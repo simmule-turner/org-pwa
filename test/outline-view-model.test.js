@@ -66,6 +66,22 @@ test('toggleFold flips collapsed and changes what flattenVisibleRows returns', (
   assert.equal(toggleFold(nrp), false);
 });
 
+test('list-item rows carry a reference to their owning heading', () => {
+  const doc = sampleDoc();
+  const rows = flattenVisibleRows(doc);
+  const itemRow = rows.find((r) => r.rowType === 'list-item');
+  assert.equal(itemRow.heading, doc.children[1]); // "Reading list"
+});
+
+test('table/paragraph/block rows carry a reference to their owning heading', () => {
+  const doc = parseOrg(['* Notes', 'A paragraph.', '', '| a | b |'].join('\n'));
+  const rows = flattenVisibleRows(doc);
+  const paraRow = rows.find((r) => r.rowType === 'paragraph');
+  const tableRow = rows.find((r) => r.rowType === 'table');
+  assert.equal(paraRow.heading, doc.children[0]);
+  assert.equal(tableRow.heading, doc.children[0]);
+});
+
 test('cycleHeadingTodo uses the resolved sequence (file #+TODO: wins over global default)', () => {
   const doc = parseOrg(['#+TODO: NEXT WAITING | DONE', '* NEXT Something'].join('\n'));
   const heading = doc.children[0];
