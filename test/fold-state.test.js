@@ -7,10 +7,122 @@ import {
   defaultCollapsed,
   applyFoldState,
   extractFoldState,
+  isFullyExpanded,
+  expandOneLevel,
+  expandFully,
+  collapseFully,
+  cycleFoldLevel,
   createInMemoryAdapter,
   loadFoldState,
   saveFoldState,
 } from '../src/fold-state.js';
+
+function deepDoc() {
+  const text = [
+    '* Grandparent',
+    '** Parent A',
+    '*** Child A1',
+    '*** Child A2',
+    '**** Grandchild A2a',
+    '** Parent B',
+    '*** Child B1',
+  ].join('\n');
+  return parseOrg(text);
+}
+
+test('isFullyExpanded is true only when the heading and every descendant are expanded', () => {
+  const doc = deepDoc();
+  const grandparent = doc.children[0];
+  applyFoldState(doc, []); // everything collapsed by default
+  assert.equal(isFullyExpanded(grandparent), false);
+
+  function expandAll(h) {
+    h.collapsed = false;
+    for (const c of h.children) expandAll(c);
+  }
+  expandAll(grandparent);
+  assert.equal(isFullyExpanded(grandparent), true);
+
+  grandparent.children[0].children[1].children[0].collapsed = true; // Grandchild A2a
+  assert.equal(isFullyExpanded(grandparent), false);
+});
+
+test('expandOneLevel reveals direct children but keeps grandchildren collapsed', () => {
+  const doc = deepDoc();
+  const grandparent = doc.children[0];
+  applyFoldState(doc, []);
+  expandOneLevel(grandparent);
+
+  assert.equal(grandparent.collapsed, false);
+  assert.equal(grandparent.children[0].collapsed, true); // Parent A
+  assert.equal(grandparent.children[1].collapsed, true); // Parent B
+});
+
+test('expandFully reveals every descendant recursively', () => {
+  const doc = deepDoc();
+  const grandparent = doc.children[0];
+  applyFoldState(doc, []);
+  expandFully(grandparent);
+
+  assert.equal(isFullyExpanded(grandparent), true);
+});
+
+test('collapseFully collapses the heading and resets every descendant to collapsed', () => {
+  const doc = deepDoc();
+  const grandparent = doc.children[0];
+  expandFully(grandparent);
+  collapseFully(grandparent);
+
+  assert.equal(grandparent.collapsed, true);
+  assert.equal(grandparent.children[0].collapsed, true);
+  assert.equal(grandparent.children[1].children[0].collapsed, true); // Child B1
+});
+
+test('cycleFoldLevel: collapsed -> one level -> full -> collapsed, in order', () => {
+  const doc = deepDoc();
+  const grandparent = doc.children[0];
+  applyFoldState(doc, []); // starts collapsed
+
+  assert.equal(cycleFoldLevel(grandparent), 'children');
+  assert.equal(grandparent.collapsed, false);
+  assert.equal(grandparent.children[0].collapsed, true);
+
+  assert.equal(cycleFoldLevel(grandparent), 'full');
+  assert.equal(isFullyExpanded(grandparent), true);
+
+  assert.equal(cycleFoldLevel(grandparent), 'collapsed');
+  assert.equal(grandparent.collapsed, true);
+
+  assert.equal(cycleFoldLevel(grandparent), 'children');
+  assert.equal(grandparent.children[0].collapsed, true);
+});
+
+test('cycleFoldLevel treats a partially-expanded heading as "not fully expanded" and advances to full', () => {
+  const doc = deepDoc();
+  const grandparent = doc.children[0];
+  applyFoldState(doc, []);
+
+  // Simulate: user expanded the top heading and one child by hand (e.g.
+  // via the ordinary fold-toggle button), leaving things in a state that
+  // isn't exactly any of the three canonical steps.
+  grandparent.collapsed = false;
+  grandparent.children[0].collapsed = false; // Parent A expanded
+  grandparent.children[1].collapsed = true; // Parent B still collapsed
+
+  assert.equal(cycleFoldLevel(grandparent), 'full');
+  assert.equal(isFullyExpanded(grandparent), true);
+});
+
+test('cycleFoldLevel on a leaf heading (no children) still toggles sensibly', () => {
+  const doc = parseOrg('* Leaf heading');
+  const leaf = doc.children[0];
+  leaf.collapsed = true;
+
+  assert.equal(cycleFoldLevel(leaf), 'children');
+  assert.equal(leaf.collapsed, false);
+  assert.equal(cycleFoldLevel(leaf), 'collapsed');
+  assert.equal(leaf.collapsed, true);
+});
 
 function sampleDoc() {
   const text = [
