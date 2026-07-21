@@ -2,6 +2,7 @@ import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src
 import { parseOrg } from './src/org-parser.js';
 import { setProperty, deleteProperty, findAncestorPath } from './src/archive-model.js';
 import { resolveLinkTarget } from './src/link-resolve.js';
+import { parseInline } from './src/inline-markup.js';
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
 import { loadFoldState, saveFoldState } from './src/fold-state.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
@@ -18,6 +19,7 @@ import {
   deleteListItem,
   deleteTable,
   deleteParagraph,
+  editListItemText,
 } from './src/body-edit.js';
 import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
 import {
@@ -52,6 +54,8 @@ let editingIsNew = false;
 let editingCell = null;
 // { heading, paragraph } for the one paragraph currently being edited, or null.
 let editingParagraph = null;
+// { heading, item } for the one list item currently being text-edited, or null.
+let editingListItem = null;
 
 function setStatus(text) {
   statusEl.textContent = text;
@@ -404,8 +408,16 @@ function renderRow(row, todoSequence) {
     } else {
       const title = document.createElement('span');
       title.className = 'heading-title';
-      title.textContent = row.node.title || '(untitled)';
-      title.onclick = () => startEditingTitle(row.node, false);
+      if (row.node.title) {
+        renderInlineNodes(parseInline(row.node.title), title);
+      } else {
+        title.textContent = '(untitled)';
+        title.style.opacity = '0.5';
+      }
+      title.onclick = (e) => {
+        if (e.target.closest('[data-inline-link]')) return;
+        startEditingTitle(row.node, false);
+      };
       el.appendChild(title);
 
       for (const tag of row.node.tags) {
@@ -490,6 +502,7 @@ function renderRow(row, todoSequence) {
         editingIsNew = false;
         editingCell = null;
         editingParagraph = null;
+        editingListItem = null;
         removeHeading(state.doc, row.node);
         commitAndRender();
       };
@@ -514,17 +527,55 @@ function renderRow(row, todoSequence) {
       box.textContent = row.item.checkbox === 'X' ? '\u2611' : row.item.checkbox === '-' ? '\u25aa' : '\u2610';
       el.appendChild(box);
     }
-    const text = document.createElement('span');
-    if (row.item.tag) {
-      text.appendChild(document.createTextNode(row.item.tag + ' :: '));
+
+    const isEditingText = editingListItem && editingListItem.item === row.item;
+
+    if (isEditingText) {
+      const input = document.createElement('input');
+      input.id = 'listitem-edit-input';
+      input.type = 'text';
+      input.value = row.item.text;
+      input.style.flex = '1 1 auto';
+      input.style.minWidth = '0';
+      input.style.font = 'inherit';
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          editingListItem = null;
+          render();
+        }
+      });
+      input.addEventListener('blur', () => {
+        const { heading, item } = editingListItem;
+        editingListItem = null;
+        editListItemText(heading, item, input.value);
+        commitAndRender();
+      });
+      el.appendChild(input);
+    } else {
+      const text = document.createElement('span');
+      if (row.item.tag) {
+        text.appendChild(document.createTextNode(row.item.tag + ' :: '));
+      }
+      renderInlineNodes(row.item.inline, text);
+      text.style.flex = '1 1 auto';
+      text.style.minWidth = '0';
+      text.style.overflow = 'hidden';
+      text.style.textOverflow = 'ellipsis';
+      text.style.whiteSpace = 'nowrap';
+      text.style.cursor = 'text';
+      // Tapping the text specifically opens text editing, even on a
+      // checkbox row where tapping elsewhere toggles the checkbox — the
+      // stopPropagation is what keeps those two gestures from colliding.
+      text.onclick = (e) => {
+        if (e.target.closest('[data-inline-link]')) return;
+        e.stopPropagation();
+        editingListItem = { heading: row.heading, item: row.item };
+        render();
+      };
+      el.appendChild(text);
     }
-    renderInlineNodes(row.item.inline, text);
-    text.style.flex = '1 1 auto';
-    text.style.minWidth = '0';
-    text.style.overflow = 'hidden';
-    text.style.textOverflow = 'ellipsis';
-    text.style.whiteSpace = 'nowrap';
-    el.appendChild(text);
 
     const deleteItemBtn = document.createElement('button');
     deleteItemBtn.style.flexShrink = '0';
@@ -540,6 +591,7 @@ function renderRow(row, todoSequence) {
     deleteItemBtn.onclick = (e) => {
       e.stopPropagation();
       if (!confirmListItemDelete(row.item)) return;
+      if (editingListItem && editingListItem.item === row.item) editingListItem = null;
       deleteListItem(row.heading, row.item);
       commitAndRender();
     };
@@ -794,11 +846,12 @@ function render() {
   outlineEl.innerHTML = '';
   outlineEl.appendChild(fragment);
 
-  if (editingHeading || editingCell || editingParagraph) {
+  if (editingHeading || editingCell || editingParagraph || editingListItem) {
     requestAnimationFrame(() => {
       const input =
         document.getElementById('title-edit-input') ||
         document.getElementById('cell-edit-input') ||
+        document.getElementById('listitem-edit-input') ||
         document.getElementById('paragraph-edit-input');
       if (input) {
         input.focus();
