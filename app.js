@@ -526,6 +526,15 @@ function renderRow(row, todoSequence) {
       const box = document.createElement('span');
       box.textContent = row.item.checkbox === 'X' ? '\u2611' : row.item.checkbox === '-' ? '\u25aa' : '\u2610';
       el.appendChild(box);
+    } else {
+      const marker = document.createElement('span');
+      marker.style.flexShrink = '0';
+      marker.style.color = 'var(--text-muted, #888)';
+      marker.style.fontSize = '13px';
+      marker.style.textAlign = 'right';
+      marker.style.minWidth = row.item.ordered ? '22px' : '12px';
+      marker.textContent = row.item.ordered ? row.displayNumber + '.' : '\u2022';
+      el.appendChild(marker);
     }
 
     const isEditingText = editingListItem && editingListItem.item === row.item;
