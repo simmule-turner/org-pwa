@@ -42,8 +42,13 @@ const CHECKBOX_CYCLE = [' ', '-', 'X'];
  *
  * Row shapes:
  *   { rowType: 'heading', id, node, depth, hasChildren }
- *   { rowType: 'list-item', id, item, depth, heading }
+ *   { rowType: 'list-item', id, item, depth, heading, displayNumber }
  *   { rowType: 'paragraph' | 'table' | 'block', node, depth, heading }
+ *
+ * `displayNumber` is the item's position for rendering an ordered list's
+ * numbering (null for unordered items) — computed per items-array (each
+ * nested list numbers independently) and reset by a [@N] start-value
+ * cookie, so callers don't need to re-derive numbering themselves.
  */
 function flattenVisibleRows(doc, opts = {}) {
   const { computeIds = true } = opts;
@@ -51,9 +56,15 @@ function flattenVisibleRows(doc, opts = {}) {
   const rows = [];
 
   function flattenListItems(items, headingNode, headingId, depth, pathPrefix) {
+    let orderedCounter = 0;
     items.forEach((item, i) => {
+      let displayNumber = null;
+      if (item.ordered) {
+        orderedCounter = item.startValue != null ? item.startValue : orderedCounter + 1;
+        displayNumber = orderedCounter;
+      }
       const id = headingId !== null ? `${headingId}:${pathPrefix}${i}` : null;
-      rows.push({ rowType: 'list-item', id, item, depth, heading: headingNode });
+      rows.push({ rowType: 'list-item', id, item, depth, heading: headingNode, displayNumber });
       for (const nestedList of item.children || []) {
         flattenListItems(nestedList.items, headingNode, headingId, depth + 1, `${id}.`);
       }

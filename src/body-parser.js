@@ -26,6 +26,12 @@ import { parseInline } from './inline-markup.js';
  * line is itself a list item at or above the current indent). Real org
  * mode's rules around loose lists / paragraph continuation inside list
  * items are richer than this; this is a v1 approximation.
+ *
+ * The org [@N] "start value" cookie (e.g. "20. [@20] item") is parsed out
+ * of an ordered item's text into a separate `startValue` field rather than
+ * left embedded in `text` — so the UI can use it to reset the displayed
+ * numbering without also showing the literal cookie as part of the item's
+ * visible content.
  */
 
 const BLOCK_START_RE = /^\s*#\+begin_(\w+)(?:\s+(.*))?$/i;
@@ -107,6 +113,14 @@ function parseListItemLine(line) {
   const m = LIST_ITEM_RE.exec(line);
   const [, indent, marker, checkbox, rest] = m;
   let text = rest;
+
+  let startValue = null;
+  const startValueMatch = /^\[@(\d+)\]\s*/.exec(text);
+  if (startValueMatch) {
+    startValue = Number(startValueMatch[1]);
+    text = text.slice(startValueMatch[0].length);
+  }
+
   let tag = null;
   const tagSplit = text.split(/\s+::\s+/);
   if (tagSplit.length >= 2) {
@@ -119,6 +133,7 @@ function parseListItemLine(line) {
     marker,
     ordered: isOrderedMarker(marker),
     checkbox: checkbox || null,
+    startValue,
     tag,
     text,
     inline: parseInline(text),

@@ -150,8 +150,8 @@ export function insertTable(heading, { rows = 2, cols = 2 } = {}) {
 
 /**
  * Replaces a list item's text, reconstructing its single source line with
- * the original indentation, marker, checkbox, and tag preserved — only
- * the text portion changes. A list item is always exactly one line (its
+ * the original indentation, marker, checkbox, [@N] start-value cookie, and
+ * tag preserved — only the text portion changes. A list item is always exactly one line (its
  * lineCount is implicitly 1; nested content lives in separate list-item
  * entries with their own lineIndex, never as continuation lines of this
  * one), so this always splices exactly one line.
@@ -162,8 +162,9 @@ export function insertTable(heading, { rows = 2, cols = 2 } = {}) {
 export function editListItemText(heading, item, newText) {
   const sanitized = String(newText).replace(/[\r\n]+/g, ' ').trim();
   const checkboxPart = item.checkbox !== null ? `[${item.checkbox}] ` : '';
+  const startValuePart = item.startValue != null ? `[@${item.startValue}] ` : '';
   const tagPart = item.tag ? `${item.tag} :: ` : '';
-  const line = `${item.indent}${item.marker} ${checkboxPart}${tagPart}${sanitized}`;
+  const line = `${item.indent}${item.marker} ${checkboxPart}${startValuePart}${tagPart}${sanitized}`;
   commitLines(heading, item.lineIndex, 1, [line]);
 }
 
