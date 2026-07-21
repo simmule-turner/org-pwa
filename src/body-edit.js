@@ -124,6 +124,10 @@ export function deleteTableColumn(heading, table, colIndex) {
   commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
 }
 
+export function deleteTable(heading, table) {
+  commitLines(heading, table.lineIndex, table.lineCount, []);
+}
+
 /** Appends a brand-new table (default 2x2, blank cells, with a header
  *  rule) to the end of `heading`'s body content. Adds a blank-line
  *  separator first if the heading already has body content, so the new
@@ -184,6 +188,10 @@ export function deleteListItem(heading, item) {
 export function editParagraphText(heading, paragraph, newText) {
   const newLines = String(newText).split('\n');
   commitLines(heading, paragraph.lineIndex, paragraph.lineCount, newLines.length ? newLines : ['']);
+}
+
+export function deleteParagraph(heading, paragraph) {
+  commitLines(heading, paragraph.lineIndex, paragraph.lineCount, []);
 }
 
 /** Appends a brand-new paragraph to the end of `heading`'s body content,
