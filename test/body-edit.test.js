@@ -13,6 +13,7 @@ import {
   insertTable,
   editParagraphText,
   insertParagraph,
+  deleteListItem,
 } from '../src/body-edit.js';
 
 function docWithTable() {
@@ -156,6 +157,55 @@ test('insertTable adds a blank-line separator when the heading already has conte
   insertTable(heading, {});
   const text = serializeOrg(doc);
   assert.match(text, /Some existing text\.\n\n\|/);
+});
+
+// ---- deleteListItem --------------------------------------------------
+
+test('deleteListItem removes a simple item and survives serialize -> reparse', () => {
+  const doc = parseOrg(['* Notes', '- one', '- two', '- three'].join('\n'));
+  const heading = doc.children[0];
+  const list = heading.body[0];
+  deleteListItem(heading, list.items[1]); // "two"
+
+  const remaining = heading.body[0].items.map((i) => i.text);
+  assert.deepEqual(remaining, ['one', 'three']);
+
+  const doc2 = parseOrg(serializeOrg(doc));
+  assert.deepEqual(
+    doc2.children[0].body[0].items.map((i) => i.text),
+    ['one', 'three']
+  );
+});
+
+test('deleteListItem takes nested sub-items with it', () => {
+  const doc = parseOrg(
+    ['* Notes', '- one', '  - one-a', '  - one-b', '- two'].join('\n')
+  );
+  const heading = doc.children[0];
+  const list = heading.body[0];
+  deleteListItem(heading, list.items[0]); // "one", with its nested one-a/one-b
+
+  const remaining = heading.body[0].items.map((i) => i.text);
+  assert.deepEqual(remaining, ['two']);
+});
+
+test('deleteListItem only removes the targeted item, leaving unrelated siblings intact', () => {
+  const doc = parseOrg(
+    ['* Notes', '- keep-1', '- delete-me', '  - nested-under-delete-me', '- keep-2'].join('\n')
+  );
+  const heading = doc.children[0];
+  deleteListItem(heading, heading.body[0].items[1]);
+
+  const remaining = heading.body[0].items.map((i) => i.text);
+  assert.deepEqual(remaining, ['keep-1', 'keep-2']);
+});
+
+test('deleteListItem on the last remaining item leaves an empty body (no crash)', () => {
+  const doc = parseOrg(['* Notes', '- only item'].join('\n'));
+  const heading = doc.children[0];
+  deleteListItem(heading, heading.body[0].items[0]);
+  assert.deepEqual(heading.body, []);
+  assert.equal(serializeOrg(doc), '* Notes');
 });
 
 // ---- paragraph edits -----------------------------------------------------
