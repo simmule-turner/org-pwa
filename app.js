@@ -1,5 +1,7 @@
 import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src/document-store.js';
 import { parseOrg } from './src/org-parser.js';
+import { setProperty, deleteProperty, findAncestorPath } from './src/archive-model.js';
+import { resolveLinkTarget } from './src/link-resolve.js';
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
 import { loadFoldState, saveFoldState } from './src/fold-state.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
@@ -110,6 +112,174 @@ function persistInBackground() {
 function commitAndRender() {
   render();
   persistInBackground();
+}
+
+// Marks every link/image-produced DOM element so container click handlers
+// (checkbox-cycle on a list-item row, edit-on-click on a paragraph) can
+// detect "this click landed on a link, don't also trigger my own handler"
+// via a single e.target.closest('[data-inline-link]') check, rather than
+// each link type needing its own stopPropagation wiring.
+const INLINE_LINK_ATTR = 'data-inline-link';
+
+function renderImageNode(node) {
+  if (/^https?:\/\//i.test(node.target)) {
+    const img = document.createElement('img');
+    img.src = node.target;
+    img.alt = '';
+    img.style.maxWidth = '100%';
+    img.style.display = 'block';
+    img.style.margin = '4px 0';
+    img.style.borderRadius = '4px';
+    return img;
+  }
+  // Local/relative image paths can't be resolved to pixels here — doing so
+  // would need a registered File System Access directory handle and path
+  // resolution this app doesn't have yet. Shown as a labeled placeholder
+  // rather than a broken image icon or silently dropped content.
+  const span = document.createElement('span');
+  span.textContent = '[image: ' + node.target + ']';
+  span.style.color = 'var(--text-muted, #888)';
+  span.style.fontStyle = 'italic';
+  return span;
+}
+
+function renderLinkNode(node) {
+  const label = node.description || node.target;
+  const resolution = resolveLinkTarget(state.doc, node.target);
+
+  if (resolution.type === 'external') {
+    const a = document.createElement('a');
+    a.href = resolution.url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = label;
+    a.style.color = '#185fa5';
+    a.setAttribute(INLINE_LINK_ATTR, '1');
+    return a;
+  }
+
+  if (resolution.type === 'heading') {
+    const a = document.createElement('a');
+    a.href = '#';
+    a.textContent = label;
+    a.style.color = '#185fa5';
+    a.setAttribute(INLINE_LINK_ATTR, '1');
+    a.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      navigateToHeading(resolution.heading);
+    };
+    return a;
+  }
+
+  if (resolution.type === 'file') {
+    const span = document.createElement('span');
+    span.textContent = label;
+    span.style.color = 'var(--text-muted, #888)';
+    span.style.textDecoration = 'underline dotted';
+    span.style.cursor = 'pointer';
+    span.setAttribute(INLINE_LINK_ATTR, '1');
+    span.onclick = (e) => {
+      e.stopPropagation();
+      setStatus("Can't open local file links yet: " + resolution.path);
+    };
+    return span;
+  }
+
+  // Unresolved: e.g. a *Heading or #custom-id link with no matching
+  // heading (renamed heading, typo, or a link meant for a different
+  // file). Shown distinctly rather than silently rendered as plain text,
+  // since "this link is broken" is useful information.
+  const span = document.createElement('span');
+  span.textContent = label;
+  span.style.color = 'var(--text-muted, #888)';
+  span.style.textDecoration = 'underline wavy';
+  span.title = 'Unresolved link: ' + node.target;
+  span.setAttribute(INLINE_LINK_ATTR, '1');
+  return span;
+}
+
+/** Renders a parseInline() node array into `container`. Recurses into
+ *  emphasis spans' children; code/verbatim/comment/image/link are leaves. */
+function renderInlineNodes(nodes, container) {
+  for (const node of nodes) {
+    switch (node.type) {
+      case 'text':
+        container.appendChild(document.createTextNode(node.value));
+        break;
+      case 'bold': {
+        const el = document.createElement('b');
+        renderInlineNodes(node.children, el);
+        container.appendChild(el);
+        break;
+      }
+      case 'italic': {
+        const el = document.createElement('i');
+        renderInlineNodes(node.children, el);
+        container.appendChild(el);
+        break;
+      }
+      case 'underline': {
+        const el = document.createElement('u');
+        renderInlineNodes(node.children, el);
+        container.appendChild(el);
+        break;
+      }
+      case 'strikethrough': {
+        const el = document.createElement('s');
+        renderInlineNodes(node.children, el);
+        container.appendChild(el);
+        break;
+      }
+      case 'code':
+      case 'verbatim': {
+        const el = document.createElement('code');
+        el.textContent = node.value;
+        el.style.background = 'rgba(128,128,128,0.15)';
+        el.style.padding = '1px 4px';
+        el.style.borderRadius = '3px';
+        el.style.fontSize = '0.9em';
+        container.appendChild(el);
+        break;
+      }
+      case 'image':
+        container.appendChild(renderImageNode(node));
+        break;
+      case 'link':
+        container.appendChild(renderLinkNode(node));
+        break;
+      case 'comment':
+        // Org excludes comments from rendered/exported output; skipped here too.
+        break;
+      default:
+        container.appendChild(document.createTextNode(node.value || ''));
+    }
+  }
+}
+
+/** Expands every ancestor of `heading` (so it isn't hidden inside a
+ *  collapsed parent), re-renders, then scrolls the now-visible row into
+ *  view with a brief highlight. */
+function navigateToHeading(heading) {
+  for (const ancestor of findAncestorPath(state.doc, heading) || []) {
+    ancestor.collapsed = false;
+  }
+  render();
+  saveFoldState(state.doc, state.documentId, kv).catch(() => {});
+
+  requestAnimationFrame(() => {
+    const rows = flattenVisibleRows(state.doc, { computeIds: false });
+    const idx = rows.findIndex((r) => r.rowType === 'heading' && r.node === heading);
+    if (idx === -1 || !outlineEl.children[idx]) return;
+    const el = outlineEl.children[idx];
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const original = el.style.backgroundColor;
+    el.style.transition = 'background-color 0.6s';
+    el.style.backgroundColor = 'rgba(24,95,165,0.15)';
+    setTimeout(() => {
+      el.style.backgroundColor = original;
+    }, 1200);
+  });
 }
 
 function smallButton(label, ariaLabel, onClick) {
@@ -279,6 +449,32 @@ function renderRow(row, todoSequence) {
       };
       el.appendChild(addNote);
 
+      const setIdBtn = document.createElement('button');
+      setIdBtn.className = 'add-child-btn';
+      setIdBtn.style.marginLeft = '2px';
+      setIdBtn.textContent = '#';
+      setIdBtn.style.fontWeight = row.node.properties.CUSTOM_ID ? '700' : '400';
+      setIdBtn.setAttribute(
+        'aria-label',
+        row.node.properties.CUSTOM_ID ? 'Edit link ID (' + row.node.properties.CUSTOM_ID + ')' : 'Set link ID'
+      );
+      setIdBtn.onclick = () => {
+        const current = row.node.properties.CUSTOM_ID || '';
+        const next = window.prompt(
+          'Custom ID for linking to this heading with [[#id]] (stays stable if you rename the heading). Leave blank to remove.',
+          current
+        );
+        if (next === null) return; // cancelled
+        const trimmed = next.trim();
+        if (trimmed === '') {
+          deleteProperty(row.node, 'CUSTOM_ID');
+        } else {
+          setProperty(row.node, 'CUSTOM_ID', trimmed);
+        }
+        commitAndRender();
+      };
+      el.appendChild(setIdBtn);
+
       const deleteHeadingBtn = document.createElement('button');
       deleteHeadingBtn.className = 'add-child-btn';
       deleteHeadingBtn.style.marginLeft = 'auto';
@@ -309,7 +505,8 @@ function renderRow(row, todoSequence) {
     el.style.paddingLeft = 8 + row.depth * 16 + 'px';
     if (row.item.checkbox !== null) {
       el.classList.add('checkbox-row');
-      el.onclick = () => {
+      el.onclick = (e) => {
+        if (e.target.closest('[data-inline-link]')) return;
         cycleItemCheckbox(row.heading, row.item);
         commitAndRender();
       };
@@ -318,7 +515,10 @@ function renderRow(row, todoSequence) {
       el.appendChild(box);
     }
     const text = document.createElement('span');
-    text.textContent = (row.item.tag ? row.item.tag + ' :: ' : '') + row.item.text;
+    if (row.item.tag) {
+      text.appendChild(document.createTextNode(row.item.tag + ' :: '));
+    }
+    renderInlineNodes(row.item.inline, text);
     text.style.flex = '1 1 auto';
     text.style.minWidth = '0';
     text.style.overflow = 'hidden';
@@ -518,9 +718,18 @@ function renderParagraphRow(row) {
     p.style.fontSize = '14px';
     p.style.flex = '1 1 auto';
     p.style.minWidth = '0';
-    p.textContent = row.node.lines.join('\n') || '(empty note \u2014 tap to edit)';
-    if (!row.node.lines.join('\n')) p.style.opacity = '0.5';
-    p.onclick = () => {
+    const hasContent = row.node.lines.some((l) => l.trim() !== '');
+    if (hasContent) {
+      row.node.inlineLines.forEach((lineNodes, i) => {
+        if (i > 0) p.appendChild(document.createElement('br'));
+        renderInlineNodes(lineNodes, p);
+      });
+    } else {
+      p.textContent = '(empty note \u2014 tap to edit)';
+      p.style.opacity = '0.5';
+    }
+    p.onclick = (e) => {
+      if (e.target.closest('[data-inline-link]')) return;
       editingParagraph = { heading: row.heading, paragraph: row.node };
       render();
     };
