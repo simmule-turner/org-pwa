@@ -24,31 +24,37 @@ const CHECKBOX_CYCLE = [' ', '-', 'X'];
  * a virtualized list needs (it shouldn't have to measure/skip hidden rows,
  * they just shouldn't be in the array).
  *
+ * Every body-content row (list-item, paragraph, table, block) carries a
+ * `heading` reference to its owning heading node — needed by any editing
+ * operation that has to splice that heading's `bodyLines` (see
+ * body-edit.js), so callers never have to re-derive "which heading does
+ * this row belong to" by searching.
+ *
  * Row shapes:
  *   { rowType: 'heading', id, node, depth, hasChildren }
- *   { rowType: 'list-item', id, item, depth }
- *   { rowType: 'paragraph' | 'table' | 'block', node, depth }
+ *   { rowType: 'list-item', id, item, depth, heading }
+ *   { rowType: 'paragraph' | 'table' | 'block', node, depth, heading }
  */
 function flattenVisibleRows(doc) {
   const idByNode = new Map(buildFoldIndex(doc).map((e) => [e.node, e.id]));
   const rows = [];
 
-  function flattenListItems(items, headingId, depth, pathPrefix) {
+  function flattenListItems(items, headingNode, headingId, depth, pathPrefix) {
     items.forEach((item, i) => {
       const id = `${headingId}:${pathPrefix}${i}`;
-      rows.push({ rowType: 'list-item', id, item, depth });
+      rows.push({ rowType: 'list-item', id, item, depth, heading: headingNode });
       for (const nestedList of item.children || []) {
-        flattenListItems(nestedList.items, headingId, depth + 1, `${id}.`);
+        flattenListItems(nestedList.items, headingNode, headingId, depth + 1, `${id}.`);
       }
     });
   }
 
-  function flattenBody(bodyNodes, headingId, depth) {
+  function flattenBody(bodyNodes, headingNode, headingId, depth) {
     for (const node of bodyNodes || []) {
       if (node.type === 'list') {
-        flattenListItems(node.items, headingId, depth, '');
+        flattenListItems(node.items, headingNode, headingId, depth, '');
       } else {
-        rows.push({ rowType: node.type, node, depth });
+        rows.push({ rowType: node.type, node, depth, heading: headingNode });
       }
     }
   }
@@ -61,7 +67,7 @@ function flattenVisibleRows(doc) {
       rows.push({ rowType: 'heading', id, node, depth, hasChildren });
 
       if (!node.collapsed) {
-        flattenBody(node.body, id, depth + 1);
+        flattenBody(node.body, node, id, depth + 1);
         walk(node.children, depth + 1);
       }
     }

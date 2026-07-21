@@ -13,6 +13,12 @@ import { parseInline } from './inline-markup.js';
  * additive field (`inline` / `cellsInline`) alongside the raw string, which
  * stays around for serialization.
  *
+ * Tables and paragraphs track `lineIndex`/`lineCount` (their span within
+ * the `lines` array they were parsed from), the same way list items track
+ * `lineIndex` — this is what lets body-edit.js commit an edit by splicing
+ * the owning heading's `bodyLines` and reparsing, rather than only
+ * mutating the derived tree (which the serializer never reads).
+ *
  * Known limitation: list continuation across blank lines uses a simple
  * lookahead heuristic (a blank line is swallowed only if the next non-blank
  * line is itself a list item at or above the current indent). Real org
@@ -72,6 +78,7 @@ function parseTableRow(line) {
 }
 
 function parseTable(lines, i) {
+  const startIndex = i;
   const rows = [];
   while (i < lines.length && TABLE_LINE_RE.test(lines[i]) && lines[i].trim() !== '') {
     rows.push(parseTableRow(lines[i]));
@@ -85,7 +92,7 @@ function parseTable(lines, i) {
       i++;
     }
   }
-  return [{ type: 'table', rows, tblfm }, i];
+  return [{ type: 'table', rows, tblfm, lineIndex: startIndex, lineCount: i - startIndex }, i];
 }
 
 // ---- lists ------------------------------------------------------------
@@ -164,6 +171,7 @@ function parseList(lines, i, baseIndent) {
 // ---- paragraphs ---------------------------------------------------------
 
 function parseParagraph(lines, i) {
+  const startIndex = i;
   const paraLines = [];
   while (
     i < lines.length &&
@@ -175,7 +183,16 @@ function parseParagraph(lines, i) {
     paraLines.push(lines[i]);
     i++;
   }
-  return [{ type: 'paragraph', lines: paraLines, inlineLines: paraLines.map(parseInline) }, i];
+  return [
+    {
+      type: 'paragraph',
+      lines: paraLines,
+      inlineLines: paraLines.map(parseInline),
+      lineIndex: startIndex,
+      lineCount: i - startIndex,
+    },
+    i,
+  ];
 }
 
 // ---- main -----------------------------------------------------------------
