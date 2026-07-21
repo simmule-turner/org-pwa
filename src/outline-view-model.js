@@ -30,18 +30,29 @@ const CHECKBOX_CYCLE = [' ', '-', 'X'];
  * body-edit.js), so callers never have to re-derive "which heading does
  * this row belong to" by searching.
  *
+ * `computeIds` (default true) controls whether row.id gets populated.
+ * Computing it requires buildFoldIndex — a full recursive tree walk with
+ * an FNV-1a hash per heading — which is only actually needed by callers
+ * that persist/look up fold state by id. A UI's per-interaction render
+ * loop typically doesn't read row.id at all (it holds live node/item
+ * object references instead), so pass `{ computeIds: false }` there to
+ * skip that walk entirely — on a large document this is the difference
+ * between "every tap re-hashes the whole tree" and "every tap just reads
+ * a few already-set booleans".
+ *
  * Row shapes:
  *   { rowType: 'heading', id, node, depth, hasChildren }
  *   { rowType: 'list-item', id, item, depth, heading }
  *   { rowType: 'paragraph' | 'table' | 'block', node, depth, heading }
  */
-function flattenVisibleRows(doc) {
-  const idByNode = new Map(buildFoldIndex(doc).map((e) => [e.node, e.id]));
+function flattenVisibleRows(doc, opts = {}) {
+  const { computeIds = true } = opts;
+  const idByNode = computeIds ? new Map(buildFoldIndex(doc).map((e) => [e.node, e.id])) : null;
   const rows = [];
 
   function flattenListItems(items, headingNode, headingId, depth, pathPrefix) {
     items.forEach((item, i) => {
-      const id = `${headingId}:${pathPrefix}${i}`;
+      const id = headingId !== null ? `${headingId}:${pathPrefix}${i}` : null;
       rows.push({ rowType: 'list-item', id, item, depth, heading: headingNode });
       for (const nestedList of item.children || []) {
         flattenListItems(nestedList.items, headingNode, headingId, depth + 1, `${id}.`);
@@ -62,7 +73,7 @@ function flattenVisibleRows(doc) {
   function walk(nodes, depth) {
     for (const node of nodes) {
       if (node.type !== 'heading') continue;
-      const id = idByNode.get(node);
+      const id = idByNode ? idByNode.get(node) : null;
       const hasChildren = (node.children && node.children.length > 0) || (node.body && node.body.length > 0);
       rows.push({ rowType: 'heading', id, node, depth, hasChildren });
 

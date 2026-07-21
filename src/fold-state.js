@@ -78,22 +78,54 @@ function ancestorTitlesFor(doc, heading) {
   return path ? path.map((h) => h.title) : null;
 }
 
-/** Sets `node.collapsed` on every heading from a list/Set of collapsed ids.
- *  Anything not in the set defaults to expanded (false). */
-function applyFoldState(doc, collapsedIds) {
-  const set = collapsedIds instanceof Set ? collapsedIds : new Set(collapsedIds);
+/**
+ * Whether a heading should default to collapsed when no explicit fold
+ * preference has been saved for it. As of this version: everything does,
+ * unconditionally — a document opens fully collapsed until the user
+ * expands what they want to see. There is no per-node exception anymore
+ * (a previous version defaulted only archived headings to collapsed and
+ * left everything else expanded; that asymmetry has been removed in favor
+ * of this simpler, stronger rule). `opts` is kept in the signature for
+ * forward compatibility even though nothing currently reads it — future
+ * default policies (e.g. "collapse below level N") would live here
+ * without changing every caller's signature again.
+ */
+function defaultCollapsed(_node, _opts = {}) {
+  return true;
+}
+
+/**
+ * Sets `node.collapsed` on every heading. `overrides` is a sparse list of
+ * `{ id, collapsed }` entries — a heading not present in it falls back to
+ * `defaultCollapsed(node, opts)`. This is what makes an explicit user
+ * choice (e.g. manually re-expanding an archived heading to review it)
+ * stick regardless of the archived-default, while anything untouched
+ * follows whatever the current default computes to.
+ */
+function applyFoldState(doc, overrides, opts = {}) {
+  const overrideMap = new Map((overrides || []).map((o) => [o.id, o.collapsed]));
   for (const { id, node } of buildFoldIndex(doc)) {
-    node.collapsed = set.has(id);
+    node.collapsed = overrideMap.has(id) ? overrideMap.get(id) : defaultCollapsed(node, opts);
   }
   return doc;
 }
 
-/** Extracts the sparse list of collapsed heading ids (not a full map —
- *  expanded is the default, so only exceptions need storing). */
-function extractFoldState(doc) {
-  return buildFoldIndex(doc)
-    .filter(({ node }) => node.collapsed === true)
-    .map(({ id }) => id);
+/**
+ * Extracts the sparse list of headings whose current collapsed state
+ * differs from their computed default — no longer simply "all collapsed
+ * headings", since the default itself now varies per heading (archived
+ * vs. not). A heading sitting at its own default is never stored; only
+ * genuine deviations are.
+ */
+function extractFoldState(doc, opts = {}) {
+  const overrides = [];
+  for (const { id, node } of buildFoldIndex(doc)) {
+    const def = defaultCollapsed(node, opts);
+    if (node.collapsed !== def) {
+      overrides.push({ id, collapsed: node.collapsed });
+    }
+  }
+  return overrides;
 }
 
 // ---- persistence -----------------------------------------------------
@@ -102,34 +134,46 @@ function storageKey(documentId) {
   return 'foldstate:' + documentId;
 }
 
-/** Loads and applies persisted fold state for `documentId` onto `doc`.
- *  Fails open (leaves everything expanded) on any storage error rather
- *  than throwing — a missing/corrupt fold-state entry should never block
- *  opening a document. */
-async function loadFoldState(doc, documentId, adapter) {
+/**
+ * Loads persisted overrides (if any) for `documentId` and applies fold
+ * state to `doc` — always, even when nothing is stored yet, since
+ * "nothing stored" still needs defaultCollapsed() run on every heading to
+ * get archived-collapsed-by-default right on a document's very first
+ * open. (The previous version skipped applying anything in that case,
+ * which is exactly why archived headings were showing expanded regardless
+ * of configuration — there was no default-computation step at all, only
+ * an override lookup.) Fails open (falls back to an empty override list,
+ * i.e. defaults only) on any storage error.
+ */
+async function loadFoldState(doc, documentId, adapter, opts = {}) {
+  let overrides = [];
   try {
     const result = await adapter.get(storageKey(documentId));
-    if (!result) return doc;
-    const raw = result && typeof result === 'object' && 'value' in result ? result.value : result;
-    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    if (Array.isArray(parsed)) applyFoldState(doc, parsed);
-    return doc;
+    if (result) {
+      const raw = result && typeof result === 'object' && 'value' in result ? result.value : result;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (Array.isArray(parsed)) overrides = parsed;
+    }
   } catch {
-    return doc;
+    overrides = [];
   }
+  applyFoldState(doc, overrides, opts);
+  return doc;
 }
 
-/** Extracts current fold state from `doc` and persists it under `documentId`. */
-async function saveFoldState(doc, documentId, adapter) {
-  const collapsedIds = extractFoldState(doc);
-  await adapter.set(storageKey(documentId), JSON.stringify(collapsedIds));
-  return collapsedIds;
+/** Extracts current fold-state overrides from `doc` (relative to `opts`'s
+ *  defaults) and persists them under `documentId`. */
+async function saveFoldState(doc, documentId, adapter, opts = {}) {
+  const overrides = extractFoldState(doc, opts);
+  await adapter.set(storageKey(documentId), JSON.stringify(overrides));
+  return overrides;
 }
 
 export {
   computeNodeId,
   buildFoldIndex,
   ancestorTitlesFor,
+  defaultCollapsed,
   applyFoldState,
   extractFoldState,
   createInMemoryAdapter,
