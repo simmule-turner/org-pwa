@@ -128,6 +128,81 @@ function extractFoldState(doc, opts = {}) {
   return overrides;
 }
 
+/**
+ * Whether `heading` and every descendant heading (recursively) is
+ * expanded. Used to tell "fully expanded" apart from "one level
+ * expanded" — there's no separate state tracked for this; it's derived
+ * from the actual collapsed flags in the subtree each time, so it can
+ * never drift out of sync with what's really on screen.
+ */
+function isFullyExpanded(heading) {
+  if (heading.collapsed) return false;
+  for (const child of heading.children || []) {
+    if (!isFullyExpanded(child)) return false;
+  }
+  return true;
+}
+
+/** Reveals `heading`'s own content and its direct child headings, but
+ *  collapses each direct child — so grandchildren stay hidden. This is
+ *  the "one level" step. */
+function expandOneLevel(heading) {
+  heading.collapsed = false;
+  for (const child of heading.children || []) {
+    child.collapsed = true;
+  }
+}
+
+/** Reveals `heading` and every descendant heading, recursively. */
+function expandFully(heading) {
+  heading.collapsed = false;
+  for (const child of heading.children || []) {
+    expandFully(child);
+  }
+}
+
+/** Collapses `heading` AND resets every descendant back to collapsed too
+ *  — not just hiding them (which node.collapsed = true alone would do),
+ *  but resetting their state, so the next cycle starts clean at "one
+ *  level" rather than silently remembering a stale full-expand from
+ *  before. Without this reset, cycling collapsed -> full -> collapsed ->
+ *  (expected: one level) could actually jump straight back to "full",
+ *  since the descendants' collapsed=false flags would still be sitting
+ *  there unseen. */
+function collapseFully(heading) {
+  heading.collapsed = true;
+  for (const child of heading.children || []) {
+    collapseFully(child);
+  }
+}
+
+/**
+ * Advances `heading` through the three-state fold cycle used by the
+ * slide-left gesture: collapsed -> one level -> fully expanded ->
+ * collapsed -> ... There's no stored "which step am I on" — each call
+ * inspects the heading's actual current fold state and decides the next
+ * step from that, which is what makes it safe to call after some other
+ * action (e.g. the plain fold-toggle button) has changed things in a way
+ * that doesn't cleanly match one of the three canonical states: a
+ * heading that's expanded but only partially (some grandchildren shown,
+ * others not) is treated as "not fully expanded", so the next call
+ * advances it to fully expanded rather than getting stuck.
+ *
+ * Returns which state the heading ended up in: 'children' | 'full' | 'collapsed'.
+ */
+function cycleFoldLevel(heading) {
+  if (heading.collapsed) {
+    expandOneLevel(heading);
+    return 'children';
+  }
+  if (isFullyExpanded(heading)) {
+    collapseFully(heading);
+    return 'collapsed';
+  }
+  expandFully(heading);
+  return 'full';
+}
+
 // ---- persistence -----------------------------------------------------
 
 function storageKey(documentId) {
@@ -176,6 +251,11 @@ export {
   defaultCollapsed,
   applyFoldState,
   extractFoldState,
+  isFullyExpanded,
+  expandOneLevel,
+  expandFully,
+  collapseFully,
+  cycleFoldLevel,
   createInMemoryAdapter,
   loadFoldState,
   saveFoldState,
