@@ -4,7 +4,7 @@ import { setProperty, deleteProperty, findAncestorPath } from './src/archive-mod
 import { resolveLinkTarget } from './src/link-resolve.js';
 import { parseInline } from './src/inline-markup.js';
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
-import { loadFoldState, saveFoldState } from './src/fold-state.js';
+import { loadFoldState, saveFoldState, cycleFoldLevel } from './src/fold-state.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import { renameHeading, insertTopLevelHeading, insertChildHeading, removeHeading } from './src/heading-edit.js';
 import {
@@ -286,6 +286,49 @@ function navigateToHeading(heading) {
   });
 }
 
+// Slide-left gesture: cycles a heading through the three fold levels
+// (collapsed -> one level -> fully expanded -> collapsed). Uses Pointer
+// Events rather than separate touch/mouse handlers — one code path for
+// touch, mouse, and pen, and Chromium (already required for File System
+// Access) supports it fully. Never calls preventDefault, so normal
+// vertical scrolling of the outline is completely unaffected; the
+// direction/distance check is what tells a swipe apart from a scroll,
+// not blocking the browser's own gesture handling.
+const SWIPE_THRESHOLD_PX = 40;
+
+function attachSlideLeftToFold(el, heading) {
+  let startX = null;
+  let startY = null;
+  let active = false;
+
+  el.addEventListener('pointerdown', (e) => {
+    // Don't hijack taps meant for an actual control (fold button, TODO
+    // badge, title, add/delete buttons, links) — only bare row space and
+    // plain text starts a swipe candidate.
+    if (e.target.closest('button, a, input, textarea, [data-inline-link]')) return;
+    startX = e.clientX;
+    startY = e.clientY;
+    active = true;
+  });
+
+  const finish = (e) => {
+    if (!active) return;
+    active = false;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    const isLeftSwipe = dx < -SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.5;
+    if (!isLeftSwipe) return;
+    cycleFoldLevel(heading);
+    render();
+    saveFoldState(state.doc, state.documentId, kv).catch((err) => setStatus('Save failed: ' + err.message));
+  };
+
+  el.addEventListener('pointerup', finish);
+  el.addEventListener('pointercancel', () => {
+    active = false;
+  });
+}
+
 function smallButton(label, ariaLabel, onClick) {
   const btn = document.createElement('button');
   btn.textContent = label;
@@ -364,6 +407,8 @@ function renderRow(row, todoSequence) {
     const el = document.createElement('div');
     el.className = 'row';
     el.style.paddingLeft = 8 + row.depth * 16 + 'px';
+    el.style.touchAction = 'pan-y';
+    attachSlideLeftToFold(el, row.node);
 
     const fold = document.createElement('button');
     fold.className = 'fold-btn';
