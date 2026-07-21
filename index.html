@@ -19,6 +19,10 @@
   .todo-badge.done { background: #97c45955; color: #27500a; }
   .tag { font-size: 10px; padding: 1px 6px; border-radius: 4px; border: 1px solid #8884; margin-left: 4px; opacity: 0.75; }
   .checkbox-row { padding-left: 32px; cursor: pointer; }
+  .title-input { font: inherit; border: 1px solid #5a5; border-radius: 4px; padding: 1px 4px; flex: 1; min-width: 60px; }
+  .add-child-btn { border: none; background: none; opacity: 0.45; cursor: pointer; font-size: 14px; padding: 0 4px; margin-left: auto; }
+  .add-child-btn:hover { opacity: 0.9; }
+  .heading-title { cursor: text; }
   .empty-state { padding: 40px 20px; text-align: center; opacity: 0.6; font-size: 14px; }
 </style>
 </head>
@@ -26,6 +30,7 @@
   <header>
     <button id="openBtn">Open .org file</button>
     <span id="filename">No file open</span>
+    <button id="addBtn" disabled>+ Heading</button>
     <button id="saveBtn" disabled>Save</button>
   </header>
   <div id="status"></div>
