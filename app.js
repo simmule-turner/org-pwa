@@ -1072,7 +1072,58 @@ saveBtn.addEventListener('click', async () => {
 });
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  const updateBanner = document.getElementById('updateBanner');
+  const updateReloadBtn = document.getElementById('updateReloadBtn');
+  let reloadedForUpdate = false;
+
+  function showUpdateBanner(waitingWorker) {
+    updateBanner.style.display = 'flex';
+    updateReloadBtn.onclick = () => {
+      waitingWorker.postMessage('SKIP_WAITING');
+    };
+  }
+
+  navigator.serviceWorker
+    .register('sw.js')
+    .then((registration) => {
+      // A worker may already be sitting in 'waiting' if it finished
+      // installing before this particular page load noticed (e.g. another
+      // tab triggered the update check first).
+      if (registration.waiting) {
+        showUpdateBanner(registration.waiting);
+      }
+
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          // 'installed' with an existing controller means this is a real
+          // update (not the very first install, which has no controller
+          // yet and activates on its own with nothing to prompt about).
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            showUpdateBanner(newWorker);
+          }
+        });
+      });
+
+      // The browser only checks for a new service worker on navigation by
+      // default, which barely happens in an app meant to stay open — that
+      // was a real part of why updates were hard to see while testing.
+      // Checking again whenever the tab regains focus closes that gap.
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) registration.update().catch(() => {});
+      });
+    })
+    .catch(() => {});
+
+  // Fires once the new worker actually takes over (after the user clicks
+  // Reload and the new worker calls skipWaiting + clients.claim). Reload
+  // exactly once — controllerchange can in principle fire more than once.
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloadedForUpdate) return;
+    reloadedForUpdate = true;
+    window.location.reload();
+  });
 }
 
 render();

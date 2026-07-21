@@ -28,9 +28,22 @@ const SHELL_FILES = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_FILES)).then(() => self.skipWaiting())
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_FILES)));
+  // Deliberately no self.skipWaiting() here. Calling it unconditionally
+  // meant a new service worker silently took over control of already-open
+  // tabs the moment it finished installing — the cache was updated, but
+  // the tab's already-loaded JS kept running from memory regardless, so
+  // nothing visibly changed and there was no prompt telling you a new
+  // version existed. Without skipWaiting, the new worker parks in the
+  // 'waiting' state until app.js explicitly tells it to take over (see
+  // the 'message' listener below), which is what makes the update-banner
+  // flow in app.js possible.
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (event) => {
