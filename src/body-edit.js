@@ -181,6 +181,40 @@ function listItemEndLine(item) {
 }
 
 /**
+ * Inserts a new sibling item right after `afterItem` (and after
+ * everything nested under it), at the same indentation/marker style. If
+ * `afterItem` has a checkbox, the new item gets an unchecked one too
+ * (matching "this is a checklist" convention); it never inherits
+ * `afterItem`'s tag, since a tag is a per-item descriptive term, not
+ * something that makes sense to duplicate onto a sibling. Returns the
+ * freshly parsed item so the caller can e.g. start editing it right away.
+ */
+export function insertListItem(heading, afterItem, text = '') {
+  const checkboxPart = afterItem.checkbox !== null ? '[ ] ' : '';
+  const line = `${afterItem.indent}${afterItem.marker} ${checkboxPart}${text}`;
+  const insertAt = listItemEndLine(afterItem);
+  commitLines(heading, insertAt, 0, [line]);
+
+  function findByLineIndex(items) {
+    for (const item of items) {
+      if (item.lineIndex === insertAt) return item;
+      for (const nestedList of item.children || []) {
+        const found = findByLineIndex(nestedList.items);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+  for (const node of heading.body) {
+    if (node.type === 'list') {
+      const found = findByLineIndex(node.items);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
  * Deletes a list item and everything nested under it (sub-items, at any
  * depth) — deleting a parent bullet takes its children with it, silently,
  * the same way deleting a folder takes its contents. No confirmation here;
