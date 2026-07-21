@@ -14,6 +14,8 @@ import {
   editParagraphText,
   insertParagraph,
   deleteListItem,
+  deleteTable,
+  deleteParagraph,
 } from './src/body-edit.js';
 import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
 import {
@@ -139,6 +141,47 @@ function confirmHeadingDelete(heading) {
   const title = heading.title || '(untitled)';
   return window.confirm(
     `Delete "${title}"? It contains ${parts.join(' and ')}, which will be deleted too. This can't be undone.`
+  );
+}
+
+function tableHasContent(table) {
+  return table.rows.some((r) => r.type === 'row' && r.cells.some((c) => c.trim() !== ''));
+}
+
+function confirmTableDelete(table) {
+  if (!tableHasContent(table)) return true;
+  return window.confirm("Delete this table and all its data? This can't be undone.");
+}
+
+function paragraphHasContent(paragraph) {
+  return paragraph.lines.some((l) => l.trim() !== '');
+}
+
+function confirmParagraphDelete(paragraph) {
+  if (!paragraphHasContent(paragraph)) return true;
+  return window.confirm("Delete this note? This can't be undone.");
+}
+
+// Counts every item nested under `item`, at any depth — used to decide
+// whether deleting it needs confirming, and to say how much would go with
+// it. Mirrors headingHasContent's "empty deletes instantly, content
+// prompts" rule rather than confirming on every single-line item deletion,
+// which would add friction to the common case (cleaning up a checkbox
+// list) for no real safety benefit.
+function listItemDescendantCount(item) {
+  let count = 0;
+  for (const nestedList of item.children || []) {
+    count += nestedList.items.length;
+    for (const child of nestedList.items) count += listItemDescendantCount(child);
+  }
+  return count;
+}
+
+function confirmListItemDelete(item) {
+  const count = listItemDescendantCount(item);
+  if (count === 0) return true;
+  return window.confirm(
+    `Delete this item? It has ${count} nested sub-item${count === 1 ? '' : 's'} that will be deleted too. This can't be undone.`
   );
 }
 
@@ -296,6 +339,7 @@ function renderRow(row, todoSequence) {
     deleteItemBtn.setAttribute('aria-label', 'Delete item');
     deleteItemBtn.onclick = (e) => {
       e.stopPropagation();
+      if (!confirmListItemDelete(row.item)) return;
       deleteListItem(row.heading, row.item);
       commitAndRender();
     };
@@ -418,6 +462,14 @@ function renderTableRow(row) {
       commitAndRender();
     })
   );
+  const deleteTableBtn = smallButton('\u2715 table', 'Delete table', () => {
+    if (!confirmTableDelete(row.node)) return;
+    deleteTable(row.heading, row.node);
+    commitAndRender();
+  });
+  deleteTableBtn.style.marginLeft = 'auto';
+  deleteTableBtn.style.color = '#c0392b';
+  controls.appendChild(deleteTableBtn);
   wrap.appendChild(controls);
 
   return wrap;
@@ -455,17 +507,44 @@ function renderParagraphRow(row) {
     });
     wrap.appendChild(textarea);
   } else {
+    const row2 = document.createElement('div');
+    row2.style.display = 'flex';
+    row2.style.alignItems = 'flex-start';
+    row2.style.gap = '4px';
+
     const p = document.createElement('div');
     p.style.cursor = 'text';
     p.style.whiteSpace = 'pre-wrap';
     p.style.fontSize = '14px';
+    p.style.flex = '1 1 auto';
+    p.style.minWidth = '0';
     p.textContent = row.node.lines.join('\n') || '(empty note \u2014 tap to edit)';
     if (!row.node.lines.join('\n')) p.style.opacity = '0.5';
     p.onclick = () => {
       editingParagraph = { heading: row.heading, paragraph: row.node };
       render();
     };
-    wrap.appendChild(p);
+    row2.appendChild(p);
+
+    const deleteParaBtn = document.createElement('button');
+    deleteParaBtn.style.flexShrink = '0';
+    deleteParaBtn.style.border = 'none';
+    deleteParaBtn.style.background = 'none';
+    deleteParaBtn.style.opacity = '0.4';
+    deleteParaBtn.style.fontSize = '13px';
+    deleteParaBtn.style.padding = '2px 8px';
+    deleteParaBtn.style.color = '#c0392b';
+    deleteParaBtn.textContent = '\u2715';
+    deleteParaBtn.setAttribute('aria-label', 'Delete note');
+    deleteParaBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (!confirmParagraphDelete(row.node)) return;
+      deleteParagraph(row.heading, row.node);
+      commitAndRender();
+    };
+    row2.appendChild(deleteParaBtn);
+
+    wrap.appendChild(row2);
   }
 
   return wrap;
