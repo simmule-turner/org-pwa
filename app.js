@@ -1,4 +1,5 @@
 import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src/document-store.js';
+import { parseOrg } from './src/org-parser.js';
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
 import { loadFoldState, saveFoldState } from './src/fold-state.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
@@ -18,6 +19,7 @@ import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
 import {
   createFileSystemAccessAdapter,
   pickAndRegisterFile,
+  pickAndRegisterNewFile,
   isFileSystemAccessSupported,
 } from './src-browser/filesystem-adapter.js';
 
@@ -30,6 +32,7 @@ const outlineEl = document.getElementById('outline');
 const filenameEl = document.getElementById('filename');
 const statusEl = document.getElementById('status');
 const openBtn = document.getElementById('openBtn');
+const newBtn = document.getElementById('newBtn');
 const saveBtn = document.getElementById('saveBtn');
 const addBtn = document.getElementById('addBtn');
 
@@ -535,6 +538,32 @@ openBtn.addEventListener('click', async () => {
     render();
   } catch (err) {
     if (err.name !== 'AbortError') setStatus('Could not open file: ' + err.message);
+  }
+});
+
+newBtn.addEventListener('click', async () => {
+  if (!isFileSystemAccessSupported()) {
+    setStatus('This browser lacks File System Access support \u2014 Chrome/Edge required for v1.');
+    return;
+  }
+  try {
+    const documentId = await pickAndRegisterNewFile(kv);
+    await markDocumentOpen(kv, documentId);
+    const doc = parseOrg('');
+    await loadFoldState(doc, documentId, kv); // nothing to load yet, but keeps first-open behavior consistent
+    state = { documentId, doc };
+    filenameEl.textContent = documentId;
+    saveBtn.disabled = false;
+    addBtn.disabled = false;
+    render(); // show the empty outline immediately
+    // Establish real (empty) content on disk right away, rather than
+    // leaving the picked file however the browser happened to create it —
+    // so "New" always leaves you with an actual, readable .org file, not
+    // just a registered handle with undefined contents.
+    await saveAndSync({ documentId, doc, kvAdapter: kv, diskAdapter: disk });
+    setStatus('Created.');
+  } catch (err) {
+    if (err.name !== 'AbortError') setStatus('Could not create file: ' + err.message);
   }
 });
 

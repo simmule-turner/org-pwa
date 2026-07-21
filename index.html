@@ -9,7 +9,7 @@
   :root { color-scheme: light dark; }
   body { font-family: system-ui, sans-serif; margin: 0; padding: 0; max-width: 480px; margin: 0 auto; }
   header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #8883; position: sticky; top: 0; background: Canvas; }
-  header button { font-size: 13px; padding: 6px 10px; }
+  header button { font-size: 13px; padding: 6px 10px; flex-shrink: 0; }
   #filename { flex: 1; font-size: 13px; opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #status { font-size: 11px; opacity: 0.6; padding: 4px 12px; }
   .row { display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-bottom: 1px solid #8882; }
@@ -28,7 +28,8 @@
 </head>
 <body>
   <header>
-    <button id="openBtn">Open .org file</button>
+    <button id="openBtn">Open</button>
+    <button id="newBtn">New</button>
     <span id="filename">No file open</span>
     <button id="addBtn" disabled>+ Heading</button>
     <button id="saveBtn" disabled>Save</button>
