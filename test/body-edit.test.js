@@ -17,6 +17,7 @@ import {
   deleteTable,
   deleteParagraph,
   editListItemText,
+  insertListItem,
 } from '../src/body-edit.js';
 
 function docWithTable() {
@@ -273,6 +274,64 @@ test('editListItemText preserves a [@N] start-value cookie', () => {
   assert.equal(item.startValue, 20);
   assert.equal(item.text, 'twentieth item, revised');
   assert.match(serializeOrg(doc), /^20\. \[@20\] twentieth item, revised$/m);
+});
+
+// ---- insertListItem --------------------------------------------------
+
+test('insertListItem adds a sibling right after the target and survives serialize -> reparse', () => {
+  const doc = parseOrg(['* Notes', '- one', '- three'].join('\n'));
+  const heading = doc.children[0];
+  const newItem = insertListItem(heading, heading.body[0].items[0], 'two');
+
+  assert.equal(newItem.text, 'two');
+  assert.deepEqual(
+    heading.body[0].items.map((i) => i.text),
+    ['one', 'two', 'three']
+  );
+
+  const doc2 = parseOrg(serializeOrg(doc));
+  assert.deepEqual(
+    doc2.children[0].body[0].items.map((i) => i.text),
+    ['one', 'two', 'three']
+  );
+});
+
+test('insertListItem inserts after a subtree, not inside it', () => {
+  const doc = parseOrg(['* Notes', '- one', '  - nested', '- three'].join('\n'));
+  const heading = doc.children[0];
+  insertListItem(heading, heading.body[0].items[0], 'two');
+
+  const list = heading.body[0];
+  assert.deepEqual(
+    list.items.map((i) => i.text),
+    ['one', 'two', 'three']
+  );
+  assert.equal(list.items[0].children[0].items[0].text, 'nested');
+});
+
+test('insertListItem gives the new item an unchecked checkbox when the sibling has one', () => {
+  const doc = parseOrg(['* Notes', '- [X] done thing'].join('\n'));
+  const heading = doc.children[0];
+  const newItem = insertListItem(heading, heading.body[0].items[0], 'new thing');
+  assert.equal(newItem.checkbox, ' ');
+});
+
+test('insertListItem does not inherit the sibling tag', () => {
+  const doc = parseOrg(['* Notes', '- fruit :: apples'].join('\n'));
+  const heading = doc.children[0];
+  const newItem = insertListItem(heading, heading.body[0].items[0], 'plain new item');
+  assert.equal(newItem.tag, null);
+  assert.equal(newItem.text, 'plain new item');
+});
+
+test('insertListItem preserves indentation for a nested sibling', () => {
+  const doc = parseOrg(['* Notes', '- one', '  - nested-a'].join('\n'));
+  const heading = doc.children[0];
+  const nestedA = heading.body[0].items[0].children[0].items[0];
+  insertListItem(heading, nestedA, 'nested-b');
+
+  const text = serializeOrg(doc);
+  assert.match(text, /^  - nested-b$/m);
 });
 
 // ---- deleteListItem --------------------------------------------------
