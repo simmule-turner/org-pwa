@@ -3,6 +3,16 @@ import { flattenVisibleRows, toggleFold, cycleHeadingTodo, cycleItemCheckbox } f
 import { loadFoldState, saveFoldState } from './src/fold-state.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import { renameHeading, insertTopLevelHeading, insertChildHeading, removeHeading } from './src/heading-edit.js';
+import {
+  setTableCell,
+  insertTableRow,
+  deleteTableRow,
+  insertTableColumn,
+  deleteTableColumn,
+  insertTable,
+  editParagraphText,
+  insertParagraph,
+} from './src/body-edit.js';
 import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
 import {
   createFileSystemAccessAdapter,
@@ -28,6 +38,12 @@ let state = { documentId: null, doc: null };
 // instead of leaving a titleless heading behind).
 let editingHeading = null;
 let editingIsNew = false;
+// { heading, table, rowIndex, colIndex } for the one table cell currently
+// being edited, or null. `table` must always be a reference read fresh
+// from the current render (see body-edit.js's module docstring).
+let editingCell = null;
+// { heading, paragraph } for the one paragraph currently being edited, or null.
+let editingParagraph = null;
 
 function setStatus(text) {
   statusEl.textContent = text;
@@ -70,9 +86,23 @@ function cancelTitleEdit() {
   }
 }
 
-async function persistAndRender() {
+async function persist() {
   await saveDocument({ documentId: state.documentId, doc: state.doc, kvAdapter: kv });
+}
+
+async function persistAndRender() {
+  await persist();
   render();
+}
+
+function smallButton(label, ariaLabel, onClick) {
+  const btn = document.createElement('button');
+  btn.textContent = label;
+  btn.setAttribute('aria-label', ariaLabel);
+  btn.style.fontSize = '11px';
+  btn.style.padding = '2px 6px';
+  btn.onclick = onClick;
+  return btn;
 }
 
 function renderRow(row) {
@@ -143,6 +173,30 @@ function renderRow(row) {
         startEditingTitle(child, true);
       };
       el.appendChild(addChild);
+
+      const addTable = document.createElement('button');
+      addTable.className = 'add-child-btn';
+      addTable.style.marginLeft = '2px';
+      addTable.textContent = '\u229e';
+      addTable.setAttribute('aria-label', 'Add table');
+      addTable.onclick = async () => {
+        insertTable(row.node, {});
+        await persistAndRender();
+      };
+      el.appendChild(addTable);
+
+      const addNote = document.createElement('button');
+      addNote.className = 'add-child-btn';
+      addNote.style.marginLeft = '2px';
+      addNote.textContent = '\u00b6';
+      addNote.setAttribute('aria-label', 'Add note');
+      addNote.onclick = async () => {
+        const paragraph = insertParagraph(row.node, '');
+        await persist();
+        editingParagraph = { heading: row.node, paragraph };
+        render();
+      };
+      el.appendChild(addNote);
     }
 
     return el;
@@ -155,8 +209,7 @@ function renderRow(row) {
     if (row.item.checkbox !== null) {
       el.classList.add('checkbox-row');
       el.onclick = async () => {
-        const headingNode = findOwningHeadingForItem(row);
-        cycleItemCheckbox(headingNode, row.item);
+        cycleItemCheckbox(row.heading, row.item);
         await persistAndRender();
       };
       const box = document.createElement('span');
@@ -169,6 +222,9 @@ function renderRow(row) {
     return el;
   }
 
+  if (row.rowType === 'table') return renderTableRow(row);
+  if (row.rowType === 'paragraph') return renderParagraphRow(row);
+
   const el = document.createElement('div');
   el.className = 'row';
   el.style.paddingLeft = 8 + row.depth * 16 + 'px';
@@ -178,17 +234,159 @@ function renderRow(row) {
   return el;
 }
 
-// Rows don't carry a back-reference to their owning heading (only headings
-// and list-items are row types), so checkbox edits look it up by re-walking
-// the flattened list. Fine for a v1 shell; a real renderer would thread the
-// owning heading through row construction instead of re-deriving it.
-function findOwningHeadingForItem(row) {
-  const rows = flattenVisibleRows(state.doc);
-  const idx = rows.indexOf(row);
-  for (let i = idx; i >= 0; i--) {
-    if (rows[i].rowType === 'heading') return rows[i].node;
+function renderTableRow(row) {
+  const wrap = document.createElement('div');
+  wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
+  wrap.style.margin = '4px 0';
+
+  const tableEl = document.createElement('table');
+  tableEl.style.borderCollapse = 'collapse';
+  tableEl.style.fontSize = '13px';
+
+  row.node.rows.forEach((tr, rowIndex) => {
+    if (tr.type === 'rule') return; // shown implicitly via the header row's styling, not as its own grid row
+    const trEl = document.createElement('tr');
+    tr.cells.forEach((cellText, colIndex) => {
+      const tdEl = document.createElement('td');
+      tdEl.style.border = '1px solid #8886';
+      tdEl.style.padding = '3px 6px';
+      tdEl.style.cursor = 'text';
+      if (rowIndex === 0) tdEl.style.fontWeight = '600';
+
+      const isEditing =
+        editingCell &&
+        editingCell.table === row.node &&
+        editingCell.rowIndex === rowIndex &&
+        editingCell.colIndex === colIndex;
+
+      if (isEditing) {
+        const input = document.createElement('input');
+        input.id = 'cell-edit-input';
+        input.value = cellText;
+        input.style.font = 'inherit';
+        input.style.width = Math.max(50, cellText.length * 8) + 'px';
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') input.blur();
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            editingCell = null;
+            render();
+          }
+        });
+        input.addEventListener('blur', async () => {
+          const { heading, table, rowIndex: ri, colIndex: ci } = editingCell;
+          editingCell = null;
+          setTableCell(heading, table, ri, ci, input.value);
+          await persistAndRender();
+        });
+        tdEl.appendChild(input);
+      } else {
+        tdEl.textContent = cellText || '\u00a0';
+        tdEl.onclick = () => {
+          editingCell = { heading: row.heading, table: row.node, rowIndex, colIndex };
+          render();
+        };
+      }
+      trEl.appendChild(tdEl);
+    });
+    tableEl.appendChild(trEl);
+  });
+  wrap.appendChild(tableEl);
+
+  const controls = document.createElement('div');
+  controls.style.display = 'flex';
+  controls.style.gap = '4px';
+  controls.style.marginTop = '4px';
+
+  const dataRowCount = () => row.node.rows.filter((r) => r.type === 'row').length;
+  const colCount = () => {
+    const dr = row.node.rows.find((r) => r.type === 'row');
+    return dr ? dr.cells.length : 1;
+  };
+
+  controls.appendChild(
+    smallButton('+ row', 'Add row', async () => {
+      insertTableRow(row.heading, row.node, row.node.rows.length - 1);
+      await persistAndRender();
+    })
+  );
+  controls.appendChild(
+    smallButton('\u2212 row', 'Delete last row', async () => {
+      if (dataRowCount() <= 1) {
+        setStatus("Can't delete the last row.");
+        return;
+      }
+      deleteTableRow(row.heading, row.node, row.node.rows.length - 1);
+      await persistAndRender();
+    })
+  );
+  controls.appendChild(
+    smallButton('+ col', 'Add column', async () => {
+      insertTableColumn(row.heading, row.node, colCount() - 1);
+      await persistAndRender();
+    })
+  );
+  controls.appendChild(
+    smallButton('\u2212 col', 'Delete last column', async () => {
+      if (colCount() <= 1) {
+        setStatus("Can't delete the last column.");
+        return;
+      }
+      deleteTableColumn(row.heading, row.node, colCount() - 1);
+      await persistAndRender();
+    })
+  );
+  wrap.appendChild(controls);
+
+  return wrap;
+}
+
+function renderParagraphRow(row) {
+  const wrap = document.createElement('div');
+  wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
+  wrap.style.margin = '4px 0';
+
+  const isEditing = editingParagraph && editingParagraph.paragraph === row.node;
+
+  if (isEditing) {
+    const textarea = document.createElement('textarea');
+    textarea.id = 'paragraph-edit-input';
+    textarea.value = row.node.lines.join('\n');
+    textarea.rows = Math.max(2, row.node.lines.length);
+    textarea.style.width = '100%';
+    textarea.style.font = 'inherit';
+    textarea.style.boxSizing = 'border-box';
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        editingParagraph = null;
+        render();
+      }
+      // Enter deliberately inserts a newline rather than committing —
+      // paragraph text is multi-line, unlike a heading title.
+    });
+    textarea.addEventListener('blur', async () => {
+      const { heading, paragraph } = editingParagraph;
+      editingParagraph = null;
+      editParagraphText(heading, paragraph, textarea.value);
+      await persistAndRender();
+    });
+    wrap.appendChild(textarea);
+  } else {
+    const p = document.createElement('div');
+    p.style.cursor = 'text';
+    p.style.whiteSpace = 'pre-wrap';
+    p.style.fontSize = '14px';
+    p.textContent = row.node.lines.join('\n') || '(empty note \u2014 tap to edit)';
+    if (!row.node.lines.join('\n')) p.style.opacity = '0.5';
+    p.onclick = () => {
+      editingParagraph = { heading: row.heading, paragraph: row.node };
+      render();
+    };
+    wrap.appendChild(p);
   }
-  throw new Error('could not find owning heading for list item');
+
+  return wrap;
 }
 
 function render() {
@@ -210,12 +408,15 @@ function render() {
   }
   for (const row of rows) outlineEl.appendChild(renderRow(row));
 
-  if (editingHeading) {
+  if (editingHeading || editingCell || editingParagraph) {
     requestAnimationFrame(() => {
-      const input = document.getElementById('title-edit-input');
+      const input =
+        document.getElementById('title-edit-input') ||
+        document.getElementById('cell-edit-input') ||
+        document.getElementById('paragraph-edit-input');
       if (input) {
         input.focus();
-        input.select();
+        if (typeof input.select === 'function') input.select();
       }
     });
   }

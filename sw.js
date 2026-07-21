@@ -19,6 +19,7 @@ const SHELL_FILES = [
   './src/body-parser.js',
   './src/todo-cycle.js',
   './src/heading-edit.js',
+  './src/body-edit.js',
   './src-browser/indexeddb-adapter.js',
   './src-browser/filesystem-adapter.js',
   './icons/icon-192.png',
