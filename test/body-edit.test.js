@@ -14,6 +14,8 @@ import {
   editParagraphText,
   insertParagraph,
   deleteListItem,
+  deleteTable,
+  deleteParagraph,
 } from '../src/body-edit.js';
 
 function docWithTable() {
@@ -157,6 +159,49 @@ test('insertTable adds a blank-line separator when the heading already has conte
   insertTable(heading, {});
   const text = serializeOrg(doc);
   assert.match(text, /Some existing text\.\n\n\|/);
+});
+
+test('deleteTable removes the whole table and survives serialize -> reparse', () => {
+  const doc = docWithTable();
+  const heading = doc.children[0];
+  deleteTable(heading, heading.body[0]);
+  assert.equal(heading.body.length, 0);
+
+  const doc2 = parseOrg(serializeOrg(doc));
+  assert.deepEqual(doc2.children[0].body, []);
+});
+
+test('deleteTable leaves unrelated content before/after intact', () => {
+  const doc = parseOrg(['* Notes', 'Before.', '', '| a | b |', '', 'After.'].join('\n'));
+  const heading = doc.children[0];
+  const table = heading.body.find((n) => n.type === 'table');
+  deleteTable(heading, table);
+
+  const types = heading.body.map((n) => n.type);
+  assert.deepEqual(types, ['paragraph', 'paragraph']);
+  assert.equal(heading.body[0].lines[0], 'Before.');
+  assert.equal(heading.body[1].lines[0], 'After.');
+});
+
+test('deleteParagraph removes the paragraph and survives serialize -> reparse', () => {
+  const doc = parseOrg(['* Notes', 'Some text.'].join('\n'));
+  const heading = doc.children[0];
+  deleteParagraph(heading, heading.body[0]);
+  assert.equal(heading.body.length, 0);
+
+  const doc2 = parseOrg(serializeOrg(doc));
+  assert.deepEqual(doc2.children[0].body, []);
+});
+
+test('deleteParagraph leaves unrelated content before/after intact', () => {
+  const doc = parseOrg(['* Notes', 'Before.', '', 'Delete this one.', '', '| a | b |'].join('\n'));
+  const heading = doc.children[0];
+  const target = heading.body.find((n) => n.type === 'paragraph' && n.lines[0] === 'Delete this one.');
+  deleteParagraph(heading, target);
+
+  const types = heading.body.map((n) => n.type);
+  assert.deepEqual(types, ['paragraph', 'table']);
+  assert.equal(heading.body[0].lines[0], 'Before.');
 });
 
 // ---- deleteListItem --------------------------------------------------
