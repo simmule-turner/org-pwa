@@ -20,6 +20,7 @@ import {
   deleteTable,
   deleteParagraph,
   editListItemText,
+  insertListItem,
 } from './src/body-edit.js';
 import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
 import {
@@ -56,6 +57,11 @@ let editingCell = null;
 let editingParagraph = null;
 // { heading, item } for the one list item currently being text-edited, or null.
 let editingListItem = null;
+// The single heading or list-item node whose contextual action row is
+// currently revealed (tap-to-reveal, per the interaction redesign — only
+// one open at a time). Not the same as editingHeading/editingListItem:
+// tapping the revealed pencil icon is what transitions into those.
+let actionMenuFor = null;
 
 function setStatus(text) {
   statusEl.textContent = text;
@@ -361,6 +367,46 @@ function confirmHeadingDelete(heading) {
   );
 }
 
+// Contextual action row shown below a heading/list-item when its text has
+// been tapped. `actions` is [{ icon, label, onClick }]. Icons are the only
+// differentiator between actions — deliberately no color coding (e.g. no
+// "delete is red"), since the request was specifically for icon-based
+// distinction, not color-based.
+function renderActionMenu(actions) {
+  const menu = document.createElement('div');
+  menu.style.display = 'flex';
+  menu.style.flexWrap = 'wrap';
+  menu.style.gap = '6px';
+  menu.style.padding = '6px 8px 8px 40px';
+  menu.style.borderBottom = '0.5px solid #8882';
+  for (const action of actions) {
+    const btn = document.createElement('button');
+    btn.textContent = action.icon;
+    btn.setAttribute('aria-label', action.label);
+    btn.style.fontSize = '15px';
+    btn.style.lineHeight = '1';
+    btn.style.padding = '6px 12px';
+    btn.style.border = '0.5px solid #8884';
+    btn.style.borderRadius = '6px';
+    btn.style.background = 'none';
+    btn.onclick = action.onClick;
+    menu.appendChild(btn);
+  }
+  return menu;
+}
+
+// Wraps a row element and, if its menu is currently open, the action menu
+// right below it, in a plain block container — this is what lets a single
+// renderRow() call produce "two stacked pieces" without changing render()'s
+// one-element-per-row assumption.
+function withActionMenu(rowEl, menuEl) {
+  if (!menuEl) return rowEl;
+  const wrap = document.createElement('div');
+  wrap.appendChild(rowEl);
+  wrap.appendChild(menuEl);
+  return wrap;
+}
+
 function tableHasContent(table) {
   return table.rows.some((r) => r.type === 'row' && r.cells.some((c) => c.trim() !== ''));
 }
@@ -407,6 +453,7 @@ function renderRow(row, todoSequence) {
     const el = document.createElement('div');
     el.className = 'row';
     el.style.paddingLeft = 8 + row.depth * 16 + 'px';
+    el.style.alignItems = 'flex-start';
     el.style.touchAction = 'pan-y';
     attachSlideLeftToFold(el, row.node);
 
@@ -433,6 +480,8 @@ function renderRow(row, todoSequence) {
       };
       el.appendChild(badge);
     }
+
+    let menuEl = null;
 
     if (state.doc && editingHeading === row.node) {
       const input = document.createElement('input');
@@ -461,7 +510,8 @@ function renderRow(row, todoSequence) {
       }
       title.onclick = (e) => {
         if (e.target.closest('[data-inline-link]')) return;
-        startEditingTitle(row.node, false);
+        actionMenuFor = actionMenuFor === row.node ? null : row.node;
+        render();
       };
       el.appendChild(title);
 
@@ -472,95 +522,98 @@ function renderRow(row, todoSequence) {
         el.appendChild(t);
       }
 
-      const addChild = document.createElement('button');
-      addChild.className = 'add-child-btn';
-      addChild.textContent = '+';
-      addChild.setAttribute('aria-label', 'Add sub-heading');
-      addChild.onclick = () => {
-        const child = insertChildHeading(row.node, {});
-        startEditingTitle(child, true);
-      };
-      el.appendChild(addChild);
-
-      const addTable = document.createElement('button');
-      addTable.className = 'add-child-btn';
-      addTable.style.marginLeft = '2px';
-      addTable.textContent = '\u229e';
-      addTable.setAttribute('aria-label', 'Add table');
-      addTable.onclick = () => {
-        insertTable(row.node, {});
-        commitAndRender();
-      };
-      el.appendChild(addTable);
-
-      const addNote = document.createElement('button');
-      addNote.className = 'add-child-btn';
-      addNote.style.marginLeft = '2px';
-      addNote.textContent = '\u00b6';
-      addNote.setAttribute('aria-label', 'Add note');
-      addNote.onclick = () => {
-        const paragraph = insertParagraph(row.node, '');
-        editingParagraph = { heading: row.node, paragraph };
-        render();
-        persistInBackground();
-      };
-      el.appendChild(addNote);
-
-      const setIdBtn = document.createElement('button');
-      setIdBtn.className = 'add-child-btn';
-      setIdBtn.style.marginLeft = '2px';
-      setIdBtn.textContent = '#';
-      setIdBtn.style.fontWeight = row.node.properties.CUSTOM_ID ? '700' : '400';
-      setIdBtn.setAttribute(
-        'aria-label',
-        row.node.properties.CUSTOM_ID ? 'Edit link ID (' + row.node.properties.CUSTOM_ID + ')' : 'Set link ID'
-      );
-      setIdBtn.onclick = () => {
-        const current = row.node.properties.CUSTOM_ID || '';
-        const next = window.prompt(
-          'Custom ID for linking to this heading with [[#id]] (stays stable if you rename the heading). Leave blank to remove.',
-          current
-        );
-        if (next === null) return; // cancelled
-        const trimmed = next.trim();
-        if (trimmed === '') {
-          deleteProperty(row.node, 'CUSTOM_ID');
-        } else {
-          setProperty(row.node, 'CUSTOM_ID', trimmed);
-        }
-        commitAndRender();
-      };
-      el.appendChild(setIdBtn);
-
-      const deleteHeadingBtn = document.createElement('button');
-      deleteHeadingBtn.className = 'add-child-btn';
-      deleteHeadingBtn.style.marginLeft = 'auto';
-      deleteHeadingBtn.style.color = '#c0392b';
-      deleteHeadingBtn.textContent = '\u2715';
-      deleteHeadingBtn.setAttribute('aria-label', 'Delete heading');
-      deleteHeadingBtn.onclick = () => {
-        if (!confirmHeadingDelete(row.node)) return;
-        // Deleting a heading can remove whatever's currently mid-edit
-        // inside it; clear all edit state unconditionally rather than try
-        // to prove none of it pointed into the deleted subtree.
-        editingHeading = null;
-        editingIsNew = false;
-        editingCell = null;
-        editingParagraph = null;
-        editingListItem = null;
-        removeHeading(state.doc, row.node);
-        commitAndRender();
-      };
-      el.appendChild(deleteHeadingBtn);
+      if (actionMenuFor === row.node) {
+        menuEl = renderActionMenu([
+          {
+            icon: '\u270e',
+            label: 'Edit title',
+            onClick: () => {
+              actionMenuFor = null;
+              startEditingTitle(row.node, false);
+            },
+          },
+          {
+            icon: '\ud83d\udcdd',
+            label: 'Edit text',
+            onClick: () => {
+              actionMenuFor = null;
+              const paragraph =
+                row.node.body.find((n) => n.type === 'paragraph') || insertParagraph(row.node, '');
+              editingParagraph = { heading: row.node, paragraph };
+              render();
+              persistInBackground();
+            },
+          },
+          {
+            icon: '\u229e',
+            label: 'Add table',
+            onClick: () => {
+              actionMenuFor = null;
+              insertTable(row.node, {});
+              commitAndRender();
+            },
+          },
+          {
+            icon: '+',
+            label: 'Add sub-heading',
+            onClick: () => {
+              actionMenuFor = null;
+              const child = insertChildHeading(row.node, {});
+              startEditingTitle(child, true);
+            },
+          },
+          {
+            icon: '#',
+            label: row.node.properties.CUSTOM_ID
+              ? 'Edit link ID (' + row.node.properties.CUSTOM_ID + ')'
+              : 'Set link ID',
+            onClick: () => {
+              actionMenuFor = null;
+              const current = row.node.properties.CUSTOM_ID || '';
+              const next = window.prompt(
+                'Custom ID for linking to this heading with [[#id]] (stays stable if you rename the heading). Leave blank to remove.',
+                current
+              );
+              if (next === null) {
+                render();
+                return;
+              }
+              const trimmed = next.trim();
+              if (trimmed === '') {
+                deleteProperty(row.node, 'CUSTOM_ID');
+              } else {
+                setProperty(row.node, 'CUSTOM_ID', trimmed);
+              }
+              commitAndRender();
+            },
+          },
+          {
+            icon: '\u2715',
+            label: 'Delete heading',
+            onClick: () => {
+              if (!confirmHeadingDelete(row.node)) return;
+              actionMenuFor = null;
+              editingHeading = null;
+              editingIsNew = false;
+              editingCell = null;
+              editingParagraph = null;
+              editingListItem = null;
+              removeHeading(state.doc, row.node);
+              commitAndRender();
+            },
+          },
+        ]);
+      }
     }
 
-    return el;
+    return withActionMenu(el, menuEl);
   }
 
   if (row.rowType === 'list-item') {
     const el = document.createElement('div');
     el.className = 'row';
     el.style.paddingLeft = 8 + row.depth * 16 + 'px';
+    el.style.alignItems = 'flex-start';
     if (row.item.checkbox !== null) {
       el.classList.add('checkbox-row');
       el.onclick = (e) => {
@@ -583,6 +636,7 @@ function renderRow(row, todoSequence) {
     }
 
     const isEditingText = editingListItem && editingListItem.item === row.item;
+    let menuEl = null;
 
     if (isEditingText) {
       const input = document.createElement('input');
@@ -615,43 +669,61 @@ function renderRow(row, todoSequence) {
       renderInlineNodes(row.item.inline, text);
       text.style.flex = '1 1 auto';
       text.style.minWidth = '0';
-      text.style.overflow = 'hidden';
-      text.style.textOverflow = 'ellipsis';
-      text.style.whiteSpace = 'nowrap';
+      text.style.whiteSpace = 'normal';
+      text.style.overflowWrap = 'anywhere';
       text.style.cursor = 'text';
-      // Tapping the text specifically opens text editing, even on a
-      // checkbox row where tapping elsewhere toggles the checkbox — the
-      // stopPropagation is what keeps those two gestures from colliding.
+      // Tapping the text reveals the contextual menu (edit/add/delete)
+      // rather than jumping straight into editing — even on a checkbox
+      // row where tapping elsewhere toggles the checkbox; stopPropagation
+      // is what keeps those two gestures from colliding.
       text.onclick = (e) => {
         if (e.target.closest('[data-inline-link]')) return;
         e.stopPropagation();
-        editingListItem = { heading: row.heading, item: row.item };
+        actionMenuFor = actionMenuFor === row.item ? null : row.item;
         render();
       };
       el.appendChild(text);
+
+      if (actionMenuFor === row.item) {
+        menuEl = renderActionMenu([
+          {
+            icon: '\u270e',
+            label: 'Edit text',
+            onClick: (e) => {
+              e.stopPropagation();
+              actionMenuFor = null;
+              editingListItem = { heading: row.heading, item: row.item };
+              render();
+            },
+          },
+          {
+            icon: '+',
+            label: 'Add item below',
+            onClick: (e) => {
+              e.stopPropagation();
+              actionMenuFor = null;
+              const newItem = insertListItem(row.heading, row.item, '');
+              editingListItem = { heading: row.heading, item: newItem };
+              commitAndRender();
+            },
+          },
+          {
+            icon: '\u2715',
+            label: 'Delete item',
+            onClick: (e) => {
+              e.stopPropagation();
+              if (!confirmListItemDelete(row.item)) return;
+              actionMenuFor = null;
+              if (editingListItem && editingListItem.item === row.item) editingListItem = null;
+              deleteListItem(row.heading, row.item);
+              commitAndRender();
+            },
+          },
+        ]);
+      }
     }
 
-    const deleteItemBtn = document.createElement('button');
-    deleteItemBtn.style.flexShrink = '0';
-    deleteItemBtn.style.marginLeft = 'auto';
-    deleteItemBtn.style.opacity = '0.4';
-    deleteItemBtn.style.border = 'none';
-    deleteItemBtn.style.background = 'none';
-    deleteItemBtn.style.fontSize = '13px';
-    deleteItemBtn.style.padding = '2px 8px';
-    deleteItemBtn.style.color = '#c0392b';
-    deleteItemBtn.textContent = '\u2715';
-    deleteItemBtn.setAttribute('aria-label', 'Delete item');
-    deleteItemBtn.onclick = (e) => {
-      e.stopPropagation();
-      if (!confirmListItemDelete(row.item)) return;
-      if (editingListItem && editingListItem.item === row.item) editingListItem = null;
-      deleteListItem(row.heading, row.item);
-      commitAndRender();
-    };
-    el.appendChild(deleteItemBtn);
-
-    return el;
+    return withActionMenu(el, menuEl);
   }
 
   if (row.rowType === 'table') return renderTableRow(row);
