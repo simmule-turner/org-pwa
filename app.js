@@ -12,6 +12,7 @@ import {
   insertTable,
   editParagraphText,
   insertParagraph,
+  deleteListItem,
 } from './src/body-edit.js';
 import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
 import {
@@ -66,11 +67,11 @@ function commitTitleEdit(rawValue) {
     // User backed out of creating a heading without typing a title —
     // discard it rather than leave an empty heading behind.
     removeHeading(state.doc, heading);
-    persistAndRender();
+    commitAndRender();
     return;
   }
   renameHeading(heading, sanitized);
-  persistAndRender();
+  commitAndRender();
 }
 
 function cancelTitleEdit() {
@@ -80,7 +81,7 @@ function cancelTitleEdit() {
   editingIsNew = false;
   if (isNew) {
     removeHeading(state.doc, heading);
-    persistAndRender();
+    commitAndRender();
   } else {
     render();
   }
@@ -90,9 +91,20 @@ async function persist() {
   await saveDocument({ documentId: state.documentId, doc: state.doc, kvAdapter: kv });
 }
 
-async function persistAndRender() {
-  await persist();
+// The fix for "every tap feels laggy": document-store.js's whole design is
+// "writes apply to the kv cache instantly, offline-safe" — but the UI was
+// awaiting that write (a full serialize + two sequential IndexedDB
+// transactions: doc cache + outbox) before rendering anything at all,
+// which defeats the point. render() reflects the already-mutated in-memory
+// doc immediately; the storage write happens after, in the background.
+// Errors still surface (via status text) rather than vanishing silently.
+function persistInBackground() {
+  persist().catch((err) => setStatus('Save failed: ' + err.message));
+}
+
+function commitAndRender() {
   render();
+  persistInBackground();
 }
 
 function smallButton(label, ariaLabel, onClick) {
@@ -105,7 +117,29 @@ function smallButton(label, ariaLabel, onClick) {
   return btn;
 }
 
-function renderRow(row) {
+// "Has content" for the delete-confirmation decision: sub-headings and/or
+// any body content (notes, lists, tables, blocks). An empty heading — the
+// common case right after creating one and backing out, or a placeholder
+// that was never filled in — deletes immediately with no prompt; anything
+// with real content underneath it gets one.
+function headingHasContent(heading) {
+  return (heading.children && heading.children.length > 0) || (heading.body && heading.body.length > 0);
+}
+
+function confirmHeadingDelete(heading) {
+  if (!headingHasContent(heading)) return true;
+  const parts = [];
+  if (heading.children.length) {
+    parts.push(`${heading.children.length} sub-heading${heading.children.length === 1 ? '' : 's'}`);
+  }
+  if (heading.body.length) parts.push('notes/lists/tables');
+  const title = heading.title || '(untitled)';
+  return window.confirm(
+    `Delete "${title}"? It contains ${parts.join(' and ')}, which will be deleted too. This can't be undone.`
+  );
+}
+
+function renderRow(row, todoSequence) {
   if (row.rowType === 'heading') {
     const el = document.createElement('div');
     el.className = 'row';
@@ -115,21 +149,22 @@ function renderRow(row) {
     fold.className = 'fold-btn';
     fold.textContent = row.hasChildren ? (row.node.collapsed ? '\u25b8' : '\u25be') : ' ';
     fold.setAttribute('aria-label', 'Toggle fold');
-    fold.onclick = async () => {
+    fold.onclick = () => {
       toggleFold(row.node);
-      await saveFoldState(state.doc, state.documentId, kv);
       render();
+      saveFoldState(state.doc, state.documentId, kv).catch((err) =>
+        setStatus('Save failed: ' + err.message)
+      );
     };
     el.appendChild(fold);
 
     if (row.node.todo) {
-      const seq = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
       const badge = document.createElement('span');
-      badge.className = 'todo-badge ' + (seq.doneKeywords.includes(row.node.todo) ? 'done' : 'todo');
+      badge.className = 'todo-badge ' + (todoSequence.doneKeywords.includes(row.node.todo) ? 'done' : 'todo');
       badge.textContent = row.node.todo;
-      badge.onclick = async () => {
+      badge.onclick = () => {
         cycleHeadingTodo(state.doc, row.node, GLOBAL_TODO_DEFAULT);
-        await persistAndRender();
+        commitAndRender();
       };
       el.appendChild(badge);
     }
@@ -179,9 +214,9 @@ function renderRow(row) {
       addTable.style.marginLeft = '2px';
       addTable.textContent = '\u229e';
       addTable.setAttribute('aria-label', 'Add table');
-      addTable.onclick = async () => {
+      addTable.onclick = () => {
         insertTable(row.node, {});
-        await persistAndRender();
+        commitAndRender();
       };
       el.appendChild(addTable);
 
@@ -190,13 +225,33 @@ function renderRow(row) {
       addNote.style.marginLeft = '2px';
       addNote.textContent = '\u00b6';
       addNote.setAttribute('aria-label', 'Add note');
-      addNote.onclick = async () => {
+      addNote.onclick = () => {
         const paragraph = insertParagraph(row.node, '');
-        await persist();
         editingParagraph = { heading: row.node, paragraph };
         render();
+        persistInBackground();
       };
       el.appendChild(addNote);
+
+      const deleteHeadingBtn = document.createElement('button');
+      deleteHeadingBtn.className = 'add-child-btn';
+      deleteHeadingBtn.style.marginLeft = 'auto';
+      deleteHeadingBtn.style.color = '#c0392b';
+      deleteHeadingBtn.textContent = '\u2715';
+      deleteHeadingBtn.setAttribute('aria-label', 'Delete heading');
+      deleteHeadingBtn.onclick = () => {
+        if (!confirmHeadingDelete(row.node)) return;
+        // Deleting a heading can remove whatever's currently mid-edit
+        // inside it; clear all edit state unconditionally rather than try
+        // to prove none of it pointed into the deleted subtree.
+        editingHeading = null;
+        editingIsNew = false;
+        editingCell = null;
+        editingParagraph = null;
+        removeHeading(state.doc, row.node);
+        commitAndRender();
+      };
+      el.appendChild(deleteHeadingBtn);
     }
 
     return el;
@@ -208,9 +263,9 @@ function renderRow(row) {
     el.style.paddingLeft = 8 + row.depth * 16 + 'px';
     if (row.item.checkbox !== null) {
       el.classList.add('checkbox-row');
-      el.onclick = async () => {
+      el.onclick = () => {
         cycleItemCheckbox(row.heading, row.item);
-        await persistAndRender();
+        commitAndRender();
       };
       const box = document.createElement('span');
       box.textContent = row.item.checkbox === 'X' ? '\u2611' : row.item.checkbox === '-' ? '\u25aa' : '\u2610';
@@ -218,7 +273,26 @@ function renderRow(row) {
     }
     const text = document.createElement('span');
     text.textContent = (row.item.tag ? row.item.tag + ' :: ' : '') + row.item.text;
+    text.style.flex = '1';
     el.appendChild(text);
+
+    const deleteItemBtn = document.createElement('button');
+    deleteItemBtn.style.marginLeft = 'auto';
+    deleteItemBtn.style.opacity = '0.4';
+    deleteItemBtn.style.border = 'none';
+    deleteItemBtn.style.background = 'none';
+    deleteItemBtn.style.fontSize = '13px';
+    deleteItemBtn.style.padding = '2px 8px';
+    deleteItemBtn.style.color = '#c0392b';
+    deleteItemBtn.textContent = '\u2715';
+    deleteItemBtn.setAttribute('aria-label', 'Delete item');
+    deleteItemBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteListItem(row.heading, row.item);
+      commitAndRender();
+    };
+    el.appendChild(deleteItemBtn);
+
     return el;
   }
 
@@ -273,11 +347,11 @@ function renderTableRow(row) {
             render();
           }
         });
-        input.addEventListener('blur', async () => {
+        input.addEventListener('blur', () => {
           const { heading, table, rowIndex: ri, colIndex: ci } = editingCell;
           editingCell = null;
           setTableCell(heading, table, ri, ci, input.value);
-          await persistAndRender();
+          commitAndRender();
         });
         tdEl.appendChild(input);
       } else {
@@ -305,35 +379,35 @@ function renderTableRow(row) {
   };
 
   controls.appendChild(
-    smallButton('+ row', 'Add row', async () => {
+    smallButton('+ row', 'Add row', () => {
       insertTableRow(row.heading, row.node, row.node.rows.length - 1);
-      await persistAndRender();
+      commitAndRender();
     })
   );
   controls.appendChild(
-    smallButton('\u2212 row', 'Delete last row', async () => {
+    smallButton('\u2212 row', 'Delete last row', () => {
       if (dataRowCount() <= 1) {
         setStatus("Can't delete the last row.");
         return;
       }
       deleteTableRow(row.heading, row.node, row.node.rows.length - 1);
-      await persistAndRender();
+      commitAndRender();
     })
   );
   controls.appendChild(
-    smallButton('+ col', 'Add column', async () => {
+    smallButton('+ col', 'Add column', () => {
       insertTableColumn(row.heading, row.node, colCount() - 1);
-      await persistAndRender();
+      commitAndRender();
     })
   );
   controls.appendChild(
-    smallButton('\u2212 col', 'Delete last column', async () => {
+    smallButton('\u2212 col', 'Delete last column', () => {
       if (colCount() <= 1) {
         setStatus("Can't delete the last column.");
         return;
       }
       deleteTableColumn(row.heading, row.node, colCount() - 1);
-      await persistAndRender();
+      commitAndRender();
     })
   );
   wrap.appendChild(controls);
@@ -365,11 +439,11 @@ function renderParagraphRow(row) {
       // Enter deliberately inserts a newline rather than committing —
       // paragraph text is multi-line, unlike a heading title.
     });
-    textarea.addEventListener('blur', async () => {
+    textarea.addEventListener('blur', () => {
       const { heading, paragraph } = editingParagraph;
       editingParagraph = null;
       editParagraphText(heading, paragraph, textarea.value);
-      await persistAndRender();
+      commitAndRender();
     });
     wrap.appendChild(textarea);
   } else {
@@ -390,23 +464,39 @@ function renderParagraphRow(row) {
 }
 
 function render() {
-  outlineEl.innerHTML = '';
   if (!state.doc) {
+    outlineEl.innerHTML = '';
     const empty = document.createElement('div');
     empty.className = 'empty-state';
     empty.textContent = 'Open an .org file to get started.';
     outlineEl.appendChild(empty);
     return;
   }
-  const rows = flattenVisibleRows(state.doc);
+  // computeIds: false — this render loop reads row.node/row.item/row.heading
+  // object references directly, never row.id, so skip the full
+  // buildFoldIndex tree-walk-plus-hash that computing ids would otherwise
+  // cost on every single render (i.e. every tap).
+  const rows = flattenVisibleRows(state.doc, { computeIds: false });
   if (rows.length === 0) {
+    outlineEl.innerHTML = '';
     const empty = document.createElement('div');
     empty.className = 'empty-state';
     empty.textContent = 'Empty file \u2014 no headings yet.';
     outlineEl.appendChild(empty);
     return;
   }
-  for (const row of rows) outlineEl.appendChild(renderRow(row));
+
+  const todoSequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
+
+  // Build the new row elements off-DOM (a DocumentFragment has no layout
+  // box, so appending into it triggers no reflow), then swap the whole
+  // thing into the live container in one operation, instead of clearing
+  // outlineEl and appendChild-ing each row directly onto an already
+  // on-screen, already-laid-out element.
+  const fragment = document.createDocumentFragment();
+  for (const row of rows) fragment.appendChild(renderRow(row, todoSequence));
+  outlineEl.innerHTML = '';
+  outlineEl.appendChild(fragment);
 
   if (editingHeading || editingCell || editingParagraph) {
     requestAnimationFrame(() => {
