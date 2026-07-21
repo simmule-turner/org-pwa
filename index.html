@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>org-pwa</title>
+<link rel="manifest" href="manifest.json" />
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 0; max-width: 480px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #8883; position: sticky; top: 0; background: Canvas; }
+  header button { font-size: 13px; padding: 6px 10px; }
+  #filename { flex: 1; font-size: 13px; opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #status { font-size: 11px; opacity: 0.6; padding: 4px 12px; }
+  .row { display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-bottom: 1px solid #8882; }
+  .fold-btn { width: 22px; height: 22px; border: none; background: none; cursor: pointer; padding: 0; }
+  .todo-badge { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-right: 6px; cursor: pointer; }
+  .todo-badge.todo { background: #f0997b55; color: #99341d; }
+  .todo-badge.done { background: #97c45955; color: #27500a; }
+  .tag { font-size: 10px; padding: 1px 6px; border-radius: 4px; border: 1px solid #8884; margin-left: 4px; opacity: 0.75; }
+  .checkbox-row { padding-left: 32px; cursor: pointer; }
+  .empty-state { padding: 40px 20px; text-align: center; opacity: 0.6; font-size: 14px; }
+</style>
+</head>
+<body>
+  <header>
+    <button id="openBtn">Open .org file</button>
+    <span id="filename">No file open</span>
+    <button id="saveBtn" disabled>Save</button>
+  </header>
+  <div id="status"></div>
+  <div id="outline"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
