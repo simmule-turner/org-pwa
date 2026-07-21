@@ -50,6 +50,27 @@ test('flattenVisibleRows includes list-item rows with increasing depth for nesti
   assert.equal(items[0].depth, 1);
 });
 
+test('computeIds: false skips id computation (ids come back null) but everything else still works', () => {
+  const doc = sampleDoc();
+  const rows = flattenVisibleRows(doc, { computeIds: false });
+  const headingRows = rows.filter((r) => r.rowType === 'heading');
+  const itemRows = rows.filter((r) => r.rowType === 'list-item');
+  assert.ok(headingRows.every((r) => r.id === null));
+  assert.ok(itemRows.every((r) => r.id === null));
+  // Structure/content is identical either way.
+  assert.deepEqual(
+    headingRows.map((r) => r.node.title),
+    ['Projects', 'NRP', 'Ship v0.1.0', 'Set up test suite', 'Reading list']
+  );
+});
+
+test('computeIds defaults to true (backward compatible) when omitted', () => {
+  const doc = sampleDoc();
+  const rows = flattenVisibleRows(doc);
+  const nrpRow = rows.find((r) => r.rowType === 'heading' && r.node.title === 'NRP');
+  assert.ok(nrpRow.id.startsWith('p:'));
+});
+
 test('flattenVisibleRows assigns stable heading row ids matching fold-state ids', () => {
   const doc = sampleDoc();
   const rows = flattenVisibleRows(doc);
