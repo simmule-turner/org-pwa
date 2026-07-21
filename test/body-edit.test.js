@@ -16,6 +16,7 @@ import {
   deleteListItem,
   deleteTable,
   deleteParagraph,
+  editListItemText,
 } from '../src/body-edit.js';
 
 function docWithTable() {
@@ -202,6 +203,65 @@ test('deleteParagraph leaves unrelated content before/after intact', () => {
   const types = heading.body.map((n) => n.type);
   assert.deepEqual(types, ['paragraph', 'table']);
   assert.equal(heading.body[0].lines[0], 'Before.');
+});
+
+// ---- editListItemText ------------------------------------------------
+
+test('editListItemText replaces the text and survives serialize -> reparse', () => {
+  const doc = parseOrg(['* Notes', '- one', '- two', '- three'].join('\n'));
+  const heading = doc.children[0];
+  editListItemText(heading, heading.body[0].items[1], 'TWO (edited)');
+
+  const text2 = serializeOrg(doc);
+  assert.match(text2, /^- TWO \(edited\)$/m);
+
+  const doc2 = parseOrg(text2);
+  assert.deepEqual(
+    doc2.children[0].body[0].items.map((i) => i.text),
+    ['one', 'TWO (edited)', 'three']
+  );
+});
+
+test('editListItemText preserves checkbox and marker', () => {
+  const doc = parseOrg(['* Notes', '- [ ] buy milk'].join('\n'));
+  const heading = doc.children[0];
+  editListItemText(heading, heading.body[0].items[0], 'buy oat milk');
+
+  const item = heading.body[0].items[0];
+  assert.equal(item.checkbox, ' ');
+  assert.equal(item.text, 'buy oat milk');
+  assert.match(serializeOrg(doc), /^- \[ \] buy oat milk$/m);
+});
+
+test('editListItemText preserves a tag prefix', () => {
+  const doc = parseOrg(['* Notes', '- fruit :: apples'].join('\n'));
+  const heading = doc.children[0];
+  editListItemText(heading, heading.body[0].items[0], 'pears and plums');
+
+  assert.equal(heading.body[0].items[0].tag, 'fruit');
+  assert.equal(heading.body[0].items[0].text, 'pears and plums');
+});
+
+test('editListItemText preserves original indentation on a nested item', () => {
+  const doc = parseOrg(['* Notes', '- one', '  - nested'].join('\n'));
+  const heading = doc.children[0];
+  const nested = heading.body[0].items[0].children[0].items[0];
+  editListItemText(heading, nested, 'nested (edited)');
+
+  const text2 = serializeOrg(doc);
+  assert.match(text2, /^  - nested \(edited\)$/m);
+});
+
+test('editListItemText only touches the targeted line, leaving siblings and nesting intact', () => {
+  const doc = parseOrg(
+    ['* Notes', '- keep-1', '- edit-me', '  - nested-under-edit-me', '- keep-2'].join('\n')
+  );
+  const heading = doc.children[0];
+  editListItemText(heading, heading.body[0].items[1], 'edited');
+
+  const list = heading.body[0];
+  assert.deepEqual(list.items.map((i) => i.text), ['keep-1', 'edited', 'keep-2']);
+  assert.equal(list.items[1].children[0].items[0].text, 'nested-under-edit-me');
 });
 
 // ---- deleteListItem --------------------------------------------------
