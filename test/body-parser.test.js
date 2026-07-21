@@ -38,6 +38,26 @@ test('parses checkbox states', () => {
   );
 });
 
+test('parses the [@N] start-value cookie into its own field, stripped from text', () => {
+  const [list] = parseBody(['20. [@20] item twenty']);
+  const item = list.items[0];
+  assert.equal(item.startValue, 20);
+  assert.equal(item.text, 'item twenty');
+});
+
+test('an item with no [@N] cookie has startValue null', () => {
+  const [list] = parseBody(['- plain item']);
+  assert.equal(list.items[0].startValue, null);
+});
+
+test('[@N] cookie works alongside a checkbox', () => {
+  const [list] = parseBody(['3. [X] [@3] third item, already done']);
+  const item = list.items[0];
+  assert.equal(item.checkbox, 'X');
+  assert.equal(item.startValue, 3);
+  assert.equal(item.text, 'third item, already done');
+});
+
 test('parses tag lists (checkbox + tag together)', () => {
   const lines = ['- [ ] fruits :: get apples', '- [X] veggies :: get carrots'];
   const [list] = parseBody(lines);

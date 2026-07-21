@@ -103,6 +103,46 @@ test('table/paragraph/block rows carry a reference to their owning heading', () 
   assert.equal(tableRow.heading, doc.children[0]);
 });
 
+test('displayNumber increments for ordered items and is null for unordered ones', () => {
+  const doc = parseOrg(['* Notes', '1. first', '2. second', '3. third'].join('\n'));
+  const rows = flattenVisibleRows(doc);
+  const items = rows.filter((r) => r.rowType === 'list-item');
+  assert.deepEqual(
+    items.map((r) => r.displayNumber),
+    [1, 2, 3]
+  );
+});
+
+test('displayNumber is null for every item in an unordered list', () => {
+  const doc = parseOrg(['* Notes', '- one', '- two'].join('\n'));
+  const rows = flattenVisibleRows(doc);
+  const items = rows.filter((r) => r.rowType === 'list-item');
+  assert.deepEqual(
+    items.map((r) => r.displayNumber),
+    [null, null]
+  );
+});
+
+test('displayNumber respects a [@N] start-value cookie mid-list', () => {
+  const doc = parseOrg(['* Notes', '1. first', '20. [@20] twentieth', '21. twenty-first'].join('\n'));
+  const rows = flattenVisibleRows(doc);
+  const items = rows.filter((r) => r.rowType === 'list-item');
+  assert.deepEqual(
+    items.map((r) => r.displayNumber),
+    [1, 20, 21]
+  );
+});
+
+test('nested ordered lists number independently from their parent', () => {
+  const doc = parseOrg(['* Notes', '1. top one', '   1. nested one', '   2. nested two', '2. top two'].join('\n'));
+  const rows = flattenVisibleRows(doc);
+  const items = rows.filter((r) => r.rowType === 'list-item');
+  assert.deepEqual(
+    items.map((r) => r.displayNumber),
+    [1, 1, 2, 2]
+  );
+});
+
 test('cycleHeadingTodo uses the resolved sequence (file #+TODO: wins over global default)', () => {
   const doc = parseOrg(['#+TODO: NEXT WAITING | DONE', '* NEXT Something'].join('\n'));
   const heading = doc.children[0];

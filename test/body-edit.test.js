@@ -264,6 +264,17 @@ test('editListItemText only touches the targeted line, leaving siblings and nest
   assert.equal(list.items[1].children[0].items[0].text, 'nested-under-edit-me');
 });
 
+test('editListItemText preserves a [@N] start-value cookie', () => {
+  const doc = parseOrg(['* Notes', '20. [@20] twentieth item'].join('\n'));
+  const heading = doc.children[0];
+  editListItemText(heading, heading.body[0].items[0], 'twentieth item, revised');
+
+  const item = heading.body[0].items[0];
+  assert.equal(item.startValue, 20);
+  assert.equal(item.text, 'twentieth item, revised');
+  assert.match(serializeOrg(doc), /^20\. \[@20\] twentieth item, revised$/m);
+});
+
 // ---- deleteListItem --------------------------------------------------
 
 test('deleteListItem removes a simple item and survives serialize -> reparse', () => {
