@@ -273,10 +273,15 @@ function renderRow(row, todoSequence) {
     }
     const text = document.createElement('span');
     text.textContent = (row.item.tag ? row.item.tag + ' :: ' : '') + row.item.text;
-    text.style.flex = '1';
+    text.style.flex = '1 1 auto';
+    text.style.minWidth = '0';
+    text.style.overflow = 'hidden';
+    text.style.textOverflow = 'ellipsis';
+    text.style.whiteSpace = 'nowrap';
     el.appendChild(text);
 
     const deleteItemBtn = document.createElement('button');
+    deleteItemBtn.style.flexShrink = '0';
     deleteItemBtn.style.marginLeft = 'auto';
     deleteItemBtn.style.opacity = '0.4';
     deleteItemBtn.style.border = 'none';
