@@ -142,6 +142,35 @@ export function insertTable(heading, { rows = 2, cols = 2 } = {}) {
   return heading.body[heading.body.length - 1];
 }
 
+// ---- list item edits --------------------------------------------------
+
+/** The line just past the end of `item`'s own line and everything nested
+ *  under it (recursively) — i.e. the exclusive end of its line span. */
+function listItemEndLine(item) {
+  let end = item.lineIndex + 1;
+  for (const nestedList of item.children || []) {
+    for (const child of nestedList.items) {
+      end = Math.max(end, listItemEndLine(child));
+    }
+  }
+  return end;
+}
+
+/**
+ * Deletes a list item and everything nested under it (sub-items, at any
+ * depth) — deleting a parent bullet takes its children with it, silently,
+ * the same way deleting a folder takes its contents. No confirmation here;
+ * that's a deliberate scope choice (unlike heading deletion, which does
+ * confirm when there's content) since list items are smaller, more
+ * frequent, easier-to-redo edits. Revisit if that turns out wrong in
+ * practice.
+ */
+export function deleteListItem(heading, item) {
+  const start = item.lineIndex;
+  const end = listItemEndLine(item);
+  commitLines(heading, start, end - start, []);
+}
+
 // ---- paragraph edits --------------------------------------------------
 
 /**
