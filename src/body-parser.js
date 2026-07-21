@@ -17,7 +17,9 @@ import { parseInline } from './inline-markup.js';
  * the `lines` array they were parsed from), the same way list items track
  * `lineIndex` — this is what lets body-edit.js commit an edit by splicing
  * the owning heading's `bodyLines` and reparsing, rather than only
- * mutating the derived tree (which the serializer never reads).
+ * mutating the derived tree (which the serializer never reads). List
+ * items additionally track `indent` (their original leading whitespace),
+ * needed to reconstruct a correctly-indented line when editing text.
  *
  * Known limitation: list continuation across blank lines uses a simple
  * lookahead heuristic (a blank line is swallowed only if the next non-blank
@@ -103,7 +105,7 @@ function isOrderedMarker(marker) {
 
 function parseListItemLine(line) {
   const m = LIST_ITEM_RE.exec(line);
-  const [, , marker, checkbox, rest] = m;
+  const [, indent, marker, checkbox, rest] = m;
   let text = rest;
   let tag = null;
   const tagSplit = text.split(/\s+::\s+/);
@@ -113,6 +115,7 @@ function parseListItemLine(line) {
   }
   return {
     type: 'list-item',
+    indent,
     marker,
     ordered: isOrderedMarker(marker),
     checkbox: checkbox || null,

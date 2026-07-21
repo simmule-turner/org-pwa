@@ -148,6 +148,25 @@ export function insertTable(heading, { rows = 2, cols = 2 } = {}) {
 
 // ---- list item edits --------------------------------------------------
 
+/**
+ * Replaces a list item's text, reconstructing its single source line with
+ * the original indentation, marker, checkbox, and tag preserved — only
+ * the text portion changes. A list item is always exactly one line (its
+ * lineCount is implicitly 1; nested content lives in separate list-item
+ * entries with their own lineIndex, never as continuation lines of this
+ * one), so this always splices exactly one line.
+ *
+ * Newlines in `newText` are stripped (a list item is one line, same rule
+ * as heading-edit.js's renameHeading for heading titles).
+ */
+export function editListItemText(heading, item, newText) {
+  const sanitized = String(newText).replace(/[\r\n]+/g, ' ').trim();
+  const checkboxPart = item.checkbox !== null ? `[${item.checkbox}] ` : '';
+  const tagPart = item.tag ? `${item.tag} :: ` : '';
+  const line = `${item.indent}${item.marker} ${checkboxPart}${tagPart}${sanitized}`;
+  commitLines(heading, item.lineIndex, 1, [line]);
+}
+
 /** The line just past the end of `item`'s own line and everything nested
  *  under it (recursively) — i.e. the exclusive end of its line span. */
 function listItemEndLine(item) {
