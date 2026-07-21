@@ -2,6 +2,7 @@ import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
 import { loadFoldState, saveFoldState } from './src/fold-state.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
+import { renameHeading, insertTopLevelHeading, insertChildHeading, removeHeading } from './src/heading-edit.js';
 import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
 import {
   createFileSystemAccessAdapter,
@@ -19,11 +20,54 @@ const filenameEl = document.getElementById('filename');
 const statusEl = document.getElementById('status');
 const openBtn = document.getElementById('openBtn');
 const saveBtn = document.getElementById('saveBtn');
+const addBtn = document.getElementById('addBtn');
 
 let state = { documentId: null, doc: null };
+// Which heading (by object reference) currently has its title in edit
+// mode, and whether it was just created (so an empty commit removes it
+// instead of leaving a titleless heading behind).
+let editingHeading = null;
+let editingIsNew = false;
 
 function setStatus(text) {
   statusEl.textContent = text;
+}
+
+function startEditingTitle(heading, isNew) {
+  editingHeading = heading;
+  editingIsNew = isNew;
+  render();
+}
+
+function commitTitleEdit(rawValue) {
+  const heading = editingHeading;
+  const isNew = editingIsNew;
+  editingHeading = null;
+  editingIsNew = false;
+
+  const sanitized = String(rawValue).replace(/[\r\n]+/g, ' ').trim();
+  if (sanitized === '' && isNew) {
+    // User backed out of creating a heading without typing a title —
+    // discard it rather than leave an empty heading behind.
+    removeHeading(state.doc, heading);
+    persistAndRender();
+    return;
+  }
+  renameHeading(heading, sanitized);
+  persistAndRender();
+}
+
+function cancelTitleEdit() {
+  const heading = editingHeading;
+  const isNew = editingIsNew;
+  editingHeading = null;
+  editingIsNew = false;
+  if (isNew) {
+    removeHeading(state.doc, heading);
+    persistAndRender();
+  } else {
+    render();
+  }
 }
 
 async function persistAndRender() {
@@ -60,15 +104,45 @@ function renderRow(row) {
       el.appendChild(badge);
     }
 
-    const title = document.createElement('span');
-    title.textContent = row.node.title;
-    el.appendChild(title);
+    if (state.doc && editingHeading === row.node) {
+      const input = document.createElement('input');
+      input.className = 'title-input';
+      input.id = 'title-edit-input';
+      input.type = 'text';
+      input.value = row.node.title;
+      input.placeholder = 'Heading title';
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          cancelTitleEdit();
+        }
+      });
+      input.addEventListener('blur', () => commitTitleEdit(input.value));
+      el.appendChild(input);
+    } else {
+      const title = document.createElement('span');
+      title.className = 'heading-title';
+      title.textContent = row.node.title || '(untitled)';
+      title.onclick = () => startEditingTitle(row.node, false);
+      el.appendChild(title);
 
-    for (const tag of row.node.tags) {
-      const t = document.createElement('span');
-      t.className = 'tag';
-      t.textContent = tag;
-      el.appendChild(t);
+      for (const tag of row.node.tags) {
+        const t = document.createElement('span');
+        t.className = 'tag';
+        t.textContent = tag;
+        el.appendChild(t);
+      }
+
+      const addChild = document.createElement('button');
+      addChild.className = 'add-child-btn';
+      addChild.textContent = '+';
+      addChild.setAttribute('aria-label', 'Add sub-heading');
+      addChild.onclick = () => {
+        const child = insertChildHeading(row.node, {});
+        startEditingTitle(child, true);
+      };
+      el.appendChild(addChild);
     }
 
     return el;
@@ -135,6 +209,16 @@ function render() {
     return;
   }
   for (const row of rows) outlineEl.appendChild(renderRow(row));
+
+  if (editingHeading) {
+    requestAnimationFrame(() => {
+      const input = document.getElementById('title-edit-input');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
+  }
 }
 
 openBtn.addEventListener('click', async () => {
@@ -150,11 +234,18 @@ openBtn.addEventListener('click', async () => {
     state = { documentId, doc };
     filenameEl.textContent = documentId;
     saveBtn.disabled = false;
+    addBtn.disabled = false;
     setStatus('Opened.');
     render();
   } catch (err) {
     if (err.name !== 'AbortError') setStatus('Could not open file: ' + err.message);
   }
+});
+
+addBtn.addEventListener('click', () => {
+  if (!state.doc) return;
+  const heading = insertTopLevelHeading(state.doc, {});
+  startEditingTitle(heading, true);
 });
 
 saveBtn.addEventListener('click', async () => {
