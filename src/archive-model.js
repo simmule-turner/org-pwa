@@ -52,6 +52,42 @@ function deleteProperty(heading, key) {
   }
 }
 
+/** All of `heading`'s properties as `key: value` lines, one per property,
+ *  in their original drawer order — for showing in a single editable text
+ *  block (the same pattern already used for a heading's combined body
+ *  text), rather than a bespoke per-row add/edit/delete property UI. */
+function getPropertiesText(heading) {
+  return heading.propertyOrder.map((key) => `${key}: ${heading.properties[key]}`).join('\n');
+}
+
+/**
+ * Replaces `heading`'s entire property set from `text` (the same
+ * `key: value` per line format getPropertiesText produces) — this is a
+ * full replace, not a merge: a property missing from `text` is deleted,
+ * matching what "edit this text block and save it" should mean. Lines
+ * with no `:` are silently skipped rather than throwing, since a
+ * half-finished edit (still typing a new property's key) shouldn't crash
+ * the save. A key containing whitespace has the whitespace collapsed to
+ * underscores, since org property-drawer keys can't contain spaces.
+ */
+function setPropertiesFromText(heading, text) {
+  const properties = {};
+  const propertyOrder = [];
+  for (const rawLine of String(text).split('\n')) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const colonIndex = line.indexOf(':');
+    if (colonIndex === -1) continue;
+    const key = line.slice(0, colonIndex).trim().replace(/\s+/g, '_');
+    const value = line.slice(colonIndex + 1).trim();
+    if (!key) continue;
+    if (!(key in properties)) propertyOrder.push(key);
+    properties[key] = value;
+  }
+  heading.properties = properties;
+  heading.propertyOrder = propertyOrder;
+}
+
 function cloneHeading(heading) {
   // structuredClone is fine here: the AST is plain data, no functions/cycles.
   return structuredClone(heading);
@@ -236,6 +272,8 @@ export {
   ARCHIVE_TAG,
   setProperty,
   deleteProperty,
+  getPropertiesText,
+  setPropertiesFromText,
   cloneHeading,
   findAncestorPath,
   findContainer,

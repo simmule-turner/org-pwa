@@ -7,11 +7,13 @@
  * Handles: active <2026-07-21 Tue> vs inactive [2026-07-21 Tue], optional
  * time (<2026-07-21 Tue 14:30>), and a repeater suffix (+1w, ++1m, .+3d).
  *
- * Known limitation, stated rather than hidden: repeaters are parsed and
- * kept on the returned object, but this module does NOT expand them into
- * future occurrences. "Show me every Monday this quarter" for a +1w
- * repeating task is agenda-view work for a later increment, not something
- * silently half-implemented here.
+ * This module only parses a single timestamp and keeps the repeater
+ * string on the returned object — it does not expand a repeater into
+ * future occurrences itself. That expansion lives in agenda.js
+ * (parseRepeater/expandRepeats), since "which occurrences fall in this
+ * displayed range" is inherently an agenda-view concern (it needs a
+ * range to expand into), not something a single-timestamp parser should
+ * decide on its own.
  */
 
 const TIMESTAMP_RE =

@@ -51,6 +51,27 @@ export function renameHeading(heading, newTitle) {
   return sanitized;
 }
 
+/** Splits free-form tag input (space- or colon-separated, e.g. from a
+ *  text prompt: "urgent home01" or ":urgent:home01:") into a clean tag
+ *  array — trimmed, empty entries dropped, and any stray colons stripped
+ *  from within a tag (colons are the org tag *delimiter*, so one leaking
+ *  into an actual tag value would corrupt the `:tag1:tag2:` serialization
+ *  on the next save). */
+export function parseTagsInput(input) {
+  return String(input)
+    .split(/[\s:]+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
+/** Replaces `heading`'s tags outright with `tags` (already-clean array —
+ *  see parseTagsInput for turning free-form user input into one). */
+export function setHeadingTags(heading, tags) {
+  const cleaned = tags.map((t) => String(t).trim().replace(/:/g, '')).filter(Boolean);
+  heading.tags = cleaned;
+  return cleaned;
+}
+
 /** Appends a new top-level (level 1) heading at the end of the document. */
 export function insertTopLevelHeading(doc, opts = {}) {
   const heading = createHeading({ level: 1, ...opts });
