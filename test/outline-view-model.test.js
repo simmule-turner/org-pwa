@@ -100,6 +100,36 @@ test('toggleFold flips collapsed and changes what flattenVisibleRows returns', (
   assert.equal(toggleFold(nrp), false);
 });
 
+test('THE BUG THIS FIXES: toggleFold clears bodyHidden on expand, so a leaf heading (body content, no sub-headings) can actually have its content revealed', () => {
+  // Reproduces the reported #+STARTUP: content bug exactly: before this
+  // fix, a heading with only body content and no sub-headings showed
+  // literally zero visible change when its chevron was tapped, because
+  // bodyHidden stayed stuck true regardless of collapsed.
+  const doc = parseOrg(['* Parent B', 'Body text, no sub-headings.'].join('\n'));
+  const heading = doc.children[0];
+  heading.collapsed = false;
+  heading.bodyHidden = true; // simulates the #+STARTUP: content default
+
+  const before = flattenVisibleRows(doc);
+  assert.deepEqual(before.map((r) => r.rowType), ['heading']); // body invisible
+
+  toggleFold(heading); // collapses (was already expanded) — no visible content either way
+  toggleFold(heading); // expands again
+
+  assert.equal(heading.bodyHidden, false); // the fix: expanding cleared it
+  const after = flattenVisibleRows(doc);
+  assert.deepEqual(after.map((r) => r.rowType), ['heading', 'paragraph']); // body now visible
+});
+
+test('toggleFold does not touch bodyHidden when collapsing (only clears it on expand)', () => {
+  const doc = parseOrg(['* Notes', 'Some text.'].join('\n'));
+  const heading = doc.children[0];
+  heading.collapsed = false;
+  heading.bodyHidden = false; // already revealed
+  toggleFold(heading); // collapse
+  assert.equal(heading.bodyHidden, false); // stays as it was — collapsing doesn't re-hide it
+});
+
 test('list-item rows carry a reference to their owning heading', () => {
   const doc = sampleDoc();
   const rows = flattenVisibleRows(doc);

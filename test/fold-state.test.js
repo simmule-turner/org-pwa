@@ -156,6 +156,38 @@ test('expandOneLevel reveals direct children but keeps grandchildren collapsed',
   assert.equal(grandparent.children[1].collapsed, true);
 });
 
+test('THE BUG THIS FIXES: expandOneLevel clears bodyHidden, so the slide-left gesture can reveal a heading\'s own body content under #+STARTUP: content', () => {
+  const doc = deepDoc();
+  const grandparent = doc.children[0];
+  applyStartupVisibility(doc, { visibility: 'content' });
+  assert.equal(grandparent.bodyHidden, true); // content mode's default
+
+  expandOneLevel(grandparent);
+  assert.equal(grandparent.bodyHidden, false); // the fix
+});
+
+test('expandFully clears bodyHidden on the whole revealed subtree', () => {
+  const doc = deepDoc();
+  const grandparent = doc.children[0];
+  applyStartupVisibility(doc, { visibility: 'content' });
+  expandFully(grandparent);
+
+  function allBodyVisible(h) {
+    return !h.bodyHidden && h.children.every(allBodyVisible);
+  }
+  assert.equal(allBodyVisible(grandparent), true);
+});
+
+test('expandFully still skips bodyHidden-clearing (and everything else) for an archived child under archiveVisibility "archived"', () => {
+  const doc = docWithArchivedChild();
+  const parent = doc.children[0];
+  applyStartupVisibility(doc, { visibility: 'content', archiveVisibility: 'archived' });
+  expandFully(parent, { archiveVisibility: 'archived' });
+
+  const archivedChild = parent.children[1];
+  assert.equal(archivedChild.collapsed, true); // stays shut, per the earlier archive fix
+});
+
 test('expandFully reveals every descendant recursively', () => {
   const doc = deepDoc();
   const grandparent = doc.children[0];
