@@ -100,9 +100,13 @@ function isFullyExpanded(heading, opts = {}) {
 
 /** Reveals `heading`'s own content and its direct child headings, but
  *  collapses each direct child — so grandchildren stay hidden. This is
- *  the "one level" step. */
+ *  the "one level" step. Also clears `heading.bodyHidden` — see
+ *  outline-view-model.js's toggleFold for why: without this, a heading
+ *  whose bodyHidden was set by #+STARTUP: content could never have its
+ *  own body text revealed through this gesture either. */
 function expandOneLevel(heading) {
   heading.collapsed = false;
+  heading.bodyHidden = false;
   for (const child of heading.children || []) {
     child.collapsed = true;
   }
@@ -117,10 +121,16 @@ function expandOneLevel(heading) {
  * directly with the chevron (a direct, explicit action on that specific
  * heading, unaffected by this — this only skips *cascading* expansion
  * onto archived descendants during a cycle).
+ *
+ * Also clears `bodyHidden` on every heading it reveals — "fully expand"
+ * should mean body text included for the whole subtree, not just
+ * headline structure with body permanently stuck hidden from
+ * #+STARTUP: content.
  */
 function expandFully(heading, opts = {}) {
   const { archiveVisibility = 'archived' } = opts;
   heading.collapsed = false;
+  heading.bodyHidden = false;
   for (const child of heading.children || []) {
     if (archiveVisibility === 'archived' && isArchived(child)) {
       child.collapsed = true;

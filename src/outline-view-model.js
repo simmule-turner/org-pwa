@@ -102,9 +102,28 @@ function flattenVisibleRows(doc) {
 
 // ---- gesture handlers ---------------------------------------------------
 
-/** Tap-a-chevron: flips a heading's fold state. Returns the new value. */
+/**
+ * Tap-a-chevron: flips a heading's fold state. Returns the new value.
+ *
+ * When this expands a heading (collapsed: true -> false), it also clears
+ * bodyHidden for that heading. This is the fix for a real bug: bodyHidden
+ * is only ever set by applyStartupVisibility (from #+STARTUP: content),
+ * and nothing else ever cleared it — so a heading with only body content
+ * and no sub-headings (the majority of headings in a typical file: a
+ * journal entry, a note, a health-metrics table) could never have its
+ * content revealed at all. Toggling `collapsed` alone produced literally
+ * no visible change for such a heading, because body was hidden either
+ * way (bodyHidden: true) whether collapsed was true or false — there was
+ * no path to ever see it. Tapping a chevron to expand a heading means
+ * "let me see this" — that should include its own body text, not just
+ * reveal child headings while leaving the body permanently invisible.
+ * Collapsing doesn't touch bodyHidden — once revealed, a heading's body
+ * stays revealed for the rest of the session even if you fold and
+ * re-expand it, rather than making you re-reveal it every time.
+ */
 function toggleFold(heading) {
   heading.collapsed = !heading.collapsed;
+  if (!heading.collapsed) heading.bodyHidden = false;
   return heading.collapsed;
 }
 
