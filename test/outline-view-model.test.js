@@ -64,6 +64,33 @@ test('flattenVisibleRows no longer requires an options argument (id computation 
   assert.ok(rows.length > 0);
 });
 
+test('bodyHidden hides only this heading\'s own body content, not its child headings', () => {
+  const doc = parseOrg(['* Projects', '- a list item', '** NRP', 'NRP body text'].join('\n'));
+  const projects = doc.children[0];
+  projects.collapsed = false;
+  projects.bodyHidden = true; // content-mode-style: children visible, body hidden
+  projects.children[0].collapsed = false;
+  projects.children[0].bodyHidden = false;
+
+  const rows = flattenVisibleRows(doc);
+  const rowTypes = rows.map((r) => r.rowType);
+  // "Projects" heading shows, its list item does NOT (bodyHidden), but
+  // "NRP" (a child heading) and NRP's own body text DO show.
+  assert.deepEqual(rowTypes, ['heading', 'heading', 'paragraph']);
+  assert.equal(rows[1].node.title, 'NRP');
+});
+
+test('bodyHidden on a heading with bodyHidden: false still shows its body normally (sanity check for the default case)', () => {
+  const doc = parseOrg(['* Notes', 'Some text.'].join('\n'));
+  const heading = doc.children[0];
+  heading.bodyHidden = false;
+  const rows = flattenVisibleRows(doc);
+  assert.deepEqual(
+    rows.map((r) => r.rowType),
+    ['heading', 'paragraph']
+  );
+});
+
 test('toggleFold flips collapsed and changes what flattenVisibleRows returns', () => {
   const doc = sampleDoc();
   const nrp = doc.children[0].children[0];

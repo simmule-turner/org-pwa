@@ -50,18 +50,32 @@ test('applyStartupVisibility: showeverything expands every heading', () => {
   const doc = deepDoc();
   applyStartupVisibility(doc, { visibility: 'showeverything' });
   function allExpanded(nodes) {
-    return nodes.every((n) => !n.collapsed && allExpanded(n.children));
+    return nodes.every((n) => !n.collapsed && !n.bodyHidden && allExpanded(n.children));
   }
   assert.equal(allExpanded(doc.children), true);
 });
 
-test('applyStartupVisibility: showall and content also expand everything (documented simplification)', () => {
-  for (const visibility of ['showall', 'content']) {
-    const doc = deepDoc();
-    applyStartupVisibility(doc, { visibility });
-    assert.equal(doc.children[0].collapsed, false);
-    assert.equal(doc.children[0].children[0].children[0].collapsed, false);
+test('applyStartupVisibility: showall expands every heading with body content visible', () => {
+  const doc = deepDoc();
+  applyStartupVisibility(doc, { visibility: 'showall' });
+  assert.equal(doc.children[0].collapsed, false);
+  assert.equal(doc.children[0].bodyHidden, false);
+  assert.equal(doc.children[0].children[0].children[0].collapsed, false);
+});
+
+test('applyStartupVisibility: content expands every heading (children visible) but hides body content on all of them', () => {
+  const doc = deepDoc();
+  applyStartupVisibility(doc, { visibility: 'content' });
+  function allExpandedWithHiddenBody(nodes) {
+    return nodes.every((n) => !n.collapsed && n.bodyHidden && allExpandedWithHiddenBody(n.children));
   }
+  assert.equal(allExpandedWithHiddenBody(doc.children), true);
+});
+
+test('applyStartupVisibility: overview leaves bodyHidden false (irrelevant when collapsed hides everything anyway, but should not be left in a confusing state)', () => {
+  const doc = deepDoc();
+  applyStartupVisibility(doc, { visibility: 'overview' });
+  assert.equal(doc.children[0].bodyHidden, false);
 });
 
 // ---- three-state fold cycle --------------------------------------------
