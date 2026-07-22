@@ -14,6 +14,50 @@ import {
   openAllDocuments,
 } from '../src/document-store.js';
 
+test('preferCache: true reads the cache instead of disk, even when disk has newer content \u2014 the actual recovery mechanism for pending unsynced edits', async () => {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  await disk.write('notes.org', '* Disk version');
+  // Simulate an unsynced local edit sitting in the cache (from a previous
+  // session that never made it to Save).
+  await kv.set('doc:notes.org', '* My unsaved local edit');
+
+  const result = await openDocument({
+    documentId: 'notes.org',
+    kvAdapter: kv,
+    diskAdapter: disk,
+    preferCache: true,
+  });
+  assert.equal(result.source, 'cache');
+  assert.equal(result.doc.children[0].title, 'My unsaved local edit');
+});
+
+test('preferCache: true falls back to disk when there is nothing cached', async () => {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  await disk.write('notes.org', '* Disk version');
+
+  const result = await openDocument({
+    documentId: 'notes.org',
+    kvAdapter: kv,
+    diskAdapter: disk,
+    preferCache: true,
+  });
+  assert.equal(result.source, 'disk');
+  assert.equal(result.doc.children[0].title, 'Disk version');
+});
+
+test('preferCache defaults to false, preserving the disk-first fix for external edits', async () => {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  await disk.write('notes.org', '* Disk version');
+  await kv.set('doc:notes.org', '* Stale cached version');
+
+  const result = await openDocument({ documentId: 'notes.org', kvAdapter: kv, diskAdapter: disk });
+  assert.equal(result.source, 'disk');
+  assert.equal(result.doc.children[0].title, 'Disk version');
+});
+
 test('opening a document that exists on disk parses it and refreshes the cache', async () => {
   const kv = createInMemoryAdapter();
   const disk = createInMemoryDiskAdapter();
