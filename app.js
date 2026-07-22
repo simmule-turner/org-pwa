@@ -33,22 +33,57 @@ import {
   pickAndRegisterNewFile,
   isFileSystemAccessSupported,
 } from './src-browser/filesystem-adapter.js';
+import { createGithubAdapter, isGithubConfigured } from './src-browser/github-adapter.js';
+import { createInputFileAdapter, pickAndImportFile, isFileSystemAccessUnsupported } from './src-browser/input-file-adapter.js';
+import {
+  getGithubConfig,
+  setGithubConfig,
+  getTheme,
+  setTheme,
+  getFontFamily,
+  setFontFamily,
+  getFontSize,
+  setFontSize,
+} from './src-browser/settings.js';
 
 const GLOBAL_TODO_DEFAULT = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
 
 const kv = createIndexedDbAdapter();
-const disk = createFileSystemAccessAdapter(kv);
+const filesystemAdapter = createFileSystemAccessAdapter(kv);
+const inputFileAdapter = createInputFileAdapter(kv);
+// A live cache of GitHub settings, refreshed whenever Settings saves new
+// ones — createGithubAdapter takes a getter function rather than a
+// static config object specifically so this stays current without
+// needing to reconstruct the adapter every time settings change.
+let githubConfig = { token: '', owner: '', repo: '', branch: 'main' };
+const githubAdapter = createGithubAdapter(() => githubConfig);
+
+/** Which adapter Save/Save-As-in-place should use — whatever storage kind
+ *  the currently open document actually came from. This is the crux of
+ *  "Save uses whatever mechanism was used to open the file". */
+function activeDiskAdapter() {
+  if (state.storageKind === 'github') return githubAdapter;
+  if (state.storageKind === 'input') return inputFileAdapter;
+  return filesystemAdapter;
+}
 
 const outlineEl = document.getElementById('outline');
 const filenameEl = document.getElementById('filename');
 const statusEl = document.getElementById('status');
-const openBtn = document.getElementById('openBtn');
-const newBtn = document.getElementById('newBtn');
-const saveBtn = document.getElementById('saveBtn');
 const addBtn = document.getElementById('addBtn');
 const textModeBtn = document.getElementById('textModeBtn');
+const fileMenuBtn = document.getElementById('fileMenuBtn');
+const fileMenuPanel = document.getElementById('fileMenuPanel');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPanel = document.getElementById('settingsPanel');
 
-let state = { documentId: null, doc: null, startupConfig: null };
+let state = { documentId: null, doc: null, startupConfig: null, storageKind: null };
+// File menu: whether the panel is open, and if so, which action's
+// backend-choice sub-step is showing (null = the main New/Open/Save/Save
+// As list; otherwise 'open' | 'new' | 'saveas').
+let fileMenuOpen = false;
+let fileMenuStep = null;
+let settingsOpen = false;
 // Which heading (by object reference) currently has its title in edit
 // mode, and whether it was just created (so an empty commit removes it
 // instead of leaving a titleless heading behind).
@@ -1098,76 +1133,367 @@ function render() {
   }
 }
 
-openBtn.addEventListener('click', async () => {
+function storageKindLabel(kind) {
+  if (kind === 'github') return 'GitHub';
+  if (kind === 'input') return 'Imported';
+  return 'Local';
+}
+
+/** Common finish-up after any successful open/create, regardless of which
+ *  backend it came from. */
+async function afterDocumentLoaded(documentId, doc, storageKind) {
+  const startupConfig = parseStartupConfig(doc);
+  applyStartupVisibility(doc, startupConfig);
+  state = { documentId, doc, startupConfig, storageKind };
+  filenameEl.textContent = documentId + ' (' + storageKindLabel(storageKind) + ')';
+  textEditMode = false;
+  textModeBtn.textContent = 'Text';
+  addBtn.disabled = false;
+  textModeBtn.disabled = false;
+  closeFileMenu();
+  render();
+}
+
+// ---- Open --------------------------------------------------------------
+
+async function openFromFilesystem() {
   if (!isFileSystemAccessSupported()) {
-    setStatus('This browser lacks File System Access support \u2014 Chrome/Edge required for v1.');
+    setStatus('This browser lacks File System Access support.');
     return;
   }
   try {
     const documentId = await pickAndRegisterFile(kv);
-
-    // openDocument now always prefers disk over the cache (that's the
-    // actual fix for "external edits aren't picked up") — but that means
-    // it would also silently discard any local edit that was made and
-    // never synced to disk. That's a real, separate risk worth a
-    // deliberate check, not something to fold silently into the fix above.
+    // openDocument prefers disk over the cache — but that would also
+    // silently discard any local edit that was made and never synced.
+    // That's a real, separate risk worth a deliberate check.
     if (await hasPendingChange(kv, documentId)) {
       const proceed = window.confirm(
-        `"${documentId}" has local changes that were never saved to disk (from an earlier session). ` +
-          'Opening it now will load the current file from disk and discard those unsaved changes. Continue?'
+        `"${documentId}" has local changes that were never saved. ` +
+          'Opening it now will load the current file and discard those unsaved changes. Continue?'
       );
       if (!proceed) {
         setStatus('Open cancelled \u2014 unsaved local changes were kept.');
         return;
       }
     }
-
     await markDocumentOpen(kv, documentId);
-    const { doc } = await openDocument({ documentId, kvAdapter: kv, diskAdapter: disk });
-    const startupConfig = parseStartupConfig(doc);
-    applyStartupVisibility(doc, startupConfig);
-    state = { documentId, doc, startupConfig };
-    filenameEl.textContent = documentId;
-    textEditMode = false;
-    textModeBtn.textContent = 'Text';
-    saveBtn.disabled = false;
-    addBtn.disabled = false;
-    textModeBtn.disabled = false;
+    const { doc } = await openDocument({ documentId, kvAdapter: kv, diskAdapter: filesystemAdapter });
+    await afterDocumentLoaded(documentId, doc, 'filesystem');
     setStatus('Opened.');
-    render();
   } catch (err) {
     if (err.name !== 'AbortError') setStatus('Could not open file: ' + err.message);
   }
-});
+}
 
-newBtn.addEventListener('click', async () => {
+async function openFromImport() {
+  try {
+    const { fileId } = await pickAndImportFile(kv);
+    await markDocumentOpen(kv, fileId);
+    const { doc } = await openDocument({ documentId: fileId, kvAdapter: kv, diskAdapter: inputFileAdapter });
+    await afterDocumentLoaded(fileId, doc, 'input');
+    setStatus('Imported. Use Save to download your changes \u2014 there\u2019s no live link back to the original file on this platform.');
+  } catch (err) {
+    setStatus('Could not import file: ' + err.message);
+  }
+}
+
+async function openFromGithub() {
+  const config = await getGithubConfig(kv);
+  githubConfig = config;
+  if (!isGithubConfigured(config)) {
+    setStatus('GitHub is not set up yet \u2014 open Settings first.');
+    closeFileMenu();
+    return;
+  }
+  const path = window.prompt(`Path of the file in ${config.owner}/${config.repo} (e.g. notes.org):`);
+  if (!path) return;
+  try {
+    setStatus('Loading from GitHub\u2026');
+    await markDocumentOpen(kv, path);
+    const { doc, source } = await openDocument({ documentId: path, kvAdapter: kv, diskAdapter: githubAdapter });
+    await afterDocumentLoaded(path, doc, 'github');
+    setStatus(
+      source === 'new'
+        ? `"${path}" doesn't exist in the repo yet \u2014 opened as a new empty file.`
+        : 'Opened from GitHub.'
+    );
+  } catch (err) {
+    setStatus('Could not open from GitHub: ' + err.message);
+  }
+}
+
+// ---- New ---------------------------------------------------------------
+
+async function newOnFilesystem() {
   if (!isFileSystemAccessSupported()) {
-    setStatus('This browser lacks File System Access support \u2014 Chrome/Edge required for v1.');
+    setStatus('This browser lacks File System Access support.');
     return;
   }
   try {
     const documentId = await pickAndRegisterNewFile(kv);
     await markDocumentOpen(kv, documentId);
     const doc = parseOrg('');
-    const startupConfig = parseStartupConfig(doc); // all defaults, since there's no content yet
-    applyStartupVisibility(doc, startupConfig);
-    state = { documentId, doc, startupConfig };
-    filenameEl.textContent = documentId;
-    textEditMode = false;
-    textModeBtn.textContent = 'Text';
-    saveBtn.disabled = false;
-    addBtn.disabled = false;
-    textModeBtn.disabled = false;
-    render(); // show the empty outline immediately
+    await afterDocumentLoaded(documentId, doc, 'filesystem');
     // Establish real (empty) content on disk right away, rather than
-    // leaving the picked file however the browser happened to create it —
-    // so "New" always leaves you with an actual, readable .org file, not
-    // just a registered handle with undefined contents.
-    await saveAndSync({ documentId, doc, kvAdapter: kv, diskAdapter: disk });
+    // leaving the picked file however the browser happened to create it.
+    await saveAndSync({ documentId, doc, kvAdapter: kv, diskAdapter: filesystemAdapter });
     setStatus('Created.');
   } catch (err) {
     if (err.name !== 'AbortError') setStatus('Could not create file: ' + err.message);
   }
+}
+
+async function newOnGithub() {
+  const config = await getGithubConfig(kv);
+  githubConfig = config;
+  if (!isGithubConfigured(config)) {
+    setStatus('GitHub is not set up yet \u2014 open Settings first.');
+    closeFileMenu();
+    return;
+  }
+  const path = window.prompt(`Path for the new file in ${config.owner}/${config.repo} (e.g. notes.org):`);
+  if (!path) return;
+  try {
+    if (await githubAdapter.exists(path)) {
+      setStatus(`"${path}" already exists on GitHub \u2014 use Open instead.`);
+      return;
+    }
+    await markDocumentOpen(kv, path);
+    const doc = parseOrg('');
+    await afterDocumentLoaded(path, doc, 'github');
+    await saveAndSync({ documentId: path, doc, kvAdapter: kv, diskAdapter: githubAdapter });
+    setStatus('Created on GitHub.');
+  } catch (err) {
+    setStatus('Could not create file on GitHub: ' + err.message);
+  }
+}
+
+async function newViaImport() {
+  const name = window.prompt('File name (e.g. notes.org):', 'untitled.org');
+  if (!name) return;
+  const doc = parseOrg('');
+  await markDocumentOpen(kv, name);
+  await afterDocumentLoaded(name, doc, 'input');
+  setStatus('Created \u2014 use Save to download it, then keep it in Files.');
+}
+
+// ---- Save / Save As --------------------------------------------------
+
+async function saveCurrent() {
+  if (!state.documentId) return;
+  setStatus('Saving\u2026');
+  try {
+    const result = await saveAndSync({
+      documentId: state.documentId,
+      doc: state.doc,
+      kvAdapter: kv,
+      diskAdapter: activeDiskAdapter(),
+      resolveConflict: async () => {
+        // v1 conflict UI: a plain confirm dialog, per the "simple, no
+        // diff/merge view" storage decision. A real UI would replace only
+        // this callback \u2014 everything else stays the same.
+        const keepMine = window.confirm(
+          'This file changed since this app last synced it.\n\nOK = keep your version (overwrite)\nCancel = keep the other version (discard your local edit)'
+        );
+        return keepMine ? 'mine' : 'disk';
+      },
+    });
+    if (result.status === 'conflict' && result.resolution === 'disk') {
+      const reopened = await openDocument({
+        documentId: state.documentId,
+        kvAdapter: kv,
+        diskAdapter: activeDiskAdapter(),
+      });
+      state.doc = reopened.doc;
+      state.startupConfig = parseStartupConfig(state.doc);
+      applyStartupVisibility(state.doc, state.startupConfig);
+      render();
+    }
+    setStatus('Saved (' + result.status + ').');
+  } catch (err) {
+    setStatus('Save failed: ' + err.message);
+  }
+  closeFileMenu();
+}
+
+async function saveAsFilesystem() {
+  if (!state.doc) return;
+  if (!isFileSystemAccessSupported()) {
+    setStatus('This browser lacks File System Access support.');
+    return;
+  }
+  try {
+    const documentId = await pickAndRegisterNewFile(kv, state.documentId || 'untitled.org');
+    state.documentId = documentId;
+    state.storageKind = 'filesystem';
+    await markDocumentOpen(kv, documentId);
+    filenameEl.textContent = documentId + ' (Local)';
+    await saveAndSync({ documentId, doc: state.doc, kvAdapter: kv, diskAdapter: filesystemAdapter });
+    setStatus('Saved as ' + documentId + '.');
+    closeFileMenu();
+    render();
+  } catch (err) {
+    if (err.name !== 'AbortError') setStatus('Save As failed: ' + err.message);
+  }
+}
+
+async function saveAsGithub() {
+  if (!state.doc) return;
+  const config = await getGithubConfig(kv);
+  githubConfig = config;
+  if (!isGithubConfigured(config)) {
+    setStatus('GitHub is not set up yet \u2014 open Settings first.');
+    closeFileMenu();
+    return;
+  }
+  const path = window.prompt(
+    `Save to which path in ${config.owner}/${config.repo}?`,
+    state.documentId || 'notes.org'
+  );
+  if (!path) return;
+  try {
+    state.documentId = path;
+    state.storageKind = 'github';
+    await markDocumentOpen(kv, path);
+    filenameEl.textContent = path + ' (GitHub)';
+    await saveAndSync({ documentId: path, doc: state.doc, kvAdapter: kv, diskAdapter: githubAdapter });
+    setStatus('Saved to GitHub as ' + path + '.');
+    closeFileMenu();
+    render();
+  } catch (err) {
+    setStatus('Save As failed: ' + err.message);
+  }
+}
+
+async function saveAsImport() {
+  if (!state.doc) return;
+  const name = window.prompt('File name to save as:', state.documentId || 'untitled.org');
+  if (!name) return;
+  state.documentId = name;
+  state.storageKind = 'input';
+  try {
+    await markDocumentOpen(kv, name);
+    filenameEl.textContent = name + ' (Imported)';
+    await saveAndSync({ documentId: name, doc: state.doc, kvAdapter: kv, diskAdapter: inputFileAdapter });
+    setStatus('Downloaded as ' + name + '.');
+    closeFileMenu();
+    render();
+  } catch (err) {
+    setStatus('Save As failed: ' + err.message);
+  }
+}
+
+// ---- File menu UI -------------------------------------------------------
+
+function menuButton(label, onClick, disabled) {
+  const btn = document.createElement('button');
+  btn.textContent = label;
+  btn.disabled = !!disabled;
+  btn.onclick = onClick;
+  return btn;
+}
+
+function closeFileMenu() {
+  fileMenuOpen = false;
+  fileMenuStep = null;
+  renderFileMenu();
+}
+
+function renderFileMenu() {
+  fileMenuPanel.innerHTML = '';
+  if (!fileMenuOpen) {
+    fileMenuPanel.style.display = 'none';
+    return;
+  }
+  fileMenuPanel.style.display = 'block';
+
+  if (fileMenuStep === null) {
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    row.appendChild(
+      menuButton('New', () => {
+        fileMenuStep = 'new';
+        renderFileMenu();
+      })
+    );
+    row.appendChild(
+      menuButton('Open', () => {
+        fileMenuStep = 'open';
+        renderFileMenu();
+      })
+    );
+    row.appendChild(menuButton('Save', () => saveCurrent(), !state.documentId));
+    row.appendChild(
+      menuButton(
+        'Save As\u2026',
+        () => {
+          fileMenuStep = 'saveas';
+          renderFileMenu();
+        },
+        !state.doc
+      )
+    );
+    fileMenuPanel.appendChild(row);
+    return;
+  }
+
+  const label = document.createElement('div');
+  label.style.fontSize = '12px';
+  label.style.opacity = '0.7';
+  label.style.marginBottom = '4px';
+  label.textContent =
+    fileMenuStep === 'open' ? 'Open from:' : fileMenuStep === 'new' ? 'New file on:' : 'Save a copy to:';
+  fileMenuPanel.appendChild(label);
+
+  const btnRow = document.createElement('div');
+  btnRow.className = 'panel-row';
+
+  if (!isFileSystemAccessUnsupported()) {
+    btnRow.appendChild(
+      menuButton('Local file', () => {
+        if (fileMenuStep === 'open') openFromFilesystem();
+        else if (fileMenuStep === 'new') newOnFilesystem();
+        else saveAsFilesystem();
+      })
+    );
+  } else {
+    // This platform has no File System Access API at all (every browser
+    // on iOS) — offer the read-once/download-based fallback instead.
+    btnRow.appendChild(
+      menuButton(fileMenuStep === 'open' ? 'Import file\u2026' : 'Local (download)', () => {
+        if (fileMenuStep === 'open') openFromImport();
+        else if (fileMenuStep === 'new') newViaImport();
+        else saveAsImport();
+      })
+    );
+  }
+
+  btnRow.appendChild(
+    menuButton('GitHub', () => {
+      if (fileMenuStep === 'open') openFromGithub();
+      else if (fileMenuStep === 'new') newOnGithub();
+      else saveAsGithub();
+    })
+  );
+
+  btnRow.appendChild(
+    menuButton('Cancel', () => {
+      fileMenuStep = null;
+      renderFileMenu();
+    })
+  );
+
+  fileMenuPanel.appendChild(btnRow);
+}
+
+fileMenuBtn.addEventListener('click', () => {
+  fileMenuOpen = !fileMenuOpen;
+  fileMenuStep = null;
+  if (fileMenuOpen && settingsOpen) {
+    settingsOpen = false;
+    renderSettingsPanel();
+  }
+  renderFileMenu();
 });
 
 addBtn.addEventListener('click', () => {
@@ -1213,36 +1539,174 @@ textModeBtn.addEventListener('click', () => {
   commitAndRender();
 });
 
-saveBtn.addEventListener('click', async () => {
-  if (!state.documentId) return;
-  setStatus('Saving\u2026');
-  try {
-    const result = await saveAndSync({
-      documentId: state.documentId,
-      doc: state.doc,
-      kvAdapter: kv,
-      diskAdapter: disk,
-      resolveConflict: async () => {
-        // v1 conflict UI: a plain confirm dialog, per the "simple, no
-        // diff/merge view" storage decision. A real UI would replace only
-        // this callback \u2014 everything else stays the same.
-        const keepMine = window.confirm(
-          'This file changed on disk since you last synced.\n\nOK = keep your version (overwrite disk)\nCancel = keep the disk version (discard your local edit)'
-        );
-        return keepMine ? 'mine' : 'disk';
-      },
-    });
-    if (result.status === 'conflict' && result.resolution === 'disk') {
-      const reopened = await openDocument({ documentId: state.documentId, kvAdapter: kv, diskAdapter: disk });
-      state.doc = reopened.doc;
-      state.startupConfig = parseStartupConfig(state.doc);
-      applyStartupVisibility(state.doc, state.startupConfig);
-      render();
-    }
-    setStatus('Saved (' + result.status + ').');
-  } catch (err) {
-    setStatus('Save failed: ' + err.message);
+// ---- Settings UI --------------------------------------------------------
+
+function labeledInput(labelText, type, value) {
+  const wrap = document.createElement('div');
+  wrap.className = 'panel-field';
+  const labelEl = document.createElement('label');
+  labelEl.textContent = labelText;
+  const input = document.createElement('input');
+  input.type = type;
+  input.value = value || '';
+  wrap.appendChild(labelEl);
+  wrap.appendChild(input);
+  return { wrap, input };
+}
+
+function applyTheme(theme) {
+  if (theme === 'light' || theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', theme);
+  } else {
+    document.documentElement.removeAttribute('data-theme'); // 'system' — let prefers-color-scheme decide
   }
+}
+
+const FONT_FAMILY_STACKS = {
+  system: 'system-ui, sans-serif',
+  serif: 'Georgia, "Times New Roman", serif',
+  monospace: 'ui-monospace, "SF Mono", Menlo, monospace',
+};
+
+function applyFontFamily(fontFamily) {
+  document.documentElement.style.setProperty(
+    '--app-font-family',
+    FONT_FAMILY_STACKS[fontFamily] || FONT_FAMILY_STACKS.system
+  );
+}
+
+function applyFontSize(size) {
+  document.documentElement.style.setProperty('--app-font-size', size + 'px');
+}
+
+async function renderSettingsPanel() {
+  settingsPanel.innerHTML = '';
+  if (!settingsOpen) {
+    settingsPanel.style.display = 'none';
+    return;
+  }
+  settingsPanel.style.display = 'block';
+
+  const config = await getGithubConfig(kv);
+  const theme = await getTheme(kv);
+  const fontFamily = await getFontFamily(kv);
+  const fontSize = await getFontSize(kv);
+
+  const ghTitle = document.createElement('div');
+  ghTitle.className = 'panel-section-title';
+  ghTitle.textContent = 'GitHub';
+  settingsPanel.appendChild(ghTitle);
+
+  const tokenField = labeledInput('Personal access token', 'password', config.token);
+  const ownerField = labeledInput('Owner', 'text', config.owner);
+  const repoField = labeledInput('Repo', 'text', config.repo);
+  const branchField = labeledInput('Branch', 'text', config.branch);
+
+  const ghRow1 = document.createElement('div');
+  ghRow1.className = 'panel-row';
+  ghRow1.appendChild(tokenField.wrap);
+  settingsPanel.appendChild(ghRow1);
+
+  const ghRow2 = document.createElement('div');
+  ghRow2.className = 'panel-row';
+  ghRow2.appendChild(ownerField.wrap);
+  ghRow2.appendChild(repoField.wrap);
+  ghRow2.appendChild(branchField.wrap);
+  settingsPanel.appendChild(ghRow2);
+
+  const ghHint = document.createElement('div');
+  ghHint.style.fontSize = '11px';
+  ghHint.style.opacity = '0.6';
+  ghHint.style.margin = '2px 0 6px';
+  ghHint.textContent =
+    'Use a fine-grained token scoped to just this repo, with Contents read/write access only.';
+  settingsPanel.appendChild(ghHint);
+
+  const ghSaveRow = document.createElement('div');
+  ghSaveRow.className = 'panel-row';
+  ghSaveRow.appendChild(
+    menuButton('Save GitHub settings', async () => {
+      githubConfig = await setGithubConfig(kv, {
+        token: tokenField.input.value.trim(),
+        owner: ownerField.input.value.trim(),
+        repo: repoField.input.value.trim(),
+        branch: branchField.input.value.trim() || 'main',
+      });
+      setStatus('GitHub settings saved.');
+    })
+  );
+  settingsPanel.appendChild(ghSaveRow);
+
+  const themeTitle = document.createElement('div');
+  themeTitle.className = 'panel-section-title';
+  themeTitle.textContent = 'Appearance';
+  settingsPanel.appendChild(themeTitle);
+
+  const themeRow = document.createElement('div');
+  themeRow.className = 'panel-row';
+  for (const opt of ['system', 'light', 'dark']) {
+    const btn = menuButton(opt[0].toUpperCase() + opt.slice(1), async () => {
+      await setTheme(kv, opt);
+      applyTheme(opt);
+      renderSettingsPanel();
+    });
+    if (opt === theme) btn.style.fontWeight = '700';
+    themeRow.appendChild(btn);
+  }
+  settingsPanel.appendChild(themeRow);
+
+  const fontTitle = document.createElement('div');
+  fontTitle.className = 'panel-section-title';
+  fontTitle.textContent = 'Font';
+  settingsPanel.appendChild(fontTitle);
+
+  const fontRow = document.createElement('div');
+  fontRow.className = 'panel-row';
+  for (const opt of ['system', 'serif', 'monospace']) {
+    const btn = menuButton(opt[0].toUpperCase() + opt.slice(1), async () => {
+      await setFontFamily(kv, opt);
+      applyFontFamily(opt);
+      renderSettingsPanel();
+    });
+    if (opt === fontFamily) btn.style.fontWeight = '700';
+    fontRow.appendChild(btn);
+  }
+  settingsPanel.appendChild(fontRow);
+
+  const sizeRow = document.createElement('div');
+  sizeRow.className = 'panel-row';
+  sizeRow.appendChild(
+    menuButton('\u2212', async () => {
+      const next = Math.max(12, fontSize - 1);
+      await setFontSize(kv, next);
+      applyFontSize(next);
+      renderSettingsPanel();
+    })
+  );
+  const sizeLabel = document.createElement('span');
+  sizeLabel.textContent = fontSize + 'px';
+  sizeLabel.style.fontSize = '13px';
+  sizeLabel.style.padding = '0 6px';
+  sizeRow.appendChild(sizeLabel);
+  sizeRow.appendChild(
+    menuButton('+', async () => {
+      const next = Math.min(28, fontSize + 1);
+      await setFontSize(kv, next);
+      applyFontSize(next);
+      renderSettingsPanel();
+    })
+  );
+  settingsPanel.appendChild(sizeRow);
+}
+
+settingsBtn.addEventListener('click', async () => {
+  settingsOpen = !settingsOpen;
+  if (settingsOpen && fileMenuOpen) {
+    fileMenuOpen = false;
+    fileMenuStep = null;
+    renderFileMenu();
+  }
+  await renderSettingsPanel();
 });
 
 if ('serviceWorker' in navigator) {
@@ -1300,4 +1764,12 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-render();
+async function bootstrap() {
+  githubConfig = await getGithubConfig(kv);
+  applyTheme(await getTheme(kv));
+  applyFontFamily(await getFontFamily(kv));
+  applyFontSize(await getFontSize(kv));
+  render();
+}
+
+bootstrap();

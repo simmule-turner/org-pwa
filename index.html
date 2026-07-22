@@ -6,33 +6,86 @@
 <title>org-pwa</title>
 <link rel="manifest" href="manifest.json" />
 <style>
-  :root { color-scheme: light dark; }
-  body { font-family: system-ui, sans-serif; margin: 0; padding: 0; max-width: 480px; margin: 0 auto; }
-  header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #8883; position: sticky; top: 0; background: Canvas; }
-  header button { font-size: 13px; padding: 6px 10px; flex-shrink: 0; }
-  #filename { flex: 1; font-size: 13px; opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  :root {
+    color-scheme: light dark;
+    --bg: Canvas;
+    --fg: CanvasText;
+    --border: #8883;
+    --border-strong: #8886;
+    --surface: #8881;
+    --muted: #8888;
+    --accent: #185fa5;
+    --app-font-family: system-ui, sans-serif;
+    --app-font-size: 16px;
+  }
+  html[data-theme="dark"] {
+    --bg: #16181c;
+    --fg: #e8e8e8;
+    --border: #ffffff22;
+    --border-strong: #ffffff3a;
+    --surface: #ffffff14;
+    --muted: #9aa0a6;
+    --accent: #6fb2ff;
+  }
+  html[data-theme="light"] {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --border: #00000022;
+    --border-strong: #0000003a;
+    --surface: #00000009;
+    --muted: #666666;
+    --accent: #185fa5;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: var(--app-font-family);
+    font-size: var(--app-font-size);
+    margin: 0;
+    padding: 0;
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--bg);
+    color: var(--fg);
+  }
+  header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 2; flex-wrap: wrap; }
+  header button { font-size: 13px; padding: 6px 10px; flex-shrink: 0; font-family: inherit; }
+  #filename { flex: 1; font-size: 13px; opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 40px; }
   #status { font-size: 11px; opacity: 0.6; padding: 4px 12px; }
-  .row { display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-bottom: 1px solid #8882; }
-  .fold-btn { width: 28px; height: 28px; font-size: 20px; line-height: 1; border: none; background: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .panel { border-bottom: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 13px; }
+  .panel button { font-size: 13px; padding: 6px 10px; font-family: inherit; }
+  .panel-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+  .panel label { font-size: 12px; opacity: 0.75; display: block; margin-bottom: 2px; }
+  .panel input[type="text"], .panel input[type="password"], .panel input[type="number"] {
+    font: inherit; font-size: 13px; padding: 5px 7px; border: 1px solid var(--border-strong); border-radius: 4px;
+    background: var(--bg); color: var(--fg); width: 100%; box-sizing: border-box;
+  }
+  .panel-field { flex: 1 1 120px; min-width: 100px; }
+  .panel-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; margin: 10px 0 4px; }
+  .row { display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-bottom: 1px solid var(--border); font-family: var(--app-font-family); font-size: var(--app-font-size); }
+  .fold-btn { width: 28px; height: 28px; font-size: 20px; line-height: 1; border: none; background: none; color: var(--fg); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .todo-badge { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-right: 6px; cursor: pointer; flex-shrink: 0; }
   .todo-badge.todo { background: #f0997b55; color: #99341d; }
   .todo-badge.done { background: #97c45955; color: #27500a; }
-  .tag { font-size: 10px; padding: 1px 6px; border-radius: 4px; border: 1px solid #8884; margin-left: 4px; opacity: 0.75; flex-shrink: 0; }
+  .tag { font-size: 10px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border-strong); margin-left: 4px; opacity: 0.75; flex-shrink: 0; }
   .checkbox-row { padding-left: 32px; cursor: pointer; }
-  .title-input { font: inherit; border: 1px solid #5a5; border-radius: 4px; padding: 1px 4px; flex: 1; min-width: 60px; }
+  .title-input { font: inherit; border: 1px solid #5a5; border-radius: 4px; padding: 1px 4px; flex: 1; min-width: 60px; background: var(--bg); color: var(--fg); }
   .heading-title { cursor: text; flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
   .empty-state { padding: 40px 20px; text-align: center; opacity: 0.6; font-size: 14px; }
+  button { background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 6px; }
+  input, textarea { color: var(--fg); }
+  textarea { background: var(--bg); }
 </style>
 </head>
 <body>
   <header>
-    <button id="openBtn">Open</button>
-    <button id="newBtn">New</button>
+    <button id="fileMenuBtn">File &#9662;</button>
     <span id="filename">No file open</span>
     <button id="addBtn" disabled>+ Heading</button>
     <button id="textModeBtn" disabled>Text</button>
-    <button id="saveBtn" disabled>Save</button>
+    <button id="settingsBtn">&#9881;</button>
   </header>
+  <div id="fileMenuPanel" class="panel" style="display: none;"></div>
+  <div id="settingsPanel" class="panel" style="display: none;"></div>
   <div id="status"></div>
   <div id="updateBanner" style="display: none; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; background: #185fa5; color: white; font-size: 13px;">
     <span>A new version is available.</span>

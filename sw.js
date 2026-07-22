@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v8';
+const CACHE_NAME = 'org-pwa-shell-v9';
 
 const SHELL_FILES = [
   './',
@@ -24,6 +24,9 @@ const SHELL_FILES = [
   './src/startup-config.js',
   './src-browser/indexeddb-adapter.js',
   './src-browser/filesystem-adapter.js',
+  './src-browser/github-adapter.js',
+  './src-browser/input-file-adapter.js',
+  './src-browser/settings.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];
