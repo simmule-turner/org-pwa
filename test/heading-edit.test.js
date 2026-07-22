@@ -4,6 +4,8 @@ import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import {
   createHeading,
   renameHeading,
+  parseTagsInput,
+  setHeadingTags,
   insertTopLevelHeading,
   insertChildHeading,
   removeHeading,
@@ -95,4 +97,33 @@ test('a newly inserted-then-removed heading leaves no trace after serialize', ()
   removeHeading(doc, h);
   const text = serializeOrg(doc);
   assert.equal(text, '* Existing');
+});
+
+// ---- tag editing --------------------------------------------------------
+
+test('parseTagsInput splits on whitespace or colons and drops empties', () => {
+  assert.deepEqual(parseTagsInput('urgent home01'), ['urgent', 'home01']);
+  assert.deepEqual(parseTagsInput(':urgent:home01:'), ['urgent', 'home01']);
+  assert.deepEqual(parseTagsInput('  urgent   home01  '), ['urgent', 'home01']);
+  assert.deepEqual(parseTagsInput(''), []);
+});
+
+test('setHeadingTags replaces tags outright and strips stray colons that would corrupt serialization', () => {
+  const h = createHeading({ level: 1, title: 'Test' });
+  setHeadingTags(h, ['urgent', 'ho:me01']);
+  assert.deepEqual(h.tags, ['urgent', 'home01']);
+});
+
+test('setHeadingTags with an empty array clears all tags', () => {
+  const doc = parseOrg('* Heading :a:b:');
+  setHeadingTags(doc.children[0], []);
+  assert.deepEqual(doc.children[0].tags, []);
+});
+
+test('tags set via setHeadingTags round-trip correctly through serialize -> reparse', () => {
+  const doc = parseOrg('* Heading');
+  setHeadingTags(doc.children[0], parseTagsInput('urgent home01'));
+  const doc2 = parseOrg(serializeOrg(doc));
+  assert.deepEqual(doc2.children[0].tags, ['urgent', 'home01']);
+  assert.equal(doc2.children[0].title, 'Heading'); // title itself is untouched by the tag change
 });

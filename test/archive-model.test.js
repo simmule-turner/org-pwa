@@ -9,6 +9,8 @@ import {
   archiveToSiblingFile,
   restoreFromArchive,
   findAncestorPath,
+  getPropertiesText,
+  setPropertiesFromText,
 } from '../src/archive-model.js';
 
 const FIXED_DATE = new Date('2026-07-20T14:32:00');
@@ -115,4 +117,78 @@ test('restoreFromArchive strips ARCHIVE_* properties and restores original todo 
   assert.equal('ARCHIVE_OLPATH' in restored.properties, false);
   assert.equal('ARCHIVE_CATEGORY' in restored.properties, false);
   assert.equal('ARCHIVE_TODO' in restored.properties, false);
+});
+
+// ---- property text editing ------------------------------------------------
+
+test('getPropertiesText renders each property as one key: value line, in drawer order', () => {
+  const doc = parseOrg(
+    ['* Simmule', '  :PROPERTIES:', '  :fname: Simmule', '  :lname: Turner', '  :END:'].join('\n')
+  );
+  assert.equal(getPropertiesText(doc.children[0]), 'fname: Simmule\nlname: Turner');
+});
+
+test('getPropertiesText is empty for a heading with no property drawer', () => {
+  const doc = parseOrg('* Plain heading');
+  assert.equal(getPropertiesText(doc.children[0]), '');
+});
+
+test('setPropertiesFromText replaces the whole property set and round-trips through serialize -> reparse', () => {
+  const doc = parseOrg('* Simmule');
+  setPropertiesFromText(doc.children[0], 'fname: Simmule\nlname: Turner\ndob: 1965-01-27');
+
+  const doc2 = parseOrg(serializeOrg(doc));
+  const h = doc2.children[0];
+  assert.equal(h.properties.fname, 'Simmule');
+  assert.equal(h.properties.lname, 'Turner');
+  assert.equal(h.properties.dob, '1965-01-27');
+  assert.deepEqual(h.propertyOrder, ['fname', 'lname', 'dob']);
+});
+
+test('setPropertiesFromText is a full replace: a property missing from the new text is deleted, not kept', () => {
+  const doc = parseOrg(
+    ['* Simmule', '  :PROPERTIES:', '  :fname: Simmule', '  :lname: Turner', '  :END:'].join('\n')
+  );
+  setPropertiesFromText(doc.children[0], 'fname: Simmule'); // lname omitted
+  assert.deepEqual(doc.children[0].properties, { fname: 'Simmule' });
+  assert.deepEqual(doc.children[0].propertyOrder, ['fname']);
+});
+
+test('setPropertiesFromText skips malformed lines (no colon) instead of throwing', () => {
+  const doc = parseOrg('* Test');
+  setPropertiesFromText(doc.children[0], 'fname: Simmule\nthis line has no colon\nlname: Turner');
+  assert.deepEqual(doc.children[0].propertyOrder, ['fname', 'lname']);
+});
+
+test('setPropertiesFromText with empty text clears all properties', () => {
+  const doc = parseOrg(
+    ['* Simmule', '  :PROPERTIES:', '  :fname: Simmule', '  :END:'].join('\n')
+  );
+  setPropertiesFromText(doc.children[0], '');
+  assert.deepEqual(doc.children[0].properties, {});
+  assert.deepEqual(doc.children[0].propertyOrder, []);
+});
+
+test('setPropertiesFromText collapses whitespace in a key to underscores (org keys cannot contain spaces)', () => {
+  const doc = parseOrg('* Test');
+  setPropertiesFromText(doc.children[0], 'my key: value');
+  assert.deepEqual(doc.children[0].propertyOrder, ['my_key']);
+});
+
+test('getPropertiesText -> setPropertiesFromText round-trips a real multi-property drawer unchanged', () => {
+  const doc = parseOrg(
+    [
+      '* Simmule',
+      '  :PROPERTIES:',
+      '  :fname:    Simmule',
+      '  :mname:    Romero',
+      '  :lname:    Turner',
+      '  :dob:      1965-01-27',
+      '  :END:',
+    ].join('\n')
+  );
+  const heading = doc.children[0];
+  const text = getPropertiesText(heading);
+  setPropertiesFromText(heading, text); // no-op edit
+  assert.deepEqual(heading.properties, { fname: 'Simmule', mname: 'Romero', lname: 'Turner', dob: '1965-01-27' });
 });
