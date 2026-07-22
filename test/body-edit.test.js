@@ -13,6 +13,7 @@ import {
   insertTable,
   editParagraphText,
   insertParagraph,
+  insertParagraphAfter,
   deleteListItem,
   deleteTable,
   deleteParagraph,
@@ -429,6 +430,48 @@ test('insertParagraph appends new text with a blank-line separator', () => {
   assert.equal(heading.body[1].lines[0], 'New note.');
   const text = serializeOrg(doc);
   assert.match(text, /Existing\.\n\nNew note\./);
+});
+
+// ---- insertParagraphAfter ---------------------------------------------
+
+test('insertParagraphAfter inserts a sibling right after the target, separated from what follows', () => {
+  const doc = parseOrg(['* Notes', 'First.', '', 'Third.'].join('\n'));
+  const heading = doc.children[0];
+  const first = heading.body[0];
+  const newPara = insertParagraphAfter(heading, first, 'Second.');
+
+  assert.equal(newPara.lines[0], 'Second.');
+  assert.deepEqual(
+    heading.body.map((n) => n.lines[0]),
+    ['First.', 'Second.', 'Third.']
+  );
+
+  const text2 = serializeOrg(doc);
+  const doc2 = parseOrg(text2);
+  assert.deepEqual(
+    doc2.children[0].body.map((n) => n.lines[0]),
+    ['First.', 'Second.', 'Third.']
+  );
+});
+
+test('insertParagraphAfter at the very end of the body needs no trailing separator', () => {
+  const doc = parseOrg(['* Notes', 'Only paragraph.'].join('\n'));
+  const heading = doc.children[0];
+  insertParagraphAfter(heading, heading.body[0], 'New last paragraph.');
+
+  assert.equal(serializeOrg(doc), '* Notes\nOnly paragraph.\n\nNew last paragraph.');
+});
+
+test('insertParagraphAfter adds a trailing separator before immediately-following non-blank content (e.g. a list)', () => {
+  const doc = parseOrg(['* Notes', 'A paragraph.', '- a list item'].join('\n'));
+  const heading = doc.children[0];
+  insertParagraphAfter(heading, heading.body[0], 'Inserted paragraph.');
+
+  const text2 = serializeOrg(doc);
+  const doc2 = parseOrg(text2);
+  const types = doc2.children[0].body.map((n) => n.type);
+  assert.deepEqual(types, ['paragraph', 'paragraph', 'list']);
+  assert.equal(doc2.children[0].body[1].lines[0], 'Inserted paragraph.');
 });
 
 // ---- heading text (entire body content) -----------------------------
