@@ -4,7 +4,8 @@ import { setProperty, deleteProperty, findAncestorPath } from './src/archive-mod
 import { resolveLinkTarget } from './src/link-resolve.js';
 import { parseInline } from './src/inline-markup.js';
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
-import { loadFoldState, saveFoldState, cycleFoldLevel } from './src/fold-state.js';
+import { applyStartupVisibility, cycleFoldLevel } from './src/fold-state.js';
+import { parseStartupConfig } from './src/startup-config.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import { renameHeading, insertTopLevelHeading, insertChildHeading, removeHeading } from './src/heading-edit.js';
 import {
@@ -44,7 +45,7 @@ const newBtn = document.getElementById('newBtn');
 const saveBtn = document.getElementById('saveBtn');
 const addBtn = document.getElementById('addBtn');
 
-let state = { documentId: null, doc: null };
+let state = { documentId: null, doc: null, startupConfig: null };
 // Which heading (by object reference) currently has its title in edit
 // mode, and whether it was just created (so an empty commit removes it
 // instead of leaving a titleless heading behind).
@@ -139,7 +140,9 @@ function commitAndRender() {
 const INLINE_LINK_ATTR = 'data-inline-link';
 
 function renderImageNode(node) {
-  if (/^https?:\/\//i.test(node.target)) {
+  const inlineImagesOn = state.startupConfig && state.startupConfig.imageVisibility === 'inlineimages';
+
+  if (inlineImagesOn && /^https?:\/\//i.test(node.target)) {
     const img = document.createElement('img');
     img.src = node.target;
     img.alt = '';
@@ -149,10 +152,12 @@ function renderImageNode(node) {
     img.style.borderRadius = '4px';
     return img;
   }
-  // Local/relative image paths can't be resolved to pixels here — doing so
-  // would need a registered File System Access directory handle and path
-  // resolution this app doesn't have yet. Shown as a labeled placeholder
-  // rather than a broken image icon or silently dropped content.
+  // Either inline images are off (#+STARTUP: noinlineimages, the default —
+  // "just the link information will be displayed") or this is a
+  // local/relative path that can't be resolved to pixels here anyway
+  // (would need a registered File System Access directory handle and path
+  // resolution this app doesn't have). Either way: a labeled link/placeholder,
+  // not a broken image icon or silently dropped content.
   const span = document.createElement('span');
   span.textContent = '[image: ' + node.target + ']';
   span.style.color = 'var(--text-muted, #888)';
@@ -282,10 +287,9 @@ function navigateToHeading(heading) {
     ancestor.collapsed = false;
   }
   render();
-  saveFoldState(state.doc, state.documentId, kv).catch(() => {});
 
   requestAnimationFrame(() => {
-    const rows = flattenVisibleRows(state.doc, { computeIds: false });
+    const rows = flattenVisibleRows(state.doc);
     const idx = rows.findIndex((r) => r.rowType === 'heading' && r.node === heading);
     if (idx === -1 || !outlineEl.children[idx]) return;
     const el = outlineEl.children[idx];
@@ -331,9 +335,9 @@ function attachSlideLeftToFold(el, heading) {
     const dy = e.clientY - startY;
     const isLeftSwipe = dx < -SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.5;
     if (!isLeftSwipe) return;
-    cycleFoldLevel(heading);
+    const archiveVisibility = state.startupConfig ? state.startupConfig.archiveVisibility : 'archived';
+    cycleFoldLevel(heading, { archiveVisibility });
     render();
-    saveFoldState(state.doc, state.documentId, kv).catch((err) => setStatus('Save failed: ' + err.message));
   };
 
   el.addEventListener('pointerup', finish);
@@ -473,9 +477,6 @@ function renderRow(row, todoSequence) {
     fold.onclick = () => {
       toggleFold(row.node);
       render();
-      saveFoldState(state.doc, state.documentId, kv).catch((err) =>
-        setStatus('Save failed: ' + err.message)
-      );
     };
     el.appendChild(fold);
 
@@ -982,11 +983,7 @@ function render() {
     outlineEl.appendChild(empty);
     return;
   }
-  // computeIds: false — this render loop reads row.node/row.item/row.heading
-  // object references directly, never row.id, so skip the full
-  // buildFoldIndex tree-walk-plus-hash that computing ids would otherwise
-  // cost on every single render (i.e. every tap).
-  const rows = flattenVisibleRows(state.doc, { computeIds: false });
+  const rows = flattenVisibleRows(state.doc);
   if (rows.length === 0) {
     outlineEl.innerHTML = '';
     const empty = document.createElement('div');
@@ -1044,8 +1041,9 @@ openBtn.addEventListener('click', async () => {
     const documentId = await pickAndRegisterFile(kv);
     await markDocumentOpen(kv, documentId);
     const { doc } = await openDocument({ documentId, kvAdapter: kv, diskAdapter: disk });
-    await loadFoldState(doc, documentId, kv);
-    state = { documentId, doc };
+    const startupConfig = parseStartupConfig(doc);
+    applyStartupVisibility(doc, startupConfig);
+    state = { documentId, doc, startupConfig };
     filenameEl.textContent = documentId;
     saveBtn.disabled = false;
     addBtn.disabled = false;
@@ -1065,8 +1063,9 @@ newBtn.addEventListener('click', async () => {
     const documentId = await pickAndRegisterNewFile(kv);
     await markDocumentOpen(kv, documentId);
     const doc = parseOrg('');
-    await loadFoldState(doc, documentId, kv); // nothing to load yet, but keeps first-open behavior consistent
-    state = { documentId, doc };
+    const startupConfig = parseStartupConfig(doc); // all defaults, since there's no content yet
+    applyStartupVisibility(doc, startupConfig);
+    state = { documentId, doc, startupConfig };
     filenameEl.textContent = documentId;
     saveBtn.disabled = false;
     addBtn.disabled = false;
@@ -1110,7 +1109,8 @@ saveBtn.addEventListener('click', async () => {
     if (result.status === 'conflict' && result.resolution === 'disk') {
       const reopened = await openDocument({ documentId: state.documentId, kvAdapter: kv, diskAdapter: disk });
       state.doc = reopened.doc;
-      await loadFoldState(state.doc, state.documentId, kv);
+      state.startupConfig = parseStartupConfig(state.doc);
+      applyStartupVisibility(state.doc, state.startupConfig);
       render();
     }
     setStatus('Saved (' + result.status + ').');

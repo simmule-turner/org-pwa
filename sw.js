@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v5';
+const CACHE_NAME = 'org-pwa-shell-v6';
 
 const SHELL_FILES = [
   './',
@@ -21,6 +21,7 @@ const SHELL_FILES = [
   './src/heading-edit.js',
   './src/body-edit.js',
   './src/link-resolve.js',
+  './src/startup-config.js',
   './src-browser/indexeddb-adapter.js',
   './src-browser/filesystem-adapter.js',
   './icons/icon-192.png',
