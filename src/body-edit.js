@@ -260,80 +260,55 @@ export function insertParagraph(heading, text = '') {
   return heading.body[heading.body.length - 1];
 }
 
-// ---- heading "body text" (multi-paragraph) --------------------------
+// ---- heading "body text" (everything belonging to the heading) --------
 
 /**
  * The bug this section fixes: org has no separate "description" field on
- * a heading — per the org spec, *any* text immediately following a
+ * a heading — per the org spec, *any* content immediately following a
  * heading (or its planning line / property drawer) belongs to that
- * heading as its body, and that body can span multiple paragraphs
- * separated by blank lines, all still belonging to the same heading right
- * up until a list, table, sub-heading, or end of file interrupts it. The
- * previous "edit text" feature only surfaced the *first* paragraph node
- * for editing, silently ignoring any further paragraphs — this section
- * replaces that with the actual multi-paragraph semantics.
+ * heading, until a sub-heading or end of file ends it. That content isn't
+ * just paragraphs: it can be — and very often is — a mix of lists,
+ * paragraphs, and tables, in any order and any combination.
  *
- * Scope boundary, stated rather than hidden: this covers the *leading*
- * run of paragraphs — every paragraph node starting from the beginning of
- * `heading.body`, until a non-paragraph node (list/table/block) breaks
- * the run. A paragraph appearing *after* a list or table is not part of
- * this combined block; it's still individually editable by tapping that
- * specific paragraph row (unchanged, already worked). This matches every
- * example in the org documentation, which shows body text as a
- * contiguous run at the top of a heading's content, not interleaved with
- * structured content.
+ * An earlier version of this only covered the *leading run of paragraph
+ * nodes*, which handled simple description-only headings fine but missed
+ * essentially everything in a heading like "Fix organice issues" — a
+ * checklist, then a bold-text paragraph, then another list — because that
+ * heading's body starts with a list, not a paragraph, so the leading-run
+ * scan found nothing and returned empty. That was the actual bug: it
+ * covered a narrow, common-but-not-representative case, not "the text
+ * associated with the header" in general.
+ *
+ * The fix: getHeadingText/setHeadingText now cover the heading's *entire*
+ * bodyLines — every line between the heading (and its planning line /
+ * property drawer, which live on the heading object itself, not in
+ * bodyLines) and the next heading. Nothing is excluded. Editing this and
+ * writing it back is exactly as literal as editing the underlying .org
+ * text directly would be: typing "- [ ] " at the start of a line turns it
+ * into a checklist item on reparse, the same as it would anywhere else in
+ * this app, because bodyLines is genuinely the org source text, not a
+ * sanitized subset of it.
+ *
+ * This does overlap with the existing granular per-item editors (tap a
+ * checkbox, tap one list item, tap one table cell) — that's intentional,
+ * not a redundancy to resolve. Those stay the fast path for a single
+ * small fix; this is the "edit everything about this heading's content
+ * at once" path, useful for larger restructuring or when you just want to
+ * see and edit it all together.
  */
-function leadingParagraphs(heading) {
-  const paras = [];
-  for (const node of heading.body) {
-    if (node.type !== 'paragraph') break;
-    paras.push(node);
-  }
-  return paras;
-}
-
-/** Every leading paragraph node, for callers (the UI) that need to know
- *  which specific nodes are covered by getHeadingText/setHeadingText —
- *  e.g. to avoid rendering them a second time as separate rows while
- *  they're being edited as one combined block. */
-export function getLeadingParagraphNodes(heading) {
-  return leadingParagraphs(heading);
-}
-
-/** The heading's full leading-paragraph text as one string, with a blank
- *  line between each paragraph (so the multi-paragraph structure survives
- *  round-trip through a single textarea) — '' if there's no leading text yet. */
 export function getHeadingText(heading) {
-  return leadingParagraphs(heading)
-    .map((p) => p.lines.join('\n'))
-    .join('\n\n');
+  return heading.bodyLines.join('\n');
 }
 
 /**
- * Replaces the heading's entire leading-paragraph run with `newText` in
- * one operation. Blank lines the user types are NOT flattened away —
- * they split back into separate paragraph nodes on reparse, same as
- * editParagraphText's literal-syntax behavior, because that's correct org
- * semantics, not something to paper over.
- *
- * If there's no leading paragraph run yet, the new text is inserted right
- * at the start of the heading's body content (before any existing list or
- * table), matching where descriptive text conventionally goes — not
- * appended at the end the way insertParagraph does for a deliberately
- * separate, later note.
+ * Replaces the heading's entire body content with `newText`, splitting on
+ * newlines and fully reparsing `heading.body` from scratch — the same
+ * "patch the source, then re-derive everything" pattern every other
+ * function in this file uses, just applied to the whole body instead of
+ * one node's line span.
  */
 export function setHeadingText(heading, newText) {
-  const paras = leadingParagraphs(heading);
   const isEmpty = String(newText).trim() === '';
-  const newLines = isEmpty ? [] : String(newText).split('\n');
-
-  if (paras.length > 0) {
-    const start = paras[0].lineIndex;
-    const last = paras[paras.length - 1];
-    const end = last.lineIndex + last.lineCount;
-    commitLines(heading, start, end - start, newLines);
-  } else if (newLines.length > 0) {
-    commitLines(heading, 0, 0, newLines);
-  }
-  // else: nothing existed and nothing was typed — no-op.
+  heading.bodyLines = isEmpty ? [] : String(newText).split('\n');
+  heading.body = parseBody(heading.bodyLines);
 }
