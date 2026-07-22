@@ -12,7 +12,6 @@
  * plain data and pure mutation functions, nothing UI-framework-specific.
  */
 
-import { buildFoldIndex } from './fold-state.js';
 import { resolveTodoSequence, cycleTodoState } from './todo-cycle.js';
 
 const CHECKBOX_CYCLE = [' ', '-', 'X'];
@@ -30,32 +29,28 @@ const CHECKBOX_CYCLE = [' ', '-', 'X'];
  * body-edit.js), so callers never have to re-derive "which heading does
  * this row belong to" by searching.
  *
- * `computeIds` (default true) controls whether row.id gets populated.
- * Computing it requires buildFoldIndex — a full recursive tree walk with
- * an FNV-1a hash per heading — which is only actually needed by callers
- * that persist/look up fold state by id. A UI's per-interaction render
- * loop typically doesn't read row.id at all (it holds live node/item
- * object references instead), so pass `{ computeIds: false }` there to
- * skip that walk entirely — on a large document this is the difference
- * between "every tap re-hashes the whole tree" and "every tap just reads
- * a few already-set booleans".
+ * Rows carry a `key` (a plain positional path string, e.g. "0.2.1") for
+ * use as a rendering key (React-style list keys, DOM diffing, etc.) —
+ * this is NOT a stable cross-session identity the way an earlier
+ * version's hashed `id` was; it's only meant to be unique *within one
+ * render* of one document. Callers needing to act on a specific
+ * node/item hold the live object reference itself (row.node / row.item),
+ * not this key.
  *
  * Row shapes:
- *   { rowType: 'heading', id, node, depth, hasChildren }
- *   { rowType: 'list-item', id, item, depth, heading, displayNumber }
- *   { rowType: 'paragraph' | 'table' | 'block', node, depth, heading }
+ *   { rowType: 'heading', key, node, depth, hasChildren }
+ *   { rowType: 'list-item', key, item, depth, heading, displayNumber }
+ *   { rowType: 'paragraph' | 'table' | 'block', key, node, depth, heading }
  *
  * `displayNumber` is the item's position for rendering an ordered list's
  * numbering (null for unordered items) — computed per items-array (each
  * nested list numbers independently) and reset by a [@N] start-value
  * cookie, so callers don't need to re-derive numbering themselves.
  */
-function flattenVisibleRows(doc, opts = {}) {
-  const { computeIds = true } = opts;
-  const idByNode = computeIds ? new Map(buildFoldIndex(doc).map((e) => [e.node, e.id])) : null;
+function flattenVisibleRows(doc) {
   const rows = [];
 
-  function flattenListItems(items, headingNode, headingId, depth, pathPrefix) {
+  function flattenListItems(items, headingNode, depth, keyPrefix) {
     let orderedCounter = 0;
     items.forEach((item, i) => {
       let displayNumber = null;
@@ -63,39 +58,39 @@ function flattenVisibleRows(doc, opts = {}) {
         orderedCounter = item.startValue != null ? item.startValue : orderedCounter + 1;
         displayNumber = orderedCounter;
       }
-      const id = headingId !== null ? `${headingId}:${pathPrefix}${i}` : null;
-      rows.push({ rowType: 'list-item', id, item, depth, heading: headingNode, displayNumber });
+      const key = `${keyPrefix}${i}`;
+      rows.push({ rowType: 'list-item', key, item, depth, heading: headingNode, displayNumber });
       for (const nestedList of item.children || []) {
-        flattenListItems(nestedList.items, headingNode, headingId, depth + 1, `${id}.`);
+        flattenListItems(nestedList.items, headingNode, depth + 1, `${key}.`);
       }
     });
   }
 
-  function flattenBody(bodyNodes, headingNode, headingId, depth) {
-    for (const node of bodyNodes || []) {
+  function flattenBody(bodyNodes, headingNode, depth, keyPrefix) {
+    (bodyNodes || []).forEach((node, i) => {
       if (node.type === 'list') {
-        flattenListItems(node.items, headingNode, headingId, depth, '');
+        flattenListItems(node.items, headingNode, depth, `${keyPrefix}${i}.`);
       } else {
-        rows.push({ rowType: node.type, node, depth, heading: headingNode });
+        rows.push({ rowType: node.type, key: `${keyPrefix}${i}`, node, depth, heading: headingNode });
       }
-    }
+    });
   }
 
-  function walk(nodes, depth) {
-    for (const node of nodes) {
-      if (node.type !== 'heading') continue;
-      const id = idByNode ? idByNode.get(node) : null;
+  function walk(nodes, depth, keyPrefix) {
+    nodes.forEach((node, i) => {
+      if (node.type !== 'heading') return;
+      const key = `${keyPrefix}${i}`;
       const hasChildren = (node.children && node.children.length > 0) || (node.body && node.body.length > 0);
-      rows.push({ rowType: 'heading', id, node, depth, hasChildren });
+      rows.push({ rowType: 'heading', key, node, depth, hasChildren });
 
       if (!node.collapsed) {
-        flattenBody(node.body, node, id, depth + 1);
-        walk(node.children, depth + 1);
+        flattenBody(node.body, node, depth + 1, `${key}.b`);
+        walk(node.children, depth + 1, `${key}.`);
       }
-    }
+    });
   }
 
-  walk(doc.children, 0);
+  walk(doc.children, 0, '');
   return rows;
 }
 
