@@ -260,6 +260,27 @@ export function insertParagraph(heading, text = '') {
   return heading.body[heading.body.length - 1];
 }
 
+/**
+ * Inserts a new paragraph right after `afterParagraph` — a targeted
+ * sibling insert, unlike insertParagraph, which always appends at the
+ * very end of the heading's body regardless of where you're looking.
+ * Always separates the new paragraph from its neighbors with a blank
+ * line on both sides it needs one (none needed on a side that's already
+ * blank or at the end of the body), so it reads as its own paragraph, not
+ * a continuation of whatever it's inserted next to.
+ */
+export function insertParagraphAfter(heading, afterParagraph, text = '') {
+  const insertAt = afterParagraph.lineIndex + afterParagraph.lineCount;
+  const lines = String(text).split('\n');
+  const nextLine = heading.bodyLines[insertAt];
+  const needsTrailingSeparator = nextLine !== undefined && nextLine.trim() !== '';
+  const toInsert = needsTrailingSeparator ? ['', ...lines, ''] : ['', ...lines];
+  commitLines(heading, insertAt, 0, toInsert);
+
+  const newParagraphLineIndex = insertAt + 1;
+  return heading.body.find((n) => n.type === 'paragraph' && n.lineIndex === newParagraphLineIndex) || null;
+}
+
 // ---- heading "body text" (everything belonging to the heading) --------
 
 /**
