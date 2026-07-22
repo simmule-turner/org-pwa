@@ -15,7 +15,7 @@
  */
 
 import { isArchived } from './archive-model.js';
-import { parseOrgTimestamp, dateKey, isSameDay } from './org-timestamp.js';
+import { parseOrgTimestamp, findTimestamps, dateKey, isSameDay } from './org-timestamp.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const REPEATER_RE = /^([.+]{1,2})(\d+)([hdwmy])$/;
@@ -104,11 +104,19 @@ function walkHeadings(doc, visit) {
 }
 
 /**
- * Builds the flat list of agenda items (one per SCHEDULED/DEADLINE
- * timestamp found, or one per occurrence for a repeating timestamp when
- * a range is given — see below) across `docs` — an array of
+ * Builds the flat list of agenda items across `docs` — an array of
  * { documentId, doc }, e.g. straight from document-store's
- * openAllDocuments().
+ * openAllDocuments(). Three sources per heading, each producing an item
+ * (or, for a repeating timestamp with a range given, multiple items —
+ * see rangeStart/rangeEnd below):
+ *   - a SCHEDULED: timestamp (kind: 'scheduled')
+ *   - a DEADLINE: timestamp (kind: 'deadline')
+ *   - a plain *active* timestamp written directly in the heading title,
+ *     when the heading has no SCHEDULED/DEADLINE of its own (kind:
+ *     'timestamp') — the standard org convention for tracking a
+ *     recurring date like a birthday right on its own heading line
+ *     ("Jennifer <1989-11-02 Thu +1y>"), a genuinely different, older
+ *     agenda source than SCHEDULED/DEADLINE, not a fallback for them.
  *
  * Options:
  *   includeArchived (default false) — include archived subtrees/items
@@ -127,37 +135,61 @@ function buildAgendaItems(docs, opts = {}) {
   const { includeArchived = false, todoFilter = null, tagFilter = null, rangeStart = null, rangeEnd = null } = opts;
   const items = [];
 
+  function addItem(documentId, heading, kind, parsed) {
+    const base = {
+      documentId,
+      heading,
+      kind,
+      hasTime: parsed.hasTime,
+      repeater: parsed.repeater,
+      todo: heading.todo,
+      priority: heading.priority,
+      tags: heading.tags,
+      title: heading.title,
+    };
+    const repeater = parsed.repeater ? parseRepeater(parsed.repeater) : null;
+    if (repeater && rangeStart && rangeEnd) {
+      for (const occurrenceDate of expandRepeats(parsed.date, repeater, rangeStart, rangeEnd)) {
+        items.push({ ...base, date: occurrenceDate });
+      }
+    } else {
+      items.push({ ...base, date: parsed.date });
+    }
+  }
+
   for (const { documentId, doc } of docs) {
     walkHeadings(doc, (heading) => {
       if (!includeArchived && isArchived(heading)) return;
       if (todoFilter && !todoFilter(heading.todo)) return;
       if (tagFilter && !tagFilter(heading.tags)) return;
 
+      let hasPlanning = false;
       for (const kind of ['scheduled', 'deadline']) {
         const raw = heading.planning && heading.planning[kind];
         if (!raw) continue;
         const parsed = parseOrgTimestamp(raw);
         if (!parsed) continue;
+        hasPlanning = true;
+        addItem(documentId, heading, kind, parsed);
+      }
 
-        const base = {
-          documentId,
-          heading,
-          kind,
-          hasTime: parsed.hasTime,
-          repeater: parsed.repeater,
-          todo: heading.todo,
-          priority: heading.priority,
-          tags: heading.tags,
-          title: heading.title,
-        };
-
-        const repeater = parsed.repeater ? parseRepeater(parsed.repeater) : null;
-        if (repeater && rangeStart && rangeEnd) {
-          for (const occurrenceDate of expandRepeats(parsed.date, repeater, rangeStart, rangeEnd)) {
-            items.push({ ...base, date: occurrenceDate });
-          }
-        } else {
-          items.push({ ...base, date: parsed.date });
+      // Plain timestamps written directly in the heading title — a
+      // separate, genuine org convention distinct from SCHEDULED/DEADLINE
+      // (the standard way to track something like a recurring birthday
+      // right on its own heading line: "Jennifer <1989-11-02 Thu +1y>").
+      // Scoped deliberately to the title only, not body text — scanning
+      // body text too would risk pulling in unrelated dates mentioned in
+      // ordinary prose elsewhere in a journal-heavy file, which titles
+      // don't really have the same risk of. Only *active* timestamps
+      // count, matching real org's own rule that an inactive [timestamp]
+      // is deliberately excluded from the agenda (a dated record, not a
+      // reminder). Skipped when the heading already has its own
+      // SCHEDULED/DEADLINE, so one heading doesn't produce a confusing
+      // double entry for what would usually be the same underlying date.
+      if (!hasPlanning) {
+        for (const parsed of findTimestamps(heading.title)) {
+          if (!parsed.active) continue;
+          addItem(documentId, heading, 'timestamp', parsed);
         }
       }
     });
