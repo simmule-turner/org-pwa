@@ -15,12 +15,14 @@ import {
   deleteTableColumn,
   insertTable,
   editParagraphText,
-  insertParagraph,
   deleteListItem,
   deleteTable,
   deleteParagraph,
   editListItemText,
   insertListItem,
+  getHeadingText,
+  setHeadingText,
+  getLeadingParagraphNodes,
 } from './src/body-edit.js';
 import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
 import {
@@ -57,6 +59,12 @@ let editingCell = null;
 let editingParagraph = null;
 // { heading, item } for the one list item currently being text-edited, or null.
 let editingListItem = null;
+// The single heading whose combined multi-paragraph body text (per
+// body-edit.js's getHeadingText/setHeadingText) is currently being edited
+// as one block, or null. Distinct from editingParagraph, which still
+// handles editing one specific paragraph row directly (e.g. a paragraph
+// that comes after a list, outside this combined block's scope).
+let editingHeadingText = null;
 // The single heading or list-item node whose contextual action row is
 // currently revealed (tap-to-reveal, per the interaction redesign — only
 // one open at a time). Not the same as editingHeading/editingListItem:
@@ -395,15 +403,17 @@ function renderActionMenu(actions) {
   return menu;
 }
 
-// Wraps a row element and, if its menu is currently open, the action menu
-// right below it, in a plain block container — this is what lets a single
-// renderRow() call produce "two stacked pieces" without changing render()'s
+// Wraps a row element and any number of optional extra elements (action
+// menu, the combined heading-text editor, etc.) stacked below it in a
+// plain block container — this is what lets a single renderRow() call
+// produce "several stacked pieces" without changing render()'s
 // one-element-per-row assumption.
-function withActionMenu(rowEl, menuEl) {
-  if (!menuEl) return rowEl;
+function withActionMenu(rowEl, ...extras) {
+  const present = extras.filter(Boolean);
+  if (present.length === 0) return rowEl;
   const wrap = document.createElement('div');
   wrap.appendChild(rowEl);
-  wrap.appendChild(menuEl);
+  for (const el of present) wrap.appendChild(el);
   return wrap;
 }
 
@@ -537,11 +547,8 @@ function renderRow(row, todoSequence) {
             label: 'Edit text',
             onClick: () => {
               actionMenuFor = null;
-              const paragraph =
-                row.node.body.find((n) => n.type === 'paragraph') || insertParagraph(row.node, '');
-              editingParagraph = { heading: row.node, paragraph };
+              editingHeadingText = row.node;
               render();
-              persistInBackground();
             },
           },
           {
@@ -598,6 +605,7 @@ function renderRow(row, todoSequence) {
               editingCell = null;
               editingParagraph = null;
               editingListItem = null;
+              editingHeadingText = null;
               removeHeading(state.doc, row.node);
               commitAndRender();
             },
@@ -606,7 +614,36 @@ function renderRow(row, todoSequence) {
       }
     }
 
-    return withActionMenu(el, menuEl);
+    let textEditorEl = null;
+    if (editingHeadingText === row.node) {
+      textEditorEl = document.createElement('div');
+      textEditorEl.style.padding = '4px 10px 10px 40px';
+      const textarea = document.createElement('textarea');
+      textarea.id = 'heading-text-edit-input';
+      textarea.value = getHeadingText(row.node);
+      textarea.rows = Math.max(3, textarea.value.split('\n').length);
+      textarea.placeholder = 'Text for this heading (a blank line starts a new paragraph)';
+      textarea.style.width = '100%';
+      textarea.style.boxSizing = 'border-box';
+      textarea.style.font = 'inherit';
+      textarea.style.fontSize = '14px';
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          editingHeadingText = null;
+          render();
+        }
+      });
+      textarea.addEventListener('blur', () => {
+        const heading = editingHeadingText;
+        editingHeadingText = null;
+        setHeadingText(heading, textarea.value);
+        commitAndRender();
+      });
+      textEditorEl.appendChild(textarea);
+    }
+
+    return withActionMenu(el, menuEl, textEditorEl);
   }
 
   if (row.rowType === 'list-item') {
@@ -960,6 +997,17 @@ function render() {
     return;
   }
 
+  // While a heading's combined body text is being edited as one block
+  // (editingHeadingText), its leading paragraph nodes are covered by that
+  // one editor — skip rendering them as separate rows too, or the same
+  // text would show twice until the edit is committed.
+  const visibleRows = editingHeadingText
+    ? (() => {
+        const skip = new Set(getLeadingParagraphNodes(editingHeadingText));
+        return rows.filter((r) => r.rowType !== 'paragraph' || !skip.has(r.node));
+      })()
+    : rows;
+
   const todoSequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
 
   // Build the new row elements off-DOM (a DocumentFragment has no layout
@@ -968,16 +1016,17 @@ function render() {
   // outlineEl and appendChild-ing each row directly onto an already
   // on-screen, already-laid-out element.
   const fragment = document.createDocumentFragment();
-  for (const row of rows) fragment.appendChild(renderRow(row, todoSequence));
+  for (const row of visibleRows) fragment.appendChild(renderRow(row, todoSequence));
   outlineEl.innerHTML = '';
   outlineEl.appendChild(fragment);
 
-  if (editingHeading || editingCell || editingParagraph || editingListItem) {
+  if (editingHeading || editingCell || editingParagraph || editingListItem || editingHeadingText) {
     requestAnimationFrame(() => {
       const input =
         document.getElementById('title-edit-input') ||
         document.getElementById('cell-edit-input') ||
         document.getElementById('listitem-edit-input') ||
+        document.getElementById('heading-text-edit-input') ||
         document.getElementById('paragraph-edit-input');
       if (input) {
         input.focus();
