@@ -22,7 +22,6 @@ import {
   insertListItem,
   getHeadingText,
   setHeadingText,
-  getLeadingParagraphNodes,
 } from './src/body-edit.js';
 import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
 import {
@@ -622,7 +621,7 @@ function renderRow(row, todoSequence) {
       textarea.id = 'heading-text-edit-input';
       textarea.value = getHeadingText(row.node);
       textarea.rows = Math.max(3, textarea.value.split('\n').length);
-      textarea.placeholder = 'Text for this heading (a blank line starts a new paragraph)';
+      textarea.placeholder = 'All content for this heading — lists, notes, etc. — as org text';
       textarea.style.width = '100%';
       textarea.style.boxSizing = 'border-box';
       textarea.style.font = 'inherit';
@@ -998,14 +997,14 @@ function render() {
   }
 
   // While a heading's combined body text is being edited as one block
-  // (editingHeadingText), its leading paragraph nodes are covered by that
-  // one editor — skip rendering them as separate rows too, or the same
-  // text would show twice until the edit is committed.
+  // (editingHeadingText), ALL of its body content — list items,
+  // paragraphs, tables, blocks, everything — is covered by that one
+  // editor, not just paragraphs. Every body-content row carries a
+  // `.heading` reference to its owning heading, so this hides exactly the
+  // rows that belong to the heading being edited, without touching a
+  // sub-heading's own content (which has its own `.heading` reference).
   const visibleRows = editingHeadingText
-    ? (() => {
-        const skip = new Set(getLeadingParagraphNodes(editingHeadingText));
-        return rows.filter((r) => r.rowType !== 'paragraph' || !skip.has(r.node));
-      })()
+    ? rows.filter((r) => r.rowType === 'heading' || r.heading !== editingHeadingText)
     : rows;
 
   const todoSequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
