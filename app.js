@@ -1,4 +1,5 @@
 import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src/document-store.js';
+import { hasPendingChange } from './src/outbox.js';
 import { parseOrg } from './src/org-parser.js';
 import { setProperty, deleteProperty, findAncestorPath } from './src/archive-model.js';
 import { resolveLinkTarget } from './src/link-resolve.js';
@@ -1039,6 +1040,23 @@ openBtn.addEventListener('click', async () => {
   }
   try {
     const documentId = await pickAndRegisterFile(kv);
+
+    // openDocument now always prefers disk over the cache (that's the
+    // actual fix for "external edits aren't picked up") — but that means
+    // it would also silently discard any local edit that was made and
+    // never synced to disk. That's a real, separate risk worth a
+    // deliberate check, not something to fold silently into the fix above.
+    if (await hasPendingChange(kv, documentId)) {
+      const proceed = window.confirm(
+        `"${documentId}" has local changes that were never saved to disk (from an earlier session). ` +
+          'Opening it now will load the current file from disk and discard those unsaved changes. Continue?'
+      );
+      if (!proceed) {
+        setStatus('Open cancelled \u2014 unsaved local changes were kept.');
+        return;
+      }
+    }
+
     await markDocumentOpen(kv, documentId);
     const { doc } = await openDocument({ documentId, kvAdapter: kv, diskAdapter: disk });
     const startupConfig = parseStartupConfig(doc);
