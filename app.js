@@ -1307,7 +1307,13 @@ async function newOnFilesystem() {
     await afterDocumentLoaded(documentId, doc, 'filesystem');
     // Establish real (empty) content on disk right away, rather than
     // leaving the picked file however the browser happened to create it.
-    await saveAndSync({ documentId, doc, kvAdapter: kv, diskAdapter: filesystemAdapter });
+    await saveAndSync({
+      documentId,
+      doc,
+      kvAdapter: kv,
+      diskAdapter: filesystemAdapter,
+      resolveConflict: ALWAYS_KEEP_MINE,
+    });
     setStatus('Created.');
   } catch (err) {
     if (err.name !== 'AbortError') setStatus('Could not create file: ' + err.message);
@@ -1412,6 +1418,20 @@ async function saveCurrent() {
   closeFileMenu();
 }
 
+// New (on filesystem) and Save As all keep "mine" on conflict — there's
+// no ambiguity to negotiate here the way there is for a background Save:
+// the user just explicitly chose this destination (via the native save
+// picker) and explicitly wants their current content written there.
+// syncDocument's conflict detection treats "no prior sync history for
+// this documentId" the same as "disk changed since we last knew about
+// it" — which is true of every single New/Save As to any path, since
+// showSaveFilePicker creates the file (even if empty) the moment the
+// picker resolves, before this code ever calls write(). Without this
+// callback, every New or Save As throws instead of saving; this is the
+// fix for that, and it always resolves in favor of the content actually
+// on screen, which is what both actions mean.
+const ALWAYS_KEEP_MINE = async () => 'mine';
+
 async function saveAsFilesystem() {
   if (!state.doc) return;
   if (!isFileSystemAccessSupported()) {
@@ -1424,7 +1444,13 @@ async function saveAsFilesystem() {
     state.storageKind = 'filesystem';
     await markDocumentOpen(kv, documentId);
     filenameEl.textContent = documentId + ' (Local)';
-    await saveAndSync({ documentId, doc: state.doc, kvAdapter: kv, diskAdapter: filesystemAdapter });
+    await saveAndSync({
+      documentId,
+      doc: state.doc,
+      kvAdapter: kv,
+      diskAdapter: filesystemAdapter,
+      resolveConflict: ALWAYS_KEEP_MINE,
+    });
     setStatus('Saved as ' + documentId + '.');
     closeFileMenu();
     render();
@@ -1452,7 +1478,13 @@ async function saveAsGithub() {
     state.storageKind = 'github';
     await markDocumentOpen(kv, path);
     filenameEl.textContent = path + ' (GitHub)';
-    await saveAndSync({ documentId: path, doc: state.doc, kvAdapter: kv, diskAdapter: githubAdapter });
+    await saveAndSync({
+      documentId: path,
+      doc: state.doc,
+      kvAdapter: kv,
+      diskAdapter: githubAdapter,
+      resolveConflict: ALWAYS_KEEP_MINE,
+    });
     setStatus('Saved to GitHub as ' + path + '.');
     closeFileMenu();
     render();
@@ -1477,7 +1509,13 @@ async function saveAsWebdav() {
     state.storageKind = 'webdav';
     await markDocumentOpen(kv, path);
     filenameEl.textContent = path + ' (WebDAV)';
-    await saveAndSync({ documentId: path, doc: state.doc, kvAdapter: kv, diskAdapter: webdavAdapter });
+    await saveAndSync({
+      documentId: path,
+      doc: state.doc,
+      kvAdapter: kv,
+      diskAdapter: webdavAdapter,
+      resolveConflict: ALWAYS_KEEP_MINE,
+    });
     setStatus('Saved to WebDAV as ' + path + '.');
     closeFileMenu();
     render();
@@ -1495,7 +1533,13 @@ async function saveAsImport() {
   try {
     await markDocumentOpen(kv, name);
     filenameEl.textContent = name + ' (Imported)';
-    await saveAndSync({ documentId: name, doc: state.doc, kvAdapter: kv, diskAdapter: inputFileAdapter });
+    await saveAndSync({
+      documentId: name,
+      doc: state.doc,
+      kvAdapter: kv,
+      diskAdapter: inputFileAdapter,
+      resolveConflict: ALWAYS_KEEP_MINE,
+    });
     setStatus('Downloaded as ' + name + '.');
     closeFileMenu();
     render();
