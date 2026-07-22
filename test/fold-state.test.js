@@ -82,7 +82,7 @@ test('applyStartupVisibility: overview leaves bodyHidden false (irrelevant when 
 
 test('THE BUG THIS FIXES: content mode used to unfold an archived subtree\'s children on file open, ignoring archiveVisibility entirely', () => {
   const doc = docWithArchivedChild();
-  applyStartupVisibility(doc, { visibility: 'content', archiveVisibility: 'archived' });
+  applyStartupVisibility(doc, { visibility: 'content' }, 'archived');
 
   const parent = doc.children[0];
   const archivedChild = parent.children[1]; // "Archived child :ARCHIVE:"
@@ -95,7 +95,7 @@ test('THE BUG THIS FIXES: content mode used to unfold an archived subtree\'s chi
 test('showall and showeverything have the same bug fixed the same way', () => {
   for (const visibility of ['showall', 'showeverything']) {
     const doc = docWithArchivedChild();
-    applyStartupVisibility(doc, { visibility, archiveVisibility: 'archived' });
+    applyStartupVisibility(doc, { visibility }, 'archived');
     const archivedChild = doc.children[0].children[1];
     assert.equal(archivedChild.collapsed, true, `failed for visibility=${visibility}`);
   }
@@ -103,14 +103,14 @@ test('showall and showeverything have the same bug fixed the same way', () => {
 
 test('archiveVisibility: "noarchived" restores the old (now correctly opt-in) behavior of expanding archived headings too', () => {
   const doc = docWithArchivedChild();
-  applyStartupVisibility(doc, { visibility: 'content', archiveVisibility: 'noarchived' });
+  applyStartupVisibility(doc, { visibility: 'content' }, 'noarchived');
   const archivedChild = doc.children[0].children[1];
   assert.equal(archivedChild.collapsed, false);
 });
 
 test('an archived heading\'s own descendants still get their default collapsed/bodyHidden set (not force-collapsed themselves), so expanding the archived heading later shows them in the right state', () => {
   const doc = docWithArchivedChild();
-  applyStartupVisibility(doc, { visibility: 'content', archiveVisibility: 'archived' });
+  applyStartupVisibility(doc, { visibility: 'content' }, 'archived');
   const archivedChild = doc.children[0].children[1];
   const archivedGrandchild = archivedChild.children[0]; // "Archived grandchild"
   // The grandchild itself isn't archived, so it gets the normal content-mode
@@ -121,7 +121,7 @@ test('an archived heading\'s own descendants still get their default collapsed/b
 
 test('overview mode is unaffected by the archive fix (everything was already collapsed either way)', () => {
   const doc = docWithArchivedChild();
-  applyStartupVisibility(doc, { visibility: 'overview', archiveVisibility: 'archived' });
+  applyStartupVisibility(doc, { visibility: 'overview' }, 'archived');
   assert.equal(doc.children[0].children[0].collapsed, true); // regular child
   assert.equal(doc.children[0].children[1].collapsed, true); // archived child
 });
@@ -181,7 +181,7 @@ test('expandFully clears bodyHidden on the whole revealed subtree', () => {
 test('expandFully still skips bodyHidden-clearing (and everything else) for an archived child under archiveVisibility "archived"', () => {
   const doc = docWithArchivedChild();
   const parent = doc.children[0];
-  applyStartupVisibility(doc, { visibility: 'content', archiveVisibility: 'archived' });
+  applyStartupVisibility(doc, { visibility: 'content' }, 'archived');
   expandFully(parent, { archiveVisibility: 'archived' });
 
   const archivedChild = parent.children[1];

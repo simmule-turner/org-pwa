@@ -8,21 +8,19 @@ test('defaults apply when there is no #+STARTUP line at all', () => {
   assert.deepEqual(parseStartupConfig(doc), DEFAULT_STARTUP_CONFIG);
 });
 
-test('parses a single #+STARTUP line covering all three categories', () => {
-  const doc = parseOrg('#+STARTUP: overview inlineimages noarchived\n* A heading');
+test('parses a single #+STARTUP line covering both categories', () => {
+  const doc = parseOrg('#+STARTUP: overview inlineimages\n* A heading');
   assert.deepEqual(parseStartupConfig(doc), {
     visibility: 'overview',
     imageVisibility: 'inlineimages',
-    archiveVisibility: 'noarchived',
   });
 });
 
-test('none, some, or all three categories can be specified — unspecified ones keep their default', () => {
+test('none, some, or both categories can be specified — unspecified ones keep their default', () => {
   const doc = parseOrg('#+STARTUP: inlineimages\n* A heading');
   assert.deepEqual(parseStartupConfig(doc), {
     visibility: 'showeverything',
     imageVisibility: 'inlineimages',
-    archiveVisibility: 'archived',
   });
 });
 
@@ -37,19 +35,18 @@ test('across multiple #+STARTUP lines, the later line wins for that category', (
 });
 
 test('multiple #+STARTUP lines can each set a different category without conflicting', () => {
-  const doc = parseOrg(
-    ['#+STARTUP: overview', '#+STARTUP: inlineimages', '#+STARTUP: noarchived', '* A heading'].join('\n')
-  );
+  const doc = parseOrg(['#+STARTUP: overview', '#+STARTUP: inlineimages', '* A heading'].join('\n'));
   assert.deepEqual(parseStartupConfig(doc), {
     visibility: 'overview',
     imageVisibility: 'inlineimages',
-    archiveVisibility: 'noarchived',
   });
 });
 
-test('unrecognized #+STARTUP tokens are ignored rather than erroring', () => {
-  const doc = parseOrg('#+STARTUP: logdone hidestars overview\n* A heading');
-  assert.equal(parseStartupConfig(doc).visibility, 'overview');
+test('unrecognized #+STARTUP tokens are ignored rather than erroring — including the removed archived/noarchived, which were never real org syntax', () => {
+  const doc = parseOrg('#+STARTUP: logdone archived noarchived hidestars overview\n* A heading');
+  const config = parseStartupConfig(doc);
+  assert.equal(config.visibility, 'overview');
+  assert.equal('archiveVisibility' in config, false);
 });
 
 test('is case-sensitive to the #+STARTUP key but not fooled by unrelated #+ keywords', () => {

@@ -12,6 +12,9 @@ import {
   monthView,
   parseRepeater,
   expandRepeats,
+  startOfDay,
+  endOfDay,
+  startOfWeek,
 } from '../src/agenda.js';
 
 function docsFixture() {
@@ -101,15 +104,67 @@ test('groupByDay groups and sorts by calendar day', () => {
   assert.equal(july21.items.length, 2);
 });
 
-test('weekView returns 7 days of grouped items starting from the given date', () => {
+test('THE BUG THIS FIXES: weekView aligns to an actual week boundary (Monday by default), not just "whatever date you passed in as day 1"', () => {
   const items = buildAgendaItems(docsFixture());
-  const week = weekView(items, new Date(2026, 6, 19)); // Sun 2026-07-19 -> Sat 2026-07-25
+  // Wed 2026-07-22 is mid-week — the old, buggy behavior treated this as
+  // day 1 of a 7-day span (July 22-28). The fix: it should resolve to the
+  // week actually containing July 22, which starts Monday July 20.
+  const week = weekView(items, new Date(2026, 6, 22));
+  assert.equal(week.length > 0 ? week[0].date >= '2026-07-20' : true, true);
   for (const day of week) {
-    assert.ok(day.date >= '2026-07-19' && day.date <= '2026-07-25');
+    assert.ok(day.date >= '2026-07-20' && day.date <= '2026-07-26', `${day.date} outside Mon-Sun window`);
   }
-  // "Pay rent" (Aug 1) should not appear in this week.
-  const allTitles = week.flatMap((d) => d.items.map((i) => i.title));
-  assert.ok(!allTitles.includes('Pay rent'));
+});
+
+test('weekView returns the same week no matter which day within it you pass', () => {
+  const items = buildAgendaItems(docsFixture());
+  const fromMonday = weekView(items, new Date(2026, 6, 20));
+  const fromWednesday = weekView(items, new Date(2026, 6, 22));
+  const fromSunday = weekView(items, new Date(2026, 6, 26));
+  assert.deepEqual(fromMonday, fromWednesday);
+  assert.deepEqual(fromMonday, fromSunday);
+});
+
+test('weekView respects a configured startOnWeekday (e.g. 0 = Sunday)', () => {
+  const items = buildAgendaItems(docsFixture());
+  const week = weekView(items, new Date(2026, 6, 22), 0); // Wed, Sunday-start
+  for (const day of week) {
+    assert.ok(day.date >= '2026-07-19' && day.date <= '2026-07-25', `${day.date} outside Sun-Sat window`);
+  }
+});
+
+// ---- startOfDay / endOfDay / startOfWeek ---------------------------------
+
+test('startOfDay zeroes out the time-of-day', () => {
+  const d = startOfDay(new Date(2026, 6, 22, 21, 41, 33));
+  assert.equal(d.getHours(), 0);
+  assert.equal(d.getMinutes(), 0);
+  assert.equal(d.getSeconds(), 0);
+  assert.equal(d.getDate(), 22);
+});
+
+test('endOfDay is the last instant of the same calendar day', () => {
+  const d = endOfDay(new Date(2026, 6, 22, 3, 0));
+  assert.equal(d.getDate(), 22);
+  assert.equal(d.getHours(), 23);
+  assert.equal(d.getMinutes(), 59);
+});
+
+test('startOfWeek(Monday-anchor, Wednesday) resolves to that week\'s Monday', () => {
+  const monday = startOfWeek(new Date(2026, 6, 22), 1); // Wed -> Mon
+  assert.equal(monday.getDate(), 20);
+  assert.equal(monday.getDay(), 1);
+});
+
+test('startOfWeek already on the start day is a no-op', () => {
+  const monday = startOfWeek(new Date(2026, 6, 20), 1); // already Monday
+  assert.equal(monday.getDate(), 20);
+});
+
+test('startOfWeek supports Sunday-start (0) and Tuesday-start (2) too', () => {
+  const wed = new Date(2026, 6, 22);
+  assert.equal(startOfWeek(wed, 0).getDate(), 19); // preceding Sunday
+  assert.equal(startOfWeek(wed, 2).getDate(), 21); // preceding Tuesday
 });
 
 // ---- parseRepeater / expandRepeats -----------------------------------
