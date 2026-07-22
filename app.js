@@ -34,10 +34,13 @@ import {
   isFileSystemAccessSupported,
 } from './src-browser/filesystem-adapter.js';
 import { createGithubAdapter, isGithubConfigured } from './src-browser/github-adapter.js';
+import { createWebdavAdapter, isWebdavConfigured } from './src-browser/webdav-adapter.js';
 import { createInputFileAdapter, pickAndImportFile, isFileSystemAccessUnsupported } from './src-browser/input-file-adapter.js';
 import {
   getGithubConfig,
   setGithubConfig,
+  getWebdavConfig,
+  setWebdavConfig,
   getTheme,
   setTheme,
   getFontFamily,
@@ -57,12 +60,15 @@ const inputFileAdapter = createInputFileAdapter(kv);
 // needing to reconstruct the adapter every time settings change.
 let githubConfig = { token: '', owner: '', repo: '', branch: 'main' };
 const githubAdapter = createGithubAdapter(() => githubConfig);
+let webdavConfig = { baseUrl: '', username: '', password: '' };
+const webdavAdapter = createWebdavAdapter(() => webdavConfig);
 
 /** Which adapter Save/Save-As-in-place should use — whatever storage kind
  *  the currently open document actually came from. This is the crux of
  *  "Save uses whatever mechanism was used to open the file". */
 function activeDiskAdapter() {
   if (state.storageKind === 'github') return githubAdapter;
+  if (state.storageKind === 'webdav') return webdavAdapter;
   if (state.storageKind === 'input') return inputFileAdapter;
   return filesystemAdapter;
 }
@@ -1135,6 +1141,7 @@ function render() {
 
 function storageKindLabel(kind) {
   if (kind === 'github') return 'GitHub';
+  if (kind === 'webdav') return 'WebDAV';
   if (kind === 'input') return 'Imported';
   return 'Local';
 }
@@ -1222,6 +1229,31 @@ async function openFromGithub() {
   }
 }
 
+async function openFromWebdav() {
+  const config = await getWebdavConfig(kv);
+  webdavConfig = config;
+  if (!isWebdavConfigured(config)) {
+    setStatus('WebDAV is not set up yet \u2014 open Settings first.');
+    closeFileMenu();
+    return;
+  }
+  const path = window.prompt('Path of the file on the WebDAV server (e.g. notes.org):');
+  if (!path) return;
+  try {
+    setStatus('Loading from WebDAV\u2026');
+    await markDocumentOpen(kv, path);
+    const { doc, source } = await openDocument({ documentId: path, kvAdapter: kv, diskAdapter: webdavAdapter });
+    await afterDocumentLoaded(path, doc, 'webdav');
+    setStatus(
+      source === 'new'
+        ? `"${path}" doesn't exist on the server yet \u2014 opened as a new empty file.`
+        : 'Opened from WebDAV.'
+    );
+  } catch (err) {
+    setStatus('Could not open from WebDAV: ' + err.message);
+  }
+}
+
 // ---- New ---------------------------------------------------------------
 
 async function newOnFilesystem() {
@@ -1265,6 +1297,31 @@ async function newOnGithub() {
     setStatus('Created on GitHub.');
   } catch (err) {
     setStatus('Could not create file on GitHub: ' + err.message);
+  }
+}
+
+async function newOnWebdav() {
+  const config = await getWebdavConfig(kv);
+  webdavConfig = config;
+  if (!isWebdavConfigured(config)) {
+    setStatus('WebDAV is not set up yet \u2014 open Settings first.');
+    closeFileMenu();
+    return;
+  }
+  const path = window.prompt('Path for the new file on the WebDAV server (e.g. notes.org):');
+  if (!path) return;
+  try {
+    if (await webdavAdapter.exists(path)) {
+      setStatus(`"${path}" already exists on the server \u2014 use Open instead.`);
+      return;
+    }
+    await markDocumentOpen(kv, path);
+    const doc = parseOrg('');
+    await afterDocumentLoaded(path, doc, 'webdav');
+    await saveAndSync({ documentId: path, doc, kvAdapter: kv, diskAdapter: webdavAdapter });
+    setStatus('Created on WebDAV.');
+  } catch (err) {
+    setStatus('Could not create file on WebDAV: ' + err.message);
   }
 }
 
@@ -1358,6 +1415,31 @@ async function saveAsGithub() {
     filenameEl.textContent = path + ' (GitHub)';
     await saveAndSync({ documentId: path, doc: state.doc, kvAdapter: kv, diskAdapter: githubAdapter });
     setStatus('Saved to GitHub as ' + path + '.');
+    closeFileMenu();
+    render();
+  } catch (err) {
+    setStatus('Save As failed: ' + err.message);
+  }
+}
+
+async function saveAsWebdav() {
+  if (!state.doc) return;
+  const config = await getWebdavConfig(kv);
+  webdavConfig = config;
+  if (!isWebdavConfigured(config)) {
+    setStatus('WebDAV is not set up yet \u2014 open Settings first.');
+    closeFileMenu();
+    return;
+  }
+  const path = window.prompt('Save to which path on the WebDAV server?', state.documentId || 'notes.org');
+  if (!path) return;
+  try {
+    state.documentId = path;
+    state.storageKind = 'webdav';
+    await markDocumentOpen(kv, path);
+    filenameEl.textContent = path + ' (WebDAV)';
+    await saveAndSync({ documentId: path, doc: state.doc, kvAdapter: kv, diskAdapter: webdavAdapter });
+    setStatus('Saved to WebDAV as ' + path + '.');
     closeFileMenu();
     render();
   } catch (err) {
@@ -1477,6 +1559,14 @@ function renderFileMenu() {
   );
 
   btnRow.appendChild(
+    menuButton('WebDAV', () => {
+      if (fileMenuStep === 'open') openFromWebdav();
+      else if (fileMenuStep === 'new') newOnWebdav();
+      else saveAsWebdav();
+    })
+  );
+
+  btnRow.appendChild(
     menuButton('Cancel', () => {
       fileMenuStep = null;
       renderFileMenu();
@@ -1588,6 +1678,7 @@ async function renderSettingsPanel() {
   settingsPanel.style.display = 'block';
 
   const config = await getGithubConfig(kv);
+  const webdavConfigStored = await getWebdavConfig(kv);
   const theme = await getTheme(kv);
   const fontFamily = await getFontFamily(kv);
   const fontSize = await getFontSize(kv);
@@ -1636,6 +1727,50 @@ async function renderSettingsPanel() {
     })
   );
   settingsPanel.appendChild(ghSaveRow);
+
+  const webdavTitle = document.createElement('div');
+  webdavTitle.className = 'panel-section-title';
+  webdavTitle.textContent = 'WebDAV';
+  settingsPanel.appendChild(webdavTitle);
+
+  const webdavUrlField = labeledInput('Server URL', 'text', webdavConfigStored.baseUrl);
+  const webdavUserField = labeledInput('Username', 'text', webdavConfigStored.username);
+  const webdavPassField = labeledInput('Password', 'password', webdavConfigStored.password);
+
+  const webdavRow1 = document.createElement('div');
+  webdavRow1.className = 'panel-row';
+  webdavRow1.appendChild(webdavUrlField.wrap);
+  settingsPanel.appendChild(webdavRow1);
+
+  const webdavRow2 = document.createElement('div');
+  webdavRow2.className = 'panel-row';
+  webdavRow2.appendChild(webdavUserField.wrap);
+  webdavRow2.appendChild(webdavPassField.wrap);
+  settingsPanel.appendChild(webdavRow2);
+
+  const webdavHint = document.createElement('div');
+  webdavHint.style.fontSize = '11px';
+  webdavHint.style.opacity = '0.6';
+  webdavHint.style.margin = '2px 0 6px';
+  webdavHint.textContent =
+    'Use an app-specific password if your server supports one, not your main account password. ' +
+    'Most WebDAV servers need CORS explicitly enabled to accept requests from this app \u2014 ' +
+    'if Open/Save fails with a network error, that\u2019s the first thing to check on the server side.';
+  settingsPanel.appendChild(webdavHint);
+
+  const webdavSaveRow = document.createElement('div');
+  webdavSaveRow.className = 'panel-row';
+  webdavSaveRow.appendChild(
+    menuButton('Save WebDAV settings', async () => {
+      webdavConfig = await setWebdavConfig(kv, {
+        baseUrl: webdavUrlField.input.value.trim(),
+        username: webdavUserField.input.value.trim(),
+        password: webdavPassField.input.value,
+      });
+      setStatus('WebDAV settings saved.');
+    })
+  );
+  settingsPanel.appendChild(webdavSaveRow);
 
   const themeTitle = document.createElement('div');
   themeTitle.className = 'panel-section-title';
@@ -1766,6 +1901,7 @@ if ('serviceWorker' in navigator) {
 
 async function bootstrap() {
   githubConfig = await getGithubConfig(kv);
+  webdavConfig = await getWebdavConfig(kv);
   applyTheme(await getTheme(kv));
   applyFontFamily(await getFontFamily(kv));
   applyFontSize(await getFontSize(kv));
