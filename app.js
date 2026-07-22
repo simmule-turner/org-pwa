@@ -1,14 +1,30 @@
 import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src/document-store.js';
 import { hasPendingChange } from './src/outbox.js';
 import { parseOrg, serializeOrg } from './src/org-parser.js';
-import { setProperty, deleteProperty, findAncestorPath } from './src/archive-model.js';
+import {
+  setProperty,
+  deleteProperty,
+  findAncestorPath,
+  getPropertiesText,
+  setPropertiesFromText,
+} from './src/archive-model.js';
 import { resolveLinkTarget } from './src/link-resolve.js';
 import { parseInline } from './src/inline-markup.js';
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
+import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
+import { searchDocument } from './src/search.js';
 import { applyStartupVisibility, cycleFoldLevel } from './src/fold-state.js';
 import { parseStartupConfig } from './src/startup-config.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
-import { renameHeading, insertTopLevelHeading, insertChildHeading, removeHeading } from './src/heading-edit.js';
+import { buildAgendaItems, dayView, weekView, monthView } from './src/agenda.js';
+import {
+  renameHeading,
+  parseTagsInput,
+  setHeadingTags,
+  insertTopLevelHeading,
+  insertChildHeading,
+  removeHeading,
+} from './src/heading-edit.js';
 import {
   setTableCell,
   insertTableRow,
@@ -77,11 +93,14 @@ const outlineEl = document.getElementById('outline');
 const filenameEl = document.getElementById('filename');
 const statusEl = document.getElementById('status');
 const addBtn = document.getElementById('addBtn');
-const textModeBtn = document.getElementById('textModeBtn');
+const viewMenuBtn = document.getElementById('viewMenuBtn');
+const viewMenuPanel = document.getElementById('viewMenuPanel');
 const fileMenuBtn = document.getElementById('fileMenuBtn');
 const fileMenuPanel = document.getElementById('fileMenuPanel');
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsPanel = document.getElementById('settingsPanel');
+const searchBtn = document.getElementById('searchBtn');
+const searchPanel = document.getElementById('searchPanel');
 
 let state = { documentId: null, doc: null, startupConfig: null, storageKind: null };
 // File menu: whether the panel is open, and if so, which action's
@@ -90,6 +109,15 @@ let state = { documentId: null, doc: null, startupConfig: null, storageKind: nul
 let fileMenuOpen = false;
 let fileMenuStep = null;
 let settingsOpen = false;
+let searchOpen = false;
+let searchQuery = '';
+let viewMenuOpen = false;
+// Agenda view state: which grouping is active, and the anchor date that
+// grouping is centered/started on — prev/next navigation moves this
+// anchor by one unit of whichever view is active (a day, a week, or a
+// month), matching "scrolling by the view amount".
+let agendaViewType = 'week'; // 'day' | 'week' | 'month'
+let agendaAnchorDate = new Date();
 // Which heading (by object reference) currently has its title in edit
 // mode, and whether it was just created (so an empty commit removes it
 // instead of leaving a titleless heading behind).
@@ -109,16 +137,23 @@ let editingListItem = null;
 // handles editing one specific paragraph row directly (e.g. a paragraph
 // that comes after a list, outside this combined block's scope).
 let editingHeadingText = null;
+// The single heading whose property drawer is currently being edited as
+// one text block (key: value per line), or null. Same pattern as
+// editingHeadingText, reused rather than building a separate per-row
+// property UI.
+let editingProperties = null;
 // The single heading or list-item node whose contextual action row is
 // currently revealed (tap-to-reveal, per the interaction redesign — only
 // one open at a time). Not the same as editingHeading/editingListItem:
 // tapping the revealed pencil icon is what transitions into those.
 let actionMenuFor = null;
-// Whether the whole-document plain-text editor (the "Text" toggle) is
-// currently showing instead of the outline. While true, render() shows
-// only a textarea; none of the outline's tap-to-edit/reveal-menu state
-// applies (and gets cleared when entering/leaving this mode).
-let textEditMode = false;
+// Which of the three top-level views is showing: 'org' (the default
+// outline), 'text' (the whole-document plain-text editor), or 'agenda'.
+// While 'text', render() shows only a textarea; while 'agenda', render()
+// shows the agenda list instead of the outline. Either way, none of the
+// outline's tap-to-edit/reveal-menu state applies (and gets cleared when
+// switching away from 'org').
+let currentView = 'org';
 // Whether the currently open document has edits that haven't been
 // written to disk/GitHub/WebDAV yet — set true the moment any edit is
 // committed, and cleared only after a successful Save/Save As, or when a
@@ -206,7 +241,7 @@ function commitAndRender() {
  * on screen before anything reads it.
  */
 function commitTextModeIfActive() {
-  if (!textEditMode) return false;
+  if (currentView !== 'text') return false;
   const textarea = document.getElementById('document-text-edit-input');
   const newText = textarea ? textarea.value : serializeOrg(state.doc);
   const newDoc = parseOrg(newText);
@@ -214,8 +249,7 @@ function commitTextModeIfActive() {
   applyStartupVisibility(newDoc, startupConfig);
   state.doc = newDoc;
   state.startupConfig = startupConfig;
-  textEditMode = false;
-  textModeBtn.textContent = 'Text';
+  currentView = 'org';
   return true;
 }
 
@@ -369,15 +403,36 @@ function renderInlineNodes(nodes, container) {
 /** Expands every ancestor of `heading` (so it isn't hidden inside a
  *  collapsed parent), re-renders, then scrolls the now-visible row into
  *  view with a brief highlight. */
-function navigateToHeading(heading) {
+/** Expands every ancestor of `heading` (so it isn't hidden inside a
+ *  collapsed parent), re-renders, then scrolls the now-visible row into
+ *  view with a brief highlight.
+ *
+ *  `revealOwnBody` also clears `heading`'s own `collapsed`/`bodyHidden` —
+ *  needed when the thing being navigated to is inside the heading's own
+ *  body content (a search match in a paragraph/list item/table), not
+ *  just the heading itself. Without this, navigating to a body-content
+ *  match under `#+STARTUP: content` could "succeed" (scroll to the right
+ *  heading) while the actual matched content stayed invisible, since
+ *  expanding ancestors alone doesn't touch the target heading's own
+ *  bodyHidden flag.
+ *
+ *  `targetNode` (defaults to `heading`) is which specific row to scroll
+ *  to and highlight — pass the actual paragraph/list-item/table node for
+ *  a body-content search result, to land precisely on the match rather
+ *  than just its heading. */
+function navigateToHeading(heading, { revealOwnBody = false, targetNode = heading } = {}) {
   for (const ancestor of findAncestorPath(state.doc, heading) || []) {
     ancestor.collapsed = false;
+  }
+  if (revealOwnBody) {
+    heading.collapsed = false;
+    heading.bodyHidden = false;
   }
   render();
 
   requestAnimationFrame(() => {
     const rows = flattenVisibleRows(state.doc);
-    const idx = rows.findIndex((r) => r.rowType === 'heading' && r.node === heading);
+    const idx = rows.findIndex((r) => (r.rowType === 'list-item' ? r.item === targetNode : r.node === targetNode));
     if (idx === -1 || !outlineEl.children[idx]) return;
     const el = outlineEl.children[idx];
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -682,6 +737,32 @@ function renderRow(row, todoSequence) {
             },
           },
           {
+            icon: '\ud83c\udff7\ufe0f',
+            label: row.node.tags.length ? 'Edit tags (' + row.node.tags.join(', ') + ')' : 'Add tags',
+            onClick: () => {
+              actionMenuFor = null;
+              const next = window.prompt(
+                'Tags for this heading, separated by spaces (e.g. "urgent home01"). Leave blank to remove all.',
+                row.node.tags.join(' ')
+              );
+              if (next === null) {
+                render();
+                return;
+              }
+              setHeadingTags(row.node, parseTagsInput(next));
+              commitAndRender();
+            },
+          },
+          {
+            icon: '\u25a4',
+            label: row.node.propertyOrder.length ? 'Edit properties' : 'Add properties',
+            onClick: () => {
+              actionMenuFor = null;
+              editingProperties = row.node;
+              render();
+            },
+          },
+          {
             icon: '\u2715',
             label: 'Delete heading',
             onClick: () => {
@@ -693,6 +774,7 @@ function renderRow(row, todoSequence) {
               editingParagraph = null;
               editingListItem = null;
               editingHeadingText = null;
+              editingProperties = null;
               removeHeading(state.doc, row.node);
               commitAndRender();
             },
@@ -730,7 +812,36 @@ function renderRow(row, todoSequence) {
       textEditorEl.appendChild(textarea);
     }
 
-    return withActionMenu(el, menuEl, textEditorEl);
+    let propertiesEditorEl = null;
+    if (editingProperties === row.node) {
+      propertiesEditorEl = document.createElement('div');
+      propertiesEditorEl.style.padding = '4px 10px 10px 40px';
+      const textarea = document.createElement('textarea');
+      textarea.id = 'properties-edit-input';
+      textarea.value = getPropertiesText(row.node);
+      textarea.rows = Math.max(2, textarea.value.split('\n').length);
+      textarea.placeholder = 'key: value, one property per line';
+      textarea.style.width = '100%';
+      textarea.style.boxSizing = 'border-box';
+      textarea.style.font = 'inherit';
+      textarea.style.fontSize = '14px';
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          editingProperties = null;
+          render();
+        }
+      });
+      textarea.addEventListener('blur', () => {
+        const heading = editingProperties;
+        editingProperties = null;
+        setPropertiesFromText(heading, textarea.value);
+        commitAndRender();
+      });
+      propertiesEditorEl.appendChild(textarea);
+    }
+
+    return withActionMenu(el, menuEl, textEditorEl, propertiesEditorEl);
   }
 
   if (row.rowType === 'list-item') {
@@ -743,6 +854,7 @@ function renderRow(row, todoSequence) {
       el.onclick = (e) => {
         if (e.target.closest('[data-inline-link]')) return;
         cycleItemCheckbox(row.heading, row.item);
+        updateCheckboxCookiesUpward(state.doc, row.heading);
         commitAndRender();
       };
       const box = document.createElement('span');
@@ -787,10 +899,22 @@ function renderRow(row, todoSequence) {
       el.appendChild(input);
     } else {
       const text = document.createElement('span');
-      if (row.item.tag) {
-        text.appendChild(document.createTextNode(row.item.tag + ' :: '));
+      const hasContent = row.item.text.trim() !== '' || (row.item.tag && row.item.tag.trim() !== '');
+      if (hasContent) {
+        if (row.item.tag) {
+          text.appendChild(document.createTextNode(row.item.tag + ' :: '));
+        }
+        renderInlineNodes(row.item.inline, text);
+      } else {
+        // An empty item (e.g. a fresh checkbox with nothing typed yet)
+        // otherwise renders zero visible content here — which means zero
+        // tappable area, since this span is the only thing with the
+        // reveal-menu handler. That made an empty item's edit/add/delete
+        // actions completely unreachable: nothing to tap to reveal them.
+        // Same placeholder pattern already used for an empty paragraph.
+        text.textContent = '(empty \u2014 tap for options)';
+        text.style.opacity = '0.5';
       }
-      renderInlineNodes(row.item.inline, text);
       text.style.flex = '1 1 auto';
       text.style.minWidth = '0';
       text.style.whiteSpace = 'normal';
@@ -827,6 +951,7 @@ function renderRow(row, todoSequence) {
               e.stopPropagation();
               actionMenuFor = null;
               const newItem = insertListItem(row.heading, row.item, '');
+              updateCheckboxCookiesUpward(state.doc, row.heading);
               editingListItem = { heading: row.heading, item: newItem };
               commitAndRender();
             },
@@ -840,6 +965,7 @@ function renderRow(row, todoSequence) {
               actionMenuFor = null;
               if (editingListItem && editingListItem.item === row.item) editingListItem = null;
               deleteListItem(row.heading, row.item);
+              updateCheckboxCookiesUpward(state.doc, row.heading);
               commitAndRender();
             },
           },
@@ -1112,7 +1238,7 @@ function render() {
     return;
   }
 
-  if (textEditMode) {
+  if (currentView === 'text') {
     outlineEl.innerHTML = '';
     const textarea = document.createElement('textarea');
     textarea.id = 'document-text-edit-input';
@@ -1137,6 +1263,11 @@ function render() {
       textarea.focus();
       textarea.scrollTop = 0; // re-assert: some browsers scroll-to-caret again on focus
     });
+    return;
+  }
+
+  if (currentView === 'agenda') {
+    renderAgendaView();
     return;
   }
 
@@ -1173,13 +1304,14 @@ function render() {
   outlineEl.innerHTML = '';
   outlineEl.appendChild(fragment);
 
-  if (editingHeading || editingCell || editingParagraph || editingListItem || editingHeadingText) {
+  if (editingHeading || editingCell || editingParagraph || editingListItem || editingHeadingText || editingProperties) {
     requestAnimationFrame(() => {
       const input =
         document.getElementById('title-edit-input') ||
         document.getElementById('cell-edit-input') ||
         document.getElementById('listitem-edit-input') ||
         document.getElementById('heading-text-edit-input') ||
+        document.getElementById('properties-edit-input') ||
         document.getElementById('paragraph-edit-input');
       if (input) {
         input.focus();
@@ -1217,10 +1349,16 @@ async function afterDocumentLoaded(documentId, doc, storageKind) {
   applyStartupVisibility(doc, startupConfig);
   state = { documentId, doc, startupConfig, storageKind };
   isDirty = false; // freshly loaded — matches whatever was just read, nothing unsaved yet
-  textEditMode = false;
-  textModeBtn.textContent = 'Text';
+  currentView = 'org';
+  agendaAnchorDate = new Date();
   addBtn.disabled = false;
-  textModeBtn.disabled = false;
+  viewMenuBtn.disabled = false;
+  searchBtn.disabled = false;
+  searchOpen = false;
+  searchQuery = '';
+  renderSearchPanel();
+  viewMenuOpen = false;
+  renderViewMenu();
   closeFileMenu();
   render();
 }
@@ -1761,6 +1899,14 @@ fileMenuBtn.addEventListener('click', () => {
     settingsOpen = false;
     renderSettingsPanel();
   }
+  if (fileMenuOpen && searchOpen) {
+    searchOpen = false;
+    renderSearchPanel();
+  }
+  if (fileMenuOpen && viewMenuOpen) {
+    viewMenuOpen = false;
+    renderViewMenu();
+  }
   renderFileMenu();
 });
 
@@ -1770,32 +1916,271 @@ addBtn.addEventListener('click', () => {
   startEditingTitle(heading, true);
 });
 
-textModeBtn.addEventListener('click', () => {
-  if (!state.doc) return;
+/** Switches between the three top-level views, handling the
+ *  enter/exit bookkeeping each transition needs: leaving 'text' commits
+ *  its content into state.doc first (the fix from a previous bug — never
+ *  read a stale doc); leaving 'org' clears outline edit state, since
+ *  nothing should be mid-edit while the outline isn't even shown. */
+function switchToView(view) {
+  if (view === currentView) {
+    viewMenuOpen = false;
+    renderViewMenu();
+    return;
+  }
 
-  if (!textEditMode) {
-    // Entering text mode: nothing should be mid-edit in the outline while
-    // it's not even shown.
+  if (currentView === 'text') {
+    commitTextModeIfActive();
+  } else if (currentView === 'org') {
     editingHeading = null;
     editingIsNew = false;
     editingCell = null;
     editingParagraph = null;
     editingListItem = null;
     editingHeadingText = null;
+    editingProperties = null;
     actionMenuFor = null;
-    textEditMode = true;
-    textModeBtn.textContent = 'Outline';
-    render();
-    return;
   }
 
-  // Exiting text mode: the textarea's current text is the new source of
-  // truth for the whole document — reparse it fresh, exactly the way
-  // opening a file does, so #+STARTUP/#+TODO changes (and any structural
-  // edits made by hand) actually take effect rather than being merged
-  // against the old in-memory doc.
-  commitTextModeIfActive();
-  commitAndRender();
+  currentView = view;
+  viewMenuOpen = false;
+  renderViewMenu();
+  render();
+}
+
+function renderViewMenu() {
+  viewMenuPanel.innerHTML = '';
+  if (!viewMenuOpen) {
+    viewMenuPanel.style.display = 'none';
+    return;
+  }
+  viewMenuPanel.style.display = 'block';
+
+  const row = document.createElement('div');
+  row.className = 'panel-row';
+  for (const [key, label] of [
+    ['org', 'Org'],
+    ['text', 'Text'],
+    ['agenda', 'Agenda'],
+  ]) {
+    const btn = menuButton(label, () => switchToView(key));
+    if (key === currentView) btn.style.fontWeight = '700';
+    row.appendChild(btn);
+  }
+  viewMenuPanel.appendChild(row);
+}
+
+// ---- Agenda view ---------------------------------------------------------
+
+function agendaRangeFor(viewType, anchorDate) {
+  if (viewType === 'day') {
+    return { start: new Date(anchorDate), end: new Date(anchorDate) };
+  }
+  if (viewType === 'week') {
+    const end = new Date(anchorDate);
+    end.setDate(end.getDate() + 6);
+    return { start: new Date(anchorDate), end };
+  }
+  // month
+  const start = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
+  const end = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0);
+  return { start, end };
+}
+
+/** Moves `anchorDate` by one unit of `viewType` in `direction` (-1 or 1)
+ *  — this is "scrolling by the view amount": a day, a week, or a month. */
+function agendaStepAnchor(viewType, anchorDate, direction) {
+  const next = new Date(anchorDate);
+  if (viewType === 'day') next.setDate(next.getDate() + direction);
+  else if (viewType === 'week') next.setDate(next.getDate() + direction * 7);
+  else next.setMonth(next.getMonth() + direction);
+  return next;
+}
+
+function formatDayHeader(dateKeyStr) {
+  const [y, m, d] = dateKeyStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const isToday = date.toDateString() === new Date().toDateString();
+  const label = date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  return isToday ? label + ' \u2014 Today' : label;
+}
+
+function formatAgendaRangeLabel(viewType, start, end) {
+  const fmt = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  if (viewType === 'day') return fmt(start);
+  if (viewType === 'month') return start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  return fmt(start) + ' \u2013 ' + fmt(end);
+}
+
+function renderAgendaView() {
+  outlineEl.innerHTML = '';
+  const container = document.createElement('div');
+  container.style.padding = '8px 12px';
+
+  const controls = document.createElement('div');
+  controls.style.display = 'flex';
+  controls.style.gap = '6px';
+  controls.style.alignItems = 'center';
+  controls.style.marginBottom = '10px';
+  controls.style.flexWrap = 'wrap';
+
+  for (const [key, label] of [
+    ['day', 'Day'],
+    ['week', 'Week'],
+    ['month', 'Month'],
+  ]) {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    if (key === agendaViewType) btn.style.fontWeight = '700';
+    btn.onclick = () => {
+      agendaViewType = key;
+      render();
+    };
+    controls.appendChild(btn);
+  }
+
+  const prevBtn = document.createElement('button');
+  prevBtn.textContent = '\u2039';
+  prevBtn.setAttribute('aria-label', 'Previous ' + agendaViewType);
+  prevBtn.onclick = () => {
+    agendaAnchorDate = agendaStepAnchor(agendaViewType, agendaAnchorDate, -1);
+    render();
+  };
+  controls.appendChild(prevBtn);
+
+  const todayBtn = document.createElement('button');
+  todayBtn.textContent = 'Today';
+  todayBtn.onclick = () => {
+    agendaAnchorDate = new Date();
+    render();
+  };
+  controls.appendChild(todayBtn);
+
+  const nextBtn = document.createElement('button');
+  nextBtn.textContent = '\u203a';
+  nextBtn.setAttribute('aria-label', 'Next ' + agendaViewType);
+  nextBtn.onclick = () => {
+    agendaAnchorDate = agendaStepAnchor(agendaViewType, agendaAnchorDate, 1);
+    render();
+  };
+  controls.appendChild(nextBtn);
+  container.appendChild(controls);
+
+  const { start, end } = agendaRangeFor(agendaViewType, agendaAnchorDate);
+  const rangeLabel = document.createElement('div');
+  rangeLabel.style.fontSize = '12px';
+  rangeLabel.style.opacity = '0.65';
+  rangeLabel.style.marginBottom = '8px';
+  rangeLabel.textContent = formatAgendaRangeLabel(agendaViewType, start, end);
+  container.appendChild(rangeLabel);
+
+  // Completed items excluded, using this file's own #+TODO: sequence
+  // (not a hardcoded "DONE" check) — and the range is passed through so
+  // any repeating SCHEDULED/DEADLINE timestamp expands into every
+  // occurrence that actually falls within what's being displayed.
+  const todoSequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
+  const items = buildAgendaItems([{ documentId: state.documentId, doc: state.doc }], {
+    todoFilter: (todo) => !todoSequence.doneKeywords.includes(todo),
+    rangeStart: start,
+    rangeEnd: end,
+  });
+
+  const grouped =
+    agendaViewType === 'day'
+      ? dayView(items, agendaAnchorDate)
+      : agendaViewType === 'week'
+        ? weekView(items, agendaAnchorDate)
+        : monthView(items, agendaAnchorDate);
+
+  if (grouped.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.opacity = '0.6';
+    empty.style.fontSize = '14px';
+    empty.style.padding = '20px 0';
+    empty.textContent = 'Nothing scheduled in this range.';
+    container.appendChild(empty);
+  }
+
+  for (const day of grouped) {
+    const dayHeader = document.createElement('div');
+    dayHeader.style.fontSize = '12px';
+    dayHeader.style.fontWeight = '700';
+    dayHeader.style.opacity = '0.7';
+    dayHeader.style.margin = '10px 0 4px';
+    dayHeader.textContent = formatDayHeader(day.date);
+    container.appendChild(dayHeader);
+
+    for (const item of day.items) {
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.gap = '6px';
+      row.style.alignItems = 'baseline';
+      row.style.padding = '6px 2px';
+      row.style.borderBottom = '1px solid var(--border)';
+      row.style.cursor = 'pointer';
+
+      const kindIcon = document.createElement('span');
+      kindIcon.textContent = item.kind === 'deadline' ? '\u26a0' : '\u23f0';
+      kindIcon.style.flexShrink = '0';
+      kindIcon.style.opacity = '0.6';
+      row.appendChild(kindIcon);
+
+      const text = document.createElement('div');
+      text.style.flex = '1 1 auto';
+      text.style.minWidth = '0';
+      if (item.todo) {
+        const badge = document.createElement('span');
+        badge.textContent = item.todo + ' ';
+        badge.style.fontWeight = '700';
+        badge.style.fontSize = '12px';
+        text.appendChild(badge);
+      }
+      text.appendChild(document.createTextNode(item.title));
+      if (item.repeater) {
+        const rep = document.createElement('span');
+        rep.textContent = ' \u21bb';
+        rep.style.opacity = '0.5';
+        rep.style.fontSize = '12px';
+        text.appendChild(rep);
+      }
+      row.appendChild(text);
+
+      if (item.hasTime) {
+        const time = document.createElement('span');
+        time.style.fontSize = '12px';
+        time.style.opacity = '0.6';
+        time.style.flexShrink = '0';
+        time.textContent = item.date.toTimeString().slice(0, 5);
+        row.appendChild(time);
+      }
+
+      row.onclick = () => {
+        switchToView('org');
+        navigateToHeading(item.heading);
+      };
+      container.appendChild(row);
+    }
+  }
+
+  outlineEl.appendChild(container);
+}
+
+viewMenuBtn.addEventListener('click', () => {
+  if (!state.doc) return;
+  viewMenuOpen = !viewMenuOpen;
+  if (viewMenuOpen && fileMenuOpen) {
+    fileMenuOpen = false;
+    fileMenuStep = null;
+    renderFileMenu();
+  }
+  if (viewMenuOpen && settingsOpen) {
+    settingsOpen = false;
+    renderSettingsPanel();
+  }
+  if (viewMenuOpen && searchOpen) {
+    searchOpen = false;
+    renderSearchPanel();
+  }
+  renderViewMenu();
 });
 
 // ---- Settings UI --------------------------------------------------------
@@ -2010,7 +2395,154 @@ settingsBtn.addEventListener('click', async () => {
     fileMenuStep = null;
     renderFileMenu();
   }
+  if (settingsOpen && searchOpen) {
+    searchOpen = false;
+    renderSearchPanel();
+  }
+  if (settingsOpen && viewMenuOpen) {
+    viewMenuOpen = false;
+    renderViewMenu();
+  }
   await renderSettingsPanel();
+});
+
+// ---- Search UI -----------------------------------------------------------
+
+const SEARCH_TYPE_ICON = {
+  heading: '\u25c9',
+  paragraph: '\u00b6',
+  'list-item': '\u2022',
+  table: '\u229e',
+  block: '\u2318',
+};
+
+function renderSearchPanel() {
+  searchPanel.innerHTML = '';
+  if (!searchOpen) {
+    searchPanel.style.display = 'none';
+    return;
+  }
+  searchPanel.style.display = 'block';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.id = 'search-query-input';
+  input.placeholder = 'Search this file\u2026';
+  input.value = searchQuery;
+  input.style.width = '100%';
+  input.style.boxSizing = 'border-box';
+  input.style.font = 'inherit';
+  input.style.fontSize = '14px';
+  input.style.padding = '6px 8px';
+  input.style.border = '1px solid var(--border-strong)';
+  input.style.borderRadius = '4px';
+  input.style.background = 'var(--bg)';
+  input.style.color = 'var(--fg)';
+  input.addEventListener('input', () => {
+    searchQuery = input.value;
+    renderSearchResults();
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      searchOpen = false;
+      searchQuery = '';
+      renderSearchPanel();
+    }
+  });
+  searchPanel.appendChild(input);
+
+  const resultsEl = document.createElement('div');
+  resultsEl.id = 'search-results';
+  resultsEl.style.marginTop = '6px';
+  resultsEl.style.maxHeight = '50vh';
+  resultsEl.style.overflowY = 'auto';
+  searchPanel.appendChild(resultsEl);
+
+  renderSearchResults();
+  requestAnimationFrame(() => input.focus());
+}
+
+function renderSearchResults() {
+  const resultsEl = document.getElementById('search-results');
+  if (!resultsEl) return;
+  resultsEl.innerHTML = '';
+
+  if (!searchQuery.trim()) return;
+  if (!state.doc) return;
+
+  const results = searchDocument(state.doc, searchQuery);
+  if (results.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.fontSize = '13px';
+    empty.style.opacity = '0.6';
+    empty.style.padding = '6px 2px';
+    empty.textContent = 'No matches.';
+    resultsEl.appendChild(empty);
+    return;
+  }
+
+  for (const result of results) {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.gap = '6px';
+    row.style.alignItems = 'baseline';
+    row.style.padding = '6px 2px';
+    row.style.borderBottom = '1px solid var(--border)';
+    row.style.cursor = 'pointer';
+
+    const icon = document.createElement('span');
+    icon.textContent = SEARCH_TYPE_ICON[result.type] || '\u2022';
+    icon.style.flexShrink = '0';
+    icon.style.opacity = '0.6';
+    row.appendChild(icon);
+
+    const text = document.createElement('div');
+    text.style.minWidth = '0';
+    text.style.flex = '1 1 auto';
+    const headingLine = document.createElement('div');
+    headingLine.style.fontSize = '11px';
+    headingLine.style.opacity = '0.6';
+    headingLine.textContent = result.heading.title || '(untitled)';
+    const snippetLine = document.createElement('div');
+    snippetLine.style.fontSize = '14px';
+    snippetLine.style.overflow = 'hidden';
+    snippetLine.style.textOverflow = 'ellipsis';
+    snippetLine.style.whiteSpace = 'nowrap';
+    snippetLine.textContent = result.snippet;
+    text.appendChild(headingLine);
+    if (result.type !== 'heading') text.appendChild(snippetLine);
+    row.appendChild(text);
+
+    row.onclick = () => {
+      searchOpen = false;
+      renderSearchPanel();
+      navigateToHeading(result.heading, {
+        revealOwnBody: result.type !== 'heading',
+        targetNode: result.node,
+      });
+    };
+    resultsEl.appendChild(row);
+  }
+}
+
+searchBtn.addEventListener('click', () => {
+  searchOpen = !searchOpen;
+  if (searchOpen && fileMenuOpen) {
+    fileMenuOpen = false;
+    fileMenuStep = null;
+    renderFileMenu();
+  }
+  if (searchOpen && settingsOpen) {
+    settingsOpen = false;
+    renderSettingsPanel();
+  }
+  if (searchOpen && viewMenuOpen) {
+    viewMenuOpen = false;
+    renderViewMenu();
+  }
+  if (!searchOpen) searchQuery = '';
+  renderSearchPanel();
 });
 
 if ('serviceWorker' in navigator) {
