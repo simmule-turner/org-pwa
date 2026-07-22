@@ -38,6 +38,7 @@ export function createHeading({ level, title = '', todo = null, priority = null,
     bodyLines: [],
     body: [],
     collapsed: false,
+    bodyHidden: false,
     children: [],
   };
 }

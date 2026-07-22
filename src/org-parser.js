@@ -140,6 +140,7 @@ function parseOrg(text, opts = {}) {
         propertyOrder: [],
         bodyLines: [],
         collapsed: false,
+        bodyHidden: false,
         children: [],
       };
 

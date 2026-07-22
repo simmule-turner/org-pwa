@@ -37,17 +37,26 @@ import { isArchived } from './archive-model.js';
  * mode shows every heading LINE but folds away body text under each one —
  * a distinction this app's simpler per-heading collapsed flag can't
  * represent (that flag controls "children and body" together, not
- * separately). 'content' is treated the same as 'showall'/'showeverything'
- * here: fully expanded, body text included. Building a true dual-axis
- * fold model (heading-visibility vs. body-visibility) is a real, larger
- * feature, not a quick fix bundled into this one.
+ * separately). This used to conflate 'content' with 'showall'/
+ * 'showeverything' — both fully expanded, body text included — because
+ * the single `collapsed` flag per heading couldn't represent "children
+ * visible, body hidden" on its own. `bodyHidden` is the second,
+ * independent flag that makes that distinction real: `collapsed`
+ * controls whether a heading's children (and body) are visible at all;
+ * `bodyHidden` controls specifically whether a heading's own body content
+ * (paragraphs/lists/tables/blocks) shows, independent of whether its
+ * children headings do. A heading can be expanded (collapsed: false) with
+ * its body hidden (bodyHidden: true) — that combination is exactly what
+ * 'content' mode sets on every heading.
  */
 function applyStartupVisibility(doc, startupConfig) {
   const collapsed = startupConfig.visibility === 'overview';
+  const bodyHidden = startupConfig.visibility === 'content';
   function walk(nodes) {
     for (const node of nodes) {
       if (node.type !== 'heading') continue;
       node.collapsed = collapsed;
+      node.bodyHidden = bodyHidden;
       walk(node.children);
     }
   }

@@ -17,11 +17,17 @@ import { resolveTodoSequence, cycleTodoState } from './todo-cycle.js';
 const CHECKBOX_CYCLE = [' ', '-', 'X'];
 
 /**
- * Flattens `doc` into a linear row array respecting each heading's
- * `collapsed` flag: a collapsed heading's children (sub-headings AND body
- * content) are omitted entirely, not just visually hidden — matching what
- * a virtualized list needs (it shouldn't have to measure/skip hidden rows,
- * they just shouldn't be in the array).
+ * Flattens `doc` into a linear row array respecting two independent
+ * per-heading visibility flags: `collapsed` (a collapsed heading's
+ * children — sub-headings AND body content — are omitted entirely, not
+ * just visually hidden, matching what a virtualized list needs) and
+ * `bodyHidden` (this heading's own body content specifically, independent
+ * of whether its child headings show — this is what makes #+STARTUP:
+ * content's "unfold every heading, hide body text" distinct from
+ * showall/showeverything's "unfold everything, body text included").
+ * A heading can be expanded with its body hidden; its children's own
+ * visibility is governed by their own `collapsed`/`bodyHidden`, not by
+ * this heading's `bodyHidden`.
  *
  * Every body-content row (list-item, paragraph, table, block) carries a
  * `heading` reference to its owning heading node — needed by any editing
@@ -84,7 +90,7 @@ function flattenVisibleRows(doc) {
       rows.push({ rowType: 'heading', key, node, depth, hasChildren });
 
       if (!node.collapsed) {
-        flattenBody(node.body, node, depth + 1, `${key}.b`);
+        if (!node.bodyHidden) flattenBody(node.body, node, depth + 1, `${key}.b`);
         walk(node.children, depth + 1, `${key}.`);
       }
     });

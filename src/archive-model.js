@@ -21,6 +21,7 @@
  *     bodyLines: string[],        // raw section content between heading/drawer and next heading
  *     body: Node[],               // parsed content (lists/tables/blocks/paragraphs) derived from bodyLines — see body-parser.js
  *     collapsed: boolean,         // fold/UI state — see fold-state.js
+ *     bodyHidden: boolean,        // body-content visibility, independent of collapsed — see fold-state.js
  *     children: HeadingNode[],
  *   }
  *
