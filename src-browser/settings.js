@@ -13,12 +13,14 @@
 
 const KEYS = {
   github: 'settings:github',
+  webdav: 'settings:webdav',
   theme: 'settings:theme',
   fontFamily: 'settings:fontFamily',
   fontSize: 'settings:fontSize',
 };
 
 const DEFAULT_GITHUB_CONFIG = { token: '', owner: '', repo: '', branch: 'main' };
+const DEFAULT_WEBDAV_CONFIG = { baseUrl: '', username: '', password: '' };
 const DEFAULT_THEME = 'system'; // 'system' | 'light' | 'dark'
 const DEFAULT_FONT_FAMILY = 'system'; // 'system' | 'serif' | 'monospace'
 const DEFAULT_FONT_SIZE = 16; // px
@@ -56,6 +58,19 @@ export async function setGithubConfig(kvAdapter, config) {
   return merged;
 }
 
+// ---- WebDAV ------------------------------------------------------------
+
+export async function getWebdavConfig(kvAdapter) {
+  const stored = await getJson(kvAdapter, KEYS.webdav, {});
+  return { ...DEFAULT_WEBDAV_CONFIG, ...stored };
+}
+
+export async function setWebdavConfig(kvAdapter, config) {
+  const merged = { ...DEFAULT_WEBDAV_CONFIG, ...config };
+  await setJson(kvAdapter, KEYS.webdav, merged);
+  return merged;
+}
+
 // ---- theme -----------------------------------------------------------
 
 export async function getTheme(kvAdapter) {
@@ -84,4 +99,4 @@ export async function setFontSize(kvAdapter, fontSize) {
   await setJson(kvAdapter, KEYS.fontSize, fontSize);
 }
 
-export { DEFAULT_GITHUB_CONFIG, DEFAULT_THEME, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE };
+export { DEFAULT_GITHUB_CONFIG, DEFAULT_WEBDAV_CONFIG, DEFAULT_THEME, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE };
