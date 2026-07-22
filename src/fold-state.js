@@ -33,19 +33,29 @@ import { isArchived } from './archive-model.js';
  * text); anything else ('content', 'showall', 'showeverything') expands
  * everything — EXCEPT an archived heading itself, which stays collapsed
  * regardless of visibility mode when `archiveVisibility: 'archived'` (the
- * default), the same rule the slide-left cycle already applies (see
- * expandFully below). Without this, 'content'/'showall'/'showeverything'
- * would unfold an archived subtree's children right on file open — a real
- * bug this fixes, not a hypothetical: 'content' mode in particular sets
- * every heading's `collapsed: false` unconditionally, which included
- * archived ones until this changed. An archived heading's own descendants
- * still get their `collapsed`/`bodyHidden` set per the normal visibility
- * rule (not forced collapsed themselves) — only the archived heading
- * itself is forced shut, which is what actually hides them from view
- * (flattenVisibleRows never recurses into a collapsed heading's
- * children), and it means manually expanding that one heading later (via
- * the chevron) reveals its contents already in the right state for
- * whatever visibility mode is active, not doubly restricted.
+ * default — see below for where this actually comes from), the same rule
+ * the slide-left cycle already applies (see expandFully below). Without
+ * this, 'content'/'showall'/'showeverything' would unfold an archived
+ * subtree's children right on file open — a real bug this fixes, not a
+ * hypothetical: 'content' mode in particular sets every heading's
+ * `collapsed: false` unconditionally, which included archived ones until
+ * this changed. An archived heading's own descendants still get their
+ * `collapsed`/`bodyHidden` set per the normal visibility rule (not forced
+ * collapsed themselves) — only the archived heading itself is forced
+ * shut, which is what actually hides them from view (flattenVisibleRows
+ * never recurses into a collapsed heading's children), and it means
+ * manually expanding that one heading later (via the chevron) reveals its
+ * contents already in the right state for whatever visibility mode is
+ * active, not doubly restricted.
+ *
+ * `archiveVisibility` is a separate parameter, not part of
+ * `startupConfig`, because it genuinely comes from somewhere else: real
+ * org-mode controls archived-tree cycling with the Emacs variable
+ * `org-cycle-open-archived-trees`, conventionally set per-file via a
+ * "Local Variables" block (see local-variables.js), not via #+STARTUP: —
+ * an earlier version of this invented "archived"/"noarchived" as
+ * #+STARTUP: keywords, which was a mistake (not real org syntax), now
+ * corrected.
  *
  * Known simplification, stated rather than hidden: org's real 'content'
  * mode shows every heading LINE but folds away body text under each one —
@@ -57,10 +67,9 @@ import { isArchived } from './archive-model.js';
  * specifically whether a heading's own body content shows, independent of
  * whether its children headings do.
  */
-function applyStartupVisibility(doc, startupConfig) {
+function applyStartupVisibility(doc, startupConfig, archiveVisibility = 'archived') {
   const collapsedDefault = startupConfig.visibility === 'overview';
   const bodyHiddenDefault = startupConfig.visibility === 'content';
-  const archiveVisibility = startupConfig.archiveVisibility || 'archived';
 
   function walk(nodes) {
     for (const node of nodes) {

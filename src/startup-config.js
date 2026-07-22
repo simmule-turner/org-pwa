@@ -1,28 +1,33 @@
 /**
- * Parses org's #+STARTUP: directive into a structured config covering the
- * three categories requested: visibility, image-visibility, and
- * archive-visibility. None, some, or all three keywords can appear on a
- * single #+STARTUP: line, and a file can have more than one such line —
- * "last one wins" applies uniformly to both cases, since this walks
- * doc.keywords (already in document order from the parser) and lets each
- * later matching token simply overwrite the earlier one in its category.
+ * Parses org's #+STARTUP: directive into a structured config covering
+ * heading visibility and inline-image visibility. None, some, or both
+ * keywords can appear on a single #+STARTUP: line, and a file can have
+ * more than one such line — "last one wins" applies uniformly to both
+ * cases, since this walks doc.keywords (already in document order from
+ * the parser) and lets each later matching token simply overwrite the
+ * earlier one in its category.
+ *
+ * Archive-tree-cycling behavior used to live here too, as invented
+ * "archived"/"noarchived" #+STARTUP: keywords — that was a mistake: real
+ * org-mode doesn't have #+STARTUP: keywords for this at all. The actual
+ * mechanism is the Emacs variable `org-cycle-open-archived-trees`,
+ * conventionally set per-file via a "Local Variables" block, not
+ * #+STARTUP:. That's now handled by local-variables.js instead — see
+ * there for the corrected mechanism.
  *
  * Defaults (used when a category's keyword never appears anywhere in the
  * file) match real Emacs org-mode's actual out-of-the-box behavior, not
  * assumptions: a fresh file with no #+STARTUP line opens fully shown
- * (`showeverything`), images stay as link text rather than rendering
- * (`noinlineimages`), and archived items don't auto-expand during
- * visibility cycling (`archived`).
+ * (`showeverything`), and images stay as link text rather than rendering
+ * (`noinlineimages`).
  */
 
 const VISIBILITY_KEYWORDS = ['overview', 'content', 'showall', 'showeverything'];
 const IMAGE_VISIBILITY_KEYWORDS = ['inlineimages', 'noinlineimages'];
-const ARCHIVE_VISIBILITY_KEYWORDS = ['archived', 'noarchived'];
 
 const DEFAULT_STARTUP_CONFIG = {
   visibility: 'showeverything',
   imageVisibility: 'noinlineimages',
-  archiveVisibility: 'archived',
 };
 
 export function parseStartupConfig(doc) {
@@ -35,11 +40,9 @@ export function parseStartupConfig(doc) {
         config.visibility = token;
       } else if (IMAGE_VISIBILITY_KEYWORDS.includes(token)) {
         config.imageVisibility = token;
-      } else if (ARCHIVE_VISIBILITY_KEYWORDS.includes(token)) {
-        config.archiveVisibility = token;
       }
       // Unrecognized tokens (org has many more #+STARTUP keywords than
-      // these three categories — logdone, hidestars, etc.) are silently
+      // these two categories — logdone, hidestars, etc.) are silently
       // ignored rather than erroring, matching org's own tolerant parsing
       // of directives it doesn't act on.
     }

@@ -236,8 +236,47 @@ function dayView(items, date = new Date()) {
   return groupByDay(itemsForDate(items, date));
 }
 
-/** A week view starting from `start`'s calendar day, 7 days inclusive. */
-function weekView(items, start = new Date()) {
+/** Midnight (00:00:00.000) of `date`'s calendar day. */
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/** The last instant (23:59:59.999) of `date`'s calendar day. */
+function endOfDay(date) {
+  const d = startOfDay(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+/**
+ * The first day of the calendar week containing `date`, per
+ * `startOnWeekday` (0=Sunday, 1=Monday — real org's own default via
+ * org-agenda-start-on-weekday, see local-variables.js — 2=Tuesday, ...
+ * 6=Saturday). This is what makes a week view actually a week: given any
+ * date inside a week, it finds that week's real starting day, rather
+ * than treating whatever date it's handed as the literal first day (see
+ * weekView below, which used to do exactly that — a real bug, not just
+ * an unconfigurable default).
+ */
+function startOfWeek(date, startOnWeekday = 1) {
+  const d = startOfDay(date);
+  const currentWeekday = d.getDay(); // 0-6, Sun-Sat
+  const diff = (currentWeekday - startOnWeekday + 7) % 7;
+  d.setDate(d.getDate() - diff);
+  return d;
+}
+
+/**
+ * A week view: the 7 days of the calendar week containing `anchorDate`,
+ * starting on `startOnWeekday`. This used to just start FROM whatever
+ * date was passed in, treating it as day 1 of the week regardless of
+ * which weekday it actually fell on — meaning "this week" depended on
+ * which day you happened to open the agenda on, not on any consistent
+ * notion of a week. Now it always resolves to the same 7-day window
+ * (e.g. Monday-Sunday) no matter which day within that window you pass.
+ */
+function weekView(items, anchorDate = new Date(), startOnWeekday = 1) {
+  const start = startOfWeek(anchorDate, startOnWeekday);
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
   return groupByDay(itemsInRange(items, start, end));
@@ -264,4 +303,7 @@ export {
   monthView,
   parseRepeater,
   expandRepeats,
+  startOfDay,
+  endOfDay,
+  startOfWeek,
 };
