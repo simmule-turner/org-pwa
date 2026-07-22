@@ -225,3 +225,53 @@ test('monthView correctly handles a shorter month (February, including a leap ye
   assert.ok(allDates.every((d) => d <= '2028-02-29'));
   assert.ok(allDates.includes('2028-02-29'));
 });
+
+// ---- plain timestamps embedded in heading titles (the reported gap) -----
+
+test('THE BUG THIS FIXES: a birthday timestamp written directly in the heading title now produces an agenda item', () => {
+  const doc = parseOrg('**** Jennifer and Simmule <1989-11-02 Thu +1y>:ANNIV:'.replace(':ANNIV:', ''));
+  // (tag omitted here since — see the response to the user — a tag with
+  // no preceding space isn't valid org tag syntax and won't parse as a
+  // tag; that's unrelated to this fix, which only concerns the timestamp.)
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'timestamp');
+  assert.equal(items[0].date.getFullYear(), 1989);
+  assert.equal(items[0].repeater, '+1y');
+});
+
+test('a title timestamp expands with its repeater the same as SCHEDULED/DEADLINE do, when a range is given', () => {
+  const doc = parseOrg('**** Jennifer <1989-11-02 Thu +1y>');
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: new Date(2026, 0, 1),
+    rangeEnd: new Date(2027, 0, 1),
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].date.getFullYear(), 2026);
+  assert.equal(items[0].date.getMonth(), 10);
+  assert.equal(items[0].date.getDate(), 2);
+});
+
+test('an inactive timestamp in a title does NOT produce an agenda item, matching real org\'s own rule', () => {
+  const doc = parseOrg('**** Logged [2026-01-01 Thu]');
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
+  assert.equal(items.length, 0);
+});
+
+test('a heading with BOTH a title timestamp and its own SCHEDULED does not double-count — SCHEDULED wins', () => {
+  const doc = parseOrg(['**** Something <2026-01-01 Thu>', 'SCHEDULED: <2026-02-01 Sun>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'scheduled');
+});
+
+test('a heading with no timestamp anywhere produces nothing, as before', () => {
+  const doc = parseOrg('**** Just a plain heading');
+  assert.deepEqual(buildAgendaItems([{ documentId: 'x.org', doc }]), []);
+});
+
+test('title-timestamp items still respect todoFilter/archived filtering like every other agenda item', () => {
+  const doc = parseOrg('**** Archived birthday <2026-01-01 Thu>                      :ARCHIVE:');
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
+  assert.equal(items.length, 0); // excluded by default (includeArchived: false)
+});
