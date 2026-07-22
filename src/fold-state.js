@@ -31,32 +31,43 @@ import { isArchived } from './archive-model.js';
  * everything (only top-level headings show, matching org's actual
  * 'overview' semantics — child headings are hidden, not just their body
  * text); anything else ('content', 'showall', 'showeverything') expands
- * everything.
+ * everything — EXCEPT an archived heading itself, which stays collapsed
+ * regardless of visibility mode when `archiveVisibility: 'archived'` (the
+ * default), the same rule the slide-left cycle already applies (see
+ * expandFully below). Without this, 'content'/'showall'/'showeverything'
+ * would unfold an archived subtree's children right on file open — a real
+ * bug this fixes, not a hypothetical: 'content' mode in particular sets
+ * every heading's `collapsed: false` unconditionally, which included
+ * archived ones until this changed. An archived heading's own descendants
+ * still get their `collapsed`/`bodyHidden` set per the normal visibility
+ * rule (not forced collapsed themselves) — only the archived heading
+ * itself is forced shut, which is what actually hides them from view
+ * (flattenVisibleRows never recurses into a collapsed heading's
+ * children), and it means manually expanding that one heading later (via
+ * the chevron) reveals its contents already in the right state for
+ * whatever visibility mode is active, not doubly restricted.
  *
  * Known simplification, stated rather than hidden: org's real 'content'
  * mode shows every heading LINE but folds away body text under each one —
  * a distinction this app's simpler per-heading collapsed flag can't
  * represent (that flag controls "children and body" together, not
- * separately). This used to conflate 'content' with 'showall'/
- * 'showeverything' — both fully expanded, body text included — because
- * the single `collapsed` flag per heading couldn't represent "children
- * visible, body hidden" on its own. `bodyHidden` is the second,
- * independent flag that makes that distinction real: `collapsed`
- * controls whether a heading's children (and body) are visible at all;
- * `bodyHidden` controls specifically whether a heading's own body content
- * (paragraphs/lists/tables/blocks) shows, independent of whether its
- * children headings do. A heading can be expanded (collapsed: false) with
- * its body hidden (bodyHidden: true) — that combination is exactly what
- * 'content' mode sets on every heading.
+ * separately). `bodyHidden` is the second, independent flag that makes
+ * that distinction real: `collapsed` controls whether a heading's
+ * children (and body) are visible at all; `bodyHidden` controls
+ * specifically whether a heading's own body content shows, independent of
+ * whether its children headings do.
  */
 function applyStartupVisibility(doc, startupConfig) {
-  const collapsed = startupConfig.visibility === 'overview';
-  const bodyHidden = startupConfig.visibility === 'content';
+  const collapsedDefault = startupConfig.visibility === 'overview';
+  const bodyHiddenDefault = startupConfig.visibility === 'content';
+  const archiveVisibility = startupConfig.archiveVisibility || 'archived';
+
   function walk(nodes) {
     for (const node of nodes) {
       if (node.type !== 'heading') continue;
-      node.collapsed = collapsed;
-      node.bodyHidden = bodyHidden;
+      const forceCollapsed = archiveVisibility === 'archived' && isArchived(node);
+      node.collapsed = forceCollapsed ? true : collapsedDefault;
+      node.bodyHidden = bodyHiddenDefault;
       walk(node.children);
     }
   }
