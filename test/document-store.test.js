@@ -14,7 +14,7 @@ import {
   openAllDocuments,
 } from '../src/document-store.js';
 
-test('opening a document that exists on disk parses and caches it', async () => {
+test('opening a document that exists on disk parses it and refreshes the cache', async () => {
   const kv = createInMemoryAdapter();
   const disk = createInMemoryDiskAdapter();
   await disk.write('nrp.org', '* TODO Ship it');
@@ -23,9 +23,39 @@ test('opening a document that exists on disk parses and caches it', async () => 
   assert.equal(source, 'disk');
   assert.equal(doc.children[0].todo, 'TODO');
 
-  // Second open should hit the cache, not disk.
+  // Opening again still reads disk (not a silently-trusted cache) — this
+  // is the actual bug fix: a stale cache should never win over disk.
   const second = await openDocument({ documentId: 'nrp.org', kvAdapter: kv, diskAdapter: disk });
-  assert.equal(second.source, 'cache');
+  assert.equal(second.source, 'disk');
+});
+
+test('THE BUG THIS FIXES: a file edited outside the app is picked up on the next open, not silently served from a stale cache', async () => {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  await disk.write('notes.org', '* Original content');
+
+  const first = await openDocument({ documentId: 'notes.org', kvAdapter: kv, diskAdapter: disk });
+  assert.equal(first.doc.children[0].title, 'Original content');
+
+  // Simulate editing the file in a text editor, outside this app entirely
+  // — nothing routes through kvAdapter or saveDocument for this change.
+  disk._simulateExternalEdit('notes.org', '#+STARTUP: overview\n* Edited outside the app');
+
+  const second = await openDocument({ documentId: 'notes.org', kvAdapter: kv, diskAdapter: disk });
+  assert.equal(second.source, 'disk');
+  assert.equal(second.doc.children[0].title, 'Edited outside the app');
+});
+
+test('cache is still used as a fallback when disk read genuinely fails (no registered handle)', async () => {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  // Prime the cache directly, without ever writing anything to "disk" for
+  // this documentId — simulates a document with no file handle available.
+  await kv.set('doc:orphaned.org', '* Cached-only content');
+
+  const { doc, source } = await openDocument({ documentId: 'orphaned.org', kvAdapter: kv, diskAdapter: disk });
+  assert.equal(source, 'cache');
+  assert.equal(doc.children[0].title, 'Cached-only content');
 });
 
 test('opening a document that exists nowhere returns a fresh empty document', async () => {
