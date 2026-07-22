@@ -20,7 +20,6 @@ import {
   insertListItem,
   getHeadingText,
   setHeadingText,
-  getLeadingParagraphNodes,
 } from '../src/body-edit.js';
 
 function docWithTable() {
@@ -432,10 +431,11 @@ test('insertParagraph appends new text with a blank-line separator', () => {
   assert.match(text, /Existing\.\n\nNew note\./);
 });
 
-// ---- heading text (multi-paragraph body) ---------------------------------
+// ---- heading text (entire body content) -----------------------------
 
-test('getHeadingText combines multiple leading paragraphs with blank-line separators', () => {
-  // The user's own second example.
+test('getHeadingText returns every line of body content, not just paragraphs', () => {
+  // The user's own second example — pure paragraph content, the case the
+  // old leading-only version happened to get right.
   const doc = parseOrg(
     [
       '* My Project Tasks',
@@ -451,12 +451,11 @@ test('getHeadingText combines multiple leading paragraphs with blank-line separa
     ].join('\n')
   );
   const heading = doc.children[0];
-  const text = getHeadingText(heading);
   assert.equal(
-    text,
+    getHeadingText(heading),
     'This is the initial overview text.\n\n' +
-      'This text is separated by a blank line, but still belongs to the headline.\n\n' +
-      'Even with multiple blank lines, this text stays inside the "My Project Tasks" section.'
+      'This text is separated by a blank line, but still belongs to the headline.\n\n\n' +
+      'Even with multiple blank lines, this text stays inside the "My Project Tasks" section.\n'
   );
 });
 
@@ -468,67 +467,83 @@ test('getHeadingText does not pull in text belonging to a sub-heading', () => {
   assert.equal(getHeadingText(heading), 'Parent text.');
 });
 
-test('getHeadingText stops at a list — text after the list is not part of the leading run', () => {
-  const doc = parseOrg(['* Notes', 'Leading text.', '- a list item', 'Trailing paragraph.'].join('\n'));
+test('getHeadingText: the exact bug report — a heading whose body starts with a list, then a paragraph, then another list', () => {
+  // Built directly from "Fix organice issues": the old leading-paragraph-only
+  // version returned '' here, since body[0] is a list, not a paragraph —
+  // missing essentially all of the heading's actual content.
+  const doc = parseOrg(
+    [
+      '* Fix organice issues',
+      '',
+      '- [X] first item',
+      '- [X] second item',
+      '**Release Notes**',
+      '- Added more raw entries',
+      '  - nested detail',
+      '- Added repeating timestamps',
+    ].join('\n')
+  );
   const heading = doc.children[0];
-  assert.equal(getHeadingText(heading), 'Leading text.');
+  assert.equal(heading.body.map((n) => n.type).join(','), 'list,paragraph,list');
+  const text = getHeadingText(heading);
+  assert.match(text, /- \[X\] first item/);
+  assert.match(text, /- \[X\] second item/);
+  assert.match(text, /\*\*Release Notes\*\*/);
+  assert.match(text, /- Added more raw entries/);
+  assert.match(text, /  - nested detail/);
+  assert.match(text, /- Added repeating timestamps/);
 });
 
-test('getHeadingText is empty when the heading has no leading paragraph', () => {
-  const doc = parseOrg(['* Notes', '- just a list, no leading text'].join('\n'));
+test('getHeadingText is empty only when the heading truly has no body content', () => {
+  const doc = parseOrg(['* Empty heading', '** Child'].join('\n'));
   assert.equal(getHeadingText(doc.children[0]), '');
 });
 
-test('getLeadingParagraphNodes returns every node getHeadingText combined', () => {
-  const doc = parseOrg(['* Notes', 'One.', '', 'Two.', '- a list'].join('\n'));
+test('setHeadingText replaces the entire body and survives serialize -> reparse, including list/paragraph/list content', () => {
+  const doc = parseOrg(
+    ['* Fix organice issues', '- [X] old item', '**Release Notes**', '- old note'].join('\n')
+  );
   const heading = doc.children[0];
-  const nodes = getLeadingParagraphNodes(heading);
-  assert.equal(nodes.length, 2);
-  assert.equal(nodes[0].lines[0], 'One.');
-  assert.equal(nodes[1].lines[0], 'Two.');
-});
-
-test('setHeadingText replaces the whole multi-paragraph block and survives serialize -> reparse', () => {
-  const doc = parseOrg(['* My Project Tasks', 'Old overview.', '', 'Old second paragraph.'].join('\n'));
-  const heading = doc.children[0];
-  setHeadingText(heading, 'New overview.\n\nNew second paragraph.\n\nA third one, added.');
+  setHeadingText(
+    heading,
+    '- [ ] new item one\n- [X] new item two\n**Updated Notes**\n- a new note\n- another note'
+  );
 
   const text2 = serializeOrg(doc);
   const doc2 = parseOrg(text2);
-  assert.equal(
-    getHeadingText(doc2.children[0]),
-    'New overview.\n\nNew second paragraph.\n\nA third one, added.'
-  );
+  const reheading = doc2.children[0];
+  assert.equal(reheading.body.map((n) => n.type).join(','), 'list,paragraph,list');
+  assert.equal(reheading.body[0].items.map((i) => i.text).join(','), 'new item one,new item two');
+  assert.equal(reheading.body[2].items.length, 2);
 });
 
-test('setHeadingText on a heading with no leading text inserts before existing list content', () => {
+test('setHeadingText on a heading with existing list content fully replaces it, not just prepends', () => {
   const doc = parseOrg(['* Notes', '- existing item'].join('\n'));
   const heading = doc.children[0];
-  setHeadingText(heading, 'New description text.');
+  setHeadingText(heading, 'Now just plain text, no list at all.');
 
+  assert.equal(heading.body.length, 1);
   assert.equal(heading.body[0].type, 'paragraph');
-  assert.equal(heading.body[0].lines[0], 'New description text.');
-  assert.equal(heading.body[1].type, 'list');
-
-  const text = serializeOrg(doc);
-  assert.match(text, /New description text\.\n- existing item/);
+  assert.equal(heading.body[0].lines[0], 'Now just plain text, no list at all.');
 });
 
-test('setHeadingText with empty text removes the leading paragraph run entirely', () => {
-  const doc = parseOrg(['* Notes', 'Text to remove.', '', 'More text.', '- keep this list'].join('\n'));
+test('setHeadingText with empty text clears all body content, of any kind', () => {
+  const doc = parseOrg(
+    ['* Fix organice issues', '- [X] item one', '**Release Notes**', '- a note'].join('\n')
+  );
   const heading = doc.children[0];
   setHeadingText(heading, '   '); // effectively empty after trim
 
-  assert.equal(heading.body.length, 1);
-  assert.equal(heading.body[0].type, 'list');
+  assert.deepEqual(heading.body, []);
+  assert.deepEqual(heading.bodyLines, []);
 });
 
 test('setHeadingText leaves a sub-heading and its own text completely untouched', () => {
-  const doc = parseOrg(['* Parent', 'Parent text.', '** Child', 'Child text.'].join('\n'));
+  const doc = parseOrg(['* Parent', '- parent list item', '** Child', 'Child text.'].join('\n'));
   const heading = doc.children[0];
-  setHeadingText(heading, 'Updated parent text.');
+  setHeadingText(heading, 'Replaced with plain text.');
 
-  assert.equal(getHeadingText(heading), 'Updated parent text.');
+  assert.equal(getHeadingText(heading), 'Replaced with plain text.');
   assert.equal(heading.children[0].title, 'Child');
   assert.equal(getHeadingText(heading.children[0]), 'Child text.');
 });
