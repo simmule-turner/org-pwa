@@ -42,10 +42,22 @@ function unwrap(result) {
  * data-loss risk (edits made, never saved, then the file reopened) and
  * is deliberately handled by the caller (see app.js's use of
  * outbox.js's hasPendingChange before calling this), not silently
- * decided in here.
+ * decided in here. `preferCache: true` is the recovery half of that:
+ * when the caller has already asked the user and they chose to resume
+ * their unsynced edits rather than discard them, this reads the cache
+ * first instead of disk, so "keep my changes" actually means "show me my
+ * changes" rather than a dead end that leaves them sitting inaccessible
+ * in IndexedDB with no path back to them.
  */
-async function openDocument({ documentId, kvAdapter, diskAdapter }) {
+async function openDocument({ documentId, kvAdapter, diskAdapter, preferCache = false }) {
   const cacheKey = 'doc:' + documentId;
+
+  if (preferCache) {
+    const cached = await kvAdapter.get(cacheKey);
+    if (cached) {
+      return { documentId, doc: parseOrg(unwrap(cached)), source: 'cache' };
+    }
+  }
 
   const diskEntry = await diskAdapter.read(documentId);
   if (diskEntry) {
