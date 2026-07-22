@@ -119,6 +119,13 @@ let actionMenuFor = null;
 // only a textarea; none of the outline's tap-to-edit/reveal-menu state
 // applies (and gets cleared when entering/leaving this mode).
 let textEditMode = false;
+// Whether the currently open document has edits that haven't been
+// written to disk/GitHub/WebDAV yet — set true the moment any edit is
+// committed, and cleared only after a successful Save/Save As, or when a
+// document is freshly opened/created. Purely in-memory and synchronous
+// (not read from the outbox asynchronously) so the indicator can update
+// immediately, matching the app's existing optimistic-render approach.
+let isDirty = false;
 
 function setStatus(text) {
   statusEl.textContent = text;
@@ -173,12 +180,43 @@ async function persist() {
 // doc immediately; the storage write happens after, in the background.
 // Errors still surface (via status text) rather than vanishing silently.
 function persistInBackground() {
+  isDirty = true;
   persist().catch((err) => setStatus('Save failed: ' + err.message));
 }
 
 function commitAndRender() {
   render();
   persistInBackground();
+}
+
+/**
+ * If the plain-text editor is currently showing, commits its current
+ * content into state.doc — reparsing fresh, exactly like exiting text
+ * mode normally does — and returns to outline view. Returns true if it
+ * actually did something.
+ *
+ * This is the fix for a real, major bug: state.doc only ever got updated
+ * with the textarea's content when the user explicitly clicked the
+ * Text/Outline toggle button to exit text mode. Every save/open/new
+ * operation read state.doc directly — so hitting Save (or Save As, or
+ * opening a different file) while still in text mode read the STALE
+ * pre-edit document, silently discarding whatever was typed in the
+ * textarea, while still reporting success. Calling this at the start of
+ * every such operation ensures state.doc always reflects what's actually
+ * on screen before anything reads it.
+ */
+function commitTextModeIfActive() {
+  if (!textEditMode) return false;
+  const textarea = document.getElementById('document-text-edit-input');
+  const newText = textarea ? textarea.value : serializeOrg(state.doc);
+  const newDoc = parseOrg(newText);
+  const startupConfig = parseStartupConfig(newDoc);
+  applyStartupVisibility(newDoc, startupConfig);
+  state.doc = newDoc;
+  state.startupConfig = startupConfig;
+  textEditMode = false;
+  textModeBtn.textContent = 'Text';
+  return true;
 }
 
 // Marks every link/image-produced DOM element so container click handlers
@@ -1063,6 +1101,8 @@ function renderParagraphRow(row) {
 }
 
 function render() {
+  updateFilenameDisplay();
+
   if (!state.doc) {
     outlineEl.innerHTML = '';
     const empty = document.createElement('div');
@@ -1086,7 +1126,17 @@ function render() {
     textarea.style.border = 'none';
     textarea.spellcheck = false;
     outlineEl.appendChild(textarea);
-    requestAnimationFrame(() => textarea.focus());
+    // Setting .value moves the caret to the end of the text by default in
+    // most browsers, and focus() scrolls to keep the caret in view — that
+    // combination is exactly why text mode used to open scrolled all the
+    // way to the bottom of the file instead of the top. Explicitly
+    // resetting both the selection and the scroll position fixes it.
+    textarea.scrollTop = 0;
+    textarea.setSelectionRange(0, 0);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.scrollTop = 0; // re-assert: some browsers scroll-to-caret again on focus
+    });
     return;
   }
 
@@ -1146,13 +1196,27 @@ function storageKindLabel(kind) {
   return 'Local';
 }
 
+/** Single source of truth for the filename display, including the
+ *  "modified" indicator — called from render() itself (so it's always
+ *  current on every render, without needing every call site that changes
+ *  state.documentId/storageKind/isDirty to separately remember to update
+ *  it) rather than being set ad hoc in half a dozen different places. */
+function updateFilenameDisplay() {
+  if (!state.documentId) {
+    filenameEl.textContent = 'No file open';
+    return;
+  }
+  filenameEl.textContent =
+    state.documentId + ' (' + storageKindLabel(state.storageKind) + ')' + (isDirty ? ' \u2022 modified' : '');
+}
+
 /** Common finish-up after any successful open/create, regardless of which
  *  backend it came from. */
 async function afterDocumentLoaded(documentId, doc, storageKind) {
   const startupConfig = parseStartupConfig(doc);
   applyStartupVisibility(doc, startupConfig);
   state = { documentId, doc, startupConfig, storageKind };
-  filenameEl.textContent = documentId + ' (' + storageKindLabel(storageKind) + ')';
+  isDirty = false; // freshly loaded — matches whatever was just read, nothing unsaved yet
   textEditMode = false;
   textModeBtn.textContent = 'Text';
   addBtn.disabled = false;
@@ -1184,6 +1248,7 @@ async function resolvePendingChangeChoice(documentId) {
 }
 
 async function openFromFilesystem() {
+  if (commitTextModeIfActive()) render();
   if (!isFileSystemAccessSupported()) {
     setStatus('This browser lacks File System Access support.');
     return;
@@ -1199,6 +1264,10 @@ async function openFromFilesystem() {
       preferCache,
     });
     await afterDocumentLoaded(documentId, doc, 'filesystem');
+    if (preferCache) {
+      isDirty = true; // resumed content differs from the last synced version
+      render();
+    }
     setStatus(preferCache ? 'Resumed your unsaved local version \u2014 remember to Save it.' : 'Opened.');
   } catch (err) {
     if (err.name !== 'AbortError') setStatus('Could not open file: ' + err.message);
@@ -1206,6 +1275,7 @@ async function openFromFilesystem() {
 }
 
 async function openFromImport() {
+  if (commitTextModeIfActive()) render();
   try {
     const { fileId } = await pickAndImportFile(kv);
     const { preferCache } = await resolvePendingChangeChoice(fileId);
@@ -1217,6 +1287,10 @@ async function openFromImport() {
       preferCache,
     });
     await afterDocumentLoaded(fileId, doc, 'input');
+    if (preferCache) {
+      isDirty = true;
+      render();
+    }
     setStatus(
       preferCache
         ? 'Resumed your unsaved local version \u2014 remember to Save it.'
@@ -1228,6 +1302,7 @@ async function openFromImport() {
 }
 
 async function openFromGithub() {
+  if (commitTextModeIfActive()) render();
   const config = await getGithubConfig(kv);
   githubConfig = config;
   if (!isGithubConfigured(config)) {
@@ -1248,6 +1323,10 @@ async function openFromGithub() {
       preferCache,
     });
     await afterDocumentLoaded(path, doc, 'github');
+    if (preferCache) {
+      isDirty = true;
+      render();
+    }
     setStatus(
       preferCache
         ? 'Resumed your unsaved local version \u2014 remember to Save it.'
@@ -1261,6 +1340,7 @@ async function openFromGithub() {
 }
 
 async function openFromWebdav() {
+  if (commitTextModeIfActive()) render();
   const config = await getWebdavConfig(kv);
   webdavConfig = config;
   if (!isWebdavConfigured(config)) {
@@ -1281,6 +1361,10 @@ async function openFromWebdav() {
       preferCache,
     });
     await afterDocumentLoaded(path, doc, 'webdav');
+    if (preferCache) {
+      isDirty = true;
+      render();
+    }
     setStatus(
       preferCache
         ? 'Resumed your unsaved local version \u2014 remember to Save it.'
@@ -1296,6 +1380,7 @@ async function openFromWebdav() {
 // ---- New ---------------------------------------------------------------
 
 async function newOnFilesystem() {
+  if (commitTextModeIfActive()) render();
   if (!isFileSystemAccessSupported()) {
     setStatus('This browser lacks File System Access support.');
     return;
@@ -1321,6 +1406,7 @@ async function newOnFilesystem() {
 }
 
 async function newOnGithub() {
+  if (commitTextModeIfActive()) render();
   const config = await getGithubConfig(kv);
   githubConfig = config;
   if (!isGithubConfigured(config)) {
@@ -1346,6 +1432,7 @@ async function newOnGithub() {
 }
 
 async function newOnWebdav() {
+  if (commitTextModeIfActive()) render();
   const config = await getWebdavConfig(kv);
   webdavConfig = config;
   if (!isWebdavConfigured(config)) {
@@ -1371,6 +1458,7 @@ async function newOnWebdav() {
 }
 
 async function newViaImport() {
+  if (commitTextModeIfActive()) render();
   const name = window.prompt('File name (e.g. notes.org):', 'untitled.org');
   if (!name) return;
   const doc = parseOrg('');
@@ -1383,6 +1471,7 @@ async function newViaImport() {
 
 async function saveCurrent() {
   if (!state.documentId) return;
+  if (commitTextModeIfActive()) render();
   setStatus('Saving\u2026');
   try {
     const result = await saveAndSync({
@@ -1411,6 +1500,8 @@ async function saveCurrent() {
       applyStartupVisibility(state.doc, state.startupConfig);
       render();
     }
+    isDirty = false;
+    render();
     setStatus('Saved (' + result.status + ').');
   } catch (err) {
     setStatus('Save failed: ' + err.message);
@@ -1434,6 +1525,7 @@ const ALWAYS_KEEP_MINE = async () => 'mine';
 
 async function saveAsFilesystem() {
   if (!state.doc) return;
+  if (commitTextModeIfActive()) render();
   if (!isFileSystemAccessSupported()) {
     setStatus('This browser lacks File System Access support.');
     return;
@@ -1443,7 +1535,6 @@ async function saveAsFilesystem() {
     state.documentId = documentId;
     state.storageKind = 'filesystem';
     await markDocumentOpen(kv, documentId);
-    filenameEl.textContent = documentId + ' (Local)';
     await saveAndSync({
       documentId,
       doc: state.doc,
@@ -1451,6 +1542,7 @@ async function saveAsFilesystem() {
       diskAdapter: filesystemAdapter,
       resolveConflict: ALWAYS_KEEP_MINE,
     });
+    isDirty = false;
     setStatus('Saved as ' + documentId + '.');
     closeFileMenu();
     render();
@@ -1461,6 +1553,7 @@ async function saveAsFilesystem() {
 
 async function saveAsGithub() {
   if (!state.doc) return;
+  if (commitTextModeIfActive()) render();
   const config = await getGithubConfig(kv);
   githubConfig = config;
   if (!isGithubConfigured(config)) {
@@ -1477,7 +1570,6 @@ async function saveAsGithub() {
     state.documentId = path;
     state.storageKind = 'github';
     await markDocumentOpen(kv, path);
-    filenameEl.textContent = path + ' (GitHub)';
     await saveAndSync({
       documentId: path,
       doc: state.doc,
@@ -1485,6 +1577,7 @@ async function saveAsGithub() {
       diskAdapter: githubAdapter,
       resolveConflict: ALWAYS_KEEP_MINE,
     });
+    isDirty = false;
     setStatus('Saved to GitHub as ' + path + '.');
     closeFileMenu();
     render();
@@ -1495,6 +1588,7 @@ async function saveAsGithub() {
 
 async function saveAsWebdav() {
   if (!state.doc) return;
+  if (commitTextModeIfActive()) render();
   const config = await getWebdavConfig(kv);
   webdavConfig = config;
   if (!isWebdavConfigured(config)) {
@@ -1508,7 +1602,6 @@ async function saveAsWebdav() {
     state.documentId = path;
     state.storageKind = 'webdav';
     await markDocumentOpen(kv, path);
-    filenameEl.textContent = path + ' (WebDAV)';
     await saveAndSync({
       documentId: path,
       doc: state.doc,
@@ -1516,6 +1609,7 @@ async function saveAsWebdav() {
       diskAdapter: webdavAdapter,
       resolveConflict: ALWAYS_KEEP_MINE,
     });
+    isDirty = false;
     setStatus('Saved to WebDAV as ' + path + '.');
     closeFileMenu();
     render();
@@ -1526,13 +1620,13 @@ async function saveAsWebdav() {
 
 async function saveAsImport() {
   if (!state.doc) return;
+  if (commitTextModeIfActive()) render();
   const name = window.prompt('File name to save as:', state.documentId || 'untitled.org');
   if (!name) return;
   state.documentId = name;
   state.storageKind = 'input';
   try {
     await markDocumentOpen(kv, name);
-    filenameEl.textContent = name + ' (Imported)';
     await saveAndSync({
       documentId: name,
       doc: state.doc,
@@ -1540,6 +1634,7 @@ async function saveAsImport() {
       diskAdapter: inputFileAdapter,
       resolveConflict: ALWAYS_KEEP_MINE,
     });
+    isDirty = false;
     setStatus('Downloaded as ' + name + '.');
     closeFileMenu();
     render();
@@ -1699,16 +1794,7 @@ textModeBtn.addEventListener('click', () => {
   // opening a file does, so #+STARTUP/#+TODO changes (and any structural
   // edits made by hand) actually take effect rather than being merged
   // against the old in-memory doc.
-  const textarea = document.getElementById('document-text-edit-input');
-  const newText = textarea ? textarea.value : serializeOrg(state.doc);
-  const newDoc = parseOrg(newText);
-  const startupConfig = parseStartupConfig(newDoc);
-  applyStartupVisibility(newDoc, startupConfig);
-
-  state.doc = newDoc;
-  state.startupConfig = startupConfig;
-  textEditMode = false;
-  textModeBtn.textContent = 'Text';
+  commitTextModeIfActive();
   commitAndRender();
 });
 
