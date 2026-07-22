@@ -130,11 +130,18 @@ This is the escape hatch for everything the tap-driven UI doesn't cover yet.
 
 ## Agenda
 
-Tap **View → Agenda** for a list of everything with a `SCHEDULED:`/`DEADLINE:` timestamp, grouped into Day, Week, or Month views. **‹**/**›** step the view backward or forward by whatever unit is currently active — a day, a week, or a month — and **Today** jumps back to the current date. Tapping an item switches back to the Org view and scrolls straight to it.
+Tap **View → Agenda** for a list of everything with a date attached, grouped into Day, Week, or Month views. **‹**/**›** step the view backward or forward by whatever unit is currently active — a day, a week, or a month — and **Today** jumps back to the current date. Tapping an item switches back to the Org view and scrolls straight to it.
 
+Three kinds of dated entry show up:
+- **`SCHEDULED:`/`DEADLINE:`** planning lines, the usual way.
+- **A plain, *active* timestamp written directly in a heading's title** — the standard org convention for tracking something like a recurring birthday right on its own heading line (`**** Jennifer <1989-11-02 Thu +1y>`), a genuinely separate source from SCHEDULED/DEADLINE, not a fallback for it. Only counted when the heading has no SCHEDULED/DEADLINE of its own (to avoid a confusing double entry), and only *active* `<...>` timestamps count — an inactive `[...]` one is excluded, matching real org's own rule that those are just dated records, not reminders. This only looks at the title, not body text, to avoid pulling in unrelated dates mentioned in ordinary prose elsewhere in a journal-heavy file.
+
+Other behavior:
 - **Completed items are excluded** — using the file's own `#+TODO:` sequence (whatever keywords you've actually defined as "done"), not a hardcoded check for the literal word `DONE`.
-- **Repeating timestamps expand properly.** `SCHEDULED: <2026-01-05 Mon +1w>` shows up on every matching day within whatever range is currently displayed, not just its one literal stored date — switch to Month view and a weekly task correctly shows up every week of that month.
+- **Repeating timestamps expand properly**, for either source above. `<1989-11-02 Thu +1y>` shows up every year on the anniversary within whatever range is currently displayed, not just its one literal stored date — switch to Month view and it correctly shows up in whichever month it falls in.
 - Archived headings are excluded, same as everywhere else in the app.
+
+One thing worth knowing if a title timestamp isn't showing the way you expect: **a trailing tag needs a space before it to actually parse as a tag** (`<1989-11-02 Thu +1y> :BDAY:`, not `+1y>:BDAY:`) — this matches real Emacs org-mode's own heading-parsing rules, not a gap specific to this app. Without the space, the tag stays as literal title text instead of becoming a real, filterable tag — but the *timestamp itself* is still found and still shows up in the agenda either way, since that scan doesn't care about tag formatting.
 
 Scope, stated plainly: this covers the currently open file only. The underlying engine can aggregate across multiple documents at once (it takes a list of `{documentId, doc}` pairs, built with a future cross-file agenda in mind), but there's no multi-file-open UI yet to actually feed it more than one — see [Differences from Emacs org-mode](#differences-from-emacs-org-mode).
 
@@ -252,4 +259,4 @@ Engine code (`src/`) and browser-specific adapters (`src-browser/`) are unit tes
 node --test
 ```
 
-323 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change.
+334 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change.

@@ -2119,7 +2119,7 @@ function renderAgendaView() {
       row.style.cursor = 'pointer';
 
       const kindIcon = document.createElement('span');
-      kindIcon.textContent = item.kind === 'deadline' ? '\u26a0' : '\u23f0';
+      kindIcon.textContent = item.kind === 'deadline' ? '\u26a0' : item.kind === 'timestamp' ? '\ud83d\udcc5' : '\u23f0';
       kindIcon.style.flexShrink = '0';
       kindIcon.style.opacity = '0.6';
       row.appendChild(kindIcon);
