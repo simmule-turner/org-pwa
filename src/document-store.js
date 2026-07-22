@@ -22,22 +22,40 @@ function unwrap(result) {
 }
 
 /**
- * Opens `documentId`: reads from the kv cache if present (fast path, and
- * the only path when offline), otherwise falls back to disk. Either way
- * the result is parsed into an AST. Doesn't touch the outbox — opening a
- * file is not itself a change.
+ * Opens `documentId`: reads from disk first, parses into an AST, and
+ * refreshes the kv cache to match. Falls back to the cache only if disk
+ * read doesn't succeed (no registered file handle yet, or some other
+ * read failure) — not the other way around.
+ *
+ * This used to be cache-first, with disk as the fallback, on the
+ * reasoning that disk "might be unreachable when offline". That reasoning
+ * doesn't actually apply here: File System Access reads are local file
+ * reads, not network requests — they're never blocked by connectivity.
+ * Cache-first meant that once a file was opened once, every later "Open"
+ * of the same file silently returned the stale cached copy forever, even
+ * after editing the file outside the app — the cache was never given a
+ * chance to hear about the change. Disk-first fixes that: "Open" now
+ * means what it says.
+ *
+ * This does NOT check for locally pending, unsynced edits before
+ * overwriting the cache with fresh disk content — that's a real
+ * data-loss risk (edits made, never saved, then the file reopened) and
+ * is deliberately handled by the caller (see app.js's use of
+ * outbox.js's hasPendingChange before calling this), not silently
+ * decided in here.
  */
 async function openDocument({ documentId, kvAdapter, diskAdapter }) {
   const cacheKey = 'doc:' + documentId;
-  const cached = await kvAdapter.get(cacheKey);
-  if (cached) {
-    return { documentId, doc: parseOrg(unwrap(cached)), source: 'cache' };
-  }
 
   const diskEntry = await diskAdapter.read(documentId);
   if (diskEntry) {
     await kvAdapter.set(cacheKey, diskEntry.content);
     return { documentId, doc: parseOrg(diskEntry.content), source: 'disk' };
+  }
+
+  const cached = await kvAdapter.get(cacheKey);
+  if (cached) {
+    return { documentId, doc: parseOrg(unwrap(cached)), source: 'cache' };
   }
 
   // Brand new, unsaved document.
