@@ -1163,6 +1163,26 @@ async function afterDocumentLoaded(documentId, doc, storageKind) {
 
 // ---- Open --------------------------------------------------------------
 
+/**
+ * Checks for a pending, unsynced local edit before opening `documentId`
+ * fresh from disk/GitHub/WebDAV/import. Returns `{ preferCache: boolean }`.
+ *
+ * Both choices actually open the file — that's the fix. A previous
+ * version's "Cancel" choice here just aborted with a status message
+ * ("unsaved local changes were kept") and no way back to them: the edit
+ * sat untouched in IndexedDB, but there was no UI path to ever see it
+ * again. "Kept" should mean "shown", not "kept invisible somewhere".
+ */
+async function resolvePendingChangeChoice(documentId) {
+  if (!(await hasPendingChange(kv, documentId))) return { preferCache: false };
+  const resumeLocal = window.confirm(
+    `"${documentId}" has local changes that were never saved (from an earlier session).\n\n` +
+      'OK = resume those unsaved changes\n' +
+      'Cancel = discard them and load the current version'
+  );
+  return { preferCache: resumeLocal };
+}
+
 async function openFromFilesystem() {
   if (!isFileSystemAccessSupported()) {
     setStatus('This browser lacks File System Access support.');
@@ -1170,23 +1190,16 @@ async function openFromFilesystem() {
   }
   try {
     const documentId = await pickAndRegisterFile(kv);
-    // openDocument prefers disk over the cache — but that would also
-    // silently discard any local edit that was made and never synced.
-    // That's a real, separate risk worth a deliberate check.
-    if (await hasPendingChange(kv, documentId)) {
-      const proceed = window.confirm(
-        `"${documentId}" has local changes that were never saved. ` +
-          'Opening it now will load the current file and discard those unsaved changes. Continue?'
-      );
-      if (!proceed) {
-        setStatus('Open cancelled \u2014 unsaved local changes were kept.');
-        return;
-      }
-    }
+    const { preferCache } = await resolvePendingChangeChoice(documentId);
     await markDocumentOpen(kv, documentId);
-    const { doc } = await openDocument({ documentId, kvAdapter: kv, diskAdapter: filesystemAdapter });
+    const { doc } = await openDocument({
+      documentId,
+      kvAdapter: kv,
+      diskAdapter: filesystemAdapter,
+      preferCache,
+    });
     await afterDocumentLoaded(documentId, doc, 'filesystem');
-    setStatus('Opened.');
+    setStatus(preferCache ? 'Resumed your unsaved local version \u2014 remember to Save it.' : 'Opened.');
   } catch (err) {
     if (err.name !== 'AbortError') setStatus('Could not open file: ' + err.message);
   }
@@ -1195,10 +1208,20 @@ async function openFromFilesystem() {
 async function openFromImport() {
   try {
     const { fileId } = await pickAndImportFile(kv);
+    const { preferCache } = await resolvePendingChangeChoice(fileId);
     await markDocumentOpen(kv, fileId);
-    const { doc } = await openDocument({ documentId: fileId, kvAdapter: kv, diskAdapter: inputFileAdapter });
+    const { doc } = await openDocument({
+      documentId: fileId,
+      kvAdapter: kv,
+      diskAdapter: inputFileAdapter,
+      preferCache,
+    });
     await afterDocumentLoaded(fileId, doc, 'input');
-    setStatus('Imported. Use Save to download your changes \u2014 there\u2019s no live link back to the original file on this platform.');
+    setStatus(
+      preferCache
+        ? 'Resumed your unsaved local version \u2014 remember to Save it.'
+        : 'Imported. Use Save to download your changes \u2014 there\u2019s no live link back to the original file on this platform.'
+    );
   } catch (err) {
     setStatus('Could not import file: ' + err.message);
   }
@@ -1215,14 +1238,22 @@ async function openFromGithub() {
   const path = window.prompt(`Path of the file in ${config.owner}/${config.repo} (e.g. notes.org):`);
   if (!path) return;
   try {
+    const { preferCache } = await resolvePendingChangeChoice(path);
     setStatus('Loading from GitHub\u2026');
     await markDocumentOpen(kv, path);
-    const { doc, source } = await openDocument({ documentId: path, kvAdapter: kv, diskAdapter: githubAdapter });
+    const { doc, source } = await openDocument({
+      documentId: path,
+      kvAdapter: kv,
+      diskAdapter: githubAdapter,
+      preferCache,
+    });
     await afterDocumentLoaded(path, doc, 'github');
     setStatus(
-      source === 'new'
-        ? `"${path}" doesn't exist in the repo yet \u2014 opened as a new empty file.`
-        : 'Opened from GitHub.'
+      preferCache
+        ? 'Resumed your unsaved local version \u2014 remember to Save it.'
+        : source === 'new'
+          ? `"${path}" doesn't exist in the repo yet \u2014 opened as a new empty file.`
+          : 'Opened from GitHub.'
     );
   } catch (err) {
     setStatus('Could not open from GitHub: ' + err.message);
@@ -1240,14 +1271,22 @@ async function openFromWebdav() {
   const path = window.prompt('Path of the file on the WebDAV server (e.g. notes.org):');
   if (!path) return;
   try {
+    const { preferCache } = await resolvePendingChangeChoice(path);
     setStatus('Loading from WebDAV\u2026');
     await markDocumentOpen(kv, path);
-    const { doc, source } = await openDocument({ documentId: path, kvAdapter: kv, diskAdapter: webdavAdapter });
+    const { doc, source } = await openDocument({
+      documentId: path,
+      kvAdapter: kv,
+      diskAdapter: webdavAdapter,
+      preferCache,
+    });
     await afterDocumentLoaded(path, doc, 'webdav');
     setStatus(
-      source === 'new'
-        ? `"${path}" doesn't exist on the server yet \u2014 opened as a new empty file.`
-        : 'Opened from WebDAV.'
+      preferCache
+        ? 'Resumed your unsaved local version \u2014 remember to Save it.'
+        : source === 'new'
+          ? `"${path}" doesn't exist on the server yet \u2014 opened as a new empty file.`
+          : 'Opened from WebDAV.'
     );
   } catch (err) {
     setStatus('Could not open from WebDAV: ' + err.message);
