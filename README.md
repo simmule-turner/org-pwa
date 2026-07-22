@@ -15,6 +15,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 - [Searching](#searching)
 - [Links and images](#links-and-images)
 - [Folding and `#+STARTUP`](#folding-and-startup)
+- [Local Variables](#local-variables)
 - [Archiving](#archiving)
 - [The plain-text editor](#the-plain-text-editor)
 - [Agenda](#agenda)
@@ -97,32 +98,50 @@ Search looks at the entire document regardless of current fold state — a match
 
 ## Folding and `#+STARTUP`
 
-org-pwa reads and applies `#+STARTUP:` directives, typically on the first line of the file. None, some, or all of the following can be present on one line, or spread across several — the last matching keyword wins if there's a conflict:
+org-pwa reads and applies `#+STARTUP:` directives, typically on the first line of the file. None, some, or both of the following can be present on one line, or spread across several — the last matching keyword wins if there's a conflict:
 
 | Category | Keywords | Default |
 |---|---|---|
 | Heading visibility | `overview`, `content`, `showall`, `showeverything` | `showeverything` |
 | Inline images | `inlineimages`, `noinlineimages` | `noinlineimages` |
-| Archived-item cycling | `archived`, `noarchived` | `archived` |
 
 - **`overview`** — only top-level headings shown, everything else folded.
 - **`content`** — every heading line unfolded, but body text (paragraphs/lists/tables) stays hidden until you tap a heading open — a genuinely separate visibility axis from "is this heading's subtree folded," not just an alias for `showall`.
 - **`showall` / `showeverything`** — fully expanded, body included.
-- With `archived` (the default), an archived heading (tagged `:ARCHIVE:`) starts folded regardless of the visibility mode above, and swiping to expand a subtree skips cascading into archived children — though you can still tap directly into one.
 
-These defaults are chosen to match real Emacs org-mode's actual out-of-the-box behavior (no `#+STARTUP` line means fully shown, not folded), not an arbitrary choice.
+These defaults are chosen to match real Emacs org-mode's actual out-of-the-box behavior (no `#+STARTUP` line means fully shown, not folded), not an arbitrary choice. (Archived-heading cycling behavior used to be documented here as `#+STARTUP: archived`/`noarchived` — that was a mistake; it's not real org syntax. See [Local Variables](#local-variables) for the actual, corrected mechanism.)
+
+---
+
+## Local Variables
+
+Separate from `#+STARTUP:` — this is a general *Emacs* mechanism (works in any file type Emacs edits), not an org-specific directive, conventionally placed at the end of the file:
+
+```
+# Local Variables:
+# org-agenda-start-on-weekday: 1
+# org-cycle-open-archived-trees: nil
+# End:
+```
+
+Currently recognized:
+
+- **`org-agenda-start-on-weekday`** — which weekday the agenda's Week view starts on. `0` = Sunday, `1` = Monday (the default, matching real org), `2` = Tuesday, and so on through `6` = Saturday. An out-of-range value falls back to Monday rather than producing a nonsensical week.
+- **`org-cycle-open-archived-trees`** — `t` or `nil` (Lisp booleans, not JavaScript truthiness — the string `"true"` is not `t` and won't be treated as one). `nil` (the default, matching real org) means an archived heading (tagged `:ARCHIVE:`) starts folded regardless of the `#+STARTUP:` visibility mode, and swiping to expand a subtree skips cascading into archived children, though you can still tap directly into one. Set to `t` to make archived headings behave like any other heading for folding purposes.
+
+More variables will likely be added here over time; the parser itself is general-purpose (it captures whatever `# key: value` lines it finds in the block, whether or not this app currently acts on that particular key), so recognizing a new one is a small, additive change rather than a redesign.
 
 ---
 
 ## Archiving
 
-Headings tagged `:ARCHIVE:` are treated specially for folding (see above) throughout the outline view. There is currently **no UI action to add or remove the archive tag** — you archive a heading by adding `:ARCHIVE:` yourself, most easily via the plain-text editor.
+Headings tagged `:ARCHIVE:` are treated specially for folding (see [Local Variables](#local-variables) above) throughout the outline view. There is currently **no UI action to add or remove the archive tag** — you archive a heading by adding `:ARCHIVE:` yourself, most easily via the plain-text editor.
 
 ---
 
 ## The plain-text editor
 
-Tap **View → Text** to switch the entire outline view for one full-width textarea containing the whole document as raw org text — everything, including `#+STARTUP:`, `#+TODO:`, and any syntax the structured view still doesn't have dedicated UI for (priority cookies, archive tags). Tap **View → Org** to switch back; the text is reparsed from scratch at that point, so any changes — including to `#+STARTUP`/`#+TODO` — take effect immediately.
+Tap **View → Text** to switch the entire outline view for one full-width textarea containing the whole document as raw org text — everything, including `#+STARTUP:`, `#+TODO:`, a [Local Variables](#local-variables) block, and any syntax the structured view still doesn't have dedicated UI for (priority cookies, archive tags). Tap **View → Org** to switch back; the text is reparsed from scratch at that point, so any changes — including to `#+STARTUP`/`#+TODO`/Local Variables — take effect immediately.
 
 This is the escape hatch for everything the tap-driven UI doesn't cover yet.
 
@@ -132,6 +151,8 @@ This is the escape hatch for everything the tap-driven UI doesn't cover yet.
 
 Tap **View → Agenda** for a list of everything with a date attached, grouped into Day, Week, or Month views. **‹**/**›** step the view backward or forward by whatever unit is currently active — a day, a week, or a month — and **Today** jumps back to the current date. Tapping an item switches back to the Org view and scrolls straight to it.
 
+**Week view always aligns to an actual calendar week** — Monday through Sunday by default (configurable, see below), regardless of which day of that week you happened to open the agenda on. It resolves to the same 7-day window whether you're looking at it from Monday or Friday, not "whatever day is currently open, plus the next six."
+
 Three kinds of dated entry show up:
 - **`SCHEDULED:`/`DEADLINE:`** planning lines, the usual way.
 - **A plain, *active* timestamp written directly in a heading's title** — the standard org convention for tracking something like a recurring birthday right on its own heading line (`**** Jennifer <1989-11-02 Thu +1y>`), a genuinely separate source from SCHEDULED/DEADLINE, not a fallback for it. Only counted when the heading has no SCHEDULED/DEADLINE of its own (to avoid a confusing double entry), and only *active* `<...>` timestamps count — an inactive `[...]` one is excluded, matching real org's own rule that those are just dated records, not reminders. This only looks at the title, not body text, to avoid pulling in unrelated dates mentioned in ordinary prose elsewhere in a journal-heavy file.
@@ -140,6 +161,7 @@ Other behavior:
 - **Completed items are excluded** — using the file's own `#+TODO:` sequence (whatever keywords you've actually defined as "done"), not a hardcoded check for the literal word `DONE`.
 - **Repeating timestamps expand properly**, for either source above. `<1989-11-02 Thu +1y>` shows up every year on the anniversary within whatever range is currently displayed, not just its one literal stored date — switch to Month view and it correctly shows up in whichever month it falls in.
 - Archived headings are excluded, same as everywhere else in the app.
+- **Week view's start day is configurable** via `org-agenda-start-on-weekday` in a [Local Variables](#local-variables) block — Monday by default, matching real org.
 
 One thing worth knowing if a title timestamp isn't showing the way you expect: **a trailing tag needs a space before it to actually parse as a tag** (`<1989-11-02 Thu +1y> :BDAY:`, not `+1y>:BDAY:`) — this matches real Emacs org-mode's own heading-parsing rules, not a gap specific to this app. Without the space, the tag stays as literal title text instead of becoming a real, filterable tag — but the *timestamp itself* is still found and still shows up in the agenda either way, since that scan doesn't care about tag formatting.
 
@@ -259,4 +281,4 @@ Engine code (`src/`) and browser-specific adapters (`src-browser/`) are unit tes
 node --test
 ```
 
-334 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change.
+356 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion (including week/day boundary alignment), Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change.

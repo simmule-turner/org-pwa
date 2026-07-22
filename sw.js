@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v18';
+const CACHE_NAME = 'org-pwa-shell-v19';
 
 const SHELL_FILES = [
   './',
@@ -13,6 +13,7 @@ const SHELL_FILES = [
   './src/outbox.js',
   './src/org-parser.js',
   './src/agenda.js',
+  './src/local-variables.js',
   './src/outline-view-model.js',
   './src/org-timestamp.js',
   './src/inline-markup.js',

@@ -15,8 +15,13 @@ import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
 import { searchDocument } from './src/search.js';
 import { applyStartupVisibility, cycleFoldLevel } from './src/fold-state.js';
 import { parseStartupConfig } from './src/startup-config.js';
+import {
+  parseLocalVariables,
+  getAgendaStartOnWeekday,
+  getCycleOpenArchivedTrees,
+} from './src/local-variables.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
-import { buildAgendaItems, dayView, weekView, monthView } from './src/agenda.js';
+import { buildAgendaItems, dayView, weekView, monthView, startOfDay, endOfDay, startOfWeek } from './src/agenda.js';
 import {
   renameHeading,
   parseTagsInput,
@@ -102,7 +107,7 @@ const settingsPanel = document.getElementById('settingsPanel');
 const searchBtn = document.getElementById('searchBtn');
 const searchPanel = document.getElementById('searchPanel');
 
-let state = { documentId: null, doc: null, startupConfig: null, storageKind: null };
+let state = { documentId: null, doc: null, startupConfig: null, storageKind: null, localVariables: null };
 // File menu: whether the panel is open, and if so, which action's
 // backend-choice sub-step is showing (null = the main New/Open/Save/Save
 // As list; otherwise 'open' | 'new' | 'saveas').
@@ -246,9 +251,12 @@ function commitTextModeIfActive() {
   const newText = textarea ? textarea.value : serializeOrg(state.doc);
   const newDoc = parseOrg(newText);
   const startupConfig = parseStartupConfig(newDoc);
-  applyStartupVisibility(newDoc, startupConfig);
+  const localVariables = parseLocalVariables(newText);
+  const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
+  applyStartupVisibility(newDoc, startupConfig, archiveVisibility);
   state.doc = newDoc;
   state.startupConfig = startupConfig;
+  state.localVariables = localVariables;
   currentView = 'org';
   return true;
 }
@@ -477,7 +485,7 @@ function attachSlideLeftToFold(el, heading) {
     const dy = e.clientY - startY;
     const isLeftSwipe = dx < -SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.5;
     if (!isLeftSwipe) return;
-    const archiveVisibility = state.startupConfig ? state.startupConfig.archiveVisibility : 'archived';
+    const archiveVisibility = getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived';
     cycleFoldLevel(heading, { archiveVisibility });
     render();
   };
@@ -1346,8 +1354,10 @@ function updateFilenameDisplay() {
  *  backend it came from. */
 async function afterDocumentLoaded(documentId, doc, storageKind) {
   const startupConfig = parseStartupConfig(doc);
-  applyStartupVisibility(doc, startupConfig);
-  state = { documentId, doc, startupConfig, storageKind };
+  const localVariables = parseLocalVariables(serializeOrg(doc));
+  const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
+  applyStartupVisibility(doc, startupConfig, archiveVisibility);
+  state = { documentId, doc, startupConfig, storageKind, localVariables };
   isDirty = false; // freshly loaded — matches whatever was just read, nothing unsaved yet
   currentView = 'org';
   agendaAnchorDate = new Date();
@@ -1635,7 +1645,9 @@ async function saveCurrent() {
       });
       state.doc = reopened.doc;
       state.startupConfig = parseStartupConfig(state.doc);
-      applyStartupVisibility(state.doc, state.startupConfig);
+      state.localVariables = parseLocalVariables(serializeOrg(state.doc));
+      const archiveVisibility = getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived';
+      applyStartupVisibility(state.doc, state.startupConfig, archiveVisibility);
       render();
     }
     isDirty = false;
@@ -1973,16 +1985,18 @@ function renderViewMenu() {
 
 function agendaRangeFor(viewType, anchorDate) {
   if (viewType === 'day') {
-    return { start: new Date(anchorDate), end: new Date(anchorDate) };
+    return { start: startOfDay(anchorDate), end: endOfDay(anchorDate) };
   }
   if (viewType === 'week') {
-    const end = new Date(anchorDate);
+    const startOnWeekday = getAgendaStartOnWeekday(state.localVariables);
+    const start = startOfWeek(anchorDate, startOnWeekday);
+    const end = new Date(start);
     end.setDate(end.getDate() + 6);
-    return { start: new Date(anchorDate), end };
+    return { start, end: endOfDay(end) };
   }
   // month
   const start = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
-  const end = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0);
+  const end = endOfDay(new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0));
   return { start, end };
 }
 
@@ -2088,7 +2102,7 @@ function renderAgendaView() {
     agendaViewType === 'day'
       ? dayView(items, agendaAnchorDate)
       : agendaViewType === 'week'
-        ? weekView(items, agendaAnchorDate)
+        ? weekView(items, agendaAnchorDate, getAgendaStartOnWeekday(state.localVariables))
         : monthView(items, agendaAnchorDate);
 
   if (grouped.length === 0) {
