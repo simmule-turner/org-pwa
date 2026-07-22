@@ -1,6 +1,6 @@
 import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src/document-store.js';
 import { hasPendingChange } from './src/outbox.js';
-import { parseOrg } from './src/org-parser.js';
+import { parseOrg, serializeOrg } from './src/org-parser.js';
 import { setProperty, deleteProperty, findAncestorPath } from './src/archive-model.js';
 import { resolveLinkTarget } from './src/link-resolve.js';
 import { parseInline } from './src/inline-markup.js';
@@ -17,6 +17,7 @@ import {
   deleteTableColumn,
   insertTable,
   editParagraphText,
+  insertParagraphAfter,
   deleteListItem,
   deleteTable,
   deleteParagraph,
@@ -45,6 +46,7 @@ const openBtn = document.getElementById('openBtn');
 const newBtn = document.getElementById('newBtn');
 const saveBtn = document.getElementById('saveBtn');
 const addBtn = document.getElementById('addBtn');
+const textModeBtn = document.getElementById('textModeBtn');
 
 let state = { documentId: null, doc: null, startupConfig: null };
 // Which heading (by object reference) currently has its title in edit
@@ -71,6 +73,11 @@ let editingHeadingText = null;
 // one open at a time). Not the same as editingHeading/editingListItem:
 // tapping the revealed pencil icon is what transitions into those.
 let actionMenuFor = null;
+// Whether the whole-document plain-text editor (the "Text" toggle) is
+// currently showing instead of the outline. While true, render() shows
+// only a textarea; none of the outline's tap-to-edit/reveal-menu state
+// applies (and gets cleared when entering/leaving this mode).
+let textEditMode = false;
 
 function setStatus(text) {
   statusEl.textContent = text;
@@ -781,6 +788,41 @@ function renderTableRow(row) {
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
   wrap.style.margin = '4px 0';
 
+  // A table has no single "tap the text" affordance the way a paragraph
+  // or list item does — you interact with individual cells, and its
+  // structural controls (+row/+col etc.) are a real toolbar, not a
+  // per-item options menu, so they stay always-visible below the grid.
+  // This label is the tap target for the one thing that *does* belong in
+  // a reveal-on-tap menu: deleting the whole table.
+  const label = document.createElement('div');
+  label.textContent = '\u229e Table';
+  label.style.fontSize = '11px';
+  label.style.color = 'var(--text-muted, #888)';
+  label.style.cursor = 'pointer';
+  label.style.padding = '2px 0 4px';
+  label.onclick = () => {
+    actionMenuFor = actionMenuFor === row.node ? null : row.node;
+    render();
+  };
+  wrap.appendChild(label);
+
+  let menuEl = null;
+  if (actionMenuFor === row.node) {
+    menuEl = renderActionMenu([
+      {
+        icon: '\u2715',
+        label: 'Delete table',
+        onClick: () => {
+          if (!confirmTableDelete(row.node)) return;
+          actionMenuFor = null;
+          deleteTable(row.heading, row.node);
+          commitAndRender();
+        },
+      },
+    ]);
+    menuEl.style.padding = '0 0 8px';
+  }
+
   const tableEl = document.createElement('table');
   tableEl.style.borderCollapse = 'collapse';
   tableEl.style.fontSize = '13px';
@@ -878,17 +920,9 @@ function renderTableRow(row) {
       commitAndRender();
     })
   );
-  const deleteTableBtn = smallButton('\u2715 table', 'Delete table', () => {
-    if (!confirmTableDelete(row.node)) return;
-    deleteTable(row.heading, row.node);
-    commitAndRender();
-  });
-  deleteTableBtn.style.marginLeft = 'auto';
-  deleteTableBtn.style.color = '#c0392b';
-  controls.appendChild(deleteTableBtn);
   wrap.appendChild(controls);
 
-  return wrap;
+  return withActionMenu(wrap, menuEl);
 }
 
 function renderParagraphRow(row) {
@@ -922,57 +956,69 @@ function renderParagraphRow(row) {
       commitAndRender();
     });
     wrap.appendChild(textarea);
-  } else {
-    const row2 = document.createElement('div');
-    row2.style.display = 'flex';
-    row2.style.alignItems = 'flex-start';
-    row2.style.gap = '4px';
-
-    const p = document.createElement('div');
-    p.style.cursor = 'text';
-    p.style.whiteSpace = 'pre-wrap';
-    p.style.fontSize = '14px';
-    p.style.flex = '1 1 auto';
-    p.style.minWidth = '0';
-    const hasContent = row.node.lines.some((l) => l.trim() !== '');
-    if (hasContent) {
-      row.node.inlineLines.forEach((lineNodes, i) => {
-        if (i > 0) p.appendChild(document.createElement('br'));
-        renderInlineNodes(lineNodes, p);
-      });
-    } else {
-      p.textContent = '(empty note \u2014 tap to edit)';
-      p.style.opacity = '0.5';
-    }
-    p.onclick = (e) => {
-      if (e.target.closest('[data-inline-link]')) return;
-      editingParagraph = { heading: row.heading, paragraph: row.node };
-      render();
-    };
-    row2.appendChild(p);
-
-    const deleteParaBtn = document.createElement('button');
-    deleteParaBtn.style.flexShrink = '0';
-    deleteParaBtn.style.border = 'none';
-    deleteParaBtn.style.background = 'none';
-    deleteParaBtn.style.opacity = '0.4';
-    deleteParaBtn.style.fontSize = '13px';
-    deleteParaBtn.style.padding = '2px 8px';
-    deleteParaBtn.style.color = '#c0392b';
-    deleteParaBtn.textContent = '\u2715';
-    deleteParaBtn.setAttribute('aria-label', 'Delete note');
-    deleteParaBtn.onclick = (e) => {
-      e.stopPropagation();
-      if (!confirmParagraphDelete(row.node)) return;
-      deleteParagraph(row.heading, row.node);
-      commitAndRender();
-    };
-    row2.appendChild(deleteParaBtn);
-
-    wrap.appendChild(row2);
+    return wrap;
   }
 
-  return wrap;
+  const p = document.createElement('div');
+  p.style.cursor = 'text';
+  p.style.whiteSpace = 'pre-wrap';
+  p.style.fontSize = '14px';
+  const hasContent = row.node.lines.some((l) => l.trim() !== '');
+  if (hasContent) {
+    row.node.inlineLines.forEach((lineNodes, i) => {
+      if (i > 0) p.appendChild(document.createElement('br'));
+      renderInlineNodes(lineNodes, p);
+    });
+  } else {
+    p.textContent = '(empty note \u2014 tap to edit)';
+    p.style.opacity = '0.5';
+  }
+  // Tapping the text reveals the contextual menu (edit/add/delete),
+  // matching list items and headings, instead of jumping straight into
+  // editing and showing a standalone always-visible delete button.
+  p.onclick = (e) => {
+    if (e.target.closest('[data-inline-link]')) return;
+    actionMenuFor = actionMenuFor === row.node ? null : row.node;
+    render();
+  };
+  wrap.appendChild(p);
+
+  let menuEl = null;
+  if (actionMenuFor === row.node) {
+    menuEl = renderActionMenu([
+      {
+        icon: '\u270e',
+        label: 'Edit text',
+        onClick: () => {
+          actionMenuFor = null;
+          editingParagraph = { heading: row.heading, paragraph: row.node };
+          render();
+        },
+      },
+      {
+        icon: '+',
+        label: 'Add paragraph below',
+        onClick: () => {
+          actionMenuFor = null;
+          const newParagraph = insertParagraphAfter(row.heading, row.node, '');
+          editingParagraph = { heading: row.heading, paragraph: newParagraph };
+          commitAndRender();
+        },
+      },
+      {
+        icon: '\u2715',
+        label: 'Delete note',
+        onClick: () => {
+          if (!confirmParagraphDelete(row.node)) return;
+          actionMenuFor = null;
+          deleteParagraph(row.heading, row.node);
+          commitAndRender();
+        },
+      },
+    ]);
+  }
+
+  return withActionMenu(wrap, menuEl);
 }
 
 function render() {
@@ -984,6 +1030,25 @@ function render() {
     outlineEl.appendChild(empty);
     return;
   }
+
+  if (textEditMode) {
+    outlineEl.innerHTML = '';
+    const textarea = document.createElement('textarea');
+    textarea.id = 'document-text-edit-input';
+    textarea.value = serializeOrg(state.doc);
+    textarea.style.width = '100%';
+    textarea.style.boxSizing = 'border-box';
+    textarea.style.height = 'calc(100vh - 160px)';
+    textarea.style.font = 'ui-monospace, monospace';
+    textarea.style.fontSize = '13px';
+    textarea.style.padding = '10px';
+    textarea.style.border = 'none';
+    textarea.spellcheck = false;
+    outlineEl.appendChild(textarea);
+    requestAnimationFrame(() => textarea.focus());
+    return;
+  }
+
   const rows = flattenVisibleRows(state.doc);
   if (rows.length === 0) {
     outlineEl.innerHTML = '';
@@ -1063,8 +1128,11 @@ openBtn.addEventListener('click', async () => {
     applyStartupVisibility(doc, startupConfig);
     state = { documentId, doc, startupConfig };
     filenameEl.textContent = documentId;
+    textEditMode = false;
+    textModeBtn.textContent = 'Text';
     saveBtn.disabled = false;
     addBtn.disabled = false;
+    textModeBtn.disabled = false;
     setStatus('Opened.');
     render();
   } catch (err) {
@@ -1085,8 +1153,11 @@ newBtn.addEventListener('click', async () => {
     applyStartupVisibility(doc, startupConfig);
     state = { documentId, doc, startupConfig };
     filenameEl.textContent = documentId;
+    textEditMode = false;
+    textModeBtn.textContent = 'Text';
     saveBtn.disabled = false;
     addBtn.disabled = false;
+    textModeBtn.disabled = false;
     render(); // show the empty outline immediately
     // Establish real (empty) content on disk right away, rather than
     // leaving the picked file however the browser happened to create it —
@@ -1103,6 +1174,43 @@ addBtn.addEventListener('click', () => {
   if (!state.doc) return;
   const heading = insertTopLevelHeading(state.doc, {});
   startEditingTitle(heading, true);
+});
+
+textModeBtn.addEventListener('click', () => {
+  if (!state.doc) return;
+
+  if (!textEditMode) {
+    // Entering text mode: nothing should be mid-edit in the outline while
+    // it's not even shown.
+    editingHeading = null;
+    editingIsNew = false;
+    editingCell = null;
+    editingParagraph = null;
+    editingListItem = null;
+    editingHeadingText = null;
+    actionMenuFor = null;
+    textEditMode = true;
+    textModeBtn.textContent = 'Outline';
+    render();
+    return;
+  }
+
+  // Exiting text mode: the textarea's current text is the new source of
+  // truth for the whole document — reparse it fresh, exactly the way
+  // opening a file does, so #+STARTUP/#+TODO changes (and any structural
+  // edits made by hand) actually take effect rather than being merged
+  // against the old in-memory doc.
+  const textarea = document.getElementById('document-text-edit-input');
+  const newText = textarea ? textarea.value : serializeOrg(state.doc);
+  const newDoc = parseOrg(newText);
+  const startupConfig = parseStartupConfig(newDoc);
+  applyStartupVisibility(newDoc, startupConfig);
+
+  state.doc = newDoc;
+  state.startupConfig = startupConfig;
+  textEditMode = false;
+  textModeBtn.textContent = 'Text';
+  commitAndRender();
 });
 
 saveBtn.addEventListener('click', async () => {
