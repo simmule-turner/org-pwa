@@ -602,6 +602,8 @@ const REPEATER_MARK_OPTIONS = [
 
 function textInputStyle(el) {
   el.style.width = '100%';
+  el.style.maxWidth = '100%';
+  el.style.minWidth = '0';
   el.style.minHeight = '40px';
   el.style.fontSize = '16px';
   el.style.padding = '6px 8px';
@@ -815,14 +817,8 @@ function renderActionMenu(actions) {
     const btn = document.createElement('button');
     btn.textContent = action.icon;
     btn.setAttribute('aria-label', action.label);
-    btn.style.fontSize = '20px';
-    btn.style.lineHeight = '1';
-    btn.style.width = '44px';
-    btn.style.height = '44px';
-    btn.style.padding = '0';
-    btn.style.border = '0.5px solid #8884';
-    btn.style.borderRadius = '10px';
-    btn.style.background = 'none';
+    btn.className = 'icon-btn';
+    btn.style.fontSize = '20px'; // slightly smaller than the top-bar icons (22px) -- these appear several to a row and can crowd more easily
     btn.onclick = action.onClick;
     menu.appendChild(btn);
   }
@@ -2340,12 +2336,12 @@ function renderFileMenu() {
     })
   );
 
-  btnRow.appendChild(
-    menuButton('Cancel', () => {
-      fileMenuStep = null;
-      renderFileMenu();
-    })
-  );
+  const cancelBtn = menuButton('\u2715', () => {
+    fileMenuStep = null;
+    renderFileMenu();
+  });
+  cancelBtn.setAttribute('aria-label', 'Cancel');
+  btnRow.appendChild(cancelBtn);
 
   fileMenuPanel.appendChild(btnRow);
 }
@@ -2772,6 +2768,71 @@ async function renderSettingsView() {
   const fontFamily = await getFontFamily(kv);
   const fontSize = await getFontSize(kv);
 
+  const themeTitle = document.createElement('div');
+  themeTitle.className = 'panel-section-title';
+  themeTitle.textContent = 'Appearance';
+  container.appendChild(themeTitle);
+
+  const themeRow = document.createElement('div');
+  themeRow.className = 'panel-row';
+  for (const opt of ['system', 'light', 'dark']) {
+    const btn = menuButton(opt[0].toUpperCase() + opt.slice(1), async () => {
+      await setTheme(kv, opt);
+      applyTheme(opt);
+      renderSettingsView();
+    });
+    btn.style.flex = '1'; // equal width per button, instead of sizing to each option's own text length
+    if (opt === theme) btn.style.fontWeight = '700';
+    themeRow.appendChild(btn);
+  }
+  container.appendChild(themeRow);
+
+  const fontTitle = document.createElement('div');
+  fontTitle.className = 'panel-section-title';
+  fontTitle.textContent = 'Font';
+  container.appendChild(fontTitle);
+
+  const fontRow = document.createElement('div');
+  fontRow.className = 'panel-row';
+  for (const opt of ['system', 'serif', 'monospace']) {
+    const btn = menuButton(opt[0].toUpperCase() + opt.slice(1), async () => {
+      await setFontFamily(kv, opt);
+      applyFontFamily(opt);
+      renderSettingsView();
+    });
+    btn.style.flex = '1'; // equal width per button, same reasoning as the theme row above
+    if (opt === fontFamily) btn.style.fontWeight = '700';
+    fontRow.appendChild(btn);
+  }
+  container.appendChild(fontRow);
+
+  const sizeRow = document.createElement('div');
+  sizeRow.className = 'panel-row';
+  sizeRow.style.alignItems = 'center'; // overrides .panel-row's flex-start default -- correct for label-above-field pairs elsewhere, wrong here (no label, just a number between two taller buttons)
+  sizeRow.appendChild(
+    menuButton('\u2212', async () => {
+      const next = Math.max(12, fontSize - 1);
+      await setFontSize(kv, next);
+      applyFontSize(next);
+      renderSettingsView();
+    })
+  );
+  const sizeLabel = document.createElement('span');
+  sizeLabel.textContent = fontSize + 'px';
+  sizeLabel.style.fontSize = '14px';
+  sizeLabel.style.minWidth = '40px';
+  sizeLabel.style.textAlign = 'center';
+  sizeRow.appendChild(sizeLabel);
+  sizeRow.appendChild(
+    menuButton('+', async () => {
+      const next = Math.min(28, fontSize + 1);
+      await setFontSize(kv, next);
+      applyFontSize(next);
+      renderSettingsView();
+    })
+  );
+  container.appendChild(sizeRow);
+
   const ghTitle = document.createElement('div');
   ghTitle.className = 'panel-section-title';
   ghTitle.textContent = 'GitHub';
@@ -2852,66 +2913,6 @@ async function renderSettingsView() {
   );
   container.appendChild(webdavSaveRow);
 
-  const themeTitle = document.createElement('div');
-  themeTitle.className = 'panel-section-title';
-  themeTitle.textContent = 'Appearance';
-  container.appendChild(themeTitle);
-
-  const themeRow = document.createElement('div');
-  themeRow.className = 'panel-row';
-  for (const opt of ['system', 'light', 'dark']) {
-    const btn = menuButton(opt[0].toUpperCase() + opt.slice(1), async () => {
-      await setTheme(kv, opt);
-      applyTheme(opt);
-      renderSettingsView();
-    });
-    if (opt === theme) btn.style.fontWeight = '700';
-    themeRow.appendChild(btn);
-  }
-  container.appendChild(themeRow);
-
-  const fontTitle = document.createElement('div');
-  fontTitle.className = 'panel-section-title';
-  fontTitle.textContent = 'Font';
-  container.appendChild(fontTitle);
-
-  const fontRow = document.createElement('div');
-  fontRow.className = 'panel-row';
-  for (const opt of ['system', 'serif', 'monospace']) {
-    const btn = menuButton(opt[0].toUpperCase() + opt.slice(1), async () => {
-      await setFontFamily(kv, opt);
-      applyFontFamily(opt);
-      renderSettingsView();
-    });
-    if (opt === fontFamily) btn.style.fontWeight = '700';
-    fontRow.appendChild(btn);
-  }
-  container.appendChild(fontRow);
-
-  const sizeRow = document.createElement('div');
-  sizeRow.className = 'panel-row';
-  sizeRow.appendChild(
-    menuButton('\u2212', async () => {
-      const next = Math.max(12, fontSize - 1);
-      await setFontSize(kv, next);
-      applyFontSize(next);
-      renderSettingsView();
-    })
-  );
-  const sizeLabel = document.createElement('span');
-  sizeLabel.textContent = fontSize + 'px';
-  sizeLabel.style.fontSize = '13px';
-  sizeLabel.style.padding = '0 6px';
-  sizeRow.appendChild(sizeLabel);
-  sizeRow.appendChild(
-    menuButton('+', async () => {
-      const next = Math.min(28, fontSize + 1);
-      await setFontSize(kv, next);
-      applyFontSize(next);
-      renderSettingsView();
-    })
-  );
-  container.appendChild(sizeRow);
 }
 
 settingsBtn.addEventListener('click', async () => {
