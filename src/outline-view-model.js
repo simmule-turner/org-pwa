@@ -14,7 +14,8 @@
 
 import { resolveTodoSequence, cycleTodoState } from './todo-cycle.js';
 
-const CHECKBOX_CYCLE = [' ', '-', 'X'];
+const CHECKBOX_CYCLE_SIMPLE = [' ', 'X'];
+const CHECKBOX_CYCLE_WITH_CHILDREN = [' ', '-', 'X'];
 
 /**
  * Flattens `doc` into a linear row array respecting two independent
@@ -145,8 +146,10 @@ function cycleItemCheckbox(heading, item) {
   if (item.checkbox === null) {
     throw new Error('cycleItemCheckbox: item has no checkbox to cycle');
   }
-  const idx = CHECKBOX_CYCLE.indexOf(item.checkbox);
-  const next = CHECKBOX_CYCLE[((idx === -1 ? 0 : idx) + 1) % CHECKBOX_CYCLE.length];
+  const hasNestedItems = (item.children || []).some((list) => list.items.length > 0);
+  const cycle = hasNestedItems ? CHECKBOX_CYCLE_WITH_CHILDREN : CHECKBOX_CYCLE_SIMPLE;
+  const idx = cycle.indexOf(item.checkbox);
+  const next = cycle[((idx === -1 ? 0 : idx) + 1) % cycle.length];
   item.checkbox = next;
 
   if (typeof item.lineIndex === 'number' && heading.bodyLines[item.lineIndex] !== undefined) {
