@@ -17,7 +17,7 @@
  */
 
 import { findContainer } from './archive-model.js';
-import { parseOrgTimestamp } from './org-timestamp.js';
+import { parseOrgTimestamp, findTimestamps } from './org-timestamp.js';
 
 /** Builds a heading object with every field the AST shape requires — the
  *  single source of truth for "what does an empty heading look like",
@@ -112,6 +112,38 @@ export function setPlanningFromText(heading, text) {
     else deadline = value;
   }
   heading.planning = { scheduled, deadline, closed: heading.planning.closed };
+}
+
+/**
+ * The first *active* plain timestamp found in `heading`'s title, if
+ * any — i.e. a timestamp written directly in the title line rather than
+ * on a SCHEDULED:/DEADLINE: planning line (the standard org convention
+ * for a recurring date like a birthday: "Jennifer <1989-11-02 Thu
+ * +1y>"). Returns the raw timestamp string (e.g. "<1989-11-02 Thu
+ * +1y>"), or null if the title has none. Used to pre-fill the plain-
+ * timestamp field in the structured timestamp editor from whatever's
+ * already there.
+ */
+export function getPlainTimestampInTitle(heading) {
+  const found = findTimestamps(heading.title).find((t) => t.active);
+  return found ? found.raw : null;
+}
+
+/**
+ * Sets (or clears, if `raw` is null) the plain timestamp embedded in a
+ * heading's title. If an active timestamp already exists in the title,
+ * it's replaced in place (preserving whatever text surrounds it);
+ * otherwise the new one is appended to the end of the title. Passing
+ * null removes the first active timestamp found, if any, leaving the
+ * rest of the title untouched.
+ */
+export function setPlainTimestampInTitle(heading, raw) {
+  const existing = findTimestamps(heading.title).find((t) => t.active);
+  if (existing) {
+    heading.title = heading.title.replace(existing.raw, raw || '').replace(/\s+/g, ' ').trim();
+  } else if (raw) {
+    heading.title = (heading.title + ' ' + raw).trim();
+  }
 }
 
 /** Appends a new top-level (level 1) heading at the end of the document. */
