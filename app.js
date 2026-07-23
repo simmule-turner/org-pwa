@@ -1385,13 +1385,22 @@ function renderTableRow(row) {
         editingCell.colIndex === colIndex;
 
       if (isEditing) {
-        const input = document.createElement('input');
+        const input = document.createElement('textarea');
         input.id = 'cell-edit-input';
         input.value = cellText;
+        input.rows = 1;
         input.style.font = 'inherit';
-        input.style.width = Math.max(50, cellText.length * 8) + 'px';
+        input.style.width = '100%';
+        input.style.minWidth = Math.min(50, cellText.length * 8 || 50) + 'px';
+        input.style.maxWidth = '220px';
+        input.style.boxSizing = 'border-box';
         input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') input.blur();
+          if (e.key === 'Enter') {
+            // A literal newline would break the table's one-row-per-line
+            // syntax on save — Enter commits instead, same as before.
+            e.preventDefault();
+            input.blur();
+          }
           if (e.key === 'Escape') {
             e.preventDefault();
             editingCell = null;
@@ -1401,9 +1410,10 @@ function renderTableRow(row) {
         input.addEventListener('blur', () => {
           const { heading, table, rowIndex: ri, colIndex: ci } = editingCell;
           editingCell = null;
-          setTableCell(heading, table, ri, ci, input.value);
+          setTableCell(heading, table, ri, ci, input.value.replace(/\n/g, ' '));
           commitAndRender();
         });
+        autoGrowTextarea(input);
         tdEl.appendChild(input);
       } else {
         tdEl.textContent = cellText || '\u00a0';
@@ -1416,7 +1426,12 @@ function renderTableRow(row) {
     });
     tableEl.appendChild(trEl);
   });
-  wrap.appendChild(tableEl);
+  const tableScroll = document.createElement('div');
+  tableScroll.style.overflowX = 'auto';
+  tableScroll.style.maxWidth = '100%';
+  tableScroll.style.webkitOverflowScrolling = 'touch';
+  tableScroll.appendChild(tableEl);
+  wrap.appendChild(tableScroll);
 
   const controls = document.createElement('div');
   controls.style.display = 'flex';
@@ -1521,6 +1536,7 @@ function renderParagraphRow(row) {
   const p = document.createElement('div');
   p.style.cursor = 'text';
   p.style.whiteSpace = 'pre-wrap';
+  p.style.overflowWrap = 'anywhere';
   p.style.fontSize = '14px';
   const hasContent = row.node.lines.some((l) => l.trim() !== '');
   if (hasContent) {
