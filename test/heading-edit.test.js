@@ -6,6 +6,8 @@ import {
   renameHeading,
   parseTagsInput,
   setHeadingTags,
+  getPlanningText,
+  setPlanningFromText,
   insertTopLevelHeading,
   insertChildHeading,
   removeHeading,
@@ -126,4 +128,56 @@ test('tags set via setHeadingTags round-trip correctly through serialize -> repa
   const doc2 = parseOrg(serializeOrg(doc));
   assert.deepEqual(doc2.children[0].tags, ['urgent', 'home01']);
   assert.equal(doc2.children[0].title, 'Heading'); // title itself is untouched by the tag change
+});
+
+// ---- planning text editing (minimal SCHEDULED/DEADLINE editor) ----------
+
+test('getPlanningText shows SCHEDULED and DEADLINE as separate lines', () => {
+  const doc = parseOrg(['* Task', 'SCHEDULED: <2026-01-05 Mon> DEADLINE: <2026-01-10 Sat>'].join('\n'));
+  assert.equal(getPlanningText(doc.children[0]), 'SCHEDULED: <2026-01-05 Mon>\nDEADLINE: <2026-01-10 Sat>');
+});
+
+test('getPlanningText is empty for a heading with neither', () => {
+  const doc = parseOrg('* Task');
+  assert.equal(getPlanningText(doc.children[0]), '');
+});
+
+test('getPlanningText omits CLOSED even if present — not shown by this editor', () => {
+  const doc = parseOrg(['* Task', 'CLOSED: [2026-01-05 Mon] SCHEDULED: <2026-01-01 Thu>'].join('\n'));
+  assert.equal(getPlanningText(doc.children[0]), 'SCHEDULED: <2026-01-01 Thu>');
+});
+
+test('setPlanningFromText sets both and round-trips through serialize -> reparse', () => {
+  const doc = parseOrg('* Task');
+  setPlanningFromText(doc.children[0], 'SCHEDULED: <2026-01-05 Mon>\nDEADLINE: <2026-01-10 Sat>');
+  const doc2 = parseOrg(serializeOrg(doc));
+  assert.equal(doc2.children[0].planning.scheduled, '<2026-01-05 Mon>');
+  assert.equal(doc2.children[0].planning.deadline, '<2026-01-10 Sat>');
+});
+
+test('setPlanningFromText with empty text clears both fields (a full replace)', () => {
+  const doc = parseOrg(['* Task', 'SCHEDULED: <2026-01-05 Mon>'].join('\n'));
+  setPlanningFromText(doc.children[0], '');
+  assert.equal(doc.children[0].planning.scheduled, null);
+});
+
+test('setPlanningFromText never touches CLOSED, even on a full replace', () => {
+  const doc = parseOrg(['* Task', 'CLOSED: [2026-01-05 Mon] SCHEDULED: <2026-01-01 Thu>'].join('\n'));
+  setPlanningFromText(doc.children[0], 'DEADLINE: <2026-02-01 Sun>');
+  assert.equal(doc.children[0].planning.closed, '[2026-01-05 Mon]');
+  assert.equal(doc.children[0].planning.scheduled, null); // omitted from the text -> cleared
+  assert.equal(doc.children[0].planning.deadline, '<2026-02-01 Sun>');
+});
+
+test('setPlanningFromText skips a malformed/unparseable timestamp rather than corrupting planning', () => {
+  const doc = parseOrg('* Task');
+  setPlanningFromText(doc.children[0], 'SCHEDULED: not-a-real-timestamp');
+  assert.equal(doc.children[0].planning.scheduled, null);
+});
+
+test('setPlanningFromText only sets one field when only one line is given', () => {
+  const doc = parseOrg(['* Task', 'SCHEDULED: <2026-01-05 Mon> DEADLINE: <2026-01-10 Sat>'].join('\n'));
+  setPlanningFromText(doc.children[0], 'DEADLINE: <2026-02-01 Sun>');
+  assert.equal(doc.children[0].planning.scheduled, null);
+  assert.equal(doc.children[0].planning.deadline, '<2026-02-01 Sun>');
 });
