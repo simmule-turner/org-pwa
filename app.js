@@ -1711,7 +1711,16 @@ function render() {
         document.getElementById('paragraph-edit-input');
       if (input) {
         input.focus();
-        if (typeof input.select === 'function') input.select();
+        // Cursor at the end, not select-all: selecting the whole value
+        // by default means the very next keystroke silently replaces
+        // everything the user typed before — an easy, real way to lose
+        // a heading or task's text by accident. Positioning at the end
+        // instead lets typing append naturally; tapping anywhere in the
+        // field (or selecting manually) still works exactly as normal.
+        if (typeof input.setSelectionRange === 'function') {
+          const end = input.value.length;
+          input.setSelectionRange(end, end);
+        }
       }
     });
   }
@@ -2755,17 +2764,12 @@ async function renderSettingsView() {
   const repoField = labeledInput('Repo', 'text', config.repo);
   const branchField = labeledInput('Branch', 'text', config.branch);
 
-  const ghRow1 = document.createElement('div');
-  ghRow1.className = 'panel-row';
-  ghRow1.appendChild(tokenField.wrap);
-  container.appendChild(ghRow1);
-
-  const ghRow2 = document.createElement('div');
-  ghRow2.className = 'panel-row';
-  ghRow2.appendChild(ownerField.wrap);
-  ghRow2.appendChild(repoField.wrap);
-  ghRow2.appendChild(branchField.wrap);
-  container.appendChild(ghRow2);
+  for (const field of [tokenField, ownerField, repoField, branchField]) {
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    row.appendChild(field.wrap);
+    container.appendChild(row);
+  }
 
   const ghHint = document.createElement('div');
   ghHint.style.fontSize = '11px';
@@ -2799,16 +2803,12 @@ async function renderSettingsView() {
   const webdavUserField = labeledInput('Username', 'text', webdavConfigStored.username);
   const webdavPassField = labeledInput('Password', 'password', webdavConfigStored.password);
 
-  const webdavRow1 = document.createElement('div');
-  webdavRow1.className = 'panel-row';
-  webdavRow1.appendChild(webdavUrlField.wrap);
-  container.appendChild(webdavRow1);
-
-  const webdavRow2 = document.createElement('div');
-  webdavRow2.className = 'panel-row';
-  webdavRow2.appendChild(webdavUserField.wrap);
-  webdavRow2.appendChild(webdavPassField.wrap);
-  container.appendChild(webdavRow2);
+  for (const field of [webdavUrlField, webdavUserField, webdavPassField]) {
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    row.appendChild(field.wrap);
+    container.appendChild(row);
+  }
 
   const webdavHint = document.createElement('div');
   webdavHint.style.fontSize = '11px';
