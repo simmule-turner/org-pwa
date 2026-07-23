@@ -827,7 +827,7 @@ function renderActionMenu(actions) {
     btn.textContent = action.icon;
     btn.setAttribute('aria-label', action.label);
     btn.className = 'icon-btn';
-    btn.style.fontSize = '20px'; // slightly smaller than the top-bar icons (22px) -- these appear several to a row and can crowd more easily
+    btn.style.fontSize = '22px'; // matches the top-bar icons exactly
     btn.onclick = action.onClick;
     menu.appendChild(btn);
   }
@@ -987,7 +987,7 @@ function renderRow(row, todoSequence) {
             },
           },
           {
-            icon: '\ud83d\udcdd',
+            icon: '\u270f\ufe0f',
             label: 'Edit text',
             onClick: () => {
               actionMenuFor = null;
@@ -996,7 +996,7 @@ function renderRow(row, todoSequence) {
             },
           },
           {
-            icon: '\u229e',
+            icon: '\u25a6',
             label: 'Add table',
             onClick: () => {
               actionMenuFor = null;
@@ -1056,7 +1056,7 @@ function renderRow(row, todoSequence) {
             },
           },
           {
-            icon: '\u25a4',
+            icon: '\u2630',
             label: row.node.propertyOrder.length ? 'Edit properties' : 'Add properties',
             onClick: () => {
               actionMenuFor = null;
@@ -1367,7 +1367,7 @@ function renderTableRow(row) {
   // This label is the tap target for the one thing that *does* belong in
   // a reveal-on-tap menu: deleting the whole table.
   const label = document.createElement('div');
-  label.textContent = '\u229e Table';
+  label.textContent = '\u25a6 Table';
   label.style.fontSize = '11px';
   label.style.color = 'var(--text-muted, #888)';
   label.style.cursor = 'pointer';
@@ -2348,13 +2348,6 @@ function renderFileMenu() {
     })
   );
 
-  const cancelBtn = menuButton('\u2715', () => {
-    fileMenuStep = null;
-    renderFileMenu();
-  });
-  cancelBtn.setAttribute('aria-label', 'Cancel');
-  btnRow.appendChild(cancelBtn);
-
   fileMenuPanel.appendChild(btnRow);
 }
 
@@ -2973,7 +2966,7 @@ const SEARCH_TYPE_ICON = {
   heading: '\u25c9',
   paragraph: '\u00b6',
   'list-item': '\u2022',
-  table: '\u229e',
+  table: '\u25a6',
   block: '\u2318',
 };
 
