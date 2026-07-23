@@ -8,6 +8,8 @@ import {
   setHeadingTags,
   getPlanningText,
   setPlanningFromText,
+  getPlainTimestampInTitle,
+  setPlainTimestampInTitle,
   insertTopLevelHeading,
   insertChildHeading,
   removeHeading,
@@ -180,4 +182,52 @@ test('setPlanningFromText only sets one field when only one line is given', () =
   setPlanningFromText(doc.children[0], 'DEADLINE: <2026-02-01 Sun>');
   assert.equal(doc.children[0].planning.scheduled, null);
   assert.equal(doc.children[0].planning.deadline, '<2026-02-01 Sun>');
+});
+
+// ---- plain timestamp in title (not SCHEDULED/DEADLINE) -------------------
+
+test('getPlainTimestampInTitle finds an existing active timestamp in the title', () => {
+  const doc = parseOrg('**** Jennifer <1989-11-02 Thu +1y>');
+  assert.equal(getPlainTimestampInTitle(doc.children[0]), '<1989-11-02 Thu +1y>');
+});
+
+test('getPlainTimestampInTitle returns null when there is none', () => {
+  const doc = parseOrg('**** Just a heading');
+  assert.equal(getPlainTimestampInTitle(doc.children[0]), null);
+});
+
+test('getPlainTimestampInTitle ignores an inactive timestamp', () => {
+  const doc = parseOrg('**** Logged [2026-01-01 Thu]');
+  assert.equal(getPlainTimestampInTitle(doc.children[0]), null);
+});
+
+test('setPlainTimestampInTitle appends when the title has none yet', () => {
+  const doc = parseOrg('**** Jennifer');
+  setPlainTimestampInTitle(doc.children[0], '<1989-11-02 Thu +1y>');
+  assert.equal(doc.children[0].title, 'Jennifer <1989-11-02 Thu +1y>');
+});
+
+test('setPlainTimestampInTitle replaces an existing one in place, preserving surrounding text', () => {
+  const doc = parseOrg('**** Jennifer <1989-11-02 Thu +1y> and Simmule');
+  setPlainTimestampInTitle(doc.children[0], '<1990-05-01 Tue>');
+  assert.equal(doc.children[0].title, 'Jennifer <1990-05-01 Tue> and Simmule');
+});
+
+test('setPlainTimestampInTitle with null clears an existing timestamp, leaving the rest of the title', () => {
+  const doc = parseOrg('**** Jennifer <1989-11-02 Thu +1y> and Simmule');
+  setPlainTimestampInTitle(doc.children[0], null);
+  assert.equal(doc.children[0].title, 'Jennifer and Simmule');
+});
+
+test('setPlainTimestampInTitle with null on a title with no timestamp is a no-op', () => {
+  const doc = parseOrg('**** Just a heading');
+  setPlainTimestampInTitle(doc.children[0], null);
+  assert.equal(doc.children[0].title, 'Just a heading');
+});
+
+test('round-trips correctly through serialize -> reparse', () => {
+  const doc = parseOrg('**** Jennifer');
+  setPlainTimestampInTitle(doc.children[0], '<1989-11-02 Thu +1y>');
+  const doc2 = parseOrg(serializeOrg(doc));
+  assert.equal(getPlainTimestampInTitle(doc2.children[0]), '<1989-11-02 Thu +1y>');
 });
