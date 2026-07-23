@@ -185,7 +185,7 @@ Scope, stated plainly: this covers the currently open file only. The underlying 
 
 ## Settings
 
-Reached via the ⚙ button.
+Reached via the ⚙ button, which replaces the outline with the settings screen — same as switching to Text or Agenda view, not a popup over the outline. Tap ⚙ again, or any of File/Search/+/View, to leave settings and return to whatever was showing before (there's no separate "Done" button; those are already the way out).
 
 - **GitHub** — personal access token, repo owner, repo name, branch. Use a fine-grained token scoped to just that repo with Contents read/write only, not a broad classic token.
 - **WebDAV** — server URL, username, password (an app-specific password if your server supports one, not your main account password). Most WebDAV servers don't send CORS headers by default; if Open/Save fails with a network error, that's very likely a server-side CORS setting to fix, not a bug in this app.

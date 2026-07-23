@@ -27,6 +27,8 @@ import {
   renameHeading,
   parseTagsInput,
   setHeadingTags,
+  getPlainTimestampInTitle,
+  setPlainTimestampInTitle,
   insertTopLevelHeading,
   insertChildHeading,
   removeHeading,
@@ -106,8 +108,6 @@ const viewMenuPanel = document.getElementById('viewMenuPanel');
 const fileMenuBtn = document.getElementById('fileMenuBtn');
 const fileMenuPanel = document.getElementById('fileMenuPanel');
 const settingsBtn = document.getElementById('settingsBtn');
-const settingsPanel = document.getElementById('settingsPanel');
-const settingsBackdrop = document.getElementById('settingsBackdrop');
 const searchBtn = document.getElementById('searchBtn');
 const searchPanel = document.getElementById('searchPanel');
 
@@ -123,8 +123,20 @@ const searchPanel = document.getElementById('searchPanel');
  * Cheap enough to call after every render/panel-toggle rather than try
  * to guess exactly when the height could have changed.
  */
+// dvh tracks the ACTUAL visible viewport (correctly shrinking when an
+// on-screen keyboard appears); vh stays pinned to the full keyboard-less
+// screen height on most mobile browsers, which is what caused content to
+// overflow past the visible area whenever, e.g., the search input got
+// focused. Used wherever a JS-set inline style needs viewport-height
+// units (CSS text can use the "declare twice, later one wins if
+// understood" fallback trick directly; inline styles set via JS can't,
+// so this checks support once instead).
+const VH_UNIT = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('height', '1dvh') ? 'dvh' : 'vh';
+
 function syncContentOffset() {
-  contentAreaEl.style.marginTop = topBarEl.offsetHeight + 'px';
+  const barHeight = topBarEl.offsetHeight;
+  contentAreaEl.style.marginTop = barHeight + 'px';
+  contentAreaEl.style.height = `calc(100% - ${barHeight}px)`;
 }
 window.addEventListener('resize', syncContentOffset);
 // Reacts to ANY change to topBar's rendered content (a panel opening/
@@ -336,7 +348,7 @@ function renderLinkNode(node) {
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
     a.textContent = label;
-    a.style.color = '#185fa5';
+    a.style.color = 'var(--accent)';
     a.setAttribute(INLINE_LINK_ATTR, '1');
     return a;
   }
@@ -345,7 +357,7 @@ function renderLinkNode(node) {
     const a = document.createElement('a');
     a.href = '#';
     a.textContent = label;
-    a.style.color = '#185fa5';
+    a.style.color = 'var(--accent)';
     a.setAttribute(INLINE_LINK_ATTR, '1');
     a.onclick = (e) => {
       e.preventDefault();
@@ -631,20 +643,35 @@ function buildTimestampFieldGroup(label, currentRaw) {
   wrap.style.padding = '10px';
   wrap.style.marginBottom = '10px';
 
-  const headerRow = document.createElement('label');
+  const headerRow = document.createElement('div');
   headerRow.style.display = 'flex';
   headerRow.style.alignItems = 'center';
+  headerRow.style.justifyContent = 'space-between';
   headerRow.style.gap = '8px';
-  headerRow.style.fontWeight = '600';
-  headerRow.style.fontSize = '14px';
-  headerRow.style.cursor = 'pointer';
+
+  const checkboxLabel = document.createElement('label');
+  checkboxLabel.style.display = 'flex';
+  checkboxLabel.style.alignItems = 'center';
+  checkboxLabel.style.gap = '8px';
+  checkboxLabel.style.fontWeight = '600';
+  checkboxLabel.style.fontSize = '14px';
+  checkboxLabel.style.cursor = 'pointer';
   const enabledCheckbox = document.createElement('input');
   enabledCheckbox.type = 'checkbox';
   enabledCheckbox.checked = !!parsed;
   enabledCheckbox.style.width = '20px';
   enabledCheckbox.style.height = '20px';
-  headerRow.appendChild(enabledCheckbox);
-  headerRow.appendChild(document.createTextNode(label));
+  checkboxLabel.appendChild(enabledCheckbox);
+  checkboxLabel.appendChild(document.createTextNode(label));
+  headerRow.appendChild(checkboxLabel);
+
+  const clearBtn = document.createElement('button');
+  clearBtn.textContent = 'Clear';
+  clearBtn.style.fontSize = '13px';
+  clearBtn.style.padding = '6px 10px';
+  clearBtn.style.flexShrink = '0';
+  headerRow.appendChild(clearBtn);
+
   wrap.appendChild(headerRow);
 
   const fields = document.createElement('div');
@@ -741,6 +768,18 @@ function buildTimestampFieldGroup(label, currentRaw) {
     fields.style.display = enabledCheckbox.checked ? 'block' : 'none';
   });
 
+  clearBtn.onclick = () => {
+    enabledCheckbox.checked = false;
+    fields.style.display = 'none';
+    dateInput.value = '';
+    timeInput.value = '';
+    repeaterMarkSelect.value = '';
+    repeaterAmountInput.value = '';
+    repeaterUnitSelect.value = 'd';
+    delayAmountInput.value = '';
+    delayUnitSelect.value = '';
+  };
+
   function getRawValue() {
     if (!enabledCheckbox.checked || !dateInput.value) return null;
     const [y, m, d] = dateInput.value.split('-').map(Number);
@@ -813,12 +852,17 @@ function confirmParagraphDelete(paragraph) {
   return window.confirm("Delete this note? This can't be undone.");
 }
 
-// Counts every item nested under `item`, at any depth — used to decide
-// whether deleting it needs confirming, and to say how much would go with
-// it. Mirrors headingHasContent's "empty deletes instantly, content
-// prompts" rule rather than confirming on every single-line item deletion,
-// which would add friction to the common case (cleaning up a checkbox
-// list) for no real safety benefit.
+// Counts every item nested under `item`, at any depth — used by
+// confirmListItemDelete to decide whether deleting it needs confirming
+// (nested children present, or the item itself has real content), and
+// to say how much would go with it. A genuinely empty item — no text,
+// no nested children — skips confirmation, same "nothing lost, nothing
+// to ask about" rule as confirmParagraphDelete/confirmTableDelete. This
+// used to skip confirmation for ANY item with no nested children,
+// regardless of the item's own content — meaning a plain, undoable
+// checkbox task like "Buy milk" never got a confirmation at all, since
+// it has no children of its own. That was the actual bug, not a
+// deliberate friction/safety tradeoff.
 function listItemDescendantCount(item) {
   let count = 0;
   for (const nestedList of item.children || []) {
@@ -830,10 +874,14 @@ function listItemDescendantCount(item) {
 
 function confirmListItemDelete(item) {
   const count = listItemDescendantCount(item);
-  if (count === 0) return true;
-  return window.confirm(
-    `Delete this item? It has ${count} nested sub-item${count === 1 ? '' : 's'} that will be deleted too. This can't be undone.`
-  );
+  const hasOwnContent = (item.text && item.text.trim() !== '') || (item.tag && item.tag.trim() !== '');
+  if (count === 0 && !hasOwnContent) return true; // genuinely empty item, nothing lost either way
+  if (count > 0) {
+    return window.confirm(
+      `Delete this item? It has ${count} nested sub-item${count === 1 ? '' : 's'} that will be deleted too. This can't be undone.`
+    );
+  }
+  return window.confirm("Delete this item? This can't be undone.");
 }
 
 function renderRow(row, todoSequence) {
@@ -1055,6 +1103,7 @@ function renderRow(row, todoSequence) {
         setHeadingText(heading, textarea.value);
         commitAndRender();
       });
+      autoGrowTextarea(textarea);
       textEditorEl.appendChild(textarea);
     }
 
@@ -1084,6 +1133,7 @@ function renderRow(row, todoSequence) {
         setPropertiesFromText(heading, textarea.value);
         commitAndRender();
       });
+      autoGrowTextarea(textarea);
       propertiesEditorEl.appendChild(textarea);
     }
 
@@ -1094,14 +1144,19 @@ function renderRow(row, todoSequence) {
 
       const scheduledGroup = buildTimestampFieldGroup('SCHEDULED', row.node.planning.scheduled);
       const deadlineGroup = buildTimestampFieldGroup('DEADLINE', row.node.planning.deadline);
+      const plainGroup = buildTimestampFieldGroup(
+        'Plain timestamp (not scheduled/deadline)',
+        getPlainTimestampInTitle(row.node)
+      );
       planningEditorEl.appendChild(scheduledGroup.container);
       planningEditorEl.appendChild(deadlineGroup.container);
+      planningEditorEl.appendChild(plainGroup.container);
 
       const btnRow = document.createElement('div');
       btnRow.style.display = 'flex';
-      btnRow.style.gap = '8px';
+      btnRow.style.gap = '10px';
       btnRow.appendChild(
-        menuButton('Save', () => {
+        wizardButton('Save', () => {
           const heading = editingPlanning;
           editingPlanning = null;
           heading.planning = {
@@ -1109,11 +1164,12 @@ function renderRow(row, todoSequence) {
             deadline: deadlineGroup.getRawValue(),
             closed: heading.planning.closed,
           };
+          setPlainTimestampInTitle(heading, plainGroup.getRawValue());
           commitAndRender();
         })
       );
       btnRow.appendChild(
-        menuButton('Cancel', () => {
+        wizardButton('Cancel', () => {
           editingPlanning = null;
           render();
         })
@@ -1373,6 +1429,17 @@ function renderTableRow(row) {
     return dr ? dr.cells.length : 1;
   };
 
+  function lastDataRowHasContent() {
+    const dataRows = row.node.rows.filter((r) => r.type === 'row');
+    const last = dataRows[dataRows.length - 1];
+    return last ? last.cells.some((c) => c.trim() !== '') : false;
+  }
+  function lastColumnHasContent() {
+    const dataRows = row.node.rows.filter((r) => r.type === 'row');
+    const lastColIndex = colCount() - 1;
+    return dataRows.some((r) => (r.cells[lastColIndex] || '').trim() !== '');
+  }
+
   controls.appendChild(
     smallButton('+ row', 'Add row', () => {
       insertTableRow(row.heading, row.node, row.node.rows.length - 1);
@@ -1383,6 +1450,9 @@ function renderTableRow(row) {
     smallButton('\u2212 row', 'Delete last row', () => {
       if (dataRowCount() <= 1) {
         setStatus("Can't delete the last row.");
+        return;
+      }
+      if (lastDataRowHasContent() && !window.confirm("Delete the last row? It has data in it. This can't be undone.")) {
         return;
       }
       deleteTableRow(row.heading, row.node, row.node.rows.length - 1);
@@ -1399,6 +1469,9 @@ function renderTableRow(row) {
     smallButton('\u2212 col', 'Delete last column', () => {
       if (colCount() <= 1) {
         setStatus("Can't delete the last column.");
+        return;
+      }
+      if (lastColumnHasContent() && !window.confirm("Delete the last column? It has data in it. This can't be undone.")) {
         return;
       }
       deleteTableColumn(row.heading, row.node, colCount() - 1);
@@ -1440,6 +1513,7 @@ function renderParagraphRow(row) {
       editParagraphText(heading, paragraph, textarea.value);
       commitAndRender();
     });
+    autoGrowTextarea(textarea);
     wrap.appendChild(textarea);
     return wrap;
   }
@@ -1509,6 +1583,8 @@ function renderParagraphRow(row) {
 function render() {
   updateFilenameDisplay();
 
+  if (settingsOpen) return; // renderSettingsView() owns #outline while settings is showing
+
   if (!state.doc) {
     outlineEl.innerHTML = '';
     const empty = document.createElement('div');
@@ -1525,7 +1601,7 @@ function render() {
     textarea.value = serializeOrg(state.doc);
     textarea.style.width = '100%';
     textarea.style.boxSizing = 'border-box';
-    textarea.style.height = 'calc(100vh - 160px)';
+    textarea.style.height = VH_UNIT === 'dvh' ? 'calc(100dvh - 160px)' : 'calc(100vh - 160px)';
     textarea.style.font = 'ui-monospace, monospace';
     textarea.style.fontSize = '13px';
     textarea.style.padding = '10px';
@@ -1649,6 +1725,7 @@ async function afterDocumentLoaded(documentId, doc, storageKind) {
   renderSearchPanel();
   viewMenuOpen = false;
   renderViewMenu();
+  settingsOpen = false;
   closeFileMenu();
   render();
 }
@@ -2075,11 +2152,52 @@ async function saveAsImport() {
 
 // ---- File menu UI -------------------------------------------------------
 
+/**
+ * Makes a textarea grow to fit its content instead of scrolling
+ * internally — appropriate for a focused edit (a heading's text, its
+ * properties, a single paragraph), where the amount of content is
+ * modest and scrolling inside a small box just to see what you're
+ * editing is more friction than it's worth. Deliberately NOT used for
+ * the whole-document plain-text editor (View → Text), which stays
+ * bounded with its own internal scroll — that one really can hold an
+ * entire file's worth of text, where growing the whole page to fit it
+ * would defeat the fixed-app-shell layout instead of serving it.
+ */
+function autoGrowTextarea(textarea) {
+  textarea.style.resize = 'none';
+  textarea.style.overflow = 'hidden';
+  const resize = () => {
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+  };
+  textarea.addEventListener('input', resize);
+  // Called once immediately, after the caller has set the textarea's
+  // initial value — sizes it correctly from the start rather than only
+  // growing in response to the user's own typing.
+  requestAnimationFrame(resize);
+}
+
 function menuButton(label, onClick, disabled) {
   const btn = document.createElement('button');
   btn.textContent = label;
   btn.disabled = !!disabled;
   btn.onclick = onClick;
+  return btn;
+}
+
+/** Same idea as menuButton, but with explicit comfortable sizing
+ *  (matching the .panel button convention) for use outside a
+ *  .panel-classed container — e.g. the timestamp wizard's Save/Cancel,
+ *  which otherwise fell back to bare, unstyled, visually cramped
+ *  buttons since nothing in their ancestor chain provided sizing. */
+function wizardButton(label, onClick) {
+  const btn = document.createElement('button');
+  btn.textContent = label;
+  btn.onclick = onClick;
+  btn.style.flex = '1';
+  btn.style.fontSize = '15px';
+  btn.style.padding = '10px 14px';
+  btn.style.minHeight = '44px';
   return btn;
 }
 
@@ -2189,7 +2307,7 @@ fileMenuBtn.addEventListener('click', () => {
   fileMenuStep = null;
   if (fileMenuOpen && settingsOpen) {
     settingsOpen = false;
-    renderSettingsPanel();
+    render(); // restores the normal outline content in place of settings
   }
   if (fileMenuOpen && searchOpen) {
     searchOpen = false;
@@ -2204,6 +2322,7 @@ fileMenuBtn.addEventListener('click', () => {
 
 addBtn.addEventListener('click', () => {
   if (!state.doc) return;
+  settingsOpen = false;
   const heading = insertTopLevelHeading(state.doc, {});
   startEditingTitle(heading, true);
 });
@@ -2492,7 +2611,7 @@ viewMenuBtn.addEventListener('click', () => {
   }
   if (viewMenuOpen && settingsOpen) {
     settingsOpen = false;
-    renderSettingsPanel();
+    render(); // restores the normal outline content in place of settings
   }
   if (viewMenuOpen && searchOpen) {
     searchOpen = false;
@@ -2519,8 +2638,22 @@ function labeledInput(labelText, type, value) {
 function applyTheme(theme) {
   if (theme === 'light' || theme === 'dark') {
     document.documentElement.setAttribute('data-theme', theme);
+    // Keep native form-control rendering (unstyled <input>s, date/time
+    // pickers, etc.) in sync with the EXPLICIT choice. Without this,
+    // color-scheme stays at its static 'light dark' declaration, which
+    // means the browser picks native widget colors from the OS's own
+    // dark/light preference — independent of what theme the user
+    // actually picked in this app. If those disagree (OS in dark mode,
+    // user explicitly chose Light here), an unstyled input gets a
+    // browser-native DARK background while this app's CSS forces
+    // light-theme (dark) text onto it: dark text on a dark background,
+    // unreadable. This was the actual cause of "editing a link in light
+    // mode, can't see the content" — the input containing the text being
+    // edited, not the link's own rendered color.
+    document.documentElement.style.colorScheme = theme;
   } else {
     document.documentElement.removeAttribute('data-theme'); // 'system' — let prefers-color-scheme decide
+    document.documentElement.style.colorScheme = 'light dark';
   }
 }
 
@@ -2541,15 +2674,12 @@ function applyFontSize(size) {
   document.documentElement.style.setProperty('--app-font-size', size + 'px');
 }
 
-async function renderSettingsPanel() {
-  settingsPanel.innerHTML = '';
-  if (!settingsOpen) {
-    settingsBackdrop.classList.remove('open');
-    document.body.style.overflow = ''; // release the scroll lock
-    return;
-  }
-  settingsBackdrop.classList.add('open');
-  document.body.style.overflow = 'hidden'; // lock background scroll while the modal is open — only the modal's own content scrolls
+async function renderSettingsView() {
+  outlineEl.innerHTML = '';
+  const container = document.createElement('div');
+  container.className = 'panel';
+  container.style.minHeight = '100%';
+  outlineEl.appendChild(container);
 
   const config = await getGithubConfig(kv);
   const webdavConfigStored = await getWebdavConfig(kv);
@@ -2560,7 +2690,7 @@ async function renderSettingsPanel() {
   const ghTitle = document.createElement('div');
   ghTitle.className = 'panel-section-title';
   ghTitle.textContent = 'GitHub';
-  settingsPanel.appendChild(ghTitle);
+  container.appendChild(ghTitle);
 
   const tokenField = labeledInput('Personal access token', 'password', config.token);
   const ownerField = labeledInput('Owner', 'text', config.owner);
@@ -2570,14 +2700,14 @@ async function renderSettingsPanel() {
   const ghRow1 = document.createElement('div');
   ghRow1.className = 'panel-row';
   ghRow1.appendChild(tokenField.wrap);
-  settingsPanel.appendChild(ghRow1);
+  container.appendChild(ghRow1);
 
   const ghRow2 = document.createElement('div');
   ghRow2.className = 'panel-row';
   ghRow2.appendChild(ownerField.wrap);
   ghRow2.appendChild(repoField.wrap);
   ghRow2.appendChild(branchField.wrap);
-  settingsPanel.appendChild(ghRow2);
+  container.appendChild(ghRow2);
 
   const ghHint = document.createElement('div');
   ghHint.style.fontSize = '11px';
@@ -2585,7 +2715,7 @@ async function renderSettingsPanel() {
   ghHint.style.margin = '2px 0 6px';
   ghHint.textContent =
     'Use a fine-grained token scoped to just this repo, with Contents read/write access only.';
-  settingsPanel.appendChild(ghHint);
+  container.appendChild(ghHint);
 
   const ghSaveRow = document.createElement('div');
   ghSaveRow.className = 'panel-row';
@@ -2600,12 +2730,12 @@ async function renderSettingsPanel() {
       setStatus('GitHub settings saved.');
     })
   );
-  settingsPanel.appendChild(ghSaveRow);
+  container.appendChild(ghSaveRow);
 
   const webdavTitle = document.createElement('div');
   webdavTitle.className = 'panel-section-title';
   webdavTitle.textContent = 'WebDAV';
-  settingsPanel.appendChild(webdavTitle);
+  container.appendChild(webdavTitle);
 
   const webdavUrlField = labeledInput('Server URL', 'text', webdavConfigStored.baseUrl);
   const webdavUserField = labeledInput('Username', 'text', webdavConfigStored.username);
@@ -2614,13 +2744,13 @@ async function renderSettingsPanel() {
   const webdavRow1 = document.createElement('div');
   webdavRow1.className = 'panel-row';
   webdavRow1.appendChild(webdavUrlField.wrap);
-  settingsPanel.appendChild(webdavRow1);
+  container.appendChild(webdavRow1);
 
   const webdavRow2 = document.createElement('div');
   webdavRow2.className = 'panel-row';
   webdavRow2.appendChild(webdavUserField.wrap);
   webdavRow2.appendChild(webdavPassField.wrap);
-  settingsPanel.appendChild(webdavRow2);
+  container.appendChild(webdavRow2);
 
   const webdavHint = document.createElement('div');
   webdavHint.style.fontSize = '11px';
@@ -2630,7 +2760,7 @@ async function renderSettingsPanel() {
     'Use an app-specific password if your server supports one, not your main account password. ' +
     'Most WebDAV servers need CORS explicitly enabled to accept requests from this app \u2014 ' +
     'if Open/Save fails with a network error, that\u2019s the first thing to check on the server side.';
-  settingsPanel.appendChild(webdavHint);
+  container.appendChild(webdavHint);
 
   const webdavSaveRow = document.createElement('div');
   webdavSaveRow.className = 'panel-row';
@@ -2644,12 +2774,12 @@ async function renderSettingsPanel() {
       setStatus('WebDAV settings saved.');
     })
   );
-  settingsPanel.appendChild(webdavSaveRow);
+  container.appendChild(webdavSaveRow);
 
   const themeTitle = document.createElement('div');
   themeTitle.className = 'panel-section-title';
   themeTitle.textContent = 'Appearance';
-  settingsPanel.appendChild(themeTitle);
+  container.appendChild(themeTitle);
 
   const themeRow = document.createElement('div');
   themeRow.className = 'panel-row';
@@ -2657,17 +2787,17 @@ async function renderSettingsPanel() {
     const btn = menuButton(opt[0].toUpperCase() + opt.slice(1), async () => {
       await setTheme(kv, opt);
       applyTheme(opt);
-      renderSettingsPanel();
+      renderSettingsView();
     });
     if (opt === theme) btn.style.fontWeight = '700';
     themeRow.appendChild(btn);
   }
-  settingsPanel.appendChild(themeRow);
+  container.appendChild(themeRow);
 
   const fontTitle = document.createElement('div');
   fontTitle.className = 'panel-section-title';
   fontTitle.textContent = 'Font';
-  settingsPanel.appendChild(fontTitle);
+  container.appendChild(fontTitle);
 
   const fontRow = document.createElement('div');
   fontRow.className = 'panel-row';
@@ -2675,12 +2805,12 @@ async function renderSettingsPanel() {
     const btn = menuButton(opt[0].toUpperCase() + opt.slice(1), async () => {
       await setFontFamily(kv, opt);
       applyFontFamily(opt);
-      renderSettingsPanel();
+      renderSettingsView();
     });
     if (opt === fontFamily) btn.style.fontWeight = '700';
     fontRow.appendChild(btn);
   }
-  settingsPanel.appendChild(fontRow);
+  container.appendChild(fontRow);
 
   const sizeRow = document.createElement('div');
   sizeRow.className = 'panel-row';
@@ -2689,7 +2819,7 @@ async function renderSettingsPanel() {
       const next = Math.max(12, fontSize - 1);
       await setFontSize(kv, next);
       applyFontSize(next);
-      renderSettingsPanel();
+      renderSettingsView();
     })
   );
   const sizeLabel = document.createElement('span');
@@ -2702,28 +2832,11 @@ async function renderSettingsPanel() {
       const next = Math.min(28, fontSize + 1);
       await setFontSize(kv, next);
       applyFontSize(next);
-      renderSettingsPanel();
+      renderSettingsView();
     })
   );
-  settingsPanel.appendChild(sizeRow);
-
-  const doneRow = document.createElement('div');
-  doneRow.className = 'panel-row';
-  doneRow.style.marginTop = '14px';
-  doneRow.appendChild(
-    menuButton('Done', () => {
-      settingsOpen = false;
-      renderSettingsPanel();
-    })
-  );
-  settingsPanel.appendChild(doneRow);
+  container.appendChild(sizeRow);
 }
-
-settingsBackdrop.addEventListener('click', (e) => {
-  if (e.target !== settingsBackdrop) return; // only close on the backdrop itself, not clicks inside the panel
-  settingsOpen = false;
-  renderSettingsPanel();
-});
 
 settingsBtn.addEventListener('click', async () => {
   settingsOpen = !settingsOpen;
@@ -2740,7 +2853,11 @@ settingsBtn.addEventListener('click', async () => {
     viewMenuOpen = false;
     renderViewMenu();
   }
-  await renderSettingsPanel();
+  if (settingsOpen) {
+    await renderSettingsView();
+  } else {
+    render(); // restores whatever currentView was showing before settings opened
+  }
 });
 
 // ---- Search UI -----------------------------------------------------------
@@ -2792,7 +2909,7 @@ function renderSearchPanel() {
   const resultsEl = document.createElement('div');
   resultsEl.id = 'search-results';
   resultsEl.style.marginTop = '6px';
-  resultsEl.style.maxHeight = '50vh';
+  resultsEl.style.maxHeight = `50${VH_UNIT}`;
   resultsEl.style.overflowY = 'auto';
   searchPanel.appendChild(resultsEl);
 
@@ -2872,7 +2989,7 @@ searchBtn.addEventListener('click', () => {
   }
   if (searchOpen && settingsOpen) {
     settingsOpen = false;
-    renderSettingsPanel();
+    render(); // restores the normal outline content in place of settings
   }
   if (searchOpen && viewMenuOpen) {
     viewMenuOpen = false;

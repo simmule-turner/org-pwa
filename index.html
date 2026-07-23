@@ -15,6 +15,10 @@
     --surface: #8881;
     --muted: #8888;
     --accent: #185fa5;
+    --todo-bg: #f0997b55;
+    --todo-fg: #99341d;
+    --done-bg: #97c45955;
+    --done-fg: #27500a;
     --app-font-family: system-ui, sans-serif;
     --app-font-size: 16px;
   }
@@ -26,6 +30,10 @@
     --surface: #ffffff14;
     --muted: #9aa0a6;
     --accent: #6fb2ff;
+    --todo-bg: #ff8f5c40;
+    --todo-fg: #ffb28c;
+    --done-bg: #6fcf5740;
+    --done-fg: #a3e693;
   }
   html[data-theme="light"] {
     --bg: #ffffff;
@@ -35,9 +43,32 @@
     --surface: #00000009;
     --muted: #666666;
     --accent: #185fa5;
+    --todo-bg: #f0997b55;
+    --todo-fg: #99341d;
+    --done-bg: #97c45955;
+    --done-fg: #27500a;
+  }
+  /* Following System theme (no explicit data-theme) with an OS-level
+     dark preference — the badge colors need the same dark-appropriate
+     values as html[data-theme="dark"] above, since :root's own defaults
+     are light-appropriate and don't auto-adjust for hardcoded hex colors
+     the way "Canvas"/"CanvasText" do. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+      --todo-bg: #ff8f5c40;
+      --todo-fg: #ffb28c;
+      --done-bg: #6fcf5740;
+      --done-fg: #a3e693;
+    }
   }
   * { box-sizing: border-box; }
-  html, body { overflow-x: hidden; width: 100%; }
+  html, body {
+    overflow: hidden; /* the page itself never scrolls or resizes — only #contentArea does, as its own designated scroll pane */
+    overflow-x: hidden;
+    width: 100%;
+    height: 100vh; /* fallback for browsers without dvh support */
+    height: 100dvh; /* the ACTUAL visible viewport height, correctly accounting for an on-screen keyboard or browser chrome — unlike vh, which mobile browsers keep pinned to the full keyboard-less screen height even while the keyboard is showing. That mismatch was the actual cause of "search changes the viewport size": vh-based max-heights kept computing against a screen that was momentarily larger than what was actually visible, so content overflowed past the visible bottom edge the moment the keyboard opened. */
+  }
   body {
     font-family: var(--app-font-family);
     font-size: var(--app-font-size);
@@ -58,14 +89,21 @@
      very short viewport (e.g. landscape phone) with a long open panel —
      ordinarily the panel's own content (like search results) scrolls
      internally well before this would ever kick in. Settings is
-     deliberately NOT part of this bar — it's a true modal instead (see
-     #settingsBackdrop below). Since #topBar is now out of normal
-     document flow, #contentArea's top margin is kept in sync with its
-     actual rendered height in app.js (syncContentOffset). */
+     deliberately NOT part of this bar — it renders directly into
+     #outline instead (same content area Text/Agenda view already use),
+     completely replacing whatever was showing rather than overlaying it
+     with a backdrop. That's a deliberate fix, not just a style choice: a
+     backdrop-based modal left background elements still tab-focusable
+     behind it, so focus could leak out of the "modal" into the outline,
+     which then auto-scrolled into view — replacing the content outright
+     means there's nothing else on the page to focus or scroll into.
+     Since #topBar is now out of normal document flow, #contentArea's top
+     margin is kept in sync with its actual rendered height in app.js
+     (syncContentOffset). */
   #topBar {
     position: fixed; top: 0; left: 50%; transform: translateX(-50%);
     width: 100%; max-width: 480px; z-index: 5; background: var(--bg);
-    max-height: 92vh; overflow-y: auto;
+    max-height: 92vh; max-height: 92dvh; overflow-y: auto;
   }
   header { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); flex-wrap: nowrap; width: 100%; }
   #filename { flex: 1 1 auto; min-width: 0; font-size: 12px; opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -77,7 +115,7 @@
     display: flex; align-items: center; justify-content: center; padding: 0;
     border-radius: 10px;
   }
-  #contentArea { width: 100%; }
+  #contentArea { width: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   #status { font-size: 11px; opacity: 0.6; padding: 4px 12px; }
   .panel { border-bottom: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 13px; width: 100%; box-sizing: border-box; }
   /* Item 1.5: panel buttons (File/View menu options, Settings controls)
@@ -91,33 +129,18 @@
   }
   .panel-field { flex: 1 1 120px; min-width: 100px; }
   .panel-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; margin: 10px 0 4px; }
-  /* Item 6: Settings as a true modal — the backdrop covers the viewport
-     and captures all interaction; the body behind it doesn't scroll
-     (toggled in app.js) while only the modal's own content area does. */
-  #settingsBackdrop {
-    display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); z-index: 20;
-    align-items: flex-end; justify-content: center;
-  }
-  #settingsBackdrop.open { display: flex; }
-  #settingsPanel.modal {
-    width: 100%; max-width: 480px; max-height: 80vh; overflow-y: auto;
-    border-radius: 14px 14px 0 0; border-bottom: none;
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.25);
-    background: var(--bg); /* opaque — was inheriting .panel's near-transparent tint, which made the text behind show through */
-  }
   .row { display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-bottom: 1px solid var(--border); font-family: var(--app-font-family); font-size: var(--app-font-size); }
   .fold-btn { width: 28px; height: 28px; font-size: 20px; line-height: 1; border: none; background: none; color: var(--fg); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .todo-badge { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-right: 6px; cursor: pointer; flex-shrink: 0; }
-  .todo-badge.todo { background: #f0997b55; color: #99341d; }
-  .todo-badge.done { background: #97c45955; color: #27500a; }
+  .todo-badge.todo { background: var(--todo-bg); color: var(--todo-fg); }
+  .todo-badge.done { background: var(--done-bg); color: var(--done-fg); }
   .tag { font-size: 10px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border-strong); margin-left: 4px; opacity: 0.75; flex-shrink: 0; }
   .checkbox-row { padding-left: 32px; cursor: pointer; }
   .title-input { font: inherit; border: 1px solid #5a5; border-radius: 4px; padding: 1px 4px; flex: 1; min-width: 60px; background: var(--bg); color: var(--fg); }
   .heading-title { cursor: text; flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
   .empty-state { padding: 40px 20px; text-align: center; opacity: 0.6; font-size: 14px; }
   button { background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 6px; }
-  input, textarea { color: var(--fg); }
-  textarea { background: var(--bg); }
+  input, textarea { color: var(--fg); background: var(--bg); }
 </style>
 </head>
 <body>
@@ -133,9 +156,6 @@
     <div id="fileMenuPanel" class="panel" style="display: none;"></div>
     <div id="searchPanel" class="panel" style="display: none;"></div>
     <div id="viewMenuPanel" class="panel" style="display: none;"></div>
-  </div>
-  <div id="settingsBackdrop">
-    <div id="settingsPanel" class="panel modal"></div>
   </div>
   <div id="contentArea">
     <div id="status"></div>
