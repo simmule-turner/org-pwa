@@ -6,6 +6,7 @@ import {
   flattenVisibleRows,
   toggleFold,
   cycleHeadingTodo,
+  toggleHeadingTodo,
   cycleItemCheckbox,
 } from '../src/outline-view-model.js';
 
@@ -240,4 +241,49 @@ test('cycleItemCheckbox throws on a list item with no checkbox', () => {
   const item = doc.children[0].body[0].items[0];
   assert.equal(item.checkbox, null);
   assert.throws(() => cycleItemCheckbox(doc.children[0], item));
+});
+
+// ---- toggleHeadingTodo (Mark as TODO action) -----------------------------
+
+test('toggleHeadingTodo on a heading with no TODO state sets it to the sequence\'s first keyword', () => {
+  const doc = sampleDoc();
+  const heading = doc.children[0];
+  const globalDefault = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
+  heading.todo = null;
+  assert.equal(toggleHeadingTodo(doc, heading, globalDefault), 'TODO');
+});
+
+test('toggleHeadingTodo on a heading already in TODO state clears it directly to null', () => {
+  const doc = sampleDoc();
+  const heading = doc.children[0];
+  const globalDefault = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
+  heading.todo = 'TODO';
+  assert.equal(toggleHeadingTodo(doc, heading, globalDefault), null);
+});
+
+test('toggleHeadingTodo on a heading in DONE state ALSO clears it directly to null -- not one more cycle step forward', () => {
+  const doc = sampleDoc();
+  const heading = doc.children[0];
+  const globalDefault = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
+  heading.todo = 'DONE';
+  assert.equal(toggleHeadingTodo(doc, heading, globalDefault), null);
+});
+
+test('toggleHeadingTodo on a custom keyword mid-sequence (e.g. WAIT) also clears directly to null', () => {
+  const doc = parseOrg(['#+TODO: TODO WAIT | DONE', '* Something', 'body'].join('\n'));
+  const heading = doc.children[0];
+  const globalDefault = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
+  heading.todo = 'WAIT';
+  assert.equal(toggleHeadingTodo(doc, heading, globalDefault), null);
+});
+
+test('toggleHeadingTodo is a true two-state toggle when called repeatedly, not a multi-step cycle', () => {
+  const doc = sampleDoc();
+  const heading = doc.children[0];
+  const globalDefault = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
+  heading.todo = null;
+  assert.equal(toggleHeadingTodo(doc, heading, globalDefault), 'TODO');
+  assert.equal(toggleHeadingTodo(doc, heading, globalDefault), null);
+  assert.equal(toggleHeadingTodo(doc, heading, globalDefault), 'TODO');
+  assert.equal(toggleHeadingTodo(doc, heading, globalDefault), null);
 });
