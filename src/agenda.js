@@ -15,6 +15,7 @@
  */
 
 import { isArchived } from './archive-model.js';
+import { isCommentedHeading } from './comment-model.js';
 import { parseOrgTimestamp, findTimestamps, dateKey, isSameDay } from './org-timestamp.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -176,6 +177,13 @@ function walkHeadings(doc, visit) {
  *
  * Options:
  *   includeArchived (default false) — include archived subtrees/items
+ *   includeCommented (default false) — include "commented" headings —
+ *     ones whose title itself starts with "# " (or is just "#"), real
+ *     org's own definition of a comment line applied to a heading title
+ *     (see comment-model.js). Mirrors includeArchived exactly, matching
+ *     real org's own default of skipping both commented and archived
+ *     trees in agenda views (org-agenda-skip-comment-trees and
+ *     org-agenda-skip-archived-trees, both t by default).
  *   todoFilter(keyword) -> boolean — keep only headings whose todo passes
  *   tagFilter(tags) -> boolean — keep only headings whose tags pass
  *   rangeStart, rangeEnd (both optional, both required together) — when
@@ -207,6 +215,7 @@ function walkHeadings(doc, visit) {
 function buildAgendaItems(docs, opts = {}) {
   const {
     includeArchived = false,
+    includeCommented = false,
     todoFilter = null,
     tagFilter = null,
     rangeStart = null,
@@ -268,6 +277,7 @@ function buildAgendaItems(docs, opts = {}) {
   for (const { documentId, doc } of docs) {
     walkHeadings(doc, (heading) => {
       if (!includeArchived && isArchived(heading)) return;
+      if (!includeCommented && isCommentedHeading(heading)) return;
       if (todoFilter && !todoFilter(heading.todo)) return;
       if (tagFilter && !tagFilter(heading.tags)) return;
 

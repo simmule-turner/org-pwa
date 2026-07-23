@@ -74,3 +74,20 @@ export function getAgendaStartOnWeekday(vars) {
 export function getCycleOpenArchivedTrees(vars) {
   return parseLispBoolean((vars || {})['org-cycle-open-archived-trees'], false);
 }
+
+/** org-agenda-skip-comment-trees: real org's default is t — a
+ *  "commented" heading (one whose title starts with "# ", see
+ *  comment-model.js — real org's own comment-line syntax applied to a
+ *  heading title) is skipped in agenda views. Set to nil to include
+ *  commented headings in the agenda after all. */
+export function getAgendaSkipCommentTrees(vars) {
+  return parseLispBoolean((vars || {})['org-agenda-skip-comment-trees'], true);
+}
+
+/** org-agenda-skip-archived-trees: real org's default is t — an
+ *  archived heading (tagged :ARCHIVE:, see archive-model.js) is skipped
+ *  in agenda views. Set to nil to include archived headings in the
+ *  agenda after all. */
+export function getAgendaSkipArchivedTrees(vars) {
+  return parseLispBoolean((vars || {})['org-agenda-skip-archived-trees'], true);
+}
