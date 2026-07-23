@@ -141,6 +141,17 @@
   .empty-state { padding: 40px 20px; text-align: center; opacity: 0.6; font-size: 14px; }
   button { background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 6px; }
   input, textarea { color: var(--fg); background: var(--bg); }
+  /* Hard floor, not a suggestion: any focused input/textarea/select
+     under 16px triggers iOS Safari's automatic zoom-on-focus, which
+     visually "grows" the page and can leave it zoomed in — appearing to
+     require horizontal scrolling — even after the field loses focus,
+     since iOS doesn't reliably auto-revert. This overrides any smaller
+     inline font-size a specific input/textarea/select might otherwise
+     set (deliberately, via !important) — a single rule here is far more
+     reliable than keeping every individual JS-set font-size at or above
+     16px by memory across every input in the app, which is exactly how
+     the search input's 14px got through uncaught before. */
+  input, textarea, select { font-size: 16px !important; }
 </style>
 </head>
 <body>

@@ -594,7 +594,7 @@ const REPEATER_MARK_OPTIONS = [
 function textInputStyle(el) {
   el.style.width = '100%';
   el.style.minHeight = '40px';
-  el.style.fontSize = '15px';
+  el.style.fontSize = '16px';
   el.style.padding = '6px 8px';
   el.style.boxSizing = 'border-box';
   el.style.border = '1px solid var(--border-strong)';
@@ -2902,7 +2902,7 @@ function renderSearchPanel() {
   input.style.width = '100%';
   input.style.boxSizing = 'border-box';
   input.style.font = 'inherit';
-  input.style.fontSize = '14px';
+  input.style.fontSize = '16px';
   input.style.padding = '6px 8px';
   input.style.border = '1px solid var(--border-strong)';
   input.style.borderRadius = '4px';
