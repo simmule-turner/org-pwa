@@ -2096,6 +2096,14 @@ function renderAgendaView() {
     todoFilter: (todo) => !todoSequence.doneKeywords.includes(todo),
     rangeStart: start,
     rangeEnd: end,
+    // Carry-forward: an incomplete SCHEDULED/DEADLINE keeps appearing on
+    // every day from its date through today, matching real org-mode's
+    // actual behavior (a plain title timestamp never does this, by
+    // design — see agenda.js). `today` is the real current date, not
+    // agendaAnchorDate, which is just whatever date the user is
+    // currently navigating to look at.
+    isDone: (todo) => todoSequence.doneKeywords.includes(todo),
+    today: new Date(),
   });
 
   const grouped =
