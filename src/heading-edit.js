@@ -17,6 +17,7 @@
  */
 
 import { findContainer } from './archive-model.js';
+import { parseOrgTimestamp } from './org-timestamp.js';
 
 /** Builds a heading object with every field the AST shape requires — the
  *  single source of truth for "what does an empty heading look like",
@@ -70,6 +71,47 @@ export function setHeadingTags(heading, tags) {
   const cleaned = tags.map((t) => String(t).trim().replace(/:/g, '')).filter(Boolean);
   heading.tags = cleaned;
   return cleaned;
+}
+
+/** `heading`'s SCHEDULED/DEADLINE as editable lines, one per line
+ *  (omitting CLOSED — that's auto-managed by marking a task done, not
+ *  something this simple editor exposes for hand-editing). A minimal
+ *  timestamp editor, not the fuller SCHEDULED/DEADLINE CRUD (repeaters,
+ *  a date picker, etc.) that's still to come — this covers "add/edit/
+ *  clear a plain SCHEDULED or DEADLINE value" only. */
+export function getPlanningText(heading) {
+  const lines = [];
+  if (heading.planning.scheduled) lines.push(`SCHEDULED: ${heading.planning.scheduled}`);
+  if (heading.planning.deadline) lines.push(`DEADLINE: ${heading.planning.deadline}`);
+  return lines.join('\n');
+}
+
+/**
+ * Replaces `heading`'s SCHEDULED/DEADLINE from `text` (the same format
+ * getPlanningText produces: "SCHEDULED: <...>" / "DEADLINE: <...>", one
+ * per line). A full replace for those two fields specifically — a line
+ * omitted from the text clears that field — but `closed` is always left
+ * untouched, since this editor never shows it and shouldn't silently
+ * wipe it. Each value is validated with parseOrgTimestamp before being
+ * accepted; a malformed value (or an unrecognized line) is just skipped
+ * rather than corrupting heading.planning with something the agenda
+ * engine couldn't parse back out.
+ */
+export function setPlanningFromText(heading, text) {
+  let scheduled = null;
+  let deadline = null;
+  const lineRe = /^(SCHEDULED|DEADLINE)\s*:\s*(.+)$/i;
+  for (const rawLine of String(text).split('\n')) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const m = lineRe.exec(line);
+    if (!m) continue;
+    const value = m[2].trim();
+    if (!parseOrgTimestamp(value)) continue; // skip anything that wouldn't parse back out cleanly
+    if (m[1].toUpperCase() === 'SCHEDULED') scheduled = value;
+    else deadline = value;
+  }
+  heading.planning = { scheduled, deadline, closed: heading.planning.closed };
 }
 
 /** Appends a new top-level (level 1) heading at the end of the document. */
