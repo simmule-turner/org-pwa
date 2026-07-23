@@ -136,6 +136,24 @@ function cycleHeadingTodo(doc, heading, globalDefault, opts) {
 }
 
 /**
+ * Toggles a heading's TODO state on/off directly, rather than advancing
+ * one step through the full sequence: null -> the sequence's first
+ * keyword (same starting point cycling would land on), but any existing
+ * state (TODO, DONE, a custom keyword — doesn't matter which) clears
+ * straight back to null in one step. This is deliberately NOT the same
+ * as calling cycleHeadingTodo repeatedly until it wraps back to null —
+ * the "Mark as TODO" action button is meant to work as an on/off toggle,
+ * not force stepping through every state in between.
+ */
+function toggleHeadingTodo(doc, heading, globalDefault) {
+  if (heading.todo === null) {
+    return cycleHeadingTodo(doc, heading, globalDefault);
+  }
+  heading.todo = null;
+  return null;
+}
+
+/**
  * Tap-a-checkbox: cycles a list item's checkbox state AND patches the
  * owning heading's raw `bodyLines` so the change actually survives
  * serialization — mutating `item.checkbox` alone would be invisible to
@@ -166,5 +184,6 @@ export {
   flattenVisibleRows,
   toggleFold,
   cycleHeadingTodo,
+  toggleHeadingTodo,
   cycleItemCheckbox,
 };
