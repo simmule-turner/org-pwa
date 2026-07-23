@@ -492,3 +492,29 @@ test('carryForwardOccurrences: a future item returns just its own day, nothing b
   assert.equal(days[0].getDate(), 1);
   assert.equal(days[0].getMonth(), 7);
 });
+
+// ---- commented headings excluded from agenda by default -----------------
+
+test('THE EXACT REPORTED BUG: a heading whose title starts with "#" is excluded from the agenda by default', () => {
+  const doc = parseOrg(['** # fix documentation for ignore #, archive.', 'DEADLINE: <2025-06-21 Sat>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
+  assert.deepEqual(items, []);
+});
+
+test('a commented heading is included when includeCommented is explicitly true', () => {
+  const doc = parseOrg(['** # fix documentation for ignore #, archive.', 'DEADLINE: <2025-06-21 Sat>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], { includeCommented: true });
+  assert.equal(items.length, 1);
+});
+
+test('a normal (non-commented) heading is unaffected by the commented-heading filter', () => {
+  const doc = parseOrg(['** Something normal', 'SCHEDULED: <2026-01-05 Mon>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
+  assert.equal(items.length, 1);
+});
+
+test('a commented heading with a plain title timestamp is also excluded (not just SCHEDULED/DEADLINE)', () => {
+  const doc = parseOrg('** # Someone <2026-01-05 Mon>');
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
+  assert.deepEqual(items, []);
+});

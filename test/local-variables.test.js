@@ -6,6 +6,8 @@ import {
   parseLispNumber,
   getAgendaStartOnWeekday,
   getCycleOpenArchivedTrees,
+  getAgendaSkipCommentTrees,
+  getAgendaSkipArchivedTrees,
 } from '../src/local-variables.js';
 
 // ---- parseLocalVariables --------------------------------------------------
@@ -112,4 +114,25 @@ test('both getters are safe to call with undefined/null vars (e.g. before any fi
   assert.equal(getAgendaStartOnWeekday(null), 1);
   assert.equal(getCycleOpenArchivedTrees(undefined), false);
   assert.equal(getCycleOpenArchivedTrees(null), false);
+});
+
+test('getAgendaSkipCommentTrees defaults to true (skip), matching real org\'s own default', () => {
+  assert.equal(getAgendaSkipCommentTrees({}), true);
+});
+
+test('getAgendaSkipCommentTrees reads nil as false (include commented headings)', () => {
+  assert.equal(getAgendaSkipCommentTrees({ 'org-agenda-skip-comment-trees': 'nil' }), false);
+});
+
+test('getAgendaSkipArchivedTrees defaults to true (skip), matching real org\'s own default', () => {
+  assert.equal(getAgendaSkipArchivedTrees({}), true);
+});
+
+test('getAgendaSkipArchivedTrees reads nil as false (include archived headings)', () => {
+  assert.equal(getAgendaSkipArchivedTrees({ 'org-agenda-skip-archived-trees': 'nil' }), false);
+});
+
+test('both new getters are safe with undefined/null vars', () => {
+  assert.equal(getAgendaSkipCommentTrees(undefined), true);
+  assert.equal(getAgendaSkipArchivedTrees(undefined), true);
 });
