@@ -193,29 +193,46 @@ test('cycleHeadingTodo uses the resolved sequence (file #+TODO: wins over global
   assert.equal(cycleHeadingTodo(doc, heading, globalDefault), 'WAITING');
 });
 
-test('cycleItemCheckbox cycles the in-memory state', () => {
+test('cycleItemCheckbox cycles a leaf item (no nested sub-items) through just two states', () => {
   const doc = sampleDoc();
   const readingList = doc.children[1];
-  const item = readingList.body[0].items[0];
+  const item = readingList.body[0].items[0]; // "Org manual" -- no nested sub-items
   assert.equal(item.checkbox, ' ');
-  assert.equal(cycleItemCheckbox(readingList, item), '-');
-  assert.equal(cycleItemCheckbox(readingList, item), 'X');
+  assert.equal(cycleItemCheckbox(readingList, item), 'X'); // straight to checked, no partial state
   assert.equal(cycleItemCheckbox(readingList, item), ' ');
+  assert.equal(cycleItemCheckbox(readingList, item), 'X');
+});
+
+test('cycleItemCheckbox cycles an item WITH nested sub-items through all three states', () => {
+  const doc = parseOrg(
+    ['* Notes', '- [ ] Parent task', '  - [ ] Sub-task one', '  - [ ] Sub-task two'].join('\n')
+  );
+  const item = doc.children[0].body[0].items[0]; // "Parent task" -- has nested sub-items
+  assert.equal(item.checkbox, ' ');
+  assert.equal(cycleItemCheckbox(doc.children[0], item), '-');
+  assert.equal(cycleItemCheckbox(doc.children[0], item), 'X');
+  assert.equal(cycleItemCheckbox(doc.children[0], item), ' ');
+});
+
+test('cycleItemCheckbox on a leaf item currently showing "-" (e.g. hand-edited) moves to checked, skipping back to the ambiguous state', () => {
+  const doc = parseOrg(['* Notes', '- [-] A leaf item somehow left partial'].join('\n'));
+  const item = doc.children[0].body[0].items[0];
+  assert.equal(cycleItemCheckbox(doc.children[0], item), 'X');
 });
 
 test('cycleItemCheckbox patches bodyLines so the edit survives serialize -> reparse', () => {
   const doc = sampleDoc();
   const readingList = doc.children[1];
-  const item = readingList.body[0].items[0]; // "Org manual", starts ' '
+  const item = readingList.body[0].items[0]; // "Org manual", starts ' ', a leaf item
 
-  cycleItemCheckbox(readingList, item); // ' ' -> '-'
+  cycleItemCheckbox(readingList, item); // ' ' -> 'X' (2-state cycle, no nested sub-items)
 
   const text2 = serializeOrg(doc);
-  assert.match(text2, /- \[-\] Org manual/);
+  assert.match(text2, /- \[X\] Org manual/);
 
   const doc2 = parseOrg(text2);
   const reparsedItem = doc2.children[1].body[0].items[0];
-  assert.equal(reparsedItem.checkbox, '-');
+  assert.equal(reparsedItem.checkbox, 'X');
 });
 
 test('cycleItemCheckbox throws on a list item with no checkbox', () => {
