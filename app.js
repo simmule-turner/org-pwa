@@ -26,6 +26,8 @@ import {
   renameHeading,
   parseTagsInput,
   setHeadingTags,
+  getPlanningText,
+  setPlanningFromText,
   insertTopLevelHeading,
   insertChildHeading,
   removeHeading,
@@ -104,6 +106,7 @@ const fileMenuBtn = document.getElementById('fileMenuBtn');
 const fileMenuPanel = document.getElementById('fileMenuPanel');
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsPanel = document.getElementById('settingsPanel');
+const settingsBackdrop = document.getElementById('settingsBackdrop');
 const searchBtn = document.getElementById('searchBtn');
 const searchPanel = document.getElementById('searchPanel');
 
@@ -147,6 +150,11 @@ let editingHeadingText = null;
 // editingHeadingText, reused rather than building a separate per-row
 // property UI.
 let editingProperties = null;
+// The single heading whose SCHEDULED/DEADLINE is currently being edited
+// as one text block, or null. Same pattern as editingProperties — a
+// minimal timestamp editor (full CRUD with repeaters, a date picker,
+// etc. is still to come).
+let editingPlanning = null;
 // The single heading or list-item node whose contextual action row is
 // currently revealed (tap-to-reveal, per the interaction redesign — only
 // one open at a time). Not the same as editingHeading/editingListItem:
@@ -537,18 +545,20 @@ function renderActionMenu(actions) {
   const menu = document.createElement('div');
   menu.style.display = 'flex';
   menu.style.flexWrap = 'wrap';
-  menu.style.gap = '6px';
-  menu.style.padding = '6px 8px 8px 40px';
+  menu.style.gap = '8px';
+  menu.style.padding = '8px 8px 10px 40px';
   menu.style.borderBottom = '0.5px solid #8882';
   for (const action of actions) {
     const btn = document.createElement('button');
     btn.textContent = action.icon;
     btn.setAttribute('aria-label', action.label);
-    btn.style.fontSize = '15px';
+    btn.style.fontSize = '20px';
     btn.style.lineHeight = '1';
-    btn.style.padding = '6px 12px';
+    btn.style.width = '44px';
+    btn.style.height = '44px';
+    btn.style.padding = '0';
     btn.style.border = '0.5px solid #8884';
-    btn.style.borderRadius = '6px';
+    btn.style.borderRadius = '10px';
     btn.style.background = 'none';
     btn.onclick = action.onClick;
     menu.appendChild(btn);
@@ -771,6 +781,18 @@ function renderRow(row, todoSequence) {
             },
           },
           {
+            icon: '\ud83d\udcc5',
+            label:
+              row.node.planning.scheduled || row.node.planning.deadline
+                ? 'Edit scheduled/deadline'
+                : 'Add scheduled/deadline',
+            onClick: () => {
+              actionMenuFor = null;
+              editingPlanning = row.node;
+              render();
+            },
+          },
+          {
             icon: '\u2715',
             label: 'Delete heading',
             onClick: () => {
@@ -783,6 +805,7 @@ function renderRow(row, todoSequence) {
               editingListItem = null;
               editingHeadingText = null;
               editingProperties = null;
+              editingPlanning = null;
               removeHeading(state.doc, row.node);
               commitAndRender();
             },
@@ -849,7 +872,36 @@ function renderRow(row, todoSequence) {
       propertiesEditorEl.appendChild(textarea);
     }
 
-    return withActionMenu(el, menuEl, textEditorEl, propertiesEditorEl);
+    let planningEditorEl = null;
+    if (editingPlanning === row.node) {
+      planningEditorEl = document.createElement('div');
+      planningEditorEl.style.padding = '4px 10px 10px 40px';
+      const textarea = document.createElement('textarea');
+      textarea.id = 'planning-edit-input';
+      textarea.value = getPlanningText(row.node);
+      textarea.rows = Math.max(2, textarea.value.split('\n').length);
+      textarea.placeholder = 'SCHEDULED: <YYYY-MM-DD Day>\nDEADLINE: <YYYY-MM-DD Day>';
+      textarea.style.width = '100%';
+      textarea.style.boxSizing = 'border-box';
+      textarea.style.font = 'inherit';
+      textarea.style.fontSize = '14px';
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          editingPlanning = null;
+          render();
+        }
+      });
+      textarea.addEventListener('blur', () => {
+        const heading = editingPlanning;
+        editingPlanning = null;
+        setPlanningFromText(heading, textarea.value);
+        commitAndRender();
+      });
+      planningEditorEl.appendChild(textarea);
+    }
+
+    return withActionMenu(el, menuEl, textEditorEl, propertiesEditorEl, planningEditorEl);
   }
 
   if (row.rowType === 'list-item') {
@@ -1312,7 +1364,15 @@ function render() {
   outlineEl.innerHTML = '';
   outlineEl.appendChild(fragment);
 
-  if (editingHeading || editingCell || editingParagraph || editingListItem || editingHeadingText || editingProperties) {
+  if (
+    editingHeading ||
+    editingCell ||
+    editingParagraph ||
+    editingListItem ||
+    editingHeadingText ||
+    editingProperties ||
+    editingPlanning
+  ) {
     requestAnimationFrame(() => {
       const input =
         document.getElementById('title-edit-input') ||
@@ -1320,6 +1380,7 @@ function render() {
         document.getElementById('listitem-edit-input') ||
         document.getElementById('heading-text-edit-input') ||
         document.getElementById('properties-edit-input') ||
+        document.getElementById('planning-edit-input') ||
         document.getElementById('paragraph-edit-input');
       if (input) {
         input.focus();
@@ -1950,6 +2011,7 @@ function switchToView(view) {
     editingListItem = null;
     editingHeadingText = null;
     editingProperties = null;
+    editingPlanning = null;
     actionMenuFor = null;
   }
 
@@ -2037,46 +2099,61 @@ function renderAgendaView() {
   controls.style.marginBottom = '10px';
   controls.style.flexWrap = 'wrap';
 
+  function agendaControlBtn(label, onClick, isActive, ariaLabel) {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    if (ariaLabel) btn.setAttribute('aria-label', ariaLabel);
+    btn.style.fontSize = '15px';
+    btn.style.padding = '10px 14px';
+    btn.style.minHeight = '44px';
+    btn.style.fontWeight = isActive ? '700' : '400';
+    btn.onclick = onClick;
+    return btn;
+  }
+
   for (const [key, label] of [
     ['day', 'Day'],
     ['week', 'Week'],
     ['month', 'Month'],
   ]) {
-    const btn = document.createElement('button');
-    btn.textContent = label;
-    if (key === agendaViewType) btn.style.fontWeight = '700';
-    btn.onclick = () => {
-      agendaViewType = key;
-      render();
-    };
-    controls.appendChild(btn);
+    controls.appendChild(
+      agendaControlBtn(label, () => {
+        agendaViewType = key;
+        render();
+      }, key === agendaViewType)
+    );
   }
 
-  const prevBtn = document.createElement('button');
-  prevBtn.textContent = '\u2039';
-  prevBtn.setAttribute('aria-label', 'Previous ' + agendaViewType);
-  prevBtn.onclick = () => {
-    agendaAnchorDate = agendaStepAnchor(agendaViewType, agendaAnchorDate, -1);
-    render();
-  };
-  controls.appendChild(prevBtn);
+  controls.appendChild(
+    agendaControlBtn(
+      '\u2039',
+      () => {
+        agendaAnchorDate = agendaStepAnchor(agendaViewType, agendaAnchorDate, -1);
+        render();
+      },
+      false,
+      'Previous ' + agendaViewType
+    )
+  );
 
-  const todayBtn = document.createElement('button');
-  todayBtn.textContent = 'Today';
-  todayBtn.onclick = () => {
-    agendaAnchorDate = new Date();
-    render();
-  };
-  controls.appendChild(todayBtn);
+  controls.appendChild(
+    agendaControlBtn('Today', () => {
+      agendaAnchorDate = new Date();
+      render();
+    })
+  );
 
-  const nextBtn = document.createElement('button');
-  nextBtn.textContent = '\u203a';
-  nextBtn.setAttribute('aria-label', 'Next ' + agendaViewType);
-  nextBtn.onclick = () => {
-    agendaAnchorDate = agendaStepAnchor(agendaViewType, agendaAnchorDate, 1);
-    render();
-  };
-  controls.appendChild(nextBtn);
+  controls.appendChild(
+    agendaControlBtn(
+      '\u203a',
+      () => {
+        agendaAnchorDate = agendaStepAnchor(agendaViewType, agendaAnchorDate, 1);
+        render();
+      },
+      false,
+      'Next ' + agendaViewType
+    )
+  );
   container.appendChild(controls);
 
   const { start, end } = agendaRangeFor(agendaViewType, agendaAnchorDate);
@@ -2248,10 +2325,12 @@ function applyFontSize(size) {
 async function renderSettingsPanel() {
   settingsPanel.innerHTML = '';
   if (!settingsOpen) {
-    settingsPanel.style.display = 'none';
+    settingsBackdrop.classList.remove('open');
+    document.body.style.overflow = ''; // release the scroll lock
     return;
   }
-  settingsPanel.style.display = 'block';
+  settingsBackdrop.classList.add('open');
+  document.body.style.overflow = 'hidden'; // lock background scroll while the modal is open — only the modal's own content scrolls
 
   const config = await getGithubConfig(kv);
   const webdavConfigStored = await getWebdavConfig(kv);
@@ -2408,7 +2487,24 @@ async function renderSettingsPanel() {
     })
   );
   settingsPanel.appendChild(sizeRow);
+
+  const doneRow = document.createElement('div');
+  doneRow.className = 'panel-row';
+  doneRow.style.marginTop = '14px';
+  doneRow.appendChild(
+    menuButton('Done', () => {
+      settingsOpen = false;
+      renderSettingsPanel();
+    })
+  );
+  settingsPanel.appendChild(doneRow);
 }
+
+settingsBackdrop.addEventListener('click', (e) => {
+  if (e.target !== settingsBackdrop) return; // only close on the backdrop itself, not clicks inside the panel
+  settingsOpen = false;
+  renderSettingsPanel();
+});
 
 settingsBtn.addEventListener('click', async () => {
   settingsOpen = !settingsOpen;
