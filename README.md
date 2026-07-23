@@ -54,11 +54,12 @@ The header shows the current filename, which backend it came from, and a **`• 
 
 ## Editing your outline
 
-- **Headings**: tap the title text to reveal a row of actions — edit title, edit the heading's own body text, add a table, add a sub-heading, set a link ID, edit tags, edit properties, delete. Nothing is shown until you tap; this keeps the row itself uncluttered.
+- **Headings**: tap the title text to reveal a row of actions — edit title, edit the heading's own body text, add a table, add a sub-heading, set a link ID, edit tags, edit properties, set SCHEDULED/DEADLINE, delete. Nothing is shown until you tap; this keeps the row itself uncluttered.
 - **TODO state**: tap the TODO badge to cycle through the sequence defined by `#+TODO:` (or `TODO`/`DONE` by default).
 - **Fold/unfold**: tap the chevron to toggle a heading's whole subtree, or swipe left on a heading to cycle through collapsed → children-only → fully expanded → collapsed.
 - **Tags**: the tag action prompts for a space-separated list (`urgent home01`) and replaces the heading's tags outright.
 - **Properties**: the properties action opens the whole `:PROPERTIES:` drawer as one editable block of `key: value` lines — add a line for a new property, remove a line to delete one, edit a value in place. This is a full replace on save, not a merge: a property you delete from the text stays deleted.
+- **SCHEDULED / DEADLINE** (the 📅 action): a structured form, not a raw text box — real date and time pickers, a repeat selector (mark + amount + unit: every N hours/days/weeks/months/years), and an optional "warn ahead by" delay (real org syntax, e.g. `-3d`, for seeing a deadline coming a few days early instead of only on the day it's due). SCHEDULED and DEADLINE are two independent instances of the exact same form — set one, both, or neither, and Cancel discards without touching the heading. This is what actually builds the underlying `SCHEDULED:`/`DEADLINE:` timestamp syntax, so there's no need to know org's raw format to use it correctly.
 - **Reordering and priority**: not directly editable through the outline UI — see [Differences from Emacs org-mode](#differences-from-emacs-org-mode).
 
 ### A heading's "text"
@@ -237,6 +238,7 @@ This is the section to read if you know org-mode well and want to know exactly w
 
 **Agenda**
 - Day/Week/Month views, repeating-timestamp expansion, and completed-item exclusion are all built now (see [Agenda](#agenda)) — this used to be engine-only with no UI at all, and repeaters used to be parsed but never expanded. What's still different from real org: it only ever looks at the currently open file (see "Single document at a time" below); the three repeater marks (`+`, `++`, `.+`) all expand identically here, since this is a read-only display with no notion of "when was this marked done" driving a catch-up/restart calculation; and there's no support for org's diary-sexp entries (`%%(diary-...)`) at all.
+- **The delay/warning-period suffix (`-3d`) is parsed and settable via the SCHEDULED/DEADLINE wizard, and round-trips correctly, but doesn't yet change agenda display.** In real org, `DEADLINE: <2026-01-10 Sat -3d>` makes that deadline start appearing in the agenda from Jan 7th onward, not just from the 10th. That early-warning behavior isn't wired into this app's agenda logic yet — a deadline still only shows starting on its own date (or carried-forward afterward, if overdue and not done — see [Agenda](#agenda)). Stated plainly rather than silently: the field exists and works correctly as data, but nothing reads it yet.
 
 **No capture templates, no babel, no command palette.** These were scoped early on as possible future work and never built.
 
@@ -259,7 +261,7 @@ Restated in one place for scanning:
 - No capture templates
 - No Markdown/HTML/PDF export
 - No archive UI action (tag it manually via plain-text mode)
-- No priority editing UI (tags and properties now have dedicated UI — see above)
+- No priority editing UI (tags, properties, and SCHEDULED/DEADLINE now have dedicated UI — see above)
 - Search is substring-only: no regex, no search-and-replace, no filtered tree view
 - `:COOKIE_DATA:` overrides for checkbox counting scope aren't read — counting is always hierarchical
 - No table formula evaluation
@@ -282,4 +284,4 @@ Engine code (`src/`) and browser-specific adapters (`src-browser/`) are unit tes
 node --test
 ```
 
-370 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion (including week/day boundary alignment and SCHEDULED/DEADLINE carry-forward), Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change.
+393 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion (including week/day boundary alignment and SCHEDULED/DEADLINE carry-forward), timestamp building/delay parsing for the structured SCHEDULED/DEADLINE editor, Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change.

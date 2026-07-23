@@ -21,13 +21,12 @@ import {
   getCycleOpenArchivedTrees,
 } from './src/local-variables.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
-import { buildAgendaItems, dayView, weekView, monthView, startOfDay, endOfDay, startOfWeek } from './src/agenda.js';
+import { buildAgendaItems, dayView, weekView, monthView, startOfDay, endOfDay, startOfWeek, parseRepeater } from './src/agenda.js';
+import { parseOrgTimestamp, formatOrgTimestamp, parseDelay } from './src/org-timestamp.js';
 import {
   renameHeading,
   parseTagsInput,
   setHeadingTags,
-  getPlanningText,
-  setPlanningFromText,
   insertTopLevelHeading,
   insertChildHeading,
   removeHeading,
@@ -99,6 +98,8 @@ function activeDiskAdapter() {
 const outlineEl = document.getElementById('outline');
 const filenameEl = document.getElementById('filename');
 const statusEl = document.getElementById('status');
+const topBarEl = document.getElementById('topBar');
+const contentAreaEl = document.getElementById('contentArea');
 const addBtn = document.getElementById('addBtn');
 const viewMenuBtn = document.getElementById('viewMenuBtn');
 const viewMenuPanel = document.getElementById('viewMenuPanel');
@@ -109,6 +110,29 @@ const settingsPanel = document.getElementById('settingsPanel');
 const settingsBackdrop = document.getElementById('settingsBackdrop');
 const searchBtn = document.getElementById('searchBtn');
 const searchPanel = document.getElementById('searchPanel');
+
+/**
+ * Keeps the content area's top offset in sync with the fixed top bar's
+ * actual rendered height. #topBar is `position: fixed` (real app-chrome
+ * behavior — it must never scroll away, per explicit direction), which
+ * takes it out of document flow entirely; without this, content behind
+ * it would just be hidden underneath. The bar's height genuinely varies
+ * (a File/View/Search panel opening or closing changes it, search
+ * results growing/shrinking changes it), so a static CSS padding value
+ * can't track it — this re-measures and re-applies on every call.
+ * Cheap enough to call after every render/panel-toggle rather than try
+ * to guess exactly when the height could have changed.
+ */
+function syncContentOffset() {
+  contentAreaEl.style.marginTop = topBarEl.offsetHeight + 'px';
+}
+window.addEventListener('resize', syncContentOffset);
+// Reacts to ANY change to topBar's rendered content (a panel opening/
+// closing, its content changing, search results growing/shrinking) —
+// deliberately not a list of "call this after every place that could
+// change topBar," which would be one missed call site away from drifting
+// out of sync again.
+new MutationObserver(syncContentOffset).observe(topBarEl, { childList: true, subtree: true, attributes: true });
 
 let state = { documentId: null, doc: null, startupConfig: null, storageKind: null, localVariables: null };
 // File menu: whether the panel is open, and if so, which action's
@@ -541,6 +565,197 @@ function confirmHeadingDelete(heading) {
 // differentiator between actions — deliberately no color coding (e.g. no
 // "delete is red"), since the request was specifically for icon-based
 // distinction, not color-based.
+const TIME_UNIT_OPTIONS = [
+  ['h', 'Hour(s)'],
+  ['d', 'Day(s)'],
+  ['w', 'Week(s)'],
+  ['m', 'Month(s)'],
+  ['y', 'Year(s)'],
+];
+const REPEATER_MARK_OPTIONS = [
+  ['', 'No repeat'],
+  ['+', 'Every'],
+  ['++', 'Every (catch-up)'],
+  ['.+', 'Every (from completion)'],
+];
+
+function textInputStyle(el) {
+  el.style.width = '100%';
+  el.style.minHeight = '40px';
+  el.style.fontSize = '15px';
+  el.style.padding = '6px 8px';
+  el.style.boxSizing = 'border-box';
+  el.style.border = '1px solid var(--border-strong)';
+  el.style.borderRadius = '6px';
+  el.style.background = 'var(--bg)';
+  el.style.color = 'var(--fg)';
+  el.style.font = 'inherit';
+}
+
+function fieldRow(labelText, inputEl) {
+  const row = document.createElement('div');
+  row.style.marginBottom = '8px';
+  const l = document.createElement('label');
+  l.textContent = labelText;
+  l.style.fontSize = '12px';
+  l.style.opacity = '0.75';
+  l.style.display = 'block';
+  l.style.marginBottom = '2px';
+  row.appendChild(l);
+  row.appendChild(inputEl);
+  return row;
+}
+
+/**
+ * A structured SCHEDULED/DEADLINE editor: real date/time pickers, a
+ * repeater (mark + amount + unit), and a delay/warning period — instead
+ * of a plain text box the user has to know org's raw timestamp syntax
+ * to use correctly. Shared by both SCHEDULED and DEADLINE editing (see
+ * the heading action menu's Timestamp action), since they're
+ * structurally identical fields with only the label differing.
+ *
+ * Returns { container, getRawValue() } — getRawValue() returns null if
+ * the group's checkbox is unchecked or its date is empty (meaning "clear
+ * this timestamp"), otherwise a valid org timestamp string built via
+ * formatOrgTimestamp from whatever the fields currently hold.
+ */
+function buildTimestampFieldGroup(label, currentRaw) {
+  const parsed = currentRaw ? parseOrgTimestamp(currentRaw) : null;
+  const repeaterParsed = parsed && parsed.repeater ? parseRepeater(parsed.repeater) : null;
+  const repeaterMarkParsed = parsed && parsed.repeater ? parsed.repeater.match(/^[.+]+/)[0] : '';
+  const delayParsed = parsed && parsed.delay ? parseDelay(parsed.delay) : null;
+
+  const wrap = document.createElement('div');
+  wrap.style.border = '0.5px solid var(--border-strong)';
+  wrap.style.borderRadius = '8px';
+  wrap.style.padding = '10px';
+  wrap.style.marginBottom = '10px';
+
+  const headerRow = document.createElement('label');
+  headerRow.style.display = 'flex';
+  headerRow.style.alignItems = 'center';
+  headerRow.style.gap = '8px';
+  headerRow.style.fontWeight = '600';
+  headerRow.style.fontSize = '14px';
+  headerRow.style.cursor = 'pointer';
+  const enabledCheckbox = document.createElement('input');
+  enabledCheckbox.type = 'checkbox';
+  enabledCheckbox.checked = !!parsed;
+  enabledCheckbox.style.width = '20px';
+  enabledCheckbox.style.height = '20px';
+  headerRow.appendChild(enabledCheckbox);
+  headerRow.appendChild(document.createTextNode(label));
+  wrap.appendChild(headerRow);
+
+  const fields = document.createElement('div');
+  fields.style.marginTop = '10px';
+  fields.style.display = enabledCheckbox.checked ? 'block' : 'none';
+
+  const dateInput = document.createElement('input');
+  dateInput.type = 'date';
+  textInputStyle(dateInput);
+  if (parsed) {
+    const y = parsed.date.getFullYear();
+    const m = String(parsed.date.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.date.getDate()).padStart(2, '0');
+    dateInput.value = `${y}-${m}-${d}`;
+  }
+  fields.appendChild(fieldRow('Date', dateInput));
+
+  const timeInput = document.createElement('input');
+  timeInput.type = 'time';
+  textInputStyle(timeInput);
+  if (parsed && parsed.hasTime) {
+    const h = String(parsed.date.getHours()).padStart(2, '0');
+    const min = String(parsed.date.getMinutes()).padStart(2, '0');
+    timeInput.value = `${h}:${min}`;
+  }
+  fields.appendChild(fieldRow('Start time (optional)', timeInput));
+
+  const repeaterRow = document.createElement('div');
+  repeaterRow.style.display = 'flex';
+  repeaterRow.style.gap = '6px';
+  const repeaterMarkSelect = document.createElement('select');
+  textInputStyle(repeaterMarkSelect);
+  repeaterMarkSelect.style.flex = '1 1 auto';
+  for (const [val, text] of REPEATER_MARK_OPTIONS) {
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = text;
+    repeaterMarkSelect.appendChild(opt);
+  }
+  repeaterMarkSelect.value = repeaterMarkParsed;
+  const repeaterAmountInput = document.createElement('input');
+  repeaterAmountInput.type = 'number';
+  repeaterAmountInput.min = '1';
+  textInputStyle(repeaterAmountInput);
+  repeaterAmountInput.style.width = '60px';
+  repeaterAmountInput.style.flex = '0 0 60px';
+  if (repeaterParsed) repeaterAmountInput.value = String(repeaterParsed.amount);
+  const repeaterUnitSelect = document.createElement('select');
+  textInputStyle(repeaterUnitSelect);
+  repeaterUnitSelect.style.flex = '1 1 auto';
+  for (const [val, text] of TIME_UNIT_OPTIONS) {
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = text;
+    repeaterUnitSelect.appendChild(opt);
+  }
+  if (repeaterParsed) repeaterUnitSelect.value = repeaterParsed.unit;
+  repeaterRow.appendChild(repeaterMarkSelect);
+  repeaterRow.appendChild(repeaterAmountInput);
+  repeaterRow.appendChild(repeaterUnitSelect);
+  fields.appendChild(fieldRow('Repeat', repeaterRow));
+
+  const delayRow = document.createElement('div');
+  delayRow.style.display = 'flex';
+  delayRow.style.gap = '6px';
+  const delayAmountInput = document.createElement('input');
+  delayAmountInput.type = 'number';
+  delayAmountInput.min = '1';
+  textInputStyle(delayAmountInput);
+  delayAmountInput.style.width = '60px';
+  delayAmountInput.style.flex = '0 0 60px';
+  if (delayParsed) delayAmountInput.value = String(delayParsed.amount);
+  const delayUnitSelect = document.createElement('select');
+  textInputStyle(delayUnitSelect);
+  delayUnitSelect.style.flex = '1 1 auto';
+  const blankUnitOpt = document.createElement('option');
+  blankUnitOpt.value = '';
+  blankUnitOpt.textContent = '\u2014';
+  delayUnitSelect.appendChild(blankUnitOpt);
+  for (const [val, text] of TIME_UNIT_OPTIONS) {
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = text;
+    delayUnitSelect.appendChild(opt);
+  }
+  if (delayParsed) delayUnitSelect.value = delayParsed.unit;
+  delayRow.appendChild(delayAmountInput);
+  delayRow.appendChild(delayUnitSelect);
+  fields.appendChild(fieldRow('Warn ahead by (optional \u2014 e.g. see a deadline coming a few days early)', delayRow));
+
+  wrap.appendChild(fields);
+
+  enabledCheckbox.addEventListener('change', () => {
+    fields.style.display = enabledCheckbox.checked ? 'block' : 'none';
+  });
+
+  function getRawValue() {
+    if (!enabledCheckbox.checked || !dateInput.value) return null;
+    const [y, m, d] = dateInput.value.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    const time = timeInput.value || null;
+    const repeaterMark = repeaterMarkSelect.value || null;
+    const repeaterValue =
+      repeaterMark && repeaterAmountInput.value ? `${repeaterAmountInput.value}${repeaterUnitSelect.value}` : null;
+    const delayValue = delayUnitSelect.value && delayAmountInput.value ? `${delayAmountInput.value}${delayUnitSelect.value}` : null;
+    return formatOrgTimestamp({ date, time, repeaterMark, repeaterValue, delayValue });
+  }
+
+  return { container: wrap, getRawValue };
+}
+
 function renderActionMenu(actions) {
   const menu = document.createElement('div');
   menu.style.display = 'flex';
@@ -875,30 +1090,35 @@ function renderRow(row, todoSequence) {
     let planningEditorEl = null;
     if (editingPlanning === row.node) {
       planningEditorEl = document.createElement('div');
-      planningEditorEl.style.padding = '4px 10px 10px 40px';
-      const textarea = document.createElement('textarea');
-      textarea.id = 'planning-edit-input';
-      textarea.value = getPlanningText(row.node);
-      textarea.rows = Math.max(2, textarea.value.split('\n').length);
-      textarea.placeholder = 'SCHEDULED: <YYYY-MM-DD Day>\nDEADLINE: <YYYY-MM-DD Day>';
-      textarea.style.width = '100%';
-      textarea.style.boxSizing = 'border-box';
-      textarea.style.font = 'inherit';
-      textarea.style.fontSize = '14px';
-      textarea.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-          e.preventDefault();
+      planningEditorEl.style.padding = '8px 10px 10px 40px';
+
+      const scheduledGroup = buildTimestampFieldGroup('SCHEDULED', row.node.planning.scheduled);
+      const deadlineGroup = buildTimestampFieldGroup('DEADLINE', row.node.planning.deadline);
+      planningEditorEl.appendChild(scheduledGroup.container);
+      planningEditorEl.appendChild(deadlineGroup.container);
+
+      const btnRow = document.createElement('div');
+      btnRow.style.display = 'flex';
+      btnRow.style.gap = '8px';
+      btnRow.appendChild(
+        menuButton('Save', () => {
+          const heading = editingPlanning;
+          editingPlanning = null;
+          heading.planning = {
+            scheduled: scheduledGroup.getRawValue(),
+            deadline: deadlineGroup.getRawValue(),
+            closed: heading.planning.closed,
+          };
+          commitAndRender();
+        })
+      );
+      btnRow.appendChild(
+        menuButton('Cancel', () => {
           editingPlanning = null;
           render();
-        }
-      });
-      textarea.addEventListener('blur', () => {
-        const heading = editingPlanning;
-        editingPlanning = null;
-        setPlanningFromText(heading, textarea.value);
-        commitAndRender();
-      });
-      planningEditorEl.appendChild(textarea);
+        })
+      );
+      planningEditorEl.appendChild(btnRow);
     }
 
     return withActionMenu(el, menuEl, textEditorEl, propertiesEditorEl, planningEditorEl);
@@ -1380,7 +1600,6 @@ function render() {
         document.getElementById('listitem-edit-input') ||
         document.getElementById('heading-text-edit-input') ||
         document.getElementById('properties-edit-input') ||
-        document.getElementById('planning-edit-input') ||
         document.getElementById('paragraph-edit-input');
       if (input) {
         input.focus();
@@ -2724,6 +2943,7 @@ async function bootstrap() {
   applyTheme(await getTheme(kv));
   applyFontFamily(await getFontFamily(kv));
   applyFontSize(await getFontSize(kv));
+  syncContentOffset();
   render();
 }
 
