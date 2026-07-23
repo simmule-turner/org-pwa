@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v30';
+const CACHE_NAME = 'org-pwa-shell-v32';
 
 const SHELL_FILES = [
   './',
