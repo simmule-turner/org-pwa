@@ -475,6 +475,13 @@ function renderInlineNodes(nodes, container) {
  *  a body-content search result, to land precisely on the match rather
  *  than just its heading. */
 function navigateToHeading(heading, { revealOwnBody = false, targetNode = heading } = {}) {
+  // Always land in the outline — a caller (search, an internal link,
+  // agenda) shouldn't each need to remember this. Safe to call even when
+  // already in 'org': switchToView no-ops in that case rather than
+  // re-rendering redundantly, and the render() below always runs anyway
+  // to reflect the collapsed-state changes just made.
+  if (currentView !== 'org') switchToView('org');
+
   for (const ancestor of findAncestorPath(state.doc, heading) || []) {
     ancestor.collapsed = false;
   }
@@ -491,11 +498,11 @@ function navigateToHeading(heading, { revealOwnBody = false, targetNode = headin
     const el = outlineEl.children[idx];
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     const original = el.style.backgroundColor;
-    el.style.transition = 'background-color 0.6s';
+    el.style.transition = 'background-color 1.2s';
     el.style.backgroundColor = 'rgba(24,95,165,0.15)';
     setTimeout(() => {
       el.style.backgroundColor = original;
-    }, 1200);
+    }, 2400);
   });
 }
 
@@ -2394,6 +2401,17 @@ function switchToView(view) {
     actionMenuFor = null;
   }
 
+  if (view === 'text' && searchOpen) {
+    // Entering text mode means the document could be reparsed (new
+    // object identities) the next time it's left — any search result
+    // currently held would reference objects that no longer exist by
+    // the time it's tapped. Closing search here removes that
+    // possibility rather than leaving stale results sitting around.
+    searchOpen = false;
+    searchQuery = '';
+    renderSearchPanel();
+  }
+
   currentView = view;
   viewMenuOpen = false;
   renderViewMenu();
@@ -3043,6 +3061,13 @@ function renderSearchResults() {
 
 searchBtn.addEventListener('click', () => {
   searchOpen = !searchOpen;
+  if (searchOpen && currentView === 'text') {
+    // Leaving text mode reparses the document into new objects — do this
+    // now, before any search results are computed, not later when a
+    // result is tapped. Otherwise a result computed against the old
+    // document would already be stale by the time it's tapped.
+    switchToView('org');
+  }
   if (searchOpen && fileMenuOpen) {
     fileMenuOpen = false;
     fileMenuStep = null;
