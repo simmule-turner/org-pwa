@@ -917,20 +917,27 @@ function renderRow(row, todoSequence) {
     let menuEl = null;
 
     if (state.doc && editingHeading === row.node) {
-      const input = document.createElement('input');
+      const input = document.createElement('textarea');
       input.className = 'title-input';
       input.id = 'title-edit-input';
-      input.type = 'text';
+      input.rows = 1;
       input.value = row.node.title;
       input.placeholder = 'Heading title';
+      input.style.overflowWrap = 'anywhere';
       input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Enter') {
+          // A heading title is one logical line — Enter commits rather
+          // than inserting a newline, same reasoning as a table cell.
+          e.preventDefault();
+          input.blur();
+        }
         if (e.key === 'Escape') {
           e.preventDefault();
           cancelTitleEdit();
         }
       });
-      input.addEventListener('blur', () => commitTitleEdit(input.value));
+      input.addEventListener('blur', () => commitTitleEdit(input.value.replace(/\n/g, ' ')));
+      autoGrowTextarea(input);
       el.appendChild(input);
     } else {
       const title = document.createElement('span');
@@ -1211,15 +1218,21 @@ function renderRow(row, todoSequence) {
     let menuEl = null;
 
     if (isEditingText) {
-      const input = document.createElement('input');
+      const input = document.createElement('textarea');
       input.id = 'listitem-edit-input';
-      input.type = 'text';
+      input.rows = 1;
       input.value = row.item.text;
       input.style.flex = '1 1 auto';
       input.style.minWidth = '0';
       input.style.font = 'inherit';
+      input.style.overflowWrap = 'anywhere';
       input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Enter') {
+          // A list item's text is one logical line — Enter commits
+          // rather than inserting a newline, same as a heading title.
+          e.preventDefault();
+          input.blur();
+        }
         if (e.key === 'Escape') {
           e.preventDefault();
           editingListItem = null;
@@ -1229,9 +1242,10 @@ function renderRow(row, todoSequence) {
       input.addEventListener('blur', () => {
         const { heading, item } = editingListItem;
         editingListItem = null;
-        editListItemText(heading, item, input.value);
+        editListItemText(heading, item, input.value.replace(/\n/g, ' '));
         commitAndRender();
       });
+      autoGrowTextarea(input);
       el.appendChild(input);
     } else {
       const text = document.createElement('span');
@@ -2643,10 +2657,29 @@ function labeledInput(labelText, type, value) {
   wrap.className = 'panel-field';
   const labelEl = document.createElement('label');
   labelEl.textContent = labelText;
-  const input = document.createElement('input');
-  input.type = type;
-  input.value = value || '';
   wrap.appendChild(labelEl);
+
+  if (type === 'password') {
+    // Stays a real <input type="password"> — masking requires it, and
+    // there's no password-type textarea. A justified, narrow exception
+    // to the "always wraps, never scrolls horizontally" rule elsewhere:
+    // masked content isn't something wrapping would help read anyway.
+    const input = document.createElement('input');
+    input.type = 'password';
+    input.value = value || '';
+    wrap.appendChild(input);
+    return { wrap, input };
+  }
+
+  const input = document.createElement('textarea');
+  input.rows = 1;
+  input.value = value || '';
+  input.style.overflowWrap = 'anywhere';
+  input.style.font = 'inherit';
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') e.preventDefault(); // one logical line — a repo/branch/URL/username, not multi-line content
+  });
+  autoGrowTextarea(input);
   wrap.appendChild(input);
   return { wrap, input };
 }
@@ -2894,9 +2927,9 @@ function renderSearchPanel() {
   }
   searchPanel.style.display = 'block';
 
-  const input = document.createElement('input');
-  input.type = 'text';
+  const input = document.createElement('textarea');
   input.id = 'search-query-input';
+  input.rows = 1;
   input.placeholder = 'Search this file\u2026';
   input.value = searchQuery;
   input.style.width = '100%';
@@ -2908,11 +2941,13 @@ function renderSearchPanel() {
   input.style.borderRadius = '4px';
   input.style.background = 'var(--bg)';
   input.style.color = 'var(--fg)';
+  input.style.overflowWrap = 'anywhere';
   input.addEventListener('input', () => {
     searchQuery = input.value;
     renderSearchResults();
   });
   input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') e.preventDefault(); // a search query is one line; results already update live
     if (e.key === 'Escape') {
       e.preventDefault();
       searchOpen = false;
@@ -2920,6 +2955,7 @@ function renderSearchPanel() {
       renderSearchPanel();
     }
   });
+  autoGrowTextarea(input);
   searchPanel.appendChild(input);
 
   const resultsEl = document.createElement('div');
