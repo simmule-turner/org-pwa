@@ -618,6 +618,9 @@ function textInputStyle(el) {
 function fieldRow(labelText, inputEl) {
   const row = document.createElement('div');
   row.style.marginBottom = '8px';
+  row.style.boxSizing = 'border-box';
+  row.style.width = '100%';
+  row.style.maxWidth = '100%';
   const l = document.createElement('label');
   l.textContent = labelText;
   l.style.fontSize = '12px';
@@ -653,6 +656,9 @@ function buildTimestampFieldGroup(label, currentRaw) {
   wrap.style.borderRadius = '8px';
   wrap.style.padding = '10px';
   wrap.style.marginBottom = '10px';
+  wrap.style.boxSizing = 'border-box';
+  wrap.style.width = '100%';
+  wrap.style.maxWidth = '100%';
 
   const headerRow = document.createElement('div');
   headerRow.style.display = 'flex';
@@ -688,6 +694,9 @@ function buildTimestampFieldGroup(label, currentRaw) {
   const fields = document.createElement('div');
   fields.style.marginTop = '10px';
   fields.style.display = enabledCheckbox.checked ? 'block' : 'none';
+  fields.style.boxSizing = 'border-box';
+  fields.style.width = '100%';
+  fields.style.maxWidth = '100%';
 
   const dateInput = document.createElement('input');
   dateInput.type = 'date';
@@ -1153,6 +1162,9 @@ function renderRow(row, todoSequence) {
     if (editingPlanning === row.node) {
       planningEditorEl = document.createElement('div');
       planningEditorEl.style.padding = '8px 10px 10px 40px';
+      planningEditorEl.style.boxSizing = 'border-box';
+      planningEditorEl.style.width = '100%';
+      planningEditorEl.style.maxWidth = '100%';
 
       const scheduledGroup = buildTimestampFieldGroup('SCHEDULED', row.node.planning.scheduled);
       const deadlineGroup = buildTimestampFieldGroup('DEADLINE', row.node.planning.deadline);
@@ -2684,7 +2696,7 @@ viewMenuBtn.addEventListener('click', () => {
 
 // ---- Settings UI --------------------------------------------------------
 
-function labeledInput(labelText, type, value) {
+function labeledInput(labelText, type, value, placeholder) {
   const wrap = document.createElement('div');
   wrap.className = 'panel-field';
   const labelEl = document.createElement('label');
@@ -2699,6 +2711,7 @@ function labeledInput(labelText, type, value) {
     const input = document.createElement('input');
     input.type = 'password';
     input.value = value || '';
+    if (placeholder) input.placeholder = placeholder;
     wrap.appendChild(input);
     return { wrap, input };
   }
@@ -2706,6 +2719,7 @@ function labeledInput(labelText, type, value) {
   const input = document.createElement('textarea');
   input.rows = 1;
   input.value = value || '';
+  if (placeholder) input.placeholder = placeholder;
   input.style.overflowWrap = 'anywhere';
   input.style.font = 'inherit';
   input.addEventListener('keydown', (e) => {
@@ -2768,10 +2782,14 @@ async function renderSettingsView() {
   const fontFamily = await getFontFamily(kv);
   const fontSize = await getFontSize(kv);
 
+  const appearanceSection = document.createElement('div');
+  appearanceSection.className = 'settings-section';
+  container.appendChild(appearanceSection);
+
   const themeTitle = document.createElement('div');
   themeTitle.className = 'panel-section-title';
   themeTitle.textContent = 'Appearance';
-  container.appendChild(themeTitle);
+  appearanceSection.appendChild(themeTitle);
 
   const themeRow = document.createElement('div');
   themeRow.className = 'panel-row';
@@ -2785,12 +2803,12 @@ async function renderSettingsView() {
     if (opt === theme) btn.style.fontWeight = '700';
     themeRow.appendChild(btn);
   }
-  container.appendChild(themeRow);
+  appearanceSection.appendChild(themeRow);
 
   const fontTitle = document.createElement('div');
   fontTitle.className = 'panel-section-title';
   fontTitle.textContent = 'Font';
-  container.appendChild(fontTitle);
+  appearanceSection.appendChild(fontTitle);
 
   const fontRow = document.createElement('div');
   fontRow.className = 'panel-row';
@@ -2804,7 +2822,7 @@ async function renderSettingsView() {
     if (opt === fontFamily) btn.style.fontWeight = '700';
     fontRow.appendChild(btn);
   }
-  container.appendChild(fontRow);
+  appearanceSection.appendChild(fontRow);
 
   const sizeRow = document.createElement('div');
   sizeRow.className = 'panel-row';
@@ -2831,23 +2849,27 @@ async function renderSettingsView() {
       renderSettingsView();
     })
   );
-  container.appendChild(sizeRow);
+  appearanceSection.appendChild(sizeRow);
+
+  const githubSection = document.createElement('div');
+  githubSection.className = 'settings-section';
+  container.appendChild(githubSection);
 
   const ghTitle = document.createElement('div');
   ghTitle.className = 'panel-section-title';
   ghTitle.textContent = 'GitHub';
-  container.appendChild(ghTitle);
+  githubSection.appendChild(ghTitle);
 
   const tokenField = labeledInput('Personal access token', 'password', config.token);
-  const ownerField = labeledInput('Owner', 'text', config.owner);
-  const repoField = labeledInput('Repo', 'text', config.repo);
-  const branchField = labeledInput('Branch', 'text', config.branch);
+  const ownerField = labeledInput('Owner', 'text', config.owner, 'e.g. octocat');
+  const repoField = labeledInput('Repo', 'text', config.repo, 'e.g. my-notes');
+  const branchField = labeledInput('Branch', 'text', config.branch, 'main');
 
   for (const field of [tokenField, ownerField, repoField, branchField]) {
     const row = document.createElement('div');
     row.className = 'panel-row';
     row.appendChild(field.wrap);
-    container.appendChild(row);
+    githubSection.appendChild(row);
   }
 
   const ghHint = document.createElement('div');
@@ -2856,7 +2878,7 @@ async function renderSettingsView() {
   ghHint.style.margin = '2px 0 6px';
   ghHint.textContent =
     'Use a fine-grained token scoped to just this repo, with Contents read/write access only.';
-  container.appendChild(ghHint);
+  githubSection.appendChild(ghHint);
 
   const ghSaveRow = document.createElement('div');
   ghSaveRow.className = 'panel-row';
@@ -2871,14 +2893,23 @@ async function renderSettingsView() {
       setStatus('GitHub settings saved.');
     })
   );
-  container.appendChild(ghSaveRow);
+  githubSection.appendChild(ghSaveRow);
+
+  const webdavSection = document.createElement('div');
+  webdavSection.className = 'settings-section';
+  container.appendChild(webdavSection);
 
   const webdavTitle = document.createElement('div');
   webdavTitle.className = 'panel-section-title';
   webdavTitle.textContent = 'WebDAV';
-  container.appendChild(webdavTitle);
+  webdavSection.appendChild(webdavTitle);
 
-  const webdavUrlField = labeledInput('Server URL', 'text', webdavConfigStored.baseUrl);
+  const webdavUrlField = labeledInput(
+    'Server URL',
+    'text',
+    webdavConfigStored.baseUrl,
+    'e.g. https://dav.example.com/remote.php/dav/files/me'
+  );
   const webdavUserField = labeledInput('Username', 'text', webdavConfigStored.username);
   const webdavPassField = labeledInput('Password', 'password', webdavConfigStored.password);
 
@@ -2886,7 +2917,7 @@ async function renderSettingsView() {
     const row = document.createElement('div');
     row.className = 'panel-row';
     row.appendChild(field.wrap);
-    container.appendChild(row);
+    webdavSection.appendChild(row);
   }
 
   const webdavHint = document.createElement('div');
@@ -2897,7 +2928,7 @@ async function renderSettingsView() {
     'Use an app-specific password if your server supports one, not your main account password. ' +
     'Most WebDAV servers need CORS explicitly enabled to accept requests from this app \u2014 ' +
     'if Open/Save fails with a network error, that\u2019s the first thing to check on the server side.';
-  container.appendChild(webdavHint);
+  webdavSection.appendChild(webdavHint);
 
   const webdavSaveRow = document.createElement('div');
   webdavSaveRow.className = 'panel-row';
@@ -2911,8 +2942,7 @@ async function renderSettingsView() {
       setStatus('WebDAV settings saved.');
     })
   );
-  container.appendChild(webdavSaveRow);
-
+  webdavSection.appendChild(webdavSaveRow);
 }
 
 settingsBtn.addEventListener('click', async () => {
