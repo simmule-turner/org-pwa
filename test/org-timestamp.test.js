@@ -1,7 +1,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseOrgTimestamp, findTimestamps, dateKey, isSameDay } from '../src/org-timestamp.js';
+import { parseOrgTimestamp, findTimestamps, formatOrgTimestamp, parseDelay, dateKey, isSameDay } from '../src/org-timestamp.js';
 
 test('parses a basic active date-only timestamp', () => {
   const ts = parseOrgTimestamp('<2026-07-21 Tue>');
@@ -101,4 +101,109 @@ test('findTimestamps is reusable across repeated calls (no stale global regex st
   const second = findTimestamps('* B <2026-06-01 Mon>');
   assert.equal(first[0].date.getMonth(), 0);
   assert.equal(second[0].date.getMonth(), 5);
+});
+
+// ---- delay/warning-period parsing ----------------------------------------
+
+test('parses a delay suffix on its own', () => {
+  const p = parseOrgTimestamp('<2025-01-01 Wed -3d>');
+  assert.equal(p.delay, '-3d');
+  assert.equal(p.repeater, null);
+});
+
+test('parses a repeater AND a delay together, repeater first', () => {
+  const p = parseOrgTimestamp('<2025-01-01 Wed +1m -3d>');
+  assert.equal(p.repeater, '+1m');
+  assert.equal(p.delay, '-3d');
+});
+
+test('delay is null when absent, same as before this change', () => {
+  const p = parseOrgTimestamp('<2025-01-01 Wed>');
+  assert.equal(p.delay, null);
+});
+
+test('findTimestamps also picks up delay correctly when scanning within a larger string', () => {
+  const results = findTimestamps('Renew passport <2026-01-01 Thu -14d>');
+  assert.equal(results.length, 1);
+  assert.equal(results[0].delay, '-14d');
+});
+
+// ---- formatOrgTimestamp ---------------------------------------------------
+
+test('formatOrgTimestamp builds a plain date-only active timestamp', () => {
+  const s = formatOrgTimestamp({ date: new Date(2026, 0, 5) }); // Mon Jan 5 2026
+  assert.equal(s, '<2026-01-05 Mon>');
+});
+
+test('formatOrgTimestamp builds an inactive timestamp when active: false', () => {
+  const s = formatOrgTimestamp({ date: new Date(2026, 0, 5), active: false });
+  assert.equal(s, '[2026-01-05 Mon]');
+});
+
+test('formatOrgTimestamp includes a time when given', () => {
+  const s = formatOrgTimestamp({ date: new Date(2026, 0, 5), time: '14:30' });
+  assert.equal(s, '<2026-01-05 Mon 14:30>');
+});
+
+test('formatOrgTimestamp includes a repeater when both mark and value are given', () => {
+  const s = formatOrgTimestamp({ date: new Date(2026, 0, 5), repeaterMark: '+', repeaterValue: '1w' });
+  assert.equal(s, '<2026-01-05 Mon +1w>');
+});
+
+test('formatOrgTimestamp omits the repeater if only the mark or only the value is given (incomplete)', () => {
+  assert.equal(formatOrgTimestamp({ date: new Date(2026, 0, 5), repeaterMark: '+' }), '<2026-01-05 Mon>');
+  assert.equal(formatOrgTimestamp({ date: new Date(2026, 0, 5), repeaterValue: '1w' }), '<2026-01-05 Mon>');
+});
+
+test('formatOrgTimestamp includes a delay when given', () => {
+  const s = formatOrgTimestamp({ date: new Date(2026, 0, 5), delayValue: '3d' });
+  assert.equal(s, '<2026-01-05 Mon -3d>');
+});
+
+test('formatOrgTimestamp combines time, repeater, and delay all together, in the correct order', () => {
+  const s = formatOrgTimestamp({
+    date: new Date(2026, 0, 5),
+    time: '09:00',
+    repeaterMark: '++',
+    repeaterValue: '2w',
+    delayValue: '1d',
+  });
+  assert.equal(s, '<2026-01-05 Mon 09:00 ++2w -1d>');
+});
+
+test('formatOrgTimestamp throws on a missing or invalid date rather than building a malformed timestamp', () => {
+  assert.throws(() => formatOrgTimestamp({}));
+  assert.throws(() => formatOrgTimestamp({ date: new Date('not-a-date') }));
+});
+
+test('formatOrgTimestamp round-trips correctly through parseOrgTimestamp for every field combination', () => {
+  const built = formatOrgTimestamp({
+    date: new Date(2026, 5, 15),
+    time: '08:15',
+    repeaterMark: '.+',
+    repeaterValue: '3d',
+    delayValue: '2d',
+  });
+  const parsed = parseOrgTimestamp(built);
+  assert.equal(parsed.active, true);
+  assert.equal(parsed.hasTime, true);
+  assert.equal(parsed.date.getHours(), 8);
+  assert.equal(parsed.date.getMinutes(), 15);
+  assert.equal(parsed.repeater, '.+3d');
+  assert.equal(parsed.delay, '-2d');
+});
+
+// ---- parseDelay -----------------------------------------------------------
+
+test('parseDelay parses a valid delay string', () => {
+  assert.deepEqual(parseDelay('-3d'), { amount: 3, unit: 'd' });
+  assert.deepEqual(parseDelay('-14d'), { amount: 14, unit: 'd' });
+  assert.deepEqual(parseDelay('-2w'), { amount: 2, unit: 'w' });
+});
+
+test('parseDelay returns null for garbage or a repeater-shaped string', () => {
+  assert.equal(parseDelay(null), null);
+  assert.equal(parseDelay(''), null);
+  assert.equal(parseDelay('+3d'), null); // that's a repeater, not a delay
+  assert.equal(parseDelay('not-a-delay'), null);
 });
