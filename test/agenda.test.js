@@ -12,6 +12,7 @@ import {
   monthView,
   parseRepeater,
   expandRepeats,
+  carryForwardOccurrences,
   startOfDay,
   endOfDay,
   startOfWeek,
@@ -329,4 +330,165 @@ test('title-timestamp items still respect todoFilter/archived filtering like eve
   const doc = parseOrg('**** Archived birthday <2026-01-01 Thu>                      :ARCHIVE:');
   const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
   assert.equal(items.length, 0); // excluded by default (includeArchived: false)
+});
+
+// ---- buildAgendaItems must itself respect the requested range -----------
+
+test('THE BUG THIS FIXES: a non-repeating item outside the requested range is excluded by buildAgendaItems itself, not just by a later dayView/weekView/monthView call', () => {
+  const doc = parseOrg(['* Something far away', 'SCHEDULED: <2030-01-01 Tue>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: new Date(2026, 0, 1),
+    rangeEnd: new Date(2026, 0, 31),
+  });
+  assert.deepEqual(items, []);
+});
+
+test('a non-repeating item inside the requested range is still included', () => {
+  const doc = parseOrg(['* Something soon', 'SCHEDULED: <2026-01-15 Thu>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: new Date(2026, 0, 1),
+    rangeEnd: new Date(2026, 0, 31),
+  });
+  assert.equal(items.length, 1);
+});
+
+test('without a range at all, a non-repeating item is still included regardless of its date (unchanged, existing behavior)', () => {
+  const doc = parseOrg(['* Whenever', 'SCHEDULED: <2030-01-01 Tue>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
+  assert.equal(items.length, 1);
+});
+
+// ---- carry-forward for incomplete SCHEDULED/DEADLINE (the real bug) -----
+
+test('THE EXACT BUG: an undone SCHEDULED item from over a year ago still shows up when viewing "today"', () => {
+  const doc = parseOrg(
+    ['** change to Maritime hotel in NYC.', 'SCHEDULED: <2025-07-07 Mon>'].join('\n')
+  );
+  const today = new Date(2026, 6, 22); // over a year after the scheduled date
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: today,
+    rangeEnd: today,
+    today,
+    isDone: (todo) => todo === 'DONE' || todo === 'KILL',
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'scheduled');
+  assert.ok(items[0].daysOverdue > 300); // roughly 380 days, don't hardcode the exact count
+});
+
+test('a DONE heading\'s SCHEDULED does NOT carry forward — it only ever shows on its literal date', () => {
+  const doc = parseOrg(
+    ['** DONE get clearance to contribute to organics.', 'SCHEDULED: <2025-07-07 Mon>'].join('\n')
+  );
+  const today = new Date(2026, 6, 22);
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: today,
+    rangeEnd: today,
+    today,
+    isDone: (todo) => todo === 'DONE',
+  });
+  assert.deepEqual(items, []); // not shown today; would only show on 2025-07-07 itself
+});
+
+test('a plain title timestamp does NOT carry forward, even when undone and isDone/today are provided — matching real org\'s explicit rule', () => {
+  const doc = parseOrg('**** Someone <2025-07-07 Mon>'); // no repeater, no SCHEDULED/DEADLINE
+  const today = new Date(2026, 6, 22);
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: today,
+    rangeEnd: today,
+    today,
+    isDone: () => false,
+  });
+  assert.deepEqual(items, []); // correctly absent -- it was over a year ago and plain timestamps never carry forward
+});
+
+test('carry-forward is opt-in: without isDone, behavior is unchanged from before (no carry-forward at all)', () => {
+  const doc = parseOrg(['** Something', 'SCHEDULED: <2025-07-07 Mon>'].join('\n'));
+  const today = new Date(2026, 6, 22);
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: today,
+    rangeEnd: today,
+    // isDone deliberately omitted
+  });
+  assert.deepEqual(items, []); // old behavior: literal date only, and today isn't that date
+});
+
+test('a future SCHEDULED item (not yet due) shows only on its own date, not "carried forward" before it happens', () => {
+  const doc = parseOrg(['** Something upcoming', 'SCHEDULED: <2026-08-01 Sat>'].join('\n'));
+  const today = new Date(2026, 6, 22); // before the scheduled date
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: new Date(2026, 6, 1),
+    rangeEnd: new Date(2026, 7, 31),
+    today,
+    isDone: () => false,
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].date.getDate(), 1);
+  assert.equal(items[0].daysOverdue, 0);
+});
+
+test('an overdue DEADLINE carries forward too, not just SCHEDULED', () => {
+  const doc = parseOrg(['** Something due', 'DEADLINE: <2026-07-01 Wed>'].join('\n'));
+  const today = new Date(2026, 6, 22);
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: today,
+    rangeEnd: today,
+    today,
+    isDone: () => false,
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'deadline');
+  assert.equal(items[0].daysOverdue, 21);
+});
+
+test('carry-forward respects a full week view: the overdue item appears on every day of the week through today, but not into the week\'s still-future days', () => {
+  const doc = parseOrg(['** Overdue task', 'SCHEDULED: <2026-07-01 Wed>'].join('\n'));
+  const today = new Date(2026, 6, 22); // Wed, mid-week
+  const weekStart = new Date(2026, 6, 20); // Mon
+  const weekEnd = new Date(2026, 6, 26); // Sun
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: weekStart,
+    rangeEnd: weekEnd,
+    today,
+    isDone: () => false,
+  });
+  // Mon(20)/Tue(21)/Wed(22, today) show it as overdue; Thu-Sun (23-26)
+  // are still in the future relative to "today" and correctly don't,
+  // since nothing can be "overdue" on a day that hasn't happened yet.
+  assert.equal(items.length, 3);
+});
+
+test('a repeating SCHEDULED item does not ALSO get carry-forward — stays scoped to its own repeat expansion', () => {
+  const doc = parseOrg(['** Weekly task', 'SCHEDULED: <2026-01-05 Mon +1w>'].join('\n'));
+  const today = new Date(2026, 6, 22);
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: today,
+    rangeEnd: today,
+    today,
+    isDone: () => false,
+  });
+  // Jan 5 + 1w repeats land on Mondays; July 22 2026 is a Wednesday, so no occurrence lands exactly today.
+  assert.deepEqual(items, []);
+});
+
+test('carryForwardOccurrences: a same-day item (not yet overdue) returns just that one day', () => {
+  const today = new Date(2026, 6, 22);
+  const days = carryForwardOccurrences(today, today, today, today);
+  assert.equal(days.length, 1);
+});
+
+test('carryForwardOccurrences: intersects correctly with a narrower range than the full overdue window', () => {
+  const itemDate = new Date(2026, 0, 1);
+  const today = new Date(2026, 6, 22);
+  const days = carryForwardOccurrences(itemDate, today, new Date(2026, 6, 20), new Date(2026, 6, 22));
+  assert.equal(days.length, 3); // just the 3 days of the requested range, not the full ~200-day overdue span
+});
+
+test('carryForwardOccurrences: a future item returns just its own day, nothing before it', () => {
+  const itemDate = new Date(2026, 7, 1);
+  const today = new Date(2026, 6, 22);
+  const days = carryForwardOccurrences(itemDate, today, new Date(2026, 6, 1), new Date(2026, 7, 31));
+  assert.equal(days.length, 1);
+  assert.equal(days[0].getDate(), 1);
+  assert.equal(days[0].getMonth(), 7);
 });
