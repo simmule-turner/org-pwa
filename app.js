@@ -19,6 +19,8 @@ import {
   parseLocalVariables,
   getAgendaStartOnWeekday,
   getCycleOpenArchivedTrees,
+  getAgendaSkipCommentTrees,
+  getAgendaSkipArchivedTrees,
 } from './src/local-variables.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import { buildAgendaItems, dayView, weekView, monthView, startOfDay, endOfDay, startOfWeek, parseRepeater } from './src/agenda.js';
@@ -2539,6 +2541,13 @@ function renderAgendaView() {
   const todoSequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
   const items = buildAgendaItems([{ documentId: state.documentId, doc: state.doc }], {
     todoFilter: (todo) => !todoSequence.doneKeywords.includes(todo),
+    // Real org's default is to skip both commented headings (title
+    // starts with "# ") and archived ones (:ARCHIVE: tag) in agenda
+    // views — org-agenda-skip-comment-trees / org-agenda-skip-archived-
+    // trees, both t by default. Overridable per-file via a Local
+    // Variables block (set either to nil to include them after all).
+    includeCommented: !getAgendaSkipCommentTrees(state.localVariables),
+    includeArchived: !getAgendaSkipArchivedTrees(state.localVariables),
     rangeStart: start,
     rangeEnd: end,
     // Carry-forward: an incomplete SCHEDULED/DEADLINE keeps appearing on
