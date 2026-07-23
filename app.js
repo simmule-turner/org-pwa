@@ -701,6 +701,16 @@ function buildTimestampFieldGroup(label, currentRaw) {
   const dateInput = document.createElement('input');
   dateInput.type = 'date';
   textInputStyle(dateInput);
+  // iOS Safari specifically: the native date-picker control has its own
+  // internal rendering that doesn't fully respect max-width/box-sizing
+  // the way Chrome's does, which is why this overflowed on iOS but not
+  // Chrome despite already being constrained at every container level.
+  // -webkit-appearance: none is the standard, documented fix — it drops
+  // iOS's native chrome for the inline (non-active) display, forcing it
+  // to actually honor normal CSS box sizing; tapping still opens the
+  // native date-wheel picker as usual.
+  dateInput.style.webkitAppearance = 'none';
+  dateInput.style.appearance = 'none';
   if (parsed) {
     const y = parsed.date.getFullYear();
     const m = String(parsed.date.getMonth() + 1).padStart(2, '0');
@@ -712,6 +722,8 @@ function buildTimestampFieldGroup(label, currentRaw) {
   const timeInput = document.createElement('input');
   timeInput.type = 'time';
   textInputStyle(timeInput);
+  timeInput.style.webkitAppearance = 'none'; // same iOS fix as dateInput above
+  timeInput.style.appearance = 'none';
   if (parsed && parsed.hasTime) {
     const h = String(parsed.date.getHours()).padStart(2, '0');
     const min = String(parsed.date.getMinutes()).padStart(2, '0');
@@ -817,11 +829,12 @@ function buildTimestampFieldGroup(label, currentRaw) {
 
 function renderActionMenu(actions) {
   const menu = document.createElement('div');
-  menu.style.display = 'flex';
-  menu.style.flexWrap = 'wrap';
+  menu.style.display = 'grid';
+  menu.style.gridTemplateColumns = 'repeat(5, 44px)'; // exactly 5 per row, regardless of container width -- flex-wrap would vary the count by available space instead
   menu.style.gap = '8px';
   menu.style.padding = '8px 8px 10px 40px';
   menu.style.borderBottom = '0.5px solid #8882';
+  menu.style.overflowX = 'auto'; // safety net for a deeply nested heading where 5 columns might not fit the reduced available width -- keeps buttons reachable via local scroll rather than clipped
   for (const action of actions) {
     const btn = document.createElement('button');
     btn.textContent = action.icon;
@@ -979,15 +992,28 @@ function renderRow(row, todoSequence) {
       if (actionMenuFor === row.node) {
         menuEl = renderActionMenu([
           {
-            icon: '\u270e',
+            icon: '\u270f\ufe0f',
             label: 'Edit title',
             onClick: () => {
               actionMenuFor = null;
               startEditingTitle(row.node, false);
             },
           },
+          ...(!row.node.todo
+            ? [
+                {
+                  icon: '\u2610',
+                  label: 'Mark as TODO',
+                  onClick: () => {
+                    actionMenuFor = null;
+                    cycleHeadingTodo(state.doc, row.node, GLOBAL_TODO_DEFAULT);
+                    commitAndRender();
+                  },
+                },
+              ]
+            : []),
           {
-            icon: '\u270f\ufe0f',
+            icon: '\ud83d\udcdd',
             label: 'Edit text',
             onClick: () => {
               actionMenuFor = null;
@@ -1302,7 +1328,7 @@ function renderRow(row, todoSequence) {
       if (actionMenuFor === row.item) {
         menuEl = renderActionMenu([
           {
-            icon: '\u270e',
+            icon: '\u270f\ufe0f',
             label: 'Edit text',
             onClick: (e) => {
               e.stopPropagation();
@@ -1593,7 +1619,7 @@ function renderParagraphRow(row) {
   if (actionMenuFor === row.node) {
     menuEl = renderActionMenu([
       {
-        icon: '\u270e',
+        icon: '\u270f\ufe0f',
         label: 'Edit text',
         onClick: () => {
           actionMenuFor = null;
