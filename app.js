@@ -10,7 +10,7 @@ import {
 } from './src/archive-model.js';
 import { resolveLinkTarget } from './src/link-resolve.js';
 import { parseInline } from './src/inline-markup.js';
-import { flattenVisibleRows, toggleFold, cycleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
+import { flattenVisibleRows, toggleFold, cycleHeadingTodo, toggleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
 import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
 import { searchDocument } from './src/search.js';
 import { applyStartupVisibility, cycleFoldLevel } from './src/fold-state.js';
@@ -999,19 +999,6 @@ function renderRow(row, todoSequence) {
               startEditingTitle(row.node, false);
             },
           },
-          ...(!row.node.todo
-            ? [
-                {
-                  icon: '\u2610',
-                  label: 'Mark as TODO',
-                  onClick: () => {
-                    actionMenuFor = null;
-                    cycleHeadingTodo(state.doc, row.node, GLOBAL_TODO_DEFAULT);
-                    commitAndRender();
-                  },
-                },
-              ]
-            : []),
           {
             icon: '\ud83d\udcdd',
             label: 'Edit text',
@@ -1031,6 +1018,15 @@ function renderRow(row, todoSequence) {
             },
           },
           {
+            icon: '\u2610',
+            label: row.node.todo ? 'Remove TODO/DONE state' : 'Mark as TODO',
+            onClick: () => {
+              actionMenuFor = null;
+              toggleHeadingTodo(state.doc, row.node, GLOBAL_TODO_DEFAULT);
+              commitAndRender();
+            },
+          },
+          {
             icon: '+',
             label: 'Add sub-heading',
             onClick: () => {
@@ -1040,28 +1036,15 @@ function renderRow(row, todoSequence) {
             },
           },
           {
-            icon: '#',
-            label: row.node.properties.CUSTOM_ID
-              ? 'Edit link ID (' + row.node.properties.CUSTOM_ID + ')'
-              : 'Set link ID',
+            icon: '\ud83d\udcc5',
+            label:
+              row.node.planning.scheduled || row.node.planning.deadline
+                ? 'Edit scheduled/deadline'
+                : 'Add scheduled/deadline',
             onClick: () => {
               actionMenuFor = null;
-              const current = row.node.properties.CUSTOM_ID || '';
-              const next = window.prompt(
-                'Custom ID for linking to this heading with [[#id]] (stays stable if you rename the heading). Leave blank to remove.',
-                current
-              );
-              if (next === null) {
-                render();
-                return;
-              }
-              const trimmed = next.trim();
-              if (trimmed === '') {
-                deleteProperty(row.node, 'CUSTOM_ID');
-              } else {
-                setProperty(row.node, 'CUSTOM_ID', trimmed);
-              }
-              commitAndRender();
+              editingPlanning = row.node;
+              render();
             },
           },
           {
@@ -1091,15 +1074,28 @@ function renderRow(row, todoSequence) {
             },
           },
           {
-            icon: '\ud83d\udcc5',
-            label:
-              row.node.planning.scheduled || row.node.planning.deadline
-                ? 'Edit scheduled/deadline'
-                : 'Add scheduled/deadline',
+            icon: '#',
+            label: row.node.properties.CUSTOM_ID
+              ? 'Edit link ID (' + row.node.properties.CUSTOM_ID + ')'
+              : 'Set link ID',
             onClick: () => {
               actionMenuFor = null;
-              editingPlanning = row.node;
-              render();
+              const current = row.node.properties.CUSTOM_ID || '';
+              const next = window.prompt(
+                'Custom ID for linking to this heading with [[#id]] (stays stable if you rename the heading). Leave blank to remove.',
+                current
+              );
+              if (next === null) {
+                render();
+                return;
+              }
+              const trimmed = next.trim();
+              if (trimmed === '') {
+                deleteProperty(row.node, 'CUSTOM_ID');
+              } else {
+                setProperty(row.node, 'CUSTOM_ID', trimmed);
+              }
+              commitAndRender();
             },
           },
           {
@@ -2842,6 +2838,11 @@ async function renderSettingsView() {
     fontRow.appendChild(btn);
   }
   appearanceSection.appendChild(fontRow);
+
+  const sizeTitle = document.createElement('div');
+  sizeTitle.className = 'panel-section-title';
+  sizeTitle.textContent = 'Font Size';
+  appearanceSection.appendChild(sizeTitle);
 
   const sizeRow = document.createElement('div');
   sizeRow.className = 'panel-row';
