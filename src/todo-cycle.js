@@ -1,11 +1,30 @@
 
 /**
  * TODO-cycle logic. Per the requirements decision: the file's own #+TODO:
- * line wins if present; a global app-level default is the fallback when a
- * file doesn't specify one. There's no "merge" step — it's one or the
- * other, which keeps the UI's TODO badge unambiguous about which sequence
- * it's cycling through.
+ * line(s) win if present; a global app-level default is the fallback when a
+ * file doesn't specify any. There's no "merge" step between the file's own
+ * configuration and the global default — it's one or the other, which keeps
+ * the UI's TODO badge unambiguous about which sequence it's cycling through.
+ *
+ * When a file has multiple #+TODO: lines (real org allows this, and some
+ * files use it deliberately, appending or overriding), this needs to
+ * resolve them the exact same way org-parser.js itself does when it
+ * decides what to set each heading's own .todo field to — otherwise the
+ * two could disagree about which keywords are valid, which is exactly
+ * what happened before this was fixed: a heading using a keyword from an
+ * earlier #+TODO: line that a later line's non-empty TODO part replaced
+ * (not merged) would have .todo === null (the parser correctly didn't
+ * recognize it), while this function still considered that keyword part
+ * of "the" sequence (it was reading only the first line, effectively
+ * getting the opposite priority order from the parser's actual "each
+ * later line updates, last one std" behavior) — so a real, undone task
+ * could silently disappear from every feature that relies on this
+ * (TODO cycling, Agenda's done-detection, the Task List) without ever
+ * showing up as broken, since nothing threw — it just silently used the
+ * wrong keyword set.
  */
+
+import { DEFAULT_TODO_KEYWORDS, DEFAULT_DONE_KEYWORDS } from './org-parser.js';
 
 const DEFAULT_SEQUENCE = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
 
@@ -18,20 +37,35 @@ function parseTodoValue(value) {
 }
 
 /**
- * Resolves which keyword sequence applies to `doc`: its own #+TODO: line if
- * present, otherwise `globalDefault` (falling back to the built-in TODO/DONE
- * pair if no global default is supplied either).
+ * Resolves which keyword sequence applies to `doc`: its own #+TODO:
+ * line(s) if present, otherwise `globalDefault` (falling back to the
+ * built-in TODO/DONE pair if no global default is supplied either).
+ *
+ * When there are multiple #+TODO: lines, each one updates the todo part
+ * and/or done part independently (an empty part on a later line doesn't
+ * blank out an earlier line's non-empty value for that part) — this is
+ * org-parser.js's own algorithm, replicated exactly here rather than
+ * approximated, since heading.todo values were set using THAT algorithm
+ * and this function needs to agree with it, not use a different one.
  */
 function resolveTodoSequence(doc, globalDefault) {
   const fallback = globalDefault || DEFAULT_SEQUENCE;
-  if (doc && Array.isArray(doc.keywords)) {
-    for (const kw of doc.keywords) {
-      if (kw.key.toUpperCase() === 'TODO') {
-        return parseTodoValue(kw.value);
-      }
-    }
+  if (!doc || !Array.isArray(doc.keywords)) return fallback;
+
+  let todoKeywords = null;
+  let doneKeywords = null;
+  for (const kw of doc.keywords) {
+    if (kw.key.toUpperCase() !== 'TODO') continue;
+    const parsed = parseTodoValue(kw.value);
+    if (parsed.todoKeywords.length) todoKeywords = parsed.todoKeywords;
+    if (parsed.doneKeywords.length) doneKeywords = parsed.doneKeywords;
   }
-  return fallback;
+
+  if (todoKeywords === null && doneKeywords === null) return fallback; // no #+TODO: line found at all
+  return {
+    todoKeywords: todoKeywords || [...DEFAULT_TODO_KEYWORDS],
+    doneKeywords: doneKeywords || [...DEFAULT_DONE_KEYWORDS],
+  };
 }
 
 /** The full cycle order: no keyword -> each TODO-type keyword -> each

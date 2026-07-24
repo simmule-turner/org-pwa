@@ -16,7 +16,7 @@
 
 import { isArchived } from './archive-model.js';
 import { isCommentedHeading } from './comment-model.js';
-import { parseOrgTimestamp, findTimestamps, dateKey, isSameDay } from './org-timestamp.js';
+import { parseOrgTimestamp, findTimestamps, parseDelay, dateKey, isSameDay } from './org-timestamp.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const REPEATER_RE = /^([.+]{1,2})(\d+)([hdwmy])$/;
@@ -86,27 +86,61 @@ function expandRepeats(baseDate, repeater, rangeStart, rangeEnd) {
   return occurrences;
 }
 
+/** Converts a parsed delay ({amount, unit}) to an approximate day count,
+ *  for the early-warning window calculation. Exact for h/d/w; m/y use a
+ *  30/365-day approximation, an acceptable simplification since a delay
+ *  is inherently a short-term "warn me ahead of time" concept in
+ *  practice (a few days or weeks), not something that needs
+ *  calendar-precise month lengths the way a repeater's actual occurrence
+ *  dates do. */
+function delayToDays(delay) {
+  if (!delay) return 0;
+  switch (delay.unit) {
+    case 'h':
+      return delay.amount / 24;
+    case 'd':
+      return delay.amount;
+    case 'w':
+      return delay.amount * 7;
+    case 'm':
+      return delay.amount * 30;
+    case 'y':
+      return delay.amount * 365;
+    default:
+      return 0;
+  }
+}
+
 /**
- * Every day from `itemDate` through `today` (inclusive), intersected
- * with [rangeStart, rangeEnd] — the actual "carry forward" window for an
- * incomplete SCHEDULED/DEADLINE item: real org keeps it on the agenda
- * every day it's been overdue, right up through today (never past today,
- * since we can't know whether it'll still be undone on a day that
- * hasn't happened yet). If `itemDate` is in the future relative to
- * `today`, there's nothing to carry forward yet — it just returns that
- * one day, same as a normal single occurrence.
+ * Every day in the item's "active display window", intersected with
+ * [rangeStart, rangeEnd] — the window is [itemDate - earlyWarningDays,
+ * max(itemDate, today)]:
+ *   - the end covers "carry forward": real org keeps an incomplete
+ *     SCHEDULED/DEADLINE on the agenda every day it's been overdue,
+ *     right up through today (never past today, since we can't know
+ *     whether it'll still be undone on a day that hasn't happened yet).
+ *   - the start covers the delay/warning-period suffix (e.g. DEADLINE:
+ *     <2026-01-10 Sat -3d>): real org starts showing it `earlyWarningDays`
+ *     before the literal date, not just on the date itself. Defaults to
+ *     0 (no early warning), so a plain SCHEDULED/DEADLINE with no delay
+ *     behaves exactly as before.
+ *
+ * If `itemDate` is in the future relative to `today` and there's no
+ * early-warning window reaching back to today yet, this just returns
+ * that one day, same as a normal single occurrence.
  *
  * Intersecting with the caller's range (rather than generating the full
- * carry-forward window and filtering afterward) is what keeps this cheap
- * regardless of how long something's been overdue: a task overdue for
- * two years, viewed in a single day's agenda, produces one date, not 730.
+ * window and filtering afterward) is what keeps this cheap regardless of
+ * how long something's been overdue: a task overdue for two years,
+ * viewed in a single day's agenda, produces one date, not 730.
  */
-function carryForwardOccurrences(itemDate, today, rangeStart, rangeEnd) {
+function carryForwardOccurrences(itemDate, today, rangeStart, rangeEnd, earlyWarningDays = 0) {
   const itemDay = startOfDay(itemDate);
   const todayDay = startOfDay(today);
   const carryEnd = itemDay <= todayDay ? todayDay : itemDay;
+  const earlyStart = new Date(itemDay.getFullYear(), itemDay.getMonth(), itemDay.getDate() - earlyWarningDays);
 
-  let windowStart = itemDay;
+  let windowStart = earlyStart;
   let windowEnd = carryEnd;
   if (rangeStart) {
     const rangeStartDay = startOfDay(rangeStart);
@@ -249,7 +283,9 @@ function buildAgendaItems(docs, opts = {}) {
     const carryForwardEligible =
       !repeater && isDone !== null && !headingIsDone && (kind === 'scheduled' || kind === 'deadline');
     if (carryForwardEligible && rangeStart && rangeEnd) {
-      for (const occurrenceDate of carryForwardOccurrences(parsed.date, today, rangeStart, rangeEnd)) {
+      const delay = parsed.delay ? parseDelay(parsed.delay) : null;
+      const earlyWarningDays = delayToDays(delay);
+      for (const occurrenceDate of carryForwardOccurrences(parsed.date, today, rangeStart, rangeEnd, earlyWarningDays)) {
         const daysOverdue = Math.round((startOfDay(occurrenceDate) - startOfDay(parsed.date)) / MS_PER_DAY);
         items.push({ ...base, date: occurrenceDate, daysOverdue });
       }
@@ -414,9 +450,52 @@ function monthView(items, date = new Date()) {
   return groupByDay(itemsInRange(items, start, end));
 }
 
+/**
+ * Builds the flat list of "active" TODO-state headings across `docs` —
+ * completely independent of any date or timestamp, matching real org's
+ * own global TODO list (the 't' dispatcher option, distinct from 'a'
+ * agenda, which only ever shows dated items — a TODO with no date never
+ * appears there, by design, not by omission). A heading qualifies when
+ * its TODO state is set and isn't one of the sequence's done keywords.
+ *
+ * Options mirror buildAgendaItems' equivalents where they overlap:
+ *   includeArchived (default false), includeCommented (default false),
+ *   tagFilter(tags) -> boolean, isDone(todo) -> boolean — required to
+ *     get any results at all, since without it every heading with ANY
+ *     todo state (done or not) would be considered "active". This is
+ *     deliberately not defaulted to some hardcoded "DONE" check, for the
+ *     same reason buildAgendaItems isn't — the file's own #+TODO:
+ *     sequence decides what counts as done, not this module.
+ */
+function buildTaskList(docs, opts = {}) {
+  const { includeArchived = false, includeCommented = false, tagFilter = null, isDone = null } = opts;
+  const items = [];
+
+  for (const { documentId, doc } of docs) {
+    walkHeadings(doc, (heading) => {
+      if (!includeArchived && isArchived(heading)) return;
+      if (!includeCommented && isCommentedHeading(heading)) return;
+      if (tagFilter && !tagFilter(heading.tags)) return;
+      if (!heading.todo) return; // no TODO state at all -- not a task
+      if (isDone && isDone(heading.todo)) return;
+      items.push({
+        documentId,
+        heading,
+        todo: heading.todo,
+        priority: heading.priority,
+        tags: heading.tags,
+        title: heading.title,
+      });
+    });
+  }
+
+  return items;
+}
+
 export {
   walkHeadings,
   buildAgendaItems,
+  buildTaskList,
   itemsForDate,
   itemsInRange,
   groupByDay,
@@ -426,6 +505,7 @@ export {
   parseRepeater,
   expandRepeats,
   carryForwardOccurrences,
+  delayToDays,
   startOfDay,
   endOfDay,
   startOfWeek,
