@@ -20,6 +20,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 - [The plain-text editor](#the-plain-text-editor)
 - [Agenda](#agenda)
 - [TODO view](#todo-view)
+- [Capture Templates](#capture-templates)
 - [File management](#file-management)
 - [Settings](#settings)
 - [Offline behavior and sync](#offline-behavior-and-sync)
@@ -185,6 +186,38 @@ It's a flat list, in document order, each item showing its TODO keyword and titl
 
 ---
 
+## Capture Templates
+
+Tap the inbox-tray icon (next to Search) for **Capture** — real org-mode's own `org-capture-templates` system, for quickly filing a note, task, or table row into a specific spot in the outline without navigating there by hand. Pick a template, answer whatever prompts it asks, and the expanded result gets inserted at that template's target — creating the target heading(s) if they don't exist yet.
+
+Four example templates are the default, so this works immediately with no setup: **b**ullet list item, **c**heck list item, **m**eeting notes, and a **t**able row. Edit or replace them any time in **Settings → Capture Templates** — configured as JSON (an array of template objects), not a visual builder, matching how this app already handles GitHub/WebDAV config.
+
+**Template shape:**
+```json
+{
+  "key": "b",
+  "description": "Bullet List",
+  "type": "item",
+  "olp": ["heading 1", "heading n"],
+  "template": "%? [The captured text or note]",
+  "emptyLines": 1
+}
+```
+- **`key`** — must be unique; shown next to the description in the picker.
+- **`type`** — one of `item` (plain bullet), `checkitem` (checkbox item), `plain` (raw text, parsed as its own org fragment and merged in — the only type that can itself contain heading syntax, properties drawers, TODO keywords, etc.), or `table-line` (one row, appended to the nearest existing table under the target or creating a new one).
+- **`olp`** — the outline path to insert into, found or created heading by heading. A segment wrapped in `%<FORMAT>` (e.g. `"%<%Y-%m>"`) expands dynamically — real org's own `,(format-time-string ...)` idea, translated into this app's %-escape syntax so a monthly table can target "2026-07" without you creating that heading by hand every month. Any other segment is used completely literally, with no escape processing at all.
+- **`emptyLines`** — parsed and stored, matching real org's `:empty-lines N`, but **not yet acted on** — stated plainly rather than silently: no blank lines get inserted after captured content yet.
+
+**Template text — the %-escape language, local time throughout:**
+- `%<FORMAT>` — a practical `format-time-string` subset: `%Y %y %m %d %e %H %I %M %S %p %A %a %B %b %F %R %T %j`, plus `%%` for a literal percent. An unrecognized specifier is left visible (e.g. `%Z` stays as `%Z`) rather than silently dropped.
+- `%t` / `%T` — an active timestamp, date-only / date-and-time.
+- `%u` / `%U` — the same, but inactive (`[...]` instead of `<...>`).
+- `%^{Prompt}` — asks a question via a simple prompt dialog. `%^{Prompt|default}` pre-fills an answer; `%^{Prompt|default|choice1|choice2}` also lists the choices in the prompt text (there's no dropdown here — real org's completion-table equivalent is just shown as text to pick from). Multiple prompts in one template are asked in the order they appear; cancelling any single one aborts the whole capture — nothing partial gets inserted.
+- `%N` — the row number, for `table-line` captures only (empty otherwise).
+- `%?` — not text — marks where the cursor should land afterward. Precise only for `item`/`checkitem`: those open the captured item for editing with the cursor exactly there. For `plain`/`table-line`, capture instead just navigates to the target heading — those two can produce multi-part content (a whole subtree, or a table row with several cells) with no single obvious place to put a cursor, so this doesn't try to fake precision it can't actually deliver.
+
+---
+
 ## File management
 
 **File menu**: New, Open, Save, Save As.
@@ -297,4 +330,4 @@ Engine code (`src/`) and browser-specific adapters (`src-browser/`) are unit tes
 node --test
 ```
 
-445 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion (including week/day boundary alignment, SCHEDULED/DEADLINE carry-forward with delay-based early warning, commented/archived-heading exclusion, and the date-independent TODO view), correct resolution of a file with multiple `#+TODO:` lines, timestamp building/delay parsing and plain-timestamp-in-title editing for the structured SCHEDULED/DEADLINE editor, Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change.
+493 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion (including week/day boundary alignment, SCHEDULED/DEADLINE carry-forward with delay-based early warning, commented/archived-heading exclusion, and the date-independent TODO view), correct resolution of a file with multiple `#+TODO:` lines, capture-template expansion and insertion (all four types, OLP target resolution, and the sequential-table-mutation bug this coverage originally caught), timestamp building/delay parsing and plain-timestamp-in-title editing for the structured SCHEDULED/DEADLINE editor, Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change, and the capture UI flow specifically was additionally verified via a DOM-stub integration test exercising the real button/prompt/insertion path end to end.

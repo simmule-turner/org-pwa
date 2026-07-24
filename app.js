@@ -34,6 +34,7 @@ import {
   startOfWeek,
   parseRepeater,
 } from './src/agenda.js';
+import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture } from './src/capture-template.js';
 import { parseOrgTimestamp, formatOrgTimestamp, parseDelay } from './src/org-timestamp.js';
 import {
   renameHeading,
@@ -85,6 +86,9 @@ import {
   setFontSize,
   getLastActiveDocument,
   setLastActiveDocument,
+  getCaptureTemplates,
+  setCaptureTemplates,
+  DEFAULT_CAPTURE_TEMPLATES,
 } from './src-browser/settings.js';
 
 const GLOBAL_TODO_DEFAULT = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
@@ -124,6 +128,8 @@ const fileMenuPanel = document.getElementById('fileMenuPanel');
 const settingsBtn = document.getElementById('settingsBtn');
 const searchBtn = document.getElementById('searchBtn');
 const searchPanel = document.getElementById('searchPanel');
+const captureBtn = document.getElementById('captureBtn');
+const capturePanel = document.getElementById('capturePanel');
 
 /**
  * Keeps the content area's top offset in sync with the fixed top bar's
@@ -168,6 +174,7 @@ let fileMenuOpen = false;
 let fileMenuStep = null;
 let settingsOpen = false;
 let searchOpen = false;
+let captureOpen = false;
 let searchQuery = '';
 let viewMenuOpen = false;
 // Agenda view state: which grouping is active, and the anchor date that
@@ -1816,6 +1823,7 @@ async function afterDocumentLoaded(documentId, doc, storageKind) {
   addBtn.disabled = false;
   viewMenuBtn.disabled = false;
   searchBtn.disabled = false;
+  captureBtn.disabled = false;
   searchOpen = false;
   searchQuery = '';
   renderSearchPanel();
@@ -2971,6 +2979,68 @@ async function renderSettingsView() {
   );
   appearanceSection.appendChild(sizeRow);
 
+  const captureSection = document.createElement('div');
+  captureSection.className = 'settings-section';
+  container.appendChild(captureSection);
+
+  const captureTitle = document.createElement('div');
+  captureTitle.className = 'panel-section-title';
+  captureTitle.textContent = 'Capture Templates';
+  captureSection.appendChild(captureTitle);
+
+  const captureHint = document.createElement('div');
+  captureHint.style.fontSize = '11px';
+  captureHint.style.opacity = '0.6';
+  captureHint.style.margin = '2px 0 8px';
+  captureHint.textContent =
+    'Edited as JSON — an array of {key, description, type, olp, template}. ' +
+    'type is one of "item", "checkitem", "plain", "table-line". ' +
+    'olp is the outline path to insert into, e.g. ["Inbox", "Tasks"]. ' +
+    'template supports %<FORMAT>, %t/%T/%u/%U, %^{Prompt|default|choices}, %N, and %? — see the README.';
+  captureSection.appendChild(captureHint);
+
+  const currentTemplates = await getCaptureTemplates(kv);
+  const captureTextarea = document.createElement('textarea');
+  captureTextarea.value = JSON.stringify(currentTemplates, null, 2);
+  captureTextarea.rows = 12;
+  captureTextarea.style.fontFamily = 'monospace';
+  captureTextarea.style.fontSize = '13px';
+  captureTextarea.style.width = '100%';
+  captureTextarea.style.maxWidth = '100%';
+  captureTextarea.style.boxSizing = 'border-box';
+  captureTextarea.style.resize = 'vertical';
+  captureSection.appendChild(captureTextarea);
+
+  const captureBtnRow = document.createElement('div');
+  captureBtnRow.className = 'panel-row';
+  captureBtnRow.style.marginTop = '8px';
+  captureBtnRow.appendChild(
+    menuButton('Save templates', async () => {
+      let parsed;
+      try {
+        parsed = JSON.parse(captureTextarea.value);
+      } catch (err) {
+        setStatus('Capture templates: invalid JSON \u2014 ' + err.message);
+        return;
+      }
+      const problem = validateCaptureTemplates(parsed);
+      if (problem) {
+        setStatus('Capture templates: ' + problem);
+        return;
+      }
+      await setCaptureTemplates(kv, parsed);
+      setStatus('Capture templates saved.');
+    })
+  );
+  captureBtnRow.appendChild(
+    menuButton('Reset to defaults', async () => {
+      await setCaptureTemplates(kv, DEFAULT_CAPTURE_TEMPLATES);
+      setStatus('Capture templates reset to defaults.');
+      renderSettingsView();
+    })
+  );
+  captureSection.appendChild(captureBtnRow);
+
   const githubSection = document.createElement('div');
   githubSection.className = 'settings-section';
   container.appendChild(githubSection);
@@ -3234,6 +3304,188 @@ searchBtn.addEventListener('click', () => {
   }
   if (!searchOpen) searchQuery = '';
   renderSearchPanel();
+});
+
+// ---- Capture ---------------------------------------------------------
+
+// ---- Capture ---------------------------------------------------------
+
+const CAPTURE_TYPES = ['item', 'checkitem', 'plain', 'table-line'];
+
+/** Returns a human-readable problem description, or null if `parsed` is
+ *  a valid capture-templates array. Checked before saving from Settings
+ *  so a malformed edit gets a clear message immediately, rather than
+ *  either silently corrupting the stored config or failing confusingly
+ *  later when a capture is actually run against it. */
+function validateCaptureTemplates(parsed) {
+  if (!Array.isArray(parsed)) return 'must be a JSON array';
+  for (let i = 0; i < parsed.length; i++) {
+    const t = parsed[i];
+    const label = `template #${i + 1}`;
+    if (!t || typeof t !== 'object') return `${label} must be an object`;
+    if (typeof t.key !== 'string' || t.key.length === 0) return `${label}: "key" must be a non-empty string`;
+    if (typeof t.description !== 'string') return `${label}: "description" must be a string`;
+    if (!CAPTURE_TYPES.includes(t.type)) return `${label}: "type" must be one of ${CAPTURE_TYPES.join(', ')}`;
+    if (!Array.isArray(t.olp) || t.olp.length === 0 || !t.olp.every((s) => typeof s === 'string')) {
+      return `${label}: "olp" must be a non-empty array of strings`;
+    }
+    if (typeof t.template !== 'string') return `${label}: "template" must be a string`;
+  }
+  const keys = parsed.map((t) => t.key);
+  const duplicate = keys.find((k, i) => keys.indexOf(k) !== i);
+  if (duplicate !== undefined) return `duplicate key "${duplicate}" \u2014 each template needs a unique key`;
+  return null;
+}
+
+async function renderCapturePanel() {
+  capturePanel.innerHTML = '';
+  if (!captureOpen) {
+    capturePanel.style.display = 'none';
+    return;
+  }
+  capturePanel.style.display = 'block';
+
+  const heading = document.createElement('div');
+  heading.style.fontSize = '12px';
+  heading.style.opacity = '0.65';
+  heading.style.marginBottom = '8px';
+  heading.textContent = 'Capture — pick a template';
+  capturePanel.appendChild(heading);
+
+  const templates = await getCaptureTemplates(kv);
+  if (!captureOpen) return; // panel was closed again before this resolved
+
+  if (templates.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.opacity = '0.6';
+    empty.style.fontSize = '13px';
+    empty.textContent = 'No capture templates configured yet — add some in Settings.';
+    capturePanel.appendChild(empty);
+    return;
+  }
+
+  for (const template of templates) {
+    const btn = document.createElement('button');
+    btn.style.display = 'block';
+    btn.style.width = '100%';
+    btn.style.textAlign = 'left';
+    btn.style.padding = '10px 12px';
+    btn.style.marginBottom = '6px';
+    btn.style.border = '1px solid var(--border-strong)';
+    btn.style.borderRadius = '8px';
+    btn.style.background = 'var(--bg)';
+    btn.style.color = 'var(--fg)';
+    btn.style.fontSize = '14px';
+    btn.textContent = template.key + '   ' + template.description;
+    btn.onclick = () => runCapture(template);
+    capturePanel.appendChild(btn);
+  }
+}
+
+/**
+ * Runs one capture template end to end: resolves its (file+olp ...)
+ * target (creating any missing heading along the way), computes %N if
+ * this is a table-line capture, collects an answer for every %^{...}
+ * prompt in order (via window.prompt, matching this app's existing
+ * pattern for tags/CUSTOM_ID — cancelling any single prompt aborts the
+ * whole capture, nothing gets inserted), expands the template, inserts
+ * it, and finally either opens the inserted item for editing with the
+ * cursor at %?'s position (item/checkitem only — see the module-level
+ * design note below) or just navigates to the target heading.
+ *
+ * Cursor positioning is deliberately precise for item/checkitem only,
+ * not plain/table-line: those two can produce multi-part content (a
+ * whole subtree of headings, for plain; a table row with several
+ * cells, for table-line) with no single obvious "the one thing to
+ * edit" — faking precision there would be worse than being honest that
+ * navigating to the heading is as far as this goes for those two types.
+ */
+async function runCapture(template) {
+  captureOpen = false;
+  renderCapturePanel();
+
+  if (currentView === 'text') {
+    // Same reasoning as search's own text-mode guard above: leaving text
+    // mode reparses the document into new objects, so do it now, before
+    // resolveOlpTarget below touches state.doc, not after.
+    switchToView('org');
+  }
+
+  const now = new Date();
+  const target = resolveOlpTarget(state.doc, template.olp, { now });
+
+  let tableRowNumber = null;
+  if (template.type === 'table-line') {
+    const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
+    const dataRowCount = existingTable ? existingTable.rows.filter((r) => r.type === 'row').length : 0;
+    tableRowNumber = dataRowCount + 1;
+  }
+
+  const prompts = scanPrompts(template.template);
+  const answers = [];
+  for (const p of prompts) {
+    const message = p.completions.length > 0 ? `${p.prompt} (options: ${p.completions.join(', ')})` : p.prompt;
+    const answer = window.prompt(message, p.default);
+    if (answer === null) {
+      setStatus('Capture cancelled.');
+      return; // cancelling any one prompt aborts the whole capture -- nothing partial gets inserted
+    }
+    answers.push(answer);
+  }
+
+  const { text, cursorOffset } = expandTemplate(template.template, {
+    now,
+    promptAnswers: answers,
+    tableRowNumber,
+  });
+
+  const inserted = insertCapture(target, template.type, text);
+  commitAndRender();
+
+  if (cursorOffset !== null && inserted && (template.type === 'item' || template.type === 'checkitem')) {
+    switchToView('org');
+    for (const ancestor of findAncestorPath(state.doc, target) || []) {
+      ancestor.collapsed = false;
+    }
+    editingListItem = { heading: target, item: inserted };
+    render();
+    requestAnimationFrame(() => {
+      const input = document.getElementById('listitem-edit-input');
+      if (input) {
+        input.focus();
+        input.setSelectionRange(cursorOffset, cursorOffset);
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+    return;
+  }
+
+  switchToView('org');
+  navigateToHeading(target);
+  setStatus('Captured.');
+}
+
+captureBtn.addEventListener('click', () => {
+  captureOpen = !captureOpen;
+  if (captureOpen && fileMenuOpen) {
+    fileMenuOpen = false;
+    fileMenuStep = null;
+    renderFileMenu();
+  }
+  if (captureOpen && settingsOpen) {
+    settingsOpen = false;
+    render();
+  }
+  if (captureOpen && viewMenuOpen) {
+    viewMenuOpen = false;
+    renderViewMenu();
+  }
+  if (captureOpen && searchOpen) {
+    searchOpen = false;
+    searchQuery = '';
+    renderSearchPanel();
+  }
+  renderCapturePanel();
 });
 
 if ('serviceWorker' in navigator) {
