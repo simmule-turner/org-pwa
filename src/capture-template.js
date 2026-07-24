@@ -26,6 +26,7 @@ import { formatOrgTimestamp } from './org-timestamp.js';
 import { parseOrg } from './org-parser.js';
 import { insertTopLevelHeading, insertChildHeading } from './heading-edit.js';
 import { insertTable, insertTableRow, setTableCell } from './body-edit.js';
+import { parseBody } from './body-parser.js';
 
 // ---- %<FORMAT> (format-time-string subset) -------------------------------
 
@@ -257,7 +258,7 @@ function mergeFragmentInto(target, fragment) {
     target.collapsed = false;
   } else {
     target.bodyLines.push(...fragment.bodyLines);
-    target.body.push(...fragment.body);
+    target.body = parseBody(target.bodyLines);
   }
 }
 
