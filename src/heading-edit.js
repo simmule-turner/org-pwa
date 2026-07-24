@@ -16,7 +16,7 @@
  * mangling legitimate titles that contain colons.
  */
 
-import { findContainer } from './archive-model.js';
+import { findContainer, findAncestorPath, shiftLevels } from './archive-model.js';
 import { parseOrgTimestamp, findTimestamps } from './org-timestamp.js';
 
 /** Builds a heading object with every field the AST shape requires — the
@@ -170,5 +170,74 @@ export function removeHeading(doc, heading) {
   const located = findContainer(doc, heading);
   if (!located) return false;
   located.container.splice(located.index, 1);
+  return true;
+}
+
+/** Swaps heading with its previous sibling (same parent, same level).
+ *  No-op (returns false) if heading is already first among its
+ *  siblings. Matches real org's M-up: reorders among siblings without
+ *  touching level or parent — the subtree (all descendants) moves as
+ *  one unit automatically, since they're already part of the same
+ *  object. */
+export function moveHeadingUp(doc, heading) {
+  const located = findContainer(doc, heading);
+  if (!located || located.index === 0) return false;
+  const { container, index } = located;
+  [container[index - 1], container[index]] = [container[index], container[index - 1]];
+  return true;
+}
+
+/** Swaps heading with its next sibling. No-op if already last. */
+export function moveHeadingDown(doc, heading) {
+  const located = findContainer(doc, heading);
+  if (!located || located.index === located.container.length - 1) return false;
+  const { container, index } = located;
+  [container[index], container[index + 1]] = [container[index + 1], container[index]];
+  return true;
+}
+
+/**
+ * Promotes heading (and its whole subtree) up one level: it becomes a
+ * sibling of its current parent, inserted immediately after it. No-op
+ * if heading is already top-level — there's nothing above level 1 to
+ * promote into. Matches real org's M-left/outdent, except expressed as
+ * reparenting rather than just decrementing a star count: this app's
+ * document model derives level from tree depth, so "one level up"
+ * means "become a child of the grandparent" — every descendant's level
+ * shifts by the same amount as part of the same move, since they're
+ * still the same subtree, just relocated.
+ */
+export function promoteHeading(doc, heading) {
+  const path = findAncestorPath(doc, heading);
+  if (!path || path.length === 0) return false; // already top-level
+  const parent = path[path.length - 1];
+
+  const located = findContainer(doc, heading);
+  const parentLocated = findContainer(doc, parent);
+  if (!located || !parentLocated) return false;
+
+  located.container.splice(located.index, 1);
+  parentLocated.container.splice(parentLocated.index + 1, 0, heading);
+  shiftLevels(heading, parent.level);
+  return true;
+}
+
+/**
+ * Demotes heading (and its whole subtree) down one level: it becomes
+ * the last child of its immediately preceding sibling. No-op if
+ * heading has no preceding sibling — matches real org's own
+ * limitation, since there'd be nothing to become a child of (you can't
+ * demote the very first item under a given parent).
+ */
+export function demoteHeading(doc, heading) {
+  const located = findContainer(doc, heading);
+  if (!located || located.index === 0) return false;
+  const { container, index } = located;
+  const newParent = container[index - 1];
+
+  container.splice(index, 1);
+  newParent.children.push(heading);
+  newParent.collapsed = false; // otherwise the demoted heading vanishes from view the instant it moves
+  shiftLevels(heading, newParent.level + 1);
   return true;
 }
