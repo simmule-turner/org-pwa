@@ -3492,15 +3492,11 @@ async function runCapture(template) {
   }
 
   const now = new Date();
-  const target = resolveOlpTarget(state.doc, template.olp, { now });
 
-  let tableRowNumber = null;
-  if (template.type === 'table-line') {
-    const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
-    const dataRowCount = existingTable ? existingTable.rows.filter((r) => r.type === 'row').length : 0;
-    tableRowNumber = dataRowCount + 1;
-  }
-
+  // Prompts are collected FIRST, before anything below touches state.doc
+  // at all -- so a cancelled prompt genuinely means nothing happened, not
+  // just "nothing was inserted" while still leaving behind any OLP
+  // headings resolveOlpTarget had to create to even find a target.
   const prompts = scanPrompts(template.template);
   const answers = [];
   for (const p of prompts) {
@@ -3508,9 +3504,18 @@ async function runCapture(template) {
     const answer = window.prompt(message, p.default);
     if (answer === null) {
       setStatus('Capture cancelled.');
-      return; // cancelling any one prompt aborts the whole capture -- nothing partial gets inserted
+      return;
     }
     answers.push(answer);
+  }
+
+  const target = resolveOlpTarget(state.doc, template.olp, { now });
+
+  let tableRowNumber = null;
+  if (template.type === 'table-line') {
+    const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
+    const dataRowCount = existingTable ? existingTable.rows.filter((r) => r.type === 'row').length : 0;
+    tableRowNumber = dataRowCount + 1;
   }
 
   const { text, cursorOffset } = expandTemplate(template.template, {
