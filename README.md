@@ -50,7 +50,7 @@ If you're looking for org-mode-in-the-browser with full parity — babel, captur
 3. Edit. Every edit is applied instantly to an in-memory copy and cached locally in the background — nothing is lost if you close the tab, even before you hit Save.
 4. Tap **Save** when you want it written back to wherever it came from. **Save As** lets you choose a different destination or backend.
 
-The header shows the current filename, which backend it came from, and a **`• modified`** indicator whenever there are edits that haven't been saved yet.
+The header shows the current filename and which backend it came from, turning **red** whenever there are edits that haven't been saved yet (normal color otherwise).
 
 ---
 
@@ -83,7 +83,7 @@ Every delete action asks for confirmation and states plainly that it can't be un
 
 ## Searching
 
-Tap the 🔍 button to search the whole file — headings, tags, paragraphs, list items, table cells, and block content, case-insensitively. Results update live as you type and show a short snippet with the match, grouped under the heading each one belongs to.
+Tap **More → Search** to search the whole file — headings, tags, paragraphs, list items, table cells, and block content, case-insensitively. Results update live as you type and show a short snippet with the match, grouped under the heading each one belongs to.
 
 Search looks at the entire document regardless of current fold state — a match inside a collapsed heading, or inside body text hidden by `#+STARTUP: content`, still shows up. Tapping a result expands whatever's necessary to actually reveal it (including the target heading's own body, not just its ancestors) and scrolls to it with a brief highlight.
 
@@ -188,7 +188,7 @@ It's a flat list, in document order, each item showing its TODO keyword and titl
 
 ## Capture Templates
 
-Tap the inbox-tray icon (next to Search) for **Capture** — real org-mode's own `org-capture-templates` system, for quickly filing a note, task, or table row into a specific spot in the outline without navigating there by hand. Pick a template, answer whatever prompts it asks, and the expanded result gets inserted at that template's target — creating the target heading(s) if they don't exist yet.
+Tap **More → Capture** (the ⋮ button next to the filename) for real org-mode's own `org-capture-templates` system, for quickly filing a note, task, or table row into a specific spot in the outline without navigating there by hand. Pick a template, answer whatever prompts it asks, and the expanded result gets inserted at that template's target — creating the target heading(s) if they don't exist yet.
 
 Four example templates are the default, so this works immediately with no setup: **b**ullet list item, **c**heck list item, **m**eeting notes, and a **t**able row. Edit or replace them any time in **Settings → Capture Templates** — configured as JSON (an array of template objects), not a visual builder, matching how this app already handles GitHub/WebDAV config.
 
@@ -232,7 +232,7 @@ Four example templates are the default, so this works immediately with no setup:
 
 ## Settings
 
-Reached via the ⚙ button, which replaces the outline with the settings screen — same as switching to Text or Agenda view, not a popup over the outline. Tap ⚙ again, or any of File/Search/+/View, to leave settings and return to whatever was showing before (there's no separate "Done" button; those are already the way out).
+Reached via the ⚙ button, which replaces the outline with the settings screen — same as switching to Text or Agenda view, not a popup over the outline. Tap ⚙ again, or any of File/More/View, to leave settings and return to whatever was showing before (there's no separate "Done" button; those are already the way out).
 
 - **GitHub** — personal access token, repo owner, repo name, branch. Use a fine-grained token scoped to just that repo with Contents read/write only, not a broad classic token.
 - **WebDAV** — server URL, username, password (an app-specific password if your server supports one, not your main account password). Most WebDAV servers don't send CORS headers by default; if Open/Save fails with a network error, that's very likely a server-side CORS setting to fix, not a bug in this app.
@@ -330,4 +330,4 @@ Engine code (`src/`) and browser-specific adapters (`src-browser/`) are unit tes
 node --test
 ```
 
-493 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion (including week/day boundary alignment, SCHEDULED/DEADLINE carry-forward with delay-based early warning, commented/archived-heading exclusion, and the date-independent TODO view), correct resolution of a file with multiple `#+TODO:` lines, capture-template expansion and insertion (all four types, OLP target resolution, and the sequential-table-mutation bug this coverage originally caught), timestamp building/delay parsing and plain-timestamp-in-title editing for the structured SCHEDULED/DEADLINE editor, Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change, and the capture UI flow specifically was additionally verified via a DOM-stub integration test exercising the real button/prompt/insertion path end to end.
+493 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion (including week/day boundary alignment, SCHEDULED/DEADLINE carry-forward with delay-based early warning, commented/archived-heading exclusion, and the date-independent TODO view), correct resolution of a file with multiple `#+TODO:` lines, capture-template expansion and insertion (all four types, OLP target resolution, and the sequential-table-mutation bug this coverage originally caught), timestamp building/delay parsing and plain-timestamp-in-title editing for the structured SCHEDULED/DEADLINE editor, Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change, and both the capture UI flow and the More-menu restructuring were additionally verified via DOM-stub integration tests exercising the real button/prompt/insertion paths end to end.

@@ -130,6 +130,8 @@ const searchBtn = document.getElementById('searchBtn');
 const searchPanel = document.getElementById('searchPanel');
 const captureBtn = document.getElementById('captureBtn');
 const capturePanel = document.getElementById('capturePanel');
+const moreBtn = document.getElementById('moreBtn');
+const morePanel = document.getElementById('morePanel');
 
 /**
  * Keeps the content area's top offset in sync with the fixed top bar's
@@ -175,6 +177,7 @@ let fileMenuStep = null;
 let settingsOpen = false;
 let searchOpen = false;
 let captureOpen = false;
+let moreOpen = false;
 let searchQuery = '';
 let viewMenuOpen = false;
 // Agenda view state: which grouping is active, and the anchor date that
@@ -493,6 +496,38 @@ function renderInlineNodes(nodes, container) {
  *  to and highlight — pass the actual paragraph/list-item/table node for
  *  a body-content search result, to land precisely on the match rather
  *  than just its heading. */
+/**
+ * Toggles the action menu for `node` (a heading, list item, table, or
+ * paragraph — whichever matches what flattenVisibleRows produces for
+ * it), and — only when actually opening, not closing — scrolls the
+ * newly-revealed row+menu combination fully into view.
+ *
+ * This matters specifically for a row near the bottom of the viewport:
+ * the action menu renders BELOW the row it belongs to, so without an
+ * explicit scroll, tapping a row near the bottom could open a menu that
+ * ends up partially or entirely below the visible area, with nothing
+ * about the tap itself bringing it into view.
+ *
+ * Reuses the same row-index-into-outlineEl.children mapping
+ * navigateToHeading relies on elsewhere, since withActionMenu wraps a
+ * row and its menu together into one element — scrolling that ONE
+ * element into view covers both the row and whatever menu is now
+ * showing beneath it, not just the row itself.
+ */
+function toggleActionMenu(node) {
+  const opening = actionMenuFor !== node;
+  actionMenuFor = opening ? node : null;
+  render();
+
+  if (!opening) return;
+  requestAnimationFrame(() => {
+    const rows = flattenVisibleRows(state.doc);
+    const idx = rows.findIndex((r) => (r.rowType === 'list-item' ? r.item === node : r.node === node));
+    if (idx === -1 || !outlineEl.children[idx]) return;
+    outlineEl.children[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+}
+
 function navigateToHeading(heading, { revealOwnBody = false, targetNode = heading } = {}) {
   // Always land in the outline — a caller (search, an internal link,
   // agenda) shouldn't each need to remember this. Safe to call even when
@@ -584,7 +619,15 @@ function smallButton(label, ariaLabel, onClick) {
 // that was never filled in — deletes immediately with no prompt; anything
 // with real content underneath it gets one.
 function headingHasContent(heading) {
-  return (heading.children && heading.children.length > 0) || (heading.body && heading.body.length > 0);
+  return (
+    (heading.children && heading.children.length > 0) ||
+    (heading.body && heading.body.length > 0) ||
+    heading.todo !== null ||
+    heading.priority !== null ||
+    (heading.tags && heading.tags.length > 0) ||
+    (heading.propertyOrder && heading.propertyOrder.length > 0) ||
+    Boolean(heading.planning && (heading.planning.scheduled || heading.planning.deadline))
+  );
 }
 
 function confirmHeadingDelete(heading) {
@@ -594,9 +637,14 @@ function confirmHeadingDelete(heading) {
     parts.push(`${heading.children.length} sub-heading${heading.children.length === 1 ? '' : 's'}`);
   }
   if (heading.body.length) parts.push('notes/lists/tables');
+  if (heading.todo !== null) parts.push(`its "${heading.todo}" state`);
+  if (heading.priority !== null) parts.push('a priority');
+  if (heading.tags && heading.tags.length) parts.push(`tags (${heading.tags.join(', ')})`);
+  if (heading.propertyOrder && heading.propertyOrder.length) parts.push('properties');
+  if (heading.planning && (heading.planning.scheduled || heading.planning.deadline)) parts.push('a scheduled/deadline date');
   const title = heading.title || '(untitled)';
   return window.confirm(
-    `Delete "${title}"? It contains ${parts.join(' and ')}, which will be deleted too. This can't be undone.`
+    `Delete "${title}"? It has ${parts.join(', ')}, which will be lost. This can't be undone.`
   );
 }
 
@@ -996,8 +1044,7 @@ function renderRow(row, todoSequence) {
       }
       title.onclick = (e) => {
         if (e.target.closest('[data-inline-link]')) return;
-        actionMenuFor = actionMenuFor === row.node ? null : row.node;
-        render();
+        toggleActionMenu(row.node);
       };
       el.appendChild(title);
 
@@ -1335,8 +1382,7 @@ function renderRow(row, todoSequence) {
       text.onclick = (e) => {
         if (e.target.closest('[data-inline-link]')) return;
         e.stopPropagation();
-        actionMenuFor = actionMenuFor === row.item ? null : row.item;
-        render();
+        toggleActionMenu(row.item);
       };
       el.appendChild(text);
 
@@ -1414,8 +1460,7 @@ function renderTableRow(row) {
   label.style.cursor = 'pointer';
   label.style.padding = '2px 0 4px';
   label.onclick = () => {
-    actionMenuFor = actionMenuFor === row.node ? null : row.node;
-    render();
+    toggleActionMenu(row.node);
   };
   wrap.appendChild(label);
 
@@ -1625,8 +1670,7 @@ function renderParagraphRow(row) {
   // editing and showing a standalone always-visible delete button.
   p.onclick = (e) => {
     if (e.target.closest('[data-inline-link]')) return;
-    actionMenuFor = actionMenuFor === row.node ? null : row.node;
-    render();
+    toggleActionMenu(row.node);
   };
   wrap.appendChild(p);
 
@@ -1802,10 +1846,13 @@ function storageKindLabel(kind) {
 function updateFilenameDisplay() {
   if (!state.documentId) {
     filenameEl.textContent = 'No file open';
+    filenameEl.style.color = '';
+    filenameEl.style.opacity = '';
     return;
   }
-  filenameEl.textContent =
-    (isDirty ? '\u2022 modified \u2014 ' : '') + state.documentId + ' (' + storageKindLabel(state.storageKind) + ')';
+  filenameEl.textContent = state.documentId + ' (' + storageKindLabel(state.storageKind) + ')';
+  filenameEl.style.color = isDirty ? '#c0392b' : '';
+  filenameEl.style.opacity = isDirty ? '1' : ''; // full opacity when modified so the red actually stands out, not dimmed by the element's own default 0.7
 }
 
 /** Common finish-up after any successful open/create, regardless of which
@@ -1824,6 +1871,7 @@ async function afterDocumentLoaded(documentId, doc, storageKind) {
   viewMenuBtn.disabled = false;
   searchBtn.disabled = false;
   captureBtn.disabled = false;
+  moreBtn.disabled = false;
   searchOpen = false;
   searchQuery = '';
   renderSearchPanel();
@@ -2414,12 +2462,24 @@ fileMenuBtn.addEventListener('click', () => {
     viewMenuOpen = false;
     renderViewMenu();
   }
+  if (fileMenuOpen && captureOpen) {
+    captureOpen = false;
+    renderCapturePanel();
+  }
+  if (fileMenuOpen && moreOpen) {
+    moreOpen = false;
+    renderMoreMenu();
+  }
   renderFileMenu();
 });
 
 addBtn.addEventListener('click', () => {
   if (!state.doc) return;
   settingsOpen = false;
+  if (moreOpen) {
+    moreOpen = false;
+    renderMoreMenu();
+  }
   const heading = insertTopLevelHeading(state.doc, {});
   startEditingTitle(heading, true);
 });
@@ -2814,6 +2874,14 @@ viewMenuBtn.addEventListener('click', () => {
     searchOpen = false;
     renderSearchPanel();
   }
+  if (viewMenuOpen && captureOpen) {
+    captureOpen = false;
+    renderCapturePanel();
+  }
+  if (viewMenuOpen && moreOpen) {
+    moreOpen = false;
+    renderMoreMenu();
+  }
   renderViewMenu();
 });
 
@@ -3150,6 +3218,14 @@ settingsBtn.addEventListener('click', async () => {
     viewMenuOpen = false;
     renderViewMenu();
   }
+  if (settingsOpen && captureOpen) {
+    captureOpen = false;
+    renderCapturePanel();
+  }
+  if (settingsOpen && moreOpen) {
+    moreOpen = false;
+    renderMoreMenu();
+  }
   if (settingsOpen) {
     await renderSettingsView();
   } else {
@@ -3301,6 +3377,10 @@ searchBtn.addEventListener('click', () => {
   if (searchOpen && viewMenuOpen) {
     viewMenuOpen = false;
     renderViewMenu();
+  }
+  if (searchOpen && moreOpen) {
+    moreOpen = false;
+    renderMoreMenu();
   }
   if (!searchOpen) searchQuery = '';
   renderSearchPanel();
@@ -3485,7 +3565,76 @@ captureBtn.addEventListener('click', () => {
     searchQuery = '';
     renderSearchPanel();
   }
+  if (captureOpen && moreOpen) {
+    moreOpen = false;
+    renderMoreMenu();
+  }
   renderCapturePanel();
+});
+
+// ---- More menu (Search / Capture / Add heading) ---------------------
+
+/** Search, Capture, and Add heading live behind this one button instead
+ *  of each having their own place in the top bar — frees up room for
+ *  the filename, which otherwise competes for space with up to six
+ *  separate icon buttons. Each option here just calls .click() on the
+ *  original (still-present-but-hidden) button rather than reimplementing
+ *  any of its logic, so nothing about how search/capture/add actually
+ *  work changes at all — only how they're reached. */
+function renderMoreMenu() {
+  morePanel.innerHTML = '';
+  if (!moreOpen) {
+    morePanel.style.display = 'none';
+    return;
+  }
+  morePanel.style.display = 'block';
+
+  const row = document.createElement('div');
+  row.className = 'panel-row';
+
+  const searchBtnOption = menuButton('Search', () => {
+    moreOpen = false;
+    renderMoreMenu();
+    searchBtn.click();
+  });
+  searchBtnOption.style.flex = '1';
+  row.appendChild(searchBtnOption);
+
+  const captureBtnOption = menuButton('Capture', () => {
+    moreOpen = false;
+    renderMoreMenu();
+    captureBtn.click();
+  });
+  captureBtnOption.style.flex = '1';
+  row.appendChild(captureBtnOption);
+
+  const addBtnOption = menuButton('Add heading', () => {
+    moreOpen = false;
+    renderMoreMenu();
+    addBtn.click();
+  });
+  addBtnOption.style.flex = '1';
+  row.appendChild(addBtnOption);
+
+  morePanel.appendChild(row);
+}
+
+moreBtn.addEventListener('click', () => {
+  moreOpen = !moreOpen;
+  if (moreOpen && fileMenuOpen) {
+    fileMenuOpen = false;
+    fileMenuStep = null;
+    renderFileMenu();
+  }
+  if (moreOpen && settingsOpen) {
+    settingsOpen = false;
+    render();
+  }
+  if (moreOpen && viewMenuOpen) {
+    viewMenuOpen = false;
+    renderViewMenu();
+  }
+  renderMoreMenu();
 });
 
 if ('serviceWorker' in navigator) {

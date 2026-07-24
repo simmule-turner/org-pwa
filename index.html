@@ -164,15 +164,20 @@
     <header>
       <button id="fileMenuBtn" class="icon-btn" aria-label="File">&#128193;</button>
       <span id="filename">No file open</span>
-      <button id="searchBtn" class="icon-btn" disabled aria-label="Search">&#128269;</button>
-      <button id="captureBtn" class="icon-btn" disabled aria-label="Capture">&#128229;</button>
-      <button id="addBtn" class="icon-btn" disabled aria-label="Add heading">+</button>
+      <button id="moreBtn" class="icon-btn" disabled aria-label="More">&#8942;</button>
       <button id="viewMenuBtn" class="icon-btn" disabled aria-label="View">&#128065;</button>
       <button id="settingsBtn" class="icon-btn" aria-label="Settings">&#9881;</button>
     </header>
     <div id="fileMenuPanel" class="panel" style="display: none;"></div>
     <div id="searchPanel" class="panel" style="display: none;"></div>
     <div id="capturePanel" class="panel" style="display: none;"></div>
+    <div id="morePanel" class="panel" style="display: none;"></div>
+    <!-- Kept in the DOM so their existing click handlers and disabled-state
+         logic stay completely untouched -- the More panel's own buttons
+         just call .click() on these rather than duplicating any logic. -->
+    <button id="searchBtn" disabled aria-label="Search" style="display: none;">&#128269;</button>
+    <button id="captureBtn" disabled aria-label="Capture" style="display: none;">&#128229;</button>
+    <button id="addBtn" disabled aria-label="Add heading" style="display: none;">+</button>
     <div id="viewMenuPanel" class="panel" style="display: none;"></div>
   </div>
   <div id="contentArea">
