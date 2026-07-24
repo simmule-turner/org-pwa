@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
 import {
   buildAgendaItems,
+  buildTaskList,
   itemsForDate,
   itemsInRange,
   groupByDay,
@@ -13,6 +14,7 @@ import {
   parseRepeater,
   expandRepeats,
   carryForwardOccurrences,
+  delayToDays,
   startOfDay,
   endOfDay,
   startOfWeek,
@@ -517,4 +519,142 @@ test('a commented heading with a plain title timestamp is also excluded (not jus
   const doc = parseOrg('** # Someone <2026-01-05 Mon>');
   const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
   assert.deepEqual(items, []);
+});
+
+// ---- delayToDays -----------------------------------------------------
+
+test('delayToDays converts hours/days/weeks exactly', () => {
+  assert.equal(delayToDays({ amount: 3, unit: 'd' }), 3);
+  assert.equal(delayToDays({ amount: 2, unit: 'w' }), 14);
+  assert.equal(delayToDays({ amount: 12, unit: 'h' }), 0.5);
+});
+
+test('delayToDays approximates months/years and returns 0 for null', () => {
+  assert.equal(delayToDays({ amount: 1, unit: 'm' }), 30);
+  assert.equal(delayToDays({ amount: 1, unit: 'y' }), 365);
+  assert.equal(delayToDays(null), 0);
+});
+
+// ---- carryForwardOccurrences with an early-warning window ---------------
+
+test('carryForwardOccurrences with earlyWarningDays starts the window before the literal date', () => {
+  const itemDate = new Date(2026, 0, 10); // Jan 10
+  const today = new Date(2026, 0, 5); // Jan 5 -- before the item is even due
+  const days = carryForwardOccurrences(itemDate, today, new Date(2026, 0, 1), new Date(2026, 0, 31), 3);
+  // Should start Jan 7 (10 - 3) and end Jan 10 (the literal date, since it's not yet overdue)
+  assert.equal(days[0].getDate(), 7);
+  assert.equal(days[days.length - 1].getDate(), 10);
+  assert.equal(days.length, 4); // Jan 7, 8, 9, 10
+});
+
+test('carryForwardOccurrences with earlyWarningDays: 0 (default) behaves exactly as before', () => {
+  const itemDate = new Date(2026, 0, 10);
+  const today = new Date(2026, 0, 5);
+  const days = carryForwardOccurrences(itemDate, today, new Date(2026, 0, 1), new Date(2026, 0, 31));
+  assert.equal(days.length, 1);
+  assert.equal(days[0].getDate(), 10);
+});
+
+// ---- buildAgendaItems: delay makes an upcoming deadline show up early ---
+
+test('THE FEATURE THIS ADDS: a DEADLINE with a delay shows up before its literal date, with negative daysOverdue ("days until due")', () => {
+  const doc = parseOrg(['** Something due soon', 'DEADLINE: <2026-01-10 Sat -3d>'].join('\n'));
+  const today = new Date(2026, 0, 8); // 2 days before the deadline, within the 3-day warning window
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: today,
+    rangeEnd: today,
+    today,
+    isDone: () => false,
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].daysOverdue, -2); // 2 days until due
+});
+
+test('a DEADLINE with a delay does NOT show up before the warning window starts', () => {
+  const doc = parseOrg(['** Something due later', 'DEADLINE: <2026-01-10 Sat -3d>'].join('\n'));
+  const today = new Date(2026, 0, 5); // 5 days before the deadline -- outside the 3-day window
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: today,
+    rangeEnd: today,
+    today,
+    isDone: () => false,
+  });
+  assert.deepEqual(items, []);
+});
+
+test('a DEADLINE with a delay still correctly carries forward (positive daysOverdue) once actually overdue', () => {
+  const doc = parseOrg(['** Overdue with a delay', 'DEADLINE: <2026-01-10 Sat -3d>'].join('\n'));
+  const today = new Date(2026, 0, 15); // 5 days past the deadline
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: today,
+    rangeEnd: today,
+    today,
+    isDone: () => false,
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].daysOverdue, 5);
+});
+
+test('a SCHEDULED item without any delay is completely unaffected by this feature', () => {
+  const doc = parseOrg(['** Normal scheduled item', 'SCHEDULED: <2026-01-10 Sat>'].join('\n'));
+  const today = new Date(2026, 0, 5);
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: today,
+    rangeEnd: today,
+    today,
+    isDone: () => false,
+  });
+  assert.deepEqual(items, []); // correctly not yet shown -- 5 days before, no delay
+});
+
+// ---- buildTaskList (the date-independent global TODO list) --------------
+
+test('THE EXACT REFERENCE SCENARIO: a TODO with no date at all shows up in the task list', () => {
+  const doc = parseOrg('** TODO Something with no date attached at all');
+  const items = buildTaskList([{ documentId: 'x.org', doc }], { isDone: (t) => t === 'DONE' });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, 'Something with no date attached at all');
+});
+
+test('buildTaskList excludes DONE items, using the isDone predicate like buildAgendaItems does', () => {
+  const doc = parseOrg(['** TODO Not done', '** DONE Finished'].join('\n'));
+  const items = buildTaskList([{ documentId: 'x.org', doc }], { isDone: (t) => t === 'DONE' });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, 'Not done');
+});
+
+test('buildTaskList excludes a heading with no TODO state at all', () => {
+  const doc = parseOrg('** Just a normal heading, never a task');
+  const items = buildTaskList([{ documentId: 'x.org', doc }], { isDone: () => false });
+  assert.deepEqual(items, []);
+});
+
+test('buildTaskList without isDone includes every todo-state heading, done or not (matching buildAgendaItems\' own opt-in pattern)', () => {
+  const doc = parseOrg(['** TODO Not done', '** DONE Finished'].join('\n'));
+  const items = buildTaskList([{ documentId: 'x.org', doc }]);
+  assert.equal(items.length, 2);
+});
+
+test('buildTaskList excludes archived and commented headings by default, same as buildAgendaItems', () => {
+  const doc = parseOrg(
+    ['** TODO Archived task :ARCHIVE:', '** TODO # Commented-out task'].join('\n')
+  );
+  const items = buildTaskList([{ documentId: 'x.org', doc }], { isDone: () => false });
+  assert.deepEqual(items, []);
+});
+
+test('buildTaskList respects a tagFilter, same shape as buildAgendaItems', () => {
+  const doc = parseOrg(['** TODO Tagged :work:', '** TODO Untagged'].join('\n'));
+  const items = buildTaskList([{ documentId: 'x.org', doc }], {
+    isDone: () => false,
+    tagFilter: (tags) => tags.includes('work'),
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, 'Tagged');
+});
+
+test('buildTaskList is completely independent of SCHEDULED/DEADLINE -- a dated TODO shows up too', () => {
+  const doc = parseOrg(['** TODO Has a date', 'SCHEDULED: <2026-01-10 Sat>'].join('\n'));
+  const items = buildTaskList([{ documentId: 'x.org', doc }], { isDone: () => false });
+  assert.equal(items.length, 1);
 });

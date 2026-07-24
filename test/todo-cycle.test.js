@@ -76,3 +76,52 @@ test('isDoneKeyword distinguishes TODO-type from DONE-type keywords', () => {
   assert.equal(isDoneKeyword('WAITING', seq), false);
   assert.equal(isDoneKeyword('CANCELLED', seq), true);
 });
+
+// ---- multiple #+TODO: lines (the real bug) -------------------------------
+
+test('THE BUG THIS FIXES: with two #+TODO: lines, resolveTodoSequence used to read only the FIRST one -- the opposite of what the parser itself does when setting heading.todo (last line wins, per-part)', () => {
+  const doc = parseOrg(
+    ['#+TODO: TODO WAIT | DONE KILL', '#+TODO: TODO | DONE', '* WAIT Something'].join('\n')
+  );
+  // The parser itself, using its own last-wins-per-part algorithm, does NOT
+  // recognize WAIT here (the second line's non-empty TODO part replaced
+  // the first line's), so heading.todo is null -- this is correct,
+  // expected parser behavior, not a bug on its own.
+  assert.equal(doc.children[0].todo, null);
+  // The bug: resolveTodoSequence used to disagree with the parser about
+  // this, reporting WAIT as a valid keyword anyway (it read only the
+  // first line). Now it must agree with the parser exactly.
+  const seq = resolveTodoSequence(doc);
+  assert.deepEqual(seq.todoKeywords, ['TODO']);
+  assert.deepEqual(seq.doneKeywords, ['DONE']);
+});
+
+test('a later #+TODO: line with a non-empty TODO part replaces the earlier one entirely (not merged)', () => {
+  const doc = parseOrg(['#+TODO: TODO WAIT REVIEW | DONE', '#+TODO: TODO | DONE CANCELLED'].join('\n'));
+  const seq = resolveTodoSequence(doc);
+  assert.deepEqual(seq.todoKeywords, ['TODO']); // WAIT, REVIEW from line 1 are gone
+  assert.deepEqual(seq.doneKeywords, ['DONE', 'CANCELLED']); // line 2's done part used, since it's non-empty
+});
+
+test('a later #+TODO: line with an EMPTY todo part does not blank out an earlier lines todo keywords', () => {
+  const doc = parseOrg(['#+TODO: TODO WAIT | DONE', '#+TODO: | KILLED'].join('\n'));
+  const seq = resolveTodoSequence(doc);
+  assert.deepEqual(seq.todoKeywords, ['TODO', 'WAIT']); // kept from line 1, since line 2's part was empty
+  assert.deepEqual(seq.doneKeywords, ['KILLED']); // line 2's non-empty done part used
+});
+
+test('resolveTodoSequence with multiple lines matches heading.todo exactly for a keyword that DOES survive to the final sequence', () => {
+  const doc = parseOrg(
+    ['#+TODO: TODO WAIT | DONE KILL', '#+TODO: TODO WAIT | DONE', '* WAIT Something still valid'].join('\n')
+  );
+  assert.equal(doc.children[0].todo, 'WAIT'); // both lines agree WAIT is valid
+  const seq = resolveTodoSequence(doc);
+  assert.ok(seq.todoKeywords.includes('WAIT'));
+});
+
+test('a single #+TODO: line (the common case) is completely unaffected by this fix', () => {
+  const doc = parseOrg('#+TODO: TODO WAIT | DONE KILL\n* WAIT Something');
+  const seq = resolveTodoSequence(doc);
+  assert.deepEqual(seq, { todoKeywords: ['TODO', 'WAIT'], doneKeywords: ['DONE', 'KILL'] });
+  assert.equal(doc.children[0].todo, 'WAIT');
+});
