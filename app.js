@@ -900,14 +900,14 @@ function buildTimestampFieldGroup(label, currentRaw) {
   return { container: wrap, getRawValue };
 }
 
-function renderActionMenu(actions) {
+function renderActionMenu(actions, columns = 5) {
   const menu = document.createElement('div');
   menu.style.display = 'grid';
-  menu.style.gridTemplateColumns = 'repeat(5, 44px)'; // exactly 5 per row, regardless of container width -- flex-wrap would vary the count by available space instead
+  menu.style.gridTemplateColumns = `repeat(${columns}, 44px)`; // fixed count per row, regardless of container width -- flex-wrap would vary the count by available space instead
   menu.style.gap = '8px';
-  menu.style.padding = '8px 8px 10px 40px';
+  menu.style.padding = '8px 8px 10px 8px';
   menu.style.borderBottom = '0.5px solid #8882';
-  menu.style.overflowX = 'auto'; // safety net for a deeply nested heading where 5 columns might not fit the reduced available width -- keeps buttons reachable via local scroll rather than clipped
+  menu.style.overflowX = 'auto'; // safety net: a wide row (especially at 7 columns) can get tight on narrow phones, more so once a nested heading's own depth indentation eats into available width -- keeps buttons reachable via local scroll rather than clipped if it doesn't fit
   for (const action of actions) {
     const btn = document.createElement('button');
     btn.textContent = action.icon;
@@ -1108,6 +1108,32 @@ function renderRow(row, todoSequence) {
             },
           },
           {
+            icon: '\u2191',
+            label: 'Move up',
+            onClick: () => {
+              actionMenuFor = null;
+              if (moveHeadingUp(state.doc, row.node)) {
+                commitAndRender();
+              } else {
+                setStatus('Already first among its siblings.');
+                render();
+              }
+            },
+          },
+          {
+            icon: '\u2193',
+            label: 'Move down',
+            onClick: () => {
+              actionMenuFor = null;
+              if (moveHeadingDown(state.doc, row.node)) {
+                commitAndRender();
+              } else {
+                setStatus('Already last among its siblings.');
+                render();
+              }
+            },
+          },
+          {
             icon: '\ud83d\udcc5',
             label:
               row.node.planning.scheduled || row.node.planning.deadline
@@ -1189,32 +1215,6 @@ function renderRow(row, todoSequence) {
             },
           },
           {
-            icon: '\u2191',
-            label: 'Move up',
-            onClick: () => {
-              actionMenuFor = null;
-              if (moveHeadingUp(state.doc, row.node)) {
-                commitAndRender();
-              } else {
-                setStatus('Already first among its siblings.');
-                render();
-              }
-            },
-          },
-          {
-            icon: '\u2193',
-            label: 'Move down',
-            onClick: () => {
-              actionMenuFor = null;
-              if (moveHeadingDown(state.doc, row.node)) {
-                commitAndRender();
-              } else {
-                setStatus('Already last among its siblings.');
-                render();
-              }
-            },
-          },
-          {
             icon: '\u2190',
             label: 'Promote (outdent)',
             onClick: () => {
@@ -1240,7 +1240,7 @@ function renderRow(row, todoSequence) {
               }
             },
           },
-        ]);
+        ], 7);
       }
     }
 
