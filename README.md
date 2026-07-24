@@ -19,6 +19,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 - [Archiving](#archiving)
 - [The plain-text editor](#the-plain-text-editor)
 - [Agenda](#agenda)
+- [Task List](#task-list)
 - [File management](#file-management)
 - [Settings](#settings)
 - [Offline behavior and sync](#offline-behavior-and-sync)
@@ -159,13 +160,13 @@ Tap **View → Agenda** for a list of everything with a date attached, grouped i
 **Week view always aligns to an actual calendar week** — Monday through Sunday by default (configurable, see below), regardless of which day of that week you happened to open the agenda on. It resolves to the same 7-day window whether you're looking at it from Monday or Friday, not "whatever day is currently open, plus the next six."
 
 Three kinds of dated entry show up, and **they behave differently from each other in an important way** — this is real org-mode semantics, not an app-specific choice:
-- **`SCHEDULED:`** — when you intend to do something. Shows on its date, and if the heading isn't marked done, **keeps reappearing on every day after that** (as overdue) right up through today, until you mark it done. This is what makes "I meant to do this last week and never did" actually visible instead of quietly vanishing off the agenda the day after its original date.
-- **`DEADLINE:`** — same carry-forward behavior as SCHEDULED: once the deadline passes with the heading still not done, it keeps showing as past-due through today.
+- **`SCHEDULED:`** — when you intend to do something. Shows on its date, and if the heading isn't marked done, **keeps reappearing on every day after that** (as overdue) right up through today, until you mark it done. This is what makes "I meant to do this last week and never did" actually visible instead of quietly vanishing off the agenda the day after its original date. The overdue count shows directly on the item ("3 days overdue").
+- **`DEADLINE:`** — same carry-forward behavior as SCHEDULED once the date passes with the heading still not done. It also supports a **delay/warning-period** suffix (real org syntax: `DEADLINE: <2026-01-10 Sat -3d>`), which makes it start appearing *before* its date too — 3 days early in that example, showing "due in 3 days," counting down each day until it either gets marked done or becomes overdue (at which point it switches to counting up instead). Without a delay, a DEADLINE only ever shows on its date or after — real org's own default.
 - **A plain, *active* timestamp written directly in a heading's title** — the standard org convention for tracking something like a recurring birthday right on its own heading line (`**** Jennifer <1989-11-02 Thu +1y>`), a genuinely separate source from SCHEDULED/DEADLINE, not a fallback for it. This one does **not** carry forward, ever, regardless of done status — matching real org's own distinction ("if you didn't go to your doctor's appointment yesterday, that doesn't mean you still have one today"). Only counted when the heading has no SCHEDULED/DEADLINE of its own (to avoid a confusing double entry), and only *active* `<...>` timestamps count — an inactive `[...]` one is excluded, same reasoning: a dated record, not a reminder. This only looks at the title, not body text, to avoid pulling in unrelated dates mentioned in ordinary prose elsewhere in a journal-heavy file.
 
 Other behavior:
 - **Completed items are excluded** — using the file's own `#+TODO:` sequence (whatever keywords you've actually defined as "done"), not a hardcoded check for the literal word `DONE`.
-- **Repeating timestamps expand properly**, for any of the sources above. `<1989-11-02 Thu +1y>` shows up every year on the anniversary within whatever range is currently displayed, not just its one literal stored date — switch to Month view and it correctly shows up in whichever month it falls in. Carry-forward and repetition don't combine — a *repeating* SCHEDULED/DEADLINE shows on its own repeat dates only, not additionally carried forward between them (org's actual interaction between a repeater and completion history is more involved than a read-only agenda needs to model).
+- **Repeating timestamps expand properly**, for any of the sources above. `<1989-11-02 Thu +1y>` shows up every year on the anniversary within whatever range is currently displayed, not just its one literal stored date — switch to Month view and it correctly shows up in whichever month it falls in. Carry-forward, delay, and repetition don't combine — a *repeating* SCHEDULED/DEADLINE shows on its own repeat dates only, with no additional carry-forward or early-warning between them (org's actual interaction between a repeater and completion history is more involved than a read-only agenda needs to model).
 - Archived headings are excluded, same as everywhere else in the app.
 - **Commented headings are excluded too** — a heading whose title starts with `# ` (or is just `#`), real org's own comment-line convention applied to a heading title (e.g. `** # draft, not ready yet`). Both this and archived-heading exclusion are configurable via [Local Variables](#local-variables) (`org-agenda-skip-comment-trees` / `org-agenda-skip-archived-trees`), matching real org's own two separate settings for this.
 - **Week view's start day is configurable** via `org-agenda-start-on-weekday` in a [Local Variables](#local-variables) block — Monday by default, matching real org.
@@ -173,6 +174,14 @@ Other behavior:
 One thing worth knowing if a title timestamp isn't showing the way you expect: **a trailing tag needs a space before it to actually parse as a tag** (`<1989-11-02 Thu +1y> :BDAY:`, not `+1y>:BDAY:`) — this matches real Emacs org-mode's own heading-parsing rules, not a gap specific to this app. Without the space, the tag stays as literal title text instead of becoming a real, filterable tag — but the *timestamp itself* is still found and still shows up in the agenda either way, since that scan doesn't care about tag formatting.
 
 Scope, stated plainly: this covers the currently open file only. The underlying engine can aggregate across multiple documents at once (it takes a list of `{documentId, doc}` pairs, built with a future cross-file agenda in mind), but there's no multi-file-open UI yet to actually feed it more than one — see [Differences from Emacs org-mode](#differences-from-emacs-org-mode).
+
+---
+
+## Task List
+
+Tap **View → Task List** for every active TODO-state heading in the file, **completely independent of any date** — matching real org-mode's own global TODO list (`C-c a t`, distinct from `C-c a a`, the calendar-style agenda). A TODO with no SCHEDULED, DEADLINE, or timestamp attached never shows up in Agenda at all — by design, not by omission — so this is where it lives instead.
+
+It's a flat list, in document order, each item showing its TODO keyword and title, tap to jump straight to it in the outline. Same exclusions as Agenda: completed items (via the file's own `#+TODO:` sequence), archived headings, and commented headings, using the same [Local Variables](#local-variables) overrides where relevant.
 
 ---
 
@@ -242,8 +251,7 @@ This is the section to read if you know org-mode well and want to know exactly w
 - No UI action archives a heading for you (adds `:ARCHIVE:`) or moves it to a sibling archive file, even though the underlying engine has functions for both. Folding *respects* the archive tag once it's there; nothing in the UI *sets* it.
 
 **Agenda**
-- Day/Week/Month views, repeating-timestamp expansion, and completed-item exclusion are all built now (see [Agenda](#agenda)) — this used to be engine-only with no UI at all, and repeaters used to be parsed but never expanded. What's still different from real org: it only ever looks at the currently open file (see "Single document at a time" below); the three repeater marks (`+`, `++`, `.+`) all expand identically here, since this is a read-only display with no notion of "when was this marked done" driving a catch-up/restart calculation; and there's no support for org's diary-sexp entries (`%%(diary-...)`) at all.
-- **The delay/warning-period suffix (`-3d`) is parsed and settable via the SCHEDULED/DEADLINE wizard, and round-trips correctly, but doesn't yet change agenda display.** In real org, `DEADLINE: <2026-01-10 Sat -3d>` makes that deadline start appearing in the agenda from Jan 7th onward, not just from the 10th. That early-warning behavior isn't wired into this app's agenda logic yet — a deadline still only shows starting on its own date (or carried-forward afterward, if overdue and not done — see [Agenda](#agenda)). Stated plainly rather than silently: the field exists and works correctly as data, but nothing reads it yet.
+- Day/Week/Month views, repeating-timestamp expansion, completed-item exclusion, SCHEDULED/DEADLINE carry-forward with a visible overdue count, and the delay/warning-period suffix making a deadline show up early are all built now (see [Agenda](#agenda)) — this used to be engine-only with no UI at all, and repeaters and delays used to be parsed but never expanded or acted on. What's still different from real org: it only ever looks at the currently open file (see "Single document at a time" below); the three repeater marks (`+`, `++`, `.+`) all expand identically here, since this is a read-only display with no notion of "when was this marked done" driving a catch-up/restart calculation; and there's no support for org's diary-sexp entries (`%%(diary-...)`) at all.
 
 **No capture templates, no babel, no command palette.** These were scoped early on as possible future work and never built.
 
@@ -272,7 +280,7 @@ Restated in one place for scanning:
 - No table formula evaluation
 - No undo/redo
 - No drag-to-reorder
-- No multi-file switching UI (agenda is therefore single-file, too — see [Agenda](#agenda))
+- No multi-file switching UI (Agenda and Task List are therefore single-file, too — see [Agenda](#agenda))
 - Agenda doesn't distinguish the three repeater marks (`+`/`++`/`.+`), and has no diary-sexp support
 - Local/relative images show as a placeholder, never resolve to real pixels
 - File-to-file links don't navigate
@@ -289,4 +297,4 @@ Engine code (`src/`) and browser-specific adapters (`src-browser/`) are unit tes
 node --test
 ```
 
-418 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion (including week/day boundary alignment, SCHEDULED/DEADLINE carry-forward, and commented/archived-heading exclusion), timestamp building/delay parsing and plain-timestamp-in-title editing for the structured SCHEDULED/DEADLINE editor, Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change.
+445 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion (including week/day boundary alignment, SCHEDULED/DEADLINE carry-forward with delay-based early warning, commented/archived-heading exclusion, and the date-independent Task List), correct resolution of a file with multiple `#+TODO:` lines, timestamp building/delay parsing and plain-timestamp-in-title editing for the structured SCHEDULED/DEADLINE editor, Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change.

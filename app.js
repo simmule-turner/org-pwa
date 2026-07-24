@@ -23,7 +23,17 @@ import {
   getAgendaSkipArchivedTrees,
 } from './src/local-variables.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
-import { buildAgendaItems, dayView, weekView, monthView, startOfDay, endOfDay, startOfWeek, parseRepeater } from './src/agenda.js';
+import {
+  buildAgendaItems,
+  buildTaskList,
+  dayView,
+  weekView,
+  monthView,
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  parseRepeater,
+} from './src/agenda.js';
 import { parseOrgTimestamp, formatOrgTimestamp, parseDelay } from './src/org-timestamp.js';
 import {
   renameHeading,
@@ -1696,6 +1706,11 @@ function render() {
     return;
   }
 
+  if (currentView === 'tasklist') {
+    renderTaskListView();
+    return;
+  }
+
   const rows = flattenVisibleRows(state.doc);
   if (rows.length === 0) {
     outlineEl.innerHTML = '';
@@ -2455,6 +2470,7 @@ function renderViewMenu() {
     ['org', 'Org'],
     ['text', 'Text'],
     ['agenda', 'Agenda'],
+    ['tasklist', 'Task List'],
   ]) {
     const btn = menuButton(label, () => switchToView(key));
     if (key === currentView) btn.style.fontWeight = '700';
@@ -2668,6 +2684,20 @@ function renderAgendaView() {
         rep.style.fontSize = '12px';
         text.appendChild(rep);
       }
+      if (item.daysOverdue) {
+        const overdue = document.createElement('span');
+        overdue.style.fontSize = '12px';
+        overdue.style.marginLeft = '6px';
+        if (item.daysOverdue > 0) {
+          overdue.style.color = '#c0392b';
+          overdue.textContent = item.daysOverdue === 1 ? '1 day overdue' : item.daysOverdue + ' days overdue';
+        } else {
+          overdue.style.opacity = '0.6';
+          const daysUntil = -item.daysOverdue;
+          overdue.textContent = daysUntil === 1 ? 'due tomorrow' : 'due in ' + daysUntil + ' days';
+        }
+        text.appendChild(overdue);
+      }
       row.appendChild(text);
 
       if (item.hasTime) {
@@ -2685,6 +2715,73 @@ function renderAgendaView() {
       };
       container.appendChild(row);
     }
+  }
+
+  outlineEl.appendChild(container);
+}
+
+function renderTaskListView() {
+  outlineEl.innerHTML = '';
+  const container = document.createElement('div');
+  container.style.padding = '8px 12px';
+
+  const heading = document.createElement('div');
+  heading.style.fontSize = '12px';
+  heading.style.opacity = '0.65';
+  heading.style.marginBottom = '10px';
+  heading.textContent = 'Every active TODO in this file, regardless of date — matching real org\u2019s own global TODO list.';
+  container.appendChild(heading);
+
+  // Same exclusion rules as Agenda (completed items, archived, commented
+  // headings), using this file's own #+TODO: sequence — deliberately
+  // consistent with Agenda rather than a separate, different notion of
+  // "done" or "should this show up at all".
+  const todoSequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
+  const items = buildTaskList([{ documentId: state.documentId, doc: state.doc }], {
+    isDone: (todo) => todoSequence.doneKeywords.includes(todo),
+    includeCommented: !getAgendaSkipCommentTrees(state.localVariables),
+    includeArchived: !getAgendaSkipArchivedTrees(state.localVariables),
+  });
+
+  if (items.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.opacity = '0.6';
+    empty.style.fontSize = '14px';
+    empty.style.padding = '20px 0';
+    empty.textContent = 'Nothing active \u2014 every TODO is either done or there are none yet.';
+    container.appendChild(empty);
+    outlineEl.appendChild(container);
+    return;
+  }
+
+  for (const item of items) {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.gap = '6px';
+    row.style.alignItems = 'baseline';
+    row.style.padding = '8px 2px';
+    row.style.borderBottom = '1px solid var(--border)';
+    row.style.cursor = 'pointer';
+
+    const badge = document.createElement('span');
+    badge.textContent = item.todo;
+    badge.style.fontWeight = '700';
+    badge.style.fontSize = '12px';
+    badge.style.flexShrink = '0';
+    row.appendChild(badge);
+
+    const text = document.createElement('div');
+    text.style.flex = '1 1 auto';
+    text.style.minWidth = '0';
+    text.style.overflowWrap = 'anywhere';
+    text.textContent = item.title;
+    row.appendChild(text);
+
+    row.onclick = () => {
+      switchToView('org');
+      navigateToHeading(item.heading);
+    };
+    container.appendChild(row);
   }
 
   outlineEl.appendChild(container);
