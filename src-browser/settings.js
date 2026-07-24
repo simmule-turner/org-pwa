@@ -18,7 +18,52 @@ const KEYS = {
   fontFamily: 'settings:fontFamily',
   fontSize: 'settings:fontSize',
   lastActiveDocument: 'settings:lastActiveDocument',
+  captureTemplates: 'settings:captureTemplates',
 };
+
+/** Ships as the default so capture works immediately with no setup —
+ *  these are the four example templates from the request, translated
+ *  from org-capture-templates' elisp shape into this app's JSON one:
+ *  `(file+olp "" ...)` becomes `olp: [...]` (no separate file field,
+ *  since this app edits one open document at a time -- see
+ *  capture-template.js's resolveOlpTarget for why "" is the only
+ *  meaningful file value here anyway), and `:empty-lines N` becomes
+ *  `emptyLines: N`. */
+const DEFAULT_CAPTURE_TEMPLATES = [
+  {
+    key: 'b',
+    description: 'Bullet List',
+    type: 'item',
+    olp: ['heading 1', 'heading n'],
+    template: '%? [The captured text or note]',
+    emptyLines: 1,
+  },
+  {
+    key: 'c',
+    description: 'Check List',
+    type: 'checkitem',
+    olp: ['heading 1', 'heading n'],
+    template: '%^{Item description}',
+    emptyLines: 0,
+  },
+  {
+    key: 'm',
+    description: 'Meeting',
+    type: 'plain',
+    olp: ['Meeting Notes'],
+    template:
+      '* %^{Meeting Title} :meeting:\n:PROPERTIES:\n:CREATED: %U\n:END:\n** Attendees\n- %?\n** Notes\n- \n** Action Items\n*** TODO [#A] %^{Top Priority Task}',
+    emptyLines: 1,
+  },
+  {
+    key: 't',
+    description: 'Table Insert prompted for values',
+    type: 'table-line',
+    olp: ['heading 1', '%<%Y-%m>'],
+    template: '| %N | %U | %^{Description} | %^{Amount} |',
+    emptyLines: 0,
+  },
+];
 
 const DEFAULT_GITHUB_CONFIG = { token: '', owner: '', repo: '', branch: 'main' };
 const DEFAULT_WEBDAV_CONFIG = { baseUrl: '', username: '', password: '' };
@@ -114,5 +159,17 @@ export async function getLastActiveDocument(kvAdapter) {
 export async function setLastActiveDocument(kvAdapter, documentId, storageKind) {
   await setJson(kvAdapter, KEYS.lastActiveDocument, documentId ? { documentId, storageKind } : null);
 }
+
+// ---- capture templates ----------------------------------------------------
+
+export async function getCaptureTemplates(kvAdapter) {
+  return getJson(kvAdapter, KEYS.captureTemplates, DEFAULT_CAPTURE_TEMPLATES);
+}
+
+export async function setCaptureTemplates(kvAdapter, templates) {
+  await setJson(kvAdapter, KEYS.captureTemplates, templates);
+}
+
+export { DEFAULT_CAPTURE_TEMPLATES };
 
 export { DEFAULT_GITHUB_CONFIG, DEFAULT_WEBDAV_CONFIG, DEFAULT_THEME, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE };
