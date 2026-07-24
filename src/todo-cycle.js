@@ -19,7 +19,7 @@
  * getting the opposite priority order from the parser's actual "each
  * later line updates, last one std" behavior) — so a real, undone task
  * could silently disappear from every feature that relies on this
- * (TODO cycling, Agenda's done-detection, the Task List) without ever
+ * (TODO cycling, Agenda's done-detection, the TODO view) without ever
  * showing up as broken, since nothing threw — it just silently used the
  * wrong keyword set.
  */
