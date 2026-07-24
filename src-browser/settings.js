@@ -17,6 +17,7 @@ const KEYS = {
   theme: 'settings:theme',
   fontFamily: 'settings:fontFamily',
   fontSize: 'settings:fontSize',
+  lastActiveDocument: 'settings:lastActiveDocument',
 };
 
 const DEFAULT_GITHUB_CONFIG = { token: '', owner: '', repo: '', branch: 'main' };
@@ -97,6 +98,21 @@ export async function getFontSize(kvAdapter) {
 
 export async function setFontSize(kvAdapter, fontSize) {
   await setJson(kvAdapter, KEYS.fontSize, fontSize);
+}
+
+// ---- last active document (session resume) ------------------------------
+
+/** { documentId, storageKind } of the document that was open when the app
+ *  was last used, or null if there wasn't one (never opened anything yet,
+ *  or explicitly closed). Used to resume a session on next launch, reading
+ *  straight from the cache -- not a disk/network re-check, which is a
+ *  separate, explicit action (Open) the person can still take any time. */
+export async function getLastActiveDocument(kvAdapter) {
+  return getJson(kvAdapter, KEYS.lastActiveDocument, null);
+}
+
+export async function setLastActiveDocument(kvAdapter, documentId, storageKind) {
+  await setJson(kvAdapter, KEYS.lastActiveDocument, documentId ? { documentId, storageKind } : null);
 }
 
 export { DEFAULT_GITHUB_CONFIG, DEFAULT_WEBDAV_CONFIG, DEFAULT_THEME, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE };
