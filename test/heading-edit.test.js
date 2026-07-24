@@ -13,6 +13,10 @@ import {
   insertTopLevelHeading,
   insertChildHeading,
   removeHeading,
+  moveHeadingUp,
+  moveHeadingDown,
+  promoteHeading,
+  demoteHeading,
 } from '../src/heading-edit.js';
 
 test('createHeading builds a complete, valid heading with sane defaults', () => {
@@ -230,4 +234,140 @@ test('round-trips correctly through serialize -> reparse', () => {
   setPlainTimestampInTitle(doc.children[0], '<1989-11-02 Thu +1y>');
   const doc2 = parseOrg(serializeOrg(doc));
   assert.equal(getPlainTimestampInTitle(doc2.children[0]), '<1989-11-02 Thu +1y>');
+});
+
+// ---- moveHeadingUp / moveHeadingDown -------------------------------------
+
+test('moveHeadingUp swaps a heading with its previous sibling', () => {
+  const doc = parseOrg('* A\n* B\n* C');
+  const result = moveHeadingUp(doc, doc.children[1]); // B
+  assert.equal(result, true);
+  assert.deepEqual(doc.children.map((h) => h.title), ['B', 'A', 'C']);
+});
+
+test('moveHeadingUp on the first sibling is a no-op and returns false', () => {
+  const doc = parseOrg('* A\n* B\n* C');
+  const result = moveHeadingUp(doc, doc.children[0]); // A, already first
+  assert.equal(result, false);
+  assert.deepEqual(doc.children.map((h) => h.title), ['A', 'B', 'C']);
+});
+
+test('moveHeadingDown swaps a heading with its next sibling', () => {
+  const doc = parseOrg('* A\n* B\n* C');
+  const result = moveHeadingDown(doc, doc.children[1]); // B
+  assert.equal(result, true);
+  assert.deepEqual(doc.children.map((h) => h.title), ['A', 'C', 'B']);
+});
+
+test('moveHeadingDown on the last sibling is a no-op and returns false', () => {
+  const doc = parseOrg('* A\n* B\n* C');
+  const result = moveHeadingDown(doc, doc.children[2]); // C, already last
+  assert.equal(result, false);
+  assert.deepEqual(doc.children.map((h) => h.title), ['A', 'B', 'C']);
+});
+
+test('moveHeadingUp/Down carries a heading\u2019s whole subtree along automatically', () => {
+  const doc = parseOrg('* A\n** A1\n** A2\n* B');
+  moveHeadingDown(doc, doc.children[0]); // A (with children A1/A2) moves after B
+  assert.deepEqual(doc.children.map((h) => h.title), ['B', 'A']);
+  assert.deepEqual(doc.children[1].children.map((h) => h.title), ['A1', 'A2']);
+  assert.match(serializeOrg(doc), /\* B\n\* A\n\*\* A1\n\*\* A2/);
+});
+
+test('moveHeadingUp/Down only reorders among the SAME parent\u2019s children, not globally', () => {
+  const doc = parseOrg('* A\n** A1\n** A2\n* B');
+  const result = moveHeadingUp(doc, doc.children[0].children[1]); // A2, sibling of A1
+  assert.equal(result, true);
+  assert.deepEqual(doc.children[0].children.map((h) => h.title), ['A2', 'A1']);
+  assert.deepEqual(doc.children.map((h) => h.title), ['A', 'B']); // top level untouched
+});
+
+// ---- promoteHeading --------------------------------------------------
+
+test('promoteHeading makes a heading a sibling of its former parent, right after it', () => {
+  const doc = parseOrg('* A\n** A1\n* B');
+  const a1 = doc.children[0].children[0];
+  const result = promoteHeading(doc, a1);
+  assert.equal(result, true);
+  assert.deepEqual(doc.children.map((h) => h.title), ['A', 'A1', 'B']);
+  assert.equal(doc.children[1].level, 1);
+  assert.equal(doc.children[0].children.length, 0); // removed from its old parent
+});
+
+test('promoteHeading on an already-top-level heading is a no-op and returns false', () => {
+  const doc = parseOrg('* A\n* B');
+  const result = promoteHeading(doc, doc.children[1]);
+  assert.equal(result, false);
+  assert.deepEqual(doc.children.map((h) => h.title), ['A', 'B']);
+});
+
+test('promoteHeading shifts every descendant\u2019s level by the same amount, recursively', () => {
+  const doc = parseOrg('* A\n** A1\n*** A1a\n* B');
+  const a1 = doc.children[0].children[0];
+  promoteHeading(doc, a1);
+  assert.equal(a1.level, 1);
+  assert.equal(a1.children[0].level, 2); // A1a was 3, now 2 -- same -1 shift
+  assert.match(serializeOrg(doc), /\* A\n\* A1\n\*\* A1a\n\* B/);
+});
+
+test('promoteHeading twice moves a deeply-nested heading up two levels total', () => {
+  const doc = parseOrg('* A\n** B\n*** C');
+  const c = doc.children[0].children[0].children[0];
+  promoteHeading(doc, c); // C becomes sibling of B, under A
+  promoteHeading(doc, c); // C becomes sibling of A, top-level
+  assert.equal(c.level, 1);
+  assert.deepEqual(doc.children.map((h) => h.title), ['A', 'C']);
+});
+
+// ---- demoteHeading -----------------------------------------------------
+
+test('demoteHeading makes a heading the last child of its preceding sibling', () => {
+  const doc = parseOrg('* A\n* B\n* C');
+  const result = demoteHeading(doc, doc.children[1]); // B, preceded by A
+  assert.equal(result, true);
+  assert.deepEqual(doc.children.map((h) => h.title), ['A', 'C']);
+  assert.deepEqual(doc.children[0].children.map((h) => h.title), ['B']);
+  assert.equal(doc.children[0].children[0].level, 2);
+});
+
+test('demoteHeading on the first heading (no preceding sibling) is a no-op and returns false', () => {
+  const doc = parseOrg('* A\n* B');
+  const result = demoteHeading(doc, doc.children[0]);
+  assert.equal(result, false);
+  assert.deepEqual(doc.children.map((h) => h.title), ['A', 'B']);
+});
+
+test('demoteHeading appends after any EXISTING children of the new parent, not before', () => {
+  const doc = parseOrg('* A\n** A1\n* B');
+  demoteHeading(doc, doc.children[1]); // B becomes a child of A, after A1
+  assert.deepEqual(doc.children[0].children.map((h) => h.title), ['A1', 'B']);
+});
+
+test('demoteHeading shifts every descendant\u2019s level by the same amount, recursively', () => {
+  const doc = parseOrg('* A\n* B\n** B1');
+  demoteHeading(doc, doc.children[1]); // B (with child B1) becomes child of A
+  assert.equal(doc.children[0].children[0].level, 2); // B
+  assert.equal(doc.children[0].children[0].children[0].level, 3); // B1
+  assert.match(serializeOrg(doc), /\* A\n\*\* B\n\*\*\* B1/);
+});
+
+test('demoteHeading un-collapses the new parent, so the demoted heading doesn\u2019t vanish from view', () => {
+  const doc = parseOrg('* A\n* B');
+  doc.children[0].collapsed = true; // A was collapsed (had no children before, so this was moot until now)
+  demoteHeading(doc, doc.children[1]);
+  assert.equal(doc.children[0].collapsed, false);
+});
+
+// ---- move/promote/demote: round-trip fidelity ----------------------------
+
+test('moveHeadingDown then serializeOrg->parseOrg round-trips correctly', () => {
+  const doc = parseOrg('* A\n:PROPERTIES:\n:ID: abc\n:END:\n* B\nsome body text');
+  moveHeadingDown(doc, doc.children[0]);
+  const text = serializeOrg(doc);
+  const reparsed = parseOrg(text);
+  assert.deepEqual(
+    reparsed.children.map((h) => h.title),
+    ['B', 'A']
+  );
+  assert.equal(reparsed.children[1].properties.ID, 'abc');
 });
