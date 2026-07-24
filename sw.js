@@ -1,10 +1,12 @@
-const CACHE_NAME = 'org-pwa-shell-v47';
+const CACHE_NAME = 'org-pwa-shell-v50';
 
 const SHELL_FILES = [
   './',
   './index.html',
   './app.js',
   './manifest.json',
+  './README.md',
+  './src/markdown.js',
   './src/archive-model.js',
   './src/checkbox-cookie.js',
   './src/search.js',

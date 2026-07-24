@@ -35,6 +35,7 @@ import {
   parseRepeater,
 } from './src/agenda.js';
 import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture } from './src/capture-template.js';
+import { parseMarkdown } from './src/markdown.js';
 import { parseOrgTimestamp, formatOrgTimestamp, parseDelay } from './src/org-timestamp.js';
 import {
   renameHeading,
@@ -45,6 +46,10 @@ import {
   insertTopLevelHeading,
   insertChildHeading,
   removeHeading,
+  moveHeadingUp,
+  moveHeadingDown,
+  promoteHeading,
+  demoteHeading,
 } from './src/heading-edit.js';
 import {
   setTableCell,
@@ -175,6 +180,7 @@ let state = { documentId: null, doc: null, startupConfig: null, storageKind: nul
 let fileMenuOpen = false;
 let fileMenuStep = null;
 let settingsOpen = false;
+let docsOpen = false;
 let searchOpen = false;
 let captureOpen = false;
 let moreOpen = false;
@@ -1182,6 +1188,58 @@ function renderRow(row, todoSequence) {
               commitAndRender();
             },
           },
+          {
+            icon: '\u2191',
+            label: 'Move up',
+            onClick: () => {
+              actionMenuFor = null;
+              if (moveHeadingUp(state.doc, row.node)) {
+                commitAndRender();
+              } else {
+                setStatus('Already first among its siblings.');
+                render();
+              }
+            },
+          },
+          {
+            icon: '\u2193',
+            label: 'Move down',
+            onClick: () => {
+              actionMenuFor = null;
+              if (moveHeadingDown(state.doc, row.node)) {
+                commitAndRender();
+              } else {
+                setStatus('Already last among its siblings.');
+                render();
+              }
+            },
+          },
+          {
+            icon: '\u2190',
+            label: 'Promote (outdent)',
+            onClick: () => {
+              actionMenuFor = null;
+              if (promoteHeading(state.doc, row.node)) {
+                commitAndRender();
+              } else {
+                setStatus("Already top-level \u2014 can't promote further.");
+                render();
+              }
+            },
+          },
+          {
+            icon: '\u2192',
+            label: 'Demote (indent)',
+            onClick: () => {
+              actionMenuFor = null;
+              if (demoteHeading(state.doc, row.node)) {
+                commitAndRender();
+              } else {
+                setStatus("No preceding sibling to demote under.");
+                render();
+              }
+            },
+          },
         ]);
       }
     }
@@ -1716,6 +1774,7 @@ function render() {
   updateFilenameDisplay();
 
   if (settingsOpen) return; // renderSettingsView() owns #outline while settings is showing
+  if (docsOpen) return; // renderDocsView() owns #outline while docs is showing
 
   if (!state.doc) {
     outlineEl.innerHTML = '';
@@ -2470,12 +2529,17 @@ fileMenuBtn.addEventListener('click', () => {
     moreOpen = false;
     renderMoreMenu();
   }
+  if (fileMenuOpen && docsOpen) {
+    docsOpen = false;
+    render(); // restores the normal outline content in place of docs
+  }
   renderFileMenu();
 });
 
 addBtn.addEventListener('click', () => {
   if (!state.doc) return;
   settingsOpen = false;
+  docsOpen = false;
   if (moreOpen) {
     moreOpen = false;
     renderMoreMenu();
@@ -2490,6 +2554,10 @@ addBtn.addEventListener('click', () => {
  *  read a stale doc); leaving 'org' clears outline edit state, since
  *  nothing should be mid-edit while the outline isn't even shown. */
 function switchToView(view) {
+  if (docsOpen) {
+    docsOpen = false;
+    render();
+  }
   if (view === currentView) {
     viewMenuOpen = false;
     renderViewMenu();
@@ -2882,6 +2950,10 @@ viewMenuBtn.addEventListener('click', () => {
     moreOpen = false;
     renderMoreMenu();
   }
+  if (viewMenuOpen && docsOpen) {
+    docsOpen = false;
+    render();
+  }
   renderViewMenu();
 });
 
@@ -3203,6 +3275,151 @@ async function renderSettingsView() {
   webdavSection.appendChild(webdavSaveRow);
 }
 
+// ---- Docs (README, rendered in-app) --------------------------------------
+
+let cachedDocsMarkdown = null; // fetched once per session, not re-fetched on every "Docs" tap
+
+/** Appends parseInline's token list as actual inline DOM (bold/italic/
+ *  code/link/text) into `container`. Internal #anchor links scroll to the
+ *  matching heading within the docs view rather than navigating (there's
+ *  no routing in this single-page app); external links open in a real
+ *  new tab via a normal <a>, letting the browser handle it natively
+ *  rather than a JS-driven window.open. */
+function renderInlineTokens(tokens, container) {
+  for (const tok of tokens) {
+    if (tok.type === 'text') {
+      container.appendChild(document.createTextNode(tok.value));
+    } else if (tok.type === 'bold') {
+      const b = document.createElement('strong');
+      b.textContent = tok.value;
+      container.appendChild(b);
+    } else if (tok.type === 'italic') {
+      const em = document.createElement('em');
+      em.textContent = tok.value;
+      container.appendChild(em);
+    } else if (tok.type === 'code') {
+      const code = document.createElement('code');
+      code.textContent = tok.value;
+      code.style.fontFamily = 'monospace';
+      code.style.fontSize = '0.9em';
+      code.style.background = 'var(--surface)';
+      code.style.padding = '1px 4px';
+      code.style.borderRadius = '4px';
+      container.appendChild(code);
+    } else if (tok.type === 'link') {
+      const a = document.createElement('a');
+      a.textContent = tok.value;
+      a.href = tok.href;
+      a.style.color = 'var(--accent)';
+      if (tok.href.startsWith('#')) {
+        a.onclick = (e) => {
+          e.preventDefault();
+          const target = document.getElementById('docs-heading-' + tok.href.slice(1));
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+      } else {
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+      }
+      container.appendChild(a);
+    }
+  }
+}
+
+/** Converts one parsed markdown block into a DOM element. Headings get a
+ *  predictable id (docs-heading-<slug>) so renderInlineTokens' internal
+ *  link handler above can find and scroll to them. */
+function renderMarkdownBlock(block) {
+  if (block.type === 'heading') {
+    const h = document.createElement(`h${Math.min(block.level, 6)}`);
+    h.id = 'docs-heading-' + block.id;
+    h.style.marginTop = block.level <= 2 ? '20px' : '14px';
+    h.style.marginBottom = '8px';
+    h.style.fontSize = ['22px', '19px', '16px', '15px', '14px', '13px'][block.level - 1];
+    renderInlineTokens(block.inline, h);
+    return h;
+  }
+
+  if (block.type === 'paragraph') {
+    const p = document.createElement('p');
+    p.style.margin = '8px 0';
+    p.style.lineHeight = '1.5';
+    p.style.overflowWrap = 'anywhere';
+    renderInlineTokens(block.inline, p);
+    return p;
+  }
+
+  if (block.type === 'list') {
+    const list = document.createElement(block.ordered ? 'ol' : 'ul');
+    list.style.margin = '8px 0';
+    list.style.paddingLeft = '24px';
+    for (const item of block.items) {
+      const li = document.createElement('li');
+      li.style.margin = '4px 0';
+      li.style.lineHeight = '1.5';
+      li.style.overflowWrap = 'anywhere';
+      renderInlineTokens(item.inline, li);
+      list.appendChild(li);
+    }
+    return list;
+  }
+
+  if (block.type === 'code-block') {
+    const pre = document.createElement('pre');
+    pre.style.background = 'var(--surface)';
+    pre.style.padding = '10px';
+    pre.style.borderRadius = '6px';
+    pre.style.overflowX = 'auto';
+    pre.style.fontSize = '13px';
+    pre.style.margin = '8px 0';
+    const code = document.createElement('code');
+    code.style.fontFamily = 'monospace';
+    code.textContent = block.text;
+    pre.appendChild(code);
+    return pre;
+  }
+
+  if (block.type === 'hr') {
+    const hr = document.createElement('hr');
+    hr.style.border = 'none';
+    hr.style.borderTop = '1px solid var(--border)';
+    hr.style.margin = '16px 0';
+    return hr;
+  }
+
+  return document.createElement('div'); // unreachable given parseMarkdown's own block types, but never leave a tap-triggered render with nothing to show
+}
+
+async function renderDocsView() {
+  outlineEl.innerHTML = '';
+  const container = document.createElement('div');
+  container.className = 'panel';
+  container.style.minHeight = '100%';
+  outlineEl.appendChild(container);
+
+  if (cachedDocsMarkdown === null) {
+    try {
+      const response = await fetch('./README.md');
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      cachedDocsMarkdown = await response.text();
+    } catch (err) {
+      const errorEl = document.createElement('div');
+      errorEl.style.padding = '20px';
+      errorEl.style.opacity = '0.7';
+      errorEl.textContent = "Couldn't load the documentation (" + err.message + '). Try again once you\u2019re back online.';
+      container.appendChild(errorEl);
+      return;
+    }
+  }
+
+  if (!docsOpen) return; // closed again while the fetch above was in flight
+
+  const blocks = parseMarkdown(cachedDocsMarkdown);
+  for (const block of blocks) {
+    container.appendChild(renderMarkdownBlock(block));
+  }
+}
+
 settingsBtn.addEventListener('click', async () => {
   settingsOpen = !settingsOpen;
   if (settingsOpen && fileMenuOpen) {
@@ -3225,6 +3442,9 @@ settingsBtn.addEventListener('click', async () => {
   if (settingsOpen && moreOpen) {
     moreOpen = false;
     renderMoreMenu();
+  }
+  if (settingsOpen && docsOpen) {
+    docsOpen = false;
   }
   if (settingsOpen) {
     await renderSettingsView();
@@ -3381,6 +3601,10 @@ searchBtn.addEventListener('click', () => {
   if (searchOpen && moreOpen) {
     moreOpen = false;
     renderMoreMenu();
+  }
+  if (searchOpen && docsOpen) {
+    docsOpen = false;
+    render();
   }
   if (!searchOpen) searchQuery = '';
   renderSearchPanel();
@@ -3574,6 +3798,10 @@ captureBtn.addEventListener('click', () => {
     moreOpen = false;
     renderMoreMenu();
   }
+  if (captureOpen && docsOpen) {
+    docsOpen = false;
+    render();
+  }
   renderCapturePanel();
 });
 
@@ -3613,13 +3841,24 @@ function renderMoreMenu() {
   captureBtnOption.style.flex = '1';
   row.appendChild(captureBtnOption);
 
-  const addBtnOption = menuButton('Add heading', () => {
+  const addBtnOption = menuButton('+', () => {
     moreOpen = false;
     renderMoreMenu();
     addBtn.click();
   });
   addBtnOption.style.flex = '1';
+  addBtnOption.setAttribute('aria-label', 'Add heading');
   row.appendChild(addBtnOption);
+
+  const docsBtnOption = menuButton('?', () => {
+    moreOpen = false;
+    renderMoreMenu();
+    docsOpen = true;
+    renderDocsView();
+  });
+  docsBtnOption.style.flex = '1';
+  docsBtnOption.setAttribute('aria-label', 'Help / Docs');
+  row.appendChild(docsBtnOption);
 
   morePanel.appendChild(row);
 }
@@ -3638,6 +3877,14 @@ moreBtn.addEventListener('click', () => {
   if (moreOpen && viewMenuOpen) {
     viewMenuOpen = false;
     renderViewMenu();
+  }
+  if (moreOpen && captureOpen) {
+    captureOpen = false;
+    renderCapturePanel();
+  }
+  if (moreOpen && docsOpen) {
+    docsOpen = false;
+    render();
   }
   renderMoreMenu();
 });

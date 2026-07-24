@@ -21,6 +21,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 - [Agenda](#agenda)
 - [TODO view](#todo-view)
 - [Capture Templates](#capture-templates)
+- [Docs](#docs)
 - [File management](#file-management)
 - [Settings](#settings)
 - [Offline behavior and sync](#offline-behavior-and-sync)
@@ -56,13 +57,14 @@ The header shows the current filename and which backend it came from, turning **
 
 ## Editing your outline
 
-- **Headings**: tap the title text to reveal a row of actions — edit title, edit the heading's own body text, add a table, add a sub-heading, set a link ID, edit tags, edit properties, set SCHEDULED/DEADLINE, delete. Nothing is shown until you tap; this keeps the row itself uncluttered.
+- **Headings**: tap the title text to reveal a row of actions — edit title, edit the heading's own body text, add a table, add a sub-heading, set a link ID, edit tags, edit properties, set SCHEDULED/DEADLINE, delete, move up/down, promote/demote, mark as TODO. Nothing is shown until you tap; this keeps the row itself uncluttered.
 - **TODO state**: tap the TODO badge to cycle through the sequence defined by `#+TODO:` (or `TODO`/`DONE` by default).
 - **Fold/unfold**: tap the chevron to toggle a heading's whole subtree, or swipe left on a heading to cycle through collapsed → children-only → fully expanded → collapsed.
 - **Tags**: the tag action prompts for a space-separated list (`urgent home01`) and replaces the heading's tags outright.
 - **Properties**: the properties action opens the whole `:PROPERTIES:` drawer as one editable block of `key: value` lines — add a line for a new property, remove a line to delete one, edit a value in place. This is a full replace on save, not a merge: a property you delete from the text stays deleted.
 - **SCHEDULED / DEADLINE / plain timestamp** (the 📅 action): a structured form, not a raw text box — real date and time pickers, a repeat selector (mark + amount + unit: every N hours/days/weeks/months/years), and an optional "warn ahead by" delay (real org syntax, e.g. `-3d`, for seeing a deadline coming a few days early instead of only on the day it's due). SCHEDULED, DEADLINE, and a plain timestamp (see [Agenda](#agenda) for the difference — a plain timestamp doesn't carry forward and lives in the title, not a planning line) are three independent instances of the exact same form — set any combination, and Cancel discards without touching the heading. Each has its own **Clear** button for explicitly removing that timestamp, separate from the Save/Cancel that applies to the whole form. This is what actually builds the underlying `SCHEDULED:`/`DEADLINE:`/title-timestamp syntax, so there's no need to know org's raw format to use it correctly.
-- **Reordering and priority**: not directly editable through the outline UI — see [Differences from Emacs org-mode](#differences-from-emacs-org-mode).
+- **Moving headings** (↑ / ↓ / ← / → in the action row): ↑ and ↓ reorder a heading among its own siblings without touching its level or its subtree — everything nested under it moves as one unit automatically. ← (promote/outdent) moves a heading up one level, making it a sibling of its former parent, inserted right after it. → (demote/indent) moves it down one level, making it the last child of whichever heading immediately precedes it. All four are no-ops at a natural boundary (already first/last, already top-level, no preceding sibling to demote under) — tapping one there shows a brief status message rather than silently doing nothing or corrupting the outline. This is the actual replacement for switching to Text view and cutting/pasting raw lines, which used to be the only way to reorder anything.
+- **Priority**: not directly editable through the outline UI — see [Differences from Emacs org-mode](#differences-from-emacs-org-mode).
 
 ### A heading's "text"
 
@@ -230,6 +232,14 @@ Four example templates are the default, so this works immediately with no setup:
 
 ---
 
+## Docs
+
+Tap **More → ?** to read this very README inside the app — same "replaces the outline" treatment as Settings, not a popup. It's fetched once per session and cached in memory, so re-opening it doesn't re-fetch; it's also cached by the service worker, so it's available offline the same as everything else here. The table of contents links actually work — tapping one scrolls to that section within the doc, it doesn't try to navigate anywhere (there's no routing in this app). External links (anything not starting with `#`) open in a real new tab.
+
+Rendered by a small, dependency-free markdown parser built specifically for this file — not a general-purpose implementation, just the subset this README actually uses (headings, bold/italic/inline code, fenced code blocks, bullet/numbered lists, links, horizontal rules). If you edit this README and add a construct it doesn't handle, the in-app Docs view is what'll look wrong first.
+
+---
+
 ## Settings
 
 Reached via the ⚙ button, which replaces the outline with the settings screen — same as switching to Text or Agenda view, not a popup over the outline. Tap ⚙ again, or any of File/More/View, to leave settings and return to whatever was showing before (there's no separate "Done" button; those are already the way out).
@@ -286,9 +296,9 @@ This is the section to read if you know org-mode well and want to know exactly w
 **Agenda**
 - Day/Week/Month views, repeating-timestamp expansion, completed-item exclusion, SCHEDULED/DEADLINE carry-forward with a visible overdue count, and the delay/warning-period suffix making a deadline show up early are all built now (see [Agenda](#agenda)) — this used to be engine-only with no UI at all, and repeaters and delays used to be parsed but never expanded or acted on. What's still different from real org: it only ever looks at the currently open file (see "Single document at a time" below); the three repeater marks (`+`, `++`, `.+`) all expand identically here, since this is a read-only display with no notion of "when was this marked done" driving a catch-up/restart calculation; and there's no support for org's diary-sexp entries (`%%(diary-...)`) at all.
 
-**No capture templates, no babel, no command palette.** These were scoped early on as possible future work and never built.
+**No babel, no command palette.** These were scoped early on as possible future work and never built.
 
-**No undo/redo, no drag-to-reorder headings.** Deletions ask for confirmation and are irreversible from within the app (your version-control/sync history is the real undo, if you have one).
+**No undo/redo.** Deletions ask for confirmation and are irreversible from within the app (your version-control/sync history is the real undo, if you have one). Headings *can* be reordered now (see above) — but only via the dedicated Move/Promote/Demote actions, not by dragging.
 
 **Search** looks at the whole document (see [Searching](#searching)), but it's substring matching only — no regex, no search-and-replace, no filtering the outline view down to just the matches (it's a separate results list, not a live-filtered tree).
 
@@ -304,7 +314,6 @@ This is the section to read if you know org-mode well and want to know exactly w
 
 Restated in one place for scanning:
 
-- No capture templates
 - No Markdown/HTML/PDF export
 - No archive UI action (tag it manually via plain-text mode)
 - No priority editing UI (tags, properties, and SCHEDULED/DEADLINE now have dedicated UI — see above)
@@ -312,7 +321,7 @@ Restated in one place for scanning:
 - `:COOKIE_DATA:` overrides for checkbox counting scope aren't read — counting is always hierarchical
 - No table formula evaluation
 - No undo/redo
-- No drag-to-reorder
+- No drag-to-reorder (button-based Move/Promote/Demote actions exist instead — see [Editing your outline](#editing-your-outline))
 - No multi-file switching UI (Agenda and the TODO view are therefore single-file, too — see [Agenda](#agenda))
 - Agenda doesn't distinguish the three repeater marks (`+`/`++`/`.+`), and has no diary-sexp support
 - Local/relative images show as a placeholder, never resolve to real pixels
@@ -330,4 +339,4 @@ Engine code (`src/`) and browser-specific adapters (`src-browser/`) are unit tes
 node --test
 ```
 
-498 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion (including week/day boundary alignment, SCHEDULED/DEADLINE carry-forward with delay-based early warning, commented/archived-heading exclusion, and the date-independent TODO view), correct resolution of a file with multiple `#+TODO:` lines, capture-template expansion and insertion (all four types, OLP target resolution, the sequential-table-mutation bug this coverage originally caught, and a serious data-loss bug where editing a just-captured item could silently overwrite unrelated pre-existing content elsewhere in the same heading), timestamp building/delay parsing and plain-timestamp-in-title editing for the structured SCHEDULED/DEADLINE editor, Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change, and the capture UI flow, the More-menu restructuring, and the data-loss fix above were additionally verified via DOM-stub integration tests exercising the real button/prompt/edit/insertion paths end to end, not just the underlying engine in isolation.
+539 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion (including week/day boundary alignment, SCHEDULED/DEADLINE carry-forward with delay-based early warning, commented/archived-heading exclusion, and the date-independent TODO view), correct resolution of a file with multiple `#+TODO:` lines, capture-template expansion and insertion (all four types, OLP target resolution, the sequential-table-mutation bug this coverage originally caught, and a serious data-loss bug where editing a just-captured item could silently overwrite unrelated pre-existing content elsewhere in the same heading), the in-app Docs view's markdown parser (including against this actual README's real content, catching a slug-generation mismatch against GitHub's own anchor algorithm that would otherwise have silently broken a table-of-contents link), heading move/promote/demote (including whole-subtree relocation, recursive level shifts, and every natural-boundary no-op case), timestamp building/delay parsing and plain-timestamp-in-title editing for the structured SCHEDULED/DEADLINE editor, Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change, and the capture UI flow, the More-menu restructuring, the data-loss fix, the Docs view, and heading reordering were additionally verified via DOM-stub integration tests exercising the real button/prompt/edit/insertion/fetch paths end to end, not just the underlying engine in isolation.
