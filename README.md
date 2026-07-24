@@ -19,7 +19,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 - [Archiving](#archiving)
 - [The plain-text editor](#the-plain-text-editor)
 - [Agenda](#agenda)
-- [Task List](#task-list)
+- [TODO view](#todo-view)
 - [File management](#file-management)
 - [Settings](#settings)
 - [Offline behavior and sync](#offline-behavior-and-sync)
@@ -177,9 +177,9 @@ Scope, stated plainly: this covers the currently open file only. The underlying 
 
 ---
 
-## Task List
+## TODO view
 
-Tap **View → Task List** for every active TODO-state heading in the file, **completely independent of any date** — matching real org-mode's own global TODO list (`C-c a t`, distinct from `C-c a a`, the calendar-style agenda). A TODO with no SCHEDULED, DEADLINE, or timestamp attached never shows up in Agenda at all — by design, not by omission — so this is where it lives instead.
+Tap **View → TODO** for every active TODO-state heading in the file, **completely independent of any date** — matching real org-mode's own global TODO list (`C-c a t`, distinct from `C-c a a`, the calendar-style agenda). A TODO with no SCHEDULED, DEADLINE, or timestamp attached never shows up in Agenda at all — by design, not by omission — so this is where it lives instead.
 
 It's a flat list, in document order, each item showing its TODO keyword and title, tap to jump straight to it in the outline. Same exclusions as Agenda: completed items (via the file's own `#+TODO:` sequence), archived headings, and commented headings, using the same [Local Variables](#local-variables) overrides where relevant.
 
@@ -280,7 +280,7 @@ Restated in one place for scanning:
 - No table formula evaluation
 - No undo/redo
 - No drag-to-reorder
-- No multi-file switching UI (Agenda and Task List are therefore single-file, too — see [Agenda](#agenda))
+- No multi-file switching UI (Agenda and the TODO view are therefore single-file, too — see [Agenda](#agenda))
 - Agenda doesn't distinguish the three repeater marks (`+`/`++`/`.+`), and has no diary-sexp support
 - Local/relative images show as a placeholder, never resolve to real pixels
 - File-to-file links don't navigate
@@ -297,4 +297,4 @@ Engine code (`src/`) and browser-specific adapters (`src-browser/`) are unit tes
 node --test
 ```
 
-445 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion (including week/day boundary alignment, SCHEDULED/DEADLINE carry-forward with delay-based early warning, commented/archived-heading exclusion, and the date-independent Task List), correct resolution of a file with multiple `#+TODO:` lines, timestamp building/delay parsing and plain-timestamp-in-title editing for the structured SCHEDULED/DEADLINE editor, Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change.
+445 tests as of this writing, covering the parser, every editing operation, fold/visibility logic, checkbox-cookie recalculation, search, agenda/repeater expansion (including week/day boundary alignment, SCHEDULED/DEADLINE carry-forward with delay-based early warning, commented/archived-heading exclusion, and the date-independent TODO view), correct resolution of a file with multiple `#+TODO:` lines, timestamp building/delay parsing and plain-timestamp-in-title editing for the structured SCHEDULED/DEADLINE editor, Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change.

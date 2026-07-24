@@ -83,6 +83,8 @@ import {
   setFontFamily,
   getFontSize,
   setFontSize,
+  getLastActiveDocument,
+  setLastActiveDocument,
 } from './src-browser/settings.js';
 
 const GLOBAL_TODO_DEFAULT = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
@@ -1796,7 +1798,7 @@ function updateFilenameDisplay() {
     return;
   }
   filenameEl.textContent =
-    state.documentId + ' (' + storageKindLabel(state.storageKind) + ')' + (isDirty ? ' \u2022 modified' : '');
+    (isDirty ? '\u2022 modified \u2014 ' : '') + state.documentId + ' (' + storageKindLabel(state.storageKind) + ')';
 }
 
 /** Common finish-up after any successful open/create, regardless of which
@@ -1808,6 +1810,7 @@ async function afterDocumentLoaded(documentId, doc, storageKind) {
   applyStartupVisibility(doc, startupConfig, archiveVisibility);
   state = { documentId, doc, startupConfig, storageKind, localVariables };
   isDirty = false; // freshly loaded — matches whatever was just read, nothing unsaved yet
+  await setLastActiveDocument(kv, documentId, storageKind);
   currentView = 'org';
   agendaAnchorDate = new Date();
   addBtn.disabled = false;
@@ -2470,7 +2473,7 @@ function renderViewMenu() {
     ['org', 'Org'],
     ['text', 'Text'],
     ['agenda', 'Agenda'],
-    ['tasklist', 'Task List'],
+    ['tasklist', 'TODO'],
   ]) {
     const btn = menuButton(label, () => switchToView(key));
     if (key === currentView) btn.style.fontWeight = '700';
@@ -3295,6 +3298,26 @@ async function bootstrap() {
   applyFontFamily(await getFontFamily(kv));
   applyFontSize(await getFontSize(kv));
   syncContentOffset();
+
+  const last = await getLastActiveDocument(kv);
+  if (last && last.documentId) {
+    try {
+      const cached = await kv.get('doc:' + last.documentId);
+      if (cached && typeof cached.value === 'string') {
+        const doc = parseOrg(cached.value);
+        const pending = await hasPendingChange(kv, last.documentId);
+        await afterDocumentLoaded(last.documentId, doc, last.storageKind);
+        isDirty = pending; // afterDocumentLoaded always sets this false; restore it if there was actually an unsynced edit waiting
+        updateFilenameDisplay();
+        render();
+        return;
+      }
+    } catch {
+      // Resume is a convenience, never a blocker -- fall through to the
+      // normal "no file open" state below rather than getting stuck.
+    }
+  }
+
   render();
 }
 
