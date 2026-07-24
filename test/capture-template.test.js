@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
+import { editListItemText, setTableCell } from '../src/body-edit.js';
 import {
   formatTime,
   scanPrompts,
@@ -402,4 +403,88 @@ test('insertCapture table-line returns the table', () => {
   const target = doc.children[0];
   const table = insertCapture(target, 'table-line', '| 1 | first | 45.00 |');
   assert.equal(table.type, 'table');
+});
+
+// ---- REGRESSION: capturing into a heading with pre-existing content must -----
+// ---- never corrupt/delete that content when the captured item is later edited ----
+// A real, serious bug: mergeFragmentInto used to append fragment.body directly,
+// but a fragment's own AST nodes carry lineIndex values relative to the
+// FRAGMENT itself (starting at 0), not offset for the target's own
+// pre-existing bodyLines length. Editing the captured item afterward (which
+// looks up its line by lineIndex) would silently overwrite whatever
+// pre-existing content actually sat at that too-low index -- data loss,
+// not just a cosmetic glitch. Fixed by re-deriving target.body via
+// parseBody(target.bodyLines) instead of naively appending fragment.body.
+
+test('REGRESSION: item capture into a heading with existing content, then editing the captured item, preserves everything else', () => {
+  const doc = parseOrg('* Target\nExisting first line.\nExisting second line.');
+  const target = doc.children[0];
+  const item = insertCapture(target, 'item', 'captured item text');
+  assert.equal(item.lineIndex, 2, 'the captured item must know its REAL position, not the fragment-relative one');
+
+  // Simulate what happens when the user edits the captured item afterward
+  // (exactly what the auto-opened editor after a capture lets them do)
+  editListItemText(target, item, 'EDITED');
+
+  const text = serializeOrg(doc);
+  assert.match(text, /Existing first line\./, 'first pre-existing line must survive');
+  assert.match(text, /Existing second line\./, 'second pre-existing line must survive');
+  assert.match(text, /EDITED/, 'the edit itself must have applied');
+  assert.equal(text.split('\n').filter((l) => l.trim() !== '').length, 4); // heading + 2 existing + 1 edited item, nothing duplicated or lost
+});
+
+test('REGRESSION: checkitem capture into a heading with existing content, then editing, preserves everything else', () => {
+  const doc = parseOrg('* Target\nExisting first line.\nExisting second line.');
+  const target = doc.children[0];
+  const item = insertCapture(target, 'checkitem', 'Buy milk');
+  assert.equal(item.lineIndex, 2);
+  editListItemText(target, item, 'Buy oat milk');
+  const text = serializeOrg(doc);
+  assert.match(text, /Existing first line\./);
+  assert.match(text, /Existing second line\./);
+  assert.match(text, /- \[ \] Buy oat milk/);
+});
+
+test('REGRESSION: three sequential item captures each get a correctly-offset lineIndex, and editing any one only affects that one line', () => {
+  const doc = parseOrg('* Target\nExisting line.');
+  const target = doc.children[0];
+  const a = insertCapture(target, 'item', 'item A');
+  const b = insertCapture(target, 'item', 'item B');
+  const c = insertCapture(target, 'item', 'item C');
+  assert.deepEqual([a.lineIndex, b.lineIndex, c.lineIndex], [1, 2, 3]);
+
+  editListItemText(target, b, 'EDITED B ONLY');
+  const text = serializeOrg(doc);
+  assert.match(text, /Existing line\./);
+  assert.match(text, /- item A/);
+  assert.match(text, /- EDITED B ONLY/);
+  assert.match(text, /- item C/);
+  assert.equal(text.split('\n').filter((l) => l.trim() !== '').length, 5); // heading + existing + 3 items, nothing lost or duplicated
+});
+
+test('REGRESSION: plain capture producing body-only content (no heading) into a heading with existing content preserves it, and later edits target the right line', () => {
+  const doc = parseOrg('* Target\nExisting paragraph.');
+  const target = doc.children[0];
+  insertCapture(target, 'plain', '- a captured list item');
+  const list = target.body.find((n) => n.type === 'list');
+  assert.ok(list, 'a list should have been parsed from the captured content');
+  const item = list.items[0];
+  editListItemText(target, item, 'EDITED plain item');
+  const text = serializeOrg(doc);
+  assert.match(text, /Existing paragraph\./);
+  assert.match(text, /EDITED plain item/);
+});
+
+test('REGRESSION: table-line capture into a heading with existing content preserves it when a captured cell is later edited', () => {
+  const doc = parseOrg('* Target\nExisting note before the table.');
+  const target = doc.children[0];
+  insertCapture(target, 'table-line', '| 1 | first |');
+  insertCapture(target, 'table-line', '| 2 | second |');
+  const table = target.body.find((n) => n.type === 'table');
+  const dataRowIndices = table.rows.map((r, i) => (r.type === 'row' ? i : -1)).filter((i) => i !== -1);
+  setTableCell(target, table, dataRowIndices[1], 1, 'EDITED');
+  const text = serializeOrg(doc);
+  assert.match(text, /Existing note before the table\./);
+  assert.match(text, /\| 1 \| first \|/);
+  assert.match(text, /\| 2 \| EDITED \|/);
 });
