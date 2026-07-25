@@ -260,6 +260,8 @@ Every edit applies to an in-memory copy and is cached to IndexedDB in the backgr
 
 Local file access (the "Local" option, with a live, writable handle) requires the File System Access API — Chrome and Edge, desktop or Android. **No browser on iOS supports this**, because Apple requires every iOS browser to use WebKit, which has never implemented it — that's not fixable by switching browsers on that platform.
 
+**Android specifically**: the file picker filters by MIME type through the OS's own Storage Access Framework, not by extension — and `.org` has no MIME type registered on Android (unlike `.txt`, which maps cleanly to `text/plain`), so `.org` files could be invisible in the picker even though they're right there. Fixed by asking the picker to filter on the `.org` extension directly (`accept: {'*/*': ['.org']}`) rather than a specific MIME type — if this ever regresses, that's the mechanism to check first.
+
 On unsupported platforms, **Import** replaces "Local": pick a file once via the native file picker, edit it, and Save triggers a download of the new version, which you then move into place yourself (e.g. overwriting the original in the Files app). GitHub and WebDAV work the same everywhere, including iOS, since they're plain HTTPS requests rather than filesystem access.
 
 ---
