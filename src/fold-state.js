@@ -138,13 +138,16 @@ function expandOneLevel(heading) {
 
 /**
  * Reveals `heading` and every descendant heading, recursively — except,
- * with `archiveVisibility: 'archived'` (the default), an archived child
- * is left collapsed and not recursed into at all, matching the requested
- * behavior: visibility cycling (the slide-left gesture) does not
- * expand/unfold archived items, though they can still be expanded
- * directly with the chevron (a direct, explicit action on that specific
- * heading, unaffected by this — this only skips *cascading* expansion
- * onto archived descendants during a cycle).
+ * with `archiveVisibility: 'archived'` (the default): an archived
+ * `heading` itself is left entirely untouched (not expanded, nothing
+ * recursed into), and an archived child encountered while recursing is
+ * left collapsed and not recursed into either. Matches real org-mode's
+ * own stated behavior exactly — the ARCHIVE tag's own docstring in
+ * org.el says plainly "An archived subtree does not open during
+ * visibility cycling," with no carve-out for cycling invoked directly
+ * on the archived heading versus cascading into it from a parent, so
+ * neither case is special-cased here to behave differently from the
+ * other.
  *
  * Also clears `bodyHidden` and `drawersHidden` on every heading it
  * reveals — "fully expand" should mean body text, properties, AND block
@@ -157,6 +160,7 @@ function expandOneLevel(heading) {
  */
 function expandFully(heading, opts = {}) {
   const { archiveVisibility = 'archived' } = opts;
+  if (archiveVisibility === 'archived' && isArchived(heading)) return; // refused, matching real org-mode exactly
   heading.collapsed = false;
   heading.bodyHidden = false;
   heading.drawersHidden = false;
@@ -197,11 +201,29 @@ function collapseFully(heading) {
  * advances it to fully expanded rather than getting stuck.
  *
  * `opts.archiveVisibility` (default 'archived') is threaded through to
- * isFullyExpanded/expandFully — see their docs for what it does.
+ * isFullyExpanded/expandFully — see their docs for what it does. It
+ * ALSO gates cycling `heading` itself here: real org-mode's own
+ * ARCHIVE-tag docstring states plainly, "An archived subtree does not
+ * open during visibility cycling" — no carve-out for cycling invoked
+ * directly on the archived heading versus cascading into it from a
+ * parent. So with `archiveVisibility: 'archived'` (the default), cycling
+ * an archived heading is a complete no-op regardless of which one it is
+ * — confirmed against the actual org.el source, not assumed. (Real org
+ * does still let you force it open with a universal-argument TAB or
+ * `outline-show-all`; this app's equivalent is toggling
+ * `org-cycle-open-archived-trees` to `t` via Local Variables, which
+ * flips `archiveVisibility` to `'noarchived'` and lifts this guard
+ * entirely — there's deliberately no separate "force open just this
+ * one" gesture, matching how most people would actually reach for the
+ * variable rather than a rare modifier-key combination.)
  *
  * Returns which state the heading ended up in: 'children' | 'full' | 'collapsed'.
  */
 function cycleFoldLevel(heading, opts = {}) {
+  const { archiveVisibility = 'archived' } = opts;
+  if (archiveVisibility === 'archived' && isArchived(heading)) {
+    return heading.collapsed ? 'collapsed' : 'full'; // refused -- no state change, matching real org-mode exactly
+  }
   if (heading.collapsed) {
     expandOneLevel(heading);
     return 'children';

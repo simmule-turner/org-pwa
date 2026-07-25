@@ -13,6 +13,7 @@
  */
 
 import { resolveTodoSequence, cycleTodoState } from './todo-cycle.js';
+import { isArchived } from './archive-model.js';
 
 const CHECKBOX_CYCLE_SIMPLE = [' ', 'X'];
 const CHECKBOX_CYCLE_WITH_CHILDREN = [' ', '-', 'X'];
@@ -121,8 +122,21 @@ function flattenVisibleRows(doc) {
  * Collapsing doesn't touch bodyHidden — once revealed, a heading's body
  * stays revealed for the rest of the session even if you fold and
  * re-expand it, rather than making you re-reveal it every time.
+ *
+ * `archiveVisibility` (default 'archived', matching fold-state.js's
+ * cycleFoldLevel/expandFully) refuses to open an archived heading via
+ * the chevron the same way those refuse it via the slide-left gesture —
+ * real org-mode's own stated behavior, "an archived subtree does not
+ * open during visibility cycling," makes no distinction between which
+ * UI action triggered the attempt. Collapsing an already-open archived
+ * heading is still allowed either way; only the open direction is
+ * blocked.
  */
-function toggleFold(heading) {
+function toggleFold(heading, opts = {}) {
+  const { archiveVisibility = 'archived' } = opts;
+  if (archiveVisibility === 'archived' && isArchived(heading) && heading.collapsed) {
+    return true; // refused -- stays collapsed, matching real org-mode exactly
+  }
   heading.collapsed = !heading.collapsed;
   if (!heading.collapsed) heading.bodyHidden = false;
   return heading.collapsed;
