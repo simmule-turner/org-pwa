@@ -1008,8 +1008,7 @@ function renderRow(row, todoSequence) {
     fold.textContent = row.hasChildren ? (row.node.collapsed ? '\u25b8' : '\u25be') : ' ';
     fold.setAttribute('aria-label', 'Toggle fold');
     fold.onclick = () => {
-      const archiveVisibility = getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived';
-      toggleFold(row.node, { archiveVisibility });
+      toggleFold(row.node);
       render();
     };
     el.appendChild(fold);
