@@ -1353,7 +1353,21 @@ function renderRow(row, todoSequence) {
       planningEditorEl.appendChild(btnRow);
     }
 
-    return withActionMenu(el, menuEl, textEditorEl, propertiesEditorEl, planningEditorEl);
+    let propertiesDisplayEl = null;
+    if (!row.node.drawersHidden && row.node.propertyOrder.length > 0 && editingProperties !== row.node) {
+      propertiesDisplayEl = document.createElement('div');
+      propertiesDisplayEl.style.padding = '2px 10px 6px 40px';
+      propertiesDisplayEl.style.fontSize = '12px';
+      propertiesDisplayEl.style.fontFamily = 'monospace';
+      propertiesDisplayEl.style.opacity = '0.65';
+      propertiesDisplayEl.style.whiteSpace = 'pre-wrap';
+      propertiesDisplayEl.style.overflowWrap = 'anywhere';
+      propertiesDisplayEl.style.cursor = 'pointer';
+      propertiesDisplayEl.textContent = getPropertiesText(row.node);
+      propertiesDisplayEl.onclick = () => toggleActionMenu(row.node);
+    }
+
+    return withActionMenu(el, menuEl, textEditorEl, propertiesEditorEl, planningEditorEl, propertiesDisplayEl);
   }
 
   if (row.rowType === 'list-item') {
@@ -1496,6 +1510,7 @@ function renderRow(row, todoSequence) {
 
   if (row.rowType === 'table') return renderTableRow(row);
   if (row.rowType === 'paragraph') return renderParagraphRow(row);
+  if (row.rowType === 'block') return renderBlockRow(row);
 
   const el = document.createElement('div');
   el.className = 'row';
@@ -1774,6 +1789,69 @@ function renderParagraphRow(row) {
   }
 
   return withActionMenu(wrap, menuEl);
+}
+
+/** Read-only block content (#+BEGIN_SRC/QUOTE/EXAMPLE/etc.), gated by
+ *  the owning heading's drawersHidden flag (see fold-state.js -- shared
+ *  with property-drawer visibility, since real org-mode's showall/
+ *  showeverything distinction treats drawers and blocks as one group).
+ *  Shows an honest "collapsed block" placeholder when hidden, actual
+ *  content when not. No editing support here (there's no body-edit.js
+ *  function for it yet) -- this is visibility only, matching what was
+ *  actually asked for. Tapping toggles drawersHidden for the whole
+ *  heading (its actual granularity -- one flag covers every block AND
+ *  every property under a heading, not each individually), landing on
+ *  the header label specifically when expanded so selecting/copying the
+ *  code itself doesn't
+ *  accidentally re-collapse it. */
+function renderBlockRow(row) {
+  const wrap = document.createElement('div');
+  wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
+  wrap.style.margin = '4px 0';
+
+  const label = row.node.name + (row.node.params ? ' ' + row.node.params : '');
+
+  if (row.heading.drawersHidden) {
+    const placeholder = document.createElement('div');
+    placeholder.style.cursor = 'pointer';
+    placeholder.style.opacity = '0.6';
+    placeholder.style.fontStyle = 'italic';
+    placeholder.style.fontSize = '13px';
+    placeholder.textContent = '\u25b8 ' + label + ' (collapsed block \u2014 tap to reveal)';
+    placeholder.onclick = () => {
+      row.heading.drawersHidden = false;
+      render();
+    };
+    wrap.appendChild(placeholder);
+    return wrap;
+  }
+
+  const header = document.createElement('div');
+  header.style.fontSize = '11px';
+  header.style.opacity = '0.6';
+  header.style.fontFamily = 'monospace';
+  header.style.cursor = 'pointer';
+  header.textContent = '\u25be ' + label;
+  header.onclick = () => {
+    row.heading.drawersHidden = true;
+    render();
+  };
+  wrap.appendChild(header);
+
+  const pre = document.createElement('pre');
+  pre.style.margin = '2px 0';
+  pre.style.padding = '8px';
+  pre.style.background = 'var(--surface)';
+  pre.style.borderRadius = '6px';
+  pre.style.overflowX = 'auto';
+  pre.style.fontSize = '13px';
+  const code = document.createElement('code');
+  code.style.fontFamily = 'monospace';
+  code.textContent = row.node.lines.join('\n');
+  pre.appendChild(code);
+  wrap.appendChild(pre);
+
+  return wrap;
 }
 
 function render() {
