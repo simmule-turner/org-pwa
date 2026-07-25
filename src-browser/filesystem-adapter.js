@@ -33,16 +33,18 @@ async function verifyPermission(handle, mode) {
  * Returns the documentId to use with openDocument/saveAndSync.
  */
 export async function pickAndRegisterFile(kvAdapter) {
-  const [handle] = await window.showOpenFilePicker({
-    // '*/*' rather than 'text/plain': on Android, the underlying Storage
-    // Access Framework filters by each file's actual reported MIME
-    // type, not by extension — and .org has no registered MIME type on
-    // Android (unlike .txt, which cleanly maps to text/plain), so files
-    // were being hidden from the picker even though the extension
-    // matched. '*/*' filters by extension only, sidestepping MIME-type
-    // lookup entirely. This is the documented fix for this exact issue.
-    types: [{ description: 'Org files', accept: { '*/*': ['.org'] } }],
-  });
+  // No `types` filter here, deliberately: an earlier attempt used
+  // accept: {'*/*': ['.org']} specifically to work around Android's
+  // Storage Access Framework filtering by MIME type rather than
+  // extension -- but that was directly tested and confirmed to still
+  // hide .org files in Android's picker while .txt worked fine. This
+  // points to Android Chrome's file-type filtering being unreliable
+  // for non-standard extensions regardless of how the MIME filter is
+  // configured, not something fixable by trying yet another `accept`
+  // shape. Showing every file sidesteps the buggy filtering logic
+  // entirely: the person picks their .org file by name, same as they
+  // would in any other file-picking context on the platform.
+  const [handle] = await window.showOpenFilePicker();
   const documentId = handle.name;
   await kvAdapter.set(handleKey(documentId), handle);
   return documentId;
@@ -52,7 +54,13 @@ export async function pickAndRegisterFile(kvAdapter) {
 export async function pickAndRegisterNewFile(kvAdapter, suggestedName = 'untitled.org') {
   const handle = await window.showSaveFilePicker({
     suggestedName,
-    types: [{ description: 'Org files', accept: { '*/*': ['.org'] } }], // same reasoning as pickAndRegisterFile above
+    // Save is a different situation from open above: it's about typing
+    // a new filename, not selecting from a list of existing files, so
+    // it doesn't have the "file invisible in the list" failure mode --
+    // and suggestedName already gives the right default extension
+    // regardless of what this filter does. Left as '*/*' rather than
+    // removed for consistency, not because it's confirmed necessary.
+    types: [{ description: 'Org files', accept: { '*/*': ['.org'] } }],
   });
   const documentId = handle.name;
   await kvAdapter.set(handleKey(documentId), handle);
