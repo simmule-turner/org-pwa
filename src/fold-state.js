@@ -70,6 +70,7 @@ import { isArchived } from './archive-model.js';
 function applyStartupVisibility(doc, startupConfig, archiveVisibility = 'archived') {
   const collapsedDefault = startupConfig.visibility === 'overview';
   const bodyHiddenDefault = startupConfig.visibility === 'content';
+  const blocksHiddenDefault = startupConfig.visibility !== 'showeverything';
 
   function walk(nodes) {
     for (const node of nodes) {
@@ -77,6 +78,7 @@ function applyStartupVisibility(doc, startupConfig, archiveVisibility = 'archive
       const forceCollapsed = archiveVisibility === 'archived' && isArchived(node);
       node.collapsed = forceCollapsed ? true : collapsedDefault;
       node.bodyHidden = bodyHiddenDefault;
+      node.blocksHidden = blocksHiddenDefault;
       walk(node.children);
     }
   }
@@ -99,7 +101,7 @@ function applyStartupVisibility(doc, startupConfig, archiveVisibility = 'archive
  */
 function isFullyExpanded(heading, opts = {}) {
   const { archiveVisibility = 'archived' } = opts;
-  if (heading.collapsed) return false;
+  if (heading.collapsed || heading.bodyHidden || heading.blocksHidden) return false;
   for (const child of heading.children || []) {
     if (archiveVisibility === 'archived' && isArchived(child)) continue;
     if (!isFullyExpanded(child, opts)) return false;
@@ -131,15 +133,20 @@ function expandOneLevel(heading) {
  * heading, unaffected by this — this only skips *cascading* expansion
  * onto archived descendants during a cycle).
  *
- * Also clears `bodyHidden` on every heading it reveals — "fully expand"
- * should mean body text included for the whole subtree, not just
- * headline structure with body permanently stuck hidden from
- * #+STARTUP: content.
+ * Also clears `bodyHidden` and `blocksHidden` on every heading it
+ * reveals — "fully expand" should mean body text AND block content
+ * (#+BEGIN_SRC etc.) included for the whole subtree, not just headline
+ * structure with body/blocks permanently stuck hidden by whatever
+ * #+STARTUP: mode the file declared. This is what lets manually cycling
+ * a single heading to "fully expanded" reveal everything about it —
+ * properties, block content, all of it — even in a file whose
+ * #+STARTUP: line wouldn't show that by default.
  */
 function expandFully(heading, opts = {}) {
   const { archiveVisibility = 'archived' } = opts;
   heading.collapsed = false;
   heading.bodyHidden = false;
+  heading.blocksHidden = false;
   for (const child of heading.children || []) {
     if (archiveVisibility === 'archived' && isArchived(child)) {
       child.collapsed = true;
