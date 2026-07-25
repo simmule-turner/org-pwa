@@ -136,6 +136,7 @@ test('isFullyExpanded is true only when the heading and every descendant are exp
 
   function expandAll(h) {
     h.collapsed = false;
+    h.blocksHidden = false;
     for (const c of h.children) expandAll(c);
   }
   expandAll(grandparent);
@@ -305,4 +306,74 @@ test('cycleFoldLevel with archiveVisibility "archived" never cascades onto an ar
   // expansion onto it as a side effect of a parent's cycle.
   expandOneLevel(archivedChild);
   assert.equal(archivedChild.collapsed, false);
+});
+
+// ---- blocksHidden: the actual showall/showeverything distinction --------
+
+test('applyStartupVisibility: showall reveals body/lists but keeps blocksHidden true', () => {
+  const doc = parseOrg('* A\nsome body text\n#+BEGIN_SRC js\nconsole.log(1);\n#+END_SRC');
+  applyStartupVisibility(doc, { visibility: 'showall' });
+  const heading = doc.children[0];
+  assert.equal(heading.collapsed, false);
+  assert.equal(heading.bodyHidden, false);
+  assert.equal(heading.blocksHidden, true);
+});
+
+test('applyStartupVisibility: showeverything reveals body AND blocks', () => {
+  const doc = parseOrg('* A\nsome body text');
+  applyStartupVisibility(doc, { visibility: 'showeverything' });
+  const heading = doc.children[0];
+  assert.equal(heading.collapsed, false);
+  assert.equal(heading.bodyHidden, false);
+  assert.equal(heading.blocksHidden, false);
+});
+
+test('applyStartupVisibility: overview and content both keep blocksHidden true', () => {
+  const doc1 = parseOrg('* A');
+  applyStartupVisibility(doc1, { visibility: 'overview' });
+  assert.equal(doc1.children[0].blocksHidden, true);
+
+  const doc2 = parseOrg('* A');
+  applyStartupVisibility(doc2, { visibility: 'content' });
+  assert.equal(doc2.children[0].blocksHidden, true);
+});
+
+test('expandFully clears blocksHidden, matching how it already clears bodyHidden', () => {
+  const doc = parseOrg('* A\n** B');
+  applyStartupVisibility(doc, { visibility: 'showall' }); // blocksHidden: true initially
+  const a = doc.children[0];
+  assert.equal(a.blocksHidden, true);
+  expandFully(a);
+  assert.equal(a.blocksHidden, false);
+  assert.equal(a.children[0].blocksHidden, false); // descendant too
+});
+
+test('REGRESSION THIS FIXES: isFullyExpanded correctly reports false when blocksHidden is still true, even though collapsed is false', () => {
+  const doc = parseOrg('* A');
+  applyStartupVisibility(doc, { visibility: 'showall' }); // collapsed: false, blocksHidden: true
+  assert.equal(isFullyExpanded(doc.children[0]), false);
+});
+
+test('REGRESSION THIS FIXES: isFullyExpanded correctly reports false when bodyHidden is still true', () => {
+  const doc = parseOrg('* A');
+  applyStartupVisibility(doc, { visibility: 'content' }); // collapsed: false, bodyHidden: true
+  assert.equal(isFullyExpanded(doc.children[0]), false);
+});
+
+test('cycleFoldLevel on a showall-loaded heading correctly advances straight to full (reveals blocks), not straight to collapse', () => {
+  const doc = parseOrg('* A');
+  applyStartupVisibility(doc, { visibility: 'showall' });
+  const heading = doc.children[0];
+  const result = cycleFoldLevel(heading);
+  assert.equal(result, 'full');
+  assert.equal(heading.blocksHidden, false);
+});
+
+test('cycleFoldLevel on a content-loaded heading correctly advances straight to full (reveals body), not straight to collapse', () => {
+  const doc = parseOrg('* A\nbody text');
+  applyStartupVisibility(doc, { visibility: 'content' });
+  const heading = doc.children[0];
+  const result = cycleFoldLevel(heading);
+  assert.equal(result, 'full');
+  assert.equal(heading.bodyHidden, false);
 });
