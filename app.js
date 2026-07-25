@@ -917,6 +917,16 @@ function renderActionMenu(actions, columns = 5) {
     btn.onclick = action.onClick;
     menu.appendChild(btn);
   }
+  menu.onclick = (e) => {
+    // Only when the tap landed on the menu's own background, not a
+    // button -- e.target is the actual element tapped, so this only
+    // fires in genuinely empty grid space (e.g. to the right of the
+    // last button on a row that doesn't perfectly fill the width).
+    if (e.target === menu) {
+      actionMenuFor = null;
+      render();
+    }
+  };
   return menu;
 }
 
@@ -1111,7 +1121,6 @@ function renderRow(row, todoSequence) {
             icon: '\u2191',
             label: 'Move up',
             onClick: () => {
-              actionMenuFor = null;
               if (moveHeadingUp(state.doc, row.node)) {
                 commitAndRender();
               } else {
@@ -1124,7 +1133,6 @@ function renderRow(row, todoSequence) {
             icon: '\u2193',
             label: 'Move down',
             onClick: () => {
-              actionMenuFor = null;
               if (moveHeadingDown(state.doc, row.node)) {
                 commitAndRender();
               } else {
@@ -1218,7 +1226,6 @@ function renderRow(row, todoSequence) {
             icon: '\u2190',
             label: 'Promote (outdent)',
             onClick: () => {
-              actionMenuFor = null;
               if (promoteHeading(state.doc, row.node)) {
                 commitAndRender();
               } else {
@@ -1231,7 +1238,6 @@ function renderRow(row, todoSequence) {
             icon: '\u2192',
             label: 'Demote (indent)',
             onClick: () => {
-              actionMenuFor = null;
               if (demoteHeading(state.doc, row.node)) {
                 commitAndRender();
               } else {
