@@ -164,6 +164,76 @@ function carryForwardOccurrences(itemDate, today, rangeStart, rangeEnd, earlyWar
   return days;
 }
 
+// ---- org-anniversary (sexp diary entry) -----------------------------
+
+// %%(org-anniversary YEAR MONTH DAY) description text, with an optional
+// %d placeholder in the description for the computed age. YEAR is
+// either an integer or the literal word `nil` (age then can't be known,
+// see anniversaryAge below). Matches the real Emacs org-anniversary
+// calling convention: a stable YEAR MONTH DAY argument order regardless
+// of any date-style configuration, unlike other diary sexp functions
+// that vary by calendar-date-style.
+const ANNIVERSARY_RE = /^%%\(org-anniversary\s+(nil|-?\d+)\s+(\d{1,2})\s+(\d{1,2})\)\s*(.*)$/;
+
+/** Parses one line as an org-anniversary sexp entry. Returns
+ *  { year, month, day, text } (year is null for a literal `nil`) or
+ *  null if the line doesn't match or has an out-of-range month/day. */
+function parseAnniversaryLine(line) {
+  const m = ANNIVERSARY_RE.exec(line.trim());
+  if (!m) return null;
+  const year = m[1] === 'nil' ? null : Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return { year, month, day, text: m[4] };
+}
+
+/** Elapsed years as of `occurrenceDate` (whichever year's occurrence is
+ *  being shown) for an anniversary whose stored year is `year`. -1 when
+ *  `year` is null (unknown), matching org-anniversary's own documented
+ *  behavior for a nil YEAR argument rather than throwing or guessing. */
+function anniversaryAge(year, occurrenceDate) {
+  if (year === null) return -1;
+  return occurrenceDate.getFullYear() - year;
+}
+
+/** Replaces every %d in `text` with `age`. A plain split/join rather
+ *  than a regex replace so a literal `$` in the description (which
+ *  String.replace treats specially as a backreference token) can never
+ *  corrupt the substitution. */
+function substituteAnniversaryAge(text, age) {
+  return text.split('%d').join(String(age));
+}
+
+/**
+ * Every (month, day) occurrence within [rangeStart, rangeEnd], one per
+ * calendar year the range spans — an anniversary recurs every year
+ * regardless of its own stored YEAR, which only feeds the age
+ * calculation above, not which years it appears in. Without a range,
+ * returns just the single occurrence in `today`'s year, matching how
+ * other agenda sources fall back to "the literal/current occurrence"
+ * when no range was requested.
+ *
+ * A (month, day) that doesn't exist in a given year — February 29 in a
+ * non-leap year — rolls over to March 1 via plain JS Date arithmetic
+ * rather than being specially skipped; a known simplification, not a
+ * faithful reproduction of Emacs calendar.el's own leap-year handling
+ * for this edge case, stated rather than silently different.
+ */
+function expandAnniversaryOccurrences(month, day, rangeStart, rangeEnd, today) {
+  if (!rangeStart || !rangeEnd) {
+    return [new Date(today.getFullYear(), month - 1, day)];
+  }
+  const rangeStartDay = startOfDay(rangeStart);
+  const rangeEndDay = endOfDay(rangeEnd);
+  const dates = [];
+  for (let year = rangeStart.getFullYear(); year <= rangeEnd.getFullYear(); year++) {
+    const occurrence = new Date(year, month - 1, day);
+    if (occurrence >= rangeStartDay && occurrence <= rangeEndDay) dates.push(occurrence);
+  }
+  return dates;
+}
+
 /**
  * Walks every heading in `doc`, calling `visit(heading, ancestors)` for
  * each. Small and local rather than imported — matches the existing
@@ -350,6 +420,45 @@ function buildAgendaItems(docs, opts = {}) {
           addItem(documentId, heading, 'timestamp', parsed, true); // headingIsDone: true short-circuits carry-forward
         }
       }
+
+      // org-anniversary sexp diary entries (%%(org-anniversary YEAR
+      // MONTH DAY) text) — scanned from body text, not the title: a
+      // yearly-recurring event like a birthday is naturally its own
+      // body line, a separate convention from the plain-title-timestamp
+      // one above, not a variant of it. Every year the anniversary
+      // recurs within the requested range is its own item (kind:
+      // 'anniversary'), with %d in its own text substituted for the
+      // elapsed years AT THAT occurrence — so the same entry correctly
+      // shows a different age each year it appears across a multi-year
+      // agenda range, not one age baked in for all of them.
+      for (const line of heading.bodyLines || []) {
+        const anniversary = parseAnniversaryLine(line);
+        if (!anniversary) continue;
+        const occurrences = expandAnniversaryOccurrences(
+          anniversary.month,
+          anniversary.day,
+          rangeStart,
+          rangeEnd,
+          today
+        );
+        for (const occurrenceDate of occurrences) {
+          const age = anniversaryAge(anniversary.year, occurrenceDate);
+          items.push({
+            documentId,
+            heading,
+            kind: 'anniversary',
+            hasTime: false,
+            repeater: null,
+            todo: heading.todo,
+            priority: heading.priority,
+            tags: heading.tags,
+            title: substituteAnniversaryAge(anniversary.text, age),
+            age,
+            date: occurrenceDate,
+            daysOverdue: 0,
+          });
+        }
+      }
     });
   }
 
@@ -509,4 +618,8 @@ export {
   startOfDay,
   endOfDay,
   startOfWeek,
+  parseAnniversaryLine,
+  anniversaryAge,
+  substituteAnniversaryAge,
+  expandAnniversaryOccurrences,
 };
