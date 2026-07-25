@@ -429,25 +429,25 @@ test('expandFully called directly on an archived heading is a complete no-op', (
   );
 });
 
-test('toggleFold: tapping the chevron directly on a collapsed archived heading refuses to open it', () => {
+test('toggleFold: the chevron DOES open a collapsed archived heading -- deliberately different from swipe/cycleFoldLevel, this app\u2019s stand-in for Emacs\u2019s separate force-open mechanisms (C-c C-TAB etc.), not a second cycling implementation', () => {
   const doc = parseOrg('* Archived :ARCHIVE:\nsome content');
   const archived = doc.children[0];
   applyStartupVisibility(doc, {});
   assert.equal(archived.collapsed, true);
 
-  const result = toggleFold(archived, { archiveVisibility: 'archived' });
-  assert.equal(archived.collapsed, true, 'chevron tap must also refuse -- same rule as swipe, no carve-out for which UI gesture triggered it');
-  assert.equal(result, true);
+  const result = toggleFold(archived);
+  assert.equal(archived.collapsed, false, 'the chevron must open it -- without this, archived content becomes permanently unreachable in a touch UI with no keyboard modifiers to fall back on');
+  assert.equal(result, false);
 });
 
-test('toggleFold: an already-open archived heading (e.g. from noarchived mode) can still be COLLAPSED via the chevron -- only opening is blocked', () => {
+test('toggleFold: an open archived heading can be re-collapsed via the chevron too, same as any other heading', () => {
   const doc = parseOrg('* Archived :ARCHIVE:\nsome content');
   const archived = doc.children[0];
   applyStartupVisibility(doc, {}, 'noarchived');
   assert.equal(archived.collapsed, false);
 
-  const result = toggleFold(archived, { archiveVisibility: 'archived' });
-  assert.equal(archived.collapsed, true, 'collapsing must still work -- the guard only blocks the open direction');
+  const result = toggleFold(archived);
+  assert.equal(archived.collapsed, true);
   assert.equal(result, true);
 });
 
