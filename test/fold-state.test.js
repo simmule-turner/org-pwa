@@ -136,7 +136,7 @@ test('isFullyExpanded is true only when the heading and every descendant are exp
 
   function expandAll(h) {
     h.collapsed = false;
-    h.blocksHidden = false;
+    h.drawersHidden = false;
     for (const c of h.children) expandAll(c);
   }
   expandAll(grandparent);
@@ -308,49 +308,49 @@ test('cycleFoldLevel with archiveVisibility "archived" never cascades onto an ar
   assert.equal(archivedChild.collapsed, false);
 });
 
-// ---- blocksHidden: the actual showall/showeverything distinction --------
+// ---- drawersHidden: the actual showall/showeverything distinction (covers BOTH property drawers and block content, per real org-mode) --------
 
-test('applyStartupVisibility: showall reveals body/lists but keeps blocksHidden true', () => {
+test('applyStartupVisibility: showall reveals body/lists but keeps drawersHidden true (properties/blocks stay folded, matching real org)', () => {
   const doc = parseOrg('* A\nsome body text\n#+BEGIN_SRC js\nconsole.log(1);\n#+END_SRC');
   applyStartupVisibility(doc, { visibility: 'showall' });
   const heading = doc.children[0];
   assert.equal(heading.collapsed, false);
   assert.equal(heading.bodyHidden, false);
-  assert.equal(heading.blocksHidden, true);
+  assert.equal(heading.drawersHidden, true);
 });
 
-test('applyStartupVisibility: showeverything reveals body AND blocks', () => {
-  const doc = parseOrg('* A\nsome body text');
+test('applyStartupVisibility: showeverything reveals body, properties, AND blocks', () => {
+  const doc = parseOrg('* A\nsome body text\n:PROPERTIES:\n:ID: abc\n:END:');
   applyStartupVisibility(doc, { visibility: 'showeverything' });
   const heading = doc.children[0];
   assert.equal(heading.collapsed, false);
   assert.equal(heading.bodyHidden, false);
-  assert.equal(heading.blocksHidden, false);
+  assert.equal(heading.drawersHidden, false);
 });
 
-test('applyStartupVisibility: overview and content both keep blocksHidden true', () => {
+test('applyStartupVisibility: overview and content both keep drawersHidden true', () => {
   const doc1 = parseOrg('* A');
   applyStartupVisibility(doc1, { visibility: 'overview' });
-  assert.equal(doc1.children[0].blocksHidden, true);
+  assert.equal(doc1.children[0].drawersHidden, true);
 
   const doc2 = parseOrg('* A');
   applyStartupVisibility(doc2, { visibility: 'content' });
-  assert.equal(doc2.children[0].blocksHidden, true);
+  assert.equal(doc2.children[0].drawersHidden, true);
 });
 
-test('expandFully clears blocksHidden, matching how it already clears bodyHidden', () => {
+test('expandFully clears drawersHidden, matching how it already clears bodyHidden', () => {
   const doc = parseOrg('* A\n** B');
-  applyStartupVisibility(doc, { visibility: 'showall' }); // blocksHidden: true initially
+  applyStartupVisibility(doc, { visibility: 'showall' }); // drawersHidden: true initially
   const a = doc.children[0];
-  assert.equal(a.blocksHidden, true);
+  assert.equal(a.drawersHidden, true);
   expandFully(a);
-  assert.equal(a.blocksHidden, false);
-  assert.equal(a.children[0].blocksHidden, false); // descendant too
+  assert.equal(a.drawersHidden, false);
+  assert.equal(a.children[0].drawersHidden, false); // descendant too
 });
 
-test('REGRESSION THIS FIXES: isFullyExpanded correctly reports false when blocksHidden is still true, even though collapsed is false', () => {
+test('REGRESSION THIS FIXES: isFullyExpanded correctly reports false when drawersHidden is still true, even though collapsed is false', () => {
   const doc = parseOrg('* A');
-  applyStartupVisibility(doc, { visibility: 'showall' }); // collapsed: false, blocksHidden: true
+  applyStartupVisibility(doc, { visibility: 'showall' }); // collapsed: false, drawersHidden: true
   assert.equal(isFullyExpanded(doc.children[0]), false);
 });
 
@@ -366,7 +366,7 @@ test('cycleFoldLevel on a showall-loaded heading correctly advances straight to 
   const heading = doc.children[0];
   const result = cycleFoldLevel(heading);
   assert.equal(result, 'full');
-  assert.equal(heading.blocksHidden, false);
+  assert.equal(heading.drawersHidden, false);
 });
 
 test('cycleFoldLevel on a content-loaded heading correctly advances straight to full (reveals body), not straight to collapse', () => {
