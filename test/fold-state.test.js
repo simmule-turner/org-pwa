@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
+import { toggleFold } from '../src/outline-view-model.js';
 import {
   applyStartupVisibility,
   isFullyExpanded,
@@ -376,4 +377,88 @@ test('cycleFoldLevel on a content-loaded heading correctly advances straight to 
   const result = cycleFoldLevel(heading);
   assert.equal(result, 'full');
   assert.equal(heading.bodyHidden, false);
+});
+
+// ---- REGRESSION: archived headings must refuse to open via cycling, whether direct or cascading (real org: "An archived subtree does not open during visibility cycling") ----
+
+test('cycleFoldLevel: swiping DIRECTLY on an archived, collapsed heading is a complete no-op (does not expand)', () => {
+  const doc = parseOrg('* Parent\n** Archived child :ARCHIVE:\nsome archived content');
+  const archivedChild = doc.children[0].children[0];
+  applyStartupVisibility(doc, {}); // forces archivedChild.collapsed = true
+  assert.equal(archivedChild.collapsed, true);
+
+  const result = cycleFoldLevel(archivedChild, { archiveVisibility: 'archived' });
+  assert.equal(archivedChild.collapsed, true, 'must stay collapsed -- real org refuses this regardless of direct vs cascading');
+  assert.equal(result, 'collapsed');
+});
+
+test('cycleFoldLevel: repeated swipes on an archived heading never open it, no matter how many times', () => {
+  const doc = parseOrg('* Archived :ARCHIVE:\nsome content');
+  const archived = doc.children[0];
+  applyStartupVisibility(doc, {});
+  for (let i = 0; i < 5; i++) {
+    cycleFoldLevel(archived, { archiveVisibility: 'archived' });
+    assert.equal(archived.collapsed, true, `still collapsed after swipe ${i + 1}`);
+  }
+});
+
+test('cycleFoldLevel: with archiveVisibility "noarchived" (org-cycle-open-archived-trees: t), an archived heading cycles completely normally', () => {
+  const doc = parseOrg('* Archived :ARCHIVE:\nsome content');
+  const archived = doc.children[0];
+  applyStartupVisibility(doc, {}, 'noarchived'); // t means don't force-collapse at load either
+  assert.equal(archived.collapsed, false);
+
+  const result = cycleFoldLevel(archived, { archiveVisibility: 'noarchived' });
+  assert.equal(result, 'full');
+  assert.equal(archived.collapsed, false);
+});
+
+test('expandFully called directly on an archived heading is a complete no-op', () => {
+  const doc = parseOrg('* Archived :ARCHIVE:\n** Child\nsome content');
+  const archived = doc.children[0];
+  applyStartupVisibility(doc, {});
+  assert.equal(archived.collapsed, true);
+  const childCollapsedBefore = archived.children[0].collapsed;
+
+  expandFully(archived, { archiveVisibility: 'archived' });
+  assert.equal(archived.collapsed, true, 'expandFully must refuse to touch an archived heading directly, not just its archived descendants');
+  assert.equal(
+    archived.children[0].collapsed,
+    childCollapsedBefore,
+    'nothing underneath should change either, since the whole call was refused before it even started walking'
+  );
+});
+
+test('toggleFold: tapping the chevron directly on a collapsed archived heading refuses to open it', () => {
+  const doc = parseOrg('* Archived :ARCHIVE:\nsome content');
+  const archived = doc.children[0];
+  applyStartupVisibility(doc, {});
+  assert.equal(archived.collapsed, true);
+
+  const result = toggleFold(archived, { archiveVisibility: 'archived' });
+  assert.equal(archived.collapsed, true, 'chevron tap must also refuse -- same rule as swipe, no carve-out for which UI gesture triggered it');
+  assert.equal(result, true);
+});
+
+test('toggleFold: an already-open archived heading (e.g. from noarchived mode) can still be COLLAPSED via the chevron -- only opening is blocked', () => {
+  const doc = parseOrg('* Archived :ARCHIVE:\nsome content');
+  const archived = doc.children[0];
+  applyStartupVisibility(doc, {}, 'noarchived');
+  assert.equal(archived.collapsed, false);
+
+  const result = toggleFold(archived, { archiveVisibility: 'archived' });
+  assert.equal(archived.collapsed, true, 'collapsing must still work -- the guard only blocks the open direction');
+  assert.equal(result, true);
+});
+
+test('cycleFoldLevel: cascading from a PARENT still correctly skips an archived child too (the original, already-working case, re-confirmed alongside the direct-swipe fix)', () => {
+  const doc = parseOrg('* Parent\n** Archived child :ARCHIVE:\nsome archived content\n** Normal child\nnormal content');
+  applyStartupVisibility(doc, {});
+  const parent = doc.children[0];
+  const archivedChild = parent.children[0];
+
+  cycleFoldLevel(parent, { archiveVisibility: 'archived' }); // starts fully expanded by default -> collapses
+  cycleFoldLevel(parent, { archiveVisibility: 'archived' }); // -> one level
+  cycleFoldLevel(parent, { archiveVisibility: 'archived' }); // -> full
+  assert.equal(archivedChild.collapsed, true, 'cascading into it from the parent must still skip it, unchanged from before');
 });
