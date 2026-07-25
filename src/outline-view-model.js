@@ -13,7 +13,6 @@
  */
 
 import { resolveTodoSequence, cycleTodoState } from './todo-cycle.js';
-import { isArchived } from './archive-model.js';
 
 const CHECKBOX_CYCLE_SIMPLE = [' ', 'X'];
 const CHECKBOX_CYCLE_WITH_CHILDREN = [' ', '-', 'X'];
@@ -123,20 +122,22 @@ function flattenVisibleRows(doc) {
  * stays revealed for the rest of the session even if you fold and
  * re-expand it, rather than making you re-reveal it every time.
  *
- * `archiveVisibility` (default 'archived', matching fold-state.js's
- * cycleFoldLevel/expandFully) refuses to open an archived heading via
- * the chevron the same way those refuse it via the slide-left gesture —
- * real org-mode's own stated behavior, "an archived subtree does not
- * open during visibility cycling," makes no distinction between which
- * UI action triggered the attempt. Collapsing an already-open archived
- * heading is still allowed either way; only the open direction is
- * blocked.
+ * The chevron is deliberately NOT subject to the archive-open refusal
+ * that fold-state.js's cycleFoldLevel/expandFully enforce for the
+ * slide-left visibility-cycling gesture. Real Emacs's TAB key IS the
+ * cycling mechanism, so "TAB refuses to open an archived subtree"
+ * necessarily blocks every way of triggering it, direct or cascading —
+ * there's no separate "direct" action to distinguish there. But real
+ * Emacs also provides separate, explicit force-open mechanisms outside
+ * that gesture (`C-c C-TAB`, a universal-argument TAB, `outline-show-all`)
+ * for exactly this situation: cycling won't reveal it, so something else
+ * has to. This app's chevron fills that role — a distinct, explicit
+ * "reveal this one heading" action, not a second implementation of
+ * cycling — so it stays unguarded here. Without it, archived content
+ * would become permanently unreachable in a touch UI with no keyboard
+ * modifiers to fall back on, which was an explicit requirement.
  */
-function toggleFold(heading, opts = {}) {
-  const { archiveVisibility = 'archived' } = opts;
-  if (archiveVisibility === 'archived' && isArchived(heading) && heading.collapsed) {
-    return true; // refused -- stays collapsed, matching real org-mode exactly
-  }
+function toggleFold(heading) {
   heading.collapsed = !heading.collapsed;
   if (!heading.collapsed) heading.bodyHidden = false;
   return heading.collapsed;
