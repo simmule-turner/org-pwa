@@ -40,7 +40,7 @@ export function createHeading({ level, title = '', todo = null, priority = null,
     body: [],
     collapsed: false,
     bodyHidden: false,
-    blocksHidden: false,
+    drawersHidden: false,
     children: [],
   };
 }

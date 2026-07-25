@@ -66,11 +66,22 @@ import { isArchived } from './archive-model.js';
  * children (and body) are visible at all; `bodyHidden` controls
  * specifically whether a heading's own body content shows, independent of
  * whether its children headings do.
+ *
+ * `drawersHidden` is the third, similarly independent flag, covering
+ * property drawers (:PROPERTIES:...:END:) and block content
+ * (#+BEGIN_SRC/QUOTE/EXAMPLE/etc.) together — real org-mode's actual
+ * 'showall' vs 'showeverything' distinction, confirmed against the org
+ * manual: 'showall' unfolds headlines/body/lists/tables but leaves
+ * drawers and blocks folded as a single line; 'showeverything' additionally
+ * unfolds those too. So `drawersHidden` is false only for
+ * 'showeverything' — true for 'overview'/'content'/'showall' alike (the
+ * first two don't even show the body those drawers/blocks live under, so
+ * this mostly matters once 'showall' is in play).
  */
 function applyStartupVisibility(doc, startupConfig, archiveVisibility = 'archived') {
   const collapsedDefault = startupConfig.visibility === 'overview';
   const bodyHiddenDefault = startupConfig.visibility === 'content';
-  const blocksHiddenDefault = startupConfig.visibility !== 'showeverything';
+  const drawersHiddenDefault = startupConfig.visibility !== 'showeverything';
 
   function walk(nodes) {
     for (const node of nodes) {
@@ -78,7 +89,7 @@ function applyStartupVisibility(doc, startupConfig, archiveVisibility = 'archive
       const forceCollapsed = archiveVisibility === 'archived' && isArchived(node);
       node.collapsed = forceCollapsed ? true : collapsedDefault;
       node.bodyHidden = bodyHiddenDefault;
-      node.blocksHidden = blocksHiddenDefault;
+      node.drawersHidden = drawersHiddenDefault;
       walk(node.children);
     }
   }
@@ -101,7 +112,7 @@ function applyStartupVisibility(doc, startupConfig, archiveVisibility = 'archive
  */
 function isFullyExpanded(heading, opts = {}) {
   const { archiveVisibility = 'archived' } = opts;
-  if (heading.collapsed || heading.bodyHidden || heading.blocksHidden) return false;
+  if (heading.collapsed || heading.bodyHidden || heading.drawersHidden) return false;
   for (const child of heading.children || []) {
     if (archiveVisibility === 'archived' && isArchived(child)) continue;
     if (!isFullyExpanded(child, opts)) return false;
@@ -114,7 +125,9 @@ function isFullyExpanded(heading, opts = {}) {
  *  the "one level" step. Also clears `heading.bodyHidden` — see
  *  outline-view-model.js's toggleFold for why: without this, a heading
  *  whose bodyHidden was set by #+STARTUP: content could never have its
- *  own body text revealed through this gesture either. */
+ *  own body text revealed through this gesture either. Does NOT clear
+ *  drawersHidden — that's deliberately reserved for the "fully expanded"
+ *  step, matching how "one level" is a partial reveal, not everything. */
 function expandOneLevel(heading) {
   heading.collapsed = false;
   heading.bodyHidden = false;
@@ -133,20 +146,20 @@ function expandOneLevel(heading) {
  * heading, unaffected by this — this only skips *cascading* expansion
  * onto archived descendants during a cycle).
  *
- * Also clears `bodyHidden` and `blocksHidden` on every heading it
- * reveals — "fully expand" should mean body text AND block content
- * (#+BEGIN_SRC etc.) included for the whole subtree, not just headline
- * structure with body/blocks permanently stuck hidden by whatever
+ * Also clears `bodyHidden` and `drawersHidden` on every heading it
+ * reveals — "fully expand" should mean body text, properties, AND block
+ * content all included for the whole subtree, not just headline
+ * structure with some of that permanently stuck hidden by whatever
  * #+STARTUP: mode the file declared. This is what lets manually cycling
- * a single heading to "fully expanded" reveal everything about it —
- * properties, block content, all of it — even in a file whose
- * #+STARTUP: line wouldn't show that by default.
+ * a single heading to "fully expanded" reveal everything about it — even
+ * in a file whose #+STARTUP: line says 'showall' (properties/blocks
+ * folded by default there) rather than 'showeverything'.
  */
 function expandFully(heading, opts = {}) {
   const { archiveVisibility = 'archived' } = opts;
   heading.collapsed = false;
   heading.bodyHidden = false;
-  heading.blocksHidden = false;
+  heading.drawersHidden = false;
   for (const child of heading.children || []) {
     if (archiveVisibility === 'archived' && isArchived(child)) {
       child.collapsed = true;
