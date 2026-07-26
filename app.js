@@ -3568,7 +3568,7 @@ function renderSearchPanel() {
   const input = document.createElement('textarea');
   input.id = 'search-query-input';
   input.rows = 1;
-  input.placeholder = 'Search this file\u2026';
+  input.placeholder = 'Search, or +tag  -tag  key:value\u2026';
   input.value = searchQuery;
   input.style.width = '100%';
   input.style.boxSizing = 'border-box';
@@ -3626,6 +3626,15 @@ function renderSearchPanel() {
   regexRow.appendChild(regexLabel);
 
   searchPanel.appendChild(regexRow);
+
+  const filterHint = document.createElement('div');
+  filterHint.style.fontFamily = 'monospace';
+  filterHint.style.fontSize = '11px';
+  filterHint.style.opacity = '0.55';
+  filterHint.style.marginTop = '4px';
+  filterHint.style.overflowWrap = 'anywhere';
+  filterHint.textContent = '+tag  -tag  todo:X  priority:A  key:value';
+  searchPanel.appendChild(filterHint);
 
   const resultsEl = document.createElement('div');
   resultsEl.id = 'search-results';
