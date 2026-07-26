@@ -89,6 +89,44 @@ function webdavErrorMessage(res) {
   return `WebDAV error (${res.status})`;
 }
 
+/**
+ * Parses a WebDAV PROPFIND multistatus XML response into
+ * [{ href, isCollection }]. Hand-rolled rather than DOMParser (not
+ * available under Node, where this app's tests run) or an XML library
+ * (this app has a zero-external-dependency principle) -- a targeted
+ * parser for PROPFIND's specific, well-defined response shape, the
+ * same approach org-parser.js itself takes for org syntax rather than
+ * reaching for a general-purpose parser it doesn't need.
+ *
+ * Handles the realistic range of namespace-prefix variation between
+ * WebDAV server implementations (`<d:response>`, `<D:response>`,
+ * `<response>` with a default namespace) via case-insensitive,
+ * prefix-agnostic tag matching, since the WebDAV spec itself doesn't
+ * mandate a specific prefix, only that these element LOCAL names exist
+ * in the DAV: namespace.
+ */
+function parsePropfindResponse(xml) {
+  const responseBlocks = xml.match(/<[\w-]*:?response[^>]*>[\s\S]*?<\/[\w-]*:?response>/gi) || [];
+  const entries = [];
+  for (const block of responseBlocks) {
+    const hrefMatch = /<[\w-]*:?href[^>]*>([^<]*)<\/[\w-]*:?href>/i.exec(block);
+    if (!hrefMatch) continue;
+    const href = decodeURIComponent(hrefMatch[1].trim());
+    const isCollection = /<[\w-]*:?collection\s*\/?>/i.test(block);
+    entries.push({ href, isCollection });
+  }
+  return entries;
+}
+
+/** The path portion of `config.baseUrl`, with a trailing slash, so an
+ *  href from the server (also always trailing-slash-normalized for a
+ *  directory) can be compared/stripped consistently regardless of
+ *  whether either one happened to include a trailing slash already. */
+function baseUrlPath(config) {
+  const url = new URL(config.baseUrl);
+  return url.pathname.replace(/\/+$/, '') + '/';
+}
+
 export function createWebdavAdapter(getConfig) {
   async function readImpl(fileId) {
     const config = requireConfig(getConfig);
@@ -121,9 +159,55 @@ export function createWebdavAdapter(getConfig) {
     return { hash: res.headers.get('ETag') || null };
   }
 
+  /**
+   * Lists the contents of `path` (default: configured baseUrl root)
+   * via PROPFIND with Depth: 1 (immediate children only, not a full
+   * recursive tree). Returns [{ name, path, type }], directories-first
+   * then alphabetical, same shape and ordering as the GitHub adapter's
+   * own list() -- so the UI layer can treat both backends identically
+   * without knowing which one it's talking to.
+   *
+   * The response's own href for the queried collection itself (always
+   * present as the first <response> entry in a compliant PROPFIND
+   * reply) is excluded -- it's the directory being listed, not a child
+   * of it. A 404 (directory doesn't exist) returns [] rather than
+   * throwing, matching the GitHub adapter's own "nothing here" handling.
+   */
+  async function listImpl(path = '') {
+    const config = requireConfig(getConfig);
+    const url = fileUrl(config, path);
+    const res = await fetchWithHint(url, {
+      method: 'PROPFIND',
+      headers: { ...authHeader(config), Depth: '1', 'Content-Type': 'application/xml; charset=utf-8' },
+      body: '<?xml version="1.0"?><propfind xmlns="DAV:"><prop><resourcetype/></prop></propfind>',
+    });
+    if (res.status === 404) return [];
+    if (!res.ok) throw new Error(webdavErrorMessage(res));
+    const xml = await res.text();
+    const entries = parsePropfindResponse(xml);
+    const basePath = baseUrlPath(config);
+    const normalizedQueriedPath = path.replace(/^\/+|\/+$/g, '');
+
+    const results = [];
+    for (const entry of entries) {
+      let relative = entry.href;
+      if (relative.startsWith(basePath)) relative = relative.slice(basePath.length);
+      relative = relative.replace(/\/+$/, ''); // directories come back with a trailing slash; strip it for a clean name/path
+      if (relative === normalizedQueriedPath) continue; // this was the queried directory itself, not a child -- must compare against the actual queried path, not just check for emptiness, since a subdirectory's self-reference isn't empty after stripping the base path
+      if (!relative) continue; // defensive: an unexpected genuinely-empty entry, not a real child either way
+      const name = relative.split('/').pop();
+      results.push({ name, path: relative, type: entry.isCollection ? 'dir' : 'file' });
+    }
+    return results.sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
   return {
     read: readImpl,
     write: writeImpl,
+    list: listImpl,
     async exists(fileId) {
       const config = requireConfig(getConfig);
       const res = await fetchWithHint(fileUrl(config, fileId), {
@@ -139,5 +223,5 @@ export function isWebdavConfigured(config) {
   return !!(config && config.baseUrl && config.username);
 }
 
-// Exported for testing path/URL construction in isolation.
-export { fileUrl, encodePath };
+// Exported for testing path/URL construction and the PROPFIND parser in isolation.
+export { fileUrl, encodePath, parsePropfindResponse, baseUrlPath };

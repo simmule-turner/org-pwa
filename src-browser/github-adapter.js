@@ -126,9 +126,41 @@ export function createGithubAdapter(getConfig) {
     return { hash: result.content.sha };
   }
 
+  /**
+   * Lists the contents of `path` (default: repo root) — the same
+   * Contents API endpoint readImpl already calls, just used for the
+   * shape it returns when pointed at a directory instead of a file.
+   * Returns [{ name, path, type }] where type is 'file' or 'dir',
+   * sorted directories-first then alphabetically (so a folder-browsing
+   * UI doesn't need its own sort logic) — a real, deliberate ordering,
+   * not incidental: without it, GitHub's own API order (alphabetical
+   * across both files and folders together) interleaves them, which
+   * reads worse for browsing than a consistent folders-then-files
+   * grouping does. An empty directory (or one that doesn't exist)
+   * returns [] rather than throwing — same "nothing here" outcome
+   * either way from a caller's perspective, no need to distinguish.
+   */
+  async function listImpl(path = '') {
+    const config = requireConfig(getConfig);
+    const url = contentsUrl(config, path) + '?ref=' + encodeURIComponent(config.branch || 'main');
+    const res = await fetch(url, { headers: authHeaders(config) });
+    if (res.status === 404) return [];
+    if (!res.ok) throw new Error(await githubErrorMessage(res));
+    const body = await res.json();
+    const entries = Array.isArray(body) ? body : [body]; // a single file at this exact path is a valid (if unusual) thing to "list"
+    return entries
+      .filter((e) => e.type === 'file' || e.type === 'dir')
+      .map((e) => ({ name: e.name, path: e.path, type: e.type }))
+      .sort((a, b) => {
+        if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+  }
+
   return {
     read: readImpl,
     write: writeImpl,
+    list: listImpl,
     async exists(fileId) {
       return (await readImpl(fileId)) !== null;
     },
