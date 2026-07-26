@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createWebdavAdapter, isWebdavConfigured, fileUrl, encodePath } from '../src-browser/webdav-adapter.js';
+import {
+  createWebdavAdapter,
+  isWebdavConfigured,
+  fileUrl,
+  encodePath,
+  parsePropfindResponse,
+  baseUrlPath,
+} from '../src-browser/webdav-adapter.js';
 
 function withMockFetch(handler, fn) {
   const original = globalThis.fetch;
@@ -205,4 +212,167 @@ test('exists: uses HEAD and reflects response.ok', async () => {
     }
   );
   assert.ok(calls.every((m) => m === 'HEAD'));
+});
+
+// ---- parsePropfindResponse -------------------------------------------------
+
+const SAMPLE_PROPFIND_XML = `<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:">
+  <d:response>
+    <d:href>/remote.php/dav/files/me/</d:href>
+    <d:propstat>
+      <d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+  <d:response>
+    <d:href>/remote.php/dav/files/me/notes.org</d:href>
+    <d:propstat>
+      <d:prop><d:resourcetype/></d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+  <d:response>
+    <d:href>/remote.php/dav/files/me/journal/</d:href>
+    <d:propstat>
+      <d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+</d:multistatus>`;
+
+test('parsePropfindResponse extracts href and collection status for every response block', () => {
+  const entries = parsePropfindResponse(SAMPLE_PROPFIND_XML);
+  assert.equal(entries.length, 3);
+  assert.equal(entries[0].href, '/remote.php/dav/files/me/');
+  assert.equal(entries[0].isCollection, true);
+  assert.equal(entries[1].href, '/remote.php/dav/files/me/notes.org');
+  assert.equal(entries[1].isCollection, false);
+  assert.equal(entries[2].href, '/remote.php/dav/files/me/journal/');
+  assert.equal(entries[2].isCollection, true);
+});
+
+test('parsePropfindResponse handles an uppercase namespace prefix (some servers use D: instead of d:)', () => {
+  const xml = SAMPLE_PROPFIND_XML.replace(/d:/g, 'D:');
+  const entries = parsePropfindResponse(xml);
+  assert.equal(entries.length, 3);
+  assert.equal(entries[1].isCollection, false);
+});
+
+test('parsePropfindResponse decodes percent-encoded characters in href (e.g. a space in a filename)', () => {
+  const xml = `<d:multistatus xmlns:d="DAV:">
+    <d:response><d:href>/dav/files/me/my%20notes.org</d:href>
+      <d:propstat><d:prop><d:resourcetype/></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat>
+    </d:response>
+  </d:multistatus>`;
+  const entries = parsePropfindResponse(xml);
+  assert.equal(entries[0].href, '/dav/files/me/my notes.org');
+});
+
+test('parsePropfindResponse returns an empty array for malformed/empty XML rather than throwing', () => {
+  assert.deepEqual(parsePropfindResponse(''), []);
+  assert.deepEqual(parsePropfindResponse('not xml at all'), []);
+});
+
+// ---- baseUrlPath ------------------------------------------------------------
+
+test('baseUrlPath extracts just the path portion, with a trailing slash', () => {
+  assert.equal(baseUrlPath({ baseUrl: 'https://cloud.example.com/remote.php/dav/files/me' }), '/remote.php/dav/files/me/');
+  assert.equal(baseUrlPath({ baseUrl: 'https://cloud.example.com/remote.php/dav/files/me/' }), '/remote.php/dav/files/me/');
+});
+
+// ---- list() -------------------------------------------------------------
+
+test('list() excludes the self-referencing entry for the queried directory itself', () => {
+  return withMockFetch(
+    async () => textResponse(207, SAMPLE_PROPFIND_XML),
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      const entries = await adapter.list();
+      assert.equal(entries.length, 2); // NOT 3 -- the directory-itself entry must be excluded
+    }
+  );
+});
+
+test('list() returns correctly-shaped, directories-first-then-alphabetical entries', () => {
+  return withMockFetch(
+    async () => textResponse(207, SAMPLE_PROPFIND_XML),
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      const entries = await adapter.list();
+      assert.deepEqual(entries, [
+        { name: 'journal', path: 'journal', type: 'dir' },
+        { name: 'notes.org', path: 'notes.org', type: 'file' },
+      ]);
+    }
+  );
+});
+
+test('list() sends a PROPFIND request with Depth: 1', () => {
+  let capturedMethod = null;
+  let capturedHeaders = null;
+  return withMockFetch(
+    async (url, opts) => {
+      capturedMethod = opts.method;
+      capturedHeaders = opts.headers;
+      return textResponse(207, SAMPLE_PROPFIND_XML);
+    },
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      await adapter.list();
+      assert.equal(capturedMethod, 'PROPFIND');
+      assert.equal(capturedHeaders.Depth, '1');
+    }
+  );
+});
+
+test('list() returns an empty array for a 404 rather than throwing', () => {
+  return withMockFetch(
+    async () => textResponse(404, ''),
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      assert.deepEqual(await adapter.list('nonexistent'), []);
+    }
+  );
+});
+
+test('list() throws a clear error on a non-ok, non-404 response', () => {
+  return withMockFetch(
+    async () => textResponse(401, ''),
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      await assert.rejects(() => adapter.list(), /rejected the credentials/);
+    }
+  );
+});
+
+test('list() requires configuration, same as read/write', () => {
+  const adapter = createWebdavAdapter(() => null);
+  return assert.rejects(() => adapter.list(), /not configured yet/);
+});
+
+test('list() correctly requests a subdirectory path', () => {
+  let requestedUrl = null;
+  return withMockFetch(
+    async (url) => {
+      requestedUrl = url;
+      return textResponse(
+        207,
+        `<d:multistatus xmlns:d="DAV:">
+          <d:response><d:href>/remote.php/dav/files/me/journal/</d:href>
+            <d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat>
+          </d:response>
+          <d:response><d:href>/remote.php/dav/files/me/journal/2026.org</d:href>
+            <d:propstat><d:prop><d:resourcetype/></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat>
+          </d:response>
+        </d:multistatus>`
+      );
+    },
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      const entries = await adapter.list('journal');
+      assert.equal(requestedUrl, 'https://cloud.example.com/remote.php/dav/files/me/journal');
+      assert.deepEqual(entries, [{ name: '2026.org', path: 'journal/2026.org', type: 'file' }]);
+    }
+  );
 });

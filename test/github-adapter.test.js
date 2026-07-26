@@ -210,3 +210,100 @@ test('getConfig is called fresh on every operation, so a settings change mid-ses
     }
   );
 });
+
+// ---- list() -------------------------------------------------------------
+
+test('list() returns files and directories, sorted directories-first then alphabetically', () => {
+  return withMockFetch(
+    async () =>
+      jsonResponse(200, [
+        { name: 'zebra.org', path: 'zebra.org', type: 'file' },
+        { name: 'archive', path: 'archive', type: 'dir' },
+        { name: 'apple.org', path: 'apple.org', type: 'file' },
+        { name: 'journal', path: 'journal', type: 'dir' },
+      ]),
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      const entries = await adapter.list();
+      assert.deepEqual(
+        entries.map((e) => e.name),
+        ['archive', 'journal', 'apple.org', 'zebra.org']
+      );
+      assert.deepEqual(
+        entries.map((e) => e.type),
+        ['dir', 'dir', 'file', 'file']
+      );
+    }
+  );
+});
+
+test('list() correctly requests a subdirectory path', () => {
+  let requestedUrl = null;
+  return withMockFetch(
+    async (url) => {
+      requestedUrl = url;
+      return jsonResponse(200, [{ name: '2026.org', path: 'journal/2026.org', type: 'file' }]);
+    },
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      const entries = await adapter.list('journal');
+      assert.match(requestedUrl, /\/contents\/journal\?/);
+      assert.deepEqual(entries, [{ name: '2026.org', path: 'journal/2026.org', type: 'file' }]);
+    }
+  );
+});
+
+test('list() wraps a single-file response (not an array) into a one-item list', () => {
+  return withMockFetch(
+    async () => jsonResponse(200, { name: 'notes.org', path: 'notes.org', type: 'file' }),
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      const entries = await adapter.list('notes.org');
+      assert.deepEqual(entries, [{ name: 'notes.org', path: 'notes.org', type: 'file' }]);
+    }
+  );
+});
+
+test('list() returns an empty array for a 404 rather than throwing', () => {
+  return withMockFetch(
+    async () => jsonResponse(404, { message: 'Not Found' }),
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      assert.deepEqual(await adapter.list('nonexistent'), []);
+    }
+  );
+});
+
+test('list() filters out entries that are neither file nor dir (e.g. submodule, symlink)', () => {
+  return withMockFetch(
+    async () =>
+      jsonResponse(200, [
+        { name: 'notes.org', path: 'notes.org', type: 'file' },
+        { name: 'some-submodule', path: 'some-submodule', type: 'submodule' },
+        { name: 'a-symlink', path: 'a-symlink', type: 'symlink' },
+      ]),
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      const entries = await adapter.list();
+      assert.deepEqual(
+        entries.map((e) => e.name),
+        ['notes.org']
+      );
+    }
+  );
+});
+
+test('list() throws a clear error on a non-ok, non-404 response', () => {
+  return withMockFetch(
+    async () => jsonResponse(403, { message: 'rate limited' }),
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      await assert.rejects(() => adapter.list(), /forbidden/i);
+    }
+  );
+});
+
+test('list() requires configuration, same as read/write', () => {
+  const adapter = createGithubAdapter(() => null);
+  return assert.rejects(() => adapter.list(), /not configured yet/);
+});
