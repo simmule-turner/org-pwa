@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
-import { searchDocument } from '../src/search.js';
+import { searchDocument, parseFilterQuery } from '../src/search.js';
 
 function sampleDoc() {
   return parseOrg(
@@ -223,4 +223,166 @@ test('planning search respects regex mode too', () => {
   const results = searchDocument(doc, '\\+\\d+y', { useRegex: true });
   const planningResult = results.find((r) => r.type === 'planning');
   assert.ok(planningResult);
+});
+
+// ---- parseFilterQuery: the token parser itself -----------------------------
+
+test('parseFilterQuery: recognizes a +tag inclusion filter', () => {
+  const { filters, freeText } = parseFilterQuery('+work');
+  assert.deepEqual(filters, [{ type: 'tag', mode: 'include', value: 'work' }]);
+  assert.equal(freeText, '');
+});
+
+test('parseFilterQuery: recognizes a -tag exclusion filter', () => {
+  const { filters, freeText } = parseFilterQuery('-someday');
+  assert.deepEqual(filters, [{ type: 'tag', mode: 'exclude', value: 'someday' }]);
+  assert.equal(freeText, '');
+});
+
+test('parseFilterQuery: recognizes todo: and priority: as reserved keys', () => {
+  const { filters } = parseFilterQuery('todo:WAITING priority:A');
+  assert.deepEqual(filters, [
+    { type: 'todo', value: 'WAITING' },
+    { type: 'priority', value: 'A' },
+  ]);
+});
+
+test('parseFilterQuery: any other key:value becomes a property filter', () => {
+  const { filters } = parseFilterQuery('spouse:Jennifer');
+  assert.deepEqual(filters, [{ type: 'property', key: 'spouse', value: 'Jennifer' }]);
+});
+
+test('parseFilterQuery: multiple filter tokens combine, leftover words become free text', () => {
+  const { filters, freeText } = parseFilterQuery('+work todo:WAITING budget review');
+  assert.equal(filters.length, 2);
+  assert.equal(freeText, 'budget review');
+});
+
+test('parseFilterQuery: a bare "+" or "-" with nothing after it is NOT treated as a filter', () => {
+  const { filters, freeText } = parseFilterQuery('+ -');
+  assert.equal(filters.length, 0);
+  assert.equal(freeText, '+ -');
+});
+
+test('parseFilterQuery: an http(s):// URL is not misparsed as a key:value property filter', () => {
+  const { filters, freeText } = parseFilterQuery('see https://example.com/page for details');
+  assert.equal(filters.length, 0, 'the URL must fall through to free text, not become a filter on a property literally named "https"');
+  assert.match(freeText, /https:\/\/example\.com\/page/);
+});
+
+test('parseFilterQuery: "10:30" (a time) is not misparsed as key:value -- a key must start with a letter, not a digit', () => {
+  const { filters, freeText } = parseFilterQuery('meeting at 10:30 today');
+  assert.equal(filters.length, 0);
+  assert.match(freeText, /10:30/);
+});
+
+test('parseFilterQuery: an empty query produces no filters and empty free text', () => {
+  const { filters, freeText } = parseFilterQuery('');
+  assert.deepEqual(filters, []);
+  assert.equal(freeText, '');
+});
+
+test('parseFilterQuery: pure free text with no filter-like tokens at all passes through unchanged', () => {
+  const { filters, freeText } = parseFilterQuery('just a normal search phrase');
+  assert.deepEqual(filters, []);
+  assert.equal(freeText, 'just a normal search phrase');
+});
+
+// ---- searchDocument: filter-token integration ------------------------------
+
+function taggedDoc() {
+  return parseOrg(
+    [
+      '#+TODO: TODO WAITING | DONE',
+      '* TODO [#A] Fix the bug :work:urgent:',
+      'Some notes about the bug.',
+      '* TODO Someday maybe :work:someday:',
+      'Low priority idea.',
+      '* WAITING On vendor reply :work:',
+      'Waiting for a response.',
+      '* Personal errand :home:',
+      'Buy groceries.',
+    ].join('\n')
+  );
+}
+
+test('a +tag filter finds only headings with that tag', () => {
+  const results = searchDocument(taggedDoc(), '+home');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['Personal errand']);
+});
+
+test('a -tag filter excludes headings with that tag', () => {
+  const results = searchDocument(taggedDoc(), '+work -someday');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings.sort(), ['Fix the bug', 'On vendor reply'].sort());
+});
+
+test('a todo: filter matches the TODO keyword exactly, not as a substring', () => {
+  const results = searchDocument(taggedDoc(), 'todo:WAITING');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['On vendor reply']);
+});
+
+test('todo: filter is case-insensitive', () => {
+  const results = searchDocument(taggedDoc(), 'todo:waiting');
+  assert.equal(results.filter((r) => r.type === 'heading').length, 1);
+});
+
+test('a priority: filter finds only that exact priority', () => {
+  const results = searchDocument(taggedDoc(), 'priority:A');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['Fix the bug']);
+});
+
+test('a generic key:value filter matches a property', () => {
+  const doc = parseOrg('* Simmule\n:PROPERTIES:\n:spouse: Jennifer\n:END:\n* Someone else\n:PROPERTIES:\n:spouse: Robert\n:END:');
+  const results = searchDocument(doc, 'spouse:Jennifer');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['Simmule']);
+});
+
+test('combined filters apply as AND, not OR', () => {
+  const results = searchDocument(taggedDoc(), '+work todo:WAITING');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['On vendor reply']); // NOT "Fix the bug" -- that one is TODO, not WAITING
+});
+
+test('a filter combined with free text requires BOTH to match', () => {
+  const results = searchDocument(taggedDoc(), '+work vendor');
+  const headings = results.filter((r) => r.type === 'heading' || r.type === 'paragraph').map((r) => r.heading.title);
+  assert.ok(headings.includes('On vendor reply'));
+  assert.ok(!headings.includes('Fix the bug'), 'tagged work but has no "vendor" text anywhere, so must not match');
+});
+
+test('a pure filter query (no free text) produces a heading result for every heading that passes, even with nothing to highlight', () => {
+  const results = searchDocument(taggedDoc(), '+work');
+  assert.equal(results.length, 3); // three headings tagged work, one result each, no body/property/planning noise
+  assert.ok(results.every((r) => r.type === 'heading'));
+});
+
+test('filters do NOT inherit to child headings -- a child without the tag does not match even if its parent has it', () => {
+  const doc = parseOrg('* Parent :work:\n** Child with no tags of its own');
+  const results = searchDocument(doc, '+work');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['Parent']);
+});
+
+test('child headings are still independently evaluated and can match on their own', () => {
+  const doc = parseOrg('* Parent (no tag)\n** Child :work:');
+  const results = searchDocument(doc, '+work');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['Child']);
+});
+
+test('filters combine correctly with regex mode for the free-text portion', () => {
+  const doc = parseOrg('* A :work:\nCall 555-1234\n* B :work:\nno phone number here');
+  const results = searchDocument(doc, '+work \\d{3}-\\d{4}', { useRegex: true });
+  const headings = results.filter((r) => r.type === 'paragraph').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['A']);
+});
+
+test('a filter with no matching headings at all returns an empty array, not an error', () => {
+  const results = searchDocument(taggedDoc(), '+nonexistent-tag');
+  assert.deepEqual(results, []);
 });
