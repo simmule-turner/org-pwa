@@ -3601,11 +3601,12 @@ function renderSearchPanel() {
   const regexRow = document.createElement('div');
   regexRow.style.display = 'flex';
   regexRow.style.alignItems = 'center';
-  regexRow.style.gap = '6px';
+  regexRow.style.gap = '8px';
   regexRow.style.marginTop = '6px';
+  regexRow.style.flexWrap = 'wrap';
 
   const regexToggle = document.createElement('button');
-  regexToggle.textContent = '.*';
+  regexToggle.textContent = '[Regex]';
   regexToggle.setAttribute('aria-label', searchUseRegex ? 'Regex search on' : 'Regex search off');
   regexToggle.style.fontFamily = 'monospace';
   regexToggle.style.fontSize = '13px';
@@ -3615,28 +3616,24 @@ function renderSearchPanel() {
   regexToggle.style.border = '1px solid var(--border-strong)';
   regexToggle.style.background = searchUseRegex ? 'var(--accent)' : 'transparent';
   regexToggle.style.color = searchUseRegex ? '#fff' : 'var(--fg)';
+  regexToggle.style.flexShrink = '0';
   regexToggle.onclick = () => {
     searchUseRegex = !searchUseRegex;
     renderSearchPanel();
   };
   regexRow.appendChild(regexToggle);
 
-  const regexLabel = document.createElement('span');
-  regexLabel.textContent = 'Regex';
-  regexLabel.style.fontSize = '12px';
-  regexLabel.style.opacity = '0.6';
-  regexRow.appendChild(regexLabel);
-
-  searchPanel.appendChild(regexRow);
-
-  const filterHint = document.createElement('div');
+  const filterHint = document.createElement('span');
+  filterHint.style.flex = '1';
   filterHint.style.fontFamily = 'monospace';
   filterHint.style.fontSize = '11px';
   filterHint.style.opacity = '0.55';
-  filterHint.style.marginTop = '4px';
+  filterHint.style.textAlign = 'right';
   filterHint.style.overflowWrap = 'anywhere';
-  filterHint.textContent = '+tag  -tag  todo:X  priority:A  key:value';
-  searchPanel.appendChild(filterHint);
+  filterHint.textContent = 'Hints: +tag  -tag  todo:X  priority:A  key:value';
+  regexRow.appendChild(filterHint);
+
+  searchPanel.appendChild(regexRow);
 
   const resultsEl = document.createElement('div');
   resultsEl.id = 'search-results';
