@@ -185,6 +185,7 @@ let searchOpen = false;
 let captureOpen = false;
 let moreOpen = false;
 let searchQuery = '';
+let searchUseRegex = false; // deliberately NOT reset when the search panel closes, unlike searchQuery -- this is a mode preference, not a one-off query value
 let viewMenuOpen = false;
 // Agenda view state: which grouping is active, and the anchor date that
 // grouping is centered/started on — prev/next navigation moves this
@@ -548,6 +549,7 @@ function navigateToHeading(heading, { revealOwnBody = false, targetNode = headin
   if (revealOwnBody) {
     heading.collapsed = false;
     heading.bodyHidden = false;
+    heading.drawersHidden = false;
   }
   render();
 
@@ -3551,6 +3553,8 @@ const SEARCH_TYPE_ICON = {
   'list-item': '\u2022',
   table: '\u25a6',
   block: '\u2318',
+  property: '\ud83c\udff7\ufe0f',
+  planning: '\ud83d\udcc5',
 };
 
 function renderSearchPanel() {
@@ -3592,6 +3596,37 @@ function renderSearchPanel() {
   autoGrowTextarea(input);
   searchPanel.appendChild(input);
 
+  const regexRow = document.createElement('div');
+  regexRow.style.display = 'flex';
+  regexRow.style.alignItems = 'center';
+  regexRow.style.gap = '6px';
+  regexRow.style.marginTop = '6px';
+
+  const regexToggle = document.createElement('button');
+  regexToggle.textContent = '.*';
+  regexToggle.setAttribute('aria-label', searchUseRegex ? 'Regex search on' : 'Regex search off');
+  regexToggle.style.fontFamily = 'monospace';
+  regexToggle.style.fontSize = '13px';
+  regexToggle.style.fontWeight = '700';
+  regexToggle.style.padding = '3px 9px';
+  regexToggle.style.borderRadius = '12px';
+  regexToggle.style.border = '1px solid var(--border-strong)';
+  regexToggle.style.background = searchUseRegex ? 'var(--accent)' : 'transparent';
+  regexToggle.style.color = searchUseRegex ? '#fff' : 'var(--fg)';
+  regexToggle.onclick = () => {
+    searchUseRegex = !searchUseRegex;
+    renderSearchPanel();
+  };
+  regexRow.appendChild(regexToggle);
+
+  const regexLabel = document.createElement('span');
+  regexLabel.textContent = 'Regex';
+  regexLabel.style.fontSize = '12px';
+  regexLabel.style.opacity = '0.6';
+  regexRow.appendChild(regexLabel);
+
+  searchPanel.appendChild(regexRow);
+
   const resultsEl = document.createElement('div');
   resultsEl.id = 'search-results';
   resultsEl.style.marginTop = '6px';
@@ -3611,7 +3646,18 @@ function renderSearchResults() {
   if (!searchQuery.trim()) return;
   if (!state.doc) return;
 
-  const results = searchDocument(state.doc, searchQuery);
+  let results;
+  try {
+    results = searchDocument(state.doc, searchQuery, { useRegex: searchUseRegex });
+  } catch (err) {
+    const errorEl = document.createElement('div');
+    errorEl.style.fontSize = '13px';
+    errorEl.style.color = '#c0392b';
+    errorEl.style.padding = '6px 2px';
+    errorEl.textContent = err.message;
+    resultsEl.appendChild(errorEl);
+    return;
+  }
   if (results.length === 0) {
     const empty = document.createElement('div');
     empty.style.fontSize = '13px';
