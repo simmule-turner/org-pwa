@@ -209,6 +209,20 @@ let state = { documentId: null, doc: null, startupConfig: null, storageKind: nul
 // As list; otherwise 'open' | 'new' | 'saveas').
 let fileMenuOpen = false;
 let fileMenuStep = null;
+// File-browser state: browseBackend non-null means the "open" step is
+// currently showing a navigable folder/file listing (see startBrowsing
+// below) instead of the plain New/Open/Save/Save As button row.
+// browsePath is '' at the configured root, or a path within it (e.g.
+// 'journal') when navigated into a subdirectory. browseEntries is null
+// while loading, an array once loaded (possibly empty), or unchanged
+// (stale, from before the error) if the load fails -- browseError is
+// what actually signals the failure state, checked separately so a
+// failed reload doesn't wipe out the previously-successful listing the
+// user might still want to navigate via Back.
+let browseBackend = null;
+let browsePath = '';
+let browseEntries = null;
+let browseError = null;
 let settingsOpen = false;
 let docsOpen = false;
 let searchOpen = false;
@@ -2158,6 +2172,88 @@ async function openFromImport() {
   }
 }
 
+/** Opens `path` from a remote backend -- the shared logic behind both
+ *  the file-browser UI (tapping a file) and the manual "type a path"
+ *  fallback, so there's exactly one place that knows how to actually
+ *  open a remote path once you have one, regardless of how it was
+ *  chosen. `kind` is 'github' | 'webdav' (passed through to
+ *  afterDocumentLoaded, same as before this existed as a shared
+ *  function), `label` is the human-readable name used in status
+ *  messages ("GitHub" / "WebDAV"). */
+async function openRemotePath(path, kind, diskAdapter, label) {
+  try {
+    const { preferCache } = await resolvePendingChangeChoice(path);
+    setStatus(`Loading from ${label}\u2026`);
+    await markDocumentOpen(kv, path);
+    const { doc, source } = await openDocument({
+      documentId: path,
+      kvAdapter: kv,
+      diskAdapter,
+      preferCache,
+    });
+    await afterDocumentLoaded(path, doc, kind);
+    if (preferCache) {
+      isDirty = true;
+      render();
+    }
+    setStatus(
+      preferCache
+        ? 'Resumed your unsaved local version \u2014 remember to Save it.'
+        : source === 'new'
+          ? `"${path}" doesn't exist yet \u2014 opened as a new empty file.`
+          : `Opened from ${label}.`
+    );
+  } catch (err) {
+    setStatus(`Could not open from ${label}: ` + err.message);
+  }
+}
+
+/** Sets up and shows the navigable file browser for `backend`
+ *  ('github' | 'webdav') at the configured root, then kicks off the
+ *  first listing load. This is what File \u2192 Open \u2192 GitHub/WebDAV
+ *  actually does now -- see openGithubByPrompt/openWebdavByPrompt
+ *  below for the manual-entry fallback this replaces as the default
+ *  path, still reachable from within the browser UI itself. */
+function startBrowsing(backend) {
+  browseBackend = backend;
+  browsePath = '';
+  browseEntries = null;
+  browseError = null;
+  renderFileMenu();
+  loadBrowseEntries();
+}
+
+/** Fetches the listing for the current browsePath from whichever
+ *  adapter browseBackend points at, updating browseEntries/browseError
+ *  and re-rendering when done. Split out from startBrowsing so
+ *  navigating into a folder (which doesn't reset browsePath to root)
+ *  can call just this part again. */
+async function loadBrowseEntries() {
+  const adapter = browseBackend === 'github' ? githubAdapter : webdavAdapter;
+  const requestedPath = browsePath; // captured now -- if the user navigates again before this resolves, a stale response must not overwrite the newer one
+  browseEntries = null;
+  browseError = null;
+  renderFileMenu();
+  try {
+    const entries = await adapter.list(requestedPath);
+    if (requestedPath !== browsePath || !browseBackend) return; // superseded by a newer navigation, or the browser was closed while this was in flight
+    browseEntries = entries;
+  } catch (err) {
+    if (requestedPath !== browsePath || !browseBackend) return;
+    browseError = err.message;
+  }
+  renderFileMenu();
+}
+
+async function openGithubByPrompt() {
+  if (commitTextModeIfActive()) render();
+  const config = await getGithubConfig(kv);
+  githubConfig = config;
+  const path = window.prompt(`Path of the file in ${config.owner}/${config.repo} (e.g. notes.org):`);
+  if (!path) return;
+  await openRemotePath(path, 'github', githubAdapter, 'GitHub');
+}
+
 async function openFromGithub() {
   if (commitTextModeIfActive()) render();
   const config = await getGithubConfig(kv);
@@ -2167,33 +2263,16 @@ async function openFromGithub() {
     closeFileMenu();
     return;
   }
-  const path = window.prompt(`Path of the file in ${config.owner}/${config.repo} (e.g. notes.org):`);
+  startBrowsing('github');
+}
+
+async function openWebdavByPrompt() {
+  if (commitTextModeIfActive()) render();
+  const config = await getWebdavConfig(kv);
+  webdavConfig = config;
+  const path = window.prompt('Path of the file on the WebDAV server (e.g. notes.org):');
   if (!path) return;
-  try {
-    const { preferCache } = await resolvePendingChangeChoice(path);
-    setStatus('Loading from GitHub\u2026');
-    await markDocumentOpen(kv, path);
-    const { doc, source } = await openDocument({
-      documentId: path,
-      kvAdapter: kv,
-      diskAdapter: githubAdapter,
-      preferCache,
-    });
-    await afterDocumentLoaded(path, doc, 'github');
-    if (preferCache) {
-      isDirty = true;
-      render();
-    }
-    setStatus(
-      preferCache
-        ? 'Resumed your unsaved local version \u2014 remember to Save it.'
-        : source === 'new'
-          ? `"${path}" doesn't exist in the repo yet \u2014 opened as a new empty file.`
-          : 'Opened from GitHub.'
-    );
-  } catch (err) {
-    setStatus('Could not open from GitHub: ' + err.message);
-  }
+  await openRemotePath(path, 'webdav', webdavAdapter, 'WebDAV');
 }
 
 async function openFromWebdav() {
@@ -2205,33 +2284,7 @@ async function openFromWebdav() {
     closeFileMenu();
     return;
   }
-  const path = window.prompt('Path of the file on the WebDAV server (e.g. notes.org):');
-  if (!path) return;
-  try {
-    const { preferCache } = await resolvePendingChangeChoice(path);
-    setStatus('Loading from WebDAV\u2026');
-    await markDocumentOpen(kv, path);
-    const { doc, source } = await openDocument({
-      documentId: path,
-      kvAdapter: kv,
-      diskAdapter: webdavAdapter,
-      preferCache,
-    });
-    await afterDocumentLoaded(path, doc, 'webdav');
-    if (preferCache) {
-      isDirty = true;
-      render();
-    }
-    setStatus(
-      preferCache
-        ? 'Resumed your unsaved local version \u2014 remember to Save it.'
-        : source === 'new'
-          ? `"${path}" doesn't exist on the server yet \u2014 opened as a new empty file.`
-          : 'Opened from WebDAV.'
-    );
-  } catch (err) {
-    setStatus('Could not open from WebDAV: ' + err.message);
-  }
+  startBrowsing('webdav');
 }
 
 // ---- New ---------------------------------------------------------------
@@ -2556,6 +2609,7 @@ function wizardButton(label, onClick) {
 function closeFileMenu() {
   fileMenuOpen = false;
   fileMenuStep = null;
+  stopBrowsing();
   renderFileMenu();
 }
 
@@ -2594,6 +2648,11 @@ function renderFileMenu() {
       )
     );
     fileMenuPanel.appendChild(row);
+    return;
+  }
+
+  if (browseBackend) {
+    renderFileBrowser();
     return;
   }
 
@@ -2647,9 +2706,152 @@ function renderFileMenu() {
   fileMenuPanel.appendChild(btnRow);
 }
 
+/** Closes the file browser, returning to the "which backend" button
+ *  row -- used by both Cancel and after successfully opening a file
+ *  (since the file menu itself also closes right after, but leaving
+ *  stale browse state around would show it again if File \u2192 Open got
+ *  reopened without going through startBrowsing first). */
+function stopBrowsing() {
+  browseBackend = null;
+  browsePath = '';
+  browseEntries = null;
+  browseError = null;
+}
+
+/** Renders the navigable file/folder listing for whichever backend
+ *  startBrowsing set up -- the actual UI this whole feature is about.
+ *  Folders are tappable to navigate into; only .org files are shown
+ *  (and tappable to open) among files, since anything else isn't
+ *  something this app can do anything useful with anyway and would
+ *  just be clutter in the list. */
+function renderFileBrowser() {
+  const backendLabel = browseBackend === 'github' ? 'GitHub' : 'WebDAV';
+
+  const header = document.createElement('div');
+  header.style.display = 'flex';
+  header.style.alignItems = 'center';
+  header.style.gap = '8px';
+  header.style.marginBottom = '6px';
+
+  if (browsePath) {
+    header.appendChild(
+      menuButton('\u2191 Up', () => {
+        const parts = browsePath.split('/');
+        parts.pop();
+        browsePath = parts.join('/');
+        loadBrowseEntries();
+      })
+    );
+  }
+
+  const pathLabel = document.createElement('div');
+  pathLabel.style.fontSize = '12px';
+  pathLabel.style.opacity = '0.7';
+  pathLabel.style.overflow = 'hidden';
+  pathLabel.style.textOverflow = 'ellipsis';
+  pathLabel.style.whiteSpace = 'nowrap';
+  pathLabel.textContent = `${backendLabel}: /${browsePath}`;
+  header.appendChild(pathLabel);
+  fileMenuPanel.appendChild(header);
+
+  const listEl = document.createElement('div');
+  listEl.style.maxHeight = `40${VH_UNIT}`;
+  listEl.style.overflowY = 'auto';
+  fileMenuPanel.appendChild(listEl);
+
+  if (browseEntries === null && !browseError) {
+    const loading = document.createElement('div');
+    loading.style.fontSize = '13px';
+    loading.style.opacity = '0.6';
+    loading.style.padding = '10px 2px';
+    loading.textContent = 'Loading\u2026';
+    listEl.appendChild(loading);
+  } else if (browseError) {
+    const errorEl = document.createElement('div');
+    errorEl.style.fontSize = '13px';
+    errorEl.style.color = '#c0392b';
+    errorEl.style.padding = '6px 2px';
+    errorEl.textContent = browseError;
+    listEl.appendChild(errorEl);
+  } else {
+    const orgEntries = browseEntries.filter((e) => e.type === 'dir' || e.name.toLowerCase().endsWith('.org'));
+    if (orgEntries.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.fontSize = '13px';
+      empty.style.opacity = '0.6';
+      empty.style.padding = '10px 2px';
+      empty.textContent = 'No .org files or folders here.';
+      listEl.appendChild(empty);
+    }
+    for (const entry of orgEntries) {
+      const row = document.createElement('button');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.gap = '8px';
+      row.style.width = '100%';
+      row.style.textAlign = 'left';
+      row.style.padding = '8px 4px';
+      row.style.border = 'none';
+      row.style.borderBottom = '1px solid var(--border)';
+      row.style.background = 'transparent';
+      row.style.color = 'var(--fg)';
+      row.style.font = 'inherit';
+      row.style.fontSize = '14px';
+
+      const icon = document.createElement('span');
+      icon.textContent = entry.type === 'dir' ? '\ud83d\udcc1' : '\ud83d\udcc4';
+      icon.style.flexShrink = '0';
+      row.appendChild(icon);
+
+      const name = document.createElement('span');
+      name.textContent = entry.name;
+      name.style.overflow = 'hidden';
+      name.style.textOverflow = 'ellipsis';
+      name.style.whiteSpace = 'nowrap';
+      row.appendChild(name);
+
+      row.onclick = () => {
+        if (entry.type === 'dir') {
+          browsePath = entry.path;
+          loadBrowseEntries();
+        } else {
+          const diskAdapter = browseBackend === 'github' ? githubAdapter : webdavAdapter;
+          const path = entry.path;
+          const kind = browseBackend;
+          stopBrowsing();
+          closeFileMenu();
+          openRemotePath(path, kind, diskAdapter, backendLabel);
+        }
+      };
+      listEl.appendChild(row);
+    }
+  }
+
+  const footerRow = document.createElement('div');
+  footerRow.className = 'panel-row';
+  footerRow.style.marginTop = '6px';
+  footerRow.appendChild(
+    menuButton('Type a path instead\u2026', () => {
+      const kind = browseBackend;
+      stopBrowsing();
+      renderFileMenu();
+      if (kind === 'github') openGithubByPrompt();
+      else openWebdavByPrompt();
+    })
+  );
+  footerRow.appendChild(
+    menuButton('Cancel', () => {
+      stopBrowsing();
+      renderFileMenu();
+    })
+  );
+  fileMenuPanel.appendChild(footerRow);
+}
+
 fileMenuBtn.addEventListener('click', () => {
   fileMenuOpen = !fileMenuOpen;
   fileMenuStep = null;
+  stopBrowsing();
   if (fileMenuOpen && settingsOpen) {
     settingsOpen = false;
     render(); // restores the normal outline content in place of settings
@@ -3081,6 +3283,7 @@ viewMenuBtn.addEventListener('click', () => {
   if (viewMenuOpen && fileMenuOpen) {
     fileMenuOpen = false;
     fileMenuStep = null;
+    stopBrowsing();
     renderFileMenu();
   }
   if (viewMenuOpen && settingsOpen) {
@@ -3576,6 +3779,7 @@ settingsBtn.addEventListener('click', async () => {
   if (settingsOpen && fileMenuOpen) {
     fileMenuOpen = false;
     fileMenuStep = null;
+    stopBrowsing();
     renderFileMenu();
   }
   if (settingsOpen && searchOpen) {
@@ -3793,6 +3997,7 @@ searchBtn.addEventListener('click', () => {
   if (searchOpen && fileMenuOpen) {
     fileMenuOpen = false;
     fileMenuStep = null;
+    stopBrowsing();
     renderFileMenu();
   }
   if (searchOpen && settingsOpen) {
@@ -3984,6 +4189,7 @@ captureBtn.addEventListener('click', () => {
   if (captureOpen && fileMenuOpen) {
     fileMenuOpen = false;
     fileMenuStep = null;
+    stopBrowsing();
     renderFileMenu();
   }
   if (captureOpen && settingsOpen) {
@@ -4077,6 +4283,7 @@ moreBtn.addEventListener('click', () => {
   if (moreOpen && fileMenuOpen) {
     fileMenuOpen = false;
     fileMenuStep = null;
+    stopBrowsing();
     renderFileMenu();
   }
   if (moreOpen && settingsOpen) {
