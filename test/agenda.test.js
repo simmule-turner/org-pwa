@@ -18,10 +18,11 @@ import {
   startOfDay,
   endOfDay,
   startOfWeek,
-  parseAnniversaryLine,
-  anniversaryAge,
-  substituteAnniversaryAge,
-  expandAnniversaryOccurrences,
+  isContactsAnniversariesTrigger,
+  parseContactEvent,
+  contactEventAge,
+  formatContactEventLine,
+  expandContactEventOccurrences,
 } from '../src/agenda.js';
 
 function docsFixture() {
@@ -663,126 +664,143 @@ test('buildTaskList is completely independent of SCHEDULED/DEADLINE -- a dated T
   assert.equal(items.length, 1);
 });
 
-// ---- org-anniversary ---------------------------------------------------
 
-test('parseAnniversaryLine parses a valid entry with a known year', () => {
-  const result = parseAnniversaryLine('%%(org-anniversary 1990 5 15) Mom\'s birthday, turning %d');
-  assert.deepEqual(result, { year: 1990, month: 5, day: 15, text: "Mom's birthday, turning %d" });
+// ---- org-contacts-anniversaries -------------------------------------------
+
+test('isContactsAnniversariesTrigger recognizes the trigger line', () => {
+  assert.equal(isContactsAnniversariesTrigger('%%(org-contacts-anniversaries)'), true);
+  assert.equal(isContactsAnniversariesTrigger('  %%(org-contacts-anniversaries)  '), true);
 });
 
-test('parseAnniversaryLine parses a nil year', () => {
-  const result = parseAnniversaryLine('%%(org-anniversary nil 12 25) Unknown-year anniversary');
-  assert.deepEqual(result, { year: null, month: 12, day: 25, text: 'Unknown-year anniversary' });
+test('isContactsAnniversariesTrigger rejects other lines', () => {
+  assert.equal(isContactsAnniversariesTrigger('just a regular line'), false);
+  assert.equal(isContactsAnniversariesTrigger('%%(org-anniversary 1990 5 15) old format'), false);
+  assert.equal(isContactsAnniversariesTrigger('%%(org-contacts-anniversaries) extra text'), false);
 });
 
-test('parseAnniversaryLine handles leading/trailing whitespace on the line', () => {
-  const result = parseAnniversaryLine('   %%(org-anniversary 2000 1 1) New Year baby  ');
-  assert.equal(result.year, 2000);
-  assert.equal(result.text, 'New Year baby');
+test('parseContactEvent parses a valid entry with a known year', () => {
+  const result = parseContactEvent('1990-05-15 Birthday');
+  assert.deepEqual(result, { year: 1990, month: 5, day: 15, description: 'Birthday' });
 });
 
-test('parseAnniversaryLine returns null for a non-matching line', () => {
-  assert.equal(parseAnniversaryLine('just a regular line of text'), null);
-  assert.equal(parseAnniversaryLine('%%(org-diary-cyclic 1 2020 5 15) something else'), null);
-  assert.equal(parseAnniversaryLine('org-anniversary 1990 5 15 missing percent-paren'), null);
+test('parseContactEvent parses a nil-year entry', () => {
+  const result = parseContactEvent('nil-08-22 Wedding Anniversary');
+  assert.deepEqual(result, { year: null, month: 8, day: 22, description: 'Wedding Anniversary' });
 });
 
-test('parseAnniversaryLine returns null for an out-of-range month or day', () => {
-  assert.equal(parseAnniversaryLine('%%(org-anniversary 1990 13 1) bad month'), null);
-  assert.equal(parseAnniversaryLine('%%(org-anniversary 1990 1 32) bad day'), null);
-  assert.equal(parseAnniversaryLine('%%(org-anniversary 1990 0 1) zero month'), null);
+test('parseContactEvent returns null for an out-of-range month or day', () => {
+  assert.equal(parseContactEvent('1990-13-01 Birthday'), null);
+  assert.equal(parseContactEvent('1990-01-32 Birthday'), null);
 });
 
-test('parseAnniversaryLine works with no trailing text at all', () => {
-  const result = parseAnniversaryLine('%%(org-anniversary 1990 5 15)');
-  assert.equal(result.text, '');
+test('parseContactEvent returns null for a bare date with no description at all', () => {
+  assert.equal(parseContactEvent('1990-05-15'), null);
+  assert.equal(parseContactEvent('1990-05-15   '), null);
 });
 
-test('anniversaryAge computes elapsed years from the occurrence date', () => {
-  assert.equal(anniversaryAge(1990, new Date(2026, 4, 15)), 36);
-  assert.equal(anniversaryAge(2000, new Date(2000, 4, 15)), 0); // the very first occurrence
+test('parseContactEvent returns null for garbage input', () => {
+  assert.equal(parseContactEvent('not a date at all'), null);
+  assert.equal(parseContactEvent(''), null);
 });
 
-test('anniversaryAge returns -1 for a null (nil) year, per org-anniversary\u2019s documented behavior', () => {
-  assert.equal(anniversaryAge(null, new Date(2026, 4, 15)), -1);
+test('contactEventAge computes elapsed years from the occurrence date', () => {
+  assert.equal(contactEventAge(1990, new Date(2026, 4, 15)), 36);
+  assert.equal(contactEventAge(2015, new Date(2026, 7, 22)), 11);
 });
 
-test('substituteAnniversaryAge replaces every %d occurrence', () => {
-  assert.equal(substituteAnniversaryAge('Turning %d today, %d years!', 30), 'Turning 30 today, 30 years!');
+test('contactEventAge returns null for a null (nil) year', () => {
+  assert.equal(contactEventAge(null, new Date(2026, 4, 15)), null);
 });
 
-test('substituteAnniversaryAge leaves text with no %d unchanged', () => {
-  assert.equal(substituteAnniversaryAge('No placeholder here', 30), 'No placeholder here');
+test('formatContactEventLine builds the correct display string', () => {
+  assert.equal(formatContactEventLine('John Doe', 'Birthday', 36), 'John Doe: Birthday (36)');
+  assert.equal(formatContactEventLine('Mary & Jim', 'Wedding Anniversary', 11), 'Mary & Jim: Wedding Anniversary (11)');
 });
 
-test('substituteAnniversaryAge substitutes -1 literally for an unknown-year anniversary', () => {
-  assert.equal(substituteAnniversaryAge('Age: %d', -1), 'Age: -1');
+test('formatContactEventLine shows "(xx)" for a null (unknown) age', () => {
+  assert.equal(formatContactEventLine('Someone', 'Birthday', null), 'Someone: Birthday (xx)');
 });
 
-test('substituteAnniversaryAge is not vulnerable to $-based replacement-pattern corruption', () => {
-  // String.replace treats $& / $1 / $$ etc. specially in the replacement
-  // argument -- split/join must not have that problem, since a
-  // description could plausibly contain a literal dollar sign (e.g. an
-  // anniversary note about a purchase price).
-  assert.equal(substituteAnniversaryAge('Cost $%d today', 500), 'Cost $500 today');
-});
-
-test('expandAnniversaryOccurrences produces one occurrence per year across a multi-year range', () => {
-  const dates = expandAnniversaryOccurrences(5, 15, new Date(2024, 0, 1), new Date(2026, 11, 31), new Date());
-  assert.equal(dates.length, 3);
+test('expandContactEventOccurrences produces one occurrence per year across a multi-year range', () => {
+  const dates = expandContactEventOccurrences(5, 15, new Date(2024, 0, 1), new Date(2026, 11, 31), new Date());
   assert.deepEqual(
     dates.map((d) => d.getFullYear()),
     [2024, 2025, 2026]
   );
-  for (const d of dates) {
-    assert.equal(d.getMonth(), 4); // May
-    assert.equal(d.getDate(), 15);
-  }
 });
 
-test('expandAnniversaryOccurrences without a range falls back to the single occurrence in today\u2019s year', () => {
+test('expandContactEventOccurrences without a range falls back to the single occurrence in today\u2019s year', () => {
   const today = new Date(2026, 6, 24);
-  const dates = expandAnniversaryOccurrences(5, 15, null, null, today);
+  const dates = expandContactEventOccurrences(5, 15, null, null, today);
   assert.equal(dates.length, 1);
   assert.equal(dates[0].getFullYear(), 2026);
-  assert.equal(dates[0].getMonth(), 4);
-  assert.equal(dates[0].getDate(), 15);
 });
 
-test('expandAnniversaryOccurrences correctly excludes years where the range doesn\u2019t reach that month/day', () => {
-  // Range starts in June 2024, so May 15 2024 is BEFORE the range and
-  // should be excluded, even though the range technically touches 2024.
-  const dates = expandAnniversaryOccurrences(5, 15, new Date(2024, 5, 1), new Date(2025, 11, 31), new Date());
-  assert.equal(dates.length, 1);
-  assert.equal(dates[0].getFullYear(), 2025);
+// ---- org-contacts-anniversaries: buildAgendaItems integration -------------
+
+test('no anniversary items are produced when the trigger is absent, even with a matching property present', () => {
+  const doc = parseOrg('* John Doe\n:PROPERTIES:\n:BIRTHDAY: 1990-05-15 Birthday\n:END:');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 4, 1),
+    rangeEnd: new Date(2026, 4, 31),
+  });
+  assert.equal(items.filter((i) => i.kind === 'anniversary').length, 0);
 });
 
-test('expandAnniversaryOccurrences: a Feb 29 anniversary rolls over to March 1 in a non-leap year (documented simplification)', () => {
-  const dates = expandAnniversaryOccurrences(2, 29, new Date(2025, 0, 1), new Date(2025, 11, 31), new Date());
-  assert.equal(dates.length, 1);
-  assert.equal(dates[0].getMonth(), 2); // March (0-indexed)
-  assert.equal(dates[0].getDate(), 1);
-});
-
-// ---- org-anniversary: buildAgendaItems integration -----------------------
-
-test('buildAgendaItems produces an anniversary-kind item from a body-text org-anniversary line', () => {
-  const doc = parseOrg('* Birthdays\n** Mom\n%%(org-anniversary 1960 5 15) Mom\'s birthday, turning %d');
+test('the trigger activates a scan producing the correctly formatted agenda line, using the default BIRTHDAY property', () => {
+  const doc = parseOrg(
+    [
+      '* John Doe',
+      ':PROPERTIES:',
+      ':BIRTHDAY: 1990-05-15 Birthday',
+      ':END:',
+      '* Anniversaries & Birthdays',
+      '%%(org-contacts-anniversaries)',
+    ].join('\n')
+  );
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 4, 1),
     rangeEnd: new Date(2026, 4, 31),
   });
   const anniv = items.find((i) => i.kind === 'anniversary');
-  assert.ok(anniv, 'expected an anniversary item');
-  assert.equal(anniv.title, "Mom's birthday, turning 66");
-  assert.equal(anniv.age, 66);
+  assert.ok(anniv);
+  assert.equal(anniv.title, 'John Doe: Birthday (36)');
+  assert.equal(anniv.age, 36);
   assert.equal(anniv.hasTime, false);
-  assert.equal(anniv.date.getMonth(), 4);
-  assert.equal(anniv.date.getDate(), 15);
 });
 
-test('buildAgendaItems: a multi-year range produces one anniversary item per year, each with the correct age', () => {
-  const doc = parseOrg('* Person\n%%(org-anniversary 2000 3 10) Birthday, turning %d');
+test('a nil-year event shows "(xx)" in the agenda line', () => {
+  const doc = parseOrg(
+    [
+      '* Mary & Jim',
+      ':PROPERTIES:',
+      ':BIRTHDAY: nil-08-22 Wedding Anniversary',
+      ':END:',
+      '* Trigger',
+      '%%(org-contacts-anniversaries)',
+    ].join('\n')
+  );
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 7, 1),
+    rangeEnd: new Date(2026, 7, 31),
+  });
+  const anniv = items.find((i) => i.kind === 'anniversary');
+  assert.ok(anniv);
+  assert.equal(anniv.title, 'Mary & Jim: Wedding Anniversary (xx)');
+  assert.equal(anniv.age, null);
+});
+
+test('a multi-year range produces one item per year, each with the correct age', () => {
+  const doc = parseOrg(
+    [
+      '* Person',
+      ':PROPERTIES:',
+      ':BIRTHDAY: 2000-03-10 Birthday',
+      ':END:',
+      '* Trigger',
+      '%%(org-contacts-anniversaries)',
+    ].join('\n')
+  );
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2024, 0, 1),
     rangeEnd: new Date(2026, 11, 31),
@@ -795,33 +813,79 @@ test('buildAgendaItems: a multi-year range produces one anniversary item per yea
   );
 });
 
-test('buildAgendaItems: a nil-year anniversary substitutes -1 for %d', () => {
-  const doc = parseOrg('* Person\n%%(org-anniversary nil 6 1) Anniversary of unknown year, %d years');
-  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
-    rangeStart: new Date(2026, 5, 1),
-    rangeEnd: new Date(2026, 5, 30),
-  });
-  const anniv = items.find((i) => i.kind === 'anniversary');
-  assert.ok(anniv);
-  assert.equal(anniv.age, -1);
-  assert.equal(anniv.title, 'Anniversary of unknown year, -1 years');
-});
-
-test('buildAgendaItems: an anniversary line coexists with ordinary body text without interference', () => {
+test('a custom birthdayProperty option is respected, case-insensitively', () => {
   const doc = parseOrg(
-    '* Person\nSome ordinary note text.\n%%(org-anniversary 1995 8 20) Birthday, turning %d\nMore ordinary text.'
+    ['* John Doe', ':PROPERTIES:', ':event: 1990-05-15 Birthday', ':END:', '* Trigger', '%%(org-contacts-anniversaries)'].join(
+      '\n'
+    )
   );
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
-    rangeStart: new Date(2026, 7, 1),
-    rangeEnd: new Date(2026, 7, 31),
+    rangeStart: new Date(2026, 4, 1),
+    rangeEnd: new Date(2026, 4, 31),
+    birthdayProperty: 'EVENT',
   });
-  const annivs = items.filter((i) => i.kind === 'anniversary');
-  assert.equal(annivs.length, 1);
-  assert.equal(annivs[0].age, 31);
+  const anniv = items.find((i) => i.kind === 'anniversary');
+  assert.ok(anniv, 'should match :event: against birthdayProperty "EVENT" case-insensitively');
+  assert.equal(anniv.title, 'John Doe: Birthday (36)');
 });
 
-test('buildAgendaItems: anniversary items respect includeArchived (excluded by default)', () => {
-  const doc = parseOrg('* Person :ARCHIVE:\n%%(org-anniversary 1990 5 15) Birthday, turning %d');
+test('a heading with the property in an unparseable format is silently skipped, not an error', () => {
+  const doc = parseOrg(
+    ['* Bad Entry', ':PROPERTIES:', ':BIRTHDAY: not a valid date', ':END:', '* Trigger', '%%(org-contacts-anniversaries)'].join(
+      '\n'
+    )
+  );
+  assert.doesNotThrow(() => {
+    const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+      rangeStart: new Date(2026, 4, 1),
+      rangeEnd: new Date(2026, 4, 31),
+    });
+    assert.equal(items.filter((i) => i.kind === 'anniversary').length, 0);
+  });
+});
+
+test('a heading without the birthday property at all produces no anniversary item', () => {
+  const doc = parseOrg(['* No Birthday Here', 'just a regular heading', '* Trigger', '%%(org-contacts-anniversaries)'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 4, 1),
+    rangeEnd: new Date(2026, 4, 31),
+  });
+  assert.equal(items.filter((i) => i.kind === 'anniversary').length, 0);
+});
+
+test('the trigger works regardless of where in the document it sits, and multiple contacts all get picked up', () => {
+  const doc = parseOrg(
+    [
+      '* Trigger heading at the top',
+      '%%(org-contacts-anniversaries)',
+      '* Alice',
+      ':PROPERTIES:',
+      ':BIRTHDAY: 1985-05-15 Birthday',
+      ':END:',
+      '* Bob',
+      ':PROPERTIES:',
+      ':BIRTHDAY: 1990-05-15 Birthday',
+      ':END:',
+    ].join('\n')
+  );
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 4, 1),
+    rangeEnd: new Date(2026, 4, 31),
+  });
+  const annivs = items.filter((i) => i.kind === 'anniversary');
+  assert.equal(annivs.length, 2);
+  assert.deepEqual(
+    annivs.map((i) => i.age).sort((a, b) => a - b),
+    [36, 41]
+  );
+});
+
+test('anniversary items respect includeArchived (excluded by default)', () => {
+  const doc = parseOrg(
+    ['* Archived Person :ARCHIVE:', ':PROPERTIES:', ':BIRTHDAY: 1990-05-15 Birthday', ':END:', '* Trigger', '%%(org-contacts-anniversaries)'].join(
+      '\n'
+    )
+  );
   const itemsDefault = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 4, 1),
     rangeEnd: new Date(2026, 4, 31),
@@ -834,20 +898,4 @@ test('buildAgendaItems: anniversary items respect includeArchived (excluded by d
     rangeEnd: new Date(2026, 4, 31),
   });
   assert.equal(itemsIncluded.filter((i) => i.kind === 'anniversary').length, 1);
-});
-
-test('buildAgendaItems: multiple anniversary lines under different headings all get picked up', () => {
-  const doc = parseOrg(
-    '* Alice\n%%(org-anniversary 1985 5 15) Alice\'s birthday, turning %d\n* Bob\n%%(org-anniversary 1990 5 15) Bob\'s birthday, turning %d'
-  );
-  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
-    rangeStart: new Date(2026, 4, 1),
-    rangeEnd: new Date(2026, 4, 31),
-  });
-  const annivs = items.filter((i) => i.kind === 'anniversary');
-  assert.equal(annivs.length, 2);
-  assert.deepEqual(
-    annivs.map((i) => i.age).sort((a, b) => a - b),
-    [36, 41]
-  );
 });
