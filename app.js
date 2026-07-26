@@ -122,6 +122,28 @@ function activeDiskAdapter() {
 }
 
 const outlineEl = document.getElementById('outline');
+const sidePanelEl = document.getElementById('sidePanel');
+
+// Matches index.html's own @media (min-width: 900px) breakpoint exactly
+// -- kept as a single named constant rather than two separately-typed
+// "900px" literals in two different files, so a future change to one
+// can't silently drift out of sync with the other.
+const WIDE_LAYOUT_QUERY = '(min-width: 900px)';
+function isWideLayout() {
+  return window.matchMedia(WIDE_LAYOUT_QUERY).matches;
+}
+
+// Which element Settings/Docs is CURRENTLY rendering into -- updated by
+// renderSettingsView/renderDocsView themselves whenever called with an
+// explicit target (see those functions below), so an internal
+// re-render from deep inside settings (e.g. a theme button's own
+// onclick calling renderSettingsView() with no argument, to reflect
+// the just-changed value) automatically continues targeting wherever
+// THIS open session actually put it -- #outline on a narrow layout,
+// #sidePanel on a wide one -- rather than defaulting back to #outline
+// unconditionally and silently rendering into the wrong place.
+let settingsRenderTarget = outlineEl;
+let docsRenderTarget = outlineEl;
 const filenameEl = document.getElementById('filename');
 const statusEl = document.getElementById('status');
 const topBarEl = document.getElementById('topBar');
@@ -167,6 +189,13 @@ function syncContentOffset() {
   contentAreaEl.style.height = `calc(100% - ${barHeight}px)`;
 }
 window.addEventListener('resize', syncContentOffset);
+// Crossing the wide-layout breakpoint (e.g. resizing a browser window,
+// or rotating a tablet) while Settings/Docs is open needs a re-render
+// to switch between "replace #outline" (narrow) and "side panel"
+// (wide) modes -- a plain resize could fire many times without ever
+// crossing the breakpoint, so this listens specifically for the
+// breakpoint itself rather than re-rendering on every pixel of resize.
+window.matchMedia(WIDE_LAYOUT_QUERY).addEventListener('change', () => render());
 // Reacts to ANY change to topBar's rendered content (a panel opening/
 // closing, its content changing, search results growing/shrinking) —
 // deliberately not a list of "call this after every place that could
@@ -1856,11 +1885,37 @@ function renderBlockRow(row) {
   return wrap;
 }
 
+/** On a wide layout, Settings/Docs render into #sidePanel instead of
+ *  replacing #outline outright — called at the very start of render()
+ *  so every existing caller gets this "for free" without individually
+ *  needing to know about it. On a narrow layout, this is a complete
+ *  no-op: #sidePanel stays hidden, and render()'s own guards below
+ *  still fully own #outline exactly as before this feature existed. */
+function syncSidePanel() {
+  const wide = isWideLayout();
+  if (wide && settingsOpen) {
+    sidePanelEl.style.display = 'block';
+    renderSettingsView(sidePanelEl);
+  } else if (wide && docsOpen) {
+    sidePanelEl.style.display = 'block';
+    renderDocsView(sidePanelEl);
+  } else {
+    sidePanelEl.style.display = 'none';
+    sidePanelEl.innerHTML = '';
+  }
+}
+
 function render() {
   updateFilenameDisplay();
+  syncSidePanel();
 
-  if (settingsOpen) return; // renderSettingsView() owns #outline while settings is showing
-  if (docsOpen) return; // renderDocsView() owns #outline while docs is showing
+  const wide = isWideLayout();
+  // renderSettingsView()/renderDocsView() own #outline while showing —
+  // but only on a narrow layout; on a wide one, syncSidePanel above
+  // already routed them to #sidePanel instead, so #outline should keep
+  // rendering normally below rather than being replaced too.
+  if (settingsOpen && !wide) return;
+  if (docsOpen && !wide) return;
 
   if (!state.doc) {
     outlineEl.innerHTML = '';
@@ -3126,12 +3181,13 @@ function applyFontSize(size) {
   document.documentElement.style.setProperty('--app-font-size', size + 'px');
 }
 
-async function renderSettingsView() {
-  outlineEl.innerHTML = '';
+async function renderSettingsView(target = settingsRenderTarget) {
+  settingsRenderTarget = target;
+  target.innerHTML = '';
   const container = document.createElement('div');
   container.className = 'panel';
   container.style.minHeight = '100%';
-  outlineEl.appendChild(container);
+  target.appendChild(container);
 
   const config = await getGithubConfig(kv);
   const webdavConfigStored = await getWebdavConfig(kv);
@@ -3484,12 +3540,13 @@ function renderMarkdownBlock(block) {
   return document.createElement('div'); // unreachable given parseMarkdown's own block types, but never leave a tap-triggered render with nothing to show
 }
 
-async function renderDocsView() {
-  outlineEl.innerHTML = '';
+async function renderDocsView(target = docsRenderTarget) {
+  docsRenderTarget = target;
+  target.innerHTML = '';
   const container = document.createElement('div');
   container.className = 'panel';
   container.style.minHeight = '100%';
-  outlineEl.appendChild(container);
+  target.appendChild(container);
 
   if (cachedDocsMarkdown === null) {
     try {
@@ -3541,7 +3598,11 @@ settingsBtn.addEventListener('click', async () => {
     docsOpen = false;
   }
   if (settingsOpen) {
-    await renderSettingsView();
+    if (isWideLayout()) {
+      render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
+    } else {
+      await renderSettingsView(outlineEl); // narrow: replaces #outline directly, exactly as before this feature existed
+    }
   } else {
     render(); // restores whatever currentView was showing before settings opened
   }
@@ -3998,7 +4059,11 @@ function renderMoreMenu() {
     moreOpen = false;
     renderMoreMenu();
     docsOpen = true;
-    renderDocsView();
+    if (isWideLayout()) {
+      render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
+    } else {
+      renderDocsView(outlineEl); // narrow: replaces #outline directly, exactly as before this feature existed
+    }
   });
   docsBtnOption.style.flex = '1';
   docsBtnOption.setAttribute('aria-label', 'Help / Docs');

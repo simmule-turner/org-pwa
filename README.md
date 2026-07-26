@@ -304,6 +304,8 @@ Local file access (the "Local" option, with a live, writable handle) requires th
 
 On unsupported platforms, **Import** replaces "Local": pick a file once via the native file picker, edit it, and Save triggers a download of the new version, which you then move into place yourself (e.g. overwriting the original in the Files app). GitHub and WebDAV work the same everywhere, including iOS, since they're plain HTTPS requests rather than filesystem access.
 
+**Screen size**: this was built mobile-first — 44px touch targets, swipe-to-cycle-visibility, tap-to-reveal action menus instead of hover/right-click — and stays that way below 900px wide, byte-for-byte the same layout it's always had. Above 900px (a laptop or desktop browser window), two things change: the app widens from its 480px mobile cap up to 1100px instead of sitting in a narrow column with empty space on either side, and opening Settings or Docs shows them in a **side panel** next to the outline instead of replacing it outright — there's room to see both at once, so replacing the whole screen for something like settings stopped making sense. The side panel scrolls independently from the outline. Every other interaction — swipe, tap-to-reveal, the action menus — works identically at any width; this is a layout change, not a second UI. Resizing a browser window across the breakpoint while Settings/Docs is open switches between the two modes correctly rather than getting stuck in whichever one it started in.
+
 ---
 
 ## Differences from Emacs org-mode

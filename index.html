@@ -116,6 +116,61 @@
     border-radius: 10px;
   }
   #contentArea { width: 100%; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+
+  /* Wide-layout (desktop/laptop) mode: the whole reason this exists —
+     see the comment on #sidePanel below for what actually goes in
+     there. Everything above this query is completely untouched by it;
+     below the breakpoint, #splitRow is just an inert wrapper div with
+     no layout effect of its own, and #sidePanel stays hidden — the
+     mobile experience is byte-for-byte the same DOM structure and CSS
+     rules as before this feature existed, not a "mobile mode" of a
+     unified responsive system that could subtly regress it. 900px was
+     chosen as comfortably past typical phone/large-phablet widths in
+     landscape, so an actual phone never crosses into this branch by
+     accident. */
+  @media (min-width: 900px) {
+    body, #topBar { max-width: 1100px; }
+
+    /* #contentArea becomes a flex column so #status/#updateBanner keep
+       their natural height and #splitRow gets exactly what's left —
+       not "100% of #contentArea" (which would double-count the banner
+       space and push content off the bottom of the screen), and not
+       relying on #contentArea's own scroll (its overflow-y:auto above
+       still applies as a harmless fallback, but shouldn't normally
+       trigger, since #splitRow's own children scroll internally
+       instead once this layout is active). */
+    #contentArea { display: flex; flex-direction: column; }
+    #splitRow { display: flex; align-items: stretch; flex: 1 1 auto; min-height: 0; }
+
+    /* min-height/min-width: 0 on both flex children is load-bearing,
+       not decoration — without it, a flex item defaults to
+       min-height/width:auto, which means "at least as tall/wide as my
+       content," permanently defeating overflow-y:auto no matter what
+       else is set. This is the actual, well-known reason a flex-based
+       scroll pane silently fails to scroll if you skip it. */
+    #outline { flex: 1 1 auto; min-width: 0; overflow-y: auto; height: 100%; }
+
+    /* #sidePanel is where Settings/Docs render on a wide screen instead
+       of replacing #outline outright (see renderSettingsView/
+       renderDocsView's own target-element parameter in app.js) — the
+       actual point of this whole feature: on a phone there's no room
+       to see your outline and your settings at once, so replacing the
+       whole screen is the only option; on a 1200px monitor there's
+       nothing stopping you from seeing both, so the extra width now
+       gets used for something structural instead of just a wider
+       column of empty margin. Hidden by default (display:none) —
+       app.js's syncSidePanel() is what actually shows/populates it,
+       exactly when there's something to show. */
+    #sidePanel {
+      flex: 0 0 420px;
+      min-width: 0;
+      overflow-y: auto;
+      height: 100%;
+      border-left: 1px solid var(--border);
+      padding-left: 4px;
+    }
+  }
+
   #status { font-size: 11px; opacity: 0.6; padding: 4px 12px; }
   .panel { border-bottom: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 13px; width: 100%; box-sizing: border-box; }
   /* Item 1.5: panel buttons (File/View menu options, Settings controls)
@@ -186,7 +241,10 @@
       <span>A new version is available.</span>
       <button id="updateReloadBtn" style="background: white; color: #185fa5; border: none; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">Reload</button>
     </div>
-    <div id="outline"></div>
+    <div id="splitRow">
+      <div id="outline"></div>
+      <div id="sidePanel" style="display: none;"></div>
+    </div>
   </div>
   <script type="module" src="app.js"></script>
 </body>
