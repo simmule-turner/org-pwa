@@ -21,6 +21,7 @@ import {
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
   getAgendaSkipArchivedTrees,
+  getContactsBirthdayProperty,
 } from './src/local-variables.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import {
@@ -2848,6 +2849,7 @@ function renderAgendaView() {
     // currently navigating to look at.
     isDone: (todo) => todoSequence.doneKeywords.includes(todo),
     today: new Date(),
+    birthdayProperty: getContactsBirthdayProperty(state.localVariables),
   });
 
   const grouped =
