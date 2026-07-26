@@ -164,51 +164,77 @@ function carryForwardOccurrences(itemDate, today, rangeStart, rangeEnd, earlyWar
   return days;
 }
 
-// ---- org-anniversary (sexp diary entry) -----------------------------
+// ---- org-contacts-anniversaries (property-based birthdays/anniversaries) ----
 
-// %%(org-anniversary YEAR MONTH DAY) description text, with an optional
-// %d placeholder in the description for the computed age. YEAR is
-// either an integer or the literal word `nil` (age then can't be known,
-// see anniversaryAge below). Matches the real Emacs org-anniversary
-// calling convention: a stable YEAR MONTH DAY argument order regardless
-// of any date-style configuration, unlike other diary sexp functions
-// that vary by calendar-date-style.
-const ANNIVERSARY_RE = /^%%\(org-anniversary\s+(nil|-?\d+)\s+(\d{1,2})\s+(\d{1,2})\)\s*(.*)$/;
+// A heading's birthday/anniversary date+description lives in a single
+// property (key configurable via org-contacts-birthday-property, see
+// local-variables.js — default "EVENT"), not duplicated into a separate
+// sexp line too: :EVENT: 1990-05-15 Birthday. The trigger line
+// %%(org-contacts-anniversaries), placed anywhere in the document(s)
+// being searched, activates a scan of every heading for that property —
+// its own position doesn't matter beyond "present somewhere"; it isn't
+// itself an event, just a switch. Matches real org-contacts' actual
+// mechanism (org-contacts-anniversaries loops through every heading
+// carrying the configured property, confirmed directly against the
+// org-contacts.el source — "Default FIELD value is BIRTHDAY", scanning
+// every heading with that property) rather than the standalone
+// %%(org-anniversary YEAR MONTH DAY) sexp this replaces, which required
+// writing the date twice — once in a property, once again as literal
+// text in a sexp line — for anyone who also wanted it recorded as a
+// property for other purposes. Deliberately does NOT reproduce real
+// org-contacts' own additional requirement of an :EMAIL: property to
+// count as a "valid contact" — that wasn't part of what was asked for,
+// and adding it back would silently exclude anyone whose birthday is
+// tracked without an email on file.
+const CONTACTS_TRIGGER_RE = /^%%\(org-contacts-anniversaries\)\s*$/;
+const EVENT_PROPERTY_RE = /^(\d{4}|nil)-(\d{2})-(\d{2})\s+(.+)$/;
 
-/** Parses one line as an org-anniversary sexp entry. Returns
- *  { year, month, day, text } (year is null for a literal `nil`) or
- *  null if the line doesn't match or has an out-of-range month/day. */
-function parseAnniversaryLine(line) {
-  const m = ANNIVERSARY_RE.exec(line.trim());
+/** True if `line` is the %%(org-contacts-anniversaries) trigger,
+ *  activating the whole scan below. The line's own content beyond this
+ *  is not itself read as an event — it's a switch, not a contact. */
+function isContactsAnniversariesTrigger(line) {
+  return CONTACTS_TRIGGER_RE.test(line.trim());
+}
+
+/** Parses a birthday/anniversary property value: "YYYY-MM-DD
+ *  description text", or "nil-MM-DD description text" when the year is
+ *  genuinely unknown (age then can't be computed — see
+ *  contactEventAge below). Returns { year, month, day, description } or
+ *  null if the value doesn't match: an out-of-range month/day, or no
+ *  description text at all (a bare date with nothing to label it isn't
+ *  something this can build a sensible "Name: ___ (age)" line from). */
+function parseContactEvent(value) {
+  const m = EVENT_PROPERTY_RE.exec(String(value).trim());
   if (!m) return null;
   const year = m[1] === 'nil' ? null : Number(m[1]);
   const month = Number(m[2]);
   const day = Number(m[3]);
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  return { year, month, day, text: m[4] };
+  return { year, month, day, description: m[4].trim() };
 }
 
-/** Elapsed years as of `occurrenceDate` (whichever year's occurrence is
- *  being shown) for an anniversary whose stored year is `year`. -1 when
- *  `year` is null (unknown), matching org-anniversary's own documented
- *  behavior for a nil YEAR argument rather than throwing or guessing. */
-function anniversaryAge(year, occurrenceDate) {
-  if (year === null) return -1;
+/** Elapsed years as of `occurrenceDate` for an event whose stored year
+ *  is `year`. null when `year` is null (unknown) — formatted as "(xx)"
+ *  by formatContactEventLine below, per what was actually asked for,
+ *  rather than a numeric sentinel a caller could accidentally display
+ *  as a real age. */
+function contactEventAge(year, occurrenceDate) {
+  if (year === null) return null;
   return occurrenceDate.getFullYear() - year;
 }
 
-/** Replaces every %d in `text` with `age`. A plain split/join rather
- *  than a regex replace so a literal `$` in the description (which
- *  String.replace treats specially as a backreference token) can never
- *  corrupt the substitution. */
-function substituteAnniversaryAge(text, age) {
-  return text.split('%d').join(String(age));
+/** "Name: Description (36)", or "Name: Description (xx)" when the age
+ *  is unknown — the fixed display format this feature produces, not
+ *  something the file author writes text for (unlike the deprecated
+ *  org-anniversary sexp's own arbitrary-text-with-%d approach). */
+function formatContactEventLine(headingTitle, description, age) {
+  return `${headingTitle}: ${description} (${age === null ? 'xx' : age})`;
 }
 
 /**
  * Every (month, day) occurrence within [rangeStart, rangeEnd], one per
- * calendar year the range spans — an anniversary recurs every year
- * regardless of its own stored YEAR, which only feeds the age
+ * calendar year the range spans — a birthday/anniversary recurs every
+ * year regardless of its own stored YEAR, which only feeds the age
  * calculation above, not which years it appears in. Without a range,
  * returns just the single occurrence in `today`'s year, matching how
  * other agenda sources fall back to "the literal/current occurrence"
@@ -220,7 +246,7 @@ function substituteAnniversaryAge(text, age) {
  * faithful reproduction of Emacs calendar.el's own leap-year handling
  * for this edge case, stated rather than silently different.
  */
-function expandAnniversaryOccurrences(month, day, rangeStart, rangeEnd, today) {
+function expandContactEventOccurrences(month, day, rangeStart, rangeEnd, today) {
   if (!rangeStart || !rangeEnd) {
     return [new Date(today.getFullYear(), month - 1, day)];
   }
@@ -315,6 +341,10 @@ function walkHeadings(doc, visit) {
  *     the timestamp auto-advancing on completion — is genuinely more
  *     involved than this read-only agenda needs to model) or to plain
  *     title timestamps (which never carry forward, by definition above).
+ *   birthdayProperty (default 'BIRTHDAY') — which property key
+ *     org-contacts-anniversaries (see above) reads for a heading's
+ *     birthday/anniversary date+description, matching whatever
+ *     org-contacts-birthday-property is set to via Local Variables.
  */
 function buildAgendaItems(docs, opts = {}) {
   const {
@@ -326,6 +356,7 @@ function buildAgendaItems(docs, opts = {}) {
     rangeEnd = null,
     isDone = null,
     today = new Date(),
+    birthdayProperty = 'BIRTHDAY',
   } = opts;
   const items = [];
 
@@ -380,6 +411,23 @@ function buildAgendaItems(docs, opts = {}) {
     }
   }
 
+  // org-contacts-anniversaries is active for this call if the trigger
+  // line is present ANYWHERE across all docs, not scoped to any one
+  // heading or file — checked upfront, once, rather than re-scanning
+  // per heading in the main loop below.
+  let contactsAnniversariesActive = false;
+  for (const { doc } of docs) {
+    walkHeadings(doc, (heading) => {
+      if (contactsAnniversariesActive) return;
+      for (const line of heading.bodyLines || []) {
+        if (isContactsAnniversariesTrigger(line)) {
+          contactsAnniversariesActive = true;
+          break;
+        }
+      }
+    });
+  }
+
   for (const { documentId, doc } of docs) {
     walkHeadings(doc, (heading) => {
       if (!includeArchived && isArchived(heading)) return;
@@ -421,42 +469,37 @@ function buildAgendaItems(docs, opts = {}) {
         }
       }
 
-      // org-anniversary sexp diary entries (%%(org-anniversary YEAR
-      // MONTH DAY) text) — scanned from body text, not the title: a
-      // yearly-recurring event like a birthday is naturally its own
-      // body line, a separate convention from the plain-title-timestamp
-      // one above, not a variant of it. Every year the anniversary
-      // recurs within the requested range is its own item (kind:
-      // 'anniversary'), with %d in its own text substituted for the
-      // elapsed years AT THAT occurrence — so the same entry correctly
-      // shows a different age each year it appears across a multi-year
-      // agenda range, not one age baked in for all of them.
-      for (const line of heading.bodyLines || []) {
-        const anniversary = parseAnniversaryLine(line);
-        if (!anniversary) continue;
-        const occurrences = expandAnniversaryOccurrences(
-          anniversary.month,
-          anniversary.day,
-          rangeStart,
-          rangeEnd,
-          today
+      // org-contacts-anniversaries: only checked at all when the
+      // trigger was found somewhere (see contactsAnniversariesActive
+      // above) — a heading carrying the configured property means
+      // nothing on its own otherwise, since the property might simply
+      // be there for other purposes (vCard export, contact lookup) with
+      // no intention of it appearing in the agenda.
+      if (contactsAnniversariesActive) {
+        const foundKey = (heading.propertyOrder || []).find(
+          (k) => k.toLowerCase() === birthdayProperty.toLowerCase()
         );
-        for (const occurrenceDate of occurrences) {
-          const age = anniversaryAge(anniversary.year, occurrenceDate);
-          items.push({
-            documentId,
-            heading,
-            kind: 'anniversary',
-            hasTime: false,
-            repeater: null,
-            todo: heading.todo,
-            priority: heading.priority,
-            tags: heading.tags,
-            title: substituteAnniversaryAge(anniversary.text, age),
-            age,
-            date: occurrenceDate,
-            daysOverdue: 0,
-          });
+        const rawEvent = foundKey ? heading.properties[foundKey] : undefined;
+        const event = rawEvent ? parseContactEvent(rawEvent) : null;
+        if (event) {
+          const occurrences = expandContactEventOccurrences(event.month, event.day, rangeStart, rangeEnd, today);
+          for (const occurrenceDate of occurrences) {
+            const age = contactEventAge(event.year, occurrenceDate);
+            items.push({
+              documentId,
+              heading,
+              kind: 'anniversary',
+              hasTime: false,
+              repeater: null,
+              todo: heading.todo,
+              priority: heading.priority,
+              tags: heading.tags,
+              title: formatContactEventLine(heading.title, event.description, age),
+              age,
+              date: occurrenceDate,
+              daysOverdue: 0,
+            });
+          }
         }
       }
     });
@@ -618,8 +661,9 @@ export {
   startOfDay,
   endOfDay,
   startOfWeek,
-  parseAnniversaryLine,
-  anniversaryAge,
-  substituteAnniversaryAge,
-  expandAnniversaryOccurrences,
+  isContactsAnniversariesTrigger,
+  parseContactEvent,
+  contactEventAge,
+  formatContactEventLine,
+  expandContactEventOccurrences,
 };

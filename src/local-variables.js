@@ -91,3 +91,16 @@ export function getAgendaSkipCommentTrees(vars) {
 export function getAgendaSkipArchivedTrees(vars) {
   return parseLispBoolean((vars || {})['org-agenda-skip-archived-trees'], true);
 }
+
+/** org-contacts-birthday-property: which property key holds a
+ *  heading's birthday/anniversary date+description (see agenda.js's
+ *  org-contacts-anniversaries support). Default "BIRTHDAY", matching
+ *  real org-contacts.el's own default exactly (confirmed directly
+ *  against the org-contacts.el source: "Default FIELD value is
+ *  BIRTHDAY"). A plain string value, not a Lisp boolean/number, so no
+ *  special parsing beyond trimming. */
+export function getContactsBirthdayProperty(vars) {
+  const raw = (vars || {})['org-contacts-birthday-property'];
+  const trimmed = raw ? String(raw).trim() : '';
+  return trimmed || 'BIRTHDAY';
+}
