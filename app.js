@@ -1557,7 +1557,6 @@ function renderTableRow(row) {
         },
       },
     ]);
-    menuEl.style.padding = '0 0 8px';
   }
 
   const tableEl = document.createElement('table');
