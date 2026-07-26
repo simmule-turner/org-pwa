@@ -125,12 +125,20 @@ function isFullyExpanded(heading, opts = {}) {
  *  the "one level" step. Also clears `heading.bodyHidden` — see
  *  outline-view-model.js's toggleFold for why: without this, a heading
  *  whose bodyHidden was set by #+STARTUP: content could never have its
- *  own body text revealed through this gesture either. Does NOT clear
- *  drawersHidden — that's deliberately reserved for the "fully expanded"
- *  step, matching how "one level" is a partial reveal, not everything. */
+ *  own body text revealed through this gesture either. RE-HIDES
+ *  drawersHidden (sets it back to true, not just "leaves it alone") --
+ *  properties/block content are specifically a "fully expanded" thing,
+ *  not a "one level" thing, so stepping back to one level after having
+ *  been fully expanded must actually re-fold them, not silently leave
+ *  them revealed because nothing happened to touch the flag. This is
+ *  the fix for a real bug: without it, properties revealed once via a
+ *  full expand stayed visible forever afterward, through every
+ *  subsequent collapse/one-level/re-expand, with no way to ever hide
+ *  them again for the rest of the session. */
 function expandOneLevel(heading) {
   heading.collapsed = false;
   heading.bodyHidden = false;
+  heading.drawersHidden = true;
   for (const child of heading.children || []) {
     child.collapsed = true;
   }
@@ -180,9 +188,27 @@ function expandFully(heading, opts = {}) {
  *  before. Without this reset, cycling collapsed -> full -> collapsed ->
  *  (expected: one level) could actually jump straight back to "full",
  *  since the descendants' collapsed=false flags would still be sitting
- *  there unseen. */
+ *  there unseen.
+ *
+ *  Also resets `drawersHidden` back to true throughout — the identical
+ *  staleness problem, just for properties/block-content visibility
+ *  instead of headline structure. This is the actual fix for a real,
+ *  reported bug: a heading's properties, once revealed via a full
+ *  expand, stayed visible through every subsequent collapse for the
+ *  rest of the session, with no way to hide them again — because
+ *  nothing ever reset the flag that was gating them, collapsed or not.
+ *  `drawersHidden` matters even while `heading` stays collapsed here,
+ *  unlike most fold state: a heading's own row (title, tags, and this
+ *  properties display) always renders regardless of its collapsed
+ *  state — only paragraph/list/table body content is a separate row
+ *  that flattenVisibleRows itself excludes when collapsed. Properties
+ *  were rendered inline on the heading's own row precisely so they'd
+ *  be visible without opening the action menu, which is exactly what
+ *  made the stale flag a real, visible bug rather than a harmless
+ *  internal inconsistency nobody would ever notice. */
 function collapseFully(heading) {
   heading.collapsed = true;
+  heading.drawersHidden = true;
   for (const child of heading.children || []) {
     collapseFully(child);
   }
