@@ -249,6 +249,12 @@ test('cycleFoldLevel on a leaf heading (no children) still toggles sensibly', ()
 
   assert.equal(cycleFoldLevel(leaf), 'children');
   assert.equal(leaf.collapsed, false);
+  // A leaf heading's own drawersHidden still has to reach false before
+  // it counts as fully expanded -- correctly a 3-state cycle like any
+  // other heading, not a special-cased 2-state one just because it has
+  // no children of its own.
+  assert.equal(cycleFoldLevel(leaf), 'full');
+  assert.equal(leaf.collapsed, false);
   assert.equal(cycleFoldLevel(leaf), 'collapsed');
   assert.equal(leaf.collapsed, true);
 });
@@ -461,4 +467,58 @@ test('cycleFoldLevel: cascading from a PARENT still correctly skips an archived 
   cycleFoldLevel(parent, { archiveVisibility: 'archived' }); // -> one level
   cycleFoldLevel(parent, { archiveVisibility: 'archived' }); // -> full
   assert.equal(archivedChild.collapsed, true, 'cascading into it from the parent must still skip it, unchanged from before');
+});
+
+// ---- REGRESSION: properties revealed via full-expand must actually hide again on collapse (the reported bug: "swiped left, it showed properties, no way to make it go away") ----
+
+test('REGRESSION: drawersHidden correctly resets across a full swipe cycle -- collapsed -> children -> full -> collapsed -> children -> full', () => {
+  const doc = parseOrg('* Simmule :contact:\n:PROPERTIES:\n:fname: Simmule\n:END:');
+  const heading = doc.children[0];
+  applyStartupVisibility(doc, { visibility: 'overview' }); // starts collapsed, so the first cycleFoldLevel call below lands on the "children" step as intended
+  assert.equal(heading.collapsed, true);
+
+  cycleFoldLevel(heading); // -> children
+  assert.equal(heading.drawersHidden, true, 'one-level step must not show properties');
+
+  assert.equal(cycleFoldLevel(heading), 'full');
+  assert.equal(heading.drawersHidden, false, 'full expand correctly reveals properties');
+
+  assert.equal(cycleFoldLevel(heading), 'collapsed');
+  assert.equal(heading.drawersHidden, true, 'THE ACTUAL BUG: collapsing must re-hide properties, not leave them stuck visible for the rest of the session');
+
+  // And it has to keep working on every subsequent cycle too, not just the first one.
+  assert.equal(cycleFoldLevel(heading), 'children');
+  assert.equal(heading.drawersHidden, true);
+  assert.equal(cycleFoldLevel(heading), 'full');
+  assert.equal(heading.drawersHidden, false);
+  assert.equal(cycleFoldLevel(heading), 'collapsed');
+  assert.equal(heading.drawersHidden, true);
+});
+
+test('REGRESSION: drawersHidden also resets correctly via the chevron (toggleFold), not just the swipe gesture', () => {
+  const doc = parseOrg('* Simmule :contact:\n:PROPERTIES:\n:fname: Simmule\n:END:');
+  const heading = doc.children[0];
+  applyStartupVisibility(doc, {});
+  heading.collapsed = true;
+  heading.drawersHidden = true;
+
+  toggleFold(heading); // open
+  assert.equal(heading.collapsed, false);
+  assert.equal(heading.drawersHidden, false, 'the chevron is the full-reveal mechanism, so opening should reveal properties immediately -- this is also the ONLY way to ever see an archived heading\u2019s properties, since swipe refuses to touch archived headings at all');
+
+  toggleFold(heading); // close
+  assert.equal(heading.collapsed, true);
+  assert.equal(heading.drawersHidden, true, 'closing via chevron must also re-hide properties -- same bug, same fix, different UI trigger');
+});
+
+test('REGRESSION: collapseFully resets drawersHidden for the whole subtree, not just the top heading', () => {
+  const doc = parseOrg('* Parent\n** Child\n:PROPERTIES:\n:id: abc\n:END:');
+  const parent = doc.children[0];
+  const child = parent.children[0];
+  applyStartupVisibility(doc, {});
+  expandFully(parent); // reveals everything, including child's properties
+  assert.equal(child.drawersHidden, false);
+
+  collapseFully(parent);
+  assert.equal(child.drawersHidden, true, 'a descendant\u2019s revealed properties must also re-hide when the whole subtree collapses, not just the heading collapseFully was called on directly');
 });
