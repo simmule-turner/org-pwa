@@ -90,3 +90,137 @@ test('results are in document order', () => {
     ['First match', 'Second match', 'Third match']
   );
 });
+
+// ---- regex mode ----------------------------------------------------------
+
+test('regex mode: a pattern matches text a literal query never could', () => {
+  const doc = parseOrg('* A\nCall me at 555-1234 or 555-5678.');
+  const plainResults = searchDocument(doc, '\\d{3}-\\d{4}');
+  assert.equal(plainResults.length, 0, 'plain mode treats regex metacharacters as literal text');
+
+  const regexResults = searchDocument(doc, '\\d{3}-\\d{4}', { useRegex: true });
+  assert.equal(regexResults.length, 1);
+});
+
+test('regex mode: "." matches any character, unlike plain mode where it is literal', () => {
+  const doc = parseOrg('* Heading\ncatXdog catzdog cat dog (no direct match)');
+  const plain = searchDocument(doc, 'catXdog');
+  assert.equal(plain.length, 1); // literal match only
+
+  const regex = searchDocument(doc, 'cat.dog', { useRegex: true });
+  assert.equal(regex.length, 1);
+  assert.match(regex[0].snippet, /cat.dog/);
+});
+
+test('regex mode is case-insensitive, matching plain mode\u2019s own behavior', () => {
+  const doc = parseOrg('* A\nHello WORLD');
+  const results = searchDocument(doc, 'hello [wW]orld', { useRegex: true });
+  assert.equal(results.length, 1);
+});
+
+test('regex mode: an invalid pattern throws a clear, catchable error rather than silently matching nothing', () => {
+  const doc = parseOrg('* A\nsome text');
+  assert.throws(() => searchDocument(doc, '(unclosed', { useRegex: true }), /Invalid regex/);
+});
+
+test('regex mode: an empty query still returns no results without throwing', () => {
+  const doc = parseOrg('* A\nsome text');
+  assert.deepEqual(searchDocument(doc, '', { useRegex: true }), []);
+  assert.deepEqual(searchDocument(doc, '   ', { useRegex: true }), []);
+});
+
+test('plain mode is unaffected by the useRegex option defaulting to false when omitted entirely', () => {
+  const doc = parseOrg('* A (parenthetical) heading');
+  const results = searchDocument(doc, '(parenthetical)');
+  assert.equal(results.length, 1, 'a literal paren in the query must match a literal paren in the text, not be treated as a regex group');
+});
+
+// ---- properties -----------------------------------------------------------
+
+test('finds a match in a property KEY', () => {
+  const doc = parseOrg('* Simmule\n:PROPERTIES:\n:spouse: Jennifer\n:END:');
+  const results = searchDocument(doc, 'spouse');
+  const propResult = results.find((r) => r.type === 'property');
+  assert.ok(propResult);
+  assert.equal(propResult.snippet, 'spouse: Jennifer');
+});
+
+test('finds a match in a property VALUE', () => {
+  const doc = parseOrg('* Simmule\n:PROPERTIES:\n:spouse: Jennifer\n:END:');
+  const results = searchDocument(doc, 'Jennifer');
+  const propResult = results.find((r) => r.type === 'property');
+  assert.ok(propResult);
+  assert.equal(propResult.heading.title, 'Simmule');
+});
+
+test('only matching properties produce results, not every property on the heading', () => {
+  const doc = parseOrg('* Simmule\n:PROPERTIES:\n:fname: Simmule\n:lname: Turner\n:city: Durham\n:END:');
+  const results = searchDocument(doc, 'Turner');
+  const propResults = results.filter((r) => r.type === 'property');
+  assert.equal(propResults.length, 1);
+  assert.equal(propResults[0].snippet, 'lname: Turner');
+});
+
+test('property search respects regex mode too', () => {
+  const doc = parseOrg('* A\n:PROPERTIES:\n:dob: 1965-01-27\n:END:');
+  const results = searchDocument(doc, '\\d{4}-\\d{2}-\\d{2}', { useRegex: true });
+  const propResult = results.find((r) => r.type === 'property');
+  assert.ok(propResult);
+});
+
+// ---- TODO keyword / priority -----------------------------------------------
+
+test('finds a match on a heading\u2019s TODO keyword', () => {
+  const doc = parseOrg('* TODO Buy milk\n* Just a regular heading');
+  const results = searchDocument(doc, 'TODO');
+  const headingResults = results.filter((r) => r.type === 'heading');
+  assert.equal(headingResults.length, 1);
+  assert.equal(headingResults[0].heading.title, 'Buy milk');
+});
+
+test('finds a match on a heading\u2019s priority, even when title/tags don\u2019t match', () => {
+  const doc = parseOrg('* TODO [#C] Urgent work\n* TODO Regular work');
+  const results = searchDocument(doc, 'C');
+  const headingResults = results.filter((r) => r.type === 'heading');
+  assert.equal(headingResults.length, 1, 'only the [#C] heading should match -- neither title contains a "C" of its own');
+  assert.equal(headingResults[0].heading.title, 'Urgent work');
+});
+
+test('TODO/priority matches produce a "heading" type result, not a separate type', () => {
+  const doc = parseOrg('* TODO [#B] Something');
+  const results = searchDocument(doc, 'TODO');
+  assert.equal(results.length, 1);
+  assert.equal(results[0].type, 'heading');
+});
+
+// ---- SCHEDULED/DEADLINE planning -------------------------------------------
+
+test('finds a match in a SCHEDULED timestamp', () => {
+  const doc = parseOrg('* A task\nSCHEDULED: <2026-05-15 Fri>');
+  const results = searchDocument(doc, '2026-05-15');
+  const planningResult = results.find((r) => r.type === 'planning');
+  assert.ok(planningResult);
+  assert.equal(planningResult.snippet, 'SCHEDULED: <2026-05-15 Fri>');
+});
+
+test('finds a match in a DEADLINE timestamp', () => {
+  const doc = parseOrg('* A task\nDEADLINE: <2026-06-01 Mon>');
+  const results = searchDocument(doc, '2026-06-01');
+  const planningResult = results.find((r) => r.type === 'planning');
+  assert.ok(planningResult);
+  assert.equal(planningResult.snippet, 'DEADLINE: <2026-06-01 Mon>');
+});
+
+test('a heading with both SCHEDULED and DEADLINE produces two separate planning results when both match', () => {
+  const doc = parseOrg('* A task\nSCHEDULED: <2026-05-15 Fri> DEADLINE: <2026-05-20 Wed>');
+  const results = searchDocument(doc, '2026-05');
+  const planningResults = results.filter((r) => r.type === 'planning');
+  assert.equal(planningResults.length, 2);
+});
+
+test('planning search respects regex mode too', () => {
+  const doc = parseOrg('* A task\nSCHEDULED: <2026-05-15 Fri +1y>');
+  const results = searchDocument(doc, '\\+\\d+y', { useRegex: true });
+  const planningResult = results.find((r) => r.type === 'planning');
+  assert.ok(planningResult);
+});
