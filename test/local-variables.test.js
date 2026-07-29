@@ -8,6 +8,7 @@ import {
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
   getAgendaSkipArchivedTrees,
+  getArchiveConfirm,
   getUseSubSuperscripts,
 } from '../src/local-variables.js';
 
@@ -154,4 +155,18 @@ test("getUseSubSuperscripts returns '{}' when explicitly set", () => {
 
 test('getUseSubSuperscripts falls back to t for an unrecognized value', () => {
   assert.equal(getUseSubSuperscripts({ 'org-use-sub-superscripts': 'garbage' }), 't');
+});
+
+// ---- getArchiveConfirm -------------------------------------------------
+
+test('getArchiveConfirm defaults to true (t)', () => {
+  assert.equal(getArchiveConfirm({}), true);
+});
+
+test('getArchiveConfirm returns false when explicitly set to nil', () => {
+  assert.equal(getArchiveConfirm({ 'org-archive-confirm': 'nil' }), false);
+});
+
+test('getArchiveConfirm returns true when explicitly set to t', () => {
+  assert.equal(getArchiveConfirm({ 'org-archive-confirm': 't' }), true);
 });

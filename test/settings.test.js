@@ -14,12 +14,15 @@ import {
   setFontSize,
   getOtherFontSize,
   setOtherFontSize,
+  getAgendaFiles,
+  setAgendaFiles,
   exportAllSettings,
   importAllSettings,
   DEFAULT_THEME,
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONT_SIZE,
   DEFAULT_OTHER_FONT_SIZE,
+  DEFAULT_AGENDA_FILES,
 } from '../src-browser/settings.js';
 
 // ---- GitHub config --------------------------------------------------------
@@ -212,4 +215,34 @@ test('a full export/import round trip preserves every setting exactly', async ()
   assert.equal(await getOtherFontSize(kv2), 12);
   assert.deepEqual(await getGithubConfig(kv2), await getGithubConfig(kv1));
   assert.deepEqual(await getWebdavConfig(kv2), await getWebdavConfig(kv1));
+});
+
+// ---- getAgendaFiles / setAgendaFiles ---------------------------------
+
+test('getAgendaFiles defaults to an empty array', async () => {
+  const kv = createInMemoryAdapter();
+  assert.deepEqual(await getAgendaFiles(kv), DEFAULT_AGENDA_FILES);
+  assert.deepEqual(await getAgendaFiles(kv), []);
+});
+
+test('setAgendaFiles / getAgendaFiles round-trip a list of entries', async () => {
+  const kv = createInMemoryAdapter();
+  const files = [
+    { scheme: 'github', path: 'journal/2026.org' },
+    { scheme: 'webdav', path: 'notes/tasks.org' },
+  ];
+  await setAgendaFiles(kv, files);
+  assert.deepEqual(await getAgendaFiles(kv), files);
+});
+
+test('exportAllSettings/importAllSettings include agendaFiles like any other setting', async () => {
+  const kv1 = createInMemoryAdapter();
+  const files = [{ scheme: 'github', path: 'journal.org' }];
+  await setAgendaFiles(kv1, files);
+  const bundle = await exportAllSettings(kv1);
+  assert.deepEqual(bundle.settings.agendaFiles, files);
+
+  const kv2 = createInMemoryAdapter();
+  await importAllSettings(kv2, bundle);
+  assert.deepEqual(await getAgendaFiles(kv2), files);
 });

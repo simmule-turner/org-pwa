@@ -7,6 +7,7 @@ import {
   archiveInPlace,
   unarchiveInPlace,
   archiveToSiblingFile,
+  buildRestoredClone,
   restoreFromArchive,
   findAncestorPath,
   getPropertiesText,
@@ -125,6 +126,37 @@ test('restoreFromArchive strips ARCHIVE_* properties and restores original todo 
   assert.equal('ARCHIVE_OLPATH' in restored.properties, false);
   assert.equal('ARCHIVE_CATEGORY' in restored.properties, false);
   assert.equal('ARCHIVE_TODO' in restored.properties, false);
+  assert.equal(restored.tags.includes('ARCHIVE'), false, 'a restored heading must not stay tagged :ARCHIVE: -- this was a real bug');
+});
+
+test('buildRestoredClone does NOT remove the heading from archiveDoc (non-mutating)', () => {
+  const sourceDoc = docWithProject();
+  const archiveDoc = { type: 'document', keywords: [], children: [] };
+  const target = sourceDoc.children[0].children[0].children[0];
+  archiveToSiblingFile(sourceDoc, archiveDoc, target, 'nrp.org', { now: FIXED_DATE });
+  const archivedNode = archiveDoc.children[0];
+
+  buildRestoredClone(archivedNode);
+
+  assert.equal(archiveDoc.children.length, 1, 'archiveDoc must be completely untouched');
+  assert.equal(archiveDoc.children[0], archivedNode, 'the original archived heading object must still be there, unmodified');
+});
+
+test('buildRestoredClone strips the ARCHIVE tag and all ARCHIVE_* properties, same as restoreFromArchive', () => {
+  const sourceDoc = docWithProject();
+  const archiveDoc = { type: 'document', keywords: [], children: [] };
+  const target = sourceDoc.children[0].children[0].children[0];
+  archiveToSiblingFile(sourceDoc, archiveDoc, target, 'nrp.org', { now: FIXED_DATE, markDone: true });
+  const archivedNode = archiveDoc.children[0];
+
+  const clone = buildRestoredClone(archivedNode);
+  assert.equal(clone.todo, 'TODO');
+  assert.equal(clone.tags.includes('ARCHIVE'), false);
+  assert.equal('ARCHIVE_TIME' in clone.properties, false);
+  assert.equal('ARCHIVE_FILE' in clone.properties, false);
+  assert.equal('ARCHIVE_OLPATH' in clone.properties, false);
+  assert.equal('ARCHIVE_CATEGORY' in clone.properties, false);
+  assert.equal('ARCHIVE_TODO' in clone.properties, false);
 });
 
 // ---- property text editing ------------------------------------------------
@@ -387,6 +419,22 @@ test('buildArchivedClone produces the same stamped result as extractForArchive w
   assert.equal(clone.properties.ARCHIVE_FILE, 'src.org');
   assert.equal(clone.properties.ARCHIVE_OLPATH, 'Parent');
   assert.equal(clone.properties.ARCHIVE_CATEGORY, 'Parent');
+  assert.ok(clone.tags.includes('ARCHIVE'), 'the archived clone must be tagged :ARCHIVE: -- this was a real bug (properties were stamped but the tag itself was never added)');
+});
+
+test('buildArchivedClone tags the clone :ARCHIVE:, matching real org-archive-subtree and what isArchivedInPlace/the Unarchive-button detection both rely on', () => {
+  const sourceDoc = parseOrg('* A heading');
+  const heading = sourceDoc.children[0];
+  const clone = buildArchivedClone(sourceDoc, heading, 'src.org');
+  assert.deepEqual(clone.tags, ['ARCHIVE']);
+  assert.equal(isArchivedInPlace(clone), true);
+});
+
+test('buildArchivedClone does not duplicate the ARCHIVE tag if the original heading already had it', () => {
+  const sourceDoc = parseOrg('* A heading :ARCHIVE:other:');
+  const heading = sourceDoc.children[0];
+  const clone = buildArchivedClone(sourceDoc, heading, 'src.org');
+  assert.deepEqual(clone.tags.filter((t) => t === 'ARCHIVE').length, 1);
 });
 
 test('extractForArchive is equivalent to buildArchivedClone followed by an explicit removal', () => {
