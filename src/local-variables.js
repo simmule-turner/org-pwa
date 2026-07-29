@@ -104,3 +104,17 @@ export function getContactsBirthdayProperty(vars) {
   const trimmed = raw ? String(raw).trim() : '';
   return trimmed || 'BIRTHDAY';
 }
+
+/** org-use-sub-superscripts: controls whether/how `_`/`^` are
+ *  interpreted as subscript/superscript markers (see inline-markup.js).
+ *  Unlike the other Lisp-boolean variables above, this one has three
+ *  valid values, not two -- returns exactly 't', 'nil', or '{}' (never
+ *  a JS boolean), matching parseInline's own subSuperscriptMode option
+ *  directly. An unrecognized value falls back to 't', real org's own
+ *  default, rather than silently disabling the feature. */
+export function getUseSubSuperscripts(vars) {
+  const raw = (vars || {})['org-use-sub-superscripts'];
+  const trimmed = raw ? String(raw).trim() : '';
+  if (trimmed === 'nil' || trimmed === '{}') return trimmed;
+  return 't';
+}

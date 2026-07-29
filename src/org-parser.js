@@ -261,9 +261,45 @@ function serializeOrg(doc) {
   return out.join('\n');
 }
 
+/**
+ * Returns the 0-indexed line number where `targetHeading` starts within
+ * serializeOrg(doc)'s own output -- i.e., what line its own "* Title"
+ * line lands on if the document were serialized to plain text right
+ * now. Mirrors serializeNode's exact structure (the heading line
+ * itself, then an optional planning line, then an optional properties
+ * drawer, then body lines, then children) line-for-line, rather than a
+ * separate, independently-maintained counting implementation that
+ * could silently drift out of sync with what serializeOrg actually
+ * produces. Returns -1 if targetHeading isn't reachable from doc at
+ * all (e.g. a stale reference to a heading that's since been deleted).
+ */
+function findHeadingLineNumber(doc, targetHeading) {
+  let count = doc.keywords.length + (doc.bodyLines ? doc.bodyLines.length : 0);
+
+  function walk(node) {
+    if (node === targetHeading) return true;
+    count += 1; // the heading's own "* Title" line
+    if (serializePlanningLine(node.planning)) count += 1;
+    if (node.propertyOrder && node.propertyOrder.length) {
+      count += 2 + node.propertyOrder.length; // :PROPERTIES: + one line per property + :END:
+    }
+    count += (node.bodyLines || []).length;
+    for (const child of node.children || []) {
+      if (walk(child)) return true;
+    }
+    return false;
+  }
+
+  for (const child of doc.children) {
+    if (walk(child)) return count;
+  }
+  return -1;
+}
+
 export {
   parseOrg,
   serializeOrg,
+  findHeadingLineNumber,
   DEFAULT_TODO_KEYWORDS,
   DEFAULT_DONE_KEYWORDS,
 };

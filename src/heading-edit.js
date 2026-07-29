@@ -74,6 +74,25 @@ export function setHeadingTags(heading, tags) {
   return cleaned;
 }
 
+/** Sets `heading`'s priority cookie ([#A]/[#B]/[#C]/etc. in the title).
+ *  `priority` is either a single letter (any case; normalized to
+ *  uppercase, matching how the parser itself stores it) or a falsy
+ *  value (null/undefined/'') to clear it entirely. Anything else --
+ *  more than one character, a non-letter -- is rejected (returns false,
+ *  heading unchanged) rather than silently storing something the
+ *  parser/serializer wouldn't round-trip correctly; real org's own
+ *  priority cookie is always exactly one character. */
+export function setPriority(heading, priority) {
+  if (!priority) {
+    heading.priority = null;
+    return true;
+  }
+  const normalized = String(priority).trim().toUpperCase();
+  if (!/^[A-Z]$/.test(normalized)) return false;
+  heading.priority = normalized;
+  return true;
+}
+
 /** `heading`'s SCHEDULED/DEADLINE as editable lines, one per line
  *  (omitting CLOSED — that's auto-managed by marking a task done, not
  *  something this simple editor exposes for hand-editing). A minimal

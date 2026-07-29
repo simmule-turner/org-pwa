@@ -38,6 +38,47 @@ const IMAGE_EXT_RE = /\.(png|jpe?g|gif|svg|webp|bmp)$/i;
 const OPEN_PRE_RE = /[\s\-({'"]/;
 const CLOSE_POST_RE = /[\s.,;:!?)\]}'"-]/;
 
+// Bare (unbraced) sub/superscript content: an optional leading sign,
+// then one or more alphanumerics -- covers both a_b (one character) and
+// a_bc (several, still valid without braces per the org spec: braces
+// improve readability, they aren't required for a multi-character
+// script). Deliberately narrower than org's own full regexp-components
+// table (which also allows a handful of extra punctuation inside a bare
+// script); this covers the common case, not every edge case.
+const BARE_SCRIPT_RE = /^[+-]?[A-Za-z0-9]+/;
+
+/**
+ * Attempts to match a `_{...}`/`^{...}` or bare `_word`/`^word`
+ * sub/superscript starting exactly at `pos`. `mode` matches
+ * org-use-sub-superscripts: 'nil' disables this entirely (never
+ * matches), '{}' only matches the braced form (a bare `a_b` is left as
+ * literal text), and 't' (the default) matches both forms. Requires a
+ * non-whitespace character immediately before `pos` -- `_`/`^` at the
+ * very start of a line, or after whitespace, is always literal, in
+ * every mode, matching how `a_b` needs the `a` immediately before it.
+ * Returns { kind, content, length } or null.
+ */
+function matchScriptAt(text, pos, mode) {
+  if (mode === 'nil') return null;
+  const marker = text[pos];
+  if (marker !== '_' && marker !== '^') return null;
+  if (pos === 0 || /\s/.test(text[pos - 1])) return null;
+
+  const kind = marker === '_' ? 'subscript' : 'superscript';
+
+  if (text[pos + 1] === '{') {
+    const close = text.indexOf('}', pos + 2);
+    if (close === -1) return null;
+    return { kind, content: text.slice(pos + 2, close), length: close - pos + 1 };
+  }
+
+  if (mode === '{}') return null; // braces required in this mode; a bare a_b is left as literal underscore + text
+
+  const bareMatch = BARE_SCRIPT_RE.exec(text.slice(pos + 1));
+  if (!bareMatch) return null;
+  return { kind, content: bareMatch[0], length: 1 + bareMatch[0].length };
+}
+
 function isEmphasisMarker(ch) {
   return Object.prototype.hasOwnProperty.call(EMPHASIS_KIND, ch);
 }
@@ -70,10 +111,28 @@ function matchEmphasisAt(text, pos) {
 /**
  * Parses a single line/string into an array of inline nodes. Recurses into
  * emphasis span content (so nesting like underline-around-italic-around-bold
- * works), but never
- * recurses into code/verbatim content, which is kept as a literal string.
+ * works), but never recurses into code/verbatim/subscript/superscript
+ * content, which is kept as a literal string.
+ *
+ * `opts.subSuperscriptMode` matches org-use-sub-superscripts: `'t'`
+ * (default, real org's own default) interprets both `_word`/`^word` and
+ * `_{word}`/`^{word}`; `'{}'` only interprets the braced form, leaving a
+ * bare `a_b` as literal text; `'nil'` disables sub/superscript
+ * interpretation entirely, so `_`/`^` are always literal characters.
+ *
+ * `_` doubles as both the underline marker and the subscript marker --
+ * real org's own overload, disambiguated the same way here: underline
+ * requires the character before it to be whitespace/start-of-line/
+ * certain punctuation (matchEmphasisAt's own border rule), while
+ * subscript requires the opposite, a non-whitespace character
+ * immediately before it. These two conditions are mutually exclusive
+ * for the overwhelming majority of real text; emphasis is checked
+ * first below as the tiebreak for the rare remaining overlap (a
+ * hyphen/paren/quote sitting immediately before the underscore, which
+ * satisfies both rules at once).
  */
-function parseInline(text) {
+function parseInline(text, opts = {}) {
+  const subSuperscriptMode = opts.subSuperscriptMode || 't';
   const nodes = [];
   let buffer = '';
   let pos = 0;
@@ -118,9 +177,19 @@ function parseInline(text) {
         if (LITERAL_KINDS.has(kind)) {
           nodes.push({ type: kind, value: m.content });
         } else {
-          nodes.push({ type: kind, children: parseInline(m.content) });
+          nodes.push({ type: kind, children: parseInline(m.content, opts) });
         }
         pos += m.length;
+        continue;
+      }
+    }
+
+    if (text[pos] === '_' || text[pos] === '^') {
+      const s = matchScriptAt(text, pos, subSuperscriptMode);
+      if (s) {
+        flush();
+        nodes.push({ type: s.kind, value: s.content });
+        pos += s.length;
         continue;
       }
     }

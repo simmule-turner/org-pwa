@@ -40,6 +40,11 @@ const TABLE_LINE_RE = /^\s*\|.*\|?\s*$/;
 const TABLE_RULE_RE = /^\s*\|[-+]*\|?\s*$/;
 const TBLFM_RE = /^\s*#\+TBLFM:\s*(.*)$/i;
 const LIST_ITEM_RE = /^(\s*)([-+]|\*|\d+[.)]|[A-Za-z][.)])\s+(?:\[([ xX-])\]\s+)?(.*)$/;
+// Real org: "a line consisting of only dashes, and at least 5 of them,
+// is exported as a horizontal line." Whitespace around the dashes is
+// tolerated (indentation, trailing spaces), matching how org itself is
+// lenient about surrounding whitespace on this line.
+const HR_LINE_RE = /^\s*-{5,}\s*$/;
 
 function leadingWhitespace(line) {
   const m = /^(\s*)/.exec(line);
@@ -196,7 +201,8 @@ function parseParagraph(lines, i) {
     lines[i].trim() !== '' &&
     !BLOCK_START_RE.test(lines[i]) &&
     !TABLE_LINE_RE.test(lines[i]) &&
-    !isListItemLine(lines[i])
+    !isListItemLine(lines[i]) &&
+    !HR_LINE_RE.test(lines[i])
   ) {
     paraLines.push(lines[i]);
     i++;
@@ -236,6 +242,11 @@ function parseBody(lines) {
       const [node, next] = parseTable(lines, i);
       nodes.push(node);
       i = next;
+      continue;
+    }
+    if (HR_LINE_RE.test(line)) {
+      nodes.push({ type: 'hr' });
+      i++;
       continue;
     }
     if (isListItemLine(line)) {
