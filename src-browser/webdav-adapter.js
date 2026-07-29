@@ -49,6 +49,19 @@ function encodePath(path) {
     .join('/');
 }
 
+/** Converts binary content to a base64 string, browser-safe (no Node
+ *  Buffer -- btoa operates on a "binary string" where each character
+ *  code is one byte, the standard technique for this conversion in a
+ *  browser context; works identically under Node's own global btoa,
+ *  which matches the same web standard, so this is testable directly
+ *  under node:test too). */
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
 function fileUrl(config, path) {
   const base = config.baseUrl.replace(/\/+$/, '');
   const cleanPath = encodePath(path.replace(/^\/+/, ''));
@@ -141,6 +154,22 @@ export function createWebdavAdapter(getConfig) {
     return { content, hash };
   }
 
+  /** Reads `fileId` as binary content (base64-encoded), for an image or
+   *  any other non-text file -- separate from readImpl's own text
+   *  decoding, which would corrupt binary data. Returns null for a 404,
+   *  matching readImpl's own "not found" convention. */
+  async function readBinaryImpl(fileId) {
+    const config = requireConfig(getConfig);
+    const res = await fetchWithHint(fileUrl(config, fileId), {
+      method: 'GET',
+      headers: authHeader(config),
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(webdavErrorMessage(res));
+    const buffer = await res.arrayBuffer();
+    return { base64: arrayBufferToBase64(buffer), hash: res.headers.get('ETag') || null };
+  }
+
   async function writeImpl(fileId, content) {
     const config = requireConfig(getConfig);
     const existing = await readImpl(fileId);
@@ -208,6 +237,7 @@ export function createWebdavAdapter(getConfig) {
     read: readImpl,
     write: writeImpl,
     list: listImpl,
+    readBinary: readBinaryImpl,
     async exists(fileId) {
       const config = requireConfig(getConfig);
       const res = await fetchWithHint(fileUrl(config, fileId), {
@@ -224,4 +254,4 @@ export function isWebdavConfigured(config) {
 }
 
 // Exported for testing path/URL construction and the PROPFIND parser in isolation.
-export { fileUrl, encodePath, parsePropfindResponse, baseUrlPath };
+export { fileUrl, encodePath, parsePropfindResponse, baseUrlPath, arrayBufferToBase64 };

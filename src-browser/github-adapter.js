@@ -103,6 +103,25 @@ export function createGithubAdapter(getConfig) {
     return { content: base64ToUtf8(body.content), hash: body.sha };
   }
 
+  /** Reads `fileId` as binary content (base64-encoded), for an image or
+   *  any other non-text file. The Contents API already returns base64
+   *  directly -- unlike readImpl, which decodes it to utf8 text (which
+   *  would corrupt binary data), this just strips the MIME-style line
+   *  wrapping GitHub's own response includes, for a clean data: URL
+   *  payload. Returns null for a 404, matching readImpl's convention. */
+  async function readBinaryImpl(fileId) {
+    const config = requireConfig(getConfig);
+    const url = contentsUrl(config, fileId) + '?ref=' + encodeURIComponent(config.branch || 'main');
+    const res = await fetch(url, { headers: authHeaders(config) });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(await githubErrorMessage(res));
+    const body = await res.json();
+    if (Array.isArray(body)) {
+      throw new Error(`"${fileId}" is a directory in this repo, not a file.`);
+    }
+    return { base64: body.content.replace(/\n/g, ''), hash: body.sha };
+  }
+
   async function writeImpl(fileId, content) {
     const config = requireConfig(getConfig);
     // GitHub requires the current sha to update an existing file (so it
@@ -161,6 +180,7 @@ export function createGithubAdapter(getConfig) {
     read: readImpl,
     write: writeImpl,
     list: listImpl,
+    readBinary: readBinaryImpl,
     async exists(fileId) {
       return (await readImpl(fileId)) !== null;
     },
