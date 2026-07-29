@@ -201,6 +201,9 @@ function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = {}) {
 
   const clone = cloneHeading(heading);
 
+  if (!clone.tags.includes(ARCHIVE_TAG)) {
+    clone.tags = [...clone.tags, ARCHIVE_TAG];
+  }
   setProperty(clone, 'ARCHIVE_TIME', formatOrgTimestamp(now));
   setProperty(clone, 'ARCHIVE_FILE', sourceFilePath);
   setProperty(clone, 'ARCHIVE_OLPATH', olpath);
@@ -272,13 +275,21 @@ function archiveToSiblingFile(sourceDoc, archiveDoc, heading, sourceFilePath, op
  * requirements leave "where exactly it lands" as a UI decision, not a data
  * model one).
  */
-function restoreFromArchive(archiveDoc, heading) {
-  const located = findContainer(archiveDoc, heading);
-  if (!located) {
-    throw new Error('restoreFromArchive: heading not found in archiveDoc');
-  }
-  located.container.splice(located.index, 1);
-
+/**
+ * Builds the restored, un-stamped clone of an archived `heading` --
+ * everything restoreFromArchive does EXCEPT removing the original from
+ * archiveDoc. Deliberately non-mutating, same reasoning as
+ * buildArchivedClone: safe to call before knowing whether the actual
+ * restore destination write will succeed, so a cross-file restore can
+ * attempt that write FIRST and only remove the archived original
+ * afterward, once it has actually succeeded.
+ *
+ * Restores the original TODO state from ARCHIVE_TODO if present, strips
+ * all four ARCHIVE_* properties, and removes the ARCHIVE tag -- a
+ * restored heading must not stay tagged archived once it's back in a
+ * live document.
+ */
+function buildRestoredClone(heading) {
   const clone = cloneHeading(heading);
   if ('ARCHIVE_TODO' in clone.properties) {
     clone.todo = clone.properties.ARCHIVE_TODO;
@@ -286,6 +297,21 @@ function restoreFromArchive(archiveDoc, heading) {
   for (const key of ['ARCHIVE_TIME', 'ARCHIVE_FILE', 'ARCHIVE_OLPATH', 'ARCHIVE_CATEGORY', 'ARCHIVE_TODO']) {
     deleteProperty(clone, key);
   }
+  unarchiveInPlace(clone);
+  return clone;
+}
+
+/** Removes `heading` from `archiveDoc` and returns its restored clone
+ *  (built via buildRestoredClone) -- the combined convenience wrapper,
+ *  same relationship buildArchivedClone/extractForArchive already
+ *  have to each other. */
+function restoreFromArchive(archiveDoc, heading) {
+  const clone = buildRestoredClone(heading);
+  const located = findContainer(archiveDoc, heading);
+  if (!located) {
+    throw new Error('restoreFromArchive: heading not found in archiveDoc');
+  }
+  located.container.splice(located.index, 1);
   return clone;
 }
 
@@ -435,6 +461,7 @@ export {
   extractForArchive,
   appendToArchive,
   archiveToSiblingFile,
+  buildRestoredClone,
   restoreFromArchive,
   DEFAULT_ARCHIVE_LOCATION,
   parseArchiveLocation,

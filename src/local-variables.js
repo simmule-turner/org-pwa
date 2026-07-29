@@ -92,6 +92,14 @@ export function getAgendaSkipArchivedTrees(vars) {
   return parseLispBoolean((vars || {})['org-agenda-skip-archived-trees'], true);
 }
 
+/** org-archive-confirm: whether archiving/unarchiving a heading asks
+ *  for confirmation first. `t` (the default, matching real org's own
+ *  default) shows a confirmation dialog with the destination before
+ *  proceeding; `nil` archives/unarchives immediately with no prompt. */
+export function getArchiveConfirm(vars) {
+  return parseLispBoolean((vars || {})['org-archive-confirm'], true);
+}
+
 /** org-contacts-birthday-property: which property key holds a
  *  heading's birthday/anniversary date+description (see agenda.js's
  *  org-contacts-anniversaries support). Default "BIRTHDAY", matching
