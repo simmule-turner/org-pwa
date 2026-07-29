@@ -199,3 +199,97 @@ test('subscript still works correctly alongside unrelated underline elsewhere in
   assert.equal(nodes.some((n) => n.type === 'subscript'), true);
   assert.equal(nodes.some((n) => n.type === 'underline'), true);
 });
+
+// ---- bare URL auto-linking (the reported bug) --------------------------
+
+test('BUG FIX: a bare https:// URL with no brackets and no description auto-links', () => {
+  const nodes = parseInline('https://nickhigham.wordpress.com/');
+  assert.deepEqual(nodes, [{ type: 'link', target: 'https://nickhigham.wordpress.com/', description: null }]);
+});
+
+test('a bare URL surrounded by prose text auto-links, leaving the surrounding text intact', () => {
+  const nodes = parseInline('See https://example.com/page for more.');
+  assert.deepEqual(nodes, [
+    { type: 'text', value: 'See ' },
+    { type: 'link', target: 'https://example.com/page', description: null },
+    { type: 'text', value: ' for more.' },
+  ]);
+});
+
+test('trailing sentence punctuation is excluded from the auto-linked URL', () => {
+  const nodes = parseInline('Visit https://example.com/page.');
+  const link = nodes.find((n) => n.type === 'link');
+  assert.equal(link.target, 'https://example.com/page');
+  const trailingText = nodes.find((n) => n.type === 'text' && n.value.includes('.'));
+  assert.ok(trailingText, 'the trailing period must remain as separate plain text');
+});
+
+test('a bare URL ending in an image extension auto-renders as an image, same as the bracketed form', () => {
+  const nodes = parseInline('https://example.com/photo.png');
+  assert.deepEqual(nodes, [{ type: 'image', target: 'https://example.com/photo.png' }]);
+});
+
+test('mailto: auto-links as a bare URL', () => {
+  const nodes = parseInline('Contact mailto:someone@example.com today');
+  const link = nodes.find((n) => n.type === 'link');
+  assert.equal(link.target, 'mailto:someone@example.com');
+});
+
+test('non-URL-like text with a colon does NOT get misread as a link (e.g. a time)', () => {
+  const nodes = parseInline('meeting at 10:30 today');
+  assert.equal(nodes.some((n) => n.type === 'link'), false);
+});
+
+test('an unsupported scheme is not auto-linked, even though it has "word:word" shape', () => {
+  const nodes = parseInline('see e.g. ratio 3:4 for reference');
+  assert.equal(nodes.some((n) => n.type === 'link'), false);
+});
+
+test('the bracketed [[...]] form still works exactly as before -- no regression', () => {
+  const nodes = parseInline('[[https://example.com][My Link]]');
+  assert.deepEqual(nodes, [{ type: 'link', target: 'https://example.com', description: 'My Link' }]);
+});
+
+// ---- angle-bracket <...> auto-link form (real org's other recognized form) --
+
+test('an angle-bracket-wrapped URL auto-links, with the brackets consumed', () => {
+  const nodes = parseInline('See <https://example.com/page> for details');
+  assert.deepEqual(nodes, [
+    { type: 'text', value: 'See ' },
+    { type: 'link', target: 'https://example.com/page', description: null },
+    { type: 'text', value: ' for details' },
+  ]);
+});
+
+test('angle brackets mean trailing punctuation inside them is NOT stripped (the boundary is explicit)', () => {
+  const nodes = parseInline('<https://example.com/page.>');
+  const link = nodes.find((n) => n.type === 'link');
+  assert.equal(link.target, 'https://example.com/page.');
+});
+
+// ---- doi: scheme ---------------------------------------------------------
+
+test('a bracketed doi: link is recognized (already worked, confirming no regression)', () => {
+  const nodes = parseInline('[[doi:10.1145/1327452.1327492]]');
+  assert.deepEqual(nodes, [{ type: 'link', target: 'doi:10.1145/1327452.1327492', description: null }]);
+});
+
+test('a bare doi: link auto-links -- the new feature', () => {
+  const nodes = parseInline('See doi:10.1145/1327452.1327492 for the paper');
+  const link = nodes.find((n) => n.type === 'link');
+  assert.equal(link.target, 'doi:10.1145/1327452.1327492');
+});
+
+// ---- file:/github:/webdav: bare auto-linking ---------------------------
+
+test('a bare file: link auto-links', () => {
+  const nodes = parseInline('see file:~/notes.org for the source');
+  const link = nodes.find((n) => n.type === 'link');
+  assert.equal(link.target, 'file:~/notes.org');
+});
+
+test('a bare github: link auto-links', () => {
+  const nodes = parseInline('tracked in github:journal/2026.org');
+  const link = nodes.find((n) => n.type === 'link');
+  assert.equal(link.target, 'github:journal/2026.org');
+});

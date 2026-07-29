@@ -4,6 +4,12 @@ import { parseOrg } from '../src/org-parser.js';
 import {
   isExternalUrl,
   isFileLink,
+  isDoi,
+  doiToUrl,
+  fileLinkScheme,
+  splitFileLinkTarget,
+  resolveImagePath,
+  guessImageMimeType,
   findHeadingByTitle,
   findHeadingByCustomId,
   resolveLinkTarget,
@@ -117,13 +123,153 @@ test('resolveLinkTarget: file-like targets, with the file: prefix stripped', () 
   const doc = docWithHeadings();
   assert.deepEqual(resolveLinkTarget(doc, 'file:~/Pictures/x.png'), {
     type: 'file',
+    scheme: 'file',
     path: '~/Pictures/x.png',
+    inFileTarget: null,
   });
-  assert.deepEqual(resolveLinkTarget(doc, './notes.org'), { type: 'file', path: './notes.org' });
+  assert.deepEqual(resolveLinkTarget(doc, './notes.org'), {
+    type: 'file',
+    scheme: 'file',
+    path: './notes.org',
+    inFileTarget: null,
+  });
 });
 
 test('resolveLinkTarget trims whitespace around the target', () => {
   const doc = docWithHeadings();
   const result = resolveLinkTarget(doc, '  *Installation  ');
   assert.equal(result.type, 'heading');
+});
+
+// ---- doi: ------------------------------------------------------------
+
+test('isDoi recognizes a doi: target', () => {
+  assert.equal(isDoi('doi:10.1145/1327452.1327492'), true);
+  assert.equal(isDoi('https://example.com'), false);
+});
+
+test('doiToUrl rewrites to the standard doi.org resolver', () => {
+  assert.equal(doiToUrl('doi:10.1145/1327452.1327492'), 'https://doi.org/10.1145/1327452.1327492');
+});
+
+test('resolveLinkTarget resolves a doi: link as external, rewritten to doi.org', () => {
+  const doc = parseOrg('* A');
+  const result = resolveLinkTarget(doc, 'doi:10.1145/1327452.1327492');
+  assert.deepEqual(result, { type: 'external', url: 'https://doi.org/10.1145/1327452.1327492' });
+});
+
+// ---- fileLinkScheme -------------------------------------------------------
+
+test('fileLinkScheme identifies each of the three schemes correctly', () => {
+  assert.equal(fileLinkScheme('file:~/notes.org'), 'file');
+  assert.equal(fileLinkScheme('github:journal/2026.org'), 'github');
+  assert.equal(fileLinkScheme('webdav:notes/2026.org'), 'webdav');
+});
+
+test('fileLinkScheme defaults to "file" for a bare path with no scheme prefix', () => {
+  assert.equal(fileLinkScheme('./notes.org'), 'file');
+  assert.equal(fileLinkScheme('~/notes.org'), 'file');
+  assert.equal(fileLinkScheme('/notes.org'), 'file');
+});
+
+// ---- splitFileLinkTarget ---------------------------------------------
+
+test('splitFileLinkTarget: no "::" at all returns a null inFileTarget', () => {
+  assert.deepEqual(splitFileLinkTarget('~/notes.org'), { path: '~/notes.org', inFileTarget: null });
+});
+
+test('splitFileLinkTarget: a headline target after "::"', () => {
+  assert.deepEqual(splitFileLinkTarget('~/notes.org::*Project Alpha'), { path: '~/notes.org', inFileTarget: '*Project Alpha' });
+});
+
+test('splitFileLinkTarget: a plain text search target after "::"', () => {
+  assert.deepEqual(splitFileLinkTarget('~/notes.org::exact phrase'), { path: '~/notes.org', inFileTarget: 'exact phrase' });
+});
+
+// ---- resolveLinkTarget: the four documented file: examples ---------------
+
+test('EXAMPLE: absolute path', () => {
+  const doc = parseOrg('* A');
+  const result = resolveLinkTarget(doc, 'file:/home/user/documents/notes.org');
+  assert.deepEqual(result, { type: 'file', scheme: 'file', path: '/home/user/documents/notes.org', inFileTarget: null });
+});
+
+test('EXAMPLE: relative path', () => {
+  const doc = parseOrg('* A');
+  const result = resolveLinkTarget(doc, 'file:projects/todo.org');
+  assert.deepEqual(result, { type: 'file', scheme: 'file', path: 'projects/todo.org', inFileTarget: null });
+});
+
+test('EXAMPLE: specific headline target', () => {
+  const doc = parseOrg('* A');
+  const result = resolveLinkTarget(doc, 'file:~/notes.org::*Project Alpha');
+  assert.deepEqual(result, { type: 'file', scheme: 'file', path: '~/notes.org', inFileTarget: '*Project Alpha' });
+});
+
+test('EXAMPLE: text search target', () => {
+  const doc = parseOrg('* A');
+  const result = resolveLinkTarget(doc, 'file:~/notes.org::exact phrase');
+  assert.deepEqual(result, { type: 'file', scheme: 'file', path: '~/notes.org', inFileTarget: 'exact phrase' });
+});
+
+test('github: and webdav: links resolve with their own scheme and support the same ::target syntax', () => {
+  const doc = parseOrg('* A');
+  assert.deepEqual(resolveLinkTarget(doc, 'github:journal/2026.org::*Q1 Goals'), {
+    type: 'file',
+    scheme: 'github',
+    path: 'journal/2026.org',
+    inFileTarget: '*Q1 Goals',
+  });
+  assert.deepEqual(resolveLinkTarget(doc, 'webdav:notes/todo.org'), {
+    type: 'file',
+    scheme: 'webdav',
+    path: 'notes/todo.org',
+    inFileTarget: null,
+  });
+});
+
+// ---- resolveImagePath ------------------------------------------------
+
+test('resolveImagePath: a bare filename becomes a sibling of the current document', () => {
+  assert.equal(resolveImagePath('photo.png', 'notes.org'), 'photo.png');
+  assert.equal(resolveImagePath('photo.png', 'journal/notes.org'), 'journal/photo.png');
+});
+
+test('resolveImagePath: a leading "./" is stripped, same result as no prefix at all', () => {
+  assert.equal(resolveImagePath('./photo.png', 'journal/notes.org'), 'journal/photo.png');
+});
+
+test('resolveImagePath: a path already containing "/" is used as-is', () => {
+  assert.equal(resolveImagePath('images/photo.png', 'notes.org'), 'images/photo.png');
+});
+
+test('resolveImagePath: a leading "/" is treated as root-relative within the backend', () => {
+  assert.equal(resolveImagePath('/images/photo.png', 'journal/notes.org'), 'images/photo.png');
+});
+
+test('resolveImagePath: file:/github:/webdav: scheme prefixes are stripped before resolving', () => {
+  assert.equal(resolveImagePath('file:photo.png', 'journal/notes.org'), 'journal/photo.png');
+  assert.equal(resolveImagePath('github:images/photo.png', 'notes.org'), 'images/photo.png');
+  assert.equal(resolveImagePath('webdav:photo.png', 'journal/notes.org'), 'journal/photo.png');
+});
+
+// ---- guessImageMimeType -----------------------------------------------
+
+test('guessImageMimeType identifies every supported extension correctly', () => {
+  assert.equal(guessImageMimeType('a.png'), 'image/png');
+  assert.equal(guessImageMimeType('a.jpg'), 'image/jpeg');
+  assert.equal(guessImageMimeType('a.jpeg'), 'image/jpeg');
+  assert.equal(guessImageMimeType('a.gif'), 'image/gif');
+  assert.equal(guessImageMimeType('a.svg'), 'image/svg+xml');
+  assert.equal(guessImageMimeType('a.webp'), 'image/webp');
+  assert.equal(guessImageMimeType('a.bmp'), 'image/bmp');
+});
+
+test('guessImageMimeType is case-insensitive on the extension', () => {
+  assert.equal(guessImageMimeType('a.PNG'), 'image/png');
+});
+
+test('guessImageMimeType falls back to a generic binary type for an unrecognized extension', () => {
+  assert.equal(guessImageMimeType('a.tiff'), 'application/octet-stream');
+  assert.equal(guessImageMimeType('noextension'), 'application/octet-stream');
 });

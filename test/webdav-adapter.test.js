@@ -7,6 +7,7 @@ import {
   encodePath,
   parsePropfindResponse,
   baseUrlPath,
+  arrayBufferToBase64,
 } from '../src-browser/webdav-adapter.js';
 
 function withMockFetch(handler, fn) {
@@ -375,4 +376,57 @@ test('list() correctly requests a subdirectory path', () => {
       assert.deepEqual(entries, [{ name: '2026.org', path: 'journal/2026.org', type: 'file' }]);
     }
   );
+});
+
+// ---- readBinary -----------------------------------------------------------
+
+test('readBinary converts arrayBuffer content to base64 correctly', () => {
+  const imageBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]); // PNG magic bytes
+  return withMockFetch(
+    async () => ({
+      status: 200,
+      ok: true,
+      arrayBuffer: async () => imageBytes.buffer,
+      headers: { get: (name) => (name === 'ETag' ? 'img-etag' : null) },
+    }),
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      const result = await adapter.readBinary('photo.png');
+      assert.equal(result.hash, 'img-etag');
+      // round-trip: decoding the returned base64 must reproduce the exact original bytes
+      assert.deepEqual(Buffer.from(result.base64, 'base64'), Buffer.from(imageBytes));
+    }
+  );
+});
+
+test('readBinary returns null for a 404, matching read()\u2019s own convention', () => {
+  return withMockFetch(
+    async () => textResponse(404, ''),
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      assert.equal(await adapter.readBinary('missing.png'), null);
+    }
+  );
+});
+
+test('readBinary throws a clear error on a non-ok, non-404 response', () => {
+  return withMockFetch(
+    async () => textResponse(401, ''),
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      await assert.rejects(() => adapter.readBinary('photo.png'), /rejected the credentials/);
+    }
+  );
+});
+
+// ---- arrayBufferToBase64 ---------------------------------------------
+
+test('arrayBufferToBase64 correctly encodes arbitrary binary data', () => {
+  const bytes = new Uint8Array([0, 1, 2, 255, 254, 253, 128, 127]);
+  const result = arrayBufferToBase64(bytes.buffer);
+  assert.deepEqual(Buffer.from(result, 'base64'), Buffer.from(bytes));
+});
+
+test('arrayBufferToBase64 handles empty input', () => {
+  assert.equal(arrayBufferToBase64(new ArrayBuffer(0)), '');
 });

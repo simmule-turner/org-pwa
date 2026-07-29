@@ -9,6 +9,7 @@ import {
   resolveOlpTarget,
   mergeFragmentInto,
   insertCapture,
+  resolveCaptureFileId,
 } from '../src/capture-template.js';
 
 const NOW = new Date(2026, 6, 24, 14, 30, 5); // July 24 2026, 14:30:05, a Friday
@@ -487,4 +488,26 @@ test('REGRESSION: table-line capture into a heading with existing content preser
   assert.match(text, /Existing note before the table\./);
   assert.match(text, /\| 1 \| first \|/);
   assert.match(text, /\| 2 \| EDITED \|/);
+});
+
+// ---- resolveCaptureFileId ---------------------------------------------
+
+test('resolveCaptureFileId: a blank/unset file resolves to the current document itself', () => {
+  assert.equal(resolveCaptureFileId('', 'notes.org'), 'notes.org');
+  assert.equal(resolveCaptureFileId(null, 'notes.org'), 'notes.org');
+  assert.equal(resolveCaptureFileId(undefined, 'notes.org'), 'notes.org');
+});
+
+test('resolveCaptureFileId: a bare filename (no "/") becomes a sibling of the current document', () => {
+  assert.equal(resolveCaptureFileId('journal.org', 'notes.org'), 'journal.org');
+  assert.equal(resolveCaptureFileId('journal.org', 'work/notes.org'), 'work/journal.org');
+});
+
+test('resolveCaptureFileId: a path already containing "/" is used as-is', () => {
+  assert.equal(resolveCaptureFileId('archive/journal.org', 'notes.org'), 'archive/journal.org');
+  assert.equal(resolveCaptureFileId('/home/user/journal.org', 'notes.org'), '/home/user/journal.org');
+});
+
+test('resolveCaptureFileId trims whitespace around the file field', () => {
+  assert.equal(resolveCaptureFileId('  journal.org  ', 'notes.org'), 'journal.org');
 });

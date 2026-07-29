@@ -307,3 +307,42 @@ test('list() requires configuration, same as read/write', () => {
   const adapter = createGithubAdapter(() => null);
   return assert.rejects(() => adapter.list(), /not configured yet/);
 });
+
+// ---- readBinary -----------------------------------------------------------
+
+test('readBinary returns the base64 content directly, without utf8-decoding it', () => {
+  const imageBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47]); // PNG magic bytes -- not valid utf8, would corrupt if decoded
+  const base64 = imageBytes.toString('base64');
+  return withMockFetch(
+    async () => jsonResponse(200, { content: base64, sha: 'img-sha' }),
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      const result = await adapter.readBinary('photo.png');
+      assert.equal(result.base64, base64);
+      assert.equal(result.hash, 'img-sha');
+      // round-trip: decoding the returned base64 must reproduce the exact original bytes
+      assert.deepEqual(Buffer.from(result.base64, 'base64'), imageBytes);
+    }
+  );
+});
+
+test('readBinary strips MIME-style line wrapping from GitHub\u2019s own response', () => {
+  return withMockFetch(
+    async () => jsonResponse(200, { content: 'YWJj\nZGVm\n', sha: 's' }),
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      const result = await adapter.readBinary('file.bin');
+      assert.equal(result.base64, 'YWJjZGVm');
+    }
+  );
+});
+
+test('readBinary returns null for a 404, matching read()\u2019s own convention', () => {
+  return withMockFetch(
+    async () => jsonResponse(404, { message: 'Not Found' }),
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      assert.equal(await adapter.readBinary('missing.png'), null);
+    }
+  );
+});
