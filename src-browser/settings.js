@@ -20,6 +20,7 @@ const KEYS = {
   otherFontSize: 'settings:otherFontSize',
   lastActiveDocument: 'settings:lastActiveDocument',
   captureTemplates: 'settings:captureTemplates',
+  agendaFiles: 'settings:agendaFiles',
 };
 
 /** Ships as the default so capture works immediately with no setup —
@@ -160,6 +161,26 @@ export async function setOtherFontSize(kvAdapter, fontSize) {
   await setJson(kvAdapter, KEYS.otherFontSize, fontSize);
 }
 
+/** Real org's own org-agenda-files idea: additional files the Agenda
+ *  and TODO views scan across, beyond whichever file is currently
+ *  open. Each entry is { scheme: 'github'|'webdav', path: string } --
+ *  restricted to these two schemes since they're the only backends
+ *  that can read an arbitrary path directly, without the fresh
+ *  per-file picker gesture File System Access (local files, iOS
+ *  import) requires; see archiveHeadingToLocation/openFileLink/image
+ *  loading for the same limitation stated the same way elsewhere in
+ *  this app. Empty by default -- the agenda scans only the currently
+ *  open file until this is configured, exactly as before this existed. */
+const DEFAULT_AGENDA_FILES = [];
+
+export async function getAgendaFiles(kvAdapter) {
+  return getJson(kvAdapter, KEYS.agendaFiles, DEFAULT_AGENDA_FILES);
+}
+
+export async function setAgendaFiles(kvAdapter, agendaFiles) {
+  await setJson(kvAdapter, KEYS.agendaFiles, agendaFiles);
+}
+
 // ---- export/import all settings ------------------------------------------
 
 /**
@@ -240,4 +261,12 @@ export async function setCaptureTemplates(kvAdapter, templates) {
 
 export { DEFAULT_CAPTURE_TEMPLATES };
 
-export { DEFAULT_GITHUB_CONFIG, DEFAULT_WEBDAV_CONFIG, DEFAULT_THEME, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, DEFAULT_OTHER_FONT_SIZE };
+export {
+  DEFAULT_GITHUB_CONFIG,
+  DEFAULT_WEBDAV_CONFIG,
+  DEFAULT_THEME,
+  DEFAULT_FONT_FAMILY,
+  DEFAULT_FONT_SIZE,
+  DEFAULT_OTHER_FONT_SIZE,
+  DEFAULT_AGENDA_FILES,
+};
