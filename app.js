@@ -4,11 +4,13 @@ import { parseOrg, serializeOrg, findHeadingLineNumber } from './src/org-parser.
 import {
   findAncestorPath,
   getPropertiesText,
-  isArchivedInPlace,
-  archiveInPlace,
-  unarchiveInPlace,
+  buildArchivedClone,
+  getArchiveLocation,
+  parseArchiveLocation,
+  resolveArchiveFileId,
+  insertAtArchiveLocation,
 } from './src/archive-model.js';
-import { resolveLinkTarget } from './src/link-resolve.js';
+import { resolveLinkTarget, resolveImagePath, guessImageMimeType, isExternalUrl } from './src/link-resolve.js';
 import { parseInline } from './src/inline-markup.js';
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, toggleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
 import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
@@ -36,7 +38,7 @@ import {
   startOfWeek,
   parseRepeater,
 } from './src/agenda.js';
-import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture } from './src/capture-template.js';
+import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId } from './src/capture-template.js';
 import { parseMarkdown } from './src/markdown.js';
 import { parseOrgTimestamp, formatOrgTimestamp, parseDelay } from './src/org-timestamp.js';
 import {
@@ -129,6 +131,84 @@ function activeDiskAdapter() {
   if (state.storageKind === 'webdav') return webdavAdapter;
   if (state.storageKind === 'input') return inputFileAdapter;
   return filesystemAdapter;
+}
+
+/**
+ * Performs a full org-archive-subtree move (real org's `C-c C-x C-s` /
+ * `C-c $`): computes the effective org-archive-location for `heading`
+ * (its own `ARCHIVE` property, then the file's `#+ARCHIVE:` keyword,
+ * then the documented default `"%s_archive::"`), and moves the subtree
+ * there -- either within the current document (an empty file part) or
+ * to a separate file, read/parsed/inserted/written via whichever
+ * storage backend the current document itself already came from
+ * (reused directly; there's no separate "where does the archive file
+ * live" configuration to set up).
+ *
+ * Write-before-remove for the cross-file case: buildArchivedClone is
+ * deliberately non-mutating (see archive-model.js), so the target
+ * file's write is attempted FIRST, and the heading is only removed
+ * from the current document once that write has actually succeeded --
+ * a network failure, a WebDAV conflict, or a local-file permission
+ * problem can then never silently lose the heading; it simply stays
+ * exactly where it was, with a clear error shown instead.
+ *
+ * A local (File System Access) or iOS-import backend can't write to a
+ * file it doesn't already have a granted handle for -- the browser's
+ * own security model requires an explicit user gesture (a file picker)
+ * per file, which can't be done silently mid-archive. Rather than
+ * failing with a confusing low-level permission error, this is
+ * detected up front and reported as an actionable message.
+ */
+async function archiveHeadingToLocation(heading) {
+  const location = getArchiveLocation(state.doc, heading);
+  const { filePart, headlinePart } = parseArchiveLocation(location);
+  const targetFileId = resolveArchiveFileId(filePart, state.documentId);
+
+  if (targetFileId === null || targetFileId === state.documentId) {
+    // Same file: build the stamped copy, remove the original, insert
+    // the copy at the target location, save -- one atomic in-memory
+    // edit, no cross-file I/O risk to worry about.
+    const clone = buildArchivedClone(state.doc, heading, state.documentId);
+    removeHeading(state.doc, heading);
+    insertAtArchiveLocation(state.doc, clone, headlinePart);
+    commitAndRender();
+    setStatus('Archived within this file.');
+    return;
+  }
+
+  const adapter = activeDiskAdapter();
+  if ((state.storageKind === 'filesystem' || state.storageKind === 'input') && !(await adapter.exists(targetFileId))) {
+    setStatus(
+      `Can't archive to "${targetFileId}" automatically \u2014 local files need that file picked/created once first (browser security requires a file picker per file, not something this can do on its own mid-archive). Try File \u2192 Open or Save As on "${targetFileId}" first, or use GitHub/WebDAV for automatic cross-file archiving, or set #+ARCHIVE: to archive within this file instead (e.g. "::* Archived Tasks").`
+    );
+    return;
+  }
+
+  setStatus(`Archiving to ${targetFileId}\u2026`);
+  const clone = buildArchivedClone(state.doc, heading, state.documentId);
+
+  let archiveDoc;
+  try {
+    const existing = await adapter.read(targetFileId);
+    archiveDoc = existing ? parseOrg(existing.content) : parseOrg('');
+  } catch (err) {
+    setStatus(`Could not archive: reading "${targetFileId}" failed \u2014 ${err.message}`);
+    return;
+  }
+
+  insertAtArchiveLocation(archiveDoc, clone, headlinePart);
+
+  try {
+    await adapter.write(targetFileId, serializeOrg(archiveDoc));
+  } catch (err) {
+    setStatus(`Could not archive: writing "${targetFileId}" failed \u2014 ${err.message}. Nothing was removed from this file.`);
+    return;
+  }
+
+  // The write succeeded -- now, and only now, remove the original.
+  removeHeading(state.doc, heading);
+  commitAndRender();
+  setStatus(`Archived to ${targetFileId}.`);
 }
 
 const outlineEl = document.getElementById('outline');
@@ -539,6 +619,24 @@ function commitTextModeIfActive() {
 // each link type needing its own stopPropagation wiring.
 const INLINE_LINK_ATTR = 'data-inline-link';
 
+// Cache of resolved image data: URLs, keyed by backend+path -- avoids
+// re-fetching the same image on every re-render (this app re-renders
+// the whole outline on any state change) and avoids a
+// placeholder-then-image flash on every subsequent render once an
+// image has already loaded once this session. Cleared implicitly by a
+// page reload; not persisted, since a stale cached image across a
+// full app restart isn't worth the complexity of invalidation logic
+// for what's ultimately just avoiding a redundant network request.
+const imageDataUrlCache = new Map();
+
+function imagePlaceholder(target, reason) {
+  const span = document.createElement('span');
+  span.textContent = reason ? `[image: ${target} \u2014 ${reason}]` : `[image: ${target}]`;
+  span.style.color = 'var(--text-muted, #888)';
+  span.style.fontStyle = 'italic';
+  return span;
+}
+
 function renderImageNode(node) {
   const inlineImagesOn = state.startupConfig && state.startupConfig.imageVisibility === 'inlineimages';
 
@@ -552,17 +650,62 @@ function renderImageNode(node) {
     img.style.borderRadius = '4px';
     return img;
   }
-  // Either inline images are off (#+STARTUP: noinlineimages, the default —
-  // "just the link information will be displayed") or this is a
-  // local/relative path that can't be resolved to pixels here anyway
-  // (would need a registered File System Access directory handle and path
-  // resolution this app doesn't have). Either way: a labeled link/placeholder,
-  // not a broken image icon or silently dropped content.
-  const span = document.createElement('span');
-  span.textContent = '[image: ' + node.target + ']';
-  span.style.color = 'var(--text-muted, #888)';
-  span.style.fontStyle = 'italic';
-  return span;
+
+  // A local/relative image, or an explicit file:/github:/webdav:
+  // scheme -- only resolvable to real pixels when the CURRENT
+  // document's own backend can read an arbitrary path without a fresh
+  // picker gesture (GitHub, WebDAV). Local filesystem/iOS import hit
+  // the same File System Access permission wall already documented for
+  // archiving and capture-to-file, so those keep the honest placeholder
+  // below rather than attempting (and failing) a read.
+  const canReadArbitraryPaths = state.storageKind === 'github' || state.storageKind === 'webdav';
+  if (inlineImagesOn && canReadArbitraryPaths && !isExternalUrl(node.target)) {
+    const resolvedPath = resolveImagePath(node.target, state.documentId);
+    const cacheKey = state.storageKind + ':' + resolvedPath;
+
+    const img = document.createElement('img');
+    img.alt = node.target;
+    img.style.maxWidth = '100%';
+    img.style.display = 'block';
+    img.style.margin = '4px 0';
+    img.style.borderRadius = '4px';
+
+    if (imageDataUrlCache.has(cacheKey)) {
+      img.src = imageDataUrlCache.get(cacheKey);
+      return img;
+    }
+
+    // Not loaded yet -- show a placeholder box immediately (avoiding a
+    // zero-height flash), then swap in the real image once the async
+    // read resolves.
+    img.style.minHeight = '24px';
+    img.style.background = 'var(--surface)';
+
+    const adapter = activeDiskAdapter();
+    adapter
+      .readBinary(resolvedPath)
+      .then((result) => {
+        if (!result) {
+          img.replaceWith(imagePlaceholder(node.target, 'not found'));
+          return;
+        }
+        const dataUrl = `data:${guessImageMimeType(resolvedPath)};base64,${result.base64}`;
+        imageDataUrlCache.set(cacheKey, dataUrl);
+        img.src = dataUrl;
+        img.style.background = '';
+        img.style.minHeight = '';
+      })
+      .catch((err) => {
+        img.replaceWith(imagePlaceholder(node.target, err.message));
+      });
+
+    return img;
+  }
+
+  // Either inline images are off (#+STARTUP: noinlineimages, the
+  // default) or this is a local/relative path on a backend that can't
+  // read an arbitrary path without a fresh picker gesture.
+  return imagePlaceholder(node.target);
 }
 
 function renderLinkNode(node) {
@@ -603,7 +746,8 @@ function renderLinkNode(node) {
     span.setAttribute(INLINE_LINK_ATTR, '1');
     span.onclick = (e) => {
       e.stopPropagation();
-      setStatus("Can't open local file links yet: " + resolution.path);
+      const schemeLabel = resolution.scheme === 'file' ? 'local file' : resolution.scheme;
+      setStatus(`Can't open ${schemeLabel} links yet: ${resolution.path}` + (resolution.inFileTarget ? ' :: ' + resolution.inFileTarget : ''));
     };
     return span;
   }
@@ -1611,12 +1755,11 @@ function renderRow(row, todoSequence) {
             },
             {
               icon: '\ud83d\uddc4\ufe0f',
-              label: isArchivedInPlace(row.node) ? 'Unarchive' : 'Archive',
-              onClick: () => {
+              label: 'Archive',
+              onClick: async () => {
                 actionMenuFor = null;
-                if (isArchivedInPlace(row.node)) unarchiveInPlace(row.node);
-                else archiveInPlace(row.node);
-                commitAndRender();
+                render();
+                await archiveHeadingToLocation(row.node);
               },
             },
             {
@@ -3972,9 +4115,10 @@ async function renderSettingsView(target = settingsRenderTarget) {
   captureHint.style.opacity = '0.6';
   captureHint.style.margin = '2px 0 8px';
   captureHint.textContent =
-    'Edited as JSON — an array of {key, description, type, olp, template}. ' +
+    'Edited as JSON — an array of {key, description, type, olp, template, file}. ' +
     'type is one of "item", "checkitem", "plain", "table-line". ' +
     'olp is the outline path to insert into, e.g. ["Inbox", "Tasks"]. ' +
+    'file is optional — a filename (e.g. "journal.org", captured as a sibling of whatever file is currently open) or a full path, for a template that captures into a DIFFERENT file without switching what you\u2019re looking at. Omit it to capture into the currently open file, as before. ' +
     'template supports %<FORMAT>, %t/%T/%u/%U, %^{Prompt|default|choices}, %N, and %? — see the README.';
   captureSection.appendChild(captureHint);
 
@@ -4651,6 +4795,7 @@ function validateCaptureTemplates(parsed) {
       return `${label}: "olp" must be a non-empty array of strings`;
     }
     if (typeof t.template !== 'string') return `${label}: "template" must be a string`;
+    if ('file' in t && typeof t.file !== 'string') return `${label}: "file" must be a string if present`;
   }
   const keys = parsed.map((t) => t.key);
   const duplicate = keys.find((k, i) => keys.indexOf(k) !== i);
@@ -4748,6 +4893,53 @@ async function runCapture(template) {
       return;
     }
     answers.push(answer);
+  }
+
+  const targetFileId = resolveCaptureFileId(template.file, state.documentId);
+
+  if (targetFileId !== state.documentId) {
+    // Cross-file capture: read/insert/write the OTHER file directly via
+    // whichever backend the current document itself came from, without
+    // touching state.doc or switching the active view at all -- matching
+    // real org-capture's own behavior of not switching your current
+    // buffer just because a template's target is elsewhere.
+    const adapter = activeDiskAdapter();
+    if ((state.storageKind === 'filesystem' || state.storageKind === 'input') && !(await adapter.exists(targetFileId))) {
+      setStatus(
+        `Can't capture to "${targetFileId}" automatically \u2014 local files need that file picked/created once first (browser security requires a file picker per file). Try File \u2192 Open or Save As on "${targetFileId}" first, or use GitHub/WebDAV, or remove "file" from this template to capture into the currently open file instead.`
+      );
+      return;
+    }
+
+    setStatus(`Capturing to ${targetFileId}\u2026`);
+    let targetDoc;
+    try {
+      const existing = await adapter.read(targetFileId);
+      targetDoc = existing ? parseOrg(existing.content) : parseOrg('');
+    } catch (err) {
+      setStatus(`Could not capture: reading "${targetFileId}" failed \u2014 ${err.message}`);
+      return;
+    }
+
+    const target = resolveOlpTarget(targetDoc, template.olp, { now });
+    let tableRowNumber = null;
+    if (template.type === 'table-line') {
+      const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
+      const dataRowCount = existingTable ? existingTable.rows.filter((r) => r.type === 'row').length : 0;
+      tableRowNumber = dataRowCount + 1;
+    }
+    const { text } = expandTemplate(template.template, { now, promptAnswers: answers, tableRowNumber });
+    insertCapture(target, template.type, text);
+
+    try {
+      await adapter.write(targetFileId, serializeOrg(targetDoc));
+    } catch (err) {
+      setStatus(`Could not capture: writing "${targetFileId}" failed \u2014 ${err.message}. Nothing was changed.`);
+      return;
+    }
+
+    setStatus(`Captured to ${targetFileId}.`);
+    return;
   }
 
   const target = resolveOlpTarget(state.doc, template.olp, { now });
