@@ -1,12 +1,12 @@
 import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src/document-store.js';
 import { hasPendingChange } from './src/outbox.js';
-import { parseOrg, serializeOrg } from './src/org-parser.js';
+import { parseOrg, serializeOrg, findHeadingLineNumber } from './src/org-parser.js';
 import {
-  setProperty,
-  deleteProperty,
   findAncestorPath,
   getPropertiesText,
-  setPropertiesFromText,
+  isArchivedInPlace,
+  archiveInPlace,
+  unarchiveInPlace,
 } from './src/archive-model.js';
 import { resolveLinkTarget } from './src/link-resolve.js';
 import { parseInline } from './src/inline-markup.js';
@@ -22,6 +22,7 @@ import {
   getAgendaSkipCommentTrees,
   getAgendaSkipArchivedTrees,
   getContactsBirthdayProperty,
+  getUseSubSuperscripts,
 } from './src/local-variables.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import {
@@ -40,8 +41,8 @@ import { parseMarkdown } from './src/markdown.js';
 import { parseOrgTimestamp, formatOrgTimestamp, parseDelay } from './src/org-timestamp.js';
 import {
   renameHeading,
-  parseTagsInput,
   setHeadingTags,
+  setPriority,
   getPlainTimestampInTitle,
   setPlainTimestampInTitle,
   insertTopLevelHeading,
@@ -78,7 +79,12 @@ import {
 } from './src-browser/filesystem-adapter.js';
 import { createGithubAdapter, isGithubConfigured } from './src-browser/github-adapter.js';
 import { createWebdavAdapter, isWebdavConfigured } from './src-browser/webdav-adapter.js';
-import { createInputFileAdapter, pickAndImportFile, isFileSystemAccessUnsupported } from './src-browser/input-file-adapter.js';
+import {
+  createInputFileAdapter,
+  pickAndImportFile,
+  isFileSystemAccessUnsupported,
+  downloadFile,
+} from './src-browser/input-file-adapter.js';
 import {
   getGithubConfig,
   setGithubConfig,
@@ -90,6 +96,10 @@ import {
   setFontFamily,
   getFontSize,
   setFontSize,
+  getOtherFontSize,
+  setOtherFontSize,
+  exportAllSettings,
+  importAllSettings,
   getLastActiveDocument,
   setLastActiveDocument,
   getCaptureTemplates,
@@ -196,6 +206,137 @@ window.addEventListener('resize', syncContentOffset);
 // crossing the breakpoint, so this listens specifically for the
 // breakpoint itself rather than re-rendering on every pixel of resize.
 window.matchMedia(WIDE_LAYOUT_QUERY).addEventListener('change', () => render());
+
+/** Every heading currently visible in the outline, in on-screen order --
+ *  the pool keyboard-focus navigation (j/k, arrow keys) moves through.
+ *  Respects current fold state via flattenVisibleRows, the same
+ *  function the outline's own rendering uses, so keyboard nav never
+ *  lands on a heading that isn't actually shown. */
+function visibleHeadingsInOrder() {
+  if (!state.doc) return [];
+  return flattenVisibleRows(state.doc)
+    .filter((row) => row.rowType === 'heading')
+    .map((row) => row.node);
+}
+
+/** Moves keyboard focus by `delta` (+1/-1) among currently visible
+ *  headings. No wraparound at either end -- staying put at a boundary
+ *  is more predictable than silently jumping to the opposite end of a
+ *  potentially long document. Scrolls the newly-focused heading into
+ *  view, since it may not currently be on screen. */
+function moveKeyboardFocus(delta) {
+  const headings = visibleHeadingsInOrder();
+  if (headings.length === 0) return;
+  const currentIndex = keyboardFocusedHeading ? headings.indexOf(keyboardFocusedHeading) : -1;
+  let nextIndex;
+  if (currentIndex === -1) {
+    nextIndex = delta > 0 ? 0 : headings.length - 1;
+  } else {
+    nextIndex = Math.max(0, Math.min(headings.length - 1, currentIndex + delta));
+  }
+  keyboardFocusedHeading = headings[nextIndex];
+  render();
+  requestAnimationFrame(() => {
+    const el = document.getElementById('keyboard-focused-row');
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+  });
+}
+
+/**
+ * Keyboard shortcuts, primarily aimed at non-touch devices where a
+ * pointer-driven tap/swipe UI is a worse fit than it is on a phone.
+ * Mostly real org-mode's own bindings, but NOT a faithful reproduction
+ * of them: org leans heavily on the `C-c` prefix (`C-c C-t`, `C-c C-s`,
+ * etc.), and `C-c`/`C-v`/`C-a`/`C-f` and friends are universally
+ * reserved by every browser for copy/paste/select-all/find and cannot
+ * be reliably intercepted from a web page — building on that prefix
+ * would mean silently breaking copy-paste, not a reasonable tradeoff.
+ * Real org's `M-\u2190`/`M-\u2192` (promote/demote) collide with the browser's
+ * own back/forward navigation the same way. Where the direct org key is
+ * actually safe to use (`Tab` for org-cycle, `M-\u2191`/`M-\u2193` for moving a
+ * subtree) it's used as-is; everywhere else this substitutes a
+ * different, safe key rather than pretending the conflict doesn't
+ * exist. See the README's Keybindings section for the full table and
+ * this same reasoning stated for a reader, not just a future editor of
+ * this code.
+ *
+ * All of this is inert on a touch device in practice -- there's no
+ * keyboard to press these on -- except a Bluetooth keyboard paired to a
+ * tablet, a real if uncommon case these bindings work correctly for
+ * too, same code path either way.
+ */
+document.addEventListener('keydown', (e) => {
+  const activeTag = document.activeElement && document.activeElement.tagName;
+  if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return; // never hijack actual typing; each field's own keydown handler (Escape to cancel, etc.) already owns this
+
+  if (e.metaKey || e.ctrlKey) return; // Cmd/Ctrl combinations are the browser's own territory (new tab, save, find, ...) -- never treated as one of these shortcuts, avoiding a silent double-action
+
+  if (e.key === '/') {
+    e.preventDefault();
+    if (!searchOpen) {
+      searchOpen = true;
+      renderSearchPanel();
+    }
+    const input = document.getElementById('search-query-input');
+    if (input) input.focus();
+    return;
+  }
+
+  if (e.key === 'Escape') {
+    if (keyboardFocusedHeading) {
+      e.preventDefault();
+      keyboardFocusedHeading = null;
+      render();
+    }
+    return;
+  }
+
+  if (currentView !== 'org' || !state.doc) return; // everything below acts on the outline specifically
+
+  if (e.key === 'ArrowDown' || e.key === 'j') {
+    e.preventDefault();
+    moveKeyboardFocus(1);
+    return;
+  }
+  if (e.key === 'ArrowUp' || e.key === 'k') {
+    e.preventDefault();
+    moveKeyboardFocus(-1);
+    return;
+  }
+  if (e.key === 'n') {
+    e.preventDefault();
+    addBtn.click();
+    return;
+  }
+
+  if (!keyboardFocusedHeading) return; // everything remaining needs a specific heading to act on
+
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const archiveVisibility = getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived';
+    cycleFoldLevel(keyboardFocusedHeading, { archiveVisibility });
+    render();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    toggleActionMenu(keyboardFocusedHeading);
+  } else if (e.key === 't') {
+    e.preventDefault();
+    toggleHeadingTodo(state.doc, keyboardFocusedHeading, GLOBAL_TODO_DEFAULT);
+    commitAndRender();
+  } else if (e.altKey && e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (moveHeadingUp(state.doc, keyboardFocusedHeading)) commitAndRender();
+  } else if (e.altKey && e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (moveHeadingDown(state.doc, keyboardFocusedHeading)) commitAndRender();
+  } else if (e.key === '[') {
+    e.preventDefault();
+    if (promoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender();
+  } else if (e.key === ']') {
+    e.preventDefault();
+    if (demoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender();
+  }
+});
 // Reacts to ANY change to topBar's rendered content (a panel opening/
 // closing, its content changing, search results growing/shrinking) —
 // deliberately not a list of "call this after every place that could
@@ -256,21 +397,32 @@ let editingListItem = null;
 // handles editing one specific paragraph row directly (e.g. a paragraph
 // that comes after a list, outside this combined block's scope).
 let editingHeadingText = null;
-// The single heading whose property drawer is currently being edited as
-// one text block (key: value per line), or null. Same pattern as
-// editingHeadingText, reused rather than building a separate per-row
-// property UI.
-let editingProperties = null;
-// The single heading whose SCHEDULED/DEADLINE is currently being edited
-// as one text block, or null. Same pattern as editingProperties — a
-// minimal timestamp editor (full CRUD with repeaters, a date picker,
-// etc. is still to come).
-let editingPlanning = null;
+// The single heading whose general editor (SCHEDULED/DEADLINE, plain
+// timestamp, tags, priority, properties -- all six committed together
+// on Save, discarded together on Cancel) is currently open, or null.
+let editingGeneral = null;
 // The single heading or list-item node whose contextual action row is
 // currently revealed (tap-to-reveal, per the interaction redesign — only
 // one open at a time). Not the same as editingHeading/editingListItem:
 // tapping the revealed pencil icon is what transitions into those.
 let actionMenuFor = null;
+// The heading currently focused via keyboard navigation (see the
+// keydown listener near the bottom of this file) -- distinct from
+// actionMenuFor, which is about a tap-revealed action row. null until
+// the person actually uses a keyboard-navigation key (arrow/j/k),
+// which is also the gate that gates the rest of the keyboard shortcuts
+// -- Tab/Enter/etc. only act once a heading is actually focused, so
+// a stray Tab press before ever engaging keyboard nav doesn't hijack
+// normal browser focus-cycling for a keyboard/screen-reader user who
+// never asked for org-style keyboard nav in the first place.
+let keyboardFocusedHeading = null;
+// The heading most recently navigated to via navigateToHeading (a
+// search result, an internal link, an agenda item) -- tracked
+// specifically so switching into the plain-text editor can land near
+// that same content instead of always resetting to the top of the
+// file. Not updated by manual scrolling/tapping within the outline
+// itself; deliberately scoped to explicit "jump to X" navigation only.
+let currentContextHeading = null;
 // Which of the three top-level views is showing: 'org' (the default
 // outline), 'text' (the whole-document plain-text editor), or 'agenda'.
 // While 'text', render() shows only a textarea; while 'agenda', render()
@@ -469,6 +621,14 @@ function renderLinkNode(node) {
   return span;
 }
 
+/** Inline-parsing options reflecting the current document's Local
+ *  Variables -- currently just subSuperscriptMode, but centralized here
+ *  so a future option doesn't need updating at every parseInline call
+ *  site individually. */
+function currentInlineOpts() {
+  return { subSuperscriptMode: getUseSubSuperscripts(state.localVariables) };
+}
+
 /** Renders a parseInline() node array into `container`. Recurses into
  *  emphasis spans' children; code/verbatim/comment/image/link are leaves. */
 function renderInlineNodes(nodes, container) {
@@ -509,6 +669,18 @@ function renderInlineNodes(nodes, container) {
         el.style.padding = '1px 4px';
         el.style.borderRadius = '3px';
         el.style.fontSize = '0.9em';
+        container.appendChild(el);
+        break;
+      }
+      case 'subscript': {
+        const el = document.createElement('sub');
+        el.textContent = node.value;
+        container.appendChild(el);
+        break;
+      }
+      case 'superscript': {
+        const el = document.createElement('sup');
+        el.textContent = node.value;
         container.appendChild(el);
         break;
       }
@@ -580,6 +752,7 @@ function toggleActionMenu(node) {
 }
 
 function navigateToHeading(heading, { revealOwnBody = false, targetNode = heading } = {}) {
+  currentContextHeading = heading;
   // Always land in the outline — a caller (search, an internal link,
   // agenda) shouldn't each need to remember this. Safe to call even when
   // already in 'org': switchToView no-ops in that case rather than
@@ -946,14 +1119,247 @@ function buildTimestampFieldGroup(label, currentRaw) {
   return { container: wrap, getRawValue };
 }
 
+/** Structured tag editor: existing tags shown as removable chips, plus
+ *  an input+button to add a new one. Working state is local to this
+ *  group (not committed to `heading` until the general editor's own
+ *  Save button reads getTags()) -- same uncommitted-until-Save pattern
+ *  buildTimestampFieldGroup already uses, so Cancel genuinely discards
+ *  everything, tags included, not just the timestamp fields. */
+function buildTagsFieldGroup(heading) {
+  const wrap = document.createElement('div');
+  wrap.style.border = '0.5px solid var(--border-strong)';
+  wrap.style.borderRadius = '8px';
+  wrap.style.padding = '10px';
+  wrap.style.marginBottom = '10px';
+  wrap.style.boxSizing = 'border-box';
+  wrap.style.width = '100%';
+  wrap.style.maxWidth = '100%';
+
+  const header = document.createElement('div');
+  header.textContent = 'Tags';
+  header.style.fontWeight = '600';
+  header.style.fontSize = '14px';
+  header.style.marginBottom = '10px';
+  wrap.appendChild(header);
+
+  let currentTags = [...heading.tags];
+
+  const chipsRow = document.createElement('div');
+  chipsRow.style.display = 'flex';
+  chipsRow.style.flexWrap = 'wrap';
+  chipsRow.style.gap = '6px';
+  chipsRow.style.marginBottom = currentTags.length ? '10px' : '0';
+  wrap.appendChild(chipsRow);
+
+  const addRow = document.createElement('div');
+  addRow.style.display = 'flex';
+  addRow.style.gap = '6px';
+  const addInput = document.createElement('input');
+  addInput.type = 'text';
+  textInputStyle(addInput);
+  addInput.placeholder = 'New tag';
+  const addBtn = wizardButton('Add', () => {
+    const val = addInput.value.trim().replace(/:/g, '');
+    if (val && !currentTags.includes(val)) {
+      currentTags.push(val);
+      addInput.value = '';
+      renderChips();
+    }
+  });
+  addBtn.style.flex = '0 0 auto';
+  addRow.appendChild(addInput);
+  addRow.appendChild(addBtn);
+  wrap.appendChild(addRow);
+
+  function renderChips() {
+    chipsRow.innerHTML = '';
+    chipsRow.style.marginBottom = currentTags.length ? '10px' : '0';
+    for (const tag of currentTags) {
+      const chip = document.createElement('button');
+      chip.textContent = tag + ' \u2715';
+      chip.setAttribute('aria-label', 'Remove tag ' + tag);
+      chip.style.fontSize = '13px';
+      chip.style.padding = '5px 10px';
+      chip.style.borderRadius = '12px';
+      chip.style.border = '1px solid var(--border-strong)';
+      chip.style.background = 'var(--surface)';
+      chip.style.color = 'var(--fg)';
+      chip.onclick = () => {
+        currentTags = currentTags.filter((t) => t !== tag);
+        renderChips();
+      };
+      chipsRow.appendChild(chip);
+    }
+  }
+  renderChips();
+
+  return { container: wrap, getTags: () => currentTags };
+}
+
+/** Structured priority editor: a row of buttons (A/B/C/None), the
+ *  active one highlighted. A/B/C are real org's own conventional
+ *  default range (org-priority-highest/-lowest, both configurable in
+ *  Emacs but A-C out of the box) -- covers the common case directly
+ *  with one tap; anything outside that range isn't reachable from this
+ *  UI, a stated scope limit rather than trying to build a full A-Z
+ *  picker for a rarely-used case. */
+const PRIORITY_LEVELS = ['A', 'B', 'C'];
+
+function buildPriorityFieldGroup(heading) {
+  const wrap = document.createElement('div');
+  wrap.style.border = '0.5px solid var(--border-strong)';
+  wrap.style.borderRadius = '8px';
+  wrap.style.padding = '10px';
+  wrap.style.marginBottom = '10px';
+  wrap.style.boxSizing = 'border-box';
+  wrap.style.width = '100%';
+  wrap.style.maxWidth = '100%';
+
+  const header = document.createElement('div');
+  header.textContent = 'Priority';
+  header.style.fontWeight = '600';
+  header.style.fontSize = '14px';
+  header.style.marginBottom = '10px';
+  wrap.appendChild(header);
+
+  let currentPriority = heading.priority;
+
+  const btnRow = document.createElement('div');
+  btnRow.style.display = 'flex';
+  btnRow.style.gap = '6px';
+  wrap.appendChild(btnRow);
+
+  function renderButtons() {
+    btnRow.innerHTML = '';
+    for (const level of [...PRIORITY_LEVELS, 'None']) {
+      const btn = wizardButton(level, () => {
+        currentPriority = level === 'None' ? null : level;
+        renderButtons();
+      });
+      const isActive = level === 'None' ? !currentPriority : level === currentPriority;
+      btn.style.background = isActive ? 'var(--accent)' : 'transparent';
+      btn.style.color = isActive ? '#fff' : 'var(--fg)';
+      btn.style.border = '1px solid var(--border-strong)';
+      btnRow.appendChild(btn);
+    }
+  }
+  renderButtons();
+
+  return { container: wrap, getPriority: () => currentPriority };
+}
+
+/** Structured properties editor: each existing property as its own
+ *  key/value row (both directly editable, not a raw ":KEY: value" text
+ *  block to parse), a per-row remove button, and an "Add property" row
+ *  to append a new, initially-blank one. Blank-key rows are silently
+ *  dropped on save (getProperties() below) rather than erroring, since
+ *  "I tapped Add then changed my mind" is a normal, expected path, not
+ *  a mistake to flag. Duplicate keys: the LAST row with a given key
+ *  wins (matching a plain object's own last-write-wins semantics),
+ *  since this UI doesn't have anywhere to show a "duplicate key"
+ *  warning inline the way the raw-text editor's onChange validation
+ *  could -- a stated simplification versus that discarded approach. */
+function buildPropertiesFieldGroup(heading) {
+  const wrap = document.createElement('div');
+  wrap.style.border = '0.5px solid var(--border-strong)';
+  wrap.style.borderRadius = '8px';
+  wrap.style.padding = '10px';
+  wrap.style.marginBottom = '10px';
+  wrap.style.boxSizing = 'border-box';
+  wrap.style.width = '100%';
+  wrap.style.maxWidth = '100%';
+
+  const header = document.createElement('div');
+  header.textContent = 'Properties';
+  header.style.fontWeight = '600';
+  header.style.fontSize = '14px';
+  header.style.marginBottom = '10px';
+  wrap.appendChild(header);
+
+  const currentProps = heading.propertyOrder.map((key) => ({ key, value: heading.properties[key] ?? '' }));
+
+  const rowsContainer = document.createElement('div');
+  wrap.appendChild(rowsContainer);
+
+  function renderRows() {
+    rowsContainer.innerHTML = '';
+    currentProps.forEach((prop, idx) => {
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.gap = '6px';
+      row.style.marginBottom = '6px';
+
+      const keyInput = document.createElement('input');
+      keyInput.type = 'text';
+      textInputStyle(keyInput);
+      keyInput.style.flex = '1 1 40%';
+      keyInput.placeholder = 'Key';
+      keyInput.value = prop.key;
+      keyInput.oninput = () => {
+        prop.key = keyInput.value;
+      };
+
+      const valueInput = document.createElement('input');
+      valueInput.type = 'text';
+      textInputStyle(valueInput);
+      valueInput.style.flex = '2 1 60%';
+      valueInput.placeholder = 'Value';
+      valueInput.value = prop.value;
+      valueInput.oninput = () => {
+        prop.value = valueInput.value;
+      };
+
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = '\u2715';
+      removeBtn.setAttribute('aria-label', 'Remove property');
+      removeBtn.style.flexShrink = '0';
+      removeBtn.style.minWidth = '40px';
+      removeBtn.style.minHeight = '40px';
+      removeBtn.onclick = () => {
+        currentProps.splice(idx, 1);
+        renderRows();
+      };
+
+      row.appendChild(keyInput);
+      row.appendChild(valueInput);
+      row.appendChild(removeBtn);
+      rowsContainer.appendChild(row);
+    });
+  }
+  renderRows();
+
+  const addBtn = wizardButton('+ Add property', () => {
+    currentProps.push({ key: '', value: '' });
+    renderRows();
+  });
+  addBtn.style.marginTop = '4px';
+  wrap.appendChild(addBtn);
+
+  return {
+    container: wrap,
+    getProperties: () => {
+      const properties = {};
+      const propertyOrder = [];
+      for (const { key, value } of currentProps) {
+        const trimmedKey = key.trim();
+        if (!trimmedKey) continue; // an incomplete "Add property" row the user never filled in -- dropped silently, not an error
+        if (!(trimmedKey in properties)) propertyOrder.push(trimmedKey);
+        properties[trimmedKey] = value;
+      }
+      return { properties, propertyOrder };
+    },
+  };
+}
+
 function renderActionMenu(actions, columns = 5) {
   const menu = document.createElement('div');
   menu.style.display = 'grid';
   menu.style.gridTemplateColumns = `repeat(${columns}, 44px)`; // fixed count per row, regardless of container width -- flex-wrap would vary the count by available space instead
+  menu.style.justifyContent = 'center'; // centers the (fixed-width) button grid within the row's available width -- responsive to any container width and any column count, unlike a fixed left-margin value that would only look centered at one specific width
   menu.style.gap = '8px';
   menu.style.padding = '8px 8px 10px 8px';
   menu.style.borderBottom = '0.5px solid #8882';
-  menu.style.overflowX = 'auto'; // safety net: a wide row (especially at 7 columns) can get tight on narrow phones, more so once a nested heading's own depth indentation eats into available width -- keeps buttons reachable via local scroll rather than clipped if it doesn't fit
+  menu.style.overflowX = 'auto'; // safety net: a wide row (especially at 6 columns) can get tight on narrow phones, more so once a nested heading's own depth indentation eats into available width -- keeps buttons reachable via local scroll rather than clipped if it doesn't fit
   for (const action of actions) {
     const btn = document.createElement('button');
     btn.textContent = action.icon;
@@ -1047,6 +1453,12 @@ function renderRow(row, todoSequence) {
     el.style.paddingLeft = 8 + row.depth * 16 + 'px';
     el.style.alignItems = 'flex-start';
     el.style.touchAction = 'pan-y';
+    if (row.node === keyboardFocusedHeading) {
+      el.id = 'keyboard-focused-row';
+      el.style.outline = '2px solid var(--accent)';
+      el.style.outlineOffset = '-2px';
+      el.style.borderRadius = '4px';
+    }
     attachSlideLeftToFold(el, row.node);
 
     const fold = document.createElement('button');
@@ -1099,7 +1511,7 @@ function renderRow(row, todoSequence) {
       const title = document.createElement('span');
       title.className = 'heading-title';
       if (row.node.title) {
-        renderInlineNodes(parseInline(row.node.title), title);
+        renderInlineNodes(parseInline(row.node.title, currentInlineOpts()), title);
       } else {
         title.textContent = '(untitled)';
         title.style.opacity = '0.5';
@@ -1118,181 +1530,139 @@ function renderRow(row, todoSequence) {
       }
 
       if (actionMenuFor === row.node) {
-        menuEl = renderActionMenu([
-          {
-            icon: '\u270f\ufe0f',
-            label: 'Edit title',
-            onClick: () => {
-              actionMenuFor = null;
-              startEditingTitle(row.node, false);
+        menuEl = renderActionMenu(
+          [
+            {
+              icon: '\u270f\ufe0f',
+              label: 'Edit title',
+              onClick: () => {
+                actionMenuFor = null;
+                startEditingTitle(row.node, false);
+              },
             },
-          },
-          {
-            icon: '\ud83d\udcdd',
-            label: 'Edit text',
-            onClick: () => {
-              actionMenuFor = null;
-              editingHeadingText = row.node;
-              render();
+            {
+              icon: '\ud83d\udcdd',
+              label: 'Edit text',
+              onClick: () => {
+                actionMenuFor = null;
+                editingHeadingText = row.node;
+                render();
+              },
             },
-          },
-          {
-            icon: '\u25a6',
-            label: 'Add table',
-            onClick: () => {
-              actionMenuFor = null;
-              insertTable(row.node, {});
-              commitAndRender();
+            {
+              icon: '\ud83d\udccb',
+              label: 'Edit details (scheduled/deadline, tags, priority, properties)',
+              onClick: () => {
+                actionMenuFor = null;
+                editingGeneral = row.node;
+                render();
+              },
             },
-          },
-          {
-            icon: '\u2610',
-            label: row.node.todo ? 'Remove TODO/DONE state' : 'Mark as TODO',
-            onClick: () => {
-              actionMenuFor = null;
-              toggleHeadingTodo(state.doc, row.node, GLOBAL_TODO_DEFAULT);
-              commitAndRender();
+            {
+              icon: '+',
+              label: 'Add sub-heading',
+              onClick: () => {
+                actionMenuFor = null;
+                const child = insertChildHeading(row.node, {});
+                startEditingTitle(child, true);
+              },
             },
-          },
-          {
-            icon: '+',
-            label: 'Add sub-heading',
-            onClick: () => {
-              actionMenuFor = null;
-              const child = insertChildHeading(row.node, {});
-              startEditingTitle(child, true);
+            {
+              icon: '\u2191',
+              label: 'Move up',
+              onClick: () => {
+                if (moveHeadingUp(state.doc, row.node)) {
+                  commitAndRender();
+                } else {
+                  setStatus('Already first among its siblings.');
+                  render();
+                }
+              },
             },
-          },
-          {
-            icon: '\u2191',
-            label: 'Move up',
-            onClick: () => {
-              if (moveHeadingUp(state.doc, row.node)) {
+            {
+              icon: '\u2193',
+              label: 'Move down',
+              onClick: () => {
+                if (moveHeadingDown(state.doc, row.node)) {
+                  commitAndRender();
+                } else {
+                  setStatus('Already last among its siblings.');
+                  render();
+                }
+              },
+            },
+            {
+              icon: '\u2610',
+              label: row.node.todo ? 'Remove TODO/DONE state' : 'Mark as TODO',
+              onClick: () => {
+                actionMenuFor = null;
+                toggleHeadingTodo(state.doc, row.node, GLOBAL_TODO_DEFAULT);
                 commitAndRender();
-              } else {
-                setStatus('Already first among its siblings.');
-                render();
-              }
+              },
             },
-          },
-          {
-            icon: '\u2193',
-            label: 'Move down',
-            onClick: () => {
-              if (moveHeadingDown(state.doc, row.node)) {
+            {
+              icon: '\u25a6',
+              label: 'Add table',
+              onClick: () => {
+                actionMenuFor = null;
+                insertTable(row.node, {});
                 commitAndRender();
-              } else {
-                setStatus('Already last among its siblings.');
-                render();
-              }
+              },
             },
-          },
-          {
-            icon: '\ud83d\udcc5',
-            label:
-              row.node.planning.scheduled || row.node.planning.deadline
-                ? 'Edit scheduled/deadline'
-                : 'Add scheduled/deadline',
-            onClick: () => {
-              actionMenuFor = null;
-              editingPlanning = row.node;
-              render();
-            },
-          },
-          {
-            icon: '\ud83c\udff7\ufe0f',
-            label: row.node.tags.length ? 'Edit tags (' + row.node.tags.join(', ') + ')' : 'Add tags',
-            onClick: () => {
-              actionMenuFor = null;
-              const next = window.prompt(
-                'Tags for this heading, separated by spaces (e.g. "urgent home01"). Leave blank to remove all.',
-                row.node.tags.join(' ')
-              );
-              if (next === null) {
-                render();
-                return;
-              }
-              setHeadingTags(row.node, parseTagsInput(next));
-              commitAndRender();
-            },
-          },
-          {
-            icon: '\u2630',
-            label: row.node.propertyOrder.length ? 'Edit properties' : 'Add properties',
-            onClick: () => {
-              actionMenuFor = null;
-              editingProperties = row.node;
-              render();
-            },
-          },
-          {
-            icon: '#',
-            label: row.node.properties.CUSTOM_ID
-              ? 'Edit link ID (' + row.node.properties.CUSTOM_ID + ')'
-              : 'Set link ID',
-            onClick: () => {
-              actionMenuFor = null;
-              const current = row.node.properties.CUSTOM_ID || '';
-              const next = window.prompt(
-                'Custom ID for linking to this heading with [[#id]] (stays stable if you rename the heading). Leave blank to remove.',
-                current
-              );
-              if (next === null) {
-                render();
-                return;
-              }
-              const trimmed = next.trim();
-              if (trimmed === '') {
-                deleteProperty(row.node, 'CUSTOM_ID');
-              } else {
-                setProperty(row.node, 'CUSTOM_ID', trimmed);
-              }
-              commitAndRender();
-            },
-          },
-          {
-            icon: '\u2715',
-            label: 'Delete heading',
-            onClick: () => {
-              if (!confirmHeadingDelete(row.node)) return;
-              actionMenuFor = null;
-              editingHeading = null;
-              editingIsNew = false;
-              editingCell = null;
-              editingParagraph = null;
-              editingListItem = null;
-              editingHeadingText = null;
-              editingProperties = null;
-              editingPlanning = null;
-              removeHeading(state.doc, row.node);
-              commitAndRender();
-            },
-          },
-          {
-            icon: '\u2190',
-            label: 'Promote (outdent)',
-            onClick: () => {
-              if (promoteHeading(state.doc, row.node)) {
+            {
+              icon: '\ud83d\uddc4\ufe0f',
+              label: isArchivedInPlace(row.node) ? 'Unarchive' : 'Archive',
+              onClick: () => {
+                actionMenuFor = null;
+                if (isArchivedInPlace(row.node)) unarchiveInPlace(row.node);
+                else archiveInPlace(row.node);
                 commitAndRender();
-              } else {
-                setStatus("Already top-level \u2014 can't promote further.");
-                render();
-              }
+              },
             },
-          },
-          {
-            icon: '\u2192',
-            label: 'Demote (indent)',
-            onClick: () => {
-              if (demoteHeading(state.doc, row.node)) {
+            {
+              icon: '\u2715',
+              label: 'Delete heading',
+              onClick: () => {
+                if (!confirmHeadingDelete(row.node)) return;
+                actionMenuFor = null;
+                editingHeading = null;
+                editingIsNew = false;
+                editingCell = null;
+                editingParagraph = null;
+                editingListItem = null;
+                editingHeadingText = null;
+                editingGeneral = null;
+                removeHeading(state.doc, row.node);
                 commitAndRender();
-              } else {
-                setStatus("No preceding sibling to demote under.");
-                render();
-              }
+              },
             },
-          },
-        ], 7);
+            {
+              icon: '\u2190',
+              label: 'Promote (outdent)',
+              onClick: () => {
+                if (promoteHeading(state.doc, row.node)) {
+                  commitAndRender();
+                } else {
+                  setStatus("Already top-level \u2014 can't promote further.");
+                  render();
+                }
+              },
+            },
+            {
+              icon: '\u2192',
+              label: 'Demote (indent)',
+              onClick: () => {
+                if (demoteHeading(state.doc, row.node)) {
+                  commitAndRender();
+                } else {
+                  setStatus("No preceding sibling to demote under.");
+                  render();
+                }
+              },
+            },
+          ],
+          6
+        );
       }
     }
 
@@ -1326,43 +1696,13 @@ function renderRow(row, todoSequence) {
       textEditorEl.appendChild(textarea);
     }
 
-    let propertiesEditorEl = null;
-    if (editingProperties === row.node) {
-      propertiesEditorEl = document.createElement('div');
-      propertiesEditorEl.style.padding = '4px 10px 10px 40px';
-      const textarea = document.createElement('textarea');
-      textarea.id = 'properties-edit-input';
-      textarea.value = getPropertiesText(row.node);
-      textarea.rows = Math.max(2, textarea.value.split('\n').length);
-      textarea.placeholder = 'key: value, one property per line';
-      textarea.style.width = '100%';
-      textarea.style.boxSizing = 'border-box';
-      textarea.style.font = 'inherit';
-      textarea.style.fontSize = '14px';
-      textarea.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          editingProperties = null;
-          render();
-        }
-      });
-      textarea.addEventListener('blur', () => {
-        const heading = editingProperties;
-        editingProperties = null;
-        setPropertiesFromText(heading, textarea.value);
-        commitAndRender();
-      });
-      autoGrowTextarea(textarea);
-      propertiesEditorEl.appendChild(textarea);
-    }
-
-    let planningEditorEl = null;
-    if (editingPlanning === row.node) {
-      planningEditorEl = document.createElement('div');
-      planningEditorEl.style.padding = '8px 10px 10px 40px';
-      planningEditorEl.style.boxSizing = 'border-box';
-      planningEditorEl.style.width = '100%';
-      planningEditorEl.style.maxWidth = '100%';
+    let generalEditorEl = null;
+    if (editingGeneral === row.node) {
+      generalEditorEl = document.createElement('div');
+      generalEditorEl.style.padding = '8px 10px 10px 40px';
+      generalEditorEl.style.boxSizing = 'border-box';
+      generalEditorEl.style.width = '100%';
+      generalEditorEl.style.maxWidth = '100%';
 
       const scheduledGroup = buildTimestampFieldGroup('SCHEDULED', row.node.planning.scheduled);
       const deadlineGroup = buildTimestampFieldGroup('DEADLINE', row.node.planning.deadline);
@@ -1370,37 +1710,48 @@ function renderRow(row, todoSequence) {
         'Plain timestamp (not scheduled/deadline)',
         getPlainTimestampInTitle(row.node)
       );
-      planningEditorEl.appendChild(scheduledGroup.container);
-      planningEditorEl.appendChild(deadlineGroup.container);
-      planningEditorEl.appendChild(plainGroup.container);
+      const tagsGroup = buildTagsFieldGroup(row.node);
+      const priorityGroup = buildPriorityFieldGroup(row.node);
+      const propsGroup = buildPropertiesFieldGroup(row.node);
+      generalEditorEl.appendChild(scheduledGroup.container);
+      generalEditorEl.appendChild(deadlineGroup.container);
+      generalEditorEl.appendChild(plainGroup.container);
+      generalEditorEl.appendChild(tagsGroup.container);
+      generalEditorEl.appendChild(priorityGroup.container);
+      generalEditorEl.appendChild(propsGroup.container);
 
       const btnRow = document.createElement('div');
       btnRow.style.display = 'flex';
       btnRow.style.gap = '10px';
       btnRow.appendChild(
         wizardButton('Save', () => {
-          const heading = editingPlanning;
-          editingPlanning = null;
+          const heading = editingGeneral;
+          editingGeneral = null;
           heading.planning = {
             scheduled: scheduledGroup.getRawValue(),
             deadline: deadlineGroup.getRawValue(),
             closed: heading.planning.closed,
           };
           setPlainTimestampInTitle(heading, plainGroup.getRawValue());
+          setHeadingTags(heading, tagsGroup.getTags());
+          setPriority(heading, priorityGroup.getPriority());
+          const { properties, propertyOrder } = propsGroup.getProperties();
+          heading.properties = properties;
+          heading.propertyOrder = propertyOrder;
           commitAndRender();
         })
       );
       btnRow.appendChild(
         wizardButton('Cancel', () => {
-          editingPlanning = null;
+          editingGeneral = null;
           render();
         })
       );
-      planningEditorEl.appendChild(btnRow);
+      generalEditorEl.appendChild(btnRow);
     }
 
     let propertiesDisplayEl = null;
-    if (!row.node.drawersHidden && row.node.propertyOrder.length > 0 && editingProperties !== row.node) {
+    if (!row.node.drawersHidden && row.node.propertyOrder.length > 0 && editingGeneral !== row.node) {
       propertiesDisplayEl = document.createElement('div');
       propertiesDisplayEl.style.padding = '2px 10px 6px 40px';
       propertiesDisplayEl.style.fontSize = '12px';
@@ -1413,7 +1764,7 @@ function renderRow(row, todoSequence) {
       propertiesDisplayEl.onclick = () => toggleActionMenu(row.node);
     }
 
-    return withActionMenu(el, menuEl, textEditorEl, propertiesEditorEl, planningEditorEl, propertiesDisplayEl);
+    return withActionMenu(el, menuEl, textEditorEl, generalEditorEl, propertiesDisplayEl);
   }
 
   if (row.rowType === 'list-item') {
@@ -1483,7 +1834,7 @@ function renderRow(row, todoSequence) {
         if (row.item.tag) {
           text.appendChild(document.createTextNode(row.item.tag + ' :: '));
         }
-        renderInlineNodes(row.item.inline, text);
+        renderInlineNodes(parseInline(row.item.text, currentInlineOpts()), text);
       } else {
         // An empty item (e.g. a fresh checkbox with nothing typed yet)
         // otherwise renders zero visible content here — which means zero
@@ -1511,7 +1862,8 @@ function renderRow(row, todoSequence) {
       el.appendChild(text);
 
       if (actionMenuFor === row.item) {
-        menuEl = renderActionMenu([
+        menuEl = renderActionMenu(
+          [
           {
             icon: '\u270f\ufe0f',
             label: 'Edit text',
@@ -1547,7 +1899,9 @@ function renderRow(row, todoSequence) {
               commitAndRender();
             },
           },
-        ]);
+          ],
+          3
+        );
       }
     }
 
@@ -1557,6 +1911,7 @@ function renderRow(row, todoSequence) {
   if (row.rowType === 'table') return renderTableRow(row);
   if (row.rowType === 'paragraph') return renderParagraphRow(row);
   if (row.rowType === 'block') return renderBlockRow(row);
+  if (row.rowType === 'hr') return renderHrRow(row);
 
   const el = document.createElement('div');
   el.className = 'row';
@@ -1591,23 +1946,26 @@ function renderTableRow(row) {
 
   let menuEl = null;
   if (actionMenuFor === row.node) {
-    menuEl = renderActionMenu([
-      {
-        icon: '\u2715',
-        label: 'Delete table',
-        onClick: () => {
-          if (!confirmTableDelete(row.node)) return;
-          actionMenuFor = null;
-          deleteTable(row.heading, row.node);
-          commitAndRender();
+    menuEl = renderActionMenu(
+      [
+        {
+          icon: '\u2715',
+          label: 'Delete table',
+          onClick: () => {
+            if (!confirmTableDelete(row.node)) return;
+            actionMenuFor = null;
+            deleteTable(row.heading, row.node);
+            commitAndRender();
+          },
         },
-      },
-    ]);
+      ],
+      1
+    );
   }
 
   const tableEl = document.createElement('table');
   tableEl.style.borderCollapse = 'collapse';
-  tableEl.style.fontSize = '13px';
+  tableEl.style.fontSize = 'var(--app-font-size-other)';
 
   row.node.rows.forEach((tr, rowIndex) => {
     if (tr.type === 'rule') return; // shown implicitly via the header row's styling, not as its own grid row
@@ -1739,6 +2097,23 @@ function renderTableRow(row) {
   return withActionMenu(wrap, menuEl);
 }
 
+/** A horizontal rule (5+ dashes on their own line) -- purely visual, no
+ *  action menu, since there's nothing meaningful to edit on it beyond
+ *  what the plain-text editor or the heading's own "Edit text" action
+ *  already cover for arbitrary raw content. */
+function renderHrRow(row) {
+  const wrap = document.createElement('div');
+  wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
+  wrap.style.paddingRight = '8px';
+  wrap.style.margin = '4px 0';
+  const hr = document.createElement('hr');
+  hr.style.border = 'none';
+  hr.style.borderTop = '1px solid var(--border-strong)';
+  hr.style.margin = '8px 0';
+  wrap.appendChild(hr);
+  return wrap;
+}
+
 function renderParagraphRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
@@ -1781,9 +2156,9 @@ function renderParagraphRow(row) {
   p.style.fontSize = '14px';
   const hasContent = row.node.lines.some((l) => l.trim() !== '');
   if (hasContent) {
-    row.node.inlineLines.forEach((lineNodes, i) => {
+    row.node.lines.forEach((line, i) => {
       if (i > 0) p.appendChild(document.createElement('br'));
-      renderInlineNodes(lineNodes, p);
+      renderInlineNodes(parseInline(line, currentInlineOpts()), p);
     });
   } else {
     p.textContent = '(empty note \u2014 tap to edit)';
@@ -1800,37 +2175,40 @@ function renderParagraphRow(row) {
 
   let menuEl = null;
   if (actionMenuFor === row.node) {
-    menuEl = renderActionMenu([
-      {
-        icon: '\u270f\ufe0f',
-        label: 'Edit text',
-        onClick: () => {
-          actionMenuFor = null;
-          editingParagraph = { heading: row.heading, paragraph: row.node };
-          render();
+    menuEl = renderActionMenu(
+      [
+        {
+          icon: '\u270f\ufe0f',
+          label: 'Edit text',
+          onClick: () => {
+            actionMenuFor = null;
+            editingParagraph = { heading: row.heading, paragraph: row.node };
+            render();
+          },
         },
-      },
-      {
-        icon: '+',
-        label: 'Add paragraph below',
-        onClick: () => {
-          actionMenuFor = null;
-          const newParagraph = insertParagraphAfter(row.heading, row.node, '');
-          editingParagraph = { heading: row.heading, paragraph: newParagraph };
-          commitAndRender();
+        {
+          icon: '+',
+          label: 'Add paragraph below',
+          onClick: () => {
+            actionMenuFor = null;
+            const newParagraph = insertParagraphAfter(row.heading, row.node, '');
+            editingParagraph = { heading: row.heading, paragraph: newParagraph };
+            commitAndRender();
+          },
         },
-      },
-      {
-        icon: '\u2715',
-        label: 'Delete note',
-        onClick: () => {
-          if (!confirmParagraphDelete(row.node)) return;
-          actionMenuFor = null;
-          deleteParagraph(row.heading, row.node);
-          commitAndRender();
+        {
+          icon: '\u2715',
+          label: 'Delete note',
+          onClick: () => {
+            if (!confirmParagraphDelete(row.node)) return;
+            actionMenuFor = null;
+            deleteParagraph(row.heading, row.node);
+            commitAndRender();
+          },
         },
-      },
-    ]);
+      ],
+      3
+    );
   }
 
   return withActionMenu(wrap, menuEl);
@@ -1944,7 +2322,8 @@ function render() {
     outlineEl.innerHTML = '';
     const textarea = document.createElement('textarea');
     textarea.id = 'document-text-edit-input';
-    textarea.value = serializeOrg(state.doc);
+    const fullText = serializeOrg(state.doc);
+    textarea.value = fullText;
     textarea.style.width = '100%';
     textarea.style.boxSizing = 'border-box';
     textarea.style.height = VH_UNIT === 'dvh' ? 'calc(100dvh - 160px)' : 'calc(100vh - 160px)';
@@ -1954,6 +2333,36 @@ function render() {
     textarea.style.border = 'none';
     textarea.spellcheck = false;
     outlineEl.appendChild(textarea);
+
+    // Land near wherever the person last explicitly navigated to
+    // (a search result, an internal link) rather than always resetting
+    // to the top of the file -- losing that context on every switch
+    // into the plain-text editor was the actual complaint this fixes.
+    // findHeadingLineNumber returns -1 for a stale reference (the
+    // heading was deleted, or nothing was ever navigated to this
+    // session), which falls through to the original top-of-file
+    // behavior below.
+    const lines = fullText.split('\n');
+    const targetLine = currentContextHeading ? findHeadingLineNumber(state.doc, currentContextHeading) : -1;
+
+    if (targetLine >= 0) {
+      let charOffset = 0;
+      for (let i = 0; i < targetLine; i++) charOffset += lines[i].length + 1; // +1 for the newline each line consumed
+      textarea.setSelectionRange(charOffset, charOffset);
+      // Scroll proportionally to the target line's fraction of the
+      // total line count -- an approximation, not an exact per-line
+      // pixel position (which would need the textarea's actual
+      // rendered line height, itself variable once a long line wraps).
+      // "Near the same line" is the actual goal here, not pixel-exact
+      // positioning.
+      requestAnimationFrame(() => {
+        textarea.focus();
+        const fraction = targetLine / Math.max(1, lines.length - 1);
+        textarea.scrollTop = fraction * (textarea.scrollHeight - textarea.clientHeight);
+      });
+      return;
+    }
+
     // Setting .value moves the caret to the end of the text by default in
     // most browsers, and focus() scrolls to keep the caret in view — that
     // combination is exactly why text mode used to open scrolled all the
@@ -2017,8 +2426,7 @@ function render() {
     editingParagraph ||
     editingListItem ||
     editingHeadingText ||
-    editingProperties ||
-    editingPlanning
+    editingGeneral
   ) {
     requestAnimationFrame(() => {
       const input =
@@ -2026,7 +2434,6 @@ function render() {
         document.getElementById('cell-edit-input') ||
         document.getElementById('listitem-edit-input') ||
         document.getElementById('heading-text-edit-input') ||
-        document.getElementById('properties-edit-input') ||
         document.getElementById('paragraph-edit-input');
       if (input) {
         input.focus();
@@ -2916,8 +3323,7 @@ function switchToView(view) {
     editingParagraph = null;
     editingListItem = null;
     editingHeadingText = null;
-    editingProperties = null;
-    editingPlanning = null;
+    editingGeneral = null;
     actionMenuFor = null;
   }
 
@@ -3384,6 +3790,40 @@ function applyFontSize(size) {
   document.documentElement.style.setProperty('--app-font-size', size + 'px');
 }
 
+function applyOtherFontSize(size) {
+  document.documentElement.style.setProperty('--app-font-size-other', size + 'px');
+}
+
+/** Opens the native file picker and resolves with the picked file's raw
+ *  text content. A minimal, standalone helper for settings import --
+ *  deliberately not reusing pickAndImportFile, which is built for .org
+ *  document import specifically and also caches the picked content
+ *  into kv under an unrelated key for later re-reading; a one-off
+ *  settings JSON file has no business being cached there. */
+function pickTextFile(accept) {
+  return new Promise((resolve, reject) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.style.display = 'none';
+    input.addEventListener('change', async () => {
+      const file = input.files && input.files[0];
+      if (input.parentNode) input.parentNode.removeChild(input);
+      if (!file) {
+        reject(new Error('No file selected'));
+        return;
+      }
+      try {
+        resolve(await file.text());
+      } catch (err) {
+        reject(err);
+      }
+    });
+    document.body.appendChild(input);
+    input.click();
+  });
+}
+
 async function renderSettingsView(target = settingsRenderTarget) {
   settingsRenderTarget = target;
   target.innerHTML = '';
@@ -3445,9 +3885,12 @@ async function renderSettingsView(target = settingsRenderTarget) {
   sizeTitle.textContent = 'Font Size';
   appearanceSection.appendChild(sizeTitle);
 
+  const otherFontSize = await getOtherFontSize(kv);
+
   const sizeRow = document.createElement('div');
   sizeRow.className = 'panel-row';
   sizeRow.style.alignItems = 'center'; // overrides .panel-row's flex-start default -- correct for label-above-field pairs elsewhere, wrong here (no label, just a number between two taller buttons)
+  sizeRow.style.flexWrap = 'wrap'; // lets the "Other" group drop to its own line on a narrow phone rather than clipping or forcing horizontal scroll
   sizeRow.appendChild(
     menuButton('\u2212', async () => {
       const next = Math.max(12, fontSize - 1);
@@ -3470,7 +3913,50 @@ async function renderSettingsView(target = settingsRenderTarget) {
       renderSettingsView();
     })
   );
+
+  const otherDivider = document.createElement('span');
+  otherDivider.textContent = '\u2502'; // visual separator between the main and "other" groups on the same row
+  otherDivider.style.opacity = '0.3';
+  otherDivider.style.margin = '0 4px';
+  sizeRow.appendChild(otherDivider);
+
+  const otherLabel = document.createElement('span');
+  otherLabel.textContent = 'Other:';
+  otherLabel.style.fontSize = '13px';
+  otherLabel.style.opacity = '0.7';
+  sizeRow.appendChild(otherLabel);
+
+  sizeRow.appendChild(
+    menuButton('\u2212', async () => {
+      const next = Math.max(10, otherFontSize - 1);
+      await setOtherFontSize(kv, next);
+      applyOtherFontSize(next);
+      renderSettingsView();
+    })
+  );
+  const otherSizeLabel = document.createElement('span');
+  otherSizeLabel.textContent = otherFontSize + 'px';
+  otherSizeLabel.style.fontSize = '14px';
+  otherSizeLabel.style.minWidth = '40px';
+  otherSizeLabel.style.textAlign = 'center';
+  sizeRow.appendChild(otherSizeLabel);
+  sizeRow.appendChild(
+    menuButton('+', async () => {
+      const next = Math.min(24, otherFontSize + 1);
+      await setOtherFontSize(kv, next);
+      applyOtherFontSize(next);
+      renderSettingsView();
+    })
+  );
+
   appearanceSection.appendChild(sizeRow);
+
+  const otherFontHint = document.createElement('div');
+  otherFontHint.textContent = 'Applies to tables and other secondary UI text, independent of the main font size above.';
+  otherFontHint.style.fontSize = '11px';
+  otherFontHint.style.opacity = '0.6';
+  otherFontHint.style.margin = '4px 0 8px';
+  appearanceSection.appendChild(otherFontHint);
 
   const captureSection = document.createElement('div');
   captureSection.className = 'settings-section';
@@ -3626,6 +4112,76 @@ async function renderSettingsView(target = settingsRenderTarget) {
     })
   );
   webdavSection.appendChild(webdavSaveRow);
+
+  const backupSection = document.createElement('div');
+  backupSection.className = 'settings-section';
+  container.appendChild(backupSection);
+
+  const backupTitle = document.createElement('div');
+  backupTitle.className = 'panel-section-title';
+  backupTitle.textContent = 'Backup';
+  backupSection.appendChild(backupTitle);
+
+  const backupRow = document.createElement('div');
+  backupRow.className = 'panel-row';
+  backupRow.appendChild(
+    menuButton('Export Settings', async () => {
+      const bundle = await exportAllSettings(kv);
+      const hasCredentials = !!(bundle.settings.github && bundle.settings.github.token) || !!(bundle.settings.webdav && bundle.settings.webdav.password);
+      if (
+        hasCredentials &&
+        !window.confirm(
+          'This file will include your GitHub token and/or WebDAV password in plain text. Keep it private, and only share it with something you trust. Continue?'
+        )
+      ) {
+        return;
+      }
+      downloadFile('org-pwa-settings.json', JSON.stringify(bundle, null, 2));
+      setStatus('Settings exported \u2014 check your downloads.');
+    })
+  );
+  backupRow.appendChild(
+    menuButton('Import Settings\u2026', async () => {
+      let content;
+      try {
+        content = await pickTextFile('.json,application/json');
+      } catch {
+        return; // picker cancelled -- not an error, nothing to report
+      }
+      let bundle;
+      try {
+        bundle = JSON.parse(content);
+      } catch (err) {
+        setStatus('Could not import settings: the file is not valid JSON.');
+        return;
+      }
+      const imported = await importAllSettings(kv, bundle);
+      if (imported.length === 0) {
+        setStatus('No recognizable settings found in that file.');
+        return;
+      }
+      // Re-apply anything with an immediate visual effect right away,
+      // rather than requiring a reload to see the imported theme/fonts
+      // take effect.
+      if (imported.includes('theme')) applyTheme(await getTheme(kv));
+      if (imported.includes('fontFamily')) applyFontFamily(await getFontFamily(kv));
+      if (imported.includes('fontSize')) applyFontSize(await getFontSize(kv));
+      if (imported.includes('otherFontSize')) applyOtherFontSize(await getOtherFontSize(kv));
+      if (imported.includes('github')) githubConfig = await getGithubConfig(kv);
+      if (imported.includes('webdav')) webdavConfig = await getWebdavConfig(kv);
+      setStatus('Imported: ' + imported.join(', ') + '.');
+      renderSettingsView();
+    })
+  );
+  backupSection.appendChild(backupRow);
+
+  const backupHint = document.createElement('div');
+  backupHint.style.fontSize = '11px';
+  backupHint.style.opacity = '0.6';
+  backupHint.style.margin = '2px 0 6px';
+  backupHint.textContent =
+    'Export bundles every setting on this page \u2014 appearance, capture templates, GitHub, and WebDAV \u2014 into one file, useful for moving settings to another device. Import merges the file\u2019s settings into what\u2019s already configured here; anything the file doesn\u2019t mention is left untouched.';
+  backupSection.appendChild(backupHint);
 }
 
 // ---- Docs (README, rendered in-app) --------------------------------------
@@ -3738,6 +4294,57 @@ function renderMarkdownBlock(block) {
     hr.style.borderTop = '1px solid var(--border)';
     hr.style.margin = '16px 0';
     return hr;
+  }
+
+  if (block.type === 'table') {
+    const wrap = document.createElement('div');
+    wrap.style.overflowX = 'auto'; // a several-column table can easily be wider than a phone screen -- scroll within the table rather than letting it force the whole page wider
+    wrap.style.margin = '10px 0';
+
+    const table = document.createElement('table');
+    table.style.borderCollapse = 'collapse';
+    table.style.width = '100%';
+    table.style.fontSize = '13px';
+
+    function styleCell(cell, align, isHeader) {
+      cell.style.border = '1px solid var(--border)';
+      cell.style.padding = '6px 10px';
+      cell.style.textAlign = align;
+      cell.style.verticalAlign = 'top';
+      cell.style.overflowWrap = 'anywhere';
+      if (isHeader) {
+        cell.style.background = 'var(--surface)';
+        cell.style.fontWeight = '600';
+        cell.style.whiteSpace = 'nowrap'; // header labels are short and meant to stay put as a fixed reference row while long body cells wrap
+      }
+    }
+
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    block.header.forEach((cell, idx) => {
+      const th = document.createElement('th');
+      styleCell(th, block.align[idx] || 'left', true);
+      renderInlineTokens(cell.inline, th);
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const row of block.rows) {
+      const tr = document.createElement('tr');
+      row.forEach((cell, idx) => {
+        const td = document.createElement('td');
+        styleCell(td, block.align[idx] || 'left', false);
+        renderInlineTokens(cell.inline, td);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    wrap.appendChild(table);
+    return wrap;
   }
 
   return document.createElement('div'); // unreachable given parseMarkdown's own block types, but never leave a tap-triggered render with nothing to show
@@ -4366,6 +4973,7 @@ async function bootstrap() {
   applyTheme(await getTheme(kv));
   applyFontFamily(await getFontFamily(kv));
   applyFontSize(await getFontSize(kv));
+  applyOtherFontSize(await getOtherFontSize(kv));
   syncContentOffset();
 
   const last = await getLastActiveDocument(kv);

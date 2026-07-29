@@ -12,6 +12,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 - [Getting started](#getting-started)
 - [Editing your outline](#editing-your-outline)
 - [Lists, tables, and body text](#lists-tables-and-body-text)
+- [Inline text markup](#inline-text-markup)
 - [Searching](#searching)
 - [Links and images](#links-and-images)
 - [Folding and `#+STARTUP`](#folding-and-startup)
@@ -26,6 +27,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 - [Settings](#settings)
 - [Offline behavior and sync](#offline-behavior-and-sync)
 - [Platform support](#platform-support)
+- [Keybindings](#keybindings)
 - [Differences from Emacs org-mode](#differences-from-emacs-org-mode)
 - [Known limitations / not built yet](#known-limitations--not-built-yet)
 - [Development](#development)
@@ -57,15 +59,19 @@ The header shows the current filename and which backend it came from, turning **
 
 ## Editing your outline
 
-- **Headings**: tap the title text to reveal a row of actions — edit title, edit the heading's own body text, add a table, add a sub-heading, set a link ID, edit tags, edit properties, set SCHEDULED/DEADLINE, delete, move up/down, promote/demote, mark as TODO. Nothing is shown until you tap; this keeps the row itself uncluttered. Most actions close the row back up after running; Move up/down and Promote/Demote deliberately don't, since repeating one of those a few times in a row is a normal thing to want to do — tap elsewhere on the row (or in the empty space after the buttons themselves) to close it manually when you're done.
+- **Headings**: tap the title text to reveal a row of twelve actions — edit title, edit the heading's own body text, edit details (the general editor — see below), add a sub-heading, move up/down, mark as TODO, add a table, archive, delete, promote/demote. Nothing is shown until you tap; this keeps the row itself uncluttered. Most actions close the row back up after running; Move up/down and Promote/Demote deliberately don't, since repeating one of those a few times in a row is a normal thing to want to do — tap elsewhere on the row (or in the empty space after the buttons themselves) to close it manually when you're done.
 - **TODO state**: tap the TODO badge to cycle through the sequence defined by `#+TODO:` (or `TODO`/`DONE` by default).
 - **Fold/unfold**: tap the chevron to toggle a heading's whole subtree, or swipe left on a heading to cycle through collapsed → children-only → fully expanded → collapsed.
-- **Tags**: the tag action prompts for a space-separated list (`urgent home01`) and replaces the heading's tags outright.
-- **Properties**: the properties action opens the whole `:PROPERTIES:` drawer as one editable block of `key: value` lines — add a line for a new property, remove a line to delete one, edit a value in place. This is a full replace on save, not a merge: a property you delete from the text stays deleted. When not editing, existing properties show as a small read-only line under the heading, but only when drawers are actually visible for that heading (`#+STARTUP: showeverything`, or manually cycled to "fully expanded" — see [Folding and `#+STARTUP`](#folding-and-startup)); tapping it opens the same action menu as tapping the title. Collapsing the heading again correctly hides them too, whether via swipe or chevron — this used to be a real bug (revealing properties once left them stuck visible for the rest of the session, with no way to hide them again), not something that was ever supposed to be one-directional.
+- **Archive**: tags the heading `:ARCHIVE:` and stamps an `ARCHIVE_TIME` property with the current timestamp — real org's own archive-in-place convention (org's *other* archiving method, moving the subtree to a separate sibling file via `C-c C-x A`, isn't implemented). The button relabels to **Unarchive** once a heading is archived, which removes the tag; the `ARCHIVE_TIME` property is left in place rather than deleted, matching real org's own behavior (archiving again later just adds a fresh timestamp). `ARCHIVE_TIME` shows up in the general editor's properties list like any other property — editable or removable by hand from there if you ever need to.
+- **The general editor** (📋 **Edit details**): one structured form covering everything that used to be spread across several separate actions:
+  - **SCHEDULED / DEADLINE / plain timestamp** — real date and time pickers, a repeat selector (mark + amount + unit: every N hours/days/weeks/months/years), and an optional "warn ahead by" delay (real org syntax, e.g. `-3d`, for seeing a deadline coming a few days early instead of only on the day it's due). These three are independent instances of the same field group — set any combination; each has its own **Clear** button for explicitly removing that one timestamp, separate from the form's overall Save/Cancel. See [Agenda](#agenda) for how a plain timestamp differs from SCHEDULED/DEADLINE (it doesn't carry forward, and lives in the title rather than a planning line).
+  - **Tags** — existing tags shown as removable chips (tap a chip to remove it), plus an input and Add button for a new one. Not a raw space-separated prompt.
+  - **Priority** — a row of buttons (A / B / C / None), the currently-set one highlighted. Covers real org's own conventional default range directly with one tap; anything outside A–C isn't reachable from this UI, a stated scope limit rather than a full A–Z picker for a rarely-used case.
+  - **Properties** — each existing property as its own editable key/value row, with a per-row remove button and an "Add property" row to append a new, initially-blank one. A row left with a blank key is silently dropped on save rather than erroring — "I tapped Add then changed my mind" is a normal path, not a mistake to flag. This is also how you set a `CUSTOM_ID` for `[[#id]]`-style linking (see [Links and images](#links-and-images)) — there's no longer a dedicated action just for that, since it's a property like any other.
+
+  All fields across all four sections are committed together on **Save**, or discarded together on **Cancel** — nothing is written until you actually save. When not editing, existing properties still show as a small read-only line under the heading, but only when drawers are actually visible for that heading (`#+STARTUP: showeverything`, or manually cycled to "fully expanded" — see [Folding and `#+STARTUP`](#folding-and-startup)); tapping it opens the same general editor as tapping the title. Collapsing the heading again correctly hides them too, whether via swipe or chevron.
 - **Block content** (`#+BEGIN_SRC`/`#+BEGIN_QUOTE`/`#+BEGIN_EXAMPLE`/etc.): shown read-only, gated by the same drawer-visibility rule as properties above. When folded, an honest "collapsed block" label is shown rather than nothing — tap it to reveal the actual content (code, quoted text, whatever the block holds); tap the label again once expanded to re-fold it. No in-app editing of block content yet — this is visibility only.
-- **SCHEDULED / DEADLINE / plain timestamp** (the 📅 action): a structured form, not a raw text box — real date and time pickers, a repeat selector (mark + amount + unit: every N hours/days/weeks/months/years), and an optional "warn ahead by" delay (real org syntax, e.g. `-3d`, for seeing a deadline coming a few days early instead of only on the day it's due). SCHEDULED, DEADLINE, and a plain timestamp (see [Agenda](#agenda) for the difference — a plain timestamp doesn't carry forward and lives in the title, not a planning line) are three independent instances of the exact same form — set any combination, and Cancel discards without touching the heading. Each has its own **Clear** button for explicitly removing that timestamp, separate from the Save/Cancel that applies to the whole form. This is what actually builds the underlying `SCHEDULED:`/`DEADLINE:`/title-timestamp syntax, so there's no need to know org's raw format to use it correctly.
 - **Moving headings** (↑ / ↓ / ← / → in the action row): ↑ and ↓ reorder a heading among its own siblings without touching its level or its subtree — everything nested under it moves as one unit automatically. ← (promote/outdent) moves a heading up one level, making it a sibling of its former parent, inserted right after it. → (demote/indent) moves it down one level, making it the last child of whichever heading immediately precedes it. All four are no-ops at a natural boundary (already first/last, already top-level, no preceding sibling to demote under) — tapping one there shows a brief status message rather than silently doing nothing or corrupting the outline. This is the actual replacement for switching to Text view and cutting/pasting raw lines, which used to be the only way to reorder anything.
-- **Priority**: not directly editable through the outline UI — see [Differences from Emacs org-mode](#differences-from-emacs-org-mode).
 
 ### A heading's "text"
 
@@ -81,6 +87,37 @@ Org has no separate description field — anything following a heading (until th
 - **Paragraphs**: tap text to reveal edit/add-paragraph-below/delete.
 
 Every delete action asks for confirmation and states plainly that it can't be undone — there is no undo/redo in this app (see limitations).
+
+---
+
+## Inline text markup
+
+All six of org's emphasis markers work, in headings, paragraphs, and list items:
+
+| Markup | Syntax | Renders as |
+|---|---|---|
+| Bold | `*bold text*` | **bold text** |
+| Italic | `/italic text/` | *italic text* |
+| Underline | `_underline text_` | underlined |
+| Strikethrough | `+strikethrough text+` | ~~strikethrough text~~ |
+| Verbatim | `=verbatim text=` | `verbatim text` (literal, not further parsed) |
+| Code | `~code text~` | `code text` (literal, not further parsed) |
+
+A marker only opens where it's preceded by the start of a line, whitespace, or one of `-({'"`, and not immediately followed by whitespace; it only closes where it's not immediately preceded by whitespace, and is followed by the end of the line, whitespace, or closing punctuation — matching real org's own border rules for the common cases, not a full reproduction of org's complete border-character tables. Bold/italic/underline/strikethrough nest inside each other (`*bold /italic/ bold*` works); verbatim and code never do — their content is always literal, exactly matching org's own rule that these must be the innermost markers.
+
+**Horizontal rule**: a line consisting of only dashes, at least 5 of them (`-----`), renders as a horizontal rule. Whitespace around the dashes is fine; anything else on the line (a 6th character that isn't a dash) means it's just a paragraph, not a rule.
+
+**Subscript and superscript**: `_` and `^` mark sub/superscript — `x_i` and `x^2` both work without braces, and braces (`x_{alpha}`, `10^{100}`) are always accepted too, mainly useful for readability once the script itself is more than a couple of characters. Controlled by `org-use-sub-superscripts` (see [Local Variables](#local-variables)):
+
+| Value | Behavior |
+|---|---|
+| `t` (default) | Both `x_i` and `x_{i}` are interpreted |
+| `{}` | Only the braced form `x_{i}` is interpreted; a bare `x_i` stays literal text |
+| `nil` | Disabled entirely; `_`/`^` are always literal characters |
+
+`_` doubles as both the underline marker and the subscript marker — org's own overload, not a conflict introduced here. The two are disambiguated by what comes immediately before the `_`: underline needs whitespace/start-of-line/certain punctuation before it (`_underlined_`), subscript needs a non-whitespace character immediately before it (`a_b`) — the opposite condition, so in practice they essentially never collide. Sub/superscript content is always literal — `x_{*bold*}` doesn't further interpret the `*bold*` inside it, the same way verbatim/code content doesn't.
+
+Table cells currently render as plain text — none of the markup on this page is interpreted inside a table cell yet.
 
 ---
 
@@ -113,7 +150,7 @@ Tags and properties are read from a heading's own line only — **no inheritance
 ## Links and images
 
 - **`[[target][description]]`** links render as tappable text.
-- Internal links resolve by heading title (`[[*Some Heading]]`), by `CUSTOM_ID` property (`[[#my-id]]`), or fall back to a title search for bare text — tapping one expands ancestors and scrolls to the target heading.
+- Internal links resolve by heading title (`[[*Some Heading]]`), by `CUSTOM_ID` property (`[[#my-id]]`), or fall back to a title search for bare text — tapping one expands ancestors and scrolls to the target heading. Set a heading's `CUSTOM_ID` via the properties section of its general editor (see [Editing your outline](#editing-your-outline)) — it's a property like any other, no dedicated action for it.
 - **`http://`/`https://` image links** render inline as actual images, if `#+STARTUP: inlineimages` is set (off by default — see below).
 - **Local/relative image paths** always show as a `[image: path]` placeholder, since resolving them to real pixels would need a registered filesystem directory handle this app doesn't have.
 - Links to other files (`file:./notes.org`) show a status message when tapped but don't navigate — multi-file navigation isn't built.
@@ -136,7 +173,7 @@ org-pwa reads and applies `#+STARTUP:` directives, typically on the first line o
 
 Manually cycling a heading to "fully expanded" (the slide-left gesture, or tapping through the fold states) always reveals everything about that heading — properties and block content included — regardless of what the file's `#+STARTUP:` line says. So a `showall` file still lets you open any specific heading's properties or block content by hand; you're never stuck needing to change the file's own directive just to peek at one thing. This reverses cleanly too: collapsing the heading again — swipe, or the chevron — correctly re-hides whatever was revealed, rather than leaving it stuck visible.
 
-These defaults are chosen to match real Emacs org-mode's actual out-of-the-box behavior (no `#+STARTUP` line means fully shown, not folded), not an arbitrary choice. (Archived-heading cycling behavior used to be documented here as `#+STARTUP: archived`/`noarchived` — that was a mistake; it's not real org syntax. See [Local Variables](#local-variables) for the actual, corrected mechanism.)
+These defaults are chosen to match real Emacs org-mode's actual out-of-the-box behavior (no `#+STARTUP` line means fully shown, not folded), not an arbitrary choice. See [Local Variables](#local-variables) for archived-heading cycling behavior, which is a separate mechanism from `#+STARTUP:` entirely.
 
 ---
 
@@ -155,11 +192,21 @@ Separate from `#+STARTUP:` — this is a general *Emacs* mechanism (works in any
 
 Currently recognized:
 
+| Variable | Default | What it does |
+|---|---|---|
+| `org-agenda-start-on-weekday` | `1` (Monday) | Which weekday the agenda's Week view starts on |
+| `org-cycle-open-archived-trees` | `nil` | Whether the swipe gesture can open an archived heading |
+| `org-agenda-skip-comment-trees` | `t` | Whether a commented heading (`** # ...`) is excluded from the agenda |
+| `org-agenda-skip-archived-trees` | `t` | Whether an archived heading is excluded from the agenda |
+| `org-contacts-birthday-property` | `BIRTHDAY` | Which property key `org-contacts-anniversaries` reads |
+| `org-use-sub-superscripts` | `t` | Whether/how `_`/`^` are interpreted as sub/superscript |
+
 - **`org-agenda-start-on-weekday`** — which weekday the agenda's Week view starts on. `0` = Sunday, `1` = Monday (the default, matching real org), `2` = Tuesday, and so on through `6` = Saturday. An out-of-range value falls back to Monday rather than producing a nonsensical week.
 - **`org-cycle-open-archived-trees`** — `t` or `nil` (Lisp booleans, not JavaScript truthiness — the string `"true"` is not `t` and won't be treated as one). `nil` (the default, matching real org) means an archived heading (tagged `:ARCHIVE:`) starts folded regardless of the `#+STARTUP:` visibility mode, and **the slide-left swipe gesture refuses to open it** — whether cascading into it from a parent or swiping directly on it. This matches real org-mode's own stated behavior exactly (confirmed against the actual org.el source: the `ARCHIVE` tag's docstring says plainly "An archived subtree does not open during visibility cycling"). The **chevron is different on purpose**: tapping it still opens an archived heading regardless of this setting. Real Emacs has separate force-open mechanisms outside of TAB/cycling for exactly this situation (`C-c C-TAB`, a universal-argument TAB, `outline-show-all`) — a touch UI with no keyboard modifiers doesn't have anywhere else to put that, so the chevron fills that role here instead of being a second implementation of the swipe gesture. Without it, archived content would have no way to ever become visible again. Set `org-cycle-open-archived-trees` to `t` to make archived headings behave like any other heading for the swipe gesture too — the chevron behavior doesn't change either way, since it was never gated by this setting.
 - **`org-agenda-skip-comment-trees`** — `t` or `nil`. `t` (the default, matching real org) excludes "commented" headings from agenda views — a heading whose *title* starts with `# ` (or is just `#`), real org's own definition of a comment line applied to a heading title, e.g. `** # draft, not ready yet`. This is a heading-title convention, distinct from `#+STARTUP:`'s archive-cycling setting above and from a `#+BEGIN_COMMENT` block — it just means "don't show this on the agenda," while the heading stays a completely normal, visible entry in the outline itself. Set to `nil` to include commented headings in the agenda after all.
 - **`org-agenda-skip-archived-trees`** — `t` or `nil`. `t` (the default, matching real org) excludes archived headings (tagged `:ARCHIVE:`) from agenda views. Set to `nil` to include them.
 - **`org-contacts-birthday-property`** — which property key holds a heading's birthday/anniversary date+description for [`org-contacts-anniversaries`](#agenda). A plain string, not a Lisp boolean — e.g. `# org-contacts-birthday-property: EVENT`. Default `BIRTHDAY`, matching real org-contacts.el's own default exactly.
+- **`org-use-sub-superscripts`** — one of `t`, `{}`, or `nil` (not a plain boolean — three real values, matching real org exactly). See [Inline text markup](#inline-text-markup) for what each one does. An unrecognized value falls back to `t`, real org's own default, rather than silently disabling the feature.
 
 More variables will likely be added here over time; the parser itself is general-purpose (it captures whatever `# key: value` lines it finds in the block, whether or not this app currently acts on that particular key), so recognizing a new one is a small, additive change rather than a redesign.
 
@@ -167,13 +214,15 @@ More variables will likely be added here over time; the parser itself is general
 
 ## Archiving
 
-Headings tagged `:ARCHIVE:` are treated specially for folding (see [Local Variables](#local-variables) above) throughout the outline view. There is currently **no UI action to add or remove the archive tag** — you archive a heading by adding `:ARCHIVE:` yourself, most easily via the plain-text editor.
+Headings tagged `:ARCHIVE:` are treated specially for folding (see [Local Variables](#local-variables) above) throughout the outline view. Tap a heading's title, then **Archive**, to add the tag and stamp an `ARCHIVE_TIME` property — see [Editing your outline](#editing-your-outline) for the full behavior, including what Unarchive does and doesn't remove.
 
 ---
 
 ## The plain-text editor
 
-Tap **View → Text** to switch the entire outline view for one full-width textarea containing the whole document as raw org text — everything, including `#+STARTUP:`, `#+TODO:`, a [Local Variables](#local-variables) block, and any syntax the structured view still doesn't have dedicated UI for (priority cookies, archive tags). Tap **View → Org** to switch back; the text is reparsed from scratch at that point, so any changes — including to `#+STARTUP`/`#+TODO`/Local Variables — take effect immediately.
+Tap **View → Text** to switch the entire outline view for one full-width textarea containing the whole document as raw org text — everything, including `#+STARTUP:`, `#+TODO:`, a [Local Variables](#local-variables) block, and any syntax the structured view still doesn't have dedicated UI for (editing block content, changing the `#+TODO:` sequence itself). Tap **View → Org** to switch back; the text is reparsed from scratch at that point, so any changes — including to `#+STARTUP`/`#+TODO`/Local Variables — take effect immediately.
+
+**Switching in lands near wherever you last navigated to**, not always the top of the file — tap a search result or an internal link, then switch to Text, and the cursor and scroll position land at that same heading's line rather than losing the context you just found. This only tracks explicit "jump to X" navigation (search, internal links, agenda items), not manual scrolling within the outline; scroll around on your own and switch to Text, and it opens at the top as before. The scroll position itself is an approximation (proportional to the target line's position in the file), not a pixel-exact one — a wrapped line's real rendered height varies with content, so "near the same line" is the actual guarantee here, not perfect alignment.
 
 This is the escape hatch for everything the tap-driven UI doesn't cover yet.
 
@@ -204,8 +253,6 @@ Four kinds of dated entry show up, and **they behave differently from each other
   Placing the trigger line `%%(org-contacts-anniversaries)` anywhere in the file activates the scan — its own position doesn't matter beyond "present somewhere"; it's a switch, not itself an event, so it's usually placed under its own heading (`* Anniversaries & Birthdays`) purely for organization. Every heading anywhere in the file carrying the configured property gets checked, producing a line like `John Doe: Birthday (36)` — the age is computed fresh for whichever year's occurrence is being shown, so the same entry correctly shows a different number across a multi-year Month or Week view, not one age frozen in. `YYYY` can be the literal word `nil` when the actual year isn't known — the age then can't be computed, and `(xx)` is shown instead of a number, exactly as asked for rather than a bare dash or omitting the parentheses. Shown with a 🎂 icon in the agenda to tell it apart from the other three kinds at a glance. A heading with the property in an unparseable format, or no description text after the date, is silently skipped rather than erroring — an empty scan result and a broken one are treated the same way here, since there's no per-item feedback channel in an agenda list to report a parse failure through.
 
   Deliberately does **not** additionally require an `:EMAIL:` property to count as a valid contact, unlike real org-contacts' own default — confirmed directly against the org-contacts.el source before diverging, not assumed. Requiring it here would silently exclude anyone whose birthday is tracked without an email on file, which wasn't part of what this was built for.
-
-  **Supersedes** the standalone `%%(org-anniversary YEAR MONTH DAY) description` sexp entry from earlier versions of this app, now removed entirely — that mechanism required writing a date twice (once in a property, if you wanted one recorded at all, and again as literal text in the sexp line itself) for the same underlying fact. If you have old `%%(org-anniversary ...)` lines from before this change, they'll no longer produce agenda entries; move the date and description into a `:BIRTHDAY:` (or your configured property) and add `%%(org-contacts-anniversaries)` once, anywhere in the file.
 
 Other behavior:
 - **Completed items are excluded** — using the file's own `#+TODO:` sequence (whatever keywords you've actually defined as "done"), not a hardcoded check for the literal word `DONE`.
@@ -287,7 +334,8 @@ Reached via the ⚙ button, which replaces the outline with the settings screen 
 
 - **GitHub** — personal access token, repo owner, repo name, branch. Use a fine-grained token scoped to just that repo with Contents read/write only, not a broad classic token.
 - **WebDAV** — server URL, username, password (an app-specific password if your server supports one, not your main account password). Most WebDAV servers don't send CORS headers by default; if Open/Save fails with a network error, that's very likely a server-side CORS setting to fix, not a bug in this app.
-- **Appearance** — theme (System/Light/Dark) and font (System/Serif/Monospace, adjustable size).
+- **Appearance** — theme (System/Light/Dark), font (System/Serif/Monospace), and two independently adjustable font sizes on the same row: the main size (everything else) and **Other** (currently just tables, which have their own size rather than inheriting the main one — a table at the same size as prose text tends to feel cramped or oversized depending on column count).
+- **Backup** — **Export Settings** bundles everything on this page — appearance, capture templates, GitHub, and WebDAV, including credentials — into one downloadable JSON file, for moving settings to another device. A confirmation is shown first if the export would include a token or password, since the file contains them in plain text. **Import Settings…** picks a previously-exported file and merges its contents into what's already configured here — a setting the file doesn't mention is left completely untouched, so importing an older or partial export can never silently wipe out something it simply doesn't know about. Anything with an immediate visual effect (theme, fonts) applies right away, no reload needed.
 
 ---
 
@@ -309,12 +357,37 @@ On unsupported platforms, **Import** replaces "Local": pick a file once via the 
 
 ---
 
+## Keybindings
+
+A practical subset for a keyboard/mouse device — genuinely inert on a phone or tablet (nothing to press these on), except a Bluetooth keyboard paired to a tablet, which they work correctly for too, same code path either way.
+
+**Not a faithful reproduction of real org's own bindings**, deliberately: org leans heavily on the `C-c` prefix (`C-c C-t`, `C-c C-s`, `C-c C-d`, ...), and `C-c`/`C-v`/`C-a`/`C-f` and friends are universally reserved by every browser for copy/paste/select-all/find — they can't be reliably intercepted from a web page, and building shortcuts on that prefix would mean silently breaking copy-paste rather than a reasonable tradeoff. Real org's `M-←`/`M-→` (promote/demote) collide with the browser's own back/forward navigation the same way. Where the real org key is actually safe to use, it's used as-is; everywhere else this substitutes a different, safe key rather than pretending the conflict doesn't exist.
+
+| Key | Action | Matches real org? |
+|---|---|---|
+| `↓` or `j` | Move keyboard focus to the next visible heading | No direct equivalent — the web/vim-style analog |
+| `↑` or `k` | Move keyboard focus to the previous visible heading | Same |
+| `Tab` | Cycle the focused heading's fold state | **Yes** — `org-cycle`, exactly |
+| `Enter` | Open/close the focused heading's action row | No equivalent (org has no "action menu" concept) |
+| `t` | Cycle the focused heading's TODO state | Matches the underlying action of `C-c C-t` |
+| `Alt+↑` | Move the focused heading up among its siblings | **Yes** — `org-move-subtree-up` (`M-↑`) |
+| `Alt+↓` | Move the focused heading down among its siblings | **Yes** — `org-move-subtree-down` (`M-↓`) |
+| `[` | Promote (outdent) the focused heading | Stands in for `org-promote-subtree` (`M-←`, unsafe in a browser) |
+| `]` | Demote (indent) the focused heading | Stands in for `org-demote-subtree` (`M-→`, unsafe in a browser) |
+| `n` | New top-level heading | No direct equivalent (org uses `M-RET`, often reserved by window managers/browsers for fullscreen) |
+| `/` | Focus the search box | Common web convention, not org-specific |
+| `Escape` | Clear keyboard focus | Not an org concept — a web convention |
+
+Keyboard focus is a separate concept from tapping a heading open — a thin highlight around the focused row, moved with `↓`/`↑`/`j`/`k`, that the rest of the table's shortcuts act on. It starts unset; the first arrow/`j`/`k` press picks the first (or last) visible heading, and every shortcut after that requiring "the focused heading" simply does nothing until one exists. `Tab` here follows the same archived-heading rule as the swipe gesture (see [Local Variables](#local-variables)), not the chevron's force-open behavior — there's no keyboard equivalent to tapping the chevron specifically. None of this ever fires while actually typing in a text field — every shortcut above is disabled the moment any input or textarea has focus, and Ctrl/Cmd-held combinations are never treated as one of these shortcuts either, so the browser's own copy/paste/find/new-tab bindings are never at risk of a silent double-action.
+
+---
+
 ## Differences from Emacs org-mode
 
 This is the section to read if you know org-mode well and want to know exactly where org-pwa is a subset, a simplification, or just plain different.
 
 **Interaction model**
-- No keybindings at all. Everything is tap-to-reveal actions and gestures (swipe-left to cycle fold). There's no command equivalent to `M-x` or a keyboard-driven workflow, by design — this is built for touch first.
+- Touch-first, primarily: tap-to-reveal actions and gestures (swipe-left to cycle fold) are the primary interaction model, not a keyboard-driven one. A practical subset of keyboard shortcuts exists for non-touch devices (see [Keybindings](#keybindings)) — but there's still no command equivalent to `M-x`, no modal editing, and nothing close to Emacs's own keyboard-first depth.
 
 **Folding**
 - org-pwa's fold model is three flags per heading (`collapsed`, `bodyHidden`, and `drawersHidden`), not Emacs's richer subtree-visibility state machine. It's enough to implement `overview`/`content`/`showall`/`showeverything` correctly — including the real distinction between `showall` (drawers/blocks still folded) and `showeverything` (everything open) — but doesn't have a direct equivalent to cycling through every intermediate visibility Emacs supports.
@@ -338,13 +411,13 @@ This is the section to read if you know org-mode well and want to know exactly w
 - No UI action archives a heading for you (adds `:ARCHIVE:`) or moves it to a sibling archive file, even though the underlying engine has functions for both. Folding *respects* the archive tag once it's there; nothing in the UI *sets* it.
 
 **Agenda**
-- Day/Week/Month views, repeating-timestamp expansion, completed-item exclusion, SCHEDULED/DEADLINE carry-forward with a visible overdue count, and the delay/warning-period suffix making a deadline show up early are all built now (see [Agenda](#agenda)) — this used to be engine-only with no UI at all, and repeaters and delays used to be parsed but never expanded or acted on. What's still different from real org: it only ever looks at the currently open file (see "Single document at a time" below); the three repeater marks (`+`, `++`, `.+`) all expand identically here, since this is a read-only display with no notion of "when was this marked done" driving a catch-up/restart calculation; and there's no support for org's diary-sexp entries (`%%(diary-...)`) at all.
+- Day/Week/Month views, repeating-timestamp expansion, completed-item exclusion, SCHEDULED/DEADLINE carry-forward with a visible overdue count, and the delay/warning-period suffix making a deadline show up early are all built now (see [Agenda](#agenda)). What's still different from real org: it only ever looks at the currently open file (see "Single document at a time" below); the three repeater marks (`+`, `++`, `.+`) all expand identically here, since this is a read-only display with no notion of "when was this marked done" driving a catch-up/restart calculation; and there's no support for org's diary-sexp entries (`%%(diary-...)`), other than `org-contacts-anniversaries` (see [Agenda](#agenda)).
 
 **No babel, no command palette.** These were scoped early on as possible future work and never built.
 
 **No undo/redo.** Deletions ask for confirmation and are irreversible from within the app (your version-control/sync history is the real undo, if you have one). Headings *can* be reordered now (see above) — but only via the dedicated Move/Promote/Demote actions, not by dragging.
 
-**Search** looks at the whole document (see [Searching](#searching)), but it's substring matching only — no regex, no search-and-replace, no filtering the outline view down to just the matches (it's a separate results list, not a live-filtered tree).
+**Search** looks at the whole document (see [Searching](#searching)), with an optional regex mode, but no search-and-replace and no filtering the outline view down to just the matches (it's a separate results list, not a live-filtered tree).
 
 **No export** — Markdown, HTML, and PDF export were discussed early on and never implemented. The plain-text editor gives you the raw org source, which is the only export path today.
 
@@ -359,9 +432,7 @@ This is the section to read if you know org-mode well and want to know exactly w
 Restated in one place for scanning:
 
 - No Markdown/HTML/PDF export
-- No archive UI action (tag it manually via plain-text mode)
-- No priority editing UI (tags, properties, and SCHEDULED/DEADLINE now have dedicated UI — see above)
-- Search is substring-only: no regex, no search-and-replace, no filtered tree view
+- Search regex mode is JavaScript RegExp, not Emacs regex syntax — no search-and-replace, no filtered tree view
 - `:COOKIE_DATA:` overrides for checkbox counting scope aren't read — counting is always hierarchical
 - No table formula evaluation
 - No undo/redo
@@ -383,4 +454,4 @@ Engine code (`src/`) and browser-specific adapters (`src-browser/`) are unit tes
 node --test
 ```
 
-638 tests as of this writing, covering the parser, every editing operation, fold/visibility logic (including the `showall`/`showeverything` distinction — confirmed against real org-mode's actual documented behavior: properties and block content stay folded in `showall`, revealed only in `showeverything` — and a real bug this caught: `isFullyExpanded` never checked `bodyHidden`/`drawersHidden`, so a heading loaded with either still hidden was incorrectly treated as already fully expanded), checkbox-cookie recalculation, search (plain and regex modes, including an invalid-pattern error path; matching against properties/TODO keyword/priority/SCHEDULED/DEADLINE, not just prose text; and filter-token parsing and integration -- +tag/-tag/todo:/priority:/key:value, AND-combining with each other and with free text, no tag inheritance to children, and URL/time false-positive exclusions), agenda/repeater expansion (including week/day boundary alignment, SCHEDULED/DEADLINE carry-forward with delay-based early warning, commented/archived-heading exclusion, the date-independent TODO view, and `org-contacts-anniversaries` — property parsing (including the nil-year and unparseable-value cases), age calculation and the "(xx)" unknown-age display, per-occurrence expansion across a multi-year range, the trigger line activating the scan regardless of its own position in the file, and full `buildAgendaItems` integration including a custom `org-contacts-birthday-property` key), correct resolution of a file with multiple `#+TODO:` lines, capture-template expansion and insertion (all four types, OLP target resolution, the sequential-table-mutation bug this coverage originally caught, and a serious data-loss bug where editing a just-captured item could silently overwrite unrelated pre-existing content elsewhere in the same heading), the in-app Docs view's markdown parser (including against this actual README's real content, catching a slug-generation mismatch against GitHub's own anchor algorithm that would otherwise have silently broken a table-of-contents link), heading move/promote/demote (including whole-subtree relocation, recursive level shifts, and every natural-boundary no-op case), timestamp building/delay parsing and plain-timestamp-in-title editing for the structured SCHEDULED/DEADLINE editor, Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network, including `list()` for both -- GitHub's Contents-API array response, and WebDAV's hand-rolled PROPFIND multistatus XML parser covering cross-server namespace-prefix variation, percent-encoded filenames, and a real bug this coverage caught: self-reference detection for a subdirectory listing, which only worked correctly for the root before the fix). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change, and the capture UI flow, the More-menu restructuring, the data-loss fix, the Docs view, heading reordering, the action-menu stay-open/tap-to-close behavior, properties/block-content rendering across all four `#+STARTUP:` modes, archive-tree cycling (the swipe gesture correctly refusing to open an archived heading whether cascading from a parent or acting on it directly, matching real org-mode's unconditional rule -- a genuine bug fixed here, since the direct case previously opened the whole subtree -- while the chevron deliberately keeps working on an archived heading either way, this app's stand-in for Emacs's own separate force-open mechanisms that a touch UI has nowhere else to put), and the `org-contacts-anniversaries` agenda display (default and custom birthday-property configurations both verified), and the search panel (regex toggle, filter tokens combining correctly through real input events, property-match navigation correctly revealing drawers, and the invalid-regex error path) and the GitHub/WebDAV file browser (folder navigation, .org filtering, opening a file, the "type a path instead" fallback correctly falling all the way back to the normal button row rather than getting stuck on stale state -- a real bug this testing caught and fixed, and the listing-failure error path) were additionally verified via DOM-stub integration tests exercising the real button/prompt/edit/insertion/fetch/swipe-gesture paths end to end, not just the underlying engine in isolation.
+697 tests as of this writing, covering the parser, every editing operation, fold/visibility logic (including the `showall`/`showeverything` distinction — confirmed against real org-mode's actual documented behavior: properties and block content stay folded in `showall`, revealed only in `showeverything` — and a real bug this caught: `isFullyExpanded` never checked `bodyHidden`/`drawersHidden`, so a heading loaded with either still hidden was incorrectly treated as already fully expanded), checkbox-cookie recalculation, search (plain and regex modes, including an invalid-pattern error path; matching against properties/TODO keyword/priority/SCHEDULED/DEADLINE, not just prose text; and filter-token parsing and integration -- +tag/-tag/todo:/priority:/key:value, AND-combining with each other and with free text, no tag inheritance to children, and URL/time false-positive exclusions), agenda/repeater expansion (including week/day boundary alignment, SCHEDULED/DEADLINE carry-forward with delay-based early warning, commented/archived-heading exclusion, the date-independent TODO view, and `org-contacts-anniversaries` — property parsing (including the nil-year and unparseable-value cases), age calculation and the "(xx)" unknown-age display, per-occurrence expansion across a multi-year range, the trigger line activating the scan regardless of its own position in the file, and full `buildAgendaItems` integration including a custom `org-contacts-birthday-property` key), correct resolution of a file with multiple `#+TODO:` lines, capture-template expansion and insertion (all four types, OLP target resolution, the sequential-table-mutation bug this coverage originally caught, and a serious data-loss bug where editing a just-captured item could silently overwrite unrelated pre-existing content elsewhere in the same heading), the in-app Docs view's markdown parser (including against this actual README's real content, catching a slug-generation mismatch against GitHub's own anchor algorithm that would otherwise have silently broken a table-of-contents link; GFM pipe table parsing with alignment; and a real bug this coverage caught: an indented fenced code block, nested under a bullet list item exactly as this README's own `org-contacts-anniversaries` example is, silently fell through to garbled paragraph text because the fence-detection regex required zero leading whitespace), heading move/promote/demote (including whole-subtree relocation, recursive level shifts, and every natural-boundary no-op case), priority setting/clearing/validation and its round-trip through serialization, horizontal-rule detection (including that it correctly interrupts a paragraph rather than being swallowed as literal text -- a real bug this coverage caught), inline sub/superscript parsing across all three `org-use-sub-superscripts` modes (including disambiguation from the pre-existing `_underline_` marker, which shares the same `_` character), timestamp building/delay parsing and plain-timestamp-in-title editing for the structured SCHEDULED/DEADLINE editor, Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking `fetch` for GitHub/WebDAV so tests never touch the network, including `list()` for both -- GitHub's Contents-API array response, and WebDAV's hand-rolled PROPFIND multistatus XML parser covering cross-server namespace-prefix variation, percent-encoded filenames, and a real bug this coverage caught: self-reference detection for a subdirectory listing, which only worked correctly for the root before the fix). `app.js` itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change, and the capture UI flow, the More-menu restructuring, the data-loss fix, the Docs view, heading reordering, the action-menu stay-open/tap-to-close behavior, properties/block-content rendering across all four `#+STARTUP:` modes, archive-tree cycling (the swipe gesture correctly refusing to open an archived heading whether cascading from a parent or acting on it directly, matching real org-mode's unconditional rule -- a genuine bug fixed here, since the direct case previously opened the whole subtree -- while the chevron deliberately keeps working on an archived heading either way, this app's stand-in for Emacs's own separate force-open mechanisms that a touch UI has nowhere else to put), and the `org-contacts-anniversaries` agenda display (default and custom birthday-property configurations both verified), and the search panel (regex toggle, filter tokens combining correctly through real input events, property-match navigation correctly revealing drawers, and the invalid-regex error path) and the GitHub/WebDAV file browser (folder navigation, .org filtering, opening a file, the "type a path instead" fallback correctly falling all the way back to the normal button row rather than getting stuck on stale state -- a real bug this testing caught and fixed, and the listing-failure error path), the general editor (structured tags/priority/properties editing alongside SCHEDULED/DEADLINE, all six fields committing together on Save or discarding together on Cancel, verified including that Cancel genuinely discards everything and not just the timestamp fields), the Archive/Unarchive action, the restructured 6-column action menu and centered button grids at every menu size, and the keyboard shortcuts (focus navigation, fold-cycling, TODO-cycling, move/promote/demote, all correctly disabled while typing in a field, Ctrl/Cmd combinations never triggering a shortcut) were additionally verified via DOM-stub integration tests exercising the real button/prompt/edit/insertion/fetch/swipe-gesture/keydown paths end to end, not just the underlying engine in isolation.
