@@ -35,6 +35,32 @@ const LINK_RE = /^\[\[([^\]]+?)\](?:\[([^\]]+?)\])?\]/;
 const COMMENT_RE = /^@@comment:(.*?)@@/;
 const IMAGE_EXT_RE = /\.(png|jpe?g|gif|svg|webp|bmp)$/i;
 
+// Real org auto-links a BARE URI (no [[...]] brackets at all) for "a
+// well-defined set of schemes" (confirmed directly against org's own
+// manual/compact guide) -- not any arbitrary "word:word" text, which
+// would misfire on things like a time ("10:30") or a citation-style
+// abbreviation. These are the schemes this app actually resolves (see
+// link-resolve.js) -- http/https/ftp/mailto for ordinary external
+// links, doi for academic citations (resolved to doi.org), and
+// file/github/webdav for the file-linking schemes this app supports.
+const AUTOLINK_SCHEMES = ['https', 'http', 'ftp', 'mailto', 'doi', 'file', 'github', 'webdav'];
+const BARE_URL_RE = new RegExp('^(?:' + AUTOLINK_SCHEMES.join('|') + '):[^\\s<>]+', 'i');
+// Trailing sentence punctuation almost never belongs to the URL itself
+// ("see https://example.com/page." -- the period ends the sentence,
+// not the link) -- stripped one character at a time from the end of a
+// bare-URL match, the same heuristic common URL auto-linkers use
+// (e.g. Rust's own rustdoc bare-URL lint). A URL that genuinely ends
+// in one of these characters is the rare case traded off here, same
+// as elsewhere in this parser (see matchScriptAt's own documented
+// tradeoffs) -- wrapping it in [[...]] or <...> sidesteps this
+// entirely if it ever matters.
+const TRAILING_PUNCTUATION_RE = /[.,;:!?)\]}'"]+$/;
+// <https://example.com> -- real org's other recognized plain-URI form,
+// explicitly called out in org's own manual as equivalent to the bare
+// form above, just with angle brackets marking the boundary instead of
+// relying on trailing-punctuation heuristics.
+const ANGLE_URL_RE = /^<((?:https?|ftp|mailto|doi|file|github|webdav):[^\s<>]+)>/i;
+
 const OPEN_PRE_RE = /[\s\-({'"]/;
 const CLOSE_POST_RE = /[\s.,;:!?)\]}'"-]/;
 
@@ -158,6 +184,32 @@ function parseInline(text, opts = {}) {
         nodes.push({ type: 'link', target, description });
       }
       pos += linkMatch[0].length;
+      continue;
+    }
+
+    const angleMatch = ANGLE_URL_RE.exec(remaining);
+    if (angleMatch && angleMatch.index === 0) {
+      flush();
+      const target = angleMatch[1];
+      if (IMAGE_EXT_RE.test(target)) {
+        nodes.push({ type: 'image', target });
+      } else {
+        nodes.push({ type: 'link', target, description: null });
+      }
+      pos += angleMatch[0].length;
+      continue;
+    }
+
+    const bareMatch = BARE_URL_RE.exec(remaining);
+    if (bareMatch && bareMatch.index === 0) {
+      flush();
+      const target = bareMatch[0].replace(TRAILING_PUNCTUATION_RE, '');
+      if (IMAGE_EXT_RE.test(target)) {
+        nodes.push({ type: 'image', target });
+      } else {
+        nodes.push({ type: 'link', target, description: null });
+      }
+      pos += target.length;
       continue;
     }
 

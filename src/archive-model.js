@@ -180,24 +180,24 @@ function unarchiveInPlace(heading) {
 }
 
 /**
- * Archive-to-sibling-file: removes `heading` from `sourceDoc` and returns a
- * clone stamped with ARCHIVE_TIME / ARCHIVE_FILE / ARCHIVE_OLPATH /
- * ARCHIVE_CATEGORY (and, if markDone, ARCHIVE_TODO), ready to be appended to
- * an archive document via appendToArchive().
- *
- * This does not touch `archiveDoc` itself — callers decide when/how to
- * persist the archive file (it may not even be open yet), matching the
- * "archive file is just another file" framing from §7 of the requirements.
+ * Builds the stamped, ready-to-insert clone of `heading` for archiving
+ * -- everything extractForArchive does EXCEPT removing the original
+ * from sourceDoc. Deliberately non-mutating: safe to call before
+ * knowing whether the actual archive destination write will succeed,
+ * so a cross-file archive (see app.js) can attempt that write FIRST
+ * and only remove the original afterward, once the write has actually
+ * succeeded -- a network failure or permission problem can then never
+ * silently lose the heading.
  */
-function extractForArchive(sourceDoc, heading, sourceFilePath, opts = {}) {
+function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = {}) {
   const { now = new Date(), markDone = false, doneKeyword = 'DONE' } = opts;
 
   const ancestors = findAncestorPath(sourceDoc, heading);
   if (ancestors === null) {
-    throw new Error('extractForArchive: heading not found in sourceDoc');
+    throw new Error('buildArchivedClone: heading not found in sourceDoc');
   }
   const olpath = ancestors.map((h) => h.title).join('/');
-  const category = ancestors.length > 0 ? ancestors[0].title : (heading.title || null);
+  const category = ancestors.length > 0 ? ancestors[0].title : heading.title || null;
 
   const clone = cloneHeading(heading);
 
@@ -210,6 +210,27 @@ function extractForArchive(sourceDoc, heading, sourceFilePath, opts = {}) {
     setProperty(clone, 'ARCHIVE_TODO', clone.todo);
     clone.todo = doneKeyword;
   }
+
+  return clone;
+}
+
+/**
+ * Archive-to-sibling-file: removes `heading` from `sourceDoc` and returns a
+ * clone stamped with ARCHIVE_TIME / ARCHIVE_FILE / ARCHIVE_OLPATH /
+ * ARCHIVE_CATEGORY (and, if markDone, ARCHIVE_TODO), ready to be appended to
+ * an archive document via appendToArchive().
+ *
+ * This does not touch `archiveDoc` itself — callers decide when/how to
+ * persist the archive file (it may not even be open yet), matching the
+ * "archive file is just another file" framing from §7 of the requirements.
+ *
+ * Built on buildArchivedClone (clone+stamp) followed by the actual
+ * removal -- kept as this one combined convenience function for
+ * existing callers that don't need buildArchivedClone's own
+ * non-mutating write-before-remove safety separately.
+ */
+function extractForArchive(sourceDoc, heading, sourceFilePath, opts = {}) {
+  const clone = buildArchivedClone(sourceDoc, heading, sourceFilePath, opts);
 
   const located = findContainer(sourceDoc, heading);
   if (!located) {
@@ -268,6 +289,133 @@ function restoreFromArchive(archiveDoc, heading) {
   return clone;
 }
 
+/** Real org's own documented default for org-archive-location: a
+ *  sibling file named after the current one with "_archive" appended
+ *  (e.g. "notes.org" -> "notes.org_archive"), archived as top-level
+ *  entries within it. */
+const DEFAULT_ARCHIVE_LOCATION = '%s_archive::';
+
+/**
+ * Splits an org-archive-location string ("%s_archive::", "::* Archived
+ * Tasks", "~/org/archive.org::* %s", etc.) into { filePart,
+ * headlinePart } on the first "::" -- real org's own two-part
+ * convention exactly. Either half can be empty: an empty filePart
+ * means "archive within the current file," an empty headlinePart means
+ * "archive at that file's top level." A location with no "::" at all
+ * is treated as filePart-only with an empty headlinePart, rather than
+ * throwing on malformed input.
+ */
+function parseArchiveLocation(location) {
+  const idx = String(location).indexOf('::');
+  if (idx === -1) return { filePart: String(location), headlinePart: '' };
+  return { filePart: location.slice(0, idx), headlinePart: location.slice(idx + 2) };
+}
+
+/**
+ * Resolves a location's filePart to an actual target file id, given the
+ * CURRENT file's own id -- used both for the %s substitution itself
+ * and for placing a %s-substituted sibling file in the same directory
+ * as the current one. Returns null for "archive within the current
+ * file" (an empty filePart).
+ *
+ * %s becomes the current file's own basename WITH its extension (e.g.
+ * "notes.org" -- the default "%s_archive::" therefore produces
+ * "notes.org_archive", matching real org's well-known convention of an
+ * archive file ending in ".org_archive", not ".org").
+ *
+ * A filePart that doesn't contain %s and already looks like a path
+ * (contains "/") is used as a literal file id on the same backend as
+ * the current file; this app has no notion of an Emacs-style `~/` home
+ * directory to expand, so a location like "~/org/archive.org" is
+ * passed through as-is and needs to already be a valid id/path for
+ * whichever storage backend (local/GitHub/WebDAV) is actually active.
+ */
+function resolveArchiveFileId(filePart, currentFileId) {
+  if (!filePart) return null;
+  const lastSlash = currentFileId.lastIndexOf('/');
+  const dir = lastSlash === -1 ? '' : currentFileId.slice(0, lastSlash + 1);
+  const basename = lastSlash === -1 ? currentFileId : currentFileId.slice(lastSlash + 1);
+  if (filePart.includes('%s')) {
+    const substituted = filePart.split('%s').join(basename);
+    return substituted.includes('/') ? substituted : dir + substituted;
+  }
+  return filePart;
+}
+
+/**
+ * Determines the effective org-archive-location for `heading`, in real
+ * org's own priority order: the heading's own `ARCHIVE` property (a
+ * per-subtree override) first, then the file's `#+ARCHIVE:` keyword,
+ * then DEFAULT_ARCHIVE_LOCATION. Real org has a further fallback below
+ * the file keyword to a global Emacs variable of the same name -- not
+ * meaningful here, since this app has no persistent Emacs-style global
+ * configuration that would exist outside any particular file.
+ */
+function getArchiveLocation(doc, heading) {
+  if (heading.properties && heading.properties.ARCHIVE) return heading.properties.ARCHIVE;
+  const kw = (doc.keywords || []).find((k) => k.key === 'ARCHIVE');
+  if (kw) return kw.value;
+  return DEFAULT_ARCHIVE_LOCATION;
+}
+
+/** A blank heading shape matching the AST documented at the top of this
+ *  file exactly -- hand-rolled here rather than imported from
+ *  heading-edit.js's own createHeading, since heading-edit.js already
+ *  imports FROM this file (findContainer/findAncestorPath/shiftLevels),
+ *  and importing back would create a circular dependency between the
+ *  two modules. */
+function blankArchiveTargetHeading(title, level) {
+  return {
+    type: 'heading',
+    level,
+    todo: null,
+    priority: null,
+    title,
+    tags: [],
+    planning: { scheduled: null, deadline: null, closed: null },
+    properties: {},
+    propertyOrder: [],
+    bodyLines: [],
+    body: [],
+    collapsed: false,
+    bodyHidden: false,
+    drawersHidden: true,
+    children: [],
+  };
+}
+
+/**
+ * Inserts `extractedHeading` into `targetDoc` per `headlinePart` (the
+ * second half of a parsed archive location). A blank headlinePart
+ * appends as a new top-level entry (appendToArchive's own existing,
+ * simpler behavior). Otherwise headlinePart names a single target
+ * heading (real org's documented examples are always one level, e.g.
+ * `* Archived Tasks` -- leading asterisks/whitespace are stripped to
+ * get the bare title): an existing top-level heading in `targetDoc`
+ * with that exact title gets the extracted subtree appended as its
+ * last child; if none exists yet, one is created first. Only a single
+ * heading level is supported as an insertion target, not a full
+ * multi-level org outline path -- covers every example in org's own
+ * documentation for this variable, not a faithful reproduction of
+ * arbitrary olpath targeting.
+ */
+function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart) {
+  const trimmedPath = String(headlinePart || '').trim();
+  if (!trimmedPath) {
+    return appendToArchive(targetDoc, extractedHeading);
+  }
+  const targetTitle = trimmedPath.replace(/^\*+\s*/, '');
+  let target = (targetDoc.children || []).find((h) => h.title === targetTitle);
+  if (!target) {
+    target = blankArchiveTargetHeading(targetTitle, 1);
+    targetDoc.children.push(target);
+  }
+  shiftLevels(extractedHeading, target.level + 1);
+  target.children.push(extractedHeading);
+  target.collapsed = false; // otherwise the just-archived item vanishes from view immediately -- same reasoning demoteHeading itself already applies
+  return targetDoc;
+}
+
 export {
   ARCHIVE_TAG,
   setProperty,
@@ -283,8 +431,14 @@ export {
   isArchived,
   archiveInPlace,
   unarchiveInPlace,
+  buildArchivedClone,
   extractForArchive,
   appendToArchive,
   archiveToSiblingFile,
   restoreFromArchive,
+  DEFAULT_ARCHIVE_LOCATION,
+  parseArchiveLocation,
+  resolveArchiveFileId,
+  getArchiveLocation,
+  insertAtArchiveLocation,
 };

@@ -393,6 +393,28 @@ function insertCapture(target, type, expandedText) {
   return producedHeadings ? target.children[target.children.length - 1] : null;
 }
 
+/**
+ * Resolves a capture template's `file` field to an actual target file
+ * id, given the current document's own id. A path containing "/" is
+ * used as-is (already a fully-qualified path for whatever backend is
+ * active); a bare filename with no "/" is placed in the same directory
+ * as the current document (a sibling file) -- the closest equivalent
+ * this app's simpler, backend-agnostic file-id space has to real org's
+ * own org-directory-relative resolution for a capture template's file
+ * target. A blank/unset `file` resolves to the current document
+ * itself, matching a template with no file target at all (real org's
+ * `(file+olp ...)` with no file argument capturing into the buffer
+ * you're currently in).
+ */
+function resolveCaptureFileId(file, currentFileId) {
+  const trimmed = String(file || '').trim();
+  if (!trimmed) return currentFileId;
+  if (trimmed.includes('/')) return trimmed;
+  const lastSlash = currentFileId.lastIndexOf('/');
+  const dir = lastSlash === -1 ? '' : currentFileId.slice(0, lastSlash + 1);
+  return dir + trimmed;
+}
+
 export {
   formatTime,
   scanPrompts,
@@ -400,4 +422,5 @@ export {
   resolveOlpTarget,
   mergeFragmentInto,
   insertCapture,
+  resolveCaptureFileId,
 };
