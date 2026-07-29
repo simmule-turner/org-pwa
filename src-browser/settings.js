@@ -17,6 +17,7 @@ const KEYS = {
   theme: 'settings:theme',
   fontFamily: 'settings:fontFamily',
   fontSize: 'settings:fontSize',
+  otherFontSize: 'settings:otherFontSize',
   lastActiveDocument: 'settings:lastActiveDocument',
   captureTemplates: 'settings:captureTemplates',
 };
@@ -70,6 +71,7 @@ const DEFAULT_WEBDAV_CONFIG = { baseUrl: '', username: '', password: '' };
 const DEFAULT_THEME = 'system'; // 'system' | 'light' | 'dark'
 const DEFAULT_FONT_FAMILY = 'system'; // 'system' | 'serif' | 'monospace'
 const DEFAULT_FONT_SIZE = 16; // px
+const DEFAULT_OTHER_FONT_SIZE = 13; // px -- matches the previous hard-coded table font size, so introducing this setting doesn't change anyone's current appearance until they actually adjust it
 
 function unwrap(result) {
   return result && typeof result === 'object' && 'value' in result ? result.value : result;
@@ -145,6 +147,72 @@ export async function setFontSize(kvAdapter, fontSize) {
   await setJson(kvAdapter, KEYS.fontSize, fontSize);
 }
 
+/** Font size for "other" elements -- currently just tables, which have
+ *  their own fixed size rather than inheriting the main body font size
+ *  (a table with the same font size as prose text tends to feel
+ *  cramped or oversized depending on column count, so it's kept
+ *  independently adjustable rather than tied 1:1 to the main size). */
+export async function getOtherFontSize(kvAdapter) {
+  return getJson(kvAdapter, KEYS.otherFontSize, DEFAULT_OTHER_FONT_SIZE);
+}
+
+export async function setOtherFontSize(kvAdapter, fontSize) {
+  await setJson(kvAdapter, KEYS.otherFontSize, fontSize);
+}
+
+// ---- export/import all settings ------------------------------------------
+
+/**
+ * Bundles every currently-stored setting into one JSON-serializable
+ * object: theme, fonts (including the per-element font sizes), capture
+ * templates, GitHub/WebDAV config (including credentials -- this
+ * function doesn't redact or omit them; the UI layer is responsible
+ * for warning the person before an actual export that the file will
+ * contain a plaintext token/password), and the last-active-document
+ * pointer. Reuses KEYS directly rather than a second, separately
+ * maintained list -- a future setting added to KEYS is automatically
+ * included here with no further change needed.
+ *
+ * A setting that's never been configured (still at its default,
+ * nothing ever written) is simply omitted from the bundle rather than
+ * included as an explicit default value, so importing this bundle
+ * elsewhere only touches settings that were actually customized.
+ */
+export async function exportAllSettings(kvAdapter) {
+  const settings = {};
+  for (const name of Object.keys(KEYS)) {
+    const value = await getJson(kvAdapter, KEYS[name], undefined);
+    if (value !== undefined) settings[name] = value;
+  }
+  return { format: 'org-pwa-settings', version: 1, exportedAt: new Date().toISOString(), settings };
+}
+
+/**
+ * Writes every setting present in `bundle.settings` back to the kv
+ * store. This is a MERGE onto whatever's already there, not a full
+ * replace -- a key the bundle doesn't mention is left completely
+ * untouched, so importing an older or partial export can never
+ * silently wipe out a setting it simply doesn't know about. A key in
+ * the bundle that this version of the app doesn't recognize (e.g. from
+ * a newer export, or a hand-edited file) is skipped rather than
+ * erroring, the same forward-compatibility reasoning
+ * parseLocalVariables itself already applies to unknown keys.
+ *
+ * Returns the list of setting names actually written, so the caller
+ * can report back what was imported.
+ */
+export async function importAllSettings(kvAdapter, bundle) {
+  const settings = (bundle && typeof bundle === 'object' && bundle.settings) || {};
+  const imported = [];
+  for (const [name, value] of Object.entries(settings)) {
+    const key = KEYS[name];
+    if (!key) continue;
+    await setJson(kvAdapter, key, value);
+    imported.push(name);
+  }
+  return imported;
+}
+
 // ---- last active document (session resume) ------------------------------
 
 /** { documentId, storageKind } of the document that was open when the app
@@ -172,4 +240,4 @@ export async function setCaptureTemplates(kvAdapter, templates) {
 
 export { DEFAULT_CAPTURE_TEMPLATES };
 
-export { DEFAULT_GITHUB_CONFIG, DEFAULT_WEBDAV_CONFIG, DEFAULT_THEME, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE };
+export { DEFAULT_GITHUB_CONFIG, DEFAULT_WEBDAV_CONFIG, DEFAULT_THEME, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, DEFAULT_OTHER_FONT_SIZE };
