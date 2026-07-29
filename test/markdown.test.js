@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMarkdown, parseInline, slugify } from '../src/markdown.js';
+import { parseMarkdown, parseInline, slugify, splitTableRow, parseTableAlignment } from '../src/markdown.js';
 
 // ---- slugify ---------------------------------------------------------
 
@@ -194,4 +194,112 @@ test('REAL CONTENT: a bold-label bullet item (the common README style) parses co
   const blocks = parseMarkdown('- **`key`** \u2014 must be unique; shown next to the description in the picker.');
   const item = blocks[0].items[0];
   assert.equal(item.inline[0].type, 'bold');
+});
+
+// ---- tables ----------------------------------------------------------
+
+test('splitTableRow splits and trims cells, dropping the outer pipe fragments', () => {
+  assert.deepEqual(splitTableRow('| a | b | c |'), ['a', 'b', 'c']);
+  assert.deepEqual(splitTableRow('|a|b|c|'), ['a', 'b', 'c']);
+});
+
+test('parseTableAlignment reads left/center/right from colon placement, defaulting to left', () => {
+  assert.deepEqual(parseTableAlignment('|---|:---|---:|:---:|'), ['left', 'left', 'right', 'center']);
+});
+
+test('parseMarkdown recognizes a basic table: header, alignment, and rows', () => {
+  const md = ['| Category | Default |', '|---|---|', '| A | 1 |', '| B | 2 |'].join('\n');
+  const blocks = parseMarkdown(md);
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0].type, 'table');
+  assert.deepEqual(
+    blocks[0].header.map((c) => c.text),
+    ['Category', 'Default']
+  );
+  assert.deepEqual(blocks[0].align, ['left', 'left']);
+  assert.equal(blocks[0].rows.length, 2);
+  assert.deepEqual(
+    blocks[0].rows[0].map((c) => c.text),
+    ['A', '1']
+  );
+  assert.deepEqual(
+    blocks[0].rows[1].map((c) => c.text),
+    ['B', '2']
+  );
+});
+
+test('parseMarkdown table cells are inline-parsed (bold/code/links work inside a cell)', () => {
+  const md = ['| Key | Value |', '|---|---|', '| **bold** | `code` |'].join('\n');
+  const blocks = parseMarkdown(md);
+  assert.deepEqual(blocks[0].rows[0][0].inline, [{ type: 'bold', value: 'bold' }]);
+  assert.deepEqual(blocks[0].rows[0][1].inline, [{ type: 'code', value: 'code' }]);
+});
+
+test('parseMarkdown table stops at a blank line, leaving anything after as separate blocks', () => {
+  const md = ['| A | B |', '|---|---|', '| 1 | 2 |', '', 'A paragraph after.'].join('\n');
+  const blocks = parseMarkdown(md);
+  assert.equal(blocks.length, 2);
+  assert.equal(blocks[0].type, 'table');
+  assert.equal(blocks[1].type, 'paragraph');
+  assert.equal(blocks[1].text, 'A paragraph after.');
+});
+
+test('parseMarkdown: a paragraph immediately before a table does not swallow the table header', () => {
+  const md = ['Some intro text.', '| A | B |', '|---|---|', '| 1 | 2 |'].join('\n');
+  const blocks = parseMarkdown(md);
+  assert.equal(blocks.length, 2);
+  assert.equal(blocks[0].type, 'paragraph');
+  assert.equal(blocks[0].text, 'Some intro text.');
+  assert.equal(blocks[1].type, 'table');
+});
+
+test('parseMarkdown: a pipe-containing line with no valid separator row is NOT treated as a table', () => {
+  const md = '| this looks like a table row but has no separator after it |';
+  const blocks = parseMarkdown(md);
+  assert.equal(blocks[0].type, 'paragraph');
+});
+
+test('parseMarkdown correctly parses the actual folding-section table shape used in the README', () => {
+  const md = [
+    '| Category | Keywords | Default |',
+    '|---|---|---|',
+    '| Heading visibility | `overview`, `content`, `showall`, `showeverything` | `showeverything` |',
+    '| Inline images | `inlineimages`, `noinlineimages` | `noinlineimages` |',
+  ].join('\n');
+  const blocks = parseMarkdown(md);
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0].type, 'table');
+  assert.equal(blocks[0].rows.length, 2);
+  assert.equal(blocks[0].rows[0][0].text, 'Heading visibility');
+});
+
+// ---- indented fenced code blocks (nested under a list item) --------------
+
+test('a fenced code block indented under a list item is recognized as a code block, not garbled paragraph text', () => {
+  const md = ['- some bullet text:', '  ```org', '  * A heading', '  ```'].join('\n');
+  const blocks = parseMarkdown(md);
+  const codeBlock = blocks.find((b) => b.type === 'code-block');
+  assert.ok(codeBlock, 'the indented fence must be recognized as a code-block, not fall through to a paragraph');
+});
+
+test('an indented fenced code block has its indentation stripped from content lines', () => {
+  const md = ['- text:', '  ```org', '  * John Doe', '    :PROPERTIES:', '    :BIRTHDAY: 1990-05-15 Birthday', '    :END:', '  ```'].join(
+    '\n'
+  );
+  const blocks = parseMarkdown(md);
+  const codeBlock = blocks.find((b) => b.type === 'code-block');
+  assert.equal(codeBlock.text, ['* John Doe', '  :PROPERTIES:', '  :BIRTHDAY: 1990-05-15 Birthday', '  :END:'].join('\n'));
+});
+
+test('an unindented fenced code block still works exactly as before (no regression)', () => {
+  const md = ['```js', 'const x = 1;', '```'].join('\n');
+  const blocks = parseMarkdown(md);
+  assert.equal(blocks[0].type, 'code-block');
+  assert.equal(blocks[0].text, 'const x = 1;');
+});
+
+test('a blank line inside an indented code block is left as-is, not over-stripped or throwing', () => {
+  const md = ['  ```', '  line one', '', '  line two', '  ```'].join('\n');
+  const blocks = parseMarkdown(md);
+  assert.equal(blocks[0].text, 'line one\n\nline two');
 });

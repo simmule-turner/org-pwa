@@ -6,6 +6,7 @@ import {
   renameHeading,
   parseTagsInput,
   setHeadingTags,
+  setPriority,
   getPlanningText,
   setPlanningFromText,
   getPlainTimestampInTitle,
@@ -370,4 +371,40 @@ test('moveHeadingDown then serializeOrg->parseOrg round-trips correctly', () => 
     ['B', 'A']
   );
   assert.equal(reparsed.children[1].properties.ID, 'abc');
+});
+
+// ---- setPriority ---------------------------------------------------------
+
+test('setPriority sets a valid single-letter priority, normalized to uppercase', () => {
+  const h = createHeading({ level: 1, title: 'A' });
+  assert.equal(setPriority(h, 'a'), true);
+  assert.equal(h.priority, 'A');
+});
+
+test('setPriority clears the priority for any falsy value', () => {
+  const h = createHeading({ level: 1, title: 'A', priority: 'B' });
+  assert.equal(setPriority(h, null), true);
+  assert.equal(h.priority, null);
+  h.priority = 'B';
+  assert.equal(setPriority(h, ''), true);
+  assert.equal(h.priority, null);
+});
+
+test('setPriority rejects more than one character, leaving the heading unchanged', () => {
+  const h = createHeading({ level: 1, title: 'A', priority: 'B' });
+  assert.equal(setPriority(h, 'AB'), false);
+  assert.equal(h.priority, 'B');
+});
+
+test('setPriority rejects a non-letter character', () => {
+  const h = createHeading({ level: 1, title: 'A' });
+  assert.equal(setPriority(h, '1'), false);
+  assert.equal(h.priority, null);
+});
+
+test('setPriority round-trips correctly through serialization', () => {
+  const doc = parseOrg('* A');
+  setPriority(doc.children[0], 'A');
+  const text = serializeOrg(doc);
+  assert.match(text, /\* \[#A\] A/);
 });

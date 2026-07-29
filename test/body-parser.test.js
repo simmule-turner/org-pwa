@@ -155,3 +155,38 @@ test('a plain paragraph with no lists/tables/blocks', () => {
   assert.equal(para.type, 'paragraph');
   assert.deepEqual(para.lines, ['Line one.', 'Line two.']);
 });
+
+// ---- horizontal rule (5+ dashes) ------------------------------------------
+
+test('a line of exactly 5 dashes is parsed as an hr', () => {
+  const nodes = parseBody(['-----']);
+  assert.deepEqual(nodes, [{ type: 'hr' }]);
+});
+
+test('a line of more than 5 dashes is also an hr', () => {
+  const nodes = parseBody(['----------']);
+  assert.deepEqual(nodes, [{ type: 'hr' }]);
+});
+
+test('fewer than 5 dashes is NOT an hr -- stays a plain paragraph', () => {
+  const nodes = parseBody(['----']);
+  assert.equal(nodes[0].type, 'paragraph');
+});
+
+test('an hr line surrounded by whitespace is still recognized', () => {
+  const nodes = parseBody(['  -----  ']);
+  assert.deepEqual(nodes, [{ type: 'hr' }]);
+});
+
+test('an hr separates paragraphs correctly', () => {
+  const nodes = parseBody(['First paragraph.', '-----', 'Second paragraph.']);
+  assert.equal(nodes.length, 3);
+  assert.equal(nodes[0].type, 'paragraph');
+  assert.equal(nodes[1].type, 'hr');
+  assert.equal(nodes[2].type, 'paragraph');
+});
+
+test('dashes with any non-dash character are not an hr', () => {
+  const nodes = parseBody(['-----x']);
+  assert.equal(nodes[0].type, 'paragraph');
+});

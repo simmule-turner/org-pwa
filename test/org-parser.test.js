@@ -1,7 +1,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseOrg, serializeOrg } from '../src/org-parser.js';
+import { parseOrg, serializeOrg, findHeadingLineNumber } from '../src/org-parser.js';
 
 test('parses a basic heading with TODO, priority, and tags', () => {
   const doc = parseOrg('*** TODO [#A] Write report :work:urgent:');
@@ -146,4 +146,80 @@ test('parses the example doc from the org-mode primer without throwing', () => {
   assert.equal(doc.children.length, 2);
   assert.equal(doc.children[0].children[0].title, 'Sub-heading');
   assert.equal(doc.children[1].todo, 'TODO');
+});
+
+// ---- findHeadingLineNumber -------------------------------------------
+
+/** Verifies findHeadingLineNumber against the actual serializeOrg
+ *  output directly -- the line at the returned index must genuinely be
+ *  that heading's own title line, rather than trusting a hand-counted
+ *  expected number that could itself be wrong. */
+function assertLineIsHeading(doc, heading, expectedTitleFragment) {
+  const lineNum = findHeadingLineNumber(doc, heading);
+  const lines = serializeOrg(doc).split('\n');
+  assert.ok(lineNum >= 0 && lineNum < lines.length, `line number ${lineNum} out of range`);
+  assert.match(lines[lineNum], new RegExp('^\\*+ .*' + expectedTitleFragment));
+  return lineNum;
+}
+
+test('findHeadingLineNumber finds a top-level heading with no preceding content', () => {
+  const doc = parseOrg('* First\n* Second\n* Third');
+  assertLineIsHeading(doc, doc.children[0], 'First');
+  assertLineIsHeading(doc, doc.children[1], 'Second');
+  assertLineIsHeading(doc, doc.children[2], 'Third');
+});
+
+test('findHeadingLineNumber accounts for document-level keywords and body lines before the first heading', () => {
+  const doc = parseOrg('#+TITLE: My File\n#+TODO: TODO | DONE\nSome preamble text.\n\n* First heading');
+  assertLineIsHeading(doc, doc.children[0], 'First heading');
+});
+
+test('findHeadingLineNumber accounts for a heading\'s own body lines before its children', () => {
+  const doc = parseOrg('* Parent\nSome body text.\nMore body text.\n** Child');
+  assertLineIsHeading(doc, doc.children[0], 'Parent');
+  assertLineIsHeading(doc, doc.children[0].children[0], 'Child');
+});
+
+test('findHeadingLineNumber accounts for SCHEDULED/DEADLINE planning lines', () => {
+  const doc = parseOrg('* A\nSCHEDULED: <2026-01-01 Thu>\n* B');
+  assertLineIsHeading(doc, doc.children[1], 'B');
+});
+
+test('findHeadingLineNumber accounts for a properties drawer', () => {
+  const doc = parseOrg('* A\n:PROPERTIES:\n:ID: abc123\n:CUSTOM: value\n:END:\n* B');
+  assertLineIsHeading(doc, doc.children[1], 'B');
+});
+
+test('findHeadingLineNumber handles a deeply nested heading correctly', () => {
+  const doc = parseOrg('* A\n** B\nsome text\n*** C\nmore text\n**** D');
+  const target = doc.children[0].children[0].children[0].children[0];
+  assertLineIsHeading(doc, target, 'D');
+});
+
+test('findHeadingLineNumber returns -1 for a heading not present in the document', () => {
+  const doc1 = parseOrg('* A');
+  const doc2 = parseOrg('* B');
+  assert.equal(findHeadingLineNumber(doc1, doc2.children[0]), -1);
+});
+
+test('findHeadingLineNumber works correctly across multiple siblings with varied content', () => {
+  const doc = parseOrg(
+    [
+      '* A',
+      'body of A',
+      ':PROPERTIES:',
+      ':ID: 1',
+      ':END:',
+      '* B',
+      'SCHEDULED: <2026-01-01 Thu>',
+      '** B1',
+      '** B2',
+      '* C',
+    ].join('\n')
+  );
+  assertLineIsHeading(doc, doc.children[0], 'A');
+  assertLineIsHeading(doc, doc.children[1], 'B');
+  assertLineIsHeading(doc, doc.children[1].children[0], 'B1');
+  assertLineIsHeading(doc, doc.children[1].children[1], 'B2');
+  assertLineIsHeading(doc, doc.children[2], 'C');
 });

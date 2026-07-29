@@ -92,3 +92,110 @@ test('mixed plain text and emphasis in one line', () => {
     { type: 'text', value: ' increases depth.' },
   ]);
 });
+
+// ---- sub/superscript -------------------------------------------------
+
+test('a_b parses as a bare subscript "b" (default t mode)', () => {
+  const nodes = parseInline('a_b');
+  assert.deepEqual(nodes, [
+    { type: 'text', value: 'a' },
+    { type: 'subscript', value: 'b' },
+  ]);
+});
+
+test('a^b parses as a bare superscript "b" (default t mode)', () => {
+  const nodes = parseInline('a^b');
+  assert.deepEqual(nodes, [
+    { type: 'text', value: 'a' },
+    { type: 'superscript', value: 'b' },
+  ]);
+});
+
+test('a bare multi-character script is captured in full, not just one character', () => {
+  const nodes = parseInline('x_abc');
+  assert.deepEqual(nodes, [
+    { type: 'text', value: 'x' },
+    { type: 'subscript', value: 'abc' },
+  ]);
+});
+
+test('a_{b} (braced) parses the same as the bare form in t mode', () => {
+  const nodes = parseInline('a_{b}');
+  assert.deepEqual(nodes, [
+    { type: 'text', value: 'a' },
+    { type: 'subscript', value: 'b' },
+  ]);
+});
+
+test('a braced multi-character script works too', () => {
+  const nodes = parseInline('x_{alpha}');
+  assert.deepEqual(nodes, [
+    { type: 'text', value: 'x' },
+    { type: 'subscript', value: 'alpha' },
+  ]);
+});
+
+test('a leading sign in a bare script is included', () => {
+  const nodes = parseInline('x^-1');
+  assert.deepEqual(nodes, [
+    { type: 'text', value: 'x' },
+    { type: 'superscript', value: '-1' },
+  ]);
+});
+
+test('_ or ^ with no preceding character is never a script (needs something directly before it)', () => {
+  const nodes = parseInline('_b');
+  assert.equal(nodes.some((n) => n.type === 'subscript'), false);
+});
+
+test('_ or ^ preceded by whitespace is never a script', () => {
+  const nodes = parseInline('x _b');
+  assert.equal(nodes.some((n) => n.type === 'subscript'), false);
+});
+
+test('an unmatched opening brace falls through to literal text rather than throwing', () => {
+  const nodes = parseInline('x_{unterminated');
+  assert.equal(nodes.some((n) => n.type === 'subscript'), false);
+});
+
+// ---- org-use-sub-superscripts: nil mode -------------------------------
+
+test("mode 'nil' disables subscript/superscript entirely, even the braced form", () => {
+  const nodes = parseInline('a_b and a^b and a_{c}', { subSuperscriptMode: 'nil' });
+  assert.equal(nodes.some((n) => n.type === 'subscript' || n.type === 'superscript'), false);
+});
+
+// ---- org-use-sub-superscripts: '{}' mode -------------------------------
+
+test("mode '{}' only interprets the braced form -- a bare a_b is left as literal", () => {
+  const nodes = parseInline('a_b', { subSuperscriptMode: '{}' });
+  assert.equal(nodes.some((n) => n.type === 'subscript'), false);
+  assert.deepEqual(nodes, [{ type: 'text', value: 'a_b' }]);
+});
+
+test("mode '{}' still interprets a_{b}", () => {
+  const nodes = parseInline('a_{b}', { subSuperscriptMode: '{}' });
+  assert.deepEqual(nodes, [
+    { type: 'text', value: 'a' },
+    { type: 'subscript', value: 'b' },
+  ]);
+});
+
+// ---- disambiguation from underline ------------------------------------
+
+test('_underline text_ at the start of a line is still parsed as underline, not subscript', () => {
+  const nodes = parseInline('_underline text_');
+  assert.deepEqual(nodes, [{ type: 'underline', children: [{ type: 'text', value: 'underline text' }] }]);
+});
+
+test('_underline_ after whitespace is still underline, not subscript', () => {
+  const nodes = parseInline('word _underline_ word');
+  assert.equal(nodes.some((n) => n.type === 'underline'), true);
+  assert.equal(nodes.some((n) => n.type === 'subscript'), false);
+});
+
+test('subscript still works correctly alongside unrelated underline elsewhere in the same line', () => {
+  const nodes = parseInline('a_b and _underline_');
+  assert.equal(nodes.some((n) => n.type === 'subscript'), true);
+  assert.equal(nodes.some((n) => n.type === 'underline'), true);
+});

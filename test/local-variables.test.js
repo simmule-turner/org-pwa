@@ -8,6 +8,7 @@ import {
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
   getAgendaSkipArchivedTrees,
+  getUseSubSuperscripts,
 } from '../src/local-variables.js';
 
 // ---- parseLocalVariables --------------------------------------------------
@@ -135,4 +136,22 @@ test('getAgendaSkipArchivedTrees reads nil as false (include archived headings)'
 test('both new getters are safe with undefined/null vars', () => {
   assert.equal(getAgendaSkipCommentTrees(undefined), true);
   assert.equal(getAgendaSkipArchivedTrees(undefined), true);
+});
+
+// ---- getUseSubSuperscripts -------------------------------------------------
+
+test('getUseSubSuperscripts defaults to t when unset', () => {
+  assert.equal(getUseSubSuperscripts({}), 't');
+});
+
+test('getUseSubSuperscripts returns nil when explicitly set', () => {
+  assert.equal(getUseSubSuperscripts({ 'org-use-sub-superscripts': 'nil' }), 'nil');
+});
+
+test("getUseSubSuperscripts returns '{}' when explicitly set", () => {
+  assert.equal(getUseSubSuperscripts({ 'org-use-sub-superscripts': '{}' }), '{}');
+});
+
+test('getUseSubSuperscripts falls back to t for an unrecognized value', () => {
+  assert.equal(getUseSubSuperscripts({ 'org-use-sub-superscripts': 'garbage' }), 't');
 });
