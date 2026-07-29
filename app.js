@@ -9,8 +9,16 @@ import {
   parseArchiveLocation,
   resolveArchiveFileId,
   insertAtArchiveLocation,
+  buildRestoredClone,
+  isArchivedInPlace,
 } from './src/archive-model.js';
-import { resolveLinkTarget, resolveImagePath, guessImageMimeType, isExternalUrl } from './src/link-resolve.js';
+import {
+  resolveLinkTarget,
+  resolveImagePath,
+  guessImageMimeType,
+  isExternalUrl,
+  findHeadingByTitle,
+} from './src/link-resolve.js';
 import { parseInline } from './src/inline-markup.js';
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, toggleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
 import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
@@ -25,6 +33,7 @@ import {
   getAgendaSkipArchivedTrees,
   getContactsBirthdayProperty,
   getUseSubSuperscripts,
+  getArchiveConfirm,
 } from './src/local-variables.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import {
@@ -107,6 +116,9 @@ import {
   getCaptureTemplates,
   setCaptureTemplates,
   DEFAULT_CAPTURE_TEMPLATES,
+  getAgendaFiles,
+  setAgendaFiles,
+  DEFAULT_AGENDA_FILES,
 } from './src-browser/settings.js';
 
 const GLOBAL_TODO_DEFAULT = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
@@ -122,6 +134,92 @@ let githubConfig = { token: '', owner: '', repo: '', branch: 'main' };
 const githubAdapter = createGithubAdapter(() => githubConfig);
 let webdavConfig = { baseUrl: '', username: '', password: '' };
 const webdavAdapter = createWebdavAdapter(() => webdavConfig);
+
+// org-agenda-files equivalent: additional GitHub/WebDAV files the
+// Agenda/TODO views scan across, beyond whichever file is currently
+// open. agendaFilesConfig is the raw configured list (loaded at
+// bootstrap, refreshed whenever Settings saves a new one, same pattern
+// as githubConfig/webdavConfig above). agendaFilesCache holds the
+// actual fetched-and-parsed result per entry -- populated
+// asynchronously (see ensureAgendaFilesLoaded), since buildAgendaItems
+// itself and the Agenda/TODO views that call it are synchronous; the
+// view renders with whatever's cached so far and re-renders again once
+// each fetch resolves, the same "render now, swap in what arrives"
+// pattern already used for inline images.
+let agendaFilesConfig = [];
+const agendaFilesCache = new Map(); // "scheme:path" -> { doc, documentId } | { error } | { loading: true }
+let agendaFilesCacheLoadedFor = null; // JSON of the config this cache reflects, so a settings change invalidates stale entries
+
+/** Kicks off a fetch for every configured agenda file not already
+ *  cached (or currently loading), triggering a re-render each time one
+ *  resolves. Safe to call on every agenda/TODO render -- already-
+ *  cached or in-flight entries are skipped, so this is cheap once
+ *  everything's loaded. A config change (different agendaFilesConfig
+ *  than the cache currently reflects) clears the whole cache first, so
+ *  a removed entry doesn't linger and a changed path gets refetched. */
+function ensureAgendaFilesLoaded() {
+  const configKey = JSON.stringify(agendaFilesConfig);
+  if (agendaFilesCacheLoadedFor !== configKey) {
+    agendaFilesCache.clear();
+    agendaFilesCacheLoadedFor = configKey;
+  }
+
+  for (const entry of agendaFilesConfig) {
+    const key = entry.scheme + ':' + entry.path;
+    if (agendaFilesCache.has(key)) continue; // already loaded, errored, or currently loading
+
+    agendaFilesCache.set(key, { loading: true }); // set BEFORE the async call, so a concurrent call to this function can't kick off a duplicate fetch for the same key
+
+    const adapter = entry.scheme === 'github' ? githubAdapter : entry.scheme === 'webdav' ? webdavAdapter : null;
+    if (!adapter) {
+      agendaFilesCache.set(key, { error: `Unsupported scheme "${entry.scheme}" \u2014 only github/webdav are supported for agenda files.` });
+      continue;
+    }
+
+    adapter
+      .read(entry.path)
+      .then((result) => {
+        agendaFilesCache.set(
+          key,
+          result ? { doc: parseOrg(result.content), documentId: entry.path } : { error: `"${entry.path}" not found.` }
+        );
+        if (currentView === 'agenda' || currentView === 'tasklist') render();
+      })
+      .catch((err) => {
+        agendaFilesCache.set(key, { error: err.message });
+        if (currentView === 'agenda' || currentView === 'tasklist') render();
+      });
+  }
+}
+
+/** Forces a fresh fetch of every configured agenda file, discarding
+ *  whatever's currently cached (including any past errors) -- the
+ *  explicit "Refresh" action, for when a file's contents have actually
+ *  changed since it was last loaded this session. */
+function refreshAgendaFiles() {
+  agendaFilesCache.clear();
+  agendaFilesCacheLoadedFor = null;
+  ensureAgendaFilesLoaded();
+  render();
+}
+
+/** The full docs list for agenda/TODO aggregation: the currently open
+ *  document plus every successfully-loaded configured agenda file,
+ *  deduplicated by documentId -- if the current file also happens to
+ *  be in the configured list, the live in-memory version (with
+ *  whatever unsaved edits exist right now) wins over a separately
+ *  fetched, possibly-stale read of the same file. */
+function aggregateAgendaDocs() {
+  const docs = [{ documentId: state.documentId, doc: state.doc }];
+  const seen = new Set([state.documentId]);
+  for (const entry of agendaFilesCache.values()) {
+    if (entry.doc && !seen.has(entry.documentId)) {
+      docs.push({ documentId: entry.documentId, doc: entry.doc });
+      seen.add(entry.documentId);
+    }
+  }
+  return docs;
+}
 
 /** Which adapter Save/Save-As-in-place should use — whatever storage kind
  *  the currently open document actually came from. This is the crux of
@@ -164,6 +262,20 @@ async function archiveHeadingToLocation(heading) {
   const { filePart, headlinePart } = parseArchiveLocation(location);
   const targetFileId = resolveArchiveFileId(filePart, state.documentId);
 
+  if (getArchiveConfirm(state.localVariables)) {
+    const destinationLabel =
+      targetFileId === null || targetFileId === state.documentId
+        ? headlinePart.trim()
+          ? `this file, under "${headlinePart.trim().replace(/^\*+\s*/, '')}"`
+          : 'this file (top level)'
+        : headlinePart.trim()
+          ? `"${targetFileId}", under "${headlinePart.trim().replace(/^\*+\s*/, '')}"`
+          : `"${targetFileId}" (top level)`;
+    if (!window.confirm(`Archive "${heading.title}" to ${destinationLabel}?`)) {
+      return;
+    }
+  }
+
   if (targetFileId === null || targetFileId === state.documentId) {
     // Same file: build the stamped copy, remove the original, insert
     // the copy at the target location, save -- one atomic in-memory
@@ -172,7 +284,7 @@ async function archiveHeadingToLocation(heading) {
     removeHeading(state.doc, heading);
     insertAtArchiveLocation(state.doc, clone, headlinePart);
     commitAndRender();
-    setStatus('Archived within this file.');
+    setStatus('--- Archive complete.');
     return;
   }
 
@@ -208,7 +320,111 @@ async function archiveHeadingToLocation(heading) {
   // The write succeeded -- now, and only now, remove the original.
   removeHeading(state.doc, heading);
   commitAndRender();
-  setStatus(`Archived to ${targetFileId}.`);
+  setStatus(`--- Archive complete. (${targetFileId})`);
+}
+
+/**
+ * Performs a full restore/unarchive: reads the archived heading's own
+ * `ARCHIVE_FILE`/`ARCHIVE_OLPATH` properties to determine where it
+ * originally came from, moves it back there, and strips the `:ARCHIVE:`
+ * tag and all four `ARCHIVE_*` properties (via buildRestoredClone).
+ *
+ * Same write-before-remove transaction safety as archiveHeadingToLocation:
+ * the destination is written FIRST (when it's a different file than the
+ * one currently open), and the archived heading is only removed from
+ * THIS file once that write has actually succeeded -- a network
+ * failure or permission problem leaves the archived heading exactly
+ * where it was, with a clear error, never silently lost.
+ *
+ * A heading with no recorded `ARCHIVE_FILE` (tagged `:ARCHIVE:` by
+ * hand, or via the tag-toggle mechanism from an earlier version of
+ * this app, rather than through org-archive-subtree) has nowhere
+ * on record to be restored TO -- the honest behavior is to just strip
+ * the tag/properties in place, at the top level of the file it's
+ * already in, rather than guessing.
+ */
+async function unarchiveHeadingToOriginalLocation(heading) {
+  const archiveFile = heading.properties.ARCHIVE_FILE || null;
+  const archiveOlpath = heading.properties.ARCHIVE_OLPATH || '';
+  const olpSegments = archiveOlpath ? archiveOlpath.split('/') : [];
+
+  if (getArchiveConfirm(state.localVariables)) {
+    const destinationLabel = !archiveFile
+      ? 'this file (no original location recorded \u2014 the archive tag will just be removed)'
+      : archiveFile === state.documentId
+        ? olpSegments.length > 0
+          ? `this file, under "${olpSegments.join(' / ')}"`
+          : 'this file (top level)'
+        : olpSegments.length > 0
+          ? `"${archiveFile}", under "${olpSegments.join(' / ')}"`
+          : `"${archiveFile}" (top level)`;
+    if (!window.confirm(`Restore "${heading.title}" to ${destinationLabel}?`)) {
+      return;
+    }
+  }
+
+  if (!archiveFile || archiveFile === state.documentId) {
+    // No recorded location, or the recorded location IS the currently
+    // open file -- either way, this is a same-file, in-memory-only
+    // operation with no cross-file I/O risk.
+    const clone = buildRestoredClone(heading);
+    removeHeading(state.doc, heading);
+    if (olpSegments.length > 0) {
+      const target = resolveOlpTarget(state.doc, olpSegments);
+      target.children.push(clone);
+      target.collapsed = false; // otherwise the just-restored item vanishes from view immediately
+    } else {
+      state.doc.children.push(clone);
+    }
+    commitAndRender();
+    setStatus('--- Restore complete.');
+    return;
+  }
+
+  const adapter = activeDiskAdapter();
+  if ((state.storageKind === 'filesystem' || state.storageKind === 'input') && !(await adapter.exists(archiveFile))) {
+    setStatus(
+      `Can't restore to "${archiveFile}" automatically \u2014 local files need that file picked/created once first (browser security requires a file picker per file, not something this can do on its own mid-restore). Try File \u2192 Open or Save As on "${archiveFile}" first, or use GitHub/WebDAV for automatic cross-file restoring.`
+    );
+    return;
+  }
+
+  setStatus(`Restoring to ${archiveFile}\u2026`);
+  const clone = buildRestoredClone(heading);
+
+  let targetDoc;
+  try {
+    const existing = await adapter.read(archiveFile);
+    if (!existing) {
+      setStatus(`Could not restore: "${archiveFile}" no longer exists.`);
+      return;
+    }
+    targetDoc = parseOrg(existing.content);
+  } catch (err) {
+    setStatus(`Could not restore: reading "${archiveFile}" failed \u2014 ${err.message}`);
+    return;
+  }
+
+  if (olpSegments.length > 0) {
+    const target = resolveOlpTarget(targetDoc, olpSegments);
+    target.children.push(clone);
+    target.collapsed = false;
+  } else {
+    targetDoc.children.push(clone);
+  }
+
+  try {
+    await adapter.write(archiveFile, serializeOrg(targetDoc));
+  } catch (err) {
+    setStatus(`Could not restore: writing "${archiveFile}" failed \u2014 ${err.message}. Nothing was removed from this file.`);
+    return;
+  }
+
+  // The write succeeded -- now, and only now, remove the archived
+  // heading from THIS (the currently open, archive) file.
+  removeHeading(state.doc, heading);
+  commitAndRender();
+  setStatus(`--- Restore complete. (${archiveFile})`);
 }
 
 const outlineEl = document.getElementById('outline');
@@ -738,18 +954,17 @@ function renderLinkNode(node) {
   }
 
   if (resolution.type === 'file') {
-    const span = document.createElement('span');
-    span.textContent = label;
-    span.style.color = 'var(--text-muted, #888)';
-    span.style.textDecoration = 'underline dotted';
-    span.style.cursor = 'pointer';
-    span.setAttribute(INLINE_LINK_ATTR, '1');
-    span.onclick = (e) => {
+    const a = document.createElement('a');
+    a.href = '#';
+    a.textContent = label;
+    a.style.color = 'var(--accent)';
+    a.setAttribute(INLINE_LINK_ATTR, '1');
+    a.onclick = (e) => {
+      e.preventDefault();
       e.stopPropagation();
-      const schemeLabel = resolution.scheme === 'file' ? 'local file' : resolution.scheme;
-      setStatus(`Can't open ${schemeLabel} links yet: ${resolution.path}` + (resolution.inFileTarget ? ' :: ' + resolution.inFileTarget : ''));
+      openFileLink(resolution);
     };
-    return span;
+    return a;
   }
 
   // Unresolved: e.g. a *Heading or #custom-id link with no matching
@@ -1754,12 +1969,16 @@ function renderRow(row, todoSequence) {
               },
             },
             {
-              icon: '\ud83d\uddc4\ufe0f',
-              label: 'Archive',
+              icon: isArchivedInPlace(row.node) ? '\ud83d\udce4' : '\ud83d\uddc4\ufe0f',
+              label: isArchivedInPlace(row.node) ? 'Unarchive (restore)' : 'Archive',
               onClick: async () => {
                 actionMenuFor = null;
                 render();
-                await archiveHeadingToLocation(row.node);
+                if (isArchivedInPlace(row.node)) {
+                  await unarchiveHeadingToOriginalLocation(row.node);
+                } else {
+                  await archiveHeadingToLocation(row.node);
+                }
               },
             },
             {
@@ -2758,6 +2977,77 @@ async function openRemotePath(path, kind, diskAdapter, label) {
   }
 }
 
+/**
+ * Handles tapping a file:/github:/webdav: link — resolves which
+ * adapter to use (the explicit scheme if given, otherwise whichever
+ * backend the CURRENT document itself already uses, same convention
+ * resolveImagePath/resolveCaptureFileId both already apply), opens the
+ * target document via openRemotePath — the exact same switching
+ * mechanism File \u2192 Open already uses, including its own conflict
+ * resolution for unsaved changes — then jumps to the in-file target if
+ * one was specified: a headline search (`*Title`) via
+ * findHeadingByTitle, or a plain text search via the same
+ * searchDocument engine the Search panel itself uses, landing on the
+ * first match.
+ *
+ * Local filesystem / iOS import: same picker-permission wall as
+ * archiving/capture-to-file/images — can't open an arbitrary path
+ * without a fresh picker gesture the browser requires per file, so
+ * this shows a clear message rather than silently failing.
+ */
+async function openFileLink(resolution) {
+  let adapter, kind, label;
+  if (resolution.scheme === 'github') {
+    adapter = githubAdapter;
+    kind = 'github';
+    label = 'GitHub';
+  } else if (resolution.scheme === 'webdav') {
+    adapter = webdavAdapter;
+    kind = 'webdav';
+    label = 'WebDAV';
+  } else {
+    // 'file' scheme, no explicit backend named — use whichever backend
+    // the CURRENT document itself came from.
+    if (state.storageKind !== 'github' && state.storageKind !== 'webdav') {
+      setStatus(
+        `Can't open "${resolution.path}" automatically \u2014 local files need a file picker per file (browser security), which can't happen from a link tap. Use a github:/webdav: link explicitly, or open it via File \u2192 Open.`
+      );
+      return;
+    }
+    adapter = activeDiskAdapter();
+    kind = state.storageKind;
+    label = state.storageKind === 'github' ? 'GitHub' : 'WebDAV';
+  }
+
+  const resolvedPath = resolveImagePath(resolution.path, state.documentId);
+  await openRemotePath(resolvedPath, kind, adapter, label);
+
+  // openRemotePath catches and reports its own errors via setStatus
+  // rather than throwing — the only reliable way to tell whether it
+  // actually succeeded is checking that state now points at the
+  // target document, before attempting to navigate within it.
+  if (!resolution.inFileTarget || !state.doc || state.documentId !== resolvedPath) return;
+
+  const target = resolution.inFileTarget;
+  if (target.startsWith('*')) {
+    const headingTitle = target.slice(1).trim();
+    const heading = findHeadingByTitle(state.doc, headingTitle);
+    if (heading) {
+      navigateToHeading(heading);
+    } else {
+      setStatus(`Opened ${resolvedPath}, but couldn't find the heading "${headingTitle}".`);
+    }
+    return;
+  }
+
+  const results = searchDocument(state.doc, target);
+  if (results.length > 0) {
+    navigateToHeading(results[0].heading, { revealOwnBody: results[0].type !== 'heading', targetNode: results[0].node });
+  } else {
+    setStatus(`Opened ${resolvedPath}, but couldn't find "${target}" in it.`);
+  }
+}
+
 /** Sets up and shows the navigable file browser for `backend`
  *  ('github' | 'webdav') at the configured root, then kicks off the
  *  first listing load. This is what File \u2192 Open \u2192 GitHub/WebDAV
@@ -3324,7 +3614,9 @@ function renderFileBrowser() {
     errorEl.textContent = browseError;
     listEl.appendChild(errorEl);
   } else {
-    const orgEntries = browseEntries.filter((e) => e.type === 'dir' || e.name.toLowerCase().endsWith('.org'));
+    const orgEntries = browseEntries.filter(
+      (e) => e.type === 'dir' || e.name.toLowerCase().endsWith('.org') || e.name.toLowerCase().endsWith('_archive')
+    );
     if (orgEntries.length === 0) {
       const empty = document.createElement('div');
       empty.style.fontSize = '13px';
@@ -3349,7 +3641,7 @@ function renderFileBrowser() {
       row.style.fontSize = '14px';
 
       const icon = document.createElement('span');
-      icon.textContent = entry.type === 'dir' ? '\ud83d\udcc1' : '\ud83d\udcc4';
+      icon.textContent = entry.type === 'dir' ? '\ud83d\udcc1' : entry.name.toLowerCase().endsWith('_archive') ? '\ud83d\uddc4\ufe0f' : '\ud83d\udcc4';
       icon.style.flexShrink = '0';
       row.appendChild(icon);
 
@@ -3555,6 +3847,7 @@ function formatAgendaRangeLabel(viewType, start, end) {
 }
 
 function renderAgendaView() {
+  ensureAgendaFilesLoaded();
   outlineEl.innerHTML = '';
   const container = document.createElement('div');
   container.style.padding = '8px 12px';
@@ -3621,6 +3914,18 @@ function renderAgendaView() {
       'Next ' + agendaViewType
     )
   );
+
+  if (agendaFilesConfig.length > 0) {
+    controls.appendChild(
+      agendaControlBtn(
+        '\u21bb',
+        () => refreshAgendaFiles(),
+        false,
+        'Refresh agenda files (re-fetch every configured file from its own source)'
+      )
+    );
+  }
+
   container.appendChild(controls);
 
   const { start, end } = agendaRangeFor(agendaViewType, agendaAnchorDate);
@@ -3631,12 +3936,33 @@ function renderAgendaView() {
   rangeLabel.textContent = formatAgendaRangeLabel(agendaViewType, start, end);
   container.appendChild(rangeLabel);
 
+  if (agendaFilesConfig.length > 0) {
+    const entries = agendaFilesConfig.map((f) => agendaFilesCache.get(f.scheme + ':' + f.path));
+    const loadingCount = entries.filter((e) => e && e.loading).length;
+    const errored = agendaFilesConfig
+      .map((f, i) => ({ f, entry: entries[i] }))
+      .filter(({ entry }) => entry && entry.error);
+    if (loadingCount > 0 || errored.length > 0) {
+      const agendaFilesStatus = document.createElement('div');
+      agendaFilesStatus.style.fontSize = '11px';
+      agendaFilesStatus.style.marginBottom = '8px';
+      const parts = [];
+      if (loadingCount > 0) parts.push(`Loading ${loadingCount} agenda file${loadingCount === 1 ? '' : 's'}\u2026`);
+      if (errored.length > 0) {
+        agendaFilesStatus.style.color = '#c0392b';
+        parts.push(errored.map(({ f, entry }) => `"${f.path}": ${entry.error}`).join('; '));
+      }
+      agendaFilesStatus.textContent = parts.join(' ');
+      container.appendChild(agendaFilesStatus);
+    }
+  }
+
   // Completed items excluded, using this file's own #+TODO: sequence
   // (not a hardcoded "DONE" check) — and the range is passed through so
   // any repeating SCHEDULED/DEADLINE timestamp expands into every
   // occurrence that actually falls within what's being displayed.
   const todoSequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
-  const items = buildAgendaItems([{ documentId: state.documentId, doc: state.doc }], {
+  const items = buildAgendaItems(aggregateAgendaDocs(), {
     todoFilter: (todo) => !todoSequence.doneKeywords.includes(todo),
     // Real org's default is to skip both commented headings (title
     // starts with "# ") and archived ones (:ARCHIVE: tag) in agenda
@@ -3760,6 +4086,7 @@ function renderAgendaView() {
 }
 
 function renderTaskListView() {
+  ensureAgendaFilesLoaded();
   outlineEl.innerHTML = '';
   const container = document.createElement('div');
   container.style.padding = '8px 12px';
@@ -3776,7 +4103,7 @@ function renderTaskListView() {
   // consistent with Agenda rather than a separate, different notion of
   // "done" or "should this show up at all".
   const todoSequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
-  const items = buildTaskList([{ documentId: state.documentId, doc: state.doc }], {
+  const items = buildTaskList(aggregateAgendaDocs(), {
     isDone: (todo) => todoSequence.doneKeywords.includes(todo),
     includeCommented: !getAgendaSkipCommentTrees(state.localVariables),
     includeArchived: !getAgendaSkipArchivedTrees(state.localVariables),
@@ -4163,6 +4490,68 @@ async function renderSettingsView(target = settingsRenderTarget) {
     })
   );
   captureSection.appendChild(captureBtnRow);
+
+  const agendaFilesSection = document.createElement('div');
+  agendaFilesSection.className = 'settings-section';
+  container.appendChild(agendaFilesSection);
+
+  const agendaFilesTitle = document.createElement('div');
+  agendaFilesTitle.className = 'panel-section-title';
+  agendaFilesTitle.textContent = 'Agenda Files';
+  agendaFilesSection.appendChild(agendaFilesTitle);
+
+  const agendaFilesHint = document.createElement('div');
+  agendaFilesHint.style.fontSize = '11px';
+  agendaFilesHint.style.opacity = '0.6';
+  agendaFilesHint.style.margin = '2px 0 6px';
+  agendaFilesHint.textContent =
+    'Real org\u2019s org-agenda-files idea \u2014 additional files the Agenda and TODO views scan across, beyond whichever file is currently open. ' +
+    'Edited as JSON \u2014 an array of {scheme, path}, where scheme is "github" or "webdav" (the only backends that can read a file without a picker prompt) and path is that file\u2019s location on the currently configured GitHub repo or WebDAV server. Example: [{"scheme": "github", "path": "journal/2026.org"}]';
+  agendaFilesSection.appendChild(agendaFilesHint);
+
+  const currentAgendaFiles = await getAgendaFiles(kv);
+  const agendaFilesTextarea = document.createElement('textarea');
+  agendaFilesTextarea.value = JSON.stringify(currentAgendaFiles, null, 2);
+  agendaFilesTextarea.rows = 6;
+  agendaFilesTextarea.style.fontFamily = 'monospace';
+  agendaFilesTextarea.style.fontSize = '13px';
+  agendaFilesTextarea.style.width = '100%';
+  agendaFilesTextarea.style.maxWidth = '100%';
+  agendaFilesTextarea.style.boxSizing = 'border-box';
+  agendaFilesTextarea.style.resize = 'vertical';
+  agendaFilesSection.appendChild(agendaFilesTextarea);
+
+  const agendaFilesBtnRow = document.createElement('div');
+  agendaFilesBtnRow.className = 'panel-row';
+  agendaFilesBtnRow.style.marginTop = '8px';
+  agendaFilesBtnRow.appendChild(
+    menuButton('Save agenda files', async () => {
+      let parsed;
+      try {
+        parsed = JSON.parse(agendaFilesTextarea.value);
+      } catch (err) {
+        setStatus('Agenda files: invalid JSON \u2014 ' + err.message);
+        return;
+      }
+      const problem = validateAgendaFiles(parsed);
+      if (problem) {
+        setStatus('Agenda files: ' + problem);
+        return;
+      }
+      await setAgendaFiles(kv, parsed);
+      agendaFilesConfig = parsed;
+      setStatus('Agenda files saved.');
+    })
+  );
+  agendaFilesBtnRow.appendChild(
+    menuButton('Clear', async () => {
+      await setAgendaFiles(kv, DEFAULT_AGENDA_FILES);
+      agendaFilesConfig = DEFAULT_AGENDA_FILES;
+      setStatus('Agenda files cleared \u2014 Agenda/TODO scan only the currently open file again.');
+      renderSettingsView();
+    })
+  );
+  agendaFilesSection.appendChild(agendaFilesBtnRow);
 
   const githubSection = document.createElement('div');
   githubSection.className = 'settings-section';
@@ -4803,6 +5192,18 @@ function validateCaptureTemplates(parsed) {
   return null;
 }
 
+function validateAgendaFiles(parsed) {
+  if (!Array.isArray(parsed)) return 'must be a JSON array';
+  for (let i = 0; i < parsed.length; i++) {
+    const f = parsed[i];
+    const label = `entry #${i + 1}`;
+    if (!f || typeof f !== 'object') return `${label} must be an object`;
+    if (f.scheme !== 'github' && f.scheme !== 'webdav') return `${label}: "scheme" must be "github" or "webdav"`;
+    if (typeof f.path !== 'string' || f.path.length === 0) return `${label}: "path" must be a non-empty string`;
+  }
+  return null;
+}
+
 async function renderCapturePanel() {
   capturePanel.innerHTML = '';
   if (!captureOpen) {
@@ -5162,6 +5563,7 @@ if ('serviceWorker' in navigator) {
 async function bootstrap() {
   githubConfig = await getGithubConfig(kv);
   webdavConfig = await getWebdavConfig(kv);
+  agendaFilesConfig = await getAgendaFiles(kv);
   applyTheme(await getTheme(kv));
   applyFontFamily(await getFontFamily(kv));
   applyFontSize(await getFontSize(kv));
