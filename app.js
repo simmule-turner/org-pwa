@@ -3443,6 +3443,22 @@ function menuButton(label, onClick, disabled) {
   return btn;
 }
 
+/** Same idea as menuButton, but noticeably tighter (smaller font,
+ *  less padding, no enforced min-height) -- for a row that needs to
+ *  fit more buttons on one line than the standard 44px-min-height
+ *  touch-target sizing comfortably allows, e.g. the file menu's own
+ *  top row (New/Open/Save/Save As/Export) and the export sub-flow's
+ *  format/scope choices plus a Back button all sharing one line. Not
+ *  a blanket touch-target reduction -- scoped to these specific,
+ *  already-short-label rows, not applied anywhere else. */
+function compactMenuButton(label, onClick, disabled) {
+  const btn = menuButton(label, onClick, disabled);
+  btn.style.fontSize = '13px';
+  btn.style.padding = '6px 8px';
+  btn.style.minHeight = '0';
+  return btn;
+}
+
 /** Same idea as menuButton, but with explicit comfortable sizing
  *  (matching the .panel button convention) for use outside a
  *  .panel-classed container — e.g. the timestamp wizard's Save/Cancel,
@@ -3479,21 +3495,22 @@ function renderFileMenu() {
   if (fileMenuStep === null) {
     const row = document.createElement('div');
     row.className = 'panel-row';
+    row.style.gap = '4px';
     row.appendChild(
-      menuButton('New', () => {
+      compactMenuButton('New', () => {
         fileMenuStep = 'new';
         renderFileMenu();
       })
     );
     row.appendChild(
-      menuButton('Open', () => {
+      compactMenuButton('Open', () => {
         fileMenuStep = 'open';
         renderFileMenu();
       })
     );
-    row.appendChild(menuButton('Save', () => saveCurrent(), !state.documentId));
+    row.appendChild(compactMenuButton('Save', () => saveCurrent(), !state.documentId));
     row.appendChild(
-      menuButton(
+      compactMenuButton(
         'Save As\u2026',
         () => {
           fileMenuStep = 'saveas';
@@ -3503,7 +3520,7 @@ function renderFileMenu() {
       )
     );
     row.appendChild(
-      menuButton(
+      compactMenuButton(
         'Export\u2026',
         () => {
           fileMenuStep = 'export';
@@ -3631,14 +3648,15 @@ function renderExportFlow() {
 
     const row = document.createElement('div');
     row.className = 'panel-row';
+    row.style.gap = '4px';
     row.appendChild(
-      menuButton('Markdown', () => {
+      compactMenuButton('Markdown', () => {
         exportFormat = 'markdown';
         renderFileMenu();
       })
     );
     row.appendChild(
-      menuButton('HTML', () => {
+      compactMenuButton('HTML', () => {
         exportFormat = 'html';
         renderFileMenu();
       })
@@ -3683,7 +3701,7 @@ function renderExportFlow() {
     backRow.className = 'panel-row';
     backRow.style.marginTop = '6px';
     backRow.appendChild(
-      menuButton('\u2039 Back', () => {
+      compactMenuButton('\u2039 Back', () => {
         exportPickingHeading = false;
         renderFileMenu();
       })
@@ -3701,27 +3719,21 @@ function renderExportFlow() {
 
   const row = document.createElement('div');
   row.className = 'panel-row';
+  row.style.gap = '4px';
+  row.appendChild(compactMenuButton('Whole file', () => performExport(exportFormat, null)));
   row.appendChild(
-    menuButton('Whole file', () => performExport(exportFormat, null))
-  );
-  row.appendChild(
-    menuButton('Choose a heading\u2026', () => {
+    compactMenuButton('Choose a heading\u2026', () => {
       exportPickingHeading = true;
       renderFileMenu();
     })
   );
-  fileMenuPanel.appendChild(row);
-
-  const backRow = document.createElement('div');
-  backRow.className = 'panel-row';
-  backRow.style.marginTop = '6px';
-  backRow.appendChild(
-    menuButton('\u2039 Back', () => {
+  row.appendChild(
+    compactMenuButton('\u2039 Back', () => {
       exportFormat = null;
       renderFileMenu();
     })
   );
-  fileMenuPanel.appendChild(backRow);
+  fileMenuPanel.appendChild(row);
 }
 
 function stopBrowsing() {
