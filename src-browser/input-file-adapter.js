@@ -69,8 +69,8 @@ export function pickAndImportFile(kvAdapter, accept = '.org') {
 
 /** Triggers a browser download of `content` as a file named `fileId` —
  *  the "write" half, since there's no handle to write back to in place. */
-export function downloadFile(fileId, content) {
-  const blob = new Blob([content], { type: 'text/plain' });
+export function downloadFile(fileId, content, mimeType = 'text/plain') {
+  const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
