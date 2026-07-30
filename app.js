@@ -50,6 +50,8 @@ import {
   parseRepeater,
 } from './src/agenda.js';
 import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId } from './src/capture-template.js';
+import { exportToMarkdown } from './src/export-markdown.js';
+import { exportToHtml } from './src/export-html.js';
 import { parseMarkdown } from './src/markdown.js';
 import { parseOrgTimestamp, formatOrgTimestamp, parseDelay } from './src/org-timestamp.js';
 import {
@@ -645,9 +647,16 @@ new MutationObserver(syncContentOffset).observe(topBarEl, { childList: true, sub
 let state = { documentId: null, doc: null, startupConfig: null, storageKind: null, localVariables: null };
 // File menu: whether the panel is open, and if so, which action's
 // backend-choice sub-step is showing (null = the main New/Open/Save/Save
-// As list; otherwise 'open' | 'new' | 'saveas').
+// As/Export list; otherwise 'open' | 'new' | 'saveas' | 'export').
 let fileMenuOpen = false;
 let fileMenuStep = null;
+// Export sub-flow: which format was picked (null | 'markdown' | 'html'),
+// tracked separately since the export flow has its own two steps
+// (format, then scope) that don't fit the open/new/saveas
+// backend-choice pattern the rest of the file menu already uses.
+let exportFormat = null;
+let exportPickingHeading = false;
+
 // File-browser state: browseBackend non-null means the "open" step is
 // currently showing a navigable folder/file listing (see startBrowsing
 // below) instead of the plain New/Open/Save/Save As button row.
@@ -3453,6 +3462,8 @@ function wizardButton(label, onClick) {
 function closeFileMenu() {
   fileMenuOpen = false;
   fileMenuStep = null;
+  exportFormat = null;
+  exportPickingHeading = false;
   stopBrowsing();
   renderFileMenu();
 }
@@ -3491,7 +3502,23 @@ function renderFileMenu() {
         !state.doc
       )
     );
+    row.appendChild(
+      menuButton(
+        'Export\u2026',
+        () => {
+          fileMenuStep = 'export';
+          exportFormat = null;
+          renderFileMenu();
+        },
+        !state.doc
+      )
+    );
     fileMenuPanel.appendChild(row);
+    return;
+  }
+
+  if (fileMenuStep === 'export') {
+    renderExportFlow();
     return;
   }
 
@@ -3555,6 +3582,148 @@ function renderFileMenu() {
  *  (since the file menu itself also closes right after, but leaving
  *  stale browse state around would show it again if File \u2192 Open got
  *  reopened without going through startBrowsing first). */
+/** Collects every heading in `doc`, in document order, regardless of
+ *  fold state -- a heading buried under several collapsed ancestors
+ *  must still be pickable as an export scope, unlike keyboard
+ *  navigation (which only moves between currently-visible rows). */
+function allHeadingsInOrder(doc) {
+  const out = [];
+  function walk(nodes, depth) {
+    for (const node of nodes) {
+      if (node.type !== 'heading') continue;
+      out.push({ heading: node, depth });
+      walk(node.children || [], depth + 1);
+    }
+  }
+  walk(doc.children || [], 0);
+  return out;
+}
+
+/** Generates the export text for `format`/`scope` and triggers a
+ *  download -- the actual terminal step of the export flow, closing
+ *  the file menu and resetting its state back to the top level once
+ *  done. */
+function performExport(format, scope) {
+  const rawName = scope ? scope.title : (state.documentId || 'export').replace(/\.[a-zA-Z0-9]+$/, '');
+  const baseName = rawName.replace(/[\\/:*?"<>|]/g, '_').trim() || 'export';
+  if (format === 'markdown') {
+    downloadFile(baseName + '.md', exportToMarkdown(state.doc, scope), 'text/markdown');
+  } else {
+    downloadFile(baseName + '.html', exportToHtml(state.doc, scope), 'text/html');
+  }
+  fileMenuOpen = false;
+  fileMenuStep = null;
+  exportFormat = null;
+  exportPickingHeading = false;
+  setStatus(`Exported to ${format === 'markdown' ? 'Markdown' : 'HTML'}.`);
+  renderFileMenu();
+  render();
+}
+
+function renderExportFlow() {
+  if (exportFormat === null) {
+    const label = document.createElement('div');
+    label.style.fontSize = '12px';
+    label.style.opacity = '0.7';
+    label.style.marginBottom = '4px';
+    label.textContent = 'Export as:';
+    fileMenuPanel.appendChild(label);
+
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    row.appendChild(
+      menuButton('Markdown', () => {
+        exportFormat = 'markdown';
+        renderFileMenu();
+      })
+    );
+    row.appendChild(
+      menuButton('HTML', () => {
+        exportFormat = 'html';
+        renderFileMenu();
+      })
+    );
+    fileMenuPanel.appendChild(row);
+    return;
+  }
+
+  if (exportPickingHeading) {
+    const label = document.createElement('div');
+    label.style.fontSize = '12px';
+    label.style.opacity = '0.7';
+    label.style.marginBottom = '4px';
+    label.textContent = 'Choose a heading:';
+    fileMenuPanel.appendChild(label);
+
+    const list = document.createElement('div');
+    list.style.maxHeight = '260px';
+    list.style.overflowY = 'auto';
+    const headings = allHeadingsInOrder(state.doc);
+    if (headings.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.fontSize = '13px';
+      empty.style.opacity = '0.6';
+      empty.style.padding = '8px 0';
+      empty.textContent = 'This file has no headings yet.';
+      list.appendChild(empty);
+    }
+    for (const { heading, depth } of headings) {
+      const row = document.createElement('div');
+      row.className = 'panel-row';
+      row.style.paddingLeft = 8 + depth * 16 + 'px';
+      row.style.cursor = 'pointer';
+      row.style.fontSize = '14px';
+      row.textContent = heading.title || '(untitled)';
+      row.onclick = () => performExport(exportFormat, heading);
+      list.appendChild(row);
+    }
+    fileMenuPanel.appendChild(list);
+
+    const backRow = document.createElement('div');
+    backRow.className = 'panel-row';
+    backRow.style.marginTop = '6px';
+    backRow.appendChild(
+      menuButton('\u2039 Back', () => {
+        exportPickingHeading = false;
+        renderFileMenu();
+      })
+    );
+    fileMenuPanel.appendChild(backRow);
+    return;
+  }
+
+  const label = document.createElement('div');
+  label.style.fontSize = '12px';
+  label.style.opacity = '0.7';
+  label.style.marginBottom = '4px';
+  label.textContent = `Export ${exportFormat === 'markdown' ? 'Markdown' : 'HTML'} for:`;
+  fileMenuPanel.appendChild(label);
+
+  const row = document.createElement('div');
+  row.className = 'panel-row';
+  row.appendChild(
+    menuButton('Whole file', () => performExport(exportFormat, null))
+  );
+  row.appendChild(
+    menuButton('Choose a heading\u2026', () => {
+      exportPickingHeading = true;
+      renderFileMenu();
+    })
+  );
+  fileMenuPanel.appendChild(row);
+
+  const backRow = document.createElement('div');
+  backRow.className = 'panel-row';
+  backRow.style.marginTop = '6px';
+  backRow.appendChild(
+    menuButton('\u2039 Back', () => {
+      exportFormat = null;
+      renderFileMenu();
+    })
+  );
+  fileMenuPanel.appendChild(backRow);
+}
+
 function stopBrowsing() {
   browseBackend = null;
   browsePath = '';
@@ -3697,6 +3866,8 @@ function renderFileBrowser() {
 fileMenuBtn.addEventListener('click', () => {
   fileMenuOpen = !fileMenuOpen;
   fileMenuStep = null;
+  exportFormat = null;
+  exportPickingHeading = false;
   stopBrowsing();
   if (fileMenuOpen && settingsOpen) {
     settingsOpen = false;
@@ -4163,6 +4334,8 @@ viewMenuBtn.addEventListener('click', () => {
   if (viewMenuOpen && fileMenuOpen) {
     fileMenuOpen = false;
     fileMenuStep = null;
+    exportFormat = null;
+    exportPickingHeading = false;
     stopBrowsing();
     renderFileMenu();
   }
@@ -4923,6 +5096,8 @@ settingsBtn.addEventListener('click', async () => {
   if (settingsOpen && fileMenuOpen) {
     fileMenuOpen = false;
     fileMenuStep = null;
+    exportFormat = null;
+    exportPickingHeading = false;
     stopBrowsing();
     renderFileMenu();
   }
@@ -5145,6 +5320,8 @@ searchBtn.addEventListener('click', () => {
   if (searchOpen && fileMenuOpen) {
     fileMenuOpen = false;
     fileMenuStep = null;
+    exportFormat = null;
+    exportPickingHeading = false;
     stopBrowsing();
     renderFileMenu();
   }
@@ -5397,6 +5574,8 @@ captureBtn.addEventListener('click', () => {
   if (captureOpen && fileMenuOpen) {
     fileMenuOpen = false;
     fileMenuStep = null;
+    exportFormat = null;
+    exportPickingHeading = false;
     stopBrowsing();
     renderFileMenu();
   }
@@ -5491,6 +5670,8 @@ moreBtn.addEventListener('click', () => {
   if (moreOpen && fileMenuOpen) {
     fileMenuOpen = false;
     fileMenuStep = null;
+    exportFormat = null;
+    exportPickingHeading = false;
     stopBrowsing();
     renderFileMenu();
   }
