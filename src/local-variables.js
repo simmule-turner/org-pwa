@@ -100,6 +100,33 @@ export function getArchiveConfirm(vars) {
   return parseLispBoolean((vars || {})['org-archive-confirm'], true);
 }
 
+/** org-use-tag-inheritance: whether a heading's "effective" tags (for
+ *  search/filtering purposes) include its ancestors' own tags, not
+ *  just its own. `t` is real org's own actual default — tags inherit
+ *  down the outline structurally by default, confirmed directly
+ *  against org's own manual ("if a heading has a certain tag, all
+ *  subheadings inherit the tag as well") — not an opt-in feature the
+ *  way property inheritance below is. A simple boolean here, not real
+ *  org's fuller list-of-tags/regexp value space (org-use-tag-inheritance
+ *  can also be set to a specific tag list or a regexp) — a stated
+ *  simplification, covering the common on/off case. */
+export function getUseTagInheritance(vars) {
+  return parseLispBoolean((vars || {})['org-use-tag-inheritance'], true);
+}
+
+/** org-use-property-inheritance: whether a heading's "effective"
+ *  property values (for search/filtering purposes) fall back to an
+ *  ancestor's value when the heading doesn't have that property
+ *  itself. `nil` is real org's own actual default — property
+ *  inheritance is opt-in, explicitly NOT turned on by default because
+ *  it can slow down property searches and is often not needed
+ *  (confirmed directly against org's own manual). A simple boolean
+ *  here, not real org's fuller t/list/regexp value space — the same
+ *  stated simplification as getUseTagInheritance above. */
+export function getUsePropertyInheritance(vars) {
+  return parseLispBoolean((vars || {})['org-use-property-inheritance'], false);
+}
+
 /** org-contacts-birthday-property: which property key holds a
  *  heading's birthday/anniversary date+description (see agenda.js's
  *  org-contacts-anniversaries support). Default "BIRTHDAY", matching

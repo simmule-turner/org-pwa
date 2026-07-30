@@ -160,10 +160,46 @@ function parseFilterQuery(query) {
  *  inheritance from ancestor headings -- a heading's OWN tags/properties
  *  only, a stated simplification versus real org's default inheritance
  *  behavior. */
-function headingPassesFilters(heading, filters) {
+/** Computes the effective tag set for `heading`, given its `ancestors`
+ *  (root-to-parent order) -- the heading's own tags, plus (if
+ *  `useInheritance`) every ancestor's own tags too, matching real
+ *  org's own tag-inheritance model exactly: "if a heading has a
+ *  certain tag, all subheadings inherit the tag as well." Without
+ *  inheritance, this is just `heading.tags` itself. */
+function effectiveTags(heading, ancestors, useInheritance) {
+  if (!useInheritance) return heading.tags || [];
+  const all = [...(heading.tags || [])];
+  for (const ancestor of ancestors) all.push(...(ancestor.tags || []));
+  return all;
+}
+
+/** Computes the effective value of property `key` for `heading`, given
+ *  its `ancestors` (root-to-parent order) -- the heading's own value if
+ *  it has one, otherwise (if `useInheritance`) the NEAREST ancestor's
+ *  own value, matching real org's own property-inheritance model: a
+ *  heading's own value always wins; inheritance only fills in when the
+ *  heading doesn't define the property itself at all. Returns null if
+ *  nothing in the chain defines it. Key lookup is case-insensitive,
+ *  matching how property filters elsewhere in this app already work.
+ */
+function effectivePropertyValue(heading, ancestors, key, useInheritance) {
+  const ownKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === key.toLowerCase());
+  if (ownKey) return heading.properties[ownKey];
+  if (!useInheritance) return null;
+  for (let i = ancestors.length - 1; i >= 0; i--) {
+    // nearest ancestor first
+    const ancestor = ancestors[i];
+    const ancestorKey = (ancestor.propertyOrder || []).find((k) => k.toLowerCase() === key.toLowerCase());
+    if (ancestorKey) return ancestor.properties[ancestorKey];
+  }
+  return null;
+}
+
+function headingPassesFilters(heading, filters, ancestors, useTagInheritance, usePropertyInheritance) {
   for (const filter of filters) {
     if (filter.type === 'tag') {
-      const hasTag = (heading.tags || []).some((t) => t.toLowerCase() === filter.value.toLowerCase());
+      const tags = effectiveTags(heading, ancestors, useTagInheritance);
+      const hasTag = tags.some((t) => t.toLowerCase() === filter.value.toLowerCase());
       if (filter.mode === 'include' && !hasTag) return false;
       if (filter.mode === 'exclude' && hasTag) return false;
     } else if (filter.type === 'todo') {
@@ -171,10 +207,8 @@ function headingPassesFilters(heading, filters) {
     } else if (filter.type === 'priority') {
       if (!heading.priority || heading.priority.toLowerCase() !== filter.value.toLowerCase()) return false;
     } else if (filter.type === 'property') {
-      const foundKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === filter.key.toLowerCase());
-      if (!foundKey) return false;
-      const value = heading.properties[foundKey] || '';
-      if (!value.toLowerCase().includes(filter.value.toLowerCase())) return false;
+      const value = effectivePropertyValue(heading, ancestors, filter.key, usePropertyInheritance);
+      if (value === null || !value.toLowerCase().includes(filter.value.toLowerCase())) return false;
     }
   }
   return true;
@@ -261,7 +295,7 @@ function searchTextWithinHeading(results, node, q, matches, useRegex) {
 }
 
 export function searchDocument(doc, query, opts = {}) {
-  const { useRegex = false } = opts;
+  const { useRegex = false, useTagInheritance = true, usePropertyInheritance = false } = opts;
   const trimmed = String(query).trim();
   if (!trimmed) return [];
 
@@ -274,11 +308,11 @@ export function searchDocument(doc, query, opts = {}) {
 
   const results = [];
 
-  function walk(nodes) {
+  function walk(nodes, ancestors) {
     for (const node of nodes) {
       if (node.type !== 'heading') continue;
 
-      if (headingPassesFilters(node, filters)) {
+      if (headingPassesFilters(node, filters, ancestors, useTagInheritance, usePropertyInheritance)) {
         if (matches) {
           searchTextWithinHeading(results, node, freeText, matches, useRegex);
         } else {
@@ -286,12 +320,12 @@ export function searchDocument(doc, query, opts = {}) {
         }
       }
 
-      walk(node.children || []); // always recurse regardless of whether THIS heading passed -- filters are per-heading, not inherited by children (see headingPassesFilters' own docs)
+      walk(node.children || [], [...ancestors, node]); // always recurse regardless of whether THIS heading passed -- filters are per-heading (with inheritance now folded into that per-heading check itself), not a separate pass-down-to-children step
     }
   }
 
-  walk(doc.children);
+  walk(doc.children, []);
   return results;
 }
 
-export { parseFilterQuery };
+export { parseFilterQuery, effectiveTags, effectivePropertyValue };
