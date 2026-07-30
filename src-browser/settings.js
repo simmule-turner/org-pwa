@@ -17,7 +17,7 @@ const KEYS = {
   theme: 'settings:theme',
   fontFamily: 'settings:fontFamily',
   fontSize: 'settings:fontSize',
-  otherFontSize: 'settings:otherFontSize',
+  tablesFontSize: 'settings:otherFontSize', // storage key deliberately left as "otherFontSize" -- renaming the key itself would silently reset every existing user's saved table font size back to default
   lastActiveDocument: 'settings:lastActiveDocument',
   captureTemplates: 'settings:captureTemplates',
   agendaFiles: 'settings:agendaFiles',
@@ -72,7 +72,7 @@ const DEFAULT_WEBDAV_CONFIG = { baseUrl: '', username: '', password: '' };
 const DEFAULT_THEME = 'system'; // 'system' | 'light' | 'dark'
 const DEFAULT_FONT_FAMILY = 'system'; // 'system' | 'serif' | 'monospace'
 const DEFAULT_FONT_SIZE = 16; // px
-const DEFAULT_OTHER_FONT_SIZE = 13; // px -- matches the previous hard-coded table font size, so introducing this setting doesn't change anyone's current appearance until they actually adjust it
+const DEFAULT_TABLES_FONT_SIZE = 13; // px -- matches the previous hard-coded table font size, so introducing this setting doesn't change anyone's current appearance until they actually adjust it
 
 function unwrap(result) {
   return result && typeof result === 'object' && 'value' in result ? result.value : result;
@@ -153,12 +153,12 @@ export async function setFontSize(kvAdapter, fontSize) {
  *  (a table with the same font size as prose text tends to feel
  *  cramped or oversized depending on column count, so it's kept
  *  independently adjustable rather than tied 1:1 to the main size). */
-export async function getOtherFontSize(kvAdapter) {
-  return getJson(kvAdapter, KEYS.otherFontSize, DEFAULT_OTHER_FONT_SIZE);
+export async function getTablesFontSize(kvAdapter) {
+  return getJson(kvAdapter, KEYS.tablesFontSize, DEFAULT_TABLES_FONT_SIZE);
 }
 
-export async function setOtherFontSize(kvAdapter, fontSize) {
-  await setJson(kvAdapter, KEYS.otherFontSize, fontSize);
+export async function setTablesFontSize(kvAdapter, fontSize) {
+  await setJson(kvAdapter, KEYS.tablesFontSize, fontSize);
 }
 
 /** Real org's own org-agenda-files idea: additional files the Agenda
@@ -267,6 +267,6 @@ export {
   DEFAULT_THEME,
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONT_SIZE,
-  DEFAULT_OTHER_FONT_SIZE,
+  DEFAULT_TABLES_FONT_SIZE,
   DEFAULT_AGENDA_FILES,
 };
