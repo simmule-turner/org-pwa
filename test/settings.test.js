@@ -12,8 +12,8 @@ import {
   setFontFamily,
   getFontSize,
   setFontSize,
-  getOtherFontSize,
-  setOtherFontSize,
+  getTablesFontSize,
+  setTablesFontSize,
   getAgendaFiles,
   setAgendaFiles,
   exportAllSettings,
@@ -21,7 +21,7 @@ import {
   DEFAULT_THEME,
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONT_SIZE,
-  DEFAULT_OTHER_FONT_SIZE,
+  DEFAULT_TABLES_FONT_SIZE,
   DEFAULT_AGENDA_FILES,
 } from '../src-browser/settings.js';
 
@@ -105,17 +105,17 @@ test('setFontFamily / setFontSize round-trip independently', async () => {
   assert.equal(await getFontSize(kv), 20);
 });
 
-test('getOtherFontSize defaults sensibly and is independent of the main font size', async () => {
+test('getTablesFontSize defaults sensibly and is independent of the main font size', async () => {
   const kv = createInMemoryAdapter();
-  assert.equal(await getOtherFontSize(kv), DEFAULT_OTHER_FONT_SIZE);
+  assert.equal(await getTablesFontSize(kv), DEFAULT_TABLES_FONT_SIZE);
   await setFontSize(kv, 24);
-  assert.equal(await getOtherFontSize(kv), DEFAULT_OTHER_FONT_SIZE, 'changing the main font size must not affect the other-elements size');
+  assert.equal(await getTablesFontSize(kv), DEFAULT_TABLES_FONT_SIZE, 'changing the main font size must not affect the tables size');
 });
 
-test('setOtherFontSize round-trips and does not affect the main font size', async () => {
+test('setTablesFontSize round-trips and does not affect the main font size', async () => {
   const kv = createInMemoryAdapter();
-  await setOtherFontSize(kv, 18);
-  assert.equal(await getOtherFontSize(kv), 18);
+  await setTablesFontSize(kv, 18);
+  assert.equal(await getTablesFontSize(kv), 18);
   assert.equal(await getFontSize(kv), DEFAULT_FONT_SIZE);
 });
 
@@ -145,7 +145,7 @@ test('exportAllSettings includes every configured setting, across categories', a
   await setTheme(kv, 'dark');
   await setFontFamily(kv, 'monospace');
   await setFontSize(kv, 20);
-  await setOtherFontSize(kv, 15);
+  await setTablesFontSize(kv, 15);
   await setGithubConfig(kv, { token: 'secret-token', owner: 'me', repo: 'notes', branch: 'main' });
   await setWebdavConfig(kv, { baseUrl: 'https://example.com', username: 'me', password: 'secret-pw' });
 
@@ -153,7 +153,7 @@ test('exportAllSettings includes every configured setting, across categories', a
   assert.equal(bundle.settings.theme, 'dark');
   assert.equal(bundle.settings.fontFamily, 'monospace');
   assert.equal(bundle.settings.fontSize, 20);
-  assert.equal(bundle.settings.otherFontSize, 15);
+  assert.equal(bundle.settings.tablesFontSize, 15);
   assert.equal(bundle.settings.github.token, 'secret-token');
   assert.equal(bundle.settings.webdav.password, 'secret-pw');
 });
@@ -200,7 +200,7 @@ test('a full export/import round trip preserves every setting exactly', async ()
   await setTheme(kv1, 'dark');
   await setFontFamily(kv1, 'monospace');
   await setFontSize(kv1, 19);
-  await setOtherFontSize(kv1, 12);
+  await setTablesFontSize(kv1, 12);
   await setGithubConfig(kv1, { token: 'tok', owner: 'me', repo: 'notes', branch: 'main' });
   await setWebdavConfig(kv1, { baseUrl: 'https://cloud.example.com', username: 'me', password: 'pw' });
 
@@ -212,7 +212,7 @@ test('a full export/import round trip preserves every setting exactly', async ()
   assert.equal(await getTheme(kv2), 'dark');
   assert.equal(await getFontFamily(kv2), 'monospace');
   assert.equal(await getFontSize(kv2), 19);
-  assert.equal(await getOtherFontSize(kv2), 12);
+  assert.equal(await getTablesFontSize(kv2), 12);
   assert.deepEqual(await getGithubConfig(kv2), await getGithubConfig(kv1));
   assert.deepEqual(await getWebdavConfig(kv2), await getWebdavConfig(kv1));
 });
