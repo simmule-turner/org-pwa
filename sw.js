@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v80';
+const CACHE_NAME = 'org-pwa-shell-v82';
 
 const SHELL_FILES = [
   './',
@@ -30,6 +30,8 @@ const SHELL_FILES = [
   './src/link-resolve.js',
   './src/export-markdown.js',
   './src/export-html.js',
+  './src/undo-history.js',
+  './src/text-diff.js',
   './src/startup-config.js',
   './src-browser/indexeddb-adapter.js',
   './src-browser/filesystem-adapter.js',

@@ -52,6 +52,8 @@ import {
 import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId } from './src/capture-template.js';
 import { exportToMarkdown } from './src/export-markdown.js';
 import { exportToHtml } from './src/export-html.js';
+import { createHistory, pushSnapshot, canUndo, canRedo, undo, redo, jumpTo, currentEntry } from './src/undo-history.js';
+import { diffHunks } from './src/text-diff.js';
 import { parseMarkdown } from './src/markdown.js';
 import { parseOrgTimestamp, formatOrgTimestamp, parseDelay } from './src/org-timestamp.js';
 import {
@@ -287,7 +289,7 @@ async function archiveHeadingToLocation(heading) {
     const clone = buildArchivedClone(state.doc, heading, state.documentId);
     removeHeading(state.doc, heading);
     insertAtArchiveLocation(state.doc, clone, headlinePart);
-    commitAndRender();
+    commitAndRender('Archived heading');
     setStatus('--- Archive complete.');
     return;
   }
@@ -323,7 +325,7 @@ async function archiveHeadingToLocation(heading) {
 
   // The write succeeded -- now, and only now, remove the original.
   removeHeading(state.doc, heading);
-  commitAndRender();
+  commitAndRender('Archived heading');
   setStatus(`--- Archive complete. (${targetFileId})`);
 }
 
@@ -380,7 +382,7 @@ async function unarchiveHeadingToOriginalLocation(heading) {
     } else {
       state.doc.children.push(clone);
     }
-    commitAndRender();
+    commitAndRender('Restored (unarchived) heading');
     setStatus('--- Restore complete.');
     return;
   }
@@ -427,7 +429,7 @@ async function unarchiveHeadingToOriginalLocation(heading) {
   // The write succeeded -- now, and only now, remove the archived
   // heading from THIS (the currently open, archive) file.
   removeHeading(state.doc, heading);
-  commitAndRender();
+  commitAndRender('Restored (unarchived) heading');
   setStatus(`--- Restore complete. (${archiveFile})`);
 }
 
@@ -468,6 +470,7 @@ const searchBtn = document.getElementById('searchBtn');
 const searchPanel = document.getElementById('searchPanel');
 const captureBtn = document.getElementById('captureBtn');
 const capturePanel = document.getElementById('capturePanel');
+const historyPanel = document.getElementById('historyPanel');
 const moreBtn = document.getElementById('moreBtn');
 const morePanel = document.getElementById('morePanel');
 
@@ -622,19 +625,19 @@ document.addEventListener('keydown', (e) => {
   } else if (e.key === 't') {
     e.preventDefault();
     toggleHeadingTodo(state.doc, keyboardFocusedHeading, GLOBAL_TODO_DEFAULT);
-    commitAndRender();
+    commitAndRender('Toggled TODO');
   } else if (e.altKey && e.key === 'ArrowUp') {
     e.preventDefault();
-    if (moveHeadingUp(state.doc, keyboardFocusedHeading)) commitAndRender();
+    if (moveHeadingUp(state.doc, keyboardFocusedHeading)) commitAndRender('Moved heading up');
   } else if (e.altKey && e.key === 'ArrowDown') {
     e.preventDefault();
-    if (moveHeadingDown(state.doc, keyboardFocusedHeading)) commitAndRender();
+    if (moveHeadingDown(state.doc, keyboardFocusedHeading)) commitAndRender('Moved heading down');
   } else if (e.key === '[') {
     e.preventDefault();
-    if (promoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender();
+    if (promoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender('Promoted heading');
   } else if (e.key === ']') {
     e.preventDefault();
-    if (demoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender();
+    if (demoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender('Demoted heading');
   }
 });
 // Reacts to ANY change to topBar's rendered content (a panel opening/
@@ -745,6 +748,16 @@ let currentView = 'org';
 // immediately, matching the app's existing optimistic-render approach.
 let isDirty = false;
 
+// Undo/redo history for the CURRENTLY open document's editing session
+// only -- reset every time a document is freshly opened (not persisted,
+// not carried across a reopen, by explicit design choice: simpler and
+// lower-risk than trying to make sense of undo history against a file
+// that may have changed on disk since it was last open). See
+// src/undo-history.js for the actual history model this wraps.
+let history = createHistory('');
+let historyOpen = false;
+let historyDiffExpandedIndex = null;
+
 function setStatus(text) {
   statusEl.textContent = text;
 }
@@ -766,11 +779,11 @@ function commitTitleEdit(rawValue) {
     // User backed out of creating a heading without typing a title —
     // discard it rather than leave an empty heading behind.
     removeHeading(state.doc, heading);
-    commitAndRender();
+    commitAndRender('Discarded empty new heading');
     return;
   }
   renameHeading(heading, sanitized);
-  commitAndRender();
+  commitAndRender(isNew ? 'Added heading' : 'Edited heading title');
 }
 
 function cancelTitleEdit() {
@@ -780,7 +793,7 @@ function cancelTitleEdit() {
   editingIsNew = false;
   if (isNew) {
     removeHeading(state.doc, heading);
-    commitAndRender();
+    commitAndRender('Discarded empty new heading');
   } else {
     render();
   }
@@ -802,9 +815,219 @@ function persistInBackground() {
   persist().catch((err) => setStatus('Save failed: ' + err.message));
 }
 
-function commitAndRender() {
+function commitAndRender(label = 'Edited') {
+  history = pushSnapshot(history, serializeOrg(state.doc), label);
   render();
   persistInBackground();
+}
+
+/**
+ * Restores state.doc from whichever history entry `history.index`
+ * currently points at, after `history` has already been moved there
+ * (by undo/redo/jumpTo) -- re-parses fresh and reapplies
+ * startupConfig/localVariables, the same pattern
+ * commitTextModeIfActive's own "reparse the whole doc" path already
+ * uses. Counts as an unsaved change (isDirty = true) -- undoing or
+ * redoing changes what's on screen just as much as any other edit
+ * does, and needs saving to actually stick.
+ *
+ * Deliberately does NOT try to preserve fold state across the jump --
+ * reapplying the document's own #+STARTUP visibility on every
+ * undo/redo step is a stated simplification, not an oversight: the
+ * alternative (matching which headings correspond to which across two
+ * potentially very different trees, to carry fold state over) is real
+ * complexity for a benefit that's mostly invisible day to day, and
+ * "fold state resets" already matches how this app treats reopening a
+ * file or switching documents elsewhere.
+ */
+function restoreFromHistory() {
+  const entry = currentEntry(history);
+  const newDoc = parseOrg(entry.text);
+  const startupConfig = parseStartupConfig(newDoc);
+  const localVariables = parseLocalVariables(entry.text);
+  const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
+  applyStartupVisibility(newDoc, startupConfig, archiveVisibility);
+  state.doc = newDoc;
+  state.startupConfig = startupConfig;
+  state.localVariables = localVariables;
+  isDirty = true;
+  if (currentView === 'text') currentView = 'org'; // avoid showing now-stale textarea content after a jump
+  render();
+  persistInBackground();
+}
+
+function performUndo() {
+  if (!canUndo(history)) {
+    setStatus('Nothing to undo.');
+    return;
+  }
+  const undoneLabel = currentEntry(history).label; // the step we're about to leave
+  history = undo(history);
+  restoreFromHistory();
+  setStatus(`Undid: ${undoneLabel}`);
+}
+
+function performRedo() {
+  if (!canRedo(history)) {
+    setStatus('Nothing to redo.');
+    return;
+  }
+  history = redo(history);
+  restoreFromHistory();
+  setStatus(`Redid: ${currentEntry(history).label}`);
+}
+
+/** Renders a diffHunks() result as colored added/removed/same lines,
+ *  with a visual gap between non-adjacent hunks -- the actual "show
+ *  what changed" view for a single history entry, diffed against the
+ *  entry immediately before it (what that one edit actually did, not
+ *  a diff against the file's current live state). */
+function renderDiffView(oldText, newText) {
+  const wrap = document.createElement('div');
+  wrap.style.fontFamily = 'ui-monospace, monospace';
+  wrap.style.fontSize = '12px';
+  wrap.style.background = 'var(--surface, #f6f6f6)';
+  wrap.style.borderRadius = '6px';
+  wrap.style.padding = '6px 8px';
+  wrap.style.margin = '4px 0 8px';
+  wrap.style.overflowX = 'auto';
+  wrap.style.whiteSpace = 'pre';
+
+  const hunks = diffHunks(oldText, newText, 1);
+  if (hunks.length === 0) {
+    wrap.textContent = '(no textual difference)';
+    wrap.style.fontStyle = 'italic';
+    wrap.style.opacity = '0.6';
+    return wrap;
+  }
+
+  hunks.forEach((hunk, hunkIndex) => {
+    if (hunkIndex > 0) {
+      const gap = document.createElement('div');
+      gap.textContent = '\u22ee';
+      gap.style.opacity = '0.4';
+      wrap.appendChild(gap);
+    }
+    for (const op of hunk.lines) {
+      const lineEl = document.createElement('div');
+      const prefix = op.type === 'added' ? '+ ' : op.type === 'removed' ? '\u2212 ' : '  ';
+      lineEl.textContent = prefix + op.line;
+      if (op.type === 'added') {
+        lineEl.style.color = '#227a1e';
+        lineEl.style.background = '#dcf0d8';
+      } else if (op.type === 'removed') {
+        lineEl.style.color = '#a02020';
+        lineEl.style.background = '#fde3e3';
+      } else {
+        lineEl.style.opacity = '0.6';
+      }
+      wrap.appendChild(lineEl);
+    }
+  });
+  return wrap;
+}
+
+function renderHistoryPanel() {
+  historyPanel.innerHTML = '';
+  if (!historyOpen) {
+    historyPanel.style.display = 'none';
+    return;
+  }
+  historyPanel.style.display = 'block';
+
+  const title = document.createElement('div');
+  title.className = 'panel-section-title';
+  title.textContent = 'History';
+  historyPanel.appendChild(title);
+
+  const stepRow = document.createElement('div');
+  stepRow.className = 'panel-row';
+  stepRow.appendChild(
+    menuButton('\u2039 Undo', () => {
+      performUndo();
+      renderHistoryPanel();
+    }, !canUndo(history))
+  );
+  stepRow.appendChild(
+    menuButton('Redo \u203a', () => {
+      performRedo();
+      renderHistoryPanel();
+    }, !canRedo(history))
+  );
+  historyPanel.appendChild(stepRow);
+
+  const hint = document.createElement('div');
+  hint.style.fontSize = '11px';
+  hint.style.opacity = '0.6';
+  hint.style.margin = '4px 0';
+  hint.textContent = 'Tap an entry to jump there. Tap "diff" to see what that step actually changed.';
+  historyPanel.appendChild(hint);
+
+  const list = document.createElement('div');
+  list.style.maxHeight = '340px';
+  list.style.overflowY = 'auto';
+
+  history.entries.forEach((entry, idx) => {
+    const row = document.createElement('div');
+    row.style.padding = '6px 4px';
+    row.style.borderBottom = '1px solid var(--border)';
+    row.style.cursor = 'pointer';
+    row.style.opacity = idx > history.index ? '0.55' : '1'; // "future" (redo-available) entries shown dimmer
+
+    const line = document.createElement('div');
+    line.style.display = 'flex';
+    line.style.alignItems = 'center';
+    line.style.gap = '6px';
+
+    const marker = document.createElement('span');
+    marker.textContent = idx === history.index ? '\u25cf' : '\u25cb';
+    marker.style.fontSize = '10px';
+    marker.style.color = idx === history.index ? 'var(--accent)' : 'var(--text-muted, #888)';
+    line.appendChild(marker);
+
+    const label = document.createElement('span');
+    label.textContent = entry.label;
+    label.style.flex = '1';
+    label.style.fontWeight = idx === history.index ? '600' : '400';
+    line.appendChild(label);
+
+    const time = document.createElement('span');
+    time.textContent = entry.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    time.style.fontSize = '11px';
+    time.style.opacity = '0.6';
+    line.appendChild(time);
+
+    if (idx > 0) {
+      const diffBtn = document.createElement('span');
+      diffBtn.textContent = 'diff';
+      diffBtn.style.fontSize = '11px';
+      diffBtn.style.opacity = '0.7';
+      diffBtn.style.textDecoration = 'underline';
+      diffBtn.style.marginLeft = '4px';
+      diffBtn.onclick = (e) => {
+        e.stopPropagation();
+        historyDiffExpandedIndex = historyDiffExpandedIndex === idx ? null : idx;
+        renderHistoryPanel();
+      };
+      line.appendChild(diffBtn);
+    }
+
+    row.appendChild(line);
+    row.onclick = () => {
+      history = jumpTo(history, idx);
+      restoreFromHistory();
+      setStatus(`Jumped to: ${entry.label}`);
+      renderHistoryPanel();
+    };
+
+    if (historyDiffExpandedIndex === idx && idx > 0) {
+      row.appendChild(renderDiffView(history.entries[idx - 1].text, entry.text));
+    }
+
+    list.appendChild(row);
+  });
+
+  historyPanel.appendChild(list);
 }
 
 /**
@@ -836,6 +1059,7 @@ function commitTextModeIfActive() {
   state.startupConfig = startupConfig;
   state.localVariables = localVariables;
   currentView = 'org';
+  history = pushSnapshot(history, newText, 'Edited in text mode');
   return true;
 }
 
@@ -1239,7 +1463,7 @@ function confirmHeadingDelete(heading) {
   if (heading.planning && (heading.planning.scheduled || heading.planning.deadline)) parts.push('a scheduled/deadline date');
   const title = heading.title || '(untitled)';
   return window.confirm(
-    `Delete "${title}"? It has ${parts.join(', ')}, which will be lost. This can't be undone.`
+    `Delete "${title}"? It has ${parts.join(', ')}, which will be lost.`
   );
 }
 
@@ -1772,7 +1996,7 @@ function tableHasContent(table) {
 
 function confirmTableDelete(table) {
   if (!tableHasContent(table)) return true;
-  return window.confirm("Delete this table and all its data? This can't be undone.");
+  return window.confirm("Delete this table and all its data?");
 }
 
 function paragraphHasContent(paragraph) {
@@ -1781,7 +2005,7 @@ function paragraphHasContent(paragraph) {
 
 function confirmParagraphDelete(paragraph) {
   if (!paragraphHasContent(paragraph)) return true;
-  return window.confirm("Delete this note? This can't be undone.");
+  return window.confirm("Delete this note?");
 }
 
 // Counts every item nested under `item`, at any depth — used by
@@ -1810,10 +2034,10 @@ function confirmListItemDelete(item) {
   if (count === 0 && !hasOwnContent) return true; // genuinely empty item, nothing lost either way
   if (count > 0) {
     return window.confirm(
-      `Delete this item? It has ${count} nested sub-item${count === 1 ? '' : 's'} that will be deleted too. This can't be undone.`
+      `Delete this item? It has ${count} nested sub-item${count === 1 ? '' : 's'} that will be deleted too.`
     );
   }
-  return window.confirm("Delete this item? This can't be undone.");
+  return window.confirm("Delete this item?");
 }
 
 function renderRow(row, todoSequence) {
@@ -1847,7 +2071,7 @@ function renderRow(row, todoSequence) {
       badge.textContent = row.node.todo;
       badge.onclick = () => {
         cycleHeadingTodo(state.doc, row.node, GLOBAL_TODO_DEFAULT);
-        commitAndRender();
+        commitAndRender('Cycled TODO state');
       };
       el.appendChild(badge);
     }
@@ -1942,7 +2166,7 @@ function renderRow(row, todoSequence) {
               label: 'Move up',
               onClick: () => {
                 if (moveHeadingUp(state.doc, row.node)) {
-                  commitAndRender();
+                  commitAndRender('Moved heading up');
                 } else {
                   setStatus('Already first among its siblings.');
                   render();
@@ -1954,7 +2178,7 @@ function renderRow(row, todoSequence) {
               label: 'Move down',
               onClick: () => {
                 if (moveHeadingDown(state.doc, row.node)) {
-                  commitAndRender();
+                  commitAndRender('Moved heading down');
                 } else {
                   setStatus('Already last among its siblings.');
                   render();
@@ -1966,8 +2190,9 @@ function renderRow(row, todoSequence) {
               label: row.node.todo ? 'Remove TODO/DONE state' : 'Mark as TODO',
               onClick: () => {
                 actionMenuFor = null;
+                const hadTodo = !!row.node.todo;
                 toggleHeadingTodo(state.doc, row.node, GLOBAL_TODO_DEFAULT);
-                commitAndRender();
+                commitAndRender(hadTodo ? 'Removed TODO/DONE state' : 'Marked as TODO');
               },
             },
             {
@@ -1976,7 +2201,7 @@ function renderRow(row, todoSequence) {
               onClick: () => {
                 actionMenuFor = null;
                 insertTable(row.node, {});
-                commitAndRender();
+                commitAndRender('Added table');
               },
             },
             {
@@ -2006,7 +2231,7 @@ function renderRow(row, todoSequence) {
                 editingHeadingText = null;
                 editingGeneral = null;
                 removeHeading(state.doc, row.node);
-                commitAndRender();
+                commitAndRender('Deleted heading');
               },
             },
             {
@@ -2014,7 +2239,7 @@ function renderRow(row, todoSequence) {
               label: 'Promote (outdent)',
               onClick: () => {
                 if (promoteHeading(state.doc, row.node)) {
-                  commitAndRender();
+                  commitAndRender('Promoted heading');
                 } else {
                   setStatus("Already top-level \u2014 can't promote further.");
                   render();
@@ -2026,7 +2251,7 @@ function renderRow(row, todoSequence) {
               label: 'Demote (indent)',
               onClick: () => {
                 if (demoteHeading(state.doc, row.node)) {
-                  commitAndRender();
+                  commitAndRender('Demoted heading');
                 } else {
                   setStatus("No preceding sibling to demote under.");
                   render();
@@ -2063,7 +2288,7 @@ function renderRow(row, todoSequence) {
         const heading = editingHeadingText;
         editingHeadingText = null;
         setHeadingText(heading, textarea.value);
-        commitAndRender();
+        commitAndRender('Edited heading body text');
       });
       autoGrowTextarea(textarea);
       textEditorEl.appendChild(textarea);
@@ -2111,7 +2336,7 @@ function renderRow(row, todoSequence) {
           const { properties, propertyOrder } = propsGroup.getProperties();
           heading.properties = properties;
           heading.propertyOrder = propertyOrder;
-          commitAndRender();
+          commitAndRender('Edited heading details');
         })
       );
       btnRow.appendChild(
@@ -2151,7 +2376,7 @@ function renderRow(row, todoSequence) {
         if (e.target.closest('[data-inline-link]')) return;
         cycleItemCheckbox(row.heading, row.item);
         updateCheckboxCookiesUpward(state.doc, row.heading);
-        commitAndRender();
+        commitAndRender('Toggled checkbox');
       };
       const box = document.createElement('span');
       box.textContent = row.item.checkbox === 'X' ? '\u2611' : row.item.checkbox === '-' ? '\u25aa' : '\u2610';
@@ -2196,7 +2421,7 @@ function renderRow(row, todoSequence) {
         const { heading, item } = editingListItem;
         editingListItem = null;
         editListItemText(heading, item, input.value.replace(/\n/g, ' '));
-        commitAndRender();
+        commitAndRender('Edited list item text');
       });
       autoGrowTextarea(input);
       el.appendChild(input);
@@ -2256,7 +2481,7 @@ function renderRow(row, todoSequence) {
               const newItem = insertListItem(row.heading, row.item, '');
               updateCheckboxCookiesUpward(state.doc, row.heading);
               editingListItem = { heading: row.heading, item: newItem };
-              commitAndRender();
+              commitAndRender('Added list item');
             },
           },
           {
@@ -2269,7 +2494,7 @@ function renderRow(row, todoSequence) {
               if (editingListItem && editingListItem.item === row.item) editingListItem = null;
               deleteListItem(row.heading, row.item);
               updateCheckboxCookiesUpward(state.doc, row.heading);
-              commitAndRender();
+              commitAndRender('Deleted list item');
             },
           },
           ],
@@ -2328,7 +2553,7 @@ function renderTableRow(row) {
             if (!confirmTableDelete(row.node)) return;
             actionMenuFor = null;
             deleteTable(row.heading, row.node);
-            commitAndRender();
+            commitAndRender('Deleted table');
           },
         },
       ],
@@ -2383,7 +2608,7 @@ function renderTableRow(row) {
           const { heading, table, rowIndex: ri, colIndex: ci } = editingCell;
           editingCell = null;
           setTableCell(heading, table, ri, ci, input.value.replace(/\n/g, ' '));
-          commitAndRender();
+          commitAndRender('Edited table cell');
         });
         autoGrowTextarea(input);
         tdEl.appendChild(input);
@@ -2430,7 +2655,7 @@ function renderTableRow(row) {
   controls.appendChild(
     smallButton('+ row', 'Add row', () => {
       insertTableRow(row.heading, row.node, row.node.rows.length - 1);
-      commitAndRender();
+      commitAndRender('Added table row');
     })
   );
   controls.appendChild(
@@ -2439,17 +2664,17 @@ function renderTableRow(row) {
         setStatus("Can't delete the last row.");
         return;
       }
-      if (lastDataRowHasContent() && !window.confirm("Delete the last row? It has data in it. This can't be undone.")) {
+      if (lastDataRowHasContent() && !window.confirm('Delete the last row? It has data in it.')) {
         return;
       }
       deleteTableRow(row.heading, row.node, row.node.rows.length - 1);
-      commitAndRender();
+      commitAndRender('Deleted table row');
     })
   );
   controls.appendChild(
     smallButton('+ col', 'Add column', () => {
       insertTableColumn(row.heading, row.node, colCount() - 1);
-      commitAndRender();
+      commitAndRender('Added table column');
     })
   );
   controls.appendChild(
@@ -2458,11 +2683,11 @@ function renderTableRow(row) {
         setStatus("Can't delete the last column.");
         return;
       }
-      if (lastColumnHasContent() && !window.confirm("Delete the last column? It has data in it. This can't be undone.")) {
+      if (lastColumnHasContent() && !window.confirm('Delete the last column? It has data in it.')) {
         return;
       }
       deleteTableColumn(row.heading, row.node, colCount() - 1);
-      commitAndRender();
+      commitAndRender('Deleted table column');
     })
   );
   wrap.appendChild(controls);
@@ -2515,7 +2740,7 @@ function renderParagraphRow(row) {
       const { heading, paragraph } = editingParagraph;
       editingParagraph = null;
       editParagraphText(heading, paragraph, textarea.value);
-      commitAndRender();
+      commitAndRender('Edited paragraph text');
     });
     autoGrowTextarea(textarea);
     wrap.appendChild(textarea);
@@ -2565,7 +2790,7 @@ function renderParagraphRow(row) {
             actionMenuFor = null;
             const newParagraph = insertParagraphAfter(row.heading, row.node, '');
             editingParagraph = { heading: row.heading, paragraph: newParagraph };
-            commitAndRender();
+            commitAndRender('Added paragraph');
           },
         },
         {
@@ -2575,7 +2800,7 @@ function renderParagraphRow(row) {
             if (!confirmParagraphDelete(row.node)) return;
             actionMenuFor = null;
             deleteParagraph(row.heading, row.node);
-            commitAndRender();
+            commitAndRender('Deleted paragraph');
           },
         },
       ],
@@ -2856,6 +3081,8 @@ async function afterDocumentLoaded(documentId, doc, storageKind) {
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(doc, startupConfig, archiveVisibility);
   state = { documentId, doc, startupConfig, storageKind, localVariables };
+  history = createHistory(serializeOrg(doc));
+  historyOpen = false;
   isDirty = false; // freshly loaded — matches whatever was just read, nothing unsaved yet
   await setLastActiveDocument(kv, documentId, storageKind);
   currentView = 'org';
@@ -3443,22 +3670,6 @@ function menuButton(label, onClick, disabled) {
   return btn;
 }
 
-/** Same idea as menuButton, but noticeably tighter (smaller font,
- *  less padding, no enforced min-height) -- for a row that needs to
- *  fit more buttons on one line than the standard 44px-min-height
- *  touch-target sizing comfortably allows, e.g. the file menu's own
- *  top row (New/Open/Save/Save As/Export) and the export sub-flow's
- *  format/scope choices plus a Back button all sharing one line. Not
- *  a blanket touch-target reduction -- scoped to these specific,
- *  already-short-label rows, not applied anywhere else. */
-function compactMenuButton(label, onClick, disabled) {
-  const btn = menuButton(label, onClick, disabled);
-  btn.style.fontSize = '13px';
-  btn.style.padding = '6px 8px';
-  btn.style.minHeight = '0';
-  return btn;
-}
-
 /** Same idea as menuButton, but with explicit comfortable sizing
  *  (matching the .panel button convention) for use outside a
  *  .panel-classed container — e.g. the timestamp wizard's Save/Cancel,
@@ -3495,23 +3706,22 @@ function renderFileMenu() {
   if (fileMenuStep === null) {
     const row = document.createElement('div');
     row.className = 'panel-row';
-    row.style.gap = '4px';
     row.appendChild(
-      compactMenuButton('New', () => {
+      menuButton('New', () => {
         fileMenuStep = 'new';
         renderFileMenu();
       })
     );
     row.appendChild(
-      compactMenuButton('Open', () => {
+      menuButton('Open', () => {
         fileMenuStep = 'open';
         renderFileMenu();
       })
     );
-    row.appendChild(compactMenuButton('Save', () => saveCurrent(), !state.documentId));
+    row.appendChild(menuButton('Save', () => saveCurrent(), !state.documentId));
     row.appendChild(
-      compactMenuButton(
-        'Save As\u2026',
+      menuButton(
+        'Save As',
         () => {
           fileMenuStep = 'saveas';
           renderFileMenu();
@@ -3520,8 +3730,8 @@ function renderFileMenu() {
       )
     );
     row.appendChild(
-      compactMenuButton(
-        'Export\u2026',
+      menuButton(
+        'Export',
         () => {
           fileMenuStep = 'export';
           exportFormat = null;
@@ -3648,15 +3858,14 @@ function renderExportFlow() {
 
     const row = document.createElement('div');
     row.className = 'panel-row';
-    row.style.gap = '4px';
     row.appendChild(
-      compactMenuButton('Markdown', () => {
+      menuButton('Markdown', () => {
         exportFormat = 'markdown';
         renderFileMenu();
       })
     );
     row.appendChild(
-      compactMenuButton('HTML', () => {
+      menuButton('HTML', () => {
         exportFormat = 'html';
         renderFileMenu();
       })
@@ -3701,7 +3910,7 @@ function renderExportFlow() {
     backRow.className = 'panel-row';
     backRow.style.marginTop = '6px';
     backRow.appendChild(
-      compactMenuButton('\u2039 Back', () => {
+      menuButton('\u2039 Back', () => {
         exportPickingHeading = false;
         renderFileMenu();
       })
@@ -3719,16 +3928,15 @@ function renderExportFlow() {
 
   const row = document.createElement('div');
   row.className = 'panel-row';
-  row.style.gap = '4px';
-  row.appendChild(compactMenuButton('Whole file', () => performExport(exportFormat, null)));
+  row.appendChild(menuButton('Whole file', () => performExport(exportFormat, null)));
   row.appendChild(
-    compactMenuButton('Choose a heading\u2026', () => {
+    menuButton('Choose a heading\u2026', () => {
       exportPickingHeading = true;
       renderFileMenu();
     })
   );
   row.appendChild(
-    compactMenuButton('\u2039 Back', () => {
+    menuButton('\u2039 Back', () => {
       exportFormat = null;
       renderFileMenu();
     })
@@ -3904,6 +4112,10 @@ fileMenuBtn.addEventListener('click', () => {
   if (fileMenuOpen && docsOpen) {
     docsOpen = false;
     render(); // restores the normal outline content in place of docs
+  }
+  if (fileMenuOpen && historyOpen) {
+    historyOpen = false;
+    renderHistoryPanel();
   }
   renderFileMenu();
 });
@@ -5132,6 +5344,10 @@ settingsBtn.addEventListener('click', async () => {
   if (settingsOpen && docsOpen) {
     docsOpen = false;
   }
+  if (settingsOpen && historyOpen) {
+    historyOpen = false;
+    renderHistoryPanel();
+  }
   if (settingsOpen) {
     if (isWideLayout()) {
       render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
@@ -5353,6 +5569,10 @@ searchBtn.addEventListener('click', () => {
     docsOpen = false;
     render();
   }
+  if (searchOpen && historyOpen) {
+    historyOpen = false;
+    renderHistoryPanel();
+  }
   if (!searchOpen) searchQuery = '';
   renderSearchPanel();
 });
@@ -5556,7 +5776,7 @@ async function runCapture(template) {
   });
 
   const inserted = insertCapture(target, template.type, text);
-  commitAndRender();
+  commitAndRender(`Captured: ${template.description}`);
 
   if (cursorOffset !== null && inserted && (template.type === 'item' || template.type === 'checkitem')) {
     switchToView('org');
@@ -5611,6 +5831,10 @@ captureBtn.addEventListener('click', () => {
   if (captureOpen && docsOpen) {
     docsOpen = false;
     render();
+  }
+  if (captureOpen && historyOpen) {
+    historyOpen = false;
+    renderHistoryPanel();
   }
   renderCapturePanel();
 });
@@ -5674,6 +5898,17 @@ function renderMoreMenu() {
   docsBtnOption.setAttribute('aria-label', 'Help / Docs');
   row.appendChild(docsBtnOption);
 
+  const historyBtnOption = menuButton('History', () => {
+    moreOpen = false;
+    renderMoreMenu();
+    historyOpen = true;
+    renderHistoryPanel();
+  });
+  historyBtnOption.style.flex = '1';
+  historyBtnOption.disabled = !state.doc;
+  historyBtnOption.setAttribute('aria-label', 'Undo history');
+  row.appendChild(historyBtnOption);
+
   morePanel.appendChild(row);
 }
 
@@ -5702,6 +5937,10 @@ moreBtn.addEventListener('click', () => {
   if (moreOpen && docsOpen) {
     docsOpen = false;
     render();
+  }
+  if (moreOpen && historyOpen) {
+    historyOpen = false;
+    renderHistoryPanel();
   }
   renderMoreMenu();
 });
