@@ -34,6 +34,8 @@ import {
   getContactsBirthdayProperty,
   getUseSubSuperscripts,
   getArchiveConfirm,
+  getUseTagInheritance,
+  getUsePropertyInheritance,
 } from './src/local-variables.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import {
@@ -107,8 +109,8 @@ import {
   setFontFamily,
   getFontSize,
   setFontSize,
-  getOtherFontSize,
-  setOtherFontSize,
+  getTablesFontSize,
+  setTablesFontSize,
   exportAllSettings,
   importAllSettings,
   getLastActiveDocument,
@@ -2327,7 +2329,7 @@ function renderTableRow(row) {
 
   const tableEl = document.createElement('table');
   tableEl.style.borderCollapse = 'collapse';
-  tableEl.style.fontSize = 'var(--app-font-size-other)';
+  tableEl.style.fontSize = 'var(--app-font-size-tables)';
 
   row.node.rows.forEach((tr, rowIndex) => {
     if (tr.type === 'rule') return; // shown implicitly via the header row's styling, not as its own grid row
@@ -2515,7 +2517,6 @@ function renderParagraphRow(row) {
   p.style.cursor = 'text';
   p.style.whiteSpace = 'pre-wrap';
   p.style.overflowWrap = 'anywhere';
-  p.style.fontSize = '14px';
   const hasContent = row.node.lines.some((l) => l.trim() !== '');
   if (hasContent) {
     row.node.lines.forEach((line, i) => {
@@ -3040,7 +3041,10 @@ async function openFileLink(resolution) {
     return;
   }
 
-  const results = searchDocument(state.doc, target);
+  const results = searchDocument(state.doc, target, {
+    useTagInheritance: getUseTagInheritance(state.localVariables),
+    usePropertyInheritance: getUsePropertyInheritance(state.localVariables),
+  });
   if (results.length > 0) {
     navigateToHeading(results[0].heading, { revealOwnBody: results[0].type !== 'heading', targetNode: results[0].node });
   } else {
@@ -4260,8 +4264,8 @@ function applyFontSize(size) {
   document.documentElement.style.setProperty('--app-font-size', size + 'px');
 }
 
-function applyOtherFontSize(size) {
-  document.documentElement.style.setProperty('--app-font-size-other', size + 'px');
+function applyTablesFontSize(size) {
+  document.documentElement.style.setProperty('--app-font-size-tables', size + 'px');
 }
 
 /** Opens the native file picker and resolves with the picked file's raw
@@ -4355,7 +4359,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
   sizeTitle.textContent = 'Font Size';
   appearanceSection.appendChild(sizeTitle);
 
-  const otherFontSize = await getOtherFontSize(kv);
+  const tablesFontSize = await getTablesFontSize(kv);
 
   const sizeRow = document.createElement('div');
   sizeRow.className = 'panel-row';
@@ -4390,31 +4394,31 @@ async function renderSettingsView(target = settingsRenderTarget) {
   otherDivider.style.margin = '0 4px';
   sizeRow.appendChild(otherDivider);
 
-  const otherLabel = document.createElement('span');
-  otherLabel.textContent = 'Other:';
-  otherLabel.style.fontSize = '13px';
-  otherLabel.style.opacity = '0.7';
-  sizeRow.appendChild(otherLabel);
+  const tablesLabel = document.createElement('span');
+  tablesLabel.textContent = 'Tables:';
+  tablesLabel.style.fontSize = '13px';
+  tablesLabel.style.opacity = '0.7';
+  sizeRow.appendChild(tablesLabel);
 
   sizeRow.appendChild(
     menuButton('\u2212', async () => {
-      const next = Math.max(10, otherFontSize - 1);
-      await setOtherFontSize(kv, next);
-      applyOtherFontSize(next);
+      const next = Math.max(10, tablesFontSize - 1);
+      await setTablesFontSize(kv, next);
+      applyTablesFontSize(next);
       renderSettingsView();
     })
   );
-  const otherSizeLabel = document.createElement('span');
-  otherSizeLabel.textContent = otherFontSize + 'px';
-  otherSizeLabel.style.fontSize = '14px';
-  otherSizeLabel.style.minWidth = '40px';
-  otherSizeLabel.style.textAlign = 'center';
-  sizeRow.appendChild(otherSizeLabel);
+  const tablesSizeLabel = document.createElement('span');
+  tablesSizeLabel.textContent = tablesFontSize + 'px';
+  tablesSizeLabel.style.fontSize = '14px';
+  tablesSizeLabel.style.minWidth = '40px';
+  tablesSizeLabel.style.textAlign = 'center';
+  sizeRow.appendChild(tablesSizeLabel);
   sizeRow.appendChild(
     menuButton('+', async () => {
-      const next = Math.min(24, otherFontSize + 1);
-      await setOtherFontSize(kv, next);
-      applyOtherFontSize(next);
+      const next = Math.min(24, tablesFontSize + 1);
+      await setTablesFontSize(kv, next);
+      applyTablesFontSize(next);
       renderSettingsView();
     })
   );
@@ -4699,7 +4703,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
       if (imported.includes('theme')) applyTheme(await getTheme(kv));
       if (imported.includes('fontFamily')) applyFontFamily(await getFontFamily(kv));
       if (imported.includes('fontSize')) applyFontSize(await getFontSize(kv));
-      if (imported.includes('otherFontSize')) applyOtherFontSize(await getOtherFontSize(kv));
+      if (imported.includes('tablesFontSize')) applyTablesFontSize(await getTablesFontSize(kv));
       if (imported.includes('github')) githubConfig = await getGithubConfig(kv);
       if (imported.includes('webdav')) webdavConfig = await getWebdavConfig(kv);
       setStatus('Imported: ' + imported.join(', ') + '.');
@@ -5011,7 +5015,7 @@ function renderSearchPanel() {
   regexRow.style.flexWrap = 'wrap';
 
   const regexToggle = document.createElement('button');
-  regexToggle.textContent = '[Regex]';
+  regexToggle.textContent = 'Regex';
   regexToggle.setAttribute('aria-label', searchUseRegex ? 'Regex search on' : 'Regex search off');
   regexToggle.style.fontFamily = 'monospace';
   regexToggle.style.fontSize = '13px';
@@ -5061,7 +5065,11 @@ function renderSearchResults() {
 
   let results;
   try {
-    results = searchDocument(state.doc, searchQuery, { useRegex: searchUseRegex });
+    results = searchDocument(state.doc, searchQuery, {
+      useRegex: searchUseRegex,
+      useTagInheritance: getUseTagInheritance(state.localVariables),
+      usePropertyInheritance: getUsePropertyInheritance(state.localVariables),
+    });
   } catch (err) {
     const errorEl = document.createElement('div');
     errorEl.style.fontSize = '13px';
@@ -5567,7 +5575,7 @@ async function bootstrap() {
   applyTheme(await getTheme(kv));
   applyFontFamily(await getFontFamily(kv));
   applyFontSize(await getFontSize(kv));
-  applyOtherFontSize(await getOtherFontSize(kv));
+  applyTablesFontSize(await getTablesFontSize(kv));
   syncContentOffset();
 
   const last = await getLastActiveDocument(kv);

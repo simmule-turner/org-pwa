@@ -21,7 +21,7 @@
     --done-fg: #27500a;
     --app-font-family: system-ui, sans-serif;
     --app-font-size: 16px;
-    --app-font-size-other: 13px;
+    --app-font-size-tables: 13px;
   }
   html[data-theme="dark"] {
     --bg: #16181c;
@@ -197,8 +197,8 @@
   .todo-badge.done { background: var(--done-bg); color: var(--done-fg); }
   .tag { font-size: 10px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border-strong); margin-left: 4px; opacity: 0.75; flex-shrink: 0; }
   .checkbox-row { padding-left: 32px; cursor: pointer; }
-  .title-input { font: inherit; border: 1px solid #5a5; border-radius: 4px; padding: 1px 4px; flex: 1; min-width: 60px; background: var(--bg); color: var(--fg); }
-  .heading-title { cursor: text; flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+  .title-input { font: inherit; font-weight: 600; border: 1px solid #5a5; border-radius: 4px; padding: 1px 4px; flex: 1; min-width: 60px; background: var(--bg); color: var(--fg); }
+  .heading-title { cursor: text; flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; font-weight: 600; }
   .empty-state { padding: 40px 20px; text-align: center; opacity: 0.6; font-size: 14px; }
   button { background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 6px; }
   input, textarea { color: var(--fg); background: var(--bg); }
