@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
-import { searchDocument, parseFilterQuery } from '../src/search.js';
+import { searchDocument, parseFilterQuery, effectiveTags, effectivePropertyValue } from '../src/search.js';
 
 function sampleDoc() {
   return parseOrg(
@@ -361,11 +361,25 @@ test('a pure filter query (no free text) produces a heading result for every hea
   assert.ok(results.every((r) => r.type === 'heading'));
 });
 
-test('filters do NOT inherit to child headings -- a child without the tag does not match even if its parent has it', () => {
+test('tag filters DO inherit to child headings by default, matching real org-use-tag-inheritance\u2019s own default of t', () => {
   const doc = parseOrg('* Parent :work:\n** Child with no tags of its own');
   const results = searchDocument(doc, '+work');
   const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['Parent', 'Child with no tags of its own']);
+});
+
+test('tag inheritance can be turned off via useTagInheritance: false, restoring the "own tags only" behavior', () => {
+  const doc = parseOrg('* Parent :work:\n** Child with no tags of its own');
+  const results = searchDocument(doc, '+work', { useTagInheritance: false });
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
   assert.deepEqual(headings, ['Parent']);
+});
+
+test('inheritance also applies correctly to a -tag exclusion -- an inherited tag still excludes the child', () => {
+  const doc = parseOrg('* Parent :work:\n** Child with no tags of its own');
+  const results = searchDocument(doc, '-work');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, [], 'the child inherits :work: so -work must exclude it too, same as it excludes the parent');
 });
 
 test('child headings are still independently evaluated and can match on their own', () => {
@@ -385,4 +399,85 @@ test('filters combine correctly with regex mode for the free-text portion', () =
 test('a filter with no matching headings at all returns an empty array, not an error', () => {
   const results = searchDocument(taggedDoc(), '+nonexistent-tag');
   assert.deepEqual(results, []);
+});
+
+// ---- multi-level tag inheritance ---------------------------------------
+
+test('tag inheritance flows through multiple levels -- a grandchild inherits a grandparent\u2019s tag', () => {
+  const doc = parseOrg('* Grandparent :project:\n** Parent (no tag)\n*** Grandchild (no tag)');
+  const results = searchDocument(doc, '+project');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['Grandparent', 'Parent (no tag)', 'Grandchild (no tag)']);
+});
+
+test('a heading\u2019s own tag combines with an inherited one -- both matter independently', () => {
+  const doc = parseOrg('* Parent :work:\n** Child :urgent:');
+  assert.deepEqual(searchDocument(doc, '+work').map((r) => r.heading.title), ['Parent', 'Child']);
+  assert.deepEqual(searchDocument(doc, '+urgent').map((r) => r.heading.title), ['Child']);
+});
+
+// ---- property inheritance (opt-in, matching real org's own default) ---
+
+test('property filters do NOT inherit by default, matching real org-use-property-inheritance\u2019s own default of nil', () => {
+  const doc = parseOrg(
+    ['* Parent', ':PROPERTIES:', ':OWNER: Alice', ':END:', '** Child with no properties of its own'].join('\n')
+  );
+  const results = searchDocument(doc, 'owner:Alice');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['Parent']);
+});
+
+test('property inheritance can be turned on via usePropertyInheritance: true', () => {
+  const doc = parseOrg(
+    ['* Parent', ':PROPERTIES:', ':OWNER: Alice', ':END:', '** Child with no properties of its own'].join('\n')
+  );
+  const results = searchDocument(doc, 'owner:Alice', { usePropertyInheritance: true });
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['Parent', 'Child with no properties of its own']);
+});
+
+test('a heading\u2019s OWN property value always wins over an inherited one, even with inheritance on', () => {
+  const doc = parseOrg(
+    ['* Parent', ':PROPERTIES:', ':OWNER: Alice', ':END:', '** Child', ':PROPERTIES:', ':OWNER: Bob', ':END:'].join('\n')
+  );
+  const results = searchDocument(doc, 'owner:Bob', { usePropertyInheritance: true });
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['Child'], 'the child\u2019s own OWNER: Bob must win, not inherit Alice from the parent');
+});
+
+// ---- effectiveTags / effectivePropertyValue direct unit tests -----------
+
+test('effectiveTags: without inheritance, only the heading\u2019s own tags', () => {
+  const heading = { tags: ['a'] };
+  const ancestors = [{ tags: ['b'] }, { tags: ['c'] }];
+  assert.deepEqual(effectiveTags(heading, ancestors, false), ['a']);
+});
+
+test('effectiveTags: with inheritance, the heading\u2019s own tags plus every ancestor\u2019s', () => {
+  const heading = { tags: ['a'] };
+  const ancestors = [{ tags: ['b'] }, { tags: ['c'] }];
+  assert.deepEqual(effectiveTags(heading, ancestors, true), ['a', 'b', 'c']);
+});
+
+test('effectivePropertyValue: the heading\u2019s own value is used when present, inheritance or not', () => {
+  const heading = { propertyOrder: ['OWNER'], properties: { OWNER: 'Alice' } };
+  const ancestors = [{ propertyOrder: ['OWNER'], properties: { OWNER: 'Bob' } }];
+  assert.equal(effectivePropertyValue(heading, ancestors, 'OWNER', true), 'Alice');
+  assert.equal(effectivePropertyValue(heading, ancestors, 'OWNER', false), 'Alice');
+});
+
+test('effectivePropertyValue: falls back to the NEAREST ancestor that has it, with inheritance on', () => {
+  const heading = { propertyOrder: [], properties: {} };
+  const ancestors = [
+    { propertyOrder: ['OWNER'], properties: { OWNER: 'Grandparent' } },
+    { propertyOrder: [], properties: {} }, // parent -- doesn't have it
+  ];
+  assert.equal(effectivePropertyValue(heading, ancestors, 'OWNER', true), 'Grandparent');
+});
+
+test('effectivePropertyValue: returns null when nothing in the chain defines it', () => {
+  const heading = { propertyOrder: [], properties: {} };
+  const ancestors = [{ propertyOrder: [], properties: {} }];
+  assert.equal(effectivePropertyValue(heading, ancestors, 'OWNER', true), null);
+  assert.equal(effectivePropertyValue(heading, ancestors, 'OWNER', false), null);
 });

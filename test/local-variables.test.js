@@ -9,6 +9,8 @@ import {
   getAgendaSkipCommentTrees,
   getAgendaSkipArchivedTrees,
   getArchiveConfirm,
+  getUseTagInheritance,
+  getUsePropertyInheritance,
   getUseSubSuperscripts,
 } from '../src/local-variables.js';
 
@@ -169,4 +171,22 @@ test('getArchiveConfirm returns false when explicitly set to nil', () => {
 
 test('getArchiveConfirm returns true when explicitly set to t', () => {
   assert.equal(getArchiveConfirm({ 'org-archive-confirm': 't' }), true);
+});
+
+// ---- getUseTagInheritance / getUsePropertyInheritance ----------------
+
+test('getUseTagInheritance defaults to true, matching real org (tags inherit by default)', () => {
+  assert.equal(getUseTagInheritance({}), true);
+});
+
+test('getUseTagInheritance can be turned off', () => {
+  assert.equal(getUseTagInheritance({ 'org-use-tag-inheritance': 'nil' }), false);
+});
+
+test('getUsePropertyInheritance defaults to false, matching real org (properties do NOT inherit by default)', () => {
+  assert.equal(getUsePropertyInheritance({}), false);
+});
+
+test('getUsePropertyInheritance can be turned on', () => {
+  assert.equal(getUsePropertyInheritance({ 'org-use-property-inheritance': 't' }), true);
 });
