@@ -1429,7 +1429,10 @@ function navigateToHeading(heading, { revealOwnBody = false, targetNode = headin
 // not blocking the browser's own gesture handling.
 const SWIPE_THRESHOLD_PX = 40;
 
-function attachSlideLeftToFold(el, heading) {
+function attachSlideLeftToFold(el, heading, opts = {}) {
+  const onFolded = opts.onFolded || render;
+  const archiveVisibility =
+    opts.archiveVisibility || (getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived');
   let startX = null;
   let startY = null;
   let active = false;
@@ -1451,9 +1454,8 @@ function attachSlideLeftToFold(el, heading) {
     const dy = e.clientY - startY;
     const isLeftSwipe = dx < -SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.5;
     if (!isLeftSwipe) return;
-    const archiveVisibility = getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived';
     cycleFoldLevel(heading, { archiveVisibility });
-    render();
+    onFolded();
   };
 
   el.addEventListener('pointerup', finish);
@@ -5226,6 +5228,7 @@ function renderReadOnlyHeading(heading, depth, container, todoSequence, linkCont
   wrap.style.paddingLeft = 8 + depth * 16 + 'px';
   wrap.style.padding = `4px 4px 4px ${8 + depth * 16}px`;
   if (docsScrollTarget === heading) wrap.id = 'docs-heading-target';
+  attachSlideLeftToFold(wrap, heading, { onFolded: rerender, archiveVisibility: 'archived' });
 
   const row = document.createElement('div');
   row.style.display = 'flex';
@@ -5233,15 +5236,16 @@ function renderReadOnlyHeading(heading, depth, container, todoSequence, linkCont
   row.style.gap = '4px';
 
   const hasChildren = heading.children.length > 0;
+  const hasFoldableContent = hasChildren || heading.body.length > 0;
   const fold = document.createElement('span');
-  fold.textContent = hasChildren ? (heading.collapsed ? '\u25b8' : '\u25be') : ' ';
-  fold.style.cursor = hasChildren ? 'pointer' : 'default';
+  fold.textContent = hasFoldableContent ? (heading.collapsed ? '\u25b8' : '\u25be') : ' ';
+  fold.style.cursor = hasFoldableContent ? 'pointer' : 'default';
   fold.style.width = '16px';
   fold.style.flexShrink = '0';
   fold.style.userSelect = 'none';
-  if (hasChildren) {
+  if (hasFoldableContent) {
     fold.onclick = () => {
-      heading.collapsed = !heading.collapsed;
+      toggleFold(heading);
       rerender();
     };
   }
@@ -5277,8 +5281,10 @@ function renderReadOnlyHeading(heading, depth, container, todoSequence, linkCont
   container.appendChild(wrap);
 
   if (!heading.collapsed) {
-    for (const node of heading.body) {
-      renderReadOnlyBodyNode(node, depth, container, linkContext);
+    if (!heading.bodyHidden) {
+      for (const node of heading.body) {
+        renderReadOnlyBodyNode(node, depth, container, linkContext, heading.drawersHidden);
+      }
     }
     for (const child of heading.children) {
       renderReadOnlyHeading(child, depth + 1, container, todoSequence, linkContext, rerender);
@@ -5286,7 +5292,7 @@ function renderReadOnlyHeading(heading, depth, container, todoSequence, linkCont
   }
 }
 
-function renderReadOnlyBodyNode(node, depth, container, linkContext) {
+function renderReadOnlyBodyNode(node, depth, container, linkContext, drawersHidden) {
   const indent = 8 + depth * 16 + 16;
   if (node.type === 'paragraph') {
     const p = document.createElement('div');
@@ -5309,7 +5315,7 @@ function renderReadOnlyBodyNode(node, depth, container, linkContext) {
   } else if (node.type === 'table') {
     renderReadOnlyTable(node, depth, container);
   } else if (node.type === 'block') {
-    renderReadOnlyBlock(node, depth, container);
+    renderReadOnlyBlock(node, depth, container, drawersHidden);
   }
 }
 
@@ -5375,8 +5381,8 @@ function renderReadOnlyTable(table, depth, container) {
  *  re-fold. Local, closure-captured state (not stored on the node
  *  itself), since a block's own expand/collapse state doesn't need to
  *  survive a full docs re-render the way heading fold state does. */
-function renderReadOnlyBlock(block, depth, container) {
-  let expanded = false;
+function renderReadOnlyBlock(block, depth, container, drawersHidden) {
+  let expanded = !drawersHidden;
   const wrap = document.createElement('div');
   wrap.style.marginLeft = 8 + depth * 16 + 16 + 'px';
   wrap.style.margin = '4px 0';
@@ -5389,7 +5395,7 @@ function renderReadOnlyBlock(block, depth, container) {
   wrap.appendChild(label);
 
   const content = document.createElement('pre');
-  content.style.display = 'none';
+  content.style.display = expanded ? 'block' : 'none';
   content.style.background = 'var(--surface, #f6f6f6)';
   content.style.padding = '8px';
   content.style.borderRadius = '6px';
@@ -5421,6 +5427,8 @@ async function renderDocsView(target = docsRenderTarget) {
       if (!response.ok) throw new Error('HTTP ' + response.status);
       const text = await response.text();
       cachedDocsDoc = parseOrg(text);
+      const docsStartupConfig = parseStartupConfig(cachedDocsDoc);
+      applyStartupVisibility(cachedDocsDoc, docsStartupConfig, 'archived');
       docsScrollTarget = null; // a genuinely fresh load -- no stale scroll target from a previous session
     } catch (err) {
       const errorEl = document.createElement('div');
