@@ -9,7 +9,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 ** Contents
 
 - [[*What org-pwa is (and isn't)][What org-pwa is (and isn't)]]
-- [[#named-target][Custom Target Anchor]]
+- [[named-target][Custom Target Anchor]]
 - [[#foo][Foo is back]]
 - [[*Getting started][Getting started]]
 - [[*Editing your outline][Editing your outline]]
