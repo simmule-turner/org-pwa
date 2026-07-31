@@ -10,6 +10,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 
 - [[*What org-pwa is (and isn't)][What org-pwa is (and isn't)]]
 - [[#named-target][Custom Target Anchor]]
+- [[#foo][Foo is back]]
 - [[*Getting started][Getting started]]
 - [[*Editing your outline][Editing your outline]]
 - [[*Undo/redo and History][Undo/redo and History]]
@@ -62,6 +63,9 @@ The header shows the current filename and which backend it came from, turning *r
 -----
 
 ** Editing your outline
+  :PROPERTIES:
+  :CUSTOM_ID: foo
+  :END:
 
 - *Headings*: tap the title text to reveal a row of twelve actions — edit title, edit the heading's own body text, edit details (the general editor — see below), add a sub-heading, move up/down, mark as TODO, add a table, archive, delete, promote/demote. Nothing is shown until you tap; this keeps the row itself uncluttered. Most actions close the row back up after running; Move up/down and Promote/Demote deliberately don't, since repeating one of those a few times in a row is a normal thing to want to do — tap elsewhere on the row (or in the empty space after the buttons themselves) to close it manually when you're done.
 - *TODO state*: tap the TODO badge to cycle through the sequence defined by ~#+TODO:~ (or ~TODO~/~DONE~ by default).
