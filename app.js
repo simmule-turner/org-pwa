@@ -54,7 +54,6 @@ import { exportToMarkdown } from './src/export-markdown.js';
 import { exportToHtml } from './src/export-html.js';
 import { createHistory, pushSnapshot, canUndo, canRedo, undo, redo, jumpTo, currentEntry } from './src/undo-history.js';
 import { diffHunks } from './src/text-diff.js';
-import { parseMarkdown } from './src/markdown.js';
 import { parseOrgTimestamp, formatOrgTimestamp, parseDelay } from './src/org-timestamp.js';
 import {
   renameHeading,
@@ -191,24 +190,26 @@ function ensureAgendaFilesLoaded() {
     agendaFilesCacheLoadedFor = configKey;
   }
 
-  for (const entry of agendaFilesConfig) {
-    const key = entry.scheme + ':' + entry.path;
+  for (const key of agendaFilesConfig) {
     if (agendaFilesCache.has(key)) continue; // already loaded, errored, or currently loading
 
     agendaFilesCache.set(key, { loading: true }); // set BEFORE the async call, so a concurrent call to this function can't kick off a duplicate fetch for the same key
 
-    const adapter = entry.scheme === 'github' ? githubAdapter : entry.scheme === 'webdav' ? webdavAdapter : null;
+    const colonIndex = key.indexOf(':');
+    const scheme = colonIndex === -1 ? key : key.slice(0, colonIndex);
+    const path = colonIndex === -1 ? '' : key.slice(colonIndex + 1);
+    const adapter = scheme === 'github' ? githubAdapter : scheme === 'webdav' ? webdavAdapter : null;
     if (!adapter) {
-      agendaFilesCache.set(key, { error: `Unsupported scheme "${entry.scheme}" \u2014 only github/webdav are supported for agenda files.` });
+      agendaFilesCache.set(key, { error: `Unsupported scheme "${scheme}" \u2014 only github/webdav are supported for agenda files.` });
       continue;
     }
 
     adapter
-      .read(entry.path)
+      .read(path)
       .then((result) => {
         agendaFilesCache.set(
           key,
-          result ? { doc: parseOrg(result.content), documentId: entry.path } : { error: `"${entry.path}" not found.` }
+          result ? { doc: parseOrg(result.content), documentId: path } : { error: `"${path}" not found.` }
         );
         if (currentView === 'agenda' || currentView === 'tasklist') render();
       })
@@ -1190,9 +1191,10 @@ function renderImageNode(node) {
   return imagePlaceholder(node.target);
 }
 
-function renderLinkNode(node) {
+function renderLinkNode(node, linkContext = null) {
   const label = node.description || node.target;
-  const resolution = resolveLinkTarget(state.doc, node.target);
+  const targetDoc = linkContext ? linkContext.doc : state.doc;
+  const resolution = resolveLinkTarget(targetDoc, node.target);
 
   if (resolution.type === 'external') {
     const a = document.createElement('a');
@@ -1214,12 +1216,16 @@ function renderLinkNode(node) {
     a.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      navigateToHeading(resolution.heading);
+      if (linkContext) {
+        linkContext.onHeadingLinkClick(resolution.heading);
+      } else {
+        navigateToHeading(resolution.heading);
+      }
     };
     return a;
   }
 
-  if (resolution.type === 'file') {
+  if (resolution.type === 'file' && !linkContext) {
     const a = document.createElement('a');
     a.href = '#';
     a.textContent = label;
@@ -1235,8 +1241,11 @@ function renderLinkNode(node) {
 
   // Unresolved: e.g. a *Heading or #custom-id link with no matching
   // heading (renamed heading, typo, or a link meant for a different
-  // file). Shown distinctly rather than silently rendered as plain text,
-  // since "this link is broken" is useful information.
+  // file) -- or a file:/github:/webdav: link encountered while a
+  // linkContext is active (a read-only overlay like Docs deliberately
+  // never switches the active document). Shown distinctly rather than
+  // silently rendered as plain text, since "this link is broken" is
+  // useful information.
   const span = document.createElement('span');
   span.textContent = label;
   span.style.color = 'var(--text-muted, #888)';
@@ -1256,7 +1265,7 @@ function currentInlineOpts() {
 
 /** Renders a parseInline() node array into `container`. Recurses into
  *  emphasis spans' children; code/verbatim/comment/image/link are leaves. */
-function renderInlineNodes(nodes, container) {
+function renderInlineNodes(nodes, container, linkContext = null) {
   for (const node of nodes) {
     switch (node.type) {
       case 'text':
@@ -1264,25 +1273,25 @@ function renderInlineNodes(nodes, container) {
         break;
       case 'bold': {
         const el = document.createElement('b');
-        renderInlineNodes(node.children, el);
+        renderInlineNodes(node.children, el, linkContext);
         container.appendChild(el);
         break;
       }
       case 'italic': {
         const el = document.createElement('i');
-        renderInlineNodes(node.children, el);
+        renderInlineNodes(node.children, el, linkContext);
         container.appendChild(el);
         break;
       }
       case 'underline': {
         const el = document.createElement('u');
-        renderInlineNodes(node.children, el);
+        renderInlineNodes(node.children, el, linkContext);
         container.appendChild(el);
         break;
       }
       case 'strikethrough': {
         const el = document.createElement('s');
-        renderInlineNodes(node.children, el);
+        renderInlineNodes(node.children, el, linkContext);
         container.appendChild(el);
         break;
       }
@@ -1313,7 +1322,7 @@ function renderInlineNodes(nodes, container) {
         container.appendChild(renderImageNode(node));
         break;
       case 'link':
-        container.appendChild(renderLinkNode(node));
+        container.appendChild(renderLinkNode(node, linkContext));
         break;
       case 'comment':
         // Org excludes comments from rendered/exported output; skipped here too.
@@ -3106,15 +3115,26 @@ function updateFilenameDisplay() {
 
 /** Common finish-up after any successful open/create, regardless of which
  *  backend it came from. */
-async function afterDocumentLoaded(documentId, doc, storageKind) {
+async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCache = false) {
   const startupConfig = parseStartupConfig(doc);
   const localVariables = parseLocalVariables(serializeOrg(doc));
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(doc, startupConfig, archiveVisibility);
   state = { documentId, doc, startupConfig, storageKind, localVariables };
-  history = createHistory(serializeOrg(doc));
+  history = createHistory(
+    serializeOrg(doc),
+    resumedFromCache ? 'Opened (resumed unsaved local version)' : 'Opened'
+  );
   historyOpen = false;
-  isDirty = false; // freshly loaded — matches whatever was just read, nothing unsaved yet
+  // A resumed local version is, by definition, different from whatever's
+  // actually on disk/GitHub/WebDAV right now -- that's the whole reason it
+  // was worth resuming instead of just discarding. isDirty reflects that
+  // correctly here rather than starting false and getting corrected
+  // separately by every caller after the fact, which is exactly what let
+  // this go silently unexplained before: the filename would show modified
+  // with nothing in the history log to say why, since the label above is
+  // the only place that actually says what happened.
+  isDirty = resumedFromCache;
   await setLastActiveDocument(kv, documentId, storageKind);
   currentView = 'org';
   agendaAnchorDate = new Date();
@@ -3171,11 +3191,8 @@ async function openFromFilesystem() {
       diskAdapter: filesystemAdapter,
       preferCache,
     });
-    await afterDocumentLoaded(documentId, doc, 'filesystem');
-    if (preferCache) {
-      isDirty = true; // resumed content differs from the last synced version
-      render();
-    }
+    await afterDocumentLoaded(documentId, doc, 'filesystem', preferCache);
+    if (preferCache) render();
     setStatus(preferCache ? 'Resumed your unsaved local version \u2014 remember to Save it.' : 'Opened.');
   } catch (err) {
     if (err.name !== 'AbortError') setStatus('Could not open file: ' + err.message);
@@ -3194,11 +3211,8 @@ async function openFromImport() {
       diskAdapter: inputFileAdapter,
       preferCache,
     });
-    await afterDocumentLoaded(fileId, doc, 'input');
-    if (preferCache) {
-      isDirty = true;
-      render();
-    }
+    await afterDocumentLoaded(fileId, doc, 'input', preferCache);
+    if (preferCache) render();
     setStatus(
       preferCache
         ? 'Resumed your unsaved local version \u2014 remember to Save it.'
@@ -3228,11 +3242,8 @@ async function openRemotePath(path, kind, diskAdapter, label) {
       diskAdapter,
       preferCache,
     });
-    await afterDocumentLoaded(path, doc, kind);
-    if (preferCache) {
-      isDirty = true;
-      render();
-    }
+    await afterDocumentLoaded(path, doc, kind, preferCache);
+    if (preferCache) render();
     setStatus(
       preferCache
         ? 'Resumed your unsaved local version \u2014 remember to Save it.'
@@ -4367,7 +4378,7 @@ function renderAgendaView() {
   container.appendChild(rangeLabel);
 
   if (agendaFilesConfig.length > 0) {
-    const entries = agendaFilesConfig.map((f) => agendaFilesCache.get(f.scheme + ':' + f.path));
+    const entries = agendaFilesConfig.map((f) => agendaFilesCache.get(f));
     const loadingCount = entries.filter((e) => e && e.loading).length;
     const errored = agendaFilesConfig
       .map((f, i) => ({ f, entry: entries[i] }))
@@ -4380,7 +4391,7 @@ function renderAgendaView() {
       if (loadingCount > 0) parts.push(`Loading ${loadingCount} agenda file${loadingCount === 1 ? '' : 's'}\u2026`);
       if (errored.length > 0) {
         agendaFilesStatus.style.color = '#c0392b';
-        parts.push(errored.map(({ f, entry }) => `"${f.path}": ${entry.error}`).join('; '));
+        parts.push(errored.map(({ f, entry }) => `"${f}": ${entry.error}`).join('; '));
       }
       agendaFilesStatus.textContent = parts.join(' ');
       container.appendChild(agendaFilesStatus);
@@ -4938,7 +4949,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
   agendaFilesHint.style.margin = '2px 0 6px';
   agendaFilesHint.textContent =
     'Real org\u2019s org-agenda-files idea \u2014 additional files the Agenda and TODO views scan across, beyond whichever file is currently open. ' +
-    'Edited as JSON \u2014 an array of {scheme, path}, where scheme is "github" or "webdav" (the only backends that can read a file without a picker prompt) and path is that file\u2019s location on the currently configured GitHub repo or WebDAV server. Example: [{"scheme": "github", "path": "journal/2026.org"}]';
+    'Edited as JSON \u2014 an array of "scheme:path" strings, where scheme is "github" or "webdav" (the only backends that can read a file without a picker prompt) and path is that file\u2019s location on the currently configured GitHub repo or WebDAV server. Example: ["github:journal.org", "github:todo.org"]';
   agendaFilesSection.appendChild(agendaFilesHint);
 
   const currentAgendaFiles = await getAgendaFiles(kv);
@@ -5151,168 +5162,249 @@ async function renderSettingsView(target = settingsRenderTarget) {
 
 // ---- Docs (README, rendered in-app) --------------------------------------
 
-let cachedDocsMarkdown = null; // fetched once per session, not re-fetched on every "Docs" tap
+let cachedDocsDoc = null; // parsed once per session from README.org, not re-fetched/re-parsed on every "Docs" tap
 
-/** Appends parseInline's token list as actual inline DOM (bold/italic/
- *  code/link/text) into `container`. Internal #anchor links scroll to the
- *  matching heading within the docs view rather than navigating (there's
- *  no routing in this single-page app); external links open in a real
- *  new tab via a normal <a>, letting the browser handle it natively
- *  rather than a JS-driven window.open. */
-function renderInlineTokens(tokens, container) {
-  for (const tok of tokens) {
-    if (tok.type === 'text') {
-      container.appendChild(document.createTextNode(tok.value));
-    } else if (tok.type === 'bold') {
-      const b = document.createElement('strong');
-      b.textContent = tok.value;
-      container.appendChild(b);
-    } else if (tok.type === 'italic') {
-      const em = document.createElement('em');
-      em.textContent = tok.value;
-      container.appendChild(em);
-    } else if (tok.type === 'code') {
-      const code = document.createElement('code');
-      code.textContent = tok.value;
-      code.style.fontFamily = 'monospace';
-      code.style.fontSize = '0.9em';
-      code.style.background = 'var(--surface)';
-      code.style.padding = '1px 4px';
-      code.style.borderRadius = '4px';
-      container.appendChild(code);
-    } else if (tok.type === 'link') {
-      const a = document.createElement('a');
-      a.textContent = tok.value;
-      a.href = tok.href;
-      a.style.color = 'var(--accent)';
-      if (tok.href.startsWith('#')) {
-        a.onclick = (e) => {
-          e.preventDefault();
-          const target = document.getElementById('docs-heading-' + tok.href.slice(1));
-          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        };
-      } else {
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
+/**
+ * Renders `doc` (a fully separate, parsed org document -- currently only
+ * used for README.org in the Docs view) read-only into `container`:
+ * headings with working fold/unfold, TODO badges, tags, and body content
+ * (paragraphs, lists, tables, blocks), but nothing editable at all -- no
+ * tap-to-edit, no action menus, no swipe gestures, no commitAndRender.
+ * Deliberately a separate, much simpler rendering path from renderRow
+ * rather than a reuse of it: that function is deeply wired for editing
+ * throughout (mutation calls, action menus, swipe-to-fold), and threading
+ * readOnly conditionals through an already-large core function would risk
+ * the main app's actual editing path for the sake of a docs-only feature.
+ *
+ * Fold state lives directly on `doc`'s own heading objects (the same
+ * `collapsed` field the main app's headings already have) -- toggling it
+ * only ever mutates this separate, local document, never state.doc, and
+ * only ever triggers `rerender()` (a full re-render of this container),
+ * never the main app's own render().
+ */
+let docsScrollTarget = null; // set right before a docs-internal link scrolls to a heading; read once by the next render pass, then left alone (not cleared) so subsequent re-renders from folding elsewhere don't lose the anchor
+
+function renderReadOnlyOutline(doc, container, rerender) {
+  container.innerHTML = '';
+  const todoSequence = resolveTodoSequence(doc, GLOBAL_TODO_DEFAULT);
+  const linkContext = {
+    doc,
+    onHeadingLinkClick(heading) {
+      // Expand every ancestor of the link's target (mirroring
+      // navigateToHeading's own ancestor-expansion, but against this
+      // local doc, never state.doc) so the target is actually visible
+      // once scrolled to, then scroll it into view.
+      const stack = [];
+      function findPath(headings, target, path) {
+        for (const h of headings) {
+          const next = [...path, h];
+          if (h === target) {
+            stack.push(...next);
+            return true;
+          }
+          if (findPath(h.children, target, next)) return true;
+        }
+        return false;
       }
-      container.appendChild(a);
+      findPath(doc.children, heading, []);
+      for (const ancestor of stack) ancestor.collapsed = false;
+      docsScrollTarget = heading;
+      rerender();
+      requestAnimationFrame(() => {
+        const el = document.getElementById('docs-heading-target');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    },
+  };
+  for (const heading of doc.children) {
+    renderReadOnlyHeading(heading, 0, container, todoSequence, linkContext, rerender);
+  }
+}
+
+function renderReadOnlyHeading(heading, depth, container, todoSequence, linkContext, rerender) {
+  const wrap = document.createElement('div');
+  wrap.style.paddingLeft = 8 + depth * 16 + 'px';
+  wrap.style.padding = `4px 4px 4px ${8 + depth * 16}px`;
+  if (docsScrollTarget === heading) wrap.id = 'docs-heading-target';
+
+  const row = document.createElement('div');
+  row.style.display = 'flex';
+  row.style.alignItems = 'flex-start';
+  row.style.gap = '4px';
+
+  const hasChildren = heading.children.length > 0;
+  const fold = document.createElement('span');
+  fold.textContent = hasChildren ? (heading.collapsed ? '\u25b8' : '\u25be') : ' ';
+  fold.style.cursor = hasChildren ? 'pointer' : 'default';
+  fold.style.width = '16px';
+  fold.style.flexShrink = '0';
+  fold.style.userSelect = 'none';
+  if (hasChildren) {
+    fold.onclick = () => {
+      heading.collapsed = !heading.collapsed;
+      rerender();
+    };
+  }
+  row.appendChild(fold);
+
+  const titleWrap = document.createElement('div');
+  titleWrap.style.flex = '1';
+
+  if (heading.todo) {
+    const badge = document.createElement('span');
+    badge.className = 'todo-badge ' + (todoSequence.doneKeywords.includes(heading.todo) ? 'done' : 'todo');
+    badge.textContent = heading.todo;
+    badge.style.marginRight = '4px';
+    titleWrap.appendChild(badge);
+  }
+
+  const title = document.createElement('span');
+  title.style.fontWeight = depth === 0 ? '700' : '600';
+  title.style.fontSize = depth === 0 ? '17px' : depth === 1 ? '15px' : '14px';
+  renderInlineNodes(parseInline(heading.title, currentInlineOpts()), title, linkContext);
+  titleWrap.appendChild(title);
+
+  for (const tag of heading.tags) {
+    const t = document.createElement('span');
+    t.className = 'tag';
+    t.style.marginLeft = '4px';
+    t.textContent = tag;
+    titleWrap.appendChild(t);
+  }
+
+  row.appendChild(titleWrap);
+  wrap.appendChild(row);
+  container.appendChild(wrap);
+
+  if (!heading.collapsed) {
+    for (const node of heading.body) {
+      renderReadOnlyBodyNode(node, depth, container, linkContext);
+    }
+    for (const child of heading.children) {
+      renderReadOnlyHeading(child, depth + 1, container, todoSequence, linkContext, rerender);
     }
   }
 }
 
-/** Converts one parsed markdown block into a DOM element. Headings get a
- *  predictable id (docs-heading-<slug>) so renderInlineTokens' internal
- *  link handler above can find and scroll to them. */
-function renderMarkdownBlock(block) {
-  if (block.type === 'heading') {
-    const h = document.createElement(`h${Math.min(block.level, 6)}`);
-    h.id = 'docs-heading-' + block.id;
-    h.style.marginTop = block.level <= 2 ? '20px' : '14px';
-    h.style.marginBottom = '8px';
-    h.style.fontSize = ['22px', '19px', '16px', '15px', '14px', '13px'][block.level - 1];
-    renderInlineTokens(block.inline, h);
-    return h;
-  }
-
-  if (block.type === 'paragraph') {
-    const p = document.createElement('p');
-    p.style.margin = '8px 0';
-    p.style.lineHeight = '1.5';
-    p.style.overflowWrap = 'anywhere';
-    renderInlineTokens(block.inline, p);
-    return p;
-  }
-
-  if (block.type === 'list') {
-    const list = document.createElement(block.ordered ? 'ol' : 'ul');
-    list.style.margin = '8px 0';
-    list.style.paddingLeft = '24px';
-    for (const item of block.items) {
-      const li = document.createElement('li');
-      li.style.margin = '4px 0';
-      li.style.lineHeight = '1.5';
-      li.style.overflowWrap = 'anywhere';
-      renderInlineTokens(item.inline, li);
-      list.appendChild(li);
-    }
-    return list;
-  }
-
-  if (block.type === 'code-block') {
-    const pre = document.createElement('pre');
-    pre.style.background = 'var(--surface)';
-    pre.style.padding = '10px';
-    pre.style.borderRadius = '6px';
-    pre.style.overflowX = 'auto';
-    pre.style.fontSize = '13px';
-    pre.style.margin = '8px 0';
-    const code = document.createElement('code');
-    code.style.fontFamily = 'monospace';
-    code.textContent = block.text;
-    pre.appendChild(code);
-    return pre;
-  }
-
-  if (block.type === 'hr') {
+function renderReadOnlyBodyNode(node, depth, container, linkContext) {
+  const indent = 8 + depth * 16 + 16;
+  if (node.type === 'paragraph') {
+    const p = document.createElement('div');
+    p.style.paddingLeft = indent + 'px';
+    p.style.margin = '4px 0';
+    p.style.lineHeight = '1.4';
+    node.inlineLines.forEach((inline, i) => {
+      if (i > 0) p.appendChild(document.createElement('br'));
+      renderInlineNodes(inline, p, linkContext);
+    });
+    container.appendChild(p);
+  } else if (node.type === 'hr') {
     const hr = document.createElement('hr');
+    hr.style.marginLeft = indent + 'px';
     hr.style.border = 'none';
     hr.style.borderTop = '1px solid var(--border)';
-    hr.style.margin = '16px 0';
-    return hr;
+    container.appendChild(hr);
+  } else if (node.type === 'list') {
+    renderReadOnlyList(node, depth, container, linkContext);
+  } else if (node.type === 'table') {
+    renderReadOnlyTable(node, depth, container);
+  } else if (node.type === 'block') {
+    renderReadOnlyBlock(node, depth, container);
   }
+}
 
-  if (block.type === 'table') {
-    const wrap = document.createElement('div');
-    wrap.style.overflowX = 'auto'; // a several-column table can easily be wider than a phone screen -- scroll within the table rather than letting it force the whole page wider
-    wrap.style.margin = '10px 0';
+function renderReadOnlyList(list, depth, container, linkContext) {
+  for (const item of list.items) {
+    const row = document.createElement('div');
+    row.style.paddingLeft = 8 + depth * 16 + 16 + item.indent + 'px';
+    row.style.margin = '2px 0';
+    row.style.display = 'flex';
+    row.style.gap = '6px';
 
-    const table = document.createElement('table');
-    table.style.borderCollapse = 'collapse';
-    table.style.width = '100%';
-    table.style.fontSize = '13px';
-
-    function styleCell(cell, align, isHeader) {
-      cell.style.border = '1px solid var(--border)';
-      cell.style.padding = '6px 10px';
-      cell.style.textAlign = align;
-      cell.style.verticalAlign = 'top';
-      cell.style.overflowWrap = 'anywhere';
-      if (isHeader) {
-        cell.style.background = 'var(--surface)';
-        cell.style.fontWeight = '600';
-        cell.style.whiteSpace = 'nowrap'; // header labels are short and meant to stay put as a fixed reference row while long body cells wrap
-      }
+    const marker = document.createElement('span');
+    marker.style.flexShrink = '0';
+    marker.style.opacity = '0.6';
+    if (item.checkbox) {
+      marker.textContent = item.checkbox === 'X' || item.checkbox === 'x' ? '\u2611' : item.checkbox === '-' ? '\u2612' : '\u2610';
+    } else {
+      marker.textContent = item.ordered ? item.marker : '\u2022';
     }
+    row.appendChild(marker);
 
-    const thead = document.createElement('thead');
-    const headRow = document.createElement('tr');
-    block.header.forEach((cell, idx) => {
-      const th = document.createElement('th');
-      styleCell(th, block.align[idx] || 'left', true);
-      renderInlineTokens(cell.inline, th);
-      headRow.appendChild(th);
-    });
-    thead.appendChild(headRow);
-    table.appendChild(thead);
-
-    const tbody = document.createElement('tbody');
-    for (const row of block.rows) {
-      const tr = document.createElement('tr');
-      row.forEach((cell, idx) => {
-        const td = document.createElement('td');
-        styleCell(td, block.align[idx] || 'left', false);
-        renderInlineTokens(cell.inline, td);
-        tr.appendChild(td);
-      });
-      tbody.appendChild(tr);
+    const text = document.createElement('span');
+    if (item.tag) {
+      const tagEl = document.createElement('b');
+      tagEl.textContent = item.tag;
+      text.appendChild(tagEl);
+      text.appendChild(document.createTextNode(' \u2014 '));
     }
-    table.appendChild(tbody);
+    renderInlineNodes(item.inline, text, linkContext);
+    row.appendChild(text);
 
-    wrap.appendChild(table);
-    return wrap;
+    container.appendChild(row);
+
+    for (const nested of item.children) {
+      renderReadOnlyList(nested, depth, container, linkContext);
+    }
   }
+}
 
-  return document.createElement('div'); // unreachable given parseMarkdown's own block types, but never leave a tap-triggered render with nothing to show
+function renderReadOnlyTable(table, depth, container) {
+  const el = document.createElement('table');
+  el.style.marginLeft = 8 + depth * 16 + 16 + 'px';
+  el.style.borderCollapse = 'collapse';
+  el.style.fontSize = '13px';
+  for (const row of table.rows) {
+    if (row.type === 'rule') continue; // a rule row is a visual-only separator, nothing to render as content
+    const tr = document.createElement('tr');
+    for (const cellInline of row.cellsInline) {
+      const td = document.createElement('td');
+      td.style.border = '1px solid var(--border)';
+      td.style.padding = '4px 8px';
+      renderInlineNodes(cellInline, td, null);
+      tr.appendChild(td);
+    }
+    el.appendChild(tr);
+  }
+  container.appendChild(el);
+}
+
+/** A block starts collapsed to a single label, matching the same
+ *  "collapsed block" convention the main app already uses for
+ *  #+BEGIN_SRC/#+BEGIN_QUOTE/etc. -- tap to reveal, tap again to
+ *  re-fold. Local, closure-captured state (not stored on the node
+ *  itself), since a block's own expand/collapse state doesn't need to
+ *  survive a full docs re-render the way heading fold state does. */
+function renderReadOnlyBlock(block, depth, container) {
+  let expanded = false;
+  const wrap = document.createElement('div');
+  wrap.style.marginLeft = 8 + depth * 16 + 16 + 'px';
+  wrap.style.margin = '4px 0';
+
+  const label = document.createElement('div');
+  label.style.fontSize = '11px';
+  label.style.opacity = '0.6';
+  label.style.cursor = 'pointer';
+  label.textContent = `[${block.name}]`;
+  wrap.appendChild(label);
+
+  const content = document.createElement('pre');
+  content.style.display = 'none';
+  content.style.background = 'var(--surface, #f6f6f6)';
+  content.style.padding = '8px';
+  content.style.borderRadius = '6px';
+  content.style.fontSize = '13px';
+  content.style.overflowX = 'auto';
+  content.style.whiteSpace = 'pre-wrap';
+  content.textContent = block.lines.join('\n');
+  wrap.appendChild(content);
+
+  label.onclick = () => {
+    expanded = !expanded;
+    content.style.display = expanded ? 'block' : 'none';
+  };
+
+  container.appendChild(wrap);
 }
 
 async function renderDocsView(target = docsRenderTarget) {
@@ -5323,11 +5415,13 @@ async function renderDocsView(target = docsRenderTarget) {
   container.style.minHeight = '100%';
   target.appendChild(container);
 
-  if (cachedDocsMarkdown === null) {
+  if (cachedDocsDoc === null) {
     try {
-      const response = await fetch('./README.md');
+      const response = await fetch('./README.org');
       if (!response.ok) throw new Error('HTTP ' + response.status);
-      cachedDocsMarkdown = await response.text();
+      const text = await response.text();
+      cachedDocsDoc = parseOrg(text);
+      docsScrollTarget = null; // a genuinely fresh load -- no stale scroll target from a previous session
     } catch (err) {
       const errorEl = document.createElement('div');
       errorEl.style.padding = '20px';
@@ -5340,10 +5434,7 @@ async function renderDocsView(target = docsRenderTarget) {
 
   if (!docsOpen) return; // closed again while the fetch above was in flight
 
-  const blocks = parseMarkdown(cachedDocsMarkdown);
-  for (const block of blocks) {
-    container.appendChild(renderMarkdownBlock(block));
-  }
+  renderReadOnlyOutline(cachedDocsDoc, container, () => renderDocsView(docsRenderTarget));
 }
 
 settingsBtn.addEventListener('click', async () => {
@@ -5640,14 +5731,22 @@ function validateCaptureTemplates(parsed) {
   return null;
 }
 
+/**
+ * Validates an agenda-files config: an array of "scheme:path" strings,
+ * e.g. "github:journal.org". Splits only on the FIRST colon, so a path
+ * that itself contains one isn't mistaken for a second scheme separator.
+ */
 function validateAgendaFiles(parsed) {
   if (!Array.isArray(parsed)) return 'must be a JSON array';
   for (let i = 0; i < parsed.length; i++) {
-    const f = parsed[i];
     const label = `entry #${i + 1}`;
-    if (!f || typeof f !== 'object') return `${label} must be an object`;
-    if (f.scheme !== 'github' && f.scheme !== 'webdav') return `${label}: "scheme" must be "github" or "webdav"`;
-    if (typeof f.path !== 'string' || f.path.length === 0) return `${label}: "path" must be a non-empty string`;
+    if (typeof parsed[i] !== 'string' || parsed[i].length === 0) return `${label} must be a non-empty string`;
+    const colonIndex = parsed[i].indexOf(':');
+    if (colonIndex === -1) return `${label}: expected "scheme:path" (e.g. "github:journal.org")`;
+    const scheme = parsed[i].slice(0, colonIndex);
+    const path = parsed[i].slice(colonIndex + 1);
+    if (scheme !== 'github' && scheme !== 'webdav') return `${label}: scheme must be "github" or "webdav", got "${scheme}"`;
+    if (path.length === 0) return `${label}: path can't be empty`;
   }
   return null;
 }
@@ -5728,6 +5827,7 @@ function openCapturePrompt(template) {
 function renderCapturePromptForm() {
   const template = capturePromptTemplate;
   const prompts = scanPrompts(template.template);
+  const previewNow = new Date(); // captured once, not per-keystroke, so the displayed time doesn't visibly tick while typing
 
   const heading = document.createElement('div');
   heading.style.fontSize = '12px';
@@ -5735,6 +5835,31 @@ function renderCapturePromptForm() {
   heading.style.marginBottom = '8px';
   heading.textContent = template.key + ' \u2014 ' + template.description;
   capturePanel.appendChild(heading);
+
+  const previewLabel = document.createElement('div');
+  previewLabel.style.fontSize = '11px';
+  previewLabel.style.opacity = '0.6';
+  previewLabel.style.marginBottom = '2px';
+  previewLabel.textContent = 'Preview:';
+  capturePanel.appendChild(previewLabel);
+
+  const preview = document.createElement('div');
+  preview.style.fontFamily = 'ui-monospace, monospace';
+  preview.style.fontSize = '13px';
+  preview.style.whiteSpace = 'pre-wrap';
+  preview.style.wordBreak = 'break-word';
+  preview.style.background = 'var(--surface, #f6f6f6)';
+  preview.style.border = '1px solid var(--border-strong)';
+  preview.style.borderRadius = '6px';
+  preview.style.padding = '8px 10px';
+  preview.style.marginBottom = '12px';
+  capturePanel.appendChild(preview);
+
+  function updatePreview() {
+    const { text } = expandTemplate(template.template, { now: previewNow, promptAnswers: capturePromptValues });
+    preview.textContent = text;
+  }
+  updatePreview();
 
   prompts.forEach((p, i) => {
     const field = document.createElement('div');
@@ -5759,6 +5884,7 @@ function renderCapturePromptForm() {
     input.style.color = 'var(--fg)';
     input.addEventListener('input', () => {
       capturePromptValues[i] = input.value;
+      updatePreview();
     });
     field.appendChild(input);
 
@@ -5780,7 +5906,6 @@ function renderCapturePromptForm() {
   row.appendChild(
     menuButton('Capture', () => {
       const answers = capturePromptValues.slice();
-      capturePromptTemplate = null;
       runCaptureWithAnswers(template, answers);
     })
   );
@@ -5829,6 +5954,28 @@ async function runCaptureWithAnswers(template, answers) {
     // touching state.doc or switching the active view at all -- matching
     // real org-capture's own behavior of not switching your current
     // buffer just because a template's target is elsewhere.
+    //
+    // This bypasses this app's own outbox entirely (see src/outbox.js) --
+    // it isn't a per-edit journal that could reasonably replay a capture
+    // into it, just a single "most recent unsynced snapshot" per file. If
+    // the target file already has ONE of those sitting unresolved from an
+    // earlier session, writing straight to the backing store here would
+    // create a real, silent data-loss trap: the pending snapshot doesn't
+    // know this capture happened, so it would still be offered as "resume"
+    // next time that file opens -- and resuming-then-saving would overwrite
+    // the capture with no warning at all, since nothing here ever told the
+    // outbox its assumption about "the last synced version" just changed
+    // out from under it. Refuse up front instead; the alternative is
+    // silently constructing that trap and hoping the person never resumes
+    // into it.
+    if (await hasPendingChange(kv, targetFileId)) {
+      setStatus(
+        `Can't capture to "${targetFileId}" right now \u2014 it has unsaved local changes from an earlier session that haven't been synced yet. Open "${targetFileId}" directly first and either save or discard those changes, then retry this capture.`
+      );
+      renderCapturePanel();
+      return;
+    }
+
     const adapter = activeDiskAdapter();
     if ((state.storageKind === 'filesystem' || state.storageKind === 'input') && !(await adapter.exists(targetFileId))) {
       setStatus(
@@ -5868,7 +6015,7 @@ async function runCaptureWithAnswers(template, answers) {
     }
 
     setStatus(`Captured to ${targetFileId}.`);
-    afterSuccessfulCapture(template);
+    afterSuccessfulCapture();
     return;
   }
 
@@ -5893,21 +6040,16 @@ async function runCaptureWithAnswers(template, answers) {
   switchToView('org');
   navigateToHeading(target, { revealOwnBody: true });
   setStatus('Captured.');
-  afterSuccessfulCapture(template);
+  afterSuccessfulCapture();
 }
 
-/** After a successful capture: a template with at least one prompt
- *  loops back to a FRESH copy of its own form (the "multiple entries"
- *  feature); a template with no prompts returns to the template list,
- *  since there's nothing left to fill in for a repeat. */
-function afterSuccessfulCapture(template) {
-  const prompts = scanPrompts(template.template);
-  if (prompts.length > 0) {
-    capturePromptTemplate = template;
-    capturePromptValues = prompts.map((p) => p.default || '');
-  } else {
-    capturePromptTemplate = null;
-  }
+/** After a successful capture, the form always closes, returning to
+ *  the template list -- captureOpen itself is untouched here, so the
+ *  panel stays open on that list, which is how rapid multi-template
+ *  capture actually works: tap the next template straight from the
+ *  list, not a reopened copy of the same form. */
+function afterSuccessfulCapture() {
+  capturePromptTemplate = null;
   renderCapturePanel();
 }
 
@@ -5985,6 +6127,17 @@ function renderMoreMenu() {
   captureBtnOption.style.flex = '1';
   row.appendChild(captureBtnOption);
 
+  const historyBtnOption = menuButton('History', () => {
+    moreOpen = false;
+    renderMoreMenu();
+    historyOpen = true;
+    renderHistoryPanel();
+  });
+  historyBtnOption.style.flex = '1';
+  historyBtnOption.disabled = !state.doc;
+  historyBtnOption.setAttribute('aria-label', 'Undo history');
+  row.appendChild(historyBtnOption);
+
   const addBtnOption = menuButton('+', () => {
     moreOpen = false;
     renderMoreMenu();
@@ -6007,17 +6160,6 @@ function renderMoreMenu() {
   docsBtnOption.style.flex = '1';
   docsBtnOption.setAttribute('aria-label', 'Help / Docs');
   row.appendChild(docsBtnOption);
-
-  const historyBtnOption = menuButton('History', () => {
-    moreOpen = false;
-    renderMoreMenu();
-    historyOpen = true;
-    renderHistoryPanel();
-  });
-  historyBtnOption.style.flex = '1';
-  historyBtnOption.disabled = !state.doc;
-  historyBtnOption.setAttribute('aria-label', 'Undo history');
-  row.appendChild(historyBtnOption);
 
   morePanel.appendChild(row);
 }
@@ -6127,8 +6269,7 @@ async function bootstrap() {
       if (cached && typeof cached.value === 'string') {
         const doc = parseOrg(cached.value);
         const pending = await hasPendingChange(kv, last.documentId);
-        await afterDocumentLoaded(last.documentId, doc, last.storageKind);
-        isDirty = pending; // afterDocumentLoaded always sets this false; restore it if there was actually an unsynced edit waiting
+        await afterDocumentLoaded(last.documentId, doc, last.storageKind, pending);
         updateFilenameDisplay();
         render();
         return;
