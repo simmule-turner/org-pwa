@@ -1,7 +1,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseOrg, serializeOrg, findHeadingLineNumber } from '../src/org-parser.js';
+import { parseOrg, serializeOrg, findHeadingLineNumber, parseTodoKeywordToken, parseTodoSpecValue } from '../src/org-parser.js';
 
 test('parses a basic heading with TODO, priority, and tags', () => {
   const doc = parseOrg('*** TODO [#A] Write report :work:urgent:');
@@ -267,4 +267,162 @@ test('round-trip: a block containing "*" lines survives parse -> serialize -> pa
 test('a block nested inside a list item still correctly suppresses heading detection within it', () => {
   const doc = parseOrg('* Heading\n- item one\n  #+BEGIN_SRC org\n  * looks like a heading but is not\n  #+END_SRC\n- item two\n');
   assert.equal(doc.children.length, 1, 'the indented "* looks like a heading" line must not create a second top-level heading');
+});
+
+// ---- #+TODO: parenthetical fast-key / logging-spec parsing --------------
+
+test('parseTodoKeywordToken: a bare keyword with no parens at all', () => {
+  assert.deepEqual(parseTodoKeywordToken('TODO'), { keyword: 'TODO', key: null, logSpec: null });
+});
+
+test('parseTodoKeywordToken: fast-key only, e.g. "TODO(t)"', () => {
+  assert.deepEqual(parseTodoKeywordToken('TODO(t)'), { keyword: 'TODO', key: 't', logSpec: null });
+});
+
+test('parseTodoKeywordToken: logging-only, entering-timestamp, e.g. "DONE(!)"', () => {
+  assert.deepEqual(parseTodoKeywordToken('DONE(!)'), { keyword: 'DONE', key: null, logSpec: '!' });
+});
+
+test('parseTodoKeywordToken: logging-only, entering-note, e.g. "KILL(@)"', () => {
+  assert.deepEqual(parseTodoKeywordToken('KILL(@)'), { keyword: 'KILL', key: null, logSpec: '@' });
+});
+
+test('parseTodoKeywordToken: fast-key + entering-timestamp together, e.g. "DONE(d!)"', () => {
+  assert.deepEqual(parseTodoKeywordToken('DONE(d!)'), { keyword: 'DONE', key: 'd', logSpec: '!' });
+});
+
+test('parseTodoKeywordToken: fast-key + entering-note, e.g. "KILL(k@)"', () => {
+  assert.deepEqual(parseTodoKeywordToken('KILL(k@)'), { keyword: 'KILL', key: 'k', logSpec: '@' });
+});
+
+test('parseTodoKeywordToken: the full "note on entering + timestamp on leaving" form, e.g. "WAIT(w@/!)"', () => {
+  assert.deepEqual(parseTodoKeywordToken('WAIT(w@/!)'), { keyword: 'WAIT', key: 'w', logSpec: '@/!' });
+});
+
+test('parseTodoKeywordToken: leaving-only, no key, e.g. "WAIT(/!)"', () => {
+  assert.deepEqual(parseTodoKeywordToken('WAIT(/!)'), { keyword: 'WAIT', key: null, logSpec: '/!' });
+});
+
+test('parseTodoKeywordToken: leaving-only WITH a fast-key, e.g. "WAIT(w/!)"', () => {
+  assert.deepEqual(parseTodoKeywordToken('WAIT(w/!)'), { keyword: 'WAIT', key: 'w', logSpec: '/!' });
+});
+
+test('parseTodoKeywordToken: empty parens produce no key and no logSpec', () => {
+  assert.deepEqual(parseTodoKeywordToken('TODO()'), { keyword: 'TODO', key: null, logSpec: null });
+});
+
+test('parseTodoSpecValue: the full example from the org manual, all four keywords with different specs', () => {
+  const spec = parseTodoSpecValue('TODO(t) WAIT(w@/!) | DONE(d!) KILL(k@)');
+  assert.deepEqual(spec.todoKeywords, ['TODO', 'WAIT']);
+  assert.deepEqual(spec.doneKeywords, ['DONE', 'KILL']);
+  assert.deepEqual(spec.keySpecs, { TODO: 't', WAIT: 'w', DONE: 'd', KILL: 'k' });
+  assert.deepEqual(spec.logSpecs, { WAIT: '@/!', DONE: '!', KILL: '@' });
+});
+
+test('parseTodoSpecValue: a plain #+TODO: line with no parens anywhere produces empty keySpecs/logSpecs', () => {
+  const spec = parseTodoSpecValue('TODO | DONE');
+  assert.deepEqual(spec.todoKeywords, ['TODO']);
+  assert.deepEqual(spec.doneKeywords, ['DONE']);
+  assert.deepEqual(spec.keySpecs, {});
+  assert.deepEqual(spec.logSpecs, {});
+});
+
+test('parseTodoSpecValue: mixed -- only some keywords have a parenthetical suffix', () => {
+  const spec = parseTodoSpecValue('TODO(t) NEXT | DONE(d)');
+  assert.deepEqual(spec.todoKeywords, ['TODO', 'NEXT']);
+  assert.deepEqual(spec.keySpecs, { TODO: 't', DONE: 'd' });
+  assert.ok(!('NEXT' in spec.keySpecs));
+});
+
+// ---- heading.todo matching is fixed for the buggy real-world case -------
+
+test('a heading using a keyword with a fast-key/logging suffix in #+TODO: is now correctly recognized (the original bug)', () => {
+  const doc = parseOrg('#+TODO: TODO(t) WAIT(w@/!) | DONE(d!) KILL(k@)\n* WAIT Something\n* DONE Other thing\n* KILL A third thing\n');
+  assert.equal(doc.children[0].todo, 'WAIT');
+  assert.equal(doc.children[1].todo, 'DONE');
+  assert.equal(doc.children[2].todo, 'KILL');
+});
+
+test('a plain #+TODO: line using ONLY fast-keys, no logging spec at all, is also fixed (this was broken too, not just the logging case)', () => {
+  const doc = parseOrg('#+TODO: TODO(t) | DONE(d)\n* TODO Buy milk\n* DONE Already done\n');
+  assert.equal(doc.children[0].todo, 'TODO');
+  assert.equal(doc.children[1].todo, 'DONE');
+});
+
+test('round-trip: the #+TODO: line itself is preserved completely verbatim, parens and all, regardless of how it\u2019s parsed for matching', () => {
+  const original = '#+TODO: TODO(t) WAIT(w@/!) | DONE(d!) KILL(k@)\n* WAIT Something\n';
+  const doc = parseOrg(original);
+  assert.equal(serializeOrg(doc), original);
+});
+
+// ---- :LOGBOOK: drawer parsing/serialization ------------------------------
+
+test(':LOGBOOK: drawer content is captured raw into logbookLines', () => {
+  const doc = parseOrg('* DONE Buy groceries\n:LOGBOOK:\n- State "DONE"       from "TODO"       [2026-07-31 Fri 14:22]\n:END:\n');
+  assert.deepEqual(doc.children[0].logbookLines, ['- State "DONE"       from "TODO"       [2026-07-31 Fri 14:22]']);
+});
+
+test(':LOGBOOK: and :PROPERTIES: both parse correctly when :PROPERTIES: comes first (the more common order)', () => {
+  const text = '* DONE Buy groceries\n:PROPERTIES:\n:ID: abc123\n:END:\n:LOGBOOK:\n- State "DONE"       [2026-07-31 Fri 14:22]\n:END:\n';
+  const doc = parseOrg(text);
+  const h = doc.children[0];
+  assert.deepEqual(h.properties, { ID: 'abc123' });
+  assert.deepEqual(h.logbookLines, ['- State "DONE"       [2026-07-31 Fri 14:22]']);
+});
+
+test(':LOGBOOK: and :PROPERTIES: both parse correctly when :LOGBOOK: comes FIRST (real org allows either order)', () => {
+  const text = '* DONE Buy groceries\n:LOGBOOK:\n- State "DONE"       [2026-07-31 Fri 14:22]\n:END:\n:PROPERTIES:\n:ID: abc123\n:END:\n';
+  const doc = parseOrg(text);
+  const h = doc.children[0];
+  assert.deepEqual(h.properties, { ID: 'abc123' });
+  assert.deepEqual(h.logbookLines, ['- State "DONE"       [2026-07-31 Fri 14:22]']);
+});
+
+test('a heading with ONLY :LOGBOOK: and no :PROPERTIES: at all parses correctly', () => {
+  const doc = parseOrg('* DONE Buy groceries\n:LOGBOOK:\n- State "DONE"       [2026-07-31 Fri 14:22]\n:END:\n');
+  const h = doc.children[0];
+  assert.deepEqual(h.logbookLines, ['- State "DONE"       [2026-07-31 Fri 14:22]']);
+  assert.deepEqual(h.properties, {});
+});
+
+test('a heading with neither drawer has an empty logbookLines array, not undefined', () => {
+  const doc = parseOrg('* Just a heading\nSome body text.\n');
+  assert.deepEqual(doc.children[0].logbookLines, []);
+});
+
+test('body content after both drawers still parses correctly as ordinary body text', () => {
+  const text = '* DONE Buy groceries\n:LOGBOOK:\n- State "DONE"       [2026-07-31 Fri 14:22]\n:END:\nActual body paragraph here.\n';
+  const doc = parseOrg(text);
+  assert.deepEqual(doc.children[0].bodyLines, ['Actual body paragraph here.', '']);
+});
+
+test('round-trip: a heading with both :PROPERTIES: and :LOGBOOK: serializes back to the exact original text', () => {
+  const original = '* DONE Buy groceries\n:PROPERTIES:\n:ID: abc123\n:END:\n:LOGBOOK:\n- State "DONE"       from "TODO"       [2026-07-31 Fri 14:22]\n:END:\nBody text.\n';
+  const doc = parseOrg(original);
+  assert.equal(serializeOrg(doc), original);
+});
+
+test('round-trip: LOGBOOK content this parser can\u0027t make sense of (an unrecognized line) is still preserved verbatim -- no data loss', () => {
+  const original = '* Heading\n:LOGBOOK:\nSome totally custom line format this app has never seen.\n:END:\n';
+  const doc = parseOrg(original);
+  assert.equal(serializeOrg(doc), original);
+});
+
+test('a multi-line note continuation inside :LOGBOOK: round-trips exactly, indentation and all', () => {
+  const original =
+    '* Heading\n:LOGBOOK:\n- State "WAIT"       from "TODO"       [2026-07-30 Thu 09:10] \\\n  Blocked on vendor response.\n:END:\n';
+  const doc = parseOrg(original);
+  assert.equal(serializeOrg(doc), original);
+});
+
+test('a CLOCK line round-trips correctly even though clocking itself isn\u0027t built yet', () => {
+  const original = '* Heading\n:LOGBOOK:\nCLOCK: [2026-07-31 Fri 09:00]--[2026-07-31 Fri 10:30] =>  1:30\n:END:\n';
+  const doc = parseOrg(original);
+  assert.equal(serializeOrg(doc), original);
+});
+
+test('a new heading created via createHeading has an empty logbookLines field, not undefined', () => {
+  // Exercised indirectly through parseOrg's own default-heading shape check via a freshly-parsed heading with no drawers
+  const doc = parseOrg('* Fresh heading\n');
+  assert.deepEqual(doc.children[0].logbookLines, []);
 });

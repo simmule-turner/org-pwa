@@ -27,7 +27,7 @@ test('a file-level #+TODO: line wins even when a global default is supplied', ()
   const doc = parseOrg(['#+TODO: NEXT WAITING | DONE CANCELLED', '* Something'].join('\n'));
   const global = { todoKeywords: ['NEXT'], doneKeywords: ['SHIPPED'] };
   const seq = resolveTodoSequence(doc, global);
-  assert.deepEqual(seq, { todoKeywords: ['NEXT', 'WAITING'], doneKeywords: ['DONE', 'CANCELLED'] });
+  assert.deepEqual(seq, { todoKeywords: ['NEXT', 'WAITING'], doneKeywords: ['DONE', 'CANCELLED'], keySpecs: {}, logSpecs: {} });
 });
 
 test('cycleTodoState walks null -> TODO -> DONE -> null with the default sequence', () => {
@@ -122,6 +122,40 @@ test('resolveTodoSequence with multiple lines matches heading.todo exactly for a
 test('a single #+TODO: line (the common case) is completely unaffected by this fix', () => {
   const doc = parseOrg('#+TODO: TODO WAIT | DONE KILL\n* WAIT Something');
   const seq = resolveTodoSequence(doc);
-  assert.deepEqual(seq, { todoKeywords: ['TODO', 'WAIT'], doneKeywords: ['DONE', 'KILL'] });
+  assert.deepEqual(seq, { todoKeywords: ['TODO', 'WAIT'], doneKeywords: ['DONE', 'KILL'], keySpecs: {}, logSpecs: {} });
   assert.equal(doc.children[0].todo, 'WAIT');
+});
+
+// ---- resolveTodoSequence: keySpecs / logSpecs -----------------------
+
+test('resolveTodoSequence exposes keySpecs and logSpecs parsed from the file\u2019s own #+TODO: line', () => {
+  const doc = parseOrg('#+TODO: TODO(t) WAIT(w@/!) | DONE(d!) KILL(k@)\n* Something\n');
+  const seq = resolveTodoSequence(doc);
+  assert.deepEqual(seq.keySpecs, { TODO: 't', WAIT: 'w', DONE: 'd', KILL: 'k' });
+  assert.deepEqual(seq.logSpecs, { WAIT: '@/!', DONE: '!', KILL: '@' });
+});
+
+test('keySpecs/logSpecs merge across multiple #+TODO: lines the same keyword-by-keyword way todoKeywords/doneKeywords already do', () => {
+  const doc = parseOrg('#+TODO: TODO(t) | DONE(d!)\n#+TODO: TODO(t) WAIT(w@) | DONE(d!)\n* Something\n');
+  const seq = resolveTodoSequence(doc);
+  // The second line's non-empty todo-part DOES replace the first line's (real org semantics -- a later line's
+  // non-empty part wins outright, it isn't merged item-by-item), so WAIT is now part of the sequence too
+  assert.deepEqual(seq.todoKeywords, ['TODO', 'WAIT']);
+  assert.deepEqual(seq.keySpecs, { TODO: 't', WAIT: 'w', DONE: 'd' });
+  assert.deepEqual(seq.logSpecs, { DONE: '!', WAIT: '@' });
+});
+
+test('a keyword\u2019s spec from an EARLIER line survives when a later line doesn\u2019t redefine that same keyword at all', () => {
+  const doc = parseOrg('#+TODO: TODO(t) | DONE(d!)\n#+TODO: TODO(x) | DONE(d)\n* Something\n');
+  const seq = resolveTodoSequence(doc);
+  assert.equal(seq.keySpecs.TODO, 'x'); // later line's own spec for TODO wins
+  // The later line's "DONE(d)" token has no logSpec of its own to override with -- the earlier
+  // line's "!" for DONE is correctly preserved, not silently cleared just because DONE was
+  // mentioned again on a later line without its own logSpec.
+  assert.equal(seq.logSpecs.DONE, '!');
+});
+
+test('the default global fallback sequence has empty keySpecs/logSpecs', () => {
+  assert.deepEqual(DEFAULT_SEQUENCE.keySpecs, {});
+  assert.deepEqual(DEFAULT_SEQUENCE.logSpecs, {});
 });

@@ -9,6 +9,7 @@ import {
   getAgendaSkipCommentTrees,
   getAgendaSkipArchivedTrees,
   getArchiveConfirm,
+  getClosedKeepWhenNoTodo,
   getUseTagInheritance,
   getUsePropertyInheritance,
   getUseSubSuperscripts,
@@ -171,6 +172,20 @@ test('getArchiveConfirm returns false when explicitly set to nil', () => {
 
 test('getArchiveConfirm returns true when explicitly set to t', () => {
   assert.equal(getArchiveConfirm({ 'org-archive-confirm': 't' }), true);
+});
+
+// ---- getClosedKeepWhenNoTodo --------------------------------------------
+
+test('getClosedKeepWhenNoTodo defaults to false (nil), matching real org', () => {
+  assert.equal(getClosedKeepWhenNoTodo({}), false);
+});
+
+test('getClosedKeepWhenNoTodo returns true when explicitly set to t', () => {
+  assert.equal(getClosedKeepWhenNoTodo({ 'org-closed-keep-when-no-todo': 't' }), true);
+});
+
+test('getClosedKeepWhenNoTodo returns false when explicitly set to nil', () => {
+  assert.equal(getClosedKeepWhenNoTodo({ 'org-closed-keep-when-no-todo': 'nil' }), false);
 });
 
 // ---- getUseTagInheritance / getUsePropertyInheritance ----------------
