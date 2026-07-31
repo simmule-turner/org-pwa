@@ -100,6 +100,18 @@ export function getArchiveConfirm(vars) {
   return parseLispBoolean((vars || {})['org-archive-confirm'], true);
 }
 
+/** org-closed-keep-when-no-todo: real org's own default is nil --
+ *  cycling a DONE heading all the way back to having no TODO keyword at
+ *  all removes its CLOSED timestamp, the same as cycling it to a
+ *  different, non-done keyword does unconditionally. Set to t to keep
+ *  the CLOSED timestamp specifically for this "cleared to no keyword"
+ *  case (it's still always removed when cycling to a different TODO
+ *  keyword, regardless of this setting -- that part of the behavior
+ *  isn't controlled by any variable in real org either). */
+export function getClosedKeepWhenNoTodo(vars) {
+  return parseLispBoolean((vars || {})['org-closed-keep-when-no-todo'], false);
+}
+
 /** org-use-tag-inheritance: whether a heading's "effective" tags (for
  *  search/filtering purposes) include its ancestors' own tags, not
  *  just its own. `t` is real org's own actual default — tags inherit

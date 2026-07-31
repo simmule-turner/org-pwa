@@ -24,10 +24,12 @@
 
 const VISIBILITY_KEYWORDS = ['overview', 'content', 'showall', 'showeverything'];
 const IMAGE_VISIBILITY_KEYWORDS = ['inlineimages', 'noinlineimages'];
+const LOG_DONE_KEYWORDS = { logdone: 'time', lognotedone: 'note' };
 
 const DEFAULT_STARTUP_CONFIG = {
   visibility: 'showeverything',
   imageVisibility: 'noinlineimages',
+  logDone: null,
 };
 
 export function parseStartupConfig(doc) {
@@ -40,11 +42,13 @@ export function parseStartupConfig(doc) {
         config.visibility = token;
       } else if (IMAGE_VISIBILITY_KEYWORDS.includes(token)) {
         config.imageVisibility = token;
+      } else if (token in LOG_DONE_KEYWORDS) {
+        config.logDone = LOG_DONE_KEYWORDS[token];
       }
       // Unrecognized tokens (org has many more #+STARTUP keywords than
-      // these two categories — logdone, hidestars, etc.) are silently
-      // ignored rather than erroring, matching org's own tolerant parsing
-      // of directives it doesn't act on.
+      // these three categories -- hidestars, etc.) are silently ignored
+      // rather than erroring, matching org's own tolerant parsing of
+      // directives it doesn't act on.
     }
   }
   return config;

@@ -24,17 +24,9 @@
  * wrong keyword set.
  */
 
-import { DEFAULT_TODO_KEYWORDS, DEFAULT_DONE_KEYWORDS } from './org-parser.js';
+import { DEFAULT_TODO_KEYWORDS, DEFAULT_DONE_KEYWORDS, parseTodoSpecValue } from './org-parser.js';
 
-const DEFAULT_SEQUENCE = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
-
-function parseTodoValue(value) {
-  const [todoPart, donePart = ''] = value.split('|').map((s) => s.trim());
-  return {
-    todoKeywords: todoPart.split(/\s+/).filter(Boolean),
-    doneKeywords: donePart.split(/\s+/).filter(Boolean),
-  };
-}
+const DEFAULT_SEQUENCE = { todoKeywords: ['TODO'], doneKeywords: ['DONE'], keySpecs: {}, logSpecs: {} };
 
 /**
  * Resolves which keyword sequence applies to `doc`: its own #+TODO:
@@ -43,10 +35,15 @@ function parseTodoValue(value) {
  *
  * When there are multiple #+TODO: lines, each one updates the todo part
  * and/or done part independently (an empty part on a later line doesn't
- * blank out an earlier line's non-empty value for that part) — this is
- * org-parser.js's own algorithm, replicated exactly here rather than
- * approximated, since heading.todo values were set using THAT algorithm
- * and this function needs to agree with it, not use a different one.
+ * blank out an earlier line's non-empty value for that part), and
+ * keySpecs/logSpecs merge the same way, keyword by keyword -- a later
+ * line's entry for a given keyword overrides an earlier one, but a
+ * keyword only mentioned on an earlier line keeps whatever spec that
+ * line gave it. This is org-parser.js's own resolution algorithm
+ * (parseTodoSpecValue), used directly here rather than a separate
+ * approximation, since heading.todo values were set using THAT
+ * algorithm and this function needs to agree with it, not use a
+ * different one.
  */
 function resolveTodoSequence(doc, globalDefault) {
   const fallback = globalDefault || DEFAULT_SEQUENCE;
@@ -54,17 +51,25 @@ function resolveTodoSequence(doc, globalDefault) {
 
   let todoKeywords = null;
   let doneKeywords = null;
+  let keySpecs = {};
+  let logSpecs = {};
+  let sawAnyTodoLine = false;
   for (const kw of doc.keywords) {
     if (kw.key.toUpperCase() !== 'TODO') continue;
-    const parsed = parseTodoValue(kw.value);
+    sawAnyTodoLine = true;
+    const parsed = parseTodoSpecValue(kw.value);
     if (parsed.todoKeywords.length) todoKeywords = parsed.todoKeywords;
     if (parsed.doneKeywords.length) doneKeywords = parsed.doneKeywords;
+    keySpecs = { ...keySpecs, ...parsed.keySpecs };
+    logSpecs = { ...logSpecs, ...parsed.logSpecs };
   }
 
-  if (todoKeywords === null && doneKeywords === null) return fallback; // no #+TODO: line found at all
+  if (!sawAnyTodoLine) return fallback; // no #+TODO: line found at all
   return {
     todoKeywords: todoKeywords || [...DEFAULT_TODO_KEYWORDS],
     doneKeywords: doneKeywords || [...DEFAULT_DONE_KEYWORDS],
+    keySpecs,
+    logSpecs,
   };
 }
 
@@ -113,7 +118,6 @@ function isDoneKeyword(keyword, sequence) {
 
 export {
   DEFAULT_SEQUENCE,
-  parseTodoValue,
   resolveTodoSequence,
   fullCycle,
   cycleTodoState,

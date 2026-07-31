@@ -83,6 +83,53 @@ function parseTodoKeyword(rest, todoKeywords) {
   return { rest, todo: null };
 }
 
+/** Parses one token from a #+TODO: line's todo/done part -- "WAIT(w@/!)"
+ *  -> { keyword: "WAIT", key: "w", logSpec: "@/!" }. The parenthesized
+ *  suffix is entirely optional, and every combination inside it is real,
+ *  valid org syntax: a bare "WAIT", fast-key-only "WAIT(w)",
+ *  logging-only "WAIT(@/!)" or "WAIT(/!)", or both a key and a logging
+ *  spec together. When present, a fast-key is always the first
+ *  character (since @/!/ are reserved for the logging spec itself and
+ *  can never themselves be a fast-key), so splitting on "the first
+ *  character that isn't one of those" cleanly separates the two parts
+ *  regardless of which are actually present. */
+function parseTodoKeywordToken(token) {
+  const m = /^([^\s(]+)(?:\(([^)]*)\))?$/.exec(token);
+  if (!m) return { keyword: token, key: null, logSpec: null };
+  const keyword = m[1];
+  const paren = m[2] || '';
+  const innerMatch = /^([^@!/])?(.*)$/.exec(paren);
+  const key = innerMatch && innerMatch[1] ? innerMatch[1] : null;
+  const logSpec = innerMatch && innerMatch[2] ? innerMatch[2] : null;
+  return { keyword, key, logSpec };
+}
+
+/** Parses a full #+TODO: value ("TODO(t) WAIT(w@/!) | DONE(d!) KILL(k@)")
+ *  into bare keyword lists (what heading-todo matching and TODO-cycling
+ *  both need to agree on) plus per-keyword fast-key/logging-spec
+ *  metadata, keyed by the bare keyword. `keySpecs`/`logSpecs` only ever
+ *  contain entries for keywords that actually specified one -- a
+ *  keyword with neither present at all, not present as null, so a
+ *  caller can use straightforward `in`/property-access checks. */
+function parseTodoSpecValue(value) {
+  const [todoPart, donePart = ''] = value.split('|').map((s) => s.trim());
+  const todoTokens = todoPart.split(/\s+/).filter(Boolean).map(parseTodoKeywordToken);
+  const doneTokens = donePart.split(/\s+/).filter(Boolean).map(parseTodoKeywordToken);
+  const allTokens = [...todoTokens, ...doneTokens];
+  const keySpecs = {};
+  const logSpecs = {};
+  for (const t of allTokens) {
+    if (t.key) keySpecs[t.keyword] = t.key;
+    if (t.logSpec) logSpecs[t.keyword] = t.logSpec;
+  }
+  return {
+    todoKeywords: todoTokens.map((t) => t.keyword),
+    doneKeywords: doneTokens.map((t) => t.keyword),
+    keySpecs,
+    logSpecs,
+  };
+}
+
 // ---- main parse ----------------------------------------------------------
 
 /**
@@ -101,11 +148,9 @@ function parseOrg(text, opts = {}) {
   for (const line of lines) {
     const m = KEYWORD_RE.exec(line);
     if (m && m[1].toUpperCase() === 'TODO') {
-      const [todoPart, donePart = ''] = m[2].split('|').map((s) => s.trim());
-      const todos = todoPart.split(/\s+/).filter(Boolean);
-      const dones = donePart.split(/\s+/).filter(Boolean);
-      if (todos.length) todoKeywords = todos;
-      if (dones.length) doneKeywords = dones;
+      const spec = parseTodoSpecValue(m[2]);
+      if (spec.todoKeywords.length) todoKeywords = spec.todoKeywords;
+      if (spec.doneKeywords.length) doneKeywords = spec.doneKeywords;
     }
   }
   const allTodoLike = [...todoKeywords, ...doneKeywords];
@@ -315,4 +360,6 @@ export {
   findHeadingLineNumber,
   DEFAULT_TODO_KEYWORDS,
   DEFAULT_DONE_KEYWORDS,
+  parseTodoKeywordToken,
+  parseTodoSpecValue,
 };
