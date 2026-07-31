@@ -37,8 +37,10 @@ import {
   getArchiveConfirm,
   getUseTagInheritance,
   getUsePropertyInheritance,
+  getClosedKeepWhenNoTodo,
 } from './src/local-variables.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
+import { decideProgressLogging } from './src/progress-logging.js';
 import {
   buildAgendaItems,
   buildTaskList,
@@ -57,6 +59,7 @@ import { exportToIcalendar } from './src/export-icalendar.js';
 import { createHistory, pushSnapshot, canUndo, canRedo, undo, redo, jumpTo, currentEntry } from './src/undo-history.js';
 import { diffHunks } from './src/text-diff.js';
 import { parseOrgTimestamp, formatOrgTimestamp, parseDelay } from './src/org-timestamp.js';
+import { parseBody } from './src/body-parser.js';
 import {
   renameHeading,
   setHeadingTags,
@@ -150,6 +153,120 @@ document.createElement = function (tagName, options) {
 };
 
 const GLOBAL_TODO_DEFAULT = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
+
+// Set to { heading } when org-log-done is 'note and a heading just
+// entered a DONE state -- renderDoneNotePrompt shows a small form for
+// it. Only ever one at a time (matching how only one heading can be
+// mid-transition at once from user interaction); a second transition
+// happening while a prompt is already pending (unlikely, but not
+// impossible via rapid taps) simply replaces it -- the earlier prompt's
+// note is lost if never submitted, the same "skip discards it" behavior
+// as explicitly dismissing one.
+let pendingDoneNote = null;
+
+/**
+ * Every call site in this app that changes a heading's TODO state
+ * (cycling, toggling) must go through this rather than calling
+ * cycleHeadingTodo/toggleHeadingTodo directly -- org-log-done (Layer 1
+ * of progress logging) needs to see EVERY transition applied
+ * consistently, not just the ones some call site happened to remember
+ * to wire up. `performChange` is a thunk that actually performs the
+ * state change (e.g. `() => cycleHeadingTodo(state.doc, heading,
+ * GLOBAL_TODO_DEFAULT)`); this wrapper captures the state immediately
+ * before and after it runs to decide what logging action applies.
+ *
+ * Parses #+STARTUP: fresh from state.doc on every call rather than
+ * trusting state.startupConfig to already be current -- that cached
+ * value isn't guaranteed refreshed at every point a heading's TODO
+ * state could change (e.g. immediately after a plain-text-editor
+ * round-trip), and this check is cheap enough that re-parsing beats
+ * risking a stale read.
+ */
+function applyTodoTransition(heading, performChange) {
+  const fromTodo = heading.todo;
+  performChange();
+  const toTodo = heading.todo;
+
+  const sequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
+  const logDoneSetting = parseStartupConfig(state.doc).logDone;
+  const keepWhenNoTodo = getClosedKeepWhenNoTodo(state.localVariables);
+  const decision = decideProgressLogging(fromTodo, toTodo, sequence, logDoneSetting, keepWhenNoTodo);
+
+  if (decision.insertClosed) {
+    heading.planning.closed = formatOrgTimestamp({ date: new Date(), time: new Date().toTimeString().slice(0, 5), active: false });
+  } else if (decision.removeClosed) {
+    heading.planning.closed = null;
+  }
+
+  if (decision.promptNote) {
+    pendingDoneNote = { heading };
+  }
+}
+
+/** Shows a small dedicated panel for taking (or skipping) the closing
+ *  note when org-log-done is 'note and a heading just entered a DONE
+ *  state -- the TODO badge already flipped immediately when tapped
+ *  (applyTodoTransition doesn't wait for this), so declining to add a
+ *  note here never reverts or blocks that state change; it only
+ *  decides whether a "Closing Note" child heading gets added alongside
+ *  it. Per the literal spec this implements: the note is stored under
+ *  a real child heading titled "Closing Note", not a :LOGBOOK: entry --
+ *  Layer 2's own, more complex per-keyword logging will need to settle
+ *  on a LOGBOOK convention regardless, but this simpler, self-contained
+ *  mechanism is enough for org-log-done specifically and doesn't need
+ *  to wait on that broader design. */
+function renderDoneNotePrompt() {
+  doneNotePanel.innerHTML = '';
+  if (!pendingDoneNote) {
+    doneNotePanel.style.display = 'none';
+    return;
+  }
+  doneNotePanel.style.display = 'block';
+
+  const { heading } = pendingDoneNote;
+
+  const label = document.createElement('div');
+  label.style.fontSize = '12px';
+  label.style.opacity = '0.7';
+  label.style.marginBottom = '6px';
+  label.textContent = `Note for marking "${heading.title || '(untitled)'}" as ${heading.todo}:`;
+  doneNotePanel.appendChild(label);
+
+  const textarea = document.createElement('textarea');
+  textarea.id = 'done-note-input';
+  textarea.rows = 3;
+  textarea.style.width = '100%';
+  textarea.style.boxSizing = 'border-box';
+  textarea.style.font = 'inherit';
+  doneNotePanel.appendChild(textarea);
+  autoGrowTextarea(textarea);
+
+  const row = document.createElement('div');
+  row.className = 'panel-row';
+  row.style.marginTop = '6px';
+  row.appendChild(
+    menuButton('Save note', () => {
+      const text = textarea.value.trim();
+      pendingDoneNote = null;
+      if (text) {
+        const timestamp = formatOrgTimestamp({ date: new Date(), time: new Date().toTimeString().slice(0, 5), active: false });
+        const note = insertChildHeading(heading, { title: 'Closing Note' });
+        note.bodyLines = [timestamp, '', text];
+        note.body = parseBody(note.bodyLines);
+      }
+      commitAndRender(text ? 'Added closing note' : 'Skipped closing note');
+    })
+  );
+  row.appendChild(
+    menuButton('Skip', () => {
+      pendingDoneNote = null;
+      renderDoneNotePrompt();
+    })
+  );
+  doneNotePanel.appendChild(row);
+
+  requestAnimationFrame(() => textarea.focus());
+}
 
 const kv = createIndexedDbAdapter();
 const filesystemAdapter = createFileSystemAccessAdapter(kv);
@@ -526,6 +643,7 @@ const searchPanel = document.getElementById('searchPanel');
 const captureBtn = document.getElementById('captureBtn');
 const capturePanel = document.getElementById('capturePanel');
 const historyPanel = document.getElementById('historyPanel');
+const doneNotePanel = document.getElementById('doneNotePanel');
 const moreBtn = document.getElementById('moreBtn');
 const morePanel = document.getElementById('morePanel');
 
@@ -679,7 +797,7 @@ document.addEventListener('keydown', (e) => {
     toggleActionMenu(keyboardFocusedHeading);
   } else if (e.key === 't') {
     e.preventDefault();
-    toggleHeadingTodo(state.doc, keyboardFocusedHeading, GLOBAL_TODO_DEFAULT);
+    applyTodoTransition(keyboardFocusedHeading, () => toggleHeadingTodo(state.doc, keyboardFocusedHeading, GLOBAL_TODO_DEFAULT));
     commitAndRender('Toggled TODO');
   } else if (e.altKey && e.key === 'ArrowUp') {
     e.preventDefault();
@@ -753,6 +871,7 @@ let viewMenuOpen = false;
 // month), matching "scrolling by the view amount".
 let agendaViewType = 'week'; // 'day' | 'week' | 'month'
 let agendaAnchorDate = new Date();
+let agendaLogMode = false; // whether LOGBOOK entries (state-change/note timestamps) show alongside SCHEDULED/DEADLINE/etc. -- off by default, matching real org's own org-agenda-log-mode convention exactly (a toggle, not always-on, so daily task-scanning doesn't get cluttered by default)
 // Which heading (by object reference) currently has its title in edit
 // mode, and whether it was just created (so an empty commit removes it
 // instead of leaving a titleless heading behind).
@@ -883,6 +1002,7 @@ function persistInBackground() {
 function commitAndRender(label = 'Edited') {
   history = pushSnapshot(history, serializeOrg(state.doc), label);
   render();
+  renderDoneNotePrompt();
   persistInBackground();
 }
 
@@ -2210,7 +2330,7 @@ function renderRow(row, todoSequence) {
       badge.className = 'todo-badge ' + (todoSequence.doneKeywords.includes(row.node.todo) ? 'done' : 'todo');
       badge.textContent = row.node.todo;
       badge.onclick = () => {
-        cycleHeadingTodo(state.doc, row.node, GLOBAL_TODO_DEFAULT);
+        applyTodoTransition(row.node, () => cycleHeadingTodo(state.doc, row.node, GLOBAL_TODO_DEFAULT));
         commitAndRender('Cycled TODO state');
       };
       el.appendChild(badge);
@@ -2331,7 +2451,7 @@ function renderRow(row, todoSequence) {
               onClick: () => {
                 actionMenuFor = null;
                 const hadTodo = !!row.node.todo;
-                toggleHeadingTodo(state.doc, row.node, GLOBAL_TODO_DEFAULT);
+                applyTodoTransition(row.node, () => toggleHeadingTodo(state.doc, row.node, GLOBAL_TODO_DEFAULT));
                 commitAndRender(hadTodo ? 'Removed TODO/DONE state' : 'Marked as TODO');
               },
             },
@@ -4521,12 +4641,39 @@ function renderAgendaView() {
   container.appendChild(controls);
 
   const { start, end } = agendaRangeFor(agendaViewType, agendaAnchorDate);
+  const rangeRow = document.createElement('div');
+  rangeRow.style.display = 'flex';
+  rangeRow.style.alignItems = 'center';
+  rangeRow.style.justifyContent = 'space-between';
+  rangeRow.style.gap = '8px';
+  rangeRow.style.marginBottom = '8px';
+
   const rangeLabel = document.createElement('div');
   rangeLabel.style.fontSize = '12px';
   rangeLabel.style.opacity = '0.65';
-  rangeLabel.style.marginBottom = '8px';
   rangeLabel.textContent = formatAgendaRangeLabel(agendaViewType, start, end);
-  container.appendChild(rangeLabel);
+  rangeRow.appendChild(rangeLabel);
+
+  const logToggle = document.createElement('label');
+  logToggle.style.display = 'flex';
+  logToggle.style.alignItems = 'center';
+  logToggle.style.gap = '4px';
+  logToggle.style.fontSize = '12px';
+  logToggle.style.opacity = '0.8';
+  logToggle.style.cursor = 'pointer';
+  logToggle.style.flexShrink = '0';
+  const logCheckbox = document.createElement('input');
+  logCheckbox.type = 'checkbox';
+  logCheckbox.checked = agendaLogMode;
+  logCheckbox.onchange = () => {
+    agendaLogMode = logCheckbox.checked;
+    render();
+  };
+  logToggle.appendChild(logCheckbox);
+  logToggle.appendChild(document.createTextNode('Log'));
+  rangeRow.appendChild(logToggle);
+
+  container.appendChild(rangeRow);
 
   if (agendaFilesConfig.length > 0) {
     const entries = agendaFilesConfig.map((f) => agendaFilesCache.get(f));

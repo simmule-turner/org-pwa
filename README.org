@@ -23,6 +23,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 - [[#searching][Searching]]
 - [[#links-and-images][Links and images]]
 - [[#folding-and-startup][Folding and ~#+STARTUP~]]
+- [[#progress-logging][Progress logging]]
 - [[#local-variables][Local Variables]]
 - [[#archiving][Archiving]]
 - [[#the-plain-text-editor][The plain-text editor]]
@@ -224,15 +225,31 @@ org-pwa reads and applies ~#+STARTUP:~ directives, typically on the first line o
 |---+---+---|
 | Heading visibility | ~overview~, ~content~, ~showall~, ~showeverything~ | ~showeverything~ |
 | Inline images | ~inlineimages~, ~noinlineimages~ | ~noinlineimages~ |
+| Progress logging on DONE | ~logdone~, ~lognotedone~ | neither (no logging) |
 
 - ~overview~ — only top-level headings shown, everything else folded.
 - ~content~ — every heading line unfolded, but body text (paragraphs/lists/tables) and properties stay hidden until you tap a heading open — a genuinely separate visibility axis from "is this heading's subtree folded," not just an alias for ~showall~.
 - ~showall~ — body text, lists, and tables all shown. Property drawers (~:PROPERTIES: ... :END:~) and block content (~#+BEGIN_SRC~/~#+BEGIN_QUOTE~\/etc.) stay folded — matching real org-mode's own distinction, confirmed against the org manual: ~showall~ unfolds headlines and body text, but drawers and blocks remain collapsed as a single line regardless.
 - ~showeverything~ — everything ~showall~ shows, plus property drawers and block content, both fully expanded. This is the actual, sole structural difference between the two modes.
+- ~logdone~/~lognotedone~ — see [[#progress-logging][Progress logging]] for the full behavior; these two set ~org-log-done~ to ~time~/~note~ respectively.
 
 Manually cycling a heading to "fully expanded" (the slide-left gesture, or tapping through the fold states) always reveals everything about that heading — properties and block content included — regardless of what the file's ~#+STARTUP:~ line says. So a ~showall~ file still lets you open any specific heading's properties or block content by hand; you're never stuck needing to change the file's own directive just to peek at one thing. This reverses cleanly too: collapsing the heading again — swipe, or the chevron — correctly re-hides whatever was revealed, rather than leaving it stuck visible.
 
 These defaults are chosen to match real Emacs org-mode's actual out-of-the-box behavior (no ~#+STARTUP~ line means fully shown, not folded), not an arbitrary choice. See [[#local-variables][Local Variables]] for archived-heading cycling behavior, which is a separate mechanism from ~#+STARTUP:~ entirely.
+
+-----
+
+** Progress logging
+:PROPERTIES:
+:CUSTOM_ID: progress-logging
+:END:
+
+~org-log-done~ (set via ~#+STARTUP: logdone~ or ~#+STARTUP: lognotedone~ — see [[#folding-and-startup][Folding and #+STARTUP]]) controls what happens automatically when a heading enters a DONE-type state (tapping the TODO badge to cycle there, or the action-menu toggle) — matching real org-mode's own two mutually-exclusive modes:
+
+- ~logdone~ (~time~) — inserts a ~CLOSED: [timestamp]~ planning line the moment a heading becomes DONE. Cycling it back to a different, non-done keyword removes that timestamp again; cycling it all the way back to no keyword at all also removes it by default, unless ~org-closed-keep-when-no-todo~ is set (see [[#local-variables][Local Variables]]) — matching real org's own distinct handling of that specific case. Re-marking an already-done heading as a *different* done keyword (e.g. DONE → KILL) doesn't insert a second timestamp or disturb an existing one, since that's not "entering" DONE.
+- ~lognotedone~ (~note~) — instead of a timestamp, prompts for a note the moment a heading becomes DONE, in a small dedicated panel. The TODO badge itself flips immediately when tapped — it never waits on the note — so *Skip* simply declines to add one without reverting the state change. A saved note is filed under a new ~Closing Note~ child heading, timestamped.
+
+These two are alternatives, not combined — a file has either ~logdone~ or ~lognotedone~ active, never both at once (matching the real org variable ~org-log-done~ having exactly one value at a time). With neither set (the default — no ~#+STARTUP:~ line, matching real org's own out-of-the-box behavior), entering DONE does nothing extra at all.
 
 -----
 
@@ -264,6 +281,7 @@ Currently recognized:
 | ~org-use-sub-superscripts~ | ~t~ | Whether/how ~_~/~^~ are interpreted as sub/superscript |
 | ~org-use-tag-inheritance~ | ~t~ | Whether a search filter's ~+tag~/~-tag~ also matches a tag inherited from an ancestor |
 | ~org-use-property-inheritance~ | ~nil~ | Whether a search filter's ~key:value~ also matches a value inherited from an ancestor |
+| ~org-closed-keep-when-no-todo~ | ~nil~ | Whether a CLOSED timestamp survives cycling all the way back to no TODO keyword |
 
 - ~org-agenda-start-on-weekday~ — which weekday the agenda's Week view starts on. ~0~ = Sunday, ~1~ = Monday (the default, matching real org), ~2~ = Tuesday, and so on through ~6~ = Saturday. An out-of-range value falls back to Monday rather than producing a nonsensical week.
 - ~org-cycle-open-archived-trees~ — ~t~ or ~nil~ (Lisp booleans, not JavaScript truthiness — the string ~"true"~ is not ~t~ and won't be treated as one). ~nil~ (the default, matching real org) means an archived heading (tagged ~:ARCHIVE:~) starts folded regardless of the ~#+STARTUP:~ visibility mode, and *the slide-left swipe gesture refuses to open it* — whether cascading into it from a parent or swiping directly on it. This matches real org-mode's own stated behavior exactly (confirmed against the actual org.el source: the ~ARCHIVE~ tag's docstring says plainly "An archived subtree does not open during visibility cycling"). The *chevron is different on purpose*: tapping it still opens an archived heading regardless of this setting. Real Emacs has separate force-open mechanisms outside of TAB/cycling for exactly this situation (~C-c C-TAB~, a universal-argument TAB, ~outline-show-all~) — a touch UI with no keyboard modifiers doesn't have anywhere else to put that, so the chevron fills that role here instead of being a second implementation of the swipe gesture. Without it, archived content would have no way to ever become visible again. Set ~org-cycle-open-archived-trees~ to ~t~ to make archived headings behave like any other heading for the swipe gesture too — the chevron behavior doesn't change either way, since it was never gated by this setting.
@@ -273,6 +291,7 @@ Currently recognized:
 - ~org-use-sub-superscripts~ — one of ~t~, ~{}~, or ~nil~ (not a plain boolean — three real values, matching real org exactly). See [[#inline-text-markup][Inline text markup]] for what each one does. An unrecognized value falls back to ~t~, real org's own default, rather than silently disabling the feature.
 - ~org-use-tag-inheritance~ — ~t~ or ~nil~. ~t~ (the default, matching real org's own actual default — confirmed directly against org's own manual) means a ~+tag~/~-tag~ search filter also matches a heading whose tag comes from an ancestor, not just its own — structural inheritance down the outline, the same as real org's tags always working this way unless explicitly turned off. ~nil~ restricts a filter to a heading's own tags only. A simpler ~t~/~nil~ boolean here than real org's fuller value space (a specific tag list, or a regexp, are both also valid values for the real Emacs variable) — this app only supports the on/off case. Search-time only — doesn't change what tags are /displayed/ on a heading.
 - ~org-use-property-inheritance~ — ~t~ or ~nil~. ~nil~ (the default, matching real org's own actual default — property inheritance is opt-in in real org too, "because it can slow down property searches and is often not needed") means a ~key:value~ search filter only looks at a heading's own properties. ~t~ also falls back to the nearest ancestor's value when the heading doesn't define that property itself — a heading's own value always wins if it has one, inheritance only fills the gap. Same ~t~/~nil~ simplification as ~org-use-tag-inheritance~ above, versus real org's fuller list/regexp value space.
+- ~org-closed-keep-when-no-todo~ — ~t~ or ~nil~. ~nil~ (the default, matching real org) means cycling a DONE heading all the way back to /no/ TODO keyword at all removes its CLOSED timestamp, the same as cycling it to a different, non-done keyword always does — that latter case isn't controlled by this or any variable in real org either, it just always removes CLOSED. Set to ~t~ to keep the timestamp specifically for the "cleared to no keyword" case. See [[#progress-logging][Progress logging]].
 
 *One entry here is not actually a real org-mode variable, and it would be misleading to present it as one*: ~org-archive-confirm~ was made up for this app specifically — Emacs org-mode has no variable by this name, and archiving in real Emacs doesn't ask for confirmation at all. It piggybacks on the same ~#+... Local Variables~ mechanism purely as a convenient, already-existing place to put a per-file setting, not because it's reproducing something org-mode itself does. ~t~ or ~nil~; ~t~ (the default here) shows a confirmation dialog naming the actual destination before archiving or unarchiving a heading; ~nil~ skips it and proceeds immediately. See [[#archiving][Archiving]].
 
