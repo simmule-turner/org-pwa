@@ -678,6 +678,16 @@ let settingsOpen = false;
 let docsOpen = false;
 let searchOpen = false;
 let captureOpen = false;
+// The template currently showing its prompt-answer form, or null when
+// the capture panel is just showing the template list. Replaces
+// window.prompt() for %^{Prompt} placeholders -- window.prompt is a
+// native OS-level dialog with known reliability/layout problems in a
+// PWA running in standalone display mode on mobile (which is exactly
+// what surfaced as "capture has no usable UI" and scroll/visibility
+// glitches); an in-app form sidesteps that entirely, being just an
+// ordinary part of this app's own layout.
+let capturePromptTemplate = null;
+let capturePromptValues = [];
 let moreOpen = false;
 let searchQuery = '';
 let searchUseRegex = false; // deliberately NOT reset when the search panel closes, unlike searchQuery -- this is a mode preference, not a one-off query value
@@ -5625,15 +5635,21 @@ async function renderCapturePanel() {
   capturePanel.innerHTML = '';
   if (!captureOpen) {
     capturePanel.style.display = 'none';
+    capturePromptTemplate = null;
     return;
   }
   capturePanel.style.display = 'block';
+
+  if (capturePromptTemplate) {
+    renderCapturePromptForm();
+    return;
+  }
 
   const heading = document.createElement('div');
   heading.style.fontSize = '12px';
   heading.style.opacity = '0.65';
   heading.style.marginBottom = '8px';
-  heading.textContent = 'Capture — pick a template';
+  heading.textContent = 'Capture \u2014 pick a template';
   capturePanel.appendChild(heading);
 
   const templates = await getCaptureTemplates(kv);
@@ -5648,34 +5664,130 @@ async function renderCapturePanel() {
     return;
   }
 
+  const grid = document.createElement('div');
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = '1fr 1fr';
+  grid.style.gap = '6px';
+
   for (const template of templates) {
     const btn = document.createElement('button');
-    btn.style.display = 'block';
-    btn.style.width = '100%';
     btn.style.textAlign = 'left';
     btn.style.padding = '10px 12px';
-    btn.style.marginBottom = '6px';
     btn.style.border = '1px solid var(--border-strong)';
     btn.style.borderRadius = '8px';
     btn.style.background = 'var(--bg)';
     btn.style.color = 'var(--fg)';
     btn.style.fontSize = '14px';
+    btn.style.minHeight = '44px';
     btn.textContent = template.key + '   ' + template.description;
-    btn.onclick = () => runCapture(template);
-    capturePanel.appendChild(btn);
+    btn.onclick = () => openCapturePrompt(template);
+    grid.appendChild(btn);
   }
+  capturePanel.appendChild(grid);
+}
+
+/** Opens the given template: straight to capturing it if it has no
+ *  %^{Prompt} placeholders to fill in, otherwise shows the in-app
+ *  prompt form first. */
+function openCapturePrompt(template) {
+  const prompts = scanPrompts(template.template);
+  if (prompts.length === 0) {
+    runCaptureWithAnswers(template, []);
+    return;
+  }
+  capturePromptTemplate = template;
+  capturePromptValues = prompts.map((p) => p.default || '');
+  renderCapturePanel();
+}
+
+/** Renders the in-app form for answering a template's %^{Prompt}
+ *  placeholders -- one labeled input per prompt (completions, if any,
+ *  shown as a hint under the field, matching what window.prompt's own
+ *  message text used to fold in), Capture/Cancel at the bottom. */
+function renderCapturePromptForm() {
+  const template = capturePromptTemplate;
+  const prompts = scanPrompts(template.template);
+
+  const heading = document.createElement('div');
+  heading.style.fontSize = '12px';
+  heading.style.opacity = '0.65';
+  heading.style.marginBottom = '8px';
+  heading.textContent = template.key + ' \u2014 ' + template.description;
+  capturePanel.appendChild(heading);
+
+  prompts.forEach((p, i) => {
+    const field = document.createElement('div');
+    field.style.marginBottom = '10px';
+
+    const label = document.createElement('div');
+    label.style.fontSize = '13px';
+    label.style.marginBottom = '3px';
+    label.textContent = p.prompt;
+    field.appendChild(label);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = capturePromptValues[i];
+    input.style.width = '100%';
+    input.style.boxSizing = 'border-box';
+    input.style.fontSize = '15px';
+    input.style.padding = '8px 10px';
+    input.style.border = '1px solid var(--border-strong)';
+    input.style.borderRadius = '6px';
+    input.style.background = 'var(--bg)';
+    input.style.color = 'var(--fg)';
+    input.addEventListener('input', () => {
+      capturePromptValues[i] = input.value;
+    });
+    field.appendChild(input);
+
+    if (p.completions.length > 0) {
+      const hint = document.createElement('div');
+      hint.style.fontSize = '11px';
+      hint.style.opacity = '0.6';
+      hint.style.marginTop = '2px';
+      hint.textContent = 'Options: ' + p.completions.join(', ');
+      field.appendChild(hint);
+    }
+
+    capturePanel.appendChild(field);
+    if (i === 0) requestAnimationFrame(() => input.focus());
+  });
+
+  const row = document.createElement('div');
+  row.className = 'panel-row';
+  row.appendChild(
+    menuButton('Capture', () => {
+      const answers = capturePromptValues.slice();
+      capturePromptTemplate = null;
+      runCaptureWithAnswers(template, answers);
+    })
+  );
+  row.appendChild(
+    menuButton('Cancel', () => {
+      capturePromptTemplate = null;
+      setStatus('Capture cancelled.');
+      renderCapturePanel();
+    })
+  );
+  capturePanel.appendChild(row);
 }
 
 /**
- * Runs one capture template end to end: resolves its (file+olp ...)
+ * Runs one capture template end to end, given `answers` already
+ * gathered for its %^{...} prompts (by the in-app prompt form, or an
+ * empty array if the template has none): resolves its (file+olp ...)
  * target (creating any missing heading along the way), computes %N if
- * this is a table-line capture, collects an answer for every %^{...}
- * prompt in order (via window.prompt, matching this app's existing
- * pattern for tags/CUSTOM_ID — cancelling any single prompt aborts the
- * whole capture, nothing gets inserted), expands the template, inserts
- * it, and finally either opens the inserted item for editing with the
- * cursor at %?'s position (item/checkitem only — see the module-level
- * design note below) or just navigates to the target heading.
+ * this is a table-line capture, expands the template, inserts it, and
+ * finally either opens the inserted item for editing with the cursor
+ * at %?'s position (item/checkitem only — see the module-level design
+ * note below) or just navigates to the target heading.
+ *
+ * The capture panel stays open afterward, back on the template list,
+ * for rapid back-to-back captures without reopening it each time — the
+ * one exception is item/checkitem's own cursor-focus behavior below,
+ * which closes it, since jumping straight into editing the captured
+ * text is a different workflow than "capture several things in a row."
  *
  * Cursor positioning is deliberately precise for item/checkitem only,
  * not plain/table-line: those two can produce multi-part content (a
@@ -5684,10 +5796,7 @@ async function renderCapturePanel() {
  * edit" — faking precision there would be worse than being honest that
  * navigating to the heading is as far as this goes for those two types.
  */
-async function runCapture(template) {
-  captureOpen = false;
-  renderCapturePanel();
-
+async function runCaptureWithAnswers(template, answers) {
   if (currentView === 'text') {
     // Same reasoning as search's own text-mode guard above: leaving text
     // mode reparses the document into new objects, so do it now, before
@@ -5696,22 +5805,6 @@ async function runCapture(template) {
   }
 
   const now = new Date();
-
-  // Prompts are collected FIRST, before anything below touches state.doc
-  // at all -- so a cancelled prompt genuinely means nothing happened, not
-  // just "nothing was inserted" while still leaving behind any OLP
-  // headings resolveOlpTarget had to create to even find a target.
-  const prompts = scanPrompts(template.template);
-  const answers = [];
-  for (const p of prompts) {
-    const message = p.completions.length > 0 ? `${p.prompt} (options: ${p.completions.join(', ')})` : p.prompt;
-    const answer = window.prompt(message, p.default);
-    if (answer === null) {
-      setStatus('Capture cancelled.');
-      return;
-    }
-    answers.push(answer);
-  }
 
   const targetFileId = resolveCaptureFileId(template.file, state.documentId);
 
@@ -5726,6 +5819,7 @@ async function runCapture(template) {
       setStatus(
         `Can't capture to "${targetFileId}" automatically \u2014 local files need that file picked/created once first (browser security requires a file picker per file). Try File \u2192 Open or Save As on "${targetFileId}" first, or use GitHub/WebDAV, or remove "file" from this template to capture into the currently open file instead.`
       );
+      renderCapturePanel();
       return;
     }
 
@@ -5736,6 +5830,7 @@ async function runCapture(template) {
       targetDoc = existing ? parseOrg(existing.content) : parseOrg('');
     } catch (err) {
       setStatus(`Could not capture: reading "${targetFileId}" failed \u2014 ${err.message}`);
+      renderCapturePanel();
       return;
     }
 
@@ -5753,10 +5848,12 @@ async function runCapture(template) {
       await adapter.write(targetFileId, serializeOrg(targetDoc));
     } catch (err) {
       setStatus(`Could not capture: writing "${targetFileId}" failed \u2014 ${err.message}. Nothing was changed.`);
+      renderCapturePanel();
       return;
     }
 
     setStatus(`Captured to ${targetFileId}.`);
+    renderCapturePanel();
     return;
   }
 
@@ -5779,12 +5876,14 @@ async function runCapture(template) {
   commitAndRender(`Captured: ${template.description}`);
 
   if (cursorOffset !== null && inserted && (template.type === 'item' || template.type === 'checkitem')) {
+    captureOpen = false;
     switchToView('org');
     for (const ancestor of findAncestorPath(state.doc, target) || []) {
       ancestor.collapsed = false;
     }
     editingListItem = { heading: target, item: inserted };
     render();
+    renderCapturePanel();
     requestAnimationFrame(() => {
       const input = document.getElementById('listitem-edit-input');
       if (input) {
@@ -5799,6 +5898,7 @@ async function runCapture(template) {
   switchToView('org');
   navigateToHeading(target);
   setStatus('Captured.');
+  renderCapturePanel();
 }
 
 captureBtn.addEventListener('click', () => {

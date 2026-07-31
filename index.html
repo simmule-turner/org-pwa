@@ -106,7 +106,7 @@
     width: 100%; max-width: 480px; z-index: 5; background: var(--bg);
     max-height: 92vh; max-height: 92dvh; overflow-y: auto;
   }
-  header { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); flex-wrap: nowrap; width: 100%; }
+  header { position: sticky; top: 0; z-index: 1; background: var(--bg); display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); flex-wrap: nowrap; width: 100%; }
   #filename { flex: 1 1 auto; min-width: 0; font-size: 12px; opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Uniform icon buttons — item 1: larger, icon-based, consistent touch
      target size (44px meets the standard mobile minimum) instead of
