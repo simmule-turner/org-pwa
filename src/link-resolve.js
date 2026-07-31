@@ -146,6 +146,86 @@ export function findHeadingByCustomId(doc, customId) {
   return found;
 }
 
+/** Does `nodes` (a parsed inline-node array) contain a footnote-def node
+ *  with this exact label, anywhere (including nested inside emphasis
+ *  spans, since footnote-def content is itself recursively parsed)? */
+function inlineContainsFootnoteDef(nodes, label) {
+  for (const node of nodes) {
+    if (node.type === 'footnote-def' && node.label === label) return true;
+    if (node.children && inlineContainsFootnoteDef(node.children, label)) return true;
+  }
+  return false;
+}
+
+/**
+ * Finds the definition of footnote `label` (in document order): either a
+ * paragraph explicitly marked as that footnote's own definition (the
+ * "[fn:label] text" separate-line convention body-parser.js detects), or
+ * any paragraph/list-item/table-cell containing an inline
+ * [fn:label:definition] node with a matching label -- an inline
+ * definition can be referenced again elsewhere via a bare [fn:label],
+ * same as real org allows.
+ *
+ * Returns { heading, kind } (kind is 'paragraph-definition' or
+ * 'inline-definition', for a caller that wants to highlight differently
+ * depending on which), or null if no definition exists anywhere in the
+ * document for this label.
+ */
+export function findFootnoteDefinition(doc, label) {
+  let found = null;
+
+  function checkParagraph(node, heading) {
+    if (found) return;
+    if (node.footnoteLabel === label) {
+      found = { heading, kind: 'paragraph-definition', node };
+      return;
+    }
+    for (const inline of node.inlineLines) {
+      if (inlineContainsFootnoteDef(inline, label)) {
+        found = { heading, kind: 'inline-definition', node };
+        return;
+      }
+    }
+  }
+
+  function checkListItems(items, heading) {
+    for (const item of items) {
+      if (found) return;
+      if (inlineContainsFootnoteDef(item.inline, label)) {
+        found = { heading, kind: 'inline-definition', node: item };
+        return;
+      }
+      for (const nestedList of item.children) {
+        if (found) return;
+        checkListItems(nestedList.items, heading);
+      }
+    }
+  }
+
+  walkHeadings(doc, (heading) => {
+    if (found) return;
+    for (const node of heading.body) {
+      if (found) return;
+      if (node.type === 'paragraph') checkParagraph(node, heading);
+      else if (node.type === 'list') checkListItems(node.items, heading);
+      else if (node.type === 'table') {
+        for (const row of node.rows) {
+          if (found) return;
+          if (row.type !== 'row') continue;
+          for (const cellInline of row.cellsInline) {
+            if (inlineContainsFootnoteDef(cellInline, label)) {
+              found = { heading, kind: 'inline-definition', node };
+              break;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  return found;
+}
+
 /**
  * Splits a "file:...::target" style link into the file path and an
  * optional in-file target (a headline search or plain text search),

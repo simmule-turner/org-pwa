@@ -35,6 +35,26 @@
 
 import { parseInline } from './inline-markup.js';
 
+// Footnote definitions accumulated during a single exportToMarkdown()
+// call (module-level, reset at the start of each call): GFM has no
+// inline-definition syntax the way org's own [fn:label:text] does --
+// every definition (inline or the separate "[fn:label] text" line
+// convention) becomes a "[^label]: text" line collected here and
+// emitted together at the very end of the export, GFM's own convention
+// for where footnote definitions live.
+let footnoteDefinitionsMd = [];
+let anonymousFootnoteCounterMd = 0;
+
+/** GFM requires an explicit label on every footnote, unlike org's own
+ *  anonymous [fn::...] form -- assigns a synthetic one for that case,
+ *  distinguishable from any real user-chosen label so it can never
+ *  collide with one. */
+function footnoteLabelMd(label) {
+  if (label !== null) return label;
+  anonymousFootnoteCounterMd++;
+  return 'anon-' + anonymousFootnoteCounterMd;
+}
+
 // ---- inline rendering -----------------------------------------------------
 
 /** Characters that carry special meaning in Markdown and need escaping
@@ -85,6 +105,13 @@ function renderInlineNodeMd(node) {
     }
     case 'image':
       return `![](${node.target})`;
+    case 'footnote-ref':
+      return `[^${node.label}]`;
+    case 'footnote-def': {
+      const label = footnoteLabelMd(node.label);
+      footnoteDefinitionsMd.push({ label, text: renderInlineListMd(node.children) });
+      return `[^${label}]`;
+    }
     case 'comment':
       // org's own @@comment:...@@ export-comment marker -- never
       // appears in exported output, matching real org's own behavior
@@ -102,6 +129,15 @@ function renderTextMd(text) {
 // ---- body content -----------------------------------------------------
 
 function renderParagraphMd(node) {
+  if (node.footnoteLabel !== null) {
+    const strippedFirstLine = node.lines[0].replace(
+      new RegExp('^\\[fn:' + node.footnoteLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\]\\s?'),
+      ''
+    );
+    const text = [strippedFirstLine, ...node.lines.slice(1)].map(renderTextMd).join(' ');
+    footnoteDefinitionsMd.push({ label: node.footnoteLabel, text });
+    return ''; // emitted at the end instead, alongside every other footnote definition
+  }
   // A trailing double-space before the newline is the standard
   // Markdown "hard line break" convention -- preserves org's own
   // multi-line paragraph structure rather than collapsing it into one
@@ -235,12 +271,27 @@ function renderHeadingMd(heading, levelOffset, out) {
  * already uses (e.g. archiveHeadingToLocation).
  */
 export function exportToMarkdown(doc, scope = null) {
+  footnoteDefinitionsMd = [];
+  anonymousFootnoteCounterMd = 0;
+
   const roots = scope ? [scope] : doc.children || [];
   const levelOffset = scope ? scope.level - 1 : 0;
   const out = [];
   for (const heading of roots) {
     renderHeadingMd(heading, levelOffset, out);
   }
+
+  if (footnoteDefinitionsMd.length > 0) {
+    const seenLabels = new Set();
+    const defLines = [];
+    for (const { label, text } of footnoteDefinitionsMd) {
+      if (seenLabels.has(label)) continue; // the same real label can legitimately be referenced more than once, but only needs one definition line
+      seenLabels.add(label);
+      defLines.push(`[^${label}]: ${text}`);
+    }
+    out.push(defLines.join('\n'));
+  }
+
   // Blocks are joined with a blank line between them for normal
   // Markdown paragraph/block separation; collapse any accidental
   // triple-or-more blank lines (e.g. an empty paragraph node) down to

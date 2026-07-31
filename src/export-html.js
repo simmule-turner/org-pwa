@@ -22,6 +22,21 @@
 import { parseInline } from './inline-markup.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 
+// Footnote definitions accumulated during a single exportToHtml() call
+// (module-level, reset at the start of each call) -- collected the same
+// way export-markdown.js collects them, since neither this convention
+// nor GFM supports an inline definition; every one (inline or the
+// separate "[fn:label] text" line convention) is emitted together in a
+// Footnotes section at the end, each back-linking to its own reference.
+let footnoteDefinitionsHtml = [];
+let anonymousFootnoteCounterHtml = 0;
+
+function footnoteLabelHtml(label) {
+  if (label !== null) return label;
+  anonymousFootnoteCounterHtml++;
+  return 'anon-' + anonymousFootnoteCounterHtml;
+}
+
 // ---- escaping ---------------------------------------------------------
 
 const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -61,6 +76,13 @@ function renderInlineNodeHtml(node) {
     }
     case 'image':
       return `<img src="${escapeHtml(node.target)}" alt="">`;
+    case 'footnote-ref':
+      return `<sup id="fnref-${escapeHtml(node.label)}"><a href="#fn-${escapeHtml(node.label)}">${escapeHtml(node.label)}</a></sup>`;
+    case 'footnote-def': {
+      const label = footnoteLabelHtml(node.label);
+      footnoteDefinitionsHtml.push({ label, html: renderInlineListHtml(node.children) });
+      return `<sup id="fnref-${escapeHtml(label)}"><a href="#fn-${escapeHtml(label)}">${escapeHtml(label)}</a></sup>`;
+    }
     case 'comment':
       return ''; // matches real org's own export behavior -- comments never appear in exported output
     default:
@@ -75,6 +97,15 @@ function renderTextHtml(text) {
 // ---- body content -----------------------------------------------------
 
 function renderParagraphHtml(node) {
+  if (node.footnoteLabel !== null) {
+    const strippedFirstLine = node.lines[0].replace(
+      new RegExp('^\\[fn:' + node.footnoteLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\]\\s?'),
+      ''
+    );
+    const html = [strippedFirstLine, ...node.lines.slice(1)].map(renderTextHtml).join('<br>');
+    footnoteDefinitionsHtml.push({ label: node.footnoteLabel, html });
+    return ''; // emitted in the Footnotes section at the end instead
+  }
   return '<p>' + node.lines.map(renderTextHtml).join('<br>') + '</p>';
 }
 
@@ -209,6 +240,10 @@ const PRINT_CSS = `
   .todo-keyword.done { background: #dcf0d8; color: #227a1e; }
   .priority { color: #a06010; font-weight: 600; }
   .tags code { font-size: 0.7em; opacity: 0.7; margin-left: 2px; }
+  sup a { text-decoration: none; }
+  .footnotes { margin-top: 2em; padding-top: 1em; border-top: 1px solid #ddd; font-size: 0.9em; color: #444; }
+  .footnotes li { margin: 0.3em 0; }
+  .footnotes a.footnote-back { text-decoration: none; margin-left: 0.3em; }
   @media print {
     body { max-width: none; margin: 0; }
     a { color: inherit; text-decoration: none; }
@@ -222,6 +257,9 @@ const PRINT_CSS = `
  * by-reference convention as exportToMarkdown.
  */
 export function exportToHtml(doc, scope = null) {
+  footnoteDefinitionsHtml = [];
+  anonymousFootnoteCounterHtml = 0;
+
   const roots = scope ? [scope] : doc.children || [];
   const levelOffset = scope ? scope.level - 1 : 0;
   const { doneKeywords } = resolveTodoSequence(doc);
@@ -229,6 +267,20 @@ export function exportToHtml(doc, scope = null) {
   for (const heading of roots) {
     renderHeadingHtml(heading, levelOffset, doneKeywords, out);
   }
+
+  if (footnoteDefinitionsHtml.length > 0) {
+    const seenLabels = new Set();
+    const items = [];
+    for (const { label, html } of footnoteDefinitionsHtml) {
+      if (seenLabels.has(label)) continue; // the same real label can legitimately be referenced more than once, but only needs one definition
+      seenLabels.add(label);
+      items.push(
+        `<li id="fn-${escapeHtml(label)}">${html} <a class="footnote-back" href="#fnref-${escapeHtml(label)}">\u21a9</a></li>`
+      );
+    }
+    out.push(`<div class="footnotes"><strong>Footnotes</strong><ol>${items.join('')}</ol></div>`);
+  }
+
   const titleSource = scope ? scope.title : (doc.keywords || []).find((k) => k.key === 'TITLE');
   const title = escapeHtml(scope ? scope.title : titleSource ? titleSource.value : 'Untitled');
   return (

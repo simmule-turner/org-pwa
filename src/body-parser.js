@@ -193,6 +193,8 @@ function parseList(lines, i, baseIndent) {
 
 // ---- paragraphs ---------------------------------------------------------
 
+const FOOTNOTE_DEF_LINE_RE = /^\[fn:([A-Za-z0-9_-]+)\]\s?(.*)$/;
+
 function parseParagraph(lines, i) {
   const startIndex = i;
   const paraLines = [];
@@ -207,11 +209,19 @@ function parseParagraph(lines, i) {
     paraLines.push(lines[i]);
     i++;
   }
+
+  const footnoteMatch = paraLines.length > 0 ? FOOTNOTE_DEF_LINE_RE.exec(paraLines[0]) : null;
+  const footnoteLabel = footnoteMatch ? footnoteMatch[1] : null;
+  const inlineLines = footnoteMatch
+    ? [parseInline(footnoteMatch[2]), ...paraLines.slice(1).map(parseInline)]
+    : paraLines.map(parseInline);
+
   return [
     {
       type: 'paragraph',
       lines: paraLines,
-      inlineLines: paraLines.map(parseInline),
+      inlineLines,
+      footnoteLabel,
       lineIndex: startIndex,
       lineCount: i - startIndex,
     },

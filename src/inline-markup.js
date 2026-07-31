@@ -35,6 +35,52 @@ const LINK_RE = /^\[\[([^\]]+?)\](?:\[([^\]]+?)\])?\]/;
 const COMMENT_RE = /^@@comment:(.*?)@@/;
 const IMAGE_EXT_RE = /\.(png|jpe?g|gif|svg|webp|bmp)$/i;
 
+// Footnotes: [fn:label] is a bare reference to a definition given
+// elsewhere (either inline, via [fn:label:...] somewhere else in the
+// document, or as its own definition line/paragraph -- see
+// body-parser.js's own FOOTNOTE_DEF_LINE_RE). [fn:label:definition] is
+// an inline definition (also referenceable again elsewhere via plain
+// [fn:label]); [fn::definition] (empty label) is real org's own
+// anonymous-footnote form -- never referenced again, renumbered
+// positionally on export. A manual bracket-depth scan (not a simple
+// regex) finds the definition's closing ']', since footnote text
+// commonly contains its own [[link]] -- a naive non-greedy match would
+// stop at the first ']' it finds, which could easily belong to a
+// nested link instead of actually closing the footnote.
+const FOOTNOTE_START_RE = /^\[fn:([A-Za-z0-9_-]*)/;
+
+function matchFootnoteAt(text, pos) {
+  const m = FOOTNOTE_START_RE.exec(text.slice(pos));
+  if (!m) return null;
+  const label = m[1] || null;
+  let i = pos + m[0].length;
+
+  if (text[i] === ']') {
+    if (!label) return null; // "[fn:]" alone (empty label, no colon) isn't valid org syntax either way
+    return { type: 'footnote-ref', label, length: i - pos + 1 };
+  }
+
+  if (text[i] === ':') {
+    i++;
+    const contentStart = i;
+    let depth = 0;
+    while (i < text.length) {
+      if (text[i] === '[') {
+        depth++;
+      } else if (text[i] === ']') {
+        if (depth === 0) {
+          return { type: 'footnote-def', label, content: text.slice(contentStart, i), length: i - pos + 1 };
+        }
+        depth--;
+      }
+      i++;
+    }
+    return null; // unterminated -- no matching ']' found, left as literal text
+  }
+
+  return null;
+}
+
 // Real org auto-links a BARE URI (no [[...]] brackets at all) for "a
 // well-defined set of schemes" (confirmed directly against org's own
 // manual/compact guide) -- not any arbitrary "word:word" text, which
@@ -219,6 +265,20 @@ function parseInline(text, opts = {}) {
       nodes.push({ type: 'comment', value: commentMatch[1] });
       pos += commentMatch[0].length;
       continue;
+    }
+
+    if (text[pos] === '[' && text[pos + 1] === 'f' && text[pos + 2] === 'n' && text[pos + 3] === ':') {
+      const fn = matchFootnoteAt(text, pos);
+      if (fn) {
+        flush();
+        if (fn.type === 'footnote-ref') {
+          nodes.push({ type: 'footnote-ref', label: fn.label });
+        } else {
+          nodes.push({ type: 'footnote-def', label: fn.label, children: parseInline(fn.content, opts) });
+        }
+        pos += fn.length;
+        continue;
+      }
     }
 
     if (isEmphasisMarker(text[pos])) {
