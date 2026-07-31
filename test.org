@@ -20,7 +20,7 @@ This file exists purely to test how GitHub renders two different kinds of intern
 
 * Getting started
   :PROPERTIES:
-  :CUSTOM_ID: sec-getting-started
+  :ID: sec-getting-started
   :END:
 
 If the CUSTOM_ID link above brought you here directly, that variant works on GitHub. If it instead tried to open something like ".../blob/main/*Getting%20started" as a separate page, it didn't.
@@ -29,7 +29,7 @@ This is a level-1 heading, to confirm CUSTOM_ID works at the top level, not just
 
 * Features
   :PROPERTIES:
-  :CUSTOM_ID: sec-features
+  :ID: sec-features
   :END:
 
 Some *bold text*, some /italic text/, and some ~inline code~, just to confirm ordinary formatting still renders normally alongside the CUSTOM_ID property drawer.
@@ -40,7 +40,7 @@ Some *bold text*, some /italic text/, and some ~inline code~, just to confirm or
 
 ** A sub-feature
    :PROPERTIES:
-   :CUSTOM_ID: sec-sub-feature
+   :ID: sec-sub-feature
    :END:
 
 This is a level-2 heading (nested under "Features"), to confirm CUSTOM_ID works the same way on a sub-heading, not just top-level ones.
@@ -52,7 +52,7 @@ This is a level-2 heading (nested under "Features"), to confirm CUSTOM_ID works 
 
 * Notes
   :PROPERTIES:
-  :CUSTOM_ID: sec-notes
+  :ID: sec-notes
   :END:
 
 If only the CUSTOM_ID links work: that confirms the fix — switching this app's real README.org over to CUSTOM_ID-based links (instead of the current ~[[*Heading]]~ style) would make the table of contents actually usable on GitHub, at the cost of needing an explicit ~:CUSTOM_ID:~ property added to every heading.
