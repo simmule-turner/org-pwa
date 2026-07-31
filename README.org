@@ -9,6 +9,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 ** Contents
 
 - [[*What org-pwa is (and isn't)][What org-pwa is (and isn't)]]
+- [[#named-target][Custom Target Anchor]]
 - [[*Getting started][Getting started]]
 - [[*Editing your outline][Editing your outline]]
 - [[*Undo/redo and History][Undo/redo and History]]
@@ -35,7 +36,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 - [[*Development][Development]]
 
 -----
-
+<<named-target>>
 ** What org-pwa is (and isn't)
 
 org-pwa is a *touch-first outline editor*, not a port of Emacs. It reads and writes real ~.org~ files — round-trip fidelity is a hard requirement, so content it doesn't specifically understand is preserved verbatim rather than mangled or dropped. But the /editing model/ is built from scratch around tapping and gestures, not Emacs keybindings, and it deliberately implements a useful subset of org-mode rather than all of it.
