@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v94';
+const CACHE_NAME = 'org-pwa-shell-v95';
 
 const SHELL_FILES = [
   './',
@@ -25,6 +25,7 @@ const SHELL_FILES = [
   './src/body-parser.js',
   './src/todo-cycle.js',
   './src/progress-logging.js',
+  './src/logbook.js',
   './src/heading-edit.js',
   './src/body-edit.js',
   './src/link-resolve.js',

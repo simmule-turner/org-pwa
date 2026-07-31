@@ -1705,6 +1705,7 @@ function headingHasContent(heading) {
     heading.priority !== null ||
     (heading.tags && heading.tags.length > 0) ||
     (heading.propertyOrder && heading.propertyOrder.length > 0) ||
+    (heading.logbookLines && heading.logbookLines.length > 0) ||
     Boolean(heading.planning && (heading.planning.scheduled || heading.planning.deadline))
   );
 }
@@ -1720,6 +1721,7 @@ function confirmHeadingDelete(heading) {
   if (heading.priority !== null) parts.push('a priority');
   if (heading.tags && heading.tags.length) parts.push(`tags (${heading.tags.join(', ')})`);
   if (heading.propertyOrder && heading.propertyOrder.length) parts.push('properties');
+  if (heading.logbookLines && heading.logbookLines.length) parts.push('a state-change/note history');
   if (heading.planning && (heading.planning.scheduled || heading.planning.deadline)) parts.push('a scheduled/deadline date');
   const title = heading.title || '(untitled)';
   return window.confirm(
