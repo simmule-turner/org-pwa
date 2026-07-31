@@ -127,6 +127,27 @@ import {
   DEFAULT_AGENDA_FILES,
 } from './src-browser/settings.js';
 
+// Disable auto-capitalization app-wide, on every text input/textarea
+// this app ever creates -- Chrome and Safari on mobile default
+// autocapitalize to "sentences," which fights against this app's own
+// conventions (tags, properties, list markers, and most everyday
+// capture text are almost always lowercase) with no per-field way to
+// opt out short of setting the attribute directly. Wrapping
+// createElement here, once, covers every input/textarea this app ever
+// creates without needing the same attribute repeated at dozens of
+// individual call sites. A manual capital is still one tap away on
+// the keyboard's own shift key -- this only removes the automatic,
+// unrequested kind, never the ability to type one deliberately.
+const nativeCreateElement = document.createElement.bind(document);
+document.createElement = function (tagName, options) {
+  const el = nativeCreateElement(tagName, options);
+  const tag = String(tagName).toLowerCase();
+  if (tag === 'input' || tag === 'textarea') {
+    el.setAttribute('autocapitalize', 'off');
+  }
+  return el;
+};
+
 const GLOBAL_TODO_DEFAULT = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
 
 const kv = createIndexedDbAdapter();
@@ -5679,7 +5700,7 @@ async function renderCapturePanel() {
     btn.style.color = 'var(--fg)';
     btn.style.fontSize = '14px';
     btn.style.minHeight = '44px';
-    btn.textContent = template.key + '   ' + template.description;
+    btn.textContent = template.description;
     btn.onclick = () => openCapturePrompt(template);
     grid.appendChild(btn);
   }
@@ -5775,26 +5796,20 @@ function renderCapturePromptForm() {
 
 /**
  * Runs one capture template end to end, given `answers` already
- * gathered for its %^{...} prompts (by the in-app prompt form, or an
- * empty array if the template has none): resolves its (file+olp ...)
- * target (creating any missing heading along the way), computes %N if
- * this is a table-line capture, expands the template, inserts it, and
- * finally either opens the inserted item for editing with the cursor
- * at %?'s position (item/checkitem only — see the module-level design
- * note below) or just navigates to the target heading.
+ * gathered for its %^{...} AND %? prompts (by the in-app prompt form,
+ * or an empty array if the template has none): resolves its
+ * (file+olp ...) target (creating any missing heading along the way),
+ * computes %N if this is a table-line capture, expands the template
+ * (with every prompt's answer, %? included, already substituted
+ * directly into the text — see scanPrompts/expandTemplate), inserts
+ * it, and navigates to the target heading.
  *
- * The capture panel stays open afterward, back on the template list,
- * for rapid back-to-back captures without reopening it each time — the
- * one exception is item/checkitem's own cursor-focus behavior below,
- * which closes it, since jumping straight into editing the captured
- * text is a different workflow than "capture several things in a row."
- *
- * Cursor positioning is deliberately precise for item/checkitem only,
- * not plain/table-line: those two can produce multi-part content (a
- * whole subtree of headings, for plain; a table row with several
- * cells, for table-line) with no single obvious "the one thing to
- * edit" — faking precision there would be worse than being honest that
- * navigating to the heading is as far as this goes for those two types.
+ * Afterward: a template with at least one prompt loops back to a
+ * FRESH copy of its own form rather than the template list — the
+ * "multiple entries" feature, for templates that are naturally
+ * captured several times in a row (a journal line, a tracking row).
+ * A template with no prompts at all returns to the template list,
+ * since there's nothing left to fill in for a repeat.
  */
 async function runCaptureWithAnswers(template, answers) {
   if (currentView === 'text') {
@@ -5853,7 +5868,7 @@ async function runCaptureWithAnswers(template, answers) {
     }
 
     setStatus(`Captured to ${targetFileId}.`);
-    renderCapturePanel();
+    afterSuccessfulCapture(template);
     return;
   }
 
@@ -5866,38 +5881,33 @@ async function runCaptureWithAnswers(template, answers) {
     tableRowNumber = dataRowCount + 1;
   }
 
-  const { text, cursorOffset } = expandTemplate(template.template, {
+  const { text } = expandTemplate(template.template, {
     now,
     promptAnswers: answers,
     tableRowNumber,
   });
 
-  const inserted = insertCapture(target, template.type, text);
+  insertCapture(target, template.type, text);
   commitAndRender(`Captured: ${template.description}`);
 
-  if (cursorOffset !== null && inserted && (template.type === 'item' || template.type === 'checkitem')) {
-    captureOpen = false;
-    switchToView('org');
-    for (const ancestor of findAncestorPath(state.doc, target) || []) {
-      ancestor.collapsed = false;
-    }
-    editingListItem = { heading: target, item: inserted };
-    render();
-    renderCapturePanel();
-    requestAnimationFrame(() => {
-      const input = document.getElementById('listitem-edit-input');
-      if (input) {
-        input.focus();
-        input.setSelectionRange(cursorOffset, cursorOffset);
-        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    });
-    return;
-  }
-
   switchToView('org');
-  navigateToHeading(target);
+  navigateToHeading(target, { revealOwnBody: true });
   setStatus('Captured.');
+  afterSuccessfulCapture(template);
+}
+
+/** After a successful capture: a template with at least one prompt
+ *  loops back to a FRESH copy of its own form (the "multiple entries"
+ *  feature); a template with no prompts returns to the template list,
+ *  since there's nothing left to fill in for a repeat. */
+function afterSuccessfulCapture(template) {
+  const prompts = scanPrompts(template.template);
+  if (prompts.length > 0) {
+    capturePromptTemplate = template;
+    capturePromptValues = prompts.map((p) => p.default || '');
+  } else {
+    capturePromptTemplate = null;
+  }
   renderCapturePanel();
 }
 

@@ -329,7 +329,7 @@ It's a flat list, in document order, each item showing its TODO keyword and titl
 
 ## Capture Templates
 
-Tap **More → Capture** (the ⋮ button next to the filename) for real org-mode's own `org-capture-templates` system, for quickly filing a note, task, or table row into a specific spot in the outline without navigating there by hand. Pick a template, answer whatever prompts it asks, and the expanded result gets inserted at that template's target — creating the target heading(s) if they don't exist yet.
+Tap **More → Capture** (the ⋮ button next to the filename) for real org-mode's own `org-capture-templates` system, for quickly filing a note, task, or table row into a specific spot in the outline without navigating there by hand. Templates show two per row (their description only — the `key` is just an internal identifier, not shown); tap one, and if it has any `%^{Prompt}` or `%?` fields, an in-app form appears asking for each — filled in and submitted together, not one native dialog after another. **A template with at least one prompt loops back to a fresh copy of its own form after capturing, rather than the template list** — built specifically for templates that are naturally captured several times in a row (a journal line, a tracking row): keep entering and submitting without navigating back through More → Capture → Template each time. Tap Cancel on that fresh form (or a different top-bar button) when you're actually done.
 
 Four example templates are the default, so this works immediately with no setup: **b**ullet list item, **c**heck list item, **m**eeting notes, and a **t**able row. Edit or replace them any time in **Settings → Capture Templates** — configured as JSON (an array of template objects), not a visual builder, matching how this app already handles GitHub/WebDAV config.
 
@@ -358,19 +358,19 @@ Four example templates are the default, so this works immediately with no setup:
   |---|---|---|
   | `%Y` | 4-digit year | `2025` |
   | `%y` | 2-digit year | `25` |
-  | `%m` | Month, zero-padded (01\u201312) | `03` |
-  | `%d` | Day of month, zero-padded (01\u201331) | `05` |
-  | `%e` | Day of month, space-padded ( 1\u201331) | ` 5` |
-  | `%H` | Hour, 24-hour, zero-padded (00\u201323) | `14` |
-  | `%I` | Hour, 12-hour, zero-padded (01\u201312) | `02` |
-  | `%M` | Minute, zero-padded (00\u201359) | `30` |
-  | `%S` | Second, zero-padded (00\u201359) | `07` |
+  | `%m` | Month, zero-padded (01–12) | `03` |
+  | `%d` | Day of month, zero-padded (01–31) | `05` |
+  | `%e` | Day of month, space-padded ( 1–31) | ` 5` |
+  | `%H` | Hour, 24-hour, zero-padded (00–23) | `14` |
+  | `%I` | Hour, 12-hour, zero-padded (01–12) | `02` |
+  | `%M` | Minute, zero-padded (00–59) | `30` |
+  | `%S` | Second, zero-padded (00–59) | `07` |
   | `%p` | `AM` or `PM` | `PM` |
   | `%A` | Full weekday name | `Wednesday` |
   | `%a` | Abbreviated weekday name | `Wed` |
   | `%B` | Full month name | `March` |
   | `%b` | Abbreviated month name | `Mar` |
-  | `%j` | Day of year, zero-padded to 3 digits (001\u2013366) | `064` |
+  | `%j` | Day of year, zero-padded to 3 digits (001–366) | `064` |
   | `%F` | ISO date (`%Y-%m-%d` combined) | `2025-03-05` |
   | `%R` | Hour:minute (`%H:%M` combined) | `14:30` |
   | `%T` | Hour:minute:second (`%H:%M:%S` combined) | `14:30:07` |
@@ -379,9 +379,9 @@ Four example templates are the default, so this works immediately with no setup:
   An unrecognized specifier is left visible (e.g. `%Z` stays as `%Z`) rather than silently dropped.
 - `%t` / `%T` — an active timestamp, date-only / date-and-time.
 - `%u` / `%U` — the same, but inactive (`[...]` instead of `<...>`).
-- `%^{Prompt}` — asks a question via a simple prompt dialog. `%^{Prompt|default}` pre-fills an answer; `%^{Prompt|default|choice1|choice2}` also lists the choices in the prompt text (there's no dropdown here — real org's completion-table equivalent is just shown as text to pick from). Multiple prompts in one template are asked in the order they appear; cancelling any single one aborts the whole capture — nothing partial gets inserted.
+- `%^{Prompt}` — asks a question via this app's own in-app form (not the browser's native `window.prompt`, which has real reliability and layout problems in a PWA running standalone on mobile — see below). `%^{Prompt|default}` pre-fills an answer; `%^{Prompt|default|choice1|choice2}` also lists the choices as a hint under the field (there's no dropdown here — real org's completion-table equivalent is just shown as text to pick from). Multiple prompts in one template all appear as separate fields on the same form, not one dialog after another — filled in together, submitted together; cancelling discards the whole capture, nothing partial gets inserted.
 - `%N` — the row number, for `table-line` captures only (empty otherwise).
-- `%?` — not text — marks where the cursor should land afterward. Precise only for `item`/`checkitem`: those open the captured item for editing with the cursor exactly there. For `plain`/`table-line`, capture instead just navigates to the target heading — those two can produce multi-part content (a whole subtree, or a table row with several cells) with no single obvious place to put a cursor, so this doesn't try to fake precision it can't actually deliver.
+- `%?` — real org's own "cursor goes here" marker, treated here as just another prompt: it shows up in the same in-app form as any `%^{Prompt}`, labeled "Text," gathered before insertion rather than left empty with a cursor position to find and focus afterward. That's a deliberate change from an earlier version of this feature, which tried to jump into editing the inserted text live in the outline — that depended entirely on DOM state (a target heading needing to already be visible/expanded, which a freshly-collapsed or newly-created heading often wasn't) and had no equivalent at all for a capture landing in a different file. Gathering the value up front like any other prompt sidesteps both problems the same way every other prompt already did, and works identically for every capture type and every target file.
 
 ---
 
@@ -446,6 +446,8 @@ Local file access (the "Local" option, with a live, writable handle) requires th
 On unsupported platforms, **Import** replaces "Local": pick a file once via the native file picker, edit it, and Save triggers a download of the new version, which you then move into place yourself (e.g. overwriting the original in the Files app). GitHub and WebDAV work the same everywhere, including iOS, since they're plain HTTPS requests rather than filesystem access.
 
 **Screen size**: this was built mobile-first — 44px touch targets, swipe-to-cycle-visibility, tap-to-reveal action menus instead of hover/right-click — and stays that way below 900px wide, byte-for-byte the same layout it's always had. Above 900px (a laptop or desktop browser window), two things change: the app widens from its 480px mobile cap up to 1100px instead of sitting in a narrow column with empty space on either side, and opening Settings or Docs shows them in a **side panel** next to the outline instead of replacing it outright — there's room to see both at once, so replacing the whole screen for something like settings stopped making sense. The side panel scrolls independently from the outline. Every other interaction — swipe, tap-to-reveal, the action menus — works identically at any width; this is a layout change, not a second UI. Resizing a browser window across the breakpoint while Settings/Docs is open switches between the two modes correctly rather than getting stuck in whichever one it started in.
+
+**No auto-capitalization, anywhere in this app.** Mobile Chrome and Safari both default to capitalizing the first letter of each sentence in a text field — every text input and textarea this app creates has that turned off, application-wide, in one place rather than field by field, since this app's own conventions (tags, properties, list markers, and most everyday capture text) are almost always lowercase and the automatic capital just gets in the way. A manual capital is still one tap away on the keyboard's own shift key, same as it always was — this only removes the automatic, unrequested kind.
 
 ---
 
