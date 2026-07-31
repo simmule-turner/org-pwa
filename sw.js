@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v91';
+const CACHE_NAME = 'org-pwa-shell-v92';
 
 const SHELL_FILES = [
   './',
@@ -29,6 +29,7 @@ const SHELL_FILES = [
   './src/link-resolve.js',
   './src/export-markdown.js',
   './src/export-html.js',
+  './src/export-icalendar.js',
   './src/undo-history.js',
   './src/text-diff.js',
   './src/startup-config.js',

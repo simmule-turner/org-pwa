@@ -18,6 +18,7 @@ import {
   guessImageMimeType,
   isExternalUrl,
   findHeadingByTitle,
+  findFootnoteDefinition,
 } from './src/link-resolve.js';
 import { parseInline } from './src/inline-markup.js';
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, toggleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
@@ -52,6 +53,7 @@ import {
 import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId } from './src/capture-template.js';
 import { exportToMarkdown } from './src/export-markdown.js';
 import { exportToHtml } from './src/export-html.js';
+import { exportToIcalendar } from './src/export-icalendar.js';
 import { createHistory, pushSnapshot, canUndo, canRedo, undo, redo, jumpTo, currentEntry } from './src/undo-history.js';
 import { diffHunks } from './src/text-diff.js';
 import { parseOrgTimestamp, formatOrgTimestamp, parseDelay } from './src/org-timestamp.js';
@@ -229,6 +231,37 @@ function refreshAgendaFiles() {
   agendaFilesCacheLoadedFor = null;
   ensureAgendaFilesLoaded();
   render();
+}
+
+/** Waits until every currently-configured agenda file has actually
+ *  finished loading (succeeded or errored -- not still `{ loading:
+ *  true }`), kicking off any fetches that haven't started yet.
+ *  ensureAgendaFilesLoaded's own fetches are fire-and-forget (the
+ *  Agenda/TODO views just re-render as each one resolves), which is
+ *  fine for a live view but not for an export: without this, exporting
+ *  "this file + Agenda Files" before ever having visited the Agenda
+ *  view would silently produce a calendar missing every other file,
+ *  since nothing would have triggered their fetches yet. Capped at a
+ *  few seconds so one stuck fetch can't hang the export flow forever;
+ *  whatever's actually settled by then (successful or errored) is what
+ *  aggregateAgendaDocs sees. */
+function waitForAgendaFilesLoaded() {
+  ensureAgendaFilesLoaded();
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const check = () => {
+      const allSettled = agendaFilesConfig.every((key) => {
+        const entry = agendaFilesCache.get(key);
+        return entry && !entry.loading;
+      });
+      if (allSettled || Date.now() - startedAt > 8000) {
+        resolve();
+      } else {
+        setTimeout(check, 50);
+      }
+    };
+    check();
+  });
 }
 
 /** The full docs list for agenda/TODO aggregation: the currently open
@@ -1255,6 +1288,65 @@ function renderLinkNode(node, linkContext = null) {
   return span;
 }
 
+/** A bare [fn:label] footnote reference: tappable, jumping to (and
+ *  highlighting) wherever the actual definition lives in the document
+ *  -- reusing findFootnoteDefinition the same way renderLinkNode reuses
+ *  resolveLinkTarget. In the main app, jumps with navigateToHeading's
+ *  own targetNode precision (the exact paragraph/list-item, not just
+ *  the right heading); in a linkContext (the read-only Docs view),
+ *  falls back to the heading-level onHeadingLinkClick unless a more
+ *  precise onFootnoteRefClick was explicitly provided -- Docs' own
+ *  content doesn't currently use footnotes, so this is a deliberately
+ *  simpler fallback rather than building full paragraph-level jump
+ *  precision for a case that isn't actually exercised there yet.
+ *  Unresolved (no definition found anywhere) renders inert, matching
+ *  renderLinkNode's own "no dead-end click target" convention. */
+function renderFootnoteRefNode(node, linkContext = null) {
+  const targetDoc = linkContext ? linkContext.doc : state.doc;
+  const result = findFootnoteDefinition(targetDoc, node.label);
+  const sup = document.createElement('sup');
+  sup.textContent = '[' + node.label + ']';
+  sup.setAttribute(INLINE_LINK_ATTR, '1');
+  if (!result) {
+    sup.style.color = 'var(--text-muted, #888)';
+    sup.title = 'No definition found for footnote "' + node.label + '"';
+    return sup;
+  }
+  sup.style.color = 'var(--accent)';
+  sup.style.cursor = 'pointer';
+  sup.onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (linkContext) {
+      if (linkContext.onFootnoteRefClick) linkContext.onFootnoteRefClick(result);
+      else linkContext.onHeadingLinkClick(result.heading);
+    } else {
+      navigateToHeading(result.heading, { revealOwnBody: true, targetNode: result.node });
+    }
+  };
+  return sup;
+}
+
+/** An inline [fn:label:definition] (or anonymous [fn::definition]):
+ *  shows the actual definition text right there, styled distinctly
+ *  (smaller, italic, a superscript label) rather than making it
+ *  something to tap and jump to -- it already IS the definition, not a
+ *  reference to one elsewhere. */
+function renderFootnoteDefNode(node, linkContext = null) {
+  const wrap = document.createElement('span');
+  const labelEl = document.createElement('sup');
+  labelEl.textContent = node.label ? '[' + node.label + ']' : '[*]';
+  labelEl.style.color = 'var(--text-muted, #888)';
+  wrap.appendChild(labelEl);
+  const content = document.createElement('span');
+  content.style.fontSize = '0.9em';
+  content.style.fontStyle = 'italic';
+  content.style.opacity = '0.85';
+  renderInlineNodes(node.children, content, linkContext);
+  wrap.appendChild(content);
+  return wrap;
+}
+
 /** Inline-parsing options reflecting the current document's Local
  *  Variables -- currently just subSuperscriptMode, but centralized here
  *  so a future option doesn't need updating at every parseInline call
@@ -1323,6 +1415,12 @@ function renderInlineNodes(nodes, container, linkContext = null) {
         break;
       case 'link':
         container.appendChild(renderLinkNode(node, linkContext));
+        break;
+      case 'footnote-ref':
+        container.appendChild(renderFootnoteRefNode(node, linkContext));
+        break;
+      case 'footnote-def':
+        container.appendChild(renderFootnoteDefNode(node, linkContext));
         break;
       case 'comment':
         // Org excludes comments from rendered/exported output; skipped here too.
@@ -2793,11 +2891,23 @@ function renderParagraphRow(row) {
   p.style.cursor = 'text';
   p.style.whiteSpace = 'pre-wrap';
   p.style.overflowWrap = 'anywhere';
+  if (row.node.footnoteLabel !== null) {
+    p.style.fontSize = '0.92em';
+    p.style.opacity = '0.85';
+    const labelEl = document.createElement('sup');
+    labelEl.textContent = '[' + row.node.footnoteLabel + '] ';
+    labelEl.style.opacity = '0.7';
+    p.appendChild(labelEl);
+  }
   const hasContent = row.node.lines.some((l) => l.trim() !== '');
   if (hasContent) {
     row.node.lines.forEach((line, i) => {
       if (i > 0) p.appendChild(document.createElement('br'));
-      renderInlineNodes(parseInline(line, currentInlineOpts()), p);
+      const text =
+        i === 0 && row.node.footnoteLabel !== null
+          ? line.replace(new RegExp('^\\[fn:' + row.node.footnoteLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\]\\s?'), '')
+          : line;
+      renderInlineNodes(parseInline(text, currentInlineOpts()), p);
     });
   } else {
     p.textContent = '(empty note \u2014 tap to edit)';
@@ -3875,18 +3985,21 @@ function allHeadingsInOrder(doc) {
  *  the file menu and resetting its state back to the top level once
  *  done. */
 function performExport(format, scope) {
-  const rawName = scope ? scope.title : (state.documentId || 'export').replace(/\.[a-zA-Z0-9]+$/, '');
+  const rawName = scope && typeof scope === 'object' ? scope.title : (state.documentId || 'export').replace(/\.[a-zA-Z0-9]+$/, '');
   const baseName = rawName.replace(/[\\/:*?"<>|]/g, '_').trim() || 'export';
   if (format === 'markdown') {
     downloadFile(baseName + '.md', exportToMarkdown(state.doc, scope), 'text/markdown');
-  } else {
+  } else if (format === 'html') {
     downloadFile(baseName + '.html', exportToHtml(state.doc, scope), 'text/html');
+  } else {
+    const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: state.documentId, doc: state.doc }];
+    downloadFile(baseName + '.ics', exportToIcalendar(docs), 'text/calendar');
   }
   fileMenuOpen = false;
   fileMenuStep = null;
   exportFormat = null;
   exportPickingHeading = false;
-  setStatus(`Exported to ${format === 'markdown' ? 'Markdown' : 'HTML'}.`);
+  setStatus(`Exported to ${format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : 'Calendar (.ics)'}.`);
   renderFileMenu();
   render();
 }
@@ -3911,6 +4024,42 @@ function renderExportFlow() {
     row.appendChild(
       menuButton('HTML', () => {
         exportFormat = 'html';
+        renderFileMenu();
+      })
+    );
+    row.appendChild(
+      menuButton('Calendar (.ics)', () => {
+        exportFormat = 'icalendar';
+        renderFileMenu();
+      })
+    );
+    fileMenuPanel.appendChild(row);
+    return;
+  }
+
+  if (exportFormat === 'icalendar') {
+    const label = document.createElement('div');
+    label.style.fontSize = '12px';
+    label.style.opacity = '0.7';
+    label.style.marginBottom = '4px';
+    label.textContent = 'Export Calendar (.ics) for:';
+    fileMenuPanel.appendChild(label);
+
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    row.appendChild(menuButton('This file', () => performExport('icalendar', null)));
+    if (agendaFilesConfig.length > 0) {
+      row.appendChild(
+        menuButton('This file + Agenda Files', async () => {
+          setStatus('Loading agenda files\u2026');
+          await waitForAgendaFilesLoaded();
+          performExport('icalendar', 'agenda-files');
+        })
+      );
+    }
+    row.appendChild(
+      menuButton('\u2039 Back', () => {
+        exportFormat = null;
         renderFileMenu();
       })
     );
@@ -3967,7 +4116,7 @@ function renderExportFlow() {
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '4px';
-  label.textContent = `Export ${exportFormat === 'markdown' ? 'Markdown' : 'HTML'} for:`;
+  label.textContent = `Export ${exportFormat === 'markdown' ? 'Markdown' : exportFormat === 'html' ? 'HTML' : 'Calendar (.ics)'} for:`;
   fileMenuPanel.appendChild(label);
 
   const row = document.createElement('div');
@@ -5299,6 +5448,14 @@ function renderReadOnlyBodyNode(node, depth, container, linkContext, drawersHidd
     p.style.paddingLeft = indent + 'px';
     p.style.margin = '4px 0';
     p.style.lineHeight = '1.4';
+    if (node.footnoteLabel !== null) {
+      p.style.fontSize = '0.92em';
+      p.style.opacity = '0.85';
+      const labelEl = document.createElement('sup');
+      labelEl.textContent = '[' + node.footnoteLabel + '] ';
+      labelEl.style.opacity = '0.7';
+      p.appendChild(labelEl);
+    }
     node.inlineLines.forEach((inline, i) => {
       if (i > 0) p.appendChild(document.createElement('br'));
       renderInlineNodes(inline, p, linkContext);
