@@ -39,6 +39,8 @@ const TAGS_RE = /\s+(:[A-Za-z0-9_@#%:]+:)\s*$/;
 const PRIORITY_RE = /^\[#([A-Za-z0-9])\]\s*/;
 
 const PLANNING_KEYWORD_RE = /(SCHEDULED|DEADLINE|CLOSED):\s*([<\[][^>\]]+[>\]])/g;
+const BLOCK_START_RE = /^\s*#\+begin_(\w+)(?:\s+(.*))?$/i;
+const BLOCK_END_RE = /^\s*#\+end_(\w+)\s*$/i;
 
 function parsePlanningLine(line) {
   const planning = { scheduled: null, deadline: null, closed: null };
@@ -110,9 +112,19 @@ function parseOrg(text, opts = {}) {
 
   const stack = [{ node: doc, level: 0 }];
   let i = 0;
+  let inBlock = false; // true while between a #+BEGIN_.../#+END_... pair -- content in that range is literal, never re-parsed as a heading even if it starts with '*'
 
   while (i < lines.length) {
     const line = lines[i];
+
+    if (inBlock) {
+      if (BLOCK_END_RE.test(line)) inBlock = false;
+      const current = stack[stack.length - 1].node;
+      current.bodyLines.push(line);
+      i++;
+      continue;
+    }
+
     const headingMatch = HEADING_RE.exec(line);
 
     if (headingMatch) {
@@ -187,6 +199,7 @@ function parseOrg(text, opts = {}) {
       }
     }
     current.bodyLines.push(line);
+    if (BLOCK_START_RE.test(line)) inBlock = true;
     i++;
   }
 
