@@ -12,6 +12,7 @@ import {
   guessImageMimeType,
   findHeadingByTitle,
   findHeadingByCustomId,
+  findFootnoteDefinition,
   resolveLinkTarget,
 } from '../src/link-resolve.js';
 
@@ -272,4 +273,79 @@ test('guessImageMimeType is case-insensitive on the extension', () => {
 test('guessImageMimeType falls back to a generic binary type for an unrecognized extension', () => {
   assert.equal(guessImageMimeType('a.tiff'), 'application/octet-stream');
   assert.equal(guessImageMimeType('noextension'), 'application/octet-stream');
+});
+
+// ---- findFootnoteDefinition ------------------------------------------
+
+test('finds a paragraph-style footnote definition ("[fn:label] text" line) by its label', () => {
+  const doc = parseOrg('* Heading\nSee this[fn:1] for details.\n\n[fn:1] The actual note.\n');
+  const result = findFootnoteDefinition(doc, '1');
+  assert.ok(result);
+  assert.equal(result.kind, 'paragraph-definition');
+  assert.equal(result.heading.title, 'Heading');
+});
+
+test('finds an inline footnote definition ([fn:label:text]) by its label, even when referenced again elsewhere as a bare [fn:label]', () => {
+  const doc = parseOrg('* Heading\nFirst mention[fn:1:the actual note here]. Later, referenced again[fn:1].\n');
+  const result = findFootnoteDefinition(doc, '1');
+  assert.ok(result);
+  assert.equal(result.kind, 'inline-definition');
+});
+
+test('finds an inline footnote definition nested inside a list item', () => {
+  const doc = parseOrg('* Heading\n- a list item with a note[fn:1:defined right here]\n');
+  const result = findFootnoteDefinition(doc, '1');
+  assert.ok(result);
+  assert.equal(result.kind, 'inline-definition');
+});
+
+test('finds an inline footnote definition nested inside a nested (sub) list item', () => {
+  const doc = parseOrg('* Heading\n- outer item\n  - nested item with a note[fn:1:defined here]\n');
+  const result = findFootnoteDefinition(doc, '1');
+  assert.ok(result);
+});
+
+test('finds an inline footnote definition inside a table cell', () => {
+  const doc = parseOrg('* Heading\n| col1 | col2[fn:1:a table footnote] |\n');
+  const result = findFootnoteDefinition(doc, '1');
+  assert.ok(result);
+  assert.equal(result.kind, 'inline-definition');
+});
+
+test('returns null when no definition exists anywhere for the given label', () => {
+  const doc = parseOrg('* Heading\nA reference with no matching definition[fn:nowhere].\n');
+  assert.equal(findFootnoteDefinition(doc, 'nowhere'), null);
+});
+
+test('finds the correct heading when multiple headings each have their own footnote definitions', () => {
+  const doc = parseOrg('* First\n[fn:a] Note A.\n* Second\n[fn:b] Note B.\n');
+  const resultA = findFootnoteDefinition(doc, 'a');
+  const resultB = findFootnoteDefinition(doc, 'b');
+  assert.equal(resultA.heading.title, 'First');
+  assert.equal(resultB.heading.title, 'Second');
+});
+
+test('a footnote-def with a DIFFERENT label does not falsely match a search for a different label', () => {
+  const doc = parseOrg('* Heading\nA note[fn:1:definition one] and another[fn:2:definition two].\n');
+  const result1 = findFootnoteDefinition(doc, '1');
+  const result2 = findFootnoteDefinition(doc, '2');
+  assert.ok(result1);
+  assert.ok(result2);
+  // Both resolve to the same heading here, but each call independently found ITS OWN label's def, not just "any" footnote-def node
+  assert.equal(result1.kind, 'inline-definition');
+  assert.equal(result2.kind, 'inline-definition');
+});
+
+test('the returned node is the exact paragraph object for a paragraph-style definition', () => {
+  const doc = parseOrg('* Heading\n[fn:1] The actual note.\n');
+  const result = findFootnoteDefinition(doc, '1');
+  assert.equal(result.node.type, 'paragraph');
+  assert.equal(result.node.footnoteLabel, '1');
+});
+
+test('the returned node is the exact list-item object for an inline definition inside a list item', () => {
+  const doc = parseOrg('* Heading\n- an item with a note[fn:1:defined here]\n');
+  const result = findFootnoteDefinition(doc, '1');
+  assert.equal(result.node.type, 'list-item');
+  assert.equal(result.node.text.includes('an item with a note'), true);
 });

@@ -225,3 +225,61 @@ test('property drawers (including ARCHIVE_* properties) are never included in th
   assert.ok(!out.includes('my-id'));
   assert.ok(out.includes('Body text.'));
 });
+
+// ---- footnotes -----------------------------------------------------------
+
+test('a bare footnote reference [fn:1] exports as GFM\u2019s own [^1]', () => {
+  const doc = parseOrg('* Heading\nA claim needing support[fn:1].\n\n[fn:1] The actual source.\n');
+  const md = exportToMarkdown(doc);
+  assert.match(md, /A claim needing support\[\^1\]\./);
+});
+
+test('a separate-line definition ("[fn:1] text") exports as GFM\u2019s own "[^1]: text" line', () => {
+  const doc = parseOrg('* Heading\nRef[fn:1].\n\n[fn:1] The actual source.\n');
+  const md = exportToMarkdown(doc);
+  assert.match(md, /\[\^1\]: The actual source\./);
+});
+
+test('an inline definition ([fn:1:text]) exports the reference inline AND collects the definition at the end', () => {
+  const doc = parseOrg('* Heading\nA claim[fn:1:this is the note] right here.\n');
+  const md = exportToMarkdown(doc);
+  assert.match(md, /A claim\[\^1\] right here\./);
+  assert.match(md, /\[\^1\]: this is the note/);
+});
+
+test('an anonymous inline footnote ([fn::text]) gets a synthetic label, since GFM has no anonymous-footnote form', () => {
+  const doc = parseOrg('* Heading\nSome text[fn::an anonymous note] here.\n');
+  const md = exportToMarkdown(doc);
+  assert.match(md, /Some text\[\^anon-1\] here\./);
+  assert.match(md, /\[\^anon-1\]: an anonymous note/);
+});
+
+test('the same real label referenced multiple times produces only ONE definition line, not a duplicate', () => {
+  const doc = parseOrg('* Heading\nFirst[fn:1:the note]. Later, again[fn:1].\n');
+  const md = exportToMarkdown(doc);
+  const defLines = md.split('\n').filter((l) => l.startsWith('[^1]:'));
+  assert.equal(defLines.length, 1);
+});
+
+test('two different anonymous footnotes each get their own distinct synthetic label', () => {
+  const doc = parseOrg('* Heading\nOne[fn::first note]. Two[fn::second note].\n');
+  const md = exportToMarkdown(doc);
+  assert.match(md, /\[\^anon-1\]: first note/);
+  assert.match(md, /\[\^anon-2\]: second note/);
+});
+
+test('multiple independent export calls do not leak footnote state between them', () => {
+  const doc1 = parseOrg('* H\nOne[fn::first].\n');
+  const doc2 = parseOrg('* H\nTwo[fn::second].\n');
+  const md1 = exportToMarkdown(doc1);
+  const md2 = exportToMarkdown(doc2);
+  // Both should independently start their anonymous counter at 1, not continue from the previous call's state
+  assert.match(md1, /\[\^anon-1\]: first/);
+  assert.match(md2, /\[\^anon-1\]: second/);
+});
+
+test('a document with no footnotes at all produces no definition-line section', () => {
+  const doc = parseOrg('* Heading\nJust ordinary text, no footnotes here.\n');
+  const md = exportToMarkdown(doc);
+  assert.doesNotMatch(md, /\[\^/);
+});

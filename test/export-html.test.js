@@ -216,3 +216,61 @@ test('includes @media print rules to avoid bad page/table breaks', () => {
   assert.ok(out.includes('@media print'));
   assert.ok(out.includes('break-inside: avoid'));
 });
+
+// ---- footnotes -----------------------------------------------------------
+
+test('a bare footnote reference [fn:1] exports as a jump-link superscript', () => {
+  const doc = parseOrg('* Heading\nA claim needing support[fn:1].\n\n[fn:1] The actual source.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<sup id="fnref-1"><a href="#fn-1">1<\/a><\/sup>/);
+});
+
+test('a separate-line definition ("[fn:1] text") appears in the Footnotes section with a back-link', () => {
+  const doc = parseOrg('* Heading\nRef[fn:1].\n\n[fn:1] The actual source.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<div class="footnotes">/);
+  assert.match(html, /<li id="fn-1">The actual source\. <a class="footnote-back" href="#fnref-1">/);
+});
+
+test('an inline definition ([fn:1:text]) renders the jump-link inline AND appears in the Footnotes section', () => {
+  const doc = parseOrg('* Heading\nA claim[fn:1:this is the note] right here.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<sup id="fnref-1">/);
+  assert.match(html, /<li id="fn-1">this is the note/);
+});
+
+test('an anonymous inline footnote ([fn::text]) gets a synthetic label', () => {
+  const doc = parseOrg('* Heading\nSome text[fn::an anonymous note] here.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<sup id="fnref-anon-1">/);
+  assert.match(html, /<li id="fn-anon-1">an anonymous note/);
+});
+
+test('the same real label referenced multiple times produces only ONE Footnotes list item', () => {
+  const doc = parseOrg('* Heading\nFirst[fn:1:the note]. Later, again[fn:1].\n');
+  const html = exportToHtml(doc);
+  const matches = html.match(/<li id="fn-1">/g) || [];
+  assert.equal(matches.length, 1);
+});
+
+test('a document with no footnotes produces no Footnotes section at all', () => {
+  const doc = parseOrg('* Heading\nJust ordinary text.\n');
+  const html = exportToHtml(doc);
+  assert.doesNotMatch(html, /class="footnotes"/);
+});
+
+test('multiple independent export calls do not leak footnote state between them', () => {
+  const doc1 = parseOrg('* H\nOne[fn::first].\n');
+  const doc2 = parseOrg('* H\nTwo[fn::second].\n');
+  const html1 = exportToHtml(doc1);
+  const html2 = exportToHtml(doc2);
+  assert.match(html1, /anon-1/);
+  assert.match(html2, /anon-1/);
+});
+
+test('footnote label and content are HTML-escaped, not passed through raw', () => {
+  const doc = parseOrg('* Heading\nA claim[fn:1:contains a <script> tag] here.\n');
+  const html = exportToHtml(doc);
+  assert.doesNotMatch(html, /<script>/);
+  assert.match(html, /&lt;script&gt;/);
+});

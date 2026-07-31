@@ -190,3 +190,48 @@ test('dashes with any non-dash character are not an hr', () => {
   const nodes = parseBody(['-----x']);
   assert.equal(nodes[0].type, 'paragraph');
 });
+
+// ---- footnote definition lines ----------------------------------------
+
+test('a paragraph starting with "[fn:label] text" is marked as that footnote\u2019s definition', () => {
+  const body = parseBody(['[fn:1] This is the footnote text.']);
+  assert.equal(body[0].type, 'paragraph');
+  assert.equal(body[0].footnoteLabel, '1');
+});
+
+test('the definition paragraph\u2019s inlineLines render the text AFTER the "[fn:label] " prefix, not a redundant footnote-ref marker', () => {
+  const body = parseBody(['[fn:1] The actual note, with *bold* text.']);
+  assert.deepEqual(body[0].inlineLines[0], [
+    { type: 'text', value: 'The actual note, with ' },
+    { type: 'bold', children: [{ type: 'text', value: 'bold' }] },
+    { type: 'text', value: ' text.' },
+  ]);
+});
+
+test('the definition paragraph\u2019s raw lines are completely untouched -- "[fn:label] " prefix and all -- for round-trip safety', () => {
+  const body = parseBody(['[fn:1] The actual note.']);
+  assert.deepEqual(body[0].lines, ['[fn:1] The actual note.']);
+});
+
+test('a footnote definition spanning multiple lines keeps footnoteLabel set once, subsequent lines parsed normally', () => {
+  const body = parseBody(['[fn:1] First line of the note.', 'Second line, continued.']);
+  assert.equal(body[0].footnoteLabel, '1');
+  assert.equal(body[0].lines.length, 2);
+  assert.deepEqual(body[0].inlineLines[1], [{ type: 'text', value: 'Second line, continued.' }]);
+});
+
+test('an ordinary paragraph (no footnote-definition prefix) has footnoteLabel null', () => {
+  const body = parseBody(['Just a normal paragraph.']);
+  assert.equal(body[0].footnoteLabel, null);
+});
+
+test('a bare footnote REFERENCE mid-sentence does not get mistaken for a definition line -- only the very start of the paragraph counts', () => {
+  const body = parseBody(['See this[fn:1] for more, not a definition.']);
+  assert.equal(body[0].footnoteLabel, null);
+});
+
+test('round-trip: a footnote definition paragraph serializes back to its exact original text', () => {
+  const original = '[fn:1] The actual note, with *bold* text.';
+  const body = parseBody([original]);
+  assert.equal(body[0].lines.join('\n'), original);
+});

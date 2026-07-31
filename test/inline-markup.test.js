@@ -293,3 +293,78 @@ test('a bare github: link auto-links', () => {
   const link = nodes.find((n) => n.type === 'link');
   assert.equal(link.target, 'github:journal/2026.org');
 });
+
+// ---- footnotes -----------------------------------------------------------
+
+test('a bare footnote reference [fn:1] parses as a footnote-ref node', () => {
+  const nodes = parseInline('See this[fn:1] for details.');
+  assert.deepEqual(nodes, [
+    { type: 'text', value: 'See this' },
+    { type: 'footnote-ref', label: '1' },
+    { type: 'text', value: ' for details.' },
+  ]);
+});
+
+test('a footnote reference label can be alphanumeric with hyphens/underscores, not just a number', () => {
+  const nodes = parseInline('text[fn:my_note-1] more');
+  assert.deepEqual(nodes[1], { type: 'footnote-ref', label: 'my_note-1' });
+});
+
+test('an inline footnote definition [fn:1:text] parses as a footnote-def node with recursively-parsed content', () => {
+  const nodes = parseInline('word[fn:1:this is *bold* text] more');
+  assert.deepEqual(nodes[1], {
+    type: 'footnote-def',
+    label: '1',
+    children: [
+      { type: 'text', value: 'this is ' },
+      { type: 'bold', children: [{ type: 'text', value: 'bold' }] },
+      { type: 'text', value: ' text' },
+    ],
+  });
+});
+
+test('an anonymous inline footnote [fn::text] (empty label) parses with label null', () => {
+  const nodes = parseInline('word[fn::an anonymous note] more');
+  assert.deepEqual(nodes[1], {
+    type: 'footnote-def',
+    label: null,
+    children: [{ type: 'text', value: 'an anonymous note' }],
+  });
+});
+
+test('a footnote definition containing its own [[link]] finds the correct closing bracket via depth tracking, not the link\u2019s own bracket', () => {
+  const nodes = parseInline('word[fn:1:see [[https://example.com][here]] for more] rest');
+  assert.deepEqual(nodes[1].type, 'footnote-def');
+  assert.deepEqual(nodes[1].label, '1');
+  assert.deepEqual(nodes[1].children, [
+    { type: 'text', value: 'see ' },
+    { type: 'link', target: 'https://example.com', description: 'here' },
+    { type: 'text', value: ' for more' },
+  ]);
+  assert.deepEqual(nodes[2], { type: 'text', value: ' rest' });
+});
+
+test('an unterminated footnote definition (no matching close bracket) is left as literal text', () => {
+  const nodes = parseInline('word[fn:1:never closes');
+  assert.deepEqual(nodes, [{ type: 'text', value: 'word[fn:1:never closes' }]);
+});
+
+test('multiple footnote references in the same line all parse correctly', () => {
+  const nodes = parseInline('one[fn:a] two[fn:b] three[fn:c]');
+  const refs = nodes.filter((n) => n.type === 'footnote-ref');
+  assert.deepEqual(
+    refs.map((r) => r.label),
+    ['a', 'b', 'c']
+  );
+});
+
+test('"[fn:]" with an empty label and no colon is not valid footnote syntax, left as literal text', () => {
+  const nodes = parseInline('word[fn:] rest');
+  assert.deepEqual(nodes, [{ type: 'text', value: 'word[fn:] rest' }]);
+});
+
+test('footnote syntax does not interfere with an ordinary [[link]] elsewhere on the same line', () => {
+  const nodes = parseInline('a note[fn:1] and a [[https://example.com][link]] together');
+  assert.deepEqual(nodes[1], { type: 'footnote-ref', label: '1' });
+  assert.deepEqual(nodes[3], { type: 'link', target: 'https://example.com', description: 'link' });
+});
