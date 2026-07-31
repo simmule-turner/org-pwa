@@ -34,6 +34,8 @@ const HEADING_RE = /^(\*+)\s+(.*)$/;
 const KEYWORD_RE = /^#\+([A-Za-z][A-Za-z_]*):\s?(.*)$/;
 const PROPERTY_DRAWER_START_RE = /^\s*:PROPERTIES:\s*$/i;
 const PROPERTY_DRAWER_END_RE = /^\s*:END:\s*$/i;
+const LOGBOOK_DRAWER_START_RE = /^\s*:LOGBOOK:\s*$/i;
+const LOGBOOK_DRAWER_END_RE = /^\s*:END:\s*$/i;
 const PROPERTY_LINE_RE = /^\s*:([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/;
 const TAGS_RE = /\s+(:[A-Za-z0-9_@#%:]+:)\s*$/;
 const PRIORITY_RE = /^\[#([A-Za-z0-9])\]\s*/;
@@ -195,6 +197,7 @@ function parseOrg(text, opts = {}) {
         planning: { scheduled: null, deadline: null, closed: null },
         properties: {},
         propertyOrder: [],
+        logbookLines: [],
         bodyLines: [],
         collapsed: false,
         bodyHidden: false,
@@ -215,18 +218,31 @@ function parseOrg(text, opts = {}) {
         i++;
       }
 
-      if (i < lines.length && PROPERTY_DRAWER_START_RE.test(lines[i])) {
-        i++;
-        while (i < lines.length && !PROPERTY_DRAWER_END_RE.test(lines[i])) {
-          const pm = PROPERTY_LINE_RE.exec(lines[i]);
-          if (pm) {
-            const [, key, value] = pm;
-            if (!(key in heading.properties)) heading.propertyOrder.push(key);
-            heading.properties[key] = value;
-          }
+      let sawDrawer = true;
+      while (sawDrawer && i < lines.length) {
+        sawDrawer = false;
+        if (PROPERTY_DRAWER_START_RE.test(lines[i])) {
+          sawDrawer = true;
           i++;
+          while (i < lines.length && !PROPERTY_DRAWER_END_RE.test(lines[i])) {
+            const pm = PROPERTY_LINE_RE.exec(lines[i]);
+            if (pm) {
+              const [, key, value] = pm;
+              if (!(key in heading.properties)) heading.propertyOrder.push(key);
+              heading.properties[key] = value;
+            }
+            i++;
+          }
+          i++; // consume :END:
+        } else if (LOGBOOK_DRAWER_START_RE.test(lines[i])) {
+          sawDrawer = true;
+          i++;
+          while (i < lines.length && !LOGBOOK_DRAWER_END_RE.test(lines[i])) {
+            heading.logbookLines.push(lines[i]);
+            i++;
+          }
+          i++; // consume :END:
         }
-        i++; // consume :END:
       }
 
       continue;
@@ -299,6 +315,12 @@ function serializeNode(node, out) {
       for (const key of node.propertyOrder) {
         out.push(`:${key}: ${node.properties[key]}`);
       }
+      out.push(':END:');
+    }
+
+    if (node.logbookLines && node.logbookLines.length) {
+      out.push(':LOGBOOK:');
+      for (const l of node.logbookLines) out.push(l);
       out.push(':END:');
     }
 
