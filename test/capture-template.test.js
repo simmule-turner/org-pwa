@@ -126,23 +126,29 @@ test('expandTemplate handles %<FORMAT> the same way formatTime does directly', (
   assert.equal(text, 'Filed on 2026-07-24');
 });
 
-// ---- expandTemplate: %? cursor position ------------------------------------
+// ---- expandTemplate: %? is now a prompt, gathered like any other ----------
 
-test('expandTemplate records the character offset where %? appeared, and removes it from the text', () => {
-  const { text, cursorOffset } = expandTemplate('before %? after', { now: NOW });
+test('a bare %? is scanned as a prompt too, labeled "Text", in document order alongside %^{...}', () => {
+  const prompts = scanPrompts('before %^{First} and %? and %^{Last}');
+  assert.deepEqual(
+    prompts.map((p) => p.prompt),
+    ['First', 'Text', 'Last']
+  );
+});
+
+test('expandTemplate substitutes %?\u2019s gathered answer directly into the text', () => {
+  const { text } = expandTemplate('before %? after', { now: NOW, promptAnswers: ['FILLED'] });
+  assert.equal(text, 'before FILLED after');
+});
+
+test('expandTemplate leaves %? as empty text when no answer was provided for it, same as any other prompt', () => {
+  const { text } = expandTemplate('before %? after', { now: NOW });
   assert.equal(text, 'before  after');
-  assert.equal(cursorOffset, 7);
 });
 
-test('expandTemplate cursorOffset is null when the template has no %?', () => {
-  const { cursorOffset } = expandTemplate('no cursor marker here', { now: NOW });
-  assert.equal(cursorOffset, null);
-});
-
-test('expandTemplate %? at the very start gives cursorOffset 0', () => {
-  const { text, cursorOffset } = expandTemplate('%?trailing text', { now: NOW });
-  assert.equal(cursorOffset, 0);
-  assert.equal(text, 'trailing text');
+test('expandTemplate %? at the very start substitutes correctly there too', () => {
+  const { text } = expandTemplate('%?trailing text', { now: NOW, promptAnswers: ['Start'] });
+  assert.equal(text, 'Starttrailing text');
 });
 
 // ---- expandTemplate: %% literal percent -----------------------------------
@@ -160,16 +166,16 @@ test('THE EXACT MEETING TEMPLATE: multiple prompt types, %U, and %? all together
   const prompts = scanPrompts(template);
   assert.deepEqual(
     prompts.map((p) => p.prompt),
-    ['Meeting Title', 'Top Priority Task']
+    ['Meeting Title', 'Text', 'Top Priority Task']
   );
-  const { text, cursorOffset } = expandTemplate(template, {
+  const { text } = expandTemplate(template, {
     now: NOW,
-    promptAnswers: ['Q3 Planning', 'Finalize budget'],
+    promptAnswers: ['Q3 Planning', 'Alice, Bob', 'Finalize budget'],
   });
   assert.match(text, /^\* Q3 Planning :meeting:/);
   assert.match(text, /:CREATED: \[2026-07-24 Fri 14:30\]/);
+  assert.match(text, /- Alice, Bob/);
   assert.match(text, /\*\*\* TODO \[#A\] Finalize budget$/);
-  assert.ok(cursorOffset > 0 && cursorOffset < text.length, 'cursorOffset should be a valid index into the expanded text');
 });
 
 test('THE EXACT TABLE TEMPLATE: %N, %U, and two prompts in one row', () => {
