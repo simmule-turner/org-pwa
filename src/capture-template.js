@@ -108,22 +108,37 @@ function formatTime(date, format) {
 // ---- %^{PROMPT} scanning --------------------------------------------------
 
 /**
- * Finds every %^{...} prompt in `template`, in the order they appear —
- * what a caller uses to actually ask the person for each answer before
- * calling expandTemplate. Real org syntax: %^{prompt}, %^{prompt|default},
- * or %^{prompt|default|completion1|completion2|...}.
+ * Finds every %^{...} prompt AND bare %? marker in `template`, in the
+ * order they appear — what a caller uses to actually ask the person
+ * for each answer before calling expandTemplate. Real org syntax:
+ * %^{prompt}, %^{prompt|default}, or
+ * %^{prompt|default|completion1|completion2|...}. A bare %? (real
+ * org's own "cursor goes here" marker) is treated as a prompt too,
+ * labeled "Text" — gathered up front via the same mechanism as any
+ * other prompt, rather than left empty with its position recorded for
+ * a caller to find-and-focus after the fact. That older approach
+ * depended entirely on DOM state (the target heading needing to
+ * already be expanded/visible, which a freshly-collapsed or
+ * newly-created heading often isn't) and had no equivalent at all for
+ * a capture landing in a different file, since there's no live DOM
+ * for that file to focus anything in. Gathering the value first sidesteps
+ * both problems the same way any other prompt already did.
  */
 function scanPrompts(template) {
   const prompts = [];
-  const re = /%\^\{([^}]*)\}/g;
+  const re = /%\^\{([^}]*)\}|%\?/g;
   let match;
   while ((match = re.exec(template))) {
-    const parts = match[1].split('|');
-    prompts.push({
-      prompt: parts[0] || '',
-      default: parts.length > 1 ? parts[1] : '',
-      completions: parts.slice(2),
-    });
+    if (match[0] === '%?') {
+      prompts.push({ prompt: 'Text', default: '', completions: [] });
+    } else {
+      const parts = match[1].split('|');
+      prompts.push({
+        prompt: parts[0] || '',
+        default: parts.length > 1 ? parts[1] : '',
+        completions: parts.slice(2),
+      });
+    }
   }
   return prompts;
 }
@@ -135,15 +150,16 @@ function scanPrompts(template) {
  *   now             -- Date to use for %<FORMAT>/%t/%T/%u/%U (defaults to
  *                       the actual current moment; a caller passing a
  *                       fixed Date makes this deterministic for testing)
- *   promptAnswers    -- array of strings, matched to %^{...} occurrences
- *                       IN ORDER (the same order scanPrompts returns them
- *                       in) — not matched by prompt text, since two
- *                       prompts can legitimately share the same wording
+ *   promptAnswers    -- array of strings, matched to %^{...} AND bare %?
+ *                       occurrences IN ORDER (the same order scanPrompts
+ *                       returns them in) — not matched by prompt text,
+ *                       since two prompts can legitimately share the
+ *                       same wording
  *   tableRowNumber   -- substituted for %N; omitted/null becomes ''
  *
- * Returns { text, cursorOffset } — cursorOffset is the character index
- * in `text` where %? appeared (null if the template had no %?), so a
- * caller can position an editing cursor there after inserting.
+ * Returns { text } — a bare %? is just another prompt answer
+ * substituted directly into the text now (see scanPrompts' own docs for
+ * why), so there's no separate cursor position left to report.
  */
 function expandTemplate(template, context = {}) {
   const now = context.now instanceof Date ? context.now : new Date();
@@ -156,7 +172,6 @@ function expandTemplate(template, context = {}) {
   let result = '';
   let lastIndex = 0;
   let promptIndex = 0;
-  let cursorOffset = null;
   let match;
 
   while ((match = TOKEN_RE.exec(template))) {
@@ -183,12 +198,14 @@ function expandTemplate(template, context = {}) {
     } else if (token === '%N') {
       result += tableRowNumber !== undefined && tableRowNumber !== null ? String(tableRowNumber) : '';
     } else if (token === '%?') {
-      cursorOffset = result.length;
+      const answer = promptAnswers[promptIndex];
+      result += answer !== undefined && answer !== null ? answer : '';
+      promptIndex += 1;
     }
   }
   result += template.slice(lastIndex);
 
-  return { text: result, cursorOffset };
+  return { text: result };
 }
 
 // ---- (file+olp "" "heading 1" "heading n") target resolution -------------
