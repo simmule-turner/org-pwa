@@ -36,7 +36,6 @@ This document describes what org-pwa actually does today, how to use it, and —
 - [[*Development][Development]]
 
 -----
-<<named-target>>
 ** What org-pwa is (and isn't)
 
 org-pwa is a *touch-first outline editor*, not a port of Emacs. It reads and writes real ~.org~ files — round-trip fidelity is a hard requirement, so content it doesn't specifically understand is preserved verbatim rather than mangled or dropped. But the /editing model/ is built from scratch around tapping and gestures, not Emacs keybindings, and it deliberately implements a useful subset of org-mode rather than all of it.
@@ -44,7 +43,7 @@ org-pwa is a *touch-first outline editor*, not a port of Emacs. It reads and wri
 If you're looking for org-mode-in-the-browser with full parity — babel, capture templates, the agenda, LaTeX export — this isn't that (yet, and possibly not ever; see [[*Known limitations / not built yet][Known limitations]]). If you want to open a real org file on your phone, reorganize your outline, check off tasks, edit tables, and get it saved back to disk, GitHub, or a WebDAV server, that's what this is for.
 
 -----
-
+<<named-target>>
 ** Getting started
 
 1. Open the app. If no file is open, tap *File → Open*.
