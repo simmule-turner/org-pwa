@@ -223,3 +223,48 @@ test('findHeadingLineNumber works correctly across multiple siblings with varied
   assertLineIsHeading(doc, doc.children[1].children[1], 'B2');
   assertLineIsHeading(doc, doc.children[2], 'C');
 });
+
+// ---- a real bug this coverage caught: a '*'-prefixed line inside a
+// #+BEGIN_.../#+END_... block was being incorrectly split off as a real
+// heading, with zero awareness of block context -----------------------
+
+test('a line starting with "*" inside a #+BEGIN_SRC block is NOT treated as a heading', () => {
+  const doc = parseOrg('* Real heading\n#+BEGIN_SRC org\n* Example heading shown as literal text\n#+END_SRC\n');
+  assert.equal(doc.children.length, 1, 'only the one real heading should exist');
+  assert.equal(doc.children[0].title, 'Real heading');
+  assert.ok(doc.children[0].bodyLines.some((l) => l === '* Example heading shown as literal text'));
+});
+
+test('multiple "*"-prefixed lines inside a block all stay literal, not split into several fake headings', () => {
+  const doc = parseOrg('* Real heading\n#+BEGIN_EXAMPLE\n* one\n** two\n*** three\n#+END_EXAMPLE\n');
+  assert.equal(doc.children.length, 1);
+  assert.equal(doc.children[0].bodyLines.filter((l) => l.trim().length > 0).length, 5); // BEGIN + 3 stars lines + END
+});
+
+test('heading detection resumes correctly for a real heading right after a block closes', () => {
+  const doc = parseOrg('* First\n#+BEGIN_SRC text\n* not a heading\n#+END_SRC\n* Second\n');
+  assert.equal(doc.children.length, 2);
+  assert.equal(doc.children[0].title, 'First');
+  assert.equal(doc.children[1].title, 'Second');
+});
+
+test('an unclosed block (missing #+END_) does not leak inBlock state and swallow the rest of the document as literal text forever -- still round-trips safely even if imperfectly', () => {
+  const text = '* Heading\n#+BEGIN_SRC\n* unclosed block, no matching END\n';
+  const doc = parseOrg(text);
+  // Documented, acceptable behavior for malformed input: everything after
+  // an unclosed BEGIN becomes part of that heading's body verbatim, rather
+  // than crashing or losing content -- round-trip safety is preserved.
+  assert.equal(serializeOrg(doc), text);
+});
+
+test('round-trip: a block containing "*" lines survives parse -> serialize -> parse unchanged', () => {
+  const text = '* Heading\nSome text.\n#+BEGIN_SRC org\n* Example\n  :PROPERTIES:\n  :FOO: bar\n  :END:\n#+END_SRC\n';
+  const doc = parseOrg(text);
+  const doc2 = parseOrg(serializeOrg(doc));
+  assert.deepEqual(doc, doc2);
+});
+
+test('a block nested inside a list item still correctly suppresses heading detection within it', () => {
+  const doc = parseOrg('* Heading\n- item one\n  #+BEGIN_SRC org\n  * looks like a heading but is not\n  #+END_SRC\n- item two\n');
+  assert.equal(doc.children.length, 1, 'the indented "* looks like a heading" line must not create a second top-level heading');
+});
