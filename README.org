@@ -1,4 +1,7 @@
 * org-pwa
+:PROPERTIES:
+:CUSTOM_ID: org-pwa
+:END:
 
 A single-file, offline-capable, mobile-first outliner for editing ~.org~ files in the browser. No server, no account required to use it locally — just a static site you can install as a PWA and point at a file.
 
@@ -7,44 +10,53 @@ This document describes what org-pwa actually does today, how to use it, and —
 -----
 
 ** Contents
+:PROPERTIES:
+:CUSTOM_ID: contents
+:END:
 
-- [[*What org-pwa is (and isn't)][What org-pwa is (and isn't)]]
-- [[*Getting started][Getting started]]
-- [[*Editing your outline][Editing your outline]]
-- [[*Undo/redo and History][Undo/redo and History]]
-- [[*Lists, tables, and body text][Lists, tables, and body text]]
-- [[*Inline text markup][Inline text markup]]
-- [[*Searching][Searching]]
-- [[*Links and images][Links and images]]
-- [[*Folding and ~#+STARTUP~][Folding and ~#+STARTUP~]]
-- [[*Local Variables][Local Variables]]
-- [[*Archiving][Archiving]]
-- [[*The plain-text editor][The plain-text editor]]
-- [[*Agenda][Agenda]]
-- [[*The TODO view][The TODO view]]
-- [[*Capture Templates][Capture Templates]]
-- [[*Docs][Docs]]
-- [[*File management][File management]]
-- [[*Export][Export]]
-- [[*Settings][Settings]]
-- [[*Offline behavior and sync][Offline behavior and sync]]
-- [[*Platform support][Platform support]]
-- [[*Keybindings][Keybindings]]
-- [[*Differences from Emacs org-mode][Differences from Emacs org-mode]]
-- [[*Known limitations / not built yet][Known limitations / not built yet]]
-- [[*Development][Development]]
+- [[#what-org-pwa-is-and-isnt][What org-pwa is (and isn't)]]
+- [[#getting-started][Getting started]]
+- [[#editing-your-outline][Editing your outline]]
+- [[#undoredo-and-history][Undo/redo and History]]
+- [[#lists-tables-and-body-text][Lists, tables, and body text]]
+- [[#inline-text-markup][Inline text markup]]
+- [[#searching][Searching]]
+- [[#links-and-images][Links and images]]
+- [[#folding-and-startup][Folding and ~#+STARTUP~]]
+- [[#local-variables][Local Variables]]
+- [[#archiving][Archiving]]
+- [[#the-plain-text-editor][The plain-text editor]]
+- [[#agenda][Agenda]]
+- [[#the-todo-view][The TODO view]]
+- [[#capture-templates][Capture Templates]]
+- [[#docs][Docs]]
+- [[#file-management][File management]]
+- [[#export][Export]]
+- [[#settings][Settings]]
+- [[#offline-behavior-and-sync][Offline behavior and sync]]
+- [[#platform-support][Platform support]]
+- [[#keybindings][Keybindings]]
+- [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]]
+- [[#known-limitations--not-built-yet][Known limitations / not built yet]]
+- [[#development][Development]]
 
 -----
 
 ** What org-pwa is (and isn't)
+:PROPERTIES:
+:CUSTOM_ID: what-org-pwa-is-and-isnt
+:END:
 
 org-pwa is a *touch-first outline editor*, not a port of Emacs. It reads and writes real ~.org~ files — round-trip fidelity is a hard requirement, so content it doesn't specifically understand is preserved verbatim rather than mangled or dropped. But the /editing model/ is built from scratch around tapping and gestures, not Emacs keybindings, and it deliberately implements a useful subset of org-mode rather than all of it.
 
-If you're looking for org-mode-in-the-browser with full parity — babel, capture templates, the agenda, LaTeX export — this isn't that (yet, and possibly not ever; see [[*Known limitations / not built yet][Known limitations]]). If you want to open a real org file on your phone, reorganize your outline, check off tasks, edit tables, and get it saved back to disk, GitHub, or a WebDAV server, that's what this is for.
+If you're looking for org-mode-in-the-browser with full parity — babel, capture templates, the agenda, LaTeX export — this isn't that (yet, and possibly not ever; see [[#known-limitations--not-built-yet][Known limitations]]). If you want to open a real org file on your phone, reorganize your outline, check off tasks, edit tables, and get it saved back to disk, GitHub, or a WebDAV server, that's what this is for.
 
 -----
 
 ** Getting started
+:PROPERTIES:
+:CUSTOM_ID: getting-started
+:END:
 
 1. Open the app. If no file is open, tap *File → Open*.
 2. Choose where to open from:
@@ -52,7 +64,7 @@ If you're looking for org-mode-in-the-browser with full parity — babel, captur
    - *Local file* — uses the browser's native file picker and keeps a live handle, so Save writes straight back to the same file. Requires a browser with File System Access support (Chrome/Edge on desktop and Android).
    - *GitHub* — browse folders and ~.org~ files in a repo you've configured in Settings, tap one to open it. A "Type a path instead…" option is always available too, for a path that doesn't show up in the listing (e.g. permissions on a specific subfolder) or if listing fails outright.
    - *WebDAV* — same idea, browsing a WebDAV server you've configured in Settings via the standard ~PROPFIND~ directory-listing method. Same "Type a path instead…" fallback available here too.
-   - *Import file* (shown instead of "Local file" on platforms without File System Access, i.e. everything on iOS) — picks a file once and reads it; there's no live link back to the original, so Save downloads a new copy you place back manually. See [[*Platform support][Platform support]].
+   - *Import file* (shown instead of "Local file" on platforms without File System Access, i.e. everything on iOS) — picks a file once and reads it; there's no live link back to the original, so Save downloads a new copy you place back manually. See [[#platform-support][Platform support]].
 
 1. Edit. Every edit is applied instantly to an in-memory copy and cached locally in the background — nothing is lost if you close the tab, even before you hit Save.
 2. Tap *Save* when you want it written back to wherever it came from. *Save As* lets you choose a different destination or backend.
@@ -62,29 +74,38 @@ The header shows the current filename and which backend it came from, turning *r
 -----
 
 ** Editing your outline
+:PROPERTIES:
+:CUSTOM_ID: editing-your-outline
+:END:
 
 - *Headings*: tap the title text to reveal a row of twelve actions — edit title, edit the heading's own body text, edit details (the general editor — see below), add a sub-heading, move up/down, mark as TODO, add a table, archive, delete, promote/demote. Nothing is shown until you tap; this keeps the row itself uncluttered. Most actions close the row back up after running; Move up/down and Promote/Demote deliberately don't, since repeating one of those a few times in a row is a normal thing to want to do — tap elsewhere on the row (or in the empty space after the buttons themselves) to close it manually when you're done.
 - *TODO state*: tap the TODO badge to cycle through the sequence defined by ~#+TODO:~ (or ~TODO~/~DONE~ by default).
 - *Fold/unfold*: tap the chevron to toggle a heading's whole subtree, or swipe left on a heading to cycle through collapsed → children-only → fully expanded → collapsed.
-- *Archive* (becomes *Unarchive* once a heading is already archived, a different icon for each): moves the whole subtree to its configured ~org-archive-location~, or back to its original location — real org's ~org-archive-subtree~, not just a tag added in place. Confirms first by default (~org-archive-confirm~, see [[*Local Variables][Local Variables]]). See [[*Archiving][Archiving]] for the full behavior, the ~org-archive-location~ syntax, the transaction-safety guarantee, and the platform limitation for local files. The ~:ARCHIVE:~ tag and ~ARCHIVE_TIME~/~ARCHIVE_FILE~/~ARCHIVE_OLPATH~/~ARCHIVE_CATEGORY~ properties are all still just an ordinary tag and ordinary properties once the move lands — editable or removable by hand from the general editor like any other, if you ever need to.
+- *Archive* (becomes *Unarchive* once a heading is already archived, a different icon for each): moves the whole subtree to its configured ~org-archive-location~, or back to its original location — real org's ~org-archive-subtree~, not just a tag added in place. Confirms first by default (~org-archive-confirm~, see [[#local-variables][Local Variables]]). See [[#archiving][Archiving]] for the full behavior, the ~org-archive-location~ syntax, the transaction-safety guarantee, and the platform limitation for local files. The ~:ARCHIVE:~ tag and ~ARCHIVE_TIME~/~ARCHIVE_FILE~/~ARCHIVE_OLPATH~/~ARCHIVE_CATEGORY~ properties are all still just an ordinary tag and ordinary properties once the move lands — editable or removable by hand from the general editor like any other, if you ever need to.
 - *The general editor* (📋 *Edit details*): one structured form covering everything that used to be spread across several separate actions:
-  - *SCHEDULED / DEADLINE / plain timestamp* — real date and time pickers, a repeat selector (mark + amount + unit: every N hours/days/weeks/months/years), and an optional "warn ahead by" delay (real org syntax, e.g. ~-3d~, for seeing a deadline coming a few days early instead of only on the day it's due). These three are independent instances of the same field group — set any combination; each has its own *Clear* button for explicitly removing that one timestamp, separate from the form's overall Save/Cancel. See [[*Agenda][Agenda]] for how a plain timestamp differs from SCHEDULED/DEADLINE (it doesn't carry forward, and lives in the title rather than a planning line).
+  - *SCHEDULED / DEADLINE / plain timestamp* — real date and time pickers, a repeat selector (mark + amount + unit: every N hours/days/weeks/months/years), and an optional "warn ahead by" delay (real org syntax, e.g. ~-3d~, for seeing a deadline coming a few days early instead of only on the day it's due). These three are independent instances of the same field group — set any combination; each has its own *Clear* button for explicitly removing that one timestamp, separate from the form's overall Save/Cancel. See [[#agenda][Agenda]] for how a plain timestamp differs from SCHEDULED/DEADLINE (it doesn't carry forward, and lives in the title rather than a planning line).
   - *Tags* — existing tags shown as removable chips (tap a chip to remove it), plus an input and Add button for a new one. Not a raw space-separated prompt.
   - *Priority* — a row of buttons (A / B / C / None), the currently-set one highlighted. Covers real org's own conventional default range directly with one tap; anything outside A–C isn't reachable from this UI, a stated scope limit rather than a full A–Z picker for a rarely-used case.
-  - *Properties* — each existing property as its own editable key/value row, with a per-row remove button and an "Add property" row to append a new, initially-blank one. A row left with a blank key is silently dropped on save rather than erroring — "I tapped Add then changed my mind" is a normal path, not a mistake to flag. This is also how you set a ~CUSTOM_ID~ for ~[[#id]]~-style linking (see [[*Links and images][Links and images]]) — there's no longer a dedicated action just for that, since it's a property like any other.
+  - *Properties* — each existing property as its own editable key/value row, with a per-row remove button and an "Add property" row to append a new, initially-blank one. A row left with a blank key is silently dropped on save rather than erroring — "I tapped Add then changed my mind" is a normal path, not a mistake to flag. This is also how you set a ~CUSTOM_ID~ for ~[[#id]]~-style linking (see [[#links-and-images][Links and images]]) — there's no longer a dedicated action just for that, since it's a property like any other.
 
-  All fields across all four sections are committed together on *Save*, or discarded together on *Cancel* — nothing is written until you actually save. When not editing, existing properties still show as a small read-only line under the heading, but only when drawers are actually visible for that heading (~#+STARTUP: showeverything~, or manually cycled to "fully expanded" — see [[*Folding and ~#+STARTUP~][Folding and ~#+STARTUP~]]); tapping it opens the same general editor as tapping the title. Collapsing the heading again correctly hides them too, whether via swipe or chevron.
+  All fields across all four sections are committed together on *Save*, or discarded together on *Cancel* — nothing is written until you actually save. When not editing, existing properties still show as a small read-only line under the heading, but only when drawers are actually visible for that heading (~#+STARTUP: showeverything~, or manually cycled to "fully expanded" — see [[#folding-and-startup][Folding and ~#+STARTUP~]]); tapping it opens the same general editor as tapping the title. Collapsing the heading again correctly hides them too, whether via swipe or chevron.
 
 - *Block content* (~#+BEGIN_SRC~/~#+BEGIN_QUOTE~/~#+BEGIN_EXAMPLE~\/etc.): shown read-only, gated by the same drawer-visibility rule as properties above. When folded, an honest "collapsed block" label is shown rather than nothing — tap it to reveal the actual content (code, quoted text, whatever the block holds); tap the label again once expanded to re-fold it. No in-app editing of block content yet — this is visibility only.
 - *Moving headings* (↑ / ↓ / ← / → in the action row): ↑ and ↓ reorder a heading among its own siblings without touching its level or its subtree — everything nested under it moves as one unit automatically. ← (promote/outdent) moves a heading up one level, making it a sibling of its former parent, inserted right after it. → (demote/indent) moves it down one level, making it the last child of whichever heading immediately precedes it. All four are no-ops at a natural boundary (already first/last, already top-level, no preceding sibling to demote under) — tapping one there shows a brief status message rather than silently doing nothing or corrupting the outline. This is the actual replacement for switching to Text view and cutting/pasting raw lines, which used to be the only way to reorder anything.
 
 *** A heading's "text"
+:PROPERTIES:
+:CUSTOM_ID: a-headings-text
+:END:
 
 Org has no separate description field — anything following a heading (until the next heading) belongs to it, and that can include multiple paragraphs, lists, and tables in any order. The *Edit text* action opens all of that heading's content as one editable block of raw org syntax, not just the first paragraph. Typing ~- [ ] ~ at the start of a line turns it into a checklist item on save, exactly as it would in the underlying file.
 
 -----
 
 ** Undo/redo and History
+:PROPERTIES:
+:CUSTOM_ID: undoredo-and-history
+:END:
 
 Every edit in this app — heading/paragraph/list-item/table-cell text, TODO/priority/tags/properties, moving, promoting, archiving, capturing, all of it — can be undone and redone. *More (⋮) → History* opens a panel with three things: quick *‹ Undo* / *Redo ›* buttons for stepping one change at a time, a scrollable list of every step taken since the file was opened (oldest to newest, with the current position marked), and a *diff* toggle on each entry showing exactly what that one step changed — added lines and removed lines, color-coded, diffed against the step right before it.
 
@@ -99,17 +120,23 @@ The list isn't just for stepping through one at a time — tap *any* entry to ju
 -----
 
 ** Lists, tables, and body text
+:PROPERTIES:
+:CUSTOM_ID: lists-tables-and-body-text
+:END:
 
 - *Lists*: ordered, unordered, checkboxes (tap to cycle unchecked → in-progress → done), description lists (~term :: description~), and nested sub-lists. Tap a list item's text to reveal edit/add-item-below/delete actions.
 - *Checkboxes*: cycle through the three states org supports. Progress cookies in a heading's title (~[3/8]~ or ~[40%]~, including the blank ~[/]~/~[/8]~ form) are recalculated automatically whenever a checkbox in that heading's subtree is toggled, added, or removed — matching real org-mode's default hierarchical counting (a heading's cookie counts checkboxes in its own list /and/ every descendant heading's, not just its direct list).
 - *Tables*: tap a cell to edit it directly. Row/column add and remove controls sit below the table, always visible (not tap-to-reveal, since you need them to actually use the table). ~#+TBLFM:~ formula lines are preserved on save but *not evaluated* — org-pwa doesn't compute tables, Emacs does.
 - *Paragraphs*: tap text to reveal edit/add-paragraph-below/delete.
 
-Every delete action still asks for confirmation — but is no longer irreversible: *Undo/redo now covers every edit in this app* (see [[*Undo/redo and History][Undo/redo and History]]).
+Every delete action still asks for confirmation — but is no longer irreversible: *Undo/redo now covers every edit in this app* (see [[#undoredo-and-history][Undo/redo and History]]).
 
 -----
 
 ** Inline text markup
+:PROPERTIES:
+:CUSTOM_ID: inline-text-markup
+:END:
 
 All six of org's emphasis markers work, in headings, paragraphs, and list items:
 
@@ -126,7 +153,7 @@ A marker only opens where it's preceded by the start of a line, whitespace, or o
 
 *Horizontal rule*: a line consisting of only dashes, at least 5 of them (~-----~), renders as a horizontal rule. Whitespace around the dashes is fine; anything else on the line (a 6th character that isn't a dash) means it's just a paragraph, not a rule.
 
-*Subscript and superscript*: ~_~ and ~^~ mark sub/superscript — ~x_i~ and ~x^2~ both work without braces, and braces (~x_{alpha}~, ~10^{100}~) are always accepted too, mainly useful for readability once the script itself is more than a couple of characters. Controlled by ~org-use-sub-superscripts~ (see [[*Local Variables][Local Variables]]):
+*Subscript and superscript*: ~_~ and ~^~ mark sub/superscript — ~x_i~ and ~x^2~ both work without braces, and braces (~x_{alpha}~, ~10^{100}~) are always accepted too, mainly useful for readability once the script itself is more than a couple of characters. Controlled by ~org-use-sub-superscripts~ (see [[#local-variables][Local Variables]]):
 
 | Value | Behavior |
 |---+---|
@@ -141,6 +168,9 @@ Table cells currently render as plain text — none of the markup on this page i
 -----
 
 ** Searching
+:PROPERTIES:
+:CUSTOM_ID: searching
+:END:
 
 Tap *More → Search* to search the whole file — headings, tags, TODO keyword, priority, properties (key or value), SCHEDULED/DEADLINE timestamps, paragraphs, list items, table cells, and block content, case-insensitively. Results update live as you type and show a short snippet with the match, grouped under the heading each one belongs to.
 
@@ -167,11 +197,14 @@ Tags and properties are read from a heading's own line only — *no inheritance 
 -----
 
 ** Links and images
+:PROPERTIES:
+:CUSTOM_ID: links-and-images
+:END:
 
 - ~[[target][description]]~ links render as tappable text.
 - *A bare URL auto-links too*, matching real org's own documented behavior — ~https://example.com~ typed directly in a sentence (no ~[[...]]~ brackets at all) renders as a tappable link, same as the bracketed form. ~<https://example.com>~ (angle-bracket wrapped) works the same way, and is org's other recognized plain-URI form. Recognized schemes: ~http~, ~https~, ~ftp~, ~mailto~, ~doi~, ~file~, ~github~, ~webdav~ — a well-defined set, not arbitrary ~word:word~ text (so a time like ~10:30~ or a ratio like ~3:4~ is never misread as a link). Trailing sentence punctuation (~.~, ~,~, ~)~, etc.) is excluded from a bare match — ~see https://example.com/page.~ links just the URL, not the period; wrap it in ~<...>~ or ~[[...]]~ if a URL genuinely needs to end in one of those characters.
 - ~doi:10.1145/1327452.1327492~ — a Digital Object Identifier, common in academic citations — resolves to the standard ~https://doi.org/...~ resolver URL and opens like any other external link. Works both bracketed and as a bare auto-link.
-- Internal links resolve by heading title (~[[*Some Heading]]~), by ~CUSTOM_ID~ property (~[[#my-id]]~), or fall back to a title search for bare text — tapping one expands ancestors and scrolls to the target heading. Set a heading's ~CUSTOM_ID~ via the properties section of its general editor (see [[*Editing your outline][Editing your outline]]) — it's a property like any other, no dedicated action for it.
+- Internal links resolve by heading title (~[[*Some Heading]]~), by ~CUSTOM_ID~ property (~[[#my-id]]~), or fall back to a title search for bare text — tapping one expands ancestors and scrolls to the target heading. Set a heading's ~CUSTOM_ID~ via the properties section of its general editor (see [[#editing-your-outline][Editing your outline]]) — it's a property like any other, no dedicated action for it.
 - *~http://~/~https://~ image links* render inline as actual images, if ~#+STARTUP: inlineimages~ is set (off by default — see below).
 - *Local/relative image paths load and render on GitHub and WebDAV* — ~[[photo.png]]~, ~[[images/photo.png]]~, ~[[file:photo.png]]~, ~[[github:images/photo.png]]~ all resolve relative to the current document's own path (a bare filename lands beside it, same convention as capture-to-file and archiving below), get read as binary and base64-encoded into a ~data:~ URL, and appear as real images — same ~#+STARTUP: inlineimages~ gate as ~http(s)~ images above. Cached per session once loaded, so re-rendering the outline (any edit, anywhere) doesn't re-fetch the same image again. *Local files (File System Access) and iOS import still show the ~[image: path]~ placeholder* — same picker-permission wall as archiving and capture-to-file: reading an arbitrary sibling file needs a handle the browser hasn't granted, and can't be granted silently mid-render.
 - *~file:~/~github:~/~webdav:~ links are recognized, parsed, and navigate* — absolute path (~file:/home/user/documents/notes.org~), relative path (~file:projects/todo.org~), a specific headline (~file:~/notes.org::*Project Alpha~), and a text search (~file:~/notes.org::exact phrase~) all parse correctly into a scheme, a path, and an optional in-file target, matching real org's own ~::~ convention. ~github:path/in/repo.org~ and ~webdav:path/on/server.org~ follow the same rules for their own backend. Tapping one opens the target document (the same mechanism File → Open already uses, including its own unsaved-changes handling) and jumps straight to the headline or text match if one was specified. A bare ~file:~\/relative-path link with no explicit scheme uses whichever backend the /current/ document itself came from; an explicit ~github:~/~webdav:~ always targets that backend directly, regardless of what's currently open. *Local files and iOS import are the one exception* — same picker-permission wall as archiving, capture-to-file, and image loading below: opening an arbitrary path needs a fresh picker gesture the browser requires per file, which can't happen from a link tap, so those show a clear message instead of attempting (and failing) a silent open.
@@ -179,6 +212,9 @@ Tags and properties are read from a heading's own line only — *no inheritance 
 -----
 
 ** Folding and ~#+STARTUP~
+:PROPERTIES:
+:CUSTOM_ID: folding-and-startup
+:END:
 
 org-pwa reads and applies ~#+STARTUP:~ directives, typically on the first line of the file. None, some, or both of the following can be present on one line, or spread across several — the last matching keyword wins if there's a conflict:
 
@@ -194,11 +230,14 @@ org-pwa reads and applies ~#+STARTUP:~ directives, typically on the first line o
 
 Manually cycling a heading to "fully expanded" (the slide-left gesture, or tapping through the fold states) always reveals everything about that heading — properties and block content included — regardless of what the file's ~#+STARTUP:~ line says. So a ~showall~ file still lets you open any specific heading's properties or block content by hand; you're never stuck needing to change the file's own directive just to peek at one thing. This reverses cleanly too: collapsing the heading again — swipe, or the chevron — correctly re-hides whatever was revealed, rather than leaving it stuck visible.
 
-These defaults are chosen to match real Emacs org-mode's actual out-of-the-box behavior (no ~#+STARTUP~ line means fully shown, not folded), not an arbitrary choice. See [[*Local Variables][Local Variables]] for archived-heading cycling behavior, which is a separate mechanism from ~#+STARTUP:~ entirely.
+These defaults are chosen to match real Emacs org-mode's actual out-of-the-box behavior (no ~#+STARTUP~ line means fully shown, not folded), not an arbitrary choice. See [[#local-variables][Local Variables]] for archived-heading cycling behavior, which is a separate mechanism from ~#+STARTUP:~ entirely.
 
 -----
 
 ** Local Variables
+:PROPERTIES:
+:CUSTOM_ID: local-variables
+:END:
 
 Separate from ~#+STARTUP:~ — this is a general /Emacs/ mechanism (works in any file type Emacs edits), not an org-specific directive, conventionally placed at the end of the file:
 
@@ -228,22 +267,25 @@ Currently recognized:
 - ~org-cycle-open-archived-trees~ — ~t~ or ~nil~ (Lisp booleans, not JavaScript truthiness — the string ~"true"~ is not ~t~ and won't be treated as one). ~nil~ (the default, matching real org) means an archived heading (tagged ~:ARCHIVE:~) starts folded regardless of the ~#+STARTUP:~ visibility mode, and *the slide-left swipe gesture refuses to open it* — whether cascading into it from a parent or swiping directly on it. This matches real org-mode's own stated behavior exactly (confirmed against the actual org.el source: the ~ARCHIVE~ tag's docstring says plainly "An archived subtree does not open during visibility cycling"). The *chevron is different on purpose*: tapping it still opens an archived heading regardless of this setting. Real Emacs has separate force-open mechanisms outside of TAB/cycling for exactly this situation (~C-c C-TAB~, a universal-argument TAB, ~outline-show-all~) — a touch UI with no keyboard modifiers doesn't have anywhere else to put that, so the chevron fills that role here instead of being a second implementation of the swipe gesture. Without it, archived content would have no way to ever become visible again. Set ~org-cycle-open-archived-trees~ to ~t~ to make archived headings behave like any other heading for the swipe gesture too — the chevron behavior doesn't change either way, since it was never gated by this setting.
 - ~org-agenda-skip-comment-trees~ — ~t~ or ~nil~. ~t~ (the default, matching real org) excludes "commented" headings from agenda views — a heading whose /title/ starts with ~# ~ (or is just ~#~), real org's own definition of a comment line applied to a heading title, e.g. ~** # draft, not ready yet~. This is a heading-title convention, distinct from ~#+STARTUP:~'s archive-cycling setting above and from a ~#+BEGIN_COMMENT~ block — it just means "don't show this on the agenda," while the heading stays a completely normal, visible entry in the outline itself. Set to ~nil~ to include commented headings in the agenda after all.
 - ~org-agenda-skip-archived-trees~ — ~t~ or ~nil~. ~t~ (the default, matching real org) excludes archived headings (tagged ~:ARCHIVE:~) from agenda views. Set to ~nil~ to include them.
-- ~org-contacts-birthday-property~ — which property key holds a heading's birthday/anniversary date+description for [[*Agenda][~org-contacts-anniversaries~]]. A plain string, not a Lisp boolean — e.g. ~# org-contacts-birthday-property: EVENT~. Default ~BIRTHDAY~, matching real org-contacts.el's own default exactly.
-- ~org-use-sub-superscripts~ — one of ~t~, ~{}~, or ~nil~ (not a plain boolean — three real values, matching real org exactly). See [[*Inline text markup][Inline text markup]] for what each one does. An unrecognized value falls back to ~t~, real org's own default, rather than silently disabling the feature.
+- ~org-contacts-birthday-property~ — which property key holds a heading's birthday/anniversary date+description for [[#agenda][~org-contacts-anniversaries~]]. A plain string, not a Lisp boolean — e.g. ~# org-contacts-birthday-property: EVENT~. Default ~BIRTHDAY~, matching real org-contacts.el's own default exactly.
+- ~org-use-sub-superscripts~ — one of ~t~, ~{}~, or ~nil~ (not a plain boolean — three real values, matching real org exactly). See [[#inline-text-markup][Inline text markup]] for what each one does. An unrecognized value falls back to ~t~, real org's own default, rather than silently disabling the feature.
 - ~org-use-tag-inheritance~ — ~t~ or ~nil~. ~t~ (the default, matching real org's own actual default — confirmed directly against org's own manual) means a ~+tag~/~-tag~ search filter also matches a heading whose tag comes from an ancestor, not just its own — structural inheritance down the outline, the same as real org's tags always working this way unless explicitly turned off. ~nil~ restricts a filter to a heading's own tags only. A simpler ~t~/~nil~ boolean here than real org's fuller value space (a specific tag list, or a regexp, are both also valid values for the real Emacs variable) — this app only supports the on/off case. Search-time only — doesn't change what tags are /displayed/ on a heading.
 - ~org-use-property-inheritance~ — ~t~ or ~nil~. ~nil~ (the default, matching real org's own actual default — property inheritance is opt-in in real org too, "because it can slow down property searches and is often not needed") means a ~key:value~ search filter only looks at a heading's own properties. ~t~ also falls back to the nearest ancestor's value when the heading doesn't define that property itself — a heading's own value always wins if it has one, inheritance only fills the gap. Same ~t~/~nil~ simplification as ~org-use-tag-inheritance~ above, versus real org's fuller list/regexp value space.
 
-*One entry here is not actually a real org-mode variable, and it would be misleading to present it as one*: ~org-archive-confirm~ was made up for this app specifically — Emacs org-mode has no variable by this name, and archiving in real Emacs doesn't ask for confirmation at all. It piggybacks on the same ~#+... Local Variables~ mechanism purely as a convenient, already-existing place to put a per-file setting, not because it's reproducing something org-mode itself does. ~t~ or ~nil~; ~t~ (the default here) shows a confirmation dialog naming the actual destination before archiving or unarchiving a heading; ~nil~ skips it and proceeds immediately. See [[*Archiving][Archiving]].
+*One entry here is not actually a real org-mode variable, and it would be misleading to present it as one*: ~org-archive-confirm~ was made up for this app specifically — Emacs org-mode has no variable by this name, and archiving in real Emacs doesn't ask for confirmation at all. It piggybacks on the same ~#+... Local Variables~ mechanism purely as a convenient, already-existing place to put a per-file setting, not because it's reproducing something org-mode itself does. ~t~ or ~nil~; ~t~ (the default here) shows a confirmation dialog naming the actual destination before archiving or unarchiving a heading; ~nil~ skips it and proceeds immediately. See [[#archiving][Archiving]].
 
 More variables will likely be added here over time; the parser itself is general-purpose (it captures whatever ~# key: value~ lines it finds in the block, whether or not this app currently acts on that particular key), so recognizing a new one is a small, additive change rather than a redesign.
 
 -----
 
 ** Archiving
+:PROPERTIES:
+:CUSTOM_ID: archiving
+:END:
 
 Tap a heading's title, then *Archive*, to move the whole subtree to its configured archive location — real org's ~org-archive-subtree~ (~C-c C-x C-s~ / the friendlier ~C-c $~), not just tagging something in place. The moved copy gets ~:ARCHIVE:~ added to its tags and four properties stamped on it recording where it came from: ~ARCHIVE_TIME~, ~ARCHIVE_FILE~, ~ARCHIVE_OLPATH~ (the titles of its ancestor headings, joined by ~/~), and ~ARCHIVE_CATEGORY~. The original is only removed from the current file after the move to its destination has actually succeeded — a network failure or permission problem leaves the heading exactly where it was, with a clear error shown, rather than losing it.
 
-*Confirmation*: with ~org-archive-confirm~ at its default ~t~ — an app-specific setting, not a real org-mode variable (see [[*Local Variables][Local Variables]] for why it's presented this way regardless) — archiving shows a confirmation dialog naming the actual destination — the file, and the heading it'll be filed under if the location has one — before anything happens. Cancel and nothing changes at all. Confirm and, once the move actually completes, the status line reads ~--- Archive complete.~ Set ~org-archive-confirm~ to ~nil~ to skip the dialog and archive immediately.
+*Confirmation*: with ~org-archive-confirm~ at its default ~t~ — an app-specific setting, not a real org-mode variable (see [[#local-variables][Local Variables]] for why it's presented this way regardless) — archiving shows a confirmation dialog naming the actual destination — the file, and the heading it'll be filed under if the location has one — before anything happens. Cancel and nothing changes at all. Confirm and, once the move actually completes, the status line reads ~--- Archive complete.~ Set ~org-archive-confirm~ to ~nil~ to skip the dialog and archive immediately.
 
 *Where things get archived to* is controlled by ~org-archive-location~, checked in the same priority order real org uses: a heading's own ~ARCHIVE~ property first, then the file's ~#+ARCHIVE:~ keyword, then the default ~"%s_archive::"~. The value is two parts joined by ~::~:
 
@@ -262,6 +304,9 @@ Set ~#+ARCHIVE: location~ at the top of a file to apply it to every heading in t
 *Platform limitation, stated plainly rather than silently failing*: archiving to a /different/ file only works automatically on GitHub and WebDAV, which can read/write an arbitrary path directly. A local file (opened via File System Access) or an iOS import can't — the browser's own security model requires an explicit file picker gesture per file, which can't happen silently mid-archive. Attempting a cross-file archive on those backends shows a clear message instead of a confusing low-level permission error, and archiving /within/ the current file (an empty file part, e.g. ~::* Archived Tasks~) works everywhere regardless of backend.
 
 *** Restoring (unarchive)
+:PROPERTIES:
+:CUSTOM_ID: restoring-unarchive
+:END:
 
 Open the archive file itself — the *File → Open* browser now shows ~_archive~ files alongside ~.org~ ones (🗄️ icon), so there's no need to already know or type the exact filename — and tap the archived heading's title. Its properties record exactly where it came from, so the action row shows *Unarchive* (📤) in place of Archive: tap it, and the heading moves back to its original file and location, ~:ARCHIVE:~ and all four ~ARCHIVE_*~ properties stripped, and its original TODO state restored if it was changed to DONE on archiving.
 
@@ -274,8 +319,11 @@ There's no restore-from-archive UI yet — moving something back means opening t
 -----
 
 ** The plain-text editor
+:PROPERTIES:
+:CUSTOM_ID: the-plain-text-editor
+:END:
 
-Tap *View → Text* to switch the entire outline view for one full-width textarea containing the whole document as raw org text — everything, including ~#+STARTUP:~, ~#+TODO:~, a [[*Local Variables][Local Variables]] block, and any syntax the structured view still doesn't have dedicated UI for (editing block content, changing the ~#+TODO:~ sequence itself). Tap *View → Org* to switch back; the text is reparsed from scratch at that point, so any changes — including to ~#+STARTUP~/~#+TODO~\/Local Variables — take effect immediately.
+Tap *View → Text* to switch the entire outline view for one full-width textarea containing the whole document as raw org text — everything, including ~#+STARTUP:~, ~#+TODO:~, a [[#local-variables][Local Variables]] block, and any syntax the structured view still doesn't have dedicated UI for (editing block content, changing the ~#+TODO:~ sequence itself). Tap *View → Org* to switch back; the text is reparsed from scratch at that point, so any changes — including to ~#+STARTUP~/~#+TODO~\/Local Variables — take effect immediately.
 
 *Switching in lands near wherever you last navigated to*, not always the top of the file — tap a search result or an internal link, then switch to Text, and the cursor and scroll position land at that same heading's line rather than losing the context you just found. This only tracks explicit "jump to X" navigation (search, internal links, agenda items), not manual scrolling within the outline; scroll around on your own and switch to Text, and it opens at the top as before. The scroll position itself is an approximation (proportional to the target line's position in the file), not a pixel-exact one — a wrapped line's real rendered height varies with content, so "near the same line" is the actual guarantee here, not perfect alignment.
 
@@ -284,6 +332,9 @@ This is the escape hatch for everything the tap-driven UI doesn't cover yet.
 -----
 
 ** Agenda
+:PROPERTIES:
+:CUSTOM_ID: agenda
+:END:
 
 Tap *View → Agenda* for a list of everything with a date attached, grouped into Day, Week, or Month views. *‹*/*›* step the view backward or forward by whatever unit is currently active — a day, a week, or a month — and *Today* jumps back to the current date. Tapping an item switches back to the Org view and scrolls straight to it.
 
@@ -294,7 +345,7 @@ Four kinds of dated entry show up, and *they behave differently from each other 
 - ~SCHEDULED:~ — when you intend to do something. Shows on its date, and if the heading isn't marked done, *keeps reappearing on every day after that* (as overdue) right up through today, until you mark it done. This is what makes "I meant to do this last week and never did" actually visible instead of quietly vanishing off the agenda the day after its original date. The overdue count shows directly on the item ("3 days overdue").
 - ~DEADLINE:~ — same carry-forward behavior as SCHEDULED once the date passes with the heading still not done. It also supports a *delay/warning-period* suffix (real org syntax: ~DEADLINE: <2026-01-10 Sat -3d>~), which makes it start appearing /before/ its date too — 3 days early in that example, showing "due in 3 days," counting down each day until it either gets marked done or becomes overdue (at which point it switches to counting up instead). Without a delay, a DEADLINE only ever shows on its date or after — real org's own default.
 - *A plain, active timestamp written directly in a heading's title* — the standard org convention for tracking something like a recurring birthday right on its own heading line (~**** Jane Doe <2000-01-01 Sat +1y>~), a genuinely separate source from SCHEDULED/DEADLINE, not a fallback for it. This one does *not* carry forward, ever, regardless of done status — matching real org's own distinction ("if you didn't go to your doctor's appointment yesterday, that doesn't mean you still have one today"). Only counted when the heading has no SCHEDULED/DEADLINE of its own (to avoid a confusing double entry), and only /active/ ~<...>~ timestamps count — an inactive ~[...]~ one is excluded, same reasoning: a dated record, not a reminder. This only looks at the title, not body text, to avoid pulling in unrelated dates mentioned in ordinary prose elsewhere in a journal-heavy file.
-- ~org-contacts-anniversaries~ — real org-contacts' own mechanism for recurring yearly events (birthdays, anniversaries), read directly from a heading's own property rather than a separate, duplicated line of text — one source of truth for a date you might also want recorded as a property for other reasons (vCard export, contact lookup). A contact heading gets a property (default key ~BIRTHDAY~, matching real org-contacts' own default exactly — configurable via [[*Local Variables][Local Variables]]) formatted ~YYYY-MM-DD Description~:
+- ~org-contacts-anniversaries~ — real org-contacts' own mechanism for recurring yearly events (birthdays, anniversaries), read directly from a heading's own property rather than a separate, duplicated line of text — one source of truth for a date you might also want recorded as a property for other reasons (vCard export, contact lookup). A contact heading gets a property (default key ~BIRTHDAY~, matching real org-contacts' own default exactly — configurable via [[#local-variables][Local Variables]]) formatted ~YYYY-MM-DD Description~:
 
 #+BEGIN_SRC org
   * John Doe
@@ -317,8 +368,8 @@ Other behavior:
 - *Completed items are excluded* — using the file's own ~#+TODO:~ sequence (whatever keywords you've actually defined as "done"), not a hardcoded check for the literal word ~DONE~.
 - *Repeating timestamps expand properly*, for SCHEDULED/DEADLINE/title-timestamp (the first three sources above — ~org-contacts-anniversaries~ recurs by its own inherent yearly mechanism instead, described above, not this repeater syntax). ~<2000-01-01 Sat +1y>~ shows up every year on the anniversary within whatever range is currently displayed, not just its one literal stored date — switch to Month view and it correctly shows up in whichever month it falls in. Carry-forward, delay, and repetition don't combine — a /repeating/ SCHEDULED/DEADLINE shows on its own repeat dates only, with no additional carry-forward or early-warning between them (org's actual interaction between a repeater and completion history is more involved than a read-only agenda needs to model).
 - Archived headings are excluded, same as everywhere else in the app.
-- *Commented headings are excluded too* — a heading whose title starts with ~# ~ (or is just ~#~), real org's own comment-line convention applied to a heading title (e.g. ~** # draft, not ready yet~). Both this and archived-heading exclusion are configurable via [[*Local Variables][Local Variables]] (~org-agenda-skip-comment-trees~ / ~org-agenda-skip-archived-trees~), matching real org's own two separate settings for this.
-- *Week view's start day is configurable* via ~org-agenda-start-on-weekday~ in a [[*Local Variables][Local Variables]] block — Monday by default, matching real org.
+- *Commented headings are excluded too* — a heading whose title starts with ~# ~ (or is just ~#~), real org's own comment-line convention applied to a heading title (e.g. ~** # draft, not ready yet~). Both this and archived-heading exclusion are configurable via [[#local-variables][Local Variables]] (~org-agenda-skip-comment-trees~ / ~org-agenda-skip-archived-trees~), matching real org's own two separate settings for this.
+- *Week view's start day is configurable* via ~org-agenda-start-on-weekday~ in a [[#local-variables][Local Variables]] block — Monday by default, matching real org.
 
 One thing worth knowing if a title timestamp isn't showing the way you expect: *a trailing tag needs a space before it to actually parse as a tag* (~<2000-01-01 Sat +1y> :BDAY:~, not ~+1y>:BDAY:~) — this matches real Emacs org-mode's own heading-parsing rules, not a gap specific to this app. Without the space, the tag stays as literal title text instead of becoming a real, filterable tag — but the /timestamp itself/ is still found and still shows up in the agenda either way, since that scan doesn't care about tag formatting.
 
@@ -329,14 +380,20 @@ Configured files are fetched once per session and cached, not refetched on every
 -----
 
 ** The TODO view
+:PROPERTIES:
+:CUSTOM_ID: the-todo-view
+:END:
 
 Tap *View → TODO* for every active TODO-state heading in the file, *completely independent of any date* — matching real org-mode's own global TODO list (~C-c a t~, distinct from ~C-c a a~, the calendar-style agenda). A TODO with no SCHEDULED, DEADLINE, or timestamp attached never shows up in Agenda at all — by design, not by omission — so this is where it lives instead.
 
-It's a flat list, in document order, each item showing its TODO keyword and title, tap to jump straight to it in the outline. Same exclusions as Agenda: completed items (via the file's own ~#+TODO:~ sequence), archived headings, and commented headings, using the same [[*Local Variables][Local Variables]] overrides where relevant.
+It's a flat list, in document order, each item showing its TODO keyword and title, tap to jump straight to it in the outline. Same exclusions as Agenda: completed items (via the file's own ~#+TODO:~ sequence), archived headings, and commented headings, using the same [[#local-variables][Local Variables]] overrides where relevant.
 
 -----
 
 ** Capture Templates
+:PROPERTIES:
+:CUSTOM_ID: capture-templates
+:END:
 
 Tap *More → Capture* (the ⋮ button next to the filename) for real org-mode's own ~org-capture-templates~ system, for quickly filing a note, task, or table row into a specific spot in the outline without navigating there by hand. Templates show two per row (their description only — the ~key~ is just an internal identifier, not shown); tap one, and if it has any ~%^{Prompt}~ or ~%?~ fields, an in-app form appears asking for each — filled in and submitted together, not one native dialog after another — with a *live preview* above the fields showing the actual expanded result as you type, so a template like ~%<%H:%M> - %?~ visibly reads "22:07 - " with your cursor right after it, not a bare, context-free text box. *The form closes after a successful capture, returning to the template list — and the capture panel itself stays open there*, rather than closing outright: tap straight into the next template (the same one again, for repeated entries like journal lines or tracking rows, or a different one entirely) without navigating back through More → Capture each time. If a capture fails partway — a network error, a sync conflict on the target file — the form stays exactly as you left it instead, everything you'd typed still there rather than being silently discarded; fix whatever went wrong (or copy the text out to save some other way) and tap Capture again from that same form.
 
@@ -401,11 +458,14 @@ Four example templates are the default, so this works immediately with no setup:
 -----
 
 ** File management
+:PROPERTIES:
+:CUSTOM_ID: file-management
+:END:
 
 *File menu*: New, Open, Save, Save As.
 
 - *New* and *Open* ask which backend to use (Local/Import, GitHub, or WebDAV).
-- *Opening from GitHub or WebDAV browses a real folder/file listing* — no more needing to already know the exact path from some other source. Folders (📁) are tappable to navigate into; among files, ~.org~ files (📄) and ~_archive~ files (🗄️, real org's own archive-file naming convention — see [[*Archiving][Archiving]]) are shown, other files in the same folder are filtered out rather than cluttering the list. An *↑ Up* button appears once you're below the root. GitHub uses its Contents API (the same one reads/writes already used); WebDAV uses the standard ~PROPFIND~ method, which most servers (Nextcloud, ownCloud, Apache ~mod_dav~) support out of the box. If listing ever fails — a server that doesn't support ~PROPFIND~ well, a token without list permission on a specific folder — *"Type a path instead…"* is always available as a fallback, the same manual entry this replaced as the default path.
+- *Opening from GitHub or WebDAV browses a real folder/file listing* — no more needing to already know the exact path from some other source. Folders (📁) are tappable to navigate into; among files, ~.org~ files (📄) and ~_archive~ files (🗄️, real org's own archive-file naming convention — see [[#archiving][Archiving]]) are shown, other files in the same folder are filtered out rather than cluttering the list. An *↑ Up* button appears once you're below the root. GitHub uses its Contents API (the same one reads/writes already used); WebDAV uses the standard ~PROPFIND~ method, which most servers (Nextcloud, ownCloud, Apache ~mod_dav~) support out of the box. If listing ever fails — a server that doesn't support ~PROPFIND~ well, a token without list permission on a specific folder — *"Type a path instead…"* is always available as a fallback, the same manual entry this replaced as the default path.
 - *Save* always writes back to whichever backend the current file came from — you don't get asked again.
 - *Save As* lets you pick a new destination, possibly on a different backend than the one you opened from.
 - If a file has local edits that were never saved when you try to open it again, you're asked whether to *resume* those edits or *discard* them and load the current version — either choice actually opens the file; there's no dead-end confirmation.
@@ -414,6 +474,9 @@ Four example templates are the default, so this works immediately with no setup:
 -----
 
 ** Export
+:PROPERTIES:
+:CUSTOM_ID: export
+:END:
 
 *File → Export…* gets a document out of org-pwa as Markdown or HTML, for the whole file or just one heading's subtree. Both walk the same parsed structure the app already renders from, not a text-level reparse.
 
@@ -423,19 +486,25 @@ Four example templates are the default, so this works immediately with no setup:
 
 *HTML* is a complete, standalone document — open it directly, no other files needed. TODO keywords and priority get small styled badges (a done-state keyword like ~DONE~ or a custom one like ~KILL~, correctly read from the file's own ~#+TODO:~ line, renders in green rather than red). Checkboxes are real disabled ~<input type="checkbox">~ elements. *This is also the path to PDF*: the exported HTML includes print-aware CSS (headings and tables don't split awkwardly across a page break), so opening it and using the browser's own Print → Save as PDF produces a properly paginated PDF with no separate export path needed — a browser's print engine handles pagination far better than a hand-rolled PDF generator would, and needs no new dependency to get there.
 
-*What's dropped on export, deliberately*: property drawers (an implementation detail, not reader-facing content) and the ~ARCHIVE_*~ properties specifically, even if present — their meaning is entirely internal to this app's own archiving feature (see [[*Archiving][Archiving]]). SCHEDULED/DEADLINE render as a small italicized line under the heading instead. Internal links (~[[*Some Heading]]~, ~[[#custom-id]]~) are *not* resolved to anchors in the output — the target renderer's own heading-slug algorithm can't be predicted from here, so guessing at an anchor that might not actually match would be worse than keeping the raw org target as the link's href verbatim.
+*What's dropped on export, deliberately*: property drawers (an implementation detail, not reader-facing content) and the ~ARCHIVE_*~ properties specifically, even if present — their meaning is entirely internal to this app's own archiving feature (see [[#archiving][Archiving]]). SCHEDULED/DEADLINE render as a small italicized line under the heading instead. Internal links (~[[*Some Heading]]~, ~[[#custom-id]]~) are *not* resolved to anchors in the output — the target renderer's own heading-slug algorithm can't be predicted from here, so guessing at an anchor that might not actually match would be worse than keeping the raw org target as the link's href verbatim.
 
 -----
 
 ** Docs
+:PROPERTIES:
+:CUSTOM_ID: docs
+:END:
 
 Tap *More → ?* to read this very file inside the app — same "replaces the outline" treatment as Settings, not a popup. It's fetched once per session and cached in memory, so re-opening it doesn't re-fetch; it's also cached by the service worker, so it's available offline the same as everything else here.
 
-This documentation *is* an org file (~README.org~), rendered by this app's own org parser and outline renderer — the same engine every other file goes through, not a separate parser built just for docs. Folding works exactly like the main outline (tap a chevron to collapse/expand a section), and the table of contents' internal links are real org links (~[[*Section Name]]~) that jump straight to the target section, auto-expanding it if it was folded. **Read-only, deliberately**: nothing here is editable — no tap-to-edit, no action menus — and viewing it never touches whatever file you actually have open elsewhere in the app; switching back and forth loses no state and prompts for nothing. External links (anything not starting with ~[[*~) open in a real new tab.
+This documentation *is* an org file (~README.org~), rendered by this app's own org parser and outline renderer — the same engine every other file goes through, not a separate parser built just for docs. Folding works exactly like the main outline (tap a chevron to collapse/expand a section), and the table of contents' internal links use ~[[#custom-id][text]]~ specifically, not the ~[[*Heading][text]]~ style — GitHub's own org rendering (the ~org-ruby~ gem) has a confirmed, longstanding bug resolving that style into a working in-page anchor; ~#custom-id~ links work correctly there. **Read-only, deliberately**: nothing here is editable — no tap-to-edit, no action menus — and viewing it never touches whatever file you actually have open elsewhere in the app; switching back and forth loses no state and prompts for nothing. External links (anything not starting with ~[[#~) open in a real new tab.
 
 -----
 
 ** Settings
+:PROPERTIES:
+:CUSTOM_ID: settings
+:END:
 
 Reached via the ⚙ button, which replaces the outline with the settings screen — same as switching to Text or Agenda view, not a popup over the outline. Tap ⚙ again, or any of File/More/View, to leave settings and return to whatever was showing before (there's no separate "Done" button; those are already the way out).
 
@@ -447,14 +516,20 @@ Reached via the ⚙ button, which replaces the outline with the settings screen 
 -----
 
 ** Offline behavior and sync
+:PROPERTIES:
+:CUSTOM_ID: offline-behavior-and-sync
+:END:
 
 Every edit applies to an in-memory copy and is cached to IndexedDB in the background immediately — the UI never waits on a write to feel responsive, and nothing is lost by closing the tab before hitting Save. Writing back to disk/GitHub/WebDAV only happens on an explicit Save. Local File System Access reads are unaffected by network connectivity (it's not a network call); GitHub and WebDAV obviously do need a connection.
 
-*Every GitHub and WebDAV read explicitly bypasses the browser's own HTTP cache* (~cache: 'no-store'~ on the request). Without it, updating the same file twice in quick succession — the exact shape of repeated capture, especially the "multiple entries" loop-back in [[*Capture Templates][Capture Templates]] — could read back a browser-cached, already-stale version of the file on the second attempt, sending a write with an out-of-date GitHub ~sha~, which GitHub then correctly refuses as a conflict even though nothing had actually changed except this app's own previous write moments earlier.
+*Every GitHub and WebDAV read explicitly bypasses the browser's own HTTP cache* (~cache: 'no-store'~ on the request). Without it, updating the same file twice in quick succession — the exact shape of repeated capture, especially the "multiple entries" loop-back in [[#capture-templates][Capture Templates]] — could read back a browser-cached, already-stale version of the file on the second attempt, sending a write with an out-of-date GitHub ~sha~, which GitHub then correctly refuses as a conflict even though nothing had actually changed except this app's own previous write moments earlier.
 
 -----
 
 ** Platform support
+:PROPERTIES:
+:CUSTOM_ID: platform-support
+:END:
 
 Local file access (the "Local" option, with a live, writable handle) requires the File System Access API — Chrome and Edge, desktop or Android. *No browser on iOS supports this*, because Apple requires every iOS browser to use WebKit, which has never implemented it — that's not fixable by switching browsers on that platform.
 
@@ -469,6 +544,9 @@ On unsupported platforms, *Import* replaces "Local": pick a file once via the na
 -----
 
 ** Keybindings
+:PROPERTIES:
+:CUSTOM_ID: keybindings
+:END:
 
 A practical subset for a keyboard/mouse device — genuinely inert on a phone or tablet (nothing to press these on), except a Bluetooth keyboard paired to a tablet, which they work correctly for too, same code path either way.
 
@@ -489,17 +567,20 @@ A practical subset for a keyboard/mouse device — genuinely inert on a phone or
 | ~/~ | Focus the search box | Common web convention, not org-specific |
 | ~Escape~ | Clear keyboard focus | Not an org concept — a web convention |
 
-Keyboard focus is a separate concept from tapping a heading open — a thin highlight around the focused row, moved with ~↓~/~↑~/~j~/~k~, that the rest of the table's shortcuts act on. It starts unset; the first arrow/~j~/~k~ press picks the first (or last) visible heading, and every shortcut after that requiring "the focused heading" simply does nothing until one exists. ~Tab~ here follows the same archived-heading rule as the swipe gesture (see [[*Local Variables][Local Variables]]), not the chevron's force-open behavior — there's no keyboard equivalent to tapping the chevron specifically. None of this ever fires while actually typing in a text field — every shortcut above is disabled the moment any input or textarea has focus, and Ctrl/Cmd-held combinations are never treated as one of these shortcuts either, so the browser's own copy/paste/find/new-tab bindings are never at risk of a silent double-action.
+Keyboard focus is a separate concept from tapping a heading open — a thin highlight around the focused row, moved with ~↓~/~↑~/~j~/~k~, that the rest of the table's shortcuts act on. It starts unset; the first arrow/~j~/~k~ press picks the first (or last) visible heading, and every shortcut after that requiring "the focused heading" simply does nothing until one exists. ~Tab~ here follows the same archived-heading rule as the swipe gesture (see [[#local-variables][Local Variables]]), not the chevron's force-open behavior — there's no keyboard equivalent to tapping the chevron specifically. None of this ever fires while actually typing in a text field — every shortcut above is disabled the moment any input or textarea has focus, and Ctrl/Cmd-held combinations are never treated as one of these shortcuts either, so the browser's own copy/paste/find/new-tab bindings are never at risk of a silent double-action.
 
 -----
 
 ** Differences from Emacs org-mode
+:PROPERTIES:
+:CUSTOM_ID: differences-from-emacs-org-mode
+:END:
 
 This is the section to read if you know org-mode well and want to know exactly where org-pwa is a subset, a simplification, or just plain different.
 
 *Interaction model*
 
-- Touch-first, primarily: tap-to-reveal actions and gestures (swipe-left to cycle fold) are the primary interaction model, not a keyboard-driven one. A practical subset of keyboard shortcuts exists for non-touch devices (see [[*Keybindings][Keybindings]]) — but there's still no command equivalent to ~M-x~, no modal editing, and nothing close to Emacs's own keyboard-first depth.
+- Touch-first, primarily: tap-to-reveal actions and gestures (swipe-left to cycle fold) are the primary interaction model, not a keyboard-driven one. A practical subset of keyboard shortcuts exists for non-touch devices (see [[#keybindings][Keybindings]]) — but there's still no command equivalent to ~M-x~, no modal editing, and nothing close to Emacs's own keyboard-first depth.
 
 *Folding*
 
@@ -507,7 +588,7 @@ This is the section to read if you know org-mode well and want to know exactly w
 
 *Priority*
 
-- Priority cookies (~[#A]~) have dedicated UI in the general editor (A/B/C/None buttons — see [[*Editing your outline][Editing your outline]]), not just parsed-and-preserved on round-trip. Editing a heading's title directly through the outline UI still treats the whole string as literal title text rather than re-parsing it for a priority cookie — set priority through the dedicated buttons, not by typing ~[#A]~ into the title field.
+- Priority cookies (~[#A]~) have dedicated UI in the general editor (A/B/C/None buttons — see [[#editing-your-outline][Editing your outline]]), not just parsed-and-preserved on round-trip. Editing a heading's title directly through the outline UI still treats the whole string as literal title text rather than re-parsing it for a priority cookie — set priority through the dedicated buttons, not by typing ~[#A]~ into the title field.
 
 *Tags*
 
@@ -515,15 +596,15 @@ This is the section to read if you know org-mode well and want to know exactly w
 
 *Properties*
 
-- Property drawers have dedicated UI too — individual key/value rows in the general editor, each with its own add/remove, not a full-replace text block. Not real org-mode-style value completion, and no special handling or validation for the properties org itself treats specially (~CUSTOM_ID~ still has its own separate, simpler action; things like ~ARCHIVE_*~ properties round-trip fine and are surfaced with real meaning for archiving/restoring — see [[*Archiving][Archiving]] — but nothing else treats them specially).
+- Property drawers have dedicated UI too — individual key/value rows in the general editor, each with its own add/remove, not a full-replace text block. Not real org-mode-style value completion, and no special handling or validation for the properties org itself treats specially (~CUSTOM_ID~ still has its own separate, simpler action; things like ~ARCHIVE_*~ properties round-trip fine and are surfaced with real meaning for archiving/restoring — see [[#archiving][Archiving]] — but nothing else treats them specially).
 
 *Inheritance*
 
-- Tags and properties both support ancestor inheritance for search/filter purposes, matching real org's own actual defaults exactly (confirmed against org's own manual): tag inheritance is *on* by default (~org-use-tag-inheritance~) — a ~+tag~/~-tag~ search filter matches a heading whose tag comes from an ancestor, not just its own, the same as real org's ~if a heading has a certain tag, all subheadings inherit the tag as well~. Property inheritance is *off* by default (~org-use-property-inheritance~) — a ~key:value~ filter only looks at a heading's own properties unless turned on, since real org itself doesn't enable this by default either ("it can slow down property searches and is often not needed"). Both are simple ~t~/~nil~ booleans here rather than real org's fuller list-of-tags/regexp value space for either variable — a stated simplification covering the common on/off case. Inheritance is a search-time concept only, matching real org's own UX — it doesn't change what's /displayed/ on a heading (no inherited tag badges shown inline), only what a filter search matches against. See [[*Local Variables][Local Variables]].
+- Tags and properties both support ancestor inheritance for search/filter purposes, matching real org's own actual defaults exactly (confirmed against org's own manual): tag inheritance is *on* by default (~org-use-tag-inheritance~) — a ~+tag~/~-tag~ search filter matches a heading whose tag comes from an ancestor, not just its own, the same as real org's ~if a heading has a certain tag, all subheadings inherit the tag as well~. Property inheritance is *off* by default (~org-use-property-inheritance~) — a ~key:value~ filter only looks at a heading's own properties unless turned on, since real org itself doesn't enable this by default either ("it can slow down property searches and is often not needed"). Both are simple ~t~/~nil~ booleans here rather than real org's fuller list-of-tags/regexp value space for either variable — a stated simplification covering the common on/off case. Inheritance is a search-time concept only, matching real org's own UX — it doesn't change what's /displayed/ on a heading (no inherited tag badges shown inline), only what a filter search matches against. See [[#local-variables][Local Variables]].
 
 *Archiving*
 
-- The ~org-archive-subtree~ move, confirmation dialog, and full restore/unarchive are all built now — see [[*Archiving][Archiving]] for the complete behavior. What's different from real Emacs: no ~org-refile~-style interactive "pick from a list of candidate headings" restore flow — restoring means opening the archive file itself and tapping the archived heading's own Unarchive button, not choosing a destination from an arbitrary refile-targets list. ~org-archive-location~'s multi-level outline-path targets (~* A/** B~) aren't supported, only a single heading level, though every example in org's own documentation for that variable is one level anyway.
+- The ~org-archive-subtree~ move, confirmation dialog, and full restore/unarchive are all built now — see [[#archiving][Archiving]] for the complete behavior. What's different from real Emacs: no ~org-refile~-style interactive "pick from a list of candidate headings" restore flow — restoring means opening the archive file itself and tapping the archived heading's own Unarchive button, not choosing a destination from an arbitrary refile-targets list. ~org-archive-location~'s multi-level outline-path targets (~* A/** B~) aren't supported, only a single heading level, though every example in org's own documentation for that variable is one level anyway.
 
 *Checkbox progress cookies*
 
@@ -535,38 +616,44 @@ This is the section to read if you know org-mode well and want to know exactly w
 
 *Agenda*
 
-- Day/Week/Month views, repeating-timestamp expansion, completed-item exclusion, SCHEDULED/DEADLINE carry-forward with a visible overdue count, the delay/warning-period suffix making a deadline show up early, and multi-file aggregation via ~org-agenda-files~ are all built now (see [[*Agenda][Agenda]]). What's still different from real org: the three repeater marks (~+~, ~++~, ~.+~) all expand identically here, since this is a read-only display with no notion of "when was this marked done" driving a catch-up/restart calculation; there's no support for org's diary-sexp entries (~%%(diary-...)~), other than ~org-contacts-anniversaries~; and ~org-agenda-files~ only supports GitHub/WebDAV entries, not a local file, for the same picker-permission reason stated throughout this document (see [[*Agenda][Agenda]] for the details).
+- Day/Week/Month views, repeating-timestamp expansion, completed-item exclusion, SCHEDULED/DEADLINE carry-forward with a visible overdue count, the delay/warning-period suffix making a deadline show up early, and multi-file aggregation via ~org-agenda-files~ are all built now (see [[#agenda][Agenda]]). What's still different from real org: the three repeater marks (~+~, ~++~, ~.+~) all expand identically here, since this is a read-only display with no notion of "when was this marked done" driving a catch-up/restart calculation; there's no support for org's diary-sexp entries (~%%(diary-...)~), other than ~org-contacts-anniversaries~; and ~org-agenda-files~ only supports GitHub/WebDAV entries, not a local file, for the same picker-permission reason stated throughout this document (see [[#agenda][Agenda]] for the details).
 
 *No babel, no command palette.* These were scoped early on as possible future work and never built.
 
-*Undo/redo* covers every edit now (see [[*Undo/redo and History][Undo/redo and History]]) — snapshot-based (one step per completed edit action, not per keystroke), not persisted across a reopen, by explicit design choice. What's different from real Emacs: no per-buffer undo tied to Emacs's own undo-tree machinery, and no attempt to preserve fold state across an undo/redo jump (it reapplies the file's own ~#+STARTUP~ visibility fresh each time instead, same as reopening the file does). Headings /can/ be reordered now (see above) — but only via the dedicated Move/Promote/Demote actions, not by dragging.
+*Undo/redo* covers every edit now (see [[#undoredo-and-history][Undo/redo and History]]) — snapshot-based (one step per completed edit action, not per keystroke), not persisted across a reopen, by explicit design choice. What's different from real Emacs: no per-buffer undo tied to Emacs's own undo-tree machinery, and no attempt to preserve fold state across an undo/redo jump (it reapplies the file's own ~#+STARTUP~ visibility fresh each time instead, same as reopening the file does). Headings /can/ be reordered now (see above) — but only via the dedicated Move/Promote/Demote actions, not by dragging.
 
-*Search* looks at the whole document (see [[*Searching][Searching]]), with an optional regex mode, but no search-and-replace and no filtering the outline view down to just the matches (it's a separate results list, not a live-filtered tree).
+*Search* looks at the whole document (see [[#searching][Searching]]), with an optional regex mode, but no search-and-replace and no filtering the outline view down to just the matches (it's a separate results list, not a live-filtered tree).
 
-*Export* (see [[*Export][Export]] for the full behavior) covers Markdown and HTML — the whole file or a single heading's subtree — with PDF available via the browser's own print dialog on the exported HTML rather than a separate hand-rolled PDF path. What's different from real org's own export backends: no LaTeX/ODT/other formats, and internal links aren't resolved to anchors in the output (the raw org target is kept as the link's href verbatim, rather than guessing at a heading-slug algorithm the eventual renderer might not actually match).
+*Export* (see [[#export][Export]] for the full behavior) covers Markdown and HTML — the whole file or a single heading's subtree — with PDF available via the browser's own print dialog on the exported HTML rather than a separate hand-rolled PDF path. What's different from real org's own export backends: no LaTeX/ODT/other formats, and internal links aren't resolved to anchors in the output (the raw org target is kept as the link's href verbatim, rather than guessing at a heading-slug algorithm the eventual renderer might not actually match).
 
-*Single document at a time.* Opening a different document — via a ~file:~/~github:~/~webdav:~ link, or File → Open — always replaces what's currently showing; there's no true simultaneous multi-document editing (several documents open/dirty/rendered at once, tab-bar style). ~org-agenda-files~ (see [[*Agenda][Agenda]]) and capture-to-file (see [[*Capture Templates][Capture Templates]]) both work across multiple files without this limitation applying to them at all, since neither needs its target file to become the active one.
+*Single document at a time.* Opening a different document — via a ~file:~/~github:~/~webdav:~ link, or File → Open — always replaces what's currently showing; there's no true simultaneous multi-document editing (several documents open/dirty/rendered at once, tab-bar style). ~org-agenda-files~ (see [[#agenda][Agenda]]) and capture-to-file (see [[#capture-templates][Capture Templates]]) both work across multiple files without this limitation applying to them at all, since neither needs its target file to become the active one.
 
 *Conflict resolution* is a plain confirm dialog (keep mine / keep the other version), not a diff or three-way merge view.
 
 -----
 
 ** Known limitations / not built yet
+:PROPERTIES:
+:CUSTOM_ID: known-limitations--not-built-yet
+:END:
 
 Restated in one place for scanning:
 
-- No LaTeX/ODT/other export formats beyond Markdown and HTML (PDF is covered via the browser's own print dialog on the exported HTML, see [[*Export][Export]]); internal links aren't resolved to anchors in exported output
+- No LaTeX/ODT/other export formats beyond Markdown and HTML (PDF is covered via the browser's own print dialog on the exported HTML, see [[#export][Export]]); internal links aren't resolved to anchors in exported output
 - Search regex mode is JavaScript RegExp, not Emacs regex syntax — no search-and-replace, no filtered tree view
 - ~:COOKIE_DATA:~ overrides for checkbox counting scope aren't read — counting is always hierarchical
 - No table formula evaluation
-- No drag-to-reorder (button-based Move/Promote/Demote actions exist instead — see [[*Editing your outline][Editing your outline]])
-- No dedicated "browse your recently-opened documents" switcher UI — switching between documents happens by tapping a ~file:~/~github:~/~webdav:~ link or File → Open, not a tab bar or history list; and no true simultaneous multi-document editing (see [[*Differences from Emacs org-mode][Differences from Emacs org-mode]] for the full explanation)
+- No drag-to-reorder (button-based Move/Promote/Demote actions exist instead — see [[#editing-your-outline][Editing your outline]])
+- No dedicated "browse your recently-opened documents" switcher UI — switching between documents happens by tapping a ~file:~/~github:~/~webdav:~ link or File → Open, not a tab bar or history list; and no true simultaneous multi-document editing (see [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]] for the full explanation)
 - Agenda doesn't distinguish the three repeater marks (~+~/~++~/~.+~), and has no diary-sexp support other than ~org-contacts-anniversaries~
 - Local/relative images resolve and render on GitHub/WebDAV; on local files (File System Access) and iOS import, still a placeholder (same picker-permission limitation as archiving/capture-to-file)
 - Conflict resolution has no diff/merge view
-- No File System Access support on iOS (by platform limitation, not a bug — see [[*Platform support][Platform support]])
+- No File System Access support on iOS (by platform limitation, not a bug — see [[#platform-support][Platform support]])
 
 ** Development
+:PROPERTIES:
+:CUSTOM_ID: development
+:END:
 
 Pure static site — ~index.html~ + ES modules, no build step. Serve any way you like (including directly from the filesystem via ~python3 -m http.server~, or GitHub Pages).
 
@@ -576,4 +663,4 @@ Engine code (~src/~) and browser-specific adapters (~src-browser/~) are unit tes
 node --test
 #+END_SRC
 
-862 tests as of this writing, covering the parser (including a real, general bug this work caught: a line starting with ~*~ inside a ~#+BEGIN_...~/~#+END_...~ block was being incorrectly split off as an actual heading, with zero awareness of block context -- this affected any file with such a block, not just this documentation), every editing operation, fold/visibility logic (including the ~showall~/~showeverything~ distinction — confirmed against real org-mode's actual documented behavior: properties and block content stay folded in ~showall~, revealed only in ~showeverything~ — and a real bug this caught: ~isFullyExpanded~ never checked ~bodyHidden~/~drawersHidden~, so a heading loaded with either still hidden was incorrectly treated as already fully expanded), checkbox-cookie recalculation, search (plain and regex modes, including an invalid-pattern error path; matching against properties/TODO keyword/priority/SCHEDULED/DEADLINE, not just prose text; and filter-token parsing and integration -- \+tag/-tag/todo:/priority:/key:value, AND-combining with each other and with free text, tag/property inheritance from ancestor headings (multi-level, an inherited tag still respecting a -tag exclusion, a heading's own property value always winning over an inherited one, and both correctly defaulting to real org's own actual defaults -- tags on, properties off), and URL/time false-positive exclusions), agenda/repeater expansion (including week/day boundary alignment, SCHEDULED/DEADLINE carry-forward with delay-based early warning, commented/archived-heading exclusion, the date-independent TODO view, and ~org-contacts-anniversaries~ — property parsing (including the nil-year and unparseable-value cases), age calculation and the "(xx)" unknown-age display, per-occurrence expansion across a multi-year range, the trigger line activating the scan regardless of its own position in the file, and full ~buildAgendaItems~ integration including a custom ~org-contacts-birthday-property~ key), correct resolution of a file with multiple ~#+TODO:~ lines, capture-template expansion and insertion (all four types, OLP target resolution, the sequential-table-mutation bug this coverage originally caught, and a serious data-loss bug where editing a just-captured item could silently overwrite unrelated pre-existing content elsewhere in the same heading), heading move/promote/demote (including whole-subtree relocation, recursive level shifts, and every natural-boundary no-op case), priority setting/clearing/validation and its round-trip through serialization, horizontal-rule detection (including that it correctly interrupts a paragraph rather than being swallowed as literal text -- a real bug this coverage caught), inline sub/superscript parsing across all three ~org-use-sub-superscripts~ modes (including disambiguation from the pre-existing ~_underline_~ marker, which shares the same ~_~ character), timestamp building/delay parsing and plain-timestamp-in-title editing for the structured SCHEDULED/DEADLINE editor, Local Variables parsing, sync/conflict handling, and all three storage adapters (mocking ~fetch~ for GitHub/WebDAV so tests never touch the network, including ~list()~ for both -- GitHub's Contents-API array response, and WebDAV's hand-rolled PROPFIND multistatus XML parser covering cross-server namespace-prefix variation, percent-encoded filenames, and a real bug this coverage caught: self-reference detection for a subdirectory listing, which only worked correctly for the root before the fix), and the Markdown/HTML export converters (every inline formatting type, lists including nested/ordered/checkbox/description-list items, tables with a real org-syntax rule row correctly excluded rather than becoming a phantom row, blocks including a COMMENT block correctly dropped entirely, subtree-scope level normalization making the selected heading the new top level, HTML escaping specifically verified to neutralize a literal ~<script>~ tag rather than passing it through as real markup, and a real bug this coverage caught in the exporter's own escaping: several ordinary punctuation characters were being needlessly backslash-escaped in Markdown output, and a ~doneKeywords~-styling bug in the HTML exporter where every TODO keyword would have rendered in the same "active" color regardless of the file's own ~#+TODO:~ sequence). ~app.js~ itself (UI wiring) isn't unit tested — it has no logic that doesn't ultimately call into the tested engine — but is checked for syntax validity as part of every change, and the capture UI flow, the More-menu restructuring, the data-loss fix, the Docs view (rendering real converted content correctly, folding and internal link navigation both working, and confirming viewing it never touches whatever file is actually open elsewhere in the app), heading reordering, the action-menu stay-open/tap-to-close behavior, properties/block-content rendering across all four ~#+STARTUP:~ modes, archive-tree cycling (the swipe gesture correctly refusing to open an archived heading whether cascading from a parent or acting on it directly, matching real org-mode's unconditional rule -- a genuine bug fixed here, since the direct case previously opened the whole subtree -- while the chevron deliberately keeps working on an archived heading either way, this app's stand-in for Emacs's own separate force-open mechanisms that a touch UI has nowhere else to put), and the ~org-contacts-anniversaries~ agenda display (default and custom birthday-property configurations both verified), and the search panel (regex toggle, filter tokens combining correctly through real input events, property-match navigation correctly revealing drawers, and the invalid-regex error path) and the GitHub/WebDAV file browser (folder navigation, .org filtering, opening a file, the "type a path instead" fallback correctly falling all the way back to the normal button row rather than getting stuck on stale state -- a real bug this testing caught and fixed, and the listing-failure error path), the general editor (structured tags/priority/properties editing alongside SCHEDULED/DEADLINE, all six fields committing together on Save or discarding together on Cancel, verified including that Cancel genuinely discards everything and not just the timestamp fields), the ~org-archive-subtree~ move (same-file archiving under a target heading, cross-file archiving via a mocked GitHub backend with the archive file created fresh and correctly stamped, and the local-filesystem permission limitation producing a clear error with nothing lost from the current file), a real bug this coverage caught where the archived clone's stamped properties were correct but the ~:ARCHIVE:~ tag itself was never actually added -- meaning the Unarchive-button detection that depends on it would silently never have worked --, the restore/unarchive feature (the dynamic Archive/Unarchive button swap, the confirmation dialog naming the actual destination and the cancel case doing nothing, ~org-archive-confirm: nil~ skipping the dialog entirely, and the full restore transaction verified end to end: opening an archive file, tapping Unarchive, and confirming the original file is written with the restored heading correctly filed under its recorded ~ARCHIVE_OLPATH~ before the archived copy is removed), the restructured 6-column action menu and centered button grids at every menu size, and the keyboard shortcuts (focus navigation, fold-cycling, TODO-cycling, move/promote/demote, all correctly disabled while typing in a field, Ctrl/Cmd combinations never triggering a shortcut), file-link navigation (a headline-target and a text-search-target link each confirmed switching documents and landing on the correct heading, including one nested two levels deep with ancestors correctly expanded), and ~org-agenda-files~ (multi-file aggregation rendering immediately with the current file's own items and updating again once a configured file's async fetch resolves, the loading/error indicator, and the current-file-also-in-the-list dedup), and the File → Export flow (format choice, scope choice, the heading picker listing every heading regardless of fold state, a real bug this testing caught where the file menu never visually closed after a successful export since ~render()~ alone never touches that separate panel, and a real filename bug this testing caught where the source file's own extension wasn't stripped before appending the new one, producing "notes.org.md" instead of "notes.md") were additionally verified via DOM-stub integration tests exercising the real button/prompt/edit/insertion/fetch/swipe-gesture/keydown paths end to end, not just the underlying engine in isolation. The undo/redo history model (~src/undo-history.js~) and its line-diff engine (~src/text-diff.js~) are both unit tested in full — the history model specifically covering that a genuinely new edit after undoing discards the redo "future" while merely browsing the history list never discards anything, the exact distinction the whole feature depends on getting right — and the full undo/redo/History-panel flow was separately verified end to end through the real app: toggling a TODO state and undoing/redoing it correctly, opening the History panel and confirming its list and labels, the diff view showing the actual change, jumping directly to an arbitrary entry rather than stepping one at a time, a genuinely new edit after an undo correctly discarding the stale redo branch (down to confirming the entry count itself, not just a label), and history correctly resetting to empty on a freshly opened document rather than carrying over from whatever was open before.
+862 tests as of this writing, covering every editing operation and real bug caught along the way in detail. See [[test/testing.org][test/testing.org]] for the full record — this file stays focused on what the app does, not how it's verified.
