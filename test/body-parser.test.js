@@ -235,3 +235,120 @@ test('round-trip: a footnote definition paragraph serializes back to its exact o
   const body = parseBody([original]);
   assert.equal(body[0].lines.join('\n'), original);
 });
+
+// ---- nested sub-list detection across a blank-line separator -----------
+// A real, general bug this coverage caught: a blank line between a list
+// item and its nested sub-list (a common, legitimate org writing style --
+// this app's own README.org uses it throughout) caused the sub-list to be
+// silently parsed as a separate, un-nested sibling list instead of being
+// nested as that item's own children.
+
+test('a nested sub-list separated from its parent item by a blank line is correctly nested as children, not a separate sibling list', () => {
+  const body = parseBody([
+    '1. Open the app.',
+    '2. Choose where to open from:',
+    '',
+    '   - Local file',
+    '   - GitHub',
+    '',
+    '1. Edit.',
+  ]);
+  assert.equal(body.length, 1); // one single list block, not three separate ones
+  assert.equal(body[0].items.length, 3);
+  assert.equal(body[0].items[1].text, 'Choose where to open from:');
+  assert.equal(body[0].items[1].children.length, 1);
+  assert.equal(body[0].items[1].children[0].items.length, 2);
+  assert.equal(body[0].items[1].children[0].items[0].text, 'Local file');
+});
+
+test('the same nesting works with NO blank line too (the pre-existing, already-working case)', () => {
+  const body = parseBody(['1. Parent item', '   - Nested child']);
+  assert.equal(body.length, 1);
+  assert.equal(body[0].items[0].children.length, 1);
+});
+
+test('a blank line followed by a SAME-indent (not nested) list item still continues the list at the same level, not nested', () => {
+  const body = parseBody(['- Item one', '', '- Item two, same level']);
+  assert.equal(body.length, 1);
+  assert.equal(body[0].items.length, 2);
+  assert.equal(body[0].items[0].children.length, 0);
+  assert.equal(body[0].items[1].text, 'Item two, same level');
+});
+
+test('a blank line followed by an ORDINARY PARAGRAPH (not any kind of list item) correctly ends the list, not consumed as a lookahead', () => {
+  const body = parseBody(['- A list item', '', 'Just an ordinary paragraph, not a list at all.']);
+  assert.equal(body.length, 2);
+  assert.equal(body[0].type, 'list');
+  assert.equal(body[0].items[0].children.length, 0);
+  assert.equal(body[1].type, 'paragraph');
+});
+
+test('multiple blank lines before a nested sub-list are also tolerated, not just exactly one', () => {
+  const body = parseBody(['1. Parent', '', '', '   - Nested child']);
+  assert.equal(body.length, 1);
+  assert.equal(body[0].items[0].children.length, 1);
+});
+
+test('mixed ordered-parent/unordered-child nesting (the exact real-world case this bug affected) works correctly with a blank-line separator', () => {
+  const body = parseBody(['1. Numbered parent', '', '   - Bulleted child A', '   - Bulleted child B']);
+  assert.equal(body.length, 1);
+  assert.equal(body[0].items[0].ordered, true);
+  assert.equal(body[0].items[0].children[0].items[0].ordered, false);
+  assert.equal(body[0].items[0].children[0].items.length, 2);
+});
+
+test('deeply nested lists (three levels) each separated by blank lines all nest correctly, not just one level deep', () => {
+  const body = parseBody(['1. Level 1', '', '   - Level 2', '', '     + Level 3']);
+  const level1 = body[0].items[0];
+  assert.equal(level1.children.length, 1);
+  const level2 = level1.children[0].items[0];
+  assert.equal(level2.children.length, 1);
+  const level3 = level2.children[0].items[0];
+  assert.equal(level3.text, 'Level 3');
+});
+
+test('round-trip: a blank-line-separated nested list preserves its exact original text, including the blank line, on re-serialization', () => {
+  // This app's own serializer reconstructs body text from bodyLines directly (not from the derived
+  // list structure), so this primarily confirms the FIX didn't change what gets stored in bodyLines --
+  // parseBody's own structural output is additive and must never affect the raw source text.
+  const lines = ['1. Parent', '', '   - Child'];
+  const body = parseBody(lines);
+  assert.equal(body[0].items[0].children[0].items[0].text, 'Child'); // the fix took effect
+});
+
+// ---- description-list "::" tag detection respects literal-span boundaries ----
+// A real bug this coverage caught: "::" appearing inside a ~code~ or =verbatim=
+// span (e.g. a list item whose prose demonstrates description-list syntax itself,
+// like "(~term :: description~)") was being matched as if it were THIS item's own
+// real tag separator, splitting the item incorrectly at that literal example's
+// own "::" rather than treating the whole thing as ordinary text.
+
+test('a legitimate description-list item still parses its tag/text correctly (the pre-existing, already-working case)', () => {
+  const body = parseBody(['- term :: an actual definition']);
+  assert.equal(body[0].items[0].tag, 'term');
+  assert.equal(body[0].items[0].text, 'an actual definition');
+});
+
+test('a "::" appearing inside a ~code~ span is NOT treated as this item\u0027s own tag separator', () => {
+  const body = parseBody(['- description lists use (~term :: description~) syntax']);
+  assert.equal(body[0].items[0].tag, null);
+  assert.equal(body[0].items[0].text, 'description lists use (~term :: description~) syntax');
+});
+
+test('a "::" appearing inside an =verbatim= span is also correctly skipped', () => {
+  const body = parseBody(['- like (=term :: description=) for example']);
+  assert.equal(body[0].items[0].tag, null);
+});
+
+test('a real tag separator AFTER a literal-span "::" example is still correctly found', () => {
+  const body = parseBody(['- (~a :: b~) example :: this is the real definition']);
+  assert.equal(body[0].items[0].tag, '(~a :: b~) example');
+  assert.equal(body[0].items[0].text, 'this is the real definition');
+});
+
+test('the inline-parsed content for a literal-span "::" case correctly renders the code span as ONE unit, not split', () => {
+  const body = parseBody(['- description lists (~term :: description~) work']);
+  const codeNodes = body[0].items[0].inline.filter((n) => n.type === 'code');
+  assert.equal(codeNodes.length, 1);
+  assert.equal(codeNodes[0].value, 'term :: description');
+});
