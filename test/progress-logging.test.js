@@ -1,112 +1,203 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decideProgressLogging } from '../src/progress-logging.js';
+import { decideProgressLogging, decideLogbookEntry, effectiveLogSpec, parseLogSpec } from '../src/progress-logging.js';
 
-const SEQ = { todoKeywords: ['TODO', 'WAIT'], doneKeywords: ['DONE', 'KILL'] };
+const SEQ = { todoKeywords: ['TODO', 'WAIT'], doneKeywords: ['DONE', 'KILL'], logSpecs: {} };
 
-function decide(from, to, logDoneSetting, keepWhenNoTodo = false) {
+function decideClosed(from, to, logDoneSetting, keepWhenNoTodo = false) {
   return decideProgressLogging(from, to, SEQ, logDoneSetting, keepWhenNoTodo);
 }
 
-// ---- 'time mode: entering DONE inserts CLOSED -----------------------
+// ==== decideProgressLogging (CLOSED planning line only) ===================
 
 test('TODO -> DONE with \u0027time inserts CLOSED', () => {
-  assert.deepEqual(decide('TODO', 'DONE', 'time'), { insertClosed: true, promptNote: false, removeClosed: false });
+  assert.deepEqual(decideClosed('TODO', 'DONE', 'time'), { insertClosed: true, removeClosed: false });
 });
 
 test('null (no keyword) -> DONE with \u0027time also inserts CLOSED', () => {
-  assert.deepEqual(decide(null, 'DONE', 'time'), { insertClosed: true, promptNote: false, removeClosed: false });
+  assert.deepEqual(decideClosed(null, 'DONE', 'time'), { insertClosed: true, removeClosed: false });
 });
 
 test('WAIT -> KILL with \u0027time inserts CLOSED (any non-done -> any done keyword counts as entering DONE)', () => {
-  assert.deepEqual(decide('WAIT', 'KILL', 'time'), { insertClosed: true, promptNote: false, removeClosed: false });
+  assert.deepEqual(decideClosed('WAIT', 'KILL', 'time'), { insertClosed: true, removeClosed: false });
 });
 
-test('entering DONE with logDoneSetting null (no #+STARTUP: logdone) does nothing at all', () => {
-  assert.deepEqual(decide('TODO', 'DONE', null), { insertClosed: false, promptNote: false, removeClosed: false });
+test('entering DONE with logDoneSetting null (no #+STARTUP: logdone) inserts nothing', () => {
+  assert.deepEqual(decideClosed('TODO', 'DONE', null), { insertClosed: false, removeClosed: false });
 });
 
-test('entering DONE with \u0027note does NOT insert CLOSED -- the two settings are mutually exclusive, not combined', () => {
-  const result = decide('TODO', 'DONE', 'note');
-  assert.equal(result.insertClosed, false);
+test('entering DONE with \u0027note does NOT insert CLOSED -- CLOSED is \u0027time-only, \u0027note is handled entirely by decideLogbookEntry instead', () => {
+  assert.equal(decideClosed('TODO', 'DONE', 'note').insertClosed, false);
 });
 
-// ---- 'note mode: entering DONE prompts for a note --------------------
-
-test('TODO -> DONE with \u0027note prompts for a note, does not insert CLOSED', () => {
-  assert.deepEqual(decide('TODO', 'DONE', 'note'), { insertClosed: false, promptNote: true, removeClosed: false });
+test('DONE -> KILL (already done, switching to a DIFFERENT done keyword) does not insert a second CLOSED', () => {
+  assert.deepEqual(decideClosed('DONE', 'KILL', 'time'), { insertClosed: false, removeClosed: false });
 });
 
-test('entering DONE with \u0027time does NOT prompt for a note', () => {
-  const result = decide('TODO', 'DONE', 'time');
-  assert.equal(result.promptNote, false);
-});
-
-// ---- already-done -> different-done: does NOT re-trigger entering-DONE logic ----
-
-test('DONE -> KILL (already done, switching to a DIFFERENT done keyword) does not insert a second CLOSED or prompt again', () => {
-  assert.deepEqual(decide('DONE', 'KILL', 'time'), { insertClosed: false, promptNote: false, removeClosed: false });
-  assert.deepEqual(decide('DONE', 'KILL', 'note'), { insertClosed: false, promptNote: false, removeClosed: false });
-});
-
-// ---- leaving DONE: CLOSED removal, unconditional regardless of current setting ----
-
-test('DONE -> TODO (cycled back to a different, non-done keyword) removes CLOSED, even with logDoneSetting null', () => {
-  assert.deepEqual(decide('DONE', 'TODO', null), { insertClosed: false, promptNote: false, removeClosed: true });
+test('DONE -> TODO removes CLOSED, even with logDoneSetting null (cleanup of a stale timestamp)', () => {
+  assert.deepEqual(decideClosed('DONE', 'TODO', null), { insertClosed: false, removeClosed: true });
 });
 
 test('DONE -> WAIT removes CLOSED regardless of org-closed-keep-when-no-todo (that setting only governs the null-target case)', () => {
-  assert.deepEqual(decide('DONE', 'WAIT', null, /* keepWhenNoTodo */ true), {
-    insertClosed: false,
-    promptNote: false,
-    removeClosed: true,
-  });
+  assert.deepEqual(decideClosed('DONE', 'WAIT', null, true), { insertClosed: false, removeClosed: true });
 });
 
-test('DONE -> null (cycled all the way to no keyword) removes CLOSED by default (org-closed-keep-when-no-todo is nil)', () => {
-  assert.deepEqual(decide('DONE', null, null, false), { insertClosed: false, promptNote: false, removeClosed: true });
+test('DONE -> null removes CLOSED by default (org-closed-keep-when-no-todo is nil)', () => {
+  assert.deepEqual(decideClosed('DONE', null, null, false), { insertClosed: false, removeClosed: true });
 });
 
 test('DONE -> null with org-closed-keep-when-no-todo = t keeps CLOSED instead of removing it', () => {
-  assert.deepEqual(decide('DONE', null, null, true), { insertClosed: false, promptNote: false, removeClosed: false });
+  assert.deepEqual(decideClosed('DONE', null, null, true), { insertClosed: false, removeClosed: false });
 });
 
-test('removeClosed fires regardless of the CURRENT logDoneSetting -- cleaning up a stale CLOSED from an earlier \u0027time session even if logging is now off', () => {
-  assert.equal(decide('DONE', 'TODO', null).removeClosed, true);
-  assert.equal(decide('DONE', 'TODO', 'note').removeClosed, true);
-  assert.equal(decide('DONE', 'TODO', 'time').removeClosed, true);
+test('removeClosed fires regardless of the CURRENT logDoneSetting', () => {
+  assert.equal(decideClosed('DONE', 'TODO', null).removeClosed, true);
+  assert.equal(decideClosed('DONE', 'TODO', 'note').removeClosed, true);
+  assert.equal(decideClosed('DONE', 'TODO', 'time').removeClosed, true);
 });
-
-// ---- no-op transitions: neither entering nor leaving DONE -------------
 
 test('TODO -> WAIT (neither state is done) does nothing at all', () => {
-  assert.deepEqual(decide('TODO', 'WAIT', 'time'), { insertClosed: false, promptNote: false, removeClosed: false });
+  assert.deepEqual(decideClosed('TODO', 'WAIT', 'time'), { insertClosed: false, removeClosed: false });
 });
 
-test('null -> TODO (starting to cycle, still not done) does nothing', () => {
-  assert.deepEqual(decide(null, 'TODO', 'time'), { insertClosed: false, promptNote: false, removeClosed: false });
+test('a heading staying in the exact same state does nothing', () => {
+  assert.deepEqual(decideClosed('DONE', 'DONE', 'time'), { insertClosed: false, removeClosed: false });
+  assert.deepEqual(decideClosed('TODO', 'TODO', 'time'), { insertClosed: false, removeClosed: false });
 });
 
-test('a heading staying in the exact same DONE state (not a real transition, but a defensive case) does nothing', () => {
-  assert.deepEqual(decide('DONE', 'DONE', 'time'), { insertClosed: false, promptNote: false, removeClosed: false });
+// ==== parseLogSpec ==========================================================
+
+test('parseLogSpec: "@" is an entering-note-only spec', () => {
+  assert.deepEqual(parseLogSpec('@'), { enterNote: true, enterTimestamp: false, leaveTimestamp: false });
 });
 
-test('a heading staying in the exact same non-done state does nothing', () => {
-  assert.deepEqual(decide('TODO', 'TODO', 'time'), { insertClosed: false, promptNote: false, removeClosed: false });
+test('parseLogSpec: "!" is an entering-timestamp-only spec', () => {
+  assert.deepEqual(parseLogSpec('!'), { enterNote: false, enterTimestamp: true, leaveTimestamp: false });
 });
 
-// ---- full round-trip scenario -------------------------------------------
+test('parseLogSpec: "@/!" is entering-note PLUS leaving-timestamp', () => {
+  assert.deepEqual(parseLogSpec('@/!'), { enterNote: true, enterTimestamp: false, leaveTimestamp: true });
+});
 
-test('full scenario: TODO -> DONE (insert) -> TODO (remove) -> DONE again (insert again)', () => {
-  let state = { todo: 'TODO' };
-  let d1 = decide(state.todo, 'DONE', 'time');
-  assert.equal(d1.insertClosed, true);
-  state.todo = 'DONE';
+test('parseLogSpec: "/!" is leaving-timestamp ONLY, no entering behavior at all', () => {
+  assert.deepEqual(parseLogSpec('/!'), { enterNote: false, enterTimestamp: false, leaveTimestamp: true });
+});
 
-  let d2 = decide(state.todo, 'TODO', 'time');
-  assert.equal(d2.removeClosed, true);
-  state.todo = 'TODO';
+test('parseLogSpec: null or an unrecognized string means no logging at all', () => {
+  assert.deepEqual(parseLogSpec(null), { enterNote: false, enterTimestamp: false, leaveTimestamp: false });
+  assert.deepEqual(parseLogSpec('garbage'), { enterNote: false, enterTimestamp: false, leaveTimestamp: false });
+});
 
-  let d3 = decide(state.todo, 'DONE', 'time');
-  assert.equal(d3.insertClosed, true);
+// ==== effectiveLogSpec ======================================================
+
+test('effectiveLogSpec: an explicit per-keyword spec is used directly', () => {
+  const seq = { doneKeywords: ['DONE'], logSpecs: { DONE: '!' } };
+  assert.equal(effectiveLogSpec('DONE', seq, null), '!');
+});
+
+test('effectiveLogSpec: an explicit spec wins even when org-log-done would otherwise apply', () => {
+  const seq = { doneKeywords: ['DONE'], logSpecs: { DONE: '@' } };
+  assert.equal(effectiveLogSpec('DONE', seq, 'time'), '@'); // not '!' from the 'time setting -- the explicit spec wins
+});
+
+test('effectiveLogSpec: org-log-done \u0027time synthesizes "!" for a done keyword with no explicit spec', () => {
+  const seq = { doneKeywords: ['DONE'], logSpecs: {} };
+  assert.equal(effectiveLogSpec('DONE', seq, 'time'), '!');
+});
+
+test('effectiveLogSpec: org-log-done \u0027note synthesizes "@" for a done keyword with no explicit spec', () => {
+  const seq = { doneKeywords: ['DONE'], logSpecs: {} };
+  assert.equal(effectiveLogSpec('DONE', seq, 'note'), '@');
+});
+
+test('effectiveLogSpec: org-log-done never applies to a non-done keyword, even with no explicit spec', () => {
+  const seq = { doneKeywords: ['DONE'], logSpecs: {} };
+  assert.equal(effectiveLogSpec('TODO', seq, 'time'), null);
+});
+
+test('effectiveLogSpec: null keyword (no TODO state at all) always has no effective spec', () => {
+  const seq = { doneKeywords: ['DONE'], logSpecs: { DONE: '!' } };
+  assert.equal(effectiveLogSpec(null, seq, 'time'), null);
+});
+
+// ==== decideLogbookEntry: the exact worked example from the original spec ====
+// #+TODO: TODO(t) WAIT(w@/!) | DONE(d!) KILL(k@)
+
+const SPEC_SEQ = { todoKeywords: ['TODO', 'WAIT'], doneKeywords: ['DONE', 'KILL'], logSpecs: { WAIT: '@/!', DONE: '!', KILL: '@' } };
+
+test('worked example: WAIT -> DONE -- DONE already logs on entry, so WAIT\u2019s own leaving-log has no OBSERVABLE extra effect (still logs once, via DONE\u2019s own entry spec)', () => {
+  const result = decideLogbookEntry('WAIT', 'DONE', SPEC_SEQ, null);
+  assert.equal(result.shouldLog, true); // DONE's own "!" still logs the transition
+  assert.equal(result.needsNote, false); // timestamp only, not a note
+});
+
+test('worked example: WAIT -> TODO -- TODO has NO logging of its own, so WAIT\u2019s own "/!" leaving-log fires', () => {
+  const result = decideLogbookEntry('WAIT', 'TODO', SPEC_SEQ, null);
+  assert.equal(result.shouldLog, true);
+  assert.equal(result.needsNote, false); // leaving-log is always timestamp-only, never a note
+});
+
+test('worked example: TODO -> WAIT -- entering WAIT triggers its own "@" (note on entry)', () => {
+  const result = decideLogbookEntry('TODO', 'WAIT', SPEC_SEQ, null);
+  assert.equal(result.shouldLog, true);
+  assert.equal(result.needsNote, true);
+});
+
+test('worked example: TODO -> DONE -- entering DONE triggers its own "!" (timestamp only)', () => {
+  const result = decideLogbookEntry('TODO', 'DONE', SPEC_SEQ, null);
+  assert.equal(result.shouldLog, true);
+  assert.equal(result.needsNote, false);
+});
+
+test('worked example: TODO -> KILL -- entering KILL triggers its own "@" (note on entry)', () => {
+  const result = decideLogbookEntry('TODO', 'KILL', SPEC_SEQ, null);
+  assert.equal(result.shouldLog, true);
+  assert.equal(result.needsNote, true);
+});
+
+// ==== decideLogbookEntry: the suppression logic is directly observable =======
+
+test('the leaving-log rule genuinely fires (not just coincidentally masked) when the target has NO entry logging at all', () => {
+  const seq = { todoKeywords: ['TODO', 'WAIT'], doneKeywords: ['DONE'], logSpecs: { WAIT: '@/!' } }; // DONE has no spec of its own
+  const result = decideLogbookEntry('WAIT', 'DONE', seq, null);
+  assert.equal(result.shouldLog, true); // fires via WAIT's own /!, since DONE doesn't log on entry
+});
+
+test('a transition between two entirely unlogged keywords never logs anything', () => {
+  const seq = { todoKeywords: ['TODO', 'NEXT'], doneKeywords: ['DONE'], logSpecs: {} };
+  assert.deepEqual(decideLogbookEntry('TODO', 'NEXT', seq, null), { shouldLog: false, needsNote: false });
+});
+
+test('the same keyword (no real transition) never logs, even if it has its own spec', () => {
+  const seq = { todoKeywords: ['TODO'], doneKeywords: ['DONE'], logSpecs: { DONE: '!' } };
+  assert.deepEqual(decideLogbookEntry('DONE', 'DONE', seq, null), { shouldLog: false, needsNote: false });
+});
+
+// ==== decideLogbookEntry: org-log-done as a synthesized fallback (unifying Layer 1's 'note) ====
+
+test('org-log-done \u0027note (no explicit per-keyword spec on any done keyword) makes entering DONE need a note, purely via the synthesized fallback', () => {
+  const seq = { todoKeywords: ['TODO'], doneKeywords: ['DONE'], logSpecs: {} };
+  const result = decideLogbookEntry('TODO', 'DONE', seq, 'note');
+  assert.equal(result.shouldLog, true);
+  assert.equal(result.needsNote, true);
+});
+
+test('org-log-done \u0027time (no explicit per-keyword spec) makes entering DONE log a bare timestamp via the same synthesized-fallback mechanism', () => {
+  const seq = { todoKeywords: ['TODO'], doneKeywords: ['DONE'], logSpecs: {} };
+  const result = decideLogbookEntry('TODO', 'DONE', seq, 'time');
+  assert.equal(result.shouldLog, true);
+  assert.equal(result.needsNote, false);
+});
+
+test('an explicit per-keyword spec on a done keyword overrides org-log-done entirely for that keyword', () => {
+  const seq = { todoKeywords: ['TODO'], doneKeywords: ['DONE'], logSpecs: { DONE: '!' } }; // explicit timestamp-only
+  const result = decideLogbookEntry('TODO', 'DONE', seq, 'note'); // org-log-done says note, but DONE's own spec wins
+  assert.equal(result.needsNote, false); // the explicit "!" wins, not the synthesized "@" from 'note
+});
+
+test('org-log-done set, but leaving a done state to a keyword with no logging: still removes nothing extra from LOGBOOK (only CLOSED\u2019s own removal, a separate mechanism, applies)', () => {
+  const seq = { todoKeywords: ['TODO'], doneKeywords: ['DONE'], logSpecs: {} };
+  const result = decideLogbookEntry('DONE', 'TODO', seq, 'time');
+  // DONE's effective spec via 'time is "!" (entry-only, no leaveTimestamp component), so leaving it logs nothing new here
+  assert.equal(result.shouldLog, false);
 });

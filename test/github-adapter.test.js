@@ -346,3 +346,43 @@ test('readBinary returns null for a 404, matching read()\u2019s own convention',
     }
   );
 });
+
+// ---- cache: 'no-store' on every GET (prevents a stale sha from a --
+// browser-cached read causing a false "conflict" on the very next write,
+// especially with repeated captures to the same file in quick succession) --
+
+test('read() passes cache: "no-store" so a fresh sha is always fetched, never a stale cached one', () => {
+  let capturedOpts = null;
+  return withMockFetch(
+    async (url, opts) => { capturedOpts = opts; return jsonResponse(200, { content: '', sha: 's' }); },
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      await adapter.read('notes.org');
+      assert.equal(capturedOpts.cache, 'no-store');
+    }
+  );
+});
+
+test('readBinary() also passes cache: "no-store"', () => {
+  let capturedOpts = null;
+  return withMockFetch(
+    async (url, opts) => { capturedOpts = opts; return jsonResponse(200, { content: '', sha: 's' }); },
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      await adapter.readBinary('photo.png');
+      assert.equal(capturedOpts.cache, 'no-store');
+    }
+  );
+});
+
+test('list() also passes cache: "no-store"', () => {
+  let capturedOpts = null;
+  return withMockFetch(
+    async (url, opts) => { capturedOpts = opts; return jsonResponse(200, []); },
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      await adapter.list('');
+      assert.equal(capturedOpts.cache, 'no-store');
+    }
+  );
+});

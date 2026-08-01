@@ -430,3 +430,34 @@ test('arrayBufferToBase64 correctly encodes arbitrary binary data', () => {
 test('arrayBufferToBase64 handles empty input', () => {
   assert.equal(arrayBufferToBase64(new ArrayBuffer(0)), '');
 });
+
+// ---- cache: 'no-store' on every GET (same reasoning as the GitHub adapter --
+// prevents a stale browser-cached read from causing a false conflict on the
+// very next write, especially with repeated captures to the same file) --
+
+test('read() passes cache: "no-store" so a fresh read is always fetched, never a stale cached one', () => {
+  let capturedOpts = null;
+  return withMockFetch(
+    async (url, opts) => { capturedOpts = opts; return textResponse(200, 'content'); },
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      await adapter.read('notes.org');
+      assert.equal(capturedOpts.cache, 'no-store');
+    }
+  );
+});
+
+test('readBinary() also passes cache: "no-store"', () => {
+  let capturedOpts = null;
+  return withMockFetch(
+    async (url, opts) => {
+      capturedOpts = opts;
+      return { status: 200, ok: true, arrayBuffer: async () => new ArrayBuffer(0), headers: { get: () => null } };
+    },
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      await adapter.readBinary('photo.png');
+      assert.equal(capturedOpts.cache, 'no-store');
+    }
+  );
+});
