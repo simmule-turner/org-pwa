@@ -114,6 +114,24 @@ function isOrderedMarker(marker) {
   return /^\d+[.)]$/.test(marker) || /^[A-Za-z][.)]$/.test(marker);
 }
 
+/** Whether position `pos` in `text` falls inside an active ~...~ or
+ *  =...= span -- an odd count of the corresponding delimiter having
+ *  appeared before this point means we're "inside" one of those spans
+ *  right now. A lightweight approximation (not a full reimplementation
+ *  of the inline parser's own border rules), but sufficient for this
+ *  specific purpose: deciding whether a "::" match is real tag-separator
+ *  syntax or just literal text living inside a code/verbatim span. */
+function isInsideLiteralSpan(text, pos) {
+  for (const delim of ['~', '=']) {
+    let count = 0;
+    for (let i = 0; i < pos; i++) {
+      if (text[i] === delim) count++;
+    }
+    if (count % 2 === 1) return true;
+  }
+  return false;
+}
+
 function parseListItemLine(line) {
   const m = LIST_ITEM_RE.exec(line);
   const [, indent, marker, checkbox, rest] = m;
@@ -127,10 +145,13 @@ function parseListItemLine(line) {
   }
 
   let tag = null;
-  const tagSplit = text.split(/\s+::\s+/);
-  if (tagSplit.length >= 2) {
-    tag = tagSplit[0];
-    text = tagSplit.slice(1).join(' :: ');
+  const TAG_SEP_RE = /\s+::\s+/g;
+  let tagMatch;
+  while ((tagMatch = TAG_SEP_RE.exec(text))) {
+    if (isInsideLiteralSpan(text, tagMatch.index)) continue; // e.g. a "~term :: description~" example within the item's own text, not a real tag separator
+    tag = text.slice(0, tagMatch.index);
+    text = text.slice(tagMatch.index + tagMatch[0].length);
+    break;
   }
   return {
     type: 'list-item',
@@ -179,8 +200,21 @@ function parseList(lines, i, baseIndent) {
     item.lineIndex = i;
     i++;
 
-    if (i < lines.length && isListItemLine(lines[i]) && indentOf(lines[i]) > indent) {
-      const [nested, nextI] = parseList(lines, i, indentOf(lines[i]));
+    // Look ahead for a more-indented nested sub-list, skipping over any
+    // blank line(s) first -- org's own convention commonly separates a
+    // list item from its nested sub-list with a blank line for
+    // readability (this is not an edge case; it's how many real org
+    // files, including this app's own README, are actually written),
+    // and without this the sub-list was silently parsed as a separate,
+    // un-nested sibling list instead -- same marker or not. i is only
+    // advanced past the blank line(s) when a nested sub-list is
+    // actually found there; otherwise i is left exactly as it was, so
+    // the main loop's own blank-line handling for same-level
+    // continuation (above) is completely unaffected.
+    let lookahead = i;
+    while (lookahead < lines.length && lines[lookahead].trim() === '') lookahead++;
+    if (lookahead < lines.length && isListItemLine(lines[lookahead]) && indentOf(lines[lookahead]) > indent) {
+      const [nested, nextI] = parseList(lines, lookahead, indentOf(lines[lookahead]));
       item.children.push(nested);
       i = nextI;
     }
