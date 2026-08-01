@@ -642,6 +642,18 @@ function isWideLayout() {
   return window.matchMedia(WIDE_LAYOUT_QUERY).matches;
 }
 
+/** The element that's ACTUALLY scrollable right now -- #outline only
+ *  gets its own overflow-y:auto inside the wide-layout (>=900px)
+ *  media query; on the default, narrow/mobile layout it has no scroll
+ *  behavior of its own at all, and #contentArea (the whole page's own
+ *  scroll pane there) is what actually scrolls instead. Reading or
+ *  writing outlineEl.scrollTop unconditionally is silently a no-op on
+ *  mobile specifically -- the default, most common case, not an edge
+ *  case -- since that element genuinely never scrolls there. */
+function scrollContainer() {
+  return isWideLayout() ? outlineEl : contentAreaEl;
+}
+
 // Which element Settings/Docs is CURRENTLY rendering into -- updated by
 // renderSettingsView/renderDocsView themselves whenever called with an
 // explicit target (see those functions below), so an internal
@@ -1665,7 +1677,7 @@ function syncNavBackButtonVisibility() {
 }
 
 function navigateToHeading(heading, { revealOwnBody = false, targetNode = heading } = {}) {
-  navigationBackStack.push({ view: currentView, docsOpen, scrollTop: outlineEl.scrollTop });
+  navigationBackStack.push({ view: currentView, docsOpen, scrollTop: scrollContainer().scrollTop });
   if (navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) navigationBackStack.shift();
   currentContextHeading = heading;
   syncNavBackButtonVisibility();
@@ -1727,7 +1739,7 @@ function navigateBack() {
   }
 
   requestAnimationFrame(() => {
-    outlineEl.scrollTop = target.scrollTop;
+    scrollContainer().scrollTop = target.scrollTop;
   });
   syncNavBackButtonVisibility();
 }
@@ -5808,7 +5820,7 @@ function renderReadOnlyOutline(doc, container, rerender) {
   const linkContext = {
     doc,
     onHeadingLinkClick(heading) {
-      navigationBackStack.push({ view: currentView, docsOpen, scrollTop: outlineEl.scrollTop });
+      navigationBackStack.push({ view: currentView, docsOpen, scrollTop: scrollContainer().scrollTop });
       if (navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) navigationBackStack.shift();
       syncNavBackButtonVisibility();
       // Expand every ancestor of the link's target (mirroring

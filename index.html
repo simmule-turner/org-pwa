@@ -213,6 +213,10 @@
      16px by memory across every input in the app, which is exactly how
      the search input's 14px got through uncaught before. */
   input, textarea, select { font-size: 16px !important; }
+
+  /* Brief opacity increase on tap -- confirms the tap registered,
+     since the button's own resting opacity is deliberately low. */
+  #navBackBtn:active { opacity: 0.75; }
 </style>
 </head>
 <body>
@@ -242,14 +246,17 @@
       style="
         display: none;
         position: fixed;
-        right: 16px;
+        left: 16px;
         bottom: 16px;
         z-index: 50;
         width: 44px;
         height: 44px;
+        align-items: center;
+        justify-content: center;
         border-radius: 50%;
         border: 1px solid var(--border-strong);
         background: var(--accent);
+        opacity: 0.35;
         color: #fff;
         font-size: 20px;
         line-height: 1;
