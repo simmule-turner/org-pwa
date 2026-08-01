@@ -21,6 +21,7 @@ const KEYS = {
   lastActiveDocument: 'settings:lastActiveDocument',
   captureTemplates: 'settings:captureTemplates',
   agendaFiles: 'settings:agendaFiles',
+  globalVariables: 'settings:globalVariables',
 };
 
 /** Ships as the default so capture works immediately with no setup —
@@ -182,6 +183,23 @@ export async function setAgendaFiles(kvAdapter, agendaFiles) {
   await setJson(kvAdapter, KEYS.agendaFiles, agendaFiles);
 }
 
+/** "Global Variables" -- the app-wide, cross-file counterpart to a
+ *  file's own "# Local Variables:" block (see
+ *  src/global-variables.js), configured here as one setting per line
+ *  in the exact same "name: value" text format. Stored as raw text
+ *  (not pre-parsed) since the Settings UI is a plain editable
+ *  textarea -- parsing happens on read, the same relationship
+ *  Local Variables' own raw file text has to parseLocalVariables. */
+const DEFAULT_GLOBAL_VARIABLES = '';
+
+export async function getGlobalVariables(kvAdapter) {
+  return getJson(kvAdapter, KEYS.globalVariables, DEFAULT_GLOBAL_VARIABLES);
+}
+
+export async function setGlobalVariables(kvAdapter, text) {
+  await setJson(kvAdapter, KEYS.globalVariables, text);
+}
+
 // ---- export/import all settings ------------------------------------------
 
 /**
@@ -270,4 +288,5 @@ export {
   DEFAULT_FONT_SIZE,
   DEFAULT_TABLES_FONT_SIZE,
   DEFAULT_AGENDA_FILES,
+  DEFAULT_GLOBAL_VARIABLES,
 };
