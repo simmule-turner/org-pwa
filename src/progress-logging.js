@@ -1,42 +1,40 @@
 /**
- * Progress logging, Layer 1: org-log-done semantics. Decides what
- * should happen to a heading's CLOSED planning line (or, in 'note
- * mode, a note) when its TODO state changes -- pure decision logic,
- * no DOM/mutation here, matching this codebase's established
- * separation between engine logic (src/) and the UI code that acts on
- * its decisions (app.js).
+ * Progress logging: decision logic for what should happen to a
+ * heading's CLOSED planning line and :LOGBOOK: drawer when its TODO
+ * state changes -- pure decision logic, no DOM/mutation here, matching
+ * this codebase's established separation between engine logic (src/)
+ * and the UI code that acts on its decisions (app.js).
  *
- * org-log-done's two values are mutually exclusive, not combined: 'time
- * inserts/removes a CLOSED: [timestamp] planning line and never prompts
- * for a note; 'note prompts for and stores a note instead, and never
- * touches the CLOSED planning line at all. null (real org's own actual
- * default -- no #+STARTUP: logdone/lognotedone line present) means
- * neither happens on entering DONE, though CLOSED removal on LEAVING a
- * done state still applies regardless (see closedLineAction below).
+ * Two genuinely separate mechanisms, kept as two separate decision
+ * functions rather than merged into one:
+ *
+ * - decideProgressLogging governs ONLY the CLOSED: [timestamp] planning
+ *   line -- org-log-done's 'time value specifically, a dedicated field
+ *   real org treats as its own thing, separate from LOGBOOK entirely.
+ *
+ * - decideLogbookEntry governs :LOGBOOK: "- State ..." lines -- the
+ *   general per-keyword logging mechanism (the "!"/"@"/"@/!"/"/!"
+ *   markers in a #+TODO: line's parenthetical spec), which applies to
+ *   ANY keyword, not just done-type ones. org-log-done's 'note value is
+ *   modeled here too, as a synthesized fallback spec ("@") applied to a
+ *   done-type keyword that has no EXPLICIT per-keyword spec of its own
+ *   -- an explicit spec on that keyword always wins over the
+ *   #+STARTUP-level default, matching real org's own precedence.
+ *   This means org-log-done='note isn't a separate code path at all;
+ *   it's just one particular case this same engine already handles.
+ *
+ * Both can fire independently for the same transition -- e.g. entering
+ * DONE(d!) with #+STARTUP: logdone also active inserts a CLOSED
+ * timestamp AND a LOGBOOK "State" line, which can look redundant but is
+ * how real org itself behaves; they're separate mechanisms that happen
+ * to both be configured here; this doesn't try to silently suppress one
+ * in favor of the other.
  */
 
-/**
- * Whether entering DONE should insert a CLOSED timestamp: only when
- * `logDoneSetting` is exactly 'time' AND this transition is actually
- * "was not done, now is done" (re-marking an already-done heading as a
- * *different* done keyword, e.g. DONE -> KILL, doesn't count as
- * "entering" DONE and shouldn't insert a second CLOSED line or disturb
- * an existing one).
- */
+// ---- CLOSED planning-line logic (org-log-done's 'time value only) -------
+
 function shouldInsertClosedOnEnteringDone(fromTodo, toTodo, sequence, logDoneSetting) {
   if (logDoneSetting !== 'time') return false;
-  const wasDone = sequence.doneKeywords.includes(fromTodo);
-  const isDone = sequence.doneKeywords.includes(toTodo);
-  return !wasDone && isDone;
-}
-
-/**
- * Whether entering DONE should prompt for and store a note: the exact
- * same "was not done, now is done" transition as above, just gated on
- * logDoneSetting === 'note' instead of 'time'.
- */
-function shouldPromptDoneNote(fromTodo, toTodo, sequence, logDoneSetting) {
-  if (logDoneSetting !== 'note') return false;
   const wasDone = sequence.doneKeywords.includes(fromTodo);
   const isDone = sequence.doneKeywords.includes(toTodo);
   return !wasDone && isDone;
@@ -64,20 +62,86 @@ function shouldRemoveClosed(fromTodo, toTodo, sequence, keepWhenNoTodo) {
 }
 
 /**
- * The single entry point a caller (app.js's TODO-cycling call sites)
- * actually needs: given the heading's TODO state just before and just
- * after a transition, decides the full set of actions to take. Returns
- * `{ insertClosed, promptNote, removeClosed }` -- booleans, since more
- * than one could in principle apply to unusual custom sequences (though
- * insertClosed/promptNote are mutually exclusive in practice, since
- * they're gated on different, mutually-exclusive logDoneSetting values).
+ * Decides what should happen to the CLOSED planning line for this
+ * transition. Returns `{ insertClosed, removeClosed }`.
  */
 function decideProgressLogging(fromTodo, toTodo, sequence, logDoneSetting, keepWhenNoTodo) {
   return {
     insertClosed: shouldInsertClosedOnEnteringDone(fromTodo, toTodo, sequence, logDoneSetting),
-    promptNote: shouldPromptDoneNote(fromTodo, toTodo, sequence, logDoneSetting),
     removeClosed: shouldRemoveClosed(fromTodo, toTodo, sequence, keepWhenNoTodo),
   };
 }
 
-export { decideProgressLogging, shouldInsertClosedOnEnteringDone, shouldPromptDoneNote, shouldRemoveClosed };
+// ---- :LOGBOOK: entry logic (the general per-keyword spec mechanism) -----
+
+/**
+ * Interprets a raw logSpec string (the parenthetical suffix after a
+ * keyword's fast-key, e.g. "@/!" in "WAIT(w@/!)") into its three
+ * independent components. Real org only ever produces these four
+ * concrete forms -- "@", "!", "@/!", "/!" -- notably never a leaving
+ * *note* (only a leaving timestamp is possible); an unrecognized raw
+ * spec is treated as no logging at all rather than guessing at intent.
+ */
+function parseLogSpec(rawSpec) {
+  if (rawSpec === '@') return { enterNote: true, enterTimestamp: false, leaveTimestamp: false };
+  if (rawSpec === '!') return { enterNote: false, enterTimestamp: true, leaveTimestamp: false };
+  if (rawSpec === '@/!') return { enterNote: true, enterTimestamp: false, leaveTimestamp: true };
+  if (rawSpec === '/!') return { enterNote: false, enterTimestamp: false, leaveTimestamp: true };
+  return { enterNote: false, enterTimestamp: false, leaveTimestamp: false };
+}
+
+/**
+ * The logging spec that actually applies to `keyword` for this file:
+ * its own explicit per-keyword spec (`sequence.logSpecs[keyword]`) if
+ * it has one -- an explicit spec always wins, regardless of
+ * org-log-done -- otherwise, for a done-type keyword specifically, a
+ * spec synthesized from org-log-done ('time -> "!", 'note -> "@") as
+ * the fallback every done-keyword effectively gets unless it overrides
+ * it individually. A non-done keyword with no explicit spec of its own
+ * has no effective spec at all -- org-log-done only ever affects
+ * done-type keywords.
+ */
+function effectiveLogSpec(keyword, sequence, logDoneSetting) {
+  if (keyword === null) return null;
+  if (sequence.logSpecs && keyword in sequence.logSpecs) return sequence.logSpecs[keyword];
+  if (sequence.doneKeywords.includes(keyword)) {
+    if (logDoneSetting === 'time') return '!';
+    if (logDoneSetting === 'note') return '@';
+  }
+  return null;
+}
+
+/**
+ * Decides whether a :LOGBOOK: "- State ..." entry should be written
+ * for this transition, and whether it needs a note. This is the single
+ * function that implements the conditional leaving-log rule: a
+ * leaving-timestamp on the OLD state (fromTodo's own "/!") only fires
+ * when the NEW state (toTodo) doesn't *already* log something on its
+ * own entry -- if it does, that entering-log already covers the
+ * transition, and the old state's own leaving-log is suppressed rather
+ * than producing a second, redundant entry for the same moment.
+ *
+ * Returns `{ shouldLog, needsNote }`. When `shouldLog` is true and
+ * `needsNote` is false, the caller can write a bare-timestamp entry
+ * immediately; when `needsNote` is also true, the caller should prompt
+ * for one first (matching Layer 1's own established UX: entering the
+ * new state itself is never blocked on this, only the LOGBOOK entry is
+ * -- and if the note prompt is skipped, no entry gets written at all,
+ * not even a timestamp-only fallback).
+ */
+function decideLogbookEntry(fromTodo, toTodo, sequence, logDoneSetting) {
+  if (fromTodo === toTodo) return { shouldLog: false, needsNote: false }; // not a real transition
+
+  const enterSpec = parseLogSpec(effectiveLogSpec(toTodo, sequence, logDoneSetting));
+  const fromSpec = parseLogSpec(effectiveLogSpec(fromTodo, sequence, logDoneSetting));
+
+  const targetLogsOnEntry = enterSpec.enterNote || enterSpec.enterTimestamp;
+  const leaveTimestamp = fromSpec.leaveTimestamp && !targetLogsOnEntry;
+
+  const shouldLog = enterSpec.enterNote || enterSpec.enterTimestamp || leaveTimestamp;
+  const needsNote = enterSpec.enterNote; // the only note-producing case -- a leaving-log is always timestamp-only, matching real org
+
+  return { shouldLog, needsNote };
+}
+
+export { decideProgressLogging, decideLogbookEntry, effectiveLogSpec, parseLogSpec };
