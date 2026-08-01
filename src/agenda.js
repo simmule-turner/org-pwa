@@ -17,6 +17,7 @@
 import { isArchived } from './archive-model.js';
 import { isCommentedHeading } from './comment-model.js';
 import { parseOrgTimestamp, findTimestamps, parseDelay, dateKey, isSameDay } from './org-timestamp.js';
+import { parseLogbookEntries } from './logbook.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const REPEATER_RE = /^([.+]{1,2})(\d+)([hdwmy])$/;
@@ -231,6 +232,20 @@ function formatContactEventLine(headingTitle, description, age) {
   return `${headingTitle}: ${description} (${age === null ? 'xx' : age})`;
 }
 
+/** Matches formatContactEventLine's own style: a short, readable
+ *  one-line summary of a single LOGBOOK entry for agenda display. A
+ *  state-change entry shows the transition itself ("from X" only when
+ *  there was a previous state, matching how the LOGBOOK line itself
+ *  omits it too); a bare note (not tied to any state change) is
+ *  labeled plainly, since there's no "->" transition to describe. */
+function formatLogbookEntryLine(headingTitle, entry) {
+  if (entry.type === 'state') {
+    const from = entry.oldState ? `${entry.oldState} \u2192 ` : '';
+    return `${headingTitle}: ${from}${entry.newState}`;
+  }
+  return `${headingTitle}: note`;
+}
+
 /**
  * Every (month, day) occurrence within [rangeStart, rangeEnd], one per
  * calendar year the range spans — a birthday/anniversary recurs every
@@ -350,6 +365,7 @@ function buildAgendaItems(docs, opts = {}) {
   const {
     includeArchived = false,
     includeCommented = false,
+    includeLogbook = false,
     todoFilter = null,
     tagFilter = null,
     rangeStart = null,
@@ -432,8 +448,37 @@ function buildAgendaItems(docs, opts = {}) {
     walkHeadings(doc, (heading) => {
       if (!includeArchived && isArchived(heading)) return;
       if (!includeCommented && isCommentedHeading(heading)) return;
-      if (todoFilter && !todoFilter(heading.todo)) return;
       if (tagFilter && !tagFilter(heading.tags)) return;
+
+      // LOGBOOK items are deliberately NOT gated by todoFilter -- Log
+      // mode's whole purpose is showing a heading's history even when
+      // it's now DONE, which is exactly what the main agenda call
+      // site's own todoFilter (excluding done-state headings from the
+      // normal, non-log view) would otherwise wrongly suppress here too.
+      if (includeLogbook && heading.logbookLines && heading.logbookLines.length) {
+        for (const entry of parseLogbookEntries(heading.logbookLines)) {
+          if (entry.type !== 'state' && entry.type !== 'note') continue; // CLOCK entries excluded -- clocking isn't built yet, and a start/end range doesn't fit this "one item, one date" model
+          const parsed = parseOrgTimestamp(entry.timestamp);
+          if (!parsed) continue;
+          if (rangeStart && rangeEnd && (parsed.date < rangeStart || parsed.date > rangeEnd)) continue;
+          items.push({
+            documentId,
+            heading,
+            kind: 'logbook',
+            hasTime: parsed.hasTime,
+            repeater: null,
+            todo: heading.todo,
+            priority: heading.priority,
+            tags: heading.tags,
+            title: formatLogbookEntryLine(heading.title, entry),
+            logNote: entry.note || null,
+            date: parsed.date,
+            daysOverdue: 0,
+          });
+        }
+      }
+
+      if (todoFilter && !todoFilter(heading.todo)) return;
 
       const headingIsDone = isDone ? isDone(heading.todo) : false;
 
