@@ -1,0 +1,83 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { parseGlobalVariables, mergeGlobalAndLocalVariables } from '../src/global-variables.js';
+
+// ---- parseGlobalVariables --------------------------------------------------
+
+test('parses a simple "name: value" line', () => {
+  assert.deepEqual(parseGlobalVariables("org-log-done: 'time"), { 'org-log-done': "'time" });
+});
+
+test('parses multiple lines into one map', () => {
+  const vars = parseGlobalVariables("org-log-done: 'time\norg-agenda-start-on-weekday: 1");
+  assert.deepEqual(vars, { 'org-log-done': "'time", 'org-agenda-start-on-weekday': '1' });
+});
+
+test('blank lines are skipped', () => {
+  const vars = parseGlobalVariables("org-log-done: 'time\n\n\norg-archive-confirm: nil");
+  assert.deepEqual(vars, { 'org-log-done': "'time", 'org-archive-confirm': 'nil' });
+});
+
+test('leading/trailing whitespace on a line and around the value is trimmed', () => {
+  const vars = parseGlobalVariables('   org-log-done:    \'time   ');
+  assert.deepEqual(vars, { 'org-log-done': "'time" });
+});
+
+test('an empty string produces an empty map', () => {
+  assert.deepEqual(parseGlobalVariables(''), {});
+});
+
+test('null/undefined input produces an empty map rather than throwing', () => {
+  assert.deepEqual(parseGlobalVariables(null), {});
+  assert.deepEqual(parseGlobalVariables(undefined), {});
+});
+
+test('a malformed line (no colon) is silently skipped, not an error', () => {
+  const vars = parseGlobalVariables("this has no colon at all\norg-log-done: 'time");
+  assert.deepEqual(vars, { 'org-log-done': "'time" });
+});
+
+test('a variable name with hyphens and digits parses correctly', () => {
+  const vars = parseGlobalVariables('org-agenda-skip-archived-trees-2: nil');
+  assert.deepEqual(vars, { 'org-agenda-skip-archived-trees-2': 'nil' });
+});
+
+test('later lines override earlier ones for the same key, matching the last-line-wins convention of a plain key:value text block', () => {
+  const vars = parseGlobalVariables('org-log-done: nil\norg-log-done: \'time');
+  assert.deepEqual(vars, { 'org-log-done': "'time" });
+});
+
+// ---- mergeGlobalAndLocalVariables ------------------------------------------
+
+test('merge: a key only in global variables passes through unchanged', () => {
+  const merged = mergeGlobalAndLocalVariables({ 'org-log-done': "'time" }, {});
+  assert.equal(merged['org-log-done'], "'time");
+});
+
+test('merge: a key only in local variables passes through unchanged', () => {
+  const merged = mergeGlobalAndLocalVariables({}, { 'org-log-done': "'note" });
+  assert.equal(merged['org-log-done'], "'note");
+});
+
+test('merge: a key in BOTH resolves in favor of local variables (the higher-precedence, more file-specific override)', () => {
+  const merged = mergeGlobalAndLocalVariables({ 'org-log-done': "'time" }, { 'org-log-done': "'note" });
+  assert.equal(merged['org-log-done'], "'note");
+});
+
+test('merge: keys present in only one side are all preserved alongside an overridden key', () => {
+  const merged = mergeGlobalAndLocalVariables(
+    { 'org-log-done': "'time", 'org-archive-confirm': 'nil' },
+    { 'org-log-done': "'note", 'org-agenda-start-on-weekday': '0' }
+  );
+  assert.deepEqual(merged, {
+    'org-log-done': "'note", // local wins
+    'org-archive-confirm': 'nil', // global-only, preserved
+    'org-agenda-start-on-weekday': '0', // local-only, preserved
+  });
+});
+
+test('merge: null/undefined on either side is treated as an empty map, not an error', () => {
+  assert.deepEqual(mergeGlobalAndLocalVariables(null, { a: '1' }), { a: '1' });
+  assert.deepEqual(mergeGlobalAndLocalVariables({ a: '1' }, null), { a: '1' });
+  assert.deepEqual(mergeGlobalAndLocalVariables(null, null), {});
+});

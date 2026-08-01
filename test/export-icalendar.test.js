@@ -250,3 +250,48 @@ test('DTSTAMP is emitted in real UTC form with a trailing Z, not floating local 
   const ics = exportToIcalendar(docs('* Task\nSCHEDULED: <2026-08-01 Sat>\n'), { today: utcNoon });
   assert.match(ics, /DTSTAMP:20260731T120000Z/);
 });
+
+// ---- scope (Choose a heading) --------------------------------------------
+
+test('scope: with no scope, exports dated items from the whole document', () => {
+  const doc = parseOrg('* Project A\n** Task A1\nSCHEDULED: <2026-08-01 Sat>\n* Project B\n** Task B1\nSCHEDULED: <2026-08-02 Sun>\n');
+  const ics = exportToIcalendar([{ documentId: 't.org', doc }], { today: TODAY });
+  const count = (ics.match(/BEGIN:VEVENT/g) || []).length;
+  assert.equal(count, 2);
+});
+
+test('scope: exports only the scoped heading\u2019s own dated items, not sibling subtrees', () => {
+  const doc = parseOrg('* Project A\n** Task A1\nSCHEDULED: <2026-08-01 Sat>\n* Project B\n** Task B1\nSCHEDULED: <2026-08-02 Sun>\n');
+  const scopeHeading = doc.children[0]; // Project A
+  const ics = exportToIcalendar([{ documentId: 't.org', doc }], { today: TODAY, scope: scopeHeading });
+  assert.match(ics, /SUMMARY:Task A1/);
+  assert.doesNotMatch(ics, /SUMMARY:Task B1/);
+});
+
+test('scope: includes the scoped heading\u2019s OWN dated item too, not just its descendants\u2019', () => {
+  const doc = parseOrg('* Project A\nSCHEDULED: <2026-08-01 Sat>\n** Task A1\nSCHEDULED: <2026-08-02 Sun>\n* Project B\n');
+  const scopeHeading = doc.children[0];
+  const ics = exportToIcalendar([{ documentId: 't.org', doc }], { today: TODAY, scope: scopeHeading });
+  assert.match(ics, /SUMMARY:Project A/);
+  assert.match(ics, /SUMMARY:Task A1/);
+});
+
+test('scope: a deeply-nested scope heading still correctly includes only its own descendants', () => {
+  const doc = parseOrg(
+    '* Root\n** Middle\n*** Deep target\nSCHEDULED: <2026-08-01 Sat>\n**** Grandchild\nSCHEDULED: <2026-08-02 Sun>\n*** Sibling of target\nSCHEDULED: <2026-08-03 Mon>\n'
+  );
+  const scopeHeading = doc.children[0].children[0].children[0]; // "Deep target"
+  const ics = exportToIcalendar([{ documentId: 't.org', doc }], { today: TODAY, scope: scopeHeading });
+  assert.match(ics, /SUMMARY:Deep target/);
+  assert.match(ics, /SUMMARY:Grandchild/);
+  assert.doesNotMatch(ics, /SUMMARY:Sibling of target/);
+});
+
+test('scope: org-contacts-anniversaries still activates correctly when scoped, if the trigger line is within the scoped subtree', () => {
+  const doc = parseOrg(
+    '* Project A\n** Jane Doe\n:PROPERTIES:\n:BIRTHDAY: 1989-11-02 Birthday\n:END:\n** Trigger\n%%(org-contacts-anniversaries)\n'
+  );
+  const scopeHeading = doc.children[0];
+  const ics = exportToIcalendar([{ documentId: 't.org', doc }], { today: TODAY, scope: scopeHeading });
+  assert.match(ics, /SUMMARY:Jane Doe: Birthday/);
+});

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decideProgressLogging, decideLogbookEntry, effectiveLogSpec, parseLogSpec } from '../src/progress-logging.js';
+import { decideProgressLogging, decideLogbookEntry, effectiveLogSpec, parseLogSpec, getEffectiveLogDoneSetting } from '../src/progress-logging.js';
 
 const SEQ = { todoKeywords: ['TODO', 'WAIT'], doneKeywords: ['DONE', 'KILL'], logSpecs: {} };
 
@@ -200,4 +200,46 @@ test('org-log-done set, but leaving a done state to a keyword with no logging: s
   const result = decideLogbookEntry('DONE', 'TODO', seq, 'time');
   // DONE's effective spec via 'time is "!" (entry-only, no leaveTimestamp component), so leaving it logs nothing new here
   assert.equal(result.shouldLog, false);
+});
+
+// ==== getEffectiveLogDoneSetting: 3-layer precedence ========================
+// Global Variables (lowest) < #+STARTUP (middle) < file-local Local Variables (highest)
+
+test('precedence: only Global Variables set -- that value applies', () => {
+  const result = getEffectiveLogDoneSetting({}, { logDone: null }, { 'org-log-done': "'time" });
+  assert.equal(result, 'time');
+});
+
+test('precedence: #+STARTUP overrides Global Variables', () => {
+  const result = getEffectiveLogDoneSetting({}, { logDone: 'note' }, { 'org-log-done': "'time" });
+  assert.equal(result, 'note');
+});
+
+test('precedence: file-local Local Variables overrides Global Variables (with no #+STARTUP)', () => {
+  const result = getEffectiveLogDoneSetting({ 'org-log-done': "'note" }, { logDone: null }, { 'org-log-done': "'time" });
+  assert.equal(result, 'note');
+});
+
+test('precedence: file-local Local Variables overrides #+STARTUP too (the highest layer wins over the middle one)', () => {
+  const result = getEffectiveLogDoneSetting({ 'org-log-done': "'note" }, { logDone: 'time' }, { 'org-log-done': "'time" });
+  assert.equal(result, 'note');
+});
+
+test('precedence: nothing set anywhere resolves to null (no logging), matching real org\u2019s own out-of-the-box default', () => {
+  assert.equal(getEffectiveLogDoneSetting({}, { logDone: null }, {}), null);
+});
+
+test('precedence: an unrecognized Global Variables value (not \u0027time or \u0027note) is treated as unset, falling through correctly', () => {
+  const result = getEffectiveLogDoneSetting({}, { logDone: null }, { 'org-log-done': 'garbage' });
+  assert.equal(result, null);
+});
+
+test('precedence: a leading Lisp quote mark on the value is correctly stripped', () => {
+  assert.equal(getEffectiveLogDoneSetting({}, { logDone: null }, { 'org-log-done': "'note" }), 'note');
+  assert.equal(getEffectiveLogDoneSetting({}, { logDone: null }, { 'org-log-done': 'note' }), 'note'); // also works without the quote mark
+});
+
+test('precedence: #+STARTUP set to null (not configured) correctly falls through to Global Variables, not treated as an explicit "no logging" override', () => {
+  const result = getEffectiveLogDoneSetting({}, { logDone: null }, { 'org-log-done': "'time" });
+  assert.equal(result, 'time');
 });

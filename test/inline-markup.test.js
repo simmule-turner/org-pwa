@@ -1,7 +1,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseInline } from '../src/inline-markup.js';
+import { parseInline, stripLineBreakMarker } from '../src/inline-markup.js';
 
 test('parses plain text with no markup', () => {
   const nodes = parseInline('just some words');
@@ -367,4 +367,30 @@ test('footnote syntax does not interfere with an ordinary [[link]] elsewhere on 
   const nodes = parseInline('a note[fn:1] and a [[https://example.com][link]] together');
   assert.deepEqual(nodes[1], { type: 'footnote-ref', label: '1' });
   assert.deepEqual(nodes[3], { type: 'link', target: 'https://example.com', description: 'link' });
+});
+
+// ---- stripLineBreakMarker (real org's own hard-line-break marker) --------
+
+test('stripLineBreakMarker: removes two trailing backslashes', () => {
+  assert.equal(stripLineBreakMarker('This is a line\\\\'), 'This is a line');
+});
+
+test('stripLineBreakMarker: a SINGLE trailing backslash is left untouched -- real org\u2019s marker is specifically two, not one', () => {
+  assert.equal(stripLineBreakMarker('ends with one\\'), 'ends with one\\');
+});
+
+test('stripLineBreakMarker: trailing whitespace after the marker is also removed', () => {
+  assert.equal(stripLineBreakMarker('This is a line\\\\   '), 'This is a line');
+});
+
+test('stripLineBreakMarker: a line with no marker at all is returned unchanged', () => {
+  assert.equal(stripLineBreakMarker('A completely ordinary line.'), 'A completely ordinary line.');
+});
+
+test('stripLineBreakMarker: only strips at the END of the line -- two backslashes in the middle are left alone', () => {
+  assert.equal(stripLineBreakMarker('a path like C:\\\\Users\\\\name'), 'a path like C:\\\\Users\\\\name');
+});
+
+test('stripLineBreakMarker: an empty string is returned unchanged, not an error', () => {
+  assert.equal(stripLineBreakMarker(''), '');
 });
