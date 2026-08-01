@@ -899,3 +899,119 @@ test('anniversary items respect includeArchived (excluded by default)', () => {
   });
   assert.equal(itemsIncluded.filter((i) => i.kind === 'anniversary').length, 1);
 });
+
+// ---- LOGBOOK entries as agenda items (includeLogbook) --------------------
+
+test('LOGBOOK entries are excluded by default (includeLogbook defaults to false)', () => {
+  const doc = parseOrg('* Order parts\n:LOGBOOK:\n- State "DONE"       from "TODO"       [2026-07-31 Fri 14:22]\n:END:\n');
+  const items = buildAgendaItems([{ documentId: 't.org', doc }], {});
+  assert.deepEqual(items, []);
+});
+
+test('a state-change LOGBOOK entry becomes an agenda item when includeLogbook is true', () => {
+  const doc = parseOrg('* Order parts\n:LOGBOOK:\n- State "DONE"       from "TODO"       [2026-07-31 Fri 14:22]\n:END:\n');
+  const items = buildAgendaItems([{ documentId: 't.org', doc }], { includeLogbook: true });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'logbook');
+  assert.equal(items[0].title, 'Order parts: TODO \u2192 DONE');
+  assert.equal(items[0].logNote, null);
+  assert.equal(items[0].hasTime, true);
+});
+
+test('a state-change entry with NO "from" clause omits the arrow in its title, matching the LOGBOOK line itself', () => {
+  const doc = parseOrg('* Order parts\n:LOGBOOK:\n- State "TODO"       [2026-07-31 Fri 08:00]\n:END:\n');
+  const items = buildAgendaItems([{ documentId: 't.org', doc }], { includeLogbook: true });
+  assert.equal(items[0].title, 'Order parts: TODO');
+});
+
+test('a note-carrying entry exposes the note text via logNote', () => {
+  const doc = parseOrg(
+    '* Order parts\n:LOGBOOK:\n- State "WAIT"       from "TODO"       [2026-07-30 Thu 09:10] \\\n  Waiting on vendor.\n:END:\n'
+  );
+  const items = buildAgendaItems([{ documentId: 't.org', doc }], { includeLogbook: true });
+  assert.equal(items[0].logNote, 'Waiting on vendor.');
+});
+
+test('multiple LOGBOOK entries on the same heading each become their own item, sorted chronologically', () => {
+  const doc = parseOrg(
+    '* Order parts\n:LOGBOOK:\n- State "DONE"       from "WAIT"       [2026-07-31 Fri 14:22]\n- State "WAIT"       from "TODO"       [2026-07-30 Thu 09:10]\n:END:\n'
+  );
+  const items = buildAgendaItems([{ documentId: 't.org', doc }], { includeLogbook: true });
+  assert.equal(items.length, 2);
+  assert.ok(items[0].date < items[1].date); // sorted chronologically, oldest first, even though the file itself lists newest-first
+  assert.equal(items[0].title, 'Order parts: TODO \u2192 WAIT');
+  assert.equal(items[1].title, 'Order parts: WAIT \u2192 DONE');
+});
+
+test('a bare "Note taken on" entry (not tied to a state change) also becomes an agenda item', () => {
+  const doc = parseOrg('* Heading\n:LOGBOOK:\n- Note taken on [2026-07-30 Thu 09:15] \\\n  A standalone note.\n:END:\n');
+  const items = buildAgendaItems([{ documentId: 't.org', doc }], { includeLogbook: true });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, 'Heading: note');
+  assert.equal(items[0].logNote, 'A standalone note.');
+});
+
+test('a CLOCK entry is excluded even with includeLogbook true -- clocking isn\u0027t built yet', () => {
+  const doc = parseOrg('* Heading\n:LOGBOOK:\nCLOCK: [2026-07-31 Fri 09:00]--[2026-07-31 Fri 10:30] =>  1:30\n:END:\n');
+  const items = buildAgendaItems([{ documentId: 't.org', doc }], { includeLogbook: true });
+  assert.deepEqual(items, []);
+});
+
+test('LOGBOOK items respect rangeStart/rangeEnd filtering, same as other agenda item kinds', () => {
+  const doc = parseOrg('* Order parts\n:LOGBOOK:\n- State "DONE"       from "TODO"       [2026-07-31 Fri 14:22]\n:END:\n');
+  const inRange = buildAgendaItems([{ documentId: 't.org', doc }], {
+    includeLogbook: true,
+    rangeStart: new Date(2026, 6, 1),
+    rangeEnd: new Date(2026, 6, 31, 23, 59, 59),
+  });
+  assert.equal(inRange.length, 1);
+
+  const outOfRange = buildAgendaItems([{ documentId: 't.org', doc }], {
+    includeLogbook: true,
+    rangeStart: new Date(2026, 5, 1),
+    rangeEnd: new Date(2026, 5, 30, 23, 59, 59),
+  });
+  assert.equal(outOfRange.length, 0);
+});
+
+test('a heading with no LOGBOOK content at all produces no logbook items, even with includeLogbook true', () => {
+  const doc = parseOrg('* Just a heading\n');
+  const items = buildAgendaItems([{ documentId: 't.org', doc }], { includeLogbook: true });
+  assert.deepEqual(items, []);
+});
+
+test('LOGBOOK items still respect archived/commented exclusion, same as every other item kind', () => {
+  const archived = parseOrg('* Order parts :ARCHIVE:\n:LOGBOOK:\n- State "DONE"       from "TODO"       [2026-07-31 Fri 14:22]\n:END:\n');
+  const items = buildAgendaItems([{ documentId: 't.org', doc: archived }], { includeLogbook: true });
+  assert.deepEqual(items, []);
+});
+
+test('LOGBOOK items interleave correctly by date with other item kinds (SCHEDULED, etc.) in the same result set', () => {
+  const doc = parseOrg(
+    '* A\nSCHEDULED: <2026-07-31 Fri 10:00>\n* B\n:LOGBOOK:\n- State "DONE"       from "TODO"       [2026-07-31 Fri 14:22]\n:END:\n'
+  );
+  const items = buildAgendaItems([{ documentId: 't.org', doc }], { includeLogbook: true });
+  assert.equal(items.length, 2);
+  assert.equal(items[0].kind, 'scheduled'); // 10:00 comes before 14:22
+  assert.equal(items[1].kind, 'logbook');
+});
+
+test('a real bug this coverage caught: LOGBOOK entries for a DONE heading still show in Log mode even when todoFilter excludes done headings from the normal agenda -- Log mode\u2019s whole purpose is showing history for headings that ARE now done', () => {
+  const doc = parseOrg('* DONE Order parts\n:LOGBOOK:\n- State "DONE"       from "TODO"       [2026-07-31 Fri 14:22]\n:END:\n');
+  const items = buildAgendaItems([{ documentId: 't.org', doc }], {
+    includeLogbook: true,
+    todoFilter: (todo) => todo !== 'DONE', // matches the real app's own main-agenda-call-site exclusion
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'logbook');
+});
+
+test('meanwhile, the SAME DONE heading\u2019s SCHEDULED/DEADLINE items ARE correctly still excluded by todoFilter -- only LOGBOOK items bypass it', () => {
+  const doc = parseOrg('* DONE Order parts\nSCHEDULED: <2026-07-31 Fri>\n:LOGBOOK:\n- State "DONE"       from "TODO"       [2026-07-31 Fri 14:22]\n:END:\n');
+  const items = buildAgendaItems([{ documentId: 't.org', doc }], {
+    includeLogbook: true,
+    todoFilter: (todo) => todo !== 'DONE',
+  });
+  assert.equal(items.length, 1); // only the logbook item, not the scheduled one
+  assert.equal(items[0].kind, 'logbook');
+});
