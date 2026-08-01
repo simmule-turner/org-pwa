@@ -20,7 +20,7 @@ import {
   findHeadingByTitle,
   findFootnoteDefinition,
 } from './src/link-resolve.js';
-import { parseInline } from './src/inline-markup.js';
+import { parseInline, stripLineBreakMarker } from './src/inline-markup.js';
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, toggleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
 import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
 import { searchDocument } from './src/search.js';
@@ -40,7 +40,8 @@ import {
   getClosedKeepWhenNoTodo,
 } from './src/local-variables.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
-import { decideProgressLogging, decideLogbookEntry } from './src/progress-logging.js';
+import { decideProgressLogging, decideLogbookEntry, getEffectiveLogDoneSetting } from './src/progress-logging.js';
+import { parseGlobalVariables, mergeGlobalAndLocalVariables } from './src/global-variables.js';
 import { formatStateLogLine, parseLogbookEntries } from './src/logbook.js';
 import {
   buildAgendaItems,
@@ -128,7 +129,10 @@ import {
   DEFAULT_CAPTURE_TEMPLATES,
   getAgendaFiles,
   setAgendaFiles,
+  getGlobalVariables,
+  setGlobalVariables,
   DEFAULT_AGENDA_FILES,
+  DEFAULT_GLOBAL_VARIABLES,
 } from './src-browser/settings.js';
 
 // Disable auto-capitalization app-wide, on every text input/textarea
@@ -202,7 +206,8 @@ function applyTodoTransition(heading, performChange) {
   const toTodo = heading.todo;
 
   const sequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
-  const logDoneSetting = parseStartupConfig(state.doc).logDone;
+  const fileLocalVarsOnly = parseLocalVariables(serializeOrg(state.doc));
+  const logDoneSetting = getEffectiveLogDoneSetting(fileLocalVarsOnly, parseStartupConfig(state.doc), globalVariables);
   const keepWhenNoTodo = getClosedKeepWhenNoTodo(state.localVariables);
   const now = new Date();
   const timestamp = formatOrgTimestamp({ date: now, time: now.toTimeString().slice(0, 5), active: false });
@@ -310,6 +315,8 @@ const webdavAdapter = createWebdavAdapter(() => webdavConfig);
 // each fetch resolves, the same "render now, swap in what arrives"
 // pattern already used for inline images.
 let agendaFilesConfig = [];
+let globalVariablesText = '';
+let globalVariables = {}; // parsed from globalVariablesText -- kept in sync by setGlobalVariablesAndReparse below
 const agendaFilesCache = new Map(); // "scheme:path" -> { doc, documentId } | { error } | { loading: true }
 let agendaFilesCacheLoadedFor = null; // JSON of the config this cache reflects, so a settings change invalidates stale entries
 
@@ -651,6 +658,7 @@ const statusEl = document.getElementById('status');
 const topBarEl = document.getElementById('topBar');
 const contentAreaEl = document.getElementById('contentArea');
 const addBtn = document.getElementById('addBtn');
+const navBackBtn = document.getElementById('navBackBtn');
 const viewMenuBtn = document.getElementById('viewMenuBtn');
 const viewMenuPanel = document.getElementById('viewMenuPanel');
 const fileMenuBtn = document.getElementById('fileMenuBtn');
@@ -935,6 +943,15 @@ let keyboardFocusedHeading = null;
 // file. Not updated by manual scrolling/tapping within the outline
 // itself; deliberately scoped to explicit "jump to X" navigation only.
 let currentContextHeading = null;
+// A stack of previously-visited headings, pushed by navigateToHeading
+// itself before each jump -- lets a tapped link/footnote/search
+// result/agenda item be followed on a mobile device (where there's no
+// reliable, always-present browser Back the way desktop has) and then
+// returned from via the floating back button, without needing to
+// manually scroll back to wherever the tap originated. Capped so an
+// unbroken chain of link-following doesn't grow this without limit.
+let navigationBackStack = [];
+const NAVIGATION_BACK_STACK_LIMIT = 20;
 // Which of the three top-level views is showing: 'org' (the default
 // outline), 'text' (the whole-document plain-text editor), or 'agenda'.
 // While 'text', render() shows only a textarea; while 'agenda', render()
@@ -1047,12 +1064,21 @@ function restoreFromHistory() {
   const entry = currentEntry(history);
   const newDoc = parseOrg(entry.text);
   const startupConfig = parseStartupConfig(newDoc);
-  const localVariables = parseLocalVariables(entry.text);
+  const localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(entry.text));
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(newDoc, startupConfig, archiveVisibility);
   state.doc = newDoc;
   state.startupConfig = startupConfig;
   state.localVariables = localVariables;
+  // Every heading object reference held anywhere (the navigation
+  // back-stack in particular) is now stale -- a fresh parseOrg call
+  // always produces brand new heading instances, even when re-parsing
+  // what is nominally "the same" file (e.g. after an external change),
+  // so this reset applies unconditionally, not just when switching to
+  // a genuinely different document.
+  navigationBackStack = [];
+  currentContextHeading = null;
+  syncNavBackButtonVisibility();
   isDirty = true;
   if (currentView === 'text') currentView = 'org'; // avoid showing now-stale textarea content after a jump
   render();
@@ -1255,12 +1281,21 @@ function commitTextModeIfActive() {
   const newText = textarea ? textarea.value : serializeOrg(state.doc);
   const newDoc = parseOrg(newText);
   const startupConfig = parseStartupConfig(newDoc);
-  const localVariables = parseLocalVariables(newText);
+  const localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(newText));
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(newDoc, startupConfig, archiveVisibility);
   state.doc = newDoc;
   state.startupConfig = startupConfig;
   state.localVariables = localVariables;
+  // Every heading object reference held anywhere (the navigation
+  // back-stack in particular) is now stale -- a fresh parseOrg call
+  // always produces brand new heading instances, even when re-parsing
+  // what is nominally "the same" file (e.g. after an external change),
+  // so this reset applies unconditionally, not just when switching to
+  // a genuinely different document.
+  navigationBackStack = [];
+  currentContextHeading = null;
+  syncNavBackButtonVisibility();
   currentView = 'org';
   history = pushSnapshot(history, newText, 'Edited in text mode');
   return true;
@@ -1621,8 +1656,19 @@ function toggleActionMenu(node) {
   });
 }
 
+/** Shows/hides the floating back button based on whether there's
+ *  actually anywhere to go back to -- called after every navigation
+ *  (both a forward jump, which may have just pushed a new entry, and
+ *  a back-navigation itself, which may have just emptied the stack). */
+function syncNavBackButtonVisibility() {
+  navBackBtn.style.display = navigationBackStack.length > 0 ? 'flex' : 'none';
+}
+
 function navigateToHeading(heading, { revealOwnBody = false, targetNode = heading } = {}) {
+  navigationBackStack.push({ view: currentView, docsOpen, scrollTop: outlineEl.scrollTop });
+  if (navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) navigationBackStack.shift();
   currentContextHeading = heading;
+  syncNavBackButtonVisibility();
   // Always land in the outline — a caller (search, an internal link,
   // agenda) shouldn't each need to remember this. Safe to call even when
   // already in 'org': switchToView no-ops in that case rather than
@@ -1653,6 +1699,37 @@ function navigateToHeading(heading, { revealOwnBody = false, targetNode = headin
       el.style.backgroundColor = original;
     }, 2400);
   });
+}
+
+/** Pops the most recent entry off the navigation back-stack and
+ *  restores that view and scroll position -- unlike navigateToHeading,
+ *  this doesn't target a specific heading at all, since the point
+ *  navigated away from often wasn't one (organic scrolling, or a link
+ *  tapped from a non-'org' view like Docs). A no-op if the stack is
+ *  empty (the floating back button isn't shown in that case anyway,
+ *  but this stays safe to call regardless). */
+function navigateBack() {
+  const target = navigationBackStack.pop();
+  if (!target) return;
+
+  if (target.docsOpen && !docsOpen) {
+    // The jump away closed Docs (navigateToHeading's own switchToView
+    // forces 'org' and closes it) -- reopen and re-render it before
+    // restoring scroll, the same sequence the "?" button itself uses.
+    docsOpen = true;
+    if (isWideLayout()) {
+      render();
+    } else {
+      renderDocsView(outlineEl);
+    }
+  } else if (target.view !== currentView) {
+    switchToView(target.view);
+  }
+
+  requestAnimationFrame(() => {
+    outlineEl.scrollTop = target.scrollTop;
+  });
+  syncNavBackButtonVisibility();
 }
 
 // Slide-left gesture: cycles a heading through the three fold levels
@@ -3086,7 +3163,7 @@ function renderParagraphRow(row) {
         i === 0 && row.node.footnoteLabel !== null
           ? line.replace(new RegExp('^\\[fn:' + row.node.footnoteLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\]\\s?'), '')
           : line;
-      renderInlineNodes(parseInline(text, currentInlineOpts()), p);
+      renderInlineNodes(parseInline(stripLineBreakMarker(text), currentInlineOpts()), p);
     });
   } else {
     p.textContent = '(empty note \u2014 tap to edit)';
@@ -3155,6 +3232,115 @@ function renderParagraphRow(row) {
  *  the header label specifically when expanded so selecting/copying the
  *  code itself doesn't
  *  accidentally re-collapse it. */
+/**
+ * Renders a block's own content appropriately for its name, appending
+ * to `container`. QUOTE, VERSE, and CENTER all interpret inline
+ * markup within them, matching real org's own actual behavior for
+ * these three specifically -- they're meant to hold normal prose,
+ * just displayed differently, not literal/verbatim content the way
+ * SRC and EXAMPLE are. Everything else (SRC, EXAMPLE, or any other/
+ * custom block name) falls through to the original, unchanged
+ * literal <pre><code> treatment -- no markup interpretation, content
+ * shown byte-for-byte.
+ */
+function renderBlockContent(block, container, linkContext) {
+  const name = block.name;
+
+  if (name === 'VERSE') {
+    // One source line is always one visual line -- never reflowed or
+    // merged with an adjacent line the way ordinary paragraph text
+    // is, matching real org's own defining characteristic of a verse
+    // block. Each line gets its own block-level element, which
+    // preserves the break naturally without needing white-space: pre
+    // at all (unlike the literal SRC/EXAMPLE case, this can still
+    // word-wrap a too-long single line, since only the *line breaks
+    // between* source lines need preserving here, not the wrapping
+    // within one). The hard-line-break marker is stripped but has no
+    // extra effect here -- every line already breaks regardless.
+    const verse = document.createElement('div');
+    verse.style.padding = '4px 12px';
+    verse.style.fontStyle = 'italic';
+    for (const line of block.lines) {
+      const lineEl = document.createElement('div');
+      const stripped = stripLineBreakMarker(line);
+      if (stripped.trim() === '') {
+        lineEl.innerHTML = '&nbsp;'; // a blank verse line is still a real, visible line break, not nothing
+      } else {
+        renderInlineNodes(parseInline(stripped, currentInlineOpts()), lineEl, linkContext);
+      }
+      verse.appendChild(lineEl);
+    }
+    container.appendChild(verse);
+    return;
+  }
+
+  if (name === 'QUOTE' || name === 'CENTER') {
+    const wrap = document.createElement('div');
+    if (name === 'QUOTE') {
+      // Indented on BOTH the left and right margins, plus a left
+      // border -- a conventional blockquote treatment, and the
+      // specific thing real org's own manual describes ("indented on
+      // both the left and the right margin").
+      wrap.style.padding = '4px 16px';
+      wrap.style.margin = '4px 0';
+      wrap.style.borderLeft = '3px solid var(--border)';
+      wrap.style.fontStyle = 'italic';
+    } else {
+      wrap.style.padding = '4px 12px';
+      wrap.style.textAlign = 'center';
+    }
+    // Blank-line-separated paragraphs, each one reflowing its own
+    // lines together normally (matching ordinary prose -- the actual
+    // distinction from VERSE above) UNLESS a line ends with the
+    // hard-line-break marker, which forces a real break at that point
+    // instead of just joining into the next line with a space. This
+    // is the one place in this app where the marker does something a
+    // plain per-line join wouldn't already do on its own.
+    let currentParagraphLines = [];
+    const flushParagraph = () => {
+      if (currentParagraphLines.length === 0) return;
+      const p = document.createElement('p');
+      p.style.margin = '4px 0';
+      currentParagraphLines.forEach((line, i) => {
+        if (i > 0) {
+          const prevLine = currentParagraphLines[i - 1];
+          const prevForcedBreak = stripLineBreakMarker(prevLine) !== prevLine;
+          p.appendChild(prevForcedBreak ? document.createElement('br') : document.createTextNode(' '));
+        }
+        renderInlineNodes(parseInline(stripLineBreakMarker(line), currentInlineOpts()), p, linkContext);
+      });
+      wrap.appendChild(p);
+      currentParagraphLines = [];
+    };
+    for (const line of block.lines) {
+      if (line.trim() === '') {
+        flushParagraph();
+      } else {
+        currentParagraphLines.push(line.trim());
+      }
+    }
+    flushParagraph();
+    container.appendChild(wrap);
+    return;
+  }
+
+  // SRC, EXAMPLE, or any other/custom name -- literal, verbatim, no
+  // markup interpretation, unchanged from before.
+  const pre = document.createElement('pre');
+  pre.style.margin = '2px 0';
+  pre.style.padding = '8px';
+  pre.style.background = 'var(--surface)';
+  pre.style.borderRadius = '6px';
+  pre.style.overflowX = 'auto';
+  pre.style.fontSize = '13px';
+  pre.style.whiteSpace = 'pre-wrap';
+  const code = document.createElement('code');
+  code.style.fontFamily = 'monospace';
+  code.textContent = block.lines.join('\n');
+  pre.appendChild(code);
+  container.appendChild(pre);
+}
+
 function renderBlockRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
@@ -3189,18 +3375,7 @@ function renderBlockRow(row) {
   };
   wrap.appendChild(header);
 
-  const pre = document.createElement('pre');
-  pre.style.margin = '2px 0';
-  pre.style.padding = '8px';
-  pre.style.background = 'var(--surface)';
-  pre.style.borderRadius = '6px';
-  pre.style.overflowX = 'auto';
-  pre.style.fontSize = '13px';
-  const code = document.createElement('code');
-  code.style.fontFamily = 'monospace';
-  code.textContent = row.node.lines.join('\n');
-  pre.appendChild(code);
-  wrap.appendChild(pre);
+  renderBlockContent(row.node, wrap, null);
 
   return wrap;
 }
@@ -3408,7 +3583,7 @@ function updateFilenameDisplay() {
  *  backend it came from. */
 async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCache = false) {
   const startupConfig = parseStartupConfig(doc);
-  const localVariables = parseLocalVariables(serializeOrg(doc));
+  const localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(doc)));
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(doc, startupConfig, archiveVisibility);
   state = { documentId, doc, startupConfig, storageKind, localVariables };
@@ -3820,7 +3995,10 @@ async function saveCurrent() {
       });
       state.doc = reopened.doc;
       state.startupConfig = parseStartupConfig(state.doc);
-      state.localVariables = parseLocalVariables(serializeOrg(state.doc));
+      state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
+      navigationBackStack = [];
+      currentContextHeading = null;
+      syncNavBackButtonVisibility();
       const archiveVisibility = getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived';
       applyStartupVisibility(state.doc, state.startupConfig, archiveVisibility);
       render();
@@ -4172,7 +4350,8 @@ function performExport(format, scope) {
     downloadFile(baseName + '.html', exportToHtml(state.doc, scope), 'text/html');
   } else {
     const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: state.documentId, doc: state.doc }];
-    downloadFile(baseName + '.ics', exportToIcalendar(docs), 'text/calendar');
+    const icsScope = scope && typeof scope === 'object' ? scope : null;
+    downloadFile(baseName + '.ics', exportToIcalendar(docs, { scope: icsScope }), 'text/calendar');
   }
   fileMenuOpen = false;
   fileMenuStep = null;
@@ -4216,7 +4395,7 @@ function renderExportFlow() {
     return;
   }
 
-  if (exportFormat === 'icalendar') {
+  if (exportFormat === 'icalendar' && !exportPickingHeading) {
     const label = document.createElement('div');
     label.style.fontSize = '12px';
     label.style.opacity = '0.7';
@@ -4236,6 +4415,12 @@ function renderExportFlow() {
         })
       );
     }
+    row.appendChild(
+      menuButton('Choose a heading\u2026', () => {
+        exportPickingHeading = true;
+        renderFileMenu();
+      })
+    );
     row.appendChild(
       menuButton('\u2039 Back', () => {
         exportFormat = null;
@@ -4300,7 +4485,7 @@ function renderExportFlow() {
 
   const row = document.createElement('div');
   row.className = 'panel-row';
-  row.appendChild(menuButton('Whole file', () => performExport(exportFormat, null)));
+  row.appendChild(menuButton('This file', () => performExport(exportFormat, null)));
   row.appendChild(
     menuButton('Choose a heading\u2026', () => {
       exportPickingHeading = true;
@@ -4502,6 +4687,10 @@ addBtn.addEventListener('click', () => {
   }
   const heading = insertTopLevelHeading(state.doc, {});
   startEditingTitle(heading, true);
+});
+
+navBackBtn.addEventListener('click', () => {
+  navigateBack();
 });
 
 /** Switches between the three top-level views, handling the
@@ -5364,6 +5553,67 @@ async function renderSettingsView(target = settingsRenderTarget) {
   );
   agendaFilesSection.appendChild(agendaFilesBtnRow);
 
+  const globalVarsSection = document.createElement('div');
+  globalVarsSection.className = 'settings-section';
+  container.appendChild(globalVarsSection);
+
+  const globalVarsTitle = document.createElement('div');
+  globalVarsTitle.className = 'panel-section-title';
+  globalVarsTitle.textContent = 'Global Variables';
+  globalVarsSection.appendChild(globalVarsTitle);
+
+  const globalVarsHint = document.createElement('div');
+  globalVarsHint.style.fontSize = '11px';
+  globalVarsHint.style.opacity = '0.6';
+  globalVarsHint.style.margin = '2px 0 6px';
+  globalVarsHint.textContent =
+    'The same kind of variable a file\u2019s own "# Local Variables:" block or #+STARTUP: line can set, but as the app-wide baseline default across every file \u2014 one per line, same "name: value" format. A file-specific #+STARTUP:/Local Variables setting still overrides this; see Configuration in the README for the full precedence order. Example: org-log-done: \'time';
+  globalVarsSection.appendChild(globalVarsHint);
+
+  const globalVarsTextarea = document.createElement('textarea');
+  globalVarsTextarea.value = globalVariablesText;
+  globalVarsTextarea.rows = 5;
+  globalVarsTextarea.style.fontFamily = 'monospace';
+  globalVarsTextarea.style.fontSize = '13px';
+  globalVarsTextarea.style.width = '100%';
+  globalVarsTextarea.style.maxWidth = '100%';
+  globalVarsTextarea.style.boxSizing = 'border-box';
+  globalVarsTextarea.style.resize = 'vertical';
+  globalVarsSection.appendChild(globalVarsTextarea);
+
+  const globalVarsBtnRow = document.createElement('div');
+  globalVarsBtnRow.className = 'panel-row';
+  globalVarsBtnRow.style.marginTop = '8px';
+  globalVarsBtnRow.appendChild(
+    menuButton('Save global variables', async () => {
+      await setGlobalVariables(kv, globalVarsTextarea.value);
+      globalVariablesText = globalVarsTextarea.value;
+      globalVariables = parseGlobalVariables(globalVariablesText);
+      // Re-merge immediately so the currently open document (if any)
+      // reflects the change right away -- no reload needed, matching
+      // how the theme/font settings already apply on save.
+      if (state.doc) {
+        state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
+      }
+      setStatus('Global variables saved.');
+      render();
+    })
+  );
+  globalVarsBtnRow.appendChild(
+    menuButton('Clear', async () => {
+      await setGlobalVariables(kv, DEFAULT_GLOBAL_VARIABLES);
+      globalVariablesText = DEFAULT_GLOBAL_VARIABLES;
+      globalVariables = {};
+      if (state.doc) {
+        state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
+      }
+      setStatus('Global variables cleared.');
+      renderSettingsView();
+      render();
+    })
+  );
+  globalVarsSection.appendChild(globalVarsBtnRow);
+
   const githubSection = document.createElement('div');
   githubSection.className = 'settings-section';
   container.appendChild(githubSection);
@@ -5558,6 +5808,9 @@ function renderReadOnlyOutline(doc, container, rerender) {
   const linkContext = {
     doc,
     onHeadingLinkClick(heading) {
+      navigationBackStack.push({ view: currentView, docsOpen, scrollTop: outlineEl.scrollTop });
+      if (navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) navigationBackStack.shift();
+      syncNavBackButtonVisibility();
       // Expand every ancestor of the link's target (mirroring
       // navigateToHeading's own ancestor-expansion, but against this
       // local doc, never state.doc) so the target is actually visible
@@ -5689,11 +5942,12 @@ function renderReadOnlyBodyNode(node, depth, container, linkContext, drawersHidd
   } else if (node.type === 'table') {
     renderReadOnlyTable(node, depth, container);
   } else if (node.type === 'block') {
-    renderReadOnlyBlock(node, depth, container, drawersHidden);
+    renderReadOnlyBlock(node, depth, container, drawersHidden, linkContext);
   }
 }
 
 function renderReadOnlyList(list, depth, container, linkContext, listDepth = 0) {
+  let orderedCounter = 0;
   for (const item of list.items) {
     const row = document.createElement('div');
     row.style.paddingLeft = 8 + depth * 16 + 16 + listDepth * 16 + 'px';
@@ -5706,8 +5960,11 @@ function renderReadOnlyList(list, depth, container, linkContext, listDepth = 0) 
     marker.style.opacity = '0.6';
     if (item.checkbox) {
       marker.textContent = item.checkbox === 'X' || item.checkbox === 'x' ? '\u2611' : item.checkbox === '-' ? '\u2612' : '\u2610';
+    } else if (item.ordered) {
+      orderedCounter = item.startValue != null ? item.startValue : orderedCounter + 1;
+      marker.textContent = orderedCounter + '.';
     } else {
-      marker.textContent = item.ordered ? item.marker : '\u2022';
+      marker.textContent = '\u2022';
     }
     row.appendChild(marker);
 
@@ -5755,7 +6012,7 @@ function renderReadOnlyTable(table, depth, container) {
  *  re-fold. Local, closure-captured state (not stored on the node
  *  itself), since a block's own expand/collapse state doesn't need to
  *  survive a full docs re-render the way heading fold state does. */
-function renderReadOnlyBlock(block, depth, container, drawersHidden) {
+function renderReadOnlyBlock(block, depth, container, drawersHidden, linkContext) {
   let expanded = !drawersHidden;
   const wrap = document.createElement('div');
   wrap.style.marginLeft = 8 + depth * 16 + 16 + 'px';
@@ -5768,15 +6025,9 @@ function renderReadOnlyBlock(block, depth, container, drawersHidden) {
   label.textContent = `[${block.name}]`;
   wrap.appendChild(label);
 
-  const content = document.createElement('pre');
+  const content = document.createElement('div');
   content.style.display = expanded ? 'block' : 'none';
-  content.style.background = 'var(--surface, #f6f6f6)';
-  content.style.padding = '8px';
-  content.style.borderRadius = '6px';
-  content.style.fontSize = '13px';
-  content.style.overflowX = 'auto';
-  content.style.whiteSpace = 'pre-wrap';
-  content.textContent = block.lines.join('\n');
+  renderBlockContent(block, content, linkContext);
   wrap.appendChild(content);
 
   label.onclick = () => {
@@ -6638,6 +6889,8 @@ async function bootstrap() {
   githubConfig = await getGithubConfig(kv);
   webdavConfig = await getWebdavConfig(kv);
   agendaFilesConfig = await getAgendaFiles(kv);
+  globalVariablesText = await getGlobalVariables(kv);
+  globalVariables = parseGlobalVariables(globalVariablesText);
   applyTheme(await getTheme(kv));
   applyFontFamily(await getFontFamily(kv));
   applyFontSize(await getFontSize(kv));

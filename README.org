@@ -22,9 +22,8 @@ This document describes what org-pwa actually does today, how to use it, and —
 - [[#inline-text-markup][Inline text markup]]
 - [[#searching][Searching]]
 - [[#links-and-images][Links and images]]
-- [[#folding-and-startup][Folding and #+STARTUP]]
+- [[#configuration][Configuration]]
 - [[#progress-logging][Progress logging]]
-- [[#local-variables][Local Variables]]
 - [[#archiving][Archiving]]
 - [[#the-plain-text-editor][The plain-text editor]]
 - [[#agenda][Agenda]]
@@ -91,7 +90,15 @@ The header shows the current filename and which backend it came from, turning *r
 
   All fields across all four sections are committed together on *Save*, or discarded together on *Cancel* — nothing is written until you actually save. When not editing, existing properties still show as a small read-only line under the heading, but only when drawers are actually visible for that heading (~#+STARTUP: showeverything~, or manually cycled to "fully expanded" — see [[#folding-and-startup][Folding and #+STARTUP]]); tapping it opens the same general editor as tapping the title. Collapsing the heading again correctly hides them too, whether via swipe or chevron.
 
-- *Block content* (~#+BEGIN_SRC~ / ~#+BEGIN_QUOTE~ / ~#+BEGIN_EXAMPLE~ /etc.): shown read-only, gated by the same drawer-visibility rule as properties above. When folded, an honest "collapsed block" label is shown rather than nothing — tap it to reveal the actual content (code, quoted text, whatever the block holds); tap the label again once expanded to re-fold it. No in-app editing of block content yet — this is visibility only.
+- *Block content* (~#+BEGIN_SRC~ / ~#+BEGIN_QUOTE~ / ~#+BEGIN_EXAMPLE~ /etc.): shown read-only, gated by the same drawer-visibility rule as properties above. When folded, an honest "collapsed block" label is shown rather than nothing — tap it to reveal the actual content; tap the label again once expanded to re-fold it. No in-app editing of block content yet — this is visibility only. Recognition itself is fully generic — *any* ~#+BEGIN_NAME~ / ~#+END_NAME~ pair round-trips correctly and gets this same tap-to-reveal treatment, not a fixed list of specific names. Three names get real, distinct display treatment though, matching real org's own actual behavior — content isn't just shown literally for every block name the same way:
+
+  - ~QUOTE~ — inline markup (bold, italic, links, everything) is interpreted, not shown literally, since a quote is meant to hold normal prose. Indented on *both* the left and right margins with a left border, a conventional blockquote treatment — this is a real, distinct visual difference from every other block type, not just a label change.
+  - ~VERSE~ — inline markup interpreted, same as ~QUOTE~, but every source line stays its own visual line exactly, never reflowing into or merging with an adjacent line the way ordinary paragraph text (or ~QUOTE~ itself) does — real org's own defining characteristic of a verse block.
+  - ~CENTER~ — inline markup interpreted, its own paragraphs centered.
+
+  Everything else — ~SRC~, ~EXAMPLE~, ~COMMENT~, or any other/custom name — stays literal and verbatim, shown byte-for-byte with no markup interpretation at all, exactly as before.
+
+  On export (see [[#export][Export]]), a further, separate three-way distinction applies: ~SRC~ becomes a real fenced code block with its language parameter preserved (~#+BEGIN_SRC python~ → ```python), ~QUOTE~ becomes a blockquote, and ~COMMENT~ is dropped from the output entirely, matching real org's own export behavior exactly. Every other name — ~EXAMPLE~, ~CENTER~, ~VERSE~, or anything custom — exports as a plain, language-less fenced/preformatted block, its content otherwise untouched (export doesn't currently mirror ~VERSE~'s own line-preserving or ~CENTER~'s own centering treatment — a stated, current gap). A ~SRC~ block's language parameter (and any other text after the block name) is parsed and preserved for round-trip either way, but isn't used for anything beyond that export-time language hint — no in-app syntax highlighting, and no Babel-style execution of any kind (see [[#known-limitations--not-built-yet][Known limitations]]).
 - *Moving headings* (↑ / ↓ / ← / → in the action row): ↑ and ↓ reorder a heading among its own siblings without touching its level or its subtree — everything nested under it moves as one unit automatically. ← (promote/outdent) moves a heading up one level, making it a sibling of its former parent, inserted right after it. → (demote/indent) moves it down one level, making it the last child of whichever heading immediately precedes it. All four are no-ops at a natural boundary (already first/last, already top-level, no preceding sibling to demote under) — tapping one there shows a brief status message rather than silently doing nothing or corrupting the outline. This is the actual replacement for switching to Text view and cutting/pasting raw lines, which used to be the only way to reorder anything.
 
 *** A heading's "text"
@@ -154,6 +161,8 @@ A marker only opens where it's preceded by the start of a line, whitespace, or o
 
 *Horizontal rule*: a line consisting of only dashes, at least 5 of them (~-----~), renders as a horizontal rule. Whitespace around the dashes is fine; anything else on the line (a 6th character that isn't a dash) means it's just a paragraph, not a rule.
 
+*Hard line break*: a line ending in two literal backslashes (~\\~) is real org's own explicit line-break marker. In an ordinary paragraph or list item, this app already shows every source line as its own visual line regardless — paragraphs never reflow adjacent lines together the way real org's own default actually does — so the marker's practical effect there is just display cleanup: without recognizing it, the two backslash characters would show up as literal, visible text at the end of the line, which this app now strips instead. Inside a [[#lists-tables-and-body-text][~QUOTE~ or ~CENTER~ block]] specifically, where lines genuinely do reflow together into one paragraph, the marker has real, distinguishable meaning — it forces an actual break at that point instead of just joining into the next line with a space.
+
 *Subscript and superscript*: ~_~ and ~^~ mark sub/superscript — ~x_i~ and ~x^2~ both work without braces, and braces (~x_{alpha}~, ~10^{100}~) are always accepted too, mainly useful for readability once the script itself is more than a couple of characters. Controlled by ~org-use-sub-superscripts~ (see [[#local-variables][Local Variables]]):
 
 | Value | Behavior |
@@ -207,14 +216,45 @@ Tags and properties are read from a heading's own line only — *no inheritance 
 - ~[[target][description]]~ links render as tappable text.
 - *A bare URL auto-links too*, matching real org's own documented behavior — ~https://example.com~ typed directly in a sentence (no ~[[...]]~ brackets at all) renders as a tappable link, same as the bracketed form. ~<https://example.com>~ (angle-bracket wrapped) works the same way, and is org's other recognized plain-URI form. Recognized schemes: ~http~, ~https~, ~ftp~, ~mailto~, ~doi~, ~file~, ~github~, ~webdav~ — a well-defined set, not arbitrary ~word:word~ text (so a time like ~10:30~ or a ratio like ~3:4~ is never misread as a link). Trailing sentence punctuation (~.~, ~,~, ~)~, etc.) is excluded from a bare match — ~see https://example.com/page.~ links just the URL, not the period; wrap it in ~<...>~ or ~[[...]]~ if a URL genuinely needs to end in one of those characters.
 - ~doi:10.1145/1327452.1327492~ — a Digital Object Identifier, common in academic citations — resolves to the standard ~https://doi.org/...~ resolver URL and opens like any other external link. Works both bracketed and as a bare auto-link.
-- Internal links resolve by heading title (~[[*Some Heading]]~), by ~CUSTOM_ID~ property (~[[#my-id]]~), or fall back to a title search for bare text — tapping one expands ancestors and scrolls to the target heading. Set a heading's ~CUSTOM_ID~ via the properties section of its general editor (see [[#editing-your-outline][Editing your outline]]) — it's a property like any other, no dedicated action for it.
+- Internal links resolve by heading title (~[[*Some Heading]]~), by ~CUSTOM_ID~ property (~[[#my-id]]~), or fall back to a title search for bare text — tapping one expands ancestors and scrolls to the target heading. Set a heading's ~CUSTOM_ID~ via the properties section of its general editor (see [[#editing-your-outline][Editing your outline]]) — it's a property like any other, no dedicated action for it. *A floating ⏎ button appears bottom-right* after following one, remembering wherever the tap actually happened (organic scrolling, not just a prior link jump) so a document with a table of contents — Docs' own included — is genuinely navigable on a touch device with no reliable browser Back to fall back on. Chained link-following (tap through several links in a row, from either the outline or Docs) unwinds one hop at a time, standard back-stack behavior; the button disappears once there's nowhere left to go back to.
 - *~http://~ / ~https://~ image links* render inline as actual images, if ~#+STARTUP: inlineimages~ is set (off by default — see below).
 - *Local/relative image paths load and render on GitHub and WebDAV* — ~[[photo.png]]~, ~[[images/photo.png]]~, ~[[file:photo.png]]~, ~[[github:images/photo.png]]~ all resolve relative to the current document's own path (a bare filename lands beside it, same convention as capture-to-file and archiving below), get read as binary and base64-encoded into a ~data:~ URL, and appear as real images — same ~#+STARTUP: inlineimages~ gate as ~http(s)~ images above. Cached per session once loaded, so re-rendering the outline (any edit, anywhere) doesn't re-fetch the same image again. *Local files (File System Access) and iOS import still show the ~[image: path]~ placeholder* — same picker-permission wall as archiving and capture-to-file: reading an arbitrary sibling file needs a handle the browser hasn't granted, and can't be granted silently mid-render.
 - *~file:~ / ~github:~ / ~webdav:~ links are recognized, parsed, and navigate* — absolute path (~file:/home/user/documents/notes.org~), relative path (~file:projects/todo.org~), a specific headline (=file:~/notes.org::*Project Alpha=), and a text search (=file:~/notes.org::exact phrase=) all parse correctly into a scheme, a path, and an optional in-file target, matching real org's own ~::~ convention. ~github:path/in/repo.org~ and ~webdav:path/on/server.org~ follow the same rules for their own backend. Tapping one opens the target document (the same mechanism File → Open already uses, including its own unsaved-changes handling) and jumps straight to the headline or text match if one was specified. A bare ~file:~ /relative-path link with no explicit scheme uses whichever backend the /current/ document itself came from; an explicit ~github:~ / ~webdav:~ always targets that backend directly, regardless of what's currently open. *Local files and iOS import are the one exception* — same picker-permission wall as archiving, capture-to-file, and image loading below: opening an arbitrary path needs a fresh picker gesture the browser requires per file, which can't happen from a link tap, so those show a clear message instead of attempting (and failing) a silent open.
 
 -----
 
-** Folding and ~#+STARTUP~
+** Configuration
+:PROPERTIES:
+:CUSTOM_ID: configuration
+:END:
+
+Three separate mechanisms, all ultimately setting the same kind of thing (an Emacs Lisp variable, or an org-specific directive), at three different scopes -- and, where more than one could apply to the same setting, resolved in a specific, deliberate precedence order, matching real Emacs org-mode's own actual behavior exactly, not an arbitrary choice made for this app:
+
+1. *Global Variables* (below) -- the lowest-precedence layer, an app-wide baseline that applies across every file, configured once in Settings.
+2. *~#+STARTUP:~* ([[#folding-and-startup][below]]) -- a file's own directive line, overriding the global baseline for that file specifically. Only a handful of variables have a ~#+STARTUP:~ shorthand at all (heading visibility, inline images, and ~org-log-done~ are the ones this app recognizes) -- most variables skip this layer entirely and are only ever set via Global Variables or Local Variables.
+3. *Local Variables* ([[#local-variables][below]]) -- a file's own "# Local Variables:" block, the highest-precedence layer. This is a general Emacs mechanism (not org-specific), and real Emacs processes it deliberately last, specifically so a file can override anything set earlier -- including a user's own init-file customizations, which is exactly the role Global Variables plays here.
+
+In short: *Local Variables beats #+STARTUP beats Global Variables*. A variable set at a higher layer always wins over a lower one for that same file; a variable left unset at a given layer simply falls through to the next one down. Most of the variables below are only ever read from Global Variables or Local Variables directly, with no ~#+STARTUP:~ layer in between at all -- ~org-log-done~ is the one deliberate exception, since it's also the one variable real org itself gives a dedicated ~#+STARTUP:~ shorthand to.
+
+-----
+
+*** Global Variables
+:PROPERTIES:
+:CUSTOM_ID: global-variables
+:END:
+
+Set in *Settings → Global Variables* -- the lowest-precedence layer described above, and the only one of the three that isn't stored inside any particular ~.org~ file at all. Same "name: value" per-line text format as a file's own [[#local-variables][Local Variables]] block, just without that mechanism's "# Local Variables: ... # End:" wrapper, since this text lives in a dedicated Settings field rather than inside a file's own comment syntax. Example:
+
+#+BEGIN_SRC
+org-log-done: 'time
+org-agenda-start-on-weekday: 1
+#+END_SRC
+
+Every variable [[#local-variables][Local Variables]] recognizes can be set here too, at this lower, app-wide precedence -- both sections document the same variables, so see Local Variables below for the full list and what each one does; nothing here is exclusive to this layer. Takes effect immediately on *Save* -- no reload, and no need to reopen whatever document is currently open, matching how the theme and font settings already apply instantly. Included in *Export Settings* / *Import Settings…* (see [[#file-management][File management]]) along with every other setting, so this travels with a settings backup like anything else.
+
+-----
+
+*** Folding and ~#+STARTUP~
 :PROPERTIES:
 :CUSTOM_ID: folding-and-startup
 :END:
@@ -239,58 +279,7 @@ These defaults are chosen to match real Emacs org-mode's actual out-of-the-box b
 
 -----
 
-** Progress logging
-:PROPERTIES:
-:CUSTOM_ID: progress-logging
-:END:
-
-Two related mechanisms, both writing into the same place — a heading's ~:LOGBOOK:~ drawer — real org-mode's own convention for keeping a running history of state changes and notes, separate from a heading's ordinary body content.
-
-*** ~org-log-done~
-
-Set via ~#+STARTUP: logdone~ or ~#+STARTUP: lognotedone~ (see [[#folding-and-startup][Folding and #+STARTUP]]) — controls what happens automatically whenever a heading enters a DONE-type state (tapping the TODO badge to cycle there, or the action-menu toggle), matching real org-mode's own two mutually-exclusive modes:
-
-- ~logdone~ (~time~) — inserts a ~CLOSED: [timestamp]~ planning line the moment a heading becomes DONE. Cycling it back to a different, non-done keyword removes that timestamp again; cycling it all the way back to no keyword at all also removes it by default, unless ~org-closed-keep-when-no-todo~ is set (see [[#local-variables][Local Variables]]) — matching real org's own distinct handling of that specific case. Re-marking an already-done heading as a *different* done keyword (e.g. DONE → KILL) doesn't insert a second timestamp or disturb an existing one, since that's not "entering" DONE.
-- ~lognotedone~ (~note~) — instead of (or alongside — see below) a timestamp, prompts for a note the moment a heading becomes DONE, in a small dedicated panel. The TODO badge itself flips immediately when tapped — it never waits on the note — so *Skip* simply declines to add one without reverting the state change. A saved note is filed as a new ~:LOGBOOK:~ entry, timestamped.
-
-These two are alternatives for a *plain* DONE-type keyword with no logging spec of its own — a file has either ~logdone~ or ~lognotedone~ active as the default, never both at once for the same keyword. With neither set (the default — no ~#+STARTUP:~ line, matching real org's own out-of-the-box behavior), entering DONE inserts nothing extra on its own.
-
-*** The per-keyword logging spec
-
-The more general mechanism — applies to *any* keyword, not just done-type ones, and can override ~org-log-done~'s own default on a per-keyword basis. Set via the same parenthesized fast-key syntax after a keyword in ~#+TODO:~, e.g.:
-
-#+BEGIN_SRC
-#+TODO: TODO(t) WAIT(w@/!) | DONE(d!) KILL(k@)
-#+END_SRC
-
-Four possible markers, each optional, matching real org's own actual grammar exactly:
-
-| Marker | Meaning |
-|---+---|
-| ~!~ | Log a timestamp when *entering* this state |
-| ~@~ | Log a note (prompted for, same panel as ~org-log-done~'s own) when *entering* this state |
-| ~@/!~ | Log a note when entering, /and/ a timestamp when *leaving* — conditionally, see below |
-| ~/!~ | Log a timestamp only when *leaving* this state — no logging on entering it at all |
-
-The leaving-timestamp forms (~@/!~ and ~/!~) have a real subtlety, matching real org exactly: a leaving-log only fires *if the target state doesn't already log something on its own entry*. Using the example above — ~WAIT(w@/!)~ — switching from WAIT to DONE fires nothing extra from WAIT's own ~/!~, because DONE is already configured to log a timestamp on entry (~d!~); the transition is already covered. But switching from WAIT back to TODO *does* trigger it, since TODO has no logging configured of its own — without WAIT's leaving-log, that transition would go completely unrecorded.
-
-An explicit per-keyword spec always takes precedence over ~org-log-done~'s file-wide default for that specific keyword — ~org-log-done~ only fills in for a done-type keyword that has no spec of its own. Both mechanisms can genuinely fire together for the same transition (a ~CLOSED~ timestamp *and* a ~:LOGBOOK:~ entry), which can look redundant but is how real org itself behaves — they're separate, independent mechanisms that happen to both be configured.
-
-*Fast-access keys* (the single letter before any ~@~/~!~, e.g. the ~t~ in ~TODO(t)~) are correctly parsed — so a real ~#+TODO:~ line using them, which is extremely common, no longer breaks TODO-state recognition entirely (a real bug this work found and fixed — see [[test/testing.org][test/testing.org]] for the full account). There's no fast-key-driven jump-to-state UI yet, though — tap-to-cycle is still the only way to change state in the app itself.
-
-*** The ~:LOGBOOK:~ drawer
-
-Shown under a heading exactly like ~:PROPERTIES:~ — same visibility rule (gated by the same drawer-visibility flag, hidden by default unless ~#+STARTUP: showeverything~ or the heading is manually swiped fully open), same read-only, tap-to-open-the-action-menu treatment. A state-change entry shows the transition and its timestamp (~WAIT → DONE   [timestamp]~); a note, if one was taken, appears indented and italicized underneath.
-
-Recognized entry formats match real org's own actual default log format exactly (not an invented convention) — including the "from" clause being correctly omitted when there was no previous state, and a multi-line note correctly recognized via the trailing-backslash continuation convention real org itself uses. ~CLOCK:~ lines are recognized structurally (so a file already using real org's clocking commands round-trips cleanly through this app without losing anything) but not acted on — clocking itself isn't built here yet.
-
-*** Agenda: Log
-
-The Agenda screen's date-range line has a *Log* checkbox, off by default — matching real org's own ~org-agenda-log-mode~ convention exactly (a toggle, not always-on, since showing every state change and note by default would clutter a view meant for daily task-scanning). Turned on, every ~:LOGBOOK:~ entry across the aggregated files shows up as its own dated item, interleaved by its own timestamp alongside SCHEDULED/DEADLINE/anniversaries — not clustered separately — with a 📝 icon and the note text shown underneath when there is one. Deliberately shows a DONE heading's own history even though the Agenda's normal view excludes DONE headings entirely — Log mode's whole purpose is seeing what got done, which a heading that's already been filtered out for being done would otherwise never surface at all.
-
------
-
-** Local Variables
+*** Local Variables
 :PROPERTIES:
 :CUSTOM_ID: local-variables
 :END:
@@ -336,12 +325,63 @@ More variables will likely be added here over time; the parser itself is general
 
 -----
 
+** Progress logging
+:PROPERTIES:
+:CUSTOM_ID: progress-logging
+:END:
+
+Two related mechanisms, both writing into the same place — a heading's ~:LOGBOOK:~ drawer — real org-mode's own convention for keeping a running history of state changes and notes, separate from a heading's ordinary body content.
+
+*** ~org-log-done~
+
+Set via ~#+STARTUP: logdone~ or ~#+STARTUP: lognotedone~ (see [[#folding-and-startup][Folding and #+STARTUP]]) — controls what happens automatically whenever a heading enters a DONE-type state (tapping the TODO badge to cycle there, or the action-menu toggle), matching real org-mode's own two mutually-exclusive modes:
+
+- ~logdone~ (~time~) — inserts a ~CLOSED: [timestamp]~ planning line the moment a heading becomes DONE. Cycling it back to a different, non-done keyword removes that timestamp again; cycling it all the way back to no keyword at all also removes it by default, unless ~org-closed-keep-when-no-todo~ is set (see [[#local-variables][Local Variables]]) — matching real org's own distinct handling of that specific case. Re-marking an already-done heading as a *different* done keyword (e.g. DONE → KILL) doesn't insert a second timestamp or disturb an existing one, since that's not "entering" DONE.
+- ~lognotedone~ (~note~) — instead of (or alongside — see below) a timestamp, prompts for a note the moment a heading becomes DONE, in a small dedicated panel. The TODO badge itself flips immediately when tapped — it never waits on the note — so *Skip* simply declines to add one without reverting the state change. A saved note is filed as a new ~:LOGBOOK:~ entry, timestamped.
+
+These two are alternatives for a *plain* DONE-type keyword with no logging spec of its own — a file has either ~logdone~ or ~lognotedone~ active as the default, never both at once for the same keyword. With neither set (the default — no ~#+STARTUP:~ line, matching real org's own out-of-the-box behavior), entering DONE inserts nothing extra on its own.
+
+*** The per-keyword logging spec
+
+The more general mechanism — applies to *any* keyword, not just done-type ones, and can override ~org-log-done~'s own default on a per-keyword basis. Set via the same parenthesized fast-key syntax after a keyword in ~#+TODO:~, e.g.:
+
+#+BEGIN_SRC
+#+TODO: TODO(t) WAIT(w@/!) | DONE(d!) KILL(k@)
+#+END_SRC
+
+Four possible markers, each optional, matching real org's own actual grammar exactly:
+
+| Marker | Meaning |
+|---+---|
+| ~!~ | Log a timestamp when *entering* this state |
+| ~@~ | Log a note (prompted for, same panel as ~org-log-done~'s own) when *entering* this state |
+| ~@/!~ | Log a note when entering, /and/ a timestamp when *leaving* — conditionally, see below |
+| ~/!~ | Log a timestamp only when *leaving* this state — no logging on entering it at all |
+
+The leaving-timestamp forms (~@/!~ and ~/!~) have a real subtlety, matching real org exactly: a leaving-log only fires *if the target state doesn't already log something on its own entry*. Using the example above — ~WAIT(w@/!)~ — switching from WAIT to DONE fires nothing extra from WAIT's own ~/!~, because DONE is already configured to log a timestamp on entry (~d!~); the transition is already covered. But switching from WAIT back to TODO *does* trigger it, since TODO has no logging configured of its own — without WAIT's leaving-log, that transition would go completely unrecorded.
+
+An explicit per-keyword spec always takes precedence over ~org-log-done~'s file-wide default for that specific keyword — ~org-log-done~ only fills in for a done-type keyword that has no spec of its own. Both mechanisms can genuinely fire together for the same transition (a ~CLOSED~ timestamp *and* a ~:LOGBOOK:~ entry), which can look redundant but is how real org itself behaves — they're separate, independent mechanisms that happen to both be configured.
+
+*Fast-access keys* (the single letter before any ~@~ / ~!~, e.g. the ~t~ in ~TODO(t)~) are correctly parsed — so a real ~#+TODO:~ line using them, which is extremely common, no longer breaks TODO-state recognition entirely (a real bug this work found and fixed — see [[test/testing.org][test/testing.org]] for the full account). There's no fast-key-driven jump-to-state UI yet, though — tap-to-cycle is still the only way to change state in the app itself.
+
+*** The ~:LOGBOOK:~ drawer
+
+Shown under a heading exactly like ~:PROPERTIES:~ — same visibility rule (gated by the same drawer-visibility flag, hidden by default unless ~#+STARTUP: showeverything~ or the heading is manually swiped fully open), same read-only, tap-to-open-the-action-menu treatment. A state-change entry shows the transition and its timestamp (~WAIT → DONE   [timestamp]~); a note, if one was taken, appears indented and italicized underneath.
+
+Recognized entry formats match real org's own actual default log format exactly (not an invented convention) — including the "from" clause being correctly omitted when there was no previous state, and a multi-line note correctly recognized via the trailing-backslash continuation convention real org itself uses. ~CLOCK:~ lines are recognized structurally (so a file already using real org's clocking commands round-trips cleanly through this app without losing anything) but not acted on — clocking itself isn't built here yet.
+
+*** Agenda: Log
+
+The Agenda screen's date-range line has a *Log* checkbox, off by default — matching real org's own ~org-agenda-log-mode~ convention exactly (a toggle, not always-on, since showing every state change and note by default would clutter a view meant for daily task-scanning). Turned on, every ~:LOGBOOK:~ entry across the aggregated files shows up as its own dated item, interleaved by its own timestamp alongside SCHEDULED/DEADLINE/anniversaries — not clustered separately — with a 📝 icon and the note text shown underneath when there is one. Deliberately shows a DONE heading's own history even though the Agenda's normal view excludes DONE headings entirely — Log mode's whole purpose is seeing what got done, which a heading that's already been filtered out for being done would otherwise never surface at all.
+
+-----
+
 ** Archiving
 :PROPERTIES:
 :CUSTOM_ID: archiving
 :END:
 
-Tap a heading's title, then *Archive*, to move the whole subtree to its configured archive location — real org's ~org-archive-subtree~ (~C-c C-x C-s~ / the friendlier ~C-c $~), not just tagging something in place. The moved copy gets ~:ARCHIVE:~ added to its tags and four properties stamped on it recording where it came from: ~ARCHIVE_TIME~, ~ARCHIVE_FILE~, ~ARCHIVE_OLPATH~ (the titles of its ancestor headings, joined by ~/~), and ~ARCHIVE_CATEGORY~. The original is only removed from the current file after the move to its destination has actually succeeded — a network failure or permission problem leaves the heading exactly where it was, with a clear error shown, rather than losing it.
+Tap a heading's title, then *Archive*, to move the whole subtree to its configured archive location — real org's ~org-archive-subtree~ (~C-c C-x C-s~ / the friendlier ~C-c $~), not just tagging something in place. The moved copy gets ~:ARCHIVE:~ added to its tags and four properties stamped on it recording where it came from: ~ARCHIVE_TIME~, ~ARCHIVE_FILE~, ~ARCHIVE_OLPATH~ (the titles of its ancestor headings, joined by ~ / ~), and ~ARCHIVE_CATEGORY~. The original is only removed from the current file after the move to its destination has actually succeeded — a network failure or permission problem leaves the heading exactly where it was, with a clear error shown, rather than losing it.
 
 *Confirmation*: with ~org-archive-confirm~ at its default ~t~ — an app-specific setting, not a real org-mode variable (see [[#local-variables][Local Variables]] for why it's presented this way regardless) — archiving shows a confirmation dialog naming the actual destination — the file, and the heading it'll be filed under if the location has one — before anything happens. Cancel and nothing changes at all. Confirm and, once the move actually completes, the status line reads ~--- Archive complete.~ Set ~org-archive-confirm~ to ~nil~ to skip the dialog and archive immediately.
 
@@ -476,7 +516,7 @@ Four example templates are the default, so this works immediately with no setup:
 - ~key~ — must be unique; shown next to the description in the picker.
 - ~type~ — one of ~item~ (plain bullet), ~checkitem~ (checkbox item), ~plain~ (raw text, parsed as its own org fragment and merged in — the only type that can itself contain heading syntax, properties drawers, TODO keywords, etc.), or ~table-line~ (one row, appended to the nearest existing table under the target or creating a new one).
 - ~olp~ — the outline path to insert into, found or created heading by heading. A segment wrapped in ~%<FORMAT>~ (e.g. ~"%<%Y-%m>"~) expands dynamically — real org's own ~,(format-time-string ...)~ idea, translated into this app's %-escape syntax so a monthly table can target "2026-07" without you creating that heading by hand every month. Any other segment is used completely literally, with no escape processing at all.
-- ~file~ /(optional)/ — capture into a DIFFERENT file than the one currently open, real org's own ~(file+olp "target-file.org" ...)~ idea. A bare filename (~"journal.org"~) lands as a sibling of whatever file is currently open — same convention as archiving's ~%s_archive~; a path containing ~/~ is used as-is. *The currently open file is never switched or touched* — this reads the target file via whichever backend (GitHub/WebDAV/local) the current document already uses, inserts, and writes it back directly, the same read-write-safely pattern archiving uses (nothing is changed if the write fails). Omit ~file~ entirely to capture into the currently open file, exactly as before this existed. Same local-file picker-permission limitation as archiving: a target file on GitHub/WebDAV works automatically; a local (File System Access) or iOS-import target needs that file opened/saved once first, or you'll get a clear message explaining why instead of a silent failure.
+- ~file~ /(optional)/ — capture into a DIFFERENT file than the one currently open, real org's own ~(file+olp "target-file.org" ...)~ idea. A bare filename (~"journal.org"~) lands as a sibling of whatever file is currently open — same convention as archiving's ~%s_archive~; a path containing ~ / ~ is used as-is. *The currently open file is never switched or touched* — this reads the target file via whichever backend (GitHub/WebDAV/local) the current document already uses, inserts, and writes it back directly, the same read-write-safely pattern archiving uses (nothing is changed if the write fails). Omit ~file~ entirely to capture into the currently open file, exactly as before this existed. Same local-file picker-permission limitation as archiving: a target file on GitHub/WebDAV works automatically; a local (File System Access) or iOS-import target needs that file opened/saved once first, or you'll get a clear message explaining why instead of a silent failure.
 - ~emptyLines~ — parsed and stored, matching real org's ~:empty-lines N~, but *not yet acted on* — stated plainly rather than silently: no blank lines get inserted after captured content yet.
 
 *Template text — the %-escape language, local time throughout:*
@@ -538,7 +578,7 @@ Four example templates are the default, so this works immediately with no setup:
 
 *File → Export…* gets a document out of org-pwa as Markdown, HTML, or a calendar file, for the whole file or (Markdown/HTML only) just one heading's subtree. All three walk the same parsed structure the app already renders from, not a text-level reparse.
 
-*Scope*: *Whole file* exports everything; *Choose a heading…* shows every heading in the document — regardless of current fold state, so something folded away is still pickable — and exports just that heading and its descendants. The selected heading becomes the new top level (~#~ / ~<h1>~) in the output, not its original depth, so a level-3 heading exported on its own doesn't produce a dangling ~###~ / ~<h3>~ with nothing above it. *Calendar export has its own, different scope options instead* (see below) — dated items are typically scattered across a whole file rather than confined to one subtree, so a heading picker doesn't map onto it the same way.
+*Scope*: *This file* exports everything; *Choose a heading…* shows every heading in the document — regardless of current fold state, so something folded away is still pickable — and exports just that heading and its descendants. The selected heading becomes the new top level (~#~ / ~<h1>~) in the output, not its original depth, so a level-3 heading exported on its own doesn't produce a dangling ~###~ / ~<h3>~ with nothing above it. Calendar export shares this same scope choice too (see below) — including its own *Choose a heading…* option, exporting just that heading's dated items and its descendants'.
 
 *Markdown* is GFM-flavored: checkboxes become real task-list syntax (~- [ ]~ / ~- [x]~), tables become pipe tables, fenced code blocks keep their language hint, footnotes become GFM's own ~[^label]~ / ~[^label]: text~ syntax. TODO keyword, priority, and tags stay as plain text on the heading line (~# TODO [#A] Buy milk~) since Markdown has no native syntax for any of the three — matching org's own source convention rather than inventing one. Underline and sub/superscript fall back to raw ~<u>~ / ~<sub>~ / ~<sup>~ HTML passthrough, since Markdown has no native syntax for those either (both CommonMark and GFM allow embedded HTML, so this renders correctly wherever the output is actually viewed).
 
@@ -680,7 +720,7 @@ This is the section to read if you know org-mode well and want to know exactly w
 
 *Progress logging*
 
-- ~org-log-done~ and the general per-keyword ~!~/~@~/~@/!~/~/!~ logging spec are both built, writing into a shared ~:LOGBOOK:~ drawer, including the conditional leaving-log semantics (a state's own leaving-timestamp only fires when the target state doesn't already log its own entry) — see [[#progress-logging][Progress logging]] for the full behavior. Fast-access keys (~TODO(t)~) are correctly parsed but have no jump-to-state UI of their own yet; tap-to-cycle remains the only way to actually change a heading's state. No clocking (~org-clock-in~/~-out~/~-cancel~/~-display~) — ~CLOCK:~ lines round-trip cleanly if a file already has them, but nothing in this app starts, stops, or displays one.
+- ~org-log-done~ and the general per-keyword ~!~ / ~@~ / ~@/!~ / ~/!~ logging spec are both built, writing into a shared ~:LOGBOOK:~ drawer, including the conditional leaving-log semantics (a state's own leaving-timestamp only fires when the target state doesn't already log its own entry) — see [[#progress-logging][Progress logging]] for the full behavior. Fast-access keys (~TODO(t)~) are correctly parsed but have no jump-to-state UI of their own yet; tap-to-cycle remains the only way to actually change a heading's state. No clocking (~org-clock-in~ / ~-out~ / ~-cancel~ / ~-display~) — ~CLOCK:~ lines round-trip cleanly if a file already has them, but nothing in this app starts, stops, or displays one.
 
 *Agenda*
 
@@ -712,7 +752,7 @@ Restated in one place for scanning:
 - ~:COOKIE_DATA:~ overrides for checkbox counting scope aren't read — counting is always hierarchical
 - No table formula evaluation
 - No footnote commands (~org-footnote-new~ /normalize/sort/renumber) — editing a footnote means editing its raw text directly
-- No clocking (~org-clock-in~/~-out~/~-cancel~/~-display~) — ~CLOCK:~ lines round-trip cleanly but nothing starts, stops, or displays one; no fast-key-driven jump-to-state UI for progress logging's own per-keyword spec either, tap-to-cycle is still the only way to change state
+- No clocking (~org-clock-in~ / ~-out~ / ~-cancel~ / ~-display~) — ~CLOCK:~ lines round-trip cleanly but nothing starts, stops, or displays one; no fast-key-driven jump-to-state UI for progress logging's own per-keyword spec either, tap-to-cycle is still the only way to change state
 - No drag-to-reorder (button-based Move/Promote/Demote actions exist instead — see [[#editing-your-outline][Editing your outline]])
 - No dedicated "browse your recently-opened documents" switcher UI — switching between documents happens by tapping a ~file:~ / ~github:~ / ~webdav:~ link or File → Open, not a tab bar or history list; and no true simultaneous multi-document editing (see [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]] for the full explanation)
 - Agenda doesn't distinguish the three repeater marks (~+~ / ~++~ / ~.+~), and has no diary-sexp support other than ~org-contacts-anniversaries~
