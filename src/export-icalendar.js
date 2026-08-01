@@ -167,15 +167,21 @@ function buildVevent({ uid, summary, description, date, hasTime, rrule, alarmDay
  * already uses for its own `today` option.
  */
 export function exportToIcalendar(docs, opts = {}) {
-  const { today = new Date(), birthdayProperty = 'BIRTHDAY' } = opts;
+  const { today = new Date(), birthdayProperty = 'BIRTHDAY', scope = null } = opts;
   const events = [];
+
+  // When scoped to a single heading, walk just that heading's own
+  // subtree (itself and its descendants) -- a lightweight, doc-shaped
+  // wrapper around just the scope heading, reusing walkHeadings exactly
+  // as-is rather than a separate, parallel traversal implementation.
+  const walkScope = (doc, visit) => walkHeadings(scope ? { children: [scope] } : doc, visit);
 
   // org-contacts-anniversaries is active for this export if the trigger
   // line is present ANYWHERE across all docs -- checked upfront, once,
   // matching buildAgendaItems' own identical upfront scan exactly.
   let contactsAnniversariesActive = false;
   for (const { doc } of docs) {
-    walkHeadings(doc, (heading) => {
+    walkScope(doc, (heading) => {
       if (contactsAnniversariesActive) return;
       for (const line of heading.bodyLines || []) {
         if (isContactsAnniversariesTrigger(line)) {
@@ -188,7 +194,7 @@ export function exportToIcalendar(docs, opts = {}) {
 
   for (const { documentId, doc } of docs) {
     const { doneKeywords } = resolveTodoSequence(doc);
-    walkHeadings(doc, (heading) => {
+    walkScope(doc, (heading) => {
       if (isArchived(heading)) return;
       if (isCommentedHeading(heading)) return;
       if (doneKeywords.includes(heading.todo)) return; // matches the agenda/TODO views' own default exclusion of completed items

@@ -144,4 +144,36 @@ function decideLogbookEntry(fromTodo, toTodo, sequence, logDoneSetting) {
   return { shouldLog, needsNote };
 }
 
-export { decideProgressLogging, decideLogbookEntry, effectiveLogSpec, parseLogSpec };
+// ---- org-log-done's own 3-layer precedence (Global Variables < #+STARTUP < Local Variables) ----
+
+/** Real Emacs Lisp quote-symbol syntax -- a Global/Local Variables
+ *  value like `'time` or `'note` (the leading `'` is how Lisp writes a
+ *  quoted symbol) resolves to the bare symbol name; anything else
+ *  (including an unset or unrecognized value) resolves to null rather
+ *  than guessing. */
+function parseLogDoneLispValue(raw) {
+  if (raw === undefined || raw === null) return null;
+  const v = String(raw).trim().replace(/^'/, '');
+  return v === 'time' || v === 'note' ? v : null;
+}
+
+/**
+ * Resolves org-log-done's effective value across all three
+ * precedence layers, highest first: a file's own "# Local Variables:"
+ * block, then #+STARTUP: logdone/lognotedone, then the app-wide
+ * Global Variables setting -- matching real Emacs' own actual
+ * resolution order (see global-variables.js's own docs for why this
+ * order specifically). `localVarsOnly` must be the file-local-only
+ * map (parseLocalVariables's own direct output), NOT a map already
+ * merged with Global Variables -- a pre-merged map can't tell "this
+ * file set it explicitly" apart from "only the global default
+ * applies", and only the former should outrank #+STARTUP.
+ */
+function getEffectiveLogDoneSetting(localVarsOnly, startupConfig, globalVarsOnly) {
+  const local = parseLogDoneLispValue((localVarsOnly || {})['org-log-done']);
+  if (local) return local;
+  if (startupConfig && startupConfig.logDone) return startupConfig.logDone;
+  return parseLogDoneLispValue((globalVarsOnly || {})['org-log-done']);
+}
+
+export { decideProgressLogging, decideLogbookEntry, effectiveLogSpec, parseLogSpec, getEffectiveLogDoneSetting };

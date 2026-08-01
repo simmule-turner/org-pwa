@@ -1,5 +1,5 @@
 
-import { parseInline } from './inline-markup.js';
+import { parseInline, stripLineBreakMarker } from './inline-markup.js';
 
 /**
  * Body-content parser: text lines -> content nodes (list, table, block,
@@ -247,8 +247,8 @@ function parseParagraph(lines, i) {
   const footnoteMatch = paraLines.length > 0 ? FOOTNOTE_DEF_LINE_RE.exec(paraLines[0]) : null;
   const footnoteLabel = footnoteMatch ? footnoteMatch[1] : null;
   const inlineLines = footnoteMatch
-    ? [parseInline(footnoteMatch[2]), ...paraLines.slice(1).map(parseInline)]
-    : paraLines.map(parseInline);
+    ? [parseInline(stripLineBreakMarker(footnoteMatch[2])), ...paraLines.slice(1).map((l) => parseInline(stripLineBreakMarker(l)))]
+    : paraLines.map((l) => parseInline(stripLineBreakMarker(l)));
 
   return [
     {

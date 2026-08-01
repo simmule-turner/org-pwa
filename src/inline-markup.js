@@ -314,6 +314,24 @@ function parseInline(text, opts = {}) {
   return nodes;
 }
 
+/** Real org's own hard-line-break marker: a paragraph line ending in
+ *  two literal backslashes, optionally followed by trailing
+ *  whitespace. This app already shows every source line as its own
+ *  visual line regardless of this marker (paragraphs never reflow
+ *  adjacent lines together the way real org's own default does) --
+ *  so its only practical effect here is display cleanup: without
+ *  stripping it before parsing, the two backslash characters would
+ *  show up as literal, visible text at the end of the line. Kept
+ *  separate from parseInline itself since this is specifically a
+ *  paragraph-line concept, not something that should also apply to a
+ *  heading title, list item, or table cell. */
+const LINE_BREAK_MARKER_RE = /\\\\\s*$/;
+
+function stripLineBreakMarker(line) {
+  return line.replace(LINE_BREAK_MARKER_RE, '');
+}
+
 export {
   parseInline,
+  stripLineBreakMarker,
 };
