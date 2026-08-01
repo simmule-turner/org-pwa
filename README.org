@@ -166,7 +166,7 @@ A marker only opens where it's preceded by the start of a line, whitespace, or o
 
 *Footnotes*: ~[fn:label]~ is a reference — rendered as a small tappable superscript that jumps to (and briefly highlights) wherever the actual definition lives, anywhere in the document, even under a currently-folded heading. A definition can be given inline right at the reference itself, ~[fn:label:the actual note text]~, or ~[fn::an anonymous note]~ (no label — org's own convention for a footnote that's never referenced again elsewhere) — either way, an inline definition's text renders directly, styled distinctly (smaller, italic), rather than something to tap through to. The other standard org convention also works: a separate line starting with ~[fn:label]~ (e.g. ~[fn:1] The actual definition.~) is recognized as that footnote's own definition, shown with a small label marking it as one. Exported to Markdown as GFM's own ~[^label]~ / ~[^label]: text~ footnote syntax, and to HTML as a jump-linked superscript with a back-linked Footnotes section at the end of the document.
 
-Table cells currently render as plain text — none of the markup on this page is interpreted inside a table cell yet.
+Table cells render inline markup too, same as everywhere else — tap a cell to see/edit its raw underlying text; tap away and it shows rendered again, matching how paragraphs and list items already work.
 
 -----
 

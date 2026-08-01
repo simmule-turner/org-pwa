@@ -2928,7 +2928,11 @@ function renderTableRow(row) {
         autoGrowTextarea(input);
         tdEl.appendChild(input);
       } else {
-        tdEl.textContent = cellText || '\u00a0';
+        if (cellText) {
+          renderInlineNodes(parseInline(cellText, currentInlineOpts()), tdEl);
+        } else {
+          tdEl.textContent = '\u00a0';
+        }
         tdEl.onclick = () => {
           editingCell = { heading: row.heading, table: row.node, rowIndex, colIndex };
           render();
