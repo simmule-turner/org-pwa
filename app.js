@@ -40,7 +40,8 @@ import {
   getClosedKeepWhenNoTodo,
 } from './src/local-variables.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
-import { decideProgressLogging } from './src/progress-logging.js';
+import { decideProgressLogging, decideLogbookEntry } from './src/progress-logging.js';
+import { formatStateLogLine, parseLogbookEntries } from './src/logbook.js';
 import {
   buildAgendaItems,
   buildTaskList,
@@ -59,7 +60,6 @@ import { exportToIcalendar } from './src/export-icalendar.js';
 import { createHistory, pushSnapshot, canUndo, canRedo, undo, redo, jumpTo, currentEntry } from './src/undo-history.js';
 import { diffHunks } from './src/text-diff.js';
 import { parseOrgTimestamp, formatOrgTimestamp, parseDelay } from './src/org-timestamp.js';
-import { parseBody } from './src/body-parser.js';
 import {
   renameHeading,
   setHeadingTags,
@@ -154,26 +154,40 @@ document.createElement = function (tagName, options) {
 
 const GLOBAL_TODO_DEFAULT = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
 
-// Set to { heading } when org-log-done is 'note and a heading just
-// entered a DONE state -- renderDoneNotePrompt shows a small form for
-// it. Only ever one at a time (matching how only one heading can be
-// mid-transition at once from user interaction); a second transition
+// Set to { heading, fromTodo, toTodo, timestamp } when a transition's
+// effective logging spec requires a note -- renderLogNotePrompt shows a
+// small form for it. Only ever one at a time (matching how only one
+// heading can be mid-transition at once from user interaction); a
+// second transition happening while a prompt is already pending
+// (unlikely, but not impossible via rapid taps) simply replaces it --
+// the earlier prompt's note is lost if never submitted, the same "skip
+// discards it" behavior as explicitly dismissing one.
 // happening while a prompt is already pending (unlikely, but not
 // impossible via rapid taps) simply replaces it -- the earlier prompt's
 // note is lost if never submitted, the same "skip discards it" behavior
-// as explicitly dismissing one.
-let pendingDoneNote = null;
+// as explicitly dismissing one. Generalized beyond just "DONE" now:
+// any keyword transition can require a note (the "@" logging marker
+// isn't done-specific), not only org-log-done's own 'note value.
+let pendingLogNote = null;
 
 /**
  * Every call site in this app that changes a heading's TODO state
  * (cycling, toggling) must go through this rather than calling
- * cycleHeadingTodo/toggleHeadingTodo directly -- org-log-done (Layer 1
- * of progress logging) needs to see EVERY transition applied
- * consistently, not just the ones some call site happened to remember
- * to wire up. `performChange` is a thunk that actually performs the
- * state change (e.g. `() => cycleHeadingTodo(state.doc, heading,
- * GLOBAL_TODO_DEFAULT)`); this wrapper captures the state immediately
- * before and after it runs to decide what logging action applies.
+ * cycleHeadingTodo/toggleHeadingTodo directly -- progress logging needs
+ * to see EVERY transition applied consistently, not just the ones some
+ * call site happened to remember to wire up. `performChange` is a
+ * thunk that actually performs the state change (e.g. `() =>
+ * cycleHeadingTodo(state.doc, heading, GLOBAL_TODO_DEFAULT)`); this
+ * wrapper captures the state immediately before and after it runs to
+ * decide what logging actions apply.
+ *
+ * Two genuinely separate decisions get applied here, matching
+ * progress-logging.js's own separation: the CLOSED planning line
+ * (org-log-done's 'time value specifically) and a :LOGBOOK: "- State
+ * ..." entry (the general per-keyword mechanism, which also subsumes
+ * org-log-done's 'note value as a synthesized fallback spec -- see
+ * effectiveLogSpec's own docs for why that isn't a separate code path).
+ * Both can fire independently for the same transition.
  *
  * Parses #+STARTUP: fresh from state.doc on every call rather than
  * trusting state.startupConfig to already be current -- that cached
@@ -190,46 +204,53 @@ function applyTodoTransition(heading, performChange) {
   const sequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
   const logDoneSetting = parseStartupConfig(state.doc).logDone;
   const keepWhenNoTodo = getClosedKeepWhenNoTodo(state.localVariables);
-  const decision = decideProgressLogging(fromTodo, toTodo, sequence, logDoneSetting, keepWhenNoTodo);
+  const now = new Date();
+  const timestamp = formatOrgTimestamp({ date: now, time: now.toTimeString().slice(0, 5), active: false });
 
-  if (decision.insertClosed) {
-    heading.planning.closed = formatOrgTimestamp({ date: new Date(), time: new Date().toTimeString().slice(0, 5), active: false });
-  } else if (decision.removeClosed) {
+  const closedDecision = decideProgressLogging(fromTodo, toTodo, sequence, logDoneSetting, keepWhenNoTodo);
+  if (closedDecision.insertClosed) {
+    heading.planning.closed = timestamp;
+  } else if (closedDecision.removeClosed) {
     heading.planning.closed = null;
   }
 
-  if (decision.promptNote) {
-    pendingDoneNote = { heading };
+  const logbookDecision = decideLogbookEntry(fromTodo, toTodo, sequence, logDoneSetting);
+  if (logbookDecision.shouldLog) {
+    if (logbookDecision.needsNote) {
+      pendingLogNote = { heading, fromTodo, toTodo, timestamp };
+    } else {
+      heading.logbookLines.splice(0, 0, ...formatStateLogLine(toTodo, fromTodo, timestamp));
+    }
   }
 }
 
-/** Shows a small dedicated panel for taking (or skipping) the closing
- *  note when org-log-done is 'note and a heading just entered a DONE
- *  state -- the TODO badge already flipped immediately when tapped
- *  (applyTodoTransition doesn't wait for this), so declining to add a
- *  note here never reverts or blocks that state change; it only
- *  decides whether a "Closing Note" child heading gets added alongside
- *  it. Per the literal spec this implements: the note is stored under
- *  a real child heading titled "Closing Note", not a :LOGBOOK: entry --
- *  Layer 2's own, more complex per-keyword logging will need to settle
- *  on a LOGBOOK convention regardless, but this simpler, self-contained
- *  mechanism is enough for org-log-done specifically and doesn't need
- *  to wait on that broader design. */
-function renderDoneNotePrompt() {
+/** Shows a small dedicated panel for taking (or skipping) the log note
+ *  when a transition's effective logging spec requires one (either an
+ *  explicit "@" on the keyword being entered, or org-log-done's 'note
+ *  value acting as a same-shaped fallback for a done-type keyword with
+ *  no spec of its own) -- the TODO badge already flipped immediately
+ *  when tapped (applyTodoTransition doesn't wait for this), so
+ *  declining to add a note here never reverts or blocks that state
+ *  change; it only decides whether a :LOGBOOK: entry gets added
+ *  alongside it. Skipping adds no entry at all -- not even a
+ *  timestamp-only fallback -- matching real org's own behavior for a
+ *  declined note prompt, and this app's own established convention
+ *  from before this was generalized beyond just DONE. */
+function renderLogNotePrompt() {
   doneNotePanel.innerHTML = '';
-  if (!pendingDoneNote) {
+  if (!pendingLogNote) {
     doneNotePanel.style.display = 'none';
     return;
   }
   doneNotePanel.style.display = 'block';
 
-  const { heading } = pendingDoneNote;
+  const { heading, fromTodo, toTodo, timestamp } = pendingLogNote;
 
   const label = document.createElement('div');
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '6px';
-  label.textContent = `Note for marking "${heading.title || '(untitled)'}" as ${heading.todo}:`;
+  label.textContent = `Note for marking "${heading.title || '(untitled)'}" as ${toTodo}:`;
   doneNotePanel.appendChild(label);
 
   const textarea = document.createElement('textarea');
@@ -247,20 +268,17 @@ function renderDoneNotePrompt() {
   row.appendChild(
     menuButton('Save note', () => {
       const text = textarea.value.trim();
-      pendingDoneNote = null;
+      pendingLogNote = null;
       if (text) {
-        const timestamp = formatOrgTimestamp({ date: new Date(), time: new Date().toTimeString().slice(0, 5), active: false });
-        const note = insertChildHeading(heading, { title: 'Closing Note' });
-        note.bodyLines = [timestamp, '', text];
-        note.body = parseBody(note.bodyLines);
+        heading.logbookLines.splice(0, 0, ...formatStateLogLine(toTodo, fromTodo, timestamp, text));
       }
-      commitAndRender(text ? 'Added closing note' : 'Skipped closing note');
+      commitAndRender(text ? 'Added log note' : 'Skipped log note');
     })
   );
   row.appendChild(
     menuButton('Skip', () => {
-      pendingDoneNote = null;
-      renderDoneNotePrompt();
+      pendingLogNote = null;
+      renderLogNotePrompt();
     })
   );
   doneNotePanel.appendChild(row);
@@ -1002,7 +1020,7 @@ function persistInBackground() {
 function commitAndRender(label = 'Edited') {
   history = pushSnapshot(history, serializeOrg(state.doc), label);
   render();
-  renderDoneNotePrompt();
+  renderLogNotePrompt();
   persistInBackground();
 }
 
@@ -2624,7 +2642,42 @@ function renderRow(row, todoSequence) {
       propertiesDisplayEl.onclick = () => toggleActionMenu(row.node);
     }
 
-    return withActionMenu(el, menuEl, textEditorEl, generalEditorEl, propertiesDisplayEl);
+    let logbookDisplayEl = null;
+    if (!row.node.drawersHidden && row.node.logbookLines.length > 0 && editingGeneral !== row.node) {
+      logbookDisplayEl = document.createElement('div');
+      logbookDisplayEl.style.padding = '2px 10px 6px 40px';
+      logbookDisplayEl.style.fontSize = '12px';
+      logbookDisplayEl.style.opacity = '0.65';
+      logbookDisplayEl.style.cursor = 'pointer';
+      logbookDisplayEl.onclick = () => toggleActionMenu(row.node);
+      for (const entry of parseLogbookEntries(row.node.logbookLines)) {
+        const line = document.createElement('div');
+        line.style.whiteSpace = 'pre-wrap';
+        line.style.overflowWrap = 'anywhere';
+        if (entry.type === 'clock') {
+          line.textContent = entry.end
+            ? `Clock: ${entry.start}\u2013${entry.end} \u21d2 ${entry.duration}`
+            : `Clock: ${entry.start} (running)`;
+        } else if (entry.type === 'state') {
+          const transition = entry.oldState ? `${entry.oldState} \u2192 ${entry.newState}` : entry.newState;
+          line.textContent = `${transition}   ${entry.timestamp}`;
+        } else {
+          line.textContent = `Note   ${entry.timestamp}`;
+        }
+        logbookDisplayEl.appendChild(line);
+        if (entry.note) {
+          const noteLine = document.createElement('div');
+          noteLine.style.whiteSpace = 'pre-wrap';
+          noteLine.style.overflowWrap = 'anywhere';
+          noteLine.style.paddingLeft = '12px';
+          noteLine.style.fontStyle = 'italic';
+          noteLine.textContent = entry.note;
+          logbookDisplayEl.appendChild(noteLine);
+        }
+      }
+    }
+
+    return withActionMenu(el, menuEl, textEditorEl, generalEditorEl, propertiesDisplayEl, logbookDisplayEl);
   }
 
   if (row.rowType === 'list-item') {
@@ -4704,6 +4757,7 @@ function renderAgendaView() {
   // occurrence that actually falls within what's being displayed.
   const todoSequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
   const items = buildAgendaItems(aggregateAgendaDocs(), {
+    includeLogbook: agendaLogMode,
     todoFilter: (todo) => !todoSequence.doneKeywords.includes(todo),
     // Real org's default is to skip both commented headings (title
     // starts with "# ") and archived ones (:ARCHIVE: tag) in agenda
@@ -4767,7 +4821,9 @@ function renderAgendaView() {
             ? '\ud83d\udcc5'
             : item.kind === 'anniversary'
               ? '\ud83c\udf82'
-              : '\u23f0';
+              : item.kind === 'logbook'
+                ? '\ud83d\udcdd'
+                : '\u23f0';
       kindIcon.style.flexShrink = '0';
       kindIcon.style.opacity = '0.6';
       row.appendChild(kindIcon);
@@ -4775,7 +4831,7 @@ function renderAgendaView() {
       const text = document.createElement('div');
       text.style.flex = '1 1 auto';
       text.style.minWidth = '0';
-      if (item.todo) {
+      if (item.todo && item.kind !== 'logbook') {
         const badge = document.createElement('span');
         badge.textContent = item.todo + ' ';
         badge.style.fontWeight = '700';
@@ -4783,6 +4839,14 @@ function renderAgendaView() {
         text.appendChild(badge);
       }
       text.appendChild(document.createTextNode(item.title));
+      if (item.logNote) {
+        const noteLine = document.createElement('div');
+        noteLine.style.fontSize = '12px';
+        noteLine.style.opacity = '0.65';
+        noteLine.style.fontStyle = 'italic';
+        noteLine.textContent = item.logNote;
+        text.appendChild(noteLine);
+      }
       if (item.repeater) {
         const rep = document.createElement('span');
         rep.textContent = ' \u21bb';
