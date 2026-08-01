@@ -1,5 +1,5 @@
 import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src/document-store.js';
-import { hasPendingChange } from './src/outbox.js';
+import { hasPendingChange, getPendingChange, clearPendingChange } from './src/outbox.js';
 import { parseOrg, serializeOrg, findHeadingLineNumber } from './src/org-parser.js';
 import {
   findAncestorPath,
@@ -3644,13 +3644,28 @@ async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCach
  * again. "Kept" should mean "shown", not "kept invisible somewhere".
  */
 async function resolvePendingChangeChoice(documentId) {
-  if (!(await hasPendingChange(kv, documentId))) return { preferCache: false };
+  const pending = await getPendingChange(kv, documentId);
+  if (!pending) return { preferCache: false };
+  const when = formatPendingChangeTimestamp(pending.queuedAt);
   const resumeLocal = window.confirm(
-    `"${documentId}" has local changes that were never saved (from an earlier session).\n\n` +
+    `"${documentId}" has local changes from ${when} that were never saved.\n\n` +
       'OK = resume those unsaved changes\n' +
       'Cancel = discard them and load the current version'
   );
+  if (!resumeLocal) await clearPendingChange(kv, documentId);
   return { preferCache: resumeLocal };
+}
+
+/** A short, readable rendering of an outbox entry's queuedAt timestamp
+ *  for the discard/resume prompt -- "from an earlier session" was too
+ *  vague to judge whether a pending edit was worth resuming or safely
+ *  ignorable; showing exactly when it happened lets the person decide
+ *  for themselves. Falls back to the generic wording if the timestamp
+ *  is missing or unparseable, rather than showing "Invalid Date". */
+function formatPendingChangeTimestamp(iso) {
+  const d = iso ? new Date(iso) : null;
+  if (!d || Number.isNaN(d.getTime())) return 'an earlier session';
+  return d.toLocaleString();
 }
 
 async function openFromFilesystem() {
@@ -5625,6 +5640,92 @@ async function renderSettingsView(target = settingsRenderTarget) {
     })
   );
   globalVarsSection.appendChild(globalVarsBtnRow);
+
+  const pendingSection = document.createElement('div');
+  pendingSection.className = 'settings-section';
+  container.appendChild(pendingSection);
+
+  const pendingTitle = document.createElement('div');
+  pendingTitle.className = 'panel-section-title';
+  pendingTitle.textContent = 'Pending Local Changes';
+  pendingSection.appendChild(pendingTitle);
+
+  const pendingHint = document.createElement('div');
+  pendingHint.style.fontSize = '11px';
+  pendingHint.style.opacity = '0.6';
+  pendingHint.style.margin = '2px 0 6px';
+  pendingHint.textContent =
+    'Edits made while offline (or before a save fully synced) that haven\u2019t been written back to disk/GitHub/WebDAV yet -- opening one of these files again prompts to resume or discard them, but they\u2019re also listed here directly so it\u2019s always clear which files, if any, actually have something pending.';
+  pendingSection.appendChild(pendingHint);
+
+  const pendingListEl = document.createElement('div');
+  pendingSection.appendChild(pendingListEl);
+
+  async function renderPendingList() {
+    pendingListEl.innerHTML = '';
+    const { keys } = await kv.list('outbox:');
+    if (keys.length === 0) {
+      const none = document.createElement('div');
+      none.style.fontSize = '12px';
+      none.style.opacity = '0.6';
+      none.style.padding = '4px 0';
+      none.textContent = 'No pending local changes.';
+      pendingListEl.appendChild(none);
+      return;
+    }
+    for (const key of keys) {
+      const documentId = key.slice('outbox:'.length);
+      const entry = await getPendingChange(kv, documentId);
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.gap = '8px';
+      row.style.padding = '4px 0';
+      row.style.borderBottom = '1px solid var(--border)';
+
+      const label = document.createElement('div');
+      label.style.flex = '1 1 auto';
+      label.style.minWidth = '0';
+      label.style.fontSize = '13px';
+      label.style.overflowWrap = 'anywhere';
+      const nameEl = document.createElement('div');
+      nameEl.textContent = documentId;
+      label.appendChild(nameEl);
+      const whenEl = document.createElement('div');
+      whenEl.style.fontSize = '11px';
+      whenEl.style.opacity = '0.6';
+      whenEl.textContent = entry ? formatPendingChangeTimestamp(entry.queuedAt) : '';
+      label.appendChild(whenEl);
+      row.appendChild(label);
+
+      row.appendChild(
+        menuButton('Discard', async () => {
+          await clearPendingChange(kv, documentId);
+          await renderPendingList();
+          setStatus(`Discarded pending changes for "${documentId}".`);
+        })
+      );
+      pendingListEl.appendChild(row);
+    }
+
+    if (keys.length > 1) {
+      const discardAllRow = document.createElement('div');
+      discardAllRow.className = 'panel-row';
+      discardAllRow.style.marginTop = '6px';
+      discardAllRow.appendChild(
+        menuButton('Discard all', async () => {
+          for (const key of keys) {
+            await clearPendingChange(kv, key.slice('outbox:'.length));
+          }
+          await renderPendingList();
+          setStatus('Discarded all pending local changes.');
+        })
+      );
+      pendingListEl.appendChild(discardAllRow);
+    }
+  }
+
+  await renderPendingList();
 
   const githubSection = document.createElement('div');
   githubSection.className = 'settings-section';
