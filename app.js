@@ -5689,10 +5689,10 @@ function renderReadOnlyBodyNode(node, depth, container, linkContext, drawersHidd
   }
 }
 
-function renderReadOnlyList(list, depth, container, linkContext) {
+function renderReadOnlyList(list, depth, container, linkContext, listDepth = 0) {
   for (const item of list.items) {
     const row = document.createElement('div');
-    row.style.paddingLeft = 8 + depth * 16 + 16 + item.indent + 'px';
+    row.style.paddingLeft = 8 + depth * 16 + 16 + listDepth * 16 + 'px';
     row.style.margin = '2px 0';
     row.style.display = 'flex';
     row.style.gap = '6px';
@@ -5720,7 +5720,7 @@ function renderReadOnlyList(list, depth, container, linkContext) {
     container.appendChild(row);
 
     for (const nested of item.children) {
-      renderReadOnlyList(nested, depth, container, linkContext);
+      renderReadOnlyList(nested, depth, container, linkContext, listDepth + 1);
     }
   }
 }
