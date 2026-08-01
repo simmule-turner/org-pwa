@@ -93,7 +93,7 @@ export function createGithubAdapter(getConfig) {
   async function readImpl(fileId) {
     const config = requireConfig(getConfig);
     const url = contentsUrl(config, fileId) + '?ref=' + encodeURIComponent(config.branch || 'main');
-    const res = await fetch(url, { headers: authHeaders(config) });
+    const res = await fetch(url, { headers: authHeaders(config), cache: 'no-store' });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(await githubErrorMessage(res));
     const body = await res.json();
@@ -112,7 +112,7 @@ export function createGithubAdapter(getConfig) {
   async function readBinaryImpl(fileId) {
     const config = requireConfig(getConfig);
     const url = contentsUrl(config, fileId) + '?ref=' + encodeURIComponent(config.branch || 'main');
-    const res = await fetch(url, { headers: authHeaders(config) });
+    const res = await fetch(url, { headers: authHeaders(config), cache: 'no-store' });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(await githubErrorMessage(res));
     const body = await res.json();
@@ -162,7 +162,7 @@ export function createGithubAdapter(getConfig) {
   async function listImpl(path = '') {
     const config = requireConfig(getConfig);
     const url = contentsUrl(config, path) + '?ref=' + encodeURIComponent(config.branch || 'main');
-    const res = await fetch(url, { headers: authHeaders(config) });
+    const res = await fetch(url, { headers: authHeaders(config), cache: 'no-store' });
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(await githubErrorMessage(res));
     const body = await res.json();

@@ -146,6 +146,7 @@ export function createWebdavAdapter(getConfig) {
     const res = await fetchWithHint(fileUrl(config, fileId), {
       method: 'GET',
       headers: authHeader(config),
+      cache: 'no-store',
     });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(webdavErrorMessage(res));
@@ -163,6 +164,7 @@ export function createWebdavAdapter(getConfig) {
     const res = await fetchWithHint(fileUrl(config, fileId), {
       method: 'GET',
       headers: authHeader(config),
+      cache: 'no-store',
     });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(webdavErrorMessage(res));
