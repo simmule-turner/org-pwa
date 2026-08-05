@@ -243,8 +243,16 @@ function expandTemplate(template, context = {}) {
  * you're inserting, so they're deliberately not supported here), which
  * is what lets a template target a heading like the current month
  * ("2026-07") without the person needing to create it by hand first.
+ *
+ * `prepend`: when true, any heading actually auto-created along the way
+ * (a segment that didn't already exist) becomes the FIRST child of its
+ * own parent (or the first top-level heading, for the first segment)
+ * instead of the last -- applied independently at each level a new
+ * heading gets created. An already-existing segment is matched and
+ * reused as-is regardless of this setting; there's no heading-creation
+ * decision to make for something that's already there.
  */
-function resolveOlpTarget(doc, olpPath, { now } = {}) {
+function resolveOlpTarget(doc, olpPath, { now, prepend = false } = {}) {
   const at = now instanceof Date ? now : new Date();
   let siblings = doc.children;
   let parent = null;
@@ -255,7 +263,7 @@ function resolveOlpTarget(doc, olpPath, { now } = {}) {
     const title = wrapped ? formatTime(at, wrapped[1]) : rawSegment;
     found = siblings.find((h) => h.title === title);
     if (!found) {
-      found = parent ? insertChildHeading(parent, { title }) : insertTopLevelHeading(doc, { title });
+      found = parent ? insertChildHeading(parent, { title }, prepend) : insertTopLevelHeading(doc, { title }, prepend);
     }
     parent = found;
     siblings = found.children;

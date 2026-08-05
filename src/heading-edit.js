@@ -168,18 +168,27 @@ export function setPlainTimestampInTitle(heading, raw) {
 }
 
 /** Appends a new top-level (level 1) heading at the end of the document. */
-export function insertTopLevelHeading(doc, opts = {}) {
+export function insertTopLevelHeading(doc, opts = {}, prepend = false) {
   const heading = createHeading({ level: 1, ...opts });
-  doc.children.push(heading);
+  if (prepend) {
+    doc.children.unshift(heading);
+  } else {
+    doc.children.push(heading);
+  }
   return heading;
 }
 
-/** Appends a new child heading under `parent`, one level deeper, and
- *  un-collapses `parent` so the new child is immediately visible rather
- *  than disappearing into a folded subtree the moment it's created. */
-export function insertChildHeading(parent, opts = {}) {
+/** Appends (or, if `prepend` is true, prepends) a new child heading
+ *  under `parent`, one level deeper, and un-collapses `parent` so the
+ *  new child is immediately visible rather than disappearing into a
+ *  folded subtree the moment it's created. */
+export function insertChildHeading(parent, opts = {}, prepend = false) {
   const heading = createHeading({ level: parent.level + 1, ...opts });
-  parent.children.push(heading);
+  if (prepend) {
+    parent.children.unshift(heading);
+  } else {
+    parent.children.push(heading);
+  }
   parent.collapsed = false;
   return heading;
 }
