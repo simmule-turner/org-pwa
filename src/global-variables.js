@@ -30,10 +30,37 @@
 
 const GLOBAL_VAR_LINE_RE = /^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/;
 
+/** Joins any line ending in a trailing backslash with the physical
+ *  line(s) that follow it, before "name: value" parsing happens --
+ *  lets a single variable's value span multiple lines for readability
+ *  (org-extra-menu's own multi-entry format is the motivating case).
+ *  The backslash itself is stripped, and the joined content is
+ *  separated by a single space, matching a natural word-wrap rather
+ *  than concatenating with no separator at all. A trailing backslash
+ *  on the very last line (nothing left to continue onto) is left as a
+ *  literal trailing character rather than silently swallowed. */
+function joinContinuedLines(text) {
+  const rawLines = text.split('\n');
+  const joined = [];
+  let current = null;
+  for (let i = 0; i < rawLines.length; i++) {
+    current = current === null ? rawLines[i] : current + ' ' + rawLines[i];
+    const isLastLine = i === rawLines.length - 1;
+    if (/\s*\\\s*$/.test(current) && !isLastLine) {
+      current = current.replace(/\s*\\\s*$/, '');
+    } else {
+      joined.push(current);
+      current = null;
+    }
+  }
+  if (current !== null) joined.push(current);
+  return joined;
+}
+
 export function parseGlobalVariables(text) {
   const vars = {};
   if (!text) return vars;
-  for (const rawLine of text.split('\n')) {
+  for (const rawLine of joinContinuedLines(text)) {
     const line = rawLine.trim();
     if (!line) continue;
     const m = GLOBAL_VAR_LINE_RE.exec(line);

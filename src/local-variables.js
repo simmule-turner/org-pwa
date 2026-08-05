@@ -29,7 +29,7 @@ const LOCAL_VAR_LINE_RE = /^#\s*([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/;
 export function parseLocalVariables(text) {
   const vars = {};
   if (!text) return vars;
-  const lines = text.split('\n');
+  const lines = joinContinuedLines(text);
 
   const startIdx = lines.findIndex((l) => LOCAL_VARS_START_RE.test(l.trim()));
   if (startIdx === -1) return vars;
@@ -41,6 +41,45 @@ export function parseLocalVariables(text) {
     if (m) vars[m[1]] = m[2].trim();
   }
   return vars;
+}
+
+/** Joins any line ending in a trailing backslash with the physical
+ *  line(s) that follow it, before "# key: value" parsing happens --
+ *  lets a single variable's value span multiple lines for readability
+ *  (org-extra-menu's own multi-entry format is the motivating case).
+ *  Identical to global-variables.js's own joinContinuedLines -- kept
+ *  as a separate copy here rather than a shared import, matching how
+ *  each of this app's variable-source modules already stays fairly
+ *  self-contained. The backslash itself is stripped, and the joined
+ *  content is separated by a single space. A trailing backslash on the
+ *  very last line (nothing left to continue onto) is left as a
+ *  literal trailing character rather than silently swallowed. */
+function joinContinuedLines(text) {
+  const rawLines = text.split('\n');
+  const joined = [];
+  let current = null;
+  for (let i = 0; i < rawLines.length; i++) {
+    if (current === null) {
+      current = rawLines[i];
+    } else {
+      // A continuation line still carries this block's own "# ..."
+      // comment-prefix convention -- strip it here (unlike the first
+      // line of a declaration, whose leading "#" is stripped later by
+      // LOCAL_VAR_LINE_RE's own match instead) so it doesn't end up as
+      // a literal "#" character embedded in the middle of the joined
+      // value.
+      current += ' ' + rawLines[i].replace(/^\s*#\s*/, '');
+    }
+    const isLastLine = i === rawLines.length - 1;
+    if (/\s*\\\s*$/.test(current) && !isLastLine) {
+      current = current.replace(/\s*\\\s*$/, '');
+    } else {
+      joined.push(current);
+      current = null;
+    }
+  }
+  if (current !== null) joined.push(current);
+  return joined;
 }
 
 /** Emacs Lisp boolean convention: the symbol `t` is true, `nil` is
@@ -92,14 +131,6 @@ export function getAgendaSkipArchivedTrees(vars) {
   return parseLispBoolean((vars || {})['org-agenda-skip-archived-trees'], true);
 }
 
-/** org-archive-confirm: whether archiving/unarchiving a heading asks
- *  for confirmation first. `t` (the default, matching real org's own
- *  default) shows a confirmation dialog with the destination before
- *  proceeding; `nil` archives/unarchives immediately with no prompt. */
-export function getArchiveConfirm(vars) {
-  return parseLispBoolean((vars || {})['org-archive-confirm'], true);
-}
-
 /** org-closed-keep-when-no-todo: real org's own default is nil --
  *  cycling a DONE heading all the way back to having no TODO keyword at
  *  all removes its CLOSED timestamp, the same as cycling it to a
@@ -128,6 +159,15 @@ export function getAsciiTextWidth(vars) {
  *  module's own parseRefileTargets, not duplicated here. */
 export function getRefileTargets(vars) {
   return (vars || {})['org-refile-targets'] || '';
+}
+
+/** org-extra-menu: this app's own extension (not a real org-mode
+ *  variable), a floating (☰) button's configurable quick-action menu
+ *  -- see src/extra-menu.js's own docs for the full syntax. Just the
+ *  raw string here, since parsing/validation lives in that module's
+ *  own parseExtraMenu. */
+export function getExtraMenu(vars) {
+  return (vars || {})['org-extra-menu'] || '';
 }
 
 /** org-use-tag-inheritance: whether a heading's "effective" tags (for

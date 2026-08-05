@@ -150,4 +150,21 @@ function parseClockTimestampToDate(raw) {
   return new Date(Number(y), Number(mo) - 1, Number(d), h ? Number(h) : 0, mi ? Number(mi) : 0);
 }
 
-export { isClockRunning, clockIn, clockOut, formatClockDuration, parseClockDuration, totalClockedMinutes };
+/** Searches `doc` for whichever heading (if any) currently has a
+ *  running clock -- depth-first, so if more than one somehow ended up
+ *  running (e.g. a hand-edited file), the first one encountered wins
+ *  rather than this throwing or picking arbitrarily. Returns null if
+ *  nothing is running anywhere in the document. */
+function findHeadingWithRunningClock(doc) {
+  const walk = (headings) => {
+    for (const heading of headings) {
+      if (isClockRunning(heading)) return heading;
+      const found = walk(heading.children || []);
+      if (found) return found;
+    }
+    return null;
+  };
+  return walk(doc.children || []);
+}
+
+export { isClockRunning, clockIn, clockOut, formatClockDuration, parseClockDuration, totalClockedMinutes, findHeadingWithRunningClock };
