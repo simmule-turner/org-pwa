@@ -26,7 +26,7 @@ import { flattenVisibleRows, toggleFold, cycleHeadingTodo, toggleHeadingTodo, cy
 import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
 import { searchDocument } from './src/search.js';
 import { applyStartupVisibility, cycleFoldLevel } from './src/fold-state.js';
-import { parseStartupConfig } from './src/startup-config.js';
+import { parseStartupConfig, resolveEffectiveStartupConfig } from './src/startup-config.js';
 import {
   parseLocalVariables,
   getAgendaStartOnWeekday,
@@ -43,6 +43,7 @@ import {
   getAsciiTextWidth,
 } from './src/local-variables.js';
 import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath } from './src/refile.js';
+import { isClockRunning, clockIn, clockOut, totalClockedMinutes, formatClockDuration } from './src/clock.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import { decideProgressLogging, decideLogbookEntry, getEffectiveLogDoneSetting } from './src/progress-logging.js';
 import { parseGlobalVariables, mergeGlobalAndLocalVariables } from './src/global-variables.js';
@@ -182,6 +183,13 @@ let pendingLogNote = null;
 // action menu -- renderRefilePanel shows the candidate-target list for
 // it. Only ever one at a time, matching pendingLogNote's own pattern.
 let pendingRefile = null;
+// Set to { heading } when Archive is tapped on a non-archived heading
+// and org-archive-confirm is on -- renderArchiveConfirmPanel shows the
+// Refile/Cancel/OK choice for it, reusing refilePanel's own DOM
+// element (the two flows are mutually exclusive, never both active at
+// once, so sharing the element avoids a whole extra panel just for
+// this one three-button prompt).
+let pendingArchiveConfirm = null;
 
 /**
  * Every call site in this app that changes a heading's TODO state
@@ -656,24 +664,117 @@ async function performRefile(heading, targetDocumentId, targetOutlinePath) {
   setStatus(`Refiled to "${target.title}" in "${targetDocumentId}".`);
 }
 
+/** The human-readable "where this would go" label for confirming an
+ *  archive -- extracted from what used to be inline inside
+ *  archiveHeadingToLocation itself, now needed by the new confirm
+ *  prompt instead (that function no longer does its own confirming at
+ *  all -- see confirmAndArchive). */
+function getArchiveDestinationLabel(heading) {
+  const location = getArchiveLocation(state.doc, heading);
+  const { filePart, headlinePart } = parseArchiveLocation(location);
+  const targetFileId = resolveArchiveFileId(filePart, state.documentId);
+  return targetFileId === null || targetFileId === state.documentId
+    ? headlinePart.trim()
+      ? `this file, under "${headlinePart.trim().replace(/^\*+\s*/, '')}"`
+      : 'this file (top level)'
+    : headlinePart.trim()
+      ? `"${targetFileId}", under "${headlinePart.trim().replace(/^\*+\s*/, '')}"`
+      : `"${targetFileId}" (top level)`;
+}
+
+/** The action menu's own entry point for Archive on a non-archived
+ *  heading -- decides whether to prompt at all (org-archive-confirm),
+ *  and if so, offers Refile as a genuine alternative right there
+ *  rather than a plain OK/Cancel, since often the actual intent behind
+ *  reaching for Archive is "get this out of my active outline," which
+ *  Refile serves just as well for a destination that isn't the archive
+ *  file specifically. */
+function confirmAndArchive(heading) {
+  if (!getArchiveConfirm(state.localVariables)) {
+    archiveHeadingToLocation(heading);
+    return;
+  }
+  pendingArchiveConfirm = { heading };
+  renderArchiveConfirmPanel();
+}
+
+/** org-clock-in: starts the clock on `heading`, using the same "now"
+ *  timestamp convention every other progress-logging entry in this app
+ *  already uses. A no-op (with a status message, not silent) if a
+ *  clock is already running on this heading -- clockIn itself already
+ *  refuses this, this just surfaces it to the person instead of
+ *  quietly doing nothing. */
+function clockInHeading(heading) {
+  const now = new Date();
+  const timestamp = formatOrgTimestamp({ date: now, time: now.toTimeString().slice(0, 5), active: false });
+  if (!clockIn(heading, timestamp)) {
+    setStatus('A clock is already running on this heading.');
+    render();
+    return;
+  }
+  commitAndRender('Clocked in');
+}
+
+/** org-clock-out: stops whatever clock is currently running on
+ *  `heading`. A no-op (with a status message) if nothing is running --
+ *  matches clockInHeading's own "surface it, don't silently do
+ *  nothing" treatment of the equivalent already-in-that-state case. */
+function clockOutHeading(heading) {
+  const end = new Date();
+  const timestamp = formatOrgTimestamp({ date: end, time: end.toTimeString().slice(0, 5), active: false });
+  if (!clockOut(heading, timestamp, end)) {
+    setStatus('No clock is currently running on this heading.');
+    render();
+    return;
+  }
+  commitAndRender('Clocked out');
+}
+
+function renderArchiveConfirmPanel() {
+  refilePanel.innerHTML = '';
+  if (!pendingArchiveConfirm) {
+    refilePanel.style.display = 'none';
+    return;
+  }
+  refilePanel.style.display = 'block';
+
+  const label = document.createElement('div');
+  label.style.fontSize = '13px';
+  label.style.marginBottom = '8px';
+  label.textContent = `Archive "${pendingArchiveConfirm.heading.title || '(untitled)'}" to ${getArchiveDestinationLabel(pendingArchiveConfirm.heading)}?`;
+  refilePanel.appendChild(label);
+
+  const row = document.createElement('div');
+  row.className = 'panel-row';
+  row.appendChild(
+    menuButton('Refile\u2026', async () => {
+      const heading = pendingArchiveConfirm.heading;
+      pendingArchiveConfirm = null;
+      renderArchiveConfirmPanel();
+      await openRefilePicker(heading);
+    })
+  );
+  row.appendChild(
+    menuButton('Cancel', () => {
+      pendingArchiveConfirm = null;
+      renderArchiveConfirmPanel();
+    })
+  );
+  row.appendChild(
+    menuButton('OK', async () => {
+      const heading = pendingArchiveConfirm.heading;
+      pendingArchiveConfirm = null;
+      renderArchiveConfirmPanel();
+      await archiveHeadingToLocation(heading);
+    })
+  );
+  refilePanel.appendChild(row);
+}
+
 async function archiveHeadingToLocation(heading) {
   const location = getArchiveLocation(state.doc, heading);
   const { filePart, headlinePart } = parseArchiveLocation(location);
   const targetFileId = resolveArchiveFileId(filePart, state.documentId);
-
-  if (getArchiveConfirm(state.localVariables)) {
-    const destinationLabel =
-      targetFileId === null || targetFileId === state.documentId
-        ? headlinePart.trim()
-          ? `this file, under "${headlinePart.trim().replace(/^\*+\s*/, '')}"`
-          : 'this file (top level)'
-        : headlinePart.trim()
-          ? `"${targetFileId}", under "${headlinePart.trim().replace(/^\*+\s*/, '')}"`
-          : `"${targetFileId}" (top level)`;
-    if (!window.confirm(`Archive "${heading.title}" to ${destinationLabel}?`)) {
-      return;
-    }
-  }
 
   if (targetFileId === null || targetFileId === state.documentId) {
     // Same file: build the stamped copy, remove the original, insert
@@ -1107,6 +1208,7 @@ let viewMenuOpen = false;
 let agendaViewType = 'week'; // 'day' | 'week' | 'month'
 let agendaAnchorDate = new Date();
 let agendaLogMode = false; // whether LOGBOOK entries (state-change/note timestamps) show alongside SCHEDULED/DEADLINE/etc. -- off by default, matching real org's own org-agenda-log-mode convention exactly (a toggle, not always-on, so daily task-scanning doesn't get cluttered by default)
+let showClockDisplay = false; // org-clock-display: whether each TODO-view item shows its own total clocked time (including its subtree) -- off by default, matching real org's own org-clock-display being an on-demand COMMAND (M-x org-clock-display), not something always shown
 // Which heading (by object reference) currently has its title in edit
 // mode, and whether it was just created (so an empty commit removes it
 // instead of leaving a titleless heading behind).
@@ -1272,8 +1374,9 @@ function commitAndRender(label = 'Edited') {
 function restoreFromHistory() {
   const entry = currentEntry(history);
   const newDoc = parseOrg(entry.text);
-  const startupConfig = parseStartupConfig(newDoc);
-  const localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(entry.text));
+  const rawLocalVars = parseLocalVariables(entry.text);
+  const startupConfig = resolveEffectiveStartupConfig(newDoc, rawLocalVars, globalVariables);
+  const localVariables = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(newDoc, startupConfig, archiveVisibility);
   state.doc = newDoc;
@@ -1489,8 +1592,9 @@ function commitTextModeIfActive() {
   const textarea = document.getElementById('document-text-edit-input');
   const newText = textarea ? textarea.value : serializeOrg(state.doc);
   const newDoc = parseOrg(newText);
-  const startupConfig = parseStartupConfig(newDoc);
-  const localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(newText));
+  const rawLocalVars = parseLocalVariables(newText);
+  const startupConfig = resolveEffectiveStartupConfig(newDoc, rawLocalVars, globalVariables);
+  const localVariables = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(newDoc, startupConfig, archiveVisibility);
   state.doc = newDoc;
@@ -2762,12 +2866,15 @@ function renderRow(row, todoSequence) {
               },
             },
             {
-              icon: '\u25a6',
-              label: 'Add table',
+              icon: isClockRunning(row.node) ? '\u23f9\ufe0f' : '\u25b6\ufe0f',
+              label: isClockRunning(row.node) ? 'Clock out' : 'Clock in',
               onClick: () => {
                 actionMenuFor = null;
-                insertTable(row.node, {});
-                commitAndRender('Added table');
+                if (isClockRunning(row.node)) {
+                  clockOutHeading(row.node);
+                } else {
+                  clockInHeading(row.node);
+                }
               },
             },
             {
@@ -2779,23 +2886,10 @@ function renderRow(row, todoSequence) {
                 if (isArchivedInPlace(row.node)) {
                   await unarchiveHeadingToOriginalLocation(row.node);
                 } else {
-                  await archiveHeadingToLocation(row.node);
+                  confirmAndArchive(row.node);
                 }
               },
             },
-            ...(isArchivedInPlace(row.node)
-              ? []
-              : [
-                  {
-                    icon: '📦',
-                    label: 'Refile\u2026',
-                    onClick: async () => {
-                      actionMenuFor = null;
-                      render();
-                      await openRefilePicker(row.node);
-                    },
-                  },
-                ]),
             {
               icon: '\u2715',
               label: 'Delete heading',
@@ -2896,6 +2990,19 @@ function renderRow(row, todoSequence) {
       generalEditorEl.appendChild(tagsGroup.container);
       generalEditorEl.appendChild(priorityGroup.container);
       generalEditorEl.appendChild(propsGroup.container);
+
+      const addTableRow = document.createElement('div');
+      addTableRow.style.display = 'flex';
+      addTableRow.style.marginTop = '4px';
+      addTableRow.appendChild(
+        menuButton('\u25a6 Add table', () => {
+          const heading = editingGeneral;
+          editingGeneral = null;
+          insertTable(heading, {});
+          commitAndRender('Added table');
+        })
+      );
+      generalEditorEl.appendChild(addTableRow);
 
       const btnRow = document.createElement('div');
       btnRow.style.display = 'flex';
@@ -3804,8 +3911,9 @@ function updateFilenameDisplay() {
 /** Common finish-up after any successful open/create, regardless of which
  *  backend it came from. */
 async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCache = false) {
-  const startupConfig = parseStartupConfig(doc);
-  const localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(doc)));
+  const rawLocalVars = parseLocalVariables(serializeOrg(doc));
+  const startupConfig = resolveEffectiveStartupConfig(doc, rawLocalVars, globalVariables);
+  const localVariables = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(doc, startupConfig, archiveVisibility);
   state = { documentId, doc, startupConfig, storageKind, localVariables };
@@ -4231,8 +4339,9 @@ async function saveCurrent() {
         diskAdapter: activeDiskAdapter(),
       });
       state.doc = reopened.doc;
-      state.startupConfig = parseStartupConfig(state.doc);
-      state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
+      const rawLocalVars = parseLocalVariables(serializeOrg(state.doc));
+      state.startupConfig = resolveEffectiveStartupConfig(state.doc, rawLocalVars, globalVariables);
+      state.localVariables = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
       navigationBackStack = [];
       currentContextHeading = null;
       syncNavBackButtonVisibility();
@@ -5336,12 +5445,39 @@ function renderTaskListView() {
   const container = document.createElement('div');
   container.style.padding = '8px 12px';
 
+  const headingRow = document.createElement('div');
+  headingRow.style.display = 'flex';
+  headingRow.style.justifyContent = 'space-between';
+  headingRow.style.alignItems = 'center';
+  headingRow.style.gap = '8px';
+  headingRow.style.marginBottom = '10px';
+
   const heading = document.createElement('div');
   heading.style.fontSize = '12px';
   heading.style.opacity = '0.65';
-  heading.style.marginBottom = '10px';
   heading.textContent = 'Every active TODO in this file, regardless of date — matching real org\u2019s own global TODO list.';
-  container.appendChild(heading);
+  headingRow.appendChild(heading);
+
+  const clockToggle = document.createElement('label');
+  clockToggle.style.display = 'flex';
+  clockToggle.style.alignItems = 'center';
+  clockToggle.style.gap = '4px';
+  clockToggle.style.fontSize = '12px';
+  clockToggle.style.opacity = '0.8';
+  clockToggle.style.cursor = 'pointer';
+  clockToggle.style.flexShrink = '0';
+  const clockCheckbox = document.createElement('input');
+  clockCheckbox.type = 'checkbox';
+  clockCheckbox.checked = showClockDisplay;
+  clockCheckbox.onchange = () => {
+    showClockDisplay = clockCheckbox.checked;
+    render();
+  };
+  clockToggle.appendChild(clockCheckbox);
+  clockToggle.appendChild(document.createTextNode('Clock'));
+  headingRow.appendChild(clockToggle);
+
+  container.appendChild(headingRow);
 
   // Same exclusion rules as Agenda (completed items, archived, commented
   // headings), using this file's own #+TODO: sequence — deliberately
@@ -5387,6 +5523,18 @@ function renderTaskListView() {
     text.style.overflowWrap = 'anywhere';
     text.textContent = item.title;
     row.appendChild(text);
+
+    if (showClockDisplay) {
+      const minutes = totalClockedMinutes(item.heading);
+      if (minutes > 0) {
+        const clockLabel = document.createElement('span');
+        clockLabel.style.fontSize = '12px';
+        clockLabel.style.opacity = '0.65';
+        clockLabel.style.flexShrink = '0';
+        clockLabel.textContent = formatClockDuration(minutes);
+        row.appendChild(clockLabel);
+      }
+    }
 
     row.onclick = () => {
       switchToView('org');
