@@ -5841,12 +5841,13 @@ async function renderSettingsView(target = settingsRenderTarget) {
   captureHint.style.opacity = '0.6';
   captureHint.style.margin = '2px 0 8px';
   captureHint.textContent =
-    'Edited as JSON — an array of {key, description, type, olp, template, file, prepend}. ' +
+    'Edited as JSON — an array of {key, description, type, olp, template, file, prepend, prependHeading}. ' +
     'type is one of "item", "checkitem", "plain", "table-line". ' +
     'olp is the outline path to insert into, e.g. ["Inbox", "Tasks"]. ' +
     'file is optional — a filename (e.g. "journal.org", captured as a sibling of whatever file is currently open) or a full path, for a template that captures into a DIFFERENT file without switching what you\u2019re looking at. Omit it to capture into the currently open file, as before. ' +
-    'prepend is optional (true/false, default false) — true puts the new entry at the TOP of the target instead of the bottom, matching real org\u2019s own :prepend t. ' +
-    'template supports %<FORMAT>, %t/%T/%u/%U, %^{Prompt|default|choices}, @# (real org\u2019s table row-number constant \u2014 @# + 3 / @# - 2 also work), and %? — see the README.';
+    'prepend is optional (true/false, default false) — true puts the new entry at the TOP of the target instead of the bottom, matching real org\u2019s own :prepend t. For item/checkitem/plain, this also controls where any missing heading along olp gets auto-created (first vs. last child of its own parent) — the two decisions are really the same thing at two levels for those three. ' +
+    'prependHeading is table-line only, and independent of prepend there: prepend controls where the new ROW lands within the table; prependHeading controls where an auto-created heading along olp lands among ITS siblings — so "newest month first, rows still in chronological order" is prependHeading: true, prepend: false. ' +
+    'template supports %<FORMAT>, %t/%T/%u/%U, %^{Prompt|default|choices}, @# (real org\u2019s table row-number constant — @# + 3 / @# - 2 also work), and %? — see the README.';
   captureSection.appendChild(captureHint);
 
   const currentTemplates = await getCaptureTemplates(kv);
@@ -6846,6 +6847,7 @@ function validateCaptureTemplates(parsed) {
     if (typeof t.template !== 'string') return `${label}: "template" must be a string`;
     if ('file' in t && typeof t.file !== 'string') return `${label}: "file" must be a string if present`;
     if ('prepend' in t && typeof t.prepend !== 'boolean') return `${label}: "prepend" must be true or false if present`;
+    if ('prependHeading' in t && typeof t.prependHeading !== 'boolean') return `${label}: "prependHeading" must be true or false if present`;
   }
   const keys = parsed.map((t) => t.key);
   const duplicate = keys.find((k, i) => keys.indexOf(k) !== i);
@@ -7077,6 +7079,19 @@ function renderCapturePromptForm() {
  * A template with no prompts at all returns to the template list,
  * since there's nothing left to fill in for a repeat.
  */
+/** Which value controls where an auto-created OLP heading lands among
+ *  its own siblings, for a given template -- table-line has its own
+ *  dedicated prependHeading field, since row placement (prepend) and
+ *  heading placement are genuinely independent decisions for it
+ *  (newest section first, but chronological rows within it is a
+ *  common, sensible combination); item/checkitem/plain reuse the same
+ *  prepend value for both, since for those three "where does the
+ *  container heading go" and "where does the content go" are the same
+ *  decision applied at two tree levels, not two independent ones. */
+function getOlpPrepend(template) {
+  return template.type === 'table-line' ? !!template.prependHeading : !!template.prepend;
+}
+
 async function runCaptureWithAnswers(template, answers) {
   if (currentView === 'text') {
     // Same reasoning as search's own text-mode guard above: leaving text
@@ -7137,7 +7152,7 @@ async function runCaptureWithAnswers(template, answers) {
       return;
     }
 
-    const target = resolveOlpTarget(targetDoc, template.olp, { now });
+    const target = resolveOlpTarget(targetDoc, template.olp, { now, prepend: getOlpPrepend(template) });
     let tableRowNumber = null;
     if (template.type === 'table-line') {
       const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
@@ -7164,7 +7179,7 @@ async function runCaptureWithAnswers(template, answers) {
     return;
   }
 
-  const target = resolveOlpTarget(state.doc, template.olp, { now });
+  const target = resolveOlpTarget(state.doc, template.olp, { now, prepend: getOlpPrepend(template) });
 
   let tableRowNumber = null;
   if (template.type === 'table-line') {
