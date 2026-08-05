@@ -257,6 +257,40 @@ test('resolveOlpTarget leaves a plain (non-%<...>-wrapped) segment completely li
   assert.equal(target.title, '100% Done');
 });
 
+// ---- resolveOlpTarget: prepend -----------------------------------------------
+
+test('resolveOlpTarget prepend: a new top-level heading lands before existing siblings', () => {
+  const doc = parseOrg('* Existing 1\n* Existing 2\n');
+  resolveOlpTarget(doc, ['New Heading'], { now: NOW, prepend: true });
+  assert.equal(doc.children[0].title, 'New Heading');
+  assert.equal(doc.children[1].title, 'Existing 1');
+  assert.equal(doc.children[2].title, 'Existing 2');
+});
+
+test('resolveOlpTarget prepend: applies independently at EVERY newly-created level of a multi-segment path', () => {
+  const doc = parseOrg('* Logs\n** Existing Month\n');
+  resolveOlpTarget(doc, ['Logs', 'New Month'], { now: NOW, prepend: true });
+  assert.equal(doc.children[0].title, 'Logs'); // "Logs" already existed -- reused, not duplicated or reordered
+  assert.equal(doc.children[0].children[0].title, 'New Month'); // the newly-created segment is first among ITS siblings
+  assert.equal(doc.children[0].children[1].title, 'Existing Month');
+});
+
+test('resolveOlpTarget prepend: default (unset) is completely unaffected -- still appends, exactly as before this option existed', () => {
+  const doc = parseOrg('* Existing 1\n');
+  resolveOlpTarget(doc, ['New Heading'], { now: NOW });
+  assert.equal(doc.children[0].title, 'Existing 1');
+  assert.equal(doc.children[1].title, 'New Heading');
+});
+
+test('resolveOlpTarget prepend: an ALREADY-EXISTING segment is matched and reused as-is, never reordered or duplicated, regardless of prepend', () => {
+  const doc = parseOrg('* Logs\n** March\n*** Task\n');
+  const target = resolveOlpTarget(doc, ['Logs', 'March'], { now: NOW, prepend: true });
+  assert.equal(doc.children.length, 1); // still just one "Logs"
+  assert.equal(doc.children[0].children.length, 1); // still just one "March"
+  assert.equal(target, doc.children[0].children[0]); // the SAME heading object, not a fresh duplicate
+  assert.equal(target.children[0].title, 'Task'); // its own existing content untouched
+});
+
 // ---- mergeFragmentInto -----------------------------------------------------
 
 test('mergeFragmentInto appends heading-producing content as children with levels correctly offset', () => {
