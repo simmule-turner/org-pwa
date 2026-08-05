@@ -112,6 +112,24 @@ export function getClosedKeepWhenNoTodo(vars) {
   return parseLispBoolean((vars || {})['org-closed-keep-when-no-todo'], false);
 }
 
+/** org-ascii-text-width: the maximum line width (in characters) for
+ *  wrapping paragraph text during ASCII export. Real org's own default
+ *  is 72, matched here exactly. A non-positive or unparseable value
+ *  falls back to that default rather than producing zero-or-negative-
+ *  width wrapping. */
+export function getAsciiTextWidth(vars) {
+  const n = parseLispNumber((vars || {})['org-ascii-text-width'], 72);
+  return n > 0 ? n : 72;
+}
+
+/** org-refile-targets: this app's own plain-text translation (see
+ *  src/refile.js's own docs for the full syntax and precedence) --
+ *  just the raw string here, since parsing/validation lives in that
+ *  module's own parseRefileTargets, not duplicated here. */
+export function getRefileTargets(vars) {
+  return (vars || {})['org-refile-targets'] || '';
+}
+
 /** org-use-tag-inheritance: whether a heading's "effective" tags (for
  *  search/filtering purposes) include its ancestors' own tags, not
  *  just its own. `t` is real org's own actual default — tags inherit
