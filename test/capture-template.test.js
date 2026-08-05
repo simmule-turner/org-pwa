@@ -107,16 +107,46 @@ test('expandTemplate %U is an inactive timestamp with date and time', () => {
   assert.equal(text, '[2026-07-24 Fri 14:30]');
 });
 
-// ---- expandTemplate: %N (table row number) --------------------------------
+// ---- expandTemplate: @# (real org's table row-number constant) ------------
 
-test('expandTemplate %N substitutes the table row number', () => {
-  const { text } = expandTemplate('Row %N', { now: NOW, tableRowNumber: 7 });
+test('expandTemplate @# substitutes the table row number', () => {
+  const { text } = expandTemplate('Row @#', { now: NOW, tableRowNumber: 7 });
   assert.equal(text, 'Row 7');
 });
 
-test('expandTemplate %N is empty when no table row number is given (not a table-line capture)', () => {
-  const { text } = expandTemplate('Row %N', { now: NOW });
+test('expandTemplate @# is empty when no table row number is given (not a table-line capture)', () => {
+  const { text } = expandTemplate('Row @#', { now: NOW });
   assert.equal(text, 'Row ');
+});
+
+test('expandTemplate @# + n adds a positive offset', () => {
+  const { text } = expandTemplate('ID: @# + 3', { now: NOW, tableRowNumber: 5 });
+  assert.equal(text, 'ID: 8');
+});
+
+test('expandTemplate @# - n subtracts an offset', () => {
+  const { text } = expandTemplate('ID: @# - 2', { now: NOW, tableRowNumber: 5 });
+  assert.equal(text, 'ID: 3');
+});
+
+test('expandTemplate @# + 0 is a no-op offset, still just the row number', () => {
+  const { text } = expandTemplate('ID: @# + 0', { now: NOW, tableRowNumber: 5 });
+  assert.equal(text, 'ID: 5');
+});
+
+test('expandTemplate @#+n and @#-n work with no whitespace around the operator', () => {
+  assert.equal(expandTemplate('@#+3', { tableRowNumber: 5 }).text, '8');
+  assert.equal(expandTemplate('@#-2', { tableRowNumber: 5 }).text, '3');
+});
+
+test('expandTemplate @# with an offset is still empty when no table row number is given', () => {
+  const { text } = expandTemplate('ID: @# + 3', { now: NOW });
+  assert.equal(text, 'ID: ');
+});
+
+test('expandTemplate no longer recognizes %N at all -- left as literal text, matching its replacement by @#', () => {
+  const { text } = expandTemplate('Row %N', { now: NOW, tableRowNumber: 7 });
+  assert.equal(text, 'Row %N');
 });
 
 // ---- expandTemplate: %<FORMAT> embedded in a template ---------------------
@@ -178,8 +208,8 @@ test('THE EXACT MEETING TEMPLATE: multiple prompt types, %U, and %? all together
   assert.match(text, /\*\*\* TODO \[#A\] Finalize budget$/);
 });
 
-test('THE EXACT TABLE TEMPLATE: %N, %U, and two prompts in one row', () => {
-  const template = '| %N | %U | %^{Description} | %^{Amount} |';
+test('THE EXACT TABLE TEMPLATE: @#, %U, and two prompts in one row', () => {
+  const template = '| @# | %U | %^{Description} | %^{Amount} |';
   const { text } = expandTemplate(template, {
     now: NOW,
     promptAnswers: ['Bought groceries', '45.00'],
@@ -362,7 +392,7 @@ test('END TO END: Table Insert example with dynamic %<%Y-%m> OLP segment, exactl
   const doc = parseOrg('* heading 1');
   const target = resolveOlpTarget(doc, ['heading 1', '%<%Y-%m>'], { now: NOW });
   assert.equal(target.title, '2026-07');
-  const { text } = expandTemplate('| %N | %U | %^{Description} | %^{Amount} |', {
+  const { text } = expandTemplate('| @# | %U | %^{Description} | %^{Amount} |', {
     now: NOW,
     promptAnswers: ['Bought groceries', '45.00'],
     tableRowNumber: 1,
@@ -410,6 +440,89 @@ test('insertCapture table-line returns the table', () => {
   const target = doc.children[0];
   const table = insertCapture(target, 'table-line', '| 1 | first | 45.00 |');
   assert.equal(table.type, 'table');
+});
+
+// ---- insertCapture: prepend (real org's :prepend t) -------------------------
+
+test('prepend item: new item lands before existing items, not after', () => {
+  const doc = parseOrg('* H\n- existing item\n');
+  insertCapture(doc.children[0], 'item', 'new item', true);
+  const list = doc.children[0].body[0];
+  assert.equal(list.items[0].text, 'new item');
+  assert.equal(list.items[1].text, 'existing item');
+});
+
+test('prepend item: append (the default) is completely unaffected -- still lands after', () => {
+  const doc = parseOrg('* H\n- existing item\n');
+  insertCapture(doc.children[0], 'item', 'new item');
+  const list = doc.children[0].body[0];
+  assert.equal(list.items[0].text, 'existing item');
+  assert.equal(list.items[1].text, 'new item');
+});
+
+test('prepend item: returns the prepended item itself (the first one now), not the last', () => {
+  const doc = parseOrg('* H\n- existing item\n');
+  const inserted = insertCapture(doc.children[0], 'item', 'new item', true);
+  assert.equal(inserted.text, 'new item');
+});
+
+test('prepend checkitem: lands before existing checkitems', () => {
+  const doc = parseOrg('* H\n- [ ] existing\n');
+  insertCapture(doc.children[0], 'checkitem', 'new checkitem', true);
+  const list = doc.children[0].body[0];
+  assert.equal(list.items[0].text, 'new checkitem');
+  assert.equal(list.items[1].text, 'existing');
+});
+
+test('prepend plain (producing a heading): new heading lands before existing subheadings', () => {
+  const doc = parseOrg('* H\n** Existing subheading\n');
+  insertCapture(doc.children[0], 'plain', '* New heading', true);
+  assert.equal(doc.children[0].children[0].title, 'New heading');
+  assert.equal(doc.children[0].children[1].title, 'Existing subheading');
+});
+
+test('prepend plain: returns the prepended (first) heading, not the last', () => {
+  const doc = parseOrg('* H\n** Existing subheading\n');
+  const inserted = insertCapture(doc.children[0], 'plain', '* New heading', true);
+  assert.equal(inserted.title, 'New heading');
+});
+
+test('prepend plain (body-only, no heading produced): new text lands before existing text -- merges into the same paragraph when there\u0027s no blank line between them, matching real org\u0027s own "a blank line separates paragraphs" rule (the same as the existing append path already does)', () => {
+  const doc = parseOrg('* H\nExisting paragraph.\n');
+  insertCapture(doc.children[0], 'plain', 'New paragraph.', true);
+  assert.equal(doc.children[0].body[0].lines.join(' '), 'New paragraph. Existing paragraph.');
+});
+
+test('prepend table-line, NO header/rule: new row lands at the very top', () => {
+  const doc = parseOrg('* H\n| a | b |\n| c | d |\n');
+  insertCapture(doc.children[0], 'table-line', '| x | y |', true);
+  const table = doc.children[0].body[0];
+  assert.deepEqual(table.rows[0].cells, ['x', 'y']);
+  assert.deepEqual(table.rows[1].cells, ['a', 'b']);
+});
+
+test('prepend table-line, WITH a header row followed by a rule: new row lands right after the rule, not above the header -- this exact case surfaced a real bug during manual testing (checked the wrong row index for the rule)', () => {
+  const doc = parseOrg('* H\n| col1 | col2 |\n|---+---|\n| c | d |\n');
+  insertCapture(doc.children[0], 'table-line', '| x | y |', true);
+  const table = doc.children[0].body[0];
+  assert.deepEqual(table.rows[0].cells, ['col1', 'col2']); // header still first
+  assert.equal(table.rows[1].type, 'rule'); // rule still right after the header
+  assert.deepEqual(table.rows[2].cells, ['x', 'y']); // new row is the first DATA row
+  assert.deepEqual(table.rows[3].cells, ['c', 'd']);
+});
+
+test('prepend table-line, brand-new table (none exists yet): prepend has nothing to prepend relative to, behaves the same as append', () => {
+  const doc = parseOrg('* H\n');
+  const withPrepend = insertCapture(doc.children[0], 'table-line', '| x | y |', true);
+  assert.equal(withPrepend.type, 'table');
+  assert.deepEqual(withPrepend.rows[0].cells, ['x', 'y']);
+});
+
+test('prepend table-line: returns the table containing the prepended row', () => {
+  const doc = parseOrg('* H\n| a | b |\n');
+  const table = insertCapture(doc.children[0], 'table-line', '| x | y |', true);
+  assert.equal(table.type, 'table');
+  assert.deepEqual(table.rows[0].cells, ['x', 'y']);
 });
 
 // ---- REGRESSION: capturing into a heading with pre-existing content must -----
