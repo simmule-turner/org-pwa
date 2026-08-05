@@ -1192,6 +1192,13 @@ let extraMenuOpen = false;
 // glitches); an in-app form sidesteps that entirely, being just an
 // ordinary part of this app's own layout.
 let capturePromptTemplate = null;
+// True while a capture triggered by the extras (☰) menu is in progress
+// -- that flow already knows exactly which template to use, so once
+// it completes (success or cancel) the capture panel should close
+// entirely rather than looping back to the "pick a template" picker
+// grid the normal Capture button's own multi-capture flow shows,
+// which the person never asked to see via the extras menu at all.
+let captureOpenedFromExtraMenu = false;
 let capturePromptValues = [];
 let moreOpen = false;
 let searchQuery = '';
@@ -7023,6 +7030,10 @@ function renderCapturePromptForm() {
   row.appendChild(
     menuButton('Cancel', () => {
       capturePromptTemplate = null;
+      if (captureOpenedFromExtraMenu) {
+        captureOpenedFromExtraMenu = false;
+        captureOpen = false;
+      }
       setStatus('Capture cancelled.');
       renderCapturePanel();
     })
@@ -7161,6 +7172,10 @@ async function runCaptureWithAnswers(template, answers) {
  *  list, not a reopened copy of the same form. */
 function afterSuccessfulCapture() {
   capturePromptTemplate = null;
+  if (captureOpenedFromExtraMenu) {
+    captureOpenedFromExtraMenu = false;
+    captureOpen = false;
+  }
   renderCapturePanel();
 }
 
@@ -7239,8 +7254,8 @@ async function runExtraMenuEntry(entry) {
       render();
       return;
     }
+    captureOpenedFromExtraMenu = true;
     captureOpen = true;
-    renderCapturePanel();
     openCapturePrompt(template);
     return;
   }
@@ -7279,6 +7294,7 @@ extraMenuBtn.addEventListener('click', () => {
 
 captureBtn.addEventListener('click', () => {
   captureOpen = !captureOpen;
+  captureOpenedFromExtraMenu = false;
   if (captureOpen && fileMenuOpen) {
     fileMenuOpen = false;
     fileMenuStep = null;
