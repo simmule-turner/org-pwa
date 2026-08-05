@@ -11,6 +11,7 @@ import {
   insertAtArchiveLocation,
   buildRestoredClone,
   isArchivedInPlace,
+  shiftLevels,
 } from './src/archive-model.js';
 import {
   resolveLinkTarget,
@@ -38,7 +39,10 @@ import {
   getUseTagInheritance,
   getUsePropertyInheritance,
   getClosedKeepWhenNoTodo,
+  getRefileTargets,
+  getAsciiTextWidth,
 } from './src/local-variables.js';
+import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath } from './src/refile.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import { decideProgressLogging, decideLogbookEntry, getEffectiveLogDoneSetting } from './src/progress-logging.js';
 import { parseGlobalVariables, mergeGlobalAndLocalVariables } from './src/global-variables.js';
@@ -56,6 +60,7 @@ import {
 } from './src/agenda.js';
 import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId } from './src/capture-template.js';
 import { exportToMarkdown } from './src/export-markdown.js';
+import { exportToAscii } from './src/export-ascii.js';
 import { exportToHtml } from './src/export-html.js';
 import { exportToIcalendar } from './src/export-icalendar.js';
 import { createHistory, pushSnapshot, canUndo, canRedo, undo, redo, jumpTo, currentEntry } from './src/undo-history.js';
@@ -173,6 +178,10 @@ const GLOBAL_TODO_DEFAULT = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
 // any keyword transition can require a note (the "@" logging marker
 // isn't done-specific), not only org-log-done's own 'note value.
 let pendingLogNote = null;
+// Set to { heading } when "Refile..." is tapped from a heading's own
+// action menu -- renderRefilePanel shows the candidate-target list for
+// it. Only ever one at a time, matching pendingLogNote's own pattern.
+let pendingRefile = null;
 
 /**
  * Every call site in this app that changes a heading's TODO state
@@ -460,6 +469,193 @@ function activeDiskAdapter() {
  * failing with a confusing low-level permission error, this is
  * detected up front and reported as an actionable message.
  */
+/** Loads every document a resolved refile-targets spec could need,
+ *  beyond what aggregateAgendaDocs() already covers (the current file
+ *  and every configured Agenda File) -- an explicitly-named target
+ *  file spec that isn't already one of those gets read fresh via the
+ *  active disk adapter. A file that fails to load is silently omitted
+ *  (getRefileCandidates already treats a missing docsById entry as
+ *  "no candidates from this entry", not an error) rather than blocking
+ *  the whole picker on one bad/inaccessible target. */
+async function loadRefileTargetDocs(targetsSpec) {
+  const docsById = {};
+  for (const { documentId, doc } of aggregateAgendaDocs()) {
+    docsById[documentId] = doc;
+  }
+  const adapter = activeDiskAdapter();
+  for (const entry of targetsSpec) {
+    if (entry.fileSpec === 'current' || entry.fileSpec === 'agenda-files') continue;
+    for (const documentId of resolveEntryFileIds(entry, state.documentId, agendaFilesConfig)) {
+      if (docsById[documentId]) continue;
+      try {
+        const existing = await adapter.read(documentId);
+        if (existing) docsById[documentId] = parseOrg(existing.content);
+      } catch {
+        // Omitted, not an error -- see doc comment above.
+      }
+    }
+  }
+  return docsById;
+}
+
+async function openRefilePicker(heading) {
+  pendingRefile = { heading, loading: true, candidates: [] };
+  renderRefilePanel();
+  const targetsSpec = parseRefileTargets(getRefileTargets(state.localVariables));
+  const docsById = await loadRefileTargetDocs(targetsSpec);
+  if (!pendingRefile || pendingRefile.heading !== heading) return; // dismissed while loading
+  const candidates = getRefileCandidates(targetsSpec, docsById, state.documentId, agendaFilesConfig, heading);
+  pendingRefile = { heading, loading: false, candidates };
+  renderRefilePanel();
+}
+
+function renderRefilePanel() {
+  refilePanel.innerHTML = '';
+  if (!pendingRefile) {
+    refilePanel.style.display = 'none';
+    return;
+  }
+  refilePanel.style.display = 'block';
+
+  const label = document.createElement('div');
+  label.style.fontSize = '12px';
+  label.style.opacity = '0.7';
+  label.style.marginBottom = '6px';
+  label.textContent = `Refile "${pendingRefile.heading.title || '(untitled)'}" to:`;
+  refilePanel.appendChild(label);
+
+  if (pendingRefile.loading) {
+    const loading = document.createElement('div');
+    loading.style.fontSize = '13px';
+    loading.style.opacity = '0.6';
+    loading.style.padding = '8px 0';
+    loading.textContent = 'Loading targets\u2026';
+    refilePanel.appendChild(loading);
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.style.maxHeight = '260px';
+  list.style.overflowY = 'auto';
+  if (pendingRefile.candidates.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.fontSize = '13px';
+    empty.style.opacity = '0.6';
+    empty.style.padding = '8px 0';
+    empty.textContent =
+      'No refile targets found -- check org-refile-targets (Global/Local Variables) and that any configured target files are reachable.';
+    list.appendChild(empty);
+  }
+  for (const candidate of pendingRefile.candidates) {
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    row.style.cursor = 'pointer';
+    row.style.fontSize = '14px';
+    row.style.flexDirection = 'column';
+    row.style.alignItems = 'flex-start';
+    const pathEl = document.createElement('div');
+    pathEl.textContent = candidate.outlinePath.join(' / ');
+    row.appendChild(pathEl);
+    if (candidate.documentId !== state.documentId) {
+      const fileEl = document.createElement('div');
+      fileEl.style.fontSize = '11px';
+      fileEl.style.opacity = '0.6';
+      fileEl.textContent = candidate.documentId;
+      row.appendChild(fileEl);
+    }
+    row.onclick = () => performRefile(pendingRefile.heading, candidate.documentId, candidate.outlinePath);
+    list.appendChild(row);
+  }
+  refilePanel.appendChild(list);
+
+  const backRow = document.createElement('div');
+  backRow.className = 'panel-row';
+  backRow.style.marginTop = '6px';
+  backRow.appendChild(
+    menuButton('\u2039 Cancel', () => {
+      pendingRefile = null;
+      renderRefilePanel();
+    })
+  );
+  refilePanel.appendChild(backRow);
+}
+
+/**
+ * Moves `heading` (and its whole subtree) to become the LAST child of
+ * the target identified by `targetDocumentId` + `targetOutlinePath` --
+ * real org's own default refile insertion point. Same-file is a
+ * simple splice-out/push-in plus a level-shift, mirroring
+ * demoteHeading's own already-established pattern exactly. Cross-file
+ * re-resolves the target against a FRESH read of that file (never the
+ * possibly-stale docsById snapshot the picker itself was built from)
+ * and uses the same write-target-before-remove-from-source transaction
+ * safety archiveHeadingToLocation already established -- a failed
+ * write to the target file leaves the source completely untouched.
+ */
+async function performRefile(heading, targetDocumentId, targetOutlinePath) {
+  pendingRefile = null;
+  renderRefilePanel();
+
+  if (targetDocumentId === state.documentId) {
+    const target = findHeadingByOutlinePath(state.doc, targetOutlinePath);
+    if (!target) {
+      setStatus('Could not refile: that target heading no longer exists (the outline may have changed).');
+      return;
+    }
+    removeHeading(state.doc, heading);
+    target.children.push(heading);
+    target.collapsed = false;
+    shiftLevels(heading, target.level + 1);
+    commitAndRender('Refiled heading');
+    setStatus(`Refiled to "${target.title}".`);
+    return;
+  }
+
+  const adapter = activeDiskAdapter();
+  if ((state.storageKind === 'filesystem' || state.storageKind === 'input') && !(await adapter.exists(targetDocumentId))) {
+    setStatus(
+      `Can't refile to "${targetDocumentId}" automatically \u2014 local files need that file picked/created once first (browser security requires a file picker per file, not something this can do mid-refile). Try File \u2192 Open or Save As on "${targetDocumentId}" first, or use GitHub/WebDAV for automatic cross-file refiling.`
+    );
+    return;
+  }
+
+  setStatus(`Refiling to ${targetDocumentId}\u2026`);
+  let targetDoc;
+  try {
+    const existing = await adapter.read(targetDocumentId);
+    if (!existing) {
+      setStatus(`Could not refile: "${targetDocumentId}" no longer exists.`);
+      return;
+    }
+    targetDoc = parseOrg(existing.content);
+  } catch (err) {
+    setStatus(`Could not refile: reading "${targetDocumentId}" failed \u2014 ${err.message}`);
+    return;
+  }
+
+  const target = findHeadingByOutlinePath(targetDoc, targetOutlinePath);
+  if (!target) {
+    setStatus(`Could not refile: that target heading no longer exists in "${targetDocumentId}" (it may have changed since this picker opened).`);
+    return;
+  }
+
+  target.children.push(heading);
+  target.collapsed = false;
+  shiftLevels(heading, target.level + 1);
+
+  try {
+    await adapter.write(targetDocumentId, serializeOrg(targetDoc));
+  } catch (err) {
+    setStatus(`Could not refile: writing "${targetDocumentId}" failed \u2014 ${err.message}. Nothing was removed from this file.`);
+    return;
+  }
+
+  // The write succeeded -- now, and only now, remove the original.
+  removeHeading(state.doc, heading);
+  commitAndRender('Refiled heading');
+  setStatus(`Refiled to "${target.title}" in "${targetDocumentId}".`);
+}
+
 async function archiveHeadingToLocation(heading) {
   const location = getArchiveLocation(state.doc, heading);
   const { filePart, headlinePart } = parseArchiveLocation(location);
@@ -682,6 +878,7 @@ const captureBtn = document.getElementById('captureBtn');
 const capturePanel = document.getElementById('capturePanel');
 const historyPanel = document.getElementById('historyPanel');
 const doneNotePanel = document.getElementById('doneNotePanel');
+const refilePanel = document.getElementById('refilePanel');
 const moreBtn = document.getElementById('moreBtn');
 const morePanel = document.getElementById('morePanel');
 
@@ -2586,6 +2783,19 @@ function renderRow(row, todoSequence) {
                 }
               },
             },
+            ...(isArchivedInPlace(row.node)
+              ? []
+              : [
+                  {
+                    icon: '📦',
+                    label: 'Refile\u2026',
+                    onClick: async () => {
+                      actionMenuFor = null;
+                      render();
+                      await openRefilePicker(row.node);
+                    },
+                  },
+                ]),
             {
               icon: '\u2715',
               label: 'Delete heading',
@@ -4371,7 +4581,9 @@ function allHeadingsInOrder(doc) {
 function performExport(format, scope) {
   const rawName = scope && typeof scope === 'object' ? scope.title : (state.documentId || 'export').replace(/\.[a-zA-Z0-9]+$/, '');
   const baseName = rawName.replace(/[\\/:*?"<>|]/g, '_').trim() || 'export';
-  if (format === 'markdown') {
+  if (format === 'ascii') {
+    downloadFile(baseName + '.txt', exportToAscii(state.doc, scope, getAsciiTextWidth(state.localVariables)), 'text/plain');
+  } else if (format === 'markdown') {
     downloadFile(baseName + '.md', exportToMarkdown(state.doc, scope), 'text/markdown');
   } else if (format === 'html') {
     downloadFile(baseName + '.html', exportToHtml(state.doc, scope), 'text/html');
@@ -4384,7 +4596,9 @@ function performExport(format, scope) {
   fileMenuStep = null;
   exportFormat = null;
   exportPickingHeading = false;
-  setStatus(`Exported to ${format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : 'Calendar (.ics)'}.`);
+  setStatus(
+    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : 'Calendar (.ics)'}.`
+  );
   renderFileMenu();
   render();
 }
@@ -4401,8 +4615,14 @@ function renderExportFlow() {
     const row = document.createElement('div');
     row.className = 'panel-row';
     row.appendChild(
-      menuButton('Markdown', () => {
-        exportFormat = 'markdown';
+      menuButton('ASCII', () => {
+        exportFormat = 'ascii';
+        renderFileMenu();
+      })
+    );
+    row.appendChild(
+      menuButton('Calendar (.ics)', () => {
+        exportFormat = 'icalendar';
         renderFileMenu();
       })
     );
@@ -4413,8 +4633,8 @@ function renderExportFlow() {
       })
     );
     row.appendChild(
-      menuButton('Calendar (.ics)', () => {
-        exportFormat = 'icalendar';
+      menuButton('Markdown', () => {
+        exportFormat = 'markdown';
         renderFileMenu();
       })
     );
@@ -4507,7 +4727,7 @@ function renderExportFlow() {
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '4px';
-  label.textContent = `Export ${exportFormat === 'markdown' ? 'Markdown' : exportFormat === 'html' ? 'HTML' : 'Calendar (.ics)'} for:`;
+  label.textContent = `Export ${exportFormat === 'ascii' ? 'ASCII' : exportFormat === 'markdown' ? 'Markdown' : exportFormat === 'html' ? 'HTML' : 'Calendar (.ics)'} for:`;
   fileMenuPanel.appendChild(label);
 
   const row = document.createElement('div');
