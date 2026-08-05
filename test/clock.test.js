@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
 import { formatOrgTimestamp } from '../src/org-timestamp.js';
-import { isClockRunning, clockIn, clockOut, formatClockDuration, parseClockDuration, totalClockedMinutes } from '../src/clock.js';
+import { isClockRunning, clockIn, clockOut, formatClockDuration, parseClockDuration, totalClockedMinutes, findHeadingWithRunningClock } from '../src/clock.js';
 
 function ts(date, timeStr) {
   return formatOrgTimestamp({ date, time: timeStr, active: false });
@@ -156,4 +156,29 @@ test('totalClockedMinutes: a running clock on a DESCENDANT also contributes its 
 test('totalClockedMinutes: a malformed/unrecognized LOGBOOK line simply doesn\u0027t contribute, rather than breaking the whole computation', () => {
   const doc = parseOrg('* Task\n:LOGBOOK:\nsome nonsense line\nCLOCK: [2026-07-31 Fri 09:00]--[2026-07-31 Fri 09:30] =>  0:30\n:END:\n');
   assert.equal(totalClockedMinutes(doc.children[0]), 30);
+});
+
+// ---- findHeadingWithRunningClock --------------------------------------------
+
+test('findHeadingWithRunningClock returns null when nothing is running anywhere', () => {
+  const doc = parseOrg('* A\n** B\n');
+  assert.equal(findHeadingWithRunningClock(doc), null);
+});
+
+test('findHeadingWithRunningClock finds a running clock at the top level', () => {
+  const doc = parseOrg('* A\n* B\n');
+  clockIn(doc.children[1], ts(new Date(2026, 6, 31, 9, 0), '09:00'));
+  assert.equal(findHeadingWithRunningClock(doc), doc.children[1]);
+});
+
+test('findHeadingWithRunningClock finds a running clock nested several levels deep', () => {
+  const doc = parseOrg('* A\n** B\n*** C\n');
+  const target = doc.children[0].children[0].children[0];
+  clockIn(target, ts(new Date(2026, 6, 31, 9, 0), '09:00'));
+  assert.equal(findHeadingWithRunningClock(doc), target);
+});
+
+test('findHeadingWithRunningClock ignores a completed (non-running) clock', () => {
+  const doc = parseOrg('* A\n:LOGBOOK:\nCLOCK: [2026-07-31 Fri 09:00]--[2026-07-31 Fri 09:30] =>  0:30\n:END:\n');
+  assert.equal(findHeadingWithRunningClock(doc), null);
 });
