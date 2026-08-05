@@ -63,7 +63,7 @@ const DEFAULT_CAPTURE_TEMPLATES = [
     description: 'Table Insert prompted for values',
     type: 'table-line',
     olp: ['heading 1', '%<%Y-%m>'],
-    template: '| %N | %U | %^{Description} | %^{Amount} |',
+    template: '| @# | %U | %^{Description} | %^{Amount} |',
     emptyLines: 0,
   },
 ];
