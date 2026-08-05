@@ -155,7 +155,14 @@ function scanPrompts(template) {
  *                       returns them in) — not matched by prompt text,
  *                       since two prompts can legitimately share the
  *                       same wording
- *   tableRowNumber   -- substituted for %N; omitted/null becomes ''
+ *   tableRowNumber   -- substituted for @# (real org's own table-formula
+ *                       row-number constant, not an invented specifier);
+ *                       omitted/null becomes ''. @# also supports a
+ *                       simple offset -- @# + 3 or @# - 2 (whitespace
+ *                       around the operator optional either way)
+ *                       evaluates to tableRowNumber plus/minus that
+ *                       integer, still '' if tableRowNumber itself is
+ *                       unset.
  *
  * Returns { text } — a bare %? is just another prompt answer
  * substituted directly into the text now (see scanPrompts' own docs for
@@ -167,7 +174,7 @@ function expandTemplate(template, context = {}) {
   const tableRowNumber = context.tableRowNumber;
 
   const hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
-  const TOKEN_RE = /%%|%<([^>]*)>|%\^\{([^}]*)\}|%[tTuUN?]/g;
+  const TOKEN_RE = /%%|%<([^>]*)>|%\^\{([^}]*)\}|%[tTuU?]|@#(?:\s*([+-])\s*(\d+))?/g;
 
   let result = '';
   let lastIndex = 0;
@@ -195,8 +202,15 @@ function expandTemplate(template, context = {}) {
       result += formatOrgTimestamp({ date: now, active: false });
     } else if (token === '%U') {
       result += formatOrgTimestamp({ date: now, active: false, time: hhmm });
-    } else if (token === '%N') {
-      result += tableRowNumber !== undefined && tableRowNumber !== null ? String(tableRowNumber) : '';
+    } else if (token.startsWith('@#')) {
+      if (tableRowNumber === undefined || tableRowNumber === null) {
+        result += '';
+      } else {
+        const sign = match[3];
+        const offset = match[4];
+        const n = sign && offset ? Number(sign + offset) : 0;
+        result += String(tableRowNumber + n);
+      }
     } else if (token === '%?') {
       const answer = promptAnswers[promptIndex];
       result += answer !== undefined && answer !== null ? answer : '';
@@ -224,7 +238,7 @@ function expandTemplate(template, context = {}) {
  * something a single-document capture flow can resolve.
  *
  * Each segment of the path is itself expanded for %<FORMAT> (and only
- * %<FORMAT> -- %^{...} prompts, %N, %t/%T/%u/%U don't have an obvious
+ * %<FORMAT> -- %^{...} prompts, @#, %t/%T/%u/%U don't have an obvious
  * meaning as part of a heading you're navigating TO rather than content
  * you're inserting, so they're deliberately not supported here), which
  * is what lets a template target a heading like the current month
@@ -255,13 +269,15 @@ function resolveOlpTarget(doc, olpPath, { now } = {}) {
 /**
  * Merges a parsed fragment (from parseOrg on already-expanded template
  * text) into `target`: if the fragment produced any headings, they're
- * appended as target's children with their levels offset to nest
- * correctly underneath it (a fragment heading's level is relative to
- * itself, starting at 1, same as any standalone document); otherwise
- * (a fragment with no headings at all -- just paragraphs/lists/tables)
- * its body content is appended to target's own body directly.
+ * appended (or, if `prepend` is true, prepended -- real org's own
+ * :prepend t capture-template property) as target's children with
+ * their levels offset to nest correctly underneath it (a fragment
+ * heading's level is relative to itself, starting at 1, same as any
+ * standalone document); otherwise (a fragment with no headings at all
+ * -- just paragraphs/lists/tables) its body content is appended (or
+ * prepended) to target's own body directly.
  */
-function mergeFragmentInto(target, fragment) {
+function mergeFragmentInto(target, fragment, prepend = false) {
   if (fragment.children.length > 0) {
     const offset = target.level;
     const applyOffset = (headings) => {
@@ -271,10 +287,18 @@ function mergeFragmentInto(target, fragment) {
       }
     };
     applyOffset(fragment.children);
-    target.children.push(...fragment.children);
+    if (prepend) {
+      target.children.unshift(...fragment.children);
+    } else {
+      target.children.push(...fragment.children);
+    }
     target.collapsed = false;
   } else {
-    target.bodyLines.push(...fragment.bodyLines);
+    if (prepend) {
+      target.bodyLines.unshift(...fragment.bodyLines);
+    } else {
+      target.bodyLines.push(...fragment.bodyLines);
+    }
     target.body = parseBody(target.bodyLines);
   }
 }
@@ -324,6 +348,17 @@ function lastTableIn(heading) {
   return null;
 }
 
+/** The first table in a heading's body -- lastTableIn's own mirror,
+ *  needed because a :prepend capture puts new content at the START of
+ *  target.body, so the just-inserted (or just-extended) table is now
+ *  the first one there, not the last. */
+function firstTableIn(heading) {
+  for (const node of heading.body) {
+    if (node.type === 'table') return node;
+  }
+  return null;
+}
+
 /** Finds the last item in the last list of a heading's body -- the
  *  list-item equivalent of lastTableIn, for the same reason: after
  *  mergeFragmentInto (which goes through no commitLines call, so no
@@ -333,6 +368,18 @@ function lastListItemIn(heading) {
   for (let i = heading.body.length - 1; i >= 0; i--) {
     const node = heading.body[i];
     if (node.type === 'list' && node.items.length > 0) return node.items[node.items.length - 1];
+  }
+  return null;
+}
+
+/** The first item of the first list in a heading's body --
+ *  lastListItemIn's own mirror, for the same :prepend reason
+ *  firstTableIn exists: prepending puts the new item at the very
+ *  start, so it's now the first item of the first list, not the last
+ *  item of the last one. */
+function firstListItemIn(heading) {
+  for (const node of heading.body) {
+    if (node.type === 'list' && node.items.length > 0) return node.items[0];
   }
   return null;
 }
@@ -358,6 +405,14 @@ function lastListItemIn(heading) {
  *                   target, or a brand new table created from this row
  *                   if target has none yet
  *
+ * `prepend` (real org's own :prepend t capture-template property) puts
+ * the new content at the START of target instead of the end, for every
+ * type. For table-line specifically, prepending with an existing table
+ * inserts right after any leading rule row (so the new row lands as
+ * the first DATA row, not literally above the header) rather than at
+ * index 0 unconditionally; a brand-new table has nothing to prepend
+ * relative to, so prepend doesn't change that case.
+ *
  * item/checkitem/plain all go through the same parse-a-fragment-and-merge
  * path (see mergeFragmentInto) rather than body-edit.js's insertListItem,
  * deliberately: insertListItem requires an existing list item to insert
@@ -367,30 +422,32 @@ function lastListItemIn(heading) {
  * yet" and "list already exists, extend it" the same way, uniformly,
  * without needing to detect and branch on which case applies.
  */
-function insertCapture(target, type, expandedText) {
+function insertCapture(target, type, expandedText, prepend = false) {
   if (type === 'item') {
     const fragment = parseOrg('- ' + expandedText);
-    mergeFragmentInto(target, fragment);
-    return lastListItemIn(target);
+    mergeFragmentInto(target, fragment, prepend);
+    return prepend ? firstListItemIn(target) : lastListItemIn(target);
   }
 
   if (type === 'checkitem') {
     const fragment = parseOrg('- [ ] ' + expandedText);
-    mergeFragmentInto(target, fragment);
-    return lastListItemIn(target);
+    mergeFragmentInto(target, fragment, prepend);
+    return prepend ? firstListItemIn(target) : lastListItemIn(target);
   }
 
   if (type === 'table-line') {
     const cells = splitTableRowLine(expandedText);
-    let table = lastTableIn(target);
+    let table = prepend ? firstTableIn(target) : lastTableIn(target);
 
     if (table) {
-      const newRowIndex = table.rows.length; // insert after the current last row
-      insertTableRow(target, table, newRowIndex - 1);
-      table = lastTableIn(target); // re-fetch: insertTableRow's commitLines just re-parsed target.body
+      const hasLeadingRule = table.rows[1] && table.rows[1].type === 'rule';
+      const insertAfterIndex = prepend ? (hasLeadingRule ? 1 : -1) : table.rows.length - 1;
+      const newRowIndex = insertAfterIndex + 1;
+      insertTableRow(target, table, insertAfterIndex);
+      table = prepend ? firstTableIn(target) : lastTableIn(target); // re-fetch: insertTableRow's commitLines just re-parsed target.body
       for (let i = 0; i < cells.length; i++) {
         setTableCell(target, table, newRowIndex, i, cells[i]);
-        table = lastTableIn(target); // re-fetch after every cell too, same reason
+        table = prepend ? firstTableIn(target) : lastTableIn(target); // re-fetch after every cell too, same reason
       }
     } else {
       let newTable = insertTable(target, { rows: 1, cols: cells.length || 1 });
@@ -399,15 +456,16 @@ function insertCapture(target, type, expandedText) {
         newTable = lastTableIn(target);
       }
     }
-    return lastTableIn(target);
+    return prepend ? firstTableIn(target) : lastTableIn(target);
   }
 
   // 'plain' (and the fallback for anything unrecognized -- inserting the
   // text verbatim is a safer default than silently discarding it)
   const fragment = parseOrg(expandedText);
   const producedHeadings = fragment.children.length > 0;
-  mergeFragmentInto(target, fragment);
-  return producedHeadings ? target.children[target.children.length - 1] : null;
+  mergeFragmentInto(target, fragment, prepend);
+  if (!producedHeadings) return null;
+  return prepend ? target.children[0] : target.children[target.children.length - 1];
 }
 
 /**
