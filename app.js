@@ -5841,11 +5841,12 @@ async function renderSettingsView(target = settingsRenderTarget) {
   captureHint.style.opacity = '0.6';
   captureHint.style.margin = '2px 0 8px';
   captureHint.textContent =
-    'Edited as JSON — an array of {key, description, type, olp, template, file}. ' +
+    'Edited as JSON — an array of {key, description, type, olp, template, file, prepend}. ' +
     'type is one of "item", "checkitem", "plain", "table-line". ' +
     'olp is the outline path to insert into, e.g. ["Inbox", "Tasks"]. ' +
     'file is optional — a filename (e.g. "journal.org", captured as a sibling of whatever file is currently open) or a full path, for a template that captures into a DIFFERENT file without switching what you\u2019re looking at. Omit it to capture into the currently open file, as before. ' +
-    'template supports %<FORMAT>, %t/%T/%u/%U, %^{Prompt|default|choices}, %N, and %? — see the README.';
+    'prepend is optional (true/false, default false) — true puts the new entry at the TOP of the target instead of the bottom, matching real org\u2019s own :prepend t. ' +
+    'template supports %<FORMAT>, %t/%T/%u/%U, %^{Prompt|default|choices}, @# (real org\u2019s table row-number constant \u2014 @# + 3 / @# - 2 also work), and %? — see the README.';
   captureSection.appendChild(captureHint);
 
   const currentTemplates = await getCaptureTemplates(kv);
@@ -5905,12 +5906,20 @@ async function renderSettingsView(target = settingsRenderTarget) {
   agendaFilesHint.style.margin = '2px 0 6px';
   agendaFilesHint.textContent =
     'Real org\u2019s org-agenda-files idea \u2014 additional files the Agenda and TODO views scan across, beyond whichever file is currently open. ' +
-    'Edited as JSON \u2014 an array of "scheme:path" strings, where scheme is "github" or "webdav" (the only backends that can read a file without a picker prompt) and path is that file\u2019s location on the currently configured GitHub repo or WebDAV server. Example: ["github:journal.org", "github:todo.org"]';
+    'One file per line, as scheme:path \u2014 scheme is github or webdav (the only backends that can read a file without a picker prompt), path is that file\u2019s location on the currently configured GitHub repo or WebDAV server. Example:';
   agendaFilesSection.appendChild(agendaFilesHint);
+
+  const agendaFilesExample = document.createElement('div');
+  agendaFilesExample.style.fontFamily = 'monospace';
+  agendaFilesExample.style.fontSize = '12px';
+  agendaFilesExample.style.opacity = '0.6';
+  agendaFilesExample.style.margin = '0 0 6px';
+  agendaFilesExample.textContent = 'github:journal.org\nwebdav:notes/todo.org';
+  agendaFilesSection.appendChild(agendaFilesExample);
 
   const currentAgendaFiles = await getAgendaFiles(kv);
   const agendaFilesTextarea = document.createElement('textarea');
-  agendaFilesTextarea.value = JSON.stringify(currentAgendaFiles, null, 2);
+  agendaFilesTextarea.value = currentAgendaFiles.join('\n');
   agendaFilesTextarea.rows = 6;
   agendaFilesTextarea.style.fontFamily = 'monospace';
   agendaFilesTextarea.style.fontSize = '13px';
@@ -5925,13 +5934,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
   agendaFilesBtnRow.style.marginTop = '8px';
   agendaFilesBtnRow.appendChild(
     menuButton('Save agenda files', async () => {
-      let parsed;
-      try {
-        parsed = JSON.parse(agendaFilesTextarea.value);
-      } catch (err) {
-        setStatus('Agenda files: invalid JSON \u2014 ' + err.message);
-        return;
-      }
+      const parsed = parseAgendaFilesText(agendaFilesTextarea.value);
       const problem = validateAgendaFiles(parsed);
       if (problem) {
         setStatus('Agenda files: ' + problem);
@@ -6842,11 +6845,27 @@ function validateCaptureTemplates(parsed) {
     }
     if (typeof t.template !== 'string') return `${label}: "template" must be a string`;
     if ('file' in t && typeof t.file !== 'string') return `${label}: "file" must be a string if present`;
+    if ('prepend' in t && typeof t.prepend !== 'boolean') return `${label}: "prepend" must be true or false if present`;
   }
   const keys = parsed.map((t) => t.key);
   const duplicate = keys.find((k, i) => keys.indexOf(k) !== i);
   if (duplicate !== undefined) return `duplicate key "${duplicate}" \u2014 each template needs a unique key`;
   return null;
+}
+
+/** Converts the Agenda Files textarea's plain, one-entry-per-line text
+ *  into the same array-of-strings shape the storage layer and
+ *  validateAgendaFiles already expect -- simple line-splitting, not
+ *  JSON, replacing what used to require typing valid JSON array
+ *  syntax (brackets, quotes, commas) to configure a handful of file
+ *  paths. Blank lines and lines starting with # are ignored, so a
+ *  person can leave a note or temporarily disable an entry by
+ *  commenting it out rather than deleting and retyping it later. */
+function parseAgendaFilesText(text) {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#'));
 }
 
 /**
@@ -6855,10 +6874,10 @@ function validateCaptureTemplates(parsed) {
  * that itself contains one isn't mistaken for a second scheme separator.
  */
 function validateAgendaFiles(parsed) {
-  if (!Array.isArray(parsed)) return 'must be a JSON array';
+  if (!Array.isArray(parsed)) return 'internal error \u2014 expected an array';
   for (let i = 0; i < parsed.length; i++) {
-    const label = `entry #${i + 1}`;
-    if (typeof parsed[i] !== 'string' || parsed[i].length === 0) return `${label} must be a non-empty string`;
+    const label = `line ${i + 1}`;
+    if (typeof parsed[i] !== 'string' || parsed[i].length === 0) return `${label} must be a non-empty line`;
     const colonIndex = parsed[i].indexOf(':');
     if (colonIndex === -1) return `${label}: expected "scheme:path" (e.g. "github:journal.org")`;
     const scheme = parsed[i].slice(0, colonIndex);
@@ -7046,7 +7065,7 @@ function renderCapturePromptForm() {
  * gathered for its %^{...} AND %? prompts (by the in-app prompt form,
  * or an empty array if the template has none): resolves its
  * (file+olp ...) target (creating any missing heading along the way),
- * computes %N if this is a table-line capture, expands the template
+ * computes @# if this is a table-line capture, expands the template
  * (with every prompt's answer, %? included, already substituted
  * directly into the text — see scanPrompts/expandTemplate), inserts
  * it, and navigates to the target heading.
@@ -7123,10 +7142,14 @@ async function runCaptureWithAnswers(template, answers) {
     if (template.type === 'table-line') {
       const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
       const dataRowCount = existingTable ? existingTable.rows.filter((r) => r.type === 'row').length : 0;
-      tableRowNumber = dataRowCount + 1;
+      // @# reflects the row's ACTUAL final position -- 1 (the new first
+      // data row) when prepending to an existing table, dataRowCount + 1
+      // (the next row after every existing one) when appending, the
+      // table's own default.
+      tableRowNumber = template.prepend && existingTable ? 1 : dataRowCount + 1;
     }
     const { text } = expandTemplate(template.template, { now, promptAnswers: answers, tableRowNumber });
-    insertCapture(target, template.type, text);
+    insertCapture(target, template.type, text, template.prepend);
 
     try {
       await adapter.write(targetFileId, serializeOrg(targetDoc));
@@ -7147,7 +7170,11 @@ async function runCaptureWithAnswers(template, answers) {
   if (template.type === 'table-line') {
     const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
     const dataRowCount = existingTable ? existingTable.rows.filter((r) => r.type === 'row').length : 0;
-    tableRowNumber = dataRowCount + 1;
+    // @# reflects the row's ACTUAL final position -- 1 (the new first
+    // data row) when prepending to an existing table, dataRowCount + 1
+    // (the next row after every existing one) when appending, the
+    // table's own default.
+    tableRowNumber = template.prepend && existingTable ? 1 : dataRowCount + 1;
   }
 
   const { text } = expandTemplate(template.template, {
@@ -7156,7 +7183,7 @@ async function runCaptureWithAnswers(template, answers) {
     tableRowNumber,
   });
 
-  insertCapture(target, template.type, text);
+  insertCapture(target, template.type, text, template.prepend);
   commitAndRender(`Captured: ${template.description}`);
 
   switchToView('org');
