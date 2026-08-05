@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v112';
+const CACHE_NAME = 'org-pwa-shell-v113';
 
 const SHELL_FILES = [
   './',
@@ -18,6 +18,7 @@ const SHELL_FILES = [
   './src/local-variables.js',
   './src/refile.js',
   './src/clock.js',
+  './src/extra-menu.js',
   './src/global-variables.js',
   './src/comment-model.js',
   './src/outline-view-model.js',

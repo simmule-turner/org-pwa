@@ -35,15 +35,16 @@ import {
   getAgendaSkipArchivedTrees,
   getContactsBirthdayProperty,
   getUseSubSuperscripts,
-  getArchiveConfirm,
   getUseTagInheritance,
   getUsePropertyInheritance,
   getClosedKeepWhenNoTodo,
   getRefileTargets,
   getAsciiTextWidth,
+  getExtraMenu,
 } from './src/local-variables.js';
 import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath } from './src/refile.js';
-import { isClockRunning, clockIn, clockOut, totalClockedMinutes, formatClockDuration } from './src/clock.js';
+import { isClockRunning, clockIn, clockOut, totalClockedMinutes, formatClockDuration, findHeadingWithRunningClock } from './src/clock.js';
+import { parseExtraMenu } from './src/extra-menu.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import { decideProgressLogging, decideLogbookEntry, getEffectiveLogDoneSetting } from './src/progress-logging.js';
 import { parseGlobalVariables, mergeGlobalAndLocalVariables } from './src/global-variables.js';
@@ -184,11 +185,12 @@ let pendingLogNote = null;
 // it. Only ever one at a time, matching pendingLogNote's own pattern.
 let pendingRefile = null;
 // Set to { heading } when Archive is tapped on a non-archived heading
-// and org-archive-confirm is on -- renderArchiveConfirmPanel shows the
-// Refile/Cancel/OK choice for it, reusing refilePanel's own DOM
-// element (the two flows are mutually exclusive, never both active at
-// once, so sharing the element avoids a whole extra panel just for
-// this one three-button prompt).
+// -- always shown now (org-archive-confirm was removed, the person
+// wants confirmation to always happen, not something toggleable).
+// renderArchiveConfirmPanel shows the Refile/Cancel/OK choice for it,
+// reusing refilePanel's own DOM element (the two flows are mutually
+// exclusive, never both active at once, so sharing the element avoids
+// a whole extra panel just for this one three-button prompt).
 let pendingArchiveConfirm = null;
 
 /**
@@ -665,39 +667,7 @@ async function performRefile(heading, targetDocumentId, targetOutlinePath) {
 }
 
 /** The human-readable "where this would go" label for confirming an
- *  archive -- extracted from what used to be inline inside
- *  archiveHeadingToLocation itself, now needed by the new confirm
- *  prompt instead (that function no longer does its own confirming at
- *  all -- see confirmAndArchive). */
-function getArchiveDestinationLabel(heading) {
-  const location = getArchiveLocation(state.doc, heading);
-  const { filePart, headlinePart } = parseArchiveLocation(location);
-  const targetFileId = resolveArchiveFileId(filePart, state.documentId);
-  return targetFileId === null || targetFileId === state.documentId
-    ? headlinePart.trim()
-      ? `this file, under "${headlinePart.trim().replace(/^\*+\s*/, '')}"`
-      : 'this file (top level)'
-    : headlinePart.trim()
-      ? `"${targetFileId}", under "${headlinePart.trim().replace(/^\*+\s*/, '')}"`
-      : `"${targetFileId}" (top level)`;
-}
-
-/** The action menu's own entry point for Archive on a non-archived
- *  heading -- decides whether to prompt at all (org-archive-confirm),
- *  and if so, offers Refile as a genuine alternative right there
- *  rather than a plain OK/Cancel, since often the actual intent behind
- *  reaching for Archive is "get this out of my active outline," which
- *  Refile serves just as well for a destination that isn't the archive
- *  file specifically. */
-function confirmAndArchive(heading) {
-  if (!getArchiveConfirm(state.localVariables)) {
-    archiveHeadingToLocation(heading);
-    return;
-  }
-  pendingArchiveConfirm = { heading };
-  renderArchiveConfirmPanel();
-}
-
+ *  archive. */
 /** org-clock-in: starts the clock on `heading`, using the same "now"
  *  timestamp convention every other progress-logging entry in this app
  *  already uses. A no-op (with a status message, not silent) if a
@@ -728,6 +698,31 @@ function clockOutHeading(heading) {
     return;
   }
   commitAndRender('Clocked out');
+}
+
+function getArchiveDestinationLabel(heading) {
+  const location = getArchiveLocation(state.doc, heading);
+  const { filePart, headlinePart } = parseArchiveLocation(location);
+  const targetFileId = resolveArchiveFileId(filePart, state.documentId);
+  return targetFileId === null || targetFileId === state.documentId
+    ? headlinePart.trim()
+      ? `this file, under "${headlinePart.trim().replace(/^\*+\s*/, '')}"`
+      : 'this file (top level)'
+    : headlinePart.trim()
+      ? `"${targetFileId}", under "${headlinePart.trim().replace(/^\*+\s*/, '')}"`
+      : `"${targetFileId}" (top level)`;
+}
+
+/** The action menu's own entry point for Archive on a non-archived
+ *  heading -- always shows the Refile/Cancel/OK prompt (unconditional
+ *  now that org-archive-confirm has been removed), offering Refile as
+ *  a genuine alternative right there rather than a plain OK/Cancel,
+ *  since often the actual intent behind reaching for Archive is "get
+ *  this out of my active outline," which Refile serves just as well
+ *  for a destination that isn't the archive file specifically. */
+function openArchiveConfirmPrompt(heading) {
+  pendingArchiveConfirm = { heading };
+  renderArchiveConfirmPanel();
 }
 
 function renderArchiveConfirmPanel() {
@@ -848,19 +843,17 @@ async function unarchiveHeadingToOriginalLocation(heading) {
   const archiveOlpath = heading.properties.ARCHIVE_OLPATH || '';
   const olpSegments = archiveOlpath ? archiveOlpath.split('/') : [];
 
-  if (getArchiveConfirm(state.localVariables)) {
-    const destinationLabel = !archiveFile
-      ? 'this file (no original location recorded \u2014 the archive tag will just be removed)'
-      : archiveFile === state.documentId
-        ? olpSegments.length > 0
-          ? `this file, under "${olpSegments.join(' / ')}"`
-          : 'this file (top level)'
-        : olpSegments.length > 0
-          ? `"${archiveFile}", under "${olpSegments.join(' / ')}"`
-          : `"${archiveFile}" (top level)`;
-    if (!window.confirm(`Restore "${heading.title}" to ${destinationLabel}?`)) {
-      return;
-    }
+  const destinationLabel = !archiveFile
+    ? 'this file (no original location recorded \u2014 the archive tag will just be removed)'
+    : archiveFile === state.documentId
+      ? olpSegments.length > 0
+        ? `this file, under "${olpSegments.join(' / ')}"`
+        : 'this file (top level)'
+      : olpSegments.length > 0
+        ? `"${archiveFile}", under "${olpSegments.join(' / ')}"`
+        : `"${archiveFile}" (top level)`;
+  if (!window.confirm(`Restore "${heading.title}" to ${destinationLabel}?`)) {
+    return;
   }
 
   if (!archiveFile || archiveFile === state.documentId) {
@@ -968,6 +961,8 @@ const topBarEl = document.getElementById('topBar');
 const contentAreaEl = document.getElementById('contentArea');
 const addBtn = document.getElementById('addBtn');
 const navBackBtn = document.getElementById('navBackBtn');
+const extraMenuBtn = document.getElementById('extraMenuBtn');
+const extraMenuPanel = document.getElementById('extraMenuPanel');
 const viewMenuBtn = document.getElementById('viewMenuBtn');
 const viewMenuPanel = document.getElementById('viewMenuPanel');
 const fileMenuBtn = document.getElementById('fileMenuBtn');
@@ -1187,6 +1182,7 @@ let settingsOpen = false;
 let docsOpen = false;
 let searchOpen = false;
 let captureOpen = false;
+let extraMenuOpen = false;
 // The template currently showing its prompt-answer form, or null when
 // the capture panel is just showing the template list. Replaces
 // window.prompt() for %^{Prompt} placeholders -- window.prompt is a
@@ -2886,7 +2882,7 @@ function renderRow(row, todoSequence) {
                 if (isArchivedInPlace(row.node)) {
                   await unarchiveHeadingToOriginalLocation(row.node);
                 } else {
-                  confirmAndArchive(row.node);
+                  openArchiveConfirmPrompt(row.node);
                 }
               },
             },
@@ -3732,6 +3728,7 @@ function syncSidePanel() {
 function render() {
   updateFilenameDisplay();
   syncSidePanel();
+  syncExtraMenuButtonVisibility();
 
   const wide = isWideLayout();
   // renderSettingsView()/renderDocsView() own #outline while showing —
@@ -7166,6 +7163,119 @@ function afterSuccessfulCapture() {
   capturePromptTemplate = null;
   renderCapturePanel();
 }
+
+/** Shows/hides the floating extras (☰) button based on whether
+ *  org-extra-menu (Global/Local Variables, see src/extra-menu.js's own
+ *  docs) currently resolves to at least one SELECTABLE entry --
+ *  showing an always-visible button that opens an empty or
+ *  separator-only menu would be confusing, not useful. */
+function syncExtraMenuButtonVisibility() {
+  if (!state.localVariables) {
+    extraMenuBtn.style.display = 'none';
+    return;
+  }
+  const entries = parseExtraMenu(getExtraMenu(state.localVariables));
+  const hasSelectable = entries.some((e) => e.type !== 'separator');
+  extraMenuBtn.style.display = hasSelectable ? 'flex' : 'none';
+}
+
+/** Renders the extras popup's own content -- a vertical list of
+ *  tappable rows (one per menu entry) plus visual dividers for
+ *  separator entries, matching the org-extra-menu spec's own
+ *  five-hyphen convention. */
+function renderExtraMenu() {
+  extraMenuPanel.innerHTML = '';
+  if (!extraMenuOpen) {
+    extraMenuPanel.style.display = 'none';
+    return;
+  }
+  const entries = state.localVariables ? parseExtraMenu(getExtraMenu(state.localVariables)) : [];
+  if (entries.length === 0) {
+    // The menu emptied out from under an already-open popup (e.g. the
+    // document changed) -- close it rather than showing a blank panel.
+    extraMenuOpen = false;
+    extraMenuPanel.style.display = 'none';
+    return;
+  }
+  extraMenuPanel.style.display = 'block';
+  for (const entry of entries) {
+    if (entry.type === 'separator') {
+      const hr = document.createElement('div');
+      hr.style.borderTop = '1px solid var(--border)';
+      hr.style.margin = '4px 2px';
+      extraMenuPanel.appendChild(hr);
+      continue;
+    }
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    row.style.cursor = 'pointer';
+    row.style.padding = '9px 8px';
+    row.style.fontSize = '14px';
+    row.textContent = entry.label;
+    row.onclick = () => runExtraMenuEntry(entry);
+    extraMenuPanel.appendChild(row);
+  }
+}
+
+/** Executes a selected extras-menu entry, dispatched by type:
+ *  - capture: runs the matching capture template by key, exactly as
+ *    if it had been picked from the regular Capture menu itself.
+ *  - olp: resolves (and creates, if needed -- the same
+ *    resolveOlpTarget capture templates themselves already use,
+ *    including its own %<FORMAT> expansion) the target heading, then
+ *    navigates to it.
+ *  - function: runs a built-in function by name. Only org-clock-out
+ *    is recognized today; more may be added later.
+ */
+async function runExtraMenuEntry(entry) {
+  extraMenuOpen = false;
+  renderExtraMenu();
+
+  if (entry.type === 'capture') {
+    const templates = await getCaptureTemplates(kv);
+    const template = templates.find((t) => t.key === entry.key);
+    if (!template) {
+      setStatus(`No capture template with key "${entry.key}" found.`);
+      render();
+      return;
+    }
+    captureOpen = true;
+    renderCapturePanel();
+    openCapturePrompt(template);
+    return;
+  }
+
+  if (entry.type === 'olp') {
+    if (!state.doc) return;
+    const before = serializeOrg(state.doc);
+    const target = resolveOlpTarget(state.doc, entry.headers, { now: new Date() });
+    const after = serializeOrg(state.doc);
+    switchToView('org');
+    if (before !== after) {
+      commitAndRender('Created heading via extras menu');
+    }
+    navigateToHeading(target);
+    return;
+  }
+
+  if (entry.type === 'function') {
+    if (entry.name === 'org-clock-out') {
+      const running = state.doc ? findHeadingWithRunningClock(state.doc) : null;
+      if (!running) {
+        setStatus('No clock is currently running.');
+        render();
+        return;
+      }
+      clockOutHeading(running);
+    }
+    return;
+  }
+}
+
+extraMenuBtn.addEventListener('click', () => {
+  extraMenuOpen = !extraMenuOpen;
+  renderExtraMenu();
+});
 
 captureBtn.addEventListener('click', () => {
   captureOpen = !captureOpen;
