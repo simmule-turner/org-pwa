@@ -267,6 +267,50 @@
       cursor: pointer;
     "
   >&#9166;</button>
+  <button
+    id="extraMenuBtn"
+    aria-label="Extras menu"
+    style="
+      display: none;
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 50;
+      width: 44px;
+      height: 44px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      border: 1px solid var(--border-strong);
+      background: var(--fg);
+      opacity: 0.35;
+      color: var(--bg);
+      font-size: 20px;
+      line-height: 1;
+      box-shadow: 0 2px 8px #0004;
+      cursor: pointer;
+    "
+  >&#9776;</button>
+  <div
+    id="extraMenuPanel"
+    class="panel"
+    style="
+      display: none;
+      position: fixed;
+      right: 68px;
+      bottom: 16px;
+      z-index: 51;
+      min-width: 160px;
+      max-width: min(70vw, 280px);
+      border-radius: 10px;
+      border: 1px solid var(--border-strong);
+      background: var(--bg);
+      box-shadow: 0 4px 16px #0006;
+      padding: 6px;
+      max-height: 70vh;
+      overflow-y: auto;
+    "
+  ></div>
   <div id="contentArea">
     <div id="status"></div>
     <div id="updateBanner" style="display: none; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; background: #185fa5; color: white; font-size: 13px;">

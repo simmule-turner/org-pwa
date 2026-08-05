@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v113';
+const CACHE_NAME = 'org-pwa-shell-v114';
 
 const SHELL_FILES = [
   './',
@@ -51,7 +51,24 @@ const SHELL_FILES = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_FILES)));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(async (cache) => {
+      // Individually, not cache.addAll(SHELL_FILES) -- addAll fails
+      // ATOMICALLY (any single failed request rejects the whole call),
+      // which meant one missing/unreachable file could prevent the
+      // service worker from ever installing at all, breaking the
+      // entire app rather than just that one file. A failure here is
+      // logged (visible in the browser's own service worker console)
+      // rather than silently swallowed, so a real deployment gap is
+      // still discoverable -- just not fatal to everything else.
+      const results = await Promise.allSettled(SHELL_FILES.map((url) => cache.add(url)));
+      results.forEach((result, i) => {
+        if (result.status === 'rejected') {
+          console.warn('[sw] failed to cache', SHELL_FILES[i], result.reason);
+        }
+      });
+    })
+  );
   // Deliberately no self.skipWaiting() here. Calling it unconditionally
   // meant a new service worker silently took over control of already-open
   // tabs the moment it finished installing — the cache was updated, but
