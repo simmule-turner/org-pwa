@@ -10,6 +10,8 @@ import {
   getAgendaSkipArchivedTrees,
   getArchiveConfirm,
   getClosedKeepWhenNoTodo,
+  getRefileTargets,
+  getAsciiTextWidth,
   getUseTagInheritance,
   getUsePropertyInheritance,
   getUseSubSuperscripts,
@@ -204,4 +206,35 @@ test('getUsePropertyInheritance defaults to false, matching real org (properties
 
 test('getUsePropertyInheritance can be turned on', () => {
   assert.equal(getUsePropertyInheritance({ 'org-use-property-inheritance': 't' }), true);
+});
+
+// ---- getRefileTargets ------------------------------------------------------
+
+test('getRefileTargets returns the raw string value unchanged', () => {
+  assert.equal(getRefileTargets({ 'org-refile-targets': 'current maxlevel=3' }), 'current maxlevel=3');
+});
+
+test('getRefileTargets returns an empty string when unset, not undefined', () => {
+  assert.equal(getRefileTargets({}), '');
+  assert.equal(getRefileTargets(null), '');
+});
+
+// ---- getAsciiTextWidth ------------------------------------------------------
+
+test('getAsciiTextWidth defaults to 72, matching real org\u2019s own default exactly', () => {
+  assert.equal(getAsciiTextWidth({}), 72);
+  assert.equal(getAsciiTextWidth(null), 72);
+});
+
+test('getAsciiTextWidth parses a set numeric value', () => {
+  assert.equal(getAsciiTextWidth({ 'org-ascii-text-width': '100' }), 100);
+});
+
+test('getAsciiTextWidth falls back to 72 for a non-positive value rather than producing zero/negative-width wrapping', () => {
+  assert.equal(getAsciiTextWidth({ 'org-ascii-text-width': '0' }), 72);
+  assert.equal(getAsciiTextWidth({ 'org-ascii-text-width': '-10' }), 72);
+});
+
+test('getAsciiTextWidth falls back to 72 for an unparseable value', () => {
+  assert.equal(getAsciiTextWidth({ 'org-ascii-text-width': 'garbage' }), 72);
 });
