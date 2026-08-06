@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createInMemoryAdapter } from '../src/kv-adapter.js';
-import { createInMemoryDiskAdapter } from '../src/sync-engine.js';
+import { createInMemoryDiskAdapter, getSyncMeta } from '../src/sync-engine.js';
 import { hasPendingChange } from '../src/outbox.js';
 import {
   openDocument,
@@ -13,6 +13,49 @@ import {
   markDocumentClosed,
   openAllDocuments,
 } from '../src/document-store.js';
+
+// ---- openDocument establishes a conflict-detection baseline on a real disk read ----
+
+test('openDocument establishes syncMeta the moment it actually reads fresh from disk -- previously nothing did this until the first successful SAVE, leaving no accurate baseline for what was seen at open time', async () => {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  await disk.write('notes.org', '* Disk version');
+
+  assert.equal(await getSyncMeta(kv, 'notes.org'), null); // nothing recorded yet
+  await openDocument({ documentId: 'notes.org', kvAdapter: kv, diskAdapter: disk });
+  const meta = await getSyncMeta(kv, 'notes.org');
+  assert.notEqual(meta, null);
+
+  const fresh = await disk.read('notes.org');
+  assert.equal(meta.lastSyncedHash, fresh.hash); // matches the BACKEND's own hash, not some other value
+});
+
+test('openDocument does NOT establish/overwrite syncMeta when serving from cache (preferCache) -- a resumed, unsynced local version does not reflect what is actually on disk, so it must not be treated as a fresh baseline', async () => {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  await disk.write('notes.org', '* Disk version');
+  await kv.set('doc:notes.org', '* My unsaved local edit');
+
+  const result = await openDocument({ documentId: 'notes.org', kvAdapter: kv, diskAdapter: disk, preferCache: true });
+  assert.equal(result.source, 'cache');
+  assert.equal(await getSyncMeta(kv, 'notes.org'), null); // still nothing recorded -- correctly not established from a cached, unsynced version
+});
+
+test('openDocument re-establishes syncMeta on every fresh disk read, keeping it current across repeated opens', async () => {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  await disk.write('notes.org', '* Version 1');
+  await openDocument({ documentId: 'notes.org', kvAdapter: kv, diskAdapter: disk });
+  const firstMeta = await getSyncMeta(kv, 'notes.org');
+
+  await disk.write('notes.org', '* Version 2'); // someone else changes it
+  await openDocument({ documentId: 'notes.org', kvAdapter: kv, diskAdapter: disk }); // reopening picks it up fresh
+  const secondMeta = await getSyncMeta(kv, 'notes.org');
+
+  assert.notEqual(firstMeta.lastSyncedHash, secondMeta.lastSyncedHash);
+  const fresh = await disk.read('notes.org');
+  assert.equal(secondMeta.lastSyncedHash, fresh.hash);
+});
 
 test('preferCache: true reads the cache instead of disk, even when disk has newer content \u2014 the actual recovery mechanism for pending unsynced edits', async () => {
   const kv = createInMemoryAdapter();

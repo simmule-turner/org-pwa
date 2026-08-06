@@ -10,6 +10,7 @@ import {
   mergeFragmentInto,
   insertCapture,
   resolveCaptureFileId,
+  getCaptureFileScheme,
 } from '../src/capture-template.js';
 
 const NOW = new Date(2026, 6, 24, 14, 30, 5); // July 24 2026, 14:30:05, a Friday
@@ -663,4 +664,54 @@ test('resolveCaptureFileId: a path already containing "/" is used as-is', () => 
 
 test('resolveCaptureFileId trims whitespace around the file field', () => {
   assert.equal(resolveCaptureFileId('  journal.org  ', 'notes.org'), 'journal.org');
+});
+
+// ---- resolveCaptureFileId: scheme prefix (THE DATA-LOSS BUG FIX) ------------
+
+test('THE BUG: "github:foo" now correctly resolves to match the currently-open "foo" -- previously the whole string was treated as one literal filename, meaning it NEVER matched the current document even when it was actually the exact same file, silently forcing a same-file capture down the dangerous cross-file write path', () => {
+  assert.equal(resolveCaptureFileId('github:foo', 'foo'), 'foo');
+});
+
+test('scheme matching is case-insensitive, matching how a person would naturally type it', () => {
+  assert.equal(resolveCaptureFileId('GitHub:foo', 'foo'), 'foo');
+  assert.equal(resolveCaptureFileId('WEBDAV:foo', 'foo'), 'foo');
+});
+
+test('webdav: scheme works the same way as github:', () => {
+  assert.equal(resolveCaptureFileId('webdav:notes.org', 'notes.org'), 'notes.org');
+});
+
+test('a scheme prefix combined with a bare sibling filename still resolves relative to the current directory', () => {
+  assert.equal(resolveCaptureFileId('github:sibling.org', 'journal/2026.org'), 'journal/sibling.org');
+});
+
+test('a scheme prefix combined with a full path is used as-is, same as without the scheme', () => {
+  assert.equal(resolveCaptureFileId('github:archive/old.org', 'notes.org'), 'archive/old.org');
+});
+
+test('an unrecognized scheme-like prefix is NOT silently stripped -- ambiguous whether ":" is a typo\u2019d scheme or a genuine (if unusual) filename character, so the safer choice is to keep treating the whole original string literally, exactly as before this fix existed', () => {
+  assert.equal(resolveCaptureFileId('dropbox:foo', 'foo'), 'dropbox:foo');
+});
+
+test('bare filenames with no scheme at all are completely unaffected by this change', () => {
+  assert.equal(resolveCaptureFileId('foo', 'foo'), 'foo');
+  assert.equal(resolveCaptureFileId('journal.org', 'work/notes.org'), 'work/journal.org');
+});
+
+// ---- getCaptureFileScheme ----------------------------------------------------
+
+test('getCaptureFileScheme: recognizes github and webdav, lowercased regardless of input casing', () => {
+  assert.deepEqual(getCaptureFileScheme('github:foo'), { scheme: 'github', path: 'foo' });
+  assert.deepEqual(getCaptureFileScheme('GitHub:foo'), { scheme: 'github', path: 'foo' });
+  assert.deepEqual(getCaptureFileScheme('webdav:foo'), { scheme: 'webdav', path: 'foo' });
+  assert.deepEqual(getCaptureFileScheme('WebDAV:foo'), { scheme: 'webdav', path: 'foo' });
+});
+
+test('getCaptureFileScheme: an unrecognized prefix is returned verbatim (original casing), not lowercased or normalized -- the caller decides what to do with it', () => {
+  assert.deepEqual(getCaptureFileScheme('Dropbox:foo'), { scheme: 'Dropbox', path: 'foo' });
+});
+
+test('getCaptureFileScheme: no colon at all -- scheme is null, path is the whole original string', () => {
+  assert.deepEqual(getCaptureFileScheme('journal/2026.org'), { scheme: null, path: 'journal/2026.org' });
+  assert.deepEqual(getCaptureFileScheme('notes.org'), { scheme: null, path: 'notes.org' });
 });
