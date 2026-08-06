@@ -5,6 +5,7 @@ import {
   serializeTableRow,
   serializeTableRule,
   serializeTable,
+  isTableHeaderRow,
   setTableCell,
   insertTableRow,
   deleteTableRow,
@@ -50,6 +51,55 @@ test('serializeTable reconstructs rows, rule, and TBLFM in order', () => {
   const table = doc.children[0].body[0];
   const lines = serializeTable(table);
   assert.deepEqual(lines, ['| Name | Age |', '|---+---|', '| Alice | 30 |', '| Bob | 25 |']);
+});
+
+// ---- isTableHeaderRow -------------------------------------------------------
+
+test('THE BUG: a table with no rule line anywhere has NO header, even at row 0 -- this is what a freshly-created table looks like, and it was previously always bolded regardless', () => {
+  const doc = parseOrg('* H\n| a | b |\n| c | d |\n');
+  const table = doc.children[0].body[0];
+  assert.equal(isTableHeaderRow(table, 0), false);
+  assert.equal(isTableHeaderRow(table, 1), false);
+});
+
+test('standard case: a single row before the rule is the header, everything after is not', () => {
+  const doc = parseOrg('* H\n| col1 | col2 |\n|---+---|\n| c | d |\n| e | f |\n');
+  const table = doc.children[0].body[0];
+  assert.equal(isTableHeaderRow(table, 0), true);
+  assert.equal(isTableHeaderRow(table, 1), false); // the rule row itself
+  assert.equal(isTableHeaderRow(table, 2), false);
+  assert.equal(isTableHeaderRow(table, 3), false);
+});
+
+test('a rule row itself is never a header row', () => {
+  const doc = parseOrg('* H\n| a | b |\n|---+---|\n');
+  const table = doc.children[0].body[0];
+  assert.equal(table.rows[1].type, 'rule');
+  assert.equal(isTableHeaderRow(table, 1), false);
+});
+
+test('multi-row header (rare but real, matching org\u0027s own documented behavior): every row before the rule is a header, not just the first', () => {
+  const doc = parseOrg('* H\n| Name | Phone |\n| --- | # |\n|---+---|\n| Peter | 1234 |\n');
+  const table = doc.children[0].body[0];
+  assert.equal(isTableHeaderRow(table, 0), true);
+  assert.equal(isTableHeaderRow(table, 1), true);
+  assert.equal(isTableHeaderRow(table, 2), false); // the rule
+  assert.equal(isTableHeaderRow(table, 3), false);
+});
+
+test('a table with more than one rule: only rows before the FIRST rule are headers -- a later rule is just a group separator, not a second header boundary', () => {
+  const doc = parseOrg('* H\n| col1 | col2 |\n|---+---|\n| a | b |\n|---+---|\n| c | d |\n');
+  const table = doc.children[0].body[0];
+  assert.equal(isTableHeaderRow(table, 0), true);
+  assert.equal(isTableHeaderRow(table, 2), false); // data row right before the SECOND rule -- not a header
+  assert.equal(isTableHeaderRow(table, 4), false);
+});
+
+test('out-of-range or invalid rowIndex returns false rather than throwing', () => {
+  const doc = parseOrg('* H\n| a | b |\n|---+---|\n');
+  const table = doc.children[0].body[0];
+  assert.equal(isTableHeaderRow(table, 99), false);
+  assert.equal(isTableHeaderRow(table, -1), false);
 });
 
 // ---- setTableCell --------------------------------------------------------

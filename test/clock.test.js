@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
 import { formatOrgTimestamp } from '../src/org-timestamp.js';
-import { isClockRunning, clockIn, clockOut, formatClockDuration, parseClockDuration, totalClockedMinutes, findHeadingWithRunningClock } from '../src/clock.js';
+import { isClockRunning, clockIn, clockOut, clockCancel, formatClockDuration, parseClockDuration, totalClockedMinutes, findHeadingWithRunningClock } from '../src/clock.js';
 
 function ts(date, timeStr) {
   return formatOrgTimestamp({ date, time: timeStr, active: false });
@@ -156,6 +156,54 @@ test('totalClockedMinutes: a running clock on a DESCENDANT also contributes its 
 test('totalClockedMinutes: a malformed/unrecognized LOGBOOK line simply doesn\u0027t contribute, rather than breaking the whole computation', () => {
   const doc = parseOrg('* Task\n:LOGBOOK:\nsome nonsense line\nCLOCK: [2026-07-31 Fri 09:00]--[2026-07-31 Fri 09:30] =>  0:30\n:END:\n');
   assert.equal(totalClockedMinutes(doc.children[0]), 30);
+});
+
+// ---- clockCancel -------------------------------------------------------------
+
+test('clockCancel: removes the running line entirely, no trace of it left, and no duration ever recorded', () => {
+  const doc = parseOrg('* Task\n');
+  const heading = doc.children[0];
+  clockIn(heading, ts(new Date(2026, 6, 31, 9, 0), '09:00'));
+  const ok = clockCancel(heading);
+  assert.equal(ok, true);
+  assert.deepEqual(heading.logbookLines, []);
+  assert.equal(isClockRunning(heading), false);
+});
+
+test('clockCancel: nothing running is a no-op, returns false', () => {
+  const doc = parseOrg('* Task\n');
+  const heading = doc.children[0];
+  assert.equal(clockCancel(heading), false);
+});
+
+test('clockCancel: only removes the running line, every other LOGBOOK entry (already-completed clocks, state-change notes) is untouched', () => {
+  const doc = parseOrg(
+    '* Task\n:LOGBOOK:\nCLOCK: [2026-07-30 Thu 09:00]--[2026-07-30 Thu 09:30] =>  0:30\n:END:\n'
+  );
+  const heading = doc.children[0];
+  clockIn(heading, ts(new Date(2026, 6, 31, 9, 0), '09:00'));
+  assert.equal(heading.logbookLines.length, 2);
+  clockCancel(heading);
+  assert.deepEqual(heading.logbookLines, ['CLOCK: [2026-07-30 Thu 09:00]--[2026-07-30 Thu 09:30] =>  0:30']);
+});
+
+test('clockCancel: cancelled time never contributes to totalClockedMinutes, unlike a completed session', () => {
+  const doc = parseOrg('* Task\n');
+  const heading = doc.children[0];
+  clockIn(heading, ts(new Date(2026, 6, 31, 9, 0), '09:00'));
+  clockCancel(heading);
+  assert.equal(totalClockedMinutes(heading, new Date(2026, 6, 31, 10, 0)), 0);
+});
+
+test('clockCancel: after cancelling, clocking in again starts a genuinely fresh session', () => {
+  const doc = parseOrg('* Task\n');
+  const heading = doc.children[0];
+  clockIn(heading, ts(new Date(2026, 6, 31, 9, 0), '09:00'));
+  clockCancel(heading);
+  const okAgain = clockIn(heading, ts(new Date(2026, 6, 31, 10, 0), '10:00'));
+  assert.equal(okAgain, true);
+  assert.equal(isClockRunning(heading), true);
+  assert.equal(heading.logbookLines.length, 1);
 });
 
 // ---- findHeadingWithRunningClock --------------------------------------------

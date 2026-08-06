@@ -88,8 +88,14 @@ test('an unrecognized function name is skipped, not a hard error -- forward-comp
   assert.deepEqual(parseExtraMenu("\"'org-nonexistent-function;Nope\""), []);
 });
 
-test('KNOWN_FUNCTIONS currently contains exactly org-clock-out, matching what\u2019s actually implemented', () => {
-  assert.deepEqual([...KNOWN_FUNCTIONS], ['org-clock-out']);
+test('KNOWN_FUNCTIONS currently contains exactly org-clock-out and org-clock-cancel, matching what\u2019s actually implemented', () => {
+  assert.deepEqual([...KNOWN_FUNCTIONS], ['org-clock-out', 'org-clock-cancel']);
+});
+
+test('parses org-clock-cancel as a recognized function-reference entry', () => {
+  assert.deepEqual(parseExtraMenu("\"'org-clock-cancel;\u274c Cancel clock\""), [
+    { type: 'function', name: 'org-clock-cancel', label: '\u274c Cancel clock' },
+  ]);
 });
 
 // ---- malformed entries, tolerance -------------------------------------------
