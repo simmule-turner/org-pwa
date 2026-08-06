@@ -1,4 +1,5 @@
 import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src/document-store.js';
+import { setSyncMeta, getSyncMeta } from './src/sync-engine.js';
 import { hasPendingChange, getPendingChange, clearPendingChange } from './src/outbox.js';
 import { parseOrg, serializeOrg, findHeadingLineNumber } from './src/org-parser.js';
 import {
@@ -60,7 +61,7 @@ import {
   startOfWeek,
   parseRepeater,
 } from './src/agenda.js';
-import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId } from './src/capture-template.js';
+import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId, getCaptureFileScheme, CAPTURE_FILE_SCHEMES } from './src/capture-template.js';
 import { exportToMarkdown } from './src/export-markdown.js';
 import { exportToAscii } from './src/export-ascii.js';
 import { exportToHtml } from './src/export-html.js';
@@ -453,6 +454,189 @@ function aggregateAgendaDocs() {
 /** Which adapter Save/Save-As-in-place should use — whatever storage kind
  *  the currently open document actually came from. This is the crux of
  *  "Save uses whatever mechanism was used to open the file". */
+/** CRITICAL DATA-LOSS FIX (defense in depth): every cross-file write
+ *  that bypasses saveAndSync (capture-to-a-different-file, archive-to-
+ *  a-different-file, refile, unarchive/restore-to-a-different-file)
+ *  writes straight to disk via adapter.write, with no corresponding
+ *  syncMeta update -- meaning this app's own record of "the last known
+ *  hash of that file" would otherwise go stale the instant any of those
+ *  ran, regardless of whether that target file was also the currently-
+ *  open document. Later opening/editing/saving that same file could
+ *  then miss a REAL external change entirely, since the conflict
+ *  check's baseline no longer reflected reality. Call this right after
+ *  every one of those direct writes succeeds, so syncMeta always
+ *  tracks the true last-known-on-disk state no matter which code path
+ *  performed the write -- the same bookkeeping saveAndSync's own
+ *  syncDocument already keeps for the single-document save path, now
+ *  kept consistently everywhere a write can happen. */
+/** Re-reads the currently open document fresh from disk/GitHub/WebDAV
+ *  and replaces state.doc with it, discarding whatever was in memory.
+ *  Used both by saveCurrent's own "keep disk" conflict resolution and
+ *  the external-change banner's Reload button -- the same "start over
+ *  from what's actually there right now" operation either way. Caller
+ *  is responsible for confirming with the person first if there's
+ *  anything of theirs that would be lost by doing this. */
+async function reloadCurrentDocumentFromDisk() {
+  const reopened = await openDocument({
+    documentId: state.documentId,
+    kvAdapter: kv,
+    diskAdapter: activeDiskAdapter(),
+  });
+  state.doc = reopened.doc;
+  const rawLocalVars = parseLocalVariables(serializeOrg(state.doc));
+  state.startupConfig = resolveEffectiveStartupConfig(state.doc, rawLocalVars, globalVariables);
+  state.localVariables = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
+  navigationBackStack = [];
+  currentContextHeading = null;
+  syncNavBackButtonVisibility();
+  const archiveVisibility = getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived';
+  applyStartupVisibility(state.doc, state.startupConfig, archiveVisibility);
+  isDirty = false;
+  hideExternalChangeBanner();
+  render();
+}
+
+/**
+ * Shared "read another file safely, mutate it, write it back" sequence
+ * for every cross-file operation (capture, archive, refile, restore).
+ * Centralizing this here means the sync-baseline bookkeeping
+ * (recordSyncedWrite) every one of these needs can never again be
+ * silently forgotten by a future feature needing the same shape --
+ * exactly the class of bug that caused a real data-loss issue before
+ * this existed, when four separate hand-rolled copies of this
+ * sequence meant remembering the same step four separate times.
+ *
+ * `label` -- used in every generated status/error message, lowercase,
+ * describing the action a person would recognize ("archive", "refile",
+ * "restore", "capture").
+ * `allowMissing` -- if true, a target file that doesn't exist yet
+ * starts from an empty document rather than being treated as an error
+ * (capture/archive: a fresh target file is a completely normal thing
+ * to create; refile/restore: the target is expected to already exist,
+ * so its absence is a genuine error, not something to paper over).
+ * `mutate(doc)` -- feature-specific mutation of the freshly-read
+ * target document. Return `undefined`/`null` to abort (after calling
+ * setStatus itself with a feature-specific message -- this helper
+ * doesn't know enough about the specific failure to word that itself);
+ * anything else is passed through as this function's own return value
+ * on success.
+ *
+ * Returns `{ ok: true, result }` on success (after the write AND the
+ * sync-baseline update have both succeeded), or `{ ok: false }` after
+ * already calling setStatus with a clear, label-specific error --
+ * callers just check `.ok` and bail out if false, no separate error
+ * text of their own to construct for any of these shared failure modes.
+ */
+async function writeToOtherFile(fileId, { label, allowMissing, mutate }) {
+  // Same trap capture's own version of this check already described:
+  // writing straight to the backing store while an unrelated pending
+  // (unsynced) local edit for this SAME file is still sitting in the
+  // outbox would leave that edit's own "resume" flow completely
+  // unaware this write ever happened -- resuming it later and saving
+  // would silently overwrite whatever this write just did, since
+  // nothing would have told the outbox its assumption about "the last
+  // synced version" had changed out from under it. Refuse up front.
+  if (await hasPendingChange(kv, fileId)) {
+    setStatus(
+      `Can't ${label} to "${fileId}" right now \u2014 it has unsaved local changes from an earlier session that haven't been synced yet. Open "${fileId}" directly first and either save or discard those changes, then retry.`
+    );
+    return { ok: false };
+  }
+
+  const adapter = activeDiskAdapter();
+  if ((state.storageKind === 'filesystem' || state.storageKind === 'input') && !(await adapter.exists(fileId))) {
+    setStatus(
+      `Can't ${label} to "${fileId}" automatically \u2014 local files need that file picked/created once first (browser security requires a file picker per file, not something this can do on its own). Try File \u2192 Open or Save As on "${fileId}" first, or use GitHub/WebDAV for automatic cross-file ${label}ing.`
+    );
+    return { ok: false };
+  }
+
+  let doc;
+  try {
+    const existing = await adapter.read(fileId);
+    if (!existing) {
+      if (!allowMissing) {
+        setStatus(`Could not ${label}: "${fileId}" no longer exists.`);
+        return { ok: false };
+      }
+      doc = parseOrg('');
+    } else {
+      doc = parseOrg(existing.content);
+    }
+  } catch (err) {
+    setStatus(`Could not ${label}: reading "${fileId}" failed \u2014 ${err.message}`);
+    return { ok: false };
+  }
+
+  const result = mutate(doc);
+  if (result === undefined || result === null) return { ok: false };
+
+  try {
+    const content = serializeOrg(doc);
+    const written = await adapter.write(fileId, content);
+    await recordSyncedWrite(fileId, written.hash);
+  } catch (err) {
+    setStatus(`Could not ${label}: writing "${fileId}" failed \u2014 ${err.message}. Nothing was changed.`);
+    return { ok: false };
+  }
+
+  return { ok: true, result };
+}
+
+function recordSyncedWrite(fileId, hash) {
+  return setSyncMeta(kv, fileId, { lastSyncedHash: hash });
+}
+
+let externalChangeCheckInFlight = false;
+
+// The specific disk hash a Dismiss applied to, so a genuinely NEWER
+// external change (a different hash) still gets surfaced rather than
+// being silently suppressed by an earlier, unrelated dismissal --
+// null both before anything's ever been dismissed and after switching
+// documents (see afterDocumentLoaded, which resets this).
+let externalChangeDismissedHash = null;
+
+/** Best-effort, proactive check: does the currently open document's
+ *  actual state on disk/GitHub/WebDAV right now still match what this
+ *  app last recorded seeing (openDocument's own baseline, or the most
+ *  recent successful write)? If not, surfaces a dismissable notice
+ *  rather than waiting for an eventual Save to be the first moment
+ *  this ever comes up. Never throws and never blocks anything -- a
+ *  failed check (offline, a network hiccup, the file briefly
+ *  unreadable) is simply skipped; Save's own conflict check is the
+ *  actual, required safety net this is only trying to surface earlier,
+ *  not replace. */
+async function checkForExternalChange() {
+  if (!state.documentId || externalChangeCheckInFlight) return;
+  if ((state.storageKind === 'github' || state.storageKind === 'webdav') && !navigator.onLine) return;
+  externalChangeCheckInFlight = true;
+  try {
+    const meta = await getSyncMeta(kv, state.documentId);
+    if (!meta) return; // no baseline recorded yet -- nothing to compare against
+    const fresh = await activeDiskAdapter().read(state.documentId);
+    if (!fresh) return;
+    if (fresh.hash !== meta.lastSyncedHash && fresh.hash !== externalChangeDismissedHash) {
+      showExternalChangeBanner(fresh.hash);
+    }
+  } catch {
+    // Best-effort -- see the doc comment above.
+  } finally {
+    externalChangeCheckInFlight = false;
+  }
+}
+
+let externalChangeShownForHash = null;
+
+function showExternalChangeBanner(hash) {
+  externalChangeShownForHash = hash;
+  externalChangeText.textContent = `"${state.documentId}" changed elsewhere since you opened it here.`;
+  externalChangeBanner.style.display = 'flex';
+}
+
+function hideExternalChangeBanner() {
+  externalChangeBanner.style.display = 'none';
+}
+
 function activeDiskAdapter() {
   if (state.storageKind === 'github') return githubAdapter;
   if (state.storageKind === 'webdav') return webdavAdapter;
@@ -628,49 +812,30 @@ async function performRefile(heading, targetDocumentId, targetOutlinePath) {
     return;
   }
 
-  const adapter = activeDiskAdapter();
-  if ((state.storageKind === 'filesystem' || state.storageKind === 'input') && !(await adapter.exists(targetDocumentId))) {
-    setStatus(
-      `Can't refile to "${targetDocumentId}" automatically \u2014 local files need that file picked/created once first (browser security requires a file picker per file, not something this can do mid-refile). Try File \u2192 Open or Save As on "${targetDocumentId}" first, or use GitHub/WebDAV for automatic cross-file refiling.`
-    );
-    return;
-  }
-
   setStatus(`Refiling to ${targetDocumentId}\u2026`);
-  let targetDoc;
-  try {
-    const existing = await adapter.read(targetDocumentId);
-    if (!existing) {
-      setStatus(`Could not refile: "${targetDocumentId}" no longer exists.`);
-      return;
-    }
-    targetDoc = parseOrg(existing.content);
-  } catch (err) {
-    setStatus(`Could not refile: reading "${targetDocumentId}" failed \u2014 ${err.message}`);
-    return;
-  }
-
-  const target = findHeadingByOutlinePath(targetDoc, targetOutlinePath);
-  if (!target) {
-    setStatus(`Could not refile: that target heading no longer exists in "${targetDocumentId}" (it may have changed since this picker opened).`);
-    return;
-  }
-
-  target.children.push(heading);
-  target.collapsed = false;
-  shiftLevels(heading, target.level + 1);
-
-  try {
-    await adapter.write(targetDocumentId, serializeOrg(targetDoc));
-  } catch (err) {
-    setStatus(`Could not refile: writing "${targetDocumentId}" failed \u2014 ${err.message}. Nothing was removed from this file.`);
-    return;
-  }
+  const { ok, result: targetTitle } = await writeToOtherFile(targetDocumentId, {
+    label: 'refile',
+    allowMissing: false,
+    mutate: (doc) => {
+      const target = findHeadingByOutlinePath(doc, targetOutlinePath);
+      if (!target) {
+        setStatus(
+          `Could not refile: that target heading no longer exists in "${targetDocumentId}" (it may have changed since this picker opened).`
+        );
+        return null;
+      }
+      target.children.push(heading);
+      target.collapsed = false;
+      shiftLevels(heading, target.level + 1);
+      return target.title;
+    },
+  });
+  if (!ok) return;
 
   // The write succeeded -- now, and only now, remove the original.
   removeHeading(state.doc, heading);
   commitAndRender('Refiled heading');
-  setStatus(`Refiled to "${target.title}" in "${targetDocumentId}".`);
+  setStatus(`Refiled to "${targetTitle}" in "${targetDocumentId}".`);
 }
 
 /** The human-readable "where this would go" label for confirming an
@@ -857,34 +1022,17 @@ async function archiveHeadingToLocation(heading) {
     return;
   }
 
-  const adapter = activeDiskAdapter();
-  if ((state.storageKind === 'filesystem' || state.storageKind === 'input') && !(await adapter.exists(targetFileId))) {
-    setStatus(
-      `Can't archive to "${targetFileId}" automatically \u2014 local files need that file picked/created once first (browser security requires a file picker per file, not something this can do on its own mid-archive). Try File \u2192 Open or Save As on "${targetFileId}" first, or use GitHub/WebDAV for automatic cross-file archiving, or set #+ARCHIVE: to archive within this file instead (e.g. "::* Archived Tasks").`
-    );
-    return;
-  }
-
   setStatus(`Archiving to ${targetFileId}\u2026`);
   const clone = buildArchivedClone(state.doc, heading, state.documentId);
-
-  let archiveDoc;
-  try {
-    const existing = await adapter.read(targetFileId);
-    archiveDoc = existing ? parseOrg(existing.content) : parseOrg('');
-  } catch (err) {
-    setStatus(`Could not archive: reading "${targetFileId}" failed \u2014 ${err.message}`);
-    return;
-  }
-
-  insertAtArchiveLocation(archiveDoc, clone, headlinePart);
-
-  try {
-    await adapter.write(targetFileId, serializeOrg(archiveDoc));
-  } catch (err) {
-    setStatus(`Could not archive: writing "${targetFileId}" failed \u2014 ${err.message}. Nothing was removed from this file.`);
-    return;
-  }
+  const { ok } = await writeToOtherFile(targetFileId, {
+    label: 'archive',
+    allowMissing: true,
+    mutate: (doc) => {
+      insertAtArchiveLocation(doc, clone, headlinePart);
+      return true;
+    },
+  });
+  if (!ok) return;
 
   // The write succeeded -- now, and only now, remove the original.
   removeHeading(state.doc, heading);
@@ -948,44 +1096,23 @@ async function unarchiveHeadingToOriginalLocation(heading) {
     return;
   }
 
-  const adapter = activeDiskAdapter();
-  if ((state.storageKind === 'filesystem' || state.storageKind === 'input') && !(await adapter.exists(archiveFile))) {
-    setStatus(
-      `Can't restore to "${archiveFile}" automatically \u2014 local files need that file picked/created once first (browser security requires a file picker per file, not something this can do on its own mid-restore). Try File \u2192 Open or Save As on "${archiveFile}" first, or use GitHub/WebDAV for automatic cross-file restoring.`
-    );
-    return;
-  }
-
   setStatus(`Restoring to ${archiveFile}\u2026`);
   const clone = buildRestoredClone(heading);
-
-  let targetDoc;
-  try {
-    const existing = await adapter.read(archiveFile);
-    if (!existing) {
-      setStatus(`Could not restore: "${archiveFile}" no longer exists.`);
-      return;
-    }
-    targetDoc = parseOrg(existing.content);
-  } catch (err) {
-    setStatus(`Could not restore: reading "${archiveFile}" failed \u2014 ${err.message}`);
-    return;
-  }
-
-  if (olpSegments.length > 0) {
-    const target = resolveOlpTarget(targetDoc, olpSegments);
-    target.children.push(clone);
-    target.collapsed = false;
-  } else {
-    targetDoc.children.push(clone);
-  }
-
-  try {
-    await adapter.write(archiveFile, serializeOrg(targetDoc));
-  } catch (err) {
-    setStatus(`Could not restore: writing "${archiveFile}" failed \u2014 ${err.message}. Nothing was removed from this file.`);
-    return;
-  }
+  const { ok } = await writeToOtherFile(archiveFile, {
+    label: 'restore',
+    allowMissing: false,
+    mutate: (doc) => {
+      if (olpSegments.length > 0) {
+        const target = resolveOlpTarget(doc, olpSegments);
+        target.children.push(clone);
+        target.collapsed = false;
+      } else {
+        doc.children.push(clone);
+      }
+      return true;
+    },
+  });
+  if (!ok) return;
 
   // The write succeeded -- now, and only now, remove the archived
   // heading from THIS (the currently open, archive) file.
@@ -1049,6 +1176,10 @@ const capturePanel = document.getElementById('capturePanel');
 const historyPanel = document.getElementById('historyPanel');
 const doneNotePanel = document.getElementById('doneNotePanel');
 const refilePanel = document.getElementById('refilePanel');
+const externalChangeBanner = document.getElementById('externalChangeBanner');
+const externalChangeText = document.getElementById('externalChangeText');
+const externalChangeReloadBtn = document.getElementById('externalChangeReloadBtn');
+const externalChangeDismissBtn = document.getElementById('externalChangeDismissBtn');
 const moreBtn = document.getElementById('moreBtn');
 const morePanel = document.getElementById('morePanel');
 
@@ -3989,6 +4120,8 @@ function updateFilenameDisplay() {
 /** Common finish-up after any successful open/create, regardless of which
  *  backend it came from. */
 async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCache = false) {
+  externalChangeDismissedHash = null;
+  hideExternalChangeBanner();
   const rawLocalVars = parseLocalVariables(serializeOrg(doc));
   const startupConfig = resolveEffectiveStartupConfig(doc, rawLocalVars, globalVariables);
   const localVariables = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
@@ -4411,21 +4544,7 @@ async function saveCurrent() {
       },
     });
     if (result.status === 'conflict' && result.resolution === 'disk') {
-      const reopened = await openDocument({
-        documentId: state.documentId,
-        kvAdapter: kv,
-        diskAdapter: activeDiskAdapter(),
-      });
-      state.doc = reopened.doc;
-      const rawLocalVars = parseLocalVariables(serializeOrg(state.doc));
-      state.startupConfig = resolveEffectiveStartupConfig(state.doc, rawLocalVars, globalVariables);
-      state.localVariables = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
-      navigationBackStack = [];
-      currentContextHeading = null;
-      syncNavBackButtonVisibility();
-      const archiveVisibility = getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived';
-      applyStartupVisibility(state.doc, state.startupConfig, archiveVisibility);
-      render();
+      await reloadCurrentDocumentFromDisk();
     }
     isDirty = false;
     render();
@@ -7225,6 +7344,23 @@ async function runCaptureWithAnswers(template, answers) {
 
   const now = new Date();
 
+  const rawFile = String(template.file || '').trim();
+  if (rawFile) {
+    const { scheme } = getCaptureFileScheme(rawFile);
+    if (scheme && !CAPTURE_FILE_SCHEMES.has(scheme)) {
+      setStatus(`Can't capture: "${template.file}" starts with an unrecognized scheme ("${scheme}:") \u2014 only "github:" and "webdav:" are understood. Remove the prefix for a plain path, or fix the scheme name.`);
+      renderCapturePanel();
+      return;
+    }
+    if (scheme && scheme !== state.storageKind) {
+      setStatus(
+        `Can't capture: "${template.file}" targets ${scheme}, but the currently open document is on ${state.storageKind === 'github' ? 'GitHub' : state.storageKind === 'webdav' ? 'WebDAV' : state.storageKind} \u2014 capture can't switch backends. Remove the "${scheme}:" prefix to capture into a sibling file on the same backend as whatever's currently open instead.`
+      );
+      renderCapturePanel();
+      return;
+    }
+  }
+
   const targetFileId = resolveCaptureFileId(template.file, state.documentId);
 
   if (targetFileId !== state.documentId) {
@@ -7233,66 +7369,28 @@ async function runCaptureWithAnswers(template, answers) {
     // touching state.doc or switching the active view at all -- matching
     // real org-capture's own behavior of not switching your current
     // buffer just because a template's target is elsewhere.
-    //
-    // This bypasses this app's own outbox entirely (see src/outbox.js) --
-    // it isn't a per-edit journal that could reasonably replay a capture
-    // into it, just a single "most recent unsynced snapshot" per file. If
-    // the target file already has ONE of those sitting unresolved from an
-    // earlier session, writing straight to the backing store here would
-    // create a real, silent data-loss trap: the pending snapshot doesn't
-    // know this capture happened, so it would still be offered as "resume"
-    // next time that file opens -- and resuming-then-saving would overwrite
-    // the capture with no warning at all, since nothing here ever told the
-    // outbox its assumption about "the last synced version" just changed
-    // out from under it. Refuse up front instead; the alternative is
-    // silently constructing that trap and hoping the person never resumes
-    // into it.
-    if (await hasPendingChange(kv, targetFileId)) {
-      setStatus(
-        `Can't capture to "${targetFileId}" right now \u2014 it has unsaved local changes from an earlier session that haven't been synced yet. Open "${targetFileId}" directly first and either save or discard those changes, then retry this capture.`
-      );
-      renderCapturePanel();
-      return;
-    }
-
-    const adapter = activeDiskAdapter();
-    if ((state.storageKind === 'filesystem' || state.storageKind === 'input') && !(await adapter.exists(targetFileId))) {
-      setStatus(
-        `Can't capture to "${targetFileId}" automatically \u2014 local files need that file picked/created once first (browser security requires a file picker per file). Try File \u2192 Open or Save As on "${targetFileId}" first, or use GitHub/WebDAV, or remove "file" from this template to capture into the currently open file instead.`
-      );
-      renderCapturePanel();
-      return;
-    }
-
     setStatus(`Capturing to ${targetFileId}\u2026`);
-    let targetDoc;
-    try {
-      const existing = await adapter.read(targetFileId);
-      targetDoc = existing ? parseOrg(existing.content) : parseOrg('');
-    } catch (err) {
-      setStatus(`Could not capture: reading "${targetFileId}" failed \u2014 ${err.message}`);
-      renderCapturePanel();
-      return;
-    }
-
-    const target = resolveOlpTarget(targetDoc, template.olp, { now, prepend: getOlpPrepend(template) });
-    let tableRowNumber = null;
-    if (template.type === 'table-line') {
-      const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
-      const dataRowCount = existingTable ? existingTable.rows.filter((r) => r.type === 'row').length : 0;
-      // @# reflects the row's ACTUAL final position -- 1 (the new first
-      // data row) when prepending to an existing table, dataRowCount + 1
-      // (the next row after every existing one) when appending, the
-      // table's own default.
-      tableRowNumber = template.prepend && existingTable ? 1 : dataRowCount + 1;
-    }
-    const { text } = expandTemplate(template.template, { now, promptAnswers: answers, tableRowNumber });
-    insertCapture(target, template.type, text, template.prepend);
-
-    try {
-      await adapter.write(targetFileId, serializeOrg(targetDoc));
-    } catch (err) {
-      setStatus(`Could not capture: writing "${targetFileId}" failed \u2014 ${err.message}. Nothing was changed.`);
+    const { ok } = await writeToOtherFile(targetFileId, {
+      label: 'capture',
+      allowMissing: true,
+      mutate: (doc) => {
+        const target = resolveOlpTarget(doc, template.olp, { now, prepend: getOlpPrepend(template) });
+        let tableRowNumber = null;
+        if (template.type === 'table-line') {
+          const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
+          const dataRowCount = existingTable ? existingTable.rows.filter((r) => r.type === 'row').length : 0;
+          // @# reflects the row's ACTUAL final position -- 1 (the new first
+          // data row) when prepending to an existing table, dataRowCount + 1
+          // (the next row after every existing one) when appending, the
+          // table's own default.
+          tableRowNumber = template.prepend && existingTable ? 1 : dataRowCount + 1;
+        }
+        const { text } = expandTemplate(template.template, { now, promptAnswers: answers, tableRowNumber });
+        insertCapture(target, template.type, text, template.prepend);
+        return true;
+      },
+    });
+    if (!ok) {
       renderCapturePanel();
       return;
     }
@@ -7683,6 +7781,7 @@ async function bootstrap() {
         await afterDocumentLoaded(last.documentId, doc, last.storageKind, pending);
         updateFilenameDisplay();
         render();
+        checkForExternalChange();
         return;
       }
     } catch {
@@ -7693,5 +7792,36 @@ async function bootstrap() {
 
   render();
 }
+
+externalChangeReloadBtn.addEventListener('click', async () => {
+  const documentId = state.documentId;
+  if (isDirty) {
+    const proceed = window.confirm(
+      `Reloading "${documentId}" will discard your unsaved local changes here and replace them with the current version from disk. Continue?`
+    );
+    if (!proceed) return;
+  }
+  setStatus('Reloading\u2026');
+  try {
+    await reloadCurrentDocumentFromDisk();
+    setStatus('Reloaded.');
+  } catch (err) {
+    setStatus('Reload failed: ' + err.message);
+  }
+});
+
+externalChangeDismissBtn.addEventListener('click', () => {
+  externalChangeDismissedHash = externalChangeShownForHash;
+  hideExternalChangeBanner();
+});
+
+// The proactive half of external-change detection: re-check whenever the
+// tab regains focus, since that's exactly when a change made elsewhere
+// while this tab sat in the background would otherwise go unnoticed for
+// however much longer the person keeps working here. Best-effort (see
+// checkForExternalChange's own doc comment) -- never blocks anything.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) checkForExternalChange();
+});
 
 bootstrap();
