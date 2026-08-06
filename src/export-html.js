@@ -21,6 +21,7 @@
 
 import { parseInline } from './inline-markup.js';
 import { resolveTodoSequence } from './todo-cycle.js';
+import { resolveLinkTarget } from './link-resolve.js';
 
 // Footnote definitions accumulated during a single exportToHtml() call
 // (module-level, reset at the start of each call) -- collected the same
@@ -30,6 +31,58 @@ import { resolveTodoSequence } from './todo-cycle.js';
 // Footnotes section at the end, each back-linking to its own reference.
 let footnoteDefinitionsHtml = [];
 let anonymousFootnoteCounterHtml = 0;
+
+// The document currently being exported, and a Map<heading, id> for
+// every heading actually included in this export -- both reset at the
+// start of each exportToHtml() call. Needed so a link can be resolved
+// (via the same resolveLinkTarget the live app already uses for
+// on-screen navigation) to the ACTUAL heading it points to, then
+// checked against which headings are actually present in this
+// specific export (a link to something outside an exported subtree
+// has nowhere to anchor to, even once correctly resolved).
+let docForLinkResolutionHtml = null;
+let headingIdMapHtml = new Map();
+
+/** Turns a heading title into a URL-fragment-safe id: lowercased,
+ *  non-alphanumeric runs collapsed to a single hyphen, leading/
+ *  trailing hyphens trimmed. Falls back to "section" for a title that
+ *  has no alphanumeric characters at all (a title that's pure emoji or
+ *  punctuation, however unusual), so every heading still gets SOME
+ *  usable id rather than an empty string. */
+function slugifyHtml(title) {
+  const slug = String(title || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug || 'section';
+}
+
+/** Assigns every heading actually being exported a unique id: its own
+ *  :CUSTOM_ID: property if set (matching exactly what a "#custom-id"
+ *  link resolves against, so those links land precisely where they're
+ *  supposed to), otherwise a slug generated from its title, with a
+ *  numeric suffix appended if that slug is already taken by an earlier
+ *  heading (two headings can share a title; ids in one HTML document
+ *  can't). Recurses through the whole given subtree, not just the
+ *  top level. */
+function assignHeadingIdsHtml(headings, usedSlugs) {
+  for (const heading of headings) {
+    const customId = heading.properties && heading.properties.CUSTOM_ID;
+    let id = customId ? customId.trim() : '';
+    if (!id) {
+      const base = slugifyHtml(heading.title);
+      id = base;
+      let n = 2;
+      while (usedSlugs.has(id)) {
+        id = base + '-' + n;
+        n++;
+      }
+    }
+    usedSlugs.add(id);
+    headingIdMapHtml.set(heading, id);
+    assignHeadingIdsHtml(heading.children || [], usedSlugs);
+  }
+}
 
 function footnoteLabelHtml(label) {
   if (label !== null) return label;
@@ -46,6 +99,22 @@ function escapeHtml(text) {
 }
 
 // ---- inline rendering -----------------------------------------------------
+
+/** Resolves a link's raw target to what its href should actually be: a
+ *  real "#id" anchor if it resolves to a heading that's part of THIS
+ *  export, or the original target text unchanged for anything else
+ *  (external URLs, file links, or a heading that resolves but lives
+ *  outside this specific export's scope -- there's genuinely nowhere
+ *  for that last case to anchor to within this one document, even
+ *  once correctly identified). */
+function resolveLinkHref(target) {
+  if (!docForLinkResolutionHtml) return target;
+  const resolution = resolveLinkTarget(docForLinkResolutionHtml, target);
+  if (resolution.type === 'heading' && headingIdMapHtml.has(resolution.heading)) {
+    return '#' + headingIdMapHtml.get(resolution.heading);
+  }
+  return target;
+}
 
 function renderInlineListHtml(nodes) {
   return nodes.map(renderInlineNodeHtml).join('');
@@ -72,7 +141,8 @@ function renderInlineNodeHtml(node) {
       return `<sup>${escapeHtml(node.value)}</sup>`;
     case 'link': {
       const label = node.description ? renderTextHtml(node.description) : escapeHtml(node.target);
-      return `<a href="${escapeHtml(node.target)}">${label}</a>`;
+      const href = resolveLinkHref(node.target);
+      return `<a href="${escapeHtml(href)}">${label}</a>`;
     }
     case 'image':
       return `<img src="${escapeHtml(node.target)}" alt="">`;
@@ -187,6 +257,8 @@ function clampHeadingLevel(level) {
 
 function renderHeadingLineHtml(heading, level, doneKeywords) {
   const tag = 'h' + clampHeadingLevel(level);
+  const id = headingIdMapHtml.get(heading);
+  const idAttr = id ? ` id="${escapeHtml(id)}"` : '';
   const parts = [];
   if (heading.todo) {
     const cls = doneKeywords.includes(heading.todo) ? 'todo-keyword done' : 'todo-keyword';
@@ -198,7 +270,7 @@ function renderHeadingLineHtml(heading, level, doneKeywords) {
   if (heading.tags && heading.tags.length) {
     inner += ' <span class="tags">' + heading.tags.map((t) => `<code>${escapeHtml(t)}</code>`).join('') + '</span>';
   }
-  return `<${tag}>${inner}</${tag}>`;
+  return `<${tag}${idAttr}>${inner}</${tag}>`;
 }
 
 function renderHeadingHtml(heading, levelOffset, doneKeywords, out) {
@@ -259,8 +331,11 @@ const PRINT_CSS = `
 export function exportToHtml(doc, scope = null) {
   footnoteDefinitionsHtml = [];
   anonymousFootnoteCounterHtml = 0;
+  docForLinkResolutionHtml = doc;
+  headingIdMapHtml = new Map();
 
   const roots = scope ? [scope] : doc.children || [];
+  assignHeadingIdsHtml(roots, new Set());
   const levelOffset = scope ? scope.level - 1 : 0;
   const { doneKeywords } = resolveTodoSequence(doc);
   const out = [];

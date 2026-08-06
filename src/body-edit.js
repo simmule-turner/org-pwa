@@ -81,6 +81,21 @@ export function isTableHeaderRow(table, rowIndex) {
   return rowIndex < firstRuleIndex;
 }
 
+/** The last (most recently added) table directly in `heading`'s own
+ *  body, or null if it has none. "Last" matches insertTable's own
+ *  append-at-the-end convention, so a heading with more than one
+ *  table has an unambiguous, predictable target for anything (like
+ *  the general editor's Delete table button) that needs to act on
+ *  "the" table without the person first having tapped into a specific
+ *  one. */
+export function lastTableInBody(heading) {
+  const body = heading.body || [];
+  for (let i = body.length - 1; i >= 0; i--) {
+    if (body[i].type === 'table') return body[i];
+  }
+  return null;
+}
+
 // ---- commit: flush a mutated table/paragraph back to bodyLines ----------
 
 /** Replaces `heading.bodyLines[lineIndex, lineIndex+lineCount)` with
