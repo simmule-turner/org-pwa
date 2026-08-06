@@ -32,17 +32,17 @@ test('exporting a subtree titles the document after the selected heading', () =>
 test('heading levels map to h1-h6, clamped at h6 for anything deeper', () => {
   const doc = parseOrg('* A\n** B\n*** C\n**** D\n***** E\n****** F\n******* G');
   const out = exportToHtml(doc);
-  assert.ok(out.includes('<h1>'));
-  assert.ok(out.includes('<h6>'));
-  assert.ok(!out.includes('<h7>'));
+  assert.match(out, /<h1[ >]/);
+  assert.match(out, /<h6[ >]/);
+  assert.doesNotMatch(out, /<h7[ >]/);
 });
 
 test('exporting a subtree makes the selected heading an h1, shifting descendants accordingly', () => {
   const doc = parseOrg('* Top\n** Middle\n*** Deep');
   const middle = doc.children[0].children[0];
   const out = exportToHtml(doc, middle);
-  assert.ok(out.includes('<h1>Middle</h1>'));
-  assert.ok(out.includes('<h2>Deep</h2>'));
+  assert.match(out, /<h1[^>]*>Middle<\/h1>/);
+  assert.match(out, /<h2[^>]*>Deep<\/h2>/);
   assert.ok(!out.includes('Top'));
 });
 
@@ -273,4 +273,84 @@ test('footnote label and content are HTML-escaped, not passed through raw', () =
   const html = exportToHtml(doc);
   assert.doesNotMatch(html, /<script>/);
   assert.match(html, /&lt;script&gt;/);
+});
+
+// ---- internal links resolve to real anchors (THE DATA-LOSS-ADJACENT BUG) ----
+
+test('THE BUG: a #custom-id link now resolves to a real, matching heading id, instead of the raw target string being dumped as the href unresolved', () => {
+  const doc = parseOrg('* Intro\n[[#capture][Jump to Capture]]\n* Capture\n:PROPERTIES:\n:CUSTOM_ID: capture\n:END:\nSome content.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /href="#capture"/);
+  assert.match(html, /<h1 id="capture">/);
+});
+
+test('a star-prefixed title link ([[*Title][...]]) resolves via a generated, slugified id', () => {
+  const doc = parseOrg('* Intro\n[[*My Cool Section][See below]]\n* My Cool Section\nContent.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /href="#my-cool-section"/);
+  assert.match(html, /<h1 id="my-cool-section">/);
+});
+
+test('a bare fuzzy-title link ([[Title]], no # or * prefix) also resolves', () => {
+  const doc = parseOrg('* Intro\n[[My Cool Section]]\n* My Cool Section\nContent.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /href="#my-cool-section"/);
+});
+
+test('external links (http/https/mailto) are completely unaffected by link resolution', () => {
+  const doc = parseOrg('* Intro\n[[https://example.com][External]]\n[[mailto:a@b.com][Email]]\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /href="https:\/\/example\.com"/);
+  assert.match(html, /href="mailto:a@b\.com"/);
+});
+
+test('two headings sharing the same title get disambiguated ids, so both are individually linkable', () => {
+  const doc = parseOrg('* Notes\nfirst\n* Notes\nsecond\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<h1 id="notes">/);
+  assert.match(html, /<h1 id="notes-2">/);
+});
+
+test('a heading with no alphanumeric characters at all in its title still gets a usable id, not an empty one', () => {
+  const doc = parseOrg('* \u2014\u2014\u2014\nContent.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<h1 id="section">/);
+});
+
+test('a link resolving to a heading OUTSIDE the exported scope falls back to the original target text -- nowhere real to anchor to within this specific export', () => {
+  const doc = parseOrg('* Outside\n:PROPERTIES:\n:CUSTOM_ID: outside\n:END:\n* Exported Scope\n[[#outside][Link out]]\n');
+  const scopeHeading = doc.children[1];
+  const html = exportToHtml(doc, scopeHeading);
+  assert.match(html, /href="#outside"/); // best-effort fallback, unchanged from before this fix
+  assert.doesNotMatch(html, /id="outside"/); // the out-of-scope heading correctly isn't included/anchored at all
+});
+
+test('an unresolved link (matches nothing at all) falls back to the original literal target, unchanged', () => {
+  const doc = parseOrg('* Intro\n[[Nonexistent Heading][Broken]]\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /href="Nonexistent Heading"/);
+});
+
+test('a file-scheme link is left completely unresolved/unchanged -- it cannot meaningfully point anywhere within a standalone HTML export', () => {
+  const doc = parseOrg('* Intro\n[[file:other.org][Other file]]\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /href="file:other\.org"/);
+});
+
+test('CUSTOM_ID always wins over a title-based slug for the SAME heading, matching what a #custom-id link would actually resolve against', () => {
+  const doc = parseOrg('* My Title\n:PROPERTIES:\n:CUSTOM_ID: my-real-id\n:END:\nContent.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<h1 id="my-real-id">/);
+  assert.doesNotMatch(html, /id="my-title"/);
+});
+
+test('a whole realistic document with multiple internal links (a Contents/TOC-style section) resolves every single one', () => {
+  const doc = parseOrg(
+    '* Contents\n[[#section-a][Section A]]\n[[#section-b][Section B]]\n* Section A\n:PROPERTIES:\n:CUSTOM_ID: section-a\n:END:\nContent A.\n* Section B\n:PROPERTIES:\n:CUSTOM_ID: section-b\n:END:\nContent B.\n'
+  );
+  const html = exportToHtml(doc);
+  const hrefs = [...html.matchAll(/href="(#[^"]+)"/g)].map((m) => m[1]);
+  const ids = new Set([...html.matchAll(/id="([^"]+)"/g)].map((m) => m[1]));
+  assert.equal(hrefs.length, 2);
+  for (const href of hrefs) assert.ok(ids.has(href.slice(1)), `${href} should resolve to a real id`);
 });

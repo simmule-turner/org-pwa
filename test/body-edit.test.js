@@ -6,6 +6,7 @@ import {
   serializeTableRule,
   serializeTable,
   isTableHeaderRow,
+  lastTableInBody,
   setTableCell,
   insertTableRow,
   deleteTableRow,
@@ -100,6 +101,26 @@ test('out-of-range or invalid rowIndex returns false rather than throwing', () =
   const table = doc.children[0].body[0];
   assert.equal(isTableHeaderRow(table, 99), false);
   assert.equal(isTableHeaderRow(table, -1), false);
+});
+
+// ---- lastTableInBody --------------------------------------------------------
+
+test('lastTableInBody returns null for a heading with no table at all', () => {
+  const doc = parseOrg('* H\nJust a paragraph.\n');
+  assert.equal(lastTableInBody(doc.children[0]), null);
+});
+
+test('lastTableInBody finds the (only) table', () => {
+  const doc = parseOrg('* H\n| a | b |\n');
+  const table = lastTableInBody(doc.children[0]);
+  assert.equal(table.type, 'table');
+  assert.deepEqual(table.rows[0].cells, ['a', 'b']);
+});
+
+test('lastTableInBody returns the LAST table when a heading has more than one', () => {
+  const doc = parseOrg('* H\n| first | table |\n\nSome text between.\n\n| second | table |\n');
+  const table = lastTableInBody(doc.children[0]);
+  assert.deepEqual(table.rows[0].cells, ['second', 'table']);
 });
 
 // ---- setTableCell --------------------------------------------------------
