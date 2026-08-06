@@ -478,8 +478,18 @@ function insertCapture(target, type, expandedText, prepend = false) {
 
 /**
  * Resolves a capture template's `file` field to an actual target file
- * id, given the current document's own id. A path containing "/" is
- * used as-is (already a fully-qualified path for whatever backend is
+ * id, given the current document's own id. Recognizes and strips a
+ * "scheme:" prefix first -- "github:foo" / "webdav:foo" (case-
+ * insensitive), matching the SAME "scheme:path" convention Agenda
+ * Files already uses elsewhere in this app (see local-variables.js's
+ * getAgendaFiles) -- so a template author who reasonably expects that
+ * same syntax to work here gets a correct resolution rather than the
+ * whole string silently being treated as one literal filename. See
+ * getCaptureFileScheme's own docs for why the scheme itself still
+ * needs a SEPARATE validation step by the caller.
+ *
+ * Once any scheme prefix is stripped, a path containing "/" is used
+ * as-is (already a fully-qualified path for whatever backend is
  * active); a bare filename with no "/" is placed in the same directory
  * as the current document (a sibling file) -- the closest equivalent
  * this app's simpler, backend-agnostic file-id space has to real org's
@@ -492,10 +502,46 @@ function insertCapture(target, type, expandedText, prepend = false) {
 function resolveCaptureFileId(file, currentFileId) {
   const trimmed = String(file || '').trim();
   if (!trimmed) return currentFileId;
-  if (trimmed.includes('/')) return trimmed;
+  const { scheme, path } = getCaptureFileScheme(trimmed);
+  const resolved = CAPTURE_FILE_SCHEMES.has(scheme) ? path : trimmed;
+  if (resolved.includes('/')) return resolved;
   const lastSlash = currentFileId.lastIndexOf('/');
   const dir = lastSlash === -1 ? '' : currentFileId.slice(0, lastSlash + 1);
-  return dir + trimmed;
+  return dir + resolved;
+}
+
+const CAPTURE_FILE_SCHEMES = new Set(['github', 'webdav']);
+
+/**
+ * Splits a capture template's raw `file` value into `{ scheme, path }`
+ * -- `scheme` is null if there's no "word:" prefix at all (an ordinary
+ * bare filename or path, ":" not being a normal character in one);
+ * a recognized backend name ("github"/"webdav", always lowercased,
+ * matching however it was actually cased in the template) if the
+ * prefix matches one of those; or the VERBATIM, unrecognized prefix
+ * text itself (original casing preserved) for anything else that
+ * merely looks like an attempted scheme but isn't one this app
+ * understands.
+ *
+ * This module is deliberately backend-agnostic -- it has no notion of
+ * "which backend is currently active" (that's app.js's own state, not
+ * something a capture template's file-resolution logic should need to
+ * know about to do basic path math). Because of that, this function
+ * only SPLITS the string; it doesn't and can't judge whether a
+ * recognized scheme actually matches whatever backend is currently
+ * open. The caller (app.js's runCaptureWithAnswers, which does know
+ * the active backend) is expected to check that itself before treating
+ * a capture as safe to run -- silently proceeding on a scheme mismatch
+ * (e.g. "github:foo" while a WebDAV file is open) would attempt to
+ * write to the wrong backend for the currently-open document, an even
+ * more confusing failure mode than the original bug this exists to fix.
+ */
+function getCaptureFileScheme(file) {
+  const match = /^([A-Za-z][A-Za-z0-9+.-]*):(.*)$/.exec(file);
+  if (!match) return { scheme: null, path: file };
+  const rawScheme = match[1];
+  const lowered = rawScheme.toLowerCase();
+  return { scheme: CAPTURE_FILE_SCHEMES.has(lowered) ? lowered : rawScheme, path: match[2] };
 }
 
 export {
@@ -506,4 +552,6 @@ export {
   mergeFragmentInto,
   insertCapture,
   resolveCaptureFileId,
+  getCaptureFileScheme,
+  CAPTURE_FILE_SCHEMES,
 };

@@ -15,7 +15,7 @@
 
 import { parseOrg, serializeOrg } from './org-parser.js';
 import { enqueueChange } from './outbox.js';
-import { syncDocument } from './sync-engine.js';
+import { syncDocument, setSyncMeta } from './sync-engine.js';
 
 function unwrap(result) {
   return result && typeof result === 'object' && 'value' in result ? result.value : result;
@@ -62,6 +62,7 @@ async function openDocument({ documentId, kvAdapter, diskAdapter, preferCache = 
   const diskEntry = await diskAdapter.read(documentId);
   if (diskEntry) {
     await kvAdapter.set(cacheKey, diskEntry.content);
+    await setSyncMeta(kvAdapter, documentId, { lastSyncedHash: diskEntry.hash });
     return { documentId, doc: parseOrg(diskEntry.content), source: 'disk' };
   }
 
