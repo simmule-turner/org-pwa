@@ -63,6 +63,7 @@ import {
 } from './src/agenda.js';
 import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId, getCaptureFileScheme, CAPTURE_FILE_SCHEMES } from './src/capture-template.js';
 import { exportToMarkdown } from './src/export-markdown.js';
+import { exportToOdt } from './src/export-odt.js';
 import { exportToAscii } from './src/export-ascii.js';
 import { exportToHtml } from './src/export-html.js';
 import { exportToIcalendar } from './src/export-icalendar.js';
@@ -95,6 +96,7 @@ import {
   insertParagraphAfter,
   deleteListItem,
   deleteTable,
+  lastTableInBody,
   deleteParagraph,
   editListItemText,
   insertListItem,
@@ -3201,14 +3203,31 @@ function renderRow(row, todoSequence) {
 
       const addTableRow = document.createElement('div');
       addTableRow.style.display = 'flex';
+      addTableRow.style.gap = '8px';
       addTableRow.style.marginTop = '4px';
+      const existingTable = lastTableInBody(row.node);
       addTableRow.appendChild(
-        menuButton('\u25a6 Add table', () => {
+        tableActionButton('\u25a6 Add table', () => {
           const heading = editingGeneral;
           editingGeneral = null;
           insertTable(heading, {});
           commitAndRender('Added table');
         })
+      );
+      addTableRow.appendChild(
+        tableActionButton(
+          '\ud83d\uddd1\ufe0f Delete table',
+          () => {
+            const heading = editingGeneral;
+            const table = lastTableInBody(heading);
+            if (!table) return; // shouldn't happen -- disabled when there's nothing to delete -- but never act on nothing
+            if (!window.confirm('Delete this table? This can\u2019t be undone.')) return;
+            editingGeneral = null;
+            deleteTable(heading, table);
+            commitAndRender('Deleted table');
+          },
+          !existingTable
+        )
       );
       generalEditorEl.appendChild(addTableRow);
 
@@ -4740,6 +4759,23 @@ function wizardButton(label, onClick) {
   return btn;
 }
 
+/** Same explicit sizing as wizardButton (needed outside a .panel-
+ *  classed container, where the app's normal button styling doesn't
+ *  reach) but WITHOUT flex:1 -- for a button meant to sit alongside a
+ *  sibling in the same row, sized to its own content, rather than
+ *  stretching alone to fill the whole row the way a lone wizardButton
+ *  is meant to. */
+function tableActionButton(label, onClick, disabled) {
+  const btn = document.createElement('button');
+  btn.textContent = label;
+  btn.disabled = !!disabled;
+  btn.onclick = onClick;
+  btn.style.fontSize = '15px';
+  btn.style.padding = '10px 14px';
+  btn.style.minHeight = '44px';
+  return btn;
+}
+
 function closeFileMenu() {
   fileMenuOpen = false;
   fileMenuStep = null;
@@ -4893,6 +4929,8 @@ function performExport(format, scope) {
     downloadFile(baseName + '.md', exportToMarkdown(state.doc, scope), 'text/markdown');
   } else if (format === 'html') {
     downloadFile(baseName + '.html', exportToHtml(state.doc, scope), 'text/html');
+  } else if (format === 'odt') {
+    downloadFile(baseName + '.odt', exportToOdt(state.doc, scope), 'application/vnd.oasis.opendocument.text');
   } else {
     const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: state.documentId, doc: state.doc }];
     const icsScope = scope && typeof scope === 'object' ? scope : null;
@@ -4903,7 +4941,7 @@ function performExport(format, scope) {
   exportFormat = null;
   exportPickingHeading = false;
   setStatus(
-    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : 'Calendar (.ics)'}.`
+    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : 'Calendar (.ics)'}.`
   );
   renderFileMenu();
   render();
@@ -4939,8 +4977,8 @@ function renderExportFlow() {
       })
     );
     row.appendChild(
-      menuButton('Markdown', () => {
-        exportFormat = 'markdown';
+      menuButton('ODT', () => {
+        exportFormat = 'odt';
         renderFileMenu();
       })
     );
@@ -5033,7 +5071,7 @@ function renderExportFlow() {
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '4px';
-  label.textContent = `Export ${exportFormat === 'ascii' ? 'ASCII' : exportFormat === 'markdown' ? 'Markdown' : exportFormat === 'html' ? 'HTML' : 'Calendar (.ics)'} for:`;
+  label.textContent = `Export ${exportFormat === 'ascii' ? 'ASCII' : exportFormat === 'markdown' ? 'Markdown' : exportFormat === 'html' ? 'HTML' : exportFormat === 'odt' ? 'ODT' : 'Calendar (.ics)'} for:`;
   fileMenuPanel.appendChild(label);
 
   const row = document.createElement('div');
@@ -7549,6 +7587,9 @@ async function runExtraMenuEntry(entry) {
       } else {
         clockCancelHeading(running);
       }
+    } else if (entry.name === 'export-markdown') {
+      if (!state.doc) return;
+      performExport('markdown', null);
     }
     return;
   }
