@@ -43,7 +43,7 @@ import {
   getExtraMenu,
 } from './src/local-variables.js';
 import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath } from './src/refile.js';
-import { isClockRunning, clockIn, clockOut, totalClockedMinutes, formatClockDuration, findHeadingWithRunningClock } from './src/clock.js';
+import { isClockRunning, clockIn, clockOut, clockCancel, totalClockedMinutes, formatClockDuration, findHeadingWithRunningClock } from './src/clock.js';
 import { parseExtraMenu } from './src/extra-menu.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import { decideProgressLogging, decideLogbookEntry, getEffectiveLogDoneSetting } from './src/progress-logging.js';
@@ -84,6 +84,7 @@ import {
 } from './src/heading-edit.js';
 import {
   setTableCell,
+  isTableHeaderRow,
   insertTableRow,
   deleteTableRow,
   insertTableColumn,
@@ -192,6 +193,12 @@ let pendingRefile = null;
 // exclusive, never both active at once, so sharing the element avoids
 // a whole extra panel just for this one three-button prompt).
 let pendingArchiveConfirm = null;
+// Set to { heading } when Clock out is tapped on a heading with a
+// running clock -- always shown, offering Cancel (org-clock-cancel,
+// discard the session entirely) / Stop (org-clock-out, the normal
+// completion) / OK (back out, keep the clock running). Reuses
+// refilePanel's own DOM element, same pattern as pendingArchiveConfirm.
+let pendingClockStop = null;
 
 /**
  * Every call site in this app that changes a heading's TODO state
@@ -698,6 +705,73 @@ function clockOutHeading(heading) {
     return;
   }
   commitAndRender('Clocked out');
+}
+
+/** org-clock-cancel: stops whatever clock is currently running on
+ *  `heading` and discards its accumulated time entirely -- no
+ *  duration ever gets recorded, unlike clockOutHeading. A no-op (with
+ *  a status message) if nothing is running, matching clockOutHeading's
+ *  own treatment of the equivalent already-in-that-state case. */
+function clockCancelHeading(heading) {
+  if (!clockCancel(heading)) {
+    setStatus('No clock is currently running on this heading.');
+    render();
+    return;
+  }
+  commitAndRender('Clock cancelled \u2014 time discarded');
+}
+
+/** The action menu's own entry point for Clock out on a heading with a
+ *  running clock -- always prompts rather than stopping directly,
+ *  offering org-clock-cancel (discard the session entirely) as a
+ *  genuine alternative to the normal completion, since accidentally
+ *  starting the wrong clock or switching tasks without wanting the
+ *  elapsed time logged is common enough to deserve its own one-tap
+ *  option right there, not a separate hunt through the action menu. */
+function openClockStopPrompt(heading) {
+  pendingClockStop = { heading };
+  renderClockStopPanel();
+}
+
+function renderClockStopPanel() {
+  refilePanel.innerHTML = '';
+  if (!pendingClockStop) {
+    refilePanel.style.display = 'none';
+    return;
+  }
+  refilePanel.style.display = 'block';
+
+  const label = document.createElement('div');
+  label.style.fontSize = '13px';
+  label.style.marginBottom = '8px';
+  label.textContent = `Stop the clock on "${pendingClockStop.heading.title || '(untitled)'}"?`;
+  refilePanel.appendChild(label);
+
+  const row = document.createElement('div');
+  row.className = 'panel-row';
+  row.appendChild(
+    menuButton('Cancel', () => {
+      const heading = pendingClockStop.heading;
+      pendingClockStop = null;
+      renderClockStopPanel();
+      clockCancelHeading(heading);
+    })
+  );
+  row.appendChild(
+    menuButton('Stop', () => {
+      const heading = pendingClockStop.heading;
+      pendingClockStop = null;
+      renderClockStopPanel();
+      clockOutHeading(heading);
+    })
+  );
+  row.appendChild(
+    menuButton('OK', () => {
+      pendingClockStop = null;
+      renderClockStopPanel();
+    })
+  );
+  refilePanel.appendChild(row);
 }
 
 function getArchiveDestinationLabel(heading) {
@@ -2874,7 +2948,7 @@ function renderRow(row, todoSequence) {
               onClick: () => {
                 actionMenuFor = null;
                 if (isClockRunning(row.node)) {
-                  clockOutHeading(row.node);
+                  openClockStopPrompt(row.node);
                 } else {
                   clockInHeading(row.node);
                 }
@@ -3297,7 +3371,7 @@ function renderTableRow(row) {
       tdEl.style.border = '1px solid #8886';
       tdEl.style.padding = '3px 6px';
       tdEl.style.cursor = 'text';
-      if (rowIndex === 0) tdEl.style.fontWeight = '600';
+      if (isTableHeaderRow(row.node, rowIndex)) tdEl.style.fontWeight = '600';
 
       const isEditing =
         editingCell &&
@@ -5837,18 +5911,20 @@ async function renderSettingsView(target = settingsRenderTarget) {
   captureSection.appendChild(captureTitle);
 
   const captureHint = document.createElement('div');
-  captureHint.style.fontSize = '11px';
-  captureHint.style.opacity = '0.6';
-  captureHint.style.margin = '2px 0 8px';
-  captureHint.textContent =
-    'Edited as JSON — an array of {key, description, type, olp, template, file, prepend, prependHeading}. ' +
-    'type is one of "item", "checkitem", "plain", "table-line". ' +
-    'olp is the outline path to insert into, e.g. ["Inbox", "Tasks"]. ' +
-    'file is optional — a filename (e.g. "journal.org", captured as a sibling of whatever file is currently open) or a full path, for a template that captures into a DIFFERENT file without switching what you\u2019re looking at. Omit it to capture into the currently open file, as before. ' +
-    'prepend is optional (true/false, default false) — true puts the new entry at the TOP of the target instead of the bottom, matching real org\u2019s own :prepend t. For item/checkitem/plain, this also controls where any missing heading along olp gets auto-created (first vs. last child of its own parent) — the two decisions are really the same thing at two levels for those three. ' +
-    'prependHeading is table-line only, and independent of prepend there: prepend controls where the new ROW lands within the table; prependHeading controls where an auto-created heading along olp lands among ITS siblings — so "newest month first, rows still in chronological order" is prependHeading: true, prepend: false. ' +
-    'template supports %<FORMAT>, %t/%T/%u/%U, %^{Prompt|default|choices}, @# (real org\u2019s table row-number constant — @# + 3 / @# - 2 also work), and %? — see the README.';
+  captureHint.style.fontSize = '12px';
+  captureHint.style.opacity = '0.75';
+  captureHint.style.margin = '2px 0 6px';
+  captureHint.textContent = 'Edited as JSON \u2014 an array of template objects. Full schema, every field, and examples are in the help doc:';
   captureSection.appendChild(captureHint);
+
+  const captureHintLinkRow = document.createElement('div');
+  captureHintLinkRow.style.marginBottom = '8px';
+  captureHintLinkRow.appendChild(
+    menuButton('Capture Templates reference \u2192', () => {
+      openDocsAtHeading('#capture-templates');
+    })
+  );
+  captureSection.appendChild(captureHintLinkRow);
 
   const currentTemplates = await getCaptureTemplates(kv);
   const captureTextarea = document.createElement('textarea');
@@ -6480,18 +6556,20 @@ function renderReadOnlyTable(table, depth, container) {
   el.style.marginLeft = 8 + depth * 16 + 16 + 'px';
   el.style.borderCollapse = 'collapse';
   el.style.fontSize = '13px';
-  for (const row of table.rows) {
-    if (row.type === 'rule') continue; // a rule row is a visual-only separator, nothing to render as content
+  table.rows.forEach((row, rowIndex) => {
+    if (row.type === 'rule') return; // a rule row is a visual-only separator, nothing to render as content
     const tr = document.createElement('tr');
+    const isHeader = isTableHeaderRow(table, rowIndex);
     for (const cellInline of row.cellsInline) {
       const td = document.createElement('td');
       td.style.border = '1px solid var(--border)';
       td.style.padding = '4px 8px';
+      if (isHeader) td.style.fontWeight = '600';
       renderInlineNodes(cellInline, td, null);
       tr.appendChild(td);
     }
     el.appendChild(tr);
-  }
+  });
   container.appendChild(el);
 }
 
@@ -6557,6 +6635,51 @@ async function renderDocsView(target = docsRenderTarget) {
   if (!docsOpen) return; // closed again while the fetch above was in flight
 
   renderReadOnlyOutline(cachedDocsDoc, container, () => renderDocsView(docsRenderTarget));
+}
+
+/** Opens Docs and scrolls directly to a specific section, identified
+ *  by its CUSTOM_ID anchor (e.g. "#capture-templates") -- the same
+ *  resolution resolveLinkTarget already uses for [[#id][...]]-style
+ *  links, and the same ancestor-expansion + docsScrollTarget mechanism
+ *  onHeadingLinkClick (Docs' own internal link handling) already
+ *  established, just triggered from outside Docs itself rather than
+ *  from a tap on a link within it. Used by Settings' own hotlinks to
+ *  the corresponding help section, so a streamlined settings hint can
+ *  point at the full documentation instead of duplicating it inline. */
+async function openDocsAtHeading(anchorId) {
+  moreOpen = false;
+  docsOpen = true;
+  await renderDocsView(outlineEl); // ensures cachedDocsDoc is loaded, regardless of layout
+  if (!cachedDocsDoc) return; // load failed -- renderDocsView already showed its own error message
+
+  const resolution = resolveLinkTarget(cachedDocsDoc, anchorId);
+  if (resolution.type !== 'heading') return; // an unresolvable anchor is a documentation bug, not something to surface as a runtime error
+
+  const stack = [];
+  function findPath(headings, target, path) {
+    for (const h of headings) {
+      const next = [...path, h];
+      if (h === target) {
+        stack.push(...next);
+        return true;
+      }
+      if (findPath(h.children, target, next)) return true;
+    }
+    return false;
+  }
+  findPath(cachedDocsDoc.children, resolution.heading, []);
+  for (const ancestor of stack) ancestor.collapsed = false;
+  docsScrollTarget = resolution.heading;
+
+  if (isWideLayout()) {
+    render();
+  } else {
+    await renderDocsView(outlineEl);
+  }
+  requestAnimationFrame(() => {
+    const el = document.getElementById('docs-heading-target');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 }
 
 settingsBtn.addEventListener('click', async () => {
@@ -7316,14 +7439,18 @@ async function runExtraMenuEntry(entry) {
   }
 
   if (entry.type === 'function') {
-    if (entry.name === 'org-clock-out') {
+    if (entry.name === 'org-clock-out' || entry.name === 'org-clock-cancel') {
       const running = state.doc ? findHeadingWithRunningClock(state.doc) : null;
       if (!running) {
         setStatus('No clock is currently running.');
         render();
         return;
       }
-      clockOutHeading(running);
+      if (entry.name === 'org-clock-out') {
+        clockOutHeading(running);
+      } else {
+        clockCancelHeading(running);
+      }
     }
     return;
   }

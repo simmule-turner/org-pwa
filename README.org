@@ -136,7 +136,7 @@ The list isn't just for stepping through one at a time — tap *any* entry to ju
 
 - *Lists*: ordered, unordered, checkboxes (tap to cycle unchecked → in-progress → done), description lists (~term :: description~), and nested sub-lists. Tap a list item's text to reveal edit/add-item-below/delete actions.
 - *Checkboxes*: cycle through the three states org supports. Progress cookies in a heading's title (~[3/8]~ or ~[40%]~, including the blank ~[/]~ / ~[/8]~ form) are recalculated automatically whenever a checkbox in that heading's subtree is toggled, added, or removed — matching real org-mode's default hierarchical counting (a heading's cookie counts checkboxes in its own list /and/ every descendant heading's, not just its direct list).
-- *Tables*: tap a cell to edit it directly. Row/column add and remove controls sit below the table, always visible (not tap-to-reveal, since you need them to actually use the table). ~#+TBLFM:~ formula lines are preserved on save but *not evaluated* — org-pwa doesn't compute tables, Emacs does.
+- *Tables*: tap a cell to edit it directly. Row/column add and remove controls sit below the table, always visible (not tap-to-reveal, since you need them to actually use the table). ~#+TBLFM:~ formula lines are preserved on save but *not evaluated* — org-pwa doesn't compute tables, Emacs does. *Header row(s) render bold* — org has no separate header-row syntax of its own; a header is defined purely by position relative to the table's own FIRST horizontal rule line (~|---+---|~), confirmed directly against the Org Manual ("rows before the first horizontal rule are header lines"). This is *not* the same thing as "whichever row happens to be first" — a table with no rule anywhere (a freshly-created one, or a plain data table nobody's added a header divider to) has no header at all, and none of its rows render bold, even the top one. A table can have more than one rule (a real, if less common, convention for visually grouping data into sections) — only the row(s) before the *first* rule are ever the header; a later rule is just a group separator within the data, and doesn't turn the row above it into a second header.
 - *Paragraphs*: tap text to reveal edit/add-paragraph-below/delete.
 
 Every delete action still asks for confirmation — but is no longer irreversible: *Undo/redo now covers every edit in this app* (see [[#undoredo-and-history][Undo/redo and History]]).
@@ -237,9 +237,9 @@ Three separate mechanisms, all ultimately setting the same kind of thing (an Ema
 
 | Variable | ~#+STARTUP:~ keyword(s) |
 |---+---|
-| ~org-log-done~ | ~logdone~ (\u2192 ~time~), ~lognotedone~ (\u2192 ~note~) |
+| ~org-log-done~ | ~logdone~ (→ ~time~), ~lognotedone~ (→ ~note~) |
 | ~org-startup-folded~ | ~overview~, ~content~, ~showall~, ~showeverything~ |
-| ~org-startup-with-inline-images~ | ~inlineimages~ (\u2192 ~t~), ~noinlineimages~ (\u2192 ~nil~) |
+| ~org-startup-with-inline-images~ | ~inlineimages~ (→ ~t~), ~noinlineimages~ (→ ~nil~) |
 
 3. *Local Variables* ([[#local-variables][below]]) -- a file's own "# Local Variables:" block, the highest-precedence layer. This is a general Emacs mechanism (not org-specific), and real Emacs processes it deliberately last, specifically so a file can override anything set earlier -- including a user's own init-file customizations, which is exactly the role Global Variables plays here.
 
@@ -314,7 +314,7 @@ Currently recognized (sorted alphabetically):
 | ~org-closed-keep-when-no-todo~ | ~nil~ | Whether a CLOSED timestamp survives cycling all the way back to no TODO keyword |
 | ~org-contacts-birthday-property~ | ~BIRTHDAY~ | Which property key ~org-contacts-anniversaries~ reads |
 | ~org-cycle-open-archived-trees~ | ~nil~ | Whether the swipe gesture can open an archived heading |
-| ~org-extra-menu~ | unset (button hidden) | Which items the floating extras (\u2630) button's popup menu shows -- not a real org-mode variable, see [[#extras-menu][Extras menu]] |
+| ~org-extra-menu~ | unset (button hidden) | Which items the floating extras (☰) button's popup menu shows -- not a real org-mode variable, see [[#extras-menu][Extras menu]] |
 | ~org-log-done~ | ~nil~ (no logging) | Whether completing a TODO logs a ~CLOSED~ timestamp, a ~:LOGBOOK:~ note, or neither |
 | ~org-refile-targets~ | current file, level 1 | Which headings [[#refile][Refile]] offers as destinations |
 | ~org-startup-folded~ | ~showeverything~ | Initial heading-visibility mode when a file opens |
@@ -466,13 +466,13 @@ A heading's own action menu has a clock toggle — ▶️ *Clock in* / ⏹️ *C
 
 *org-clock-in* inserts a bare ~CLOCK: [timestamp]~ line marking the start of a clocking session. Tapping it again while already running is a no-op — real org itself doesn't let you double-start the same clock either, it just continues the existing session.
 
-*org-clock-out* replaces that bare line with the completed form once you tap it again: ~CLOCK: [start]--[end] =>  H:MM~, computing the duration directly from the two actual timestamps. Tapping Clock out with nothing running is also a no-op.
+*org-clock-out* / *org-clock-cancel*: tapping *Clock out* again while a clock is running no longer stops it directly — it shows a prompt with three choices. *Stop* is the normal completion (~org-clock-out~): replaces the bare ~CLOCK: [timestamp]~ line with ~CLOCK: [start]--[end] =>  H:MM~, computing the duration from the two actual timestamps. *Cancel* is ~org-clock-cancel~: discards the running session entirely — the ~CLOCK:~ line is removed outright, as if it had never been started, no duration ever recorded. Used for a clock started by mistake, or switching to something completely different without wanting the elapsed time logged. *OK* just closes the prompt and leaves the clock running, untouched. Tapping Clock out with nothing running at all is still a no-op, same as before.
 
 *One deliberate simplification, stated plainly*: real org keeps a heading's very first ~CLOCK:~ line bare, directly under the heading, only wrapping it (and every subsequent one) into a ~:LOGBOOK:~ drawer once a *second* clocking happens. This app's own LOGBOOK handling was already unified into always using the drawer from the start (see [[#progress-logging][Progress logging]]) — clocking follows that same established convention rather than reintroducing the bare-line special case just for this one thing.
 
 *org-clock-display*: a *Clock* checkbox on *View → TODO* (the same style and placement as Agenda's own *Log* checkbox — see [[#agenda][Agenda]]) shows each item's total clocked time next to its title — real org's own "all time ever clocked in for this task and its children," including every descendant's own sessions, and a currently-running clock's own elapsed-so-far time counted too, not just completed sessions. Off by default, matching real org's own actual behavior (an on-demand command, ~M-x org-clock-display~, not something always shown) rather than a persisted setting — this is a plain in-session UI toggle, not a Global/Local Variable.
 
-*What's not built*: ~org-clock-cancel~ (abandoning a running clock without recording it — clocking out is the only way to stop one, always recording whatever time elapsed); a persistent mode-line/status-bar display of the currently-running clock; ~org-clock-report~ / clock tables (~#+BEGIN: clocktable~ dynamic blocks); clock-continue (resuming the most recently-clocked task); and effort estimates / clock-in reminders tied to them. See [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]].
+*What's not built*: a persistent mode-line/status-bar display of the currently-running clock; ~org-clock-report~ / clock tables (~#+BEGIN: clocktable~ dynamic blocks); clock-continue (resuming the most recently-clocked task); and effort estimates / clock-in reminders tied to them. See [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]].
 
 -----
 
@@ -642,7 +642,7 @@ org-extra-menu: "t;⭐ Tracking" \
 
 - A bare *capture-template key* (~t~, ~j~, ~c~, ~m~ above) — selecting the item runs that template, exactly as if it had been picked from the regular Capture menu itself (see [[#capture-templates][Capture Templates]]). A key with no matching template shows a status message rather than doing nothing silently.
 - A bracketed *OLP path* (real capture-template ~olp:~ syntax — an array of double-quoted heading titles, each segment itself expanded for ~%<FORMAT>~, e.g. ~["Journal", "%<%Y-%m>"]~ resolving to the current year-month at the moment the item is actually tapped, not when the menu was configured) — selecting the item navigates straight to that heading, creating it (and any missing ancestor in the path) first if it doesn't already exist.
-- A *quoted function reference* (~'org-clock-out~ above) — selecting the item runs that specific built-in function directly. Only ~org-clock-out~ is supported today (clocks out of whichever heading currently has a running clock, wherever it is in the document — see [[#clocking][Clocking]]; a status message shows if nothing is running); more may be added over time as they become useful for a quick-access menu specifically.
+- A *quoted function reference* (~'org-clock-out~ above) — selecting the item runs that specific built-in function directly. ~org-clock-out~ and ~org-clock-cancel~ are supported today (both act on whichever heading currently has a running clock, wherever it is in the document — see [[#clocking][Clocking]] for the difference between the two; a status message shows if nothing is running). Selecting either runs it directly, no additional confirmation prompt — unlike the action menu's own Clock out button, which now asks first (Cancel/Stop/OK); a deliberate menu selection is already the confirming step. More functions may be added over time as they become useful for a quick-access menu specifically.
 
 Five hyphens (~"-----"~) on their own is a visual separator, not a selectable item — group related actions without needing a heading structure of their own.
 
@@ -797,7 +797,7 @@ This is the section to read if you know org-mode well and want to know exactly w
 
 *Progress logging.* ~org-log-done~ and the general per-keyword ~!~ / ~@~ / ~@/!~ / ~/!~ logging spec are both built, writing into a shared ~:LOGBOOK:~ drawer, including the conditional leaving-log semantics (a state's own leaving-timestamp only fires when the target state doesn't already log its own entry) — see [[#progress-logging][Progress logging]] for the full behavior. Fast-access keys (~TODO(t)~) are correctly parsed but have no jump-to-state UI of their own yet; tap-to-cycle remains the only way to actually change a heading's state.
 
-*Clocking* (see [[#clocking][Clocking]] for the full behavior) covers the core ~org-clock-in~ / ~org-clock-out~ / ~org-clock-display~ commands. What's different from real Emacs: no ~org-clock-cancel~, no persistent mode-line display of the running clock, no ~org-clock-report~ / clock tables (~#+BEGIN: clocktable~), no clock-continue, and no effort estimates.
+*Clocking* (see [[#clocking][Clocking]] for the full behavior) covers the core ~org-clock-in~ / ~org-clock-out~ / ~org-clock-cancel~ / ~org-clock-display~ commands. What's different from real Emacs: no persistent mode-line display of the running clock, no ~org-clock-report~ / clock tables (~#+BEGIN: clocktable~), no clock-continue, and no effort estimates.
 
 *Agenda.* Day/Week/Month views, repeating-timestamp expansion, completed-item exclusion, SCHEDULED/DEADLINE carry-forward with a visible overdue count, the delay/warning-period suffix making a deadline show up early, and multi-file aggregation via ~org-agenda-files~ are all built now (see [[#agenda][Agenda]]). What's still different from real org: the three repeater marks (~+~, ~++~, ~.+~) all expand identically here, since this is a read-only display with no notion of "when was this marked done" driving a catch-up/restart calculation; there's no support for org's diary-sexp entries (~%%(diary-...)~), other than ~org-contacts-anniversaries~; and ~org-agenda-files~ only supports GitHub/WebDAV entries, not a local file, for the same picker-permission reason stated throughout this document (see [[#agenda][Agenda]] for the details).
 
@@ -830,8 +830,8 @@ Restated in one place for scanning:
 - ~:COOKIE_DATA:~ overrides for checkbox counting scope aren't read — counting is always hierarchical
 - No table formula evaluation
 - No footnote commands (~org-footnote-new~ /normalize/sort/renumber) — editing a footnote means editing its raw text directly
-- No ~org-clock-cancel~, persistent mode-line clock display, ~org-clock-report~ / clock tables, clock-continue, or effort estimates — see [[#clocking][Clocking]] for what IS built (~org-clock-in~ / ~org-clock-out~ / ~org-clock-display~); no fast-key-driven jump-to-state UI for progress logging's own per-keyword spec either, tap-to-cycle is still the only way to change state
-- ~org-extra-menu~'s function-reference entries only recognize ~'org-clock-out~ today — an unrecognized function name is silently skipped rather than an error, so more can be added over time without breaking anything already configured — see [[#extras-menu][Extras menu]]
+- No persistent mode-line clock display, ~org-clock-report~ / clock tables, clock-continue, or effort estimates — see [[#clocking][Clocking]] for what IS built (~org-clock-in~ / ~org-clock-out~ / ~org-clock-cancel~ / ~org-clock-display~); no fast-key-driven jump-to-state UI for progress logging's own per-keyword spec either, tap-to-cycle is still the only way to change state
+- ~org-extra-menu~'s function-reference entries only recognize ~'org-clock-out~ and ~'org-clock-cancel~ today — an unrecognized function name is silently skipped rather than an error, so more can be added over time without breaking anything already configured — see [[#extras-menu][Extras menu]]
 - No drag-to-reorder (button-based Move/Promote/Demote actions exist instead — see [[#editing-your-outline][Editing your outline]])
 - No dedicated "browse your recently-opened documents" switcher UI — switching between documents happens by tapping a ~file:~ / ~github:~ / ~webdav:~ link or File → Open, not a tab bar or history list; and no true simultaneous multi-document editing (see [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]] for the full explanation)
 - Agenda doesn't distinguish the three repeater marks (~+~ / ~++~ / ~.+~), and has no diary-sexp support other than ~org-contacts-anniversaries~
