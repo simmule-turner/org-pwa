@@ -76,6 +76,21 @@ function clockOut(heading, endTimestamp, endDate) {
   return true;
 }
 
+/** org-clock-cancel: stops `heading`'s currently-running clock and
+ *  discards its accumulated time entirely -- unlike clockOut, this
+ *  doesn't complete the line with an end timestamp and duration, it
+ *  removes the bare "CLOCK: [start]" line outright, as if the clock
+ *  had never been started at all. Used when a clock was started by
+ *  mistake, or the person switched to a completely different task
+ *  without wanting the elapsed time logged. Returns false without
+ *  changing anything if nothing is currently running. */
+function clockCancel(heading) {
+  const idx = findRunningClockLineIndex(heading);
+  if (idx === -1) return false;
+  heading.logbookLines.splice(idx, 1);
+  return true;
+}
+
 /** Formats a whole number of minutes as real org's own "H:MM" clock
  *  duration string -- hours unpadded, minutes always two digits, e.g.
  *  90 minutes -> "1:30", 5 minutes -> "0:05". */
@@ -167,4 +182,4 @@ function findHeadingWithRunningClock(doc) {
   return walk(doc.children || []);
 }
 
-export { isClockRunning, clockIn, clockOut, formatClockDuration, parseClockDuration, totalClockedMinutes, findHeadingWithRunningClock };
+export { isClockRunning, clockIn, clockOut, clockCancel, formatClockDuration, parseClockDuration, totalClockedMinutes, findHeadingWithRunningClock };

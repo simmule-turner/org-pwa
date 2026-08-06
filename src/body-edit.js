@@ -54,6 +54,33 @@ export function serializeTable(table) {
   return lines;
 }
 
+/**
+ * Whether `table.rows[rowIndex]` is a HEADER row, as opposed to just
+ * being positionally first. Real org has no separate header-row syntax
+ * of its own -- confirmed directly against the Org Manual, a header is
+ * defined entirely by position relative to the table's FIRST horizontal
+ * rule line (`|---+---|`): every row before that first rule is a
+ * header row, and that's the only reliable signal there is. This is
+ * NOT the same question as "is rowIndex === 0": a table with no rule
+ * line anywhere (a fresh, just-created table, or a plain data table
+ * someone never bothered to add a header divider to) has no header at
+ * all, even though it very much has a first row.
+ *
+ * A rule line itself is never a header (nothing to distinguish it
+ * from). A table can have more than one rule (a real, if less common,
+ * org convention for grouping data rows into visual sections) -- only
+ * rows before the FIRST one are ever headers; a later rule is just a
+ * group separator within the data, and doesn't retroactively make the
+ * row before it look like a header too.
+ */
+export function isTableHeaderRow(table, rowIndex) {
+  const row = table.rows[rowIndex];
+  if (!row || row.type !== 'row') return false;
+  const firstRuleIndex = table.rows.findIndex((r) => r.type === 'rule');
+  if (firstRuleIndex === -1) return false; // no rule anywhere in the table -- no header at all
+  return rowIndex < firstRuleIndex;
+}
+
 // ---- commit: flush a mutated table/paragraph back to bodyLines ----------
 
 /** Replaces `heading.bodyLines[lineIndex, lineIndex+lineCount)` with

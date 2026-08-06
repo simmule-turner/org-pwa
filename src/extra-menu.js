@@ -29,9 +29,9 @@
  *     capture templates themselves already use).
  *   - A quoted-symbol function reference (e.g. 'org-clock-out) --
  *     selecting this menu item runs that built-in function directly.
- *     Only org-clock-out is recognized for now; more may be added
- *     later, so an unrecognized function name is treated as a
- *     malformed entry (skipped) rather than a hard parse error, the
+ *     org-clock-out and org-clock-cancel are recognized today; more
+ *     may be added later, so an unrecognized function name is treated
+ *     as a malformed entry (skipped) rather than a hard parse error, the
  *     same forward-compatible tolerance every other "recognized
  *     subset" parser in this codebase already has.
  *
@@ -41,7 +41,7 @@
  * chose to put there).
  */
 
-const KNOWN_FUNCTIONS = new Set(['org-clock-out']);
+const KNOWN_FUNCTIONS = new Set(['org-clock-out', 'org-clock-cancel']);
 const SEPARATOR_TOKEN = '-----';
 
 /** Splits the raw, already-line-joined org-extra-menu value into its
