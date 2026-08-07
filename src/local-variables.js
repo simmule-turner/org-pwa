@@ -170,6 +170,28 @@ export function getExtraMenu(vars) {
   return (vars || {})['org-extra-menu'] || '';
 }
 
+/** org-xx-file-menu / org-xx-more-menu / org-xx-export-menu / org-xx-view-menu:
+ *  this app's own extension (not real org-mode variables), a
+ *  "Label;alias" override list for one of the four main app-chrome
+ *  menus -- see src/menu-alias.js's own docs for the full syntax and
+ *  semantics. Just the raw string here, same as getExtraMenu; parsing
+ *  lives in that module's own parseMenuAliases. */
+export function getFileMenuAliases(vars) {
+  return (vars || {})['org-xx-file-menu'] || '';
+}
+
+export function getMoreMenuAliases(vars) {
+  return (vars || {})['org-xx-more-menu'] || '';
+}
+
+export function getExportMenuAliases(vars) {
+  return (vars || {})['org-xx-export-menu'] || '';
+}
+
+export function getViewMenuAliases(vars) {
+  return (vars || {})['org-xx-view-menu'] || '';
+}
+
 /** org-use-tag-inheritance: whether a heading's "effective" tags (for
  *  search/filtering purposes) include its ancestors' own tags, not
  *  just its own. `t` is real org's own actual default — tags inherit
