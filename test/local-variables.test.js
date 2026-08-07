@@ -11,6 +11,10 @@ import {
   getClosedKeepWhenNoTodo,
   getRefileTargets,
   getExtraMenu,
+  getFileMenuAliases,
+  getMoreMenuAliases,
+  getExportMenuAliases,
+  getViewMenuAliases,
   getAsciiTextWidth,
   getUseTagInheritance,
   getUsePropertyInheritance,
@@ -258,4 +262,26 @@ test('getExtraMenu returns the raw string value unchanged', () => {
 test('getExtraMenu returns an empty string when unset, not undefined', () => {
   assert.equal(getExtraMenu({}), '');
   assert.equal(getExtraMenu(null), '');
+});
+
+// ---- getFileMenuAliases / getMoreMenuAliases / getExportMenuAliases / getViewMenuAliases ----
+
+test('each of the 4 menu-alias accessors returns the raw string value unchanged', () => {
+  const vars = {
+    'org-xx-file-menu': '"New;\u2795"',
+    'org-xx-more-menu': '"Search;\ud83d\udd0d"',
+    'org-xx-export-menu': '"Markdown;"',
+    'org-xx-view-menu': '"Org;\ud83d\udcdd"',
+  };
+  assert.equal(getFileMenuAliases(vars), '"New;\u2795"');
+  assert.equal(getMoreMenuAliases(vars), '"Search;\ud83d\udd0d"');
+  assert.equal(getExportMenuAliases(vars), '"Markdown;"');
+  assert.equal(getViewMenuAliases(vars), '"Org;\ud83d\udcdd"');
+});
+
+test('each accessor returns an empty string when unset, not undefined', () => {
+  assert.equal(getFileMenuAliases({}), '');
+  assert.equal(getMoreMenuAliases(null), '');
+  assert.equal(getExportMenuAliases({}), '');
+  assert.equal(getViewMenuAliases(null), '');
 });

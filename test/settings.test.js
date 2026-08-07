@@ -8,6 +8,8 @@ import {
   setWebdavConfig,
   getTheme,
   setTheme,
+  getCustomThemeColors,
+  setCustomThemeColors,
   getFontFamily,
   setFontFamily,
   getFontSize,
@@ -87,6 +89,27 @@ test('setTheme then getTheme round-trips', async () => {
   const kv = createInMemoryAdapter();
   await setTheme(kv, 'dark');
   assert.equal(await getTheme(kv), 'dark');
+});
+
+// ---- custom theme colors ------------------------------------------------
+
+test('getCustomThemeColors defaults to an empty object -- no customizations, unless something has actually been set', async () => {
+  const kv = createInMemoryAdapter();
+  assert.deepEqual(await getCustomThemeColors(kv), {});
+});
+
+test('setCustomThemeColors then getCustomThemeColors round-trips', async () => {
+  const kv = createInMemoryAdapter();
+  await setCustomThemeColors(kv, { light: { '--bg': '#f0f0f0' }, dark: { '--fg': '#ffffff' } });
+  assert.deepEqual(await getCustomThemeColors(kv), { light: { '--bg': '#f0f0f0' }, dark: { '--fg': '#ffffff' } });
+});
+
+test('setCustomThemeColors only stores whichever variables were actually overridden, not a full record of all 11 for both themes', async () => {
+  const kv = createInMemoryAdapter();
+  await setCustomThemeColors(kv, { light: { '--accent': '#ff0000' } });
+  const stored = await getCustomThemeColors(kv);
+  assert.deepEqual(Object.keys(stored), ['light']);
+  assert.deepEqual(Object.keys(stored.light), ['--accent']);
 });
 
 // ---- font --------------------------------------------------------------
