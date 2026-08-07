@@ -182,4 +182,15 @@ function findHeadingWithRunningClock(doc) {
   return walk(doc.children || []);
 }
 
-export { isClockRunning, clockIn, clockOut, clockCancel, formatClockDuration, parseClockDuration, totalClockedMinutes, findHeadingWithRunningClock };
+export {
+  isClockRunning,
+  clockIn,
+  clockOut,
+  clockCancel,
+  formatClockDuration,
+  parseClockDuration,
+  totalClockedMinutes,
+  findHeadingWithRunningClock,
+  COMPLETED_CLOCK_RE,
+  parseClockTimestampToDate,
+};

@@ -1,11 +1,6 @@
 /**
  * ASCII export -- real org-mode's ox-ascii backend, for the core,
- * commonly-used cases. Deliberately doesn't attempt org-ascii's fuller
- * feature set (section numbering, a table of contents, footnote
- * reference styles, Latin-1/UTF-8-specific character substitutions) --
- * a plain, readable text rendering of the outline, wrapped to a
- * configurable width, matching this app's own "useful subset"
- * philosophy elsewhere.
+ * commonly-used cases.
  *
  * org-ascii-text-width: the maximum line width (in characters) for
  * wrapping paragraph text during export. Real org's own default is 72;
@@ -13,20 +8,39 @@
  * getAsciiTextWidth for where this is actually read from (Global/Local
  * Variables, same precedence every other such setting already has).
  *
- * Inline markup is left as-is rather than converted -- org's own
- * ~*bold*~, ~code~, etc. syntax is already valid, readable plain ASCII
- * text exactly as written in the source, so there's nothing productive
- * to transform it into. The one exception is links: `[[target][desc]]`
- * becomes `desc (target)` (or just `target` with no description),
- * since the raw bracket syntax reads far less like natural prose than
- * everything else here already does.
+ * Inline markup is parsed (via the same parseInline every other
+ * exporter here already uses), not left as raw source text -- matching
+ * a real, confirmed detail of org's own ox-ascii backend: bold,
+ * italic, underline, and strikethrough markers are stripped entirely
+ * (ASCII has no way to represent any of them visually, and org's own
+ * export framework already separates markup from content before a
+ * backend's own transcoder ever sees it -- there's nothing for an
+ * ASCII backend to re-add). Code/verbatim become real org's own
+ * `text' backtick-quote convention (org-ascii-verbatim-format,
+ * confirmed directly from ox-ascii.el's own source) rather than
+ * keeping the literal ~/= markers, which read as stray, meaningless
+ * punctuation once nothing renders them as a visual distinction. A
+ * link becomes `desc (target)` (or just `target` with no
+ * description), since the raw bracket syntax reads far less like
+ * natural prose than everything else here does.
+ *
+ * Section numbering and a generated Table of Contents are both real
+ * ox-ascii features, matched here: headings are numbered "1", "1.1",
+ * "2", ... by default (real org's own default too -- #+OPTIONS: num:nil
+ * turns numbering off, mirrored here as an opt-out), and a TOC listing
+ * every heading with its own number, dot-leader indentation matching
+ * depth, is generated at the very top when the document has more than
+ * one heading (a single-heading document has nothing worth a table of
+ * contents for).
  */
+
+import { parseInline } from './inline-markup.js';
 
 const LINK_RE = /\[\[([^\]]+)\](?:\[([^\]]+)\])?\]/g;
 
 /** Strips org's own link bracket syntax down to readable plain text --
- *  the one piece of inline syntax that doesn't already read naturally
- *  as prose the way emphasis markers do. */
+ *  used for content NOT run through parseInline (kept exported for
+ *  backwards compatibility / direct testing). */
 function stripLinksForAscii(text) {
   return text.replace(LINK_RE, (_, target, description) => (description ? `${description} (${target})` : target));
 }
@@ -57,11 +71,95 @@ function wrapText(text, width) {
   return lines;
 }
 
+// ---- inline markup ---------------------------------------------------
+
+let footnoteDefinitionsAscii = [];
+let anonymousFootnoteCounterAscii = 0;
+
+function footnoteLabelAscii(label) {
+  if (label !== null) return label;
+  anonymousFootnoteCounterAscii++;
+  return 'fn' + anonymousFootnoteCounterAscii;
+}
+
+function renderInlineListAscii(nodes) {
+  return nodes.map(renderInlineNodeAscii).join('');
+}
+
+function renderInlineNodeAscii(node) {
+  switch (node.type) {
+    case 'text':
+      return node.value;
+    case 'bold':
+    case 'italic':
+    case 'underline':
+    case 'strikethrough':
+      // Real org's own ox-ascii: these markers are simply not
+      // re-added -- ASCII has no way to represent any of them
+      // visually, and the parser has already separated the markup
+      // from its own content by this point.
+      return renderInlineListAscii(node.children);
+    case 'code':
+    case 'verbatim':
+      // Real org's own org-ascii-verbatim-format ("`%s'") -- confirmed
+      // directly from ox-ascii.el's source -- not the literal ~/=
+      // source markers, which read as meaningless stray punctuation
+      // once nothing renders them as a visual distinction.
+      return '`' + node.value + "'";
+    case 'subscript':
+    case 'superscript':
+      // Same reasoning as bold/italic/underline: no ASCII-plain way
+      // to represent either, so the marker is dropped and the plain
+      // text stands on its own.
+      return node.value;
+    case 'link': {
+      const label = node.description ? renderTextAscii(node.description) : node.target;
+      return label === node.target ? node.target : `${label} (${node.target})`;
+    }
+    case 'image':
+      return `[image: ${node.target}]`;
+    case 'footnote-ref':
+    case 'footnote-def': {
+      const children = node.type === 'footnote-def' ? node.children : [];
+      const label = footnoteLabelAscii(node.label);
+      if (node.type === 'footnote-def' || children.length > 0) {
+        footnoteDefinitionsAscii.push({ label, text: renderInlineListAscii(children) });
+      }
+      return `[${label}]`;
+    }
+    case 'comment':
+      return ''; // matches every other export backend -- comments never appear in exported output
+    default:
+      return '';
+  }
+}
+
+function renderTextAscii(text) {
+  return renderInlineListAscii(parseInline(text));
+}
+
+// ---- headings and body content -----------------------------------------
+
+/** Section numbers, one entry per level (1-indexed by array position)
+ *  -- e.g. [2, 3] means "currently on the 2nd level-1 heading, its 3rd
+ *  child so far". Reset at the start of every exportToAscii() call.
+ *  Real org's own default numbering behavior -- headings are numbered
+ *  "1", "1.1", "2", ... unless explicitly turned off. */
+let sectionNumbersAscii = [];
+let numberingEnabledAscii = true;
+
+function nextSectionNumber(level) {
+  sectionNumbersAscii = sectionNumbersAscii.slice(0, level);
+  sectionNumbersAscii[level - 1] = (sectionNumbersAscii[level - 1] || 0) + 1;
+  return sectionNumbersAscii.slice(0, level).join('.');
+}
+
 function renderHeadingLineAscii(heading, level) {
   const parts = [];
+  if (numberingEnabledAscii) parts.push(nextSectionNumber(level) + '.');
   if (heading.todo) parts.push(heading.todo);
   if (heading.priority) parts.push(`[#${heading.priority}]`);
-  parts.push(heading.title || '(untitled)');
+  parts.push(renderTextAscii(heading.title) || '(untitled)');
   if (heading.tags && heading.tags.length) parts.push(`:${heading.tags.join(':')}:`);
   const indent = '  '.repeat(Math.max(0, level - 1));
   const line = indent + parts.join(' ');
@@ -84,7 +182,7 @@ function renderPlanningAscii(planning, indent) {
 }
 
 function renderParagraphAscii(node, indent, width) {
-  const joined = stripLinksForAscii(node.lines.join(' '));
+  const joined = renderTextAscii(node.lines.join(' '));
   const available = Math.max(10, width - indent.length); // a pathologically narrow width still leaves SOME room, rather than producing zero-or-negative-width wrapping
   return wrapText(joined, available).map((line) => indent + line);
 }
@@ -103,10 +201,10 @@ function renderListAscii(list, indent, width) {
       marker = '- ';
     }
     const prefix = indent + marker;
-    let text = item.text || '';
-    if (item.tag) text = `${item.tag}: ${text}`;
+    let text = renderTextAscii(item.text || '');
+    if (item.tag) text = `${renderTextAscii(item.tag)}: ${text}`;
     const available = Math.max(10, width - prefix.length);
-    const wrapped = wrapText(stripLinksForAscii(text), available);
+    const wrapped = wrapText(text, available);
     if (wrapped.length === 0) {
       out.push(prefix.trimEnd());
     } else {
@@ -124,7 +222,13 @@ function renderListAscii(list, indent, width) {
 function renderTableAscii(table, indent) {
   // Org's own pipe-table syntax is already a plain-text table -- shown
   // as-is (indented to match surrounding content) rather than
-  // recomputed into a different ASCII-art grid style.
+  // recomputed into a different ASCII-art grid style. Cell content
+  // itself is left as source text (not run through renderTextAscii):
+  // a table cell containing emphasis markup is rare enough, and
+  // dropping the markers there specifically would then need to
+  // recompute every column's own width to keep the table properly
+  // aligned -- a level of table-layout logic out of proportion to the
+  // benefit for such an edge case.
   const out = [];
   let columnCount = 1;
   for (const row of table.rows) {
@@ -168,6 +272,45 @@ function renderHeadingAscii(heading, levelOffset, width, out) {
   }
 }
 
+// ---- table of contents ---------------------------------------------------
+
+/** Every heading in document order, alongside the section-number
+ *  string it will actually get (computed the same way
+ *  renderHeadingLineAscii's own nextSectionNumber does, but run
+ *  ahead of time, before the real render pass, specifically so the
+ *  TOC -- which has to appear BEFORE the headings themselves in the
+ *  output -- can reference numbers that end up matching exactly). */
+function collectHeadingsForToc(headings, level, numbers, out) {
+  for (const heading of headings) {
+    numbers.length = level;
+    numbers[level - 1] = (numbers[level - 1] || 0) + 1;
+    out.push({ heading, level, number: numbers.slice(0, level).join('.') });
+    collectHeadingsForToc(heading.children || [], level + 1, numbers, out);
+  }
+}
+
+/** Real org's own org-ascii--build-toc: a "Table of Contents" header
+ *  (underlined, matching the same style a level-1 heading gets),
+ *  followed by one line per heading -- dot-leader indentation
+ *  matching depth (real org's own "make-string (1- indent) '.'"
+ *  convention, here approximated as literal repeated dots), each
+ *  prefixed with its own section number when numbering is on. */
+function renderToc(headings, numberingEnabled) {
+  if (!numberingEnabled) return []; // TOC generation is gated on numbering here -- keeping this as one combined toggle rather than two independent ones, matching the simplicity goal for this app's own subset of ox-ascii's fuller feature set
+  const entries = [];
+  collectHeadingsForToc(headings, 1, [], entries);
+  if (entries.length < 2) return []; // a single heading has nothing worth a table of contents for
+
+  const title = 'Table of Contents';
+  const out = [title, '='.repeat(title.length), ''];
+  for (const { heading, level, number } of entries) {
+    const dots = level > 1 ? '.'.repeat((level - 1) * 3 - 1) + ' ' : '';
+    const numberPart = numberingEnabled ? number + '. ' : '';
+    out.push(dots + numberPart + (renderTextAscii(heading.title) || '(untitled)'));
+  }
+  return out;
+}
+
 /**
  * Exports `doc` (or, if `scope` is given, just that heading and its
  * descendants) to a plain ASCII text string, wrapped to `textWidth`
@@ -175,17 +318,41 @@ function renderHeadingAscii(heading, levelOffset, width, out) {
  * `scope` must be a heading node that's actually part of `doc` --
  * passed by reference, the same convention every other
  * heading-targeting function in this codebase already uses.
+ *
+ * `numbered` (default true, matching real org's own default): whether
+ * headings get section numbers and a Table of Contents is generated
+ * at all -- real org's own #+OPTIONS: num:nil turns this off.
  */
-export function exportToAscii(doc, scope = null, textWidth = 72) {
+export function exportToAscii(doc, scope = null, textWidth = 72, numbered = true) {
+  footnoteDefinitionsAscii = [];
+  anonymousFootnoteCounterAscii = 0;
+  sectionNumbersAscii = [];
+  numberingEnabledAscii = numbered;
+
   const roots = scope ? [scope] : doc.children || [];
   const levelOffset = scope ? scope.level - 1 : 0;
   const out = [];
+
+  const tocLines = renderToc(roots, numbered);
+  if (tocLines.length) out.push(...tocLines, '');
+
   for (const heading of roots) {
     if (out.length) out.push('');
     renderHeadingAscii(heading, levelOffset, textWidth, out);
   }
+
+  if (footnoteDefinitionsAscii.length > 0) {
+    const seenLabels = new Set();
+    out.push('', 'Footnotes', '='.repeat('Footnotes'.length), '');
+    for (const { label, text } of footnoteDefinitionsAscii) {
+      if (seenLabels.has(label)) continue; // the same real label can legitimately be referenced more than once, but only needs one definition line
+      seenLabels.add(label);
+      out.push(`[${label}] ${text}`);
+    }
+  }
+
   const joined = out.join('\n');
   return joined.replace(/\n{3,}/g, '\n\n').trim() + '\n';
 }
 
-export { wrapText };
+export { wrapText, stripLinksForAscii };
