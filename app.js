@@ -42,10 +42,16 @@ import {
   getRefileTargets,
   getAsciiTextWidth,
   getExtraMenu,
+  getFileMenuAliases,
+  getMoreMenuAliases,
+  getExportMenuAliases,
+  getViewMenuAliases,
 } from './src/local-variables.js';
 import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath } from './src/refile.js';
 import { isClockRunning, clockIn, clockOut, clockCancel, totalClockedMinutes, formatClockDuration, findHeadingWithRunningClock } from './src/clock.js';
 import { parseExtraMenu } from './src/extra-menu.js';
+import { parseMenuAliases } from './src/menu-alias.js';
+import { splitHexAlpha, combineHexAlpha } from './src/hex-alpha.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import { decideProgressLogging, decideLogbookEntry, getEffectiveLogDoneSetting } from './src/progress-logging.js';
 import { parseGlobalVariables, mergeGlobalAndLocalVariables } from './src/global-variables.js';
@@ -125,6 +131,8 @@ import {
   setWebdavConfig,
   getTheme,
   setTheme,
+  getCustomThemeColors,
+  setCustomThemeColors,
   getFontFamily,
   setFontFamily,
   getFontSize,
@@ -1509,6 +1517,11 @@ let lastSavedText = null;
 // src/undo-history.js for the actual history model this wraps.
 let history = createHistory('');
 let historyOpen = false;
+// Which theme's ('light' or 'dark') color-customization section is
+// currently expanded in Settings -- null means both collapsed, the
+// default, so the Appearance section stays as uncluttered as it
+// currently is unless someone actually taps in to customize.
+let expandedThemeColorSection = null;
 let historyDiffExpandedIndex = null;
 
 function setStatus(text) {
@@ -4768,6 +4781,33 @@ function menuButton(label, onClick, disabled) {
   return btn;
 }
 
+/** Wraps menuButton() with alias-lookup support for the four menu-
+ *  alias variables (org-xx-file-menu/org-xx-more-menu/org-xx-export-menu/
+ *  org-xx-view-menu -- see src/menu-alias.js's own docs for the full
+ *  "Label;alias" syntax and semantics). `aliasMap` is that variable's
+ *  own already-parsed lookup table; `label` is this specific button's
+ *  real, built-in name (what a caller would look it up by, and what
+ *  displays if nothing overrides it).
+ *
+ *  Returns null if this button has been explicitly omitted (an empty
+ *  alias, "Label;" with nothing after the semicolon) -- callers should
+ *  only append the return value to their row if it's non-null, e.g.
+ *  `const btn = aliasedMenuButton(aliases, 'New', onClick); if (btn)
+ *  row.appendChild(btn);`.
+ *
+ *  Every returned button gets flex:1, so a menu row always fills its
+ *  available horizontal width evenly across however many buttons
+ *  actually end up visible -- omitting some doesn't leave a gap where
+ *  they used to be, the remaining ones simply grow to fill it. */
+function aliasedMenuButton(aliasMap, label, onClick, disabled) {
+  const alias = aliasMap ? aliasMap[label] : undefined;
+  if (alias === '') return null; // explicitly omitted
+  const btn = menuButton(alias || label, onClick, disabled);
+  btn.style.flex = '1';
+  if (alias) btn.setAttribute('aria-label', label); // preserve the real meaning for accessibility once the visible text is just an icon/short alias
+  return btn;
+}
+
 /** Same idea as menuButton, but with explicit comfortable sizing
  *  (matching the .panel button convention) for use outside a
  *  .panel-classed container — e.g. the timestamp wizard's Save/Cancel,
@@ -4822,40 +4862,40 @@ function renderFileMenu() {
   if (fileMenuStep === null) {
     const row = document.createElement('div');
     row.className = 'panel-row';
-    row.appendChild(
-      menuButton('New', () => {
-        fileMenuStep = 'new';
+    const fileMenuAliases = parseMenuAliases(getFileMenuAliases(state.localVariables));
+    const newBtn = aliasedMenuButton(fileMenuAliases, 'New', () => {
+      fileMenuStep = 'new';
+      renderFileMenu();
+    });
+    if (newBtn) row.appendChild(newBtn);
+    const openBtn = aliasedMenuButton(fileMenuAliases, 'Open', () => {
+      fileMenuStep = 'open';
+      renderFileMenu();
+    });
+    if (openBtn) row.appendChild(openBtn);
+    const saveBtn = aliasedMenuButton(fileMenuAliases, 'Save', () => saveCurrent(), !state.documentId);
+    if (saveBtn) row.appendChild(saveBtn);
+    const saveAsBtn = aliasedMenuButton(
+      fileMenuAliases,
+      'Save As',
+      () => {
+        fileMenuStep = 'saveas';
         renderFileMenu();
-      })
+      },
+      !state.doc
     );
-    row.appendChild(
-      menuButton('Open', () => {
-        fileMenuStep = 'open';
+    if (saveAsBtn) row.appendChild(saveAsBtn);
+    const exportBtn = aliasedMenuButton(
+      fileMenuAliases,
+      'Export',
+      () => {
+        fileMenuStep = 'export';
+        exportFormat = null;
         renderFileMenu();
-      })
+      },
+      !state.doc
     );
-    row.appendChild(menuButton('Save', () => saveCurrent(), !state.documentId));
-    row.appendChild(
-      menuButton(
-        'Save As',
-        () => {
-          fileMenuStep = 'saveas';
-          renderFileMenu();
-        },
-        !state.doc
-      )
-    );
-    row.appendChild(
-      menuButton(
-        'Export',
-        () => {
-          fileMenuStep = 'export';
-          exportFormat = null;
-          renderFileMenu();
-        },
-        !state.doc
-      )
-    );
+    if (exportBtn) row.appendChild(exportBtn);
     fileMenuPanel.appendChild(row);
     return;
   }
@@ -4984,30 +5024,32 @@ function renderExportFlow() {
 
     const row = document.createElement('div');
     row.className = 'panel-row';
-    row.appendChild(
-      menuButton('ASCII', () => {
-        exportFormat = 'ascii';
-        renderFileMenu();
-      })
-    );
-    row.appendChild(
-      menuButton('Calendar (.ics)', () => {
-        exportFormat = 'icalendar';
-        renderFileMenu();
-      })
-    );
-    row.appendChild(
-      menuButton('HTML', () => {
-        exportFormat = 'html';
-        renderFileMenu();
-      })
-    );
-    row.appendChild(
-      menuButton('ODT', () => {
-        exportFormat = 'odt';
-        renderFileMenu();
-      })
-    );
+    const exportMenuAliases = parseMenuAliases(getExportMenuAliases(state.localVariables));
+    const asciiBtn = aliasedMenuButton(exportMenuAliases, 'ASCII', () => {
+      exportFormat = 'ascii';
+      renderFileMenu();
+    });
+    if (asciiBtn) row.appendChild(asciiBtn);
+    const icsBtn = aliasedMenuButton(exportMenuAliases, 'Calendar (.ics)', () => {
+      exportFormat = 'icalendar';
+      renderFileMenu();
+    });
+    if (icsBtn) row.appendChild(icsBtn);
+    const htmlBtn = aliasedMenuButton(exportMenuAliases, 'HTML', () => {
+      exportFormat = 'html';
+      renderFileMenu();
+    });
+    if (htmlBtn) row.appendChild(htmlBtn);
+    const mdBtn = aliasedMenuButton(exportMenuAliases, 'Markdown', () => {
+      exportFormat = 'markdown';
+      renderFileMenu();
+    });
+    if (mdBtn) row.appendChild(mdBtn);
+    const odtBtn = aliasedMenuButton(exportMenuAliases, 'ODT', () => {
+      exportFormat = 'odt';
+      renderFileMenu();
+    });
+    if (odtBtn) row.appendChild(odtBtn);
     fileMenuPanel.appendChild(row);
     return;
   }
@@ -5366,13 +5408,15 @@ function renderViewMenu() {
 
   const row = document.createElement('div');
   row.className = 'panel-row';
+  const viewMenuAliases = parseMenuAliases(getViewMenuAliases(state.localVariables));
   for (const [key, label] of [
     ['org', 'Org'],
     ['text', 'Text'],
     ['agenda', 'Agenda'],
     ['tasklist', 'TODO'],
   ]) {
-    const btn = menuButton(label, () => switchToView(key));
+    const btn = aliasedMenuButton(viewMenuAliases, label, () => switchToView(key));
+    if (!btn) continue;
     if (key === currentView) btn.style.fontWeight = '700';
     row.appendChild(btn);
   }
@@ -5877,6 +5921,45 @@ function labeledInput(labelText, type, value, placeholder) {
   return { wrap, input };
 }
 
+/** Every CSS custom property a theme actually defines -- the complete
+ *  set both applyTheme's own override logic and the Settings UI's
+ *  color-customization controls need to know about. Kept as one
+ *  shared list so neither can drift out of sync with what
+ *  index.html's own :root/[data-theme] rules actually declare. */
+const THEME_CSS_VARS = [
+  '--bg',
+  '--fg',
+  '--border',
+  '--border-strong',
+  '--surface',
+  '--muted',
+  '--accent',
+  '--todo-bg',
+  '--todo-fg',
+  '--done-bg',
+  '--done-fg',
+];
+
+// Loaded once at bootstrap, updated whenever the person changes a
+// custom color -- { light: { "--bg": "#...", ... }, dark: { ... } },
+// only ever containing whichever variables have actually been
+// overridden (see setCustomThemeColors's own docs). {} means nobody's
+// customized anything, the common case, and applyTheme below behaves
+// completely unchanged from before this feature existed.
+let customThemeColors = {};
+
+/** Which theme ('light' or 'dark') is actually in effect right now,
+ *  resolving 'system' against the LIVE OS preference. Needed because
+ *  custom-color overrides are applied as JS-set inline styles, which
+ *  -- unlike index.html's own static `@media (prefers-color-scheme:
+ *  dark)` CSS rule -- don't automatically re-evaluate when the OS
+ *  preference changes; something has to actually re-check and
+ *  re-apply (see the matchMedia listener below). */
+function resolvedThemeName(theme) {
+  if (theme === 'light' || theme === 'dark') return theme;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
 function applyTheme(theme) {
   if (theme === 'light' || theme === 'dark') {
     document.documentElement.setAttribute('data-theme', theme);
@@ -5897,6 +5980,202 @@ function applyTheme(theme) {
     document.documentElement.removeAttribute('data-theme'); // 'system' — let prefers-color-scheme decide
     document.documentElement.style.colorScheme = 'light dark';
   }
+
+  // Clear any previously-applied custom-color overrides first, so
+  // switching themes (or updating a color) never leaves a stale
+  // override from a different theme/prior state lingering underneath
+  // the new one.
+  for (const varName of THEME_CSS_VARS) {
+    document.documentElement.style.removeProperty(varName);
+  }
+  const overrides = customThemeColors[resolvedThemeName(theme)];
+  if (overrides) {
+    for (const [varName, value] of Object.entries(overrides)) {
+      document.documentElement.style.setProperty(varName, value);
+    }
+  }
+}
+
+/** The actual, current default value for each theme's own 11
+ *  customizable CSS variables -- matching index.html's own
+ *  html[data-theme="light"]/html[data-theme="dark"] rules exactly.
+ *  This is what "Reset" restores a color to, and what a
+ *  never-customized color picker shows to start with. Kept here (not
+ *  read from the live CSS) since a person could be viewing/editing
+ *  the LIGHT theme's colors while DARK is actually active on screen
+ *  right now (or vice versa) -- the picker needs to show that other
+ *  theme's own values regardless of which one is currently rendered. */
+const THEME_DEFAULTS = {
+  light: {
+    '--bg': '#ffffff',
+    '--fg': '#1a1a1a',
+    '--border': '#00000022',
+    '--border-strong': '#0000003a',
+    '--surface': '#00000009',
+    '--muted': '#666666',
+    '--accent': '#185fa5',
+    '--todo-bg': '#f0997b55',
+    '--todo-fg': '#99341d',
+    '--done-bg': '#97c45955',
+    '--done-fg': '#27500a',
+  },
+  dark: {
+    '--bg': '#16181c',
+    '--fg': '#e8e8e8',
+    '--border': '#ffffff22',
+    '--border-strong': '#ffffff3a',
+    '--surface': '#ffffff14',
+    '--muted': '#9aa0a6',
+    '--accent': '#6fb2ff',
+    '--todo-bg': '#ff8f5c40',
+    '--todo-fg': '#ffb28c',
+    '--done-bg': '#6fcf5740',
+    '--done-fg': '#a3e693',
+  },
+};
+
+const THEME_VAR_LABELS = {
+  '--bg': 'Background',
+  '--fg': 'Text',
+  '--border': 'Border',
+  '--border-strong': 'Border (Strong)',
+  '--surface': 'Surface',
+  '--muted': 'Muted Text',
+  '--accent': 'Accent',
+  '--todo-bg': 'TODO Badge Background',
+  '--todo-fg': 'TODO Badge Text',
+  '--done-bg': 'DONE Badge Background',
+  '--done-fg': 'DONE Badge Text',
+};
+
+/** Persists customThemeColors as it currently stands, re-applies the
+ *  theme live (so a change is visible immediately, not after a
+ *  reload), and re-renders Settings (so a Reset button's own
+ *  enabled/disabled state -- there's nothing left to reset once a
+ *  variable's override is gone -- reflects the change). Shared by
+ *  every color-change and reset handler below rather than repeating
+ *  this three-step sequence at each one. */
+async function persistAndReapplyThemeColors() {
+  await setCustomThemeColors(kv, customThemeColors);
+  applyTheme(await getTheme(kv));
+  renderSettingsView();
+}
+
+/** One theme's ("light" or "dark") full color-customization section:
+ *  a collapsed-by-default toggle (so Appearance stays exactly as
+ *  uncluttered as it currently is unless someone actually wants to
+ *  customize), expanding to one row per customizable CSS variable --
+ *  a color swatch, an opacity slider (needed since several of these
+ *  variables use an alpha channel a plain color input can't represent
+ *  on its own), and a per-variable Reset -- plus a Reset all for the
+ *  whole theme. */
+function buildThemeColorCustomizationSection(themeName) {
+  const wrap = document.createElement('div');
+
+  const toggleBtn = menuButton(
+    (expandedThemeColorSection === themeName ? '\u25be ' : '\u25b8 ') +
+      'Customize ' +
+      themeName[0].toUpperCase() +
+      themeName.slice(1) +
+      ' colors',
+    () => {
+      expandedThemeColorSection = expandedThemeColorSection === themeName ? null : themeName;
+      renderSettingsView();
+    }
+  );
+  toggleBtn.style.width = '100%';
+  toggleBtn.style.textAlign = 'left';
+  toggleBtn.style.marginTop = '6px';
+  wrap.appendChild(toggleBtn);
+
+  if (expandedThemeColorSection !== themeName) return wrap;
+
+  const list = document.createElement('div');
+  list.style.marginTop = '6px';
+  list.style.marginBottom = '6px';
+
+  const themeOverrides = customThemeColors[themeName] || {};
+
+  for (const varName of THEME_CSS_VARS) {
+    const currentValue = themeOverrides[varName] || THEME_DEFAULTS[themeName][varName];
+    const { rgb, alpha } = splitHexAlpha(currentValue);
+    const isCustomized = varName in themeOverrides;
+
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = '8px';
+    row.style.padding = '6px 0';
+    row.style.borderBottom = '1px solid var(--border)';
+
+    const label = document.createElement('div');
+    label.textContent = THEME_VAR_LABELS[varName];
+    label.style.flex = '1';
+    label.style.fontSize = '13px';
+    label.style.fontWeight = isCustomized ? '600' : '400';
+    row.appendChild(label);
+
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = rgb;
+    colorInput.style.width = '36px';
+    colorInput.style.height = '32px';
+    colorInput.style.padding = '0';
+    colorInput.style.border = '1px solid var(--border-strong)';
+    colorInput.style.borderRadius = '4px';
+    row.appendChild(colorInput);
+
+    const opacityInput = document.createElement('input');
+    opacityInput.type = 'range';
+    opacityInput.min = '0';
+    opacityInput.max = '255';
+    opacityInput.value = String(alpha);
+    opacityInput.style.width = '70px';
+    opacityInput.setAttribute('aria-label', THEME_VAR_LABELS[varName] + ' opacity');
+    row.appendChild(opacityInput);
+
+    const applyChange = async () => {
+      const newValue = combineHexAlpha(colorInput.value, Number(opacityInput.value));
+      if (!customThemeColors[themeName]) customThemeColors[themeName] = {};
+      customThemeColors[themeName][varName] = newValue;
+      await persistAndReapplyThemeColors();
+    };
+    colorInput.addEventListener('input', applyChange);
+    opacityInput.addEventListener('input', applyChange);
+
+    const resetBtn = menuButton(
+      'Reset',
+      async () => {
+        if (customThemeColors[themeName]) delete customThemeColors[themeName][varName];
+        if (customThemeColors[themeName] && Object.keys(customThemeColors[themeName]).length === 0) {
+          delete customThemeColors[themeName];
+        }
+        await persistAndReapplyThemeColors();
+      },
+      !isCustomized
+    );
+    resetBtn.style.fontSize = '11px';
+    resetBtn.style.padding = '4px 8px';
+    resetBtn.style.minHeight = 'auto';
+    row.appendChild(resetBtn);
+
+    list.appendChild(row);
+  }
+  wrap.appendChild(list);
+
+  const resetAllBtn = menuButton(
+    'Reset all ' + themeName[0].toUpperCase() + themeName.slice(1) + ' colors',
+    async () => {
+      delete customThemeColors[themeName];
+      await persistAndReapplyThemeColors();
+    },
+    !customThemeColors[themeName]
+  );
+  resetAllBtn.style.width = '100%';
+  resetAllBtn.style.marginBottom = '10px';
+  wrap.appendChild(resetAllBtn);
+
+  return wrap;
 }
 
 const FONT_FAMILY_STACKS = {
@@ -5986,6 +6265,10 @@ async function renderSettingsView(target = settingsRenderTarget) {
     themeRow.appendChild(btn);
   }
   appearanceSection.appendChild(themeRow);
+
+  for (const themeName of ['light', 'dark']) {
+    appearanceSection.appendChild(buildThemeColorCustomizationSection(themeName));
+  }
 
   const fontTitle = document.createElement('div');
   fontTitle.className = 'panel-section-title';
@@ -6506,6 +6789,10 @@ async function renderSettingsView(target = settingsRenderTarget) {
       // rather than requiring a reload to see the imported theme/fonts
       // take effect.
       if (imported.includes('theme')) applyTheme(await getTheme(kv));
+      if (imported.includes('customThemeColors')) {
+        customThemeColors = await getCustomThemeColors(kv);
+        applyTheme(await getTheme(kv));
+      }
       if (imported.includes('fontFamily')) applyFontFamily(await getFontFamily(kv));
       if (imported.includes('fontSize')) applyFontSize(await getFontSize(kv));
       if (imported.includes('tablesFontSize')) applyTablesFontSize(await getTablesFontSize(kv));
@@ -7684,44 +7971,49 @@ function renderMoreMenu() {
 
   const row = document.createElement('div');
   row.className = 'panel-row';
+  const moreMenuAliases = parseMenuAliases(getMoreMenuAliases(state.localVariables));
 
-  const searchBtnOption = menuButton('Search', () => {
+  const searchBtnOption = aliasedMenuButton(moreMenuAliases, 'Search', () => {
     moreOpen = false;
     renderMoreMenu();
     searchBtn.click();
   });
-  searchBtnOption.style.flex = '1';
-  row.appendChild(searchBtnOption);
+  if (searchBtnOption) row.appendChild(searchBtnOption);
 
-  const captureBtnOption = menuButton('Capture', () => {
+  const captureBtnOption = aliasedMenuButton(moreMenuAliases, 'Capture', () => {
     moreOpen = false;
     renderMoreMenu();
     captureBtn.click();
   });
-  captureBtnOption.style.flex = '1';
-  row.appendChild(captureBtnOption);
+  if (captureBtnOption) row.appendChild(captureBtnOption);
 
-  const historyBtnOption = menuButton('History', () => {
-    moreOpen = false;
-    renderMoreMenu();
-    historyOpen = true;
-    renderHistoryPanel();
-  });
-  historyBtnOption.style.flex = '1';
-  historyBtnOption.disabled = !state.doc;
-  historyBtnOption.setAttribute('aria-label', 'Undo history');
-  row.appendChild(historyBtnOption);
+  const historyBtnOption = aliasedMenuButton(
+    moreMenuAliases,
+    'History',
+    () => {
+      moreOpen = false;
+      renderMoreMenu();
+      historyOpen = true;
+      renderHistoryPanel();
+    },
+    !state.doc
+  );
+  if (historyBtnOption) {
+    historyBtnOption.setAttribute('aria-label', 'Undo history');
+    row.appendChild(historyBtnOption);
+  }
 
-  const addBtnOption = menuButton('+', () => {
+  const addBtnOption = aliasedMenuButton(moreMenuAliases, '+', () => {
     moreOpen = false;
     renderMoreMenu();
     addBtn.click();
   });
-  addBtnOption.style.flex = '1';
-  addBtnOption.setAttribute('aria-label', 'Add heading');
-  row.appendChild(addBtnOption);
+  if (addBtnOption) {
+    addBtnOption.setAttribute('aria-label', 'Add heading');
+    row.appendChild(addBtnOption);
+  }
 
-  const docsBtnOption = menuButton('?', () => {
+  const docsBtnOption = aliasedMenuButton(moreMenuAliases, '?', () => {
     moreOpen = false;
     renderMoreMenu();
     docsOpen = true;
@@ -7731,9 +8023,10 @@ function renderMoreMenu() {
       renderDocsView(outlineEl); // narrow: replaces #outline directly, exactly as before this feature existed
     }
   });
-  docsBtnOption.style.flex = '1';
-  docsBtnOption.setAttribute('aria-label', 'Help / Docs');
-  row.appendChild(docsBtnOption);
+  if (docsBtnOption) {
+    docsBtnOption.setAttribute('aria-label', 'Help / Docs');
+    row.appendChild(docsBtnOption);
+  }
 
   morePanel.appendChild(row);
 }
@@ -7832,6 +8125,7 @@ async function bootstrap() {
   agendaFilesConfig = await getAgendaFiles(kv);
   globalVariablesText = await getGlobalVariables(kv);
   globalVariables = parseGlobalVariables(globalVariablesText);
+  customThemeColors = await getCustomThemeColors(kv);
   applyTheme(await getTheme(kv));
   applyFontFamily(await getFontFamily(kv));
   applyFontSize(await getFontSize(kv));
@@ -7890,5 +8184,11 @@ externalChangeDismissBtn.addEventListener('click', () => {
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) checkForExternalChange();
 });
+
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', async () => {
+    if ((await getTheme(kv)) === 'system') applyTheme('system');
+  });
+}
 
 bootstrap();

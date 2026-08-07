@@ -31,6 +31,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 - [[#the-todo-view][The TODO view]]
 - [[#capture-templates][Capture Templates]]
 - [[#extras-menu][Extras menu]]
+- [[#menu-customization][Menu customization]]
 - [[#file-management][File management]]
 - [[#export][Export]]
 - [[#docs][Docs]]
@@ -647,13 +648,49 @@ org-extra-menu: "t;⭐ Tracking" \
 - A *quoted function reference* (~'org-clock-out~ above) — selecting the item runs that specific built-in function directly. Every function currently supported:
   - ~'org-clock-out~ — stops whatever clock is currently running, wherever it is in the document (searches the whole document, not just a specific already-selected heading). Records the elapsed time normally. A status message shows if nothing is running. See [[#clocking][Clocking]].
   - ~'org-clock-cancel~ — same search, but discards the running session entirely instead of recording it — no duration ever gets logged, as if the clock had never been started. See [[#clocking][Clocking]].
-  - ~'export-markdown~ — exports the whole currently-open file to Markdown, one tap, no scope picker (the extras menu doesn't have — or need — one for a single-tap action; use *File → Export…* instead for a specific-heading scope or any other format). See [[#export][Export]] for the Markdown format itself, now reached this way instead of a main export-menu button.
+  - ~'export-markdown~ — exports the whole currently-open file to Markdown, one tap, no scope picker (the extras menu doesn't have — or need — one for a single-tap action; use *File → Export…* instead for a specific-heading scope or any other format). See [[#export][Export]] for the Markdown format itself — also a regular *File → Export…* menu button, this is just a faster, one-tap path to the same thing for the whole file.
 
   Selecting any of these runs it directly, no additional confirmation prompt — unlike the action menu's own Clock out button, which now asks first (Cancel/Stop/OK); a deliberate menu selection is already the confirming step. More functions may be added over time as they become useful for a quick-access menu specifically — an unrecognized function name is skipped rather than erroring (see below), so this list can grow without breaking anything already configured against an older version.
 
 Five hyphens (~"-----"~) on their own is a visual separator, not a selectable item — group related actions without needing a heading structure of their own.
 
 A malformed entry (bad JSON in an OLP array, an unrecognized function name, a spec matching none of the three shapes, a missing label) is silently skipped rather than breaking the whole menu — one bad line doesn't take out every other one.
+
+-----
+
+** Menu customization
+:PROPERTIES:
+:CUSTOM_ID: menu-customization
+:END:
+
+Four Global/Local Variables — ~org-xx-file-menu~, ~org-xx-more-menu~, ~org-xx-export-menu~, ~org-xx-view-menu~ — let you relabel or hide individual buttons in this app's own File, More, Export, and View menus. Not real org-mode variables (the ~xx~ marks them as this app's own extension, the same convention other app-specific variables here are gradually moving toward); they use the same Global/Local Variables mechanism every other setting on this page does.
+
+*Syntax*: a sequence of double-quoted ~"Label;alias"~ entries, space-separated (spread across multiple physical lines with a trailing ~\~ for readability, same line-continuation mechanism every other multi-entry variable here already uses):
+
+#+BEGIN_SRC
+org-xx-file-menu: "New;➕" "Open;📂" "Save;💾" "Save As;💾➕" "Export;↗️"
+org-xx-export-menu: "Markdown;"
+org-xx-more-menu: "Search;🔍" "Capture;📸" "History;🔄" "+;➕" "?;❓"
+org-xx-view-menu:
+#+END_SRC
+
+~Label~ is one of that menu's own real, built-in button labels — see the table below for exactly which labels each of the four menus actually has. A label that doesn't match any real button in that menu simply has no effect (never looked up by anything), the same tolerant-of-the-unexpected handling every other "recognized subset" parser in this app already uses, rather than a hard error.
+
+~alias~, after the semicolon, has two meanings depending on whether it's present:
+- *Non-empty* — the button's default label text is replaced with the alias wherever it's shown (the button still does exactly the same thing; only what's written on it changes). The original label becomes that button's accessible name (screen readers, hover tooltips) instead, so it still says what the button actually is even once the visible text is just an icon.
+- *Empty* (~"Label;"~ with nothing after the semicolon) — the button is *omitted entirely*, not shown at all, not even disabled. ~org-xx-export-menu: "Markdown;"~ above is exactly this: hides the Markdown button from the Export menu (it stays fully reachable via ~org-extra-menu~'s own ~'export-markdown~ function reference regardless — see [[#extras-menu][Extras menu]]).
+
+A label never mentioned in the variable at all keeps its default, unchanged text — this is an opt-in override list, not a full redefinition of the menu. ~org-xx-view-menu:~ above, with nothing after the colon, means no overrides at all for that menu — every button keeps its default label.
+
+*Buttons always fill the available width evenly*, however many end up visible — omitting some doesn't leave a gap where they used to be; the remaining ones simply grow to fill it, the same "share the row" behavior File → New/Open/Save/Save As/Export already had before this feature existed.
+
+The four menus' own real labels, exactly as they'd appear in ~"Label;alias"~:
+| Variable | Labels |
+|----------+--------|
+| ~org-xx-file-menu~ | ~New~, ~Open~, ~Save~, ~Save As~, ~Export~ |
+| ~org-xx-more-menu~ | ~Search~, ~Capture~, ~History~, ~+~, ~?~ |
+| ~org-xx-export-menu~ | ~ASCII~, ~Calendar (.ics)~, ~HTML~, ~Markdown~, ~ODT~ |
+| ~org-xx-view-menu~ | ~Org~, ~Text~, ~Agenda~, ~TODO~ |
 
 -----
 
@@ -678,13 +715,13 @@ A malformed entry (bad JSON in an OLP array, an unrecognized function name, a sp
 :CUSTOM_ID: export
 :END:
 
-*File → Export…* gets a document out of org-pwa as ASCII, ODT, HTML, or a calendar file, for the whole file or (ASCII/ODT/HTML) just one heading's subtree. All four walk the same parsed structure the app already renders from, not a text-level reparse. Markdown export still exists and is fully supported — see the *Markdown* paragraph below for how to reach it now that ODT has taken its place as the main menu's word-processor-format option.
+*File → Export…* gets a document out of org-pwa as ASCII, Markdown, HTML, ODT, or a calendar file, for the whole file or (ASCII/Markdown/HTML/ODT) just one heading's subtree. All five walk the same parsed structure the app already renders from, not a text-level reparse.
 
 *Scope*: *This file* exports everything; *Choose a heading…* shows every heading in the document — regardless of current fold state, so something folded away is still pickable — and exports just that heading and its descendants. The selected heading becomes the new top level (plain text / ~#~ / ~<h1>~ / ODF outline level 1, depending on format) in the output, not its original depth, so a level-3 heading exported on its own doesn't produce a dangling, orphaned sub-level with nothing above it. Calendar export shares this same scope choice too (see below) — including its own *Choose a heading…* option, exporting just that heading's dated items and its descendants'.
 
 *ASCII* is a plain, readable text rendering — real org's own ~ox-ascii~ backend, for the core cases. A level-1 heading is underlined with a row of ~=~ matching its own width; deeper headings are indented. Paragraphs are word-wrapped to ~org-ascii-text-width~ characters (see [[#local-variables][Local Variables]] — the real org-mode variable this is named after, default ~72~, matching real org's own default exactly), breaking only at whitespace — a single word longer than the width is kept whole on its own line rather than split mid-word. Lists, tables, and blocks render as plain, readable text; a ~[[target][description]]~ link becomes ~description (target)~, since the raw bracket syntax reads far less like natural prose than everything else here. Inline markup (~*bold*~, ~/italic/~, =~code~=, etc.) is deliberately left completely as-is rather than converted to anything else — it's already valid, readable plain ASCII exactly as written in the source, so there's nothing productive to transform it into. Doesn't implement ~ox-ascii~'s fuller feature set (section numbering, a generated table of contents, Latin-1/UTF-8-specific character substitutions) — see [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]].
 
-*Markdown* is GFM-flavored: checkboxes become real task-list syntax (~- [ ]~ / ~- [x]~), tables become pipe tables, fenced code blocks keep their language hint, footnotes become GFM's own ~[^label]~ / ~[^label]: text~ syntax. TODO keyword, priority, and tags stay as plain text on the heading line (~# TODO [#A] Buy milk~) since Markdown has no native syntax for any of the three — matching org's own source convention rather than inventing one. Underline and sub/superscript fall back to raw ~<u>~ / ~<sub>~ / ~<sup>~ HTML passthrough, since Markdown has no native syntax for those either (both CommonMark and GFM allow embedded HTML, so this renders correctly wherever the output is actually viewed). *No longer a File → Export… menu button* — reach it instead with an ~org-extra-menu~ entry using the ~'export-markdown~ function reference (see [[#extras-menu][Extras menu]]), which exports the whole currently-open file directly, one tap, no scope picker (the extras menu doesn't have — or need — one for a single-tap action). The engine and output format are completely unchanged; only how you get to it moved.
+*Markdown* is GFM-flavored: checkboxes become real task-list syntax (~- [ ]~ / ~- [x]~), tables become pipe tables, fenced code blocks keep their language hint, footnotes become GFM's own ~[^label]~ / ~[^label]: text~ syntax. TODO keyword, priority, and tags stay as plain text on the heading line (~# TODO [#A] Buy milk~) since Markdown has no native syntax for any of the three — matching org's own source convention rather than inventing one. Underline and sub/superscript fall back to raw ~<u>~ / ~<sub>~ / ~<sup>~ HTML passthrough, since Markdown has no native syntax for those either (both CommonMark and GFM allow embedded HTML, so this renders correctly wherever the output is actually viewed). *Also reachable one tap faster* via an ~org-extra-menu~ entry using the ~'export-markdown~ function reference (see [[#extras-menu][Extras menu]]), which exports the whole currently-open file directly with no scope picker (the extras menu doesn't have — or need — one for a single-tap action) — handy if Markdown specifically is what you reach for most often.
 
 *ODT* produces a real, standalone OpenDocument Text file (~.odt~) — opens directly in LibreOffice, OpenOffice, Word (with the ODF filter), or Google Docs (import), no conversion step needed. Headings become real, navigable outline levels; bold/italic/underline/strikethrough/code map to named character styles; checkboxes render as real checkbox glyphs (☐/☑ — ODF has no native checkbox-list construct to match org's own, the same reasoning Markdown's own real task-list syntax doesn't need); footnotes become genuine, editable ODF footnotes (~<text:note>~) that a word processor can renumber and reflow on its own, not a hand-numbered list the way Markdown/HTML export approximate them. *Internal links resolve to real, working cross-references* — a ~[[#custom-id]]~ or ~[[*Heading]]~ link becomes an ODF bookmark reference pointing at the actual target heading, the same ~resolveLinkTarget~-based resolution [[#export][HTML export]] uses (see below) — not the raw org target text left as an unresolved, non-functional link the way Markdown export still does. Images are referenced by their target path as plain text, not embedded (embedding would mean packaging each image's own binary into the archive, out of scope here) — matching how ASCII/Markdown export already treat images as a reference rather than embedded data.
 
@@ -716,8 +753,8 @@ Reached via the ⚙ button, which replaces the outline with the settings screen 
 
 - *GitHub* — personal access token, repo owner, repo name, branch. Use a fine-grained token scoped to just that repo with Contents read/write only, not a broad classic token.
 - *WebDAV* — server URL, username, password (an app-specific password if your server supports one, not your main account password). Most WebDAV servers don't send CORS headers by default; if Open/Save fails with a network error, that's very likely a server-side CORS setting to fix, not a bug in this app.
-- *Appearance* — theme (System/Light/Dark), font (System/Serif/Monospace), and two independently adjustable font sizes on the same row: the main size (headings, paragraphs, and lists/checkboxes all share this one) and *Tables* (tables have their own size rather than inheriting the main one — a table at the same size as prose text tends to feel cramped or oversized depending on column count). Headings render bold, matching real org-mode's own actual default (~org-level-N~ faces are bold, not size-scaled, out of the box) — that's a fixed style choice, not a separate adjustable size.
-- *Backup* — *Export Settings* bundles everything on this page — appearance, capture templates, GitHub, and WebDAV, including credentials — into one downloadable JSON file, for moving settings to another device. A confirmation is shown first if the export would include a token or password, since the file contains them in plain text. *Import Settings…* picks a previously-exported file and merges its contents into what's already configured here — a setting the file doesn't mention is left completely untouched, so importing an older or partial export can never silently wipe out something it simply doesn't know about. Anything with an immediate visual effect (theme, fonts) applies right away, no reload needed.
+- *Appearance* — theme (System/Light/Dark), font (System/Serif/Monospace), and two independently adjustable font sizes on the same row: the main size (headings, paragraphs, and lists/checkboxes all share this one) and *Tables* (tables have their own size rather than inheriting the main one — a table at the same size as prose text tends to feel cramped or oversized depending on column count). Headings render bold, matching real org-mode's own actual default (~org-level-N~ faces are bold, not size-scaled, out of the box) — that's a fixed style choice, not a separate adjustable size. *Customize Light colors* / *Customize Dark colors* (collapsed by default, tap to expand) let you override any of the 11 colors each theme is actually built from — background, text, borders, accent, and the TODO/DONE badge colors — independently for Light and Dark. Each has its own color swatch plus an opacity slider (several of these colors are semi-transparent by default — a border or a badge background, for instance — which a plain color picker alone can't represent), and its own *Reset* back to the built-in default; *Reset all* clears an entire theme's customizations at once. Nothing here changes any default — every color is exactly what it's always been until you actually pick something different. When *System* theme is active, whichever theme (Light or Dark) actually matches the OS's live preference is the one whose customizations apply, updating immediately if the OS preference itself changes while the app is open.
+- *Backup* — *Export Settings* bundles everything on this page — appearance (including any custom theme colors), capture templates, GitHub, and WebDAV, including credentials — into one downloadable JSON file, for moving settings to another device. A confirmation is shown first if the export would include a token or password, since the file contains them in plain text. *Import Settings…* picks a previously-exported file and merges its contents into what's already configured here — a setting the file doesn't mention is left completely untouched, so importing an older or partial export can never silently wipe out something it simply doesn't know about. Anything with an immediate visual effect (theme, fonts, custom colors) applies right away, no reload needed.
 
 -----
 
@@ -820,7 +857,7 @@ This is the section to read if you know org-mode well and want to know exactly w
 
 *Search* looks at the whole document (see [[#searching][Searching]]), with an optional regex mode, but no search-and-replace and no filtering the outline view down to just the matches (it's a separate results list, not a live-filtered tree).
 
-*Export* (see [[#export][Export]] for the full behavior) covers ASCII, Markdown, HTML, and Calendar (.ics) — the whole file or (ASCII/Markdown/HTML) a single heading's subtree — with PDF available via the browser's own print dialog on the exported HTML rather than a separate hand-rolled PDF path. What's different from real org's own export backends: no LaTeX/ODT/other document formats; internal links aren't resolved to anchors in Markdown/HTML output (the raw org target is kept as the link's href verbatim, rather than guessing at a heading-slug algorithm the eventual renderer might not actually match); and ASCII export doesn't implement ~ox-ascii~'s fuller feature set (section numbering, a generated table of contents, Latin-1/UTF-8-specific character substitutions) — a plain, readable, width-wrapped rendering of the outline, not full fidelity with real org's own backend.
+*Export* (see [[#export][Export]] for the full behavior) covers ASCII, Markdown, HTML, ODT, and Calendar (.ics) — the whole file or (ASCII/Markdown/HTML/ODT) a single heading's subtree — with PDF available via the browser's own print dialog on the exported HTML rather than a separate hand-rolled PDF path. What's different from real org's own export backends: no LaTeX or other document formats beyond what's built (ODT covers the "open in a word processor" case real org would use ~ox-odt~ for); internal links aren't resolved to anchors in Markdown output specifically (HTML and ODT both resolve them correctly — see their own paragraphs in [[#export][Export]] — Markdown is the one exception, since the target renderer's own heading-slug algorithm can't be predicted from here); and ASCII export doesn't implement ~ox-ascii~'s fuller feature set (section numbering, a generated table of contents, Latin-1/UTF-8-specific character substitutions) — a plain, readable, width-wrapped rendering of the outline, not full fidelity with real org's own backend.
 
 *Refile* (see [[#refile][Refile]] for the full behavior) covers the core ~org-refile~ case — moving a subtree to become the last child of a chosen target, anywhere in the current file or another configured one. What's different from real org: only ~:level~ / ~:maxlevel~ target matching (no ~:tag~ / ~:todo~ / ~:regexp~), no most-recent-targets history, and no creating a brand-new destination heading by typing a name that doesn't exist yet — picking from the existing outline is the only way in.
 
@@ -837,7 +874,7 @@ This is the section to read if you know org-mode well and want to know exactly w
 
 Restated in one place for scanning:
 
-- No LaTeX/ODT/other document export formats beyond ASCII, Markdown, and HTML (PDF is covered via the browser's own print dialog on the exported HTML, see [[#export][Export]]); internal links aren't resolved to anchors in Markdown/HTML output; ASCII export doesn't implement real org's ~ox-ascii~ fuller feature set (section numbering, a generated table of contents, Latin-1/UTF-8-specific character substitutions)
+- No LaTeX or other document export formats beyond ASCII, Markdown, HTML, and ODT (PDF is covered via the browser's own print dialog on the exported HTML, see [[#export][Export]]); internal links aren't resolved to anchors in Markdown output specifically (HTML and ODT both resolve them correctly); ASCII export doesn't implement real org's ~ox-ascii~ fuller feature set (section numbering, a generated table of contents, Latin-1/UTF-8-specific character substitutions)
 - Refile only matches ~:level~ / ~:maxlevel~ targets (no ~:tag~ / ~:todo~ / ~:regexp~), no most-recent-targets history, and no creating a new destination heading by typing a name — see [[#refile][Refile]]
 - Search regex mode is JavaScript RegExp, not Emacs regex syntax — no search-and-replace, no filtered tree view
 - ~:COOKIE_DATA:~ overrides for checkbox counting scope aren't read — counting is always hierarchical
