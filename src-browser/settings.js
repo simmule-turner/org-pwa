@@ -16,6 +16,7 @@ const KEYS = {
   webdav: 'settings:webdav',
   theme: 'settings:theme',
   customThemeColors: 'settings:customThemeColors',
+  docsViewState: 'settings:docsViewState',
   fontFamily: 'settings:fontFamily',
   fontSize: 'settings:fontSize',
   tablesFontSize: 'settings:otherFontSize', // storage key deliberately left as "otherFontSize" -- renaming the key itself would silently reset every existing user's saved table font size back to default
@@ -146,6 +147,25 @@ export async function getCustomThemeColors(kvAdapter) {
 
 export async function setCustomThemeColors(kvAdapter, colors) {
   await setJson(kvAdapter, KEYS.customThemeColors, colors);
+}
+
+/** Shape: `{ scrollTop: number, collapsedPaths: string[] }` --
+ *  `collapsedPaths` an array of "/"-joined heading-title paths (e.g.
+ *  "Export/ODT") for every heading currently collapsed (folded away),
+ *  since that's the minority case worth remembering: README.org's own
+ *  default startup visibility is fully expanded (see startup-
+ *  config.js's own DEFAULT_STARTUP_CONFIG), so what actually varies
+ *  session to session is what the person has folded away from that
+ *  default, not what's open (which is nearly everything, by default).
+ *  `null` means nothing's been recorded yet -- Docs has never been
+ *  closed with something to remember, or nothing's been customized
+ *  from the default. */
+export async function getDocsViewState(kvAdapter) {
+  return getJson(kvAdapter, KEYS.docsViewState, null);
+}
+
+export async function setDocsViewState(kvAdapter, state) {
+  await setJson(kvAdapter, KEYS.docsViewState, state);
 }
 
 // ---- font --------------------------------------------------------------
