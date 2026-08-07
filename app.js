@@ -494,6 +494,7 @@ async function reloadCurrentDocumentFromDisk() {
   const archiveVisibility = getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(state.doc, state.startupConfig, archiveVisibility);
   isDirty = false;
+  lastSavedText = serializeOrg(state.doc);
   hideExternalChangeBanner();
   render();
 }
@@ -1487,6 +1488,18 @@ let currentView = 'org';
 // (not read from the outbox asynchronously) so the indicator can update
 // immediately, matching the app's existing optimistic-render approach.
 let isDirty = false;
+// The serialized content as of the most recent moment state.doc is
+// known to exactly match what's confirmed saved to disk/remote --
+// either just-opened-fresh (not a resumed, still-unsynced cache
+// version), or a just-completed successful Save. null means no such
+// moment has happened yet this session (nothing to compare against).
+// Updated at every one of those moments; read by restoreFromHistory
+// to correctly detect "this undo/redo/jump landed back on already-
+// saved content" against an up-to-date baseline, rather than either
+// always assuming dirty regardless of actual content, or comparing
+// against a stale baseline from whenever the document was first
+// opened, which would be wrong if a Save happened mid-session.
+let lastSavedText = null;
 
 // Undo/redo history for the CURRENTLY open document's editing session
 // only -- reset every time a document is freshly opened (not persisted,
@@ -1568,9 +1581,17 @@ function commitAndRender(label = 'Edited') {
  * (by undo/redo/jumpTo) -- re-parses fresh and reapplies
  * startupConfig/localVariables, the same pattern
  * commitTextModeIfActive's own "reparse the whole doc" path already
- * uses. Counts as an unsaved change (isDirty = true) -- undoing or
- * redoing changes what's on screen just as much as any other edit
- * does, and needs saving to actually stick.
+ * uses. isDirty reflects the LANDED-ON content's actual state, not
+ * just "an undo/redo/jump happened": if it exactly matches
+ * lastSavedText (the most recent moment this document is known to
+ * match what's confirmed saved), isDirty correctly clears, the same
+ * as it would if the person had manually edited their way back to
+ * identical content by hand. Undoing past every edit back to the
+ * exact version already on disk genuinely doesn't need saving again --
+ * claiming otherwise would be misleading, and would risk a real,
+ * pointless write (or, worse, an unnecessary "resume unsaved edits?"
+ * prompt on next open for content that turns out to be identical to
+ * what's already there).
  *
  * Deliberately does NOT try to preserve fold state across the jump --
  * reapplying the document's own #+STARTUP visibility on every
@@ -1601,7 +1622,7 @@ function restoreFromHistory() {
   navigationBackStack = [];
   currentContextHeading = null;
   syncNavBackButtonVisibility();
-  isDirty = true;
+  isDirty = lastSavedText === null || entry.text !== lastSavedText;
   if (currentView === 'text') currentView = 'org'; // avoid showing now-stale textarea content after a jump
   render();
   persistInBackground();
@@ -3204,7 +3225,7 @@ function renderRow(row, todoSequence) {
       const addTableRow = document.createElement('div');
       addTableRow.style.display = 'flex';
       addTableRow.style.gap = '8px';
-      addTableRow.style.marginTop = '4px';
+      addTableRow.style.marginBottom = '10px';
       const existingTable = lastTableInBody(row.node);
       addTableRow.appendChild(
         tableActionButton('\u25a6 Add table', () => {
@@ -4147,11 +4168,10 @@ async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCach
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(doc, startupConfig, archiveVisibility);
   state = { documentId, doc, startupConfig, storageKind, localVariables };
-  history = createHistory(
-    serializeOrg(doc),
-    resumedFromCache ? 'Opened (resumed unsaved local version)' : 'Opened'
-  );
+  const openedText = serializeOrg(doc);
+  history = createHistory(openedText, resumedFromCache ? 'Opened (resumed unsaved local version)' : 'Opened');
   historyOpen = false;
+  lastSavedText = resumedFromCache ? null : openedText;
   // A resumed local version is, by definition, different from whatever's
   // actually on disk/GitHub/WebDAV right now -- that's the whole reason it
   // was worth resuming instead of just discarding. isDirty reflects that
@@ -4566,6 +4586,7 @@ async function saveCurrent() {
       await reloadCurrentDocumentFromDisk();
     }
     isDirty = false;
+    lastSavedText = serializeOrg(state.doc);
     render();
     setStatus('Saved (' + result.status + ').');
   } catch (err) {
@@ -4608,6 +4629,7 @@ async function saveAsFilesystem() {
       resolveConflict: ALWAYS_KEEP_MINE,
     });
     isDirty = false;
+    lastSavedText = serializeOrg(state.doc);
     setStatus('Saved as ' + documentId + '.');
     closeFileMenu();
     render();
@@ -4643,6 +4665,7 @@ async function saveAsGithub() {
       resolveConflict: ALWAYS_KEEP_MINE,
     });
     isDirty = false;
+    lastSavedText = serializeOrg(state.doc);
     setStatus('Saved to GitHub as ' + path + '.');
     closeFileMenu();
     render();
@@ -4675,6 +4698,7 @@ async function saveAsWebdav() {
       resolveConflict: ALWAYS_KEEP_MINE,
     });
     isDirty = false;
+    lastSavedText = serializeOrg(state.doc);
     setStatus('Saved to WebDAV as ' + path + '.');
     closeFileMenu();
     render();
@@ -4700,6 +4724,7 @@ async function saveAsImport() {
       resolveConflict: ALWAYS_KEEP_MINE,
     });
     isDirty = false;
+    lastSavedText = serializeOrg(state.doc);
     setStatus('Downloaded as ' + name + '.');
     closeFileMenu();
     render();
@@ -4770,6 +4795,7 @@ function tableActionButton(label, onClick, disabled) {
   btn.textContent = label;
   btn.disabled = !!disabled;
   btn.onclick = onClick;
+  btn.style.flex = '1';
   btn.style.fontSize = '15px';
   btn.style.padding = '10px 14px';
   btn.style.minHeight = '44px';
