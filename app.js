@@ -49,6 +49,7 @@ import {
 } from './src/local-variables.js';
 import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath } from './src/refile.js';
 import { isClockRunning, clockIn, clockOut, clockCancel, totalClockedMinutes, formatClockDuration, findHeadingWithRunningClock } from './src/clock.js';
+import { computeClocktable, renderClocktable } from './src/clocktable.js';
 import { parseExtraMenu } from './src/extra-menu.js';
 import { parseMenuAliases } from './src/menu-alias.js';
 import { splitHexAlpha, combineHexAlpha } from './src/hex-alpha.js';
@@ -1430,6 +1431,9 @@ let agendaViewType = 'week'; // 'day' | 'week' | 'month'
 let agendaAnchorDate = new Date();
 let agendaLogMode = false; // whether LOGBOOK entries (state-change/note timestamps) show alongside SCHEDULED/DEADLINE/etc. -- off by default, matching real org's own org-agenda-log-mode convention exactly (a toggle, not always-on, so daily task-scanning doesn't get cluttered by default)
 let showClockDisplay = false; // org-clock-display: whether each TODO-view item shows its own total clocked time (including its subtree) -- off by default, matching real org's own org-clock-display being an on-demand COMMAND (M-x org-clock-display), not something always shown
+let showClocktable = false; // org-clock-report: whether the TODO view's own clocktable configuration section is expanded -- off by default, same reasoning as showClockDisplay above
+let clocktableStart = '';
+let clocktableEnd = '';
 // Which heading (by object reference) currently has its title in edit
 // mode, and whether it was just created (so an empty commit removes it
 // instead of leaving a titleless heading behind).
@@ -5752,6 +5756,112 @@ function renderAgendaView() {
   outlineEl.appendChild(container);
 }
 
+/** "YYYY-MM-DD" for a date-picker's own value attribute, local time
+ *  (not UTC -- toISOString would shift the date near a timezone
+ *  boundary, exactly the kind of off-by-one a date range picker can't
+ *  afford). */
+function dateInputValue(date) {
+  const y = date.getFullYear();
+  const mo = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${mo}-${d}`;
+}
+
+function buildClocktableSection() {
+  const wrap = document.createElement('div');
+  wrap.style.marginBottom = '10px';
+
+  const toggle = document.createElement('label');
+  toggle.style.display = 'flex';
+  toggle.style.alignItems = 'center';
+  toggle.style.gap = '6px';
+  toggle.style.fontSize = '13px';
+  toggle.style.cursor = 'pointer';
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = showClocktable;
+  checkbox.onchange = () => {
+    showClocktable = checkbox.checked;
+    // Default to the last 7 days (including today) the FIRST time this
+    // is checked with nothing picked yet -- shows something useful
+    // immediately rather than an empty picker needing two taps before
+    // any report appears at all. Once set, whatever's actually picked
+    // is remembered rather than reset on every toggle.
+    if (showClocktable && !clocktableStart && !clocktableEnd) {
+      const now = new Date();
+      const weekAgo = new Date(now);
+      weekAgo.setDate(weekAgo.getDate() - 6);
+      clocktableStart = dateInputValue(weekAgo);
+      clocktableEnd = dateInputValue(now);
+    }
+    render();
+  };
+  toggle.appendChild(checkbox);
+  toggle.appendChild(document.createTextNode('Clock report'));
+  wrap.appendChild(toggle);
+
+  if (!showClocktable) return wrap;
+
+  const rangeRow = document.createElement('div');
+  rangeRow.style.display = 'flex';
+  rangeRow.style.gap = '8px';
+  rangeRow.style.alignItems = 'center';
+  rangeRow.style.marginTop = '6px';
+  rangeRow.style.flexWrap = 'wrap';
+
+  const startInput = document.createElement('input');
+  startInput.type = 'date';
+  textInputStyle(startInput);
+  startInput.style.width = 'auto';
+  startInput.style.webkitAppearance = 'none';
+  startInput.style.appearance = 'none';
+  startInput.value = clocktableStart;
+  startInput.onchange = () => {
+    clocktableStart = startInput.value;
+    render();
+  };
+  rangeRow.appendChild(startInput);
+
+  const toLabel = document.createElement('span');
+  toLabel.textContent = '\u2013';
+  toLabel.style.opacity = '0.6';
+  rangeRow.appendChild(toLabel);
+
+  const endInput = document.createElement('input');
+  endInput.type = 'date';
+  textInputStyle(endInput);
+  endInput.style.width = 'auto';
+  endInput.style.webkitAppearance = 'none';
+  endInput.style.appearance = 'none';
+  endInput.value = clocktableEnd;
+  endInput.onchange = () => {
+    clocktableEnd = endInput.value;
+    render();
+  };
+  rangeRow.appendChild(endInput);
+
+  wrap.appendChild(rangeRow);
+
+  const result = computeClocktable(state.doc, clocktableStart, clocktableEnd);
+  const rendered = renderClocktable(result, clocktableStart, clocktableEnd, new Date());
+
+  const pre = document.createElement('pre');
+  pre.style.marginTop = '8px';
+  pre.style.padding = '10px';
+  pre.style.border = '0.5px solid var(--border-strong)';
+  pre.style.borderRadius = '8px';
+  pre.style.fontSize = '12px';
+  pre.style.fontFamily = 'monospace';
+  pre.style.whiteSpace = 'pre-wrap';
+  pre.style.wordBreak = 'break-word';
+  pre.style.userSelect = 'text';
+  pre.style.overflowX = 'auto';
+  pre.textContent = rendered;
+  wrap.appendChild(pre);
+
+  return wrap;
+}
+
 function renderTaskListView() {
   ensureAgendaFilesLoaded();
   outlineEl.innerHTML = '';
@@ -5791,6 +5901,7 @@ function renderTaskListView() {
   headingRow.appendChild(clockToggle);
 
   container.appendChild(headingRow);
+  container.appendChild(buildClocktableSection());
 
   // Same exclusion rules as Agenda (completed items, archived, commented
   // headings), using this file's own #+TODO: sequence — deliberately
