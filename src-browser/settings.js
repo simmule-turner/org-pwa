@@ -15,6 +15,7 @@ const KEYS = {
   github: 'settings:github',
   webdav: 'settings:webdav',
   theme: 'settings:theme',
+  customThemeColors: 'settings:customThemeColors',
   fontFamily: 'settings:fontFamily',
   fontSize: 'settings:fontSize',
   tablesFontSize: 'settings:otherFontSize', // storage key deliberately left as "otherFontSize" -- renaming the key itself would silently reset every existing user's saved table font size back to default
@@ -129,6 +130,22 @@ export async function getTheme(kvAdapter) {
 
 export async function setTheme(kvAdapter, theme) {
   await setJson(kvAdapter, KEYS.theme, theme);
+}
+
+/** Custom color overrides for the light/dark themes -- shape is
+ *  `{ light: { "--bg": "#ffffff", ... }, dark: { "--fg": "#e8e8e8", ... } }`,
+ *  storing only whichever CSS variables have actually been overridden
+ *  (most people customizing nothing means this stays `{}` forever, not
+ *  a full 11-variable-times-2 record nobody asked for). Applied on top
+ *  of whichever theme is actually active -- see applyTheme's own
+ *  handling in app.js -- so the built-in defaults are completely
+ *  unaffected unless something's actually been customized. */
+export async function getCustomThemeColors(kvAdapter) {
+  return getJson(kvAdapter, KEYS.customThemeColors, {});
+}
+
+export async function setCustomThemeColors(kvAdapter, colors) {
+  await setJson(kvAdapter, KEYS.customThemeColors, colors);
 }
 
 // ---- font --------------------------------------------------------------
