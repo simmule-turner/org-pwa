@@ -133,6 +133,8 @@ import {
   setTheme,
   getCustomThemeColors,
   setCustomThemeColors,
+  getDocsViewState,
+  setDocsViewState,
   getFontFamily,
   setFontFamily,
   getFontSize,
@@ -1522,6 +1524,12 @@ let historyOpen = false;
 // default, so the Appearance section stays as uncluttered as it
 // currently is unless someone actually taps in to customize.
 let expandedThemeColorSection = null;
+// The active service-worker registration, once available -- stored
+// here (not just closed over inside the registration callback) so
+// Settings' own manual "Check for updates" button can call
+// registration.update() on demand, not only the automatic checks.
+let swRegistration = null;
+let updateCheckStatus = null; // null | 'checking' | 'up-to-date' | 'found' | 'error'
 let historyDiffExpandedIndex = null;
 
 function setStatus(text) {
@@ -5326,7 +5334,7 @@ fileMenuBtn.addEventListener('click', () => {
     renderMoreMenu();
   }
   if (fileMenuOpen && docsOpen) {
-    docsOpen = false;
+    closeDocsView();
     render(); // restores the normal outline content in place of docs
   }
   if (fileMenuOpen && historyOpen) {
@@ -5339,7 +5347,7 @@ fileMenuBtn.addEventListener('click', () => {
 addBtn.addEventListener('click', () => {
   if (!state.doc) return;
   settingsOpen = false;
-  docsOpen = false;
+  closeDocsView();
   if (moreOpen) {
     moreOpen = false;
     renderMoreMenu();
@@ -5359,7 +5367,7 @@ navBackBtn.addEventListener('click', () => {
  *  nothing should be mid-edit while the outline isn't even shown. */
 function switchToView(view) {
   if (docsOpen) {
-    docsOpen = false;
+    closeDocsView();
     render();
   }
   if (view === currentView) {
@@ -5879,7 +5887,7 @@ viewMenuBtn.addEventListener('click', () => {
     renderMoreMenu();
   }
   if (viewMenuOpen && docsOpen) {
-    docsOpen = false;
+    closeDocsView();
     render();
   }
   renderViewMenu();
@@ -6811,11 +6819,127 @@ async function renderSettingsView(target = settingsRenderTarget) {
   backupHint.textContent =
     'Export bundles every setting on this page \u2014 appearance, capture templates, GitHub, and WebDAV \u2014 into one file, useful for moving settings to another device. Import merges the file\u2019s settings into what\u2019s already configured here; anything the file doesn\u2019t mention is left untouched.';
   backupSection.appendChild(backupHint);
+
+  const updatesSection = document.createElement('div');
+  updatesSection.className = 'settings-section';
+  container.appendChild(updatesSection);
+
+  const updatesTitle = document.createElement('div');
+  updatesTitle.className = 'panel-section-title';
+  updatesTitle.textContent = 'Updates';
+  updatesSection.appendChild(updatesTitle);
+
+  const updatesRow = document.createElement('div');
+  updatesRow.className = 'panel-row';
+  updatesRow.appendChild(
+    menuButton(
+      'Check for updates',
+      async () => {
+        if (!swRegistration) {
+          updateCheckStatus = 'error';
+          renderSettingsView();
+          return;
+        }
+        updateCheckStatus = 'checking';
+        renderSettingsView();
+        try {
+          await swRegistration.update();
+          // A successful update() that actually found something newer
+          // fires 'updatefound' asynchronously, which showUpdateBanner
+          // (see the registration setup above) already handles on its
+          // own -- including flipping updateCheckStatus to 'found' and
+          // re-rendering Settings again once that lands. Give that a
+          // brief moment to actually happen before concluding nothing
+          // was found -- 'updatefound' isn't guaranteed to have already
+          // fired by the time update()'s own promise resolves.
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          if (updateCheckStatus === 'checking') {
+            updateCheckStatus = 'up-to-date';
+            renderSettingsView();
+          }
+        } catch {
+          updateCheckStatus = 'error';
+          renderSettingsView();
+        }
+      },
+      !('serviceWorker' in navigator)
+    )
+  );
+  updatesSection.appendChild(updatesRow);
+
+  const updatesStatus = document.createElement('div');
+  updatesStatus.style.fontSize = '12px';
+  updatesStatus.style.marginTop = '6px';
+  updatesStatus.textContent =
+    updateCheckStatus === 'checking'
+      ? 'Checking\u2026'
+      : updateCheckStatus === 'up-to-date'
+        ? 'You\u2019re on the latest version.'
+        : updateCheckStatus === 'found'
+          ? 'An update was found \u2014 use the Reload banner at the top to apply it.'
+          : updateCheckStatus === 'error'
+            ? 'Couldn\u2019t check for updates right now.'
+            : '';
+  updatesSection.appendChild(updatesStatus);
 }
 
 // ---- Docs (README, rendered in-app) --------------------------------------
 
 let cachedDocsDoc = null; // parsed once per session from README.org, not re-fetched/re-parsed on every "Docs" tap
+
+/** Every "/"-joined title path (e.g. "Export/ODT") for a heading that's
+ *  currently collapsed within `doc` -- the minority, worth-persisting
+ *  case, since README.org's own default startup visibility is fully
+ *  expanded (see startup-config.js's own DEFAULT_STARTUP_CONFIG). Used
+ *  to save Docs' own fold state when leaving it. */
+function collectCollapsedPaths(headings, prefix = '') {
+  let paths = [];
+  for (const h of headings) {
+    const path = prefix ? prefix + '/' + h.title : h.title;
+    if (h.collapsed) paths.push(path);
+    paths = paths.concat(collectCollapsedPaths(h.children, path));
+  }
+  return paths;
+}
+
+/** The inverse of collectCollapsedPaths: given a previously-saved list
+ *  of collapsed title-paths, folds exactly those headings within a
+ *  freshly re-parsed `doc` -- everything else is left at whatever
+ *  applyStartupVisibility already set it to (expanded, by default). A
+ *  path that no longer matches anything (the docs changed since it was
+ *  saved) is silently ignored rather than erroring — stale saved state
+ *  should degrade gracefully, not break the view. */
+function applyCollapsedPaths(headings, collapsedPaths, prefix = '') {
+  for (const h of headings) {
+    const path = prefix ? prefix + '/' + h.title : h.title;
+    if (collapsedPaths.includes(path)) h.collapsed = true;
+    applyCollapsedPaths(h.children, collapsedPaths, path);
+  }
+}
+
+/** Persists Docs' own current fold state and scroll position, so
+ *  returning later -- even after a full app restart, not just within
+ *  this same session -- can restore roughly where the person left
+ *  off. Fire-and-forget (doesn't block whatever's actually closing
+ *  Docs) and a no-op if Docs was never actually opened this session
+ *  (cachedDocsDoc still null -- nothing to save). */
+function saveDocsViewState() {
+  if (!cachedDocsDoc) return;
+  setDocsViewState(kv, {
+    scrollTop: scrollContainer().scrollTop,
+    collapsedPaths: collectCollapsedPaths(cachedDocsDoc.children),
+  }).catch(() => {});
+}
+
+/** The shared "leaving Docs" path -- every one of the several places
+ *  Docs can be closed from (opening a different menu, switching
+ *  views, navigating away) goes through this rather than setting
+ *  docsOpen = false directly, so saving state on the way out can never
+ *  be forgotten at any individual call site. */
+function closeDocsView() {
+  saveDocsViewState();
+  docsOpen = false;
+}
 
 /**
  * Renders `doc` (a fully separate, parsed org document -- currently only
@@ -7083,14 +7207,33 @@ async function renderDocsView(target = docsRenderTarget) {
   container.style.minHeight = '100%';
   target.appendChild(container);
 
+  let restoreScrollTop = null;
+
   if (cachedDocsDoc === null) {
     try {
       const response = await fetch('./README.org');
       if (!response.ok) throw new Error('HTTP ' + response.status);
       const text = await response.text();
       cachedDocsDoc = parseOrg(text);
-      const docsStartupConfig = parseStartupConfig(cachedDocsDoc);
-      applyStartupVisibility(cachedDocsDoc, docsStartupConfig, 'archived');
+
+      const savedState = await getDocsViewState(kv);
+      if (savedState) {
+        // A returning visit: start fully expanded, then re-apply exactly
+        // the previously-saved fold state on top -- restoring where
+        // things were left, not a fresh reset.
+        applyStartupVisibility(cachedDocsDoc, { visibility: 'showeverything', imageVisibility: 'noinlineimages', logDone: null }, 'archived');
+        applyCollapsedPaths(cachedDocsDoc.children, savedState.collapsedPaths || []);
+        restoreScrollTop = savedState.scrollTop;
+      } else {
+        // A genuine first-ever visit (this device has never left Docs
+        // with anything to remember) -- top-level headers only, a
+        // Docs-specific override independent of whatever README.org's
+        // own #+STARTUP line says (there isn't one), so opening
+        // README.org as a regular file elsewhere is completely
+        // unaffected by this choice.
+        applyStartupVisibility(cachedDocsDoc, { visibility: 'overview', imageVisibility: 'noinlineimages', logDone: null }, 'archived');
+      }
+
       docsScrollTarget = null; // a genuinely fresh load -- no stale scroll target from a previous session
     } catch (err) {
       const errorEl = document.createElement('div');
@@ -7105,6 +7248,12 @@ async function renderDocsView(target = docsRenderTarget) {
   if (!docsOpen) return; // closed again while the fetch above was in flight
 
   renderReadOnlyOutline(cachedDocsDoc, container, () => renderDocsView(docsRenderTarget));
+
+  if (restoreScrollTop !== null) {
+    requestAnimationFrame(() => {
+      scrollContainer().scrollTop = restoreScrollTop;
+    });
+  }
 }
 
 /** Opens Docs and scrolls directly to a specific section, identified
@@ -7179,7 +7328,7 @@ settingsBtn.addEventListener('click', async () => {
     renderMoreMenu();
   }
   if (settingsOpen && docsOpen) {
-    docsOpen = false;
+    closeDocsView();
   }
   if (settingsOpen && historyOpen) {
     historyOpen = false;
@@ -7403,7 +7552,7 @@ searchBtn.addEventListener('click', () => {
     renderMoreMenu();
   }
   if (searchOpen && docsOpen) {
-    docsOpen = false;
+    closeDocsView();
     render();
   }
   if (searchOpen && historyOpen) {
@@ -7794,7 +7943,7 @@ function afterSuccessfulCapture() {
 }
 
 /** Shows/hides the floating extras (☰) button based on whether
- *  org-extra-menu (Global/Local Variables, see src/extra-menu.js's own
+ *  org-xx-extra-menu (Global/Local Variables, see src/extra-menu.js's own
  *  docs) currently resolves to at least one SELECTABLE entry --
  *  showing an always-visible button that opens an empty or
  *  separator-only menu would be confusing, not useful. */
@@ -7810,7 +7959,7 @@ function syncExtraMenuButtonVisibility() {
 
 /** Renders the extras popup's own content -- a vertical list of
  *  tappable rows (one per menu entry) plus visual dividers for
- *  separator entries, matching the org-extra-menu spec's own
+ *  separator entries, matching the org-xx-extra-menu spec's own
  *  five-hyphen convention. */
 function renderExtraMenu() {
   extraMenuPanel.innerHTML = '';
@@ -7876,13 +8025,13 @@ async function runExtraMenuEntry(entry) {
 
   if (entry.type === 'olp') {
     if (!state.doc) return;
-    const before = serializeOrg(state.doc);
-    const target = resolveOlpTarget(state.doc, entry.headers, { now: new Date() });
-    const after = serializeOrg(state.doc);
-    switchToView('org');
-    if (before !== after) {
-      commitAndRender('Created heading via extras menu');
+    const target = resolveOlpTarget(state.doc, entry.headers, { now: new Date(), allowCreate: false });
+    if (!target) {
+      setStatus(`"${entry.headers.join(' / ')}" doesn't exist yet \u2014 nothing was created.`);
+      render();
+      return;
     }
+    switchToView('org');
     navigateToHeading(target);
     return;
   }
@@ -7942,7 +8091,7 @@ captureBtn.addEventListener('click', () => {
     renderMoreMenu();
   }
   if (captureOpen && docsOpen) {
-    docsOpen = false;
+    closeDocsView();
     render();
   }
   if (captureOpen && historyOpen) {
@@ -8054,7 +8203,7 @@ moreBtn.addEventListener('click', () => {
     renderCapturePanel();
   }
   if (moreOpen && docsOpen) {
-    docsOpen = false;
+    closeDocsView();
     render();
   }
   if (moreOpen && historyOpen) {
@@ -8074,11 +8223,15 @@ if ('serviceWorker' in navigator) {
     updateReloadBtn.onclick = () => {
       waitingWorker.postMessage('SKIP_WAITING');
     };
+    updateCheckStatus = 'found';
+    if (settingsOpen) renderSettingsView();
   }
 
   navigator.serviceWorker
     .register('sw.js')
     .then((registration) => {
+      swRegistration = registration;
+
       // A worker may already be sitting in 'waiting' if it finished
       // installing before this particular page load noticed (e.g. another
       // tab triggered the update check first).
@@ -8099,13 +8252,12 @@ if ('serviceWorker' in navigator) {
         });
       });
 
-      // The browser only checks for a new service worker on navigation by
-      // default, which barely happens in an app meant to stay open — that
-      // was a real part of why updates were hard to see while testing.
-      // Checking again whenever the tab regains focus closes that gap.
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) registration.update().catch(() => {});
-      });
+      // One check right here, right after registration itself succeeds --
+      // app startup -- and otherwise only the manual "Check for updates"
+      // button in Settings' own Updates section. No periodic polling and
+      // no visibility-triggered recheck: startup and an explicit,
+      // deliberate tap are the only two triggers.
+      registration.update().catch(() => {});
     })
     .catch(() => {});
 
