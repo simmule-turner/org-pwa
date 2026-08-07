@@ -251,8 +251,17 @@ function expandTemplate(template, context = {}) {
  * heading gets created. An already-existing segment is matched and
  * reused as-is regardless of this setting; there's no heading-creation
  * decision to make for something that's already there.
+ *
+ * `allowCreate` (default true): when false, a missing segment is
+ * NEVER created -- resolution stops immediately and returns null,
+ * leaving `doc` completely untouched. Every existing caller (capture
+ * templates, archive, refile, restore) relies on the default,
+ * unchanged, always-create behavior; this exists specifically for
+ * org-xx-extra-menu's own OLP navigation entries, which should never
+ * silently create headings just from browsing a quick-access menu --
+ * see runExtraMenuEntry in app.js.
  */
-function resolveOlpTarget(doc, olpPath, { now, prepend = false } = {}) {
+function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = true } = {}) {
   const at = now instanceof Date ? now : new Date();
   let siblings = doc.children;
   let parent = null;
@@ -263,6 +272,7 @@ function resolveOlpTarget(doc, olpPath, { now, prepend = false } = {}) {
     const title = wrapped ? formatTime(at, wrapped[1]) : rawSegment;
     found = siblings.find((h) => h.title === title);
     if (!found) {
+      if (!allowCreate) return null;
       found = parent ? insertChildHeading(parent, { title }, prepend) : insertTopLevelHeading(doc, { title }, prepend);
     }
     parent = found;

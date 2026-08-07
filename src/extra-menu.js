@@ -1,5 +1,5 @@
 /**
- * org-extra-menu: a floating (☰) button's own configurable quick-
+ * org-xx-extra-menu: a floating (☰) button's own configurable quick-
  * action menu. Not a real org-mode variable -- this app's own
  * extension, using the same Global/Local Variables mechanism every
  * other setting here does.
@@ -8,7 +8,7 @@
  * separated), each either the five-hyphen separator marker
  * ("-----") or a "SPEC;LABEL" pair:
  *
- *   org-extra-menu: "t;⭐ Tracking" "j;📔 Journal" "-----" "'org-clock-out;⏹ clock-out"
+ *   org-xx-extra-menu: "t;⭐ Tracking" "j;📔 Journal" "-----" "'org-clock-out;⏹ clock-out"
  *
  * (Typically spread across several physical lines via a trailing
  * "\" for readability -- see global-variables.js's own
@@ -44,7 +44,7 @@
 const KNOWN_FUNCTIONS = new Set(['org-clock-out', 'org-clock-cancel', 'export-markdown']);
 const SEPARATOR_TOKEN = '-----';
 
-/** Splits the raw, already-line-joined org-extra-menu value into its
+/** Splits the raw, already-line-joined org-xx-extra-menu value into its
  *  individual double-quoted tokens -- tracking `[`/`]` bracket depth
  *  so an embedded double-quote inside an OLP array (each header
  *  string is itself quoted) doesn't prematurely end the outer token.
@@ -132,7 +132,7 @@ function parseSpec(spec) {
 }
 
 /**
- * Parses org-extra-menu's full raw value into an ordered list of menu
+ * Parses org-xx-extra-menu's full raw value into an ordered list of menu
  * entries: `{ type: 'separator' }` or
  * `{ type: 'capture' | 'olp' | 'function', label, ... }`. A token that
  * doesn't parse cleanly (malformed spec, missing label, unrecognized

@@ -33,7 +33,7 @@ const GLOBAL_VAR_LINE_RE = /^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/;
 /** Joins any line ending in a trailing backslash with the physical
  *  line(s) that follow it, before "name: value" parsing happens --
  *  lets a single variable's value span multiple lines for readability
- *  (org-extra-menu's own multi-entry format is the motivating case).
+ *  (org-xx-extra-menu's own multi-entry format is the motivating case).
  *  The backslash itself is stripped, and the joined content is
  *  separated by a single space, matching a natural word-wrap rather
  *  than concatenating with no separator at all. A trailing backslash

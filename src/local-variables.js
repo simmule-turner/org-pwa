@@ -46,7 +46,7 @@ export function parseLocalVariables(text) {
 /** Joins any line ending in a trailing backslash with the physical
  *  line(s) that follow it, before "# key: value" parsing happens --
  *  lets a single variable's value span multiple lines for readability
- *  (org-extra-menu's own multi-entry format is the motivating case).
+ *  (org-xx-extra-menu's own multi-entry format is the motivating case).
  *  Identical to global-variables.js's own joinContinuedLines -- kept
  *  as a separate copy here rather than a shared import, matching how
  *  each of this app's variable-source modules already stays fairly
@@ -161,13 +161,13 @@ export function getRefileTargets(vars) {
   return (vars || {})['org-refile-targets'] || '';
 }
 
-/** org-extra-menu: this app's own extension (not a real org-mode
+/** org-xx-extra-menu: this app's own extension (not a real org-mode
  *  variable), a floating (☰) button's configurable quick-action menu
  *  -- see src/extra-menu.js's own docs for the full syntax. Just the
  *  raw string here, since parsing/validation lives in that module's
  *  own parseExtraMenu. */
 export function getExtraMenu(vars) {
-  return (vars || {})['org-extra-menu'] || '';
+  return (vars || {})['org-xx-extra-menu'] || '';
 }
 
 /** org-xx-file-menu / org-xx-more-menu / org-xx-export-menu / org-xx-view-menu:

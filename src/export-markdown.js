@@ -34,6 +34,7 @@
  */
 
 import { parseInline } from './inline-markup.js';
+import { resolveLinkTarget } from './link-resolve.js';
 
 // Footnote definitions accumulated during a single exportToMarkdown()
 // call (module-level, reset at the start of each call): GFM has no
@@ -44,6 +45,59 @@ import { parseInline } from './inline-markup.js';
 // for where footnote definitions live.
 let footnoteDefinitionsMd = [];
 let anonymousFootnoteCounterMd = 0;
+
+// The document currently being exported, and a Map<heading, slug> for
+// every heading actually included in this export -- both reset at the
+// start of each exportToMarkdown() call. Mirrors export-html.js's own
+// docForLinkResolutionHtml/headingIdMapHtml, adapted to Markdown's own
+// implicit (no explicit id attribute) heading-anchor convention: the
+// slug is never written into the heading line itself, only used when
+// resolving a link that points TO that heading.
+let docForLinkResolutionMd = null;
+let headingSlugMapMd = new Map();
+
+/** GitHub's own heading-slug algorithm (github-slugger, the library
+ *  GitHub itself uses to generate `#heading-anchor`-style links for
+ *  every rendered Markdown heading) -- the closest thing to a de
+ *  facto standard across Markdown renderers, and the specific
+ *  convention this export already commits to elsewhere (GFM task
+ *  lists, GFM footnotes). Lowercases, strips anything that isn't a
+ *  Unicode letter/number, space, hyphen, or underscore, then replaces
+ *  spaces with hyphens. Deliberately does NOT convert punctuation to
+ *  hyphens (unlike the simpler slugifyHtml in export-html.js) --
+ *  GitHub's own algorithm strips it outright, and matching that
+ *  exactly matters here specifically because the whole point is
+ *  producing a link that resolves correctly once actually rendered
+ *  somewhere real. */
+export function gfmSlugify(title) {
+  return String(title || '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s_-]/gu, '')
+    .replace(/ /g, '-');
+}
+
+/** Assigns every heading actually being exported a GFM-style slug,
+ *  disambiguating a duplicate the same way GitHub's own slugger does:
+ *  the second "Notes" heading becomes "notes-1", the third "notes-2",
+ *  and so on -- NOT the "-2, -3, ..." (skipping "-1") convention
+ *  export-html.js's own assignHeadingIdsHtml uses for its own,
+ *  unrelated id-attribute scheme; matching GFM's own specific
+ *  numbering is what makes the generated link actually correct once
+ *  rendered by a real GFM-compliant tool. */
+function assignHeadingSlugsMd(headings, usedSlugs) {
+  for (const heading of headings) {
+    const base = gfmSlugify(heading.title);
+    let slug = base;
+    let n = 1;
+    while (usedSlugs.has(slug)) {
+      slug = base + '-' + n;
+      n++;
+    }
+    usedSlugs.add(slug);
+    headingSlugMapMd.set(heading, slug);
+    assignHeadingSlugsMd(heading.children || [], usedSlugs);
+  }
+}
 
 /** GFM requires an explicit label on every footnote, unlike org's own
  *  anonymous [fn::...] form -- assigns a synthetic one for that case,
@@ -66,6 +120,22 @@ function footnoteLabelMd(label) {
  *  would corrupt the literal content it's meant to preserve). */
 function escapeMarkdownText(text) {
   return text.replace(/([\\`*_[\]<|])/g, '\\$1');
+}
+
+/** Resolves a link's raw target to what its Markdown URL should
+ *  actually be: a real "#slug" anchor if it resolves to a heading
+ *  that's part of THIS export, or the original target text unchanged
+ *  for anything else (external URLs, file links, or a heading that
+ *  resolves but lives outside this specific export's scope). Mirrors
+ *  export-html.js's own resolveLinkHref exactly, adapted to GFM's
+ *  implicit slug-based anchors instead of an explicit id attribute. */
+function resolveLinkHrefMd(target) {
+  if (!docForLinkResolutionMd) return target;
+  const resolution = resolveLinkTarget(docForLinkResolutionMd, target);
+  if (resolution.type === 'heading' && headingSlugMapMd.has(resolution.heading)) {
+    return '#' + headingSlugMapMd.get(resolution.heading);
+  }
+  return target;
 }
 
 function renderInlineListMd(nodes) {
@@ -101,7 +171,7 @@ function renderInlineNodeMd(node) {
       return `<sup>${node.value}</sup>`;
     case 'link': {
       const label = node.description ? escapeMarkdownText(node.description) : node.target;
-      return `[${label}](${node.target})`;
+      return `[${label}](${resolveLinkHrefMd(node.target)})`;
     }
     case 'image':
       return `![](${node.target})`;
@@ -273,8 +343,11 @@ function renderHeadingMd(heading, levelOffset, out) {
 export function exportToMarkdown(doc, scope = null) {
   footnoteDefinitionsMd = [];
   anonymousFootnoteCounterMd = 0;
+  docForLinkResolutionMd = doc;
+  headingSlugMapMd = new Map();
 
   const roots = scope ? [scope] : doc.children || [];
+  assignHeadingSlugsMd(roots, new Set());
   const levelOffset = scope ? scope.level - 1 : 0;
   const out = [];
   for (const heading of roots) {

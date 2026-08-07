@@ -3,7 +3,7 @@
  * lookup table: `org-xx-file-menu`, `org-xx-more-menu`, `org-xx-export-menu`,
  * `org-xx-view-menu` -- not real org-mode variables; this app's own
  * extension, using the same Global/Local Variables mechanism
- * org-extra-menu already established a precedent for.
+ * org-xx-extra-menu already established a precedent for.
  *
  * Value format: a sequence of double-quoted `"Label;alias"` entries,
  * space-separated (optionally spread across multiple physical lines
@@ -54,7 +54,7 @@ function parseMenuAliases(rawValue) {
 }
 
 /** Splits the raw, already-line-joined value into its individual
- *  double-quoted tokens -- simpler than org-extra-menu's own
+ *  double-quoted tokens -- simpler than org-xx-extra-menu's own
  *  tokenizer, since a "Label;alias" entry never needs to nest
  *  brackets the way an OLP array entry does. */
 function tokenizeMenuAliasValue(raw) {
