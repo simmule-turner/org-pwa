@@ -232,31 +232,31 @@ test('getAsciiTextWidth falls back to 72 for an unparseable value', () => {
 // ---- line continuation (trailing backslash) --------------------------------
 
 test('a trailing backslash joins the value with the next physical line, stripping that line\u2019s own "# " comment prefix', () => {
-  const text = '* H\n# Local Variables:\n# org-extra-menu: "a" \\\n#                 "b"\n# End:\n';
-  assert.equal(parseLocalVariables(text)['org-extra-menu'], '"a" "b"');
+  const text = '* H\n# Local Variables:\n# org-xx-extra-menu: "a" \\\n#                 "b"\n# End:\n';
+  assert.equal(parseLocalVariables(text)['org-xx-extra-menu'], '"a" "b"');
 });
 
 test('joining works across more than two lines', () => {
-  const text = '* H\n# Local Variables:\n# org-extra-menu: "a" \\\n#                 "b" \\\n#                 "c"\n# End:\n';
-  assert.equal(parseLocalVariables(text)['org-extra-menu'], '"a" "b" "c"');
+  const text = '* H\n# Local Variables:\n# org-xx-extra-menu: "a" \\\n#                 "b" \\\n#                 "c"\n# End:\n';
+  assert.equal(parseLocalVariables(text)['org-xx-extra-menu'], '"a" "b" "c"');
 });
 
 test('a variable with no trailing backslash is completely unaffected, and a following variable parses normally', () => {
-  const text = '* H\n# Local Variables:\n# org-extra-menu: "a" \\\n#                 "b"\n# org-agenda-start-on-weekday: 1\n# End:\n';
+  const text = '* H\n# Local Variables:\n# org-xx-extra-menu: "a" \\\n#                 "b"\n# org-agenda-start-on-weekday: 1\n# End:\n';
   const result = parseLocalVariables(text);
-  assert.equal(result['org-extra-menu'], '"a" "b"');
+  assert.equal(result['org-xx-extra-menu'], '"a" "b"');
   assert.equal(result['org-agenda-start-on-weekday'], '1');
 });
 
 test('no double space when the source line has whitespace before the backslash', () => {
-  const text = '* H\n# Local Variables:\n# org-extra-menu: "a"   \\\n#                 "b"\n# End:\n';
-  assert.equal(parseLocalVariables(text)['org-extra-menu'], '"a" "b"');
+  const text = '* H\n# Local Variables:\n# org-xx-extra-menu: "a"   \\\n#                 "b"\n# End:\n';
+  assert.equal(parseLocalVariables(text)['org-xx-extra-menu'], '"a" "b"');
 });
 
 // ---- getExtraMenu -----------------------------------------------------------
 
 test('getExtraMenu returns the raw string value unchanged', () => {
-  assert.equal(getExtraMenu({ 'org-extra-menu': '"t;Tracking"' }), '"t;Tracking"');
+  assert.equal(getExtraMenu({ 'org-xx-extra-menu': '"t;Tracking"' }), '"t;Tracking"');
 });
 
 test('getExtraMenu returns an empty string when unset, not undefined', () => {

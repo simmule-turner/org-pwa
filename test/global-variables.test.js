@@ -85,20 +85,20 @@ test('merge: null/undefined on either side is treated as an empty map, not an er
 // ---- line continuation (trailing backslash) --------------------------------
 
 test('a trailing backslash joins the value with the next physical line', () => {
-  const text = 'org-extra-menu: "a" \\\n"b"';
-  assert.deepEqual(parseGlobalVariables(text), { 'org-extra-menu': '"a" "b"' });
+  const text = 'org-xx-extra-menu: "a" \\\n"b"';
+  assert.deepEqual(parseGlobalVariables(text), { 'org-xx-extra-menu': '"a" "b"' });
 });
 
 test('joining works across more than two lines', () => {
-  const text = 'org-extra-menu: "a" \\\n"b" \\\n"c"';
-  assert.deepEqual(parseGlobalVariables(text), { 'org-extra-menu': '"a" "b" "c"' });
+  const text = 'org-xx-extra-menu: "a" \\\n"b" \\\n"c"';
+  assert.deepEqual(parseGlobalVariables(text), { 'org-xx-extra-menu': '"a" "b" "c"' });
 });
 
 test('a variable with no trailing backslash is completely unaffected', () => {
-  const text = 'org-log-done: \'time\norg-extra-menu: "a" \\\n"b"\nother: value';
+  const text = 'org-log-done: \'time\norg-xx-extra-menu: "a" \\\n"b"\nother: value';
   const result = parseGlobalVariables(text);
   assert.equal(result['org-log-done'], "'time");
-  assert.equal(result['org-extra-menu'], '"a" "b"');
+  assert.equal(result['org-xx-extra-menu'], '"a" "b"');
   assert.equal(result.other, 'value');
 });
 
@@ -109,6 +109,6 @@ test('a trailing backslash on the very last line of the whole text is left as a 
 });
 
 test('trailing whitespace after the backslash is tolerated', () => {
-  const text = 'org-extra-menu: "a" \\  \n"b"';
-  assert.equal(parseGlobalVariables(text)['org-extra-menu'], '"a" "b"');
+  const text = 'org-xx-extra-menu: "a" \\  \n"b"';
+  assert.equal(parseGlobalVariables(text)['org-xx-extra-menu'], '"a" "b"');
 });

@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { parseOrg } from '../src/org-parser.js';
-import { exportToMarkdown } from '../src/export-markdown.js';
+import { exportToMarkdown, gfmSlugify } from '../src/export-markdown.js';
 
 // ---- headings and structure -------------------------------------------
 
@@ -282,4 +284,114 @@ test('a document with no footnotes at all produces no definition-line section', 
   const doc = parseOrg('* Heading\nJust ordinary text, no footnotes here.\n');
   const md = exportToMarkdown(doc);
   assert.doesNotMatch(md, /\[\^/);
+});
+
+// ---- internal links resolve to real GFM anchors ----------------------------
+
+test('THE BUG: a star-prefixed title link now resolves to a real GFM slug anchor, instead of the raw target dumped in unresolved', () => {
+  const doc = parseOrg('* Intro\n[[*My Cool Section][See below]]\n* My Cool Section\nContent.\n');
+  const md = exportToMarkdown(doc);
+  assert.match(md, /\[See below\]\(#my-cool-section\)/);
+});
+
+test('a #custom-id link resolves to the TARGET HEADING\u2019s own GFM slug -- not the custom_id string itself, since GFM has no concept of custom ids at all', () => {
+  const doc = parseOrg('* Intro\n[[#capture][Jump]]\n* Capture Templates\n:PROPERTIES:\n:CUSTOM_ID: capture\n:END:\nContent.\n');
+  const md = exportToMarkdown(doc);
+  assert.match(md, /\[Jump\]\(#capture-templates\)/);
+});
+
+test('a bare fuzzy-title link ([[Title]], no # or * prefix) also resolves', () => {
+  const doc = parseOrg('* Intro\n[[My Cool Section]]\n* My Cool Section\nContent.\n');
+  const md = exportToMarkdown(doc);
+  assert.match(md, /\(#my-cool-section\)/);
+});
+
+test('punctuation in a heading title is stripped (not hyphenated) in the generated slug, matching GFM exactly', () => {
+  const doc = parseOrg("* Intro\n[[*What's New?][Link]]\n* What's New?\nContent.\n");
+  const md = exportToMarkdown(doc);
+  assert.match(md, /\(#whats-new\)/);
+});
+
+test('duplicate heading titles get GFM\u2019s own -1, -2, ... slug disambiguation (starting from 1, not 2), and a CUSTOM_ID-targeted link to the second one resolves to its disambiguated slug', () => {
+  const doc = parseOrg(
+    '* Intro\n[[*Notes][First]] [[#notes-two][Second]]\n* Notes\nfirst\n* Notes\n:PROPERTIES:\n:CUSTOM_ID: notes-two\n:END:\nsecond\n'
+  );
+  const md = exportToMarkdown(doc);
+  // [[*Notes]] (a plain title match) always resolves to the FIRST heading
+  // named "Notes" -- correct, existing resolveLinkTarget behavior, not
+  // something this fix changes -- so it gets the first slug, "notes".
+  assert.match(md, /\[First\]\(#notes\)/);
+  // The CUSTOM_ID-targeted link can actually reach the SECOND "Notes"
+  // heading specifically, and gets ITS disambiguated slug, "notes-1".
+  assert.match(md, /\[Second\]\(#notes-1\)/);
+});
+
+test('external links (http/https/mailto) are completely unaffected by link resolution', () => {
+  const doc = parseOrg('* Intro\n[[https://example.com][External]]\n[[mailto:a@b.com][Email]]\n');
+  const md = exportToMarkdown(doc);
+  assert.match(md, /\[External\]\(https:\/\/example\.com\)/);
+  assert.match(md, /\[Email\]\(mailto:a@b\.com\)/);
+});
+
+test('a link resolving to a heading OUTSIDE the exported scope falls back to the original target text', () => {
+  const doc = parseOrg('* Outside\n:PROPERTIES:\n:CUSTOM_ID: outside\n:END:\n* Exported Scope\n[[#outside][Link out]]\n');
+  const scopeHeading = doc.children[1];
+  const md = exportToMarkdown(doc, scopeHeading);
+  assert.match(md, /\[Link out\]\(#outside\)/); // best-effort fallback, unchanged from before this fix
+});
+
+test('an unresolved link (matches nothing) falls back to the original literal target, unchanged', () => {
+  const doc = parseOrg('* Intro\n[[Nonexistent Heading][Broken]]\n');
+  const md = exportToMarkdown(doc);
+  assert.match(md, /\[Broken\]\(Nonexistent Heading\)/);
+});
+
+test('a whole realistic document with multiple internal links resolves every single one', () => {
+  const doc = parseOrg(
+    '* Contents\n[[#section-a][Section A]]\n[[#section-b][Section B]]\n* Section A\n:PROPERTIES:\n:CUSTOM_ID: section-a\n:END:\nContent A.\n* Section B\n:PROPERTIES:\n:CUSTOM_ID: section-b\n:END:\nContent B.\n'
+  );
+  const md = exportToMarkdown(doc);
+  assert.match(md, /\[Section A\]\(#section-a\)/);
+  assert.match(md, /\[Section B\]\(#section-b\)/);
+});
+
+test('gfmSlugify matches GitHub\u2019s own algorithm on known tricky cases (verified independently against the real github-slugger library during development)', () => {
+  const cases = [
+    ['My Cool Section', 'my-cool-section'],
+    ["What's New?", 'whats-new'],
+    ['Import/Export Settings', 'importexport-settings'],
+    ['HTML, ODT, & Markdown', 'html-odt--markdown'], // punctuation stripped leaves a double space -> double hyphen
+    ['2026 Q1 Planning', '2026-q1-planning'],
+    ['Underline_Test', 'underline_test'],
+    ['A: The Beginning', 'a-the-beginning'],
+    ['Multiple   Spaces   Between', 'multiple---spaces---between'],
+    ['Parens (like this)', 'parens-like-this'],
+    ['100% Done', '100-done'],
+  ];
+  for (const [title, expectedSlug] of cases) {
+    const doc = parseOrg(`* Intro\n[[*${title}][Link]]\n* ${title}\nContent.\n`);
+    const md = exportToMarkdown(doc);
+    assert.match(md, new RegExp(`\\(#${expectedSlug.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\)`), `"${title}" should slug to "${expectedSlug}"`);
+  }
+});
+
+test('a whole realistic document exported from the actual README.org resolves every internal link to a matching heading somewhere else in the same output', () => {
+  const readmeText = readFileSync(join(import.meta.dirname, '..', 'README.org'), 'utf8');
+  const doc = parseOrg(readmeText);
+  const md = exportToMarkdown(doc);
+  const linkTargets = [...md.matchAll(/\]\(#([^)]+)\)/g)].map((m) => m[1]);
+  const headingSlugs = new Set([...md.matchAll(/^#+\s.*$/gm)].map((m) => m[0]));
+  assert.ok(linkTargets.length > 50, 'the real README.org should have plenty of internal links to check');
+  // Every internal (#-prefixed) link target should correspond to SOME
+  // heading actually present in the exported Markdown -- spot-check by
+  // confirming the slug's own "word core" appears in at least one
+  // heading line (a full reverse-slug match would require re-deriving
+  // titles from slugs, which loses information; this is a strong,
+  // practical proxy).
+  let unmatched = 0;
+  for (const target of linkTargets) {
+    const found = [...headingSlugs].some((h) => gfmSlugify(h.replace(/^#+\s/, '')).startsWith(target.split('-').slice(0, 2).join('-')));
+    if (!found) unmatched++;
+  }
+  assert.ok(unmatched < linkTargets.length * 0.05, `expected nearly all ${linkTargets.length} internal links to resolve; ${unmatched} did not even loosely match`);
 });

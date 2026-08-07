@@ -292,6 +292,42 @@ test('resolveOlpTarget prepend: an ALREADY-EXISTING segment is matched and reuse
   assert.equal(target.children[0].title, 'Task'); // its own existing content untouched
 });
 
+// ---- resolveOlpTarget: allowCreate -------------------------------------------
+
+test('allowCreate: false, a missing segment returns null instead of creating it', () => {
+  const doc = parseOrg('* Existing\n');
+  const target = resolveOlpTarget(doc, ['Existing', 'Missing'], { now: NOW, allowCreate: false });
+  assert.equal(target, null);
+});
+
+test('allowCreate: false leaves doc completely untouched when resolution fails', () => {
+  const doc = parseOrg('* Existing\n');
+  const before = serializeOrg(doc);
+  resolveOlpTarget(doc, ['Existing', 'Missing'], { now: NOW, allowCreate: false });
+  assert.equal(serializeOrg(doc), before);
+});
+
+test('allowCreate: false still correctly finds and returns a FULLY existing path', () => {
+  const doc = parseOrg('* Logs\n** March\n*** Task\n');
+  const target = resolveOlpTarget(doc, ['Logs', 'March'], { now: NOW, allowCreate: false });
+  assert.equal(target, doc.children[0].children[0]);
+  assert.equal(target.title, 'March');
+});
+
+test('allowCreate: false returns null even if only the LAST segment is missing (the rest of the path exists)', () => {
+  const doc = parseOrg('* Logs\n** March\n');
+  const target = resolveOlpTarget(doc, ['Logs', 'April'], { now: NOW, allowCreate: false });
+  assert.equal(target, null);
+  assert.equal(doc.children[0].children.length, 1); // "April" was NOT created
+});
+
+test('allowCreate defaults to true -- every existing caller (capture templates, etc.) is completely unaffected by this new parameter', () => {
+  const doc = parseOrg('');
+  const target = resolveOlpTarget(doc, ['heading 1', 'heading n'], { now: NOW }); // no allowCreate passed at all
+  assert.notEqual(target, null);
+  assert.equal(target.title, 'heading n');
+});
+
 // ---- mergeFragmentInto -----------------------------------------------------
 
 test('mergeFragmentInto appends heading-producing content as children with levels correctly offset', () => {

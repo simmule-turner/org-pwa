@@ -10,6 +10,8 @@ import {
   setTheme,
   getCustomThemeColors,
   setCustomThemeColors,
+  getDocsViewState,
+  setDocsViewState,
   getFontFamily,
   setFontFamily,
   getFontSize,
@@ -268,4 +270,17 @@ test('exportAllSettings/importAllSettings include agendaFiles like any other set
   const kv2 = createInMemoryAdapter();
   await importAllSettings(kv2, bundle);
   assert.deepEqual(await getAgendaFiles(kv2), files);
+});
+
+// ---- docs view state ------------------------------------------------------
+
+test('getDocsViewState defaults to null -- nothing recorded yet', async () => {
+  const kv = createInMemoryAdapter();
+  assert.equal(await getDocsViewState(kv), null);
+});
+
+test('setDocsViewState then getDocsViewState round-trips', async () => {
+  const kv = createInMemoryAdapter();
+  await setDocsViewState(kv, { scrollTop: 400, collapsedPaths: ['Export', 'Export/ODT'] });
+  assert.deepEqual(await getDocsViewState(kv), { scrollTop: 400, collapsedPaths: ['Export', 'Export/ODT'] });
 });
