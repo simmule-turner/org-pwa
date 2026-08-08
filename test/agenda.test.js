@@ -717,8 +717,8 @@ test('formatContactEventLine builds the correct display string', () => {
   assert.equal(formatContactEventLine('Mary & Jim', 'Wedding Anniversary', 11), 'Mary & Jim: Wedding Anniversary (11)');
 });
 
-test('formatContactEventLine shows "(xx)" for a null (unknown) age', () => {
-  assert.equal(formatContactEventLine('Someone', 'Birthday', null), 'Someone: Birthday (xx)');
+test('formatContactEventLine shows "(??)" for a null (unknown) age', () => {
+  assert.equal(formatContactEventLine('Someone', 'Birthday', null), 'Someone: Birthday (??)');
 });
 
 test('expandContactEventOccurrences produces one occurrence per year across a multi-year range', () => {
@@ -769,7 +769,7 @@ test('the trigger activates a scan producing the correctly formatted agenda line
   assert.equal(anniv.hasTime, false);
 });
 
-test('a nil-year event shows "(xx)" in the agenda line', () => {
+test('a nil-year event shows "(??)" in the agenda line', () => {
   const doc = parseOrg(
     [
       '* Mary & Jim',
@@ -786,7 +786,7 @@ test('a nil-year event shows "(xx)" in the agenda line', () => {
   });
   const anniv = items.find((i) => i.kind === 'anniversary');
   assert.ok(anniv);
-  assert.equal(anniv.title, 'Mary & Jim: Wedding Anniversary (xx)');
+  assert.equal(anniv.title, 'Mary & Jim: Wedding Anniversary (??)');
   assert.equal(anniv.age, null);
 });
 
