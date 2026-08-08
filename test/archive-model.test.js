@@ -87,12 +87,63 @@ test('archiveToSiblingFile removes from source, stamps metadata, and lands in ar
   assert.equal(extracted.properties.ARCHIVE_OLPATH, 'Projects/NRP');
   assert.equal(extracted.properties.ARCHIVE_CATEGORY, 'Projects');
   assert.equal(extracted.todo, 'DONE'); // preserved as-is since markDone defaults to false
-  assert.equal('ARCHIVE_TODO' in extracted.properties, false);
+  assert.equal(extracted.properties.ARCHIVE_TODO, 'DONE'); // THE FIX: recorded regardless of markDone -- real org's own default context-info always records the pre-archive state
 
   // Archive doc serializes cleanly.
   const serialized = serializeOrg(archiveDoc);
   assert.match(serialized, /^\* DONE Set up test suite/m);
   assert.match(serialized, /:ARCHIVE_OLPATH: Projects\/NRP/);
+});
+
+test('THE FIX: ARCHIVE_ITAGS records tags inherited from ancestors, colon-delimited, matching real org\u2019s own tag-storage convention', () => {
+  const text = ['* Projects :work:', '** NRP :urgent:', '*** TODO Ship v0.1.0'].join('\n');
+  const sourceDoc = parseOrg(text);
+  const archiveDoc = { type: 'document', keywords: [], children: [] };
+  const target = sourceDoc.children[0].children[0].children[0]; // "TODO Ship v0.1.0"
+
+  const extracted = archiveToSiblingFile(sourceDoc, archiveDoc, target, 'nrp.org', { now: FIXED_DATE });
+  assert.equal(extracted.properties.ARCHIVE_ITAGS, ':work:urgent:');
+});
+
+test('ARCHIVE_ITAGS is omitted entirely when there are no ancestor tags to inherit -- not stamped with an empty value', () => {
+  const sourceDoc = docWithProject();
+  const archiveDoc = { type: 'document', keywords: [], children: [] };
+  const target = sourceDoc.children[0].children[0].children[1];
+
+  const extracted = archiveToSiblingFile(sourceDoc, archiveDoc, target, 'nrp.org', { now: FIXED_DATE });
+  assert.equal('ARCHIVE_ITAGS' in extracted.properties, false);
+});
+
+test('ARCHIVE_ITAGS only includes ANCESTOR tags, not the archived heading\u2019s own local tags', () => {
+  const text = ['* Projects :work:', '** TODO Ship v0.1.0 :personal:'].join('\n');
+  const sourceDoc = parseOrg(text);
+  const archiveDoc = { type: 'document', keywords: [], children: [] };
+  const target = sourceDoc.children[0].children[0];
+
+  const extracted = archiveToSiblingFile(sourceDoc, archiveDoc, target, 'nrp.org', { now: FIXED_DATE });
+  assert.equal(extracted.properties.ARCHIVE_ITAGS, ':work:');
+  assert.ok(extracted.tags.includes('personal')); // the archived heading's own tag is preserved as-is, unrelated to ARCHIVE_ITAGS
+});
+
+test('a duplicate tag appearing on more than one ancestor is only listed once in ARCHIVE_ITAGS', () => {
+  const text = ['* Projects :work:', '** NRP :work:', '*** TODO Ship v0.1.0'].join('\n');
+  const sourceDoc = parseOrg(text);
+  const archiveDoc = { type: 'document', keywords: [], children: [] };
+  const target = sourceDoc.children[0].children[0].children[0];
+
+  const extracted = archiveToSiblingFile(sourceDoc, archiveDoc, target, 'nrp.org', { now: FIXED_DATE });
+  assert.equal(extracted.properties.ARCHIVE_ITAGS, ':work:');
+});
+
+test('restoring strips ARCHIVE_ITAGS along with every other ARCHIVE_* property', () => {
+  const text = ['* Projects :work:', '** TODO Ship v0.1.0'].join('\n');
+  const sourceDoc = parseOrg(text);
+  const archiveDoc = { type: 'document', keywords: [], children: [] };
+  const target = sourceDoc.children[0].children[0];
+  const extracted = archiveToSiblingFile(sourceDoc, archiveDoc, target, 'nrp.org', { now: FIXED_DATE });
+
+  const restored = buildRestoredClone(extracted);
+  assert.equal('ARCHIVE_ITAGS' in restored.properties, false);
 });
 
 test('archiveToSiblingFile with markDone stores original TODO state in ARCHIVE_TODO', () => {

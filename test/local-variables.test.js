@@ -5,6 +5,7 @@ import {
   parseLispBoolean,
   parseLispNumber,
   getAgendaStartOnWeekday,
+  getDeadlineWarningDays,
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
   getAgendaSkipArchivedTrees,
@@ -284,4 +285,27 @@ test('each accessor returns an empty string when unset, not undefined', () => {
   assert.equal(getMoreMenuAliases(null), '');
   assert.equal(getExportMenuAliases({}), '');
   assert.equal(getViewMenuAliases(null), '');
+});
+
+// ---- getDeadlineWarningDays -------------------------------------------------
+
+test('THE FIX: getDeadlineWarningDays defaults to 14, matching real org\u2019s own confirmed default (not 0)', () => {
+  assert.equal(getDeadlineWarningDays({}), 14);
+  assert.equal(getDeadlineWarningDays(null), 14);
+});
+
+test('getDeadlineWarningDays reads an explicit override', () => {
+  assert.equal(getDeadlineWarningDays({ 'org-deadline-warning-days': '7' }), 7);
+});
+
+test('getDeadlineWarningDays allows 0 explicitly (no early warning at all) -- distinct from "unset"', () => {
+  assert.equal(getDeadlineWarningDays({ 'org-deadline-warning-days': '0' }), 0);
+});
+
+test('a negative value falls back to the default rather than producing a nonsensical negative window', () => {
+  assert.equal(getDeadlineWarningDays({ 'org-deadline-warning-days': '-5' }), 14);
+});
+
+test('a non-numeric value falls back to the default', () => {
+  assert.equal(getDeadlineWarningDays({ 'org-deadline-warning-days': 'abc' }), 14);
 });

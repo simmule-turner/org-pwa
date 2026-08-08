@@ -1015,3 +1015,77 @@ test('meanwhile, the SAME DONE heading\u2019s SCHEDULED/DEADLINE items ARE corre
   assert.equal(items.length, 1); // only the logbook item, not the scheduled one
   assert.equal(items[0].kind, 'logbook');
 });
+
+// ---- THE FIX: deadline warning defaults to 14 days, matching real org -------
+
+test('THE FIX: a DEADLINE with no explicit delay cookie starts appearing 14 days before its due date by default (real org\u2019s own confirmed default), not 0', () => {
+  const doc = parseOrg('* TODO Something\nDEADLINE: <2026-08-20 Thu>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 6), // 2026-08-06 -- 14 days before the deadline
+    rangeEnd: new Date(2026, 7, 6),
+    today: new Date(2026, 7, 6),
+  });
+  const deadlineItems = items.filter((i) => i.kind === 'deadline');
+  assert.equal(deadlineItems.length, 1, 'the deadline should already be showing 14 days early, by default');
+});
+
+test('THE FIX: a DEADLINE does NOT appear 15 days before its due date -- the 14-day window has a real edge, not unbounded', () => {
+  const doc = parseOrg('* TODO Something\nDEADLINE: <2026-08-20 Thu>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 5), // 2026-08-05 -- 15 days before the deadline
+    rangeEnd: new Date(2026, 7, 5),
+    today: new Date(2026, 7, 5),
+  });
+  const deadlineItems = items.filter((i) => i.kind === 'deadline');
+  assert.equal(deadlineItems.length, 0);
+});
+
+test('THE FIX: an explicit delay cookie on the DEADLINE itself still overrides the 14-day default, exactly as before', () => {
+  const doc = parseOrg('* TODO Something\nDEADLINE: <2026-08-20 Thu -3d>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 17), // 2026-08-17 -- 3 days before, matches the explicit cookie
+    rangeEnd: new Date(2026, 7, 17),
+    today: new Date(2026, 7, 17),
+  });
+  assert.equal(items.filter((i) => i.kind === 'deadline').length, 1);
+
+  const itemsTooEarly = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 6), // 2026-08-06 -- 14 days before, should NOT show since the explicit -3d cookie overrides the 14-day default
+    rangeEnd: new Date(2026, 7, 6),
+    today: new Date(2026, 7, 6),
+  });
+  assert.equal(itemsTooEarly.filter((i) => i.kind === 'deadline').length, 0);
+});
+
+test('THE FIX: deadlineWarningDays is explicitly configurable via the deadlineWarningDays option', () => {
+  const doc = parseOrg('* TODO Something\nDEADLINE: <2026-08-20 Thu>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 13), // 7 days before
+    rangeEnd: new Date(2026, 7, 13),
+    today: new Date(2026, 7, 13),
+    deadlineWarningDays: 7,
+  });
+  assert.equal(items.filter((i) => i.kind === 'deadline').length, 1);
+});
+
+test('THE FIX: SCHEDULED is deliberately unaffected by the deadline-warning default -- real org\u2019s org-deadline-warning-days only applies to DEADLINE', () => {
+  const doc = parseOrg('* TODO Something\nSCHEDULED: <2026-08-20 Thu>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 13), // 7 days before -- SCHEDULED should NOT show this early with no explicit cookie
+    rangeEnd: new Date(2026, 7, 13),
+    today: new Date(2026, 7, 13),
+  });
+  assert.equal(items.filter((i) => i.kind === 'scheduled').length, 0);
+});
