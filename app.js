@@ -31,6 +31,7 @@ import { parseStartupConfig, resolveEffectiveStartupConfig } from './src/startup
 import {
   parseLocalVariables,
   getAgendaStartOnWeekday,
+  getDeadlineWarningDays,
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
   getAgendaSkipArchivedTrees,
@@ -5653,6 +5654,7 @@ function renderAgendaView() {
     isDone: (todo) => todoSequence.doneKeywords.includes(todo),
     today: new Date(),
     birthdayProperty: getContactsBirthdayProperty(state.localVariables),
+    deadlineWarningDays: getDeadlineWarningDays(state.localVariables),
   });
 
   const grouped =
