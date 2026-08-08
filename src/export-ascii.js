@@ -219,25 +219,70 @@ function renderListAscii(list, indent, width) {
   return out;
 }
 
+/** Whether a cell's content looks like a number -- real org's own
+ *  heuristic for per-column alignment (see the Org manual's own
+ *  "Column Width and Alignment": alignment is auto-detected from the
+ *  fraction of number-like versus non-number fields in the column).
+ *  Matches an optional sign, digits, and an optional decimal part --
+ *  deliberately simple rather than a full numeric-literal grammar,
+ *  since this only has to be good enough to bias a column's own
+ *  alignment one way or the other, not validate the value itself. */
+function looksNumeric(text) {
+  return /^[+-]?\d+(\.\d+)?$/.test(text.trim());
+}
+
+/** Pads `text` to `width` characters, left- or right-aligned --
+ *  matching real org's own org-ascii--justify-string. A value already
+ *  at or beyond `width` (a cell content computed the width FROM in
+ *  the first place, so this is normally exact, never truncated) is
+ *  returned unchanged rather than clipped. */
+function justify(text, width, alignRight) {
+  const padding = ' '.repeat(Math.max(0, width - text.length));
+  return alignRight ? padding + text : text + padding;
+}
+
 function renderTableAscii(table, indent) {
-  // Org's own pipe-table syntax is already a plain-text table -- shown
-  // as-is (indented to match surrounding content) rather than
-  // recomputed into a different ASCII-art grid style. Cell content
-  // itself is left as source text (not run through renderTextAscii):
-  // a table cell containing emphasis markup is rare enough, and
-  // dropping the markers there specifically would then need to
-  // recompute every column's own width to keep the table properly
-  // aligned -- a level of table-layout logic out of proportion to the
-  // benefit for such an edge case.
+  // Real org's own table editor keeps every column a single, fixed
+  // width (the widest cell in it) and auto-aligns each column left or
+  // right depending on whether it's mostly numeric -- confirmed
+  // directly from the Org manual's own "Column Width and Alignment"
+  // section and ox-ascii.el's own org-ascii--justify-string. Ragged,
+  // unaligned columns (this app's own earlier behavior, just joining
+  // raw cell text with " | ") is NOT what real org actually produces,
+  // even though it happens to be valid, parseable pipe-table syntax
+  // on its own -- looking like unformatted Markdown rather than a
+  // properly typeset org table was the actual bug.
+  const dataRows = table.rows.filter((r) => r.type === 'row');
+  if (dataRows.length === 0) return [];
+
+  const renderedRows = dataRows.map((row) => row.cells.map((cell) => renderTextAscii(cell)));
+  const columnCount = Math.max(...renderedRows.map((cells) => cells.length));
+
+  const columnWidths = [];
+  const columnAlignRight = [];
+  for (let col = 0; col < columnCount; col++) {
+    const columnCells = renderedRows.map((cells) => cells[col] || '');
+    columnWidths.push(Math.max(1, ...columnCells.map((c) => c.length)));
+    const numericCount = columnCells.filter((c) => c && looksNumeric(c)).length;
+    const nonEmptyCount = columnCells.filter((c) => c).length;
+    columnAlignRight.push(nonEmptyCount > 0 && numericCount / nonEmptyCount > 0.5);
+  }
+
+  const ruleLine = indent + '|' + columnWidths.map((w) => '-'.repeat(w + 2)).join('+') + '|';
+
   const out = [];
-  let columnCount = 1;
+  let dataRowIndex = -1;
   for (const row of table.rows) {
     if (row.type === 'rule') {
-      out.push(indent + '|' + Array(columnCount).fill('---').join('+') + '|');
+      out.push(ruleLine);
       continue;
     }
-    columnCount = row.cells.length;
-    out.push(indent + '| ' + row.cells.join(' | ') + ' |');
+    dataRowIndex++;
+    const cells = renderedRows[dataRowIndex];
+    const rendered = columnWidths
+      .map((width, col) => justify(cells[col] || '', width, columnAlignRight[col]))
+      .join(' | ');
+    out.push(`${indent}| ${rendered} |`);
   }
   return out;
 }
