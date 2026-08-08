@@ -32,6 +32,8 @@ import {
   parseLocalVariables,
   getAgendaStartOnWeekday,
   getDeadlineWarningDays,
+  getCalendarLatitude,
+  getCalendarLongitude,
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
   getAgendaSkipArchivedTrees,
@@ -49,12 +51,13 @@ import {
   getViewMenuAliases,
 } from './src/local-variables.js';
 import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath } from './src/refile.js';
-import { isClockRunning, clockIn, clockOut, clockCancel, totalClockedMinutes, formatClockDuration, findHeadingWithRunningClock } from './src/clock.js';
+import { isClockRunning, clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, formatClockDuration, findHeadingWithRunningClock } from './src/clock.js';
 import { computeClocktable, renderClocktable } from './src/clocktable.js';
 import { parseExtraMenu } from './src/extra-menu.js';
 import { parseMenuAliases } from './src/menu-alias.js';
 import { splitHexAlpha, combineHexAlpha } from './src/hex-alpha.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
+import { applyRepeaterShiftOnDone } from './src/repeater-shift.js';
 import { decideProgressLogging, decideLogbookEntry, getEffectiveLogDoneSetting } from './src/progress-logging.js';
 import { parseGlobalVariables, mergeGlobalAndLocalVariables } from './src/global-variables.js';
 import { formatStateLogLine, parseLogbookEntries } from './src/logbook.js';
@@ -275,6 +278,27 @@ function applyTodoTransition(heading, performChange) {
       pendingLogNote = { heading, fromTodo, toTodo, timestamp };
     } else {
       heading.logbookLines.splice(0, 0, ...formatStateLogLine(toTodo, fromTodo, timestamp));
+    }
+  }
+
+  // Real org's own repeater-shift-on-DONE: completing a heading with
+  // a repeating SCHEDULED/DEADLINE doesn't actually finish it -- the
+  // date shifts forward and the state bounces straight back to TODO.
+  // Only applies when THIS transition is what just entered a
+  // done-type keyword (not e.g. cycling from one done-type keyword to
+  // another) -- matches real org's own "on marking DONE" trigger.
+  if (sequence.doneKeywords.includes(toTodo) && !sequence.doneKeywords.includes(fromTodo)) {
+    if (applyRepeaterShiftOnDone(heading, sequence, now)) {
+      // The bounce-back is an automatic side effect of the repeater,
+      // not a real user-initiated transition -- real org's own actual
+      // behavior logs only the original DONE entry above, not a
+      // second one for this. The CLOSED timestamp just inserted DOES
+      // still need to come back off, though, since the heading isn't
+      // actually staying done.
+      const bounceBackDecision = decideProgressLogging(toTodo, heading.todo, sequence, logDoneSetting, keepWhenNoTodo);
+      if (bounceBackDecision.removeClosed) {
+        heading.planning.closed = null;
+      }
     }
   }
 }
@@ -870,15 +894,26 @@ async function performRefile(heading, targetDocumentId, targetOutlinePath) {
  *  clock is already running on this heading -- clockIn itself already
  *  refuses this, this just surfaces it to the person instead of
  *  quietly doing nothing. */
+/** org-clock-in: starts the clock on `heading`. If a DIFFERENT
+ *  heading already has a clock running, it's auto-clocked-out first
+ *  (at the exact same moment the new one starts, no gap) -- real
+ *  org's own actual org-clock-in behavior, confirmed directly from
+ *  its own docstring ("If necessary, clock-out of the currently
+ *  active clock"), not a silent second, simultaneous clock left
+ *  running elsewhere. A no-op (with a status message, not silent) if
+ *  a clock is already running on THIS SAME heading -- real org
+ *  doesn't let you double-start the same clock either, it just
+ *  continues the existing session. */
 function clockInHeading(heading) {
   const now = new Date();
   const timestamp = formatOrgTimestamp({ date: now, time: now.toTimeString().slice(0, 5), active: false });
-  if (!clockIn(heading, timestamp)) {
+  const { started, switchedFrom } = clockInSwitchingTasks(state.doc, heading, timestamp, now);
+  if (!started) {
     setStatus('A clock is already running on this heading.');
     render();
     return;
   }
-  commitAndRender('Clocked in');
+  commitAndRender(switchedFrom ? `Clocked in (stopped the clock on "${switchedFrom.title}")` : 'Clocked in');
 }
 
 /** org-clock-out: stops whatever clock is currently running on
@@ -5655,6 +5690,8 @@ function renderAgendaView() {
     today: new Date(),
     birthdayProperty: getContactsBirthdayProperty(state.localVariables),
     deadlineWarningDays: getDeadlineWarningDays(state.localVariables),
+    calendarLatitude: getCalendarLatitude(state.localVariables),
+    calendarLongitude: getCalendarLongitude(state.localVariables),
   });
 
   const grouped =
@@ -5701,7 +5738,11 @@ function renderAgendaView() {
               ? '\ud83c\udf82'
               : item.kind === 'logbook'
                 ? '\ud83d\udcdd'
-                : '\u23f0';
+                : item.kind === 'diary-sexp'
+                  ? '\ud83d\udd01'
+                  : item.kind === 'sunrise-sunset'
+                    ? '\u2600\ufe0f'
+                    : '\u23f0';
       kindIcon.style.flexShrink = '0';
       kindIcon.style.opacity = '0.6';
       row.appendChild(kindIcon);
