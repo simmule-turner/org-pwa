@@ -196,3 +196,27 @@ test(
     assert.match(html, /<i>italic<\/i>/);
   }
 );
+
+// ---- width-cookie row exclusion (real org's own "<N>" column-width directive) ----
+
+test('THE FIX: a width-cookie row ("<N>" in every cell) is excluded entirely, not shown as a literal data row', () => {
+  const doc = parseOrg('* H\n| <10> | <5> |\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
+  const xml = unzipEntry(exportToOdt(doc), 'content.xml');
+  assert.doesNotMatch(xml, /&lt;10&gt;/);
+  assert.doesNotMatch(xml, /&lt;5&gt;/);
+});
+
+test('THE FIX: with the cookie row correctly excluded, the REAL header row (Name/Age) is the first row actually rendered', () => {
+  const doc = parseOrg('* H\n| <10> | <5> |\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
+  const xml = unzipEntry(exportToOdt(doc), 'content.xml');
+  const firstRow = xml.match(/<table:table-row>.*?<\/table:table-row>/)[0];
+  assert.match(firstRow, />Name</);
+  assert.match(firstRow, />Age</);
+});
+
+test('a table with no width-cookie row is completely unaffected', () => {
+  const doc = parseOrg('* H\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
+  const xml = unzipEntry(exportToOdt(doc), 'content.xml');
+  const firstRow = xml.match(/<table:table-row>.*?<\/table:table-row>/)[0];
+  assert.match(firstRow, />Name</);
+});

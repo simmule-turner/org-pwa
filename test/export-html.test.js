@@ -354,3 +354,24 @@ test('a whole realistic document with multiple internal links (a Contents/TOC-st
   assert.equal(hrefs.length, 2);
   for (const href of hrefs) assert.ok(ids.has(href.slice(1)), `${href} should resolve to a real id`);
 });
+
+// ---- width-cookie row exclusion (real org's own "<N>" column-width directive) ----
+
+test('THE FIX: a width-cookie row ("<N>" in every cell) is excluded entirely, not shown as data or mistaken for the header', () => {
+  const doc = parseOrg('* H\n| <10> | <5> |\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
+  const html = exportToHtml(doc);
+  assert.doesNotMatch(html, /&lt;10&gt;/);
+  assert.doesNotMatch(html, /&lt;5&gt;/);
+});
+
+test('THE FIX: with the cookie row correctly excluded, the REAL header row is the one actually promoted to <th>, not demoted into the body', () => {
+  const doc = parseOrg('* H\n| <10> | <5> |\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<thead><tr><th>Name<\/th><th>Age<\/th><\/tr><\/thead>/);
+});
+
+test('a table with no width-cookie row is completely unaffected', () => {
+  const doc = parseOrg('* H\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<thead><tr><th>Name<\/th><th>Age<\/th><\/tr><\/thead>/);
+});

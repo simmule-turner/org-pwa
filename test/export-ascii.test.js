@@ -264,6 +264,45 @@ test('an empty table (no data rows) produces no output rather than throwing', ()
   assert.doesNotThrow(() => exportToAscii(doc));
 });
 
+// ---- explicit column-width cookies (real org-mode "<N>" syntax) -----------
+
+test('THE FEATURE: a "<N>" width-cookie row forces each column to that exact width, and is itself excluded from the rendered output (a directive, not data)', () => {
+  const doc = parseOrg('* H\n| <10> | <5> |\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
+  const result = exportToAscii(doc, null, 200);
+  assert.ok(!result.includes('<10>'));
+  assert.ok(!result.includes('<5>'));
+  const dataLines = result.split('\n').filter((l) => l.includes('|') && !l.includes('-'));
+  for (const line of dataLines) assert.equal(line.length, dataLines[0].length, `expected every row the same length: ${JSON.stringify(line)}`);
+});
+
+test('THE FEATURE: content wider than its explicit column width word-wraps across multiple output lines within the same logical row', () => {
+  const doc = parseOrg('* H\n| <10> |\n| Header |\n|---|\n| This is a long sentence that needs wrapping |\n');
+  const result = exportToAscii(doc, null, 200);
+  const lines = result.split('\n').filter((l) => l.includes('This') || l.includes('long') || l.includes('sentence') || l.includes('needs') || l.includes('wrapping'));
+  assert.ok(lines.length > 1, 'expected the long cell content to span multiple output lines');
+});
+
+test('THE FEATURE: a word longer than the explicit width breaks at a hyphen (kept on the earlier segment), matching how hyphenated words conventionally break', () => {
+  const doc = parseOrg('* H\n| <10> |\n| Header |\n|---|\n| org-agenda-skip-archived-trees |\n');
+  const result = exportToAscii(doc, null, 200);
+  assert.ok(result.includes('org-'));
+  assert.ok(result.includes('agenda-'));
+  assert.ok(!result.includes('org-agenda-skip-archived-trees')); // definitely wrapped, not left on one line
+});
+
+test('THE FEATURE: a table with NO width-cookie row is completely unaffected -- auto-computed widths as before', () => {
+  const doc = parseOrg('* H\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
+  const result = exportToAscii(doc, null, 200);
+  assert.ok(result.includes('| Name | Age |'));
+});
+
+test('THE FEATURE: a row that only PARTIALLY matches the "<N>" pattern (not every cell) is treated as ordinary data, not a cookie row', () => {
+  const doc = parseOrg('* H\n| <10> | Not a cookie |\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
+  const result = exportToAscii(doc, null, 200);
+  assert.ok(result.includes('<10>')); // shown as ordinary cell content, not stripped
+  assert.ok(result.includes('Not a cookie'));
+});
+
 // ---- exportToAscii: blocks ------------------------------------------------
 
 test('a block is shown with a name label and its literal content, indented', () => {

@@ -395,3 +395,24 @@ test('a whole realistic document exported from the actual README.org resolves ev
   }
   assert.ok(unmatched < linkTargets.length * 0.05, `expected nearly all ${linkTargets.length} internal links to resolve; ${unmatched} did not even loosely match`);
 });
+
+// ---- width-cookie row exclusion (real org's own "<N>" column-width directive) ----
+
+test('THE FIX: a width-cookie row ("<N>" in every cell) is excluded entirely, not shown as data or mistaken for the header', () => {
+  const doc = parseOrg('* H\n| <10> | <5> |\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
+  const md = exportToMarkdown(doc);
+  assert.doesNotMatch(md, /<10>/);
+  assert.doesNotMatch(md, /<5>/);
+});
+
+test('THE FIX: with the cookie row correctly excluded, the REAL header row is used as the GFM table header, not demoted', () => {
+  const doc = parseOrg('* H\n| <10> | <5> |\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
+  const md = exportToMarkdown(doc);
+  assert.match(md, /\| Name \| Age \|\n\| --- \| --- \|/);
+});
+
+test('a table with no width-cookie row is completely unaffected', () => {
+  const doc = parseOrg('* H\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
+  const md = exportToMarkdown(doc);
+  assert.match(md, /\| Name \| Age \|\n\| --- \| --- \|/);
+});
