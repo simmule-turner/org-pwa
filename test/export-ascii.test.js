@@ -218,6 +218,52 @@ test('a table rule line correctly matches a wider table\u2019s actual column cou
   assert.ok(result.includes('|---+---+---|'));
 });
 
+test('THE FIX: columns are padded to a fixed width (the longest cell in that column), not left ragged/jagged like raw pipe-table source', () => {
+  const doc = parseOrg('* H\n| Name | Phone |\n|---+---|\n| Peter | 1234 |\n| Anna | 4321567 |\n');
+  const result = exportToAscii(doc, null, 200);
+  const lines = result.split('\n').filter((l) => l.includes('|'));
+  // Every non-rule row should be the exact same total length -- the
+  // whole point of fixed-width columns.
+  const dataLines = lines.filter((l) => !l.includes('-'));
+  const lengths = new Set(dataLines.map((l) => l.length));
+  assert.equal(lengths.size, 1, `expected every row to be the same length, got: ${JSON.stringify(dataLines)}`);
+});
+
+test('THE FIX: the rule line\u2019s dashes match each column\u2019s ACTUAL computed width, not a fixed "---" regardless of content', () => {
+  const doc = parseOrg('* H\n| Name | Phone |\n|---+---|\n| Peter | 1234 |\n| Anna | 4321567 |\n');
+  const result = exportToAscii(doc, null, 200);
+  // "Phone" column's widest cell is "4321567" (7 chars) -- the rule
+  // segment for that column should be 7+2=9 dashes, not a generic 3.
+  assert.match(result, /\+-{9}\|/);
+});
+
+test('THE FIX: a numeric-majority column is right-aligned, matching real org\u2019s own auto-detected alignment', () => {
+  const doc = parseOrg('* H\n| Name | Age |\n|---+---|\n| Peter | 17 |\n| Anna | 125 |\n');
+  const result = exportToAscii(doc, null, 200);
+  // "17" (2 chars) in a 3-char-wide column (matching "125") should be
+  // right-padded with a leading space: " 17", not "17 ".
+  assert.match(result, /\|\s+17 \|/);
+});
+
+test('THE FIX: a text-majority column is left-aligned', () => {
+  const doc = parseOrg('* H\n| Name | Age |\n|---+---|\n| A | 17 |\n| Longer | 5 |\n');
+  const result = exportToAscii(doc, null, 200);
+  assert.match(result, /\| A {6}\|/); // "A" padded with trailing spaces to match "Longer"'s width
+});
+
+test('THE FIX: cell content is parsed for inline markup, consistent with the rest of this exporter -- code/verbatim becomes the backtick-quote convention, bold/italic markers are stripped', () => {
+  const doc = parseOrg('* H\n| Item | Status |\n|---+---|\n| ~code~ | *done* |\n');
+  const result = exportToAscii(doc, null, 200);
+  assert.ok(result.includes("`code'"));
+  assert.ok(result.includes('done'));
+  assert.ok(!result.includes('*done*'));
+});
+
+test('an empty table (no data rows) produces no output rather than throwing', () => {
+  const doc = parseOrg('* H\n');
+  assert.doesNotThrow(() => exportToAscii(doc));
+});
+
 // ---- exportToAscii: blocks ------------------------------------------------
 
 test('a block is shown with a name label and its literal content, indented', () => {
