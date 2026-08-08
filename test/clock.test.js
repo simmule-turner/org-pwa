@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
 import { formatOrgTimestamp } from '../src/org-timestamp.js';
-import { isClockRunning, clockIn, clockOut, clockCancel, formatClockDuration, parseClockDuration, totalClockedMinutes, findHeadingWithRunningClock } from '../src/clock.js';
+import { isClockRunning, clockIn, clockOut, clockCancel, clockInSwitchingTasks, formatClockDuration, parseClockDuration, totalClockedMinutes, findHeadingWithRunningClock } from '../src/clock.js';
 
 function ts(date, timeStr) {
   return formatOrgTimestamp({ date, time: timeStr, active: false });
@@ -229,4 +229,70 @@ test('findHeadingWithRunningClock finds a running clock nested several levels de
 test('findHeadingWithRunningClock ignores a completed (non-running) clock', () => {
   const doc = parseOrg('* A\n:LOGBOOK:\nCLOCK: [2026-07-31 Fri 09:00]--[2026-07-31 Fri 09:30] =>  0:30\n:END:\n');
   assert.equal(findHeadingWithRunningClock(doc), null);
+});
+
+// ---- THE FIX: clockInSwitchingTasks auto-clocks-out a different running clock ----
+
+test('THE FIX: clocking in on a DIFFERENT heading while another is running auto-clocks-out the previous one first, matching real org\u2019s own confirmed "if necessary, clock-out of the currently active clock" behavior', () => {
+  const doc = parseOrg('* Task A\n* Task B\n');
+  const taskA = doc.children[0];
+  const taskB = doc.children[1];
+  clockIn(taskA, '[2026-08-08 Sat 09:00]');
+
+  const now = new Date(2026, 7, 8, 10, 0);
+  const result = clockInSwitchingTasks(doc, taskB, '[2026-08-08 Sat 10:00]', now);
+
+  assert.equal(result.started, true);
+  assert.equal(result.switchedFrom, taskA);
+  assert.equal(isClockRunning(taskA), false);
+  assert.equal(isClockRunning(taskB), true);
+});
+
+test('THE FIX: the auto-clocked-out previous task records the correct elapsed duration, ending at the exact moment the new task started -- no gap', () => {
+  const doc = parseOrg('* Task A\n* Task B\n');
+  const taskA = doc.children[0];
+  clockIn(taskA, '[2026-08-08 Sat 09:00]');
+
+  const now = new Date(2026, 7, 8, 10, 30);
+  clockInSwitchingTasks(doc, doc.children[1], '[2026-08-08 Sat 10:30]', now);
+
+  assert.deepEqual(taskA.logbookLines, ['CLOCK: [2026-08-08 Sat 09:00]--[2026-08-08 Sat 10:30] =>  1:30']);
+});
+
+test('clockInSwitchingTasks on the SAME heading that\u2019s already running is unchanged from plain clockIn -- a no-op, real org refuses to double-start too', () => {
+  const doc = parseOrg('* Task A\n');
+  const taskA = doc.children[0];
+  clockIn(taskA, '[2026-08-08 Sat 09:00]');
+
+  const now = new Date(2026, 7, 8, 10, 0);
+  const result = clockInSwitchingTasks(doc, taskA, '[2026-08-08 Sat 10:00]', now);
+
+  assert.equal(result.started, false);
+  assert.equal(result.switchedFrom, null);
+  assert.deepEqual(taskA.logbookLines, ['CLOCK: [2026-08-08 Sat 09:00]']); // untouched
+});
+
+test('clockInSwitchingTasks with no clock running anywhere just starts the new one normally', () => {
+  const doc = parseOrg('* Task A\n');
+  const taskA = doc.children[0];
+  const now = new Date(2026, 7, 8, 9, 0);
+  const result = clockInSwitchingTasks(doc, taskA, '[2026-08-08 Sat 09:00]', now);
+
+  assert.equal(result.started, true);
+  assert.equal(result.switchedFrom, null);
+  assert.equal(isClockRunning(taskA), true);
+});
+
+test('clockInSwitchingTasks correctly finds and switches from a running clock on a DESCENDANT heading, not just a sibling', () => {
+  const doc = parseOrg('* Project\n** Task A\n* Task B\n');
+  const taskA = doc.children[0].children[0];
+  const taskB = doc.children[1];
+  clockIn(taskA, '[2026-08-08 Sat 09:00]');
+
+  const now = new Date(2026, 7, 8, 10, 0);
+  const result = clockInSwitchingTasks(doc, taskB, '[2026-08-08 Sat 10:00]', now);
+
+  assert.equal(result.switchedFrom, taskA);
+  assert.equal(isClockRunning(taskA), false);
+  assert.equal(isClockRunning(taskB), true);
 });

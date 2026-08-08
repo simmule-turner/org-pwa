@@ -1089,3 +1089,86 @@ test('THE FIX: SCHEDULED is deliberately unaffected by the deadline-warning defa
   });
   assert.equal(items.filter((i) => i.kind === 'scheduled').length, 0);
 });
+
+// ---- THE FIX: SCHEDULED's own "-Nd" suffix delays, DEADLINE's own "-Nd" warns early --
+
+test('THE FIX: a SCHEDULED "-Nd" suffix does NOT show the item early -- confirmed against the Org manual, "-Nd" delays SCHEDULED\u2019s appearance instead', () => {
+  const doc = parseOrg('* TODO Something\nSCHEDULED: <2026-08-20 Thu -2d>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 18), // 2 days before -- the OLD, buggy behavior would show it here
+    rangeEnd: new Date(2026, 7, 18),
+    today: new Date(2026, 7, 18),
+  });
+  assert.equal(items.filter((i) => i.kind === 'scheduled').length, 0);
+});
+
+test('THE FIX: a SCHEDULED "-Nd" suffix does not even show on its own literal date -- the appearance is delayed past it, not just "no early warning"', () => {
+  const doc = parseOrg('* TODO Something\nSCHEDULED: <2026-08-20 Thu -2d>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 20), // the literal SCHEDULED date itself
+    rangeEnd: new Date(2026, 7, 20),
+    today: new Date(2026, 7, 20),
+  });
+  assert.equal(items.filter((i) => i.kind === 'scheduled').length, 0);
+});
+
+test('THE FIX: a SCHEDULED "-Nd" suffix DOES show once the delay has actually elapsed (N days after the literal date)', () => {
+  const doc = parseOrg('* TODO Something\nSCHEDULED: <2026-08-20 Thu -2d>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 22), // exactly 2 days after -- the delay has now elapsed
+    rangeEnd: new Date(2026, 7, 22),
+    today: new Date(2026, 7, 22),
+  });
+  assert.equal(items.filter((i) => i.kind === 'scheduled').length, 1);
+});
+
+test('THE FIX: once a delayed SCHEDULED item starts showing, normal carry-forward/overdue behavior continues from there', () => {
+  const doc = parseOrg('* TODO Something\nSCHEDULED: <2026-08-20 Thu -2d>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 25), // well after the delayed appearance date
+    rangeEnd: new Date(2026, 7, 25),
+    today: new Date(2026, 7, 25),
+  });
+  assert.equal(items.filter((i) => i.kind === 'scheduled').length, 1);
+});
+
+test('DEADLINE\u2019s own "-Nd" suffix is completely unaffected by this fix -- it still means early warning, the opposite direction from SCHEDULED', () => {
+  const doc = parseOrg('* TODO Something\nDEADLINE: <2026-08-20 Thu -3d>\n');
+  const early = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 17), // 3 days before -- should show, matching DEADLINE's own early-warning direction
+    rangeEnd: new Date(2026, 7, 17),
+    today: new Date(2026, 7, 17),
+  });
+  assert.equal(early.filter((i) => i.kind === 'deadline').length, 1);
+
+  const tooEarly = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 16), // 4 days before -- should NOT show yet
+    rangeEnd: new Date(2026, 7, 16),
+    today: new Date(2026, 7, 16),
+  });
+  assert.equal(tooEarly.filter((i) => i.kind === 'deadline').length, 0);
+});
+
+test('a SCHEDULED item with NO delay suffix at all is completely unaffected -- shows on its own literal date as always', () => {
+  const doc = parseOrg('* TODO Something\nSCHEDULED: <2026-08-20 Thu>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 20),
+    rangeEnd: new Date(2026, 7, 20),
+    today: new Date(2026, 7, 20),
+  });
+  assert.equal(items.filter((i) => i.kind === 'scheduled').length, 1);
+});
