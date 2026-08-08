@@ -5838,6 +5838,24 @@ function buildClocktableSection() {
   reportToggle.appendChild(document.createTextNode('Clock report'));
   checkboxRow.appendChild(reportToggle);
 
+  let rendered = null;
+  if (showClocktable) {
+    const result = computeClocktable(state.doc, clocktableStart, clocktableEnd, clocktableMaxlevel);
+    rendered = renderClocktable(result, clocktableStart, clocktableEnd, new Date(), clocktableMaxlevel);
+
+    const copyBtn = menuButton('\ud83d\udccb Copy', async () => {
+      try {
+        await navigator.clipboard.writeText(rendered);
+        setStatus('Clocktable copied to clipboard.');
+      } catch {
+        setStatus("Couldn't copy \u2014 your browser may not allow clipboard access here.");
+      }
+      render();
+    });
+    copyBtn.style.marginLeft = 'auto';
+    checkboxRow.appendChild(copyBtn);
+  }
+
   wrap.appendChild(checkboxRow);
 
   if (!showClocktable) return wrap;
@@ -5880,16 +5898,14 @@ function buildClocktableSection() {
   };
   rangeRow.appendChild(endInput);
 
-  const maxlevelLabel = document.createElement('label');
-  maxlevelLabel.style.display = 'flex';
-  maxlevelLabel.style.alignItems = 'center';
-  maxlevelLabel.style.gap = '4px';
-  maxlevelLabel.style.fontSize = '12px';
-  maxlevelLabel.style.marginLeft = '6px';
-  maxlevelLabel.appendChild(document.createTextNode('maxlevel'));
+  // No visible text label -- just the bare select, so it fits on the
+  // same line as the date pickers without extra width; still
+  // identifiable via aria-label for accessibility.
   const maxlevelSelect = document.createElement('select');
   textInputStyle(maxlevelSelect);
   maxlevelSelect.style.width = 'auto';
+  maxlevelSelect.style.marginLeft = '6px';
+  maxlevelSelect.setAttribute('aria-label', 'maxlevel');
   for (let n = 1; n <= 10; n++) {
     const option = document.createElement('option');
     option.value = String(n);
@@ -5901,27 +5917,9 @@ function buildClocktableSection() {
     clocktableMaxlevel = Number(maxlevelSelect.value);
     render();
   };
-  maxlevelLabel.appendChild(maxlevelSelect);
-  rangeRow.appendChild(maxlevelLabel);
+  rangeRow.appendChild(maxlevelSelect);
 
   wrap.appendChild(rangeRow);
-
-  const result = computeClocktable(state.doc, clocktableStart, clocktableEnd, clocktableMaxlevel);
-  const rendered = renderClocktable(result, clocktableStart, clocktableEnd, new Date(), clocktableMaxlevel);
-
-  const copyRow = document.createElement('div');
-  copyRow.style.marginTop = '8px';
-  const copyBtn = menuButton('\ud83d\udccb Copy', async () => {
-    try {
-      await navigator.clipboard.writeText(rendered);
-      setStatus('Clocktable copied to clipboard.');
-    } catch {
-      setStatus("Couldn't copy \u2014 your browser may not allow clipboard access here.");
-    }
-    render();
-  });
-  copyRow.appendChild(copyBtn);
-  wrap.appendChild(copyRow);
 
   const pre = document.createElement('pre');
   pre.style.marginTop = '8px';
