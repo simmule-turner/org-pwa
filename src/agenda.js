@@ -215,7 +215,7 @@ function parseContactEvent(value) {
 }
 
 /** Elapsed years as of `occurrenceDate` for an event whose stored year
- *  is `year`. null when `year` is null (unknown) — formatted as "(xx)"
+ *  is `year`. null when `year` is null (unknown) — formatted as "(??)"
  *  by formatContactEventLine below, per what was actually asked for,
  *  rather than a numeric sentinel a caller could accidentally display
  *  as a real age. */
@@ -224,12 +224,12 @@ function contactEventAge(year, occurrenceDate) {
   return occurrenceDate.getFullYear() - year;
 }
 
-/** "Name: Description (36)", or "Name: Description (xx)" when the age
+/** "Name: Description (36)", or "Name: Description (??)" when the age
  *  is unknown — the fixed display format this feature produces, not
  *  something the file author writes text for (unlike the deprecated
  *  org-anniversary sexp's own arbitrary-text-with-%d approach). */
 function formatContactEventLine(headingTitle, description, age) {
-  return `${headingTitle}: ${description} (${age === null ? 'xx' : age})`;
+  return `${headingTitle}: ${description} (${age === null ? '??' : age})`;
 }
 
 /** Matches formatContactEventLine's own style: a short, readable
