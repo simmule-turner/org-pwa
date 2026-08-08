@@ -157,23 +157,32 @@ import {
   DEFAULT_GLOBAL_VARIABLES,
 } from './src-browser/settings.js';
 
-// Disable auto-capitalization app-wide, on every text input/textarea
-// this app ever creates -- Chrome and Safari on mobile default
-// autocapitalize to "sentences," which fights against this app's own
-// conventions (tags, properties, list markers, and most everyday
-// capture text are almost always lowercase) with no per-field way to
-// opt out short of setting the attribute directly. Wrapping
+// Disable auto-capitalization AND auto-correction app-wide, on every
+// text input/textarea this app ever creates -- Chrome and Safari on
+// mobile default autocapitalize to "sentences," which fights against
+// this app's own conventions (tags, properties, list markers, and
+// most everyday capture text are almost always lowercase) with no
+// per-field way to opt out short of setting the attribute directly.
+// autocorrect="off" is the same idea for a DIFFERENT, separately
+// surprising behavior: iOS/Safari's own "double-tap space inserts a
+// period" system shortcut is tied to the same underlying
+// autocorrection subsystem as spelling suggestions, and ties directly
+// to this attribute -- most noticeable while typing normal prose into
+// a plain text field (a Settings text box, a capture prompt answer),
+// where two spaces in a row (easy to type without noticing on a
+// mobile keyboard) silently becomes ". " instead. Wrapping
 // createElement here, once, covers every input/textarea this app ever
-// creates without needing the same attribute repeated at dozens of
-// individual call sites. A manual capital is still one tap away on
-// the keyboard's own shift key -- this only removes the automatic,
-// unrequested kind, never the ability to type one deliberately.
+// creates without needing the same attributes repeated at dozens of
+// individual call sites. A manual capital or period is still one tap
+// away on the keyboard's own keys -- this only removes the automatic,
+// unrequested kind, never the ability to type either deliberately.
 const nativeCreateElement = document.createElement.bind(document);
 document.createElement = function (tagName, options) {
   const el = nativeCreateElement(tagName, options);
   const tag = String(tagName).toLowerCase();
   if (tag === 'input' || tag === 'textarea') {
     el.setAttribute('autocapitalize', 'off');
+    el.setAttribute('autocorrect', 'off');
   }
   return el;
 };
@@ -1434,6 +1443,7 @@ let showClockDisplay = false; // org-clock-display: whether each TODO-view item 
 let showClocktable = false; // org-clock-report: whether the TODO view's own clocktable configuration section is expanded -- off by default, same reasoning as showClockDisplay above
 let clocktableStart = '';
 let clocktableEnd = '';
+let clocktableMaxlevel = 2;
 // Which heading (by object reference) currently has its title in edit
 // mode, and whether it was just created (so an empty commit removes it
 // instead of leaving a titleless heading behind).
@@ -5771,17 +5781,45 @@ function buildClocktableSection() {
   const wrap = document.createElement('div');
   wrap.style.marginBottom = '10px';
 
-  const toggle = document.createElement('label');
-  toggle.style.display = 'flex';
-  toggle.style.alignItems = 'center';
-  toggle.style.gap = '6px';
-  toggle.style.fontSize = '13px';
-  toggle.style.cursor = 'pointer';
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.checked = showClocktable;
-  checkbox.onchange = () => {
-    showClocktable = checkbox.checked;
+  const hr = document.createElement('hr');
+  hr.style.border = 'none';
+  hr.style.borderTop = '0.5px solid var(--border-strong)';
+  hr.style.margin = '2px 0 8px';
+  wrap.appendChild(hr);
+
+  const checkboxRow = document.createElement('div');
+  checkboxRow.style.display = 'flex';
+  checkboxRow.style.alignItems = 'center';
+  checkboxRow.style.gap = '14px';
+
+  const clockToggle = document.createElement('label');
+  clockToggle.style.display = 'flex';
+  clockToggle.style.alignItems = 'center';
+  clockToggle.style.gap = '4px';
+  clockToggle.style.fontSize = '13px';
+  clockToggle.style.cursor = 'pointer';
+  const clockCheckbox = document.createElement('input');
+  clockCheckbox.type = 'checkbox';
+  clockCheckbox.checked = showClockDisplay;
+  clockCheckbox.onchange = () => {
+    showClockDisplay = clockCheckbox.checked;
+    render();
+  };
+  clockToggle.appendChild(clockCheckbox);
+  clockToggle.appendChild(document.createTextNode('Clock'));
+  checkboxRow.appendChild(clockToggle);
+
+  const reportToggle = document.createElement('label');
+  reportToggle.style.display = 'flex';
+  reportToggle.style.alignItems = 'center';
+  reportToggle.style.gap = '6px';
+  reportToggle.style.fontSize = '13px';
+  reportToggle.style.cursor = 'pointer';
+  const reportCheckbox = document.createElement('input');
+  reportCheckbox.type = 'checkbox';
+  reportCheckbox.checked = showClocktable;
+  reportCheckbox.onchange = () => {
+    showClocktable = reportCheckbox.checked;
     // Default to the last 7 days (including today) the FIRST time this
     // is checked with nothing picked yet -- shows something useful
     // immediately rather than an empty picker needing two taps before
@@ -5796,9 +5834,11 @@ function buildClocktableSection() {
     }
     render();
   };
-  toggle.appendChild(checkbox);
-  toggle.appendChild(document.createTextNode('Clock report'));
-  wrap.appendChild(toggle);
+  reportToggle.appendChild(reportCheckbox);
+  reportToggle.appendChild(document.createTextNode('Clock report'));
+  checkboxRow.appendChild(reportToggle);
+
+  wrap.appendChild(checkboxRow);
 
   if (!showClocktable) return wrap;
 
@@ -5840,10 +5880,48 @@ function buildClocktableSection() {
   };
   rangeRow.appendChild(endInput);
 
+  const maxlevelLabel = document.createElement('label');
+  maxlevelLabel.style.display = 'flex';
+  maxlevelLabel.style.alignItems = 'center';
+  maxlevelLabel.style.gap = '4px';
+  maxlevelLabel.style.fontSize = '12px';
+  maxlevelLabel.style.marginLeft = '6px';
+  maxlevelLabel.appendChild(document.createTextNode('maxlevel'));
+  const maxlevelSelect = document.createElement('select');
+  textInputStyle(maxlevelSelect);
+  maxlevelSelect.style.width = 'auto';
+  for (let n = 1; n <= 10; n++) {
+    const option = document.createElement('option');
+    option.value = String(n);
+    option.textContent = String(n);
+    if (n === clocktableMaxlevel) option.selected = true;
+    maxlevelSelect.appendChild(option);
+  }
+  maxlevelSelect.onchange = () => {
+    clocktableMaxlevel = Number(maxlevelSelect.value);
+    render();
+  };
+  maxlevelLabel.appendChild(maxlevelSelect);
+  rangeRow.appendChild(maxlevelLabel);
+
   wrap.appendChild(rangeRow);
 
-  const result = computeClocktable(state.doc, clocktableStart, clocktableEnd);
-  const rendered = renderClocktable(result, clocktableStart, clocktableEnd, new Date());
+  const result = computeClocktable(state.doc, clocktableStart, clocktableEnd, clocktableMaxlevel);
+  const rendered = renderClocktable(result, clocktableStart, clocktableEnd, new Date(), clocktableMaxlevel);
+
+  const copyRow = document.createElement('div');
+  copyRow.style.marginTop = '8px';
+  const copyBtn = menuButton('\ud83d\udccb Copy', async () => {
+    try {
+      await navigator.clipboard.writeText(rendered);
+      setStatus('Clocktable copied to clipboard.');
+    } catch {
+      setStatus("Couldn't copy \u2014 your browser may not allow clipboard access here.");
+    }
+    render();
+  });
+  copyRow.appendChild(copyBtn);
+  wrap.appendChild(copyRow);
 
   const pre = document.createElement('pre');
   pre.style.marginTop = '8px';
@@ -5880,25 +5958,6 @@ function renderTaskListView() {
   heading.style.opacity = '0.65';
   heading.textContent = 'Every active TODO in this file, regardless of date — matching real org\u2019s own global TODO list.';
   headingRow.appendChild(heading);
-
-  const clockToggle = document.createElement('label');
-  clockToggle.style.display = 'flex';
-  clockToggle.style.alignItems = 'center';
-  clockToggle.style.gap = '4px';
-  clockToggle.style.fontSize = '12px';
-  clockToggle.style.opacity = '0.8';
-  clockToggle.style.cursor = 'pointer';
-  clockToggle.style.flexShrink = '0';
-  const clockCheckbox = document.createElement('input');
-  clockCheckbox.type = 'checkbox';
-  clockCheckbox.checked = showClockDisplay;
-  clockCheckbox.onchange = () => {
-    showClockDisplay = clockCheckbox.checked;
-    render();
-  };
-  clockToggle.appendChild(clockCheckbox);
-  clockToggle.appendChild(document.createTextNode('Clock'));
-  headingRow.appendChild(clockToggle);
 
   container.appendChild(headingRow);
   container.appendChild(buildClocktableSection());
