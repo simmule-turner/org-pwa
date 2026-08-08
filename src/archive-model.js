@@ -209,9 +209,31 @@ function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = {}) {
   setProperty(clone, 'ARCHIVE_OLPATH', olpath);
   setProperty(clone, 'ARCHIVE_CATEGORY', category);
 
-  if (markDone && clone.todo) {
+  // Real org's own default org-archive-save-context-info is
+  // '(time file olpath category todo itags) -- ARCHIVE_TODO records
+  // the PRE-ARCHIVE state whenever the heading actually has one,
+  // independent of markDone (a separate, additional org-archive-
+  // mark-done concern: whether archiving ALSO forces the heading to
+  // DONE). The two were previously conflated into a single
+  // condition, meaning ARCHIVE_TODO never got recorded at all
+  // wherever markDone wasn't explicitly requested.
+  if (clone.todo) {
     setProperty(clone, 'ARCHIVE_TODO', clone.todo);
+  }
+  if (markDone && clone.todo) {
     clone.todo = doneKeyword;
+  }
+
+  // ARCHIVE_ITAGS: the tags the subtree INHERITS from further up the
+  // hierarchy -- ancestors' own tags, not the heading's own local
+  // ones (those are already preserved as-is on the clone itself, tags
+  // aren't stripped when archiving). Colon-delimited, matching real
+  // org's own tag-storage convention everywhere else (":tag1:tag2:").
+  // Omitted entirely when there's nothing to record, rather than
+  // stamping an empty, meaningless value.
+  const inheritedTags = [...new Set(ancestors.flatMap((h) => h.tags || []))];
+  if (inheritedTags.length > 0) {
+    setProperty(clone, 'ARCHIVE_ITAGS', ':' + inheritedTags.join(':') + ':');
   }
 
   return clone;
@@ -285,16 +307,16 @@ function archiveToSiblingFile(sourceDoc, archiveDoc, heading, sourceFilePath, op
  * afterward, once it has actually succeeded.
  *
  * Restores the original TODO state from ARCHIVE_TODO if present, strips
- * all four ARCHIVE_* properties, and removes the ARCHIVE tag -- a
- * restored heading must not stay tagged archived once it's back in a
- * live document.
+ * every ARCHIVE_* property this app ever stamps, and removes the
+ * ARCHIVE tag -- a restored heading must not stay tagged archived once
+ * it's back in a live document.
  */
 function buildRestoredClone(heading) {
   const clone = cloneHeading(heading);
   if ('ARCHIVE_TODO' in clone.properties) {
     clone.todo = clone.properties.ARCHIVE_TODO;
   }
-  for (const key of ['ARCHIVE_TIME', 'ARCHIVE_FILE', 'ARCHIVE_OLPATH', 'ARCHIVE_CATEGORY', 'ARCHIVE_TODO']) {
+  for (const key of ['ARCHIVE_TIME', 'ARCHIVE_FILE', 'ARCHIVE_OLPATH', 'ARCHIVE_CATEGORY', 'ARCHIVE_TODO', 'ARCHIVE_ITAGS']) {
     deleteProperty(clone, key);
   }
   unarchiveInPlace(clone);

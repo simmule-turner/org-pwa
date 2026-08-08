@@ -373,6 +373,7 @@ function buildAgendaItems(docs, opts = {}) {
     isDone = null,
     today = new Date(),
     birthdayProperty = 'BIRTHDAY',
+    deadlineWarningDays = 14,
   } = opts;
   const items = [];
 
@@ -401,7 +402,7 @@ function buildAgendaItems(docs, opts = {}) {
       !repeater && isDone !== null && !headingIsDone && (kind === 'scheduled' || kind === 'deadline');
     if (carryForwardEligible && rangeStart && rangeEnd) {
       const delay = parsed.delay ? parseDelay(parsed.delay) : null;
-      const earlyWarningDays = delayToDays(delay);
+      const earlyWarningDays = delay ? delayToDays(delay) : kind === 'deadline' ? deadlineWarningDays : 0;
       for (const occurrenceDate of carryForwardOccurrences(parsed.date, today, rangeStart, rangeEnd, earlyWarningDays)) {
         const daysOverdue = Math.round((startOfDay(occurrenceDate) - startOfDay(parsed.date)) / MS_PER_DAY);
         items.push({ ...base, date: occurrenceDate, daysOverdue });

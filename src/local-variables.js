@@ -108,6 +108,21 @@ export function getAgendaStartOnWeekday(vars) {
   return n >= 0 && n <= 6 ? n : 1;
 }
 
+/** org-deadline-warning-days: how many days before its own due date a
+ *  DEADLINE with no explicit delay cookie of its own (e.g. no
+ *  "<2026-01-10 Sat -3d>" suffix) starts appearing in the agenda at
+ *  all. Real org's own actual default is 14 -- confirmed directly
+ *  against the Org FAQ, the authoritative source for this specific
+ *  number -- not 0: a DEADLINE with no cookie of its own still gets a
+ *  two-week heads-up automatically, the same as real org's own daily
+ *  workflow, rather than only ever showing up on its exact due date
+ *  with zero advance notice. A negative value falls back to the
+ *  default too, rather than producing a nonsensical negative window. */
+export function getDeadlineWarningDays(vars) {
+  const n = parseLispNumber((vars || {})['org-deadline-warning-days'], 14);
+  return n >= 0 ? n : 14;
+}
+
 /** org-cycle-open-archived-trees: real org's default is nil (false) —
  *  cycling/folding does NOT expand into archived trees. */
 export function getCycleOpenArchivedTrees(vars) {
