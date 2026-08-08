@@ -18,6 +18,20 @@ import { isArchived } from './archive-model.js';
 import { isCommentedHeading } from './comment-model.js';
 import { parseOrgTimestamp, findTimestamps, parseDelay, dateKey, isSameDay } from './org-timestamp.js';
 import { parseLogbookEntries } from './logbook.js';
+import {
+  parseOrgAnniversaryLine,
+  expandOrgAnniversaryOccurrences,
+  formatOrgAnniversaryTitle,
+  parseOrgDateCyclicLine,
+  expandOrgDateCyclicOccurrences,
+  parseOrgBlockLine,
+  expandOrgBlockOccurrences,
+  parseDiaryFloatLine,
+  expandDiaryFloatOccurrences,
+  isDiarySunriseSunsetLine,
+  formatSunriseSunsetLine,
+  enumerateDays,
+} from './diary-sexp.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const REPEATER_RE = /^([.+]{1,2})(\d+)([hdwmy])$/;
@@ -374,6 +388,8 @@ function buildAgendaItems(docs, opts = {}) {
     today = new Date(),
     birthdayProperty = 'BIRTHDAY',
     deadlineWarningDays = 14,
+    calendarLatitude = 35.994,
+    calendarLongitude = -78.8986,
   } = opts;
   const items = [];
 
@@ -402,8 +418,20 @@ function buildAgendaItems(docs, opts = {}) {
       !repeater && isDone !== null && !headingIsDone && (kind === 'scheduled' || kind === 'deadline');
     if (carryForwardEligible && rangeStart && rangeEnd) {
       const delay = parsed.delay ? parseDelay(parsed.delay) : null;
-      const earlyWarningDays = delay ? delayToDays(delay) : kind === 'deadline' ? deadlineWarningDays : 0;
-      for (const occurrenceDate of carryForwardOccurrences(parsed.date, today, rangeStart, rangeEnd, earlyWarningDays)) {
+      const delayDays = delay ? delayToDays(delay) : 0;
+      // DEADLINE's own "-Nd" is an early warning (shows N days BEFORE
+      // its date); SCHEDULED's own "-Nd" is the opposite -- a delay
+      // (shows N days AFTER its date, not at all before then) --
+      // confirmed directly against the Org manual's own wording ("the
+      // task is still scheduled on the 25th but will appear two days
+      // later"). Implemented as two different inputs to the very same
+      // carry-forward window function: DEADLINE subtracts from the
+      // window's own start; SCHEDULED shifts the effective "item
+      // date" itself forward, with no separate early-warning offset
+      // on top of that.
+      const earlyWarningDays = kind === 'deadline' ? (delay ? delayDays : deadlineWarningDays) : 0;
+      const effectiveDate = kind === 'scheduled' && delay ? addDays(parsed.date, delayDays) : parsed.date;
+      for (const occurrenceDate of carryForwardOccurrences(effectiveDate, today, rangeStart, rangeEnd, earlyWarningDays)) {
         const daysOverdue = Math.round((startOfDay(occurrenceDate) - startOfDay(parsed.date)) / MS_PER_DAY);
         items.push({ ...base, date: occurrenceDate, daysOverdue });
       }
@@ -548,6 +576,94 @@ function buildAgendaItems(docs, opts = {}) {
           }
         }
       }
+
+      // The five diary-sexp forms below (org-anniversary, org-date-
+      // cyclic, org-block, diary-float, diary-sunrise-sunset) are
+      // each self-contained, per-line sexps -- unlike
+      // org-contacts-anniversaries' own trigger-line-plus-property
+      // mechanism above, no upfront "is this active anywhere" scan is
+      // needed first; every line in this heading's own body is simply
+      // checked against each pattern directly.
+      if (rangeStart && rangeEnd) {
+        for (const line of heading.bodyLines || []) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('%%(')) continue; // fast skip -- every one of these five forms starts this way
+
+          const pushDiarySexpItem = (occurrenceDate, title) => {
+            items.push({
+              documentId,
+              heading,
+              kind: 'diary-sexp',
+              hasTime: false,
+              repeater: null,
+              todo: heading.todo,
+              priority: heading.priority,
+              tags: heading.tags,
+              title,
+              date: occurrenceDate,
+              daysOverdue: 0,
+            });
+          };
+
+          const anniv = parseOrgAnniversaryLine(trimmed);
+          if (anniv) {
+            for (const occ of expandOrgAnniversaryOccurrences(anniv.month, anniv.day, rangeStart, rangeEnd)) {
+              pushDiarySexpItem(occ, formatOrgAnniversaryTitle(anniv.template, occ.getFullYear() - anniv.year));
+            }
+            continue;
+          }
+
+          const cyclic = parseOrgDateCyclicLine(trimmed);
+          if (cyclic) {
+            const baseline = new Date(cyclic.year, cyclic.month - 1, cyclic.day);
+            for (const occ of expandOrgDateCyclicOccurrences(cyclic.n, baseline, rangeStart, rangeEnd)) {
+              pushDiarySexpItem(occ, cyclic.title);
+            }
+            continue;
+          }
+
+          const block = parseOrgBlockLine(trimmed);
+          if (block) {
+            for (const occ of expandOrgBlockOccurrences(block.dateA, block.dateB, rangeStart, rangeEnd)) {
+              pushDiarySexpItem(occ, block.title);
+            }
+            continue;
+          }
+
+          const float = parseDiaryFloatLine(trimmed);
+          if (float) {
+            const occs = expandDiaryFloatOccurrences(
+              float.monthSpec,
+              float.dayname,
+              float.n,
+              float.day,
+              float.year,
+              rangeStart,
+              rangeEnd
+            );
+            for (const occ of occs) pushDiarySexpItem(occ, float.title);
+            continue;
+          }
+
+          if (isDiarySunriseSunsetLine(trimmed)) {
+            for (const day of enumerateDays(rangeStart, rangeEnd)) {
+              items.push({
+                documentId,
+                heading,
+                kind: 'sunrise-sunset',
+                hasTime: false,
+                repeater: null,
+                todo: heading.todo,
+                priority: heading.priority,
+                tags: heading.tags,
+                title: formatSunriseSunsetLine(day, calendarLatitude, calendarLongitude),
+                date: day,
+                daysOverdue: 0,
+              });
+            }
+          }
+        }
+      }
     });
   }
 
@@ -595,6 +711,14 @@ function dayView(items, date = new Date()) {
 /** Midnight (00:00:00.000) of `date`'s calendar day. */
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/** `date` shifted forward (or backward, for a negative `days`) by
+ *  `days` whole calendar days -- month/year boundaries handled
+ *  correctly by JS's own Date arithmetic (setting a day-of-month
+ *  value past the end of its month rolls over into the next one). */
+function addDays(date, days) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days, date.getHours(), date.getMinutes());
 }
 
 /** The last instant (23:59:59.999) of `date`'s calendar day. */
@@ -701,6 +825,7 @@ export {
   weekView,
   monthView,
   parseRepeater,
+  addInterval,
   expandRepeats,
   carryForwardOccurrences,
   delayToDays,

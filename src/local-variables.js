@@ -247,6 +247,32 @@ export function getContactsBirthdayProperty(vars) {
   return trimmed || 'BIRTHDAY';
 }
 
+/** calendar-latitude: real Emacs's own exact variable name and
+ *  purpose -- the latitude diary-sunrise-sunset computes from. A
+ *  non-numeric or out-of-range (-90 to 90) value falls back to the
+ *  default rather than producing a nonsensical calculation. */
+export function getCalendarLatitude(vars) {
+  const n = parseLispNumber((vars || {})['calendar-latitude'], 35.994);
+  return n >= -90 && n <= 90 ? n : 35.994;
+}
+
+/** calendar-longitude: real Emacs's own exact variable name. A
+ *  non-numeric or out-of-range (-180 to 180) value falls back to the
+ *  default. */
+export function getCalendarLongitude(vars) {
+  const n = parseLispNumber((vars || {})['calendar-longitude'], -78.8986);
+  return n >= -180 && n <= 180 ? n : -78.8986;
+}
+
+/** calendar-location-name: real Emacs's own exact variable name --
+ *  purely cosmetic (a label), unlike latitude/longitude which
+ *  actually drive the calculation. */
+export function getCalendarLocationName(vars) {
+  const raw = (vars || {})['calendar-location-name'];
+  const trimmed = raw ? String(raw).trim() : '';
+  return trimmed || 'Durham, NC';
+}
+
 /** org-use-sub-superscripts: controls whether/how `_`/`^` are
  *  interpreted as subscript/superscript markers (see inline-markup.js).
  *  Unlike the other Lisp-boolean variables above, this one has three

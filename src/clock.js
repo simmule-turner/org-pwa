@@ -182,9 +182,48 @@ function findHeadingWithRunningClock(doc) {
   return walk(doc.children || []);
 }
 
+/**
+ * org-clock-in, but matching real org's own actual behavior when a
+ * DIFFERENT heading already has a running clock: real org's own
+ * org-clock-in docstring says it plainly -- "If necessary, clock-out
+ * of the currently active clock" -- before starting the new one,
+ * rather than refusing, or (this app's own previous, confirmed bug)
+ * silently allowing a second, simultaneous clock to start running
+ * elsewhere in the same document. Only ever at most one clock can
+ * meaningfully be "the current task" at a time, matching real org's
+ * own singular org-clock-marker model.
+ *
+ * `doc` is searched for whichever heading (if any) currently has a
+ * running clock; if it's a DIFFERENT heading than `heading` itself,
+ * that one is clocked out first, using `timestamp` as its own end
+ * time too -- the switch happens at a single moment, so the previous
+ * task's end and the new task's start are the exact same instant,
+ * with no gap between them, matching real org's own seamless-switch
+ * behavior. If the running clock is already on `heading` itself, this
+ * is unchanged from plain clockIn -- a no-op, real org doesn't let you
+ * double-start the same clock either.
+ *
+ * Returns `{ started, switchedFrom }` -- `started` is clockIn's own
+ * boolean (whether the new clock actually started), `switchedFrom` is
+ * the heading that got auto-clocked-out to make room for it, or null
+ * if nothing needed switching.
+ */
+function clockInSwitchingTasks(doc, heading, timestamp, now) {
+  const previouslyRunning = findHeadingWithRunningClock(doc);
+  let switchedFrom = null;
+  if (previouslyRunning && previouslyRunning !== heading) {
+    if (clockOut(previouslyRunning, timestamp, now)) {
+      switchedFrom = previouslyRunning;
+    }
+  }
+  const started = clockIn(heading, timestamp);
+  return { started, switchedFrom };
+}
+
 export {
   isClockRunning,
   clockIn,
+  clockInSwitchingTasks,
   clockOut,
   clockCancel,
   formatClockDuration,
