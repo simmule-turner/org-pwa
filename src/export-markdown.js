@@ -35,6 +35,7 @@
 
 import { parseInline } from './inline-markup.js';
 import { resolveLinkTarget } from './link-resolve.js';
+import { isWidthCookieRow } from './table-cookies.js';
 
 // Footnote definitions accumulated during a single exportToMarkdown()
 // call (module-level, reset at the start of each call): GFM has no
@@ -249,7 +250,7 @@ function padCells(cells, count) {
 }
 
 function renderTableMd(table) {
-  const dataRows = table.rows.filter((r) => r.type === 'row');
+  const dataRows = table.rows.filter((r) => r.type === 'row' && !isWidthCookieRow(r));
   if (dataRows.length === 0) return '';
   const colCount = Math.max(...dataRows.map((r) => r.cells.length));
   const lines = [];

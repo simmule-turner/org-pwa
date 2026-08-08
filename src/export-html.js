@@ -22,6 +22,7 @@
 import { parseInline } from './inline-markup.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 import { resolveLinkTarget } from './link-resolve.js';
+import { isWidthCookieRow } from './table-cookies.js';
 
 // Footnote definitions accumulated during a single exportToHtml() call
 // (module-level, reset at the start of each call) -- collected the same
@@ -204,7 +205,7 @@ function renderListHtml(list) {
 }
 
 function renderTableHtml(table) {
-  const dataRows = table.rows.filter((r) => r.type === 'row');
+  const dataRows = table.rows.filter((r) => r.type === 'row' && !isWidthCookieRow(r));
   if (dataRows.length === 0) return '';
   const [headerRow, ...bodyRows] = dataRows;
   const head = '<tr>' + headerRow.cellsInline.map((c) => `<th>${renderInlineListHtml(c)}</th>`).join('') + '</tr>';

@@ -26,6 +26,7 @@ import { parseInline } from './inline-markup.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 import { resolveLinkTarget } from './link-resolve.js';
 import { createZip } from './zip-writer.js';
+import { isWidthCookieRow } from './table-cookies.js';
 
 // ---- escaping -------------------------------------------------------------
 
@@ -192,7 +193,7 @@ function renderListOdt(list) {
 }
 
 function renderTableOdt(table) {
-  const dataRows = table.rows.filter((r) => r.type === 'row');
+  const dataRows = table.rows.filter((r) => r.type === 'row' && !isWidthCookieRow(r));
   if (dataRows.length === 0) return '';
   const colCount = Math.max(...dataRows.map((r) => r.cellsInline.length));
   const columns = Array(colCount).fill('<table:table-column/>').join('');

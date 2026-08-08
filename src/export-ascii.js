@@ -35,6 +35,7 @@
  */
 
 import { parseInline } from './inline-markup.js';
+import { parseWidthCookieRow } from './table-cookies.js';
 
 const LINK_RE = /\[\[([^\]]+)\](?:\[([^\]]+)\])?\]/g;
 
@@ -241,6 +242,59 @@ function justify(text, width, alignRight) {
   return alignRight ? padding + text : text + padding;
 }
 
+/** Like wrapText, but ALSO breaks at hyphens when a single unbroken
+ *  "word" (no whitespace at all) is itself wider than `width` --
+ *  common in this app's own content: long, hyphenated identifiers
+ *  like org-mode variable names easily exceed a narrow, explicitly-
+ *  set table column width on their own. The hyphen itself stays at
+ *  the end of the broken segment ("org-agenda-skip-archived-" /
+ *  "trees"), matching how hyphenated words are conventionally broken
+ *  in running text. Regular paragraph/list wrapping (wrapText itself)
+ *  doesn't need this -- it's specific to the tighter, fixed-width
+ *  constraint an explicit table column width actually creates. */
+function wrapTableCellAscii(text, width) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const pieces = [];
+  for (const word of words) {
+    if (word.length <= width) {
+      pieces.push(word);
+      continue;
+    }
+    let remaining = word;
+    while (remaining.length > width) {
+      // Break at the last hyphen that still fits within width, if
+      // there is one -- keeps the hyphen itself on the earlier
+      // segment, matching conventional hyphenated-word line breaks.
+      const breakAt = remaining.lastIndexOf('-', width - 1);
+      if (breakAt > 0) {
+        pieces.push(remaining.slice(0, breakAt + 1));
+        remaining = remaining.slice(breakAt + 1);
+      } else {
+        // No hyphen to break at within reach -- fall back to a hard
+        // break at the width boundary rather than overflowing it.
+        pieces.push(remaining.slice(0, width));
+        remaining = remaining.slice(width);
+      }
+    }
+    pieces.push(remaining);
+  }
+  if (pieces.length === 0) return [];
+
+  const lines = [];
+  let current = '';
+  for (const piece of pieces) {
+    const candidate = current ? `${current} ${piece}` : piece;
+    if (candidate.length <= width || current === '') {
+      current = candidate;
+    } else {
+      lines.push(current);
+      current = piece;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
 function renderTableAscii(table, indent) {
   // Real org's own table editor keeps every column a single, fixed
   // width (the widest cell in it) and auto-aligns each column left or
@@ -252,7 +306,27 @@ function renderTableAscii(table, indent) {
   // even though it happens to be valid, parseable pipe-table syntax
   // on its own -- looking like unformatted Markdown rather than a
   // properly typeset org table was the actual bug.
-  const dataRows = table.rows.filter((r) => r.type === 'row');
+  //
+  // An explicit column-width cookie row (see parseWidthCookieRow),
+  // when present, overrides the auto-computed width for those
+  // columns -- real org's own way of forcing a table to a specific
+  // total width. Content that doesn't fit an explicit width word-
+  // wraps across multiple output lines within the same logical row,
+  // rather than being left to overflow unbounded.
+  let explicitWidths = null;
+  const contentRows = [];
+  for (const row of table.rows) {
+    if (row.type === 'row') {
+      const cookie = parseWidthCookieRow(row);
+      if (cookie) {
+        explicitWidths = cookie;
+        continue; // a directive, not a data row -- excluded from the rendered output entirely
+      }
+    }
+    contentRows.push(row);
+  }
+
+  const dataRows = contentRows.filter((r) => r.type === 'row');
   if (dataRows.length === 0) return [];
 
   const renderedRows = dataRows.map((row) => row.cells.map((cell) => renderTextAscii(cell)));
@@ -262,7 +336,8 @@ function renderTableAscii(table, indent) {
   const columnAlignRight = [];
   for (let col = 0; col < columnCount; col++) {
     const columnCells = renderedRows.map((cells) => cells[col] || '');
-    columnWidths.push(Math.max(1, ...columnCells.map((c) => c.length)));
+    const explicit = explicitWidths && explicitWidths[col];
+    columnWidths.push(explicit || Math.max(1, ...columnCells.map((c) => c.length)));
     const numericCount = columnCells.filter((c) => c && looksNumeric(c)).length;
     const nonEmptyCount = columnCells.filter((c) => c).length;
     columnAlignRight.push(nonEmptyCount > 0 && numericCount / nonEmptyCount > 0.5);
@@ -272,17 +347,27 @@ function renderTableAscii(table, indent) {
 
   const out = [];
   let dataRowIndex = -1;
-  for (const row of table.rows) {
+  for (const row of contentRows) {
     if (row.type === 'rule') {
       out.push(ruleLine);
       continue;
     }
     dataRowIndex++;
     const cells = renderedRows[dataRowIndex];
-    const rendered = columnWidths
-      .map((width, col) => justify(cells[col] || '', width, columnAlignRight[col]))
-      .join(' | ');
-    out.push(`${indent}| ${rendered} |`);
+    // Word-wrap each cell to its own column's width -- a cell that
+    // fits on one line produces a single-entry array, same as before;
+    // one that doesn't gets split across as many lines as it needs.
+    const wrappedCells = columnWidths.map((width, col) => {
+      const wrapped = wrapTableCellAscii(cells[col] || '', width);
+      return wrapped.length ? wrapped : [''];
+    });
+    const lineCount = Math.max(...wrappedCells.map((lines) => lines.length));
+    for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
+      const rendered = columnWidths
+        .map((width, col) => justify(wrappedCells[col][lineIndex] || '', width, columnAlignRight[col]))
+        .join(' | ');
+      out.push(`${indent}| ${rendered} |`);
+    }
   }
   return out;
 }
