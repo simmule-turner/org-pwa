@@ -2,6 +2,13 @@ import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src
 import { setSyncMeta, getSyncMeta } from './src/sync-engine.js';
 import { hasPendingChange, getPendingChange, clearPendingChange } from './src/outbox.js';
 import { parseOrg, serializeOrg, findHeadingLineNumber } from './src/org-parser.js';
+import { parseBody } from './src/body-parser.js';
+import {
+  generateAttachmentId,
+  attachmentPath,
+  formatAttachmentLink,
+  sanitizeAttachmentFilename,
+} from './src/attach.js';
 import {
   findAncestorPath,
   getPropertiesText,
@@ -13,6 +20,7 @@ import {
   buildRestoredClone,
   isArchivedInPlace,
   shiftLevels,
+  setProperty,
 } from './src/archive-model.js';
 import {
   resolveLinkTarget,
@@ -78,6 +86,7 @@ import {
 import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId, getCaptureFileScheme, CAPTURE_FILE_SCHEMES } from './src/capture-template.js';
 import { exportToMarkdown } from './src/export-markdown.js';
 import { exportToOdt } from './src/export-odt.js';
+import { exportToDocx } from './src/export-docx.js';
 import { exportToAscii } from './src/export-ascii.js';
 import { exportToHtml } from './src/export-html.js';
 import { exportToIcalendar } from './src/export-icalendar.js';
@@ -889,12 +898,6 @@ async function performRefile(heading, targetDocumentId, targetOutlinePath) {
 
 /** The human-readable "where this would go" label for confirming an
  *  archive. */
-/** org-clock-in: starts the clock on `heading`, using the same "now"
- *  timestamp convention every other progress-logging entry in this app
- *  already uses. A no-op (with a status message, not silent) if a
- *  clock is already running on this heading -- clockIn itself already
- *  refuses this, this just surfaces it to the person instead of
- *  quietly doing nothing. */
 /** org-clock-in: starts the clock on `heading`. If a DIFFERENT
  *  heading already has a clock running, it's auto-clocked-out first
  *  (at the exact same moment the new one starts, no gap) -- real
@@ -915,6 +918,69 @@ function clockInHeading(heading) {
     return;
   }
   commitAndRender(switchedFrom ? `Clocked in (stopped the clock on "${switchedFrom.title}")` : 'Clocked in');
+}
+
+/** Attaches a picked file to `heading` -- this app's own extension,
+ *  inspired by real org's own org-attach (see src/attach.js's own
+ *  header comment for the honest caveat on how closely the folder
+ *  convention actually matches). Only works on GitHub/WebDAV, the
+ *  same "arbitrary file write needs a backend that can do that
+ *  without a fresh picker gesture per file" reasoning this app's own
+ *  Agenda Files and cross-file archive/refile already established --
+ *  a local (File System Access) or iOS-import file has no equivalent
+ *  capability, so this refuses up front with a clear explanation
+ *  rather than attempting something that can't actually succeed.
+ *
+ * Generates a heading's own :ID: property the first time it's ever
+ * attached to (reused for every attachment after that, so they all
+ * land in the same per-heading folder rather than a fresh one each
+ * time); computes the attachment's own data/<prefix>/<rest>/<filename>
+ * path from that ID; uploads the picked file's raw bytes; and appends
+ * a real org file: link -- [[file:...][filename]] -- to the heading's
+ * own body, so it's immediately visible and clickable like any other
+ * link in this app.
+ */
+async function attachFileToHeading(heading) {
+  if (state.storageKind !== 'github' && state.storageKind !== 'webdav') {
+    setStatus(
+      "Attachments need automatic file-write access \u2014 only available with GitHub or WebDAV connected (a local file needs a fresh picker gesture per file, which browser security doesn't allow this app to do on its own for a brand-new attachment file). Connect GitHub or WebDAV in Settings first."
+    );
+    render();
+    return;
+  }
+
+  let picked;
+  try {
+    picked = await pickBinaryFile('environment');
+  } catch {
+    return; // no file selected -- silently do nothing, matching every other cancel-a-picker path in this app
+  }
+
+  setStatus('Uploading attachment\u2026');
+  render();
+
+  let id = heading.properties && heading.properties.ID;
+  if (!id) {
+    id = generateAttachmentId();
+    setProperty(heading, 'ID', id);
+  }
+
+  const filename = sanitizeAttachmentFilename(picked.name);
+  const path = attachmentPath(id, filename);
+
+  try {
+    const adapter = activeDiskAdapter();
+    await adapter.writeBinary(path, picked.base64);
+  } catch (err) {
+    setStatus(`Could not attach "${filename}": ${err.message}`);
+    render();
+    return;
+  }
+
+  heading.bodyLines.push(formatAttachmentLink(path, filename));
+  heading.body = parseBody(heading.bodyLines);
+
+  commitAndRender(`Attached "${filename}"`);
 }
 
 /** org-clock-out: stops whatever clock is currently running on
@@ -3211,6 +3277,15 @@ function renderRow(row, todoSequence) {
               },
             },
             {
+              icon: '\ud83d\udcce',
+              label: 'Attach',
+              onClick: async () => {
+                actionMenuFor = null;
+                render();
+                await attachFileToHeading(row.node);
+              },
+            },
+            {
               icon: '\u2715',
               label: 'Delete heading',
               onClick: () => {
@@ -5073,6 +5148,12 @@ function performExport(format, scope) {
     downloadFile(baseName + '.html', exportToHtml(state.doc, scope), 'text/html');
   } else if (format === 'odt') {
     downloadFile(baseName + '.odt', exportToOdt(state.doc, scope), 'application/vnd.oasis.opendocument.text');
+  } else if (format === 'docx') {
+    downloadFile(
+      baseName + '.docx',
+      exportToDocx(state.doc, scope),
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    );
   } else {
     const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: state.documentId, doc: state.doc }];
     const icsScope = scope && typeof scope === 'object' ? scope : null;
@@ -5083,7 +5164,7 @@ function performExport(format, scope) {
   exportFormat = null;
   exportPickingHeading = false;
   setStatus(
-    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : 'Calendar (.ics)'}.`
+    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : format === 'docx' ? 'DOCX' : 'Calendar (.ics)'}.`
   );
   renderFileMenu();
   render();
@@ -5126,6 +5207,11 @@ function renderExportFlow() {
       renderFileMenu();
     });
     if (odtBtn) row.appendChild(odtBtn);
+    const docxBtn = aliasedMenuButton(exportMenuAliases, 'DOCX', () => {
+      exportFormat = 'docx';
+      renderFileMenu();
+    });
+    if (docxBtn) row.appendChild(docxBtn);
     fileMenuPanel.appendChild(row);
     return;
   }
@@ -5215,7 +5301,7 @@ function renderExportFlow() {
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '4px';
-  label.textContent = `Export ${exportFormat === 'ascii' ? 'ASCII' : exportFormat === 'markdown' ? 'Markdown' : exportFormat === 'html' ? 'HTML' : exportFormat === 'odt' ? 'ODT' : 'Calendar (.ics)'} for:`;
+  label.textContent = `Export ${exportFormat === 'ascii' ? 'ASCII' : exportFormat === 'markdown' ? 'Markdown' : exportFormat === 'html' ? 'HTML' : exportFormat === 'odt' ? 'ODT' : exportFormat === 'docx' ? 'DOCX' : 'Calendar (.ics)'} for:`;
   fileMenuPanel.appendChild(label);
 
   const row = document.createElement('div');
@@ -6457,6 +6543,43 @@ function pickTextFile(accept) {
       }
       try {
         resolve(await file.text());
+      } catch (err) {
+        reject(err);
+      }
+    });
+    document.body.appendChild(input);
+    input.click();
+  });
+}
+
+/** Opens the native file picker and resolves with the picked file's
+ *  own name, MIME type, and raw content as base64 -- the binary
+ *  counterpart to pickTextFile just above, for attachments. `capture`
+ *  (optional) is passed straight through to the input's own capture
+ *  attribute -- 'environment' hints a mobile browser to offer the
+ *  rear camera as a picker option alongside the usual photo library/
+ *  file browser, the actual motivating case for this feature; most
+ *  mobile browsers still offer the other options too even with this
+ *  set, so it's additive, never a restriction. */
+function pickBinaryFile(capture) {
+  return new Promise((resolve, reject) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    if (capture) input.setAttribute('capture', capture);
+    input.style.display = 'none';
+    input.addEventListener('change', async () => {
+      const file = input.files && input.files[0];
+      if (input.parentNode) input.parentNode.removeChild(input);
+      if (!file) {
+        reject(new Error('No file selected'));
+        return;
+      }
+      try {
+        const buffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        resolve({ name: file.name, type: file.type, base64: btoa(binary) });
       } catch (err) {
         reject(err);
       }

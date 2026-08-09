@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v138';
+const CACHE_NAME = 'org-pwa-shell-v140';
 
 const SHELL_FILES = [
   './',
@@ -7,6 +7,7 @@ const SHELL_FILES = [
   './manifest.json',
   './README.org',
   './src/archive-model.js',
+  './src/attach.js',
   './src/checkbox-cookie.js',
   './src/search.js',
   './src/document-store.js',
@@ -41,6 +42,7 @@ const SHELL_FILES = [
   './src/link-resolve.js',
   './src/export-markdown.js',
   './src/export-odt.js',
+  './src/export-docx.js',
   './src/zip-writer.js',
   './src/export-ascii.js',
   './src/export-html.js',
