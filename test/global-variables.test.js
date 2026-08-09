@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseGlobalVariables, mergeGlobalAndLocalVariables } from '../src/global-variables.js';
+import { parseGlobalVariables, serializeGlobalVariables, mergeGlobalAndLocalVariables } from '../src/global-variables.js';
 
 // ---- parseGlobalVariables --------------------------------------------------
 
@@ -111,4 +111,26 @@ test('a trailing backslash on the very last line of the whole text is left as a 
 test('trailing whitespace after the backslash is tolerated', () => {
   const text = 'org-xx-extra-menu: "a" \\  \n"b"';
   assert.equal(parseGlobalVariables(text)['org-xx-extra-menu'], '"a" "b"');
+});
+
+// ---- serializeGlobalVariables (the new Quick Settings UI's own round-trip) ---
+
+test('serializeGlobalVariables produces one "key: value" line per entry, alphabetically sorted', () => {
+  const text = serializeGlobalVariables({ 'org-deadline-warning-days': 7, 'calendar-latitude': 40.1 });
+  assert.equal(text, 'calendar-latitude: 40.1\norg-deadline-warning-days: 7');
+});
+
+test('serializeGlobalVariables omits null/undefined/empty-string values entirely, rather than an empty line', () => {
+  const text = serializeGlobalVariables({ a: '1', b: null, c: undefined, d: '' });
+  assert.equal(text, 'a: 1');
+});
+
+test('serializeGlobalVariables round-trips correctly through parseGlobalVariables', () => {
+  const original = { 'org-agenda-skip-archived-trees': 'nil', 'org-deadline-warning-days': '7' };
+  const roundTripped = parseGlobalVariables(serializeGlobalVariables(original));
+  assert.deepEqual(roundTripped, original);
+});
+
+test('serializeGlobalVariables of an empty object produces an empty string', () => {
+  assert.equal(serializeGlobalVariables({}), '');
 });
