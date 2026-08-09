@@ -5,6 +5,7 @@ import {
   isGithubConfigured,
   utf8ToBase64,
   base64ToUtf8,
+  encodeGithubPath,
 } from '../src-browser/github-adapter.js';
 
 function withMockFetch(handler, fn) {
@@ -170,6 +171,93 @@ test('write: throws an informative error on failure rather than silently losing 
       await assert.rejects(adapter.write('notes.org', '* content'), /forbidden/);
     }
   );
+});
+
+// ---- writeBinary (attachments) ---------------------------------------------
+
+test('writeBinary: sends the given base64 payload directly, without utf8-encoding it (which would corrupt binary data)', async () => {
+  const calls = [];
+  const fakeBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB'; // arbitrary base64-looking payload, not real image data -- content itself doesn't matter for this test
+  await withMockFetch(
+    async (url, opts) => {
+      calls.push({ url, opts });
+      if (!opts || !opts.method) {
+        return jsonResponse(404, { message: 'Not Found' }); // the internal existence-check read
+      }
+      return jsonResponse(201, { content: { sha: 'binsha001' } });
+    },
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      const result = await adapter.writeBinary('data/ab/abc123/photo.png', fakeBase64);
+      assert.equal(result.hash, 'binsha001');
+    }
+  );
+  const putCall = calls.find((c) => c.opts && c.opts.method === 'PUT');
+  const body = JSON.parse(putCall.opts.body);
+  assert.equal(body.content, fakeBase64); // sent as-is, not double-encoded
+  assert.equal('sha' in body, false);
+});
+
+test('writeBinary: updating an existing attachment includes the current sha, same as a text write', async () => {
+  const calls = [];
+  const fakeBase64 = 'aGVsbG8=';
+  await withMockFetch(
+    async (url, opts) => {
+      calls.push({ url, opts });
+      if (!opts || !opts.method) {
+        return jsonResponse(200, { content: 'b2xk', sha: 'oldbinsha' });
+      }
+      return jsonResponse(200, { content: { sha: 'newbinsha' } });
+    },
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      const result = await adapter.writeBinary('data/ab/abc123/photo.png', fakeBase64);
+      assert.equal(result.hash, 'newbinsha');
+    }
+  );
+  const putCall = calls.find((c) => c.opts && c.opts.method === 'PUT');
+  const body = JSON.parse(putCall.opts.body);
+  assert.equal(body.sha, 'oldbinsha');
+});
+
+// ---- encodeGithubPath (THE FIX: a real, confirmed URL-corruption bug) ------
+
+test('THE FIX: encodeGithubPath encodes a space, preserving path structure', () => {
+  assert.equal(encodeGithubPath('data/ab/xyz/vacation photo.jpg'), 'data/ab/xyz/vacation%20photo.jpg');
+});
+
+test('THE FIX: encodeGithubPath encodes "#", which would otherwise be misread as a URL fragment separator, silently truncating the actual request path', () => {
+  const encoded = encodeGithubPath('data/ab/xyz/bug #42 screenshot.png');
+  assert.doesNotMatch(encoded, /#/);
+  assert.match(encoded, /%23/);
+});
+
+test('THE FIX: encodeGithubPath encodes "?", which would otherwise be misread as the start of a URL query string', () => {
+  const encoded = encodeGithubPath('data/ab/xyz/what?.jpg');
+  assert.doesNotMatch(encoded, /\?/);
+  assert.match(encoded, /%3F/);
+});
+
+test('THE FIX: encodeGithubPath preserves "/" as real path separators, not encoding them as %2F', () => {
+  const encoded = encodeGithubPath('data/ab/xyz/photo.jpg');
+  assert.equal(encoded.split('/').length, 4);
+});
+
+test('THE FIX: a write() call for a path containing "#" sends a request URL where the path segment survives intact, not truncated at the "#"', async () => {
+  const calls = [];
+  await withMockFetch(
+    async (url, opts) => {
+      calls.push({ url, opts });
+      if (!opts || !opts.method) return jsonResponse(404, { message: 'Not Found' });
+      return jsonResponse(201, { content: { sha: 'sha001' } });
+    },
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      await adapter.write('data/ab/xyz/bug #42 screenshot.png', 'content');
+    }
+  );
+  const putCall = calls.find((c) => c.opts && c.opts.method === 'PUT');
+  assert.match(putCall.url, /bug%20%2342%20screenshot\.png$/);
 });
 
 // ---- exists -------------------------------------------------------------

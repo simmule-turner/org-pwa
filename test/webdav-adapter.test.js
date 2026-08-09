@@ -197,6 +197,51 @@ test('write: throws on a 412 precondition failure (server-side conflict)', async
   );
 });
 
+// ---- writeBinary (attachments) ---------------------------------------------
+
+test('writeBinary: a new attachment (no existing ETag) sends If-None-Match: *, with the actual decoded bytes as the PUT body', async () => {
+  const calls = [];
+  const fakeBase64 = arrayBufferToBase64(new Uint8Array([1, 2, 3, 4]).buffer);
+  await withMockFetch(
+    async (url, opts) => {
+      calls.push(opts);
+      if (opts.method === 'GET') return textResponse(404, '');
+      return textResponse(201, '', { ETag: '"binnew001"' });
+    },
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      const result = await adapter.writeBinary('data/ab/abc123/photo.png', fakeBase64);
+      assert.equal(result.hash, '"binnew001"');
+    }
+  );
+  const putCall = calls.find((c) => c.method === 'PUT');
+  assert.equal(putCall.headers['If-None-Match'], '*');
+  assert.equal('If-Match' in putCall.headers, false);
+  assert.deepEqual(Array.from(new Uint8Array(putCall.body)), [1, 2, 3, 4]); // real decoded bytes, not the base64 text itself
+});
+
+test('writeBinary: updating an existing attachment sends If-Match with the current ETag', async () => {
+  const calls = [];
+  const existingBytes = new Uint8Array([9, 9, 9]);
+  const fakeBase64 = arrayBufferToBase64(new Uint8Array([5, 6, 7]).buffer);
+  await withMockFetch(
+    async (url, opts) => {
+      calls.push(opts);
+      if (opts.method === 'GET') {
+        return { status: 200, ok: true, arrayBuffer: async () => existingBytes.buffer, headers: { get: (n) => (n === 'ETag' ? '"binold001"' : null) } };
+      }
+      return textResponse(200, '', { ETag: '"binupdated002"' });
+    },
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      const result = await adapter.writeBinary('data/ab/abc123/photo.png', fakeBase64);
+      assert.equal(result.hash, '"binupdated002"');
+    }
+  );
+  const putCall = calls.find((c) => c.method === 'PUT');
+  assert.equal(putCall.headers['If-Match'], '"binold001"');
+});
+
 // ---- exists -------------------------------------------------------------
 
 test('exists: uses HEAD and reflects response.ok', async () => {
