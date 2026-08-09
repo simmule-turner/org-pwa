@@ -9,6 +9,7 @@ import {
   getCalendarLatitude,
   getCalendarLongitude,
   getCalendarLocationName,
+  getAgendaFilesVar,
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
   getAgendaSkipArchivedTrees,
@@ -333,4 +334,15 @@ test('getCalendarLocationName reads an explicit override, including one with a c
 test('an out-of-range latitude/longitude falls back to the default', () => {
   assert.equal(getCalendarLatitude({ 'calendar-latitude': '95' }), 35.994);
   assert.equal(getCalendarLongitude({ 'calendar-longitude': '200' }), -78.8986);
+});
+
+// ---- getAgendaFilesVar -------------------------------------------------------
+
+test('getAgendaFilesVar defaults to an empty string when unset', () => {
+  assert.equal(getAgendaFilesVar({}), '');
+  assert.equal(getAgendaFilesVar(null), '');
+});
+
+test('getAgendaFilesVar returns the raw semicolon-separated string as-is', () => {
+  assert.equal(getAgendaFilesVar({ 'org-agenda-files': 'github:journal.org;webdav:notes/todo.org' }), 'github:journal.org;webdav:notes/todo.org');
 });
