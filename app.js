@@ -6508,7 +6508,7 @@ const QUICK_SETTINGS_FIELDS = [
     section: 'Agenda',
     type: 'boolean',
     default: true,
-    helpAnchor: '#agenda',
+    helpAnchor: '#agenda-behavior',
   },
   {
     key: 'org-agenda-skip-comment-trees',
@@ -6516,9 +6516,9 @@ const QUICK_SETTINGS_FIELDS = [
     section: 'Agenda',
     type: 'boolean',
     default: true,
-    helpAnchor: '#agenda',
+    helpAnchor: '#agenda-behavior',
   },
-  { key: 'org-agenda-start-on-weekday', label: 'Week starts on', section: 'Agenda', type: 'weekday', default: 1, helpAnchor: '#agenda' },
+  { key: 'org-agenda-start-on-weekday', label: 'Week starts on', section: 'Agenda', type: 'weekday', default: 1, helpAnchor: '#agenda-behavior' },
   {
     key: 'org-deadline-warning-days',
     label: 'Deadline advance warning (days)',
@@ -6528,7 +6528,7 @@ const QUICK_SETTINGS_FIELDS = [
     min: 0,
     max: 365,
     step: 1,
-    helpAnchor: '#agenda',
+    helpAnchor: '#agenda-dated-entries',
   },
   {
     key: 'org-cycle-open-archived-trees',
@@ -6544,7 +6544,7 @@ const QUICK_SETTINGS_FIELDS = [
     section: 'Contacts & Calendar',
     type: 'text',
     default: 'BIRTHDAY',
-    helpAnchor: '#agenda',
+    helpAnchor: '#agenda-diary-sexp',
   },
   {
     key: 'calendar-latitude',
@@ -6555,7 +6555,7 @@ const QUICK_SETTINGS_FIELDS = [
     min: -90,
     max: 90,
     step: 0.0001,
-    helpAnchor: '#agenda',
+    helpAnchor: '#agenda-diary-sexp',
   },
   {
     key: 'calendar-longitude',
@@ -6566,7 +6566,7 @@ const QUICK_SETTINGS_FIELDS = [
     min: -180,
     max: 180,
     step: 0.0001,
-    helpAnchor: '#agenda',
+    helpAnchor: '#agenda-diary-sexp',
   },
   {
     key: 'calendar-location-name',
@@ -6574,7 +6574,7 @@ const QUICK_SETTINGS_FIELDS = [
     section: 'Contacts & Calendar',
     type: 'text',
     default: 'Durham, NC',
-    helpAnchor: '#agenda',
+    helpAnchor: '#agenda-diary-sexp',
   },
   {
     key: 'org-use-tag-inheritance',
@@ -6605,7 +6605,7 @@ const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#export',
   },
   { key: 'org-refile-targets', label: 'Refile targets', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#refile' },
-  { key: 'org-agenda-files', label: 'Agenda files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda' },
+  { key: 'org-agenda-files', label: 'Agenda files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda-files' },
   { key: 'org-xx-extra-menu', label: 'Extras menu (\u2630)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#extras-menu' },
   { key: 'org-xx-file-menu', label: 'File menu labels', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization' },
   { key: 'org-xx-more-menu', label: 'More menu labels', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization' },
