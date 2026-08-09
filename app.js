@@ -157,10 +157,8 @@ import {
   setCaptureTemplates,
   DEFAULT_CAPTURE_TEMPLATES,
   getAgendaFiles,
-  setAgendaFiles,
   getGlobalVariables,
   setGlobalVariables,
-  DEFAULT_AGENDA_FILES,
   DEFAULT_GLOBAL_VARIABLES,
 } from './src-browser/settings.js';
 
@@ -2330,7 +2328,20 @@ function navigateBack() {
   const target = navigationBackStack.pop();
   if (!target) return;
 
-  if (target.docsOpen && !docsOpen) {
+  if (target.settingsOpen && !settingsOpen) {
+    // The jump away (a Quick Settings help link, or the Capture
+    // Templates reference link) came FROM Settings -- return there,
+    // closing Docs in the process, rather than falling through to the
+    // docsOpen/view restoration below (which has no notion of
+    // Settings at all).
+    docsOpen = false;
+    settingsOpen = true;
+    if (isWideLayout()) {
+      render();
+    } else {
+      renderSettingsView(outlineEl);
+    }
+  } else if (target.docsOpen && !docsOpen) {
     // The jump away closed Docs (navigateToHeading's own switchToView
     // forces 'org' and closes it) -- reopen and re-render it before
     // restoring scroll, the same sequence the "?" button itself uses.
@@ -6478,13 +6489,14 @@ function pickTextFile(accept) {
  *     space (t / nil / {}), not a plain boolean.
  */
 const QUICK_SETTINGS_FIELDS = [
-  { key: 'org-log-done', label: 'Log completing a TODO', section: 'Progress logging', type: 'logdone' },
+  { key: 'org-log-done', label: 'Log completing a TODO', section: 'Progress logging', type: 'logdone', helpAnchor: '#progress-logging' },
   {
     key: 'org-closed-keep-when-no-todo',
     label: 'Keep CLOSED when cycled to no TODO keyword',
     section: 'Progress logging',
     type: 'boolean',
     default: false,
+    helpAnchor: '#progress-logging',
   },
   {
     key: 'org-agenda-skip-archived-trees',
@@ -6492,6 +6504,7 @@ const QUICK_SETTINGS_FIELDS = [
     section: 'Agenda',
     type: 'boolean',
     default: true,
+    helpAnchor: '#agenda',
   },
   {
     key: 'org-agenda-skip-comment-trees',
@@ -6499,8 +6512,9 @@ const QUICK_SETTINGS_FIELDS = [
     section: 'Agenda',
     type: 'boolean',
     default: true,
+    helpAnchor: '#agenda',
   },
-  { key: 'org-agenda-start-on-weekday', label: 'Week starts on', section: 'Agenda', type: 'weekday', default: 1 },
+  { key: 'org-agenda-start-on-weekday', label: 'Week starts on', section: 'Agenda', type: 'weekday', default: 1, helpAnchor: '#agenda' },
   {
     key: 'org-deadline-warning-days',
     label: 'Deadline advance warning (days)',
@@ -6510,6 +6524,7 @@ const QUICK_SETTINGS_FIELDS = [
     min: 0,
     max: 365,
     step: 1,
+    helpAnchor: '#agenda',
   },
   {
     key: 'org-cycle-open-archived-trees',
@@ -6517,6 +6532,7 @@ const QUICK_SETTINGS_FIELDS = [
     section: 'Agenda',
     type: 'boolean',
     default: false,
+    helpAnchor: '#archiving',
   },
   {
     key: 'org-contacts-birthday-property',
@@ -6524,6 +6540,7 @@ const QUICK_SETTINGS_FIELDS = [
     section: 'Contacts & Calendar',
     type: 'text',
     default: 'BIRTHDAY',
+    helpAnchor: '#agenda',
   },
   {
     key: 'calendar-latitude',
@@ -6534,6 +6551,7 @@ const QUICK_SETTINGS_FIELDS = [
     min: -90,
     max: 90,
     step: 0.0001,
+    helpAnchor: '#agenda',
   },
   {
     key: 'calendar-longitude',
@@ -6544,6 +6562,7 @@ const QUICK_SETTINGS_FIELDS = [
     min: -180,
     max: 180,
     step: 0.0001,
+    helpAnchor: '#agenda',
   },
   {
     key: 'calendar-location-name',
@@ -6551,6 +6570,7 @@ const QUICK_SETTINGS_FIELDS = [
     section: 'Contacts & Calendar',
     type: 'text',
     default: 'Durham, NC',
+    helpAnchor: '#agenda',
   },
   {
     key: 'org-use-tag-inheritance',
@@ -6558,6 +6578,7 @@ const QUICK_SETTINGS_FIELDS = [
     section: 'Search & tags',
     type: 'boolean',
     default: true,
+    helpAnchor: '#searching',
   },
   {
     key: 'org-use-property-inheritance',
@@ -6565,8 +6586,9 @@ const QUICK_SETTINGS_FIELDS = [
     section: 'Search & tags',
     type: 'boolean',
     default: false,
+    helpAnchor: '#searching',
   },
-  { key: 'org-use-sub-superscripts', label: 'Interpret _ / ^ as sub/superscript', section: 'Editing', type: 'subsuper' },
+  { key: 'org-use-sub-superscripts', label: 'Interpret _ / ^ as sub/superscript', section: 'Editing', type: 'subsuper', helpAnchor: '#inline-text-markup' },
   {
     key: 'org-ascii-text-width',
     label: 'ASCII export line width',
@@ -6576,13 +6598,15 @@ const QUICK_SETTINGS_FIELDS = [
     min: 20,
     max: 200,
     step: 1,
+    helpAnchor: '#export',
   },
-  { key: 'org-refile-targets', label: 'Refile targets', section: 'Advanced (raw syntax)', type: 'longtext' },
-  { key: 'org-xx-extra-menu', label: 'Extras menu (\u2630)', section: 'Advanced (raw syntax)', type: 'longtext' },
-  { key: 'org-xx-file-menu', label: 'File menu labels', section: 'Advanced (raw syntax)', type: 'longtext' },
-  { key: 'org-xx-more-menu', label: 'More menu labels', section: 'Advanced (raw syntax)', type: 'longtext' },
-  { key: 'org-xx-export-menu', label: 'Export menu labels', section: 'Advanced (raw syntax)', type: 'longtext' },
-  { key: 'org-xx-view-menu', label: 'View menu labels', section: 'Advanced (raw syntax)', type: 'longtext' },
+  { key: 'org-refile-targets', label: 'Refile targets', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#refile' },
+  { key: 'org-agenda-files', label: 'Agenda files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda' },
+  { key: 'org-xx-extra-menu', label: 'Extras menu (\u2630)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#extras-menu' },
+  { key: 'org-xx-file-menu', label: 'File menu labels', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization' },
+  { key: 'org-xx-more-menu', label: 'More menu labels', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization' },
+  { key: 'org-xx-export-menu', label: 'Export menu labels', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization' },
+  { key: 'org-xx-view-menu', label: 'View menu labels', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization' },
 ];
 
 /** Writes `key: rawValue` into the app-wide Global Variables baseline
@@ -6602,6 +6626,7 @@ async function commitGlobalVariableChange(key, rawValue) {
   globalVariablesText = serializeGlobalVariables(vars);
   globalVariables = vars;
   await setGlobalVariables(kv, globalVariablesText);
+  agendaFilesConfig = parseAgendaFilesVar(globalVariables['org-agenda-files'] || '');
   if (state.doc) {
     state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
   }
@@ -6612,6 +6637,12 @@ function renderQuickSettingField(field) {
   const row = document.createElement('div');
   row.style.marginBottom = '10px';
 
+  const headerRow = document.createElement('div');
+  headerRow.style.display = 'flex';
+  headerRow.style.alignItems = 'center';
+  headerRow.style.justifyContent = 'space-between';
+  headerRow.style.gap = '8px';
+
   const label = document.createElement('label');
   label.style.display = 'flex';
   label.style.flexDirection = field.type === 'boolean' ? 'row' : 'column';
@@ -6619,6 +6650,8 @@ function renderQuickSettingField(field) {
   label.style.gap = field.type === 'boolean' ? '8px' : '4px';
   label.style.fontSize = '13px';
   label.style.cursor = field.type === 'boolean' ? 'pointer' : 'default';
+  label.style.flex = '1 1 auto';
+  label.style.minWidth = '0';
 
   const labelText = document.createElement('span');
   labelText.textContent = field.label;
@@ -6759,7 +6792,20 @@ function renderQuickSettingField(field) {
     label.appendChild(select);
   }
 
-  row.appendChild(label);
+  headerRow.appendChild(label);
+  if (field.helpAnchor) {
+    const helpLink = document.createElement('span');
+    helpLink.textContent = '?';
+    helpLink.title = 'Open the help doc for this setting';
+    helpLink.style.flexShrink = '0';
+    helpLink.style.opacity = '0.6';
+    helpLink.style.fontSize = '13px';
+    helpLink.style.cursor = 'pointer';
+    helpLink.style.padding = '0 4px';
+    helpLink.onclick = () => openDocsAtHeading(field.helpAnchor);
+    headerRow.appendChild(helpLink);
+  }
+  row.appendChild(headerRow);
   return row;
 }
 
@@ -7016,70 +7062,6 @@ async function renderSettingsView(target = settingsRenderTarget) {
   );
   captureSection.appendChild(captureBtnRow);
 
-  const agendaFilesSection = document.createElement('div');
-  agendaFilesSection.className = 'settings-section';
-  container.appendChild(agendaFilesSection);
-
-  const agendaFilesTitle = document.createElement('div');
-  agendaFilesTitle.className = 'panel-section-title';
-  agendaFilesTitle.textContent = 'Agenda Files';
-  agendaFilesSection.appendChild(agendaFilesTitle);
-
-  const agendaFilesHint = document.createElement('div');
-  agendaFilesHint.style.fontSize = '11px';
-  agendaFilesHint.style.opacity = '0.6';
-  agendaFilesHint.style.margin = '2px 0 6px';
-  agendaFilesHint.textContent =
-    'Real org\u2019s org-agenda-files idea \u2014 additional files the Agenda and TODO views scan across, beyond whichever file is currently open. ' +
-    'One file per line, as scheme:path \u2014 scheme is github or webdav (the only backends that can read a file without a picker prompt), path is that file\u2019s location on the currently configured GitHub repo or WebDAV server. Example:';
-  agendaFilesSection.appendChild(agendaFilesHint);
-
-  const agendaFilesExample = document.createElement('div');
-  agendaFilesExample.style.fontFamily = 'monospace';
-  agendaFilesExample.style.fontSize = '12px';
-  agendaFilesExample.style.opacity = '0.6';
-  agendaFilesExample.style.margin = '0 0 6px';
-  agendaFilesExample.textContent = 'github:journal.org\nwebdav:notes/todo.org';
-  agendaFilesSection.appendChild(agendaFilesExample);
-
-  const currentAgendaFiles = await getAgendaFiles(kv);
-  const agendaFilesTextarea = document.createElement('textarea');
-  agendaFilesTextarea.value = currentAgendaFiles.join('\n');
-  agendaFilesTextarea.rows = 6;
-  agendaFilesTextarea.style.fontFamily = 'monospace';
-  agendaFilesTextarea.style.fontSize = '13px';
-  agendaFilesTextarea.style.width = '100%';
-  agendaFilesTextarea.style.maxWidth = '100%';
-  agendaFilesTextarea.style.boxSizing = 'border-box';
-  agendaFilesTextarea.style.resize = 'vertical';
-  agendaFilesSection.appendChild(agendaFilesTextarea);
-
-  const agendaFilesBtnRow = document.createElement('div');
-  agendaFilesBtnRow.className = 'panel-row';
-  agendaFilesBtnRow.style.marginTop = '8px';
-  agendaFilesBtnRow.appendChild(
-    menuButton('Save agenda files', async () => {
-      const parsed = parseAgendaFilesText(agendaFilesTextarea.value);
-      const problem = validateAgendaFiles(parsed);
-      if (problem) {
-        setStatus('Agenda files: ' + problem);
-        return;
-      }
-      await setAgendaFiles(kv, parsed);
-      agendaFilesConfig = parsed;
-      setStatus('Agenda files saved.');
-    })
-  );
-  agendaFilesBtnRow.appendChild(
-    menuButton('Clear', async () => {
-      await setAgendaFiles(kv, DEFAULT_AGENDA_FILES);
-      agendaFilesConfig = DEFAULT_AGENDA_FILES;
-      setStatus('Agenda files cleared \u2014 Agenda/TODO scan only the currently open file again.');
-      renderSettingsView();
-    })
-  );
-  agendaFilesSection.appendChild(agendaFilesBtnRow);
-
   container.appendChild(renderQuickSettingsSection());
 
   const globalVarsSection = document.createElement('div');
@@ -7118,6 +7100,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
       await setGlobalVariables(kv, globalVarsTextarea.value);
       globalVariablesText = globalVarsTextarea.value;
       globalVariables = parseGlobalVariables(globalVariablesText);
+      agendaFilesConfig = parseAgendaFilesVar(globalVariables['org-agenda-files'] || '');
       // Re-merge immediately so the currently open document (if any)
       // reflects the change right away -- no reload needed, matching
       // how the theme/font settings already apply on save.
@@ -7134,6 +7117,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
       await setGlobalVariables(kv, DEFAULT_GLOBAL_VARIABLES);
       globalVariablesText = DEFAULT_GLOBAL_VARIABLES;
       globalVariables = {};
+      agendaFilesConfig = [];
       if (state.doc) {
         state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
       }
@@ -7843,7 +7827,11 @@ async function renderDocsView(target = docsRenderTarget) {
  *  the corresponding help section, so a streamlined settings hint can
  *  point at the full documentation instead of duplicating it inline. */
 async function openDocsAtHeading(anchorId) {
+  navigationBackStack.push({ view: currentView, docsOpen, settingsOpen, scrollTop: scrollContainer().scrollTop });
+  if (navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) navigationBackStack.shift();
+  syncNavBackButtonVisibility();
   moreOpen = false;
+  settingsOpen = false;
   docsOpen = true;
   await renderDocsView(outlineEl); // ensures cachedDocsDoc is loaded, regardless of layout
   if (!cachedDocsDoc) return; // load failed -- renderDocsView already showed its own error message
@@ -8174,39 +8162,30 @@ function validateCaptureTemplates(parsed) {
   return null;
 }
 
-/** Converts the Agenda Files textarea's plain, one-entry-per-line text
- *  into the same array-of-strings shape the storage layer and
- *  validateAgendaFiles already expect -- simple line-splitting, not
- *  JSON, replacing what used to require typing valid JSON array
- *  syntax (brackets, quotes, commas) to configure a handful of file
- *  paths. Blank lines and lines starting with # are ignored, so a
- *  person can leave a note or temporarily disable an entry by
- *  commenting it out rather than deleting and retyping it later. */
-function parseAgendaFilesText(text) {
-  return text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith('#'));
-}
-
-/**
- * Validates an agenda-files config: an array of "scheme:path" strings,
- * e.g. "github:journal.org". Splits only on the FIRST colon, so a path
- * that itself contains one isn't mistaken for a second scheme separator.
- */
-function validateAgendaFiles(parsed) {
-  if (!Array.isArray(parsed)) return 'internal error \u2014 expected an array';
-  for (let i = 0; i < parsed.length; i++) {
-    const label = `line ${i + 1}`;
-    if (typeof parsed[i] !== 'string' || parsed[i].length === 0) return `${label} must be a non-empty line`;
-    const colonIndex = parsed[i].indexOf(':');
-    if (colonIndex === -1) return `${label}: expected "scheme:path" (e.g. "github:journal.org")`;
-    const scheme = parsed[i].slice(0, colonIndex);
-    const path = parsed[i].slice(colonIndex + 1);
-    if (scheme !== 'github' && scheme !== 'webdav') return `${label}: scheme must be "github" or "webdav", got "${scheme}"`;
-    if (path.length === 0) return `${label}: path can't be empty`;
-  }
-  return null;
+/** Converts org-agenda-files' own raw string value (semicolon-
+ *  separated "scheme:path" entries, the same separator convention
+ *  org-refile-targets already uses) into the array-of-strings shape
+ *  the storage layer expects. A malformed entry -- not "scheme:path"
+ *  at all, or an unrecognized scheme -- is silently skipped rather
+ *  than guessed at or blocking the whole value, the same "malformed
+ *  entry -- skipped, not guessed at" precedent org-refile-targets'
+ *  own parser already sets (see src/refile.js), now that this is a
+ *  generic Quick Settings longtext field with no separate blocking-
+ *  validation step of its own. Splits only on the FIRST colon within
+ *  each entry, so a path that itself contains one isn't mistaken for
+ *  a second scheme separator. */
+function parseAgendaFilesVar(text) {
+  const entries = (text || '')
+    .split(';')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  return entries.filter((entry) => {
+    const colonIndex = entry.indexOf(':');
+    if (colonIndex === -1) return false;
+    const scheme = entry.slice(0, colonIndex);
+    const path = entry.slice(colonIndex + 1);
+    return (scheme === 'github' || scheme === 'webdav') && path.length > 0;
+  });
 }
 
 async function renderCapturePanel() {
@@ -8851,9 +8830,15 @@ if ('serviceWorker' in navigator) {
 async function bootstrap() {
   githubConfig = await getGithubConfig(kv);
   webdavConfig = await getWebdavConfig(kv);
-  agendaFilesConfig = await getAgendaFiles(kv);
+  const legacyAgendaFiles = await getAgendaFiles(kv);
   globalVariablesText = await getGlobalVariables(kv);
   globalVariables = parseGlobalVariables(globalVariablesText);
+  if (!globalVariables['org-agenda-files'] && legacyAgendaFiles.length > 0) {
+    globalVariables['org-agenda-files'] = legacyAgendaFiles.join(';');
+    globalVariablesText = serializeGlobalVariables(globalVariables);
+    await setGlobalVariables(kv, globalVariablesText);
+  }
+  agendaFilesConfig = parseAgendaFilesVar(globalVariables['org-agenda-files'] || '');
   customThemeColors = await getCustomThemeColors(kv);
   applyTheme(await getTheme(kv));
   applyFontFamily(await getFontFamily(kv));
