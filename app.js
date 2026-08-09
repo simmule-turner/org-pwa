@@ -2324,7 +2324,7 @@ function navigateToHeading(heading, { revealOwnBody = false, targetNode = headin
  *  tapped from a non-'org' view like Docs). A no-op if the stack is
  *  empty (the floating back button isn't shown in that case anyway,
  *  but this stays safe to call regardless). */
-function navigateBack() {
+async function navigateBack() {
   const target = navigationBackStack.pop();
   if (!target) return;
 
@@ -2337,9 +2337,11 @@ function navigateBack() {
     docsOpen = false;
     settingsOpen = true;
     if (isWideLayout()) {
+      sidePanelEl.style.display = 'block';
+      await renderSettingsView(sidePanelEl);
       render();
     } else {
-      renderSettingsView(outlineEl);
+      await renderSettingsView(outlineEl);
     }
   } else if (target.docsOpen && !docsOpen) {
     // The jump away closed Docs (navigateToHeading's own switchToView
@@ -2347,9 +2349,11 @@ function navigateBack() {
     // restoring scroll, the same sequence the "?" button itself uses.
     docsOpen = true;
     if (isWideLayout()) {
+      sidePanelEl.style.display = 'block';
+      await renderDocsView(sidePanelEl);
       render();
     } else {
-      renderDocsView(outlineEl);
+      await renderDocsView(outlineEl);
     }
   } else if (target.view !== currentView) {
     switchToView(target.view);
@@ -5420,8 +5424,8 @@ addBtn.addEventListener('click', () => {
   startEditingTitle(heading, true);
 });
 
-navBackBtn.addEventListener('click', () => {
-  navigateBack();
+navBackBtn.addEventListener('click', async () => {
+  await navigateBack();
 });
 
 /** Switches between the three top-level views, handling the
