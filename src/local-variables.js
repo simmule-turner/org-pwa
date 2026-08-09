@@ -176,6 +176,19 @@ export function getRefileTargets(vars) {
   return (vars || {})['org-refile-targets'] || '';
 }
 
+/** org-agenda-files: real org's own exact variable name -- additional
+ *  files the Agenda and TODO views scan across, beyond whichever file
+ *  is currently open. Semicolon-separated "scheme:path" entries (the
+ *  same separator convention as org-refile-targets above, and the
+ *  same "scheme:path" per-entry shape this app already used for its
+ *  own, previously-separate Agenda Files setting) -- just the raw
+ *  string here; parsing/validation is app.js's own
+ *  parseAgendaFilesVar, the same division of responsibility as
+ *  getRefileTargets and src/refile.js above. */
+export function getAgendaFilesVar(vars) {
+  return (vars || {})['org-agenda-files'] || '';
+}
+
 /** org-xx-extra-menu: this app's own extension (not a real org-mode
  *  variable), a floating (☰) button's configurable quick-action menu
  *  -- see src/extra-menu.js's own docs for the full syntax. Just the
