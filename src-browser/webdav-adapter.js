@@ -62,6 +62,16 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
+/** The inverse of arrayBufferToBase64 above -- atob (the standard,
+ *  browser/Node-both-support-it decode) back to a binary string, then
+ *  one byte per character into a real Uint8Array. */
+function base64ToArrayBuffer(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 function fileUrl(config, path) {
   const base = config.baseUrl.replace(/\/+$/, '');
   const cleanPath = encodePath(path.replace(/^\/+/, ''));
@@ -190,6 +200,30 @@ export function createWebdavAdapter(getConfig) {
     return { hash: res.headers.get('ETag') || null };
   }
 
+  /** Writes `base64Content` (already base64-encoded binary -- an
+   *  attachment's own raw bytes, not UTF-8 text) to `fileId` --
+   *  otherwise identical to writeImpl's own precondition logic, just
+   *  decoding back to real binary bytes first (via
+   *  base64ToArrayBuffer) rather than sending the base64 text itself
+   *  as the PUT body, which would corrupt the stored file. */
+  async function writeBinaryImpl(fileId, base64Content) {
+    const config = requireConfig(getConfig);
+    const existing = await readBinaryImpl(fileId);
+    const headers = { ...authHeader(config), 'Content-Type': 'application/octet-stream' };
+    if (existing && existing.hash) {
+      headers['If-Match'] = existing.hash;
+    } else if (!existing) {
+      headers['If-None-Match'] = '*';
+    }
+    const res = await fetchWithHint(fileUrl(config, fileId), {
+      method: 'PUT',
+      headers,
+      body: base64ToArrayBuffer(base64Content),
+    });
+    if (!res.ok) throw new Error(webdavErrorMessage(res));
+    return { hash: res.headers.get('ETag') || null };
+  }
+
   /**
    * Lists the contents of `path` (default: configured baseUrl root)
    * via PROPFIND with Depth: 1 (immediate children only, not a full
@@ -238,6 +272,7 @@ export function createWebdavAdapter(getConfig) {
   return {
     read: readImpl,
     write: writeImpl,
+    writeBinary: writeBinaryImpl,
     list: listImpl,
     readBinary: readBinaryImpl,
     async exists(fileId) {
@@ -256,4 +291,4 @@ export function isWebdavConfigured(config) {
 }
 
 // Exported for testing path/URL construction and the PROPFIND parser in isolation.
-export { fileUrl, encodePath, parsePropfindResponse, baseUrlPath, arrayBufferToBase64 };
+export { fileUrl, encodePath, parsePropfindResponse, baseUrlPath, arrayBufferToBase64, base64ToArrayBuffer };

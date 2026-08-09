@@ -44,8 +44,24 @@ function base64ToUtf8(base64) {
   return new TextDecoder('utf-8').decode(bytes);
 }
 
+/** URL-encodes each path segment separately, preserving the "/"
+ *  separators between them -- confirmed as a real, necessary fix, not
+ *  a theoretical one: without this, a path containing "#" or "?" (an
+ *  entirely ordinary filename like "bug #42 screenshot.png") gets
+ *  those characters interpreted as URL fragment/query syntax by the
+ *  browser's own URL parser rather than sent as literal path
+ *  characters, silently truncating or corrupting the actual request
+ *  GitHub's API receives. Matches the WebDAV adapter's own
+ *  encodePath exactly. */
+function encodeGithubPath(path) {
+  return path
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+}
+
 function contentsUrl(config, path) {
-  return `${API_BASE}/repos/${config.owner}/${config.repo}/contents/${path}`;
+  return `${API_BASE}/repos/${config.owner}/${config.repo}/contents/${encodeGithubPath(path)}`;
 }
 
 function authHeaders(config) {
@@ -145,6 +161,32 @@ export function createGithubAdapter(getConfig) {
     return { hash: result.content.sha };
   }
 
+  /** Writes `base64Content` (already base64-encoded binary -- an
+   *  attachment's own raw bytes, not UTF-8 text) to `fileId` --
+   *  otherwise identical to writeImpl's own sha-based update-vs-create
+   *  logic, just skipping the utf8ToBase64 encoding step that would
+   *  otherwise corrupt binary data (the same reasoning readBinaryImpl
+   *  skips readImpl's own utf8 decoding). */
+  async function writeBinaryImpl(fileId, base64Content) {
+    const config = requireConfig(getConfig);
+    const existing = await readImpl(fileId);
+    const requestBody = {
+      message: existing ? `Update ${fileId} via org-pwa` : `Create ${fileId} via org-pwa`,
+      content: base64Content,
+      branch: config.branch || 'main',
+    };
+    if (existing) requestBody.sha = existing.hash;
+
+    const res = await fetch(contentsUrl(config, fileId), {
+      method: 'PUT',
+      headers: { ...authHeaders(config), 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+    if (!res.ok) throw new Error(await githubErrorMessage(res));
+    const result = await res.json();
+    return { hash: result.content.sha };
+  }
+
   /**
    * Lists the contents of `path` (default: repo root) — the same
    * Contents API endpoint readImpl already calls, just used for the
@@ -179,6 +221,7 @@ export function createGithubAdapter(getConfig) {
   return {
     read: readImpl,
     write: writeImpl,
+    writeBinary: writeBinaryImpl,
     list: listImpl,
     readBinary: readBinaryImpl,
     async exists(fileId) {
@@ -194,4 +237,4 @@ export function isGithubConfigured(config) {
 // Exported for testing the tricky part in isolation — real UTF-8 (emoji
 // included, since real org files in the wild use them heavily in
 // headings) round-tripping through GitHub's base64 encoding.
-export { utf8ToBase64, base64ToUtf8 };
+export { utf8ToBase64, base64ToUtf8, encodeGithubPath };
