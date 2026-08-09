@@ -30,10 +30,13 @@ import { applyStartupVisibility, cycleFoldLevel } from './src/fold-state.js';
 import { parseStartupConfig, resolveEffectiveStartupConfig } from './src/startup-config.js';
 import {
   parseLocalVariables,
+  parseLispBoolean,
+  parseLispNumber,
   getAgendaStartOnWeekday,
   getDeadlineWarningDays,
   getCalendarLatitude,
   getCalendarLongitude,
+  getCalendarLocationName,
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
   getAgendaSkipArchivedTrees,
@@ -58,8 +61,8 @@ import { parseMenuAliases } from './src/menu-alias.js';
 import { splitHexAlpha, combineHexAlpha } from './src/hex-alpha.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import { applyRepeaterShiftOnDone } from './src/repeater-shift.js';
-import { decideProgressLogging, decideLogbookEntry, getEffectiveLogDoneSetting } from './src/progress-logging.js';
-import { parseGlobalVariables, mergeGlobalAndLocalVariables } from './src/global-variables.js';
+import { decideProgressLogging, decideLogbookEntry, getEffectiveLogDoneSetting, parseLogDoneLispValue } from './src/progress-logging.js';
+import { parseGlobalVariables, serializeGlobalVariables, mergeGlobalAndLocalVariables } from './src/global-variables.js';
 import { formatStateLogLine, parseLogbookEntries } from './src/logbook.js';
 import {
   buildAgendaItems,
@@ -6448,6 +6451,366 @@ function pickTextFile(accept) {
   });
 }
 
+/**
+ * Quick Settings: one entry per Global/Local Variable this app knows
+ * about, each with a proper, type-appropriate control (toggle,
+ * number stepper, weekday picker, ...) instead of a bare "name: value"
+ * line in a shared textarea -- the same underlying storage
+ * (globalVariablesText / globalVariables) as the existing raw-text
+ * "Global Variables" section below it, just with a friendlier front
+ * end for the common case. The raw textarea stays too, unchanged, as
+ * the power-user/advanced path for anything not covered here (or for
+ * editing several fields at once via paste).
+ *
+ * `type` drives which control renderQuickSettingField builds:
+ *   - 'boolean': a checkbox, Lisp t/nil underneath.
+ *   - 'number': a number input, with min/max/step as given.
+ *   - 'text': a single-line text input.
+ *   - 'longtext': a small textarea, for a value that can itself be
+ *     long/multi-entry (org-refile-targets, the org-xx-*-menu family)
+ *     -- still just this one variable's own raw syntax, not a
+ *     structured list-editor for it; that's a bigger feature of its
+ *     own, out of scope here.
+ *   - 'weekday': a 0-6 select, real day names shown instead of digits.
+ *   - 'logdone': org-log-done's own three-state Off/Timestamp/Note,
+ *     with real Lisp quoted-symbol syntax ('time / 'note) underneath.
+ *   - 'subsuper': org-use-sub-superscripts' own three-state value
+ *     space (t / nil / {}), not a plain boolean.
+ */
+const QUICK_SETTINGS_FIELDS = [
+  { key: 'org-log-done', label: 'Log completing a TODO', section: 'Progress logging', type: 'logdone' },
+  {
+    key: 'org-closed-keep-when-no-todo',
+    label: 'Keep CLOSED when cycled to no TODO keyword',
+    section: 'Progress logging',
+    type: 'boolean',
+    default: false,
+  },
+  {
+    key: 'org-agenda-skip-archived-trees',
+    label: 'Skip archived headings in Agenda',
+    section: 'Agenda',
+    type: 'boolean',
+    default: true,
+  },
+  {
+    key: 'org-agenda-skip-comment-trees',
+    label: 'Skip commented headings in Agenda',
+    section: 'Agenda',
+    type: 'boolean',
+    default: true,
+  },
+  { key: 'org-agenda-start-on-weekday', label: 'Week starts on', section: 'Agenda', type: 'weekday', default: 1 },
+  {
+    key: 'org-deadline-warning-days',
+    label: 'Deadline advance warning (days)',
+    section: 'Agenda',
+    type: 'number',
+    default: 14,
+    min: 0,
+    max: 365,
+    step: 1,
+  },
+  {
+    key: 'org-cycle-open-archived-trees',
+    label: 'Allow expanding archived headings',
+    section: 'Agenda',
+    type: 'boolean',
+    default: false,
+  },
+  {
+    key: 'org-contacts-birthday-property',
+    label: 'Birthday property name',
+    section: 'Contacts & Calendar',
+    type: 'text',
+    default: 'BIRTHDAY',
+  },
+  {
+    key: 'calendar-latitude',
+    label: 'Latitude',
+    section: 'Contacts & Calendar',
+    type: 'number',
+    default: 35.994,
+    min: -90,
+    max: 90,
+    step: 0.0001,
+  },
+  {
+    key: 'calendar-longitude',
+    label: 'Longitude',
+    section: 'Contacts & Calendar',
+    type: 'number',
+    default: -78.8986,
+    min: -180,
+    max: 180,
+    step: 0.0001,
+  },
+  {
+    key: 'calendar-location-name',
+    label: 'Location name',
+    section: 'Contacts & Calendar',
+    type: 'text',
+    default: 'Durham, NC',
+  },
+  {
+    key: 'org-use-tag-inheritance',
+    label: 'Tag search matches inherited tags',
+    section: 'Search & tags',
+    type: 'boolean',
+    default: true,
+  },
+  {
+    key: 'org-use-property-inheritance',
+    label: 'Property search matches inherited values',
+    section: 'Search & tags',
+    type: 'boolean',
+    default: false,
+  },
+  { key: 'org-use-sub-superscripts', label: 'Interpret _ / ^ as sub/superscript', section: 'Editing', type: 'subsuper' },
+  {
+    key: 'org-ascii-text-width',
+    label: 'ASCII export line width',
+    section: 'Export',
+    type: 'number',
+    default: 72,
+    min: 20,
+    max: 200,
+    step: 1,
+  },
+  { key: 'org-refile-targets', label: 'Refile targets', section: 'Advanced (raw syntax)', type: 'longtext' },
+  { key: 'org-xx-extra-menu', label: 'Extras menu (\u2630)', section: 'Advanced (raw syntax)', type: 'longtext' },
+  { key: 'org-xx-file-menu', label: 'File menu labels', section: 'Advanced (raw syntax)', type: 'longtext' },
+  { key: 'org-xx-more-menu', label: 'More menu labels', section: 'Advanced (raw syntax)', type: 'longtext' },
+  { key: 'org-xx-export-menu', label: 'Export menu labels', section: 'Advanced (raw syntax)', type: 'longtext' },
+  { key: 'org-xx-view-menu', label: 'View menu labels', section: 'Advanced (raw syntax)', type: 'longtext' },
+];
+
+/** Writes `key: rawValue` into the app-wide Global Variables baseline
+ *  (or removes `key` entirely when `rawValue` is null) -- the exact
+ *  same globalVariablesText/globalVariables module-level state the
+ *  existing raw textarea reads and writes, kept persisted and
+ *  re-merged into the currently open document immediately, the same
+ *  "applies right away, no reload needed" convention every other
+ *  Settings control here already follows. */
+async function commitGlobalVariableChange(key, rawValue) {
+  const vars = parseGlobalVariables(globalVariablesText);
+  if (rawValue === null) {
+    delete vars[key];
+  } else {
+    vars[key] = rawValue;
+  }
+  globalVariablesText = serializeGlobalVariables(vars);
+  globalVariables = vars;
+  await setGlobalVariables(kv, globalVariablesText);
+  if (state.doc) {
+    state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
+  }
+}
+
+/** Builds one Quick Settings field's own label + control row. */
+function renderQuickSettingField(field) {
+  const row = document.createElement('div');
+  row.style.marginBottom = '10px';
+
+  const label = document.createElement('label');
+  label.style.display = 'flex';
+  label.style.flexDirection = field.type === 'boolean' ? 'row' : 'column';
+  label.style.alignItems = field.type === 'boolean' ? 'center' : 'stretch';
+  label.style.gap = field.type === 'boolean' ? '8px' : '4px';
+  label.style.fontSize = '13px';
+  label.style.cursor = field.type === 'boolean' ? 'pointer' : 'default';
+
+  const labelText = document.createElement('span');
+  labelText.textContent = field.label;
+  if (field.type === 'boolean') label.appendChild(document.createElement('span')); // placeholder swapped below, keeps checkbox-then-label DOM order consistent with other checkboxes in this app
+  else label.appendChild(labelText);
+
+  const rawValue = globalVariables[field.key];
+
+  if (field.type === 'boolean') {
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = parseLispBoolean(rawValue, field.default);
+    checkbox.onchange = async () => {
+      await commitGlobalVariableChange(field.key, checkbox.checked ? 't' : 'nil');
+      setStatus(`${field.label}: ${checkbox.checked ? 'on' : 'off'}.`);
+      renderSettingsView();
+      render();
+    };
+    label.replaceChild(checkbox, label.firstChild);
+    label.appendChild(labelText);
+  } else if (field.type === 'number') {
+    const input = document.createElement('input');
+    input.type = 'number';
+    textInputStyle(input);
+    if (field.min !== undefined) input.min = String(field.min);
+    if (field.max !== undefined) input.max = String(field.max);
+    if (field.step !== undefined) input.step = String(field.step);
+    input.value = String(parseLispNumber(rawValue, field.default));
+    input.onchange = async () => {
+      const n = Number(input.value);
+      if (!Number.isFinite(n)) {
+        setStatus(`${field.label}: not a valid number, ignored.`);
+        render();
+        return;
+      }
+      await commitGlobalVariableChange(field.key, String(n));
+      setStatus(`${field.label} updated.`);
+      renderSettingsView();
+      render();
+    };
+    label.appendChild(input);
+  } else if (field.type === 'text') {
+    const input = document.createElement('input');
+    input.type = 'text';
+    textInputStyle(input);
+    input.value = rawValue !== undefined ? rawValue : field.default;
+    input.onchange = async () => {
+      const trimmed = input.value.trim();
+      await commitGlobalVariableChange(field.key, trimmed === field.default || trimmed === '' ? null : trimmed);
+      setStatus(`${field.label} updated.`);
+      renderSettingsView();
+      render();
+    };
+    label.appendChild(input);
+  } else if (field.type === 'longtext') {
+    const textarea = document.createElement('textarea');
+    textarea.rows = 2;
+    textarea.style.fontFamily = 'monospace';
+    textarea.style.fontSize = '12px';
+    textarea.style.width = '100%';
+    textarea.style.maxWidth = '100%';
+    textarea.style.boxSizing = 'border-box';
+    textarea.style.resize = 'vertical';
+    textarea.value = rawValue !== undefined ? rawValue : '';
+    textarea.onchange = async () => {
+      const trimmed = textarea.value.trim();
+      await commitGlobalVariableChange(field.key, trimmed === '' ? null : trimmed);
+      setStatus(`${field.label} updated.`);
+      renderSettingsView();
+      render();
+    };
+    label.appendChild(textarea);
+  } else if (field.type === 'weekday') {
+    const select = document.createElement('select');
+    textInputStyle(select);
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const current = getAgendaStartOnWeekday(globalVariables);
+    for (let i = 0; i < 7; i++) {
+      const option = document.createElement('option');
+      option.value = String(i);
+      option.textContent = dayNames[i];
+      if (i === current) option.selected = true;
+      select.appendChild(option);
+    }
+    select.onchange = async () => {
+      await commitGlobalVariableChange(field.key, select.value);
+      setStatus(`${field.label}: ${dayNames[Number(select.value)]}.`);
+      renderSettingsView();
+      render();
+    };
+    label.appendChild(select);
+  } else if (field.type === 'logdone') {
+    const select = document.createElement('select');
+    textInputStyle(select);
+    const current = parseLogDoneLispValue(rawValue); // 'time' | 'note' | null
+    const options = [
+      { value: '', text: 'Off (no logging)' },
+      { value: 'time', text: 'Timestamp (CLOSED:)' },
+      { value: 'note', text: 'Note (prompted in LOGBOOK)' },
+    ];
+    for (const opt of options) {
+      const optionEl = document.createElement('option');
+      optionEl.value = opt.value;
+      optionEl.textContent = opt.text;
+      if ((current || '') === opt.value) optionEl.selected = true;
+      select.appendChild(optionEl);
+    }
+    select.onchange = async () => {
+      const v = select.value;
+      await commitGlobalVariableChange(field.key, v ? `'${v}` : null);
+      setStatus('org-log-done updated.');
+      renderSettingsView();
+      render();
+    };
+    label.appendChild(select);
+  } else if (field.type === 'subsuper') {
+    const select = document.createElement('select');
+    textInputStyle(select);
+    const current = getUseSubSuperscripts(globalVariables);
+    const options = [
+      { value: 't', text: 'Always (a_b \u2192 subscript)' },
+      { value: '{}', text: 'Only with {braces} (a_{b})' },
+      { value: 'nil', text: 'Never' },
+    ];
+    for (const opt of options) {
+      const optionEl = document.createElement('option');
+      optionEl.value = opt.value;
+      optionEl.textContent = opt.text;
+      if (current === opt.value) optionEl.selected = true;
+      select.appendChild(optionEl);
+    }
+    select.onchange = async () => {
+      await commitGlobalVariableChange(field.key, select.value);
+      setStatus('org-use-sub-superscripts updated.');
+      renderSettingsView();
+      render();
+    };
+    label.appendChild(select);
+  }
+
+  row.appendChild(label);
+  return row;
+}
+
+/** Groups QUICK_SETTINGS_FIELDS by their own `section`, in first-
+ *  appearance order (not alphabetical -- "Progress logging" and
+ *  "Agenda" first, "Advanced" last, matches how someone would
+ *  actually want to scan this, not dictionary order). */
+function renderQuickSettingsSection() {
+  const wrap = document.createElement('div');
+  wrap.className = 'settings-section';
+
+  const title = document.createElement('div');
+  title.className = 'panel-section-title';
+  title.textContent = 'Quick Settings';
+  wrap.appendChild(title);
+
+  const hint = document.createElement('div');
+  hint.style.fontSize = '11px';
+  hint.style.opacity = '0.6';
+  hint.style.margin = '2px 0 10px';
+  hint.textContent =
+    'Friendlier controls for the same app-wide Global Variables baseline the raw text box below also edits \u2014 changing one here updates that text too, and vice versa. Applies immediately, no reload needed.';
+  wrap.appendChild(hint);
+
+  const sections = [];
+  for (const field of QUICK_SETTINGS_FIELDS) {
+    let group = sections.find((s) => s.name === field.section);
+    if (!group) {
+      group = { name: field.section, fields: [] };
+      sections.push(group);
+    }
+    group.fields.push(field);
+  }
+
+  for (const group of sections) {
+    const groupTitle = document.createElement('div');
+    groupTitle.style.fontSize = '12px';
+    groupTitle.style.fontWeight = '600';
+    groupTitle.style.opacity = '0.7';
+    groupTitle.style.margin = '10px 0 6px';
+    groupTitle.textContent = group.name;
+    wrap.appendChild(groupTitle);
+
+    for (const field of group.fields) {
+      wrap.appendChild(renderQuickSettingField(field));
+    }
+  }
+
+  return wrap;
+}
+
 async function renderSettingsView(target = settingsRenderTarget) {
   settingsRenderTarget = target;
   target.innerHTML = '';
@@ -6717,6 +7080,8 @@ async function renderSettingsView(target = settingsRenderTarget) {
   );
   agendaFilesSection.appendChild(agendaFilesBtnRow);
 
+  container.appendChild(renderQuickSettingsSection());
+
   const globalVarsSection = document.createElement('div');
   globalVarsSection.className = 'settings-section';
   container.appendChild(globalVarsSection);
@@ -6760,6 +7125,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
         state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
       }
       setStatus('Global variables saved.');
+      renderSettingsView();
       render();
     })
   );
