@@ -69,6 +69,20 @@ export function parseGlobalVariables(text) {
   return vars;
 }
 
+/** The reverse of parseGlobalVariables: one "key: value" line per
+ *  entry, alphabetically sorted for stable, predictable output
+ *  regardless of insertion order. A key whose value is null/undefined
+ *  is omitted entirely (removed), rather than written as an empty
+ *  line -- matching how a Settings UI control resetting a field to
+ *  "unset" should behave. */
+export function serializeGlobalVariables(vars) {
+  return Object.keys(vars)
+    .filter((k) => vars[k] !== null && vars[k] !== undefined && vars[k] !== '')
+    .sort()
+    .map((k) => `${k}: ${vars[k]}`)
+    .join('\n');
+}
+
 /**
  * Merges Global Variables (`globalVars`, the lowest-precedence,
  * app-wide baseline) with a file's own Local Variables (`localVars`,

@@ -176,4 +176,4 @@ function getEffectiveLogDoneSetting(localVarsOnly, startupConfig, globalVarsOnly
   return parseLogDoneLispValue((globalVarsOnly || {})['org-log-done']);
 }
 
-export { decideProgressLogging, decideLogbookEntry, effectiveLogSpec, parseLogSpec, getEffectiveLogDoneSetting };
+export { decideProgressLogging, decideLogbookEntry, effectiveLogSpec, parseLogSpec, getEffectiveLogDoneSetting, parseLogDoneLispValue };
