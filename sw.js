@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v140';
+const CACHE_NAME = 'org-pwa-shell-v145';
 
 const SHELL_FILES = [
   './',
@@ -16,6 +16,7 @@ const SHELL_FILES = [
   './src/org-parser.js',
   './src/agenda.js',
   './src/diary-sexp.js',
+  './src/sexp-eval.js',
   './src/repeater-shift.js',
   './src/capture-template.js',
   './src/local-variables.js',

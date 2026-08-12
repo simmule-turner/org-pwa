@@ -8,6 +8,8 @@ import {
   attachmentPath,
   formatAttachmentLink,
   sanitizeAttachmentFilename,
+  listAttachments,
+  removeAttachmentLink,
 } from './src/attach.js';
 import {
   findAncestorPath,
@@ -25,6 +27,7 @@ import {
 import {
   resolveLinkTarget,
   resolveImagePath,
+  resolveAttachmentTarget,
   guessImageMimeType,
   isExternalUrl,
   findHeadingByTitle,
@@ -56,10 +59,7 @@ import {
   getRefileTargets,
   getAsciiTextWidth,
   getExtraMenu,
-  getFileMenuAliases,
-  getMoreMenuAliases,
-  getExportMenuAliases,
-  getViewMenuAliases,
+  getMenuAliases,
 } from './src/local-variables.js';
 import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath } from './src/refile.js';
 import { isClockRunning, clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, formatClockDuration, findHeadingWithRunningClock } from './src/clock.js';
@@ -134,7 +134,7 @@ import {
   isFileSystemAccessSupported,
 } from './src-browser/filesystem-adapter.js';
 import { createGithubAdapter, isGithubConfigured } from './src-browser/github-adapter.js';
-import { createWebdavAdapter, isWebdavConfigured } from './src-browser/webdav-adapter.js';
+import { createWebdavAdapter, isWebdavConfigured, base64ToArrayBuffer } from './src-browser/webdav-adapter.js';
 import {
   createInputFileAdapter,
   pickAndImportFile,
@@ -236,6 +236,23 @@ let pendingArchiveConfirm = null;
 // completion) / OK (back out, keep the clock running). Reuses
 // refilePanel's own DOM element, same pattern as pendingArchiveConfirm.
 let pendingClockStop = null;
+// Set to { heading } when Attach is tapped -- the first-level choice
+// among the four org-attach-style sub-actions (Attach a file, Take
+// Photo/Video, Open, Delete). renderAttachChoicePanel shows that
+// choice; reuses refilePanel's own DOM element, same pattern as the
+// three flows above (mutually exclusive with all of them -- none of
+// these panels are ever open at the same time as another).
+let pendingAttachChoice = null;
+// Set to { heading, filenames, action } when Open or Delete is tapped
+// on a heading with MORE than one attachment -- org-attach's own
+// actual behavior ("if there's more than one, prompt for a file name
+// first"), rather than guessing which one was meant. `action` is
+// 'open' or 'delete', so renderAttachFileListPanel's own tap handler
+// knows which of the two to actually do once a filename is picked.
+// Skipped entirely (goes straight to the action) when there's exactly
+// one attachment -- nothing to disambiguate. Reuses refilePanel's own
+// DOM element too, same reasoning as pendingAttachChoice above.
+let pendingAttachFileList = null;
 
 /**
  * Every call site in this app that changes a heading's TODO state
@@ -940,7 +957,7 @@ function clockInHeading(heading) {
  * own body, so it's immediately visible and clickable like any other
  * link in this app.
  */
-async function attachFileToHeading(heading) {
+async function attachFileToHeading(heading, capture) {
   if (state.storageKind !== 'github' && state.storageKind !== 'webdav') {
     setStatus(
       "Attachments need automatic file-write access \u2014 only available with GitHub or WebDAV connected (a local file needs a fresh picker gesture per file, which browser security doesn't allow this app to do on its own for a brand-new attachment file). Connect GitHub or WebDAV in Settings first."
@@ -951,7 +968,7 @@ async function attachFileToHeading(heading) {
 
   let picked;
   try {
-    picked = await pickBinaryFile('environment');
+    picked = await pickBinaryFile(capture);
   } catch {
     return; // no file selected -- silently do nothing, matching every other cancel-a-picker path in this app
   }
@@ -977,10 +994,92 @@ async function attachFileToHeading(heading) {
     return;
   }
 
-  heading.bodyLines.push(formatAttachmentLink(path, filename));
+  heading.bodyLines.push(formatAttachmentLink(filename));
   heading.body = parseBody(heading.bodyLines);
 
   commitAndRender(`Attached "${filename}"`);
+}
+
+/** Downloads a non-image attachment: link's own actual file -- what
+ *  tapping one does, since (unlike a file:/github:/webdav: link)
+ *  there's no sensible "navigate into this as an org document"
+ *  action for a PDF, a photo, or any other binary attachment; a real
+ *  browser download is the correct action instead, the same
+ *  mechanism export already uses via downloadFile. `target` is the
+ *  link's own full "attachment:filename" text; `heading` is whichever
+ *  heading this link's own body content belongs to (see
+ *  renderInlineNodes' own heading-threading docs), needed to resolve
+ *  which :ID: actually owns this attachment, matching the exact same
+ *  ancestor-chain lookup the inline-image case already uses. */
+async function downloadAttachmentLink(target, heading) {
+  if (state.storageKind !== 'github' && state.storageKind !== 'webdav') {
+    setStatus(
+      "Can't download this attachment \u2014 only available with GitHub or WebDAV connected, the same backends attachments themselves are only ever stored on."
+    );
+    render();
+    return;
+  }
+  const resolvedPath = resolveAttachmentTarget(state.doc, heading, target);
+  if (!resolvedPath) {
+    setStatus("Can't resolve this attachment \u2014 no heading in its own ancestor chain has an :ID: property.");
+    render();
+    return;
+  }
+  const filename = target.replace(/^attachment:/i, '');
+  setStatus('Downloading attachment\u2026');
+  render();
+  try {
+    const adapter = activeDiskAdapter();
+    const result = await adapter.readBinary(resolvedPath);
+    if (!result) {
+      setStatus(`Attachment "${filename}" not found at ${resolvedPath}.`);
+      render();
+      return;
+    }
+    downloadFile(filename, base64ToArrayBuffer(result.base64), guessImageMimeType(resolvedPath));
+    setStatus(`Downloaded "${filename}".`);
+    render();
+  } catch (err) {
+    setStatus(`Could not download "${filename}": ${err.message}`);
+    render();
+  }
+}
+
+/** Deletes `filename` from `heading`'s own attachments -- both the
+ *  underlying file on the backend (via the storage adapter's own
+ *  delete) and the [[attachment:...]] link referencing it in the
+ *  heading's own body text (via removeAttachmentLink). The backend
+ *  delete happens first: if it fails, the in-document link is left
+ *  alone too, rather than ending up in a state where the app thinks
+ *  the attachment is gone but the actual file is still sitting on
+ *  GitHub/WebDAV. */
+async function deleteAttachment(heading, filename) {
+  if (state.storageKind !== 'github' && state.storageKind !== 'webdav') {
+    setStatus(
+      "Can't delete this attachment \u2014 only available with GitHub or WebDAV connected, the same backends attachments themselves are only ever stored on."
+    );
+    render();
+    return;
+  }
+  const resolvedPath = resolveAttachmentTarget(state.doc, heading, `attachment:${filename}`);
+  if (!resolvedPath) {
+    setStatus("Can't resolve this attachment \u2014 no heading in its own ancestor chain has an :ID: property.");
+    render();
+    return;
+  }
+  setStatus('Deleting attachment\u2026');
+  render();
+  try {
+    const adapter = activeDiskAdapter();
+    await adapter.delete(resolvedPath);
+  } catch (err) {
+    setStatus(`Could not delete "${filename}": ${err.message}`);
+    render();
+    return;
+  }
+  removeAttachmentLink(heading, filename);
+  heading.body = parseBody(heading.bodyLines);
+  commitAndRender(`Deleted "${filename}"`);
 }
 
 /** org-clock-out: stops whatever clock is currently running on
@@ -1063,6 +1162,147 @@ function renderClockStopPanel() {
     })
   );
   refilePanel.appendChild(row);
+}
+
+function openAttachChoicePrompt(heading) {
+  pendingAttachChoice = { heading };
+  renderAttachChoicePanel();
+}
+
+/** The Attach action's own first-level choice -- org-attach's real
+ *  menu structure (a)ttach / (p)hoto / (o)pen / (d)elete, adapted to
+ *  this app's own tap-a-button UI rather than press-a-letter, the
+ *  same "one clear button per option" convention every other multi-
+ *  choice panel in this app already uses. */
+function renderAttachChoicePanel() {
+  refilePanel.innerHTML = '';
+  if (!pendingAttachChoice) {
+    refilePanel.style.display = 'none';
+    return;
+  }
+  refilePanel.style.display = 'block';
+  const heading = pendingAttachChoice.heading;
+
+  const label = document.createElement('div');
+  label.style.fontSize = '13px';
+  label.style.marginBottom = '8px';
+  label.textContent = `Attachments for "${heading.title || '(untitled)'}"`;
+  refilePanel.appendChild(label);
+
+  const row = document.createElement('div');
+  row.className = 'panel-row';
+  row.appendChild(
+    menuButton('\ud83d\udcce Attach a file', async () => {
+      pendingAttachChoice = null;
+      renderAttachChoicePanel();
+      await attachFileToHeading(heading);
+    })
+  );
+  row.appendChild(
+    menuButton('\ud83d\udcf7 Photo/Video', async () => {
+      pendingAttachChoice = null;
+      renderAttachChoicePanel();
+      await attachFileToHeading(heading, 'environment');
+    })
+  );
+  row.appendChild(
+    menuButton('\ud83d\udcc2 Open', () => {
+      pendingAttachChoice = null;
+      renderAttachChoicePanel();
+      startAttachmentPickFlow(heading, 'open');
+    })
+  );
+  row.appendChild(
+    menuButton('\ud83d\uddd1\ufe0f Delete', () => {
+      pendingAttachChoice = null;
+      renderAttachChoicePanel();
+      startAttachmentPickFlow(heading, 'delete');
+    })
+  );
+  row.appendChild(
+    menuButton('Cancel', () => {
+      pendingAttachChoice = null;
+      renderAttachChoicePanel();
+    })
+  );
+  refilePanel.appendChild(row);
+}
+
+/** Shared entry point for Open and Delete: enumerates `heading`'s own
+ *  attachments (listAttachments) and either acts directly (0 or
+ *  exactly 1 attachment -- nothing to disambiguate) or opens the
+ *  file-list picker (more than one), matching org-attach's own actual
+ *  "if there's more than one, prompt for a file name first" behavior
+ *  for org-attach-open, applied identically to delete too since the
+ *  same ambiguity exists there. */
+function startAttachmentPickFlow(heading, action) {
+  const filenames = listAttachments(heading);
+  if (filenames.length === 0) {
+    setStatus('No attachments on this heading yet.');
+    render();
+    return;
+  }
+  if (filenames.length === 1) {
+    performAttachmentAction(heading, filenames[0], action);
+    return;
+  }
+  pendingAttachFileList = { heading, filenames, action };
+  renderAttachFileListPanel();
+}
+
+/** The "which attachment?" picker, shown only when Open/Delete found
+ *  more than one on the heading -- one button per filename, tapping
+ *  it performs whichever action (`open`/`delete`) this flow started
+ *  as. */
+function renderAttachFileListPanel() {
+  refilePanel.innerHTML = '';
+  if (!pendingAttachFileList) {
+    refilePanel.style.display = 'none';
+    return;
+  }
+  refilePanel.style.display = 'block';
+  const { heading, filenames, action } = pendingAttachFileList;
+
+  const label = document.createElement('div');
+  label.style.fontSize = '13px';
+  label.style.marginBottom = '8px';
+  label.textContent = `${action === 'delete' ? 'Delete' : 'Open'} which attachment?`;
+  refilePanel.appendChild(label);
+
+  const row = document.createElement('div');
+  row.className = 'panel-row';
+  for (const filename of filenames) {
+    row.appendChild(
+      menuButton(filename, () => {
+        pendingAttachFileList = null;
+        renderAttachFileListPanel();
+        performAttachmentAction(heading, filename, action);
+      })
+    );
+  }
+  row.appendChild(
+    menuButton('Cancel', () => {
+      pendingAttachFileList = null;
+      renderAttachFileListPanel();
+    })
+  );
+  refilePanel.appendChild(row);
+}
+
+/** Dispatches to the actual open/delete implementation once a single
+ *  attachment has been settled on -- either because there was only
+ *  ever one, or because the file-list picker resolved the ambiguity.
+ *  Delete always confirms first, matching every other destructive
+ *  action in this app; Open never does, since downloading a file (or
+ *  viewing it, if the browser handles that download itself) isn't
+ *  destructive. */
+function performAttachmentAction(heading, filename, action) {
+  if (action === 'delete') {
+    if (!window.confirm(`Delete attachment "${filename}"? This removes the actual file, not just the link to it.`)) return;
+    deleteAttachment(heading, filename);
+  } else {
+    downloadAttachmentLink(`attachment:${filename}`, heading);
+  }
 }
 
 function getArchiveDestinationLabel(heading) {
@@ -1650,7 +1890,15 @@ let updateCheckStatus = null; // null | 'checking' | 'up-to-date' | 'found' | 'e
 let historyDiffExpandedIndex = null;
 
 function setStatus(text) {
-  statusEl.textContent = text;
+  statusEl.innerHTML = '';
+  const isBusy = /\u2026$/.test(text);
+  statusEl.classList.toggle('status--busy', isBusy);
+  if (isBusy) {
+    const spinner = document.createElement('span');
+    spinner.className = 'status-spinner';
+    statusEl.appendChild(spinner);
+  }
+  statusEl.appendChild(document.createTextNode(text));
 }
 
 function startEditingTitle(heading, isNew) {
@@ -2008,7 +2256,7 @@ function imagePlaceholder(target, reason) {
   return span;
 }
 
-function renderImageNode(node) {
+function renderImageNode(node, heading = null) {
   const inlineImagesOn = state.startupConfig && state.startupConfig.imageVisibility === 'inlineimages';
 
   if (inlineImagesOn && /^https?:\/\//i.test(node.target)) {
@@ -2022,16 +2270,28 @@ function renderImageNode(node) {
     return img;
   }
 
-  // A local/relative image, or an explicit file:/github:/webdav:
-  // scheme -- only resolvable to real pixels when the CURRENT
-  // document's own backend can read an arbitrary path without a fresh
-  // picker gesture (GitHub, WebDAV). Local filesystem/iOS import hit
-  // the same File System Access permission wall already documented for
-  // archiving and capture-to-file, so those keep the honest placeholder
-  // below rather than attempting (and failing) a read.
+  const isAttachment = /^attachment:/i.test(node.target);
+
+  // A local/relative image, an explicit file:/github:/webdav: scheme,
+  // or an attachment: link -- only resolvable to real pixels when the
+  // CURRENT document's own backend can read an arbitrary path without
+  // a fresh picker gesture (GitHub, WebDAV) -- attachments themselves
+  // are only ever stored on those same two backends in the first
+  // place (see src/attach.js's own docs), so this same gate already
+  // covers both cases correctly. Local filesystem/iOS import hit the
+  // same File System Access permission wall already documented for
+  // archiving and capture-to-file, so those keep the honest
+  // placeholder below rather than attempting (and failing) a read.
   const canReadArbitraryPaths = state.storageKind === 'github' || state.storageKind === 'webdav';
-  if (inlineImagesOn && canReadArbitraryPaths && !isExternalUrl(node.target)) {
-    const resolvedPath = resolveImagePath(node.target, state.documentId);
+  if (inlineImagesOn && canReadArbitraryPaths && (isAttachment || !isExternalUrl(node.target))) {
+    const resolvedPath = isAttachment ? resolveAttachmentTarget(state.doc, heading, node.target) : resolveImagePath(node.target, state.documentId);
+    if (!resolvedPath) {
+      // An attachment: link with no owning heading in its own
+      // ancestor chain carrying an :ID: at all -- nothing to resolve
+      // against (a hand-written or otherwise-orphaned attachment:
+      // link, not one this app's own Attach action produced).
+      return imagePlaceholder(node.target, 'no :ID: found to resolve this attachment against');
+    }
     const cacheKey = state.storageKind + ':' + resolvedPath;
 
     const img = document.createElement('img');
@@ -2079,7 +2339,7 @@ function renderImageNode(node) {
   return imagePlaceholder(node.target);
 }
 
-function renderLinkNode(node, linkContext = null) {
+function renderLinkNode(node, linkContext = null, heading = null) {
   const label = node.description || node.target;
   const targetDoc = linkContext ? linkContext.doc : state.doc;
   const resolution = resolveLinkTarget(targetDoc, node.target);
@@ -2113,6 +2373,20 @@ function renderLinkNode(node, linkContext = null) {
     return a;
   }
 
+  if (resolution.type === 'attachment' && !linkContext) {
+    const a = document.createElement('a');
+    a.href = '#';
+    a.textContent = label;
+    a.style.color = 'var(--accent)';
+    a.setAttribute(INLINE_LINK_ATTR, '1');
+    a.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      downloadAttachmentLink(resolution.target, heading);
+    };
+    return a;
+  }
+
   if (resolution.type === 'file' && !linkContext) {
     const a = document.createElement('a');
     a.href = '#';
@@ -2129,11 +2403,11 @@ function renderLinkNode(node, linkContext = null) {
 
   // Unresolved: e.g. a *Heading or #custom-id link with no matching
   // heading (renamed heading, typo, or a link meant for a different
-  // file) -- or a file:/github:/webdav: link encountered while a
-  // linkContext is active (a read-only overlay like Docs deliberately
-  // never switches the active document). Shown distinctly rather than
-  // silently rendered as plain text, since "this link is broken" is
-  // useful information.
+  // file) -- or a file:/github:/webdav:/attachment: link encountered
+  // while a linkContext is active (a read-only overlay like Docs
+  // deliberately never switches the active document). Shown distinctly
+  // rather than silently rendered as plain text, since "this link is
+  // broken" is useful information.
   const span = document.createElement('span');
   span.textContent = label;
   span.style.color = 'var(--text-muted, #888)';
@@ -2211,8 +2485,14 @@ function currentInlineOpts() {
 }
 
 /** Renders a parseInline() node array into `container`. Recurses into
- *  emphasis spans' children; code/verbatim/comment/image/link are leaves. */
-function renderInlineNodes(nodes, container, linkContext = null) {
+ *  emphasis spans' children; code/verbatim/comment/image/link are leaves.
+ *  `heading`, when known (the main outline's own paragraph/list-item/
+ *  table-cell rendering -- not the read-only Docs overlay, which has
+ *  no heading-owned attachments of its own to resolve), is threaded
+ *  through to renderImageNode so an attachment: link can resolve
+ *  against the right heading's own :ID: (or an ancestor's, via
+ *  resolveAttachmentTarget's own inheritance). */
+function renderInlineNodes(nodes, container, linkContext = null, heading = null) {
   for (const node of nodes) {
     switch (node.type) {
       case 'text':
@@ -2220,25 +2500,25 @@ function renderInlineNodes(nodes, container, linkContext = null) {
         break;
       case 'bold': {
         const el = document.createElement('b');
-        renderInlineNodes(node.children, el, linkContext);
+        renderInlineNodes(node.children, el, linkContext, heading);
         container.appendChild(el);
         break;
       }
       case 'italic': {
         const el = document.createElement('i');
-        renderInlineNodes(node.children, el, linkContext);
+        renderInlineNodes(node.children, el, linkContext, heading);
         container.appendChild(el);
         break;
       }
       case 'underline': {
         const el = document.createElement('u');
-        renderInlineNodes(node.children, el, linkContext);
+        renderInlineNodes(node.children, el, linkContext, heading);
         container.appendChild(el);
         break;
       }
       case 'strikethrough': {
         const el = document.createElement('s');
-        renderInlineNodes(node.children, el, linkContext);
+        renderInlineNodes(node.children, el, linkContext, heading);
         container.appendChild(el);
         break;
       }
@@ -2266,10 +2546,10 @@ function renderInlineNodes(nodes, container, linkContext = null) {
         break;
       }
       case 'image':
-        container.appendChild(renderImageNode(node));
+        container.appendChild(renderImageNode(node, heading));
         break;
       case 'link':
-        container.appendChild(renderLinkNode(node, linkContext));
+        container.appendChild(renderLinkNode(node, linkContext, heading));
         break;
       case 'footnote-ref':
         container.appendChild(renderFootnoteRefNode(node, linkContext));
@@ -2486,26 +2766,7 @@ function smallButton(label, ariaLabel, onClick) {
   return btn;
 }
 
-// "Has content" for the delete-confirmation decision: sub-headings and/or
-// any body content (notes, lists, tables, blocks). An empty heading — the
-// common case right after creating one and backing out, or a placeholder
-// that was never filled in — deletes immediately with no prompt; anything
-// with real content underneath it gets one.
-function headingHasContent(heading) {
-  return (
-    (heading.children && heading.children.length > 0) ||
-    (heading.body && heading.body.length > 0) ||
-    heading.todo !== null ||
-    heading.priority !== null ||
-    (heading.tags && heading.tags.length > 0) ||
-    (heading.propertyOrder && heading.propertyOrder.length > 0) ||
-    (heading.logbookLines && heading.logbookLines.length > 0) ||
-    Boolean(heading.planning && (heading.planning.scheduled || heading.planning.deadline))
-  );
-}
-
 function confirmHeadingDelete(heading) {
-  if (!headingHasContent(heading)) return true;
   const parts = [];
   if (heading.children.length) {
     parts.push(`${heading.children.length} sub-heading${heading.children.length === 1 ? '' : 's'}`);
@@ -2518,9 +2779,74 @@ function confirmHeadingDelete(heading) {
   if (heading.logbookLines && heading.logbookLines.length) parts.push('a state-change/note history');
   if (heading.planning && (heading.planning.scheduled || heading.planning.deadline)) parts.push('a scheduled/deadline date');
   const title = heading.title || '(untitled)';
-  return window.confirm(
-    `Delete "${title}"? It has ${parts.join(', ')}, which will be lost.`
-  );
+  const detail = parts.length > 0 ? ` It has ${parts.join(', ')}, which will be lost.` : '';
+  return window.confirm(`Delete "${title}"?${detail}`);
+}
+
+/** Confirms (always -- see confirmHeadingDelete's own docs) and, if
+ *  confirmed, deletes `heading` -- clearing any of this app's own
+ *  in-progress edit state that might reference it first (editing its
+ *  title, a cell/paragraph/list-item within it, etc.), the same
+ *  cleanup the previous "X" action-row button already did, now
+ *  reachable only via a long-press on the heading's own title instead
+ *  of a dedicated button. */
+function deleteHeadingWithConfirmation(heading) {
+  if (!confirmHeadingDelete(heading)) return;
+  actionMenuFor = null;
+  editingHeading = null;
+  editingIsNew = false;
+  editingCell = null;
+  editingParagraph = null;
+  editingListItem = null;
+  editingHeadingText = null;
+  editingGeneral = null;
+  removeHeading(state.doc, heading);
+  commitAndRender('Deleted heading');
+}
+
+/** Attaches a long-press gesture to `el`: holding a touch/pointer down
+ *  on it for `duration` ms fires `callback`, matching the Pointer
+ *  Events API's own unified handling of touch/mouse/stylus alike
+ *  rather than separately wiring touch* and mouse* events. Movement
+ *  beyond a small threshold (a scroll starting on the same element,
+ *  not a held press) or releasing early cancels the pending timer --
+ *  a genuine long-press only fires once the full duration has
+ *  elapsed with the pointer still down and still roughly in place.
+ *  Sets `el`'s own `dataset.longPressFired` for one tick after firing,
+ *  so a caller's own click handler (which still fires on release,
+ *  same as any other tap) can check it and skip its own normal action
+ *  -- the long-press's own callback already ran, a regular tap
+ *  shouldn't also do something on top of that. */
+function attachLongPress(el, callback, duration = 600) {
+  let timer = null;
+  let startX = 0;
+  let startY = 0;
+  const MOVE_THRESHOLD = 10;
+
+  const cancel = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  };
+
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button !== undefined && e.button !== 0) return; // only the primary button/touch -- not right-click etc.
+    startX = e.clientX;
+    startY = e.clientY;
+    timer = setTimeout(() => {
+      timer = null;
+      el.dataset.longPressFired = '1';
+      callback(e);
+    }, duration);
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (!timer) return;
+    if (Math.abs(e.clientX - startX) > MOVE_THRESHOLD || Math.abs(e.clientY - startY) > MOVE_THRESHOLD) cancel();
+  });
+  el.addEventListener('pointerup', cancel);
+  el.addEventListener('pointercancel', cancel);
+  el.addEventListener('pointerleave', cancel);
 }
 
 // Contextual action row shown below a heading/list-item when its text has
@@ -3168,8 +3494,13 @@ function renderRow(row, todoSequence) {
       }
       title.onclick = (e) => {
         if (e.target.closest('[data-inline-link]')) return;
+        if (title.dataset.longPressFired) {
+          delete title.dataset.longPressFired;
+          return;
+        }
         toggleActionMenu(row.node);
       };
+      attachLongPress(title, () => deleteHeadingWithConfirmation(row.node));
       el.appendChild(title);
 
       for (const tag of row.node.tags) {
@@ -3279,27 +3610,10 @@ function renderRow(row, todoSequence) {
             {
               icon: '\ud83d\udcce',
               label: 'Attach',
-              onClick: async () => {
+              onClick: () => {
                 actionMenuFor = null;
                 render();
-                await attachFileToHeading(row.node);
-              },
-            },
-            {
-              icon: '\u2715',
-              label: 'Delete heading',
-              onClick: () => {
-                if (!confirmHeadingDelete(row.node)) return;
-                actionMenuFor = null;
-                editingHeading = null;
-                editingIsNew = false;
-                editingCell = null;
-                editingParagraph = null;
-                editingListItem = null;
-                editingHeadingText = null;
-                editingGeneral = null;
-                removeHeading(state.doc, row.node);
-                commitAndRender('Deleted heading');
+                openAttachChoicePrompt(row.node);
               },
             },
             {
@@ -3565,7 +3879,7 @@ function renderRow(row, todoSequence) {
         if (row.item.tag) {
           text.appendChild(document.createTextNode(row.item.tag + ' :: '));
         }
-        renderInlineNodes(parseInline(row.item.text, currentInlineOpts()), text);
+        renderInlineNodes(parseInline(row.item.text, currentInlineOpts()), text, null, row.heading);
       } else {
         // An empty item (e.g. a fresh checkbox with nothing typed yet)
         // otherwise renders zero visible content here — which means zero
@@ -3747,7 +4061,7 @@ function renderTableRow(row) {
         tdEl.appendChild(input);
       } else {
         if (cellText) {
-          renderInlineNodes(parseInline(cellText, currentInlineOpts()), tdEl);
+          renderInlineNodes(parseInline(cellText, currentInlineOpts()), tdEl, null, row.heading);
         } else {
           tdEl.textContent = '\u00a0';
         }
@@ -3904,7 +4218,7 @@ function renderParagraphRow(row) {
         i === 0 && row.node.footnoteLabel !== null
           ? line.replace(new RegExp('^\\[fn:' + row.node.footnoteLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\]\\s?'), '')
           : line;
-      renderInlineNodes(parseInline(stripLineBreakMarker(text), currentInlineOpts()), p);
+      renderInlineNodes(parseInline(stripLineBreakMarker(text), currentInlineOpts()), p, null, row.heading);
     });
   } else {
     p.textContent = '(empty note \u2014 tap to edit)';
@@ -4410,6 +4724,8 @@ async function openFromFilesystem() {
     const documentId = await pickAndRegisterFile(kv);
     const { preferCache } = await resolvePendingChangeChoice(documentId);
     await markDocumentOpen(kv, documentId);
+    setStatus('Opening\u2026');
+    render();
     const { doc } = await openDocument({
       documentId,
       kvAdapter: kv,
@@ -4430,6 +4746,8 @@ async function openFromImport() {
     const { fileId } = await pickAndImportFile(kv);
     const { preferCache } = await resolvePendingChangeChoice(fileId);
     await markDocumentOpen(kv, fileId);
+    setStatus('Importing\u2026');
+    render();
     const { doc } = await openDocument({
       documentId: fileId,
       kvAdapter: kv,
@@ -4649,6 +4967,8 @@ async function newOnFilesystem() {
     await afterDocumentLoaded(documentId, doc, 'filesystem');
     // Establish real (empty) content on disk right away, rather than
     // leaving the picked file however the browser happened to create it.
+    setStatus('Creating\u2026');
+    render();
     await saveAndSync({
       documentId,
       doc,
@@ -4681,6 +5001,8 @@ async function newOnGithub() {
     await markDocumentOpen(kv, path);
     const doc = parseOrg('');
     await afterDocumentLoaded(path, doc, 'github');
+    setStatus('Creating\u2026');
+    render();
     await saveAndSync({ documentId: path, doc, kvAdapter: kv, diskAdapter: githubAdapter });
     setStatus('Created on GitHub.');
   } catch (err) {
@@ -4707,6 +5029,8 @@ async function newOnWebdav() {
     await markDocumentOpen(kv, path);
     const doc = parseOrg('');
     await afterDocumentLoaded(path, doc, 'webdav');
+    setStatus('Creating\u2026');
+    render();
     await saveAndSync({ documentId: path, doc, kvAdapter: kv, diskAdapter: webdavAdapter });
     setStatus('Created on WebDAV.');
   } catch (err) {
@@ -4747,6 +5071,8 @@ async function saveCurrent() {
       },
     });
     if (result.status === 'conflict' && result.resolution === 'disk') {
+      setStatus('Reloading\u2026');
+      render();
       await reloadCurrentDocumentFromDisk();
     }
     isDirty = false;
@@ -4785,6 +5111,8 @@ async function saveAsFilesystem() {
     state.documentId = documentId;
     state.storageKind = 'filesystem';
     await markDocumentOpen(kv, documentId);
+    setStatus('Saving\u2026');
+    render();
     await saveAndSync({
       documentId,
       doc: state.doc,
@@ -4821,6 +5149,8 @@ async function saveAsGithub() {
     state.documentId = path;
     state.storageKind = 'github';
     await markDocumentOpen(kv, path);
+    setStatus('Saving\u2026');
+    render();
     await saveAndSync({
       documentId: path,
       doc: state.doc,
@@ -4854,6 +5184,8 @@ async function saveAsWebdav() {
     state.documentId = path;
     state.storageKind = 'webdav';
     await markDocumentOpen(kv, path);
+    setStatus('Saving\u2026');
+    render();
     await saveAndSync({
       documentId: path,
       doc: state.doc,
@@ -4880,6 +5212,8 @@ async function saveAsImport() {
   state.storageKind = 'input';
   try {
     await markDocumentOpen(kv, name);
+    setStatus('Saving\u2026');
+    render();
     await saveAndSync({
       documentId: name,
       doc: state.doc,
@@ -4932,19 +5266,21 @@ function menuButton(label, onClick, disabled) {
   return btn;
 }
 
-/** Wraps menuButton() with alias-lookup support for the four menu-
- *  alias variables (org-xx-file-menu/org-xx-more-menu/org-xx-export-menu/
- *  org-xx-view-menu -- see src/menu-alias.js's own docs for the full
- *  "Label;alias" syntax and semantics). `aliasMap` is that variable's
- *  own already-parsed lookup table; `label` is this specific button's
- *  real, built-in name (what a caller would look it up by, and what
- *  displays if nothing overrides it).
+/** Wraps menuButton() with alias-lookup support for org-xx-menu-aliases
+ *  (see src/menu-alias.js's own docs for the full "menu:Label;alias"
+ *  syntax and semantics). `aliasMap` is that variable's own already-
+ *  parsed lookup table for ONE of its four menus specifically (e.g.
+ *  `parseMenuAliases(getMenuAliases(state.localVariables)).file` for
+ *  the File menu) -- callers pass in just their own menu's own
+ *  sub-table, not the full four-menu structure. `label` is this
+ *  specific button's real, built-in name (what a caller would look it
+ *  up by, and what displays if nothing overrides it).
  *
  *  Returns null if this button has been explicitly omitted (an empty
- *  alias, "Label;" with nothing after the semicolon) -- callers should
- *  only append the return value to their row if it's non-null, e.g.
- *  `const btn = aliasedMenuButton(aliases, 'New', onClick); if (btn)
- *  row.appendChild(btn);`.
+ *  alias, "menu:Label;" with nothing after the semicolon) -- callers
+ *  should only append the return value to their row if it's non-null,
+ *  e.g. `const btn = aliasedMenuButton(aliases, 'New', onClick); if
+ *  (btn) row.appendChild(btn);`.
  *
  *  Every returned button gets flex:1, so a menu row always fills its
  *  available horizontal width evenly across however many buttons
@@ -5013,7 +5349,7 @@ function renderFileMenu() {
   if (fileMenuStep === null) {
     const row = document.createElement('div');
     row.className = 'panel-row';
-    const fileMenuAliases = parseMenuAliases(getFileMenuAliases(state.localVariables));
+    const fileMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).file;
     const newBtn = aliasedMenuButton(fileMenuAliases, 'New', () => {
       fileMenuStep = 'new';
       renderFileMenu();
@@ -5181,7 +5517,7 @@ function renderExportFlow() {
 
     const row = document.createElement('div');
     row.className = 'panel-row';
-    const exportMenuAliases = parseMenuAliases(getExportMenuAliases(state.localVariables));
+    const exportMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).export;
     const asciiBtn = aliasedMenuButton(exportMenuAliases, 'ASCII', () => {
       exportFormat = 'ascii';
       renderFileMenu();
@@ -5570,7 +5906,7 @@ function renderViewMenu() {
 
   const row = document.createElement('div');
   row.className = 'panel-row';
-  const viewMenuAliases = parseMenuAliases(getViewMenuAliases(state.localVariables));
+  const viewMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).view;
   for (const [key, label] of [
     ['org', 'Org'],
     ['text', 'Text'],
@@ -5842,7 +6178,7 @@ function renderAgendaView() {
               ? '\ud83c\udf82'
               : item.kind === 'logbook'
                 ? '\ud83d\udcdd'
-                : item.kind === 'diary-sexp'
+                : item.kind === 'diary-sexp' || item.kind === 'sexp-timestamp'
                   ? '\ud83d\udd01'
                   : item.kind === 'sunrise-sunset'
                     ? '\u2600\ufe0f'
@@ -5934,6 +6270,12 @@ function buildClocktableSection() {
   hr.style.margin = '2px 0 8px';
   wrap.appendChild(hr);
 
+  const sectionTitle = document.createElement('div');
+  sectionTitle.className = 'panel-section-title';
+  sectionTitle.textContent = '\u23f1\ufe0f Clocking';
+  sectionTitle.style.marginBottom = '4px';
+  wrap.appendChild(sectionTitle);
+
   const checkboxRow = document.createElement('div');
   checkboxRow.style.display = 'flex';
   checkboxRow.style.alignItems = 'center';
@@ -5953,7 +6295,7 @@ function buildClocktableSection() {
     render();
   };
   clockToggle.appendChild(clockCheckbox);
-  clockToggle.appendChild(document.createTextNode('Clock'));
+  clockToggle.appendChild(document.createTextNode('Per-item totals'));
   checkboxRow.appendChild(clockToggle);
 
   const reportToggle = document.createElement('label');
@@ -5982,7 +6324,7 @@ function buildClocktableSection() {
     render();
   };
   reportToggle.appendChild(reportCheckbox);
-  reportToggle.appendChild(document.createTextNode('Clock report'));
+  reportToggle.appendChild(document.createTextNode('Report'));
   checkboxRow.appendChild(reportToggle);
 
   let rendered = null;
@@ -6006,6 +6348,12 @@ function buildClocktableSection() {
   wrap.appendChild(checkboxRow);
 
   if (!showClocktable) return wrap;
+
+  const reportNest = document.createElement('div');
+  reportNest.style.marginTop = '4px';
+  reportNest.style.paddingLeft = '10px';
+  reportNest.style.borderLeft = '2px solid var(--border-strong)';
+  wrap.appendChild(reportNest);
 
   const rangeRow = document.createElement('div');
   rangeRow.style.display = 'flex';
@@ -6066,7 +6414,7 @@ function buildClocktableSection() {
   };
   rangeRow.appendChild(maxlevelSelect);
 
-  wrap.appendChild(rangeRow);
+  reportNest.appendChild(rangeRow);
 
   const pre = document.createElement('pre');
   pre.style.marginTop = '8px';
@@ -6080,7 +6428,7 @@ function buildClocktableSection() {
   pre.style.userSelect = 'text';
   pre.style.overflowX = 'auto';
   pre.textContent = rendered;
-  wrap.appendChild(pre);
+  reportNest.appendChild(pre);
 
   return wrap;
 }
@@ -6730,10 +7078,7 @@ const QUICK_SETTINGS_FIELDS = [
   { key: 'org-refile-targets', label: 'Refile targets', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#refile' },
   { key: 'org-agenda-files', label: 'Agenda files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda-files' },
   { key: 'org-xx-extra-menu', label: 'Extras menu (\u2630)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#extras-menu' },
-  { key: 'org-xx-file-menu', label: 'File menu labels', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization' },
-  { key: 'org-xx-more-menu', label: 'More menu labels', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization' },
-  { key: 'org-xx-export-menu', label: 'Export menu labels', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization' },
-  { key: 'org-xx-view-menu', label: 'View menu labels', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization' },
+  { key: 'org-xx-menu-aliases', label: 'Menu labels (File/More/Export/View)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization' },
 ];
 
 /** Writes `key: rawValue` into the app-wide Global Variables baseline
@@ -8803,7 +9148,7 @@ function renderMoreMenu() {
 
   const row = document.createElement('div');
   row.className = 'panel-row';
-  const moreMenuAliases = parseMenuAliases(getMoreMenuAliases(state.localVariables));
+  const moreMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).more;
 
   const searchBtnOption = aliasedMenuButton(moreMenuAliases, 'Search', () => {
     moreOpen = false;
@@ -8966,6 +9311,37 @@ async function bootstrap() {
     await setGlobalVariables(kv, globalVariablesText);
   }
   agendaFilesConfig = parseAgendaFilesVar(globalVariables['org-agenda-files'] || '');
+
+  // One-time migration: what used to be four separate variables
+  // (org-xx-file-menu / -more-menu / -export-menu / -view-menu) are
+  // now one, consolidated org-xx-menu-aliases with a "menu:Label;alias"
+  // namespaced entry format. Converts each old variable's own tokens
+  // into the new namespaced form and combines them, so nothing anyone
+  // already configured at the app-wide Global Variables level silently
+  // stops working. Only runs once, since after this the new variable
+  // IS set and none of the old keys remain to trigger it again.
+  const OLD_MENU_ALIAS_KEYS = {
+    'org-xx-file-menu': 'file',
+    'org-xx-more-menu': 'more',
+    'org-xx-export-menu': 'export',
+    'org-xx-view-menu': 'view',
+  };
+  if (!globalVariables['org-xx-menu-aliases']) {
+    const migratedParts = [];
+    for (const [oldKey, menuName] of Object.entries(OLD_MENU_ALIAS_KEYS)) {
+      if (!globalVariables[oldKey]) continue;
+      for (const token of globalVariables[oldKey].matchAll(/"([^"]*)"/g)) {
+        migratedParts.push(`"${menuName}:${token[1]}"`);
+      }
+      delete globalVariables[oldKey];
+    }
+    if (migratedParts.length > 0) {
+      globalVariables['org-xx-menu-aliases'] = migratedParts.join(' ');
+      globalVariablesText = serializeGlobalVariables(globalVariables);
+      await setGlobalVariables(kv, globalVariablesText);
+    }
+  }
+
   customThemeColors = await getCustomThemeColors(kv);
   applyTheme(await getTheme(kv));
   applyFontFamily(await getFontFamily(kv));
