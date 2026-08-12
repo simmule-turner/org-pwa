@@ -267,6 +267,8 @@ org-agenda-start-on-weekday: 1
 
 Every variable [[#local-variables][Local Variables]] recognizes can be set here too, at this lower, app-wide precedence -- both sections document the same variables, so see Local Variables below for the full list and what each one does; nothing here is exclusive to this layer. Takes effect immediately on *Save* -- no reload, and no need to reopen whatever document is currently open, matching how the theme and font settings already apply instantly. Included in *Export Settings* / *Import Settings…* (see [[#file-management][File management]]) along with every other setting, so this travels with a settings backup like anything else.
 
+*Typed "smart" quotes are normalized automatically* -- a real, confirmed bug this app had until now: iOS (and many Android keyboards, and some desktop apps) auto-substitute a typed straight quote (~"~ / ~'~) with a typographic "curly" one (~“~ ~”~ / ~‘~ ~’~) as part of ordinary autocorrect, entirely invisible to whoever's typing. Every quote-delimited value here -- ~org-xx-extra-menu~'s own double-quoted tokens and its ~'function-name~ single-quote sigil, ~org-xx-menu-aliases~'s own tokens, and the separate [[#capture-templates][Capture Templates]] JSON -- depends on the literal ASCII character, and a curly one in its place used to silently fail to parse (or, for Capture Templates' own JSON specifically, fail outright with an "invalid JSON" error) with no indication that quote marks were ever the actual problem. Both Quick Settings and this raw text box (and Capture Templates' own save, below) now correct any curly quote back to a straight one automatically on save, in both directions (a genuine typed apostrophe/quotation mark inside ordinary prose elsewhere in the app -- a heading's title, a paragraph -- is untouched; this only applies here, where the text is always syntax, never prose).
+
 -----
 
 *** Folding and ~#+STARTUP~
@@ -731,7 +733,8 @@ org-xx-extra-menu: "t;⭐ Tracking" \
                 "j;📔 Journal" \
                 "c;✅ Checklist" \
                 "m;👥 Meeting" \
-                "'org-clock-out;⏹ clock-out"
+                "'org-clock-out;⏹ clock-out" \
+                "'org-xx-calendar;📅 Calendar"
 #+END_SRC
 
 *LABEL* is the display text for that menu item, shown exactly as written (icon prefix and all). *SPEC* is one of three shapes:
@@ -742,6 +745,7 @@ org-xx-extra-menu: "t;⭐ Tracking" \
   - ~'org-clock-out~ — stops whatever clock is currently running, wherever it is in the document (searches the whole document, not just a specific already-selected heading). Records the elapsed time normally. A status message shows if nothing is running. See [[#clocking][Clocking]].
   - ~'org-clock-cancel~ — same search, but discards the running session entirely instead of recording it — no duration ever gets logged, as if the clock had never been started. See [[#clocking][Clocking]].
   - ~'export-markdown~ — exports the whole currently-open file to Markdown, one tap, no scope picker (the extras menu doesn't have — or need — one for a single-tap action; use *File → Export…* instead for a specific-heading scope or any other format). See [[#export][Export]] for the Markdown format itself — also a regular *File → Export…* menu button, this is just a faster, one-tap path to the same thing for the whole file.
+  - ~'org-xx-calendar~ — this app's own extension too, not a real org-mode function: opens a single-month calendar overview (year/month navigation, a Today jump, the current day highlighted). *Tapping any real date closes the calendar and jumps straight to Agenda's own Day view, anchored on that specific date* — always available regardless of what's currently open or which backend is connected (unlike Attachments or cross-file Archive/Refile, jumping to an arbitrary date in Agenda needs no special backend capability at all, so there's no "can't do this right now" case to design around here). The displayed month/year is remembered for the rest of the session once you first open the calendar — closing and reopening it picks up wherever you left off, rather than always resetting back to today.
 
   Selecting any of these runs it directly, no additional confirmation prompt — unlike the action menu's own Clock out button, which now asks first (Cancel/Stop/OK); a deliberate menu selection is already the confirming step. More functions may be added over time as they become useful for a quick-access menu specifically — an unrecognized function name is skipped rather than erroring (see below), so this list can grow without breaking anything already configured against an older version.
 

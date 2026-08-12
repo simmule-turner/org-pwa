@@ -66,6 +66,8 @@ import { isClockRunning, clockIn, clockInSwitchingTasks, clockOut, clockCancel, 
 import { computeClocktable, renderClocktable } from './src/clocktable.js';
 import { parseExtraMenu } from './src/extra-menu.js';
 import { parseMenuAliases } from './src/menu-alias.js';
+import { normalizeSmartQuotes } from './src/text-normalize.js';
+import { buildMonthGrid, stepMonth, stepYear, MONTH_NAMES } from './src/calendar-grid.js';
 import { splitHexAlpha, combineHexAlpha } from './src/hex-alpha.js';
 import { resolveTodoSequence } from './src/todo-cycle.js';
 import { applyRepeaterShiftOnDone } from './src/repeater-shift.js';
@@ -253,6 +255,19 @@ let pendingAttachChoice = null;
 // one attachment -- nothing to disambiguate. Reuses refilePanel's own
 // DOM element too, same reasoning as pendingAttachChoice above.
 let pendingAttachFileList = null;
+// Set to true when org-xx-calendar (a org-xx-extra-menu function
+// reference) is selected -- a single-month calendar overview,
+// reusing refilePanel's own DOM element, same pattern as every other
+// pendingXxx flow above. calendarViewYear/Month track which month is
+// currently displayed -- null until first opened (initialized to
+// today's own year/month at that point), then remembered across
+// re-opens for the rest of this session (not persisted to storage,
+// matching agendaAnchorDate's own same in-memory-only behavior),
+// so navigating away and reopening the calendar doesn't lose your
+// place.
+let calendarOpen = false;
+let calendarViewYear = null;
+let calendarViewMonth = null;
 
 /**
  * Every call site in this app that changes a heading's TODO state
@@ -1303,6 +1318,158 @@ function performAttachmentAction(heading, filename, action) {
   } else {
     downloadAttachmentLink(`attachment:${filename}`, heading);
   }
+}
+
+/** org-xx-extra-menu's own 'org-xx-calendar function reference --
+ *  opens the single-month calendar overview, initializing the
+ *  displayed month/year to today's own if this is the first time it's
+ *  been opened this session (a later re-open remembers wherever it
+ *  was last left, see calendarViewYear/Month's own docs above). */
+function openCalendarPanel() {
+  const today = new Date();
+  if (calendarViewYear === null) {
+    calendarViewYear = today.getFullYear();
+    calendarViewMonth = today.getMonth();
+  }
+  calendarOpen = true;
+  renderCalendarPanel();
+}
+
+/** Renders the single-month calendar into refilePanel -- year nav
+ *  («/»), month nav (‹/›), a Today jump, a Sunday-first weekday
+ *  header, and the day grid itself (buildMonthGrid's own output, laid
+ *  out as a 7-column CSS grid). Tapping a real day closes the
+ *  calendar and jumps straight to Agenda's own Day view, anchored on
+ *  that date -- see this function's own call to switchToView('agenda')
+ *  below for the full reasoning already discussed: this is always
+ *  mechanically possible regardless of backend or what's currently
+ *  open, unlike several of this app's other cross-file features, so
+ *  there's no gating/fallback needed the way Attachments or cross-
+ *  file Archive/Refile have. */
+function renderCalendarPanel() {
+  refilePanel.innerHTML = '';
+  if (!calendarOpen) {
+    refilePanel.style.display = 'none';
+    return;
+  }
+  refilePanel.style.display = 'block';
+
+  const today = new Date();
+
+  // Row 1: year navigation.
+  const yearRow = document.createElement('div');
+  yearRow.style.display = 'flex';
+  yearRow.style.alignItems = 'center';
+  yearRow.style.justifyContent = 'space-between';
+  yearRow.style.marginBottom = '4px';
+  yearRow.appendChild(
+    menuButton('\u00ab', () => {
+      ({ year: calendarViewYear, month: calendarViewMonth } = stepYear(calendarViewYear, calendarViewMonth, -1));
+      renderCalendarPanel();
+    })
+  );
+  const yearLabel = document.createElement('div');
+  yearLabel.style.fontWeight = '700';
+  yearLabel.textContent = String(calendarViewYear);
+  yearRow.appendChild(yearLabel);
+  yearRow.appendChild(
+    menuButton('\u00bb', () => {
+      ({ year: calendarViewYear, month: calendarViewMonth } = stepYear(calendarViewYear, calendarViewMonth, 1));
+      renderCalendarPanel();
+    })
+  );
+  refilePanel.appendChild(yearRow);
+
+  // Row 2: month navigation.
+  const monthRow = document.createElement('div');
+  monthRow.style.display = 'flex';
+  monthRow.style.alignItems = 'center';
+  monthRow.style.justifyContent = 'space-between';
+  monthRow.style.marginBottom = '8px';
+  monthRow.appendChild(
+    menuButton('\u2039', () => {
+      ({ year: calendarViewYear, month: calendarViewMonth } = stepMonth(calendarViewYear, calendarViewMonth, -1));
+      renderCalendarPanel();
+    })
+  );
+  const monthLabel = document.createElement('div');
+  monthLabel.style.fontSize = '13px';
+  monthLabel.textContent = MONTH_NAMES[calendarViewMonth];
+  monthRow.appendChild(monthLabel);
+  monthRow.appendChild(
+    menuButton('\u203a', () => {
+      ({ year: calendarViewYear, month: calendarViewMonth } = stepMonth(calendarViewYear, calendarViewMonth, 1));
+      renderCalendarPanel();
+    })
+  );
+  refilePanel.appendChild(monthRow);
+
+  // Weekday header (Sunday-first, matching buildMonthGrid's own docs).
+  const weekdayHeader = document.createElement('div');
+  weekdayHeader.style.display = 'grid';
+  weekdayHeader.style.gridTemplateColumns = 'repeat(7, 1fr)';
+  weekdayHeader.style.fontSize = '11px';
+  weekdayHeader.style.opacity = '0.6';
+  weekdayHeader.style.textAlign = 'center';
+  weekdayHeader.style.marginBottom = '2px';
+  for (const label of ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']) {
+    const cell = document.createElement('div');
+    cell.textContent = label;
+    weekdayHeader.appendChild(cell);
+  }
+  refilePanel.appendChild(weekdayHeader);
+
+  // The day grid itself.
+  const dayGrid = document.createElement('div');
+  dayGrid.style.display = 'grid';
+  dayGrid.style.gridTemplateColumns = 'repeat(7, 1fr)';
+  dayGrid.style.gap = '2px';
+  for (const cellData of buildMonthGrid(calendarViewYear, calendarViewMonth, today)) {
+    const cell = document.createElement('div');
+    if (!cellData) {
+      dayGrid.appendChild(cell);
+      continue;
+    }
+    cell.textContent = String(cellData.day);
+    cell.style.textAlign = 'center';
+    cell.style.padding = '8px 0';
+    cell.style.borderRadius = '6px';
+    cell.style.cursor = 'pointer';
+    if (cellData.isToday) {
+      cell.style.fontWeight = '700';
+      cell.style.border = '1.5px solid var(--accent)';
+    }
+    cell.onclick = () => {
+      agendaViewType = 'day';
+      agendaAnchorDate = cellData.date;
+      calendarOpen = false;
+      renderCalendarPanel();
+      switchToView('agenda');
+      render();
+    };
+    dayGrid.appendChild(cell);
+  }
+  refilePanel.appendChild(dayGrid);
+
+  // Row 3: Today jump / Close.
+  const bottomRow = document.createElement('div');
+  bottomRow.className = 'panel-row';
+  bottomRow.style.marginTop = '8px';
+  bottomRow.appendChild(
+    menuButton('Today', () => {
+      const now = new Date();
+      calendarViewYear = now.getFullYear();
+      calendarViewMonth = now.getMonth();
+      renderCalendarPanel();
+    })
+  );
+  bottomRow.appendChild(
+    menuButton('Close', () => {
+      calendarOpen = false;
+      renderCalendarPanel();
+    })
+  );
+  refilePanel.appendChild(bottomRow);
 }
 
 function getArchiveDestinationLabel(heading) {
@@ -7089,11 +7256,12 @@ const QUICK_SETTINGS_FIELDS = [
  *  "applies right away, no reload needed" convention every other
  *  Settings control here already follows. */
 async function commitGlobalVariableChange(key, rawValue) {
+  const normalizedValue = typeof rawValue === 'string' ? normalizeSmartQuotes(rawValue) : rawValue;
   const vars = parseGlobalVariables(globalVariablesText);
-  if (rawValue === null) {
+  if (normalizedValue === null) {
     delete vars[key];
   } else {
-    vars[key] = rawValue;
+    vars[key] = normalizedValue;
   }
   globalVariablesText = serializeGlobalVariables(vars);
   globalVariables = vars;
@@ -7511,7 +7679,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
     menuButton('Save templates', async () => {
       let parsed;
       try {
-        parsed = JSON.parse(captureTextarea.value);
+        parsed = JSON.parse(normalizeSmartQuotes(captureTextarea.value));
       } catch (err) {
         setStatus('Capture templates: invalid JSON \u2014 ' + err.message);
         return;
@@ -7569,8 +7737,9 @@ async function renderSettingsView(target = settingsRenderTarget) {
   globalVarsBtnRow.style.marginTop = '8px';
   globalVarsBtnRow.appendChild(
     menuButton('Save global variables', async () => {
-      await setGlobalVariables(kv, globalVarsTextarea.value);
-      globalVariablesText = globalVarsTextarea.value;
+      const normalizedText = normalizeSmartQuotes(globalVarsTextarea.value);
+      await setGlobalVariables(kv, normalizedText);
+      globalVariablesText = normalizedText;
       globalVariables = parseGlobalVariables(globalVariablesText);
       agendaFilesConfig = parseAgendaFilesVar(globalVariables['org-agenda-files'] || '');
       // Re-merge immediately so the currently open document (if any)
@@ -9080,6 +9249,8 @@ async function runExtraMenuEntry(entry) {
     } else if (entry.name === 'export-markdown') {
       if (!state.doc) return;
       performExport('markdown', null);
+    } else if (entry.name === 'org-xx-calendar') {
+      openCalendarPanel();
     }
     return;
   }
