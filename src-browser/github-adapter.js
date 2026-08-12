@@ -187,6 +187,29 @@ export function createGithubAdapter(getConfig) {
     return { hash: result.content.sha };
   }
 
+  /** Deletes `fileId` -- GitHub's Contents API requires the file's
+   *  current sha in the DELETE request body (the same precondition
+   *  writeImpl's own update path already needs), so this reads it
+   *  first via readImpl. A no-op (not an error) if the file doesn't
+   *  exist at all -- the end state (file gone) is already true,
+   *  matching how a delete action in this app generally behaves when
+   *  there's nothing there to remove. */
+  async function deleteImpl(fileId) {
+    const config = requireConfig(getConfig);
+    const existing = await readImpl(fileId);
+    if (!existing) return;
+    const res = await fetch(contentsUrl(config, fileId), {
+      method: 'DELETE',
+      headers: { ...authHeaders(config), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `Delete ${fileId} via org-pwa`,
+        sha: existing.hash,
+        branch: config.branch || 'main',
+      }),
+    });
+    if (!res.ok) throw new Error(await githubErrorMessage(res));
+  }
+
   /**
    * Lists the contents of `path` (default: repo root) — the same
    * Contents API endpoint readImpl already calls, just used for the
@@ -222,6 +245,7 @@ export function createGithubAdapter(getConfig) {
     read: readImpl,
     write: writeImpl,
     writeBinary: writeBinaryImpl,
+    delete: deleteImpl,
     list: listImpl,
     readBinary: readBinaryImpl,
     async exists(fileId) {

@@ -224,6 +224,20 @@ export function createWebdavAdapter(getConfig) {
     return { hash: res.headers.get('ETag') || null };
   }
 
+  /** Deletes `fileId` via a real HTTP DELETE request. A 404 (already
+   *  gone) is treated as success, not an error -- the end state (file
+   *  gone) is already true, matching the GitHub adapter's own
+   *  deleteImpl and how a delete action in this app generally behaves
+   *  when there's nothing there to remove. */
+  async function deleteImpl(fileId) {
+    const config = requireConfig(getConfig);
+    const res = await fetchWithHint(fileUrl(config, fileId), {
+      method: 'DELETE',
+      headers: authHeader(config),
+    });
+    if (!res.ok && res.status !== 404) throw new Error(webdavErrorMessage(res));
+  }
+
   /**
    * Lists the contents of `path` (default: configured baseUrl root)
    * via PROPFIND with Depth: 1 (immediate children only, not a full
@@ -273,6 +287,7 @@ export function createWebdavAdapter(getConfig) {
     read: readImpl,
     write: writeImpl,
     writeBinary: writeBinaryImpl,
+    delete: deleteImpl,
     list: listImpl,
     readBinary: readBinaryImpl,
     async exists(fileId) {
