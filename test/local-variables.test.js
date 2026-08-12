@@ -16,10 +16,7 @@ import {
   getClosedKeepWhenNoTodo,
   getRefileTargets,
   getExtraMenu,
-  getFileMenuAliases,
-  getMoreMenuAliases,
-  getExportMenuAliases,
-  getViewMenuAliases,
+  getMenuAliases,
   getAsciiTextWidth,
   getUseTagInheritance,
   getUsePropertyInheritance,
@@ -269,26 +266,16 @@ test('getExtraMenu returns an empty string when unset, not undefined', () => {
   assert.equal(getExtraMenu(null), '');
 });
 
-// ---- getFileMenuAliases / getMoreMenuAliases / getExportMenuAliases / getViewMenuAliases ----
+// ---- getMenuAliases ----
 
-test('each of the 4 menu-alias accessors returns the raw string value unchanged', () => {
-  const vars = {
-    'org-xx-file-menu': '"New;\u2795"',
-    'org-xx-more-menu': '"Search;\ud83d\udd0d"',
-    'org-xx-export-menu': '"Markdown;"',
-    'org-xx-view-menu': '"Org;\ud83d\udcdd"',
-  };
-  assert.equal(getFileMenuAliases(vars), '"New;\u2795"');
-  assert.equal(getMoreMenuAliases(vars), '"Search;\ud83d\udd0d"');
-  assert.equal(getExportMenuAliases(vars), '"Markdown;"');
-  assert.equal(getViewMenuAliases(vars), '"Org;\ud83d\udcdd"');
+test('getMenuAliases returns the raw string value unchanged', () => {
+  const vars = { 'org-xx-menu-aliases': '"file:New;\u2795" "export:Markdown;"' };
+  assert.equal(getMenuAliases(vars), '"file:New;\u2795" "export:Markdown;"');
 });
 
-test('each accessor returns an empty string when unset, not undefined', () => {
-  assert.equal(getFileMenuAliases({}), '');
-  assert.equal(getMoreMenuAliases(null), '');
-  assert.equal(getExportMenuAliases({}), '');
-  assert.equal(getViewMenuAliases(null), '');
+test('getMenuAliases returns an empty string when unset, not undefined', () => {
+  assert.equal(getMenuAliases({}), '');
+  assert.equal(getMenuAliases(null), '');
 });
 
 // ---- getDeadlineWarningDays -------------------------------------------------
