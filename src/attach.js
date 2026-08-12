@@ -17,6 +17,8 @@
  * network I/O -- this module is pure path/link-text computation only.
  */
 
+import { IMAGE_EXT_RE } from './inline-markup.js';
+
 /** A fresh, random attachment ID -- a standard UUID v4, the same
  *  identifier space real org's own org-id-new defaults to. Uses the
  *  Web Crypto API's own crypto.randomUUID(), available in every
@@ -56,17 +58,24 @@ function attachmentPath(id, filename) {
   return `data/${prefix}/${rest}/${filename}`;
 }
 
-/** A real org file: link referencing an attachment -- `filename`
- *  itself as the link's own description, so what shows in the
- *  outline is the human-readable name, not the full data/xx/yyy/...
- *  path. `relativePath` is whatever app.js has already resolved this
- *  attachment's path to be relative to the CURRENT document (which
- *  may differ from the org-attach-relative path above, if the heading
- *  being attached to lives in a different file than the one currently
- *  open -- refile/capture both already have this same "resolve
- *  relative to wherever this actually ends up" concern). */
-function formatAttachmentLink(relativePath, filename) {
-  return `[[file:${relativePath}][${filename}]]`;
+/** A real org attachment: link referencing an attached file -- real
+ *  org-attach's own actual link type, resolved (at render time, via
+ *  link-resolve.js's own resolveAttachmentTarget) relative to
+ *  whichever heading's own :ID: actually owns the attachment
+ *  directory, not embedded in the link text itself the way a file:
+ *  link's own path is. Bare (no description) for an image filename --
+ *  matching real org's own actual "no description = inline image"
+ *  convention (see inline-markup.js's own IMAGE_EXT_RE, which this
+ *  reuses directly rather than a separate, potentially-drifting
+ *  duplicate) -- so it correctly renders inline; with the filename
+ *  itself as the description for anything else, so a non-image
+ *  attachment still shows a readable name as a regular, tappable
+ *  link rather than its own raw target text. */
+function formatAttachmentLink(filename) {
+  if (IMAGE_EXT_RE.test(filename)) {
+    return `[[attachment:${filename}]]`;
+  }
+  return `[[attachment:${filename}][${filename}]]`;
 }
 
 /** A reasonably safe filename for a newly attached file -- strips
@@ -83,4 +92,69 @@ function sanitizeAttachmentFilename(name) {
   return cleaned || 'attachment';
 }
 
-export { generateAttachmentId, splitAttachmentId, attachmentPath, formatAttachmentLink, sanitizeAttachmentFilename };
+// Matches both attachment: link forms this app itself ever generates
+// (see formatAttachmentLink above) -- bare (no description, for an
+// image) and with a description (everything else) -- and, since a
+// hand-written link is just as valid org syntax either way, matches
+// either form regardless of which kind of file it actually points to.
+const ATTACHMENT_LINK_RE = /\[\[attachment:([^\]]+?)\](?:\[[^\]]*\])?\]/gi;
+
+/** Every attachment: link's own filename currently in `heading`'s
+ *  own body text (`heading.bodyLines`, the raw source lines -- not
+ *  the parsed AST, since this needs to work the same way whether or
+ *  not the body has actually been (re)parsed yet), in first-
+ *  appearance order, de-duplicated (the same file linked twice counts
+ *  once) -- what the Open/Delete sub-actions both need to enumerate
+ *  before either doing something directly (exactly one attachment) or
+ *  prompting which one (more than one). Returns `[]` for a heading
+ *  with no attachment: links in its own body at all -- not an error,
+ *  just nothing to enumerate. */
+function listAttachments(heading) {
+  const seen = new Set();
+  const filenames = [];
+  for (const line of heading.bodyLines || []) {
+    for (const match of line.matchAll(ATTACHMENT_LINK_RE)) {
+      const filename = match[1];
+      if (!seen.has(filename)) {
+        seen.add(filename);
+        filenames.push(filename);
+      }
+    }
+  }
+  return filenames;
+}
+
+/** Removes every attachment: link in `heading.bodyLines` whose own
+ *  filename exactly matches `filename` -- the in-document half of
+ *  deleting an attachment (the caller is separately responsible for
+ *  actually removing the underlying file from storage; this module
+ *  stays pure/no-I/O throughout, matching every other function here).
+ *  A line that becomes entirely empty after removing its own link
+ *  (the common case -- an attachment link is usually the only thing
+ *  on its own line) is dropped from bodyLines entirely, rather than
+ *  left behind as a blank line; a line with OTHER content alongside
+ *  the link keeps that other content, with just the link itself
+ *  excised. Mutates `heading.bodyLines` in place, matching how
+ *  app.js's own attachFileToHeading already mutates it directly
+ *  (re-deriving heading.body from it is the caller's own
+ *  responsibility, same division as that function too). */
+function removeAttachmentLink(heading, filename) {
+  const escaped = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const linkRe = new RegExp(`\\[\\[attachment:${escaped}\\](?:\\[[^\\]]*\\])?\\]`, 'i');
+  heading.bodyLines = heading.bodyLines
+    .map((line, i) => {
+      if (!linkRe.test(line)) return line;
+      return line.replace(linkRe, '').replace(/  +/g, ' ').trim();
+    })
+    .filter((line, i) => line !== '' || heading.bodyLines[i].trim() === '');
+}
+
+export {
+  generateAttachmentId,
+  splitAttachmentId,
+  attachmentPath,
+  formatAttachmentLink,
+  sanitizeAttachmentFilename,
+  listAttachments,
+  removeAttachmentLink,
+};

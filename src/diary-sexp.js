@@ -111,16 +111,16 @@ function formatOrgAnniversaryTitle(template, age) {
   return template.replace(/%d/g, String(age)).replace(/%s/g, ordinalSuffix(age));
 }
 
-// ---- org-date-cyclic ---------------------------------------------------------
+// ---- org-cyclic ---------------------------------------------------------
 
-const ORG_DATE_CYCLIC_RE = /^%%\(org-date-cyclic\s+(\d+)\s+(\d{4})\s+(\d{1,2})\s+(\d{1,2})\)\s*(.*)$/;
+const ORG_CYCLIC_RE = /^%%\(org-cyclic\s+(\d+)\s+(\d{4})\s+(\d{1,2})\s+(\d{1,2})\)\s*(.*)$/;
 
-/** Parses an org-date-cyclic line into { n, year, month, day, title },
+/** Parses an org-cyclic line into { n, year, month, day, title },
  *  or null if it doesn't match -- N (the day interval), the 4-digit
  *  baseline year, and a 1-12 month / 1-31 day with no leading zeros,
  *  exactly the syntax specified. */
-function parseOrgDateCyclicLine(line) {
-  const m = ORG_DATE_CYCLIC_RE.exec(line.trim());
+function parseOrgCyclicLine(line) {
+  const m = ORG_CYCLIC_RE.exec(line.trim());
   if (!m) return null;
   const n = Number(m[1]);
   const year = Number(m[2]);
@@ -134,7 +134,7 @@ function parseOrgDateCyclicLine(line) {
  *  after the baseline date, or a whole multiple of N days after it --
  *  flags the agenda every N days starting from the baseline, never
  *  before it. */
-function expandOrgDateCyclicOccurrences(n, baselineDate, rangeStart, rangeEnd) {
+function expandOrgCyclicOccurrences(n, baselineDate, rangeStart, rangeEnd) {
   const baselineDay = startOfDay(baselineDate);
   const rangeStartDay = startOfDay(rangeStart);
   const rangeEndDay = endOfDay(rangeEnd);
@@ -423,8 +423,8 @@ export {
   parseOrgAnniversaryLine,
   expandOrgAnniversaryOccurrences,
   formatOrgAnniversaryTitle,
-  parseOrgDateCyclicLine,
-  expandOrgDateCyclicOccurrences,
+  parseOrgCyclicLine,
+  expandOrgCyclicOccurrences,
   parseOrgBlockLine,
   expandOrgBlockOccurrences,
   enumerateDays,

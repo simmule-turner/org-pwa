@@ -18,12 +18,13 @@ import { isArchived } from './archive-model.js';
 import { isCommentedHeading } from './comment-model.js';
 import { parseOrgTimestamp, findTimestamps, parseDelay, dateKey, isSameDay } from './org-timestamp.js';
 import { parseLogbookEntries } from './logbook.js';
+import { findSexpTimestamps, evaluateSexpTimestamp, isTruthy } from './sexp-eval.js';
 import {
   parseOrgAnniversaryLine,
   expandOrgAnniversaryOccurrences,
   formatOrgAnniversaryTitle,
-  parseOrgDateCyclicLine,
-  expandOrgDateCyclicOccurrences,
+  parseOrgCyclicLine,
+  expandOrgCyclicOccurrences,
   parseOrgBlockLine,
   expandOrgBlockOccurrences,
   parseDiaryFloatLine,
@@ -543,6 +544,44 @@ function buildAgendaItems(docs, opts = {}) {
         }
       }
 
+      // Real org's own <%%(sexp)> timestamp form -- a genuinely
+      // different mechanism from the plain <timestamp> case just
+      // above: rather than one literal date, the expression is
+      // evaluated once for every day being considered, and each day
+      // it evaluates truthy becomes its own agenda occurrence. Same
+      // "skip if this heading already has SCHEDULED/DEADLINE" guard,
+      // same "never carries forward" reasoning as the plain-timestamp
+      // case -- a sexp timestamp is a dynamic matcher, not a
+      // stateful "intend to do this" marker either.
+      if (!hasPlanning && rangeStart && rangeEnd) {
+        for (const sexpTs of findSexpTimestamps(heading.title)) {
+          const cleanTitle = heading.title.replace(sexpTs.raw, '').trim() || '(untitled)';
+          for (const day of enumerateDays(rangeStart, rangeEnd)) {
+            const result = evaluateSexpTimestamp(sexpTs.expr, {
+              candidateDate: day,
+              today,
+              calendarLatitude,
+              calendarLongitude,
+            });
+            if (!isTruthy(result)) continue;
+            const displayTitle = typeof result === 'string' ? `${cleanTitle}: ${result}` : cleanTitle;
+            items.push({
+              documentId,
+              heading,
+              kind: 'sexp-timestamp',
+              hasTime: false,
+              repeater: null,
+              todo: heading.todo,
+              priority: heading.priority,
+              tags: heading.tags,
+              title: displayTitle,
+              date: day,
+              daysOverdue: 0,
+            });
+          }
+        }
+      }
+
       // org-contacts-anniversaries: only checked at all when the
       // trigger was found somewhere (see contactsAnniversariesActive
       // above) — a heading carrying the configured property means
@@ -613,10 +652,10 @@ function buildAgendaItems(docs, opts = {}) {
             continue;
           }
 
-          const cyclic = parseOrgDateCyclicLine(trimmed);
+          const cyclic = parseOrgCyclicLine(trimmed);
           if (cyclic) {
             const baseline = new Date(cyclic.year, cyclic.month - 1, cyclic.day);
-            for (const occ of expandOrgDateCyclicOccurrences(cyclic.n, baseline, rangeStart, rangeEnd)) {
+            for (const occ of expandOrgCyclicOccurrences(cyclic.n, baseline, rangeStart, rangeEnd)) {
               pushDiarySexpItem(occ, cyclic.title);
             }
             continue;

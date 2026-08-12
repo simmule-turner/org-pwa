@@ -33,7 +33,7 @@ const LITERAL_KINDS = new Set(['code', 'verbatim']);
 
 const LINK_RE = /^\[\[([^\]]+?)\](?:\[([^\]]+?)\])?\]/;
 const COMMENT_RE = /^@@comment:(.*?)@@/;
-const IMAGE_EXT_RE = /\.(png|jpe?g|gif|svg|webp|bmp)$/i;
+const IMAGE_EXT_RE = /\.(png|jpe?g|gif|svg|webp|bmp|heic|heif)$/i;
 
 // Footnotes: [fn:label] is a bare reference to a definition given
 // elsewhere (either inline, via [fn:label:...] somewhere else in the
@@ -334,4 +334,5 @@ function stripLineBreakMarker(line) {
 export {
   parseInline,
   stripLineBreakMarker,
+  IMAGE_EXT_RE,
 };

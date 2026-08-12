@@ -30,6 +30,9 @@
  * differently here.
  */
 
+import { findAncestorPath } from './archive-model.js';
+import { attachmentPath } from './attach.js';
+
 const EXTERNAL_URL_RE = /^[a-z][a-z0-9+.-]*:\/\//i;
 const MAILTO_RE = /^mailto:/i;
 const DOI_RE = /^doi:/i;
@@ -96,6 +99,36 @@ export function resolveImagePath(target, currentDocumentId) {
   return dir + path;
 }
 
+/**
+ * Resolves an "attachment:filename" link target to its own actual
+ * storage path -- data/<id-prefix>/<id-rest>/filename -- matching real
+ * org-attach's own actual resolution behavior: relative to whichever
+ * heading's own :ID: property actually owns the attachment directory,
+ * not the current document's own directory the way a plain file: link
+ * resolves (see resolveImagePath just above). Walks `heading` itself
+ * first, then outward through its own ancestor chain (found via
+ * findAncestorPath), returning the FIRST :ID: found -- matching real
+ * org-attach's own inheritance: a heading with no :ID: of its own can
+ * still resolve an attachment: link against an ancestor's attach
+ * directory. Returns null if no heading in the whole chain (this one,
+ * or any ancestor) has an :ID: at all -- nothing to resolve against.
+ *
+ * `attachmentTarget` is the link's own full target text, including
+ * the "attachment:" prefix (e.g. "attachment:photo.jpg") -- stripped
+ * here, not by the caller, matching resolveImagePath's own convention
+ * of taking the raw target text as-is.
+ */
+export function resolveAttachmentTarget(doc, heading, attachmentTarget) {
+  const filename = attachmentTarget.replace(/^attachment:/i, '');
+  const ancestors = findAncestorPath(doc, heading) || [];
+  const chain = [heading, ...ancestors.slice().reverse()];
+  for (const candidate of chain) {
+    const id = candidate.properties && candidate.properties.ID;
+    if (id) return attachmentPath(id, filename);
+  }
+  return null;
+}
+
 const IMAGE_MIME_TYPES = {
   png: 'image/png',
   jpg: 'image/jpeg',
@@ -104,6 +137,8 @@ const IMAGE_MIME_TYPES = {
   svg: 'image/svg+xml',
   webp: 'image/webp',
   bmp: 'image/bmp',
+  heic: 'image/heic',
+  heif: 'image/heif',
 };
 
 /** Guesses an image's MIME type from its file extension, for building a
@@ -270,6 +305,10 @@ export function resolveLinkTarget(doc, rawTarget) {
   if (target.startsWith('*')) {
     const heading = findHeadingByTitle(doc, target.slice(1).trim());
     return heading ? { type: 'heading', heading } : { type: 'unresolved', target };
+  }
+
+  if (/^attachment:/i.test(target)) {
+    return { type: 'attachment', target };
   }
 
   if (isFileLink(target)) {
