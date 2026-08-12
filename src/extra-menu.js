@@ -29,10 +29,13 @@
  *     capture templates themselves already use).
  *   - A quoted-symbol function reference (e.g. 'org-clock-out) --
  *     selecting this menu item runs that built-in function directly.
- *     org-clock-out, org-clock-cancel, and export-markdown are
- *     recognized today; more may be added later, so an unrecognized
- *     function name is treated as a malformed entry (skipped) rather
- *     than a hard parse error, the same forward-compatible tolerance
+ *     org-clock-out, org-clock-cancel, export-markdown, and
+ *     org-xx-calendar (not a real org-mode function -- this app's own
+ *     single-month calendar overview, see app.js's own
+ *     openCalendarPanel) are recognized today; more may be added
+ *     later, so an unrecognized function name is treated as a
+ *     malformed entry (skipped) rather than a hard parse error, the
+ *     same forward-compatible tolerance
  *     every other "recognized subset" parser in this codebase already has.
  *
  * LABEL is the display text shown for the menu item -- whatever
@@ -41,7 +44,7 @@
  * chose to put there).
  */
 
-const KNOWN_FUNCTIONS = new Set(['org-clock-out', 'org-clock-cancel', 'export-markdown']);
+const KNOWN_FUNCTIONS = new Set(['org-clock-out', 'org-clock-cancel', 'export-markdown', 'org-xx-calendar']);
 const SEPARATOR_TOKEN = '-----';
 
 /** Splits the raw, already-line-joined org-xx-extra-menu value into its
