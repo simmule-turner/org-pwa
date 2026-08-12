@@ -1,23 +1,32 @@
 /**
- * Parses one of the four menu-alias variables' own value into a
- * lookup table: `org-xx-file-menu`, `org-xx-more-menu`, `org-xx-export-menu`,
- * `org-xx-view-menu` -- not real org-mode variables; this app's own
- * extension, using the same Global/Local Variables mechanism
- * org-xx-extra-menu already established a precedent for.
+ * Parses org-xx-menu-aliases -- this app's own extension (not a real
+ * org-mode variable), using the same Global/Local Variables mechanism
+ * org-xx-extra-menu already established a precedent for. Consolidates
+ * what used to be four separate variables (org-xx-file-menu,
+ * org-xx-more-menu, org-xx-export-menu, org-xx-view-menu) into one --
+ * all four shared this exact same "Label;alias" parsing logic, the
+ * only actual difference between them was which of the app's four
+ * main menus (File, More, Export, View) each one applied to, so a
+ * single namespaced entry format covers the same ground with one
+ * variable instead of four.
  *
- * Value format: a sequence of double-quoted `"Label;alias"` entries,
- * space-separated (optionally spread across multiple physical lines
- * with a trailing `\`, same line-continuation mechanism every other
- * multi-entry Global/Local Variable already uses):
+ * Value format: a sequence of double-quoted `"menu:Label;alias"`
+ * entries, space-separated (optionally spread across multiple
+ * physical lines with a trailing `\`, same line-continuation
+ * mechanism every other multi-entry Global/Local Variable already
+ * uses). `menu` is one of `file`, `more`, `export`, `view`:
  *
- *   org-xx-file-menu: "New;➕" "Open;📂" "Save;💾" "Save As;💾➕" "Export;↗️"
+ *   org-xx-menu-aliases: "file:New;➕" "file:Open;📂" "export:ASCII;📄" "view:Org;📝"
  *
- * `Label` is one of this menu's own real, built-in button labels
- * (e.g. "New", "Save As" for org-xx-file-menu) -- an entry for a label
- * that doesn't actually exist in that menu is simply never looked up
- * by anything and has no effect, the same tolerant-of-the-unexpected
- * approach every other "recognized subset" parser in this codebase
- * already takes, rather than a hard validation error.
+ * `Label` is one of that menu's own real, built-in button labels
+ * (e.g. "New" for file, "ASCII" for export) -- an entry naming a
+ * label that doesn't actually exist in that menu is simply never
+ * looked up by anything and has no effect, the same tolerant-of-the-
+ * unexpected approach every other "recognized subset" parser in this
+ * codebase already takes, rather than a hard validation error. An
+ * entry with no recognized "menu:" prefix at all (a stray colon-free
+ * token, or a colon-prefix that isn't one of the four known menus) is
+ * likewise silently skipped rather than erroring.
  *
  * `alias`, after the semicolon, has two meanings depending on whether
  * it's present:
@@ -27,28 +36,37 @@
  *     label becomes that button's accessible name (aria-label/title)
  *     instead, so screen readers and hover tooltips still say what it
  *     actually is even once the visible text is just an icon.
- *   - Empty ("Label;" with nothing after the semicolon): the button is
- *     OMITTED entirely -- not shown at all, not even disabled.
+ *   - Empty ("menu:Label;" with nothing after the semicolon): the
+ *     button is OMITTED entirely -- not shown at all, not even disabled.
  *
  * A label never mentioned in the variable at all keeps its default,
  * unchanged text -- this is an opt-in override list, not a full
- * redefinition of the menu.
+ * redefinition of any menu.
  *
- * Returns a plain object `{ [label]: alias }` for direct lookup by
- * label. An unset/empty value returns `{}` (no overrides at all).
+ * Returns `{ file: {...}, more: {...}, export: {...}, view: {...} }`
+ * -- each of the four always present (possibly empty `{}`), for
+ * direct `result[menu][label]` lookup by any call site exactly the
+ * way the four separate tables used to be looked up individually. An
+ * unset/empty value returns all four as `{}`.
  */
 function parseMenuAliases(rawValue) {
-  const result = {};
+  const result = { file: {}, more: {}, export: {}, view: {} };
   if (!rawValue || !rawValue.trim()) return result;
 
   const tokens = tokenizeMenuAliasValue(rawValue);
   for (const token of tokens) {
-    const semicolonIndex = token.indexOf(';');
+    const colonIndex = token.indexOf(':');
+    if (colonIndex === -1) continue; // no "menu:" prefix at all -- malformed, skip rather than error
+    const menu = token.slice(0, colonIndex).trim();
+    if (!(menu in result)) continue; // not one of the four known menus -- skip
+
+    const rest = token.slice(colonIndex + 1);
+    const semicolonIndex = rest.indexOf(';');
     if (semicolonIndex === -1) continue; // no ";" at all -- malformed, skip rather than error
-    const label = token.slice(0, semicolonIndex).trim();
-    const alias = token.slice(semicolonIndex + 1).trim();
-    if (!label) continue; // ";alias" with nothing before the ";" -- nothing to attach this to
-    result[label] = alias;
+    const label = rest.slice(0, semicolonIndex).trim();
+    const alias = rest.slice(semicolonIndex + 1).trim();
+    if (!label) continue; // "menu:;alias" with nothing before the ";" -- nothing to attach this to
+    result[menu][label] = alias;
   }
   return result;
 }

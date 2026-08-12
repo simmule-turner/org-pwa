@@ -198,26 +198,14 @@ export function getExtraMenu(vars) {
   return (vars || {})['org-xx-extra-menu'] || '';
 }
 
-/** org-xx-file-menu / org-xx-more-menu / org-xx-export-menu / org-xx-view-menu:
- *  this app's own extension (not real org-mode variables), a
- *  "Label;alias" override list for one of the four main app-chrome
- *  menus -- see src/menu-alias.js's own docs for the full syntax and
- *  semantics. Just the raw string here, same as getExtraMenu; parsing
- *  lives in that module's own parseMenuAliases. */
-export function getFileMenuAliases(vars) {
-  return (vars || {})['org-xx-file-menu'] || '';
-}
-
-export function getMoreMenuAliases(vars) {
-  return (vars || {})['org-xx-more-menu'] || '';
-}
-
-export function getExportMenuAliases(vars) {
-  return (vars || {})['org-xx-export-menu'] || '';
-}
-
-export function getViewMenuAliases(vars) {
-  return (vars || {})['org-xx-view-menu'] || '';
+/** org-xx-menu-aliases: this app's own extension (not a real org-mode
+ *  variable), an override list for the four main app-chrome menus
+ *  (File, More, Export, View) at once -- see src/menu-alias.js's own
+ *  docs for the full "menu:Label;alias" syntax and semantics. Just
+ *  the raw string here, same as getExtraMenu; parsing lives in that
+ *  module's own parseMenuAliases. */
+export function getMenuAliases(vars) {
+  return (vars || {})['org-xx-menu-aliases'] || '';
 }
 
 /** org-use-tag-inheritance: whether a heading's "effective" tags (for
