@@ -1172,3 +1172,92 @@ test('a SCHEDULED item with NO delay suffix at all is completely unaffected -- s
   });
   assert.equal(items.filter((i) => i.kind === 'scheduled').length, 1);
 });
+
+// ---- <%%(sexp)> timestamps (real org's own general sexp timestamp form) ----
+
+test('THE EXACT REQUEST: <%%(when (today-p) (diary-sunrise-sunset))> shows sunrise/sunset ONLY on today\u2019s own agenda entry', () => {
+  const doc = parseOrg("* Today's Sun Times <%%(when (today-p) (diary-sunrise-sunset))>\n");
+  const today = new Date(2026, 7, 12);
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 7, 10),
+    rangeEnd: new Date(2026, 7, 14),
+    today,
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].date.toDateString(), today.toDateString());
+  assert.equal(items[0].kind, 'sexp-timestamp');
+  assert.match(items[0].title, /^Today's Sun Times: Sunrise/);
+});
+
+test('THE EXACT EXAMPLE: weekly sunrise/sunset combining when + org-cyclic + diary-sunrise-sunset', () => {
+  const doc = parseOrg('* Weekly Sunrise/Sunset <%%(when (org-cyclic 7 2026 8 9) (diary-sunrise-sunset))>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 7, 1),
+    rangeEnd: new Date(2026, 7, 16),
+  });
+  const dates = items.map((i) => i.date.getDate());
+  assert.deepEqual(dates, [9, 16]); // every 7 days from the Aug 9 baseline
+  assert.match(items[0].title, /^Weekly Sunrise\/Sunset: Sunrise/);
+});
+
+test('THE EXACT EXAMPLE: <%%(diary-float t 6 1)> -- first Saturday of every month, as a heading\u2019s own timestamp', () => {
+  const doc = parseOrg('* TODO Team Sync <%%(diary-float t 6 1)>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 7, 1),
+    rangeEnd: new Date(2026, 8, 30),
+  });
+  assert.equal(items.length, 2); // one per month
+  assert.equal(items[0].date.getDate(), 1); // Aug 1, 2026 is a Saturday
+  assert.equal(items[0].todo, 'TODO');
+  assert.equal(items[0].title, 'Team Sync'); // the raw <%%(...)> text is stripped from the display title
+});
+
+test('THE EXACT EXAMPLE: <%%(org-cyclic 3 2026 1 1)> -- every 3 days, as a heading\u2019s own timestamp', () => {
+  const doc = parseOrg('* Water the plants <%%(org-cyclic 3 2026 1 1)>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 0, 1),
+    rangeEnd: new Date(2026, 0, 10),
+  });
+  const dates = items.map((i) => i.date.getDate());
+  assert.deepEqual(dates, [1, 4, 7, 10]);
+});
+
+test('THE EXACT EXAMPLE: <%%(org-anniversary 2018 5 14)> -- yearly anniversary as a heading\u2019s own timestamp', () => {
+  const doc = parseOrg('* Company Anniversary <%%(org-anniversary 2018 5 14)>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 4, 1),
+    rangeEnd: new Date(2026, 4, 31),
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].date.getDate(), 14);
+  assert.equal(items[0].title, 'Company Anniversary');
+});
+
+test('a heading with SCHEDULED/DEADLINE already set is not double-shown via the sexp-timestamp path too', () => {
+  const doc = parseOrg('* Meeting <%%(org-anniversary 2018 5 14)>\nSCHEDULED: <2026-05-14 Thu>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 4, 14),
+    rangeEnd: new Date(2026, 4, 14),
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'scheduled');
+});
+
+test('a sexp-timestamp result never carries forward -- it only shows on days it actually matches, unlike SCHEDULED/DEADLINE', () => {
+  const doc = parseOrg('* Water the plants <%%(org-cyclic 3 2026 1 1)>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 0, 2), // the day AFTER a match (Jan 1), which would carry forward if this behaved like SCHEDULED
+    rangeEnd: new Date(2026, 0, 2),
+  });
+  assert.equal(items.length, 0);
+});
+
+test('a plain <2026-01-01> title timestamp is completely unaffected by the new sexp-timestamp scanning', () => {
+  const doc = parseOrg('* Meeting <2026-01-01 Thu>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 0, 1),
+    rangeEnd: new Date(2026, 0, 1),
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'timestamp');
+});

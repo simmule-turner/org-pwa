@@ -5,8 +5,8 @@ import {
   parseOrgAnniversaryLine,
   expandOrgAnniversaryOccurrences,
   formatOrgAnniversaryTitle,
-  parseOrgDateCyclicLine,
-  expandOrgDateCyclicOccurrences,
+  parseOrgCyclicLine,
+  expandOrgCyclicOccurrences,
   parseOrgBlockLine,
   expandOrgBlockOccurrences,
   enumerateDays,
@@ -81,28 +81,28 @@ test('parseOrgAnniversaryLine returns null for malformed input', () => {
   assert.equal(parseOrgAnniversaryLine('not a sexp at all'), null);
 });
 
-// ---- org-date-cyclic ---------------------------------------------------------
+// ---- org-cyclic ---------------------------------------------------------
 
 test('parses and computes every-N-days-from-baseline occurrences', () => {
-  const parsed = parseOrgDateCyclicLine('%%(org-date-cyclic 14 2026 1 1) Water the succulent');
+  const parsed = parseOrgCyclicLine('%%(org-cyclic 14 2026 1 1) Water the succulent');
   assert.deepEqual(parsed, { n: 14, year: 2026, month: 1, day: 1, title: 'Water the succulent' });
   const baseline = new Date(2026, 0, 1);
-  const occs = expandOrgDateCyclicOccurrences(14, baseline, new Date(2026, 0, 1), new Date(2026, 1, 15));
+  const occs = expandOrgCyclicOccurrences(14, baseline, new Date(2026, 0, 1), new Date(2026, 1, 15));
   assert.deepEqual(
     occs.map((d) => d.toISOString().slice(0, 10)),
     ['2026-01-01', '2026-01-15', '2026-01-29', '2026-02-12']
   );
 });
 
-test('org-date-cyclic never occurs before the baseline date', () => {
+test('org-cyclic never occurs before the baseline date', () => {
   const baseline = new Date(2026, 5, 1);
-  const occs = expandOrgDateCyclicOccurrences(7, baseline, new Date(2026, 0, 1), new Date(2026, 4, 31));
+  const occs = expandOrgCyclicOccurrences(7, baseline, new Date(2026, 0, 1), new Date(2026, 4, 31));
   assert.equal(occs.length, 0);
 });
 
-test('org-date-cyclic correctly resumes mid-range, not just from the very first rangeStart', () => {
+test('org-cyclic correctly resumes mid-range, not just from the very first rangeStart', () => {
   const baseline = new Date(2026, 0, 1);
-  const occs = expandOrgDateCyclicOccurrences(10, baseline, new Date(2026, 0, 15), new Date(2026, 0, 31));
+  const occs = expandOrgCyclicOccurrences(10, baseline, new Date(2026, 0, 15), new Date(2026, 0, 31));
   // baseline + 10 = Jan 11 (before range), +20 = Jan 21, +30 = Jan 31
   assert.deepEqual(
     occs.map((d) => d.toISOString().slice(0, 10)),
@@ -110,9 +110,9 @@ test('org-date-cyclic correctly resumes mid-range, not just from the very first 
   );
 });
 
-test('parseOrgDateCyclicLine returns null for malformed input', () => {
-  assert.equal(parseOrgDateCyclicLine('%%(org-date-cyclic 0 2026 1 1) bad interval'), null);
-  assert.equal(parseOrgDateCyclicLine('%%(org-date-cyclic 14 2026 13 1) bad month'), null);
+test('parseOrgCyclicLine returns null for malformed input', () => {
+  assert.equal(parseOrgCyclicLine('%%(org-cyclic 0 2026 1 1) bad interval'), null);
+  assert.equal(parseOrgCyclicLine('%%(org-cyclic 14 2026 13 1) bad month'), null);
 });
 
 // ---- org-block -----------------------------------------------------------

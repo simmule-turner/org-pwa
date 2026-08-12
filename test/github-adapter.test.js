@@ -220,6 +220,55 @@ test('writeBinary: updating an existing attachment includes the current sha, sam
   assert.equal(body.sha, 'oldbinsha');
 });
 
+// ---- delete (attachments) --------------------------------------------------
+
+test('delete: sends the current sha in the DELETE request body, matching GitHub\u2019s own actual precondition', async () => {
+  const calls = [];
+  await withMockFetch(
+    async (url, opts) => {
+      calls.push({ url, opts });
+      if (!opts || !opts.method) return jsonResponse(200, { content: 'ZGF0YQ==', sha: 'existingsha001' });
+      return jsonResponse(200, {});
+    },
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      await adapter.delete('data/ab/abc123/photo.png');
+    }
+  );
+  const deleteCall = calls.find((c) => c.opts && c.opts.method === 'DELETE');
+  assert.ok(deleteCall, 'a DELETE request should have been sent');
+  const body = JSON.parse(deleteCall.opts.body);
+  assert.equal(body.sha, 'existingsha001');
+});
+
+test('delete: is a no-op (no DELETE request sent) when the file doesn\u2019t exist -- the end state is already true', async () => {
+  const calls = [];
+  await withMockFetch(
+    async (url, opts) => {
+      calls.push({ url, opts });
+      return jsonResponse(404, { message: 'Not Found' });
+    },
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      await assert.doesNotReject(adapter.delete('data/ab/abc123/photo.png'));
+    }
+  );
+  assert.equal(calls.some((c) => c.opts && c.opts.method === 'DELETE'), false);
+});
+
+test('delete: throws an informative error on failure', async () => {
+  await withMockFetch(
+    async (url, opts) => {
+      if (!opts || !opts.method) return jsonResponse(200, { content: 'ZGF0YQ==', sha: 'sha1' });
+      return jsonResponse(403, { message: 'Resource not accessible by personal access token' });
+    },
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      await assert.rejects(adapter.delete('data/ab/abc123/photo.png'), /forbidden/);
+    }
+  );
+});
+
 // ---- encodeGithubPath (THE FIX: a real, confirmed URL-corruption bug) ------
 
 test('THE FIX: encodeGithubPath encodes a space, preserving path structure', () => {

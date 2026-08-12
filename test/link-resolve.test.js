@@ -9,6 +9,7 @@ import {
   fileLinkScheme,
   splitFileLinkTarget,
   resolveImagePath,
+  resolveAttachmentTarget,
   guessImageMimeType,
   findHeadingByTitle,
   findHeadingByCustomId,
@@ -348,4 +349,60 @@ test('the returned node is the exact list-item object for an inline definition i
   const result = findFootnoteDefinition(doc, '1');
   assert.equal(result.node.type, 'list-item');
   assert.equal(result.node.text.includes('an item with a note'), true);
+});
+
+// ---- resolveAttachmentTarget -------------------------------------------------
+
+test('resolveAttachmentTarget resolves against the heading\u2019s own :ID: when it has one', () => {
+  const doc = parseOrg('* H\n:PROPERTIES:\n:ID: abc123-def\n:END:\n');
+  const result = resolveAttachmentTarget(doc, doc.children[0], 'attachment:photo.jpg');
+  assert.equal(result, 'data/ab/c123-def/photo.jpg');
+});
+
+test('resolveAttachmentTarget inherits from the nearest ANCESTOR\u2019s :ID: when the heading itself has none, matching real org-attach\u2019s own inheritance behavior', () => {
+  const doc = parseOrg('* Parent\n:PROPERTIES:\n:ID: xyz789-qqq\n:END:\n** Child\nNo ID here.\n');
+  const child = doc.children[0].children[0];
+  const result = resolveAttachmentTarget(doc, child, 'attachment:notes.pdf');
+  assert.equal(result, 'data/xy/z789-qqq/notes.pdf');
+});
+
+test('resolveAttachmentTarget prefers the heading\u2019s OWN :ID: over an ancestor\u2019s, when both exist', () => {
+  const doc = parseOrg(
+    '* Parent\n:PROPERTIES:\n:ID: parent111\n:END:\n** Child\n:PROPERTIES:\n:ID: child222\n:END:\n'
+  );
+  const child = doc.children[0].children[0];
+  const result = resolveAttachmentTarget(doc, child, 'attachment:photo.jpg');
+  assert.equal(result, 'data/ch/ild222/photo.jpg');
+});
+
+test('resolveAttachmentTarget returns null when no heading in the whole ancestor chain has an :ID: at all', () => {
+  const doc = parseOrg('* H\nNothing here.\n');
+  const result = resolveAttachmentTarget(doc, doc.children[0], 'attachment:photo.jpg');
+  assert.equal(result, null);
+});
+
+test('resolveAttachmentTarget walks multiple levels up correctly, not just the immediate parent', () => {
+  const doc = parseOrg('* Grandparent\n:PROPERTIES:\n:ID: gp000\n:END:\n** Parent\n*** Child\n');
+  const child = doc.children[0].children[0].children[0];
+  const result = resolveAttachmentTarget(doc, child, 'attachment:deep.jpg');
+  assert.equal(result, 'data/gp/000/deep.jpg');
+});
+
+test('resolveAttachmentTarget strips the "attachment:" prefix correctly, case-insensitively', () => {
+  const doc = parseOrg('* H\n:PROPERTIES:\n:ID: abc123\n:END:\n');
+  const result = resolveAttachmentTarget(doc, doc.children[0], 'ATTACHMENT:photo.jpg');
+  assert.equal(result, 'data/ab/c123/photo.jpg');
+});
+
+test('resolveLinkTarget recognizes attachment: as its own distinct type, not falling through to a fuzzy heading-title search', () => {
+  const doc = parseOrg('* H\n');
+  const result = resolveLinkTarget(doc, 'attachment:photo.jpg');
+  assert.equal(result.type, 'attachment');
+  assert.equal(result.target, 'attachment:photo.jpg');
+});
+
+test('resolveLinkTarget recognizes attachment: case-insensitively', () => {
+  const doc = parseOrg('* H\n');
+  const result = resolveLinkTarget(doc, 'ATTACHMENT:photo.jpg');
+  assert.equal(result.type, 'attachment');
 });

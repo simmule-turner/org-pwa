@@ -242,6 +242,45 @@ test('writeBinary: updating an existing attachment sends If-Match with the curre
   assert.equal(putCall.headers['If-Match'], '"binold001"');
 });
 
+// ---- delete (attachments) --------------------------------------------------
+
+test('delete: sends a real HTTP DELETE request to the file\u2019s own URL', async () => {
+  const calls = [];
+  await withMockFetch(
+    async (url, opts) => {
+      calls.push({ url, opts });
+      return textResponse(204, '');
+    },
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      await adapter.delete('data/ab/abc123/photo.png');
+    }
+  );
+  const deleteCall = calls.find((c) => c.opts.method === 'DELETE');
+  assert.ok(deleteCall, 'a DELETE request should have been sent');
+  assert.match(deleteCall.url, /data\/ab\/abc123\/photo\.png$/);
+});
+
+test('delete: a 404 (already gone) is treated as success, not an error', async () => {
+  await withMockFetch(
+    async () => textResponse(404, ''),
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      await assert.doesNotReject(adapter.delete('data/ab/abc123/photo.png'));
+    }
+  );
+});
+
+test('delete: throws on a genuine server error', async () => {
+  await withMockFetch(
+    async () => textResponse(500, ''),
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      await assert.rejects(adapter.delete('data/ab/abc123/photo.png'));
+    }
+  );
+});
+
 // ---- exists -------------------------------------------------------------
 
 test('exists: uses HEAD and reflects response.ok', async () => {
