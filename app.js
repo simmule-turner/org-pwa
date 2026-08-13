@@ -11,6 +11,8 @@ import {
   listAttachments,
   removeAttachmentLink,
   disambiguateAttachmentFilename,
+  isAudioFilename,
+  generateRecordingFilename,
 } from './src/attach.js';
 import {
   findAncestorPath,
@@ -30,11 +32,13 @@ import {
   resolveImagePath,
   resolveAttachmentTarget,
   guessImageMimeType,
+  guessAudioMimeType,
+  guessViewableMimeType,
   isExternalUrl,
   findHeadingByTitle,
   findFootnoteDefinition,
 } from './src/link-resolve.js';
-import { parseInline, stripLineBreakMarker } from './src/inline-markup.js';
+import { parseInline, stripLineBreakMarker, IMAGE_EXT_RE } from './src/inline-markup.js';
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, toggleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
 import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
 import { searchDocument } from './src/search.js';
@@ -46,6 +50,7 @@ import {
   parseLispNumber,
   getAgendaStartOnWeekday,
   getDeadlineWarningDays,
+  getScheduledDelayDays,
   getCalendarLatitude,
   getCalendarLongitude,
   getCalendarLocationName,
@@ -272,6 +277,20 @@ let pendingAttachFileList = null;
 let calendarOpen = false;
 let calendarViewYear = null;
 let calendarViewMonth = null;
+// Set to { heading } when "Record audio" is tapped -- reuses
+// refilePanel's own DOM element, same pattern as every other pendingXxx
+// flow above. mediaRecorder/recordedChunks/recordingStartedAt track the
+// actual in-progress MediaRecorder session itself (null/[]/null when
+// nothing is currently recording) -- kept as separate module-level
+// state rather than nested inside pendingAudioRecording, since the
+// recording panel's own render function needs to read/react to them on
+// every tick of the elapsed-time display without re-deriving them from
+// a single object each time.
+let pendingAudioRecording = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordingStartedAt = null;
+let recordedBlobUrl = null; // set once recording stops, for the review-before-save playback
 
 /**
  * Every call site in this app that changes a heading's TODO state
@@ -347,6 +366,12 @@ function applyTodoTransition(heading, performChange) {
       }
     }
   }
+
+  // A heading's own TODO state is exactly what a :COOKIE_DATA: "todo"
+  // cookie on some ancestor counts -- this transition may have just
+  // changed that count, the same reasoning a checkbox toggle already
+  // has its own updateCheckboxCookiesUpward call for.
+  updateCheckboxCookiesUpward(state.doc, heading, sequence.doneKeywords);
 }
 
 /** Shows a small dedicated panel for taking (or skipping) the log note
@@ -997,6 +1022,19 @@ async function attachFileToHeading(heading) {
     return; // no file selected -- silently do nothing, matching every other cancel-a-picker path in this app
   }
 
+  await uploadAttachmentToHeading(heading, picked);
+}
+
+/** The actual upload/link-insertion core attachFileToHeading uses once
+ *  it has a `{ name, type, base64 }` file in hand -- factored out so
+ *  the audio-recording flow (which already has bytes ready, no file
+ *  picker involved at all) can share this exact same logic rather
+ *  than a second, separately-maintained copy of it. Same backend-
+ *  availability assumption as attachFileToHeading's own caller-side
+ *  check (this itself doesn't re-check, since both current callers
+ *  already have): only ever called once GitHub/WebDAV is confirmed
+ *  connected. */
+async function uploadAttachmentToHeading(heading, picked) {
   setStatus('Uploading attachment\u2026');
   render();
 
@@ -1043,39 +1081,100 @@ async function attachFileToHeading(heading) {
  *  renderInlineNodes' own heading-threading docs), needed to resolve
  *  which :ID: actually owns this attachment, matching the exact same
  *  ancestor-chain lookup the inline-image case already uses. */
-async function downloadAttachmentLink(target, heading) {
+/** The shared core both saveAttachmentLink and openAttachmentLink use:
+ *  confirms a backend that can actually read an attachment is
+ *  connected, resolves `target`'s own real storage path, and fetches
+ *  the actual bytes. Returns `{ filename, resolvedPath, result }` on
+ *  success; on any failure, has already called setStatus/render with
+ *  a clear explanation itself and returns null, so both callers can
+ *  just check for that and return early rather than duplicating each
+ *  of these three failure cases (and their own explanatory messages)
+ *  a second time. */
+async function resolveAndReadAttachment(target, heading) {
+  const filename = target.replace(/^attachment:/i, '');
   if (state.storageKind !== 'github' && state.storageKind !== 'webdav') {
     setStatus(
-      "Can't download this attachment \u2014 only available with GitHub or WebDAV connected, the same backends attachments themselves are only ever stored on."
+      "Can't access this attachment \u2014 only available with GitHub or WebDAV connected, the same backends attachments themselves are only ever stored on."
     );
     render();
-    return;
+    return null;
   }
   const resolvedPath = resolveAttachmentTarget(state.doc, heading, target, state.documentId);
   if (!resolvedPath) {
     setStatus("Can't resolve this attachment \u2014 no heading in its own ancestor chain has an :ID: property.");
     render();
-    return;
+    return null;
   }
-  const filename = target.replace(/^attachment:/i, '');
-  setStatus('Downloading attachment\u2026');
-  render();
   try {
     const adapter = activeDiskAdapter();
     const result = await adapter.readBinary(resolvedPath);
     if (!result) {
       setStatus(`Attachment "${filename}" not found at ${resolvedPath}.`);
       render();
-      return;
+      return null;
     }
-    downloadFile(filename, base64ToArrayBuffer(result.base64), guessImageMimeType(resolvedPath));
-    setStatus(`Downloaded "${filename}".`);
-    render();
+    return { filename, resolvedPath, result };
   } catch (err) {
-    setStatus(`Could not download "${filename}": ${err.message}`);
+    setStatus(`Could not access "${filename}": ${err.message}`);
     render();
+    return null;
   }
 }
+
+/** Every image/audio extension already has its own dedicated MIME
+ *  lookup (guessImageMimeType/guessAudioMimeType); this tries each in
+ *  turn and falls back to a generic binary type -- for
+ *  saveAttachmentLink's own download, which needs SOME MIME type
+ *  regardless of what kind of file it turns out to be. */
+function guessAnyAttachmentMimeType(filename) {
+  if (IMAGE_EXT_RE.test(filename)) return guessImageMimeType(filename);
+  if (isAudioFilename(filename)) return guessAudioMimeType(filename);
+  return guessViewableMimeType(filename) || 'application/octet-stream';
+}
+
+/** Downloads `target` to the device -- unconditionally, regardless of
+ *  file type, the actual behavior "Open" used to have before this
+ *  fix, moved here and given its own honest name now that Open itself
+ *  means something different. */
+async function saveAttachmentLink(target, heading) {
+  setStatus('Downloading attachment\u2026');
+  render();
+  const attachment = await resolveAndReadAttachment(target, heading);
+  if (!attachment) return;
+  const { filename, resolvedPath, result } = attachment;
+  downloadFile(filename, base64ToArrayBuffer(result.base64), guessAnyAttachmentMimeType(resolvedPath));
+  setStatus(`Downloaded "${filename}".`);
+  render();
+}
+
+/** THE FIX: tries to actually VIEW `target` -- opening a new tab with
+ *  the browser's own native viewer (a PDF's own built-in renderer,
+ *  native video playback, or plain text shown as-is -- see
+ *  guessViewableMimeType's own docs in link-resolve.js for exactly
+ *  which types, and why HTML/SVG are deliberately excluded) --
+ *  falling back to the exact same download behavior saveAttachmentLink
+ *  has only when no viewer is available for the file type at all,
+ *  since there's nothing else useful to do with it. */
+async function openAttachmentLink(target, heading) {
+  setStatus('Opening attachment\u2026');
+  render();
+  const attachment = await resolveAndReadAttachment(target, heading);
+  if (!attachment) return;
+  const { filename, resolvedPath, result } = attachment;
+  const viewableMimeType = guessViewableMimeType(resolvedPath);
+  if (!viewableMimeType) {
+    downloadFile(filename, base64ToArrayBuffer(result.base64), guessAnyAttachmentMimeType(resolvedPath));
+    setStatus(`No viewer available for "${filename}" \u2014 downloaded instead.`);
+    render();
+    return;
+  }
+  const blob = new Blob([base64ToArrayBuffer(result.base64)], { type: viewableMimeType });
+  const blobUrl = URL.createObjectURL(blob);
+  window.open(blobUrl, '_blank');
+  setStatus(`Opened "${filename}".`);
+  render();
+}
+
 
 /** Deletes `filename` from `heading`'s own attachments -- both the
  *  underlying file on the backend (via the storage adapter's own
@@ -1236,10 +1335,24 @@ function renderAttachChoicePanel() {
     })
   );
   row.appendChild(
+    menuButton('\ud83c\udfa4 Record audio', () => {
+      pendingAttachChoice = null;
+      renderAttachChoicePanel();
+      openAudioRecordingPanel(heading);
+    })
+  );
+  row.appendChild(
     menuButton('\ud83d\udcc2 Open', () => {
       pendingAttachChoice = null;
       renderAttachChoicePanel();
       startAttachmentPickFlow(heading, 'open');
+    })
+  );
+  row.appendChild(
+    menuButton('\ud83d\udcbe Save', () => {
+      pendingAttachChoice = null;
+      renderAttachChoicePanel();
+      startAttachmentPickFlow(heading, 'save');
     })
   );
   row.appendChild(
@@ -1296,7 +1409,7 @@ function renderAttachFileListPanel() {
   const label = document.createElement('div');
   label.style.fontSize = '13px';
   label.style.marginBottom = '8px';
-  label.textContent = `${action === 'delete' ? 'Delete' : 'Open'} which attachment?`;
+  label.textContent = `${action === 'delete' ? 'Delete' : action === 'save' ? 'Save' : 'Open'} which attachment?`;
   refilePanel.appendChild(label);
 
   const row = document.createElement('div');
@@ -1330,9 +1443,249 @@ function performAttachmentAction(heading, filename, action) {
   if (action === 'delete') {
     if (!window.confirm(`Delete attachment "${filename}"? This removes the actual file, not just the link to it.`)) return;
     deleteAttachment(heading, filename);
+  } else if (action === 'save') {
+    saveAttachmentLink(`attachment:${filename}`, heading);
   } else {
-    downloadAttachmentLink(`attachment:${filename}`, heading);
+    openAttachmentLink(`attachment:${filename}`, heading);
   }
+}
+
+/** org-xx-extra-menu-independent Attach sub-action -- opens the audio-
+ *  recording panel for `heading`, resetting any state left over from
+ *  a previous recording session (own defensive cleanup, in case a
+ *  prior session was ever abandoned mid-flow without going through
+ *  discardAudioRecording's own explicit cleanup). */
+function openAudioRecordingPanel(heading) {
+  if (state.storageKind !== 'github' && state.storageKind !== 'webdav') {
+    setStatus(
+      "Attachments need automatic file-write access \u2014 only available with GitHub or WebDAV connected (a local file needs a fresh picker gesture per file, which browser security doesn't allow this app to do on its own for a brand-new attachment file). Connect GitHub or WebDAV in Settings first."
+    );
+    render();
+    return;
+  }
+  if (recordedBlobUrl) {
+    URL.revokeObjectURL(recordedBlobUrl);
+    recordedBlobUrl = null;
+  }
+  mediaRecorder = null;
+  recordedChunks = [];
+  recordingStartedAt = null;
+  pendingAudioRecording = { heading };
+  renderAudioRecordingPanel();
+}
+
+/** Renders the audio-recording panel into refilePanel -- one of three
+ *  states depending on mediaRecorder/recordedBlobUrl's own current
+ *  values: idle (nothing recorded yet -- a single Record button),
+ *  recording (mediaRecorder.state === 'recording' -- a live elapsed-
+ *  time readout plus Stop, re-rendered once a second via its own
+ *  setInterval while recording, to actually keep that readout
+ *  moving), or review (recordedBlobUrl is set -- real, native
+ *  <audio controls> playback of exactly what was just recorded,
+ *  plus Save / Re-record / Cancel). */
+function renderAudioRecordingPanel() {
+  refilePanel.innerHTML = '';
+  if (!pendingAudioRecording) {
+    refilePanel.style.display = 'none';
+    return;
+  }
+  refilePanel.style.display = 'block';
+  const heading = pendingAudioRecording.heading;
+
+  const label = document.createElement('div');
+  label.style.fontSize = '13px';
+  label.style.marginBottom = '8px';
+  label.textContent = `Record audio for "${heading.title || '(untitled)'}"`;
+  refilePanel.appendChild(label);
+
+  if (recordedBlobUrl) {
+    // Review state -- listen back before committing to an upload.
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.src = recordedBlobUrl;
+    audio.style.width = '100%';
+    audio.style.marginBottom = '8px';
+    refilePanel.appendChild(audio);
+
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    row.appendChild(
+      menuButton('\ud83d\udcbe Save', () => {
+        saveAudioRecording(heading);
+      })
+    );
+    row.appendChild(
+      menuButton('\ud83d\udd04 Re-record', () => {
+        openAudioRecordingPanel(heading);
+        startAudioRecording();
+      })
+    );
+    row.appendChild(
+      menuButton('Cancel', () => {
+        discardAudioRecording();
+      })
+    );
+    refilePanel.appendChild(row);
+    return;
+  }
+
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    // Recording state -- a live elapsed-time readout.
+    const elapsedMs = Date.now() - recordingStartedAt;
+    const totalSeconds = Math.floor(elapsedMs / 1000);
+    const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+    const ss = String(totalSeconds % 60).padStart(2, '0');
+    const timer = document.createElement('div');
+    timer.style.fontSize = '24px';
+    timer.style.fontWeight = '700';
+    timer.style.textAlign = 'center';
+    timer.style.margin = '12px 0';
+    timer.textContent = `\ud83d\udd34 ${mm}:${ss}`;
+    refilePanel.appendChild(timer);
+
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    row.appendChild(
+      menuButton('\u23f9 Stop', () => {
+        stopAudioRecording();
+      })
+    );
+    row.appendChild(
+      menuButton('Cancel', () => {
+        discardAudioRecording();
+      })
+    );
+    refilePanel.appendChild(row);
+    return;
+  }
+
+  // Idle state -- nothing recorded yet.
+  const row = document.createElement('div');
+  row.className = 'panel-row';
+  row.appendChild(
+    menuButton('\u23fa Record', () => {
+      startAudioRecording();
+    })
+  );
+  row.appendChild(
+    menuButton('Cancel', () => {
+      discardAudioRecording();
+    })
+  );
+  refilePanel.appendChild(row);
+}
+
+/** Requests microphone access (a real, explicit browser permission
+ *  prompt the first time -- HTTPS-only, matching every other
+ *  camera/mic-adjacent capability this app already relies on) and
+ *  starts a real MediaRecorder session against the resulting stream.
+ *  No explicit mimeType is requested -- left to the browser's own
+ *  default choice, which is exactly what varies by platform (webm on
+ *  Chrome/Firefox/Edge, mp4 on Safari -- see extensionForRecordedMimeType's
+ *  own docs in attach.js) and exactly why the eventual saved
+ *  filename's own extension is derived from mediaRecorder.mimeType
+ *  itself rather than assumed upfront. Re-renders the panel once a
+ *  second while recording, purely to keep the elapsed-time readout
+ *  moving -- the interval is cleared in both stopAudioRecording and
+ *  discardAudioRecording, whichever ends the session. */
+async function startAudioRecording() {
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    setStatus(`Could not access the microphone: ${err.message}`);
+    render();
+    return;
+  }
+
+  recordedChunks = [];
+  const recorder = new MediaRecorder(stream);
+  mediaRecorder = recorder;
+  recorder.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+  };
+  recorder.onstop = () => {
+    stream.getTracks().forEach((track) => track.stop());
+    const blob = new Blob(recordedChunks, { type: recorder.mimeType });
+    recordedBlobUrl = URL.createObjectURL(blob);
+    renderAudioRecordingPanel();
+  };
+
+  recordingStartedAt = Date.now();
+  recorder.start();
+  renderAudioRecordingPanel();
+
+  const tickInterval = setInterval(() => {
+    if (!mediaRecorder || mediaRecorder.state !== 'recording') {
+      clearInterval(tickInterval);
+      return;
+    }
+    renderAudioRecordingPanel();
+  }, 1000);
+}
+
+/** Ends the in-progress MediaRecorder session -- fires the recorder's
+ *  own onstop handler (set up in startAudioRecording), which is what
+ *  actually assembles the recorded chunks into a real Blob and moves
+ *  the panel into its own review state. */
+function stopAudioRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+  }
+}
+
+/** Converts the just-recorded Blob to base64 (via the same FileReader
+ *  approach pickBinaryFile already uses for a picked file, for the
+ *  same reasons -- fast, native, non-blocking) and hands it to
+ *  uploadAttachmentToHeading, the exact same upload/link-insertion
+ *  core a regular picked-file attachment already goes through. The
+ *  filename itself is generated fresh (generateRecordingFilename,
+ *  see attach.js), since a recording -- unlike a picked file -- never
+ *  had a name of its own to begin with. */
+async function saveAudioRecording(heading) {
+  const blobUrl = recordedBlobUrl;
+  const mimeType = mediaRecorder.mimeType;
+  const res = await fetch(blobUrl);
+  const blob = await res.blob();
+
+  const reader = new FileReader();
+  const base64 = await new Promise((resolve, reject) => {
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const commaIndex = dataUrl.indexOf(',');
+      resolve(commaIndex === -1 ? '' : dataUrl.slice(commaIndex + 1));
+    };
+    reader.onerror = () => reject(reader.error || new Error('Could not read the recording'));
+    reader.readAsDataURL(blob);
+  });
+
+  URL.revokeObjectURL(blobUrl);
+  recordedBlobUrl = null;
+  pendingAudioRecording = null;
+  mediaRecorder = null;
+  recordedChunks = [];
+  renderAudioRecordingPanel();
+
+  await uploadAttachmentToHeading(heading, { name: generateRecordingFilename(mimeType), type: mimeType, base64 });
+}
+
+/** Discards whatever's currently in progress (a live recording, or
+ *  one already stopped and pending review) and closes the panel --
+ *  the actual MediaRecorder session, if one is still running, is
+ *  stopped first so the microphone itself is genuinely released, not
+ *  just the UI dismissed while still recording in the background. */
+function discardAudioRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+  }
+  if (recordedBlobUrl) {
+    URL.revokeObjectURL(recordedBlobUrl);
+    recordedBlobUrl = null;
+  }
+  mediaRecorder = null;
+  recordedChunks = [];
+  pendingAudioRecording = null;
+  renderAudioRecordingPanel();
 }
 
 /** org-xx-extra-menu's own 'org-xx-calendar function reference --
@@ -1759,6 +2112,30 @@ function syncContentOffset() {
   contentAreaEl.style.height = `calc(100% - ${barHeight}px)`;
 }
 window.addEventListener('resize', syncContentOffset);
+
+// Keeps #topBar visually pinned to the top of the actually-visible area
+// even while an on-screen keyboard is open -- see this function's own
+// surrounding comment for the full "why" (a real, researched, cross-
+// platform fix, not a guess). visualViewport.offsetTop is exactly how
+// far the visual viewport's own top edge currently sits below the
+// layout viewport's own top edge (0 whenever no keyboard-driven auto-
+// scroll has happened, e.g. no field is focused at all) -- nudging
+// #topBar down by that same amount keeps it aligned with whatever's
+// actually visible, compensating for the offset a plain
+// position: fixed element has no way to react to on its own. Combined
+// into a single transform (translateX for the existing left: 50%
+// horizontal centering, translateY for this) rather than two separate
+// style properties, since setting transform directly would otherwise
+// silently override the CSS rule's own translateX(-50%) instead of
+// adding to it.
+if (window.visualViewport) {
+  const vv = window.visualViewport;
+  const repositionTopBarForKeyboard = () => {
+    topBarEl.style.transform = `translate(-50%, ${vv.offsetTop}px)`;
+  };
+  vv.addEventListener('resize', repositionTopBarForKeyboard);
+  vv.addEventListener('scroll', repositionTopBarForKeyboard);
+}
 // Crossing the wide-layout breakpoint (e.g. resizing a browser window,
 // or rotating a tablet) while Settings/Docs is open needs a re-render
 // to switch between "replace #outline" (narrow) and "side panel"
@@ -2556,6 +2933,10 @@ function renderLinkNode(node, linkContext = null, heading = null) {
   }
 
   if (resolution.type === 'attachment' && !linkContext) {
+    const filename = resolution.target.replace(/^attachment:/i, '');
+    if (isAudioFilename(filename)) {
+      return renderAudioAttachmentLink(resolution.target, filename, heading);
+    }
     const a = document.createElement('a');
     a.href = '#';
     a.textContent = label;
@@ -2564,7 +2945,7 @@ function renderLinkNode(node, linkContext = null, heading = null) {
     a.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      downloadAttachmentLink(resolution.target, heading);
+      openAttachmentLink(resolution.target, heading);
     };
     return a;
   }
@@ -2597,6 +2978,61 @@ function renderLinkNode(node, linkContext = null, heading = null) {
   span.title = 'Unresolved link: ' + node.target;
   span.setAttribute(INLINE_LINK_ATTR, '1');
   return span;
+}
+
+/** An audio attachment's own inline playback UI -- starts as a
+ *  compact "\u25b6\ufe0f filename" button; tapping it fetches the actual
+ *  bytes (the same adapter.readBinary/resolveAttachmentTarget path
+ *  renderImageNode already uses for images, lazily here -- only once
+ *  actually tapped, unlike an inline image's own eager fetch, since
+ *  an audio recording is often considerably larger and there's no
+ *  reason to pull it down before someone's actually asked to hear
+ *  it) and replaces itself with a real, native
+ *  `<audio controls autoplay>` element -- the browser's own actual
+ *  play/pause/seek/scrub UI, rather than a hand-built equivalent. */
+function renderAudioAttachmentLink(target, filename, heading) {
+  const btn = document.createElement('a');
+  btn.href = '#';
+  btn.textContent = `\u25b6\ufe0f ${filename}`;
+  btn.style.color = 'var(--accent)';
+  btn.setAttribute(INLINE_LINK_ATTR, '1');
+  btn.onclick = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (state.storageKind !== 'github' && state.storageKind !== 'webdav') {
+      setStatus(
+        "Can't play this attachment \u2014 only available with GitHub or WebDAV connected, the same backends attachments themselves are only ever stored on."
+      );
+      render();
+      return;
+    }
+    const resolvedPath = resolveAttachmentTarget(state.doc, heading, target, state.documentId);
+    if (!resolvedPath) {
+      setStatus("Can't resolve this attachment \u2014 no heading in its own ancestor chain has an :ID: property.");
+      render();
+      return;
+    }
+    btn.textContent = `\u23f3 ${filename}`;
+    try {
+      const adapter = activeDiskAdapter();
+      const result = await adapter.readBinary(resolvedPath);
+      if (!result) {
+        btn.textContent = `\u26a0\ufe0f ${filename} (not found)`;
+        return;
+      }
+      const audio = document.createElement('audio');
+      audio.controls = true;
+      audio.autoplay = true;
+      audio.src = `data:${guessAudioMimeType(filename)};base64,${result.base64}`;
+      audio.style.width = '100%';
+      audio.style.display = 'block';
+      audio.style.margin = '4px 0';
+      btn.replaceWith(audio);
+    } catch (err) {
+      btn.textContent = `\u26a0\ufe0f ${filename}: ${err.message}`;
+    }
+  };
+  return btn;
 }
 
 /** A bare [fn:label] footnote reference: tappable, jumping to (and
@@ -4004,7 +4440,7 @@ function renderRow(row, todoSequence) {
       el.onclick = (e) => {
         if (e.target.closest('[data-inline-link]')) return;
         cycleItemCheckbox(row.heading, row.item);
-        updateCheckboxCookiesUpward(state.doc, row.heading);
+        updateCheckboxCookiesUpward(state.doc, row.heading, todoSequence.doneKeywords);
         commitAndRender('Toggled checkbox');
       };
       const box = document.createElement('span');
@@ -4108,7 +4544,7 @@ function renderRow(row, todoSequence) {
               e.stopPropagation();
               actionMenuFor = null;
               const newItem = insertListItem(row.heading, row.item, '');
-              updateCheckboxCookiesUpward(state.doc, row.heading);
+              updateCheckboxCookiesUpward(state.doc, row.heading, todoSequence.doneKeywords);
               editingListItem = { heading: row.heading, item: newItem };
               commitAndRender('Added list item');
             },
@@ -4122,7 +4558,7 @@ function renderRow(row, todoSequence) {
               actionMenuFor = null;
               if (editingListItem && editingListItem.item === row.item) editingListItem = null;
               deleteListItem(row.heading, row.item);
-              updateCheckboxCookiesUpward(state.doc, row.heading);
+              updateCheckboxCookiesUpward(state.doc, row.heading, todoSequence.doneKeywords);
               commitAndRender('Deleted list item');
             },
           },
@@ -4395,7 +4831,11 @@ function renderParagraphRow(row) {
   const hasContent = row.node.lines.some((l) => l.trim() !== '');
   if (hasContent) {
     row.node.lines.forEach((line, i) => {
-      if (i > 0) p.appendChild(document.createElement('br'));
+      if (i > 0) {
+        const prevLine = row.node.lines[i - 1];
+        const prevForcedBreak = stripLineBreakMarker(prevLine) !== prevLine;
+        p.appendChild(prevForcedBreak ? document.createElement('br') : document.createTextNode(' '));
+      }
       const text =
         i === 0 && row.node.footnoteLabel !== null
           ? line.replace(new RegExp('^\\[fn:' + row.node.footnoteLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\]\\s?'), '')
@@ -6332,6 +6772,7 @@ function renderAgendaView() {
     today: new Date(),
     birthdayProperty: getContactsBirthdayProperty(state.localVariables),
     deadlineWarningDays: getDeadlineWarningDays(state.localVariables),
+    scheduledDelayDays: getScheduledDelayDays(state.localVariables),
     calendarLatitude: getCalendarLatitude(state.localVariables),
     calendarLongitude: getCalendarLongitude(state.localVariables),
   });
@@ -7208,6 +7649,17 @@ const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#agenda-dated-entries',
   },
   {
+    key: 'org-scheduled-delay-days',
+    label: 'Scheduled item delay (days)',
+    section: 'Agenda',
+    type: 'number',
+    default: 0,
+    min: 0,
+    max: 365,
+    step: 1,
+    helpAnchor: '#agenda-dated-entries',
+  },
+  {
     key: 'org-cycle-open-archived-trees',
     label: 'Allow expanding archived headings',
     section: 'Agenda',
@@ -7601,6 +8053,7 @@ function renderQuickSettingsSection() {
 
 async function renderSettingsView(target = settingsRenderTarget) {
   settingsRenderTarget = target;
+  const savedScrollTop = target.scrollTop;
   target.innerHTML = '';
   const container = document.createElement('div');
   container.className = 'panel';
@@ -8195,6 +8648,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
             ? 'Couldn\u2019t check for updates right now.'
             : '';
   updatesSection.appendChild(updatesStatus);
+  target.scrollTop = savedScrollTop;
 }
 
 // ---- Docs (README, rendered in-app) --------------------------------------
@@ -8400,7 +8854,10 @@ function renderReadOnlyBodyNode(node, depth, container, linkContext, drawersHidd
       p.appendChild(labelEl);
     }
     node.inlineLines.forEach((inline, i) => {
-      if (i > 0) p.appendChild(document.createElement('br'));
+      if (i > 0) {
+        const prevForcedBreak = stripLineBreakMarker(node.lines[i - 1]) !== node.lines[i - 1];
+        p.appendChild(prevForcedBreak ? document.createElement('br') : document.createTextNode(' '));
+      }
       renderInlineNodes(inline, p, linkContext);
     });
     container.appendChild(p);
