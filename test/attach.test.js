@@ -55,6 +55,26 @@ test('attachmentPath with two different ids produces two different paths, even f
   assert.notEqual(pathA, pathB);
 });
 
+test('THE FIX: attachmentPath anchors the "data/..." tree to documentId\u2019s own directory, matching the exact user-reported scenario (org-pwa/foo.org -> org-pwa/data/...)', () => {
+  const path = attachmentPath('ae34c932-a7b3-4987-ae3f-690587a0ff18', 'IMG_20260531_214919_098.jpg', 'org-pwa/foo.org');
+  assert.equal(path, 'org-pwa/data/ae/34c932-a7b3-4987-ae3f-690587a0ff18/IMG_20260531_214919_098.jpg');
+});
+
+test('attachmentPath is bare/root-relative when documentId is omitted, matching the previous (still-correct-for-root-level-docs) behavior', () => {
+  const path = attachmentPath('550e8400-e29b-41d4-a716-446655440000', 'photo.jpg');
+  assert.equal(path, 'data/55/0e8400-e29b-41d4-a716-446655440000/photo.jpg');
+});
+
+test('attachmentPath is bare/root-relative when documentId itself has no directory component (a root-level document)', () => {
+  const path = attachmentPath('550e8400-e29b-41d4-a716-446655440000', 'photo.jpg', 'foo.org');
+  assert.equal(path, 'data/55/0e8400-e29b-41d4-a716-446655440000/photo.jpg');
+});
+
+test('attachmentPath correctly handles a deeply nested documentId', () => {
+  const path = attachmentPath('550e8400-e29b-41d4-a716-446655440000', 'photo.jpg', 'a/b/c/foo.org');
+  assert.equal(path, 'a/b/c/data/55/0e8400-e29b-41d4-a716-446655440000/photo.jpg');
+});
+
 // ---- formatAttachmentLink ---------------------------------------------------
 
 test('formatAttachmentLink produces a bare attachment: link (no description) for an image filename, matching real org\u2019s own "no description = inline image" convention', () => {

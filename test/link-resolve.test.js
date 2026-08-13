@@ -406,3 +406,30 @@ test('resolveLinkTarget recognizes attachment: case-insensitively', () => {
   const result = resolveLinkTarget(doc, 'ATTACHMENT:photo.jpg');
   assert.equal(result.type, 'attachment');
 });
+
+// ---- resolveAttachmentTarget: document-relative resolution (THE FIX) -------
+
+test('THE FIX: resolveAttachmentTarget anchors the "data/..." tree to the current document\u2019s own directory, matching the user\u2019s own exact reported scenario', () => {
+  const doc = parseOrg('* H\n:PROPERTIES:\n:ID: ae34c932-a7b3-4987-ae3f-690587a0ff18\n:END:\n');
+  const result = resolveAttachmentTarget(doc, doc.children[0], 'attachment:photo.jpg', 'org-pwa/foo.org');
+  assert.equal(result, 'org-pwa/data/ae/34c932-a7b3-4987-ae3f-690587a0ff18/photo.jpg');
+});
+
+test('resolveAttachmentTarget falls back to a bare, root-relative path when the document itself is at the root (no "/" in its own id)', () => {
+  const doc = parseOrg('* H\n:PROPERTIES:\n:ID: abc123\n:END:\n');
+  const result = resolveAttachmentTarget(doc, doc.children[0], 'attachment:photo.jpg', 'foo.org');
+  assert.equal(result, 'data/ab/c123/photo.jpg');
+});
+
+test('resolveAttachmentTarget without a documentId at all (backward compatible) still resolves, root-relative', () => {
+  const doc = parseOrg('* H\n:PROPERTIES:\n:ID: abc123\n:END:\n');
+  const result = resolveAttachmentTarget(doc, doc.children[0], 'attachment:photo.jpg');
+  assert.equal(result, 'data/ab/c123/photo.jpg');
+});
+
+test('resolveAttachmentTarget document-relative resolution still correctly inherits from an ancestor\u2019s :ID:', () => {
+  const doc = parseOrg('* Parent\n:PROPERTIES:\n:ID: xyz789\n:END:\n** Child\nNo ID here.\n');
+  const child = doc.children[0].children[0];
+  const result = resolveAttachmentTarget(doc, child, 'attachment:notes.pdf', 'journal/2026.org');
+  assert.equal(result, 'journal/data/xy/z789/notes.pdf');
+});

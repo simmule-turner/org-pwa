@@ -242,6 +242,115 @@ test('writeBinary: updating an existing attachment sends If-Match with the curre
   assert.equal(putCall.headers['If-Match'], '"binold001"');
 });
 
+// ---- THE FIX: intermediate-directory creation (the reported WebDAV bug) ----
+
+test('THE FIX: writeBinary on a brand-new file whose own path has a missing intermediate folder creates every level via MKCOL, then retries the PUT once, succeeding', () => {
+  const calls = [];
+  let putAttempts = 0;
+  return withMockFetch(
+    async (url, opts) => {
+      calls.push({ url, method: opts.method });
+      if (opts.method === 'GET') return textResponse(404, '');
+      if (opts.method === 'MKCOL') return textResponse(201, '');
+      if (opts.method === 'PUT') {
+        putAttempts++;
+        if (putAttempts === 1) return textResponse(409, '');
+        return textResponse(201, '', { ETag: '"new-photo-sha"' });
+      }
+      return textResponse(404, '');
+    },
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      const result = await adapter.writeBinary('org-pwa/data/ae/xyz/photo.jpg', 'ZmFrZQ==');
+      assert.equal(result.hash, '"new-photo-sha"');
+    }
+  ).then(() => {
+    const mkcolCalls = calls.filter((c) => c.method === 'MKCOL');
+    // Every intermediate level, shallowest first, in order -- NOT the file itself.
+    assert.equal(mkcolCalls.length, 4);
+    assert.match(mkcolCalls[0].url, /org-pwa\/$/);
+    assert.match(mkcolCalls[1].url, /org-pwa\/data\/$/);
+    assert.match(mkcolCalls[2].url, /org-pwa\/data\/ae\/$/);
+    assert.match(mkcolCalls[3].url, /org-pwa\/data\/ae\/xyz\/$/);
+    assert.equal(calls.filter((c) => c.method === 'PUT').length, 2, 'exactly one retry, not more');
+  });
+});
+
+test('an MKCOL response indicating the folder already exists (405) is tolerated silently, not treated as an error', () => {
+  return withMockFetch(
+    async (url, opts) => {
+      if (opts.method === 'GET') return textResponse(404, '');
+      if (opts.method === 'MKCOL') return textResponse(405, ''); // "already exists" -- the most common real-server response for this
+      if (opts.method === 'PUT') return textResponse(201, '', { ETag: '"ok"' });
+      return textResponse(404, '');
+    },
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      await assert.doesNotReject(adapter.writeBinary('a/b/photo.jpg', 'ZmFrZQ=='));
+    }
+  );
+});
+
+test('a genuine MKCOL failure (not "already exists") propagates as a real, informative error', () => {
+  return withMockFetch(
+    async (url, opts) => {
+      if (opts.method === 'GET') return textResponse(404, '');
+      if (opts.method === 'MKCOL') return textResponse(500, '');
+      if (opts.method === 'PUT') return textResponse(409, '');
+      return textResponse(404, '');
+    },
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      await assert.rejects(adapter.writeBinary('a/b/photo.jpg', 'ZmFrZQ=='), /could not create.*folder/i);
+    }
+  );
+});
+
+test('a 409 while updating an EXISTING file (a genuine ETag precondition failure) does NOT trigger the MKCOL cascade at all -- only a brand-new file does', () => {
+  const calls = [];
+  return withMockFetch(
+    async (url, opts) => {
+      calls.push(opts.method);
+      if (opts.method === 'GET') {
+        return { status: 200, ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer, headers: { get: (n) => (n === 'ETag' ? '"current-sha"' : null) } };
+      }
+      if (opts.method === 'PUT') return textResponse(409, ''); // a real conflict -- the file changed since read
+      return textResponse(404, '');
+    },
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      await assert.rejects(adapter.writeBinary('existing/photo.jpg', 'ZmFrZQ=='));
+    }
+  ).then(() => {
+    assert.equal(calls.filter((m) => m === 'MKCOL').length, 0);
+    assert.equal(calls.filter((m) => m === 'PUT').length, 1, 'no retry -- this was a real conflict, not a missing folder');
+  });
+});
+
+test('writeImpl (text) gets the identical MKCOL-and-retry fix for a brand-new text file too', () => {
+  const calls = [];
+  let putAttempts = 0;
+  return withMockFetch(
+    async (url, opts) => {
+      calls.push(opts.method);
+      if (opts.method === 'GET') return textResponse(404, '');
+      if (opts.method === 'MKCOL') return textResponse(201, '');
+      if (opts.method === 'PUT') {
+        putAttempts++;
+        return putAttempts === 1 ? textResponse(409, '') : textResponse(201, '', { ETag: '"ok"' });
+      }
+      return textResponse(404, '');
+    },
+    async () => {
+      const adapter = createWebdavAdapter(() => CONFIG);
+      const result = await adapter.write('journal/2026/new-file.org', 'content');
+      assert.equal(result.hash, '"ok"');
+    }
+  ).then(() => {
+    assert.equal(calls.filter((m) => m === 'MKCOL').length, 2); // "journal/", "journal/2026/"
+  });
+});
+
 // ---- delete (attachments) --------------------------------------------------
 
 test('delete: sends a real HTTP DELETE request to the file\u2019s own URL', async () => {
