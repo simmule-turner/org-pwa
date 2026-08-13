@@ -1018,9 +1018,17 @@ async function attachFileToHeading(heading) {
     return;
   }
 
+  // Avoid immediately re-downloading the exact bytes just uploaded --
+  // the heading's own re-render below will try to display this
+  // attachment inline (if it's an image and inline images are on),
+  // and without this, that would mean a full second network fetch of
+  // content already sitting right here in memory.
+  imageDataUrlCache.set(`${state.storageKind}:${path}`, `data:${guessImageMimeType(path)};base64,${picked.base64}`);
+
   heading.bodyLines.push(formatAttachmentLink(filename));
   heading.body = parseBody(heading.bodyLines);
 
+  setStatus(`Attached "${filename}".`);
   commitAndRender(`Attached "${filename}"`);
 }
 
@@ -1103,6 +1111,7 @@ async function deleteAttachment(heading, filename) {
   }
   removeAttachmentLink(heading, filename);
   heading.body = parseBody(heading.bodyLines);
+  setStatus(`Deleted "${filename}".`);
   commitAndRender(`Deleted "${filename}"`);
 }
 
