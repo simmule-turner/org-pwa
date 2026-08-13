@@ -101,12 +101,20 @@ export function resolveImagePath(target, currentDocumentId) {
 
 /**
  * Resolves an "attachment:filename" link target to its own actual
- * storage path -- data/<id-prefix>/<id-rest>/filename -- matching real
- * org-attach's own actual resolution behavior: relative to whichever
- * heading's own :ID: property actually owns the attachment directory,
- * not the current document's own directory the way a plain file: link
- * resolves (see resolveImagePath just above). Walks `heading` itself
- * first, then outward through its own ancestor chain (found via
+ * storage path -- data/<id-prefix>/<id-rest>/filename, itself always
+ * derived purely from whichever heading's own :ID: property owns the
+ * attachment directory, matching real org-attach's own actual
+ * resolution behavior. That whole "data/..." tree, though, lives
+ * relative to the CURRENT DOCUMENT's own directory (`documentId`,
+ * when given) -- a document at "org-pwa/foo.org" gets its own
+ * attachments under "org-pwa/data/...", not a bare, always-repo-root
+ * "data/..." (a real, confirmed gap this had until now: every
+ * attachment for every document in a repo/server used to collide
+ * into the very same top-level "data/" tree regardless of which
+ * subfolder its own document actually lived in) -- the same
+ * document-relative resolution resolveImagePath just above already
+ * uses for a plain file: link. Walks `heading` itself first, then
+ * outward through its own ancestor chain (found via
  * findAncestorPath), returning the FIRST :ID: found -- matching real
  * org-attach's own inheritance: a heading with no :ID: of its own can
  * still resolve an attachment: link against an ancestor's attach
@@ -118,13 +126,13 @@ export function resolveImagePath(target, currentDocumentId) {
  * here, not by the caller, matching resolveImagePath's own convention
  * of taking the raw target text as-is.
  */
-export function resolveAttachmentTarget(doc, heading, attachmentTarget) {
+export function resolveAttachmentTarget(doc, heading, attachmentTarget, documentId) {
   const filename = attachmentTarget.replace(/^attachment:/i, '');
   const ancestors = findAncestorPath(doc, heading) || [];
   const chain = [heading, ...ancestors.slice().reverse()];
   for (const candidate of chain) {
     const id = candidate.properties && candidate.properties.ID;
-    if (id) return attachmentPath(id, filename);
+    if (id) return attachmentPath(id, filename, documentId);
   }
   return null;
 }

@@ -53,9 +53,11 @@ function splitAttachmentId(id) {
  *  as-is (already expected to be sanitized by the caller, matching
  *  how export's own baseName sanitization already works elsewhere in
  *  this app) -- not re-validated here. */
-function attachmentPath(id, filename) {
+function attachmentPath(id, filename, documentId) {
   const { prefix, rest } = splitAttachmentId(id);
-  return `data/${prefix}/${rest}/${filename}`;
+  const lastSlash = documentId ? documentId.lastIndexOf('/') : -1;
+  const dir = lastSlash === -1 ? '' : documentId.slice(0, lastSlash + 1);
+  return `${dir}data/${prefix}/${rest}/${filename}`;
 }
 
 /** A real org attachment: link referencing an attached file -- real
