@@ -187,12 +187,33 @@ export function guessAudioMimeType(path) {
   return AUDIO_MIME_TYPES[ext] || 'application/octet-stream';
 }
 
+// Every recognized image format EXCEPT svg -- svg is deliberately left
+// out here for the same reason html is: opening it via direct
+// navigation (what Open actually does, unlike this app's own existing,
+// safe <img>-based inline display) would execute any script embedded in
+// the file. An ordinary raster format has no such capability at all.
+// Destructuring off "svg" here (rather than a second, separately-typed
+// copy of the same extension list) means this can't silently drift out
+// of sync with IMAGE_MIME_TYPES if a new image format is ever added to
+// one but not the other.
+const { svg: _svgExcludedFromViewable, ...VIEWABLE_IMAGE_MIME_TYPES } = IMAGE_MIME_TYPES;
+
+// "mp4" excluded here, unlike the rest of AUDIO_MIME_TYPES below:
+// extensionForRecordedMimeType (attach.js) always names an audio/mp4
+// recording ".m4a" specifically, precisely to avoid this exact
+// ambiguity, so a literal ".mp4" attachment is essentially always a
+// video file in practice -- VIEWABLE_MIME_TYPES's own video/mp4 entry
+// should win, not get silently overridden by this spread the way
+// webm's own collision (below) is deliberately meant to go the other
+// direction.
+const { mp4: _mp4ExcludedFromAudioOverride, ...VIEWABLE_AUDIO_MIME_TYPES } = AUDIO_MIME_TYPES;
+
 const VIEWABLE_MIME_TYPES = {
   pdf: 'application/pdf',
   mp4: 'video/mp4',
   m4v: 'video/mp4',
   mov: 'video/quicktime',
-  webm: 'video/webm',
+  webm: 'video/webm', // deliberately overridden below -- see the comment on VIEWABLE_AUDIO_MIME_TYPES's own spread
   ogv: 'video/ogg',
   txt: 'text/plain',
   md: 'text/plain',
@@ -203,6 +224,18 @@ const VIEWABLE_MIME_TYPES = {
   xml: 'text/plain',
   yaml: 'text/plain',
   yml: 'text/plain',
+  ...VIEWABLE_IMAGE_MIME_TYPES,
+  // Spread last, deliberately: .webm is a genuinely ambiguous
+  // extension -- a legitimate container for both audio-only and
+  // audio+video content -- and this app's own in-browser recording
+  // feature specifically produces audio-only .webm files as its
+  // actual output on most browsers (see attach.js's own
+  // extensionForRecordedMimeType). A recorded .webm attachment is by
+  // far the more likely real case for THIS app specifically, compared
+  // to an externally-sourced .webm video file someone attached by
+  // hand -- so audio/webm intentionally overrides the video/webm
+  // entry above for this one extension, not the other way around.
+  ...VIEWABLE_AUDIO_MIME_TYPES,
 };
 
 /** Returns a MIME type for anything this app's own Open action can
