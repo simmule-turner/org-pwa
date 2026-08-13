@@ -149,6 +149,51 @@ function removeAttachmentLink(heading, filename) {
     .filter((line, i) => line !== '' || heading.bodyLines[i].trim() === '');
 }
 
+/** Confirmed as a real, necessary fix, not a theoretical one: a
+ *  camera app very commonly hands back the exact same generic
+ *  filename (e.g. "image.jpg") for every photo/video it captures --
+ *  the default behavior of many camera apps on both iOS and Android,
+ *  not a rare edge case. Since a heading's own attachment storage
+ *  path is derived purely from its :ID: plus the filename, attaching
+ *  a second capture with an identical name would silently overwrite
+ *  the first one's actual file content at the same path (both links
+ *  in the document would end up pointing at whatever was uploaded
+ *  LAST), and any cached copy of the first image already held in
+ *  memory would keep showing its own stale, pre-overwrite content
+ *  while a fresh read of the same path shows the second capture's
+ *  content instead -- exactly the confusing, inconsistent "one shows,
+ *  another doesn't" symptom this was built to prevent.
+ *
+ * Given `filename` and `existingFilenames` (the heading's own
+ * existing attachments -- see listAttachments), returns `filename`
+ * unchanged if it doesn't collide with anything already there, or a
+ * disambiguated version otherwise: "-1" inserted before the
+ * extension, then "-2", and so on, until landing on a name that's
+ * actually free ("image.jpg" -> "image-1.jpg" -> "image-2.jpg" ...).
+ * A filename with no extension at all gets the suffix appended
+ * directly, the same convention. Never returns `filename` itself
+ * once a collision is found -- an attachment always gets ITS OWN,
+ * genuinely unique storage path, so two different captures can never
+ * silently overwrite each other again regardless of what the camera
+ * app itself decided to call them. */
+function disambiguateAttachmentFilename(filename, existingFilenames) {
+  const existing = new Set(existingFilenames);
+  if (!existing.has(filename)) return filename;
+
+  const dotIndex = filename.lastIndexOf('.');
+  const hasExtension = dotIndex > 0; // > 0, not >= 0 -- a leading "." (a dotfile-style name) isn't treated as an extension
+  const base = hasExtension ? filename.slice(0, dotIndex) : filename;
+  const ext = hasExtension ? filename.slice(dotIndex) : '';
+
+  let n = 1;
+  let candidate = `${base}-${n}${ext}`;
+  while (existing.has(candidate)) {
+    n++;
+    candidate = `${base}-${n}${ext}`;
+  }
+  return candidate;
+}
+
 export {
   generateAttachmentId,
   splitAttachmentId,
@@ -157,4 +202,5 @@ export {
   sanitizeAttachmentFilename,
   listAttachments,
   removeAttachmentLink,
+  disambiguateAttachmentFilename,
 };
