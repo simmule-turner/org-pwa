@@ -10,6 +10,7 @@ import {
   sanitizeAttachmentFilename,
   listAttachments,
   removeAttachmentLink,
+  disambiguateAttachmentFilename,
 } from './src/attach.js';
 import {
   findAncestorPath,
@@ -239,8 +240,11 @@ let pendingArchiveConfirm = null;
 // refilePanel's own DOM element, same pattern as pendingArchiveConfirm.
 let pendingClockStop = null;
 // Set to { heading } when Attach is tapped -- the first-level choice
-// among the four org-attach-style sub-actions (Attach a file, Take
-// Photo/Video, Open, Delete). renderAttachChoicePanel shows that
+// among the three org-attach-style sub-actions (Attach a file, Open,
+// Delete -- a fourth, Photo/Video, was removed: Attach a file's own
+// general picker already offers the camera as one of the OS picker
+// sheet's own options on both iOS and Android, making a separate,
+// camera-only entry redundant). renderAttachChoicePanel shows that
 // choice; reuses refilePanel's own DOM element, same pattern as the
 // three flows above (mutually exclusive with all of them -- none of
 // these panels are ever open at the same time as another).
@@ -968,11 +972,16 @@ function clockInHeading(heading) {
  * land in the same per-heading folder rather than a fresh one each
  * time); computes the attachment's own data/<prefix>/<rest>/<filename>
  * path from that ID; uploads the picked file's raw bytes; and appends
- * a real org file: link -- [[file:...][filename]] -- to the heading's
- * own body, so it's immediately visible and clickable like any other
- * link in this app.
+ * a real org attachment: link -- real org-attach's own actual link
+ * type -- to the heading's own body (bare for an image, so it
+ * displays inline; with the filename as its own description
+ * otherwise), so it's immediately usable like any other link in this
+ * app. No capture hint on the picker -- the general file-picker sheet
+ * on both iOS and Android already offers the camera as one of its own
+ * options, so a separate, dedicated camera-only entry point isn't
+ * needed here.
  */
-async function attachFileToHeading(heading, capture) {
+async function attachFileToHeading(heading) {
   if (state.storageKind !== 'github' && state.storageKind !== 'webdav') {
     setStatus(
       "Attachments need automatic file-write access \u2014 only available with GitHub or WebDAV connected (a local file needs a fresh picker gesture per file, which browser security doesn't allow this app to do on its own for a brand-new attachment file). Connect GitHub or WebDAV in Settings first."
@@ -983,7 +992,7 @@ async function attachFileToHeading(heading, capture) {
 
   let picked;
   try {
-    picked = await pickBinaryFile(capture);
+    picked = await pickBinaryFile();
   } catch {
     return; // no file selected -- silently do nothing, matching every other cancel-a-picker path in this app
   }
@@ -997,7 +1006,7 @@ async function attachFileToHeading(heading, capture) {
     setProperty(heading, 'ID', id);
   }
 
-  const filename = sanitizeAttachmentFilename(picked.name);
+  const filename = disambiguateAttachmentFilename(sanitizeAttachmentFilename(picked.name), listAttachments(heading));
   const path = attachmentPath(id, filename);
 
   try {
@@ -1185,10 +1194,14 @@ function openAttachChoicePrompt(heading) {
 }
 
 /** The Attach action's own first-level choice -- org-attach's real
- *  menu structure (a)ttach / (p)hoto / (o)pen / (d)elete, adapted to
- *  this app's own tap-a-button UI rather than press-a-letter, the
- *  same "one clear button per option" convention every other multi-
- *  choice panel in this app already uses. */
+ *  menu structure (a)ttach / (o)pen / (d)elete, adapted to this app's
+ *  own tap-a-button UI rather than press-a-letter, the same "one
+ *  clear button per option" convention every other multi-choice panel
+ *  in this app already uses. A separate (p)hoto option isn't offered
+ *  here -- Attach's own general picker already surfaces the camera as
+ *  one of the OS picker sheet's own options on both iOS and Android,
+ *  so a dedicated camera-only entry would just be a second path to
+ *  the same place. */
 function renderAttachChoicePanel() {
   refilePanel.innerHTML = '';
   if (!pendingAttachChoice) {
@@ -1211,13 +1224,6 @@ function renderAttachChoicePanel() {
       pendingAttachChoice = null;
       renderAttachChoicePanel();
       await attachFileToHeading(heading);
-    })
-  );
-  row.appendChild(
-    menuButton('\ud83d\udcf7 Photo/Video', async () => {
-      pendingAttachChoice = null;
-      renderAttachChoicePanel();
-      await attachFileToHeading(heading, 'environment');
     })
   );
   row.appendChild(
@@ -5425,9 +5431,31 @@ function autoGrowTextarea(textarea) {
   requestAnimationFrame(resize);
 }
 
+// Matches a leading icon/emoji at the start of a button's own label --
+// a single "Extended_Pictographic" character, optionally followed by
+// a variation selector (U+FE0F, the "render as emoji not text" hint
+// many of these glyphs carry) or a zero-width-joined second
+// pictographic (for a compound emoji like the "person + laptop"
+// family), plus any trailing whitespace before the label text itself
+// starts. Deliberately does NOT match a bare navigation glyph like
+// "‹"/"«"/"→" -- those are punctuation, not Extended_Pictographic, and
+// read correctly at the normal text size already; only a genuine
+// icon-style glyph gets the larger, separately-sized treatment below.
+const LEADING_ICON_RE = /^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)(\s*)/u;
+
 function menuButton(label, onClick, disabled) {
   const btn = document.createElement('button');
-  btn.textContent = label;
+  const match = LEADING_ICON_RE.exec(label);
+  if (match) {
+    const icon = document.createElement('span');
+    icon.textContent = match[1];
+    icon.style.fontSize = '1.3em'; // relative to the button's own font-size, so this scales correctly wherever this button ends up (a .panel button's 15px, a wizardButton's larger sizing, etc.) rather than a fixed px value that would only be correct in one context
+    icon.style.verticalAlign = '-0.1em'; // nudges the larger glyph back down to align with the label text's own baseline, rather than sitting visibly high
+    btn.appendChild(icon);
+    btn.appendChild(document.createTextNode(match[2] + label.slice(match[0].length)));
+  } else {
+    btn.textContent = label;
+  }
   btn.disabled = !!disabled;
   btn.onclick = onClick;
   return btn;
@@ -5449,15 +5477,14 @@ function menuButton(label, onClick, disabled) {
  *  e.g. `const btn = aliasedMenuButton(aliases, 'New', onClick); if
  *  (btn) row.appendChild(btn);`.
  *
- *  Every returned button gets flex:1, so a menu row always fills its
- *  available horizontal width evenly across however many buttons
- *  actually end up visible -- omitting some doesn't leave a gap where
- *  they used to be, the remaining ones simply grow to fill it. */
+ *  Sized to its own content (via menuButton), not stretched to fill
+ *  the row -- a row of these left-aligns naturally, each button only
+ *  as wide as its own label needs, matching every other menu row in
+ *  this app. */
 function aliasedMenuButton(aliasMap, label, onClick, disabled) {
   const alias = aliasMap ? aliasMap[label] : undefined;
   if (alias === '') return null; // explicitly omitted
   const btn = menuButton(alias || label, onClick, disabled);
-  btn.style.flex = '1';
   if (alias) btn.setAttribute('aria-label', label); // preserve the real meaning for accessibility once the visible text is just an icon/short alias
   return btn;
 }
@@ -5468,9 +5495,7 @@ function aliasedMenuButton(aliasMap, label, onClick, disabled) {
  *  which otherwise fell back to bare, unstyled, visually cramped
  *  buttons since nothing in their ancestor chain provided sizing. */
 function wizardButton(label, onClick) {
-  const btn = document.createElement('button');
-  btn.textContent = label;
-  btn.onclick = onClick;
+  const btn = menuButton(label, onClick);
   btn.style.flex = '1';
   btn.style.fontSize = '15px';
   btn.style.padding = '10px 14px';
@@ -5485,11 +5510,7 @@ function wizardButton(label, onClick) {
  *  stretching alone to fill the whole row the way a lone wizardButton
  *  is meant to. */
 function tableActionButton(label, onClick, disabled) {
-  const btn = document.createElement('button');
-  btn.textContent = label;
-  btn.disabled = !!disabled;
-  btn.onclick = onClick;
-  btn.style.flex = '1';
+  const btn = menuButton(label, onClick, disabled);
   btn.style.fontSize = '15px';
   btn.style.padding = '10px 14px';
   btn.style.minHeight = '44px';
@@ -5917,6 +5938,7 @@ function renderFileBrowser() {
       const icon = document.createElement('span');
       icon.textContent = entry.type === 'dir' ? '\ud83d\udcc1' : entry.name.toLowerCase().endsWith('_archive') ? '\ud83d\uddc4\ufe0f' : '\ud83d\udcc4';
       icon.style.flexShrink = '0';
+      icon.style.fontSize = '1.3em';
       row.appendChild(icon);
 
       const name = document.createElement('span');
@@ -6023,6 +6045,10 @@ navBackBtn.addEventListener('click', async () => {
  *  read a stale doc); leaving 'org' clears outline edit state, since
  *  nothing should be mid-edit while the outline isn't even shown. */
 function switchToView(view) {
+  if (settingsOpen) {
+    settingsOpen = false;
+    render();
+  }
   if (docsOpen) {
     closeDocsView();
     render();
@@ -6352,6 +6378,7 @@ function renderAgendaView() {
                     : '\u23f0';
       kindIcon.style.flexShrink = '0';
       kindIcon.style.opacity = '0.6';
+      kindIcon.style.fontSize = '1.3em';
       row.appendChild(kindIcon);
 
       const text = document.createElement('div');
@@ -7248,6 +7275,69 @@ const QUICK_SETTINGS_FIELDS = [
   { key: 'org-xx-menu-aliases', label: 'Menu labels (File/More/Export/View)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization' },
 ];
 
+/** Resolves `field`'s own actual current effective value -- whatever
+ *  is genuinely in effect right now, whether that's an explicit
+ *  override in `globalVariables` or (when nothing's been set) the
+ *  field's own documented default -- and serializes it as the exact
+ *  string that variable's own value would need to be for a later
+ *  re-parse to reproduce the same effective state. Mirrors each field
+ *  type's own current-value resolution in renderQuickSettingField
+ *  exactly (same parseLispBoolean/parseLispNumber/getAgendaStartOnWeekday/
+ *  parseLogDoneLispValue/getUseSubSuperscripts calls), since this needs
+ *  to compute precisely what that UI is already showing, not a
+ *  second, potentially-drifting notion of "the value." Returns `null`
+ *  for a longtext field with nothing set at all (org-refile-targets,
+ *  org-agenda-files, org-xx-extra-menu, org-xx-menu-aliases) --
+ *  unlike every other type here, an unset longtext field has no
+ *  alternate "default value" a future release could ever change out
+ *  from under it (empty always means the same thing: nothing
+ *  configured), so there's nothing to protect against and nothing
+ *  meaningful to bake in. */
+function resolveQuickSettingValue(field) {
+  const rawValue = globalVariables[field.key];
+  switch (field.type) {
+    case 'boolean':
+      return parseLispBoolean(rawValue, field.default) ? 't' : 'nil';
+    case 'number':
+      return String(parseLispNumber(rawValue, field.default));
+    case 'text':
+      return rawValue !== undefined ? rawValue : field.default;
+    case 'longtext':
+      return rawValue !== undefined && rawValue !== '' ? rawValue : null;
+    case 'weekday':
+      return String(getAgendaStartOnWeekday(globalVariables));
+    case 'logdone': {
+      const current = parseLogDoneLispValue(rawValue); // 'time' | 'note' | null
+      return current ? `'${current}` : "'nil";
+    }
+    case 'subsuper':
+      return getUseSubSuperscripts(globalVariables);
+    default:
+      return rawValue !== undefined ? rawValue : null;
+  }
+}
+
+/** Builds a FULLY-RESOLVED copy of globalVariablesText for Export
+ *  Settings specifically -- every QUICK_SETTINGS_FIELDS key's own
+ *  actual current value baked in explicitly (see
+ *  resolveQuickSettingValue's own docs for exactly why), layered on
+ *  top of whatever's already in globalVariablesText so any variable
+ *  NOT covered by a Quick Settings field (there isn't one today, but
+ *  this stays correct if that ever changes) is still carried through
+ *  untouched. The LIVE globalVariablesText itself -- what the raw
+ *  textarea shows, what actually gets saved on every ordinary edit --
+ *  is completely unaffected by this; only the bundle Export Settings
+ *  produces is different from what's actually stored, and only in
+ *  the direction of being MORE complete, never less. */
+function buildFullyResolvedGlobalVariablesText() {
+  const resolved = { ...parseGlobalVariables(globalVariablesText) };
+  for (const field of QUICK_SETTINGS_FIELDS) {
+    const value = resolveQuickSettingValue(field);
+    if (value !== null) resolved[field.key] = value;
+  }
+  return serializeGlobalVariables(resolved);
+}
+
 /** Writes `key: rawValue` into the app-wide Global Variables baseline
  *  (or removes `key` entirely when `rawValue` is null) -- the exact
  *  same globalVariablesText/globalVariables module-level state the
@@ -7962,6 +8052,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
   backupRow.appendChild(
     menuButton('Export Settings', async () => {
       const bundle = await exportAllSettings(kv);
+      bundle.settings.globalVariables = buildFullyResolvedGlobalVariablesText();
       const hasCredentials = !!(bundle.settings.github && bundle.settings.github.token) || !!(bundle.settings.webdav && bundle.settings.webdav.password);
       if (
         hasCredentials &&
@@ -8008,6 +8099,15 @@ async function renderSettingsView(target = settingsRenderTarget) {
       if (imported.includes('tablesFontSize')) applyTablesFontSize(await getTablesFontSize(kv));
       if (imported.includes('github')) githubConfig = await getGithubConfig(kv);
       if (imported.includes('webdav')) webdavConfig = await getWebdavConfig(kv);
+      if (imported.includes('globalVariables')) {
+        globalVariablesText = await getGlobalVariables(kv);
+        globalVariables = parseGlobalVariables(globalVariablesText);
+        agendaFilesConfig = parseAgendaFilesVar(globalVariables['org-agenda-files'] || '');
+        if (state.doc) {
+          state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
+        }
+        syncExtraMenuButtonVisibility();
+      }
       setStatus('Imported: ' + imported.join(', ') + '.');
       renderSettingsView();
     })
@@ -8697,6 +8797,7 @@ function renderSearchResults() {
     icon.textContent = SEARCH_TYPE_ICON[result.type] || '\u2022';
     icon.style.flexShrink = '0';
     icon.style.opacity = '0.6';
+    icon.style.fontSize = '1.3em';
     row.appendChild(icon);
 
     const text = document.createElement('div');
