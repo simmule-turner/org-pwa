@@ -1007,7 +1007,7 @@ async function attachFileToHeading(heading) {
   }
 
   const filename = disambiguateAttachmentFilename(sanitizeAttachmentFilename(picked.name), listAttachments(heading));
-  const path = attachmentPath(id, filename);
+  const path = attachmentPath(id, filename, state.documentId);
 
   try {
     const adapter = activeDiskAdapter();
@@ -1043,7 +1043,7 @@ async function downloadAttachmentLink(target, heading) {
     render();
     return;
   }
-  const resolvedPath = resolveAttachmentTarget(state.doc, heading, target);
+  const resolvedPath = resolveAttachmentTarget(state.doc, heading, target, state.documentId);
   if (!resolvedPath) {
     setStatus("Can't resolve this attachment \u2014 no heading in its own ancestor chain has an :ID: property.");
     render();
@@ -1085,7 +1085,7 @@ async function deleteAttachment(heading, filename) {
     render();
     return;
   }
-  const resolvedPath = resolveAttachmentTarget(state.doc, heading, `attachment:${filename}`);
+  const resolvedPath = resolveAttachmentTarget(state.doc, heading, `attachment:${filename}`, state.documentId);
   if (!resolvedPath) {
     setStatus("Can't resolve this attachment \u2014 no heading in its own ancestor chain has an :ID: property.");
     render();
@@ -2457,7 +2457,7 @@ function renderImageNode(node, heading = null) {
   // placeholder below rather than attempting (and failing) a read.
   const canReadArbitraryPaths = state.storageKind === 'github' || state.storageKind === 'webdav';
   if (inlineImagesOn && canReadArbitraryPaths && (isAttachment || !isExternalUrl(node.target))) {
-    const resolvedPath = isAttachment ? resolveAttachmentTarget(state.doc, heading, node.target) : resolveImagePath(node.target, state.documentId);
+    const resolvedPath = isAttachment ? resolveAttachmentTarget(state.doc, heading, node.target, state.documentId) : resolveImagePath(node.target, state.documentId);
     if (!resolvedPath) {
       // An attachment: link with no owning heading in its own
       // ancestor chain carrying an :ID: at all -- nothing to resolve
@@ -7109,22 +7109,25 @@ function pickBinaryFile(capture) {
     input.type = 'file';
     if (capture) input.setAttribute('capture', capture);
     input.style.display = 'none';
-    input.addEventListener('change', async () => {
+    input.addEventListener('change', () => {
       const file = input.files && input.files[0];
       if (input.parentNode) input.parentNode.removeChild(input);
       if (!file) {
         reject(new Error('No file selected'));
         return;
       }
-      try {
-        const buffer = await file.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-        resolve({ name: file.name, type: file.type, base64: btoa(binary) });
-      } catch (err) {
-        reject(err);
-      }
+      setStatus('Reading file\u2026');
+      render();
+      const reader = new FileReader();
+      reader.onload = () => {
+        // reader.result is "data:<mime>;base64,<data>" -- everything after the first comma is the base64 payload itself.
+        const dataUrl = reader.result;
+        const commaIndex = dataUrl.indexOf(',');
+        const base64 = commaIndex === -1 ? '' : dataUrl.slice(commaIndex + 1);
+        resolve({ name: file.name, type: file.type, base64 });
+      };
+      reader.onerror = () => reject(reader.error || new Error('Could not read the picked file'));
+      reader.readAsDataURL(file);
     });
     document.body.appendChild(input);
     input.click();
