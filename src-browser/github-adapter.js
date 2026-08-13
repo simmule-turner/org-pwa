@@ -105,8 +105,13 @@ async function githubErrorMessage(res) {
  *  Contents API's own `content` field is only ever inlined for a file
  *  under 1MB; anything larger (a real camera photo very easily
  *  exceeds this -- multi-megabyte JPEGs are the ordinary case, not an
- *  edge case) omits `content` from the response entirely, while still
- *  including the file's own `sha` -- which the Blobs API accepts
+ *  edge case) returns `content` as an EMPTY STRING with
+ *  `encoding: "none"` -- confirmed directly against GitHub's own
+ *  documented "Size limits" behavior; NOT omitted from the response
+ *  entirely, a real, previously-confirmed mistake here that meant the
+ *  fallback below never actually fired for a large file at all (an
+ *  empty string is never `undefined`) -- the response still includes
+ *  the file's own `sha` either way, which the Blobs API accepts
  *  directly, with its own much higher 100MB ceiling, regardless of
  *  the Contents API's own inline-content threshold. Returns the same
  *  base64 string shape the Contents API's own inline `content` field
@@ -137,7 +142,7 @@ export function createGithubAdapter(getConfig) {
     if (Array.isArray(body)) {
       throw new Error(`"${fileId}" is a directory in this repo, not a file.`);
     }
-    const content = body.content !== undefined ? body.content : await fetchBlobContent(config, body.sha);
+    const content = body.encoding === 'none' ? await fetchBlobContent(config, body.sha) : body.content;
     return { content: base64ToUtf8(content), hash: body.sha };
   }
 
@@ -160,7 +165,7 @@ export function createGithubAdapter(getConfig) {
     if (Array.isArray(body)) {
       throw new Error(`"${fileId}" is a directory in this repo, not a file.`);
     }
-    const content = body.content !== undefined ? body.content : await fetchBlobContent(config, body.sha);
+    const content = body.encoding === 'none' ? await fetchBlobContent(config, body.sha) : body.content;
     return { base64: content.replace(/\n/g, ''), hash: body.sha };
   }
 
