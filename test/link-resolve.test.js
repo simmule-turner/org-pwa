@@ -298,11 +298,28 @@ test('guessViewableMimeType identifies PDF, video, and text extensions correctly
   assert.equal(guessViewableMimeType('report.pdf'), 'application/pdf');
   assert.equal(guessViewableMimeType('clip.mp4'), 'video/mp4');
   assert.equal(guessViewableMimeType('clip.mov'), 'video/quicktime');
-  assert.equal(guessViewableMimeType('clip.webm'), 'video/webm');
   assert.equal(guessViewableMimeType('notes.txt'), 'text/plain');
   assert.equal(guessViewableMimeType('notes.md'), 'text/plain');
   assert.equal(guessViewableMimeType('data.json'), 'text/plain');
   assert.equal(guessViewableMimeType('data.csv'), 'text/plain');
+});
+
+test('THE FIX: guessViewableMimeType now recognizes raster image formats too -- confirmed as a real bug, not a deliberate exclusion: an ordinary image has no script-execution risk, unlike HTML/SVG below', () => {
+  assert.equal(guessViewableMimeType('photo.jpg'), 'image/jpeg');
+  assert.equal(guessViewableMimeType('photo.png'), 'image/png');
+  assert.equal(guessViewableMimeType('photo.heic'), 'image/heic');
+  assert.equal(guessViewableMimeType('photo.webp'), 'image/webp');
+});
+
+test('THE FIX: guessViewableMimeType now recognizes audio formats too, the same real bug caught immediately after the image fix', () => {
+  assert.equal(guessViewableMimeType('song.mp3'), 'audio/mpeg');
+  assert.equal(guessViewableMimeType('recording.m4a'), 'audio/mp4');
+  assert.equal(guessViewableMimeType('clip.wav'), 'audio/wav');
+});
+
+test('THE FIX: the .webm / .mp4 ambiguity is resolved deliberately, not by accident of object-spread order -- .webm favors this app\u2019s own recording format (audio), .mp4 stays video since it\u2019s never actually produced by recording', () => {
+  assert.equal(guessViewableMimeType('recording.webm'), 'audio/webm');
+  assert.equal(guessViewableMimeType('clip.mp4'), 'video/mp4');
 });
 
 test('THE REAL SECURITY CONSIDERATION: guessViewableMimeType deliberately excludes HTML -- opening it via direct navigation would execute any embedded script, unlike this app\u2019s own existing, safe <img>-based SVG display', () => {
