@@ -8,6 +8,7 @@ import {
   sanitizeAttachmentFilename,
   listAttachments,
   removeAttachmentLink,
+  disambiguateAttachmentFilename,
 } from '../src/attach.js';
 
 // ---- generateAttachmentId ---------------------------------------------------
@@ -153,4 +154,40 @@ test('removeAttachmentLink is a no-op for a filename that isn\u2019t actually at
   const heading = { bodyLines: ['[[attachment:photo.jpg]]'] };
   removeAttachmentLink(heading, 'nonexistent.pdf');
   assert.deepEqual(heading.bodyLines, ['[[attachment:photo.jpg]]']);
+});
+
+// ---- disambiguateAttachmentFilename ---------------------------------------
+
+test('THE REAL BUG: a filename that doesn\u2019t collide with any existing attachment is returned unchanged', () => {
+  assert.equal(disambiguateAttachmentFilename('photo.jpg', []), 'photo.jpg');
+  assert.equal(disambiguateAttachmentFilename('photo.jpg', ['notes.pdf']), 'photo.jpg');
+});
+
+test('THE REAL BUG: a colliding filename (the exact "image.jpg" camera-capture scenario reported) gets "-1" inserted before the extension', () => {
+  assert.equal(disambiguateAttachmentFilename('image.jpg', ['image.jpg']), 'image-1.jpg');
+});
+
+test('THE REAL BUG: multiple successive collisions (repeated camera captures, all named identically) each get their own, genuinely unique number', () => {
+  assert.equal(disambiguateAttachmentFilename('image.jpg', ['image.jpg', 'image-1.jpg']), 'image-2.jpg');
+  assert.equal(disambiguateAttachmentFilename('image.jpg', ['image.jpg', 'image-1.jpg', 'image-2.jpg']), 'image-3.jpg');
+});
+
+test('disambiguateAttachmentFilename never returns the original name once ANY collision is found, even if a later-numbered slot happens to already be free', () => {
+  // image-1.jpg already taken by something else entirely, but image.jpg itself still collides -- must not silently return image.jpg.
+  const result = disambiguateAttachmentFilename('image.jpg', ['image.jpg', 'image-1.jpg']);
+  assert.notEqual(result, 'image.jpg');
+  assert.equal(result, 'image-2.jpg');
+});
+
+test('a filename with no extension at all gets the suffix appended directly', () => {
+  assert.equal(disambiguateAttachmentFilename('README', ['README']), 'README-1');
+});
+
+test('a dotfile-style name (leading dot) is not mistaken for having an extension', () => {
+  assert.equal(disambiguateAttachmentFilename('.gitignore', ['.gitignore']), '.gitignore-1');
+});
+
+test('the file\u2019s own real extension is always preserved after disambiguation', () => {
+  assert.match(disambiguateAttachmentFilename('photo.png', ['photo.png']), /\.png$/);
+  assert.match(disambiguateAttachmentFilename('video.mp4', ['video.mp4']), /\.mp4$/);
 });
