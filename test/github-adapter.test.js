@@ -474,7 +474,7 @@ test('readBinary strips MIME-style line wrapping from GitHub\u2019s own response
   );
 });
 
-test('THE FIX: readBinary falls back to the Blobs API when content is omitted from the Contents API response -- GitHub\u2019s own real, documented behavior for any file over its own 1MB inline-content threshold (an ordinary camera photo easily exceeds this)', () => {
+test('THE FIX: readBinary falls back to the Blobs API when content is empty with encoding "none" -- GitHub\u2019s own real, documented behavior for any file over its own 1MB inline-content threshold (an ordinary camera photo easily exceeds this) -- confirmed as a real, previously-mistaken assumption: content is NOT omitted from the response, it\u2019s present but empty, which a naive "!== undefined" check never actually detects', () => {
   const photoBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5]); // JPEG magic bytes + arbitrary payload
   const photoBase64 = photoBytes.toString('base64');
   const calls = [];
@@ -485,8 +485,8 @@ test('THE FIX: readBinary falls back to the Blobs API when content is omitted fr
         assert.match(url, /\/git\/blobs\/big-photo-sha$/);
         return jsonResponse(200, { content: photoBase64, sha: 'big-photo-sha', encoding: 'base64' });
       }
-      // The Contents API's own real response shape for a file over 1MB: no "content" field at all, just metadata (including sha, and a download_url this fix deliberately does NOT rely on -- see fetchBlobContent's own docs for why the Blobs API is the more robust choice).
-      return jsonResponse(200, { name: 'photo.jpg', sha: 'big-photo-sha', size: 3145728, download_url: 'https://raw.githubusercontent.com/x' });
+      // GitHub's own actual, real documented response shape for a file over 1MB (confirmed): content is an EMPTY STRING, encoding is "none" -- not an omitted field.
+      return jsonResponse(200, { name: 'photo.jpg', sha: 'big-photo-sha', size: 3145728, content: '', encoding: 'none' });
     },
     async () => {
       const adapter = createGithubAdapter(() => CONFIG);
@@ -508,13 +508,24 @@ test('THE FIX: read() (text) falls back to the Blobs API the same way, for a lar
       if (url.includes('/git/blobs/')) {
         return jsonResponse(200, { content: base64, sha: 'big-file-sha' });
       }
-      return jsonResponse(200, { name: 'huge.org', sha: 'big-file-sha', size: 2000000 });
+      return jsonResponse(200, { name: 'huge.org', sha: 'big-file-sha', size: 2000000, content: '', encoding: 'none' });
     },
     async () => {
       const adapter = createGithubAdapter(() => CONFIG);
       const result = await adapter.read('huge.org');
       assert.equal(result.content, text);
       assert.equal(result.hash, 'big-file-sha');
+    }
+  );
+});
+
+test('a small file with content genuinely present is used directly, WITHOUT the encoding "none" signal (the ordinary, normal case) -- confirms the fix doesn\u2019t only work when content happens to be an empty string for some other reason', () => {
+  return withMockFetch(
+    async () => jsonResponse(200, { content: 'aGVsbG8=', sha: 'ordinary-sha', encoding: 'base64' }),
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      const result = await adapter.readBinary('ordinary.txt');
+      assert.equal(result.base64, 'aGVsbG8=');
     }
   );
 });
