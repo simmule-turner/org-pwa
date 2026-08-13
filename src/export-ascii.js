@@ -34,7 +34,7 @@
  * contents for).
  */
 
-import { parseInline } from './inline-markup.js';
+import { parseInline, stripLineBreakMarker } from './inline-markup.js';
 import { parseWidthCookieRow } from './table-cookies.js';
 
 const LINK_RE = /\[\[([^\]]+)\](?:\[([^\]]+)\])?\]/g;
@@ -183,9 +183,19 @@ function renderPlanningAscii(planning, indent) {
 }
 
 function renderParagraphAscii(node, indent, width) {
-  const joined = renderTextAscii(node.lines.join(' '));
   const available = Math.max(10, width - indent.length); // a pathologically narrow width still leaves SOME room, rather than producing zero-or-negative-width wrapping
-  return wrapText(joined, available).map((line) => indent + line);
+  const segments = [[]];
+  for (const line of node.lines) {
+    segments[segments.length - 1].push(stripLineBreakMarker(line));
+    if (stripLineBreakMarker(line) !== line) segments.push([]); // an explicit "\\" starts a genuinely new, separately-wrapped segment
+  }
+  const out = [];
+  for (const segment of segments) {
+    if (segment.length === 0) continue;
+    const joined = renderTextAscii(segment.join(' '));
+    out.push(...wrapText(joined, available).map((line) => indent + line));
+  }
+  return out;
 }
 
 function renderListAscii(list, indent, width) {

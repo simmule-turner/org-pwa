@@ -123,6 +123,33 @@ export function getDeadlineWarningDays(vars) {
   return n >= 0 ? n : 14;
 }
 
+/** org-scheduled-delay-days: SCHEDULED's own equivalent to
+ *  org-deadline-warning-days above -- how many days a SCHEDULED item
+ *  with no explicit delay cookie of its own (e.g. no "-2d" suffix)
+ *  has its appearance in the agenda delayed by, past its own literal
+ *  date (see resolveScheduledDate in agenda.js for the direction
+ *  itself, which is already correctly the opposite of DEADLINE's own
+ *  early-warning direction -- this is purely about the FILE-WIDE
+ *  DEFAULT for that same delay, when no per-heading suffix is
+ *  written). Default 0 -- unlike DEADLINE's own confirmed-against-
+ *  the-FAQ 14-day default, this specific number couldn't be directly
+ *  confirmed against a primary source the way that one was; 0 is used
+ *  on the strength of the Org manual's own bare SCHEDULED example
+ *  ("SCHEDULED: <2004-12-25 Sat>" shows on the 25th, with no
+ *  additional caveat about any further default delay applying) and
+ *  the basic semantics of what a "delay" even is: unlike DEADLINE's
+ *  own early-warning default (which proactively gives MORE
+ *  information nobody had to ask for), a nonzero default here would
+ *  mean every ordinary SCHEDULED item is silently HIDDEN for some
+ *  number of days by default, contradicting the manual's own example
+ *  and actively working against SCHEDULED's whole purpose. A negative
+ *  value falls back to 0 too, rather than producing a nonsensical
+ *  negative delay. */
+export function getScheduledDelayDays(vars) {
+  const n = parseLispNumber((vars || {})['org-scheduled-delay-days'], 0);
+  return n >= 0 ? n : 0;
+}
+
 /** org-cycle-open-archived-trees: real org's default is nil (false) —
  *  cycling/folding does NOT expand into archived trees. */
 export function getCycleOpenArchivedTrees(vars) {

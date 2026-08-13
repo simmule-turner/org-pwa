@@ -389,6 +389,7 @@ function buildAgendaItems(docs, opts = {}) {
     today = new Date(),
     birthdayProperty = 'BIRTHDAY',
     deadlineWarningDays = 14,
+    scheduledDelayDays = 0,
     calendarLatitude = 35.994,
     calendarLongitude = -78.8986,
   } = opts;
@@ -429,9 +430,15 @@ function buildAgendaItems(docs, opts = {}) {
       // carry-forward window function: DEADLINE subtracts from the
       // window's own start; SCHEDULED shifts the effective "item
       // date" itself forward, with no separate early-warning offset
-      // on top of that.
+      // on top of that. Each side falls back to its own file-wide
+      // default (deadlineWarningDays / scheduledDelayDays -- see
+      // local-variables.js's own getDeadlineWarningDays/
+      // getScheduledDelayDays) only when the heading itself has no
+      // explicit "-Nd" cookie of its own; an explicit per-heading
+      // cookie always wins over either default.
       const earlyWarningDays = kind === 'deadline' ? (delay ? delayDays : deadlineWarningDays) : 0;
-      const effectiveDate = kind === 'scheduled' && delay ? addDays(parsed.date, delayDays) : parsed.date;
+      const effectiveScheduledDelayDays = kind === 'scheduled' ? (delay ? delayDays : scheduledDelayDays) : 0;
+      const effectiveDate = kind === 'scheduled' ? addDays(parsed.date, effectiveScheduledDelayDays) : parsed.date;
       for (const occurrenceDate of carryForwardOccurrences(effectiveDate, today, rangeStart, rangeEnd, earlyWarningDays)) {
         const daysOverdue = Math.round((startOfDay(occurrenceDate) - startOfDay(parsed.date)) / MS_PER_DAY);
         items.push({ ...base, date: occurrenceDate, daysOverdue });

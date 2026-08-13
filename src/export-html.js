@@ -19,7 +19,7 @@
  * reasoning, which applies here without change.
  */
 
-import { parseInline } from './inline-markup.js';
+import { parseInline, stripLineBreakMarker } from './inline-markup.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 import { resolveLinkTarget } from './link-resolve.js';
 import { isWidthCookieRow } from './table-cookies.js';
@@ -167,17 +167,28 @@ function renderTextHtml(text) {
 
 // ---- body content -----------------------------------------------------
 
+function joinParagraphLinesHtml(lines) {
+  return lines
+    .map((line, i) => {
+      const forcedBreak = stripLineBreakMarker(line) !== line;
+      const rendered = renderTextHtml(stripLineBreakMarker(line));
+      if (i === lines.length - 1) return rendered;
+      return rendered + (forcedBreak ? '<br>' : ' ');
+    })
+    .join('');
+}
+
 function renderParagraphHtml(node) {
   if (node.footnoteLabel !== null) {
     const strippedFirstLine = node.lines[0].replace(
       new RegExp('^\\[fn:' + node.footnoteLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\]\\s?'),
       ''
     );
-    const html = [strippedFirstLine, ...node.lines.slice(1)].map(renderTextHtml).join('<br>');
+    const html = joinParagraphLinesHtml([strippedFirstLine, ...node.lines.slice(1)]);
     footnoteDefinitionsHtml.push({ label: node.footnoteLabel, html });
     return ''; // emitted in the Footnotes section at the end instead
   }
-  return '<p>' + node.lines.map(renderTextHtml).join('<br>') + '</p>';
+  return '<p>' + joinParagraphLinesHtml(node.lines) + '</p>';
 }
 
 function renderListItemsHtml(items) {

@@ -33,7 +33,7 @@
  * view does.
  */
 
-import { parseInline } from './inline-markup.js';
+import { parseInline, stripLineBreakMarker } from './inline-markup.js';
 import { resolveLinkTarget } from './link-resolve.js';
 import { isWidthCookieRow } from './table-cookies.js';
 
@@ -209,11 +209,21 @@ function renderParagraphMd(node) {
     footnoteDefinitionsMd.push({ label: node.footnoteLabel, text });
     return ''; // emitted at the end instead, alongside every other footnote definition
   }
-  // A trailing double-space before the newline is the standard
-  // Markdown "hard line break" convention -- preserves org's own
-  // multi-line paragraph structure rather than collapsing it into one
-  // run-on line or one that only breaks by accident of line width.
-  return node.lines.map(renderTextMd).join('  \n');
+  // Markdown's own "two trailing spaces + newline" is its actual hard
+  // line break convention -- used only where the source line itself
+  // had an explicit "\\" marker, matching real org's own actual
+  // default export behavior (org-export-preserve-breaks defaults to
+  // nil): adjacent lines within one paragraph flow together with a
+  // plain space otherwise, not one that only breaks by accident of
+  // the reader's own line width.
+  return node.lines
+    .map((line, i) => {
+      const forcedBreak = stripLineBreakMarker(line) !== line;
+      const rendered = renderTextMd(stripLineBreakMarker(line));
+      if (i === node.lines.length - 1) return rendered;
+      return rendered + (forcedBreak ? '  \n' : ' ');
+    })
+    .join('');
 }
 
 function renderListMd(list, indent) {

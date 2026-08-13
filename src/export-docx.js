@@ -30,7 +30,7 @@
  * target path, not embedded, matching every other exporter here.
  */
 
-import { parseInline } from './inline-markup.js';
+import { parseInline, stripLineBreakMarker } from './inline-markup.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 import { resolveLinkTarget } from './link-resolve.js';
 import { createZip } from './zip-writer.js';
@@ -222,8 +222,13 @@ function renderParagraphDocx(node) {
   // its reference was encountered -- same treatment as
   // export-odt.js's own renderParagraphOdt.
   if (node.footnoteLabel !== null) return '';
-  const lineRuns = node.lines.map((line) => renderTextDocx(line));
-  const withBreaks = lineRuns.join('<w:r><w:br/></w:r>');
+  const lineRuns = node.lines.map((line, i) => {
+    const stripped = stripLineBreakMarker(line);
+    const needsTrailingSpace = i < node.lines.length - 1 && stripped === line; // no marker on this line -- the next one flows right after it
+    return renderTextDocx(stripped + (needsTrailingSpace ? ' ' : ''));
+  });
+  const breaks = node.lines.map((line) => (stripLineBreakMarker(line) !== line ? '<w:r><w:br/></w:r>' : ''));
+  const withBreaks = lineRuns.map((run, i) => run + (breaks[i] || '')).join('');
   return `<w:p><w:pPr><w:pStyle w:val="Standard"/></w:pPr>${withBreaks}</w:p>`;
 }
 

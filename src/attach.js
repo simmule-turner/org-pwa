@@ -196,6 +196,61 @@ function disambiguateAttachmentFilename(filename, existingFilenames) {
   return candidate;
 }
 
+// Every audio extension this app's own in-browser recording feature can
+// actually produce (.webm on Chrome/Firefox/Edge, .m4a/.mp4 on Safari --
+// MediaRecorder's own real, confirmed cross-browser format split, not a
+// single universal one), plus the common existing-file formats someone
+// might attach directly through the regular file picker instead of
+// recording fresh.
+const AUDIO_EXT_RE = /\.(webm|m4a|mp4|mp3|wav|ogg|oga|weba|aac|flac)$/i;
+
+/** True iff `filename`'s own extension is a recognized audio format --
+ *  what renderLinkNode uses to decide whether an attachment gets the
+ *  inline play-button/player treatment instead of a plain download
+ *  link, the same way IMAGE_EXT_RE (in inline-markup.js) decides
+ *  which attachments get inline image display. */
+function isAudioFilename(filename) {
+  return AUDIO_EXT_RE.test(filename);
+}
+
+/** A real MIME type's own recognized file extension -- specifically
+ *  MediaRecorder's own real, actually-produced output types (its
+ *  `mimeType` property, reflecting what the browser actually chose to
+ *  record with, not a fixed assumption): "audio/webm" (Chrome/
+ *  Firefox/Edge, generally with an explicit ";codecs=opus" suffix
+ *  MediaRecorder itself may append, which this strips before
+ *  matching) -> "webm"; "audio/mp4" (Safari) -> "m4a", the
+ *  conventional extension for AAC-in-MP4 audio specifically (matching
+ *  what every other app / OS-level "Voice Memo" style recording
+ *  already uses for this same underlying format, rather than the
+ *  more generic, video-implying ".mp4"). Falls back to "webm" for
+ *  anything else unrecognized, rather than producing a filename with
+ *  no extension at all. */
+function extensionForRecordedMimeType(mimeType) {
+  const base = String(mimeType || '').split(';')[0].trim().toLowerCase();
+  if (base === 'audio/mp4') return 'm4a';
+  if (base === 'audio/webm') return 'webm';
+  if (base === 'audio/ogg') return 'ogg';
+  if (base === 'audio/wav' || base === 'audio/wave' || base === 'audio/x-wav') return 'wav';
+  return 'webm';
+}
+
+/** A reasonable filename for a fresh in-browser recording -- unlike a
+ *  picked file, a recording has no name of its own to begin with, so
+ *  one is generated here: "recording-YYYY-MM-DD-HHMMSS.<ext>", the
+ *  extension itself derived from the actual recorded MIME type (see
+ *  extensionForRecordedMimeType's own docs for why this can't be a
+ *  single fixed extension). Reasonably readable and reasonably
+ *  unlikely to collide with anything already attached -- and even if
+ *  it does, disambiguateAttachmentFilename's own collision handling
+ *  still applies on top of this regardless, the same safety net every
+ *  other attachment already has. */
+function generateRecordingFilename(mimeType, now = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  return `recording-${stamp}.${extensionForRecordedMimeType(mimeType)}`;
+}
+
 export {
   generateAttachmentId,
   splitAttachmentId,
@@ -205,4 +260,7 @@ export {
   listAttachments,
   removeAttachmentLink,
   disambiguateAttachmentFilename,
+  isAudioFilename,
+  extensionForRecordedMimeType,
+  generateRecordingFilename,
 };

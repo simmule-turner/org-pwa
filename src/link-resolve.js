@@ -160,6 +160,74 @@ export function guessImageMimeType(path) {
   return IMAGE_MIME_TYPES[ext] || 'application/octet-stream';
 }
 
+const AUDIO_MIME_TYPES = {
+  webm: 'audio/webm',
+  m4a: 'audio/mp4',
+  mp4: 'audio/mp4',
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  oga: 'audio/ogg',
+  weba: 'audio/webm',
+  aac: 'audio/aac',
+  flac: 'audio/flac',
+};
+
+/** Same idea as guessImageMimeType, for the audio-attachment playback
+ *  feature's own data: URL construction -- an unrecognized extension
+ *  falls back to a generic binary MIME type, matching
+ *  guessImageMimeType's own fallback exactly (the browser's own
+ *  <audio> element will simply fail to play an unplayable file either
+ *  way; this isn't attempting format detection beyond the extension
+ *  itself, the same honest limitation guessImageMimeType already
+ *  has). */
+export function guessAudioMimeType(path) {
+  const match = /\.([a-z0-9]+)$/i.exec(path);
+  const ext = match ? match[1].toLowerCase() : '';
+  return AUDIO_MIME_TYPES[ext] || 'application/octet-stream';
+}
+
+const VIEWABLE_MIME_TYPES = {
+  pdf: 'application/pdf',
+  mp4: 'video/mp4',
+  m4v: 'video/mp4',
+  mov: 'video/quicktime',
+  webm: 'video/webm',
+  ogv: 'video/ogg',
+  txt: 'text/plain',
+  md: 'text/plain',
+  org: 'text/plain',
+  csv: 'text/plain',
+  log: 'text/plain',
+  json: 'text/plain',
+  xml: 'text/plain',
+  yaml: 'text/plain',
+  yml: 'text/plain',
+};
+
+/** Returns a MIME type for anything this app's own Open action can
+ *  reasonably expect a browser to display natively when opened
+ *  directly (a new tab, via a blob: URL) -- a PDF's own built-in
+ *  viewer, native video playback, or plain text rendered as-is. Null
+ *  for anything without a real, likely-native viewer (an unrecognized
+ *  extension, or one deliberately excluded here despite technically
+ *  being "text" -- .html and .svg both stay out of this table on
+ *  purpose: opening either via direct navigation, unlike this app's
+ *  own existing, safe <img>-based inline SVG display or a sandboxed
+ *  PDF/video viewer, would actually execute any script embedded in
+ *  the file, a real and meaningfully different risk this table is
+ *  careful not to introduce for an "open this attachment" action).
+ *  Deliberately returns null rather than a fallback type (unlike
+ *  guessImageMimeType/guessAudioMimeType) -- callers need to
+ *  distinguish "no viewer, fall back to downloading it instead" from
+ *  "here's what to view it as", not get handed a generic
+ *  application/octet-stream that would look viewable when it isn't. */
+export function guessViewableMimeType(path) {
+  const match = /\.([a-z0-9]+)$/i.exec(path);
+  const ext = match ? match[1].toLowerCase() : '';
+  return VIEWABLE_MIME_TYPES[ext] || null;
+}
+
 function walkHeadings(doc, visit) {
   function walk(nodes) {
     for (const node of nodes) {

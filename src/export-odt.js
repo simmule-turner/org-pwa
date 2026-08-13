@@ -22,7 +22,7 @@
  *     already treat images as a reference rather than embedded data.
  */
 
-import { parseInline } from './inline-markup.js';
+import { parseInline, stripLineBreakMarker } from './inline-markup.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 import { resolveLinkTarget } from './link-resolve.js';
 import { createZip } from './zip-writer.js';
@@ -167,7 +167,15 @@ function renderParagraphOdt(node) {
   // encountered -- the definition-line paragraph itself contributes
   // nothing further here, same as export-html.js's own treatment.
   if (node.footnoteLabel !== null) return '';
-  return '<text:p text:style-name="Standard">' + node.lines.map(renderTextOdt).join('<text:line-break/>') + '</text:p>';
+  const joined = node.lines
+    .map((line, i) => {
+      const forcedBreak = stripLineBreakMarker(line) !== line;
+      const rendered = renderTextOdt(stripLineBreakMarker(line));
+      if (i === node.lines.length - 1) return rendered;
+      return rendered + (forcedBreak ? '<text:line-break/>' : ' ');
+    })
+    .join('');
+  return '<text:p text:style-name="Standard">' + joined + '</text:p>';
 }
 
 function renderListItemsOdt(items, listStyleName) {

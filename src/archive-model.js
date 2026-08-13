@@ -436,32 +436,61 @@ function blankArchiveTargetHeading(title, level) {
  * Inserts `extractedHeading` into `targetDoc` per `headlinePart` (the
  * second half of a parsed archive location). A blank headlinePart
  * appends as a new top-level entry (appendToArchive's own existing,
- * simpler behavior). Otherwise headlinePart names a single target
- * heading (real org's documented examples are always one level, e.g.
- * `* Archived Tasks` -- leading asterisks/whitespace are stripped to
- * get the bare title): an existing top-level heading in `targetDoc`
- * with that exact title gets the extracted subtree appended as its
- * last child; if none exists yet, one is created first. Only a single
- * heading level is supported as an insertion target, not a full
- * multi-level org outline path -- covers every example in org's own
- * documentation for this variable, not a faithful reproduction of
- * arbitrary olpath targeting.
+ * simpler behavior). Otherwise headlinePart names a target heading --
+ * its own leading asterisk COUNT is the target's own intended level,
+ * matching real org's own actual documented behavior exactly (its
+ * own example: "basement::** Finished Tasks" archives "as level 3
+ * trees below the level 2 heading" -- the two asterisks specifically
+ * mean level 2, not merely "some heading called Finished Tasks"):
+ * an existing heading anywhere in `targetDoc` (not just top-level --
+ * a level-2 target could itself be nested under some other level-1
+ * heading already) at that exact level with that exact title gets the
+ * extracted subtree appended as its last child; if none exists yet,
+ * one is created fresh at that same level and appended to the
+ * document's own top level (org's own outline model has no strict
+ * requirement that a heading's own level match its literal nesting
+ * depth -- a level-2 heading can legally exist with no level-1
+ * parent immediately before it, the same flexibility this mirrors).
+ * A multi-segment "A/B"-style outline path is NOT a real
+ * org-archive-location feature at all (the only documented "/" usage
+ * is the special, unrelated "datetree/" prefix, a wholly different
+ * date-tree mechanism); this only ever targets a single named
+ * heading, at whatever single level its own asterisks specify.
  */
 function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart) {
   const trimmedPath = String(headlinePart || '').trim();
   if (!trimmedPath) {
     return appendToArchive(targetDoc, extractedHeading);
   }
+  const starMatch = /^(\*+)\s*/.exec(trimmedPath);
+  const targetLevel = starMatch ? starMatch[1].length : 1;
   const targetTitle = trimmedPath.replace(/^\*+\s*/, '');
-  let target = (targetDoc.children || []).find((h) => h.title === targetTitle);
+  let target = findHeadingAtLevel(targetDoc, targetLevel, targetTitle);
   if (!target) {
-    target = blankArchiveTargetHeading(targetTitle, 1);
+    target = blankArchiveTargetHeading(targetTitle, targetLevel);
     targetDoc.children.push(target);
   }
   shiftLevels(extractedHeading, target.level + 1);
   target.children.push(extractedHeading);
   target.collapsed = false; // otherwise the just-archived item vanishes from view immediately -- same reasoning demoteHeading itself already applies
   return targetDoc;
+}
+
+/** Recursively searches `doc`'s own entire heading tree (not just its
+ *  own top level) for the first heading at exactly `level` with
+ *  exactly `title` -- insertAtArchiveLocation's own helper, since a
+ *  level-2+ archive target could itself be nested anywhere, not
+ *  necessarily at the document's own top level. */
+function findHeadingAtLevel(doc, level, title) {
+  function walk(nodes) {
+    for (const node of nodes) {
+      if (node.level === level && node.title === title) return node;
+      const found = walk(node.children || []);
+      if (found) return found;
+    }
+    return null;
+  }
+  return walk(doc.children || []);
 }
 
 export {
