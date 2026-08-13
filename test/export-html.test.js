@@ -375,3 +375,26 @@ test('a table with no width-cookie row is completely unaffected', () => {
   const html = exportToHtml(doc);
   assert.match(html, /<thead><tr><th>Name<\/th><th>Age<\/th><\/tr><\/thead>/);
 });
+
+// ---- THE FIX: paragraph reflow -- flow unless "\\" forces a real break ----
+
+test('THE FIX: adjacent source lines within one paragraph flow together with a plain space, not a forced <br> -- matching real org\u2019s own actual default export behavior (org-export-preserve-breaks defaults to nil)', () => {
+  const doc = parseOrg('* H\nLine one\nline two continues\n');
+  const out = exportToHtml(doc);
+  assert.match(out, /Line one line two continues/);
+  assert.doesNotMatch(out, /Line one<br>/);
+});
+
+test('THE FIX: an explicit "\\\\" marker still forces a real <br>, exactly where it appears -- not everywhere', () => {
+  const doc = parseOrg('* H\nLine one\\\\\nline two forced\nline three flows\n');
+  const out = exportToHtml(doc);
+  const breakCount = (out.match(/<br>/g) || []).length;
+  assert.equal(breakCount, 1, 'exactly one forced break, after "Line one" specifically');
+  assert.match(out, /Line one<br>line two forced line three flows/);
+});
+
+test('the "\\\\" marker itself is stripped, never leaking into the HTML output as literal backslashes', () => {
+  const doc = parseOrg('* H\nSome text\\\\\nmore text\n');
+  const out = exportToHtml(doc);
+  assert.doesNotMatch(out, /\\\\/);
+});

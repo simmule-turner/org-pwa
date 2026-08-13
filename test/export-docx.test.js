@@ -264,3 +264,29 @@ test(
     assert.match(footnotesXml, /footnote body here/);
   }
 );
+
+// ---- THE FIX: paragraph reflow -- flow unless "\\" forces a real break ----
+
+test('THE FIX: adjacent source lines within one paragraph flow together with a plain space (embedded in the first run\u2019s own text), not a forced <w:br/>', () => {
+  const doc = parseOrg('* H\nLine one\nline two continues\n');
+  const xml = unzipEntry(exportToDocx(doc), 'word/document.xml');
+  assert.match(xml, /Line one <\/w:t>/, 'the trailing space is embedded in the first line\u2019s own text run');
+  assert.match(xml, /line two continues<\/w:t>/);
+  assert.doesNotMatch(xml, /<w:br\/>/);
+});
+
+test('THE FIX: an explicit "\\\\" marker still forces a real line break, exactly where it appears -- not everywhere', () => {
+  const doc = parseOrg('* H\nLine one\\\\\nline two forced\nline three flows\n');
+  const xml = unzipEntry(exportToDocx(doc), 'word/document.xml');
+  const breakCount = (xml.match(/<w:br\/>/g) || []).length;
+  assert.equal(breakCount, 1, 'exactly one forced break, after "Line one" specifically');
+  assert.match(xml, /Line one<\/w:t><\/w:r><w:r><w:br\/>/, 'the break comes immediately after the marked line, with no trailing space added to it');
+  assert.match(xml, /line two forced <\/w:t>/, 'the two unmarked lines after it still flow together with a space');
+  assert.match(xml, /line three flows<\/w:t>/);
+});
+
+test('the "\\\\" marker itself is stripped, never leaking into the DOCX output as literal backslashes', () => {
+  const doc = parseOrg('* H\nSome text\\\\\nmore text\n');
+  const xml = unzipEntry(exportToDocx(doc), 'word/document.xml');
+  assert.doesNotMatch(xml, /\\\\/);
+});

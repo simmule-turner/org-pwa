@@ -220,3 +220,26 @@ test('a table with no width-cookie row is completely unaffected', () => {
   const firstRow = xml.match(/<table:table-row>.*?<\/table:table-row>/)[0];
   assert.match(firstRow, />Name</);
 });
+
+// ---- THE FIX: paragraph reflow -- flow unless "\\" forces a real break ----
+
+test('THE FIX: adjacent source lines within one paragraph flow together with a plain space, not a forced <text:line-break/>', () => {
+  const doc = parseOrg('* H\nLine one\nline two continues\n');
+  const content = unzipEntry(exportToOdt(doc), 'content.xml');
+  assert.match(content, /Line one line two continues/);
+  assert.doesNotMatch(content, /<text:line-break\/>/);
+});
+
+test('THE FIX: an explicit "\\\\" marker still forces a real line break, exactly where it appears -- not everywhere', () => {
+  const doc = parseOrg('* H\nLine one\\\\\nline two forced\nline three flows\n');
+  const content = unzipEntry(exportToOdt(doc), 'content.xml');
+  const breakCount = (content.match(/<text:line-break\/>/g) || []).length;
+  assert.equal(breakCount, 1);
+  assert.match(content, /Line one<text:line-break\/>line two forced line three flows/);
+});
+
+test('the "\\\\" marker itself is stripped, never leaking into the ODT output as literal backslashes', () => {
+  const doc = parseOrg('* H\nSome text\\\\\nmore text\n');
+  const content = unzipEntry(exportToOdt(doc), 'content.xml');
+  assert.doesNotMatch(content, /\\\\/);
+});

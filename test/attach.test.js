@@ -9,6 +9,9 @@ import {
   listAttachments,
   removeAttachmentLink,
   disambiguateAttachmentFilename,
+  isAudioFilename,
+  extensionForRecordedMimeType,
+  generateRecordingFilename,
 } from '../src/attach.js';
 
 // ---- generateAttachmentId ---------------------------------------------------
@@ -210,4 +213,63 @@ test('a dotfile-style name (leading dot) is not mistaken for having an extension
 test('the file\u2019s own real extension is always preserved after disambiguation', () => {
   assert.match(disambiguateAttachmentFilename('photo.png', ['photo.png']), /\.png$/);
   assert.match(disambiguateAttachmentFilename('video.mp4', ['video.mp4']), /\.mp4$/);
+});
+
+// ---- isAudioFilename ---------------------------------------------------
+
+test('isAudioFilename recognizes both recorder-produced formats (webm, m4a) and common existing-file formats', () => {
+  assert.equal(isAudioFilename('recording.webm'), true);
+  assert.equal(isAudioFilename('voice.m4a'), true);
+  assert.equal(isAudioFilename('song.mp3'), true);
+  assert.equal(isAudioFilename('clip.wav'), true);
+  assert.equal(isAudioFilename('clip.ogg'), true);
+});
+
+test('isAudioFilename correctly rejects non-audio files', () => {
+  assert.equal(isAudioFilename('photo.jpg'), false);
+  assert.equal(isAudioFilename('notes.pdf'), false);
+  assert.equal(isAudioFilename('video.mov'), false);
+});
+
+test('isAudioFilename is case-insensitive', () => {
+  assert.equal(isAudioFilename('RECORDING.WEBM'), true);
+});
+
+// ---- extensionForRecordedMimeType ---------------------------------------
+
+test('THE REAL CROSS-BROWSER SPLIT: extensionForRecordedMimeType maps Chrome/Firefox/Edge\u2019s own actual audio/webm output to .webm', () => {
+  assert.equal(extensionForRecordedMimeType('audio/webm'), 'webm');
+  assert.equal(extensionForRecordedMimeType('audio/webm;codecs=opus'), 'webm');
+});
+
+test('THE REAL CROSS-BROWSER SPLIT: extensionForRecordedMimeType maps Safari\u2019s own actual audio/mp4 output to .m4a, not the more generic/video-implying .mp4', () => {
+  assert.equal(extensionForRecordedMimeType('audio/mp4'), 'm4a');
+});
+
+test('extensionForRecordedMimeType falls back to .webm for an unrecognized MIME type, rather than producing no extension at all', () => {
+  assert.equal(extensionForRecordedMimeType('audio/some-future-format'), 'webm');
+  assert.equal(extensionForRecordedMimeType(''), 'webm');
+  assert.equal(extensionForRecordedMimeType(undefined), 'webm');
+});
+
+test('extensionForRecordedMimeType is case-insensitive', () => {
+  assert.equal(extensionForRecordedMimeType('AUDIO/MP4'), 'm4a');
+});
+
+// ---- generateRecordingFilename ---------------------------------------
+
+test('generateRecordingFilename produces a readable, timestamp-based name with the correct extension for the actual recorded format', () => {
+  const name = generateRecordingFilename('audio/webm;codecs=opus', new Date(2026, 7, 13, 14, 30, 22));
+  assert.equal(name, 'recording-2026-08-13-143022.webm');
+});
+
+test('generateRecordingFilename correctly zero-pads every component', () => {
+  const name = generateRecordingFilename('audio/mp4', new Date(2026, 0, 5, 9, 5, 3));
+  assert.equal(name, 'recording-2026-01-05-090503.m4a');
+});
+
+test('generateRecordingFilename produces a different name for two recordings a second apart', () => {
+  const nameA = generateRecordingFilename('audio/webm', new Date(2026, 7, 13, 14, 30, 22));
+  const nameB = generateRecordingFilename('audio/webm', new Date(2026, 7, 13, 14, 30, 23));
+  assert.notEqual(nameA, nameB);
 });

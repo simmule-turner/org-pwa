@@ -6,6 +6,7 @@ import {
   parseLispNumber,
   getAgendaStartOnWeekday,
   getDeadlineWarningDays,
+  getScheduledDelayDays,
   getCalendarLatitude,
   getCalendarLongitude,
   getCalendarLocationName,
@@ -299,6 +300,25 @@ test('a negative value falls back to the default rather than producing a nonsens
 
 test('a non-numeric value falls back to the default', () => {
   assert.equal(getDeadlineWarningDays({ 'org-deadline-warning-days': 'abc' }), 14);
+});
+
+// ---- getScheduledDelayDays ---------------------------------------------------
+
+test('getScheduledDelayDays defaults to 0 -- unlike DEADLINE\u2019s own proactive-warning default, a nonzero default here would silently hide every ordinary SCHEDULED item, contradicting the Org manual\u2019s own bare SCHEDULED example', () => {
+  assert.equal(getScheduledDelayDays({}), 0);
+  assert.equal(getScheduledDelayDays(null), 0);
+});
+
+test('getScheduledDelayDays reads an explicit override', () => {
+  assert.equal(getScheduledDelayDays({ 'org-scheduled-delay-days': '3' }), 3);
+});
+
+test('a negative value falls back to 0 rather than producing a nonsensical negative delay', () => {
+  assert.equal(getScheduledDelayDays({ 'org-scheduled-delay-days': '-2' }), 0);
+});
+
+test('a non-numeric value falls back to 0', () => {
+  assert.equal(getScheduledDelayDays({ 'org-scheduled-delay-days': 'abc' }), 0);
 });
 
 // ---- calendar-latitude / calendar-longitude / calendar-location-name -------

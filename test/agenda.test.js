@@ -1090,6 +1090,69 @@ test('THE FIX: SCHEDULED is deliberately unaffected by the deadline-warning defa
   assert.equal(items.filter((i) => i.kind === 'scheduled').length, 0);
 });
 
+// ---- THE FIX: scheduledDelayDays -- SCHEDULED's own file-wide delay default --
+
+test('THE FIX: with no explicit cookie, a SCHEDULED item still shows on its own literal date when scheduledDelayDays is 0 (the default) -- unaffected by this feature at all', () => {
+  const doc = parseOrg('* TODO Something\nSCHEDULED: <2026-08-20 Thu>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 20),
+    rangeEnd: new Date(2026, 7, 20),
+    today: new Date(2026, 7, 20),
+  });
+  assert.equal(items.filter((i) => i.kind === 'scheduled').length, 1);
+});
+
+test('THE FIX: scheduledDelayDays delays a SCHEDULED item with no explicit cookie of its own, the same direction a per-heading "-Nd" cookie already does', () => {
+  const doc = parseOrg('* TODO Something\nSCHEDULED: <2026-08-20 Thu>\n');
+  const itemsOnLiteralDate = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 20), // the literal date itself
+    rangeEnd: new Date(2026, 7, 20),
+    today: new Date(2026, 7, 20),
+    scheduledDelayDays: 3,
+  });
+  assert.equal(itemsOnLiteralDate.filter((i) => i.kind === 'scheduled').length, 0, 'delayed by the file-wide default, should not show on its own literal date');
+
+  const itemsAfterDelay = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 23), // 3 days later
+    rangeEnd: new Date(2026, 7, 23),
+    today: new Date(2026, 7, 23),
+    scheduledDelayDays: 3,
+  });
+  assert.equal(itemsAfterDelay.filter((i) => i.kind === 'scheduled').length, 1, 'shows once the file-wide delay has elapsed');
+});
+
+test('THE FIX: an explicit per-heading "-Nd" cookie always overrides scheduledDelayDays, the same precedence deadlineWarningDays already has', () => {
+  const doc = parseOrg('* TODO Something\nSCHEDULED: <2026-08-20 Thu -1d>\n'); // explicit 1-day delay, NOT the file-wide 5
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 21), // 1 day after -- matches the EXPLICIT cookie, not the file-wide default
+    rangeEnd: new Date(2026, 7, 21),
+    today: new Date(2026, 7, 21),
+    scheduledDelayDays: 5,
+  });
+  assert.equal(items.filter((i) => i.kind === 'scheduled').length, 1);
+});
+
+test('DEADLINE is deliberately unaffected by scheduledDelayDays -- it only applies to SCHEDULED', () => {
+  const doc = parseOrg('* TODO Something\nDEADLINE: <2026-08-20 Thu>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false,
+    rangeStart: new Date(2026, 7, 20),
+    rangeEnd: new Date(2026, 7, 20),
+    today: new Date(2026, 7, 20),
+    scheduledDelayDays: 10,
+  });
+  assert.equal(items.filter((i) => i.kind === 'deadline').length, 1);
+});
+
 // ---- THE FIX: SCHEDULED's own "-Nd" suffix delays, DEADLINE's own "-Nd" warns early --
 
 test('THE FIX: a SCHEDULED "-Nd" suffix does NOT show the item early -- confirmed against the Org manual, "-Nd" delays SCHEDULED\u2019s appearance instead', () => {

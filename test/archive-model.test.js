@@ -389,6 +389,49 @@ test('insertAtArchiveLocation: strips leading asterisks/whitespace to get the ba
   assert.equal(targetDoc.children[0].title, 'Weird Spacing');
 });
 
+// ---- THE FIX: the headline part's own asterisk count is the target's real, intended level ----
+
+test('THE FIX: real org\u2019s own exact documented example -- "basement::** Finished Tasks" archives as level-3 trees below the level-2 heading', () => {
+  const targetDoc = parseOrg('');
+  const source = parseOrg('* Task A\nDone stuff.\n');
+  const extracted = extractForArchive(source, source.children[0], 'src.org');
+  insertAtArchiveLocation(targetDoc, extracted, '** Finished Tasks');
+  const target = targetDoc.children.find((h) => h.title === 'Finished Tasks');
+  assert.equal(target.level, 2, 'the target heading itself is created at level 2, not the previous, always-level-1 behavior');
+  assert.equal(target.children[0].level, 3, 'the archived item becomes a level-3 child, one below its own level-2 target');
+});
+
+test('THE FIX: a level-2+ target is searched for ANYWHERE in the document, not just at the top level', () => {
+  const targetDoc = parseOrg('* Some Project\n** Finished Tasks\n*** Old Item\n');
+  const source = parseOrg('* Task B\n');
+  const extracted = extractForArchive(source, source.children[0], 'src.org');
+  insertAtArchiveLocation(targetDoc, extracted, '** Finished Tasks');
+  const project = targetDoc.children.find((h) => h.title === 'Some Project');
+  const target = project.children.find((h) => h.title === 'Finished Tasks');
+  assert.equal(target.children.length, 2, 'appended to the EXISTING nested heading, not a newly-created top-level duplicate');
+  assert.equal(target.children[1].title, 'Task B');
+});
+
+test('THE FIX: a bare single asterisk still means level 1, exactly the previous behavior -- no change for the common case', () => {
+  const targetDoc = parseOrg('');
+  const source = parseOrg('* X');
+  const extracted = extractForArchive(source, source.children[0], 'src.org');
+  insertAtArchiveLocation(targetDoc, extracted, '* Archived Tasks');
+  assert.equal(targetDoc.children[0].level, 1);
+});
+
+test('THE FIX: matching by level AND title together -- a same-named heading at the WRONG level is correctly not matched', () => {
+  const targetDoc = parseOrg('* Finished Tasks\n** Old (level 1, wrong level)\n');
+  const source = parseOrg('* Task C\n');
+  const extracted = extractForArchive(source, source.children[0], 'src.org');
+  insertAtArchiveLocation(targetDoc, extracted, '** Finished Tasks'); // asks for LEVEL 2 specifically
+  const level1Match = targetDoc.children.find((h) => h.level === 1 && h.title === 'Finished Tasks');
+  const level2Match = targetDoc.children.find((h) => h.level === 2 && h.title === 'Finished Tasks');
+  assert.equal(level1Match.children.length, 1, 'the pre-existing level-1 "Finished Tasks" is untouched');
+  assert.ok(level2Match, 'a NEW, separate level-2 "Finished Tasks" was created instead of incorrectly reusing the level-1 one');
+  assert.equal(level2Match.children[0].title, 'Task C');
+});
+
 // ---- full end-to-end scenarios matching each documented example -----------
 
 test('EXAMPLE: default "%s_archive::" -- archives to a sibling file as a top-level entry', () => {

@@ -11,6 +11,8 @@ import {
   resolveImagePath,
   resolveAttachmentTarget,
   guessImageMimeType,
+  guessAudioMimeType,
+  guessViewableMimeType,
   findHeadingByTitle,
   findHeadingByCustomId,
   findFootnoteDefinition,
@@ -274,6 +276,52 @@ test('guessImageMimeType is case-insensitive on the extension', () => {
 test('guessImageMimeType falls back to a generic binary type for an unrecognized extension', () => {
   assert.equal(guessImageMimeType('a.tiff'), 'application/octet-stream');
   assert.equal(guessImageMimeType('noextension'), 'application/octet-stream');
+});
+
+// ---- guessAudioMimeType -----------------------------------------------
+
+test('guessAudioMimeType identifies every supported extension correctly', () => {
+  assert.equal(guessAudioMimeType('a.webm'), 'audio/webm');
+  assert.equal(guessAudioMimeType('a.m4a'), 'audio/mp4');
+  assert.equal(guessAudioMimeType('a.mp3'), 'audio/mpeg');
+  assert.equal(guessAudioMimeType('a.wav'), 'audio/wav');
+  assert.equal(guessAudioMimeType('a.ogg'), 'audio/ogg');
+});
+
+test('guessAudioMimeType falls back to a generic binary type for an unrecognized extension', () => {
+  assert.equal(guessAudioMimeType('a.xyz'), 'application/octet-stream');
+});
+
+// ---- guessViewableMimeType ---------------------------------------------
+
+test('guessViewableMimeType identifies PDF, video, and text extensions correctly', () => {
+  assert.equal(guessViewableMimeType('report.pdf'), 'application/pdf');
+  assert.equal(guessViewableMimeType('clip.mp4'), 'video/mp4');
+  assert.equal(guessViewableMimeType('clip.mov'), 'video/quicktime');
+  assert.equal(guessViewableMimeType('clip.webm'), 'video/webm');
+  assert.equal(guessViewableMimeType('notes.txt'), 'text/plain');
+  assert.equal(guessViewableMimeType('notes.md'), 'text/plain');
+  assert.equal(guessViewableMimeType('data.json'), 'text/plain');
+  assert.equal(guessViewableMimeType('data.csv'), 'text/plain');
+});
+
+test('THE REAL SECURITY CONSIDERATION: guessViewableMimeType deliberately excludes HTML -- opening it via direct navigation would execute any embedded script, unlike this app\u2019s own existing, safe <img>-based SVG display', () => {
+  assert.equal(guessViewableMimeType('page.html'), null);
+  assert.equal(guessViewableMimeType('page.htm'), null);
+});
+
+test('guessViewableMimeType deliberately excludes SVG too -- already handled safely via the existing image-display path, not this one', () => {
+  assert.equal(guessViewableMimeType('icon.svg'), null);
+});
+
+test('guessViewableMimeType returns null (not a fallback type) for anything with no likely native viewer', () => {
+  assert.equal(guessViewableMimeType('report.docx'), null);
+  assert.equal(guessViewableMimeType('archive.zip'), null);
+  assert.equal(guessViewableMimeType('noextension'), null);
+});
+
+test('guessViewableMimeType is case-insensitive on the extension', () => {
+  assert.equal(guessViewableMimeType('REPORT.PDF'), 'application/pdf');
 });
 
 // ---- findFootnoteDefinition ------------------------------------------

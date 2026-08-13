@@ -115,3 +115,105 @@ test('a top-level heading with a cookie and no ancestors updates correctly', () 
   assert.equal(changed, true);
   assert.equal(doc.children[0].title, 'Tasks [2/2]');
 });
+
+// ---- :COOKIE_DATA: property (checkbox/todo mode selection, recursive) ----
+
+test('no :COOKIE_DATA: at all -- existing checkbox-only behavior is completely unchanged, even with a TODO child present', () => {
+  const doc = parseOrg(['* Unchanged [/]', '- [X] a', '- [ ] b', '** TODO ignored (no COOKIE_DATA todo mode)'].join('\n'));
+  updateHeadingCheckboxCookie(doc.children[0]);
+  assert.equal(doc.children[0].title, 'Unchanged [1/2]');
+});
+
+test('THE FIX: :COOKIE_DATA: "checkbox" explicitly counts only checkboxes, ignoring TODO children -- resolves the "ambiguous" case the Org manual itself describes', () => {
+  const doc = parseOrg(
+    ['* Mixed [/]', ':PROPERTIES:', ':COOKIE_DATA: checkbox', ':END:', '- [X] item 1', '- [ ] item 2', '** TODO Should be ignored'].join(
+      '\n'
+    )
+  );
+  updateHeadingCheckboxCookie(doc.children[0], ['DONE']);
+  assert.equal(doc.children[0].title, 'Mixed [1/2]');
+});
+
+test('THE FIX: :COOKIE_DATA: "todo" counts only TODO-keyword children, ignoring checkboxes', () => {
+  const doc = parseOrg(
+    ['* Mixed [/]', ':PROPERTIES:', ':COOKIE_DATA: todo', ':END:', '- [X] checkbox (ignored)', '** TODO A', '** DONE B'].join('\n')
+  );
+  updateHeadingCheckboxCookie(doc.children[0], ['DONE']);
+  assert.equal(doc.children[0].title, 'Mixed [1/2]');
+});
+
+test('THE FIX: real org\u2019s own exact manual example -- "todo recursive" counts TODO-keyword headings at any depth, not just direct children', () => {
+  const doc = parseOrg(
+    [
+      '* Parent capturing statistics [/]',
+      ':PROPERTIES:',
+      ':COOKIE_DATA: todo recursive',
+      ':END:',
+      '** TODO A',
+      '** DONE B',
+      '** Sub',
+      '*** TODO C',
+      '*** DONE D',
+    ].join('\n')
+  );
+  updateHeadingCheckboxCookie(doc.children[0], ['DONE']);
+  assert.equal(doc.children[0].title, 'Parent capturing statistics [2/4]');
+});
+
+test('THE FIX: "todo" WITHOUT "recursive" only counts direct children -- the Org manual\u2019s own literal baseline before "recursive" is added', () => {
+  const doc = parseOrg(
+    ['* Direct only [/]', ':PROPERTIES:', ':COOKIE_DATA: todo', ':END:', '** TODO A', '** Sub', '*** TODO nested'].join('\n')
+  );
+  updateHeadingCheckboxCookie(doc.children[0], ['DONE']);
+  assert.equal(doc.children[0].title, 'Direct only [0/1]', 'the nested TODO under Sub must not count without "recursive"');
+});
+
+test('THE FIX: "checkbox todo" together count BOTH kinds combined into one total, rather than picking just one', () => {
+  const doc = parseOrg(
+    ['* Combined [/]', ':PROPERTIES:', ':COOKIE_DATA: checkbox todo', ':END:', '- [X] item', '** TODO A', '** DONE B'].join('\n')
+  );
+  updateHeadingCheckboxCookie(doc.children[0], ['DONE']);
+  assert.equal(doc.children[0].title, 'Combined [2/3]', '1 checked checkbox + 1 done TODO out of 1+2 total');
+});
+
+test('an ordinary heading with no TODO keyword at all is never counted in "todo" mode -- this is a TODO-item count, not a generic child-heading count', () => {
+  const doc = parseOrg(
+    ['* Only todos count [/]', ':PROPERTIES:', ':COOKIE_DATA: todo', ':END:', '** TODO A', '** Just a plain heading, no keyword'].join(
+      '\n'
+    )
+  );
+  updateHeadingCheckboxCookie(doc.children[0], ['DONE']);
+  assert.equal(doc.children[0].title, 'Only todos count [0/1]');
+});
+
+test('THE FIX: a TODO-state transition on a descendant updates an ancestor\u2019s "todo"-mode cookie via updateCheckboxCookiesUpward, the same way a checkbox toggle already does', () => {
+  const doc = parseOrg(
+    ['* Project [/]', ':PROPERTIES:', ':COOKIE_DATA: todo', ':END:', '** TODO A', '** TODO B'].join('\n')
+  );
+  const childA = doc.children[0].children[0];
+  childA.todo = 'DONE'; // simulating what applyTodoTransition's own performChange() already did
+  const changed = updateCheckboxCookiesUpward(doc, childA, ['DONE']);
+  assert.equal(changed, true);
+  assert.equal(doc.children[0].title, 'Project [1/2]');
+});
+
+test('each heading in an ancestor chain can have its own, independently different :COOKIE_DATA: override', () => {
+  const doc = parseOrg(
+    [
+      '* Grandparent [/]',
+      ':PROPERTIES:',
+      ':COOKIE_DATA: todo recursive',
+      ':END:',
+      '** Parent [/]',
+      ':PROPERTIES:',
+      ':COOKIE_DATA: checkbox',
+      ':END:',
+      '- [X] a checkbox here',
+      '*** TODO Child',
+    ].join('\n')
+  );
+  const child = doc.children[0].children[0].children[0];
+  updateCheckboxCookiesUpward(doc, child, ['DONE']);
+  assert.equal(doc.children[0].children[0].title, 'Parent [1/1]', 'Parent counts only its own checkbox (checkbox mode)');
+  assert.equal(doc.children[0].title, 'Grandparent [0/1]', 'Grandparent counts the TODO child recursively (todo recursive mode)');
+});

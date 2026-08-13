@@ -333,3 +333,25 @@ test('multiple sibling top-level headings are each numbered (1, 2) and separated
   assert.ok(result.includes('1. First'));
   assert.ok(result.includes('\n\n2. Second'));
 });
+
+// ---- THE FIX: paragraph reflow -- flow unless "\\" forces a real break ----
+
+test('THE FIX: adjacent source lines within one paragraph flow together and wrap normally -- already correct for the default case, confirmed still correct after the fix', () => {
+  const doc = parseOrg('* H\nLine one\nline two continues\n');
+  const out = exportToAscii(doc, null, 60);
+  assert.match(out, /Line one line two continues/);
+});
+
+test('THE FIX: an explicit "\\\\" marker forces a real, separate line -- confirmed via research that real org\u2019s own plain-text export also honors this marker, not just HTML/LaTeX', () => {
+  const doc = parseOrg('* H\nLine one\\\\\nline two forced\nline three flows\n');
+  const out = exportToAscii(doc, null, 60);
+  const lines = out.split('\n').filter((l) => l.trim() !== '' && !l.startsWith('1.') && !l.startsWith('='));
+  assert.ok(lines.some((l) => l.trim() === 'Line one'), 'the marked line stands alone');
+  assert.ok(lines.some((l) => l.includes('line two forced') && l.includes('line three flows')), 'the two unmarked lines after it still flow together');
+});
+
+test('the "\\\\" marker itself is stripped, never leaking into the ASCII output as literal backslashes', () => {
+  const doc = parseOrg('* H\nSome text\\\\\nmore text\n');
+  const out = exportToAscii(doc, null, 60);
+  assert.doesNotMatch(out, /\\\\/);
+});

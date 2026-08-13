@@ -416,3 +416,24 @@ test('a table with no width-cookie row is completely unaffected', () => {
   const md = exportToMarkdown(doc);
   assert.match(md, /\| Name \| Age \|\n\| --- \| --- \|/);
 });
+
+// ---- THE FIX: paragraph reflow -- flow unless "\\" forces a real break ----
+
+test('THE FIX: adjacent source lines within one paragraph flow together with a plain space, not Markdown\u2019s own hard-break convention -- matching real org\u2019s own actual default export behavior', () => {
+  const doc = parseOrg('* H\nLine one\nline two continues\n');
+  const out = exportToMarkdown(doc);
+  assert.match(out, /Line one line two continues/);
+  assert.doesNotMatch(out, /Line one {2}\n/);
+});
+
+test('THE FIX: an explicit "\\\\" marker still forces Markdown\u2019s own real hard-break convention, exactly where it appears', () => {
+  const doc = parseOrg('* H\nLine one\\\\\nline two forced\nline three flows\n');
+  const out = exportToMarkdown(doc);
+  assert.match(out, /Line one {2}\nline two forced line three flows/);
+});
+
+test('the "\\\\" marker itself is stripped, never leaking into the Markdown output as literal backslashes', () => {
+  const doc = parseOrg('* H\nSome text\\\\\nmore text\n');
+  const out = exportToMarkdown(doc);
+  assert.doesNotMatch(out, /text\\\\\\\\/);
+});
