@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v156';
+const CACHE_NAME = 'org-pwa-shell-v157';
 
 const SHELL_FILES = [
   './',
@@ -53,6 +53,7 @@ const SHELL_FILES = [
   './src/undo-history.js',
   './src/text-diff.js',
   './src/startup-config.js',
+  './src/webm-track-detect.js',
   './src-browser/indexeddb-adapter.js',
   './src-browser/filesystem-adapter.js',
   './src-browser/github-adapter.js',

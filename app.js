@@ -3,6 +3,7 @@ import { setSyncMeta, getSyncMeta } from './src/sync-engine.js';
 import { hasPendingChange, getPendingChange, clearPendingChange } from './src/outbox.js';
 import { parseOrg, serializeOrg, findHeadingLineNumber } from './src/org-parser.js';
 import { parseBody } from './src/body-parser.js';
+import { detectWebmHasVideoTrack } from './src/webm-track-detect.js';
 import {
   generateAttachmentId,
   attachmentPath,
@@ -1161,7 +1162,19 @@ async function openAttachmentLink(target, heading) {
   const attachment = await resolveAndReadAttachment(target, heading);
   if (!attachment) return;
   const { filename, resolvedPath, result } = attachment;
-  const viewableMimeType = guessViewableMimeType(resolvedPath);
+  let viewableMimeType = guessViewableMimeType(resolvedPath);
+  if (/\.webm$/i.test(resolvedPath)) {
+    // .webm is genuinely ambiguous (a legitimate container for both
+    // audio-only and audio+video content) -- guessViewableMimeType's
+    // own default here is a heuristic (this app's own recording
+    // feature usually produces audio-only .webm), not a real answer.
+    // The file's own actual content has the real answer, so read it
+    // directly rather than continuing to guess.
+    const hasVideo = detectWebmHasVideoTrack(new Uint8Array(base64ToArrayBuffer(result.base64)));
+    if (hasVideo === true) viewableMimeType = 'video/webm';
+    else if (hasVideo === false) viewableMimeType = 'audio/webm';
+    // hasVideo === null (couldn't determine) -- keep the existing heuristic result rather than guessing differently
+  }
   if (!viewableMimeType) {
     downloadFile(filename, base64ToArrayBuffer(result.base64), guessAnyAttachmentMimeType(resolvedPath));
     setStatus(`No viewer available for "${filename}" \u2014 downloaded instead.`);
