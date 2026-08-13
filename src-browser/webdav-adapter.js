@@ -112,6 +112,46 @@ function webdavErrorMessage(res) {
   return `WebDAV error (${res.status})`;
 }
 
+/** Creates every intermediate directory (WebDAV "collection") along
+ *  `path` that doesn't already exist, via MKCOL, one level at a time
+ *  -- the actual fix for the real, confirmed bug webdavErrorMessage's
+ *  own 409 message above already anticipated but never prevented: a
+ *  real WebDAV server's PUT requires every parent collection along a
+ *  path to already physically exist first, unlike GitHub's git-based
+ *  storage (where a "directory" is just a path prefix, nothing to
+ *  create). An attachment's own "data/<prefix>/<rest>/" tree is
+ *  always brand new (a fresh, random ID), so this fires on
+ *  essentially every first attachment to a given heading -- not a
+ *  rare edge case.
+ *
+ *  MKCOL'd one directory level at a time, shallowest first (a real
+ *  WebDAV server generally can't create more than one new level in a
+ *  single MKCOL) -- for `path` = "org-pwa/data/ae/xyz/photo.jpg", that's
+ *  "org-pwa/", then "org-pwa/data/", then "org-pwa/data/ae/", then
+ *  "org-pwa/data/ae/xyz/". A level that already exists is expected,
+ *  ordinary, and NOT an error -- a real server's own documented
+ *  response for "this collection is already there" varies (405
+ *  Method Not Allowed is the most common; some report 409 or even
+ *  301), so any of those is tolerated silently here rather than
+ *  narrowly checking for just one. Only a genuine, unexpected failure
+ *  (401/403/500/...) actually throws. `path` itself (the file, not a
+ *  directory) is never MKCOL'd -- only the directory components
+ *  before its own final segment. */
+async function ensureIntermediateDirectories(config, path) {
+  const segments = path.split('/');
+  segments.pop(); // the file's own name -- not a directory to create
+  let current = '';
+  for (const segment of segments) {
+    current += segment + '/';
+    const res = await fetchWithHint(fileUrl(config, current), {
+      method: 'MKCOL',
+      headers: authHeader(config),
+    });
+    if (res.ok || res.status === 405 || res.status === 409 || res.status === 301) continue;
+    throw new Error(`Could not create the "${current}" folder on the WebDAV server: ${webdavErrorMessage(res)}`);
+  }
+}
+
 /**
  * Parses a WebDAV PROPFIND multistatus XML response into
  * [{ href, isCollection }]. Hand-rolled rather than DOMParser (not
@@ -191,11 +231,23 @@ export function createWebdavAdapter(getConfig) {
     } else if (!existing) {
       headers['If-None-Match'] = '*';
     }
-    const res = await fetchWithHint(fileUrl(config, fileId), {
+    let res = await fetchWithHint(fileUrl(config, fileId), {
       method: 'PUT',
       headers,
       body: content,
     });
+    if (res.status === 409 && !existing) {
+      // A brand-new file whose own path has an intermediate directory
+      // that doesn't exist on the server yet -- create it, then retry
+      // the exact same PUT once. Only attempted for a genuinely new
+      // file (existing === null): a 409 while updating something that
+      // already exists is a real precondition failure (an actual
+      // ETag mismatch), not a missing-folder problem, and retrying
+      // that would silently discard the "don't clobber a newer
+      // version" check this function's own If-Match header exists for.
+      await ensureIntermediateDirectories(config, fileId);
+      res = await fetchWithHint(fileUrl(config, fileId), { method: 'PUT', headers, body: content });
+    }
     if (!res.ok) throw new Error(webdavErrorMessage(res));
     return { hash: res.headers.get('ETag') || null };
   }
@@ -215,11 +267,22 @@ export function createWebdavAdapter(getConfig) {
     } else if (!existing) {
       headers['If-None-Match'] = '*';
     }
-    const res = await fetchWithHint(fileUrl(config, fileId), {
+    let res = await fetchWithHint(fileUrl(config, fileId), {
       method: 'PUT',
       headers,
       body: base64ToArrayBuffer(base64Content),
     });
+    if (res.status === 409 && !existing) {
+      // See writeImpl's own identical comment just above -- only for a
+      // genuinely new file; a 409 while updating an existing one is a
+      // real ETag precondition failure, not a missing-folder problem.
+      await ensureIntermediateDirectories(config, fileId);
+      res = await fetchWithHint(fileUrl(config, fileId), {
+        method: 'PUT',
+        headers,
+        body: base64ToArrayBuffer(base64Content),
+      });
+    }
     if (!res.ok) throw new Error(webdavErrorMessage(res));
     return { hash: res.headers.get('ETag') || null };
   }

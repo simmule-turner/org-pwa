@@ -99,6 +99,27 @@ async function githubErrorMessage(res) {
   return `GitHub API error (${res.status})${detail ? ': ' + detail : ''}`;
 }
 
+/** Fetches `body.sha`'s own raw content directly via the Git Blobs API
+ *  (`GET /repos/{owner}/{repo}/git/blobs/{sha}`) -- GitHub's own real,
+ *  documented fallback for exactly the case that put us here: the
+ *  Contents API's own `content` field is only ever inlined for a file
+ *  under 1MB; anything larger (a real camera photo very easily
+ *  exceeds this -- multi-megabyte JPEGs are the ordinary case, not an
+ *  edge case) omits `content` from the response entirely, while still
+ *  including the file's own `sha` -- which the Blobs API accepts
+ *  directly, with its own much higher 100MB ceiling, regardless of
+ *  the Contents API's own inline-content threshold. Returns the same
+ *  base64 string shape the Contents API's own inline `content` field
+ *  would have had, so callers don't need to know or care which path
+ *  was actually taken. */
+async function fetchBlobContent(config, sha) {
+  const url = `${API_BASE}/repos/${config.owner}/${config.repo}/git/blobs/${sha}`;
+  const res = await fetch(url, { headers: authHeaders(config), cache: 'no-store' });
+  if (!res.ok) throw new Error(await githubErrorMessage(res));
+  const blob = await res.json();
+  return blob.content;
+}
+
 /**
  * `getConfig` is a function (not a static object) — called fresh on every
  * operation, so changing GitHub settings mid-session (e.g. after a user
@@ -116,15 +137,19 @@ export function createGithubAdapter(getConfig) {
     if (Array.isArray(body)) {
       throw new Error(`"${fileId}" is a directory in this repo, not a file.`);
     }
-    return { content: base64ToUtf8(body.content), hash: body.sha };
+    const content = body.content !== undefined ? body.content : await fetchBlobContent(config, body.sha);
+    return { content: base64ToUtf8(content), hash: body.sha };
   }
 
   /** Reads `fileId` as binary content (base64-encoded), for an image or
-   *  any other non-text file. The Contents API already returns base64
-   *  directly -- unlike readImpl, which decodes it to utf8 text (which
-   *  would corrupt binary data), this just strips the MIME-style line
-   *  wrapping GitHub's own response includes, for a clean data: URL
-   *  payload. Returns null for a 404, matching readImpl's convention. */
+   *  any other non-text file. Unlike readImpl (which decodes to utf8
+   *  text -- would corrupt binary data), this just strips the MIME-
+   *  style line wrapping GitHub's own response includes, for a clean
+   *  data: URL payload -- content is base64 either way (see
+   *  fetchBlobContent's own docs for why "either way" matters: the
+   *  Contents API only inlines it directly for a file under 1MB; an
+   *  ordinary camera photo easily exceeds that, not an edge case).
+   *  Returns null for a 404, matching readImpl's convention. */
   async function readBinaryImpl(fileId) {
     const config = requireConfig(getConfig);
     const url = contentsUrl(config, fileId) + '?ref=' + encodeURIComponent(config.branch || 'main');
@@ -135,7 +160,8 @@ export function createGithubAdapter(getConfig) {
     if (Array.isArray(body)) {
       throw new Error(`"${fileId}" is a directory in this repo, not a file.`);
     }
-    return { base64: body.content.replace(/\n/g, ''), hash: body.sha };
+    const content = body.content !== undefined ? body.content : await fetchBlobContent(config, body.sha);
+    return { base64: content.replace(/\n/g, ''), hash: body.sha };
   }
 
   async function writeImpl(fileId, content) {
