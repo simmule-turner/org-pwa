@@ -88,8 +88,8 @@ test('an unrecognized function name is skipped, not a hard error -- forward-comp
   assert.deepEqual(parseExtraMenu("\"'org-nonexistent-function;Nope\""), []);
 });
 
-test('KNOWN_FUNCTIONS currently contains exactly org-clock-out, org-clock-cancel, export-markdown, org-xx-calendar, and org-table-recalculate, matching what\u2019s actually implemented', () => {
-  assert.deepEqual([...KNOWN_FUNCTIONS], ['org-clock-out', 'org-clock-cancel', 'export-markdown', 'org-xx-calendar', 'org-table-recalculate']);
+test('KNOWN_FUNCTIONS currently contains exactly org-clock-out, org-clock-cancel, export-markdown, org-xx-calendar, and org-table-recalculate-buffer-tables, matching what\u2019s actually implemented', () => {
+  assert.deepEqual([...KNOWN_FUNCTIONS], ['org-clock-out', 'org-clock-cancel', 'export-markdown', 'org-xx-calendar', 'org-table-recalculate-buffer-tables']);
 });
 
 test('parses org-clock-cancel as a recognized function-reference entry', () => {
@@ -98,9 +98,9 @@ test('parses org-clock-cancel as a recognized function-reference entry', () => {
   ]);
 });
 
-test('THE FIX: parses org-table-recalculate as a recognized function-reference entry', () => {
-  assert.deepEqual(parseExtraMenu("\"'org-table-recalculate;\ud83d\udd22 Recalc tables\""), [
-    { type: 'function', name: 'org-table-recalculate', label: '\ud83d\udd22 Recalc tables' },
+test('THE FIX: parses org-table-recalculate-buffer-tables as a recognized function-reference entry', () => {
+  assert.deepEqual(parseExtraMenu("\"'org-table-recalculate-buffer-tables;\ud83d\udd22 Recalc tables\""), [
+    { type: 'function', name: 'org-table-recalculate-buffer-tables', label: '\ud83d\udd22 Recalc tables' },
   ]);
 });
 
