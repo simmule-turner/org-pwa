@@ -127,18 +127,80 @@ function tokenize(expr) {
   return tokens;
 }
 
+// Every name below is a real, confirmed Emacs Calc function name,
+// verified directly against the GNU Emacs Calc Manual (and, for
+// vcount, its actual Lisp source) -- not an invented convenience
+// alias. This app previously also accepted plain, unprefixed names
+// (sum/mean/min/max/count) as synonyms; those were never actually
+// real Calc names and have been removed, so this function set is now
+// a genuine, verified subset of real org's own table-formula
+// language, not an approximation of it.
 const AGGREGATE_FUNCTIONS = {
-  sum: (vals) => vals.reduce((a, b) => a + b, 0),
   vsum: (vals) => vals.reduce((a, b) => a + b, 0),
-  mean: (vals) => (vals.length === 0 ? 0 : vals.reduce((a, b) => a + b, 0) / vals.length),
   vmean: (vals) => (vals.length === 0 ? 0 : vals.reduce((a, b) => a + b, 0) / vals.length),
-  count: (vals) => vals.length,
   vcount: (vals) => vals.length,
-  min: (vals) => Math.min(...vals),
-  vmin: (vals) => Math.min(...vals),
-  max: (vals) => Math.max(...vals),
-  vmax: (vals) => Math.max(...vals),
+  vmin: (vals) => (vals.length === 0 ? 0 : Math.min(...vals)),
+  vmax: (vals) => (vals.length === 0 ? 0 : Math.max(...vals)),
+  vmedian: (vals) => {
+    if (vals.length === 0) return 0;
+    const sorted = [...vals].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  },
+  // Population variance/stddev (divide by n) vs sample (divide by
+  // n-1) are genuinely different, real Calc functions with different
+  // names -- vvar/vsdev (sample) and vpvar/vpsdev (population) --
+  // not one function with a mode flag. There's deliberately no plain
+  // "variance"/"stddev" name for either pair: which one someone means
+  // by an unqualified name is exactly the kind of silent, wrong-answer
+  // ambiguity this app would rather force an explicit choice on.
+  vvar: (vals) => sampleVariance(vals),
+  vpvar: (vals) => populationVariance(vals),
+  vsdev: (vals) => Math.sqrt(sampleVariance(vals)),
+  vpsdev: (vals) => Math.sqrt(populationVariance(vals)),
 };
+
+function populationVariance(vals) {
+  if (vals.length === 0) return 0;
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  return vals.reduce((acc, x) => acc + (x - mean) * (x - mean), 0) / vals.length;
+}
+
+function sampleVariance(vals) {
+  if (vals.length < 2) return 0; // n-1 divisor is undefined for n=0 or n=1 -- 0 rather than a division-by-zero NaN, matching this module's own existing "can't compute a real result" convention
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  return vals.reduce((acc, x) => acc + (x - mean) * (x - mean), 0) / (vals.length - 1);
+}
+
+// Single-value functions -- one number in, one number out, unlike
+// AGGREGATE_FUNCTIONS above (which reduce a whole range/list to one
+// number). All five confirmed directly against the Calc manual's own
+// "Integer Truncation" and "Basic Arithmetic" sections. Each of
+// floor/ceil/round/trunc optionally takes a SECOND argument -- how
+// many digits after the decimal point to keep -- also confirmed
+// directly against the manual's own wording for algebraic-formula
+// usage (exactly the context table formulas are written in).
+const SCALAR_FUNCTIONS = {
+  sqrt: (x) => (x < 0 ? 0 : Math.sqrt(x)), // real Calc returns a complex number for a negative input; this app has no complex-number support at all, so 0 rather than NaN, matching every other "can't produce a real result" case in this module
+  floor: (x, digits) => roundToDigits(x, digits, Math.floor),
+  ceil: (x, digits) => roundToDigits(x, digits, Math.ceil),
+  round: (x, digits) => roundToDigits(x, digits, roundHalfAwayFromZero),
+  trunc: (x, digits) => roundToDigits(x, digits, Math.trunc),
+};
+
+function roundHalfAwayFromZero(x) {
+  // Math.round rounds -0.5 UP to -0 (toward +Infinity); real Calc's
+  // own documented convention is "away from zero" for an exact tie
+  // (confirmed directly against the manual: "3.5 R produces 4... -3.5
+  // R produces -4"), which disagree on the negative case specifically.
+  return x < 0 ? -Math.round(-x) : Math.round(x);
+}
+
+function roundToDigits(x, digits, roundFn) {
+  const d = digits === undefined ? 0 : digits;
+  const factor = Math.pow(10, d);
+  return roundFn(x * factor) / factor;
+}
 
 /** Parses a single reference token (already known to start with "@" or
  *  "$") into a resolvable ref descriptor: { row, col } where each of
@@ -230,11 +292,24 @@ function parseExpression(tokens) {
     }
     if (/^[A-Za-z_]/.test(tok)) {
       const name = next().toLowerCase();
-      if (!(name in AGGREGATE_FUNCTIONS)) throw new Error(`Unknown function "${name}" in formula`);
+      const isAggregate = name in AGGREGATE_FUNCTIONS;
+      const isScalar = name in SCALAR_FUNCTIONS;
+      if (!isAggregate && !isScalar) throw new Error(`Unknown function "${name}" in formula`);
       expect('(');
-      const arg = parseExpr();
+      if (isAggregate) {
+        const arg = parseExpr();
+        expect(')');
+        return { type: 'call', name, arg };
+      }
+      // Scalar: 1 or 2 comma-separated plain-expression arguments (value, optional decimal-places).
+      const args = [parseExpr()];
+      while (peek() === ',') {
+        next();
+        args.push(parseExpr());
+      }
       expect(')');
-      return { type: 'call', name, arg };
+      if (args.length > 2) throw new Error(`"${name}" takes at most 2 arguments, got ${args.length}`);
+      return { type: 'scalarCall', name, args };
     }
     if (tok.startsWith('@') || tok.startsWith('$')) {
       return parseRangeOrRef();
@@ -266,6 +341,39 @@ function parseExpression(tokens) {
  *  own actual default behavior for arithmetic over non-numeric cells,
  *  rather than propagating NaN through the whole calculation from one
  *  incidental blank or label cell. */
+/** True if the resolved (row, col) cell is blank (empty or only
+ *  whitespace) -- used by collectRangeValues below to omit blank
+ *  cells from a range entirely, matching real org's own actual
+ *  default behavior (confirmed directly against the Org Manual:
+ *  "Without 'E' empty fields in range references are suppressed so
+ *  that the Calc vector... contains only the non-empty fields").
+ *  This is genuinely different from readCellNumber's own blank->0
+ *  behavior just below -- real org treats a blank cell differently
+ *  depending on whether it's a plain, direct reference (0, by
+ *  default) or part of a range (omitted, by default). Getting this
+ *  distinction right matters beyond just matching the numbers real
+ *  Emacs would produce: an org file recalculated in both this app and
+ *  real Emacs needs to land on the same result either way, or sharing
+ *  a file between them silently produces different numbers. */
+function isCellBlank(dataRows, row, col) {
+  const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
+  return text.trim() === '';
+}
+
+/** Reads one resolved (row, col) cell's own current numeric value for
+ *  a PLAIN, direct reference in ordinary arithmetic (not part of a
+ *  range -- see isCellBlank above and collectRangeValues below for
+ *  that separate case) -- blank cell text is treated as 0, matching
+ *  real org's own actual default behavior for this specific case
+ *  (confirmed directly against the Org Manual's own wording: "'E' is
+ *  required to NOT convert empty fields to 0" -- without E, which
+ *  this app never implements, a blank plain reference IS 0 by
+ *  default). Non-numeric-but-present text (a stray label cell, say)
+ *  is ALSO treated as 0 here -- real org would actually error trying
+ *  to add a label to a number; treating it as 0 instead is a
+ *  deliberate, documented simplification of this module's own (so a
+ *  stray label elsewhere in a table doesn't break every other formula
+ *  referencing it), not an attempt at exact real-org error behavior. */
 function readCellNumber(dataRows, row, col) {
   const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
   const n = Number(text.trim());
@@ -314,6 +422,11 @@ function evaluateAst(node, ctx) {
       const values = collectRangeValues(node.arg, ctx);
       return fn(values);
     }
+    case 'scalarCall': {
+      const fn = SCALAR_FUNCTIONS[node.name];
+      const argValues = node.args.map((a) => evaluateAst(a, ctx));
+      return fn(...argValues);
+    }
     default:
       throw new Error(`Unknown AST node type "${node.type}"`);
   }
@@ -327,10 +440,10 @@ function evaluateAst(node, ctx) {
 function collectRangeValues(argNode, ctx) {
   if (argNode.type === 'ref') {
     const { row, col } = resolveRef(argNode.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount);
-    return [readCellNumber(ctx.dataRows, row, col)];
+    return isCellBlank(ctx.dataRows, row, col) ? [] : [readCellNumber(ctx.dataRows, row, col)];
   }
   if (argNode.type !== 'range') {
-    // A plain arithmetic expression as an aggregate's own argument (e.g. sum($1+$2)) --
+    // A plain arithmetic expression as an aggregate's own argument (e.g. vsum($1+$2)) --
     // real org supports this too; evaluate it as one single value.
     return [evaluateAst(argNode, ctx)];
   }
@@ -343,26 +456,51 @@ function collectRangeValues(argNode, ctx) {
   const values = [];
   for (let r = rowStart; r <= rowEnd; r++) {
     for (let c = colStart; c <= colEnd; c++) {
-      values.push(readCellNumber(ctx.dataRows, r, c));
+      if (!isCellBlank(ctx.dataRows, r, c)) values.push(readCellNumber(ctx.dataRows, r, c));
     }
   }
   return values;
 }
 
 /** Formats a computed numeric result back into cell text -- an
- *  integer stays a bare integer ("4", not "4.0" or "4.000000000001"
- *  from ordinary floating-point division noise), a non-integer
- *  rounds to a reasonable, readable precision. Real org's own
- *  optional ";%.2f"-style per-formula format specifier isn't
- *  implemented here -- a deliberate, documented scope cut, not an
- *  oversight; this fixed, reasonable default covers the common case
- *  without it. */
+ *  integer stays a bare integer ("4", not "4.0" or
+ *  "4.000000000000000"). A non-integer is formatted to 8 significant
+ *  figures, matching real org's own actual, documented default
+ *  exactly (confirmed directly against the Org Manual: Calc's own
+ *  "(float 8)" display mode -- "the display format... has been
+ *  changed to '(float 8)' to keep tables compact"), not an
+ *  arbitrarily-chosen precision. Getting this specific number right
+ *  matters beyond cosmetics: recalculating the identical formula
+ *  against identical data in org-pwa and in real Emacs needs to write
+ *  the same text into the cell either way, or a table shared between
+ *  the two silently diverges depending on whichever one last touched
+ *  it -- confirmed as a real, concrete case this replaces: this
+ *  function previously rounded to 6 digits *after the decimal point*
+ *  regardless of magnitude (a different rule from "8 significant
+ *  figures total", not merely a different number -- the two rules
+ *  only happen to coincide for results roughly between 1 and 10),
+ *  which wrote "123.333333" for 370/3 where real org's own actual
+ *  default writes "123.33333".
+ *
+ *  Real org's own optional ";%.2f"-style per-formula format specifier
+ *  isn't implemented here -- a deliberate, documented scope cut, not
+ *  an oversight; this fixed, reasonable default covers the common
+ *  case without it. */
 function formatResult(n) {
   if (Number.isInteger(n)) return String(n);
-  // 6 significant decimal places, then strip trailing zeros -- enough
-  // to make ordinary division (e.g. 10/3) readable without an
-  // unbounded string of floating-point noise digits.
-  return String(Math.round(n * 1e6) / 1e6);
+  const SIGNIFICANT_FIGURES = 8;
+  const precise = n.toPrecision(SIGNIFICANT_FIGURES);
+  // toPrecision always pads to exactly 8 significant figures
+  // ("1.5000000"), and switches to exponential notation for an
+  // extreme magnitude ("1.234e-7") -- trailing zeros are stripped
+  // from the mantissa either way (a plain result and an exponential
+  // one both get the same cleanup), for a cleaner, still-equivalent
+  // result rather than always showing every padded digit.
+  const eIndex = precise.search(/e/i);
+  const mantissa = eIndex === -1 ? precise : precise.slice(0, eIndex);
+  const suffix = eIndex === -1 ? '' : precise.slice(eIndex);
+  const cleanedMantissa = mantissa.includes('.') ? mantissa.replace(/0+$/, '').replace(/\.$/, '') : mantissa;
+  return cleanedMantissa + suffix;
 }
 
 // ---- formula-line parsing ------------------------------------------------
