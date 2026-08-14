@@ -130,12 +130,16 @@ import {
   deleteListItem,
   deleteTable,
   lastTableInBody,
+  allTablesInBody,
+  commitLines,
+  serializeTable,
   deleteParagraph,
   editListItemText,
   insertListItem,
   getHeadingText,
   setHeadingText,
 } from './src/body-edit.js';
+import { recalculateTable } from './src/table-formula.js';
 import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
 import {
   createFileSystemAccessAdapter,
@@ -1700,6 +1704,77 @@ function discardAudioRecording() {
   recordedChunks = [];
   pendingAudioRecording = null;
   renderAudioRecordingPanel();
+}
+
+/** org-xx-extra-menu's own 'org-table-recalculate function reference --
+ *  real org's own actual command (bound to C-c C-c on a table). This
+ *  app has no "point"/cursor concept the way Emacs does, so rather
+ *  than needing some notion of "which table is currently selected"
+ *  (no such state exists here at all), this matches real org's own
+ *  C-u C-c C-c -- recalculate every table in the whole buffer -- not
+ *  the plain, single-table C-c C-c.
+ *
+ *  Walks every heading top-to-bottom, recalculating every table that
+ *  has a #+TBLFM: line (see table-formula.js's own recalculateTable).
+ *  Within one heading with more than one such table, tables are
+ *  re-found BY POSITION after each individual commit rather than
+ *  holding onto object references across commits -- committing one
+ *  table's own change re-parses that heading's entire body (see
+ *  body-edit.js's own commitLines), which invalidates any OTHER table
+ *  reference taken from the stale, pre-commit parse. Pure cell-value
+ *  changes never add or remove a row, so re-finding "the Nth table in
+ *  this heading" by position after a re-parse still correctly lands
+ *  on the same logical table.
+ *
+ *  A malformed formula in one table is reported and that ONE table is
+ *  skipped, rather than aborting recalculation of every other,
+ *  correctly-written table in the document -- one typo shouldn't take
+ *  out a whole document's worth of otherwise-working formulas. Every
+ *  actually-changed table is committed together as a single undo
+ *  step, not one per table or per cell. */
+function recalculateAllTables() {
+  if (!state.doc) return;
+  let anyChanged = false;
+  const failedHeadingTitles = [];
+  for (const { heading } of allHeadingsInOrder(state.doc)) {
+    let tableIndex = 0;
+    while (true) {
+      const tables = allTablesInBody(heading); // freshly re-derived every iteration -- see this function's own docs above for why
+      if (tableIndex >= tables.length) break;
+      const table = tables[tableIndex];
+      if (table.tblfm && table.tblfm.trim()) {
+        try {
+          const newRows = recalculateTable(table);
+          if (newRows && JSON.stringify(newRows) !== JSON.stringify(table.rows)) {
+            table.rows = newRows;
+            commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
+            anyChanged = true;
+          }
+        } catch {
+          failedHeadingTitles.push(heading.title || '(untitled)');
+        }
+      }
+      tableIndex++;
+    }
+  }
+
+  if (failedHeadingTitles.length > 0) {
+    const shown = failedHeadingTitles.slice(0, 3).join(', ');
+    const rest = failedHeadingTitles.length > 3 ? `, +${failedHeadingTitles.length - 3} more` : '';
+    const noun = failedHeadingTitles.length === 1 ? 'a formula' : 'formulas';
+    const verb = failedHeadingTitles.length === 1 ? 'was' : 'were';
+    setStatus(`Recalculated tables, but ${noun} under "${shown}${rest}" had an error and ${verb} skipped.`);
+  } else if (anyChanged) {
+    setStatus('Recalculated all table formulas.');
+  } else {
+    setStatus('No table formulas to recalculate.');
+  }
+
+  if (anyChanged) {
+    commitAndRender('Recalculated table formulas');
+  } else {
+    render();
+  }
 }
 
 /** org-xx-extra-menu's own 'org-xx-calendar function reference --
@@ -9890,6 +9965,8 @@ async function runExtraMenuEntry(entry) {
       performExport('markdown', null);
     } else if (entry.name === 'org-xx-calendar') {
       openCalendarPanel();
+    } else if (entry.name === 'org-table-recalculate') {
+      recalculateAllTables();
     }
     return;
   }
