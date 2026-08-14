@@ -8777,7 +8777,20 @@ async function renderSettingsView(target = settingsRenderTarget) {
 
   const updatesSection = document.createElement('div');
   updatesSection.className = 'settings-section';
-  container.appendChild(updatesSection);
+  // org-xx-updates-at-top (this app's own extension, not a real
+  // org-mode variable -- same "org-xx-" convention as
+  // org-xx-extra-menu/org-xx-calendar/org-xx-menu-aliases): true (the
+  // default, matching real org's own t/nil convention for "unset"
+  // meaning "on") puts Updates at the very top of Settings, since for
+  // many people it's the single most-used entry on this whole page;
+  // explicitly nil keeps it at its own original position instead, for
+  // anyone who'd rather Settings stay in its previous, familiar order.
+  const updatesAtTop = parseLispBoolean(state.localVariables['org-xx-updates-at-top'], true);
+  if (updatesAtTop) {
+    container.insertBefore(updatesSection, container.firstChild);
+  } else {
+    container.appendChild(updatesSection);
+  }
 
   const updatesTitle = document.createElement('div');
   updatesTitle.className = 'panel-section-title';
