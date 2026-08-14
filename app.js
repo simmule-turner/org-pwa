@@ -4,6 +4,7 @@ import { hasPendingChange, getPendingChange, clearPendingChange } from './src/ou
 import { parseOrg, serializeOrg, findHeadingLineNumber } from './src/org-parser.js';
 import { parseBody } from './src/body-parser.js';
 import { detectWebmHasVideoTrack } from './src/webm-track-detect.js';
+import { findScrollingAncestor } from './src/scroll-util.js';
 import {
   generateAttachmentId,
   attachmentPath,
@@ -2148,6 +2149,32 @@ if (window.visualViewport) {
   };
   vv.addEventListener('resize', repositionTopBarForKeyboard);
   vv.addEventListener('scroll', repositionTopBarForKeyboard);
+  // A plain, layout-viewport-level scroll/resize is a second, independent
+  // trigger for the exact same re-check -- catches whatever a given
+  // browser/platform's own visualViewport events don't promptly fire for
+  // on their own (e.g. the browser's default "scroll the newly-focused
+  // field into view" behavior is a layout-viewport-level scroll, not
+  // necessarily a visualViewport-level one).
+  window.addEventListener('scroll', repositionTopBarForKeyboard);
+  window.addEventListener('resize', repositionTopBarForKeyboard);
+  // A third, deterministic trigger, independent of either of the above:
+  // any editable field gaining or losing focus anywhere on the page.
+  // focusin/focusout both bubble (unlike focus/blur), so one delegated
+  // listener on document catches every heading-title/body/paragraph/
+  // list-item/cell editor this app creates, without needing to attach a
+  // fresh listener to each one individually as it's dynamically created
+  // and destroyed. Fires on both focus IN (the keyboard is about to
+  // open) and focus OUT (about to close) with a short delay either way,
+  // giving the platform's own keyboard-open/dismiss animation and
+  // viewport-resize a moment to actually finish before re-checking --
+  // this specifically also catches the confirmed, currently-active iOS
+  // 26 WebKit bug where visualViewport.offsetTop can fail to reset to 0
+  // after the keyboard is dismissed (the resize/scroll events above may
+  // already have fired with the still-wrong value by that point; this
+  // re-checks again slightly later instead of trusting they got it right
+  // the first time).
+  document.addEventListener('focusin', () => setTimeout(repositionTopBarForKeyboard, 350));
+  document.addEventListener('focusout', () => setTimeout(repositionTopBarForKeyboard, 350));
 }
 // Crossing the wide-layout breakpoint (e.g. resizing a browser window,
 // or rotating a tablet) while Settings/Docs is open needs a re-render
@@ -2527,10 +2554,21 @@ function persistInBackground() {
 }
 
 function commitAndRender(label = 'Edited') {
+  const previousHistory = history;
   history = pushSnapshot(history, serializeOrg(state.doc), label);
   render();
   renderLogNotePrompt();
-  persistInBackground();
+  // pushSnapshot returns the SAME history object reference, unchanged,
+  // when the serialized text turned out identical to what's already
+  // there (a genuine no-op edit -- e.g. opening a text field and
+  // blurring it again without actually typing anything). Only mark
+  // the document dirty / trigger a background save when something
+  // actually changed -- otherwise the undo history and the "modified"
+  // indicator disagree with each other: no new history entry, but
+  // still shown as modified, confusing and simply wrong either way.
+  if (history !== previousHistory) {
+    persistInBackground();
+  }
 }
 
 /**
@@ -5149,7 +5187,7 @@ function render() {
       // rendered line height, itself variable once a long line wraps).
       // "Near the same line" is the actual goal here, not pixel-exact
       // positioning.
-      requestAnimationFrame(() => {
+      queueMicrotask(() => {
         textarea.focus();
         const fraction = targetLine / Math.max(1, lines.length - 1);
         textarea.scrollTop = fraction * (textarea.scrollHeight - textarea.clientHeight);
@@ -5164,7 +5202,7 @@ function render() {
     // resetting both the selection and the scroll position fixes it.
     textarea.scrollTop = 0;
     textarea.setSelectionRange(0, 0);
-    requestAnimationFrame(() => {
+    queueMicrotask(() => {
       textarea.focus();
       textarea.scrollTop = 0; // re-assert: some browsers scroll-to-caret again on focus
     });
@@ -5222,7 +5260,7 @@ function render() {
     editingHeadingText ||
     editingGeneral
   ) {
-    requestAnimationFrame(() => {
+    queueMicrotask(() => {
       const input =
         document.getElementById('title-edit-input') ||
         document.getElementById('cell-edit-input') ||
@@ -8064,9 +8102,27 @@ function renderQuickSettingsSection() {
   return wrap;
 }
 
+/** Finds the nearest ancestor of `el` (inclusive) that is actually
+ *  scrolling right now -- has more content than fits
+ *  (scrollHeight > clientHeight) and a computed overflow-y that lets
+ *  it scroll at all. This app's own layout has TWO different possible
+ *  scrolling containers depending on screen width (#contentArea on a
+ *  narrow/mobile layout, since #outline's own overflow-y:auto CSS
+ *  rule only applies inside the >=900px desktop media query -- #outline
+ *  itself never actually overflows on a phone at all; #outline or
+ *  #sidePanel directly on a wide/desktop layout instead, where
+ *  #contentArea's own overflow-y:auto, while unconditionally present
+ *  in the CSS, doesn't actually trigger there -- see index.html's own
+ *  comments on both rules). Reading/writing scrollTop on a specific,
+ *  hardcoded element is therefore wrong on whichever layout that
+ *  element ISN'T actually the scrolling one for -- a real,
+ *  platform-independent CSS/layout fact, not an iOS- or
+ *  Android-specific quirk. This walks up to find whichever ancestor
+ *  actually is scrolling right now, instead of assuming. */
 async function renderSettingsView(target = settingsRenderTarget) {
   settingsRenderTarget = target;
-  const savedScrollTop = target.scrollTop;
+  const scrollingEl = findScrollingAncestor(target);
+  const savedScrollTop = scrollingEl.scrollTop;
   target.innerHTML = '';
   const container = document.createElement('div');
   container.className = 'panel';
@@ -8661,7 +8717,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
             ? 'Couldn\u2019t check for updates right now.'
             : '';
   updatesSection.appendChild(updatesStatus);
-  target.scrollTop = savedScrollTop;
+  scrollingEl.scrollTop = savedScrollTop;
 }
 
 // ---- Docs (README, rendered in-app) --------------------------------------
