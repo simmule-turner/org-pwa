@@ -133,7 +133,17 @@ function shiftLevels(node, newLevel) {
   walk(node);
 }
 
-/** Org inactive timestamp, e.g. [2026-07-20 Mon 14:32] */
+/** Org's own ARCHIVE_TIME format: a BARE date/day-name/time string,
+ *  deliberately NOT wrapped in brackets at all -- confirmed directly
+ *  against real, observed org-archive output (independent real-world
+ *  examples: ":ARCHIVE_TIME: 2020-09-12 Sat 11:52" /
+ *  ":ARCHIVE_TIME: 2017-01-02 Mon 19:41") and against the actual
+ *  mechanism in real org's own org-archive.el source
+ *  (org-set-property "ARCHIVE_TIME" using the ACTIVE
+ *  org-time-stamp-formats entry with its own enclosing angle brackets
+ *  explicitly stripped via (substring ... 1 -1) before use) -- the
+ *  result is genuinely neither an active nor an inactive org
+ *  timestamp, just plain text that happens to look like one. */
 function formatOrgTimestamp(date = new Date()) {
   const pad = (n) => String(n).padStart(2, '0');
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -143,7 +153,7 @@ function formatOrgTimestamp(date = new Date()) {
   const dow = days[date.getDay()];
   const hh = pad(date.getHours());
   const mm = pad(date.getMinutes());
-  return `[${y}-${m}-${d} ${dow} ${hh}:${mm}]`;
+  return `${y}-${m}-${d} ${dow} ${hh}:${mm}`;
 }
 
 // ---- archive operations -----------------------------------------------

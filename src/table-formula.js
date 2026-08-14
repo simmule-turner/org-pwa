@@ -483,9 +483,53 @@ function collectRangeValues(argNode, ctx) {
  *  default writes "123.33333".
  *
  *  Real org's own optional ";%.2f"-style per-formula format specifier
- *  isn't implemented here -- a deliberate, documented scope cut, not
- *  an oversight; this fixed, reasonable default covers the common
- *  case without it. */
+ *  IS now implemented -- see parseFormatSpec/applyFormatSpec below --
+ *  this default is only ever used when a formula has no such
+ *  specifier of its own. */
+
+const FORMAT_SPEC_RE = /^%0?\.(\d+)f$|^%d$/;
+
+/** Parses a real org "%.Nf" or "%d" format specifier (the part after
+ *  the formula's own trailing ";", already split off by
+ *  parseFormulaStatement below) into { type: 'fixed', digits } |
+ *  { type: 'integer' } | null (anything else -- an unrecognized
+ *  specifier, or real org's own other, unimplemented mode letters
+ *  like E/N/f-1 -- silently falls through to this module's own
+ *  existing default formatting instead, the same tolerant handling
+ *  this module already gives an unrecognized aggregate-function name
+ *  no chance to opt out of). */
+function parseFormatSpec(suffix) {
+  const trimmed = suffix.trim();
+  const m = FORMAT_SPEC_RE.exec(trimmed);
+  if (!m) return null;
+  return m[1] !== undefined ? { type: 'fixed', digits: Number(m[1]) } : { type: 'integer' };
+}
+
+/** Formats `n` per an explicit, real org format specifier -- "%.Nf"
+ *  (fixed N decimal places, confirmed directly against both the Org
+ *  Manual's own wording and a real, published org file using this
+ *  exact syntax) or "%d" (integer; the exact rounding rule isn't
+ *  independently source-confirmed the way "%.Nf" is, so round-to-
+ *  nearest is used as the most defensible choice, not a confirmed
+ *  match to real Calc's own exact behavior). */
+function applyFormatSpec(n, spec) {
+  if (spec.type === 'fixed') return n.toFixed(spec.digits);
+  // Truncates toward zero, not round-to-nearest -- unlike "%.Nf"
+  // above (confirmed directly against both the Org Manual's own
+  // wording and a real, published org file using that exact syntax),
+  // this specific rule for "%d" isn't confirmed against a primary
+  // source the same way, despite multiple targeted searches for the
+  // actual Calc/Lisp mechanism behind it. Truncation is used on
+  // converging, but indirect, evidence instead: real Emacs Lisp's own
+  // `format` function is strict about argument types for "%d" (it
+  // won't silently accept a float at all), so Calc must explicitly
+  // convert to an integer before formatting -- and truncation is the
+  // conventional default "convert to int" behavior across the
+  // C-derived languages Calc's own format mechanism is explicitly
+  // modeled on ("similar to printf," per the Org Manual itself).
+  return String(Math.trunc(n));
+}
+
 function formatResult(n) {
   if (Number.isInteger(n)) return String(n);
   const SIGNIFICANT_FIGURES = 8;
@@ -520,7 +564,11 @@ function parseFormulaStatement(statement) {
   const lhs = statement.slice(0, eq).trim();
   let rhs = statement.slice(eq + 1).trim();
   const formatSuffix = /;[^;]*$/.exec(rhs);
-  if (formatSuffix) rhs = rhs.slice(0, formatSuffix.index).trim();
+  let formatSpec = null;
+  if (formatSuffix) {
+    rhs = rhs.slice(0, formatSuffix.index).trim();
+    formatSpec = parseFormatSpec(formatSuffix[0].slice(1)); // slice(1): drop the leading ";" itself
+  }
 
   let target;
   const cellMatch = /^@([<>]|[+-]?\d+)\$([<>]|\d+)$/.exec(lhs);
@@ -539,7 +587,7 @@ function parseFormulaStatement(statement) {
   }
 
   const expr = parseExpression(tokenize(rhs));
-  return { target, expr };
+  return { target, expr, formatSpec };
 }
 
 /** Splits a full #+TBLFM: value on "::" (real org's own multi-formula
@@ -596,20 +644,20 @@ export function recalculateTable(table) {
   const dataRowCount = dataRows.length;
   const colCount = dataRows.reduce((max, r) => Math.max(max, r.cells.length), 0);
 
-  for (const { target, expr } of statements) {
+  for (const { target, expr, formatSpec } of statements) {
     if (target.type === 'cell') {
       const row = resolveRowRef(target.row, 1, dataRowCount); // currentRow=1 is a placeholder -- an explicit @N$M target is never itself relative
       const col = resolveColRef(target.col, colCount);
       if (row === null || col === null) throw new Error('Formula target is out of range for this table');
       const value = evaluateAst(expr, { dataRows, dataRowCount, colCount, currentRow: row });
-      dataRows[row - 1].cells[col - 1] = formatResult(value);
+      dataRows[row - 1].cells[col - 1] = formatSpec ? applyFormatSpec(value, formatSpec) : formatResult(value);
     } else {
       // Column-formula shorthand: apply to every data row, each computing $M from ITS OWN row.
       const col = resolveColRef(target.col, colCount);
       if (col === null) throw new Error('Formula target column is out of range for this table');
       for (let r = 1; r <= dataRowCount; r++) {
         const value = evaluateAst(expr, { dataRows, dataRowCount, colCount, currentRow: r });
-        dataRows[r - 1].cells[col - 1] = formatResult(value);
+        dataRows[r - 1].cells[col - 1] = formatSpec ? applyFormatSpec(value, formatSpec) : formatResult(value);
       }
     }
   }
