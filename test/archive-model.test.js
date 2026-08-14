@@ -44,7 +44,17 @@ test('archiveInPlace tags the heading and stamps ARCHIVE_TIME', () => {
 
   assert.equal(isArchivedInPlace(target), true);
   assert.ok(target.tags.includes('ARCHIVE'));
-  assert.equal(target.properties.ARCHIVE_TIME, '[2026-07-20 Mon 14:32]');
+  assert.equal(target.properties.ARCHIVE_TIME, '2026-07-20 Mon 14:32');
+});
+
+test('THE FIX: ARCHIVE_TIME is written as a BARE date/day-name/time string, deliberately NOT wrapped in [] or <> -- confirmed against real, observed org-archive output (independent real-world examples both showed a bare, unbracketed value) and against the actual org-archive.el mechanism, which explicitly strips the enclosing angle brackets before writing this specific property', () => {
+  const doc = docWithProject();
+  const target = doc.children[0].children[0].children[1];
+  archiveInPlace(target, { now: FIXED_DATE });
+  const value = target.properties.ARCHIVE_TIME;
+  assert.ok(!value.startsWith('['), 'must not be wrapped in square brackets (an inactive timestamp)');
+  assert.ok(!value.startsWith('<'), 'must not be wrapped in angle brackets (an active timestamp) either');
+  assert.equal(value, '2026-07-20 Mon 14:32');
 });
 
 test('unarchiveInPlace removes the tag but keeps ARCHIVE_TIME as history', () => {
@@ -54,7 +64,7 @@ test('unarchiveInPlace removes the tag but keeps ARCHIVE_TIME as history', () =>
   unarchiveInPlace(target);
 
   assert.equal(isArchivedInPlace(target), false);
-  assert.equal(target.properties.ARCHIVE_TIME, '[2026-07-20 Mon 14:32]');
+  assert.equal(target.properties.ARCHIVE_TIME, '2026-07-20 Mon 14:32');
 });
 
 test('findAncestorPath returns the correct outline path', () => {
@@ -82,7 +92,7 @@ test('archiveToSiblingFile removes from source, stamps metadata, and lands in ar
   assert.equal(extracted.level, 1);
 
   // Metadata stamped correctly.
-  assert.equal(extracted.properties.ARCHIVE_TIME, '[2026-07-20 Mon 14:32]');
+  assert.equal(extracted.properties.ARCHIVE_TIME, '2026-07-20 Mon 14:32');
   assert.equal(extracted.properties.ARCHIVE_FILE, 'nrp.org');
   assert.equal(extracted.properties.ARCHIVE_OLPATH, 'Projects/NRP');
   assert.equal(extracted.properties.ARCHIVE_CATEGORY, 'Projects');

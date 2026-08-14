@@ -212,10 +212,49 @@ test('THE FIX: exact, character-for-character cross-check against a real, publis
   assert.equal(result[12].cells[0], '1.5092309', 'STD DEV (sample, vsdev), per the real, published example -- exact match, not approximate');
 });
 
-// ---- the ";format" suffix is parsed off, not left dangling -----------------
+// ---- THE FIX: format specifiers are now actually applied, not just stripped -----------------
 
-test('a real org ";format" specifier is recognized and stripped rather than breaking the expression parse -- not actually applied (a documented scope cut), but harmless either way', () => {
+test('THE FIX: a real org ";%.Nf" format specifier is now actually applied, matching printf-style fixed decimal formatting', () => {
   const result = recalculateTable(mkTable('@1$1=$1+$2;%.2f', [['3', '4']]));
+  assert.equal(result[0].cells[0], '7.00');
+});
+
+test('THE FIX: real, published-example syntax "%0.Nf" (a leading zero flag) is also recognized, not just the bare "%.Nf" form', () => {
+  const result = recalculateTable(mkTable('@3$1=vsum(@1$1..@2$1);%0.1f', [['0.5'], ['1.5'], ['']]));
+  assert.equal(result[2].cells[0], '2.0', 'exact match to a real, published org file using this exact syntax');
+});
+
+test('THE FIX: ";%d" formats a result as an integer', () => {
+  const result = recalculateTable(mkTable('@1$1=$1/$2;%d', [['10', '3']]));
+  assert.equal(result[0].cells[0], '3');
+});
+
+test('THE FIX: ";%d" truncates toward zero, not round-to-nearest -- 4.85 truncates to 4, not 5', () => {
+  const result = recalculateTable(mkTable('@1$2=$1;%d', [['4.85', '']]));
+  assert.equal(result[0].cells[1], '4');
+});
+
+test('THE FIX: ";%d" truncation, negative number -- the case that actually distinguishes truncate from round: -4.85 truncates to -4 (toward zero), NOT -5 (which round-to-nearest would give)', () => {
+  const result = recalculateTable(mkTable('@1$2=$1;%d', [['-4.85', '']]));
+  assert.equal(result[0].cells[1], '-4');
+});
+
+test('THE FIX: explicitly calling round()/ceil()/floor() before ";%d" still produces the expected rounded/ceiling/floor value -- %d itself is then just a no-op truncation on an already-integer result', () => {
+  const result = recalculateTable(
+    mkTable('@1$1=round($4);%d::@1$2=ceil($4);%d::@1$3=floor($4);%d', [['', '', '', '-4.85']])
+  );
+  assert.equal(result[0].cells[0], '-5', 'round(-4.85) rounds to nearest, ties away from zero');
+  assert.equal(result[0].cells[1], '-4', 'ceil(-4.85) rounds toward +Infinity');
+  assert.equal(result[0].cells[2], '-5', 'floor(-4.85) rounds toward -Infinity');
+});
+
+test('a formula with NO format specifier at all still uses the default 8-significant-figure formatting, unaffected by this feature', () => {
+  const result = recalculateTable(mkTable('@1$1=$1/$2', [['10', '3']]));
+  assert.equal(result[0].cells[0], '3.3333333');
+});
+
+test('an unrecognized specifier (real org\u2019s own other, unimplemented mode letters) is harmlessly ignored, falling back to the default formatting rather than throwing', () => {
+  const result = recalculateTable(mkTable('@1$1=$1+$2;E', [['3', '4']]));
   assert.equal(result[0].cells[0], '7');
 });
 
