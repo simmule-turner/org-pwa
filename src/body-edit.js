@@ -96,6 +96,20 @@ export function lastTableInBody(heading) {
   return null;
 }
 
+/** Every table in `heading`'s own body, in reading order -- a sibling
+ *  to lastTableInBody above, for callers (like org-table-recalculate
+ *  in app.js) that need to walk ALL of a heading's own tables, not
+ *  just the last one. Deliberately re-derived fresh from heading.body
+ *  on every call rather than cached anywhere -- exactly the point:
+ *  after committing one table's own changes (which re-parses
+ *  heading.body entirely, see commitLines below), any table reference
+ *  taken from the PREVIOUS call is stale, and a caller processing
+ *  several tables in the same heading needs to call this again to get
+ *  a valid one. */
+export function allTablesInBody(heading) {
+  return (heading.body || []).filter((node) => node.type === 'table');
+}
+
 // ---- commit: flush a mutated table/paragraph back to bodyLines ----------
 
 /** Replaces `heading.bodyLines[lineIndex, lineIndex+lineCount)` with
@@ -103,7 +117,7 @@ export function lastTableInBody(heading) {
  *  bodyLines. This is the one place that keeps the derived tree and the
  *  serialization source in sync — every edit function below ends by
  *  calling this rather than mutating heading.body directly. */
-function commitLines(heading, lineIndex, lineCount, newLines) {
+export function commitLines(heading, lineIndex, lineCount, newLines) {
   heading.bodyLines.splice(lineIndex, lineCount, ...newLines);
   heading.body = parseBody(heading.bodyLines);
 }
