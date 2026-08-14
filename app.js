@@ -1706,25 +1706,60 @@ function discardAudioRecording() {
   renderAudioRecordingPanel();
 }
 
-/** org-xx-extra-menu's own 'org-table-recalculate function reference --
- *  real org's own actual command (bound to C-c C-c on a table). This
- *  app has no "point"/cursor concept the way Emacs does, so rather
- *  than needing some notion of "which table is currently selected"
- *  (no such state exists here at all), this matches real org's own
- *  C-u C-c C-c -- recalculate every table in the whole buffer -- not
- *  the plain, single-table C-c C-c.
+/** Recalculates a single table's own #+TBLFM: formulas (if any) and
+ *  commits the result, if anything actually changed -- the shared
+ *  primitive both the per-table Calc button (renderTableRow, below in
+ *  this file) and the whole-document org-table-recalculate-buffer-
+ *  tables sweep are built on. Returns 'no-formula' (nothing to do --
+ *  the table has no #+TBLFM: at all), 'unchanged' (formulas exist but
+ *  every computed value already matched what was there), 'changed'
+ *  (committed), or 'error' (a malformed formula or out-of-range
+ *  reference -- table.rows is left completely untouched in this case,
+ *  see table-formula.js's own recalculateTable for why: the whole
+ *  recalculation is abandoned, never partially applied). Callers
+ *  decide for themselves how to report each of these -- a single
+ *  table's own Calc button and a whole-document sweep reasonably want
+ *  different status wording for the same underlying result. */
+function recalculateOneTable(heading, table) {
+  if (!table.tblfm || !table.tblfm.trim()) return { result: 'no-formula' };
+  try {
+    const newRows = recalculateTable(table);
+    if (!newRows || JSON.stringify(newRows) === JSON.stringify(table.rows)) {
+      return { result: 'unchanged' };
+    }
+    table.rows = newRows;
+    commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
+    return { result: 'changed' };
+  } catch (err) {
+    return { result: 'error', message: err.message };
+  }
+}
+
+/** org-xx-extra-menu's own 'org-table-recalculate-buffer-tables
+ *  function reference -- real org's own actual, distinct command
+ *  (org-table-recalculate-buffer-tables, confirmed directly against
+ *  the Org Manual: "Recompute all tables in the current buffer" is
+ *  its own separate entry, not reachable via any C-c C-c prefix
+ *  chain at all -- C-u C-c C-c only recomputes the entire CURRENT
+ *  table, "line by line," per the manual's own wording). This app
+ *  has no "point"/cursor concept the way Emacs does, so there's no
+ *  single-table equivalent to bind here at all -- see renderTableRow
+ *  below for the per-table Calc button, which fills that role
+ *  instead, matching real org's own actual two-command structure
+ *  (a per-table command and a separate, distinct whole-buffer one)
+ *  rather than one command escalated by a prefix argument.
  *
  *  Walks every heading top-to-bottom, recalculating every table that
- *  has a #+TBLFM: line (see table-formula.js's own recalculateTable).
- *  Within one heading with more than one such table, tables are
- *  re-found BY POSITION after each individual commit rather than
- *  holding onto object references across commits -- committing one
- *  table's own change re-parses that heading's entire body (see
- *  body-edit.js's own commitLines), which invalidates any OTHER table
- *  reference taken from the stale, pre-commit parse. Pure cell-value
- *  changes never add or remove a row, so re-finding "the Nth table in
- *  this heading" by position after a re-parse still correctly lands
- *  on the same logical table.
+ *  has a #+TBLFM: line via recalculateOneTable above. Within one
+ *  heading with more than one such table, tables are re-found BY
+ *  POSITION after each individual commit rather than holding onto
+ *  object references across commits -- committing one table's own
+ *  change re-parses that heading's entire body (see body-edit.js's
+ *  own commitLines), which invalidates any OTHER table reference
+ *  taken from the stale, pre-commit parse. Pure cell-value changes
+ *  never add or remove a row, so re-finding "the Nth table in this
+ *  heading" by position after a re-parse still correctly lands on
+ *  the same logical table.
  *
  *  A malformed formula in one table is reported and that ONE table is
  *  skipped, rather than aborting recalculation of every other,
@@ -1742,18 +1777,9 @@ function recalculateAllTables() {
       const tables = allTablesInBody(heading); // freshly re-derived every iteration -- see this function's own docs above for why
       if (tableIndex >= tables.length) break;
       const table = tables[tableIndex];
-      if (table.tblfm && table.tblfm.trim()) {
-        try {
-          const newRows = recalculateTable(table);
-          if (newRows && JSON.stringify(newRows) !== JSON.stringify(table.rows)) {
-            table.rows = newRows;
-            commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
-            anyChanged = true;
-          }
-        } catch {
-          failedHeadingTitles.push(heading.title || '(untitled)');
-        }
-      }
+      const { result } = recalculateOneTable(heading, table);
+      if (result === 'changed') anyChanged = true;
+      if (result === 'error') failedHeadingTitles.push(heading.title || '(untitled)');
       tableIndex++;
     }
   }
@@ -4885,6 +4911,24 @@ function renderTableRow(row) {
       commitAndRender('Deleted table column');
     })
   );
+  if (row.node.tblfm && row.node.tblfm.trim()) {
+    controls.appendChild(
+      smallButton('\ud83d\udd22 Calc', 'Recalculate this table', () => {
+        const { result, message } = recalculateOneTable(row.heading, row.node);
+        if (result === 'error') {
+          setStatus(`Couldn't recalculate: ${message}`);
+          render();
+        } else if (result === 'unchanged') {
+          setStatus('Table is already up to date.');
+          render();
+        } else if (result === 'changed') {
+          setStatus('Recalculated table.');
+          commitAndRender('Recalculated table');
+        }
+        // 'no-formula' can't actually happen here -- the button itself is only shown when row.node.tblfm is set.
+      })
+    );
+  }
   wrap.appendChild(controls);
 
   return withActionMenu(wrap, menuEl);
@@ -9965,7 +10009,7 @@ async function runExtraMenuEntry(entry) {
       performExport('markdown', null);
     } else if (entry.name === 'org-xx-calendar') {
       openCalendarPanel();
-    } else if (entry.name === 'org-table-recalculate') {
+    } else if (entry.name === 'org-table-recalculate-buffer-tables') {
       recalculateAllTables();
     }
     return;
