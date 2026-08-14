@@ -148,9 +148,28 @@ test('a bare "$N" inside an expression (no "@") means the CURRENT row, applied p
 // ---- hlines / row numbering -------------------------------------------------
 
 test('THE FIX: a horizontal rule (hline) never gets its own row number -- @N always counts DATA rows only, matching real org', () => {
-  const result = recalculateTable(mkTable('@4$1=sum(@1$1..@3$1)', [['1'], ['2'], null, ['3'], ['']]));
-  assert.equal(cellsOf(result)[2], '---', 'the rule itself is preserved untouched, at its own original position');
-  assert.equal(result[4].cells[0], '6', '@4 correctly refers to the 4th DATA row (the blank one after "3"), not the 4th array position');
+  // Header row, then first hline (defines the header boundary), then
+  // data rows with a SECOND hline mid-data (a group separator, which
+  // must NOT reset numbering or count as its own row either).
+  const result = recalculateTable(mkTable('@4$1=sum(@1$1..@3$1)', [['H'], null, ['1'], ['2'], null, ['3'], ['']]));
+  assert.equal(cellsOf(result)[1], '---', 'the first (header-defining) rule is preserved untouched, at its own original position');
+  assert.equal(cellsOf(result)[4], '---', 'the second (mid-data) rule is also preserved untouched');
+  assert.equal(result[6].cells[0], '6', '@4 correctly refers to the 4th DATA row (the blank one after "3"), counting only 1/2/3/blank -- not the header, and not either rule');
+});
+
+test('THE FIX: a header row (any row before the table\u2019s own first hline) is excluded entirely from @N numbering and column-formula application -- a real, confirmed bug found and fixed: a header row\u2019s own label text was silently getting overwritten with a computed number', () => {
+  const result = recalculateTable(mkTable('$2=($1-32)*5/9', [['Fahrenheit', 'Celsius'], null, ['32', ''], ['212', '']]));
+  assert.deepEqual(cellsOf(result)[0], ['Fahrenheit', 'Celsius'], 'the header row\u2019s own text must be completely untouched, not overwritten with a computed value');
+  assert.equal(result[2].cells[1], '0', 'the actual data rows are still correctly computed');
+  assert.equal(result[3].cells[1], '100');
+});
+
+test('a table with NO hline anywhere at all has no header row -- every row counts as data, matching real org\u2019s own documented convention exactly', () => {
+  const result = recalculateTable(mkTable('$2=$1*2', [['3', ''], ['5', '']]));
+  assert.deepEqual(cellsOf(result), [
+    ['3', '6'],
+    ['5', '10'],
+  ]);
 });
 
 // ---- multiple formulas / chaining --------------------------------------------
