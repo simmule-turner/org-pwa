@@ -445,7 +445,16 @@ export function recalculateTable(table) {
   // `cells` array per row so evaluating one formula can't accidentally
   // mutate a row a caller might still be holding a reference to.
   const workingRows = table.rows.map((row) => (row.type === 'row' ? { ...row, cells: [...row.cells] } : row));
-  const dataRows = workingRows.filter((r) => r.type === 'row');
+  // Any row before the table's own first hline is a HEADER row, real
+  // org's own actual documented convention exactly (confirmed against
+  // the Org Manual: "Any lines before the first hline are left alone,
+  // assuming that these are part of the table header") -- excluded
+  // from @N numbering and column-formula application entirely, the
+  // same as body-edit.js's own isTableHeaderRow already treats it for
+  // bold-rendering. No hline anywhere at all means no header, and
+  // every row counts as data, matching that same convention too.
+  const firstRuleIndex = workingRows.findIndex((r) => r.type === 'rule');
+  const dataRows = workingRows.filter((r, i) => r.type === 'row' && (firstRuleIndex === -1 || i >= firstRuleIndex));
   const dataRowCount = dataRows.length;
   const colCount = dataRows.reduce((max, r) => Math.max(max, r.cells.length), 0);
 
