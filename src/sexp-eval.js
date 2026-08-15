@@ -236,6 +236,22 @@ function evaluateSexpr(node, context) {
     case 'diary-day-length':
       return formatDayLengthLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, context.solarHideLabel);
 
+    case 'format': {
+      if (args.length < 1 || args[0].type !== 'string') return false;
+      const fmt = args[0].value;
+      const substitutionArgs = args.slice(1);
+      const placeholderCount = (fmt.match(/%[s%]/g) || []).filter((m) => m === '%s').length;
+      if (placeholderCount > substitutionArgs.length) return false; // not enough sub-expressions to fill every %s
+      let argIndex = 0;
+      return fmt.replace(/%[s%]/g, (m) => {
+        if (m === '%%') return '%';
+        const subResult = evaluateSexpr(substitutionArgs[argIndex], context);
+        argIndex++;
+        if (typeof subResult === 'string') return subResult;
+        return subResult ? 't' : 'nil'; // real elisp's own printed representation for a non-string, non-nil value in a %s slot
+      });
+    }
+
     default:
       return false; // an unrecognized function name -- no match, not an error
   }
