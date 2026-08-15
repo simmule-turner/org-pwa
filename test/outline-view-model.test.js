@@ -194,6 +194,27 @@ test('cycleHeadingTodo uses the resolved sequence (file #+TODO: wins over global
   assert.equal(cycleHeadingTodo(doc, heading, globalDefault), 'WAITING');
 });
 
+test('THE FIX: cycleHeadingTodo stays within the SPECIFIC parallel sequence a heading\u2019s own current keyword belongs to, not a sequence merged across every #+TODO: workflow in the file -- real org\u2019s own actual multi-workflow model', () => {
+  const doc = parseOrg(
+    ['#+TODO: TODO(t) | DONE(d)', '#+TODO: REPORT(r) BUG(b) KNOWNCAUSE(k) | FIXED(f)', '* REPORT Something'].join('\n')
+  );
+  const heading = doc.children[0];
+  const globalDefault = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
+  assert.equal(cycleHeadingTodo(doc, heading, globalDefault), 'BUG');
+  assert.equal(cycleHeadingTodo(doc, heading, globalDefault), 'KNOWNCAUSE');
+  assert.equal(cycleHeadingTodo(doc, heading, globalDefault), 'FIXED');
+  assert.equal(cycleHeadingTodo(doc, heading, globalDefault), null, 'wraps back to blank -- never crosses into the OTHER sequence\u2019s own keywords along the way');
+});
+
+test('THE FIX: once wrapped back to blank, cycling again correctly starts fresh in the file\u2019s FIRST sequence, matching real org\u2019s own actual default for a fresh heading', () => {
+  const doc = parseOrg(
+    ['#+TODO: TODO(t) | DONE(d)', '#+TODO: REPORT(r) BUG(b) KNOWNCAUSE(k) | FIXED(f)', '* Something'].join('\n')
+  );
+  const heading = doc.children[0];
+  const globalDefault = { todoKeywords: ['TODO'], doneKeywords: ['DONE'] };
+  assert.equal(cycleHeadingTodo(doc, heading, globalDefault), 'TODO');
+});
+
 test('cycleItemCheckbox cycles a leaf item (no nested sub-items) through just two states', () => {
   const doc = sampleDoc();
   const readingList = doc.children[1];

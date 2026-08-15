@@ -1,7 +1,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseInline, stripLineBreakMarker } from '../src/inline-markup.js';
+import { parseInline, stripLineBreakMarker, matchLatexFragmentAt } from '../src/inline-markup.js';
 
 test('parses plain text with no markup', () => {
   const nodes = parseInline('just some words');
@@ -393,4 +393,93 @@ test('stripLineBreakMarker: only strips at the END of the line -- two backslashe
 
 test('stripLineBreakMarker: an empty string is returned unchanged, not an error', () => {
   assert.equal(stripLineBreakMarker(''), '');
+});
+
+// ---- LaTeX math fragments ---------------------------------------------------
+
+test('THE FIX: \\(...\\) inline math fragment is recognized', () => {
+  assert.deepEqual(parseInline('\\(x=y\\)'), [{ type: 'latex', source: 'x=y', displayMode: false }]);
+});
+
+test('THE FIX: \\[...\\] display math fragment is recognized', () => {
+  assert.deepEqual(parseInline('\\[x=y\\]'), [{ type: 'latex', source: 'x=y', displayMode: true }]);
+});
+
+test('THE FIX: $$...$$ display math fragment is recognized', () => {
+  assert.deepEqual(parseInline('$$x=y$$'), [{ type: 'latex', source: 'x=y', displayMode: true }]);
+});
+
+test('THE FIX: a single-line \\begin{env}...\\end{env} is recognized as display math, with the raw environment text (including \\begin/\\end) kept as the source', () => {
+  const nodes = parseInline('\\begin{equation}x=y\\end{equation}');
+  assert.deepEqual(nodes, [{ type: 'latex', source: '\\begin{equation}x=y\\end{equation}', displayMode: true }]);
+});
+
+test('THE FIX: \\begin{env}...\\end{env} is only recognized when \\begin starts the line, preceded by nothing but whitespace -- real org\u2019s own actual documented rule', () => {
+  assert.deepEqual(parseInline('  \\begin{equation}x=y\\end{equation}'), [
+    { type: 'text', value: '  ' },
+    { type: 'latex', source: '\\begin{equation}x=y\\end{equation}', displayMode: true },
+  ]);
+  assert.deepEqual(parseInline('text \\begin{equation}x=y\\end{equation}'), [
+    { type: 'text', value: 'text \\begin{equation}x=y\\end{equation}' },
+  ]);
+});
+
+test('THE FIX: mismatched \\begin/\\end environment names are NOT recognized as one fragment', () => {
+  assert.deepEqual(parseInline('\\begin{equation}x=y\\end{align}'), [
+    { type: 'text', value: '\\begin{equation}x=y\\end{align}' },
+  ]);
+});
+
+test('THE FIX: $...$ inline math -- real org\u2019s own documented example, both fragments in one sentence', () => {
+  const nodes = parseInline('If $a^2=b$ and \\( b=2 \\), then the solution must be either.');
+  assert.deepEqual(nodes, [
+    { type: 'text', value: 'If ' },
+    { type: 'latex', source: 'a^2=b', displayMode: false },
+    { type: 'text', value: ' and ' },
+    { type: 'latex', source: ' b=2 ', displayMode: false },
+    { type: 'text', value: ', then the solution must be either.' },
+  ]);
+});
+
+test('THE FIX: $...$ is NOT recognized when there\u2019s whitespace directly inside the delimiters -- confirmed directly against the Org Manual\u2019s own wording ("directly attached to the \'$\' characters with no whitespace in between")', () => {
+  assert.deepEqual(parseInline('$ x $ has spaces'), [{ type: 'text', value: '$ x $ has spaces' }]);
+});
+
+test('THE FIX: $...$ is NOT recognized when the closing $ is followed by a dash -- confirmed directly against the Org Manual\u2019s own explicit exception ("followed by whitespace or punctuation (but not a dash)"), avoiding "$5-10" reading as math', () => {
+  assert.deepEqual(parseInline('$5-10 is a range'), [{ type: 'text', value: '$5-10 is a range' }]);
+});
+
+test('THE FIX: $...$ correctly avoids currency-text false positives -- the Org Manual\u2019s own stated purpose for these restrictions in the first place', () => {
+  assert.deepEqual(parseInline('costs $5 and $10 total'), [{ type: 'text', value: 'costs $5 and $10 total' }]);
+});
+
+test('$...$ closing followed by ordinary punctuation or end-of-string is still recognized', () => {
+  assert.deepEqual(parseInline('$x$.'), [{ type: 'latex', source: 'x', displayMode: false }, { type: 'text', value: '.' }]);
+  assert.deepEqual(parseInline('$x$'), [{ type: 'latex', source: 'x', displayMode: false }]);
+});
+
+test('LaTeX math correctly nests inside bold/italic text (matching real org)', () => {
+  assert.deepEqual(parseInline('*bold $x$ text*'), [
+    {
+      type: 'bold',
+      children: [
+        { type: 'text', value: 'bold ' },
+        { type: 'latex', source: 'x', displayMode: false },
+        { type: 'text', value: ' text' },
+      ],
+    },
+  ]);
+});
+
+test('LaTeX-looking text inside a literal ~code~/=verbatim= span stays literal, NOT re-parsed as math (matching real org -- literal spans are never recursively parsed at all)', () => {
+  assert.deepEqual(parseInline('~literal $x$ stays literal~'), [{ type: 'code', value: 'literal $x$ stays literal' }]);
+});
+
+test('matchLatexFragmentAt returns null when nothing matches at the given position', () => {
+  assert.equal(matchLatexFragmentAt('plain text', 0), null);
+});
+
+test('a lone, unterminated $ or \\( is left as plain text, not a hang or a false match', () => {
+  assert.deepEqual(parseInline('an unterminated $x here'), [{ type: 'text', value: 'an unterminated $x here' }]);
+  assert.deepEqual(parseInline('an unterminated \\(x here'), [{ type: 'text', value: 'an unterminated \\(x here' }]);
 });

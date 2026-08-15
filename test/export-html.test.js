@@ -398,3 +398,58 @@ test('the "\\\\" marker itself is stripped, never leaking into the HTML output a
   const out = exportToHtml(doc);
   assert.doesNotMatch(out, /\\\\/);
 });
+
+// ---- LaTeX math fragments ---------------------------------------------------
+
+function withMockKatex(fn) {
+  const prevWindow = globalThis.window;
+  globalThis.window = { katex: { renderToString: (source, opts) => `<span class="katex" data-mode="${opts.displayMode}">${source}</span>` } };
+  try {
+    return fn();
+  } finally {
+    globalThis.window = prevWindow;
+  }
+}
+
+test('THE FIX: a math fragment renders through the engine when available, into the exported HTML', () => {
+  withMockKatex(() => {
+    const doc = parseOrg('* H\nSome text $a^2=b$ here.\n');
+    const out = exportToHtml(doc);
+    assert.ok(out.includes('<span class="katex" data-mode="false">a^2=b</span>'));
+  });
+});
+
+test('THE FIX: KaTeX\u2019s own CSS is included in the exported document\u2019s <head> ONLY when the document actually contains a successfully-rendered math fragment', () => {
+  withMockKatex(() => {
+    const withMath = exportToHtml(parseOrg('* H\nSome text $a^2=b$ here.\n'));
+    assert.ok(withMath.includes('.katex{'), 'a math-containing document must include the CSS');
+  });
+  const withoutMath = exportToHtml(parseOrg('* H\nJust plain text, no math at all.\n'));
+  assert.ok(!withoutMath.includes('.katex{'), 'a document with no math at all must not carry ~20KB of unused CSS');
+});
+
+test('THE FIX: the engine being entirely unavailable (no window.katex, e.g. this exact test environment by default) falls back to a visibly-distinct raw-source span, not a crash or silently-dropped content', () => {
+  const prevWindow = globalThis.window;
+  delete globalThis.window;
+  try {
+    const doc = parseOrg('* H\nSome text $a^2=b$ here.\n');
+    const out = exportToHtml(doc);
+    assert.ok(out.includes('a^2=b'), 'the raw source text must still be present, not silently dropped');
+    assert.ok(out.includes('dashed'), 'a visibly-distinct fallback treatment, not rendered as if it were ordinary text');
+  } finally {
+    globalThis.window = prevWindow;
+  }
+});
+
+test('a malformed LaTeX fragment (the engine rejects it) also falls back to the raw-source span, and does not include the CSS on its own (no OTHER math on the page succeeded)', () => {
+  const prevWindow = globalThis.window;
+  globalThis.window = { katex: { renderToString: () => { throw new Error('bad'); } } };
+  try {
+    const doc = parseOrg('* H\nSome text $bad^\\varnothing$ here.\n');
+    const out = exportToHtml(doc);
+    assert.ok(out.includes('bad^\\varnothing'));
+    assert.ok(!out.includes('.katex{'));
+  } finally {
+    globalThis.window = prevWindow;
+  }
+});

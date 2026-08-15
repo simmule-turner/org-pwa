@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
 import {
   resolveTodoSequence,
+  resolveTodoSequences,
   cycleTodoState,
   setTodoState,
   isDoneKeyword,
@@ -20,7 +21,7 @@ test('resolveTodoSequence uses a supplied global default when the file has no #+
   const doc = parseOrg('* No keyword line here');
   const global = { todoKeywords: ['NEXT'], doneKeywords: ['SHIPPED'] };
   const seq = resolveTodoSequence(doc, global);
-  assert.deepEqual(seq, global);
+  assert.deepEqual(seq, { ...global, keySpecs: {}, logSpecs: {} });
 });
 
 test('a file-level #+TODO: line wins even when a global default is supplied', () => {
@@ -28,6 +29,34 @@ test('a file-level #+TODO: line wins even when a global default is supplied', ()
   const global = { todoKeywords: ['NEXT'], doneKeywords: ['SHIPPED'] };
   const seq = resolveTodoSequence(doc, global);
   assert.deepEqual(seq, { todoKeywords: ['NEXT', 'WAITING'], doneKeywords: ['DONE', 'CANCELLED'], keySpecs: {}, logSpecs: {} });
+});
+
+test('THE FIX: a #+TODO: line with NO "|" separator at all treats the LAST keyword as the sole done state -- confirmed directly against the Org Mode Compact Guide\u2019s own wording: "If you do not provide the separator bar, the last state is used as the \u2018DONE\u2019 state." Previously, this app left doneKeywords empty in this case, meaning the file\u2019s own final keyword (here, "FIXED") was never recognized as done at all -- checkbox counting, agenda completion logic, and CLOSED-timestamp insertion would all have been silently wrong for a real file using this common, valid syntax.', () => {
+  const doc = parseOrg(['#+TODO: TODO NEXT FIXED', '* Something'].join('\n'));
+  const seq = resolveTodoSequence(doc, { todoKeywords: ['TODO'], doneKeywords: ['DONE'] });
+  assert.deepEqual(seq.todoKeywords, ['TODO', 'NEXT']);
+  assert.deepEqual(seq.doneKeywords, ['FIXED']);
+});
+
+test('THE FIX: the no-separator fallback still correctly carries fast-select keys and logging specs for the keyword it moves into doneKeywords', () => {
+  const doc = parseOrg(['#+TODO: TODO(t) NEXT(n) FIXED(f!)', '* Something'].join('\n'));
+  const seq = resolveTodoSequence(doc, { todoKeywords: ['TODO'], doneKeywords: ['DONE'] });
+  assert.deepEqual(seq.doneKeywords, ['FIXED']);
+  assert.equal(seq.keySpecs.FIXED, 'f');
+  assert.equal(seq.logSpecs.FIXED, '!');
+});
+
+test('a single bare keyword with no "|" at all becomes the done state; the (separate, intentional) "don\u2019t overwrite with empty" behavior in resolveTodoSequence -- needed for the legitimate multi-line #+TODO: case, see the test above -- means the global default\u2019s own todoKeywords stays in effect here rather than clearing to [], since this one #+TODO: line has none of its own to contribute', () => {
+  const doc = parseOrg(['#+TODO: ONLYSTATE', '* Something'].join('\n'));
+  const seq = resolveTodoSequence(doc, { todoKeywords: ['TODO'], doneKeywords: ['DONE'] });
+  assert.deepEqual(seq.todoKeywords, ['TODO'], 'the global default carries through, unaffected -- this file\u2019s own line contributed no todo keywords of its own');
+  assert.deepEqual(seq.doneKeywords, ['ONLYSTATE'], 'the fix itself: this file\u2019s own single keyword is correctly recognized as the done state');
+});
+
+test('a "|" that IS present, even with nothing after it, is a genuinely different case (explicitly "no done states at all") and must NOT trigger the no-separator fallback', () => {
+  const doc = parseOrg(['#+TODO: TODO NEXT |', '* Something'].join('\n'));
+  const seq = resolveTodoSequence(doc, { todoKeywords: ['TODO'], doneKeywords: ['DONE'] });
+  assert.deepEqual(seq.todoKeywords, ['TODO', 'NEXT'], 'both keywords stay as TODO-type, neither gets silently reassigned to done');
 });
 
 test('cycleTodoState walks null -> TODO -> DONE -> null with the default sequence', () => {
@@ -79,35 +108,34 @@ test('isDoneKeyword distinguishes TODO-type from DONE-type keywords', () => {
 
 // ---- multiple #+TODO: lines (the real bug) -------------------------------
 
-test('THE BUG THIS FIXES: with two #+TODO: lines, resolveTodoSequence used to read only the FIRST one -- the opposite of what the parser itself does when setting heading.todo (last line wins, per-part)', () => {
+test('THE FIX (deeper than the earlier "last line wins" pass): the parser AND resolveTodoSequence now correctly agree that multiple #+TODO: lines are SEPARATE, PARALLEL sequences, per real org\u2019s own actual documented model -- not one line progressively overriding the previous one. A heading using an EARLIER line\u2019s own keyword is correctly recognized, at parse time, not just by resolveTodoSequence', () => {
   const doc = parseOrg(
     ['#+TODO: TODO WAIT | DONE KILL', '#+TODO: TODO | DONE', '* WAIT Something'].join('\n')
   );
-  // The parser itself, using its own last-wins-per-part algorithm, does NOT
-  // recognize WAIT here (the second line's non-empty TODO part replaced
-  // the first line's), so heading.todo is null -- this is correct,
-  // expected parser behavior, not a bug on its own.
-  assert.equal(doc.children[0].todo, null);
-  // The bug: resolveTodoSequence used to disagree with the parser about
-  // this, reporting WAIT as a valid keyword anyway (it read only the
-  // first line). Now it must agree with the parser exactly.
+  // Previously null: the parser's own OLD, separate copy of the same
+  // last-line-wins bug meant "WAIT" was never recognized as a keyword at
+  // all, so it fell through as literal heading title text instead.
+  assert.equal(doc.children[0].todo, 'WAIT', 'the parser itself now correctly recognizes a keyword from an EARLIER #+TODO: line');
   const seq = resolveTodoSequence(doc);
-  assert.deepEqual(seq.todoKeywords, ['TODO']);
-  assert.deepEqual(seq.doneKeywords, ['DONE']);
+  assert.deepEqual(seq.todoKeywords, ['TODO', 'WAIT']);
+  assert.deepEqual(seq.doneKeywords, ['DONE', 'KILL']);
 });
 
-test('a later #+TODO: line with a non-empty TODO part replaces the earlier one entirely (not merged)', () => {
-  const doc = parseOrg(['#+TODO: TODO WAIT REVIEW | DONE', '#+TODO: TODO | DONE CANCELLED'].join('\n'));
+test('two #+TODO: lines with genuinely different sequences (a real multi-workflow file) are both correctly recognized together -- neither line\u2019s own keywords are dropped', () => {
+  const doc = parseOrg(['#+TODO: TODO WAIT REVIEW | DONE', '#+TODO: REPORT BUG | FIXED'].join('\n'));
   const seq = resolveTodoSequence(doc);
-  assert.deepEqual(seq.todoKeywords, ['TODO']); // WAIT, REVIEW from line 1 are gone
-  assert.deepEqual(seq.doneKeywords, ['DONE', 'CANCELLED']); // line 2's done part used, since it's non-empty
+  assert.deepEqual(seq.todoKeywords, ['TODO', 'WAIT', 'REVIEW', 'REPORT', 'BUG']);
+  assert.deepEqual(seq.doneKeywords, ['DONE', 'FIXED']);
 });
 
-test('a later #+TODO: line with an EMPTY todo part does not blank out an earlier lines todo keywords', () => {
-  const doc = parseOrg(['#+TODO: TODO WAIT | DONE', '#+TODO: | KILLED'].join('\n'));
-  const seq = resolveTodoSequence(doc);
-  assert.deepEqual(seq.todoKeywords, ['TODO', 'WAIT']); // kept from line 1, since line 2's part was empty
-  assert.deepEqual(seq.doneKeywords, ['KILLED']); // line 2's non-empty done part used
+test('resolveTodoSequences (plural) correctly keeps two #+TODO: lines as two SEPARATE sequences, each with only its own keywords -- the actual data multi-workflow selection needs, distinct from resolveTodoSequence\u2019s own flattened union', () => {
+  const doc = parseOrg(['#+TODO: TODO WAIT REVIEW | DONE', '#+TODO: REPORT BUG | FIXED'].join('\n'));
+  const sequences = resolveTodoSequences(doc);
+  assert.equal(sequences.length, 2);
+  assert.deepEqual(sequences[0].todoKeywords, ['TODO', 'WAIT', 'REVIEW']);
+  assert.deepEqual(sequences[0].doneKeywords, ['DONE']);
+  assert.deepEqual(sequences[1].todoKeywords, ['REPORT', 'BUG']);
+  assert.deepEqual(sequences[1].doneKeywords, ['FIXED']);
 });
 
 test('resolveTodoSequence with multiple lines matches heading.todo exactly for a keyword that DOES survive to the final sequence', () => {
