@@ -55,6 +55,8 @@ import {
   getScheduledDelayDays,
   getCalendarLatitude,
   getCalendarLongitude,
+  getSolarAmpm,
+  getSolarHideLabel,
   getCalendarLocationName,
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
@@ -7104,6 +7106,8 @@ function renderAgendaView() {
     scheduledDelayDays: getScheduledDelayDays(state.localVariables),
     calendarLatitude: getCalendarLatitude(state.localVariables),
     calendarLongitude: getCalendarLongitude(state.localVariables),
+    solarAmpm: getSolarAmpm(state.localVariables),
+    solarHideLabel: getSolarHideLabel(state.localVariables),
   });
 
   const grouped =
@@ -8032,6 +8036,22 @@ const QUICK_SETTINGS_FIELDS = [
     section: 'Contacts & Calendar',
     type: 'text',
     default: 'Durham, NC',
+    helpAnchor: '#agenda-diary-sexp',
+  },
+  {
+    key: 'solar-ampm',
+    label: 'Solar times: use am/pm (else 24-hour)',
+    section: 'Contacts & Calendar',
+    type: 'boolean',
+    default: false,
+    helpAnchor: '#agenda-diary-sexp',
+  },
+  {
+    key: 'solar-hide-label',
+    label: 'Solar times: hide label (e.g. "Sunrise")',
+    section: 'Contacts & Calendar',
+    type: 'boolean',
+    default: false,
     helpAnchor: '#agenda-diary-sexp',
   },
   {
