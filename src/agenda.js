@@ -576,7 +576,7 @@ function buildAgendaItems(docs, opts = {}) {
       // stateful "intend to do this" marker either.
       if (!hasPlanning && rangeStart && rangeEnd) {
         for (const sexpTs of findSexpTimestamps(heading.title)) {
-          const cleanTitle = heading.title.replace(sexpTs.raw, '').trim() || '(untitled)';
+          const cleanTitle = heading.title.replace(sexpTs.raw, '').trim();
           for (const day of enumerateDays(rangeStart, rangeEnd)) {
             const result = evaluateSexpTimestamp(sexpTs.expr, {
               candidateDate: day,
@@ -587,7 +587,8 @@ function buildAgendaItems(docs, opts = {}) {
               solarHideLabel,
             });
             if (!isTruthy(result)) continue;
-            const displayTitle = typeof result === 'string' ? `${cleanTitle}: ${result}` : cleanTitle;
+            const displayTitle =
+              typeof result === 'string' ? (cleanTitle ? `${cleanTitle}: ${result}` : result) : cleanTitle || '(untitled)';
             items.push({
               documentId,
               heading,
