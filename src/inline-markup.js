@@ -35,6 +35,73 @@ const LINK_RE = /^\[\[([^\]]+?)\](?:\[([^\]]+?)\])?\]/;
 const COMMENT_RE = /^@@comment:(.*?)@@/;
 const IMAGE_EXT_RE = /\.(png|jpe?g|gif|svg|webp|bmp|heic|heif)$/i;
 
+// LaTeX math fragment delimiters -- confirmed directly against the Org
+// Manual (see src/math-render.js for the full rendering architecture
+// and its own citations). Real org also allows $...$ / \[...\] /
+// $$...$$ / environments to span up to two line breaks -- since this
+// module parses one line at a time (paragraphs render line-by-line,
+// see renderParagraphRow in app.js), fragment detection here is scoped
+// to a fragment that fits entirely on a single line; a fragment
+// genuinely spanning multiple lines is a known, deliberate limitation
+// of this pass, not silently broken -- see math-render.js's own docs
+// for the full account.
+const DISPLAY_DOLLAR_RE = /^\$\$([^\n]+?)\$\$/;
+const INLINE_PAREN_RE = /^\\\(([^\n]+?)\\\)/;
+const DISPLAY_BRACKET_RE = /^\\\[([^\n]+?)\\\]/;
+const BEGIN_ENV_RE = /^\\begin\{([A-Za-z*]+)\}([\s\S]+?)\\end\{\1\}/;
+const DOLLAR_INLINE_RE = /^\$(\S(?:[^\n$]*\S)?)\$/;
+const DOLLAR_VALID_FOLLOW_RE = /[\s.,;:!?)\]}'"]/;
+
+/** Matches a real org LaTeX math fragment at `text[pos]` -- tries the
+ *  display forms first ($$...$$, \[...\], \begin{env}...\end{env})
+ *  before the single-$ inline form, since a naive single-$ scan would
+ *  otherwise incorrectly consume half of a $$...$$ pair. Returns
+ *  { content, displayMode, length } or null.
+ *
+ *  $...$'s own restrictions are confirmed directly against the Org
+ *  Manual: content must be directly attached to the '$' with no
+ *  whitespace inside, and the closing '$' must be followed by
+ *  whitespace or punctuation, but never a dash (avoiding "$5-10"
+ *  reading as math). What must precede the OPENING '$', though, is
+ *  NOT confirmed against a primary source, despite real effort (see
+ *  math-render.js's own docs on this specific gap) -- "not
+ *  immediately preceded by a digit" below is this app's own reasoned
+ *  choice (avoiding "$5 $10"-style currency text), not a verified
+ *  match to real org's own exact behavior. */
+function matchLatexFragmentAt(text, pos) {
+  const remaining = text.slice(pos);
+
+  if (remaining.startsWith('\\begin{')) {
+    const beforeOnLine = text.slice(0, pos);
+    const linePrefix = beforeOnLine.slice(beforeOnLine.lastIndexOf('\n') + 1);
+    if (/^\s*$/.test(linePrefix)) {
+      const m = BEGIN_ENV_RE.exec(remaining);
+      if (m) return { content: m[0], displayMode: true, length: m[0].length };
+    }
+  }
+
+  const dd = DISPLAY_DOLLAR_RE.exec(remaining);
+  if (dd) return { content: dd[1], displayMode: true, length: dd[0].length };
+
+  const ip = INLINE_PAREN_RE.exec(remaining);
+  if (ip) return { content: ip[1], displayMode: false, length: ip[0].length };
+
+  const db = DISPLAY_BRACKET_RE.exec(remaining);
+  if (db) return { content: db[1], displayMode: true, length: db[0].length };
+
+  if (text[pos] === '$' && text[pos + 1] !== '$' && !(pos > 0 && /[0-9]/.test(text[pos - 1]))) {
+    const m = DOLLAR_INLINE_RE.exec(remaining);
+    if (m) {
+      const after = text[pos + m[0].length];
+      if (after !== '-' && (after === undefined || DOLLAR_VALID_FOLLOW_RE.test(after))) {
+        return { content: m[1], displayMode: false, length: m[0].length };
+      }
+    }
+  }
+
+  return null;
+}
+
 // Footnotes: [fn:label] is a bare reference to a definition given
 // elsewhere (either inline, via [fn:label:...] somewhere else in the
 // document, or as its own definition line/paragraph -- see
@@ -281,6 +348,16 @@ function parseInline(text, opts = {}) {
       }
     }
 
+    if (text[pos] === '$' || text[pos] === '\\') {
+      const latex = matchLatexFragmentAt(text, pos);
+      if (latex) {
+        flush();
+        nodes.push({ type: 'latex', source: latex.content, displayMode: latex.displayMode });
+        pos += latex.length;
+        continue;
+      }
+    }
+
     if (isEmphasisMarker(text[pos])) {
       const m = matchEmphasisAt(text, pos);
       if (m) {
@@ -335,4 +412,5 @@ export {
   parseInline,
   stripLineBreakMarker,
   IMAGE_EXT_RE,
+  matchLatexFragmentAt,
 };

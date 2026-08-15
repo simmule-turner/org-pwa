@@ -12,7 +12,7 @@
  * plain data and pure mutation functions, nothing UI-framework-specific.
  */
 
-import { resolveTodoSequence, cycleTodoState } from './todo-cycle.js';
+import { resolveTodoSequences, findSequenceForHeading, cycleTodoState } from './todo-cycle.js';
 
 const CHECKBOX_CYCLE_SIMPLE = [' ', 'X'];
 const CHECKBOX_CYCLE_WITH_CHILDREN = [' ', '-', 'X'];
@@ -148,10 +148,17 @@ function toggleFold(heading) {
   return heading.collapsed;
 }
 
-/** Tap-the-TODO-badge: advances a heading's TODO state using whichever
- *  sequence applies (file's own #+TODO: line, else `globalDefault`). */
+/** Tap-the-TODO-badge: advances a heading's TODO state by one step,
+ *  staying within whichever specific sequence this heading's own
+ *  current keyword actually belongs to -- resolved via
+ *  findSequenceForHeading, not a single sequence merged across a
+ *  file's entire set of parallel #+TODO: workflows (real org's own
+ *  actual multi-workflow model; see todo-cycle.js's own header
+ *  comment). A blank heading starts in the file's first-defined
+ *  sequence, matching real org's own actual default. */
 function cycleHeadingTodo(doc, heading, globalDefault, opts) {
-  const sequence = resolveTodoSequence(doc, globalDefault);
+  const sequences = resolveTodoSequences(doc, globalDefault);
+  const sequence = findSequenceForHeading(sequences, heading);
   return cycleTodoState(heading, sequence, opts);
 }
 

@@ -1,27 +1,37 @@
 
 /**
- * TODO-cycle logic. Per the requirements decision: the file's own #+TODO:
- * line(s) win if present; a global app-level default is the fallback when a
- * file doesn't specify any. There's no "merge" step between the file's own
- * configuration and the global default — it's one or the other, which keeps
- * the UI's TODO badge unambiguous about which sequence it's cycling through.
+ * TODO-cycle logic. Real org's own actual model for a file with multiple
+ * #+TODO: lines: each line defines a SEPARATE, complete, parallel
+ * sequence -- not a progressive override of the previous one (confirmed
+ * directly: "Sometimes you may want to use different sets of TODO
+ * keywords in parallel... To define TODO keywords that are valid only in
+ * a single file... #+TODO: TODO(t) | DONE(d) #+TODO: REPORT(r) BUG(b)
+ * KNOWNCAUSE(k) | FIXED(f)" -- two separate, coexisting workflows, not
+ * one line replacing the other). Real org requires every keyword across
+ * every parallel sequence in a file to be distinct, specifically so a
+ * heading's own current keyword always unambiguously identifies which
+ * sequence it belongs to -- no separate "which workflow is this" state is
+ * ever needed once a heading actually has a keyword.
  *
- * When a file has multiple #+TODO: lines (real org allows this, and some
- * files use it deliberately, appending or overriding), this needs to
- * resolve them the exact same way org-parser.js itself does when it
- * decides what to set each heading's own .todo field to — otherwise the
- * two could disagree about which keywords are valid, which is exactly
- * what happened before this was fixed: a heading using a keyword from an
- * earlier #+TODO: line that a later line's non-empty TODO part replaced
- * (not merged) would have .todo === null (the parser correctly didn't
- * recognize it), while this function still considered that keyword part
- * of "the" sequence (it was reading only the first line, effectively
- * getting the opposite priority order from the parser's actual "each
- * later line updates, last one std" behavior) — so a real, undone task
- * could silently disappear from every feature that relies on this
- * (TODO cycling, Agenda's done-detection, the TODO view) without ever
- * showing up as broken, since nothing threw — it just silently used the
- * wrong keyword set.
+ * resolveTodoSequences (plural, below) returns the array of parallel
+ * sequences a file actually has -- what TODO-cycling itself needs, since
+ * cycling a specific heading must stay within whichever ONE sequence that
+ * heading's own keyword belongs to. resolveTodoSequence (singular) is
+ * kept for the many existing consumers that only ever need a simple "is X
+ * a done-type keyword" / "what are all the possible keywords" answer
+ * (Agenda's own completion filtering, checkbox-cookie counting, badge
+ * color) -- these don't need to know which specific sequence a keyword
+ * came from, so a plain UNION across every sequence answers them
+ * correctly (safe specifically because real org's own uniqueness
+ * requirement above rules out any ambiguity). This union-based
+ * resolveTodoSequence replaces this module's own earlier "last line
+ * wins" fix, which was itself still wrong for the genuine multi-sequence
+ * case: a heading using an EARLIER sequence's own keyword had that
+ * keyword silently vanish from the resolved set entirely (not just read
+ * from the wrong line, which was the original, narrower bug that fix
+ * addressed) -- exactly the kind of silent, undone-task-disappears
+ * failure mode this module's own docs already warned about, just not
+ * fully fixed by that earlier pass.
  */
 
 import { DEFAULT_TODO_KEYWORDS, DEFAULT_DONE_KEYWORDS, parseTodoSpecValue } from './org-parser.js';
@@ -29,47 +39,69 @@ import { DEFAULT_TODO_KEYWORDS, DEFAULT_DONE_KEYWORDS, parseTodoSpecValue } from
 const DEFAULT_SEQUENCE = { todoKeywords: ['TODO'], doneKeywords: ['DONE'], keySpecs: {}, logSpecs: {} };
 
 /**
- * Resolves which keyword sequence applies to `doc`: its own #+TODO:
- * line(s) if present, otherwise `globalDefault` (falling back to the
- * built-in TODO/DONE pair if no global default is supplied either).
- *
- * When there are multiple #+TODO: lines, each one updates the todo part
- * and/or done part independently (an empty part on a later line doesn't
- * blank out an earlier line's non-empty value for that part), and
- * keySpecs/logSpecs merge the same way, keyword by keyword -- a later
- * line's entry for a given keyword overrides an earlier one, but a
- * keyword only mentioned on an earlier line keeps whatever spec that
- * line gave it. This is org-parser.js's own resolution algorithm
- * (parseTodoSpecValue), used directly here rather than a separate
- * approximation, since heading.todo values were set using THAT
- * algorithm and this function needs to agree with it, not use a
- * different one.
+ * Parses EVERY #+TODO: line in `doc` into an array of separate, parallel
+ * sequences, in document order -- real org's own actual multi-workflow
+ * model (see this module's own header comment above). Falls back to a
+ * single-element array holding `globalDefault` (or the built-in TODO/DONE
+ * pair) when the file has no #+TODO: line at all.
  */
-function resolveTodoSequence(doc, globalDefault) {
+function resolveTodoSequences(doc, globalDefault) {
   const fallback = globalDefault || DEFAULT_SEQUENCE;
-  if (!doc || !Array.isArray(doc.keywords)) return fallback;
-
-  let todoKeywords = null;
-  let doneKeywords = null;
-  let keySpecs = {};
-  let logSpecs = {};
-  let sawAnyTodoLine = false;
+  if (!doc || !Array.isArray(doc.keywords)) return [fallback];
+  const sequences = [];
   for (const kw of doc.keywords) {
     if (kw.key.toUpperCase() !== 'TODO') continue;
-    sawAnyTodoLine = true;
     const parsed = parseTodoSpecValue(kw.value);
-    if (parsed.todoKeywords.length) todoKeywords = parsed.todoKeywords;
-    if (parsed.doneKeywords.length) doneKeywords = parsed.doneKeywords;
-    keySpecs = { ...keySpecs, ...parsed.keySpecs };
-    logSpecs = { ...logSpecs, ...parsed.logSpecs };
+    sequences.push({
+      todoKeywords: parsed.todoKeywords.length ? parsed.todoKeywords : [...DEFAULT_TODO_KEYWORDS],
+      doneKeywords: parsed.doneKeywords.length ? parsed.doneKeywords : [...DEFAULT_DONE_KEYWORDS],
+      keySpecs: parsed.keySpecs,
+      logSpecs: parsed.logSpecs,
+    });
   }
+  return sequences.length ? sequences : [fallback];
+}
 
-  if (!sawAnyTodoLine) return fallback; // no #+TODO: line found at all
+/**
+ * Finds which of `sequences` (see resolveTodoSequences above) actually
+ * contains `heading`'s own current keyword -- always unambiguous once a
+ * heading has one, per real org's own uniqueness requirement across
+ * parallel sequences. A blank heading (heading.todo === null) has no
+ * keyword to disambiguate from at all -- returns the FIRST sequence,
+ * matching real org's own actual default for a fresh heading. A
+ * heading whose own current keyword isn't found in ANY sequence (e.g.
+ * after the file's own #+TODO: lines changed) also falls back to the
+ * first sequence -- the same "cycling should never dead-end" principle
+ * cycleTodoState itself already has, just applied one level up.
+ */
+function findSequenceForHeading(sequences, heading) {
+  if (heading.todo !== null) {
+    const match = sequences.find((seq) => seq.todoKeywords.includes(heading.todo) || seq.doneKeywords.includes(heading.todo));
+    if (match) return match;
+  }
+  return sequences[0];
+}
+
+/**
+ * The simple, single-sequence view most consumers actually need: every
+ * keyword across every one of the file's own parallel sequences (see
+ * resolveTodoSequences above), unioned together. Safe specifically
+ * because real org's own requirement that every keyword across every
+ * sequence be distinct rules out any ambiguity in combining them this
+ * way -- there's no case where the SAME keyword name means two
+ * different things depending on which sequence it came from. Existing
+ * callers checking "is X a done-type keyword" (Agenda's own completion
+ * filtering, checkbox-cookie counting, the TODO badge's own color) get
+ * a correct answer regardless of which specific sequence X belongs to,
+ * without needing to know or care.
+ */
+function resolveTodoSequence(doc, globalDefault) {
+  const sequences = resolveTodoSequences(doc, globalDefault);
   return {
-    todoKeywords: todoKeywords || [...DEFAULT_TODO_KEYWORDS],
-    doneKeywords: doneKeywords || [...DEFAULT_DONE_KEYWORDS],
-    keySpecs,
-    logSpecs,
+    todoKeywords: [...new Set(sequences.flatMap((s) => s.todoKeywords))],
+    doneKeywords: [...new Set(sequences.flatMap((s) => s.doneKeywords))],
+    keySpecs: Object.assign({}, ...sequences.map((s) => s.keySpecs)),
+    logSpecs: Object.assign({}, ...sequences.map((s) => s.logSpecs)),
   };
 }
 
@@ -119,6 +151,8 @@ function isDoneKeyword(keyword, sequence) {
 export {
   DEFAULT_SEQUENCE,
   resolveTodoSequence,
+  resolveTodoSequences,
+  findSequenceForHeading,
   fullCycle,
   cycleTodoState,
   setTodoState,

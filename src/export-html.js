@@ -23,6 +23,8 @@ import { parseInline, stripLineBreakMarker } from './inline-markup.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 import { resolveLinkTarget } from './link-resolve.js';
 import { isWidthCookieRow } from './table-cookies.js';
+import { renderMathHtml } from './math-render.js';
+import { KATEX_EXPORT_CSS } from './katex-export-css.js';
 
 // Footnote definitions accumulated during a single exportToHtml() call
 // (module-level, reset at the start of each call) -- collected the same
@@ -31,6 +33,12 @@ import { isWidthCookieRow } from './table-cookies.js';
 // separate "[fn:label] text" line convention) is emitted together in a
 // Footnotes section at the end, each back-linking to its own reference.
 let footnoteDefinitionsHtml = [];
+// True once at least one 'latex' node has actually been rendered
+// during THIS export -- lets the final <head> include KaTeX's own
+// CSS (see katex-export-css.js) only for documents that actually
+// have math in them, rather than bloating every single HTML export
+// with ~20KB of unused CSS.
+let mathUsedHtml = false;
 let anonymousFootnoteCounterHtml = 0;
 
 // The document currently being exported, and a Map<heading, id> for
@@ -147,6 +155,14 @@ function renderInlineNodeHtml(node) {
     }
     case 'image':
       return `<img src="${escapeHtml(node.target)}" alt="">`;
+    case 'latex': {
+      const { html, ok } = renderMathHtml(node.source, node.displayMode);
+      if (ok) {
+        mathUsedHtml = true;
+        return html;
+      }
+      return `<span style="border:1px dashed #f88;border-radius:3px;padding:0 3px;font-family:monospace;font-size:0.9em" title="This LaTeX fragment could not be rendered.">${escapeHtml(node.source)}</span>`;
+    }
     case 'footnote-ref':
       return `<sup id="fnref-${escapeHtml(node.label)}"><a href="#fn-${escapeHtml(node.label)}">${escapeHtml(node.label)}</a></sup>`;
     case 'footnote-def': {
@@ -342,6 +358,7 @@ const PRINT_CSS = `
  */
 export function exportToHtml(doc, scope = null) {
   footnoteDefinitionsHtml = [];
+  mathUsedHtml = false;
   anonymousFootnoteCounterHtml = 0;
   docForLinkResolutionHtml = doc;
   headingIdMapHtml = new Map();
@@ -378,6 +395,7 @@ export function exportToHtml(doc, scope = null) {
     '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
     `<title>${title}</title>\n` +
     `<style>${PRINT_CSS}</style>\n` +
+    (mathUsedHtml ? `<style>${KATEX_EXPORT_CSS}</style>\n` : '') +
     '</head>\n' +
     '<body>\n' +
     out.join('\n') +

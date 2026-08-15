@@ -114,9 +114,14 @@ function parseTodoKeywordToken(token) {
  *  keyword with neither present at all, not present as null, so a
  *  caller can use straightforward `in`/property-access checks. */
 function parseTodoSpecValue(value) {
+  const hasBar = value.includes('|');
   const [todoPart, donePart = ''] = value.split('|').map((s) => s.trim());
-  const todoTokens = todoPart.split(/\s+/).filter(Boolean).map(parseTodoKeywordToken);
-  const doneTokens = donePart.split(/\s+/).filter(Boolean).map(parseTodoKeywordToken);
+  let todoTokens = todoPart.split(/\s+/).filter(Boolean).map(parseTodoKeywordToken);
+  let doneTokens = donePart.split(/\s+/).filter(Boolean).map(parseTodoKeywordToken);
+  if (!hasBar && todoTokens.length > 0) {
+    doneTokens = [todoTokens[todoTokens.length - 1]];
+    todoTokens = todoTokens.slice(0, -1);
+  }
   const allTokens = [...todoTokens, ...doneTokens];
   const keySpecs = {};
   const logSpecs = {};
@@ -146,14 +151,36 @@ function parseOrg(text, opts = {}) {
   let doneKeywords = opts.doneKeywords ? [...opts.doneKeywords] : [...DEFAULT_DONE_KEYWORDS];
 
   // First pass: pull #+TODO: lines out so the keyword set is known before
-  // headings are parsed (matches how Emacs treats file-local #+TODO: lines).
+  // headings are parsed (matches how Emacs treats file-local #+TODO:
+  // lines). Real org's own actual model for multiple #+TODO: lines in
+  // one file: each line defines a SEPARATE, complete, parallel sequence
+  // (see todo-cycle.js's own header comment for the confirmed source),
+  // not a progressive override of the previous one -- every keyword
+  // across every line must be recognized here, unioned together. A
+  // heading using an EARLIER line's own keyword (e.g. "WAIT" from a
+  // file's first #+TODO: line, when a second, later line defines an
+  // entirely different sequence) must still be recognized as a valid
+  // TODO keyword at parse time -- getting this right here is more
+  // fundamental than getting it right in resolveTodoSequence
+  // (todo-cycle.js): everything downstream (Agenda, checkbox counting,
+  // cycling) depends on heading.todo being set correctly to begin with,
+  // not just on later code correctly interpreting an already-correct
+  // value.
+  let todoKeywordsUnion = [];
+  let doneKeywordsUnion = [];
+  let sawAnyTodoLine = false;
   for (const line of lines) {
     const m = KEYWORD_RE.exec(line);
     if (m && m[1].toUpperCase() === 'TODO') {
+      sawAnyTodoLine = true;
       const spec = parseTodoSpecValue(m[2]);
-      if (spec.todoKeywords.length) todoKeywords = spec.todoKeywords;
-      if (spec.doneKeywords.length) doneKeywords = spec.doneKeywords;
+      todoKeywordsUnion.push(...spec.todoKeywords);
+      doneKeywordsUnion.push(...spec.doneKeywords);
     }
+  }
+  if (sawAnyTodoLine) {
+    todoKeywords = [...new Set(todoKeywordsUnion)];
+    doneKeywords = [...new Set(doneKeywordsUnion)];
   }
   const allTodoLike = [...todoKeywords, ...doneKeywords];
 
