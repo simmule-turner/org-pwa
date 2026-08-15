@@ -185,3 +185,83 @@ test('evaluateSexpTimestamp delegates to evaluateSexpr for a valid expr', () => 
   const expr = parseSexpr('(today-p)');
   assert.equal(evaluateSexpTimestamp(expr, ctx(TODAY)), true);
 });
+
+// ---- format -------------------------------------------------------------
+
+test('THE FIX: THE EXACT REQUEST -- (format "Rise %s (%s)" (diary-sunrise) (diary-civil-sunrise)) combines two functions into one string, with solar-hide-label set so only the bare times appear', () => {
+  const expr = parseSexpr('(format "Rise %s (%s)" (diary-sunrise) (diary-civil-sunrise))');
+  const result = evaluateSexpr(expr, { ...ctx(TODAY), solarHideLabel: true });
+  assert.match(result, /^Rise \d\d:\d\d \(\d\d:\d\d\)$/);
+});
+
+test('THE FIX: THE EXACT REQUEST, wrapped in <%%(when (today-p) ...)> exactly as originally written, via findSexpTimestamps + evaluateSexpTimestamp end to end', () => {
+  const title = 'Sun Report <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-sunrise)) )>';
+  const found = findSexpTimestamps(title);
+  assert.equal(found.length, 1, 'the parens embedded inside the "Rise %s (%s)" string literal must not be mistaken for sexp structure');
+  const result = evaluateSexpTimestamp(found[0].expr, { ...ctx(TODAY), solarHideLabel: true });
+  assert.match(result, /^Rise \d\d:\d\d \(\d\d:\d\d\)$/);
+  const notToday = evaluateSexpTimestamp(found[0].expr, { ...ctx(new Date(2026, 7, 13)), solarHideLabel: true });
+  assert.equal(notToday, false, 'still only matches on today, same as every other (when (today-p) ...) example');
+});
+
+test('without solar-hide-label set, format still works correctly -- it just includes whatever each nested function itself returns, labels included', () => {
+  const expr = parseSexpr('(format "Rise %s (%s)" (diary-sunrise) (diary-civil-sunrise))');
+  const result = evaluateSexpr(expr, ctx(TODAY));
+  assert.match(result, /^Rise \d\d:\d\d Sunrise \(\d\d:\d\d Dawn\)$/);
+});
+
+test('THE FIX: too few sub-expressions to fill every %s evaluates to false (no match) rather than throwing or silently leaving a placeholder', () => {
+  const expr = parseSexpr('(format "%s %s" (diary-sunrise))');
+  assert.equal(evaluateSexpr(expr, ctx(TODAY)), false);
+});
+
+test('THE FIX: extra, unused sub-expressions are simply ignored, matching real elisp\u2019s own tolerant behavior for format', () => {
+  const expr = parseSexpr('(format "%s" (diary-sunrise) (diary-sunset))');
+  const result = evaluateSexpr(expr, ctx(TODAY));
+  assert.match(result, /^\d\d:\d\d Sunrise$/, 'only the first sub-expression is used; the second is never evaluated or included');
+});
+
+test('THE FIX: %% is a literal percent sign', () => {
+  const expr = parseSexpr('(format "100%% done: %s" (diary-sunrise))');
+  const result = evaluateSexpr(expr, ctx(TODAY));
+  assert.match(result, /^100% done: /);
+});
+
+test('a format string with zero %s placeholders is just the literal string, unchanged', () => {
+  const expr = parseSexpr('(format "just a literal string")');
+  assert.equal(evaluateSexpr(expr, ctx(TODAY)), 'just a literal string');
+});
+
+test('THE FIX: format nests inside itself correctly -- each %s recursively evaluates its own sub-expression via the same evaluator, so nested format needs no special-casing at all', () => {
+  const expr = parseSexpr('(format "outer: %s" (format "inner: %s" (diary-sunrise)))');
+  const result = evaluateSexpr(expr, ctx(TODAY));
+  assert.match(result, /^outer: inner: \d\d:\d\d Sunrise$/);
+});
+
+test('a boolean sub-expression (today-p) in a %s slot prints as real elisp\u2019s own "t"/"nil"', () => {
+  const trueExpr = parseSexpr('(format "today? %s" (today-p))');
+  assert.equal(evaluateSexpr(trueExpr, ctx(TODAY)), 'today? t');
+  const falseExpr = parseSexpr('(format "today? %s" (today-p))');
+  assert.equal(evaluateSexpr(falseExpr, ctx(new Date(2026, 7, 13))), 'today? nil');
+});
+
+test('THE FIX: the first argument must be a literal string -- a non-string first argument evaluates to false rather than throwing', () => {
+  const expr = parseSexpr('(format (diary-sunrise) "x")');
+  assert.equal(evaluateSexpr(expr, ctx(TODAY)), false);
+});
+
+test('format combines three functions at once, including diary-day-length', () => {
+  const expr = parseSexpr('(format "%s | %s | %s" (diary-sunrise) (diary-civil-sunrise) (diary-day-length))');
+  const result = evaluateSexpr(expr, { ...ctx(TODAY), solarHideLabel: true });
+  assert.match(result, /^\d\d:\d\d \| \d\d:\d\d \| \d\d:\d\d$/);
+});
+
+test('format with no sub-expressions at all (missing entirely, not just fewer than %s needs) evaluates to false when %s is present, since args.length < 1 only covers the missing-format-string case -- here args.length is 1 (just the string), so placeholderCount (1) > substitutionArgs.length (0)', () => {
+  const expr = parseSexpr('(format "%s")');
+  assert.equal(evaluateSexpr(expr, ctx(TODAY)), false);
+});
+
+test('format with truly zero arguments at all is malformed and evaluates to false', () => {
+  const expr = parseSexpr('(format)');
+  assert.equal(evaluateSexpr(expr, ctx(TODAY)), false);
+});

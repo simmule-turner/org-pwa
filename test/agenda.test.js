@@ -1366,6 +1366,20 @@ test('THE FIX: composes correctly with another sexp form -- <%%(when (today-p) (
   assert.match(items[0].title, /^Civil Dawn Today: \d\d:\d\d Dawn$/);
 });
 
+test('THE EXACT REQUEST: <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-sunrise)) )> -- the user\u2019s own precise, verbatim example, through the full buildAgendaItems pipeline', () => {
+  const doc = parseOrg('* Sun Report <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-sunrise)) )>\n');
+  const today = new Date(2026, 7, 12);
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 7, 10),
+    rangeEnd: new Date(2026, 7, 14),
+    today,
+    solarHideLabel: true,
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].date.toDateString(), today.toDateString());
+  assert.match(items[0].title, /^Sun Report: Rise \d\d:\d\d \(\d\d:\d\d\)$/);
+});
+
 test('THE EXACT EXAMPLE: weekly sunrise/sunset combining when + org-cyclic + diary-sunrise-sunset', () => {
   const doc = parseOrg('* Weekly Sunrise/Sunset <%%(when (org-cyclic 7 2026 8 9) (diary-sunrise-sunset))>\n');
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
