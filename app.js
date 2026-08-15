@@ -40,7 +40,7 @@ import {
   findHeadingByTitle,
   findFootnoteDefinition,
 } from './src/link-resolve.js';
-import { parseInline, stripLineBreakMarker, IMAGE_EXT_RE } from './src/inline-markup.js';
+import { parseInline, stripLineBreakMarker, IMAGE_EXT_RE, extractLatexFragments } from './src/inline-markup.js';
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, toggleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
 import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
 import { searchDocument } from './src/search.js';
@@ -1550,22 +1550,47 @@ function renderTodoWorkflowPanel() {
   for (const seq of sequences) {
     const row = document.createElement('div');
     row.className = 'panel-row';
+    row.style.flexWrap = 'wrap'; // smaller buttons still need to wrap onto more than one visual line for a longer workflow, rather than overflowing
+    row.style.gap = '4px';
+    const startState = seq.todoKeywords[0];
     for (const keyword of [...seq.todoKeywords, ...seq.doneKeywords]) {
-      const key = seq.keySpecs[keyword];
-      row.appendChild(menuButton(key ? `${keyword} (${key})` : keyword, () => chooseTodoWorkflowState(heading, keyword, seq)));
+      const btn = document.createElement('button');
+      btn.textContent = keyword;
+      btn.style.fontSize = '11px'; // smaller than the default menuButton, specifically to fit more states per row
+      btn.style.padding = '3px 6px';
+      if (keyword === startState) {
+        btn.style.borderColor = 'var(--workflow-start-fg)';
+        btn.style.color = 'var(--workflow-start-fg)';
+      } else if (seq.doneKeywords.includes(keyword)) {
+        btn.style.borderColor = 'var(--workflow-terminal-fg)';
+        btn.style.color = 'var(--workflow-terminal-fg)';
+        btn.style.fontWeight = '600'; // a done-type state ending a long, wrapped workflow still needs to read as clearly terminal even at this smaller size
+      }
+      btn.onclick = () => chooseTodoWorkflowState(heading, keyword, seq);
+      row.appendChild(btn);
     }
     refilePanel.appendChild(row);
   }
 
-  const cancelRow = document.createElement('div');
-  cancelRow.className = 'panel-row';
-  cancelRow.appendChild(
+  const actionRow = document.createElement('div');
+  actionRow.className = 'panel-row';
+  actionRow.appendChild(
+    menuButton('Clear', () => {
+      pendingTodoWorkflowChoice = null;
+      renderTodoWorkflowPanel();
+      applyTodoTransition(heading, () => {
+        heading.todo = null;
+      });
+      commitAndRender('Removed TODO/DONE state');
+    })
+  );
+  actionRow.appendChild(
     menuButton('Cancel', () => {
       pendingTodoWorkflowChoice = null;
       renderTodoWorkflowPanel();
     })
   );
-  refilePanel.appendChild(cancelRow);
+  refilePanel.appendChild(actionRow);
 }
 
 /** org-xx-extra-menu-independent Attach sub-action -- opens the audio-
@@ -2448,32 +2473,6 @@ document.addEventListener('keydown', (e) => {
   if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return; // never hijack actual typing; each field's own keydown handler (Escape to cancel, etc.) already owns this
 
   if (e.metaKey || e.ctrlKey) return; // Cmd/Ctrl combinations are the browser's own territory (new tab, save, find, ...) -- never treated as one of these shortcuts, avoiding a silent double-action
-
-  if (pendingTodoWorkflowChoice) {
-    // The TODO-workflow panel owns the keyboard exclusively while it's
-    // open -- nothing else (search's own '/', outline navigation, ...)
-    // should also fire underneath it. A keyword's own fast-select key
-    // (if the file's own #+TODO: line defined one) jumps straight to
-    // that state; Escape cancels; every other key is swallowed rather
-    // than falling through.
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      pendingTodoWorkflowChoice = null;
-      renderTodoWorkflowPanel();
-      return;
-    }
-    const { heading } = pendingTodoWorkflowChoice;
-    for (const seq of resolveTodoSequences(state.doc, GLOBAL_TODO_DEFAULT)) {
-      for (const keyword of [...seq.todoKeywords, ...seq.doneKeywords]) {
-        if (seq.keySpecs[keyword] === e.key) {
-          e.preventDefault();
-          chooseTodoWorkflowState(heading, keyword, seq);
-          return;
-        }
-      }
-    }
-    return;
-  }
 
   if (e.key === '/') {
     e.preventDefault();
@@ -5155,17 +5154,20 @@ function renderParagraphRow(row) {
   }
   const hasContent = row.node.lines.some((l) => l.trim() !== '');
   if (hasContent) {
-    row.node.lines.forEach((line, i) => {
+    const strippedLines = row.node.lines.map((line, i) =>
+      i === 0 && row.node.footnoteLabel !== null
+        ? line.replace(new RegExp('^\\[fn:' + row.node.footnoteLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\]\\s?'), '')
+        : line
+    );
+    const { lines: extractedLines, fragments } = extractLatexFragments(strippedLines);
+    const inlineOpts = { ...currentInlineOpts(), latexFragments: fragments };
+    extractedLines.forEach((line, i) => {
       if (i > 0) {
-        const prevLine = row.node.lines[i - 1];
+        const prevLine = extractedLines[i - 1];
         const prevForcedBreak = stripLineBreakMarker(prevLine) !== prevLine;
         p.appendChild(prevForcedBreak ? document.createElement('br') : document.createTextNode(' '));
       }
-      const text =
-        i === 0 && row.node.footnoteLabel !== null
-          ? line.replace(new RegExp('^\\[fn:' + row.node.footnoteLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\]\\s?'), '')
-          : line;
-      renderInlineNodes(parseInline(stripLineBreakMarker(text), currentInlineOpts()), p, null, row.heading);
+      renderInlineNodes(parseInline(stripLineBreakMarker(line), inlineOpts), p, null, row.heading);
     });
   } else {
     p.textContent = '(empty note \u2014 tap to edit)';
@@ -5303,13 +5305,15 @@ function renderBlockContent(block, container, linkContext) {
       if (currentParagraphLines.length === 0) return;
       const p = document.createElement('p');
       p.style.margin = '4px 0';
-      currentParagraphLines.forEach((line, i) => {
+      const { lines: extractedLines, fragments } = extractLatexFragments(currentParagraphLines);
+      const inlineOpts = { ...currentInlineOpts(), latexFragments: fragments };
+      extractedLines.forEach((line, i) => {
         if (i > 0) {
-          const prevLine = currentParagraphLines[i - 1];
+          const prevLine = extractedLines[i - 1];
           const prevForcedBreak = stripLineBreakMarker(prevLine) !== prevLine;
           p.appendChild(prevForcedBreak ? document.createElement('br') : document.createTextNode(' '));
         }
-        renderInlineNodes(parseInline(stripLineBreakMarker(line), currentInlineOpts()), p, linkContext);
+        renderInlineNodes(parseInline(stripLineBreakMarker(line), inlineOpts), p, linkContext);
       });
       wrap.appendChild(p);
       currentParagraphLines = [];
@@ -9211,7 +9215,7 @@ function renderReadOnlyBodyNode(node, depth, container, linkContext, drawersHidd
     }
     node.inlineLines.forEach((inline, i) => {
       if (i > 0) {
-        const prevForcedBreak = stripLineBreakMarker(node.lines[i - 1]) !== node.lines[i - 1];
+        const prevForcedBreak = stripLineBreakMarker(node.extractedLines[i - 1]) !== node.extractedLines[i - 1];
         p.appendChild(prevForcedBreak ? document.createElement('br') : document.createTextNode(' '));
       }
       renderInlineNodes(inline, p, linkContext);
