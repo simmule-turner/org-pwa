@@ -453,3 +453,30 @@ test('a malformed LaTeX fragment (the engine rejects it) also falls back to the 
     globalThis.window = prevWindow;
   }
 });
+
+test('THE FIX: a multi-line LaTeX fragment (the user\u2019s own reported "align" example, with a blank line in its middle) renders as ONE fragment in HTML export, not broken apart at the blank line', () => {
+  withMockKatex(() => {
+    const doc = parseOrg([
+      '* H',
+      '',
+      '\\begin{align}',
+      '  f(x) &= (x + 3)^2 \\\\',
+      '  ',
+      '       &= x^2 + 6x + 9',
+      '\\end{align}',
+    ].join('\n'));
+    const out = exportToHtml(doc);
+    const katexSpanCount = (out.match(/class="katex"/g) || []).length;
+    assert.equal(katexSpanCount, 1, 'the whole environment renders as exactly one KaTeX span, not split into several');
+    assert.ok(out.includes('f(x)') && out.includes('x^2 + 6x + 9'), 'content from both sides of the blank line is present');
+  });
+});
+
+test('THE FIX: a #+BEGIN_QUOTE block also correctly handles a multi-line LaTeX fragment', () => {
+  withMockKatex(() => {
+    const doc = parseOrg(['* H', '#+BEGIN_QUOTE', '\\begin{equation}', 'x=y', '\\end{equation}', '#+END_QUOTE'].join('\n'));
+    const out = exportToHtml(doc);
+    assert.ok(out.includes('<blockquote>'));
+    assert.ok(out.includes('class="katex"'));
+  });
+});

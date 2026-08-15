@@ -1,7 +1,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseInline, stripLineBreakMarker, matchLatexFragmentAt } from '../src/inline-markup.js';
+import { parseInline, stripLineBreakMarker, matchLatexFragmentAt, extractLatexFragments } from '../src/inline-markup.js';
 
 test('parses plain text with no markup', () => {
   const nodes = parseInline('just some words');
@@ -453,18 +453,35 @@ test('THE FIX: $...$ correctly avoids currency-text false positives -- the Org M
   assert.deepEqual(parseInline('costs $5 and $10 total'), [{ type: 'text', value: 'costs $5 and $10 total' }]);
 });
 
+test('THE FIX: a digit immediately before the opening $ is now correctly recognized -- confirmed directly against real org\u2019s own actual org-latex-regexps source, superseding an earlier, reasoned-but-incorrect guess that excluded digits entirely', () => {
+  assert.deepEqual(parseInline('5$xy$'), [{ type: 'text', value: '5' }, { type: 'latex', source: 'xy', displayMode: false }]);
+});
+
+test('THE FIX: the opening $ is only rejected when immediately preceded by another literal $ -- confirmed directly against the source\u2019s own leading group ("\\([^$]\\|^\\)")', () => {
+  assert.deepEqual(parseInline('$$x$'), [{ type: 'text', value: '$$x$' }]);
+});
+
+test('THE FIX: a semicolon is valid as the LAST content character (immediately before the closing $) but not the first -- an asymmetry confirmed directly in the actual source, not a simplification of it', () => {
+  assert.deepEqual(parseInline('$x;$ ok'), [{ type: 'latex', source: 'x;', displayMode: false }, { type: 'text', value: ' ok' }]);
+  assert.deepEqual(parseInline('$;x$ no'), [{ type: 'text', value: '$;x$ no' }]);
+});
+
+test('THE FIX: an opening bracket immediately after the closing $ is a valid boundary -- confirmed directly against the source\u2019s own \\s( syntax-class check, which the earlier implementation was missing (it only allowed CLOSING brackets)', () => {
+  assert.deepEqual(parseInline('$xy$(next)'), [{ type: 'latex', source: 'xy', displayMode: false }, { type: 'text', value: '(next)' }]);
+});
+
 test('$...$ closing followed by ordinary punctuation or end-of-string is still recognized', () => {
-  assert.deepEqual(parseInline('$x$.'), [{ type: 'latex', source: 'x', displayMode: false }, { type: 'text', value: '.' }]);
-  assert.deepEqual(parseInline('$x$'), [{ type: 'latex', source: 'x', displayMode: false }]);
+  assert.deepEqual(parseInline('$xy$.'), [{ type: 'latex', source: 'xy', displayMode: false }, { type: 'text', value: '.' }]);
+  assert.deepEqual(parseInline('$xy$'), [{ type: 'latex', source: 'xy', displayMode: false }]);
 });
 
 test('LaTeX math correctly nests inside bold/italic text (matching real org)', () => {
-  assert.deepEqual(parseInline('*bold $x$ text*'), [
+  assert.deepEqual(parseInline('*bold $xy$ text*'), [
     {
       type: 'bold',
       children: [
         { type: 'text', value: 'bold ' },
-        { type: 'latex', source: 'x', displayMode: false },
+        { type: 'latex', source: 'xy', displayMode: false },
         { type: 'text', value: ' text' },
       ],
     },
@@ -482,4 +499,94 @@ test('matchLatexFragmentAt returns null when nothing matches at the given positi
 test('a lone, unterminated $ or \\( is left as plain text, not a hang or a false match', () => {
   assert.deepEqual(parseInline('an unterminated $x here'), [{ type: 'text', value: 'an unterminated $x here' }]);
   assert.deepEqual(parseInline('an unterminated \\(x here'), [{ type: 'text', value: 'an unterminated \\(x here' }]);
+});
+
+test('THE FIX: $...$ genuinely requires at least 2 characters of content -- confirmed directly against the actual org-latex-regexps source\u2019s own structure (a required first-character-class match and a SEPARATE required last-character-class match are two distinct character positions, not satisfiable by a single character); real org would use \\(x\\) for a single-character case instead, which has no such restriction at all', () => {
+  assert.deepEqual(parseInline('$x$'), [{ type: 'text', value: '$x$' }]);
+  assert.deepEqual(parseInline('\\(x\\)'), [{ type: 'latex', source: 'x', displayMode: false }]);
+});
+
+// ---- THE FIX: multi-line LaTeX fragments -----------------------------------
+
+test('THE FIX: \\(...\\) now spans multiple lines with no limit -- confirmed directly against the source ("(?:.|\\n)*?"), correcting an earlier implementation that was restricted to a single line', () => {
+  const nodes = parseInline('\\(x =\ny + 1\\)');
+  assert.deepEqual(nodes, [{ type: 'latex', source: 'x =\ny + 1', displayMode: false }]);
+});
+
+test('THE FIX: \\[...\\] now spans multiple lines with no limit', () => {
+  const nodes = parseInline('\\[x =\ny\n+ 1\\]');
+  assert.deepEqual(nodes, [{ type: 'latex', source: 'x =\ny\n+ 1', displayMode: true }]);
+});
+
+test('THE FIX: $$...$$ now spans multiple lines with no limit', () => {
+  const nodes = parseInline('$$x =\ny + 1$$');
+  assert.deepEqual(nodes, [{ type: 'latex', source: 'x =\ny + 1', displayMode: true }]);
+});
+
+test('THE FIX: \\begin{env}...\\end{env} spanning multiple lines, including a blank line in the middle, is recognized -- the user\u2019s own reported "align" example', () => {
+  const source = '\\begin{align}\n  f(x) &= (x + 3)^2 \\\\\\\\\n  \n       &= x^2 + 6x + 9\n\\end{align}';
+  const nodes = parseInline(source);
+  assert.equal(nodes.length, 1);
+  assert.equal(nodes[0].type, 'latex');
+  assert.equal(nodes[0].displayMode, true);
+  assert.ok(nodes[0].source.includes('f(x)') && nodes[0].source.includes('x^2 + 6x + 9'));
+});
+
+test('THE FIX: the user\u2019s own reported failing example -- \\begin{equation} with \\sqrt spanning 3 lines -- now works', () => {
+  const source = '\\begin{equation}\nx=\\sqrt{b}\n\\end{equation}';
+  const nodes = parseInline(source);
+  assert.deepEqual(nodes, [{ type: 'latex', source: source, displayMode: true }]);
+});
+
+test('$...$ still correctly caps at 2 embedded newlines (3 lines total) -- real org\u2019s own actual, different restriction for this one delimiter specifically, confirmed directly against the source\u2019s own "{0,2}" repeat count', () => {
+  const twoBreaks = parseInline('$ab\ncd\nef$');
+  assert.deepEqual(twoBreaks, [{ type: 'latex', source: 'ab\ncd\nef', displayMode: false }]);
+
+  const threeBreaks = parseInline('$ab\ncd\nef\ngh$');
+  assert.deepEqual(threeBreaks, [{ type: 'text', value: '$ab\ncd\nef\ngh$' }]);
+});
+
+// ---- THE FIX: extractLatexFragments (the paragraph-level pre-pass) --------
+
+test('THE FIX: extractLatexFragments collapses a multi-line fragment into a single placeholder line, shortening the returned line array', () => {
+  const lines = ['\\begin{equation}', 'x=\\sqrt{b}', '\\end{equation}'];
+  const { lines: extracted, fragments } = extractLatexFragments(lines);
+  assert.equal(extracted.length, 1, 'three original lines collapse to one placeholder line');
+  assert.equal(fragments.length, 1);
+  assert.equal(fragments[0].source, lines.join('\n'));
+  assert.equal(fragments[0].displayMode, true);
+});
+
+test('THE FIX: a placeholder round-trips correctly through parseInline, given the extracted fragments passed via opts.latexFragments', () => {
+  const lines = ['\\begin{equation}', 'x=\\sqrt{b}', '\\end{equation}'];
+  const { lines: extracted, fragments } = extractLatexFragments(lines);
+  const nodes = parseInline(extracted[0], { latexFragments: fragments });
+  assert.deepEqual(nodes, [{ type: 'latex', source: lines.join('\n'), displayMode: true }]);
+});
+
+test('extractLatexFragments leaves ordinary text (with no fragments at all) completely unchanged', () => {
+  const lines = ['Just an ordinary paragraph.', 'With a second line.'];
+  const { lines: extracted, fragments } = extractLatexFragments(lines);
+  assert.deepEqual(extracted, lines);
+  assert.deepEqual(fragments, []);
+});
+
+test('extractLatexFragments handles multiple fragments in the same paragraph, single- and multi-line mixed together, each getting its own correctly-indexed placeholder', () => {
+  const lines = ['First: $xy$.', 'Then a block:', '\\begin{equation}', 'a=b', '\\end{equation}', 'Done.'];
+  const { lines: extracted, fragments } = extractLatexFragments(lines);
+  assert.equal(fragments.length, 2);
+  assert.equal(fragments[0].source, 'xy');
+  assert.equal(fragments[0].displayMode, false);
+  assert.equal(fragments[1].source, '\\begin{equation}\na=b\n\\end{equation}');
+  assert.equal(fragments[1].displayMode, true);
+  // Each extracted line, once re-parsed, correctly resolves back to its own fragment by index.
+  const line0Nodes = parseInline(extracted[0], { latexFragments: fragments });
+  assert.equal(line0Nodes.find((n) => n.type === 'latex').source, 'xy');
+});
+
+test('a paragraph with NO LaTeX at all is completely unaffected by going through the pre-pass -- extraction is a genuine no-op for ordinary text', () => {
+  const lines = ['Plain text only.', 'Nothing to extract here.'];
+  const { lines: extracted, fragments } = extractLatexFragments(lines);
+  const rendered = extracted.map((l) => parseInline(l, { latexFragments: fragments }));
+  assert.deepEqual(rendered, [[{ type: 'text', value: 'Plain text only.' }], [{ type: 'text', value: 'Nothing to extract here.' }]]);
 });

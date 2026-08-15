@@ -352,3 +352,56 @@ test('the inline-parsed content for a literal-span "::" case correctly renders t
   assert.equal(codeNodes.length, 1);
   assert.equal(codeNodes[0].value, 'term :: description');
 });
+
+// ---- THE FIX: multi-line LaTeX fragments don't get split by paragraph boundaries ----
+
+test('THE FIX: a blank line INSIDE a multi-line \\begin{}...\\end{} environment does not split it into separate paragraphs -- the user\u2019s own reported "align" bug', () => {
+  const lines = ['\\begin{align}', '  f(x) &= (x + 3)^2 \\\\', '  ', '       &= x^2 + 6x + 9', '\\end{align}'];
+  const nodes = parseBody(lines);
+  assert.equal(nodes.length, 1, 'must stay a single paragraph node, not split into 3 at the blank line');
+  assert.equal(nodes[0].type, 'paragraph');
+  assert.deepEqual(nodes[0].lines, lines, 'the raw, original lines are preserved exactly -- no placeholder substitution reaches the stored node');
+  assert.equal(nodes[0].inlineLines.length, 1, 'collapses to exactly one rendered line, containing the whole fragment as one node');
+  assert.equal(nodes[0].inlineLines[0][0].type, 'latex');
+  assert.ok(nodes[0].inlineLines[0][0].source.includes('f(x)') && nodes[0].inlineLines[0][0].source.includes('x^2 + 6x + 9'));
+});
+
+test('THE FIX: the user\u2019s own reported \\begin{equation}...\\sqrt{b}...\\end{equation} example (no blank line, just multiple lines) stays one paragraph and one fragment', () => {
+  const lines = ['\\begin{equation}', 'x=\\sqrt{b}', '\\end{equation}'];
+  const nodes = parseBody(lines);
+  assert.equal(nodes.length, 1);
+  assert.equal(nodes[0].inlineLines[0][0].source, lines.join('\n'));
+});
+
+test('a genuinely SEPARATE paragraph after a multi-line fragment is still correctly split off, once the fragment itself has closed', () => {
+  const lines = ['\\begin{equation}', 'x=y', '\\end{equation}', '', 'A separate paragraph.'];
+  const nodes = parseBody(lines);
+  assert.equal(nodes.length, 2, 'the fragment\u2019s own paragraph, then a genuinely new one after the real blank line');
+  assert.equal(nodes[1].type, 'paragraph');
+  assert.equal(nodes[1].lines[0], 'A separate paragraph.');
+});
+
+test('a blank line that ISN\u2019T inside any fragment still correctly ends a paragraph as normal -- the protection only applies to lines genuinely inside an open multi-line fragment', () => {
+  const lines = ['First paragraph.', '', 'Second paragraph.'];
+  const nodes = parseBody(lines);
+  assert.equal(nodes.length, 2);
+});
+
+test('a line that looks like a table row, but is actually INSIDE a multi-line fragment, does not incorrectly end the paragraph either', () => {
+  const lines = ['\\begin{matrix}', 'a | b', 'c | d', '\\end{matrix}'];
+  const nodes = parseBody(lines);
+  assert.equal(nodes.length, 1, 'the whole matrix environment stays one paragraph, even though "a | b" would otherwise look like it starts a table');
+  assert.equal(nodes[0].type, 'paragraph');
+});
+
+test('$...$ (capped at 2 line breaks, unlike the other four forms) does NOT receive the same open-ended paragraph protection -- a $...$ spanning enough lines to cross an actual blank-line boundary is out of its own real scope anyway', () => {
+  const lines = ['$a', 'b$', '', 'Next paragraph.'];
+  const nodes = parseBody(lines);
+  // Whether or not "$a\nb$" itself renders as math (a separate, already-tested
+  // concern), the key thing here is the blank line after it still correctly
+  // starts a new paragraph -- $...$ was deliberately left out of
+  // findLatexProtectedLineIndices, since real org\u2019s own restriction on it
+  // (2 line breaks max) never reaches across an actual paragraph boundary
+  // the way the unlimited-multi-line forms can.
+  assert.equal(nodes.length, 2);
+});
