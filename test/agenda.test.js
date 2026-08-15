@@ -1380,6 +1380,54 @@ test('THE EXACT REQUEST: <%%(when (today-p) (format "Rise %s (%s)" (diary-sunris
   assert.match(items[0].title, /^Sun Report: Rise \d\d:\d\d \(\d\d:\d\d\)$/);
 });
 
+test('THE FIX: THE EXACT BUG REPORT -- a bare heading with no title text at all (the timestamp IS the entire title) no longer shows a meaningless "(untitled): " prefix in front of a string result', () => {
+  const doc = parseOrg('* <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-sunrise)) )>\n');
+  const today = new Date(2026, 7, 12);
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 7, 10),
+    rangeEnd: new Date(2026, 7, 14),
+    today,
+    solarHideLabel: true,
+  });
+  assert.equal(items.length, 1);
+  assert.match(items[0].title, /^Rise \d\d:\d\d \(\d\d:\d\d\)$/, 'no "(untitled): " prefix at all -- the result string stands on its own');
+  assert.ok(!items[0].title.includes('untitled'));
+});
+
+test('THE FIX: this fixes every string-returning sexp function identically, including the original diary-sunrise-sunset -- the bug was never specific to the newer functions', () => {
+  const doc = parseOrg('* <%%(diary-sunrise-sunset)>\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 7, 10),
+    rangeEnd: new Date(2026, 7, 10),
+  });
+  assert.equal(items.length, 1);
+  assert.match(items[0].title, /^Sunrise \d/, 'no "(untitled): " prefix here either');
+});
+
+test('the (untitled) fallback still correctly applies for the genuinely different case: a bare, title-less heading whose sexp result is a plain boolean match, not a string -- there really is nothing else to show here', () => {
+  const doc = parseOrg('* <%%(today-p)>\n');
+  const today = new Date(2026, 7, 12);
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 7, 10),
+    rangeEnd: new Date(2026, 7, 14),
+    today,
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, '(untitled)');
+});
+
+test('a heading WITH real title text alongside its own sexp timestamp is completely unaffected by this fix -- still "Title: result", exactly as before', () => {
+  const doc = parseOrg('* Sun Report <%%(when (today-p) (diary-sunrise))>\n');
+  const today = new Date(2026, 7, 12);
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 7, 10),
+    rangeEnd: new Date(2026, 7, 14),
+    today,
+  });
+  assert.equal(items.length, 1);
+  assert.match(items[0].title, /^Sun Report: \d\d:\d\d Sunrise$/);
+});
+
 test('THE EXACT EXAMPLE: weekly sunrise/sunset combining when + org-cyclic + diary-sunrise-sunset', () => {
   const doc = parseOrg('* Weekly Sunrise/Sunset <%%(when (org-cyclic 7 2026 8 9) (diary-sunrise-sunset))>\n');
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
