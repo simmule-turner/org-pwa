@@ -1,5 +1,5 @@
 
-import { parseInline, stripLineBreakMarker } from './inline-markup.js';
+import { parseInline, stripLineBreakMarker, extractLatexFragments, matchLatexFragmentAt } from './inline-markup.js';
 
 /**
  * Body-content parser: text lines -> content nodes (list, table, block,
@@ -229,16 +229,48 @@ function parseList(lines, i, baseIndent) {
 
 const FOOTNOTE_DEF_LINE_RE = /^\[fn:([A-Za-z0-9_-]+)\]\s?(.*)$/;
 
-function parseParagraph(lines, i) {
+/** Computes the set of 0-based line indices that fall INSIDE a
+ *  multi-line LaTeX fragment ($$...$$ / \(...\) / \[...\] /
+ *  \begin{}...\end{}) spanning more than one of `lines` -- used by
+ *  parseParagraph below to avoid incorrectly treating a blank line,
+ *  or a line that happens to look like a block/table/list/hr marker,
+ *  as a structural boundary when it's actually just part of the
+ *  fragment's own interior content. $...$ is deliberately excluded --
+ *  its own real restriction caps it at 2 embedded newlines, which
+ *  never reaches across an actual blank-line paragraph boundary the
+ *  way the other, genuinely unlimited-multi-line forms can. */
+function findLatexProtectedLineIndices(lines) {
+  const fullText = lines.join('\n');
+  const protectedIndices = new Set();
+  let pos = 0;
+  while (pos < fullText.length) {
+    const ch = fullText[pos];
+    if (ch === '\\' || ch === '$') {
+      const m = matchLatexFragmentAt(fullText, pos);
+      if (m && m.content.includes('\n')) {
+        const startLine = fullText.slice(0, pos).split('\n').length - 1;
+        const endLine = fullText.slice(0, pos + m.length).split('\n').length - 1;
+        for (let li = startLine; li <= endLine; li++) protectedIndices.add(li);
+        pos += m.length;
+        continue;
+      }
+    }
+    pos += 1;
+  }
+  return protectedIndices;
+}
+
+function parseParagraph(lines, i, protectedIndices = new Set()) {
   const startIndex = i;
   const paraLines = [];
   while (
     i < lines.length &&
-    lines[i].trim() !== '' &&
-    !BLOCK_START_RE.test(lines[i]) &&
-    !TABLE_LINE_RE.test(lines[i]) &&
-    !isListItemLine(lines[i]) &&
-    !HR_LINE_RE.test(lines[i])
+    (protectedIndices.has(i) ||
+      (lines[i].trim() !== '' &&
+        !BLOCK_START_RE.test(lines[i]) &&
+        !TABLE_LINE_RE.test(lines[i]) &&
+        !isListItemLine(lines[i]) &&
+        !HR_LINE_RE.test(lines[i])))
   ) {
     paraLines.push(lines[i]);
     i++;
@@ -246,14 +278,15 @@ function parseParagraph(lines, i) {
 
   const footnoteMatch = paraLines.length > 0 ? FOOTNOTE_DEF_LINE_RE.exec(paraLines[0]) : null;
   const footnoteLabel = footnoteMatch ? footnoteMatch[1] : null;
-  const inlineLines = footnoteMatch
-    ? [parseInline(stripLineBreakMarker(footnoteMatch[2])), ...paraLines.slice(1).map((l) => parseInline(stripLineBreakMarker(l)))]
-    : paraLines.map((l) => parseInline(stripLineBreakMarker(l)));
+  const strippedLines = footnoteMatch ? [footnoteMatch[2], ...paraLines.slice(1)] : paraLines;
+  const { lines: extractedLines, fragments } = extractLatexFragments(strippedLines);
+  const inlineLines = extractedLines.map((l) => parseInline(stripLineBreakMarker(l), { latexFragments: fragments }));
 
   return [
     {
       type: 'paragraph',
       lines: paraLines,
+      extractedLines,
       inlineLines,
       footnoteLabel,
       lineIndex: startIndex,
@@ -268,6 +301,7 @@ function parseParagraph(lines, i) {
 function parseBody(lines) {
   const nodes = [];
   let i = 0;
+  const protectedIndices = findLatexProtectedLineIndices(lines);
 
   while (i < lines.length) {
     const line = lines[i];
@@ -299,7 +333,7 @@ function parseBody(lines) {
       i = next;
       continue;
     }
-    const [node, next] = parseParagraph(lines, i);
+    const [node, next] = parseParagraph(lines, i, protectedIndices);
     nodes.push(node);
     i = next;
   }

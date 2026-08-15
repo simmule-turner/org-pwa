@@ -19,7 +19,7 @@
  * reasoning, which applies here without change.
  */
 
-import { parseInline, stripLineBreakMarker } from './inline-markup.js';
+import { parseInline, stripLineBreakMarker, extractLatexFragments } from './inline-markup.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 import { resolveLinkTarget } from './link-resolve.js';
 import { isWidthCookieRow } from './table-cookies.js';
@@ -184,11 +184,12 @@ function renderTextHtml(text) {
 // ---- body content -----------------------------------------------------
 
 function joinParagraphLinesHtml(lines) {
-  return lines
+  const { lines: extractedLines, fragments } = extractLatexFragments(lines);
+  return extractedLines
     .map((line, i) => {
       const forcedBreak = stripLineBreakMarker(line) !== line;
-      const rendered = renderTextHtml(stripLineBreakMarker(line));
-      if (i === lines.length - 1) return rendered;
+      const rendered = renderInlineListHtml(parseInline(stripLineBreakMarker(line), { latexFragments: fragments }));
+      if (i === extractedLines.length - 1) return rendered;
       return rendered + (forcedBreak ? '<br>' : ' ');
     })
     .join('');
@@ -246,7 +247,8 @@ function renderBlockHtml(block) {
   const name = block.name;
   if (name === 'COMMENT') return '';
   if (name === 'QUOTE') {
-    return '<blockquote>' + block.lines.map((l) => renderTextHtml(l)).join('<br>') + '</blockquote>';
+    const { lines: extractedLines, fragments } = extractLatexFragments(block.lines);
+    return '<blockquote>' + extractedLines.map((l) => renderInlineListHtml(parseInline(l, { latexFragments: fragments }))).join('<br>') + '</blockquote>';
   }
   if (name === 'SRC') {
     const lang = block.params.split(/\s+/)[0] || '';

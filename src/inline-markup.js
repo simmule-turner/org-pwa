@@ -45,12 +45,12 @@ const IMAGE_EXT_RE = /\.(png|jpe?g|gif|svg|webp|bmp|heic|heif)$/i;
 // genuinely spanning multiple lines is a known, deliberate limitation
 // of this pass, not silently broken -- see math-render.js's own docs
 // for the full account.
-const DISPLAY_DOLLAR_RE = /^\$\$([^\n]+?)\$\$/;
-const INLINE_PAREN_RE = /^\\\(([^\n]+?)\\\)/;
-const DISPLAY_BRACKET_RE = /^\\\[([^\n]+?)\\\]/;
+const DISPLAY_DOLLAR_RE = /^\$\$([\s\S]+?)\$\$/;
+const INLINE_PAREN_RE = /^\\\(([\s\S]*?)\\\)/;
+const DISPLAY_BRACKET_RE = /^\\\[([\s\S]*?)\\\]/;
 const BEGIN_ENV_RE = /^\\begin\{([A-Za-z*]+)\}([\s\S]+?)\\end\{\1\}/;
-const DOLLAR_INLINE_RE = /^\$(\S(?:[^\n$]*\S)?)\$/;
-const DOLLAR_VALID_FOLLOW_RE = /[\s.,;:!?)\]}'"]/;
+const DOLLAR_INLINE_RE = /^\$([^ \t\n,;.$][^$\n\r]*?(?:\n[^$\n\r]*?){0,2}[^ \t\n,.$])\$/;
+const DOLLAR_VALID_FOLLOW_RE = /[\s.,;:!?([{)\]}'"]/;
 
 /** Matches a real org LaTeX math fragment at `text[pos]` -- tries the
  *  display forms first ($$...$$, \[...\], \begin{env}...\end{env})
@@ -58,16 +58,32 @@ const DOLLAR_VALID_FOLLOW_RE = /[\s.,;:!?)\]}'"]/;
  *  otherwise incorrectly consume half of a $$...$$ pair. Returns
  *  { content, displayMode, length } or null.
  *
- *  $...$'s own restrictions are confirmed directly against the Org
- *  Manual: content must be directly attached to the '$' with no
- *  whitespace inside, and the closing '$' must be followed by
- *  whitespace or punctuation, but never a dash (avoiding "$5-10"
- *  reading as math). What must precede the OPENING '$', though, is
- *  NOT confirmed against a primary source, despite real effort (see
- *  math-render.js's own docs on this specific gap) -- "not
- *  immediately preceded by a digit" below is this app's own reasoned
- *  choice (avoiding "$5 $10"-style currency text), not a verified
- *  match to real org's own exact behavior. */
+ *  $...$'s own restrictions are confirmed directly against real org's
+ *  own actual source -- org-latex-regexps in org.el -- not just the
+ *  Org Manual's own prose description of them:
+ *    - the opening '$' must be preceded by any character that isn't
+ *      '$' itself, or the start of the line (org's own source:
+ *      "\([^$]\|^\)" -- notably NOT restricted to "no digit before
+ *      it," an earlier, reasoned-but-incorrect guess this app made
+ *      before the actual source was available)
+ *    - content's first character excludes space/tab/newline/comma/
+ *      semicolon/period
+ *    - content's last character (immediately before the closing '$')
+ *      excludes space/tab/newline/comma/period specifically --
+ *      semicolon is allowed there, an asymmetry confirmed directly in
+ *      the source, not a simplification of it
+ *    - the closing '$' must be followed by whitespace, an opening or
+ *      closing bracket/paren/brace, a quote character, an apostrophe,
+ *      common punctuation, or end of line -- real org's own source
+ *      expresses this via Emacs syntax-class checks (\s. \s- \s( \s)
+ *      \s"), which this app can't replicate exactly without Emacs's
+ *      own syntax table, but produces the same observable result for;
+ *      a literal dash is excluded not because org's regex explicitly
+ *      excludes it, but because Emacs's own standard syntax table
+ *      classifies '-' as "symbol" syntax, which falls outside every
+ *      class the regex actually checks -- this app excludes it
+ *      explicitly instead, to get the same observable behavior
+ *      without needing Emacs's own syntax table to fall back on */
 function matchLatexFragmentAt(text, pos) {
   const remaining = text.slice(pos);
 
@@ -89,7 +105,7 @@ function matchLatexFragmentAt(text, pos) {
   const db = DISPLAY_BRACKET_RE.exec(remaining);
   if (db) return { content: db[1], displayMode: true, length: db[0].length };
 
-  if (text[pos] === '$' && text[pos + 1] !== '$' && !(pos > 0 && /[0-9]/.test(text[pos - 1]))) {
+  if (text[pos] === '$' && text[pos + 1] !== '$' && (pos === 0 || text[pos - 1] !== '$')) {
     const m = DOLLAR_INLINE_RE.exec(remaining);
     if (m) {
       const after = text[pos + m[0].length];
@@ -100,6 +116,77 @@ function matchLatexFragmentAt(text, pos) {
   }
 
   return null;
+}
+
+// Sentinel delimiters for a LaTeX-fragment placeholder -- Unicode
+// Private Use Area characters, specifically because real org text a
+// person would actually type can never contain them at all, so
+// there's no ambiguity between a genuine placeholder and coincidental
+// user text. See extractLatexFragments/LATEX_PLACEHOLDER_RE below.
+const LATEX_PLACEHOLDER_START = '\uE000';
+const LATEX_PLACEHOLDER_END = '\uE001';
+const LATEX_PLACEHOLDER_RE = /^\uE000(\d+)\uE001/;
+
+function makeLatexPlaceholder(index) {
+  return LATEX_PLACEHOLDER_START + index + LATEX_PLACEHOLDER_END;
+}
+
+/** Paragraph-level pre-pass: extracts every LaTeX fragment from the
+ *  FULL, joined, multi-line text of a paragraph's own lines -- before
+ *  the existing per-line rendering pipeline (renderParagraphRow,
+ *  parseInline) ever sees any of it. This is what actually makes a
+ *  multi-line fragment work: matchLatexFragmentAt's own regexes
+ *  already allow \(...\) / \[...\] / $$...$$ / \begin{}...\end{} to
+ *  span an unlimited number of lines (and $...$ up to two line
+ *  breaks -- see matchLatexFragmentAt's own docs for why that one
+ *  delimiter is different), but paragraph text is otherwise rendered
+ *  one line at a time -- an existing, load-bearing part of this
+ *  app's own rendering architecture (the forced-line-break-vs-
+ *  flowing-paragraph distinction depends on knowing where each
+ *  original line ended), not something built for math specifically.
+ *  Detection has to happen before that per-line split, or a fragment
+ *  spanning more than one line is never actually given more than one
+ *  line to match against.
+ *
+ *  Each found fragment, however many lines it spans, collapses to a
+ *  single-line placeholder token at the point it started -- which
+ *  naturally shortens the returned line array when a fragment
+ *  consumed more than one of the original lines, since those extra
+ *  lines' own content is now folded into the fragment's own single
+ *  placeholder line instead of remaining separate lines in their own
+ *  right. A forced-line-break marker (a trailing "\\") is checked
+ *  against these POST-extraction line boundaries, not the original
+ *  ones -- a real simplification for the rare case of a marker
+ *  sitting exactly at a fragment's own edge (e.g. immediately after
+ *  "\begin{equation}"), which isn't realistic org usage in the first
+ *  place, in exchange for not needing to track a full original-to-
+ *  collapsed line correspondence for every other, ordinary case.
+ *
+ *  Returns { lines, fragments }: `lines` is a new array (the
+ *  placeholder-substituted text, re-split on '\n'); `fragments` is
+ *  the ordered list of { source, displayMode } that parseInline's own
+ *  placeholder recognition looks up by index when rendering each
+ *  line (pass it through via opts.latexFragments). */
+function extractLatexFragments(lines) {
+  const fullText = lines.join('\n');
+  const fragments = [];
+  let result = '';
+  let pos = 0;
+  while (pos < fullText.length) {
+    const ch = fullText[pos];
+    if (ch === '$' || ch === '\\') {
+      const m = matchLatexFragmentAt(fullText, pos);
+      if (m) {
+        fragments.push({ source: m.content, displayMode: m.displayMode });
+        result += makeLatexPlaceholder(fragments.length - 1);
+        pos += m.length;
+        continue;
+      }
+    }
+    result += ch;
+    pos += 1;
+  }
+  return { lines: result.split('\n'), fragments };
 }
 
 // Footnotes: [fn:label] is a bare reference to a definition given
@@ -348,6 +435,17 @@ function parseInline(text, opts = {}) {
       }
     }
 
+    if (text[pos] === LATEX_PLACEHOLDER_START) {
+      const ph = LATEX_PLACEHOLDER_RE.exec(text.slice(pos));
+      const frag = ph && opts.latexFragments && opts.latexFragments[Number(ph[1])];
+      if (frag) {
+        flush();
+        nodes.push({ type: 'latex', source: frag.source, displayMode: frag.displayMode });
+        pos += ph[0].length;
+        continue;
+      }
+    }
+
     if (text[pos] === '$' || text[pos] === '\\') {
       const latex = matchLatexFragmentAt(text, pos);
       if (latex) {
@@ -413,4 +511,5 @@ export {
   stripLineBreakMarker,
   IMAGE_EXT_RE,
   matchLatexFragmentAt,
+  extractLatexFragments,
 };
