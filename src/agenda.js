@@ -31,6 +31,18 @@ import {
   expandDiaryFloatOccurrences,
   isDiarySunriseSunsetLine,
   formatSunriseSunsetLine,
+  isDiarySolarSummaryLine,
+  formatSolarSummaryLine,
+  isDiarySunriseLine,
+  formatSunriseLine,
+  isDiarySunsetLine,
+  formatSunsetLine,
+  isDiaryCivilSunriseLine,
+  formatCivilSunriseLine,
+  isDiaryCivilSunsetLine,
+  formatCivilSunsetLine,
+  isDiaryDayLengthLine,
+  formatDayLengthLine,
   enumerateDays,
 } from './diary-sexp.js';
 
@@ -392,6 +404,8 @@ function buildAgendaItems(docs, opts = {}) {
     scheduledDelayDays = 0,
     calendarLatitude = 35.994,
     calendarLongitude = -78.8986,
+    solarAmpm = false,
+    solarHideLabel = false,
   } = opts;
   const items = [];
 
@@ -569,6 +583,8 @@ function buildAgendaItems(docs, opts = {}) {
               today,
               calendarLatitude,
               calendarLongitude,
+              solarAmpm,
+              solarHideLabel,
             });
             if (!isTruthy(result)) continue;
             const displayTitle = typeof result === 'string' ? `${cleanTitle}: ${result}` : cleanTitle;
@@ -623,9 +639,11 @@ function buildAgendaItems(docs, opts = {}) {
         }
       }
 
-      // The five diary-sexp forms below (org-anniversary, org-date-
-      // cyclic, org-block, diary-float, diary-sunrise-sunset) are
-      // each self-contained, per-line sexps -- unlike
+      // The eleven diary-sexp forms below (org-anniversary, org-date-
+      // cyclic, org-block, diary-float, diary-sunrise-sunset,
+      // diary-solar-summary, diary-sunrise, diary-sunset,
+      // diary-civil-sunrise, diary-civil-sunset, diary-day-length)
+      // are each self-contained, per-line sexps -- unlike
       // org-contacts-anniversaries' own trigger-line-plus-property
       // mechanism above, no upfront "is this active anywhere" scan is
       // needed first; every line in this heading's own body is simply
@@ -703,6 +721,114 @@ function buildAgendaItems(docs, opts = {}) {
                 priority: heading.priority,
                 tags: heading.tags,
                 title: formatSunriseSunsetLine(day, calendarLatitude, calendarLongitude),
+                date: day,
+                daysOverdue: 0,
+              });
+            }
+          }
+
+          if (isDiarySolarSummaryLine(trimmed)) {
+            for (const day of enumerateDays(rangeStart, rangeEnd)) {
+              items.push({
+                documentId,
+                heading,
+                kind: 'solar-summary',
+                hasTime: false,
+                repeater: null,
+                todo: heading.todo,
+                priority: heading.priority,
+                tags: heading.tags,
+                title: formatSolarSummaryLine(day, calendarLatitude, calendarLongitude),
+                date: day,
+                daysOverdue: 0,
+              });
+            }
+          }
+
+          if (isDiarySunriseLine(trimmed)) {
+            for (const day of enumerateDays(rangeStart, rangeEnd)) {
+              items.push({
+                documentId,
+                heading,
+                kind: 'sunrise',
+                hasTime: false,
+                repeater: null,
+                todo: heading.todo,
+                priority: heading.priority,
+                tags: heading.tags,
+                title: formatSunriseLine(day, calendarLatitude, calendarLongitude, undefined, solarAmpm, solarHideLabel),
+                date: day,
+                daysOverdue: 0,
+              });
+            }
+          }
+
+          if (isDiarySunsetLine(trimmed)) {
+            for (const day of enumerateDays(rangeStart, rangeEnd)) {
+              items.push({
+                documentId,
+                heading,
+                kind: 'sunset',
+                hasTime: false,
+                repeater: null,
+                todo: heading.todo,
+                priority: heading.priority,
+                tags: heading.tags,
+                title: formatSunsetLine(day, calendarLatitude, calendarLongitude, undefined, solarAmpm, solarHideLabel),
+                date: day,
+                daysOverdue: 0,
+              });
+            }
+          }
+
+          if (isDiaryCivilSunriseLine(trimmed)) {
+            for (const day of enumerateDays(rangeStart, rangeEnd)) {
+              items.push({
+                documentId,
+                heading,
+                kind: 'civil-sunrise',
+                hasTime: false,
+                repeater: null,
+                todo: heading.todo,
+                priority: heading.priority,
+                tags: heading.tags,
+                title: formatCivilSunriseLine(day, calendarLatitude, calendarLongitude, undefined, solarAmpm, solarHideLabel),
+                date: day,
+                daysOverdue: 0,
+              });
+            }
+          }
+
+          if (isDiaryCivilSunsetLine(trimmed)) {
+            for (const day of enumerateDays(rangeStart, rangeEnd)) {
+              items.push({
+                documentId,
+                heading,
+                kind: 'civil-sunset',
+                hasTime: false,
+                repeater: null,
+                todo: heading.todo,
+                priority: heading.priority,
+                tags: heading.tags,
+                title: formatCivilSunsetLine(day, calendarLatitude, calendarLongitude, undefined, solarAmpm, solarHideLabel),
+                date: day,
+                daysOverdue: 0,
+              });
+            }
+          }
+
+          if (isDiaryDayLengthLine(trimmed)) {
+            for (const day of enumerateDays(rangeStart, rangeEnd)) {
+              items.push({
+                documentId,
+                heading,
+                kind: 'day-length',
+                hasTime: false,
+                repeater: null,
+                todo: heading.todo,
+                priority: heading.priority,
+                tags: heading.tags,
+                title: formatDayLengthLine(day, calendarLatitude, calendarLongitude, solarHideLabel),
                 date: day,
                 daysOverdue: 0,
               });

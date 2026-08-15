@@ -301,6 +301,34 @@ export function getCalendarLocationName(vars) {
   return trimmed || 'Durham, NC';
 }
 
+/** solar-ampm: this app's own extension, not a real elisp/org
+ *  variable -- controls the time format for the four single-value
+ *  solar functions (diary-sunrise/diary-sunset/diary-civil-sunrise/
+ *  diary-civil-sunset). Default nil (24-hour, zero-filled, matching
+ *  what was originally requested for these four); t switches to
+ *  12-hour with am/pm. Doesn't affect diary-sunrise-sunset or
+ *  diary-solar-summary, which already have their own, separate
+ *  12-hour convention (matching real diary-sunrise-sunset's own
+ *  actual output) unrelated to this variable, nor diary-day-length,
+ *  which is a duration, not a time-of-day -- there's no "am/pm" for a
+ *  duration. */
+export function getSolarAmpm(vars) {
+  return parseLispBoolean((vars || {})['solar-ampm'], false);
+}
+
+/** solar-hide-label: this app's own extension too -- controls
+ *  whether the four single-value solar functions above, and
+ *  diary-day-length, show their own trailing label ("Sunrise",
+ *  "Dawn", "daylight", ...) at all. Default nil (label shown,
+ *  matching the format originally requested); t omits it, leaving
+ *  just the bare time or duration. Unlike solar-ampm, this one DOES
+ *  apply to diary-day-length as well as the four solar functions --
+ *  a duration still has a label to hide ("daylight"), even though it
+ *  has no time-of-day format to switch between 12-/24-hour. */
+export function getSolarHideLabel(vars) {
+  return parseLispBoolean((vars || {})['solar-hide-label'], false);
+}
+
 /** org-use-sub-superscripts: controls whether/how `_`/`^` are
  *  interpreted as subscript/superscript markers (see inline-markup.js).
  *  Unlike the other Lisp-boolean variables above, this one has three

@@ -42,6 +42,12 @@ import {
   expandOrgCyclicOccurrences,
   expandDiaryFloatOccurrences,
   formatSunriseSunsetLine,
+  formatSolarSummaryLine,
+  formatSunriseLine,
+  formatSunsetLine,
+  formatCivilSunriseLine,
+  formatCivilSunsetLine,
+  formatDayLengthLine,
 } from './diary-sexp.js';
 
 // ---- tokenizing + parsing ---------------------------------------------------
@@ -153,7 +159,8 @@ function occursOn(expandFn, date, ...args) {
 }
 
 /** Evaluates one already-parsed expression node against `context`
- *  (`{ candidateDate, today, calendarLatitude, calendarLongitude }`).
+ *  (`{ candidateDate, today, calendarLatitude, calendarLongitude,
+ *  solarAmpm, solarHideLabel }`).
  *  Returns `false` (no match), `true` (a plain match -- the heading's
  *  own title is what should display), or a non-empty string (a
  *  match, AND that string is what should display instead of/
@@ -210,6 +217,24 @@ function evaluateSexpr(node, context) {
 
     case 'diary-sunrise-sunset':
       return formatSunriseSunsetLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude);
+
+    case 'diary-solar-summary':
+      return formatSolarSummaryLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude);
+
+    case 'diary-sunrise':
+      return formatSunriseLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
+
+    case 'diary-sunset':
+      return formatSunsetLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
+
+    case 'diary-civil-sunrise':
+      return formatCivilSunriseLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
+
+    case 'diary-civil-sunset':
+      return formatCivilSunsetLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
+
+    case 'diary-day-length':
+      return formatDayLengthLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, context.solarHideLabel);
 
     default:
       return false; // an unrecognized function name -- no match, not an error
