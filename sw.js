@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v165';
+const CACHE_NAME = 'org-pwa-shell-v168';
 
 const SHELL_FILES = [
   './',
@@ -28,6 +28,33 @@ const SHELL_FILES = [
   './src/menu-alias.js',
   './src/text-normalize.js',
   './src/hex-alpha.js',
+  './src/math-render.js',
+  './src/katex-export-css.js',
+  // KaTeX -- LaTeX math fragment rendering (see src/math-render.js).
+  // Vendored locally, woff2-only (no legacy woff/ttf fallback -- every
+  // modern browser this PWA already requires supports woff2 directly).
+  './src/vendor/katex/fonts/KaTeX_AMS-Regular.woff2',
+  './src/vendor/katex/fonts/KaTeX_Caligraphic-Bold.woff2',
+  './src/vendor/katex/fonts/KaTeX_Caligraphic-Regular.woff2',
+  './src/vendor/katex/fonts/KaTeX_Fraktur-Bold.woff2',
+  './src/vendor/katex/fonts/KaTeX_Fraktur-Regular.woff2',
+  './src/vendor/katex/fonts/KaTeX_Main-Bold.woff2',
+  './src/vendor/katex/fonts/KaTeX_Main-BoldItalic.woff2',
+  './src/vendor/katex/fonts/KaTeX_Main-Italic.woff2',
+  './src/vendor/katex/fonts/KaTeX_Main-Regular.woff2',
+  './src/vendor/katex/fonts/KaTeX_Math-BoldItalic.woff2',
+  './src/vendor/katex/fonts/KaTeX_Math-Italic.woff2',
+  './src/vendor/katex/fonts/KaTeX_SansSerif-Bold.woff2',
+  './src/vendor/katex/fonts/KaTeX_SansSerif-Italic.woff2',
+  './src/vendor/katex/fonts/KaTeX_SansSerif-Regular.woff2',
+  './src/vendor/katex/fonts/KaTeX_Script-Regular.woff2',
+  './src/vendor/katex/fonts/KaTeX_Size1-Regular.woff2',
+  './src/vendor/katex/fonts/KaTeX_Size2-Regular.woff2',
+  './src/vendor/katex/fonts/KaTeX_Size3-Regular.woff2',
+  './src/vendor/katex/fonts/KaTeX_Size4-Regular.woff2',
+  './src/vendor/katex/fonts/KaTeX_Typewriter-Regular.woff2',
+  './src/vendor/katex/katex.min.css',
+  './src/vendor/katex/katex.min.js',
   './src/global-variables.js',
   './src/comment-model.js',
   './src/outline-view-model.js',

@@ -77,7 +77,8 @@ import { parseMenuAliases } from './src/menu-alias.js';
 import { normalizeSmartQuotes } from './src/text-normalize.js';
 import { buildMonthGrid, stepMonth, stepYear, MONTH_NAMES } from './src/calendar-grid.js';
 import { splitHexAlpha, combineHexAlpha } from './src/hex-alpha.js';
-import { resolveTodoSequence } from './src/todo-cycle.js';
+import { resolveTodoSequence, resolveTodoSequences, setTodoState } from './src/todo-cycle.js';
+import { renderMathHtml } from './src/math-render.js';
 import { applyRepeaterShiftOnDone } from './src/repeater-shift.js';
 import { decideProgressLogging, decideLogbookEntry, getEffectiveLogDoneSetting, parseLogDoneLispValue } from './src/progress-logging.js';
 import { parseGlobalVariables, serializeGlobalVariables, mergeGlobalAndLocalVariables } from './src/global-variables.js';
@@ -270,6 +271,15 @@ let pendingAttachChoice = null;
 // one attachment -- nothing to disambiguate. Reuses refilePanel's own
 // DOM element too, same reasoning as pendingAttachChoice above.
 let pendingAttachFileList = null;
+// Set when the file has more than one parallel #+TODO: workflow and the
+// person has tapped the TODO action (either a blank heading or an
+// already-in-progress one) -- holds { heading } while the full
+// state-picker panel is showing, reusing refilePanel's own DOM element,
+// same pattern as every other picker above. Real org's own actual
+// multi-workflow model means a file with just one #+TODO: sequence (the
+// overwhelming common case) never touches this at all -- the TODO
+// action keeps behaving exactly as it always has.
+let pendingTodoWorkflowChoice = null;
 // Set to true when org-xx-calendar (a org-xx-extra-menu function
 // reference) is selected -- a single-month calendar overview,
 // reusing refilePanel's own DOM element, same pattern as every other
@@ -1468,6 +1478,96 @@ function performAttachmentAction(heading, filename, action) {
   }
 }
 
+/** The TODO action's own entry point -- called from both the keyboard
+ *  shortcut and the action-menu "Mark as TODO"/"Remove TODO/DONE state"
+ *  item, so the two stay in sync rather than drifting into separate
+ *  behavior over time. A file with just one #+TODO: sequence (the
+ *  overwhelming common case) behaves exactly as it always has --
+ *  toggleHeadingTodo directly, no picker, no change in feel at all. A
+ *  file with more than one parallel sequence opens the full state-picker
+ *  panel instead, regardless of whether `heading` is currently blank or
+ *  already mid-cycle -- "random access" to any state in any workflow,
+ *  not just a choice of which workflow to start in, matching real org's
+ *  own actual C-u C-c C-t direct-state-selection behavior more closely
+ *  than a narrower "pick a workflow, land on its first state" design
+ *  would. Tap-the-badge (cycleHeadingTodo, a separate code path) is
+ *  deliberately untouched by any of this -- once a heading already has a
+ *  keyword, which sequence it belongs to is already unambiguous, and a
+ *  picker popping up on every single ordinary cycle tap would be a real,
+ *  noticeable regression for the common case. */
+function openTodoOrPickWorkflow(heading) {
+  const sequences = resolveTodoSequences(state.doc, GLOBAL_TODO_DEFAULT);
+  if (sequences.length <= 1) {
+    const hadTodo = !!heading.todo;
+    applyTodoTransition(heading, () => toggleHeadingTodo(state.doc, heading, GLOBAL_TODO_DEFAULT));
+    commitAndRender(hadTodo ? 'Removed TODO/DONE state' : 'Marked as TODO');
+    return;
+  }
+  pendingTodoWorkflowChoice = { heading };
+  renderTodoWorkflowPanel();
+}
+
+/** Commits a state picked from the TODO-workflow panel (see
+ *  renderTodoWorkflowPanel below) -- shared by both the button click
+ *  and the keyboard fast-key handler (the global keydown listener),
+ *  so the two paths can never drift into different behavior. */
+function chooseTodoWorkflowState(heading, keyword, seq) {
+  pendingTodoWorkflowChoice = null;
+  renderTodoWorkflowPanel();
+  applyTodoTransition(heading, () => setTodoState(heading, keyword, seq));
+  commitAndRender('Set TODO state');
+}
+
+/** Renders the full-state picker (see openTodoOrPickWorkflow above): one
+ *  row per parallel #+TODO: sequence, one button per state within that
+ *  sequence (blank/no-state isn't offered here -- Cancel already covers
+ *  "I didn't mean to open this", and every workflow's own DONE-type
+ *  states are included alongside its TODO-type ones, so jumping straight
+ *  to "FIXED" without stepping through REPORT/BUG/KNOWNCAUSE first is
+ *  exactly as reachable as any other state). Each button's own label is
+ *  the literal keyword text as written in the file's own #+TODO: line,
+ *  not a decorated or reformatted version of it. A keyword's own
+ *  fast-select key, if the file's own #+TODO: line defined one, also
+ *  works as a keyboard shortcut while this panel is open (see the
+ *  global keydown listener) -- but the button always works regardless
+ *  of whether a fast-key exists at all. */
+function renderTodoWorkflowPanel() {
+  refilePanel.innerHTML = '';
+  if (!pendingTodoWorkflowChoice) {
+    refilePanel.style.display = 'none';
+    return;
+  }
+  refilePanel.style.display = 'block';
+  const { heading } = pendingTodoWorkflowChoice;
+  const sequences = resolveTodoSequences(state.doc, GLOBAL_TODO_DEFAULT);
+
+  const label = document.createElement('div');
+  label.style.fontSize = '13px';
+  label.style.marginBottom = '8px';
+  label.textContent = 'This file has more than one TODO workflow \u2014 which state?';
+  refilePanel.appendChild(label);
+
+  for (const seq of sequences) {
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    for (const keyword of [...seq.todoKeywords, ...seq.doneKeywords]) {
+      const key = seq.keySpecs[keyword];
+      row.appendChild(menuButton(key ? `${keyword} (${key})` : keyword, () => chooseTodoWorkflowState(heading, keyword, seq)));
+    }
+    refilePanel.appendChild(row);
+  }
+
+  const cancelRow = document.createElement('div');
+  cancelRow.className = 'panel-row';
+  cancelRow.appendChild(
+    menuButton('Cancel', () => {
+      pendingTodoWorkflowChoice = null;
+      renderTodoWorkflowPanel();
+    })
+  );
+  refilePanel.appendChild(cancelRow);
+}
+
 /** org-xx-extra-menu-independent Attach sub-action -- opens the audio-
  *  recording panel for `heading`, resetting any state left over from
  *  a previous recording session (own defensive cleanup, in case a
@@ -2349,6 +2449,32 @@ document.addEventListener('keydown', (e) => {
 
   if (e.metaKey || e.ctrlKey) return; // Cmd/Ctrl combinations are the browser's own territory (new tab, save, find, ...) -- never treated as one of these shortcuts, avoiding a silent double-action
 
+  if (pendingTodoWorkflowChoice) {
+    // The TODO-workflow panel owns the keyboard exclusively while it's
+    // open -- nothing else (search's own '/', outline navigation, ...)
+    // should also fire underneath it. A keyword's own fast-select key
+    // (if the file's own #+TODO: line defined one) jumps straight to
+    // that state; Escape cancels; every other key is swallowed rather
+    // than falling through.
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      pendingTodoWorkflowChoice = null;
+      renderTodoWorkflowPanel();
+      return;
+    }
+    const { heading } = pendingTodoWorkflowChoice;
+    for (const seq of resolveTodoSequences(state.doc, GLOBAL_TODO_DEFAULT)) {
+      for (const keyword of [...seq.todoKeywords, ...seq.doneKeywords]) {
+        if (seq.keySpecs[keyword] === e.key) {
+          e.preventDefault();
+          chooseTodoWorkflowState(heading, keyword, seq);
+          return;
+        }
+      }
+    }
+    return;
+  }
+
   if (e.key === '/') {
     e.preventDefault();
     if (!searchOpen) {
@@ -2399,8 +2525,7 @@ document.addEventListener('keydown', (e) => {
     toggleActionMenu(keyboardFocusedHeading);
   } else if (e.key === 't') {
     e.preventDefault();
-    applyTodoTransition(keyboardFocusedHeading, () => toggleHeadingTodo(state.doc, keyboardFocusedHeading, GLOBAL_TODO_DEFAULT));
-    commitAndRender('Toggled TODO');
+    openTodoOrPickWorkflow(keyboardFocusedHeading);
   } else if (e.altKey && e.key === 'ArrowUp') {
     e.preventDefault();
     if (moveHeadingUp(state.doc, keyboardFocusedHeading)) commitAndRender('Moved heading up');
@@ -2967,6 +3092,34 @@ function imagePlaceholder(target, reason) {
   return span;
 }
 
+/** Renders a 'latex' inline node (see src/inline-markup.js's own
+ *  matchLatexFragmentAt) via math-render.js's own engine adapter. This
+ *  function -- like every other caller of renderMathHtml -- knows
+ *  nothing about KaTeX specifically, only that it gets back either an
+ *  HTML string to inject, or a failure to show a graceful fallback
+ *  for; see math-render.js's own docs for why that separation is what
+ *  keeps a future engine swap cheap. A failure (the engine isn't
+ *  available at all, or rejected this specific LaTeX as invalid) shows
+ *  the raw source text with a distinct, dashed-border treatment rather
+ *  than silently showing nothing or breaking the rest of the
+ *  paragraph's own render. */
+function renderLatexNode(node) {
+  const { html, ok } = renderMathHtml(node.source, node.displayMode);
+  const el = document.createElement(node.displayMode ? 'div' : 'span');
+  if (ok) {
+    el.innerHTML = html;
+  } else {
+    el.textContent = node.source;
+    el.style.border = '1px dashed #f88';
+    el.style.borderRadius = '3px';
+    el.style.padding = '0 3px';
+    el.style.fontFamily = 'monospace';
+    el.style.fontSize = '0.9em';
+    el.title = 'This LaTeX fragment could not be rendered.';
+  }
+  return el;
+}
+
 function renderImageNode(node, heading = null) {
   const inlineImagesOn = state.startupConfig && state.startupConfig.imageVisibility === 'inlineimages';
 
@@ -3317,6 +3470,9 @@ function renderInlineNodes(nodes, container, linkContext = null, heading = null)
       }
       case 'image':
         container.appendChild(renderImageNode(node, heading));
+        break;
+      case 'latex':
+        container.appendChild(renderLatexNode(node));
         break;
       case 'link':
         container.appendChild(renderLinkNode(node, linkContext, heading));
@@ -4347,9 +4503,8 @@ function renderRow(row, todoSequence) {
               label: row.node.todo ? 'Remove TODO/DONE state' : 'Mark as TODO',
               onClick: () => {
                 actionMenuFor = null;
-                const hadTodo = !!row.node.todo;
-                applyTodoTransition(row.node, () => toggleHeadingTodo(state.doc, row.node, GLOBAL_TODO_DEFAULT));
-                commitAndRender(hadTodo ? 'Removed TODO/DONE state' : 'Marked as TODO');
+                render();
+                openTodoOrPickWorkflow(row.node);
               },
             },
             {

@@ -247,6 +247,16 @@
      since the button's own resting opacity is deliberately low. */
   #navBackBtn:active { opacity: 0.75; }
 </style>
+<!-- KaTeX -- LaTeX math fragment rendering (see src/math-render.js for
+     the full architecture). Vendored locally, not loaded from a CDN,
+     matching this app's own offline-first requirement; cached for
+     offline use via sw.js's own SHELL_FILES list. A plain, non-module
+     script tag specifically because KaTeX's own distributed bundle is
+     UMD (attaches to window.katex in a browser context), not an ES
+     module with its own export -- see math-render.js's own docs for
+     why this, rather than a native import, is the correct integration
+     here. -->
+<link rel="stylesheet" href="src/vendor/katex/katex.min.css">
 </head>
 <body>
   <div id="topBar">
@@ -359,6 +369,7 @@
       <div id="sidePanel" style="display: none;"></div>
     </div>
   </div>
+  <script src="src/vendor/katex/katex.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
