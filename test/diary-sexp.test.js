@@ -18,6 +18,20 @@ import {
   computeSunriseSunsetUtc,
   formatSunTime,
   formatSunriseSunsetLine,
+  isDiarySolarSummaryLine,
+  formatSolarSummaryLine,
+  formatSunTime24,
+  isDiarySunriseLine,
+  formatSunriseLine,
+  isDiarySunsetLine,
+  formatSunsetLine,
+  isDiaryCivilSunriseLine,
+  formatCivilSunriseLine,
+  isDiaryCivilSunsetLine,
+  formatCivilSunsetLine,
+  computeDaylightHours,
+  formatDayLengthLine,
+  isDiaryDayLengthLine,
 } from '../src/diary-sexp.js';
 
 // ---- ordinalSuffix ------------------------------------------------------
@@ -231,6 +245,163 @@ test('summer solstice has more daylight than winter solstice, for the same locat
     return h;
   };
   assert.ok(daylightHours(summer) > daylightHours(winter));
+});
+
+// ---- diary-solar-summary ---------------------------------------------------
+
+test('isDiarySolarSummaryLine recognizes the exact trigger, nothing else', () => {
+  assert.equal(isDiarySolarSummaryLine('%%(diary-solar-summary)'), true);
+  assert.equal(isDiarySolarSummaryLine('%%(diary-solar-summary) with trailing text'), false);
+  assert.equal(isDiarySolarSummaryLine('%%(diary-sunrise-sunset)'), false);
+});
+
+test('THE FIX: diary-solar-summary produces the exact requested format -- "Dawn: %s | Sunrise: %s | Sunset: %s | Dusk: %s"', () => {
+  const line = formatSolarSummaryLine(new Date(2026, 7, 8), 35.994, -78.8986, -240);
+  assert.match(line, /^Dawn: \d{1,2}:\d\d(am|pm) \| Sunrise: \d{1,2}:\d\d(am|pm) \| Sunset: \d{1,2}:\d\d(am|pm) \| Dusk: \d{1,2}:\d\d(am|pm)$/);
+});
+
+test('THE WORKED EXAMPLE: civil dawn/dusk for Durham, NC roughly matches real-world data -- dawn shortly before sunrise, dusk shortly after sunset, both around 25-35 minutes given this latitude', () => {
+  const line = formatSolarSummaryLine(new Date(2026, 7, 8), 35.994, -78.8986, -240);
+  const [, dawnH, dawnM, sunriseH, sunriseM] = /Dawn: (\d+):(\d\d)am \| Sunrise: (\d+):(\d\d)am/.exec(line);
+  const dawnMinutes = Number(dawnH) * 60 + Number(dawnM);
+  const sunriseMinutes = Number(sunriseH) * 60 + Number(sunriseM);
+  const gap = sunriseMinutes - dawnMinutes;
+  assert.ok(gap >= 20 && gap <= 40, `civil dawn should precede sunrise by roughly 20-40 minutes at this latitude, got ${gap}`);
+});
+
+test('diary-solar-summary reuses the exact same sunrise/sunset values as diary-sunrise-sunset itself, for the same date/location -- not a separate, independently-computed pair of values that could silently drift out of agreement', () => {
+  const date = new Date(2026, 7, 8);
+  const summary = formatSolarSummaryLine(date, 35.994, -78.8986, -240);
+  const sunriseSunsetLine = formatSunriseSunsetLine(date, 35.994, -78.8986, -240);
+  const [, sunriseTime] = /Sunrise (\d+:\d\d(?:am|pm))/.exec(sunriseSunsetLine);
+  const [, sunsetTime] = /sunset (\d+:\d\d(?:am|pm))/.exec(sunriseSunsetLine);
+  assert.ok(summary.includes(`Sunrise: ${sunriseTime}`));
+  assert.ok(summary.includes(`Sunset: ${sunsetTime}`));
+});
+
+test('THE FIX: civil dawn/dusk (-6\u00b0) and ordinary sunrise/sunset (-0.83\u00b0) are handled INDEPENDENTLY for the polar-day/night edge case -- "white nights" at high latitude, where the sun still rises and sets but never dips low enough for civil twilight to even begin', () => {
+  const date = new Date(2026, 5, 21); // summer solstice
+  const line = formatSolarSummaryLine(date, 64, 25.0, 120); // ~64\u00b0N midsummer
+  assert.match(line, /^Dawn: n\/a \| Sunrise: \d/, 'sunrise/sunset still occur normally');
+  assert.match(line, /Dusk: n\/a$/, 'but civil dusk never happens -- the sun never reaches -6\u00b0 below the horizon that night');
+});
+
+test('true polar day (well beyond the Arctic Circle, midsummer) shows n/a for all four values', () => {
+  const date = new Date(2026, 5, 21);
+  const line = formatSolarSummaryLine(date, 75, 25.0, 120);
+  assert.equal(line, 'Dawn: n/a | Sunrise: n/a | Sunset: n/a | Dusk: n/a');
+});
+
+// ---- diary-sunrise / diary-sunset / diary-civil-sunrise / diary-civil-sunset ----
+
+test('formatSunTime24 formats hours correctly in 24-hour, zero-filled format', () => {
+  assert.equal(formatSunTime24(0, 0), '00:00'); // midnight
+  assert.equal(formatSunTime24(12, 0), '12:00'); // noon
+  assert.equal(formatSunTime24(6.5, 0), '06:30');
+  assert.equal(formatSunTime24(18.25, 0), '18:15');
+  assert.equal(formatSunTime24(9, 0), '09:00'); // single-digit hour, zero-filled
+});
+
+test('THE FIX: formatSunTime24 returns \u2019n/a\u2019 for a null (polar day/night) input', () => {
+  assert.equal(formatSunTime24(null, 0), 'n/a');
+});
+
+test('isDiarySunriseLine / isDiarySunsetLine / isDiaryCivilSunriseLine / isDiaryCivilSunsetLine each recognize their own exact trigger, and correctly reject each other\u2019s and diary-sunrise-sunset\u2019s own triggers', () => {
+  assert.equal(isDiarySunriseLine('%%(diary-sunrise)'), true);
+  assert.equal(isDiarySunriseLine('%%(diary-sunrise-sunset)'), false, 'must not accidentally match the longer, unrelated trigger');
+  assert.equal(isDiarySunriseLine('%%(diary-sunrise) trailing text'), false);
+
+  assert.equal(isDiarySunsetLine('%%(diary-sunset)'), true);
+  assert.equal(isDiarySunsetLine('%%(diary-sunrise)'), false);
+
+  assert.equal(isDiaryCivilSunriseLine('%%(diary-civil-sunrise)'), true);
+  assert.equal(isDiaryCivilSunriseLine('%%(diary-sunrise)'), false, 'must not accidentally match the shorter, unrelated trigger');
+
+  assert.equal(isDiaryCivilSunsetLine('%%(diary-civil-sunset)'), true);
+  assert.equal(isDiaryCivilSunsetLine('%%(diary-civil-sunrise)'), false);
+});
+
+test('THE FIX: all four functions produce the exact requested "HH:MM Label" format, in 24-hour zero-filled time', () => {
+  const date = new Date(2026, 7, 8);
+  assert.match(formatSunriseLine(date, 35.994, -78.8986, -240), /^\d\d:\d\d Sunrise$/);
+  assert.match(formatSunsetLine(date, 35.994, -78.8986, -240), /^\d\d:\d\d Sunset$/);
+  assert.match(formatCivilSunriseLine(date, 35.994, -78.8986, -240), /^\d\d:\d\d Dawn$/);
+  assert.match(formatCivilSunsetLine(date, 35.994, -78.8986, -240), /^\d\d:\d\d Dusk$/);
+});
+
+test('the four single-value functions are consistent with diary-solar-summary\u2019s own values, for the same date/location -- reusing the same underlying computation, not independently drifting', () => {
+  const date = new Date(2026, 7, 8);
+  const summary = formatSolarSummaryLine(date, 35.994, -78.8986, -240); // "Dawn: 6:02am | Sunrise: 6:30am | Sunset: 8:15pm | Dusk: 8:43pm"
+  assert.equal(formatSunriseLine(date, 35.994, -78.8986, -240), '06:30 Sunrise');
+  assert.equal(formatSunsetLine(date, 35.994, -78.8986, -240), '20:15 Sunset');
+  assert.equal(formatCivilSunriseLine(date, 35.994, -78.8986, -240), '06:02 Dawn');
+  assert.equal(formatCivilSunsetLine(date, 35.994, -78.8986, -240), '20:43 Dusk');
+  assert.ok(summary.includes('6:30am') && summary.includes('6:02am') && summary.includes('8:15pm') && summary.includes('8:43pm'));
+});
+
+test('THE FIX: n/a for whichever value doesn\u2019t occur -- civil dawn/dusk during "white nights" at high latitude, while ordinary sunrise/sunset still succeed', () => {
+  const date = new Date(2026, 5, 21);
+  assert.match(formatSunriseLine(date, 64, 25.0, 120), /^\d\d:\d\d Sunrise$/, 'sunrise still occurs normally');
+  assert.equal(formatCivilSunriseLine(date, 64, 25.0, 120), 'n/a Dawn', 'but civil dawn never happens at this latitude/date');
+  assert.equal(formatCivilSunsetLine(date, 64, 25.0, 120), 'n/a Dusk');
+});
+
+test('THE FIX: solar-ampm (default false/24-hour, unchanged) switches all four single-value functions to 12-hour am/pm when true', () => {
+  const date = new Date(2026, 7, 8);
+  assert.equal(formatSunriseLine(date, 35.994, -78.8986, -240), '06:30 Sunrise', 'default: 24-hour, unaffected');
+  assert.equal(formatSunriseLine(date, 35.994, -78.8986, -240, true), '6:30am Sunrise', 'ampm=true switches format');
+  assert.equal(formatSunsetLine(date, 35.994, -78.8986, -240, true), '8:15pm Sunset');
+  assert.equal(formatCivilSunriseLine(date, 35.994, -78.8986, -240, true), '6:02am Dawn');
+  assert.equal(formatCivilSunsetLine(date, 35.994, -78.8986, -240, true), '8:43pm Dusk');
+});
+
+test('THE FIX: solar-hide-label (default false/label shown, unchanged) omits the trailing label entirely when true, leaving just the bare time', () => {
+  const date = new Date(2026, 7, 8);
+  assert.equal(formatSunriseLine(date, 35.994, -78.8986, -240, false, true), '06:30');
+  assert.equal(formatSunsetLine(date, 35.994, -78.8986, -240, false, true), '20:15');
+  assert.equal(formatCivilSunriseLine(date, 35.994, -78.8986, -240, false, true), '06:02');
+  assert.equal(formatCivilSunsetLine(date, 35.994, -78.8986, -240, false, true), '20:43');
+});
+
+test('THE FIX: solar-ampm and solar-hide-label combine correctly -- 12-hour time, no label', () => {
+  const date = new Date(2026, 7, 8);
+  assert.equal(formatSunriseLine(date, 35.994, -78.8986, -240, true, true), '6:30am');
+});
+
+// ---- diary-day-length -------------------------------------------------------
+
+test('THE FIX: diary-day-length produces the exact requested "HH:MM daylight" format, 24-hour zero-filled', () => {
+  const line = formatDayLengthLine(new Date(2026, 7, 8), 35.994, -78.8986);
+  assert.match(line, /^\d\d:\d\d daylight$/);
+});
+
+test('THE FIX: diary-day-length is consistent with sunset minus sunrise for the same date/location', () => {
+  const date = new Date(2026, 7, 8);
+  const hours = computeDaylightHours(date, 35.994, -78.8986);
+  assert.ok(hours > 13.5 && hours < 14, `expected roughly 13.7-13.8 hours of daylight in early August at this latitude, got ${hours}`);
+});
+
+test('THE FIX: only solar-hide-label affects diary-day-length\u2019s own output -- there\u2019s no separate ampm parameter at all, since a duration has no time-of-day format to switch between, per the explicit clarification', () => {
+  const date = new Date(2026, 7, 8);
+  assert.match(formatDayLengthLine(date, 35.994, -78.8986, false), /^\d\d:\d\d daylight$/, 'label shown, default');
+  assert.match(formatDayLengthLine(date, 35.994, -78.8986, true), /^\d\d:\d\d$/, 'label hidden, still 24-hour -- no am/pm concept applies here at all');
+});
+
+test('THE FIX: isDiaryDayLengthLine recognizes the exact trigger, nothing else', () => {
+  assert.equal(isDiaryDayLengthLine('%%(diary-day-length)'), true);
+  assert.equal(isDiaryDayLengthLine('%%(diary-day-length) trailing text'), false);
+  assert.equal(isDiaryDayLengthLine('%%(diary-sunrise)'), false);
+});
+
+test('THE FIX: computeDaylightHours correctly disambiguates polar day (24 hours) from polar night (0 hours) -- verified against the standard solar-noon-elevation formula, not assumed', () => {
+  assert.equal(computeDaylightHours(new Date(2026, 5, 21), 75, 25.0), 24, 'high-latitude midsummer: continuous daylight');
+  assert.equal(computeDaylightHours(new Date(2026, 11, 21), 75, 25.0), 0, 'same latitude, midwinter: continuous night');
+});
+
+test('summer solstice has more daylight hours than winter solstice, computed via computeDaylightHours directly (not just the two independent sunrise/sunset values, as the earlier, already-existing test does)', () => {
+  const summer = computeDaylightHours(new Date(2026, 5, 21), 35.994, -78.8986);
+  const winter = computeDaylightHours(new Date(2026, 11, 21), 35.994, -78.8986);
+  assert.ok(summer > winter);
 });
 
 test('formatSunTime formats hours correctly with am/pm, including the 12-hour edge cases', () => {

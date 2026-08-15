@@ -10,6 +10,8 @@ import {
   getCalendarLatitude,
   getCalendarLongitude,
   getCalendarLocationName,
+  getSolarAmpm,
+  getSolarHideLabel,
   getAgendaFilesVar,
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
@@ -336,6 +338,26 @@ test('getCalendarLatitude/Longitude read an explicit override', () => {
 
 test('getCalendarLocationName reads an explicit override, including one with a comma', () => {
   assert.equal(getCalendarLocationName({ 'calendar-location-name': 'Urbana, IL' }), 'Urbana, IL');
+});
+
+test('THE FIX: getSolarAmpm defaults to false (24-hour), matching what was originally requested for the four solar functions', () => {
+  assert.equal(getSolarAmpm({}), false);
+  assert.equal(getSolarAmpm(undefined), false);
+});
+
+test('THE FIX: getSolarAmpm reads t as true (12-hour am/pm)', () => {
+  assert.equal(getSolarAmpm({ 'solar-ampm': 't' }), true);
+  assert.equal(getSolarAmpm({ 'solar-ampm': 'nil' }), false);
+});
+
+test('THE FIX: getSolarHideLabel defaults to false (label shown)', () => {
+  assert.equal(getSolarHideLabel({}), false);
+  assert.equal(getSolarHideLabel(undefined), false);
+});
+
+test('THE FIX: getSolarHideLabel reads t as true (label hidden)', () => {
+  assert.equal(getSolarHideLabel({ 'solar-hide-label': 't' }), true);
+  assert.equal(getSolarHideLabel({ 'solar-hide-label': 'nil' }), false);
 });
 
 test('an out-of-range latitude/longitude falls back to the default', () => {
