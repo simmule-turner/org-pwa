@@ -1500,3 +1500,86 @@ test('a plain <2026-01-01> title timestamp is completely unaffected by the new s
   assert.equal(items.length, 1);
   assert.equal(items[0].kind, 'timestamp');
 });
+
+// ---- THE FIX: %%(org-weather) -----------------------------------------------
+
+const SAMPLE_WEATHER_DATA = {
+  weatherCode: 3,
+  humidity: 49,
+  humidityUnit: '%',
+  pressure: 1002.8,
+  pressureUnit: 'hPa',
+  temperatureCurrent: 86.3,
+  temperatureMin: 75.5,
+  temperatureMax: 91.8,
+  apparentTemperatureMin: 84.3,
+  apparentTemperatureMax: 103.5,
+  windSpeed: 5.1,
+};
+
+test('THE FIX: a standalone "%%(org-weather)" body line generates exactly ONE entry, on today\u2019s own actual date, even across a multi-day queried range -- unlike every other diary-sexp form here (sunrise, day-length, ...), which generate one entry PER DAY, since weather data describes right now, not any other day', () => {
+  const doc = parseOrg('* Weather\n%%(org-weather)\n');
+  const today = new Date(2026, 7, 19);
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 7, 17),
+    rangeEnd: new Date(2026, 7, 23),
+    today,
+    weatherData: SAMPLE_WEATHER_DATA,
+  });
+  assert.equal(items.length, 1, 'exactly one entry across the whole 7-day range, not one per day');
+  assert.equal(items[0].kind, 'weather');
+  assert.equal(items[0].date.toDateString(), today.toDateString());
+  assert.equal(items[0].title, 'Weather: Overcast, 86.3(75.5-91.8)\u00b0F, 1002.8hPa, 49%, 5.1mph');
+});
+
+test('THE FIX: no entry at all when weather data has never actually been fetched (weatherData: null) -- there\u2019s nothing to show, not an error', () => {
+  const doc = parseOrg('* Weather\n%%(org-weather)\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 7, 17),
+    rangeEnd: new Date(2026, 7, 23),
+    today: new Date(2026, 7, 19),
+    weatherData: null,
+  });
+  assert.equal(items.length, 0);
+});
+
+test('THE FIX: no entry when today doesn\u2019t actually fall within the queried range -- browsing a different week/month than the current one shouldn\u2019t surface a stale "current weather" snapshot at all', () => {
+  const doc = parseOrg('* Weather\n%%(org-weather)\n');
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 8, 1),
+    rangeEnd: new Date(2026, 8, 7),
+    today: new Date(2026, 7, 19),
+    weatherData: SAMPLE_WEATHER_DATA,
+  });
+  assert.equal(items.length, 0);
+});
+
+test('org-weather-format / org-weather-temperature-unit / org-weather-speed-unit, threaded through buildAgendaItems\u2019 own options, correctly reach the standalone-line pathway\u2019s own output', () => {
+  const doc = parseOrg('* Weather\n%%(org-weather)\n');
+  const today = new Date(2026, 7, 19);
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: today,
+    rangeEnd: today,
+    today,
+    weatherData: SAMPLE_WEATHER_DATA,
+    orgWeatherFormat: '%icon %tcur%tu, wind %s%su',
+    orgWeatherTemperatureUnit: '\u00b0C',
+    orgWeatherSpeedUnit: 'km/h',
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, '\u2601\ufe0f 30.2\u00b0C, wind 8.2km/h');
+});
+
+test('THE FIX: org-weather also works inside the general <%%(...)> timestamp form, composing with (when (today-p) ...) exactly like every other function here', () => {
+  const doc = parseOrg('* Current Conditions <%%(when (today-p) (org-weather))>\n');
+  const today = new Date(2026, 7, 19);
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 7, 17),
+    rangeEnd: new Date(2026, 7, 23),
+    today,
+    weatherData: SAMPLE_WEATHER_DATA,
+  });
+  assert.equal(items.length, 1, 'only today\u2019s own row, even though the <%%(...)> mechanism itself DOES scan every day in the range -- today-p is what restricts it here, not org-weather itself');
+  assert.equal(items[0].date.toDateString(), today.toDateString());
+  assert.match(items[0].title, /^Current Conditions: Weather: Overcast/);
+});

@@ -142,22 +142,45 @@ test('a bare "$N" inside an expression (no "@") means the CURRENT row, applied p
 
 // ---- hlines / row numbering -------------------------------------------------
 
-test('THE FIX: a horizontal rule (hline) never gets its own row number -- @N always counts DATA rows only, matching real org', () => {
+test('THE FIX: a horizontal rule (hline) never gets its own row number -- @N always counts every actual row, INCLUDING the header (confirmed directly against real Emacs org-mode -- see the next test), but never a rule/hline itself', () => {
   // Header row, then first hline (defines the header boundary), then
   // data rows with a SECOND hline mid-data (a group separator, which
   // must NOT reset numbering or count as its own row either).
-  const result = recalculateTable(mkTable('@4$1=vsum(@1$1..@3$1)', [['H'], null, ['1'], ['2'], null, ['3'], ['']]));
+  const result = recalculateTable(mkTable('@5$1=vsum(@2..@4)', [['H'], null, ['1'], ['2'], null, ['3'], ['']]));
   assert.equal(cellsOf(result)[1], '---', 'the first (header-defining) rule is preserved untouched, at its own original position');
   assert.equal(cellsOf(result)[4], '---', 'the second (mid-data) rule is also preserved untouched');
-  assert.equal(result[6].cells[0], '6', '@4 correctly refers to the 4th DATA row (the blank one after "3"), counting only 1/2/3/blank -- not the header, and not either rule');
+  assert.equal(result[6].cells[0], '6', '@5 correctly refers to the 5th row overall (the blank one after "3") -- @1 is the header, @2..@4 are 1/2/3, and neither rule consumes a row number of its own');
 });
 
-test('THE FIX: a header row (any row before the table\u2019s own first hline) is excluded entirely from @N numbering and column-formula application -- a real, confirmed bug found and fixed: a header row\u2019s own label text was silently getting overwritten with a computed number', () => {
+test('THE FIX: the column-formula SHORTHAND ($N=, applied to every row at once) still correctly skips a row before the table\u2019s own first hline -- confirmed directly against real Emacs org-mode: a $3=$2*2 column formula leaves the header row\u2019s own text alone, distinct from (and narrower than) @N numbering itself, which DOES count the header (see the dedicated header-numbering test below) -- these are two separate rules, not one', () => {
   const result = recalculateTable(mkTable('$2=($1-32)*5/9', [['Fahrenheit', 'Celsius'], null, ['32', ''], ['212', '']]));
   assert.deepEqual(cellsOf(result)[0], ['Fahrenheit', 'Celsius'], 'the header row\u2019s own text must be completely untouched, not overwritten with a computed value');
   assert.equal(result[2].cells[1], '0', 'the actual data rows are still correctly computed');
   assert.equal(result[3].cells[1], '100');
 });
+
+test('THE FIX: @N numbering counts the header row as @1 -- a real, significant bug found and fixed: the earlier implementation excluded the header from @N numbering entirely (not just from column-formula application), confirmed wrong by actually running real Emacs org-mode\u2019s own org-table-recalculate in batch mode, not by reading the Manual\u2019s own ambiguous prose and stopping there. The user\u2019s own exact reported example: "@7$2=vsum(@2..@6)" on a table with a 3-column header, 5 data rows, then a summary row -- @7 is the summary row (header=@1, the 5 data rows=@2..@6, matching real Emacs\u2019s own actual, directly-verified output exactly)', () => {
+  const result = recalculateTable(
+    mkTable('@7$2=vsum(@2..@6)', [
+      ['ITEM', 'COST', 'PRICE'],
+      null,
+      ['Bike', '50', '100'],
+      ['Sword', '20', '35'],
+      ['Drill', '30', '60'],
+      ['Cooler', '10', '70'],
+      ['TV', '50', '40'],
+      null,
+      ['', '999', ''],
+    ])
+  );
+  assert.equal(result[8].cells[1], '160', 'matches real Emacs org-mode\u2019s own actual, directly-verified output for this exact formula and table');
+});
+
+test('an explicit, deliberately-targeted cell formula (@1$2=...) still freely modifies the header when asked to -- confirmed directly against real Emacs too: only the column-formula SHORTHAND skips the header, not an explicit @N$M= target', () => {
+  const result = recalculateTable(mkTable('@1$2=999', [['ITEM', 'COST'], null, ['Bike', '50'], ['Sword', '20']]));
+  assert.deepEqual(result[0].cells, ['ITEM', '999']);
+});
+
 
 test('a table with NO hline anywhere at all has no header row -- every row counts as data, matching real org\u2019s own documented convention exactly', () => {
   const result = recalculateTable(mkTable('$2=$1*2', [['3', ''], ['5', '']]));
@@ -409,4 +432,119 @@ test('a range that is entirely blank correctly yields 0 for every aggregate func
 test('a single bare-ref argument to an aggregate function (not a full range) also correctly omits a blank cell, consistent with the range case', () => {
   const result = recalculateTable(mkTable('@1$2=vcount($1)', [['', '']]));
   assert.equal(result[0].cells[1], '0', 'a single blank cell fed to vcount correctly counts as 0 data values, not 1');
+});
+
+// ---- THE FIX: hline references (@I, @II, @III, ...) ------------------------
+
+test('THE FIX: @I / @II resolve to hline positions, and a range between them spans every data row strictly between the two hlines -- confirmed directly against real Emacs org-mode (org-table-recalculate in batch mode), matching the user\u2019s own reported "Standard deviation" example exactly', () => {
+  const rows = [
+    ['INDEX', 'VALUE'],
+    null,
+    ['1', '1'],
+    ['2', '2'],
+    ['3', '4'],
+    ['4', '2'],
+    ['5', '3'],
+    ['6', '1'],
+    ['7', '4'],
+    ['8', '1'],
+    ['9', '5'],
+    null,
+    ['STD DEV', '999999999'],
+  ];
+  const result = recalculateTable(mkTable('@>$2=vsdev(@I..@II)', rows));
+  assert.equal(result[result.length - 1].cells[1], '1.5092309', 'matches real Emacs org-mode\u2019s own directly-verified output exactly');
+});
+
+test('THE FIX: @I is repeated-"I"-character notation, NOT Roman numerals -- confirmed directly against real Emacs: @IIII is the 4th hline, not @IV. The user\u2019s own reported "summing sections" example, all four hline-bounded ranges at once, each result matching their own expected values exactly', () => {
+  const rows = [
+    ['ITEM', 'COST'],
+    null,
+    ['rum', '20'],
+    ['gin', '18'],
+    ['beer', '50'],
+    null,
+    ['coke', '10'],
+    ['sprite', '5'],
+    null,
+    ['chips', '10'],
+    ['cookies', '20'],
+    ['pizza', '60'],
+    null,
+    ['plates', '10'],
+    ['napkins', '8'],
+    ['cups', '12'],
+    null,
+    ['ALCOHOL', '-1'],
+    ['SODA', '-1'],
+    ['FOOD', '-1'],
+    ['MISC', '-1'],
+  ];
+  const tblfm = '@13$2=vsum(@I..@II)::@14$2=vsum(@II..@III)::@15$2=vsum(@III..@IIII)::@16$2=vsum(@IIII..@IIIII)';
+  const result = recalculateTable(mkTable(tblfm, rows));
+  assert.equal(result[17].cells[1], '88', 'ALCOHOL: 20+18+50');
+  assert.equal(result[18].cells[1], '15', 'SODA: 10+5');
+  assert.equal(result[19].cells[1], '90', 'FOOD: 10+20+60');
+  assert.equal(result[20].cells[1], '30', 'MISC: 10+8+12');
+});
+
+test('THE FIX: a range reaching past the table\u2019s own last hline still resolves, clamping to the table\u2019s own actual end rather than erroring -- confirmed directly against real Emacs org-mode (re-verified fresh, not assumed): @II, which doesn\u2019t exist in a table with only one hline, clamps to the table\u2019s own last row. Since there\u2019s no hline separating the target row itself from the data being summed, the clamped range correctly includes the target\u2019s own current value too -- confirmed this is real org\u2019s own actual behavior, not a bug: 10+8+12+(-1)=29, not 30', () => {
+  const rows = [['ITEM', 'COST'], null, ['a', '10'], ['b', '8'], ['c', '12'], ['MISC', '-1']];
+  const result = recalculateTable(mkTable('@5$2=vsum(@I..@II)', rows));
+  assert.equal(result[5].cells[1], '29', 'matches real Emacs org-mode\u2019s own directly-verified output exactly');
+});
+
+test('an hline reference with a +N/-N offset resolves to a data row that many positions after/before the hline itself', () => {
+  const rows = [['A'], null, ['1'], ['2'], ['3'], ['4']];
+  const result = recalculateTable(mkTable('@1$1=@I+2', rows));
+  assert.equal(result[0].cells[0], '2', '@I+2: the hline\u2019s own start boundary (row 1, "1") plus 2 = row 3, "2"');
+});
+
+// ---- THE FIX: a range as the formula\u2019s own target -------------------------
+
+test('THE FIX: a range target applies the formula independently to each cell in that range -- confirmed directly against real Emacs org-mode, matching the user\u2019s own reported "Summing columns" example exactly (four columns summed at once via a single range-target formula)', () => {
+  const rows = [
+    ['ITEM', 'COST', 'PRICE', 'SHIPPING', 'MILEAGE'],
+    null,
+    ['Bike', '50', '100', '0', '23'],
+    ['Sword', '20', '35', '10', '12'],
+    ['Drill', '30', '60', '5', '51'],
+    ['Cooler', '10', '70', '0', '32'],
+    ['TV', '50', '40', '20', '19'],
+    ['Blender', '25', '45', '0', '9'],
+    ['Boots', '20', '20', '0', '38'],
+    null,
+    ['', '', '', '', ''],
+  ];
+  const result = recalculateTable(mkTable('@>$2..@>$>=vsum(@2..@-1)', rows));
+  assert.deepEqual(result[result.length - 1].cells, ['', '205', '370', '35', '184'], 'matches real Emacs org-mode\u2019s own directly-verified output exactly');
+});
+
+test('THE FIX: a range target with both endpoints fully explicit (@>$2..@>$3=) -- the user\u2019s own reported "Column totals" example, corrected to valid syntax (see the next test for the literal, invalid version)', () => {
+  const rows = [
+    ['ITEM', 'COST', 'PRICE'],
+    null,
+    ['Bike', '50', '100'],
+    ['Sword', '20', '35'],
+    ['Drill', '30', '60'],
+    ['Cooler', '10', '70'],
+    ['TV', '50', '40'],
+    ['Blender', '25', '45'],
+    ['Boots', '20', '20'],
+    null,
+    ['', '999', '999'],
+  ];
+  const result = recalculateTable(mkTable('@>$2..@>$3=vsum(@2..@-1)', rows));
+  assert.deepEqual(result[result.length - 1].cells, ['', '205', '370']);
+});
+
+test('THE FIX: the user\u2019s own literal, reported "Column totals" formula (@>$2..$3=, second endpoint missing its row) throws clearly -- confirmed directly against real Emacs org-mode that this is genuinely invalid there too ("Row descriptor -1 leads outside table"), not a bug in this app to silently make work', () => {
+  const rows = [['ITEM', 'COST', 'PRICE'], null, ['Bike', '50', '100'], null, ['', '999', '999']];
+  assert.throws(() => recalculateTable(mkTable('@>$2..$3=vsum(@2..@-1)', rows)), /explicit row on both endpoints/);
+});
+
+test('a range target can also span multiple ROWS in one column, not just multiple columns in one row', () => {
+  const rows = [['1'], ['2'], ['3']];
+  const result = recalculateTable(mkTable('@1$1..@3$1=99', rows));
+  assert.deepEqual(cellsOf(result), [['99'], ['99'], ['99']]);
 });

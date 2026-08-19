@@ -12,6 +12,9 @@ import {
   getCalendarLocationName,
   getSolarAmpm,
   getSolarHideLabel,
+  getOrgWeatherFormat,
+  getOrgWeatherSpeedUnit,
+  getOrgWeatherTemperatureUnit,
   getAgendaFilesVar,
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
@@ -358,6 +361,35 @@ test('THE FIX: getSolarHideLabel defaults to false (label shown)', () => {
 test('THE FIX: getSolarHideLabel reads t as true (label hidden)', () => {
   assert.equal(getSolarHideLabel({ 'solar-hide-label': 't' }), true);
   assert.equal(getSolarHideLabel({ 'solar-hide-label': 'nil' }), false);
+});
+
+test('THE FIX: getOrgWeatherFormat defaults to the exact format given in the original request', () => {
+  assert.equal(getOrgWeatherFormat({}), 'Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su');
+  assert.equal(getOrgWeatherFormat(undefined), 'Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su');
+});
+
+test('getOrgWeatherFormat reads an explicit override', () => {
+  assert.equal(getOrgWeatherFormat({ 'org-weather-format': '%icon %tcur%tu' }), '%icon %tcur%tu');
+});
+
+test('THE FIX: getOrgWeatherSpeedUnit defaults to mph, matching what this app always fetches in', () => {
+  assert.equal(getOrgWeatherSpeedUnit({}), 'mph');
+});
+
+test('getOrgWeatherSpeedUnit reads a valid override; an unrecognized value falls back to the default rather than passing a malformed unit through', () => {
+  assert.equal(getOrgWeatherSpeedUnit({ 'org-weather-speed-unit': 'km/h' }), 'km/h');
+  assert.equal(getOrgWeatherSpeedUnit({ 'org-weather-speed-unit': 'm/s' }), 'm/s');
+  assert.equal(getOrgWeatherSpeedUnit({ 'org-weather-speed-unit': 'Knots' }), 'Knots');
+  assert.equal(getOrgWeatherSpeedUnit({ 'org-weather-speed-unit': 'bogus' }), 'mph');
+});
+
+test('THE FIX: getOrgWeatherTemperatureUnit defaults to \u00b0F, matching what this app always fetches in', () => {
+  assert.equal(getOrgWeatherTemperatureUnit({}), '\u00b0F');
+});
+
+test('getOrgWeatherTemperatureUnit reads a valid override; an unrecognized value falls back to the default', () => {
+  assert.equal(getOrgWeatherTemperatureUnit({ 'org-weather-temperature-unit': '\u00b0C' }), '\u00b0C');
+  assert.equal(getOrgWeatherTemperatureUnit({ 'org-weather-temperature-unit': 'bogus' }), '\u00b0F');
 });
 
 test('an out-of-range latitude/longitude falls back to the default', () => {

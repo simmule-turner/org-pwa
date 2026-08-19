@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSexpr, evaluateSexpr, findSexpTimestamps, evaluateSexpTimestamp, isTruthy } from '../src/sexp-eval.js';
+import { parseSexpr, evaluateSexpr, findSexpTimestamps, evaluateSexpTimestamp, isTruthy, documentUsesOrgWeather } from '../src/sexp-eval.js';
+import { parseOrg } from '../src/org-parser.js';
 
 // ---- parseSexpr (the raw parser) --------------------------------------------
 
@@ -264,4 +265,36 @@ test('format with no sub-expressions at all (missing entirely, not just fewer th
 test('format with truly zero arguments at all is malformed and evaluates to false', () => {
   const expr = parseSexpr('(format)');
   assert.equal(evaluateSexpr(expr, ctx(TODAY)), false);
+});
+
+// ---- documentUsesOrgWeather ---------------------------------------------------
+
+test('documentUsesOrgWeather is false for a document with no org-weather usage at all', () => {
+  const doc = parseOrg('* Just a heading\nSome text.\n');
+  assert.equal(documentUsesOrgWeather(doc), false);
+});
+
+test('THE FIX: documentUsesOrgWeather is true for a standalone "%%(org-weather)" body line', () => {
+  const doc = parseOrg('* Weather\n%%(org-weather)\n');
+  assert.equal(documentUsesOrgWeather(doc), true);
+});
+
+test('THE FIX: documentUsesOrgWeather is true for org-weather used within a <%%(...)> timestamp', () => {
+  const doc = parseOrg('* Conditions <%%(when (today-p) (org-weather))>\n');
+  assert.equal(documentUsesOrgWeather(doc), true);
+});
+
+test('documentUsesOrgWeather finds a usage on a deeply nested sub-heading, not just top-level ones', () => {
+  const doc = parseOrg('* A\n** B\n*** C\n%%(org-weather)\n');
+  assert.equal(documentUsesOrgWeather(doc), true);
+});
+
+test('documentUsesOrgWeather handles a null/missing document gracefully', () => {
+  assert.equal(documentUsesOrgWeather(null), false);
+  assert.equal(documentUsesOrgWeather(undefined), false);
+});
+
+test('THE FIX: similar-looking but unrelated text does not false-positive -- only a genuine trigger counts', () => {
+  const doc = parseOrg('* Heading\nI mention org-weather here but there\u2019s no actual %%(...) trigger.\n');
+  assert.equal(documentUsesOrgWeather(doc), false);
 });
