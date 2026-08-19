@@ -1,24 +1,19 @@
 /**
  * A minimal S-expression parser and evaluator for real org-mode's own
- * <%%(sexp)> diary timestamp syntax -- a genuinely different, more
- * general mechanism from this app's own existing %%(...) body-line
- * triggers (org-contacts-anniversaries, org-anniversary, org-cyclic,
- * diary-float, org-block, diary-sunrise-sunset -- see diary-sexp.js):
- * those five recognize exactly one whole line matching one of five
- * fixed forms; <%%(...)> instead evaluates an arbitrary expression,
+ * <%%(sexp)> diary timestamp syntax -- a more general mechanism than
+ * this app's own %%(...) body-line triggers (org-contacts-anniversaries,
+ * org-anniversary, org-cyclic, diary-float, org-block -- see
+ * diary-sexp.js), which each recognize exactly one whole line matching
+ * one fixed form. <%%(...)> instead evaluates an arbitrary expression,
  * once per candidate date, wherever it's written as a heading's own
  * timestamp (the same position a plain <2026-01-01> title-timestamp
- * already occupies) -- and that expression can combine functions
+ * already occupies), and that expression can combine functions
  * together, not just invoke one alone.
  *
- * Confirmed directly against real org-mode's own documented sexp
- * timestamp semantics: the expression is evaluated with the candidate
- * date bound (real org calls this variable `date`); a `nil` result
- * means no match that day, a non-nil result means a match, and
- * specifically a STRING result becomes the entry's own displayed
- * text for that occurrence (real diary-sunrise-sunset's own actual
- * behavior -- it always "matches", and what it matches WITH is the
- * formatted sunrise/sunset text itself, not a fixed heading title).
+ * The expression is evaluated with the candidate date bound (real org
+ * calls this variable `date`); a `nil` result means no match that day,
+ * a non-nil result means a match, and a STRING result becomes the
+ * entry's own displayed text for that occurrence.
  *
  * Deliberately NOT a general elisp interpreter -- only `when` (the
  * one control-flow form needed for the requested composability) and
@@ -42,8 +37,6 @@ import {
   expandOrgAnniversaryOccurrences,
   expandOrgCyclicOccurrences,
   expandDiaryFloatOccurrences,
-  formatSunriseSunsetLine,
-  formatSolarSummaryLine,
   formatSunriseLine,
   formatSunsetLine,
   formatCivilSunriseLine,
@@ -165,10 +158,9 @@ function occursOn(expandFn, date, ...args) {
  *  Returns `false` (no match), `true` (a plain match -- the heading's
  *  own title is what should display), or a non-empty string (a
  *  match, AND that string is what should display instead of/
- *  alongside the heading's own title -- diary-sunrise-sunset's own
- *  actual behavior). An unrecognized function name, or any other
- *  malformed/unsupported construct, evaluates to `false` rather than
- *  throwing -- see parseSexpr's own docs for why. */
+ *  alongside the heading's own title). An unrecognized function
+ *  name, or any other malformed/unsupported construct, evaluates to
+ *  `false` rather than throwing -- see parseSexpr's own docs for why. */
 function evaluateSexpr(node, context) {
   if (!Array.isArray(node)) {
     // A bare leaf outside any function call at all -- not a
@@ -215,12 +207,6 @@ function evaluateSexpr(node, context) {
       const yearFilter = args[4] ? args[4].value : null;
       return occursOn(expandDiaryFloatOccurrences, context.candidateDate, monthSpec, dayname, n, dayOverride, yearFilter);
     }
-
-    case 'diary-sunrise-sunset':
-      return formatSunriseSunsetLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude);
-
-    case 'diary-solar-summary':
-      return formatSolarSummaryLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude);
 
     case 'diary-sunrise':
       return formatSunriseLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);

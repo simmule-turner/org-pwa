@@ -276,9 +276,9 @@ export function getContactsBirthdayProperty(vars) {
 }
 
 /** calendar-latitude: real Emacs's own exact variable name and
- *  purpose -- the latitude diary-sunrise-sunset computes from. A
- *  non-numeric or out-of-range (-90 to 90) value falls back to the
- *  default rather than producing a nonsensical calculation. */
+ *  purpose -- the latitude the solar diary-sexp functions compute
+ *  from. A non-numeric or out-of-range (-90 to 90) value falls back
+ *  to the default rather than producing a nonsensical calculation. */
 export function getCalendarLatitude(vars) {
   const n = parseLispNumber((vars || {})['calendar-latitude'], 35.994);
   return n >= -90 && n <= 90 ? n : 35.994;
@@ -304,12 +304,8 @@ export function getCalendarLocationName(vars) {
 /** solar-ampm: this app's own extension, not a real elisp/org
  *  variable -- controls the time format for the four single-value
  *  solar functions (diary-sunrise/diary-sunset/diary-civil-sunrise/
- *  diary-civil-sunset). Default nil (24-hour, zero-filled, matching
- *  what was originally requested for these four); t switches to
- *  12-hour with am/pm. Doesn't affect diary-sunrise-sunset or
- *  diary-solar-summary, which already have their own, separate
- *  12-hour convention (matching real diary-sunrise-sunset's own
- *  actual output) unrelated to this variable, nor diary-day-length,
+ *  diary-civil-sunset). Default nil (24-hour, zero-filled); t
+ *  switches to 12-hour with am/pm. Doesn't affect diary-day-length,
  *  which is a duration, not a time-of-day -- there's no "am/pm" for a
  *  duration. */
 export function getSolarAmpm(vars) {
@@ -327,6 +323,16 @@ export function getSolarAmpm(vars) {
  *  has no time-of-day format to switch between 12-/24-hour. */
 export function getSolarHideLabel(vars) {
   return parseLispBoolean((vars || {})['solar-hide-label'], false);
+}
+
+/** org-table-duration-hour-zero-padding: real org's own actual
+ *  variable name. Default t (true) -- confirmed directly against real
+ *  Emacs org-mode: with no setting change, a duration formula's own
+ *  T/U-flag output pads the hours field to at least 2 digits
+ *  ("00:08:00"), not "0:08:00". Minutes and seconds are always
+ *  2-digit padded regardless of this setting. */
+export function getOrgTableDurationHourZeroPadding(vars) {
+  return parseLispBoolean((vars || {})['org-table-duration-hour-zero-padding'], true);
 }
 
 /** org-weather-format: this app's own extension, not a real

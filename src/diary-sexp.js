@@ -1,6 +1,6 @@
 /**
- * New diary-sexp forms for the agenda -- org-anniversary, org-date-
- * cyclic, org-block, diary-float, and diary-sunrise-sunset. Each of
+ * New diary-sexp forms for the agenda -- org-anniversary, org-cyclic,
+ * org-block, diary-float, and the solar functions below. Each of
  * these is a per-line sexp: the line itself, wherever it appears in a
  * heading's body text, both triggers the computation AND (for the
  * first four) supplies the description template that follows the
@@ -308,7 +308,7 @@ function expandDiaryFloatOccurrences(monthSpec, dayname, n, dayOverride, yearFil
   return dates;
 }
 
-// ---- diary-sunrise-sunset ---------------------------------------------------
+// ---- solar position ---------------------------------------------------------
 
 // Standard NOAA solar-position algorithm (the widely-used, well-tested
 // astronomical formulas for sunrise/sunset given latitude, longitude,
@@ -343,10 +343,7 @@ function toJulianDay(date) {
  *  far below the horizon the sun's own center must be for this to
  *  count as "risen"/"set" -- defaults to -0.83, the standard
  *  refraction-and-solar-radius-corrected value real sunrise/sunset
- *  itself uses. diary-solar-summary (below) reuses this same,
- *  already-tested solar-position math at -6 degrees instead, for
- *  civil dawn/dusk, rather than a separate implementation of the same
- *  underlying astronomy. */
+ *  itself uses; -6 degrees for civil dawn/dusk. */
 /** The sun's own declination (radians) and solar transit (Julian
  *  day) for `date` at `longitude` -- factored out of
  *  computeSunriseSunsetUtc so computeDaylightHours below can reuse
@@ -430,42 +427,6 @@ function formatSunTime(utcHours, offsetMinutes) {
   return `${h}:${String(mi).padStart(2, '0')}${period}`;
 }
 
-/** The full diary-sunrise-sunset line for `date` at the given
- *  location -- "Sunrise 7:12am, sunset 5:07pm, 9hr 55min daylight",
- *  matching real diary-sunrise-sunset's own general shape. Returns a
- *  polar-day/night message instead when the sun doesn't rise or set
- *  at all that day. `offsetMinutes` shifts the UTC calculation into
- *  local time -- this app's own equivalent of real Emacs's
- *  calendar-time-zone. Defaults to the browser's own current
- *  timezone offset for `date` (correctly DST-aware) rather than a
- *  separately-configured variable, since a person's own device
- *  timezone virtually always matches wherever their own
- *  calendar-latitude/longitude actually point -- but callers (tests,
- *  or a future explicit setting) can override it directly rather than
- *  being locked to whatever system timezone happens to be running. */
-function formatSunriseSunsetLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset()) {
-  const result = computeSunriseSunsetUtc(date, latitude, longitude);
-  if (!result) return 'Sun does not rise or set at this location today';
-  const sunriseStr = formatSunTime(result.sunrise, offsetMinutes);
-  let sunsetStr = formatSunTime(result.sunset, offsetMinutes);
-  let daylightMinutes = Math.round((result.sunset - result.sunrise) * 60);
-  if (daylightMinutes < 0) daylightMinutes += 24 * 60;
-  const dh = Math.floor(daylightMinutes / 60);
-  const dm = daylightMinutes % 60;
-  return `Sunrise ${sunriseStr}, sunset ${sunsetStr}, ${dh}hr ${dm}min daylight`;
-}
-
-const DIARY_SUNRISE_SUNSET_RE = /^%%\(diary-sunrise-sunset\)\s*$/;
-
-/** True if `line` is the %%(diary-sunrise-sunset) trigger -- a
- *  self-contained line (no trailing description text; the line
- *  itself both triggers and IS the entry, unlike the other diary-sexp
- *  types above, since real diary-sunrise-sunset always generates its
- *  own full text). */
-function isDiarySunriseSunsetLine(line) {
-  return DIARY_SUNRISE_SUNSET_RE.test(line.trim());
-}
-
 /** Civil twilight's own standard, universally-used astronomical
  *  definition: the sun 0-6 degrees below the horizon. Civil dawn/dusk
  *  is the sun crossing -6 degrees (as opposed to nautical at -12, or
@@ -478,51 +439,16 @@ const CIVIL_TWILIGHT_ANGLE = -6;
 
 /** One resolved sun-crossing time as "H:MMam"/"H:MMpm", or a clear
  *  placeholder for the polar day/night case (computeSunriseSunsetUtc
- *  returned null) -- each of Dawn/Sunrise/Sunset/Dusk is resolved
- *  independently in formatSolarSummaryLine below, since the sun
- *  failing to cross one angle on a given day (e.g. never reaching -6
- *  degrees, deep into a high-latitude summer) doesn't necessarily
- *  mean it also fails to cross the other. */
+ *  returned null). */
 function formatSunTimeOrPlaceholder(utcHours, offsetMinutes) {
   return utcHours === null ? 'n/a' : formatSunTime(utcHours, offsetMinutes);
-}
-
-/** The full diary-solar-summary line for `date` at the given
- *  location -- "Dawn: 6:42am | Sunrise: 7:12am | Sunset: 5:07pm |
- *  Dusk: 5:37pm", matching the exact format requested: civil
- *  dawn/dusk (sun at -6 degrees) alongside ordinary sunrise/sunset
- *  (sun at -0.83 degrees, computeSunriseSunsetUtc's own existing
- *  default), computed via the same shared solar-position math used
- *  for diary-sunrise-sunset above -- not a separate calculation.
- *  `offsetMinutes` shifts the UTC calculation into local time, same
- *  convention as formatSunriseSunsetLine's own. */
-function formatSolarSummaryLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset()) {
-  const dawnDusk = computeSunriseSunsetUtc(date, latitude, longitude, CIVIL_TWILIGHT_ANGLE);
-  const sunriseSunset = computeSunriseSunsetUtc(date, latitude, longitude);
-  const dawnStr = formatSunTimeOrPlaceholder(dawnDusk ? dawnDusk.sunrise : null, offsetMinutes);
-  const sunriseStr = formatSunTimeOrPlaceholder(sunriseSunset ? sunriseSunset.sunrise : null, offsetMinutes);
-  const sunsetStr = formatSunTimeOrPlaceholder(sunriseSunset ? sunriseSunset.sunset : null, offsetMinutes);
-  const duskStr = formatSunTimeOrPlaceholder(dawnDusk ? dawnDusk.sunset : null, offsetMinutes);
-  return `Dawn: ${dawnStr} | Sunrise: ${sunriseStr} | Sunset: ${sunsetStr} | Dusk: ${duskStr}`;
-}
-
-const DIARY_SOLAR_SUMMARY_RE = /^%%\(diary-solar-summary\)\s*$/;
-
-/** True if `line` is the %%(diary-solar-summary) trigger -- a
- *  self-contained line, same convention as
- *  isDiarySunriseSunsetLine above. */
-function isDiarySolarSummaryLine(line) {
-  return DIARY_SOLAR_SUMMARY_RE.test(line.trim());
 }
 
 /** "HH:MM" in 24-hour, zero-filled format, or 'n/a' if `utcHours` is
  *  null (the sun doesn't cross this particular angle at all that
  *  day -- polar day/night, or "white nights" for the civil-twilight
- *  angle specifically). This app's own extension format, distinct
- *  from formatSunTime's own 12-hour am/pm convention (which matches
- *  real diary-sunrise-sunset's own actual output) -- used by the four
- *  single-value functions below, which are this app's own addition
- *  with their own, explicitly-requested format. */
+ *  angle specifically). Used by the four single-value functions
+ *  below. */
 function formatSunTime24(utcHours, offsetMinutes) {
   if (utcHours === null) return 'n/a';
   let totalMinutes = Math.round(utcHours * 60 + offsetMinutes);
@@ -535,18 +461,14 @@ function formatSunTime24(utcHours, offsetMinutes) {
 /** The four single-value solar functions below (diary-sunrise,
  *  diary-sunset, diary-civil-sunrise, diary-civil-sunset) are this
  *  app's own extension, not real elisp/org functions -- each reuses
- *  computeSunriseSunsetUtc directly, at the same two angles
- *  diary-solar-summary above already uses, rather than a third
- *  implementation of the same solar-position math. Each returns
- *  "HH:MM Label" by default -- 24-hour, zero-filled time
- *  (formatSunTime24 above), 'n/a' in place of the time for whichever
- *  value doesn't occur that day at this latitude. Two of this app's
- *  own extension variables (see local-variables.js) adjust the
- *  output: solar-ampm (default nil) switches from 24-hour to 12-hour
- *  am/pm (formatSunTimeOrPlaceholder above, the same formatter
- *  diary-solar-summary itself already uses) when non-nil;
- *  solar-hide-label (default nil) omits the trailing label entirely
- *  when non-nil, leaving just the bare time. */
+ *  computeSunriseSunsetUtc directly. Each returns "HH:MM Label" by
+ *  default -- 24-hour, zero-filled time (formatSunTime24 above), 'n/a'
+ *  in place of the time for whichever value doesn't occur that day at
+ *  this latitude. Two of this app's own extension variables (see
+ *  local-variables.js) adjust the output: solar-ampm (default nil)
+ *  switches from 24-hour to 12-hour am/pm (formatSunTimeOrPlaceholder
+ *  above) when non-nil; solar-hide-label (default nil) omits the
+ *  trailing label entirely when non-nil, leaving just the bare time. */
 function formatSunriseLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
   const result = computeSunriseSunsetUtc(date, latitude, longitude);
   const utcHours = result ? result.sunrise : null;
@@ -596,12 +518,7 @@ const DIARY_SUNSET_RE = /^%%\(diary-sunset\)\s*$/;
 const DIARY_CIVIL_SUNRISE_RE = /^%%\(diary-civil-sunrise\)\s*$/;
 const DIARY_CIVIL_SUNSET_RE = /^%%\(diary-civil-sunset\)\s*$/;
 
-/** True if `line` is exactly one of the four single-value triggers --
- *  same self-contained-line convention as isDiarySunriseSunsetLine /
- *  isDiarySolarSummaryLine above. Anchored precisely enough that
- *  "diary-sunrise" never accidentally matches
- *  "diary-sunrise-sunset)" or vice versa -- each requires the closing
- *  paren immediately after its own exact name. */
+/** True if `line` is exactly one of the four single-value triggers. */
 function isDiarySunriseLine(line) {
   return DIARY_SUNRISE_RE.test(line.trim());
 }
@@ -637,12 +554,8 @@ export {
   monthSpecMatches,
   nthWeekdayOfMonth,
   expandDiaryFloatOccurrences,
-  isDiarySunriseSunsetLine,
   computeSunriseSunsetUtc,
   formatSunTime,
-  formatSunriseSunsetLine,
-  isDiarySolarSummaryLine,
-  formatSolarSummaryLine,
   formatSunTime24,
   isDiarySunriseLine,
   formatSunriseLine,

@@ -29,10 +29,6 @@ import {
   expandOrgBlockOccurrences,
   parseDiaryFloatLine,
   expandDiaryFloatOccurrences,
-  isDiarySunriseSunsetLine,
-  formatSunriseSunsetLine,
-  isDiarySolarSummaryLine,
-  formatSolarSummaryLine,
   isDiarySunriseLine,
   formatSunriseLine,
   isDiarySunsetLine,
@@ -649,15 +645,12 @@ function buildAgendaItems(docs, opts = {}) {
         }
       }
 
-      // The eleven diary-sexp forms below (org-anniversary, org-date-
-      // cyclic, org-block, diary-float, diary-sunrise-sunset,
-      // diary-solar-summary, diary-sunrise, diary-sunset,
-      // diary-civil-sunrise, diary-civil-sunset, diary-day-length)
-      // are each self-contained, per-line sexps -- unlike
-      // org-contacts-anniversaries' own trigger-line-plus-property
-      // mechanism above, no upfront "is this active anywhere" scan is
-      // needed first; every line in this heading's own body is simply
-      // checked against each pattern directly.
+      // The ten diary-sexp forms below (org-anniversary, org-cyclic,
+      // org-block, diary-float, diary-sunrise, diary-sunset,
+      // diary-civil-sunrise, diary-civil-sunset, diary-day-length,
+      // org-weather) are each self-contained, per-line sexps -- every
+      // line in this heading's own body is checked against each
+      // pattern directly.
       if (rangeStart && rangeEnd) {
         for (const line of heading.bodyLines || []) {
           const trimmed = line.trim();
@@ -717,42 +710,6 @@ function buildAgendaItems(docs, opts = {}) {
             );
             for (const occ of occs) pushDiarySexpItem(occ, float.title);
             continue;
-          }
-
-          if (isDiarySunriseSunsetLine(trimmed)) {
-            for (const day of enumerateDays(rangeStart, rangeEnd)) {
-              items.push({
-                documentId,
-                heading,
-                kind: 'sunrise-sunset',
-                hasTime: false,
-                repeater: null,
-                todo: heading.todo,
-                priority: heading.priority,
-                tags: heading.tags,
-                title: formatSunriseSunsetLine(day, calendarLatitude, calendarLongitude),
-                date: day,
-                daysOverdue: 0,
-              });
-            }
-          }
-
-          if (isDiarySolarSummaryLine(trimmed)) {
-            for (const day of enumerateDays(rangeStart, rangeEnd)) {
-              items.push({
-                documentId,
-                heading,
-                kind: 'solar-summary',
-                hasTime: false,
-                repeater: null,
-                todo: heading.todo,
-                priority: heading.priority,
-                tags: heading.tags,
-                title: formatSolarSummaryLine(day, calendarLatitude, calendarLongitude),
-                date: day,
-                daysOverdue: 0,
-              });
-            }
           }
 
           if (isDiarySunriseLine(trimmed)) {

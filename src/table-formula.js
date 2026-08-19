@@ -397,21 +397,56 @@ function isCellBlank(dataRows, row, col) {
 /** Reads one resolved (row, col) cell's own current numeric value for
  *  a PLAIN, direct reference in ordinary arithmetic (not part of a
  *  range -- see isCellBlank above and collectRangeValues below for
- *  that separate case) -- blank cell text is treated as 0, matching
- *  real org's own actual default behavior for this specific case
- *  (confirmed directly against the Org Manual's own wording: "'E' is
- *  required to NOT convert empty fields to 0" -- without E, which
- *  this app never implements, a blank plain reference IS 0 by
- *  default). Non-numeric-but-present text (a stray label cell, say)
- *  is ALSO treated as 0 here -- real org would actually error trying
- *  to add a label to a number; treating it as 0 instead is a
- *  deliberate, documented simplification of this module's own (so a
- *  stray label elsewhere in a table doesn't break every other formula
- *  referencing it), not an attempt at exact real-org error behavior. */
-function readCellNumber(dataRows, row, col) {
+ *  that separate case).
+ *
+ *  A blank cell's own value depends on `emptyMode` (real org's own E
+ *  flag): 'omit' (no flag at all, the default) and 'zero' (E and N
+ *  together) both read as 0, matching real org's own documented
+ *  default ("'E' is required to NOT convert empty fields to 0");
+ *  'nan' (E alone) reads as NaN, confirmed directly against real
+ *  Emacs org-mode.
+ *
+ *  Non-blank text that isn't a valid number depends on `forceNumeric`
+ *  (real org's own N flag): 0 when set, matching real org's own
+ *  documented "use 0 for non-numbers." Without N, it reads as NaN --
+ *  confirmed directly against real Emacs that a non-numeric field is
+ *  genuinely NOT silently read as 0 there (real org shows an
+ *  unevaluated symbolic expression instead, e.g. "text + 10", which
+ *  this app's own narrower engine doesn't reproduce -- but NaN,
+ *  unlike a confidently-wrong 0, still visibly propagates into the
+ *  result rather than silently misrepresenting the data). */
+function readCellNumber(dataRows, row, col, emptyMode = 'omit', forceNumeric = false) {
   const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
-  const n = Number(text.trim());
-  return text.trim() === '' || Number.isNaN(n) ? 0 : n;
+  const trimmed = text.trim();
+  if (trimmed === '') return emptyMode === 'nan' ? NaN : 0;
+  const n = Number(trimmed);
+  if (!Number.isNaN(n)) return n;
+  return forceNumeric ? 0 : NaN;
+}
+
+/** Reads one resolved (row, col) cell's own value for use in an
+ *  arithmetic expression, duration-aware: under `ctx.durationMode`
+ *  (a formula with a T/U/t flag), a cell matching "HH:MM[:SS]" is
+ *  read as its own total-seconds value -- confirmed directly against
+ *  real Emacs org-mode; anything else (a bare integer, blank, or
+ *  non-numeric text) falls through to readCellNumber's own existing
+ *  E/N-aware logic, matching real org's own "integers are considered
+ *  as seconds in addition and subtraction" rule (a bare integer
+ *  already IS the seconds count, no extra conversion needed). Without
+ *  durationMode, "HH:MM" isn't recognized as a duration at all --
+ *  confirmed directly against real Emacs that the same text is read
+ *  as a Calc fraction instead there, a distinction this app's own
+ *  narrower engine doesn't reproduce either way. */
+function readCellValue(dataRows, row, col, ctx) {
+  if (ctx.durationMode) {
+    const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
+    const trimmed = text.trim();
+    if (trimmed !== '') {
+      const seconds = parseDurationSeconds(trimmed);
+      if (seconds !== null) return seconds;
+    }
+  }
+  return readCellNumber(dataRows, row, col, ctx.emptyMode, ctx.forceNumeric);
 }
 
 /** Expands a { row, col } ref descriptor (row and/or col possibly
@@ -446,7 +481,7 @@ function evaluateAst(node, ctx) {
     }
     case 'ref': {
       const { row, col } = resolveRef(node.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
-      return readCellNumber(ctx.dataRows, row, col);
+      return readCellValue(ctx.dataRows, row, col, ctx);
     }
     case 'range': {
       throw new Error('A range can only be used as an aggregate function\u2019s own argument, not as a plain value');
@@ -474,7 +509,8 @@ function evaluateAst(node, ctx) {
 function collectRangeValues(argNode, ctx) {
   if (argNode.type === 'ref') {
     const { row, col } = resolveRef(argNode.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
-    return isCellBlank(ctx.dataRows, row, col) ? [] : [readCellNumber(ctx.dataRows, row, col)];
+    if (isCellBlank(ctx.dataRows, row, col) && ctx.emptyMode === 'omit') return [];
+    return [readCellValue(ctx.dataRows, row, col, ctx)];
   }
   if (argNode.type !== 'range') {
     // A plain arithmetic expression as an aggregate's own argument (e.g. vsum($1+$2)) --
@@ -490,7 +526,8 @@ function collectRangeValues(argNode, ctx) {
   const values = [];
   for (let r = rowStart; r <= rowEnd; r++) {
     for (let c = colStart; c <= colEnd; c++) {
-      if (!isCellBlank(ctx.dataRows, r, c)) values.push(readCellNumber(ctx.dataRows, r, c));
+      if (isCellBlank(ctx.dataRows, r, c) && ctx.emptyMode === 'omit') continue;
+      values.push(readCellValue(ctx.dataRows, r, c, ctx));
     }
   }
   return values;
@@ -516,27 +553,146 @@ function collectRangeValues(argNode, ctx) {
  *  which wrote "123.333333" for 370/3 where real org's own actual
  *  default writes "123.33333".
  *
- *  Real org's own optional ";%.2f"-style per-formula format specifier
- *  IS now implemented -- see parseFormatSpec/applyFormatSpec below --
- *  this default is only ever used when a formula has no such
- *  specifier of its own. */
+ *  Real org's own optional mode string (";%.2f", ";T", ";EN", etc.)
+ *  IS now implemented -- see parseModeString/applyFormatSpec below --
+ *  this default is only ever used when a formula has no format flag
+ *  of its own. */
 
-const FORMAT_SPEC_RE = /^%0?\.(\d+)f$|^%d$/;
+const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUEN]/y;
 
-/** Parses a real org "%.Nf" or "%d" format specifier (the part after
- *  the formula's own trailing ";", already split off by
- *  parseFormulaStatement below) into { type: 'fixed', digits } |
- *  { type: 'integer' } | null (anything else -- an unrecognized
- *  specifier, or real org's own other, unimplemented mode letters
- *  like E/N/f-1 -- silently falls through to this module's own
- *  existing default formatting instead, the same tolerant handling
- *  this module already gives an unrecognized aggregate-function name
- *  no chance to opt out of). */
-function parseFormatSpec(suffix) {
-  const trimmed = suffix.trim();
-  const m = FORMAT_SPEC_RE.exec(trimmed);
+/** Parses a formula's own trailing mode string (everything after the
+ *  ";", already split off by parseFormulaStatement below) into a
+ *  single object covering every flag documented for real org table
+ *  formulas: { format, duration, emptyMode }.
+ *
+ *  format: { type: 'fixed'|'integer'|'normal'|'scientific'|'engineering', digits } | null
+ *    - %.Nf / fN -> fixed, N decimal places
+ *    - %d        -> integer (truncated toward zero)
+ *    - nN        -> normal, N significant figures
+ *    - sN        -> scientific, N significant figures
+ *    - eN        -> engineering, N significant figures
+ *  duration: 'T' | 'U' | 't' | null
+ *    - T -> HH:MM:SS   U -> HH:MM   t -> fractional hours
+ *    - Overrides `format` entirely when present -- a duration result
+ *      is never also shown in scientific/fixed/etc notation.
+ *  emptyMode: 'omit' (default) | 'nan' (E) | 'zero' (E and N together)
+ *
+ *  pN (precision) is recognized and consumed but has no further
+ *  effect -- this engine's own numbers already carry more precision
+ *  than Calc's own default, and p alone doesn't change the display
+ *  format in real org either.
+ *
+ *  Flags can appear concatenated with no separator (e.g. "EN"), in
+ *  any order; an unrecognized remaining character stops parsing
+ *  there, falling back to whatever was already parsed rather than
+ *  discarding the whole mode string. */
+function parseModeString(suffix) {
+  const mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false };
+  MODE_TOKEN_RE.lastIndex = 0;
+  let m;
+  while ((m = MODE_TOKEN_RE.exec(suffix))) {
+    const token = m[0];
+    if (m[1] !== undefined) mode.format = { type: 'fixed', digits: Number(m[1]) }; // %.Nf
+    else if (token === '%d') mode.format = { type: 'integer' };
+    else if (token.startsWith('p')) {
+      // precision -- consumed, no effect (see docs above)
+    } else if (m[2] !== undefined) mode.format = { type: 'normal', digits: Number(m[2]) };
+    else if (m[3] !== undefined) mode.format = { type: 'scientific', digits: Number(m[3]) };
+    else if (m[4] !== undefined) mode.format = { type: 'engineering', digits: Number(m[4]) };
+    else if (m[5] !== undefined) mode.format = { type: 'fixed', digits: Number(m[5]) }; // fN
+    else if (token === 'T' || token === 't' || token === 'U') mode.duration = token;
+    else if (token === 'E') mode.emptyMode = 'nan';
+    else if (token === 'N') mode.forceNumeric = true;
+  }
+  if (mode.forceNumeric && mode.emptyMode === 'nan') mode.emptyMode = 'zero'; // E and N together: blank fields are 0, not nan
+  return mode;
+}
+
+/** Parses "HH:MM[:SS]" (an optional leading "-" for a negative
+ *  duration) into total seconds, or null if `text` doesn't match --
+ *  real org's own input form for a duration-mode formula (T/U/t).
+ *  Only recognized when a formula actually has one of those flags;
+ *  without one, the same text isn't treated as a duration at all
+ *  (matching real org, where "H:MM" without a duration flag is read
+ *  as a Calc fraction instead, a distinction this app doesn't
+ *  reproduce -- see readCellValue's own docs). */
+function parseDurationSeconds(text) {
+  const m = /^(-)?(\d+):([0-5]?\d)(?::([0-5]?\d))?$/.exec(text.trim());
   if (!m) return null;
-  return m[1] !== undefined ? { type: 'fixed', digits: Number(m[1]) } : { type: 'integer' };
+  const sign = m[1] ? -1 : 1;
+  const hours = Number(m[2]);
+  const minutes = Number(m[3]);
+  const seconds = m[4] !== undefined ? Number(m[4]) : 0;
+  return sign * (hours * 3600 + minutes * 60 + seconds);
+}
+
+/** Formats a total-seconds value for a duration-mode formula's own
+ *  result, per its `duration` flag -- confirmed directly against real
+ *  Emacs org-mode's own org-table-recalculate in batch mode for all
+ *  three flags. `hourZeroPad` mirrors org-table-duration-hour-zero-
+ *  padding: true (the default) pads the hours field to at least 2
+ *  digits; false leaves it at its own natural width. Minutes and
+ *  seconds are always 2-digit zero-padded regardless. */
+function formatDuration(totalSeconds, flag, hourZeroPad) {
+  if (Number.isNaN(totalSeconds)) return 'nan';
+  const sign = totalSeconds < 0 ? '-' : '';
+  const abs = Math.round(Math.abs(totalSeconds));
+  if (flag === 't') {
+    // org-table-duration-custom-format's own default: fractional hours, 2 decimal places.
+    return (totalSeconds / 3600).toFixed(2);
+  }
+  const hours = Math.floor(abs / 3600);
+  const minutes = Math.floor((abs % 3600) / 60);
+  const seconds = abs % 60;
+  const hoursStr = hourZeroPad ? String(hours).padStart(2, '0') : String(hours);
+  const minutesStr = String(minutes).padStart(2, '0');
+  if (flag === 'U') return `${sign}${hoursStr}:${minutesStr}`;
+  const secondsStr = String(seconds).padStart(2, '0');
+  return `${sign}${hoursStr}:${minutesStr}:${secondsStr}`;
+}
+
+/** Formats `n` to `digits` significant figures in "normal" notation
+ *  (plain decimal, no exponent) -- real org's own "nN" mode letter.
+ *  Falls back to formatResult's own default rounding/cleanup logic at
+ *  `digits` significant figures instead of the usual 8. */
+function formatNormal(n, digits) {
+  if (n === 0) return '0';
+  const precise = n.toPrecision(digits);
+  return cleanupPrecision(precise);
+}
+
+/** Formats `n` in scientific notation -- one digit before the decimal
+ *  point, `digits` significant figures total, real org's own "sN"
+ *  mode letter. */
+function formatScientific(n, digits) {
+  if (n === 0) return '0e0';
+  return cleanupPrecision(n.toExponential(digits - 1));
+}
+
+/** Formats `n` in engineering notation -- like scientific, but the
+ *  exponent is always a multiple of 3 (so the mantissa can have 1-3
+ *  digits before the decimal point), real org's own "eN" mode letter. */
+function formatEngineering(n, digits) {
+  if (n === 0) return '0e0';
+  const sign = n < 0 ? -1 : 1;
+  const abs = Math.abs(n);
+  const rawExp = Math.floor(Math.log10(abs));
+  const engExp = Math.floor(rawExp / 3) * 3;
+  const mantissa = (abs / Math.pow(10, engExp)) * sign;
+  const precise = mantissa.toPrecision(digits);
+  const cleaned = cleanupPrecision(precise);
+  return `${cleaned}e${engExp}`;
+}
+
+/** Shared trailing-zero/decimal-point cleanup for a toPrecision or
+ *  toExponential string -- both a plain and an exponential result get
+ *  the same treatment, matching formatResult's own existing default. */
+function cleanupPrecision(precise) {
+  const eIndex = precise.search(/e/i);
+  const mantissa = eIndex === -1 ? precise : precise.slice(0, eIndex);
+  let suffix = eIndex === -1 ? '' : precise.slice(eIndex).replace('+', '');
+  const cleanedMantissa = mantissa.includes('.') ? mantissa.replace(/0+$/, '').replace(/\.$/, '') : mantissa;
+  return cleanedMantissa + suffix;
 }
 
 /** Formats `n` per an explicit, real org format specifier -- "%.Nf"
@@ -547,7 +703,11 @@ function parseFormatSpec(suffix) {
  *  nearest is used as the most defensible choice, not a confirmed
  *  match to real Calc's own exact behavior). */
 function applyFormatSpec(n, spec) {
+  if (Number.isNaN(n)) return 'nan';
   if (spec.type === 'fixed') return n.toFixed(spec.digits);
+  if (spec.type === 'normal') return formatNormal(n, spec.digits);
+  if (spec.type === 'scientific') return formatScientific(n, spec.digits);
+  if (spec.type === 'engineering') return formatEngineering(n, spec.digits);
   // Truncates toward zero, not round-to-nearest -- unlike "%.Nf"
   // above (confirmed directly against both the Org Manual's own
   // wording and a real, published org file using that exact syntax),
@@ -565,6 +725,7 @@ function applyFormatSpec(n, spec) {
 }
 
 function formatResult(n) {
+  if (Number.isNaN(n)) return 'nan';
   if (Number.isInteger(n)) return String(n);
   const SIGNIFICANT_FIGURES = 8;
   const precise = n.toPrecision(SIGNIFICANT_FIGURES);
@@ -598,10 +759,10 @@ function parseFormulaStatement(statement) {
   const lhs = statement.slice(0, eq).trim();
   let rhs = statement.slice(eq + 1).trim();
   const formatSuffix = /;[^;]*$/.exec(rhs);
-  let formatSpec = null;
+  let mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false };
   if (formatSuffix) {
     rhs = rhs.slice(0, formatSuffix.index).trim();
-    formatSpec = parseFormatSpec(formatSuffix[0].slice(1)); // slice(1): drop the leading ";" itself
+    mode = parseModeString(formatSuffix[0].slice(1)); // slice(1): drop the leading ";" itself
   }
 
   let target;
@@ -627,7 +788,7 @@ function parseFormulaStatement(statement) {
   }
 
   const expr = parseExpression(tokenize(rhs));
-  return { target, expr, formatSpec };
+  return { target, expr, mode };
 }
 
 /** Splits a full #+TBLFM: value on "::" (real org's own multi-formula
@@ -663,8 +824,20 @@ function parseTblfm(tblfm) {
  * `table.rows` reference, so the caller's own input is never mutated
  * regardless of whether this throws partway through.
  */
-export function recalculateTable(table) {
+/** Formats one formula's own final computed value into cell text --
+ *  duration formatting (T/U/t) takes priority when present, since a
+ *  duration result is never also shown in scientific/fixed/etc
+ *  notation; otherwise an explicit format spec (fixed/integer/normal/
+ *  scientific/engineering); otherwise formatResult's own default. */
+function formatFinalValue(value, mode, hourZeroPad) {
+  if (mode.duration) return formatDuration(value, mode.duration, hourZeroPad);
+  if (mode.format) return applyFormatSpec(value, mode.format);
+  return formatResult(value);
+}
+
+export function recalculateTable(table, options = {}) {
   if (!table.tblfm || !table.tblfm.trim()) return null;
+  const hourZeroPad = options.hourZeroPad !== undefined ? options.hourZeroPad : true;
   const statements = parseTblfm(table.tblfm);
 
   // A working copy: same row objects' own shape, but with a fresh
@@ -697,13 +870,14 @@ export function recalculateTable(table) {
   const headerRowCount = firstRuleIndex === -1 ? 0 : workingRows.slice(0, firstRuleIndex).filter((r) => r.type === 'row').length;
   const { positions: hlinePositions } = computeHlinePositions(workingRows);
 
-  for (const { target, expr, formatSpec } of statements) {
+  for (const { target, expr, mode } of statements) {
+    const evalCtx = { dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric };
     if (target.type === 'cell') {
       const row = resolveRowRef(target.row, 1, dataRowCount, hlinePositions, false); // currentRow=1 is a placeholder -- an explicit @N$M target is never itself relative
       const col = resolveColRef(target.col, colCount);
       if (row === null || col === null) throw new Error('Formula target is out of range for this table');
-      const value = evaluateAst(expr, { dataRows, dataRowCount, colCount, currentRow: row, currentCol: col, hlinePositions });
-      dataRows[row - 1].cells[col - 1] = formatSpec ? applyFormatSpec(value, formatSpec) : formatResult(value);
+      const value = evaluateAst(expr, { ...evalCtx, currentRow: row, currentCol: col });
+      dataRows[row - 1].cells[col - 1] = formatFinalValue(value, mode, hourZeroPad);
     } else if (target.type === 'range') {
       if (target.from.row === null || target.to.row === null) {
         throw new Error('A formula target range needs an explicit row on both endpoints');
@@ -721,8 +895,8 @@ export function recalculateTable(table) {
       const colEnd = Math.max(fromCol, toCol);
       for (let r = rowStart; r <= rowEnd; r++) {
         for (let c = colStart; c <= colEnd; c++) {
-          const value = evaluateAst(expr, { dataRows, dataRowCount, colCount, currentRow: r, currentCol: c, hlinePositions });
-          dataRows[r - 1].cells[c - 1] = formatSpec ? applyFormatSpec(value, formatSpec) : formatResult(value);
+          const value = evaluateAst(expr, { ...evalCtx, currentRow: r, currentCol: c });
+          dataRows[r - 1].cells[c - 1] = formatFinalValue(value, mode, hourZeroPad);
         }
       }
     } else {
@@ -732,8 +906,8 @@ export function recalculateTable(table) {
       const col = resolveColRef(target.col, colCount);
       if (col === null) throw new Error('Formula target column is out of range for this table');
       for (let r = headerRowCount + 1; r <= dataRowCount; r++) {
-        const value = evaluateAst(expr, { dataRows, dataRowCount, colCount, currentRow: r, currentCol: col, hlinePositions });
-        dataRows[r - 1].cells[col - 1] = formatSpec ? applyFormatSpec(value, formatSpec) : formatResult(value);
+        const value = evaluateAst(expr, { ...evalCtx, currentRow: r, currentCol: col });
+        dataRows[r - 1].cells[col - 1] = formatFinalValue(value, mode, hourZeroPad);
       }
     }
   }
