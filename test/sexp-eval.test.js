@@ -16,10 +16,10 @@ test('parses a simple function call with numeric arguments', () => {
 });
 
 test('parses a nested expression (when wrapping two more calls)', () => {
-  const result = parseSexpr('(when (today-p) (diary-sunrise-sunset))');
+  const result = parseSexpr('(when (today-p) (diary-sunrise))');
   assert.equal(result[0].value, 'when');
   assert.deepEqual(result[1], [{ type: 'symbol', value: 'today-p' }]);
-  assert.deepEqual(result[2], [{ type: 'symbol', value: 'diary-sunrise-sunset' }]);
+  assert.deepEqual(result[2], [{ type: 'symbol', value: 'diary-sunrise' }]);
 });
 
 test('parses a symbol argument (the literal "t" for diary-float\u2019s own "every month")', () => {
@@ -56,8 +56,8 @@ function ctx(candidateDate) {
   return { candidateDate, today: TODAY, calendarLatitude: 35.994, calendarLongitude: -78.8986 };
 }
 
-test('THE EXACT EXAMPLE: (when (today-p) (diary-sunrise-sunset)) shows sunrise/sunset ONLY on today, matching the original request precisely', () => {
-  const expr = parseSexpr('(when (today-p) (diary-sunrise-sunset))');
+test('(when (today-p) (diary-sunrise)) shows sunrise ONLY on today', () => {
+  const expr = parseSexpr('(when (today-p) (diary-sunrise))');
   const todayResult = evaluateSexpr(expr, ctx(TODAY));
   assert.equal(typeof todayResult, 'string');
   assert.match(todayResult, /Sunrise/);
@@ -66,8 +66,8 @@ test('THE EXACT EXAMPLE: (when (today-p) (diary-sunrise-sunset)) shows sunrise/s
   assert.equal(evaluateSexpr(expr, ctx(new Date(2026, 7, 13))), false); // tomorrow
 });
 
-test('THE EXACT EXAMPLE: (when (org-cyclic 7 2026 8 9) (diary-sunrise-sunset)) -- weekly sunrise/sunset combining when + org-cyclic', () => {
-  const expr = parseSexpr('(when (org-cyclic 7 2026 8 9) (diary-sunrise-sunset))');
+test('(when (org-cyclic 7 2026 8 9) (diary-sunrise)) -- weekly sunrise combining when + org-cyclic', () => {
+  const expr = parseSexpr('(when (org-cyclic 7 2026 8 9) (diary-sunrise))');
   assert.equal(typeof evaluateSexpr(expr, ctx(new Date(2026, 7, 9))), 'string'); // baseline day
   assert.equal(typeof evaluateSexpr(expr, ctx(new Date(2026, 7, 16))), 'string'); // baseline + 7
   assert.equal(evaluateSexpr(expr, ctx(new Date(2026, 7, 12))), false); // not a multiple of 7 from baseline
@@ -103,7 +103,7 @@ test('today-p is true only when the candidate date exactly matches today, ignori
 });
 
 test('when with a falsy condition returns false without evaluating the "then" branch', () => {
-  const expr = parseSexpr('(when (org-cyclic 3 2026 1 1) (diary-sunrise-sunset))');
+  const expr = parseSexpr('(when (org-cyclic 3 2026 1 1) (diary-sunrise))');
   assert.equal(evaluateSexpr(expr, ctx(new Date(2026, 0, 2))), false); // doesn't match the cyclic pattern
 });
 
@@ -143,9 +143,9 @@ test('isTruthy: false and the empty string are falsy; everything else (including
 // ---- findSexpTimestamps -----------------------------------------------------
 
 test('finds a <%%(...)> timestamp embedded in a heading title, alongside ordinary text', () => {
-  const found = findSexpTimestamps('Weekly Sunrise/Sunset <%%(when (org-cyclic 7 2026 8 9) (diary-sunrise-sunset))>');
+  const found = findSexpTimestamps('Weekly Sunrise <%%(when (org-cyclic 7 2026 8 9) (diary-sunrise))>');
   assert.equal(found.length, 1);
-  assert.equal(found[0].raw, '<%%(when (org-cyclic 7 2026 8 9) (diary-sunrise-sunset))>');
+  assert.equal(found[0].raw, '<%%(when (org-cyclic 7 2026 8 9) (diary-sunrise))>');
   assert.notEqual(found[0].expr, null);
 });
 

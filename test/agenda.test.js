@@ -1238,45 +1238,6 @@ test('a SCHEDULED item with NO delay suffix at all is completely unaffected -- s
 
 // ---- <%%(sexp)> timestamps (real org's own general sexp timestamp form) ----
 
-test('THE EXACT REQUEST: <%%(when (today-p) (diary-sunrise-sunset))> shows sunrise/sunset ONLY on today\u2019s own agenda entry', () => {
-  const doc = parseOrg("* Today's Sun Times <%%(when (today-p) (diary-sunrise-sunset))>\n");
-  const today = new Date(2026, 7, 12);
-  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
-    rangeStart: new Date(2026, 7, 10),
-    rangeEnd: new Date(2026, 7, 14),
-    today,
-  });
-  assert.equal(items.length, 1);
-  assert.equal(items[0].date.toDateString(), today.toDateString());
-  assert.equal(items[0].kind, 'sexp-timestamp');
-  assert.match(items[0].title, /^Today's Sun Times: Sunrise/);
-});
-
-test('THE FIX: <%%(when (today-p) (diary-solar-summary))> works the same way as diary-sunrise-sunset, through the same general sexp-timestamp mechanism', () => {
-  const doc = parseOrg("* Today's Full Sun Report <%%(when (today-p) (diary-solar-summary))>\n");
-  const today = new Date(2026, 7, 12);
-  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
-    rangeStart: new Date(2026, 7, 10),
-    rangeEnd: new Date(2026, 7, 14),
-    today,
-  });
-  assert.equal(items.length, 1);
-  assert.equal(items[0].date.toDateString(), today.toDateString());
-  assert.equal(items[0].kind, 'sexp-timestamp');
-  assert.match(items[0].title, /^Today's Full Sun Report: Dawn: \d/);
-});
-
-test('THE FIX: a dedicated, standalone "%%(diary-solar-summary)" body line (real Emacs diary-file convention, distinct from the <%%(...)> timestamp form above) generates one agenda entry per day in range, each with the full Dawn/Sunrise/Sunset/Dusk title', () => {
-  const doc = parseOrg('* Daily Sun Report\n%%(diary-solar-summary)\n');
-  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
-    rangeStart: new Date(2026, 7, 10),
-    rangeEnd: new Date(2026, 7, 12),
-  });
-  assert.equal(items.length, 3, 'one entry per day in the 3-day range');
-  assert.equal(items[0].kind, 'solar-summary');
-  assert.match(items[0].title, /^Dawn: \d{1,2}:\d\d(am|pm) \| Sunrise: /);
-});
-
 test('THE FIX: standalone "%%(diary-sunrise)" / "%%(diary-sunset)" / "%%(diary-civil-sunrise)" / "%%(diary-civil-sunset)" body lines each generate their own agenda entries, with the exact requested "HH:MM Label" 24-hour format', () => {
   const doc = parseOrg(
     ['* Sun Times', '%%(diary-sunrise)', '%%(diary-sunset)', '%%(diary-civil-sunrise)', '%%(diary-civil-sunset)'].join('\n')
@@ -1334,7 +1295,7 @@ test('THE FIX: diary-day-length also works inside the general <%%(...)> timestam
   assert.match(items[0].title, /^Today\u2019s Daylight: \d\d:\d\d$/, 'label hidden, bare duration only');
 });
 
-test('THE FIX: all four also work inside the general <%%(...)> timestamp form, matching diary-sunrise-sunset/diary-solar-summary\u2019s own established mechanism', () => {
+test('all four also work inside the general <%%(...)> timestamp form', () => {
   const doc = parseOrg([
     '* Sunrise <%%(diary-sunrise)>',
     '* Sunset <%%(diary-sunset)>',
@@ -1394,14 +1355,14 @@ test('THE FIX: THE EXACT BUG REPORT -- a bare heading with no title text at all 
   assert.ok(!items[0].title.includes('untitled'));
 });
 
-test('THE FIX: this fixes every string-returning sexp function identically, including the original diary-sunrise-sunset -- the bug was never specific to the newer functions', () => {
-  const doc = parseOrg('* <%%(diary-sunrise-sunset)>\n');
+test('a bare, title-less heading with a string-returning sexp result never shows an "(untitled): " prefix', () => {
+  const doc = parseOrg('* <%%(diary-sunrise)>\n');
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 7, 10),
     rangeEnd: new Date(2026, 7, 10),
   });
   assert.equal(items.length, 1);
-  assert.match(items[0].title, /^Sunrise \d/, 'no "(untitled): " prefix here either');
+  assert.match(items[0].title, /^\d\d:\d\d Sunrise$/);
 });
 
 test('the (untitled) fallback still correctly applies for the genuinely different case: a bare, title-less heading whose sexp result is a plain boolean match, not a string -- there really is nothing else to show here', () => {
@@ -1428,15 +1389,15 @@ test('a heading WITH real title text alongside its own sexp timestamp is complet
   assert.match(items[0].title, /^Sun Report: \d\d:\d\d Sunrise$/);
 });
 
-test('THE EXACT EXAMPLE: weekly sunrise/sunset combining when + org-cyclic + diary-sunrise-sunset', () => {
-  const doc = parseOrg('* Weekly Sunrise/Sunset <%%(when (org-cyclic 7 2026 8 9) (diary-sunrise-sunset))>\n');
+test('weekly sunrise combining when + org-cyclic + diary-sunrise', () => {
+  const doc = parseOrg('* Weekly Sunrise <%%(when (org-cyclic 7 2026 8 9) (diary-sunrise))>\n');
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 7, 1),
     rangeEnd: new Date(2026, 7, 16),
   });
   const dates = items.map((i) => i.date.getDate());
   assert.deepEqual(dates, [9, 16]); // every 7 days from the Aug 9 baseline
-  assert.match(items[0].title, /^Weekly Sunrise\/Sunset: Sunrise/);
+  assert.match(items[0].title, /^Weekly Sunrise: \d\d:\d\d Sunrise$/);
 });
 
 test('THE EXACT EXAMPLE: <%%(diary-float t 6 1)> -- first Saturday of every month, as a heading\u2019s own timestamp', () => {

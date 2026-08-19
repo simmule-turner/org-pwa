@@ -15,6 +15,7 @@ import {
   getOrgWeatherFormat,
   getOrgWeatherSpeedUnit,
   getOrgWeatherTemperatureUnit,
+  getOrgTableDurationHourZeroPadding,
   getAgendaFilesVar,
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
@@ -406,4 +407,14 @@ test('getAgendaFilesVar defaults to an empty string when unset', () => {
 
 test('getAgendaFilesVar returns the raw semicolon-separated string as-is', () => {
   assert.equal(getAgendaFilesVar({ 'org-agenda-files': 'github:journal.org;webdav:notes/todo.org' }), 'github:journal.org;webdav:notes/todo.org');
+});
+
+test('THE FIX: getOrgTableDurationHourZeroPadding defaults to true, matching real org\u2019s own confirmed default (a duration formula\u2019s own hours field is zero-padded by default)', () => {
+  assert.equal(getOrgTableDurationHourZeroPadding({}), true);
+  assert.equal(getOrgTableDurationHourZeroPadding(undefined), true);
+});
+
+test('getOrgTableDurationHourZeroPadding reads an explicit override', () => {
+  assert.equal(getOrgTableDurationHourZeroPadding({ 'org-table-duration-hour-zero-padding': 'nil' }), false);
+  assert.equal(getOrgTableDurationHourZeroPadding({ 'org-table-duration-hour-zero-padding': 't' }), true);
 });

@@ -63,8 +63,13 @@ test('blank cells are treated as 0 in arithmetic, not NaN', () => {
   assert.equal(result[0].cells[2], '0');
 });
 
-test('non-numeric text (a label cell) is treated as 0, not NaN', () => {
+test('THE FIX: non-numeric text (a label cell), without the N flag, propagates as NaN rather than being silently read as 0 -- confirmed directly against real Emacs org-mode, which shows an unevaluated symbolic expression there instead; NaN is the closest honest approximation without full symbolic algebra', () => {
   const result = recalculateTable(mkTable('@1$3=$1+$2', [['label', '5', '']]));
+  assert.equal(result[0].cells[2], 'nan');
+});
+
+test('the N flag restores "non-numeric text reads as 0", matching real org\u2019s own documented N semantics exactly', () => {
+  const result = recalculateTable(mkTable('@1$3=$1+$2;N', [['label', '5', '']]));
   assert.equal(result[0].cells[2], '5');
 });
 
@@ -547,4 +552,120 @@ test('a range target can also span multiple ROWS in one column, not just multipl
   const rows = [['1'], ['2'], ['3']];
   const result = recalculateTable(mkTable('@1$1..@3$1=99', rows));
   assert.deepEqual(cellsOf(result), [['99'], ['99'], ['99']]);
+});
+
+// ---- THE FIX: duration flags (T/U/t) ----------------------------------------
+
+test('THE EXACT REQUEST: the manual\u2019s own worked example, verified exactly -- T (HH:MM:SS), U (HH:MM), t (fractional hours)', () => {
+  const rows = [
+    ['Task 1', 'Task 2', 'Total'],
+    null,
+    ['2:12', '1:47', '999'],
+    ['2:12', '1:47', '999'],
+    ['3:02:20', '-2:07:00', '999'],
+  ];
+  const tblfm = '@2$3=$1+$2;T::@3$3=$1+$2;U::@4$3=$1+$2;t';
+  const result = recalculateTable(mkTable(tblfm, rows));
+  assert.equal(result[2].cells[2], '03:59:00', 'matches real Emacs org-mode\u2019s own directly-verified output exactly');
+  assert.equal(result[3].cells[2], '03:59');
+  assert.equal(result[4].cells[2], '0.92');
+});
+
+test('THE FIX: without any duration flag, "H:MM" text is NOT read as a duration at all -- confirmed directly against real Emacs org-mode, which reads it as a Calc fraction instead (a distinction this engine doesn\u2019t reproduce either way, but the flag-gating itself is confirmed real)', () => {
+  const rows = [['2:12', '1:47', '999']];
+  const result = recalculateTable(mkTable('@1$3=$1+$2', rows));
+  // Neither operand parses as a plain number, so both read as NaN under
+  // this engine's own non-numeric-text handling (see the N-flag tests
+  // below) -- NOT a duration sum of any kind.
+  assert.equal(result[0].cells[2], 'nan');
+});
+
+test('a negative duration result is correctly signed', () => {
+  const rows = [['1:00', '-3:00', '999']];
+  const result = recalculateTable(mkTable('@1$3=$1+$2;T', rows));
+  assert.equal(result[0].cells[2], '-02:00:00');
+});
+
+test('a plain integer operand under a duration flag is treated as seconds, matching real org\u2019s own "integers are considered as seconds" rule -- confirmed directly against real Emacs', () => {
+  const rows = [['2:12', '30', '999']];
+  const result = recalculateTable(mkTable('@1$3=$1+$2;T', rows));
+  assert.equal(result[0].cells[2], '02:12:30');
+});
+
+test('THE FIX: org-table-duration-hour-zero-padding -- true (real org\u2019s own default, confirmed directly against real Emacs) zero-pads the hours field; false leaves it at its own natural width. Minutes/seconds are always 2-digit padded regardless', () => {
+  const rows = [['0:05', '0:03', '999']];
+  const padded = recalculateTable(mkTable('@1$3=$1+$2;T', rows), { hourZeroPad: true });
+  assert.equal(padded[0].cells[2], '00:08:00');
+  const unpadded = recalculateTable(mkTable('@1$3=$1+$2;T', rows), { hourZeroPad: false });
+  assert.equal(unpadded[0].cells[2], '0:08:00');
+});
+
+test('hourZeroPad defaults to true when not specified, matching real org\u2019s own default', () => {
+  const rows = [['0:05', '0:03', '999']];
+  const result = recalculateTable(mkTable('@1$3=$1+$2;T', rows));
+  assert.equal(result[0].cells[2], '00:08:00');
+});
+
+// ---- THE FIX: empty-field flags (E/N) ---------------------------------------
+
+test('THE FIX: without E, a blank cell in a range is still omitted from the vector entirely -- the app\u2019s own existing default, unchanged', () => {
+  const rows = [['1'], ['2'], ['']];
+  const result = recalculateTable(mkTable('@1$2=vmean(@1$1..@3$1)', [['1', '999'], ['2', '999'], ['', '999']]));
+  assert.equal(result[0].cells[1], '1.5', 'mean of [1,2] only, blank omitted');
+});
+
+test('THE FIX: the E flag keeps a blank cell in the range as NaN instead of omitting it -- confirmed directly against real Emacs org-mode', () => {
+  const result = recalculateTable(mkTable('@1$2=vsum(@1$1..@3$1);E', [['1', '999'], ['2', '999'], ['', '999']]));
+  assert.equal(result[0].cells[1], 'nan');
+});
+
+test('THE FIX: E and N together turn a blank cell into 0, still kept in the range (not omitted) -- confirmed directly against real Emacs org-mode', () => {
+  const result = recalculateTable(mkTable('@1$2=vsum(@1$1..@3$1);EN', [['1', '999'], ['2', '999'], ['', '999']]));
+  assert.equal(result[0].cells[1], '3');
+});
+
+test('THE FIX: E also affects a PLAIN (non-range) reference to a blank cell, not just ranges -- confirmed directly against real Emacs org-mode', () => {
+  const result = recalculateTable(mkTable('@1$2=$1+5;E', [['', '999']]));
+  assert.equal(result[0].cells[1], 'nan');
+});
+
+test('vcount under E counts a blank cell as present in the vector, even though its own value is NaN -- confirmed directly against real Emacs org-mode', () => {
+  const result = recalculateTable(mkTable('@1$2=vcount(@1$1..@3$1);E', [['1', '999'], ['2', '999'], ['', '999']]));
+  assert.equal(result[0].cells[1], '3');
+});
+
+// ---- THE FIX: n/s/e/f display-format flags ----------------------------------
+
+test('THE FIX: fN (fixed, N decimal places) matches real Emacs org-mode\u2019s own output exactly, and is equivalent to the existing %.Nf syntax', () => {
+  const result = recalculateTable(mkTable('@1$1=100.56789;f4', [['999']]));
+  assert.equal(result[0].cells[0], '100.5679');
+});
+
+test('THE FIX: nN (normal, N significant figures) matches real Emacs org-mode\u2019s own output exactly', () => {
+  const result = recalculateTable(mkTable('@1$1=3.14159265;n5', [['999']]));
+  assert.equal(result[0].cells[0], '3.1416');
+});
+
+test('THE FIX: sN (scientific notation, N significant figures) matches real Emacs org-mode\u2019s own output exactly, including no "+" on a positive exponent', () => {
+  const result = recalculateTable(mkTable('@1$1=123456.789;s3', [['999']]));
+  assert.equal(result[0].cells[0], '1.23e5');
+});
+
+test('THE FIX: eN (engineering notation, exponent always a multiple of 3) matches real Emacs org-mode\u2019s own output exactly, and genuinely differs from sN when the natural exponent isn\u2019t already a multiple of 3', () => {
+  const result = recalculateTable(mkTable('@1$1=123456.789;e3', [['999']]));
+  assert.equal(result[0].cells[0], '123e3');
+});
+
+test('pN (precision) is accepted without erroring but has no effect on the displayed result -- confirmed directly against real Emacs org-mode, where p alone doesn\u2019t change the display format either', () => {
+  const result = recalculateTable(mkTable('@1$1=1/3;p20', [['999']]));
+  assert.equal(result[0].cells[0], '0.33333333', 'still the default 8-significant-figure format, not 20 digits');
+});
+
+test('flags can be concatenated with no separator, in either order', () => {
+  const rowsNE = [['1', '999'], ['', '999']];
+  const resultNE = recalculateTable(mkTable('@1$2=vsum(@1$1..@2$1);NE', rowsNE));
+  const rowsEN = [['1', '999'], ['', '999']];
+  const resultEN = recalculateTable(mkTable('@1$2=vsum(@1$1..@2$1);EN', rowsEN));
+  assert.equal(resultNE[0].cells[1], '1', 'NE and EN both mean "blank -> 0, kept in range" -- order doesn\u2019t matter');
+  assert.equal(resultEN[0].cells[1], '1');
 });
