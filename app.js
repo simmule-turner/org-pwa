@@ -57,6 +57,9 @@ import {
   getCalendarLongitude,
   getSolarAmpm,
   getSolarHideLabel,
+  getOrgWeatherFormat,
+  getOrgWeatherSpeedUnit,
+  getOrgWeatherTemperatureUnit,
   getCalendarLocationName,
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
@@ -143,6 +146,8 @@ import {
   setHeadingText,
 } from './src/body-edit.js';
 import { recalculateTable } from './src/table-formula.js';
+import { isOrgWeatherLine, formatWeatherLine, buildWeatherApiUrl } from './src/org-weather.js';
+import { documentUsesOrgWeather } from './src/sexp-eval.js';
 import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
 import {
   createFileSystemAccessAdapter,
@@ -1930,6 +1935,99 @@ function recalculateAllTables() {
   }
 }
 
+/** Fetches current conditions + today's own high/low from Open-Meteo
+ *  and normalizes the response into the flat shape
+ *  org-weather.js's own formatWeatherLine expects -- real browser
+ *  fetch(), a genuine network call this app's own automated tests
+ *  can't exercise directly (there's no live network access in that
+ *  environment), but works exactly as any other fetch() call would
+ *  in the actual, shipped app. A 10-second timeout (AbortController)
+ *  keeps a stalled connection from hanging the whole refresh
+ *  indefinitely; a non-2xx response or malformed JSON both throw a
+ *  clear, specific error rather than silently returning incomplete
+ *  data. */
+async function fetchWeatherData(latitude, longitude) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  let response;
+  try {
+    response = await fetch(buildWeatherApiUrl(latitude, longitude), { signal: controller.signal });
+  } catch (err) {
+    throw new Error(err.name === 'AbortError' ? 'Weather request timed out.' : `Weather request failed: ${err.message}`);
+  } finally {
+    clearTimeout(timeout);
+  }
+  if (!response.ok) throw new Error(`Weather request failed: HTTP ${response.status}`);
+  let json;
+  try {
+    json = await response.json();
+  } catch {
+    throw new Error('Weather response was not valid JSON.');
+  }
+  if (!json.current || !json.current_units || !json.daily) {
+    throw new Error('Weather response was missing expected fields.');
+  }
+  return {
+    weatherCode: json.current.weather_code,
+    humidity: json.current.relative_humidity_2m,
+    humidityUnit: json.current_units.relative_humidity_2m,
+    pressure: json.current.surface_pressure,
+    pressureUnit: json.current_units.surface_pressure,
+    temperatureCurrent: json.current.temperature_2m,
+    temperatureMin: json.daily.temperature_2m_min[0],
+    temperatureMax: json.daily.temperature_2m_max[0],
+    apparentTemperatureMin: json.daily.apparent_temperature_min[0],
+    apparentTemperatureMax: json.daily.apparent_temperature_max[0],
+    windSpeed: json.current.wind_speed_10m,
+  };
+}
+
+const WEATHER_CACHE_KEY = 'weather:cache';
+
+/** Loads whatever weather snapshot was cached from a previous
+ *  session, if any, into the top-level weatherData/weatherLastRefreshed
+ *  state -- called once at startup, so %%(org-weather) has something
+ *  to show immediately rather than staying blank until the person
+ *  explicitly refreshes again after every reload. */
+async function loadCachedWeatherData() {
+  try {
+    const cached = await kv.get(WEATHER_CACHE_KEY);
+    const value = cached && typeof cached === 'object' && 'value' in cached ? cached.value : cached;
+    if (!value) return;
+    const parsed = JSON.parse(value);
+    weatherData = parsed.data;
+    weatherLastRefreshed = parsed.fetchedAt;
+  } catch {
+    // A corrupted or missing cache entry just means "nothing cached
+    // yet" -- not a startup failure.
+  }
+}
+
+/** Fetches fresh weather data using the currently-configured
+ *  calendar-latitude/calendar-longitude, updates the top-level
+ *  weatherData/weatherLastRefreshed state, persists it to IndexedDB
+ *  for the next session, and re-renders. A failed fetch (offline, the
+ *  API unreachable, a malformed response) leaves whatever was
+ *  already cached in place -- refreshing is never destructive, a
+ *  stale-but-present snapshot is strictly more useful than none at
+ *  all. */
+async function refreshWeather() {
+  const latitude = getCalendarLatitude(state.localVariables);
+  const longitude = getCalendarLongitude(state.localVariables);
+  setStatus('Refreshing weather\u2026');
+  render();
+  try {
+    const data = await fetchWeatherData(latitude, longitude);
+    weatherData = data;
+    weatherLastRefreshed = new Date().toISOString();
+    await kv.set(WEATHER_CACHE_KEY, JSON.stringify({ data, fetchedAt: weatherLastRefreshed }));
+    setStatus('Weather refreshed.');
+  } catch (err) {
+    setStatus(`Couldn't refresh weather: ${err.message}`);
+  }
+  render();
+}
+
 /** org-xx-extra-menu's own 'org-xx-calendar function reference --
  *  opens the single-month calendar overview, initializing the
  *  displayed month/year to today's own if this is the first time it's
@@ -2624,6 +2722,14 @@ let editingIsNew = false;
 let editingCell = null;
 // { heading, paragraph } for the one paragraph currently being edited, or null.
 let editingParagraph = null;
+// %%(org-weather)'s own last-fetched snapshot -- app-level state, not
+// part of the per-document `state` object above, since weather data
+// has nothing to do with which document happens to be open and
+// should persist across switching between them. null until the first
+// successful refresh (or before the cached value has finished
+// loading from IndexedDB on startup -- see loadCachedWeatherData).
+let weatherData = null;
+let weatherLastRefreshed = null; // ISO timestamp string, or null
 // { heading, item } for the one list item currently being text-edited, or null.
 let editingListItem = null;
 // The single heading whose combined multi-paragraph body text (per
@@ -7108,6 +7214,10 @@ function renderAgendaView() {
     calendarLongitude: getCalendarLongitude(state.localVariables),
     solarAmpm: getSolarAmpm(state.localVariables),
     solarHideLabel: getSolarHideLabel(state.localVariables),
+    weatherData,
+    orgWeatherFormat: getOrgWeatherFormat(state.localVariables),
+    orgWeatherTemperatureUnit: getOrgWeatherTemperatureUnit(state.localVariables),
+    orgWeatherSpeedUnit: getOrgWeatherSpeedUnit(state.localVariables),
   });
 
   const grouped =
@@ -8625,6 +8735,35 @@ async function renderSettingsView(target = settingsRenderTarget) {
   captureSection.appendChild(captureBtnRow);
 
   container.appendChild(renderQuickSettingsSection());
+
+  if (documentUsesOrgWeather(state.doc)) {
+    const weatherSection = document.createElement('div');
+    weatherSection.className = 'settings-section';
+    container.appendChild(weatherSection);
+
+    const weatherTitle = document.createElement('div');
+    weatherTitle.className = 'panel-section-title';
+    weatherTitle.textContent = 'Weather';
+    weatherSection.appendChild(weatherTitle);
+
+    const weatherStatus = document.createElement('div');
+    weatherStatus.style.fontSize = '13px';
+    weatherStatus.style.marginBottom = '6px';
+    weatherStatus.textContent = weatherLastRefreshed
+      ? `Last refreshed: ${new Date(weatherLastRefreshed).toLocaleString()}`
+      : 'Never refreshed \u2014 %%(org-weather) has nothing to show yet.';
+    weatherSection.appendChild(weatherStatus);
+
+    const weatherRow = document.createElement('div');
+    weatherRow.className = 'panel-row';
+    weatherRow.appendChild(
+      menuButton('\ud83c\udf24\ufe0f Refresh weather now', async () => {
+        await refreshWeather();
+        renderSettingsView();
+      })
+    );
+    weatherSection.appendChild(weatherRow);
+  }
 
   const globalVarsSection = document.createElement('div');
   globalVarsSection.className = 'settings-section';
@@ -10426,6 +10565,7 @@ async function bootstrap() {
   githubConfig = await getGithubConfig(kv);
   webdavConfig = await getWebdavConfig(kv);
   const legacyAgendaFiles = await getAgendaFiles(kv);
+  await loadCachedWeatherData();
   globalVariablesText = await getGlobalVariables(kv);
   globalVariables = parseGlobalVariables(globalVariablesText);
   if (!globalVariables['org-agenda-files'] && legacyAgendaFiles.length > 0) {
