@@ -45,6 +45,7 @@ import {
   formatDayLengthLine,
   enumerateDays,
 } from './diary-sexp.js';
+import { isOrgWeatherLine, formatWeatherLine } from './org-weather.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const REPEATER_RE = /^([.+]{1,2})(\d+)([hdwmy])$/;
@@ -406,6 +407,10 @@ function buildAgendaItems(docs, opts = {}) {
     calendarLongitude = -78.8986,
     solarAmpm = false,
     solarHideLabel = false,
+    weatherData = null,
+    orgWeatherFormat = 'Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su',
+    orgWeatherTemperatureUnit = '\u00b0F',
+    orgWeatherSpeedUnit = 'mph',
   } = opts;
   const items = [];
 
@@ -585,6 +590,10 @@ function buildAgendaItems(docs, opts = {}) {
               calendarLongitude,
               solarAmpm,
               solarHideLabel,
+              weatherData,
+              orgWeatherFormat,
+              orgWeatherTemperatureUnit,
+              orgWeatherSpeedUnit,
             });
             if (!isTruthy(result)) continue;
             const displayTitle =
@@ -834,6 +843,22 @@ function buildAgendaItems(docs, opts = {}) {
                 daysOverdue: 0,
               });
             }
+          }
+
+          if (isOrgWeatherLine(trimmed) && weatherData && enumerateDays(rangeStart, rangeEnd).some((d) => startOfDay(d).getTime() === startOfDay(today).getTime())) {
+            items.push({
+              documentId,
+              heading,
+              kind: 'weather',
+              hasTime: false,
+              repeater: null,
+              todo: heading.todo,
+              priority: heading.priority,
+              tags: heading.tags,
+              title: formatWeatherLine(orgWeatherFormat, weatherData, orgWeatherTemperatureUnit, orgWeatherSpeedUnit),
+              date: today,
+              daysOverdue: 0,
+            });
           }
         }
       }

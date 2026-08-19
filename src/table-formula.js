@@ -59,6 +59,8 @@ function parseRowRef(text) {
   if (relative) return { type: 'relative', delta: (relative[1] === '-' ? -1 : 1) * Number(relative[2]) };
   const absolute = /^(\d+)$/.exec(text);
   if (absolute) return { type: 'absolute', n: Number(absolute[1]) };
+  const hline = /^(I+)([+-]\d+)?$/.exec(text);
+  if (hline) return { type: 'hline', count: hline[1].length, offset: hline[2] ? Number(hline[2]) : 0 };
   return null;
 }
 
@@ -87,23 +89,55 @@ function parseColRef(text) {
  *  out-of-range result (e.g. @-5 from row 2) rather than clamping --
  *  a formula reaching past the edge of the table is a real error to
  *  surface, not something to silently reinterpret. */
-function resolveRowRef(ref, currentRow, dataRowCount) {
+function resolveRowRef(ref, currentRow, dataRowCount, hlinePositions, asRangeStart) {
   let n;
   if (ref.type === 'absolute') n = ref.n;
   else if (ref.type === 'relative') n = currentRow + ref.delta;
   else if (ref.type === 'first') n = 1;
-  else n = dataRowCount; // 'last'
+  else if (ref.type === 'hline') {
+    const boundary = hlinePositions && hlinePositions[ref.count - 1];
+    const base = boundary ? (asRangeStart ? boundary.asStart : boundary.asEnd) : asRangeStart ? dataRowCount + 1 : dataRowCount;
+    n = base + ref.offset;
+  } else n = dataRowCount; // 'last'
   return n >= 1 && n <= dataRowCount ? n : null;
 }
 
-function resolveColRef(ref, colCount) {
+function resolveColRef(ref, colCount, currentCol) {
+  if (ref === null) return currentCol; // no column specified in this ref at all -- real org's own actual convention for a bare row-only reference/range ("@2", "@2..@6"): defaults to the formula's own target column, the same way a bare row-less reference ("$2") already defaults to the current row
   const n = ref.type === 'absolute' ? ref.n : ref.type === 'first' ? 1 : colCount;
   return n >= 1 && n <= colCount ? n : null;
 }
 
+/** Pre-computes every hline's own data-row-number boundary, for both
+ *  directions a range endpoint might use it in -- confirmed directly
+ *  against real Emacs org-mode (running formulas through
+ *  org-table-recalculate in batch mode, not inferred): a range like
+ *  "@I..@II" spans every actual data row strictly between the two
+ *  hlines, so the FIRST hline's own boundary, used as a range START,
+ *  is the data-row-number of the first actual row after it; the
+ *  SECOND hline's own boundary, used as a range END, is the
+ *  data-row-number of the last actual row before it. Indexed by
+ *  hline count minus 1 (index 0 is @I). A count beyond how many
+ *  hlines the table actually has still resolves rather than erroring
+ *  -- also confirmed directly against real Emacs -- clamping to just
+ *  past the table's own end (asStart) or the table's own actual last
+ *  row (asEnd). */
+function computeHlinePositions(workingRows) {
+  const positions = [];
+  let dataRowsBefore = 0;
+  for (const row of workingRows) {
+    if (row.type === 'rule') {
+      positions.push({ asStart: dataRowsBefore + 1, asEnd: dataRowsBefore });
+    } else {
+      dataRowsBefore++;
+    }
+  }
+  return { positions, dataRowCount: dataRowsBefore };
+}
+
 // ---- expression tokenizing/parsing ------------------------------------
 
-const TOKEN_RE = /\s*(\.\.|@(?:[<>]|[+-]?\d+)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+)|\d+\.?\d*|[A-Za-z_][A-Za-z0-9_]*|[()+\-*/^,])\s*/y;
+const TOKEN_RE = /\s*(\.\.|@(?:[<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+)|\d+\.?\d*|[A-Za-z_][A-Za-z0-9_]*|[()+\-*/^,])\s*/y;
 
 /** Tokenizes an RHS expression -- numbers, cell/range references
  *  (kept as single tokens, not decomposed further here), function
@@ -210,7 +244,7 @@ function roundToDigits(x, digits, roundFn) {
  *  that far ahead; row is null for a bare "$N" token, meaning "the
  *  current row", resolved later by the evaluator). */
 function parseRef(token) {
-  const atMatch = /^@([<>]|[+-]?\d+)(?:\$([<>]|\d+))?$/.exec(token);
+  const atMatch = /^@([<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$([<>]|\d+))?$/.exec(token);
   if (atMatch) {
     const row = parseRowRef(atMatch[1]);
     const col = atMatch[2] !== undefined ? parseColRef(atMatch[2]) : null;
@@ -386,9 +420,9 @@ function readCellNumber(dataRows, row, col) {
  *  currently centered on. Throws if either half can't be resolved
  *  (out of range, or a column-only ref used somewhere a row is
  *  required). */
-function resolveRef(ref, currentRow, dataRowCount, colCount) {
-  const row = ref.row === null ? currentRow : resolveRowRef(ref.row, currentRow, dataRowCount);
-  const col = resolveColRef(ref.col, colCount);
+function resolveRef(ref, currentRow, dataRowCount, colCount, currentCol, hlinePositions, asRangeStart = false) {
+  const row = ref.row === null ? currentRow : resolveRowRef(ref.row, currentRow, dataRowCount, hlinePositions, asRangeStart);
+  const col = resolveColRef(ref.col, colCount, currentCol);
   if (row === null) throw new Error('Row reference out of range in formula');
   if (col === null) throw new Error('Column reference out of range in formula');
   return { row, col };
@@ -411,7 +445,7 @@ function evaluateAst(node, ctx) {
       throw new Error(`Unknown operator "${node.op}"`);
     }
     case 'ref': {
-      const { row, col } = resolveRef(node.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount);
+      const { row, col } = resolveRef(node.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
       return readCellNumber(ctx.dataRows, row, col);
     }
     case 'range': {
@@ -439,7 +473,7 @@ function evaluateAst(node, ctx) {
  *  would naturally read the range they wrote. */
 function collectRangeValues(argNode, ctx) {
   if (argNode.type === 'ref') {
-    const { row, col } = resolveRef(argNode.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount);
+    const { row, col } = resolveRef(argNode.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
     return isCellBlank(ctx.dataRows, row, col) ? [] : [readCellNumber(ctx.dataRows, row, col)];
   }
   if (argNode.type !== 'range') {
@@ -447,8 +481,8 @@ function collectRangeValues(argNode, ctx) {
     // real org supports this too; evaluate it as one single value.
     return [evaluateAst(argNode, ctx)];
   }
-  const from = resolveRef(argNode.from, ctx.currentRow, ctx.dataRowCount, ctx.colCount);
-  const to = resolveRef(argNode.to, ctx.currentRow, ctx.dataRowCount, ctx.colCount);
+  const from = resolveRef(argNode.from, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, true);
+  const to = resolveRef(argNode.to, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, false);
   const rowStart = Math.min(from.row, to.row);
   const rowEnd = Math.max(from.row, to.row);
   const colStart = Math.min(from.col, to.col);
@@ -571,9 +605,15 @@ function parseFormulaStatement(statement) {
   }
 
   let target;
-  const cellMatch = /^@([<>]|[+-]?\d+)\$([<>]|\d+)$/.exec(lhs);
+  const rangeMatch = lhs.includes('..') ? /^(.+)\.\.(.+)$/.exec(lhs) : null;
+  const cellMatch = /^@([<>]|[+-]?\d+|I+(?:[+-]\d+)?)\$([<>]|\d+)$/.exec(lhs);
   const colMatch = /^\$([<>]|\d+)$/.exec(lhs);
-  if (cellMatch) {
+  if (rangeMatch) {
+    const from = parseRef(rangeMatch[1]);
+    const to = parseRef(rangeMatch[2]);
+    if (!from || !to || from.col === null || to.col === null) throw new Error(`Malformed formula target: "${lhs}"`);
+    target = { type: 'range', from, to };
+  } else if (cellMatch) {
     const row = parseRowRef(cellMatch[1]);
     const col = parseColRef(cellMatch[2]);
     if (!row || !col) throw new Error(`Malformed formula target: "${lhs}"`);
@@ -631,32 +671,68 @@ export function recalculateTable(table) {
   // `cells` array per row so evaluating one formula can't accidentally
   // mutate a row a caller might still be holding a reference to.
   const workingRows = table.rows.map((row) => (row.type === 'row' ? { ...row, cells: [...row.cells] } : row));
-  // Any row before the table's own first hline is a HEADER row, real
-  // org's own actual documented convention exactly (confirmed against
-  // the Org Manual: "Any lines before the first hline are left alone,
-  // assuming that these are part of the table header") -- excluded
-  // from @N numbering and column-formula application entirely, the
-  // same as body-edit.js's own isTableHeaderRow already treats it for
-  // bold-rendering. No hline anywhere at all means no header, and
-  // every row counts as data, matching that same convention too.
-  const firstRuleIndex = workingRows.findIndex((r) => r.type === 'rule');
-  const dataRows = workingRows.filter((r, i) => r.type === 'row' && (firstRuleIndex === -1 || i >= firstRuleIndex));
+  // @N numbering counts EVERY data row, including any row before the
+  // table's own first hline -- confirmed directly against real Emacs
+  // org-mode itself, not just inferred from the Manual's own prose
+  // (which reads ambiguously on this specific point): a table with a
+  // header row, 5 data rows below a hline, and one more row below a
+  // second hline numbers that last row @7 (header=@1, the 5 data
+  // rows=@2..@6, the final row=@7) -- verified by actually running
+  // "@7$2=vsum(@2..@6)" through real Emacs's own org-table-recalculate
+  // in batch mode and confirming it computes correctly, not by reading
+  // the manual's own words about it and stopping there.
+  const dataRows = workingRows.filter((r) => r.type === 'row');
   const dataRowCount = dataRows.length;
   const colCount = dataRows.reduce((max, r) => Math.max(max, r.cells.length), 0);
+  // The header-row exclusion real org DOES have is narrower and
+  // different from @N numbering: specifically, the column-formula
+  // SHORTHAND ($N=, applied to every row at once) skips any row
+  // before the table's own first hline -- also confirmed directly
+  // against real Emacs: a $3=$2*2 column formula correctly leaves the
+  // header row's own text alone, while an explicit, deliberately-
+  // targeted cell formula like @1$2=999 still freely modifies the
+  // header when asked to. No hline anywhere at all means nothing is
+  // excluded from column formulas either -- every row counts as data.
+  const firstRuleIndex = workingRows.findIndex((r) => r.type === 'rule');
+  const headerRowCount = firstRuleIndex === -1 ? 0 : workingRows.slice(0, firstRuleIndex).filter((r) => r.type === 'row').length;
+  const { positions: hlinePositions } = computeHlinePositions(workingRows);
 
   for (const { target, expr, formatSpec } of statements) {
     if (target.type === 'cell') {
-      const row = resolveRowRef(target.row, 1, dataRowCount); // currentRow=1 is a placeholder -- an explicit @N$M target is never itself relative
+      const row = resolveRowRef(target.row, 1, dataRowCount, hlinePositions, false); // currentRow=1 is a placeholder -- an explicit @N$M target is never itself relative
       const col = resolveColRef(target.col, colCount);
       if (row === null || col === null) throw new Error('Formula target is out of range for this table');
-      const value = evaluateAst(expr, { dataRows, dataRowCount, colCount, currentRow: row });
+      const value = evaluateAst(expr, { dataRows, dataRowCount, colCount, currentRow: row, currentCol: col, hlinePositions });
       dataRows[row - 1].cells[col - 1] = formatSpec ? applyFormatSpec(value, formatSpec) : formatResult(value);
+    } else if (target.type === 'range') {
+      if (target.from.row === null || target.to.row === null) {
+        throw new Error('A formula target range needs an explicit row on both endpoints');
+      }
+      const fromRow = resolveRowRef(target.from.row, 1, dataRowCount, hlinePositions, false);
+      const toRow = resolveRowRef(target.to.row, 1, dataRowCount, hlinePositions, false);
+      const fromCol = resolveColRef(target.from.col, colCount);
+      const toCol = resolveColRef(target.to.col, colCount);
+      if (fromRow === null || toRow === null || fromCol === null || toCol === null) {
+        throw new Error('Formula target is out of range for this table');
+      }
+      const rowStart = Math.min(fromRow, toRow);
+      const rowEnd = Math.max(fromRow, toRow);
+      const colStart = Math.min(fromCol, toCol);
+      const colEnd = Math.max(fromCol, toCol);
+      for (let r = rowStart; r <= rowEnd; r++) {
+        for (let c = colStart; c <= colEnd; c++) {
+          const value = evaluateAst(expr, { dataRows, dataRowCount, colCount, currentRow: r, currentCol: c, hlinePositions });
+          dataRows[r - 1].cells[c - 1] = formatSpec ? applyFormatSpec(value, formatSpec) : formatResult(value);
+        }
+      }
     } else {
-      // Column-formula shorthand: apply to every data row, each computing $M from ITS OWN row.
+      // Column-formula shorthand: apply to every data row AFTER the
+      // header (see headerRowCount above), each computing $M from ITS
+      // OWN row.
       const col = resolveColRef(target.col, colCount);
       if (col === null) throw new Error('Formula target column is out of range for this table');
-      for (let r = 1; r <= dataRowCount; r++) {
-        const value = evaluateAst(expr, { dataRows, dataRowCount, colCount, currentRow: r });
+      for (let r = headerRowCount + 1; r <= dataRowCount; r++) {
+        const value = evaluateAst(expr, { dataRows, dataRowCount, colCount, currentRow: r, currentCol: col, hlinePositions });
         dataRows[r - 1].cells[col - 1] = formatSpec ? applyFormatSpec(value, formatSpec) : formatResult(value);
       }
     }

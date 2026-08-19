@@ -329,6 +329,44 @@ export function getSolarHideLabel(vars) {
   return parseLispBoolean((vars || {})['solar-hide-label'], false);
 }
 
+/** org-weather-format: this app's own extension, not a real
+ *  elisp/org variable -- the template %%(org-weather) substitutes
+ *  its own placeholders into (see src/org-weather.js's own
+ *  formatWeatherLine). Default matches the exact format given in the
+ *  original request. */
+export function getOrgWeatherFormat(vars) {
+  const raw = (vars || {})['org-weather-format'];
+  const trimmed = raw ? String(raw).trim() : '';
+  return trimmed || 'Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su';
+}
+
+const WEATHER_SPEED_UNITS = new Set(['km/h', 'm/s', 'mph', 'Knots']);
+
+/** org-weather-speed-unit: this app's own extension. Default "mph",
+ *  matching what this app always fetches in (see
+ *  src/org-weather.js's own FETCH_SPEED_UNIT) -- an unrecognized
+ *  value (a typo, an unsupported unit) falls back to that same
+ *  default rather than passing a malformed unit label straight
+ *  through to the formatted output. */
+export function getOrgWeatherSpeedUnit(vars) {
+  const raw = (vars || {})['org-weather-speed-unit'];
+  const trimmed = raw ? String(raw).trim() : '';
+  return WEATHER_SPEED_UNITS.has(trimmed) ? trimmed : 'mph';
+}
+
+const WEATHER_TEMPERATURE_UNITS = new Set(['\u00b0C', '\u00b0F']);
+
+/** org-weather-temperature-unit: this app's own extension. Default
+ *  "\u00b0F", matching what this app always fetches in (see
+ *  src/org-weather.js's own FETCH_TEMPERATURE_UNIT) -- same
+ *  unrecognized-value fallback behavior as getOrgWeatherSpeedUnit
+ *  above. */
+export function getOrgWeatherTemperatureUnit(vars) {
+  const raw = (vars || {})['org-weather-temperature-unit'];
+  const trimmed = raw ? String(raw).trim() : '';
+  return WEATHER_TEMPERATURE_UNITS.has(trimmed) ? trimmed : '\u00b0F';
+}
+
 /** org-use-sub-superscripts: controls whether/how `_`/`^` are
  *  interpreted as subscript/superscript markers (see inline-markup.js).
  *  Unlike the other Lisp-boolean variables above, this one has three

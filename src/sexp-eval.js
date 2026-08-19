@@ -37,6 +37,7 @@
  */
 
 import { startOfDay } from './agenda.js';
+import { formatWeatherLine, isOrgWeatherLine } from './org-weather.js';
 import {
   expandOrgAnniversaryOccurrences,
   expandOrgCyclicOccurrences,
@@ -236,6 +237,10 @@ function evaluateSexpr(node, context) {
     case 'diary-day-length':
       return formatDayLengthLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, context.solarHideLabel);
 
+    case 'org-weather':
+      if (!context.weatherData) return false;
+      return formatWeatherLine(context.orgWeatherFormat, context.weatherData, context.orgWeatherTemperatureUnit, context.orgWeatherSpeedUnit);
+
     case 'format': {
       if (args.length < 1 || args[0].type !== 'string') return false;
       const fmt = args[0].value;
@@ -336,6 +341,29 @@ function findSexpTimestamps(text) {
   return results;
 }
 
+/** True if %%(org-weather), in either its standalone-line form or
+ *  within a <%%(...)> timestamp, is used anywhere in `doc` -- what
+ *  decides whether the "Refresh weather now" action in Settings
+ *  (app.js's own renderSettingsView) shows up at all, rather than
+ *  cluttering Settings with an action nobody's actual document has
+ *  any use for. Lives here, not alongside the rest of org-weather's
+ *  own logic in org-weather.js, specifically because it needs
+ *  findSexpTimestamps -- which is native to this file -- and this
+ *  file already imports from org-weather.js (formatWeatherLine), so
+ *  the reverse import direction would create a circular dependency
+ *  between the two modules. */
+function documentUsesOrgWeather(doc) {
+  if (!doc) return false;
+  const usesIt = (heading) => {
+    if (findSexpTimestamps(heading.title).some((ts) => /\borg-weather\b/.test(ts.raw))) return true;
+    for (const line of heading.bodyLines || []) {
+      if (isOrgWeatherLine(line)) return true;
+    }
+    return (heading.children || []).some(usesIt);
+  };
+  return (doc.children || []).some(usesIt);
+}
+
 /** Evaluates one findSexpTimestamps result's own `expr` against
  *  `context` -- a thin wrapper that also handles the "failed to
  *  parse at all" (`expr === null`) case, folding it into the same
@@ -346,4 +374,4 @@ function evaluateSexpTimestamp(expr, context) {
   return evaluateSexpr(expr, context);
 }
 
-export { parseSexpr, evaluateSexpr, findSexpTimestamps, evaluateSexpTimestamp, isTruthy };
+export { parseSexpr, evaluateSexpr, findSexpTimestamps, evaluateSexpTimestamp, isTruthy, documentUsesOrgWeather };
