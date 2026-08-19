@@ -60,6 +60,7 @@ import {
   getOrgWeatherFormat,
   getOrgWeatherSpeedUnit,
   getOrgWeatherTemperatureUnit,
+  getOrgTableDurationHourZeroPadding,
   getCalendarLocationName,
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
@@ -1855,7 +1856,7 @@ function discardAudioRecording() {
 function recalculateOneTable(heading, table) {
   if (!table.tblfm || !table.tblfm.trim()) return { result: 'no-formula' };
   try {
-    const newRows = recalculateTable(table);
+    const newRows = recalculateTable(table, { hourZeroPad: getOrgTableDurationHourZeroPadding(state.localVariables) });
     if (!newRows || JSON.stringify(newRows) === JSON.stringify(table.rows)) {
       return { result: 'unchanged' };
     }
@@ -2025,6 +2026,43 @@ async function refreshWeather() {
   } catch (err) {
     setStatus(`Couldn't refresh weather: ${err.message}`);
   }
+  render();
+}
+
+/** Fetches the device's own current latitude/longitude via the
+ *  browser's Geolocation API and commits both to calendar-latitude/
+ *  calendar-longitude -- the "Use device location" button next to
+ *  those two fields in Quick Settings. Any failure (permission
+ *  denied, no fix available, the API missing entirely in this
+ *  browser/context) leaves both fields exactly as they already were. */
+async function refreshLocationFromDevice() {
+  if (!navigator.geolocation) {
+    setStatus('Geolocation is not available in this browser.');
+    return;
+  }
+  setStatus('Getting device location\u2026');
+  render();
+  try {
+    const position = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000, enableHighAccuracy: false });
+    });
+    const latitude = Math.round(position.coords.latitude * 10000) / 10000;
+    const longitude = Math.round(position.coords.longitude * 10000) / 10000;
+    await commitGlobalVariableChange('calendar-latitude', String(latitude));
+    await commitGlobalVariableChange('calendar-longitude', String(longitude));
+    setStatus(`Location updated: ${latitude}, ${longitude}.`);
+  } catch (err) {
+    const message =
+      err.code === 1
+        ? 'Location permission denied.'
+        : err.code === 2
+          ? 'Location unavailable.'
+          : err.code === 3
+            ? 'Location request timed out.'
+            : `Could not get device location: ${err.message || err}`;
+    setStatus(message);
+  }
+  renderSettingsView();
   render();
 }
 
@@ -7265,10 +7303,10 @@ function renderAgendaView() {
               : item.kind === 'logbook'
                 ? '\ud83d\udcdd'
                 : item.kind === 'diary-sexp' || item.kind === 'sexp-timestamp'
-                  ? '\ud83d\udd01'
-                  : item.kind === 'sunrise-sunset'
-                    ? '\u2600\ufe0f'
-                    : '\u23f0';
+                ? '\ud83d\udd01'
+                : item.kind === 'sunrise' || item.kind === 'sunset' || item.kind === 'civil-sunrise' || item.kind === 'civil-sunset' || item.kind === 'day-length' || item.kind === 'weather'
+                  ? '\u2600\ufe0f'
+                  : '\u23f0';
       kindIcon.style.flexShrink = '0';
       kindIcon.style.opacity = '0.6';
       kindIcon.style.fontSize = '1.3em';
@@ -8165,6 +8203,40 @@ const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#agenda-diary-sexp',
   },
   {
+    key: 'org-weather-format',
+    label: 'Format',
+    section: 'Weather',
+    type: 'text',
+    default: 'Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su',
+    helpAnchor: '#agenda-diary-sexp',
+  },
+  {
+    key: 'org-weather-temperature-unit',
+    label: 'Temperature unit',
+    section: 'Weather',
+    type: 'select',
+    default: '\u00b0F',
+    options: [
+      { value: '\u00b0F', label: '\u00b0F' },
+      { value: '\u00b0C', label: '\u00b0C' },
+    ],
+    helpAnchor: '#agenda-diary-sexp',
+  },
+  {
+    key: 'org-weather-speed-unit',
+    label: 'Wind speed unit',
+    section: 'Weather',
+    type: 'select',
+    default: 'mph',
+    options: [
+      { value: 'mph', label: 'mph' },
+      { value: 'km/h', label: 'km/h' },
+      { value: 'm/s', label: 'm/s' },
+      { value: 'Knots', label: 'Knots' },
+    ],
+    helpAnchor: '#agenda-diary-sexp',
+  },
+  {
     key: 'org-use-tag-inheritance',
     label: 'Tag search matches inherited tags',
     section: 'Search & tags',
@@ -8359,6 +8431,24 @@ function renderQuickSettingField(field) {
       render();
     };
     label.appendChild(input);
+  } else if (field.type === 'select') {
+    const select = document.createElement('select');
+    textInputStyle(select);
+    const current = rawValue !== undefined ? rawValue : field.default;
+    for (const opt of field.options) {
+      const optionEl = document.createElement('option');
+      optionEl.value = opt.value;
+      optionEl.textContent = opt.label;
+      if (opt.value === current) optionEl.selected = true;
+      select.appendChild(optionEl);
+    }
+    select.onchange = async () => {
+      await commitGlobalVariableChange(field.key, select.value === field.default ? null : select.value);
+      setStatus(`${field.label} updated.`);
+      renderSettingsView();
+      render();
+    };
+    label.appendChild(select);
   } else if (field.type === 'longtext') {
     const textarea = document.createElement('textarea');
     textarea.rows = 2;
@@ -8446,6 +8536,23 @@ function renderQuickSettingField(field) {
   }
 
   headerRow.appendChild(label);
+  if (rawValue !== undefined) {
+    const resetLink = document.createElement('span');
+    resetLink.textContent = '\u21ba';
+    resetLink.title = `Reset ${field.label} to its default`;
+    resetLink.style.flexShrink = '0';
+    resetLink.style.opacity = '0.6';
+    resetLink.style.fontSize = '15px';
+    resetLink.style.cursor = 'pointer';
+    resetLink.style.padding = '0 4px';
+    resetLink.onclick = async () => {
+      await commitGlobalVariableChange(field.key, null);
+      setStatus(`${field.label} reset to its default.`);
+      renderSettingsView();
+      render();
+    };
+    headerRow.appendChild(resetLink);
+  }
   if (field.helpAnchor) {
     const helpLink = document.createElement('span');
     helpLink.textContent = '?';
@@ -8504,6 +8611,43 @@ function renderQuickSettingsSection() {
 
     for (const field of group.fields) {
       wrap.appendChild(renderQuickSettingField(field));
+    }
+
+    if (group.name === 'Contacts & Calendar') {
+      const geoRow = document.createElement('div');
+      geoRow.className = 'panel-row';
+      geoRow.style.marginBottom = '10px';
+      geoRow.appendChild(menuButton('\ud83d\udccd Use device location', refreshLocationFromDevice));
+      wrap.appendChild(geoRow);
+    }
+
+    if (group.name === 'Weather') {
+      const weatherHint = document.createElement('div');
+      weatherHint.style.fontSize = '11px';
+      weatherHint.style.opacity = '0.6';
+      weatherHint.style.margin = '2px 0 6px';
+      weatherHint.textContent =
+        'Add "%%(org-weather)" as a line under any heading (or use it inside a <%%(...)> timestamp) to show today\u2019s weather in the agenda there.';
+      wrap.appendChild(weatherHint);
+
+      const weatherStatus = document.createElement('div');
+      weatherStatus.style.fontSize = '13px';
+      weatherStatus.style.marginBottom = '6px';
+      const refreshedText = weatherLastRefreshed ? `Last refreshed: ${new Date(weatherLastRefreshed).toLocaleString()}` : 'Never refreshed yet.';
+      const usageNote = documentUsesOrgWeather(state.doc) ? '' : ' Not used in the current document yet.';
+      weatherStatus.textContent = refreshedText + usageNote;
+      wrap.appendChild(weatherStatus);
+
+      const weatherRow = document.createElement('div');
+      weatherRow.className = 'panel-row';
+      weatherRow.style.marginBottom = '10px';
+      weatherRow.appendChild(
+        menuButton('\ud83c\udf24\ufe0f Refresh weather now', async () => {
+          await refreshWeather();
+          renderSettingsView();
+        })
+      );
+      wrap.appendChild(weatherRow);
     }
   }
 
@@ -8735,35 +8879,6 @@ async function renderSettingsView(target = settingsRenderTarget) {
   captureSection.appendChild(captureBtnRow);
 
   container.appendChild(renderQuickSettingsSection());
-
-  if (documentUsesOrgWeather(state.doc)) {
-    const weatherSection = document.createElement('div');
-    weatherSection.className = 'settings-section';
-    container.appendChild(weatherSection);
-
-    const weatherTitle = document.createElement('div');
-    weatherTitle.className = 'panel-section-title';
-    weatherTitle.textContent = 'Weather';
-    weatherSection.appendChild(weatherTitle);
-
-    const weatherStatus = document.createElement('div');
-    weatherStatus.style.fontSize = '13px';
-    weatherStatus.style.marginBottom = '6px';
-    weatherStatus.textContent = weatherLastRefreshed
-      ? `Last refreshed: ${new Date(weatherLastRefreshed).toLocaleString()}`
-      : 'Never refreshed \u2014 %%(org-weather) has nothing to show yet.';
-    weatherSection.appendChild(weatherStatus);
-
-    const weatherRow = document.createElement('div');
-    weatherRow.className = 'panel-row';
-    weatherRow.appendChild(
-      menuButton('\ud83c\udf24\ufe0f Refresh weather now', async () => {
-        await refreshWeather();
-        renderSettingsView();
-      })
-    );
-    weatherSection.appendChild(weatherRow);
-  }
 
   const globalVarsSection = document.createElement('div');
   globalVarsSection.className = 'settings-section';
@@ -9103,7 +9218,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
   // many people it's the single most-used entry on this whole page;
   // explicitly nil keeps it at its own original position instead, for
   // anyone who'd rather Settings stay in its previous, familiar order.
-  const updatesAtTop = parseLispBoolean(state.localVariables['org-xx-updates-at-top'], true);
+  const updatesAtTop = parseLispBoolean((state.localVariables || {})['org-xx-updates-at-top'], true);
   if (updatesAtTop) {
     container.insertBefore(updatesSection, container.firstChild);
   } else {
