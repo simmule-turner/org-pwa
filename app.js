@@ -118,6 +118,7 @@ import {
   setPlainTimestampInTitle,
   insertTopLevelHeading,
   insertChildHeading,
+  insertHeadingAfter,
   removeHeading,
   moveHeadingUp,
   moveHeadingDown,
@@ -148,6 +149,7 @@ import {
 } from './src/body-edit.js';
 import { recalculateTable } from './src/table-formula.js';
 import { isOrgWeatherLine, formatWeatherLine, buildWeatherApiUrl } from './src/org-weather.js';
+import { initialState as godModeInitialState, processKey as godModeProcessKey } from './src/god-mode.js';
 import { documentUsesOrgWeather } from './src/sexp-eval.js';
 import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
 import {
@@ -1969,6 +1971,7 @@ async function fetchWeatherData(latitude, longitude) {
     throw new Error('Weather response was missing expected fields.');
   }
   return {
+    currentTime: json.current.time,
     weatherCode: json.current.weather_code,
     humidity: json.current.relative_humidity_2m,
     humidityUnit: json.current_units.relative_humidity_2m,
@@ -2007,11 +2010,15 @@ async function loadCachedWeatherData() {
 /** Fetches fresh weather data using the currently-configured
  *  calendar-latitude/calendar-longitude, updates the top-level
  *  weatherData/weatherLastRefreshed state, persists it to IndexedDB
- *  for the next session, and re-renders. A failed fetch (offline, the
- *  API unreachable, a malformed response) leaves whatever was
- *  already cached in place -- refreshing is never destructive, a
- *  stale-but-present snapshot is strictly more useful than none at
- *  all. */
+ *  for the next session, and re-renders. weatherLastRefreshed is the
+ *  API's own reported current.time -- the underlying data's own "as
+ *  of" timestamp, which is what actually reflects its staleness, not
+ *  when the client happened to make the request (network latency,
+ *  API server lag, etc. can make the two differ). A failed fetch
+ *  (offline, the API unreachable, a malformed response) leaves
+ *  whatever was already cached in place -- refreshing is never
+ *  destructive, a stale-but-present snapshot is strictly more useful
+ *  than none at all. */
 async function refreshWeather() {
   const latitude = getCalendarLatitude(state.localVariables);
   const longitude = getCalendarLongitude(state.localVariables);
@@ -2020,7 +2027,7 @@ async function refreshWeather() {
   try {
     const data = await fetchWeatherData(latitude, longitude);
     weatherData = data;
-    weatherLastRefreshed = new Date().toISOString();
+    weatherLastRefreshed = data.currentTime;
     await kv.set(WEATHER_CACHE_KEY, JSON.stringify({ data, fetchedAt: weatherLastRefreshed }));
     setStatus('Weather refreshed.');
   } catch (err) {
@@ -2442,6 +2449,42 @@ const contentAreaEl = document.getElementById('contentArea');
 const addBtn = document.getElementById('addBtn');
 const navBackBtn = document.getElementById('navBackBtn');
 const extraMenuBtn = document.getElementById('extraMenuBtn');
+// god-mode's own indicator -- created here rather than in index.html,
+// since this is a niche, keyboard-only feature (genuinely inert
+// without a keyboard, same framing as the rest of this app's own
+// keybindings) not worth a static markup change for. Fixed-position
+// so it stays visible regardless of scroll/view state; hidden
+// entirely (display: none) whenever god-mode isn't active, synced
+// from render() itself (see syncGodModeIndicator below) so it can
+// never drift out of sync with the actual godModeActive/godModeState.
+const godModeIndicatorEl = document.createElement('div');
+godModeIndicatorEl.style.position = 'fixed';
+godModeIndicatorEl.style.bottom = '12px';
+godModeIndicatorEl.style.right = '12px';
+godModeIndicatorEl.style.zIndex = '9999';
+godModeIndicatorEl.style.padding = '6px 12px';
+godModeIndicatorEl.style.borderRadius = '6px';
+godModeIndicatorEl.style.fontSize = '13px';
+godModeIndicatorEl.style.fontFamily = 'monospace';
+godModeIndicatorEl.style.background = 'var(--accent, #444)';
+godModeIndicatorEl.style.color = '#fff';
+godModeIndicatorEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+godModeIndicatorEl.style.display = 'none';
+document.body.appendChild(godModeIndicatorEl);
+
+/** Keeps godModeIndicatorEl in sync with godModeActive/godModeState --
+ *  called from render() itself so it's always up to date after any
+ *  state change, never a separate call site that could drift. */
+function syncGodModeIndicator() {
+  if (!godModeActive) {
+    godModeIndicatorEl.style.display = 'none';
+    return;
+  }
+  godModeIndicatorEl.style.display = 'block';
+  const seq = godModeState.chordString || (godModeState.awaitingSecondC ? 'c' : godModeState.pendingModifier ? '\u2026' : '');
+  godModeIndicatorEl.textContent = seq ? `\ud83e\udde0 God-mode: ${seq}` : '\ud83e\udde0 God-mode (Esc to exit)';
+}
+
 const extraMenuPanel = document.getElementById('extraMenuPanel');
 const viewMenuBtn = document.getElementById('viewMenuBtn');
 const viewMenuPanel = document.getElementById('viewMenuPanel');
@@ -2560,6 +2603,13 @@ function visibleHeadingsInOrder() {
     .map((row) => row.node);
 }
 
+function scrollFocusedHeadingIntoView() {
+  requestAnimationFrame(() => {
+    const el = document.getElementById('keyboard-focused-row');
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+  });
+}
+
 /** Moves keyboard focus by `delta` (+1/-1) among currently visible
  *  headings. No wraparound at either end -- staying put at a boundary
  *  is more predictable than silently jumping to the opposite end of a
@@ -2577,10 +2627,209 @@ function moveKeyboardFocus(delta) {
   }
   keyboardFocusedHeading = headings[nextIndex];
   render();
-  requestAnimationFrame(() => {
-    const el = document.getElementById('keyboard-focused-row');
-    if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
-  });
+  scrollFocusedHeadingIntoView();
+}
+
+/** Moves keyboard focus to the next/previous VISIBLE heading at the
+ *  SAME level as the currently focused one -- real org's own
+ *  org-forward-heading-same-level / org-backward-heading-same-level
+ *  (god-mode's own C-c C-f / C-c C-b). Stops without moving if a
+ *  shallower-level heading is reached first, since that means we've
+ *  left the current heading's own region entirely. No-op if nothing
+ *  is currently focused. */
+function moveToSameLevelHeading(delta) {
+  if (!keyboardFocusedHeading) return;
+  const headings = visibleHeadingsInOrder();
+  const currentIndex = headings.indexOf(keyboardFocusedHeading);
+  if (currentIndex === -1) return;
+  const level = keyboardFocusedHeading.level;
+  for (let i = currentIndex + delta; i >= 0 && i < headings.length; i += delta) {
+    if (headings[i].level < level) return;
+    if (headings[i].level === level) {
+      keyboardFocusedHeading = headings[i];
+      render();
+      scrollFocusedHeadingIntoView();
+      return;
+    }
+  }
+}
+
+/** Moves keyboard focus to the current heading's own immediate
+ *  parent -- real org's own org-up-heading (god-mode's own C-c
+ *  C-u). No-op if already top-level (no parent) or nothing is
+ *  currently focused. */
+function moveToParentHeading() {
+  if (!keyboardFocusedHeading || !state.doc) return;
+  const path = findAncestorPath(state.doc, keyboardFocusedHeading);
+  if (!path || path.length === 0) return;
+  keyboardFocusedHeading = path[path.length - 1];
+  render();
+  scrollFocusedHeadingIntoView();
+}
+
+/** Cycles a heading's own priority through None -> A -> B -> C -> None
+ *  -- god-mode's own "C-c ," (real org's own priority prompt,
+ *  simplified to a fixed cycle matching this app's own existing
+ *  general-editor priority row, which only offers A/B/C/None too). */
+function cyclePriorityFor(heading) {
+  if (!heading) return;
+  const order = [null, 'A', 'B', 'C'];
+  const currentIndex = order.indexOf(heading.priority);
+  const next = order[(Math.max(currentIndex, 0) + 1) % order.length];
+  setPriority(heading, next);
+  commitAndRender(next ? `Priority set to ${next}` : 'Priority cleared');
+}
+
+/** Cycles the WHOLE document's own fold state between 'overview'
+ *  (only top-level headings shown) and 'showeverything' (everything
+ *  expanded) -- god-mode's own S-TAB, a simplified two-state
+ *  version of real org's own three-state org-global-cycle (overview
+ *  / contents / show-all), matching this app's own existing per-
+ *  heading cycleFoldLevel's simpler convention. */
+let lastGlobalFoldState = 'showeverything';
+function globalCycleFold() {
+  if (!state.doc) return;
+  const archiveVisibility = getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived';
+  lastGlobalFoldState = lastGlobalFoldState === 'overview' ? 'showeverything' : 'overview';
+  applyStartupVisibility(state.doc, { visibility: lastGlobalFoldState }, archiveVisibility);
+  render();
+}
+
+/** Reports a god-mode sequence that's genuinely valid (it's in the
+ *  reference this feature was built from) but has no equivalent in
+ *  this app yet -- table-cell-relative operations, link insertion,
+ *  and code-block execution all need a keyboard-focus/cursor concept
+ *  this app's own heading-level-only keyboard model doesn't have, or
+ *  (for code execution) a capability this app deliberately doesn't
+ *  implement at all (see the README's own Known limitations). Told
+ *  honestly rather than silently doing nothing or approximating
+ *  something misleading. */
+function godModeNotSupported(reason) {
+  setStatus(`God-mode: ${reason}`);
+  render();
+}
+
+/** god-mode's own action table -- maps a normalized chord string (see
+ *  src/god-mode.js) to a callback, one entry per row in the reference
+ *  document this feature was built from. Every action here operates
+ *  on `keyboardFocusedHeading`, the same heading-level keyboard-focus
+ *  concept the existing simple shortcuts (j/k/t/[/]/...) already use. */
+const GOD_MODE_ACTIONS = {
+  // Section 1: Structural Editing & Navigation
+  TAB: () => {
+    if (!keyboardFocusedHeading) return;
+    const archiveVisibility = getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived';
+    cycleFoldLevel(keyboardFocusedHeading, { archiveVisibility });
+    render();
+  },
+  'S-TAB': () => globalCycleFold(),
+  'M-<up>': () => {
+    if (keyboardFocusedHeading && moveHeadingUp(state.doc, keyboardFocusedHeading)) commitAndRender('Moved heading up');
+  },
+  'M-<down>': () => {
+    if (keyboardFocusedHeading && moveHeadingDown(state.doc, keyboardFocusedHeading)) commitAndRender('Moved heading down');
+  },
+  'M-<right>': () => {
+    if (keyboardFocusedHeading && demoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender('Demoted heading');
+  },
+  'M-<left>': () => {
+    if (keyboardFocusedHeading && promoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender('Promoted heading');
+  },
+  // This app's own promote/demote already act on the whole subtree
+  // (see heading-edit.js's own docs) -- there's no separate single-
+  // heading-only version, so the "entire subtree" god-mode sequence
+  // maps to the exact same action as the plain one above.
+  'M-S-<right>': () => {
+    if (keyboardFocusedHeading && demoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender('Demoted heading');
+  },
+  'M-S-<left>': () => {
+    if (keyboardFocusedHeading && promoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender('Promoted heading');
+  },
+  'C-c C-f': () => moveToSameLevelHeading(1),
+  'C-c C-b': () => moveToSameLevelHeading(-1),
+  'C-c C-u': () => moveToParentHeading(),
+
+  // Section 2: Item & Headline Creation
+  'M-RET': () => {
+    if (!keyboardFocusedHeading || !state.doc) return;
+    const heading = insertHeadingAfter(state.doc, keyboardFocusedHeading, {});
+    if (heading) {
+      keyboardFocusedHeading = heading;
+      startEditingTitle(heading, true);
+    }
+  },
+  'M-S-RET': () => {
+    if (!keyboardFocusedHeading || !state.doc) return;
+    const heading = insertHeadingAfter(state.doc, keyboardFocusedHeading, { todo: 'TODO' });
+    if (heading) {
+      keyboardFocusedHeading = heading;
+      startEditingTitle(heading, true);
+    }
+  },
+  'C-c C-c': () => godModeNotSupported('checkbox toggling and code execution both need a finer keyboard focus than headings -- tap the checkbox or block directly'),
+
+  // Section 3: TODOs & Task Management
+  'C-c C-t': () => keyboardFocusedHeading && openTodoOrPickWorkflow(keyboardFocusedHeading),
+  'C-c ,': () => cyclePriorityFor(keyboardFocusedHeading),
+  'C-c C-v': () => {
+    if (!state.doc) return;
+    switchToView('tasklist');
+  },
+
+  // Section 4: Dates, Deadlines & Timestamps
+  'C-c .': () => {
+    if (keyboardFocusedHeading) {
+      editingGeneral = keyboardFocusedHeading;
+      render();
+    }
+  },
+  'C-c !': () => {
+    if (keyboardFocusedHeading) {
+      editingGeneral = keyboardFocusedHeading;
+      render();
+    }
+  },
+  'C-c C-d': () => {
+    if (keyboardFocusedHeading) {
+      editingGeneral = keyboardFocusedHeading;
+      render();
+    }
+  },
+  'C-c C-s': () => {
+    if (keyboardFocusedHeading) {
+      editingGeneral = keyboardFocusedHeading;
+      render();
+    }
+  },
+  'S-<up>': () => godModeNotSupported('shifting a date under the cursor needs a text-cursor concept this app doesn\u2019t have -- use Edit details instead'),
+  'S-<down>': () => godModeNotSupported('shifting a date under the cursor needs a text-cursor concept this app doesn\u2019t have -- use Edit details instead'),
+
+  // Section 5: Table Manipulation -- none of these have a keyboard-
+  // focus equivalent, since this app's own keyboard focus tracks a
+  // heading, not a specific table cell.
+  'C-c |': () => godModeNotSupported('table creation needs a table-cell keyboard focus this app doesn\u2019t have -- use the \u25a6 Add table action instead'),
+
+  // Section 6: Agenda, Hyperlinks & Babel Code Blocks
+  'C-c l': () => godModeNotSupported('there\u2019s no dedicated link-insertion command -- type or paste a URL directly'),
+  'C-c C-l': () => godModeNotSupported('there\u2019s no dedicated link-insertion command -- type or paste a URL directly'),
+  'C-c C-o': () => godModeNotSupported('links are tappable directly -- there\u2019s no keyboard-cursor concept to open one from'),
+  'C-c a': () => {
+    if (state.doc) switchToView('agenda');
+  },
+  'C-c c': () => captureBtn.click(),
+  'C-c C-e': () => godModeNotSupported('use File \u2192 Export instead'),
+};
+
+/** True if `chordString` is either an exact match in GOD_MODE_ACTIONS
+ *  or a proper prefix of some entry there (e.g. "C-c" is a prefix of
+ *  "C-c C-t") -- the keydown handler uses this to decide whether an
+ *  in-progress sequence should keep waiting for more input or be
+ *  treated as a dead end. An empty chordString (nothing committed
+ *  yet, e.g. mid-"c c" or right after "m"/"g") always counts as a
+ *  valid prefix -- there's always more possible input at that point. */
+function isValidGodModePrefix(chordString) {
+  if (chordString === '') return true;
+  return Object.keys(GOD_MODE_ACTIONS).some((k) => k === chordString || k.startsWith(chordString + ' '));
 }
 
 /**
@@ -2612,6 +2861,44 @@ document.addEventListener('keydown', (e) => {
 
   if (e.metaKey || e.ctrlKey) return; // Cmd/Ctrl combinations are the browser's own territory (new tab, save, find, ...) -- never treated as one of these shortcuts, avoiding a silent double-action
 
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    const godModeMidSequence = godModeState.chordString !== '' || godModeState.awaitingSecondC || godModeState.pendingModifier !== null;
+    if (godModeActive && godModeMidSequence) {
+      godModeState = godModeInitialState();
+      setStatus('God-mode: sequence cancelled.');
+      render();
+    } else if (godModeActive) {
+      godModeActive = false;
+      render();
+    } else if (keyboardFocusedHeading) {
+      keyboardFocusedHeading = null;
+      render();
+    } else {
+      godModeActive = true;
+      godModeState = godModeInitialState();
+      render();
+    }
+    return;
+  }
+
+  if (godModeActive) {
+    if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return; // a bare modifier key press isn't a god-mode keystroke of its own
+    e.preventDefault();
+    const { state: newState, chordString } = godModeProcessKey(godModeState, e.key, e.shiftKey);
+    godModeState = newState;
+    const stillWaiting = newState.pendingModifier !== null || newState.awaitingSecondC;
+    if (!stillWaiting && chordString in GOD_MODE_ACTIONS) {
+      GOD_MODE_ACTIONS[chordString]();
+      godModeState = godModeInitialState();
+    } else if (!stillWaiting && !isValidGodModePrefix(chordString)) {
+      setStatus(`God-mode: "${chordString}" isn\u2019t a recognized sequence.`);
+      godModeState = godModeInitialState();
+    }
+    render();
+    return;
+  }
+
   if (e.key === '/') {
     e.preventDefault();
     if (!searchOpen) {
@@ -2620,15 +2907,6 @@ document.addEventListener('keydown', (e) => {
     }
     const input = document.getElementById('search-query-input');
     if (input) input.focus();
-    return;
-  }
-
-  if (e.key === 'Escape') {
-    if (keyboardFocusedHeading) {
-      e.preventDefault();
-      keyboardFocusedHeading = null;
-      render();
-    }
     return;
   }
 
@@ -2767,7 +3045,7 @@ let editingParagraph = null;
 // successful refresh (or before the cached value has finished
 // loading from IndexedDB on startup -- see loadCachedWeatherData).
 let weatherData = null;
-let weatherLastRefreshed = null; // ISO timestamp string, or null
+let weatherLastRefreshed = null; // the API's own current.time (local, timezone-naive), or null
 // { heading, item } for the one list item currently being text-edited, or null.
 let editingListItem = null;
 // The single heading whose combined multi-paragraph body text (per
@@ -2795,6 +3073,15 @@ let actionMenuFor = null;
 // normal browser focus-cycling for a keyboard/screen-reader user who
 // never asked for org-style keyboard nav in the first place.
 let keyboardFocusedHeading = null;
+// god-mode: whether it's currently active (toggled by Escape -- see
+// the keydown listener below), and the in-progress key-sequence
+// state (src/god-mode.js's own state shape) accumulated so far.
+// Reset to a fresh state after every dispatched action, cancelled
+// sequence, or dead end -- godModeActive itself stays on across
+// dispatches, matching real god-mode's own "stays engaged until
+// explicitly toggled off" behavior, not a one-shot mode.
+let godModeActive = false;
+let godModeState = godModeInitialState();
 // The heading most recently navigated to via navigateToHeading (a
 // search result, an internal link, an agenda item) -- tracked
 // specifically so switching into the plain-text editor can land near
@@ -5556,6 +5843,7 @@ function render() {
   updateFilenameDisplay();
   syncSidePanel();
   syncExtraMenuButtonVisibility();
+  syncGodModeIndicator();
 
   const wide = isWideLayout();
   // renderSettingsView()/renderDocsView() own #outline while showing —
@@ -7683,6 +7971,172 @@ viewMenuBtn.addEventListener('click', () => {
 
 // ---- Settings UI --------------------------------------------------------
 
+/** Opens a large, near-full-width popup with a big (15+ row),
+ *  wrapping, vertically-scrolling textarea for comfortably viewing
+ *  and editing one field's own full content -- the inline text boxes
+ *  in Settings are kept deliberately small (Refile targets / Agenda
+ *  files' own established size), so this is where the actual editing
+ *  happens for anything longer than a couple of words. Cancel
+ *  discards any change and closes without calling `onSave` at all;
+ *  OK calls `onSave(newValue)` then closes; Reset (shown only when
+ *  `onReset` is given AND `value` actually differs from
+ *  `defaultValue` -- there's nothing to reset back to otherwise) does
+ *  whatever the field's own inline reset control already does, then
+ *  closes without calling `onSave`. */
+function openTextFieldPopup({ label, value, defaultValue, onSave, onReset }) {
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.inset = '0';
+  overlay.style.background = 'rgba(0,0,0,0.5)';
+  overlay.style.zIndex = '10000';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.padding = '16px';
+  overlay.style.boxSizing = 'border-box';
+
+  const modal = document.createElement('div');
+  modal.style.background = 'var(--surface, #fff)';
+  modal.style.color = 'var(--fg, #000)';
+  modal.style.border = '1px solid var(--border, #ccc)';
+  modal.style.borderRadius = '8px';
+  modal.style.padding = '16px';
+  modal.style.width = '100%';
+  modal.style.maxWidth = '760px';
+  modal.style.display = 'flex';
+  modal.style.flexDirection = 'column';
+  modal.style.gap = '8px';
+  modal.style.boxSizing = 'border-box';
+  overlay.appendChild(modal);
+
+  const titleEl = document.createElement('div');
+  titleEl.textContent = label;
+  titleEl.style.fontWeight = '600';
+  titleEl.style.fontSize = '14px';
+  modal.appendChild(titleEl);
+
+  const textarea = document.createElement('textarea');
+  textarea.value = value !== undefined && value !== null ? value : '';
+  textarea.rows = 15;
+  textarea.style.width = '100%';
+  textarea.style.boxSizing = 'border-box';
+  textarea.style.fontFamily = 'monospace';
+  textarea.style.fontSize = '13px';
+  textarea.style.whiteSpace = 'pre-wrap';
+  textarea.style.overflowWrap = 'break-word';
+  textarea.style.overflowY = 'auto';
+  textarea.style.resize = 'vertical';
+  modal.appendChild(textarea);
+
+  const btnRow = document.createElement('div');
+  btnRow.style.display = 'flex';
+  btnRow.style.justifyContent = 'flex-end';
+  btnRow.style.gap = '8px';
+  modal.appendChild(btnRow);
+
+  function close() {
+    document.body.removeChild(overlay);
+  }
+
+  btnRow.appendChild(menuButton('Cancel', () => close()));
+
+  if (onReset && value !== defaultValue) {
+    btnRow.appendChild(
+      menuButton('Reset', async () => {
+        await onReset();
+        close();
+      })
+    );
+  }
+
+  btnRow.appendChild(
+    menuButton('OK', async () => {
+      await onSave(textarea.value);
+      close();
+    })
+  );
+
+  document.body.appendChild(overlay);
+  textarea.focus();
+  return overlay;
+}
+
+/** Opens a popup form with several related fields together (each a
+ *  labeledInput-style row), Cancel/Save at a fixed location -- used
+ *  by the GitHub/WebDAV sync settings below, where all of a single
+ *  repository's own fields are edited and saved as one unit rather
+ *  than each having its own separate save action. `fields` is an
+ *  array of `{ key, label, type: 'text'|'password', value,
+ *  placeholder }`; `onSave` receives `{ [key]: currentInputValue }`
+ *  for every field, already trimmed for 'text' fields (a password
+ *  field's own leading/trailing whitespace is preserved, since it
+ *  might genuinely be part of the password). */
+function openMultiFieldPopup({ label, fields, onSave }) {
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.inset = '0';
+  overlay.style.background = 'rgba(0,0,0,0.5)';
+  overlay.style.zIndex = '10000';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.padding = '16px';
+  overlay.style.boxSizing = 'border-box';
+
+  const modal = document.createElement('div');
+  modal.style.background = 'var(--surface, #fff)';
+  modal.style.color = 'var(--fg, #000)';
+  modal.style.border = '1px solid var(--border, #ccc)';
+  modal.style.borderRadius = '8px';
+  modal.style.padding = '16px';
+  modal.style.width = '100%';
+  modal.style.maxWidth = '480px';
+  modal.style.display = 'flex';
+  modal.style.flexDirection = 'column';
+  modal.style.gap = '4px';
+  modal.style.boxSizing = 'border-box';
+  overlay.appendChild(modal);
+
+  const titleEl = document.createElement('div');
+  titleEl.textContent = label;
+  titleEl.style.fontWeight = '600';
+  titleEl.style.fontSize = '14px';
+  titleEl.style.marginBottom = '4px';
+  modal.appendChild(titleEl);
+
+  const fieldEntries = fields.map((f) => ({ key: f.key, type: f.type, entry: labeledInput(f.label, f.type, f.value, f.placeholder) }));
+  for (const { entry } of fieldEntries) {
+    modal.appendChild(entry.wrap);
+  }
+
+  const btnRow = document.createElement('div');
+  btnRow.style.display = 'flex';
+  btnRow.style.justifyContent = 'flex-end';
+  btnRow.style.gap = '8px';
+  btnRow.style.marginTop = '8px';
+  modal.appendChild(btnRow);
+
+  function close() {
+    document.body.removeChild(overlay);
+  }
+
+  btnRow.appendChild(menuButton('Cancel', () => close()));
+  btnRow.appendChild(
+    menuButton('Save', async () => {
+      const values = {};
+      for (const { key, type, entry } of fieldEntries) {
+        values[key] = type === 'password' ? entry.input.value : entry.input.value.trim();
+      }
+      await onSave(values);
+      close();
+    })
+  );
+
+  document.body.appendChild(overlay);
+  if (fieldEntries[0]) fieldEntries[0].entry.input.focus();
+  return overlay;
+}
+
 function labeledInput(labelText, type, value, placeholder) {
   const wrap = document.createElement('div');
   wrap.className = 'panel-field';
@@ -8422,13 +8876,31 @@ function renderQuickSettingField(field) {
     const input = document.createElement('input');
     input.type = 'text';
     textInputStyle(input);
+    input.readOnly = true;
     input.value = rawValue !== undefined ? rawValue : field.default;
-    input.onchange = async () => {
-      const trimmed = input.value.trim();
-      await commitGlobalVariableChange(field.key, trimmed === field.default || trimmed === '' ? null : trimmed);
-      setStatus(`${field.label} updated.`);
-      renderSettingsView();
-      render();
+    input.onfocus = () => {
+      input.blur();
+      openTextFieldPopup({
+        label: field.label,
+        value: rawValue !== undefined ? rawValue : field.default,
+        defaultValue: field.default,
+        onSave: async (newValue) => {
+          const trimmed = newValue.trim();
+          await commitGlobalVariableChange(field.key, trimmed === field.default || trimmed === '' ? null : trimmed);
+          setStatus(`${field.label} updated.`);
+          renderSettingsView();
+          render();
+        },
+        onReset:
+          rawValue !== undefined
+            ? async () => {
+                await commitGlobalVariableChange(field.key, null);
+                setStatus(`${field.label} reset to its default.`);
+                renderSettingsView();
+                render();
+              }
+            : null,
+      });
     };
     label.appendChild(input);
   } else if (field.type === 'select') {
@@ -8458,13 +8930,31 @@ function renderQuickSettingField(field) {
     textarea.style.maxWidth = '100%';
     textarea.style.boxSizing = 'border-box';
     textarea.style.resize = 'vertical';
+    textarea.readOnly = true;
     textarea.value = rawValue !== undefined ? rawValue : '';
-    textarea.onchange = async () => {
-      const trimmed = textarea.value.trim();
-      await commitGlobalVariableChange(field.key, trimmed === '' ? null : trimmed);
-      setStatus(`${field.label} updated.`);
-      renderSettingsView();
-      render();
+    textarea.onfocus = () => {
+      textarea.blur();
+      openTextFieldPopup({
+        label: field.label,
+        value: rawValue !== undefined ? rawValue : '',
+        defaultValue: '',
+        onSave: async (newValue) => {
+          const trimmed = newValue.trim();
+          await commitGlobalVariableChange(field.key, trimmed === '' ? null : trimmed);
+          setStatus(`${field.label} updated.`);
+          renderSettingsView();
+          render();
+        },
+        onReset:
+          rawValue !== undefined
+            ? async () => {
+                await commitGlobalVariableChange(field.key, null);
+                setStatus(`${field.label} reset to its default.`);
+                renderSettingsView();
+                render();
+              }
+            : null,
+      });
     };
     label.appendChild(textarea);
   } else if (field.type === 'weekday') {
@@ -8811,6 +9301,68 @@ async function renderSettingsView(target = settingsRenderTarget) {
   otherFontHint.style.margin = '4px 0 8px';
   appearanceSection.appendChild(otherFontHint);
 
+  const globalVarsSection = document.createElement('div');
+  globalVarsSection.className = 'settings-section';
+  container.appendChild(globalVarsSection);
+
+  const globalVarsTitle = document.createElement('div');
+  globalVarsTitle.className = 'panel-section-title';
+  globalVarsTitle.textContent = 'Global Variables';
+  globalVarsSection.appendChild(globalVarsTitle);
+
+  const globalVarsHint = document.createElement('div');
+  globalVarsHint.style.fontSize = '11px';
+  globalVarsHint.style.opacity = '0.6';
+  globalVarsHint.style.margin = '2px 0 6px';
+  globalVarsHint.textContent =
+    'The same kind of variable a file\u2019s own "# Local Variables:" block or #+STARTUP: line can set, but as the app-wide baseline default across every file \u2014 one per line, same "name: value" format. A file-specific #+STARTUP:/Local Variables setting still overrides this; see Configuration in the README for the full precedence order. Example: org-log-done: \'time';
+  globalVarsSection.appendChild(globalVarsHint);
+
+  async function saveGlobalVariablesText(newText) {
+    const normalizedText = normalizeSmartQuotes(newText);
+    await setGlobalVariables(kv, normalizedText);
+    globalVariablesText = normalizedText;
+    globalVariables = parseGlobalVariables(globalVariablesText);
+    agendaFilesConfig = parseAgendaFilesVar(globalVariables['org-agenda-files'] || '');
+    // Re-merge immediately so the currently open document (if any)
+    // reflects the change right away -- no reload needed, matching
+    // how the theme/font settings already apply on save.
+    if (state.doc) {
+      state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
+    }
+    setStatus('Global variables saved.');
+    renderSettingsView();
+    render();
+  }
+
+  const globalVarsTextarea = document.createElement('textarea');
+  globalVarsTextarea.value = globalVariablesText;
+  globalVarsTextarea.rows = 2;
+  globalVarsTextarea.style.fontFamily = 'monospace';
+  globalVarsTextarea.style.fontSize = '12px';
+  globalVarsTextarea.style.width = '100%';
+  globalVarsTextarea.style.maxWidth = '100%';
+  globalVarsTextarea.style.boxSizing = 'border-box';
+  globalVarsTextarea.style.resize = 'vertical';
+  globalVarsTextarea.readOnly = true;
+  globalVarsTextarea.onfocus = () => {
+    globalVarsTextarea.blur();
+    openTextFieldPopup({
+      label: 'Global Variables',
+      value: globalVariablesText,
+      defaultValue: DEFAULT_GLOBAL_VARIABLES,
+      onSave: saveGlobalVariablesText,
+      onReset:
+        globalVariablesText !== DEFAULT_GLOBAL_VARIABLES
+          ? async () => {
+              await saveGlobalVariablesText(DEFAULT_GLOBAL_VARIABLES);
+              setStatus('Global variables cleared.');
+            }
+          : null,
+    });
+  };
+  globalVarsSection.appendChild(globalVarsTextarea);
+
   const captureSection = document.createElement('div');
   captureSection.className = 'settings-section';
   container.appendChild(captureSection);
@@ -8837,113 +9389,55 @@ async function renderSettingsView(target = settingsRenderTarget) {
   captureSection.appendChild(captureHintLinkRow);
 
   const currentTemplates = await getCaptureTemplates(kv);
+  const currentTemplatesText = JSON.stringify(currentTemplates, null, 2);
+  const defaultTemplatesText = JSON.stringify(DEFAULT_CAPTURE_TEMPLATES, null, 2);
   const captureTextarea = document.createElement('textarea');
-  captureTextarea.value = JSON.stringify(currentTemplates, null, 2);
-  captureTextarea.rows = 12;
+  captureTextarea.value = currentTemplatesText;
+  captureTextarea.rows = 2;
   captureTextarea.style.fontFamily = 'monospace';
-  captureTextarea.style.fontSize = '13px';
+  captureTextarea.style.fontSize = '12px';
   captureTextarea.style.width = '100%';
   captureTextarea.style.maxWidth = '100%';
   captureTextarea.style.boxSizing = 'border-box';
   captureTextarea.style.resize = 'vertical';
+  captureTextarea.readOnly = true;
+  captureTextarea.onfocus = () => {
+    captureTextarea.blur();
+    openTextFieldPopup({
+      label: 'Capture Templates',
+      value: currentTemplatesText,
+      defaultValue: defaultTemplatesText,
+      onSave: async (newValue) => {
+        let parsed;
+        try {
+          parsed = JSON.parse(normalizeSmartQuotes(newValue));
+        } catch (err) {
+          setStatus('Capture templates: invalid JSON \u2014 ' + err.message);
+          return;
+        }
+        const problem = validateCaptureTemplates(parsed);
+        if (problem) {
+          setStatus('Capture templates: ' + problem);
+          return;
+        }
+        await setCaptureTemplates(kv, parsed);
+        setStatus('Capture templates saved.');
+        renderSettingsView();
+        render();
+      },
+      onReset:
+        currentTemplatesText !== defaultTemplatesText
+          ? async () => {
+              await setCaptureTemplates(kv, DEFAULT_CAPTURE_TEMPLATES);
+              setStatus('Capture templates reset to defaults.');
+              renderSettingsView();
+            }
+          : null,
+    });
+  };
   captureSection.appendChild(captureTextarea);
 
-  const captureBtnRow = document.createElement('div');
-  captureBtnRow.className = 'panel-row';
-  captureBtnRow.style.marginTop = '8px';
-  captureBtnRow.appendChild(
-    menuButton('Save templates', async () => {
-      let parsed;
-      try {
-        parsed = JSON.parse(normalizeSmartQuotes(captureTextarea.value));
-      } catch (err) {
-        setStatus('Capture templates: invalid JSON \u2014 ' + err.message);
-        return;
-      }
-      const problem = validateCaptureTemplates(parsed);
-      if (problem) {
-        setStatus('Capture templates: ' + problem);
-        return;
-      }
-      await setCaptureTemplates(kv, parsed);
-      setStatus('Capture templates saved.');
-    })
-  );
-  captureBtnRow.appendChild(
-    menuButton('Reset to defaults', async () => {
-      await setCaptureTemplates(kv, DEFAULT_CAPTURE_TEMPLATES);
-      setStatus('Capture templates reset to defaults.');
-      renderSettingsView();
-    })
-  );
-  captureSection.appendChild(captureBtnRow);
-
   container.appendChild(renderQuickSettingsSection());
-
-  const globalVarsSection = document.createElement('div');
-  globalVarsSection.className = 'settings-section';
-  container.appendChild(globalVarsSection);
-
-  const globalVarsTitle = document.createElement('div');
-  globalVarsTitle.className = 'panel-section-title';
-  globalVarsTitle.textContent = 'Global Variables';
-  globalVarsSection.appendChild(globalVarsTitle);
-
-  const globalVarsHint = document.createElement('div');
-  globalVarsHint.style.fontSize = '11px';
-  globalVarsHint.style.opacity = '0.6';
-  globalVarsHint.style.margin = '2px 0 6px';
-  globalVarsHint.textContent =
-    'The same kind of variable a file\u2019s own "# Local Variables:" block or #+STARTUP: line can set, but as the app-wide baseline default across every file \u2014 one per line, same "name: value" format. A file-specific #+STARTUP:/Local Variables setting still overrides this; see Configuration in the README for the full precedence order. Example: org-log-done: \'time';
-  globalVarsSection.appendChild(globalVarsHint);
-
-  const globalVarsTextarea = document.createElement('textarea');
-  globalVarsTextarea.value = globalVariablesText;
-  globalVarsTextarea.rows = 5;
-  globalVarsTextarea.style.fontFamily = 'monospace';
-  globalVarsTextarea.style.fontSize = '13px';
-  globalVarsTextarea.style.width = '100%';
-  globalVarsTextarea.style.maxWidth = '100%';
-  globalVarsTextarea.style.boxSizing = 'border-box';
-  globalVarsTextarea.style.resize = 'vertical';
-  globalVarsSection.appendChild(globalVarsTextarea);
-
-  const globalVarsBtnRow = document.createElement('div');
-  globalVarsBtnRow.className = 'panel-row';
-  globalVarsBtnRow.style.marginTop = '8px';
-  globalVarsBtnRow.appendChild(
-    menuButton('Save global variables', async () => {
-      const normalizedText = normalizeSmartQuotes(globalVarsTextarea.value);
-      await setGlobalVariables(kv, normalizedText);
-      globalVariablesText = normalizedText;
-      globalVariables = parseGlobalVariables(globalVariablesText);
-      agendaFilesConfig = parseAgendaFilesVar(globalVariables['org-agenda-files'] || '');
-      // Re-merge immediately so the currently open document (if any)
-      // reflects the change right away -- no reload needed, matching
-      // how the theme/font settings already apply on save.
-      if (state.doc) {
-        state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
-      }
-      setStatus('Global variables saved.');
-      renderSettingsView();
-      render();
-    })
-  );
-  globalVarsBtnRow.appendChild(
-    menuButton('Clear', async () => {
-      await setGlobalVariables(kv, DEFAULT_GLOBAL_VARIABLES);
-      globalVariablesText = DEFAULT_GLOBAL_VARIABLES;
-      globalVariables = {};
-      agendaFilesConfig = [];
-      if (state.doc) {
-        state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
-      }
-      setStatus('Global variables cleared.');
-      renderSettingsView();
-      render();
-    })
-  );
-  globalVarsSection.appendChild(globalVarsBtnRow);
 
   const pendingSection = document.createElement('div');
   pendingSection.className = 'settings-section';
@@ -9040,12 +9534,35 @@ async function renderSettingsView(target = settingsRenderTarget) {
   ghTitle.textContent = 'GitHub';
   githubSection.appendChild(ghTitle);
 
-  const tokenField = labeledInput('Personal access token', 'password', config.token);
-  const ownerField = labeledInput('Owner', 'text', config.owner, 'e.g. octocat');
-  const repoField = labeledInput('Repo', 'text', config.repo, 'e.g. my-notes');
-  const branchField = labeledInput('Branch', 'text', config.branch, 'main');
+  function openGithubFormPopup() {
+    openMultiFieldPopup({
+      label: 'GitHub',
+      fields: [
+        { key: 'token', label: 'Personal access token', type: 'password', value: githubConfig.token },
+        { key: 'owner', label: 'Owner', type: 'text', value: githubConfig.owner, placeholder: 'e.g. octocat' },
+        { key: 'repo', label: 'Repo', type: 'text', value: githubConfig.repo, placeholder: 'e.g. my-notes' },
+        { key: 'branch', label: 'Branch', type: 'text', value: githubConfig.branch, placeholder: 'main' },
+      ],
+      onSave: async (values) => {
+        githubConfig = await setGithubConfig(kv, { token: values.token, owner: values.owner, repo: values.repo, branch: values.branch || 'main' });
+        setStatus('GitHub settings saved.');
+        renderSettingsView();
+      },
+    });
+  }
 
-  for (const field of [tokenField, ownerField, repoField, branchField]) {
+  const ghPreviewFields = [
+    labeledInput('Personal access token', 'password', config.token),
+    labeledInput('Owner', 'text', config.owner, 'e.g. octocat'),
+    labeledInput('Repo', 'text', config.repo, 'e.g. my-notes'),
+    labeledInput('Branch', 'text', config.branch, 'main'),
+  ];
+  for (const field of ghPreviewFields) {
+    field.input.readOnly = true;
+    field.input.onfocus = () => {
+      field.input.blur();
+      openGithubFormPopup();
+    };
     const row = document.createElement('div');
     row.className = 'panel-row';
     row.appendChild(field.wrap);
@@ -9060,21 +9577,6 @@ async function renderSettingsView(target = settingsRenderTarget) {
     'Use a fine-grained token scoped to just this repo, with Contents read/write access only.';
   githubSection.appendChild(ghHint);
 
-  const ghSaveRow = document.createElement('div');
-  ghSaveRow.className = 'panel-row';
-  ghSaveRow.appendChild(
-    menuButton('Save GitHub settings', async () => {
-      githubConfig = await setGithubConfig(kv, {
-        token: tokenField.input.value.trim(),
-        owner: ownerField.input.value.trim(),
-        repo: repoField.input.value.trim(),
-        branch: branchField.input.value.trim() || 'main',
-      });
-      setStatus('GitHub settings saved.');
-    })
-  );
-  githubSection.appendChild(ghSaveRow);
-
   const webdavSection = document.createElement('div');
   webdavSection.className = 'settings-section';
   container.appendChild(webdavSection);
@@ -9084,16 +9586,33 @@ async function renderSettingsView(target = settingsRenderTarget) {
   webdavTitle.textContent = 'WebDAV';
   webdavSection.appendChild(webdavTitle);
 
-  const webdavUrlField = labeledInput(
-    'Server URL',
-    'text',
-    webdavConfigStored.baseUrl,
-    'e.g. https://dav.example.com/remote.php/dav/files/me'
-  );
-  const webdavUserField = labeledInput('Username', 'text', webdavConfigStored.username);
-  const webdavPassField = labeledInput('Password', 'password', webdavConfigStored.password);
+  function openWebdavFormPopup() {
+    openMultiFieldPopup({
+      label: 'WebDAV',
+      fields: [
+        { key: 'baseUrl', label: 'Server URL', type: 'text', value: webdavConfig.baseUrl, placeholder: 'e.g. https://dav.example.com/remote.php/dav/files/me' },
+        { key: 'username', label: 'Username', type: 'text', value: webdavConfig.username },
+        { key: 'password', label: 'Password', type: 'password', value: webdavConfig.password },
+      ],
+      onSave: async (values) => {
+        webdavConfig = await setWebdavConfig(kv, { baseUrl: values.baseUrl, username: values.username, password: values.password });
+        setStatus('WebDAV settings saved.');
+        renderSettingsView();
+      },
+    });
+  }
 
-  for (const field of [webdavUrlField, webdavUserField, webdavPassField]) {
+  const webdavPreviewFields = [
+    labeledInput('Server URL', 'text', webdavConfigStored.baseUrl, 'e.g. https://dav.example.com/remote.php/dav/files/me'),
+    labeledInput('Username', 'text', webdavConfigStored.username),
+    labeledInput('Password', 'password', webdavConfigStored.password),
+  ];
+  for (const field of webdavPreviewFields) {
+    field.input.readOnly = true;
+    field.input.onfocus = () => {
+      field.input.blur();
+      openWebdavFormPopup();
+    };
     const row = document.createElement('div');
     row.className = 'panel-row';
     row.appendChild(field.wrap);
@@ -9109,20 +9628,6 @@ async function renderSettingsView(target = settingsRenderTarget) {
     'Most WebDAV servers need CORS explicitly enabled to accept requests from this app \u2014 ' +
     'if Open/Save fails with a network error, that\u2019s the first thing to check on the server side.';
   webdavSection.appendChild(webdavHint);
-
-  const webdavSaveRow = document.createElement('div');
-  webdavSaveRow.className = 'panel-row';
-  webdavSaveRow.appendChild(
-    menuButton('Save WebDAV settings', async () => {
-      webdavConfig = await setWebdavConfig(kv, {
-        baseUrl: webdavUrlField.input.value.trim(),
-        username: webdavUserField.input.value.trim(),
-        password: webdavPassField.input.value,
-      });
-      setStatus('WebDAV settings saved.');
-    })
-  );
-  webdavSection.appendChild(webdavSaveRow);
 
   const backupSection = document.createElement('div');
   backupSection.className = 'settings-section';

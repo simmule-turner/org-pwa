@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v178';
+const CACHE_NAME = 'org-pwa-shell-v180';
 
 const SHELL_FILES = [
   './',
@@ -29,6 +29,7 @@ const SHELL_FILES = [
   './src/text-normalize.js',
   './src/hex-alpha.js',
   './src/org-weather.js',
+  './src/god-mode.js',
   './src/math-render.js',
   './src/katex-export-css.js',
   // KaTeX -- LaTeX math fragment rendering (see src/math-render.js).
