@@ -8014,6 +8014,43 @@ viewMenuBtn.addEventListener('click', () => {
  *  `defaultValue` -- there's nothing to reset back to otherwise) does
  *  whatever the field's own inline reset control already does, then
  *  closes without calling `onSave`. */
+/** Locks the background page from scrolling while a modal overlay is
+ *  open, and returns a function that restores it exactly as it was.
+ *
+ *  BUG FIX: a fully-covering, high-z-index overlay does NOT, by
+ *  itself, stop a touch-drag gesture from scrolling whatever's behind
+ *  it -- painting order and scroll-chaining are separate concerns on
+ *  mobile, and this app's own popups (openTextFieldPopup,
+ *  openMultiFieldPopup) never locked the underlying scroll container
+ *  at all, letting a drag that started on the dimmed backdrop scroll
+ *  the Settings panel behind it. Two layers, matching the standard,
+ *  well-established fix for this exact class of bug: (1) `overflow:
+ *  hidden` on both `document.body` and whichever element this app's
+ *  own scrollContainer() currently considers the real scrolling pane
+ *  (it differs by layout width -- see that function's own docs), and
+ *  (2) a `touchmove` listener on the overlay's own backdrop
+ *  specifically (never on the popup's own textarea/fields, which
+ *  still need to scroll normally) that calls preventDefault() for any
+ *  touch that didn't start on an element the popup itself owns. */
+function lockBackgroundScroll(overlay) {
+  const scrollEl = scrollContainer();
+  const previousBodyOverflow = document.body.style.overflow;
+  const previousScrollElOverflow = scrollEl.style.overflow;
+  document.body.style.overflow = 'hidden';
+  scrollEl.style.overflow = 'hidden';
+
+  const preventBackdropTouchMove = (e) => {
+    if (e.target === overlay) e.preventDefault();
+  };
+  overlay.addEventListener('touchmove', preventBackdropTouchMove, { passive: false });
+
+  return () => {
+    document.body.style.overflow = previousBodyOverflow;
+    scrollEl.style.overflow = previousScrollElOverflow;
+    overlay.removeEventListener('touchmove', preventBackdropTouchMove);
+  };
+}
+
 /** Keeps a fixed-position overlay element aligned with the ACTUALLY
  *  visible viewport, even while an on-screen keyboard is open -- the
  *  same visualViewport-based technique already used for #topBar (see
@@ -8113,9 +8150,11 @@ function openTextFieldPopup({ label, value, defaultValue, onSave, onReset }) {
   modal.appendChild(btnRow);
 
   const stopTrackingViewport = keepOverlayInVisibleViewport(overlay);
+  const unlockScroll = lockBackgroundScroll(overlay);
 
   function close() {
     stopTrackingViewport();
+    unlockScroll();
     document.body.removeChild(overlay);
   }
 
@@ -8237,9 +8276,11 @@ function openMultiFieldPopup({ label, fields, onSave }) {
   modal.appendChild(btnRow);
 
   const stopTrackingViewport = keepOverlayInVisibleViewport(overlay);
+  const unlockScroll = lockBackgroundScroll(overlay);
 
   function close() {
     stopTrackingViewport();
+    unlockScroll();
     document.body.removeChild(overlay);
   }
 
