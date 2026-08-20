@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v181';
+const CACHE_NAME = 'org-pwa-shell-v183';
 
 const SHELL_FILES = [
   './',
@@ -78,6 +78,8 @@ const SHELL_FILES = [
   './src/zip-writer.js',
   './src/export-ascii.js',
   './src/export-html.js',
+  './src/export-options.js',
+  './src/export-include.js',
   './src/export-icalendar.js',
   './src/undo-history.js',
   './src/text-diff.js',

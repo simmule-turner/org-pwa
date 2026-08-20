@@ -105,6 +105,7 @@ import { exportToMarkdown } from './src/export-markdown.js';
 import { exportToOdt } from './src/export-odt.js';
 import { exportToDocx } from './src/export-docx.js';
 import { exportToAscii } from './src/export-ascii.js';
+import { expandIncludes } from './src/export-include.js';
 import { exportToHtml } from './src/export-html.js';
 import { exportToIcalendar } from './src/export-icalendar.js';
 import { createHistory, pushSnapshot, canUndo, canRedo, undo, redo, jumpTo, currentEntry } from './src/undo-history.js';
@@ -6869,27 +6870,49 @@ function allHeadingsInOrder(doc) {
   return out;
 }
 
+/** Resolves a raw #+INCLUDE: path (see src/export-include.js's own
+ *  docs for the full directive syntax this feeds into) against this
+ *  app's own storage. An explicit "github:"/"webdav:" prefix -- the
+ *  same scheme:path convention org-agenda-files/org-refile-targets
+ *  already use -- reads from that specific adapter regardless of
+ *  what's currently open; a bare path instead resolves against the
+ *  CURRENTLY OPEN document's own storage, the closest equivalent this
+ *  app's own storage model has to real org's own "relative to the
+ *  current file" behavior. Returns null (not a throw) for anything
+ *  unresolvable -- expandIncludes itself already treats that as "skip
+ *  this one include," not a reason to fail the whole export. */
+async function resolveIncludePath(path) {
+  const colonIndex = path.indexOf(':');
+  const scheme = colonIndex === -1 ? null : path.slice(0, colonIndex);
+  if (scheme === 'github') return githubAdapter.read(path.slice(colonIndex + 1));
+  if (scheme === 'webdav') return webdavAdapter.read(path.slice(colonIndex + 1));
+  return activeDiskAdapter().read(path);
+}
+
 /** Generates the export text for `format`/`scope` and triggers a
  *  download -- the actual terminal step of the export flow, closing
  *  the file menu and resetting its state back to the top level once
  *  done. */
-function performExport(format, scope) {
+async function performExport(format, scope) {
   const rawName = scope && typeof scope === 'object' ? scope.title : (state.documentId || 'export').replace(/\.[a-zA-Z0-9]+$/, '');
   const baseName = rawName.replace(/[\\/:*?"<>|]/g, '_').trim() || 'export';
-  if (format === 'ascii') {
-    downloadFile(baseName + '.txt', exportToAscii(state.doc, scope, getAsciiTextWidth(state.localVariables)), 'text/plain');
-  } else if (format === 'markdown') {
-    downloadFile(baseName + '.md', exportToMarkdown(state.doc, scope), 'text/markdown');
-  } else if (format === 'html') {
-    downloadFile(baseName + '.html', exportToHtml(state.doc, scope), 'text/html');
-  } else if (format === 'odt') {
-    downloadFile(baseName + '.odt', exportToOdt(state.doc, scope), 'application/vnd.oasis.opendocument.text');
-  } else if (format === 'docx') {
-    downloadFile(
-      baseName + '.docx',
-      exportToDocx(state.doc, scope),
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    );
+  if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt' || format === 'docx') {
+    const doc = await expandIncludes(state.doc, resolveIncludePath, parseOrg);
+    if (format === 'ascii') {
+      downloadFile(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(state.localVariables)), 'text/plain');
+    } else if (format === 'markdown') {
+      downloadFile(baseName + '.md', exportToMarkdown(doc, scope), 'text/markdown');
+    } else if (format === 'html') {
+      downloadFile(baseName + '.html', exportToHtml(doc, scope), 'text/html');
+    } else if (format === 'odt') {
+      downloadFile(baseName + '.odt', exportToOdt(doc, scope), 'application/vnd.oasis.opendocument.text');
+    } else {
+      downloadFile(
+        baseName + '.docx',
+        exportToDocx(doc, scope),
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      );
+    }
   } else {
     const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: state.documentId, doc: state.doc }];
     const icsScope = scope && typeof scope === 'object' ? scope : null;
@@ -6968,7 +6991,7 @@ function renderExportFlow() {
         menuButton('This file + Agenda Files', async () => {
           setStatus('Loading agenda files\u2026');
           await waitForAgendaFilesLoaded();
-          performExport('icalendar', 'agenda-files');
+          await performExport('icalendar', 'agenda-files');
         })
       );
     }
@@ -9393,6 +9416,8 @@ async function renderSettingsView(target = settingsRenderTarget) {
   otherFontHint.style.margin = '4px 0 8px';
   appearanceSection.appendChild(otherFontHint);
 
+  container.appendChild(renderQuickSettingsSection());
+
   const globalVarsSection = document.createElement('div');
   globalVarsSection.className = 'settings-section';
   container.appendChild(globalVarsSection);
@@ -9528,8 +9553,6 @@ async function renderSettingsView(target = settingsRenderTarget) {
     });
   };
   captureSection.appendChild(captureTextarea);
-
-  container.appendChild(renderQuickSettingsSection());
 
   const pendingSection = document.createElement('div');
   pendingSection.className = 'settings-section';
