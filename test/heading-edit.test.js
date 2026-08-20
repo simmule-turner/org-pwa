@@ -13,6 +13,7 @@ import {
   setPlainTimestampInTitle,
   insertTopLevelHeading,
   insertChildHeading,
+  insertHeadingAfter,
   removeHeading,
   moveHeadingUp,
   moveHeadingDown,
@@ -76,6 +77,28 @@ test('insertChildHeading is one level deeper and un-collapses the parent', () =>
   assert.equal(child.level, 2);
   assert.equal(parent.children[0], child);
   assert.equal(parent.collapsed, false);
+});
+
+test('THE FIX: insertHeadingAfter inserts a new SIBLING immediately after the given heading, at the same level -- real org\u2019s own org-insert-heading (M-RET), inserting relative to point rather than always at the document root', () => {
+  const doc = parseOrg('* A\n** A1\n* B\n');
+  const a1 = doc.children[0].children[0];
+  const sibling = insertHeadingAfter(doc, a1, { title: 'A2' });
+  assert.equal(sibling.level, 2, 'same level as A1, not top-level');
+  assert.equal(doc.children[0].children.length, 2);
+  assert.equal(doc.children[0].children[1], sibling);
+  assert.equal(doc.children[0].children[1].title, 'A2');
+});
+
+test('insertHeadingAfter passes through opts (e.g. a TODO keyword), matching insertTopLevelHeading/insertChildHeading\u2019s own convention', () => {
+  const doc = parseOrg('* A\n');
+  const sibling = insertHeadingAfter(doc, doc.children[0], { title: 'B', todo: 'TODO' });
+  assert.equal(sibling.todo, 'TODO');
+});
+
+test('insertHeadingAfter returns null if the heading can\u2019t be located in doc at all', () => {
+  const doc = parseOrg('* A\n');
+  const detached = createHeading({ level: 1, title: 'Not in doc' });
+  assert.equal(insertHeadingAfter(doc, detached, {}), null);
 });
 
 test('removeHeading removes a top-level heading', () => {
