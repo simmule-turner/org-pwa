@@ -193,6 +193,21 @@ export function insertChildHeading(parent, opts = {}, prepend = false) {
   return heading;
 }
 
+/**
+ * Inserts a new sibling heading immediately after `heading`, at the
+ * SAME level -- real org's own org-insert-heading (M-RET), which
+ * inserts relative to point, not always at the document root the
+ * way the "+" toolbar button's own insertTopLevelHeading does. No-op
+ * (returns null) if `heading` can't be located in `doc` at all.
+ */
+export function insertHeadingAfter(doc, heading, opts = {}) {
+  const located = findContainer(doc, heading);
+  if (!located) return null;
+  const sibling = createHeading({ level: heading.level, ...opts });
+  located.container.splice(located.index + 1, 0, sibling);
+  return sibling;
+}
+
 /** Removes `heading` from wherever it lives in `doc`. Used by the UI to
  *  discard a just-created heading if the user backs out without typing a
  *  title, rather than leaving an empty, unnamed heading behind. */
