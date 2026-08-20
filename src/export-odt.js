@@ -27,6 +27,7 @@ import { resolveTodoSequence } from './todo-cycle.js';
 import { resolveLinkTarget } from './link-resolve.js';
 import { createZip } from './zip-writer.js';
 import { isWidthCookieRow } from './table-cookies.js';
+import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
 
 // ---- escaping -------------------------------------------------------------
 
@@ -41,6 +42,18 @@ function escapeXml(text) {
 let docForLinkResolutionOdt = null;
 let headingIdMapOdt = new Map();
 let footnoteCounterOdt = 0;
+let sectionNumbersOdt = [];
+let numberingEnabledOdt = true;
+
+function nextSectionNumberOdt(level) {
+  const newNumbers = sectionNumbersOdt.slice(0, level);
+  for (let i = 0; i < level - 1; i++) {
+    if (newNumbers[i] === undefined) newNumbers[i] = 1;
+  }
+  newNumbers[level - 1] = (newNumbers[level - 1] || 0) + 1;
+  sectionNumbersOdt = newNumbers;
+  return sectionNumbersOdt.join('.');
+}
 
 function slugifyOdt(title) {
   const slug = String(title || '')
@@ -267,6 +280,7 @@ function renderHeadingLineOdt(heading, level, doneKeywords) {
   const clamped = clampHeadingLevelOdt(level);
   const id = headingIdMapOdt.get(heading);
   const parts = [];
+  if (numberingEnabledOdt) parts.push(`${nextSectionNumberOdt(level)}.`);
   if (heading.todo) {
     const style = doneKeywords.includes(heading.todo) ? 'TodoKeywordDone' : 'TodoKeywordActive';
     parts.push(`<text:span text:style-name="${style}">${escapeXml(heading.todo)}</text:span>`);
@@ -341,6 +355,9 @@ function stylesXml() {
     '<style:default-style style:family="paragraph"><style:text-properties style:font-name="Liberation Sans" fo:font-size="11pt"/></style:default-style>' +
     '<style:style style:name="Standard" style:family="paragraph"/>' +
     '<style:style style:name="Heading" style:family="paragraph"><style:text-properties fo:font-weight="bold"/></style:style>' +
+    '<style:style style:name="Title" style:family="paragraph"><style:text-properties fo:font-size="26pt" fo:font-weight="bold"/></style:style>' +
+    '<style:style style:name="Subtitle" style:family="paragraph"><style:text-properties fo:font-size="12pt" fo:color="#666666"/></style:style>' +
+    '<style:style style:name="Creator" style:family="paragraph"><style:text-properties fo:font-size="9pt" fo:color="#999999" fo:font-style="italic"/></style:style>' +
     headingStyles +
     '<style:style style:name="Quote" style:family="paragraph"><style:paragraph-properties fo:margin-left="0.5in"/><style:text-properties fo:font-style="italic"/></style:style>' +
     '<style:style style:name="Code" style:family="text"><style:text-properties style:font-name="Liberation Mono"/></style:style>' +
@@ -361,13 +378,15 @@ function stylesXml() {
   );
 }
 
-function metaXml(title) {
+function metaXml(title, author, date) {
   return (
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<office:document-meta xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" ' +
     'xmlns:dc="http://purl.org/dc/elements/1.1/" office:version="1.2">\n' +
     '<office:meta>' +
     `<dc:title>${escapeXml(title)}</dc:title>` +
+    (author ? `<dc:creator>${escapeXml(author)}</dc:creator>` : '') +
+    (date ? `<dc:date>${escapeXml(date)}</dc:date>` : '') +
     '<meta:generator xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0">org-pwa</meta:generator>' +
     '</office:meta>\n' +
     '</office:document-meta>\n'
@@ -397,29 +416,92 @@ function contentXml(bodyXml) {
  * hand to a download function. Same by-reference `scope` convention
  * as exportToHtml/exportToMarkdown.
  */
+/** Builds one level of the ToC's own nested list -- a real ODF
+ *  <text:list>, linking each entry to the same bookmark
+ *  renderHeadingLineOdt already creates for that heading. */
+function buildTocListOdt(headings, level, maxDepth, numberingEnabled, numbers) {
+  if (level > maxDepth || headings.length === 0) return '';
+  const items = headings
+    .map((heading) => {
+      numbers.length = level;
+      numbers[level - 1] = (numbers[level - 1] || 0) + 1;
+      const number = numbers.slice(0, level).join('.');
+      const id = headingIdMapOdt.get(heading);
+      const label = (numberingEnabled ? `${number}. ` : '') + (renderTextOdt(heading.title) || '(untitled)');
+      const link = id ? `<text:a xlink:type="simple" xlink:href="#${escapeXml(id)}">${label}</text:a>` : label;
+      const childList = buildTocListOdt(heading.children || [], level + 1, maxDepth, numberingEnabled, numbers);
+      return `<text:list-item><text:p>${link}</text:p>${childList}</text:list-item>`;
+    })
+    .join('');
+  return `<text:list text:style-name="UnorderedList">${items}</text:list>`;
+}
+
+/** Builds the full Table of Contents block, or '' when `toc` is
+ *  false, or fewer than two headings are actually visible at `toc`'s
+ *  own depth limit -- matches buildTocHtml's own conditions exactly. */
+function buildTocOdt(roots, toc, numberingEnabled) {
+  if (!toc) return '';
+  const maxDepth = typeof toc === 'number' ? toc : Infinity;
+  let visibleCount = 0;
+  (function countVisible(headings, level) {
+    if (level > maxDepth) return;
+    for (const heading of headings) {
+      visibleCount++;
+      countVisible(heading.children || [], level + 1);
+    }
+  })(roots, 1);
+  if (visibleCount < 2) return '';
+  const list = buildTocListOdt(roots, 1, maxDepth, numberingEnabled, []);
+  return `<text:p text:style-name="Heading">Table of Contents</text:p>${list}`;
+}
+
 export function exportToOdt(doc, scope = null) {
   docForLinkResolutionOdt = doc;
   headingIdMapOdt = new Map();
   footnoteCounterOdt = 0;
+  sectionNumbersOdt = [];
+  const options = parseExportOptions(doc);
+  numberingEnabledOdt = options.num;
 
   const roots = scope ? [scope] : doc.children || [];
   assignHeadingIdsOdt(roots, new Set());
   const levelOffset = scope ? scope.level - 1 : 0;
   const { doneKeywords } = resolveTodoSequence(doc);
   const out = [];
+
+  const titleSource = scope ? scope.title : (doc.keywords || []).find((k) => k.key === 'TITLE');
+  const title = scope ? scope.title : titleSource ? titleSource.value : 'Untitled';
+  const author = !scope && options.author ? getDocAuthor(doc) : null;
+  const date = !scope && options.date ? getDocDate(doc) : null;
+
+  if (!scope && getDocTitle(doc)) {
+    out.push(`<text:p text:style-name="Title">${escapeXml(getDocTitle(doc))}</text:p>`);
+    if (author) out.push(`<text:p text:style-name="Subtitle">${escapeXml(author)}</text:p>`);
+    if (date) out.push(`<text:p text:style-name="Subtitle">${escapeXml(date)}</text:p>`);
+  }
+  if (!scope) {
+    const toc = buildTocOdt(roots, options.toc, options.num);
+    if (toc) out.push(toc);
+    for (const node of doc.body || []) {
+      const rendered = renderBodyNodeOdt(node);
+      if (rendered) out.push(rendered);
+    }
+  }
+
   for (const heading of roots) {
     renderHeadingOdt(heading, levelOffset, doneKeywords, out);
   }
 
-  const titleSource = scope ? scope.title : (doc.keywords || []).find((k) => k.key === 'TITLE');
-  const title = scope ? scope.title : titleSource ? titleSource.value : 'Untitled';
+  if (!scope && options.creator) {
+    out.push('<text:p text:style-name="Creator">Generated by org-pwa</text:p>');
+  }
 
   const zip = createZip([
     { name: 'mimetype', content: MIMETYPE },
     { name: 'META-INF/manifest.xml', content: MANIFEST_XML },
     { name: 'content.xml', content: contentXml(out.join('')) },
     { name: 'styles.xml', content: stylesXml() },
-    { name: 'meta.xml', content: metaXml(title) },
+    { name: 'meta.xml', content: metaXml(title, author, date) },
   ]);
 
   return zip;

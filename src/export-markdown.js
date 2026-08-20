@@ -36,6 +36,7 @@
 import { parseInline, stripLineBreakMarker } from './inline-markup.js';
 import { resolveLinkTarget } from './link-resolve.js';
 import { isWidthCookieRow } from './table-cookies.js';
+import { parseExportOptions } from './export-options.js';
 
 // Footnote definitions accumulated during a single exportToMarkdown()
 // call (module-level, reset at the start of each call): GFM has no
@@ -351,6 +352,52 @@ function renderHeadingMd(heading, levelOffset, out) {
  * convention every other heading-targeting function in this codebase
  * already uses (e.g. archiveHeadingToLocation).
  */
+/** Builds one level of the ToC's own nested list -- always recurses
+ *  with level+1, the actual list-building logic (see buildTocMd below
+ *  for the one-time wrapper that decides whether to call this at
+ *  all). */
+function buildTocListMd(headings, level, maxDepth, numberingEnabled) {
+  if (level > maxDepth || headings.length === 0) return '';
+  const indent = '  '.repeat(level - 1);
+  const marker = numberingEnabled ? (i) => `${i + 1}.` : () => '-';
+  const lines = [];
+  headings.forEach((heading, i) => {
+    const slug = headingSlugMapMd.get(heading);
+    const label = renderTextMd(heading.title) || '(untitled)';
+    lines.push(`${indent}${marker(i)} [${label}](#${slug || ''})`);
+    const childList = buildTocListMd(heading.children || [], level + 1, maxDepth, numberingEnabled);
+    if (childList) lines.push(childList);
+  });
+  return lines.join('\n');
+}
+
+/** Builds the Table of Contents block for Markdown export -- a nested
+ *  list of links to each heading's own existing anchor slug
+ *  (headingSlugMapMd, already built by assignHeadingSlugsMd for
+ *  internal-link resolution; reused directly here). Real org's own
+ *  actual ox-md backend (confirmed directly against real Emacs org-
+ *  mode) has NO per-heading number prefix in the body regardless of
+ *  num: -- what num: actually controls for Markdown specifically is
+ *  whether the ToC's own list is ordered ("1.", "2.", ...) or
+ *  unordered ("-"), not whether headings are numbered at all (they
+ *  never are). Returns '' when `toc` is false, or fewer than two
+ *  headings are visible at `toc`'s own depth limit. */
+function buildTocMd(headings, toc, numberingEnabled) {
+  if (!toc) return '';
+  const maxDepth = typeof toc === 'number' ? toc : Infinity;
+  let visibleCount = 0;
+  (function countVisible(hs, lvl) {
+    if (lvl > maxDepth) return;
+    for (const h of hs) {
+      visibleCount++;
+      countVisible(h.children || [], lvl + 1);
+    }
+  })(headings, 1);
+  if (visibleCount < 2) return '';
+  const body = buildTocListMd(headings, 1, maxDepth, numberingEnabled);
+  return '# Table of Contents\n\n' + body;
+}
+
 export function exportToMarkdown(doc, scope = null) {
   footnoteDefinitionsMd = [];
   anonymousFootnoteCounterMd = 0;
@@ -361,6 +408,17 @@ export function exportToMarkdown(doc, scope = null) {
   assignHeadingSlugsMd(roots, new Set());
   const levelOffset = scope ? scope.level - 1 : 0;
   const out = [];
+
+  if (!scope) {
+    const options = parseExportOptions(doc);
+    const toc = buildTocMd(roots, options.toc, options.num);
+    if (toc) out.push(toc);
+    for (const node of doc.body || []) {
+      const rendered = renderBodyNodeMd(node);
+      if (rendered) out.push(rendered);
+    }
+  }
+
   for (const heading of roots) {
     renderHeadingMd(heading, levelOffset, out);
   }

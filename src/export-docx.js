@@ -35,6 +35,7 @@ import { resolveTodoSequence } from './todo-cycle.js';
 import { resolveLinkTarget } from './link-resolve.js';
 import { createZip } from './zip-writer.js';
 import { isWidthCookieRow } from './table-cookies.js';
+import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
 
 // ---- escaping -------------------------------------------------------------
 
@@ -63,6 +64,18 @@ let footnoteCounterDocx = 0;
 let footnoteEntriesDocx = [];
 let collectedHyperlinksDocx = []; // [{ id, target }] -- relationship entries, assigned in encounter order
 let relationshipCounterDocx = 0;
+let sectionNumbersDocx = [];
+let numberingEnabledDocx = true;
+
+function nextSectionNumberDocx(level) {
+  const newNumbers = sectionNumbersDocx.slice(0, level);
+  for (let i = 0; i < level - 1; i++) {
+    if (newNumbers[i] === undefined) newNumbers[i] = 1;
+  }
+  newNumbers[level - 1] = (newNumbers[level - 1] || 0) + 1;
+  sectionNumbersDocx = newNumbers;
+  return sectionNumbersDocx.join('.');
+}
 
 function slugifyDocx(title) {
   const slug = String(title || '')
@@ -338,6 +351,7 @@ function renderHeadingLineDocx(heading, level, doneKeywords) {
   const clamped = clampHeadingLevelDocx(level);
   const id = headingIdMapDocx.get(heading);
   const runs = [];
+  if (numberingEnabledDocx) runs.push(runXml(`${nextSectionNumberDocx(level)}. `));
   if (heading.todo) {
     const color = doneKeywords.includes(heading.todo) ? '2f8f3f' : 'a83232';
     runs.push(runXml(heading.todo + ' ', buildRPr(['<w:b/>', `<w:color w:val="${color}"/>`])));
@@ -481,6 +495,12 @@ function stylesXml() {
     '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/></w:rPr></w:rPrDefault></w:docDefaults>' +
     '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>' +
     '<w:style w:type="paragraph" w:styleId="Standard"><w:name w:val="Standard"/><w:basedOn w:val="Normal"/></w:style>' +
+    '<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/>' +
+    '<w:pPr><w:spacing w:after="60"/></w:pPr><w:rPr><w:b/><w:sz w:val="52"/></w:rPr></w:style>' +
+    '<w:style w:type="paragraph" w:styleId="Subtitle"><w:name w:val="Subtitle"/><w:basedOn w:val="Normal"/>' +
+    '<w:rPr><w:color w:val="666666"/><w:sz w:val="24"/></w:rPr></w:style>' +
+    '<w:style w:type="paragraph" w:styleId="Creator"><w:name w:val="Creator"/><w:basedOn w:val="Normal"/>' +
+    '<w:rPr><w:i/><w:color w:val="999999"/><w:sz w:val="18"/></w:rPr></w:style>' +
     headingStyles +
     '<w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="Normal"/>' +
     '<w:pPr><w:ind w:left="720"/></w:pPr><w:rPr><w:i/></w:rPr></w:style>' +
@@ -503,12 +523,14 @@ function stylesXml() {
   );
 }
 
-function coreXml(title) {
+function coreXml(title, author, date) {
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
     '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" ' +
     'xmlns:dc="http://purl.org/dc/elements/1.1/">' +
     `<dc:title>${escapeXml(title)}</dc:title>` +
+    (author ? `<dc:creator>${escapeXml(author)}</dc:creator>` : '') +
+    (date ? `<dc:date>${escapeXml(date)}</dc:date>` : '') +
     '<cp:lastModifiedBy>org-pwa</cp:lastModifiedBy>' +
     '</cp:coreProperties>\n'
   );
@@ -533,6 +555,49 @@ function documentXml(bodyXml) {
  * to hand to a download function. Same by-reference `scope`
  * convention as exportToOdt/exportToHtml/exportToMarkdown.
  */
+/** Builds one level of the ToC's own entries -- a "ListParagraph"
+ *  paragraph per heading, indented per level, linking via a real
+ *  <w:hyperlink w:anchor="..."> to the same bookmark
+ *  renderHeadingLineDocx already creates for that heading. */
+function buildTocListDocx(headings, level, maxDepth, numberingEnabled, numbers, out) {
+  if (level > maxDepth) return;
+  for (const heading of headings) {
+    numbers.length = level;
+    numbers[level - 1] = (numbers[level - 1] || 0) + 1;
+    const number = numbers.slice(0, level).join('.');
+    const id = headingIdMapDocx.get(heading);
+    const linkedRuns = renderTextDocx(heading.title) || runXml('(untitled)');
+    const numberRun = numberingEnabled ? runXml(`${number}. `) : '';
+    const inner = numberRun + linkedRuns;
+    const body = id
+      ? `<w:hyperlink w:anchor="${escapeXml(id)}">${inner}</w:hyperlink>`
+      : inner;
+    const indent = (level - 1) * 360; // twentieths of a point, ~0.25in per level
+    out.push(`<w:p><w:pPr><w:pStyle w:val="ListParagraph"/><w:ind w:left="${indent}"/></w:pPr>${body}</w:p>`);
+    buildTocListDocx(heading.children || [], level + 1, maxDepth, numberingEnabled, numbers, out);
+  }
+}
+
+/** Builds the full Table of Contents block, or '' when `toc` is
+ *  false, or fewer than two headings are actually visible at `toc`'s
+ *  own depth limit -- matches buildTocHtml's own conditions exactly. */
+function buildTocDocx(roots, toc, numberingEnabled) {
+  if (!toc) return '';
+  const maxDepth = typeof toc === 'number' ? toc : Infinity;
+  let visibleCount = 0;
+  (function countVisible(headings, level) {
+    if (level > maxDepth) return;
+    for (const heading of headings) {
+      visibleCount++;
+      countVisible(heading.children || [], level + 1);
+    }
+  })(roots, 1);
+  if (visibleCount < 2) return '';
+  const out = [`<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr>${runXml('Table of Contents')}</w:p>`];
+  buildTocListDocx(roots, 1, maxDepth, numberingEnabled, [], out);
+  return out.join('');
+}
+
 export function exportToDocx(doc, scope = null) {
   docForLinkResolutionDocx = doc;
   headingIdMapDocx = new Map();
@@ -540,23 +605,47 @@ export function exportToDocx(doc, scope = null) {
   footnoteEntriesDocx = [];
   collectedHyperlinksDocx = [];
   relationshipCounterDocx = 0;
+  sectionNumbersDocx = [];
+  const options = parseExportOptions(doc);
+  numberingEnabledDocx = options.num;
 
   const roots = scope ? [scope] : doc.children || [];
   assignHeadingIdsDocx(roots, new Set());
   const levelOffset = scope ? scope.level - 1 : 0;
   const { doneKeywords } = resolveTodoSequence(doc);
   const out = [];
+
+  const titleSource = scope ? scope.title : (doc.keywords || []).find((k) => k.key === 'TITLE');
+  const title = scope ? scope.title : titleSource ? titleSource.value : 'Untitled';
+  const author = !scope && options.author ? getDocAuthor(doc) : null;
+  const date = !scope && options.date ? getDocDate(doc) : null;
+
+  if (!scope && getDocTitle(doc)) {
+    out.push(`<w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr>${runXml(getDocTitle(doc))}</w:p>`);
+    if (author) out.push(`<w:p><w:pPr><w:pStyle w:val="Subtitle"/></w:pPr>${runXml(author)}</w:p>`);
+    if (date) out.push(`<w:p><w:pPr><w:pStyle w:val="Subtitle"/></w:pPr>${runXml(date)}</w:p>`);
+  }
+  if (!scope) {
+    const toc = buildTocDocx(roots, options.toc, options.num);
+    if (toc) out.push(toc);
+    for (const node of doc.body || []) {
+      const rendered = renderBodyNodeDocx(node);
+      if (rendered) out.push(rendered);
+    }
+  }
+
   for (const heading of roots) {
     renderHeadingDocx(heading, levelOffset, doneKeywords, out);
   }
 
-  const titleSource = scope ? scope.title : (doc.keywords || []).find((k) => k.key === 'TITLE');
-  const title = scope ? scope.title : titleSource ? titleSource.value : 'Untitled';
+  if (!scope && options.creator) {
+    out.push(`<w:p><w:pPr><w:pStyle w:val="Creator"/></w:pPr>${runXml('Generated by org-pwa')}</w:p>`);
+  }
 
   const zip = createZip([
     { name: '[Content_Types].xml', content: CONTENT_TYPES_XML },
     { name: '_rels/.rels', content: ROOT_RELS_XML },
-    { name: 'docProps/core.xml', content: coreXml(title) },
+    { name: 'docProps/core.xml', content: coreXml(title, author, date) },
     { name: 'word/document.xml', content: documentXml(out.join('')) },
     { name: 'word/styles.xml', content: stylesXml() },
     { name: 'word/numbering.xml', content: numberingXml() },

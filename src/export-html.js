@@ -25,6 +25,7 @@ import { resolveLinkTarget } from './link-resolve.js';
 import { isWidthCookieRow } from './table-cookies.js';
 import { renderMathHtml } from './math-render.js';
 import { KATEX_EXPORT_CSS } from './katex-export-css.js';
+import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
 
 // Footnote definitions accumulated during a single exportToHtml() call
 // (module-level, reset at the start of each call) -- collected the same
@@ -51,6 +52,26 @@ let anonymousFootnoteCounterHtml = 0;
 // has nowhere to anchor to, even once correctly resolved).
 let docForLinkResolutionHtml = null;
 let headingIdMapHtml = new Map();
+
+// Section numbering state -- reset at the start of each exportToHtml()
+// call, same convention as export-ascii.js's own sectionNumbersAscii/
+// numberingEnabledAscii (see that file's own docs). num: and toc: are
+// genuinely INDEPENDENT (confirmed directly against real Emacs org-
+// mode) -- this only governs whether headings get numbered at all;
+// the Table of Contents' own depth is a separate concern entirely,
+// handled by buildTocHtml below.
+let sectionNumbersHtml = [];
+let numberingEnabledHtml = true;
+
+function nextSectionNumberHtml(level) {
+  const newNumbers = sectionNumbersHtml.slice(0, level);
+  for (let i = 0; i < level - 1; i++) {
+    if (newNumbers[i] === undefined) newNumbers[i] = 1;
+  }
+  newNumbers[level - 1] = (newNumbers[level - 1] || 0) + 1;
+  sectionNumbersHtml = newNumbers;
+  return sectionNumbersHtml.join('.');
+}
 
 /** Turns a heading title into a URL-fragment-safe id: lowercased,
  *  non-alphanumeric runs collapsed to a single hyphen, leading/
@@ -290,6 +311,9 @@ function renderHeadingLineHtml(heading, level, doneKeywords) {
   const id = headingIdMapHtml.get(heading);
   const idAttr = id ? ` id="${escapeHtml(id)}"` : '';
   const parts = [];
+  if (numberingEnabledHtml) {
+    parts.push(`<span class="section-number-${level}">${nextSectionNumberHtml(level)}.</span>`);
+  }
   if (heading.todo) {
     const cls = doneKeywords.includes(heading.todo) ? 'todo-keyword done' : 'todo-keyword';
     parts.push(`<span class="${cls}">${escapeHtml(heading.todo)}</span>`);
@@ -352,6 +376,50 @@ const PRINT_CSS = `
   }
 `;
 
+/** Builds one level of the ToC's own nested `<ul>` -- recurses
+ *  directly over the heading tree (rather than a flat list with
+ *  manual depth-tracking, which is fragile to get right), stopping
+ *  once `level` exceeds `maxDepth`. `numbers` is a single shared
+ *  array threaded through the whole recursion, the same convention
+ *  export-ascii.js's own collectHeadingsForToc uses. */
+function buildTocListHtml(headings, level, maxDepth, numberingEnabled, numbers) {
+  if (level > maxDepth || headings.length === 0) return '';
+  const items = [];
+  for (const heading of headings) {
+    numbers.length = level;
+    numbers[level - 1] = (numbers[level - 1] || 0) + 1;
+    const number = numbers.slice(0, level).join('.');
+    const id = headingIdMapHtml.get(heading);
+    const href = id ? `#${escapeHtml(id)}` : '#';
+    const label = numberingEnabled ? `${number}. ${renderTextHtml(heading.title) || '(untitled)'}` : renderTextHtml(heading.title) || '(untitled)';
+    const childList = buildTocListHtml(heading.children || [], level + 1, maxDepth, numberingEnabled, numbers);
+    items.push(`<li><a href="${href}">${label}</a>${childList}</li>`);
+  }
+  return `<ul>${items.join('')}</ul>`;
+}
+
+/** Builds the full Table of Contents block, or '' when `toc` is
+ *  false, or fewer than two headings are actually visible at `toc`'s
+ *  own depth limit (nothing worth a table of contents for) -- matches
+ *  export-ascii.js's own renderToc, adapted for HTML's own nested-
+ *  list structure (real org's own actual ToC shape) instead of a
+ *  flat, dot-leader-indented text listing. */
+function buildTocHtml(roots, toc, numberingEnabled) {
+  if (!toc) return '';
+  const maxDepth = typeof toc === 'number' ? toc : Infinity;
+  let visibleCount = 0;
+  (function countVisible(headings, level) {
+    if (level > maxDepth) return;
+    for (const heading of headings) {
+      visibleCount++;
+      countVisible(heading.children || [], level + 1);
+    }
+  })(roots, 1);
+  if (visibleCount < 2) return '';
+  const list = buildTocListHtml(roots, 1, maxDepth, numberingEnabled, []);
+  return `<div id="table-of-contents"><h2>Table of Contents</h2>${list}</div>`;
+}
+
 /**
  * Exports `doc` (or, if `scope` is given, just that heading and its
  * descendants) to a complete standalone HTML document string. `scope`
@@ -364,12 +432,33 @@ export function exportToHtml(doc, scope = null) {
   anonymousFootnoteCounterHtml = 0;
   docForLinkResolutionHtml = doc;
   headingIdMapHtml = new Map();
+  sectionNumbersHtml = [];
+  const options = parseExportOptions(doc);
+  numberingEnabledHtml = options.num;
 
   const roots = scope ? [scope] : doc.children || [];
   assignHeadingIdsHtml(roots, new Set());
   const levelOffset = scope ? scope.level - 1 : 0;
   const { doneKeywords } = resolveTodoSequence(doc);
   const out = [];
+
+  if (!scope) {
+    const docTitle = getDocTitle(doc);
+    if (docTitle) {
+      out.push(`<h1 class="title">${escapeHtml(docTitle)}</h1>`);
+      const author = options.author ? getDocAuthor(doc) : null;
+      const date = options.date ? getDocDate(doc) : null;
+      if (author) out.push(`<p class="author">${escapeHtml(author)}</p>`);
+      if (date) out.push(`<p class="date">${escapeHtml(date)}</p>`);
+    }
+    const toc = buildTocHtml(roots, options.toc, options.num);
+    if (toc) out.push(toc);
+    for (const node of doc.body || []) {
+      const rendered = renderBodyNodeHtml(node);
+      if (rendered) out.push(rendered);
+    }
+  }
+
   for (const heading of roots) {
     renderHeadingHtml(heading, levelOffset, doneKeywords, out);
   }
@@ -385,6 +474,10 @@ export function exportToHtml(doc, scope = null) {
       );
     }
     out.push(`<div class="footnotes"><strong>Footnotes</strong><ol>${items.join('')}</ol></div>`);
+  }
+
+  if (!scope && options.creator) {
+    out.push('<p class="creator">Generated by org-pwa</p>');
   }
 
   const titleSource = scope ? scope.title : (doc.keywords || []).find((k) => k.key === 'TITLE');
