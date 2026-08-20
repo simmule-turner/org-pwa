@@ -41,8 +41,8 @@ test('exporting a subtree makes the selected heading an h1, shifting descendants
   const doc = parseOrg('* Top\n** Middle\n*** Deep');
   const middle = doc.children[0].children[0];
   const out = exportToHtml(doc, middle);
-  assert.match(out, /<h1[^>]*>Middle<\/h1>/);
-  assert.match(out, /<h2[^>]*>Deep<\/h2>/);
+  assert.match(out, /<h1[^>]*>.*Middle<\/h1>/);
+  assert.match(out, /<h2[^>]*>.*Deep<\/h2>/);
   assert.ok(!out.includes('Top'));
 });
 
@@ -346,7 +346,7 @@ test('CUSTOM_ID always wins over a title-based slug for the SAME heading, matchi
 
 test('a whole realistic document with multiple internal links (a Contents/TOC-style section) resolves every single one', () => {
   const doc = parseOrg(
-    '* Contents\n[[#section-a][Section A]]\n[[#section-b][Section B]]\n* Section A\n:PROPERTIES:\n:CUSTOM_ID: section-a\n:END:\nContent A.\n* Section B\n:PROPERTIES:\n:CUSTOM_ID: section-b\n:END:\nContent B.\n'
+    '#+OPTIONS: toc:nil\n* Contents\n[[#section-a][Section A]]\n[[#section-b][Section B]]\n* Section A\n:PROPERTIES:\n:CUSTOM_ID: section-a\n:END:\nContent A.\n* Section B\n:PROPERTIES:\n:CUSTOM_ID: section-b\n:END:\nContent B.\n'
   );
   const html = exportToHtml(doc);
   const hrefs = [...html.matchAll(/href="(#[^"]+)"/g)].map((m) => m[1]);
@@ -479,4 +479,121 @@ test('THE FIX: a #+BEGIN_QUOTE block also correctly handles a multi-line LaTeX f
     assert.ok(out.includes('<blockquote>'));
     assert.ok(out.includes('class="katex"'));
   });
+});
+
+// ---- THE FIX: #+TITLE / #+AUTHOR / #+DATE / #+OPTIONS -------------------------
+
+test('THE EXACT REQUEST: #+TITLE renders as a visible <h1 class="title"> in the body, not just the <title> tag', () => {
+  const doc = parseOrg('#+TITLE: My Test Document\n* Heading\nText.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<h1 class="title">My Test Document<\/h1>/);
+});
+
+test('#+AUTHOR / #+DATE render right after the title', () => {
+  const doc = parseOrg('#+TITLE: T\n#+AUTHOR: Jane Doe\n#+DATE: 2026-01-15\n* Heading\nText.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<p class="author">Jane Doe<\/p>/);
+  assert.match(html, /<p class="date">2026-01-15<\/p>/);
+});
+
+test('THE FIX: author:nil / date:nil each independently suppress their own field', () => {
+  const doc = parseOrg('#+TITLE: T\n#+AUTHOR: Jane Doe\n#+DATE: 2026-01-15\n#+OPTIONS: author:nil\n* Heading\nText.\n');
+  const html = exportToHtml(doc);
+  assert.ok(!html.includes('Jane Doe'));
+  assert.ok(html.includes('2026-01-15'));
+});
+
+test('a document with no #+TITLE shows no title/author/date block at all', () => {
+  const doc = parseOrg('* Heading\nText.\n');
+  const html = exportToHtml(doc);
+  assert.ok(!html.includes('class="title"'));
+});
+
+test('THE EXACT REQUEST: section numbers render as real org\u2019s own confirmed <span class="section-number-N"> convention', () => {
+  const doc = parseOrg('* A\n** B\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<span class="section-number-1">1\.<\/span> A/);
+  assert.match(html, /<span class="section-number-2">1\.1\.<\/span> B/);
+});
+
+test('#+OPTIONS: num:nil removes section numbers entirely', () => {
+  const doc = parseOrg('#+OPTIONS: num:nil\n* A\n** B\n');
+  const html = exportToHtml(doc);
+  assert.ok(!html.includes('section-number'));
+});
+
+test('THE EXACT REQUEST: a document with 2+ headings gets an auto-generated Table of Contents, matching real Emacs org-mode\u2019s own confirmed <div id="table-of-contents"> structure', () => {
+  const doc = parseOrg('* First\n* Second\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<div id="table-of-contents"><h2>Table of Contents<\/h2>/);
+  assert.match(html, /<a href="#first">1\. First<\/a>/);
+  assert.match(html, /<a href="#second">2\. Second<\/a>/);
+});
+
+test('a document with only one heading gets no Table of Contents -- nothing worth listing', () => {
+  const doc = parseOrg('* Only\nText.\n');
+  const html = exportToHtml(doc);
+  assert.ok(!html.includes('table-of-contents'));
+});
+
+test('toc:nil disables the Table of Contents entirely, independent of num:', () => {
+  const doc = parseOrg('#+OPTIONS: toc:nil\n* First\n* Second\n');
+  const html = exportToHtml(doc);
+  assert.ok(!html.includes('table-of-contents'));
+  assert.ok(html.includes('section-number'), 'numbering is untouched by toc:nil');
+});
+
+test('THE EXACT REQUEST: toc:1 limits the ToC listing to headers 1 only, while section numbering throughout the body still goes to full depth', () => {
+  const doc = parseOrg('#+OPTIONS: toc:1\n* A\n** B\n*** C\n* D\n');
+  const html = exportToHtml(doc);
+  const tocBlock = html.match(/<div id="table-of-contents">.*?<\/div>/s)[0];
+  assert.ok(tocBlock.includes('>1. A<'));
+  assert.ok(tocBlock.includes('>2. D<'));
+  assert.ok(!tocBlock.includes('B'));
+  assert.ok(html.includes('1.1.1.'), 'still fully numbered in the body');
+});
+
+test('the Table of Contents is properly nested (a <ul> inside the parent <li> for a child heading)', () => {
+  const doc = parseOrg('* A\n** B\n* C\n');
+  const html = exportToHtml(doc);
+  const tocBlock = html.match(/<div id="table-of-contents">.*?<\/div>/s)[0];
+  assert.match(tocBlock, /<li><a href="#a">1\. A<\/a><ul><li><a href="#b">1\.1\. B<\/a><\/li><\/ul><\/li>/);
+});
+
+test('THE EXACT REQUEST: creator:nil is the default -- no "Generated by" notice unless explicitly enabled', () => {
+  const doc = parseOrg('#+TITLE: T\n* Heading\nText.\n');
+  const html = exportToHtml(doc);
+  assert.ok(!html.includes('Generated by'));
+});
+
+test('creator:t adds a "Generated by org-pwa" notice', () => {
+  const doc = parseOrg('#+TITLE: T\n#+OPTIONS: creator:t\n* Heading\nText.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<p class="creator">Generated by org-pwa<\/p>/);
+});
+
+test('exporting a scoped subtree shows no title/author/date/ToC/creator block, but section numbering (independent of scope) still applies', () => {
+  const doc = parseOrg('#+TITLE: Whole Doc\n#+OPTIONS: creator:t\n* Target\n** Child\n* Other\n');
+  const target = doc.children[0];
+  const html = exportToHtml(doc, target);
+  assert.ok(!html.includes('class="title"'));
+  assert.ok(!html.includes('table-of-contents'));
+  assert.ok(!html.includes('Generated by'));
+  assert.ok(html.includes('section-number'), 'numbering still applies even for a scoped export');
+});
+
+// ---- THE FIX: document-level preamble body rendering (doc.body) ---------------
+
+test('THE FIX: a document-level preamble body (doc.body, text before the first heading) now renders in HTML export -- previously never rendered at all, needed for #+INCLUDE\u2019s own block-type variant', () => {
+  const doc = parseOrg('#+TITLE: T\nSome preamble text.\n\n* Heading\nHeading text.\n');
+  const html = exportToHtml(doc);
+  assert.ok(html.includes('Some preamble text.'));
+  assert.ok(html.indexOf('Some preamble text.') < html.indexOf('id="heading"'), 'preamble renders before the actual heading (not the title, which is also an <h1>)');
+});
+
+test('a scoped subtree export shows no document-level preamble', () => {
+  const doc = parseOrg('Preamble text.\n\n* Target\nText.\n* Other\nText.\n');
+  const target = doc.children[0];
+  const html = exportToHtml(doc, target);
+  assert.ok(!html.includes('Preamble text.'));
 });

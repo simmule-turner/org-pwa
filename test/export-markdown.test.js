@@ -437,3 +437,67 @@ test('the "\\\\" marker itself is stripped, never leaking into the Markdown outp
   const out = exportToMarkdown(doc);
   assert.doesNotMatch(out, /text\\\\\\\\/);
 });
+
+// ---- THE FIX: #+OPTIONS: toc:/num: (Table of Contents) -----------------------
+
+test('THE EXACT REQUEST: a document with 2+ headings gets an auto-generated Table of Contents, linking to each heading\u2019s own existing GFM slug anchor', () => {
+  const doc = parseOrg('* First\n* Second\n');
+  const out = exportToMarkdown(doc);
+  assert.ok(out.startsWith('# Table of Contents'));
+  assert.match(out, /\[First\]\(#first\)/);
+  assert.match(out, /\[Second\]\(#second\)/);
+});
+
+test('a document with only one heading gets no Table of Contents', () => {
+  const doc = parseOrg('* Only\nText.\n');
+  const out = exportToMarkdown(doc);
+  assert.ok(!out.includes('Table of Contents'));
+});
+
+test('toc:nil disables the Table of Contents entirely', () => {
+  const doc = parseOrg('#+OPTIONS: toc:nil\n* First\n* Second\n');
+  const out = exportToMarkdown(doc);
+  assert.ok(!out.includes('Table of Contents'));
+});
+
+test('THE FIX: real org\u2019s own ox-md backend has no per-heading number prefix in the body (confirmed directly against real Emacs org-mode) -- num: instead controls whether the ToC\u2019s own list is ordered or unordered', () => {
+  const doc = parseOrg('#+OPTIONS: num:nil\n* First\n* Second\n');
+  const out = exportToMarkdown(doc);
+  assert.ok(out.includes('- [First](#first)'), 'unordered list style');
+  assert.ok(!out.includes('1. [First]'));
+  assert.ok(out.includes('# First'), 'heading itself is never number-prefixed either way');
+});
+
+test('THE EXACT REQUEST: toc:1 limits the ToC to depth 1, independent of num: (default ordered list, full body structure unaffected)', () => {
+  const doc = parseOrg('#+OPTIONS: toc:1\n* A\n** B\n* C\n');
+  const out = exportToMarkdown(doc);
+  const tocSection = out.split('# A')[0];
+  assert.ok(tocSection.includes('1. [A]'));
+  assert.ok(tocSection.includes('2. [C]'));
+  assert.ok(!tocSection.includes('[B]'));
+  assert.ok(out.includes('## B'), 'B still renders normally in the body, just excluded from the ToC listing');
+});
+
+test('nested ToC entries are indented for deeper headings', () => {
+  const doc = parseOrg('* A\n** B\n* C\n');
+  const out = exportToMarkdown(doc);
+  const lines = out.split('\n');
+  const bLine = lines.find((l) => l.includes('[B]'));
+  assert.match(bLine, /^\s+\S/, 'indented relative to the top-level entries');
+});
+
+// ---- THE FIX: document-level preamble body rendering (doc.body) ---------------
+
+test('THE FIX: a document-level preamble body now renders in Markdown export -- previously never rendered at all, needed for #+INCLUDE\u2019s own block-type variant', () => {
+  const doc = parseOrg('Some preamble text.\n\n* Heading\nHeading text.\n');
+  const out = exportToMarkdown(doc);
+  assert.ok(out.includes('Some preamble text.'));
+  assert.ok(out.indexOf('Some preamble text.') < out.indexOf('# Heading'));
+});
+
+test('a scoped subtree export shows no document-level preamble', () => {
+  const doc = parseOrg('Preamble text.\n\n* Target\nText.\n* Other\nText.\n');
+  const target = doc.children[0];
+  const out = exportToMarkdown(doc, target);
+  assert.ok(!out.includes('Preamble text.'));
+});
