@@ -28,6 +28,7 @@ import {
   isArchivedInPlace,
   shiftLevels,
   setProperty,
+  getProperty,
 } from './src/archive-model.js';
 import {
   resolveLinkTarget,
@@ -1065,7 +1066,7 @@ async function uploadAttachmentToHeading(heading, picked) {
   setStatus('Uploading attachment\u2026');
   render();
 
-  let id = heading.properties && heading.properties.ID;
+  let id = getProperty(heading, 'ID');
   if (!id) {
     id = generateAttachmentId();
     setProperty(heading, 'ID', id);
@@ -1865,7 +1866,8 @@ function recalculateOneTable(heading, table) {
     }
     table.rows = newRows;
     commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
-    return { result: 'changed' };
+    const hasError = newRows.some((row) => (row.cells || []).includes('#ERROR'));
+    return { result: 'changed', hasError };
   } catch (err) {
     return { result: 'error', message: err.message };
   }
@@ -1907,15 +1909,17 @@ function recalculateAllTables() {
   if (!state.doc) return;
   let anyChanged = false;
   const failedHeadingTitles = [];
+  const erroredHeadingTitles = [];
   for (const { heading } of allHeadingsInOrder(state.doc)) {
     let tableIndex = 0;
     while (true) {
       const tables = allTablesInBody(heading); // freshly re-derived every iteration -- see this function's own docs above for why
       if (tableIndex >= tables.length) break;
       const table = tables[tableIndex];
-      const { result } = recalculateOneTable(heading, table);
+      const { result, hasError } = recalculateOneTable(heading, table);
       if (result === 'changed') anyChanged = true;
       if (result === 'error') failedHeadingTitles.push(heading.title || '(untitled)');
+      if (result === 'changed' && hasError) erroredHeadingTitles.push(heading.title || '(untitled)');
       tableIndex++;
     }
   }
@@ -1926,6 +1930,10 @@ function recalculateAllTables() {
     const noun = failedHeadingTitles.length === 1 ? 'a formula' : 'formulas';
     const verb = failedHeadingTitles.length === 1 ? 'was' : 'were';
     setStatus(`Recalculated tables, but ${noun} under "${shown}${rest}" had an error and ${verb} skipped.`);
+  } else if (erroredHeadingTitles.length > 0) {
+    const shown = erroredHeadingTitles.slice(0, 3).join(', ');
+    const rest = erroredHeadingTitles.length > 3 ? `, +${erroredHeadingTitles.length - 3} more` : '';
+    setStatus(`Recalculated all table formulas -- one or more cells under "${shown}${rest}" has #ERROR.`);
   } else if (anyChanged) {
     setStatus('Recalculated all table formulas.');
   } else {
@@ -2348,8 +2356,8 @@ async function archiveHeadingToLocation(heading) {
  * already in, rather than guessing.
  */
 async function unarchiveHeadingToOriginalLocation(heading) {
-  const archiveFile = heading.properties.ARCHIVE_FILE || null;
-  const archiveOlpath = heading.properties.ARCHIVE_OLPATH || '';
+  const archiveFile = getProperty(heading, 'ARCHIVE_FILE') || null;
+  const archiveOlpath = getProperty(heading, 'ARCHIVE_OLPATH') || '';
   const olpSegments = archiveOlpath ? archiveOlpath.split('/') : [];
 
   const destinationLabel = !archiveFile
@@ -5502,7 +5510,7 @@ function renderTableRow(row) {
   if (row.node.tblfm && row.node.tblfm.trim()) {
     controls.appendChild(
       smallButton('\ud83d\udd22 Calc', 'Recalculate this table', () => {
-        const { result, message } = recalculateOneTable(row.heading, row.node);
+        const { result, message, hasError } = recalculateOneTable(row.heading, row.node);
         if (result === 'error') {
           setStatus(`Couldn't recalculate: ${message}`);
           render();
@@ -5510,7 +5518,7 @@ function renderTableRow(row) {
           setStatus('Table is already up to date.');
           render();
         } else if (result === 'changed') {
-          setStatus('Recalculated table.');
+          setStatus(hasError ? 'Recalculated table -- one or more cells has #ERROR.' : 'Recalculated table.');
           commitAndRender('Recalculated table');
         }
         // 'no-formula' can't actually happen here -- the button itself is only shown when row.node.tblfm is set.
@@ -9000,7 +9008,7 @@ function renderQuickSettingField(field) {
         value: rawValue !== undefined ? rawValue : field.default,
         defaultValue: field.default,
         onSave: async (newValue) => {
-          const trimmed = newValue.trim();
+          const trimmed = normalizeSmartQuotes(newValue).trim();
           await commitGlobalVariableChange(field.key, trimmed === field.default || trimmed === '' ? null : trimmed);
           setStatus(`${field.label} updated.`);
           renderSettingsView();
@@ -9054,7 +9062,7 @@ function renderQuickSettingField(field) {
         value: rawValue !== undefined ? rawValue : '',
         defaultValue: '',
         onSave: async (newValue) => {
-          const trimmed = newValue.trim();
+          const trimmed = normalizeSmartQuotes(newValue).trim();
           await commitGlobalVariableChange(field.key, trimmed === '' ? null : trimmed);
           setStatus(`${field.label} updated.`);
           renderSettingsView();
