@@ -872,12 +872,28 @@ export function recalculateTable(table, options = {}) {
 
   for (const { target, expr, mode } of statements) {
     const evalCtx = { dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric };
+    // Evaluates the expression for one specific (row, col) and writes
+    // either its formatted result or, if evaluation itself throws,
+    // the literal text "#ERROR" into that cell -- confirmed directly
+    // against real Emacs org-mode: a malformed or failing formula
+    // doesn't abort the table's own recalculation, and a DIFFERENT,
+    // valid formula elsewhere in the same #+TBLFM: line still
+    // evaluates normally. Isolated per cell, not per statement, so a
+    // range/column-formula target with one bad cell doesn't lose the
+    // rest of its own siblings either.
+    function evalCell(row, col) {
+      try {
+        const value = evaluateAst(expr, { ...evalCtx, currentRow: row, currentCol: col });
+        dataRows[row - 1].cells[col - 1] = formatFinalValue(value, mode, hourZeroPad);
+      } catch {
+        dataRows[row - 1].cells[col - 1] = '#ERROR';
+      }
+    }
     if (target.type === 'cell') {
       const row = resolveRowRef(target.row, 1, dataRowCount, hlinePositions, false); // currentRow=1 is a placeholder -- an explicit @N$M target is never itself relative
       const col = resolveColRef(target.col, colCount);
       if (row === null || col === null) throw new Error('Formula target is out of range for this table');
-      const value = evaluateAst(expr, { ...evalCtx, currentRow: row, currentCol: col });
-      dataRows[row - 1].cells[col - 1] = formatFinalValue(value, mode, hourZeroPad);
+      evalCell(row, col);
     } else if (target.type === 'range') {
       if (target.from.row === null || target.to.row === null) {
         throw new Error('A formula target range needs an explicit row on both endpoints');
@@ -895,8 +911,7 @@ export function recalculateTable(table, options = {}) {
       const colEnd = Math.max(fromCol, toCol);
       for (let r = rowStart; r <= rowEnd; r++) {
         for (let c = colStart; c <= colEnd; c++) {
-          const value = evaluateAst(expr, { ...evalCtx, currentRow: r, currentCol: c });
-          dataRows[r - 1].cells[c - 1] = formatFinalValue(value, mode, hourZeroPad);
+          evalCell(r, c);
         }
       }
     } else {
@@ -906,8 +921,7 @@ export function recalculateTable(table, options = {}) {
       const col = resolveColRef(target.col, colCount);
       if (col === null) throw new Error('Formula target column is out of range for this table');
       for (let r = headerRowCount + 1; r <= dataRowCount; r++) {
-        const value = evaluateAst(expr, { ...evalCtx, currentRow: r, currentCol: col });
-        dataRows[r - 1].cells[col - 1] = formatFinalValue(value, mode, hourZeroPad);
+        evalCell(r, col);
       }
     }
   }

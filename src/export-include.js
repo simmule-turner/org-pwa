@@ -99,6 +99,92 @@ function applyLineRange(lines, spec) {
 
 export { parseIncludeDirective, applyLineRange };
 
+const INCLUDE_LINE_RE = /^\s*#\+INCLUDE:\s?(.*)$/i;
+
+/** Resolves ONE already-parsed #+INCLUDE directive -- fetches its own
+ *  target, applies :lines, and returns either `{ headings }` (default
+ *  org format -- already level-shifted to `defaultMinlevel` when the
+ *  directive itself gave no explicit :minlevel) or `{ bodyLines }`
+ *  (a block-type include's own wrapped raw text), or null if the
+ *  fetch failed/was unreachable (the caller treats that as "skip this
+ *  one include," not a reason to fail the whole export). Shared by
+ *  both the document-level and heading-level expansion below, so the
+ *  two can never quietly drift apart on what a directive actually
+ *  does. */
+async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlevel) {
+  let result;
+  try {
+    result = await fetchPath(directive.path);
+  } catch {
+    return null;
+  }
+  if (!result || typeof result.content !== 'string') return null;
+
+  const rawLines = applyLineRange(result.content.split('\n'), directive.lines);
+
+  if (directive.blockType) {
+    const langSuffix = directive.blockType === 'src' && directive.language ? ' ' + directive.language : '';
+    return {
+      bodyLines: [`#+BEGIN_${directive.blockType.toUpperCase()}${langSuffix}`, ...rawLines, `#+END_${directive.blockType.toUpperCase()}`],
+    };
+  }
+  const subDoc = parseOrgFn(rawLines.join('\n'));
+  const headings = subDoc.children || [];
+  const minlevel = directive.minlevel || defaultMinlevel;
+  if (minlevel) {
+    for (const heading of headings) shiftLevels(heading, minlevel);
+  }
+  return { headings };
+}
+
+/** Expands every #+INCLUDE: found within `heading`'s own body text
+ *  (real org allows this, confirmed directly against real Emacs org-
+ *  mode: the included content nests as CHILDREN of the containing
+ *  heading) and, recursively, within every one of its own
+ *  descendants. Not mutating -- returns a new heading object. With no
+ *  explicit :minlevel, defaults to one level deeper than the
+ *  containing heading itself (confirmed directly against real Emacs
+ *  org-mode -- genuinely different from the document-level default,
+ *  which keeps the sub-document's own original levels unchanged).
+ *  Any body text before/after the #+INCLUDE: line, within the same
+ *  heading, stays exactly where it was -- this app doesn't reproduce
+ *  real org's own further quirk of merging trailing body text into
+ *  whatever the last included element happened to be, a well-defined,
+ *  predictable placement being preferable to replicating an
+ *  incidental artifact of real org's own internal merging. */
+async function expandHeadingIncludes(heading, fetchPath, parseOrgFn) {
+  const newBodyLines = [];
+  const prependedChildren = [];
+  for (const line of heading.bodyLines || []) {
+    const m = INCLUDE_LINE_RE.exec(line);
+    if (!m) {
+      newBodyLines.push(line);
+      continue;
+    }
+    const directive = parseIncludeDirective(m[1]);
+    if (!directive) {
+      newBodyLines.push(line); // doesn't even look like a valid directive -- leave the line as plain text rather than silently eating it
+      continue;
+    }
+    const resolved = await resolveOneInclude(directive, fetchPath, parseOrgFn, heading.level + 1);
+    if (!resolved) continue; // unreachable/failed -- the #+INCLUDE line itself is still dropped, matching the document-level case's own "skip silently" behavior
+    if (resolved.headings) prependedChildren.push(...resolved.headings);
+    else newBodyLines.push(...resolved.bodyLines);
+  }
+
+  const expandedChildren = [];
+  for (const child of heading.children || []) {
+    expandedChildren.push(await expandHeadingIncludes(child, fetchPath, parseOrgFn));
+  }
+
+  return {
+    ...heading,
+    bodyLines: newBodyLines,
+    body: parseBody(newBodyLines),
+    children: [...prependedChildren, ...expandedChildren],
+  };
+}
+
 /** Expands every document-level #+INCLUDE: keyword in `doc` into a
  *  NEW, expanded document object -- `doc` itself is never mutated.
  *  Included content is prepended before `doc`'s own existing top-
@@ -129,9 +215,26 @@ export { parseIncludeDirective, applyLineRange };
  *  document-level preamble, now rendered by every export format)
  *  rather than becoming a heading, matching real org's own actual
  *  placement. */
+/** True if `doc` has a #+INCLUDE: anywhere at all -- the document
+ *  root's own keywords, or any heading's own body text, at any depth.
+ *  expandIncludes' own cheap-no-op fast path for the overwhelmingly
+ *  common case (a document with no includes at all shouldn't pay for
+ *  rebuilding every single heading object just to find that out). */
+function hasAnyInclude(doc) {
+  if ((doc.keywords || []).some((k) => k.key.toUpperCase() === 'INCLUDE')) return true;
+  return (function walk(headings) {
+    for (const heading of headings || []) {
+      if ((heading.bodyLines || []).some((line) => INCLUDE_LINE_RE.test(line))) return true;
+      if (walk(heading.children)) return true;
+    }
+    return false;
+  })(doc.children);
+}
+
 async function expandIncludes(doc, fetchPath, parseOrgFn) {
+  if (!hasAnyInclude(doc)) return doc;
+
   const includeKeywords = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'INCLUDE');
-  if (includeKeywords.length === 0) return doc;
 
   const prependedHeadings = [];
   const appendedBodyLines = [];
@@ -139,34 +242,21 @@ async function expandIncludes(doc, fetchPath, parseOrgFn) {
   for (const kw of includeKeywords) {
     const directive = parseIncludeDirective(kw.value);
     if (!directive) continue;
+    const resolved = await resolveOneInclude(directive, fetchPath, parseOrgFn, null);
+    if (!resolved) continue;
+    if (resolved.headings) prependedHeadings.push(...resolved.headings);
+    else appendedBodyLines.push(...resolved.bodyLines);
+  }
 
-    let result;
-    try {
-      result = await fetchPath(directive.path);
-    } catch {
-      continue; // unreachable/failed fetch -- skip this one include, don't fail the whole export
-    }
-    if (!result || typeof result.content !== 'string') continue;
-
-    const rawLines = applyLineRange(result.content.split('\n'), directive.lines);
-
-    if (directive.blockType) {
-      const langSuffix = directive.blockType === 'src' && directive.language ? ' ' + directive.language : '';
-      appendedBodyLines.push(`#+BEGIN_${directive.blockType.toUpperCase()}${langSuffix}`, ...rawLines, `#+END_${directive.blockType.toUpperCase()}`);
-    } else {
-      const subDoc = parseOrgFn(rawLines.join('\n'));
-      const headings = subDoc.children || [];
-      if (directive.minlevel) {
-        for (const heading of headings) shiftLevels(heading, directive.minlevel);
-      }
-      prependedHeadings.push(...headings);
-    }
+  const expandedChildren = [];
+  for (const child of doc.children || []) {
+    expandedChildren.push(await expandHeadingIncludes(child, fetchPath, parseOrgFn));
   }
 
   const newBodyLines = [...(doc.bodyLines || []), ...appendedBodyLines];
   return {
     ...doc,
-    children: [...prependedHeadings, ...(doc.children || [])],
+    children: [...prependedHeadings, ...expandedChildren],
     bodyLines: newBodyLines,
     body: parseBody(newBodyLines),
   };

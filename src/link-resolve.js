@@ -30,7 +30,7 @@
  * differently here.
  */
 
-import { findAncestorPath } from './archive-model.js';
+import { findAncestorPath, getProperty } from './archive-model.js';
 import { attachmentPath } from './attach.js';
 
 const EXTERNAL_URL_RE = /^[a-z][a-z0-9+.-]*:\/\//i;
@@ -131,7 +131,7 @@ export function resolveAttachmentTarget(doc, heading, attachmentTarget, document
   const ancestors = findAncestorPath(doc, heading) || [];
   const chain = [heading, ...ancestors.slice().reverse()];
   for (const candidate of chain) {
-    const id = candidate.properties && candidate.properties.ID;
+    const id = getProperty(candidate, 'ID');
     if (id) return attachmentPath(id, filename, documentId);
   }
   return null;
@@ -285,7 +285,7 @@ export function findHeadingByTitle(doc, title) {
 export function findHeadingByCustomId(doc, customId) {
   let found = null;
   walkHeadings(doc, (node) => {
-    if (!found && node.properties && node.properties.CUSTOM_ID === customId) found = node;
+    if (!found && getProperty(node, 'CUSTOM_ID') === customId) found = node;
   });
   return found;
 }

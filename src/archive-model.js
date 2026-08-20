@@ -38,17 +38,59 @@ const ARCHIVE_TAG = 'ARCHIVE';
 
 // ---- small AST helpers -----------------------------------------------
 
-function setProperty(heading, key, value) {
-  if (!(key in heading.properties)) {
-    heading.propertyOrder.push(key);
+/** Finds the ACTUAL key in `properties` that case-insensitively matches
+ *  `key` (org-mode property names are case-insensitive, confirmed
+ *  directly against real Emacs org-mode -- org-entry-get/org-entry-put
+ *  both match "CUSTOM_ID" against an existing "custom_id" the same
+ *  way), or null if none exists. Every property read/write in this
+ *  app goes through this (or getProperty below) rather than a direct
+ *  `properties[key]` lookup, so a differently-cased existing property
+ *  is never silently missed or duplicated. */
+function findPropertyKey(properties, key) {
+  if (key in properties) return key; // fast path: exact match, the overwhelmingly common case
+  const lower = key.toLowerCase();
+  for (const existing in properties) {
+    if (existing.toLowerCase() === lower) return existing;
   }
+  return null;
+}
+
+/** Case-insensitive property read -- `heading.properties.CUSTOM_ID`
+ *  and `heading.properties.custom_id` are the same property as far as
+ *  real org is concerned; this returns undefined if neither is set,
+ *  matching a direct property-object lookup's own undefined-for-
+ *  missing convention. */
+function getProperty(heading, key) {
+  if (!heading.properties) return undefined;
+  const foundKey = findPropertyKey(heading.properties, key);
+  return foundKey === null ? undefined : heading.properties[foundKey];
+}
+
+function setProperty(heading, key, value) {
+  const existingKey = findPropertyKey(heading.properties, key);
+  if (existingKey === null) {
+    heading.propertyOrder.push(key);
+    heading.properties[key] = value;
+    return;
+  }
+  if (existingKey === key) {
+    heading.properties[key] = value;
+    return;
+  }
+  // An existing property with different-case key: replace it in place
+  // (own position preserved, own key text updated to the caller's
+  // case) rather than appending a new, duplicate entry -- matching
+  // real org's own confirmed org-entry-put behavior exactly.
+  delete heading.properties[existingKey];
   heading.properties[key] = value;
+  heading.propertyOrder = heading.propertyOrder.map((k) => (k === existingKey ? key : k));
 }
 
 function deleteProperty(heading, key) {
-  if (key in heading.properties) {
-    delete heading.properties[key];
-    heading.propertyOrder = heading.propertyOrder.filter((k) => k !== key);
+  const existingKey = findPropertyKey(heading.properties, key);
+  if (existingKey !== null) {
+    delete heading.properties[existingKey];
+    heading.propertyOrder = heading.propertyOrder.filter((k) => k !== existingKey);
   }
 }
 
@@ -323,8 +365,9 @@ function archiveToSiblingFile(sourceDoc, archiveDoc, heading, sourceFilePath, op
  */
 function buildRestoredClone(heading) {
   const clone = cloneHeading(heading);
-  if ('ARCHIVE_TODO' in clone.properties) {
-    clone.todo = clone.properties.ARCHIVE_TODO;
+  const archiveTodo = getProperty(clone, 'ARCHIVE_TODO');
+  if (archiveTodo !== undefined) {
+    clone.todo = archiveTodo;
   }
   for (const key of ['ARCHIVE_TIME', 'ARCHIVE_FILE', 'ARCHIVE_OLPATH', 'ARCHIVE_CATEGORY', 'ARCHIVE_TODO', 'ARCHIVE_ITAGS']) {
     deleteProperty(clone, key);
@@ -410,8 +453,9 @@ function resolveArchiveFileId(filePart, currentFileId) {
  * configuration that would exist outside any particular file.
  */
 function getArchiveLocation(doc, heading) {
-  if (heading.properties && heading.properties.ARCHIVE) return heading.properties.ARCHIVE;
-  const kw = (doc.keywords || []).find((k) => k.key === 'ARCHIVE');
+  const ownArchive = getProperty(heading, 'ARCHIVE');
+  if (ownArchive) return ownArchive;
+  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'ARCHIVE');
   if (kw) return kw.value;
   return DEFAULT_ARCHIVE_LOCATION;
 }
@@ -505,6 +549,8 @@ function findHeadingAtLevel(doc, level, title) {
 
 export {
   ARCHIVE_TAG,
+  findPropertyKey,
+  getProperty,
   setProperty,
   deleteProperty,
   getPropertiesText,

@@ -31,7 +31,7 @@
 
 import { walkHeadings, parseRepeater, isContactsAnniversariesTrigger, parseContactEvent, delayToDays } from './agenda.js';
 import { parseOrgTimestamp, findTimestamps, parseDelay } from './org-timestamp.js';
-import { isArchived } from './archive-model.js';
+import { isArchived, getProperty } from './archive-model.js';
 import { isCommentedHeading } from './comment-model.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 
@@ -120,10 +120,8 @@ function foldLine(line) {
  *  sanitized to a safe character set, since a UID must not contain
  *  control characters, semicolons, or line breaks. */
 function generateUid(documentId, heading, kind, index, date) {
-  const base =
-    heading.properties && heading.properties.ID
-      ? heading.properties.ID
-      : `${documentId || 'doc'}-${heading.title}-${kind}-${index}-${formatIcsDate(date)}`;
+  const existingId = getProperty(heading, 'ID');
+  const base = existingId ? existingId : `${documentId || 'doc'}-${heading.title}-${kind}-${index}-${formatIcsDate(date)}`;
   const safe = base.replace(/[^A-Za-z0-9._-]/g, '-');
   return `${safe}@org-pwa`;
 }

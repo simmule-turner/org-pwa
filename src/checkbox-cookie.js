@@ -24,7 +24,7 @@
  * own existing behavior, with no COOKIE_DATA involved at all).
  */
 
-import { findAncestorPath } from './archive-model.js';
+import { findAncestorPath, getProperty } from './archive-model.js';
 
 const COOKIE_RE = /\[(\d*)\/(\d*)\]|\[(\d*)%\]/;
 
@@ -127,7 +127,7 @@ export function updateHeadingCheckboxCookie(heading, doneKeywords = []) {
   const match = heading.title.match(COOKIE_RE);
   if (!match) return false;
 
-  const cookieData = parseCookieData(heading.properties && heading.properties.COOKIE_DATA);
+  const cookieData = parseCookieData(getProperty(heading, 'COOKIE_DATA'));
   let total = 0;
   let checked = 0;
   if (cookieData.countCheckbox) {

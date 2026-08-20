@@ -76,17 +76,17 @@ function parseExportOptions(doc) {
  *  enough case this app doesn't reproduce; the first one found is
  *  used), trimmed, or null if the document has none at all. */
 function getDocTitle(doc) {
-  const kw = (doc.keywords || []).find((k) => k.key === 'TITLE');
+  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'TITLE');
   return kw ? kw.value.trim() : null;
 }
 
 function getDocAuthor(doc) {
-  const kw = (doc.keywords || []).find((k) => k.key === 'AUTHOR');
+  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'AUTHOR');
   return kw ? kw.value.trim() : null;
 }
 
 function getDocDate(doc) {
-  const kw = (doc.keywords || []).find((k) => k.key === 'DATE');
+  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'DATE');
   return kw ? kw.value.trim() : null;
 }
 

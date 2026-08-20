@@ -36,6 +36,7 @@ import { resolveLinkTarget } from './link-resolve.js';
 import { createZip } from './zip-writer.js';
 import { isWidthCookieRow } from './table-cookies.js';
 import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
+import { getProperty } from './archive-model.js';
 
 // ---- escaping -------------------------------------------------------------
 
@@ -96,7 +97,7 @@ function slugifyDocx(title) {
  *  underscore rather than being rejected outright. */
 function assignHeadingIdsDocx(headings, usedSlugs) {
   for (const heading of headings) {
-    const customId = heading.properties && heading.properties.CUSTOM_ID;
+    const customId = getProperty(heading, 'CUSTOM_ID');
     let id = customId ? customId.trim() : '';
     if (!id) id = slugifyDocx(heading.title);
     if (/^[0-9]/.test(id)) id = '_' + id;
@@ -615,7 +616,7 @@ export function exportToDocx(doc, scope = null) {
   const { doneKeywords } = resolveTodoSequence(doc);
   const out = [];
 
-  const titleSource = scope ? scope.title : (doc.keywords || []).find((k) => k.key === 'TITLE');
+  const titleSource = scope ? scope.title : (doc.keywords || []).find((k) => k.key.toUpperCase() === 'TITLE');
   const title = scope ? scope.title : titleSource ? titleSource.value : 'Untitled';
   const author = !scope && options.author ? getDocAuthor(doc) : null;
   const date = !scope && options.date ? getDocDate(doc) : null;
