@@ -359,3 +359,9 @@ test('a scoped subtree export shows no document-level preamble', () => {
   const content = unzipEntry(exportToOdt(doc, target), 'content.xml');
   assert.ok(!content.includes('Preamble text.'));
 });
+
+test('THE FIX: a lowercase #+title: sets the ODF dc:title too, matching real Emacs org-mode\u2019s own confirmed case-insensitive keyword parsing', () => {
+  const doc = parseOrg('#+title: org-pwa README.org\n* Heading\nText.\n');
+  const meta = unzipEntry(exportToOdt(doc), 'meta.xml');
+  assert.match(meta, /<dc:title>org-pwa README\.org<\/dc:title>/);
+});

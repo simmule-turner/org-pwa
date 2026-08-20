@@ -292,8 +292,9 @@ test('a malformed formula (trailing operator, no right-hand operand) throws rath
   assert.throws(() => recalculateTable(mkTable('$1=1+', [['']])));
 });
 
-test('an out-of-range row reference throws', () => {
-  assert.throws(() => recalculateTable(mkTable('@1$1=@5$1', [['1']])));
+test('THE FIX: an out-of-range row reference is a runtime error, isolated to that one cell as "#ERROR" rather than aborting the whole recalculation -- matching real Emacs org-mode\u2019s own confirmed behavior', () => {
+  const result = recalculateTable(mkTable('@1$1=@5$1', [['1']]));
+  assert.equal(result[0].cells[0], '#ERROR');
 });
 
 test('an unknown function name throws', () => {
@@ -304,8 +305,16 @@ test('a formula target missing "=" entirely throws', () => {
   assert.throws(() => recalculateTable(mkTable('$1 5', [['']])));
 });
 
-test('a range used as a plain value (not inside an aggregate function) throws -- a range is a list, not a single number', () => {
-  assert.throws(() => recalculateTable(mkTable('@1$1=@1$1..@2$1', [['1'], ['2']])));
+test('THE EXACT REQUEST: a valid formula and a failing one in the SAME #+TBLFM: line don\u2019t affect each other -- the valid one\u2019s own result commits normally, the failing one gets "#ERROR", matching the exact scenario confirmed directly against real Emacs org-mode', () => {
+  const result = recalculateTable(mkTable('@1$1=$2+$3::@1$2=@99$1', [['1', '2', '3']]));
+  assert.equal(result[0].cells[0], '5', 'the valid formula (2+3) still evaluates and commits');
+  assert.equal(result[0].cells[1], '#ERROR', 'the failing one (out-of-range @99$1) is isolated to its own cell');
+});
+
+test('THE FIX: a range used as a plain value (not inside an aggregate function) is a runtime error, isolated to that one cell as "#ERROR" -- a range is a list, not a single number, but this no longer aborts the whole recalculation', () => {
+  const result = recalculateTable(mkTable('@1$1=@1$1..@2$1', [['1'], ['2']]));
+  assert.equal(result[0].cells[0], '#ERROR');
+  assert.equal(result[1].cells[0], '2', 'the OTHER row\u2019s own cell, untouched by this formula, is unaffected');
 });
 
 test('an unrecognized character in a formula throws', () => {

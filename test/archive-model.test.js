@@ -20,6 +20,10 @@ import {
   resolveArchiveFileId,
   getArchiveLocation,
   insertAtArchiveLocation,
+  findPropertyKey,
+  getProperty,
+  setProperty,
+  deleteProperty,
 } from '../src/archive-model.js';
 
 const FIXED_DATE = new Date('2026-07-20T14:32:00');
@@ -350,6 +354,11 @@ test('getArchiveLocation: uses the file-level #+ARCHIVE: keyword when present', 
   assert.equal(getArchiveLocation(doc, doc.children[0]), '::* Archived Tasks');
 });
 
+test('THE FIX: getArchiveLocation matches a lowercase #+archive: too, matching real Emacs org-mode\u2019s own confirmed case-insensitive keyword parsing', () => {
+  const doc = parseOrg('#+archive: ::* Archived Tasks\n* A');
+  assert.equal(getArchiveLocation(doc, doc.children[0]), '::* Archived Tasks');
+});
+
 test('getArchiveLocation: a heading\'s own ARCHIVE property overrides the file keyword', () => {
   const doc = parseOrg(
     ['#+ARCHIVE: ::* Archived Tasks', '* A', ':PROPERTIES:', ':ARCHIVE: ~/org/other.org::', ':END:'].join('\n')
@@ -547,4 +556,69 @@ test('extractForArchive is equivalent to buildArchivedClone followed by an expli
   const extracted = extractForArchive(sourceDoc, heading, 'src.org');
   assert.equal(sourceDoc.children.length, 1, 'extractForArchive DOES remove, unlike buildArchivedClone');
   assert.equal(extracted.title, 'Archive me');
+});
+
+// ---- THE FIX: case-insensitive property matching ----------------------------
+
+test('THE EXACT REQUEST: findPropertyKey matches a differently-cased existing key, matching real Emacs org-mode\u2019s own confirmed case-insensitive property matching', () => {
+  const doc = parseOrg('* H\n:PROPERTIES:\n:custom_id: my-id\n:END:\n');
+  const h = doc.children[0];
+  assert.equal(findPropertyKey(h.properties, 'CUSTOM_ID'), 'custom_id');
+  assert.equal(findPropertyKey(h.properties, 'Custom_Id'), 'custom_id');
+  assert.equal(findPropertyKey(h.properties, 'custom_id'), 'custom_id');
+});
+
+test('findPropertyKey returns null when no key matches at all, case-insensitively or otherwise', () => {
+  const doc = parseOrg('* H\n:PROPERTIES:\n:FOO: bar\n:END:\n');
+  assert.equal(findPropertyKey(doc.children[0].properties, 'CUSTOM_ID'), null);
+});
+
+test('getProperty reads a differently-cased property directly', () => {
+  const doc = parseOrg('* H\n:PROPERTIES:\n:custom_id: my-id\n:END:\n');
+  assert.equal(getProperty(doc.children[0], 'CUSTOM_ID'), 'my-id');
+});
+
+test('getProperty returns undefined for a heading with no properties at all, without throwing', () => {
+  const doc = parseOrg('* H\n');
+  assert.equal(getProperty(doc.children[0], 'CUSTOM_ID'), undefined);
+});
+
+test('THE EXACT REQUEST: setProperty on an existing, differently-cased key updates it IN PLACE -- preserving its own drawer position, replacing its own key text with the caller\u2019s case -- rather than silently creating a duplicate property, matching real Emacs org-mode\u2019s own confirmed org-entry-put behavior exactly', () => {
+  const doc = parseOrg('* H\n:PROPERTIES:\n:FIRST: a\n:custom_id: my-id\n:LAST: z\n:END:\n');
+  const h = doc.children[0];
+  setProperty(h, 'CUSTOM_ID', 'updated-id');
+  assert.deepEqual(h.propertyOrder, ['FIRST', 'CUSTOM_ID', 'LAST'], 'position preserved, key case replaced');
+  assert.equal(h.properties.CUSTOM_ID, 'updated-id');
+  assert.equal('custom_id' in h.properties, false, 'the old, differently-cased key is gone -- no duplicate');
+});
+
+test('setProperty on a genuinely new key (no existing match at all) appends normally', () => {
+  const doc = parseOrg('* H\n');
+  const h = doc.children[0];
+  setProperty(h, 'CUSTOM_ID', 'new-id');
+  assert.deepEqual(h.propertyOrder, ['CUSTOM_ID']);
+  assert.equal(h.properties.CUSTOM_ID, 'new-id');
+});
+
+test('setProperty on an exact-case match still just updates the value directly, no unnecessary churn', () => {
+  const doc = parseOrg('* H\n:PROPERTIES:\n:CUSTOM_ID: old-id\n:END:\n');
+  const h = doc.children[0];
+  setProperty(h, 'CUSTOM_ID', 'new-id');
+  assert.deepEqual(h.propertyOrder, ['CUSTOM_ID']);
+  assert.equal(h.properties.CUSTOM_ID, 'new-id');
+});
+
+test('THE FIX: deleteProperty removes a differently-cased existing key too, rather than silently leaving it behind because the exact case didn\u2019t match', () => {
+  const doc = parseOrg('* H\n:PROPERTIES:\n:custom_id: my-id\n:END:\n');
+  const h = doc.children[0];
+  deleteProperty(h, 'CUSTOM_ID');
+  assert.equal('custom_id' in h.properties, false);
+  assert.deepEqual(h.propertyOrder, []);
+});
+
+test('deleteProperty on a key that doesn\u2019t exist at all, case-insensitively or otherwise, is a safe no-op', () => {
+  const doc = parseOrg('* H\n:PROPERTIES:\n:FOO: bar\n:END:\n');
+  const h = doc.children[0];
+  deleteProperty(h, 'CUSTOM_ID');
+  assert.deepEqual(h.propertyOrder, ['FOO']);
 });

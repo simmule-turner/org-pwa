@@ -120,3 +120,27 @@ test('getDocTitle/getDocAuthor/getDocDate all return null when the document has 
   assert.equal(getDocAuthor(doc), null);
   assert.equal(getDocDate(doc), null);
 });
+
+// ---- THE FIX: case-insensitive keyword matching --------------------------------
+
+test('THE FIX: getDocTitle/getDocAuthor/getDocDate match a lowercase #+title:/#+author:/#+date: too, matching real Emacs org-mode\u2019s own confirmed case-insensitive keyword parsing (a user\u2019s own reported case: #+title:/#+date: silently produced no title/date at all before this fix)', () => {
+  const doc = mkDoc([
+    { key: 'title', value: 'org-pwa README.org' },
+    { key: 'author', value: 'Jane Doe' },
+    { key: 'date', value: '2026-08-20' },
+  ]);
+  assert.equal(getDocTitle(doc), 'org-pwa README.org');
+  assert.equal(getDocAuthor(doc), 'Jane Doe');
+  assert.equal(getDocDate(doc), '2026-08-20');
+});
+
+test('mixed-case #+Title:/#+Author:/#+Date: also match', () => {
+  const doc = mkDoc([
+    { key: 'Title', value: 'T' },
+    { key: 'Author', value: 'A' },
+    { key: 'Date', value: 'D' },
+  ]);
+  assert.equal(getDocTitle(doc), 'T');
+  assert.equal(getDocAuthor(doc), 'A');
+  assert.equal(getDocDate(doc), 'D');
+});

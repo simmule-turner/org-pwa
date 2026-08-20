@@ -597,3 +597,9 @@ test('a scoped subtree export shows no document-level preamble', () => {
   const html = exportToHtml(doc, target);
   assert.ok(!html.includes('Preamble text.'));
 });
+
+test('THE FIX: a lowercase #+title: sets the <title> tag too, matching real Emacs org-mode\u2019s own confirmed case-insensitive keyword parsing', () => {
+  const doc = parseOrg('#+title: org-pwa README.org\n* Heading\nText.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<title>org-pwa README\.org<\/title>/);
+});

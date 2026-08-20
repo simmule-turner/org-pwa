@@ -186,3 +186,73 @@ test('the original doc passed in is never mutated', async () => {
   await expandIncludes(doc, mkFetcher(files), parseOrg);
   assert.equal(doc.children.length, originalChildCount, 'the original document object is untouched');
 });
+
+// ---- THE FIX: #+INCLUDE within a heading's own body ---------------------------
+
+test('THE EXACT REQUEST: #+INCLUDE inside a heading\u2019s own body nests the included content as CHILDREN of that heading, matching real Emacs org-mode\u2019s own confirmed behavior', async () => {
+  const files = { 'sub.org': '* Sub One\nText.\n* Sub Two\nMore.\n' };
+  const doc = parseOrg('* Level 1\n** Level 2\nText.\n#+INCLUDE: "sub.org"\n* Other\n');
+  const expanded = await expandIncludes(doc, mkFetcher(files), parseOrg);
+  const level2 = expanded.children[0].children[0];
+  assert.equal(level2.title, 'Level 2');
+  assert.deepEqual(level2.children.map((c) => c.title), ['Sub One', 'Sub Two']);
+  assert.equal(expanded.children[1].title, 'Other', 'a sibling heading after the containing one is unaffected');
+});
+
+test('THE FIX: with no explicit :minlevel, a mid-document include defaults to ONE LEVEL DEEPER than its own containing heading -- confirmed directly against real Emacs org-mode, genuinely different from the document-level default (which keeps the sub-document\u2019s own original levels unchanged)', async () => {
+  const files = { 'sub.org': '* Sub One\nText.\n** Sub Sub\nDeep.\n' };
+  const doc = parseOrg('* A\n** B\n*** C\nText.\n#+INCLUDE: "sub.org"\n');
+  const expanded = await expandIncludes(doc, mkFetcher(files), parseOrg);
+  const c = expanded.children[0].children[0].children[0];
+  assert.equal(c.level, 3);
+  assert.equal(c.children[0].level, 4, 'container.level + 1, not the document-level default of "unchanged"');
+  assert.equal(c.children[0].children[0].level, 5, 'the included content\u2019s own internal relative depth (Sub Sub was one deeper than Sub One) is preserved');
+});
+
+test('an explicit :minlevel still overrides the new mid-document default', async () => {
+  const files = { 'sub.org': '* Sub\nText.\n' };
+  const doc = parseOrg('* Level 1\nText.\n#+INCLUDE: "sub.org" :minlevel 5\n');
+  const expanded = await expandIncludes(doc, mkFetcher(files), parseOrg);
+  assert.equal(expanded.children[0].children[0].level, 5);
+});
+
+test('THE FIX: body text before/after the #+INCLUDE line, within the same heading, stays with that heading\u2019s own body -- a well-defined, predictable placement rather than reproducing real org\u2019s own further, incidental quirk of merging trailing text into whatever the last included element happened to be', async () => {
+  const files = { 'sub.org': '* Sub\nSub text.\n' };
+  const doc = parseOrg('* Main\nBefore text.\n#+INCLUDE: "sub.org"\nAfter text.\n');
+  const expanded = await expandIncludes(doc, mkFetcher(files), parseOrg);
+  const main = expanded.children[0];
+  assert.ok(main.bodyLines.includes('Before text.'));
+  assert.ok(main.bodyLines.includes('After text.'));
+  assert.equal(main.children[0].title, 'Sub');
+});
+
+test('a block-type include inside a heading\u2019s own body wraps into that SAME heading\u2019s own bodyLines, not the document-level preamble', async () => {
+  const files = { 'code.py': 'print("nested")\n' };
+  const doc = parseOrg('* Main\nText.\n#+INCLUDE: "code.py" src python\n');
+  const expanded = await expandIncludes(doc, mkFetcher(files), parseOrg);
+  const main = expanded.children[0];
+  assert.ok(main.bodyLines.includes('#+BEGIN_SRC python'));
+  assert.ok(main.bodyLines.includes('print("nested")'));
+  assert.equal(expanded.bodyLines.length, 0, 'the document-level preamble is untouched -- this include was inside a heading, not at the document root');
+});
+
+test('#+INCLUDE works at any depth, recursively -- a grandchild heading\u2019s own include still expands', async () => {
+  const files = { 'sub.org': '* Deep\nText.\n' };
+  const doc = parseOrg('* A\n** B\n*** C\nText.\n#+INCLUDE: "sub.org"\n');
+  const expanded = await expandIncludes(doc, mkFetcher(files), parseOrg);
+  const c = expanded.children[0].children[0].children[0];
+  assert.equal(c.children[0].title, 'Deep');
+});
+
+test('a document with includes ONLY inside a heading (none at the document root at all) still expands correctly', async () => {
+  const files = { 'sub.org': '* Sub\nText.\n' };
+  const doc = parseOrg('* Main\n#+INCLUDE: "sub.org"\n');
+  const expanded = await expandIncludes(doc, mkFetcher(files), parseOrg);
+  assert.equal(expanded.children[0].children[0].title, 'Sub');
+});
+
+test('THE FIX: a document with genuinely no #+INCLUDE anywhere (root OR any heading, at any depth) still returns the SAME object unchanged -- the cheap no-op fast path covers the whole tree, not just the document root', async () => {
+  const doc = parseOrg('* A\n** B\n*** C\nText.\n');
+  const expanded = await expandIncludes(doc, mkFetcher({}), parseOrg);
+  assert.equal(expanded, doc);
+});

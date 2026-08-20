@@ -67,6 +67,12 @@ test('findHeadingByCustomId finds a heading with a matching :CUSTOM_ID:', () => 
   assert.equal(h.title, 'Installation');
 });
 
+test('THE FIX: findHeadingByCustomId matches a lowercase :custom_id: property too, matching real Emacs org-mode\u2019s own confirmed case-insensitive property matching', () => {
+  const doc = parseOrg('* Target\n:PROPERTIES:\n:custom_id: my-id\n:END:\n');
+  const h = findHeadingByCustomId(doc, 'my-id');
+  assert.equal(h.title, 'Target');
+});
+
 test('findHeadingByCustomId returns null when nothing matches', () => {
   const doc = docWithHeadings();
   assert.equal(findHeadingByCustomId(doc, 'nope'), null);
