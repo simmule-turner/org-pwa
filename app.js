@@ -7983,58 +7983,108 @@ viewMenuBtn.addEventListener('click', () => {
  *  `defaultValue` -- there's nothing to reset back to otherwise) does
  *  whatever the field's own inline reset control already does, then
  *  closes without calling `onSave`. */
+/** Keeps a fixed-position overlay element aligned with the ACTUALLY
+ *  visible viewport, even while an on-screen keyboard is open -- the
+ *  same visualViewport-based technique already used for #topBar (see
+ *  that code's own comments for the full research/reasoning), applied
+ *  here since a modal's own focused field opens the keyboard
+ *  immediately, and a plain "position: fixed; inset: 0" alone stays
+ *  pinned to the LARGER layout viewport, letting the modal appear to
+ *  drift or "scroll" out of the visible area as the keyboard opens
+ *  and closes. Returns a cleanup function removing every listener
+ *  this attaches -- unlike #topBar's own deliberately permanent ones,
+ *  a modal's own listeners must not outlive the modal itself. */
+function keepOverlayInVisibleViewport(overlay) {
+  const vv = window.visualViewport;
+  function reposition() {
+    if (!vv) return; // inset: 0 (already set by the caller) is the correct fallback
+    overlay.style.top = vv.offsetTop + 'px';
+    overlay.style.left = vv.offsetLeft + 'px';
+    overlay.style.width = vv.width + 'px';
+    overlay.style.height = vv.height + 'px';
+  }
+  reposition();
+  const cleanups = [];
+  function on(target, evt, handler) {
+    target.addEventListener(evt, handler);
+    cleanups.push(() => target.removeEventListener(evt, handler));
+  }
+  if (vv) {
+    on(vv, 'resize', reposition);
+    on(vv, 'scroll', reposition);
+  }
+  on(window, 'scroll', reposition);
+  on(window, 'resize', reposition);
+  const focusHandler = () => setTimeout(reposition, 350);
+  on(document, 'focusin', focusHandler);
+  on(document, 'focusout', focusHandler);
+  return () => {
+    for (const cleanup of cleanups) cleanup();
+  };
+}
+
 function openTextFieldPopup({ label, value, defaultValue, onSave, onReset }) {
   const overlay = document.createElement('div');
   overlay.style.position = 'fixed';
-  overlay.style.inset = '0';
-  overlay.style.background = 'rgba(0,0,0,0.5)';
+  overlay.style.inset = '0'; // fallback for a browser without visualViewport; keepOverlayInVisibleViewport overrides top/left/width/height directly when it's available
+  overlay.style.background = 'rgba(0,0,0,0.6)';
   overlay.style.zIndex = '10000';
   overlay.style.display = 'flex';
   overlay.style.alignItems = 'center';
   overlay.style.justifyContent = 'center';
   overlay.style.padding = '16px';
   overlay.style.boxSizing = 'border-box';
+  overlay.style.overflow = 'hidden'; // the modal itself scrolls (see textarea below); the backdrop never should
 
   const modal = document.createElement('div');
-  modal.style.background = 'var(--surface, #fff)';
-  modal.style.color = 'var(--fg, #000)';
-  modal.style.border = '1px solid var(--border, #ccc)';
-  modal.style.borderRadius = '8px';
+  modal.className = 'panel'; // normal, touch-friendly button/input sizing (44px targets), matching the rest of this app
+  modal.style.background = 'var(--bg)'; // opaque -- var(--surface) is a barely-visible tint meant for layering over --bg, not a standalone solid background
+  modal.style.color = 'var(--fg)';
+  modal.style.border = '1px solid var(--border-strong)';
+  modal.style.borderRadius = '10px';
   modal.style.padding = '16px';
   modal.style.width = '100%';
   modal.style.maxWidth = '760px';
+  modal.style.maxHeight = '100%';
   modal.style.display = 'flex';
   modal.style.flexDirection = 'column';
-  modal.style.gap = '8px';
+  modal.style.gap = '10px';
   modal.style.boxSizing = 'border-box';
   overlay.appendChild(modal);
 
   const titleEl = document.createElement('div');
   titleEl.textContent = label;
-  titleEl.style.fontWeight = '600';
-  titleEl.style.fontSize = '14px';
+  titleEl.style.fontWeight = '700';
+  titleEl.style.fontSize = '15px';
+  titleEl.style.flexShrink = '0';
   modal.appendChild(titleEl);
 
   const textarea = document.createElement('textarea');
   textarea.value = value !== undefined && value !== null ? value : '';
-  textarea.rows = 15;
+  textarea.rows = 20;
   textarea.style.width = '100%';
   textarea.style.boxSizing = 'border-box';
   textarea.style.fontFamily = 'monospace';
-  textarea.style.fontSize = '13px';
+  textarea.style.fontSize = '14px';
   textarea.style.whiteSpace = 'pre-wrap';
   textarea.style.overflowWrap = 'break-word';
   textarea.style.overflowY = 'auto';
   textarea.style.resize = 'vertical';
+  textarea.style.flex = '1 1 auto';
+  textarea.style.minHeight = '0';
   modal.appendChild(textarea);
 
   const btnRow = document.createElement('div');
   btnRow.style.display = 'flex';
   btnRow.style.justifyContent = 'flex-end';
   btnRow.style.gap = '8px';
+  btnRow.style.flexShrink = '0';
   modal.appendChild(btnRow);
 
+  const stopTrackingViewport = keepOverlayInVisibleViewport(overlay);
+
   function close() {
+    stopTrackingViewport();
     document.body.removeChild(overlay);
   }
 
@@ -8061,8 +8111,46 @@ function openTextFieldPopup({ label, value, defaultValue, onSave, onReset }) {
   return overlay;
 }
 
+/** One field row for openMultiFieldPopup below -- a real, single-line
+ *  `<input>` (not labeledInput's own auto-growing textarea, which is
+ *  built for a flex-wrap multi-field-per-row layout this modal
+ *  deliberately doesn't use) with a consistent, deliberate vertical
+ *  rhythm between fields, for a tighter, more custom form feel than
+ *  reusing the general-purpose labeledInput as-is produced. */
+function modalFieldRow(labelText, type, value, placeholder) {
+  const wrap = document.createElement('div');
+  wrap.style.marginBottom = '14px';
+
+  const labelEl = document.createElement('label');
+  labelEl.textContent = labelText;
+  labelEl.style.display = 'block';
+  labelEl.style.fontSize = '13px';
+  labelEl.style.fontWeight = '600';
+  labelEl.style.opacity = '0.85';
+  labelEl.style.marginBottom = '4px';
+  wrap.appendChild(labelEl);
+
+  const input = document.createElement('input');
+  input.type = type;
+  input.value = value || '';
+  if (placeholder) input.placeholder = placeholder;
+  input.style.width = '100%';
+  input.style.boxSizing = 'border-box';
+  input.style.font = 'inherit';
+  input.style.fontSize = '15px';
+  input.style.padding = '10px 12px';
+  input.style.minHeight = '44px';
+  input.style.border = '1px solid var(--border-strong)';
+  input.style.borderRadius = '8px';
+  input.style.background = 'var(--bg)';
+  input.style.color = 'var(--fg)';
+  wrap.appendChild(input);
+
+  return { wrap, input };
+}
+
 /** Opens a popup form with several related fields together (each a
- *  labeledInput-style row), Cancel/Save at a fixed location -- used
+ *  modalFieldRow), Cancel/Save at a fixed location -- used
  *  by the GitHub/WebDAV sync settings below, where all of a single
  *  repository's own fields are edited and saved as one unit rather
  *  than each having its own separate save action. `fields` is an
@@ -8074,37 +8162,38 @@ function openTextFieldPopup({ label, value, defaultValue, onSave, onReset }) {
 function openMultiFieldPopup({ label, fields, onSave }) {
   const overlay = document.createElement('div');
   overlay.style.position = 'fixed';
-  overlay.style.inset = '0';
-  overlay.style.background = 'rgba(0,0,0,0.5)';
+  overlay.style.inset = '0'; // fallback for a browser without visualViewport; keepOverlayInVisibleViewport overrides top/left/width/height directly when it's available
+  overlay.style.background = 'rgba(0,0,0,0.6)';
   overlay.style.zIndex = '10000';
   overlay.style.display = 'flex';
   overlay.style.alignItems = 'center';
   overlay.style.justifyContent = 'center';
   overlay.style.padding = '16px';
   overlay.style.boxSizing = 'border-box';
+  overlay.style.overflow = 'hidden';
 
   const modal = document.createElement('div');
-  modal.style.background = 'var(--surface, #fff)';
-  modal.style.color = 'var(--fg, #000)';
-  modal.style.border = '1px solid var(--border, #ccc)';
-  modal.style.borderRadius = '8px';
-  modal.style.padding = '16px';
+  modal.className = 'panel'; // normal, touch-friendly button sizing (44px targets), matching the rest of this app
+  modal.style.background = 'var(--bg)'; // opaque -- var(--surface) is a barely-visible tint meant for layering over --bg, not a standalone solid background
+  modal.style.color = 'var(--fg)';
+  modal.style.border = '1px solid var(--border-strong)';
+  modal.style.borderRadius = '10px';
+  modal.style.padding = '18px';
   modal.style.width = '100%';
-  modal.style.maxWidth = '480px';
-  modal.style.display = 'flex';
-  modal.style.flexDirection = 'column';
-  modal.style.gap = '4px';
+  modal.style.maxWidth = '420px';
+  modal.style.maxHeight = '100%';
+  modal.style.overflowY = 'auto';
   modal.style.boxSizing = 'border-box';
   overlay.appendChild(modal);
 
   const titleEl = document.createElement('div');
   titleEl.textContent = label;
-  titleEl.style.fontWeight = '600';
-  titleEl.style.fontSize = '14px';
-  titleEl.style.marginBottom = '4px';
+  titleEl.style.fontWeight = '700';
+  titleEl.style.fontSize = '15px';
+  titleEl.style.marginBottom = '14px';
   modal.appendChild(titleEl);
 
-  const fieldEntries = fields.map((f) => ({ key: f.key, type: f.type, entry: labeledInput(f.label, f.type, f.value, f.placeholder) }));
+  const fieldEntries = fields.map((f) => ({ key: f.key, type: f.type, entry: modalFieldRow(f.label, f.type, f.value, f.placeholder) }));
   for (const { entry } of fieldEntries) {
     modal.appendChild(entry.wrap);
   }
@@ -8113,10 +8202,13 @@ function openMultiFieldPopup({ label, fields, onSave }) {
   btnRow.style.display = 'flex';
   btnRow.style.justifyContent = 'flex-end';
   btnRow.style.gap = '8px';
-  btnRow.style.marginTop = '8px';
+  btnRow.style.marginTop = '4px';
   modal.appendChild(btnRow);
 
+  const stopTrackingViewport = keepOverlayInVisibleViewport(overlay);
+
   function close() {
+    stopTrackingViewport();
     document.body.removeChild(overlay);
   }
 
