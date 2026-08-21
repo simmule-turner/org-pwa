@@ -501,3 +501,22 @@ test('a scoped subtree export shows no document-level preamble', () => {
   const out = exportToMarkdown(doc, target);
   assert.ok(!out.includes('Preamble text.'));
 });
+
+// ---- THE FEATURE: #+BEGIN_EXPORT md --------------------------------------------
+
+test('THE EXACT REQUEST: #+BEGIN_EXPORT md ... #+END_EXPORT is rendered raw/verbatim, no code-fence wrapping', () => {
+  const doc = parseOrg('#+BEGIN_EXPORT md\n**Markdown-native bold**\n#+END_EXPORT\n\n* Heading\nText.\n');
+  const md = exportToMarkdown(doc);
+  assert.match(md, /\*\*Markdown-native bold\*\*/);
+  assert.doesNotMatch(md, /```[\s\S]*Markdown-native bold/);
+});
+
+test('#+BEGIN_EXPORT markdown (the word form) also works, matching real Emacs org-mode\u2019s own confirmed acceptance of both', () => {
+  const doc = parseOrg('#+BEGIN_EXPORT markdown\nraw markdown text\n#+END_EXPORT\n\n* Heading\nText.\n');
+  assert.match(exportToMarkdown(doc), /raw markdown text/);
+});
+
+test('THE FIX: an #+BEGIN_EXPORT block for a DIFFERENT backend (html) is omitted entirely from Markdown export', () => {
+  const doc = parseOrg('#+BEGIN_EXPORT html\n<div>HTML-only content</div>\n#+END_EXPORT\n\n* Heading\nText.\n');
+  assert.doesNotMatch(exportToMarkdown(doc), /HTML-only content/);
+});

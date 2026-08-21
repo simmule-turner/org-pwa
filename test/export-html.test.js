@@ -603,3 +603,62 @@ test('THE FIX: a lowercase #+title: sets the <title> tag too, matching real Emac
   const html = exportToHtml(doc);
   assert.match(html, /<title>org-pwa README\.org<\/title>/);
 });
+
+// ---- THE FEATURE: #+HTML_HEAD: and #+BEGIN_EXPORT html ------------------------
+
+test('THE EXACT REQUEST: #+HTML_HEAD: content is inserted verbatim into <head>, right before </head>', () => {
+  const doc = parseOrg('#+HTML_HEAD: <style>body{color:red}</style>\n\n* Heading\nText.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<style>body\{color:red\}<\/style>\n<\/head>/);
+});
+
+test('THE EXACT REQUEST: multiple #+HTML_HEAD: lines (a multi-line <style> block) all appear, in order', () => {
+  const orgText = [
+    '#+HTML_HEAD: <style>',
+    '#+HTML_HEAD: @media print {',
+    '#+HTML_HEAD:   header { position: fixed; top: 0; }',
+    '#+HTML_HEAD: }',
+    '#+HTML_HEAD: </style>',
+    '',
+    '* Heading',
+    'Text.',
+  ].join('\n');
+  const html = exportToHtml(parseOrg(orgText));
+  assert.match(html, /<style>\n@media print \{\n  header \{ position: fixed; top: 0; \}\n\}\n<\/style>/);
+});
+
+test('no #+HTML_HEAD: at all -- nothing extra is inserted, no stray blank block', () => {
+  const html = exportToHtml(parseOrg('* Heading\nText.\n'));
+  assert.doesNotMatch(html, /<style><\/style>/);
+});
+
+test('#+HTML_HEAD: still applies during a subtree-only export, matching real Emacs org-mode\u2019s own confirmed behavior', () => {
+  const doc = parseOrg('#+HTML_HEAD: <style>body{color:blue}</style>\n\n* Subtree\nText.\n');
+  const html = exportToHtml(doc, doc.children[0]);
+  assert.match(html, /body\{color:blue\}/);
+});
+
+test('THE EXACT REQUEST: #+BEGIN_EXPORT html ... #+END_EXPORT is rendered raw/verbatim, no escaping, no wrapping tag', () => {
+  const doc = parseOrg('#+BEGIN_EXPORT html\n<header><h1>My Document Header</h1></header>\n#+END_EXPORT\n\n* Heading\nText.\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /<header><h1>My Document Header<\/h1><\/header>/);
+});
+
+test('THE FIX: an #+BEGIN_EXPORT block for a DIFFERENT backend (ascii) is omitted entirely from HTML export, matching real Emacs org-mode\u2019s own confirmed backend-scoping', () => {
+  const doc = parseOrg('#+BEGIN_EXPORT ascii\nASCII-only content\n#+END_EXPORT\n\n* Heading\nText.\n');
+  const html = exportToHtml(doc);
+  assert.doesNotMatch(html, /ASCII-only content/);
+});
+
+test('#+BEGIN_EXPORT html matches case-insensitively too ("HTML", "Html")', () => {
+  for (const tag of ['HTML', 'Html', 'html']) {
+    const doc = parseOrg(`#+BEGIN_EXPORT ${tag}\n<p>x</p>\n#+END_EXPORT\n\n* H\nText.\n`);
+    assert.match(exportToHtml(doc), /<p>x<\/p>/, `tag "${tag}" should match`);
+  }
+});
+
+test('an #+BEGIN_EXPORT html block inside a heading\u2019s own body renders in that heading\u2019s own content, not the document preamble', () => {
+  const doc = parseOrg('* Second\nMore content here.\n\n#+BEGIN_EXPORT html\n<footer><p>footer text</p></footer>\n#+END_EXPORT\n');
+  const html = exportToHtml(doc);
+  assert.match(html, /More content here\.[\s\S]*<footer><p>footer text<\/p><\/footer>/);
+});

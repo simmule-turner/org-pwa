@@ -365,3 +365,52 @@ test('THE FIX: a lowercase #+title: sets the ODF dc:title too, matching real Ema
   const meta = unzipEntry(exportToOdt(doc), 'meta.xml');
   assert.match(meta, /<dc:title>org-pwa README\.org<\/dc:title>/);
 });
+
+// ---- THE FEATURE: #+BEGIN_EXPORT odt -------------------------------------------
+
+test('THE EXACT REQUEST: #+BEGIN_EXPORT odt ... #+END_EXPORT is rendered raw/verbatim into content.xml, no escaping, matching real org\u2019s own confirmed ox-odt.el behavior (org-odt-export-block)', () => {
+  const doc = parseOrg('#+BEGIN_EXPORT odt\n<text:p text:style-name="Text_20_body">Raw ODT content</text:p>\n#+END_EXPORT\n\n* Heading\nText.\n');
+  const content = unzipEntry(exportToOdt(doc), 'content.xml');
+  assert.match(content, /<text:p text:style-name="Text_20_body">Raw ODT content<\/text:p>/);
+});
+
+test('THE FIX: an #+BEGIN_EXPORT block for a DIFFERENT backend (html) is omitted entirely from ODT export', () => {
+  const doc = parseOrg('#+BEGIN_EXPORT html\n<div>HTML-only content</div>\n#+END_EXPORT\n\n* Heading\nText.\n');
+  const content = unzipEntry(exportToOdt(doc), 'content.xml');
+  assert.doesNotMatch(content, /HTML-only content/);
+});
+
+test('#+BEGIN_EXPORT odt matches case-insensitively too', () => {
+  const doc = parseOrg('#+BEGIN_EXPORT ODT\n<text:p>x</text:p>\n#+END_EXPORT\n\n* H\nText.\n');
+  assert.match(unzipEntry(exportToOdt(doc), 'content.xml'), /<text:p>x<\/text:p>/);
+});
+
+// ---- THE FEATURE: #+BEGIN_EXPORT odt --------------------------------------
+
+test('THE EXACT REQUEST: #+BEGIN_EXPORT odt ... #+END_EXPORT is rendered raw/verbatim into content.xml, no escaping', () => {
+  const doc = parseOrg('#+BEGIN_EXPORT odt\n<text:p text:style-name="Text_20_body">Raw ODT content</text:p>\n#+END_EXPORT\n\n* Heading\nText.\n');
+  const content = unzipEntry(exportToOdt(doc), 'content.xml');
+  assert.match(content, /<text:p text:style-name="Text_20_body">Raw ODT content<\/text:p>/);
+});
+
+test('THE FIX: an #+BEGIN_EXPORT block for a DIFFERENT backend (html) is omitted entirely from ODT export', () => {
+  const doc = parseOrg('#+BEGIN_EXPORT html\n<div>HTML-only content</div>\n#+END_EXPORT\n\n* Heading\nText.\n');
+  const content = unzipEntry(exportToOdt(doc), 'content.xml');
+  assert.doesNotMatch(content, /HTML-only content/);
+});
+
+test('#+BEGIN_EXPORT odt matches case-insensitively too', () => {
+  for (const tag of ['ODT', 'Odt', 'odt']) {
+    const doc = parseOrg(`#+BEGIN_EXPORT ${tag}\n<text:p>x</text:p>\n#+END_EXPORT\n\n* H\nText.\n`);
+    const content = unzipEntry(exportToOdt(doc), 'content.xml');
+    assert.match(content, /<text:p>x<\/text:p>/, `tag "${tag}" should match`);
+  }
+});
+
+test('an #+BEGIN_EXPORT odt block still produces a valid, well-formed ODT archive', () => {
+  const doc = parseOrg('#+BEGIN_EXPORT odt\n<text:p>Raw content</text:p>\n#+END_EXPORT\n\n* Heading\nText.\n');
+  const bytes = exportToOdt(doc);
+  assert.ok(bytes instanceof Uint8Array);
+  const content = unzipEntry(bytes, 'content.xml');
+  assert.match(content, /Raw content/);
+});

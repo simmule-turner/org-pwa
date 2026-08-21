@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from '../src/export-options.js';
+import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate, getHtmlHead } from '../src/export-options.js';
 
 function mkDoc(keywords) {
   return { keywords };
@@ -143,4 +143,29 @@ test('mixed-case #+Title:/#+Author:/#+Date: also match', () => {
   assert.equal(getDocTitle(doc), 'T');
   assert.equal(getDocAuthor(doc), 'A');
   assert.equal(getDocDate(doc), 'D');
+});
+
+// ---- getHtmlHead ---------------------------------------------------------------
+
+test('THE EXACT REQUEST: multiple #+HTML_HEAD: lines concatenate, joined by newlines in source order, matching real Emacs org-mode\u2019s own confirmed behavior', () => {
+  const doc = mkDoc([
+    { key: 'HTML_HEAD', value: '<style>' },
+    { key: 'HTML_HEAD', value: 'body { color: red; }' },
+    { key: 'HTML_HEAD', value: '</style>' },
+  ]);
+  assert.equal(getHtmlHead(doc), '<style>\nbody { color: red; }\n</style>');
+});
+
+test('a single #+HTML_HEAD: line works too', () => {
+  const doc = mkDoc([{ key: 'HTML_HEAD', value: '<link rel="stylesheet" href="x.css">' }]);
+  assert.equal(getHtmlHead(doc), '<link rel="stylesheet" href="x.css">');
+});
+
+test('getHtmlHead returns null (not an empty string) when there are none at all', () => {
+  assert.equal(getHtmlHead(mkDoc([])), null);
+});
+
+test('THE FIX: a lowercase #+html_head: matches too, matching real Emacs org-mode\u2019s own confirmed case-insensitive keyword parsing', () => {
+  const doc = mkDoc([{ key: 'html_head', value: '<style>x</style>' }]);
+  assert.equal(getHtmlHead(doc), '<style>x</style>');
 });

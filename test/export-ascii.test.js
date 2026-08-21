@@ -441,3 +441,25 @@ test('a scoped subtree export shows no document-level preamble -- that belongs t
   const result = exportToAscii(doc, target);
   assert.ok(!result.includes('Preamble text.'));
 });
+
+// ---- THE FEATURE: #+BEGIN_EXPORT ascii -----------------------------------------
+
+test('THE EXACT REQUEST: #+BEGIN_EXPORT ascii ... #+END_EXPORT is rendered raw/verbatim, no [NAME] label', () => {
+  const doc = parseOrg('#+BEGIN_EXPORT ascii\nASCII-only content\n#+END_EXPORT\n\n* Heading\nText.\n');
+  const ascii = exportToAscii(doc);
+  assert.match(ascii, /ASCII-only content/);
+  assert.doesNotMatch(ascii, /\[EXPORT\]/);
+});
+
+test('THE FIX: an #+BEGIN_EXPORT block for a DIFFERENT backend (html) is omitted entirely from ASCII export', () => {
+  const doc = parseOrg('#+BEGIN_EXPORT html\n<div>HTML-only content</div>\n#+END_EXPORT\n\n* Heading\nText.\n');
+  const ascii = exportToAscii(doc);
+  assert.doesNotMatch(ascii, /HTML-only content/);
+});
+
+test('#+BEGIN_EXPORT ascii matches case-insensitively too', () => {
+  for (const tag of ['ASCII', 'Ascii', 'ascii']) {
+    const doc = parseOrg(`#+BEGIN_EXPORT ${tag}\nraw text\n#+END_EXPORT\n\n* H\nText.\n`);
+    assert.match(exportToAscii(doc), /raw text/, `tag "${tag}" should match`);
+  }
+});
