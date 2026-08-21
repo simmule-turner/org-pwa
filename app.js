@@ -2222,19 +2222,24 @@ function renderCalendarPanel() {
     cell.style.borderRadius = '6px';
     cell.style.cursor = 'pointer';
     const marker = dayMarkers.get(dateKey(cellData.date));
+    let hasEventColor = false;
     if (marker && marker.hasBirthday && marker.hasOther) {
       cell.style.background = '#CC5500'; // burnt orange
       cell.style.color = '#fff';
+      hasEventColor = true;
     } else if (marker && marker.hasBirthday) {
       cell.style.background = '#2E8B57'; // green
       cell.style.color = '#fff';
+      hasEventColor = true;
     } else if (marker && marker.hasOther) {
       cell.style.background = '#3B6EA5'; // blue
       cell.style.color = '#fff';
+      hasEventColor = true;
     }
     if (cellData.isToday) {
       cell.style.fontWeight = '700';
-      cell.style.border = '1.5px solid var(--accent)';
+      cell.style.outline = hasEventColor ? '2px solid #fff' : '2px solid var(--fg)';
+      cell.style.outlineOffset = '-2px';
     }
     cell.onclick = () => {
       agendaViewType = 'day';
