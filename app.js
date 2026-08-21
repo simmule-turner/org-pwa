@@ -4032,7 +4032,7 @@ function renderFootnoteRefNode(node, linkContext = null) {
  *  (smaller, italic, a superscript label) rather than making it
  *  something to tap and jump to -- it already IS the definition, not a
  *  reference to one elsewhere. */
-function renderFootnoteDefNode(node, linkContext = null) {
+function renderFootnoteDefNode(node, linkContext = null, heading = null) {
   const wrap = document.createElement('span');
   const labelEl = document.createElement('sup');
   labelEl.textContent = node.label ? '[' + node.label + ']' : '[*]';
@@ -4042,7 +4042,7 @@ function renderFootnoteDefNode(node, linkContext = null) {
   content.style.fontSize = '0.9em';
   content.style.fontStyle = 'italic';
   content.style.opacity = '0.85';
-  renderInlineNodes(node.children, content, linkContext);
+  renderInlineNodes(node.children, content, linkContext, heading);
   wrap.appendChild(content);
   return wrap;
 }
@@ -4129,7 +4129,7 @@ function renderInlineNodes(nodes, container, linkContext = null, heading = null)
         container.appendChild(renderFootnoteRefNode(node, linkContext));
         break;
       case 'footnote-def':
-        container.appendChild(renderFootnoteDefNode(node, linkContext));
+        container.appendChild(renderFootnoteDefNode(node, linkContext, heading));
         break;
       case 'comment':
         // Org excludes comments from rendered/exported output; skipped here too.
@@ -4284,7 +4284,7 @@ async function navigateBack() {
     if (target.originHeadingPath) {
       const originHeading = findHeadingByOutlinePath(state.doc, target.originHeadingPath);
       if (originHeading) {
-        navigateToHeading(originHeading, { pushToBackStack: false });
+        navigateToHeading(originHeading, { pushToBackStack: false, revealOwnBody: true });
         syncNavBackButtonVisibility();
         return;
       }
