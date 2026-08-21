@@ -17,6 +17,7 @@ import {
   getOrgWeatherTemperatureUnit,
   getOrgTableDurationHourZeroPadding,
   getAgendaFilesVar,
+  parseAgendaFilesVar,
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
   getAgendaSkipArchivedTrees,
@@ -29,6 +30,7 @@ import {
   getUsePropertyInheritance,
   getUseSubSuperscripts,
 } from '../src/local-variables.js';
+import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
 
 // ---- parseLocalVariables --------------------------------------------------
 
@@ -407,6 +409,54 @@ test('getAgendaFilesVar defaults to an empty string when unset', () => {
 
 test('getAgendaFilesVar returns the raw semicolon-separated string as-is', () => {
   assert.equal(getAgendaFilesVar({ 'org-agenda-files': 'github:journal.org;webdav:notes/todo.org' }), 'github:journal.org;webdav:notes/todo.org');
+});
+
+// ---- parseAgendaFilesVar -------------------------------------------------------
+
+test('parseAgendaFilesVar parses semicolon-separated github:/webdav: entries', () => {
+  assert.deepEqual(parseAgendaFilesVar('github:contacts.org;webdav:notes/todo.org'), ['github:contacts.org', 'webdav:notes/todo.org']);
+});
+
+test('parseAgendaFilesVar returns an empty array for an empty or unset value', () => {
+  assert.deepEqual(parseAgendaFilesVar(''), []);
+  assert.deepEqual(parseAgendaFilesVar(null), []);
+  assert.deepEqual(parseAgendaFilesVar(undefined), []);
+});
+
+test('parseAgendaFilesVar drops an entry with no recognized scheme, keeping the rest', () => {
+  assert.deepEqual(parseAgendaFilesVar('github:a.org;not-a-real-scheme:b.org;webdav:c.org'), ['github:a.org', 'webdav:c.org']);
+});
+
+test('parseAgendaFilesVar drops an entry with an empty path', () => {
+  assert.deepEqual(parseAgendaFilesVar('github:;webdav:c.org'), ['webdav:c.org']);
+});
+
+test('parseAgendaFilesVar trims whitespace around each entry', () => {
+  assert.deepEqual(parseAgendaFilesVar('  github:a.org ; webdav:b.org  '), ['github:a.org', 'webdav:b.org']);
+});
+
+// ---- THE EXACT REQUEST: a file-local org-agenda-files override --------------
+
+test('THE EXACT REQUEST: a document\u2019s own "# Local Variables:" org-agenda-files line takes precedence over the global Settings value once merged, matching real Emacs org-mode\u2019s own confirmed behavior (the agenda command honors a file-local override when run from within that specific buffer)', () => {
+  const orgText = [
+    '* TODO Something',
+    '',
+    '# Local Variables:',
+    '# org-agenda-files: github:contacts.org;github:journal.org',
+    '# End:',
+  ].join('\n');
+  const rawLocalVars = parseLocalVariables(orgText);
+  const globalVariables = { 'org-agenda-files': 'github:old-global-value.org' };
+  const merged = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
+  assert.equal(getAgendaFilesVar(merged), 'github:contacts.org;github:journal.org');
+  assert.deepEqual(parseAgendaFilesVar(getAgendaFilesVar(merged)), ['github:contacts.org', 'github:journal.org']);
+});
+
+test('with NO file-local override, the merged value correctly falls back to the global one', () => {
+  const rawLocalVars = parseLocalVariables('* A heading\nNo local variables block here.\n');
+  const globalVariables = { 'org-agenda-files': 'github:only-global.org' };
+  const merged = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
+  assert.equal(getAgendaFilesVar(merged), 'github:only-global.org');
 });
 
 test('THE FIX: getOrgTableDurationHourZeroPadding defaults to true, matching real org\u2019s own confirmed default (a duration formula\u2019s own hours field is zero-padded by default)', () => {
