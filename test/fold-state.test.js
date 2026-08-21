@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
-import { toggleFold } from '../src/outline-view-model.js';
+import { toggleFold, flattenVisibleRows } from '../src/outline-view-model.js';
 import {
   applyStartupVisibility,
   isFullyExpanded,
@@ -77,6 +77,40 @@ test('applyStartupVisibility: overview leaves bodyHidden false (irrelevant when 
   const doc = deepDoc();
   applyStartupVisibility(doc, { visibility: 'overview' });
   assert.equal(doc.children[0].bodyHidden, false);
+});
+
+test('THE EXACT REQUEST: show2levels shows headings through depth 2 only, matching real Emacs org-mode\u2019s own confirmed behavior', () => {
+  const doc = deepDoc();
+  applyStartupVisibility(doc, { visibility: 'show2levels' });
+  const titles = flattenVisibleRows(doc)
+    .filter((r) => r.rowType === 'heading')
+    .map((r) => r.node.title);
+  assert.deepEqual(titles, ['Grandparent', 'Parent A', 'Parent B']);
+});
+
+test('THE EXACT REQUEST: show3levels shows headings through depth 3, matching real Emacs org-mode\u2019s own confirmed behavior', () => {
+  const doc = deepDoc();
+  applyStartupVisibility(doc, { visibility: 'show3levels' });
+  const titles = flattenVisibleRows(doc)
+    .filter((r) => r.rowType === 'heading')
+    .map((r) => r.node.title);
+  assert.deepEqual(titles, ['Grandparent', 'Parent A', 'Child A1', 'Child A2', 'Parent B', 'Child B1']);
+});
+
+test('show4levels reveals the whole deepDoc() structure, since it\u2019s only 4 levels deep', () => {
+  const doc = deepDoc();
+  applyStartupVisibility(doc, { visibility: 'show4levels' });
+  const titles = flattenVisibleRows(doc)
+    .filter((r) => r.rowType === 'heading')
+    .map((r) => r.node.title);
+  assert.deepEqual(titles, ['Grandparent', 'Parent A', 'Child A1', 'Child A2', 'Grandchild A2a', 'Parent B', 'Child B1']);
+});
+
+test('THE FIX: showNlevels hides body text at EVERY visible level, not just the deepest one, matching real Emacs org-mode\u2019s own confirmed behavior', () => {
+  const doc = parseOrg('* Level 1\nText at level 1.\n** Level 2\nText at level 2.\n');
+  applyStartupVisibility(doc, { visibility: 'show2levels' });
+  assert.equal(doc.children[0].bodyHidden, true);
+  assert.equal(doc.children[0].children[0].bodyHidden, true);
 });
 
 // ---- the bug: 'content'/'showall'/'showeverything' ignoring archive status ----

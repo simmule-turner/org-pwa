@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
-import { parseStartupConfig, DEFAULT_STARTUP_CONFIG, getEffectiveVisibility, getEffectiveImageVisibility } from '../src/startup-config.js';
+import { parseStartupConfig, DEFAULT_STARTUP_CONFIG, getEffectiveVisibility, getEffectiveImageVisibility, showLevelsDepth } from '../src/startup-config.js';
 
 test('defaults apply when there is no #+STARTUP line at all', () => {
   const doc = parseOrg('* A heading');
@@ -167,4 +167,34 @@ test('getEffectiveImageVisibility: an explicit nil at a layer is correctly disti
   // into the same falsy value.
   const doc = parseOrg('* A heading');
   assert.equal(getEffectiveImageVisibility(doc, { 'org-startup-with-inline-images': 'nil' }, { 'org-startup-with-inline-images': 't' }), 'noinlineimages');
+});
+
+// ---- THE FEATURE: show2levels/show3levels/show4levels/show5levels -----------
+
+test('THE EXACT REQUEST: show2levels/show3levels/show4levels/show5levels are all recognized #+STARTUP: visibility keywords', () => {
+  for (const n of [2, 3, 4, 5]) {
+    const doc = parseOrg(`#+STARTUP: show${n}levels\n* A heading`);
+    assert.equal(parseStartupConfig(doc).visibility, `show${n}levels`);
+  }
+});
+
+test('showLevelsDepth extracts the N from a showNlevels keyword', () => {
+  assert.equal(showLevelsDepth('show2levels'), 2);
+  assert.equal(showLevelsDepth('show3levels'), 3);
+  assert.equal(showLevelsDepth('show4levels'), 4);
+  assert.equal(showLevelsDepth('show5levels'), 5);
+});
+
+test('showLevelsDepth returns null for every other visibility keyword', () => {
+  assert.equal(showLevelsDepth('overview'), null);
+  assert.equal(showLevelsDepth('content'), null);
+  assert.equal(showLevelsDepth('showall'), null);
+  assert.equal(showLevelsDepth('showeverything'), null);
+  assert.equal(showLevelsDepth(null), null);
+  assert.equal(showLevelsDepth(undefined), null);
+});
+
+test('getEffectiveVisibility honors a showNlevels override from Local Variables', () => {
+  const doc = parseOrg('* A heading');
+  assert.equal(getEffectiveVisibility(doc, { 'org-startup-folded': 'show4levels' }, {}), 'show4levels');
 });
