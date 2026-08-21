@@ -2216,7 +2216,6 @@ function renderCalendarPanel() {
       dayGrid.appendChild(cell);
       continue;
     }
-    cell.textContent = String(cellData.day);
     cell.style.textAlign = 'center';
     cell.style.padding = '8px 0';
     cell.style.borderRadius = '6px';
@@ -2234,15 +2233,31 @@ function renderCalendarPanel() {
     }
     if (cellData.isToday) {
       cell.style.fontWeight = '700';
-      // A double-ring "halo" (inset white ring just outside an inset
-      // black ring) rather than a single-color outline: guaranteed
-      // visible against ANY background -- the plain panel in either
-      // theme, or any of the three event colors above -- since at
-      // least one of white/black always has strong contrast against
-      // whatever's beneath it. A single fixed color (even chosen
-      // per-theme) can't satisfy every combination of theme and
-      // event-color state at once.
-      cell.style.boxShadow = 'inset 0 0 0 2px #fff, inset 0 0 0 4px #000';
+      // A two-color "halo" ring (black outer, white inner) via genuine
+      // `border` on two real, nested elements -- not box-shadow, which
+      // has a known history of rendering quirks on some Android
+      // WebView versions, particularly combined with border-radius
+      // (reported: this app's own earlier box-shadow-based attempt
+      // showed no visible change at all on Android despite working
+      // correctly on iOS). `border` is the single most universally,
+      // unambiguously supported CSS property there is. Still
+      // guaranteed visible against any background -- the plain panel
+      // in either theme, or any of the three event colors above --
+      // since at least one of white/black always has strong contrast
+      // against whatever's beneath it.
+      cell.textContent = '';
+      cell.style.boxSizing = 'border-box';
+      cell.style.border = '2px solid #000';
+      cell.style.padding = '4px 0';
+      const inner = document.createElement('div');
+      inner.textContent = String(cellData.day);
+      inner.style.boxSizing = 'border-box';
+      inner.style.border = '2px solid #fff';
+      inner.style.borderRadius = '4px';
+      inner.style.padding = '2px 0';
+      cell.appendChild(inner);
+    } else {
+      cell.textContent = String(cellData.day);
     }
     cell.onclick = () => {
       agendaViewType = 'day';
