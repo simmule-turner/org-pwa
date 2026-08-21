@@ -47,13 +47,20 @@ function parseRefileTargets(text) {
   return entries;
 }
 
-/**
- * Resolves one entry's file-spec into the actual list of document IDs
- * it refers to, given the app's current context.
- */
+/** Strips a "scheme:path" entry down to its own bare path -- every
+ *  actual document lookup throughout this app (state.documentId,
+ *  docsById's own keys, aggregateAgendaDocs' own output) uses the bare
+ *  path only, never the "scheme:" prefix; that prefix exists purely
+ *  in agendaFilesConfig's own raw configuration strings, needed there
+ *  specifically to pick which adapter (github vs webdav) fetches it. */
+function stripScheme(key) {
+  const colonIndex = key.indexOf(':');
+  return colonIndex === -1 ? key : key.slice(colonIndex + 1);
+}
+
 function resolveEntryFileIds(entry, currentFileId, agendaFilesConfig) {
   if (entry.fileSpec === 'current') return [currentFileId];
-  if (entry.fileSpec === 'agenda-files') return (agendaFilesConfig || []).slice();
+  if (entry.fileSpec === 'agenda-files') return (agendaFilesConfig || []).map(stripScheme);
   return [resolveCaptureFileId(entry.fileSpec, currentFileId)];
 }
 

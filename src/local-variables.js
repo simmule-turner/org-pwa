@@ -327,15 +327,6 @@ export function getCalendarLongitude(vars) {
   return n >= -180 && n <= 180 ? n : -78.8986;
 }
 
-/** calendar-location-name: real Emacs's own exact variable name --
- *  purely cosmetic (a label), unlike latitude/longitude which
- *  actually drive the calculation. */
-export function getCalendarLocationName(vars) {
-  const raw = (vars || {})['calendar-location-name'];
-  const trimmed = raw ? String(raw).trim() : '';
-  return trimmed || 'Durham, NC';
-}
-
 /** solar-ampm: this app's own extension, not a real elisp/org
  *  variable -- controls the time format for the four single-value
  *  solar functions (diary-sunrise/diary-sunset/diary-civil-sunrise/
