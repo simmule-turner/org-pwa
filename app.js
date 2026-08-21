@@ -75,6 +75,8 @@ import {
   getAsciiTextWidth,
   getExtraMenu,
   getMenuAliases,
+  getAgendaFilesVar,
+  parseAgendaFilesVar,
 } from './src/local-variables.js';
 import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath } from './src/refile.js';
 import { isClockRunning, clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, formatClockDuration, findHeadingWithRunningClock } from './src/clock.js';
@@ -488,6 +490,32 @@ const webdavAdapter = createWebdavAdapter(() => webdavConfig);
 // each fetch resolves, the same "render now, swap in what arrives"
 // pattern already used for inline images.
 let agendaFilesConfig = [];
+
+/** Recomputes agendaFilesConfig from whichever variable set is
+ *  actually authoritative right now: state.localVariables (already
+ *  the correctly-merged global+file-local set -- see
+ *  mergeGlobalAndLocalVariables's own docs) when a document is open,
+ *  since real org itself does honor a file's own #+STARTUP:-adjacent
+ *  "# Local Variables:" override for org-agenda-files when the
+ *  agenda command runs from within that specific buffer (confirmed
+ *  directly against real Emacs org-mode) -- the closest real-org
+ *  analogy to this app's own always-current-document Agenda view.
+ *  Falls back to globalVariables directly when no document is open at
+ *  all (there's no state.localVariables to merge yet).
+ *
+ *  THE FIX: every call site here used to read globalVariables['org-
+ *  agenda-files'] directly, so a file-local override was silently
+ *  ignored entirely -- an org-agenda-files line inside a document's
+ *  own "# Local Variables:" block never took effect, even though the
+ *  identical value pasted into Settings' own Global Variables worked
+ *  immediately. Call this any time state.localVariables changes for
+ *  any reason: opening a different document, undo/redo, committing
+ *  from Text view, or a Settings change to the global value while a
+ *  document is open. */
+function syncAgendaFilesConfig() {
+  agendaFilesConfig = parseAgendaFilesVar(getAgendaFilesVar(state.doc ? state.localVariables : globalVariables));
+}
+
 let globalVariablesText = '';
 let globalVariables = {}; // parsed from globalVariablesText -- kept in sync by setGlobalVariablesAndReparse below
 const agendaFilesCache = new Map(); // "scheme:path" -> { doc, documentId } | { error } | { loading: true }
@@ -632,6 +660,7 @@ async function reloadCurrentDocumentFromDisk() {
   const rawLocalVars = parseLocalVariables(serializeOrg(state.doc));
   state.startupConfig = resolveEffectiveStartupConfig(state.doc, rawLocalVars, globalVariables);
   state.localVariables = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
+  syncAgendaFilesConfig();
   navigationBackStack = [];
   currentContextHeading = null;
   syncNavBackButtonVisibility();
@@ -3425,6 +3454,7 @@ function restoreFromHistory() {
   state.doc = newDoc;
   state.startupConfig = startupConfig;
   state.localVariables = localVariables;
+  syncAgendaFilesConfig();
   // Every heading object reference held anywhere (the navigation
   // back-stack in particular) is now stale -- a fresh parseOrg call
   // always produces brand new heading instances, even when re-parsing
@@ -3643,6 +3673,7 @@ function commitTextModeIfActive() {
   state.doc = newDoc;
   state.startupConfig = startupConfig;
   state.localVariables = localVariables;
+  syncAgendaFilesConfig();
   // Every heading object reference held anywhere (the navigation
   // back-stack in particular) is now stale -- a fresh parseOrg call
   // always produces brand new heading instances, even when re-parsing
@@ -6224,6 +6255,7 @@ async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCach
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(doc, startupConfig, archiveVisibility);
   state = { documentId, doc, startupConfig, storageKind, localVariables };
+  syncAgendaFilesConfig();
   const openedText = serializeOrg(doc);
   history = createHistory(openedText, resumedFromCache ? 'Opened (resumed unsaved local version)' : 'Opened');
   historyOpen = false;
@@ -9164,10 +9196,10 @@ async function commitGlobalVariableChange(key, rawValue) {
   globalVariablesText = serializeGlobalVariables(vars);
   globalVariables = vars;
   await setGlobalVariables(kv, globalVariablesText);
-  agendaFilesConfig = parseAgendaFilesVar(globalVariables['org-agenda-files'] || '');
   if (state.doc) {
     state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
   }
+  syncAgendaFilesConfig();
 }
 
 /** Builds one Quick Settings field's own label + control row. */
@@ -9684,13 +9716,13 @@ async function renderSettingsView(target = settingsRenderTarget) {
     await setGlobalVariables(kv, normalizedText);
     globalVariablesText = normalizedText;
     globalVariables = parseGlobalVariables(globalVariablesText);
-    agendaFilesConfig = parseAgendaFilesVar(globalVariables['org-agenda-files'] || '');
     // Re-merge immediately so the currently open document (if any)
     // reflects the change right away -- no reload needed, matching
     // how the theme/font settings already apply on save.
     if (state.doc) {
       state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
     }
+    syncAgendaFilesConfig();
     setStatus('Global variables saved.');
     renderSettingsView();
     render();
@@ -10052,10 +10084,10 @@ async function renderSettingsView(target = settingsRenderTarget) {
       if (imported.includes('globalVariables')) {
         globalVariablesText = await getGlobalVariables(kv);
         globalVariables = parseGlobalVariables(globalVariablesText);
-        agendaFilesConfig = parseAgendaFilesVar(globalVariables['org-agenda-files'] || '');
         if (state.doc) {
           state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
         }
+        syncAgendaFilesConfig();
         syncExtraMenuButtonVisibility();
       }
       setStatus('Imported: ' + imported.join(', ') + '.');
@@ -10896,20 +10928,6 @@ function validateCaptureTemplates(parsed) {
  *  validation step of its own. Splits only on the FIRST colon within
  *  each entry, so a path that itself contains one isn't mistaken for
  *  a second scheme separator. */
-function parseAgendaFilesVar(text) {
-  const entries = (text || '')
-    .split(';')
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-  return entries.filter((entry) => {
-    const colonIndex = entry.indexOf(':');
-    if (colonIndex === -1) return false;
-    const scheme = entry.slice(0, colonIndex);
-    const path = entry.slice(colonIndex + 1);
-    return (scheme === 'github' || scheme === 'webdav') && path.length > 0;
-  });
-}
-
 async function renderCapturePanel() {
   capturePanel.innerHTML = '';
   if (!captureOpen) {
@@ -11565,7 +11583,7 @@ async function bootstrap() {
     globalVariablesText = serializeGlobalVariables(globalVariables);
     await setGlobalVariables(kv, globalVariablesText);
   }
-  agendaFilesConfig = parseAgendaFilesVar(globalVariables['org-agenda-files'] || '');
+  syncAgendaFilesConfig();
 
   // One-time migration: what used to be four separate variables
   // (org-xx-file-menu / -more-menu / -export-menu / -view-menu) are
