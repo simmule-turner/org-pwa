@@ -105,7 +105,6 @@ import {
 import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId, getCaptureFileScheme, CAPTURE_FILE_SCHEMES } from './src/capture-template.js';
 import { exportToMarkdown } from './src/export-markdown.js';
 import { exportToOdt } from './src/export-odt.js';
-import { exportToDocx } from './src/export-docx.js';
 import { exportToAscii } from './src/export-ascii.js';
 import { expandIncludes } from './src/export-include.js';
 import { exportToHtml } from './src/export-html.js';
@@ -2527,7 +2526,8 @@ const extraMenuBtn = document.getElementById('extraMenuBtn');
 const godModeIndicatorEl = document.createElement('div');
 godModeIndicatorEl.style.position = 'fixed';
 godModeIndicatorEl.style.bottom = '12px';
-godModeIndicatorEl.style.right = '12px';
+godModeIndicatorEl.style.left = '50%';
+godModeIndicatorEl.style.transform = 'translateX(-50%)';
 godModeIndicatorEl.style.zIndex = '9999';
 godModeIndicatorEl.style.padding = '6px 12px';
 godModeIndicatorEl.style.borderRadius = '6px';
@@ -2536,13 +2536,94 @@ godModeIndicatorEl.style.fontFamily = 'monospace';
 godModeIndicatorEl.style.background = 'var(--accent, #444)';
 godModeIndicatorEl.style.color = '#fff';
 godModeIndicatorEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+godModeIndicatorEl.style.pointerEvents = 'none';
 godModeIndicatorEl.style.display = 'none';
 document.body.appendChild(godModeIndicatorEl);
 
 /** Keeps godModeIndicatorEl in sync with godModeActive/godModeState --
  *  called from render() itself so it's always up to date after any
  *  state change, never a separate call site that could drift. */
+/** True while any overlay-style panel (extras menu, Settings, Docs,
+ *  Capture, Search, the File menu, the View menu, the "More" menu,
+ *  the undo History panel, or the single-month Calendar) is currently
+ *  showing on top of the outline. Neither god-mode nor this app's
+ *  own plain keyboard shortcuts should ever act while one of these
+ *  has the user's actual attention -- confirmed as a real bug this
+ *  app had until now: none of these panels touch `currentView`
+ *  (they're all overlays, not separate views), so the outline's own
+ *  keydown listener stayed completely unaware one was open, letting
+ *  a plain shortcut silently mutate the hidden document underneath,
+ *  or (worse, if god-mode happened to be active) swallowing every
+ *  keystroke meant for that panel as a god-mode sequence instead. */
+function anyOverlayPanelOpen() {
+  return (
+    fileMenuOpen ||
+    settingsOpen ||
+    docsOpen ||
+    searchOpen ||
+    captureOpen ||
+    extraMenuOpen ||
+    calendarOpen ||
+    viewMenuOpen ||
+    moreOpen ||
+    historyOpen
+  );
+}
+
+/** Closes whichever overlay panel(s) anyOverlayPanelOpen() found open,
+ *  re-rendering each one so it actually disappears -- the shared
+ *  Escape-to-dismiss behavior every one of these panels was missing
+ *  on its own (see anyOverlayPanelOpen's own docs for why). */
+function closeAllOverlayPanels() {
+  if (fileMenuOpen) {
+    fileMenuOpen = false;
+    fileMenuStep = null;
+    exportFormat = null;
+    exportPickingHeading = false;
+    renderFileMenu();
+  }
+  if (settingsOpen) {
+    settingsOpen = false;
+  }
+  if (docsOpen) {
+    docsOpen = false;
+  }
+  if (searchOpen) {
+    searchOpen = false;
+    renderSearchPanel();
+  }
+  if (captureOpen) {
+    captureOpen = false;
+    captureOpenedFromExtraMenu = false;
+    renderCapturePanel();
+  }
+  if (extraMenuOpen) {
+    extraMenuOpen = false;
+    renderExtraMenu();
+  }
+  if (calendarOpen) {
+    calendarOpen = false;
+    renderCalendarPanel();
+  }
+  if (viewMenuOpen) {
+    viewMenuOpen = false;
+    renderViewMenu();
+  }
+  if (moreOpen) {
+    moreOpen = false;
+    renderMoreMenu();
+  }
+  if (historyOpen) {
+    historyOpen = false;
+    renderHistoryPanel();
+  }
+}
+
 function syncGodModeIndicator() {
+  if (anyOverlayPanelOpen() && godModeActive) {
+    godModeActive = false;
+    godModeState = godModeInitialState();
+  }
   if (!godModeActive) {
     godModeIndicatorEl.style.display = 'none';
     return;
@@ -2927,6 +3008,15 @@ document.addEventListener('keydown', (e) => {
   if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return; // never hijack actual typing; each field's own keydown handler (Escape to cancel, etc.) already owns this
 
   if (e.metaKey || e.ctrlKey) return; // Cmd/Ctrl combinations are the browser's own territory (new tab, save, find, ...) -- never treated as one of these shortcuts, avoiding a silent double-action
+
+  if (anyOverlayPanelOpen()) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeAllOverlayPanels();
+      render();
+    }
+    return; // every other key is ignored while a panel has the user's actual attention -- see anyOverlayPanelOpen's own docs for why
+  }
 
   if (e.key === 'Escape') {
     e.preventDefault();
@@ -4052,11 +4142,19 @@ function syncNavBackButtonVisibility() {
   navBackBtn.style.display = navigationBackStack.length > 0 ? 'flex' : 'none';
 }
 
-function navigateToHeading(heading, { revealOwnBody = false, targetNode = heading } = {}) {
-  navigationBackStack.push({ view: currentView, docsOpen, scrollTop: scrollContainer().scrollTop });
-  if (navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) navigationBackStack.shift();
-  currentContextHeading = heading;
+function navigateToHeading(heading, { revealOwnBody = false, targetNode = heading, pushToBackStack = true } = {}) {
+  if (pushToBackStack) {
+    navigationBackStack.push({
+      view: currentView,
+      docsOpen,
+      documentId: state.documentId,
+      storageKind: state.storageKind,
+      scrollTop: scrollContainer().scrollTop,
+    });
+    if (navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) navigationBackStack.shift();
+  }
   syncNavBackButtonVisibility();
+  currentContextHeading = heading;
   // Always land in the outline — a caller (search, an internal link,
   // agenda) shouldn't each need to remember this. Safe to call even when
   // already in 'org': switchToView no-ops in that case rather than
@@ -4099,6 +4197,33 @@ function navigateToHeading(heading, { revealOwnBody = false, targetNode = headin
 async function navigateBack() {
   const target = navigationBackStack.pop();
   if (!target) return;
+
+  if (target.documentId && target.documentId !== state.documentId) {
+    let adapter, label;
+    if (target.storageKind === 'github') {
+      adapter = githubAdapter;
+      label = 'GitHub';
+    } else if (target.storageKind === 'webdav') {
+      adapter = webdavAdapter;
+      label = 'WebDAV';
+    } else {
+      setStatus(
+        `Can't automatically return to "${target.documentId}" — local files need a file picker per file (browser security), which can't happen from the back button.`
+      );
+      syncNavBackButtonVisibility();
+      return;
+    }
+    await openRemotePath(target.documentId, target.storageKind, adapter, label);
+    // openRemotePath catches and reports its own errors via setStatus
+    // rather than throwing -- confirm it actually landed on the
+    // origin document before restoring any of its own view/scroll
+    // state below, the same "did this actually succeed" check
+    // openFileLink's own forward-navigation already uses.
+    if (!state.doc || state.documentId !== target.documentId) {
+      syncNavBackButtonVisibility();
+      return;
+    }
+  }
 
   if (target.settingsOpen && !settingsOpen) {
     // The jump away (a Quick Settings help link, or the Capture
@@ -6294,21 +6419,43 @@ async function openFileLink(resolution) {
     label = state.storageKind === 'github' ? 'GitHub' : 'WebDAV';
   }
 
+  // Captured BEFORE the jump switches state.documentId away from it --
+  // this is what lets the back button return here later, even though
+  // opening the target document (a fresh parseOrg call) would
+  // otherwise invalidate any heading-object-based state the way it
+  // already does for every other navigationBackStack entry.
+  const originEntry = {
+    view: currentView,
+    docsOpen,
+    documentId: state.documentId,
+    storageKind: state.storageKind,
+    scrollTop: scrollContainer().scrollTop,
+  };
+
   const resolvedPath = resolveImagePath(resolution.path, state.documentId);
   await openRemotePath(resolvedPath, kind, adapter, label);
 
   // openRemotePath catches and reports its own errors via setStatus
   // rather than throwing — the only reliable way to tell whether it
   // actually succeeded is checking that state now points at the
-  // target document, before attempting to navigate within it.
-  if (!resolution.inFileTarget || !state.doc || state.documentId !== resolvedPath) return;
+  // target document, before doing anything else -- including pushing
+  // the back-stack entry above: a failed jump never actually left the
+  // origin document, so there's nothing to push a "return to" entry
+  // for.
+  if (!state.doc || state.documentId !== resolvedPath) return;
+
+  navigationBackStack.push(originEntry);
+  if (navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) navigationBackStack.shift();
+  syncNavBackButtonVisibility();
+
+  if (!resolution.inFileTarget) return;
 
   const target = resolution.inFileTarget;
   if (target.startsWith('*')) {
     const headingTitle = target.slice(1).trim();
     const heading = findHeadingByTitle(state.doc, headingTitle);
     if (heading) {
-      navigateToHeading(heading);
+      navigateToHeading(heading, { pushToBackStack: false });
     } else {
       setStatus(`Opened ${resolvedPath}, but couldn't find the heading "${headingTitle}".`);
     }
@@ -6320,7 +6467,7 @@ async function openFileLink(resolution) {
     usePropertyInheritance: getUsePropertyInheritance(state.localVariables),
   });
   if (results.length > 0) {
-    navigateToHeading(results[0].heading, { revealOwnBody: results[0].type !== 'heading', targetNode: results[0].node });
+    navigateToHeading(results[0].heading, { revealOwnBody: results[0].type !== 'heading', targetNode: results[0].node, pushToBackStack: false });
   } else {
     setStatus(`Opened ${resolvedPath}, but couldn't find "${target}" in it.`);
   }
@@ -6963,7 +7110,7 @@ async function resolveIncludePath(path) {
 async function performExport(format, scope) {
   const rawName = scope && typeof scope === 'object' ? scope.title : (state.documentId || 'export').replace(/\.[a-zA-Z0-9]+$/, '');
   const baseName = rawName.replace(/[\\/:*?"<>|]/g, '_').trim() || 'export';
-  if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt' || format === 'docx') {
+  if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt') {
     const doc = await expandIncludes(state.doc, resolveIncludePath, parseOrg);
     if (format === 'ascii') {
       downloadFile(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(state.localVariables)), 'text/plain');
@@ -6971,14 +7118,8 @@ async function performExport(format, scope) {
       downloadFile(baseName + '.md', exportToMarkdown(doc, scope), 'text/markdown');
     } else if (format === 'html') {
       downloadFile(baseName + '.html', exportToHtml(doc, scope), 'text/html');
-    } else if (format === 'odt') {
-      downloadFile(baseName + '.odt', exportToOdt(doc, scope), 'application/vnd.oasis.opendocument.text');
     } else {
-      downloadFile(
-        baseName + '.docx',
-        exportToDocx(doc, scope),
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      );
+      downloadFile(baseName + '.odt', exportToOdt(doc, scope), 'application/vnd.oasis.opendocument.text');
     }
   } else {
     const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: state.documentId, doc: state.doc }];
@@ -6990,7 +7131,7 @@ async function performExport(format, scope) {
   exportFormat = null;
   exportPickingHeading = false;
   setStatus(
-    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : format === 'docx' ? 'DOCX' : 'Calendar (.ics)'}.`
+    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : 'Calendar (.ics)'}.`
   );
   renderFileMenu();
   render();
@@ -7033,11 +7174,6 @@ function renderExportFlow() {
       renderFileMenu();
     });
     if (odtBtn) row.appendChild(odtBtn);
-    const docxBtn = aliasedMenuButton(exportMenuAliases, 'DOCX', () => {
-      exportFormat = 'docx';
-      renderFileMenu();
-    });
-    if (docxBtn) row.appendChild(docxBtn);
     fileMenuPanel.appendChild(row);
     return;
   }
@@ -7127,7 +7263,7 @@ function renderExportFlow() {
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '4px';
-  label.textContent = `Export ${exportFormat === 'ascii' ? 'ASCII' : exportFormat === 'markdown' ? 'Markdown' : exportFormat === 'html' ? 'HTML' : exportFormat === 'odt' ? 'ODT' : exportFormat === 'docx' ? 'DOCX' : 'Calendar (.ics)'} for:`;
+  label.textContent = `Export ${exportFormat === 'ascii' ? 'ASCII' : exportFormat === 'markdown' ? 'Markdown' : exportFormat === 'html' ? 'HTML' : exportFormat === 'odt' ? 'ODT' : 'Calendar (.ics)'} for:`;
   fileMenuPanel.appendChild(label);
 
   const row = document.createElement('div');
@@ -10097,7 +10233,13 @@ function renderReadOnlyOutline(doc, container, rerender) {
   const linkContext = {
     doc,
     onHeadingLinkClick(heading) {
-      navigationBackStack.push({ view: currentView, docsOpen, scrollTop: scrollContainer().scrollTop });
+      navigationBackStack.push({
+        view: currentView,
+        docsOpen,
+        documentId: state.documentId,
+        storageKind: state.storageKind,
+        scrollTop: scrollContainer().scrollTop,
+      });
       if (navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) navigationBackStack.shift();
       syncNavBackButtonVisibility();
       // Expand every ancestor of the link's target (mirroring
@@ -10399,7 +10541,14 @@ async function renderDocsView(target = docsRenderTarget) {
  *  the corresponding help section, so a streamlined settings hint can
  *  point at the full documentation instead of duplicating it inline. */
 async function openDocsAtHeading(anchorId) {
-  navigationBackStack.push({ view: currentView, docsOpen, settingsOpen, scrollTop: scrollContainer().scrollTop });
+  navigationBackStack.push({
+    view: currentView,
+    docsOpen,
+    settingsOpen,
+    documentId: state.documentId,
+    storageKind: state.storageKind,
+    scrollTop: scrollContainer().scrollTop,
+  });
   if (navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) navigationBackStack.shift();
   syncNavBackButtonVisibility();
   moreOpen = false;
