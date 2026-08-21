@@ -209,11 +209,46 @@ export function getRefileTargets(vars) {
  *  same separator convention as org-refile-targets above, and the
  *  same "scheme:path" per-entry shape this app already used for its
  *  own, previously-separate Agenda Files setting) -- just the raw
- *  string here; parsing/validation is app.js's own
- *  parseAgendaFilesVar, the same division of responsibility as
- *  getRefileTargets and src/refile.js above. */
+ *  string here; parsing/validation is this module's own
+ *  parseAgendaFilesVar below, the same division of responsibility as
+ *  getRefileTargets and src/refile.js above.
+ *
+ *  THE FIX: a file's own "# Local Variables:" override of this used
+ *  to be silently ignored entirely -- every app.js call site read
+ *  globalVariables['org-agenda-files'] directly rather than the
+ *  merged (global + file-local) set this getter is meant to be
+ *  called with, so the identical value pasted into Settings' own
+ *  Global Variables worked immediately while the same line inside a
+ *  document's own Local Variables block never took effect. Confirmed
+ *  directly against real Emacs org-mode that a file-local
+ *  org-agenda-files override IS meant to work -- when the agenda
+ *  command runs from within that specific buffer, the closest real-
+ *  org analogy to this app's own always-current-document Agenda
+ *  view -- before treating the missing override as a bug worth
+ *  fixing rather than a deliberate design choice. */
 export function getAgendaFilesVar(vars) {
   return (vars || {})['org-agenda-files'] || '';
+}
+
+/** Parses org-agenda-files' own raw string value (semicolon-separated
+ *  "scheme:path" entries) into a validated array of just the entries
+ *  that actually look like a real, recognized backend reference --
+ *  "github:path" or "webdav:path", non-empty path required. An entry
+ *  with no recognized scheme, or an empty path, is silently dropped
+ *  rather than causing the whole list to fail -- one malformed entry
+ *  shouldn't take down every other, valid one alongside it. */
+export function parseAgendaFilesVar(text) {
+  const entries = (text || '')
+    .split(';')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  return entries.filter((entry) => {
+    const colonIndex = entry.indexOf(':');
+    if (colonIndex === -1) return false;
+    const scheme = entry.slice(0, colonIndex);
+    const path = entry.slice(colonIndex + 1);
+    return (scheme === 'github' || scheme === 'webdav') && path.length > 0;
+  });
 }
 
 /** org-xx-extra-menu: this app's own extension (not a real org-mode
