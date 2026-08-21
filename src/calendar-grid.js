@@ -14,6 +14,8 @@
  * grid shape itself.
  */
 
+import { dateKey } from './org-timestamp.js';
+
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -78,3 +80,38 @@ function stepYear(year, month, delta) {
 }
 
 export { MONTH_NAMES, buildMonthGrid, stepMonth, stepYear };
+
+/** Diary-sexp kinds that appear on essentially every day when
+ *  configured (sunrise, sunset, civil-sunrise, civil-sunset, day-
+ *  length, weather), plus logbook (past time-tracking, not a
+ *  scheduled event) -- deliberately excluded from "other event"
+ *  classification below, since including them would color almost
+ *  every day, making the birthday/event distinction meaningless. */
+const AMBIENT_AGENDA_KINDS = new Set(['sunrise', 'sunset', 'civil-sunrise', 'civil-sunset', 'day-length', 'weather', 'logbook']);
+
+/** Classifies a flat list of agenda items (buildAgendaItems' own
+ *  output, or any subset of it -- e.g. already filtered through
+ *  itemsInRange for the month being displayed) into a
+ *  `Map<dateKeyString, { hasBirthday, hasOther }>`, one entry per day
+ *  that has at least one non-ambient item. `hasBirthday` is set for a
+ *  'anniversary'-kind item (a contact's own birthday, via
+ *  org-contacts-anniversaries); `hasOther` for any other, non-ambient
+ *  kind (scheduled/deadline/timestamp/diary-sexp/sexp-timestamp).
+ *  Pure -- no DOM, no app state -- so a caller (app.js's own
+ *  renderCalendarPanel) can turn this into whatever visual treatment
+ *  it wants (background color, in this app's own current design) for
+ *  each day cell. */
+function buildDayMarkers(items) {
+  const dayMarkers = new Map();
+  for (const item of items) {
+    if (AMBIENT_AGENDA_KINDS.has(item.kind)) continue;
+    const key = dateKey(item.date);
+    const marker = dayMarkers.get(key) || { hasBirthday: false, hasOther: false };
+    if (item.kind === 'anniversary') marker.hasBirthday = true;
+    else marker.hasOther = true;
+    dayMarkers.set(key, marker);
+  }
+  return dayMarkers;
+}
+
+export { buildDayMarkers };
