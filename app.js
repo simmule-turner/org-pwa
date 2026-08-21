@@ -82,7 +82,7 @@ import { computeClocktable, renderClocktable } from './src/clocktable.js';
 import { parseExtraMenu } from './src/extra-menu.js';
 import { parseMenuAliases } from './src/menu-alias.js';
 import { normalizeSmartQuotes } from './src/text-normalize.js';
-import { buildMonthGrid, stepMonth, stepYear, MONTH_NAMES } from './src/calendar-grid.js';
+import { buildMonthGrid, stepMonth, stepYear, MONTH_NAMES, buildDayMarkers } from './src/calendar-grid.js';
 import { splitHexAlpha, combineHexAlpha } from './src/hex-alpha.js';
 import { resolveTodoSequence, resolveTodoSequences, setTodoState } from './src/todo-cycle.js';
 import { renderMathHtml } from './src/math-render.js';
@@ -100,6 +100,7 @@ import {
   endOfDay,
   startOfWeek,
   parseRepeater,
+  itemsInRange,
 } from './src/agenda.js';
 import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId, getCaptureFileScheme, CAPTURE_FILE_SCHEMES } from './src/capture-template.js';
 import { exportToMarkdown } from './src/export-markdown.js';
@@ -111,7 +112,7 @@ import { exportToHtml } from './src/export-html.js';
 import { exportToIcalendar } from './src/export-icalendar.js';
 import { createHistory, pushSnapshot, canUndo, canRedo, undo, redo, jumpTo, currentEntry } from './src/undo-history.js';
 import { diffHunks } from './src/text-diff.js';
-import { parseOrgTimestamp, formatOrgTimestamp, parseDelay } from './src/org-timestamp.js';
+import { parseOrgTimestamp, formatOrgTimestamp, parseDelay, dateKey } from './src/org-timestamp.js';
 import {
   renameHeading,
   setHeadingTags,
@@ -2118,6 +2119,29 @@ function renderCalendarPanel() {
 
   const today = new Date();
 
+  // One agenda computation for the whole visible month, reusing the
+  // exact same pipeline the main Agenda view uses (buildAgendaItems
+  // over aggregateAgendaDocs' own cross-file doc list, the same
+  // done/commented/archived filtering) so a day's own color here
+  // always matches what Agenda would actually show for it -- not a
+  // separate, potentially-drifting computation. "Other event" here
+  // deliberately excludes the ambient, every-day diary-sexp kinds
+  // (sunrise/sunset/civil-*/day-length/weather) and logbook entries:
+  // those would color almost every day if configured, making the
+  // green/blue/orange distinction meaningless.
+  const monthRangeStart = new Date(calendarViewYear, calendarViewMonth, 1);
+  const monthRangeEnd = new Date(calendarViewYear, calendarViewMonth + 1, 0);
+  const monthTodoSequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
+  const monthItems = buildAgendaItems(aggregateAgendaDocs(), {
+    todoFilter: (todo) => !monthTodoSequence.doneKeywords.includes(todo),
+    includeCommented: !getAgendaSkipCommentTrees(state.localVariables),
+    includeArchived: !getAgendaSkipArchivedTrees(state.localVariables),
+    rangeStart: monthRangeStart,
+    rangeEnd: monthRangeEnd,
+    isDone: (todo) => monthTodoSequence.doneKeywords.includes(todo),
+  });
+  const dayMarkers = buildDayMarkers(itemsInRange(monthItems, monthRangeStart, monthRangeEnd));
+
   // Row 1: year navigation.
   const yearRow = document.createElement('div');
   yearRow.style.display = 'flex';
@@ -2197,6 +2221,17 @@ function renderCalendarPanel() {
     cell.style.padding = '8px 0';
     cell.style.borderRadius = '6px';
     cell.style.cursor = 'pointer';
+    const marker = dayMarkers.get(dateKey(cellData.date));
+    if (marker && marker.hasBirthday && marker.hasOther) {
+      cell.style.background = '#CC5500'; // burnt orange
+      cell.style.color = '#fff';
+    } else if (marker && marker.hasBirthday) {
+      cell.style.background = '#2E8B57'; // green
+      cell.style.color = '#fff';
+    } else if (marker && marker.hasOther) {
+      cell.style.background = '#3B6EA5'; // blue
+      cell.style.color = '#fff';
+    }
     if (cellData.isToday) {
       cell.style.fontWeight = '700';
       cell.style.border = '1.5px solid var(--accent)';
@@ -3216,15 +3251,12 @@ async function persist() {
 // doc immediately; the storage write happens after, in the background.
 // Errors still surface (via status text) rather than vanishing silently.
 function persistInBackground() {
-  isDirty = true;
   persist().catch((err) => setStatus('Save failed: ' + err.message));
 }
 
 function commitAndRender(label = 'Edited') {
   const previousHistory = history;
   history = pushSnapshot(history, serializeOrg(state.doc), label);
-  render();
-  renderLogNotePrompt();
   // pushSnapshot returns the SAME history object reference, unchanged,
   // when the serialized text turned out identical to what's already
   // there (a genuine no-op edit -- e.g. opening a text field and
@@ -3233,7 +3265,11 @@ function commitAndRender(label = 'Edited') {
   // actually changed -- otherwise the undo history and the "modified"
   // indicator disagree with each other: no new history entry, but
   // still shown as modified, confusing and simply wrong either way.
-  if (history !== previousHistory) {
+  const changed = history !== previousHistory;
+  if (changed) isDirty = true;
+  render();
+  renderLogNotePrompt();
+  if (changed) {
     persistInBackground();
   }
 }
