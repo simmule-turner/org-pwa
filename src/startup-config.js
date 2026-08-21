@@ -22,7 +22,26 @@
  * (`noinlineimages`).
  */
 
-const VISIBILITY_KEYWORDS = ['overview', 'content', 'showall', 'showeverything'];
+const VISIBILITY_KEYWORDS = [
+  'overview',
+  'content',
+  'showall',
+  'showeverything',
+  'show2levels',
+  'show3levels',
+  'show4levels',
+  'show5levels',
+];
+
+/** For a 'showNlevels' visibility keyword, the N itself (2/3/4/5); null
+ *  for every other visibility keyword. Kept as its own small helper
+ *  since two different modules need this same number extracted --
+ *  applyStartupVisibility (fold-state.js) to know how deep to expand,
+ *  and nowhere else needs it duplicated. */
+function showLevelsDepth(visibility) {
+  const m = /^show(\d)levels$/.exec(visibility || '');
+  return m ? Number(m[1]) : null;
+}
 const IMAGE_VISIBILITY_KEYWORDS = ['inlineimages', 'noinlineimages'];
 const LOG_DONE_KEYWORDS = { logdone: 'time', lognotedone: 'note' };
 
@@ -150,4 +169,4 @@ export function resolveEffectiveStartupConfig(doc, localVarsOnly, globalVarsOnly
   };
 }
 
-export { DEFAULT_STARTUP_CONFIG };
+export { DEFAULT_STARTUP_CONFIG, showLevelsDepth };

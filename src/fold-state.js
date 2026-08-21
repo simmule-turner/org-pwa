@@ -24,6 +24,7 @@
  */
 
 import { isArchived } from './archive-model.js';
+import { showLevelsDepth } from './startup-config.js';
 
 /**
  * Sets every heading's initial `collapsed` state from the file's parsed
@@ -82,18 +83,31 @@ function applyStartupVisibility(doc, startupConfig, archiveVisibility = 'archive
   const collapsedDefault = startupConfig.visibility === 'overview';
   const bodyHiddenDefault = startupConfig.visibility === 'content';
   const drawersHiddenDefault = startupConfig.visibility !== 'showeverything';
+  const showLevels = showLevelsDepth(startupConfig.visibility);
 
-  function walk(nodes) {
+  function walk(nodes, depth) {
     for (const node of nodes) {
       if (node.type !== 'heading') continue;
       const forceCollapsed = archiveVisibility === 'archived' && isArchived(node);
-      node.collapsed = forceCollapsed ? true : collapsedDefault;
-      node.bodyHidden = bodyHiddenDefault;
+      if (forceCollapsed) {
+        node.collapsed = true;
+      } else if (showLevels !== null) {
+        // 'showNlevels': a heading AT the target depth still shows its
+        // own title (it's part of its own parent's children, already
+        // rendered by the time this is checked) but stops recursion
+        // right there -- everything past it (deeper headings, and its
+        // own body) stays hidden. A heading shallower than the target
+        // depth stays expanded so recursion can actually reach it.
+        node.collapsed = depth >= showLevels;
+      } else {
+        node.collapsed = collapsedDefault;
+      }
+      node.bodyHidden = showLevels !== null ? true : bodyHiddenDefault;
       node.drawersHidden = drawersHiddenDefault;
-      walk(node.children);
+      walk(node.children, depth + 1);
     }
   }
-  walk(doc.children);
+  walk(doc.children, 1);
   return doc;
 }
 
