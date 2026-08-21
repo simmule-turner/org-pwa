@@ -9,7 +9,6 @@ import {
   getScheduledDelayDays,
   getCalendarLatitude,
   getCalendarLongitude,
-  getCalendarLocationName,
   getSolarAmpm,
   getSolarHideLabel,
   getOrgWeatherFormat,
@@ -329,21 +328,16 @@ test('a non-numeric value falls back to 0', () => {
   assert.equal(getScheduledDelayDays({ 'org-scheduled-delay-days': 'abc' }), 0);
 });
 
-// ---- calendar-latitude / calendar-longitude / calendar-location-name -------
+// ---- calendar-latitude / calendar-longitude -----------------------------
 
-test('getCalendarLatitude/Longitude/LocationName default to Durham, NC, as requested', () => {
+test('getCalendarLatitude/Longitude default to Durham, NC, as requested', () => {
   assert.equal(getCalendarLatitude({}), 35.994);
   assert.equal(getCalendarLongitude({}), -78.8986);
-  assert.equal(getCalendarLocationName({}), 'Durham, NC');
 });
 
 test('getCalendarLatitude/Longitude read an explicit override', () => {
   assert.equal(getCalendarLatitude({ 'calendar-latitude': '40.1' }), 40.1);
   assert.equal(getCalendarLongitude({ 'calendar-longitude': '-88.2' }), -88.2);
-});
-
-test('getCalendarLocationName reads an explicit override, including one with a comma', () => {
-  assert.equal(getCalendarLocationName({ 'calendar-location-name': 'Urbana, IL' }), 'Urbana, IL');
 });
 
 test('THE FIX: getSolarAmpm defaults to false (24-hour), matching what was originally requested for the four solar functions', () => {

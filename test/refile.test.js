@@ -53,9 +53,9 @@ test('resolveEntryFileIds: "current" resolves to the current file only', () => {
   assert.deepEqual(resolveEntryFileIds({ fileSpec: 'current' }, 'notes.org', []), ['notes.org']);
 });
 
-test('resolveEntryFileIds: "agenda-files" resolves to the configured Agenda Files list', () => {
+test('THE EXACT REQUEST: "agenda-files" resolves to the configured Agenda Files list, with the "scheme:" prefix stripped -- confirmed as the actual root cause of a real, reported bug: agendaFilesConfig\u2019s own raw entries are "scheme:path" strings, but every document lookup throughout the app (docsById\u2019s own keys in particular) uses the bare path only, so returning the prefixed strings verbatim meant every "agenda-files" refile-target lookup silently found nothing at all', () => {
   assert.deepEqual(
-    resolveEntryFileIds({ fileSpec: 'agenda-files' }, 'notes.org', ['work.org', 'personal.org']),
+    resolveEntryFileIds({ fileSpec: 'agenda-files' }, 'notes.org', ['github:work.org', 'webdav:personal.org']),
     ['work.org', 'personal.org']
   );
 });
@@ -96,6 +96,19 @@ test('maxlevel: this level and everything shallower become candidates, but not d
 test('a heading deeper than maxlevel is correctly excluded, but its shallower descendants underneath a non-matching ancestor still aren\u0027t reachable (since maxlevel bounds the whole tree, not per-branch)', () => {
   const candidates = getRefileCandidates([{ fileSpec: 'current', kind: 'maxlevel', n: 2 }], { 'x.org': SAMPLE_DOC }, 'x.org', []);
   assert.ok(!candidates.some((c) => c.outlinePath.join(' / ').includes('Subtask A1a')));
+});
+
+test('THE EXACT REQUEST: "agenda-files level=2" finds candidates across both configured agenda files, end to end, with realistic "scheme:path" config -- exactly the reported scenario', () => {
+  const contactsDoc = parseOrg('* Contacts\n** Jane\n** Bob\n');
+  const journalDoc = parseOrg('* Journal\n** Entry 1\n');
+  const agendaFilesConfig = ['github:contacts.org', 'github:journal.org'];
+  const targetsSpec = parseRefileTargets('agenda-files level=2');
+  const docsById = { 'contacts.org': contactsDoc, 'journal.org': journalDoc };
+  const candidates = getRefileCandidates(targetsSpec, docsById, 'main.org', agendaFilesConfig);
+  assert.deepEqual(
+    candidates.map((c) => `${c.documentId} / ${c.outlinePath.join(' / ')}`),
+    ['contacts.org / Contacts / Jane', 'contacts.org / Contacts / Bob', 'journal.org / Journal / Entry 1']
+  );
 });
 
 test('excludeHeading: the heading itself and its own descendants are excluded, unrelated headings are not', () => {
