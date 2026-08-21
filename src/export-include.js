@@ -1,16 +1,11 @@
 /**
- * #+INCLUDE: "path" [block-type] [language] [:lines "N-M"] [:minlevel N]
+ * #+INCLUDE: "path" [block-type] [language-or-backend] [:lines "N-M"] [:minlevel N]
  *
  * Splices another document's own content into this one during export.
- * Scope: document-level only (an #+INCLUDE: line before the first
- * heading, the same place #+TITLE/#+AUTHOR/#+DATE/#+OPTIONS already
- * live) -- real org itself also allows #+INCLUDE within a heading's
- * own body, but recognizing a keyword line there would need a real
- * parser extension this app doesn't have (its own KEYWORD_RE only
- * matches at the document root); a reasonable, honest scope boundary
- * given #+INCLUDE's own most common real-world use (composing several
- * files together at the top of one "master" document) already lives
- * at the document level anyway.
+ * Works both before the first heading (document level, the same
+ * place #+TITLE/#+AUTHOR/#+DATE/#+OPTIONS live) and inside a
+ * heading's own body text -- the latter nests the included content as
+ * children of that heading (see expandHeadingIncludes below).
  *
  * The included file's own #+TITLE/#+AUTHOR/#+DATE/#+OPTIONS/etc. are
  * never merged into the including document's own metadata -- only
@@ -33,10 +28,13 @@ import { parseBody } from './body-parser.js';
  *  -- or null if `value` doesn't even have a valid quoted path, the
  *  one truly required part. `blockType` is one of 'src'/'example'/
  *  'quote'/'export', or null for the default (native org) case;
- *  `language` is only ever set alongside blockType 'src'; `lines` is
- *  the raw "N-M"/"−M"/"N-" string (see applyLineRange below for how
- *  it's actually interpreted), or null; `minlevel` is a positive
- *  integer, or null. */
+ *  `language` is set alongside blockType 'src' (a source language,
+ *  e.g. "python") OR alongside blockType 'export' (a backend name,
+ *  e.g. "html" -- confirmed directly against real Emacs org-mode:
+ *  #+INCLUDE: "path" export html is valid syntax, exactly parallel to
+ *  #+INCLUDE: "path" src python); `lines` is the raw "N-M"/"−M"/"N-"
+ *  string (see applyLineRange below for how it's actually
+ *  interpreted), or null; `minlevel` is a positive integer, or null. */
 function parseIncludeDirective(value) {
   const pathMatch = /^"([^"]*)"/.exec(value.trim());
   if (!pathMatch) return null;
@@ -52,7 +50,7 @@ function parseIncludeDirective(value) {
   if (i < tokens.length && /^(src|example|quote|export)$/.test(tokens[i])) {
     blockType = tokens[i];
     i++;
-    if (blockType === 'src' && i < tokens.length && !tokens[i].startsWith(':')) {
+    if ((blockType === 'src' || blockType === 'export') && i < tokens.length && !tokens[i].startsWith(':')) {
       language = tokens[i];
       i++;
     }
@@ -123,7 +121,7 @@ async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlev
   const rawLines = applyLineRange(result.content.split('\n'), directive.lines);
 
   if (directive.blockType) {
-    const langSuffix = directive.blockType === 'src' && directive.language ? ' ' + directive.language : '';
+    const langSuffix = (directive.blockType === 'src' || directive.blockType === 'export') && directive.language ? ' ' + directive.language : '';
     return {
       bodyLines: [`#+BEGIN_${directive.blockType.toUpperCase()}${langSuffix}`, ...rawLines, `#+END_${directive.blockType.toUpperCase()}`],
     };

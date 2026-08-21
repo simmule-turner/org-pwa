@@ -1,8 +1,8 @@
 /**
  * #+TITLE / #+AUTHOR / #+DATE / #+OPTIONS -- shared, pure parsing for
- * every export format (HTML/ASCII/Markdown/ODT/DOCX) to build its own
+ * every export format (HTML/ASCII/Markdown/ODT) to build its own
  * title block and apply the same #+OPTIONS: toggles consistently,
- * rather than five separate, potentially-drifting implementations of
+ * rather than four separate, potentially-drifting implementations of
  * the same six keys.
  *
  * toc: and num: are genuinely INDEPENDENT in real org (confirmed
@@ -90,4 +90,17 @@ function getDocDate(doc) {
   return kw ? kw.value.trim() : null;
 }
 
-export { parseExportOptions, getDocTitle, getDocAuthor, getDocDate };
+/** Every #+HTML_HEAD: line's own value, joined by newlines in source
+ *  order -- multiple lines concatenate rather than only the last one
+ *  winning (confirmed directly against real Emacs org-mode), since
+ *  this is how a multi-line <style> block like the one in this app's
+ *  own README example is actually written. Returns null when there
+ *  are none at all, so a caller can tell "nothing to insert" apart
+ *  from "an empty string was explicitly written." HTML export only --
+ *  real org itself never reads this keyword for any other backend. */
+function getHtmlHead(doc) {
+  const lines = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'HTML_HEAD').map((k) => k.value);
+  return lines.length > 0 ? lines.join('\n') : null;
+}
+
+export { parseExportOptions, getDocTitle, getDocAuthor, getDocDate, getHtmlHead };

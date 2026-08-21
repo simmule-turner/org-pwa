@@ -238,6 +238,9 @@ function renderTableOdt(table) {
 function renderBlockOdt(block) {
   const name = block.name;
   if (name === 'COMMENT') return ''; // matches every other export backend
+  if (name === 'EXPORT') {
+    return (block.params || '').trim().toLowerCase() === 'odt' ? block.lines.join('\n') : '';
+  }
   if (name === 'QUOTE') {
     return block.lines.map((l) => `<text:p text:style-name="Quote">${renderTextOdt(l)}</text:p>`).join('');
   }

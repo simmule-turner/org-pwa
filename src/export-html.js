@@ -25,7 +25,7 @@ import { resolveLinkTarget } from './link-resolve.js';
 import { isWidthCookieRow } from './table-cookies.js';
 import { renderMathHtml } from './math-render.js';
 import { KATEX_EXPORT_CSS } from './katex-export-css.js';
-import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
+import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate, getHtmlHead } from './export-options.js';
 import { getProperty } from './archive-model.js';
 
 // Footnote definitions accumulated during a single exportToHtml() call
@@ -268,6 +268,9 @@ function renderTableHtml(table) {
 function renderBlockHtml(block) {
   const name = block.name;
   if (name === 'COMMENT') return '';
+  if (name === 'EXPORT') {
+    return (block.params || '').trim().toLowerCase() === 'html' ? block.lines.join('\n') : '';
+  }
   if (name === 'QUOTE') {
     const { lines: extractedLines, fragments } = extractLatexFragments(block.lines);
     return '<blockquote>' + extractedLines.map((l) => renderInlineListHtml(parseInline(l, { latexFragments: fragments }))).join('<br>') + '</blockquote>';
@@ -483,6 +486,7 @@ export function exportToHtml(doc, scope = null) {
 
   const titleSource = scope ? scope.title : (doc.keywords || []).find((k) => k.key.toUpperCase() === 'TITLE');
   const title = escapeHtml(scope ? scope.title : titleSource ? titleSource.value : 'Untitled');
+  const htmlHead = getHtmlHead(doc);
   return (
     '<!DOCTYPE html>\n' +
     '<html>\n' +
@@ -492,6 +496,7 @@ export function exportToHtml(doc, scope = null) {
     `<title>${title}</title>\n` +
     `<style>${PRINT_CSS}</style>\n` +
     (mathUsedHtml ? `<style>${KATEX_EXPORT_CSS}</style>\n` : '') +
+    (htmlHead ? htmlHead + '\n' : '') +
     '</head>\n' +
     '<body>\n' +
     out.join('\n') +

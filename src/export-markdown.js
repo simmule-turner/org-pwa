@@ -284,6 +284,10 @@ function renderTableMd(table) {
 function renderBlockMd(block) {
   const name = block.name;
   if (name === 'COMMENT') return ''; // matches real org's own export behavior -- comment blocks are excluded from every export backend
+  if (name === 'EXPORT') {
+    const backend = (block.params || '').trim().toLowerCase();
+    return backend === 'md' || backend === 'markdown' ? block.lines.join('\n') : '';
+  }
   if (name === 'QUOTE') {
     return block.lines.map((l) => (l.trim() === '' ? '>' : '> ' + renderTextMd(l))).join('\n');
   }

@@ -388,6 +388,10 @@ function renderTableAscii(table, indent) {
 }
 
 function renderBlockAscii(block, indent) {
+  if (block.name === 'EXPORT') {
+    if ((block.params || '').trim().toLowerCase() !== 'ascii') return [];
+    return block.lines.map((line) => indent + line);
+  }
   const out = [`${indent}[${block.name}]`];
   for (const line of block.lines) out.push(indent + line);
   return out;
