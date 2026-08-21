@@ -417,7 +417,6 @@ Currently recognized (sorted alphabetically):
 | Variable | Default | What it does |
 |---+---+---|
 | ~calendar-latitude~ | ~35.994~ | Latitude the solar diary-sexp forms and ~org-weather~ compute from (Durham, NC) |
-| ~calendar-location-name~ | ~Durham, NC~ | Cosmetic label only -- doesn't affect any calculation |
 | ~calendar-longitude~ | ~-78.8986~ | Longitude the solar diary-sexp forms and ~org-weather~ compute from (Durham, NC) |
 | ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries -- additional files the Agenda and TODO views scan across |
 | ~org-agenda-skip-archived-trees~ | ~t~ | Whether an archived heading is excluded from the agenda |
@@ -914,7 +913,7 @@ The four menus' own real labels, exactly as they'd appear in ~"menu:Label;alias"
 | ~file~ | ~New~, ~Open~, ~Save~, ~Save As~, ~Export~ |
 | ~more~ | ~Search~, ~Capture~, ~History~, ~+~, ~?~ |
 | ~export~ | ~ASCII~, ~Calendar (.ics)~, ~HTML~, ~Markdown~, ~ODT~ |
-| ~view~ | ~Org~, ~Text~, ~Agenda~, ~TODO~ |
+| ~view~ | ~Org~, ~Agenda~, ~TODO~, ~Text~ |
 
 *Upgrading from an older version*: this used to be four separate variables (~org-xx-file-menu~, ~org-xx-more-menu~, ~org-xx-export-menu~, ~org-xx-view-menu~), each sharing this exact same syntax minus the ~menu:~ prefix — consolidated into one, since the only actual difference between the four was which menu each entry applied to. Anything already configured at the app-wide *Global Variables* level (via Quick Settings or the raw text box) is folded into the new variable automatically, once, the first time this version of the app runs — nothing to redo by hand. The one thing that automatic migration *can't* do: a ~#+STARTUP:~ or "# Local Variables:" block hand-written into a specific ~.org~ file, using the old, un-namespaced syntax, won't be rewritten (this app has no business silently editing the contents of your own files) — if you'd set a menu-label override at the per-file level specifically (uncommon; most people would set this once, app-wide), that file's own block needs updating to the new ~"menu:Label;alias"~ syntax by hand.
 

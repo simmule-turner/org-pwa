@@ -62,7 +62,6 @@ import {
   getOrgWeatherSpeedUnit,
   getOrgWeatherTemperatureUnit,
   getOrgTableDurationHourZeroPadding,
-  getCalendarLocationName,
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
   getAgendaSkipArchivedTrees,
@@ -538,8 +537,6 @@ function ensureAgendaFilesLoaded() {
   for (const key of agendaFilesConfig) {
     if (agendaFilesCache.has(key)) continue; // already loaded, errored, or currently loading
 
-    agendaFilesCache.set(key, { loading: true }); // set BEFORE the async call, so a concurrent call to this function can't kick off a duplicate fetch for the same key
-
     const colonIndex = key.indexOf(':');
     const scheme = colonIndex === -1 ? key : key.slice(0, colonIndex);
     const path = colonIndex === -1 ? '' : key.slice(colonIndex + 1);
@@ -549,7 +546,7 @@ function ensureAgendaFilesLoaded() {
       continue;
     }
 
-    adapter
+    const promise = adapter
       .read(path)
       .then((result) => {
         agendaFilesCache.set(
@@ -562,7 +559,26 @@ function ensureAgendaFilesLoaded() {
         agendaFilesCache.set(key, { error: err.message });
         if (currentView === 'agenda' || currentView === 'tasklist') render();
       });
+    agendaFilesCache.set(key, { loading: true, promise });
   }
+}
+
+/** Like ensureAgendaFilesLoaded, but actually waits for every fetch it
+ *  kicks off (or finds already in flight) to finish before returning
+ *  -- unlike that function's own deliberate fire-and-forget design
+ *  (correct for Agenda/TODO's own progressive-render UX: show what's
+ *  already loaded, re-render again as each fetch resolves), a caller
+ *  that needs a complete, accurate result on the very first render --
+ *  Refile's own candidate list, in particular -- needs to genuinely
+ *  wait rather than silently show an incomplete list the first time
+ *  agenda files haven't been fetched yet in this session. */
+async function ensureAgendaFilesLoadedAndWait() {
+  ensureAgendaFilesLoaded();
+  await Promise.all(
+    Array.from(agendaFilesCache.values())
+      .filter((entry) => entry.loading)
+      .map((entry) => entry.promise)
+  );
 }
 
 /** Forces a fresh fetch of every configured agenda file, discarding
@@ -879,6 +895,9 @@ async function openRefilePicker(heading) {
   pendingRefile = { heading, loading: true, candidates: [] };
   renderRefilePanel();
   const targetsSpec = parseRefileTargets(getRefileTargets(state.localVariables));
+  if (targetsSpec.some((entry) => entry.fileSpec === 'agenda-files')) {
+    await ensureAgendaFilesLoadedAndWait();
+  }
   const docsById = await loadRefileTargetDocs(targetsSpec);
   if (!pendingRefile || pendingRefile.heading !== heading) return; // dismissed while loading
   const candidates = getRefileCandidates(targetsSpec, docsById, state.documentId, agendaFilesConfig, heading);
@@ -7572,9 +7591,9 @@ function renderViewMenu() {
   const viewMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).view;
   for (const [key, label] of [
     ['org', 'Org'],
-    ['text', 'Text'],
     ['agenda', 'Agenda'],
     ['tasklist', 'TODO'],
+    ['text', 'Text'],
   ]) {
     const btn = aliasedMenuButton(viewMenuAliases, label, () => switchToView(key));
     if (!btn) continue;
@@ -9021,14 +9040,6 @@ const QUICK_SETTINGS_FIELDS = [
     min: -180,
     max: 180,
     step: 0.0001,
-    helpAnchor: '#agenda-diary-sexp',
-  },
-  {
-    key: 'calendar-location-name',
-    label: 'Location name',
-    section: 'Contacts & Calendar',
-    type: 'text',
-    default: 'Durham, NC',
     helpAnchor: '#agenda-diary-sexp',
   },
   {
