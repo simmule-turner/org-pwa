@@ -677,9 +677,7 @@ async function reloadCurrentDocumentFromDisk() {
   state.startupConfig = resolveEffectiveStartupConfig(state.doc, rawLocalVars, globalVariables);
   state.localVariables = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
   syncAgendaFilesConfig();
-  navigationBackStack = [];
   currentContextHeading = null;
-  syncNavBackButtonVisibility();
   const archiveVisibility = getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(state.doc, state.startupConfig, archiveVisibility);
   isDirty = false;
@@ -3474,15 +3472,18 @@ function restoreFromHistory() {
   state.startupConfig = startupConfig;
   state.localVariables = localVariables;
   syncAgendaFilesConfig();
-  // Every heading object reference held anywhere (the navigation
-  // back-stack in particular) is now stale -- a fresh parseOrg call
-  // always produces brand new heading instances, even when re-parsing
-  // what is nominally "the same" file (e.g. after an external change),
-  // so this reset applies unconditionally, not just when switching to
-  // a genuinely different document.
-  navigationBackStack = [];
+  // currentContextHeading DOES hold an actual heading object
+  // reference, now stale -- a fresh parseOrg call always produces
+  // brand new heading instances, even when re-parsing what is
+  // nominally "the same" file. navigationBackStack does NOT hold any
+  // such reference (just documentId/storageKind/scrollTop/view/
+  // docsOpen, all plain data unaffected by re-parsing the CURRENT
+  // document), so it's deliberately left untouched here -- clearing
+  // it unconditionally used to destroy cross-document back-navigation
+  // the moment a user did anything that re-parsed the current
+  // document (undo/redo, Text-view commit, Reload), a real, confirmed
+  // bug.
   currentContextHeading = null;
-  syncNavBackButtonVisibility();
   isDirty = lastSavedText === null || entry.text !== lastSavedText;
   if (currentView === 'text') currentView = 'org'; // avoid showing now-stale textarea content after a jump
   render();
@@ -3693,17 +3694,24 @@ function commitTextModeIfActive() {
   state.startupConfig = startupConfig;
   state.localVariables = localVariables;
   syncAgendaFilesConfig();
-  // Every heading object reference held anywhere (the navigation
-  // back-stack in particular) is now stale -- a fresh parseOrg call
-  // always produces brand new heading instances, even when re-parsing
-  // what is nominally "the same" file (e.g. after an external change),
-  // so this reset applies unconditionally, not just when switching to
-  // a genuinely different document.
-  navigationBackStack = [];
+  // currentContextHeading DOES hold an actual heading object reference,
+  // now stale -- a fresh parseOrg call always produces brand new
+  // heading instances, even when re-parsing what is nominally "the
+  // same" file. navigationBackStack does NOT hold any such reference
+  // (just documentId/storageKind/scrollTop/view/docsOpen, all plain
+  // data unaffected by re-parsing the CURRENT document), so it's
+  // deliberately left untouched here -- clearing it unconditionally
+  // used to destroy cross-document back-navigation the moment a user
+  // visited Text view even once, a real, confirmed bug.
   currentContextHeading = null;
-  syncNavBackButtonVisibility();
   currentView = 'org';
+  const previousHistory = history;
   history = pushSnapshot(history, newText, 'Edited in text mode');
+  const changed = history !== previousHistory;
+  if (changed) {
+    isDirty = true;
+    persistInBackground();
+  }
   return true;
 }
 
@@ -3904,7 +3912,7 @@ function renderLinkNode(node, linkContext = null, heading = null) {
     a.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      openFileLink(resolution);
+      openFileLink(resolution, heading);
     };
     return a;
   }
@@ -4272,6 +4280,18 @@ async function navigateBack() {
     if (!state.doc || state.documentId !== target.documentId) {
       syncNavBackButtonVisibility();
       return;
+    }
+    if (target.originHeadingPath) {
+      const originHeading = findHeadingByOutlinePath(state.doc, target.originHeadingPath);
+      if (originHeading) {
+        navigateToHeading(originHeading, { pushToBackStack: false });
+        syncNavBackButtonVisibility();
+        return;
+      }
+      // Renamed or deleted since -- fall through to the generic
+      // scrollTop restoration below rather than leaving the person on
+      // a blank, unscrolled document with no indication anything was
+      // even attempted.
     }
   }
 
@@ -6446,7 +6466,7 @@ async function openRemotePath(path, kind, diskAdapter, label) {
  * without a fresh picker gesture the browser requires per file, so
  * this shows a clear message rather than silently failing.
  */
-async function openFileLink(resolution) {
+async function openFileLink(resolution, containingHeading = null) {
   let adapter, kind, label;
   if (resolution.scheme === 'github') {
     adapter = githubAdapter;
@@ -6474,13 +6494,24 @@ async function openFileLink(resolution) {
   // this is what lets the back button return here later, even though
   // opening the target document (a fresh parseOrg call) would
   // otherwise invalidate any heading-object-based state the way it
-  // already does for every other navigationBackStack entry.
+  // already does for every other navigationBackStack entry. The
+  // heading's own outline path (an array of titles, not the object
+  // itself) is what survives that re-parse -- see navigateBack's own
+  // docs for why this matters more than it might seem: restoring a
+  // raw scrollTop alone breaks the moment the target document's own
+  // fold state differs from whatever it was when this was captured,
+  // since applyStartupVisibility always re-applies the DEFAULT fold
+  // state on every fresh open, not whatever the user had left it as.
+  const originHeadingPath = containingHeading
+    ? [...(findAncestorPath(state.doc, containingHeading) || []).map((h) => h.title), containingHeading.title]
+    : null;
   const originEntry = {
     view: currentView,
     docsOpen,
     documentId: state.documentId,
     storageKind: state.storageKind,
     scrollTop: scrollContainer().scrollTop,
+    originHeadingPath,
   };
 
   const resolvedPath = resolveImagePath(resolution.path, state.documentId);
