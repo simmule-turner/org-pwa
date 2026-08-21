@@ -344,7 +344,7 @@ Three separate mechanisms, all ultimately setting the same kind of thing (an Ema
 | Variable | ~#+STARTUP:~ keyword(s) |
 |---+---|
 | ~org-log-done~ | ~logdone~ (→ ~time~), ~lognotedone~ (→ ~note~) |
-| ~org-startup-folded~ | ~overview~, ~content~, ~showall~, ~showeverything~ |
+| ~org-startup-folded~ | ~overview~, ~content~, ~showall~, ~showeverything~, ~show2levels~, ~show3levels~, ~show4levels~, ~show5levels~ |
 | ~org-startup-with-inline-images~ | ~inlineimages~ (→ ~t~), ~noinlineimages~ (→ ~nil~) |
 
 3. *Local Variables* ([[#local-variables][below]]) -- a file's own "# Local Variables:" block, the highest-precedence layer. This is a general Emacs mechanism (not org-specific), processed last so a file can override anything set earlier.
@@ -380,11 +380,12 @@ org-pwa reads and applies ~#+STARTUP:~ directives, typically on the first line o
 
 | Category | Keywords | Default |
 |---+---+---|
-| Heading visibility | ~overview~, ~content~, ~showall~, ~showeverything~ | ~showeverything~ |
+| Heading visibility | ~overview~, ~content~, ~showall~, ~showeverything~, ~show2levels~, ~show3levels~, ~show4levels~, ~show5levels~ | ~showeverything~ |
 | Inline images | ~inlineimages~, ~noinlineimages~ | ~noinlineimages~ |
 | Progress logging on DONE | ~logdone~, ~lognotedone~ | neither (no logging) |
 
 - ~overview~ — only top-level headings shown, everything else folded.
+- ~show2levels~ / ~show3levels~ / ~show4levels~ / ~show5levels~ — the same idea as ~overview~, but the cutoff depth is configurable instead of always being 1: headings are shown down through the given level, with body text hidden at every one of those visible levels (not just the deepest) and anything deeper folded away entirely — ~show3levels~, for instance, shows levels 1 through 3 with no body text anywhere, and hides level 4 and beyond completely.
 - ~content~ — every heading line unfolded, but body text (paragraphs/lists/tables) and properties stay hidden until you tap a heading open — a genuinely separate visibility axis from "is this heading's subtree folded," not just an alias for ~showall~.
 - ~showall~ — body text, lists, and tables all shown. Property drawers (~:PROPERTIES: ... :END:~) and block content (~#+BEGIN_SRC~ / ~#+BEGIN_QUOTE~ /etc.) stay folded, collapsed as a single line each.
 - ~showeverything~ — everything ~showall~ shows, plus property drawers and block content, both fully expanded. This is the actual, sole structural difference between the two modes.
@@ -453,7 +454,7 @@ Currently recognized (sorted alphabetically):
 - ~org-xx-extra-menu~ — *not actually a real org-mode variable*: this app's own extension, using the same Global/Local Variables mechanism every other setting here does. Configures the floating extras (☰) button's popup menu — unset (the default) hides the button entirely, since there's nothing to show. See [[#extras-menu][Extras menu]] for the full syntax and behavior.
 - ~org-log-done~ — ~'time~, ~'note~, or unset (~nil~, the default — no logging). Controls what happens automatically whenever a heading enters a DONE-type state: ~'time~ inserts a ~CLOSED:~ timestamp; ~'note~ additionally prompts for a note, recorded in a shared ~:LOGBOOK:~ drawer. Has a dedicated ~#+STARTUP:~ shorthand (~logdone~ / ~lognotedone~ — see the table in [[#configuration][Configuration]] above), one of only three variables that do. See [[#progress-logging][Progress logging]] for the complete behavior, including how this relates to the more general per-keyword ~!~ / ~@~ / ~@/!~ / ~/!~ logging spec.
 - ~org-refile-targets~ — which headings [[#refile][Refile]] offers as destinations. Real org's own actual value is a Lisp list of cons cells, which a single plain-text line can't hold directly — this app translates it into semicolon-separated entries instead, each ~<file> <level-spec>~, e.g. ~current maxlevel=3; notes.org maxlevel=2; agenda-files level=1~. See [[#refile][Refile]] for the full syntax, precedence, and default (current file, level 1 only, matching real org's own nil-default exactly).
-- ~org-startup-folded~ — ~'overview~, ~'content~, ~'showall~, or ~'showeverything~ (the quoted-symbol form and the bare word are both accepted). Sets the initial heading-visibility mode when a file first opens, settable directly here rather than only via the ~#+STARTUP:~ shorthand (see the table in [[#configuration][Configuration]] above and [[#folding-and-startup][Folding and #+STARTUP]] below for what each of the four modes actually shows). Default ~showeverything~, matching real org's own out-of-the-box behavior.
+- ~org-startup-folded~ — ~'overview~, ~'content~, ~'showall~, ~'showeverything~, ~'show2levels~, ~'show3levels~, ~'show4levels~, or ~'show5levels~ (the quoted-symbol form and the bare word are both accepted). Sets the initial heading-visibility mode when a file first opens, settable directly here rather than only via the ~#+STARTUP:~ shorthand (see the table in [[#configuration][Configuration]] above and [[#folding-and-startup][Folding and #+STARTUP]] below for what each mode actually shows). Default ~showeverything~, matching real org's own out-of-the-box behavior.
 - ~org-startup-with-inline-images~ — ~t~ or ~nil~. Whether images render inline when a file first opens — real org's own actual variable, now settable directly here rather than only via the ~#+STARTUP:~ shorthand. Default ~nil~ (images stay as link text rather than rendering), matching real org's own actual out-of-the-box default exactly.
 - ~org-use-property-inheritance~ — ~t~ or ~nil~. ~nil~ (the default, matching real org — property inheritance is opt-in there too) means a ~key:value~ search filter only looks at a heading's own properties. ~t~ also falls back to the nearest ancestor's value when the heading doesn't define that property itself — a heading's own value always wins if it has one, inheritance only fills the gap. Same ~t~ / ~nil~ simplification as ~org-use-tag-inheritance~ below, versus real org's fuller list/regexp value space.
 - ~org-use-sub-superscripts~ — one of ~t~, ~{}~, or ~nil~ (not a plain boolean — three real values, matching real org exactly). See [[#inline-text-markup][Inline text markup]] for what each one does. An unrecognized value falls back to ~t~, real org's own default, rather than silently disabling the feature.
@@ -656,7 +657,7 @@ This is the escape hatch for everything the tap-driven UI doesn't cover yet.
 :CUSTOM_ID: agenda
 :END:
 
-Tap *View → Agenda* for a list of everything with a date attached, grouped into Day, Week, or Month views. *‹*/*›* step the view backward or forward by whatever unit is currently active — a day, a week, or a month — and *Today* jumps back to the current date. Tapping an item switches back to the Org view and scrolls straight to it.
+Tap *View → Agenda* for a list of everything with a date attached, grouped into Day, Week, or Month views. A single toggle button cycles between the three on tap — fixed-width, so it never shifts size as the label changes — rather than three separate buttons competing for space. *‹*/*›* step the view backward or forward by whatever unit is currently active — a day, a week, or a month — and *Today* jumps back to the current date. Tapping an item switches back to the Org view and scrolls straight to it.
 
 *Week view always aligns to an actual calendar week* — Monday through Sunday by default (configurable, see below), regardless of which day of that week you happened to open the agenda on. It resolves to the same 7-day window whether you're looking at it from Monday or Friday, not "whatever day is currently open, plus the next six."
 

@@ -7703,18 +7703,17 @@ function renderAgendaView() {
     return btn;
   }
 
-  for (const [key, label] of [
-    ['day', 'Day'],
-    ['week', 'Week'],
-    ['month', 'Month'],
-  ]) {
-    controls.appendChild(
-      agendaControlBtn(label, () => {
-        agendaViewType = key;
-        render();
-      }, key === agendaViewType)
-    );
-  }
+  const AGENDA_VIEW_CYCLE = ['day', 'week', 'month'];
+  const AGENDA_VIEW_LABELS = { day: 'Day', week: 'Week', month: 'Month' };
+  const viewToggleBtn = agendaControlBtn(AGENDA_VIEW_LABELS[agendaViewType], () => {
+    const nextIndex = (AGENDA_VIEW_CYCLE.indexOf(agendaViewType) + 1) % AGENDA_VIEW_CYCLE.length;
+    agendaViewType = AGENDA_VIEW_CYCLE[nextIndex];
+    render();
+  });
+  viewToggleBtn.style.width = '64px'; // fixed -- fits "Month", the longest label, without the button's own size shifting as the label cycles
+  viewToggleBtn.style.textAlign = 'center';
+  viewToggleBtn.setAttribute('aria-label', 'Switch agenda view (currently ' + AGENDA_VIEW_LABELS[agendaViewType] + ')');
+  controls.appendChild(viewToggleBtn);
 
   controls.appendChild(
     agendaControlBtn(
