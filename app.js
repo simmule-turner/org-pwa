@@ -5108,7 +5108,7 @@ function renderRow(row, todoSequence) {
       const title = document.createElement('span');
       title.className = 'heading-title';
       if (row.node.title) {
-        renderInlineNodes(parseInline(row.node.title, currentInlineOpts()), title);
+        renderInlineNodes(parseInline(row.node.title, currentInlineOpts()), title, null, row.node);
       } else {
         title.textContent = '(untitled)';
         title.style.opacity = '0.5';
