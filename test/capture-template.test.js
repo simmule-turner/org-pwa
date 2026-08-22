@@ -11,6 +11,7 @@ import {
   insertCapture,
   resolveCaptureFileId,
   getCaptureFileScheme,
+  computeNonCollidingKeys,
 } from '../src/capture-template.js';
 
 const NOW = new Date(2026, 6, 24, 14, 30, 5); // July 24 2026, 14:30:05, a Friday
@@ -750,4 +751,32 @@ test('getCaptureFileScheme: an unrecognized prefix is returned verbatim (origina
 test('getCaptureFileScheme: no colon at all -- scheme is null, path is the whole original string', () => {
   assert.deepEqual(getCaptureFileScheme('journal/2026.org'), { scheme: null, path: 'journal/2026.org' });
   assert.deepEqual(getCaptureFileScheme('notes.org'), { scheme: null, path: 'notes.org' });
+});
+
+// ---- computeNonCollidingKeys -------------------------------------------------
+
+test('THE EXACT REQUEST: a key claimed by more than one item is excluded entirely, not "first one wins"', () => {
+  const items = [{ key: 'm', label: 'Meeting' }, { key: 'n', label: 'Note' }, { key: 'm', label: 'Memo' }];
+  const result = computeNonCollidingKeys(items, (i) => i.key);
+  assert.equal(result.size, 1);
+  assert.equal(result.get(items[1]), 'n');
+  assert.equal(result.has(items[0]), false);
+  assert.equal(result.has(items[2]), false);
+});
+
+test('computeNonCollidingKeys: every key unique -- every item included', () => {
+  const items = [{ key: 'a' }, { key: 'b' }, { key: 'c' }];
+  const result = computeNonCollidingKeys(items, (i) => i.key);
+  assert.equal(result.size, 3);
+});
+
+test('computeNonCollidingKeys: an item with no key (empty/undefined) is skipped, doesn\u2019t count as a collision', () => {
+  const items = [{ key: '' }, { key: undefined }, { key: 'a' }];
+  const result = computeNonCollidingKeys(items, (i) => i.key);
+  assert.equal(result.size, 1);
+  assert.equal(result.get(items[2]), 'a');
+});
+
+test('computeNonCollidingKeys: empty list returns an empty map', () => {
+  assert.equal(computeNonCollidingKeys([], (i) => i.key).size, 0);
 });
