@@ -81,7 +81,7 @@ import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadi
 import { isClockRunning, clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, formatClockDuration, findHeadingWithRunningClock } from './src/clock.js';
 import { computeClocktable, renderClocktable } from './src/clocktable.js';
 import { parseExtraMenu } from './src/extra-menu.js';
-import { parseMenuAliases } from './src/menu-alias.js';
+import { parseMenuAliases, resolveMenuOrder } from './src/menu-alias.js';
 import { normalizeSmartQuotes } from './src/text-normalize.js';
 import { buildMonthGrid, stepMonth, stepYear, MONTH_NAMES, buildDayMarkers } from './src/calendar-grid.js';
 import { splitHexAlpha, combineHexAlpha } from './src/hex-alpha.js';
@@ -2644,6 +2644,21 @@ function anyOverlayPanelOpen() {
   );
 }
 
+function anyOverlayPanelOpenExceptDocs() {
+  return (
+    fileMenuOpen ||
+    settingsOpen ||
+    searchOpen ||
+    captureOpen ||
+    extraMenuOpen ||
+    calendarOpen ||
+    viewMenuOpen ||
+    moreOpen ||
+    historyOpen ||
+    !!pendingTodoWorkflowChoice
+  );
+}
+
 /** Closes whichever overlay panel(s) anyOverlayPanelOpen() found open,
  *  re-rendering each one so it actually disappears -- the shared
  *  Escape-to-dismiss behavior every one of these panels was missing
@@ -2699,7 +2714,7 @@ function closeAllOverlayPanels() {
 }
 
 function syncGodModeIndicator() {
-  if (anyOverlayPanelOpen() && godModeActive) {
+  if (anyOverlayPanelOpenExceptDocs() && godModeActive) {
     godModeActive = false;
     godModeState = godModeInitialState();
   }
@@ -3062,6 +3077,12 @@ const GOD_MODE_ACTIONS = {
     renderCapturePanel();
   },
   'C-c C-e': () => godModeNotSupported('use File \u2192 Export instead'),
+  'h i': () => {
+    moreOpen = false;
+    renderMoreMenu();
+    docsOpen = true;
+    if (!isWideLayout()) renderDocsView(outlineEl); // narrow: replaces #outline directly; wide layout is handled by the outer dispatch loop's own render() call right after this returns
+  },
 };
 
 /** True if `chordString` is either an exact match in GOD_MODE_ACTIONS
@@ -3185,7 +3206,7 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     const { state: newState, chordString } = godModeProcessKey(godModeState, e.key, e.shiftKey);
     godModeState = newState;
-    const stillWaiting = newState.pendingModifier !== null || newState.awaitingSecondC;
+    const stillWaiting = newState.pendingModifier !== null || newState.awaitingSecondC || newState.awaitingSecondH;
     if (!stillWaiting && chordString in GOD_MODE_ACTIONS) {
       GOD_MODE_ACTIONS[chordString]();
       godModeState = godModeInitialState();
@@ -7101,6 +7122,46 @@ function aliasedMenuButton(aliasMap, label, onClick, disabled) {
   return btn;
 }
 
+/** Same idea as aliasedMenuButton, but the resulting button can never
+ *  be hidden -- an empty alias falls back to the real, default label
+ *  instead of omitting the button entirely, which is otherwise
+ *  identical to aliasedMenuButton's own alias semantics (a non-empty
+ *  alias still replaces the visible text, with the real label
+ *  preserved as the accessible name). Never returns null. */
+function requiredMenuButton(aliasMap, label, onClick, disabled) {
+  const alias = aliasMap ? aliasMap[label] : undefined;
+  const btn = menuButton(alias || label, onClick, disabled);
+  if (alias) btn.setAttribute('aria-label', label);
+  return btn;
+}
+
+/** Appends a menu's own buttons to `container`, in whichever order
+ *  org-xx-menu-aliases specifies for that menu, or the app's own
+ *  default order otherwise -- see this function's own doc comment
+ *  above (requiredMenuButton) and the block comment just above this
+ *  one for the full "opt-in, all-or-nothing" reordering rule this
+ *  implements.
+ *
+ *  `labeledButtons` is an array of { label, btn } in the app's own
+ *  default order -- btn may be null (already omitted via
+ *  aliasedMenuButton's own alias==='' rule for a non-required
+ *  button); a null entry is simply skipped wherever it lands in the
+ *  final order. An alias-map entry naming a label that isn't among
+ *  labeledButtons at all (typo, or a stale reference to a button
+ *  that no longer exists) is silently dropped from the reordering,
+ *  the same tolerant-of-the-unexpected approach every other
+ *  recognized-subset parser in this codebase already takes. */
+function appendMenuButtonsInOrder(container, aliasMap, labeledButtons) {
+  const order = resolveMenuOrder(
+    aliasMap,
+    labeledButtons.map(({ label }) => label)
+  );
+  for (const label of order) {
+    const entry = labeledButtons.find((lb) => lb.label === label);
+    if (entry && entry.btn) container.appendChild(entry.btn);
+  }
+}
+
 /** Same idea as menuButton, but with explicit comfortable sizing
  *  (matching the .panel button convention) for use outside a
  *  .panel-classed container — e.g. the timestamp wizard's Save/Cancel,
@@ -7154,14 +7215,11 @@ function renderFileMenu() {
       fileMenuStep = 'new';
       renderFileMenu();
     });
-    if (newBtn) row.appendChild(newBtn);
     const openBtn = aliasedMenuButton(fileMenuAliases, 'Open', () => {
       fileMenuStep = 'open';
       renderFileMenu();
     });
-    if (openBtn) row.appendChild(openBtn);
     const saveBtn = aliasedMenuButton(fileMenuAliases, 'Save', () => saveCurrent(), !state.documentId);
-    if (saveBtn) row.appendChild(saveBtn);
     const saveAsBtn = aliasedMenuButton(
       fileMenuAliases,
       'Save As',
@@ -7171,7 +7229,6 @@ function renderFileMenu() {
       },
       !state.doc
     );
-    if (saveAsBtn) row.appendChild(saveAsBtn);
     const exportBtn = aliasedMenuButton(
       fileMenuAliases,
       'Export',
@@ -7182,7 +7239,13 @@ function renderFileMenu() {
       },
       !state.doc
     );
-    if (exportBtn) row.appendChild(exportBtn);
+    appendMenuButtonsInOrder(row, fileMenuAliases, [
+      { label: 'New', btn: newBtn },
+      { label: 'Open', btn: openBtn },
+      { label: 'Save', btn: saveBtn },
+      { label: 'Save As', btn: saveAsBtn },
+      { label: 'Export', btn: exportBtn },
+    ]);
     fileMenuPanel.appendChild(row);
     return;
   }
@@ -7338,27 +7401,29 @@ function renderExportFlow() {
       exportFormat = 'ascii';
       renderFileMenu();
     });
-    if (asciiBtn) row.appendChild(asciiBtn);
     const icsBtn = aliasedMenuButton(exportMenuAliases, 'Calendar (.ics)', () => {
       exportFormat = 'icalendar';
       renderFileMenu();
     });
-    if (icsBtn) row.appendChild(icsBtn);
     const htmlBtn = aliasedMenuButton(exportMenuAliases, 'HTML', () => {
       exportFormat = 'html';
       renderFileMenu();
     });
-    if (htmlBtn) row.appendChild(htmlBtn);
     const mdBtn = aliasedMenuButton(exportMenuAliases, 'Markdown', () => {
       exportFormat = 'markdown';
       renderFileMenu();
     });
-    if (mdBtn) row.appendChild(mdBtn);
     const odtBtn = aliasedMenuButton(exportMenuAliases, 'ODT', () => {
       exportFormat = 'odt';
       renderFileMenu();
     });
-    if (odtBtn) row.appendChild(odtBtn);
+    appendMenuButtonsInOrder(row, exportMenuAliases, [
+      { label: 'ASCII', btn: asciiBtn },
+      { label: 'Calendar (.ics)', btn: icsBtn },
+      { label: 'HTML', btn: htmlBtn },
+      { label: 'Markdown', btn: mdBtn },
+      { label: 'ODT', btn: odtBtn },
+    ]);
     fileMenuPanel.appendChild(row);
     return;
   }
@@ -7723,6 +7788,7 @@ function renderViewMenu() {
   const row = document.createElement('div');
   row.className = 'panel-row';
   const viewMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).view;
+  const labeledButtons = [];
   for (const [key, label] of [
     ['org', 'Org'],
     ['agenda', 'Agenda'],
@@ -7730,10 +7796,10 @@ function renderViewMenu() {
     ['text', 'Text'],
   ]) {
     const btn = aliasedMenuButton(viewMenuAliases, label, () => switchToView(key));
-    if (!btn) continue;
-    if (key === currentView) btn.style.fontWeight = '700';
-    row.appendChild(btn);
+    if (btn && key === currentView) btn.style.fontWeight = '700';
+    labeledButtons.push({ label, btn });
   }
+  appendMenuButtonsInOrder(row, viewMenuAliases, labeledButtons);
   viewMenuPanel.appendChild(row);
 }
 
@@ -11594,14 +11660,12 @@ function renderMoreMenu() {
     renderMoreMenu();
     searchBtn.click();
   });
-  if (searchBtnOption) row.appendChild(searchBtnOption);
 
   const captureBtnOption = aliasedMenuButton(moreMenuAliases, 'Capture', () => {
     moreOpen = false;
     renderMoreMenu();
     captureBtn.click();
   });
-  if (captureBtnOption) row.appendChild(captureBtnOption);
 
   const historyBtnOption = aliasedMenuButton(
     moreMenuAliases,
@@ -11614,20 +11678,14 @@ function renderMoreMenu() {
     },
     !state.doc
   );
-  if (historyBtnOption) {
-    historyBtnOption.setAttribute('aria-label', 'Undo history');
-    row.appendChild(historyBtnOption);
-  }
+  if (historyBtnOption) historyBtnOption.setAttribute('aria-label', 'Undo history');
 
   const addBtnOption = aliasedMenuButton(moreMenuAliases, '+', () => {
     moreOpen = false;
     renderMoreMenu();
     addBtn.click();
   });
-  if (addBtnOption) {
-    addBtnOption.setAttribute('aria-label', 'Add heading');
-    row.appendChild(addBtnOption);
-  }
+  if (addBtnOption) addBtnOption.setAttribute('aria-label', 'Add heading');
 
   const docsBtnOption = aliasedMenuButton(moreMenuAliases, '?', () => {
     moreOpen = false;
@@ -11639,17 +11697,22 @@ function renderMoreMenu() {
       renderDocsView(outlineEl); // narrow: replaces #outline directly, exactly as before this feature existed
     }
   });
-  if (docsBtnOption) {
-    docsBtnOption.setAttribute('aria-label', 'Help / Docs');
-    row.appendChild(docsBtnOption);
-  }
+  if (docsBtnOption) docsBtnOption.setAttribute('aria-label', 'Help / Docs');
 
-  const settingsBtnOption = aliasedMenuButton(moreMenuAliases, 'Settings', () => {
+  const settingsBtnOption = requiredMenuButton(moreMenuAliases, 'Settings', () => {
     moreOpen = false;
     renderMoreMenu();
     settingsBtn.click();
   });
-  if (settingsBtnOption) row.appendChild(settingsBtnOption);
+
+  appendMenuButtonsInOrder(row, moreMenuAliases, [
+    { label: 'Search', btn: searchBtnOption },
+    { label: 'Capture', btn: captureBtnOption },
+    { label: 'History', btn: historyBtnOption },
+    { label: '+', btn: addBtnOption },
+    { label: '?', btn: docsBtnOption },
+    { label: 'Settings', btn: settingsBtnOption },
+  ]);
 
   morePanel.appendChild(row);
 }

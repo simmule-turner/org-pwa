@@ -902,13 +902,19 @@ org-xx-menu-aliases: "file:New;➕" "file:Open;📂" "file:Save;💾" "file:Save
 
 ~alias~, after the semicolon, has two meanings depending on whether it's present:
 - *Non-empty* — the button's default label text is replaced with the alias wherever it's shown (the button still does exactly the same thing; only what's written on it changes). The original label becomes that button's accessible name (screen readers, hover tooltips) instead, so it still says what the button actually is even once the visible text is just an icon.
-- *Empty* (~"menu:Label;"~ with nothing after the semicolon) — the button is *omitted entirely*, not shown at all, not even disabled. ~"export:Markdown;"~ above is exactly this: hides the Markdown button from the Export menu (it stays fully reachable via ~org-xx-extra-menu~'s own ~'export-markdown~ function reference regardless — see [[#extras-menu][Extras menu]]).
+- *Empty* (~"menu:Label;"~ with nothing after the semicolon) — the button is *omitted entirely*, not shown at all, not even disabled. ~"export:Markdown;"~ above is exactly this: hides the Markdown button from the Export menu (it stays fully reachable via ~org-xx-extra-menu~'s own ~'export-markdown~ function reference regardless — see [[#extras-menu][Extras menu]]). *~more:Settings~ is the one exception* — it's a required capability (GitHub/WebDAV setup, Global Variables, and everything else reachable only from there), so it can never actually be hidden this way; an empty alias for it specifically means "keep the real label, ~Settings~" rather than "omit the button", the only label anywhere in this variable where empty doesn't mean hidden.
 
 A label never mentioned in the variable at all keeps its default, unchanged text — this is an opt-in override list, not a full redefinition of any menu. ~view~ isn't mentioned anywhere in the example above at all, meaning no overrides for the View menu specifically — every one of its buttons keeps its default label.
 
+*The order buttons appear in can be changed too* — but only once *every single one* of a menu's own real labels is listed for it (see the table below for the complete set each menu needs), even ones kept at their own default label and visibility; a partial listing leaves that menu's own default order completely untouched, so setting an alias for just one or two buttons never has the side effect of silently reordering the rest. Once every label is present, the buttons render in whichever order they're listed in — left to right, matching the order the ~"menu:Label;alias"~ entries themselves appear in the variable's own value. An entry with an empty alias still counts as "listed" for this purpose (that's how a button can occupy a specific position in the order without changing its label at all — ~"more:Settings;"~ places ~more:Settings~ exactly where listed while still showing the plain word "Settings", per the required-visibility exception above). For example, to show the More menu as Settings, Capture, Search, in that order, with History/+/? at their own defaults:
+
+#+BEGIN_SRC
+org-xx-menu-aliases: "more:Settings;" "more:Capture;" "more:Search;" "more:History;" "more:+;" "more:?;"
+#+END_SRC
+
 *Buttons are sized to their own label*, not stretched to fill the row evenly — a short label like "New" stays short, a longer one like "Save As" takes the room it actually needs, and the whole row left-aligns with consistent spacing between buttons, however many end up visible.
 
-The four menus' own real labels, exactly as they'd appear in ~"menu:Label;alias"~:
+The four menus' own real labels, exactly as they'd appear in ~"menu:Label;alias"~ — the complete set needed to reorder that specific menu:
 | ~menu~ | Labels |
 |----------+--------|
 | ~file~ | ~New~, ~Open~, ~Save~, ~Save As~, ~Export~ |
@@ -1106,10 +1112,13 @@ Translation rules:
 | ~c c .~ / ~c c !~ / ~c c d~ / ~c c s~ | ~C-c .~ / ~C-c !~ / ~C-c C-d~ / ~C-c C-s~ | Open the focused heading's details editor (where SCHEDULED/DEADLINE/timestamps live) |
 | ~c c g a~ | ~C-c a~ | Open the Agenda view |
 | ~c c g c~ | ~C-c c~ | Open Capture (see below — exits god-mode and offers hotkey template selection) |
+| ~h i~ | (not a real chord) | Open Help/Docs — see below, doesn't exit god-mode |
 
 Sequences that are valid god-mode input but have no equivalent in this app yet report that plainly rather than silently doing nothing or approximating something misleading: ~c c c~ (checkbox toggling / code-block execution — both need a finer keyboard focus than a heading), ~S-↑~ / ~S-↓~ (shifting a date under the cursor — no text-cursor concept exists), ~c c |~ and the table row/column sequences (no table-cell keyboard focus exists), ~c c g l~ / ~c c l~ / ~c c C-l~ / ~c c o~ (no link-insertion or cursor-based link-opening command exists), and ~c c C-e~ (use File → Export instead).
 
 *~c c g c~ (Capture) and ~c c t~ on a heading with no current TODO state and more than one workflow both exit god-mode and hand off to a hotkey-driven picker*, rather than staying in god-mode's own chord system — real org's own actual ~C-c c~ works the same way: the keybinding itself never reads a template letter, the command it invokes does that as its own separate, subsequent prompt once already running. Both pickers here work the same way: opening one shows every option (capture template, or TODO state) as normal, tappable buttons, and — since this came from god-mode, a keyboard-driven context — also labels each one with its own single-character hotkey, typeable immediately without needing to reach for a tap at all. *A hotkey only appears, and is only ever accepted, when it doesn't collide with another option's own key* — if two capture templates (or two TODO states, even across different ~#+TODO:~ workflows shown in the same picker) happen to share a key, neither gets a hotkey at all; that specific choice becomes tap-only rather than guessing which one a keypress meant. Opening either picker any other way (a plain tap, the ⋮ Capture button, the action-menu's own "Mark as TODO") never shows hotkeys — they're a god-mode-specific convenience, not a general feature of these pickers. ~Escape~ still cancels either picker, same as any other panel.
+
+*~h i~ opens Help/Docs* — not a real Emacs chord at all (this app's own convenience, with no Control/Meta-chord analog to mirror), and, unlike Capture/TODO above, *doesn't exit god-mode*: reading a help page shouldn't cost you an active sequence you were in the middle of building. ~Escape~ still closes it and still swallows every other key while it's open (same as any other panel — normal typing shouldn't leak into the outline underneath while you're reading), but god-mode itself is untouched throughout and is exactly as active once Help closes as it was before opening it.
 
 -----
 
