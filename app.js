@@ -1555,10 +1555,10 @@ function performAttachmentAction(heading, filename, action) {
  *  noticeable regression for the common case. */
 function openTodoOrPickWorkflow(heading) {
   const sequences = resolveTodoSequences(state.doc, GLOBAL_TODO_DEFAULT);
-  if (sequences.length <= 1) {
+  if (heading.todo || sequences.length <= 1) {
     const hadTodo = !!heading.todo;
-    applyTodoTransition(heading, () => toggleHeadingTodo(state.doc, heading, GLOBAL_TODO_DEFAULT));
-    commitAndRender(hadTodo ? 'Removed TODO/DONE state' : 'Marked as TODO');
+    applyTodoTransition(heading, () => cycleHeadingTodo(state.doc, heading, GLOBAL_TODO_DEFAULT));
+    commitAndRender(hadTodo ? 'Cycled TODO state' : 'Marked as TODO');
     return;
   }
   pendingTodoWorkflowChoice = { heading };
@@ -2918,10 +2918,16 @@ const GOD_MODE_ACTIONS = {
   },
   'S-TAB': () => globalCycleFold(),
   'M-<up>': () => {
-    if (keyboardFocusedHeading && moveHeadingUp(state.doc, keyboardFocusedHeading)) commitAndRender('Moved heading up');
+    if (keyboardFocusedHeading && moveHeadingUp(state.doc, keyboardFocusedHeading)) {
+      commitAndRender('Moved heading up');
+      scrollFocusedHeadingIntoView();
+    }
   },
   'M-<down>': () => {
-    if (keyboardFocusedHeading && moveHeadingDown(state.doc, keyboardFocusedHeading)) commitAndRender('Moved heading down');
+    if (keyboardFocusedHeading && moveHeadingDown(state.doc, keyboardFocusedHeading)) {
+      commitAndRender('Moved heading down');
+      scrollFocusedHeadingIntoView();
+    }
   },
   'M-<right>': () => {
     if (keyboardFocusedHeading && demoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender('Demoted heading');
@@ -2942,6 +2948,12 @@ const GOD_MODE_ACTIONS = {
   'C-c C-f': () => moveToSameLevelHeading(1),
   'C-c C-b': () => moveToSameLevelHeading(-1),
   'C-c C-u': () => moveToParentHeading(),
+  'C-c C-n': () => {
+    moveKeyboardFocus(1);
+  },
+  'C-c C-p': () => {
+    moveKeyboardFocus(-1);
+  },
 
   // Section 2: Item & Headline Creation
   'M-RET': () => {
@@ -3080,7 +3092,12 @@ document.addEventListener('keydown', (e) => {
     } else {
       godModeActive = true;
       godModeState = godModeInitialState();
+      if (!keyboardFocusedHeading) {
+        const headings = visibleHeadingsInOrder();
+        if (headings.length > 0) keyboardFocusedHeading = headings[0];
+      }
       render();
+      scrollFocusedHeadingIntoView();
     }
     return;
   }
@@ -3115,12 +3132,12 @@ document.addEventListener('keydown', (e) => {
 
   if (currentView !== 'org' || !state.doc) return; // everything below acts on the outline specifically
 
-  if (e.key === 'ArrowDown' || e.key === 'j') {
+  if (!e.altKey && (e.key === 'ArrowDown' || e.key === 'j')) {
     e.preventDefault();
     moveKeyboardFocus(1);
     return;
   }
-  if (e.key === 'ArrowUp' || e.key === 'k') {
+  if (!e.altKey && (e.key === 'ArrowUp' || e.key === 'k')) {
     e.preventDefault();
     moveKeyboardFocus(-1);
     return;
@@ -3146,10 +3163,16 @@ document.addEventListener('keydown', (e) => {
     openTodoOrPickWorkflow(keyboardFocusedHeading);
   } else if (e.altKey && e.key === 'ArrowUp') {
     e.preventDefault();
-    if (moveHeadingUp(state.doc, keyboardFocusedHeading)) commitAndRender('Moved heading up');
+    if (moveHeadingUp(state.doc, keyboardFocusedHeading)) {
+      commitAndRender('Moved heading up');
+      scrollFocusedHeadingIntoView();
+    }
   } else if (e.altKey && e.key === 'ArrowDown') {
     e.preventDefault();
-    if (moveHeadingDown(state.doc, keyboardFocusedHeading)) commitAndRender('Moved heading down');
+    if (moveHeadingDown(state.doc, keyboardFocusedHeading)) {
+      commitAndRender('Moved heading down');
+      scrollFocusedHeadingIntoView();
+    }
   } else if (e.key === '[') {
     e.preventDefault();
     if (promoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender('Promoted heading');
@@ -5195,7 +5218,7 @@ function renderRow(row, todoSequence) {
             },
             {
               icon: '\u2610',
-              label: row.node.todo ? 'Remove TODO/DONE state' : 'Mark as TODO',
+              label: row.node.todo ? 'Cycle TODO state' : 'Mark as TODO',
               onClick: () => {
                 actionMenuFor = null;
                 render();

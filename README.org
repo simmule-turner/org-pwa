@@ -1077,7 +1077,7 @@ Keyboard focus is a separate concept from tapping a heading open — a thin high
 :CUSTOM_ID: god-mode
 :END:
 
-An alternate input mode reaching real org's own fuller keybinding set (~C-c C-t~, ~M-RET~, and the rest) without the browser ever seeing an actual Ctrl/Alt combination held down — sidestepping the exact copy-paste/back-navigation collision the table above works around by substituting different keys instead. ~Escape~ toggles it on when nothing else needs it (see the table above for the full priority order). While active, every key is read as part of a sequence rather than triggering the plain shortcuts above; a small indicator in the bottom-center shows it's on and echoes the sequence typed so far.
+An alternate input mode reaching real org's own fuller keybinding set (~C-c C-t~, ~M-RET~, and the rest) without the browser ever seeing an actual Ctrl/Alt combination held down — sidestepping the exact copy-paste/back-navigation collision the table above works around by substituting different keys instead. ~Escape~ toggles it on when nothing else needs it (see the table above for the full priority order). While active, every key is read as part of a sequence rather than triggering the plain shortcuts above; a small indicator in the bottom-center shows it's on and echoes the sequence typed so far. *Entering god-mode auto-focuses a heading if none is already focused* — the first visible one in the document, outlined so it's clear which heading every action below actually operates on — since god-mode's own actions all need a specific heading to act on, the same as the plain shortcuts above.
 
 *Opening any overlay panel* (the extras menu, Settings, Docs, Capture, Search, the File/View/"More" menus, the undo History panel, or the single-month Calendar) *automatically exits god-mode* — none of these are separate "views," so without this, god-mode would otherwise keep silently intercepting every keystroke meant for that panel instead. The same awareness applies to the plain shortcuts above too: none of them act while one of these panels is open, and ~Escape~ closes whichever one is open first, rather than toggling god-mode underneath it.
 
@@ -1097,6 +1097,7 @@ Translation rules:
 | ~mS-←~ / ~mS-→~ | ~M-S-←~ / ~M-S-→~ | Same as above — no separate "whole subtree" action exists to map to |
 | ~c c f~ / ~c c b~ | ~C-c C-f~ / ~C-c C-b~ | Move focus to the next/previous heading at the same level |
 | ~c c u~ | ~C-c C-u~ | Move focus to the parent heading |
+| ~c c n~ / ~c c p~ | ~C-c C-n~ / ~C-c C-p~ | Move focus to the next/previous visible heading, at any level |
 | ~mRET~ | ~M-RET~ | Insert a new heading after the focused one, at the same level |
 | ~mS-RET~ | ~M-S-RET~ | Same, with a TODO keyword set |
 | ~c c t~ | ~C-c C-t~ | Cycle the focused heading's TODO state |
