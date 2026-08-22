@@ -554,6 +554,31 @@ function getCaptureFileScheme(file) {
   return { scheme: CAPTURE_FILE_SCHEMES.has(lowered) ? lowered : rawScheme, path: match[2] };
 }
 
+/**
+ * Returns a Map from item -> key, including only items whose own key
+ * doesn't collide with another item's key in the same list -- a key
+ * claimed by more than one item is entirely excluded from the result
+ * (neither item gets a hotkey), rather than picking a "first one
+ * wins" winner. Shared between the capture-template picker and the
+ * TODO-workflow picker, both of which need this same "only show/
+ * accept a hotkey when it's genuinely unambiguous" rule for their own
+ * god-mode-triggered fast-key selection.
+ */
+function computeNonCollidingKeys(items, keyFn) {
+  const counts = new Map();
+  for (const item of items) {
+    const key = keyFn(item);
+    if (!key) continue;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const result = new Map();
+  for (const item of items) {
+    const key = keyFn(item);
+    if (key && counts.get(key) === 1) result.set(item, key);
+  }
+  return result;
+}
+
 export {
   formatTime,
   scanPrompts,
@@ -564,4 +589,5 @@ export {
   resolveCaptureFileId,
   getCaptureFileScheme,
   CAPTURE_FILE_SCHEMES,
+  computeNonCollidingKeys,
 };
