@@ -436,14 +436,14 @@ Currently recognized (sorted alphabetically):
 | ~org-use-property-inheritance~ | ~nil~ | Whether a search filter's ~key:value~ also matches a value inherited from an ancestor |
 | ~org-use-sub-superscripts~ | ~t~ | Whether/how ~_~ / ~^~ are interpreted as sub/superscript |
 | ~org-use-tag-inheritance~ | ~t~ | Whether a search filter's ~+tag~ / ~-tag~ also matches a tag inherited from an ancestor |
+| ~org-weather-format~ | ~"Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su"~ | The template ~%%(org-weather)~ substitutes its own placeholders into -- not a real org-mode variable, see [[#agenda-diary-sexp][General diary-sexp forms]] |
+| ~org-weather-speed-unit~ | ~mph~ | ~km/h~ / ~m/s~ / ~mph~ / ~Knots~ -- the unit ~%%(org-weather)~'s own ~%s~ placeholder converts wind speed into -- not a real org-mode variable |
+| ~org-weather-temperature-unit~ | ~°F~ | ~°C~ / ~°F~ -- the unit ~%%(org-weather)~'s own temperature placeholders convert into -- not a real org-mode variable |
 | ~org-xx-extra-menu~ | unset (button hidden) | Which items the floating extras (☰) button's popup menu shows -- not a real org-mode variable, see [[#extras-menu][Extras menu]] |
 | ~org-xx-menu-aliases~ | unset (no relabeling) | Relabel/hide buttons across the File, More, Export, and View menus at once -- not a real org-mode variable, see [[#menu-customization][Menu customization]] |
 | ~org-xx-updates-at-top~ | ~t~ (Updates section at the top of Settings) | Whether the Updates section appears at the very top of Settings or its own original position at the bottom -- not a real org-mode variable |
 | ~solar-ampm~ | ~nil~ (24-hour) | 12-hour am/pm vs. 24-hour time for ~diary-sunrise~ / ~diary-sunset~ / ~diary-civil-sunrise~ / ~diary-civil-sunset~ -- not a real org-mode variable, see [[#agenda-diary-sexp][General diary-sexp forms]] |
 | ~solar-hide-label~ | ~nil~ (label shown) | Whether ~diary-sunrise~ / ~diary-sunset~ / ~diary-civil-sunrise~ / ~diary-civil-sunset~ / ~diary-day-length~ show their own trailing label ("Sunrise", "daylight", ...) or just the bare time/duration -- not a real org-mode variable |
-| ~org-weather-format~ | ~"Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su"~ | The template ~%%(org-weather)~ substitutes its own placeholders into -- not a real org-mode variable, see [[#agenda-diary-sexp][General diary-sexp forms]] |
-| ~org-weather-speed-unit~ | ~mph~ | ~km/h~ / ~m/s~ / ~mph~ / ~Knots~ -- the unit ~%%(org-weather)~'s own ~%s~ placeholder converts wind speed into -- not a real org-mode variable |
-| ~org-weather-temperature-unit~ | ~°F~ | ~°C~ / ~°F~ -- the unit ~%%(org-weather)~'s own temperature placeholders convert into -- not a real org-mode variable |
 
 - ~org-agenda-skip-archived-trees~ — ~t~ or ~nil~. ~t~ (the default, matching real org) excludes archived headings (tagged ~:ARCHIVE:~) from agenda views. Set to ~nil~ to include them.
 - ~org-agenda-skip-comment-trees~ — ~t~ or ~nil~. ~t~ (the default, matching real org) excludes "commented" headings from agenda views — a heading whose /title/ starts with ~#~ followed by a space (or is just ~#~ alone), real org's own definition of a comment line applied to a heading title, e.g. ~** # draft, not ready yet~. This is a heading-title convention, distinct from ~#+STARTUP:~'s visibility setting and from a ~#+BEGIN_COMMENT~ block — it just means "don't show this on the agenda," while the heading stays a completely normal, visible entry in the outline itself. Set to ~nil~ to include commented headings in the agenda after all.
@@ -912,7 +912,7 @@ The four menus' own real labels, exactly as they'd appear in ~"menu:Label;alias"
 | ~menu~ | Labels |
 |----------+--------|
 | ~file~ | ~New~, ~Open~, ~Save~, ~Save As~, ~Export~ |
-| ~more~ | ~Search~, ~Capture~, ~History~, ~+~, ~?~ |
+| ~more~ | ~Search~, ~Capture~, ~History~, ~+~, ~?~, ~Settings~ |
 | ~export~ | ~ASCII~, ~Calendar (.ics)~, ~HTML~, ~Markdown~, ~ODT~ |
 | ~view~ | ~Org~, ~Agenda~, ~TODO~, ~Text~ |
 
@@ -999,7 +999,7 @@ This documentation *is* an org file (~README.org~), rendered by this app's own o
 :CUSTOM_ID: settings
 :END:
 
-Reached via the ⚙ button, which replaces the outline with the settings screen — same as switching to Text or Agenda view, not a popup over the outline. Tap ⚙ again, or any of File/More/View, to leave settings and return to whatever was showing before (there's no separate "Done" button; those are already the way out).
+Reached via *More (⋮) → Settings*, which replaces the outline with the settings screen — same as switching to Text or Agenda view, not a popup over the outline. Tap Settings again from the More menu, or any of File/More/View, to leave settings and return to whatever was showing before (there's no separate "Done" button; those are already the way out).
 
 - *Quick Settings* — a proper, labeled control for every Global/Local Variable this app supports (grouped by area: Progress logging, Agenda, Contacts & Calendar, Weather, Search & tags, Editing, Export, plus an *Advanced* group for the handful with more complex, multi-entry syntax of their own — refile targets, agenda files, the ~org-xx-*-menu~ family) rather than a "name: value" line you have to already know to type into the text box below. A toggle, a number field, a select, or (for anything long enough to be awkward in a single line — refile targets, agenda files, the menu-customization fields, ~org-weather-format~) a small, read-only preview that opens a large, scrollable popup on focus for the actual editing — Cancel discards, OK commits, and Reset (shown only once a field has actually been changed from its own default) reverts it. The background page is locked from scrolling while any of these popups is open — a fully-covering overlay alone doesn't stop a touch-drag from scrolling whatever's behind it on mobile, a separate thing from painting order. Every one of these writes into the *exact same* app-wide Global Variables baseline as the Global Variables text box further down — changing a toggle here updates that text, and vice versa, so neither is a separate, out-of-sync source of truth. A file's own ~#+STARTUP:~ or "# Local Variables:" block still overrides anything set here, same precedence as always — this only changes the app-wide default, not any per-file override. Applies immediately, no reload needed. A small *?* next to almost every field jumps straight to the relevant part of the help doc.
 - *Global Variables* and, directly beneath it, *Capture Templates* — the same small-preview-opens-a-popup pattern as the longer Quick Settings fields above, editing the app-wide variable baseline as raw "name: value" lines and the capture template list as raw JSON respectively. The popup's own OK validates and saves; Reset (Global Variables) or "reset to defaults" (Capture Templates) is offered the same way, only once something's actually been changed.
@@ -1100,14 +1100,16 @@ Translation rules:
 | ~c c n~ / ~c c p~ | ~C-c C-n~ / ~C-c C-p~ | Move focus to the next/previous visible heading, at any level |
 | ~mRET~ | ~M-RET~ | Insert a new heading after the focused one, at the same level |
 | ~mS-RET~ | ~M-S-RET~ | Same, with a TODO keyword set |
-| ~c c t~ | ~C-c C-t~ | Cycle the focused heading's TODO state |
+| ~c c t~ | ~C-c C-t~ | Cycle the focused heading's TODO state — or, with no current state and more than one ~#+TODO:~ workflow, open a state picker instead (see below) |
 | ~c c ,~ | ~C-c ,~ | Cycle the focused heading's priority (None → A → B → C → None) |
 | ~c c v~ | ~C-c C-v~ | Switch to the TODO view (closest match to a sparse TODO tree) |
 | ~c c .~ / ~c c !~ / ~c c d~ / ~c c s~ | ~C-c .~ / ~C-c !~ / ~C-c C-d~ / ~C-c C-s~ | Open the focused heading's details editor (where SCHEDULED/DEADLINE/timestamps live) |
 | ~c c g a~ | ~C-c a~ | Open the Agenda view |
-| ~c c g c~ | ~C-c c~ | Open Capture |
+| ~c c g c~ | ~C-c c~ | Open Capture (see below — exits god-mode and offers hotkey template selection) |
 
 Sequences that are valid god-mode input but have no equivalent in this app yet report that plainly rather than silently doing nothing or approximating something misleading: ~c c c~ (checkbox toggling / code-block execution — both need a finer keyboard focus than a heading), ~S-↑~ / ~S-↓~ (shifting a date under the cursor — no text-cursor concept exists), ~c c |~ and the table row/column sequences (no table-cell keyboard focus exists), ~c c g l~ / ~c c l~ / ~c c C-l~ / ~c c o~ (no link-insertion or cursor-based link-opening command exists), and ~c c C-e~ (use File → Export instead).
+
+*~c c g c~ (Capture) and ~c c t~ on a heading with no current TODO state and more than one workflow both exit god-mode and hand off to a hotkey-driven picker*, rather than staying in god-mode's own chord system — real org's own actual ~C-c c~ works the same way: the keybinding itself never reads a template letter, the command it invokes does that as its own separate, subsequent prompt once already running. Both pickers here work the same way: opening one shows every option (capture template, or TODO state) as normal, tappable buttons, and — since this came from god-mode, a keyboard-driven context — also labels each one with its own single-character hotkey, typeable immediately without needing to reach for a tap at all. *A hotkey only appears, and is only ever accepted, when it doesn't collide with another option's own key* — if two capture templates (or two TODO states, even across different ~#+TODO:~ workflows shown in the same picker) happen to share a key, neither gets a hotkey at all; that specific choice becomes tap-only rather than guessing which one a keypress meant. Opening either picker any other way (a plain tap, the ⋮ Capture button, the action-menu's own "Mark as TODO") never shows hotkeys — they're a god-mode-specific convenience, not a general feature of these pickers. ~Escape~ still cancels either picker, same as any other panel.
 
 -----
 

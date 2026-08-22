@@ -103,7 +103,7 @@ import {
   parseRepeater,
   itemsInRange,
 } from './src/agenda.js';
-import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId, getCaptureFileScheme, CAPTURE_FILE_SCHEMES } from './src/capture-template.js';
+import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId, getCaptureFileScheme, CAPTURE_FILE_SCHEMES, computeNonCollidingKeys } from './src/capture-template.js';
 import { exportToMarkdown } from './src/export-markdown.js';
 import { exportToOdt } from './src/export-odt.js';
 import { exportToAscii } from './src/export-ascii.js';
@@ -1561,7 +1561,9 @@ function openTodoOrPickWorkflow(heading) {
     commitAndRender(hadTodo ? 'Cycled TODO state' : 'Marked as TODO');
     return;
   }
-  pendingTodoWorkflowChoice = { heading };
+  const viaGodMode = godModeActive;
+  if (viaGodMode) godModeActive = false;
+  pendingTodoWorkflowChoice = { heading, viaGodMode };
   renderTodoWorkflowPanel();
 }
 
@@ -1596,7 +1598,7 @@ function renderTodoWorkflowPanel() {
     return;
   }
   refilePanel.style.display = 'block';
-  const { heading } = pendingTodoWorkflowChoice;
+  const { heading, viaGodMode } = pendingTodoWorkflowChoice;
   const sequences = resolveTodoSequences(state.doc, GLOBAL_TODO_DEFAULT);
 
   const label = document.createElement('div');
@@ -1604,6 +1606,15 @@ function renderTodoWorkflowPanel() {
   label.style.marginBottom = '8px';
   label.textContent = 'This file has more than one TODO workflow \u2014 which state?';
   refilePanel.appendChild(label);
+
+  // Flattened across every sequence shown together -- a fast-access
+  // key colliding between two DIFFERENT workflows is just as much a
+  // collision as two states sharing one within the same workflow, so
+  // this has to span all of them, not be computed per-sequence.
+  const allEntries = sequences.flatMap((seq) => [...seq.todoKeywords, ...seq.doneKeywords].map((keyword) => ({ seq, keyword })));
+  const nonCollidingKeys = viaGodMode
+    ? computeNonCollidingKeys(allEntries, (entry) => entry.seq.keySpecs[entry.keyword])
+    : new Map();
 
   for (const seq of sequences) {
     const row = document.createElement('div');
@@ -1613,9 +1624,25 @@ function renderTodoWorkflowPanel() {
     const startState = seq.todoKeywords[0];
     for (const keyword of [...seq.todoKeywords, ...seq.doneKeywords]) {
       const btn = document.createElement('button');
-      btn.textContent = keyword;
       btn.style.fontSize = '11px'; // smaller than the default menuButton, specifically to fit more states per row
       btn.style.padding = '3px 6px';
+      btn.style.display = 'flex';
+      btn.style.alignItems = 'center';
+      btn.style.gap = '4px';
+      const hotkey = [...nonCollidingKeys.entries()].find(([entry]) => entry.seq === seq && entry.keyword === keyword)?.[1];
+      if (hotkey) {
+        const badge = document.createElement('span');
+        badge.textContent = hotkey;
+        badge.style.fontFamily = 'monospace';
+        badge.style.border = '1px solid currentColor';
+        badge.style.borderRadius = '3px';
+        badge.style.padding = '0 3px';
+        badge.style.opacity = '0.7';
+        btn.appendChild(badge);
+      }
+      const label2 = document.createElement('span');
+      label2.textContent = keyword;
+      btn.appendChild(label2);
       if (keyword === startState) {
         btn.style.borderColor = 'var(--workflow-start-fg)';
         btn.style.color = 'var(--workflow-start-fg)';
@@ -2612,7 +2639,8 @@ function anyOverlayPanelOpen() {
     calendarOpen ||
     viewMenuOpen ||
     moreOpen ||
-    historyOpen
+    historyOpen ||
+    !!pendingTodoWorkflowChoice
   );
 }
 
@@ -2641,6 +2669,7 @@ function closeAllOverlayPanels() {
   if (captureOpen) {
     captureOpen = false;
     captureOpenedFromExtraMenu = false;
+    captureOpenedViaGodMode = false;
     renderCapturePanel();
   }
   if (extraMenuOpen) {
@@ -2662,6 +2691,10 @@ function closeAllOverlayPanels() {
   if (historyOpen) {
     historyOpen = false;
     renderHistoryPanel();
+  }
+  if (pendingTodoWorkflowChoice) {
+    pendingTodoWorkflowChoice = null;
+    renderTodoWorkflowPanel();
   }
 }
 
@@ -3022,7 +3055,12 @@ const GOD_MODE_ACTIONS = {
   'C-c a': () => {
     if (state.doc) switchToView('agenda');
   },
-  'C-c c': () => captureBtn.click(),
+  'C-c c': () => {
+    godModeActive = false;
+    captureOpenedViaGodMode = true;
+    captureOpen = true;
+    renderCapturePanel();
+  },
   'C-c C-e': () => godModeNotSupported('use File \u2192 Export instead'),
 };
 
@@ -3061,6 +3099,41 @@ function isValidGodModePrefix(chordString) {
  * tablet, a real if uncommon case these bindings work correctly for
  * too, same code path either way.
  */
+/** Matches a plain keypress against whichever god-mode-triggered
+ *  picker (if any) is currently listening for hotkey selection --
+ *  the capture-template picker or the TODO-workflow picker -- and
+ *  dispatches the exact same function the corresponding button's own
+ *  onclick would call. Returns true if a match was found and
+ *  dispatched, false otherwise (so the caller knows whether to keep
+ *  treating the key as unhandled). Deliberately checks against the
+ *  SAME non-colliding key set the panel is currently showing, not a
+ *  looser "any known key" match -- a colliding key was never shown as
+ *  a hotkey in the first place and isn't accepted here either, click/
+ *  tap only, matching the explicit design decision for this feature. */
+function tryDispatchPanelHotkey(key) {
+  if (captureOpen && captureOpenedViaGodMode && !capturePromptTemplate) {
+    const nonCollidingKeys = computeNonCollidingKeys(currentCaptureTemplates, (t) => t.key);
+    for (const [template, hotkey] of nonCollidingKeys) {
+      if (hotkey === key) {
+        openCapturePrompt(template);
+        return true;
+      }
+    }
+  }
+  if (pendingTodoWorkflowChoice && pendingTodoWorkflowChoice.viaGodMode) {
+    const sequences = resolveTodoSequences(state.doc, GLOBAL_TODO_DEFAULT);
+    const allEntries = sequences.flatMap((seq) => [...seq.todoKeywords, ...seq.doneKeywords].map((keyword) => ({ seq, keyword })));
+    const nonCollidingKeys = computeNonCollidingKeys(allEntries, (entry) => entry.seq.keySpecs[entry.keyword]);
+    for (const [entry, hotkey] of nonCollidingKeys) {
+      if (hotkey === key) {
+        chooseTodoWorkflowState(pendingTodoWorkflowChoice.heading, entry.keyword, entry.seq);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 document.addEventListener('keydown', (e) => {
   const activeTag = document.activeElement && document.activeElement.tagName;
   if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return; // never hijack actual typing; each field's own keydown handler (Escape to cancel, etc.) already owns this
@@ -3072,6 +3145,11 @@ document.addEventListener('keydown', (e) => {
       e.preventDefault();
       closeAllOverlayPanels();
       render();
+      return;
+    }
+    if (!e.altKey && tryDispatchPanelHotkey(e.key)) {
+      e.preventDefault();
+      return;
     }
     return; // every other key is ignored while a panel has the user's actual attention -- see anyOverlayPanelOpen's own docs for why
   }
@@ -3236,6 +3314,8 @@ let capturePromptTemplate = null;
 // grid the normal Capture button's own multi-capture flow shows,
 // which the person never asked to see via the extras menu at all.
 let captureOpenedFromExtraMenu = false;
+let captureOpenedViaGodMode = false;
+let currentCaptureTemplates = [];
 let capturePromptValues = [];
 let moreOpen = false;
 let searchQuery = '';
@@ -10997,6 +11077,7 @@ async function renderCapturePanel() {
   if (!captureOpen) {
     capturePanel.style.display = 'none';
     capturePromptTemplate = null;
+    currentCaptureTemplates = [];
     return;
   }
   capturePanel.style.display = 'block';
@@ -11015,6 +11096,7 @@ async function renderCapturePanel() {
 
   const templates = await getCaptureTemplates(kv);
   if (!captureOpen) return; // panel was closed again before this resolved
+  currentCaptureTemplates = templates;
 
   if (templates.length === 0) {
     const empty = document.createElement('div');
@@ -11030,6 +11112,8 @@ async function renderCapturePanel() {
   grid.style.gridTemplateColumns = '1fr 1fr';
   grid.style.gap = '6px';
 
+  const nonCollidingKeys = captureOpenedViaGodMode ? computeNonCollidingKeys(templates, (t) => t.key) : new Map();
+
   for (const template of templates) {
     const btn = document.createElement('button');
     btn.style.textAlign = 'left';
@@ -11040,7 +11124,25 @@ async function renderCapturePanel() {
     btn.style.color = 'var(--fg)';
     btn.style.fontSize = '14px';
     btn.style.minHeight = '44px';
-    btn.textContent = template.description;
+    btn.style.display = 'flex';
+    btn.style.alignItems = 'center';
+    btn.style.gap = '8px';
+    const hotkey = nonCollidingKeys.get(template);
+    if (hotkey) {
+      const badge = document.createElement('span');
+      badge.textContent = hotkey;
+      badge.style.fontSize = '11px';
+      badge.style.fontFamily = 'monospace';
+      badge.style.border = '1px solid var(--border-strong)';
+      badge.style.borderRadius = '4px';
+      badge.style.padding = '1px 5px';
+      badge.style.opacity = '0.7';
+      badge.style.flexShrink = '0';
+      btn.appendChild(badge);
+    }
+    const label = document.createElement('span');
+    label.textContent = template.description;
+    btn.appendChild(label);
     btn.onclick = () => openCapturePrompt(template);
     grid.appendChild(btn);
   }
@@ -11429,6 +11531,7 @@ extraMenuBtn.addEventListener('click', () => {
 captureBtn.addEventListener('click', () => {
   captureOpen = !captureOpen;
   captureOpenedFromExtraMenu = false;
+  captureOpenedViaGodMode = false;
   if (captureOpen && fileMenuOpen) {
     fileMenuOpen = false;
     fileMenuStep = null;
@@ -11540,6 +11643,13 @@ function renderMoreMenu() {
     docsBtnOption.setAttribute('aria-label', 'Help / Docs');
     row.appendChild(docsBtnOption);
   }
+
+  const settingsBtnOption = aliasedMenuButton(moreMenuAliases, 'Settings', () => {
+    moreOpen = false;
+    renderMoreMenu();
+    settingsBtn.click();
+  });
+  if (settingsBtnOption) row.appendChild(settingsBtnOption);
 
   morePanel.appendChild(row);
 }
