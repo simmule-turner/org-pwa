@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMenuAliases } from '../src/menu-alias.js';
+import { parseMenuAliases, resolveMenuOrder } from '../src/menu-alias.js';
 
 const EMPTY = { file: {}, more: {}, export: {}, view: {} };
 
@@ -125,4 +125,31 @@ test('a value spread across multiple lines via a trailing backslash (already joi
 
 test('no value at all returns no overrides for any menu -- every button keeps its default label', () => {
   assert.deepEqual(parseMenuAliases(undefined), EMPTY);
+});
+
+// ---- resolveMenuOrder ---------------------------------------------------
+
+test('THE EXACT REQUEST: every label mentioned -- the menu is reordered to match', () => {
+  assert.deepEqual(resolveMenuOrder({ Capture: '', Search: '', History: '' }, ['Search', 'Capture', 'History']), ['Capture', 'Search', 'History']);
+});
+
+test('THE EXACT REQUEST: an empty alias still counts as "mentioned" for ordering purposes -- it just doesn\u2019t change the label', () => {
+  assert.deepEqual(resolveMenuOrder({ B: '', A: '\u2795' }, ['A', 'B']), ['B', 'A']);
+});
+
+test('a partial listing leaves the default order completely untouched', () => {
+  assert.deepEqual(resolveMenuOrder({ Search: '' }, ['Search', 'Capture', 'History']), ['Search', 'Capture', 'History']);
+});
+
+test('no aliases at all -- default order', () => {
+  assert.deepEqual(resolveMenuOrder({}, ['Search', 'Capture', 'History']), ['Search', 'Capture', 'History']);
+});
+
+test('an alias-map key naming a label that doesn\u2019t exist in the menu is silently dropped from the result', () => {
+  assert.deepEqual(resolveMenuOrder({ B: '', Typo: '', A: '' }, ['A', 'B']), ['B', 'A']);
+});
+
+test('hiding a button (empty alias) still lets it establish its own position -- ordering and visibility are separate concerns', () => {
+  // Even though 'B' would be hidden by its own empty alias in the actual rendering, its POSITION in the order is still honored here -- appendMenuButtonsInOrder's own null-btn check is what actually omits it from the DOM.
+  assert.deepEqual(resolveMenuOrder({ C: '', B: '', A: '' }, ['A', 'B', 'C']), ['C', 'B', 'A']);
 });

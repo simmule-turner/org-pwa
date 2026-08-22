@@ -208,3 +208,29 @@ test('initialState starts with an empty chord string and no pending modifiers', 
   assert.equal(state.pendingModifier, null);
   assert.equal(state.inCcChain, false);
 });
+
+// ---- THE EXACT REQUEST: "h i" as a standalone 2-key sequence ----------------
+
+test('THE EXACT REQUEST: "h i" produces the literal chord "h i", not a modifier chord', () => {
+  assert.equal(run([['h'], ['i']]), 'h i');
+});
+
+test('"h" alone (nothing typed yet) commits nothing, awaiting a possible "i"', () => {
+  const result = processKey(initialState(), 'h', false);
+  assert.equal(result.chordString, ''); // still awaiting, mirrors "c" alone
+  assert.equal(result.state.awaitingSecondH, true);
+});
+
+test('"h" followed by anything other than "i" falls back to a standalone C-h, then processes the next key(s) fresh -- "c c" no longer gets its own special chain treatment once chordString is already non-empty', () => {
+  assert.equal(run([['h'], ['x']]), 'C-h C-x');
+  assert.equal(run([['h'], ['c'], ['c'], ['t']]), 'C-h C-c C-c C-t');
+});
+
+test('"m" then "h" still produces M-h, unaffected by the new "h i" rule (pendingModifier gates it out)', () => {
+  assert.equal(run([['m'], ['h']]), 'M-h');
+});
+
+test('"h i" doesn\u2019t interfere with "c c" or vice versa', () => {
+  assert.equal(run([['c'], ['c'], ['t']]), 'C-c C-t');
+  assert.equal(run([['h'], ['i']]), 'h i');
+});
