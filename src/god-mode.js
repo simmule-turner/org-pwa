@@ -35,7 +35,7 @@
 
 /** A fresh, empty god-mode state -- nothing typed yet. */
 function initialState() {
-  return { chordString: '', pendingModifier: null, inCcChain: false, awaitingSecondC: false };
+  return { chordString: '', pendingModifier: null, inCcChain: false, awaitingSecondC: false, awaitingSecondH: false };
 }
 
 const LETTER_RE = /^[a-zA-Z]$/;
@@ -110,7 +110,7 @@ function processKey(state, rawKey, shiftKey) {
   // The very first key of a fresh sequence, if it's "c", doesn't
   // commit a chord yet -- it waits one more keystroke to see whether
   // this is the special "c c" org-prefix or a standalone "C-c".
-  if (state.chordString === '' && !state.awaitingSecondC && state.pendingModifier === null && rawKey === 'c') {
+  if (state.chordString === '' && !state.awaitingSecondC && !state.awaitingSecondH && state.pendingModifier === null && rawKey === 'c') {
     return { state: { ...state, awaitingSecondC: true }, chordString: state.chordString };
   }
   if (state.awaitingSecondC) {
@@ -125,6 +125,25 @@ function processKey(state, rawKey, shiftKey) {
     // the chain rule below all still apply correctly to it).
     const { state: afterC, chordString: afterCChord } = processKey({ ...clearedState, chordString: 'C-c' }, rawKey, shiftKey);
     return { state: afterC, chordString: afterCChord };
+  }
+
+  // "h" mirrors "c c"'s own exact pattern -- a standalone, literal
+  // 2-key sequence rather than a modifier chord at all, since "h i"
+  // (open Help) isn't meant to correspond to any real Emacs binding.
+  if (state.chordString === '' && !state.awaitingSecondC && !state.awaitingSecondH && state.pendingModifier === null && rawKey === 'h') {
+    return { state: { ...state, awaitingSecondH: true }, chordString: state.chordString };
+  }
+  if (state.awaitingSecondH) {
+    const clearedState = { ...state, awaitingSecondH: false };
+    if (rawKey === 'i') {
+      return { state: clearedState, chordString: 'h i' };
+    }
+    // Not a second key of "i" -- the "h" stands alone as its own C-h
+    // chord (the default rule any bare letter already gets), and
+    // this key starts the NEXT chord in the same sequence, processed
+    // fresh, same fallback shape as "c c" above.
+    const { state: afterH, chordString: afterHChord } = processKey({ ...clearedState, chordString: 'C-h' }, rawKey, shiftKey);
+    return { state: afterH, chordString: afterHChord };
   }
 
   const key = normalizeKeyName(rawKey, shiftKey);

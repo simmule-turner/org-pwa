@@ -100,3 +100,34 @@ function tokenizeMenuAliasValue(raw) {
 }
 
 export { parseMenuAliases };
+
+/**
+ * The pure ordering decision behind org-xx-menu-aliases' own
+ * reordering capability -- kept separate from any actual DOM
+ * manipulation (app.js's own appendMenuButtonsInOrder does that part)
+ * purely so this decision itself is directly, easily testable.
+ *
+ * `labels` is a menu's own real labels, in the app's own default
+ * order. `aliasMap` is one menu's own slice of parseMenuAliases'
+ * result (e.g. `result.more`). Returns `labels` reordered to match
+ * aliasMap's own key insertion order, but ONLY when every single one
+ * of `labels` is a key in aliasMap -- even an empty-string value
+ * counts as "mentioned" (that's how a label establishes its own
+ * position in the order without changing its text or being hidden);
+ * only a label missing from aliasMap entirely means "not mentioned",
+ * which makes reordering opt-in and all-or-nothing: a partial listing
+ * leaves the default order completely untouched, so setting one or
+ * two aliases never silently reorders anything as a side effect.
+ *
+ * An aliasMap key that isn't among `labels` at all (a typo, or a
+ * stale reference to a label that no longer exists) is silently
+ * dropped from the result, the same tolerant-of-the-unexpected
+ * approach parseMenuAliases itself already takes.
+ */
+function resolveMenuOrder(aliasMap, labels) {
+  const allMentioned = labels.every((label) => label in aliasMap);
+  if (!allMentioned) return labels;
+  return Object.keys(aliasMap).filter((orderedLabel) => labels.includes(orderedLabel));
+}
+
+export { resolveMenuOrder };
