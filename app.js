@@ -1563,7 +1563,9 @@ function openTodoOrPickWorkflow(heading) {
   }
   const viaGodMode = godModeActive;
   if (viaGodMode) godModeActive = false;
+  closeAllOverlayPanels();
   pendingTodoWorkflowChoice = { heading, viaGodMode };
+  render();
   renderTodoWorkflowPanel();
 }
 
@@ -2166,7 +2168,9 @@ function openCalendarPanel() {
     calendarViewYear = today.getFullYear();
     calendarViewMonth = today.getMonth();
   }
+  closeAllOverlayPanels();
   calendarOpen = true;
+  render();
   renderCalendarPanel();
 }
 
@@ -2669,6 +2673,7 @@ function closeAllOverlayPanels() {
     fileMenuStep = null;
     exportFormat = null;
     exportPickingHeading = false;
+    stopBrowsing();
     renderFileMenu();
   }
   if (settingsOpen) {
@@ -2679,6 +2684,7 @@ function closeAllOverlayPanels() {
   }
   if (searchOpen) {
     searchOpen = false;
+    searchQuery = '';
     renderSearchPanel();
   }
   if (captureOpen) {
@@ -3072,8 +3078,10 @@ const GOD_MODE_ACTIONS = {
   },
   'C-c c': () => {
     godModeActive = false;
+    closeAllOverlayPanels();
     captureOpenedViaGodMode = true;
     captureOpen = true;
+    render();
     renderCapturePanel();
   },
   'C-c C-e': () => godModeNotSupported('use File \u2192 Export instead'),
@@ -3161,7 +3169,16 @@ document.addEventListener('keydown', (e) => {
 
   if (e.metaKey || e.ctrlKey) return; // Cmd/Ctrl combinations are the browser's own territory (new tab, save, find, ...) -- never treated as one of these shortcuts, avoiding a silent double-action
 
-  if (anyOverlayPanelOpen()) {
+  // Help/Docs is the one panel that doesn't swallow keyboard input
+  // while god-mode is active -- see anyOverlayPanelOpenExceptDocs's
+  // own docs for why. If it's the ONLY thing currently open, skip the
+  // swallow-everything gate below entirely and let this keystroke
+  // flow through to god-mode's own normal handling -- Escape
+  // included, which should follow god-mode's own cancel-sequence/
+  // exit-god-mode priority here, not specifically close Help.
+  const docsOnlyWhileGodMode = godModeActive && docsOpen && !anyOverlayPanelOpenExceptDocs();
+
+  if (anyOverlayPanelOpen() && !docsOnlyWhileGodMode) {
     if (e.key === 'Escape') {
       e.preventDefault();
       closeAllOverlayPanels();
@@ -7675,50 +7692,21 @@ function renderFileBrowser() {
 }
 
 fileMenuBtn.addEventListener('click', () => {
-  fileMenuOpen = !fileMenuOpen;
+  const opening = !fileMenuOpen;
+  closeAllOverlayPanels();
+  fileMenuOpen = opening;
   fileMenuStep = null;
   exportFormat = null;
   exportPickingHeading = false;
   stopBrowsing();
-  if (fileMenuOpen && settingsOpen) {
-    settingsOpen = false;
-    render(); // restores the normal outline content in place of settings
-  }
-  if (fileMenuOpen && searchOpen) {
-    searchOpen = false;
-    renderSearchPanel();
-  }
-  if (fileMenuOpen && viewMenuOpen) {
-    viewMenuOpen = false;
-    renderViewMenu();
-  }
-  if (fileMenuOpen && captureOpen) {
-    captureOpen = false;
-    renderCapturePanel();
-  }
-  if (fileMenuOpen && moreOpen) {
-    moreOpen = false;
-    renderMoreMenu();
-  }
-  if (fileMenuOpen && docsOpen) {
-    closeDocsView();
-    render(); // restores the normal outline content in place of docs
-  }
-  if (fileMenuOpen && historyOpen) {
-    historyOpen = false;
-    renderHistoryPanel();
-  }
+  render();
   renderFileMenu();
 });
 
 addBtn.addEventListener('click', () => {
   if (!state.doc) return;
-  settingsOpen = false;
-  closeDocsView();
-  if (moreOpen) {
-    moreOpen = false;
-    renderMoreMenu();
-  }
+  closeAllOverlayPanels();
+  render();
   const heading = insertTopLevelHeading(state.doc, {});
   startEditingTitle(heading, true);
 });
@@ -8413,35 +8401,10 @@ function renderTaskListView() {
 
 viewMenuBtn.addEventListener('click', () => {
   if (!state.doc) return;
-  viewMenuOpen = !viewMenuOpen;
-  if (viewMenuOpen && fileMenuOpen) {
-    fileMenuOpen = false;
-    fileMenuStep = null;
-    exportFormat = null;
-    exportPickingHeading = false;
-    stopBrowsing();
-    renderFileMenu();
-  }
-  if (viewMenuOpen && settingsOpen) {
-    settingsOpen = false;
-    render(); // restores the normal outline content in place of settings
-  }
-  if (viewMenuOpen && searchOpen) {
-    searchOpen = false;
-    renderSearchPanel();
-  }
-  if (viewMenuOpen && captureOpen) {
-    captureOpen = false;
-    renderCapturePanel();
-  }
-  if (viewMenuOpen && moreOpen) {
-    moreOpen = false;
-    renderMoreMenu();
-  }
-  if (viewMenuOpen && docsOpen) {
-    closeDocsView();
-    render();
-  }
+  const opening = !viewMenuOpen;
+  closeAllOverlayPanels();
+  viewMenuOpen = opening;
+  render();
   renderViewMenu();
 });
 
@@ -10793,9 +10756,9 @@ async function openDocsAtHeading(anchorId) {
   });
   if (navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) navigationBackStack.shift();
   syncNavBackButtonVisibility();
-  moreOpen = false;
-  settingsOpen = false;
+  closeAllOverlayPanels();
   docsOpen = true;
+  render();
   await renderDocsView(outlineEl); // ensures cachedDocsDoc is loaded, regardless of layout
   if (!cachedDocsDoc) return; // load failed -- renderDocsView already showed its own error message
 
@@ -10830,38 +10793,9 @@ async function openDocsAtHeading(anchorId) {
 }
 
 settingsBtn.addEventListener('click', async () => {
-  settingsOpen = !settingsOpen;
-  if (settingsOpen && fileMenuOpen) {
-    fileMenuOpen = false;
-    fileMenuStep = null;
-    exportFormat = null;
-    exportPickingHeading = false;
-    stopBrowsing();
-    renderFileMenu();
-  }
-  if (settingsOpen && searchOpen) {
-    searchOpen = false;
-    renderSearchPanel();
-  }
-  if (settingsOpen && viewMenuOpen) {
-    viewMenuOpen = false;
-    renderViewMenu();
-  }
-  if (settingsOpen && captureOpen) {
-    captureOpen = false;
-    renderCapturePanel();
-  }
-  if (settingsOpen && moreOpen) {
-    moreOpen = false;
-    renderMoreMenu();
-  }
-  if (settingsOpen && docsOpen) {
-    closeDocsView();
-  }
-  if (settingsOpen && historyOpen) {
-    historyOpen = false;
-    renderHistoryPanel();
-  }
+  const opening = !settingsOpen;
+  closeAllOverlayPanels();
+  settingsOpen = opening;
   if (settingsOpen) {
     if (isWideLayout()) {
       render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
@@ -11052,43 +10986,17 @@ function renderSearchResults() {
 }
 
 searchBtn.addEventListener('click', () => {
-  searchOpen = !searchOpen;
-  if (searchOpen && currentView === 'text') {
+  const opening = !searchOpen;
+  if (opening && currentView === 'text') {
     // Leaving text mode reparses the document into new objects — do this
     // now, before any search results are computed, not later when a
     // result is tapped. Otherwise a result computed against the old
     // document would already be stale by the time it's tapped.
     switchToView('org');
   }
-  if (searchOpen && fileMenuOpen) {
-    fileMenuOpen = false;
-    fileMenuStep = null;
-    exportFormat = null;
-    exportPickingHeading = false;
-    stopBrowsing();
-    renderFileMenu();
-  }
-  if (searchOpen && settingsOpen) {
-    settingsOpen = false;
-    render(); // restores the normal outline content in place of settings
-  }
-  if (searchOpen && viewMenuOpen) {
-    viewMenuOpen = false;
-    renderViewMenu();
-  }
-  if (searchOpen && moreOpen) {
-    moreOpen = false;
-    renderMoreMenu();
-  }
-  if (searchOpen && docsOpen) {
-    closeDocsView();
-    render();
-  }
-  if (searchOpen && historyOpen) {
-    historyOpen = false;
-    renderHistoryPanel();
-  }
-  if (!searchOpen) searchQuery = '';
+  closeAllOverlayPanels();
+  searchOpen = opening;
+  render();
   renderSearchPanel();
 });
 
@@ -11545,8 +11453,10 @@ async function runExtraMenuEntry(entry) {
       render();
       return;
     }
+    closeAllOverlayPanels();
     captureOpenedFromExtraMenu = true;
     captureOpen = true;
+    render();
     openCapturePrompt(template);
     return;
   }
@@ -11590,47 +11500,20 @@ async function runExtraMenuEntry(entry) {
 }
 
 extraMenuBtn.addEventListener('click', () => {
-  extraMenuOpen = !extraMenuOpen;
+  const opening = !extraMenuOpen;
+  closeAllOverlayPanels();
+  extraMenuOpen = opening;
+  render();
   renderExtraMenu();
 });
 
 captureBtn.addEventListener('click', () => {
-  captureOpen = !captureOpen;
+  const opening = !captureOpen;
+  closeAllOverlayPanels();
+  captureOpen = opening;
   captureOpenedFromExtraMenu = false;
   captureOpenedViaGodMode = false;
-  if (captureOpen && fileMenuOpen) {
-    fileMenuOpen = false;
-    fileMenuStep = null;
-    exportFormat = null;
-    exportPickingHeading = false;
-    stopBrowsing();
-    renderFileMenu();
-  }
-  if (captureOpen && settingsOpen) {
-    settingsOpen = false;
-    render();
-  }
-  if (captureOpen && viewMenuOpen) {
-    viewMenuOpen = false;
-    renderViewMenu();
-  }
-  if (captureOpen && searchOpen) {
-    searchOpen = false;
-    searchQuery = '';
-    renderSearchPanel();
-  }
-  if (captureOpen && moreOpen) {
-    moreOpen = false;
-    renderMoreMenu();
-  }
-  if (captureOpen && docsOpen) {
-    closeDocsView();
-    render();
-  }
-  if (captureOpen && historyOpen) {
-    historyOpen = false;
-    renderHistoryPanel();
-  }
+  render();
   renderCapturePanel();
 });
 
@@ -11671,9 +11554,9 @@ function renderMoreMenu() {
     moreMenuAliases,
     'History',
     () => {
-      moreOpen = false;
-      renderMoreMenu();
+      closeAllOverlayPanels();
       historyOpen = true;
+      render();
       renderHistoryPanel();
     },
     !state.doc
@@ -11688,8 +11571,7 @@ function renderMoreMenu() {
   if (addBtnOption) addBtnOption.setAttribute('aria-label', 'Add heading');
 
   const docsBtnOption = aliasedMenuButton(moreMenuAliases, '?', () => {
-    moreOpen = false;
-    renderMoreMenu();
+    closeAllOverlayPanels();
     docsOpen = true;
     if (isWideLayout()) {
       render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
@@ -11718,35 +11600,10 @@ function renderMoreMenu() {
 }
 
 moreBtn.addEventListener('click', () => {
-  moreOpen = !moreOpen;
-  if (moreOpen && fileMenuOpen) {
-    fileMenuOpen = false;
-    fileMenuStep = null;
-    exportFormat = null;
-    exportPickingHeading = false;
-    stopBrowsing();
-    renderFileMenu();
-  }
-  if (moreOpen && settingsOpen) {
-    settingsOpen = false;
-    render();
-  }
-  if (moreOpen && viewMenuOpen) {
-    viewMenuOpen = false;
-    renderViewMenu();
-  }
-  if (moreOpen && captureOpen) {
-    captureOpen = false;
-    renderCapturePanel();
-  }
-  if (moreOpen && docsOpen) {
-    closeDocsView();
-    render();
-  }
-  if (moreOpen && historyOpen) {
-    historyOpen = false;
-    renderHistoryPanel();
-  }
+  const opening = !moreOpen;
+  closeAllOverlayPanels();
+  moreOpen = opening;
+  render();
   renderMoreMenu();
 });
 
