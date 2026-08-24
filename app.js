@@ -6267,6 +6267,15 @@ function render() {
   }
 
   if (currentView === 'text') {
+    const existingTextarea = document.getElementById('document-text-edit-input');
+    if (existingTextarea && existingTextarea.parentElement === outlineEl) {
+      // Already showing the text editor with the person's own,
+      // possibly-unsaved edits sitting in it -- leave it completely
+      // alone. Rebuilding it here from state.doc (stale until the
+      // person explicitly switches away, which commits first) would
+      // silently discard whatever they've typed but not yet saved.
+      return;
+    }
     outlineEl.innerHTML = '';
     const textarea = document.createElement('textarea');
     textarea.id = 'document-text-edit-input';
