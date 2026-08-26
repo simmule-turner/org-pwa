@@ -436,6 +436,8 @@ function formatSunTime(utcHours, offsetMinutes) {
  *  rather than a second implementation of the same underlying
  *  astronomy. */
 const CIVIL_TWILIGHT_ANGLE = -6;
+const NAUTICAL_TWILIGHT_ANGLE = -12;
+const ASTRONOMICAL_TWILIGHT_ANGLE = -18;
 
 /** One resolved sun-crossing time as "H:MMam"/"H:MMpm", or a clear
  *  placeholder for the polar day/night case (computeSunriseSunsetUtc
@@ -458,10 +460,13 @@ function formatSunTime24(utcHours, offsetMinutes) {
   return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;
 }
 
-/** The four single-value solar functions below (diary-sunrise,
- *  diary-sunset, diary-civil-sunrise, diary-civil-sunset) are this
- *  app's own extension, not real elisp/org functions -- each reuses
- *  computeSunriseSunsetUtc directly. Each returns "HH:MM Label" by
+/** The eight single-value solar functions below (diary-sunrise,
+ *  diary-sunset, diary-civil-dawn, diary-civil-dusk, diary-nautical-dawn,
+ *  diary-nautical-dusk, diary-astronomical-dawn, diary-astronomical-dusk)
+ *  are this app's own extension, not real elisp/org functions -- each
+ *  reuses computeSunriseSunsetUtc directly, at whichever angle below
+ *  the horizon that particular twilight definition uses (civil -6°,
+ *  nautical -12°, astronomical -18°). Each returns "HH:MM Label" by
  *  default -- 24-hour, zero-filled time (formatSunTime24 above), 'n/a'
  *  in place of the time for whichever value doesn't occur that day at
  *  this latitude. Two of this app's own extension variables (see
@@ -483,15 +488,43 @@ function formatSunsetLine(date, latitude, longitude, offsetMinutes = -date.getTi
   return hideLabel ? time : `${time} Sunset`;
 }
 
-function formatCivilSunriseLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
+function formatCivilDawnLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
   const result = computeSunriseSunsetUtc(date, latitude, longitude, CIVIL_TWILIGHT_ANGLE);
   const utcHours = result ? result.sunrise : null;
   const time = ampm ? formatSunTimeOrPlaceholder(utcHours, offsetMinutes) : formatSunTime24(utcHours, offsetMinutes);
   return hideLabel ? time : `${time} Dawn`;
 }
 
-function formatCivilSunsetLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
+function formatCivilDuskLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
   const result = computeSunriseSunsetUtc(date, latitude, longitude, CIVIL_TWILIGHT_ANGLE);
+  const utcHours = result ? result.sunset : null;
+  const time = ampm ? formatSunTimeOrPlaceholder(utcHours, offsetMinutes) : formatSunTime24(utcHours, offsetMinutes);
+  return hideLabel ? time : `${time} Dusk`;
+}
+
+function formatNauticalDawnLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
+  const result = computeSunriseSunsetUtc(date, latitude, longitude, NAUTICAL_TWILIGHT_ANGLE);
+  const utcHours = result ? result.sunrise : null;
+  const time = ampm ? formatSunTimeOrPlaceholder(utcHours, offsetMinutes) : formatSunTime24(utcHours, offsetMinutes);
+  return hideLabel ? time : `${time} Dawn`;
+}
+
+function formatNauticalDuskLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
+  const result = computeSunriseSunsetUtc(date, latitude, longitude, NAUTICAL_TWILIGHT_ANGLE);
+  const utcHours = result ? result.sunset : null;
+  const time = ampm ? formatSunTimeOrPlaceholder(utcHours, offsetMinutes) : formatSunTime24(utcHours, offsetMinutes);
+  return hideLabel ? time : `${time} Dusk`;
+}
+
+function formatAstronomicalDawnLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
+  const result = computeSunriseSunsetUtc(date, latitude, longitude, ASTRONOMICAL_TWILIGHT_ANGLE);
+  const utcHours = result ? result.sunrise : null;
+  const time = ampm ? formatSunTimeOrPlaceholder(utcHours, offsetMinutes) : formatSunTime24(utcHours, offsetMinutes);
+  return hideLabel ? time : `${time} Dawn`;
+}
+
+function formatAstronomicalDuskLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
+  const result = computeSunriseSunsetUtc(date, latitude, longitude, ASTRONOMICAL_TWILIGHT_ANGLE);
   const utcHours = result ? result.sunset : null;
   const time = ampm ? formatSunTimeOrPlaceholder(utcHours, offsetMinutes) : formatSunTime24(utcHours, offsetMinutes);
   return hideLabel ? time : `${time} Dusk`;
@@ -515,8 +548,12 @@ function formatDayLengthLine(date, latitude, longitude, hideLabel = false) {
 
 const DIARY_SUNRISE_RE = /^%%\(diary-sunrise\)\s*$/;
 const DIARY_SUNSET_RE = /^%%\(diary-sunset\)\s*$/;
-const DIARY_CIVIL_SUNRISE_RE = /^%%\(diary-civil-sunrise\)\s*$/;
-const DIARY_CIVIL_SUNSET_RE = /^%%\(diary-civil-sunset\)\s*$/;
+const DIARY_CIVIL_DAWN_RE = /^%%\(diary-civil-dawn\)\s*$/;
+const DIARY_CIVIL_DUSK_RE = /^%%\(diary-civil-dusk\)\s*$/;
+const DIARY_NAUTICAL_DAWN_RE = /^%%\(diary-nautical-dawn\)\s*$/;
+const DIARY_NAUTICAL_DUSK_RE = /^%%\(diary-nautical-dusk\)\s*$/;
+const DIARY_ASTRONOMICAL_DAWN_RE = /^%%\(diary-astronomical-dawn\)\s*$/;
+const DIARY_ASTRONOMICAL_DUSK_RE = /^%%\(diary-astronomical-dusk\)\s*$/;
 
 /** True if `line` is exactly one of the four single-value triggers. */
 function isDiarySunriseLine(line) {
@@ -525,11 +562,23 @@ function isDiarySunriseLine(line) {
 function isDiarySunsetLine(line) {
   return DIARY_SUNSET_RE.test(line.trim());
 }
-function isDiaryCivilSunriseLine(line) {
-  return DIARY_CIVIL_SUNRISE_RE.test(line.trim());
+function isDiaryCivilDawnLine(line) {
+  return DIARY_CIVIL_DAWN_RE.test(line.trim());
 }
-function isDiaryCivilSunsetLine(line) {
-  return DIARY_CIVIL_SUNSET_RE.test(line.trim());
+function isDiaryCivilDuskLine(line) {
+  return DIARY_CIVIL_DUSK_RE.test(line.trim());
+}
+function isDiaryNauticalDawnLine(line) {
+  return DIARY_NAUTICAL_DAWN_RE.test(line.trim());
+}
+function isDiaryNauticalDuskLine(line) {
+  return DIARY_NAUTICAL_DUSK_RE.test(line.trim());
+}
+function isDiaryAstronomicalDawnLine(line) {
+  return DIARY_ASTRONOMICAL_DAWN_RE.test(line.trim());
+}
+function isDiaryAstronomicalDuskLine(line) {
+  return DIARY_ASTRONOMICAL_DUSK_RE.test(line.trim());
 }
 
 const DIARY_DAY_LENGTH_RE = /^%%\(diary-day-length\)\s*$/;
@@ -561,10 +610,18 @@ export {
   formatSunriseLine,
   isDiarySunsetLine,
   formatSunsetLine,
-  isDiaryCivilSunriseLine,
-  formatCivilSunriseLine,
-  isDiaryCivilSunsetLine,
-  formatCivilSunsetLine,
+  isDiaryCivilDawnLine,
+  formatCivilDawnLine,
+  isDiaryCivilDuskLine,
+  formatCivilDuskLine,
+  isDiaryNauticalDawnLine,
+  formatNauticalDawnLine,
+  isDiaryNauticalDuskLine,
+  formatNauticalDuskLine,
+  isDiaryAstronomicalDawnLine,
+  formatAstronomicalDawnLine,
+  isDiaryAstronomicalDuskLine,
+  formatAstronomicalDuskLine,
   computeDaylightHours,
   formatDayLengthLine,
   isDiaryDayLengthLine,

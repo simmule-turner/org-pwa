@@ -39,8 +39,12 @@ import {
   expandDiaryFloatOccurrences,
   formatSunriseLine,
   formatSunsetLine,
-  formatCivilSunriseLine,
-  formatCivilSunsetLine,
+  formatCivilDawnLine,
+  formatCivilDuskLine,
+  formatNauticalDawnLine,
+  formatNauticalDuskLine,
+  formatAstronomicalDawnLine,
+  formatAstronomicalDuskLine,
   formatDayLengthLine,
 } from './diary-sexp.js';
 
@@ -214,11 +218,23 @@ function evaluateSexpr(node, context) {
     case 'diary-sunset':
       return formatSunsetLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
 
-    case 'diary-civil-sunrise':
-      return formatCivilSunriseLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
+    case 'diary-civil-dawn':
+      return formatCivilDawnLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
 
-    case 'diary-civil-sunset':
-      return formatCivilSunsetLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
+    case 'diary-civil-dusk':
+      return formatCivilDuskLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
+
+    case 'diary-nautical-dawn':
+      return formatNauticalDawnLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
+
+    case 'diary-nautical-dusk':
+      return formatNauticalDuskLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
+
+    case 'diary-astronomical-dawn':
+      return formatAstronomicalDawnLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
+
+    case 'diary-astronomical-dusk':
+      return formatAstronomicalDuskLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
 
     case 'diary-day-length':
       return formatDayLengthLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, context.solarHideLabel);

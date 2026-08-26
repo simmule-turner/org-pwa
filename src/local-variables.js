@@ -328,23 +328,24 @@ export function getCalendarLongitude(vars) {
 }
 
 /** solar-ampm: this app's own extension, not a real elisp/org
- *  variable -- controls the time format for the four single-value
- *  solar functions (diary-sunrise/diary-sunset/diary-civil-sunrise/
- *  diary-civil-sunset). Default nil (24-hour, zero-filled); t
- *  switches to 12-hour with am/pm. Doesn't affect diary-day-length,
- *  which is a duration, not a time-of-day -- there's no "am/pm" for a
- *  duration. */
+ *  variable -- controls the time format for the eight single-value
+ *  solar functions (diary-sunrise/diary-sunset/diary-civil-dawn/
+ *  diary-civil-dusk/diary-nautical-dawn/diary-nautical-dusk/
+ *  diary-astronomical-dawn/diary-astronomical-dusk). Default nil
+ *  (24-hour, zero-filled); t switches to 12-hour with am/pm. Doesn't
+ *  affect diary-day-length, which is a duration, not a time-of-day --
+ *  there's no "am/pm" for a duration. */
 export function getSolarAmpm(vars) {
   return parseLispBoolean((vars || {})['solar-ampm'], false);
 }
 
 /** solar-hide-label: this app's own extension too -- controls
- *  whether the four single-value solar functions above, and
+ *  whether the eight single-value solar functions above, and
  *  diary-day-length, show their own trailing label ("Sunrise",
  *  "Dawn", "daylight", ...) at all. Default nil (label shown,
  *  matching the format originally requested); t omits it, leaving
  *  just the bare time or duration. Unlike solar-ampm, this one DOES
- *  apply to diary-day-length as well as the four solar functions --
+ *  apply to diary-day-length as well as the eight solar functions --
  *  a duration still has a label to hide ("daylight"), even though it
  *  has no time-of-day format to switch between 12-/24-hour. */
 export function getSolarHideLabel(vars) {

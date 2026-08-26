@@ -8,23 +8,46 @@
  * ("C-c C-t", "M-<up>", "C-M-x") that a caller (app.js) matches
  * against a table of known actions.
  *
- * The full set of rules this engine implements:
+ * This is a direct, deliberate implementation of real god-mode.el's
+ * own actual, documented rules (github.com/emacsorphanage/god-mode),
+ * confirmed against its own README and source before writing any of
+ * this -- not an approximation invented for this app. The full rule
+ * set:
  *   - A plain key, by default, becomes Control+key ("t" -> "C-t").
- *   - "m" prefixes the very next key with Meta instead ("m" then
- *     "<up>" -> "M-<up>"). Consumes no chord of its own.
- *   - "g" prefixes the very next key with Control+Meta ("g" then "x"
- *     -> "C-M-x") -- UNLESS a "c c" chain (below) is currently
- *     active, in which case "g" instead clears that chain, and the
- *     next key is typed completely literally (no modifier at all).
- *     Consumes no chord of its own either way.
- *   - "c" "c" (two literal presses of "c", as the first two keys of
- *     a fresh sequence) generates exactly one "C-c" chord -- not
- *     two -- and enters a chain where every subsequent letter key
- *     automatically becomes Control too, matching how most org-mode
- *     bindings are themselves "C-c C-<letter>". A non-letter key
- *     (punctuation) within this chain is typed literally instead,
- *     matching org's own actual bindings that mix the two ("C-c .",
- *     "C-c |", alongside "C-c C-t", "C-c C-d").
+ *     This is the ONLY default; every other rule below is either an
+ *     exception to it or a way to override it for one keystroke.
+ *   - "g" prefixes the very next key with Meta instead ("g" then
+ *     "x" -> "M-x"). Consumes no chord of its own. As in real
+ *     god-mode, this means there is no way to type a bare "C-g" --
+ *     "g" always means "the next key gets Meta", full stop.
+ *   - "G" (Shift+g) prefixes the very next key with Control+Meta
+ *     ("G" then "n" -> "C-M-n"). Consumes no chord of its own.
+ *   - SPC (the literal key) TOGGLES literal mode -- sticky, exactly
+ *     as real god-mode's own god-literal-key describes: once
+ *     toggled on, every subsequent key is typed with no modifier at
+ *     all until SPC is pressed again to toggle it back off. This is
+ *     what makes "c SPC g" produce "C-c g" (a literal "g" following
+ *     "C-c"), not "C-c C-g".
+ *   - A named key with no printable character of its own (arrows,
+ *     Tab, Return) is never auto-Controlled by the plain-key default
+ *     above -- it executes as typed unless a pending g/G prefix
+ *     (or active literal mode) says otherwise. There would be no way
+ *     to navigate at all otherwise, since "C-<up>" isn't a
+ *     navigational chord any Emacs binding actually uses.
+ *   - The very first chord of a fresh sequence being exactly "C-c"
+ *     (a bare "c" typed with none of the above overrides active)
+ *     marks the rest of that sequence as an org-style C-c chain:
+ *     every further LETTER also auto-Controls, matching how nearly
+ *     every real org-mode C-c binding is itself multi-key
+ *     ("C-c C-t", "C-c C-c") -- but PUNCTUATION inside that same
+ *     chain stays literal instead ("C-c .", "C-c |"), matching
+ *     org's own real bindings that mix the two. This one rule is
+ *     this app's own necessary approximation of what real Emacs
+ *     itself gets "for free" from actually consulting its own
+ *     keymaps (C-c is always a prefix key, never a complete command
+ *     by itself, in the specific command set this app supports) --
+ *     everything else above is real god-mode's own actual mechanism,
+ *     unmodified.
  *
  * State is a plain object, threaded through processKey call by call
  * -- this module holds none of its own; the caller (app.js) owns the
@@ -35,7 +58,7 @@
 
 /** A fresh, empty god-mode state -- nothing typed yet. */
 function initialState() {
-  return { chordString: '', pendingModifier: null, inCcChain: false, awaitingSecondC: false, awaitingSecondH: false };
+  return { chordString: '', pendingModifier: null, literalActive: false, inCcChain: false };
 }
 
 const LETTER_RE = /^[a-zA-Z]$/;
@@ -78,6 +101,8 @@ function normalizeKeyName(rawKey, shiftKey) {
   return rawKey; // an unrecognized special key name -- passed through as-is rather than silently dropped
 }
 
+const NAMED_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Tab']);
+
 /** Processes one raw keystroke against the current god-mode `state`,
  *  returning `{ state, chordString }` -- `chordString` is always the
  *  FULL sequence built so far (e.g. "C-c", then "C-c C-t"), letting
@@ -90,76 +115,41 @@ function normalizeKeyName(rawKey, shiftKey) {
  *  actually held (see normalizeKeyName's own docs for why Shift is
  *  treated differently from Ctrl/Alt here). */
 function processKey(state, rawKey, shiftKey) {
-  // "m"/"g" are prefix markers, not literal keys, UNLESS one of them
-  // is itself the key a pending modifier applies to (typing "m" then
-  // "m" again means M-m, a real, valid chord -- the second "m" is
-  // consumed as the target key, not re-interpreted as a fresh prefix).
-  if (state.pendingModifier === null && rawKey === 'm') {
+  // SPC is real god-mode's own literal/escape key -- sticky, toggles
+  // on and off, applies to every key typed while active. Consumes no
+  // chord of its own.
+  if (rawKey === ' ') {
+    return { state: { ...state, literalActive: !state.literalActive }, chordString: state.chordString };
+  }
+
+  // "g"/"G" are prefix markers (Meta / Control-Meta), not literal
+  // keys, UNLESS literal mode is currently active -- in which case
+  // they're typed as themselves like anything else, same as real
+  // god-mode's own SPC-then-g example.
+  if (!state.literalActive && state.pendingModifier === null && rawKey === 'g') {
     return { state: { ...state, pendingModifier: 'M' }, chordString: state.chordString };
   }
-  if (state.pendingModifier === null && rawKey === 'g') {
-    if (state.inCcChain) {
-      // Clears the chain; the very next key (handled on the following
-      // call, via pendingModifier: 'literal') is typed with no
-      // modifier at all.
-      return { state: { ...state, inCcChain: false, pendingModifier: 'literal' }, chordString: state.chordString };
-    }
+  if (!state.literalActive && state.pendingModifier === null && rawKey === 'G') {
     return { state: { ...state, pendingModifier: 'CM' }, chordString: state.chordString };
   }
 
-  // The very first key of a fresh sequence, if it's "c", doesn't
-  // commit a chord yet -- it waits one more keystroke to see whether
-  // this is the special "c c" org-prefix or a standalone "C-c".
-  if (state.chordString === '' && !state.awaitingSecondC && !state.awaitingSecondH && state.pendingModifier === null && rawKey === 'c') {
-    return { state: { ...state, awaitingSecondC: true }, chordString: state.chordString };
-  }
-  if (state.awaitingSecondC) {
-    const clearedState = { ...state, awaitingSecondC: false };
-    if (rawKey === 'c') {
-      // Confirmed "c c" -- exactly one C-c chord, then enter the chain.
-      return { state: { ...clearedState, chordString: 'C-c', inCcChain: true }, chordString: 'C-c' };
-    }
-    // Not a second "c" -- the first "c" stands alone as its own C-c
-    // chord, and this key starts the NEXT chord in the same
-    // sequence, processed fresh (recursing so "m"/"g" prefixes and
-    // the chain rule below all still apply correctly to it).
-    const { state: afterC, chordString: afterCChord } = processKey({ ...clearedState, chordString: 'C-c' }, rawKey, shiftKey);
-    return { state: afterC, chordString: afterCChord };
-  }
-
-  // "h" mirrors "c c"'s own exact pattern -- a standalone, literal
-  // 2-key sequence rather than a modifier chord at all, since "h i"
-  // (open Help) isn't meant to correspond to any real Emacs binding.
-  if (state.chordString === '' && !state.awaitingSecondC && !state.awaitingSecondH && state.pendingModifier === null && rawKey === 'h') {
-    return { state: { ...state, awaitingSecondH: true }, chordString: state.chordString };
-  }
-  if (state.awaitingSecondH) {
-    const clearedState = { ...state, awaitingSecondH: false };
-    if (rawKey === 'i') {
-      return { state: clearedState, chordString: 'h i' };
-    }
-    // Not a second key of "i" -- the "h" stands alone as its own C-h
-    // chord (the default rule any bare letter already gets), and
-    // this key starts the NEXT chord in the same sequence, processed
-    // fresh, same fallback shape as "c c" above.
-    const { state: afterH, chordString: afterHChord } = processKey({ ...clearedState, chordString: 'C-h' }, rawKey, shiftKey);
-    return { state: afterH, chordString: afterHChord };
-  }
-
   const key = normalizeKeyName(rawKey, shiftKey);
-  const NAMED_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Tab', ' ']);
   const isNamedKey = NAMED_KEYS.has(rawKey) || rawKey.length > 1;
   let modifier;
   if (state.pendingModifier === 'M') modifier = 'M';
   else if (state.pendingModifier === 'CM') modifier = 'CM';
-  else if (state.pendingModifier === 'literal') modifier = null;
-  else if (isNamedKey) modifier = null; // a bare named key (no m/g prefix) is never auto-controlled -- see docs above
+  else if (state.literalActive) modifier = null;
+  else if (isNamedKey) modifier = null; // a bare named key (no g/G prefix, no literal mode) is never auto-Controlled -- see docs above
   else if (state.inCcChain) modifier = LETTER_RE.test(rawKey) ? 'C' : null; // punctuation stays literal even inside the chain -- matches real org's own mixed "C-c C-t" / "C-c ." bindings
-  else modifier = 'C'; // the default rule: a plain printable key/sequence acts as Control
+  else modifier = 'C'; // the default rule: a plain printable key acts as Control
 
   const chord = formatChord(modifier, key);
   const newChordString = state.chordString === '' ? chord : `${state.chordString} ${chord}`;
-  const newState = { ...state, chordString: newChordString, pendingModifier: null };
+  // The very first chord of a fresh sequence being exactly "C-c"
+  // marks everything after it as the org-style C-c chain -- see this
+  // module's own top-level docs for why this one rule exists at all.
+  const inCcChain = state.inCcChain || (state.chordString === '' && chord === 'C-c');
+  const newState = { ...state, chordString: newChordString, pendingModifier: null, inCcChain };
   return { state: newState, chordString: newChordString };
 }
 

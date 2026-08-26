@@ -220,6 +220,7 @@ const SCALAR_FUNCTIONS = {
   ceil: (x, digits) => roundToDigits(x, digits, Math.ceil),
   round: (x, digits) => roundToDigits(x, digits, roundHalfAwayFromZero),
   trunc: (x, digits) => roundToDigits(x, digits, Math.trunc),
+  deg: (x) => (x && typeof x === 'object' ? x.days : x),
 };
 
 function roundHalfAwayFromZero(x) {
@@ -234,6 +235,83 @@ function roundToDigits(x, digits, roundFn) {
   const d = digits === undefined ? 0 : digits;
   const factor = Math.pow(10, d);
   return roundFn(x * factor) / factor;
+}
+
+/** Converts a Y/M/D (+ optional H/Min) into "days since epoch" -- the
+ *  internal representation every date-tagged value uses, computed via
+ *  Date.UTC to stay independent of the runtime's own local timezone. */
+function dateToDays(year, month, day, hour = 0, minute = 0) {
+  return Date.UTC(year, month - 1, day, hour, minute, 0, 0) / 86400000;
+}
+
+/** The inverse of dateToDays -- a date-tagged value's own "days since
+ *  epoch" back into its own {year, month, day, hour, minute} fields,
+ *  used when formatting a date-tagged result back into an org
+ *  timestamp string for the cell. */
+function daysToDateParts(days) {
+  const d = new Date(Math.round(days * 86400000));
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate(), hour: d.getUTCHours(), minute: d.getUTCMinutes() };
+}
+
+// Deliberately more permissive than real org's own actual timestamp
+// syntax: the day-name org normally always writes ("Tue") is here
+// fully optional, not just cosmetically ignored -- table cells written
+// directly by a person (rather than through this app's own
+// timestamp-insertion UI) commonly omit it, and real Calc's own actual
+// date parsing accepts both forms too. The day-name group is
+// letters-only specifically so it can never accidentally swallow an
+// "HH:MM" time token instead (that always contains a colon and
+// digits, which [A-Za-z]+ cannot match), letting both be optional
+// and correctly disambiguated regardless of which are present.
+const CELL_TIMESTAMP_RE = /^[<[]\s*(\d{4})-(\d{2})-(\d{2})(?:\s+[A-Za-z]+)?(?:\s+(\d{1,2}):(\d{2}))?\s*[>\]]$/;
+
+/** Parses `rawText` (a table cell's own raw text) for a recognizable
+ *  org timestamp, returning a date-tagged value ({ type: 'date',
+ *  days, hasTime }) or null if `rawText` isn't one at all -- this
+ *  module's own dedicated parser (see CELL_TIMESTAMP_RE's own docs
+ *  for why a shared one wasn't reused). */
+function parseCellTimestamp(rawText) {
+  const m = CELL_TIMESTAMP_RE.exec(rawText.trim());
+  if (!m) return null;
+  const [, y, mo, d, h, min] = m;
+  const hasTime = h !== undefined;
+  return { type: 'date', days: dateToDays(Number(y), Number(mo), Number(d), hasTime ? Number(h) : 0, hasTime ? Number(min) : 0), hasTime };
+}
+
+/** Formats a date-tagged value back into org timestamp text for the
+ *  cell -- "<YYYY-MM-DD>" if it never had a time-of-day component
+ *  (hasTime false, e.g. from date(Y,M,D) or date()+N on such a
+ *  value), "<YYYY-MM-DD HH:MM>" otherwise. Always the active/angle-
+ *  bracket form -- there's no way for a formula's own numeric result
+ *  to signal "make this inactive" the way the original cell text
+ *  might have been, so this is this module's own necessary default,
+ *  not an attempt to preserve the source cell's own bracket style. */
+function formatDateValue(value) {
+  const { year, month, day, hour, minute } = daysToDateParts(value.days);
+  const datePart = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  if (!value.hasTime) return `<${datePart}>`;
+  return `<${datePart} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}>`;
+}
+
+/** Formats an hms-tagged duration back into Calc's own actual default
+ *  HMS notation, "H@ M' S\"" -- confirmed directly against the Calc
+ *  manual's own documented format for the HMS type. `value.days` is
+ *  the duration's own underlying value (still in DAYS, matching every
+ *  other date-tagged value in this module) -- multiplied by 24 here
+ *  purely for this specific display, not changing the underlying
+ *  value itself (deg() below exposes that raw, still-in-days number
+ *  unconverted, which is why the worked timesheet example in this
+ *  feature's own request still needs its own explicit "* 24" after
+ *  deg() to reach decimal HOURS). */
+function formatHmsValue(value) {
+  const totalHours = value.days * 24;
+  const sign = totalHours < 0 ? '-' : '';
+  const absHours = Math.abs(totalHours);
+  const h = Math.floor(absHours);
+  const remainingMinutes = (absHours - h) * 60;
+  const m = Math.floor(remainingMinutes);
+  const s = Math.round((remainingMinutes - m) * 60);
+  return `${sign}${h}@ ${m}' ${s}"`;
 }
 
 /** Parses a single reference token (already known to start with "@" or
@@ -326,6 +404,23 @@ function parseExpression(tokens) {
     }
     if (/^[A-Za-z_]/.test(tok)) {
       const name = next().toLowerCase();
+      if (name === 'date' || name === 'now') {
+        expect('(');
+        const args = [];
+        if (peek() !== ')') {
+          args.push(parseExpr());
+          while (peek() === ',') {
+            next();
+            args.push(parseExpr());
+          }
+        }
+        expect(')');
+        if (name === 'now' && args.length !== 0) throw new Error('"now" takes no arguments');
+        if (name === 'date' && args.length !== 1 && args.length !== 3) {
+          throw new Error('"date" takes either one cell/timestamp argument or three (year, month, day)');
+        }
+        return { type: 'dateCall', name, args };
+      }
       const isAggregate = name in AGGREGATE_FUNCTIONS;
       const isScalar = name in SCALAR_FUNCTIONS;
       if (!isAggregate && !isScalar) throw new Error(`Unknown function "${name}" in formula`);
@@ -463,6 +558,49 @@ function resolveRef(ref, currentRow, dataRowCount, colCount, currentCol, hlinePo
   return { row, col };
 }
 
+/** True if `v` is a date/hms-tagged value (see this module's own
+ *  top-level date-arithmetic docs) rather than a plain number. */
+function isTaggedValue(v) {
+  return v !== null && typeof v === 'object';
+}
+
+/** Handles +/- when at least one operand is a date/hms-tagged value.
+ *  date - date: a plain number (days elapsed) if NEITHER side ever
+ *  had a time-of-day component, else an hms-tagged duration -- two
+ *  moments in time naturally subtract to a SPAN, not another moment,
+ *  and whether that span is shown as a bare day count or as an HMS
+ *  duration by default depends on whether there was ever a time
+ *  component to actually span (see formatFinalValue/formatHmsValue
+ *  for where that default display actually happens; deg() is how a
+ *  formula un-tags an HMS result back to its own plain, still-in-days
+ *  number for further arithmetic). date +/- a plain number, or the
+ *  reverse, extends/recedes that date by that many days, staying a
+ *  date. Any other tagged/tagged or tagged/plain combination (hms +/-
+ *  a plain number, hms +/- hms, date +/- hms) treats the tagged
+ *  side's own days as a plain numeric offset, producing whichever
+ *  tagged type came from the DATE side if one was involved, else an
+ *  hms result -- there's no real Calc precedent for e.g. "hms + hms"
+ *  specifically, so this is this module's own reasonable, consistent
+ *  extrapolation of the same days-are-the-common-unit model
+ *  everything else here uses. */
+function evaluateDateArithmetic(l, r, op) {
+  const lTagged = isTaggedValue(l);
+  const rTagged = isTaggedValue(r);
+  if (lTagged && rTagged) {
+    if (l.type === 'date' && r.type === 'date' && op === '-') {
+      const diff = l.days - r.days;
+      return !l.hasTime && !r.hasTime ? diff : { type: 'hms', days: diff };
+    }
+    const combined = op === '+' ? l.days + r.days : l.days - r.days;
+    const resultType = l.type === 'date' ? l.type : r.type;
+    const hasTime = l.hasTime || r.hasTime;
+    return resultType === 'date' ? { type: 'date', days: combined, hasTime } : { type: 'hms', days: combined };
+  }
+  const tagged = lTagged ? l : r;
+  const days = lTagged ? (op === '+' ? tagged.days + r : tagged.days - r) : op === '+' ? l + tagged.days : l - tagged.days;
+  return tagged.type === 'date' ? { type: 'date', days, hasTime: tagged.hasTime } : { type: 'hms', days };
+}
+
 function evaluateAst(node, ctx) {
   switch (node.type) {
     case 'number':
@@ -472,11 +610,16 @@ function evaluateAst(node, ctx) {
     case 'binop': {
       const l = evaluateAst(node.left, ctx);
       const r = evaluateAst(node.right, ctx);
-      if (node.op === '+') return l + r;
-      if (node.op === '-') return l - r;
-      if (node.op === '*') return l * r;
-      if (node.op === '/') return r === 0 ? 0 : l / r; // division by zero: 0, not Infinity/NaN -- a spreadsheet-style error value has nowhere to live in a plain org table cell
-      if (node.op === '^') return Math.pow(l, r);
+      if ((node.op === '+' || node.op === '-') && (isTaggedValue(l) || isTaggedValue(r))) {
+        return evaluateDateArithmetic(l, r, node.op);
+      }
+      const lNum = isTaggedValue(l) ? l.days : l;
+      const rNum = isTaggedValue(r) ? r.days : r;
+      if (node.op === '+') return lNum + rNum;
+      if (node.op === '-') return lNum - rNum;
+      if (node.op === '*') return lNum * rNum;
+      if (node.op === '/') return rNum === 0 ? 0 : lNum / rNum; // division by zero: 0, not Infinity/NaN -- a spreadsheet-style error value has nowhere to live in a plain org table cell
+      if (node.op === '^') return Math.pow(lNum, rNum);
       throw new Error(`Unknown operator "${node.op}"`);
     }
     case 'ref': {
@@ -495,6 +638,31 @@ function evaluateAst(node, ctx) {
       const fn = SCALAR_FUNCTIONS[node.name];
       const argValues = node.args.map((a) => evaluateAst(a, ctx));
       return fn(...argValues);
+    }
+    case 'dateCall': {
+      if (node.name === 'now') {
+        const now = ctx.now || new Date();
+        return { type: 'date', days: dateToDays(now.getFullYear(), now.getMonth() + 1, now.getDate(), now.getHours(), now.getMinutes()), hasTime: true };
+      }
+      if (node.args.length === 3) {
+        const year = evaluateAst(node.args[0], ctx);
+        const month = evaluateAst(node.args[1], ctx);
+        const day = evaluateAst(node.args[2], ctx);
+        return { type: 'date', days: dateToDays(year, month, day), hasTime: false };
+      }
+      const argNode = node.args[0];
+      let rawText;
+      if (argNode.type === 'ref') {
+        const { row, col } = resolveRef(argNode.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
+        rawText = (ctx.dataRows[row - 1] && ctx.dataRows[row - 1].cells[col - 1]) || '';
+      } else {
+        const val = evaluateAst(argNode, ctx);
+        if (isTaggedValue(val) && val.type === 'date') return val; // date(date(...)) or date(now()) -- already a date value, pass through rather than re-parsing its own formatted text
+        rawText = String(val);
+      }
+      const parsed = parseCellTimestamp(rawText);
+      if (!parsed) throw new Error(`date(): couldn\u2019t find a recognizable timestamp in "${rawText.trim()}"`);
+      return parsed;
     }
     default:
       throw new Error(`Unknown AST node type "${node.type}"`);
@@ -830,6 +998,7 @@ function parseTblfm(tblfm) {
  *  notation; otherwise an explicit format spec (fixed/integer/normal/
  *  scientific/engineering); otherwise formatResult's own default. */
 function formatFinalValue(value, mode, hourZeroPad) {
+  if (isTaggedValue(value)) return value.type === 'date' ? formatDateValue(value) : formatHmsValue(value);
   if (mode.duration) return formatDuration(value, mode.duration, hourZeroPad);
   if (mode.format) return applyFormatSpec(value, mode.format);
   return formatResult(value);

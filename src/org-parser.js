@@ -368,6 +368,17 @@ function serializeOrg(doc) {
   return out.join('\n');
 }
 
+/** Serializes just `heading` and its own entire subtree (sub-headings,
+ *  all the way down) back to org text -- unlike serializeOrg, which
+ *  always serializes a WHOLE document. Needed for org-cut-subtree
+ *  (C-c C-x C-w): the cut content copied to the clipboard is this
+ *  heading's own text alone, not the surrounding document around it. */
+function serializeHeadingSubtree(heading) {
+  const out = [];
+  serializeNode(heading, out);
+  return out.join('\n');
+}
+
 /**
  * Returns the 0-indexed line number where `targetHeading` starts within
  * serializeOrg(doc)'s own output -- i.e., what line its own "* Title"
@@ -406,6 +417,7 @@ function findHeadingLineNumber(doc, targetHeading) {
 export {
   parseOrg,
   serializeOrg,
+  serializeHeadingSubtree,
   findHeadingLineNumber,
   DEFAULT_TODO_KEYWORDS,
   DEFAULT_DONE_KEYWORDS,

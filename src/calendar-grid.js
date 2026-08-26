@@ -82,12 +82,13 @@ function stepYear(year, month, delta) {
 export { MONTH_NAMES, buildMonthGrid, stepMonth, stepYear };
 
 /** Diary-sexp kinds that appear on essentially every day when
- *  configured (sunrise, sunset, civil-sunrise, civil-sunset, day-
- *  length, weather), plus logbook (past time-tracking, not a
- *  scheduled event) -- deliberately excluded from "other event"
- *  classification below, since including them would color almost
- *  every day, making the birthday/event distinction meaningless. */
-const AMBIENT_AGENDA_KINDS = new Set(['sunrise', 'sunset', 'civil-sunrise', 'civil-sunset', 'day-length', 'weather', 'logbook']);
+ *  configured (sunrise, sunset, civil-dawn, civil-dusk, nautical-dawn,
+ *  nautical-dusk, astronomical-dawn, astronomical-dusk, day-length,
+ *  weather), plus logbook (past time-tracking, not a scheduled event)
+ *  -- deliberately excluded from "other event" classification below,
+ *  since including them would color almost every day, making the
+ *  birthday/event distinction meaningless. */
+const AMBIENT_AGENDA_KINDS = new Set(['sunrise', 'sunset', 'civil-dawn', 'civil-dusk', 'nautical-dawn', 'nautical-dusk', 'astronomical-dawn', 'astronomical-dusk', 'day-length', 'weather', 'logbook']);
 
 /** Classifies a flat list of agenda items (buildAgendaItems' own
  *  output, or any subset of it -- e.g. already filtered through
