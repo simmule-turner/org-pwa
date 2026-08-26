@@ -189,14 +189,14 @@ test('evaluateSexpTimestamp delegates to evaluateSexpr for a valid expr', () => 
 
 // ---- format -------------------------------------------------------------
 
-test('THE FIX: THE EXACT REQUEST -- (format "Rise %s (%s)" (diary-sunrise) (diary-civil-sunrise)) combines two functions into one string, with solar-hide-label set so only the bare times appear', () => {
-  const expr = parseSexpr('(format "Rise %s (%s)" (diary-sunrise) (diary-civil-sunrise))');
+test('THE FIX: THE EXACT REQUEST -- (format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn)) combines two functions into one string, with solar-hide-label set so only the bare times appear', () => {
+  const expr = parseSexpr('(format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn))');
   const result = evaluateSexpr(expr, { ...ctx(TODAY), solarHideLabel: true });
   assert.match(result, /^Rise \d\d:\d\d \(\d\d:\d\d\)$/);
 });
 
 test('THE FIX: THE EXACT REQUEST, wrapped in <%%(when (today-p) ...)> exactly as originally written, via findSexpTimestamps + evaluateSexpTimestamp end to end', () => {
-  const title = 'Sun Report <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-sunrise)) )>';
+  const title = 'Sun Report <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn)) )>';
   const found = findSexpTimestamps(title);
   assert.equal(found.length, 1, 'the parens embedded inside the "Rise %s (%s)" string literal must not be mistaken for sexp structure');
   const result = evaluateSexpTimestamp(found[0].expr, { ...ctx(TODAY), solarHideLabel: true });
@@ -206,7 +206,7 @@ test('THE FIX: THE EXACT REQUEST, wrapped in <%%(when (today-p) ...)> exactly as
 });
 
 test('without solar-hide-label set, format still works correctly -- it just includes whatever each nested function itself returns, labels included', () => {
-  const expr = parseSexpr('(format "Rise %s (%s)" (diary-sunrise) (diary-civil-sunrise))');
+  const expr = parseSexpr('(format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn))');
   const result = evaluateSexpr(expr, ctx(TODAY));
   assert.match(result, /^Rise \d\d:\d\d Sunrise \(\d\d:\d\d Dawn\)$/);
 });
@@ -252,7 +252,7 @@ test('THE FIX: the first argument must be a literal string -- a non-string first
 });
 
 test('format combines three functions at once, including diary-day-length', () => {
-  const expr = parseSexpr('(format "%s | %s | %s" (diary-sunrise) (diary-civil-sunrise) (diary-day-length))');
+  const expr = parseSexpr('(format "%s | %s | %s" (diary-sunrise) (diary-civil-dawn) (diary-day-length))');
   const result = evaluateSexpr(expr, { ...ctx(TODAY), solarHideLabel: true });
   assert.match(result, /^\d\d:\d\d \| \d\d:\d\d \| \d\d:\d\d$/);
 });

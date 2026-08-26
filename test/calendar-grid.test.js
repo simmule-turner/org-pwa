@@ -125,7 +125,7 @@ test('deadline/timestamp/diary-sexp/sexp-timestamp all count as "other event", t
 });
 
 test('THE FIX: ambient, every-day diary-sexp kinds (sunrise/sunset/civil-*/day-length/weather) and logbook entries are excluded entirely -- including them would color almost every day, making the distinction meaningless', () => {
-  for (const kind of ['sunrise', 'sunset', 'civil-sunrise', 'civil-sunset', 'day-length', 'weather', 'logbook']) {
+  for (const kind of ['sunrise', 'sunset', 'civil-dawn', 'civil-dusk', 'day-length', 'weather', 'logbook']) {
     const markers = buildDayMarkers([item(kind, '2026-09-10')]);
     assert.equal(markers.size, 0, `${kind} should be excluded from day markers entirely`);
   }

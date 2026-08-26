@@ -678,3 +678,80 @@ test('flags can be concatenated with no separator, in either order', () => {
   assert.equal(resultNE[0].cells[1], '1', 'NE and EN both mean "blank -> 0, kept in range" -- order doesn\u2019t matter');
   assert.equal(resultEN[0].cells[1], '1');
 });
+
+// ---- date/time arithmetic (date/now/deg) ----------------------------------
+
+test('THE EXACT REQUEST: finding days between two dates -- date($2) - date($1) with neither side ever having a time component gives a plain integer day count', () => {
+  const result = recalculateTable(mkTable('$3 = date($2) - date($1)', [['<2026-08-01>', '<2026-08-25>', '']]));
+  assert.equal(result[0].cells[2], '24');
+});
+
+test('THE EXACT REQUEST: projecting a future deadline -- date($1) + N (a plain integer) advances the date, formatted back as an org timestamp', () => {
+  const result = recalculateTable(mkTable('$3 = date($1) + $2', [['<2026-08-25>', '14', '']]));
+  assert.equal(result[0].cells[2], '<2026-09-08>');
+});
+
+test('date($1) - N recedes the date by that many days', () => {
+  const result = recalculateTable(mkTable('$2 = date($1) - $2', [['<2026-08-25>', '10']]));
+  assert.equal(result[0].cells[1], '<2026-08-15>');
+});
+
+test('THE EXACT REQUEST: raw HMS duration output -- date($2) - date($1) with EITHER side having a time component defaults to Calc\u2019s own actual "H@ M\u2019 S\\"" notation instead of a plain number', () => {
+  const result = recalculateTable(mkTable('$3 = date($2) - date($1)', [['<2026-08-25 08:00>', '<2026-08-25 16:30>', '']]));
+  assert.equal(result[0].cells[2], `8@ 30' 0"`);
+});
+
+test('a negative HMS duration (earlier minus later) shows a leading "-", not a bare negative-looking number', () => {
+  const result = recalculateTable(mkTable('$3 = date($2) - date($1)', [['<2026-08-25 16:30>', '<2026-08-25 08:00>', '']]));
+  assert.equal(result[0].cells[2], `-8@ 30' 0"`);
+});
+
+test('THE EXACT REQUEST: converting HMS to decimal hours -- deg() un-tags the duration back to its own raw (still-in-days) number, and the formula\u2019s own explicit "* 24" reaches decimal hours, with the ;%.2f mode flag still applying normally since deg()\u2019s own result is a plain number again', () => {
+  const result = recalculateTable(mkTable('$3 = deg(date($2) - date($1)) * 24;%.2f', [['<2026-08-25 08:00>', '<2026-08-25 16:30>', '']]));
+  assert.equal(result[0].cells[2], '8.50');
+});
+
+test('THE FEATURE: date(YEAR, MONTH, DAY) constructs a date directly, with no cell reference at all', () => {
+  const result = recalculateTable(mkTable('$1 = date(2026, 8, 25)', [['']]));
+  assert.equal(result[0].cells[0], '<2026-08-25>');
+});
+
+test('date(Y,M,D) + N still works exactly like a cell-derived date -- the value is what matters, not how it was constructed', () => {
+  const result = recalculateTable(mkTable('$1 = date(2026, 8, 25) + 5', [['']]));
+  assert.equal(result[0].cells[0], '<2026-08-30>');
+});
+
+test('THE FEATURE: now() returns the current date/time as a date-tagged value, formatted with a time component since it always has one', () => {
+  const result = recalculateTable(mkTable('$1 = now()', [['']]));
+  assert.match(result[0].cells[0], /^<\d{4}-\d{2}-\d{2} \d{2}:\d{2}>$/);
+});
+
+test('date() accepts a timestamp with no day-name at all (real org syntax always includes one, but a person typing directly into a cell commonly won\u2019t) -- both bracket styles, both with and without a day-name, all parse identically', () => {
+  const withDayName = recalculateTable(mkTable('$3 = date($2) - date($1)', [['<2026-08-01 Sat>', '<2026-08-25 Tue>', '']]));
+  const withoutDayName = recalculateTable(mkTable('$3 = date($2) - date($1)', [['<2026-08-01>', '<2026-08-25>', '']]));
+  const inactiveTimestamps = recalculateTable(mkTable('$3 = date($2) - date($1)', [['[2026-08-01]', '[2026-08-25]', '']]));
+  assert.equal(withDayName[0].cells[2], '24');
+  assert.equal(withoutDayName[0].cells[2], '24');
+  assert.equal(inactiveTimestamps[0].cells[2], '24');
+});
+
+test('THE FIX: a cell that doesn\u2019t contain a recognizable timestamp at all produces #ERROR in that specific cell, not a crash, matching this module\u2019s own existing, established per-cell error-isolation convention', () => {
+  const result = recalculateTable(mkTable('$2 = date($1)', [['not a date', '']]));
+  assert.equal(result[0].cells[1], '#ERROR');
+});
+
+test('the column-formula shorthand ($M=, no @) applies date arithmetic to every data row independently, each computing its own result from its own cells', () => {
+  const result = recalculateTable(
+    mkTable('$3 = date($2) - date($1)', [
+      ['<2026-08-01>', '<2026-08-10>', ''],
+      ['<2026-01-01>', '<2026-12-31>', ''],
+    ])
+  );
+  assert.equal(result[0].cells[2], '9');
+  assert.equal(result[1].cells[2], '364');
+});
+
+test('date(date($1)) and date(now()) pass an already-date-tagged value straight through rather than re-parsing its own formatted text', () => {
+  const result = recalculateTable(mkTable('$2 = date(date($1))', [['<2026-08-25>', '']]));
+  assert.equal(result[0].cells[1], '<2026-08-25>');
+});

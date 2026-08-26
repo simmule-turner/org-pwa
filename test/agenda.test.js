@@ -1238,9 +1238,9 @@ test('a SCHEDULED item with NO delay suffix at all is completely unaffected -- s
 
 // ---- <%%(sexp)> timestamps (real org's own general sexp timestamp form) ----
 
-test('THE FIX: standalone "%%(diary-sunrise)" / "%%(diary-sunset)" / "%%(diary-civil-sunrise)" / "%%(diary-civil-sunset)" body lines each generate their own agenda entries, with the exact requested "HH:MM Label" 24-hour format', () => {
+test('THE FIX: standalone "%%(diary-sunrise)" / "%%(diary-sunset)" / "%%(diary-civil-dawn)" / "%%(diary-civil-dusk)" body lines each generate their own agenda entries, with the exact requested "HH:MM Label" 24-hour format', () => {
   const doc = parseOrg(
-    ['* Sun Times', '%%(diary-sunrise)', '%%(diary-sunset)', '%%(diary-civil-sunrise)', '%%(diary-civil-sunset)'].join('\n')
+    ['* Sun Times', '%%(diary-sunrise)', '%%(diary-sunset)', '%%(diary-civil-dawn)', '%%(diary-civil-dusk)'].join('\n')
   );
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 7, 10),
@@ -1250,8 +1250,8 @@ test('THE FIX: standalone "%%(diary-sunrise)" / "%%(diary-sunset)" / "%%(diary-c
   const byKind = Object.fromEntries(items.map((i) => [i.kind, i.title]));
   assert.match(byKind['sunrise'], /^\d\d:\d\d Sunrise$/);
   assert.match(byKind['sunset'], /^\d\d:\d\d Sunset$/);
-  assert.match(byKind['civil-sunrise'], /^\d\d:\d\d Dawn$/);
-  assert.match(byKind['civil-sunset'], /^\d\d:\d\d Dusk$/);
+  assert.match(byKind['civil-dawn'], /^\d\d:\d\d Dawn$/);
+  assert.match(byKind['civil-dusk'], /^\d\d:\d\d Dusk$/);
 });
 
 test('THE FIX: solar-ampm/solar-hide-label, passed through buildAgendaItems\u2019 own options, correctly reach the standalone-line pathway\u2019s own output', () => {
@@ -1299,8 +1299,8 @@ test('all four also work inside the general <%%(...)> timestamp form', () => {
   const doc = parseOrg([
     '* Sunrise <%%(diary-sunrise)>',
     '* Sunset <%%(diary-sunset)>',
-    '* Civil Dawn <%%(diary-civil-sunrise)>',
-    '* Civil Dusk <%%(diary-civil-sunset)>',
+    '* Civil Dawn <%%(diary-civil-dawn)>',
+    '* Civil Dusk <%%(diary-civil-dusk)>',
   ].join('\n'));
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 7, 10),
@@ -1314,8 +1314,8 @@ test('all four also work inside the general <%%(...)> timestamp form', () => {
   assert.match(items[3].title, /^Civil Dusk: \d\d:\d\d Dusk$/);
 });
 
-test('THE FIX: composes correctly with another sexp form -- <%%(when (today-p) (diary-civil-sunrise))> shows civil dawn ONLY on today\u2019s own agenda entry, per the explicit request that these "work with the other sexpr"', () => {
-  const doc = parseOrg('* Civil Dawn Today <%%(when (today-p) (diary-civil-sunrise))>\n');
+test('THE FIX: composes correctly with another sexp form -- <%%(when (today-p) (diary-civil-dawn))> shows civil dawn ONLY on today\u2019s own agenda entry, per the explicit request that these "work with the other sexpr"', () => {
+  const doc = parseOrg('* Civil Dawn Today <%%(when (today-p) (diary-civil-dawn))>\n');
   const today = new Date(2026, 7, 12);
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 7, 10),
@@ -1327,8 +1327,8 @@ test('THE FIX: composes correctly with another sexp form -- <%%(when (today-p) (
   assert.match(items[0].title, /^Civil Dawn Today: \d\d:\d\d Dawn$/);
 });
 
-test('THE EXACT REQUEST: <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-sunrise)) )> -- the user\u2019s own precise, verbatim example, through the full buildAgendaItems pipeline', () => {
-  const doc = parseOrg('* Sun Report <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-sunrise)) )>\n');
+test('THE EXACT REQUEST: <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn)) )> -- the user\u2019s own precise, verbatim example, through the full buildAgendaItems pipeline', () => {
+  const doc = parseOrg('* Sun Report <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn)) )>\n');
   const today = new Date(2026, 7, 12);
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 7, 10),
@@ -1342,7 +1342,7 @@ test('THE EXACT REQUEST: <%%(when (today-p) (format "Rise %s (%s)" (diary-sunris
 });
 
 test('THE FIX: THE EXACT BUG REPORT -- a bare heading with no title text at all (the timestamp IS the entire title) no longer shows a meaningless "(untitled): " prefix in front of a string result', () => {
-  const doc = parseOrg('* <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-sunrise)) )>\n');
+  const doc = parseOrg('* <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn)) )>\n');
   const today = new Date(2026, 7, 12);
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 7, 10),
