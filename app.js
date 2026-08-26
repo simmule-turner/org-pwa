@@ -1,7 +1,7 @@
 import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src/document-store.js';
 import { setSyncMeta, getSyncMeta } from './src/sync-engine.js';
 import { hasPendingChange, getPendingChange, clearPendingChange } from './src/outbox.js';
-import { parseOrg, serializeOrg, findHeadingLineNumber } from './src/org-parser.js';
+import { parseOrg, serializeOrg, serializeHeadingSubtree, findHeadingLineNumber } from './src/org-parser.js';
 import { parseBody } from './src/body-parser.js';
 import { detectWebmHasVideoTrack } from './src/webm-track-detect.js';
 import { findScrollingAncestor } from './src/scroll-util.js';
@@ -2644,7 +2644,8 @@ function anyOverlayPanelOpen() {
     viewMenuOpen ||
     moreOpen ||
     historyOpen ||
-    !!pendingTodoWorkflowChoice
+    !!pendingTodoWorkflowChoice ||
+    !!pendingRefile
   );
 }
 
@@ -2659,7 +2660,8 @@ function anyOverlayPanelOpenExceptDocs() {
     viewMenuOpen ||
     moreOpen ||
     historyOpen ||
-    !!pendingTodoWorkflowChoice
+    !!pendingTodoWorkflowChoice ||
+    !!pendingRefile
   );
 }
 
@@ -2717,6 +2719,10 @@ function closeAllOverlayPanels() {
     pendingTodoWorkflowChoice = null;
     renderTodoWorkflowPanel();
   }
+  if (pendingRefile) {
+    pendingRefile = null;
+    renderRefilePanel();
+  }
 }
 
 function syncGodModeIndicator() {
@@ -2729,7 +2735,7 @@ function syncGodModeIndicator() {
     return;
   }
   godModeIndicatorEl.style.display = 'block';
-  const seq = godModeState.chordString || (godModeState.awaitingSecondC ? 'c' : godModeState.pendingModifier ? '\u2026' : '');
+  const seq = godModeState.chordString || (godModeState.pendingModifier ? '\u2026' : '');
   godModeIndicatorEl.textContent = seq ? `\ud83e\udde0 God-mode: ${seq}` : '\ud83e\udde0 God-mode (Esc to exit)';
 }
 
@@ -2863,6 +2869,167 @@ function scrollFocusedHeadingIntoView() {
  *  is more predictable than silently jumping to the opposite end of a
  *  potentially long document. Scrolls the newly-focused heading into
  *  view, since it may not currently be on screen. */
+/** True if `row` (one of flattenVisibleRows' own row objects) is the
+ *  one keyboardFocusedHeading/keyboardFocusedBodyRow currently point
+ *  at -- matched by the row's own underlying node/item identity, not
+ *  the row-wrapper object itself, since flattenVisibleRows rebuilds a
+ *  fresh wrapper on every single call even when the underlying AST
+ *  hasn't changed at all. */
+function rowMatchesKeyboardFocus(row) {
+  if (row.rowType === 'heading') return !keyboardFocusedBodyRow && row.node === keyboardFocusedHeading;
+  if (!keyboardFocusedBodyRow || keyboardFocusedBodyRow.rowType !== row.rowType) return false;
+  if (row.rowType === 'list-item') return row.item === keyboardFocusedBodyRow.item;
+  return row.node === keyboardFocusedBodyRow.node;
+}
+
+/** Sets keyboard focus to `row` (one of flattenVisibleRows' own row
+ *  objects) -- keyboardFocusedHeading is kept in sync to the row's
+ *  own containing heading either way (itself, if row IS a heading;
+ *  its own .heading reference otherwise), so every existing
+ *  heading-specific action still has a sensible heading to act on
+ *  regardless of where the line-cursor has actually drilled to.
+ *  keyboardFocusedSubLine is reset -- see this function's own single
+ *  caller (moveLineFocus) for why. */
+function setKeyboardFocusToRow(row) {
+  if (row.rowType === 'heading') {
+    keyboardFocusedHeading = row.node;
+    keyboardFocusedBodyRow = null;
+  } else {
+    keyboardFocusedHeading = row.heading;
+    keyboardFocusedBodyRow = row;
+  }
+  keyboardFocusedSubLine = null;
+}
+
+/** Moves the line-cursor to the adjacent VISIBLE row -- headings,
+ *  paragraphs, tables, list items, and blocks alike, in document
+ *  order, respecting current fold state exactly the way
+ *  flattenVisibleRows itself already does. This is the "navigate to
+ *  all visible lines in the buffer" feature: plain Up/Down (both
+ *  outside and inside god-mode) move through EVERY visible row, not
+ *  just headings the way j/k (unchanged, kept as a faster
+ *  heading-to-heading jump) already do. */
+function moveLineFocus(delta) {
+  const rows = state.doc ? flattenVisibleRows(state.doc) : [];
+  if (rows.length === 0) return;
+  const currentIndex = rows.findIndex(rowMatchesKeyboardFocus);
+  let nextIndex;
+  if (currentIndex === -1) {
+    nextIndex = delta > 0 ? 0 : rows.length - 1;
+  } else {
+    nextIndex = Math.max(0, Math.min(rows.length - 1, currentIndex + delta));
+  }
+  setKeyboardFocusToRow(rows[nextIndex]);
+  render();
+  scrollFocusedHeadingIntoView();
+}
+
+/** How many individual sub-lines/sub-rows `row` has within itself --
+ *  a multi-line paragraph's own lines, or a multi-row table's own
+ *  rows; 0 for every other row type (heading, list-item, block, hr),
+ *  which flattenVisibleRows already treats as a single, atomic unit
+ *  with nothing finer to step through. */
+function subLineCountFor(row) {
+  if (row.rowType === 'paragraph') return row.node.lines.length;
+  if (row.rowType === 'table') return row.node.rows.length;
+  return 0;
+}
+
+/** True if `heading` has any body content at all (paragraph, table,
+ *  list, block) to potentially step into via moveGranular -- checked
+ *  against the heading's own raw body array directly, not
+ *  flattenVisibleRows' own output, since that respects the CURRENT
+ *  fold state and would miss body content that's simply folded away
+ *  right now (exactly the case moveGranular needs to detect, so it
+ *  knows to reveal that content rather than silently finding nothing
+ *  there). */
+function hasBodyContent(heading) {
+  return !!(heading.body && heading.body.length > 0);
+}
+
+function moveGranular(delta) {
+  if (!state.doc) return;
+  // Step within the CURRENT row's own sub-lines first, if there's
+  // room left to move in that direction.
+  if (keyboardFocusedBodyRow && keyboardFocusedSubLine !== null) {
+    const maxSubLine = subLineCountFor(keyboardFocusedBodyRow) - 1;
+    const nextSubLine = keyboardFocusedSubLine + delta;
+    if (nextSubLine >= 0 && nextSubLine <= maxSubLine) {
+      keyboardFocusedSubLine = nextSubLine;
+      render();
+      scrollFocusedHeadingIntoView();
+      return;
+    }
+  }
+
+  // Moving down from a heading whose own body is currently folded --
+  // reveal it first, so the row-walk below can actually reach it.
+  if (delta > 0 && !keyboardFocusedBodyRow && keyboardFocusedHeading && keyboardFocusedHeading.bodyHidden && hasBodyContent(keyboardFocusedHeading)) {
+    keyboardFocusedHeading.bodyHidden = false;
+  }
+
+  // The same row-level walk moveLineFocus itself uses, but a
+  // multi-line paragraph or multi-row table landed on this way is
+  // entered at whichever end matches the direction of travel,
+  // instead of being treated as one atomic stop the way plain
+  // arrow navigation treats it.
+  const rows = flattenVisibleRows(state.doc);
+  if (rows.length === 0) return;
+  const currentIndex = rows.findIndex(rowMatchesKeyboardFocus);
+  let nextIndex;
+  if (currentIndex === -1) {
+    nextIndex = delta > 0 ? 0 : rows.length - 1;
+  } else {
+    nextIndex = Math.max(0, Math.min(rows.length - 1, currentIndex + delta));
+  }
+  if (nextIndex === currentIndex) return; // already at the first/last visible row -- nothing further to move to, stay put rather than re-entering the current block from its own opposite end
+  const nextRow = rows[nextIndex];
+  setKeyboardFocusToRow(nextRow);
+  const subLineCount = subLineCountFor(nextRow);
+  if (subLineCount > 0) keyboardFocusedSubLine = delta > 0 ? 0 : subLineCount - 1;
+  render();
+  scrollFocusedHeadingIntoView();
+}
+
+/** The "i" dispatcher -- enters insert/edit mode for whatever the
+ *  line-cursor currently points at, reusing each row type's own
+ *  existing structured-editing entry point rather than building a
+ *  new one: a heading's own title (startEditingTitle), a paragraph
+ *  (editingParagraph), a table cell (editingCell, at the current
+ *  sub-line's own row, column 0 -- there's no column-level
+ *  navigation, only row-by-row per the explicit request), or a list
+ *  item (editingListItem). A "block" row (#+BEGIN_SRC etc.) has no
+ *  structured edit UI at all in this app -- read-only, requires Text
+ *  view -- so "i" there is a deliberate no-op matching that existing,
+ *  already-documented limitation, not a silent failure.
+ *
+ *  pendingCursorPosition (set by a/e beforehand -- see GOD_MODE_ACTIONS'
+ *  own 'C-a'/'C-e' entries) is consumed here: 'start' or 'end'
+ *  positions the resulting input's own cursor there once the shared
+ *  post-render focus logic (see render()'s own queueMicrotask) picks
+ *  it up; unset defaults to 'start', per the explicit request that
+ *  "i" alone (no a/e first) inserts at the beginning of the line. */
+function enterInsertModeAtCurrentLine() {
+  pendingCursorPosition = pendingCursorPosition || 'start';
+  if (!keyboardFocusedBodyRow) {
+    if (keyboardFocusedHeading) startEditingTitle(keyboardFocusedHeading, false);
+    return;
+  }
+  const row = keyboardFocusedBodyRow;
+  if (row.rowType === 'paragraph') {
+    editingParagraph = { heading: row.heading, paragraph: row.node };
+    render();
+  } else if (row.rowType === 'table') {
+    const rowIndex = keyboardFocusedSubLine !== null ? keyboardFocusedSubLine : 0;
+    editingCell = { heading: row.heading, table: row.node, rowIndex, colIndex: 0 };
+    render();
+  } else if (row.rowType === 'list-item') {
+    editingListItem = { heading: row.heading, item: row.item };
+    render();
+  }
+  // 'block'/'hr': no structured edit UI exists for either -- no-op.
+}
+
 function moveKeyboardFocus(delta) {
   const headings = visibleHeadingsInOrder();
   if (headings.length === 0) return;
@@ -3061,8 +3228,8 @@ const GOD_MODE_ACTIONS = {
       render();
     }
   },
-  'S-<up>': () => godModeNotSupported('shifting a date under the cursor needs a text-cursor concept this app doesn\u2019t have -- use Edit details instead'),
-  'S-<down>': () => godModeNotSupported('shifting a date under the cursor needs a text-cursor concept this app doesn\u2019t have -- use Edit details instead'),
+  'S-<up>': () => moveGranular(-1),
+  'S-<down>': () => moveGranular(1),
 
   // Section 5: Table Manipulation -- none of these have a keyboard-
   // focus equivalent, since this app's own keyboard focus tracks a
@@ -3085,11 +3252,16 @@ const GOD_MODE_ACTIONS = {
     renderCapturePanel();
   },
   'C-c C-e': () => godModeNotSupported('use File \u2192 Export instead'),
-  'h i': () => {
+  'C-h i': () => {
     moreOpen = false;
     renderMoreMenu();
     docsOpen = true;
     if (!isWideLayout()) renderDocsView(outlineEl); // narrow: replaces #outline directly; wide layout is handled by the outer dispatch loop's own render() call right after this returns
+  },
+  '<up>': () => moveLineFocus(-1),
+  '<down>': () => moveLineFocus(1),
+  'C-c C-x C-w': () => {
+    if (keyboardFocusedHeading) cutSubtree(keyboardFocusedHeading);
   },
 };
 
@@ -3194,7 +3366,7 @@ document.addEventListener('keydown', (e) => {
 
   if (e.key === 'Escape') {
     e.preventDefault();
-    const godModeMidSequence = godModeState.chordString !== '' || godModeState.awaitingSecondC || godModeState.pendingModifier !== null;
+    const godModeMidSequence = godModeState.chordString !== '' || godModeState.pendingModifier !== null;
     if (godModeActive && godModeMidSequence) {
       godModeState = godModeInitialState();
       setStatus('God-mode: sequence cancelled.');
@@ -3220,10 +3392,27 @@ document.addEventListener('keydown', (e) => {
 
   if (godModeActive) {
     if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return; // a bare modifier key press isn't a god-mode keystroke of its own
+    const freshSequence = godModeState.chordString === '' && godModeState.pendingModifier === null && !godModeState.literalActive;
+    if (freshSequence && !e.shiftKey && e.key === 'i') {
+      e.preventDefault();
+      enterInsertModeAtCurrentLine();
+      render();
+      return;
+    }
+    if (freshSequence && !e.shiftKey && e.key === 'a') {
+      e.preventDefault();
+      pendingCursorPosition = 'start';
+      return;
+    }
+    if (freshSequence && !e.shiftKey && e.key === 'e') {
+      e.preventDefault();
+      pendingCursorPosition = 'end';
+      return;
+    }
     e.preventDefault();
     const { state: newState, chordString } = godModeProcessKey(godModeState, e.key, e.shiftKey);
     godModeState = newState;
-    const stillWaiting = newState.pendingModifier !== null || newState.awaitingSecondC || newState.awaitingSecondH;
+    const stillWaiting = newState.pendingModifier !== null;
     if (!stillWaiting && chordString in GOD_MODE_ACTIONS) {
       GOD_MODE_ACTIONS[chordString]();
       godModeState = godModeInitialState();
@@ -3248,23 +3437,43 @@ document.addEventListener('keydown', (e) => {
 
   if (currentView !== 'org' || !state.doc) return; // everything below acts on the outline specifically
 
-  if (!e.altKey && (e.key === 'ArrowDown' || e.key === 'j')) {
+  if (!e.altKey && e.key === 'j') {
     e.preventDefault();
     moveKeyboardFocus(1);
     return;
   }
-  if (!e.altKey && (e.key === 'ArrowUp' || e.key === 'k')) {
+  if (!e.altKey && e.key === 'k') {
     e.preventDefault();
     moveKeyboardFocus(-1);
     return;
   }
-  if (e.key === 'n') {
+  if (!e.altKey && !e.shiftKey && e.key === 'ArrowDown') {
     e.preventDefault();
-    addBtn.click();
+    moveLineFocus(1);
     return;
   }
-
+  if (!e.altKey && !e.shiftKey && e.key === 'ArrowUp') {
+    e.preventDefault();
+    moveLineFocus(-1);
+    return;
+  }
+  if (!e.altKey && e.shiftKey && e.key === 'ArrowDown') {
+    e.preventDefault();
+    moveGranular(1);
+    return;
+  }
+  if (!e.altKey && e.shiftKey && e.key === 'ArrowUp') {
+    e.preventDefault();
+    moveGranular(-1);
+    return;
+  }
   if (!keyboardFocusedHeading) return; // everything remaining needs a specific heading to act on
+
+  if (e.key === 'i') {
+    e.preventDefault();
+    enterInsertModeAtCurrentLine();
+    return;
+  }
 
   if (e.key === 'Tab') {
     e.preventDefault();
@@ -3274,27 +3483,6 @@ document.addEventListener('keydown', (e) => {
   } else if (e.key === 'Enter') {
     e.preventDefault();
     toggleActionMenu(keyboardFocusedHeading);
-  } else if (e.key === 't') {
-    e.preventDefault();
-    openTodoOrPickWorkflow(keyboardFocusedHeading);
-  } else if (e.altKey && e.key === 'ArrowUp') {
-    e.preventDefault();
-    if (moveHeadingUp(state.doc, keyboardFocusedHeading)) {
-      commitAndRender('Moved heading up');
-      scrollFocusedHeadingIntoView();
-    }
-  } else if (e.altKey && e.key === 'ArrowDown') {
-    e.preventDefault();
-    if (moveHeadingDown(state.doc, keyboardFocusedHeading)) {
-      commitAndRender('Moved heading down');
-      scrollFocusedHeadingIntoView();
-    }
-  } else if (e.key === '[') {
-    e.preventDefault();
-    if (promoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender('Promoted heading');
-  } else if (e.key === ']') {
-    e.preventDefault();
-    if (demoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender('Demoted heading');
   }
 });
 // Reacts to ANY change to topBar's rendered content (a panel opening/
@@ -3417,6 +3605,9 @@ let actionMenuFor = null;
 // normal browser focus-cycling for a keyboard/screen-reader user who
 // never asked for org-style keyboard nav in the first place.
 let keyboardFocusedHeading = null;
+let keyboardFocusedBodyRow = null;
+let keyboardFocusedSubLine = null;
+let pendingCursorPosition = null;
 // god-mode: whether it's currently active (toggled by Escape -- see
 // the keydown listener below), and the in-progress key-sequence
 // state (src/god-mode.js's own state shape) accumulated so far.
@@ -4552,6 +4743,34 @@ function confirmHeadingDelete(heading) {
  *  cleanup the previous "X" action-row button already did, now
  *  reachable only via a long-press on the heading's own title instead
  *  of a dedicated button. */
+/** org-cut-subtree (C-c C-x C-w): copies `heading` and its own entire
+ *  subtree to the clipboard, matching real org's own actual "cut"
+ *  semantics (the kill ring, not just an outright delete -- so the
+ *  cut content can be yanked/pasted elsewhere), then deletes it. */
+async function cutSubtree(heading) {
+  const text = serializeHeadingSubtree(heading);
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    setStatus("Couldn't copy to clipboard \u2014 your browser may not allow clipboard access here. Nothing was deleted.");
+    return;
+  }
+  actionMenuFor = null;
+  editingHeading = null;
+  editingIsNew = false;
+  editingCell = null;
+  editingParagraph = null;
+  editingListItem = null;
+  editingHeadingText = null;
+  editingGeneral = null;
+  if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.heading === heading) {
+    keyboardFocusedBodyRow = null;
+    keyboardFocusedSubLine = null;
+  }
+  removeHeading(state.doc, heading);
+  commitAndRender('Cut subtree to clipboard');
+}
+
 function deleteHeadingWithConfirmation(heading) {
   if (!confirmHeadingDelete(heading)) return;
   actionMenuFor = null;
@@ -5184,6 +5403,19 @@ function confirmListItemDelete(item) {
   return window.confirm("Delete this item?");
 }
 
+/** Applies the keyboard-focus visual highlight to `el` if `row` is
+ *  the one currently focused -- the same outline styling every row
+ *  type shares, factored out here since keyboard focus can now land
+ *  on any visible row (not just headings), and every one of this
+ *  function's own callers needs the identical treatment. */
+function applyKeyboardFocusHighlight(el, row) {
+  if (!rowMatchesKeyboardFocus(row)) return;
+  el.id = 'keyboard-focused-row';
+  el.style.outline = '2px solid var(--accent)';
+  el.style.outlineOffset = '-2px';
+  el.style.borderRadius = '4px';
+}
+
 function renderRow(row, todoSequence) {
   if (row.rowType === 'heading') {
     const el = document.createElement('div');
@@ -5191,12 +5423,7 @@ function renderRow(row, todoSequence) {
     el.style.paddingLeft = 8 + row.depth * 16 + 'px';
     el.style.alignItems = 'flex-start';
     el.style.touchAction = 'pan-y';
-    if (row.node === keyboardFocusedHeading) {
-      el.id = 'keyboard-focused-row';
-      el.style.outline = '2px solid var(--accent)';
-      el.style.outlineOffset = '-2px';
-      el.style.borderRadius = '4px';
-    }
+    applyKeyboardFocusHighlight(el, row);
     attachSlideLeftToFold(el, row.node);
 
     const fold = document.createElement('button');
@@ -5218,6 +5445,14 @@ function renderRow(row, todoSequence) {
         commitAndRender('Cycled TODO state');
       };
       el.appendChild(badge);
+    }
+
+    if (row.node.priority) {
+      const priorityBadge = document.createElement('span');
+      priorityBadge.className = 'priority-badge';
+      priorityBadge.textContent = `#${row.node.priority}`;
+      priorityBadge.onclick = () => cyclePriorityFor(row.node);
+      el.appendChild(priorityBadge);
     }
 
     let menuEl = null;
@@ -5578,6 +5813,7 @@ function renderRow(row, todoSequence) {
     el.className = 'row';
     el.style.paddingLeft = 8 + row.depth * 16 + 'px';
     el.style.alignItems = 'flex-start';
+    applyKeyboardFocusHighlight(el, row);
     if (row.item.checkbox !== null) {
       el.classList.add('checkbox-row');
       el.onclick = (e) => {
@@ -5732,6 +5968,7 @@ function renderTableRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
   wrap.style.margin = '4px 0';
+  applyKeyboardFocusHighlight(wrap, row);
 
   // A table has no single "tap the text" affordance the way a paragraph
   // or list item does — you interact with individual cells, and its
@@ -5934,6 +6171,7 @@ function renderHrRow(row) {
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
   wrap.style.paddingRight = '8px';
   wrap.style.margin = '4px 0';
+  applyKeyboardFocusHighlight(wrap, row);
   const hr = document.createElement('hr');
   hr.style.border = 'none';
   hr.style.borderTop = '1px solid var(--border-strong)';
@@ -5946,6 +6184,7 @@ function renderParagraphRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
   wrap.style.margin = '4px 0';
+  applyKeyboardFocusHighlight(wrap, row);
 
   const isEditing = editingParagraph && editingParagraph.paragraph === row.node;
 
@@ -6188,6 +6427,7 @@ function renderBlockRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
   wrap.style.margin = '4px 0';
+  applyKeyboardFocusHighlight(wrap, row);
 
   const label = row.node.name + (row.node.params ? ' ' + row.node.params : '');
 
@@ -6394,16 +6634,17 @@ function render() {
         document.getElementById('paragraph-edit-input');
       if (input) {
         input.focus();
-        // Cursor at the end, not select-all: selecting the whole value
-        // by default means the very next keystroke silently replaces
-        // everything the user typed before — an easy, real way to lose
-        // a heading or task's text by accident. Positioning at the end
-        // instead lets typing append naturally; tapping anywhere in the
-        // field (or selecting manually) still works exactly as normal.
+        // Cursor at the end by default (not select-all: selecting the
+        // whole value means the very next keystroke silently replaces
+        // everything already there) -- UNLESS pendingCursorPosition
+        // says otherwise (set by "i"'s own dispatcher, via a/e
+        // beforehand), in which case that one-shot request wins and
+        // is then cleared.
         if (typeof input.setSelectionRange === 'function') {
-          const end = input.value.length;
-          input.setSelectionRange(end, end);
+          const pos = pendingCursorPosition === 'start' ? 0 : input.value.length;
+          input.setSelectionRange(pos, pos);
         }
+        pendingCursorPosition = null;
       }
     });
   }
@@ -8065,7 +8306,7 @@ function renderAgendaView() {
                 ? '\ud83d\udcdd'
                 : item.kind === 'diary-sexp' || item.kind === 'sexp-timestamp'
                 ? '\ud83d\udd01'
-                : item.kind === 'sunrise' || item.kind === 'sunset' || item.kind === 'civil-sunrise' || item.kind === 'civil-sunset' || item.kind === 'day-length' || item.kind === 'weather'
+                : item.kind === 'sunrise' || item.kind === 'sunset' || item.kind === 'civil-dawn' || item.kind === 'civil-dusk' || item.kind === 'nautical-dawn' || item.kind === 'nautical-dusk' || item.kind === 'astronomical-dawn' || item.kind === 'astronomical-dusk' || item.kind === 'day-length' || item.kind === 'weather'
                   ? '\u2600\ufe0f'
                   : '\u23f0';
       kindIcon.style.flexShrink = '0';
