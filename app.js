@@ -2888,8 +2888,10 @@ function rowMatchesKeyboardFocus(row) {
  *  its own .heading reference otherwise), so every existing
  *  heading-specific action still has a sensible heading to act on
  *  regardless of where the line-cursor has actually drilled to.
- *  keyboardFocusedSubLine is reset -- see this function's own single
- *  caller (moveLineFocus) for why. */
+ *  keyboardFocusedSubLine is reset here; moveGranular (this
+ *  function's other caller, besides moveLineFocus) may then
+ *  immediately override it again for its own within-block entry
+ *  point. */
 function setKeyboardFocusToRow(row) {
   if (row.rowType === 'heading') {
     keyboardFocusedHeading = row.node;
@@ -2898,6 +2900,26 @@ function setKeyboardFocusToRow(row) {
     keyboardFocusedHeading = row.heading;
     keyboardFocusedBodyRow = row;
   }
+  keyboardFocusedSubLine = null;
+}
+
+/** THE FIX: sets keyboard focus squarely to `heading` itself, clearing
+ *  keyboardFocusedBodyRow/keyboardFocusedSubLine -- every heading-only
+ *  navigation action (j/k, C-c C-f/C-c C-b, C-c C-u, C-c C-n/C-c C-p,
+ *  M-RET/M-S-RET, and Escape's own "clear focus"/"enter god-mode"
+ *  branches) needs this, not just a bare "keyboardFocusedHeading =
+ *  heading" assignment: leaving a stale keyboardFocusedBodyRow behind
+ *  meant the visual highlight (and scroll-into-view) stayed stuck on
+ *  wherever the line-cursor had last drilled into, since
+ *  rowMatchesKeyboardFocus requires keyboardFocusedBodyRow to be null
+ *  for a HEADING row to ever match -- even though keyboardFocusedHeading
+ *  itself really was being updated correctly. This is what made
+ *  C-c C-n/C-c C-p (and friends) look like they weren't moving at all
+ *  while focus was on body text. `heading` may be null (Escape's own
+ *  "clear focus entirely" case). */
+function setKeyboardFocusToHeading(heading) {
+  keyboardFocusedHeading = heading;
+  keyboardFocusedBodyRow = null;
   keyboardFocusedSubLine = null;
 }
 
@@ -3040,7 +3062,7 @@ function moveKeyboardFocus(delta) {
   } else {
     nextIndex = Math.max(0, Math.min(headings.length - 1, currentIndex + delta));
   }
-  keyboardFocusedHeading = headings[nextIndex];
+  setKeyboardFocusToHeading(headings[nextIndex]);
   render();
   scrollFocusedHeadingIntoView();
 }
@@ -3061,7 +3083,7 @@ function moveToSameLevelHeading(delta) {
   for (let i = currentIndex + delta; i >= 0 && i < headings.length; i += delta) {
     if (headings[i].level < level) return;
     if (headings[i].level === level) {
-      keyboardFocusedHeading = headings[i];
+      setKeyboardFocusToHeading(headings[i]);
       render();
       scrollFocusedHeadingIntoView();
       return;
@@ -3077,7 +3099,7 @@ function moveToParentHeading() {
   if (!keyboardFocusedHeading || !state.doc) return;
   const path = findAncestorPath(state.doc, keyboardFocusedHeading);
   if (!path || path.length === 0) return;
-  keyboardFocusedHeading = path[path.length - 1];
+  setKeyboardFocusToHeading(path[path.length - 1]);
   render();
   scrollFocusedHeadingIntoView();
 }
@@ -3181,7 +3203,7 @@ const GOD_MODE_ACTIONS = {
     if (!keyboardFocusedHeading || !state.doc) return;
     const heading = insertHeadingAfter(state.doc, keyboardFocusedHeading, {});
     if (heading) {
-      keyboardFocusedHeading = heading;
+      setKeyboardFocusToHeading(heading);
       startEditingTitle(heading, true);
     }
   },
@@ -3189,7 +3211,7 @@ const GOD_MODE_ACTIONS = {
     if (!keyboardFocusedHeading || !state.doc) return;
     const heading = insertHeadingAfter(state.doc, keyboardFocusedHeading, { todo: 'TODO' });
     if (heading) {
-      keyboardFocusedHeading = heading;
+      setKeyboardFocusToHeading(heading);
       startEditingTitle(heading, true);
     }
   },
@@ -3375,14 +3397,14 @@ document.addEventListener('keydown', (e) => {
       godModeActive = false;
       render();
     } else if (keyboardFocusedHeading) {
-      keyboardFocusedHeading = null;
+      setKeyboardFocusToHeading(null);
       render();
     } else {
       godModeActive = true;
       godModeState = godModeInitialState();
       if (!keyboardFocusedHeading) {
         const headings = visibleHeadingsInOrder();
-        if (headings.length > 0) keyboardFocusedHeading = headings[0];
+        if (headings.length > 0) setKeyboardFocusToHeading(headings[0]);
       }
       render();
       scrollFocusedHeadingIntoView();
