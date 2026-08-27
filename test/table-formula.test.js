@@ -755,3 +755,95 @@ test('date(date($1)) and date(now()) pass an already-date-tagged value straight 
   const result = recalculateTable(mkTable('$2 = date(date($1))', [['<2026-08-25>', '']]));
   assert.equal(result[0].cells[1], '<2026-08-25>');
 });
+
+// ---- conditional logic (if / comparisons / && || ! / string) --------------
+
+test('THE EXACT REQUEST: logical-example -- if($1 >= 50 && $2 >= 50, "Both Pass", "Fail")', () => {
+  const result = recalculateTable(
+    mkTable('$3 = if($1 >= 50 && $2 >= 50, "Both Pass", "Fail")', [
+      ['60', '70', ''],
+      ['40', '80', ''],
+    ])
+  );
+  assert.equal(result[0].cells[2], 'Both Pass');
+  assert.equal(result[1].cells[2], 'Fail');
+});
+
+test('THE EXACT REQUEST: grading-example -- nested if() as an else-if chain', () => {
+  const result = recalculateTable(
+    mkTable('$2 = if($1 >= 90, "A", if($1 >= 80, "B", "C"))', [
+      ['85', ''],
+      ['95', ''],
+      ['62', ''],
+    ])
+  );
+  assert.equal(result[0].cells[1], 'B');
+  assert.equal(result[1].cells[1], 'A');
+  assert.equal(result[2].cells[1], 'C');
+});
+
+test('THE EXACT REQUEST: string-example -- string() wraps a cell reference so it compares as text, not a numeric coercion', () => {
+  const result = recalculateTable(
+    mkTable('$2 = if(string($1) == "Sales", 5000, 10000)', [
+      ['Sales', ''],
+      ['Tech', ''],
+    ])
+  );
+  assert.equal(result[0].cells[1], '5000');
+  assert.equal(result[1].cells[1], '10000');
+});
+
+test('THE FEATURE: all six comparison operators, both == and = for equality', () => {
+  assert.equal(recalculateTable(mkTable('$2 = if($1 == 10, "Yes", "No")', [['10', '']]))[0].cells[1], 'Yes');
+  assert.equal(recalculateTable(mkTable('$2 = if($1 = 10, "Yes", "No")', [['10', '']]))[0].cells[1], 'Yes');
+  assert.equal(recalculateTable(mkTable('$2 = if($1 != 0, "Yes", "No")', [['5', '']]))[0].cells[1], 'Yes');
+  assert.equal(recalculateTable(mkTable('$2 = if($1 < 50, "Fail", "Pass")', [['30', '']]))[0].cells[1], 'Fail');
+  assert.equal(recalculateTable(mkTable('$2 = if($1 > 100, "Bonus", "Base")', [['150', '']]))[0].cells[1], 'Bonus');
+  assert.equal(recalculateTable(mkTable('$2 = if($1 <= 18, "Minor", "Adult")', [['18', '']]))[0].cells[1], 'Minor');
+  assert.equal(recalculateTable(mkTable('$2 = if($1 >= 65, "Senior", "Reg")', [['70', '']]))[0].cells[1], 'Senior');
+});
+
+test('THE FEATURE: && and || both as operators and as and()/or() function calls, plus ! and not()', () => {
+  assert.equal(recalculateTable(mkTable('$1 = if(1 && 1, "y", "n")', [['']]))[0].cells[0], 'y');
+  assert.equal(recalculateTable(mkTable('$1 = if(1 && 0, "y", "n")', [['']]))[0].cells[0], 'n');
+  assert.equal(recalculateTable(mkTable('$1 = if(0 || 1, "y", "n")', [['']]))[0].cells[0], 'y');
+  assert.equal(recalculateTable(mkTable('$1 = if(0 || 0, "y", "n")', [['']]))[0].cells[0], 'n');
+  assert.equal(recalculateTable(mkTable('$1 = if(and(1, 1), "y", "n")', [['']]))[0].cells[0], 'y');
+  assert.equal(recalculateTable(mkTable('$1 = if(or(0, 0), "y", "n")', [['']]))[0].cells[0], 'n');
+  assert.equal(recalculateTable(mkTable('$1 = if(!0, "y", "n")', [['']]))[0].cells[0], 'y');
+  assert.equal(recalculateTable(mkTable('$1 = if(not(1), "y", "n")', [['']]))[0].cells[0], 'n');
+});
+
+test('THE FIX: if() is lazy -- the branch NOT taken is never evaluated at all, matching real Calc\u2019s own short-circuiting behavior. Proven with a branch that would throw (not just misbehave) if it were eagerly evaluated', () => {
+  const result = recalculateTable(mkTable('$3 = if($1 == 0, date($2), 999)', [['1', 'not a date', '']]));
+  assert.equal(result[0].cells[2], '999', 'the date($2) branch, which would throw on this malformed cell, must never run');
+});
+
+test('THE EXACT REQUEST: divide-by-zero avoidance -- if($1 != 0, 100 / $1, 0)', () => {
+  assert.equal(recalculateTable(mkTable('$2 = if($1 != 0, 100 / $1, 0)', [['0', '']]))[0].cells[1], '0');
+  assert.equal(recalculateTable(mkTable('$2 = if($1 != 0, 100 / $1, 0)', [['4', '']]))[0].cells[1], '25');
+});
+
+test('&& and || both short-circuit -- the right side is never evaluated once the left side alone determines the result', () => {
+  // Same proof technique as the if() lazy test: an operand that would throw if evaluated.
+  assert.equal(recalculateTable(mkTable('$3 = if($1 == 1 && date($2) == date($2), "y", "n")', [['0', 'not a date', '']]))[0].cells[2], 'n', '&& short-circuits on a falsy left side');
+  assert.equal(recalculateTable(mkTable('$3 = if($1 == 1 || date($2) == date($2), "y", "n")', [['1', 'not a date', '']]))[0].cells[2], 'y', '|| short-circuits on a truthy left side');
+});
+
+test('comparisons bind tighter than && and ||, matching standard precedence -- $1 >= 50 && $2 >= 50 parses as ($1 >= 50) && ($2 >= 50), not something nonsensical', () => {
+  const result = recalculateTable(mkTable('$3 = if($1 >= 50 && $2 >= 50, 1, 0)', [['50', '50', '']]));
+  assert.equal(result[0].cells[2], '1');
+});
+
+test('a string literal can be output directly, and can contain an escaped quote', () => {
+  assert.equal(recalculateTable(mkTable('$1 = "hello"', [['']]))[0].cells[0], 'hello');
+  assert.equal(recalculateTable(mkTable('$1 = "she said \\"hi\\""', [['']]))[0].cells[0], 'she said "hi"');
+});
+
+test('string() on a non-ref expression converts whatever value results to its own string form, not just a bare cell reference', () => {
+  assert.equal(recalculateTable(mkTable('$1 = string(5+5)', [['']]))[0].cells[0], '10');
+});
+
+test('a malformed if() (missing the required third argument) is a parse-time error -- throws entirely, matching this module\u2019s own established convention for malformed formula syntax, rather than producing a per-cell #ERROR (which is reserved for runtime evaluation failures on an otherwise-valid formula)', () => {
+  assert.throws(() => recalculateTable(mkTable('$1 = if($1, "only two args")', [['']])));
+});
