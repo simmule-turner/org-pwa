@@ -20,6 +20,7 @@ const KEYS = {
   fontFamily: 'settings:fontFamily',
   fontSize: 'settings:fontSize',
   tablesFontSize: 'settings:otherFontSize', // storage key deliberately left as "otherFontSize" -- renaming the key itself would silently reset every existing user's saved table font size back to default
+  menuSize: 'settings:menuSize',
   lastActiveDocument: 'settings:lastActiveDocument',
   captureTemplates: 'settings:captureTemplates',
   agendaFiles: 'settings:agendaFiles',
@@ -74,6 +75,7 @@ const DEFAULT_GITHUB_CONFIG = { token: '', owner: '', repo: '', branch: 'main' }
 const DEFAULT_WEBDAV_CONFIG = { baseUrl: '', username: '', password: '' };
 const DEFAULT_THEME = 'system'; // 'system' | 'light' | 'dark'
 const DEFAULT_FONT_FAMILY = 'system'; // 'system' | 'serif' | 'monospace'
+const DEFAULT_MENU_SIZE = 'regular'; // 'regular' | 'small'
 const DEFAULT_FONT_SIZE = 16; // px
 const DEFAULT_TABLES_FONT_SIZE = 13; // px -- matches the previous hard-coded table font size, so introducing this setting doesn't change anyone's current appearance until they actually adjust it
 
@@ -176,6 +178,24 @@ export async function getFontFamily(kvAdapter) {
 
 export async function setFontFamily(kvAdapter, fontFamily) {
   await setJson(kvAdapter, KEYS.fontFamily, fontFamily);
+}
+
+// ---- menu size ------------------------------------------------------------
+
+/** Regular (default) is the larger, roomier sizing (15px text, a real
+ *  44px minimum touch target) every popup menu originally shipped
+ *  with; small is the more compact sizing Extras originally used on
+ *  its own (14px text, tighter padding, no minimum height) before all
+ *  the popup menus were unified onto one shared size. Applies to
+ *  every popup menu at once -- File/View/More/Export/the backend
+ *  picker, and Extras -- not configurable per-menu, so the whole app
+ *  stays visually consistent regardless of which is chosen. */
+export async function getMenuSize(kvAdapter) {
+  return getJson(kvAdapter, KEYS.menuSize, DEFAULT_MENU_SIZE);
+}
+
+export async function setMenuSize(kvAdapter, menuSize) {
+  await setJson(kvAdapter, KEYS.menuSize, menuSize);
 }
 
 export async function getFontSize(kvAdapter) {
@@ -322,6 +342,7 @@ export {
   DEFAULT_WEBDAV_CONFIG,
   DEFAULT_THEME,
   DEFAULT_FONT_FAMILY,
+  DEFAULT_MENU_SIZE,
   DEFAULT_FONT_SIZE,
   DEFAULT_TABLES_FONT_SIZE,
   DEFAULT_AGENDA_FILES,
