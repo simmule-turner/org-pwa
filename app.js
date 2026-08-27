@@ -6087,6 +6087,8 @@ function renderTableRow(row) {
           tdEl.textContent = '\u00a0';
         }
         tdEl.onclick = () => {
+          setKeyboardFocusToRow(row);
+          keyboardFocusedCellPos = { rowIndex, colIndex };
           editingCell = { heading: row.heading, table: row.node, rowIndex, colIndex };
           render();
         };
