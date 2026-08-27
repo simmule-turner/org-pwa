@@ -11854,23 +11854,21 @@ function renderExtraMenu() {
     return;
   }
   extraMenuPanel.style.display = 'block';
-  const list = menuListContainer();
   for (const entry of entries) {
     if (entry.type === 'separator') {
       const hr = document.createElement('div');
       hr.style.borderTop = '1px solid var(--border)';
       hr.style.margin = '4px 2px';
-      list.appendChild(hr);
+      extraMenuPanel.appendChild(hr);
       continue;
     }
     const row = document.createElement('div');
-    row.className = 'menu-list-item';
+    row.className = 'menu-list-item compact';
     row.style.cursor = 'pointer';
     row.textContent = entry.label;
     row.onclick = () => runExtraMenuEntry(entry);
-    list.appendChild(row);
+    extraMenuPanel.appendChild(row);
   }
-  extraMenuPanel.appendChild(list);
 }
 
 /** Executes a selected extras-menu entry, dispatched by type:

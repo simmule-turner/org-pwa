@@ -215,6 +215,30 @@
      larger and more touch-friendly than the previous compact text row. */
   .panel button { font-size: 15px; padding: 10px 14px; min-height: 44px; font-family: inherit; }
   .panel-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; margin: 8px 0; }
+  /* Vertical dropdown menus (File/View/More, Export/backend-picker) --
+     a bordered list of full-width, left-aligned rows, each its own
+     tap target, divided by thin separator lines -- as opposed to
+     .panel-row's horizontal row of individually-pill-shaped buttons,
+     still used for every non-menu button row (toolbars, form fields,
+     Save/Cancel pairs) elsewhere in this app. */
+  .menu-list { display: flex; flex-direction: column; margin: 8px 0; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
+  .menu-list-item {
+    display: block; width: 100%; text-align: left; font: inherit; font-size: 15px; padding: 12px 14px; min-height: 44px;
+    box-sizing: border-box; background: var(--bg); color: var(--fg); border: none; border-radius: 0; border-bottom: 1px solid var(--border);
+  }
+  .menu-list-item:last-child { border-bottom: none; }
+  .menu-list-item:active { background: var(--surface); }
+  .menu-list-item:disabled { opacity: 0.5; }
+  /* A size override for a menu-list living in a small, fixed-position
+     popup (currently just Extras, min-width 140px / max-width 220px)
+     -- the base .menu-list-item sizing above was designed for the
+     full-width File/View/More panels; at this popup's own narrow
+     width, that same padding/font-size/min-height read as cramped
+     and wrap-prone rather than roomy. Applied alongside
+     .menu-list-item, not instead of it -- only these size properties
+     change, the shared structural ones (full-width row, left-aligned
+     text, divider borders) stay exactly the same. */
+  .menu-list-item.compact { font-size: 14px; padding: 9px 10px; min-height: 0; }
   .panel label { font-size: 12px; opacity: 0.75; display: block; margin-bottom: 2px; }
   .panel input[type="text"], .panel input[type="password"], .panel input[type="number"], .panel textarea {
     font: inherit; font-size: 15px; padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: 6px;
