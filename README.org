@@ -1072,6 +1072,7 @@ A practical subset for a keyboard/mouse device — genuinely inert on a phone or
 | Key | Action | Matches real org? |
 |---+---+---|
 | ~↓~ / ~↑~ | Move keyboard focus to the next/previous visible LINE -- any row (heading, paragraph, table, list item, block), not just headings. Moving down into a heading whose own body is currently folded reveals it first, landing directly on its own first body row rather than skipping past it | No direct equivalent |
+| ~S-↓~ / ~S-↑~ / ~S-←~ / ~S-→~ | *Only when keyboard focus is on a table*: move to the next/previous row/column within it, cell by cell (the header row counts as a real, navigable row; a horizontal rule between rows doesn't). At the table's own edge, a status message says so rather than silently doing nothing. Outside a table, these aren't intercepted at all | No direct equivalent |
 | ~i~ | Enter edit mode for whatever the line-cursor is currently on (a heading's own title, a paragraph, a table cell, a list item), cursor positioned at the start of the line by default | Loosely inspired by vim's own ~i~, not a real org/Emacs binding |
 | ~j~ | Move keyboard focus to the next visible heading specifically -- a faster heading-to-heading jump than ~↓~ | No direct equivalent — the web/vim-style analog |
 | ~k~ | Move keyboard focus to the previous visible heading specifically | Same |
@@ -1104,6 +1105,7 @@ Translation rules — this is a direct implementation of real god-mode.el's own 
 | god-mode sequence | Emacs chord | Action |
 |---+---+---|
 | ~↓~ / ~↑~ | ~<down>~ / ~<up>~ | Move focus to the next/previous visible LINE -- any row, not just headings (matches the plain, non-god-mode shortcut exactly, including auto-revealing a folded heading's own body when moving down into it) |
+| ~S-↓~ / ~S-↑~ / ~S-←~ / ~S-→~ | ~S-<down>~ / ~S-<up>~ / ~S-<left>~ / ~S-<right>~ | Table cell navigation -- see the plain-shortcut table above, same behavior |
 | ~i~ | (not a real chord) | Enter edit mode for the current line, cursor at the start by default -- see below for ~a~/~e~ |
 | ~a~ | ~C-a~ | Before pressing ~i~: the eventual cursor lands at the START of the line instead of the default |
 | ~e~ | ~C-e~ | Before pressing ~i~: the eventual cursor lands at the END of the line instead of the default |
@@ -1126,7 +1128,7 @@ Translation rules — this is a direct implementation of real god-mode.el's own 
 | ~c SPC c~ | ~C-c c~ | Open Capture (see below — exits god-mode and offers hotkey template selection) |
 | ~h SPC i~ | ~C-h i~ | Open Help/Docs — see below, doesn't exit god-mode (real Emacs's own actual Info binding) |
 
-Sequences that are valid god-mode input but have no equivalent in this app yet report that plainly rather than silently doing nothing or approximating something misleading: ~c c~ (checkbox toggling / code-block execution — both need a finer keyboard focus than a heading), ~c |~ and the table row/column sequences (no table-cell keyboard focus exists), ~c SPC l~ / ~c l~ / ~c o~ (no link-insertion or cursor-based link-opening command exists), and ~c e~ (use File → Export instead).
+Sequences that are valid god-mode input but have no equivalent in this app yet report that plainly rather than silently doing nothing or approximating something misleading: ~c c~ (checkbox toggling / code-block execution — both need a finer keyboard focus than a heading), ~c |~ and the table row/column-insert sequences (use the always-visible +row/+col controls below any table instead), ~c SPC l~ / ~c l~ / ~c o~ (no link-insertion or cursor-based link-opening command exists), and ~c e~ (use File → Export instead).
 
 *~c SPC c~ (Capture) and ~c t~ on a heading with no current TODO state and more than one workflow both exit god-mode and hand off to a hotkey-driven picker*, rather than staying in god-mode's own chord system — real org's own actual ~C-c c~ works the same way: the keybinding itself never reads a template letter, the command it invokes does that as its own separate, subsequent prompt once already running. Both pickers here work the same way: opening one shows every option (capture template, or TODO state) as normal, tappable buttons, and — since this came from god-mode, a keyboard-driven context — also labels each one with its own single-character hotkey, typeable immediately without needing to reach for a tap at all. *A hotkey only appears, and is only ever accepted, when it doesn't collide with another option's own key* — if two capture templates (or two TODO states, even across different ~#+TODO:~ workflows shown in the same picker) happen to share a key, neither gets a hotkey at all; that specific choice becomes tap-only rather than guessing which one a keypress meant. Opening either picker any other way (a plain tap, the ⋮ Capture button, the action-menu's own "Mark as TODO") never shows hotkeys — they're a god-mode-specific convenience, not a general feature of these pickers. ~Escape~ still cancels either picker, same as any other panel.
 

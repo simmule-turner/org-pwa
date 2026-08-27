@@ -2882,19 +2882,39 @@ function rowMatchesKeyboardFocus(row) {
   return row.node === keyboardFocusedBodyRow.node;
 }
 
+/** The raw table.rows array index (which, like editingCell's own
+ *  existing convention, INCLUDES rule/hline entries) of the first
+ *  actual data row in `table` -- the entry point keyboard table-cell
+ *  navigation lands on when a table first gains keyboard focus.
+ *  Returns 0 if `table` has no data rows at all (shouldn't normally
+ *  happen, but a defined fallback beats an out-of-range index). */
+function firstDataRowIndex(table) {
+  const idx = table.rows.findIndex((r) => r.type !== 'rule');
+  return idx === -1 ? 0 : idx;
+}
+
 /** Sets keyboard focus to `row` (one of flattenVisibleRows' own row
  *  objects) -- keyboardFocusedHeading is kept in sync to the row's
  *  own containing heading either way (itself, if row IS a heading;
  *  its own .heading reference otherwise), so every existing
  *  heading-specific action still has a sensible heading to act on
- *  regardless of where the line-cursor has actually drilled to. */
+ *  regardless of where the line-cursor has actually drilled to.
+ *  Landing on a table also initializes keyboardFocusedCellPos to its
+ *  own first data row/first column -- the entry point Shift+arrow's
+ *  cell-by-cell stepping (moveTableCellFocus) then moves from. */
 function setKeyboardFocusToRow(row) {
   if (row.rowType === 'heading') {
     keyboardFocusedHeading = row.node;
     keyboardFocusedBodyRow = null;
+    keyboardFocusedCellPos = null;
+  } else if (row.rowType === 'table') {
+    keyboardFocusedHeading = row.heading;
+    keyboardFocusedBodyRow = row;
+    keyboardFocusedCellPos = { rowIndex: firstDataRowIndex(row.node), colIndex: 0 };
   } else {
     keyboardFocusedHeading = row.heading;
     keyboardFocusedBodyRow = row;
+    keyboardFocusedCellPos = null;
   }
 }
 
@@ -2915,6 +2935,7 @@ function setKeyboardFocusToRow(row) {
 function setKeyboardFocusToHeading(heading) {
   keyboardFocusedHeading = heading;
   keyboardFocusedBodyRow = null;
+  keyboardFocusedCellPos = null;
 }
 
 /** Moves the line-cursor to the adjacent VISIBLE row -- headings,
@@ -2944,6 +2965,35 @@ function moveLineFocus(delta) {
     nextIndex = Math.max(0, Math.min(rows.length - 1, currentIndex + delta));
   }
   setKeyboardFocusToRow(rows[nextIndex]);
+  render();
+  scrollFocusedHeadingIntoView();
+}
+
+function moveTableCellFocus(deltaRow, deltaCol) {
+  if (!keyboardFocusedBodyRow || keyboardFocusedBodyRow.rowType !== 'table' || !keyboardFocusedCellPos) return;
+  const table = keyboardFocusedBodyRow.node;
+  const dataRowIndices = table.rows.map((r, i) => i).filter((i) => table.rows[i].type !== 'rule');
+  const colCount = Math.max(1, ...table.rows.filter((r) => r.type !== 'rule').map((r) => r.cells.length));
+  let { rowIndex, colIndex } = keyboardFocusedCellPos;
+
+  if (deltaRow !== 0) {
+    const currentPos = dataRowIndices.indexOf(rowIndex);
+    const nextPos = Math.max(0, Math.min(dataRowIndices.length - 1, currentPos + deltaRow));
+    if (dataRowIndices[nextPos] === rowIndex) {
+      setStatus(deltaRow > 0 ? 'Already at the last row.' : 'Already at the first row.');
+      return;
+    }
+    rowIndex = dataRowIndices[nextPos];
+  }
+  if (deltaCol !== 0) {
+    const nextCol = Math.max(0, Math.min(colCount - 1, colIndex + deltaCol));
+    if (nextCol === colIndex) {
+      setStatus(deltaCol > 0 ? 'Already at the last column.' : 'Already at the first column.');
+      return;
+    }
+    colIndex = nextCol;
+  }
+  keyboardFocusedCellPos = { rowIndex, colIndex };
   render();
   scrollFocusedHeadingIntoView();
 }
@@ -2988,7 +3038,9 @@ function enterInsertModeAtCurrentLine() {
     editingParagraph = { heading: row.heading, paragraph: row.node };
     render();
   } else if (row.rowType === 'table') {
-    editingCell = { heading: row.heading, table: row.node, rowIndex: 0, colIndex: 0 };
+    const rowIndex = keyboardFocusedCellPos ? keyboardFocusedCellPos.rowIndex : 0;
+    const colIndex = keyboardFocusedCellPos ? keyboardFocusedCellPos.colIndex : 0;
+    editingCell = { heading: row.heading, table: row.node, rowIndex, colIndex };
     render();
   } else if (row.rowType === 'list-item') {
     editingListItem = { heading: row.heading, item: row.item };
@@ -3225,6 +3277,10 @@ const GOD_MODE_ACTIONS = {
   },
   '<up>': () => moveLineFocus(-1),
   '<down>': () => moveLineFocus(1),
+  'S-<up>': () => moveTableCellFocus(-1, 0),
+  'S-<down>': () => moveTableCellFocus(1, 0),
+  'S-<left>': () => moveTableCellFocus(0, -1),
+  'S-<right>': () => moveTableCellFocus(0, 1),
   'C-c C-x C-w': () => {
     if (keyboardFocusedHeading) cutSubtree(keyboardFocusedHeading);
   },
@@ -3422,6 +3478,14 @@ document.addEventListener('keydown', (e) => {
     moveLineFocus(-1);
     return;
   }
+  if (!e.altKey && e.shiftKey && keyboardFocusedBodyRow && keyboardFocusedBodyRow.rowType === 'table' && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+    e.preventDefault();
+    if (e.key === 'ArrowUp') moveTableCellFocus(-1, 0);
+    else if (e.key === 'ArrowDown') moveTableCellFocus(1, 0);
+    else if (e.key === 'ArrowLeft') moveTableCellFocus(0, -1);
+    else moveTableCellFocus(0, 1);
+    return;
+  }
   if (!keyboardFocusedHeading) return; // everything remaining needs a specific heading to act on
 
   if (e.key === 'i') {
@@ -3561,6 +3625,7 @@ let actionMenuFor = null;
 // never asked for org-style keyboard nav in the first place.
 let keyboardFocusedHeading = null;
 let keyboardFocusedBodyRow = null;
+let keyboardFocusedCellPos = null;
 let pendingCursorPosition = null;
 // god-mode: whether it's currently active (toggled by Escape -- see
 // the keydown listener below), and the in-progress key-sequence
@@ -4719,6 +4784,7 @@ async function cutSubtree(heading) {
   editingGeneral = null;
   if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.heading === heading) {
     keyboardFocusedBodyRow = null;
+    keyboardFocusedCellPos = null;
   }
   removeHeading(state.doc, heading);
   commitAndRender('Cut subtree to clipboard');
@@ -5972,6 +6038,10 @@ function renderTableRow(row) {
       tdEl.style.padding = '3px 6px';
       tdEl.style.cursor = 'text';
       if (isTableHeaderRow(row.node, rowIndex)) tdEl.style.fontWeight = '600';
+      if (rowMatchesKeyboardFocus(row) && keyboardFocusedCellPos && keyboardFocusedCellPos.rowIndex === rowIndex && keyboardFocusedCellPos.colIndex === colIndex) {
+        tdEl.style.outline = '2px solid var(--accent)';
+        tdEl.style.outlineOffset = '-2px';
+      }
 
       const isEditing =
         editingCell &&
