@@ -229,20 +229,29 @@
   .menu-list-item {
     display: block; width: 100%; text-align: left; font: inherit; font-size: 15px; padding: 12px 14px; min-height: 44px;
     box-sizing: border-box; background: var(--bg); color: var(--fg); border: none; border-radius: 0; border-bottom: 1px solid var(--border);
+    cursor: pointer;
   }
   .menu-list-item:last-child { border-bottom: none; }
-  .menu-list-item:active { background: var(--surface); }
+  /* Hover only on devices that genuinely support it (a mouse) -- on a
+     touch device, :hover fires on tap with no reliable way to clear
+     it again until something else is tapped, which would leave a
+     stray highlight stuck on whatever was last touched. --surface is
+     already theme-aware (its own separate light/dark/system-auto
+     definitions), so this reads correctly in either theme with no
+     extra work here. */
+  @media (hover: hover) {
+    .menu-list-item:hover { background: var(--surface); }
+  }
+  .menu-list-item:active { background: var(--border-strong); }
   .menu-list-item:disabled { opacity: 0.5; }
-  /* A size override for a menu-list living in a small, fixed-position
-     popup (currently just Extras, min-width 140px / max-width 220px)
-     -- the base .menu-list-item sizing above was designed for the
-     full-width File/View/More panels; at this popup's own narrow
-     width, that same padding/font-size/min-height read as cramped
-     and wrap-prone rather than roomy. Applied alongside
-     .menu-list-item, not instead of it -- only these size properties
-     change, the shared structural ones (full-width row, left-aligned
-     text, divider borders) stay exactly the same. */
-  .menu-list-item.compact { font-size: 14px; padding: 9px 10px; min-height: 0; }
+  .menu-list-item-disabled { opacity: 0.5; cursor: default; pointer-events: none; }
+  /* The "small" menu-size setting (Settings -> Appearance -> Menu
+     Size) -- applies to every popup menu at once via a single
+     data-menu-size attribute on <html> (see app.js's own
+     applyMenuSize), rather than each menu needing its own separate
+     styling choice. "Regular" (the default; no attribute set at all)
+     uses the sizing declared on .menu-list-item itself above. */
+  html[data-menu-size="small"] .menu-list-item { font-size: 14px; padding: 9px 10px; min-height: 0; }
   .panel label { font-size: 12px; opacity: 0.75; display: block; margin-bottom: 2px; }
   .panel input[type="text"], .panel input[type="password"], .panel input[type="number"], .panel textarea {
     font: inherit; font-size: 15px; padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: 6px;
@@ -390,7 +399,7 @@
       z-index: 51;
       width: auto;
       min-width: 140px;
-      max-width: 220px;
+      max-width: 320px;
       border-radius: 10px;
       border: 1px solid var(--border-strong);
       background: var(--bg);

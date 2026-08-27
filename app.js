@@ -182,6 +182,8 @@ import {
   setDocsViewState,
   getFontFamily,
   setFontFamily,
+  getMenuSize,
+  setMenuSize,
   getFontSize,
   setFontSize,
   getTablesFontSize,
@@ -7519,48 +7521,6 @@ function menuButton(label, onClick, disabled) {
   return btn;
 }
 
-/** Wraps menuButton() with alias-lookup support for org-xx-menu-aliases
- *  (see src/menu-alias.js's own docs for the full "menu:Label;alias"
- *  syntax and semantics). `aliasMap` is that variable's own already-
- *  parsed lookup table for ONE of its four menus specifically (e.g.
- *  `parseMenuAliases(getMenuAliases(state.localVariables)).file` for
- *  the File menu) -- callers pass in just their own menu's own
- *  sub-table, not the full four-menu structure. `label` is this
- *  specific button's real, built-in name (what a caller would look it
- *  up by, and what displays if nothing overrides it).
- *
- *  Returns null if this button has been explicitly omitted (an empty
- *  alias, "menu:Label;" with nothing after the semicolon) -- callers
- *  should only append the return value to their row if it's non-null,
- *  e.g. `const btn = aliasedMenuButton(aliases, 'New', onClick); if
- *  (btn) row.appendChild(btn);`.
- *
- *  Sized to its own content (via menuButton) by default -- callers
- *  building one of the app's own top-level dropdown menus (File/View/
- *  More/Export) additionally wrap the result in styleAsMenuListItem
- *  for the full-width vertical-list look those menus use; this
- *  function's own job stays just the alias lookup either way. */
-function aliasedMenuButton(aliasMap, label, onClick, disabled) {
-  const alias = aliasMap ? aliasMap[label] : undefined;
-  if (alias === '') return null; // explicitly omitted
-  const btn = menuButton(alias || label, onClick, disabled);
-  if (alias) btn.setAttribute('aria-label', label); // preserve the real meaning for accessibility once the visible text is just an icon/short alias
-  return btn;
-}
-
-/** Same idea as aliasedMenuButton, but the resulting button can never
- *  be hidden -- an empty alias falls back to the real, default label
- *  instead of omitting the button entirely, which is otherwise
- *  identical to aliasedMenuButton's own alias semantics (a non-empty
- *  alias still replaces the visible text, with the real label
- *  preserved as the accessible name). Never returns null. */
-function requiredMenuButton(aliasMap, label, onClick, disabled) {
-  const alias = aliasMap ? aliasMap[label] : undefined;
-  const btn = menuButton(alias || label, onClick, disabled);
-  if (alias) btn.setAttribute('aria-label', label);
-  return btn;
-}
-
 /** Appends a menu's own buttons to `container`, in whichever order
  *  org-xx-menu-aliases specifies for that menu, or the app's own
  *  default order otherwise -- see this function's own doc comment
@@ -7627,19 +7587,59 @@ function menuListContainer() {
   return el;
 }
 
-/** Restyles `btn` (already built via menuButton/aliasedMenuButton/
- *  requiredMenuButton) from its own default, compact "pill" look into
- *  a full-width, left-aligned vertical menu-list item. Purely
- *  cosmetic -- btn's own label, aria-label, disabled state, and
- *  onclick are all already set by the time this runs, and none of
- *  them are touched here, so this can wrap any button
- *  aliasedMenuButton/requiredMenuButton already returned without
- *  disturbing org-xx-menu-aliases' own configurability at all. A null
- *  btn (already omitted via aliasedMenuButton's own alias==='' rule)
- *  passes through unchanged, so callers can wrap unconditionally. */
-function styleAsMenuListItem(btn) {
-  if (btn) btn.className = 'menu-list-item';
-  return btn;
+/** Builds one <div>-based popup-menu item -- the div/onclick-based
+ *  counterpart to menuButton (which builds a <button>), matching
+ *  Extras' own existing item-construction approach exactly, so every
+ *  popup menu in this app (File/View/More/Export/the New-Open-Save-As
+ *  backend picker, alongside Extras itself) is built the identical
+ *  way, not merely restyled to resemble it. Icon-prefix parsing
+ *  (LEADING_ICON_RE) matches menuButton's own exactly. A <div> has no
+ *  native disabled attribute -- .menu-list-item-disabled (CSS) plus
+ *  aria-disabled stand in for it, with the click handler simply never
+ *  attached at all rather than attached-but-blocked. */
+function menuDivItem(label, onClick, disabled) {
+  const el = document.createElement('div');
+  el.className = 'menu-list-item';
+  el.setAttribute('role', 'menuitem');
+  const match = LEADING_ICON_RE.exec(label);
+  if (match) {
+    const icon = document.createElement('span');
+    icon.textContent = match[1];
+    icon.style.fontSize = '1.3em';
+    icon.style.verticalAlign = '-0.1em';
+    el.appendChild(icon);
+    el.appendChild(document.createTextNode(match[2] + label.slice(match[0].length)));
+  } else {
+    el.textContent = label;
+  }
+  if (disabled) {
+    el.classList.add('menu-list-item-disabled');
+    el.setAttribute('aria-disabled', 'true');
+  } else {
+    el.onclick = onClick;
+  }
+  return el;
+}
+
+/** The div-item counterpart to aliasedMenuButton -- same org-xx-menu-
+ *  aliases lookup/omission semantics exactly (see aliasedMenuButton's
+ *  own docs for the full "menu:Label;alias" rules), just producing a
+ *  menuDivItem instead of a menuButton. */
+function aliasedMenuDivItem(aliasMap, label, onClick, disabled) {
+  const alias = aliasMap ? aliasMap[label] : undefined;
+  if (alias === '') return null; // explicitly omitted
+  const el = menuDivItem(alias || label, onClick, disabled);
+  if (alias) el.setAttribute('aria-label', label);
+  return el;
+}
+
+/** The div-item counterpart to requiredMenuButton -- never omitted,
+ *  same as requiredMenuButton's own semantics. */
+function requiredMenuDivItem(aliasMap, label, onClick, disabled) {
+  const alias = aliasMap ? aliasMap[label] : undefined;
+  const el = menuDivItem(alias || label, onClick, disabled);
+  if (alias) el.setAttribute('aria-label', label);
+  return el;
 }
 
 /** Same idea as menuButton, but with explicit comfortable sizing
@@ -7695,52 +7695,42 @@ function renderFileMenuContent() {
   if (fileMenuStep === null) {
     const row = menuListContainer();
     const fileMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).file;
-    const newBtn = styleAsMenuListItem(
-      aliasedMenuButton(fileMenuAliases, 'New', () => {
-        fileMenuStep = 'new';
+    const newBtn = aliasedMenuDivItem(fileMenuAliases, 'New', () => {
+      fileMenuStep = 'new';
+      renderFileMenu();
+    });
+    const openBtn = aliasedMenuDivItem(fileMenuAliases, 'Open', () => {
+      fileMenuStep = 'open';
+      renderFileMenu();
+    });
+    const saveBtn = aliasedMenuDivItem(
+      fileMenuAliases,
+      'Save',
+      () => {
+        fileMenuOpen = false;
         renderFileMenu();
-      })
+        saveCurrent();
+      },
+      !state.documentId
     );
-    const openBtn = styleAsMenuListItem(
-      aliasedMenuButton(fileMenuAliases, 'Open', () => {
-        fileMenuStep = 'open';
+    const saveAsBtn = aliasedMenuDivItem(
+      fileMenuAliases,
+      'Save As',
+      () => {
+        fileMenuStep = 'saveas';
         renderFileMenu();
-      })
+      },
+      !state.doc
     );
-    const saveBtn = styleAsMenuListItem(
-      aliasedMenuButton(
-        fileMenuAliases,
-        'Save',
-        () => {
-          fileMenuOpen = false;
-          renderFileMenu();
-          saveCurrent();
-        },
-        !state.documentId
-      )
-    );
-    const saveAsBtn = styleAsMenuListItem(
-      aliasedMenuButton(
-        fileMenuAliases,
-        'Save As',
-        () => {
-          fileMenuStep = 'saveas';
-          renderFileMenu();
-        },
-        !state.doc
-      )
-    );
-    const exportBtn = styleAsMenuListItem(
-      aliasedMenuButton(
-        fileMenuAliases,
-        'Export',
-        () => {
-          fileMenuStep = 'export';
-          exportFormat = null;
-          renderFileMenu();
-        },
-        !state.doc
-      )
+    const exportBtn = aliasedMenuDivItem(
+      fileMenuAliases,
+      'Export',
+      () => {
+        fileMenuStep = 'export';
+        exportFormat = null;
+        renderFileMenu();
+      },
+      !state.doc
     );
     appendMenuButtonsInOrder(row, fileMenuAliases, [
       { label: 'New', btn: newBtn },
@@ -7775,46 +7765,38 @@ function renderFileMenuContent() {
 
   if (!isFileSystemAccessUnsupported()) {
     btnRow.appendChild(
-      styleAsMenuListItem(
-        menuButton('Local file', () => {
-          if (fileMenuStep === 'open') openFromFilesystem();
-          else if (fileMenuStep === 'new') newOnFilesystem();
-          else saveAsFilesystem();
-        })
-      )
+      menuDivItem('Local file', () => {
+        if (fileMenuStep === 'open') openFromFilesystem();
+        else if (fileMenuStep === 'new') newOnFilesystem();
+        else saveAsFilesystem();
+      })
     );
   } else {
     // This platform has no File System Access API at all (every browser
     // on iOS) — offer the read-once/download-based fallback instead.
     btnRow.appendChild(
-      styleAsMenuListItem(
-        menuButton(fileMenuStep === 'open' ? 'Import file\u2026' : 'Local (download)', () => {
-          if (fileMenuStep === 'open') openFromImport();
-          else if (fileMenuStep === 'new') newViaImport();
-          else saveAsImport();
-        })
-      )
+      menuDivItem(fileMenuStep === 'open' ? 'Import file\u2026' : 'Local (download)', () => {
+        if (fileMenuStep === 'open') openFromImport();
+        else if (fileMenuStep === 'new') newViaImport();
+        else saveAsImport();
+      })
     );
   }
 
   btnRow.appendChild(
-    styleAsMenuListItem(
-      menuButton('GitHub', () => {
-        if (fileMenuStep === 'open') openFromGithub();
-        else if (fileMenuStep === 'new') newOnGithub();
-        else saveAsGithub();
-      })
-    )
+    menuDivItem('GitHub', () => {
+      if (fileMenuStep === 'open') openFromGithub();
+      else if (fileMenuStep === 'new') newOnGithub();
+      else saveAsGithub();
+    })
   );
 
   btnRow.appendChild(
-    styleAsMenuListItem(
-      menuButton('WebDAV', () => {
-        if (fileMenuStep === 'open') openFromWebdav();
-        else if (fileMenuStep === 'new') newOnWebdav();
-        else saveAsWebdav();
-      })
-    )
+    menuDivItem('WebDAV', () => {
+      if (fileMenuStep === 'open') openFromWebdav();
+      else if (fileMenuStep === 'new') newOnWebdav();
+      else saveAsWebdav();
+    })
   );
 
   fileMenuPanel.appendChild(btnRow);
@@ -7906,36 +7888,26 @@ function renderExportFlow() {
 
     const row = menuListContainer();
     const exportMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).export;
-    const asciiBtn = styleAsMenuListItem(
-      aliasedMenuButton(exportMenuAliases, 'ASCII', () => {
-        exportFormat = 'ascii';
-        renderFileMenu();
-      })
-    );
-    const icsBtn = styleAsMenuListItem(
-      aliasedMenuButton(exportMenuAliases, 'Calendar (.ics)', () => {
-        exportFormat = 'icalendar';
-        renderFileMenu();
-      })
-    );
-    const htmlBtn = styleAsMenuListItem(
-      aliasedMenuButton(exportMenuAliases, 'HTML', () => {
-        exportFormat = 'html';
-        renderFileMenu();
-      })
-    );
-    const mdBtn = styleAsMenuListItem(
-      aliasedMenuButton(exportMenuAliases, 'Markdown', () => {
-        exportFormat = 'markdown';
-        renderFileMenu();
-      })
-    );
-    const odtBtn = styleAsMenuListItem(
-      aliasedMenuButton(exportMenuAliases, 'ODT', () => {
-        exportFormat = 'odt';
-        renderFileMenu();
-      })
-    );
+    const asciiBtn = aliasedMenuDivItem(exportMenuAliases, 'ASCII', () => {
+      exportFormat = 'ascii';
+      renderFileMenu();
+    });
+    const icsBtn = aliasedMenuDivItem(exportMenuAliases, 'Calendar (.ics)', () => {
+      exportFormat = 'icalendar';
+      renderFileMenu();
+    });
+    const htmlBtn = aliasedMenuDivItem(exportMenuAliases, 'HTML', () => {
+      exportFormat = 'html';
+      renderFileMenu();
+    });
+    const mdBtn = aliasedMenuDivItem(exportMenuAliases, 'Markdown', () => {
+      exportFormat = 'markdown';
+      renderFileMenu();
+    });
+    const odtBtn = aliasedMenuDivItem(exportMenuAliases, 'ODT', () => {
+      exportFormat = 'odt';
+      renderFileMenu();
+    });
     appendMenuButtonsInOrder(row, exportMenuAliases, [
       { label: 'ASCII', btn: asciiBtn },
       { label: 'Calendar (.ics)', btn: icsBtn },
@@ -7956,25 +7928,21 @@ function renderExportFlow() {
     fileMenuPanel.appendChild(label);
 
     const row = menuListContainer();
-    row.appendChild(styleAsMenuListItem(menuButton('This file', () => performExport('icalendar', null))));
+    row.appendChild(menuDivItem('This file', () => performExport('icalendar', null)));
     if (agendaFilesConfig.length > 0) {
       row.appendChild(
-        styleAsMenuListItem(
-          menuButton('This file + Agenda Files', async () => {
-            setStatus('Loading agenda files\u2026');
-            await waitForAgendaFilesLoaded();
-            await performExport('icalendar', 'agenda-files');
-          })
-        )
+        menuDivItem('This file + Agenda Files', async () => {
+          setStatus('Loading agenda files\u2026');
+          await waitForAgendaFilesLoaded();
+          await performExport('icalendar', 'agenda-files');
+        })
       );
     }
     row.appendChild(
-      styleAsMenuListItem(
-        menuButton('Choose a heading\u2026', () => {
-          exportPickingHeading = true;
-          renderFileMenu();
-        })
-      )
+      menuDivItem('Choose a heading\u2026', () => {
+        exportPickingHeading = true;
+        renderFileMenu();
+      })
     );
     fileMenuPanel.appendChild(row);
 
@@ -8297,7 +8265,7 @@ function renderViewMenuContent() {
     ['tasklist', 'TODO'],
     ['text', 'Text'],
   ]) {
-    const btn = styleAsMenuListItem(aliasedMenuButton(viewMenuAliases, label, () => switchToView(key)));
+    const btn = aliasedMenuDivItem(viewMenuAliases, label, () => switchToView(key));
     if (btn && key === currentView) btn.style.fontWeight = '700';
     labeledButtons.push({ label, btn });
   }
@@ -9527,6 +9495,14 @@ function applyFontFamily(fontFamily) {
   );
 }
 
+function applyMenuSize(menuSize) {
+  if (menuSize === 'small') {
+    document.documentElement.setAttribute('data-menu-size', 'small');
+  } else {
+    document.documentElement.removeAttribute('data-menu-size'); // 'regular' -- the default, no attribute needed
+  }
+}
+
 function applyFontSize(size) {
   document.documentElement.style.setProperty('--app-font-size', size + 'px');
 }
@@ -10254,6 +10230,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
   const theme = await getTheme(kv);
   const fontFamily = await getFontFamily(kv);
   const fontSize = await getFontSize(kv);
+  const menuSize = await getMenuSize(kv);
 
   const appearanceSection = document.createElement('div');
   appearanceSection.className = 'settings-section';
@@ -10378,6 +10355,32 @@ async function renderSettingsView(target = settingsRenderTarget) {
   otherFontHint.style.opacity = '0.6';
   otherFontHint.style.margin = '4px 0 8px';
   appearanceSection.appendChild(otherFontHint);
+
+  const menuSizeTitle = document.createElement('div');
+  menuSizeTitle.className = 'panel-section-title';
+  menuSizeTitle.textContent = 'Menu Size';
+  appearanceSection.appendChild(menuSizeTitle);
+
+  const menuSizeRow = document.createElement('div');
+  menuSizeRow.className = 'panel-row';
+  for (const opt of ['regular', 'small']) {
+    const btn = menuButton(opt[0].toUpperCase() + opt.slice(1), async () => {
+      await setMenuSize(kv, opt);
+      applyMenuSize(opt);
+      renderSettingsView();
+    });
+    btn.style.flex = '1'; // equal width per button, same reasoning as the theme/font rows above
+    if (opt === menuSize) btn.style.fontWeight = '700';
+    menuSizeRow.appendChild(btn);
+  }
+  appearanceSection.appendChild(menuSizeRow);
+
+  const menuSizeHint = document.createElement('div');
+  menuSizeHint.textContent = 'Applies to every popup menu (File, View, More, Export, and Extras) at once.';
+  menuSizeHint.style.fontSize = '11px';
+  menuSizeHint.style.opacity = '0.6';
+  menuSizeHint.style.margin = '4px 0 8px';
+  appearanceSection.appendChild(menuSizeHint);
 
   container.appendChild(renderQuickSettingsSection());
 
@@ -10764,6 +10767,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
         applyTheme(await getTheme(kv));
       }
       if (imported.includes('fontFamily')) applyFontFamily(await getFontFamily(kv));
+      if (imported.includes('menuSize')) applyMenuSize(await getMenuSize(kv));
       if (imported.includes('fontSize')) applyFontSize(await getFontSize(kv));
       if (imported.includes('tablesFontSize')) applyTablesFontSize(await getTablesFontSize(kv));
       if (imported.includes('github')) githubConfig = await getGithubConfig(kv);
@@ -11936,8 +11940,7 @@ function renderExtraMenu() {
       continue;
     }
     const row = document.createElement('div');
-    row.className = 'menu-list-item compact';
-    row.style.cursor = 'pointer';
+    row.className = 'menu-list-item';
     row.textContent = entry.label;
     row.onclick = () => runExtraMenuEntry(entry);
     extraMenuPanel.appendChild(row);
@@ -12055,66 +12058,54 @@ function renderMoreMenuContent() {
   const row = menuListContainer();
   const moreMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).more;
 
-  const searchBtnOption = styleAsMenuListItem(
-    aliasedMenuButton(moreMenuAliases, 'Search', () => {
-      moreOpen = false;
-      renderMoreMenu();
-      searchBtn.click();
-    })
-  );
+  const searchBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Search', () => {
+    moreOpen = false;
+    renderMoreMenu();
+    searchBtn.click();
+  });
 
-  const captureBtnOption = styleAsMenuListItem(
-    aliasedMenuButton(moreMenuAliases, 'Capture', () => {
-      moreOpen = false;
-      renderMoreMenu();
-      captureBtn.click();
-    })
-  );
+  const captureBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Capture', () => {
+    moreOpen = false;
+    renderMoreMenu();
+    captureBtn.click();
+  });
 
-  const historyBtnOption = styleAsMenuListItem(
-    aliasedMenuButton(
-      moreMenuAliases,
-      'History',
-      () => {
-        closeAllOverlayPanels();
-        historyOpen = true;
-        render();
-        renderHistoryPanel();
-      },
-      !state.doc
-    )
+  const historyBtnOption = aliasedMenuDivItem(
+    moreMenuAliases,
+    'History',
+    () => {
+      closeAllOverlayPanels();
+      historyOpen = true;
+      render();
+      renderHistoryPanel();
+    },
+    !state.doc
   );
   if (historyBtnOption) historyBtnOption.setAttribute('aria-label', 'Undo history');
 
-  const addBtnOption = styleAsMenuListItem(
-    aliasedMenuButton(moreMenuAliases, '+', () => {
-      moreOpen = false;
-      renderMoreMenu();
-      addBtn.click();
-    })
-  );
+  const addBtnOption = aliasedMenuDivItem(moreMenuAliases, '+', () => {
+    moreOpen = false;
+    renderMoreMenu();
+    addBtn.click();
+  });
   if (addBtnOption) addBtnOption.setAttribute('aria-label', 'Add heading');
 
-  const docsBtnOption = styleAsMenuListItem(
-    aliasedMenuButton(moreMenuAliases, '?', () => {
-      closeAllOverlayPanels();
-      docsOpen = true;
-      if (isWideLayout()) {
-        render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
-      } else {
-        renderDocsView(outlineEl); // narrow: replaces #outline directly, exactly as before this feature existed
-      }
-    })
-  );
+  const docsBtnOption = aliasedMenuDivItem(moreMenuAliases, '?', () => {
+    closeAllOverlayPanels();
+    docsOpen = true;
+    if (isWideLayout()) {
+      render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
+    } else {
+      renderDocsView(outlineEl); // narrow: replaces #outline directly, exactly as before this feature existed
+    }
+  });
   if (docsBtnOption) docsBtnOption.setAttribute('aria-label', 'Help / Docs');
 
-  const settingsBtnOption = styleAsMenuListItem(
-    requiredMenuButton(moreMenuAliases, 'Settings', () => {
-      moreOpen = false;
-      renderMoreMenu();
-      settingsBtn.click();
-    })
-  );
+  const settingsBtnOption = requiredMenuDivItem(moreMenuAliases, 'Settings', () => {
+    moreOpen = false;
+    renderMoreMenu();
+    settingsBtn.click();
+  });
 
   appendMenuButtonsInOrder(row, moreMenuAliases, [
     { label: 'Search', btn: searchBtnOption },
@@ -12241,6 +12232,7 @@ async function bootstrap() {
   customThemeColors = await getCustomThemeColors(kv);
   applyTheme(await getTheme(kv));
   applyFontFamily(await getFontFamily(kv));
+  applyMenuSize(await getMenuSize(kv));
   applyFontSize(await getFontSize(kv));
   applyTablesFontSize(await getTablesFontSize(kv));
   syncContentOffset();
