@@ -4766,6 +4766,44 @@ function confirmHeadingDelete(heading) {
  *  subtree to the clipboard, matching real org's own actual "cut"
  *  semantics (the kill ring, not just an outright delete -- so the
  *  cut content can be yanked/pasted elsewhere), then deletes it. */
+/** Recursively finds the list item at `lineIndex`, possibly nested
+ *  within a sub-list -- list items aren't direct heading.body
+ *  children the way a paragraph/table/block is, so finding a fresh
+ *  one after a re-parse needs to walk this nested structure. */
+function findListItemByLineIndex(items, lineIndex) {
+  for (const item of items) {
+    if (item.lineIndex === lineIndex) return item;
+    for (const child of item.children) {
+      if (child.type === 'list') {
+        const found = findListItemByLineIndex(child.items, lineIndex);
+        if (found) return found;
+      }
+    }
+  }
+  return null;
+}
+
+/** THE FIX: re-syncs keyboardFocusedBodyRow to freshly-parsed body
+ *  content after an edit that reparsed heading.body from scratch --
+ *  see this section's own docs above for the full mechanics. Handles
+ *  all three drillable-into row types (paragraph, table, list-item),
+ *  matched by lineIndex -- an in-place edit doesn't move where the
+ *  content itself starts within the heading's own body. No-op if
+ *  keyboard focus wasn't actually on `oldRowType`-at-`oldLineIndex`
+ *  to begin with. */
+function resyncKeyboardFocusToBodyRow(heading, oldRowType, oldLineIndex) {
+  if (!keyboardFocusedBodyRow || keyboardFocusedBodyRow.heading !== heading || keyboardFocusedBodyRow.rowType !== oldRowType) return;
+  if (oldRowType === 'list-item') {
+    if (keyboardFocusedBodyRow.item.lineIndex !== oldLineIndex) return;
+    const freshItem = findListItemByLineIndex((heading.body || []).filter((n) => n.type === 'list').flatMap((n) => n.items), oldLineIndex);
+    if (freshItem) keyboardFocusedBodyRow = { ...keyboardFocusedBodyRow, item: freshItem };
+    return;
+  }
+  if (keyboardFocusedBodyRow.node.lineIndex !== oldLineIndex) return;
+  const freshNode = (heading.body || []).find((node) => node.type === oldRowType && node.lineIndex === oldLineIndex);
+  if (freshNode) keyboardFocusedBodyRow = { ...keyboardFocusedBodyRow, node: freshNode };
+}
+
 async function cutSubtree(heading) {
   const text = serializeHeadingSubtree(heading);
   try {
@@ -5889,6 +5927,7 @@ function renderRow(row, todoSequence) {
         const { heading, item } = editingListItem;
         editingListItem = null;
         editListItemText(heading, item, input.value.replace(/\n/g, ' '));
+        resyncKeyboardFocusToBodyRow(heading, 'list-item', item.lineIndex);
         commitAndRender('Edited list item text');
       });
       autoGrowTextarea(input);
@@ -6083,6 +6122,7 @@ function renderTableRow(row) {
           const { heading, table, rowIndex: ri, colIndex: ci } = editingCell;
           editingCell = null;
           setTableCell(heading, table, ri, ci, input.value.replace(/\n/g, ' '));
+          resyncKeyboardFocusToBodyRow(heading, 'table', table.lineIndex);
           commitAndRender('Edited table cell');
         });
         autoGrowTextarea(input);
@@ -6136,6 +6176,7 @@ function renderTableRow(row) {
   controls.appendChild(
     smallButton('+ row', 'Add row', () => {
       insertTableRow(row.heading, row.node, row.node.rows.length - 1);
+      resyncKeyboardFocusToBodyRow(row.heading, 'table', row.node.lineIndex);
       commitAndRender('Added table row');
     })
   );
@@ -6149,12 +6190,14 @@ function renderTableRow(row) {
         return;
       }
       deleteTableRow(row.heading, row.node, row.node.rows.length - 1);
+      resyncKeyboardFocusToBodyRow(row.heading, 'table', row.node.lineIndex);
       commitAndRender('Deleted table row');
     })
   );
   controls.appendChild(
     smallButton('+ col', 'Add column', () => {
       insertTableColumn(row.heading, row.node, colCount() - 1);
+      resyncKeyboardFocusToBodyRow(row.heading, 'table', row.node.lineIndex);
       commitAndRender('Added table column');
     })
   );
@@ -6168,6 +6211,7 @@ function renderTableRow(row) {
         return;
       }
       deleteTableColumn(row.heading, row.node, colCount() - 1);
+      resyncKeyboardFocusToBodyRow(row.heading, 'table', row.node.lineIndex);
       commitAndRender('Deleted table column');
     })
   );
@@ -6242,6 +6286,7 @@ function renderParagraphRow(row) {
       const { heading, paragraph } = editingParagraph;
       editingParagraph = null;
       editParagraphText(heading, paragraph, textarea.value);
+      resyncKeyboardFocusToBodyRow(heading, 'paragraph', paragraph.lineIndex);
       commitAndRender('Edited paragraph text');
     });
     autoGrowTextarea(textarea);
