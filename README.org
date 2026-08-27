@@ -163,6 +163,18 @@ Landing on a step whose text is byte-identical to whatever's actually confirmed 
 | ~date(Y,M,D)~ | scalar   | Constructs a date value directly from year/month/day numbers           |
 | ~deg(x)~    | scalar     | Un-tags an HMS-formatted duration back to its own plain, still-in-days number — see below |
 | ~now()~     | scalar     | The current date and time, as a date value                             |
+| ~== =~      | operator   | Equal to (both spellings accepted) — 1 if true, 0 if false, matching Calc's own boolean-as-number convention |
+| ~!=~        | operator   | Not equal to                                                            |
+| ~< > <= >=~ | operator   | Ordinary relational comparison                                         |
+| ~&&~        | operator   | Logical AND — short-circuits, the right side is never evaluated once the left side alone is false |
+| OR operator | operator   | Logical OR (see below for the actual two-character syntax — shown in prose here, not this table, since a literal pipe can't appear in a table cell) — short-circuits the same way, once the left side alone is true |
+| ~!x~        | operator   | Logical NOT                                                             |
+| ~and(a,b)~  | scalar     | Same as ~a && b~, as a function call — doesn't short-circuit           |
+| ~or(a,b)~   | scalar     | The function-call form of logical OR (see below) — doesn't short-circuit |
+| ~not(a)~    | scalar     | Same as ~!a~, as a function call                                       |
+| ~if(c,t,f)~ | scalar     | Evaluates ~c~; returns ~t~ if true (non-zero/non-empty), ~f~ if false — see below |
+| ~string(ref)~ | scalar   | Reads a cell's own raw text as a string, bypassing the normal number coercion — see below |
+| ~"text"~    | literal    | A double-quoted string literal — see below                             |
 | ~vsum(range)~    | aggregate | Sum                                                                |
 | ~vmean(range)~   | aggregate | Arithmetic mean                                                    |
 | ~vcount(range)~  | aggregate | Count of non-blank cells                                           |
@@ -175,6 +187,10 @@ Landing on a step whose text is byte-identical to whatever's actually confirmed 
 | ~vpsdev(range)~  | aggregate | Population standard deviation                                      |
 
 ~floor~ / ~ceil~ / ~round~ / ~trunc~ each also accept an optional second argument — how many digits after the decimal point to keep (~round($1, 2)~). There's no plain, unqualified ~variance~ / ~stddev~ name for either the sample or population variant — real Calc doesn't have one either.
+
+*Conditional logic.* ~if(condition, true_value, false_value)~ evaluates ~condition~ first; Calc's own boolean convention applies (a non-zero number, or a non-empty string, counts as true) — then evaluates and returns *only* the matching branch. This is genuinely short-circuiting, not just a convenience: ~if($1 != 0, 100 / $1, 0)~ never actually computes ~100 / $1~ when ~$1~ is 0, so the classic divide-by-zero guard actually works as written rather than erroring regardless of which branch gets used. ~&&~ and ~||~ both short-circuit the same way: the right side is never evaluated once the left side alone already decides the result. ~and(a,b)~ / ~or(a,b)~ / ~not(a)~ are the function-call equivalents of ~&&~ / ~||~ / ~!~ — these don't short-circuit, matching real Calc's own actual function-call semantics.
+
+Comparisons (~==~ and ~=~ both mean equal to; ~!=~, ~<~, ~>~, ~<=~, ~>=~) return ~1~ for true or ~0~ for false, and bind tighter than ~&&~/~||~, which in turn bind looser than ~+ - * /~ — so ~$1 >= 50 && $2 >= 50~ parses exactly as written, ~($1 >= 50) && ($2 >= 50)~, not something else. A double-quoted string literal (~"Both Pass"~, with ~\"~ for a literal quote inside one) evaluates to text rather than a number; ~string(ref)~ reads a cell's own raw text directly as a string — bypassing the normal number coercion every other plain reference goes through — so ~string($1) == "Sales"~ compares as text even though a bare, un-wrapped ~$1 == "Sales"~ would instead try (and fail) to read the cell as a number. Nested ~if()~ calls, using the false-branch slot, give an else-if chain: ~if($1 >= 90, "A", if($1 >= 80, "B", "C"))~.
 
 *Date and time arithmetic.* ~date(ref)~ reads a cell's own raw text — expects a standard org timestamp, ~[YYYY-MM-DD]~ or ~<YYYY-MM-DD>~, optionally with a time (~<YYYY-MM-DD HH:MM>~); the day-name real org normally writes (~<2026-08-25 Tue>~) is accepted but entirely optional here, unlike real org's own actual timestamp syntax — a plain, un-wrapped cell reference (~$1~ alone) is read as an ordinary number instead, the same as always, so wrapping in ~date()~ is what actually signals "this cell holds a timestamp, not a number." ~date(2026, 8, 25)~ builds one directly from three plain numbers instead of a cell.
 
@@ -914,13 +930,13 @@ org-xx-menu-aliases: "file:New;➕" "file:Open;📂" "file:Save;💾" "file:Save
 
 A label never mentioned in the variable at all keeps its default, unchanged text — this is an opt-in override list, not a full redefinition of any menu. ~view~ isn't mentioned anywhere in the example above at all, meaning no overrides for the View menu specifically — every one of its buttons keeps its default label.
 
-*The order buttons appear in can be changed too* — but only once *every single one* of a menu's own real labels is listed for it (see the table below for the complete set each menu needs), even ones kept at their own default label and visibility; a partial listing leaves that menu's own default order completely untouched, so setting an alias for just one or two buttons never has the side effect of silently reordering the rest. Once every label is present, the buttons render in whichever order they're listed in — left to right, matching the order the ~"menu:Label;alias"~ entries themselves appear in the variable's own value. An entry with an empty alias still counts as "listed" for this purpose (that's how a button can occupy a specific position in the order without changing its label at all — ~"more:Settings;"~ places ~more:Settings~ exactly where listed while still showing the plain word "Settings", per the required-visibility exception above). For example, to show the More menu as Settings, Capture, Search, in that order, with History/+/? at their own defaults:
+*The order buttons appear in can be changed too* — but only once *every single one* of a menu's own real labels is listed for it (see the table below for the complete set each menu needs), even ones kept at their own default label and visibility; a partial listing leaves that menu's own default order completely untouched, so setting an alias for just one or two buttons never has the side effect of silently reordering the rest. Once every label is present, the buttons render in whichever order they're listed in — top to bottom, matching the order the ~"menu:Label;alias"~ entries themselves appear in the variable's own value. An entry with an empty alias still counts as "listed" for this purpose (that's how a button can occupy a specific position in the order without changing its label at all — ~"more:Settings;"~ places ~more:Settings~ exactly where listed while still showing the plain word "Settings", per the required-visibility exception above). For example, to show the More menu as Settings, Capture, Search, in that order, with History/+/? at their own defaults:
 
 #+BEGIN_SRC
 org-xx-menu-aliases: "more:Settings;" "more:Capture;" "more:Search;" "more:History;" "more:+;" "more:?;"
 #+END_SRC
 
-*Buttons are sized to their own label*, not stretched to fill the row evenly — a short label like "New" stays short, a longer one like "Save As" takes the room it actually needs, and the whole row left-aligns with consistent spacing between buttons, however many end up visible.
+*Each menu renders as a vertical dropdown list* — one full-width row per button, top to bottom, in a bordered panel — rather than a horizontal row of individually-sized buttons; a short label like "New" and a longer one like "Save As" both simply fill the row's own width the same way.
 
 The four menus' own real labels, exactly as they'd appear in ~"menu:Label;alias"~ — the complete set needed to reorder that specific menu:
 | ~menu~ | Labels |
@@ -1071,10 +1087,10 @@ A practical subset for a keyboard/mouse device — genuinely inert on a phone or
 
 | Key | Action | Matches real org? |
 |---+---+---|
-| ~↓~ / ~↑~ | Move keyboard focus to the next/previous visible LINE -- any row (heading, paragraph, table, list item, block), not just headings. Moving down into a heading whose own body is currently folded reveals it first, landing directly on its own first body row rather than skipping past it | No direct equivalent |
+| ~↓~ / ~↑~ | Move keyboard focus to the next/previous visible LINE -- any row (heading, paragraph, table, list item, block), not just headings. Moving down into a heading whose own body is currently folded reveals it first, landing directly on its own first body row rather than skipping past it. At the very first/last line, a status message says so rather than silently doing nothing | No direct equivalent |
 | ~S-↓~ / ~S-↑~ / ~S-←~ / ~S-→~ | *Only when keyboard focus is on a table*: move to the next/previous row/column within it, cell by cell (the header row counts as a real, navigable row; a horizontal rule between rows doesn't). At the table's own edge, a status message says so rather than silently doing nothing. Outside a table, these aren't intercepted at all. Tapping a cell (not just arriving via ~↓~/Shift+arrow) also focuses it, so editing a cell directly by tap, then pressing ~Enter~ (commits) or ~Escape~ (cancels) to exit, leaves that same cell highlighted and ready for further Shift+arrow navigation either way | No direct equivalent |
 | ~i~ | Enter edit mode for whatever the line-cursor is currently on (a heading's own title, a paragraph, a table cell, a list item), cursor positioned at the start of the line by default | Loosely inspired by vim's own ~i~, not a real org/Emacs binding |
-| ~j~ | Move keyboard focus to the next visible heading specifically -- a faster heading-to-heading jump than ~↓~ | No direct equivalent — the web/vim-style analog |
+| ~j~ | Move keyboard focus to the next visible heading specifically -- a faster heading-to-heading jump than ~↓~. A status message reports the boundary at the very first/last heading, same as ~↓~/~↑~ | No direct equivalent — the web/vim-style analog |
 | ~k~ | Move keyboard focus to the previous visible heading specifically | Same |
 | ~Tab~ | Cycle the focused heading's fold state | *Yes* — ~org-cycle~, exactly |
 | ~Enter~ | Open/close the focused heading's action row | No equivalent (org has no "action menu" concept) |
@@ -1104,7 +1120,7 @@ Translation rules — this is a direct implementation of real god-mode.el's own 
 
 | god-mode sequence | Emacs chord | Action |
 |---+---+---|
-| ~↓~ / ~↑~ | ~<down>~ / ~<up>~ | Move focus to the next/previous visible LINE -- any row, not just headings (matches the plain, non-god-mode shortcut exactly, including auto-revealing a folded heading's own body when moving down into it) |
+| ~↓~ / ~↑~ | ~<down>~ / ~<up>~ | Move focus to the next/previous visible LINE -- any row, not just headings (matches the plain, non-god-mode shortcut exactly, including auto-revealing a folded heading's own body when moving down into it, and reporting the boundary via a status message at the very first/last line) |
 | ~S-↓~ / ~S-↑~ / ~S-←~ / ~S-→~ | ~S-<down>~ / ~S-<up>~ / ~S-<left>~ / ~S-<right>~ | Table cell navigation -- see the plain-shortcut table above, same behavior |
 | ~i~ | (not a real chord) | Enter edit mode for the current line, cursor at the start by default -- see below for ~a~/~e~ |
 | ~a~ | ~C-a~ | Before pressing ~i~: the eventual cursor lands at the START of the line instead of the default |
@@ -1114,8 +1130,8 @@ Translation rules — this is a direct implementation of real god-mode.el's own 
 | ~g↑~ / ~g↓~ | ~M-↑~ / ~M-↓~ | Move the focused heading up/down among its siblings |
 | ~g←~ / ~g→~ | ~M-←~ / ~M-→~ | Promote/demote the focused heading (and its subtree — this app doesn't distinguish single-heading from whole-subtree) |
 | ~gS-←~ / ~gS-→~ | ~M-S-←~ / ~M-S-→~ | Same as above — no separate "whole subtree" action exists to map to |
-| ~c f~ / ~c b~ | ~C-c C-f~ / ~C-c C-b~ | Move focus to the next/previous heading at the same level |
-| ~c u~ | ~C-c C-u~ | Move focus to the parent heading |
+| ~c f~ / ~c b~ | ~C-c C-f~ / ~C-c C-b~ | Move focus to the next/previous heading at the same level -- reports via a status message when there is none |
+| ~c u~ | ~C-c C-u~ | Move focus to the parent heading -- reports via a status message when already at the top level |
 | ~c n~ / ~c p~ | ~C-c C-n~ / ~C-c C-p~ | Move focus to the next/previous visible heading, at any level |
 | ~c x w~ | ~C-c C-x C-w~ | Cut the focused heading and its entire subtree to the clipboard, then delete it (~org-cut-subtree~) |
 | ~gRET~ | ~M-RET~ | Insert a new heading after the focused one, at the same level |

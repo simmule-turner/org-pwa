@@ -2963,6 +2963,10 @@ function moveLineFocus(delta) {
     nextIndex = delta > 0 ? 0 : rows.length - 1;
   } else {
     nextIndex = Math.max(0, Math.min(rows.length - 1, currentIndex + delta));
+    if (nextIndex === currentIndex) {
+      setStatus(delta > 0 ? 'Already at the last line.' : 'Already at the first line.');
+      return;
+    }
   }
   setKeyboardFocusToRow(rows[nextIndex]);
   render();
@@ -3058,6 +3062,10 @@ function moveKeyboardFocus(delta) {
     nextIndex = delta > 0 ? 0 : headings.length - 1;
   } else {
     nextIndex = Math.max(0, Math.min(headings.length - 1, currentIndex + delta));
+    if (nextIndex === currentIndex) {
+      setStatus(delta > 0 ? 'Already at the last heading.' : 'Already at the first heading.');
+      return;
+    }
   }
   setKeyboardFocusToHeading(headings[nextIndex]);
   render();
@@ -3078,7 +3086,10 @@ function moveToSameLevelHeading(delta) {
   if (currentIndex === -1) return;
   const level = keyboardFocusedHeading.level;
   for (let i = currentIndex + delta; i >= 0 && i < headings.length; i += delta) {
-    if (headings[i].level < level) return;
+    if (headings[i].level < level) {
+      setStatus(delta > 0 ? 'No next heading at this level.' : 'No previous heading at this level.');
+      return;
+    }
     if (headings[i].level === level) {
       setKeyboardFocusToHeading(headings[i]);
       render();
@@ -3086,16 +3097,23 @@ function moveToSameLevelHeading(delta) {
       return;
     }
   }
+  setStatus(delta > 0 ? 'No next heading at this level.' : 'No previous heading at this level.');
 }
 
 /** Moves keyboard focus to the current heading's own immediate
  *  parent -- real org's own org-up-heading (god-mode's own C-c
- *  C-u). No-op if already top-level (no parent) or nothing is
- *  currently focused. */
+ *  C-u). No-op if nothing is currently focused at all; reports via
+ *  setStatus if focus IS on something but it's already top-level
+ *  (no parent to move to) -- see this file's own broader "report a
+ *  boundary rather than clamping silently" pass for why the two
+ *  cases are treated differently. */
 function moveToParentHeading() {
   if (!keyboardFocusedHeading || !state.doc) return;
   const path = findAncestorPath(state.doc, keyboardFocusedHeading);
-  if (!path || path.length === 0) return;
+  if (!path || path.length === 0) {
+    setStatus('Already at the top level.');
+    return;
+  }
   setKeyboardFocusToHeading(path[path.length - 1]);
   render();
   scrollFocusedHeadingIntoView();
@@ -4804,6 +4822,28 @@ function resyncKeyboardFocusToBodyRow(heading, oldRowType, oldLineIndex) {
   if (freshNode) keyboardFocusedBodyRow = { ...keyboardFocusedBodyRow, node: freshNode };
 }
 
+/** Wraps a body-mutating operation that adds new, unrelated content to
+ *  `heading` (so keyboard focus, if it was on some OTHER existing row
+ *  in the same heading at the time, doesn't get silently orphaned the
+ *  same way resyncKeyboardFocusToBodyRow's own docs describe above)
+ *  -- captures whichever row/item keyboard focus is currently on
+ *  (only if it actually belongs to `heading`) before running
+ *  `mutate`, then re-syncs it afterward. Returns whatever `mutate`
+ *  itself returns, so this can wrap a call whose own return value the
+ *  caller still needs (e.g. a newly-inserted node). */
+function withKeyboardFocusPreserved(heading, mutate) {
+  const prior =
+    keyboardFocusedBodyRow && keyboardFocusedBodyRow.heading === heading
+      ? {
+          rowType: keyboardFocusedBodyRow.rowType,
+          lineIndex: keyboardFocusedBodyRow.rowType === 'list-item' ? keyboardFocusedBodyRow.item.lineIndex : keyboardFocusedBodyRow.node.lineIndex,
+        }
+      : null;
+  const result = mutate();
+  if (prior) resyncKeyboardFocusToBodyRow(heading, prior.rowType, prior.lineIndex);
+  return result;
+}
+
 async function cutSubtree(heading) {
   const text = serializeHeadingSubtree(heading);
   try {
@@ -5765,7 +5805,7 @@ function renderRow(row, todoSequence) {
         tableActionButton('\u25a6 Add table', () => {
           const heading = editingGeneral;
           editingGeneral = null;
-          insertTable(heading, {});
+          withKeyboardFocusPreserved(heading, () => insertTable(heading, {}));
           commitAndRender('Added table');
         })
       );
@@ -5778,6 +5818,10 @@ function renderRow(row, todoSequence) {
             if (!table) return; // shouldn't happen -- disabled when there's nothing to delete -- but never act on nothing
             if (!window.confirm('Delete this table? This can\u2019t be undone.')) return;
             editingGeneral = null;
+            if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.rowType === 'table' && keyboardFocusedBodyRow.node === table) {
+              keyboardFocusedBodyRow = null;
+              keyboardFocusedCellPos = null;
+            }
             deleteTable(heading, table);
             commitAndRender('Deleted table');
           },
@@ -5985,7 +6029,9 @@ function renderRow(row, todoSequence) {
             onClick: (e) => {
               e.stopPropagation();
               actionMenuFor = null;
+              const oldLineIndex = row.item.lineIndex;
               const newItem = insertListItem(row.heading, row.item, '');
+              resyncKeyboardFocusToBodyRow(row.heading, 'list-item', oldLineIndex);
               updateCheckboxCookiesUpward(state.doc, row.heading, todoSequence.doneKeywords);
               editingListItem = { heading: row.heading, item: newItem };
               commitAndRender('Added list item');
@@ -5999,6 +6045,9 @@ function renderRow(row, todoSequence) {
               if (!confirmListItemDelete(row.item)) return;
               actionMenuFor = null;
               if (editingListItem && editingListItem.item === row.item) editingListItem = null;
+              if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.rowType === 'list-item' && keyboardFocusedBodyRow.item === row.item) {
+                keyboardFocusedBodyRow = null;
+              }
               deleteListItem(row.heading, row.item);
               updateCheckboxCookiesUpward(state.doc, row.heading, todoSequence.doneKeywords);
               commitAndRender('Deleted list item');
@@ -6060,6 +6109,10 @@ function renderTableRow(row) {
           onClick: () => {
             if (!confirmTableDelete(row.node)) return;
             actionMenuFor = null;
+            if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.rowType === 'table' && keyboardFocusedBodyRow.node === row.node) {
+              keyboardFocusedBodyRow = null;
+              keyboardFocusedCellPos = null;
+            }
             deleteTable(row.heading, row.node);
             commitAndRender('Deleted table');
           },
@@ -6354,7 +6407,9 @@ function renderParagraphRow(row) {
           label: 'Add paragraph below',
           onClick: () => {
             actionMenuFor = null;
+            const oldLineIndex = row.node.lineIndex;
             const newParagraph = insertParagraphAfter(row.heading, row.node, '');
+            resyncKeyboardFocusToBodyRow(row.heading, 'paragraph', oldLineIndex);
             editingParagraph = { heading: row.heading, paragraph: newParagraph };
             commitAndRender('Added paragraph');
           },
@@ -6365,6 +6420,9 @@ function renderParagraphRow(row) {
           onClick: () => {
             if (!confirmParagraphDelete(row.node)) return;
             actionMenuFor = null;
+            if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.rowType === 'paragraph' && keyboardFocusedBodyRow.node === row.node) {
+              keyboardFocusedBodyRow = null;
+            }
             deleteParagraph(row.heading, row.node);
             commitAndRender('Deleted paragraph');
           },
@@ -7455,10 +7513,11 @@ function menuButton(label, onClick, disabled) {
  *  e.g. `const btn = aliasedMenuButton(aliases, 'New', onClick); if
  *  (btn) row.appendChild(btn);`.
  *
- *  Sized to its own content (via menuButton), not stretched to fill
- *  the row -- a row of these left-aligns naturally, each button only
- *  as wide as its own label needs, matching every other menu row in
- *  this app. */
+ *  Sized to its own content (via menuButton) by default -- callers
+ *  building one of the app's own top-level dropdown menus (File/View/
+ *  More/Export) additionally wrap the result in styleAsMenuListItem
+ *  for the full-width vertical-list look those menus use; this
+ *  function's own job stays just the alias lookup either way. */
 function aliasedMenuButton(aliasMap, label, onClick, disabled) {
   const alias = aliasMap ? aliasMap[label] : undefined;
   if (alias === '') return null; // explicitly omitted
@@ -7507,6 +7566,30 @@ function appendMenuButtonsInOrder(container, aliasMap, labeledButtons) {
   }
 }
 
+/** A vertical dropdown-menu container -- the .menu-list counterpart to
+ *  a plain .panel-row, for the app's own top-level navigation menus
+ *  (File/View/More, Export/backend-picker). */
+function menuListContainer() {
+  const el = document.createElement('div');
+  el.className = 'menu-list';
+  return el;
+}
+
+/** Restyles `btn` (already built via menuButton/aliasedMenuButton/
+ *  requiredMenuButton) from its own default, compact "pill" look into
+ *  a full-width, left-aligned vertical menu-list item. Purely
+ *  cosmetic -- btn's own label, aria-label, disabled state, and
+ *  onclick are all already set by the time this runs, and none of
+ *  them are touched here, so this can wrap any button
+ *  aliasedMenuButton/requiredMenuButton already returned without
+ *  disturbing org-xx-menu-aliases' own configurability at all. A null
+ *  btn (already omitted via aliasedMenuButton's own alias==='' rule)
+ *  passes through unchanged, so callers can wrap unconditionally. */
+function styleAsMenuListItem(btn) {
+  if (btn) btn.className = 'menu-list-item';
+  return btn;
+}
+
 /** Same idea as menuButton, but with explicit comfortable sizing
  *  (matching the .panel button convention) for use outside a
  *  .panel-classed container — e.g. the timestamp wizard's Save/Cancel,
@@ -7553,36 +7636,43 @@ function renderFileMenu() {
   fileMenuPanel.style.display = 'block';
 
   if (fileMenuStep === null) {
-    const row = document.createElement('div');
-    row.className = 'panel-row';
+    const row = menuListContainer();
     const fileMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).file;
-    const newBtn = aliasedMenuButton(fileMenuAliases, 'New', () => {
-      fileMenuStep = 'new';
-      renderFileMenu();
-    });
-    const openBtn = aliasedMenuButton(fileMenuAliases, 'Open', () => {
-      fileMenuStep = 'open';
-      renderFileMenu();
-    });
-    const saveBtn = aliasedMenuButton(fileMenuAliases, 'Save', () => saveCurrent(), !state.documentId);
-    const saveAsBtn = aliasedMenuButton(
-      fileMenuAliases,
-      'Save As',
-      () => {
-        fileMenuStep = 'saveas';
+    const newBtn = styleAsMenuListItem(
+      aliasedMenuButton(fileMenuAliases, 'New', () => {
+        fileMenuStep = 'new';
         renderFileMenu();
-      },
-      !state.doc
+      })
     );
-    const exportBtn = aliasedMenuButton(
-      fileMenuAliases,
-      'Export',
-      () => {
-        fileMenuStep = 'export';
-        exportFormat = null;
+    const openBtn = styleAsMenuListItem(
+      aliasedMenuButton(fileMenuAliases, 'Open', () => {
+        fileMenuStep = 'open';
         renderFileMenu();
-      },
-      !state.doc
+      })
+    );
+    const saveBtn = styleAsMenuListItem(aliasedMenuButton(fileMenuAliases, 'Save', () => saveCurrent(), !state.documentId));
+    const saveAsBtn = styleAsMenuListItem(
+      aliasedMenuButton(
+        fileMenuAliases,
+        'Save As',
+        () => {
+          fileMenuStep = 'saveas';
+          renderFileMenu();
+        },
+        !state.doc
+      )
+    );
+    const exportBtn = styleAsMenuListItem(
+      aliasedMenuButton(
+        fileMenuAliases,
+        'Export',
+        () => {
+          fileMenuStep = 'export';
+          exportFormat = null;
+          renderFileMenu();
+        },
+        !state.doc
+      )
     );
     appendMenuButtonsInOrder(row, fileMenuAliases, [
       { label: 'New', btn: newBtn },
@@ -7613,43 +7703,50 @@ function renderFileMenu() {
     fileMenuStep === 'open' ? 'Open from:' : fileMenuStep === 'new' ? 'New file on:' : 'Save a copy to:';
   fileMenuPanel.appendChild(label);
 
-  const btnRow = document.createElement('div');
-  btnRow.className = 'panel-row';
+  const btnRow = menuListContainer();
 
   if (!isFileSystemAccessUnsupported()) {
     btnRow.appendChild(
-      menuButton('Local file', () => {
-        if (fileMenuStep === 'open') openFromFilesystem();
-        else if (fileMenuStep === 'new') newOnFilesystem();
-        else saveAsFilesystem();
-      })
+      styleAsMenuListItem(
+        menuButton('Local file', () => {
+          if (fileMenuStep === 'open') openFromFilesystem();
+          else if (fileMenuStep === 'new') newOnFilesystem();
+          else saveAsFilesystem();
+        })
+      )
     );
   } else {
     // This platform has no File System Access API at all (every browser
     // on iOS) — offer the read-once/download-based fallback instead.
     btnRow.appendChild(
-      menuButton(fileMenuStep === 'open' ? 'Import file\u2026' : 'Local (download)', () => {
-        if (fileMenuStep === 'open') openFromImport();
-        else if (fileMenuStep === 'new') newViaImport();
-        else saveAsImport();
-      })
+      styleAsMenuListItem(
+        menuButton(fileMenuStep === 'open' ? 'Import file\u2026' : 'Local (download)', () => {
+          if (fileMenuStep === 'open') openFromImport();
+          else if (fileMenuStep === 'new') newViaImport();
+          else saveAsImport();
+        })
+      )
     );
   }
 
   btnRow.appendChild(
-    menuButton('GitHub', () => {
-      if (fileMenuStep === 'open') openFromGithub();
-      else if (fileMenuStep === 'new') newOnGithub();
-      else saveAsGithub();
-    })
+    styleAsMenuListItem(
+      menuButton('GitHub', () => {
+        if (fileMenuStep === 'open') openFromGithub();
+        else if (fileMenuStep === 'new') newOnGithub();
+        else saveAsGithub();
+      })
+    )
   );
 
   btnRow.appendChild(
-    menuButton('WebDAV', () => {
-      if (fileMenuStep === 'open') openFromWebdav();
-      else if (fileMenuStep === 'new') newOnWebdav();
-      else saveAsWebdav();
-    })
+    styleAsMenuListItem(
+      menuButton('WebDAV', () => {
+        if (fileMenuStep === 'open') openFromWebdav();
+        else if (fileMenuStep === 'new') newOnWebdav();
+        else saveAsWebdav();
+      })
+    )
   );
 
   fileMenuPanel.appendChild(btnRow);
@@ -7739,29 +7836,38 @@ function renderExportFlow() {
     label.textContent = 'Export as:';
     fileMenuPanel.appendChild(label);
 
-    const row = document.createElement('div');
-    row.className = 'panel-row';
+    const row = menuListContainer();
     const exportMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).export;
-    const asciiBtn = aliasedMenuButton(exportMenuAliases, 'ASCII', () => {
-      exportFormat = 'ascii';
-      renderFileMenu();
-    });
-    const icsBtn = aliasedMenuButton(exportMenuAliases, 'Calendar (.ics)', () => {
-      exportFormat = 'icalendar';
-      renderFileMenu();
-    });
-    const htmlBtn = aliasedMenuButton(exportMenuAliases, 'HTML', () => {
-      exportFormat = 'html';
-      renderFileMenu();
-    });
-    const mdBtn = aliasedMenuButton(exportMenuAliases, 'Markdown', () => {
-      exportFormat = 'markdown';
-      renderFileMenu();
-    });
-    const odtBtn = aliasedMenuButton(exportMenuAliases, 'ODT', () => {
-      exportFormat = 'odt';
-      renderFileMenu();
-    });
+    const asciiBtn = styleAsMenuListItem(
+      aliasedMenuButton(exportMenuAliases, 'ASCII', () => {
+        exportFormat = 'ascii';
+        renderFileMenu();
+      })
+    );
+    const icsBtn = styleAsMenuListItem(
+      aliasedMenuButton(exportMenuAliases, 'Calendar (.ics)', () => {
+        exportFormat = 'icalendar';
+        renderFileMenu();
+      })
+    );
+    const htmlBtn = styleAsMenuListItem(
+      aliasedMenuButton(exportMenuAliases, 'HTML', () => {
+        exportFormat = 'html';
+        renderFileMenu();
+      })
+    );
+    const mdBtn = styleAsMenuListItem(
+      aliasedMenuButton(exportMenuAliases, 'Markdown', () => {
+        exportFormat = 'markdown';
+        renderFileMenu();
+      })
+    );
+    const odtBtn = styleAsMenuListItem(
+      aliasedMenuButton(exportMenuAliases, 'ODT', () => {
+        exportFormat = 'odt';
+        renderFileMenu();
+      })
+    );
     appendMenuButtonsInOrder(row, exportMenuAliases, [
       { label: 'ASCII', btn: asciiBtn },
       { label: 'Calendar (.ics)', btn: icsBtn },
@@ -7781,31 +7887,39 @@ function renderExportFlow() {
     label.textContent = 'Export Calendar (.ics) for:';
     fileMenuPanel.appendChild(label);
 
-    const row = document.createElement('div');
-    row.className = 'panel-row';
-    row.appendChild(menuButton('This file', () => performExport('icalendar', null)));
+    const row = menuListContainer();
+    row.appendChild(styleAsMenuListItem(menuButton('This file', () => performExport('icalendar', null))));
     if (agendaFilesConfig.length > 0) {
       row.appendChild(
-        menuButton('This file + Agenda Files', async () => {
-          setStatus('Loading agenda files\u2026');
-          await waitForAgendaFilesLoaded();
-          await performExport('icalendar', 'agenda-files');
-        })
+        styleAsMenuListItem(
+          menuButton('This file + Agenda Files', async () => {
+            setStatus('Loading agenda files\u2026');
+            await waitForAgendaFilesLoaded();
+            await performExport('icalendar', 'agenda-files');
+          })
+        )
       );
     }
     row.appendChild(
-      menuButton('Choose a heading\u2026', () => {
-        exportPickingHeading = true;
-        renderFileMenu();
-      })
+      styleAsMenuListItem(
+        menuButton('Choose a heading\u2026', () => {
+          exportPickingHeading = true;
+          renderFileMenu();
+        })
+      )
     );
-    row.appendChild(
+    fileMenuPanel.appendChild(row);
+
+    const backRow = document.createElement('div');
+    backRow.className = 'panel-row';
+    backRow.style.marginTop = '6px';
+    backRow.appendChild(
       menuButton('\u2039 Back', () => {
         exportFormat = null;
         renderFileMenu();
       })
     );
-    fileMenuPanel.appendChild(row);
+    fileMenuPanel.appendChild(backRow);
     return;
   }
 
@@ -8101,8 +8215,7 @@ function renderViewMenu() {
   }
   viewMenuPanel.style.display = 'block';
 
-  const row = document.createElement('div');
-  row.className = 'panel-row';
+  const row = menuListContainer();
   const viewMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).view;
   const labeledButtons = [];
   for (const [key, label] of [
@@ -8111,7 +8224,7 @@ function renderViewMenu() {
     ['tasklist', 'TODO'],
     ['text', 'Text'],
   ]) {
-    const btn = aliasedMenuButton(viewMenuAliases, label, () => switchToView(key));
+    const btn = styleAsMenuListItem(aliasedMenuButton(viewMenuAliases, label, () => switchToView(key)));
     if (btn && key === currentView) btn.style.fontWeight = '700';
     labeledButtons.push({ label, btn });
   }
@@ -11741,23 +11854,23 @@ function renderExtraMenu() {
     return;
   }
   extraMenuPanel.style.display = 'block';
+  const list = menuListContainer();
   for (const entry of entries) {
     if (entry.type === 'separator') {
       const hr = document.createElement('div');
       hr.style.borderTop = '1px solid var(--border)';
       hr.style.margin = '4px 2px';
-      extraMenuPanel.appendChild(hr);
+      list.appendChild(hr);
       continue;
     }
     const row = document.createElement('div');
-    row.className = 'panel-row';
+    row.className = 'menu-list-item';
     row.style.cursor = 'pointer';
-    row.style.padding = '9px 8px';
-    row.style.fontSize = '14px';
     row.textContent = entry.label;
     row.onclick = () => runExtraMenuEntry(entry);
-    extraMenuPanel.appendChild(row);
+    list.appendChild(row);
   }
+  extraMenuPanel.appendChild(list);
 }
 
 /** Executes a selected extras-menu entry, dispatched by type:
@@ -11863,58 +11976,69 @@ function renderMoreMenu() {
   }
   morePanel.style.display = 'block';
 
-  const row = document.createElement('div');
-  row.className = 'panel-row';
+  const row = menuListContainer();
   const moreMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).more;
 
-  const searchBtnOption = aliasedMenuButton(moreMenuAliases, 'Search', () => {
-    moreOpen = false;
-    renderMoreMenu();
-    searchBtn.click();
-  });
+  const searchBtnOption = styleAsMenuListItem(
+    aliasedMenuButton(moreMenuAliases, 'Search', () => {
+      moreOpen = false;
+      renderMoreMenu();
+      searchBtn.click();
+    })
+  );
 
-  const captureBtnOption = aliasedMenuButton(moreMenuAliases, 'Capture', () => {
-    moreOpen = false;
-    renderMoreMenu();
-    captureBtn.click();
-  });
+  const captureBtnOption = styleAsMenuListItem(
+    aliasedMenuButton(moreMenuAliases, 'Capture', () => {
+      moreOpen = false;
+      renderMoreMenu();
+      captureBtn.click();
+    })
+  );
 
-  const historyBtnOption = aliasedMenuButton(
-    moreMenuAliases,
-    'History',
-    () => {
-      closeAllOverlayPanels();
-      historyOpen = true;
-      render();
-      renderHistoryPanel();
-    },
-    !state.doc
+  const historyBtnOption = styleAsMenuListItem(
+    aliasedMenuButton(
+      moreMenuAliases,
+      'History',
+      () => {
+        closeAllOverlayPanels();
+        historyOpen = true;
+        render();
+        renderHistoryPanel();
+      },
+      !state.doc
+    )
   );
   if (historyBtnOption) historyBtnOption.setAttribute('aria-label', 'Undo history');
 
-  const addBtnOption = aliasedMenuButton(moreMenuAliases, '+', () => {
-    moreOpen = false;
-    renderMoreMenu();
-    addBtn.click();
-  });
+  const addBtnOption = styleAsMenuListItem(
+    aliasedMenuButton(moreMenuAliases, '+', () => {
+      moreOpen = false;
+      renderMoreMenu();
+      addBtn.click();
+    })
+  );
   if (addBtnOption) addBtnOption.setAttribute('aria-label', 'Add heading');
 
-  const docsBtnOption = aliasedMenuButton(moreMenuAliases, '?', () => {
-    closeAllOverlayPanels();
-    docsOpen = true;
-    if (isWideLayout()) {
-      render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
-    } else {
-      renderDocsView(outlineEl); // narrow: replaces #outline directly, exactly as before this feature existed
-    }
-  });
+  const docsBtnOption = styleAsMenuListItem(
+    aliasedMenuButton(moreMenuAliases, '?', () => {
+      closeAllOverlayPanels();
+      docsOpen = true;
+      if (isWideLayout()) {
+        render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
+      } else {
+        renderDocsView(outlineEl); // narrow: replaces #outline directly, exactly as before this feature existed
+      }
+    })
+  );
   if (docsBtnOption) docsBtnOption.setAttribute('aria-label', 'Help / Docs');
 
-  const settingsBtnOption = requiredMenuButton(moreMenuAliases, 'Settings', () => {
-    moreOpen = false;
-    renderMoreMenu();
-    settingsBtn.click();
-  });
+  const settingsBtnOption = styleAsMenuListItem(
+    requiredMenuButton(moreMenuAliases, 'Settings', () => {
+      moreOpen = false;
+      renderMoreMenu();
+      settingsBtn.click();
+    })
+  );
 
   appendMenuButtonsInOrder(row, moreMenuAliases, [
     { label: 'Search', btn: searchBtnOption },
