@@ -137,7 +137,8 @@ function computeHlinePositions(workingRows) {
 
 // ---- expression tokenizing/parsing ------------------------------------
 
-const TOKEN_RE = /\s*(\.\.|@(?:[<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+)|\d+\.?\d*|[A-Za-z_][A-Za-z0-9_]*|[()+\-*/^,])\s*/y;
+const TOKEN_RE =
+  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:[<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+)|\d+\.?\d*|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()+\-*/^,<>=!])\s*/y;
 
 /** Tokenizes an RHS expression -- numbers, cell/range references
  *  (kept as single tokens, not decomposed further here), function
@@ -221,6 +222,9 @@ const SCALAR_FUNCTIONS = {
   round: (x, digits) => roundToDigits(x, digits, roundHalfAwayFromZero),
   trunc: (x, digits) => roundToDigits(x, digits, Math.trunc),
   deg: (x) => (x && typeof x === 'object' ? x.days : x),
+  and: (a, b) => (isTruthyValue(a) && isTruthyValue(b) ? 1 : 0),
+  or: (a, b) => (isTruthyValue(a) || isTruthyValue(b) ? 1 : 0),
+  not: (a) => (isTruthyValue(a) ? 0 : 1),
 };
 
 function roundHalfAwayFromZero(x) {
@@ -240,6 +244,14 @@ function roundToDigits(x, digits, roundFn) {
 /** Converts a Y/M/D (+ optional H/Min) into "days since epoch" -- the
  *  internal representation every date-tagged value uses, computed via
  *  Date.UTC to stay independent of the runtime's own local timezone. */
+/** Converts a raw string TOKEN (still including its own surrounding
+ *  quotes, e.g. `"Both Pass"` or `"She said \"hi\""`) into the actual
+ *  JS string it represents. */
+function unescapeStringLiteral(tok) {
+  const inner = tok.slice(1, -1);
+  return inner.replace(/\\(.)/g, (_, c) => (c === 'n' ? '\n' : c === 't' ? '\t' : c));
+}
+
 function dateToDays(year, month, day, hour = 0, minute = 0) {
   return Date.UTC(year, month - 1, day, hour, minute, 0, 0) / 86400000;
 }
@@ -359,6 +371,33 @@ function parseExpression(tokens) {
   }
 
   function parseExpr() {
+    return parseOr();
+  }
+  function parseOr() {
+    let node = parseAnd();
+    while (peek() === '||') {
+      next();
+      node = { type: 'binop', op: '||', left: node, right: parseAnd() };
+    }
+    return node;
+  }
+  function parseAnd() {
+    let node = parseComparison();
+    while (peek() === '&&') {
+      next();
+      node = { type: 'binop', op: '&&', left: node, right: parseComparison() };
+    }
+    return node;
+  }
+  function parseComparison() {
+    let node = parseAdditive();
+    while (peek() === '==' || peek() === '=' || peek() === '!=' || peek() === '<' || peek() === '>' || peek() === '<=' || peek() === '>=') {
+      const op = next();
+      node = { type: 'binop', op: op === '=' ? '==' : op, left: node, right: parseAdditive() };
+    }
+    return node;
+  }
+  function parseAdditive() {
     let node = parseTerm();
     while (peek() === '+' || peek() === '-') {
       const op = next();
@@ -387,6 +426,10 @@ function parseExpression(tokens) {
       next();
       return { type: 'neg', operand: parseUnary() };
     }
+    if (peek() === '!') {
+      next();
+      return { type: 'not', operand: parseUnary() };
+    }
     return parseAtom();
   }
   function parseAtom() {
@@ -397,6 +440,10 @@ function parseExpression(tokens) {
       const node = parseExpr();
       expect(')');
       return node;
+    }
+    if (tok.startsWith('"')) {
+      next();
+      return { type: 'string', value: unescapeStringLiteral(tok) };
     }
     if (/^\d/.test(tok)) {
       next();
@@ -420,6 +467,22 @@ function parseExpression(tokens) {
           throw new Error('"date" takes either one cell/timestamp argument or three (year, month, day)');
         }
         return { type: 'dateCall', name, args };
+      }
+      if (name === 'string') {
+        expect('(');
+        const arg = parseExpr();
+        expect(')');
+        return { type: 'stringCall', arg };
+      }
+      if (name === 'if') {
+        expect('(');
+        const condition = parseExpr();
+        expect(',');
+        const trueExpr = parseExpr();
+        expect(',');
+        const falseExpr = parseExpr();
+        expect(')');
+        return { type: 'ifCall', condition, trueExpr, falseExpr };
       }
       const isAggregate = name in AGGREGATE_FUNCTIONS;
       const isScalar = name in SCALAR_FUNCTIONS;
@@ -564,6 +627,42 @@ function isTaggedValue(v) {
   return v !== null && typeof v === 'object';
 }
 
+/** Calc's own boolean convention -- a non-zero number is true, zero
+ *  is false -- extended here to the two other value types this
+ *  module's own formulas can now produce: a non-empty string is
+ *  true, empty is false; a date/hms-tagged value is true unless its
+ *  own underlying day count is exactly zero. */
+function isTruthyValue(v) {
+  if (typeof v === 'string') return v !== '';
+  if (isTaggedValue(v)) return v.days !== 0;
+  return v !== 0;
+}
+
+/** ==/=/!=/</>/ <=/>= between two already-evaluated values -- a
+ *  date/hms-tagged operand is unwrapped to its own raw day count
+ *  first, same as this module's own +, -, *, /, and ^ arithmetic already does
+ *  (see evaluateDateArithmetic and the plain binop fallback below);
+ *  JS's own comparison operators already do the right thing for the
+ *  two remaining cases once unwrapped -- numeric comparison between
+ *  two numbers, lexicographic between two strings. Always returns 1
+ *  or 0 (Calc's own boolean-as-number convention), never a real JS
+ *  boolean. */
+const COMPARISON_OPS = new Set(['==', '!=', '<', '>', '<=', '>=']);
+
+function compareValues(l, r, op) {
+  const lVal = isTaggedValue(l) ? l.days : l;
+  const rVal = isTaggedValue(r) ? r.days : r;
+  let result;
+  if (op === '==') result = lVal === rVal;
+  else if (op === '!=') result = lVal !== rVal;
+  else if (op === '<') result = lVal < rVal;
+  else if (op === '>') result = lVal > rVal;
+  else if (op === '<=') result = lVal <= rVal;
+  else if (op === '>=') result = lVal >= rVal;
+  else throw new Error(`Unknown comparison operator "${op}"`);
+  return result ? 1 : 0;
+}
+
 /** Handles +/- when at least one operand is a date/hms-tagged value.
  *  date - date: a plain number (days elapsed) if NEITHER side ever
  *  had a time-of-day component, else an hms-tagged duration -- two
@@ -605,11 +704,26 @@ function evaluateAst(node, ctx) {
   switch (node.type) {
     case 'number':
       return node.value;
+    case 'string':
+      return node.value;
     case 'neg':
       return -evaluateAst(node.operand, ctx);
+    case 'not':
+      return isTruthyValue(evaluateAst(node.operand, ctx)) ? 0 : 1;
     case 'binop': {
+      if (node.op === '&&') {
+        const l = evaluateAst(node.left, ctx);
+        if (!isTruthyValue(l)) return 0;
+        return isTruthyValue(evaluateAst(node.right, ctx)) ? 1 : 0;
+      }
+      if (node.op === '||') {
+        const l = evaluateAst(node.left, ctx);
+        if (isTruthyValue(l)) return 1;
+        return isTruthyValue(evaluateAst(node.right, ctx)) ? 1 : 0;
+      }
       const l = evaluateAst(node.left, ctx);
       const r = evaluateAst(node.right, ctx);
+      if (COMPARISON_OPS.has(node.op)) return compareValues(l, r, node.op);
       if ((node.op === '+' || node.op === '-') && (isTaggedValue(l) || isTaggedValue(r))) {
         return evaluateDateArithmetic(l, r, node.op);
       }
@@ -664,6 +778,19 @@ function evaluateAst(node, ctx) {
       if (!parsed) throw new Error(`date(): couldn\u2019t find a recognizable timestamp in "${rawText.trim()}"`);
       return parsed;
     }
+    case 'stringCall': {
+      if (node.arg.type === 'ref') {
+        const { row, col } = resolveRef(node.arg.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
+        const rawText = (ctx.dataRows[row - 1] && ctx.dataRows[row - 1].cells[col - 1]) || '';
+        return rawText.trim();
+      }
+      const val = evaluateAst(node.arg, ctx);
+      if (typeof val === 'string') return val;
+      if (isTaggedValue(val)) return val.type === 'date' ? formatDateValue(val) : formatHmsValue(val);
+      return String(val);
+    }
+    case 'ifCall':
+      return isTruthyValue(evaluateAst(node.condition, ctx)) ? evaluateAst(node.trueExpr, ctx) : evaluateAst(node.falseExpr, ctx);
     default:
       throw new Error(`Unknown AST node type "${node.type}"`);
   }
@@ -998,6 +1125,7 @@ function parseTblfm(tblfm) {
  *  notation; otherwise an explicit format spec (fixed/integer/normal/
  *  scientific/engineering); otherwise formatResult's own default. */
 function formatFinalValue(value, mode, hourZeroPad) {
+  if (typeof value === 'string') return value;
   if (isTaggedValue(value)) return value.type === 'date' ? formatDateValue(value) : formatHmsValue(value);
   if (mode.duration) return formatDuration(value, mode.duration, hourZeroPad);
   if (mode.format) return applyFormatSpec(value, mode.format);
