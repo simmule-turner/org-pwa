@@ -5489,10 +5489,12 @@ function renderRow(row, todoSequence) {
           // A heading title is one logical line — Enter commits rather
           // than inserting a newline, same reasoning as a table cell.
           e.preventDefault();
+          e.stopPropagation(); // blur() below moves focus away DURING this same event -- without this, the keydown still bubbles to the document-level listener afterward and gets processed a second time as a top-level shortcut
           input.blur();
         }
         if (e.key === 'Escape') {
           e.preventDefault();
+          e.stopPropagation();
           cancelTitleEdit();
         }
       });
@@ -5677,6 +5679,7 @@ function renderRow(row, todoSequence) {
       textarea.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
           e.preventDefault();
+          e.stopPropagation();
           editingHeadingText = null;
           render();
         }
@@ -5872,10 +5875,12 @@ function renderRow(row, todoSequence) {
           // A list item's text is one logical line — Enter commits
           // rather than inserting a newline, same as a heading title.
           e.preventDefault();
+          e.stopPropagation();
           input.blur();
         }
         if (e.key === 'Escape') {
           e.preventDefault();
+          e.stopPropagation();
           editingListItem = null;
           render();
         }
@@ -6064,10 +6069,12 @@ function renderTableRow(row) {
             // A literal newline would break the table's one-row-per-line
             // syntax on save — Enter commits instead, same as before.
             e.preventDefault();
+            e.stopPropagation();
             input.blur();
           }
           if (e.key === 'Escape') {
             e.preventDefault();
+            e.stopPropagation();
             editingCell = null;
             render();
           }
@@ -6224,6 +6231,7 @@ function renderParagraphRow(row) {
     textarea.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         e.preventDefault();
+        e.stopPropagation();
         editingParagraph = null;
         render();
       }
@@ -11125,6 +11133,7 @@ function renderSearchPanel() {
     if (e.key === 'Enter') e.preventDefault(); // a search query is one line; results already update live
     if (e.key === 'Escape') {
       e.preventDefault();
+      e.stopPropagation();
       searchOpen = false;
       searchQuery = '';
       renderSearchPanel();
