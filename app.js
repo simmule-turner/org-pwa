@@ -3374,6 +3374,28 @@ function tryDispatchPanelHotkey(key) {
   return false;
 }
 
+/** Standard popup-menu "light dismiss": closes File/View/More/Extras
+ *  when a pointer press lands outside both that menu's own panel and
+ *  its own trigger button. pointerdown rather than click -- it fires
+ *  first, so the dismiss is already complete before whatever else was
+ *  actually pressed gets its own click handled, exactly matching how
+ *  a native OS/browser popup menu behaves. Each trigger button is
+ *  excluded from its own "outside" check since it already owns
+ *  toggling its own menu via its existing click handler. */
+document.addEventListener('pointerdown', (e) => {
+  const popupMenus = [
+    { open: () => fileMenuOpen, panel: fileMenuPanel, btn: fileMenuBtn, close: () => { fileMenuOpen = false; renderFileMenu(); } },
+    { open: () => viewMenuOpen, panel: viewMenuPanel, btn: viewMenuBtn, close: () => { viewMenuOpen = false; renderViewMenu(); } },
+    { open: () => moreOpen, panel: morePanel, btn: moreBtn, close: () => { moreOpen = false; renderMoreMenu(); } },
+    { open: () => extraMenuOpen, panel: extraMenuPanel, btn: extraMenuBtn, close: () => { extraMenuOpen = false; renderExtraMenu(); } },
+  ];
+  for (const menu of popupMenus) {
+    if (menu.open() && !menu.panel.contains(e.target) && !menu.btn.contains(e.target)) {
+      menu.close();
+    }
+  }
+});
+
 document.addEventListener('keydown', (e) => {
   const activeTag = document.activeElement && document.activeElement.tagName;
   if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return; // never hijack actual typing; each field's own keydown handler (Escape to cancel, etc.) already owns this
@@ -7569,6 +7591,36 @@ function appendMenuButtonsInOrder(container, aliasMap, labeledButtons) {
 /** A vertical dropdown-menu container -- the .menu-list counterpart to
  *  a plain .panel-row, for the app's own top-level navigation menus
  *  (File/View/More, Export/backend-picker). */
+/** Positions `panelEl` (a .popup-menu element, already display:block
+ *  with its own content rendered) as a floating popup anchored near
+ *  `buttonEl`'s own current position -- see this function's own
+ *  top-level docs above for why this can't just be a fixed CSS
+ *  offset the way extraMenuPanel's own corner-anchored popup is. */
+function positionPopupNearButton(panelEl, buttonEl) {
+  const btnRect = buttonEl.getBoundingClientRect();
+  const margin = 8;
+  const maxWidth = Math.min(320, window.innerWidth - margin * 2);
+  panelEl.style.width = maxWidth + 'px';
+  panelEl.style.minWidth = Math.min(200, maxWidth) + 'px';
+
+  // Measured AFTER width is set, since wrapped text reflows to it,
+  // changing the panel's own natural height.
+  const panelHeight = panelEl.offsetHeight;
+  const panelWidth = panelEl.offsetWidth;
+
+  let left = btnRect.left;
+  if (left + panelWidth > window.innerWidth - margin) left = window.innerWidth - margin - panelWidth;
+  if (left < margin) left = margin;
+
+  let top = btnRect.bottom + 4;
+  if (top + panelHeight > window.innerHeight - margin && btnRect.top - panelHeight - 4 > margin) {
+    top = btnRect.top - panelHeight - 4; // not enough room below -- open above instead
+  }
+
+  panelEl.style.left = left + 'px';
+  panelEl.style.top = top + 'px';
+}
+
 function menuListContainer() {
   const el = document.createElement('div');
   el.className = 'menu-list';
@@ -7628,6 +7680,11 @@ function closeFileMenu() {
 }
 
 function renderFileMenu() {
+  renderFileMenuContent();
+  if (fileMenuOpen) positionPopupNearButton(fileMenuPanel, fileMenuBtn);
+}
+
+function renderFileMenuContent() {
   fileMenuPanel.innerHTML = '';
   if (!fileMenuOpen) {
     fileMenuPanel.style.display = 'none';
@@ -7650,7 +7707,18 @@ function renderFileMenu() {
         renderFileMenu();
       })
     );
-    const saveBtn = styleAsMenuListItem(aliasedMenuButton(fileMenuAliases, 'Save', () => saveCurrent(), !state.documentId));
+    const saveBtn = styleAsMenuListItem(
+      aliasedMenuButton(
+        fileMenuAliases,
+        'Save',
+        () => {
+          fileMenuOpen = false;
+          renderFileMenu();
+          saveCurrent();
+        },
+        !state.documentId
+      )
+    );
     const saveAsBtn = styleAsMenuListItem(
       aliasedMenuButton(
         fileMenuAliases,
@@ -8208,6 +8276,11 @@ function switchToView(view) {
 }
 
 function renderViewMenu() {
+  renderViewMenuContent();
+  if (viewMenuOpen) positionPopupNearButton(viewMenuPanel, viewMenuBtn);
+}
+
+function renderViewMenuContent() {
   viewMenuPanel.innerHTML = '';
   if (!viewMenuOpen) {
     viewMenuPanel.style.display = 'none';
@@ -11967,6 +12040,11 @@ captureBtn.addEventListener('click', () => {
  *  any of its logic, so nothing about how search/capture/add actually
  *  work changes at all — only how they're reached. */
 function renderMoreMenu() {
+  renderMoreMenuContent();
+  if (moreOpen) positionPopupNearButton(morePanel, moreBtn);
+}
+
+function renderMoreMenuContent() {
   morePanel.innerHTML = '';
   if (!moreOpen) {
     morePanel.style.display = 'none';

@@ -936,7 +936,7 @@ A label never mentioned in the variable at all keeps its default, unchanged text
 org-xx-menu-aliases: "more:Settings;" "more:Capture;" "more:Search;" "more:History;" "more:+;" "more:?;"
 #+END_SRC
 
-*Each menu renders as a vertical dropdown list* — one full-width row per button, top to bottom, in a bordered panel — rather than a horizontal row of individually-sized buttons; a short label like "New" and a longer one like "Save As" both simply fill the row's own width the same way.
+*Each menu is a genuine floating popup* — File, View, and More all open as a small, bordered, drop-shadowed panel positioned directly below their own trigger button (Extras already worked this way), rather than an inline panel taking up the page's own width. One full-width row per button, top to bottom, a short label like "New" and a longer one like "Save As" both simply filling the row's own width the same way. Tapping anywhere outside a menu closes it ("light dismiss," the same convention a native browser or OS popup menu uses), and selecting an action closes the menu immediately — its own result (a save completing, a file opening) is then reported separately via the status line, not by leaving the menu open.
 
 The four menus' own real labels, exactly as they'd appear in ~"menu:Label;alias"~ — the complete set needed to reorder that specific menu:
 | ~menu~ | Labels |

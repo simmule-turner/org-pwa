@@ -211,6 +211,10 @@
     .status-spinner { animation: none; }
   }
   .panel { border-bottom: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 13px; width: 100%; box-sizing: border-box; }
+  .popup-menu {
+    position: fixed; z-index: 51; border-radius: 10px; border: 1px solid var(--border-strong);
+    background: var(--bg); box-shadow: 0 4px 16px #0006; max-height: 70vh; overflow-y: auto;
+  }
   /* Item 1.5: panel buttons (File/View menu options, Settings controls)
      larger and more touch-friendly than the previous compact text row. */
   .panel button { font-size: 15px; padding: 10px 14px; min-height: 44px; font-family: inherit; }
@@ -299,13 +303,11 @@
       <button id="viewMenuBtn" class="icon-btn" disabled aria-label="View">&#128065;</button>
       <button id="moreBtn" class="icon-btn" disabled aria-label="More">&#8942;</button>
     </header>
-    <div id="fileMenuPanel" class="panel" style="display: none;"></div>
     <div id="searchPanel" class="panel" style="display: none;"></div>
     <div id="capturePanel" class="panel" style="display: none;"></div>
     <div id="historyPanel" class="panel" style="display: none;"></div>
     <div id="doneNotePanel" class="panel" style="display: none;"></div>
     <div id="refilePanel" class="panel" style="display: none;"></div>
-    <div id="morePanel" class="panel" style="display: none;"></div>
     <!-- Kept in the DOM so their existing click handlers and disabled-state
          logic stay completely untouched -- the More panel's own buttons
          just call .click() on these rather than duplicating any logic. -->
@@ -313,8 +315,22 @@
     <button id="captureBtn" disabled aria-label="Capture" style="display: none;">&#128229;</button>
     <button id="addBtn" disabled aria-label="Add heading" style="display: none;">+</button>
     <button id="settingsBtn" aria-label="Settings" style="display: none;">&#9881;</button>
-    <div id="viewMenuPanel" class="panel" style="display: none;"></div>
   </div>
+  <div
+    id="fileMenuPanel"
+    class="panel popup-menu"
+    style="display: none;"
+  ></div>
+  <div
+    id="viewMenuPanel"
+    class="panel popup-menu"
+    style="display: none;"
+  ></div>
+  <div
+    id="morePanel"
+    class="panel popup-menu"
+    style="display: none;"
+  ></div>
   <button
     id="navBackBtn"
     aria-label="Go back to previous location"
