@@ -2887,11 +2887,7 @@ function rowMatchesKeyboardFocus(row) {
  *  own containing heading either way (itself, if row IS a heading;
  *  its own .heading reference otherwise), so every existing
  *  heading-specific action still has a sensible heading to act on
- *  regardless of where the line-cursor has actually drilled to.
- *  keyboardFocusedSubLine is reset here; moveGranular (this
- *  function's other caller, besides moveLineFocus) may then
- *  immediately override it again for its own within-block entry
- *  point. */
+ *  regardless of where the line-cursor has actually drilled to. */
 function setKeyboardFocusToRow(row) {
   if (row.rowType === 'heading') {
     keyboardFocusedHeading = row.node;
@@ -2900,27 +2896,25 @@ function setKeyboardFocusToRow(row) {
     keyboardFocusedHeading = row.heading;
     keyboardFocusedBodyRow = row;
   }
-  keyboardFocusedSubLine = null;
 }
 
 /** THE FIX: sets keyboard focus squarely to `heading` itself, clearing
- *  keyboardFocusedBodyRow/keyboardFocusedSubLine -- every heading-only
- *  navigation action (j/k, C-c C-f/C-c C-b, C-c C-u, C-c C-n/C-c C-p,
- *  M-RET/M-S-RET, and Escape's own "clear focus"/"enter god-mode"
- *  branches) needs this, not just a bare "keyboardFocusedHeading =
- *  heading" assignment: leaving a stale keyboardFocusedBodyRow behind
- *  meant the visual highlight (and scroll-into-view) stayed stuck on
- *  wherever the line-cursor had last drilled into, since
- *  rowMatchesKeyboardFocus requires keyboardFocusedBodyRow to be null
- *  for a HEADING row to ever match -- even though keyboardFocusedHeading
- *  itself really was being updated correctly. This is what made
- *  C-c C-n/C-c C-p (and friends) look like they weren't moving at all
- *  while focus was on body text. `heading` may be null (Escape's own
- *  "clear focus entirely" case). */
+ *  keyboardFocusedBodyRow -- every heading-only navigation action
+ *  (j/k, C-c C-f/C-c C-b, C-c C-u, C-c C-n/C-c C-p, M-RET/M-S-RET, and
+ *  Escape's own "clear focus"/"enter god-mode" branches) needs this,
+ *  not just a bare "keyboardFocusedHeading = heading" assignment:
+ *  leaving a stale keyboardFocusedBodyRow behind meant the visual
+ *  highlight (and scroll-into-view) stayed stuck on wherever the
+ *  line-cursor had last drilled into, since rowMatchesKeyboardFocus
+ *  requires keyboardFocusedBodyRow to be null for a HEADING row to
+ *  ever match -- even though keyboardFocusedHeading itself really was
+ *  being updated correctly. This is what made C-c C-n/C-c C-p (and
+ *  friends) look like they weren't moving at all while focus was on
+ *  body text. `heading` may be null (Escape's own "clear focus
+ *  entirely" case). */
 function setKeyboardFocusToHeading(heading) {
   keyboardFocusedHeading = heading;
   keyboardFocusedBodyRow = null;
-  keyboardFocusedSubLine = null;
 }
 
 /** Moves the line-cursor to the adjacent VISIBLE row -- headings,
@@ -2932,7 +2926,15 @@ function setKeyboardFocusToHeading(heading) {
  *  just headings the way j/k (unchanged, kept as a faster
  *  heading-to-heading jump) already do. */
 function moveLineFocus(delta) {
-  const rows = state.doc ? flattenVisibleRows(state.doc) : [];
+  if (!state.doc) return;
+  // Moving down into a heading whose own body is currently folded --
+  // reveal it first, so the row-walk below naturally lands on its
+  // own first body row next, instead of skipping straight past to
+  // the next heading the way a fold-respecting walk otherwise would.
+  if (delta > 0 && !keyboardFocusedBodyRow && keyboardFocusedHeading && keyboardFocusedHeading.bodyHidden && hasBodyContent(keyboardFocusedHeading)) {
+    keyboardFocusedHeading.bodyHidden = false;
+  }
+  const rows = flattenVisibleRows(state.doc);
   if (rows.length === 0) return;
   const currentIndex = rows.findIndex(rowMatchesKeyboardFocus);
   let nextIndex;
@@ -2946,71 +2948,15 @@ function moveLineFocus(delta) {
   scrollFocusedHeadingIntoView();
 }
 
-/** How many individual sub-lines/sub-rows `row` has within itself --
- *  a multi-line paragraph's own lines, or a multi-row table's own
- *  rows; 0 for every other row type (heading, list-item, block, hr),
- *  which flattenVisibleRows already treats as a single, atomic unit
- *  with nothing finer to step through. */
-function subLineCountFor(row) {
-  if (row.rowType === 'paragraph') return row.node.lines.length;
-  if (row.rowType === 'table') return row.node.rows.length;
-  return 0;
-}
-
 /** True if `heading` has any body content at all (paragraph, table,
- *  list, block) to potentially step into via moveGranular -- checked
- *  against the heading's own raw body array directly, not
- *  flattenVisibleRows' own output, since that respects the CURRENT
- *  fold state and would miss body content that's simply folded away
- *  right now (exactly the case moveGranular needs to detect, so it
- *  knows to reveal that content rather than silently finding nothing
- *  there). */
+ *  list, block) to potentially reveal via moveLineFocus's own
+ *  auto-reveal-on-enter -- checked against the heading's own raw body
+ *  array directly, not flattenVisibleRows' own output, since that
+ *  respects the CURRENT fold state and would miss body content
+ *  that's simply folded away right now (exactly the case
+ *  auto-reveal needs to detect). */
 function hasBodyContent(heading) {
   return !!(heading.body && heading.body.length > 0);
-}
-
-function moveGranular(delta) {
-  if (!state.doc) return;
-  // Step within the CURRENT row's own sub-lines first, if there's
-  // room left to move in that direction.
-  if (keyboardFocusedBodyRow && keyboardFocusedSubLine !== null) {
-    const maxSubLine = subLineCountFor(keyboardFocusedBodyRow) - 1;
-    const nextSubLine = keyboardFocusedSubLine + delta;
-    if (nextSubLine >= 0 && nextSubLine <= maxSubLine) {
-      keyboardFocusedSubLine = nextSubLine;
-      render();
-      scrollFocusedHeadingIntoView();
-      return;
-    }
-  }
-
-  // Moving down from a heading whose own body is currently folded --
-  // reveal it first, so the row-walk below can actually reach it.
-  if (delta > 0 && !keyboardFocusedBodyRow && keyboardFocusedHeading && keyboardFocusedHeading.bodyHidden && hasBodyContent(keyboardFocusedHeading)) {
-    keyboardFocusedHeading.bodyHidden = false;
-  }
-
-  // The same row-level walk moveLineFocus itself uses, but a
-  // multi-line paragraph or multi-row table landed on this way is
-  // entered at whichever end matches the direction of travel,
-  // instead of being treated as one atomic stop the way plain
-  // arrow navigation treats it.
-  const rows = flattenVisibleRows(state.doc);
-  if (rows.length === 0) return;
-  const currentIndex = rows.findIndex(rowMatchesKeyboardFocus);
-  let nextIndex;
-  if (currentIndex === -1) {
-    nextIndex = delta > 0 ? 0 : rows.length - 1;
-  } else {
-    nextIndex = Math.max(0, Math.min(rows.length - 1, currentIndex + delta));
-  }
-  if (nextIndex === currentIndex) return; // already at the first/last visible row -- nothing further to move to, stay put rather than re-entering the current block from its own opposite end
-  const nextRow = rows[nextIndex];
-  setKeyboardFocusToRow(nextRow);
-  const subLineCount = subLineCountFor(nextRow);
-  if (subLineCount > 0) keyboardFocusedSubLine = delta > 0 ? 0 : subLineCount - 1;
-  render();
-  scrollFocusedHeadingIntoView();
 }
 
 /** The "i" dispatcher -- enters insert/edit mode for whatever the
@@ -3042,8 +2988,7 @@ function enterInsertModeAtCurrentLine() {
     editingParagraph = { heading: row.heading, paragraph: row.node };
     render();
   } else if (row.rowType === 'table') {
-    const rowIndex = keyboardFocusedSubLine !== null ? keyboardFocusedSubLine : 0;
-    editingCell = { heading: row.heading, table: row.node, rowIndex, colIndex: 0 };
+    editingCell = { heading: row.heading, table: row.node, rowIndex: 0, colIndex: 0 };
     render();
   } else if (row.rowType === 'list-item') {
     editingListItem = { heading: row.heading, item: row.item };
@@ -3250,8 +3195,6 @@ const GOD_MODE_ACTIONS = {
       render();
     }
   },
-  'S-<up>': () => moveGranular(-1),
-  'S-<down>': () => moveGranular(1),
 
   // Section 5: Table Manipulation -- none of these have a keyboard-
   // focus equivalent, since this app's own keyboard focus tracks a
@@ -3479,16 +3422,6 @@ document.addEventListener('keydown', (e) => {
     moveLineFocus(-1);
     return;
   }
-  if (!e.altKey && e.shiftKey && e.key === 'ArrowDown') {
-    e.preventDefault();
-    moveGranular(1);
-    return;
-  }
-  if (!e.altKey && e.shiftKey && e.key === 'ArrowUp') {
-    e.preventDefault();
-    moveGranular(-1);
-    return;
-  }
   if (!keyboardFocusedHeading) return; // everything remaining needs a specific heading to act on
 
   if (e.key === 'i') {
@@ -3628,7 +3561,6 @@ let actionMenuFor = null;
 // never asked for org-style keyboard nav in the first place.
 let keyboardFocusedHeading = null;
 let keyboardFocusedBodyRow = null;
-let keyboardFocusedSubLine = null;
 let pendingCursorPosition = null;
 // god-mode: whether it's currently active (toggled by Escape -- see
 // the keydown listener below), and the in-progress key-sequence
@@ -4787,7 +4719,6 @@ async function cutSubtree(heading) {
   editingGeneral = null;
   if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.heading === heading) {
     keyboardFocusedBodyRow = null;
-    keyboardFocusedSubLine = null;
   }
   removeHeading(state.doc, heading);
   commitAndRender('Cut subtree to clipboard');

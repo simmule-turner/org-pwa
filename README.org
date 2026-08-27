@@ -1071,8 +1071,7 @@ A practical subset for a keyboard/mouse device — genuinely inert on a phone or
 
 | Key | Action | Matches real org? |
 |---+---+---|
-| ~↓~ / ~↑~ | Move keyboard focus to the next/previous visible LINE -- any row (heading, paragraph, table, list item, block), not just headings | No direct equivalent |
-| ~S-↓~ / ~S-↑~ | More granular movement: step through a multi-line paragraph's own lines, or a multi-row table's own rows, one at a time (auto-revealing a folded heading's own body content first, if needed) — falling back to the same behavior as plain ~↓~/~↑~ once there's nothing finer left to step through | No direct equivalent |
+| ~↓~ / ~↑~ | Move keyboard focus to the next/previous visible LINE -- any row (heading, paragraph, table, list item, block), not just headings. Moving down into a heading whose own body is currently folded reveals it first, landing directly on its own first body row rather than skipping past it | No direct equivalent |
 | ~i~ | Enter edit mode for whatever the line-cursor is currently on (a heading's own title, a paragraph, a table cell, a list item), cursor positioned at the start of the line by default | Loosely inspired by vim's own ~i~, not a real org/Emacs binding |
 | ~j~ | Move keyboard focus to the next visible heading specifically -- a faster heading-to-heading jump than ~↓~ | No direct equivalent — the web/vim-style analog |
 | ~k~ | Move keyboard focus to the previous visible heading specifically | Same |
@@ -1104,8 +1103,7 @@ Translation rules — this is a direct implementation of real god-mode.el's own 
 
 | god-mode sequence | Emacs chord | Action |
 |---+---+---|
-| ~↓~ / ~↑~ | ~<down>~ / ~<up>~ | Move focus to the next/previous visible LINE -- any row, not just headings (matches the plain, non-god-mode shortcut exactly) |
-| ~S-↓~ / ~S-↑~ | ~S-<down>~ / ~S-<up>~ | More granular movement -- see the plain-shortcut table above, same behavior |
+| ~↓~ / ~↑~ | ~<down>~ / ~<up>~ | Move focus to the next/previous visible LINE -- any row, not just headings (matches the plain, non-god-mode shortcut exactly, including auto-revealing a folded heading's own body when moving down into it) |
 | ~i~ | (not a real chord) | Enter edit mode for the current line, cursor at the start by default -- see below for ~a~/~e~ |
 | ~a~ | ~C-a~ | Before pressing ~i~: the eventual cursor lands at the START of the line instead of the default |
 | ~e~ | ~C-e~ | Before pressing ~i~: the eventual cursor lands at the END of the line instead of the default |
