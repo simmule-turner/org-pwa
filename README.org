@@ -1134,6 +1134,7 @@ Translation rules — this is a direct implementation of real god-mode.el's own 
 | ~c u~ | ~C-c C-u~ | Move focus to the parent heading -- reports via a status message when already at the top level |
 | ~c n~ / ~c p~ | ~C-c C-n~ / ~C-c C-p~ | Move focus to the next/previous visible heading, at any level |
 | ~c x w~ | ~C-c C-x C-w~ | Cut the focused heading and its entire subtree to the clipboard, then delete it (~org-cut-subtree~) |
+| ~c x y~ | ~C-c C-x C-y~ | Paste a subtree from the clipboard as a sibling right after the focused heading, at the focused heading's own level -- every level within the pasted content shifts by whatever amount makes that true, preserving its own internal structure (~org-paste-subtree~) |
 | ~gRET~ | ~M-RET~ | Insert a new heading after the focused one, at the same level |
 | ~gS-RET~ | ~M-S-RET~ | Same, with a TODO keyword set |
 | ~c t~ | ~C-c C-t~ | Cycle the focused heading's TODO state — or, with no current state and more than one ~#+TODO:~ workflow, open a state picker instead (see below) |

@@ -213,7 +213,8 @@
   .panel { border-bottom: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 13px; width: 100%; box-sizing: border-box; }
   .popup-menu {
     position: fixed; z-index: 51; border-radius: 10px; border: 1px solid var(--border-strong);
-    background: var(--bg); box-shadow: 0 4px 16px #0006; max-height: 70vh; overflow-y: auto;
+    background: var(--bg); box-shadow: 0 4px 16px #0006; padding: 6px; box-sizing: border-box;
+    max-height: 70vh; overflow-y: auto;
   }
   /* Item 1.5: panel buttons (File/View menu options, Settings controls)
      larger and more touch-friendly than the previous compact text row. */
@@ -225,7 +226,6 @@
      .panel-row's horizontal row of individually-pill-shaped buttons,
      still used for every non-menu button row (toolbars, form fields,
      Save/Cancel pairs) elsewhere in this app. */
-  .menu-list { display: flex; flex-direction: column; margin: 8px 0; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
   .menu-list-item {
     display: block; width: 100%; text-align: left; font: inherit; font-size: 15px; padding: 12px 14px; min-height: 44px;
     box-sizing: border-box; background: var(--bg); color: var(--fg); border: none; border-radius: 0; border-bottom: 1px solid var(--border);
@@ -327,17 +327,17 @@
   </div>
   <div
     id="fileMenuPanel"
-    class="panel popup-menu"
+    class="popup-menu"
     style="display: none;"
   ></div>
   <div
     id="viewMenuPanel"
-    class="panel popup-menu"
+    class="popup-menu"
     style="display: none;"
   ></div>
   <div
     id="morePanel"
-    class="panel popup-menu"
+    class="popup-menu"
     style="display: none;"
   ></div>
   <button

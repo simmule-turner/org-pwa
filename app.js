@@ -18,6 +18,7 @@ import {
 } from './src/attach.js';
 import {
   findAncestorPath,
+  findContainer,
   getPropertiesText,
   buildArchivedClone,
   getArchiveLocation,
@@ -3304,6 +3305,9 @@ const GOD_MODE_ACTIONS = {
   'C-c C-x C-w': () => {
     if (keyboardFocusedHeading) cutSubtree(keyboardFocusedHeading);
   },
+  'C-c C-x C-y': () => {
+    if (keyboardFocusedHeading) pasteSubtree(keyboardFocusedHeading);
+  },
 };
 
 /** True if `chordString` is either an exact match in GOD_MODE_ACTIONS
@@ -4890,6 +4894,33 @@ async function cutSubtree(heading) {
   }
   removeHeading(state.doc, heading);
   commitAndRender('Cut subtree to clipboard');
+}
+
+async function pasteSubtree(heading) {
+  if (!state.doc) return;
+  let text;
+  try {
+    text = await navigator.clipboard.readText();
+  } catch {
+    setStatus("Couldn't read from the clipboard \u2014 your browser may not allow clipboard access here.");
+    return;
+  }
+  if (!text || !text.trim()) {
+    setStatus('Clipboard is empty.');
+    return;
+  }
+  const parsed = parseOrg(text);
+  if (!parsed.children || parsed.children.length === 0) {
+    setStatus('Clipboard doesn\u2019t contain a subtree to paste.');
+    return;
+  }
+  const located = findContainer(state.doc, heading);
+  if (!located) return;
+  const targetLevel = heading.level;
+  for (const node of parsed.children) shiftLevels(node, targetLevel);
+  located.container.splice(located.index + 1, 0, ...parsed.children);
+  setKeyboardFocusToHeading(parsed.children[0]);
+  commitAndRender('Pasted subtree');
 }
 
 function deleteHeadingWithConfirmation(heading) {
@@ -7560,7 +7591,7 @@ function positionPopupNearButton(panelEl, buttonEl) {
   const btnRect = buttonEl.getBoundingClientRect();
   const margin = 8;
   const maxWidth = Math.min(320, window.innerWidth - margin * 2);
-  panelEl.style.width = maxWidth + 'px';
+  panelEl.style.maxWidth = maxWidth + 'px';
   panelEl.style.minWidth = Math.min(200, maxWidth) + 'px';
 
   // Measured AFTER width is set, since wrapped text reflows to it,
@@ -7579,12 +7610,6 @@ function positionPopupNearButton(panelEl, buttonEl) {
 
   panelEl.style.left = left + 'px';
   panelEl.style.top = top + 'px';
-}
-
-function menuListContainer() {
-  const el = document.createElement('div');
-  el.className = 'menu-list';
-  return el;
 }
 
 /** Builds one <div>-based popup-menu item -- the div/onclick-based
@@ -7693,7 +7718,6 @@ function renderFileMenuContent() {
   fileMenuPanel.style.display = 'block';
 
   if (fileMenuStep === null) {
-    const row = menuListContainer();
     const fileMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).file;
     const newBtn = aliasedMenuDivItem(fileMenuAliases, 'New', () => {
       fileMenuStep = 'new';
@@ -7732,14 +7756,13 @@ function renderFileMenuContent() {
       },
       !state.doc
     );
-    appendMenuButtonsInOrder(row, fileMenuAliases, [
+    appendMenuButtonsInOrder(fileMenuPanel, fileMenuAliases, [
       { label: 'New', btn: newBtn },
       { label: 'Open', btn: openBtn },
       { label: 'Save', btn: saveBtn },
       { label: 'Save As', btn: saveAsBtn },
       { label: 'Export', btn: exportBtn },
     ]);
-    fileMenuPanel.appendChild(row);
     return;
   }
 
@@ -7761,10 +7784,8 @@ function renderFileMenuContent() {
     fileMenuStep === 'open' ? 'Open from:' : fileMenuStep === 'new' ? 'New file on:' : 'Save a copy to:';
   fileMenuPanel.appendChild(label);
 
-  const btnRow = menuListContainer();
-
   if (!isFileSystemAccessUnsupported()) {
-    btnRow.appendChild(
+    fileMenuPanel.appendChild(
       menuDivItem('Local file', () => {
         if (fileMenuStep === 'open') openFromFilesystem();
         else if (fileMenuStep === 'new') newOnFilesystem();
@@ -7774,7 +7795,7 @@ function renderFileMenuContent() {
   } else {
     // This platform has no File System Access API at all (every browser
     // on iOS) — offer the read-once/download-based fallback instead.
-    btnRow.appendChild(
+    fileMenuPanel.appendChild(
       menuDivItem(fileMenuStep === 'open' ? 'Import file\u2026' : 'Local (download)', () => {
         if (fileMenuStep === 'open') openFromImport();
         else if (fileMenuStep === 'new') newViaImport();
@@ -7783,7 +7804,7 @@ function renderFileMenuContent() {
     );
   }
 
-  btnRow.appendChild(
+  fileMenuPanel.appendChild(
     menuDivItem('GitHub', () => {
       if (fileMenuStep === 'open') openFromGithub();
       else if (fileMenuStep === 'new') newOnGithub();
@@ -7791,15 +7812,13 @@ function renderFileMenuContent() {
     })
   );
 
-  btnRow.appendChild(
+  fileMenuPanel.appendChild(
     menuDivItem('WebDAV', () => {
       if (fileMenuStep === 'open') openFromWebdav();
       else if (fileMenuStep === 'new') newOnWebdav();
       else saveAsWebdav();
     })
   );
-
-  fileMenuPanel.appendChild(btnRow);
 }
 
 /** Closes the file browser, returning to the "which backend" button
@@ -7886,7 +7905,6 @@ function renderExportFlow() {
     label.textContent = 'Export as:';
     fileMenuPanel.appendChild(label);
 
-    const row = menuListContainer();
     const exportMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).export;
     const asciiBtn = aliasedMenuDivItem(exportMenuAliases, 'ASCII', () => {
       exportFormat = 'ascii';
@@ -7908,14 +7926,13 @@ function renderExportFlow() {
       exportFormat = 'odt';
       renderFileMenu();
     });
-    appendMenuButtonsInOrder(row, exportMenuAliases, [
+    appendMenuButtonsInOrder(fileMenuPanel, exportMenuAliases, [
       { label: 'ASCII', btn: asciiBtn },
       { label: 'Calendar (.ics)', btn: icsBtn },
       { label: 'HTML', btn: htmlBtn },
       { label: 'Markdown', btn: mdBtn },
       { label: 'ODT', btn: odtBtn },
     ]);
-    fileMenuPanel.appendChild(row);
     return;
   }
 
@@ -7927,10 +7944,9 @@ function renderExportFlow() {
     label.textContent = 'Export Calendar (.ics) for:';
     fileMenuPanel.appendChild(label);
 
-    const row = menuListContainer();
-    row.appendChild(menuDivItem('This file', () => performExport('icalendar', null)));
+    fileMenuPanel.appendChild(menuDivItem('This file', () => performExport('icalendar', null)));
     if (agendaFilesConfig.length > 0) {
-      row.appendChild(
+      fileMenuPanel.appendChild(
         menuDivItem('This file + Agenda Files', async () => {
           setStatus('Loading agenda files\u2026');
           await waitForAgendaFilesLoaded();
@@ -7938,13 +7954,12 @@ function renderExportFlow() {
         })
       );
     }
-    row.appendChild(
+    fileMenuPanel.appendChild(
       menuDivItem('Choose a heading\u2026', () => {
         exportPickingHeading = true;
         renderFileMenu();
       })
     );
-    fileMenuPanel.appendChild(row);
 
     const backRow = document.createElement('div');
     backRow.className = 'panel-row';
@@ -8256,7 +8271,6 @@ function renderViewMenuContent() {
   }
   viewMenuPanel.style.display = 'block';
 
-  const row = menuListContainer();
   const viewMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).view;
   const labeledButtons = [];
   for (const [key, label] of [
@@ -8269,8 +8283,7 @@ function renderViewMenuContent() {
     if (btn && key === currentView) btn.style.fontWeight = '700';
     labeledButtons.push({ label, btn });
   }
-  appendMenuButtonsInOrder(row, viewMenuAliases, labeledButtons);
-  viewMenuPanel.appendChild(row);
+  appendMenuButtonsInOrder(viewMenuPanel, viewMenuAliases, labeledButtons);
 }
 
 // ---- Agenda view ---------------------------------------------------------
@@ -12055,7 +12068,6 @@ function renderMoreMenuContent() {
   }
   morePanel.style.display = 'block';
 
-  const row = menuListContainer();
   const moreMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).more;
 
   const searchBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Search', () => {
@@ -12107,7 +12119,7 @@ function renderMoreMenuContent() {
     settingsBtn.click();
   });
 
-  appendMenuButtonsInOrder(row, moreMenuAliases, [
+  appendMenuButtonsInOrder(morePanel, moreMenuAliases, [
     { label: 'Search', btn: searchBtnOption },
     { label: 'Capture', btn: captureBtnOption },
     { label: 'History', btn: historyBtnOption },
@@ -12115,8 +12127,6 @@ function renderMoreMenuContent() {
     { label: '?', btn: docsBtnOption },
     { label: 'Settings', btn: settingsBtnOption },
   ]);
-
-  morePanel.appendChild(row);
 }
 
 moreBtn.addEventListener('click', () => {
