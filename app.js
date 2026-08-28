@@ -2834,13 +2834,14 @@ function renderModeline() {
   const vars = state.localVariables;
   const parts = [];
 
-  // Buffer state & coding system block, matching real Emacs's own
-  // dense mode-line-mule-info + eol-type convention exactly in shape.
-  // The coding-system/EOL portion is authentic to the format but
-  // non-varying -- this app always normalizes to UTF-8/Unix line
-  // endings on save (confirmed: no CRLF-preservation logic exists
-  // anywhere in the parser), so every file shows the same thing here.
-  parts.push((isDirty ? '**' : '--') + '-UUU:----');
+  // Modified indicator -- real Emacs's own -- (unmodified) / ** (unsaved
+  // changes) convention. Real Emacs's own fuller buffer-state block also
+  // includes a coding-system + end-of-line segment, deliberately left out
+  // here: this app always writes UTF-8 and always normalizes to Unix (\n)
+  // line endings on save regardless of the original file's own encoding,
+  // so that portion would never actually vary for anything this app could
+  // open -- static decoration, not real information, so it's not shown.
+  parts.push(isDirty ? '**' : '--');
 
   parts.push(state.documentId ? state.documentId + ' (' + storageKindLabel(state.storageKind) + ')' : '');
   parts.push(computeBufferPositionString());
@@ -11531,6 +11532,7 @@ function renderMinibufferSearch() {
   input.value = searchQuery;
   input.style.flex = '1';
   input.style.minWidth = '0';
+  input.style.height = '26px';
   input.style.boxSizing = 'border-box';
   input.style.font = 'inherit';
   input.style.fontSize = '16px';
@@ -11539,7 +11541,9 @@ function renderMinibufferSearch() {
   input.style.borderRadius = '4px';
   input.style.background = 'var(--bg)';
   input.style.color = 'var(--fg)';
-  input.style.overflowWrap = 'anywhere';
+  input.style.resize = 'none';
+  input.style.overflow = 'hidden';
+  input.style.whiteSpace = 'nowrap';
   input.addEventListener('input', () => {
     searchQuery = input.value;
     renderSearchResults();
@@ -11555,7 +11559,6 @@ function renderMinibufferSearch() {
       renderSearchPanel();
     }
   });
-  autoGrowTextarea(input);
   minibufferSearchEl.appendChild(input);
 
   const regexToggle = document.createElement('button');
