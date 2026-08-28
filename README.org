@@ -321,7 +321,7 @@ Search looks at the entire document regardless of current fold state — a match
 
 *Regex mode*: the *Regex* toggle next to the minibuffer's own query box switches from plain substring matching to a real regular expression, case-insensitive either way. Off (the default) is a literal, "find this exact text" search — a query containing ~.~ or ~(~ matches that character literally, with no escaping needed, which is what most searches actually want. On, the query is compiled as a JavaScript RegExp; an invalid pattern shows a clear error message in the results area rather than crashing or silently showing "no matches," so a mistyped pattern and a genuinely empty result set are never confused for each other.
 
-*Filter tokens*: the same query box also recognizes a small set of structured tokens — a persistent hint (~Hints: +tag  -tag  todo:X  priority:A  key:value~) shown above the results. They combine with each other and with any leftover plain text as an implicit AND:
+*Filter tokens*: the same query box also recognizes a small set of structured tokens. They combine with each other and with any leftover plain text as an implicit AND:
 
 - ~+tag~ — heading must have this tag
 - ~-tag~ — heading must NOT have this tag

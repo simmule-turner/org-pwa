@@ -7700,27 +7700,39 @@ function appendMenuButtonsInOrder(container, aliasMap, labeledButtons) {
  *  top-level docs above for why this can't just be a fixed CSS
  *  offset the way extraMenuPanel's own corner-anchored popup is. */
 function positionPopupNearButton(panelEl, buttonEl) {
-  const btnRect = buttonEl.getBoundingClientRect();
-  const margin = 8;
-  const maxWidth = Math.min(320, window.innerWidth - margin * 2);
-  panelEl.style.maxWidth = maxWidth + 'px';
+  const place = () => {
+    const btnRect = buttonEl.getBoundingClientRect();
+    const margin = 8;
+    const vv = window.visualViewport;
+    const viewportWidth = vv ? vv.width : window.innerWidth;
+    const viewportHeight = vv ? vv.height : window.innerHeight;
+    const maxWidth = Math.min(320, viewportWidth - margin * 2);
+    panelEl.style.maxWidth = maxWidth + 'px';
 
-  // Measured AFTER max-width is set, since wrapped text reflows to it,
-  // changing the panel's own natural height.
-  const panelHeight = panelEl.offsetHeight;
-  const panelWidth = panelEl.offsetWidth;
+    // Measured AFTER max-width is set, since wrapped text reflows to it,
+    // changing the panel's own natural height.
+    const panelHeight = panelEl.offsetHeight;
+    const panelWidth = panelEl.offsetWidth;
 
-  let left = btnRect.left;
-  if (left + panelWidth > window.innerWidth - margin) left = window.innerWidth - margin - panelWidth;
-  if (left < margin) left = margin;
+    let left = btnRect.left;
+    if (left + panelWidth > viewportWidth - margin) left = viewportWidth - margin - panelWidth;
+    if (left < margin) left = margin;
 
-  let top = btnRect.bottom + 4;
-  if (top + panelHeight > window.innerHeight - margin && btnRect.top - panelHeight - 4 > margin) {
-    top = btnRect.top - panelHeight - 4; // not enough room below -- open above instead
-  }
+    let top = btnRect.bottom + 4;
+    if (top + panelHeight > viewportHeight - margin && btnRect.top - panelHeight - 4 > margin) {
+      top = btnRect.top - panelHeight - 4; // not enough room below -- open above instead
+    }
 
-  panelEl.style.left = left + 'px';
-  panelEl.style.top = top + 'px';
+    panelEl.style.left = left + 'px';
+    panelEl.style.top = top + 'px';
+  };
+  place();
+  // A second pass on the next frame -- self-corrects if the previous
+  // panel's own on-screen keyboard (e.g. the search input, which
+  // auto-focuses) was still mid-dismiss-animation when place() first
+  // ran above, which would have measured a transient, not-yet-settled
+  // viewport size and produced a wildly wrong position as a result.
+  requestAnimationFrame(place);
 }
 
 /** Builds one <div>-based popup-menu item -- the div/onclick-based
@@ -11593,15 +11605,6 @@ function renderSearchPanel() {
     return;
   }
   searchPanel.style.display = 'block';
-
-  const filterHint = document.createElement('div');
-  filterHint.style.fontFamily = 'monospace';
-  filterHint.style.fontSize = '11px';
-  filterHint.style.opacity = '0.55';
-  filterHint.style.overflowWrap = 'anywhere';
-  filterHint.style.marginBottom = '6px';
-  filterHint.textContent = 'Hints: +tag  -tag  todo:X  priority:A  key:value';
-  searchPanel.appendChild(filterHint);
 
   const resultsEl = document.createElement('div');
   resultsEl.id = 'search-results';
