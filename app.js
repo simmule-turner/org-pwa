@@ -4950,6 +4950,11 @@ async function pasteSubtree(heading) {
   commitAndRender('Pasted subtree');
 }
 
+function extraMenuTargetHeading() {
+  if (actionMenuFor && state.doc && findContainer(state.doc, actionMenuFor)) return actionMenuFor;
+  return keyboardFocusedHeading;
+}
+
 function deleteHeadingWithConfirmation(heading) {
   if (!confirmHeadingDelete(heading)) return;
   actionMenuFor = null;
@@ -12068,9 +12073,18 @@ async function runExtraMenuEntry(entry) {
       } else {
         clockCancelHeading(running);
       }
-    } else if (entry.name === 'export-markdown') {
-      if (!state.doc) return;
-      performExport('markdown', null);
+    } else if (entry.name === 'org-cut-subtree' || entry.name === 'org-paste-subtree') {
+      const target = extraMenuTargetHeading();
+      if (!target) {
+        setStatus('No heading selected \u2014 open a heading\u2019s own menu first.');
+        render();
+        return;
+      }
+      if (entry.name === 'org-cut-subtree') {
+        await cutSubtree(target);
+      } else {
+        await pasteSubtree(target);
+      }
     } else if (entry.name === 'org-xx-calendar') {
       openCalendarPanel();
     } else if (entry.name === 'org-table-recalculate-buffer-tables') {
