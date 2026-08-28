@@ -23,7 +23,6 @@ const KEYS = {
   menuSize: 'settings:menuSize',
   lastActiveDocument: 'settings:lastActiveDocument',
   captureTemplates: 'settings:captureTemplates',
-  agendaFiles: 'settings:agendaFiles',
   globalVariables: 'settings:globalVariables',
 };
 
@@ -219,26 +218,6 @@ export async function setTablesFontSize(kvAdapter, fontSize) {
   await setJson(kvAdapter, KEYS.tablesFontSize, fontSize);
 }
 
-/** Real org's own org-agenda-files idea: additional files the Agenda
- *  and TODO views scan across, beyond whichever file is currently
- *  open. Each entry is a "scheme:path" string (e.g. "github:journal.org"),
- *  split on the first colon only -- scheme restricted to 'github'/'webdav'
- *  since they're the only backends that can read an arbitrary path
- *  directly, without the fresh per-file picker gesture File System Access
- *  (local files, iOS import) requires; see archiveHeadingToLocation/
- *  openFileLink/image loading for the same limitation stated the same way
- *  elsewhere in this app. Empty by default -- the agenda scans only the
- *  currently open file until this is configured, exactly as before this
- *  existed. */
-const DEFAULT_AGENDA_FILES = [];
-
-export async function getAgendaFiles(kvAdapter) {
-  return getJson(kvAdapter, KEYS.agendaFiles, DEFAULT_AGENDA_FILES);
-}
-
-export async function setAgendaFiles(kvAdapter, agendaFiles) {
-  await setJson(kvAdapter, KEYS.agendaFiles, agendaFiles);
-}
 
 /** "Global Variables" -- the app-wide, cross-file counterpart to a
  *  file's own "# Local Variables:" block (see
@@ -345,6 +324,5 @@ export {
   DEFAULT_MENU_SIZE,
   DEFAULT_FONT_SIZE,
   DEFAULT_TABLES_FONT_SIZE,
-  DEFAULT_AGENDA_FILES,
   DEFAULT_GLOBAL_VARIABLES,
 };
