@@ -196,7 +196,6 @@ import {
   getCaptureTemplates,
   setCaptureTemplates,
   DEFAULT_CAPTURE_TEMPLATES,
-  getAgendaFiles,
   getGlobalVariables,
   setGlobalVariables,
   DEFAULT_GLOBAL_VARIABLES,
@@ -12148,14 +12147,14 @@ function renderMoreMenuContent() {
   );
   if (historyBtnOption) historyBtnOption.setAttribute('aria-label', 'Undo history');
 
-  const addBtnOption = aliasedMenuDivItem(moreMenuAliases, '+', () => {
+  const addBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Add Header', () => {
     moreOpen = false;
     renderMoreMenu();
     addBtn.click();
   });
   if (addBtnOption) addBtnOption.setAttribute('aria-label', 'Add heading');
 
-  const docsBtnOption = aliasedMenuDivItem(moreMenuAliases, '?', () => {
+  const docsBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Help', () => {
     closeAllOverlayPanels();
     docsOpen = true;
     if (isWideLayout()) {
@@ -12173,11 +12172,11 @@ function renderMoreMenuContent() {
   });
 
   appendMenuButtonsInOrder(morePanel, moreMenuAliases, [
-    { label: 'Search', btn: searchBtnOption },
+    { label: 'Add Header', btn: addBtnOption },
     { label: 'Capture', btn: captureBtnOption },
+    { label: 'Help', btn: docsBtnOption },
     { label: 'History', btn: historyBtnOption },
-    { label: '+', btn: addBtnOption },
-    { label: '?', btn: docsBtnOption },
+    { label: 'Search', btn: searchBtnOption },
     { label: 'Settings', btn: settingsBtnOption },
   ]);
 }
@@ -12257,46 +12256,10 @@ if ('serviceWorker' in navigator) {
 async function bootstrap() {
   githubConfig = await getGithubConfig(kv);
   webdavConfig = await getWebdavConfig(kv);
-  const legacyAgendaFiles = await getAgendaFiles(kv);
   await loadCachedWeatherData();
   globalVariablesText = await getGlobalVariables(kv);
   globalVariables = parseGlobalVariables(globalVariablesText);
-  if (!globalVariables['org-agenda-files'] && legacyAgendaFiles.length > 0) {
-    globalVariables['org-agenda-files'] = legacyAgendaFiles.join(';');
-    globalVariablesText = serializeGlobalVariables(globalVariables);
-    await setGlobalVariables(kv, globalVariablesText);
-  }
   syncAgendaFilesConfig();
-
-  // One-time migration: what used to be four separate variables
-  // (org-xx-file-menu / -more-menu / -export-menu / -view-menu) are
-  // now one, consolidated org-xx-menu-aliases with a "menu:Label;alias"
-  // namespaced entry format. Converts each old variable's own tokens
-  // into the new namespaced form and combines them, so nothing anyone
-  // already configured at the app-wide Global Variables level silently
-  // stops working. Only runs once, since after this the new variable
-  // IS set and none of the old keys remain to trigger it again.
-  const OLD_MENU_ALIAS_KEYS = {
-    'org-xx-file-menu': 'file',
-    'org-xx-more-menu': 'more',
-    'org-xx-export-menu': 'export',
-    'org-xx-view-menu': 'view',
-  };
-  if (!globalVariables['org-xx-menu-aliases']) {
-    const migratedParts = [];
-    for (const [oldKey, menuName] of Object.entries(OLD_MENU_ALIAS_KEYS)) {
-      if (!globalVariables[oldKey]) continue;
-      for (const token of globalVariables[oldKey].matchAll(/"([^"]*)"/g)) {
-        migratedParts.push(`"${menuName}:${token[1]}"`);
-      }
-      delete globalVariables[oldKey];
-    }
-    if (migratedParts.length > 0) {
-      globalVariables['org-xx-menu-aliases'] = migratedParts.join(' ');
-      globalVariablesText = serializeGlobalVariables(globalVariables);
-      await setGlobalVariables(kv, globalVariablesText);
-    }
-  }
 
   customThemeColors = await getCustomThemeColors(kv);
   applyTheme(await getTheme(kv));

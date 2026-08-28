@@ -919,7 +919,7 @@ One Global/Local Variable, ~org-xx-menu-aliases~, lets you relabel or hide indiv
 #+BEGIN_SRC
 org-xx-menu-aliases: "file:New;➕" "file:Open;📂" "file:Save;💾" "file:Save As;💾➕" "file:Export;↗️" \
                       "export:Markdown;" \
-                      "more:Search;🔍" "more:Capture;📸" "more:History;🔄" "more:+;➕" "more:?;❓"
+                      "more:Search;🔍" "more:Capture;📸" "more:History;🔄" "more:Add Header;➕" "more:Help;❓"
 #+END_SRC
 
 ~Label~ is one of that menu's own real, built-in button labels — see the table below for exactly which labels each of the four menus actually has. A label that doesn't match any real button in that menu simply has no effect (never looked up by anything), the same tolerant-of-the-unexpected handling every other "recognized subset" parser in this app already uses, rather than a hard error — the same tolerance applies to ~menu~ itself: an entry naming anything other than ~file~ / ~more~ / ~export~ / ~view~ is silently skipped too.
@@ -930,10 +930,10 @@ org-xx-menu-aliases: "file:New;➕" "file:Open;📂" "file:Save;💾" "file:Save
 
 A label never mentioned in the variable at all keeps its default, unchanged text — this is an opt-in override list, not a full redefinition of any menu. ~view~ isn't mentioned anywhere in the example above at all, meaning no overrides for the View menu specifically — every one of its buttons keeps its default label.
 
-*The order buttons appear in can be changed too* — but only once *every single one* of a menu's own real labels is listed for it (see the table below for the complete set each menu needs), even ones kept at their own default label and visibility; a partial listing leaves that menu's own default order completely untouched, so setting an alias for just one or two buttons never has the side effect of silently reordering the rest. Once every label is present, the buttons render in whichever order they're listed in — top to bottom, matching the order the ~"menu:Label;alias"~ entries themselves appear in the variable's own value. An entry with an empty alias still counts as "listed" for this purpose (that's how a button can occupy a specific position in the order without changing its label at all — ~"more:Settings;"~ places ~more:Settings~ exactly where listed while still showing the plain word "Settings", per the required-visibility exception above). For example, to show the More menu as Settings, Capture, Search, in that order, with History/+/? at their own defaults:
+*The order buttons appear in can be changed too* — but only once *every single one* of a menu's own real labels is listed for it (see the table below for the complete set each menu needs), even ones kept at their own default label and visibility; a partial listing leaves that menu's own default order completely untouched, so setting an alias for just one or two buttons never has the side effect of silently reordering the rest. Once every label is present, the buttons render in whichever order they're listed in — top to bottom, matching the order the ~"menu:Label;alias"~ entries themselves appear in the variable's own value. An entry with an empty alias still counts as "listed" for this purpose (that's how a button can occupy a specific position in the order without changing its label at all — ~"more:Settings;"~ places ~more:Settings~ exactly where listed while still showing the plain word "Settings", per the required-visibility exception above). For example, to show the More menu as Settings, Capture, Search, in that order, with History/Add Header/Help at their own defaults:
 
 #+BEGIN_SRC
-org-xx-menu-aliases: "more:Settings;" "more:Capture;" "more:Search;" "more:History;" "more:+;" "more:?;"
+org-xx-menu-aliases: "more:Settings;" "more:Capture;" "more:Search;" "more:History;" "more:Add Header;" "more:Help;"
 #+END_SRC
 
 *Each menu is a genuine floating popup* — File, View, More, and Extras all open as a small, bordered, drop-shadowed panel positioned directly next to their own trigger button (below it if there's room, above it otherwise — Extras' own button sits near the bottom of the screen, so its popup opens upward), sized to fit its own widest row with no wasted width, rather than an inline panel taking up the page's own width. All four are built through the exact same positioning code, not merely four separate implementations that happen to look similar — one full-width row per button, top to bottom, a short label like "New" and a longer one like "Save As" both simply filling the row's own width the same way; on a mouse (not a touch device), moving the pointer over a row highlights it before you click, exactly like a native OS/browser menu. Tapping anywhere outside a menu closes it ("light dismiss," the same convention a native browser or OS popup menu uses), and selecting an action closes the menu immediately — its own result (a save completing, a file opening) is then reported separately via the status line, not by leaving the menu open. Every popup menu in the app — File, View, More, Export, the New/Open/Save-As backend picker, and Extras — is built and styled the identical way, and shares one size setting (Settings → Appearance → *Menu Size*, Regular/Small) rather than each having its own separate look.
@@ -942,11 +942,9 @@ The four menus' own real labels, exactly as they'd appear in ~"menu:Label;alias"
 | ~menu~ | Labels |
 |----------+--------|
 | ~file~ | ~New~, ~Open~, ~Save~, ~Save As~, ~Export~ |
-| ~more~ | ~Search~, ~Capture~, ~History~, ~+~, ~?~, ~Settings~ |
+| ~more~ | ~Add Header~, ~Capture~, ~Help~, ~History~, ~Search~, ~Settings~ |
 | ~export~ | ~ASCII~, ~Calendar (.ics)~, ~HTML~, ~Markdown~, ~ODT~ |
 | ~view~ | ~Org~, ~Agenda~, ~TODO~, ~Text~ |
-
-*Upgrading from an older version*: this used to be four separate variables (~org-xx-file-menu~, ~org-xx-more-menu~, ~org-xx-export-menu~, ~org-xx-view-menu~), each sharing this exact same syntax minus the ~menu:~ prefix — consolidated into one, since the only actual difference between the four was which menu each entry applied to. Anything already configured at the app-wide *Global Variables* level (via Quick Settings or the raw text box) is folded into the new variable automatically, once, the first time this version of the app runs — nothing to redo by hand. The one thing that automatic migration *can't* do: a ~#+STARTUP:~ or "# Local Variables:" block hand-written into a specific ~.org~ file, using the old, un-namespaced syntax, won't be rewritten (this app has no business silently editing the contents of your own files) — if you'd set a menu-label override at the per-file level specifically (uncommon; most people would set this once, app-wide), that file's own block needs updating to the new ~"menu:Label;alias"~ syntax by hand.
 
 -----
 
