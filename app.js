@@ -2776,6 +2776,7 @@ function syncContentOffset() {
   contentAreaEl.style.marginTop = barHeight + 'px';
   contentAreaEl.style.height = `calc(100% - ${barHeight}px - ${bottomBarHeight}px)`;
   extraMenuBtn.style.bottom = bottomBarHeight + 16 + 'px';
+  navBackBtn.style.bottom = bottomBarHeight + 16 + 'px';
 }
 window.addEventListener('resize', syncContentOffset);
 
@@ -2841,7 +2842,7 @@ function renderModeline() {
   // anywhere in the parser), so every file shows the same thing here.
   parts.push((isDirty ? '**' : '--') + '-UUU:----');
 
-  parts.push(state.documentId || '');
+  parts.push(state.documentId ? state.documentId + ' (' + storageKindLabel(state.storageKind) + ')' : '');
   parts.push(computeBufferPositionString());
 
   if (getDisplayTimeMode(vars)) {
@@ -2851,7 +2852,7 @@ function renderModeline() {
   const clockHeading = findHeadingWithRunningClock(state.doc);
   if (clockHeading) {
     const mins = currentClockSessionMinutes(clockHeading);
-    parts.push(`[${formatClockDuration(mins)} ${clockHeading.title}]`);
+    parts.push(`[\u23f1 ${formatClockDuration(mins)}] ${clockHeading.title}`);
   }
 
   modelineEl.textContent = parts.join('  ');
@@ -6966,13 +6967,13 @@ function updateFilenameDisplay() {
     filenameEl.textContent = 'No file open';
     filenameEl.style.color = '';
     filenameEl.style.opacity = '';
-    filenameEl.style.display = '';
+    filenameEl.style.visibility = '';
     return;
   }
   filenameEl.textContent = state.documentId + ' (' + storageKindLabel(state.storageKind) + ')';
   filenameEl.style.color = isDirty ? '#c0392b' : '';
   filenameEl.style.opacity = isDirty ? '1' : ''; // full opacity when modified so the red actually stands out, not dimmed by the element's own default 0.7
-  filenameEl.style.display = getHideFilenameInMenu(state.localVariables) ? 'none' : '';
+  filenameEl.style.visibility = getHideFilenameInMenu(state.localVariables) ? 'hidden' : '';
 }
 
 /** Common finish-up after any successful open/create, regardless of which
