@@ -88,8 +88,11 @@ test('an unrecognized function name is skipped, not a hard error -- forward-comp
   assert.deepEqual(parseExtraMenu("\"'org-nonexistent-function;Nope\""), []);
 });
 
-test('KNOWN_FUNCTIONS currently contains exactly org-clock-out, org-clock-cancel, export-markdown, org-xx-calendar, and org-table-recalculate-buffer-tables, matching what\u2019s actually implemented', () => {
-  assert.deepEqual([...KNOWN_FUNCTIONS], ['org-clock-out', 'org-clock-cancel', 'export-markdown', 'org-xx-calendar', 'org-table-recalculate-buffer-tables']);
+test('KNOWN_FUNCTIONS currently contains exactly org-clock-out, org-clock-cancel, org-xx-calendar, org-table-recalculate-buffer-tables, org-cut-subtree, and org-paste-subtree, matching what\u2019s actually implemented', () => {
+  assert.deepEqual(
+    [...KNOWN_FUNCTIONS],
+    ['org-clock-out', 'org-clock-cancel', 'org-xx-calendar', 'org-table-recalculate-buffer-tables', 'org-cut-subtree', 'org-paste-subtree']
+  );
 });
 
 test('parses org-clock-cancel as a recognized function-reference entry', () => {
@@ -110,9 +113,15 @@ test('parses org-xx-calendar as a recognized function-reference entry', () => {
   ]);
 });
 
-test('parses export-markdown as a recognized function-reference entry', () => {
-  assert.deepEqual(parseExtraMenu("\"'export-markdown;\ud83d\udcdd Export MD\""), [
-    { type: 'function', name: 'export-markdown', label: '\ud83d\udcdd Export MD' },
+test('parses org-cut-subtree as a recognized function-reference entry', () => {
+  assert.deepEqual(parseExtraMenu("\"'org-cut-subtree;\u2702\ufe0f Cut Subtree\""), [
+    { type: 'function', name: 'org-cut-subtree', label: '\u2702\ufe0f Cut Subtree' },
+  ]);
+});
+
+test('parses org-paste-subtree as a recognized function-reference entry', () => {
+  assert.deepEqual(parseExtraMenu("\"'org-paste-subtree;\ud83d\udccb Paste Subtree\""), [
+    { type: 'function', name: 'org-paste-subtree', label: '\ud83d\udccb Paste Subtree' },
   ]);
 });
 
