@@ -29,19 +29,26 @@
  *     capture templates themselves already use).
  *   - A quoted-symbol function reference (e.g. 'org-clock-out) --
  *     selecting this menu item runs that built-in function directly.
- *     org-clock-out, org-clock-cancel, export-markdown,
- *     org-xx-calendar (not a real org-mode function -- this app's own
- *     single-month calendar overview, see app.js's own
- *     openCalendarPanel), and org-table-recalculate-buffer-tables
- *     (real org's own actual, distinct command -- confirmed directly
- *     against the Org Manual: recalculating just the CURRENT table is
- *     C-c C-c / C-u C-c C-c instead, a completely separate command,
- *     which has its own per-table Calc button on every table here
- *     instead of a menu entry, since there's no "current table" this
- *     app could mean without a cursor/point concept the way Emacs has
- *     one -- this one recalculates every #+TBLFM: formula in every
- *     table in the whole document, see app.js's own dispatch for the
- *     full behavior) are recognized today; more may be added later,
+ *     org-clock-out, org-clock-cancel, org-xx-calendar (not a real
+ *     org-mode function -- this app's own single-month calendar
+ *     overview, see app.js's own openCalendarPanel), and
+ *     org-table-recalculate-buffer-tables (real org's own actual,
+ *     distinct command -- confirmed directly against the Org Manual:
+ *     recalculating just the CURRENT table is C-c C-c / C-u C-c C-c
+ *     instead, a completely separate command, which has its own
+ *     per-table Calc button on every table here instead of a menu
+ *     entry, since there's no "current table" this app could mean
+ *     without a cursor/point concept the way Emacs has one -- this
+ *     one recalculates every #+TBLFM: formula in every table in the
+ *     whole document, see app.js's own dispatch for the full
+ *     behavior), and org-cut-subtree / org-paste-subtree (the same
+ *     C-c C-x C-w / C-c C-x C-y god-mode commands, run against
+ *     whichever heading's own per-row action menu is currently open
+ *     -- the touch-native way to designate a specific heading without
+ *     a keyboard at all -- falling back to whichever heading is
+ *     currently keyboard-focused if no action menu is open; a status
+ *     message says so if neither is set, rather than doing nothing
+ *     silently) are recognized today; more may be added later,
  *     so an unrecognized function name is treated as a malformed
  *     entry (skipped) rather than a hard parse error, the same
  *     forward-compatible tolerance every other "recognized subset"
@@ -53,7 +60,14 @@
  * chose to put there).
  */
 
-const KNOWN_FUNCTIONS = new Set(['org-clock-out', 'org-clock-cancel', 'export-markdown', 'org-xx-calendar', 'org-table-recalculate-buffer-tables']);
+const KNOWN_FUNCTIONS = new Set([
+  'org-clock-out',
+  'org-clock-cancel',
+  'org-xx-calendar',
+  'org-table-recalculate-buffer-tables',
+  'org-cut-subtree',
+  'org-paste-subtree',
+]);
 const SEPARATOR_TOKEN = '-----';
 
 /** Splits the raw, already-line-joined org-xx-extra-menu value into its
