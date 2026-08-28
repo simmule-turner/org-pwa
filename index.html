@@ -138,7 +138,7 @@
      landscape, so an actual phone never crosses into this branch by
      accident. */
   @media (min-width: 900px) {
-    body, #topBar { max-width: 1100px; }
+    body, #topBar, #modelineBar { max-width: 1100px; }
 
     /* #contentArea becomes a flex column so #status/#updateBanner/
        #externalChangeBanner keep their natural height and #splitRow
@@ -180,19 +180,32 @@
     }
   }
 
+  #modelineBar {
+    position: fixed; left: 50%; bottom: 0; transform: translateX(-50%);
+    width: 100%; max-width: 480px; z-index: 52; background: var(--bg);
+    border-top: 1px solid var(--border-strong);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  #modeline {
+    padding: 3px 8px; background: var(--surface); border-bottom: 1px solid var(--border);
+    font-family: monospace; font-size: 11px; line-height: 1.4; color: var(--fg); opacity: 0.75;
+    white-space: nowrap; overflow-x: auto; overflow-y: hidden;
+  }
+  #minibuffer { padding: 5px 10px; min-height: 20px; }
   #status {
-    font-size: 11px;
-    opacity: 0.6;
-    padding: 4px 12px;
+    font-size: 13px;
+    opacity: 0.85;
     display: flex;
     align-items: center;
     gap: 6px;
     transition: opacity 0.15s, background-color 0.15s;
   }
   #status.status--busy {
-    opacity: 0.9;
+    opacity: 1;
     background: var(--surface);
     border-radius: 4px;
+    padding: 2px 6px;
+    margin: -2px -6px;
   }
   .status-spinner {
     width: 10px;
@@ -394,7 +407,6 @@
     style="display: none;"
   ></div>
   <div id="contentArea">
-    <div id="status"></div>
     <div id="updateBanner" style="display: none; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; background: #185fa5; color: white; font-size: 13px;">
       <span>A new version is available.</span>
       <button id="updateReloadBtn" style="background: white; color: #185fa5; border: none; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">Reload</button>
@@ -409,6 +421,13 @@
     <div id="splitRow">
       <div id="outline"></div>
       <div id="sidePanel" style="display: none;"></div>
+    </div>
+  </div>
+  <div id="modelineBar">
+    <div id="modeline"></div>
+    <div id="minibuffer">
+      <div id="status"></div>
+      <div id="minibufferSearch" style="display: none;"></div>
     </div>
   </div>
   <script src="src/vendor/katex/katex.min.js"></script>

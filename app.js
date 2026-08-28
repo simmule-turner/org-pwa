@@ -75,11 +75,14 @@ import {
   getAsciiTextWidth,
   getExtraMenu,
   getMenuAliases,
+  getDisplayTimeMode,
+  getDisplayTimeFormat,
+  getHideFilenameInMenu,
   getAgendaFilesVar,
   parseAgendaFilesVar,
 } from './src/local-variables.js';
 import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath } from './src/refile.js';
-import { isClockRunning, clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, formatClockDuration, findHeadingWithRunningClock } from './src/clock.js';
+import { isClockRunning, clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, currentClockSessionMinutes, formatClockDuration, findHeadingWithRunningClock } from './src/clock.js';
 import { computeClocktable, renderClocktable } from './src/clocktable.js';
 import { parseExtraMenu } from './src/extra-menu.js';
 import { parseMenuAliases, resolveMenuOrder } from './src/menu-alias.js';
@@ -104,7 +107,7 @@ import {
   parseRepeater,
   itemsInRange,
 } from './src/agenda.js';
-import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId, getCaptureFileScheme, CAPTURE_FILE_SCHEMES, computeNonCollidingKeys } from './src/capture-template.js';
+import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId, getCaptureFileScheme, CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, formatTime } from './src/capture-template.js';
 import { exportToMarkdown } from './src/export-markdown.js';
 import { exportToOdt } from './src/export-odt.js';
 import { exportToAscii } from './src/export-ascii.js';
@@ -2591,37 +2594,14 @@ const filenameEl = document.getElementById('filename');
 const statusEl = document.getElementById('status');
 const topBarEl = document.getElementById('topBar');
 const contentAreaEl = document.getElementById('contentArea');
+const modelineBarEl = document.getElementById('modelineBar');
+const modelineEl = document.getElementById('modeline');
+const minibufferEl = document.getElementById('minibuffer');
+const minibufferSearchEl = document.getElementById('minibufferSearch');
 const addBtn = document.getElementById('addBtn');
 const navBackBtn = document.getElementById('navBackBtn');
 const extraMenuBtn = document.getElementById('extraMenuBtn');
-// god-mode's own indicator -- created here rather than in index.html,
-// since this is a niche, keyboard-only feature (genuinely inert
-// without a keyboard, same framing as the rest of this app's own
-// keybindings) not worth a static markup change for. Fixed-position
-// so it stays visible regardless of scroll/view state; hidden
-// entirely (display: none) whenever god-mode isn't active, synced
-// from render() itself (see syncGodModeIndicator below) so it can
-// never drift out of sync with the actual godModeActive/godModeState.
-const godModeIndicatorEl = document.createElement('div');
-godModeIndicatorEl.style.position = 'fixed';
-godModeIndicatorEl.style.bottom = '12px';
-godModeIndicatorEl.style.left = '50%';
-godModeIndicatorEl.style.transform = 'translateX(-50%)';
-godModeIndicatorEl.style.zIndex = '9999';
-godModeIndicatorEl.style.padding = '6px 12px';
-godModeIndicatorEl.style.borderRadius = '6px';
-godModeIndicatorEl.style.fontSize = '13px';
-godModeIndicatorEl.style.fontFamily = 'monospace';
-godModeIndicatorEl.style.background = 'var(--accent, #444)';
-godModeIndicatorEl.style.color = '#fff';
-godModeIndicatorEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-godModeIndicatorEl.style.pointerEvents = 'none';
-godModeIndicatorEl.style.display = 'none';
-document.body.appendChild(godModeIndicatorEl);
 
-/** Keeps godModeIndicatorEl in sync with godModeActive/godModeState --
- *  called from render() itself so it's always up to date after any
- *  state change, never a separate call site that could drift. */
 /** True while any overlay-style panel (extras menu, Settings, Docs,
  *  Capture, Search, the File menu, the View menu, the "More" menu,
  *  the undo History panel, or the single-month Calendar) is currently
@@ -2727,18 +2707,25 @@ function closeAllOverlayPanels() {
   }
 }
 
-function syncGodModeIndicator() {
+function renderMinibuffer() {
   if (anyOverlayPanelOpenExceptDocs() && godModeActive) {
     godModeActive = false;
     godModeState = godModeInitialState();
   }
-  if (!godModeActive) {
-    godModeIndicatorEl.style.display = 'none';
+
+  if (searchOpen) {
+    statusEl.style.display = 'none';
+    minibufferSearchEl.style.display = 'flex';
+    renderMinibufferSearch();
     return;
   }
-  godModeIndicatorEl.style.display = 'block';
-  const seq = godModeState.chordString || (godModeState.pendingModifier ? '\u2026' : '');
-  godModeIndicatorEl.textContent = seq ? `\ud83e\udde0 God-mode: ${seq}` : '\ud83e\udde0 God-mode (Esc to exit)';
+  minibufferSearchEl.style.display = 'none';
+  statusEl.style.display = 'flex';
+
+  if (godModeActive) {
+    const seq = godModeState.chordString || (godModeState.pendingModifier ? '\u2026' : '');
+    setStatus(seq ? `\ud83e\udde0 God-mode: ${seq}` : '\ud83e\udde0 God-mode (Esc to exit)');
+  }
 }
 
 const extraMenuPanel = document.getElementById('extraMenuPanel');
@@ -2785,10 +2772,93 @@ const VH_UNIT = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('heig
 
 function syncContentOffset() {
   const barHeight = topBarEl.offsetHeight;
+  const bottomBarHeight = modelineBarEl.offsetHeight;
   contentAreaEl.style.marginTop = barHeight + 'px';
-  contentAreaEl.style.height = `calc(100% - ${barHeight}px)`;
+  contentAreaEl.style.height = `calc(100% - ${barHeight}px - ${bottomBarHeight}px)`;
+  extraMenuBtn.style.bottom = bottomBarHeight + 16 + 'px';
 }
 window.addEventListener('resize', syncContentOffset);
+
+/** Top/Bot/All/percentage -- real Emacs's own actual "how far down
+ *  the buffer am I" modeline segment, computed from whichever element
+ *  is genuinely the scrolling one right now (scrollContainer() --
+ *  #outline on a wide layout, #contentArea on narrow, an existing,
+ *  already-established distinction, not new for this feature). */
+function computeDocumentDepth() {
+  const el = scrollContainer();
+  if (!el) return '';
+  const { scrollTop, scrollHeight, clientHeight } = el;
+  if (scrollHeight <= clientHeight + 1) return 'All';
+  if (scrollTop <= 0) return 'Top';
+  if (scrollTop + clientHeight >= scrollHeight - 1) return 'Bot';
+  return Math.round((scrollTop / (scrollHeight - clientHeight)) * 100) + '%';
+}
+
+/** "Top L15 C0"-style position string. Line number only when a
+ *  heading is actually focused (via findHeadingLineNumber, which
+ *  already existed for a different purpose) -- there's no meaningful
+ *  "current line" for this app's own structured-editing model without
+ *  one. Column only while a real text field is actively focused,
+ *  reading its own live selectionStart -- omitted otherwise rather
+ *  than fabricating an always-0 that would misrepresent an app with
+ *  no persistent, Emacs-style point/cursor concept between edits. */
+function computeBufferPositionString() {
+  const depth = computeDocumentDepth();
+  let suffix = '';
+  if (keyboardFocusedHeading && state.doc) {
+    const lineNum = findHeadingLineNumber(state.doc, keyboardFocusedHeading);
+    if (lineNum >= 0) suffix += ` L${lineNum + 1}`;
+  }
+  const active = document.activeElement;
+  if (active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT') && typeof active.selectionStart === 'number') {
+    const value = active.value || '';
+    const beforeCursor = value.slice(0, active.selectionStart);
+    const col = active.selectionStart - beforeCursor.lastIndexOf('\n') - 1;
+    suffix += ` C${col}`;
+  }
+  return depth + suffix;
+}
+
+/** Renders the Emacs-style modeline -- buffer state, name, position,
+ *  date/time, and clocking info -- into #modeline. Called from
+ *  render() itself, always kept in sync, never a separate call site
+ *  that could drift; also on a 30s timer (see its own call site) so
+ *  the clock/time segments stay live even with no other state
+ *  changes happening. */
+function renderModeline() {
+  if (!state.doc) {
+    modelineEl.textContent = '';
+    return;
+  }
+  const vars = state.localVariables;
+  const parts = [];
+
+  // Buffer state & coding system block, matching real Emacs's own
+  // dense mode-line-mule-info + eol-type convention exactly in shape.
+  // The coding-system/EOL portion is authentic to the format but
+  // non-varying -- this app always normalizes to UTF-8/Unix line
+  // endings on save (confirmed: no CRLF-preservation logic exists
+  // anywhere in the parser), so every file shows the same thing here.
+  parts.push((isDirty ? '**' : '--') + '-UUU:----');
+
+  parts.push(state.documentId || '');
+  parts.push(computeBufferPositionString());
+
+  if (getDisplayTimeMode(vars)) {
+    parts.push(formatTime(new Date(), getDisplayTimeFormat(vars)));
+  }
+
+  const clockHeading = findHeadingWithRunningClock(state.doc);
+  if (clockHeading) {
+    const mins = currentClockSessionMinutes(clockHeading);
+    parts.push(`[${formatClockDuration(mins)} ${clockHeading.title}]`);
+  }
+
+  modelineEl.textContent = parts.join('  ');
+}
+setInterval(() => {
+  if (state.doc) renderModeline();
+}, 30000);
 
 // Keeps #topBar visually pinned to the top of the actually-visible area
 // even while an on-screen keyboard is open -- see this function's own
@@ -3388,6 +3458,8 @@ function tryDispatchPanelHotkey(key) {
  *  excluded from its own "outside" check since it already owns
  *  toggling its own menu via its existing click handler. */
 document.addEventListener('pointerdown', (e) => {
+  if (statusEl.textContent) setStatus('');
+
   const popupMenus = [
     { open: () => fileMenuOpen, panel: fileMenuPanel, btn: fileMenuBtn, close: () => { fileMenuOpen = false; renderFileMenu(); } },
     { open: () => viewMenuOpen, panel: viewMenuPanel, btn: viewMenuBtn, close: () => { viewMenuOpen = false; renderViewMenu(); } },
@@ -3406,6 +3478,8 @@ document.addEventListener('keydown', (e) => {
   if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return; // never hijack actual typing; each field's own keydown handler (Escape to cancel, etc.) already owns this
 
   if (e.metaKey || e.ctrlKey) return; // Cmd/Ctrl combinations are the browser's own territory (new tab, save, find, ...) -- never treated as one of these shortcuts, avoiding a silent double-action
+
+  if (statusEl.textContent) setStatus('');
 
   // Help/Docs is the one panel that doesn't swallow keyboard input
   // while god-mode is active -- see anyOverlayPanelOpenExceptDocs's
@@ -6710,7 +6784,9 @@ function render() {
   updateFilenameDisplay();
   syncSidePanel();
   syncExtraMenuButtonVisibility();
-  syncGodModeIndicator();
+  renderMinibuffer();
+  renderModeline();
+  syncContentOffset();
 
   const wide = isWideLayout();
   // renderSettingsView()/renderDocsView() own #outline while showing —
@@ -6890,11 +6966,13 @@ function updateFilenameDisplay() {
     filenameEl.textContent = 'No file open';
     filenameEl.style.color = '';
     filenameEl.style.opacity = '';
+    filenameEl.style.display = '';
     return;
   }
   filenameEl.textContent = state.documentId + ' (' + storageKindLabel(state.storageKind) + ')';
   filenameEl.style.color = isDirty ? '#c0392b' : '';
   filenameEl.style.opacity = isDirty ? '1' : ''; // full opacity when modified so the red actually stands out, not dimmed by the element's own default 0.7
+  filenameEl.style.display = getHideFilenameInMenu(state.localVariables) ? 'none' : '';
 }
 
 /** Common finish-up after any successful open/create, regardless of which
@@ -9652,6 +9730,30 @@ function pickBinaryFile(capture) {
  *     space (t / nil / {}), not a plain boolean.
  */
 const QUICK_SETTINGS_FIELDS = [
+  {
+    key: 'display-time-mode',
+    label: 'Show date/time in modeline',
+    section: 'Modeline',
+    type: 'onezero',
+    default: true,
+    helpAnchor: '#modeline',
+  },
+  {
+    key: 'display-time-format',
+    label: 'Date/time format',
+    section: 'Modeline',
+    type: 'text',
+    default: '%H:%M',
+    helpAnchor: '#modeline',
+  },
+  {
+    key: 'org-xx-hide-filename-in-menu',
+    label: 'Hide filename in top menu',
+    section: 'Modeline',
+    type: 'boolean',
+    default: false,
+    helpAnchor: '#modeline',
+  },
   { key: 'org-log-done', label: 'Log completing a TODO', section: 'Progress logging', type: 'logdone', helpAnchor: '#progress-logging' },
   {
     key: 'org-closed-keep-when-no-todo',
@@ -9921,18 +10023,19 @@ function renderQuickSettingField(field) {
   headerRow.style.gap = '8px';
 
   const label = document.createElement('label');
+  const isCheckboxType = field.type === 'boolean' || field.type === 'onezero';
   label.style.display = 'flex';
-  label.style.flexDirection = field.type === 'boolean' ? 'row' : 'column';
-  label.style.alignItems = field.type === 'boolean' ? 'center' : 'stretch';
-  label.style.gap = field.type === 'boolean' ? '8px' : '4px';
+  label.style.flexDirection = isCheckboxType ? 'row' : 'column';
+  label.style.alignItems = isCheckboxType ? 'center' : 'stretch';
+  label.style.gap = isCheckboxType ? '8px' : '4px';
   label.style.fontSize = '13px';
-  label.style.cursor = field.type === 'boolean' ? 'pointer' : 'default';
+  label.style.cursor = isCheckboxType ? 'pointer' : 'default';
   label.style.flex = '1 1 auto';
   label.style.minWidth = '0';
 
   const labelText = document.createElement('span');
   labelText.textContent = field.label;
-  if (field.type === 'boolean') label.appendChild(document.createElement('span')); // placeholder swapped below, keeps checkbox-then-label DOM order consistent with other checkboxes in this app
+  if (isCheckboxType) label.appendChild(document.createElement('span')); // placeholder swapped below, keeps checkbox-then-label DOM order consistent with other checkboxes in this app
   else label.appendChild(labelText);
 
   const rawValue = globalVariables[field.key];
@@ -9943,6 +10046,18 @@ function renderQuickSettingField(field) {
     checkbox.checked = parseLispBoolean(rawValue, field.default);
     checkbox.onchange = async () => {
       await commitGlobalVariableChange(field.key, checkbox.checked ? 't' : 'nil');
+      setStatus(`${field.label}: ${checkbox.checked ? 'on' : 'off'}.`);
+      renderSettingsView();
+      render();
+    };
+    label.replaceChild(checkbox, label.firstChild);
+    label.appendChild(labelText);
+  } else if (field.type === 'onezero') {
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = rawValue === undefined ? field.default : String(rawValue).trim() !== '0';
+    checkbox.onchange = async () => {
+      await commitGlobalVariableChange(field.key, checkbox.checked ? '1' : '0');
       setStatus(`${field.label}: ${checkbox.checked ? 'on' : 'off'}.`);
       renderSettingsView();
       render();
@@ -11402,24 +11517,23 @@ const SEARCH_TYPE_ICON = {
   planning: '\ud83d\udcc5',
 };
 
-function renderSearchPanel() {
-  searchPanel.innerHTML = '';
-  if (!searchOpen) {
-    searchPanel.style.display = 'none';
-    return;
-  }
-  searchPanel.style.display = 'block';
+function renderMinibufferSearch() {
+  minibufferSearchEl.innerHTML = '';
+  minibufferSearchEl.style.display = 'flex';
+  minibufferSearchEl.style.alignItems = 'center';
+  minibufferSearchEl.style.gap = '8px';
 
   const input = document.createElement('textarea');
   input.id = 'search-query-input';
   input.rows = 1;
   input.placeholder = 'Search, or +tag  -tag  key:value\u2026';
   input.value = searchQuery;
-  input.style.width = '100%';
+  input.style.flex = '1';
+  input.style.minWidth = '0';
   input.style.boxSizing = 'border-box';
   input.style.font = 'inherit';
   input.style.fontSize = '16px';
-  input.style.padding = '6px 8px';
+  input.style.padding = '4px 8px';
   input.style.border = '1px solid var(--border-strong)';
   input.style.borderRadius = '4px';
   input.style.background = 'var(--bg)';
@@ -11436,18 +11550,12 @@ function renderSearchPanel() {
       e.stopPropagation();
       searchOpen = false;
       searchQuery = '';
+      render();
       renderSearchPanel();
     }
   });
   autoGrowTextarea(input);
-  searchPanel.appendChild(input);
-
-  const regexRow = document.createElement('div');
-  regexRow.style.display = 'flex';
-  regexRow.style.alignItems = 'center';
-  regexRow.style.gap = '8px';
-  regexRow.style.marginTop = '6px';
-  regexRow.style.flexWrap = 'wrap';
+  minibufferSearchEl.appendChild(input);
 
   const regexToggle = document.createElement('button');
   regexToggle.textContent = 'Regex';
@@ -11463,31 +11571,39 @@ function renderSearchPanel() {
   regexToggle.style.flexShrink = '0';
   regexToggle.onclick = () => {
     searchUseRegex = !searchUseRegex;
-    renderSearchPanel();
+    renderMinibufferSearch();
+    renderSearchResults();
   };
-  regexRow.appendChild(regexToggle);
+  minibufferSearchEl.appendChild(regexToggle);
 
-  const filterHint = document.createElement('span');
-  filterHint.style.flex = '1';
+  requestAnimationFrame(() => input.focus());
+}
+
+function renderSearchPanel() {
+  renderMinibuffer();
+  searchPanel.innerHTML = '';
+  if (!searchOpen) {
+    searchPanel.style.display = 'none';
+    return;
+  }
+  searchPanel.style.display = 'block';
+
+  const filterHint = document.createElement('div');
   filterHint.style.fontFamily = 'monospace';
   filterHint.style.fontSize = '11px';
   filterHint.style.opacity = '0.55';
-  filterHint.style.textAlign = 'right';
   filterHint.style.overflowWrap = 'anywhere';
+  filterHint.style.marginBottom = '6px';
   filterHint.textContent = 'Hints: +tag  -tag  todo:X  priority:A  key:value';
-  regexRow.appendChild(filterHint);
-
-  searchPanel.appendChild(regexRow);
+  searchPanel.appendChild(filterHint);
 
   const resultsEl = document.createElement('div');
   resultsEl.id = 'search-results';
-  resultsEl.style.marginTop = '6px';
   resultsEl.style.maxHeight = `50${VH_UNIT}`;
   resultsEl.style.overflowY = 'auto';
   searchPanel.appendChild(resultsEl);
 
   renderSearchResults();
-  requestAnimationFrame(() => input.focus());
 }
 
 function renderSearchResults() {
