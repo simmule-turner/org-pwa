@@ -3462,6 +3462,11 @@ function tryDispatchPanelHotkey(key) {
 document.addEventListener('pointerdown', (e) => {
   if (statusEl.textContent) setStatus('');
 
+  const active = document.activeElement;
+  if (active && active !== document.body && !active.contains(e.target)) {
+    active.blur();
+  }
+
   const popupMenus = [
     { open: () => fileMenuOpen, panel: fileMenuPanel, btn: fileMenuBtn, close: () => { fileMenuOpen = false; renderFileMenu(); } },
     { open: () => viewMenuOpen, panel: viewMenuPanel, btn: viewMenuBtn, close: () => { viewMenuOpen = false; renderViewMenu(); } },
@@ -7700,39 +7705,38 @@ function appendMenuButtonsInOrder(container, aliasMap, labeledButtons) {
  *  top-level docs above for why this can't just be a fixed CSS
  *  offset the way extraMenuPanel's own corner-anchored popup is. */
 function positionPopupNearButton(panelEl, buttonEl) {
-  const place = () => {
-    const btnRect = buttonEl.getBoundingClientRect();
-    const margin = 8;
-    const vv = window.visualViewport;
-    const viewportWidth = vv ? vv.width : window.innerWidth;
-    const viewportHeight = vv ? vv.height : window.innerHeight;
-    const maxWidth = Math.min(320, viewportWidth - margin * 2);
-    panelEl.style.maxWidth = maxWidth + 'px';
+  const btnRect = buttonEl.getBoundingClientRect();
+  const margin = 8;
+  const vv = window.visualViewport;
+  const viewportWidth = vv ? vv.width : window.innerWidth;
+  const viewportHeight = vv ? vv.height : window.innerHeight;
+  const maxWidth = Math.min(320, viewportWidth - margin * 2);
+  panelEl.style.maxWidth = maxWidth + 'px';
 
-    // Measured AFTER max-width is set, since wrapped text reflows to it,
-    // changing the panel's own natural height.
-    const panelHeight = panelEl.offsetHeight;
-    const panelWidth = panelEl.offsetWidth;
+  // Measured AFTER max-width is set, since wrapped text reflows to it,
+  // changing the panel's own natural height.
+  const panelHeight = panelEl.offsetHeight;
+  const panelWidth = panelEl.offsetWidth;
 
-    let left = btnRect.left;
-    if (left + panelWidth > viewportWidth - margin) left = viewportWidth - margin - panelWidth;
-    if (left < margin) left = margin;
+  let left = btnRect.left;
+  if (left + panelWidth > viewportWidth - margin) left = viewportWidth - margin - panelWidth;
+  if (left < margin) left = margin;
 
-    let top = btnRect.bottom + 4;
-    if (top + panelHeight > viewportHeight - margin && btnRect.top - panelHeight - 4 > margin) {
-      top = btnRect.top - panelHeight - 4; // not enough room below -- open above instead
-    }
+  let top = btnRect.bottom + 4;
+  if (top + panelHeight > viewportHeight - margin && btnRect.top - panelHeight - 4 > margin) {
+    top = btnRect.top - panelHeight - 4; // not enough room below -- open above instead
+  }
 
-    panelEl.style.left = left + 'px';
-    panelEl.style.top = top + 'px';
-  };
-  place();
-  // A second pass on the next frame -- self-corrects if the previous
-  // panel's own on-screen keyboard (e.g. the search input, which
-  // auto-focuses) was still mid-dismiss-animation when place() first
-  // ran above, which would have measured a transient, not-yet-settled
-  // viewport size and produced a wildly wrong position as a result.
-  requestAnimationFrame(place);
+  panelEl.style.left = left + 'px';
+  panelEl.style.top = top + 'px';
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => {
+    if (fileMenuOpen) positionPopupNearButton(fileMenuPanel, fileMenuBtn);
+    if (viewMenuOpen) positionPopupNearButton(viewMenuPanel, viewMenuBtn);
+    if (moreOpen) positionPopupNearButton(morePanel, moreBtn);
+    if (extraMenuOpen) positionPopupNearButton(extraMenuPanel, extraMenuBtn);
+  });
 }
 
 /** Builds one <div>-based popup-menu item -- the div/onclick-based
@@ -11594,7 +11598,7 @@ function renderMinibufferSearch() {
   };
   minibufferSearchEl.appendChild(regexToggle);
 
-  requestAnimationFrame(() => input.focus());
+  input.focus();
 }
 
 function renderSearchPanel() {
