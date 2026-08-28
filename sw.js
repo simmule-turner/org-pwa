@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v225';
+const CACHE_NAME = 'org-pwa-shell-v226';
 
 const SHELL_FILES = [
   './',
@@ -129,6 +129,10 @@ self.addEventListener('install', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
+  }
+  if (event.data && event.data.type === 'GET_VERSION' && event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ version: CACHE_NAME });
   }
 });
 

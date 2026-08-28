@@ -3744,7 +3744,35 @@ let expandedThemeColorSection = null;
 // registration.update() on demand, not only the automatic checks.
 let swRegistration = null;
 let updateCheckStatus = null; // null | 'checking' | 'up-to-date' | 'found' | 'error'
+let currentAppVersion = null; // the active service worker's own CACHE_NAME (e.g. "org-pwa-shell-v225"), once resolved
+let appVersionCheckState = 'pending'; // 'pending' (never started) | 'checking' (in flight) | 'done' (resolved, currentAppVersion may still be null e.g. no controller was available)
 let historyDiffExpandedIndex = null;
+
+/** Asks the currently-active (controlling) service worker for its own
+ *  version via a GET_VERSION message/MessageChannel round-trip --
+ *  sw.js is a classic, non-module script (registered without {type:
+ *  'module'}), so it can't share an imported constant with app.js
+ *  directly the way two ES modules could. Returns null if there's no
+ *  service worker support, no controller yet (e.g. the very first
+ *  load before the SW has taken control), or the round-trip doesn't
+ *  resolve within a couple seconds for any reason -- callers should
+ *  treat null as "unknown" and show nothing rather than a stale or
+ *  fabricated value. */
+function getServiceWorkerVersion() {
+  if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    let settled = false;
+    const settle = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    const channel = new MessageChannel();
+    channel.port1.onmessage = (event) => settle((event.data && event.data.version) || null);
+    navigator.serviceWorker.controller.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+    setTimeout(() => settle(null), 2000);
+  });
+}
 
 function setStatus(text) {
   statusEl.innerHTML = '';
@@ -10830,6 +10858,27 @@ async function renderSettingsView(target = settingsRenderTarget) {
   updatesTitle.textContent = 'Updates';
   updatesSection.appendChild(updatesTitle);
 
+  const versionDisplay = document.createElement('div');
+  versionDisplay.style.fontSize = '12px';
+  versionDisplay.style.opacity = '0.6';
+  versionDisplay.style.marginBottom = '6px';
+  if (currentAppVersion) {
+    versionDisplay.textContent = 'Version: ' + currentAppVersion;
+  } else if (appVersionCheckState === 'done') {
+    versionDisplay.textContent = 'Version: unavailable';
+  } else {
+    versionDisplay.textContent = 'Version: checking\u2026';
+    if (appVersionCheckState === 'pending') {
+      appVersionCheckState = 'checking';
+      getServiceWorkerVersion().then((version) => {
+        currentAppVersion = version;
+        appVersionCheckState = 'done';
+        if (settingsOpen) renderSettingsView();
+      });
+    }
+  }
+  updatesSection.appendChild(versionDisplay);
+
   const updatesRow = document.createElement('div');
   updatesRow.className = 'panel-row';
   updatesRow.appendChild(
@@ -12155,6 +12204,12 @@ if ('serviceWorker' in navigator) {
     .register('sw.js')
     .then((registration) => {
       swRegistration = registration;
+      appVersionCheckState = 'checking';
+      getServiceWorkerVersion().then((version) => {
+        currentAppVersion = version;
+        appVersionCheckState = 'done';
+        if (settingsOpen) renderSettingsView();
+      });
 
       // A worker may already be sitting in 'waiting' if it finished
       // installing before this particular page load noticed (e.g. another
