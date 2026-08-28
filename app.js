@@ -11522,6 +11522,8 @@ const SEARCH_TYPE_ICON = {
 function renderMinibufferSearch() {
   minibufferSearchEl.innerHTML = '';
   minibufferSearchEl.style.display = 'flex';
+  minibufferSearchEl.style.flex = '1';
+  minibufferSearchEl.style.minWidth = '0';
   minibufferSearchEl.style.alignItems = 'center';
   minibufferSearchEl.style.gap = '8px';
 
