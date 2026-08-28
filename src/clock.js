@@ -151,6 +151,19 @@ function totalClockedMinutes(heading, now = new Date()) {
   return total;
 }
 
+/** Just the elapsed minutes since `heading`'s own currently-running
+ *  clock started -- 0 if it doesn't have one running at all (checking
+ *  isClockRunning first is still worth doing for callers who need to
+ *  distinguish "not running" from "just started"). */
+function currentClockSessionMinutes(heading, now = new Date()) {
+  const runningIdx = findRunningClockLineIndex(heading);
+  if (runningIdx === -1) return 0;
+  const m = RUNNING_CLOCK_RE.exec(heading.logbookLines[runningIdx]);
+  const startDate = parseClockTimestampToDate(m[1]);
+  if (!startDate) return 0;
+  return Math.max(0, Math.round((now.getTime() - startDate.getTime()) / 60000));
+}
+
 /** A minimal, dependency-free parse of a bracketed/angled org
  *  timestamp string into a JS Date -- deliberately not reusing
  *  org-timestamp.js's own fuller parseOrgTimestamp here, since that
@@ -229,6 +242,7 @@ export {
   formatClockDuration,
   parseClockDuration,
   totalClockedMinutes,
+  currentClockSessionMinutes,
   findHeadingWithRunningClock,
   COMPLETED_CLOCK_RE,
   parseClockTimestampToDate,

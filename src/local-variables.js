@@ -266,6 +266,42 @@ export function getExtraMenu(vars) {
  *  docs for the full "menu:Label;alias" syntax and semantics. Just
  *  the raw string here, same as getExtraMenu; parsing lives in that
  *  module's own parseMenuAliases. */
+/** display-time-mode: whether the modeline shows the current date/time
+ *  -- real Emacs's own actual minor-mode toggle, including its own
+ *  1/0 convention (not this app's usual t/nil) -- confirmed directly
+ *  against the Emacs manual: `(display-time-mode 1)` enables,
+ *  `(display-time-mode 0)` disables. Enabled by default (real Emacs's
+ *  own default is actually disabled, but a modeline clock is
+ *  something most people expect to just be there, so this app starts
+ *  it on) -- any value other than exactly "0" counts as enabled,
+ *  including simply never setting it at all. */
+export function getDisplayTimeMode(vars) {
+  const raw = (vars || {})['display-time-mode'];
+  if (raw === undefined || raw === null) return true;
+  return String(raw).trim() !== '0';
+}
+
+/** display-time-format: real Emacs's own actual variable controlling
+ *  the modeline clock's own format-time-string pattern -- reuses the
+ *  exact same %<FORMAT> subset capture templates already support (see
+ *  capture-template.js's own formatTime), not a separate
+ *  implementation. "%H:%M" is real Emacs's own actual default. */
+export function getDisplayTimeFormat(vars) {
+  const raw = (vars || {})['display-time-format'];
+  return raw !== undefined && raw !== null && String(raw).trim() !== '' ? String(raw) : '%H:%M';
+}
+
+/** org-xx-hide-filename-in-menu: this app's own extension (not a real
+ *  org-mode/Emacs variable) -- hides the filename from the top File
+ *  menu button's own header display once the modeline is showing it
+ *  there instead, for anyone who'd rather not see it twice. `nil`
+ *  (including simply never setting it) keeps the header's own
+ *  filename exactly as it's always been -- this app's own default,
+ *  existing behavior, not a Behavior anyone loses without opting in. */
+export function getHideFilenameInMenu(vars) {
+  return parseLispBoolean((vars || {})['org-xx-hide-filename-in-menu'], false);
+}
+
 export function getMenuAliases(vars) {
   return (vars || {})['org-xx-menu-aliases'] || '';
 }
