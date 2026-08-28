@@ -7620,9 +7620,8 @@ function positionPopupNearButton(panelEl, buttonEl) {
   const margin = 8;
   const maxWidth = Math.min(320, window.innerWidth - margin * 2);
   panelEl.style.maxWidth = maxWidth + 'px';
-  panelEl.style.minWidth = Math.min(200, maxWidth) + 'px';
 
-  // Measured AFTER width is set, since wrapped text reflows to it,
+  // Measured AFTER max-width is set, since wrapped text reflows to it,
   // changing the panel's own natural height.
   const panelHeight = panelEl.offsetHeight;
   const panelWidth = panelEl.offsetWidth;
@@ -11979,6 +11978,11 @@ function syncExtraMenuButtonVisibility() {
  *  separator entries, matching the org-xx-extra-menu spec's own
  *  five-hyphen convention. */
 function renderExtraMenu() {
+  renderExtraMenuContent();
+  if (extraMenuOpen) positionPopupNearButton(extraMenuPanel, extraMenuBtn);
+}
+
+function renderExtraMenuContent() {
   extraMenuPanel.innerHTML = '';
   if (!extraMenuOpen) {
     extraMenuPanel.style.display = 'none';
