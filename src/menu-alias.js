@@ -1,14 +1,10 @@
 /**
  * Parses org-xx-menu-aliases -- this app's own extension (not a real
  * org-mode variable), using the same Global/Local Variables mechanism
- * org-xx-extra-menu already established a precedent for. Consolidates
- * what used to be four separate variables (org-xx-file-menu,
- * org-xx-more-menu, org-xx-export-menu, org-xx-view-menu) into one --
- * all four shared this exact same "Label;alias" parsing logic, the
- * only actual difference between them was which of the app's four
- * main menus (File, More, Export, View) each one applied to, so a
- * single namespaced entry format covers the same ground with one
- * variable instead of four.
+ * org-xx-extra-menu already established a precedent for. One
+ * namespaced entry format covers all four of the app's main menus
+ * (File, More, Export, View) at once, rather than a separate variable
+ * per menu.
  *
  * Value format: a sequence of double-quoted `"menu:Label;alias"`
  * entries, space-separated (optionally spread across multiple
@@ -45,8 +41,7 @@
  *
  * Returns `{ file: {...}, more: {...}, export: {...}, view: {...} }`
  * -- each of the four always present (possibly empty `{}`), for
- * direct `result[menu][label]` lookup by any call site exactly the
- * way the four separate tables used to be looked up individually. An
+ * direct `result[menu][label]` lookup by any call site. An
  * unset/empty value returns all four as `{}`.
  */
 function parseMenuAliases(rawValue) {
