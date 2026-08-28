@@ -7783,11 +7783,11 @@ function renderFileMenuContent() {
       !state.doc
     );
     appendMenuButtonsInOrder(fileMenuPanel, fileMenuAliases, [
+      { label: 'Export', btn: exportBtn },
       { label: 'New', btn: newBtn },
       { label: 'Open', btn: openBtn },
       { label: 'Save', btn: saveBtn },
       { label: 'Save As', btn: saveAsBtn },
-      { label: 'Export', btn: exportBtn },
     ]);
     return;
   }
@@ -7810,6 +7810,14 @@ function renderFileMenuContent() {
     fileMenuStep === 'open' ? 'Open from:' : fileMenuStep === 'new' ? 'New file on:' : 'Save a copy to:';
   fileMenuPanel.appendChild(label);
 
+  fileMenuPanel.appendChild(
+    menuDivItem('GitHub', () => {
+      if (fileMenuStep === 'open') openFromGithub();
+      else if (fileMenuStep === 'new') newOnGithub();
+      else saveAsGithub();
+    })
+  );
+
   if (!isFileSystemAccessUnsupported()) {
     fileMenuPanel.appendChild(
       menuDivItem('Local file', () => {
@@ -7829,14 +7837,6 @@ function renderFileMenuContent() {
       })
     );
   }
-
-  fileMenuPanel.appendChild(
-    menuDivItem('GitHub', () => {
-      if (fileMenuStep === 'open') openFromGithub();
-      else if (fileMenuStep === 'new') newOnGithub();
-      else saveAsGithub();
-    })
-  );
 
   fileMenuPanel.appendChild(
     menuDivItem('WebDAV', () => {
@@ -7970,6 +7970,12 @@ function renderExportFlow() {
     label.textContent = 'Export Calendar (.ics) for:';
     fileMenuPanel.appendChild(label);
 
+    fileMenuPanel.appendChild(
+      menuDivItem('Choose a heading\u2026', () => {
+        exportPickingHeading = true;
+        renderFileMenu();
+      })
+    );
     fileMenuPanel.appendChild(menuDivItem('This file', () => performExport('icalendar', null)));
     if (agendaFilesConfig.length > 0) {
       fileMenuPanel.appendChild(
@@ -7980,12 +7986,6 @@ function renderExportFlow() {
         })
       );
     }
-    fileMenuPanel.appendChild(
-      menuDivItem('Choose a heading\u2026', () => {
-        exportPickingHeading = true;
-        renderFileMenu();
-      })
-    );
 
     const backRow = document.createElement('div');
     backRow.className = 'panel-row';
@@ -8300,10 +8300,10 @@ function renderViewMenuContent() {
   const viewMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).view;
   const labeledButtons = [];
   for (const [key, label] of [
-    ['org', 'Org'],
     ['agenda', 'Agenda'],
-    ['tasklist', 'TODO'],
+    ['org', 'Org'],
     ['text', 'Text'],
+    ['tasklist', 'TODO'],
   ]) {
     const btn = aliasedMenuDivItem(viewMenuAliases, label, () => switchToView(key));
     if (btn && key === currentView) btn.style.fontWeight = '700';

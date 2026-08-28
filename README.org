@@ -941,10 +941,10 @@ org-xx-menu-aliases: "more:Settings;" "more:Capture;" "more:Search;" "more:Histo
 The four menus' own real labels, exactly as they'd appear in ~"menu:Label;alias"~ — the complete set needed to reorder that specific menu:
 | ~menu~ | Labels |
 |----------+--------|
-| ~file~ | ~New~, ~Open~, ~Save~, ~Save As~, ~Export~ |
+| ~file~ | ~Export~, ~New~, ~Open~, ~Save~, ~Save As~ |
 | ~more~ | ~Add Header~, ~Capture~, ~Help~, ~History~, ~Search~, ~Settings~ |
 | ~export~ | ~ASCII~, ~Calendar (.ics)~, ~HTML~, ~Markdown~, ~ODT~ |
-| ~view~ | ~Org~, ~Agenda~, ~TODO~, ~Text~ |
+| ~view~ | ~Agenda~, ~Org~, ~Text~, ~TODO~ |
 
 -----
 
