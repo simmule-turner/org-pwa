@@ -62,6 +62,7 @@ import {
   getOrgWeatherFormat,
   getOrgWeatherSpeedUnit,
   getOrgWeatherTemperatureUnit,
+  getWeatherRefreshInterval,
   getOrgTableDurationHourZeroPadding,
   getCycleOpenArchivedTrees,
   getAgendaSkipCommentTrees,
@@ -2124,6 +2125,28 @@ async function refreshWeather() {
   }
   render();
 }
+
+/** Checks whether weather is due for an automatic refresh per
+ *  org-weather-refresh-interval, and refreshes it if so. Called
+ *  periodically (see the setInterval below) and whenever the tab
+ *  regains focus (see the existing visibilitychange handler) --
+ *  matching checkForExternalChange's own established precedent for
+ *  catching up on staleness the moment the person returns, rather
+ *  than leaving a long-backgrounded tab stale until the next timer
+ *  tick. Gated on the currently open document actually using
+ *  %%(org-weather) at all, and on the interval itself ('never' by
+ *  default) -- never does this unprompted network work otherwise. */
+async function checkWeatherAutoRefresh() {
+  if (!documentUsesOrgWeather(state.doc)) return;
+  const interval = getWeatherRefreshInterval(state.localVariables);
+  if (interval === 'never') return;
+  const hours = Number(interval);
+  const elapsedMs = weatherLastRefreshed ? Date.now() - new Date(weatherLastRefreshed).getTime() : Infinity;
+  if (elapsedMs < hours * 3600000) return;
+  await refreshWeather();
+  if (settingsOpen) renderSettingsView();
+}
+setInterval(checkWeatherAutoRefresh, 5 * 60 * 1000);
 
 /** Fetches the device's own current latitude/longitude via the
  *  browser's Geolocation API and commits both to calendar-latitude/
@@ -10396,11 +10419,49 @@ function renderQuickSettingsSection() {
       weatherRow.className = 'panel-row';
       weatherRow.style.marginBottom = '10px';
       weatherRow.appendChild(
-        menuButton('\ud83c\udf24\ufe0f Refresh weather now', async () => {
+        menuButton('\ud83c\udf24\ufe0f Refresh weather', async () => {
           await refreshWeather();
           renderSettingsView();
         })
       );
+
+      const REFRESH_INTERVAL_OPTIONS = [
+        { value: 'never', label: 'Never' },
+        { value: '1', label: '1h' },
+        { value: '2', label: '2h' },
+        { value: '4', label: '4h' },
+        { value: '6', label: '6h' },
+        { value: '12', label: '12h' },
+        { value: '24', label: '24h' },
+      ];
+      const refreshIntervalSelect = document.createElement('select');
+      refreshIntervalSelect.setAttribute('aria-label', 'Auto-refresh weather every');
+      refreshIntervalSelect.style.minHeight = '40px';
+      refreshIntervalSelect.style.fontSize = '14px';
+      refreshIntervalSelect.style.padding = '6px 8px';
+      refreshIntervalSelect.style.boxSizing = 'border-box';
+      refreshIntervalSelect.style.border = '1px solid var(--border-strong)';
+      refreshIntervalSelect.style.borderRadius = '6px';
+      refreshIntervalSelect.style.background = 'var(--bg)';
+      refreshIntervalSelect.style.color = 'var(--fg)';
+      refreshIntervalSelect.style.font = 'inherit';
+      const currentInterval = getWeatherRefreshInterval(globalVariables);
+      for (const opt of REFRESH_INTERVAL_OPTIONS) {
+        const optionEl = document.createElement('option');
+        optionEl.value = opt.value;
+        optionEl.textContent = opt.label;
+        if (opt.value === currentInterval) optionEl.selected = true;
+        refreshIntervalSelect.appendChild(optionEl);
+      }
+      refreshIntervalSelect.onchange = async () => {
+        const chosenValue = refreshIntervalSelect.value;
+        await commitGlobalVariableChange('org-weather-refresh-interval', chosenValue === 'never' ? null : chosenValue);
+        const statusPhrase = chosenValue === 'never' ? 'never' : chosenValue === '1' ? 'every hour' : `every ${chosenValue} hours`;
+        setStatus(`Weather auto-refresh: ${statusPhrase}.`);
+        renderSettingsView();
+        render();
+      };
+      weatherRow.appendChild(refreshIntervalSelect);
       wrap.appendChild(weatherRow);
     }
   }
@@ -12497,7 +12558,10 @@ externalChangeDismissBtn.addEventListener('click', () => {
 // however much longer the person keeps working here. Best-effort (see
 // checkForExternalChange's own doc comment) -- never blocks anything.
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) checkForExternalChange();
+  if (!document.hidden) {
+    checkForExternalChange();
+    checkWeatherAutoRefresh();
+  }
 });
 
 if (window.matchMedia) {
