@@ -436,6 +436,21 @@ export function getOrgWeatherTemperatureUnit(vars) {
   return WEATHER_TEMPERATURE_UNITS.has(trimmed) ? trimmed : '\u00b0F';
 }
 
+const WEATHER_REFRESH_INTERVALS = new Set(['never', '1', '2', '4', '6', '12', '24']);
+
+/** org-weather-refresh-interval: this app's own extension, matching
+ *  the org-weather-* family's own naming. How often (in hours) weather
+ *  auto-refreshes on its own -- 'never' (the default) means only the
+ *  manual "Refresh weather now" button/Agenda-view action ever
+ *  refreshes it, no unprompted background network activity at all
+ *  unless deliberately opted into. Same unrecognized-value fallback
+ *  behavior as the other org-weather-* getters above. */
+export function getWeatherRefreshInterval(vars) {
+  const raw = (vars || {})['org-weather-refresh-interval'];
+  const trimmed = raw ? String(raw).trim() : '';
+  return WEATHER_REFRESH_INTERVALS.has(trimmed) ? trimmed : 'never';
+}
+
 /** org-use-sub-superscripts: controls whether/how `_`/`^` are
  *  interpreted as subscript/superscript markers (see inline-markup.js).
  *  Unlike the other Lisp-boolean variables above, this one has three
