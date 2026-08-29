@@ -229,27 +229,27 @@ test('planning search respects regex mode too', () => {
 
 test('parseFilterQuery: recognizes a +tag inclusion filter', () => {
   const { filters, freeText } = parseFilterQuery('+work');
-  assert.deepEqual(filters, [{ type: 'tag', mode: 'include', value: 'work' }]);
+  assert.deepEqual(filters, [{ type: 'tag', mode: 'include', values: ['work'] }]);
   assert.equal(freeText, '');
 });
 
 test('parseFilterQuery: recognizes a -tag exclusion filter', () => {
   const { filters, freeText } = parseFilterQuery('-someday');
-  assert.deepEqual(filters, [{ type: 'tag', mode: 'exclude', value: 'someday' }]);
+  assert.deepEqual(filters, [{ type: 'tag', mode: 'exclude', values: ['someday'] }]);
   assert.equal(freeText, '');
 });
 
 test('parseFilterQuery: recognizes todo: and priority: as reserved keys', () => {
   const { filters } = parseFilterQuery('todo:WAITING priority:A');
   assert.deepEqual(filters, [
-    { type: 'todo', value: 'WAITING' },
-    { type: 'priority', value: 'A' },
+    { type: 'todo', mode: 'include', values: ['WAITING'] },
+    { type: 'priority', mode: 'include', values: ['A'] },
   ]);
 });
 
 test('parseFilterQuery: any other key:value becomes a property filter', () => {
   const { filters } = parseFilterQuery('spouse:Jennifer');
-  assert.deepEqual(filters, [{ type: 'property', key: 'spouse', value: 'Jennifer' }]);
+  assert.deepEqual(filters, [{ type: 'property', mode: 'include', key: 'spouse', values: ['Jennifer'] }]);
 });
 
 test('parseFilterQuery: multiple filter tokens combine, leftover words become free text', () => {
@@ -340,6 +340,85 @@ test('a generic key:value filter matches a property', () => {
   const results = searchDocument(doc, 'spouse:Jennifer');
   const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
   assert.deepEqual(headings, ['Simmule']);
+});
+
+// ---- THE FEATURE: unified tag:/todo:/priority:/key: syntax, negation, and | (OR) ----
+
+test('THE FEATURE: tag:X (bare) is the same as +tag', () => {
+  const results = searchDocument(taggedDoc(), 'tag:home');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['Personal errand']);
+});
+
+test('THE FEATURE: +tag:X is the same as +tag', () => {
+  const results = searchDocument(taggedDoc(), '+tag:home');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['Personal errand']);
+});
+
+test('THE FEATURE: -tag:X is the same as -tag', () => {
+  const results = searchDocument(taggedDoc(), '+work -tag:someday');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings.sort(), ['Fix the bug', 'On vendor reply'].sort());
+});
+
+test('THE FEATURE: +todo:X is the same as bare todo:X', () => {
+  const results = searchDocument(taggedDoc(), '+todo:WAITING');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['On vendor reply']);
+});
+
+test('THE FEATURE: -todo:X excludes that TODO state -- genuinely new, no way to express this before', () => {
+  const results = searchDocument(taggedDoc(), '-todo:WAITING');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  // "Fix the bug" (TODO) and "Someday maybe" (TODO) pass; "On vendor
+  // reply" (WAITING) is excluded; "Personal errand" has NO todo keyword
+  // at all and still passes -- absence isn't "WAITING", same principle
+  // as -tag already had for a heading with no tags.
+  assert.deepEqual(headings.sort(), ['Fix the bug', 'Someday maybe', 'Personal errand'].sort());
+});
+
+test('THE FEATURE: +priority:X is the same as bare priority:X', () => {
+  const results = searchDocument(taggedDoc(), '+priority:A');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['Fix the bug']);
+});
+
+test('THE FEATURE: -priority:X excludes that priority, headings with no priority at all still pass', () => {
+  const results = searchDocument(taggedDoc(), '-priority:A');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings.sort(), ['Someday maybe', 'On vendor reply', 'Personal errand'].sort());
+});
+
+test('THE FEATURE: -key:value excludes a property value, missing the property entirely still passes', () => {
+  const doc = parseOrg('* Simmule\n:PROPERTIES:\n:spouse: Jennifer\n:END:\n* Robert\'s partner\n:PROPERTIES:\n:spouse: Robert\n:END:\n* No spouse property at all\n');
+  const results = searchDocument(doc, '-spouse:Jennifer');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings.sort(), ["Robert's partner", 'No spouse property at all'].sort());
+});
+
+test('THE FEATURE: | is OR within one filter\'s own value list -- todo:A|B matches either', () => {
+  const results = searchDocument(taggedDoc(), 'todo:TODO|WAITING');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings.sort(), ['Fix the bug', 'Someday maybe', 'On vendor reply'].sort());
+});
+
+test('THE FEATURE: | works for tag: too -- tag:a|b matches either tag', () => {
+  const results = searchDocument(taggedDoc(), 'tag:urgent|home');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings.sort(), ['Fix the bug', 'Personal errand'].sort());
+});
+
+test('THE FEATURE: a negated OR means "neither of these" -- -todo:TODO|WAITING excludes both states', () => {
+  const results = searchDocument(taggedDoc(), '-todo:TODO|WAITING');
+  const headings = results.filter((r) => r.type === 'heading').map((r) => r.heading.title);
+  assert.deepEqual(headings, ['Personal errand']); // the only heading with neither TODO nor WAITING
+});
+
+test('THE FEATURE: a malformed value list (nothing but a pipe) falls through to free text rather than matching nothing', () => {
+  const { filters, freeText } = parseFilterQuery('todo:|');
+  assert.deepEqual(filters, []);
+  assert.equal(freeText, 'todo:|');
 });
 
 test('combined filters apply as AND, not OR', () => {
