@@ -560,6 +560,7 @@ function ensureAgendaFilesLoaded() {
           result ? { doc: parseOrg(result.content), documentId: path } : { error: `"${path}" not found.` }
         );
         if (currentView === 'agenda' || currentView === 'tasklist') render();
+        if (settingsOpen) renderSettingsView();
       })
       .catch((err) => {
         agendaFilesCache.set(key, { error: err.message });
@@ -2126,18 +2127,34 @@ async function refreshWeather() {
   render();
 }
 
+/** Where (if anywhere) %%(org-weather) is actually in use right now
+ *  -- 'current' (the currently open document itself), 'agenda' (not
+ *  the open document, but at least one configured agenda file), or
+ *  null (neither). Weather integration isn't necessarily tied to
+ *  whatever document happens to be open -- it's just as commonly used
+ *  from within an org-agenda-files entry instead, since the Agenda
+ *  view is where the weather line typically actually shows up. */
+function whereOrgWeatherIsUsed() {
+  if (documentUsesOrgWeather(state.doc)) return 'current';
+  ensureAgendaFilesLoaded();
+  for (const entry of agendaFilesCache.values()) {
+    if (entry.doc && documentUsesOrgWeather(entry.doc)) return 'agenda';
+  }
+  return null;
+}
+
 /** Checks whether weather is due for an automatic refresh per
- *  org-weather-refresh-interval, and refreshes it if so. Called
- *  periodically (see the setInterval below) and whenever the tab
- *  regains focus (see the existing visibilitychange handler) --
- *  matching checkForExternalChange's own established precedent for
- *  catching up on staleness the moment the person returns, rather
- *  than leaving a long-backgrounded tab stale until the next timer
- *  tick. Gated on the currently open document actually using
- *  %%(org-weather) at all, and on the interval itself ('never' by
- *  default) -- never does this unprompted network work otherwise. */
+ *  org-weather-refresh-interval, and refreshes it if so. Called from
+ *  the modeline's own 30-second timer (see that timer's own site) and
+ *  once at startup (see bootstrap's own resume path) -- the timer
+ *  keeps running regardless of whether the clock display itself
+ *  (display-time-mode) is on, so this stays correct either way, not
+ *  coupled to that unrelated setting. Gated on org-weather actually
+ *  being in use somewhere relevant, and on the interval itself
+ *  ('never' by default) -- never does this unprompted network work
+ *  otherwise. */
 async function checkWeatherAutoRefresh() {
-  if (!documentUsesOrgWeather(state.doc)) return;
+  if (!whereOrgWeatherIsUsed()) return;
   const interval = getWeatherRefreshInterval(state.localVariables);
   if (interval === 'never') return;
   const hours = Number(interval);
@@ -2146,7 +2163,6 @@ async function checkWeatherAutoRefresh() {
   await refreshWeather();
   if (settingsOpen) renderSettingsView();
 }
-setInterval(checkWeatherAutoRefresh, 5 * 60 * 1000);
 
 /** Fetches the device's own current latitude/longitude via the
  *  browser's Geolocation API and commits both to calendar-latitude/
@@ -2883,6 +2899,7 @@ function renderModeline() {
 }
 setInterval(() => {
   if (state.doc) renderModeline();
+  checkWeatherAutoRefresh();
 }, 30000);
 
 // Keeps #topBar visually pinned to the top of the actually-visible area
@@ -5137,10 +5154,12 @@ const REPEATER_MARK_OPTIONS = [
   ['.+', 'Every (from completion)'],
 ];
 
-function textInputStyle(el) {
-  el.style.width = '100%';
-  el.style.maxWidth = '100%';
-  el.style.minWidth = '0';
+function textInputStyle(el, compact) {
+  if (!compact) {
+    el.style.width = '100%';
+    el.style.maxWidth = '100%';
+    el.style.minWidth = '0';
+  }
   el.style.minHeight = '40px';
   el.style.fontSize = '16px';
   el.style.padding = '6px 8px';
@@ -5150,6 +5169,62 @@ function textInputStyle(el) {
   el.style.background = 'var(--bg)';
   el.style.color = 'var(--fg)';
   el.style.font = 'inherit';
+  // iOS Safari specifically: native form-control chrome (select's own
+  // dropdown affordance, a button matched to this same sizing) doesn't
+  // fully respect max-width/box-sizing the way Chrome's does -- the
+  // same documented fix already used for the date/time inputs below.
+  el.style.webkitAppearance = 'none';
+  el.style.appearance = 'none';
+  if (el.tagName === 'SELECT') {
+    // appearance:none also strips the native dropdown-arrow indicator
+    // -- replaced with a CSS chevron so the "this is a dropdown, not a
+    // text field" affordance survives the fix above rather than being
+    // silently lost.
+    el.style.backgroundImage =
+      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M5 7l5 5 5-5'/%3E%3C/svg%3E\")";
+    el.style.backgroundRepeat = 'no-repeat';
+    el.style.backgroundPosition = 'right 8px center';
+    el.style.backgroundSize = '16px';
+    el.style.paddingRight = '28px';
+  }
+}
+
+/** Populates `selectEl` with <option> elements from `options` (an
+ *  array of {value, label} pairs), marking whichever matches
+ *  `currentValue` as selected -- the single source of truth for this
+ *  boilerplate, previously duplicated verbatim between the Quick
+ *  Settings select-type field and the weather auto-refresh-interval
+ *  dropdown, a real drift risk (and the two had, in fact, already
+ *  drifted apart in a followup fix before this consolidation).
+ *  Clears any existing <option> children first, so it's also safe to
+ *  call again on an already-populated select (e.g. after a value
+ *  change re-renders the same dropdown). */
+function populateSelectOptions(selectEl, options, currentValue) {
+  selectEl.innerHTML = '';
+  for (const opt of options) {
+    const optionEl = document.createElement('option');
+    optionEl.value = opt.value;
+    optionEl.textContent = opt.label;
+    if (opt.value === currentValue) optionEl.selected = true;
+    selectEl.appendChild(optionEl);
+  }
+}
+
+/** Matches a button's own sizing to textInputStyle's entry-field
+ *  convention -- for a button that needs to sit on the same row as
+ *  an actual entry field (a select, an input) and look consistent
+ *  with it, overriding the broader .panel button rule's own larger
+ *  touch-target sizing (correct for buttons generally -- a deliberate
+ *  44px minimum for touch targets -- but visibly mismatched here,
+ *  which is exactly the bug this fixes). Also applies the same iOS
+ *  appearance:none fix textInputStyle needs, for the same underlying
+ *  reason: native button chrome not fully respecting box-sizing. */
+function entryFieldButtonStyle(btn) {
+  btn.style.minHeight = '40px';
+  btn.style.padding = '6px 8px';
+  btn.style.fontSize = '16px';
+  btn.style.webkitAppearance = 'none';
+  btn.style.appearance = 'none';
 }
 
 function fieldRow(labelText, inputEl) {
@@ -10194,13 +10269,7 @@ function renderQuickSettingField(field) {
     const select = document.createElement('select');
     textInputStyle(select);
     const current = rawValue !== undefined ? rawValue : field.default;
-    for (const opt of field.options) {
-      const optionEl = document.createElement('option');
-      optionEl.value = opt.value;
-      optionEl.textContent = opt.label;
-      if (opt.value === current) optionEl.selected = true;
-      select.appendChild(optionEl);
-    }
+    populateSelectOptions(select, field.options, current);
     select.onchange = async () => {
       await commitGlobalVariableChange(field.key, select.value === field.default ? null : select.value);
       setStatus(`${field.label} updated.`);
@@ -10411,7 +10480,13 @@ function renderQuickSettingsSection() {
       weatherStatus.style.fontSize = '13px';
       weatherStatus.style.marginBottom = '6px';
       const refreshedText = weatherLastRefreshed ? `Last refreshed: ${new Date(weatherLastRefreshed).toLocaleString()}` : 'Never refreshed yet.';
-      const usageNote = documentUsesOrgWeather(state.doc) ? '' : ' Not used in the current document yet.';
+      const weatherUsage = whereOrgWeatherIsUsed();
+      const usageNote =
+        weatherUsage === 'current'
+          ? ''
+          : weatherUsage === 'agenda'
+          ? ' Used via an agenda file, not the current document.'
+          : ' Not used in the current document yet.';
       weatherStatus.textContent = refreshedText + usageNote;
       wrap.appendChild(weatherStatus);
 
@@ -10422,9 +10497,7 @@ function renderQuickSettingsSection() {
         await refreshWeather();
         renderSettingsView();
       });
-      refreshWeatherBtn.style.minHeight = '40px';
-      refreshWeatherBtn.style.padding = '6px 8px';
-      refreshWeatherBtn.style.fontSize = '16px';
+      entryFieldButtonStyle(refreshWeatherBtn);
       weatherRow.appendChild(refreshWeatherBtn);
 
       const REFRESH_INTERVAL_OPTIONS = [
@@ -10438,23 +10511,9 @@ function renderQuickSettingsSection() {
       ];
       const refreshIntervalSelect = document.createElement('select');
       refreshIntervalSelect.setAttribute('aria-label', 'Auto-refresh weather every');
-      refreshIntervalSelect.style.minHeight = '40px';
-      refreshIntervalSelect.style.fontSize = '14px';
-      refreshIntervalSelect.style.padding = '6px 8px';
-      refreshIntervalSelect.style.boxSizing = 'border-box';
-      refreshIntervalSelect.style.border = '1px solid var(--border-strong)';
-      refreshIntervalSelect.style.borderRadius = '6px';
-      refreshIntervalSelect.style.background = 'var(--bg)';
-      refreshIntervalSelect.style.color = 'var(--fg)';
-      refreshIntervalSelect.style.font = 'inherit';
+      textInputStyle(refreshIntervalSelect, true);
       const currentInterval = getWeatherRefreshInterval(globalVariables);
-      for (const opt of REFRESH_INTERVAL_OPTIONS) {
-        const optionEl = document.createElement('option');
-        optionEl.value = opt.value;
-        optionEl.textContent = opt.label;
-        if (opt.value === currentInterval) optionEl.selected = true;
-        refreshIntervalSelect.appendChild(optionEl);
-      }
+      populateSelectOptions(refreshIntervalSelect, REFRESH_INTERVAL_OPTIONS, currentInterval);
       refreshIntervalSelect.onchange = async () => {
         const chosenValue = refreshIntervalSelect.value;
         await commitGlobalVariableChange('org-weather-refresh-interval', chosenValue === 'never' ? null : chosenValue);
@@ -12521,6 +12580,7 @@ async function bootstrap() {
         updateFilenameDisplay();
         render();
         checkForExternalChange();
+        checkWeatherAutoRefresh();
         return;
       }
     } catch {
@@ -12560,10 +12620,7 @@ externalChangeDismissBtn.addEventListener('click', () => {
 // however much longer the person keeps working here. Best-effort (see
 // checkForExternalChange's own doc comment) -- never blocks anything.
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) {
-    checkForExternalChange();
-    checkWeatherAutoRefresh();
-  }
+  if (!document.hidden) checkForExternalChange();
 });
 
 if (window.matchMedia) {
