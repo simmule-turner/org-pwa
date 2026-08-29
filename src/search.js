@@ -294,18 +294,11 @@ function searchTextWithinHeading(results, node, q, matches, useRegex) {
   walkBodyForMatches(results, node, node.body, q, matches, useRegex);
 }
 
-export function searchDocument(doc, query, opts = {}) {
-  const { useRegex = false, useTagInheritance = true, usePropertyInheritance = false } = opts;
-  const trimmed = String(query).trim();
-  if (!trimmed) return [];
-
-  const { filters, freeText } = parseFilterQuery(trimmed);
-  // A pure filter query with no leftover text (e.g. "+work todo:WAITING")
-  // has nothing to run a text search for -- every heading that passes
-  // the filter gate IS the result, in its own right, rather than one of
-  // its fields having matched some text.
-  const matches = freeText ? buildMatcher(freeText, useRegex) : null; // throws here on an invalid regex, before any results are built
-
+/** The actual per-document heading walk, shared between searchDocument
+ *  (a single document) and searchDocuments (many at once) below --
+ *  everything about parsing the query and building the matcher stays
+ *  common to both; only this walk itself needs to repeat per file. */
+function searchOneDocument(doc, filters, freeText, matches, useRegex, useTagInheritance, usePropertyInheritance) {
   const results = [];
 
   function walk(nodes, ancestors) {
@@ -325,6 +318,38 @@ export function searchDocument(doc, query, opts = {}) {
   }
 
   walk(doc.children, []);
+  return results;
+}
+
+export function searchDocument(doc, query, opts = {}) {
+  const { useRegex = false, useTagInheritance = true, usePropertyInheritance = false } = opts;
+  const trimmed = String(query).trim();
+  if (!trimmed) return [];
+
+  const { filters, freeText } = parseFilterQuery(trimmed);
+  // A pure filter query with no leftover text (e.g. "+work todo:WAITING")
+  // has nothing to run a text search for -- every heading that passes
+  // the filter gate IS the result, in its own right, rather than one of
+  // its fields having matched some text.
+  const matches = freeText ? buildMatcher(freeText, useRegex) : null; // throws here on an invalid regex, before any results are built
+
+  return searchOneDocument(doc, filters, freeText, matches, useRegex, useTagInheritance, usePropertyInheritance);
+}
+
+export function searchDocuments(docs, query, opts = {}) {
+  const { useRegex = false, useTagInheritance = true, usePropertyInheritance = false } = opts;
+  const trimmed = String(query).trim();
+  if (!trimmed) return [];
+
+  const { filters, freeText } = parseFilterQuery(trimmed);
+  const matches = freeText ? buildMatcher(freeText, useRegex) : null; // built ONCE, not once per document -- an invalid regex throws a single clear error, not one per file
+
+  const results = [];
+  for (const { documentId, doc } of docs) {
+    for (const result of searchOneDocument(doc, filters, freeText, matches, useRegex, useTagInheritance, usePropertyInheritance)) {
+      results.push({ ...result, documentId });
+    }
+  }
   return results;
 }
 
