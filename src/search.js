@@ -16,14 +16,20 @@
  *
  * On top of that, the query can contain filter tokens — see
  * parseFilterQuery below — that restrict which HEADINGS are searched at
- * all, before any text matching happens: `+tag`, `-tag`, `todo:KEYWORD`,
- * `priority:X`, and `key:value` for an arbitrary property. Filters
- * combine with each other and with any leftover free text as an
+ * all, before any text matching happens: `+tag`/`-tag` (or the newer,
+ * unified `tag:value` form), `todo:KEYWORD`, `priority:X`, and
+ * `key:value` for an arbitrary property — every one of the `key:value`
+ * forms accepts an optional leading `+`/`-` (bare and `+` both mean
+ * "must match," `-` means "must not") and `|`-separated alternatives
+ * within its own value (`todo:TODO|WAITING` means either state).
+ * Filters combine with each other and with any leftover free text as an
  * implicit AND — `+work todo:WAITING budget` means "tagged work, AND in
  * WAITING state, AND containing 'budget' somewhere." This is NOT org's
- * own match-syntax (no OR, no parentheses, no exact-match `=`) — a
- * deliberately smaller, single-box design; see parseFilterQuery's own
- * docs for the reasoning and the specific ambiguities this trades off.
+ * own full match-syntax: OR only works within a single filter's own
+ * value list, not across separate filters, and there's no grouping/
+ * parentheses — a deliberate, smaller design; see parseFilterQuery's
+ * own docs for the reasoning and the specific ambiguities this trades
+ * off.
  *
  * Returns a flat array of match records in document order, each carrying
  * enough to render a result row and navigate to it:
@@ -81,32 +87,49 @@ function makeSnippet(text, query, useRegex) {
 }
 
 const TAG_TOKEN_RE = /^[+-][\w@#%-]+$/; // org's own tag character set, roughly -- word chars plus a few punctuation marks org itself allows in tags
-const KV_TOKEN_RE = /^([A-Za-z_][\w-]*):(.+)$/; // key must start with a letter/underscore, not a digit -- rules out "10:30" (a time) being misread as key "10"
+const KV_TOKEN_RE = /^([+-]?)([A-Za-z_][\w-]*):(.+)$/; // optional leading sign (bare/+ = must match, - = must not); key must start with a letter/underscore, not a digit -- rules out "10:30" (a time) being misread as key "10"
 
 /**
  * Splits `query` into structured filter tokens and leftover free text.
  * Recognized tokens, each a single space-delimited word with no
  * internal spaces:
- *   +tag        heading must have this tag
- *   -tag        heading must NOT have this tag
- *   todo:WORD   heading's TODO keyword must equal WORD exactly (case-insensitive)
- *   priority:X  heading's priority must equal X exactly (case-insensitive)
- *   key:value   heading must have a property named `key` whose value
- *               contains `value` (substring, case-insensitive) --
- *               anything not reserved as todo:/priority: falls here
- * Anything that doesn't match one of these becomes ordinary free text,
- * joined back together and matched exactly as it already was before
- * filters existed (title/tags/todo/priority/properties/planning/body,
- * via `useRegex` same as any other query).
+ *   +tag             heading must have this tag (bare `+tag`/`-tag`
+ *                     form, single tag only -- kept exactly as it's
+ *                     always worked)
+ *   -tag             heading must NOT have this tag
+ *   tag:urgent       same as +tag, via the newer, unified key:value
+ *                     form -- also accepts | for "any of these":
+ *   tag:urgent|blocked      has urgent OR blocked
+ *   -tag:urgent|blocked     has NEITHER urgent NOR blocked
+ *   todo:WORD        heading's TODO keyword must equal WORD exactly
+ *                     (case-insensitive); todo:A|B for "either state"
+ *   -todo:WORD       heading's TODO keyword must NOT equal WORD
+ *   priority:X       heading's priority must equal X exactly; same
+ *                     -/| support as todo above
+ *   key:value        heading must have a property named `key` whose
+ *                     value contains `value` (substring,
+ *                     case-insensitive) -- anything not reserved as
+ *                     tag:/todo:/priority: falls here; same -/| support
+ * A bare key:value or +key:value both mean "must match" (+ is purely
+ * for symmetry with -, not a distinct mode of its own). Anything that
+ * doesn't match one of these becomes ordinary free text, joined back
+ * together and matched exactly as it already was before filters
+ * existed (title/tags/todo/priority/properties/planning/body, via
+ * `useRegex` same as any other query).
  *
  * This is deliberately NOT a faithful subset of real org-mode's own
  * match-syntax (`org-search-view`'s `+tag-tag/TODO`, or the fuller
  * boolean query language with `&`/`|` and `PRIORITY="A"`-style exact
  * matches) -- a single unified box that also does free text, with
- * simpler AND-only combining and `key:value` rather than quoted `=`,
+ * `|` only ever combining alternatives *within* one filter's own value
+ * (never across separate filters, which stay implicit AND with no
+ * grouping/parentheses at all) and `key:value` rather than quoted `=`,
  * on the reasoning that quotes and `=` cost more to type on a phone
- * keyboard than they add in clarity here. See the module docstring for
- * the fuller design reasoning.
+ * keyboard than they add in clarity here, and cross-filter OR/
+ * parentheses cost a lot more surface area to learn and use correctly
+ * than they'd earn back for how rarely they're actually needed
+ * compared to "any of these tags"/"any of these states." See the
+ * module docstring for the fuller design reasoning.
  *
  * Known, accepted ambiguity, not fully avoidable in a single free-text
  * box: a word that happens to start with `+`/`-` (a negative number, a
@@ -115,6 +138,11 @@ const KV_TOKEN_RE = /^([A-Za-z_][\w-]*):(.+)$/; // key must start with a letter/
  * text. `scheme://` URLs (http://, https://) are specifically excluded
  * from the key:value pattern below, since they're the single most
  * likely false positive; rarer cases are a stated tradeoff, not a bug.
+ * `tag` is now a reserved key the same way `todo`/`priority` already
+ * were -- a real property literally named "tag" (an unusual choice;
+ * org itself expresses tags via a heading's own `:tag1:tag2:` suffix,
+ * never a drawer property) is no longer reachable via `tag:value`,
+ * the one non-additive edge of this otherwise purely-additive design.
  */
 function parseFilterQuery(query) {
   const tokens = query.split(/\s+/).filter(Boolean);
@@ -123,25 +151,36 @@ function parseFilterQuery(query) {
 
   for (const token of tokens) {
     if (TAG_TOKEN_RE.test(token) && token.length > 1) {
-      filters.push({ type: 'tag', mode: token[0] === '+' ? 'include' : 'exclude', value: token.slice(1) });
+      filters.push({ type: 'tag', mode: token[0] === '+' ? 'include' : 'exclude', values: [token.slice(1)] });
       continue;
     }
     const kv = KV_TOKEN_RE.exec(token);
     if (kv) {
-      const [, key, value] = kv;
-      if (value.startsWith('//')) {
+      const [, sign, key, rawValue] = kv;
+      if (rawValue.startsWith('//')) {
         // scheme://host -- almost certainly a URL (http://, https://,
         // etc.), not someone naming a property literally called
         // "http". Falls through to free text.
-      } else if (key.toLowerCase() === 'todo') {
-        filters.push({ type: 'todo', value });
-        continue;
-      } else if (key.toLowerCase() === 'priority') {
-        filters.push({ type: 'priority', value });
-        continue;
       } else {
-        filters.push({ type: 'property', key, value });
-        continue;
+        const mode = sign === '-' ? 'exclude' : 'include';
+        const values = rawValue.split('|').filter(Boolean);
+        if (values.length === 0) {
+          // e.g. a bare "key:|" with nothing meaningful either side of
+          // the pipe -- falls through to free text rather than create
+          // a filter that could never actually match anything.
+        } else if (key.toLowerCase() === 'tag') {
+          filters.push({ type: 'tag', mode, values });
+          continue;
+        } else if (key.toLowerCase() === 'todo') {
+          filters.push({ type: 'todo', mode, values });
+          continue;
+        } else if (key.toLowerCase() === 'priority') {
+          filters.push({ type: 'priority', mode, values });
+          continue;
+        } else {
+          filters.push({ type: 'property', mode, key, values });
+          continue;
+        }
       }
     }
     freeWords.push(token);
@@ -197,19 +236,22 @@ function effectivePropertyValue(heading, ancestors, key, useInheritance) {
 
 function headingPassesFilters(heading, filters, ancestors, useTagInheritance, usePropertyInheritance) {
   for (const filter of filters) {
+    let matched;
     if (filter.type === 'tag') {
       const tags = effectiveTags(heading, ancestors, useTagInheritance);
-      const hasTag = tags.some((t) => t.toLowerCase() === filter.value.toLowerCase());
-      if (filter.mode === 'include' && !hasTag) return false;
-      if (filter.mode === 'exclude' && hasTag) return false;
+      matched = filter.values.some((v) => tags.some((t) => t.toLowerCase() === v.toLowerCase()));
     } else if (filter.type === 'todo') {
-      if (!heading.todo || heading.todo.toLowerCase() !== filter.value.toLowerCase()) return false;
+      matched = !!heading.todo && filter.values.some((v) => heading.todo.toLowerCase() === v.toLowerCase());
     } else if (filter.type === 'priority') {
-      if (!heading.priority || heading.priority.toLowerCase() !== filter.value.toLowerCase()) return false;
+      matched = !!heading.priority && filter.values.some((v) => heading.priority.toLowerCase() === v.toLowerCase());
     } else if (filter.type === 'property') {
-      const value = effectivePropertyValue(heading, ancestors, filter.key, usePropertyInheritance);
-      if (value === null || !value.toLowerCase().includes(filter.value.toLowerCase())) return false;
+      const propValue = effectivePropertyValue(heading, ancestors, filter.key, usePropertyInheritance);
+      matched = propValue !== null && filter.values.some((v) => propValue.toLowerCase().includes(v.toLowerCase()));
+    } else {
+      continue;
     }
+    if (filter.mode === 'include' && !matched) return false;
+    if (filter.mode === 'exclude' && matched) return false;
   }
   return true;
 }
