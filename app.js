@@ -11608,7 +11608,6 @@ function renderSearchPanel() {
     searchPanel.style.display = 'none';
     return;
   }
-  searchPanel.style.display = 'block';
 
   const resultsEl = document.createElement('div');
   resultsEl.id = 'search-results';
@@ -11624,8 +11623,11 @@ function renderSearchResults() {
   if (!resultsEl) return;
   resultsEl.innerHTML = '';
 
-  if (!searchQuery.trim()) return;
-  if (!state.doc) return;
+  if (!searchQuery.trim() || !state.doc) {
+    searchPanel.style.display = 'none';
+    return;
+  }
+  searchPanel.style.display = 'block';
 
   let results;
   try {
