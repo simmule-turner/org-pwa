@@ -156,7 +156,7 @@ import {
   setHeadingText,
 } from './src/body-edit.js';
 import { recalculateTable } from './src/table-formula.js';
-import { isOrgWeatherLine, formatWeatherLine, buildWeatherApiUrl } from './src/org-weather.js';
+import { isOrgWeatherLine, formatWeatherLine, buildWeatherApiUrl, DEFAULT_ORG_WEATHER_FORMAT } from './src/org-weather.js';
 import { initialState as godModeInitialState, processKey as godModeProcessKey } from './src/god-mode.js';
 import { documentUsesOrgWeather } from './src/sexp-eval.js';
 import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
@@ -10002,7 +10002,7 @@ const QUICK_SETTINGS_FIELDS = [
     label: 'Format',
     section: 'Weather',
     type: 'text',
-    default: 'Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su',
+    default: DEFAULT_ORG_WEATHER_FORMAT,
     helpAnchor: '#agenda-diary-sexp',
   },
   {
