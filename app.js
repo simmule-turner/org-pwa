@@ -3502,11 +3502,6 @@ function tryDispatchPanelHotkey(key) {
 document.addEventListener('pointerdown', (e) => {
   if (statusEl.textContent) setStatus('');
 
-  const active = document.activeElement;
-  if (active && active !== document.body && !active.contains(e.target)) {
-    active.blur();
-  }
-
   const popupMenus = [
     { open: () => fileMenuOpen, panel: fileMenuPanel, btn: fileMenuBtn, close: () => { fileMenuOpen = false; renderFileMenu(); } },
     { open: () => viewMenuOpen, panel: viewMenuPanel, btn: viewMenuBtn, close: () => { viewMenuOpen = false; renderViewMenu(); } },
