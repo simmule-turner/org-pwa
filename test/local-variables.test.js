@@ -361,8 +361,8 @@ test('THE FIX: getSolarHideLabel reads t as true (label hidden)', () => {
 });
 
 test('THE FIX: getOrgWeatherFormat defaults to the exact format given in the original request', () => {
-  assert.equal(getOrgWeatherFormat({}), 'Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su');
-  assert.equal(getOrgWeatherFormat(undefined), 'Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su');
+  assert.equal(getOrgWeatherFormat({}), 'Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su, %a%au');
+  assert.equal(getOrgWeatherFormat(undefined), 'Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su, %a%au');
 });
 
 test('getOrgWeatherFormat reads an explicit override', () => {

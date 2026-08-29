@@ -90,6 +90,74 @@ test('a template with no placeholders at all passes through unchanged', () => {
   assert.equal(formatWeatherLine('just plain text', SAMPLE_DATA, '\u00b0F', 'mph'), 'just plain text');
 });
 
+// ---- formatWeatherLine: %a/%au (snapshot age) --------------------------------
+
+test('%a/%au: 0-59 minutes shows as minutes', () => {
+  const data = { ...SAMPLE_DATA, currentTime: '2026-08-19T09:30' };
+  const now = new Date(2026, 7, 19, 9, 45);
+  assert.equal(formatWeatherLine('%a%au', data, '\u00b0F', 'mph', now), '15m');
+});
+
+test('THE FIX: exactly 59 minutes still shows as minutes, not rounding up to an hour', () => {
+  const data = { ...SAMPLE_DATA, currentTime: '2026-08-19T09:00' };
+  const now = new Date(2026, 7, 19, 9, 59);
+  assert.equal(formatWeatherLine('%a%au', data, '\u00b0F', 'mph', now), '59m');
+});
+
+test('THE FIX: exactly 60 minutes switches to 1 hour, not "60m"', () => {
+  const data = { ...SAMPLE_DATA, currentTime: '2026-08-19T09:00' };
+  const now = new Date(2026, 7, 19, 10, 0);
+  assert.equal(formatWeatherLine('%a%au', data, '\u00b0F', 'mph', now), '1h');
+});
+
+test('%a/%au: 1-23 hours shows as hours', () => {
+  const data = { ...SAMPLE_DATA, currentTime: '2026-08-19T09:00' };
+  const now = new Date(2026, 7, 19, 17, 0);
+  assert.equal(formatWeatherLine('%a%au', data, '\u00b0F', 'mph', now), '8h');
+});
+
+test('THE FIX: exactly 23 hours 59 minutes still shows as hours, not rounding up to a day', () => {
+  const data = { ...SAMPLE_DATA, currentTime: '2026-08-19T00:00' };
+  const now = new Date(2026, 7, 19, 23, 59);
+  assert.equal(formatWeatherLine('%a%au', data, '\u00b0F', 'mph', now), '23h');
+});
+
+test('THE FIX: exactly 24 hours switches to 1 day, not "24h"', () => {
+  const data = { ...SAMPLE_DATA, currentTime: '2026-08-19T00:00' };
+  const now = new Date(2026, 7, 20, 0, 0);
+  assert.equal(formatWeatherLine('%a%au', data, '\u00b0F', 'mph', now), '1d');
+});
+
+test('%a/%au: multiple days shows as days', () => {
+  const data = { ...SAMPLE_DATA, currentTime: '2026-08-15T00:00' };
+  const now = new Date(2026, 7, 19, 0, 0);
+  assert.equal(formatWeatherLine('%a%au', data, '\u00b0F', 'mph', now), '4d');
+});
+
+test('THE FIX: clock skew (data timestamp at or after "now") clamps to 0, not a negative age', () => {
+  const data = { ...SAMPLE_DATA, currentTime: '2026-08-19T10:05' };
+  const now = new Date(2026, 7, 19, 10, 0);
+  assert.equal(formatWeatherLine('%a%au', data, '\u00b0F', 'mph', now), '0m');
+});
+
+test('%a/%au: `now` defaults to the real current time when not passed', () => {
+  const data = { ...SAMPLE_DATA, currentTime: new Date().toISOString() };
+  assert.equal(formatWeatherLine('%a%au', data, '\u00b0F', 'mph'), '0m');
+});
+
+test('THE FIX: the new default format includes the age suffix', () => {
+  const data = { ...SAMPLE_DATA, currentTime: '2026-08-19T09:00' };
+  const now = new Date(2026, 7, 19, 9, 30);
+  const result = formatWeatherLine(
+    'Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su, %a%au',
+    data,
+    '\u00b0F',
+    'mph',
+    now
+  );
+  assert.equal(result, 'Weather: Overcast, 86.3(75.5-91.8)\u00b0F, 1002.8hPa, 49%, 5.1mph, 30m');
+});
+
 // ---- buildWeatherApiUrl --------------------------------------------------
 
 test('THE EXACT REQUEST: buildWeatherApiUrl matches the exact URL structure and query parameters given in the original request', () => {

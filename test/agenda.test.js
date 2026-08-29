@@ -1465,6 +1465,7 @@ test('a plain <2026-01-01> title timestamp is completely unaffected by the new s
 // ---- THE FIX: %%(org-weather) -----------------------------------------------
 
 const SAMPLE_WEATHER_DATA = {
+  currentTime: '2026-08-18T23:30',
   weatherCode: 3,
   humidity: 49,
   humidityUnit: '%',
@@ -1490,7 +1491,7 @@ test('THE FIX: a standalone "%%(org-weather)" body line generates exactly ONE en
   assert.equal(items.length, 1, 'exactly one entry across the whole 7-day range, not one per day');
   assert.equal(items[0].kind, 'weather');
   assert.equal(items[0].date.toDateString(), today.toDateString());
-  assert.equal(items[0].title, 'Weather: Overcast, 86.3(75.5-91.8)\u00b0F, 1002.8hPa, 49%, 5.1mph');
+  assert.equal(items[0].title, 'Weather: Overcast, 86.3(75.5-91.8)\u00b0F, 1002.8hPa, 49%, 5.1mph, 30m');
 });
 
 test('THE FIX: no entry at all when weather data has never actually been fetched (weatherData: null) -- there\u2019s nothing to show, not an error', () => {
