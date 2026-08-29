@@ -2812,10 +2812,13 @@ const VH_UNIT = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('heig
 function syncContentOffset() {
   const barHeight = topBarEl.offsetHeight;
   const bottomBarHeight = modelineBarEl.offsetHeight;
+  const vv = window.visualViewport;
+  const keyboardInset = vv ? Math.max(0, document.documentElement.clientHeight - (vv.height + vv.offsetTop)) : 0;
+  modelineBarEl.style.bottom = keyboardInset + 'px';
   contentAreaEl.style.marginTop = barHeight + 'px';
-  contentAreaEl.style.height = `calc(100% - ${barHeight}px - ${bottomBarHeight}px)`;
-  extraMenuBtn.style.bottom = bottomBarHeight + 16 + 'px';
-  navBackBtn.style.bottom = bottomBarHeight + 16 + 'px';
+  contentAreaEl.style.height = `calc(100% - ${barHeight}px - ${bottomBarHeight}px - ${keyboardInset}px)`;
+  extraMenuBtn.style.bottom = bottomBarHeight + keyboardInset + 16 + 'px';
+  navBackBtn.style.bottom = bottomBarHeight + keyboardInset + 16 + 'px';
 }
 window.addEventListener('resize', syncContentOffset);
 
@@ -2922,16 +2925,28 @@ if (window.visualViewport) {
   const repositionTopBarForKeyboard = () => {
     topBarEl.style.transform = `translate(-50%, ${vv.offsetTop}px)`;
   };
-  vv.addEventListener('resize', repositionTopBarForKeyboard);
-  vv.addEventListener('scroll', repositionTopBarForKeyboard);
+  vv.addEventListener('resize', () => {
+    repositionTopBarForKeyboard();
+    syncContentOffset();
+  });
+  vv.addEventListener('scroll', () => {
+    repositionTopBarForKeyboard();
+    syncContentOffset();
+  });
   // A plain, layout-viewport-level scroll/resize is a second, independent
   // trigger for the exact same re-check -- catches whatever a given
   // browser/platform's own visualViewport events don't promptly fire for
   // on their own (e.g. the browser's default "scroll the newly-focused
   // field into view" behavior is a layout-viewport-level scroll, not
   // necessarily a visualViewport-level one).
-  window.addEventListener('scroll', repositionTopBarForKeyboard);
-  window.addEventListener('resize', repositionTopBarForKeyboard);
+  window.addEventListener('scroll', () => {
+    repositionTopBarForKeyboard();
+    syncContentOffset();
+  });
+  window.addEventListener('resize', () => {
+    repositionTopBarForKeyboard();
+    syncContentOffset();
+  });
   // A third, deterministic trigger, independent of either of the above:
   // any editable field gaining or losing focus anywhere on the page.
   // focusin/focusout both bubble (unlike focus/blur), so one delegated
@@ -2947,9 +2962,12 @@ if (window.visualViewport) {
   // after the keyboard is dismissed (the resize/scroll events above may
   // already have fired with the still-wrong value by that point; this
   // re-checks again slightly later instead of trusting they got it right
-  // the first time).
-  document.addEventListener('focusin', () => setTimeout(repositionTopBarForKeyboard, 350));
-  document.addEventListener('focusout', () => setTimeout(repositionTopBarForKeyboard, 350));
+  // the first time). Also re-syncs the bottom bar (syncContentOffset),
+  // since editing body text specifically -- the case that motivated this
+  // whole 3-trigger setup being extended to the bottom bar in the first
+  // place -- is exactly a focusin/focusout on one of those same fields.
+  document.addEventListener('focusin', () => setTimeout(() => { repositionTopBarForKeyboard(); syncContentOffset(); }, 350));
+  document.addEventListener('focusout', () => setTimeout(() => { repositionTopBarForKeyboard(); syncContentOffset(); }, 350));
 }
 // Crossing the wide-layout breakpoint (e.g. resizing a browser window,
 // or rotating a tablet) while Settings/Docs is open needs a re-render
