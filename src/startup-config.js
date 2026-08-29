@@ -169,4 +169,4 @@ export function resolveEffectiveStartupConfig(doc, localVarsOnly, globalVarsOnly
   };
 }
 
-export { DEFAULT_STARTUP_CONFIG, showLevelsDepth };
+export { DEFAULT_STARTUP_CONFIG, showLevelsDepth, VISIBILITY_KEYWORDS };
