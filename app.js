@@ -45,7 +45,7 @@ import {
 import { parseInline, stripLineBreakMarker, IMAGE_EXT_RE, extractLatexFragments } from './src/inline-markup.js';
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, toggleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
 import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
-import { searchDocument } from './src/search.js';
+import { searchDocument, searchDocuments } from './src/search.js';
 import { applyStartupVisibility, cycleFoldLevel } from './src/fold-state.js';
 import { parseStartupConfig, resolveEffectiveStartupConfig, VISIBILITY_KEYWORDS } from './src/startup-config.js';
 import {
@@ -4785,6 +4785,96 @@ function navigateToHeading(heading, { revealOwnBody = false, targetNode = headin
   });
 }
 
+/** Maps a plain documentId (as agenda items and search results already
+ *  carry it) back to which backend (github/webdav) it came from --
+ *  needed to actually re-open it via openRemotePath for cross-document
+ *  navigation. The currently open document's own storageKind is known
+ *  directly; any other documentId can only be an agenda file (the
+ *  only other source a heading reference can come from), found by
+ *  matching against agendaFilesCache's own "scheme:path" keys -- the
+ *  same key-parsing ensureAgendaFilesLoaded itself already does. */
+function storageKindForDocumentId(documentId) {
+  if (documentId === state.documentId) return state.storageKind;
+  for (const key of agendaFilesCache.keys()) {
+    const colonIndex = key.indexOf(':');
+    const scheme = colonIndex === -1 ? key : key.slice(0, colonIndex);
+    const path = colonIndex === -1 ? '' : key.slice(colonIndex + 1);
+    if (path === documentId) return scheme;
+  }
+  return null;
+}
+
+/** The ancestor-title-chain identity of `heading` -- the only thing
+ *  that survives a fresh re-parse of the same file, unlike a direct
+ *  object reference, which a cached agendaFilesCache entry's own doc
+ *  would no longer share with a freshly re-opened copy of that same
+ *  file. Looks in whichever document actually contains `heading`
+ *  right now: state.doc if `documentId` matches what's currently
+ *  open, otherwise the matching agendaFilesCache entry's own cached
+ *  doc. null if that document isn't actually available (shouldn't
+ *  normally happen -- an agenda item/search result's own documentId
+ *  only ever comes from a document that was, at some point, actually
+ *  loaded). */
+function outlinePathForHeadingInDocument(documentId, heading) {
+  const doc =
+    documentId === state.documentId
+      ? state.doc
+      : Array.from(agendaFilesCache.values()).find((e) => e.documentId === documentId)?.doc;
+  if (!doc) return null;
+  return [...(findAncestorPath(doc, heading) || []).map((h) => h.title), heading.title];
+}
+
+/** Navigates to the heading identified by `outlinePath` within
+ *  `documentId` -- switching to that document first (via
+ *  openRemotePath, the exact same mechanism openFileLink already uses
+ *  for a cross-file link jump, including its own conflict handling)
+ *  if it isn't already the one open. The single entry point both
+ *  agenda-item-tap and search-result-tap use for navigation, so a
+ *  result/item from a different file behaves identically regardless
+ *  of which one produced it. No separate "discard unsaved changes?"
+ *  prompt -- matching openFileLink's own existing, working behavior,
+ *  since any in-progress edit is already safely cached locally
+ *  regardless of navigating away (see "Pending Local Changes" in
+ *  Settings) -- there's nothing this would put at risk that isn't
+ *  already handled the same way a plain internal link jump is. */
+async function navigateToHeadingByPath(documentId, outlinePath, opts = {}) {
+  if (documentId === state.documentId) {
+    const heading = findHeadingByOutlinePath(state.doc, outlinePath);
+    if (heading) navigateToHeading(heading, opts);
+    return;
+  }
+
+  const storageKind = storageKindForDocumentId(documentId);
+  const adapter = storageKind === 'github' ? githubAdapter : storageKind === 'webdav' ? webdavAdapter : null;
+  const label = storageKind === 'github' ? 'GitHub' : storageKind === 'webdav' ? 'WebDAV' : null;
+  if (!adapter) {
+    setStatus(`Can't open "${documentId}" \u2014 unrecognized source.`);
+    return;
+  }
+
+  const originEntry = {
+    view: currentView,
+    docsOpen,
+    documentId: state.documentId,
+    storageKind: state.storageKind,
+    scrollTop: scrollContainer().scrollTop,
+  };
+
+  await openRemotePath(documentId, storageKind, adapter, label);
+  if (!state.doc || state.documentId !== documentId) return;
+
+  navigationBackStack.push(originEntry);
+  if (navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) navigationBackStack.shift();
+  syncNavBackButtonVisibility();
+
+  const heading = findHeadingByOutlinePath(state.doc, outlinePath);
+  if (heading) {
+    navigateToHeading(heading, { ...opts, pushToBackStack: false });
+  } else {
+    setStatus(`Opened ${documentId}, but couldn't find that heading anymore \u2014 it may have been edited or removed.`);
+  }
+}
+
 /** Pops the most recent entry off the navigation back-stack and
  *  restores that view and scroll position -- unlike navigateToHeading,
  *  this doesn't target a specific heading at all, since the point
@@ -8831,8 +8921,8 @@ function renderAgendaView() {
       }
 
       row.onclick = () => {
-        switchToView('org');
-        navigateToHeading(item.heading);
+        const outlinePath = outlinePathForHeadingInDocument(item.documentId, item.heading);
+        if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath);
       };
       container.appendChild(row);
     }
@@ -9105,8 +9195,8 @@ function renderTaskListView() {
     }
 
     row.onclick = () => {
-      switchToView('org');
-      navigateToHeading(item.heading);
+      const outlinePath = outlinePathForHeadingInDocument(item.documentId, item.heading);
+      if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath);
     };
     container.appendChild(row);
   }
@@ -11696,7 +11786,7 @@ function renderMinibufferSearch() {
   const input = document.createElement('textarea');
   input.id = 'search-query-input';
   input.rows = 1;
-  input.placeholder = 'Search, or +tag  -tag  key:value\u2026';
+  input.placeholder = 'Search, or [+-][tag|todo|priority|key]:value\u2026';
   input.value = searchQuery;
   input.style.flex = '1';
   input.style.minWidth = '0';
@@ -11779,9 +11869,11 @@ function renderSearchResults() {
   }
   searchPanel.style.display = 'block';
 
+  ensureAgendaFilesLoaded();
+
   let results;
   try {
-    results = searchDocument(state.doc, searchQuery, {
+    results = searchDocuments(aggregateAgendaDocs(), searchQuery, {
       useRegex: searchUseRegex,
       useTagInheritance: getUseTagInheritance(state.localVariables),
       usePropertyInheritance: getUsePropertyInheritance(state.localVariables),
@@ -11827,7 +11919,8 @@ function renderSearchResults() {
     const headingLine = document.createElement('div');
     headingLine.style.fontSize = '11px';
     headingLine.style.opacity = '0.6';
-    headingLine.textContent = result.heading.title || '(untitled)';
+    const headingTitle = result.heading.title || '(untitled)';
+    headingLine.textContent = result.documentId !== state.documentId ? `${headingTitle} \u2014 ${result.documentId}` : headingTitle;
     const snippetLine = document.createElement('div');
     snippetLine.style.fontSize = '14px';
     snippetLine.style.overflow = 'hidden';
@@ -11841,10 +11934,13 @@ function renderSearchResults() {
     row.onclick = () => {
       searchOpen = false;
       renderSearchPanel();
-      navigateToHeading(result.heading, {
-        revealOwnBody: result.type !== 'heading',
-        targetNode: result.node,
-      });
+      const outlinePath = outlinePathForHeadingInDocument(result.documentId, result.heading);
+      if (outlinePath) {
+        navigateToHeadingByPath(result.documentId, outlinePath, {
+          revealOwnBody: result.type !== 'heading',
+          targetNode: result.node,
+        });
+      }
     };
     resultsEl.appendChild(row);
   }
