@@ -10418,12 +10418,14 @@ function renderQuickSettingsSection() {
       const weatherRow = document.createElement('div');
       weatherRow.className = 'panel-row';
       weatherRow.style.marginBottom = '10px';
-      weatherRow.appendChild(
-        menuButton('\ud83c\udf24\ufe0f Refresh weather', async () => {
-          await refreshWeather();
-          renderSettingsView();
-        })
-      );
+      const refreshWeatherBtn = menuButton('\ud83c\udf24\ufe0f Refresh weather', async () => {
+        await refreshWeather();
+        renderSettingsView();
+      });
+      refreshWeatherBtn.style.minHeight = '40px';
+      refreshWeatherBtn.style.padding = '6px 8px';
+      refreshWeatherBtn.style.fontSize = '16px';
+      weatherRow.appendChild(refreshWeatherBtn);
 
       const REFRESH_INTERVAL_OPTIONS = [
         { value: 'never', label: 'Never' },
