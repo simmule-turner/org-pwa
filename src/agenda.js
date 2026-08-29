@@ -49,7 +49,7 @@ import {
   formatDayLengthLine,
   enumerateDays,
 } from './diary-sexp.js';
-import { isOrgWeatherLine, formatWeatherLine } from './org-weather.js';
+import { isOrgWeatherLine, formatWeatherLine, DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const REPEATER_RE = /^([.+]{1,2})(\d+)([hdwmy])$/;
@@ -412,7 +412,7 @@ function buildAgendaItems(docs, opts = {}) {
     solarAmpm = false,
     solarHideLabel = false,
     weatherData = null,
-    orgWeatherFormat = 'Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su',
+    orgWeatherFormat = DEFAULT_ORG_WEATHER_FORMAT,
     orgWeatherTemperatureUnit = '\u00b0F',
     orgWeatherSpeedUnit = 'mph',
   } = opts;
@@ -893,7 +893,7 @@ function buildAgendaItems(docs, opts = {}) {
               todo: heading.todo,
               priority: heading.priority,
               tags: heading.tags,
-              title: formatWeatherLine(orgWeatherFormat, weatherData, orgWeatherTemperatureUnit, orgWeatherSpeedUnit),
+              title: formatWeatherLine(orgWeatherFormat, weatherData, orgWeatherTemperatureUnit, orgWeatherSpeedUnit, today),
               date: today,
               daysOverdue: 0,
             });

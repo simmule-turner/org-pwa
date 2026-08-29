@@ -62,6 +62,15 @@ function lookupWeatherCode(code) {
  *  compare against the API's own returned unit-label strings (which
  *  use a different, slightly inconsistent format -- "mp/h", not
  *  "mph" -- than this app's own configuration values do). */
+/** The single source of truth for org-weather-format's own default
+ *  value -- previously duplicated by hand in local-variables.js (its
+ *  own getter fallback), agenda.js (its own function-parameter
+ *  default), and app.js (the Quick Settings UI default), a real drift
+ *  risk every one of those needed remembering to update in lockstep.
+ *  Defined here since this is the module that actually owns
+ *  interpreting org-weather-format in the first place. */
+const DEFAULT_ORG_WEATHER_FORMAT = 'Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su, %a%au';
+
 const FETCH_TEMPERATURE_UNIT = '\u00b0F';
 const FETCH_SPEED_UNIT = 'mph';
 
@@ -104,8 +113,28 @@ function convertSpeed(mph, targetUnit) {
  *  untouched -- this app's own consistent stance throughout (see
  *  diary-sexp.js's own %s/%d handling) on not guessing at what an
  *  unfamiliar placeholder was supposed to mean. */
-function formatWeatherLine(template, data, temperatureUnit, speedUnit) {
+/** Age of `dataTime` (the weather data's own reported reading time,
+ *  not whenever this happens to be called) relative to `now`, in
+ *  org-weather-format's own %a/%au shape: a value plus a unit letter,
+ *  m/h/d, switching units at the natural boundary -- 0-59 minutes,
+ *  1-23 hours, 1+ days -- rather than showing e.g. "65m" once a full
+ *  hour has passed. Floor, not round: age means how much time has
+ *  FULLY elapsed, and rounding could also push a value past the
+ *  stated bounds (round(59.6)=60, outside "0-59"). Clamped to a
+ *  minimum of 0 for a `dataTime` that's at or after `now` (clock
+ *  skew, or a data timestamp that isn't strictly in the past) rather
+ *  than showing a nonsensical negative age. */
+function formatWeatherAge(dataTime, now) {
+  const ageMinutesTotal = Math.max(0, Math.floor((now.getTime() - new Date(dataTime).getTime()) / 60000));
+  if (ageMinutesTotal < 60) return { value: ageMinutesTotal, unit: 'm' };
+  const ageHoursTotal = Math.floor(ageMinutesTotal / 60);
+  if (ageHoursTotal < 24) return { value: ageHoursTotal, unit: 'h' };
+  return { value: Math.floor(ageHoursTotal / 24), unit: 'd' };
+}
+
+function formatWeatherLine(template, data, temperatureUnit, speedUnit, now = new Date()) {
   const { text: desc, icon } = lookupWeatherCode(data.weatherCode);
+  const age = formatWeatherAge(data.currentTime, now);
   const values = {
     '%desc': desc,
     '%icon': icon,
@@ -121,6 +150,8 @@ function formatWeatherLine(template, data, temperatureUnit, speedUnit) {
     '%tu': temperatureUnit,
     '%s': String(convertSpeed(data.windSpeed, speedUnit)),
     '%su': speedUnit,
+    '%a': String(age.value),
+    '%au': age.unit,
   };
   // Longest keys first, so "%tamin"/"%tamax" match before the
   // shorter "%tmin"-prefix-adjacent "%h"/"%s"/"%p"-style keys could
@@ -172,4 +203,5 @@ export {
   FETCH_SPEED_UNIT,
   isOrgWeatherLine,
   buildWeatherApiUrl,
+  DEFAULT_ORG_WEATHER_FORMAT,
 };

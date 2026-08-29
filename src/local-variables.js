@@ -22,6 +22,8 @@
  * block is no less correct and one less arbitrary limit to explain.
  */
 
+import { DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
+
 const LOCAL_VARS_START_RE = /^#\s*Local Variables:\s*$/i;
 const LOCAL_VARS_END_RE = /^#\s*End:\s*$/i;
 const LOCAL_VAR_LINE_RE = /^#\s*([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/;
@@ -401,12 +403,11 @@ export function getOrgTableDurationHourZeroPadding(vars) {
 /** org-weather-format: this app's own extension, not a real
  *  elisp/org variable -- the template %%(org-weather) substitutes
  *  its own placeholders into (see src/org-weather.js's own
- *  formatWeatherLine). Default matches the exact format given in the
- *  original request. */
+ *  formatWeatherLine and DEFAULT_ORG_WEATHER_FORMAT). */
 export function getOrgWeatherFormat(vars) {
   const raw = (vars || {})['org-weather-format'];
   const trimmed = raw ? String(raw).trim() : '';
-  return trimmed || 'Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su';
+  return trimmed || DEFAULT_ORG_WEATHER_FORMAT;
 }
 
 const WEATHER_SPEED_UNITS = new Set(['km/h', 'm/s', 'mph', 'Knots']);

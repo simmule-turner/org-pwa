@@ -241,7 +241,7 @@ function evaluateSexpr(node, context) {
 
     case 'org-weather':
       if (!context.weatherData) return false;
-      return formatWeatherLine(context.orgWeatherFormat, context.weatherData, context.orgWeatherTemperatureUnit, context.orgWeatherSpeedUnit);
+      return formatWeatherLine(context.orgWeatherFormat, context.weatherData, context.orgWeatherTemperatureUnit, context.orgWeatherSpeedUnit, context.today);
 
     case 'format': {
       if (args.length < 1 || args[0].type !== 'string') return false;
