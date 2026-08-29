@@ -47,7 +47,7 @@ import { flattenVisibleRows, toggleFold, cycleHeadingTodo, toggleHeadingTodo, cy
 import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
 import { searchDocument } from './src/search.js';
 import { applyStartupVisibility, cycleFoldLevel } from './src/fold-state.js';
-import { parseStartupConfig, resolveEffectiveStartupConfig } from './src/startup-config.js';
+import { parseStartupConfig, resolveEffectiveStartupConfig, VISIBILITY_KEYWORDS } from './src/startup-config.js';
 import {
   parseLocalVariables,
   parseLispBoolean,
@@ -9749,6 +9749,31 @@ function pickBinaryFile(capture) {
  */
 const QUICK_SETTINGS_FIELDS = [
   {
+    key: 'org-xx-updates-at-top',
+    label: 'Updates section at top of Settings',
+    section: 'Settings',
+    type: 'boolean',
+    default: true,
+    helpAnchor: '#settings',
+  },
+  {
+    key: 'org-startup-folded',
+    label: 'Initial heading visibility',
+    section: 'Startup',
+    type: 'select',
+    default: 'showeverything',
+    options: VISIBILITY_KEYWORDS.map((v) => ({ value: v, label: v })),
+    helpAnchor: '#folding-and-startup',
+  },
+  {
+    key: 'org-startup-with-inline-images',
+    label: 'Show images inline on open',
+    section: 'Startup',
+    type: 'boolean',
+    default: false,
+    helpAnchor: '#folding-and-startup',
+  },
+  {
     key: 'display-time-mode',
     label: 'Show date/time in modeline',
     section: 'Modeline',
@@ -9925,6 +9950,14 @@ const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#searching',
   },
   { key: 'org-use-sub-superscripts', label: 'Interpret _ / ^ as sub/superscript', section: 'Editing', type: 'subsuper', helpAnchor: '#inline-text-markup' },
+  {
+    key: 'org-table-duration-hour-zero-padding',
+    label: 'Zero-pad hours in duration formulas',
+    section: 'Editing',
+    type: 'boolean',
+    default: true,
+    helpAnchor: '#table-formulas',
+  },
   {
     key: 'org-ascii-text-width',
     label: 'ASCII export line width',

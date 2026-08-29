@@ -1019,6 +1019,26 @@ Doesn't implement ~ox-ascii~'s fuller feature set (Latin-1/UTF-8-specific charac
 
 *~#+HTML_HEAD:~* inserts raw HTML/CSS verbatim into the exported document's own ~<head>~, right before ~</head>~ — no escaping, since the whole point is literal passthrough (a ~<style>~ block, a ~<link>~ tag, whatever's needed). Multiple ~#+HTML_HEAD:~ lines concatenate, joined by newlines in source order, rather than only the last one winning — the natural way to write a multi-line ~<style>~ block one directive line at a time. HTML export only; every other format silently ignores it, matching real org's own confirmed behavior. Still applies during a subtree-only export, not just a whole-document one.
 
+*Page numbers*, one concrete, worked use of the above: CSS's own ~@page~ rule is inherently print-only — it takes effect only once the browser actually paginates the document (printing, or *Print → Save as PDF*, this app's own documented PDF path — see *HTML* below), so it's invisible during normal on-screen viewing, which is correct: a page number genuinely means nothing until there are pages.
+
+#+BEGIN_SRC
+#+HTML_HEAD: <style>@page { @bottom-center { content: counter(page); } }</style>
+#+END_SRC
+
+Bottom-right instead of centered, with a bit more page margin to make room for it:
+
+#+BEGIN_SRC
+#+HTML_HEAD: <style>@page { @bottom-right { content: counter(page); } margin: 2cm; }</style>
+#+END_SRC
+
+"Page 3 of 12" style, via CSS's own ~counter(pages)~ (the *total* page count, not just the current one):
+
+#+BEGIN_SRC
+#+HTML_HEAD: <style>@page { @bottom-center { content: counter(page) " of " counter(pages); } }</style>
+#+END_SRC
+
+~counter(pages)~ specifically has weaker browser support than ~counter(page)~ alone — it works in Chrome, less reliably elsewhere, so the plain page-number version above is the more broadly reliable one if the destination browser is unknown. Combine with a ~#+BEGIN_EXPORT html~ block (see below) for a running header/footer alongside the page number, not just the number on its own.
+
 *~#+BEGIN_EXPORT <backend> ... #+END_EXPORT~* passes its own raw content straight through, completely unescaped, but *only* when ~<backend>~ matches whichever format is currently being exported to (~html~, ~ascii~, or ~md~ — real org's own confirmed name, though ~markdown~ also works, matching real org's own acceptance of both) — for any other backend, the whole block is omitted entirely, not shown as generic text. This is how the two together build a fixed print header/footer: an ~#+HTML_HEAD:~ ~<style>~ block with ~@media print~ rules pinning ~header~ / ~footer~ to the page edges, paired with a ~#+BEGIN_EXPORT html~ block (before the first heading, or inside whichever heading it belongs to) containing the actual ~<header>~ / ~<footer>~ markup.
 
 *ODT's own equivalent*, ~#+BEGIN_EXPORT odt~, works the same way but the raw content is expected to already be valid ODF XML markup (~<text:p text:style-name="...">...</text:p>~ and similar) — confirmed directly against real org's own ~ox-odt.el~ source, which inserts an ODT export block's own raw value completely unescaped into the document XML too, the author's own responsibility to get right, not something this app validates.
