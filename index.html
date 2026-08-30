@@ -75,6 +75,7 @@
   html, body {
     overflow: hidden; /* the page itself never scrolls or resizes — only #contentArea does, as its own designated scroll pane */
     overflow-x: hidden;
+    overscroll-behavior: none; /* stops iOS/Android's own native rubber-band/bounce effect at the viewport level -- a distinct mechanism from overflow:hidden above, which only stops the page's own content from scrolling, not the browser's own bounce chrome. That bounce can visually drag position:fixed elements (the top bar, modeline/minibuffer) along with it during the animation even though they're technically still "fixed" in the CSS sense, since the bounce operates above that layer entirely. */
     width: 100%;
     height: 100vh; /* fallback for browsers without dvh support */
     height: 100dvh; /* the ACTUAL visible viewport height, correctly accounting for an on-screen keyboard or browser chrome — unlike vh, which mobile browsers keep pinned to the full keyboard-less screen height even while the keyboard is showing. That mismatch was the actual cause of "search changes the viewport size": vh-based max-heights kept computing against a screen that was momentarily larger than what was actually visible, so content overflowed past the visible bottom edge the moment the keyboard opened. */
@@ -108,7 +109,7 @@
   #topBar {
     position: fixed; top: 0; left: 0;
     width: 100%; z-index: 5; background: var(--bg);
-    max-height: 92vh; max-height: 92dvh; overflow-y: auto;
+    max-height: 92vh; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain;
   }
   header { position: sticky; top: 0; z-index: 1; background: var(--bg); display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); flex-wrap: nowrap; width: 100%; }
   #filename { flex: 1 1 auto; min-width: 0; font-size: 12px; opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -120,7 +121,7 @@
     display: flex; align-items: center; justify-content: center; padding: 0;
     border-radius: 10px;
   }
-  #contentArea { width: 100%; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+  #contentArea { width: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 
   #modelineBar {
     position: fixed; left: 0; bottom: 0;
@@ -166,7 +167,7 @@
        content," permanently defeating overflow-y:auto no matter what
        else is set. This is the actual, well-known reason a flex-based
        scroll pane silently fails to scroll if you skip it. */
-    #outline { flex: 1 1 auto; min-width: 0; overflow-y: auto; height: 100%; }
+    #outline { flex: 1 1 auto; min-width: 0; overflow-y: auto; overscroll-behavior: contain; height: 100%; }
 
     /* #sidePanel is where Settings/Docs render on a wide screen instead
        of replacing #outline outright (see renderSettingsView/
@@ -183,6 +184,7 @@
       flex: 0 0 420px;
       min-width: 0;
       overflow-y: auto;
+      overscroll-behavior: contain;
       height: 100%;
       padding-left: 4px;
     }
@@ -241,7 +243,7 @@
   .popup-menu {
     position: fixed; z-index: 51; border-radius: 10px; border: 1px solid var(--border-strong);
     background: var(--bg); box-shadow: 0 4px 16px #0006; padding: 6px; box-sizing: border-box;
-    max-height: 70vh; overflow-y: auto;
+    max-height: 70vh; overflow-y: auto; overscroll-behavior: contain;
   }
   /* Item 1.5: panel buttons (File/View menu options, Settings controls)
      larger and more touch-friendly than the previous compact text row. */

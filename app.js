@@ -944,6 +944,7 @@ function renderRefilePanel() {
   const list = document.createElement('div');
   list.style.maxHeight = '260px';
   list.style.overflowY = 'auto';
+  list.style.overscrollBehavior = 'contain';
   if (pendingRefile.candidates.length === 0) {
     const empty = document.createElement('div');
     empty.style.fontSize = '13px';
@@ -4161,6 +4162,7 @@ function renderHistoryPanel() {
   const list = document.createElement('div');
   list.style.maxHeight = '340px';
   list.style.overflowY = 'auto';
+  list.style.overscrollBehavior = 'contain';
 
   history.entries.forEach((entry, idx) => {
     const row = document.createElement('div');
@@ -8355,6 +8357,7 @@ function renderExportFlow() {
     const list = document.createElement('div');
     list.style.maxHeight = '260px';
     list.style.overflowY = 'auto';
+    list.style.overscrollBehavior = 'contain';
     const headings = allHeadingsInOrder(state.doc);
     if (headings.length === 0) {
       const empty = document.createElement('div');
@@ -8460,6 +8463,7 @@ function renderFileBrowser() {
   const listEl = document.createElement('div');
   listEl.style.maxHeight = `40${VH_UNIT}`;
   listEl.style.overflowY = 'auto';
+  listEl.style.overscrollBehavior = 'contain';
   fileMenuPanel.appendChild(listEl);
 
   if (browseEntries === null && !browseError) {
@@ -9410,6 +9414,7 @@ function openTextFieldPopup({ label, value, defaultValue, onSave, onReset }) {
   textarea.style.whiteSpace = 'pre-wrap';
   textarea.style.overflowWrap = 'break-word';
   textarea.style.overflowY = 'auto';
+  textarea.style.overscrollBehavior = 'contain';
   textarea.style.resize = 'vertical';
   textarea.style.flex = '1 1 auto';
   textarea.style.minHeight = '0';
@@ -9526,6 +9531,7 @@ function openMultiFieldPopup({ label, fields, onSave }) {
   modal.style.maxWidth = '420px';
   modal.style.maxHeight = '100%';
   modal.style.overflowY = 'auto';
+  modal.style.overscrollBehavior = 'contain';
   modal.style.boxSizing = 'border-box';
   overlay.appendChild(modal);
 
@@ -11987,6 +11993,7 @@ function renderSearchPanel() {
   resultsEl.id = 'search-results';
   resultsEl.style.maxHeight = `50${VH_UNIT}`;
   resultsEl.style.overflowY = 'auto';
+  resultsEl.style.overscrollBehavior = 'contain';
   searchPanel.appendChild(resultsEl);
 
   renderSearchResults();
