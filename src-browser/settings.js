@@ -21,6 +21,8 @@ const KEYS = {
   fontSize: 'settings:fontSize',
   tablesFontSize: 'settings:otherFontSize', // storage key deliberately left as "otherFontSize" -- renaming the key itself would silently reset every existing user's saved table font size back to default
   menuSize: 'settings:menuSize',
+  readingWidth: 'settings:readingWidth',
+  sidePanelWidth: 'settings:sidePanelWidth',
   lastActiveDocument: 'settings:lastActiveDocument',
   captureTemplates: 'settings:captureTemplates',
   globalVariables: 'settings:globalVariables',
@@ -75,6 +77,8 @@ const DEFAULT_WEBDAV_CONFIG = { baseUrl: '', username: '', password: '' };
 const DEFAULT_THEME = 'system'; // 'system' | 'light' | 'dark'
 const DEFAULT_FONT_FAMILY = 'system'; // 'system' | 'serif' | 'monospace'
 const DEFAULT_MENU_SIZE = 'regular'; // 'regular' | 'small'
+const DEFAULT_READING_WIDTH = null; // null = unlimited (full width); otherwise a ch value
+const DEFAULT_SIDE_PANEL_WIDTH = 420; // px -- matches the previous hard-coded side panel width
 const DEFAULT_FONT_SIZE = 16; // px
 const DEFAULT_TABLES_FONT_SIZE = 13; // px -- matches the previous hard-coded table font size, so introducing this setting doesn't change anyone's current appearance until they actually adjust it
 
@@ -195,6 +199,33 @@ export async function getMenuSize(kvAdapter) {
 
 export async function setMenuSize(kvAdapter, menuSize) {
   await setJson(kvAdapter, KEYS.menuSize, menuSize);
+}
+
+/** Opt-in maximum width for the outline/content column, in ch units
+ *  (the width of the "0" character in whatever font/size is currently
+ *  active -- so unlike a fixed pixel cap, the same character-count
+ *  limit naturally computes to more pixels as font size goes up,
+ *  rather than fighting a larger font on a larger screen). null (the
+ *  default) means no limit at all -- full width, matching every other
+ *  part of the app's own chrome. */
+export async function getReadingWidth(kvAdapter) {
+  return getJson(kvAdapter, KEYS.readingWidth, DEFAULT_READING_WIDTH);
+}
+
+export async function setReadingWidth(kvAdapter, readingWidth) {
+  await setJson(kvAdapter, KEYS.readingWidth, readingWidth);
+}
+
+/** The Settings/Docs side panel's own user-dragged width on wide
+ *  layouts (see #sidePanel's own resize handle) -- persisted so it
+ *  survives reload rather than resetting to the default every
+ *  session, the same way font size and menu size already do. */
+export async function getSidePanelWidth(kvAdapter) {
+  return getJson(kvAdapter, KEYS.sidePanelWidth, DEFAULT_SIDE_PANEL_WIDTH);
+}
+
+export async function setSidePanelWidth(kvAdapter, sidePanelWidth) {
+  await setJson(kvAdapter, KEYS.sidePanelWidth, sidePanelWidth);
 }
 
 export async function getFontSize(kvAdapter) {
@@ -324,5 +355,7 @@ export {
   DEFAULT_MENU_SIZE,
   DEFAULT_FONT_SIZE,
   DEFAULT_TABLES_FONT_SIZE,
+  DEFAULT_READING_WIDTH,
+  DEFAULT_SIDE_PANEL_WIDTH,
   DEFAULT_GLOBAL_VARIABLES,
 };
