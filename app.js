@@ -561,10 +561,12 @@ function ensureAgendaFilesLoaded() {
         );
         if (currentView === 'agenda' || currentView === 'tasklist') render();
         if (settingsOpen) renderSettingsView();
+        if (searchOpen) renderSearchPanel();
       })
       .catch((err) => {
         agendaFilesCache.set(key, { error: err.message });
         if (currentView === 'agenda' || currentView === 'tasklist') render();
+        if (searchOpen) renderSearchPanel();
       });
     agendaFilesCache.set(key, { loading: true, promise });
   }
