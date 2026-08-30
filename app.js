@@ -191,6 +191,10 @@ import {
   setMenuSize,
   getFontSize,
   setFontSize,
+  getReadingWidth,
+  setReadingWidth,
+  getSidePanelWidth,
+  setSidePanelWidth,
   getTablesFontSize,
   setTablesFontSize,
   exportAllSettings,
@@ -2598,6 +2602,8 @@ async function unarchiveHeadingToOriginalLocation(heading) {
 
 const outlineEl = document.getElementById('outline');
 const sidePanelEl = document.getElementById('sidePanel');
+const sidePanelDividerEl = document.getElementById('sidePanelDivider');
+const splitRowEl = document.getElementById('splitRow');
 
 // Matches index.html's own @media (min-width: 900px) breakpoint exactly
 // -- kept as a single named constant rather than two separately-typed
@@ -6980,15 +6986,54 @@ function syncSidePanel() {
   const wide = isWideLayout();
   if (wide && settingsOpen) {
     sidePanelEl.style.display = 'block';
+    sidePanelDividerEl.style.display = 'block';
     renderSettingsView(sidePanelEl);
   } else if (wide && docsOpen) {
     sidePanelEl.style.display = 'block';
+    sidePanelDividerEl.style.display = 'block';
     renderDocsView(sidePanelEl);
   } else {
     sidePanelEl.style.display = 'none';
+    sidePanelDividerEl.style.display = 'none';
     sidePanelEl.innerHTML = '';
   }
 }
+
+const SIDE_PANEL_MIN_WIDTH = 280; // px -- also the matching floor left for #outline, so neither side can swallow the other
+
+function setupSidePanelResize() {
+  let dragging = false;
+  let startX = 0;
+  let startWidth = 0;
+
+  sidePanelDividerEl.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    startX = e.clientX;
+    startWidth = sidePanelEl.getBoundingClientRect().width;
+    sidePanelDividerEl.setPointerCapture(e.pointerId);
+    sidePanelDividerEl.classList.add('dragging');
+    e.preventDefault();
+  });
+
+  sidePanelDividerEl.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const delta = startX - e.clientX; // dragging left grows the panel (it's the right-hand side of the row), dragging right shrinks it
+    const rowWidth = splitRowEl.getBoundingClientRect().width;
+    const dividerWidth = sidePanelDividerEl.getBoundingClientRect().width;
+    const maxWidth = Math.max(SIDE_PANEL_MIN_WIDTH, rowWidth - dividerWidth - SIDE_PANEL_MIN_WIDTH);
+    const newWidth = Math.min(maxWidth, Math.max(SIDE_PANEL_MIN_WIDTH, startWidth + delta));
+    applySidePanelWidth(newWidth);
+  });
+
+  sidePanelDividerEl.addEventListener('pointerup', async (e) => {
+    if (!dragging) return;
+    dragging = false;
+    sidePanelDividerEl.classList.remove('dragging');
+    sidePanelDividerEl.releasePointerCapture(e.pointerId);
+    await setSidePanelWidth(kv, Math.round(sidePanelEl.getBoundingClientRect().width));
+  });
+}
+setupSidePanelResize();
 
 function render() {
   updateFilenameDisplay();
@@ -9854,6 +9899,14 @@ function applyTablesFontSize(size) {
   document.documentElement.style.setProperty('--app-font-size-tables', size + 'px');
 }
 
+function applyReadingWidth(readingWidth) {
+  document.documentElement.style.setProperty('--reading-max-width', readingWidth ? readingWidth + 'ch' : 'none');
+}
+
+function applySidePanelWidth(width) {
+  sidePanelEl.style.flex = `0 0 ${width}px`;
+}
+
 /** Opens the native file picker and resolves with the picked file's raw
  *  text content. A minimal, standalone helper for settings import --
  *  deliberately not reusing pickAndImportFile, which is built for .org
@@ -10668,6 +10721,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
   const fontFamily = await getFontFamily(kv);
   const fontSize = await getFontSize(kv);
   const menuSize = await getMenuSize(kv);
+  const readingWidth = await getReadingWidth(kv);
 
   const appearanceSection = document.createElement('div');
   appearanceSection.className = 'settings-section';
@@ -10742,7 +10796,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
   sizeRow.appendChild(sizeLabel);
   sizeRow.appendChild(
     menuButton('+', async () => {
-      const next = Math.min(28, fontSize + 1);
+      const next = Math.min(40, fontSize + 1);
       await setFontSize(kv, next);
       applyFontSize(next);
       renderSettingsView();
@@ -10792,6 +10846,71 @@ async function renderSettingsView(target = settingsRenderTarget) {
   otherFontHint.style.opacity = '0.6';
   otherFontHint.style.margin = '4px 0 8px';
   appearanceSection.appendChild(otherFontHint);
+
+  const readingWidthTitle = document.createElement('div');
+  readingWidthTitle.className = 'panel-section-title';
+  readingWidthTitle.textContent = 'Reading Width';
+  appearanceSection.appendChild(readingWidthTitle);
+
+  const readingWidthRow = document.createElement('div');
+  readingWidthRow.className = 'panel-row';
+  readingWidthRow.style.alignItems = 'center';
+  const readingWidthCheckboxLabel = document.createElement('label');
+  readingWidthCheckboxLabel.style.display = 'flex';
+  readingWidthCheckboxLabel.style.alignItems = 'center';
+  readingWidthCheckboxLabel.style.gap = '8px';
+  readingWidthCheckboxLabel.style.cursor = 'pointer';
+  readingWidthCheckboxLabel.style.flex = '1 1 auto';
+  const readingWidthCheckbox = document.createElement('input');
+  readingWidthCheckbox.type = 'checkbox';
+  readingWidthCheckbox.checked = readingWidth != null;
+  readingWidthCheckbox.onchange = async () => {
+    const next = readingWidthCheckbox.checked ? 80 : null;
+    await setReadingWidth(kv, next);
+    applyReadingWidth(next);
+    renderSettingsView();
+  };
+  readingWidthCheckboxLabel.appendChild(readingWidthCheckbox);
+  readingWidthCheckboxLabel.appendChild(document.createTextNode('Limit reading width for long lines'));
+  readingWidthRow.appendChild(readingWidthCheckboxLabel);
+  appearanceSection.appendChild(readingWidthRow);
+
+  if (readingWidth != null) {
+    const readingWidthStepperRow = document.createElement('div');
+    readingWidthStepperRow.className = 'panel-row';
+    readingWidthStepperRow.style.alignItems = 'center';
+    readingWidthStepperRow.appendChild(
+      menuButton('\u2212', async () => {
+        const next = Math.max(40, readingWidth - 5);
+        await setReadingWidth(kv, next);
+        applyReadingWidth(next);
+        renderSettingsView();
+      })
+    );
+    const readingWidthLabel = document.createElement('span');
+    readingWidthLabel.textContent = readingWidth + 'ch';
+    readingWidthLabel.style.fontSize = '14px';
+    readingWidthLabel.style.minWidth = '50px';
+    readingWidthLabel.style.textAlign = 'center';
+    readingWidthStepperRow.appendChild(readingWidthLabel);
+    readingWidthStepperRow.appendChild(
+      menuButton('+', async () => {
+        const next = Math.min(200, readingWidth + 5);
+        await setReadingWidth(kv, next);
+        applyReadingWidth(next);
+        renderSettingsView();
+      })
+    );
+    appearanceSection.appendChild(readingWidthStepperRow);
+  }
+
+  const readingWidthHint = document.createElement('div');
+  readingWidthHint.textContent =
+    'Off by default -- the outline uses the full available width, same as everything else in the app. When on, ch is a character-count-based unit that scales with the font size above, so the same comfortable line length holds at any size rather than a fixed pixel width fighting a larger font.';
+  readingWidthHint.style.fontSize = '11px';
+  readingWidthHint.style.opacity = '0.6';
+  readingWidthHint.style.margin = '4px 0 8px';
+  appearanceSection.appendChild(readingWidthHint);
 
   const menuSizeTitle = document.createElement('div');
   menuSizeTitle.className = 'panel-section-title';
@@ -12678,6 +12797,8 @@ async function bootstrap() {
   applyMenuSize(await getMenuSize(kv));
   applyFontSize(await getFontSize(kv));
   applyTablesFontSize(await getTablesFontSize(kv));
+  applyReadingWidth(await getReadingWidth(kv));
+  applySidePanelWidth(await getSidePanelWidth(kv));
   syncContentOffset();
 
   const last = await getLastActiveDocument(kv);
