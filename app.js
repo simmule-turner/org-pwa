@@ -2821,7 +2821,7 @@ function syncContentOffset() {
   const barHeight = topBarEl.offsetHeight;
   const bottomBarHeight = modelineBarEl.offsetHeight;
   const vv = window.visualViewport;
-  const keyboardInset = vv ? Math.max(0, document.documentElement.clientHeight - (vv.height + vv.offsetTop)) : 0;
+  const keyboardInset = vv ? Math.max(0, window.innerHeight - (vv.height + vv.offsetTop)) : 0;
   modelineBarEl.style.bottom = keyboardInset + 'px';
   contentAreaEl.style.marginTop = barHeight + 'px';
   contentAreaEl.style.height = `calc(100% - ${barHeight}px - ${bottomBarHeight}px - ${keyboardInset}px)`;
