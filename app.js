@@ -2922,16 +2922,11 @@ setInterval(() => {
 // scroll has happened, e.g. no field is focused at all) -- nudging
 // #topBar down by that same amount keeps it aligned with whatever's
 // actually visible, compensating for the offset a plain
-// position: fixed element has no way to react to on its own. Combined
-// into a single transform (translateX for the existing left: 50%
-// horizontal centering, translateY for this) rather than two separate
-// style properties, since setting transform directly would otherwise
-// silently override the CSS rule's own translateX(-50%) instead of
-// adding to it.
+// position: fixed element has no way to react to on its own.
 if (window.visualViewport) {
   const vv = window.visualViewport;
   const repositionTopBarForKeyboard = () => {
-    topBarEl.style.transform = `translate(-50%, ${vv.offsetTop}px)`;
+    topBarEl.style.transform = `translateY(${vv.offsetTop}px)`;
   };
   vv.addEventListener('resize', () => {
     repositionTopBarForKeyboard();
