@@ -2647,6 +2647,10 @@ const minibufferEl = document.getElementById('minibuffer');
 const minibufferSearchEl = document.getElementById('minibufferSearch');
 const addBtn = document.getElementById('addBtn');
 const navBackBtn = document.getElementById('navBackBtn');
+if (/Android/i.test(navigator.userAgent)) {
+  navBackBtn.style.background = 'var(--bg)';
+  navBackBtn.style.color = 'var(--fg)';
+}
 const extraMenuBtn = document.getElementById('extraMenuBtn');
 
 /** True while any overlay-style panel (extras menu, Settings, Docs,
