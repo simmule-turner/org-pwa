@@ -158,6 +158,18 @@ export function getCycleOpenArchivedTrees(vars) {
   return parseLispBoolean((vars || {})['org-cycle-open-archived-trees'], false);
 }
 
+/** org-agenda-show-all-dates: real org's default is t -- every day in
+ *  the requested range shows, even ones with nothing scheduled on
+ *  them. Set to nil to hide empty days entirely (a light month can
+ *  shrink from 30 days down to just the handful that actually have
+ *  something on them). Also toggleable on the fly in the Agenda view
+ *  itself (the `g` button), matching real org's own `g` keybinding --
+ *  this is just the file's own persistent default for that toggle's
+ *  own starting state each time Agenda is opened fresh. */
+export function getAgendaShowAllDates(vars) {
+  return parseLispBoolean((vars || {})['org-agenda-show-all-dates'], true);
+}
+
 /** org-agenda-skip-comment-trees: real org's default is t — a
  *  "commented" heading (one whose title starts with "# ", see
  *  comment-model.js — real org's own comment-line syntax applied to a

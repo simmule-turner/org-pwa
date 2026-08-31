@@ -963,7 +963,9 @@ function groupByDay(items) {
  *  functions (a one-entry array) for a consistent return shape callers
  *  can treat uniformly regardless of which view is active. */
 function dayView(items, date = new Date()) {
-  return groupByDay(itemsForDate(items, date));
+  const grouped = groupByDay(itemsForDate(items, date));
+  if (grouped.length > 0) return grouped;
+  return [{ date: dateKey(date), items: [] }];
 }
 
 /** Midnight (00:00:00.000) of `date`'s calendar day. */
@@ -1036,7 +1038,16 @@ function weekView(items, anchorDate = new Date(), startOnWeekday = 1) {
 function monthView(items, date = new Date()) {
   const start = new Date(date.getFullYear(), date.getMonth(), 1);
   const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-  return groupByDay(itemsInRange(items, start, end));
+  const grouped = groupByDay(itemsInRange(items, start, end));
+  const byKey = new Map(grouped.map((d) => [d.date, d]));
+  const allDays = [];
+  let current = new Date(start);
+  while (current <= end) {
+    const key = dateKey(current);
+    allDays.push(byKey.get(key) || { date: key, items: [] });
+    current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
+  }
+  return allDays;
 }
 
 /**
