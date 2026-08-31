@@ -25,6 +25,47 @@ test('parses a timestamp with a time component', () => {
   assert.equal(ts.date.getMinutes(), 30);
 });
 
+test('THE FEATURE: parses a timestamp with a time range', () => {
+  const ts = parseOrgTimestamp('<2026-08-31 Mon 08:00-09:00>');
+  assert.equal(ts.hasTime, true);
+  assert.equal(ts.date.getHours(), 8);
+  assert.equal(ts.date.getMinutes(), 0);
+  assert.ok(ts.endDate);
+  assert.equal(ts.endDate.getHours(), 9);
+  assert.equal(ts.endDate.getMinutes(), 0);
+  // endDate is the same calendar day as the start -- a range never
+  // implicitly spans midnight in this single-timestamp form.
+  assert.equal(ts.endDate.getFullYear(), ts.date.getFullYear());
+  assert.equal(ts.endDate.getMonth(), ts.date.getMonth());
+  assert.equal(ts.endDate.getDate(), ts.date.getDate());
+});
+
+test('THE FEATURE: a single time with no range leaves endDate null', () => {
+  const ts = parseOrgTimestamp('<2026-08-31 Mon 08:00>');
+  assert.equal(ts.hasTime, true);
+  assert.equal(ts.endDate, null);
+});
+
+test('THE FEATURE: no time at all leaves endDate null too', () => {
+  const ts = parseOrgTimestamp('<2026-08-31 Mon>');
+  assert.equal(ts.hasTime, false);
+  assert.equal(ts.endDate, null);
+});
+
+test('THE FEATURE: a time range combines correctly with a repeater', () => {
+  const ts = parseOrgTimestamp('<2026-08-31 Mon 08:00-09:00 +1w>');
+  assert.equal(ts.repeater, '+1w');
+  assert.ok(ts.endDate);
+  assert.equal(ts.endDate.getHours(), 9);
+});
+
+test('THE FEATURE: findTimestamps also picks up a time range embedded in text', () => {
+  const results = findTimestamps('Meeting <2026-08-31 Mon 08:00-09:00> in the main room');
+  assert.equal(results.length, 1);
+  assert.ok(results[0].endDate);
+  assert.equal(results[0].endDate.getHours(), 9);
+});
+
 test('parses a timestamp with a repeater', () => {
   const ts = parseOrgTimestamp('<2026-07-21 Tue +1w>');
   assert.equal(ts.repeater, '+1w');

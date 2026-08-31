@@ -141,6 +141,15 @@ test('weekView respects a configured startOnWeekday (e.g. 0 = Sunday)', () => {
   }
 });
 
+test('THE FEATURE: weekView always returns all 7 days, including ones with nothing scheduled', () => {
+  const doc = parseOrg(['* TODO Only one thing this week', 'SCHEDULED: <2026-08-31 Mon>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
+  const week = weekView(items, new Date(2026, 7, 31), 1); // Monday-start week containing Aug 31
+  assert.equal(week.length, 7);
+  const emptyDays = week.filter((d) => d.items.length === 0);
+  assert.equal(emptyDays.length, 6); // every day but the Monday with the one item
+});
+
 // ---- startOfDay / endOfDay / startOfWeek ---------------------------------
 
 test('startOfDay zeroes out the time-of-day', () => {
@@ -231,6 +240,71 @@ test('expandRepeats returns an empty array when nothing falls in range', () => {
 test('expandRepeats returns an empty array for a null/invalid repeater rather than throwing', () => {
   assert.deepEqual(expandRepeats(new Date(), null, new Date(), new Date()), []);
 });
+
+// ---- THE FEATURE: category (agenda item prefix) --------------------------
+
+test('THE FEATURE: category falls back to the filename, sans path and .org extension, when #+CATEGORY: is absent', () => {
+  const doc = parseOrg(['* TODO Buy milk', 'SCHEDULED: <2026-08-31 Mon>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'notes/test.org', doc }]);
+  assert.equal(items[0].category, 'test');
+});
+
+test('THE FEATURE: an explicit #+CATEGORY: keyword overrides the filename fallback', () => {
+  const doc = parseOrg(['#+CATEGORY: Projects', '* TODO Buy milk', 'SCHEDULED: <2026-08-31 Mon>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'notes/test.org', doc }]);
+  assert.equal(items[0].category, 'Projects');
+});
+
+test('THE FEATURE: #+CATEGORY: lookup is case-insensitive, matching every other #+KEYWORD: line here', () => {
+  const doc = parseOrg(['#+category: lowercase works too', '* TODO Buy milk', 'SCHEDULED: <2026-08-31 Mon>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'notes/test.org', doc }]);
+  assert.equal(items[0].category, 'lowercase works too');
+});
+
+test('THE FEATURE: category is computed independently per document across multiple files', () => {
+  const workDoc = parseOrg(['* TODO Standup', 'SCHEDULED: <2026-08-31 Mon>'].join('\n'));
+  const homeDoc = parseOrg(['#+CATEGORY: Home', '* TODO Groceries', 'SCHEDULED: <2026-08-31 Mon>'].join('\n'));
+  const items = buildAgendaItems([
+    { documentId: 'work.org', doc: workDoc },
+    { documentId: 'home.org', doc: homeDoc },
+  ]);
+  const byTitle = Object.fromEntries(items.map((i) => [i.title, i.category]));
+  assert.equal(byTitle['Standup'], 'work');
+  assert.equal(byTitle['Groceries'], 'Home');
+});
+
+test('THE FEATURE: a time-range timestamp propagates endDate onto the agenda item itself', () => {
+  const doc = parseOrg(['* TODO Team standup', 'SCHEDULED: <2026-08-31 Mon 08:00-09:00>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'work.org', doc }], {
+    rangeStart: new Date(2026, 7, 31, 0, 0),
+    rangeEnd: new Date(2026, 7, 31, 23, 59),
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].hasTime, true);
+  assert.ok(items[0].endDate);
+  assert.equal(items[0].endDate.getHours(), 9);
+});
+
+test('THE BUG THIS FIXES: a SCHEDULED time-range item keeps its own start time through the real app\u2019s carry-forward path (isDone provided, heading not done)', () => {
+  const doc = parseOrg(['* TODO Lunch with Sarah', 'SCHEDULED: <2026-08-31 Mon 12:00-13:00>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'personal.org', doc }], {
+    todoFilter: () => true,
+    isDone: () => false, // this is what actually triggers the carry-forward path -- the real app always passes this
+    rangeStart: new Date(2026, 7, 31, 0, 0),
+    rangeEnd: new Date(2026, 7, 31, 23, 59),
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].date.getHours(), 12, 'start time was zeroed to midnight -- the exact bug this fixes');
+  assert.equal(items[0].date.getMinutes(), 0);
+  assert.equal(items[0].endDate.getHours(), 13);
+});
+
+test('THE FEATURE: an item with no time range at all has a null endDate', () => {
+  const doc = parseOrg(['* TODO Just scheduled', 'SCHEDULED: <2026-08-31 Mon>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'work.org', doc }]);
+  assert.equal(items[0].endDate, null);
+});
+
 
 // ---- buildAgendaItems with a range (repeater expansion) -----------------
 
@@ -498,6 +572,17 @@ test('carryForwardOccurrences: a future item returns just its own day, nothing b
   assert.equal(days.length, 1);
   assert.equal(days[0].getDate(), 1);
   assert.equal(days[0].getMonth(), 7);
+});
+
+test('THE BUG THIS FIXES: carryForwardOccurrences preserves the item\u2019s own time-of-day on every occurrence, not just midnight', () => {
+  const itemDate = new Date(2026, 6, 20, 14, 30); // 2:30 PM
+  const today = new Date(2026, 6, 22);
+  const days = carryForwardOccurrences(itemDate, today, new Date(2026, 6, 20), new Date(2026, 6, 22));
+  assert.equal(days.length, 3);
+  for (const day of days) {
+    assert.equal(day.getHours(), 14, `day ${day.toDateString()} lost its own time-of-day`);
+    assert.equal(day.getMinutes(), 30);
+  }
 });
 
 // ---- commented headings excluded from agenda by default -----------------
