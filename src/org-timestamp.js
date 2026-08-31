@@ -22,14 +22,14 @@
  */
 
 const TIMESTAMP_RE =
-  /^([<[])(\d{4})-(\d{2})-(\d{2})\s+\S+(?:\s+(\d{2}):(\d{2}))?(?:\s+([.+]{1,2}\d+[hdwmy]))?(?:\s+(-\d+[hdwmy]))?([>\]])$/;
+  /^([<[])(\d{4})-(\d{2})-(\d{2})\s+\S+(?:\s+(\d{2}):(\d{2})(?:-(\d{2}):(\d{2}))?)?(?:\s+([.+]{1,2}\d+[hdwmy]))?(?:\s+(-\d+[hdwmy]))?([>\]])$/;
 
 // Same shape as TIMESTAMP_RE but NOT anchored to the whole string and
 // marked global, for finding a timestamp embedded anywhere within a
 // larger string (a heading title, a line of body text) rather than
 // requiring the entire string to be exactly one timestamp.
 const TIMESTAMP_SCAN_RE =
-  /([<[])(\d{4})-(\d{2})-(\d{2})\s+\S+(?:\s+(\d{2}):(\d{2}))?(?:\s+([.+]{1,2}\d+[hdwmy]))?(?:\s+(-\d+[hdwmy]))?([>\]])/g;
+  /([<[])(\d{4})-(\d{2})-(\d{2})\s+\S+(?:\s+(\d{2}):(\d{2})(?:-(\d{2}):(\d{2}))?)?(?:\s+([.+]{1,2}\d+[hdwmy]))?(?:\s+(-\d+[hdwmy]))?([>\]])/g;
 
 /** @returns parsed timestamp object, or null if `raw` isn't a recognizable org timestamp. */
 function parseOrgTimestamp(raw) {
@@ -37,17 +37,23 @@ function parseOrgTimestamp(raw) {
   const m = TIMESTAMP_RE.exec(raw.trim());
   if (!m) return null;
 
-  const [, open, y, mo, d, h, min, repeater, delay, close] = m;
+  const [, open, y, mo, d, h, min, endH, endMin, repeater, delay, close] = m;
   if (open === '<' && close !== '>') return null;
   if (open === '[' && close !== ']') return null;
 
   const hasTime = h !== undefined;
   const date = new Date(Number(y), Number(mo) - 1, Number(d), hasTime ? Number(h) : 0, hasTime ? Number(min) : 0);
+  // A time RANGE (08:00-09:00) is always within the same calendar day as
+  // the start -- real org's own syntax for a range spanning multiple
+  // days is two separate timestamps joined by "--", a different
+  // construct entirely, not this single-timestamp form.
+  const endDate = hasTime && endH !== undefined ? new Date(Number(y), Number(mo) - 1, Number(d), Number(endH), Number(endMin)) : null;
 
   return {
     active: open === '<',
     date,
     hasTime,
+    endDate,
     repeater: repeater || null,
     delay: delay || null,
     raw,

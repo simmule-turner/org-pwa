@@ -190,7 +190,7 @@ function carryForwardOccurrences(itemDate, today, rangeStart, rangeEnd, earlyWar
   const MAX_DAYS = 10000; // safety valve, matching expandRepeats' precedent
   let count = 0;
   while (current <= windowEnd && count < MAX_DAYS) {
-    days.push(new Date(current));
+    days.push(new Date(current.getFullYear(), current.getMonth(), current.getDate(), itemDate.getHours(), itemDate.getMinutes()));
     current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
     count++;
   }
@@ -393,6 +393,19 @@ function walkHeadings(doc, visit) {
  *     birthday/anniversary date+description, matching whatever
  *     org-contacts-birthday-property is set to via Local Variables.
  */
+/** The category label shown as a prefix before each agenda item --
+ *  real org's own #+CATEGORY: keyword if the file sets one, otherwise
+ *  the file's own basename (no directory path, no .org extension),
+ *  matching real org's own actual default behavior exactly. Keyword
+ *  lookup is case-insensitive, matching how every other #+KEYWORD:
+ *  line here already treats case as not meaningful. */
+function getCategoryForDocument(doc, documentId) {
+  const categoryKw = (doc.keywords || []).find((kw) => kw.key.toUpperCase() === 'CATEGORY');
+  if (categoryKw && categoryKw.value.trim()) return categoryKw.value.trim();
+  const base = String(documentId).split('/').pop().replace(/\.org$/i, '');
+  return base || documentId;
+}
+
 function buildAgendaItems(docs, opts = {}) {
   const {
     includeArchived = false,
@@ -424,6 +437,7 @@ function buildAgendaItems(docs, opts = {}) {
       heading,
       kind,
       hasTime: parsed.hasTime,
+      endDate: parsed.endDate || null,
       repeater: parsed.repeater,
       todo: heading.todo,
       priority: heading.priority,
@@ -903,6 +917,14 @@ function buildAgendaItems(docs, opts = {}) {
     });
   }
 
+  const categoryByDocument = new Map();
+  for (const { documentId, doc } of docs) {
+    if (!categoryByDocument.has(documentId)) categoryByDocument.set(documentId, getCategoryForDocument(doc, documentId));
+  }
+  for (const item of items) {
+    item.category = categoryByDocument.get(item.documentId) || item.documentId;
+  }
+
   items.sort((a, b) => a.date - b.date);
   return items;
 }
@@ -995,7 +1017,16 @@ function weekView(items, anchorDate = new Date(), startOnWeekday = 1) {
   const start = startOfWeek(anchorDate, startOnWeekday);
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
-  return groupByDay(itemsInRange(items, start, end));
+  const grouped = groupByDay(itemsInRange(items, start, end));
+  const byKey = new Map(grouped.map((d) => [d.date, d]));
+  const allDays = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    const key = dateKey(d);
+    allDays.push(byKey.get(key) || { date: key, items: [] });
+  }
+  return allDays;
 }
 
 /** A month view: every day in `date`'s calendar month, from the 1st
