@@ -344,7 +344,15 @@ test('dayView returns just the one requested day, in the same shape as weekView/
   assert.equal(day[0].items.length, 2);
 });
 
-test('monthView returns every day with items in the given calendar month, respecting month length', () => {
+test('THE FEATURE: dayView still returns the requested day even when it\u2019s completely empty, not an empty array', () => {
+  const items = buildAgendaItems(docsFixture());
+  const day = dayView(items, new Date(2026, 11, 25)); // Christmas -- nothing in the fixture is scheduled then
+  assert.equal(day.length, 1);
+  assert.equal(day[0].date, '2026-12-25');
+  assert.deepEqual(day[0].items, []);
+});
+
+test('monthView returns every day in the given calendar month, respecting month length', () => {
   const items = buildAgendaItems(docsFixture());
   const month = monthView(items, new Date(2026, 6, 1)); // July 2026 (31 days)
   for (const day of month) {
@@ -354,6 +362,13 @@ test('monthView returns every day with items in the given calendar month, respec
   assert.ok(!allTitles.includes('Pay rent')); // Aug 1, outside July
 });
 
+test('THE FEATURE: monthView always returns all days in the month, including empty ones, matching weekView\u2019s own behavior', () => {
+  const items = buildAgendaItems(docsFixture());
+  const month = monthView(items, new Date(2026, 6, 1)); // July 2026 (31 days)
+  assert.equal(month.length, 31);
+  assert.ok(month.some((d) => d.items.length === 0), 'a real month is expected to have at least one day with nothing scheduled');
+});
+
 test('monthView correctly handles a shorter month (February, including a leap year)', () => {
   const doc = parseOrg(['* TODO Leap day task', 'SCHEDULED: <2028-02-29 Tue>'].join('\n'));
   const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
@@ -361,6 +376,7 @@ test('monthView correctly handles a shorter month (February, including a leap ye
   const allDates = month.map((d) => d.date);
   assert.ok(allDates.every((d) => d <= '2028-02-29'));
   assert.ok(allDates.includes('2028-02-29'));
+  assert.equal(month.length, 29); // every day of a leap-year February, including the 29th
 });
 
 // ---- plain timestamps embedded in heading titles (the reported gap) -----

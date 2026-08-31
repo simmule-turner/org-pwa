@@ -18,6 +18,7 @@ import {
   getAgendaFilesVar,
   parseAgendaFilesVar,
   getCycleOpenArchivedTrees,
+  getAgendaShowAllDates,
   getAgendaSkipCommentTrees,
   getAgendaSkipArchivedTrees,
   getClosedKeepWhenNoTodo,
@@ -135,6 +136,18 @@ test('both getters are safe to call with undefined/null vars (e.g. before any fi
   assert.equal(getAgendaStartOnWeekday(null), 1);
   assert.equal(getCycleOpenArchivedTrees(undefined), false);
   assert.equal(getCycleOpenArchivedTrees(null), false);
+});
+
+test('getAgendaShowAllDates defaults to true (show every day), matching real org\'s own default', () => {
+  assert.equal(getAgendaShowAllDates({}), true);
+});
+
+test('getAgendaShowAllDates reads nil as false (hide empty days)', () => {
+  assert.equal(getAgendaShowAllDates({ 'org-agenda-show-all-dates': 'nil' }), false);
+});
+
+test('getAgendaShowAllDates is safe with undefined/null vars', () => {
+  assert.equal(getAgendaShowAllDates(undefined), true);
 });
 
 test('getAgendaSkipCommentTrees defaults to true (skip), matching real org\'s own default', () => {
