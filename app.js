@@ -11926,7 +11926,7 @@ function renderMinibufferSearch() {
   const input = document.createElement('textarea');
   input.id = 'search-query-input';
   input.rows = 1;
-  input.placeholder = 'Search, or [+-][tag|todo|priority|key]:value\u2026';
+  input.placeholder = 'Search, +word -word, or [tag|todo|priority|key]:value\u2026';
   input.value = searchQuery;
   input.style.flex = '1';
   input.style.minWidth = '0';
@@ -11999,6 +11999,23 @@ function renderSearchPanel() {
   renderSearchResults();
 }
 
+function appendSnippetWithHighlight(container, snippet) {
+  if (!snippet) return;
+  const { text, highlightStart, highlightLength } = snippet;
+  if (highlightStart < 0 || highlightLength <= 0) {
+    container.appendChild(document.createTextNode(text));
+    return;
+  }
+  const before = text.slice(0, highlightStart);
+  const match = text.slice(highlightStart, highlightStart + highlightLength);
+  const after = text.slice(highlightStart + highlightLength);
+  if (before) container.appendChild(document.createTextNode(before));
+  const mark = document.createElement('mark');
+  mark.textContent = match;
+  container.appendChild(mark);
+  if (after) container.appendChild(document.createTextNode(after));
+}
+
 function renderSearchResults() {
   const resultsEl = document.getElementById('search-results');
   if (!resultsEl) return;
@@ -12060,14 +12077,20 @@ function renderSearchResults() {
     const headingLine = document.createElement('div');
     headingLine.style.fontSize = '11px';
     headingLine.style.opacity = '0.6';
-    const headingTitle = result.heading.title || '(untitled)';
-    headingLine.textContent = result.documentId !== state.documentId ? `${headingTitle} \u2014 ${result.documentId}` : headingTitle;
+    if (result.type === 'heading' && result.snippet && result.snippet.text) {
+      appendSnippetWithHighlight(headingLine, result.snippet);
+    } else {
+      headingLine.appendChild(document.createTextNode(result.heading.title || '(untitled)'));
+    }
+    if (result.documentId !== state.documentId) {
+      headingLine.appendChild(document.createTextNode(' \u2014 ' + result.documentId));
+    }
     const snippetLine = document.createElement('div');
     snippetLine.style.fontSize = '14px';
     snippetLine.style.overflow = 'hidden';
     snippetLine.style.textOverflow = 'ellipsis';
     snippetLine.style.whiteSpace = 'nowrap';
-    snippetLine.textContent = result.snippet;
+    if (result.type !== 'heading') appendSnippetWithHighlight(snippetLine, result.snippet);
     text.appendChild(headingLine);
     if (result.type !== 'heading') text.appendChild(snippetLine);
     row.appendChild(text);
