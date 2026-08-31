@@ -53,6 +53,7 @@ import {
   parseLispBoolean,
   parseLispNumber,
   getAgendaStartOnWeekday,
+  getAgendaShowAllDates,
   getDeadlineWarningDays,
   getScheduledDelayDays,
   getCalendarLatitude,
@@ -3756,6 +3757,7 @@ let viewMenuOpen = false;
 let agendaViewType = 'week'; // 'day' | 'week' | 'month'
 let agendaAnchorDate = new Date();
 let agendaLogMode = false; // whether LOGBOOK entries (state-change/note timestamps) show alongside SCHEDULED/DEADLINE/etc. -- off by default, matching real org's own org-agenda-log-mode convention exactly (a toggle, not always-on, so daily task-scanning doesn't get cluttered by default)
+let agendaShowAllDatesOverride = null; // null = use the file's own org-agenda-show-all-dates default; true/false once the "g" button has been pressed this session
 let showClockDisplay = false; // org-clock-display: whether each TODO-view item shows its own total clocked time (including its subtree) -- off by default, matching real org's own org-clock-display being an on-demand COMMAND (M-x org-clock-display), not something always shown
 let showClocktable = false; // org-clock-report: whether the TODO view's own clocktable configuration section is expanded -- off by default, same reasoning as showClockDisplay above
 let clocktableStart = '';
@@ -8778,6 +8780,8 @@ function renderAgendaView() {
   const container = document.createElement('div');
   container.style.padding = '8px 12px';
 
+  const effectiveShowAllDates = agendaShowAllDatesOverride !== null ? agendaShowAllDatesOverride : getAgendaShowAllDates(state.localVariables);
+
   const controls = document.createElement('div');
   controls.style.display = 'flex';
   controls.style.gap = '6px';
@@ -8850,6 +8854,20 @@ function renderAgendaView() {
       )
     );
   }
+
+  controls.appendChild(
+    agendaControlBtn(
+      'g',
+      () => {
+        agendaShowAllDatesOverride = !effectiveShowAllDates;
+        render();
+      },
+      !effectiveShowAllDates,
+      effectiveShowAllDates
+        ? 'Hide empty days (toggle org-agenda-show-all-dates)'
+        : 'Show empty days (toggle org-agenda-show-all-dates)'
+    )
+  );
 
   container.appendChild(controls);
 
@@ -8953,8 +8971,9 @@ function renderAgendaView() {
       : agendaViewType === 'week'
         ? weekView(items, agendaAnchorDate, getAgendaStartOnWeekday(state.localVariables))
         : monthView(items, agendaAnchorDate);
+  const visibleDays = effectiveShowAllDates ? grouped : grouped.filter((day) => day.items.length > 0);
 
-  if (grouped.length === 0) {
+  if (visibleDays.length === 0) {
     const empty = document.createElement('div');
     empty.style.opacity = '0.6';
     empty.style.fontSize = '14px';
@@ -9107,7 +9126,7 @@ function renderAgendaView() {
     }
   }
 
-  for (const day of grouped) {
+  for (const day of visibleDays) {
     const [wy, wm, wd] = day.date.split('-').map(Number);
     const dayDate = new Date(wy, wm - 1, wd);
     const isStartOfWeek = dayDate.getDay() === getAgendaStartOnWeekday(state.localVariables);
@@ -10193,6 +10212,14 @@ const QUICK_SETTINGS_FIELDS = [
     type: 'boolean',
     default: false,
     helpAnchor: '#progress-logging',
+  },
+  {
+    key: 'org-agenda-show-all-dates',
+    label: 'Show empty days in Agenda',
+    section: 'Agenda',
+    type: 'boolean',
+    default: true,
+    helpAnchor: '#agenda-behavior',
   },
   {
     key: 'org-agenda-skip-archived-trees',
