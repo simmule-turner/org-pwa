@@ -711,7 +711,19 @@ This is the escape hatch for everything the tap-driven UI doesn't cover yet.
 
 Tap *View → Agenda* for a list of everything with a date attached, grouped into Day, Week, or Month views. A single toggle button cycles between the three on tap — fixed-width, so it never shifts size as the label changes — rather than three separate buttons competing for space. *‹*/*›* step the view backward or forward by whatever unit is currently active — a day, a week, or a month — and *Today* jumps back to the current date. Tapping an item switches back to the Org view and scrolls straight to it.
 
-*Week view always aligns to an actual calendar week* — Monday through Sunday by default (configurable, see below), regardless of which day of that week you happened to open the agenda on. It resolves to the same 7-day window whether you're looking at it from Monday or Friday, not "whatever day is currently open, plus the next six."
+*Week view always aligns to an actual calendar week* — Monday through Sunday by default (configurable, see below), regardless of which day of that week you happened to open the agenda on. It resolves to the same 7-day window whether you're looking at it from Monday or Friday, not "whatever day is currently open, plus the next six." Every day of the week shows, even a fully free one with nothing scheduled on it — a week view is a fixed 7-day skeleton, not a list that shrinks to just the days something happens to land on. The first day's own header additionally shows that week's ISO 8601 week number (e.g. "Monday 31 August 2026 W36") — shown once, not repeated on every day of the same week.
+
+*Every item shows a category prefix* — real org-mode's own ~#+CATEGORY:~ file keyword if a file sets one, otherwise that file's own name (no directory path, no ~.org~ extension) as the implicit default, matching real org's actual behavior exactly. ~#+CATEGORY:~ goes at the top of a file, before any headings:
+
+#+BEGIN_SRC org
+  ,#+CATEGORY: Projects
+  * TODO Review weekly goals
+    SCHEDULED: <2026-09-07 Mon>
+#+END_SRC
+
+*Timed entries can carry a time range*, real org syntax on any SCHEDULED/DEADLINE/plain timestamp: ~SCHEDULED: <2026-08-31 Mon 08:00-09:00>~. Week and Month views show a range as ~08:00-09:00~; a single time with no range shows as ~08:00 ……~ (trailing dots, not a bare number, so a quick glance can tell "this has a specific start but no stated duration" from "this is a range" at the format level, not just by reading closely). An untimed SCHEDULED/DEADLINE item shows its own ~Scheduled:~/~Deadline:~ label instead of any time at all.
+
+*Day view additionally shows an hour-by-hour time grid*, matching real org's own ~org-agenda-time-grid~ default exactly — dashed marker lines every two hours from 8am to 8pm. Untimed items (SCHEDULED/DEADLINE with no time component) list first, above the grid entirely; timed items — real org's own actual convention here too — are interleaved with the grid lines in chronological order, appearing right where their own time falls between two markers, so the whole day's shape (what's free, what's packed) is visible at a glance rather than only wherever something happens to be scheduled. Week and Month views intentionally do NOT show this grid — real org's own agenda reserves the hourly timeline for Day view specifically, with Week/Month staying a flat per-day list.
 
 *** Dated entry sources
 :PROPERTIES:

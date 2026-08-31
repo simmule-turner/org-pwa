@@ -8689,12 +8689,35 @@ function agendaStepAnchor(viewType, anchorDate, direction) {
   return next;
 }
 
-function formatDayHeader(dateKeyStr) {
+function isoWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7; // Sunday=0 -> 7, so Monday=1..Sunday=7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum); // move to this week's own Thursday
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+}
+
+function formatDayHeader(dateKeyStr, weekNumber = null) {
   const [y, m, d] = dateKeyStr.split('-').map(Number);
   const date = new Date(y, m - 1, d);
   const isToday = date.toDateString() === new Date().toDateString();
-  const label = date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-  return isToday ? label + ' \u2014 Today' : label;
+  const label = date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const withWeek = weekNumber ? `${label} W${weekNumber}` : label;
+  return isToday ? withWeek + ' \u2014 Today' : withWeek;
+}
+
+function formatAgendaItemTimeText(item) {
+  if (!item.hasTime) return '';
+  const start = item.date.toTimeString().slice(0, 5);
+  if (item.endDate) return start + '-' + item.endDate.toTimeString().slice(0, 5);
+  return start + ' \u2026\u2026';
+}
+
+function agendaItemKindLabel(item) {
+  if (item.hasTime) return null;
+  if (item.kind === 'scheduled') return 'Scheduled:';
+  if (item.kind === 'deadline') return 'Deadline:';
+  return null;
 }
 
 function formatAgendaRangeLabel(viewType, start, end) {
@@ -8895,100 +8918,171 @@ function renderAgendaView() {
     container.appendChild(empty);
   }
 
+  function buildAgendaItemRow(item) {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.gap = '6px';
+    row.style.alignItems = 'baseline';
+    row.style.padding = '6px 2px';
+    row.style.borderBottom = '1px solid var(--border)';
+    row.style.cursor = 'pointer';
+
+    const categoryLabel = document.createElement('span');
+    categoryLabel.textContent = item.category + ':';
+    categoryLabel.style.flexShrink = '0';
+    categoryLabel.style.opacity = '0.55';
+    categoryLabel.style.fontSize = '12px';
+    categoryLabel.style.minWidth = '52px';
+    row.appendChild(categoryLabel);
+
+    const kindIcon = document.createElement('span');
+    kindIcon.textContent =
+      item.kind === 'deadline'
+        ? '\u26a0'
+        : item.kind === 'timestamp'
+          ? '\ud83d\udcc5'
+          : item.kind === 'anniversary'
+            ? '\ud83c\udf82'
+            : item.kind === 'logbook'
+              ? '\ud83d\udcdd'
+              : item.kind === 'diary-sexp' || item.kind === 'sexp-timestamp'
+              ? '\ud83d\udd01'
+              : item.kind === 'sunrise' || item.kind === 'sunset' || item.kind === 'civil-dawn' || item.kind === 'civil-dusk' || item.kind === 'nautical-dawn' || item.kind === 'nautical-dusk' || item.kind === 'astronomical-dawn' || item.kind === 'astronomical-dusk' || item.kind === 'day-length' || item.kind === 'weather'
+                ? '\u2600\ufe0f'
+                : '\u23f0';
+    kindIcon.style.flexShrink = '0';
+    kindIcon.style.opacity = '0.6';
+    kindIcon.style.fontSize = '1.3em';
+    row.appendChild(kindIcon);
+
+    const text = document.createElement('div');
+    text.style.flex = '1 1 auto';
+    text.style.minWidth = '0';
+    if (item.todo && item.kind !== 'logbook') {
+      const badge = document.createElement('span');
+      badge.textContent = item.todo + ' ';
+      badge.style.fontWeight = '700';
+      badge.style.fontSize = '12px';
+      text.appendChild(badge);
+    }
+    text.appendChild(document.createTextNode(item.title));
+    if (item.logNote) {
+      const noteLine = document.createElement('div');
+      noteLine.style.fontSize = '12px';
+      noteLine.style.opacity = '0.65';
+      noteLine.style.fontStyle = 'italic';
+      noteLine.textContent = item.logNote;
+      text.appendChild(noteLine);
+    }
+    if (item.repeater) {
+      const rep = document.createElement('span');
+      rep.textContent = ' \u21bb';
+      rep.style.opacity = '0.5';
+      rep.style.fontSize = '12px';
+      text.appendChild(rep);
+    }
+    if (item.daysOverdue) {
+      const overdue = document.createElement('span');
+      overdue.style.fontSize = '12px';
+      overdue.style.marginLeft = '6px';
+      if (item.daysOverdue > 0) {
+        overdue.style.color = '#c0392b';
+        overdue.textContent = item.daysOverdue === 1 ? '1 day overdue' : item.daysOverdue + ' days overdue';
+      } else {
+        overdue.style.opacity = '0.6';
+        const daysUntil = -item.daysOverdue;
+        overdue.textContent = daysUntil === 1 ? 'due tomorrow' : 'due in ' + daysUntil + ' days';
+      }
+      text.appendChild(overdue);
+    }
+    row.appendChild(text);
+
+    const kindLabel = agendaItemKindLabel(item);
+    const timeText = formatAgendaItemTimeText(item);
+    if (kindLabel || timeText) {
+      const trailing = document.createElement('span');
+      trailing.style.fontSize = '12px';
+      trailing.style.opacity = '0.6';
+      trailing.style.flexShrink = '0';
+      trailing.textContent = kindLabel || timeText;
+      row.appendChild(trailing);
+    }
+
+    row.onclick = () => {
+      const outlinePath = outlinePathForHeadingInDocument(item.documentId, item.heading);
+      if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath);
+    };
+    return row;
+  }
+
+  const AGENDA_GRID_HOURS = [8, 10, 12, 14, 16, 18, 20]; // real org's own documented org-agenda-time-grid default
+
+  function buildAgendaGridLineRow(hour) {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = '6px';
+    row.style.padding = '4px 2px';
+    row.style.opacity = '0.4';
+
+    const label = document.createElement('span');
+    label.textContent = String(hour).padStart(2, '0') + ':00';
+    label.style.flexShrink = '0';
+    label.style.minWidth = '40px';
+    label.style.fontSize = '11px';
+    row.appendChild(label);
+
+    const line = document.createElement('div');
+    line.style.flex = '1 1 auto';
+    line.style.borderBottom = '1px dashed var(--border-strong)';
+    row.appendChild(line);
+
+    return row;
+  }
+
+  function renderDayViewTimeline(dayItems) {
+    const untimed = dayItems.filter((i) => !i.hasTime);
+    const timed = dayItems.filter((i) => i.hasTime).sort((a, b) => a.date - b.date);
+
+    for (const item of untimed) {
+      container.appendChild(buildAgendaItemRow(item));
+    }
+
+    let timedIdx = 0;
+    for (const hour of AGENDA_GRID_HOURS) {
+      while (timedIdx < timed.length && timed[timedIdx].date.getHours() < hour) {
+        container.appendChild(buildAgendaItemRow(timed[timedIdx]));
+        timedIdx++;
+      }
+      container.appendChild(buildAgendaGridLineRow(hour));
+    }
+    while (timedIdx < timed.length) {
+      container.appendChild(buildAgendaItemRow(timed[timedIdx]));
+      timedIdx++;
+    }
+  }
+
   for (const day of grouped) {
     const dayHeader = document.createElement('div');
     dayHeader.style.fontSize = '12px';
     dayHeader.style.fontWeight = '700';
     dayHeader.style.opacity = '0.7';
     dayHeader.style.margin = '10px 0 4px';
-    dayHeader.textContent = formatDayHeader(day.date);
+    const isFirstDayOfWeekView = agendaViewType === 'week' && day === grouped[0];
+    let weekNumber = null;
+    if (isFirstDayOfWeekView) {
+      const [wy, wm, wd] = day.date.split('-').map(Number);
+      weekNumber = isoWeekNumber(new Date(wy, wm - 1, wd));
+    }
+    dayHeader.textContent = formatDayHeader(day.date, weekNumber);
     container.appendChild(dayHeader);
 
-    for (const item of day.items) {
-      const row = document.createElement('div');
-      row.style.display = 'flex';
-      row.style.gap = '6px';
-      row.style.alignItems = 'baseline';
-      row.style.padding = '6px 2px';
-      row.style.borderBottom = '1px solid var(--border)';
-      row.style.cursor = 'pointer';
-
-      const kindIcon = document.createElement('span');
-      kindIcon.textContent =
-        item.kind === 'deadline'
-          ? '\u26a0'
-          : item.kind === 'timestamp'
-            ? '\ud83d\udcc5'
-            : item.kind === 'anniversary'
-              ? '\ud83c\udf82'
-              : item.kind === 'logbook'
-                ? '\ud83d\udcdd'
-                : item.kind === 'diary-sexp' || item.kind === 'sexp-timestamp'
-                ? '\ud83d\udd01'
-                : item.kind === 'sunrise' || item.kind === 'sunset' || item.kind === 'civil-dawn' || item.kind === 'civil-dusk' || item.kind === 'nautical-dawn' || item.kind === 'nautical-dusk' || item.kind === 'astronomical-dawn' || item.kind === 'astronomical-dusk' || item.kind === 'day-length' || item.kind === 'weather'
-                  ? '\u2600\ufe0f'
-                  : '\u23f0';
-      kindIcon.style.flexShrink = '0';
-      kindIcon.style.opacity = '0.6';
-      kindIcon.style.fontSize = '1.3em';
-      row.appendChild(kindIcon);
-
-      const text = document.createElement('div');
-      text.style.flex = '1 1 auto';
-      text.style.minWidth = '0';
-      if (item.todo && item.kind !== 'logbook') {
-        const badge = document.createElement('span');
-        badge.textContent = item.todo + ' ';
-        badge.style.fontWeight = '700';
-        badge.style.fontSize = '12px';
-        text.appendChild(badge);
+    if (agendaViewType === 'day') {
+      renderDayViewTimeline(day.items);
+    } else {
+      for (const item of day.items) {
+        container.appendChild(buildAgendaItemRow(item));
       }
-      text.appendChild(document.createTextNode(item.title));
-      if (item.logNote) {
-        const noteLine = document.createElement('div');
-        noteLine.style.fontSize = '12px';
-        noteLine.style.opacity = '0.65';
-        noteLine.style.fontStyle = 'italic';
-        noteLine.textContent = item.logNote;
-        text.appendChild(noteLine);
-      }
-      if (item.repeater) {
-        const rep = document.createElement('span');
-        rep.textContent = ' \u21bb';
-        rep.style.opacity = '0.5';
-        rep.style.fontSize = '12px';
-        text.appendChild(rep);
-      }
-      if (item.daysOverdue) {
-        const overdue = document.createElement('span');
-        overdue.style.fontSize = '12px';
-        overdue.style.marginLeft = '6px';
-        if (item.daysOverdue > 0) {
-          overdue.style.color = '#c0392b';
-          overdue.textContent = item.daysOverdue === 1 ? '1 day overdue' : item.daysOverdue + ' days overdue';
-        } else {
-          overdue.style.opacity = '0.6';
-          const daysUntil = -item.daysOverdue;
-          overdue.textContent = daysUntil === 1 ? 'due tomorrow' : 'due in ' + daysUntil + ' days';
-        }
-        text.appendChild(overdue);
-      }
-      row.appendChild(text);
-
-      if (item.hasTime) {
-        const time = document.createElement('span');
-        time.style.fontSize = '12px';
-        time.style.opacity = '0.6';
-        time.style.flexShrink = '0';
-        time.textContent = item.date.toTimeString().slice(0, 5);
-        row.appendChild(time);
-      }
-
-      row.onclick = () => {
-        const outlinePath = outlinePathForHeadingInDocument(item.documentId, item.heading);
-        if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath);
-      };
-      container.appendChild(row);
     }
   }
 
