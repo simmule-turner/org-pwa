@@ -703,6 +703,16 @@ test('resolveCaptureFileId trims whitespace around the file field', () => {
   assert.equal(resolveCaptureFileId('  journal.org  ', 'notes.org'), 'journal.org');
 });
 
+test('THE BUG THIS FIXES: a relative file target no longer crashes when currentFileId is null (an unsaved, in-memory-only document)', () => {
+  assert.equal(resolveCaptureFileId('journal.org', null), 'journal.org');
+  assert.equal(resolveCaptureFileId('journal.org', undefined), 'journal.org');
+  // A blank file still correctly resolves to "the current document itself" -- null, in this case.
+  assert.equal(resolveCaptureFileId('', null), null);
+  // An already-slashed path or scheme-prefixed one never needed currentFileId anyway, and still doesn't.
+  assert.equal(resolveCaptureFileId('archive/journal.org', null), 'archive/journal.org');
+  assert.equal(resolveCaptureFileId('github:notes.org', null), 'notes.org');
+});
+
 // ---- resolveCaptureFileId: scheme prefix (THE DATA-LOSS BUG FIX) ------------
 
 test('THE BUG: "github:foo" now correctly resolves to match the currently-open "foo" -- previously the whole string was treated as one literal filename, meaning it NEVER matched the current document even when it was actually the exact same file, silently forcing a same-file capture down the dangerous cross-file write path', () => {

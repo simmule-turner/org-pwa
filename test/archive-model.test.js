@@ -326,6 +326,11 @@ test('resolveArchiveFileId: %s substitutes the current basename WITH its extensi
   assert.equal(resolveArchiveFileId('%s_archive', 'notes.org'), 'notes.org_archive');
 });
 
+test('THE BUG THIS FIXES: %s substitution no longer crashes when currentFileId is null (an unsaved, in-memory-only document) -- falls back to "untitled" as the basename', () => {
+  assert.equal(resolveArchiveFileId('%s_archive', null), 'untitled_archive');
+  assert.equal(resolveArchiveFileId('%s_archive', undefined), 'untitled_archive');
+});
+
 test('resolveArchiveFileId: a %s-substituted result with no "/" is placed alongside the current file', () => {
   assert.equal(resolveArchiveFileId('%s_archive', 'journal/notes.org'), 'journal/notes.org_archive');
 });

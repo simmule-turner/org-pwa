@@ -245,6 +245,11 @@ test('resolveImagePath: a bare filename becomes a sibling of the current documen
   assert.equal(resolveImagePath('photo.png', 'journal/notes.org'), 'journal/photo.png');
 });
 
+test('THE BUG THIS FIXES: a bare filename no longer crashes when currentDocumentId is null (an unsaved, in-memory-only document)', () => {
+  assert.equal(resolveImagePath('photo.png', null), 'photo.png');
+  assert.equal(resolveImagePath('photo.png', undefined), 'photo.png');
+});
+
 test('resolveImagePath: a leading "./" is stripped, same result as no prefix at all', () => {
   assert.equal(resolveImagePath('./photo.png', 'journal/notes.org'), 'journal/photo.png');
 });
