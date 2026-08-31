@@ -433,9 +433,9 @@ function parseArchiveLocation(location) {
  */
 function resolveArchiveFileId(filePart, currentFileId) {
   if (!filePart) return null;
-  const lastSlash = currentFileId.lastIndexOf('/');
+  const lastSlash = currentFileId ? currentFileId.lastIndexOf('/') : -1;
   const dir = lastSlash === -1 ? '' : currentFileId.slice(0, lastSlash + 1);
-  const basename = lastSlash === -1 ? currentFileId : currentFileId.slice(lastSlash + 1);
+  const basename = !currentFileId ? 'untitled' : lastSlash === -1 ? currentFileId : currentFileId.slice(lastSlash + 1);
   if (filePart.includes('%s')) {
     const substituted = filePart.split('%s').join(basename);
     return substituted.includes('/') ? substituted : dir + substituted;

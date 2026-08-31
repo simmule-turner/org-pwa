@@ -93,7 +93,7 @@ export function resolveImagePath(target, currentDocumentId) {
   let path = target.replace(/^(file:|github:|webdav:)/i, '');
   path = path.replace(/^\.\//, '');
   if (path.startsWith('/')) return path.slice(1);
-  if (path.includes('/')) return path;
+  if (path.includes('/') || !currentDocumentId) return path;
   const lastSlash = currentDocumentId.lastIndexOf('/');
   const dir = lastSlash === -1 ? '' : currentDocumentId.slice(0, lastSlash + 1);
   return dir + path;

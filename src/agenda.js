@@ -402,6 +402,7 @@ function walkHeadings(doc, visit) {
 function getCategoryForDocument(doc, documentId) {
   const categoryKw = (doc.keywords || []).find((kw) => kw.key.toUpperCase() === 'CATEGORY');
   if (categoryKw && categoryKw.value.trim()) return categoryKw.value.trim();
+  if (!documentId) return 'Untitled'; // an unsaved, in-memory-only document has no filename to derive a category from
   const base = String(documentId).split('/').pop().replace(/\.org$/i, '');
   return base || documentId;
 }
