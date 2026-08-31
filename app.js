@@ -3698,7 +3698,9 @@ new MutationObserver(syncContentOffset).observe(topBarEl, { childList: true, sub
 let state = { documentId: null, doc: null, startupConfig: null, storageKind: null, localVariables: null };
 // File menu: whether the panel is open, and if so, which action's
 // backend-choice sub-step is showing (null = the main New/Open/Save/Save
-// As/Export list; otherwise 'open' | 'new' | 'saveas' | 'export').
+// As/Export list; otherwise 'open' | 'saveas' | 'export'). New no longer
+// has a sub-step at all -- it creates an in-memory-only document
+// directly, no backend/destination choice up front.
 let fileMenuOpen = false;
 let fileMenuStep = null;
 // Export sub-flow: which format was picked (null | 'markdown' | 'html'),
@@ -3963,6 +3965,7 @@ function cancelTitleEdit() {
 }
 
 async function persist() {
+  if (!state.documentId) return; // an unsaved, in-memory-only document has no real identity to persist under yet -- see the "New" flow
   await saveDocument({ documentId: state.documentId, doc: state.doc, kvAdapter: kv });
 }
 
@@ -5196,6 +5199,10 @@ function deleteHeadingWithConfirmation(heading) {
   editingListItem = null;
   editingHeadingText = null;
   editingGeneral = null;
+  if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.heading === heading) {
+    keyboardFocusedBodyRow = null;
+    keyboardFocusedCellPos = null;
+  }
   removeHeading(state.doc, heading);
   commitAndRender('Deleted heading');
 }
@@ -7034,6 +7041,16 @@ function setupSidePanelResize() {
 }
 setupSidePanelResize();
 
+function clearStickyTableFocusIfBackgroundTapped(e) {
+  if (e.target !== e.currentTarget) return;
+  if (!keyboardFocusedBodyRow && !keyboardFocusedCellPos) return; // nothing to clear -- avoid a pointless re-render on every ordinary background tap
+  keyboardFocusedBodyRow = null;
+  keyboardFocusedCellPos = null;
+  render();
+}
+outlineEl.addEventListener('click', clearStickyTableFocusIfBackgroundTapped);
+contentAreaEl.addEventListener('click', clearStickyTableFocusIfBackgroundTapped);
+
 function render() {
   updateFilenameDisplay();
   syncSidePanel();
@@ -7216,11 +7233,18 @@ function storageKindLabel(kind) {
  *  state.documentId/storageKind/isDirty to separately remember to update
  *  it) rather than being set ad hoc in half a dozen different places. */
 function updateFilenameDisplay() {
-  if (!state.documentId) {
+  if (!state.doc) {
     filenameEl.textContent = 'No file open';
     filenameEl.style.color = '';
     filenameEl.style.opacity = '';
     filenameEl.style.visibility = '';
+    return;
+  }
+  if (!state.documentId) {
+    filenameEl.textContent = 'Untitled (unsaved)';
+    filenameEl.style.color = '#c0392b';
+    filenameEl.style.opacity = '1';
+    filenameEl.style.visibility = getHideFilenameInMenu(state.localVariables) ? 'hidden' : '';
     return;
   }
   filenameEl.textContent = state.documentId + ' (' + storageKindLabel(state.storageKind) + ')';
@@ -7269,6 +7293,44 @@ async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCach
   renderViewMenu();
   settingsOpen = false;
   closeFileMenu();
+  render();
+}
+
+async function createNewUnsavedDocument() {
+  if (state.doc && !state.documentId) {
+    if (!window.confirm('Discard the current unsaved document? Use Save As first if you want to keep it.')) return;
+  }
+  if (commitTextModeIfActive()) render();
+  const doc = parseOrg('');
+  externalChangeDismissedHash = null;
+  hideExternalChangeBanner();
+  const rawLocalVars = parseLocalVariables(serializeOrg(doc));
+  const startupConfig = resolveEffectiveStartupConfig(doc, rawLocalVars, globalVariables);
+  const localVariables = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
+  const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
+  applyStartupVisibility(doc, startupConfig, archiveVisibility);
+  state = { documentId: null, doc, startupConfig, storageKind: null, localVariables };
+  syncAgendaFilesConfig();
+  const openedText = serializeOrg(doc);
+  history = createHistory(openedText, 'New (unsaved)');
+  historyOpen = false;
+  lastSavedText = null;
+  isDirty = false;
+  currentView = 'org';
+  agendaAnchorDate = new Date();
+  addBtn.disabled = false;
+  viewMenuBtn.disabled = false;
+  searchBtn.disabled = false;
+  captureBtn.disabled = false;
+  moreBtn.disabled = false;
+  searchOpen = false;
+  searchQuery = '';
+  renderSearchPanel();
+  viewMenuOpen = false;
+  renderViewMenu();
+  settingsOpen = false;
+  closeFileMenu();
+  setStatus('New unsaved document \u2014 use Save As to keep it.');
   render();
 }
 
@@ -7581,100 +7643,6 @@ async function openFromWebdav() {
 }
 
 // ---- New ---------------------------------------------------------------
-
-async function newOnFilesystem() {
-  if (commitTextModeIfActive()) render();
-  if (!isFileSystemAccessSupported()) {
-    setStatus('This browser lacks File System Access support.');
-    return;
-  }
-  try {
-    const documentId = await pickAndRegisterNewFile(kv);
-    await markDocumentOpen(kv, documentId);
-    const doc = parseOrg('');
-    await afterDocumentLoaded(documentId, doc, 'filesystem');
-    // Establish real (empty) content on disk right away, rather than
-    // leaving the picked file however the browser happened to create it.
-    setStatus('Creating\u2026');
-    render();
-    await saveAndSync({
-      documentId,
-      doc,
-      kvAdapter: kv,
-      diskAdapter: filesystemAdapter,
-      resolveConflict: ALWAYS_KEEP_MINE,
-    });
-    setStatus('Created.');
-  } catch (err) {
-    if (err.name !== 'AbortError') setStatus('Could not create file: ' + err.message);
-  }
-}
-
-async function newOnGithub() {
-  if (commitTextModeIfActive()) render();
-  const config = await getGithubConfig(kv);
-  githubConfig = config;
-  if (!isGithubConfigured(config)) {
-    setStatus('GitHub is not set up yet \u2014 open Settings first.');
-    closeFileMenu();
-    return;
-  }
-  const path = window.prompt(`Path for the new file in ${config.owner}/${config.repo} (e.g. notes.org):`);
-  if (!path) return;
-  try {
-    if (await githubAdapter.exists(path)) {
-      setStatus(`"${path}" already exists on GitHub \u2014 use Open instead.`);
-      return;
-    }
-    await markDocumentOpen(kv, path);
-    const doc = parseOrg('');
-    await afterDocumentLoaded(path, doc, 'github');
-    setStatus('Creating\u2026');
-    render();
-    await saveAndSync({ documentId: path, doc, kvAdapter: kv, diskAdapter: githubAdapter });
-    setStatus('Created on GitHub.');
-  } catch (err) {
-    setStatus('Could not create file on GitHub: ' + err.message);
-  }
-}
-
-async function newOnWebdav() {
-  if (commitTextModeIfActive()) render();
-  const config = await getWebdavConfig(kv);
-  webdavConfig = config;
-  if (!isWebdavConfigured(config)) {
-    setStatus('WebDAV is not set up yet \u2014 open Settings first.');
-    closeFileMenu();
-    return;
-  }
-  const path = window.prompt('Path for the new file on the WebDAV server (e.g. notes.org):');
-  if (!path) return;
-  try {
-    if (await webdavAdapter.exists(path)) {
-      setStatus(`"${path}" already exists on the server \u2014 use Open instead.`);
-      return;
-    }
-    await markDocumentOpen(kv, path);
-    const doc = parseOrg('');
-    await afterDocumentLoaded(path, doc, 'webdav');
-    setStatus('Creating\u2026');
-    render();
-    await saveAndSync({ documentId: path, doc, kvAdapter: kv, diskAdapter: webdavAdapter });
-    setStatus('Created on WebDAV.');
-  } catch (err) {
-    setStatus('Could not create file on WebDAV: ' + err.message);
-  }
-}
-
-async function newViaImport() {
-  if (commitTextModeIfActive()) render();
-  const name = window.prompt('File name (e.g. notes.org):', 'untitled.org');
-  if (!name) return;
-  const doc = parseOrg('');
-  await markDocumentOpen(kv, name);
-  await afterDocumentLoaded(name, doc, 'input');
-  setStatus('Created \u2014 use Save to download it, then keep it in Files.');
-}
 
 // ---- Save / Save As --------------------------------------------------
 
@@ -8094,8 +8062,9 @@ function renderFileMenuContent() {
   if (fileMenuStep === null) {
     const fileMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).file;
     const newBtn = aliasedMenuDivItem(fileMenuAliases, 'New', () => {
-      fileMenuStep = 'new';
+      fileMenuOpen = false;
       renderFileMenu();
+      createNewUnsavedDocument();
     });
     const openBtn = aliasedMenuDivItem(fileMenuAliases, 'Open', () => {
       fileMenuStep = 'open';
@@ -8154,14 +8123,12 @@ function renderFileMenuContent() {
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '4px';
-  label.textContent =
-    fileMenuStep === 'open' ? 'Open from:' : fileMenuStep === 'new' ? 'New file on:' : 'Save a copy to:';
+  label.textContent = fileMenuStep === 'open' ? 'Open from:' : 'Save a copy to:';
   fileMenuPanel.appendChild(label);
 
   fileMenuPanel.appendChild(
     menuDivItem('GitHub', () => {
       if (fileMenuStep === 'open') openFromGithub();
-      else if (fileMenuStep === 'new') newOnGithub();
       else saveAsGithub();
     })
   );
@@ -8170,7 +8137,6 @@ function renderFileMenuContent() {
     fileMenuPanel.appendChild(
       menuDivItem('Local file', () => {
         if (fileMenuStep === 'open') openFromFilesystem();
-        else if (fileMenuStep === 'new') newOnFilesystem();
         else saveAsFilesystem();
       })
     );
@@ -8180,7 +8146,6 @@ function renderFileMenuContent() {
     fileMenuPanel.appendChild(
       menuDivItem(fileMenuStep === 'open' ? 'Import file\u2026' : 'Local (download)', () => {
         if (fileMenuStep === 'open') openFromImport();
-        else if (fileMenuStep === 'new') newViaImport();
         else saveAsImport();
       })
     );
@@ -8189,7 +8154,6 @@ function renderFileMenuContent() {
   fileMenuPanel.appendChild(
     menuDivItem('WebDAV', () => {
       if (fileMenuStep === 'open') openFromWebdav();
-      else if (fileMenuStep === 'new') newOnWebdav();
       else saveAsWebdav();
     })
   );
@@ -8615,6 +8579,8 @@ function switchToView(view) {
     editingHeadingText = null;
     editingGeneral = null;
     actionMenuFor = null;
+    keyboardFocusedBodyRow = null;
+    keyboardFocusedCellPos = null;
   }
 
   if (view === 'text' && searchOpen) {
