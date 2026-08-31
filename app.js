@@ -8697,13 +8697,53 @@ function isoWeekNumber(date) {
   return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
 }
 
-function formatDayHeader(dateKeyStr, weekNumber = null) {
+function buildDayHeaderRow(dateKeyStr, showWeekNumber) {
   const [y, m, d] = dateKeyStr.split('-').map(Number);
   const date = new Date(y, m - 1, d);
   const isToday = date.toDateString() === new Date().toDateString();
-  const label = date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const withWeek = weekNumber ? `${label} W${weekNumber}` : label;
-  return isToday ? withWeek + ' \u2014 Today' : withWeek;
+  const dayOfWeek = date.getDay(); // 0=Sun..6=Sat
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+  const row = document.createElement('div');
+  row.style.display = 'flex';
+  row.style.alignItems = 'baseline';
+  row.style.gap = '2px';
+  row.style.fontSize = '12px';
+  row.style.fontFamily = 'monospace';
+  row.style.fontWeight = isWeekend ? '700' : '400';
+  row.style.opacity = '0.75';
+  row.style.margin = '10px 0 4px';
+
+  const weekdaySpan = document.createElement('span');
+  weekdaySpan.textContent = date.toLocaleDateString(undefined, { weekday: 'long' });
+  weekdaySpan.style.width = '10ch'; // just past "Wednesday" (9ch), the longest English weekday name -- every day-of-month column lines up underneath it regardless of which weekday is showing. A fixed width, not min-width -- min-width only sets a floor, so if any weekday name's actual rendered width ever exceeded the guessed value on some font/platform, that row's own column would silently grow wider than the rest, misaligning everything after it.
+  weekdaySpan.style.whiteSpace = 'nowrap';
+  row.appendChild(weekdaySpan);
+
+  const daySpan = document.createElement('span');
+  daySpan.textContent = String(d); // right-aligned, never zero-padded -- "1" stays "1", not "01"
+  daySpan.style.width = '2ch';
+  daySpan.style.textAlign = 'right';
+  daySpan.style.whiteSpace = 'nowrap';
+  row.appendChild(daySpan);
+
+  const monthYearSpan = document.createElement('span');
+  monthYearSpan.textContent = ' ' + date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  row.appendChild(monthYearSpan);
+
+  if (showWeekNumber) {
+    const weekSpan = document.createElement('span');
+    weekSpan.textContent = 'W' + isoWeekNumber(date);
+    row.appendChild(weekSpan);
+  }
+
+  if (isToday) {
+    const todaySpan = document.createElement('span');
+    todaySpan.textContent = '\u2014 Today';
+    row.appendChild(todaySpan);
+  }
+
+  return row;
 }
 
 function formatAgendaItemTimeText(item) {
@@ -8722,9 +8762,14 @@ function agendaItemKindLabel(item) {
 
 function formatAgendaRangeLabel(viewType, start, end) {
   const fmt = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  if (viewType === 'day') return fmt(start);
-  if (viewType === 'month') return start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-  return fmt(start) + ' \u2013 ' + fmt(end);
+  if (viewType === 'day') return fmt(start) + ` (W${isoWeekNumber(start)})`;
+  if (viewType === 'month') {
+    const w1 = isoWeekNumber(start);
+    const w2 = isoWeekNumber(end);
+    const weekRange = w1 === w2 ? `W${w1}` : `W${w1}-W${w2}`;
+    return start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) + ` (${weekRange})`;
+  }
+  return fmt(start) + ' \u2013 ' + fmt(end) + ` (W${isoWeekNumber(start)})`;
 }
 
 function renderAgendaView() {
@@ -9063,19 +9108,11 @@ function renderAgendaView() {
   }
 
   for (const day of grouped) {
-    const dayHeader = document.createElement('div');
-    dayHeader.style.fontSize = '12px';
-    dayHeader.style.fontWeight = '700';
-    dayHeader.style.opacity = '0.7';
-    dayHeader.style.margin = '10px 0 4px';
-    const isFirstDayOfWeekView = agendaViewType === 'week' && day === grouped[0];
-    let weekNumber = null;
-    if (isFirstDayOfWeekView) {
-      const [wy, wm, wd] = day.date.split('-').map(Number);
-      weekNumber = isoWeekNumber(new Date(wy, wm - 1, wd));
-    }
-    dayHeader.textContent = formatDayHeader(day.date, weekNumber);
-    container.appendChild(dayHeader);
+    const [wy, wm, wd] = day.date.split('-').map(Number);
+    const dayDate = new Date(wy, wm - 1, wd);
+    const isStartOfWeek = dayDate.getDay() === getAgendaStartOnWeekday(state.localVariables);
+    const showWeekNumber = agendaViewType === 'day' || isStartOfWeek;
+    container.appendChild(buildDayHeaderRow(day.date, showWeekNumber));
 
     if (agendaViewType === 'day') {
       renderDayViewTimeline(day.items);
