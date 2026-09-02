@@ -4815,10 +4815,10 @@ function navigateToHeading(heading, { revealOwnBody = false, targetNode = headin
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     const original = el.style.backgroundColor;
     el.style.transition = 'background-color 1.2s';
-    el.style.backgroundColor = 'rgba(24,95,165,0.15)';
+    el.style.backgroundColor = 'rgba(255,214,0,0.45)';
     setTimeout(() => {
       el.style.backgroundColor = original;
-    }, 2400);
+    }, 5000);
   });
 }
 
@@ -6622,14 +6622,18 @@ function renderTableRow(row) {
             e.preventDefault();
             e.stopPropagation();
             editingCell = null;
+            keyboardFocusedBodyRow = null;
+            keyboardFocusedCellPos = null;
             render();
           }
         });
         input.addEventListener('blur', () => {
+          if (!editingCell) return; // Escape already committed/cleared this and re-rendered -- the DOM removal that follows fires a native blur on this now-detached textarea as a side effect, not a real, separate commit
           const { heading, table, rowIndex: ri, colIndex: ci } = editingCell;
           editingCell = null;
+          keyboardFocusedBodyRow = null;
+          keyboardFocusedCellPos = null;
           setTableCell(heading, table, ri, ci, input.value.replace(/\n/g, ' '));
-          resyncKeyboardFocusToBodyRow(heading, 'table', table.lineIndex);
           commitAndRender('Edited table cell');
         });
         autoGrowTextarea(input);
@@ -7157,13 +7161,42 @@ function render() {
       return;
     }
     outlineEl.innerHTML = '';
+    const toolbar = document.createElement('div');
+    toolbar.className = 'panel-row';
+    toolbar.style.padding = '6px 10px';
+    toolbar.style.borderBottom = '0.5px solid var(--border)';
+    toolbar.appendChild(
+      tableActionButton('Select All', () => {
+        textarea.focus();
+        textarea.select();
+      })
+    );
+    toolbar.appendChild(
+      tableActionButton('Copy All', async () => {
+        try {
+          await navigator.clipboard.writeText(textarea.value);
+          setStatus('Copied to clipboard.');
+        } catch {
+          // navigator.clipboard can fail or be unavailable (a non-secure
+          // context, a browser without support, permission denied) --
+          // fall back to selecting the text so the device's own native
+          // Copy (from the OS selection toolbar that appears) still works,
+          // one step short of fully automatic but never a dead end.
+          textarea.focus();
+          textarea.select();
+          setStatus('Text selected \u2014 use your device\u2019s own Copy.');
+        }
+      })
+    );
+    outlineEl.appendChild(toolbar);
+
     const textarea = document.createElement('textarea');
     textarea.id = 'document-text-edit-input';
     const fullText = serializeOrg(state.doc);
     textarea.value = fullText;
     textarea.style.width = '100%';
     textarea.style.boxSizing = 'border-box';
-    textarea.style.height = VH_UNIT === 'dvh' ? 'calc(100dvh - 160px)' : 'calc(100vh - 160px)';
+    textarea.style.height = VH_UNIT === 'dvh' ? 'calc(100dvh - 204px)' : 'calc(100vh - 204px)';
     textarea.style.font = 'ui-monospace, monospace';
     textarea.style.fontSize = '13px';
     textarea.style.padding = '10px';
@@ -12573,7 +12606,7 @@ function renderCapturePromptForm() {
     }
 
     capturePanel.appendChild(field);
-    if (i === 0) requestAnimationFrame(() => input.focus());
+    if (i === 0) input.focus();
   });
 
   const row = document.createElement('div');

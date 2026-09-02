@@ -6,6 +6,49 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v272 — Navigation highlight, README fixes, and three reported bugs
+- *Navigation highlight* (back/link jumps) switched from a low-opacity
+  blue to a much more visible yellow, and stays visible roughly twice
+  as long — yellow specifically because it's high-luminance enough to
+  read clearly against both light and dark theme backgrounds at once.
+- *Select All / Copy All* buttons added above the Text-mode textarea —
+  selecting or copying a long document via the native mobile
+  drag-handle gesture is painful enough that a one-tap alternative is
+  worth having.
+- *Table-cell highlight logic inverted*, per direct feedback: rather
+  than continuing to patch individual "moved away from this cell"
+  triggers — a pattern that kept resurfacing as broken in some
+  interaction path despite several targeted fixes — the highlight now
+  clears unconditionally the instant a cell stops being actively
+  edited. Testing this surfaced and fixed a real, separate crash in
+  the same code path (Escape's own re-render triggering a native
+  ~blur~ afterward, throwing on an already-null ~editingCell~).
+- *Capture template ~%?~/~%^{Prompt}~ fields now actually receive
+  focus* — an existing focus attempt was deferred one frame too late
+  to count as within the original tap's own user gesture on iOS
+  Safari, so the on-screen keyboard never actually opened despite
+  focus programmatically succeeding.
+- Fixed 10 README rendering bugs (~x~/~y~ with no space around the
+  slash silently fails org's own inline-markup rules and shows as
+  literal tildes) and 4 stale references to the retired bare
+  ~+tag~/~-tag~ search shorthand.
+
+* v270 — Action row, Export, and a recently-opened files list
+- *TODO toggle* moved from the heading action row into the general
+  editor as its own field group (every workflow state as a button,
+  applying through the same CLOSED-timestamp/logbook-aware transition
+  the old toggle used).
+- *Delete restored* as a dedicated action-row button (after Attach,
+  landing symmetrically below Add sub-heading) and *long-press-to-delete
+  removed* — it was producing false-positive delete confirmations,
+  especially on laptop trackpads/mice.
+- *Export and its full submenu flow* moved from the File menu to the
+  More menu.
+- *File menu gained a "Recently opened" list*: persists across
+  sessions, alphabetically sorted for display, excludes whichever file
+  is already open, and a long-press on the label asks to clear it.
+  Tapping an entry reopens it directly for GitHub/WebDAV/local files.
+
 * v271 — Three bug fixes: table selection, Save/Text-view, date validation
 - *Table-cell selection highlight* now clears on any click that isn't a
   table cell — headings, menus, background — one general mechanism
