@@ -51,6 +51,7 @@ import {
 } from './diary-sexp.js';
 import { isOrgWeatherLine, formatWeatherLine, DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
 
+const UNSAVED_DOCUMENT_ID = '\u0000unsaved-new-document';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const REPEATER_RE = /^([.+]{1,2})(\d+)([hdwmy])$/;
 
@@ -402,7 +403,7 @@ function walkHeadings(doc, visit) {
 function getCategoryForDocument(doc, documentId) {
   const categoryKw = (doc.keywords || []).find((kw) => kw.key.toUpperCase() === 'CATEGORY');
   if (categoryKw && categoryKw.value.trim()) return categoryKw.value.trim();
-  if (!documentId) return 'Untitled'; // an unsaved, in-memory-only document has no filename to derive a category from
+  if (!documentId || documentId === UNSAVED_DOCUMENT_ID) return 'Untitled'; // an unsaved, in-memory-only document has no filename to derive a category from
   const base = String(documentId).split('/').pop().replace(/\.org$/i, '');
   return base || documentId;
 }
@@ -1094,6 +1095,7 @@ function buildTaskList(docs, opts = {}) {
 }
 
 export {
+  UNSAVED_DOCUMENT_ID,
   walkHeadings,
   buildAgendaItems,
   buildTaskList,

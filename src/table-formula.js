@@ -252,7 +252,31 @@ function unescapeStringLiteral(tok) {
   return inner.replace(/\\(.)/g, (_, c) => (c === 'n' ? '\n' : c === 't' ? '\t' : c));
 }
 
+const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+function isLeapYear(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+function daysInMonth(year, month) {
+  if (month === 2 && isLeapYear(year)) return 29;
+  return DAYS_IN_MONTH[month - 1];
+}
+
 function dateToDays(year, month, day, hour = 0, minute = 0) {
+  if (month < 1 || month > 12) {
+    throw new Error(`Invalid date: month ${month} is out of range (must be 1-12)`);
+  }
+  const maxDay = daysInMonth(year, month);
+  if (day < 1 || day > maxDay) {
+    throw new Error(`Invalid date: day ${day} is out of range for ${year}-${String(month).padStart(2, '0')} (must be 1-${maxDay})`);
+  }
+  if (hour < 0 || hour > 23) {
+    throw new Error(`Invalid date: hour ${hour} is out of range (must be 0-23)`);
+  }
+  if (minute < 0 || minute > 59) {
+    throw new Error(`Invalid date: minute ${minute} is out of range (must be 0-59)`);
+  }
   return Date.UTC(year, month - 1, day, hour, minute, 0, 0) / 86400000;
 }
 
