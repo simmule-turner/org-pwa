@@ -95,10 +95,10 @@ test('results are in document order', () => {
 
 test('regex mode: a pattern matches text a literal query never could', () => {
   const doc = parseOrg('* A\nCall me at 555-1234 or 555-5678.');
-  const plainResults = searchDocument(doc, '\\d{3}-\\d{4}');
+  const plainResults = searchDocument(doc, '[0-9]\\{3\\}-[0-9]\\{4\\}');
   assert.equal(plainResults.length, 0, 'plain mode treats regex metacharacters as literal text');
 
-  const regexResults = searchDocument(doc, '\\d{3}-\\d{4}', { useRegex: true });
+  const regexResults = searchDocument(doc, '[0-9]\\{3\\}-[0-9]\\{4\\}', { useRegex: true });
   assert.equal(regexResults.length, 1);
 });
 
@@ -120,7 +120,7 @@ test('regex mode is case-insensitive, matching plain mode\u2019s own behavior', 
 
 test('regex mode: an invalid pattern throws a clear, catchable error rather than silently matching nothing', () => {
   const doc = parseOrg('* A\nsome text');
-  assert.throws(() => searchDocument(doc, '(unclosed', { useRegex: true }), /Invalid regex/);
+  assert.throws(() => searchDocument(doc, '\\(unclosed', { useRegex: true }), /Invalid regex/);
 });
 
 test('regex mode: an empty query still returns no results without throwing', () => {
@@ -163,7 +163,7 @@ test('only matching properties produce results, not every property on the headin
 
 test('property search respects regex mode too', () => {
   const doc = parseOrg('* A\n:PROPERTIES:\n:dob: 1965-01-27\n:END:');
-  const results = searchDocument(doc, '\\d{4}-\\d{2}-\\d{2}', { useRegex: true });
+  const results = searchDocument(doc, '[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}', { useRegex: true });
   const propResult = results.find((r) => r.type === 'property');
   assert.ok(propResult);
 });
@@ -392,11 +392,11 @@ test('THE FEATURE: highlight range points at the actual matched substring within
 
 test('THE FEATURE: highlight length in regex mode reflects the ACTUAL matched text, not the pattern string\u2019s own length', () => {
   const doc = parseOrg('* A\nCall 555-123456 for details.');
-  const results = searchDocument(doc, '+\\d{3}-\\d+', { useRegex: true });
+  const results = searchDocument(doc, '+[0-9]\\{3\\}-[0-9]+', { useRegex: true });
   const para = results.find((r) => r.type === 'paragraph');
   const { text, highlightStart, highlightLength } = para.snippet;
   assert.equal(text.slice(highlightStart, highlightStart + highlightLength), '555-123456');
-  assert.notEqual(highlightLength, '\\d{3}-\\d+'.length); // the pattern string itself is a different length than what it actually matched
+  assert.notEqual(highlightLength, '[0-9]\\{3\\}-[0-9]+'.length); // the pattern string itself is a different length than what it actually matched
 });
 
 test('THE FEATURE: a structured tag: filter combines with a keyword term as AND, same as before', () => {
@@ -582,7 +582,7 @@ test('child headings are still independently evaluated and can match on their ow
 
 test('a structured filter combines correctly with a regex-mode keyword term', () => {
   const doc = parseOrg('* A :work:\nCall 555-1234\n* B :work:\nno phone number here');
-  const results = searchDocument(doc, 'tag:work \\d{3}-\\d{4}', { useRegex: true });
+  const results = searchDocument(doc, 'tag:work [0-9]\\{3\\}-[0-9]\\{4\\}', { useRegex: true });
   const headings = results.filter((r) => r.type === 'paragraph').map((r) => r.heading.title);
   assert.deepEqual(headings, ['A']);
 });
