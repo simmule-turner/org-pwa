@@ -6622,8 +6622,6 @@ function renderTableRow(row) {
             e.preventDefault();
             e.stopPropagation();
             editingCell = null;
-            keyboardFocusedBodyRow = null;
-            keyboardFocusedCellPos = null;
             render();
           }
         });
@@ -6631,9 +6629,8 @@ function renderTableRow(row) {
           if (!editingCell) return; // Escape already committed/cleared this and re-rendered -- the DOM removal that follows fires a native blur on this now-detached textarea as a side effect, not a real, separate commit
           const { heading, table, rowIndex: ri, colIndex: ci } = editingCell;
           editingCell = null;
-          keyboardFocusedBodyRow = null;
-          keyboardFocusedCellPos = null;
           setTableCell(heading, table, ri, ci, input.value.replace(/\n/g, ' '));
+          resyncKeyboardFocusToBodyRow(heading, 'table', table.lineIndex);
           commitAndRender('Edited table cell');
         });
         autoGrowTextarea(input);

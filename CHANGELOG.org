@@ -6,6 +6,22 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v273 — Reverted a table-highlight change that broke Shift+arrow
+The previous session's table-highlight fix (v272) cleared a cell's
+keyboard-focus tracking the instant editing ended, chasing down a
+"stays highlighted" complaint — but that's the exact moment Shift+arrow
+table navigation needs that same state to already be intact, since a
+browser can only deliver a keypress to one focused thing at a time (the
+cell's own textarea, while it's focused, or a table-navigation handler,
+once it isn't — never both). Nulling it out right as the textarea blurs
+left Shift+arrow with nothing to navigate from precisely when it's
+normally used, breaking desktop keyboard navigation entirely. Reverted
+that specific piece — a cell stays highlighted after editing again, for
+continued Shift+arrow use — while confirming what was actually correct
+about the original fix still holds: a click landing on anything that
+isn't a table cell at all cleanly removes the highlight, with nothing
+defaulting to a header/first-cell position instead.
+
 * v272 — Navigation highlight, README fixes, and three reported bugs
 - *Navigation highlight* (back/link jumps) switched from a low-opacity
   blue to a much more visible yellow, and stays visible roughly twice
