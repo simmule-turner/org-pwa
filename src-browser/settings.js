@@ -24,6 +24,7 @@ const KEYS = {
   readingWidth: 'settings:readingWidth',
   sidePanelWidth: 'settings:sidePanelWidth',
   lastActiveDocument: 'settings:lastActiveDocument',
+  recentFiles: 'settings:recentFiles',
   captureTemplates: 'settings:captureTemplates',
   globalVariables: 'settings:globalVariables',
 };
@@ -333,6 +334,26 @@ export async function getLastActiveDocument(kvAdapter) {
 
 export async function setLastActiveDocument(kvAdapter, documentId, storageKind) {
   await setJson(kvAdapter, KEYS.lastActiveDocument, documentId ? { documentId, storageKind } : null);
+}
+
+// ---- recently opened files ------------------------------------------------
+
+const RECENT_FILES_STORE_LIMIT = 30;
+
+export async function getRecentFiles(kvAdapter) {
+  return getJson(kvAdapter, KEYS.recentFiles, []);
+}
+
+export async function recordRecentFile(kvAdapter, documentId, storageKind) {
+  if (!documentId || !storageKind) return;
+  const existing = await getRecentFiles(kvAdapter);
+  const deduped = existing.filter((f) => !(f.documentId === documentId && f.storageKind === storageKind));
+  deduped.unshift({ documentId, storageKind, openedAt: Date.now() });
+  await setJson(kvAdapter, KEYS.recentFiles, deduped.slice(0, RECENT_FILES_STORE_LIMIT));
+}
+
+export async function clearRecentFiles(kvAdapter) {
+  await setJson(kvAdapter, KEYS.recentFiles, []);
 }
 
 // ---- capture templates ----------------------------------------------------
