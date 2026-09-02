@@ -45,6 +45,8 @@
  * all driving this particular result).
  */
 
+import { emacsRegexToJs } from './emacs-regex.js';
+
 const SNIPPET_RADIUS = 40;
 
 /** Builds a matcher for `query`: plain mode does a case-insensitive
@@ -60,7 +62,7 @@ function buildMatcher(query, useRegex) {
   }
   let re;
   try {
-    re = new RegExp(query, 'i');
+    re = emacsRegexToJs(query, 'i');
   } catch (err) {
     throw new Error('Invalid regex: ' + err.message);
   }
@@ -90,7 +92,7 @@ function findMatchIndex(text, query, useRegex) {
   }
   let re;
   try {
-    re = new RegExp(query, 'i');
+    re = emacsRegexToJs(query, 'i');
   } catch {
     return { index: -1, length: 0 }; // buildMatcher already threw earlier for an invalid pattern; this is just snippet-building, never reached with a truly invalid one
   }
