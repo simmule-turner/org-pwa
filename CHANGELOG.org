@@ -1,0 +1,81 @@
+#+TITLE: Changelog
+#+STARTUP: overview
+
+Highlights only — the "why", not every line changed. Newest first. Each
+entry is tagged with the service worker cache version it shipped in
+(=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
+direct lookup rather than a guess.
+
+* v271 — Three bug fixes: table selection, Save/Text-view, date validation
+- *Table-cell selection highlight* now clears on any click that isn't a
+  table cell — headings, menus, background — one general mechanism
+  replacing an earlier fix that only caught exact background taps and
+  missed headings/menus entirely.
+- *Saving no longer force-switches out of Text view.* Committing a
+  text-mode edit and switching views were incorrectly coupled together;
+  Save doesn't change documents or views at all, so it shouldn't have
+  been changing either.
+- *Table formula date construction now validates its own components* —
+  month, leap-year-aware day-of-month, hour, minute — instead of
+  silently overflowing through JS's own ~Date.UTC~ behavior.
+  ~date(2026,6,34)~ (or the same date parsed from a raw cell timestamp)
+  now correctly produces ~#ERROR~. Audited the rest of the formula
+  engine for the same class of gap; this was the one real one.
+
+* v269 — New creates a genuinely safe scratch document
+Changed *File → New* to create a document entirely in memory — no file
+picker, no naming prompt, no backend choice up front. *Save As* is what
+actually picks a destination; until then, *Save* stays correctly
+disabled. Every edit is cached locally exactly the same way any other
+open document's edits already are, so a crash or an accidentally-closed
+tab doesn't lose it — reopening the app resumes it from that cache, the
+same prompt any other file's unsynced edits already trigger. This
+reuses the app's own existing offline-cache/crash-recovery mechanism
+directly rather than a separate, weaker one for this one case.
+Surfaced and fixed three related crash bugs along the way
+(=resolveCaptureFileId=, =resolveImagePath=, =resolveArchiveFileId= all
+assumed a document always has a real, non-null identity).
+
+* v267 — Settings was unreachable on a fresh install
+A real lockout bug: on a brand new install, before ever opening a file,
+*Settings* (and therefore GitHub/WebDAV setup, Import Settings) was
+completely unreachable — the *More* button started disabled and only
+re-enabled after a document was already open, but Settings itself
+doesn't need one. Fixed the chicken-and-egg: More is enabled from the
+start; the menu's own per-item logic already correctly disables the
+handful of entries (like History) that do need an open document.
+
+* v266 — Table cell selection had no way to deselect
+After editing a table cell, the cell stayed visibly highlighted with no
+discoverable way to clear it — not tapping elsewhere, not switching
+views, not folding the heading. The persistence itself turned out to
+be deliberate (it's what lets Shift+arrow keep navigating from the same
+cell without re-tapping), so the fix wasn't removing that: tapping empty
+background space anywhere in the outline now deselects it directly.
+
+* v265 — Agenda: hide empty days on the fly
+Added the =g= button to Agenda's own controls row, toggling
+=org-agenda-show-all-dates= for the current session — matching real
+org's own =g= keybinding. Also exposed as a persistent Quick Settings
+default. Found and fixed a real, separate gap while building this:
+Month and Day views had never gotten the "always show every day, even
+empty ones" treatment Week view already had — both were silently
+skipping empty days unconditionally, the opposite of the intended
+default, with no way to turn it off before now.
+
+* v249 – v264 — Search redesign, Agenda overhaul, full-width layout
+A large batch of related work:
+- *Search*: real boolean keyword matching (=+word -word=) against
+  actual document content, matching real org's own =org-search-view=
+  semantics, replacing the old bare =+tag/-tag= shorthand. Match
+  highlighting via safe, XSS-proof DOM nodes rather than =innerHTML=.
+- *Agenda*: time-range timestamp support, category prefixes per item,
+  a real hour-grid Day view, ISO 8601 week numbers in headers and the
+  range label, and a resizable side panel.
+- *Layout*: removed the hard-coded 480px/1100px width caps in favor of
+  full viewport width by default, with an opt-in Reading Width setting
+  for anyone who preferred the narrower column.
+- Numerous Android/iOS-specific fixes: overscroll/scroll-chaining
+  behavior, the modeline hiding behind the on-screen keyboard, and a
+  multi-attempt saga over the back-button glyph that Vanadium's own
+  security hardening kept quietly refusing to render.

@@ -98,6 +98,7 @@ import { decideProgressLogging, decideLogbookEntry, getEffectiveLogDoneSetting, 
 import { parseGlobalVariables, serializeGlobalVariables, mergeGlobalAndLocalVariables } from './src/global-variables.js';
 import { formatStateLogLine, parseLogbookEntries } from './src/logbook.js';
 import {
+  UNSAVED_DOCUMENT_ID,
   buildAgendaItems,
   buildTaskList,
   dayView,
@@ -202,6 +203,9 @@ import {
   importAllSettings,
   getLastActiveDocument,
   setLastActiveDocument,
+  getRecentFiles,
+  recordRecentFile,
+  clearRecentFiles,
   getCaptureTemplates,
   setCaptureTemplates,
   DEFAULT_CAPTURE_TEMPLATES,
@@ -811,7 +815,7 @@ let externalChangeDismissedHash = null;
  *  actual, required safety net this is only trying to surface earlier,
  *  not replace. */
 async function checkForExternalChange() {
-  if (!state.documentId || externalChangeCheckInFlight) return;
+  if (!state.documentId || !state.storageKind || externalChangeCheckInFlight) return;
   if ((state.storageKind === 'github' || state.storageKind === 'webdav') && !navigator.onLine) return;
   externalChangeCheckInFlight = true;
   try {
@@ -2704,8 +2708,6 @@ function closeAllOverlayPanels() {
   if (fileMenuOpen) {
     fileMenuOpen = false;
     fileMenuStep = null;
-    exportFormat = null;
-    exportPickingHeading = false;
     stopBrowsing();
     renderFileMenu();
   }
@@ -2740,6 +2742,9 @@ function closeAllOverlayPanels() {
   }
   if (moreOpen) {
     moreOpen = false;
+    moreMenuStep = null;
+    exportFormat = null;
+    exportPickingHeading = false;
     renderMoreMenu();
   }
   if (historyOpen) {
@@ -3703,6 +3708,7 @@ let state = { documentId: null, doc: null, startupConfig: null, storageKind: nul
 // directly, no backend/destination choice up front.
 let fileMenuOpen = false;
 let fileMenuStep = null;
+let moreMenuStep = null; // null | 'export' -- see renderMoreMenuContent
 // Export sub-flow: which format was picked (null | 'markdown' | 'html'),
 // tracked separately since the export flow has its own two steps
 // (format, then scope) that don't fit the open/new/saveas
@@ -3759,6 +3765,11 @@ let viewMenuOpen = false;
 let agendaViewType = 'week'; // 'day' | 'week' | 'month'
 let agendaAnchorDate = new Date();
 let agendaLogMode = false; // whether LOGBOOK entries (state-change/note timestamps) show alongside SCHEDULED/DEADLINE/etc. -- off by default, matching real org's own org-agenda-log-mode convention exactly (a toggle, not always-on, so daily task-scanning doesn't get cluttered by default)
+
+function suggestedSaveAsName(fallback) {
+  return state.documentId === UNSAVED_DOCUMENT_ID ? fallback : state.documentId || fallback;
+}
+
 let agendaShowAllDatesOverride = null; // null = use the file's own org-agenda-show-all-dates default; true/false once the "g" button has been pressed this session
 let showClockDisplay = false; // org-clock-display: whether each TODO-view item shows its own total clocked time (including its subtree) -- off by default, matching real org's own org-clock-display being an on-demand COMMAND (M-x org-clock-display), not something always shown
 let showClocktable = false; // org-clock-report: whether the TODO view's own clocktable configuration section is expanded -- off by default, same reasoning as showClockDisplay above
@@ -3965,7 +3976,6 @@ function cancelTitleEdit() {
 }
 
 async function persist() {
-  if (!state.documentId) return; // an unsaved, in-memory-only document has no real identity to persist under yet -- see the "New" flow
   await saveDocument({ documentId: state.documentId, doc: state.doc, kvAdapter: kv });
 }
 
@@ -4272,7 +4282,6 @@ function commitTextModeIfActive() {
   // used to destroy cross-document back-navigation the moment a user
   // visited Text view even once, a real, confirmed bug.
   currentContextHeading = null;
-  currentView = 'org';
   const previousHistory = history;
   history = pushSnapshot(history, newText, 'Edited in text mode');
   const changed = history !== previousHistory;
@@ -5065,10 +5074,8 @@ function confirmHeadingDelete(heading) {
 /** Confirms (always -- see confirmHeadingDelete's own docs) and, if
  *  confirmed, deletes `heading` -- clearing any of this app's own
  *  in-progress edit state that might reference it first (editing its
- *  title, a cell/paragraph/list-item within it, etc.), the same
- *  cleanup the previous "X" action-row button already did, now
- *  reachable only via a long-press on the heading's own title instead
- *  of a dedicated button. */
+ *  title, a cell/paragraph/list-item within it, etc.). Reachable via
+ *  the dedicated "Delete heading" action-row button. */
 /** org-cut-subtree (C-c C-x C-w): copies `heading` and its own entire
  *  subtree to the clipboard, matching real org's own actual "cut"
  *  semantics (the kill ring, not just an outright delete -- so the
@@ -5642,6 +5649,71 @@ function buildTagsFieldGroup(heading) {
  *  picker for a rarely-used case. */
 const PRIORITY_LEVELS = ['A', 'B', 'C'];
 
+function buildTodoFieldGroup(heading) {
+  const wrap = document.createElement('div');
+  wrap.style.border = '0.5px solid var(--border-strong)';
+  wrap.style.borderRadius = '8px';
+  wrap.style.padding = '10px';
+  wrap.style.marginBottom = '10px';
+  wrap.style.boxSizing = 'border-box';
+  wrap.style.width = '100%';
+  wrap.style.maxWidth = '100%';
+
+  const header = document.createElement('div');
+  header.textContent = 'TODO state';
+  header.style.fontWeight = '600';
+  header.style.fontSize = '14px';
+  header.style.marginBottom = '10px';
+  wrap.appendChild(header);
+
+  let currentTodo = heading.todo;
+  const sequences = resolveTodoSequences(state.doc, GLOBAL_TODO_DEFAULT);
+  const rowsEl = document.createElement('div');
+  wrap.appendChild(rowsEl);
+
+  function renderRows() {
+    rowsEl.innerHTML = '';
+    const noneRow = document.createElement('div');
+    noneRow.style.display = 'flex';
+    noneRow.style.flexWrap = 'wrap';
+    noneRow.style.gap = '6px';
+    noneRow.style.marginBottom = sequences.length > 0 ? '6px' : '0';
+    const noneBtn = wizardButton('None', () => {
+      currentTodo = null;
+      renderRows();
+    });
+    styleTodoStateButton(noneBtn, !currentTodo);
+    noneRow.appendChild(noneBtn);
+    rowsEl.appendChild(noneRow);
+
+    for (const seq of sequences) {
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.flexWrap = 'wrap';
+      row.style.gap = '6px';
+      row.style.marginBottom = '6px';
+      for (const keyword of [...seq.todoKeywords, ...seq.doneKeywords]) {
+        const btn = wizardButton(keyword, () => {
+          currentTodo = keyword;
+          renderRows();
+        });
+        styleTodoStateButton(btn, keyword === currentTodo);
+        row.appendChild(btn);
+      }
+      rowsEl.appendChild(row);
+    }
+  }
+  renderRows();
+
+  return { container: wrap, getTodo: () => currentTodo };
+}
+
+function styleTodoStateButton(btn, isActive) {
+  btn.style.background = isActive ? 'var(--accent)' : 'transparent';
+  btn.style.color = isActive ? '#fff' : 'var(--fg)';
+  btn.style.border = '1px solid var(--border-strong)';
+}
+
 function buildPriorityFieldGroup(heading) {
   const wrap = document.createElement('div');
   wrap.style.border = '0.5px solid var(--border-strong)';
@@ -5973,13 +6045,8 @@ function renderRow(row, todoSequence) {
       }
       title.onclick = (e) => {
         if (e.target.closest('[data-inline-link]')) return;
-        if (title.dataset.longPressFired) {
-          delete title.dataset.longPressFired;
-          return;
-        }
         toggleActionMenu(row.node);
       };
-      attachLongPress(title, () => deleteHeadingWithConfirmation(row.node));
       el.appendChild(title);
 
       for (const tag of row.node.tags) {
@@ -6052,15 +6119,6 @@ function renderRow(row, todoSequence) {
               },
             },
             {
-              icon: '\u2610',
-              label: row.node.todo ? 'Cycle TODO state' : 'Mark as TODO',
-              onClick: () => {
-                actionMenuFor = null;
-                render();
-                openTodoOrPickWorkflow(row.node);
-              },
-            },
-            {
               icon: isClockRunning(row.node) ? '\u23f9\ufe0f' : '\u25b6\ufe0f',
               label: isClockRunning(row.node) ? 'Clock out' : 'Clock in',
               onClick: () => {
@@ -6092,6 +6150,14 @@ function renderRow(row, todoSequence) {
                 actionMenuFor = null;
                 render();
                 openAttachChoicePrompt(row.node);
+              },
+            },
+            {
+              icon: '\u2715',
+              label: 'Delete heading',
+              onClick: () => {
+                actionMenuFor = null;
+                deleteHeadingWithConfirmation(row.node);
               },
             },
             {
@@ -6163,6 +6229,7 @@ function renderRow(row, todoSequence) {
       generalEditorEl.style.width = '100%';
       generalEditorEl.style.maxWidth = '100%';
 
+      const todoGroup = buildTodoFieldGroup(row.node);
       const scheduledGroup = buildTimestampFieldGroup('SCHEDULED', row.node.planning.scheduled);
       const deadlineGroup = buildTimestampFieldGroup('DEADLINE', row.node.planning.deadline);
       const plainGroup = buildTimestampFieldGroup(
@@ -6172,6 +6239,7 @@ function renderRow(row, todoSequence) {
       const tagsGroup = buildTagsFieldGroup(row.node);
       const priorityGroup = buildPriorityFieldGroup(row.node);
       const propsGroup = buildPropertiesFieldGroup(row.node);
+      generalEditorEl.appendChild(todoGroup.container);
       generalEditorEl.appendChild(scheduledGroup.container);
       generalEditorEl.appendChild(deadlineGroup.container);
       generalEditorEl.appendChild(plainGroup.container);
@@ -6220,6 +6288,9 @@ function renderRow(row, todoSequence) {
         wizardButton('Save', () => {
           const heading = editingGeneral;
           editingGeneral = null;
+          applyTodoTransition(heading, () => {
+            heading.todo = todoGroup.getTodo();
+          });
           heading.planning = {
             scheduled: scheduledGroup.getRawValue(),
             deadline: deadlineGroup.getRawValue(),
@@ -7041,15 +7112,14 @@ function setupSidePanelResize() {
 }
 setupSidePanelResize();
 
-function clearStickyTableFocusIfBackgroundTapped(e) {
-  if (e.target !== e.currentTarget) return;
-  if (!keyboardFocusedBodyRow && !keyboardFocusedCellPos) return; // nothing to clear -- avoid a pointless re-render on every ordinary background tap
+function clearStickyTableFocusIfOutsideTableCell(e) {
+  if (e.target.closest('td')) return;
+  if (!keyboardFocusedBodyRow && !keyboardFocusedCellPos) return; // nothing to clear -- avoid a pointless re-render on every ordinary click
   keyboardFocusedBodyRow = null;
   keyboardFocusedCellPos = null;
   render();
 }
-outlineEl.addEventListener('click', clearStickyTableFocusIfBackgroundTapped);
-contentAreaEl.addEventListener('click', clearStickyTableFocusIfBackgroundTapped);
+document.addEventListener('click', clearStickyTableFocusIfOutsideTableCell);
 
 function render() {
   updateFilenameDisplay();
@@ -7240,7 +7310,7 @@ function updateFilenameDisplay() {
     filenameEl.style.visibility = '';
     return;
   }
-  if (!state.documentId) {
+  if (!state.storageKind) {
     filenameEl.textContent = 'Untitled (unsaved)';
     filenameEl.style.color = '#c0392b';
     filenameEl.style.opacity = '1';
@@ -7279,6 +7349,7 @@ async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCach
   // the only place that actually says what happened.
   isDirty = resumedFromCache;
   await setLastActiveDocument(kv, documentId, storageKind);
+  await recordRecentFile(kv, documentId, storageKind);
   currentView = 'org';
   agendaAnchorDate = new Date();
   addBtn.disabled = false;
@@ -7297,40 +7368,12 @@ async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCach
 }
 
 async function createNewUnsavedDocument() {
-  if (state.doc && !state.documentId) {
+  if (state.doc && !state.storageKind) {
     if (!window.confirm('Discard the current unsaved document? Use Save As first if you want to keep it.')) return;
   }
   if (commitTextModeIfActive()) render();
-  const doc = parseOrg('');
-  externalChangeDismissedHash = null;
-  hideExternalChangeBanner();
-  const rawLocalVars = parseLocalVariables(serializeOrg(doc));
-  const startupConfig = resolveEffectiveStartupConfig(doc, rawLocalVars, globalVariables);
-  const localVariables = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
-  const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
-  applyStartupVisibility(doc, startupConfig, archiveVisibility);
-  state = { documentId: null, doc, startupConfig, storageKind: null, localVariables };
-  syncAgendaFilesConfig();
-  const openedText = serializeOrg(doc);
-  history = createHistory(openedText, 'New (unsaved)');
-  historyOpen = false;
-  lastSavedText = null;
-  isDirty = false;
-  currentView = 'org';
-  agendaAnchorDate = new Date();
-  addBtn.disabled = false;
-  viewMenuBtn.disabled = false;
-  searchBtn.disabled = false;
-  captureBtn.disabled = false;
-  moreBtn.disabled = false;
-  searchOpen = false;
-  searchQuery = '';
-  renderSearchPanel();
-  viewMenuOpen = false;
-  renderViewMenu();
-  settingsOpen = false;
-  closeFileMenu();
-  setStatus('New unsaved document \u2014 use Save As to keep it.');
+  await afterDocumentLoaded(UNSAVED_DOCUMENT_ID, parseOrg(''), null);
+  setStatus('New unsaved document \u2014 edits are cached locally, same as any other document; Save As to keep it for good.');
   render();
 }
 
@@ -7647,7 +7690,7 @@ async function openFromWebdav() {
 // ---- Save / Save As --------------------------------------------------
 
 async function saveCurrent() {
-  if (!state.documentId) return;
+  if (!state.storageKind) return;
   if (commitTextModeIfActive()) render();
   setStatus('Saving\u2026');
   try {
@@ -7703,7 +7746,7 @@ async function saveAsFilesystem() {
     return;
   }
   try {
-    const documentId = await pickAndRegisterNewFile(kv, state.documentId || 'untitled.org');
+    const documentId = await pickAndRegisterNewFile(kv, suggestedSaveAsName('untitled.org'));
     state.documentId = documentId;
     state.storageKind = 'filesystem';
     await markDocumentOpen(kv, documentId);
@@ -7718,6 +7761,7 @@ async function saveAsFilesystem() {
     });
     isDirty = false;
     lastSavedText = serializeOrg(state.doc);
+    await recordRecentFile(kv, documentId, 'filesystem');
     setStatus('Saved as ' + documentId + '.');
     closeFileMenu();
     render();
@@ -7738,7 +7782,7 @@ async function saveAsGithub() {
   }
   const path = window.prompt(
     `Save to which path in ${config.owner}/${config.repo}?`,
-    state.documentId || 'notes.org'
+    suggestedSaveAsName('notes.org')
   );
   if (!path) return;
   try {
@@ -7756,6 +7800,7 @@ async function saveAsGithub() {
     });
     isDirty = false;
     lastSavedText = serializeOrg(state.doc);
+    await recordRecentFile(kv, path, 'github');
     setStatus('Saved to GitHub as ' + path + '.');
     closeFileMenu();
     render();
@@ -7774,7 +7819,7 @@ async function saveAsWebdav() {
     closeFileMenu();
     return;
   }
-  const path = window.prompt('Save to which path on the WebDAV server?', state.documentId || 'notes.org');
+  const path = window.prompt('Save to which path on the WebDAV server?', suggestedSaveAsName('notes.org'));
   if (!path) return;
   try {
     state.documentId = path;
@@ -7791,6 +7836,7 @@ async function saveAsWebdav() {
     });
     isDirty = false;
     lastSavedText = serializeOrg(state.doc);
+    await recordRecentFile(kv, path, 'webdav');
     setStatus('Saved to WebDAV as ' + path + '.');
     closeFileMenu();
     render();
@@ -7802,7 +7848,7 @@ async function saveAsWebdav() {
 async function saveAsImport() {
   if (!state.doc) return;
   if (commitTextModeIfActive()) render();
-  const name = window.prompt('File name to save as:', state.documentId || 'untitled.org');
+  const name = window.prompt('File name to save as:', suggestedSaveAsName('untitled.org'));
   if (!name) return;
   state.documentId = name;
   state.storageKind = 'input';
@@ -7819,6 +7865,7 @@ async function saveAsImport() {
     });
     isDirty = false;
     lastSavedText = serializeOrg(state.doc);
+    await recordRecentFile(kv, name, 'input');
     setStatus('Downloaded as ' + name + '.');
     closeFileMenu();
     render();
@@ -8040,18 +8087,87 @@ function tableActionButton(label, onClick, disabled) {
 function closeFileMenu() {
   fileMenuOpen = false;
   fileMenuStep = null;
-  exportFormat = null;
-  exportPickingHeading = false;
   stopBrowsing();
   renderFileMenu();
 }
 
-function renderFileMenu() {
-  renderFileMenuContent();
+const RECENT_FILES_DISPLAY_LIMIT = 8;
+
+function isCurrentDocument(documentId, storageKind) {
+  return !!state.doc && state.documentId === documentId && state.storageKind === storageKind;
+}
+
+async function renderRecentFilesSection(container) {
+  const stored = await getRecentFiles(kv);
+  const displayed = stored
+    .filter((f) => !isCurrentDocument(f.documentId, f.storageKind))
+    .slice(0, RECENT_FILES_DISPLAY_LIMIT)
+    .sort((a, b) => a.documentId.localeCompare(b.documentId));
+  if (displayed.length === 0) return;
+
+  const sep = document.createElement('div');
+  sep.style.borderTop = '3px double var(--border-strong)';
+  sep.style.margin = '10px 0 6px';
+  container.appendChild(sep);
+
+  const header = document.createElement('div');
+  header.textContent = 'Recently opened';
+  header.style.fontSize = '12px';
+  header.style.opacity = '0.7';
+  header.style.marginBottom = '4px';
+  header.style.padding = '0 4px';
+  container.appendChild(header);
+  attachLongPress(header, () => confirmClearRecentFiles());
+
+  for (const entry of displayed) {
+    container.appendChild(
+      menuDivItem(`${entry.documentId} (${storageKindLabel(entry.storageKind)})`, () => {
+        closeFileMenu();
+        openRecentFile(entry.documentId, entry.storageKind);
+      })
+    );
+  }
+}
+
+/** Confirms (Clear/Cancel, via window.confirm -- the same "always confirms,
+ *  no separate custom dialog" convention every other destructive confirm
+ *  in this app already uses) and, if confirmed, empties the recent-files
+ *  list. Reachable via a long-press on the "Recently opened" label. */
+async function confirmClearRecentFiles() {
+  if (!window.confirm('Clear the recently opened files list?')) return;
+  await clearRecentFiles(kv);
+  renderFileMenu();
+}
+
+/** Opens a recent-files entry directly by its own stored documentId,
+ *  the same way tapping a browsed file or an in-document file: link
+ *  already does (openRemotePath, no re-prompting) -- for GitHub, WebDAV,
+ *  and local filesystem files alike, since filesystem-adapter.js's own
+ *  read() already transparently reuses a previously-granted
+ *  FileSystemFileHandle rather than needing the picker again. An
+ *  imported file (the read-once, no-live-link fallback used where the
+ *  File System Access API isn't available at all, e.g. iOS Safari) has
+ *  no such handle to reuse and genuinely can't be reopened without the
+ *  person re-selecting it themselves -- explained rather than silently
+ *  failing or pretending it opened. */
+async function openRecentFile(documentId, storageKind) {
+  if (storageKind === 'github') {
+    await openRemotePath(documentId, 'github', githubAdapter, 'GitHub');
+  } else if (storageKind === 'webdav') {
+    await openRemotePath(documentId, 'webdav', webdavAdapter, 'WebDAV');
+  } else if (storageKind === 'filesystem') {
+    await openRemotePath(documentId, 'filesystem', filesystemAdapter, 'Local');
+  } else {
+    setStatus(`"${documentId}" was imported from a local file \u2014 use Open to re-select it (this app can't reopen an imported file automatically).`);
+  }
+}
+
+async function renderFileMenu() {
+  await renderFileMenuContent();
   if (fileMenuOpen) positionPopupNearButton(fileMenuPanel, fileMenuBtn);
 }
 
-function renderFileMenuContent() {
+async function renderFileMenuContent() {
   fileMenuPanel.innerHTML = '';
   if (!fileMenuOpen) {
     fileMenuPanel.style.display = 'none';
@@ -8078,7 +8194,7 @@ function renderFileMenuContent() {
         renderFileMenu();
         saveCurrent();
       },
-      !state.documentId
+      !state.storageKind
     );
     const saveAsBtn = aliasedMenuDivItem(
       fileMenuAliases,
@@ -8089,28 +8205,13 @@ function renderFileMenuContent() {
       },
       !state.doc
     );
-    const exportBtn = aliasedMenuDivItem(
-      fileMenuAliases,
-      'Export',
-      () => {
-        fileMenuStep = 'export';
-        exportFormat = null;
-        renderFileMenu();
-      },
-      !state.doc
-    );
     appendMenuButtonsInOrder(fileMenuPanel, fileMenuAliases, [
-      { label: 'Export', btn: exportBtn },
       { label: 'New', btn: newBtn },
       { label: 'Open', btn: openBtn },
       { label: 'Save', btn: saveBtn },
       { label: 'Save As', btn: saveAsBtn },
     ]);
-    return;
-  }
-
-  if (fileMenuStep === 'export') {
-    renderExportFlow();
+    await renderRecentFilesSection(fileMenuPanel);
     return;
   }
 
@@ -8205,7 +8306,7 @@ async function resolveIncludePath(path) {
  *  the file menu and resetting its state back to the top level once
  *  done. */
 async function performExport(format, scope) {
-  const rawName = scope && typeof scope === 'object' ? scope.title : (state.documentId || 'export').replace(/\.[a-zA-Z0-9]+$/, '');
+  const rawName = scope && typeof scope === 'object' ? scope.title : suggestedSaveAsName('export').replace(/\.[a-zA-Z0-9]+$/, '');
   const baseName = rawName.replace(/[\\/:*?"<>|]/g, '_').trim() || 'export';
   if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt') {
     const doc = await expandIncludes(state.doc, resolveIncludePath, parseOrg);
@@ -8223,14 +8324,14 @@ async function performExport(format, scope) {
     const icsScope = scope && typeof scope === 'object' ? scope : null;
     downloadFile(baseName + '.ics', exportToIcalendar(docs, { scope: icsScope }), 'text/calendar');
   }
-  fileMenuOpen = false;
-  fileMenuStep = null;
+  moreOpen = false;
+  moreMenuStep = null;
   exportFormat = null;
   exportPickingHeading = false;
   setStatus(
     `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : 'Calendar (.ics)'}.`
   );
-  renderFileMenu();
+  renderMoreMenu();
   render();
 }
 
@@ -8241,36 +8342,46 @@ function renderExportFlow() {
     label.style.opacity = '0.7';
     label.style.marginBottom = '4px';
     label.textContent = 'Export as:';
-    fileMenuPanel.appendChild(label);
+    morePanel.appendChild(label);
 
     const exportMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).export;
     const asciiBtn = aliasedMenuDivItem(exportMenuAliases, 'ASCII', () => {
       exportFormat = 'ascii';
-      renderFileMenu();
+      renderMoreMenu();
     });
     const icsBtn = aliasedMenuDivItem(exportMenuAliases, 'Calendar (.ics)', () => {
       exportFormat = 'icalendar';
-      renderFileMenu();
+      renderMoreMenu();
     });
     const htmlBtn = aliasedMenuDivItem(exportMenuAliases, 'HTML', () => {
       exportFormat = 'html';
-      renderFileMenu();
+      renderMoreMenu();
     });
     const mdBtn = aliasedMenuDivItem(exportMenuAliases, 'Markdown', () => {
       exportFormat = 'markdown';
-      renderFileMenu();
+      renderMoreMenu();
     });
     const odtBtn = aliasedMenuDivItem(exportMenuAliases, 'ODT', () => {
       exportFormat = 'odt';
-      renderFileMenu();
+      renderMoreMenu();
     });
-    appendMenuButtonsInOrder(fileMenuPanel, exportMenuAliases, [
+    appendMenuButtonsInOrder(morePanel, exportMenuAliases, [
       { label: 'ASCII', btn: asciiBtn },
       { label: 'Calendar (.ics)', btn: icsBtn },
       { label: 'HTML', btn: htmlBtn },
       { label: 'Markdown', btn: mdBtn },
       { label: 'ODT', btn: odtBtn },
     ]);
+    const backRow = document.createElement('div');
+    backRow.className = 'panel-row';
+    backRow.style.marginTop = '6px';
+    backRow.appendChild(
+      menuButton('\u2039 Back', () => {
+        moreMenuStep = null;
+        renderMoreMenu();
+      })
+    );
+    morePanel.appendChild(backRow);
     return;
   }
 
@@ -8280,17 +8391,17 @@ function renderExportFlow() {
     label.style.opacity = '0.7';
     label.style.marginBottom = '4px';
     label.textContent = 'Export Calendar (.ics) for:';
-    fileMenuPanel.appendChild(label);
+    morePanel.appendChild(label);
 
-    fileMenuPanel.appendChild(
+    morePanel.appendChild(
       menuDivItem('Choose a heading\u2026', () => {
         exportPickingHeading = true;
-        renderFileMenu();
+        renderMoreMenu();
       })
     );
-    fileMenuPanel.appendChild(menuDivItem('This file', () => performExport('icalendar', null)));
+    morePanel.appendChild(menuDivItem('This file', () => performExport('icalendar', null)));
     if (agendaFilesConfig.length > 0) {
-      fileMenuPanel.appendChild(
+      morePanel.appendChild(
         menuDivItem('This file + Agenda Files', async () => {
           setStatus('Loading agenda files\u2026');
           await waitForAgendaFilesLoaded();
@@ -8305,10 +8416,10 @@ function renderExportFlow() {
     backRow.appendChild(
       menuButton('\u2039 Back', () => {
         exportFormat = null;
-        renderFileMenu();
+        renderMoreMenu();
       })
     );
-    fileMenuPanel.appendChild(backRow);
+    morePanel.appendChild(backRow);
     return;
   }
 
@@ -8318,7 +8429,7 @@ function renderExportFlow() {
     label.style.opacity = '0.7';
     label.style.marginBottom = '4px';
     label.textContent = 'Choose a heading:';
-    fileMenuPanel.appendChild(label);
+    morePanel.appendChild(label);
 
     const list = document.createElement('div');
     list.style.maxHeight = '260px';
@@ -8343,7 +8454,7 @@ function renderExportFlow() {
       row.onclick = () => performExport(exportFormat, heading);
       list.appendChild(row);
     }
-    fileMenuPanel.appendChild(list);
+    morePanel.appendChild(list);
 
     const backRow = document.createElement('div');
     backRow.className = 'panel-row';
@@ -8351,10 +8462,10 @@ function renderExportFlow() {
     backRow.appendChild(
       menuButton('\u2039 Back', () => {
         exportPickingHeading = false;
-        renderFileMenu();
+        renderMoreMenu();
       })
     );
-    fileMenuPanel.appendChild(backRow);
+    morePanel.appendChild(backRow);
     return;
   }
 
@@ -8363,7 +8474,7 @@ function renderExportFlow() {
   label.style.opacity = '0.7';
   label.style.marginBottom = '4px';
   label.textContent = `Export ${exportFormat === 'ascii' ? 'ASCII' : exportFormat === 'markdown' ? 'Markdown' : exportFormat === 'html' ? 'HTML' : exportFormat === 'odt' ? 'ODT' : 'Calendar (.ics)'} for:`;
-  fileMenuPanel.appendChild(label);
+  morePanel.appendChild(label);
 
   const row = document.createElement('div');
   row.className = 'panel-row';
@@ -8371,16 +8482,16 @@ function renderExportFlow() {
   row.appendChild(
     menuButton('Choose a heading\u2026', () => {
       exportPickingHeading = true;
-      renderFileMenu();
+      renderMoreMenu();
     })
   );
   row.appendChild(
     menuButton('\u2039 Back', () => {
       exportFormat = null;
-      renderFileMenu();
+      renderMoreMenu();
     })
   );
-  fileMenuPanel.appendChild(row);
+  morePanel.appendChild(row);
 }
 
 function stopBrowsing() {
@@ -8529,8 +8640,6 @@ fileMenuBtn.addEventListener('click', () => {
   closeAllOverlayPanels();
   fileMenuOpen = opening;
   fileMenuStep = null;
-  exportFormat = null;
-  exportPickingHeading = false;
   stopBrowsing();
   render();
   renderFileMenu();
@@ -12799,6 +12908,11 @@ function renderMoreMenuContent() {
   }
   morePanel.style.display = 'block';
 
+  if (moreMenuStep === 'export') {
+    renderExportFlow();
+    return;
+  }
+
   const moreMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).more;
 
   const searchBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Search', () => {
@@ -12850,9 +12964,21 @@ function renderMoreMenuContent() {
     settingsBtn.click();
   });
 
+  const exportBtnOption = aliasedMenuDivItem(
+    moreMenuAliases,
+    'Export',
+    () => {
+      moreMenuStep = 'export';
+      exportFormat = null;
+      renderMoreMenu();
+    },
+    !state.doc
+  );
+
   appendMenuButtonsInOrder(morePanel, moreMenuAliases, [
     { label: 'Add Header', btn: addBtnOption },
     { label: 'Capture', btn: captureBtnOption },
+    { label: 'Export', btn: exportBtnOption },
     { label: 'Help', btn: docsBtnOption },
     { label: 'History', btn: historyBtnOption },
     { label: 'Search', btn: searchBtnOption },
