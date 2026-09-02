@@ -696,6 +696,49 @@ test('date($1) - N recedes the date by that many days', () => {
   assert.equal(result[0].cells[1], '<2026-08-15>');
 });
 
+// ---- THE BUG THIS FIXES: date component validation -----------------------
+
+test('THE BUG THIS FIXES: an out-of-range day in a raw cell timestamp errors instead of silently overflowing (June only has 30 days)', () => {
+  const result = recalculateTable(mkTable('$2 = date($1)', [['<2026-06-34>', '']]));
+  assert.equal(result[0].cells[1], '#ERROR');
+});
+
+test('THE BUG THIS FIXES: date(Y,M,D) with an out-of-range day errors the same way', () => {
+  const result = recalculateTable(mkTable('$1 = date(2026,6,34)', [['']]));
+  assert.equal(result[0].cells[0], '#ERROR');
+});
+
+test('THE BUG THIS FIXES: date(Y,M,D) with an out-of-range month errors', () => {
+  const result = recalculateTable(mkTable('$1 = date(2026,13,1)', [['']]));
+  assert.equal(result[0].cells[0], '#ERROR');
+});
+
+test('THE BUG THIS FIXES: a valid date still computes normally (no false positives)', () => {
+  const result = recalculateTable(mkTable('$2 = date($1)', [['<2026-06-30>', '']])); // June's own actual last day
+  assert.equal(result[0].cells[1], '<2026-06-30>');
+});
+
+test('THE BUG THIS FIXES: Feb 29 is correctly rejected in a non-leap year but accepted in a real one', () => {
+  const nonLeap = recalculateTable(mkTable('$1 = date(2026,2,29)', [['']])); // 2026 is not a leap year
+  assert.equal(nonLeap[0].cells[0], '#ERROR');
+  const leap = recalculateTable(mkTable('$1 = date(2028,2,29)', [['']])); // 2028 is a leap year
+  assert.equal(leap[0].cells[0], '<2028-02-29>');
+  const century = recalculateTable(mkTable('$1 = date(2100,2,29)', [['']])); // divisible by 100 but not 400 -- not a leap year
+  assert.equal(century[0].cells[0], '#ERROR');
+});
+
+test('THE BUG THIS FIXES: an out-of-range hour or minute in a raw cell timestamp errors', () => {
+  const badHour = recalculateTable(mkTable('$2 = date($1)', [['<2026-06-15 25:00>', '']]));
+  assert.equal(badHour[0].cells[1], '#ERROR');
+  const badMinute = recalculateTable(mkTable('$2 = date($1)', [['<2026-06-15 12:99>', '']]));
+  assert.equal(badMinute[0].cells[1], '#ERROR');
+});
+
+test('legitimate date arithmetic that rolls over a month boundary is unaffected by the validation fix -- this is genuinely different from constructing an invalid date', () => {
+  const result = recalculateTable(mkTable('$1 = date(2026,6,15)+30', [['']]));
+  assert.equal(result[0].cells[0], '<2026-07-15>');
+});
+
 test('THE EXACT REQUEST: raw HMS duration output -- date($2) - date($1) with EITHER side having a time component defaults to Calc\u2019s own actual "H@ M\u2019 S\\"" notation instead of a plain number', () => {
   const result = recalculateTable(mkTable('$3 = date($2) - date($1)', [['<2026-08-25 08:00>', '<2026-08-25 16:30>', '']]));
   assert.equal(result[0].cells[2], `8@ 30' 0"`);

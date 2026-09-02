@@ -20,6 +20,9 @@ import {
   setTablesFontSize,
   exportAllSettings,
   importAllSettings,
+  getRecentFiles,
+  recordRecentFile,
+  clearRecentFiles,
   DEFAULT_THEME,
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONT_SIZE,
@@ -250,4 +253,73 @@ test('setDocsViewState then getDocsViewState round-trips', async () => {
   const kv = createInMemoryAdapter();
   await setDocsViewState(kv, { scrollTop: 400, collapsedPaths: ['Export', 'Export/ODT'] });
   assert.deepEqual(await getDocsViewState(kv), { scrollTop: 400, collapsedPaths: ['Export', 'Export/ODT'] });
+});
+
+// ---- recently opened files -------------------------------------------------
+
+test('getRecentFiles defaults to an empty array -- nothing opened yet', async () => {
+  const kv = createInMemoryAdapter();
+  assert.deepEqual(await getRecentFiles(kv), []);
+});
+
+test('recordRecentFile then getRecentFiles round-trips, most recent first', async () => {
+  const kv = createInMemoryAdapter();
+  await recordRecentFile(kv, 'notes.org', 'github');
+  await recordRecentFile(kv, 'journal.org', 'webdav');
+  const recent = await getRecentFiles(kv);
+  assert.equal(recent.length, 2);
+  assert.equal(recent[0].documentId, 'journal.org');
+  assert.equal(recent[0].storageKind, 'webdav');
+  assert.equal(recent[1].documentId, 'notes.org');
+  assert.ok(typeof recent[0].openedAt === 'number');
+});
+
+test('THE FEATURE: re-opening the same file moves it to the front rather than duplicating it', async () => {
+  const kv = createInMemoryAdapter();
+  await recordRecentFile(kv, 'a.org', 'github');
+  await recordRecentFile(kv, 'b.org', 'github');
+  await recordRecentFile(kv, 'a.org', 'github');
+  const recent = await getRecentFiles(kv);
+  assert.equal(recent.length, 2);
+  assert.equal(recent[0].documentId, 'a.org');
+  assert.equal(recent[1].documentId, 'b.org');
+});
+
+test('THE FEATURE: the same documentId on a different backend is tracked as a distinct entry', async () => {
+  const kv = createInMemoryAdapter();
+  await recordRecentFile(kv, 'notes.org', 'github');
+  await recordRecentFile(kv, 'notes.org', 'webdav');
+  const recent = await getRecentFiles(kv);
+  assert.equal(recent.length, 2);
+});
+
+test('THE FEATURE: an unsaved document (no storageKind) is never recorded', async () => {
+  const kv = createInMemoryAdapter();
+  await recordRecentFile(kv, '\u0000unsaved-new-document', null);
+  assert.deepEqual(await getRecentFiles(kv), []);
+});
+
+test('THE FEATURE: a blank documentId is never recorded', async () => {
+  const kv = createInMemoryAdapter();
+  await recordRecentFile(kv, null, 'github');
+  await recordRecentFile(kv, '', 'github');
+  assert.deepEqual(await getRecentFiles(kv), []);
+});
+
+test('THE FEATURE: the stored list is capped, oldest entries dropped first', async () => {
+  const kv = createInMemoryAdapter();
+  for (let i = 0; i < 35; i++) {
+    await recordRecentFile(kv, `file${i}.org`, 'github');
+  }
+  const recent = await getRecentFiles(kv);
+  assert.ok(recent.length <= 30, `expected the stored list capped at 30, got ${recent.length}`);
+  assert.equal(recent[0].documentId, 'file34.org'); // most recent survives
+  assert.ok(!recent.some((f) => f.documentId === 'file0.org')); // oldest was evicted
+});
+
+test('clearRecentFiles empties the list', async () => {
+  const kv = createInMemoryAdapter();
+  await recordRecentFile(kv, 'notes.org', 'github');
+  await clearRecentFiles(kv);
+  assert.deepEqual(await getRecentFiles(kv), []);
 });

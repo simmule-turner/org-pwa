@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
 import {
+  UNSAVED_DOCUMENT_ID,
   buildAgendaItems,
   buildTaskList,
   itemsForDate,
@@ -247,6 +248,12 @@ test('THE FEATURE: category falls back to the filename, sans path and .org exten
   const doc = parseOrg(['* TODO Buy milk', 'SCHEDULED: <2026-08-31 Mon>'].join('\n'));
   const items = buildAgendaItems([{ documentId: 'notes/test.org', doc }]);
   assert.equal(items[0].category, 'test');
+});
+
+test('THE FEATURE: the unsaved-document sentinel produces "Untitled", not the raw sentinel string', () => {
+  const doc = parseOrg(['* TODO Buy milk', 'SCHEDULED: <2026-08-31 Mon>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: UNSAVED_DOCUMENT_ID, doc }]);
+  assert.equal(items[0].category, 'Untitled');
 });
 
 test('THE FEATURE: an explicit #+CATEGORY: keyword overrides the filename fallback', () => {
