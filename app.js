@@ -46,6 +46,8 @@ import { parseInline, stripLineBreakMarker, IMAGE_EXT_RE, extractLatexFragments 
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, toggleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
 import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
 import { searchDocument, searchDocuments } from './src/search.js';
+import { createQueryReplace } from './src/query-replace.js';
+import { emacsRegexToJs, EmacsRegexError } from './src/emacs-regex.js';
 import { applyStartupVisibility, cycleFoldLevel } from './src/fold-state.js';
 import { parseStartupConfig, resolveEffectiveStartupConfig, VISIBILITY_KEYWORDS } from './src/startup-config.js';
 import {
@@ -3544,6 +3546,32 @@ document.addEventListener('pointerdown', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
+  if (activeQueryReplace) {
+    const { controller } = activeQueryReplace;
+    if (e.key === 'y' || e.key === ' ') {
+      e.preventDefault();
+      controller.replace();
+      renderSearchPanel();
+    } else if (e.key === 'n' || e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      controller.skip();
+      renderSearchPanel();
+    } else if (e.key === '.') {
+      e.preventDefault();
+      controller.replace();
+      finishQueryReplace();
+    } else if (e.key === '!') {
+      e.preventDefault();
+      controller.replaceAll();
+      finishQueryReplace();
+    } else if (e.key === 'q' || e.key === 'Enter' || e.key === 'Escape') {
+      e.preventDefault();
+      controller.quit();
+      finishQueryReplace();
+    }
+    return;
+  }
+
   const activeTag = document.activeElement && document.activeElement.tagName;
   if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return; // never hijack actual typing; each field's own keydown handler (Escape to cancel, etc.) already owns this
 
@@ -3757,6 +3785,7 @@ let capturePromptValues = [];
 let moreOpen = false;
 let searchQuery = '';
 let searchUseRegex = false; // deliberately NOT reset when the search panel closes, unlike searchQuery -- this is a mode preference, not a one-off query value
+let activeQueryReplace = null; // { controller, replacementText, findPattern } while a replace walk is in progress, else null
 let viewMenuOpen = false;
 // Agenda view state: which grouping is active, and the anchor date that
 // grouping is centered/started on — prev/next navigation moves this
@@ -12187,6 +12216,12 @@ const SEARCH_TYPE_ICON = {
   planning: '\ud83d\udcc5',
 };
 
+function buildQueryReplacePattern(query, useRegex) {
+  if (useRegex) return emacsRegexToJs(query, 'gi');
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(escaped, 'gi');
+}
+
 function renderMinibufferSearch() {
   minibufferSearchEl.innerHTML = '';
   minibufferSearchEl.style.display = 'flex';
@@ -12217,6 +12252,8 @@ function renderMinibufferSearch() {
   input.addEventListener('input', () => {
     searchQuery = input.value;
     renderSearchResults();
+    replaceBtn.disabled = searchQuery.trim() === '';
+    replaceBtn.style.opacity = replaceBtn.disabled ? '0.4' : '1';
   });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') e.preventDefault(); // a search query is one line; results already update live
@@ -12250,7 +12287,60 @@ function renderMinibufferSearch() {
   };
   minibufferSearchEl.appendChild(regexToggle);
 
+  const replaceBtn = document.createElement('button');
+  replaceBtn.textContent = 'Replace';
+  replaceBtn.style.fontFamily = 'monospace';
+  replaceBtn.style.fontSize = '13px';
+  replaceBtn.style.fontWeight = '700';
+  replaceBtn.style.padding = '3px 9px';
+  replaceBtn.style.borderRadius = '12px';
+  replaceBtn.style.border = '1px solid var(--border-strong)';
+  replaceBtn.style.background = 'transparent';
+  replaceBtn.style.color = 'var(--fg)';
+  replaceBtn.style.flexShrink = '0';
+  replaceBtn.disabled = searchQuery.trim() === '';
+  replaceBtn.style.opacity = replaceBtn.disabled ? '0.4' : '1';
+  replaceBtn.onclick = () => startQueryReplace();
+  minibufferSearchEl.appendChild(replaceBtn);
+
   input.focus();
+}
+
+/** Starts an Emacs-style query-replace walk over the CURRENT document
+ *  only (not cross-file agenda-file results -- writing to several
+ *  different documents' own backends in one walk is a substantially
+ *  bigger, riskier undertaking than this first version takes on),
+ *  using the search box's own current query as the find pattern.
+ *  Restricted to node types with a safe, existing setter -- heading
+ *  titles, paragraphs, list items, table cells -- structured fields
+ *  (tags, TODO state, priority, properties, planning timestamps) and
+ *  block content are silently skipped, never offered as a match at
+ *  all, since blind text substitution into those risks corrupting the
+ *  document's own syntax rather than just its content. */
+function startQueryReplace() {
+  if (!state.doc || searchQuery.trim() === '') return;
+  let pattern;
+  try {
+    pattern = buildQueryReplacePattern(searchQuery, searchUseRegex);
+  } catch (err) {
+    const message = err instanceof EmacsRegexError ? err.message : String(err.message || err);
+    setStatus('Invalid regex: ' + message);
+    return;
+  }
+  const replacementText = window.prompt(`Query replace "${searchQuery}" with:`, '');
+  if (replacementText === null) return; // cancelled
+  const controller = createQueryReplace(state.doc, pattern, replacementText);
+  activeQueryReplace = { controller, replacementText, findPattern: searchQuery };
+  renderSearchPanel();
+}
+
+function finishQueryReplace() {
+  const count = activeQueryReplace.controller.replacedCount();
+  activeQueryReplace = null;
+  const label = count > 0 ? 'Query-replaced ' + count + ' occurrence' + (count === 1 ? '' : 's') + '.' : 'Query-replace: nothing changed.';
+  commitAndRender('Query-replaced ' + count + ' occurrence' + (count === 1 ? '' : 's'));
+  setStatus(label);
+  renderSearchPanel();
 }
 
 function renderSearchPanel() {
@@ -12258,6 +12348,12 @@ function renderSearchPanel() {
   searchPanel.innerHTML = '';
   if (!searchOpen) {
     searchPanel.style.display = 'none';
+    if (activeQueryReplace) finishQueryReplace();
+    return;
+  }
+
+  if (activeQueryReplace) {
+    renderQueryReplacePrompt();
     return;
   }
 
@@ -12269,6 +12365,88 @@ function renderSearchPanel() {
   searchPanel.appendChild(resultsEl);
 
   renderSearchResults();
+}
+
+function renderQueryReplacePrompt() {
+  searchPanel.style.display = 'block';
+  const { controller, replacementText } = activeQueryReplace;
+  const c = controller.current();
+  if (!c) {
+    finishQueryReplace();
+    return;
+  }
+  const { target, match, text } = c;
+
+  const wrap = document.createElement('div');
+  wrap.style.padding = '8px';
+
+  const context = document.createElement('div');
+  context.style.fontFamily = 'ui-monospace, monospace';
+  context.style.fontSize = '13px';
+  context.style.padding = '6px 8px';
+  context.style.border = '1px solid var(--border)';
+  context.style.borderRadius = '4px';
+  context.style.marginBottom = '6px';
+  context.style.overflowWrap = 'break-word';
+  const radius = 40;
+  const start = Math.max(0, match.index - radius);
+  const end = Math.min(text.length, match.index + match[0].length + radius);
+  context.appendChild(document.createTextNode((start > 0 ? '\u2026' : '') + text.slice(start, match.index)));
+  const mark = document.createElement('mark');
+  mark.textContent = match[0] || '\u2205'; // empty-set symbol so a genuinely zero-length match isn't invisible
+  context.appendChild(mark);
+  context.appendChild(document.createTextNode(text.slice(match.index + match[0].length, end) + (end < text.length ? '\u2026' : '')));
+  wrap.appendChild(context);
+
+  const label = document.createElement('div');
+  label.style.fontSize = '12px';
+  label.style.opacity = '0.7';
+  label.style.marginBottom = '8px';
+  label.textContent = `${target.label} in "${target.heading.title || '(untitled)'}" \u2014 replace with "${replacementText}"?`;
+  wrap.appendChild(label);
+
+  const prompt = document.createElement('div');
+  prompt.style.fontFamily = 'ui-monospace, monospace';
+  prompt.style.fontSize = '14px';
+  prompt.style.marginBottom = '8px';
+  prompt.textContent = 'Query replace (y, n, q, ., !): ';
+  wrap.appendChild(prompt);
+
+  const row = document.createElement('div');
+  row.className = 'panel-row';
+  row.appendChild(
+    tableActionButton('y \u2014 replace', () => {
+      controller.replace();
+      renderSearchPanel();
+    })
+  );
+  row.appendChild(
+    tableActionButton('n \u2014 skip', () => {
+      controller.skip();
+      renderSearchPanel();
+    })
+  );
+  row.appendChild(
+    tableActionButton('. \u2014 replace & stop', () => {
+      controller.replace();
+      finishQueryReplace();
+    })
+  );
+  row.appendChild(
+    tableActionButton('! \u2014 replace all', () => {
+      controller.replaceAll();
+      finishQueryReplace();
+    })
+  );
+  row.appendChild(
+    tableActionButton('q \u2014 quit', () => {
+      controller.quit();
+      finishQueryReplace();
+    })
+  );
+  wrap.appendChild(row);
+
+  searchPanel.appendChild(wrap);
 }
 
 function appendSnippetWithHighlight(container, snippet) {

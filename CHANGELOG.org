@@ -6,6 +6,39 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v276 — Search and replace, Emacs-style
+New *Replace* button next to Regex starts a real ~query-replace~/
+~query-replace-regexp~ walk over the current document, using the same
+minibuffer prompt vocabulary real Emacs uses: ~y~/Space replaces,
+~n~/Delete skips, ~q~/Return stops, ~.~ replaces once then stops, ~!~
+replaces everything remaining with no further asking. New
+=src/query-replace.js= engine, restricted to text that can be safely
+written back — heading titles, paragraphs, list items, table cells —
+deliberately excluding tags, TODO state, priority, properties,
+timestamps, and block content, since blind substitution into any of
+those risks corrupting the document's own syntax rather than just its
+content. Found and fixed two real bugs while building this: replacements
+were initially silent no-ops (a variable mix-up), and multiple matches
+within the same paragraph/cell weren't all being found, since a stale
+node reference lingered past the point where the underlying edit
+functions re-parse that heading's own body.
+
+* v275 — Search's regex mode now uses real Emacs regex syntax
+New =src/emacs-regex.js= module, written from scratch, converts Emacs's
+own regex dialect to native JS RegExp. The single biggest practical
+difference from raw JS regex: an unescaped ~( ) { } |~ is literal text
+in Emacs syntax, not a special character — grouping needs ~\( \)~,
+alternation needs ~\|~, interval counts need ~\{n,m\}~ — which is
+exactly what makes an ordinary phrase containing parentheses "just
+work" without escaping. Also supports backreferences, word/symbol
+boundaries, POSIX character classes, and whole-string anchors distinct
+from line-anchored ~^~/~$~; throws a specific, named error for the
+handful of constructs that depend on a live buffer's own syntax table
+and have no real equivalent here, rather than silently miscompiling
+them. Wired into Search's existing regex-mode toggle. Search-and-replace
+with an Emacs-style minibuffer prompt remains a separate, larger piece
+not yet built.
+
 * v274 — The actual table-highlight bug, found from a screenshot
 Tapping a table cell sets keyboard focus to three things together: the
 cell's own outline, the table row, and — separately — the table's own
