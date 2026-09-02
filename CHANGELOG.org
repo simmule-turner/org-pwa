@@ -6,6 +6,21 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v274 — The actual table-highlight bug, found from a screenshot
+Tapping a table cell sets keyboard focus to three things together: the
+cell's own outline, the table row, and — separately — the table's own
+containing heading. Tapping a completely different heading's title,
+though, only ever toggled its action menu; it never touched that third
+piece at all, so it stayed silently pointed at the table's heading,
+masked until something later cleared the table-row state — at which
+point that stale, wrong heading became visible as a highlight nobody
+had actually asked for. Fixed at the source: a heading tap now
+correctly claims keyboard focus for itself, the same way every other
+tappable row already does, and clicking genuinely empty space now
+clears the heading-level state too, not just the table-cell piece.
+Re-confirmed Shift+arrow table navigation is still intact — the exact
+thing an earlier attempt at this same underlying bug broke.
+
 * v273 — Reverted a table-highlight change that broke Shift+arrow
 The previous session's table-highlight fix (v272) cleared a cell's
 keyboard-focus tracking the instant editing ended, chasing down a

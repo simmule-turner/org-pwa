@@ -6045,6 +6045,7 @@ function renderRow(row, todoSequence) {
       }
       title.onclick = (e) => {
         if (e.target.closest('[data-inline-link]')) return;
+        setKeyboardFocusToRow(row);
         toggleActionMenu(row.node);
       };
       el.appendChild(title);
@@ -7113,14 +7114,22 @@ function setupSidePanelResize() {
 }
 setupSidePanelResize();
 
-function clearStickyTableFocusIfOutsideTableCell(e) {
-  if (e.target.closest('td')) return;
-  if (!keyboardFocusedBodyRow && !keyboardFocusedCellPos) return; // nothing to clear -- avoid a pointless re-render on every ordinary click
-  keyboardFocusedBodyRow = null;
-  keyboardFocusedCellPos = null;
-  render();
+function clearStaleKeyboardFocusIfClickedElsewhere(e) {
+  const onCell = !!e.target.closest('td');
+  const onHeadingTitle = !!e.target.closest('.heading-title');
+  let changed = false;
+  if (!onCell && (keyboardFocusedBodyRow || keyboardFocusedCellPos)) {
+    keyboardFocusedBodyRow = null;
+    keyboardFocusedCellPos = null;
+    changed = true;
+  }
+  if (!onCell && !onHeadingTitle && keyboardFocusedHeading) {
+    keyboardFocusedHeading = null;
+    changed = true;
+  }
+  if (changed) render(); // avoid a pointless re-render on every ordinary click that has nothing to clear
 }
-document.addEventListener('click', clearStickyTableFocusIfOutsideTableCell);
+document.addEventListener('click', clearStaleKeyboardFocusIfClickedElsewhere);
 
 function render() {
   updateFilenameDisplay();
