@@ -6,6 +6,32 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v285 — Standardized touch-target sizing across every list row
+Prompted by Export and Refile's own heading pickers being reported too
+small on mobile — a full audit turned up two separate problems.
+Refile's own heading list and Export's "Choose a heading" list were
+both using a CSS class meant for horizontal button groups as a bare
+clickable row, with zero padding and no minimum height at all — a
+genuine bug. History, Agenda, the TODO view, and the file browser each
+had their own small, inconsistent padding with no shared floor, unlike
+the Extras menu and Search, which already guaranteed a real 44px
+minimum. Every one of these now shares that same consistent sizing.
+Also restructured Export's ASCII/Markdown/HTML/ODT picker (previously
+three small buttons crammed into a wrapping row) to match Calendar
+export's own better, full-width stacked layout.
+
+* v284 — Fixed: delete confirmations visually recommended the wrong button
+The keyboard-focus mechanism from the earlier "Cancel is the default"
+fix (Cancel focused, Enter cancels) was correct, but provided zero
+benefit on this app's primary interface — a touch device has no
+visible focus indicator at all. Visually, both buttons looked like the
+same weight of plain button except the destructive one was colored
+red, which draws the eye and reads as "the one to tap." Cancel is now
+the filled, high-contrast button — the one that visually reads as the
+recommended choice on sight — while the destructive option is plain
+and unfilled, red text only: still clearly marked as dangerous, never
+visually competing with Cancel for attention.
+
 * v283 — Multiple documents, tab-bar style
 The largest architectural change this app has taken on. Rather than
 threading a "which document" parameter through the thousands of

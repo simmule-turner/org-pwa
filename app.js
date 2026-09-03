@@ -966,11 +966,7 @@ function renderRefilePanel() {
   }
   for (const candidate of pendingRefile.candidates) {
     const row = document.createElement('div');
-    row.className = 'panel-row';
-    row.style.cursor = 'pointer';
-    row.style.fontSize = '14px';
-    row.style.flexDirection = 'column';
-    row.style.alignItems = 'flex-start';
+    row.className = 'menu-list-item';
     const pathEl = document.createElement('div');
     pathEl.textContent = candidate.outlinePath.join(' / ');
     row.appendChild(pathEl);
@@ -978,6 +974,7 @@ function renderRefilePanel() {
       const fileEl = document.createElement('div');
       fileEl.style.fontSize = '11px';
       fileEl.style.opacity = '0.6';
+      fileEl.style.marginTop = '2px';
       fileEl.textContent = candidate.documentId;
       row.appendChild(fileEl);
     }
@@ -4503,8 +4500,7 @@ function renderHistoryPanel() {
 
   history.entries.forEach((entry, idx) => {
     const row = document.createElement('div');
-    row.style.padding = '6px 4px';
-    row.style.borderBottom = '1px solid var(--border)';
+    row.className = 'menu-list-item';
     row.style.cursor = 'pointer';
     row.style.opacity = idx > history.index ? '0.55' : '1'; // "future" (redo-available) entries shown dimmer
 
@@ -8560,7 +8556,18 @@ function confirmDialog(message, { confirmLabel = 'Delete', cancelLabel = 'Cancel
 
     const cancelBtn = tableActionButton(cancelLabel, () => finish(false));
     const confirmBtn = tableActionButton(confirmLabel, () => finish(true));
+    // Cancel is the one that should visually read as "the recommended
+    // choice" on sight -- filled, high-contrast -- since on a touch
+    // device there's no visible keyboard-focus indicator to lean on at
+    // all, unlike desktop. The destructive button stays plain and
+    // unfilled: clearly marked as dangerous via color, but never
+    // visually competing with Cancel for "the one to tap."
+    cancelBtn.style.background = 'var(--accent)';
+    cancelBtn.style.color = '#fff';
+    cancelBtn.style.borderColor = 'var(--accent)';
+    cancelBtn.style.fontWeight = '600';
     if (danger) {
+      confirmBtn.style.background = 'transparent';
       confirmBtn.style.color = 'var(--danger, #d33)';
       confirmBtn.style.borderColor = 'var(--danger, #d33)';
     }
@@ -8968,10 +8975,8 @@ function renderExportFlow() {
     }
     for (const { heading, depth } of headings) {
       const row = document.createElement('div');
-      row.className = 'panel-row';
-      row.style.paddingLeft = 8 + depth * 16 + 'px';
-      row.style.cursor = 'pointer';
-      row.style.fontSize = '14px';
+      row.className = 'menu-list-item';
+      row.style.paddingLeft = 14 + depth * 16 + 'px';
       row.textContent = heading.title || '(untitled)';
       row.onclick = () => performExport(exportFormat, heading);
       list.appendChild(row);
@@ -8998,22 +9003,24 @@ function renderExportFlow() {
   label.textContent = `Export ${exportFormat === 'ascii' ? 'ASCII' : exportFormat === 'markdown' ? 'Markdown' : exportFormat === 'html' ? 'HTML' : exportFormat === 'odt' ? 'ODT' : 'Calendar (.ics)'} for:`;
   morePanel.appendChild(label);
 
-  const row = document.createElement('div');
-  row.className = 'panel-row';
-  row.appendChild(menuButton('This file', () => performExport(exportFormat, null)));
-  row.appendChild(
-    menuButton('Choose a heading\u2026', () => {
+  morePanel.appendChild(
+    menuDivItem('Choose a heading\u2026', () => {
       exportPickingHeading = true;
       renderMoreMenu();
     })
   );
-  row.appendChild(
+  morePanel.appendChild(menuDivItem('This file', () => performExport(exportFormat, null)));
+
+  const backRow = document.createElement('div');
+  backRow.className = 'panel-row';
+  backRow.style.marginTop = '6px';
+  backRow.appendChild(
     menuButton('\u2039 Back', () => {
       exportFormat = null;
       renderMoreMenu();
     })
   );
-  morePanel.appendChild(row);
+  morePanel.appendChild(backRow);
 }
 
 function stopBrowsing() {
@@ -9097,8 +9104,10 @@ function renderFileBrowser() {
       row.style.alignItems = 'center';
       row.style.gap = '8px';
       row.style.width = '100%';
+      row.style.boxSizing = 'border-box';
+      row.style.minHeight = '44px';
       row.style.textAlign = 'left';
-      row.style.padding = '8px 4px';
+      row.style.padding = '12px 14px';
       row.style.border = 'none';
       row.style.borderBottom = '1px solid var(--border)';
       row.style.background = 'transparent';
@@ -9580,11 +9589,10 @@ function renderAgendaView() {
 
   function buildAgendaItemRow(item) {
     const row = document.createElement('div');
+    row.className = 'menu-list-item';
     row.style.display = 'flex';
     row.style.gap = '6px';
     row.style.alignItems = 'baseline';
-    row.style.padding = '6px 2px';
-    row.style.borderBottom = '1px solid var(--border)';
     row.style.cursor = 'pointer';
 
     const categoryLabel = document.createElement('span');
@@ -9971,11 +9979,10 @@ function renderTaskListView() {
 
   for (const item of items) {
     const row = document.createElement('div');
+    row.className = 'menu-list-item';
     row.style.display = 'flex';
     row.style.gap = '6px';
     row.style.alignItems = 'baseline';
-    row.style.padding = '8px 2px';
-    row.style.borderBottom = '1px solid var(--border)';
     row.style.cursor = 'pointer';
 
     const badge = document.createElement('span');
@@ -12965,6 +12972,8 @@ function renderSearchResults() {
     row.style.gap = '6px';
     row.style.alignItems = 'baseline';
     row.style.padding = '6px 2px';
+    row.style.minHeight = '44px';
+    row.style.boxSizing = 'border-box';
     row.style.borderBottom = '1px solid var(--border)';
     row.style.cursor = 'pointer';
 
