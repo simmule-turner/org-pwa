@@ -24,6 +24,7 @@ const KEYS = {
   readingWidth: 'settings:readingWidth',
   sidePanelWidth: 'settings:sidePanelWidth',
   lastActiveDocument: 'settings:lastActiveDocument',
+  openTabs: 'settings:openTabs',
   recentFiles: 'settings:recentFiles',
   captureTemplates: 'settings:captureTemplates',
   globalVariables: 'settings:globalVariables',
@@ -334,6 +335,20 @@ export async function getLastActiveDocument(kvAdapter) {
 
 export async function setLastActiveDocument(kvAdapter, documentId, storageKind) {
   await setJson(kvAdapter, KEYS.lastActiveDocument, documentId ? { documentId, storageKind } : null);
+}
+
+/** The full list of tabs open when the app was last used -- an ordered
+ *  array of { documentId, storageKind }, plus which index was the
+ *  active one, or null if nothing was tracked yet (a brand new
+ *  install, or every tab was explicitly closed). Read once at
+ *  startup to restore the whole tab set, not just the single most
+ *  recent document lastActiveDocument alone tracks. */
+export async function getOpenTabs(kvAdapter) {
+  return getJson(kvAdapter, KEYS.openTabs, null);
+}
+
+export async function setOpenTabs(kvAdapter, tabs, activeIndex) {
+  await setJson(kvAdapter, KEYS.openTabs, tabs && tabs.length ? { tabs, activeIndex } : null);
 }
 
 // ---- recently opened files ------------------------------------------------
