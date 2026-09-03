@@ -305,17 +305,6 @@ export function getDisplayTimeFormat(vars) {
   return raw !== undefined && raw !== null && String(raw).trim() !== '' ? String(raw) : '%H:%M';
 }
 
-/** org-xx-hide-filename-in-menu: this app's own extension (not a real
- *  org-mode/Emacs variable) -- hides the filename from the top File
- *  menu button's own header display once the modeline is showing it
- *  there instead, for anyone who'd rather not see it twice. `nil`
- *  (including simply never setting it) keeps the header's own
- *  filename exactly as it's always been -- this app's own default,
- *  existing behavior, not a Behavior anyone loses without opting in. */
-export function getHideFilenameInMenu(vars) {
-  return parseLispBoolean((vars || {})['org-xx-hide-filename-in-menu'], false);
-}
-
 export function getMenuAliases(vars) {
   return (vars || {})['org-xx-menu-aliases'] || '';
 }
