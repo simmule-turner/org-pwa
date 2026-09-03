@@ -6,6 +6,17 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v289 — Corrected the previous release's own menu-width fix
+The v287 fix for menu-item text wrapping used a minimum width, which
+meant every popup menu was always at least 75% of the screen wide,
+even a short two-item menu that never needed that much room. Replaced
+with genuine content-based sizing: a menu now grows to fit its own
+widest row, capped at that same 75%-of-screen limit only for content
+that actually needs it. Also found a second, separate width cap
+hiding in the code that positions menus near their trigger button,
+quietly overriding the CSS one with its own, different, hardcoded
+value — now unified to compute the same limit.
+
 * v288 — Three small UI corrections
 The tab bar now always shows, even with just one document open,
 instead of only appearing once a second tab exists — so the UI's own

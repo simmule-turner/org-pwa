@@ -8376,7 +8376,7 @@ function positionPopupNearButton(panelEl, buttonEl) {
   const vv = window.visualViewport;
   const viewportWidth = vv ? vv.width : window.innerWidth;
   const viewportHeight = vv ? vv.height : window.innerHeight;
-  const maxWidth = Math.min(320, viewportWidth - margin * 2);
+  const maxWidth = Math.min(viewportWidth * 0.75, 420, viewportWidth - margin * 2);
   panelEl.style.maxWidth = maxWidth + 'px';
 
   // Measured AFTER max-width is set, since wrapped text reflows to it,
