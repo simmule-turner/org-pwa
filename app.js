@@ -8716,7 +8716,6 @@ fileMenuBtn.addEventListener('click', () => {
 addBtn.addEventListener('click', () => {
   if (!state.doc) return;
   closeAllOverlayPanels();
-  render();
   const heading = insertTopLevelHeading(state.doc, {});
   startEditingTitle(heading, true);
 });

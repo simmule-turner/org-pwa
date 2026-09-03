@@ -6,6 +6,18 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v277 — CRITICAL: data loss on Android/ChromeOS adding a new heading
+The top-toolbar *+* (New Heading) button called ~render()~ twice in
+quick succession — the second call, already happening on its own
+inside ~startEditingTitle()~ right after, made the first one purely
+redundant, but its real effect was tearing down and rebuilding the
+brand-new title field right as the platform's own virtual
+keyboard/IME was establishing focus and composition on it. On
+Android/ChromeOS specifically this meant the new field never actually
+received focus, and text typed after manually tapping into it anyway
+could be lost entirely on Enter. No other "add heading" path had this
+extra call — isolated and fixed.
+
 * v276 — Search and replace, Emacs-style
 New *Replace* button next to Regex starts a real ~query-replace~/
 ~query-replace-regexp~ walk over the current document, using the same
