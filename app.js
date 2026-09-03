@@ -82,7 +82,6 @@ import {
   getMenuAliases,
   getDisplayTimeMode,
   getDisplayTimeFormat,
-  getHideFilenameInMenu,
   getAgendaFilesVar,
   parseAgendaFilesVar,
 } from './src/local-variables.js';
@@ -2646,7 +2645,7 @@ function scrollContainer() {
 // unconditionally and silently rendering into the wrong place.
 let settingsRenderTarget = outlineEl;
 let docsRenderTarget = outlineEl;
-const filenameEl = document.getElementById('filename');
+const saveBtnEl = document.getElementById('saveBtn');
 const statusEl = document.getElementById('status');
 const topBarEl = document.getElementById('topBar');
 const contentAreaEl = document.getElementById('contentArea');
@@ -3820,7 +3819,7 @@ function applySessionSnapshotValues(snap) {
 function saveSessionSnapshot(tabId) {
   if (tabId == null) return;
   const values = snapshotCurrentSessionValues();
-  const scrollTop = outlineEl ? outlineEl.scrollTop : 0;
+  const scrollTop = scrollContainer().scrollTop;
   const existing = documentSessions.find((s) => s.tabId === tabId);
   if (existing) {
     Object.assign(existing, values);
@@ -3831,16 +3830,20 @@ function saveSessionSnapshot(tabId) {
 }
 
 /** Loads `tabId`'s own saved session values back into the live
- *  globals, restoring its scroll position too. Does nothing (silently)
- *  if `tabId` isn't a real, currently-open session -- callers that
- *  need to know whether the switch actually happened should check
- *  documentSessions themselves first. */
+ *  globals, restoring its scroll position too (deferred until after
+ *  the render() a caller is about to trigger actually completes --
+ *  see the queueMicrotask below). Does nothing (silently) if `tabId`
+ *  isn't a real, currently-open session -- callers that need to know
+ *  whether the switch actually happened should check documentSessions
+ *  themselves first. */
 function loadSessionSnapshot(tabId) {
   const session = documentSessions.find((s) => s.tabId === tabId);
   if (!session) return;
   applySessionSnapshotValues(session);
   activeTabId = tabId;
-  if (outlineEl) outlineEl.scrollTop = session.scrollTop || 0;
+  queueMicrotask(() => {
+    scrollContainer().scrollTop = session.scrollTop || 0;
+  });
 }
 
 /** Switches the live, on-screen document to `tabId` -- saves the
@@ -3951,6 +3954,7 @@ function renderTabBar() {
   tabBarEl.style.borderBottom = '1px solid var(--border)';
   tabBarEl.style.background = 'var(--surface)';
 
+  let activeTabEl = null;
   for (const session of documentSessions) {
     const isActive = session.tabId === activeTabId;
     const docId = isActive ? state.documentId : session.state.documentId;
@@ -3999,8 +4003,10 @@ function renderTabBar() {
     };
     tab.appendChild(closeBtn);
 
+    if (isActive) activeTabEl = tab;
     tabBarEl.appendChild(tab);
   }
+  if (activeTabEl) activeTabEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
 let state = { documentId: null, doc: null, startupConfig: null, storageKind: null, localVariables: null };
@@ -7492,6 +7498,12 @@ function clearStaleKeyboardFocusIfClickedElsewhere(e) {
   // keyboard/IME is establishing focus and composition on it. The
   // cleanup below still correctly fires on the NEXT click instead.
   if (editingHeading || editingCell || editingParagraph || editingListItem || editingHeadingText || editingGeneral) return;
+  // Only clicks landing within the document content area itself are
+  // relevant here -- tapping the File menu, tab bar, or other app
+  // chrome is about navigating away entirely, not "clicked elsewhere
+  // within the document," and shouldn't discard keyboard focus before
+  // a tab switch's own session snapshot gets a chance to save it.
+  if (!outlineEl.contains(e.target)) return;
   const onCell = !!e.target.closest('td');
   const onHeadingTitle = !!e.target.closest('.heading-title');
   let changed = false;
@@ -7509,7 +7521,7 @@ function clearStaleKeyboardFocusIfClickedElsewhere(e) {
 document.addEventListener('click', clearStaleKeyboardFocusIfClickedElsewhere);
 
 function render() {
-  updateFilenameDisplay();
+  updateSaveButtonState();
   renderTabBar();
   syncSidePanel();
   syncExtraMenuButtonVisibility();
@@ -7719,25 +7731,9 @@ function storageKindLabel(kind) {
  *  current on every render, without needing every call site that changes
  *  state.documentId/storageKind/isDirty to separately remember to update
  *  it) rather than being set ad hoc in half a dozen different places. */
-function updateFilenameDisplay() {
-  if (!state.doc) {
-    filenameEl.textContent = 'No file open';
-    filenameEl.style.color = '';
-    filenameEl.style.opacity = '';
-    filenameEl.style.visibility = '';
-    return;
-  }
-  if (!state.storageKind) {
-    filenameEl.textContent = 'Untitled (unsaved)';
-    filenameEl.style.color = '#c0392b';
-    filenameEl.style.opacity = '1';
-    filenameEl.style.visibility = getHideFilenameInMenu(state.localVariables) ? 'hidden' : '';
-    return;
-  }
-  filenameEl.textContent = state.documentId + ' (' + storageKindLabel(state.storageKind) + ')';
-  filenameEl.style.color = isDirty ? '#c0392b' : '';
-  filenameEl.style.opacity = isDirty ? '1' : ''; // full opacity when modified so the red actually stands out, not dimmed by the element's own default 0.7
-  filenameEl.style.visibility = getHideFilenameInMenu(state.localVariables) ? 'hidden' : '';
+function updateSaveButtonState() {
+  saveBtnEl.disabled = !state.doc || !state.storageKind;
+  saveBtnEl.style.color = !saveBtnEl.disabled && isDirty ? '#c0392b' : '';
 }
 
 /** Common finish-up after any successful open/create, regardless of which
@@ -9174,6 +9170,10 @@ fileMenuBtn.addEventListener('click', () => {
   stopBrowsing();
   render();
   renderFileMenu();
+});
+
+saveBtnEl.addEventListener('click', () => {
+  saveCurrent();
 });
 
 addBtn.addEventListener('click', () => {
@@ -10797,14 +10797,6 @@ const QUICK_SETTINGS_FIELDS = [
     section: 'Modeline',
     type: 'text',
     default: '%H:%M',
-    helpAnchor: '#modeline',
-  },
-  {
-    key: 'org-xx-hide-filename-in-menu',
-    label: 'Hide filename in top menu',
-    section: 'Modeline',
-    type: 'boolean',
-    default: false,
     helpAnchor: '#modeline',
   },
   { key: 'org-log-done', label: 'Log completing a TODO', section: 'Progress logging', type: 'logdone', helpAnchor: '#progress-logging' },
@@ -13779,7 +13771,7 @@ async function bootstrap() {
         const matchingSession = documentSessions.find((s) => s.state.documentId === activeTabData.documentId && s.state.storageKind === activeTabData.storageKind);
         if (matchingSession) switchToTab(matchingSession.tabId);
       }
-      updateFilenameDisplay();
+      updateSaveButtonState();
       render();
       checkForExternalChange();
       checkWeatherAutoRefresh();
@@ -13795,7 +13787,7 @@ async function bootstrap() {
         const doc = parseOrg(cached.value);
         const pending = await hasPendingChange(kv, last.documentId);
         await afterDocumentLoaded(last.documentId, doc, last.storageKind, pending);
-        updateFilenameDisplay();
+        updateSaveButtonState();
         render();
         checkForExternalChange();
         checkWeatherAutoRefresh();

@@ -244,6 +244,7 @@
     position: fixed; z-index: 51; border-radius: 10px; border: 1px solid var(--border-strong);
     background: var(--bg); box-shadow: 0 4px 16px #0006; padding: 6px; box-sizing: border-box;
     max-height: 70vh; overflow-y: auto; overscroll-behavior: contain;
+    min-width: min(75vw, 420px);
   }
   /* Item 1.5: panel buttons (File/View menu options, Settings controls)
      larger and more touch-friendly than the previous compact text row. */
@@ -337,7 +338,7 @@
   <div id="topBar">
     <header>
       <button id="fileMenuBtn" class="icon-btn" aria-label="File">&#128193;</button>
-      <span id="filename">No file open</span>
+      <button id="saveBtn" class="icon-btn" disabled aria-label="Save">&#128190;</button>
       <button id="viewMenuBtn" class="icon-btn" disabled aria-label="View">&#128065;</button>
       <button id="moreBtn" class="icon-btn" aria-label="More">&#8942;</button>
     </header>

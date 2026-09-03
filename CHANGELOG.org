@@ -6,6 +6,33 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v287 — Toolbar cleanup and menu-width fix
+Removed the top-line filename display — redundant once the tab bar and
+modeline already show the same thing, genuinely overkill across three
+places. Fully removed, not just hidden, including the now-dead
+~org-xx-hide-filename-in-menu~ setting it existed to control. Added a
+💾 Save button next to the File menu for a one-tap shortcut to the
+single most common action. Fixed Export (and every other dropdown
+menu — File, View, More) wrapping menu-item text like "Choose a
+heading" instead of growing to fit it: the shared menu class had no
+explicit width at all, so it shrink-wrapped to content by default.
+Now sized to at least 75% of a narrow screen's own width, capped at a
+reasonable size on desktop.
+
+* v286 — Fixed: switching tabs lost your scroll position and cursor
+Reported as "switching tabs is like opening a file newly." Three
+separate, compounding bugs. Scroll restoration ran before the
+re-render that immediately wiped it out, and was targeting the wrong
+element on mobile in the first place (the actual scroll container
+below the desktop breakpoint is ~#contentArea~, not the outline
+itself). Separately, a click listener from an earlier session's fix
+was firing on every click anywhere in the app — including the File
+menu and tab bar — which meant switching documents cleared keyboard
+focus before the tab being left even got a chance to save it. Fold
+state needed no fix; it lives directly on each heading and was already
+being preserved correctly. Also: the active tab now scrolls into view
+whenever the tab bar renders, so it's never hidden off-screen.
+
 * v285 — Standardized touch-target sizing across every list row
 Prompted by Export and Refile's own heading pickers being reported too
 small on mobile — a full audit turned up two separate problems.
