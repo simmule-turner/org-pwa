@@ -6,6 +6,23 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v278 — CRITICAL: the ACTUAL Android/ChromeOS data-loss regression
+v277 fixed a real but, it turned out, unreachable code path (the
+top-toolbar *+*, permanently hidden and never actually used). The
+person's own correction — the button in question was the header
+action-menu's own *Add sub-heading* (+) — led to the real cause: a
+document-level click listener from an earlier session's "table
+highlight" fix fires on every click, including action-menu button
+taps. Opening a heading's action menu already sets its own keyboard-
+focus state; tapping *Add sub-heading* right after — which itself
+already starts a new edit session and renders once, correctly — would
+then ALSO trigger this listener's own render() on that same click,
+tearing down the just-created title field right as the platform's own
+virtual keyboard/IME was establishing focus on it. Confirmed
+definitively by reverting only this one guard and reproducing the
+exact reported symptoms: field present but not actually focused, typed
+text landing nowhere, the new heading silently discarded on Enter.
+
 * v277 — CRITICAL: data loss on Android/ChromeOS adding a new heading
 The top-toolbar *+* (New Heading) button called ~render()~ twice in
 quick succession — the second call, already happening on its own

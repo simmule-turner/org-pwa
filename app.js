@@ -7144,6 +7144,15 @@ function setupSidePanelResize() {
 setupSidePanelResize();
 
 function clearStaleKeyboardFocusIfClickedElsewhere(e) {
+  // A fresh edit session may have already started -- and already
+  // rendered once, correctly -- as part of THIS SAME click, if it
+  // landed on a button whose own handler runs before this listener
+  // (element-level handlers fire before the click bubbles up here).
+  // Re-rendering again in that case would tear down the just-created,
+  // about-to-be-focused input right as the platform's own virtual
+  // keyboard/IME is establishing focus and composition on it. The
+  // cleanup below still correctly fires on the NEXT click instead.
+  if (editingHeading || editingCell || editingParagraph || editingListItem || editingHeadingText || editingGeneral) return;
   const onCell = !!e.target.closest('td');
   const onHeadingTitle = !!e.target.closest('.heading-title');
   let changed = false;
