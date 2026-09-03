@@ -1,6 +1,7 @@
 import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src/document-store.js';
 import { setSyncMeta, getSyncMeta } from './src/sync-engine.js';
 import { hasPendingChange, getPendingChange, clearPendingChange } from './src/outbox.js';
+import { savePersistedHistory, loadPersistedHistory, clearPersistedHistory } from './src/history-store.js';
 import { parseOrg, serializeOrg, serializeHeadingSubtree, findHeadingLineNumber } from './src/org-parser.js';
 import { parseBody } from './src/body-parser.js';
 import { detectWebmHasVideoTrack } from './src/webm-track-detect.js';
@@ -205,6 +206,8 @@ import {
   importAllSettings,
   getLastActiveDocument,
   setLastActiveDocument,
+  getOpenTabs,
+  setOpenTabs,
   getRecentFiles,
   recordRecentFile,
   clearRecentFiles,
@@ -1546,9 +1549,9 @@ function renderAttachFileListPanel() {
  *  action in this app; Open never does, since downloading a file (or
  *  viewing it, if the browser handles that download itself) isn't
  *  destructive. */
-function performAttachmentAction(heading, filename, action) {
+async function performAttachmentAction(heading, filename, action) {
   if (action === 'delete') {
-    if (!window.confirm(`Delete attachment "${filename}"? This removes the actual file, not just the link to it.`)) return;
+    if (!(await confirmDialog(`Delete attachment "${filename}"? This removes the actual file, not just the link to it.`))) return;
     deleteAttachment(heading, filename);
   } else if (action === 'save') {
     saveAttachmentLink(`attachment:${filename}`, heading);
@@ -2609,6 +2612,7 @@ async function unarchiveHeadingToOriginalLocation(heading) {
 }
 
 const outlineEl = document.getElementById('outline');
+const tabBarEl = document.getElementById('tabBar');
 const sidePanelEl = document.getElementById('sidePanel');
 const sidePanelDividerEl = document.getElementById('sidePanelDivider');
 const splitRowEl = document.getElementById('splitRow');
@@ -3546,6 +3550,7 @@ document.addEventListener('pointerdown', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
+  if (confirmDialogOpen) return;
   if (activeQueryReplace) {
     const { controller } = activeQueryReplace;
     if (e.key === 'y' || e.key === ' ') {
@@ -3728,6 +3733,279 @@ document.addEventListener('keydown', (e) => {
 // out of sync again.
 new MutationObserver(syncContentOffset).observe(topBarEl, { childList: true, subtree: true, attributes: true });
 
+// ---- multi-document tabs --------------------------------------------------
+//
+// Every field snapshotCurrentSessionValues()/applySessionSnapshotValues()
+// (below) name is "this one open document's own state" -- swapped out to
+// documentSessions and back in again on every tab switch. That pair of
+// functions is the single, authoritative list of what counts as
+// per-document state versus app-global (settings, theme, god-mode,
+// capture-in-progress, and similar stay as plain globals, untouched by
+// tab switching) -- getting this wrong either way is a real bug: leaving
+// something out means it silently leaks between tabs; including
+// something actually app-global means switching tabs would spuriously
+// reset it.
+
+let documentSessions = []; // [{ tabId, scrollTop, ...snapshotCurrentSessionValues()'s own fields... }]
+let activeTabId = null;
+let nextTabId = 1;
+
+/** Reads the CURRENT live value of every per-document global into a
+ *  plain object -- this, and its counterpart below, are the only two
+ *  places that need to know the full list of per-document state at
+ *  all; every other read/write site throughout this file keeps using
+ *  the same global variable names exactly as before. */
+function snapshotCurrentSessionValues() {
+  return {
+    state,
+    editingHeading,
+    editingIsNew,
+    editingCell,
+    editingParagraph,
+    editingListItem,
+    editingHeadingText,
+    editingGeneral,
+    actionMenuFor,
+    keyboardFocusedHeading,
+    keyboardFocusedBodyRow,
+    keyboardFocusedCellPos,
+    pendingCursorPosition,
+    currentContextHeading,
+    navigationBackStack,
+    currentView,
+    isDirty,
+    lastSavedText,
+    history,
+    historyOpen,
+    historyDiffExpandedIndex,
+    lastGlobalFoldState,
+    externalChangeDismissedHash,
+    externalChangeShownForHash,
+    activeQueryReplace,
+  };
+}
+
+/** The inverse of snapshotCurrentSessionValues() -- writes each saved
+ *  value back into its own same-named global, restoring exactly the
+ *  state a tab was in the last time it was active. */
+function applySessionSnapshotValues(snap) {
+  state = snap.state;
+  editingHeading = snap.editingHeading;
+  editingIsNew = snap.editingIsNew;
+  editingCell = snap.editingCell;
+  editingParagraph = snap.editingParagraph;
+  editingListItem = snap.editingListItem;
+  editingHeadingText = snap.editingHeadingText;
+  editingGeneral = snap.editingGeneral;
+  actionMenuFor = snap.actionMenuFor;
+  keyboardFocusedHeading = snap.keyboardFocusedHeading;
+  keyboardFocusedBodyRow = snap.keyboardFocusedBodyRow;
+  keyboardFocusedCellPos = snap.keyboardFocusedCellPos;
+  pendingCursorPosition = snap.pendingCursorPosition;
+  currentContextHeading = snap.currentContextHeading;
+  navigationBackStack = snap.navigationBackStack;
+  currentView = snap.currentView;
+  isDirty = snap.isDirty;
+  lastSavedText = snap.lastSavedText;
+  history = snap.history;
+  historyOpen = snap.historyOpen;
+  historyDiffExpandedIndex = snap.historyDiffExpandedIndex;
+  lastGlobalFoldState = snap.lastGlobalFoldState;
+  externalChangeDismissedHash = snap.externalChangeDismissedHash;
+  externalChangeShownForHash = snap.externalChangeShownForHash;
+  activeQueryReplace = snap.activeQueryReplace;
+}
+
+/** Writes the live globals' current values into documentSessions'
+ *  entry for `tabId` (creating it first if this is a brand new tab).
+ *  Called before switching away from a tab, and periodically while
+ *  editing it, so a session object is never more than one edit stale. */
+function saveSessionSnapshot(tabId) {
+  if (tabId == null) return;
+  const values = snapshotCurrentSessionValues();
+  const scrollTop = outlineEl ? outlineEl.scrollTop : 0;
+  const existing = documentSessions.find((s) => s.tabId === tabId);
+  if (existing) {
+    Object.assign(existing, values);
+    existing.scrollTop = scrollTop;
+  } else {
+    documentSessions.push({ tabId, scrollTop, ...values });
+  }
+}
+
+/** Loads `tabId`'s own saved session values back into the live
+ *  globals, restoring its scroll position too. Does nothing (silently)
+ *  if `tabId` isn't a real, currently-open session -- callers that
+ *  need to know whether the switch actually happened should check
+ *  documentSessions themselves first. */
+function loadSessionSnapshot(tabId) {
+  const session = documentSessions.find((s) => s.tabId === tabId);
+  if (!session) return;
+  applySessionSnapshotValues(session);
+  activeTabId = tabId;
+  if (outlineEl) outlineEl.scrollTop = session.scrollTop || 0;
+}
+
+/** Switches the live, on-screen document to `tabId` -- saves the
+ *  currently-active tab's own state first (so switching back to it
+ *  later picks up exactly where it left off), then loads the target
+ *  tab's own saved state, then re-renders. The one function every
+ *  tab-bar click handler and keyboard shortcut should actually call;
+ *  everything else here is a supporting piece for this one. */
+/** Persists the full set of open tabs -- called on every tab-set change
+ *  (switch, close, open) so a reload can restore ALL of them, not just
+ *  the single most recent document lastActiveDocument alone tracks.
+ *  Fire-and-forget, matching persistHistoryInBackground's own "log,
+ *  don't interrupt the person's workflow over this" error handling --
+ *  losing track of exactly which tabs were open is a real but much
+ *  smaller loss than a failed document save. */
+function persistOpenTabsInBackground() {
+  const tabs = documentSessions.map((s) => {
+    const docState = s.tabId === activeTabId ? state : s.state;
+    return { documentId: docState.documentId, storageKind: docState.storageKind };
+  });
+  const activeIndex = documentSessions.findIndex((s) => s.tabId === activeTabId);
+  setOpenTabs(kv, tabs, activeIndex).catch((err) => console.error('Failed to persist open tabs:', err));
+}
+
+function switchToTab(tabId) {
+  if (tabId === activeTabId) return;
+  if (activeTabId != null) saveSessionSnapshot(activeTabId);
+  loadSessionSnapshot(tabId);
+  closeAllOverlayPanels();
+  render();
+  renderTabBar();
+  persistOpenTabsInBackground();
+}
+
+/** Closes `tabId` -- no confirmation, even if that tab's own document
+ *  is unsaved: the existing outbox/cache system already keeps unsaved
+ *  edits safe independent of which tabs happen to be open right now,
+ *  the same way closing a browser tab on a page with a pending
+ *  autosave doesn't lose anything either. Picks the tab immediately
+ *  before the closed one as the next active tab (or the one after, if
+ *  the first tab was closed), matching the common browser/editor
+ *  convention; falls back to this app's own existing "nothing open"
+ *  state if that was the last tab left. */
+async function closeTab(tabId) {
+  const index = documentSessions.findIndex((s) => s.tabId === tabId);
+  if (index === -1) return;
+  documentSessions.splice(index, 1);
+  if (tabId !== activeTabId) {
+    renderTabBar();
+    persistOpenTabsInBackground();
+    return;
+  }
+  if (documentSessions.length === 0) {
+    activeTabId = null;
+    state = { documentId: null, doc: null, startupConfig: null, storageKind: null, localVariables: null };
+    history = createHistory('');
+    isDirty = false;
+    lastSavedText = null;
+    currentView = 'org';
+    editingHeading = null;
+    editingCell = null;
+    editingParagraph = null;
+    editingListItem = null;
+    editingHeadingText = null;
+    editingGeneral = null;
+    actionMenuFor = null;
+    keyboardFocusedHeading = null;
+    keyboardFocusedBodyRow = null;
+    keyboardFocusedCellPos = null;
+    currentContextHeading = null;
+    navigationBackStack = [];
+    addBtn.disabled = true;
+    viewMenuBtn.disabled = true;
+    searchBtn.disabled = true;
+    captureBtn.disabled = true;
+    await setLastActiveDocument(kv, null, null);
+    render();
+    renderTabBar();
+    persistOpenTabsInBackground();
+    return;
+  }
+  const nextIndex = Math.min(index, documentSessions.length - 1);
+  loadSessionSnapshot(documentSessions[nextIndex].tabId);
+  await setLastActiveDocument(kv, state.documentId, state.storageKind);
+  render();
+  renderTabBar();
+  persistOpenTabsInBackground();
+}
+
+/** Rebuilds the tab bar from documentSessions -- hidden entirely with
+ *  0 or 1 tabs open (nothing to switch between yet), so it doesn't
+ *  cost any vertical space on a small screen until it's actually
+ *  useful. Reads each tab's own documentId/isDirty directly from its
+ *  saved session snapshot, NOT from the live globals (which only ever
+ *  reflect the currently-ACTIVE tab) -- the one exception is the
+ *  active tab itself, shown from the live globals so its own label
+ *  updates immediately as it's edited, without waiting for the next
+ *  tab switch to save a fresh snapshot. */
+function renderTabBar() {
+  tabBarEl.innerHTML = '';
+  if (documentSessions.length < 2) {
+    tabBarEl.style.display = 'none';
+    return;
+  }
+  tabBarEl.style.display = 'flex';
+  tabBarEl.style.overflowX = 'auto';
+  tabBarEl.style.overscrollBehaviorX = 'contain';
+  tabBarEl.style.borderBottom = '1px solid var(--border)';
+  tabBarEl.style.background = 'var(--surface)';
+
+  for (const session of documentSessions) {
+    const isActive = session.tabId === activeTabId;
+    const docId = isActive ? state.documentId : session.state.documentId;
+    const doc = isActive ? state.doc : session.state.doc;
+    const dirty = isActive ? isDirty : session.isDirty;
+    const isUnsaved = !docId || docId.startsWith(UNSAVED_DOCUMENT_ID);
+    const firstHeadingTitle = doc && doc.children && doc.children[0] ? doc.children[0].title : null;
+    const label = isUnsaved ? firstHeadingTitle || 'Untitled' : docId;
+
+    const tab = document.createElement('div');
+    tab.style.display = 'flex';
+    tab.style.alignItems = 'center';
+    tab.style.gap = '4px';
+    tab.style.padding = '8px 6px 8px 12px';
+    tab.style.flexShrink = '0';
+    tab.style.maxWidth = '160px';
+    tab.style.cursor = 'pointer';
+    tab.style.borderBottom = isActive ? '2px solid var(--accent)' : '2px solid transparent';
+    tab.style.background = isActive ? 'var(--bg)' : 'transparent';
+    tab.onclick = () => switchToTab(session.tabId);
+
+    const labelEl = document.createElement('span');
+    labelEl.textContent = (dirty ? '\u25cf ' : '') + label;
+    labelEl.title = label;
+    labelEl.style.overflow = 'hidden';
+    labelEl.style.textOverflow = 'ellipsis';
+    labelEl.style.whiteSpace = 'nowrap';
+    labelEl.style.fontSize = '13px';
+    labelEl.style.color = dirty ? '#c0392b' : 'var(--fg)';
+    tab.appendChild(labelEl);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '\u2715';
+    closeBtn.setAttribute('aria-label', 'Close tab: ' + label);
+    closeBtn.style.border = 'none';
+    closeBtn.style.background = 'transparent';
+    closeBtn.style.color = 'var(--muted)';
+    closeBtn.style.fontSize = '12px';
+    closeBtn.style.padding = '6px';
+    closeBtn.style.minWidth = '28px';
+    closeBtn.style.minHeight = '28px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      closeTab(session.tabId);
+    };
+    tab.appendChild(closeBtn);
+
+    tabBarEl.appendChild(tab);
+  }
+}
+
 let state = { documentId: null, doc: null, startupConfig: null, storageKind: null, localVariables: null };
 // File menu: whether the panel is open, and if so, which action's
 // backend-choice sub-step is showing (null = the main New/Open/Save/Save
@@ -3761,6 +4039,7 @@ let browseError = null;
 let settingsOpen = false;
 let docsOpen = false;
 let searchOpen = false;
+let confirmDialogOpen = false; // true only while confirmDialog()'s own overlay is showing -- lets the global keydown handler cleanly step aside rather than racing this dialog's own key handling
 let captureOpen = false;
 let extraMenuOpen = false;
 // The template currently showing its prompt-answer form, or null when
@@ -3796,7 +4075,7 @@ let agendaAnchorDate = new Date();
 let agendaLogMode = false; // whether LOGBOOK entries (state-change/note timestamps) show alongside SCHEDULED/DEADLINE/etc. -- off by default, matching real org's own org-agenda-log-mode convention exactly (a toggle, not always-on, so daily task-scanning doesn't get cluttered by default)
 
 function suggestedSaveAsName(fallback) {
-  return state.documentId === UNSAVED_DOCUMENT_ID ? fallback : state.documentId || fallback;
+  return state.documentId && state.documentId.startsWith(UNSAVED_DOCUMENT_ID) ? fallback : state.documentId || fallback;
 }
 
 let agendaShowAllDatesOverride = null; // null = use the file's own org-agenda-show-all-dates default; true/false once the "g" button has been pressed this session
@@ -4019,6 +4298,18 @@ function persistInBackground() {
   persist().catch((err) => setStatus('Save failed: ' + err.message));
 }
 
+// Persists the current undo/redo history alongside the document itself,
+// so it survives a reopen -- see history-store.js's own docstring for
+// why this is a separate module/key from the document's own save.
+// Unlike persistInBackground, a failure here is logged, not surfaced
+// via setStatus: losing undo history is a real but much smaller loss
+// than a failed document save, and shouldn't interrupt the person's
+// workflow with a status message about something they didn't ask for.
+function persistHistoryInBackground() {
+  if (!state.documentId) return;
+  savePersistedHistory(kv, state.documentId, history).catch((err) => console.error('Failed to persist undo history:', err));
+}
+
 function commitAndRender(label = 'Edited') {
   const previousHistory = history;
   history = pushSnapshot(history, serializeOrg(state.doc), label);
@@ -4036,6 +4327,7 @@ function commitAndRender(label = 'Edited') {
   renderLogNotePrompt();
   if (changed) {
     persistInBackground();
+    persistHistoryInBackground();
   }
 }
 
@@ -4094,6 +4386,7 @@ function restoreFromHistory() {
   if (currentView === 'text') currentView = 'org'; // avoid showing now-stale textarea content after a jump
   render();
   persistInBackground();
+  persistHistoryInBackground();
 }
 
 function performUndo() {
@@ -4317,6 +4610,7 @@ function commitTextModeIfActive() {
   if (changed) {
     isDirty = true;
     persistInBackground();
+    persistHistoryInBackground();
   }
   return true;
 }
@@ -5083,7 +5377,7 @@ function smallButton(label, ariaLabel, onClick) {
   return btn;
 }
 
-function confirmHeadingDelete(heading) {
+async function confirmHeadingDelete(heading) {
   const parts = [];
   if (heading.children.length) {
     parts.push(`${heading.children.length} sub-heading${heading.children.length === 1 ? '' : 's'}`);
@@ -5097,7 +5391,7 @@ function confirmHeadingDelete(heading) {
   if (heading.planning && (heading.planning.scheduled || heading.planning.deadline)) parts.push('a scheduled/deadline date');
   const title = heading.title || '(untitled)';
   const detail = parts.length > 0 ? ` It has ${parts.join(', ')}, which will be lost.` : '';
-  return window.confirm(`Delete "${title}"?${detail}`);
+  return confirmDialog(`Delete "${title}"?${detail}`);
 }
 
 /** Confirms (always -- see confirmHeadingDelete's own docs) and, if
@@ -5225,8 +5519,8 @@ function extraMenuTargetHeading() {
   return keyboardFocusedHeading;
 }
 
-function deleteHeadingWithConfirmation(heading) {
-  if (!confirmHeadingDelete(heading)) return;
+async function deleteHeadingWithConfirmation(heading) {
+  if (!(await confirmHeadingDelete(heading))) return;
   actionMenuFor = null;
   editingHeading = null;
   editingIsNew = false;
@@ -5938,18 +6232,18 @@ function tableHasContent(table) {
   return table.rows.some((r) => r.type === 'row' && r.cells.some((c) => c.trim() !== ''));
 }
 
-function confirmTableDelete(table) {
+async function confirmTableDelete(table) {
   if (!tableHasContent(table)) return true;
-  return window.confirm("Delete this table and all its data?");
+  return confirmDialog('Delete this table and all its data?');
 }
 
 function paragraphHasContent(paragraph) {
   return paragraph.lines.some((l) => l.trim() !== '');
 }
 
-function confirmParagraphDelete(paragraph) {
+async function confirmParagraphDelete(paragraph) {
   if (!paragraphHasContent(paragraph)) return true;
-  return window.confirm("Delete this note?");
+  return confirmDialog('Delete this note?');
 }
 
 // Counts every item nested under `item`, at any depth — used by
@@ -5972,16 +6266,14 @@ function listItemDescendantCount(item) {
   return count;
 }
 
-function confirmListItemDelete(item) {
+async function confirmListItemDelete(item) {
   const count = listItemDescendantCount(item);
   const hasOwnContent = (item.text && item.text.trim() !== '') || (item.tag && item.tag.trim() !== '');
   if (count === 0 && !hasOwnContent) return true; // genuinely empty item, nothing lost either way
   if (count > 0) {
-    return window.confirm(
-      `Delete this item? It has ${count} nested sub-item${count === 1 ? '' : 's'} that will be deleted too.`
-    );
+    return confirmDialog(`Delete this item? It has ${count} nested sub-item${count === 1 ? '' : 's'} that will be deleted too.`);
   }
-  return window.confirm("Delete this item?");
+  return confirmDialog('Delete this item?');
 }
 
 /** Applies the keyboard-focus visual highlight to `el` if `row` is
@@ -6072,11 +6364,11 @@ function renderRow(row, todoSequence) {
         title.textContent = '(untitled)';
         title.style.opacity = '0.5';
       }
-      title.onclick = (e) => {
+      title.addEventListener('mousedown', (e) => {
         if (e.target.closest('[data-inline-link]')) return;
         setKeyboardFocusToRow(row);
         toggleActionMenu(row.node);
-      };
+      });
       el.appendChild(title);
 
       for (const tag of row.node.tags) {
@@ -6293,11 +6585,11 @@ function renderRow(row, todoSequence) {
       addTableRow.appendChild(
         tableActionButton(
           '\ud83d\uddd1\ufe0f Delete table',
-          () => {
+          async () => {
             const heading = editingGeneral;
             const table = lastTableInBody(heading);
             if (!table) return; // shouldn't happen -- disabled when there's nothing to delete -- but never act on nothing
-            if (!window.confirm('Delete this table? This can\u2019t be undone.')) return;
+            if (!(await confirmDialog("Delete this table? This can\u2019t be undone."))) return;
             editingGeneral = null;
             if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.rowType === 'table' && keyboardFocusedBodyRow.node === table) {
               keyboardFocusedBodyRow = null;
@@ -6524,9 +6816,9 @@ function renderRow(row, todoSequence) {
           {
             icon: '\u2715',
             label: 'Delete item',
-            onClick: (e) => {
+            onClick: async (e) => {
               e.stopPropagation();
-              if (!confirmListItemDelete(row.item)) return;
+              if (!(await confirmListItemDelete(row.item))) return;
               actionMenuFor = null;
               if (editingListItem && editingListItem.item === row.item) editingListItem = null;
               if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.rowType === 'list-item' && keyboardFocusedBodyRow.item === row.item) {
@@ -6590,8 +6882,8 @@ function renderTableRow(row) {
         {
           icon: '\u2715',
           label: 'Delete table',
-          onClick: () => {
-            if (!confirmTableDelete(row.node)) return;
+          onClick: async () => {
+            if (!(await confirmTableDelete(row.node))) return;
             actionMenuFor = null;
             if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.rowType === 'table' && keyboardFocusedBodyRow.node === row.node) {
               keyboardFocusedBodyRow = null;
@@ -6631,6 +6923,9 @@ function renderTableRow(row) {
         editingCell.colIndex === colIndex;
 
       if (isEditing) {
+        const thisCellTable = row.node;
+        const thisCellRowIndex = rowIndex;
+        const thisCellColIndex = colIndex;
         const input = document.createElement('textarea');
         input.id = 'cell-edit-input';
         input.value = cellText;
@@ -6656,7 +6951,17 @@ function renderTableRow(row) {
           }
         });
         input.addEventListener('blur', () => {
-          if (!editingCell) return; // Escape already committed/cleared this and re-rendered -- the DOM removal that follows fires a native blur on this now-detached textarea as a side effect, not a real, separate commit
+          console.log('BLUR on', thisCellRowIndex, thisCellColIndex, 'editingCell:', JSON.stringify(editingCell ? {r:editingCell.rowIndex,c:editingCell.colIndex} : null));
+          if (
+            !editingCell ||
+            editingCell.table !== thisCellTable ||
+            editingCell.rowIndex !== thisCellRowIndex ||
+            editingCell.colIndex !== thisCellColIndex
+          ) {
+            console.log('  -> SKIP');
+            return;
+          }
+          console.log('  -> PROCEED (commit+render again)');
           const { heading, table, rowIndex: ri, colIndex: ci } = editingCell;
           editingCell = null;
           setTableCell(heading, table, ri, ci, input.value.replace(/\n/g, ' '));
@@ -6671,12 +6976,27 @@ function renderTableRow(row) {
         } else {
           tdEl.textContent = '\u00a0';
         }
-        tdEl.onclick = () => {
+        tdEl.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          if (editingCell) {
+            const prevInput = document.getElementById('cell-edit-input');
+            const { heading, table, rowIndex: ri, colIndex: ci } = editingCell;
+            editingCell = null;
+            if (prevInput) setTableCell(heading, table, ri, ci, prevInput.value.replace(/\n/g, ' '));
+          }
           setKeyboardFocusToRow(row);
           keyboardFocusedCellPos = { rowIndex, colIndex };
-          editingCell = { heading: row.heading, table: row.node, rowIndex, colIndex };
-          render();
-        };
+          // row.node may already be stale here -- the commit just above,
+          // if there was one, fully re-parses heading.body (see the
+          // comment on this whole handler), which produces a BRAND NEW
+          // table object whenever the committed cell shares this same
+          // heading. Re-finding it fresh by lineIndex, rather than
+          // trusting the closure-captured row.node directly, is what
+          // makes this correct either way.
+          const freshTable = (row.heading.body || []).find((n) => n.type === 'table' && n.lineIndex === row.node.lineIndex) || row.node;
+          editingCell = { heading: row.heading, table: freshTable, rowIndex, colIndex };
+          commitAndRender('Edited table cell');
+        });
       }
       trEl.appendChild(tdEl);
     });
@@ -6719,12 +7039,12 @@ function renderTableRow(row) {
     })
   );
   controls.appendChild(
-    smallButton('\u2212 row', 'Delete last row', () => {
+    smallButton('\u2212 row', 'Delete last row', async () => {
       if (dataRowCount() <= 1) {
         setStatus("Can't delete the last row.");
         return;
       }
-      if (lastDataRowHasContent() && !window.confirm('Delete the last row? It has data in it.')) {
+      if (lastDataRowHasContent() && !(await confirmDialog('Delete the last row? It has data in it.'))) {
         return;
       }
       deleteTableRow(row.heading, row.node, row.node.rows.length - 1);
@@ -6740,12 +7060,12 @@ function renderTableRow(row) {
     })
   );
   controls.appendChild(
-    smallButton('\u2212 col', 'Delete last column', () => {
+    smallButton('\u2212 col', 'Delete last column', async () => {
       if (colCount() <= 1) {
         setStatus("Can't delete the last column.");
         return;
       }
-      if (lastColumnHasContent() && !window.confirm('Delete the last column? It has data in it.')) {
+      if (lastColumnHasContent() && !(await confirmDialog('Delete the last column? It has data in it.'))) {
         return;
       }
       deleteTableColumn(row.heading, row.node, colCount() - 1);
@@ -6902,8 +7222,8 @@ function renderParagraphRow(row) {
         {
           icon: '\u2715',
           label: 'Delete note',
-          onClick: () => {
-            if (!confirmParagraphDelete(row.node)) return;
+          onClick: async () => {
+            if (!(await confirmParagraphDelete(row.node))) return;
             actionMenuFor = null;
             if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.rowType === 'paragraph' && keyboardFocusedBodyRow.node === row.node) {
               keyboardFocusedBodyRow = null;
@@ -7143,6 +7463,29 @@ function setupSidePanelResize() {
 }
 setupSidePanelResize();
 
+// Commits a currently-editing table cell before anything else on the
+// page reacts to this same tap -- capture phase, so it runs ahead of
+// whatever the tap actually landed on. Without this, that target's own
+// click handling races the cell's own blur-triggered commit-and-
+// rerender, and loses on the first tap the same way switching directly
+// between two cells used to (see the per-cell mousedown handler above
+// for the fuller explanation this mirrors).
+document.addEventListener(
+  'mousedown',
+  (e) => {
+    if (!editingCell) return;
+    if (e.target.closest('#cell-edit-input')) return; // still inside the cell's own textarea -- this tap isn't leaving it, nothing to commit
+    e.preventDefault();
+    const prevInput = document.getElementById('cell-edit-input');
+    const { heading, table, rowIndex: ri, colIndex: ci } = editingCell;
+    editingCell = null;
+    if (prevInput) setTableCell(heading, table, ri, ci, prevInput.value.replace(/\n/g, ' '));
+    resyncKeyboardFocusToBodyRow(heading, 'table', table.lineIndex);
+    commitAndRender('Edited table cell');
+  },
+  true
+);
+
 function clearStaleKeyboardFocusIfClickedElsewhere(e) {
   // A fresh edit session may have already started -- and already
   // rendered once, correctly -- as part of THIS SAME click, if it
@@ -7171,6 +7514,7 @@ document.addEventListener('click', clearStaleKeyboardFocusIfClickedElsewhere);
 
 function render() {
   updateFilenameDisplay();
+  renderTabBar();
   syncSidePanel();
   syncExtraMenuButtonVisibility();
   renderMinibuffer();
@@ -7402,7 +7746,16 @@ function updateFilenameDisplay() {
 
 /** Common finish-up after any successful open/create, regardless of which
  *  backend it came from. */
-async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCache = false) {
+async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCache = false, { replaceCurrentTab = false } = {}) {
+  if (!replaceCurrentTab) {
+    const alreadyOpenTab = documentId && !documentId.startsWith(UNSAVED_DOCUMENT_ID) ? documentSessions.find((s) => s.state && s.state.documentId === documentId && s.state.storageKind === storageKind) : null;
+    if (alreadyOpenTab && alreadyOpenTab.tabId !== activeTabId) {
+      switchToTab(alreadyOpenTab.tabId);
+      return;
+    }
+    if (activeTabId != null && !alreadyOpenTab) saveSessionSnapshot(activeTabId);
+    if (!alreadyOpenTab) activeTabId = nextTabId++;
+  }
   externalChangeDismissedHash = null;
   hideExternalChangeBanner();
   const rawLocalVars = parseLocalVariables(serializeOrg(doc));
@@ -7413,7 +7766,13 @@ async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCach
   state = { documentId, doc, startupConfig, storageKind, localVariables };
   syncAgendaFilesConfig();
   const openedText = serializeOrg(doc);
-  history = createHistory(openedText, resumedFromCache ? 'Opened (resumed unsaved local version)' : 'Opened');
+  const persistedHistory = documentId ? await loadPersistedHistory(kv, documentId) : null;
+  if (persistedHistory && persistedHistory.entries[persistedHistory.entries.length - 1].text === openedText) {
+    history = persistedHistory;
+  } else {
+    if (persistedHistory) await clearPersistedHistory(kv, documentId); // stale -- text changed since this app last saved history here
+    history = createHistory(openedText, resumedFromCache ? 'Opened (resumed unsaved local version)' : 'Opened');
+  }
   historyOpen = false;
   lastSavedText = resumedFromCache ? null : openedText;
   // A resumed local version is, by definition, different from whatever's
@@ -7441,15 +7800,15 @@ async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCach
   renderViewMenu();
   settingsOpen = false;
   closeFileMenu();
+  saveSessionSnapshot(activeTabId);
   render();
+  renderTabBar();
+  persistOpenTabsInBackground();
 }
 
 async function createNewUnsavedDocument() {
-  if (state.doc && !state.storageKind) {
-    if (!window.confirm('Discard the current unsaved document? Use Save As first if you want to keep it.')) return;
-  }
   if (commitTextModeIfActive()) render();
-  await afterDocumentLoaded(UNSAVED_DOCUMENT_ID, parseOrg(''), null);
+  await afterDocumentLoaded(UNSAVED_DOCUMENT_ID + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), parseOrg(''), null);
   setStatus('New unsaved document \u2014 edits are cached locally, same as any other document; Save As to keep it for good.');
   render();
 }
@@ -8153,6 +8512,92 @@ function wizardButton(label, onClick) {
  *  sibling in the same row, sized to its own content, rather than
  *  stretching alone to fill the whole row the way a lone wizardButton
  *  is meant to. */
+function confirmDialog(message, { confirmLabel = 'Delete', cancelLabel = 'Cancel', danger = true } = {}) {
+  return new Promise((resolve) => {
+    confirmDialogOpen = true;
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.background = 'rgba(0,0,0,0.6)';
+    overlay.style.zIndex = '10000';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.padding = '16px';
+    overlay.style.boxSizing = 'border-box';
+
+    const modal = document.createElement('div');
+    modal.className = 'panel';
+    modal.style.background = 'var(--bg)';
+    modal.style.color = 'var(--fg)';
+    modal.style.border = '1px solid var(--border-strong)';
+    modal.style.borderRadius = '10px';
+    modal.style.padding = '16px';
+    modal.style.width = '100%';
+    modal.style.maxWidth = '420px';
+    modal.style.boxSizing = 'border-box';
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
+    modal.style.gap = '14px';
+
+    const messageEl = document.createElement('div');
+    messageEl.textContent = message;
+    messageEl.style.fontSize = '15px';
+    messageEl.style.lineHeight = '1.4';
+    modal.appendChild(messageEl);
+
+    const buttonRow = document.createElement('div');
+    buttonRow.className = 'panel-row';
+    buttonRow.style.justifyContent = 'flex-end';
+    buttonRow.style.gap = '8px';
+
+    function finish(result) {
+      confirmDialogOpen = false;
+      document.removeEventListener('keydown', onKeyDown, true);
+      overlay.remove();
+      resolve(result);
+    }
+
+    const cancelBtn = tableActionButton(cancelLabel, () => finish(false));
+    const confirmBtn = tableActionButton(confirmLabel, () => finish(true));
+    if (danger) {
+      confirmBtn.style.color = 'var(--danger, #d33)';
+      confirmBtn.style.borderColor = 'var(--danger, #d33)';
+    }
+
+    buttonRow.appendChild(cancelBtn);
+    buttonRow.appendChild(confirmBtn);
+    modal.appendChild(buttonRow);
+    overlay.appendChild(modal);
+
+    // Tapping the dark backdrop itself (not the modal or either button)
+    // is the same as Cancel -- the safe, non-destructive outcome for any
+    // tap that wasn't clearly, deliberately aimed at a specific button.
+    overlay.onclick = (e) => {
+      if (e.target === overlay) finish(false);
+    };
+
+    function onKeyDown(e) {
+      // Capture phase, ahead of the global god-mode handler's own guard
+      // (which also checks confirmDialogOpen and steps aside) -- belt
+      // and suspenders against any other listener racing this dialog.
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        finish(false);
+      }
+      // Enter is deliberately NOT intercepted here: cancelBtn already
+      // has native focus below, so a native Enter-on-focused-button
+      // activates Cancel on its own, the same way it would for any
+      // other focused button in the app -- no special-casing needed.
+    }
+    document.addEventListener('keydown', onKeyDown, true);
+
+    document.body.appendChild(overlay);
+    cancelBtn.focus();
+  });
+}
+
 function tableActionButton(label, onClick, disabled) {
   const btn = menuButton(label, onClick, disabled);
   btn.style.fontSize = '15px';
@@ -8206,12 +8651,12 @@ async function renderRecentFilesSection(container) {
   }
 }
 
-/** Confirms (Clear/Cancel, via window.confirm -- the same "always confirms,
- *  no separate custom dialog" convention every other destructive confirm
- *  in this app already uses) and, if confirmed, empties the recent-files
- *  list. Reachable via a long-press on the "Recently opened" label. */
+/** Confirms (via the custom confirmDialog(), whose default button is
+ *  Cancel, not Clear -- see confirmDialog's own docstring) and, if
+ *  confirmed, empties the recent-files list. Reachable via a
+ *  long-press on the "Recently opened" label. */
 async function confirmClearRecentFiles() {
-  if (!window.confirm('Clear the recently opened files list?')) return;
+  if (!(await confirmDialog('Clear the recently opened files list?', { confirmLabel: 'Clear' }))) return;
   await clearRecentFiles(kv);
   renderFileMenu();
 }
@@ -11594,9 +12039,10 @@ async function renderSettingsView(target = settingsRenderTarget) {
       const hasCredentials = !!(bundle.settings.github && bundle.settings.github.token) || !!(bundle.settings.webdav && bundle.settings.webdav.password);
       if (
         hasCredentials &&
-        !window.confirm(
-          'This file will include your GitHub token and/or WebDAV password in plain text. Keep it private, and only share it with something you trust. Continue?'
-        )
+        !(await confirmDialog(
+          'This file will include your GitHub token and/or WebDAV password in plain text. Keep it private, and only share it with something you trust. Continue?',
+          { confirmLabel: 'Continue', danger: true }
+        ))
       ) {
         return;
       }
@@ -13301,6 +13747,37 @@ async function bootstrap() {
   applySidePanelWidth(await getSidePanelWidth(kv));
   syncContentOffset();
 
+  const openTabsData = await getOpenTabs(kv);
+  if (openTabsData && Array.isArray(openTabsData.tabs) && openTabsData.tabs.length > 0) {
+    let anyOpened = false;
+    for (const tab of openTabsData.tabs) {
+      if (!tab.documentId) continue;
+      try {
+        const cached = await kv.get('doc:' + tab.documentId);
+        if (cached && typeof cached.value === 'string') {
+          const doc = parseOrg(cached.value);
+          const pending = await hasPendingChange(kv, tab.documentId);
+          await afterDocumentLoaded(tab.documentId, doc, tab.storageKind, pending);
+          anyOpened = true;
+        }
+      } catch {
+        // One tab failing to restore shouldn't block the rest -- move on to the next.
+      }
+    }
+    if (anyOpened) {
+      const activeTabData = openTabsData.tabs[openTabsData.activeIndex];
+      if (activeTabData) {
+        const matchingSession = documentSessions.find((s) => s.state.documentId === activeTabData.documentId && s.state.storageKind === activeTabData.storageKind);
+        if (matchingSession) switchToTab(matchingSession.tabId);
+      }
+      updateFilenameDisplay();
+      render();
+      checkForExternalChange();
+      checkWeatherAutoRefresh();
+      return;
+    }
+  }
+
   const last = await getLastActiveDocument(kv);
   if (last && last.documentId) {
     try {
@@ -13327,8 +13804,9 @@ async function bootstrap() {
 externalChangeReloadBtn.addEventListener('click', async () => {
   const documentId = state.documentId;
   if (isDirty) {
-    const proceed = window.confirm(
-      `Reloading "${documentId}" will discard your unsaved local changes here and replace them with the current version from disk. Continue?`
+    const proceed = await confirmDialog(
+      `Reloading "${documentId}" will discard your unsaved local changes here and replace them with the current version from disk. Continue?`,
+      { confirmLabel: 'Reload', danger: true }
     );
     if (!proceed) return;
   }

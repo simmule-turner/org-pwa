@@ -6,6 +6,100 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v283 — Multiple documents, tab-bar style
+The largest architectural change this app has taken on. Rather than
+threading a "which document" parameter through the thousands of
+read/write sites already spread across this 13,500+ line file, used a
+session-swapping model instead — closer to how Emacs itself handles
+buffer-local state internally. Every existing global (~state~,
+~editingCell~, ~history~, and ~20 others) keeps its exact name, and
+every existing call site throughout the file stays completely
+untouched; only tab-switching itself needed to learn about sessions
+at all. New tab bar, hidden until a second tab is actually open.
+Opening a document — New, Open, a ~file:~/~github:~/~webdav:~ link,
+an Agenda or Search result — now opens into its own tab, or switches
+to it if it's already open, uniformly, since they all share the same
+underlying open-a-document logic. Each tab keeps its own content,
+editing state, cursor, scroll position, and undo history, completely
+independently. The full set of open tabs — not just the single most
+recent document — now persists and restores across closing and
+reopening the app entirely. Found and fixed two real bugs during
+testing: leftover "confirm discard" logic from the old single-document
+model was silently blocking every second new tab behind an unanswered
+dialog, and every unsaved draft sharing one fixed internal id broke
+persistence itself — multiple unsaved tabs collided in the same cache
+entry, so only the last-saved one actually survived a reload.
+
+* v282 — Table-highlight bug, fully resolved
+The other half of v281's fix: dismissing the highlight by tapping
+something that isn't a table cell — most commonly, a different
+heading — now also takes effect on the first tap. A new document-level
+mousedown handler commits a pending cell edit before whatever was
+actually tapped gets its own chance to react, closing the same DOM-
+replaced-mid-gesture race the cell-to-cell fix closed. That alone
+wasn't quite enough, though — the heading title's own action (opening
+its action menu) still used ~click~, which can't reliably resolve its
+own target once a capture-phase handler has already rebuilt the DOM
+out from under it. Converting the heading title to ~mousedown~ too,
+the same approach already used for table cells, was what actually
+closed the gap. Verified live with real taps: tapping a different
+heading mid-edit now correctly commits the cell, opens that heading's
+own action menu, and moves the highlight there in one tap.
+
+* v281 — The actual root cause of "table cell switching needs two taps"
+Found after several earlier attempts across sessions misdiagnosed this
+as a DOM-replacement timing race. The real cause: committing a table
+cell's edit fully re-parses the heading's whole body, producing a
+brand-new table object each time — so a cell-switching handler that
+committed the OLD cell then reused the already-captured table
+reference for the NEW cell was working with something already stale
+the instant both cells shared a heading. The render pass afterward
+could never match it against the freshly-reparsed table, which is why
+the cell never actually showed as editing despite its row/column
+being tracked correctly the whole time. Fixed by re-finding the table
+fresh by its own line position after any commit — the same pattern
+already used elsewhere for exactly this kind of reference. Verified
+live with real taps across multiple consecutive cell switches, each
+correctly focusing and preserving data on the first tap. Dismissing
+the highlight by tapping something other than a table cell — a
+heading, say — still needs a second tap; extending this fix there too
+is a separate, larger piece of work.
+
+* v280 — Undo/redo history persists across reopening a file
+New =src/history-store.js= module, same per-document key pattern
+=outbox.js= already uses (its own docstring anticipated exactly this).
+Capped at 200 steps once persisted — a full-text snapshot per step
+makes unbounded storage a real, ongoing cost for a file kept in
+long-term regular use, unlike the old in-memory-only history, which a
+session's own natural end (closing the tab) already bounded. Restored
+history requires its own latest snapshot to exactly match what's
+actually on screen on reopen; if the file changed elsewhere since
+(another device, GitHub's own web UI, WebDAV directly), the old
+history no longer corresponds to reality and is discarded rather than
+offering undo into disconnected content. Also investigated (per
+direct request) whether per-keystroke undo granularity would be worth
+building instead of the current one-step-per-completed-edit — recommending
+against it: the browser's own native field-level undo already covers
+the in-field case for free, before a field is even blurred, and real
+Emacs's own undo batches consecutive typing the same way this app's
+current granularity already does.
+
+* v279 — Delete confirmations default to Cancel, not OK
+Every delete/discard confirmation (heading, table, note, list item,
+row/column, attachment, recent files, discarding an unsaved document,
+reloading over local changes, exporting credentials in plain text) now
+uses a custom dialog instead of the browser's own native ~confirm()~,
+specifically so *Cancel* — not the destructive option — is the default:
+focused when the dialog opens, activated by a stray Enter press,
+Escape, or tapping the dark backdrop instead of a button. Native
+~confirm()~'s own default button was never something JS could control
+at all, which is why this needed a real replacement rather than a
+setting. Two dialogs (resolving a stale local edit, resolving a sync
+conflict) are deliberately still native for now — both offer a genuine
+choice between two valid outcomes rather than "destroy vs. do
+nothing," and need their own careful design rather than a mechanical
+swap.
+
 * v278 — CRITICAL: the ACTUAL Android/ChromeOS data-loss regression
 v277 fixed a real but, it turned out, unreachable code path (the
 top-toolbar *+*, permanently hidden and never actually used). The
