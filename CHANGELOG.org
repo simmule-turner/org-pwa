@@ -6,6 +6,17 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v288 — Three small UI corrections
+The tab bar now always shows, even with just one document open,
+instead of only appearing once a second tab exists — so the UI's own
+shape stays consistent regardless of how many tabs happen to be open.
+Closing the only remaining tab now creates a fresh, empty buffer
+immediately rather than dropping to a "nothing open" state. Also fixed
+a real regression from the previous release: removing the old
+filename display took its implicit spacer role with it, collapsing
+the top toolbar's own File/Save/View/More buttons onto the left edge
+instead of keeping File/Save left and View/More right.
+
 * v287 — Toolbar cleanup and menu-width fix
 Removed the top-line filename display — redundant once the tab bar and
 modeline already show the same thing, genuinely overkill across three

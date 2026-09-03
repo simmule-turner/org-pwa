@@ -3898,31 +3898,7 @@ async function closeTab(tabId) {
   }
   if (documentSessions.length === 0) {
     activeTabId = null;
-    state = { documentId: null, doc: null, startupConfig: null, storageKind: null, localVariables: null };
-    history = createHistory('');
-    isDirty = false;
-    lastSavedText = null;
-    currentView = 'org';
-    editingHeading = null;
-    editingCell = null;
-    editingParagraph = null;
-    editingListItem = null;
-    editingHeadingText = null;
-    editingGeneral = null;
-    actionMenuFor = null;
-    keyboardFocusedHeading = null;
-    keyboardFocusedBodyRow = null;
-    keyboardFocusedCellPos = null;
-    currentContextHeading = null;
-    navigationBackStack = [];
-    addBtn.disabled = true;
-    viewMenuBtn.disabled = true;
-    searchBtn.disabled = true;
-    captureBtn.disabled = true;
-    await setLastActiveDocument(kv, null, null);
-    render();
-    renderTabBar();
-    persistOpenTabsInBackground();
+    await createNewUnsavedDocument();
     return;
   }
   const nextIndex = Math.min(index, documentSessions.length - 1);
@@ -3944,7 +3920,7 @@ async function closeTab(tabId) {
  *  tab switch to save a fresh snapshot. */
 function renderTabBar() {
   tabBarEl.innerHTML = '';
-  if (documentSessions.length < 2) {
+  if (documentSessions.length < 1) {
     tabBarEl.style.display = 'none';
     return;
   }
