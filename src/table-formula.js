@@ -620,14 +620,16 @@ function readCellNumber(dataRows, row, col, emptyMode = 'omit', forceNumeric = f
  *  as a Calc fraction instead there, a distinction this app's own
  *  narrower engine doesn't reproduce either way. */
 function readCellValue(dataRows, row, col, ctx) {
+  const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
   if (ctx.durationMode) {
-    const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
     const trimmed = text.trim();
     if (trimmed !== '') {
       const seconds = parseDurationSeconds(trimmed);
       if (seconds !== null) return seconds;
     }
   }
+  const tagged = parseCellTimestamp(text);
+  if (tagged) return tagged;
   return readCellNumber(dataRows, row, col, ctx.emptyMode, ctx.forceNumeric);
 }
 
