@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
 import { formatOrgTimestamp } from '../src/org-timestamp.js';
-import { isClockRunning, clockIn, clockOut, clockCancel, clockInSwitchingTasks, formatClockDuration, parseClockDuration, totalClockedMinutes, findHeadingWithRunningClock } from '../src/clock.js';
+import { isClockRunning, clockIn, clockOut, clockCancel, clockInSwitchingTasks, formatClockDuration, parseClockDuration, totalClockedMinutes, findHeadingWithRunningClock, findMostRecentlyClockedHeading } from '../src/clock.js';
 
 function ts(date, timeStr) {
   return formatOrgTimestamp({ date, time: timeStr, active: false });
@@ -229,6 +229,50 @@ test('findHeadingWithRunningClock finds a running clock nested several levels de
 test('findHeadingWithRunningClock ignores a completed (non-running) clock', () => {
   const doc = parseOrg('* A\n:LOGBOOK:\nCLOCK: [2026-07-31 Fri 09:00]--[2026-07-31 Fri 09:30] =>  0:30\n:END:\n');
   assert.equal(findHeadingWithRunningClock(doc), null);
+});
+
+// ---- findMostRecentlyClockedHeading (org-clock-continue's own target-finding half) ----
+
+test('findMostRecentlyClockedHeading returns null when nothing has ever been clocked anywhere', () => {
+  const doc = parseOrg('* A\n** B\n');
+  assert.equal(findMostRecentlyClockedHeading(doc), null);
+});
+
+test('findMostRecentlyClockedHeading finds the only clocked heading when there\u2019s just one', () => {
+  const doc = parseOrg('* A\n:LOGBOOK:\nCLOCK: [2026-07-31 Fri 09:00]--[2026-07-31 Fri 09:30] =>  0:30\n:END:\n* B\n');
+  assert.equal(findMostRecentlyClockedHeading(doc), doc.children[0]);
+});
+
+test('findMostRecentlyClockedHeading picks whichever heading\u2019s own clock STARTED more recently, not the one with the later end time', () => {
+  const doc = parseOrg(
+    '* A\n:LOGBOOK:\nCLOCK: [2026-07-31 Fri 09:00]--[2026-07-31 Fri 09:30] =>  0:30\n:END:\n' +
+    '* B\n:LOGBOOK:\nCLOCK: [2026-07-31 Fri 10:00]--[2026-07-31 Fri 10:05] =>  0:05\n:END:\n'
+  );
+  // B started at 10:00, after A's own 09:00 start -- B wins even though its own session was shorter.
+  assert.equal(findMostRecentlyClockedHeading(doc), doc.children[1]);
+});
+
+test('findMostRecentlyClockedHeading finds a match nested several levels deep, regardless of a shallower heading\u2019s own older clock', () => {
+  const doc = parseOrg('* A\n:LOGBOOK:\nCLOCK: [2026-07-30 Thu 09:00]--[2026-07-30 Thu 09:30] =>  0:30\n:END:\n** B\n*** C\n:LOGBOOK:\nCLOCK: [2026-07-31 Fri 09:00]--[2026-07-31 Fri 09:30] =>  0:30\n:END:\n');
+  const target = doc.children[0].children[0].children[0];
+  assert.equal(findMostRecentlyClockedHeading(doc), target);
+});
+
+test('findMostRecentlyClockedHeading uses a heading\u2019s own MOST RECENT clock line when it has several, not its first or oldest one', () => {
+  const doc = parseOrg(
+    '* A\n:LOGBOOK:\n' +
+    'CLOCK: [2026-08-05 Wed 09:00]--[2026-08-05 Wed 09:30] =>  0:30\n' +
+    'CLOCK: [2026-07-31 Fri 09:00]--[2026-07-31 Fri 09:30] =>  0:30\n' +
+    ':END:\n* B\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 09:00]--[2026-08-01 Sat 09:30] =>  0:30\n:END:\n'
+  );
+  // A's own most recent line (Aug 5) beats B's only line (Aug 1), even though A also has an older Jul 31 line.
+  assert.equal(findMostRecentlyClockedHeading(doc), doc.children[0]);
+});
+
+test('findMostRecentlyClockedHeading considers a still-running clock too, comparing by its own start time', () => {
+  const doc = parseOrg('* A\n:LOGBOOK:\nCLOCK: [2026-07-31 Fri 09:00]--[2026-07-31 Fri 09:30] =>  0:30\n:END:\n* B\n');
+  clockIn(doc.children[1], ts(new Date(2026, 7, 1, 10, 0), '10:00'));
+  assert.equal(findMostRecentlyClockedHeading(doc), doc.children[1]);
 });
 
 // ---- THE FIX: clockInSwitchingTasks auto-clocks-out a different running clock ----
