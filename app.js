@@ -86,7 +86,7 @@ import {
   parseAgendaFilesVar,
 } from './src/local-variables.js';
 import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath } from './src/refile.js';
-import { isClockRunning, clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, currentClockSessionMinutes, formatClockDuration, findHeadingWithRunningClock } from './src/clock.js';
+import { isClockRunning, clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, currentClockSessionMinutes, formatClockDuration, findHeadingWithRunningClock, findMostRecentlyClockedHeading } from './src/clock.js';
 import { computeClocktable, renderClocktable } from './src/clocktable.js';
 import { parseExtraMenu } from './src/extra-menu.js';
 import { parseMenuAliases, resolveMenuOrder } from './src/menu-alias.js';
@@ -1073,6 +1073,32 @@ function clockInHeading(heading) {
     return;
   }
   commitAndRender(switchedFrom ? `Clocked in (stopped the clock on "${switchedFrom.title}")` : 'Clocked in');
+}
+
+/** org-clock-continue: resumes clocking on whichever heading was most
+ *  recently clocked, without needing to navigate back to find it
+ *  first. A no-op (with a status message) if a clock is already
+ *  running anywhere -- "continue the last one" doesn't have a
+ *  sensible meaning while one is already active, real org itself
+ *  wouldn't let you double-clock either -- or if nothing in the
+ *  document has ever been clocked at all. */
+function clockContinue() {
+  if (!state.doc) return;
+  if (findHeadingWithRunningClock(state.doc)) {
+    setStatus('A clock is already running.');
+    render();
+    return;
+  }
+  const target = findMostRecentlyClockedHeading(state.doc);
+  if (!target) {
+    setStatus('Nothing has been clocked yet in this document.');
+    render();
+    return;
+  }
+  const now = new Date();
+  const timestamp = formatOrgTimestamp({ date: now, time: now.toTimeString().slice(0, 5), active: false });
+  clockIn(target, timestamp);
+  commitAndRender(`Resumed clock on "${target.title}"`);
 }
 
 /** Attaches a picked file to `heading` -- this app's own extension,
@@ -13564,6 +13590,8 @@ async function runExtraMenuEntry(entry) {
       } else {
         clockCancelHeading(running);
       }
+    } else if (entry.name === 'org-clock-continue') {
+      clockContinue();
     } else if (entry.name === 'org-cut-subtree' || entry.name === 'org-paste-subtree') {
       const target = extraMenuTargetHeading();
       if (!target) {

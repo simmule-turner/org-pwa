@@ -6,6 +6,18 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v293 — org-clock-continue, and a documentation correction
+Added ~org-clock-continue~ as a new Extras-menu action: resumes
+clocking on whichever heading was most recently clocked, anywhere in
+the document, without navigating back to find it first — a status
+message covers both "a clock's already running" and "nothing's ever
+been clocked" instead of doing nothing silently. Separately: corrected
+the README, which incorrectly claimed there's no persistent modeline
+clock display — there already was one, confirmed by directly running
+it (a running clock shows its own elapsed time and heading title in
+the modeline, refreshed every 30 seconds); the code was already right,
+only the documentation was stale.
+
 * v292 — New documents are named "*scratch*", matching real Emacs
 A fresh, unsaved document with no heading yet now shows *scratch* in
 both the tab bar and modeline, instead of the generic "Untitled" —
