@@ -3914,23 +3914,47 @@ function switchToTab(tabId) {
   if (activeTabId != null) saveSessionSnapshot(activeTabId);
   loadSessionSnapshot(tabId);
   closeAllOverlayPanels();
+  hideExternalChangeBanner();
+  checkForExternalChange();
   render();
   renderTabBar();
   persistOpenTabsInBackground();
 }
 
-/** Closes `tabId` -- no confirmation, even if that tab's own document
- *  is unsaved: the existing outbox/cache system already keeps unsaved
- *  edits safe independent of which tabs happen to be open right now,
- *  the same way closing a browser tab on a page with a pending
- *  autosave doesn't lose anything either. Picks the tab immediately
- *  before the closed one as the next active tab (or the one after, if
- *  the first tab was closed), matching the common browser/editor
- *  convention; falls back to this app's own existing "nothing open"
- *  state if that was the last tab left. */
+/** Closes `tabId` -- confirms first if that tab's own document has
+ *  unsaved changes, matching real Emacs's own kill-buffer behavior
+ *  ("Buffer BUFFERNAME modified; kill anyway?"). Choosing not to close
+ *  leaves the tab open exactly as it was, unsaved changes and all, so
+ *  the person can then use the Save button on it themselves -- this
+ *  is deliberately a plain two-choice prompt, not a combined
+ *  save-and-close shortcut, the same as real Emacs's own. A clean
+ *  (non-dirty) tab still closes immediately, no confirmation: the
+ *  existing outbox/cache system already keeps ANY edit safe
+ *  independent of which tabs happen to be open, so what this
+ *  confirmation actually protects is the person's own intent (did
+ *  they mean to set this aside without saving it), not the data
+ *  itself. Picks the tab immediately before the closed one as the
+ *  next active tab (or the one after, if the first tab was closed),
+ *  matching the common browser/editor convention; falls back to this
+ *  app's own existing "nothing open" state if that was the last tab
+ *  left. */
 async function closeTab(tabId) {
   const index = documentSessions.findIndex((s) => s.tabId === tabId);
   if (index === -1) return;
+  const session = documentSessions[index];
+  const dirtyForThisTab = tabId === activeTabId ? isDirty : session.isDirty;
+  if (dirtyForThisTab) {
+    const label =
+      tabId === activeTabId
+        ? documentDisplayLabel(state.documentId, state.doc)
+        : documentDisplayLabel(session.state.documentId, session.state.doc);
+    const proceed = await confirmDialog(`"${label}" has unsaved changes. Close it anyway?`, {
+      confirmLabel: 'Close',
+      cancelLabel: 'Cancel',
+      danger: true,
+    });
+    if (!proceed) return;
+  }
   documentSessions.splice(index, 1);
   if (tabId !== activeTabId) {
     renderTabBar();
@@ -3944,6 +3968,8 @@ async function closeTab(tabId) {
   }
   const nextIndex = Math.min(index, documentSessions.length - 1);
   loadSessionSnapshot(documentSessions[nextIndex].tabId);
+  hideExternalChangeBanner();
+  checkForExternalChange();
   await setLastActiveDocument(kv, state.documentId, state.storageKind);
   render();
   renderTabBar();

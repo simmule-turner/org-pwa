@@ -6,6 +6,16 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v294 — Two tab-lifecycle safety improvements
+Switching into a tab backed by a real file now also checks whether it
+changed elsewhere since last seen — the same proactive check that
+already ran on open and on the browser tab regaining focus, now also
+catching the moment you're about to start looking at or editing it.
+Separately: closing a tab with unsaved changes now confirms first,
+matching real Emacs's own ~kill-buffer~ behavior — saying no leaves it
+open exactly as it was, so it can be saved properly instead. A clean
+tab still closes immediately, no confirmation needed.
+
 * v293 — org-clock-continue, and a documentation correction
 Added ~org-clock-continue~ as a new Extras-menu action: resumes
 clocking on whichever heading was most recently clocked, anywhere in
