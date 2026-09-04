@@ -412,6 +412,34 @@ test('insertCapture table-line creates a new table when the target has none yet'
   assert.deepEqual(dataRow.cells, ['1', 'first', '45.00']);
 });
 
+test('THE BUG THIS FOUND AND FIXED: a table-line capture creating a brand-new table never adds a header rule -- the captured row is plain data (e.g. a timestamp log entry), not a header, and shouldn\u2019t render bold just because it\u2019s the table\u2019s first row; no row should look like a header unless the person deliberately builds one', () => {
+  const doc = parseOrg('* Target');
+  const target = doc.children[0];
+  insertCapture(target, 'table-line', '| 1 | 2026-09-04 | 1200 |');
+  const reparsed = parseOrg(serializeOrg(doc));
+  const table = reparsed.children[0].body.find((n) => n.type === 'table');
+  assert.equal(table.rows.length, 1); // the one data row, and nothing else -- specifically no trailing/leading rule row
+  assert.equal(table.rows[0].type, 'row');
+});
+
+test('THE BUG THIS FOUND AND FIXED: a second table-line capture into that same newly-created (rule-free) table still appends cleanly, in both append and prepend order', () => {
+  const doc = parseOrg('* Target');
+  const target = doc.children[0];
+  insertCapture(target, 'table-line', '| 1 | 2026-09-04 |');
+  insertCapture(target, 'table-line', '| 2 | 2026-09-05 |');
+  let reparsed = parseOrg(serializeOrg(doc));
+  let table = reparsed.children[0].body.find((n) => n.type === 'table');
+  assert.deepEqual(table.rows.map((r) => r.cells), [['1', '2026-09-04'], ['2', '2026-09-05']]);
+
+  const doc2 = parseOrg('* Target');
+  const target2 = doc2.children[0];
+  insertCapture(target2, 'table-line', '| 1 | 2026-09-04 |', true);
+  insertCapture(target2, 'table-line', '| 2 | 2026-09-05 |', true);
+  reparsed = parseOrg(serializeOrg(doc2));
+  table = reparsed.children[0].body.find((n) => n.type === 'table');
+  assert.deepEqual(table.rows.map((r) => r.cells), [['2', '2026-09-05'], ['1', '2026-09-04']]);
+});
+
 test('THE BUG THIS FOUND AND FIXED: three sequential table-line captures produce three clean rows, not garbled/duplicated ones', () => {
   const doc = parseOrg('* Target');
   const target = doc.children[0];

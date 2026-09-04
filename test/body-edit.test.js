@@ -229,6 +229,24 @@ test('insertTable appends a fresh table with a header rule', () => {
   assert.equal(table.rows[0].cells.length, 3);
 });
 
+test('insertTable with headerRule: false omits the rule entirely -- every row is plain data, none of them a header', () => {
+  const doc = parseOrg('* Notes');
+  const heading = doc.children[0];
+  insertTable(heading, { rows: 2, cols: 3, headerRule: false });
+
+  const table = heading.body[0];
+  assert.equal(table.rows.length, 2);
+  assert.ok(table.rows.every((r) => r.type === 'row'));
+});
+
+test('insertTable\u2019s headerRule default is unchanged (true) when the parameter is omitted entirely, not just when rows/cols are', () => {
+  const doc = parseOrg('* Notes');
+  const heading = doc.children[0];
+  insertTable(heading, {});
+  const table = heading.body[0];
+  assert.equal(table.rows[1].type, 'rule');
+});
+
 test('insertTable adds a blank-line separator when the heading already has content', () => {
   const doc = parseOrg(['* Notes', 'Some existing text.'].join('\n'));
   const heading = doc.children[0];
