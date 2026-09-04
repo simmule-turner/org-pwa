@@ -4233,6 +4233,7 @@ function startEditingTitle(heading, isNew) {
 
 function commitTitleEdit(rawValue) {
   const heading = editingHeading;
+  if (!heading) return; // re-entrant call -- already committed (see this function's own doc note on why that can happen)
   const isNew = editingIsNew;
   editingHeading = null;
   editingIsNew = false;
@@ -5056,6 +5057,58 @@ function renderInlineNodes(nodes, container, linkContext = null, heading = null)
  * element into view covers both the row and whatever menu is now
  * showing beneath it, not just the row itself.
  */
+
+/** If a heading title, paragraph, list item, or heading-text
+ *  ("description") edit is currently in progress, commits it
+ *  immediately by reading its still-live DOM element's own current
+ *  value -- called at the start of any OTHER mousedown handler that's
+ *  about to trigger its own synchronous render(), since mousedown
+ *  fires before blur in the browser's own event order. Without this,
+ *  an intervening render() destroys the old textarea/input before its
+ *  own blur handler ever gets a chance to run, silently discarding
+ *  whatever was typed -- confirmed directly: type a new sub-heading's
+ *  title, tap a DIFFERENT heading before it commits, and the typed
+ *  text is gone, replaced by an empty "Heading title" field. Each
+ *  branch reuses the exact same commit function/logic its own blur
+ *  handler already calls, so nothing about the actual commit is
+ *  duplicated or can drift out of sync with it. editingCell is
+ *  deliberately excluded -- its own mousedown handler already commits
+ *  it with its own specialized post-commit table re-fetch (a
+ *  committed cell edit re-parses the whole table, changing its own
+ *  object identity), which this doesn't need to duplicate. */
+function commitAnyPendingInlineEdit() {
+  if (editingHeading) {
+    const input = document.getElementById('title-edit-input');
+    if (input) commitTitleEdit(input.value.replace(/\n/g, ' '));
+  } else if (editingParagraph) {
+    const input = document.getElementById('paragraph-edit-input');
+    if (input) {
+      const { heading, paragraph } = editingParagraph;
+      editingParagraph = null;
+      editParagraphText(heading, paragraph, input.value);
+      resyncKeyboardFocusToBodyRow(heading, 'paragraph', paragraph.lineIndex);
+      commitAndRender('Edited paragraph text');
+    }
+  } else if (editingListItem) {
+    const input = document.getElementById('listitem-edit-input');
+    if (input) {
+      const { heading, item } = editingListItem;
+      editingListItem = null;
+      editListItemText(heading, item, input.value.replace(/\n/g, ' '));
+      resyncKeyboardFocusToBodyRow(heading, 'list-item', item.lineIndex);
+      commitAndRender('Edited list item text');
+    }
+  } else if (editingHeadingText) {
+    const input = document.getElementById('heading-text-edit-input');
+    if (input) {
+      const heading = editingHeadingText;
+      editingHeadingText = null;
+      setHeadingText(heading, input.value);
+      commitAndRender('Edited heading body text');
+    }
+  }
+}
+
 function toggleActionMenu(node) {
   const opening = actionMenuFor !== node;
   actionMenuFor = opening ? node : null;
@@ -6344,6 +6397,7 @@ function renderRow(row, todoSequence) {
       }
       title.addEventListener('mousedown', (e) => {
         if (e.target.closest('[data-inline-link]')) return;
+        commitAnyPendingInlineEdit();
         setKeyboardFocusToRow(row);
         toggleActionMenu(row.node);
       });
@@ -6512,6 +6566,7 @@ function renderRow(row, todoSequence) {
         }
       });
       textarea.addEventListener('blur', () => {
+        if (!editingHeadingText) return; // re-entrant call -- already committed
         const heading = editingHeadingText;
         editingHeadingText = null;
         setHeadingText(heading, textarea.value);
@@ -6722,6 +6777,7 @@ function renderRow(row, todoSequence) {
         }
       });
       input.addEventListener('blur', () => {
+        if (!editingListItem) return; // re-entrant call -- already committed
         const { heading, item } = editingListItem;
         editingListItem = null;
         editListItemText(heading, item, input.value.replace(/\n/g, ' '));
@@ -6929,17 +6985,14 @@ function renderTableRow(row) {
           }
         });
         input.addEventListener('blur', () => {
-          console.log('BLUR on', thisCellRowIndex, thisCellColIndex, 'editingCell:', JSON.stringify(editingCell ? {r:editingCell.rowIndex,c:editingCell.colIndex} : null));
           if (
             !editingCell ||
             editingCell.table !== thisCellTable ||
             editingCell.rowIndex !== thisCellRowIndex ||
             editingCell.colIndex !== thisCellColIndex
           ) {
-            console.log('  -> SKIP');
             return;
           }
-          console.log('  -> PROCEED (commit+render again)');
           const { heading, table, rowIndex: ri, colIndex: ci } = editingCell;
           editingCell = null;
           setTableCell(heading, table, ri, ci, input.value.replace(/\n/g, ' '));
@@ -6961,6 +7014,8 @@ function renderTableRow(row) {
             const { heading, table, rowIndex: ri, colIndex: ci } = editingCell;
             editingCell = null;
             if (prevInput) setTableCell(heading, table, ri, ci, prevInput.value.replace(/\n/g, ' '));
+          } else {
+            commitAnyPendingInlineEdit();
           }
           setKeyboardFocusToRow(row);
           keyboardFocusedCellPos = { rowIndex, colIndex };
@@ -7119,6 +7174,7 @@ function renderParagraphRow(row) {
       // paragraph text is multi-line, unlike a heading title.
     });
     textarea.addEventListener('blur', () => {
+      if (!editingParagraph) return; // re-entrant call -- already committed
       const { heading, paragraph } = editingParagraph;
       editingParagraph = null;
       editParagraphText(heading, paragraph, textarea.value);

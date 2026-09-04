@@ -6,6 +6,34 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* Undated (shipped before v290, entry added retroactively) — Capture: table-line captures no longer render bold
+A ~table-line~ capture creating a brand-new table (no existing table
+under the target heading yet) reused a helper meant for "insert a new
+table with a header row" — meaning the captured row ended up shaped
+exactly like a header with zero data rows underneath it, which is why
+it rendered bold. Fixed by giving that helper an explicit opt-out for
+capture's own case, where the row is plain data (a log/tracking
+entry), never a header. This entry exists because the fix itself
+predates this changelog file catching up to it — the code and its own
+tests have already been in every shipped build since it was made; only
+the changelog documentation was missing.
+
+* v291 — Fixed: typed text silently lost when tapping a different heading mid-edit
+Reproduced live, following a precise reported repro: type a new
+sub-heading's title, tap a *different* heading before the first one
+committed, and the typed text vanished — replaced by an empty
+"Heading title" field, no error, nothing recoverable. Confirmed this
+happens on desktop too, not just mobile. Root cause: tapping a
+heading's title uses ~mousedown~, which browsers fire before ~blur~ —
+and opening the tapped heading's own action menu re-renders
+immediately, which destroys the still-being-typed-into field before
+its own blur ever gets a chance to save what was in it. Fixed by
+committing any other in-progress edit first, whenever a heading title
+or table cell is tapped. Also fixed a second, related crash this
+exposed (committing a field this way can trigger its own blur a
+second time) and removed leftover debug logging found while auditing
+for the same issue elsewhere.
+
 * v290 — Table formulas: bare-reference date subtraction now works
 Reported against real org-mode's own documented spreadsheet behavior:
 Calc auto-recognizes org timestamps during ordinary cell evaluation,
