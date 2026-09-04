@@ -6,6 +6,20 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v295 — Fixed: opening a second document could silently blank Agenda's own file list
+Reported precisely: a file with =org-agenda-files= set via Local
+Variables correctly showed birthdays, holidays, and weather in
+Agenda — until a *second*, unrelated document (one with no
+=org-agenda-files= of its own) was also opened, after which Agenda
+showed nothing at all, even switching back to the first file. The
+underlying config value was a single, shared variable that never got
+recomputed on switching tabs, so it stayed stuck on whichever
+document was opened last. Also explains a separately-reported
+symptom: the "Refresh agenda files" button, which only shows when
+there's something configured to refresh, was silently disappearing
+for the same reason — not removed, just correctly hidden by a value
+that had gone wrong.
+
 * v294 — Two tab-lifecycle safety improvements
 Switching into a tab backed by a real file now also checks whether it
 changed elsewhere since last seen — the same proactive check that

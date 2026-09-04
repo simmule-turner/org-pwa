@@ -3882,6 +3882,7 @@ function loadSessionSnapshot(tabId) {
   if (!session) return;
   applySessionSnapshotValues(session);
   activeTabId = tabId;
+  syncAgendaFilesConfig();
   queueMicrotask(() => {
     scrollContainer().scrollTop = session.scrollTop || 0;
   });
