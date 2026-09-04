@@ -2885,6 +2885,21 @@ function computeBufferPositionString() {
  *  that could drift; also on a 30s timer (see its own call site) so
  *  the clock/time segments stay live even with no other state
  *  changes happening. */
+/** The display label for a document, whether saved or not -- shared by
+ *  the modeline and tab bar so they always agree on what to call the
+ *  same document. A saved document's own docId (its filename) is
+ *  already a sensible label. An unsaved one has no filename at all;
+ *  its own internal ID is a randomly-suffixed sentinel never meant to
+ *  be user-visible, so it falls back to the first heading's own title
+ *  once one exists, and finally to '*scratch*' -- matching real
+ *  Emacs's own convention for a fresh, as-yet-unnamed buffer. */
+function documentDisplayLabel(docId, doc) {
+  const isUnsaved = !docId || docId.startsWith(UNSAVED_DOCUMENT_ID);
+  if (!isUnsaved) return docId;
+  const firstHeadingTitle = doc && doc.children && doc.children[0] ? doc.children[0].title : null;
+  return firstHeadingTitle || '*scratch*';
+}
+
 function renderModeline() {
   if (!state.doc) {
     modelineEl.textContent = '';
@@ -2902,7 +2917,7 @@ function renderModeline() {
   // open -- static decoration, not real information, so it's not shown.
   parts.push(isDirty ? '**' : '--');
 
-  parts.push(state.documentId ? state.documentId + ' (' + storageKindLabel(state.storageKind) + ')' : '');
+  parts.push(state.doc ? documentDisplayLabel(state.documentId, state.doc) + ' (' + storageKindLabel(state.storageKind) + ')' : '');
   parts.push(computeBufferPositionString());
 
   if (getDisplayTimeMode(vars)) {
@@ -3936,9 +3951,7 @@ function renderTabBar() {
     const docId = isActive ? state.documentId : session.state.documentId;
     const doc = isActive ? state.doc : session.state.doc;
     const dirty = isActive ? isDirty : session.isDirty;
-    const isUnsaved = !docId || docId.startsWith(UNSAVED_DOCUMENT_ID);
-    const firstHeadingTitle = doc && doc.children && doc.children[0] ? doc.children[0].title : null;
-    const label = isUnsaved ? firstHeadingTitle || 'Untitled' : docId;
+    const label = documentDisplayLabel(docId, doc);
 
     const tab = document.createElement('div');
     tab.style.display = 'flex';

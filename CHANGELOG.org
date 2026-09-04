@@ -6,6 +6,15 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v292 — New documents are named "*scratch*", matching real Emacs
+A fresh, unsaved document with no heading yet now shows *scratch* in
+both the tab bar and modeline, instead of the generic "Untitled" —
+real Emacs's own name for a fresh buffer. The moment the first heading
+gets a title, that takes over as the label, same as before. Sharing
+one label function between the modeline and tab bar also surfaced and
+fixed a separate bug: the modeline was previously showing a new
+document's own raw internal ID directly, never meant to be seen.
+
 * Undated (shipped before v290, entry added retroactively) — Capture: table-line captures no longer render bold
 A ~table-line~ capture creating a brand-new table (no existing table
 under the target heading yet) reused a helper meant for "insert a new
