@@ -6,6 +6,22 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v290 — Table formulas: bare-reference date subtraction now works
+Reported against real org-mode's own documented spreadsheet behavior:
+Calc auto-recognizes org timestamps during ordinary cell evaluation,
+so subtracting two timestamp cells directly (~$3=$1-$2~) should just
+work, no wrapper function required. It didn't — a bare cell reference
+fell straight through to plain numeric parsing, which can only ever
+be NaN for something like "<2026-12-25 Fri>", and this app's own
+~date()~ function (invented here, not something real org-mode
+requires) was the only way to get correct results. Fixed at the
+single shared function behind every cell reference, so it applies
+consistently to plain references and to aggregate functions across a
+range alike. ~date()~ itself still has real, distinct value — an
+explicit error for a cell that isn't timestamp-shaped at all, and its
+three-argument form for building a date from separate Y/M/D cells —
+and is unchanged.
+
 * v289 — Corrected the previous release's own menu-width fix
 The v287 fix for menu-item text wrapping used a minimum width, which
 meant every popup menu was always at least 75% of the screen wide,
