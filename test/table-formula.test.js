@@ -686,6 +686,21 @@ test('THE EXACT REQUEST: finding days between two dates -- date($2) - date($1) w
   assert.equal(result[0].cells[2], '24');
 });
 
+test('bare $1 - $2 (no date() wrapper) subtracts two timestamp-formatted cells directly -- matches real org/Calc\u2019s own documented behavior: Calc auto-recognizes org timestamps during ordinary cell evaluation, no explicit conversion function required', () => {
+  const result = recalculateTable(mkTable('$3 = $1 - $2', [['<2026-12-25 Fri>', '[2026-09-02 Wed]', '']]));
+  assert.equal(result[0].cells[2], '114');
+});
+
+test('bare timestamp subtraction still works when one side has a time-of-day component -- produces an hms-tagged duration display, same as the date()-wrapped equivalent', () => {
+  const result = recalculateTable(mkTable('$3 = $2 - $1', [['<2026-12-25>', '<2026-12-25 06:00>', '']]));
+  assert.equal(result[0].cells[2], '6@ 0\' 0"');
+});
+
+test('a bare reference to a non-timestamp cell is unaffected by timestamp auto-detection -- still plain numeric parsing as before', () => {
+  const result = recalculateTable(mkTable('$3 = $1 + $2', [['5', '10', '']]));
+  assert.equal(result[0].cells[2], '15');
+});
+
 test('THE EXACT REQUEST: projecting a future deadline -- date($1) + N (a plain integer) advances the date, formatted back as an org timestamp', () => {
   const result = recalculateTable(mkTable('$3 = date($1) + $2', [['<2026-08-25>', '14', '']]));
   assert.equal(result[0].cells[2], '<2026-09-08>');
