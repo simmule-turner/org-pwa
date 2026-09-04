@@ -29,20 +29,24 @@
  *     capture templates themselves already use).
  *   - A quoted-symbol function reference (e.g. 'org-clock-out) --
  *     selecting this menu item runs that built-in function directly.
- *     org-clock-out, org-clock-cancel, org-xx-calendar (not a real
- *     org-mode function -- this app's own single-month calendar
- *     overview, see app.js's own openCalendarPanel), and
- *     org-table-recalculate-buffer-tables (real org's own actual,
- *     distinct command -- confirmed directly against the Org Manual:
- *     recalculating just the CURRENT table is C-c C-c / C-u C-c C-c
- *     instead, a completely separate command, which has its own
- *     per-table Calc button on every table here instead of a menu
- *     entry, since there's no "current table" this app could mean
- *     without a cursor/point concept the way Emacs has one -- this
- *     one recalculates every #+TBLFM: formula in every table in the
- *     whole document, see app.js's own dispatch for the full
- *     behavior), and org-cut-subtree / org-paste-subtree (the same
- *     C-c C-x C-w / C-c C-x C-y god-mode commands, run against
+ *     org-clock-out, org-clock-cancel, org-clock-continue (real org's
+ *     own command -- C-u C-u C-c C-x C-i -- for resuming whichever
+ *     heading was most recently clocked, without needing to navigate
+ *     back to find it first; a no-op with a status message if a clock
+ *     is already running, or if nothing anywhere has ever been
+ *     clocked), org-xx-calendar (not a real org-mode function -- this
+ *     app's own single-month calendar overview, see app.js's own
+ *     openCalendarPanel), and org-table-recalculate-buffer-tables
+ *     (real org's own actual, distinct command -- confirmed directly
+ *     against the Org Manual: recalculating just the CURRENT table is
+ *     C-c C-c / C-u C-c C-c instead, a completely separate command,
+ *     which has its own per-table Calc button on every table here
+ *     instead of a menu entry, since there's no "current table" this
+ *     app could mean without a cursor/point concept the way Emacs has
+ *     one -- this one recalculates every #+TBLFM: formula in every
+ *     table in the whole document, see app.js's own dispatch for the
+ *     full behavior), and org-cut-subtree / org-paste-subtree (the
+ *     same C-c C-x C-w / C-c C-x C-y god-mode commands, run against
  *     whichever heading's own per-row action menu is currently open
  *     -- the touch-native way to designate a specific heading without
  *     a keyboard at all -- falling back to whichever heading is
@@ -63,6 +67,7 @@
 const KNOWN_FUNCTIONS = new Set([
   'org-clock-out',
   'org-clock-cancel',
+  'org-clock-continue',
   'org-xx-calendar',
   'org-table-recalculate-buffer-tables',
   'org-cut-subtree',

@@ -233,6 +233,44 @@ function clockInSwitchingTasks(doc, heading, timestamp, now) {
   return { started, switchedFrom };
 }
 
+/** org-clock-continue's own target-finding half: the heading whose
+ *  most recent CLOCK line (running or already-completed, either
+ *  counts) started more recently than any other heading's own most
+ *  recent one, searched across the whole document. Real org's own
+ *  actual "most recently clocked into" ordering -- not "most recently
+ *  clocked OUT of", which can differ for a still-running session that
+ *  has no end time to compare against at all. Returns null if no
+ *  heading anywhere has ever been clocked. Callers are expected to
+ *  have already confirmed nothing is currently running before calling
+ *  this -- resuming "the last clock" while one is already active
+ *  doesn't have a sensible meaning of its own. */
+function findMostRecentlyClockedHeading(doc) {
+  let best = null;
+  let bestStart = null;
+  const consider = (heading) => {
+    for (const line of heading.logbookLines || []) {
+      const running = RUNNING_CLOCK_RE.exec(line);
+      const completed = COMPLETED_CLOCK_RE.exec(line);
+      const startRaw = running ? running[1] : completed ? completed[1] : null;
+      if (!startRaw) continue;
+      const start = parseClockTimestampToDate(startRaw);
+      if (!start) continue;
+      if (!bestStart || start > bestStart) {
+        bestStart = start;
+        best = heading;
+      }
+    }
+  };
+  const walk = (headings) => {
+    for (const heading of headings) {
+      consider(heading);
+      walk(heading.children || []);
+    }
+  };
+  walk(doc.children || []);
+  return best;
+}
+
 export {
   isClockRunning,
   clockIn,
@@ -244,6 +282,7 @@ export {
   totalClockedMinutes,
   currentClockSessionMinutes,
   findHeadingWithRunningClock,
+  findMostRecentlyClockedHeading,
   COMPLETED_CLOCK_RE,
   parseClockTimestampToDate,
 };
