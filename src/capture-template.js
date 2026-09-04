@@ -468,7 +468,7 @@ function insertCapture(target, type, expandedText, prepend = false) {
         table = prepend ? firstTableIn(target) : lastTableIn(target); // re-fetch after every cell too, same reason
       }
     } else {
-      let newTable = insertTable(target, { rows: 1, cols: cells.length || 1 });
+      let newTable = insertTable(target, { rows: 1, cols: cells.length || 1, headerRule: false });
       for (let i = 0; i < cells.length; i++) {
         setTableCell(target, newTable, 0, i, cells[i]);
         newTable = lastTableIn(target);

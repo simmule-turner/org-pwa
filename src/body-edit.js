@@ -185,12 +185,15 @@ export function deleteTable(heading, table) {
 }
 
 /** Appends a brand-new table (default 2x2, blank cells, with a header
- *  rule) to the end of `heading`'s body content. Adds a blank-line
- *  separator first if the heading already has body content, so the new
- *  table doesn't visually run into whatever precedes it. */
-export function insertTable(heading, { rows = 2, cols = 2 } = {}) {
+ *  rule unless headerRule is explicitly false) to the end of
+ *  `heading`'s body content. Adds a blank-line separator first if the
+ *  heading already has body content, so the new table doesn't
+ *  visually run into whatever precedes it. */
+export function insertTable(heading, { rows = 2, cols = 2, headerRule = true } = {}) {
   const headerCells = Array(cols).fill('');
-  const lines = [serializeTableRow(headerCells), serializeTableRule(cols)];
+  const lines = headerRule
+    ? [serializeTableRow(headerCells), serializeTableRule(cols)]
+    : [serializeTableRow(headerCells)];
   for (let r = 1; r < rows; r++) lines.push(serializeTableRow(Array(cols).fill('')));
 
   const needsSeparator =
