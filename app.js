@@ -277,14 +277,6 @@ let pendingRefile = null;
 // exclusive, never both active at once, so sharing the element avoids
 // a whole extra panel just for this one three-button prompt).
 let pendingArchiveConfirm = null;
-// Set to true when the More menu's own Clocks item opens the
-// clock-options popup -- a plain boolean, not per-heading, since this
-// is reached from a menu-level context rather than any specific
-// heading's own action menu; Clock-in resolves its own target
-// dynamically at tap time instead (see openClockOptionsMenuPrompt's
-// own doc comment). Reuses refilePanel's own DOM element, same
-// pattern as pendingArchiveConfirm.
-let pendingClockOptions = null;
 // Set to { heading } when Attach is tapped -- the first-level choice
 // among the three org-attach-style sub-actions (Attach a file, Open,
 // Delete -- a fourth, Photo/Video, was removed: Attach a file's own
@@ -1378,40 +1370,32 @@ function clockCancelHeading(heading) {
 }
 
 /** The More menu's own entry point for every org-clock action in one
- *  place. Clock-in resolves its own target heading dynamically, the
- *  same way org-cut-subtree/org-paste-subtree already do from this
- *  same kind of not-heading-specific menu context: whichever heading's
- *  own action menu is currently open, falling back to whichever is
+ *  place, structured exactly like Export's own sub-flow (renderExportFlow
+ *  above): a step within this same panel, not a separate overlay.
+ *  Clock-in resolves its own target heading dynamically, the same way
+ *  org-cut-subtree/org-paste-subtree already do from this same kind of
+ *  not-heading-specific menu context: whichever heading's own action
+ *  menu is currently open, falling back to whichever is
  *  keyboard-focused. Clock-out/clock-cancel act on whichever clock is
  *  actually running anywhere in the document, matching real org's own
  *  actual "only one clock is ever the current one" semantics. */
-function openClockOptionsMenuPrompt() {
-  pendingClockOptions = true;
-  renderClockOptionsPanel();
-}
-
-function renderClockOptionsPanel() {
-  refilePanel.innerHTML = '';
-  if (!pendingClockOptions) {
-    refilePanel.style.display = 'none';
-    return;
-  }
-  refilePanel.style.display = 'block';
-
+function renderClockOptionsFlow() {
   const label = document.createElement('div');
-  label.style.fontSize = '13px';
-  label.style.marginBottom = '8px';
-  label.textContent = 'Clock';
-  refilePanel.appendChild(label);
+  label.style.fontSize = '12px';
+  label.style.opacity = '0.7';
+  label.style.marginBottom = '4px';
+  label.textContent = 'Clocking:';
+  morePanel.appendChild(label);
 
-  const list = document.createElement('div');
-  list.style.display = 'flex';
-  list.style.flexDirection = 'column';
+  const finish = () => {
+    moreOpen = false;
+    moreMenuStep = null;
+    renderMoreMenu();
+  };
 
   const runningClockAction = (action) => {
     const running = findHeadingWithRunningClock(state.doc);
-    pendingClockOptions = null;
-    renderClockOptionsPanel();
+    finish();
     if (!running) {
       setStatus('No clock is currently running.');
       render();
@@ -1420,21 +1404,18 @@ function renderClockOptionsPanel() {
     action(running);
   };
 
-  list.appendChild(
-    menuDivItem('Clock-cancel', () => runningClockAction(clockCancelHeading))
-  );
+  const list = document.createElement('div');
+  list.appendChild(menuDivItem('Clock-cancel', () => runningClockAction(clockCancelHeading)));
   list.appendChild(
     menuDivItem('Clock-continue', () => {
-      pendingClockOptions = null;
-      renderClockOptionsPanel();
+      finish();
       clockContinue();
     })
   );
   list.appendChild(
     menuDivItem('Clock-in', () => {
-      pendingClockOptions = null;
-      renderClockOptionsPanel();
       const target = extraMenuTargetHeading();
+      finish();
       if (!target) {
         setStatus('No heading to clock in on -- tap a heading first.');
         render();
@@ -1443,20 +1424,19 @@ function renderClockOptionsPanel() {
       clockInHeading(target);
     })
   );
-  list.appendChild(
-    menuDivItem('Clock-out', () => runningClockAction(clockOutHeading))
-  );
-  refilePanel.appendChild(list);
+  list.appendChild(menuDivItem('Clock-out', () => runningClockAction(clockOutHeading)));
+  morePanel.appendChild(list);
 
-  const row = document.createElement('div');
-  row.className = 'panel-row';
-  row.appendChild(
-    menuButton('Cancel', () => {
-      pendingClockOptions = null;
-      renderClockOptionsPanel();
+  const backRow = document.createElement('div');
+  backRow.className = 'panel-row';
+  backRow.style.marginTop = '6px';
+  backRow.appendChild(
+    menuButton('\u2039 Back', () => {
+      moreMenuStep = null;
+      renderMoreMenu();
     })
   );
-  refilePanel.appendChild(row);
+  morePanel.appendChild(backRow);
 }
 
 function openAttachChoicePrompt(heading) {
@@ -2817,10 +2797,6 @@ function closeAllOverlayPanels() {
   if (pendingRefile) {
     pendingRefile = null;
     renderRefilePanel();
-  }
-  if (pendingClockOptions) {
-    pendingClockOptions = null;
-    renderClockOptionsPanel();
   }
 }
 
@@ -9312,7 +9288,7 @@ function renderViewMenuContent() {
   viewMenuPanel.style.display = 'block';
 
   const viewMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).view;
-  const labeledButtons = [];
+  const viewSwitchButtons = {};
   for (const [key, label] of [
     ['agenda', 'Agenda'],
     ['org', 'Org'],
@@ -9321,7 +9297,7 @@ function renderViewMenuContent() {
   ]) {
     const btn = aliasedMenuDivItem(viewMenuAliases, label, () => switchToView(key));
     if (btn && key === currentView) btn.style.fontWeight = '700';
-    labeledButtons.push({ label, btn });
+    viewSwitchButtons[label] = btn;
   }
 
   const historyBtn = aliasedMenuDivItem(
@@ -9336,7 +9312,6 @@ function renderViewMenuContent() {
     !state.doc
   );
   if (historyBtn) historyBtn.setAttribute('aria-label', 'Undo history');
-  labeledButtons.push({ label: 'History', btn: historyBtn });
 
   const helpBtn = aliasedMenuDivItem(viewMenuAliases, 'Help', () => {
     closeAllOverlayPanels();
@@ -9348,9 +9323,15 @@ function renderViewMenuContent() {
     }
   });
   if (helpBtn) helpBtn.setAttribute('aria-label', 'Help / Docs');
-  labeledButtons.push({ label: 'Help', btn: helpBtn });
 
-  appendMenuButtonsInOrder(viewMenuPanel, viewMenuAliases, labeledButtons);
+  appendMenuButtonsInOrder(viewMenuPanel, viewMenuAliases, [
+    { label: 'Agenda', btn: viewSwitchButtons['Agenda'] },
+    { label: 'Help', btn: helpBtn },
+    { label: 'History', btn: historyBtn },
+    { label: 'Org', btn: viewSwitchButtons['Org'] },
+    { label: 'Text', btn: viewSwitchButtons['Text'] },
+    { label: 'TODO', btn: viewSwitchButtons['TODO'] },
+  ]);
 }
 
 // ---- Agenda view ---------------------------------------------------------
@@ -13672,6 +13653,11 @@ function renderMoreMenuContent() {
     return;
   }
 
+  if (moreMenuStep === 'clocks') {
+    renderClockOptionsFlow();
+    return;
+  }
+
   const moreMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).more;
 
   const searchBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Search', () => {
@@ -13692,10 +13678,9 @@ function renderMoreMenuContent() {
     settingsBtn.click();
   });
 
-  const clocksBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Clocks', () => {
-    moreOpen = false;
+  const clocksBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Clocking', () => {
+    moreMenuStep = 'clocks';
     renderMoreMenu();
-    openClockOptionsMenuPrompt();
   });
 
   const exportBtnOption = aliasedMenuDivItem(
@@ -13711,7 +13696,7 @@ function renderMoreMenuContent() {
 
   appendMenuButtonsInOrder(morePanel, moreMenuAliases, [
     { label: 'Capture', btn: captureBtnOption },
-    { label: 'Clocks', btn: clocksBtnOption },
+    { label: 'Clocking', btn: clocksBtnOption },
     { label: 'Export', btn: exportBtnOption },
     { label: 'Search', btn: searchBtnOption },
     { label: 'Settings', btn: settingsBtnOption },
