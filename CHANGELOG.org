@@ -6,6 +6,33 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v297 — Menu restructuring: Add heading, History, Help, Clocks, TODO
+Several related moves. The ➕ Add heading button is a real, visible,
+centered toolbar button again — it had been deliberately hidden all
+along, only reachable through the More menu's own proxy click, a past
+decision now reversed. History and Help moved from the More menu to
+the View menu. The heading action menu's own Clock button is gone,
+replaced by a "Clocks" entry in the More menu — one popup with every
+clock action as plain text (Clock-cancel, Clock-continue, Clock-in,
+Clock-out), reached from a menu rather than any specific heading.
+TODO took over the action menu's newly-freed slot, restoring its
+pre-general-editor behavior exactly — a simple toggle for the common
+case, a full state picker only for a file with more than one parallel
+workflow — and was removed from the general editor entirely. All of
+it already configurable via the existing =org-xx-menu-aliases=
+system, unchanged.
+
+* v296 — All clock actions in one place
+Replaced the heading action menu's own clock-in/clock-out toggle (and
+its separate three-choice stop prompt) with a single ⏱️ Clock button
+opening one popup listing all four actions together — ▶️ clock-in,
+⏹ clock-out, ❌ clock-cancel, ⏭️ clock-continue — so clock-cancel and
+clock-continue, previously buried or Extras-menu-only, are just as
+discoverable as clock-in already was. Clock-out and clock-cancel
+operate on whichever clock is actually running anywhere, not
+necessarily the specific heading whose popup was open to reach them —
+matching real org's own actual clock semantics.
+
 * v295 — Fixed: opening a second document could silently blank Agenda's own file list
 Reported precisely: a file with =org-agenda-files= set via Local
 Variables correctly showed birthdays, holidays, and weather in

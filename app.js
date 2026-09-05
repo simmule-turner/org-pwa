@@ -86,7 +86,7 @@ import {
   parseAgendaFilesVar,
 } from './src/local-variables.js';
 import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath } from './src/refile.js';
-import { isClockRunning, clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, currentClockSessionMinutes, formatClockDuration, findHeadingWithRunningClock, findMostRecentlyClockedHeading } from './src/clock.js';
+import { clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, currentClockSessionMinutes, formatClockDuration, findHeadingWithRunningClock, findMostRecentlyClockedHeading } from './src/clock.js';
 import { computeClocktable, renderClocktable } from './src/clocktable.js';
 import { parseExtraMenu } from './src/extra-menu.js';
 import { parseMenuAliases, resolveMenuOrder } from './src/menu-alias.js';
@@ -277,12 +277,14 @@ let pendingRefile = null;
 // exclusive, never both active at once, so sharing the element avoids
 // a whole extra panel just for this one three-button prompt).
 let pendingArchiveConfirm = null;
-// Set to { heading } when Clock out is tapped on a heading with a
-// running clock -- always shown, offering Cancel (org-clock-cancel,
-// discard the session entirely) / Stop (org-clock-out, the normal
-// completion) / OK (back out, keep the clock running). Reuses
-// refilePanel's own DOM element, same pattern as pendingArchiveConfirm.
-let pendingClockStop = null;
+// Set to true when the More menu's own Clocks item opens the
+// clock-options popup -- a plain boolean, not per-heading, since this
+// is reached from a menu-level context rather than any specific
+// heading's own action menu; Clock-in resolves its own target
+// dynamically at tap time instead (see openClockOptionsMenuPrompt's
+// own doc comment). Reuses refilePanel's own DOM element, same
+// pattern as pendingArchiveConfirm.
+let pendingClockOptions = null;
 // Set to { heading } when Attach is tapped -- the first-level choice
 // among the three org-attach-style sub-actions (Attach a file, Open,
 // Delete -- a fourth, Photo/Video, was removed: Attach a file's own
@@ -1375,21 +1377,22 @@ function clockCancelHeading(heading) {
   commitAndRender('Clock cancelled \u2014 time discarded');
 }
 
-/** The action menu's own entry point for Clock out on a heading with a
- *  running clock -- always prompts rather than stopping directly,
- *  offering org-clock-cancel (discard the session entirely) as a
- *  genuine alternative to the normal completion, since accidentally
- *  starting the wrong clock or switching tasks without wanting the
- *  elapsed time logged is common enough to deserve its own one-tap
- *  option right there, not a separate hunt through the action menu. */
-function openClockStopPrompt(heading) {
-  pendingClockStop = { heading };
-  renderClockStopPanel();
+/** The More menu's own entry point for every org-clock action in one
+ *  place. Clock-in resolves its own target heading dynamically, the
+ *  same way org-cut-subtree/org-paste-subtree already do from this
+ *  same kind of not-heading-specific menu context: whichever heading's
+ *  own action menu is currently open, falling back to whichever is
+ *  keyboard-focused. Clock-out/clock-cancel act on whichever clock is
+ *  actually running anywhere in the document, matching real org's own
+ *  actual "only one clock is ever the current one" semantics. */
+function openClockOptionsMenuPrompt() {
+  pendingClockOptions = true;
+  renderClockOptionsPanel();
 }
 
-function renderClockStopPanel() {
+function renderClockOptionsPanel() {
   refilePanel.innerHTML = '';
-  if (!pendingClockStop) {
+  if (!pendingClockOptions) {
     refilePanel.style.display = 'none';
     return;
   }
@@ -1398,31 +1401,59 @@ function renderClockStopPanel() {
   const label = document.createElement('div');
   label.style.fontSize = '13px';
   label.style.marginBottom = '8px';
-  label.textContent = `Stop the clock on "${pendingClockStop.heading.title || '(untitled)'}"?`;
+  label.textContent = 'Clock';
   refilePanel.appendChild(label);
+
+  const list = document.createElement('div');
+  list.style.display = 'flex';
+  list.style.flexDirection = 'column';
+
+  const runningClockAction = (action) => {
+    const running = findHeadingWithRunningClock(state.doc);
+    pendingClockOptions = null;
+    renderClockOptionsPanel();
+    if (!running) {
+      setStatus('No clock is currently running.');
+      render();
+      return;
+    }
+    action(running);
+  };
+
+  list.appendChild(
+    menuDivItem('Clock-cancel', () => runningClockAction(clockCancelHeading))
+  );
+  list.appendChild(
+    menuDivItem('Clock-continue', () => {
+      pendingClockOptions = null;
+      renderClockOptionsPanel();
+      clockContinue();
+    })
+  );
+  list.appendChild(
+    menuDivItem('Clock-in', () => {
+      pendingClockOptions = null;
+      renderClockOptionsPanel();
+      const target = extraMenuTargetHeading();
+      if (!target) {
+        setStatus('No heading to clock in on -- tap a heading first.');
+        render();
+        return;
+      }
+      clockInHeading(target);
+    })
+  );
+  list.appendChild(
+    menuDivItem('Clock-out', () => runningClockAction(clockOutHeading))
+  );
+  refilePanel.appendChild(list);
 
   const row = document.createElement('div');
   row.className = 'panel-row';
   row.appendChild(
     menuButton('Cancel', () => {
-      const heading = pendingClockStop.heading;
-      pendingClockStop = null;
-      renderClockStopPanel();
-      clockCancelHeading(heading);
-    })
-  );
-  row.appendChild(
-    menuButton('Stop', () => {
-      const heading = pendingClockStop.heading;
-      pendingClockStop = null;
-      renderClockStopPanel();
-      clockOutHeading(heading);
-    })
-  );
-  row.appendChild(
-    menuButton('OK', () => {
-      pendingClockStop = null;
-      renderClockStopPanel();
+      pendingClockOptions = null;
+      renderClockOptionsPanel();
     })
   );
   refilePanel.appendChild(row);
@@ -2786,6 +2817,10 @@ function closeAllOverlayPanels() {
   if (pendingRefile) {
     pendingRefile = null;
     renderRefilePanel();
+  }
+  if (pendingClockOptions) {
+    pendingClockOptions = null;
+    renderClockOptionsPanel();
   }
 }
 
@@ -6069,71 +6104,6 @@ function buildTagsFieldGroup(heading) {
  *  picker for a rarely-used case. */
 const PRIORITY_LEVELS = ['A', 'B', 'C'];
 
-function buildTodoFieldGroup(heading) {
-  const wrap = document.createElement('div');
-  wrap.style.border = '0.5px solid var(--border-strong)';
-  wrap.style.borderRadius = '8px';
-  wrap.style.padding = '10px';
-  wrap.style.marginBottom = '10px';
-  wrap.style.boxSizing = 'border-box';
-  wrap.style.width = '100%';
-  wrap.style.maxWidth = '100%';
-
-  const header = document.createElement('div');
-  header.textContent = 'TODO state';
-  header.style.fontWeight = '600';
-  header.style.fontSize = '14px';
-  header.style.marginBottom = '10px';
-  wrap.appendChild(header);
-
-  let currentTodo = heading.todo;
-  const sequences = resolveTodoSequences(state.doc, GLOBAL_TODO_DEFAULT);
-  const rowsEl = document.createElement('div');
-  wrap.appendChild(rowsEl);
-
-  function renderRows() {
-    rowsEl.innerHTML = '';
-    const noneRow = document.createElement('div');
-    noneRow.style.display = 'flex';
-    noneRow.style.flexWrap = 'wrap';
-    noneRow.style.gap = '6px';
-    noneRow.style.marginBottom = sequences.length > 0 ? '6px' : '0';
-    const noneBtn = wizardButton('None', () => {
-      currentTodo = null;
-      renderRows();
-    });
-    styleTodoStateButton(noneBtn, !currentTodo);
-    noneRow.appendChild(noneBtn);
-    rowsEl.appendChild(noneRow);
-
-    for (const seq of sequences) {
-      const row = document.createElement('div');
-      row.style.display = 'flex';
-      row.style.flexWrap = 'wrap';
-      row.style.gap = '6px';
-      row.style.marginBottom = '6px';
-      for (const keyword of [...seq.todoKeywords, ...seq.doneKeywords]) {
-        const btn = wizardButton(keyword, () => {
-          currentTodo = keyword;
-          renderRows();
-        });
-        styleTodoStateButton(btn, keyword === currentTodo);
-        row.appendChild(btn);
-      }
-      rowsEl.appendChild(row);
-    }
-  }
-  renderRows();
-
-  return { container: wrap, getTodo: () => currentTodo };
-}
-
-function styleTodoStateButton(btn, isActive) {
-  btn.style.background = isActive ? 'var(--accent)' : 'transparent';
-  btn.style.color = isActive ? '#fff' : 'var(--fg)';
-  btn.style.border = '1px solid var(--border-strong)';
-}
-
 function buildPriorityFieldGroup(heading) {
   const wrap = document.createElement('div');
   wrap.style.border = '0.5px solid var(--border-strong)';
@@ -6539,15 +6509,11 @@ function renderRow(row, todoSequence) {
               },
             },
             {
-              icon: isClockRunning(row.node) ? '\u23f9\ufe0f' : '\u25b6\ufe0f',
-              label: isClockRunning(row.node) ? 'Clock out' : 'Clock in',
+              icon: '\u2611\ufe0f',
+              label: 'TODO',
               onClick: () => {
                 actionMenuFor = null;
-                if (isClockRunning(row.node)) {
-                  openClockStopPrompt(row.node);
-                } else {
-                  clockInHeading(row.node);
-                }
+                openTodoOrPickWorkflow(row.node);
               },
             },
             {
@@ -6650,7 +6616,6 @@ function renderRow(row, todoSequence) {
       generalEditorEl.style.width = '100%';
       generalEditorEl.style.maxWidth = '100%';
 
-      const todoGroup = buildTodoFieldGroup(row.node);
       const scheduledGroup = buildTimestampFieldGroup('SCHEDULED', row.node.planning.scheduled);
       const deadlineGroup = buildTimestampFieldGroup('DEADLINE', row.node.planning.deadline);
       const plainGroup = buildTimestampFieldGroup(
@@ -6660,7 +6625,6 @@ function renderRow(row, todoSequence) {
       const tagsGroup = buildTagsFieldGroup(row.node);
       const priorityGroup = buildPriorityFieldGroup(row.node);
       const propsGroup = buildPropertiesFieldGroup(row.node);
-      generalEditorEl.appendChild(todoGroup.container);
       generalEditorEl.appendChild(scheduledGroup.container);
       generalEditorEl.appendChild(deadlineGroup.container);
       generalEditorEl.appendChild(plainGroup.container);
@@ -6709,9 +6673,6 @@ function renderRow(row, todoSequence) {
         wizardButton('Save', () => {
           const heading = editingGeneral;
           editingGeneral = null;
-          applyTodoTransition(heading, () => {
-            heading.todo = todoGroup.getTodo();
-          });
           heading.planning = {
             scheduled: scheduledGroup.getRawValue(),
             deadline: deadlineGroup.getRawValue(),
@@ -9362,6 +9323,33 @@ function renderViewMenuContent() {
     if (btn && key === currentView) btn.style.fontWeight = '700';
     labeledButtons.push({ label, btn });
   }
+
+  const historyBtn = aliasedMenuDivItem(
+    viewMenuAliases,
+    'History',
+    () => {
+      closeAllOverlayPanels();
+      historyOpen = true;
+      render();
+      renderHistoryPanel();
+    },
+    !state.doc
+  );
+  if (historyBtn) historyBtn.setAttribute('aria-label', 'Undo history');
+  labeledButtons.push({ label: 'History', btn: historyBtn });
+
+  const helpBtn = aliasedMenuDivItem(viewMenuAliases, 'Help', () => {
+    closeAllOverlayPanels();
+    docsOpen = true;
+    if (isWideLayout()) {
+      render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
+    } else {
+      renderDocsView(outlineEl); // narrow: replaces #outline directly, exactly as before this feature existed
+    }
+  });
+  if (helpBtn) helpBtn.setAttribute('aria-label', 'Help / Docs');
+  labeledButtons.push({ label: 'Help', btn: helpBtn });
+
   appendMenuButtonsInOrder(viewMenuPanel, viewMenuAliases, labeledButtons);
 }
 
@@ -13660,13 +13648,12 @@ captureBtn.addEventListener('click', () => {
 
 // ---- More menu (Search / Capture / Add heading) ---------------------
 
-/** Search, Capture, and Add heading live behind this one button instead
- *  of each having their own place in the top bar — frees up room for
- *  the filename, which otherwise competes for space with up to six
- *  separate icon buttons. Each option here just calls .click() on the
- *  original (still-present-but-hidden) button rather than reimplementing
- *  any of its logic, so nothing about how search/capture/add actually
- *  work changes at all — only how they're reached. */
+/** Search, Capture, Export, Settings, and Clocks live behind this one
+ *  button instead of each having their own place in the top bar.
+ *  Search/Capture/Settings each just call .click() on the original
+ *  (still-present-but-hidden) button rather than reimplementing any of
+ *  its logic, so nothing about how they actually work changes at all
+ *  — only how they're reached. */
 function renderMoreMenu() {
   renderMoreMenuContent();
   if (moreOpen) positionPopupNearButton(morePanel, moreBtn);
@@ -13699,41 +13686,16 @@ function renderMoreMenuContent() {
     captureBtn.click();
   });
 
-  const historyBtnOption = aliasedMenuDivItem(
-    moreMenuAliases,
-    'History',
-    () => {
-      closeAllOverlayPanels();
-      historyOpen = true;
-      render();
-      renderHistoryPanel();
-    },
-    !state.doc
-  );
-  if (historyBtnOption) historyBtnOption.setAttribute('aria-label', 'Undo history');
-
-  const addBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Add Header', () => {
-    moreOpen = false;
-    renderMoreMenu();
-    addBtn.click();
-  });
-  if (addBtnOption) addBtnOption.setAttribute('aria-label', 'Add heading');
-
-  const docsBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Help', () => {
-    closeAllOverlayPanels();
-    docsOpen = true;
-    if (isWideLayout()) {
-      render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
-    } else {
-      renderDocsView(outlineEl); // narrow: replaces #outline directly, exactly as before this feature existed
-    }
-  });
-  if (docsBtnOption) docsBtnOption.setAttribute('aria-label', 'Help / Docs');
-
   const settingsBtnOption = requiredMenuDivItem(moreMenuAliases, 'Settings', () => {
     moreOpen = false;
     renderMoreMenu();
     settingsBtn.click();
+  });
+
+  const clocksBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Clocks', () => {
+    moreOpen = false;
+    renderMoreMenu();
+    openClockOptionsMenuPrompt();
   });
 
   const exportBtnOption = aliasedMenuDivItem(
@@ -13748,11 +13710,9 @@ function renderMoreMenuContent() {
   );
 
   appendMenuButtonsInOrder(morePanel, moreMenuAliases, [
-    { label: 'Add Header', btn: addBtnOption },
     { label: 'Capture', btn: captureBtnOption },
+    { label: 'Clocks', btn: clocksBtnOption },
     { label: 'Export', btn: exportBtnOption },
-    { label: 'Help', btn: docsBtnOption },
-    { label: 'History', btn: historyBtnOption },
     { label: 'Search', btn: searchBtnOption },
     { label: 'Settings', btn: settingsBtnOption },
   ]);
