@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseMenuAliases, resolveMenuOrder } from '../src/menu-alias.js';
 
-const EMPTY = { file: {}, more: {}, export: {}, view: {} };
+const EMPTY = { file: {}, more: {}, export: {}, view: {}, clocking: {} };
 
 // ---- basic cases -------------------------------------------------------
 
-test('an unset/empty value returns all four menus as empty objects, not an error', () => {
+test('an unset/empty value returns all five menus as empty objects, not an error', () => {
   assert.deepEqual(parseMenuAliases(''), EMPTY);
   assert.deepEqual(parseMenuAliases(null), EMPTY);
   assert.deepEqual(parseMenuAliases(undefined), EMPTY);
@@ -25,12 +25,28 @@ test('parses multiple entries for the SAME menu', () => {
 });
 
 test('parses entries spread across DIFFERENT menus in the same value, each landing in its own sub-table', () => {
-  const raw = '"file:New;\u2795" "export:ASCII;\ud83d\udcc4" "view:Org;\ud83d\udcdd" "more:Search;\ud83d\udd0d"';
+  const raw = '"file:New;\u2795" "export:ASCII;\ud83d\udcc4" "view:Org;\ud83d\udcdd" "more:Search;\ud83d\udd0d" "clocking:Clock-in;\u25b6\ufe0f"';
   assert.deepEqual(parseMenuAliases(raw), {
     file: { New: '\u2795' },
     more: { Search: '\ud83d\udd0d' },
     export: { ASCII: '\ud83d\udcc4' },
     view: { Org: '\ud83d\udcdd' },
+    clocking: { 'Clock-in': '\u25b6\ufe0f' },
+  });
+});
+
+test('THE EXACT clocking menu example parses completely and correctly', () => {
+  const raw = '"clocking:Clock-in;\u25b6\ufe0f" "clocking:Clock-out;\u23f9" "clocking:Clock-cancel;\u274c" "clocking:Clock-continue;\u23ed\ufe0f"';
+  assert.deepEqual(parseMenuAliases(raw), {
+    ...EMPTY,
+    clocking: { 'Clock-in': '\u25b6\ufe0f', 'Clock-out': '\u23f9', 'Clock-cancel': '\u274c', 'Clock-continue': '\u23ed\ufe0f' },
+  });
+});
+
+test('clocking is a fifth, standalone namespace, not nested under more -- "more:clocking:Clock-in;alias" is NOT the way to alias a clocking item (a real question this app\u2019s own user ran into directly). Verified by direct execution, not assumed: the colon-split only ever happens ONCE, so "more" is genuinely recognized as the menu, and everything after the first colon -- including the second colon itself -- becomes one literal label string. The result is a harmless, inert entry named "clocking:Clock-in" inside the WRONG namespace (more, not clocking), which the More menu\u2019s own rendering never looks up at all (its own real labels are Capture/Clocking/Export/Search/Settings) -- not an error, and not skipped as malformed either, just silently never consulted by anything', () => {
+  assert.deepEqual(parseMenuAliases('"more:clocking:Clock-in;\u25b6\ufe0f"'), {
+    ...EMPTY,
+    more: { 'clocking:Clock-in': '\u25b6\ufe0f' },
   });
 });
 
@@ -82,7 +98,7 @@ test('an entry with no "menu:" prefix at all is skipped, not a hard error', () =
   assert.deepEqual(parseMenuAliases('"New;\u2795"'), EMPTY);
 });
 
-test('an entry naming an unrecognized menu (not file/more/export/view) is skipped', () => {
+test('an entry naming an unrecognized menu (not file/more/export/view/clocking) is skipped', () => {
   assert.deepEqual(parseMenuAliases('"bogus:New;\u2795"'), EMPTY);
 });
 
