@@ -2,27 +2,35 @@
  * Parses org-xx-menu-aliases -- this app's own extension (not a real
  * org-mode variable), using the same Global/Local Variables mechanism
  * org-xx-extra-menu already established a precedent for. One
- * namespaced entry format covers all four of the app's main menus
- * (File, More, Export, View) at once, rather than a separate variable
- * per menu.
+ * namespaced entry format covers all five of the app's main menus
+ * (File, More, Export, View, Clocking) at once, rather than a
+ * separate variable per menu.
  *
  * Value format: a sequence of double-quoted `"menu:Label;alias"`
  * entries, space-separated (optionally spread across multiple
  * physical lines with a trailing `\`, same line-continuation
  * mechanism every other multi-entry Global/Local Variable already
- * uses). `menu` is one of `file`, `more`, `export`, `view`:
+ * uses). `menu` is one of `file`, `more`, `export`, `view`, `clocking`:
  *
- *   org-xx-menu-aliases: "file:New;➕" "file:Open;📂" "export:ASCII;📄" "view:Org;📝"
+ *   org-xx-menu-aliases: "file:New;➕" "file:Open;📂" "export:ASCII;📄" "view:Org;📝" "clocking:Clock-in;▶️"
+ *
+ * `export` and `clocking` both cover a sub-flow reached as a STEP
+ * within the More menu (tapping More's own Export or Clocking button
+ * opens one, replacing the More menu's own top-level list in place --
+ * see app.js's own renderExportFlow/renderClockOptionsFlow) rather
+ * than the More menu's own top-level label set itself, which is why
+ * each gets its own separate namespace instead of being nested under
+ * `more:`.
  *
  * `Label` is one of that menu's own real, built-in button labels
- * (e.g. "New" for file, "ASCII" for export) -- an entry naming a
- * label that doesn't actually exist in that menu is simply never
- * looked up by anything and has no effect, the same tolerant-of-the-
- * unexpected approach every other "recognized subset" parser in this
- * codebase already takes, rather than a hard validation error. An
- * entry with no recognized "menu:" prefix at all (a stray colon-free
- * token, or a colon-prefix that isn't one of the four known menus) is
- * likewise silently skipped rather than erroring.
+ * (e.g. "New" for file, "ASCII" for export, "Clock-in" for clocking)
+ * -- an entry naming a label that doesn't actually exist in that menu
+ * is simply never looked up by anything and has no effect, the same
+ * tolerant-of-the-unexpected approach every other "recognized subset"
+ * parser in this codebase already takes, rather than a hard
+ * validation error. An entry with no recognized "menu:" prefix at all
+ * (a stray colon-free token, or a colon-prefix that isn't one of the
+ * five known menus) is likewise silently skipped rather than erroring.
  *
  * `alias`, after the semicolon, has two meanings depending on whether
  * it's present:
@@ -39,13 +47,13 @@
  * unchanged text -- this is an opt-in override list, not a full
  * redefinition of any menu.
  *
- * Returns `{ file: {...}, more: {...}, export: {...}, view: {...} }`
- * -- each of the four always present (possibly empty `{}`), for
- * direct `result[menu][label]` lookup by any call site. An
- * unset/empty value returns all four as `{}`.
+ * Returns `{ file: {...}, more: {...}, export: {...}, view: {...},
+ * clocking: {...} }` -- each of the five always present (possibly
+ * empty `{}`), for direct `result[menu][label]` lookup by any call
+ * site. An unset/empty value returns all five as `{}`.
  */
 function parseMenuAliases(rawValue) {
-  const result = { file: {}, more: {}, export: {}, view: {} };
+  const result = { file: {}, more: {}, export: {}, view: {}, clocking: {} };
   if (!rawValue || !rawValue.trim()) return result;
 
   const tokens = tokenizeMenuAliasValue(rawValue);
@@ -53,7 +61,7 @@ function parseMenuAliases(rawValue) {
     const colonIndex = token.indexOf(':');
     if (colonIndex === -1) continue; // no "menu:" prefix at all -- malformed, skip rather than error
     const menu = token.slice(0, colonIndex).trim();
-    if (!(menu in result)) continue; // not one of the four known menus -- skip
+    if (!(menu in result)) continue; // not one of the five known menus -- skip
 
     const rest = token.slice(colonIndex + 1);
     const semicolonIndex = rest.indexOf(';');
