@@ -6,6 +6,21 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v299 — Menu aliases: a fifth "clocking" namespace
+Setting an icon for a Clocking sub-item (Clock-in, Clock-out, and so
+on) via =org-xx-menu-aliases= had no effect, however it was written.
+Root cause was two-fold: the parser only ever recognized four
+namespaces, and the Clocking items themselves were never wired to
+consult any alias map at all. Fixed the same way Export's own
+sub-items already work — they get their own dedicated =export:=
+namespace rather than being nested under =more:=, since a sub-flow's
+own items aren't part of the parent menu's own top-level labels.
+Clocking now works the identical way: =clocking:Clock-in;▶️= and
+similar now apply correctly. Also confirmed directly: the nested
+=more:clocking:Clock-in= form doesn't error, it silently lands in the
+wrong namespace as an inert, never-consulted entry — worth knowing if
+you tried that form and it also seemed to do nothing.
+
 * v297 — Menu restructuring: Add heading, History, Help, Clocks, TODO
 Several related moves. The ➕ Add heading button is a real, visible,
 centered toolbar button again — it had been deliberately hidden all

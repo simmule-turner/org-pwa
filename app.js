@@ -1404,28 +1404,30 @@ function renderClockOptionsFlow() {
     action(running);
   };
 
-  const list = document.createElement('div');
-  list.appendChild(menuDivItem('Clock-cancel', () => runningClockAction(clockCancelHeading)));
-  list.appendChild(
-    menuDivItem('Clock-continue', () => {
-      finish();
-      clockContinue();
-    })
-  );
-  list.appendChild(
-    menuDivItem('Clock-in', () => {
-      const target = extraMenuTargetHeading();
-      finish();
-      if (!target) {
-        setStatus('No heading to clock in on -- tap a heading first.');
-        render();
-        return;
-      }
-      clockInHeading(target);
-    })
-  );
-  list.appendChild(menuDivItem('Clock-out', () => runningClockAction(clockOutHeading)));
-  morePanel.appendChild(list);
+  const clockingMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).clocking;
+  const cancelBtn = aliasedMenuDivItem(clockingMenuAliases, 'Clock-cancel', () => runningClockAction(clockCancelHeading));
+  const continueBtn = aliasedMenuDivItem(clockingMenuAliases, 'Clock-continue', () => {
+    finish();
+    clockContinue();
+  });
+  const inBtn = aliasedMenuDivItem(clockingMenuAliases, 'Clock-in', () => {
+    const target = extraMenuTargetHeading();
+    finish();
+    if (!target) {
+      setStatus('No heading to clock in on -- tap a heading first.');
+      render();
+      return;
+    }
+    clockInHeading(target);
+  });
+  const outBtn = aliasedMenuDivItem(clockingMenuAliases, 'Clock-out', () => runningClockAction(clockOutHeading));
+
+  appendMenuButtonsInOrder(morePanel, clockingMenuAliases, [
+    { label: 'Clock-cancel', btn: cancelBtn },
+    { label: 'Clock-continue', btn: continueBtn },
+    { label: 'Clock-in', btn: inBtn },
+    { label: 'Clock-out', btn: outBtn },
+  ]);
 
   const backRow = document.createElement('div');
   backRow.className = 'panel-row';
