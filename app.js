@@ -13145,6 +13145,63 @@ function validateCaptureTemplates(parsed) {
  *  validation step of its own. Splits only on the FIRST colon within
  *  each entry, so a path that itself contains one isn't mistaken for
  *  a second scheme separator. */
+/** The More menu's own Capture step -- fetches templates the exact
+ *  same way the separate, still-existing capturePanel does (async;
+ *  this may resolve after the initial synchronous render, hence the
+ *  moreMenuStep/moreOpen re-check below before touching the DOM), but
+ *  renders each as one plain row, matching Export/Clocking's own
+ *  look, rather than that panel's own two-column grid. Picking a
+ *  template hands off to the unchanged capturePanel-based flow
+ *  (openCapturePrompt) for the actual capture/prompt-form, exactly as
+ *  before -- only how the picker itself looks and is reached changes. */
+async function renderCaptureFlow() {
+  const label = document.createElement('div');
+  label.style.fontSize = '12px';
+  label.style.opacity = '0.7';
+  label.style.marginBottom = '4px';
+  label.textContent = 'Capture:';
+  morePanel.appendChild(label);
+
+  const backRow = document.createElement('div');
+  backRow.className = 'panel-row';
+  backRow.style.marginTop = '6px';
+  backRow.appendChild(
+    menuButton('\u2039 Back', () => {
+      moreMenuStep = null;
+      renderMoreMenu();
+    })
+  );
+
+  const templates = await getCaptureTemplates(kv);
+  if (!moreOpen || moreMenuStep !== 'capture') return; // menu was closed/changed before this resolved
+
+  morePanel.innerHTML = '';
+  morePanel.appendChild(label);
+
+  if (templates.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.opacity = '0.6';
+    empty.style.fontSize = '13px';
+    empty.style.padding = '8px 4px';
+    empty.textContent = 'No capture templates configured yet \u2014 add some in Settings.';
+    morePanel.appendChild(empty);
+  } else {
+    for (const template of templates) {
+      morePanel.appendChild(
+        menuDivItem(template.description, () => {
+          moreOpen = false;
+          moreMenuStep = null;
+          captureOpen = true;
+          renderMoreMenu();
+          openCapturePrompt(template);
+        })
+      );
+    }
+  }
+  morePanel.appendChild(backRow);
+  positionPopupNearButton(morePanel, moreBtn); // content just changed size/shape -- re-check placement
+}
+
 async function renderCapturePanel() {
   capturePanel.innerHTML = '';
   if (!captureOpen) {
@@ -13660,6 +13717,11 @@ function renderMoreMenuContent() {
     return;
   }
 
+  if (moreMenuStep === 'capture') {
+    renderCaptureFlow();
+    return;
+  }
+
   const moreMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).more;
 
   const searchBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Search', () => {
@@ -13669,9 +13731,8 @@ function renderMoreMenuContent() {
   });
 
   const captureBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Capture', () => {
-    moreOpen = false;
+    moreMenuStep = 'capture';
     renderMoreMenu();
-    captureBtn.click();
   });
 
   const settingsBtnOption = requiredMenuDivItem(moreMenuAliases, 'Settings', () => {

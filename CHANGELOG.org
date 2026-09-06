@@ -6,6 +6,20 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v300 — Capture: same treatment as Export/Clocking
+More → Capture's own template picker is now a step within the same
+More menu, matching Export and Clocking exactly — one plain row per
+configured template, using its own description as the label, rather
+than a separate popup with a two-column grid. Picking a template with
+prompts to fill in still hands off to the existing prompt form
+unchanged; a template with none captures immediately. Not aliasable
+via =org-xx-menu-aliases= the way Export/Clocking's own items are —
+templates already have their own real name (each one's own
+description), so a second naming layer would be redundant. God-mode's
+own capture shortcut and the Extras menu's own direct-to-template
+entries are both untouched, reaching the exact same underlying system
+they always did.
+
 * v299 — Menu aliases: a fifth "clocking" namespace
 Setting an icon for a Clocking sub-item (Clock-in, Clock-out, and so
 on) via =org-xx-menu-aliases= had no effect, however it was written.
