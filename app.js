@@ -4165,9 +4165,14 @@ let weatherLastRefreshed = null; // the API's own current.time (local, timezone-
 let editingListItem = null;
 // The single heading whose combined multi-paragraph body text (per
 // body-edit.js's getHeadingText/setHeadingText) is currently being edited
-// as one block, or null. Distinct from editingParagraph, which still
-// handles editing one specific paragraph row directly (e.g. a paragraph
-// that comes after a list, outside this combined block's scope).
+// as one block via openHeadingTextEditor's own modal, or null. Set the
+// moment the modal opens (before openHeadingTextEditor itself is called),
+// so this same render() pass hides that heading's own body-content rows
+// underneath (see the visibleRows filter in the main render loop) --
+// cleared again on Cancel/OK, restoring them. Distinct from
+// editingParagraph, which still handles editing one specific paragraph
+// row directly (e.g. a paragraph that comes after a list, outside this
+// combined block's scope).
 let editingHeadingText = null;
 // The single heading whose general editor (SCHEDULED/DEADLINE, plain
 // timestamp, tags, priority, properties -- all six committed together
@@ -5176,14 +5181,6 @@ function commitAnyPendingInlineEdit() {
       editListItemText(heading, item, input.value.replace(/\n/g, ' '));
       resyncKeyboardFocusToBodyRow(heading, 'list-item', item.lineIndex);
       commitAndRender('Edited list item text');
-    }
-  } else if (editingHeadingText) {
-    const input = document.getElementById('heading-text-edit-input');
-    if (input) {
-      const heading = editingHeadingText;
-      editingHeadingText = null;
-      setHeadingText(heading, input.value);
-      commitAndRender('Edited heading body text');
     }
   }
 }
@@ -6554,36 +6551,8 @@ function renderRow(row, todoSequence) {
       }
     }
 
-    let textEditorEl = null;
-    if (editingHeadingText === row.node) {
-      textEditorEl = document.createElement('div');
-      textEditorEl.style.padding = '4px 10px 10px 40px';
-      const textarea = document.createElement('textarea');
-      textarea.id = 'heading-text-edit-input';
-      textarea.value = getHeadingText(row.node);
-      textarea.rows = Math.max(3, textarea.value.split('\n').length);
-      textarea.placeholder = 'All content for this heading — lists, notes, etc. — as org text';
-      textarea.style.width = '100%';
-      textarea.style.boxSizing = 'border-box';
-      textarea.style.font = 'inherit';
-      textarea.style.fontSize = '14px';
-      textarea.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          e.stopPropagation();
-          editingHeadingText = null;
-          render();
-        }
-      });
-      textarea.addEventListener('blur', () => {
-        if (!editingHeadingText) return; // re-entrant call -- already committed
-        const heading = editingHeadingText;
-        editingHeadingText = null;
-        setHeadingText(heading, textarea.value);
-        commitAndRender('Edited heading body text');
-      });
-      autoGrowTextarea(textarea);
-      textEditorEl.appendChild(textarea);
+    if (editingHeadingText === row.node && !document.getElementById('heading-text-edit-popup')) {
+      openHeadingTextEditor(row.node);
     }
 
     let generalEditorEl = null;
@@ -6723,7 +6692,7 @@ function renderRow(row, todoSequence) {
       }
     }
 
-    return withActionMenu(el, menuEl, textEditorEl, generalEditorEl, propertiesDisplayEl, logbookDisplayEl);
+    return withActionMenu(el, menuEl, generalEditorEl, propertiesDisplayEl, logbookDisplayEl);
   }
 
   if (row.rowType === 'list-item') {
@@ -7728,7 +7697,6 @@ function render() {
     editingCell ||
     editingParagraph ||
     editingListItem ||
-    editingHeadingText ||
     editingGeneral
   ) {
     queueMicrotask(() => {
@@ -7736,7 +7704,6 @@ function render() {
         document.getElementById('title-edit-input') ||
         document.getElementById('cell-edit-input') ||
         document.getElementById('listitem-edit-input') ||
-        document.getElementById('heading-text-edit-input') ||
         document.getElementById('paragraph-edit-input');
       if (input) {
         input.focus();
@@ -10190,7 +10157,33 @@ function keepOverlayInVisibleViewport(overlay) {
   };
 }
 
-function openTextFieldPopup({ label, value, defaultValue, onSave, onReset }) {
+/** The heading action menu's own "Edit text" entry point -- editingHeadingText
+ *  is set by the caller (before render(), so that same pass hides this
+ *  heading's own body-content rows underneath) and cleared here on both
+ *  Cancel and OK. Uses a fixed, unique overlay id so a render() pass
+ *  while the popup is already open (from some unrelated trigger) can't
+ *  accidentally open a second, duplicate one. */
+function openHeadingTextEditor(heading) {
+  const originalText = getHeadingText(heading);
+  const overlay = openTextFieldPopup({
+    label: 'Edit heading text',
+    value: originalText,
+    placeholder: 'All content for this heading — lists, notes, etc. — as org text',
+    resetInPlace: true,
+    onCancel: () => {
+      editingHeadingText = null;
+      render();
+    },
+    onSave: (newText) => {
+      editingHeadingText = null;
+      setHeadingText(heading, newText);
+      commitAndRender('Edited heading body text');
+    },
+  });
+  overlay.id = 'heading-text-edit-popup';
+}
+
+function openTextFieldPopup({ label, value, defaultValue, onSave, onReset, onCancel, resetInPlace, placeholder }) {
   const overlay = document.createElement('div');
   overlay.style.position = 'fixed';
   overlay.style.inset = '0'; // fallback for a browser without visualViewport; keepOverlayInVisibleViewport overrides top/left/width/height directly when it's available
@@ -10228,6 +10221,7 @@ function openTextFieldPopup({ label, value, defaultValue, onSave, onReset }) {
 
   const textarea = document.createElement('textarea');
   textarea.value = value !== undefined && value !== null ? value : '';
+  if (placeholder) textarea.placeholder = placeholder;
   textarea.rows = 20;
   textarea.style.width = '100%';
   textarea.style.boxSizing = 'border-box';
@@ -10258,9 +10252,21 @@ function openTextFieldPopup({ label, value, defaultValue, onSave, onReset }) {
     document.body.removeChild(overlay);
   }
 
-  btnRow.appendChild(menuButton('Cancel', () => close()));
+  btnRow.appendChild(
+    menuButton('Cancel', () => {
+      if (onCancel) onCancel();
+      close();
+    })
+  );
 
-  if (onReset && value !== defaultValue) {
+  if (resetInPlace) {
+    btnRow.appendChild(
+      menuButton('Reset', () => {
+        textarea.value = value !== undefined && value !== null ? value : '';
+        textarea.focus();
+      })
+    );
+  } else if (onReset && value !== defaultValue) {
     btnRow.appendChild(
       menuButton('Reset', async () => {
         await onReset();

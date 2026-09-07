@@ -6,6 +6,15 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v305 — Edit heading text: now matches Settings' own Menu labels editor
+The heading action menu's own *Edit text* — editing a heading's
+combined body text as one block — is now a popup matching Settings'
+own Menu labels editor exactly, instead of an inline textarea with no
+buttons that committed on blur or cancelled on Escape. Same size, same
+three explicit buttons: *Cancel* discards and closes, keeping the
+prior text; *Reset* reloads the original text and keeps the popup
+open for continued editing; *OK* saves and closes.
+
 * v303 — THE BUG THIS FIXES: date-to-time() on a timestamp with a time-of-day
 =date-to-time($ref)= on a cell holding this app's own native org
 timestamp (=<...>=/=[...]=) produced =#ERROR= whenever the timestamp

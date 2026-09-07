@@ -112,7 +112,7 @@ The modeline (see [[#modeline-and-minibuffer][Modeline and minibuffer]]) shows t
 :CUSTOM_ID: a-headings-text
 :END:
 
-Org has no separate description field — anything following a heading (until the next heading) belongs to it, and that can include multiple paragraphs, lists, and tables in any order. The *Edit text* action opens all of that heading's content as one editable block of raw org syntax, not just the first paragraph. Typing ~- [ ]~ at the start of a line turns it into a checklist item on save, exactly as it would in the underlying file.
+Org has no separate description field — anything following a heading (until the next heading) belongs to it, and that can include multiple paragraphs, lists, and tables in any order. The *Edit text* action opens all of that heading's content as one editable block of raw org syntax in a popup, not just the first paragraph — the same interface as Settings' own *Menu labels* editor (see [[#menu-customization][Menu customization]]): a large textarea, and three explicit buttons. *Cancel* discards whatever's been typed and closes, keeping the prior text exactly as it was. *Reset* reloads the textarea with that same original text and keeps the popup open, for starting over without losing the chance to keep editing. *OK* saves and closes. The heading's own rendered body content (list items, paragraphs, tables) is hidden from the outline underneath while this popup is open, restored the moment it closes either way. Typing ~- [ ]~ at the start of a line turns it into a checklist item on save, exactly as it would in the underlying file.
 
 -----
 
