@@ -769,6 +769,30 @@ test('date-to-time() takes exactly one argument', () => {
   assert.throws(() => recalculateTable(mkTable('$1 = date-to-time()', [['']])), /exactly one argument/);
 });
 
+// ---- THE BUG THIS FIXES: date-to-time() on a bare reference to this app's own native org timestamp format ----
+
+test('THE BUG THIS FIXES: date-to-time() on a bare reference to an org timestamp WITH a time-of-day component -- previously #ERROR, since Date.parse() cannot handle org\u2019s own "<...>" brackets once a time is also present (it only tolerated them by undocumented accident for a date-only value)', () => {
+  const result = recalculateTable(mkTable('$1 = date-to-time($1)', [['<2026-09-06 22:47>']]));
+  assert.equal(result[0].cells[0], '<2026-09-06 22:47>');
+});
+
+test('date-to-time() on a bare reference to a date-only org timestamp still works (this was the accidental case that already appeared to work before the fix, for the wrong reason)', () => {
+  const result = recalculateTable(mkTable('$1 = date-to-time($1)', [['<2026-12-25>']]));
+  assert.equal(result[0].cells[0], '<2026-12-25 00:00>');
+});
+
+test('date-to-time() on a bare reference to the "[...]" bracket style (with day-name) also works, not just "<...>"', () => {
+  const result = recalculateTable(mkTable('$1 = date-to-time($1)', [['[2026-09-06 Sat 22:47]']]));
+  assert.equal(result[0].cells[0], '<2026-09-06 22:47>');
+});
+
+test('THE EXACT REQUEST: chaining $2=now() then $4=date-to-time($2) within the same recalculation pass no longer produces #ERROR', () => {
+  const result = recalculateTable(
+    mkTable('$3=($1-now())/1;%.0f:: $2=now() ::$4=date-to-time($2)', [['<2026-12-25>', '<2026-09-06 22:47>', '109', '']])
+  );
+  assert.equal(result[0].cells[3], result[0].cells[1]); // $4 should exactly match whatever $2 actually resolved to
+});
+
 // ---- THE FEATURE: format-time-string() -- additional coverage beyond the UTC/local/default cases above ----
 
 test('THE FEATURE: format-time-string() accepts a bare cell reference directly (auto-tagged as a date, same as bare-reference arithmetic elsewhere in this module)', () => {
