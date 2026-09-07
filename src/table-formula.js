@@ -415,20 +415,34 @@ function daysToDateParts(days) {
 // and correctly disambiguated regardless of which are present.
 const CELL_TIMESTAMP_RE = /^[<[]\s*(\d{4})-(\d{2})-(\d{2})(?:\s+[A-Za-z]+)?(?:\s+(\d{1,2}):(\d{2}))?\s*[>\]]$/;
 
-/** Parses `rawText` via JS's own built-in Date constructor -- real
- *  Emacs's date-to-time (via parse-time-string) is documented as
- *  accepting a wide variety of formats (ISO 8601, RFC 822/2822 email
- *  headers, common US formats); rather than a bespoke parser
- *  attempting to match that breadth from scratch, this leans on JS's
- *  own Date parsing, which already reliably handles ISO 8601 (a
- *  standardized format) and reasonably handles RFC 2822 and common US
- *  formats too. Returns a date-tagged value ({ type: 'date', days,
- *  hasTime: true }) or null if the string isn't parseable at all --
- *  always hasTime: true, since producing a full time value (not
- *  merely a date) is this function's whole documented purpose. */
+/** Parses `rawText` for a date/time value -- tries this app's own
+ *  dedicated org-timestamp parser (parseCellTimestamp) first, since
+ *  date-to-time() should reliably handle everything date() already
+ *  does (its whole documented purpose is being the MORE flexible of
+ *  the two, not a different, non-overlapping one), then falls back to
+ *  JS's own built-in Date constructor for the wider variety of
+ *  formats real Emacs's own date-to-time (via parse-time-string) is
+ *  documented as additionally accepting: ISO 8601, RFC 822/2822 email
+ *  headers, common US formats. Trying parseCellTimestamp first isn't
+ *  optional -- JS's own Date.parse() cannot be trusted with org's own
+ *  bracketed format at all, even as a fallback: it has an
+ *  undocumented, non-standard leniency that happens to tolerate stray
+ *  characters like "<"/">" around a single, unambiguous date
+ *  (confirmed directly: Date.parse("<2026-12-25>") succeeds purely by
+ *  that accident), but the exact same leniency breaks completely the
+ *  moment a time-of-day is also present in the string
+ *  (Date.parse("<2026-09-06 22:47>") is NaN) -- inconsistent,
+ *  unintentional behavior, not a real parsing path to rely on.
+ *  Returns a date-tagged value ({ type: 'date', days, hasTime: true })
+ *  or null if the string isn't parseable at all -- always hasTime:
+ *  true regardless of which parser matched, even for a date-only
+ *  input, since producing a full time value (not merely a date) is
+ *  this function's whole documented purpose. */
 function parseFlexibleDateString(rawText) {
   const trimmed = rawText.trim();
   if (!trimmed) return null;
+  const orgTimestamp = parseCellTimestamp(trimmed);
+  if (orgTimestamp) return { ...orgTimestamp, hasTime: true };
   const ms = Date.parse(trimmed);
   if (Number.isNaN(ms)) return null;
   return { type: 'date', days: ms / 86400000, hasTime: true };
