@@ -679,6 +679,48 @@ test('flags can be concatenated with no separator, in either order', () => {
   assert.equal(resultEN[0].cells[1], '1');
 });
 
+// ---- fraction mode (;F) and mixed numbers (;FS) ----------------------------
+
+test('THE EXACT REQUEST: the user\u2019s own ;F worked example, verified exactly', () => {
+  const result = recalculateTable(mkTable('$3=$1/$2;F', [['3', '6', ''], ['12', '9', ''], ['5', '3', '']]));
+  assert.deepEqual(result.map((r) => r.cells[2]), ['1/2', '4/3', '5/3']);
+});
+
+test('THE EXACT REQUEST: the user\u2019s own ;FS worked example, verified exactly', () => {
+  const result = recalculateTable(mkTable('$3=$1/$2;FS', [['14', '4', ''], ['5', '3', '']]));
+  assert.deepEqual(result.map((r) => r.cells[2]), ['3 + 1/2', '1 + 2/3']);
+});
+
+test(';F on an exact whole-number result shows the plain integer, no "/1"', () => {
+  const result = recalculateTable(mkTable('$3=$1/$2;F', [['6', '3', '']]));
+  assert.equal(result[0].cells[2], '2');
+});
+
+test(';FS on an exact whole-number result shows the plain integer too -- nothing to split into a mixed number', () => {
+  const result = recalculateTable(mkTable('$3=$1/$2;FS', [['8', '2', '']]));
+  assert.equal(result[0].cells[2], '4');
+});
+
+test(';FS on a PROPER fraction (magnitude under 1) shows the plain fraction, not "0 + n/d" -- nothing to extract as a whole part', () => {
+  const result = recalculateTable(mkTable('$3=$1/$2;FS', [['1', '3', '']]));
+  assert.equal(result[0].cells[2], '1/3');
+});
+
+test(';F on a negative result shows a correctly-signed fraction', () => {
+  const result = recalculateTable(mkTable('$3=$1/$2;F', [['-5', '3', '']]));
+  assert.equal(result[0].cells[2], '-5/3');
+});
+
+test(';FS on a negative improper fraction shows a correctly-signed mixed number, with a MINUS connector rather than plus', () => {
+  const result = recalculateTable(mkTable('$3=$1/$2;FS', [['-14', '4', '']]));
+  assert.equal(result[0].cells[2], '-3 - 1/2');
+});
+
+test(';F on an already-integer-ratio-free value (not the result of division at all) still reconstructs the correct fraction from the decimal', () => {
+  const result = recalculateTable(mkTable('$1=0.75;F', [['999']]));
+  assert.equal(result[0].cells[0], '3/4');
+});
+
 // ---- date/time arithmetic (date/now/deg) ----------------------------------
 
 test('THE EXACT REQUEST: finding days between two dates -- date($2) - date($1) with neither side ever having a time component gives a plain integer day count', () => {
@@ -709,6 +751,85 @@ test('THE EXACT REQUEST: projecting a future deadline -- date($1) + N (a plain i
 test('date($1) - N recedes the date by that many days', () => {
   const result = recalculateTable(mkTable('$2 = date($1) - $2', [['<2026-08-25>', '10']]));
   assert.equal(result[0].cells[1], '<2026-08-15>');
+});
+
+// ---- THE FEATURE: date-to-time() -- additional coverage beyond the ISO/RFC 2822/error-handling cases above ----
+
+test('THE FEATURE: date-to-time() parses a standard US date format', () => {
+  const result = recalculateTable(mkTable('$2 = date-to-time($1)', [['01/15/2026', '']]));
+  assert.equal(result[0].cells[1], '<2026-01-15 00:00>');
+});
+
+test('date-to-time(now()) passes an already-tagged date value straight through rather than re-parsing its own formatted text', () => {
+  const result = recalculateTable(mkTable('$1 = date-to-time(now())', [['']]));
+  assert.match(result[0].cells[0], /^<\d{4}-\d{2}-\d{2} \d{2}:\d{2}>$/);
+});
+
+test('date-to-time() takes exactly one argument', () => {
+  assert.throws(() => recalculateTable(mkTable('$1 = date-to-time()', [['']])), /exactly one argument/);
+});
+
+// ---- THE FEATURE: format-time-string() -- additional coverage beyond the UTC/local/default cases above ----
+
+test('THE FEATURE: format-time-string() accepts a bare cell reference directly (auto-tagged as a date, same as bare-reference arithmetic elsewhere in this module)', () => {
+  const result = recalculateTable(mkTable('$2 = format-time-string("%A, %B %d", $1)', [['<2026-01-15>', '']]));
+  assert.equal(result[0].cells[1], 'Thursday, January 15');
+});
+
+test('THE FEATURE: format-time-string()\u2019s own TIME argument accepts a plain number too, read as real Emacs\u2019s own documented "integer seconds since the Unix epoch" convention', () => {
+  const result = recalculateTable(mkTable('$1 = format-time-string("%Y-%m-%d", 1768476600)', [['']])); // 2026-01-15T10:30:00Z
+  assert.equal(result[0].cells[0], '2026-01-15');
+});
+
+// ---- date-to-time() and format-time-string() -------------------------------
+
+test('THE EXACT REQUEST: date-to-time() parses an ISO 8601 string', () => {
+  const result = recalculateTable(mkTable('$2 = date-to-time($1)', [['2024-01-15T10:30:00Z', '']]));
+  assert.equal(result[0].cells[1], '<2024-01-15 10:30>');
+});
+
+test('THE EXACT REQUEST: date-to-time() parses an RFC 2822 email-header-style date, to the same instant as the equivalent ISO 8601 string', () => {
+  const result = recalculateTable(mkTable('$2 = date-to-time($1)', [['Mon, 15 Jan 2024 10:30:00 GMT', '']]));
+  assert.equal(result[0].cells[1], '<2024-01-15 10:30>');
+});
+
+test('date-to-time() on an unparseable string produces #ERROR in the cell, matching this engine\u2019s own established convention for a runtime evaluation failure on an otherwise-valid formula (not a thrown exception, which is reserved for malformed formula syntax)', () => {
+  const result = recalculateTable(mkTable('$2 = date-to-time($1)', [['not a date at all', '']]));
+  assert.equal(result[0].cells[1], '#ERROR');
+});
+
+test('date-to-time(date(...)) passes an already date-tagged value straight through rather than re-parsing its own formatted text', () => {
+  const result = recalculateTable(mkTable('$1 = date-to-time(date(2026, 8, 25))', [['999']]));
+  assert.equal(result[0].cells[0], '<2026-08-25>');
+});
+
+test('THE EXACT REQUEST: format-time-string() with a UTC/UNIVERSAL flag reproduces the exact UTC instant regardless of the running machine\u2019s own local timezone', () => {
+  const result = recalculateTable(
+    mkTable('$2 = format-time-string("%Y-%m-%d %H:%M", date-to-time($1), 1)', [['2024-01-15T10:30:00Z', '']])
+  );
+  assert.equal(result[0].cells[1], '2024-01-15 10:30');
+});
+
+test('format-time-string() without the UNIVERSAL flag formats in the running machine\u2019s own local time -- expected value computed independently via the same JS Date APIs the implementation itself uses, so this is correct regardless of which timezone the test happens to run in', () => {
+  const instant = new Date(Date.parse('2024-01-15T10:30:00Z'));
+  const pad = (n) => String(n).padStart(2, '0');
+  const expected = `${instant.getFullYear()}-${pad(instant.getMonth() + 1)}-${pad(instant.getDate())} ${pad(instant.getHours())}:${pad(instant.getMinutes())}`;
+  const result = recalculateTable(
+    mkTable('$2 = format-time-string("%Y-%m-%d %H:%M", date-to-time($1))', [['2024-01-15T10:30:00Z', '']])
+  );
+  assert.equal(result[0].cells[1], expected);
+});
+
+test('format-time-string() with no TIME argument at all defaults to the current moment', () => {
+  const result = recalculateTable(mkTable('$1 = format-time-string("%Y")', [['999']]));
+  assert.equal(result[0].cells[0], String(new Date().getFullYear()));
+});
+
+test('format-time-string()\u2019s own FORMAT-STRING supports ordinary literal characters alongside %-codes, passed through verbatim', () => {
+  const result = recalculateTable(
+    mkTable('$2 = format-time-string("Year: %Y, Month: %B", date-to-time($1), 1)', [['2024-01-15T10:30:00Z', '']])
+  );
+  assert.equal(result[0].cells[1], 'Year: 2024, Month: January');
 });
 
 // ---- THE BUG THIS FIXES: date component validation -----------------------
