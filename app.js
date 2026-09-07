@@ -2684,6 +2684,7 @@ function scrollContainer() {
 // unconditionally and silently rendering into the wrong place.
 let settingsRenderTarget = outlineEl;
 let docsRenderTarget = outlineEl;
+let historyRenderTarget = outlineEl;
 const saveBtnEl = document.getElementById('saveBtn');
 const statusEl = document.getElementById('status');
 const topBarEl = document.getElementById('topBar');
@@ -2790,7 +2791,6 @@ function closeAllOverlayPanels() {
   }
   if (historyOpen) {
     historyOpen = false;
-    renderHistoryPanel();
   }
   if (pendingTodoWorkflowChoice) {
     pendingTodoWorkflowChoice = null;
@@ -2833,7 +2833,6 @@ const searchBtn = document.getElementById('searchBtn');
 const searchPanel = document.getElementById('searchPanel');
 const captureBtn = document.getElementById('captureBtn');
 const capturePanel = document.getElementById('capturePanel');
-const historyPanel = document.getElementById('historyPanel');
 const doneNotePanel = document.getElementById('doneNotePanel');
 const refilePanel = document.getElementById('refilePanel');
 const externalChangeBanner = document.getElementById('externalChangeBanner');
@@ -4616,18 +4615,19 @@ function renderDiffView(oldText, newText) {
   return wrap;
 }
 
-function renderHistoryPanel() {
-  historyPanel.innerHTML = '';
-  if (!historyOpen) {
-    historyPanel.style.display = 'none';
-    return;
-  }
-  historyPanel.style.display = 'block';
+function renderHistoryPanel(target = historyRenderTarget) {
+  historyRenderTarget = target;
+  if (!historyOpen) return;
+  target.innerHTML = '';
+  const container = document.createElement('div');
+  container.className = 'panel';
+  container.style.minHeight = '100%';
+  target.appendChild(container);
 
   const title = document.createElement('div');
   title.className = 'panel-section-title';
   title.textContent = 'History';
-  historyPanel.appendChild(title);
+  container.appendChild(title);
 
   const stepRow = document.createElement('div');
   stepRow.className = 'panel-row';
@@ -4643,19 +4643,16 @@ function renderHistoryPanel() {
       renderHistoryPanel();
     }, !canRedo(history))
   );
-  historyPanel.appendChild(stepRow);
+  container.appendChild(stepRow);
 
   const hint = document.createElement('div');
   hint.style.fontSize = '11px';
   hint.style.opacity = '0.6';
   hint.style.margin = '4px 0';
   hint.textContent = 'Tap an entry to jump there. Tap "diff" to see what that step actually changed.';
-  historyPanel.appendChild(hint);
+  container.appendChild(hint);
 
   const list = document.createElement('div');
-  list.style.maxHeight = '340px';
-  list.style.overflowY = 'auto';
-  list.style.overscrollBehavior = 'contain';
 
   history.entries.forEach((entry, idx) => {
     const row = document.createElement('div');
@@ -4716,7 +4713,7 @@ function renderHistoryPanel() {
     list.appendChild(row);
   });
 
-  historyPanel.appendChild(list);
+  container.appendChild(list);
 }
 
 /**
@@ -6980,7 +6977,7 @@ function renderTableRow(row) {
         // Escape, which the on-screen keyboard on a phone or tablet never
         // exposes at all.
         const cancelBtn = document.createElement('button');
-        cancelBtn.textContent = '\u2715';
+        cancelBtn.textContent = '\u238c';
         cancelBtn.className = 'cell-cancel-btn';
         cancelBtn.setAttribute('aria-label', 'Discard cell edit');
         cancelBtn.style.flex = '0 0 auto';
@@ -7418,6 +7415,10 @@ function syncSidePanel() {
     sidePanelEl.style.display = 'block';
     sidePanelDividerEl.style.display = 'block';
     renderDocsView(sidePanelEl);
+  } else if (wide && historyOpen) {
+    sidePanelEl.style.display = 'block';
+    sidePanelDividerEl.style.display = 'block';
+    renderHistoryPanel(sidePanelEl);
   } else {
     sidePanelEl.style.display = 'none';
     sidePanelDividerEl.style.display = 'none';
@@ -7468,7 +7469,7 @@ setupSidePanelResize();
 // rerender, and loses on the first tap the same way switching directly
 // between two cells used to (see the per-cell mousedown handler above
 // for the fuller explanation this mirrors). Excludes both the cell's
-// own textarea AND its adjacent × discard button -- a tap on either is
+// own textarea AND its adjacent ⎌ discard button -- a tap on either is
 // still part of this same editing session, not a tap "elsewhere" that
 // should commit; the discard button's own handler (mousedown, same
 // ordering reasoning as this one) is what actually decides what a tap
@@ -7532,12 +7533,14 @@ function render() {
   syncContentOffset();
 
   const wide = isWideLayout();
-  // renderSettingsView()/renderDocsView() own #outline while showing —
-  // but only on a narrow layout; on a wide one, syncSidePanel above
-  // already routed them to #sidePanel instead, so #outline should keep
-  // rendering normally below rather than being replaced too.
+  // renderSettingsView()/renderDocsView()/renderHistoryPanel() own
+  // #outline while showing — but only on a narrow layout; on a wide
+  // one, syncSidePanel above already routed them to #sidePanel
+  // instead, so #outline should keep rendering normally below rather
+  // than being replaced too.
   if (settingsOpen && !wide) return;
   if (docsOpen && !wide) return;
+  if (historyOpen && !wide) return;
 
   if (!state.doc) {
     outlineEl.innerHTML = '';
@@ -9181,6 +9184,10 @@ function switchToView(view) {
     closeDocsView();
     render();
   }
+  if (historyOpen) {
+    historyOpen = false;
+    render();
+  }
   if (view === currentView) {
     viewMenuOpen = false;
     renderViewMenu();
@@ -9251,8 +9258,11 @@ function renderViewMenuContent() {
     () => {
       closeAllOverlayPanels();
       historyOpen = true;
-      render();
-      renderHistoryPanel();
+      if (isWideLayout()) {
+        render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
+      } else {
+        renderHistoryPanel(outlineEl); // narrow: replaces #outline directly, matching Settings' own treatment
+      }
     },
     !state.doc
   );

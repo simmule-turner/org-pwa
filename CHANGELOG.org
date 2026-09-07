@@ -6,6 +6,19 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v307 — Discard symbol, full-screen History, %Z/%z
+Three changes. The table-cell discard button now shows =⎌= (the
+universal undo symbol) instead of =×=. History is now a full-screen
+view matching Settings exactly — on a narrow layout it replaces the
+outline entirely instead of sitting as a small panel with content
+scrolling behind it; on a wide layout it renders into the side panel
+alongside the outline, same as Settings and Docs already do. Added
+=%Z= (alphabetic timezone abbreviation, e.g. =EDT=) and =%z= (numeric
+UTC offset, e.g. =-0400=) to both =%<FORMAT>= and
+=format-time-string()= — under =format-time-string()='s own UTC flag,
+both correctly resolve to =UTC=/=+0000= rather than the device's own
+real local timezone.
+
 * v306 — Editing: one consistent, explicit-confirm interface everywhere
 Every text-editing surface in the app now uses one of two deliberate
 patterns instead of a mix of implicit blur-commits and three
