@@ -46,6 +46,90 @@
  * then col 4 = col3*2) without needing a full dependency graph.
  */
 
+// ---- format-time-string's own strftime-style formatter ----------------
+// Duplicated from src/capture-template.js's own formatTime (used there
+// for %<FORMAT>) rather than imported -- this module has zero imports
+// today, a deliberate, self-contained design, and this small, static,
+// pure function is cheap to duplicate versus this module's first-ever
+// cross-module dependency on an unrelated file. Kept behaviorally
+// identical (same format codes, same "leave the unrecognized specifier
+// untouched" fallback) so the two stay interchangeable in practice.
+
+const TIME_FORMAT_DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const TIME_FORMAT_DAY_NAMES_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const TIME_FORMAT_MONTH_NAMES_FULL = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+const TIME_FORMAT_MONTH_NAMES_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function timeFormatPad(n, width = 2) {
+  return String(n).padStart(width, '0');
+}
+
+function timeFormatDayOfYear(date) {
+  const start = new Date(date.getFullYear(), 0, 1);
+  return Math.floor((date - start) / 86400000) + 1;
+}
+
+/** format-time-string's own actual formatter -- a practical subset of
+ *  real Emacs's format-time-string specifiers (the ones that actually
+ *  show up in real use: dates, times, weekday and month names), not
+ *  the complete, much longer C strftime table, matching %<FORMAT>'s
+ *  own already-established scope exactly. `date` is read via its own
+ *  LOCAL getters throughout -- callers wanting UTC output construct a
+ *  "fake local" Date from the UTC components first (see the
+ *  formatTimeCall evaluator below), rather than this function having
+ *  two separate code paths for the same formatting logic. */
+function formatTimeStringImpl(date, format) {
+  return format.replace(/%(.)/g, (whole, spec) => {
+    switch (spec) {
+      case 'Y':
+        return String(date.getFullYear());
+      case 'y':
+        return timeFormatPad(date.getFullYear() % 100);
+      case 'm':
+        return timeFormatPad(date.getMonth() + 1);
+      case 'd':
+        return timeFormatPad(date.getDate());
+      case 'e':
+        return String(date.getDate()).padStart(2, ' ');
+      case 'H':
+        return timeFormatPad(date.getHours());
+      case 'I': {
+        const h = date.getHours() % 12 || 12;
+        return timeFormatPad(h);
+      }
+      case 'M':
+        return timeFormatPad(date.getMinutes());
+      case 'S':
+        return timeFormatPad(date.getSeconds());
+      case 'p':
+        return date.getHours() < 12 ? 'AM' : 'PM';
+      case 'A':
+        return TIME_FORMAT_DAY_NAMES_FULL[date.getDay()];
+      case 'a':
+        return TIME_FORMAT_DAY_NAMES_ABBR[date.getDay()];
+      case 'B':
+        return TIME_FORMAT_MONTH_NAMES_FULL[date.getMonth()];
+      case 'b':
+        return TIME_FORMAT_MONTH_NAMES_ABBR[date.getMonth()];
+      case 'j':
+        return timeFormatPad(timeFormatDayOfYear(date), 3);
+      case 'F':
+        return `${date.getFullYear()}-${timeFormatPad(date.getMonth() + 1)}-${timeFormatPad(date.getDate())}`;
+      case 'R':
+        return `${timeFormatPad(date.getHours())}:${timeFormatPad(date.getMinutes())}`;
+      case 'T':
+        return `${timeFormatPad(date.getHours())}:${timeFormatPad(date.getMinutes())}:${timeFormatPad(date.getSeconds())}`;
+      case '%':
+        return '%';
+      default:
+        return whole; // unrecognized -- leave as-is, don't silently drop it
+    }
+  });
+}
+
 // ---- reference parsing ------------------------------------------------
 
 /** Parses one row-reference token's text (after the leading "@", not
@@ -140,6 +224,28 @@ function computeHlinePositions(workingRows) {
 const TOKEN_RE =
   /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:[<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+)|\d+\.?\d*|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()+\-*/^,<>=!])\s*/y;
 
+/** date-to-time and format-time-string are real Emacs function names
+ *  with literal hyphens in them -- TOKEN_RE's own generic identifier
+ *  pattern ([A-Za-z_][A-Za-z0-9_]*) doesn't include "-", and its own
+ *  single-character "-" operator token would otherwise split these
+ *  apart entirely (confirmed directly: "date-to-time($1)" tokenizes
+ *  without this as ["date", "-", "to", "-", "time", "(", "$1", ")"],
+ *  parsing as subtraction, not a function call). This is a small,
+ *  isolated pre-check rather than an edit to TOKEN_RE's own pattern,
+ *  specifically to avoid any risk of interacting with that pattern's
+ *  other alternatives -- most notably the "I+" hline-reference marker
+ *  (@II, @III, ...), which is deliberately uppercase-only; embedding
+ *  a case-insensitive match for these two names directly into
+ *  TOKEN_RE would risk quietly making that marker accept lowercase
+ *  too, a real behavior change nobody asked for. Case-insensitive
+ *  here, matching how every other function name in this language
+ *  already works (the parser's own later .toLowerCase() step). The
+ *  negative lookahead (no further identifier character immediately
+ *  after) stops "date-to-time2" or similar from incorrectly matching
+ *  the shorter, real name and leaving a stray "2" dangling as its own
+ *  separate, out-of-place token. */
+const HYPHENATED_FUNCTION_RE = /^(date-to-time|format-time-string)(?![A-Za-z0-9_-])/i;
+
 /** Tokenizes an RHS expression -- numbers, cell/range references
  *  (kept as single tokens, not decomposed further here), function
  *  names, and operators/punctuation. Throws on any character that
@@ -151,6 +257,14 @@ function tokenize(expr) {
   let pos = 0;
   TOKEN_RE.lastIndex = 0;
   while (pos < expr.length) {
+    const leadingWs = /^\s*/.exec(expr.slice(pos))[0];
+    const afterWs = pos + leadingWs.length;
+    const hyphenated = HYPHENATED_FUNCTION_RE.exec(expr.slice(afterWs));
+    if (hyphenated) {
+      tokens.push(hyphenated[1]);
+      pos = afterWs + hyphenated[1].length;
+      continue;
+    }
     TOKEN_RE.lastIndex = pos;
     const m = TOKEN_RE.exec(expr);
     if (!m || m.index !== pos) {
@@ -300,6 +414,25 @@ function daysToDateParts(days) {
 // digits, which [A-Za-z]+ cannot match), letting both be optional
 // and correctly disambiguated regardless of which are present.
 const CELL_TIMESTAMP_RE = /^[<[]\s*(\d{4})-(\d{2})-(\d{2})(?:\s+[A-Za-z]+)?(?:\s+(\d{1,2}):(\d{2}))?\s*[>\]]$/;
+
+/** Parses `rawText` via JS's own built-in Date constructor -- real
+ *  Emacs's date-to-time (via parse-time-string) is documented as
+ *  accepting a wide variety of formats (ISO 8601, RFC 822/2822 email
+ *  headers, common US formats); rather than a bespoke parser
+ *  attempting to match that breadth from scratch, this leans on JS's
+ *  own Date parsing, which already reliably handles ISO 8601 (a
+ *  standardized format) and reasonably handles RFC 2822 and common US
+ *  formats too. Returns a date-tagged value ({ type: 'date', days,
+ *  hasTime: true }) or null if the string isn't parseable at all --
+ *  always hasTime: true, since producing a full time value (not
+ *  merely a date) is this function's whole documented purpose. */
+function parseFlexibleDateString(rawText) {
+  const trimmed = rawText.trim();
+  if (!trimmed) return null;
+  const ms = Date.parse(trimmed);
+  if (Number.isNaN(ms)) return null;
+  return { type: 'date', days: ms / 86400000, hasTime: true };
+}
 
 /** Parses `rawText` (a table cell's own raw text) for a recognizable
  *  org timestamp, returning a date-tagged value ({ type: 'date',
@@ -475,7 +608,7 @@ function parseExpression(tokens) {
     }
     if (/^[A-Za-z_]/.test(tok)) {
       const name = next().toLowerCase();
-      if (name === 'date' || name === 'now') {
+      if (name === 'date' || name === 'now' || name === 'date-to-time') {
         expect('(');
         const args = [];
         if (peek() !== ')') {
@@ -487,10 +620,24 @@ function parseExpression(tokens) {
         }
         expect(')');
         if (name === 'now' && args.length !== 0) throw new Error('"now" takes no arguments');
+        if (name === 'date-to-time' && args.length !== 1) throw new Error('"date-to-time" takes exactly one argument');
         if (name === 'date' && args.length !== 1 && args.length !== 3) {
           throw new Error('"date" takes either one cell/timestamp argument or three (year, month, day)');
         }
         return { type: 'dateCall', name, args };
+      }
+      if (name === 'format-time-string') {
+        expect('(');
+        const args = [parseExpr()];
+        while (peek() === ',') {
+          next();
+          args.push(parseExpr());
+        }
+        expect(')');
+        if (args.length < 1 || args.length > 3) {
+          throw new Error('"format-time-string" takes FORMAT-STRING and up to two optional arguments (TIME, UNIVERSAL)');
+        }
+        return { type: 'formatTimeCall', args };
       }
       if (name === 'string') {
         expect('(');
@@ -800,9 +947,46 @@ function evaluateAst(node, ctx) {
         if (isTaggedValue(val) && val.type === 'date') return val; // date(date(...)) or date(now()) -- already a date value, pass through rather than re-parsing its own formatted text
         rawText = String(val);
       }
+      if (node.name === 'date-to-time') {
+        const parsed = parseFlexibleDateString(rawText);
+        if (!parsed) throw new Error(`date-to-time(): couldn\u2019t parse "${rawText.trim()}" as a date/time`);
+        return parsed;
+      }
       const parsed = parseCellTimestamp(rawText);
       if (!parsed) throw new Error(`date(): couldn\u2019t find a recognizable timestamp in "${rawText.trim()}"`);
       return parsed;
+    }
+    case 'formatTimeCall': {
+      const formatVal = evaluateAst(node.args[0], ctx);
+      const formatStr = typeof formatVal === 'string' ? formatVal : String(formatVal);
+
+      let instant;
+      if (node.args.length < 2) {
+        instant = ctx.now || new Date();
+      } else {
+        const timeVal = evaluateAst(node.args[1], ctx);
+        if (isTaggedValue(timeVal)) {
+          instant = new Date(timeVal.days * 86400000);
+        } else {
+          // Real Emacs's own documented convention: a plain number here
+          // is an integer count of seconds since the Unix epoch, not days.
+          instant = new Date(timeVal * 1000);
+        }
+      }
+
+      const universal = node.args.length >= 3 && isTruthyValue(evaluateAst(node.args[2], ctx));
+      const dateForFormatting = universal
+        ? new Date(
+            instant.getUTCFullYear(),
+            instant.getUTCMonth(),
+            instant.getUTCDate(),
+            instant.getUTCHours(),
+            instant.getUTCMinutes(),
+            instant.getUTCSeconds()
+          )
+        : instant;
+
+      return formatTimeStringImpl(dateForFormatting, formatStr);
     }
     case 'stringCall': {
       if (node.arg.type === 'ref') {
@@ -879,7 +1063,7 @@ function collectRangeValues(argNode, ctx) {
  *  this default is only ever used when a formula has no format flag
  *  of its own. */
 
-const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUEN]/y;
+const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUENFS]/y;
 
 /** Parses a formula's own trailing mode string (everything after the
  *  ";", already split off by parseFormulaStatement below) into a
@@ -897,6 +1081,25 @@ const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUEN]/y
  *    - Overrides `format` entirely when present -- a duration result
  *      is never also shown in scientific/fixed/etc notation.
  *  emptyMode: 'omit' (default) | 'nan' (E) | 'zero' (E and N together)
+ *  fraction: whether F (Fraction Mode) was present -- overrides
+ *    `format`/`duration` entirely when set, same "last flag standing"
+ *    precedence duration already has over format above, since a
+ *    fraction result is never also shown in scientific/fixed/etc
+ *    notation either. Reconstructed from the computed floating-point
+ *    result via a continued-fraction approximation (see
+ *    formatAsFraction below) -- this app's own arithmetic doesn't
+ *    carry true rational values through every operation the way real
+ *    Calc's own internal representation does, but for the common case
+ *    (an expression that -- mathematically, not just by coincidence
+ *    of this app's own rounding -- reduces to a clean fraction) this
+ *    recovers the exact same result.
+ *  mixedNumber: whether S was ALSO present alongside F, requesting a
+ *    mixed-number display (whole number + proper fraction, e.g.
+ *    "3 + 1/2") for an improper fraction, real org's own documented
+ *    F+S combination. S alone, without F, is recognized and consumed
+ *    but has no effect on its own -- this app doesn't implement
+ *    Calc's own general Symbolic mode, only this specific, documented
+ *    combination with Fraction mode.
  *
  *  pN (precision) is recognized and consumed but has no further
  *  effect -- this engine's own numbers already carry more precision
@@ -908,7 +1111,7 @@ const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUEN]/y
  *  there, falling back to whatever was already parsed rather than
  *  discarding the whole mode string. */
 function parseModeString(suffix) {
-  const mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false };
+  const mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false };
   MODE_TOKEN_RE.lastIndex = 0;
   let m;
   while ((m = MODE_TOKEN_RE.exec(suffix))) {
@@ -924,6 +1127,8 @@ function parseModeString(suffix) {
     else if (token === 'T' || token === 't' || token === 'U') mode.duration = token;
     else if (token === 'E') mode.emptyMode = 'nan';
     else if (token === 'N') mode.forceNumeric = true;
+    else if (token === 'F') mode.fraction = true;
+    else if (token === 'S') mode.mixedNumber = true;
   }
   if (mode.forceNumeric && mode.emptyMode === 'nan') mode.emptyMode = 'zero'; // E and N together: blank fields are 0, not nan
   return mode;
@@ -1145,15 +1350,76 @@ function parseTblfm(tblfm) {
  * `table.rows` reference, so the caller's own input is never mutated
  * regardless of whether this throws partway through.
  */
+/** Converts `x` to the "best" rational approximation with a
+ *  reasonably small denominator -- a standard continued-fraction
+ *  convergents algorithm. This app's own arithmetic doesn't carry
+ *  true rational values through every operation the way real Calc's
+ *  own internal representation does, so this reconstructs one from
+ *  the final floating-point result instead; for any expression that
+ *  mathematically reduces to a clean fraction (not merely one that
+ *  happens to look clean after this app's own rounding), the
+ *  reconstruction recovers the exact same fraction Calc's own native
+ *  rational arithmetic would have produced directly. */
+function toRationalApproximation(x, tolerance = 1e-9, maxDenominator = 1000000) {
+  const sign = x < 0 ? -1 : 1;
+  const abs = Math.abs(x);
+  if (abs === 0) return { numerator: 0, denominator: 1 };
+  let h1 = 1,
+    h2 = 0,
+    k1 = 0,
+    k2 = 1;
+  let b = abs;
+  for (let i = 0; i < 64; i++) {
+    const a = Math.floor(b);
+    const h = a * h1 + h2;
+    h2 = h1;
+    h1 = h;
+    const k = a * k1 + k2;
+    k2 = k1;
+    k1 = k;
+    if (Math.abs(abs - h1 / k1) < tolerance * abs || k1 > maxDenominator) break;
+    if (Math.abs(b - a) < 1e-12) break;
+    b = 1 / (b - a);
+  }
+  return { numerator: sign * h1, denominator: k1 };
+}
+
+/** Formats `n` per the F (Fraction Mode) / FS (Fraction + mixed-number)
+ *  flags -- confirmed directly against real org's own documented
+ *  examples: 3/6;F -> "1/2", 12/9;F -> "4/3", 14/4;FS -> "3 + 1/2".
+ *  Without `mixedNumber` (F alone), an improper fraction stays
+ *  improper ("5/3", not "1 + 2/3") -- mixed-number display is
+ *  specifically the FS combination's own documented behavior, not F's
+ *  default. A proper fraction (|numerator| < denominator) has no
+ *  whole part to extract regardless of `mixedNumber`, so it's always
+ *  shown the same plain way either way. */
+function formatAsFraction(n, mixedNumber) {
+  if (Number.isNaN(n)) return 'nan';
+  const { numerator, denominator } = toRationalApproximation(n);
+  if (denominator === 1) return String(numerator); // an exact whole number -- no "/1" to show
+  if (!mixedNumber) return `${numerator}/${denominator}`;
+
+  const sign = numerator < 0 ? -1 : 1;
+  const absNumerator = Math.abs(numerator);
+  const whole = Math.floor(absNumerator / denominator);
+  if (whole === 0) return `${numerator}/${denominator}`; // proper fraction -- nothing to extract
+  const remainder = absNumerator % denominator;
+  if (remainder === 0) return String(sign * whole); // reduces to an exact whole number after all
+  const connector = sign < 0 ? ' - ' : ' + ';
+  return `${sign * whole}${connector}${remainder}/${denominator}`;
+}
+
 /** Formats one formula's own final computed value into cell text --
- *  duration formatting (T/U/t) takes priority when present, since a
- *  duration result is never also shown in scientific/fixed/etc
- *  notation; otherwise an explicit format spec (fixed/integer/normal/
- *  scientific/engineering); otherwise formatResult's own default. */
+ *  duration (T/U/t) or fraction (F) formatting take priority when
+ *  present, since either one is never ALSO shown in scientific/
+ *  fixed/etc notation; otherwise an explicit format spec (fixed/
+ *  integer/normal/scientific/engineering); otherwise formatResult's
+ *  own default. */
 function formatFinalValue(value, mode, hourZeroPad) {
   if (typeof value === 'string') return value;
   if (isTaggedValue(value)) return value.type === 'date' ? formatDateValue(value) : formatHmsValue(value);
   if (mode.duration) return formatDuration(value, mode.duration, hourZeroPad);
+  if (mode.fraction) return formatAsFraction(value, mode.mixedNumber);
   if (mode.format) return applyFormatSpec(value, mode.format);
   return formatResult(value);
 }
