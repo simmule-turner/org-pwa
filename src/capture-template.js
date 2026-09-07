@@ -56,6 +56,19 @@ function dayOfYear(date) {
  * since silently eating unknown input is a worse failure mode than
  * leaving a visible, debuggable trace of what wasn't understood.
  */
+function timezoneAbbreviation(date) {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(date);
+  const tz = parts.find((p) => p.type === 'timeZoneName');
+  return tz ? tz.value : '';
+}
+
+function timezoneOffsetString(date) {
+  const totalMinutes = -date.getTimezoneOffset(); // getTimezoneOffset() is UTC-minus-local, the opposite sign from ±HHMM
+  const sign = totalMinutes < 0 ? '-' : '+';
+  const abs = Math.abs(totalMinutes);
+  return sign + pad(Math.floor(abs / 60)) + pad(abs % 60);
+}
+
 function formatTime(date, format) {
   return format.replace(/%(.)/g, (whole, spec) => {
     switch (spec) {
@@ -97,6 +110,10 @@ function formatTime(date, format) {
         return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
       case 'T':
         return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+      case 'Z':
+        return timezoneAbbreviation(date);
+      case 'z':
+        return timezoneOffsetString(date);
       case '%':
         return '%';
       default:

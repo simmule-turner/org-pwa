@@ -81,7 +81,34 @@ function timeFormatDayOfYear(date) {
  *  "fake local" Date from the UTC components first (see the
  *  formatTimeCall evaluator below), rather than this function having
  *  two separate code paths for the same formatting logic. */
-function formatTimeStringImpl(date, format) {
+function timeFormatTimezoneAbbreviation(date) {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(date);
+  const tz = parts.find((p) => p.type === 'timeZoneName');
+  return tz ? tz.value : '';
+}
+
+function timeFormatTimezoneOffsetString(date) {
+  const totalMinutes = -date.getTimezoneOffset(); // getTimezoneOffset() is UTC-minus-local, the opposite sign from ±HHMM
+  const sign = totalMinutes < 0 ? '-' : '+';
+  const abs = Math.abs(totalMinutes);
+  return sign + timeFormatPad(Math.floor(abs / 60)) + timeFormatPad(abs % 60);
+}
+
+/** format-time-string's own actual formatter -- a practical subset of
+ *  real Emacs's format-time-string specifiers (the ones that actually
+ *  show up in real use: dates, times, weekday and month names), not
+ *  the complete, much longer C strftime table, matching %<FORMAT>'s
+ *  own already-established scope exactly. `date` is read via its own
+ *  LOCAL getters throughout -- callers wanting UTC output construct a
+ *  "fake local" Date from the UTC components first (see the
+ *  formatTimeCall evaluator below), rather than this function having
+ *  two separate code paths for the same formatting logic -- EXCEPT
+ *  for %Z/%z specifically, which can't use that same trick (a "fake
+ *  local" Date's own real timezone getters would report whatever zone
+ *  the machine itself is actually in, not UTC), so `isUTC` short-
+ *  circuits straight to the fixed, correct "UTC"/"+0000" for those
+ *  two codes only when set. */
+function formatTimeStringImpl(date, format, isUTC = false) {
   return format.replace(/%(.)/g, (whole, spec) => {
     switch (spec) {
       case 'Y':
@@ -122,6 +149,10 @@ function formatTimeStringImpl(date, format) {
         return `${timeFormatPad(date.getHours())}:${timeFormatPad(date.getMinutes())}`;
       case 'T':
         return `${timeFormatPad(date.getHours())}:${timeFormatPad(date.getMinutes())}:${timeFormatPad(date.getSeconds())}`;
+      case 'Z':
+        return isUTC ? 'UTC' : timeFormatTimezoneAbbreviation(date);
+      case 'z':
+        return isUTC ? '+0000' : timeFormatTimezoneOffsetString(date);
       case '%':
         return '%';
       default:
@@ -1000,7 +1031,7 @@ function evaluateAst(node, ctx) {
           )
         : instant;
 
-      return formatTimeStringImpl(dateForFormatting, formatStr);
+      return formatTimeStringImpl(dateForFormatting, formatStr, universal);
     }
     case 'stringCall': {
       if (node.arg.type === 'ref') {
