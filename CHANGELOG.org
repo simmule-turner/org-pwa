@@ -6,6 +6,32 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v302 — date-to-time / format-time-string: restored to their real names
+Reverted the previous release's own =date_to_time=/=format_time_string=
+back to =date-to-time=/=format-time-string= — real Emacs Lisp's own
+literal, hyphenated names. A working solution for this exact naming
+had already been built earlier (a small, isolated tokenizer exception,
+since this app's own formula language always treats =-= as the
+subtraction operator), but got reverted by mistake while picking the
+feature back up mid-session. No functional change beyond the spelling
+— everything from v301 works identically, just reachable under its
+real name again.
+
+* v301 — Table formulas: date_to_time, format_time_string, fraction mode
+Three new table-formula capabilities. =date_to_time(ref)= is real
+Emacs's own =date-to-time=, parsing a much wider variety of date/time
+strings than =date()= does — ISO 8601, RFC 822/2822 email-header
+dates, and common US formats. =format_time_string(fmt, time, utc)= is
+real Emacs's own =format-time-string=, using the exact same
+=%<FORMAT>= codes capture templates already support, with an optional
+UTC flag. Both are spelled with underscores rather than real Emacs's
+own literal hyphens — this app's own formula language treats =-= as
+the subtraction operator, so a hyphenated function name isn't
+reachable as a single token at all. =;F= (Fraction Mode) and =;FS=
+(mixed numbers) are new mode flags: =$1/$2;F= on 3 and 6 shows =1/2=
+rather than =0.5=; =;FS= on an improper fraction shows a mixed number
+instead, e.g. =3 + 1/2=.
+
 * v300 — Capture: same treatment as Export/Clocking
 More → Capture's own template picker is now a step within the same
 More menu, matching Export and Clocking exactly — one plain row per
