@@ -6,6 +6,23 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v306 — Editing: one consistent, explicit-confirm interface everywhere
+Every text-editing surface in the app now uses one of two deliberate
+patterns instead of a mix of implicit blur-commits and three
+different button sets. Heading titles, list items, and paragraphs all
+use the same popup Edit heading text and Settings' own Menu labels
+editor already used — Cancel / Reset / OK, same size, same behavior.
+WebDAV/GitHub and the Capture prompt form were brought in line with
+this same button convention too. Table cells stay inline — a real
+"tap the next cell to commit and move on" workflow would have broken
+under a modal — but gained a small *×* button right next to the field
+while editing: the one genuinely mobile-friendly way to back out of a
+cell edit, since neither iOS's nor Android's on-screen keyboard
+exposes an Escape key at all. Also fixed two regressions caught before
+shipping: a runtime error from an invented element ID, and table
+cells silently losing real keyboard focus after being reverted from
+modal back to inline.
+
 * v305 — Edit heading text: now matches Settings' own Menu labels editor
 The heading action menu's own *Edit text* — editing a heading's
 combined body text as one block — is now a popup matching Settings'

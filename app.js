@@ -3239,6 +3239,7 @@ function enterInsertModeAtCurrentLine() {
   if (row.rowType === 'paragraph') {
     editingParagraph = { heading: row.heading, paragraph: row.node };
     render();
+    openParagraphEditor(row.heading, row.node);
   } else if (row.rowType === 'table') {
     const rowIndex = keyboardFocusedCellPos ? keyboardFocusedCellPos.rowIndex : 0;
     const colIndex = keyboardFocusedCellPos ? keyboardFocusedCellPos.colIndex : 0;
@@ -3247,6 +3248,7 @@ function enterInsertModeAtCurrentLine() {
   } else if (row.rowType === 'list-item') {
     editingListItem = { heading: row.heading, item: row.item };
     render();
+    openListItemEditor(row.heading, row.item);
   }
   // 'block'/'hr': no structured edit UI exists for either -- no-op.
 }
@@ -4309,10 +4311,100 @@ function setStatus(text) {
   statusEl.appendChild(document.createTextNode(text));
 }
 
+/** The heading action menu's own "Edit title" entry point, and also
+ *  new-heading creation's own initial-title entry point (isNew, via
+ *  editingIsNew) -- same modal either way, per direct request. Reuses
+ *  cancelTitleEdit/commitTitleEdit directly as this modal's own
+ *  callbacks; both already correctly encapsulate the isNew-aware
+ *  "discard an empty new heading entirely" logic, so it isn't
+ *  duplicated here. */
+/** The list item action menu's own "Edit text" entry point (also used
+ *  by "Add item below" and the generic "i" keyboard shortcut, both of
+ *  which set editingListItem then call this same function). Commits
+ *  whatever's typed on OK, even if empty -- matching the old inline
+ *  editor's own existing behavior exactly; list items, unlike new
+ *  headings, never had a "discard if left empty" special case, so
+ *  this isn't introducing new behavior here. */
+/** The paragraph action menu's own "Edit text" entry point (also used
+ *  by "Add paragraph below" and the "i" keyboard shortcut). */
+/** Applies (and clears) pendingCursorPosition to `textarea` -- the
+ *  god-mode "a"/"e" then "i" feature (position the cursor at the
+ *  start/end of the field about to be entered), which only these four
+ *  editors' own modals ever need to honor; openTextFieldPopup itself
+ *  stays unaware of this narrower concept, since none of its other
+ *  callers (Settings' own Menu labels, WebDAV, etc.) have any use for
+ *  it. Called after openTextFieldPopup already focused the textarea,
+ *  same "the field is already focused, only the cursor's own position
+ *  within it changes" ordering the old inline editors' own version of
+ *  this used. */
+function applyPendingCursorPosition(textarea) {
+  if (typeof textarea.setSelectionRange === 'function') {
+    const pos = pendingCursorPosition === 'start' ? 0 : textarea.value.length;
+    textarea.setSelectionRange(pos, pos);
+  }
+  pendingCursorPosition = null;
+}
+
+function openParagraphEditor(heading, paragraph) {
+  const originalText = paragraph.lines.join('\n');
+  const overlay = openTextFieldPopup({
+    label: 'Edit paragraph',
+    value: originalText,
+    resetInPlace: true,
+    onCancel: () => {
+      editingParagraph = null;
+      render();
+    },
+    onSave: (newText) => {
+      editingParagraph = null;
+      editParagraphText(heading, paragraph, newText);
+      resyncKeyboardFocusToBodyRow(heading, 'paragraph', paragraph.lineIndex);
+      commitAndRender('Edited paragraph text');
+    },
+  });
+  overlay.id = 'paragraph-edit-popup';
+  applyPendingCursorPosition(overlay.querySelector('textarea'));
+}
+
+function openListItemEditor(heading, item) {
+  const originalText = item.text;
+  const overlay = openTextFieldPopup({
+    label: 'Edit list item',
+    value: originalText,
+    resetInPlace: true,
+    onCancel: () => {
+      editingListItem = null;
+      render();
+    },
+    onSave: (newText) => {
+      editingListItem = null;
+      editListItemText(heading, item, newText.replace(/\n/g, ' '));
+      resyncKeyboardFocusToBodyRow(heading, 'list-item', item.lineIndex);
+      commitAndRender('Edited list item text');
+    },
+  });
+  overlay.id = 'list-item-edit-popup';
+  applyPendingCursorPosition(overlay.querySelector('textarea'));
+}
+
+function openHeadingTitleEditor(heading) {
+  const originalTitle = heading.title;
+  const overlay = openTextFieldPopup({
+    label: editingIsNew ? 'New heading' : 'Edit heading title',
+    value: originalTitle,
+    resetInPlace: true,
+    onCancel: () => cancelTitleEdit(),
+    onSave: (newTitle) => commitTitleEdit(newTitle),
+  });
+  overlay.id = 'heading-title-edit-popup';
+  applyPendingCursorPosition(overlay.querySelector('textarea'));
+}
+
 function startEditingTitle(heading, isNew) {
   editingHeading = heading;
   editingIsNew = isNew;
   render();
+  openHeadingTitleEditor(heading);
 }
 
 function commitTitleEdit(rawValue) {
@@ -5142,48 +5234,6 @@ function renderInlineNodes(nodes, container, linkContext = null, heading = null)
  * showing beneath it, not just the row itself.
  */
 
-/** If a heading title, paragraph, list item, or heading-text
- *  ("description") edit is currently in progress, commits it
- *  immediately by reading its still-live DOM element's own current
- *  value -- called at the start of any OTHER mousedown handler that's
- *  about to trigger its own synchronous render(), since mousedown
- *  fires before blur in the browser's own event order. Without this,
- *  an intervening render() destroys the old textarea/input before its
- *  own blur handler ever gets a chance to run, silently discarding
- *  whatever was typed -- confirmed directly: type a new sub-heading's
- *  title, tap a DIFFERENT heading before it commits, and the typed
- *  text is gone, replaced by an empty "Heading title" field. Each
- *  branch reuses the exact same commit function/logic its own blur
- *  handler already calls, so nothing about the actual commit is
- *  duplicated or can drift out of sync with it. editingCell is
- *  deliberately excluded -- its own mousedown handler already commits
- *  it with its own specialized post-commit table re-fetch (a
- *  committed cell edit re-parses the whole table, changing its own
- *  object identity), which this doesn't need to duplicate. */
-function commitAnyPendingInlineEdit() {
-  if (editingHeading) {
-    const input = document.getElementById('title-edit-input');
-    if (input) commitTitleEdit(input.value.replace(/\n/g, ' '));
-  } else if (editingParagraph) {
-    const input = document.getElementById('paragraph-edit-input');
-    if (input) {
-      const { heading, paragraph } = editingParagraph;
-      editingParagraph = null;
-      editParagraphText(heading, paragraph, input.value);
-      resyncKeyboardFocusToBodyRow(heading, 'paragraph', paragraph.lineIndex);
-      commitAndRender('Edited paragraph text');
-    }
-  } else if (editingListItem) {
-    const input = document.getElementById('listitem-edit-input');
-    if (input) {
-      const { heading, item } = editingListItem;
-      editingListItem = null;
-      editListItemText(heading, item, input.value.replace(/\n/g, ' '));
-      resyncKeyboardFocusToBodyRow(heading, 'list-item', item.lineIndex);
-      commitAndRender('Edited list item text');
-    }
-  }
-}
 
 function toggleActionMenu(node) {
   const opening = actionMenuFor !== node;
@@ -6372,32 +6422,7 @@ function renderRow(row, todoSequence) {
 
     let menuEl = null;
 
-    if (state.doc && editingHeading === row.node) {
-      const input = document.createElement('textarea');
-      input.className = 'title-input';
-      input.id = 'title-edit-input';
-      input.rows = 1;
-      input.value = row.node.title;
-      input.placeholder = 'Heading title';
-      input.style.overflowWrap = 'anywhere';
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          // A heading title is one logical line — Enter commits rather
-          // than inserting a newline, same reasoning as a table cell.
-          e.preventDefault();
-          e.stopPropagation(); // blur() below moves focus away DURING this same event -- without this, the keydown still bubbles to the document-level listener afterward and gets processed a second time as a top-level shortcut
-          input.blur();
-        }
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          e.stopPropagation();
-          cancelTitleEdit();
-        }
-      });
-      input.addEventListener('blur', () => commitTitleEdit(input.value.replace(/\n/g, ' ')));
-      autoGrowTextarea(input);
-      el.appendChild(input);
-    } else {
+    {
       const title = document.createElement('span');
       title.className = 'heading-title';
       if (row.node.title) {
@@ -6408,7 +6433,6 @@ function renderRow(row, todoSequence) {
       }
       title.addEventListener('mousedown', (e) => {
         if (e.target.closest('[data-inline-link]')) return;
-        commitAnyPendingInlineEdit();
         setKeyboardFocusToRow(row);
         toggleActionMenu(row.node);
       });
@@ -6723,44 +6747,9 @@ function renderRow(row, todoSequence) {
       el.appendChild(marker);
     }
 
-    const isEditingText = editingListItem && editingListItem.item === row.item;
     let menuEl = null;
 
-    if (isEditingText) {
-      const input = document.createElement('textarea');
-      input.id = 'listitem-edit-input';
-      input.rows = 1;
-      input.value = row.item.text;
-      input.style.flex = '1 1 auto';
-      input.style.minWidth = '0';
-      input.style.font = 'inherit';
-      input.style.overflowWrap = 'anywhere';
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          // A list item's text is one logical line — Enter commits
-          // rather than inserting a newline, same as a heading title.
-          e.preventDefault();
-          e.stopPropagation();
-          input.blur();
-        }
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          e.stopPropagation();
-          editingListItem = null;
-          render();
-        }
-      });
-      input.addEventListener('blur', () => {
-        if (!editingListItem) return; // re-entrant call -- already committed
-        const { heading, item } = editingListItem;
-        editingListItem = null;
-        editListItemText(heading, item, input.value.replace(/\n/g, ' '));
-        resyncKeyboardFocusToBodyRow(heading, 'list-item', item.lineIndex);
-        commitAndRender('Edited list item text');
-      });
-      autoGrowTextarea(input);
-      el.appendChild(input);
-    } else {
+    {
       const text = document.createElement('span');
       const hasContent = row.item.text.trim() !== '' || (row.item.tag && row.item.tag.trim() !== '');
       if (hasContent) {
@@ -6805,6 +6794,7 @@ function renderRow(row, todoSequence) {
               actionMenuFor = null;
               editingListItem = { heading: row.heading, item: row.item };
               render();
+              openListItemEditor(row.heading, row.item);
             },
           },
           {
@@ -6819,6 +6809,7 @@ function renderRow(row, todoSequence) {
               updateCheckboxCookiesUpward(state.doc, row.heading, todoSequence.doneKeywords);
               editingListItem = { heading: row.heading, item: newItem };
               commitAndRender('Added list item');
+              openListItemEditor(row.heading, newItem);
             },
           },
           {
@@ -6934,12 +6925,15 @@ function renderTableRow(row) {
         const thisCellTable = row.node;
         const thisCellRowIndex = rowIndex;
         const thisCellColIndex = colIndex;
+        tdEl.style.display = 'flex';
+        tdEl.style.alignItems = 'center';
+        tdEl.style.gap = '4px';
         const input = document.createElement('textarea');
         input.id = 'cell-edit-input';
         input.value = cellText;
         input.rows = 1;
         input.style.font = 'inherit';
-        input.style.width = '100%';
+        input.style.flex = '1 1 auto';
         input.style.minWidth = Math.min(50, cellText.length * 8 || 50) + 'px';
         input.style.maxWidth = '220px';
         input.style.boxSizing = 'border-box';
@@ -6975,6 +6969,35 @@ function renderTableRow(row) {
         });
         autoGrowTextarea(input);
         tdEl.appendChild(input);
+
+        // Discard button -- mousedown (not click), so it clears editingCell
+        // and re-renders BEFORE the textarea's own blur ever fires, the
+        // exact same ordering the cross-cell-switch handler below already
+        // relies on: mousedown always fires ahead of blur, so acting here
+        // means the blur handler above sees editingCell already cleared/
+        // mismatched and correctly no-ops rather than committing anyway.
+        // The only in-place way to discard a cell edit without relying on
+        // Escape, which the on-screen keyboard on a phone or tablet never
+        // exposes at all.
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = '\u2715';
+        cancelBtn.className = 'cell-cancel-btn';
+        cancelBtn.setAttribute('aria-label', 'Discard cell edit');
+        cancelBtn.style.flex = '0 0 auto';
+        cancelBtn.style.border = 'none';
+        cancelBtn.style.background = 'transparent';
+        cancelBtn.style.color = 'var(--fg)';
+        cancelBtn.style.opacity = '0.6';
+        cancelBtn.style.cursor = 'pointer';
+        cancelBtn.style.fontSize = '13px';
+        cancelBtn.style.padding = '2px 4px';
+        cancelBtn.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          editingCell = null;
+          render();
+        });
+        tdEl.appendChild(cancelBtn);
       } else {
         if (cellText) {
           renderInlineNodes(parseInline(cellText, currentInlineOpts()), tdEl, null, row.heading);
@@ -6988,8 +7011,6 @@ function renderTableRow(row) {
             const { heading, table, rowIndex: ri, colIndex: ci } = editingCell;
             editingCell = null;
             if (prevInput) setTableCell(heading, table, ri, ci, prevInput.value.replace(/\n/g, ' '));
-          } else {
-            commitAnyPendingInlineEdit();
           }
           setKeyboardFocusToRow(row);
           keyboardFocusedCellPos = { rowIndex, colIndex };
@@ -7127,39 +7148,6 @@ function renderParagraphRow(row) {
   wrap.style.margin = '4px 0';
   applyKeyboardFocusHighlight(wrap, row);
 
-  const isEditing = editingParagraph && editingParagraph.paragraph === row.node;
-
-  if (isEditing) {
-    const textarea = document.createElement('textarea');
-    textarea.id = 'paragraph-edit-input';
-    textarea.value = row.node.lines.join('\n');
-    textarea.rows = Math.max(2, row.node.lines.length);
-    textarea.style.width = '100%';
-    textarea.style.font = 'inherit';
-    textarea.style.boxSizing = 'border-box';
-    textarea.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        editingParagraph = null;
-        render();
-      }
-      // Enter deliberately inserts a newline rather than committing —
-      // paragraph text is multi-line, unlike a heading title.
-    });
-    textarea.addEventListener('blur', () => {
-      if (!editingParagraph) return; // re-entrant call -- already committed
-      const { heading, paragraph } = editingParagraph;
-      editingParagraph = null;
-      editParagraphText(heading, paragraph, textarea.value);
-      resyncKeyboardFocusToBodyRow(heading, 'paragraph', paragraph.lineIndex);
-      commitAndRender('Edited paragraph text');
-    });
-    autoGrowTextarea(textarea);
-    wrap.appendChild(textarea);
-    return wrap;
-  }
-
   const p = document.createElement('div');
   p.style.cursor = 'text';
   p.style.whiteSpace = 'pre-wrap';
@@ -7213,6 +7201,7 @@ function renderParagraphRow(row) {
             actionMenuFor = null;
             editingParagraph = { heading: row.heading, paragraph: row.node };
             render();
+            openParagraphEditor(row.heading, row.node);
           },
         },
         {
@@ -7225,6 +7214,7 @@ function renderParagraphRow(row) {
             resyncKeyboardFocusToBodyRow(row.heading, 'paragraph', oldLineIndex);
             editingParagraph = { heading: row.heading, paragraph: newParagraph };
             commitAndRender('Added paragraph');
+            openParagraphEditor(row.heading, newParagraph);
           },
         },
         {
@@ -7477,12 +7467,18 @@ setupSidePanelResize();
 // click handling races the cell's own blur-triggered commit-and-
 // rerender, and loses on the first tap the same way switching directly
 // between two cells used to (see the per-cell mousedown handler above
-// for the fuller explanation this mirrors).
+// for the fuller explanation this mirrors). Excludes both the cell's
+// own textarea AND its adjacent × discard button -- a tap on either is
+// still part of this same editing session, not a tap "elsewhere" that
+// should commit; the discard button's own handler (mousedown, same
+// ordering reasoning as this one) is what actually decides what a tap
+// on it means.
 document.addEventListener(
   'mousedown',
   (e) => {
     if (!editingCell) return;
     if (e.target.closest('#cell-edit-input')) return; // still inside the cell's own textarea -- this tap isn't leaving it, nothing to commit
+    if (e.target.closest('.cell-cancel-btn')) return; // the discard button itself -- its own handler decides, not this one
     e.preventDefault();
     const prevInput = document.getElementById('cell-edit-input');
     const { heading, table, rowIndex: ri, colIndex: ci } = editingCell;
@@ -7503,7 +7499,7 @@ function clearStaleKeyboardFocusIfClickedElsewhere(e) {
   // about-to-be-focused input right as the platform's own virtual
   // keyboard/IME is establishing focus and composition on it. The
   // cleanup below still correctly fires on the NEXT click instead.
-  if (editingHeading || editingCell || editingParagraph || editingListItem || editingHeadingText || editingGeneral) return;
+  if (editingGeneral) return;
   // Only clicks landing within the document content area itself are
   // relevant here -- tapping the File menu, tab bar, or other app
   // chrome is about navigating away entirely, not "clicked elsewhere
@@ -7692,32 +7688,12 @@ function render() {
   outlineEl.innerHTML = '';
   outlineEl.appendChild(fragment);
 
-  if (
-    editingHeading ||
-    editingCell ||
-    editingParagraph ||
-    editingListItem ||
-    editingGeneral
-  ) {
+  if (editingCell) {
     queueMicrotask(() => {
-      const input =
-        document.getElementById('title-edit-input') ||
-        document.getElementById('cell-edit-input') ||
-        document.getElementById('listitem-edit-input') ||
-        document.getElementById('paragraph-edit-input');
+      const input = document.getElementById('cell-edit-input');
       if (input) {
         input.focus();
-        // Cursor at the end by default (not select-all: selecting the
-        // whole value means the very next keystroke silently replaces
-        // everything already there) -- UNLESS pendingCursorPosition
-        // says otherwise (set by "i"'s own dispatcher, via a/e
-        // beforehand), in which case that one-shot request wins and
-        // is then cleared.
-        if (typeof input.setSelectionRange === 'function') {
-          const pos = pendingCursorPosition === 'start' ? 0 : input.value.length;
-          input.setSelectionRange(pos, pos);
-        }
-        pendingCursorPosition = null;
+        applyPendingCursorPosition(input);
       }
     });
   }
@@ -10391,9 +10367,20 @@ function openMultiFieldPopup({ label, fields, onSave }) {
     document.body.removeChild(overlay);
   }
 
-  btnRow.appendChild(menuButton('Cancel', () => close()));
   btnRow.appendChild(
-    menuButton('Save', async () => {
+    menuButton('Cancel', () => close())
+  );
+  btnRow.appendChild(
+    menuButton('Reset', () => {
+      for (const { key, type, entry } of fieldEntries) {
+        const original = fields.find((f) => f.key === key).value;
+        entry.input.value = original !== undefined && original !== null ? original : '';
+      }
+      fieldEntries[0]?.entry.input.focus();
+    })
+  );
+  btnRow.appendChild(
+    menuButton('OK', async () => {
       const values = {};
       for (const { key, type, entry } of fieldEntries) {
         values[key] = type === 'password' ? entry.input.value : entry.input.value.trim();
@@ -13340,6 +13327,7 @@ function renderCapturePromptForm() {
   }
   updatePreview();
 
+  const promptInputs = [];
   prompts.forEach((p, i) => {
     const field = document.createElement('div');
     field.style.marginBottom = '10px';
@@ -13366,6 +13354,7 @@ function renderCapturePromptForm() {
       updatePreview();
     });
     field.appendChild(input);
+    promptInputs.push(input);
 
     if (p.completions.length > 0) {
       const hint = document.createElement('div');
@@ -13383,12 +13372,6 @@ function renderCapturePromptForm() {
   const row = document.createElement('div');
   row.className = 'panel-row';
   row.appendChild(
-    menuButton('Capture', () => {
-      const answers = capturePromptValues.slice();
-      runCaptureWithAnswers(template, answers);
-    })
-  );
-  row.appendChild(
     menuButton('Cancel', () => {
       capturePromptTemplate = null;
       if (captureOpenedFromExtraMenu) {
@@ -13397,6 +13380,20 @@ function renderCapturePromptForm() {
       }
       setStatus('Capture cancelled.');
       renderCapturePanel();
+    })
+  );
+  row.appendChild(
+    menuButton('Reset', () => {
+      capturePromptValues = prompts.map((p) => p.default || '');
+      promptInputs.forEach((input, i) => (input.value = capturePromptValues[i]));
+      updatePreview();
+      promptInputs[0]?.focus();
+    })
+  );
+  row.appendChild(
+    menuButton('OK', () => {
+      const answers = capturePromptValues.slice();
+      runCaptureWithAnswers(template, answers);
     })
   );
   capturePanel.appendChild(row);
