@@ -805,6 +805,22 @@ test('THE FEATURE: format-time-string()\u2019s own TIME argument accepts a plain
   assert.equal(result[0].cells[0], '2026-01-15');
 });
 
+test('THE FEATURE: %Z/%z under UNIVERSAL/utc mode always resolve to "UTC"/"+0000" exactly -- fixed regardless of the machine\u2019s own real timezone, confirming the UTC-mode\u2019s own "fake local" Date trick doesn\u2019t leak the machine\u2019s own actual zone into these two codes specifically', () => {
+  const result = recalculateTable(mkTable('$1 = format-time-string("%Z %z", date-to-time($2), 1)', [['', '2026-07-15T12:00:00Z']]));
+  assert.equal(result[0].cells[0], 'UTC +0000');
+});
+
+test('THE FEATURE: %Z/%z without UNIVERSAL/utc reflect the machine\u2019s own actual local timezone, verified against independently-computed expected values (not by re-calling format-time-string() itself)', () => {
+  const instant = new Date('2026-07-15T12:00:00Z');
+  const expectedZ = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(instant).find((p) => p.type === 'timeZoneName').value;
+  const totalMinutes = -instant.getTimezoneOffset();
+  const sign = totalMinutes < 0 ? '-' : '+';
+  const abs = Math.abs(totalMinutes);
+  const expectedz = sign + String(Math.floor(abs / 60)).padStart(2, '0') + String(abs % 60).padStart(2, '0');
+  const result = recalculateTable(mkTable('$1 = format-time-string("%Z %z", date-to-time($2))', [['', '2026-07-15T12:00:00Z']]));
+  assert.equal(result[0].cells[0], `${expectedZ} ${expectedz}`);
+});
+
 // ---- date-to-time() and format-time-string() -------------------------------
 
 test('THE EXACT REQUEST: date-to-time() parses an ISO 8601 string', () => {

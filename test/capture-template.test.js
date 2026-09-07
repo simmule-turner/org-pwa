@@ -38,7 +38,21 @@ test('formatTime supports %F (ISO shorthand), %R, %T, and a literal %%', () => {
 });
 
 test('formatTime leaves an unrecognized specifier untouched rather than silently dropping it', () => {
-  assert.equal(formatTime(NOW, 'value: %Z'), 'value: %Z');
+  assert.equal(formatTime(NOW, 'value: %Q'), 'value: %Q');
+});
+
+test('THE FEATURE: %Z (alphabetic timezone abbreviation) matches the machine\u2019s own actual timezone, computed independently -- not just re-calling formatTime() itself', () => {
+  const expected = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(NOW).find((p) => p.type === 'timeZoneName').value;
+  assert.equal(formatTime(NOW, '%Z'), expected);
+});
+
+test('THE FEATURE: %z (numeric \u00b1HHMM UTC offset) matches the machine\u2019s own actual offset, computed independently via the opposite sign convention getTimezoneOffset() itself uses', () => {
+  const totalMinutes = -NOW.getTimezoneOffset();
+  const sign = totalMinutes < 0 ? '-' : '+';
+  const abs = Math.abs(totalMinutes);
+  const expected = sign + String(Math.floor(abs / 60)).padStart(2, '0') + String(abs % 60).padStart(2, '0');
+  assert.equal(formatTime(NOW, '%z'), expected);
+  assert.match(formatTime(NOW, '%z'), /^[+-]\d{4}$/); // always exactly this shape, regardless of which zone the test happens to run in
 });
 
 test('formatTime zero-pads single-digit values correctly', () => {
