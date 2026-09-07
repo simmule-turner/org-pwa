@@ -1,0 +1,1533 @@
+/**
+ * #+TBLFM: parsing and evaluation.
+ *
+ * Real org's own table-formula language, for anything beyond trivial
+ * arithmetic, is Emacs Calc -- an entire separate symbolic-math package
+ * with its own operator set, number formatting, date/unit arithmetic,
+ * and function library. Reproducing that faithfully is a different,
+ * much larger feature than this one; what's actually built here is a
+ * deliberately narrower, well-scoped subset that covers the common,
+ * everyday cases: plain arithmetic (+ - * / ^, parentheses, unary
+ * minus) plus five aggregate functions over a cell range (sum, mean,
+ * count, min, max -- both the bare names and org/Calc's own
+ * "v"-prefixed vector-function names, vsum/vmean/vcount/vmin/vmax,
+ * are recognized as synonyms).
+ *
+ * Reference syntax (real org's own, both as a formula's own LHS target
+ * and inside an RHS expression):
+ *   $N          column N of the CURRENT row (only valid inside an RHS
+ *               expression -- meaningless as a standalone LHS target,
+ *               see the column-formula shorthand below for that case)
+ *   @N$M        row N, column M -- both explicit
+ *   @-N / @+N   row N ABOVE / BELOW the current formula's own target
+ *               row (relative, only meaningful inside an RHS
+ *               expression -- there is no "current row" for an LHS
+ *               target to be relative TO)
+ *   @< / @>     the first / last data row
+ *   $< / $>     the first / last column
+ *   A$B..C$D    a range: every cell from column/row A/B through C/D
+ *               inclusive, in reading order -- valid as an aggregate
+ *               function's own argument, not as a plain arithmetic
+ *               operand (a range is a list of values, not one value)
+ *
+ * Row numbering counts DATA rows only -- a horizontal rule (hline)
+ * never gets its own @N, matching real org's own actual behavior; @3
+ * is always the 3rd row of actual data, however many hlines separate
+ * it from the top.
+ *
+ * A formula's own LHS target is either a single cell (@N$M) or, with
+ * no @ at all (just $M=...), real org's own "column formula"
+ * shorthand: apply this same one formula to every data row in the
+ * table, each row computing its own $M from its own other cells.
+ * Multiple formulas in one #+TBLFM: line are separated by "::" and
+ * evaluated in the order written, each one able to see any earlier
+ * formula's already-updated values within the same recalculation pass
+ * -- covering the common "chained column" case (e.g. col 3 = col1+col2,
+ * then col 4 = col3*2) without needing a full dependency graph.
+ */
+
+// ---- format-time-string's own strftime-style formatter ----------------
+// Duplicated from src/capture-template.js's own formatTime (used there
+// for %<FORMAT>) rather than imported -- this module has zero imports
+// today, a deliberate, self-contained design, and this small, static,
+// pure function is cheap to duplicate versus this module's first-ever
+// cross-module dependency on an unrelated file. Kept behaviorally
+// identical (same format codes, same "leave the unrecognized specifier
+// untouched" fallback) so the two stay interchangeable in practice.
+
+const TIME_FORMAT_DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const TIME_FORMAT_DAY_NAMES_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const TIME_FORMAT_MONTH_NAMES_FULL = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+const TIME_FORMAT_MONTH_NAMES_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function timeFormatPad(n, width = 2) {
+  return String(n).padStart(width, '0');
+}
+
+function timeFormatDayOfYear(date) {
+  const start = new Date(date.getFullYear(), 0, 1);
+  return Math.floor((date - start) / 86400000) + 1;
+}
+
+/** format-time-string's own actual formatter -- a practical subset of
+ *  real Emacs's format-time-string specifiers (the ones that actually
+ *  show up in real use: dates, times, weekday and month names), not
+ *  the complete, much longer C strftime table, matching %<FORMAT>'s
+ *  own already-established scope exactly. `date` is read via its own
+ *  LOCAL getters throughout -- callers wanting UTC output construct a
+ *  "fake local" Date from the UTC components first (see the
+ *  formatTimeCall evaluator below), rather than this function having
+ *  two separate code paths for the same formatting logic. */
+function formatTimeStringImpl(date, format) {
+  return format.replace(/%(.)/g, (whole, spec) => {
+    switch (spec) {
+      case 'Y':
+        return String(date.getFullYear());
+      case 'y':
+        return timeFormatPad(date.getFullYear() % 100);
+      case 'm':
+        return timeFormatPad(date.getMonth() + 1);
+      case 'd':
+        return timeFormatPad(date.getDate());
+      case 'e':
+        return String(date.getDate()).padStart(2, ' ');
+      case 'H':
+        return timeFormatPad(date.getHours());
+      case 'I': {
+        const h = date.getHours() % 12 || 12;
+        return timeFormatPad(h);
+      }
+      case 'M':
+        return timeFormatPad(date.getMinutes());
+      case 'S':
+        return timeFormatPad(date.getSeconds());
+      case 'p':
+        return date.getHours() < 12 ? 'AM' : 'PM';
+      case 'A':
+        return TIME_FORMAT_DAY_NAMES_FULL[date.getDay()];
+      case 'a':
+        return TIME_FORMAT_DAY_NAMES_ABBR[date.getDay()];
+      case 'B':
+        return TIME_FORMAT_MONTH_NAMES_FULL[date.getMonth()];
+      case 'b':
+        return TIME_FORMAT_MONTH_NAMES_ABBR[date.getMonth()];
+      case 'j':
+        return timeFormatPad(timeFormatDayOfYear(date), 3);
+      case 'F':
+        return `${date.getFullYear()}-${timeFormatPad(date.getMonth() + 1)}-${timeFormatPad(date.getDate())}`;
+      case 'R':
+        return `${timeFormatPad(date.getHours())}:${timeFormatPad(date.getMinutes())}`;
+      case 'T':
+        return `${timeFormatPad(date.getHours())}:${timeFormatPad(date.getMinutes())}:${timeFormatPad(date.getSeconds())}`;
+      case '%':
+        return '%';
+      default:
+        return whole; // unrecognized -- leave as-is, don't silently drop it
+    }
+  });
+}
+
+// ---- reference parsing ------------------------------------------------
+
+/** Parses one row-reference token's text (after the leading "@", not
+ *  including it) into { type: 'absolute', n } | { type: 'relative', delta }
+ *  | { type: 'first' } | { type: 'last' }. Returns null if it doesn't
+ *  match any recognized row-reference shape. */
+function parseRowRef(text) {
+  if (text === '<') return { type: 'first' };
+  if (text === '>') return { type: 'last' };
+  const relative = /^([+-])(\d+)$/.exec(text);
+  if (relative) return { type: 'relative', delta: (relative[1] === '-' ? -1 : 1) * Number(relative[2]) };
+  const absolute = /^(\d+)$/.exec(text);
+  if (absolute) return { type: 'absolute', n: Number(absolute[1]) };
+  const hline = /^(I+)([+-]\d+)?$/.exec(text);
+  if (hline) return { type: 'hline', count: hline[1].length, offset: hline[2] ? Number(hline[2]) : 0 };
+  return null;
+}
+
+/** Parses one column-reference token's text (after the leading "$", not
+ *  including it) into { type: 'absolute', n } | { type: 'first' } |
+ *  { type: 'last' }. Returns null if unrecognized. Real org also
+ *  supports relative column refs ($-1/$+1); not implemented here --
+ *  genuinely rare in practice compared to relative ROW refs (a
+ *  formula reaching sideways to a fixed, always-present neighboring
+ *  column is far more common than one reaching to a neighboring row,
+ *  since columns are normally fixed data fields and rows are the
+ *  repeating axis a formula is normally applied down). */
+function parseColRef(text) {
+  if (text === '<') return { type: 'first' };
+  if (text === '>') return { type: 'last' };
+  const absolute = /^(\d+)$/.exec(text);
+  if (absolute) return { type: 'absolute', n: Number(absolute[1]) };
+  return null;
+}
+
+/** Resolves a parsed row/col ref into an actual 1-indexed row/column
+ *  number, given `currentRow` (the row this formula's own evaluation
+ *  is currently targeting -- only consulted for a relative row ref)
+ *  and `dataRowCount`/`colCount` (the table's own actual dimensions,
+ *  for @>/$> and for bounds-checking). Returns null for an
+ *  out-of-range result (e.g. @-5 from row 2) rather than clamping --
+ *  a formula reaching past the edge of the table is a real error to
+ *  surface, not something to silently reinterpret. */
+function resolveRowRef(ref, currentRow, dataRowCount, hlinePositions, asRangeStart) {
+  let n;
+  if (ref.type === 'absolute') n = ref.n;
+  else if (ref.type === 'relative') n = currentRow + ref.delta;
+  else if (ref.type === 'first') n = 1;
+  else if (ref.type === 'hline') {
+    const boundary = hlinePositions && hlinePositions[ref.count - 1];
+    const base = boundary ? (asRangeStart ? boundary.asStart : boundary.asEnd) : asRangeStart ? dataRowCount + 1 : dataRowCount;
+    n = base + ref.offset;
+  } else n = dataRowCount; // 'last'
+  return n >= 1 && n <= dataRowCount ? n : null;
+}
+
+function resolveColRef(ref, colCount, currentCol) {
+  if (ref === null) return currentCol; // no column specified in this ref at all -- real org's own actual convention for a bare row-only reference/range ("@2", "@2..@6"): defaults to the formula's own target column, the same way a bare row-less reference ("$2") already defaults to the current row
+  const n = ref.type === 'absolute' ? ref.n : ref.type === 'first' ? 1 : colCount;
+  return n >= 1 && n <= colCount ? n : null;
+}
+
+/** Pre-computes every hline's own data-row-number boundary, for both
+ *  directions a range endpoint might use it in -- confirmed directly
+ *  against real Emacs org-mode (running formulas through
+ *  org-table-recalculate in batch mode, not inferred): a range like
+ *  "@I..@II" spans every actual data row strictly between the two
+ *  hlines, so the FIRST hline's own boundary, used as a range START,
+ *  is the data-row-number of the first actual row after it; the
+ *  SECOND hline's own boundary, used as a range END, is the
+ *  data-row-number of the last actual row before it. Indexed by
+ *  hline count minus 1 (index 0 is @I). A count beyond how many
+ *  hlines the table actually has still resolves rather than erroring
+ *  -- also confirmed directly against real Emacs -- clamping to just
+ *  past the table's own end (asStart) or the table's own actual last
+ *  row (asEnd). */
+function computeHlinePositions(workingRows) {
+  const positions = [];
+  let dataRowsBefore = 0;
+  for (const row of workingRows) {
+    if (row.type === 'rule') {
+      positions.push({ asStart: dataRowsBefore + 1, asEnd: dataRowsBefore });
+    } else {
+      dataRowsBefore++;
+    }
+  }
+  return { positions, dataRowCount: dataRowsBefore };
+}
+
+// ---- expression tokenizing/parsing ------------------------------------
+
+const TOKEN_RE =
+  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:[<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+)|\d+\.?\d*|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()+\-*/^,<>=!])\s*/y;
+
+/** date-to-time and format-time-string are real Emacs function names
+ *  with literal hyphens in them -- TOKEN_RE's own generic identifier
+ *  pattern ([A-Za-z_][A-Za-z0-9_]*) doesn't include "-", and its own
+ *  single-character "-" operator token would otherwise split these
+ *  apart entirely (confirmed directly: "date-to-time($1)" tokenizes
+ *  without this as ["date", "-", "to", "-", "time", "(", "$1", ")"],
+ *  parsing as subtraction, not a function call). This is a small,
+ *  isolated pre-check rather than an edit to TOKEN_RE's own pattern,
+ *  specifically to avoid any risk of interacting with that pattern's
+ *  other alternatives -- most notably the "I+" hline-reference marker
+ *  (@II, @III, ...), which is deliberately uppercase-only; embedding
+ *  a case-insensitive match for these two names directly into
+ *  TOKEN_RE would risk quietly making that marker accept lowercase
+ *  too, a real behavior change nobody asked for. Case-insensitive
+ *  here, matching how every other function name in this language
+ *  already works (the parser's own later .toLowerCase() step). The
+ *  negative lookahead (no further identifier character immediately
+ *  after) stops "date-to-time2" or similar from incorrectly matching
+ *  the shorter, real name and leaving a stray "2" dangling as its own
+ *  separate, out-of-place token. */
+const HYPHENATED_FUNCTION_RE = /^(date-to-time|format-time-string)(?![A-Za-z0-9_-])/i;
+
+/** Tokenizes an RHS expression -- numbers, cell/range references
+ *  (kept as single tokens, not decomposed further here), function
+ *  names, and operators/punctuation. Throws on any character that
+ *  doesn't match one of those shapes, rather than silently skipping
+ *  it -- a malformed formula should surface as an error, not quietly
+ *  evaluate to something the person never actually wrote. */
+function tokenize(expr) {
+  const tokens = [];
+  let pos = 0;
+  TOKEN_RE.lastIndex = 0;
+  while (pos < expr.length) {
+    const leadingWs = /^\s*/.exec(expr.slice(pos))[0];
+    const afterWs = pos + leadingWs.length;
+    const hyphenated = HYPHENATED_FUNCTION_RE.exec(expr.slice(afterWs));
+    if (hyphenated) {
+      tokens.push(hyphenated[1]);
+      pos = afterWs + hyphenated[1].length;
+      continue;
+    }
+    TOKEN_RE.lastIndex = pos;
+    const m = TOKEN_RE.exec(expr);
+    if (!m || m.index !== pos) {
+      throw new Error(`Unrecognized character in formula at position ${pos}: "${expr.slice(pos, pos + 1)}"`);
+    }
+    tokens.push(m[1]);
+    pos = TOKEN_RE.lastIndex;
+  }
+  return tokens;
+}
+
+// Every name below is a real, confirmed Emacs Calc function name,
+// verified directly against the GNU Emacs Calc Manual (and, for
+// vcount, its actual Lisp source) -- not an invented convenience
+// alias. This app previously also accepted plain, unprefixed names
+// (sum/mean/min/max/count) as synonyms; those were never actually
+// real Calc names and have been removed, so this function set is now
+// a genuine, verified subset of real org's own table-formula
+// language, not an approximation of it.
+const AGGREGATE_FUNCTIONS = {
+  vsum: (vals) => vals.reduce((a, b) => a + b, 0),
+  vmean: (vals) => (vals.length === 0 ? 0 : vals.reduce((a, b) => a + b, 0) / vals.length),
+  vcount: (vals) => vals.length,
+  vmin: (vals) => (vals.length === 0 ? 0 : Math.min(...vals)),
+  vmax: (vals) => (vals.length === 0 ? 0 : Math.max(...vals)),
+  vmedian: (vals) => {
+    if (vals.length === 0) return 0;
+    const sorted = [...vals].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  },
+  // Population variance/stddev (divide by n) vs sample (divide by
+  // n-1) are genuinely different, real Calc functions with different
+  // names -- vvar/vsdev (sample) and vpvar/vpsdev (population) --
+  // not one function with a mode flag. There's deliberately no plain
+  // "variance"/"stddev" name for either pair: which one someone means
+  // by an unqualified name is exactly the kind of silent, wrong-answer
+  // ambiguity this app would rather force an explicit choice on.
+  vvar: (vals) => sampleVariance(vals),
+  vpvar: (vals) => populationVariance(vals),
+  vsdev: (vals) => Math.sqrt(sampleVariance(vals)),
+  vpsdev: (vals) => Math.sqrt(populationVariance(vals)),
+};
+
+function populationVariance(vals) {
+  if (vals.length === 0) return 0;
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  return vals.reduce((acc, x) => acc + (x - mean) * (x - mean), 0) / vals.length;
+}
+
+function sampleVariance(vals) {
+  if (vals.length < 2) return 0; // n-1 divisor is undefined for n=0 or n=1 -- 0 rather than a division-by-zero NaN, matching this module's own existing "can't compute a real result" convention
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  return vals.reduce((acc, x) => acc + (x - mean) * (x - mean), 0) / (vals.length - 1);
+}
+
+// Single-value functions -- one number in, one number out, unlike
+// AGGREGATE_FUNCTIONS above (which reduce a whole range/list to one
+// number). All five confirmed directly against the Calc manual's own
+// "Integer Truncation" and "Basic Arithmetic" sections. Each of
+// floor/ceil/round/trunc optionally takes a SECOND argument -- how
+// many digits after the decimal point to keep -- also confirmed
+// directly against the manual's own wording for algebraic-formula
+// usage (exactly the context table formulas are written in).
+const SCALAR_FUNCTIONS = {
+  sqrt: (x) => (x < 0 ? 0 : Math.sqrt(x)), // real Calc returns a complex number for a negative input; this app has no complex-number support at all, so 0 rather than NaN, matching every other "can't produce a real result" case in this module
+  floor: (x, digits) => roundToDigits(x, digits, Math.floor),
+  ceil: (x, digits) => roundToDigits(x, digits, Math.ceil),
+  round: (x, digits) => roundToDigits(x, digits, roundHalfAwayFromZero),
+  trunc: (x, digits) => roundToDigits(x, digits, Math.trunc),
+  deg: (x) => (x && typeof x === 'object' ? x.days : x),
+  and: (a, b) => (isTruthyValue(a) && isTruthyValue(b) ? 1 : 0),
+  or: (a, b) => (isTruthyValue(a) || isTruthyValue(b) ? 1 : 0),
+  not: (a) => (isTruthyValue(a) ? 0 : 1),
+};
+
+function roundHalfAwayFromZero(x) {
+  // Math.round rounds -0.5 UP to -0 (toward +Infinity); real Calc's
+  // own documented convention is "away from zero" for an exact tie
+  // (confirmed directly against the manual: "3.5 R produces 4... -3.5
+  // R produces -4"), which disagree on the negative case specifically.
+  return x < 0 ? -Math.round(-x) : Math.round(x);
+}
+
+function roundToDigits(x, digits, roundFn) {
+  const d = digits === undefined ? 0 : digits;
+  const factor = Math.pow(10, d);
+  return roundFn(x * factor) / factor;
+}
+
+/** Converts a Y/M/D (+ optional H/Min) into "days since epoch" -- the
+ *  internal representation every date-tagged value uses, computed via
+ *  Date.UTC to stay independent of the runtime's own local timezone. */
+/** Converts a raw string TOKEN (still including its own surrounding
+ *  quotes, e.g. `"Both Pass"` or `"She said \"hi\""`) into the actual
+ *  JS string it represents. */
+function unescapeStringLiteral(tok) {
+  const inner = tok.slice(1, -1);
+  return inner.replace(/\\(.)/g, (_, c) => (c === 'n' ? '\n' : c === 't' ? '\t' : c));
+}
+
+const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+function isLeapYear(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+function daysInMonth(year, month) {
+  if (month === 2 && isLeapYear(year)) return 29;
+  return DAYS_IN_MONTH[month - 1];
+}
+
+function dateToDays(year, month, day, hour = 0, minute = 0) {
+  if (month < 1 || month > 12) {
+    throw new Error(`Invalid date: month ${month} is out of range (must be 1-12)`);
+  }
+  const maxDay = daysInMonth(year, month);
+  if (day < 1 || day > maxDay) {
+    throw new Error(`Invalid date: day ${day} is out of range for ${year}-${String(month).padStart(2, '0')} (must be 1-${maxDay})`);
+  }
+  if (hour < 0 || hour > 23) {
+    throw new Error(`Invalid date: hour ${hour} is out of range (must be 0-23)`);
+  }
+  if (minute < 0 || minute > 59) {
+    throw new Error(`Invalid date: minute ${minute} is out of range (must be 0-59)`);
+  }
+  return Date.UTC(year, month - 1, day, hour, minute, 0, 0) / 86400000;
+}
+
+/** The inverse of dateToDays -- a date-tagged value's own "days since
+ *  epoch" back into its own {year, month, day, hour, minute} fields,
+ *  used when formatting a date-tagged result back into an org
+ *  timestamp string for the cell. */
+function daysToDateParts(days) {
+  const d = new Date(Math.round(days * 86400000));
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate(), hour: d.getUTCHours(), minute: d.getUTCMinutes() };
+}
+
+// Deliberately more permissive than real org's own actual timestamp
+// syntax: the day-name org normally always writes ("Tue") is here
+// fully optional, not just cosmetically ignored -- table cells written
+// directly by a person (rather than through this app's own
+// timestamp-insertion UI) commonly omit it, and real Calc's own actual
+// date parsing accepts both forms too. The day-name group is
+// letters-only specifically so it can never accidentally swallow an
+// "HH:MM" time token instead (that always contains a colon and
+// digits, which [A-Za-z]+ cannot match), letting both be optional
+// and correctly disambiguated regardless of which are present.
+const CELL_TIMESTAMP_RE = /^[<[]\s*(\d{4})-(\d{2})-(\d{2})(?:\s+[A-Za-z]+)?(?:\s+(\d{1,2}):(\d{2}))?\s*[>\]]$/;
+
+/** Parses `rawText` for a date/time value -- tries this app's own
+ *  dedicated org-timestamp parser (parseCellTimestamp) first, since
+ *  date-to-time() should reliably handle everything date() already
+ *  does (its whole documented purpose is being the MORE flexible of
+ *  the two, not a different, non-overlapping one), then falls back to
+ *  JS's own built-in Date constructor for the wider variety of
+ *  formats real Emacs's own date-to-time (via parse-time-string) is
+ *  documented as additionally accepting: ISO 8601, RFC 822/2822 email
+ *  headers, common US formats. Trying parseCellTimestamp first isn't
+ *  optional -- JS's own Date.parse() cannot be trusted with org's own
+ *  bracketed format at all, even as a fallback: it has an
+ *  undocumented, non-standard leniency that happens to tolerate stray
+ *  characters like "<"/">" around a single, unambiguous date
+ *  (confirmed directly: Date.parse("<2026-12-25>") succeeds purely by
+ *  that accident), but the exact same leniency breaks completely the
+ *  moment a time-of-day is also present in the string
+ *  (Date.parse("<2026-09-06 22:47>") is NaN) -- inconsistent,
+ *  unintentional behavior, not a real parsing path to rely on.
+ *  Returns a date-tagged value ({ type: 'date', days, hasTime: true })
+ *  or null if the string isn't parseable at all -- always hasTime:
+ *  true regardless of which parser matched, even for a date-only
+ *  input, since producing a full time value (not merely a date) is
+ *  this function's whole documented purpose. */
+function parseFlexibleDateString(rawText) {
+  const trimmed = rawText.trim();
+  if (!trimmed) return null;
+  const orgTimestamp = parseCellTimestamp(trimmed);
+  if (orgTimestamp) return { ...orgTimestamp, hasTime: true };
+  const ms = Date.parse(trimmed);
+  if (Number.isNaN(ms)) return null;
+  return { type: 'date', days: ms / 86400000, hasTime: true };
+}
+
+/** Parses `rawText` (a table cell's own raw text) for a recognizable
+ *  org timestamp, returning a date-tagged value ({ type: 'date',
+ *  days, hasTime }) or null if `rawText` isn't one at all -- this
+ *  module's own dedicated parser (see CELL_TIMESTAMP_RE's own docs
+ *  for why a shared one wasn't reused). */
+function parseCellTimestamp(rawText) {
+  const m = CELL_TIMESTAMP_RE.exec(rawText.trim());
+  if (!m) return null;
+  const [, y, mo, d, h, min] = m;
+  const hasTime = h !== undefined;
+  return { type: 'date', days: dateToDays(Number(y), Number(mo), Number(d), hasTime ? Number(h) : 0, hasTime ? Number(min) : 0), hasTime };
+}
+
+/** Formats a date-tagged value back into org timestamp text for the
+ *  cell -- "<YYYY-MM-DD>" if it never had a time-of-day component
+ *  (hasTime false, e.g. from date(Y,M,D) or date()+N on such a
+ *  value), "<YYYY-MM-DD HH:MM>" otherwise. Always the active/angle-
+ *  bracket form -- there's no way for a formula's own numeric result
+ *  to signal "make this inactive" the way the original cell text
+ *  might have been, so this is this module's own necessary default,
+ *  not an attempt to preserve the source cell's own bracket style. */
+function formatDateValue(value) {
+  const { year, month, day, hour, minute } = daysToDateParts(value.days);
+  const datePart = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  if (!value.hasTime) return `<${datePart}>`;
+  return `<${datePart} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}>`;
+}
+
+/** Formats an hms-tagged duration back into Calc's own actual default
+ *  HMS notation, "H@ M' S\"" -- confirmed directly against the Calc
+ *  manual's own documented format for the HMS type. `value.days` is
+ *  the duration's own underlying value (still in DAYS, matching every
+ *  other date-tagged value in this module) -- multiplied by 24 here
+ *  purely for this specific display, not changing the underlying
+ *  value itself (deg() below exposes that raw, still-in-days number
+ *  unconverted, which is why the worked timesheet example in this
+ *  feature's own request still needs its own explicit "* 24" after
+ *  deg() to reach decimal HOURS). */
+function formatHmsValue(value) {
+  const totalHours = value.days * 24;
+  const sign = totalHours < 0 ? '-' : '';
+  const absHours = Math.abs(totalHours);
+  const h = Math.floor(absHours);
+  const remainingMinutes = (absHours - h) * 60;
+  const m = Math.floor(remainingMinutes);
+  const s = Math.round((remainingMinutes - m) * 60);
+  return `${sign}${h}@ ${m}' ${s}"`;
+}
+
+/** Parses a single reference token (already known to start with "@" or
+ *  "$") into a resolvable ref descriptor: { row, col } where each of
+ *  row/col is either a parsed ref object (see parseRowRef/parseColRef
+ *  above) or null (col is null for a bare "@N" token -- not actually
+ *  valid on its own as a real reference, but parseRef doesn't see
+ *  that far ahead; row is null for a bare "$N" token, meaning "the
+ *  current row", resolved later by the evaluator). */
+function parseRef(token) {
+  const atMatch = /^@([<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$([<>]|\d+))?$/.exec(token);
+  if (atMatch) {
+    const row = parseRowRef(atMatch[1]);
+    const col = atMatch[2] !== undefined ? parseColRef(atMatch[2]) : null;
+    return row ? { row, col } : null;
+  }
+  const dollarMatch = /^\$([<>]|\d+)$/.exec(token);
+  if (dollarMatch) {
+    const col = parseColRef(dollarMatch[1]);
+    return col ? { row: null, col } : null;
+  }
+  return null;
+}
+
+/** Recursive-descent parser: expr := term (('+'|'-') term)*
+ *                             term := power (('*'|'/') power)*
+ *                             power := unary ('^' power)?  (right-assoc)
+ *                             unary := '-' unary | atom
+ *                             atom  := number | ref | range | func '(' args ')' | '(' expr ')'
+ *  Builds a plain AST of tagged objects; see evaluateAst for the
+ *  actual evaluation. Throws with a position-free but otherwise
+ *  descriptive message on any malformed input -- good enough to
+ *  surface as a status message, not meant to pinpoint an exact
+ *  column the way a real compiler's own diagnostics would. */
+function parseExpression(tokens) {
+  let pos = 0;
+  function peek() {
+    return tokens[pos];
+  }
+  function next() {
+    return tokens[pos++];
+  }
+  function expect(tok) {
+    if (next() !== tok) throw new Error(`Expected "${tok}" in formula`);
+  }
+
+  function parseExpr() {
+    return parseOr();
+  }
+  function parseOr() {
+    let node = parseAnd();
+    while (peek() === '||') {
+      next();
+      node = { type: 'binop', op: '||', left: node, right: parseAnd() };
+    }
+    return node;
+  }
+  function parseAnd() {
+    let node = parseComparison();
+    while (peek() === '&&') {
+      next();
+      node = { type: 'binop', op: '&&', left: node, right: parseComparison() };
+    }
+    return node;
+  }
+  function parseComparison() {
+    let node = parseAdditive();
+    while (peek() === '==' || peek() === '=' || peek() === '!=' || peek() === '<' || peek() === '>' || peek() === '<=' || peek() === '>=') {
+      const op = next();
+      node = { type: 'binop', op: op === '=' ? '==' : op, left: node, right: parseAdditive() };
+    }
+    return node;
+  }
+  function parseAdditive() {
+    let node = parseTerm();
+    while (peek() === '+' || peek() === '-') {
+      const op = next();
+      node = { type: 'binop', op, left: node, right: parseTerm() };
+    }
+    return node;
+  }
+  function parseTerm() {
+    let node = parsePower();
+    while (peek() === '*' || peek() === '/') {
+      const op = next();
+      node = { type: 'binop', op, left: node, right: parsePower() };
+    }
+    return node;
+  }
+  function parsePower() {
+    const node = parseUnary();
+    if (peek() === '^') {
+      next();
+      return { type: 'binop', op: '^', left: node, right: parsePower() }; // right-associative: 2^3^2 = 2^(3^2)
+    }
+    return node;
+  }
+  function parseUnary() {
+    if (peek() === '-') {
+      next();
+      return { type: 'neg', operand: parseUnary() };
+    }
+    if (peek() === '!') {
+      next();
+      return { type: 'not', operand: parseUnary() };
+    }
+    return parseAtom();
+  }
+  function parseAtom() {
+    const tok = peek();
+    if (tok === undefined) throw new Error('Unexpected end of formula');
+    if (tok === '(') {
+      next();
+      const node = parseExpr();
+      expect(')');
+      return node;
+    }
+    if (tok.startsWith('"')) {
+      next();
+      return { type: 'string', value: unescapeStringLiteral(tok) };
+    }
+    if (/^\d/.test(tok)) {
+      next();
+      return { type: 'number', value: Number(tok) };
+    }
+    if (/^[A-Za-z_]/.test(tok)) {
+      const name = next().toLowerCase();
+      if (name === 'date' || name === 'now' || name === 'date-to-time') {
+        expect('(');
+        const args = [];
+        if (peek() !== ')') {
+          args.push(parseExpr());
+          while (peek() === ',') {
+            next();
+            args.push(parseExpr());
+          }
+        }
+        expect(')');
+        if (name === 'now' && args.length !== 0) throw new Error('"now" takes no arguments');
+        if (name === 'date-to-time' && args.length !== 1) throw new Error('"date-to-time" takes exactly one argument');
+        if (name === 'date' && args.length !== 1 && args.length !== 3) {
+          throw new Error('"date" takes either one cell/timestamp argument or three (year, month, day)');
+        }
+        return { type: 'dateCall', name, args };
+      }
+      if (name === 'format-time-string') {
+        expect('(');
+        const args = [parseExpr()];
+        while (peek() === ',') {
+          next();
+          args.push(parseExpr());
+        }
+        expect(')');
+        if (args.length < 1 || args.length > 3) {
+          throw new Error('"format-time-string" takes FORMAT-STRING and up to two optional arguments (TIME, UNIVERSAL)');
+        }
+        return { type: 'formatTimeCall', args };
+      }
+      if (name === 'string') {
+        expect('(');
+        const arg = parseExpr();
+        expect(')');
+        return { type: 'stringCall', arg };
+      }
+      if (name === 'if') {
+        expect('(');
+        const condition = parseExpr();
+        expect(',');
+        const trueExpr = parseExpr();
+        expect(',');
+        const falseExpr = parseExpr();
+        expect(')');
+        return { type: 'ifCall', condition, trueExpr, falseExpr };
+      }
+      const isAggregate = name in AGGREGATE_FUNCTIONS;
+      const isScalar = name in SCALAR_FUNCTIONS;
+      if (!isAggregate && !isScalar) throw new Error(`Unknown function "${name}" in formula`);
+      expect('(');
+      if (isAggregate) {
+        const arg = parseExpr();
+        expect(')');
+        return { type: 'call', name, arg };
+      }
+      // Scalar: 1 or 2 comma-separated plain-expression arguments (value, optional decimal-places).
+      const args = [parseExpr()];
+      while (peek() === ',') {
+        next();
+        args.push(parseExpr());
+      }
+      expect(')');
+      if (args.length > 2) throw new Error(`"${name}" takes at most 2 arguments, got ${args.length}`);
+      return { type: 'scalarCall', name, args };
+    }
+    if (tok.startsWith('@') || tok.startsWith('$')) {
+      return parseRangeOrRef();
+    }
+    throw new Error(`Unexpected token "${tok}" in formula`);
+  }
+  function parseRangeOrRef() {
+    const first = parseRef(next());
+    if (!first) throw new Error('Malformed cell reference in formula');
+    if (peek() === '..') {
+      next();
+      const second = parseRef(next());
+      if (!second) throw new Error('Malformed cell reference in formula');
+      return { type: 'range', from: first, to: second };
+    }
+    return { type: 'ref', ref: first };
+  }
+
+  const result = parseExpr();
+  if (pos !== tokens.length) throw new Error('Unexpected trailing content in formula');
+  return result;
+}
+
+// ---- evaluation ---------------------------------------------------------
+
+/** Reads one resolved (row, col) cell's own current numeric value from
+ *  `dataRows` (1-indexed row/col, `dataRows` itself 0-indexed) --
+ *  blank/non-numeric cell text is treated as 0, matching real org's
+ *  own actual default behavior for arithmetic over non-numeric cells,
+ *  rather than propagating NaN through the whole calculation from one
+ *  incidental blank or label cell. */
+/** True if the resolved (row, col) cell is blank (empty or only
+ *  whitespace) -- used by collectRangeValues below to omit blank
+ *  cells from a range entirely, matching real org's own actual
+ *  default behavior (confirmed directly against the Org Manual:
+ *  "Without 'E' empty fields in range references are suppressed so
+ *  that the Calc vector... contains only the non-empty fields").
+ *  This is genuinely different from readCellNumber's own blank->0
+ *  behavior just below -- real org treats a blank cell differently
+ *  depending on whether it's a plain, direct reference (0, by
+ *  default) or part of a range (omitted, by default). Getting this
+ *  distinction right matters beyond just matching the numbers real
+ *  Emacs would produce: an org file recalculated in both this app and
+ *  real Emacs needs to land on the same result either way, or sharing
+ *  a file between them silently produces different numbers. */
+function isCellBlank(dataRows, row, col) {
+  const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
+  return text.trim() === '';
+}
+
+/** Reads one resolved (row, col) cell's own current numeric value for
+ *  a PLAIN, direct reference in ordinary arithmetic (not part of a
+ *  range -- see isCellBlank above and collectRangeValues below for
+ *  that separate case).
+ *
+ *  A blank cell's own value depends on `emptyMode` (real org's own E
+ *  flag): 'omit' (no flag at all, the default) and 'zero' (E and N
+ *  together) both read as 0, matching real org's own documented
+ *  default ("'E' is required to NOT convert empty fields to 0");
+ *  'nan' (E alone) reads as NaN, confirmed directly against real
+ *  Emacs org-mode.
+ *
+ *  Non-blank text that isn't a valid number depends on `forceNumeric`
+ *  (real org's own N flag): 0 when set, matching real org's own
+ *  documented "use 0 for non-numbers." Without N, it reads as NaN --
+ *  confirmed directly against real Emacs that a non-numeric field is
+ *  genuinely NOT silently read as 0 there (real org shows an
+ *  unevaluated symbolic expression instead, e.g. "text + 10", which
+ *  this app's own narrower engine doesn't reproduce -- but NaN,
+ *  unlike a confidently-wrong 0, still visibly propagates into the
+ *  result rather than silently misrepresenting the data). */
+function readCellNumber(dataRows, row, col, emptyMode = 'omit', forceNumeric = false) {
+  const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
+  const trimmed = text.trim();
+  if (trimmed === '') return emptyMode === 'nan' ? NaN : 0;
+  const n = Number(trimmed);
+  if (!Number.isNaN(n)) return n;
+  return forceNumeric ? 0 : NaN;
+}
+
+/** Reads one resolved (row, col) cell's own value for use in an
+ *  arithmetic expression, duration-aware: under `ctx.durationMode`
+ *  (a formula with a T/U/t flag), a cell matching "HH:MM[:SS]" is
+ *  read as its own total-seconds value -- confirmed directly against
+ *  real Emacs org-mode; anything else (a bare integer, blank, or
+ *  non-numeric text) falls through to readCellNumber's own existing
+ *  E/N-aware logic, matching real org's own "integers are considered
+ *  as seconds in addition and subtraction" rule (a bare integer
+ *  already IS the seconds count, no extra conversion needed). Without
+ *  durationMode, "HH:MM" isn't recognized as a duration at all --
+ *  confirmed directly against real Emacs that the same text is read
+ *  as a Calc fraction instead there, a distinction this app's own
+ *  narrower engine doesn't reproduce either way. */
+function readCellValue(dataRows, row, col, ctx) {
+  const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
+  if (ctx.durationMode) {
+    const trimmed = text.trim();
+    if (trimmed !== '') {
+      const seconds = parseDurationSeconds(trimmed);
+      if (seconds !== null) return seconds;
+    }
+  }
+  const tagged = parseCellTimestamp(text);
+  if (tagged) return tagged;
+  return readCellNumber(dataRows, row, col, ctx.emptyMode, ctx.forceNumeric);
+}
+
+/** Expands a { row, col } ref descriptor (row and/or col possibly
+ *  null, meaning "the current row"/never valid for col) into an
+ *  actual resolved (row, col) pair, given the row this evaluation is
+ *  currently centered on. Throws if either half can't be resolved
+ *  (out of range, or a column-only ref used somewhere a row is
+ *  required). */
+function resolveRef(ref, currentRow, dataRowCount, colCount, currentCol, hlinePositions, asRangeStart = false) {
+  const row = ref.row === null ? currentRow : resolveRowRef(ref.row, currentRow, dataRowCount, hlinePositions, asRangeStart);
+  const col = resolveColRef(ref.col, colCount, currentCol);
+  if (row === null) throw new Error('Row reference out of range in formula');
+  if (col === null) throw new Error('Column reference out of range in formula');
+  return { row, col };
+}
+
+/** True if `v` is a date/hms-tagged value (see this module's own
+ *  top-level date-arithmetic docs) rather than a plain number. */
+function isTaggedValue(v) {
+  return v !== null && typeof v === 'object';
+}
+
+/** Calc's own boolean convention -- a non-zero number is true, zero
+ *  is false -- extended here to the two other value types this
+ *  module's own formulas can now produce: a non-empty string is
+ *  true, empty is false; a date/hms-tagged value is true unless its
+ *  own underlying day count is exactly zero. */
+function isTruthyValue(v) {
+  if (typeof v === 'string') return v !== '';
+  if (isTaggedValue(v)) return v.days !== 0;
+  return v !== 0;
+}
+
+/** ==/=/!=/</>/ <=/>= between two already-evaluated values -- a
+ *  date/hms-tagged operand is unwrapped to its own raw day count
+ *  first, same as this module's own +, -, *, /, and ^ arithmetic already does
+ *  (see evaluateDateArithmetic and the plain binop fallback below);
+ *  JS's own comparison operators already do the right thing for the
+ *  two remaining cases once unwrapped -- numeric comparison between
+ *  two numbers, lexicographic between two strings. Always returns 1
+ *  or 0 (Calc's own boolean-as-number convention), never a real JS
+ *  boolean. */
+const COMPARISON_OPS = new Set(['==', '!=', '<', '>', '<=', '>=']);
+
+function compareValues(l, r, op) {
+  const lVal = isTaggedValue(l) ? l.days : l;
+  const rVal = isTaggedValue(r) ? r.days : r;
+  let result;
+  if (op === '==') result = lVal === rVal;
+  else if (op === '!=') result = lVal !== rVal;
+  else if (op === '<') result = lVal < rVal;
+  else if (op === '>') result = lVal > rVal;
+  else if (op === '<=') result = lVal <= rVal;
+  else if (op === '>=') result = lVal >= rVal;
+  else throw new Error(`Unknown comparison operator "${op}"`);
+  return result ? 1 : 0;
+}
+
+/** Handles +/- when at least one operand is a date/hms-tagged value.
+ *  date - date: a plain number (days elapsed) if NEITHER side ever
+ *  had a time-of-day component, else an hms-tagged duration -- two
+ *  moments in time naturally subtract to a SPAN, not another moment,
+ *  and whether that span is shown as a bare day count or as an HMS
+ *  duration by default depends on whether there was ever a time
+ *  component to actually span (see formatFinalValue/formatHmsValue
+ *  for where that default display actually happens; deg() is how a
+ *  formula un-tags an HMS result back to its own plain, still-in-days
+ *  number for further arithmetic). date +/- a plain number, or the
+ *  reverse, extends/recedes that date by that many days, staying a
+ *  date. Any other tagged/tagged or tagged/plain combination (hms +/-
+ *  a plain number, hms +/- hms, date +/- hms) treats the tagged
+ *  side's own days as a plain numeric offset, producing whichever
+ *  tagged type came from the DATE side if one was involved, else an
+ *  hms result -- there's no real Calc precedent for e.g. "hms + hms"
+ *  specifically, so this is this module's own reasonable, consistent
+ *  extrapolation of the same days-are-the-common-unit model
+ *  everything else here uses. */
+function evaluateDateArithmetic(l, r, op) {
+  const lTagged = isTaggedValue(l);
+  const rTagged = isTaggedValue(r);
+  if (lTagged && rTagged) {
+    if (l.type === 'date' && r.type === 'date' && op === '-') {
+      const diff = l.days - r.days;
+      return !l.hasTime && !r.hasTime ? diff : { type: 'hms', days: diff };
+    }
+    const combined = op === '+' ? l.days + r.days : l.days - r.days;
+    const resultType = l.type === 'date' ? l.type : r.type;
+    const hasTime = l.hasTime || r.hasTime;
+    return resultType === 'date' ? { type: 'date', days: combined, hasTime } : { type: 'hms', days: combined };
+  }
+  const tagged = lTagged ? l : r;
+  const days = lTagged ? (op === '+' ? tagged.days + r : tagged.days - r) : op === '+' ? l + tagged.days : l - tagged.days;
+  return tagged.type === 'date' ? { type: 'date', days, hasTime: tagged.hasTime } : { type: 'hms', days };
+}
+
+function evaluateAst(node, ctx) {
+  switch (node.type) {
+    case 'number':
+      return node.value;
+    case 'string':
+      return node.value;
+    case 'neg':
+      return -evaluateAst(node.operand, ctx);
+    case 'not':
+      return isTruthyValue(evaluateAst(node.operand, ctx)) ? 0 : 1;
+    case 'binop': {
+      if (node.op === '&&') {
+        const l = evaluateAst(node.left, ctx);
+        if (!isTruthyValue(l)) return 0;
+        return isTruthyValue(evaluateAst(node.right, ctx)) ? 1 : 0;
+      }
+      if (node.op === '||') {
+        const l = evaluateAst(node.left, ctx);
+        if (isTruthyValue(l)) return 1;
+        return isTruthyValue(evaluateAst(node.right, ctx)) ? 1 : 0;
+      }
+      const l = evaluateAst(node.left, ctx);
+      const r = evaluateAst(node.right, ctx);
+      if (COMPARISON_OPS.has(node.op)) return compareValues(l, r, node.op);
+      if ((node.op === '+' || node.op === '-') && (isTaggedValue(l) || isTaggedValue(r))) {
+        return evaluateDateArithmetic(l, r, node.op);
+      }
+      const lNum = isTaggedValue(l) ? l.days : l;
+      const rNum = isTaggedValue(r) ? r.days : r;
+      if (node.op === '+') return lNum + rNum;
+      if (node.op === '-') return lNum - rNum;
+      if (node.op === '*') return lNum * rNum;
+      if (node.op === '/') return rNum === 0 ? 0 : lNum / rNum; // division by zero: 0, not Infinity/NaN -- a spreadsheet-style error value has nowhere to live in a plain org table cell
+      if (node.op === '^') return Math.pow(lNum, rNum);
+      throw new Error(`Unknown operator "${node.op}"`);
+    }
+    case 'ref': {
+      const { row, col } = resolveRef(node.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
+      return readCellValue(ctx.dataRows, row, col, ctx);
+    }
+    case 'range': {
+      throw new Error('A range can only be used as an aggregate function\u2019s own argument, not as a plain value');
+    }
+    case 'call': {
+      const fn = AGGREGATE_FUNCTIONS[node.name];
+      const values = collectRangeValues(node.arg, ctx);
+      return fn(values);
+    }
+    case 'scalarCall': {
+      const fn = SCALAR_FUNCTIONS[node.name];
+      const argValues = node.args.map((a) => evaluateAst(a, ctx));
+      return fn(...argValues);
+    }
+    case 'dateCall': {
+      if (node.name === 'now') {
+        const now = ctx.now || new Date();
+        return { type: 'date', days: dateToDays(now.getFullYear(), now.getMonth() + 1, now.getDate(), now.getHours(), now.getMinutes()), hasTime: true };
+      }
+      if (node.args.length === 3) {
+        const year = evaluateAst(node.args[0], ctx);
+        const month = evaluateAst(node.args[1], ctx);
+        const day = evaluateAst(node.args[2], ctx);
+        return { type: 'date', days: dateToDays(year, month, day), hasTime: false };
+      }
+      const argNode = node.args[0];
+      let rawText;
+      if (argNode.type === 'ref') {
+        const { row, col } = resolveRef(argNode.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
+        rawText = (ctx.dataRows[row - 1] && ctx.dataRows[row - 1].cells[col - 1]) || '';
+      } else {
+        const val = evaluateAst(argNode, ctx);
+        if (isTaggedValue(val) && val.type === 'date') return val; // date(date(...)) or date(now()) -- already a date value, pass through rather than re-parsing its own formatted text
+        rawText = String(val);
+      }
+      if (node.name === 'date-to-time') {
+        const parsed = parseFlexibleDateString(rawText);
+        if (!parsed) throw new Error(`date-to-time(): couldn\u2019t parse "${rawText.trim()}" as a date/time`);
+        return parsed;
+      }
+      const parsed = parseCellTimestamp(rawText);
+      if (!parsed) throw new Error(`date(): couldn\u2019t find a recognizable timestamp in "${rawText.trim()}"`);
+      return parsed;
+    }
+    case 'formatTimeCall': {
+      const formatVal = evaluateAst(node.args[0], ctx);
+      const formatStr = typeof formatVal === 'string' ? formatVal : String(formatVal);
+
+      let instant;
+      if (node.args.length < 2) {
+        instant = ctx.now || new Date();
+      } else {
+        const timeVal = evaluateAst(node.args[1], ctx);
+        if (isTaggedValue(timeVal)) {
+          instant = new Date(timeVal.days * 86400000);
+        } else {
+          // Real Emacs's own documented convention: a plain number here
+          // is an integer count of seconds since the Unix epoch, not days.
+          instant = new Date(timeVal * 1000);
+        }
+      }
+
+      const universal = node.args.length >= 3 && isTruthyValue(evaluateAst(node.args[2], ctx));
+      const dateForFormatting = universal
+        ? new Date(
+            instant.getUTCFullYear(),
+            instant.getUTCMonth(),
+            instant.getUTCDate(),
+            instant.getUTCHours(),
+            instant.getUTCMinutes(),
+            instant.getUTCSeconds()
+          )
+        : instant;
+
+      return formatTimeStringImpl(dateForFormatting, formatStr);
+    }
+    case 'stringCall': {
+      if (node.arg.type === 'ref') {
+        const { row, col } = resolveRef(node.arg.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
+        const rawText = (ctx.dataRows[row - 1] && ctx.dataRows[row - 1].cells[col - 1]) || '';
+        return rawText.trim();
+      }
+      const val = evaluateAst(node.arg, ctx);
+      if (typeof val === 'string') return val;
+      if (isTaggedValue(val)) return val.type === 'date' ? formatDateValue(val) : formatHmsValue(val);
+      return String(val);
+    }
+    case 'ifCall':
+      return isTruthyValue(evaluateAst(node.condition, ctx)) ? evaluateAst(node.trueExpr, ctx) : evaluateAst(node.falseExpr, ctx);
+    default:
+      throw new Error(`Unknown AST node type "${node.type}"`);
+  }
+}
+
+/** Collects every value a range (or, degenerately, a single ref) spans
+ *  -- an aggregate function's own argument, evaluated as a list of
+ *  numbers rather than a single one. Iterates in reading order (row
+ *  by row, left to right within each row), matching how a person
+ *  would naturally read the range they wrote. */
+function collectRangeValues(argNode, ctx) {
+  if (argNode.type === 'ref') {
+    const { row, col } = resolveRef(argNode.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
+    if (isCellBlank(ctx.dataRows, row, col) && ctx.emptyMode === 'omit') return [];
+    return [readCellValue(ctx.dataRows, row, col, ctx)];
+  }
+  if (argNode.type !== 'range') {
+    // A plain arithmetic expression as an aggregate's own argument (e.g. vsum($1+$2)) --
+    // real org supports this too; evaluate it as one single value.
+    return [evaluateAst(argNode, ctx)];
+  }
+  const from = resolveRef(argNode.from, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, true);
+  const to = resolveRef(argNode.to, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, false);
+  const rowStart = Math.min(from.row, to.row);
+  const rowEnd = Math.max(from.row, to.row);
+  const colStart = Math.min(from.col, to.col);
+  const colEnd = Math.max(from.col, to.col);
+  const values = [];
+  for (let r = rowStart; r <= rowEnd; r++) {
+    for (let c = colStart; c <= colEnd; c++) {
+      if (isCellBlank(ctx.dataRows, r, c) && ctx.emptyMode === 'omit') continue;
+      values.push(readCellValue(ctx.dataRows, r, c, ctx));
+    }
+  }
+  return values;
+}
+
+/** Formats a computed numeric result back into cell text -- an
+ *  integer stays a bare integer ("4", not "4.0" or
+ *  "4.000000000000000"). A non-integer is formatted to 8 significant
+ *  figures, matching real org's own actual, documented default
+ *  exactly (confirmed directly against the Org Manual: Calc's own
+ *  "(float 8)" display mode -- "the display format... has been
+ *  changed to '(float 8)' to keep tables compact"), not an
+ *  arbitrarily-chosen precision. Getting this specific number right
+ *  matters beyond cosmetics: recalculating the identical formula
+ *  against identical data in org-pwa and in real Emacs needs to write
+ *  the same text into the cell either way, or a table shared between
+ *  the two silently diverges depending on whichever one last touched
+ *  it -- confirmed as a real, concrete case this replaces: this
+ *  function previously rounded to 6 digits *after the decimal point*
+ *  regardless of magnitude (a different rule from "8 significant
+ *  figures total", not merely a different number -- the two rules
+ *  only happen to coincide for results roughly between 1 and 10),
+ *  which wrote "123.333333" for 370/3 where real org's own actual
+ *  default writes "123.33333".
+ *
+ *  Real org's own optional mode string (";%.2f", ";T", ";EN", etc.)
+ *  IS now implemented -- see parseModeString/applyFormatSpec below --
+ *  this default is only ever used when a formula has no format flag
+ *  of its own. */
+
+const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUENFS]/y;
+
+/** Parses a formula's own trailing mode string (everything after the
+ *  ";", already split off by parseFormulaStatement below) into a
+ *  single object covering every flag documented for real org table
+ *  formulas: { format, duration, emptyMode }.
+ *
+ *  format: { type: 'fixed'|'integer'|'normal'|'scientific'|'engineering', digits } | null
+ *    - %.Nf / fN -> fixed, N decimal places
+ *    - %d        -> integer (truncated toward zero)
+ *    - nN        -> normal, N significant figures
+ *    - sN        -> scientific, N significant figures
+ *    - eN        -> engineering, N significant figures
+ *  duration: 'T' | 'U' | 't' | null
+ *    - T -> HH:MM:SS   U -> HH:MM   t -> fractional hours
+ *    - Overrides `format` entirely when present -- a duration result
+ *      is never also shown in scientific/fixed/etc notation.
+ *  emptyMode: 'omit' (default) | 'nan' (E) | 'zero' (E and N together)
+ *  fraction: whether F (Fraction Mode) was present -- overrides
+ *    `format`/`duration` entirely when set, same "last flag standing"
+ *    precedence duration already has over format above, since a
+ *    fraction result is never also shown in scientific/fixed/etc
+ *    notation either. Reconstructed from the computed floating-point
+ *    result via a continued-fraction approximation (see
+ *    formatAsFraction below) -- this app's own arithmetic doesn't
+ *    carry true rational values through every operation the way real
+ *    Calc's own internal representation does, but for the common case
+ *    (an expression that -- mathematically, not just by coincidence
+ *    of this app's own rounding -- reduces to a clean fraction) this
+ *    recovers the exact same result.
+ *  mixedNumber: whether S was ALSO present alongside F, requesting a
+ *    mixed-number display (whole number + proper fraction, e.g.
+ *    "3 + 1/2") for an improper fraction, real org's own documented
+ *    F+S combination. S alone, without F, is recognized and consumed
+ *    but has no effect on its own -- this app doesn't implement
+ *    Calc's own general Symbolic mode, only this specific, documented
+ *    combination with Fraction mode.
+ *
+ *  pN (precision) is recognized and consumed but has no further
+ *  effect -- this engine's own numbers already carry more precision
+ *  than Calc's own default, and p alone doesn't change the display
+ *  format in real org either.
+ *
+ *  Flags can appear concatenated with no separator (e.g. "EN"), in
+ *  any order; an unrecognized remaining character stops parsing
+ *  there, falling back to whatever was already parsed rather than
+ *  discarding the whole mode string. */
+function parseModeString(suffix) {
+  const mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false };
+  MODE_TOKEN_RE.lastIndex = 0;
+  let m;
+  while ((m = MODE_TOKEN_RE.exec(suffix))) {
+    const token = m[0];
+    if (m[1] !== undefined) mode.format = { type: 'fixed', digits: Number(m[1]) }; // %.Nf
+    else if (token === '%d') mode.format = { type: 'integer' };
+    else if (token.startsWith('p')) {
+      // precision -- consumed, no effect (see docs above)
+    } else if (m[2] !== undefined) mode.format = { type: 'normal', digits: Number(m[2]) };
+    else if (m[3] !== undefined) mode.format = { type: 'scientific', digits: Number(m[3]) };
+    else if (m[4] !== undefined) mode.format = { type: 'engineering', digits: Number(m[4]) };
+    else if (m[5] !== undefined) mode.format = { type: 'fixed', digits: Number(m[5]) }; // fN
+    else if (token === 'T' || token === 't' || token === 'U') mode.duration = token;
+    else if (token === 'E') mode.emptyMode = 'nan';
+    else if (token === 'N') mode.forceNumeric = true;
+    else if (token === 'F') mode.fraction = true;
+    else if (token === 'S') mode.mixedNumber = true;
+  }
+  if (mode.forceNumeric && mode.emptyMode === 'nan') mode.emptyMode = 'zero'; // E and N together: blank fields are 0, not nan
+  return mode;
+}
+
+/** Parses "HH:MM[:SS]" (an optional leading "-" for a negative
+ *  duration) into total seconds, or null if `text` doesn't match --
+ *  real org's own input form for a duration-mode formula (T/U/t).
+ *  Only recognized when a formula actually has one of those flags;
+ *  without one, the same text isn't treated as a duration at all
+ *  (matching real org, where "H:MM" without a duration flag is read
+ *  as a Calc fraction instead, a distinction this app doesn't
+ *  reproduce -- see readCellValue's own docs). */
+function parseDurationSeconds(text) {
+  const m = /^(-)?(\d+):([0-5]?\d)(?::([0-5]?\d))?$/.exec(text.trim());
+  if (!m) return null;
+  const sign = m[1] ? -1 : 1;
+  const hours = Number(m[2]);
+  const minutes = Number(m[3]);
+  const seconds = m[4] !== undefined ? Number(m[4]) : 0;
+  return sign * (hours * 3600 + minutes * 60 + seconds);
+}
+
+/** Formats a total-seconds value for a duration-mode formula's own
+ *  result, per its `duration` flag -- confirmed directly against real
+ *  Emacs org-mode's own org-table-recalculate in batch mode for all
+ *  three flags. `hourZeroPad` mirrors org-table-duration-hour-zero-
+ *  padding: true (the default) pads the hours field to at least 2
+ *  digits; false leaves it at its own natural width. Minutes and
+ *  seconds are always 2-digit zero-padded regardless. */
+function formatDuration(totalSeconds, flag, hourZeroPad) {
+  if (Number.isNaN(totalSeconds)) return 'nan';
+  const sign = totalSeconds < 0 ? '-' : '';
+  const abs = Math.round(Math.abs(totalSeconds));
+  if (flag === 't') {
+    // org-table-duration-custom-format's own default: fractional hours, 2 decimal places.
+    return (totalSeconds / 3600).toFixed(2);
+  }
+  const hours = Math.floor(abs / 3600);
+  const minutes = Math.floor((abs % 3600) / 60);
+  const seconds = abs % 60;
+  const hoursStr = hourZeroPad ? String(hours).padStart(2, '0') : String(hours);
+  const minutesStr = String(minutes).padStart(2, '0');
+  if (flag === 'U') return `${sign}${hoursStr}:${minutesStr}`;
+  const secondsStr = String(seconds).padStart(2, '0');
+  return `${sign}${hoursStr}:${minutesStr}:${secondsStr}`;
+}
+
+/** Formats `n` to `digits` significant figures in "normal" notation
+ *  (plain decimal, no exponent) -- real org's own "nN" mode letter.
+ *  Falls back to formatResult's own default rounding/cleanup logic at
+ *  `digits` significant figures instead of the usual 8. */
+function formatNormal(n, digits) {
+  if (n === 0) return '0';
+  const precise = n.toPrecision(digits);
+  return cleanupPrecision(precise);
+}
+
+/** Formats `n` in scientific notation -- one digit before the decimal
+ *  point, `digits` significant figures total, real org's own "sN"
+ *  mode letter. */
+function formatScientific(n, digits) {
+  if (n === 0) return '0e0';
+  return cleanupPrecision(n.toExponential(digits - 1));
+}
+
+/** Formats `n` in engineering notation -- like scientific, but the
+ *  exponent is always a multiple of 3 (so the mantissa can have 1-3
+ *  digits before the decimal point), real org's own "eN" mode letter. */
+function formatEngineering(n, digits) {
+  if (n === 0) return '0e0';
+  const sign = n < 0 ? -1 : 1;
+  const abs = Math.abs(n);
+  const rawExp = Math.floor(Math.log10(abs));
+  const engExp = Math.floor(rawExp / 3) * 3;
+  const mantissa = (abs / Math.pow(10, engExp)) * sign;
+  const precise = mantissa.toPrecision(digits);
+  const cleaned = cleanupPrecision(precise);
+  return `${cleaned}e${engExp}`;
+}
+
+/** Shared trailing-zero/decimal-point cleanup for a toPrecision or
+ *  toExponential string -- both a plain and an exponential result get
+ *  the same treatment, matching formatResult's own existing default. */
+function cleanupPrecision(precise) {
+  const eIndex = precise.search(/e/i);
+  const mantissa = eIndex === -1 ? precise : precise.slice(0, eIndex);
+  let suffix = eIndex === -1 ? '' : precise.slice(eIndex).replace('+', '');
+  const cleanedMantissa = mantissa.includes('.') ? mantissa.replace(/0+$/, '').replace(/\.$/, '') : mantissa;
+  return cleanedMantissa + suffix;
+}
+
+/** Formats `n` per an explicit, real org format specifier -- "%.Nf"
+ *  (fixed N decimal places, confirmed directly against both the Org
+ *  Manual's own wording and a real, published org file using this
+ *  exact syntax) or "%d" (integer; the exact rounding rule isn't
+ *  independently source-confirmed the way "%.Nf" is, so round-to-
+ *  nearest is used as the most defensible choice, not a confirmed
+ *  match to real Calc's own exact behavior). */
+function applyFormatSpec(n, spec) {
+  if (Number.isNaN(n)) return 'nan';
+  if (spec.type === 'fixed') return n.toFixed(spec.digits);
+  if (spec.type === 'normal') return formatNormal(n, spec.digits);
+  if (spec.type === 'scientific') return formatScientific(n, spec.digits);
+  if (spec.type === 'engineering') return formatEngineering(n, spec.digits);
+  // Truncates toward zero, not round-to-nearest -- unlike "%.Nf"
+  // above (confirmed directly against both the Org Manual's own
+  // wording and a real, published org file using that exact syntax),
+  // this specific rule for "%d" isn't confirmed against a primary
+  // source the same way, despite multiple targeted searches for the
+  // actual Calc/Lisp mechanism behind it. Truncation is used on
+  // converging, but indirect, evidence instead: real Emacs Lisp's own
+  // `format` function is strict about argument types for "%d" (it
+  // won't silently accept a float at all), so Calc must explicitly
+  // convert to an integer before formatting -- and truncation is the
+  // conventional default "convert to int" behavior across the
+  // C-derived languages Calc's own format mechanism is explicitly
+  // modeled on ("similar to printf," per the Org Manual itself).
+  return String(Math.trunc(n));
+}
+
+function formatResult(n) {
+  if (Number.isNaN(n)) return 'nan';
+  if (Number.isInteger(n)) return String(n);
+  const SIGNIFICANT_FIGURES = 8;
+  const precise = n.toPrecision(SIGNIFICANT_FIGURES);
+  // toPrecision always pads to exactly 8 significant figures
+  // ("1.5000000"), and switches to exponential notation for an
+  // extreme magnitude ("1.234e-7") -- trailing zeros are stripped
+  // from the mantissa either way (a plain result and an exponential
+  // one both get the same cleanup), for a cleaner, still-equivalent
+  // result rather than always showing every padded digit.
+  const eIndex = precise.search(/e/i);
+  const mantissa = eIndex === -1 ? precise : precise.slice(0, eIndex);
+  const suffix = eIndex === -1 ? '' : precise.slice(eIndex);
+  const cleanedMantissa = mantissa.includes('.') ? mantissa.replace(/0+$/, '').replace(/\.$/, '') : mantissa;
+  return cleanedMantissa + suffix;
+}
+
+// ---- formula-line parsing ------------------------------------------------
+
+/** Parses one "$M=RHS" or "@N$M=RHS" statement (one segment of a
+ *  "::"-joined #+TBLFM: line) into { target, expr } -- target is
+ *  either { type: 'column', col } (the "$M=" shorthand, no "@" at
+ *  all -- apply to every data row) or { type: 'cell', row, col } (an
+ *  explicit "@N$M="). expr is the tokenized-and-parsed RHS AST.
+ *  Real org's own optional ";format" suffix is recognized and
+ *  discarded (parsed off, not left dangling in the expression text
+ *  and misparsed as part of it) rather than actually applied -- see
+ *  formatResult's own docs for why. */
+function parseFormulaStatement(statement) {
+  const eq = statement.indexOf('=');
+  if (eq === -1) throw new Error(`Malformed formula, no "=": "${statement}"`);
+  const lhs = statement.slice(0, eq).trim();
+  let rhs = statement.slice(eq + 1).trim();
+  const formatSuffix = /;[^;]*$/.exec(rhs);
+  let mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false };
+  if (formatSuffix) {
+    rhs = rhs.slice(0, formatSuffix.index).trim();
+    mode = parseModeString(formatSuffix[0].slice(1)); // slice(1): drop the leading ";" itself
+  }
+
+  let target;
+  const rangeMatch = lhs.includes('..') ? /^(.+)\.\.(.+)$/.exec(lhs) : null;
+  const cellMatch = /^@([<>]|[+-]?\d+|I+(?:[+-]\d+)?)\$([<>]|\d+)$/.exec(lhs);
+  const colMatch = /^\$([<>]|\d+)$/.exec(lhs);
+  if (rangeMatch) {
+    const from = parseRef(rangeMatch[1]);
+    const to = parseRef(rangeMatch[2]);
+    if (!from || !to || from.col === null || to.col === null) throw new Error(`Malformed formula target: "${lhs}"`);
+    target = { type: 'range', from, to };
+  } else if (cellMatch) {
+    const row = parseRowRef(cellMatch[1]);
+    const col = parseColRef(cellMatch[2]);
+    if (!row || !col) throw new Error(`Malformed formula target: "${lhs}"`);
+    target = { type: 'cell', row, col };
+  } else if (colMatch) {
+    const col = parseColRef(colMatch[1]);
+    if (!col) throw new Error(`Malformed formula target: "${lhs}"`);
+    target = { type: 'column', col };
+  } else {
+    throw new Error(`Malformed formula target: "${lhs}"`);
+  }
+
+  const expr = parseExpression(tokenize(rhs));
+  return { target, expr, mode };
+}
+
+/** Splits a full #+TBLFM: value on "::" (real org's own multi-formula
+ *  separator) and parses each segment. Throws on the first malformed
+ *  segment -- see recalculateTable's own docs for how a caller should
+ *  handle that (the whole recalculation is abandoned, not partially
+ *  applied). */
+function parseTblfm(tblfm) {
+  return tblfm
+    .split('::')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map(parseFormulaStatement);
+}
+
+// ---- table-level recalculation -------------------------------------------
+
+/**
+ * Recalculates every formula in `table.tblfm` against `table.rows`,
+ * returning a NEW rows array with the results applied -- pure, no
+ * mutation of the input. Returns null if the table has no #+TBLFM: at
+ * all (nothing to do). Throws (with a message suitable for showing
+ * directly as a status message) on a malformed formula or an
+ * out-of-range reference -- the whole recalculation is abandoned in
+ * that case, not partially applied, so a typo in one formula can
+ * never leave some cells updated and others stale with no indication
+ * which is which.
+ *
+ * Formulas are evaluated in the order written in #+TBLFM:, each one
+ * able to see any earlier formula's own already-updated values within
+ * this same pass (covering the common "chained column" case) --
+ * working on a running COPY of the row data, not the original
+ * `table.rows` reference, so the caller's own input is never mutated
+ * regardless of whether this throws partway through.
+ */
+/** Converts `x` to the "best" rational approximation with a
+ *  reasonably small denominator -- a standard continued-fraction
+ *  convergents algorithm. This app's own arithmetic doesn't carry
+ *  true rational values through every operation the way real Calc's
+ *  own internal representation does, so this reconstructs one from
+ *  the final floating-point result instead; for any expression that
+ *  mathematically reduces to a clean fraction (not merely one that
+ *  happens to look clean after this app's own rounding), the
+ *  reconstruction recovers the exact same fraction Calc's own native
+ *  rational arithmetic would have produced directly. */
+function toRationalApproximation(x, tolerance = 1e-9, maxDenominator = 1000000) {
+  const sign = x < 0 ? -1 : 1;
+  const abs = Math.abs(x);
+  if (abs === 0) return { numerator: 0, denominator: 1 };
+  let h1 = 1,
+    h2 = 0,
+    k1 = 0,
+    k2 = 1;
+  let b = abs;
+  for (let i = 0; i < 64; i++) {
+    const a = Math.floor(b);
+    const h = a * h1 + h2;
+    h2 = h1;
+    h1 = h;
+    const k = a * k1 + k2;
+    k2 = k1;
+    k1 = k;
+    if (Math.abs(abs - h1 / k1) < tolerance * abs || k1 > maxDenominator) break;
+    if (Math.abs(b - a) < 1e-12) break;
+    b = 1 / (b - a);
+  }
+  return { numerator: sign * h1, denominator: k1 };
+}
+
+/** Formats `n` per the F (Fraction Mode) / FS (Fraction + mixed-number)
+ *  flags -- confirmed directly against real org's own documented
+ *  examples: 3/6;F -> "1/2", 12/9;F -> "4/3", 14/4;FS -> "3 + 1/2".
+ *  Without `mixedNumber` (F alone), an improper fraction stays
+ *  improper ("5/3", not "1 + 2/3") -- mixed-number display is
+ *  specifically the FS combination's own documented behavior, not F's
+ *  default. A proper fraction (|numerator| < denominator) has no
+ *  whole part to extract regardless of `mixedNumber`, so it's always
+ *  shown the same plain way either way. */
+function formatAsFraction(n, mixedNumber) {
+  if (Number.isNaN(n)) return 'nan';
+  const { numerator, denominator } = toRationalApproximation(n);
+  if (denominator === 1) return String(numerator); // an exact whole number -- no "/1" to show
+  if (!mixedNumber) return `${numerator}/${denominator}`;
+
+  const sign = numerator < 0 ? -1 : 1;
+  const absNumerator = Math.abs(numerator);
+  const whole = Math.floor(absNumerator / denominator);
+  if (whole === 0) return `${numerator}/${denominator}`; // proper fraction -- nothing to extract
+  const remainder = absNumerator % denominator;
+  if (remainder === 0) return String(sign * whole); // reduces to an exact whole number after all
+  const connector = sign < 0 ? ' - ' : ' + ';
+  return `${sign * whole}${connector}${remainder}/${denominator}`;
+}
+
+/** Formats one formula's own final computed value into cell text --
+ *  duration (T/U/t) or fraction (F) formatting take priority when
+ *  present, since either one is never ALSO shown in scientific/
+ *  fixed/etc notation; otherwise an explicit format spec (fixed/
+ *  integer/normal/scientific/engineering); otherwise formatResult's
+ *  own default. */
+function formatFinalValue(value, mode, hourZeroPad) {
+  if (typeof value === 'string') return value;
+  if (isTaggedValue(value)) return value.type === 'date' ? formatDateValue(value) : formatHmsValue(value);
+  if (mode.duration) return formatDuration(value, mode.duration, hourZeroPad);
+  if (mode.fraction) return formatAsFraction(value, mode.mixedNumber);
+  if (mode.format) return applyFormatSpec(value, mode.format);
+  return formatResult(value);
+}
+
+export function recalculateTable(table, options = {}) {
+  if (!table.tblfm || !table.tblfm.trim()) return null;
+  const hourZeroPad = options.hourZeroPad !== undefined ? options.hourZeroPad : true;
+  const statements = parseTblfm(table.tblfm);
+
+  // A working copy: same row objects' own shape, but with a fresh
+  // `cells` array per row so evaluating one formula can't accidentally
+  // mutate a row a caller might still be holding a reference to.
+  const workingRows = table.rows.map((row) => (row.type === 'row' ? { ...row, cells: [...row.cells] } : row));
+  // @N numbering counts EVERY data row, including any row before the
+  // table's own first hline -- confirmed directly against real Emacs
+  // org-mode itself, not just inferred from the Manual's own prose
+  // (which reads ambiguously on this specific point): a table with a
+  // header row, 5 data rows below a hline, and one more row below a
+  // second hline numbers that last row @7 (header=@1, the 5 data
+  // rows=@2..@6, the final row=@7) -- verified by actually running
+  // "@7$2=vsum(@2..@6)" through real Emacs's own org-table-recalculate
+  // in batch mode and confirming it computes correctly, not by reading
+  // the manual's own words about it and stopping there.
+  const dataRows = workingRows.filter((r) => r.type === 'row');
+  const dataRowCount = dataRows.length;
+  const colCount = dataRows.reduce((max, r) => Math.max(max, r.cells.length), 0);
+  // The header-row exclusion real org DOES have is narrower and
+  // different from @N numbering: specifically, the column-formula
+  // SHORTHAND ($N=, applied to every row at once) skips any row
+  // before the table's own first hline -- also confirmed directly
+  // against real Emacs: a $3=$2*2 column formula correctly leaves the
+  // header row's own text alone, while an explicit, deliberately-
+  // targeted cell formula like @1$2=999 still freely modifies the
+  // header when asked to. No hline anywhere at all means nothing is
+  // excluded from column formulas either -- every row counts as data.
+  const firstRuleIndex = workingRows.findIndex((r) => r.type === 'rule');
+  const headerRowCount = firstRuleIndex === -1 ? 0 : workingRows.slice(0, firstRuleIndex).filter((r) => r.type === 'row').length;
+  const { positions: hlinePositions } = computeHlinePositions(workingRows);
+
+  for (const { target, expr, mode } of statements) {
+    const evalCtx = { dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric };
+    // Evaluates the expression for one specific (row, col) and writes
+    // either its formatted result or, if evaluation itself throws,
+    // the literal text "#ERROR" into that cell -- confirmed directly
+    // against real Emacs org-mode: a malformed or failing formula
+    // doesn't abort the table's own recalculation, and a DIFFERENT,
+    // valid formula elsewhere in the same #+TBLFM: line still
+    // evaluates normally. Isolated per cell, not per statement, so a
+    // range/column-formula target with one bad cell doesn't lose the
+    // rest of its own siblings either.
+    function evalCell(row, col) {
+      try {
+        const value = evaluateAst(expr, { ...evalCtx, currentRow: row, currentCol: col });
+        dataRows[row - 1].cells[col - 1] = formatFinalValue(value, mode, hourZeroPad);
+      } catch {
+        dataRows[row - 1].cells[col - 1] = '#ERROR';
+      }
+    }
+    if (target.type === 'cell') {
+      const row = resolveRowRef(target.row, 1, dataRowCount, hlinePositions, false); // currentRow=1 is a placeholder -- an explicit @N$M target is never itself relative
+      const col = resolveColRef(target.col, colCount);
+      if (row === null || col === null) throw new Error('Formula target is out of range for this table');
+      evalCell(row, col);
+    } else if (target.type === 'range') {
+      if (target.from.row === null || target.to.row === null) {
+        throw new Error('A formula target range needs an explicit row on both endpoints');
+      }
+      const fromRow = resolveRowRef(target.from.row, 1, dataRowCount, hlinePositions, false);
+      const toRow = resolveRowRef(target.to.row, 1, dataRowCount, hlinePositions, false);
+      const fromCol = resolveColRef(target.from.col, colCount);
+      const toCol = resolveColRef(target.to.col, colCount);
+      if (fromRow === null || toRow === null || fromCol === null || toCol === null) {
+        throw new Error('Formula target is out of range for this table');
+      }
+      const rowStart = Math.min(fromRow, toRow);
+      const rowEnd = Math.max(fromRow, toRow);
+      const colStart = Math.min(fromCol, toCol);
+      const colEnd = Math.max(fromCol, toCol);
+      for (let r = rowStart; r <= rowEnd; r++) {
+        for (let c = colStart; c <= colEnd; c++) {
+          evalCell(r, c);
+        }
+      }
+    } else {
+      // Column-formula shorthand: apply to every data row AFTER the
+      // header (see headerRowCount above), each computing $M from ITS
+      // OWN row.
+      const col = resolveColRef(target.col, colCount);
+      if (col === null) throw new Error('Formula target column is out of range for this table');
+      for (let r = headerRowCount + 1; r <= dataRowCount; r++) {
+        evalCell(r, col);
+      }
+    }
+  }
+
+  return workingRows;
+}
