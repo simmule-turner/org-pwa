@@ -6,6 +6,20 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v303 — THE BUG THIS FIXES: date-to-time() on a timestamp with a time-of-day
+=date-to-time($ref)= on a cell holding this app's own native org
+timestamp (=<...>=/=[...]=) produced =#ERROR= whenever the timestamp
+had a time-of-day component — =$2=now()= followed by
+=date-to-time($2)= being the exact real-world case that surfaced it.
+Root cause: this function was relying on JS's own =Date.parse()= for
+org's bracketed format too, which turns out to tolerate stray =<=/=>=
+characters around a single, unambiguous date purely by an
+undocumented accident, and breaks outright the moment a time is also
+present. Fixed by trying the same dedicated org-timestamp parser
+=date()= already uses first, falling back to =Date.parse()= only for
+the genuinely different formats (ISO 8601, email headers, US dates)
+it's actually meant for.
+
 * v302 — date-to-time / format-time-string: restored to their real names
 Reverted the previous release's own =date_to_time=/=format_time_string=
 back to =date-to-time=/=format-time-string= — real Emacs Lisp's own
