@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v307';
+const CACHE_NAME = 'org-pwa-shell-v308';
 
 const SHELL_FILES = [
   './',
@@ -14,6 +14,7 @@ const SHELL_FILES = [
   './src/document-store.js',
   './src/fold-state.js',
   './src/outbox.js',
+  './src/narrow-state.js',
   './src/org-parser.js',
   './src/agenda.js',
   './src/diary-sexp.js',

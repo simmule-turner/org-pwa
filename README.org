@@ -714,6 +714,21 @@ A picked filename is lightly sanitized first — path separators and a few other
 
 -----
 
+** Narrowing
+:PROPERTIES:
+:CUSTOM_ID: narrowing
+:END:
+
+*More → Narrow* (disabled unless a heading's own action menu is open or one has keyboard focus) restricts the outline to just that heading and its own subtree — every sibling, ancestor, and unrelated top-level heading disappears from view entirely, not just visually dimmed. A persistent banner — *Narrowed to: TITLE — Widen* — stays at the very top of the outline for as long as this is active, since a menu label alone (the same slot toggling to say "Widen" instead) is too easy to miss coming back to the app later. Tapping *Widen* there, or *More → Widen* (the same slot, now showing the opposite action), removes the restriction and shows the whole file again — real org's own ~C-x n s~ / ~C-x n w~ (narrow-to-subtree / widen), also reachable directly via [[#god-mode][god-mode]] using those exact same key sequences (~x SPC n s~ / ~x SPC n w~).
+
+This is a *display* restriction, not a document one — narrowing never touches the file's own content at all, only which rows the outline actually renders. *Save, Export, Agenda, and Search all keep operating on the whole document regardless of narrowing* — narrow to one small subtree, and Agenda still scans everything, Search still searches everything, Save still writes everything. Nothing about what's "in the file" changes; only what's currently in front of you does.
+
+Narrowing follows the heading it's pointed at, not a fixed snapshot taken the moment you narrowed — promote it, demote it, move it, or rename it afterward, and the narrowed view updates to match rather than showing something stale. If the narrowed heading is deleted outright, the view automatically widens rather than showing nothing with no way back. Narrowing to a different heading while already narrowed replaces the restriction outright, matching real org's own actual behavior — there's no nested "un-narrow one level at a time" stack to pop through. Folding is completely independent of narrowing: which headings are collapsed within the narrowed subtree is unaffected by narrowing itself, and narrowing doesn't force anything open or closed.
+
+*Narrowing persists* — across switching tabs, and across actually closing and reopening the app entirely, not just for the rest of this one session. Reopening a file you'd left narrowed picks up exactly where you left it, narrowed to the same heading.
+
+*Text view, while narrowed, shows only the narrowed subtree's own raw text* — not the whole file — letting you edit just the section you're working on as plain org syntax without the rest of a large document in the way. See [[#the-plain-text-editor][The plain-text editor]] below for the full behavior, including what happens on commit. Narrowing is one-directional here by design: you can only reach this reduced view by already being narrowed in the structured outline first — switching to Text without narrowing still shows and edits the entire file, exactly as it always has.
+
 ** The plain-text editor
 :PROPERTIES:
 :CUSTOM_ID: the-plain-text-editor
@@ -721,9 +736,11 @@ A picked filename is lightly sanitized first — path separators and a few other
 
 Tap *View → Text* to switch the entire outline view for one full-width textarea containing the whole document as raw org text — everything, including ~#+STARTUP:~, ~#+TODO:~, a [[#local-variables][Local Variables]] block, and any syntax the structured view still doesn't have dedicated UI for (editing block content, changing the ~#+TODO:~ sequence itself). Tap *View → Org* to switch back; the text is reparsed from scratch at that point, so any changes — including to ~#+STARTUP~ / ~#+TODO~ /Local Variables — take effect immediately, correctly mark the document as modified, and persist the same way every other edit does — a genuine text change here is exactly as durable as tapping a heading's own title to edit it.
 
-*Switching in lands near wherever you last navigated to*, not always the top of the file — tap a search result or an internal link, then switch to Text, and the cursor and scroll position land at that same heading's line rather than losing the context you just found. This only tracks explicit "jump to X" navigation (search, internal links, agenda items), not manual scrolling within the outline; scroll around on your own and switch to Text, and it opens at the top as before. The scroll position itself is an approximation (proportional to the target line's position in the file), not a pixel-exact one — a wrapped line's real rendered height varies with content, so "near the same line" is the actual guarantee here, not perfect alignment.
+*Switching in lands near wherever you last navigated to*, not always the top of the file — tap a search result or an internal link, then switch to Text, and the cursor and scroll position land at that same heading's line rather than losing the context you just found. This only tracks explicit "jump to X" navigation (search, internal links, agenda items), not manual scrolling within the outline; scroll around on your own and switch to Text, and it opens at the top as before. The scroll position itself is an approximation (proportional to the target line's position in the file), not a pixel-exact one — a wrapped line's real rendered height varies with content, so "near the same line" is the actual guarantee here, not perfect alignment. (This doesn't apply while [[#narrowing][narrowed]] — the textarea always starts at the very top of the narrowed subtree's own text instead, since a line number computed against the full file wouldn't correspond to anything meaningful within a reduced view of just one part of it.)
 
-*Select All* and *Copy All* buttons sit above the textarea — selecting or copying an entire long document via the native mobile drag-handle gesture (long-press somewhere, then drag two handles across potentially thousands of lines) is painful enough that a one-tap alternative is worth having, rather than requiring a selection to already be underway before the device's own "Select All" bubble becomes reachable at all. *Select All* selects the full text in place — the device's own native Copy still works normally from there. *Copy All* goes one step further, writing the full text directly to the clipboard without needing a manual selection step at all; if the browser's clipboard API is unavailable or denied (a non-secure context, or permission refused), it falls back to selecting the text instead, so there's always a way forward rather than a silent failure. Keyboard ~Ctrl-A~/~Cmd-A~ already works natively inside the textarea regardless — these buttons are specifically for reaching the same thing without a physical keyboard.
+*While narrowed, only the narrowed subtree's own text is editable here* — switching back to Org splices whatever's in the box back into its own original position in the full document, rather than replacing the whole file with just that fragment. The splice target (exactly which lines this replaces) is fixed the moment you enter narrowed Text view, before any editing happens — so retyping the heading's own leading asterisks to promote or demote it, renaming it, or adding an entirely new heading inside the fragment are all just normal consequences of editing raw text, the same as they'd be editing the full file, not special cases that could corrupt anything outside the narrowed region. Narrowing itself correctly follows a level or title change made this way — rename or re-level the very heading you're narrowed to, and the narrowed view updates to match once you switch back, rather than treating the edit as if the heading had vanished.
+
+*Select All* and *Copy All* buttons sit above the textarea — selecting or copying an entire long document via the native mobile drag-handle gesture (long-press somewhere, then drag two handles across potentially thousands of lines) is painful enough that a one-tap alternative is worth having, rather than requiring a selection to already be underway before the device's own "Select All" bubble becomes reachable at all. *Select All* selects the full text in place — the device's own native Copy still works normally from there. *Copy All* goes one step further, writing the full text directly to the clipboard without needing a manual selection step at all; if the browser's clipboard API is unavailable or denied (a non-secure context, or permission refused), it falls back to selecting the text instead, so there's always a way forward rather than a silent failure. Keyboard ~Ctrl-A~/~Cmd-A~ already works natively inside the textarea regardless — these buttons are specifically for reaching the same thing without a physical keyboard. (While narrowed, both act on just the narrowed subtree's own text, matching whatever's actually shown.)
 
 This is the escape hatch for everything the tap-driven UI doesn't cover yet.
 
@@ -1016,10 +1033,12 @@ The five menus' own real labels, exactly as they'd appear in ~"menu:Label;alias"
 | ~menu~ | Labels |
 |----------+--------|
 | ~file~ | ~Export~, ~New~, ~Open~, ~Save~, ~Save As~ |
-| ~more~ | ~Capture~, ~Clocking~, ~Export~, ~Search~, ~Settings~ |
+| ~more~ | ~Capture~, ~Clocking~, ~Export~, ~Narrow~, ~Search~, ~Settings~, ~Widen~ |
 | ~export~ | ~ASCII~, ~Calendar (.ics)~, ~HTML~, ~Markdown~, ~ODT~ |
 | ~view~ | ~Agenda~, ~Help~, ~History~, ~Org~, ~Text~, ~TODO~ |
 | ~clocking~ | ~Clock-cancel~, ~Clock-continue~, ~Clock-in~, ~Clock-out~ |
+
+~more~'s own ~Narrow~ and ~Widen~ are one toggling slot in the actual menu, not two separate buttons shown together — only one of the two is ever visible at a time, depending on whether anything's currently narrowed (see [[#narrowing][Narrowing]]). Both still need their own entry here for the "every real label, to reorder" rule above, since they're each real, independently-reachable labels at different moments — set an alias for one without the other, and only that one state gets the alias; the other keeps its own plain default text.
 
 -----
 
@@ -1247,6 +1266,8 @@ Translation rules — this is a direct implementation of real god-mode.el's own 
 | ~c n~ / ~c p~ | ~C-c C-n~ / ~C-c C-p~ | Move focus to the next/previous visible heading, at any level |
 | ~c x w~ | ~C-c C-x C-w~ | Cut the focused heading and its entire subtree to the clipboard, then delete it (~org-cut-subtree~) |
 | ~c x y~ | ~C-c C-x C-y~ | Paste a subtree from the clipboard as a sibling right after the focused heading, at the focused heading's own level -- every level within the pasted content shifts by whatever amount makes that true, preserving its own internal structure (~org-paste-subtree~) |
+| ~x SPC n s~ | ~C-x n s~ | [[#narrowing][Narrow]] to the focused heading's own subtree |
+| ~x SPC n w~ | ~C-x n w~ | [[#narrowing][Widen]] -- remove any narrowing restriction |
 | ~gRET~ | ~M-RET~ | Insert a new heading after the focused one, at the same level |
 | ~gS-RET~ | ~M-S-RET~ | Same, with a TODO keyword set |
 | ~c t~ | ~C-c C-t~ | Cycle the focused heading's TODO state — or, with no current state and more than one ~#+TODO:~ workflow, open a state picker instead (see below) |

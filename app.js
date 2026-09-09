@@ -2,7 +2,7 @@ import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src
 import { setSyncMeta, getSyncMeta } from './src/sync-engine.js';
 import { hasPendingChange, getPendingChange, clearPendingChange } from './src/outbox.js';
 import { savePersistedHistory, loadPersistedHistory, clearPersistedHistory } from './src/history-store.js';
-import { parseOrg, serializeOrg, serializeHeadingSubtree, findHeadingLineNumber } from './src/org-parser.js';
+import { parseOrg, serializeOrg, serializeHeadingSubtree, findHeadingLineNumber, findHeadingAtLine } from './src/org-parser.js';
 import { parseBody } from './src/body-parser.js';
 import { detectWebmHasVideoTrack } from './src/webm-track-detect.js';
 import { findScrollingAncestor } from './src/scroll-util.js';
@@ -85,7 +85,8 @@ import {
   getAgendaFilesVar,
   parseAgendaFilesVar,
 } from './src/local-variables.js';
-import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath } from './src/refile.js';
+import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath, collectSubtreeHeadings } from './src/refile.js';
+import { saveNarrowState, loadNarrowState } from './src/narrow-state.js';
 import { clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, currentClockSessionMinutes, formatClockDuration, findHeadingWithRunningClock, findMostRecentlyClockedHeading } from './src/clock.js';
 import { computeClocktable, renderClocktable } from './src/clocktable.js';
 import { parseExtraMenu } from './src/extra-menu.js';
@@ -3392,6 +3393,11 @@ const GOD_MODE_ACTIONS = {
   'M-<left>': () => {
     if (keyboardFocusedHeading && promoteHeading(state.doc, keyboardFocusedHeading)) commitAndRender('Promoted heading');
   },
+  // Real org's own C-x n s / C-x n w (narrow-to-subtree / widen).
+  'C-x n s': () => {
+    if (keyboardFocusedHeading) narrowToHeading(keyboardFocusedHeading);
+  },
+  'C-x n w': () => widen(),
   // This app's own promote/demote already act on the whole subtree
   // (see heading-edit.js's own docs) -- there's no separate single-
   // heading-only version, so the "entire subtree" god-mode sequence
@@ -3822,6 +3828,7 @@ function snapshotCurrentSessionValues() {
     keyboardFocusedCellPos,
     pendingCursorPosition,
     currentContextHeading,
+    narrowedHeading,
     navigationBackStack,
     currentView,
     isDirty,
@@ -3854,6 +3861,7 @@ function applySessionSnapshotValues(snap) {
   keyboardFocusedCellPos = snap.keyboardFocusedCellPos;
   pendingCursorPosition = snap.pendingCursorPosition;
   currentContextHeading = snap.currentContextHeading;
+  narrowedHeading = snap.narrowedHeading;
   navigationBackStack = snap.navigationBackStack;
   currentView = snap.currentView;
   isDirty = snap.isDirty;
@@ -4213,6 +4221,36 @@ let godModeState = godModeInitialState();
 // file. Not updated by manual scrolling/tapping within the outline
 // itself; deliberately scoped to explicit "jump to X" navigation only.
 let currentContextHeading = null;
+// The single heading the outline is currently restricted to (More menu
+// "Narrow"/"Widen", or the god-mode C-x n s / C-x n w chords), or null
+// when not narrowed -- a display-only restriction on which rows
+// visibleRows includes, never on state.doc itself, so Save/Export/
+// Agenda/Search all keep operating on the whole document regardless
+// (see the visibleRows filter in the main render loop). Held as a
+// direct object reference and re-walked fresh via collectSubtreeHeadings
+// on every render, not a fixed snapshot computed once -- if the
+// narrowed heading itself moves, gets promoted/demoted, or is deleted
+// entirely, the narrowed view follows it (or, if deleted, this gets
+// reset to null and the view auto-widens) rather than showing something
+// stale. Persists within-session (part of snapshotCurrentSessionValues
+// below) and across an actual reload too (see saveNarrowStateForDocument/
+// restoreNarrowStateForDocument, using the exact same outline-path
+// durability scheme outlinePathForHeadingInDocument/
+// findHeadingByOutlinePath already established for search-result
+// navigation surviving a fresh re-parse).
+let narrowedHeading = null;
+// Which documentId maybeRestoreNarrowState() has already attempted a
+// reload-surviving restore for -- so the kv lookup only ever fires
+// once per document, not on every single render() call, and so a
+// slow, in-flight lookup for a document that's since been navigated
+// away from can't come back and clobber whatever's true now.
+let narrowStateRestoreAttemptedFor = null;
+// { startLine, lineCount } within serializeOrg(state.doc)'s own full
+// text, or null -- see this feature's own doc comment on the render()
+// text-view block above for the full reasoning on why this is fixed
+// once, before editing, rather than re-derived from the edited
+// fragment later.
+let narrowedTextModeRange = null;
 // A stack of previously-visited headings, pushed by navigateToHeading
 // itself before each jump -- lets a tapped link/footnote/search
 // result/agenda item be followed on a mobile device (where there's no
@@ -4735,7 +4773,19 @@ function renderHistoryPanel(target = historyRenderTarget) {
 function commitTextModeIfActive() {
   if (currentView !== 'text') return false;
   const textarea = document.getElementById('document-text-edit-input');
-  const newText = textarea ? textarea.value : serializeOrg(state.doc);
+  const rawValue = textarea ? textarea.value : narrowedHeading ? serializeHeadingSubtree(narrowedHeading) : serializeOrg(state.doc);
+
+  let newText;
+  const wasNarrowedTextMode = narrowedTextModeRange !== null;
+  if (narrowedTextModeRange) {
+    const fullLines = serializeOrg(state.doc).split('\n');
+    const before = fullLines.slice(0, narrowedTextModeRange.startLine);
+    const after = fullLines.slice(narrowedTextModeRange.startLine + narrowedTextModeRange.lineCount);
+    newText = [...before, ...rawValue.split('\n'), ...after].join('\n');
+  } else {
+    newText = rawValue;
+  }
+
   const newDoc = parseOrg(newText);
   const rawLocalVars = parseLocalVariables(newText);
   const startupConfig = resolveEffectiveStartupConfig(newDoc, rawLocalVars, globalVariables);
@@ -4746,6 +4796,12 @@ function commitTextModeIfActive() {
   state.startupConfig = startupConfig;
   state.localVariables = localVariables;
   syncAgendaFilesConfig();
+  if (wasNarrowedTextMode) {
+    narrowedHeading = findHeadingAtLine(newDoc, narrowedTextModeRange.startLine);
+    const outlinePath = narrowedHeading ? outlinePathForHeadingInDocument(state.documentId, narrowedHeading) : null;
+    saveNarrowState(kv, state.documentId, outlinePath).catch(() => {});
+  }
+  narrowedTextModeRange = null;
   // currentContextHeading DOES hold an actual heading object reference,
   // now stale -- a fresh parseOrg call always produces brand new
   // heading instances, even when re-parsing what is nominally "the
@@ -5671,6 +5727,58 @@ async function pasteSubtree(heading) {
 function extraMenuTargetHeading() {
   if (actionMenuFor && state.doc && findContainer(state.doc, actionMenuFor)) return actionMenuFor;
   return keyboardFocusedHeading;
+}
+
+/** Restricts the outline to `heading` and its own subtree -- replaces
+ *  any existing narrowing outright rather than stacking (matching
+ *  real Emacs's own actual C-x n s: narrowing again while already
+ *  narrowed just moves the restriction, there's no nested "un-narrow
+ *  one level at a time" concept at all). */
+function narrowToHeading(heading) {
+  narrowedHeading = heading;
+  render();
+  const outlinePath = outlinePathForHeadingInDocument(state.documentId, heading);
+  saveNarrowState(kv, state.documentId, outlinePath).catch(() => {});
+}
+
+/** Removes any narrowing restriction, showing the whole document
+ *  again -- real org's own C-x n w. */
+function widen() {
+  narrowedHeading = null;
+  render();
+  saveNarrowState(kv, state.documentId, null).catch(() => {});
+}
+
+/** Lazily restores narrowedHeading from its own reload-surviving
+ *  persistence (see narrow-state.js) -- called from render() itself
+ *  rather than hooked into any of the app's own several separate
+ *  "a document just opened" call sites (Save As, filesystem open,
+ *  GitHub/WebDAV open, startup restore), so there's no risk of
+ *  missing one. The documentId guard means the actual kv lookup only
+ *  ever fires once per document, not on every render() call; the two
+ *  checks after the await guard against two different races: the
+ *  person navigating to a different document while this was still in
+ *  flight, or narrowing/widening (by any means, including an
+ *  in-session tab-switch restore) before it resolved -- either way,
+ *  a slow, now-stale lookup must never override what's actually true
+ *  by the time it comes back. */
+function maybeRestoreNarrowState() {
+  if (!state.doc || !state.documentId) return;
+  if (narrowStateRestoreAttemptedFor === state.documentId) return;
+  narrowStateRestoreAttemptedFor = state.documentId;
+  const documentId = state.documentId;
+  loadNarrowState(kv, documentId)
+    .then((outlinePath) => {
+      if (!outlinePath) return;
+      if (state.documentId !== documentId) return;
+      if (narrowedHeading) return;
+      const heading = findHeadingByOutlinePath(state.doc, outlinePath);
+      if (heading) {
+        narrowedHeading = heading;
+        render();
+      }
+    })
+    .catch(() => {});
 }
 
 async function deleteHeadingWithConfirmation(heading) {
@@ -7551,6 +7659,8 @@ function render() {
     return;
   }
 
+  maybeRestoreNarrowState();
+
   if (currentView === 'text') {
     const existingTextarea = document.getElementById('document-text-edit-input');
     if (existingTextarea && existingTextarea.parentElement === outlineEl) {
@@ -7593,7 +7703,7 @@ function render() {
 
     const textarea = document.createElement('textarea');
     textarea.id = 'document-text-edit-input';
-    const fullText = serializeOrg(state.doc);
+    const fullText = narrowedHeading ? serializeHeadingSubtree(narrowedHeading) : serializeOrg(state.doc);
     textarea.value = fullText;
     textarea.style.width = '100%';
     textarea.style.boxSizing = 'border-box';
@@ -7604,6 +7714,27 @@ function render() {
     textarea.style.border = 'none';
     textarea.spellcheck = false;
     outlineEl.appendChild(textarea);
+
+    if (narrowedHeading) {
+      // The splice-back boundary: fixed here, once, BEFORE any editing
+      // happens -- not re-derived from the edited text later, which is
+      // exactly what makes this safe even if the person promotes the
+      // heading, retypes its own level, or adds a whole new heading
+      // inside the fragment while editing (see narrowedTextModeRange's
+      // own doc comment for the full reasoning).
+      narrowedTextModeRange = {
+        startLine: findHeadingLineNumber(state.doc, narrowedHeading),
+        lineCount: fullText.split('\n').length,
+      };
+      textarea.scrollTop = 0;
+      textarea.setSelectionRange(0, 0);
+      queueMicrotask(() => {
+        textarea.focus();
+        textarea.scrollTop = 0;
+      });
+      return;
+    }
+    narrowedTextModeRange = null;
 
     // Land near wherever the person last explicitly navigated to
     // (a search result, an internal link) rather than always resetting
@@ -7679,6 +7810,22 @@ function render() {
     ? rows.filter((r) => r.rowType === 'heading' || r.heading !== editingHeadingText)
     : rows;
 
+  // Narrowing restricts which rows are shown at all -- a display-only
+  // filter, never touching state.doc itself (see narrowedHeading's own
+  // doc comment). Re-validated fresh here, every render, rather than
+  // trusted blindly: if the narrowed heading was deleted since narrowing
+  // (directly, or as part of a deleted ancestor), this auto-widens
+  // instead of rendering nothing with no way back.
+  if (narrowedHeading && !findContainer(state.doc, narrowedHeading)) {
+    narrowedHeading = null;
+  }
+  const narrowedVisibleRows = narrowedHeading
+    ? (() => {
+        const subtreeHeadings = collectSubtreeHeadings(narrowedHeading);
+        return visibleRows.filter((r) => subtreeHeadings.has(r.rowType === 'heading' ? r.node : r.heading));
+      })()
+    : visibleRows;
+
   const todoSequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
 
   // Build the new row elements off-DOM (a DocumentFragment has no layout
@@ -7687,9 +7834,33 @@ function render() {
   // outlineEl and appendChild-ing each row directly onto an already
   // on-screen, already-laid-out element.
   const fragment = document.createDocumentFragment();
-  for (const row of visibleRows) fragment.appendChild(renderRow(row, todoSequence));
+  for (const row of narrowedVisibleRows) fragment.appendChild(renderRow(row, todoSequence));
   outlineEl.innerHTML = '';
   outlineEl.appendChild(fragment);
+
+  if (narrowedHeading) {
+    const banner = document.createElement('div');
+    banner.className = 'panel-row';
+    banner.style.background = 'var(--surface)';
+    banner.style.borderBottom = '0.5px solid var(--border)';
+    banner.style.padding = '6px 10px';
+    banner.style.fontSize = '13px';
+    banner.style.display = 'flex';
+    banner.style.alignItems = 'center';
+    banner.style.gap = '8px';
+
+    const label = document.createElement('span');
+    label.style.flex = '1';
+    label.style.minWidth = '0';
+    label.style.overflow = 'hidden';
+    label.style.textOverflow = 'ellipsis';
+    label.style.whiteSpace = 'nowrap';
+    label.textContent = `Narrowed to: ${narrowedHeading.title || '(untitled)'}`;
+    banner.appendChild(label);
+
+    banner.appendChild(menuButton('Widen', () => widen()));
+    outlineEl.insertBefore(banner, outlineEl.firstChild);
+  }
 
   if (editingCell) {
     queueMicrotask(() => {
@@ -13770,10 +13941,27 @@ function renderMoreMenuContent() {
     !state.doc
   );
 
+  const narrowTargetHeading = extraMenuTargetHeading();
+  const narrowBtnOption = aliasedMenuDivItem(
+    moreMenuAliases,
+    narrowedHeading ? 'Widen' : 'Narrow',
+    () => {
+      moreOpen = false;
+      renderMoreMenu();
+      if (narrowedHeading) {
+        widen();
+      } else if (narrowTargetHeading) {
+        narrowToHeading(narrowTargetHeading);
+      }
+    },
+    !narrowedHeading && !narrowTargetHeading
+  );
+
   appendMenuButtonsInOrder(morePanel, moreMenuAliases, [
     { label: 'Capture', btn: captureBtnOption },
     { label: 'Clocking', btn: clocksBtnOption },
     { label: 'Export', btn: exportBtnOption },
+    { label: narrowedHeading ? 'Widen' : 'Narrow', btn: narrowBtnOption },
     { label: 'Search', btn: searchBtnOption },
     { label: 'Settings', btn: settingsBtnOption },
   ]);

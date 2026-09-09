@@ -6,6 +6,23 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v308 — Narrowing (org-narrow-to-subtree / widen)
+More → Narrow restricts the outline to one heading and its own
+subtree — every sibling, ancestor, and unrelated heading disappears
+from view entirely. A persistent =Narrowed to: TITLE — Widen= banner
+stays visible the whole time; the same god-mode chords real org uses
+(=C-x n s= / =C-x n w=, typed as =x SPC n s= / =x SPC n w=) work too.
+This is a display restriction only — =state.doc= itself is never
+touched, so Save/Export/Agenda/Search all keep operating on the whole
+document regardless of what's narrowed. The narrowed heading is
+tracked live, so it follows a promote/demote/move rather than
+becoming stale, and auto-widens if it's deleted outright. Narrowing
+genuinely persists — across tab switches, and across actually closing
+and reopening the app. =View → Text=, while narrowed, shows and edits
+just the narrowed subtree's own raw text instead of the whole file,
+splicing the result back into its own exact original position on
+commit.
+
 * v307 — Discard symbol, full-screen History, %Z/%z
 Three changes. The table-cell discard button now shows =⎌= (the
 universal undo symbol) instead of =×=. History is now a full-screen
