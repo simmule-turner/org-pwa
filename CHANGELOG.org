@@ -6,6 +6,36 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v311 — Attach moves into the general editor; Narrow/Widen moves to the action menu
+📎 Attach is now a button inside the general editor (📋 Edit details)
+instead of its own separate action-menu item — its own behavior is
+completely unchanged, just relocated. Narrow/Widen moves the other
+way: out of the More menu and into the per-heading action menu,
+replacing Attach's own vacated slot there. Shows 🔽 Narrow on any
+heading that isn't currently narrowed to, or 🔼 Widen specifically on
+the one heading that is.
+
+* v310 — Modal popups: general editor, Archive, Attach
+The general editor (📋 Edit details — SCHEDULED/DEADLINE/plain
+timestamp, tags, priority, properties) is now a modal popup instead of
+an inline row-expansion panel, with a Cancel/Reset/OK button row
+replacing the old Save/Cancel pair. Reset genuinely restores every
+field back to its on-entry value without closing the editor.
+Archive's own confirmation prompt and Attach's own first-level choice
+are both modal popups now too, replacing their previous small,
+in-flow panel — their own buttons and behavior are otherwise
+unchanged.
+
+* v309 — Toolbar reorganization: Search, Help, and History move
+Search (=🔍=) and Help (=❓=) are now direct top-bar buttons instead
+of items buried in the More/View menus — Search sits next to the View
+menu button, Help right before it. History moved from the View menu
+into the More menu instead. The top bar itself is restructured to
+match: File and Save stay left-aligned, and everything else (=+=,
+=❓=, =🔍=, the View menu button, the More menu button) is now
+right-aligned as one group, replacing the old layout that centered
+the =+= button between two spacers.
+
 * v308 — Narrowing (org-narrow-to-subtree / widen)
 More → Narrow restricts the outline to one heading and its own
 subtree — every sibling, ancestor, and unrelated heading disappears

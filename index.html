@@ -112,7 +112,7 @@
     max-height: 92vh; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain;
   }
   header { position: sticky; top: 0; z-index: 1; background: var(--bg); display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); flex-wrap: nowrap; width: 100%; }
-  #topBarSpacerLeft, #topBarSpacerRight { flex: 1 1 auto; }
+  #topBarSpacer { flex: 1 1 auto; }
   /* Uniform icon buttons — item 1: larger, icon-based, consistent touch
      target size (44px meets the standard mobile minimum) instead of
      variable-width text labels. */
@@ -339,9 +339,10 @@
     <header>
       <button id="fileMenuBtn" class="icon-btn" aria-label="File">&#128193;</button>
       <button id="saveBtn" class="icon-btn" disabled aria-label="Save">&#128190;</button>
-      <div id="topBarSpacerLeft"></div>
+      <div id="topBarSpacer"></div>
       <button id="addBtn" class="icon-btn" disabled aria-label="Add heading">+</button>
-      <div id="topBarSpacerRight"></div>
+      <button id="helpBtn" class="icon-btn" aria-label="Help / Docs">&#10067;</button>
+      <button id="searchBtn" class="icon-btn" disabled aria-label="Search">&#128269;</button>
       <button id="viewMenuBtn" class="icon-btn" disabled aria-label="View">&#128065;</button>
       <button id="moreBtn" class="icon-btn" aria-label="More">&#8942;</button>
     </header>
@@ -353,9 +354,8 @@
     <!-- Kept in the DOM so their existing click handlers and disabled-state
          logic stay completely untouched -- the More panel's own buttons
          just call .click() on these rather than duplicating any logic.
-         addBtn is no longer part of this group -- it's a real, visible
-         toolbar button now (see the header block above). -->
-    <button id="searchBtn" disabled aria-label="Search" style="display: none;">&#128269;</button>
+         addBtn and searchBtn are no longer part of this group -- both are
+         real, visible toolbar buttons now (see the header block above). -->
     <button id="captureBtn" disabled aria-label="Capture" style="display: none;">&#128229;</button>
     <button id="settingsBtn" aria-label="Settings" style="display: none;">&#9881;</button>
   </div>

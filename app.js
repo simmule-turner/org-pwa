@@ -270,24 +270,6 @@ let pendingLogNote = null;
 // action menu -- renderRefilePanel shows the candidate-target list for
 // it. Only ever one at a time, matching pendingLogNote's own pattern.
 let pendingRefile = null;
-// Set to { heading } when Archive is tapped on a non-archived heading
-// -- always shown now (org-archive-confirm was removed, the person
-// wants confirmation to always happen, not something toggleable).
-// renderArchiveConfirmPanel shows the Refile/Cancel/OK choice for it,
-// reusing refilePanel's own DOM element (the two flows are mutually
-// exclusive, never both active at once, so sharing the element avoids
-// a whole extra panel just for this one three-button prompt).
-let pendingArchiveConfirm = null;
-// Set to { heading } when Attach is tapped -- the first-level choice
-// among the three org-attach-style sub-actions (Attach a file, Open,
-// Delete -- a fourth, Photo/Video, was removed: Attach a file's own
-// general picker already offers the camera as one of the OS picker
-// sheet's own options on both iOS and Android, making a separate,
-// camera-only entry redundant). renderAttachChoicePanel shows that
-// choice; reuses refilePanel's own DOM element, same pattern as the
-// three flows above (mutually exclusive with all of them -- none of
-// these panels are ever open at the same time as another).
-let pendingAttachChoice = null;
 // Set to { heading, filenames, action } when Open or Delete is tapped
 // on a heading with MORE than one attachment -- org-attach's own
 // actual behavior ("if there's more than one, prompt for a file name
@@ -296,7 +278,9 @@ let pendingAttachChoice = null;
 // knows which of the two to actually do once a filename is picked.
 // Skipped entirely (goes straight to the action) when there's exactly
 // one attachment -- nothing to disambiguate. Reuses refilePanel's own
-// DOM element too, same reasoning as pendingAttachChoice above.
+// DOM element, same pattern as pendingRefile above (this is a deeper
+// sub-flow reached only after the Attach modal's own Open/Delete
+// choice, not the modal itself).
 let pendingAttachFileList = null;
 // Set when the file has more than one parallel #+TODO: workflow and the
 // person has tapped the TODO action (either a blank heading or an
@@ -1443,78 +1427,17 @@ function renderClockOptionsFlow() {
 }
 
 function openAttachChoicePrompt(heading) {
-  pendingAttachChoice = { heading };
-  renderAttachChoicePanel();
-}
-
-/** The Attach action's own first-level choice -- org-attach's real
- *  menu structure (a)ttach / (o)pen / (d)elete, adapted to this app's
- *  own tap-a-button UI rather than press-a-letter, the same "one
- *  clear button per option" convention every other multi-choice panel
- *  in this app already uses. A separate (p)hoto option isn't offered
- *  here -- Attach's own general picker already surfaces the camera as
- *  one of the OS picker sheet's own options on both iOS and Android,
- *  so a dedicated camera-only entry would just be a second path to
- *  the same place. */
-function renderAttachChoicePanel() {
-  refilePanel.innerHTML = '';
-  if (!pendingAttachChoice) {
-    refilePanel.style.display = 'none';
-    return;
-  }
-  refilePanel.style.display = 'block';
-  const heading = pendingAttachChoice.heading;
-
-  const label = document.createElement('div');
-  label.style.fontSize = '13px';
-  label.style.marginBottom = '8px';
-  label.textContent = `Attachments for "${heading.title || '(untitled)'}"`;
-  refilePanel.appendChild(label);
-
-  const row = document.createElement('div');
-  row.className = 'panel-row';
-  row.appendChild(
-    menuButton('\ud83d\udcce Attach a file', async () => {
-      pendingAttachChoice = null;
-      renderAttachChoicePanel();
-      await attachFileToHeading(heading);
-    })
-  );
-  row.appendChild(
-    menuButton('\ud83c\udfa4 Record audio', () => {
-      pendingAttachChoice = null;
-      renderAttachChoicePanel();
-      openAudioRecordingPanel(heading);
-    })
-  );
-  row.appendChild(
-    menuButton('\ud83d\udcc2 Open', () => {
-      pendingAttachChoice = null;
-      renderAttachChoicePanel();
-      startAttachmentPickFlow(heading, 'open');
-    })
-  );
-  row.appendChild(
-    menuButton('\ud83d\udcbe Save', () => {
-      pendingAttachChoice = null;
-      renderAttachChoicePanel();
-      startAttachmentPickFlow(heading, 'save');
-    })
-  );
-  row.appendChild(
-    menuButton('\ud83d\uddd1\ufe0f Delete', () => {
-      pendingAttachChoice = null;
-      renderAttachChoicePanel();
-      startAttachmentPickFlow(heading, 'delete');
-    })
-  );
-  row.appendChild(
-    menuButton('Cancel', () => {
-      pendingAttachChoice = null;
-      renderAttachChoicePanel();
-    })
-  );
-  refilePanel.appendChild(row);
+  openButtonChoiceModal({
+    label: `Attachments for "${heading.title || '(untitled)'}"`,
+    buttons: [
+      { text: '\ud83d\udcce Attach a file', onClick: () => attachFileToHeading(heading) },
+      { text: '\ud83c\udfa4 Record audio', onClick: () => openAudioRecordingPanel(heading) },
+      { text: '\ud83d\udcc2 Open', onClick: () => startAttachmentPickFlow(heading, 'open') },
+      { text: '\ud83d\udcbe Save', onClick: () => startAttachmentPickFlow(heading, 'save') },
+      { text: '\ud83d\uddd1\ufe0f Delete', onClick: () => startAttachmentPickFlow(heading, 'delete') },
+      { text: 'Cancel', onClick: () => {} },
+    ],
+  });
 }
 
 /** Shared entry point for Open and Delete: enumerates `heading`'s own
@@ -2486,49 +2409,14 @@ function getArchiveDestinationLabel(heading) {
  *  this out of my active outline," which Refile serves just as well
  *  for a destination that isn't the archive file specifically. */
 function openArchiveConfirmPrompt(heading) {
-  pendingArchiveConfirm = { heading };
-  renderArchiveConfirmPanel();
-}
-
-function renderArchiveConfirmPanel() {
-  refilePanel.innerHTML = '';
-  if (!pendingArchiveConfirm) {
-    refilePanel.style.display = 'none';
-    return;
-  }
-  refilePanel.style.display = 'block';
-
-  const label = document.createElement('div');
-  label.style.fontSize = '13px';
-  label.style.marginBottom = '8px';
-  label.textContent = `Archive "${pendingArchiveConfirm.heading.title || '(untitled)'}" to ${getArchiveDestinationLabel(pendingArchiveConfirm.heading)}?`;
-  refilePanel.appendChild(label);
-
-  const row = document.createElement('div');
-  row.className = 'panel-row';
-  row.appendChild(
-    menuButton('Refile\u2026', async () => {
-      const heading = pendingArchiveConfirm.heading;
-      pendingArchiveConfirm = null;
-      renderArchiveConfirmPanel();
-      await openRefilePicker(heading);
-    })
-  );
-  row.appendChild(
-    menuButton('Cancel', () => {
-      pendingArchiveConfirm = null;
-      renderArchiveConfirmPanel();
-    })
-  );
-  row.appendChild(
-    menuButton('OK', async () => {
-      const heading = pendingArchiveConfirm.heading;
-      pendingArchiveConfirm = null;
-      renderArchiveConfirmPanel();
-      await archiveHeadingToLocation(heading);
-    })
-  );
-  refilePanel.appendChild(row);
+  openButtonChoiceModal({
+    label: `Archive "${heading.title || '(untitled)'}" to ${getArchiveDestinationLabel(heading)}?`,
+    buttons: [
+      { text: 'Refile\u2026', onClick: () => openRefilePicker(heading) },
+      { text: 'Cancel', onClick: () => {} },
+      { text: 'OK', onClick: () => archiveHeadingToLocation(heading) },
+    ],
+  });
 }
 
 async function archiveHeadingToLocation(heading) {
@@ -2830,6 +2718,7 @@ const viewMenuPanel = document.getElementById('viewMenuPanel');
 const fileMenuBtn = document.getElementById('fileMenuBtn');
 const fileMenuPanel = document.getElementById('fileMenuPanel');
 const settingsBtn = document.getElementById('settingsBtn');
+const helpBtn = document.getElementById('helpBtn');
 const searchBtn = document.getElementById('searchBtn');
 const searchPanel = document.getElementById('searchPanel');
 const captureBtn = document.getElementById('captureBtn');
@@ -3449,25 +3338,25 @@ const GOD_MODE_ACTIONS = {
   'C-c .': () => {
     if (keyboardFocusedHeading) {
       editingGeneral = keyboardFocusedHeading;
-      render();
+      openGeneralEditor(keyboardFocusedHeading);
     }
   },
   'C-c !': () => {
     if (keyboardFocusedHeading) {
       editingGeneral = keyboardFocusedHeading;
-      render();
+      openGeneralEditor(keyboardFocusedHeading);
     }
   },
   'C-c C-d': () => {
     if (keyboardFocusedHeading) {
       editingGeneral = keyboardFocusedHeading;
-      render();
+      openGeneralEditor(keyboardFocusedHeading);
     }
   },
   'C-c C-s': () => {
     if (keyboardFocusedHeading) {
       editingGeneral = keyboardFocusedHeading;
-      render();
+      openGeneralEditor(keyboardFocusedHeading);
     }
   },
 
@@ -6380,6 +6269,156 @@ function buildPropertiesFieldGroup(heading) {
   };
 }
 
+/** The combined SCHEDULED/DEADLINE/plain-timestamp, tags, priority, and
+ *  properties editor -- a modal popup with Cancel/Reset/OK, matching
+ *  every other multi-field editor in this app. None of the four
+ *  buildXxxFieldGroup functions below mutate `heading` at all until
+ *  their own getXxx() is explicitly read (see each one's own doc
+ *  comment) -- Reset exploits this directly: it just re-runs all four
+ *  builders again against the same, still-untouched heading and swaps
+ *  the fields container's contents, genuinely restoring the on-entry
+ *  values without needing a dedicated reset method built into any of
+ *  these four separate, already-complex widgets. */
+function openGeneralEditor(heading) {
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.inset = '0';
+  overlay.style.background = 'rgba(0,0,0,0.6)';
+  overlay.style.zIndex = '10000';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.padding = '16px';
+  overlay.style.boxSizing = 'border-box';
+  overlay.style.overflow = 'hidden';
+
+  const modal = document.createElement('div');
+  modal.className = 'panel';
+  modal.style.background = 'var(--bg)';
+  modal.style.color = 'var(--fg)';
+  modal.style.border = '1px solid var(--border-strong)';
+  modal.style.borderRadius = '10px';
+  modal.style.padding = '18px';
+  modal.style.width = '100%';
+  modal.style.maxWidth = '420px';
+  modal.style.maxHeight = '100%';
+  modal.style.overflowY = 'auto';
+  modal.style.overscrollBehavior = 'contain';
+  modal.style.boxSizing = 'border-box';
+  overlay.appendChild(modal);
+
+  const titleEl = document.createElement('div');
+  titleEl.textContent = 'Edit heading details';
+  titleEl.style.fontWeight = '700';
+  titleEl.style.fontSize = '15px';
+  titleEl.style.marginBottom = '14px';
+  modal.appendChild(titleEl);
+
+  const fieldsContainer = document.createElement('div');
+  modal.appendChild(fieldsContainer);
+
+  let scheduledGroup, deadlineGroup, plainGroup, tagsGroup, priorityGroup, propsGroup;
+  function buildFields() {
+    fieldsContainer.innerHTML = '';
+    scheduledGroup = buildTimestampFieldGroup('SCHEDULED', heading.planning.scheduled);
+    deadlineGroup = buildTimestampFieldGroup('DEADLINE', heading.planning.deadline);
+    plainGroup = buildTimestampFieldGroup('Plain timestamp (not scheduled/deadline)', getPlainTimestampInTitle(heading));
+    tagsGroup = buildTagsFieldGroup(heading);
+    priorityGroup = buildPriorityFieldGroup(heading);
+    propsGroup = buildPropertiesFieldGroup(heading);
+    fieldsContainer.appendChild(scheduledGroup.container);
+    fieldsContainer.appendChild(deadlineGroup.container);
+    fieldsContainer.appendChild(plainGroup.container);
+    fieldsContainer.appendChild(tagsGroup.container);
+    fieldsContainer.appendChild(priorityGroup.container);
+    fieldsContainer.appendChild(propsGroup.container);
+  }
+  buildFields();
+
+  const stopTrackingViewport = keepOverlayInVisibleViewport(overlay);
+  const unlockScroll = lockBackgroundScroll(overlay);
+
+  function close() {
+    stopTrackingViewport();
+    unlockScroll();
+    document.body.removeChild(overlay);
+    editingGeneral = null;
+  }
+
+  const addTableRow = document.createElement('div');
+  addTableRow.style.display = 'flex';
+  addTableRow.style.flexWrap = 'wrap';
+  addTableRow.style.gap = '8px';
+  addTableRow.style.marginBottom = '10px';
+  const existingTable = lastTableInBody(heading);
+  addTableRow.appendChild(
+    tableActionButton('\u25a6 Add table', () => {
+      close();
+      withKeyboardFocusPreserved(heading, () => insertTable(heading, {}));
+      commitAndRender('Added table');
+    })
+  );
+  addTableRow.appendChild(
+    tableActionButton(
+      '\ud83d\uddd1\ufe0f Delete table',
+      async () => {
+        const table = lastTableInBody(heading);
+        if (!table) return; // shouldn't happen -- disabled when there's nothing to delete -- but never act on nothing
+        if (!(await confirmDialog("Delete this table? This can\u2019t be undone."))) return;
+        close();
+        if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.rowType === 'table' && keyboardFocusedBodyRow.node === table) {
+          keyboardFocusedBodyRow = null;
+          keyboardFocusedCellPos = null;
+        }
+        deleteTable(heading, table);
+        commitAndRender('Deleted table');
+      },
+      !existingTable
+    )
+  );
+  addTableRow.appendChild(
+    tableActionButton('\ud83d\udcce Attach', () => {
+      close();
+      openAttachChoicePrompt(heading);
+    })
+  );
+  modal.appendChild(addTableRow);
+
+  const btnRow = document.createElement('div');
+  btnRow.style.display = 'flex';
+  btnRow.style.justifyContent = 'flex-end';
+  btnRow.style.gap = '8px';
+  btnRow.style.marginTop = '4px';
+  modal.appendChild(btnRow);
+
+  btnRow.appendChild(menuButton('Cancel', () => close()));
+  btnRow.appendChild(
+    menuButton('Reset', () => {
+      buildFields();
+    })
+  );
+  btnRow.appendChild(
+    menuButton('OK', () => {
+      close();
+      heading.planning = {
+        scheduled: scheduledGroup.getRawValue(),
+        deadline: deadlineGroup.getRawValue(),
+        closed: heading.planning.closed,
+      };
+      setPlainTimestampInTitle(heading, plainGroup.getRawValue());
+      setHeadingTags(heading, tagsGroup.getTags());
+      setPriority(heading, priorityGroup.getPriority());
+      const { properties, propertyOrder } = propsGroup.getProperties();
+      heading.properties = properties;
+      heading.propertyOrder = propertyOrder;
+      commitAndRender('Edited heading details');
+    })
+  );
+
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
 function renderActionMenu(actions, columns = 5) {
   const menu = document.createElement('div');
   menu.style.display = 'grid';
@@ -6575,8 +6614,9 @@ function renderRow(row, todoSequence) {
               label: 'Edit details (scheduled/deadline, tags, priority, properties)',
               onClick: () => {
                 actionMenuFor = null;
-                editingGeneral = row.node;
                 render();
+                editingGeneral = row.node;
+                openGeneralEditor(row.node);
               },
             },
             {
@@ -6634,12 +6674,16 @@ function renderRow(row, todoSequence) {
               },
             },
             {
-              icon: '\ud83d\udcce',
-              label: 'Attach',
+              icon: narrowedHeading === row.node ? '\ud83d\udd3c' : '\ud83d\udd3d',
+              label: narrowedHeading === row.node ? 'Widen' : 'Narrow',
               onClick: () => {
                 actionMenuFor = null;
                 render();
-                openAttachChoicePrompt(row.node);
+                if (narrowedHeading === row.node) {
+                  widen();
+                } else {
+                  narrowToHeading(row.node);
+                }
               },
             },
             {
@@ -6685,92 +6729,6 @@ function renderRow(row, todoSequence) {
     }
 
     let generalEditorEl = null;
-    if (editingGeneral === row.node) {
-      generalEditorEl = document.createElement('div');
-      generalEditorEl.style.padding = '8px 10px 10px 40px';
-      generalEditorEl.style.boxSizing = 'border-box';
-      generalEditorEl.style.width = '100%';
-      generalEditorEl.style.maxWidth = '100%';
-
-      const scheduledGroup = buildTimestampFieldGroup('SCHEDULED', row.node.planning.scheduled);
-      const deadlineGroup = buildTimestampFieldGroup('DEADLINE', row.node.planning.deadline);
-      const plainGroup = buildTimestampFieldGroup(
-        'Plain timestamp (not scheduled/deadline)',
-        getPlainTimestampInTitle(row.node)
-      );
-      const tagsGroup = buildTagsFieldGroup(row.node);
-      const priorityGroup = buildPriorityFieldGroup(row.node);
-      const propsGroup = buildPropertiesFieldGroup(row.node);
-      generalEditorEl.appendChild(scheduledGroup.container);
-      generalEditorEl.appendChild(deadlineGroup.container);
-      generalEditorEl.appendChild(plainGroup.container);
-      generalEditorEl.appendChild(tagsGroup.container);
-      generalEditorEl.appendChild(priorityGroup.container);
-      generalEditorEl.appendChild(propsGroup.container);
-
-      const addTableRow = document.createElement('div');
-      addTableRow.style.display = 'flex';
-      addTableRow.style.gap = '8px';
-      addTableRow.style.marginBottom = '10px';
-      const existingTable = lastTableInBody(row.node);
-      addTableRow.appendChild(
-        tableActionButton('\u25a6 Add table', () => {
-          const heading = editingGeneral;
-          editingGeneral = null;
-          withKeyboardFocusPreserved(heading, () => insertTable(heading, {}));
-          commitAndRender('Added table');
-        })
-      );
-      addTableRow.appendChild(
-        tableActionButton(
-          '\ud83d\uddd1\ufe0f Delete table',
-          async () => {
-            const heading = editingGeneral;
-            const table = lastTableInBody(heading);
-            if (!table) return; // shouldn't happen -- disabled when there's nothing to delete -- but never act on nothing
-            if (!(await confirmDialog("Delete this table? This can\u2019t be undone."))) return;
-            editingGeneral = null;
-            if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.rowType === 'table' && keyboardFocusedBodyRow.node === table) {
-              keyboardFocusedBodyRow = null;
-              keyboardFocusedCellPos = null;
-            }
-            deleteTable(heading, table);
-            commitAndRender('Deleted table');
-          },
-          !existingTable
-        )
-      );
-      generalEditorEl.appendChild(addTableRow);
-
-      const btnRow = document.createElement('div');
-      btnRow.style.display = 'flex';
-      btnRow.style.gap = '10px';
-      btnRow.appendChild(
-        wizardButton('Save', () => {
-          const heading = editingGeneral;
-          editingGeneral = null;
-          heading.planning = {
-            scheduled: scheduledGroup.getRawValue(),
-            deadline: deadlineGroup.getRawValue(),
-            closed: heading.planning.closed,
-          };
-          setPlainTimestampInTitle(heading, plainGroup.getRawValue());
-          setHeadingTags(heading, tagsGroup.getTags());
-          setPriority(heading, priorityGroup.getPriority());
-          const { properties, propertyOrder } = propsGroup.getProperties();
-          heading.properties = properties;
-          heading.propertyOrder = propertyOrder;
-          commitAndRender('Edited heading details');
-        })
-      );
-      btnRow.appendChild(
-        wizardButton('Cancel', () => {
-          editingGeneral = null;
-          render();
-        })
-      );
-      generalEditorEl.appendChild(btnRow);
-    }
 
     let propertiesDisplayEl = null;
     if (!row.node.drawersHidden && row.node.propertyOrder.length > 0 && editingGeneral !== row.node) {
@@ -9423,37 +9381,8 @@ function renderViewMenuContent() {
     viewSwitchButtons[label] = btn;
   }
 
-  const historyBtn = aliasedMenuDivItem(
-    viewMenuAliases,
-    'History',
-    () => {
-      closeAllOverlayPanels();
-      historyOpen = true;
-      if (isWideLayout()) {
-        render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
-      } else {
-        renderHistoryPanel(outlineEl); // narrow: replaces #outline directly, matching Settings' own treatment
-      }
-    },
-    !state.doc
-  );
-  if (historyBtn) historyBtn.setAttribute('aria-label', 'Undo history');
-
-  const helpBtn = aliasedMenuDivItem(viewMenuAliases, 'Help', () => {
-    closeAllOverlayPanels();
-    docsOpen = true;
-    if (isWideLayout()) {
-      render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
-    } else {
-      renderDocsView(outlineEl); // narrow: replaces #outline directly, exactly as before this feature existed
-    }
-  });
-  if (helpBtn) helpBtn.setAttribute('aria-label', 'Help / Docs');
-
   appendMenuButtonsInOrder(viewMenuPanel, viewMenuAliases, [
     { label: 'Agenda', btn: viewSwitchButtons['Agenda'] },
-    { label: 'Help', btn: helpBtn },
-    { label: 'History', btn: historyBtn },
     { label: 'Org', btn: viewSwitchButtons['Org'] },
     { label: 'Text', btn: viewSwitchButtons['Text'] },
     { label: 'TODO', btn: viewSwitchButtons['TODO'] },
@@ -10492,6 +10421,70 @@ function modalFieldRow(labelText, type, value, placeholder) {
  *  for every field, already trimmed for 'text' fields (a password
  *  field's own leading/trailing whitespace is preserved, since it
  *  might genuinely be part of the password). */
+function openButtonChoiceModal({ label, buttons }) {
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.inset = '0';
+  overlay.style.background = 'rgba(0,0,0,0.6)';
+  overlay.style.zIndex = '10000';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.padding = '16px';
+  overlay.style.boxSizing = 'border-box';
+  overlay.style.overflow = 'hidden';
+
+  const modal = document.createElement('div');
+  modal.className = 'panel';
+  modal.style.background = 'var(--bg)';
+  modal.style.color = 'var(--fg)';
+  modal.style.border = '1px solid var(--border-strong)';
+  modal.style.borderRadius = '10px';
+  modal.style.padding = '18px';
+  modal.style.width = '100%';
+  modal.style.maxWidth = '420px';
+  modal.style.maxHeight = '100%';
+  modal.style.overflowY = 'auto';
+  modal.style.overscrollBehavior = 'contain';
+  modal.style.boxSizing = 'border-box';
+  overlay.appendChild(modal);
+
+  const labelEl = document.createElement('div');
+  labelEl.style.fontSize = '13px';
+  labelEl.style.marginBottom = '10px';
+  labelEl.textContent = label;
+  modal.appendChild(labelEl);
+
+  const row = document.createElement('div');
+  row.className = 'panel-row';
+  modal.appendChild(row);
+
+  const stopTrackingViewport = keepOverlayInVisibleViewport(overlay);
+  const unlockScroll = lockBackgroundScroll(overlay);
+
+  function close() {
+    stopTrackingViewport();
+    unlockScroll();
+    document.body.removeChild(overlay);
+  }
+
+  for (const { text, onClick, disabled } of buttons) {
+    row.appendChild(
+      menuButton(
+        text,
+        async () => {
+          close();
+          await onClick();
+        },
+        disabled
+      )
+    );
+  }
+
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
 function openMultiFieldPopup({ label, fields, onSave }) {
   const overlay = document.createElement('div');
   overlay.style.position = 'fixed';
@@ -12900,6 +12893,21 @@ settingsBtn.addEventListener('click', async () => {
   }
 });
 
+helpBtn.addEventListener('click', () => {
+  const opening = !docsOpen;
+  closeAllOverlayPanels();
+  docsOpen = opening;
+  if (docsOpen) {
+    if (isWideLayout()) {
+      render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
+    } else {
+      renderDocsView(outlineEl); // narrow: replaces #outline directly, exactly as before this feature existed
+    }
+  } else {
+    render(); // restores whatever currentView was showing before Docs opened
+  }
+});
+
 // ---- Search UI -----------------------------------------------------------
 
 const SEARCH_TYPE_ICON = {
@@ -13908,11 +13916,22 @@ function renderMoreMenuContent() {
 
   const moreMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).more;
 
-  const searchBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Search', () => {
-    moreOpen = false;
-    renderMoreMenu();
-    searchBtn.click();
-  });
+  const historyBtnOption = aliasedMenuDivItem(
+    moreMenuAliases,
+    'History',
+    () => {
+      moreOpen = false;
+      renderMoreMenu();
+      historyOpen = true;
+      if (isWideLayout()) {
+        render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
+      } else {
+        renderHistoryPanel(outlineEl); // narrow: replaces #outline directly, matching Settings' own treatment
+      }
+    },
+    !state.doc
+  );
+  if (historyBtnOption) historyBtnOption.setAttribute('aria-label', 'Undo history');
 
   const captureBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Capture', () => {
     moreMenuStep = 'capture';
@@ -13941,28 +13960,11 @@ function renderMoreMenuContent() {
     !state.doc
   );
 
-  const narrowTargetHeading = extraMenuTargetHeading();
-  const narrowBtnOption = aliasedMenuDivItem(
-    moreMenuAliases,
-    narrowedHeading ? 'Widen' : 'Narrow',
-    () => {
-      moreOpen = false;
-      renderMoreMenu();
-      if (narrowedHeading) {
-        widen();
-      } else if (narrowTargetHeading) {
-        narrowToHeading(narrowTargetHeading);
-      }
-    },
-    !narrowedHeading && !narrowTargetHeading
-  );
-
   appendMenuButtonsInOrder(morePanel, moreMenuAliases, [
     { label: 'Capture', btn: captureBtnOption },
     { label: 'Clocking', btn: clocksBtnOption },
     { label: 'Export', btn: exportBtnOption },
-    { label: narrowedHeading ? 'Widen' : 'Narrow', btn: narrowBtnOption },
-    { label: 'Search', btn: searchBtnOption },
+    { label: 'History', btn: historyBtnOption },
     { label: 'Settings', btn: settingsBtnOption },
   ]);
 }
