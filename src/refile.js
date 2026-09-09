@@ -153,4 +153,4 @@ function findHeadingByOutlinePath(doc, outlinePath) {
   return found;
 }
 
-export { parseRefileTargets, resolveEntryFileIds, getRefileCandidates, findHeadingByOutlinePath };
+export { parseRefileTargets, resolveEntryFileIds, getRefileCandidates, findHeadingByOutlinePath, collectSubtreeHeadings };

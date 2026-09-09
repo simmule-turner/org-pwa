@@ -414,11 +414,47 @@ function findHeadingLineNumber(doc, targetHeading) {
   return -1;
 }
 
+/**
+ * The inverse of findHeadingLineNumber: given a 0-indexed line number
+ * (within serializeOrg(doc)'s own output), returns whichever heading's
+ * own "* Title" line starts exactly there, or null if no heading
+ * starts at that exact line. Needed specifically for narrowed
+ * text-mode's own splice-back commit, where a title-based lookup
+ * (findHeadingByOutlinePath) would incorrectly treat renaming or
+ * re-leveling the narrowed heading itself as "it's gone" -- this
+ * finds it by its own known position instead, which survives both.
+ */
+function findHeadingAtLine(doc, targetLine) {
+  let count = doc.keywords.length + (doc.bodyLines ? doc.bodyLines.length : 0);
+
+  function walk(node) {
+    if (count === targetLine) return node;
+    count += 1; // the heading's own "* Title" line
+    if (serializePlanningLine(node.planning)) count += 1;
+    if (node.propertyOrder && node.propertyOrder.length) {
+      count += 2 + node.propertyOrder.length; // :PROPERTIES: + one line per property + :END:
+    }
+    count += (node.bodyLines || []).length;
+    for (const child of node.children || []) {
+      const found = walk(child);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  for (const child of doc.children) {
+    const found = walk(child);
+    if (found) return found;
+  }
+  return null;
+}
+
 export {
   parseOrg,
   serializeOrg,
   serializeHeadingSubtree,
   findHeadingLineNumber,
+  findHeadingAtLine,
   DEFAULT_TODO_KEYWORDS,
   DEFAULT_DONE_KEYWORDS,
   parseTodoKeywordToken,
