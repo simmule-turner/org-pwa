@@ -6331,7 +6331,7 @@ function openGeneralEditor(heading) {
 
   const modal = document.createElement('div');
   modal.className = 'panel';
-  modal.style.background = 'var(--bg)';
+  modal.style.background = 'var(--modal-bg)';
   modal.style.color = 'var(--fg)';
   modal.style.border = '1px solid var(--border-strong)';
   modal.style.borderRadius = '10px';
@@ -8751,7 +8751,7 @@ function confirmDialog(message, { confirmLabel = 'Delete', cancelLabel = 'Cancel
 
     const modal = document.createElement('div');
     modal.className = 'panel';
-    modal.style.background = 'var(--bg)';
+    modal.style.background = 'var(--modal-bg)';
     modal.style.color = 'var(--fg)';
     modal.style.border = '1px solid var(--border-strong)';
     modal.style.borderRadius = '10px';
@@ -10434,7 +10434,7 @@ function openTextFieldPopup({ label, value, defaultValue, onSave, onReset, onCan
 
   const modal = document.createElement('div');
   modal.className = 'panel'; // normal, touch-friendly button/input sizing (44px targets), matching the rest of this app
-  modal.style.background = 'var(--bg)'; // opaque -- var(--surface) is a barely-visible tint meant for layering over --bg, not a standalone solid background
+  modal.style.background = 'var(--modal-bg)'; // opaque -- var(--surface) is a barely-visible tint meant for layering over --bg, not a standalone solid background
   modal.style.color = 'var(--fg)';
   modal.style.border = '1px solid var(--border-strong)';
   modal.style.borderRadius = '10px';
@@ -10586,7 +10586,7 @@ function openButtonChoiceModal({ label, buttons }) {
 
   const modal = document.createElement('div');
   modal.className = 'panel';
-  modal.style.background = 'var(--bg)';
+  modal.style.background = 'var(--modal-bg)';
   modal.style.color = 'var(--fg)';
   modal.style.border = '1px solid var(--border-strong)';
   modal.style.borderRadius = '10px';
@@ -10650,7 +10650,7 @@ function openMultiFieldPopup({ label, fields, onSave }) {
 
   const modal = document.createElement('div');
   modal.className = 'panel'; // normal, touch-friendly button sizing (44px targets), matching the rest of this app
-  modal.style.background = 'var(--bg)'; // opaque -- var(--surface) is a barely-visible tint meant for layering over --bg, not a standalone solid background
+  modal.style.background = 'var(--modal-bg)'; // opaque -- var(--surface) is a barely-visible tint meant for layering over --bg, not a standalone solid background
   modal.style.color = 'var(--fg)';
   modal.style.border = '1px solid var(--border-strong)';
   modal.style.borderRadius = '10px';

@@ -6,6 +6,13 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v318 — Fix: low popup/dark-mode contrast
+Every modal and dropdown menu's own background was the exact same
+color as the page behind it in dark mode, leaving nothing but a faint
+border for separation. Popups now use a distinctly lighter background
+than the page in dark mode, so it's clearly visible as its own
+surface rather than blending into the backdrop. Light mode unchanged.
+
 * v317 — Fix: Archive > Refile (and other modals) completely unusable
 The previous release's own modal conversion (v316) broke Refile, the
 TODO workflow picker, the audio-recording panel, the calendar picker,

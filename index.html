@@ -13,6 +13,7 @@
     --border: #8883;
     --border-strong: #8886;
     --surface: #8881;
+    --modal-bg: var(--bg);
     --muted: #8888;
     --accent: #185fa5;
     --todo-bg: #f0997b55;
@@ -32,6 +33,7 @@
     --border: #ffffff22;
     --border-strong: #ffffff3a;
     --surface: #ffffff14;
+    --modal-bg: #26282e;
     --muted: #9aa0a6;
     --accent: #6fb2ff;
     --todo-bg: #ff8f5c40;
@@ -242,7 +244,7 @@
   .panel { border-bottom: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 13px; width: 100%; box-sizing: border-box; }
   .popup-menu {
     position: fixed; z-index: 51; border-radius: 10px; border: 1px solid var(--border-strong);
-    background: var(--bg); box-shadow: 0 4px 16px #0006; padding: 6px; box-sizing: border-box;
+    background: var(--modal-bg); box-shadow: 0 4px 16px #0006; padding: 6px; box-sizing: border-box;
     max-height: 70vh; overflow-y: auto; overscroll-behavior: contain;
     width: max-content; max-width: min(75vw, 420px);
   }
@@ -368,13 +370,13 @@
     <button id="settingsBtn" aria-label="Settings" style="display: none;">&#9881;</button>
   </div>
   <div id="capturePanel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
-    <div id="capturePanelBox" class="panel" style="background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 10px; padding: 18px; width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box;"></div>
+    <div id="capturePanelBox" class="panel" style="background: var(--modal-bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 10px; padding: 18px; width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box;"></div>
   </div>
   <div id="doneNotePanel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
-    <div id="doneNotePanelBox" class="panel" style="background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 10px; padding: 18px; width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box;"></div>
+    <div id="doneNotePanelBox" class="panel" style="background: var(--modal-bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 10px; padding: 18px; width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box;"></div>
   </div>
   <div id="refilePanel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
-    <div id="refilePanelBox" class="panel" style="background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 10px; padding: 18px; width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box;"></div>
+    <div id="refilePanelBox" class="panel" style="background: var(--modal-bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 10px; padding: 18px; width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box;"></div>
   </div>
   <div
     id="fileMenuPanel"
