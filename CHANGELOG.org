@@ -6,6 +6,16 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v316 — Refile and other panels are proper modals now
+Refile, the TODO workflow picker, the multi-attachment file picker,
+the audio-recording panel, the calendar date picker, the capture-
+template form, and the mark-as-DONE note prompt all used to be thin,
+edge-to-edge inline panels — hard to distinguish from the background,
+especially in dark mode. All seven are now bordered, centered modal
+popups with a dark backdrop, matching the general editor's own
+established look exactly, so it's immediately clear there's something
+to act on.
+
 * v315 — Fix: tab-switch data loss, and banners hidden while scrolled
 Two fixes. First, a severe, confirmed data-loss bug: switching tabs
 could show the wrong tab's own content in Text view (whichever tab's

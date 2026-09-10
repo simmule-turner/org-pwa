@@ -415,12 +415,12 @@ function applyTodoTransition(heading, performChange) {
  *  declined note prompt, and this app's own established convention
  *  from before this was generalized beyond just DONE. */
 function renderLogNotePrompt() {
-  doneNotePanel.innerHTML = '';
+  doneNotePanelBox.innerHTML = '';
   if (!pendingLogNote) {
-    doneNotePanel.style.display = 'none';
+    hideModalOverlay(doneNotePanel);
     return;
   }
-  doneNotePanel.style.display = 'block';
+  showModalOverlay(doneNotePanel);
 
   const { heading, fromTodo, toTodo, timestamp } = pendingLogNote;
 
@@ -429,7 +429,7 @@ function renderLogNotePrompt() {
   label.style.opacity = '0.7';
   label.style.marginBottom = '6px';
   label.textContent = `Note for marking "${heading.title || '(untitled)'}" as ${toTodo}:`;
-  doneNotePanel.appendChild(label);
+  doneNotePanelBox.appendChild(label);
 
   const textarea = document.createElement('textarea');
   textarea.id = 'done-note-input';
@@ -437,7 +437,7 @@ function renderLogNotePrompt() {
   textarea.style.width = '100%';
   textarea.style.boxSizing = 'border-box';
   textarea.style.font = 'inherit';
-  doneNotePanel.appendChild(textarea);
+  doneNotePanelBox.appendChild(textarea);
   autoGrowTextarea(textarea);
 
   const row = document.createElement('div');
@@ -459,7 +459,7 @@ function renderLogNotePrompt() {
       renderLogNotePrompt();
     })
   );
-  doneNotePanel.appendChild(row);
+  doneNotePanelBox.appendChild(row);
 
   requestAnimationFrame(() => textarea.focus());
 }
@@ -908,19 +908,19 @@ async function openRefilePicker(heading) {
 }
 
 function renderRefilePanel() {
-  refilePanel.innerHTML = '';
+  refilePanelBox.innerHTML = '';
   if (!pendingRefile) {
-    refilePanel.style.display = 'none';
+    hideModalOverlay(refilePanel);
     return;
   }
-  refilePanel.style.display = 'block';
+  showModalOverlay(refilePanel);
 
   const label = document.createElement('div');
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '6px';
   label.textContent = `Refile "${pendingRefile.heading.title || '(untitled)'}" to:`;
-  refilePanel.appendChild(label);
+  refilePanelBox.appendChild(label);
 
   if (pendingRefile.loading) {
     const loading = document.createElement('div');
@@ -928,7 +928,7 @@ function renderRefilePanel() {
     loading.style.opacity = '0.6';
     loading.style.padding = '8px 0';
     loading.textContent = 'Loading targets\u2026';
-    refilePanel.appendChild(loading);
+    refilePanelBox.appendChild(loading);
     return;
   }
 
@@ -962,7 +962,7 @@ function renderRefilePanel() {
     row.onclick = () => performRefile(pendingRefile.heading, candidate.documentId, candidate.outlinePath);
     list.appendChild(row);
   }
-  refilePanel.appendChild(list);
+  refilePanelBox.appendChild(list);
 
   const backRow = document.createElement('div');
   backRow.className = 'panel-row';
@@ -973,7 +973,7 @@ function renderRefilePanel() {
       renderRefilePanel();
     })
   );
-  refilePanel.appendChild(backRow);
+  refilePanelBox.appendChild(backRow);
 }
 
 /**
@@ -1470,19 +1470,19 @@ function startAttachmentPickFlow(heading, action) {
  *  it performs whichever action (`open`/`delete`) this flow started
  *  as. */
 function renderAttachFileListPanel() {
-  refilePanel.innerHTML = '';
+  refilePanelBox.innerHTML = '';
   if (!pendingAttachFileList) {
-    refilePanel.style.display = 'none';
+    hideModalOverlay(refilePanel);
     return;
   }
-  refilePanel.style.display = 'block';
+  showModalOverlay(refilePanel);
   const { heading, filenames, action } = pendingAttachFileList;
 
   const label = document.createElement('div');
   label.style.fontSize = '13px';
   label.style.marginBottom = '8px';
   label.textContent = `${action === 'delete' ? 'Delete' : action === 'save' ? 'Save' : 'Open'} which attachment?`;
-  refilePanel.appendChild(label);
+  refilePanelBox.appendChild(label);
 
   const row = document.createElement('div');
   row.className = 'panel-row';
@@ -1501,7 +1501,7 @@ function renderAttachFileListPanel() {
       renderAttachFileListPanel();
     })
   );
-  refilePanel.appendChild(row);
+  refilePanelBox.appendChild(row);
 }
 
 /** Dispatches to the actual open/delete implementation once a single
@@ -1580,12 +1580,12 @@ function chooseTodoWorkflowState(heading, keyword, seq) {
  *  global keydown listener) -- but the button always works regardless
  *  of whether a fast-key exists at all. */
 function renderTodoWorkflowPanel() {
-  refilePanel.innerHTML = '';
+  refilePanelBox.innerHTML = '';
   if (!pendingTodoWorkflowChoice) {
-    refilePanel.style.display = 'none';
+    hideModalOverlay(refilePanel);
     return;
   }
-  refilePanel.style.display = 'block';
+  showModalOverlay(refilePanel);
   const { heading, viaGodMode } = pendingTodoWorkflowChoice;
   const sequences = resolveTodoSequences(state.doc, GLOBAL_TODO_DEFAULT);
 
@@ -1593,7 +1593,7 @@ function renderTodoWorkflowPanel() {
   label.style.fontSize = '13px';
   label.style.marginBottom = '8px';
   label.textContent = 'This file has more than one TODO workflow \u2014 which state?';
-  refilePanel.appendChild(label);
+  refilePanelBox.appendChild(label);
 
   // Flattened across every sequence shown together -- a fast-access
   // key colliding between two DIFFERENT workflows is just as much a
@@ -1642,7 +1642,7 @@ function renderTodoWorkflowPanel() {
       btn.onclick = () => chooseTodoWorkflowState(heading, keyword, seq);
       row.appendChild(btn);
     }
-    refilePanel.appendChild(row);
+    refilePanelBox.appendChild(row);
   }
 
   const actionRow = document.createElement('div');
@@ -1663,7 +1663,7 @@ function renderTodoWorkflowPanel() {
       renderTodoWorkflowPanel();
     })
   );
-  refilePanel.appendChild(actionRow);
+  refilePanelBox.appendChild(actionRow);
 }
 
 /** org-xx-extra-menu-independent Attach sub-action -- opens the audio-
@@ -1700,19 +1700,19 @@ function openAudioRecordingPanel(heading) {
  *  <audio controls> playback of exactly what was just recorded,
  *  plus Save / Re-record / Cancel). */
 function renderAudioRecordingPanel() {
-  refilePanel.innerHTML = '';
+  refilePanelBox.innerHTML = '';
   if (!pendingAudioRecording) {
-    refilePanel.style.display = 'none';
+    hideModalOverlay(refilePanel);
     return;
   }
-  refilePanel.style.display = 'block';
+  showModalOverlay(refilePanel);
   const heading = pendingAudioRecording.heading;
 
   const label = document.createElement('div');
   label.style.fontSize = '13px';
   label.style.marginBottom = '8px';
   label.textContent = `Record audio for "${heading.title || '(untitled)'}"`;
-  refilePanel.appendChild(label);
+  refilePanelBox.appendChild(label);
 
   if (recordedBlobUrl) {
     // Review state -- listen back before committing to an upload.
@@ -1721,7 +1721,7 @@ function renderAudioRecordingPanel() {
     audio.src = recordedBlobUrl;
     audio.style.width = '100%';
     audio.style.marginBottom = '8px';
-    refilePanel.appendChild(audio);
+    refilePanelBox.appendChild(audio);
 
     const row = document.createElement('div');
     row.className = 'panel-row';
@@ -1741,7 +1741,7 @@ function renderAudioRecordingPanel() {
         discardAudioRecording();
       })
     );
-    refilePanel.appendChild(row);
+    refilePanelBox.appendChild(row);
     return;
   }
 
@@ -1757,7 +1757,7 @@ function renderAudioRecordingPanel() {
     timer.style.textAlign = 'center';
     timer.style.margin = '12px 0';
     timer.textContent = `\ud83d\udd34 ${mm}:${ss}`;
-    refilePanel.appendChild(timer);
+    refilePanelBox.appendChild(timer);
 
     const row = document.createElement('div');
     row.className = 'panel-row';
@@ -1771,7 +1771,7 @@ function renderAudioRecordingPanel() {
         discardAudioRecording();
       })
     );
-    refilePanel.appendChild(row);
+    refilePanelBox.appendChild(row);
     return;
   }
 
@@ -1788,7 +1788,7 @@ function renderAudioRecordingPanel() {
       discardAudioRecording();
     })
   );
-  refilePanel.appendChild(row);
+  refilePanelBox.appendChild(row);
 }
 
 /** Requests microphone access (a real, explicit browser permission
@@ -2209,12 +2209,12 @@ function openCalendarPanel() {
  *  there's no gating/fallback needed the way Attachments or cross-
  *  file Archive/Refile have. */
 function renderCalendarPanel() {
-  refilePanel.innerHTML = '';
+  refilePanelBox.innerHTML = '';
   if (!calendarOpen) {
-    refilePanel.style.display = 'none';
+    hideModalOverlay(refilePanel);
     return;
   }
-  refilePanel.style.display = 'block';
+  showModalOverlay(refilePanel);
 
   const today = new Date();
 
@@ -2263,7 +2263,7 @@ function renderCalendarPanel() {
       renderCalendarPanel();
     })
   );
-  refilePanel.appendChild(yearRow);
+  refilePanelBox.appendChild(yearRow);
 
   // Row 2: month navigation.
   const monthRow = document.createElement('div');
@@ -2287,7 +2287,7 @@ function renderCalendarPanel() {
       renderCalendarPanel();
     })
   );
-  refilePanel.appendChild(monthRow);
+  refilePanelBox.appendChild(monthRow);
 
   // Weekday header (Sunday-first, matching buildMonthGrid's own docs).
   const weekdayHeader = document.createElement('div');
@@ -2302,7 +2302,7 @@ function renderCalendarPanel() {
     cell.textContent = label;
     weekdayHeader.appendChild(cell);
   }
-  refilePanel.appendChild(weekdayHeader);
+  refilePanelBox.appendChild(weekdayHeader);
 
   // The day grid itself.
   const dayGrid = document.createElement('div');
@@ -2368,7 +2368,7 @@ function renderCalendarPanel() {
     };
     dayGrid.appendChild(cell);
   }
-  refilePanel.appendChild(dayGrid);
+  refilePanelBox.appendChild(dayGrid);
 
   // Row 3: Today jump / Close.
   const bottomRow = document.createElement('div');
@@ -2388,7 +2388,7 @@ function renderCalendarPanel() {
       renderCalendarPanel();
     })
   );
-  refilePanel.appendChild(bottomRow);
+  refilePanelBox.appendChild(bottomRow);
 }
 
 function getArchiveDestinationLabel(heading) {
@@ -2726,8 +2726,11 @@ const searchBtn = document.getElementById('searchBtn');
 const searchPanel = document.getElementById('searchPanel');
 const captureBtn = document.getElementById('captureBtn');
 const capturePanel = document.getElementById('capturePanel');
+const capturePanelBox = document.getElementById('capturePanelBox');
 const doneNotePanel = document.getElementById('doneNotePanel');
+const doneNotePanelBox = document.getElementById('doneNotePanelBox');
 const refilePanel = document.getElementById('refilePanel');
+const refilePanelBox = document.getElementById('refilePanelBox');
 const externalChangeBanner = document.getElementById('externalChangeBanner');
 const externalChangeText = document.getElementById('externalChangeText');
 const externalChangeReloadBtn = document.getElementById('externalChangeReloadBtn');
@@ -10350,6 +10353,37 @@ function keepOverlayInVisibleViewport(overlay) {
   };
 }
 
+// Shared show/hide for the three modal overlays that still work by
+// toggling a fixed, shared element's own display (refilePanel,
+// capturePanel, doneNotePanel) rather than being built fresh by a
+// single open()/close() pair the way openGeneralEditor/
+// openButtonChoiceModal are -- each of their own several render
+// functions calls these instead of touching style.display directly,
+// so the viewport-tracking/background-scroll-lock setup (the same
+// mechanism every other modal in this app already uses) happens
+// exactly once per "session" regardless of which or how many of
+// those render functions actually do the showing.
+const modalOverlayCleanups = new Map();
+function showModalOverlay(overlayEl) {
+  overlayEl.style.display = 'flex';
+  if (!modalOverlayCleanups.has(overlayEl)) {
+    const stopTrackingViewport = keepOverlayInVisibleViewport(overlayEl);
+    const unlockScroll = lockBackgroundScroll(overlayEl);
+    modalOverlayCleanups.set(overlayEl, () => {
+      stopTrackingViewport();
+      unlockScroll();
+    });
+  }
+}
+function hideModalOverlay(overlayEl) {
+  overlayEl.style.display = 'none';
+  const cleanup = modalOverlayCleanups.get(overlayEl);
+  if (cleanup) {
+    cleanup();
+    modalOverlayCleanups.delete(overlayEl);
+  }
+}
+
 /** The heading action menu's own "Edit text" entry point -- editingHeadingText
  *  is set by the caller (before render(), so that same pass hides this
  *  heading's own body-content rows underneath) and cleared here on both
@@ -13497,14 +13531,14 @@ async function renderCaptureFlow() {
 }
 
 async function renderCapturePanel() {
-  capturePanel.innerHTML = '';
+  capturePanelBox.innerHTML = '';
   if (!captureOpen) {
-    capturePanel.style.display = 'none';
+    hideModalOverlay(capturePanel);
     capturePromptTemplate = null;
     currentCaptureTemplates = [];
     return;
   }
-  capturePanel.style.display = 'block';
+  showModalOverlay(capturePanel);
 
   if (capturePromptTemplate) {
     renderCapturePromptForm();
@@ -13516,7 +13550,7 @@ async function renderCapturePanel() {
   heading.style.opacity = '0.65';
   heading.style.marginBottom = '8px';
   heading.textContent = 'Capture \u2014 pick a template';
-  capturePanel.appendChild(heading);
+  capturePanelBox.appendChild(heading);
 
   const templates = await getCaptureTemplates(kv);
   if (!captureOpen) return; // panel was closed again before this resolved
@@ -13527,7 +13561,7 @@ async function renderCapturePanel() {
     empty.style.opacity = '0.6';
     empty.style.fontSize = '13px';
     empty.textContent = 'No capture templates configured yet — add some in Settings.';
-    capturePanel.appendChild(empty);
+    capturePanelBox.appendChild(empty);
     return;
   }
 
@@ -13570,7 +13604,7 @@ async function renderCapturePanel() {
     btn.onclick = () => openCapturePrompt(template);
     grid.appendChild(btn);
   }
-  capturePanel.appendChild(grid);
+  capturePanelBox.appendChild(grid);
 }
 
 /** Opens the given template: straight to capturing it if it has no
@@ -13601,14 +13635,14 @@ function renderCapturePromptForm() {
   heading.style.opacity = '0.65';
   heading.style.marginBottom = '8px';
   heading.textContent = template.key + ' \u2014 ' + template.description;
-  capturePanel.appendChild(heading);
+  capturePanelBox.appendChild(heading);
 
   const previewLabel = document.createElement('div');
   previewLabel.style.fontSize = '11px';
   previewLabel.style.opacity = '0.6';
   previewLabel.style.marginBottom = '2px';
   previewLabel.textContent = 'Preview:';
-  capturePanel.appendChild(previewLabel);
+  capturePanelBox.appendChild(previewLabel);
 
   const preview = document.createElement('div');
   preview.style.fontFamily = 'ui-monospace, monospace';
@@ -13620,7 +13654,7 @@ function renderCapturePromptForm() {
   preview.style.borderRadius = '6px';
   preview.style.padding = '8px 10px';
   preview.style.marginBottom = '12px';
-  capturePanel.appendChild(preview);
+  capturePanelBox.appendChild(preview);
 
   function updatePreview() {
     const { text } = expandTemplate(template.template, { now: previewNow, promptAnswers: capturePromptValues });
@@ -13666,7 +13700,7 @@ function renderCapturePromptForm() {
       field.appendChild(hint);
     }
 
-    capturePanel.appendChild(field);
+    capturePanelBox.appendChild(field);
     if (i === 0) input.focus();
   });
 
@@ -13697,7 +13731,7 @@ function renderCapturePromptForm() {
       runCaptureWithAnswers(template, answers);
     })
   );
-  capturePanel.appendChild(row);
+  capturePanelBox.appendChild(row);
 }
 
 /**
