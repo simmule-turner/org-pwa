@@ -6,6 +6,20 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v317 — Fix: Archive > Refile (and other modals) completely unusable
+The previous release's own modal conversion (v316) broke Refile, the
+TODO workflow picker, the audio-recording panel, the calendar picker,
+and Capture entirely — buttons were visible but not actually
+clickable, with no way to interact with or exit the popup at all.
+Root cause: these modals were nested inside the top bar, which is
+harmless for a small inline panel but clips a full-screen overlay's
+own hit-testing once it's converted to one. Moved all three out to be
+direct children of the page instead. Also added a Close/Cancel button
+to two states (the capture-template list, and refile's own "loading
+targets" step) that never had one at all, even before last release —
+harmless as a small inline panel, but a real dead end once it became
+a full-screen overlay.
+
 * v316 — Refile and other panels are proper modals now
 Refile, the TODO workflow picker, the multi-attachment file picker,
 the audio-recording panel, the calendar date picker, the capture-

@@ -929,6 +929,15 @@ function renderRefilePanel() {
     loading.style.padding = '8px 0';
     loading.textContent = 'Loading targets\u2026';
     refilePanelBox.appendChild(loading);
+    const cancelRow = document.createElement('div');
+    cancelRow.className = 'panel-row';
+    cancelRow.appendChild(
+      menuButton('Cancel', () => {
+        pendingRefile = null;
+        renderRefilePanel();
+      })
+    );
+    refilePanelBox.appendChild(cancelRow);
     return;
   }
 
@@ -13560,8 +13569,18 @@ async function renderCapturePanel() {
     const empty = document.createElement('div');
     empty.style.opacity = '0.6';
     empty.style.fontSize = '13px';
+    empty.style.marginBottom = '8px';
     empty.textContent = 'No capture templates configured yet — add some in Settings.';
     capturePanelBox.appendChild(empty);
+    const closeRow = document.createElement('div');
+    closeRow.className = 'panel-row';
+    closeRow.appendChild(
+      menuButton('Close', () => {
+        captureOpen = false;
+        renderCapturePanel();
+      })
+    );
+    capturePanelBox.appendChild(closeRow);
     return;
   }
 
@@ -13605,6 +13624,17 @@ async function renderCapturePanel() {
     grid.appendChild(btn);
   }
   capturePanelBox.appendChild(grid);
+
+  const closeRow = document.createElement('div');
+  closeRow.className = 'panel-row';
+  closeRow.style.marginTop = '6px';
+  closeRow.appendChild(
+    menuButton('Close', () => {
+      captureOpen = false;
+      renderCapturePanel();
+    })
+  );
+  capturePanelBox.appendChild(closeRow);
 }
 
 /** Opens the given template: straight to capturing it if it has no
