@@ -823,10 +823,12 @@ function showExternalChangeBanner(hash) {
   externalChangeShownForHash = hash;
   externalChangeText.textContent = `"${state.documentId}" changed elsewhere since you opened it here.`;
   externalChangeBanner.style.display = 'flex';
+  syncContentOffset();
 }
 
 function hideExternalChangeBanner() {
   externalChangeBanner.style.display = 'none';
+  syncContentOffset();
 }
 
 function activeDiskAdapter() {
@@ -3719,6 +3721,7 @@ function snapshotCurrentSessionValues() {
     pendingCursorPosition,
     currentContextHeading,
     narrowedHeading,
+    narrowedTextModeRange,
     navigationBackStack,
     currentView,
     isDirty,
@@ -3752,6 +3755,7 @@ function applySessionSnapshotValues(snap) {
   pendingCursorPosition = snap.pendingCursorPosition;
   currentContextHeading = snap.currentContextHeading;
   narrowedHeading = snap.narrowedHeading;
+  narrowedTextModeRange = snap.narrowedTextModeRange;
   navigationBackStack = snap.navigationBackStack;
   currentView = snap.currentView;
   isDirty = snap.isDirty;
@@ -3824,11 +3828,31 @@ function persistOpenTabsInBackground() {
 
 function switchToTab(tabId) {
   if (tabId === activeTabId) return;
+  // Committing (if there's anything to commit) brings state.doc fully
+  // up to date -- and clears narrowedTextModeRange -- for the tab
+  // being left, BEFORE the snapshot below captures it. Without this,
+  // a pending edit in that tab is silently lost the moment it's
+  // switched away from, never having been written into its own
+  // state.doc at all.
+  commitTextModeIfActive();
   if (activeTabId != null) saveSessionSnapshot(activeTabId);
   loadSessionSnapshot(tabId);
   closeAllOverlayPanels();
   hideExternalChangeBanner();
   checkForExternalChange();
+  // A text-mode textarea left over from the tab just switched AWAY from
+  // has no relationship to the tab just switched TO -- render()'s own
+  // "already showing the text editor, leave it alone" short-circuit
+  // (see the text-view render code) has no notion of which tab built
+  // it, only whether one currently exists in the DOM at all. Without
+  // this, switching between two tabs both left in Text view shows
+  // whichever tab's textarea happened to be built most recently,
+  // regardless of which tab is actually now active -- confirmed
+  // directly, a real, severe bug: saving in that state overwrites the
+  // active tab's own document with the OTHER tab's content entirely.
+  // Clearing this here forces a fresh rebuild from the now-correct,
+  // just-restored state instead.
+  outlineEl.innerHTML = '';
   render();
   renderTabBar();
   persistOpenTabsInBackground();
@@ -14072,6 +14096,7 @@ if ('serviceWorker' in navigator) {
 
   function showUpdateBanner(waitingWorker) {
     updateBanner.style.display = 'flex';
+    syncContentOffset();
     updateReloadBtn.onclick = () => {
       waitingWorker.postMessage('SKIP_WAITING');
     };

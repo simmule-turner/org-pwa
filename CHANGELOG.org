@@ -6,6 +6,21 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v315 — Fix: tab-switch data loss, and banners hidden while scrolled
+Two fixes. First, a severe, confirmed data-loss bug: switching tabs
+could show the wrong tab's own content in Text view (whichever tab's
+textarea happened to render most recently), and saving in that state
+overwrote the active tab's document with the other tab's content
+entirely. Not specific to narrowing — narrowing just made the
+consequences dramatic and immediately visible rather than subtle.
+Switching tabs now correctly commits any pending edit and rebuilds
+fresh from the newly-active tab's own state, rather than silently
+reusing whatever was left over from before. Second, the "file changed
+elsewhere" and "new version available" banners no longer scroll out
+of view along with the document — they're now pinned directly under
+the tabs regardless of scroll position, matching every other
+always-visible part of the top bar.
+
 * v314 — Settings > Extras menu / Menu labels: multi-line by default, and genuinely stable
 Both fields now show and edit as one double-quoted entry per line with
 a trailing backslash — matching this app's own documented file-based

@@ -347,6 +347,17 @@
       <button id="moreBtn" class="icon-btn" aria-label="More">&#8942;</button>
     </header>
     <div id="tabBar" style="display: none;"></div>
+    <div id="updateBanner" style="display: none; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; background: #185fa5; color: white; font-size: 13px;">
+      <span>A new version is available.</span>
+      <button id="updateReloadBtn" style="background: white; color: #185fa5; border: none; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">Reload</button>
+    </div>
+    <div id="externalChangeBanner" style="display: none; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; background: #a86a00; color: white; font-size: 13px;">
+      <span id="externalChangeText">This file changed elsewhere since you opened it here.</span>
+      <span style="display: flex; gap: 6px; flex-shrink: 0;">
+        <button id="externalChangeReloadBtn" style="background: white; color: #a86a00; border: none; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">Reload</button>
+        <button id="externalChangeDismissBtn" style="background: transparent; color: white; border: 1px solid white; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">Dismiss</button>
+      </span>
+    </div>
     <div id="searchPanel" class="panel" style="display: none;"></div>
     <div id="capturePanel" class="panel" style="display: none;"></div>
     <div id="doneNotePanel" class="panel" style="display: none;"></div>
@@ -428,17 +439,6 @@
     style="display: none;"
   ></div>
   <div id="contentArea">
-    <div id="updateBanner" style="display: none; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; background: #185fa5; color: white; font-size: 13px;">
-      <span>A new version is available.</span>
-      <button id="updateReloadBtn" style="background: white; color: #185fa5; border: none; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">Reload</button>
-    </div>
-    <div id="externalChangeBanner" style="display: none; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; background: #a86a00; color: white; font-size: 13px;">
-      <span id="externalChangeText">This file changed elsewhere since you opened it here.</span>
-      <span style="display: flex; gap: 6px; flex-shrink: 0;">
-        <button id="externalChangeReloadBtn" style="background: white; color: #a86a00; border: none; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">Reload</button>
-        <button id="externalChangeDismissBtn" style="background: transparent; color: white; border: 1px solid white; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">Dismiss</button>
-      </span>
-    </div>
     <div id="splitRow">
       <div id="outline"></div>
       <div id="sidePanelDivider" style="display: none;"></div>
