@@ -6,6 +6,17 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v312 — Fix: general editor silently discarded unsaved changes
+Tapping Add table, Delete table, or Attach inside the general editor
+used to silently discard any unsaved field edits (priority, tags,
+scheduled/deadline, properties) — none of the three ever checked for
+or committed pending changes before proceeding. Now, if anything's
+actually changed, a prompt offers a real choice: commit those changes
+and continue, discard them and continue, or go back and keep editing.
+With nothing changed, all three proceed exactly as before, no
+interruption. Also removed the icons from these three buttons, for
+consistency with the plain-text Cancel/Reset/OK row in the same modal.
+
 * v311 — Attach moves into the general editor; Narrow/Widen moves to the action menu
 📎 Attach is now a button inside the general editor (📋 Edit details)
 instead of its own separate action-menu item — its own behavior is

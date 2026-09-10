@@ -6318,6 +6318,47 @@ function openGeneralEditor(heading) {
   modal.appendChild(fieldsContainer);
 
   let scheduledGroup, deadlineGroup, plainGroup, tagsGroup, priorityGroup, propsGroup;
+  let initialSnapshot = null;
+
+  function snapshotFields() {
+    return {
+      scheduled: scheduledGroup.getRawValue(),
+      deadline: deadlineGroup.getRawValue(),
+      plain: plainGroup.getRawValue(),
+      tags: tagsGroup.getTags(),
+      priority: priorityGroup.getPriority(),
+      properties: propsGroup.getProperties(),
+    };
+  }
+
+  // Compares the fields' own CURRENT output against a snapshot taken
+  // right after buildFields() last ran -- both computed by the exact
+  // same getRawValue()/getTags()/getPriority()/getProperties()
+  // functions, so this compares like with like. Deliberately NOT
+  // compared against `heading`'s own raw stored value directly: a
+  // timestamp field group re-serializes through formatOrgTimestamp,
+  // whose output isn't guaranteed to be byte-identical to whatever's
+  // actually stored, which would risk a false "changed" on a field
+  // nobody touched.
+  function hasPendingChanges() {
+    const current = snapshotFields();
+    return JSON.stringify(current) !== JSON.stringify(initialSnapshot);
+  }
+
+  function applyFieldsToHeading() {
+    heading.planning = {
+      scheduled: scheduledGroup.getRawValue(),
+      deadline: deadlineGroup.getRawValue(),
+      closed: heading.planning.closed,
+    };
+    setPlainTimestampInTitle(heading, plainGroup.getRawValue());
+    setHeadingTags(heading, tagsGroup.getTags());
+    setPriority(heading, priorityGroup.getPriority());
+    const { properties, propertyOrder } = propsGroup.getProperties();
+    heading.properties = properties;
+    heading.propertyOrder = propertyOrder;
+  }
+
   function buildFields() {
     fieldsContainer.innerHTML = '';
     scheduledGroup = buildTimestampFieldGroup('SCHEDULED', heading.planning.scheduled);
@@ -6332,6 +6373,7 @@ function openGeneralEditor(heading) {
     fieldsContainer.appendChild(tagsGroup.container);
     fieldsContainer.appendChild(priorityGroup.container);
     fieldsContainer.appendChild(propsGroup.container);
+    initialSnapshot = snapshotFields();
   }
   buildFields();
 
@@ -6345,6 +6387,43 @@ function openGeneralEditor(heading) {
     editingGeneral = null;
   }
 
+  // Used by the three immediate-action buttons below (Add table,
+  // Delete table, Attach) -- each of those closes this editor and does
+  // something else entirely, which used to silently discard any
+  // pending field edits (heading was never actually touched until OK).
+  // This checks first: if nothing's pending, `action` just runs
+  // directly; if something is, a genuine 3-way choice is offered
+  // rather than forcing either outcome on the person's behalf.
+  async function proceedWithAction(action) {
+    if (!hasPendingChanges()) {
+      close();
+      action();
+      return;
+    }
+    openButtonChoiceModal({
+      label: 'This heading has unsaved changes. Commit them before continuing?',
+      buttons: [
+        {
+          text: 'Commit and continue',
+          onClick: () => {
+            applyFieldsToHeading();
+            close();
+            commitAndRender('Edited heading details');
+            action();
+          },
+        },
+        {
+          text: 'Discard and continue',
+          onClick: () => {
+            close();
+            action();
+          },
+        },
+        { text: 'Keep editing', onClick: () => {} },
+      ],
+    });
+  }
+
   const addTableRow = document.createElement('div');
   addTableRow.style.display = 'flex';
   addTableRow.style.flexWrap = 'wrap';
@@ -6352,34 +6431,37 @@ function openGeneralEditor(heading) {
   addTableRow.style.marginBottom = '10px';
   const existingTable = lastTableInBody(heading);
   addTableRow.appendChild(
-    tableActionButton('\u25a6 Add table', () => {
-      close();
-      withKeyboardFocusPreserved(heading, () => insertTable(heading, {}));
-      commitAndRender('Added table');
+    tableActionButton('Add table', () => {
+      proceedWithAction(() => {
+        withKeyboardFocusPreserved(heading, () => insertTable(heading, {}));
+        commitAndRender('Added table');
+      });
     })
   );
   addTableRow.appendChild(
     tableActionButton(
-      '\ud83d\uddd1\ufe0f Delete table',
+      'Delete table',
       async () => {
         const table = lastTableInBody(heading);
         if (!table) return; // shouldn't happen -- disabled when there's nothing to delete -- but never act on nothing
         if (!(await confirmDialog("Delete this table? This can\u2019t be undone."))) return;
-        close();
-        if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.rowType === 'table' && keyboardFocusedBodyRow.node === table) {
-          keyboardFocusedBodyRow = null;
-          keyboardFocusedCellPos = null;
-        }
-        deleteTable(heading, table);
-        commitAndRender('Deleted table');
+        proceedWithAction(() => {
+          if (keyboardFocusedBodyRow && keyboardFocusedBodyRow.rowType === 'table' && keyboardFocusedBodyRow.node === table) {
+            keyboardFocusedBodyRow = null;
+            keyboardFocusedCellPos = null;
+          }
+          deleteTable(heading, table);
+          commitAndRender('Deleted table');
+        });
       },
       !existingTable
     )
   );
   addTableRow.appendChild(
-    tableActionButton('\ud83d\udcce Attach', () => {
-      close();
-      openAttachChoicePrompt(heading);
+    tableActionButton('Attach', () => {
+      proceedWithAction(() => {
+        openAttachChoicePrompt(heading);
+      });
     })
   );
   modal.appendChild(addTableRow);
@@ -6400,17 +6482,7 @@ function openGeneralEditor(heading) {
   btnRow.appendChild(
     menuButton('OK', () => {
       close();
-      heading.planning = {
-        scheduled: scheduledGroup.getRawValue(),
-        deadline: deadlineGroup.getRawValue(),
-        closed: heading.planning.closed,
-      };
-      setPlainTimestampInTitle(heading, plainGroup.getRawValue());
-      setHeadingTags(heading, tagsGroup.getTags());
-      setPriority(heading, priorityGroup.getPriority());
-      const { properties, propertyOrder } = propsGroup.getProperties();
-      heading.properties = properties;
-      heading.propertyOrder = propertyOrder;
+      applyFieldsToHeading();
       commitAndRender('Edited heading details');
     })
   );
