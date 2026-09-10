@@ -102,7 +102,7 @@ function tokenizeMenuAliasValue(raw) {
   return tokens;
 }
 
-export { parseMenuAliases };
+export { parseMenuAliases, tokenizeMenuAliasValue };
 
 /**
  * The pure ordering decision behind org-xx-menu-aliases' own

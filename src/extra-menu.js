@@ -188,4 +188,4 @@ function parseExtraMenu(text) {
   return entries;
 }
 
-export { parseExtraMenu, KNOWN_FUNCTIONS };
+export { parseExtraMenu, tokenize, KNOWN_FUNCTIONS };
