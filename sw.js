@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v313';
+const CACHE_NAME = 'org-pwa-shell-v314';
 
 const SHELL_FILES = [
   './',
@@ -27,6 +27,7 @@ const SHELL_FILES = [
   './src/clocktable.js',
   './src/extra-menu.js',
   './src/menu-alias.js',
+  './src/multi-entry-format.js',
   './src/text-normalize.js',
   './src/hex-alpha.js',
   './src/org-weather.js',

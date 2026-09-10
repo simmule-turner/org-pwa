@@ -89,8 +89,9 @@ import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadi
 import { saveNarrowState, loadNarrowState } from './src/narrow-state.js';
 import { clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, currentClockSessionMinutes, formatClockDuration, findHeadingWithRunningClock, findMostRecentlyClockedHeading } from './src/clock.js';
 import { computeClocktable, renderClocktable } from './src/clocktable.js';
-import { parseExtraMenu } from './src/extra-menu.js';
-import { parseMenuAliases, resolveMenuOrder } from './src/menu-alias.js';
+import { parseExtraMenu, tokenize as tokenizeExtraMenuValue } from './src/extra-menu.js';
+import { parseMenuAliases, resolveMenuOrder, tokenizeMenuAliasValue } from './src/menu-alias.js';
+import { multiEntryValueToDisplayText, multiEntryDisplayTextToValue } from './src/multi-entry-format.js';
 import { normalizeSmartQuotes } from './src/text-normalize.js';
 import { buildMonthGrid, stepMonth, stepYear, MONTH_NAMES, buildDayMarkers } from './src/calendar-grid.js';
 import { splitHexAlpha, combineHexAlpha } from './src/hex-alpha.js';
@@ -11299,8 +11300,8 @@ const QUICK_SETTINGS_FIELDS = [
   },
   { key: 'org-refile-targets', label: 'Refile targets', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#refile' },
   { key: 'org-agenda-files', label: 'Agenda files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda-files' },
-  { key: 'org-xx-extra-menu', label: 'Extras menu (\u2630)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#extras-menu' },
-  { key: 'org-xx-menu-aliases', label: 'Menu labels (File/More/Export/View)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization' },
+  { key: 'org-xx-extra-menu', label: 'Extras menu (\u2630)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#extras-menu', entryTokenizer: tokenizeExtraMenuValue },
+  { key: 'org-xx-menu-aliases', label: 'Menu labels (File/More/Export/View)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization', entryTokenizer: tokenizeMenuAliasValue },
 ];
 
 /** Resolves `field`'s own actual current effective value -- whatever
@@ -11508,8 +11509,12 @@ function renderQuickSettingField(field) {
     };
     label.appendChild(select);
   } else if (field.type === 'longtext') {
+    const displayValue = (raw) => {
+      if (raw === undefined) return '';
+      return field.entryTokenizer ? multiEntryValueToDisplayText(raw, field.entryTokenizer) : raw;
+    };
     const textarea = document.createElement('textarea');
-    textarea.rows = 2;
+    textarea.rows = field.entryTokenizer ? 4 : 2; // multi-line entries need more visible room than a single flat line did
     textarea.style.fontFamily = 'monospace';
     textarea.style.fontSize = '12px';
     textarea.style.width = '100%';
@@ -11517,16 +11522,17 @@ function renderQuickSettingField(field) {
     textarea.style.boxSizing = 'border-box';
     textarea.style.resize = 'vertical';
     textarea.readOnly = true;
-    textarea.value = rawValue !== undefined ? rawValue : '';
+    textarea.value = displayValue(rawValue);
     textarea.onfocus = () => {
       textarea.blur();
       openTextFieldPopup({
         label: field.label,
-        value: rawValue !== undefined ? rawValue : '',
+        value: displayValue(rawValue),
         defaultValue: '',
         onSave: async (newValue) => {
-          const trimmed = normalizeSmartQuotes(newValue).trim();
-          await commitGlobalVariableChange(field.key, trimmed === '' ? null : trimmed);
+          const normalized = normalizeSmartQuotes(newValue).trim();
+          const canonical = field.entryTokenizer ? multiEntryDisplayTextToValue(normalized, field.entryTokenizer) : normalized;
+          await commitGlobalVariableChange(field.key, canonical === '' ? null : canonical);
           setStatus(`${field.label} updated.`);
           renderSettingsView();
           render();
