@@ -6,6 +6,17 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v313 — Fix: the previous "unsaved changes" fix still missed tags
+The previous fix for the general editor silently discarding unsaved
+changes (v312) had its own bug: the pending-changes check stored a
+live, mutable reference instead of a frozen copy, so adding a tag
+never actually registered as a change — the exact scenario reported.
+Fixed at the root: the check now captures an immutable string
+snapshot the instant the editor opens, rather than an object that
+could still be mutated later out from under it. Verified this time
+against all nine ways the editor's fields can change, across all
+three action buttons (Add table, Delete table, Attach).
+
 * v312 — Fix: general editor silently discarded unsaved changes
 Tapping Add table, Delete table, or Attach inside the general editor
 used to silently discard any unsaved field edits (priority, tags,

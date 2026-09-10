@@ -6318,7 +6318,7 @@ function openGeneralEditor(heading) {
   modal.appendChild(fieldsContainer);
 
   let scheduledGroup, deadlineGroup, plainGroup, tagsGroup, priorityGroup, propsGroup;
-  let initialSnapshot = null;
+  let initialSnapshotJSON = null;
 
   function snapshotFields() {
     return {
@@ -6340,9 +6340,19 @@ function openGeneralEditor(heading) {
   // whose output isn't guaranteed to be byte-identical to whatever's
   // actually stored, which would risk a false "changed" on a field
   // nobody touched.
+  //
+  // initialSnapshotJSON is deliberately a STRING, stringified the
+  // instant it's captured (see buildFields() below) -- NOT the raw
+  // object. getTags() returns the SAME mutable array on every call
+  // (the tag editor's own Add button does currentTags.push(), an
+  // in-place mutation); had this stored the object itself, that one
+  // array would still be shared between "initial" and "current" the
+  // whole time, so adding a tag would silently mutate both at once
+  // and this check could never see a difference. A string, captured
+  // immediately, is genuinely frozen at that instant regardless of
+  // what happens to the live objects afterward.
   function hasPendingChanges() {
-    const current = snapshotFields();
-    return JSON.stringify(current) !== JSON.stringify(initialSnapshot);
+    return JSON.stringify(snapshotFields()) !== initialSnapshotJSON;
   }
 
   function applyFieldsToHeading() {
@@ -6373,7 +6383,7 @@ function openGeneralEditor(heading) {
     fieldsContainer.appendChild(tagsGroup.container);
     fieldsContainer.appendChild(priorityGroup.container);
     fieldsContainer.appendChild(propsGroup.container);
-    initialSnapshot = snapshotFields();
+    initialSnapshotJSON = JSON.stringify(snapshotFields());
   }
   buildFields();
 
