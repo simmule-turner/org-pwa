@@ -140,9 +140,40 @@ function buildVcard(heading, birthdayProperty) {
  * defaults to "BIRTHDAY", matching org-contacts-birthday-property's
  * own default and this app's already-established handling of it for
  * org-contacts-anniversaries.
+ *
+ * `opts.nameFilter`, when given a non-empty string, restricts the
+ * export to only those contacts whose own heading title matches it --
+ * the same scope and behavior as real org-contacts-export-as-vcard's
+ * own optional NAME argument, confirmed directly against the actual
+ * org-contacts.el source: NAME is passed straight through to
+ * (org-contacts-filter name), which matches ONLY against a contact's
+ * own name (the heading title), via Emacs's string-match-p -- never
+ * against property keys or values at all, regardless of this app's
+ * own earlier description. `opts.nameFilterRegex` (default false)
+ * selects Emacs-style regex matching (case-insensitive, matching
+ * string-match-p's own default there) when true, matching real
+ * org-contacts' own always-regex behavior -- or a plain, case-
+ * insensitive substring match when false, a friendlier option real
+ * org-contacts doesn't offer at all. An invalid regex throws a clear,
+ * catchable error rather than silently matching nothing or crashing
+ * with an unhelpful native RegExp message.
  */
 export function exportToVcard(docs, opts = {}) {
-  const { scope = null, birthdayProperty = 'BIRTHDAY' } = opts;
+  const { scope = null, birthdayProperty = 'BIRTHDAY', nameFilter = '', nameFilterRegex = false } = opts;
+  const trimmedFilter = nameFilter.trim();
+  let filterRe = null;
+  if (trimmedFilter) {
+    if (nameFilterRegex) {
+      try {
+        filterRe = new RegExp(trimmedFilter, 'i');
+      } catch (err) {
+        throw new Error(`Invalid regex in the contact name filter: ${err.message}`);
+      }
+    } else {
+      filterRe = new RegExp(trimmedFilter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    }
+  }
+
   const cards = [];
   const walkScope = (doc, visit) => walkHeadings(scope ? { children: [scope] } : doc, visit);
 
@@ -150,6 +181,7 @@ export function exportToVcard(docs, opts = {}) {
     walkScope(doc, (heading) => {
       if (isArchived(heading)) return;
       if (isCommentedHeading(heading)) return;
+      if (filterRe && !filterRe.test(heading.title || '')) return;
       const card = buildVcard(heading, birthdayProperty);
       if (card) cards.push(card);
     });
