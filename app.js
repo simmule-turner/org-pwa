@@ -4789,10 +4789,27 @@ function renderHistoryPanel(target = historyRenderTarget) {
  * every such operation ensures state.doc always reflects what's actually
  * on screen before anything reads it.
  */
+const textModeLastCommittedValue = new WeakMap(); // textarea element -> the raw value it was last successfully committed with
 function commitTextModeIfActive() {
   if (currentView !== 'text') return false;
   const textarea = document.getElementById('document-text-edit-input');
   const rawValue = textarea ? textarea.value : narrowedHeading ? serializeHeadingSubtree(narrowedHeading) : serializeOrg(state.doc);
+
+  if (textarea && textModeLastCommittedValue.get(textarea) === rawValue) {
+    // This exact textarea, with this exact content, was already
+    // committed once -- e.g. Save immediately followed by switching
+    // views, both of which call this function while currentView is
+    // still 'text' and the textarea itself was never rebuilt in
+    // between. Committing again here would be wrong: narrowedTextModeRange's
+    // own one-shot bookkeeping (the splice-back boundary) was already
+    // consumed and reset by the prior commit, so a second pass would
+    // treat this textarea's own, possibly-narrowed content as a fresh
+    // full-document replacement -- a real, confirmed data-loss bug
+    // this guard exists specifically to close. A genuine further edit
+    // made to the same textarea after that first commit still has a
+    // different rawValue here, so it's never mistaken for this case.
+    return false;
+  }
 
   let newText;
   const wasNarrowedTextMode = narrowedTextModeRange !== null;
@@ -4821,7 +4838,9 @@ function commitTextModeIfActive() {
     const outlinePath = narrowedHeading ? outlinePathForHeadingInDocument(state.documentId, narrowedHeading) : null;
     saveNarrowState(kv, state.documentId, outlinePath).catch(() => {});
   }
-  narrowedTextModeRange = null;
+  if (wasNarrowedTextMode) {
+    narrowedTextModeRange = { startLine: narrowedTextModeRange.startLine, lineCount: rawValue.split('\n').length };
+  }
   // currentContextHeading DOES hold an actual heading object reference,
   // now stale -- a fresh parseOrg call always produces brand new
   // heading instances, even when re-parsing what is nominally "the
@@ -4840,6 +4859,7 @@ function commitTextModeIfActive() {
     persistInBackground();
     persistHistoryInBackground();
   }
+  if (textarea) textModeLastCommittedValue.set(textarea, rawValue);
   return true;
 }
 

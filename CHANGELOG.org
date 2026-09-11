@@ -6,6 +6,16 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v321 — Fix: narrow + edit + Save + widen lost the rest of the buffer
+Narrow a heading, switch to Text view, edit it, Save, then switch back
+to Org view — Widen would disappear and the whole document collapsed
+down to just the narrowed heading's own content. Saving while narrowed
+correctly commits the edit, but a second, internal commit step
+triggered by switching views right after was incorrectly treating the
+same edit as a fresh whole-document replacement. Fixed at the source;
+also verified correct across multiple edits and saves in a row while
+staying narrowed.
+
 * v320 — Contacts (.vcf) export
 New "More > Export > Contacts (.vcf)", matching real org-contacts.el's
 own org-contacts-export-as-vcard: any heading with a non-empty EMAIL
