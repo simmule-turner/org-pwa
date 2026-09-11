@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v318';
+const CACHE_NAME = 'org-pwa-shell-v320';
 
 const SHELL_FILES = [
   './',
@@ -82,6 +82,7 @@ const SHELL_FILES = [
   './src/export-options.js',
   './src/export-include.js',
   './src/export-icalendar.js',
+  './src/export-vcard.js',
   './src/undo-history.js',
   './src/text-diff.js',
   './src/startup-config.js',

@@ -6,6 +6,22 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v320 — Contacts (.vcf) export
+New "More > Export > Contacts (.vcf)", matching real org-contacts.el's
+own org-contacts-export-as-vcard: any heading with a non-empty EMAIL
+property (and not marked :IGNORE: t) becomes a vCard, with PHONE/CELL,
+WORK_PHONE, ADDRESS, NICKNAME, NOTE, and BIRTHDAY all mapped to their
+matching vCard fields. New org-contacts-files setting, for pulling
+contacts from additional files beyond the one currently open — same
+syntax and behavior as the existing Agenda Files setting, kept as its
+own independent list since the two commonly differ.
+
+* v319 — Dark-mode popup contrast: bigger shift
+The lighter popup background shipped in v318 wasn't different enough
+from the page behind it to actually notice. Now a bigger step up
+(#36383c vs the page's own #16181c), picked directly from a side-by-
+side comparison of a few shift sizes.
+
 * v318 — Fix: low popup/dark-mode contrast
 Every modal and dropdown menu's own background was the exact same
 color as the page behind it in dark mode, leaving nothing but a faint

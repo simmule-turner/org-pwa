@@ -83,6 +83,7 @@ import {
   getDisplayTimeMode,
   getDisplayTimeFormat,
   getAgendaFilesVar,
+  getContactsFilesVar,
   parseAgendaFilesVar,
 } from './src/local-variables.js';
 import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath, collectSubtreeHeadings } from './src/refile.js';
@@ -121,6 +122,7 @@ import { exportToAscii } from './src/export-ascii.js';
 import { expandIncludes } from './src/export-include.js';
 import { exportToHtml } from './src/export-html.js';
 import { exportToIcalendar } from './src/export-icalendar.js';
+import { exportToVcard } from './src/export-vcard.js';
 import { createHistory, pushSnapshot, canUndo, canRedo, undo, redo, jumpTo, currentEntry } from './src/undo-history.js';
 import { diffHunks } from './src/text-diff.js';
 import { parseOrgTimestamp, formatOrgTimestamp, parseDelay, dateKey } from './src/org-timestamp.js';
@@ -643,6 +645,94 @@ function aggregateAgendaDocs() {
   return docs;
 }
 
+// org-contacts-files equivalent: additional GitHub/WebDAV files the
+// vCard export scans across, beyond whichever file is currently open
+// -- an independent, parallel mechanism to agenda-files above (same
+// shape throughout), not folded into it, since a person may well want
+// a different set of files for contacts than for agenda aggregation.
+let contactsFilesConfig = [];
+
+/** Recomputes contactsFilesConfig from whichever variable set is
+ *  actually authoritative right now -- same reasoning and same file-
+ *  local-override handling as syncAgendaFilesConfig above. Call this
+ *  at every one of that function's own call sites. */
+function syncContactsFilesConfig() {
+  contactsFilesConfig = parseAgendaFilesVar(getContactsFilesVar(state.doc ? state.localVariables : globalVariables));
+}
+
+const contactsFilesCache = new Map(); // "scheme:path" -> { doc, documentId } | { error } | { loading: true }
+let contactsFilesCacheLoadedFor = null;
+
+/** Kicks off a fetch for every configured contacts file not already
+ *  cached (or currently loading) -- same fire-and-forget shape as
+ *  ensureAgendaFilesLoaded, re-rendering Settings (the only place this
+ *  cache's own loading/error state is currently shown) as each fetch
+ *  resolves. */
+function ensureContactsFilesLoaded() {
+  const configKey = JSON.stringify(contactsFilesConfig);
+  if (contactsFilesCacheLoadedFor !== configKey) {
+    contactsFilesCache.clear();
+    contactsFilesCacheLoadedFor = configKey;
+  }
+
+  for (const key of contactsFilesConfig) {
+    if (contactsFilesCache.has(key)) continue;
+
+    const colonIndex = key.indexOf(':');
+    const scheme = colonIndex === -1 ? key : key.slice(0, colonIndex);
+    const path = colonIndex === -1 ? '' : key.slice(colonIndex + 1);
+    const adapter = scheme === 'github' ? githubAdapter : scheme === 'webdav' ? webdavAdapter : null;
+    if (!adapter) {
+      contactsFilesCache.set(key, { error: `Unsupported scheme "${scheme}" \u2014 only github/webdav are supported for contacts files.` });
+      continue;
+    }
+
+    const promise = adapter
+      .read(path)
+      .then((result) => {
+        contactsFilesCache.set(
+          key,
+          result ? { doc: parseOrg(result.content), documentId: path } : { error: `"${path}" not found.` }
+        );
+        if (settingsOpen) renderSettingsView();
+      })
+      .catch((err) => {
+        contactsFilesCache.set(key, { error: err.message });
+        if (settingsOpen) renderSettingsView();
+      });
+    contactsFilesCache.set(key, { loading: true, promise });
+  }
+}
+
+/** Like ensureContactsFilesLoaded, but actually waits for every fetch
+ *  to finish -- the vCard export needs a complete, accurate result on
+ *  the very first render, the same reasoning ensureAgendaFilesLoadedAndWait
+ *  documents for Refile's own candidate list. */
+async function ensureContactsFilesLoadedAndWait() {
+  ensureContactsFilesLoaded();
+  await Promise.all(
+    Array.from(contactsFilesCache.values())
+      .filter((entry) => entry.loading)
+      .map((entry) => entry.promise)
+  );
+}
+
+/** The full docs list for vCard export aggregation: the currently open
+ *  document plus every successfully-loaded configured contacts file,
+ *  deduplicated by documentId -- same "the live, possibly-unsaved
+ *  version wins" precedence as aggregateAgendaDocs above. */
+function aggregateContactsDocs() {
+  const docs = [{ documentId: state.documentId, doc: state.doc }];
+  const seen = new Set([state.documentId]);
+  for (const entry of contactsFilesCache.values()) {
+    if (entry.doc && !seen.has(entry.documentId)) {
+      docs.push({ documentId: entry.documentId, doc: entry.doc });
+      seen.add(entry.documentId);
+    }
+  }
+  return docs;
+}
+
 /** Which adapter Save/Save-As-in-place should use — whatever storage kind
  *  the currently open document actually came from. This is the crux of
  *  "Save uses whatever mechanism was used to open the file". */
@@ -679,6 +769,7 @@ async function reloadCurrentDocumentFromDisk() {
   state.startupConfig = resolveEffectiveStartupConfig(state.doc, rawLocalVars, globalVariables);
   state.localVariables = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
   syncAgendaFilesConfig();
+  syncContactsFilesConfig();
   currentContextHeading = null;
   const archiveVisibility = getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(state.doc, state.startupConfig, archiveVisibility);
@@ -3811,6 +3902,7 @@ function loadSessionSnapshot(tabId) {
   applySessionSnapshotValues(session);
   activeTabId = tabId;
   syncAgendaFilesConfig();
+  syncContactsFilesConfig();
   queueMicrotask(() => {
     scrollContainer().scrollTop = session.scrollTop || 0;
   });
@@ -4489,6 +4581,7 @@ function restoreFromHistory() {
   state.startupConfig = startupConfig;
   state.localVariables = localVariables;
   syncAgendaFilesConfig();
+  syncContactsFilesConfig();
   // currentContextHeading DOES hold an actual heading object
   // reference, now stale -- a fresh parseOrg call always produces
   // brand new heading instances, even when re-parsing what is
@@ -4722,6 +4815,7 @@ function commitTextModeIfActive() {
   state.startupConfig = startupConfig;
   state.localVariables = localVariables;
   syncAgendaFilesConfig();
+  syncContactsFilesConfig();
   if (wasNarrowedTextMode) {
     narrowedHeading = findHeadingAtLine(newDoc, narrowedTextModeRange.startLine);
     const outlinePath = narrowedHeading ? outlinePathForHeadingInDocument(state.documentId, narrowedHeading) : null;
@@ -7988,6 +8082,7 @@ async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCach
   applyStartupVisibility(doc, startupConfig, archiveVisibility);
   state = { documentId, doc, startupConfig, storageKind, localVariables };
   syncAgendaFilesConfig();
+  syncContactsFilesConfig();
   const openedText = serializeOrg(doc);
   const persistedHistory = documentId ? await loadPersistedHistory(kv, documentId) : null;
   if (persistedHistory && persistedHistory.entries[persistedHistory.entries.length - 1].text === openedText) {
@@ -9075,6 +9170,10 @@ async function performExport(format, scope) {
     } else {
       downloadFile(baseName + '.odt', exportToOdt(doc, scope), 'application/vnd.oasis.opendocument.text');
     }
+  } else if (format === 'vcard') {
+    const docs = scope === 'contacts-files' ? aggregateContactsDocs() : [{ documentId: state.documentId, doc: state.doc }];
+    const vcardScope = scope && typeof scope === 'object' ? scope : null;
+    downloadFile(baseName + '.vcf', exportToVcard(docs, { scope: vcardScope, birthdayProperty: getContactsBirthdayProperty(state.localVariables) }), 'text/vcard');
   } else {
     const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: state.documentId, doc: state.doc }];
     const icsScope = scope && typeof scope === 'object' ? scope : null;
@@ -9085,7 +9184,7 @@ async function performExport(format, scope) {
   exportFormat = null;
   exportPickingHeading = false;
   setStatus(
-    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : 'Calendar (.ics)'}.`
+    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : format === 'vcard' ? 'Contacts (.vcf)' : 'Calendar (.ics)'}.`
   );
   renderMoreMenu();
   render();
@@ -9109,6 +9208,10 @@ function renderExportFlow() {
       exportFormat = 'icalendar';
       renderMoreMenu();
     });
+    const vcardBtn = aliasedMenuDivItem(exportMenuAliases, 'Contacts (.vcf)', () => {
+      exportFormat = 'vcard';
+      renderMoreMenu();
+    });
     const htmlBtn = aliasedMenuDivItem(exportMenuAliases, 'HTML', () => {
       exportFormat = 'html';
       renderMoreMenu();
@@ -9124,6 +9227,7 @@ function renderExportFlow() {
     appendMenuButtonsInOrder(morePanel, exportMenuAliases, [
       { label: 'ASCII', btn: asciiBtn },
       { label: 'Calendar (.ics)', btn: icsBtn },
+      { label: 'Contacts (.vcf)', btn: vcardBtn },
       { label: 'HTML', btn: htmlBtn },
       { label: 'Markdown', btn: mdBtn },
       { label: 'ODT', btn: odtBtn },
@@ -9141,12 +9245,13 @@ function renderExportFlow() {
     return;
   }
 
-  if (exportFormat === 'icalendar' && !exportPickingHeading) {
+  if ((exportFormat === 'icalendar' || exportFormat === 'vcard') && !exportPickingHeading) {
+    const isVcard = exportFormat === 'vcard';
     const label = document.createElement('div');
     label.style.fontSize = '12px';
     label.style.opacity = '0.7';
     label.style.marginBottom = '4px';
-    label.textContent = 'Export Calendar (.ics) for:';
+    label.textContent = `Export ${isVcard ? 'Contacts (.vcf)' : 'Calendar (.ics)'} for:`;
     morePanel.appendChild(label);
 
     morePanel.appendChild(
@@ -9155,13 +9260,17 @@ function renderExportFlow() {
         renderMoreMenu();
       })
     );
-    morePanel.appendChild(menuDivItem('This file', () => performExport('icalendar', null)));
-    if (agendaFilesConfig.length > 0) {
+    morePanel.appendChild(menuDivItem('This file', () => performExport(exportFormat, null)));
+    if (isVcard ? contactsFilesConfig.length > 0 : agendaFilesConfig.length > 0) {
       morePanel.appendChild(
-        menuDivItem('This file + Agenda Files', async () => {
-          setStatus('Loading agenda files\u2026');
-          await waitForAgendaFilesLoaded();
-          await performExport('icalendar', 'agenda-files');
+        menuDivItem(`This file + ${isVcard ? 'Contacts Files' : 'Agenda Files'}`, async () => {
+          setStatus(`Loading ${isVcard ? 'contacts' : 'agenda'} files\u2026`);
+          if (isVcard) {
+            await ensureContactsFilesLoadedAndWait();
+          } else {
+            await waitForAgendaFilesLoaded();
+          }
+          await performExport(exportFormat, isVcard ? 'contacts-files' : 'agenda-files');
         })
       );
     }
@@ -11367,6 +11476,7 @@ const QUICK_SETTINGS_FIELDS = [
   },
   { key: 'org-refile-targets', label: 'Refile targets', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#refile' },
   { key: 'org-agenda-files', label: 'Agenda files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda-files' },
+  { key: 'org-contacts-files', label: 'Contacts files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#contacts-files' },
   { key: 'org-xx-extra-menu', label: 'Extras menu (\u2630)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#extras-menu', entryTokenizer: tokenizeExtraMenuValue },
   { key: 'org-xx-menu-aliases', label: 'Menu labels (File/More/Export/View)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization', entryTokenizer: tokenizeMenuAliasValue },
 ];
@@ -11456,6 +11566,7 @@ async function commitGlobalVariableChange(key, rawValue) {
     state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
   }
   syncAgendaFilesConfig();
+  syncContactsFilesConfig();
 }
 
 /** Builds one Quick Settings field's own label + control row. */
@@ -12114,6 +12225,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
       state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
     }
     syncAgendaFilesConfig();
+    syncContactsFilesConfig();
     setStatus('Global variables saved.');
     renderSettingsView();
     render();
@@ -12481,6 +12593,7 @@ async function renderSettingsView(target = settingsRenderTarget) {
           state.localVariables = mergeGlobalAndLocalVariables(globalVariables, parseLocalVariables(serializeOrg(state.doc)));
         }
         syncAgendaFilesConfig();
+        syncContactsFilesConfig();
         syncExtraMenuButtonVisibility();
       }
       setStatus('Imported: ' + imported.join(', ') + '.');
@@ -14225,6 +14338,7 @@ async function bootstrap() {
   globalVariablesText = await getGlobalVariables(kv);
   globalVariables = parseGlobalVariables(globalVariablesText);
   syncAgendaFilesConfig();
+  syncContactsFilesConfig();
 
   customThemeColors = await getCustomThemeColors(kv);
   applyTheme(await getTheme(kv));
