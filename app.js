@@ -2778,6 +2778,9 @@ function closeAllOverlayPanels() {
     moreOpen = false;
     moreMenuStep = null;
     exportFormat = null;
+    vcardFilterStepDone = false;
+    vcardNameFilter = '';
+    vcardNameFilterRegex = false;
     exportPickingHeading = false;
     renderMoreMenu();
   }
@@ -4106,6 +4109,9 @@ let moreMenuStep = null; // null | 'export' -- see renderMoreMenuContent
 // backend-choice pattern the rest of the file menu already uses.
 let exportFormat = null;
 let exportPickingHeading = false;
+let vcardFilterStepDone = false; // whether the name-filter step (shown once, before the scope choice) has been passed for this vcard export
+let vcardNameFilter = '';
+let vcardNameFilterRegex = false;
 
 // File-browser state: browseBackend non-null means the "open" step is
 // currently showing a navigable folder/file listing (see startBrowsing
@@ -9193,7 +9199,21 @@ async function performExport(format, scope) {
   } else if (format === 'vcard') {
     const docs = scope === 'contacts-files' ? aggregateContactsDocs() : [{ documentId: state.documentId, doc: state.doc }];
     const vcardScope = scope && typeof scope === 'object' ? scope : null;
-    downloadFile(baseName + '.vcf', exportToVcard(docs, { scope: vcardScope, birthdayProperty: getContactsBirthdayProperty(state.localVariables) }), 'text/vcard');
+    let vcf;
+    try {
+      vcf = exportToVcard(docs, {
+        scope: vcardScope,
+        birthdayProperty: getContactsBirthdayProperty(state.localVariables),
+        nameFilter: vcardNameFilter,
+        nameFilterRegex: vcardNameFilterRegex,
+      });
+    } catch (err) {
+      vcardFilterStepDone = false;
+      setStatus(err.message);
+      renderMoreMenu();
+      return;
+    }
+    downloadFile(baseName + '.vcf', vcf, 'text/vcard');
   } else {
     const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: state.documentId, doc: state.doc }];
     const icsScope = scope && typeof scope === 'object' ? scope : null;
@@ -9202,6 +9222,9 @@ async function performExport(format, scope) {
   moreOpen = false;
   moreMenuStep = null;
   exportFormat = null;
+  vcardFilterStepDone = false;
+  vcardNameFilter = '';
+  vcardNameFilterRegex = false;
   exportPickingHeading = false;
   setStatus(
     `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : format === 'vcard' ? 'Contacts (.vcf)' : 'Calendar (.ics)'}.`
@@ -9265,6 +9288,77 @@ function renderExportFlow() {
     return;
   }
 
+  if (exportFormat === 'vcard' && !vcardFilterStepDone && !exportPickingHeading) {
+    const label = document.createElement('div');
+    label.style.fontSize = '12px';
+    label.style.opacity = '0.7';
+    label.style.marginBottom = '4px';
+    label.textContent = 'Filter contacts by name (optional):';
+    morePanel.appendChild(label);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = vcardNameFilter;
+    input.placeholder = 'e.g. Smith';
+    input.style.width = '100%';
+    input.style.boxSizing = 'border-box';
+    input.style.font = 'inherit';
+    input.style.fontSize = '15px';
+    input.style.padding = '10px 12px';
+    input.style.minHeight = '44px';
+    input.style.border = '1px solid var(--border-strong)';
+    input.style.borderRadius = '8px';
+    input.style.background = 'var(--bg)';
+    input.style.color = 'var(--fg)';
+    input.style.marginBottom = '8px';
+    input.oninput = () => {
+      vcardNameFilter = input.value;
+    };
+    morePanel.appendChild(input);
+
+    const regexRow = document.createElement('label');
+    regexRow.style.display = 'flex';
+    regexRow.style.alignItems = 'center';
+    regexRow.style.gap = '6px';
+    regexRow.style.fontSize = '13px';
+    regexRow.style.marginBottom = '8px';
+    regexRow.style.cursor = 'pointer';
+    const regexCheckbox = document.createElement('input');
+    regexCheckbox.type = 'checkbox';
+    regexCheckbox.checked = vcardNameFilterRegex;
+    regexCheckbox.onchange = () => {
+      vcardNameFilterRegex = regexCheckbox.checked;
+    };
+    regexRow.appendChild(regexCheckbox);
+    regexRow.appendChild(document.createTextNode('Regex'));
+    morePanel.appendChild(regexRow);
+
+    const continueRow = document.createElement('div');
+    continueRow.className = 'panel-row';
+    continueRow.appendChild(
+      menuButton('Continue', () => {
+        vcardFilterStepDone = true;
+        renderMoreMenu();
+      })
+    );
+    morePanel.appendChild(continueRow);
+
+    const backRow = document.createElement('div');
+    backRow.className = 'panel-row';
+    backRow.style.marginTop = '6px';
+    backRow.appendChild(
+      menuButton('\u2039 Back', () => {
+        exportFormat = null;
+        vcardFilterStepDone = false;
+        vcardNameFilter = '';
+        vcardNameFilterRegex = false;
+        renderMoreMenu();
+      })
+    );
+    morePanel.appendChild(backRow);
+    return;
+  }
+
   if ((exportFormat === 'icalendar' || exportFormat === 'vcard') && !exportPickingHeading) {
     const isVcard = exportFormat === 'vcard';
     const label = document.createElement('div');
@@ -9301,6 +9395,9 @@ function renderExportFlow() {
     backRow.appendChild(
       menuButton('\u2039 Back', () => {
         exportFormat = null;
+        vcardFilterStepDone = false;
+        vcardNameFilter = '';
+        vcardNameFilterRegex = false;
         renderMoreMenu();
       })
     );
@@ -9373,6 +9470,9 @@ function renderExportFlow() {
   backRow.appendChild(
     menuButton('\u2039 Back', () => {
       exportFormat = null;
+      vcardFilterStepDone = false;
+      vcardNameFilter = '';
+      vcardNameFilterRegex = false;
       renderMoreMenu();
     })
   );
@@ -14264,6 +14364,9 @@ function renderMoreMenuContent() {
     () => {
       moreMenuStep = 'export';
       exportFormat = null;
+      vcardFilterStepDone = false;
+      vcardNameFilter = '';
+      vcardNameFilterRegex = false;
       renderMoreMenu();
     },
     !state.doc

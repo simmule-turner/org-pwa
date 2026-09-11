@@ -6,6 +6,13 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v322 — Contacts (.vcf) export: filter by name
+Contacts (.vcf) export now has an optional name filter, matched
+against each contact's own heading title, with a toggle between a
+plain "contains" match and full regex — matching real org-contacts'
+own NAME argument, confirmed directly against its actual source.
+Leave it empty to export everyone, same as before.
+
 * v321 — Fix: narrow + edit + Save + widen lost the rest of the buffer
 Narrow a heading, switch to Text view, edit it, Save, then switch back
 to Org view — Widen would disappear and the whole document collapsed
