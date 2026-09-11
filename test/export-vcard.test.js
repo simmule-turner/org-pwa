@@ -143,3 +143,59 @@ test('an empty result (no valid contacts anywhere) produces an empty string, not
   const vcf = exportToVcard(docs('* Just a heading\nNo email here.\n'));
   assert.equal(vcf, '');
 });
+
+test('THE FEATURE: nameFilter (plain mode) matches only contacts whose own heading title contains the filter, case-insensitively', () => {
+  const twoContacts = docs(
+    '* Alice Smith\n:PROPERTIES:\n:EMAIL: alice@example.com\n:END:\n* Bob Jones\n:PROPERTIES:\n:EMAIL: bob@example.com\n:END:\n'
+  );
+  const vcf = exportToVcard(twoContacts, { nameFilter: 'alice' });
+  assert.match(vcf, /FN:Alice Smith/);
+  assert.doesNotMatch(vcf, /FN:Bob Jones/);
+});
+
+test('nameFilter matches ONLY the heading title, never a property value -- confirmed against the real org-contacts-export-as-vcard source, not assumed', () => {
+  const twoContacts = docs(
+    '* Alice\n:PROPERTIES:\n:EMAIL: alice@example.com\n:NOTE: mentions bob here\n:END:\n* Bob\n:PROPERTIES:\n:EMAIL: bob@example.com\n:END:\n'
+  );
+  const vcf = exportToVcard(twoContacts, { nameFilter: 'bob' });
+  // Only Bob's own heading matches "bob" -- Alice's NOTE property
+  // containing the word "bob" must NOT cause Alice to match too.
+  assert.doesNotMatch(vcf, /FN:Alice/);
+  assert.match(vcf, /FN:Bob/);
+});
+
+test('nameFilter (plain mode) treats special regex characters as literal text, not regex syntax', () => {
+  const twoContacts = docs(
+    '* Smith (Work)\n:PROPERTIES:\n:EMAIL: work@example.com\n:END:\n* Smith Home\n:PROPERTIES:\n:EMAIL: home@example.com\n:END:\n'
+  );
+  const vcf = exportToVcard(twoContacts, { nameFilter: 'Smith (Work)' });
+  assert.match(vcf, /FN:Smith \(Work\)/);
+  assert.doesNotMatch(vcf, /FN:Smith Home/);
+});
+
+test('THE FEATURE: nameFilter (regex mode) matches using a genuine regex pattern', () => {
+  const threeContacts = docs(
+    '* Alice\n:PROPERTIES:\n:EMAIL: a@example.com\n:END:\n* Alison\n:PROPERTIES:\n:EMAIL: b@example.com\n:END:\n* Bob\n:PROPERTIES:\n:EMAIL: c@example.com\n:END:\n'
+  );
+  const vcf = exportToVcard(threeContacts, { nameFilter: '^Ali', nameFilterRegex: true });
+  assert.match(vcf, /FN:Alice/);
+  assert.match(vcf, /FN:Alison/);
+  assert.doesNotMatch(vcf, /FN:Bob/);
+});
+
+test('nameFilterRegex with an invalid pattern throws a clear, catchable error rather than silently matching nothing', () => {
+  const contact = docs('* Alice\n:PROPERTIES:\n:EMAIL: a@example.com\n:END:\n');
+  assert.throws(
+    () => exportToVcard(contact, { nameFilter: '(unclosed', nameFilterRegex: true }),
+    /Invalid regex/
+  );
+});
+
+test('an empty or whitespace-only nameFilter is treated as no filter at all', () => {
+  const twoContacts = docs(
+    '* Alice\n:PROPERTIES:\n:EMAIL: a@example.com\n:END:\n* Bob\n:PROPERTIES:\n:EMAIL: b@example.com\n:END:\n'
+  );
+  const vcf = exportToVcard(twoContacts, { nameFilter: '   ' });
+  assert.match(vcf, /FN:Alice/);
+  assert.match(vcf, /FN:Bob/);
+});
