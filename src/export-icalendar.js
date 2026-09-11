@@ -98,7 +98,7 @@ function escapeIcsText(text) {
  *  continuation line starting with a single space -- an unfolded long
  *  line is technically non-conformant, and some real calendar clients
  *  (Outlook among them) are known to reject or mis-parse one. */
-function foldLine(line) {
+export function foldLine(line) {
   if (line.length <= 75) return line;
   const parts = [];
   let rest = line;

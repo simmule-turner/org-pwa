@@ -244,6 +244,19 @@ export function getAgendaFilesVar(vars) {
   return (vars || {})['org-agenda-files'] || '';
 }
 
+/** org-contacts-files: real org-contacts.el's own exact variable name
+ *  -- the files org-contacts-export-as-vcard (and any other contacts-
+ *  aware feature) scans across for contact headings, beyond whichever
+ *  file is currently open. Same "scheme:path;scheme:path" syntax as
+ *  org-agenda-files above -- parsed with that same module's own
+ *  parseAgendaFilesVar directly rather than a second, near-identical
+ *  parser, since the shape is genuinely identical even though the two
+ *  variables serve different purposes (contacts vs agenda scanning)
+ *  and are deliberately configured independently. */
+export function getContactsFilesVar(vars) {
+  return (vars || {})['org-contacts-files'] || '';
+}
+
 /** Parses org-agenda-files' own raw string value (semicolon-separated
  *  "scheme:path" entries) into a validated array of just the entries
  *  that actually look like a real, recognized backend reference --
