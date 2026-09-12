@@ -52,9 +52,9 @@ test('unary minus', () => {
   assert.equal(result[0].cells[0], '7');
 });
 
-test('division by zero yields 0, not Infinity/NaN -- there is nowhere for a spreadsheet-style error value to live in a plain cell', () => {
+test('division by zero produces #ERROR, matching real Calc\u2019s own default (non-Infinite-mode) behavior of treating it as an error', () => {
   const result = recalculateTable(mkTable('@1$1=$2/$3', [['', '5', '0']]));
-  assert.equal(result[0].cells[0], '0');
+  assert.equal(result[0].cells[0], '#ERROR');
 });
 
 // ---- non-numeric / blank cells --------------------------------------------
@@ -329,9 +329,9 @@ test('sqrt() computes a square root', () => {
   assert.equal(result[0].cells[1], '4');
 });
 
-test('sqrt() of a negative number returns 0, not NaN -- real Calc would return a complex number, which this app has no representation for at all', () => {
+test('sqrt() of a negative number produces #ERROR -- real Calc would return a complex number, which this app has no representation for at all', () => {
   const result = recalculateTable(mkTable('@1$2=sqrt($1)', [['-4', '']]));
-  assert.equal(result[0].cells[1], '0');
+  assert.equal(result[0].cells[1], '#ERROR');
 });
 
 test('floor()/ceil()/round()/trunc() with no second argument, matching real Calc\u2019s own documented single-argument behavior', () => {
@@ -1098,9 +1098,9 @@ test('arcsin/arccos/arctan under R return radians instead', () => {
   assert.ok(Math.abs(Number(result[0].cells[0]) - Math.PI / 4) < 1e-6);
 });
 
-test('arcsin/arccos outside their own [-1, 1] domain return 0, matching sqrt\u2019s own "no complex-number support" convention rather than NaN', () => {
-  assert.equal(recalculateTable(mkTable('$1 = arcsin(2)', [['']]))[0].cells[0], '0');
-  assert.equal(recalculateTable(mkTable('$1 = arccos(-2)', [['']]))[0].cells[0], '0');
+test('arcsin/arccos outside their own [-1, 1] domain produce #ERROR, matching sqrt\u2019s own updated "no complex-number support" convention', () => {
+  assert.equal(recalculateTable(mkTable('$1 = arcsin(2)', [['']]))[0].cells[0], '#ERROR');
+  assert.equal(recalculateTable(mkTable('$1 = arccos(-2)', [['']]))[0].cells[0], '#ERROR');
 });
 
 test('arctan has no domain restriction -- works for any real input', () => {
@@ -1138,16 +1138,16 @@ test('log(x) with a single argument defaults to natural log', () => {
   assert.equal(withBase[0].cells[0], withoutBase[0].cells[0]);
 });
 
-test('ln/log10/log of a non-positive number return 0, matching the same "no complex-number support" convention', () => {
-  assert.equal(recalculateTable(mkTable('$1 = ln(0)', [['']]))[0].cells[0], '0');
-  assert.equal(recalculateTable(mkTable('$1 = ln(-5)', [['']]))[0].cells[0], '0');
-  assert.equal(recalculateTable(mkTable('$1 = log10(-1)', [['']]))[0].cells[0], '0');
-  assert.equal(recalculateTable(mkTable('$1 = log(-5, 2)', [['']]))[0].cells[0], '0');
+test('ln/log10/log of a non-positive number produce #ERROR, matching the same updated "no complex-number support" convention', () => {
+  assert.equal(recalculateTable(mkTable('$1 = ln(0)', [['']]))[0].cells[0], '#ERROR');
+  assert.equal(recalculateTable(mkTable('$1 = ln(-5)', [['']]))[0].cells[0], '#ERROR');
+  assert.equal(recalculateTable(mkTable('$1 = log10(-1)', [['']]))[0].cells[0], '#ERROR');
+  assert.equal(recalculateTable(mkTable('$1 = log(-5, 2)', [['']]))[0].cells[0], '#ERROR');
 });
 
-test('log() with an invalid base (<=0 or exactly 1) returns 0 rather than Infinity/NaN', () => {
-  assert.equal(recalculateTable(mkTable('$1 = log(10, 1)', [['']]))[0].cells[0], '0');
-  assert.equal(recalculateTable(mkTable('$1 = log(10, -2)', [['']]))[0].cells[0], '0');
+test('log() with an invalid base (<=0 or exactly 1) produces #ERROR rather than Infinity/NaN', () => {
+  assert.equal(recalculateTable(mkTable('$1 = log(10, 1)', [['']]))[0].cells[0], '#ERROR');
+  assert.equal(recalculateTable(mkTable('$1 = log(10, -2)', [['']]))[0].cells[0], '#ERROR');
 });
 
 test('trig and log functions compose with ordinary arithmetic and other functions', () => {
@@ -1240,4 +1240,34 @@ test('the full worked example from the request: mass/energy/freefall table with 
   );
   assert.equal(result[2].cells[1], '898755178736817700');
   assert.equal(result[2].cells[2], '9.81');
+});
+
+// ---- inf --------------------------------------------------------------
+
+test('THE FEATURE: inf resolves to the real mathematical constant, matching real Calc\u2019s own built-in inf exactly', () => {
+  const result = recalculateTable(mkTable('$1 = inf', [['']]));
+  assert.equal(result[0].cells[0], 'inf');
+});
+
+test('-inf works via ordinary unary negation, no special-casing needed', () => {
+  const result = recalculateTable(mkTable('$1 = -inf', [['']]));
+  assert.equal(result[0].cells[0], '-inf');
+});
+
+test('inf composes with arithmetic and stays inf, matching real Calc\u2019s own "infinity propagates" behavior', () => {
+  assert.equal(recalculateTable(mkTable('$1 = inf + 1', [['']]))[0].cells[0], 'inf');
+  assert.equal(recalculateTable(mkTable('$1 = inf * 2', [['']]))[0].cells[0], 'inf');
+  assert.equal(recalculateTable(mkTable('$1 = 5 - inf', [['']]))[0].cells[0], '-inf');
+});
+
+test('inf is useful as an explicit "largest possible value" sentinel in a comparison', () => {
+  const result = recalculateTable(mkTable('$2 = if($1 > 1000000, inf, $1)', [['500', '']]));
+  assert.equal(result[0].cells[1], '500');
+  const result2 = recalculateTable(mkTable('$2 = if($1 > 1000000, inf, $1)', [['2000000', '']]));
+  assert.equal(result2[0].cells[1], 'inf');
+});
+
+test('a finite value divided by inf is 0, matching real Calc\u2019s own actual convention', () => {
+  const result = recalculateTable(mkTable('$1 = 5 / inf', [['']]));
+  assert.equal(result[0].cells[0], '0');
 });
