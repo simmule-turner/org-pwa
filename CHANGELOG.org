@@ -6,6 +6,15 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v328 — inf constant, and #ERROR for undefined math
+#+TBLFM: formulas now support inf, matching pi's own built-in
+treatment. Also: division by zero, sqrt of a negative number, ln/log10
+of a non-positive number, and out-of-range arcsin/arccos now produce
+#ERROR in that cell instead of silently returning 0 — confirmed
+against the real Calc manual that these are genuine errors under
+Calc's own default settings, which is what real org table formulas
+actually use.
+
 * v327 — Table formulas: pi and named constants
 #+TBLFM: formulas can now use pi directly, and $name to reference a
 named constant defined on a #+CONSTANTS: line (e.g. #+CONSTANTS:

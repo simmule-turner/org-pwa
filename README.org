@@ -153,19 +153,20 @@ Landing on a step whose text is byte-identical to whatever's actually confirmed 
 
 | Name | Kind | What it does |
 |-------------+------------+----------------------------------------------------------------------|
-| ~+ - * /~   | operator   | Ordinary arithmetic                                                   |
+| ~+ - * /~   | operator   | Ordinary arithmetic (division by zero produces ~#ERROR~, matching real Calc's own default, non-Infinite-mode behavior of treating it as an error) |
 | ~^~         | operator   | Exponent, right-associative (~2^3^2~ = ~2^(3^2)~ = 512)               |
-| ~sqrt(x)~   | scalar     | Square root (a negative input gives 0 — no complex-number support)    |
+| ~sqrt(x)~   | scalar     | Square root (a negative input produces ~#ERROR~ — no complex-number support, matching real Calc's own default, non-Infinite-mode behavior of treating this as an error) |
 | ~floor(x)~  | scalar     | Round toward −∞                                                       |
 | ~ceil(x)~   | scalar     | Round toward +∞                                                       |
 | ~round(x)~  | scalar     | Round to nearest; an exact ~.5~ tie rounds away from zero              |
 | ~trunc(x)~  | scalar     | Round toward zero                                                      |
 | ~sin(x) cos(x) tan(x)~ | scalar | Degrees by default, matching real org's own documented default angle mode — see the ~D~/~R~ mode flags below |
-| ~arcsin(x) arccos(x) arctan(x)~ | scalar | Inverse trig, real Calc's own algebraic names (not ~asin~/~acos~/~atan~) — an out-of-domain ~arcsin~/~arccos~ input gives 0, same "no complex-number support" convention as ~sqrt~ |
-| ~ln(x) log10(x)~ | scalar | Natural and base-10 logarithm — a non-positive input gives 0, same convention |
-| ~log(x, base)~ | scalar | Logarithm to an arbitrary base — confirmed directly against the Calc manual's own worked example (~log(1024, 2)~ = 10). ~log(x)~ with no base defaults to natural log |
+| ~arcsin(x) arccos(x) arctan(x)~ | scalar | Inverse trig, real Calc's own algebraic names (not ~asin~/~acos~/~atan~) — an out-of-domain ~arcsin~/~arccos~ input produces ~#ERROR~, same convention as ~sqrt~ |
+| ~ln(x) log10(x)~ | scalar | Natural and base-10 logarithm — a non-positive input produces ~#ERROR~, same convention |
+| ~log(x, base)~ | scalar | Logarithm to an arbitrary base — confirmed directly against the Calc manual's own worked example (~log(1024, 2)~ = 10). ~log(x)~ with no base defaults to natural log. A non-positive ~x~ or an invalid ~base~ (≤0 or exactly 1) produces ~#ERROR~ |
 | ~exp(x) exp10(x)~ | scalar | e^x and 10^x                                                           |
 | ~pi~        | constant   | The mathematical constant π — a bare name, no parentheses, matching real Calc's own built-in constant exactly |
+| ~inf~       | constant   | Infinity — same bare-name treatment as ~pi~, confirmed directly against the real Calc manual. ~-inf~ works via ordinary unary negation |
 | ~$name~     | constant   | A named constant from a ~#+CONSTANTS:~ line — see below                |
 | ~date(ref)~ | scalar     | Parses a timestamp out of a cell into a date value — see below         |
 | ~date(Y,M,D)~ | scalar   | Constructs a date value directly from year/month/day numbers           |
@@ -198,7 +199,7 @@ Landing on a step whose text is byte-identical to whatever's actually confirmed 
 
 ~floor~ / ~ceil~ / ~round~ / ~trunc~ each also accept an optional second argument — how many digits after the decimal point to keep (~round($1, 2)~). There's no plain, unqualified ~variance~ / ~stddev~ name for either the sample or population variant — real Calc doesn't have one either.
 
-*Named constants.* A ~#+CONSTANTS:~ line anywhere in the file (before or after any table) defines one or more numeric constants, referenced in a formula as ~$name~ — confirmed directly against the real org-table.el source: "A constant looks like ~$c~ or ~$Grav~", defined per-file with "a line like ~#+CONSTANTS: c=299792458~". Multiple names on one line are space-separated (~#+CONSTANTS: c=299792458 g=9.81~); multiple ~#+CONSTANTS:~ lines are all honored together, a later line's own value winning for a name repeated on more than one. Referencing an undefined ~$name~ produces ~#ERROR~ in that cell, the same as any other failing formula, rather than silently treating it as 0. This app deliberately doesn't also bundle a built-in physical-constants library the way real org optionally can via the separate, third-party ~constants.el~ package (~$c~ resolving to the speed of light with no ~#+CONSTANTS:~ line at all) — only ~pi~ is genuinely built into Calc itself; every other named constant needs its own explicit ~#+CONSTANTS:~ definition.
+*Named constants.* A ~#+CONSTANTS:~ line anywhere in the file (before or after any table) defines one or more numeric constants, referenced in a formula as ~$name~ — confirmed directly against the real org-table.el source: "A constant looks like ~$c~ or ~$Grav~", defined per-file with "a line like ~#+CONSTANTS: c=299792458~". Multiple names on one line are space-separated (~#+CONSTANTS: c=299792458 g=9.81~); multiple ~#+CONSTANTS:~ lines are all honored together, a later line's own value winning for a name repeated on more than one. Referencing an undefined ~$name~ produces ~#ERROR~ in that cell, the same as any other failing formula, rather than silently treating it as 0. This app deliberately doesn't also bundle a built-in physical-constants library the way real org optionally can via the separate, third-party ~constants.el~ package (~$c~ resolving to the speed of light with no ~#+CONSTANTS:~ line at all) — only ~pi~ and ~inf~ are genuinely built into Calc itself; every other named constant needs its own explicit ~#+CONSTANTS:~ definition.
 
 *Conditional logic.* ~if(condition, true_value, false_value)~ evaluates ~condition~ first; Calc's own boolean convention applies (a non-zero number, or a non-empty string, counts as true) — then evaluates and returns *only* the matching branch. This is genuinely short-circuiting, not just a convenience: ~if($1 != 0, 100 / $1, 0)~ never actually computes ~100 / $1~ when ~$1~ is 0, so the classic divide-by-zero guard actually works as written rather than erroring regardless of which branch gets used. ~&&~ and ~||~ both short-circuit the same way: the right side is never evaluated once the left side alone already decides the result. ~and(a,b)~ / ~or(a,b)~ / ~not(a)~ are the function-call equivalents of ~&&~ / ~||~ / ~!~ — these don't short-circuit, matching real Calc's own actual function-call semantics.
 
