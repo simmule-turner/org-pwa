@@ -6,6 +6,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v325 — Table formulas: trig, logs, and D/R angle mode
+#+TBLFM: formulas now support sin/cos/tan, arcsin/arccos/arctan, ln,
+log10, log(x, base), exp, and exp10 — matching real Calc's own exact
+names (arcsin, not asin) and default semantics (degrees by default,
+matching real org's own documented default) wherever feasible, so
+nothing here reads as a "new" or surprising name to anyone who knows
+real org-mode. New ;D/;R mode flags switch angle mode explicitly.
+
 * v324 — Fix: stale file when exporting Contacts (.vcf)
 A file listed in both org-agenda-files and org-contacts-files could
 export with outdated content, since the two lists cached that same
