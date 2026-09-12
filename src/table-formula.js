@@ -253,7 +253,7 @@ function computeHlinePositions(workingRows) {
 // ---- expression tokenizing/parsing ------------------------------------
 
 const TOKEN_RE =
-  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:[<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+)|\d+\.?\d*|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()+\-*/^,<>=!])\s*/y;
+  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:[<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+\.?\d*|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()+\-*/^,<>=!])\s*/y;
 
 /** date-to-time and format-time-string are real Emacs function names
  *  with literal hyphens in them -- TOKEN_RE's own generic identifier
@@ -710,6 +710,7 @@ function parseExpression(tokens) {
     }
     if (/^[A-Za-z_]/.test(tok)) {
       const name = next().toLowerCase();
+      if (name === 'pi') return { type: 'number', value: Math.PI };
       if (name === 'date' || name === 'now' || name === 'date-to-time') {
         expect('(');
         const args = [];
@@ -775,6 +776,13 @@ function parseExpression(tokens) {
       expect(')');
       if (args.length > 2) throw new Error(`"${name}" takes at most 2 arguments, got ${args.length}`);
       return { type: 'scalarCall', name, args };
+    }
+    if (tok.startsWith('$')) {
+      const constantMatch = /^\$([A-Za-z_][A-Za-z0-9_]*)$/.exec(tok);
+      if (constantMatch) {
+        next();
+        return { type: 'namedConstant', name: constantMatch[1] };
+      }
     }
     if (tok.startsWith('@') || tok.startsWith('$')) {
       return parseRangeOrRef();
@@ -1014,6 +1022,11 @@ function evaluateAst(node, ctx) {
     case 'ref': {
       const { row, col } = resolveRef(node.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
       return readCellValue(ctx.dataRows, row, col, ctx);
+    }
+    case 'namedConstant': {
+      const value = (ctx.constants || {})[node.name];
+      if (value === undefined) throw new Error(`Undefined constant "$${node.name}" -- add it to a #+CONSTANTS: line`);
+      return value;
     }
     case 'range': {
       throw new Error('A range can only be used as an aggregate function\u2019s own argument, not as a plain value');
@@ -1539,6 +1552,35 @@ function formatFinalValue(value, mode, hourZeroPad) {
   return formatResult(value);
 }
 
+/** Extracts and parses every #+CONSTANTS: line in `doc` into a single
+ *  {name: value} map for #+TBLFM's own $name references. Confirmed
+ *  directly against the real org-table.el source for the #+CONSTANTS:
+ *  line syntax itself ("c=299792458 g=9.81"). Multiple #+CONSTANTS:
+ *  lines are unioned together (a later line's own value for the same
+ *  name wins), matching this app's own established precedent for how
+ *  multiple lines of the same document keyword are already treated
+ *  elsewhere (#+TODO:'s own union-across-lines behavior in
+ *  org-parser.js). A malformed pair (no "=", or a non-numeric value)
+ *  is silently skipped rather than blocking the rest of the line or
+ *  throwing -- matching this app's own established "a malformed entry
+ *  doesn't block the rest of the list" convention for other
+ *  multi-entry configuration (org-agenda-files and similar). */
+export function parseTableConstants(doc) {
+  const constants = {};
+  for (const kw of doc.keywords || []) {
+    if (kw.key.toUpperCase() !== 'CONSTANTS') continue;
+    for (const pair of kw.value.trim().split(/\s+/)) {
+      const eq = pair.indexOf('=');
+      if (eq === -1) continue;
+      const name = pair.slice(0, eq);
+      const value = Number(pair.slice(eq + 1));
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) || Number.isNaN(value)) continue;
+      constants[name] = value;
+    }
+  }
+  return constants;
+}
+
 export function recalculateTable(table, options = {}) {
   if (!table.tblfm || !table.tblfm.trim()) return null;
   const hourZeroPad = options.hourZeroPad !== undefined ? options.hourZeroPad : true;
@@ -1575,7 +1617,7 @@ export function recalculateTable(table, options = {}) {
   const { positions: hlinePositions } = computeHlinePositions(workingRows);
 
   for (const { target, expr, mode } of statements) {
-    const evalCtx = { dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode };
+    const evalCtx = { dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode, constants: options.constants || {} };
     // Evaluates the expression for one specific (row, col) and writes
     // either its formatted result or, if evaluation itself throws,
     // the literal text "#ERROR" into that cell -- confirmed directly
