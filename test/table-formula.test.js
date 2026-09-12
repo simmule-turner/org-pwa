@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { recalculateTable } from '../src/table-formula.js';
+import { recalculateTable, parseTableConstants } from '../src/table-formula.js';
+import { parseOrg } from '../src/org-parser.js';
 
 function mkTable(tblfm, rowsData) {
   return { tblfm, rows: rowsData.map((r) => (r === null ? { type: 'rule' } : { type: 'row', cells: r })) };
@@ -1152,4 +1153,91 @@ test('log() with an invalid base (<=0 or exactly 1) returns 0 rather than Infini
 test('trig and log functions compose with ordinary arithmetic and other functions', () => {
   const result = recalculateTable(mkTable('$1 = round(sin(30) * 100)', [['']]));
   assert.equal(result[0].cells[0], '50');
+});
+
+// ---- pi, $name constants, #+CONSTANTS: -------------------------------------
+
+test('THE FEATURE: pi resolves to the real mathematical constant', () => {
+  const result = recalculateTable(mkTable('$1 = round(pi * 1000)', [['']]));
+  assert.equal(result[0].cells[0], '3142');
+});
+
+test('pi composes with trig functions, matching the user\u2019s own reference example (sin($1 * pi / 180))', () => {
+  const result = recalculateTable(mkTable('$2 = round(sin($1 * pi / 180) * 1000);R', [['90', '']]));
+  assert.equal(result[0].cells[1], '1000');
+});
+
+test('THE FEATURE: $name resolves a named constant passed via options.constants', () => {
+  const result = recalculateTable(mkTable('$1 = $c', [['']]), { constants: { c: 299792458 } });
+  assert.equal(result[0].cells[0], '299792458');
+});
+
+test('a named constant composes with ordinary arithmetic, matching the user\u2019s own worked example\u2019s own shape (mc^2) -- with the mathematically correct result, since the request\u2019s own illustrative table value (2.99792e17) doesn\u2019t actually match 10*c^2', () => {
+  const result = recalculateTable(mkTable('$2 = $1*($c^2)', [['10', '']]), { constants: { c: 299792458 } });
+  assert.equal(result[0].cells[1], '898755178736817700');
+});
+
+test('a bare $name (no formula reference to a cell) still correctly distinguishes from $1/$2 column references', () => {
+  const result = recalculateTable(mkTable('$3 = $1 + $2 + $g', [['1', '2', '']]), { constants: { g: 9.81 } });
+  assert.equal(result[0].cells[2], '12.81');
+});
+
+test('an undefined named constant produces #ERROR in that cell, matching real org\u2019s own actual behavior for any failing formula (confirmed directly: a malformed/failing formula never aborts recalculation, it just marks that one cell) -- not a thrown exception out of recalculateTable itself', () => {
+  const result = recalculateTable(mkTable('$1 = $undefinedname', [['']]), { constants: {} });
+  assert.equal(result[0].cells[0], '#ERROR');
+});
+
+test('with no constants option at all, a $name reference still fails cleanly (#ERROR) rather than crashing on a missing object', () => {
+  const result = recalculateTable(mkTable('$1 = $c', [['']]));
+  assert.equal(result[0].cells[0], '#ERROR');
+});
+
+test('THE FEATURE: parseTableConstants extracts a single #+CONSTANTS: line, matching the real org-table.el syntax exactly', () => {
+  const doc = parseOrg('#+CONSTANTS: c=299792458 g=9.81 e=2.71828\n* Heading\n');
+  const constants = parseTableConstants(doc);
+  assert.deepEqual(constants, { c: 299792458, g: 9.81, e: 2.71828 });
+});
+
+test('multiple #+CONSTANTS: lines union together', () => {
+  const doc = parseOrg('#+CONSTANTS: c=299792458\n#+CONSTANTS: g=9.81\n* Heading\n');
+  const constants = parseTableConstants(doc);
+  assert.deepEqual(constants, { c: 299792458, g: 9.81 });
+});
+
+test('a later #+CONSTANTS: line\u2019s own value for the same name wins over an earlier one', () => {
+  const doc = parseOrg('#+CONSTANTS: g=9.8\n#+CONSTANTS: g=9.81\n* Heading\n');
+  const constants = parseTableConstants(doc);
+  assert.deepEqual(constants, { g: 9.81 });
+});
+
+test('a malformed pair (no "=", or a non-numeric value) is silently skipped, not thrown, and doesn\u2019t block the rest of the line', () => {
+  const doc = parseOrg('#+CONSTANTS: c=299792458 malformed nonnumeric=abc g=9.81\n* Heading\n');
+  const constants = parseTableConstants(doc);
+  assert.deepEqual(constants, { c: 299792458, g: 9.81 });
+});
+
+test('no #+CONSTANTS: line at all produces an empty map, not an error', () => {
+  const doc = parseOrg('* Heading\nSome text.\n');
+  assert.deepEqual(parseTableConstants(doc), {});
+});
+
+test('the full worked example from the request: mass/energy/freefall table with c and g constants', () => {
+  const doc = parseOrg(
+    '#+CONSTANTS: c=299792458 g=9.81 e=2.71828\n' +
+      '| Mass (kg) | Energy (Joules) | Freefall Accel |\n' +
+      '|-----------+-----------------+----------------|\n' +
+      '|        10 |                 |                |\n' +
+      '#+TBLFM: $2=$1*($c^2)::$3=$g\n'
+  );
+  const constants = parseTableConstants(doc);
+  const result = recalculateTable(
+    mkTable('$2=$1*($c^2)::$3=$g', [
+      ['Mass (kg)', 'Energy (Joules)', 'Freefall Accel'],
+      null,
+      ['10', '', ''],
+    ]),
+    { constants }
+  );
+  assert.equal(result[2].cells[1], '898755178736817700');
+  assert.equal(result[2].cells[2], '9.81');
 });
