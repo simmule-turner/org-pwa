@@ -1271,3 +1271,32 @@ test('a finite value divided by inf is 0, matching real Calc\u2019s own actual c
   const result = recalculateTable(mkTable('$1 = 5 / inf', [['']]));
   assert.equal(result[0].cells[0], '0');
 });
+
+test('THE FEATURE (regression): inf with an explicit format spec (;f4 and similar) still displays as "inf", not "Infinity" -- the exact bug reported live', () => {
+  const result = recalculateTable(mkTable('$1 = inf;f4', [['']]));
+  assert.equal(result[0].cells[0], 'inf');
+});
+
+test('the user\u2019s own exact reported formula: if($1==90, inf, tan($1));f4', () => {
+  const result = recalculateTable(mkTable('$2 = if($1==90, inf, tan($1));f4', [['90', '']]));
+  assert.equal(result[0].cells[1], 'inf');
+});
+
+test('inf still displays as "inf" under every other format spec too (n, s, e, %d)', () => {
+  assert.equal(recalculateTable(mkTable('$1 = inf;n4', [['']]))[0].cells[0], 'inf');
+  assert.equal(recalculateTable(mkTable('$1 = inf;s4', [['']]))[0].cells[0], 'inf');
+  assert.equal(recalculateTable(mkTable('$1 = inf;e4', [['']]))[0].cells[0], 'inf');
+  assert.equal(recalculateTable(mkTable('$1 = inf;%d', [['']]))[0].cells[0], 'inf');
+  assert.equal(recalculateTable(mkTable('$1 = -inf;f2', [['']]))[0].cells[0], '-inf');
+});
+
+test('inf under a duration format spec (T/U/t) also displays as "inf", not garbage from an infinite HH:MM:SS split', () => {
+  assert.equal(recalculateTable(mkTable('$1 = inf;T', [['']]))[0].cells[0], 'inf');
+  assert.equal(recalculateTable(mkTable('$1 = inf;U', [['']]))[0].cells[0], 'inf');
+  assert.equal(recalculateTable(mkTable('$1 = -inf;t', [['']]))[0].cells[0], '-inf');
+});
+
+test('inf under a fraction format spec (F) also displays as "inf", not a garbage ratio', () => {
+  assert.equal(recalculateTable(mkTable('$1 = inf;F', [['']]))[0].cells[0], 'inf');
+  assert.equal(recalculateTable(mkTable('$1 = -inf;FS', [['']]))[0].cells[0], '-inf');
+});
