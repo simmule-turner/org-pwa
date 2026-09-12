@@ -6,6 +6,12 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v327 — Table formulas: pi and named constants
+#+TBLFM: formulas can now use pi directly, and $name to reference a
+named constant defined on a #+CONSTANTS: line (e.g. #+CONSTANTS:
+c=299792458, then $1*($c^2) in a formula) — matching real org's own
+documented syntax for both.
+
 * v325 — Table formulas: trig, logs, and D/R angle mode
 #+TBLFM: formulas now support sin/cos/tan, arcsin/arccos/arctan, ln,
 log10, log(x, base), exp, and exp10 — matching real Calc's own exact

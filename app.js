@@ -163,7 +163,7 @@ import {
   getHeadingText,
   setHeadingText,
 } from './src/body-edit.js';
-import { recalculateTable } from './src/table-formula.js';
+import { recalculateTable, parseTableConstants } from './src/table-formula.js';
 import { isOrgWeatherLine, formatWeatherLine, buildWeatherApiUrl, DEFAULT_ORG_WEATHER_FORMAT } from './src/org-weather.js';
 import { initialState as godModeInitialState, processKey as godModeProcessKey } from './src/god-mode.js';
 import { documentUsesOrgWeather } from './src/sexp-eval.js';
@@ -2021,7 +2021,10 @@ function discardAudioRecording() {
 function recalculateOneTable(heading, table) {
   if (!table.tblfm || !table.tblfm.trim()) return { result: 'no-formula' };
   try {
-    const newRows = recalculateTable(table, { hourZeroPad: getOrgTableDurationHourZeroPadding(state.localVariables) });
+    const newRows = recalculateTable(table, {
+      hourZeroPad: getOrgTableDurationHourZeroPadding(state.localVariables),
+      constants: parseTableConstants(state.doc),
+    });
     if (!newRows || JSON.stringify(newRows) === JSON.stringify(table.rows)) {
       return { result: 'unchanged' };
     }
