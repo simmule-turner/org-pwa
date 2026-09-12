@@ -1066,3 +1066,90 @@ test('string() on a non-ref expression converts whatever value results to its ow
 test('a malformed if() (missing the required third argument) is a parse-time error -- throws entirely, matching this module\u2019s own established convention for malformed formula syntax, rather than producing a per-cell #ERROR (which is reserved for runtime evaluation failures on an otherwise-valid formula)', () => {
   assert.throws(() => recalculateTable(mkTable('$1 = if($1, "only two args")', [['']])));
 });
+
+// ---- trig, inverse trig, log/exp, D/R angle mode --------------------------
+
+test('sin/cos/tan default to degrees, matching real org\u2019s own documented default angle mode', () => {
+  assert.equal(recalculateTable(mkTable('$1 = sin(90)', [['']]))[0].cells[0], '1');
+  assert.equal(recalculateTable(mkTable('$1 = cos(0)', [['']]))[0].cells[0], '1');
+  assert.equal(recalculateTable(mkTable('$1 = cos(60)', [['']]))[0].cells[0], '0.5');
+});
+
+test('D explicitly requests degrees -- same result as the default, just spelled out', () => {
+  assert.equal(recalculateTable(mkTable('$1 = sin(90);D', [['']]))[0].cells[0], '1');
+});
+
+test('R switches sin/cos/tan to radians', () => {
+  const result = recalculateTable(mkTable('$1 = sin(0);R', [['']]));
+  assert.equal(result[0].cells[0], '0');
+  const result2 = recalculateTable(mkTable('$1 = cos(0);R', [['']]));
+  assert.equal(result2[0].cells[0], '1');
+});
+
+test('arcsin/arccos/arctan return degrees by default, round-tripping cleanly with the forward functions', () => {
+  assert.equal(recalculateTable(mkTable('$1 = arcsin(1)', [['']]))[0].cells[0], '90');
+  assert.equal(recalculateTable(mkTable('$1 = arccos(1)', [['']]))[0].cells[0], '0');
+  assert.equal(recalculateTable(mkTable('$1 = arctan(1)', [['']]))[0].cells[0], '45');
+});
+
+test('arcsin/arccos/arctan under R return radians instead', () => {
+  const result = recalculateTable(mkTable('$1 = arctan(1);R', [['']]));
+  assert.ok(Math.abs(Number(result[0].cells[0]) - Math.PI / 4) < 1e-6);
+});
+
+test('arcsin/arccos outside their own [-1, 1] domain return 0, matching sqrt\u2019s own "no complex-number support" convention rather than NaN', () => {
+  assert.equal(recalculateTable(mkTable('$1 = arcsin(2)', [['']]))[0].cells[0], '0');
+  assert.equal(recalculateTable(mkTable('$1 = arccos(-2)', [['']]))[0].cells[0], '0');
+});
+
+test('arctan has no domain restriction -- works for any real input', () => {
+  const result = recalculateTable(mkTable('$1 = arctan(1000000)', [['']]));
+  assert.ok(Number(result[0].cells[0]) > 89.9 && Number(result[0].cells[0]) < 90);
+});
+
+test('trig functions can reference a cell, not just a literal', () => {
+  const result = recalculateTable(mkTable('$2 = sin($1)', [['90', '']]));
+  assert.equal(result[0].cells[1], '1');
+});
+
+test('ln/log10/exp/exp10 match real Calc\u2019s own confirmed names and behavior', () => {
+  assert.equal(recalculateTable(mkTable('$1 = ln(1)', [['']]))[0].cells[0], '0');
+  assert.equal(recalculateTable(mkTable('$1 = log10(100)', [['']]))[0].cells[0], '2');
+  assert.equal(recalculateTable(mkTable('$1 = exp(0)', [['']]))[0].cells[0], '1');
+  assert.equal(recalculateTable(mkTable('$1 = exp10(3)', [['']]))[0].cells[0], '1000');
+});
+
+test('exp/ln round-trip', () => {
+  const result = recalculateTable(mkTable('$1 = ln(exp(5))', [['']]));
+  assert.equal(result[0].cells[0], '5');
+});
+
+test('THE FEATURE: log(x, base) matches the Calc manual\u2019s own worked example exactly (1024, base 2 -> 10)', () => {
+  assert.equal(recalculateTable(mkTable('$1 = log(1024, 2)', [['']]))[0].cells[0], '10');
+  assert.equal(recalculateTable(mkTable('$1 = log(100, 10)', [['']]))[0].cells[0], '2');
+});
+
+test('log(x) with a single argument defaults to natural log', () => {
+  const result = recalculateTable(mkTable('$1 = log(1)', [['']]));
+  assert.equal(result[0].cells[0], '0');
+  const withBase = recalculateTable(mkTable('$1 = ln($1)', [['2.718281828']]));
+  const withoutBase = recalculateTable(mkTable('$1 = log($1)', [['2.718281828']]));
+  assert.equal(withBase[0].cells[0], withoutBase[0].cells[0]);
+});
+
+test('ln/log10/log of a non-positive number return 0, matching the same "no complex-number support" convention', () => {
+  assert.equal(recalculateTable(mkTable('$1 = ln(0)', [['']]))[0].cells[0], '0');
+  assert.equal(recalculateTable(mkTable('$1 = ln(-5)', [['']]))[0].cells[0], '0');
+  assert.equal(recalculateTable(mkTable('$1 = log10(-1)', [['']]))[0].cells[0], '0');
+  assert.equal(recalculateTable(mkTable('$1 = log(-5, 2)', [['']]))[0].cells[0], '0');
+});
+
+test('log() with an invalid base (<=0 or exactly 1) returns 0 rather than Infinity/NaN', () => {
+  assert.equal(recalculateTable(mkTable('$1 = log(10, 1)', [['']]))[0].cells[0], '0');
+  assert.equal(recalculateTable(mkTable('$1 = log(10, -2)', [['']]))[0].cells[0], '0');
+});
+
+test('trig and log functions compose with ordinary arithmetic and other functions', () => {
+  const result = recalculateTable(mkTable('$1 = round(sin(30) * 100)', [['']]));
+  assert.equal(result[0].cells[0], '50');
+});
