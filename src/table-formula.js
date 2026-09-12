@@ -373,7 +373,10 @@ const TRIG_FUNCTION_NAMES = new Set(['sin', 'cos', 'tan', 'arcsin', 'arccos', 'a
 const DEG_TO_RAD = Math.PI / 180;
 
 const SCALAR_FUNCTIONS = {
-  sqrt: (x) => (x < 0 ? 0 : Math.sqrt(x)), // real Calc returns a complex number for a negative input; this app has no complex-number support at all, so 0 rather than NaN, matching every other "can't produce a real result" case in this module
+  sqrt: (x) => {
+    if (x < 0) throw new Error('sqrt of a negative number has no real result');
+    return Math.sqrt(x);
+  },
   floor: (x, digits) => roundToDigits(x, digits, Math.floor),
   ceil: (x, digits) => roundToDigits(x, digits, Math.ceil),
   round: (x, digits) => roundToDigits(x, digits, roundHalfAwayFromZero),
@@ -392,12 +395,12 @@ const SCALAR_FUNCTIONS = {
   cos: (x, isDegrees) => Math.cos(isDegrees ? x * DEG_TO_RAD : x),
   tan: (x, isDegrees) => Math.tan(isDegrees ? x * DEG_TO_RAD : x),
   arcsin: (x, isDegrees) => {
-    if (x < -1 || x > 1) return 0; // real Calc returns a complex number outside this domain; matching sqrt's own convention above
+    if (x < -1 || x > 1) throw new Error('arcsin input must be between -1 and 1');
     const radians = Math.asin(x);
     return isDegrees ? radians / DEG_TO_RAD : radians;
   },
   arccos: (x, isDegrees) => {
-    if (x < -1 || x > 1) return 0;
+    if (x < -1 || x > 1) throw new Error('arccos input must be between -1 and 1');
     const radians = Math.acos(x);
     return isDegrees ? radians / DEG_TO_RAD : radians;
   },
@@ -417,14 +420,20 @@ const SCALAR_FUNCTIONS = {
   // related, confirmed convention rather than being a pure guess;
   // ln() remains available as an explicit, unambiguous alternative
   // for anyone who wants to be certain which one they're getting.
-  ln: (x) => (x <= 0 ? 0 : Math.log(x)), // real Calc returns a complex number for x<=0, matching sqrt's own convention
-  log10: (x) => (x <= 0 ? 0 : Math.log10(x)),
+  ln: (x) => {
+    if (x <= 0) throw new Error('ln of a non-positive number has no real result');
+    return Math.log(x);
+  },
+  log10: (x) => {
+    if (x <= 0) throw new Error('log10 of a non-positive number has no real result');
+    return Math.log10(x);
+  },
   exp: (x) => Math.exp(x),
   exp10: (x) => Math.pow(10, x),
   log: (x, base) => {
-    if (x <= 0) return 0;
+    if (x <= 0) throw new Error('log of a non-positive number has no real result');
     if (base === undefined) return Math.log(x);
-    if (base <= 0 || base === 1) return 0; // an undefined logarithm base
+    if (base <= 0 || base === 1) throw new Error('log with an undefined base (must be positive and not 1)');
     return Math.log(x) / Math.log(base);
   },
 };
@@ -711,6 +720,7 @@ function parseExpression(tokens) {
     if (/^[A-Za-z_]/.test(tok)) {
       const name = next().toLowerCase();
       if (name === 'pi') return { type: 'number', value: Math.PI };
+      if (name === 'inf') return { type: 'number', value: Infinity };
       if (name === 'date' || name === 'now' || name === 'date-to-time') {
         expect('(');
         const args = [];
@@ -1015,7 +1025,10 @@ function evaluateAst(node, ctx) {
       if (node.op === '+') return lNum + rNum;
       if (node.op === '-') return lNum - rNum;
       if (node.op === '*') return lNum * rNum;
-      if (node.op === '/') return rNum === 0 ? 0 : lNum / rNum; // division by zero: 0, not Infinity/NaN -- a spreadsheet-style error value has nowhere to live in a plain org table cell
+      if (node.op === '/') {
+        if (rNum === 0) throw new Error('Division by zero');
+        return lNum / rNum;
+      }
       if (node.op === '^') return Math.pow(lNum, rNum);
       throw new Error(`Unknown operator "${node.op}"`);
     }
@@ -1380,6 +1393,7 @@ function applyFormatSpec(n, spec) {
 
 function formatResult(n) {
   if (Number.isNaN(n)) return 'nan';
+  if (!Number.isFinite(n)) return n > 0 ? 'inf' : '-inf'; // real Calc's own actual display convention for the inf constant, matching the input syntax round-trip
   if (Number.isInteger(n)) return String(n);
   const SIGNIFICANT_FIGURES = 8;
   const precise = n.toPrecision(SIGNIFICANT_FIGURES);
