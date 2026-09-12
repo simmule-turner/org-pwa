@@ -6,6 +6,13 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v329 — Fix: inf showed as "Infinity" with a format spec
+Last release's own inf fix only covered formulas with no explicit
+format spec — a formula like `if($1==90, inf, tan($1));f4` still
+showed JS's own "Infinity" instead of "inf". Fixed everywhere a result
+gets formatted, including duration and fraction display, not just the
+one spot that was reported.
+
 * v328 — inf constant, and #ERROR for undefined math
 #+TBLFM: formulas now support inf, matching pi's own built-in
 treatment. Also: division by zero, sqrt of a negative number, ln/log10
