@@ -1302,6 +1302,7 @@ function parseDurationSeconds(text) {
  *  seconds are always 2-digit zero-padded regardless. */
 function formatDuration(totalSeconds, flag, hourZeroPad) {
   if (Number.isNaN(totalSeconds)) return 'nan';
+  if (!Number.isFinite(totalSeconds)) return totalSeconds > 0 ? 'inf' : '-inf'; // an infinite duration has no sensible HH:MM:SS representation
   const sign = totalSeconds < 0 ? '-' : '';
   const abs = Math.round(Math.abs(totalSeconds));
   if (flag === 't') {
@@ -1371,6 +1372,7 @@ function cleanupPrecision(precise) {
  *  match to real Calc's own exact behavior). */
 function applyFormatSpec(n, spec) {
   if (Number.isNaN(n)) return 'nan';
+  if (!Number.isFinite(n)) return n > 0 ? 'inf' : '-inf'; // real Calc's own actual display convention -- a digit count is meaningless for an infinite value, so no format spec (fixed/normal/scientific/engineering/%d) applies to it at all
   if (spec.type === 'fixed') return n.toFixed(spec.digits);
   if (spec.type === 'normal') return formatNormal(n, spec.digits);
   if (spec.type === 'scientific') return formatScientific(n, spec.digits);
@@ -1537,6 +1539,7 @@ function toRationalApproximation(x, tolerance = 1e-9, maxDenominator = 1000000) 
  *  shown the same plain way either way. */
 function formatAsFraction(n, mixedNumber) {
   if (Number.isNaN(n)) return 'nan';
+  if (!Number.isFinite(n)) return n > 0 ? 'inf' : '-inf'; // inf isn't a ratio of two finite integers -- no fraction to show
   const { numerator, denominator } = toRationalApproximation(n);
   if (denominator === 1) return String(numerator); // an exact whole number -- no "/1" to show
   if (!mixedNumber) return `${numerator}/${denominator}`;
