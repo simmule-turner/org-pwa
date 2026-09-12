@@ -360,6 +360,18 @@ function sampleVariance(vals) {
 // many digits after the decimal point to keep -- also confirmed
 // directly against the manual's own wording for algebraic-formula
 // usage (exactly the context table formulas are written in).
+// The six trig functions read this app's own D/R angle-mode flag (see
+// parseModeString's own angleMode field) -- handled via a second,
+// explicit argument passed only to these specific names (see
+// evaluateAst's own scalarCall case), rather than appending it to
+// every scalar function call uniformly, which would collide with an
+// optional second argument a function like log() already has of its
+// own (log(x)'s own missing base would otherwise silently receive the
+// angle-mode boolean instead).
+const TRIG_FUNCTION_NAMES = new Set(['sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan']);
+
+const DEG_TO_RAD = Math.PI / 180;
+
 const SCALAR_FUNCTIONS = {
   sqrt: (x) => (x < 0 ? 0 : Math.sqrt(x)), // real Calc returns a complex number for a negative input; this app has no complex-number support at all, so 0 rather than NaN, matching every other "can't produce a real result" case in this module
   floor: (x, digits) => roundToDigits(x, digits, Math.floor),
@@ -370,6 +382,51 @@ const SCALAR_FUNCTIONS = {
   and: (a, b) => (isTruthyValue(a) && isTruthyValue(b) ? 1 : 0),
   or: (a, b) => (isTruthyValue(a) || isTruthyValue(b) ? 1 : 0),
   not: (a) => (isTruthyValue(a) ? 0 : 1),
+  // Real Calc's own algebraic names -- confirmed directly against the
+  // manual: "the calc-arcsin command or arcsin algebraic function",
+  // never "asin". `isDegrees` (this app's own D/R mode flag, degrees
+  // being real org's own documented default) converts the input
+  // before calling the underlying radians-only Math function, and
+  // converts an inverse function's own radians-only result back.
+  sin: (x, isDegrees) => Math.sin(isDegrees ? x * DEG_TO_RAD : x),
+  cos: (x, isDegrees) => Math.cos(isDegrees ? x * DEG_TO_RAD : x),
+  tan: (x, isDegrees) => Math.tan(isDegrees ? x * DEG_TO_RAD : x),
+  arcsin: (x, isDegrees) => {
+    if (x < -1 || x > 1) return 0; // real Calc returns a complex number outside this domain; matching sqrt's own convention above
+    const radians = Math.asin(x);
+    return isDegrees ? radians / DEG_TO_RAD : radians;
+  },
+  arccos: (x, isDegrees) => {
+    if (x < -1 || x > 1) return 0;
+    const radians = Math.acos(x);
+    return isDegrees ? radians / DEG_TO_RAD : radians;
+  },
+  arctan: (x, isDegrees) => {
+    const radians = Math.atan(x); // defined for every real x -- no domain restriction to handle
+    return isDegrees ? radians / DEG_TO_RAD : radians;
+  },
+  // Logarithmic/exponential functions -- entirely independent of angle
+  // mode. Names and the two-argument log(x, base) form confirmed
+  // directly against the Calc manual's own worked example (1024, base
+  // 2 -> 10). log(x) with only one argument isn't directly documented
+  // for Calc's own algebraic function specifically, but the core
+  // Emacs Lisp reference manual's own built-in `log` function --
+  // same name, same optional-second-argument shape -- is confirmed
+  // directly: "If you don't specify base, the natural base e is
+  // used." Defaulting to natural log here matches that closely
+  // related, confirmed convention rather than being a pure guess;
+  // ln() remains available as an explicit, unambiguous alternative
+  // for anyone who wants to be certain which one they're getting.
+  ln: (x) => (x <= 0 ? 0 : Math.log(x)), // real Calc returns a complex number for x<=0, matching sqrt's own convention
+  log10: (x) => (x <= 0 ? 0 : Math.log10(x)),
+  exp: (x) => Math.exp(x),
+  exp10: (x) => Math.pow(10, x),
+  log: (x, base) => {
+    if (x <= 0) return 0;
+    if (base === undefined) return Math.log(x);
+    if (base <= 0 || base === 1) return 0; // an undefined logarithm base
+    return Math.log(x) / Math.log(base);
+  },
 };
 
 function roundHalfAwayFromZero(x) {
@@ -969,6 +1026,7 @@ function evaluateAst(node, ctx) {
     case 'scalarCall': {
       const fn = SCALAR_FUNCTIONS[node.name];
       const argValues = node.args.map((a) => evaluateAst(a, ctx));
+      if (TRIG_FUNCTION_NAMES.has(node.name)) return fn(argValues[0], ctx.angleMode === 'degrees');
       return fn(...argValues);
     }
     case 'dateCall': {
@@ -1108,7 +1166,7 @@ function collectRangeValues(argNode, ctx) {
  *  this default is only ever used when a formula has no format flag
  *  of its own. */
 
-const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUENFS]/y;
+const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUENFSDR]/y;
 
 /** Parses a formula's own trailing mode string (everything after the
  *  ";", already split off by parseFormulaStatement below) into a
@@ -1145,6 +1203,16 @@ const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUENFS]
  *    but has no effect on its own -- this app doesn't implement
  *    Calc's own general Symbolic mode, only this specific, documented
  *    combination with Fraction mode.
+ *  angleMode: 'degrees' (default) | 'radians' (R) -- which unit the six
+ *    trig functions (sin/cos/tan/arcsin/arccos/arctan) interpret/
+ *    produce angles in. Degrees is real Calc's own documented default
+ *    for org table formulas specifically (confirmed directly against
+ *    the Org Manual, not assumed -- Calc's own general default varies
+ *    by context, but org's own is always degrees unless R is given),
+ *    so a formula with neither D nor R behaves exactly as it would in
+ *    real org-mode. D is recognized and consumed for completeness
+ *    (real org accepts it explicitly even though it's already the
+ *    default) but has no additional effect beyond confirming degrees.
  *
  *  pN (precision) is recognized and consumed but has no further
  *  effect -- this engine's own numbers already carry more precision
@@ -1156,7 +1224,7 @@ const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUENFS]
  *  there, falling back to whatever was already parsed rather than
  *  discarding the whole mode string. */
 function parseModeString(suffix) {
-  const mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false };
+  const mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees' };
   MODE_TOKEN_RE.lastIndex = 0;
   let m;
   while ((m = MODE_TOKEN_RE.exec(suffix))) {
@@ -1174,6 +1242,8 @@ function parseModeString(suffix) {
     else if (token === 'N') mode.forceNumeric = true;
     else if (token === 'F') mode.fraction = true;
     else if (token === 'S') mode.mixedNumber = true;
+    else if (token === 'R') mode.angleMode = 'radians';
+    else if (token === 'D') mode.angleMode = 'degrees'; // already the default -- consumed for completeness, matching real org accepting it explicitly
   }
   if (mode.forceNumeric && mode.emptyMode === 'nan') mode.emptyMode = 'zero'; // E and N together: blank fields are 0, not nan
   return mode;
@@ -1330,7 +1400,7 @@ function parseFormulaStatement(statement) {
   const lhs = statement.slice(0, eq).trim();
   let rhs = statement.slice(eq + 1).trim();
   const formatSuffix = /;[^;]*$/.exec(rhs);
-  let mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false };
+  let mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false, angleMode: 'degrees' };
   if (formatSuffix) {
     rhs = rhs.slice(0, formatSuffix.index).trim();
     mode = parseModeString(formatSuffix[0].slice(1)); // slice(1): drop the leading ";" itself
@@ -1505,7 +1575,7 @@ export function recalculateTable(table, options = {}) {
   const { positions: hlinePositions } = computeHlinePositions(workingRows);
 
   for (const { target, expr, mode } of statements) {
-    const evalCtx = { dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric };
+    const evalCtx = { dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode };
     // Evaluates the expression for one specific (row, col) and writes
     // either its formatted result or, if evaluation itself throws,
     // the literal text "#ERROR" into that cell -- confirmed directly
