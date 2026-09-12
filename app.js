@@ -9352,8 +9352,12 @@ function renderExportFlow() {
         menuDivItem(`This file + ${isVcard ? 'Contacts Files' : 'Agenda Files'}`, async () => {
           setStatus(`Loading ${isVcard ? 'contacts' : 'agenda'} files\u2026`);
           if (isVcard) {
+            contactsFilesCache.clear();
+            contactsFilesCacheLoadedFor = null;
             await ensureContactsFilesLoadedAndWait();
           } else {
+            agendaFilesCache.clear();
+            agendaFilesCacheLoadedFor = null;
             await waitForAgendaFilesLoaded();
           }
           await performExport(exportFormat, isVcard ? 'contacts-files' : 'agenda-files');

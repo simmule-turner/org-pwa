@@ -6,6 +6,15 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v324 — Fix: stale file when exporting Contacts (.vcf)
+A file listed in both org-agenda-files and org-contacts-files could
+export with outdated content, since the two lists cached that same
+file completely independently, with no awareness that an update
+reflected in one had happened at all. Both Contacts (.vcf) and
+Calendar (.ics) export now always fetch every configured file fresh
+at export time, rather than trusting whatever happened to already be
+cached.
+
 * v323 — Contacts (.vcf) export: one screen instead of two
 The name filter added last release was its own separate step before
 the scope choice — clunky and awkward. Both now live on the same
