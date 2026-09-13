@@ -6,6 +6,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v333 — Swipe-to-complete/archive, and Agenda swipe navigation
+Swipe right on a heading to mark it done directly (jumps straight to
+DONE, not a step-by-step cycle), or opens an Archive/Refile/Cancel
+prompt when there's no TODO state to complete — never archives
+directly from a swipe. On the Agenda view, a horizontal swipe now does
+the same thing as the ‹/› buttons: advances by day, week, or month,
+matching whichever view is currently active.
+
 * v332 — Revert: speech-to-text (v330, v331)
 Removed entirely. Every text field already gets dictation for free
 from the OS keyboard itself on iOS and Android — the mic key on the

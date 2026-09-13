@@ -96,7 +96,7 @@ import { multiEntryValueToDisplayText, multiEntryDisplayTextToValue } from './sr
 import { normalizeSmartQuotes } from './src/text-normalize.js';
 import { buildMonthGrid, stepMonth, stepYear, MONTH_NAMES, buildDayMarkers } from './src/calendar-grid.js';
 import { splitHexAlpha, combineHexAlpha } from './src/hex-alpha.js';
-import { resolveTodoSequence, resolveTodoSequences, setTodoState } from './src/todo-cycle.js';
+import { resolveTodoSequence, resolveTodoSequences, setTodoState, isDoneKeyword } from './src/todo-cycle.js';
 import { renderMathHtml } from './src/math-render.js';
 import { applyRepeaterShiftOnDone } from './src/repeater-shift.js';
 import { decideProgressLogging, decideLogbookEntry, getEffectiveLogDoneSetting, parseLogDoneLispValue } from './src/progress-logging.js';
@@ -5624,6 +5624,73 @@ function attachSlideLeftToFold(el, heading, opts = {}) {
   });
 }
 
+function attachSlideRightToComplete(el, heading, opts = {}) {
+  const onDone = opts.onDone || (() => commitAndRender('Completed via swipe'));
+  let startX = null;
+  let startY = null;
+  let active = false;
+
+  el.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button, a, input, textarea, [data-inline-link]')) return;
+    startX = e.clientX;
+    startY = e.clientY;
+    active = true;
+  });
+
+  const finish = (e) => {
+    if (!active) return;
+    active = false;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    const isRightSwipe = dx > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.5;
+    if (!isRightSwipe) return;
+
+    const sequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
+    const hasActiveTodo = heading.todo !== null && !isDoneKeyword(heading.todo, sequence) && sequence.doneKeywords.length > 0;
+    if (hasActiveTodo) {
+      applyTodoTransition(heading, () => setTodoState(heading, sequence.doneKeywords[0], sequence));
+      onDone();
+    } else if (isArchivedInPlace(heading)) {
+      unarchiveHeadingToOriginalLocation(heading);
+    } else {
+      openArchiveConfirmPrompt(heading);
+    }
+  };
+
+  el.addEventListener('pointerup', finish);
+  el.addEventListener('pointercancel', () => {
+    active = false;
+  });
+}
+
+function attachAgendaSwipeNav(el) {
+  let startX = null;
+  let startY = null;
+  let active = false;
+
+  el.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button, a, input, textarea, [data-inline-link]')) return;
+    startX = e.clientX;
+    startY = e.clientY;
+    active = true;
+  });
+
+  const finish = (e) => {
+    if (!active) return;
+    active = false;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if (Math.abs(dx) <= SWIPE_THRESHOLD_PX || Math.abs(dx) <= Math.abs(dy) * 1.5) return;
+    agendaAnchorDate = agendaStepAnchor(agendaViewType, agendaAnchorDate, dx < 0 ? 1 : -1);
+    render();
+  };
+
+  el.addEventListener('pointerup', finish);
+  el.addEventListener('pointercancel', () => {
+    active = false;
+  });
+}
+
 function smallButton(label, ariaLabel, onClick) {
   const btn = document.createElement('button');
   btn.textContent = label;
@@ -6774,6 +6841,7 @@ function renderRow(row, todoSequence) {
     el.style.touchAction = 'pan-y';
     applyKeyboardFocusHighlight(el, row);
     attachSlideLeftToFold(el, row.node);
+    attachSlideRightToComplete(el, row.node);
 
     const fold = document.createElement('button');
     fold.className = 'fold-btn';
@@ -10193,6 +10261,7 @@ function renderAgendaView() {
     }
   }
 
+  attachAgendaSwipeNav(container);
   outlineEl.appendChild(container);
 }
 
