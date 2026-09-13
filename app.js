@@ -10261,6 +10261,7 @@ function renderAgendaView() {
     }
   }
 
+  container.style.touchAction = 'pan-y';
   attachAgendaSwipeNav(container);
   outlineEl.appendChild(container);
 }

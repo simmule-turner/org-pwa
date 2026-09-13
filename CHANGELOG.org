@@ -6,6 +6,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v334 — Fix: Agenda swipe silently did nothing on Android
+Worked on iOS, did nothing at all on Android. The agenda container
+never had touch-action set, unlike the heading row's own swipe
+gestures — left at the browser's own default, Chrome/Android was free
+to claim the gesture for native scrolling before a swipe completed,
+silently cancelling it. Fixed by setting touch-action: pan-y, matching
+the heading row's own already-correct pattern.
+
 * v333 — Swipe-to-complete/archive, and Agenda swipe navigation
 Swipe right on a heading to mark it done directly (jumps straight to
 DONE, not a step-by-step cycle), or opens an Archive/Refile/Cancel
