@@ -6,6 +6,16 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v332 — Revert: speech-to-text (v330, v331)
+Removed entirely. Every text field already gets dictation for free
+from the OS keyboard itself on iOS and Android — the mic key on the
+iOS keyboard, Gboard voice typing — including fields the custom
+version didn't even reach (table cells, property values). The custom
+Web Speech API integration was redundant surface: four separate UI
+touchpoints, real browser-support gaps to track (none at all in
+Firefox), and a permission-denied error path, duplicating a platform
+capability with already-broader reach.
+
 * v331 — Speech-to-text: the log-note prompt
 Extends last release's speech-to-text button to the note prompt shown
 when marking a TODO done (or any other transition whose own logging

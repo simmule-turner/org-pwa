@@ -426,19 +426,12 @@ function renderLogNotePrompt() {
 
   const { heading, fromTodo, toTodo, timestamp } = pendingLogNote;
 
-  const labelRow = document.createElement('div');
-  labelRow.style.display = 'flex';
-  labelRow.style.alignItems = 'center';
-  labelRow.style.justifyContent = 'space-between';
-  labelRow.style.gap = '8px';
-  labelRow.style.marginBottom = '6px';
-  doneNotePanelBox.appendChild(labelRow);
-
   const label = document.createElement('div');
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
+  label.style.marginBottom = '6px';
   label.textContent = `Note for marking "${heading.title || '(untitled)'}" as ${toTodo}:`;
-  labelRow.appendChild(label);
+  doneNotePanelBox.appendChild(label);
 
   const textarea = document.createElement('textarea');
   textarea.id = 'done-note-input';
@@ -448,9 +441,6 @@ function renderLogNotePrompt() {
   textarea.style.font = 'inherit';
   doneNotePanelBox.appendChild(textarea);
   autoGrowTextarea(textarea);
-
-  const micBtn = createSpeechToTextButton(textarea);
-  if (micBtn) labelRow.appendChild(micBtn);
 
   const row = document.createElement('div');
   row.className = 'panel-row';
@@ -7923,9 +7913,6 @@ function render() {
     textarea.spellcheck = false;
     outlineEl.appendChild(textarea);
 
-    const micBtn = createSpeechToTextButton(textarea);
-    if (micBtn) toolbar.appendChild(micBtn);
-
     if (narrowedHeading) {
       // The splice-back boundary: fixed here, once, BEFORE any editing
       // happens -- not re-derived from the edited text later, which is
@@ -10638,148 +10625,6 @@ function openHeadingTextEditor(heading) {
   overlay.id = 'heading-text-edit-popup';
 }
 
-// Web Speech API support, detected once. Confirmed directly against
-// current browser-support data: Chrome/Edge/Chrome-for-Android support
-// the unprefixed constructor; Safari 14.1+ (macOS) and 14.5+ (iOS)
-// expose it only under the legacy `webkit` prefix; Firefox has no
-// support at all, under either name.
-const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition || null;
-
-/** Creates a small, icon-only toggle button that dictates directly into
- *  `targetEl` (an <input> or <textarea>) via the Web Speech API, or
- *  returns null (appending nothing at all) when the browser has no
- *  speech-recognition support whatsoever -- confirmed via
- *  SpeechRecognitionCtor above, rather than showing a button that would
- *  silently do nothing when tapped.
- *
- *  A toggle, not press-and-hold: tap to start listening, tap again to
- *  stop -- per direct discussion, chosen over hold specifically because
- *  a hold gesture is fragile on mobile (a finger drifting slightly while
- *  also watching the transcription can lose the touch event and cut off
- *  mid-sentence), and because it matches the exact interaction people
- *  already know from the iOS keyboard's own mic key and Gboard's voice
- *  typing.
- *
- *  Runs in continuous mode throughout, with interim (still-being-
- *  corrected) results shown live as the person talks -- a normal
- *  thinking pause mid-sentence would otherwise get misread as "finished
- *  speaking" the way non-continuous mode behaves; the toggle itself is
- *  the only thing that starts or stops listening, never a silence
- *  timeout. Every update fully recomputes the target's own value as
- *  (whatever was already there when listening started) + (every phrase
- *  confirmed so far this session) + (the current, still-being-corrected
- *  phrase) -- never an incremental patch onto the previous value -- so
- *  the in-progress text is always cleanly replaced as each phrase
- *  finalizes, never duplicated or left behind alongside the finalized
- *  version. (A deliberate, known simplification: manually typing into
- *  the field while a dictation session is actively running would be
- *  overwritten by the next speech result, since this always rebuilds
- *  from the value captured when listening started -- typing and
- *  dictating into the same field at the same moment isn't a workflow
- *  this is designed to support.)
- *
- *  The button visually resets to "not listening" whenever the
- *  browser's own recognition session ends for ANY reason -- a network
- *  hiccup, an internal timeout, Safari's own less consistent
- *  continuous-mode reliability -- not only on an explicit tap to stop,
- *  via the API's own `onend` firing regardless of what caused the end,
- *  so the button can never get stuck showing "listening" while
- *  recognition has actually already stopped silently in the
- *  background. */
-function createSpeechToTextButton(targetEl) {
-  if (!SpeechRecognitionCtor) return null;
-
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.style.flexShrink = '0';
-  btn.style.width = '36px';
-  btn.style.height = '36px';
-  btn.style.minWidth = '36px';
-  btn.style.fontSize = '16px';
-  btn.style.lineHeight = '1';
-  btn.style.border = '1px solid var(--border-strong)';
-  btn.style.borderRadius = '6px';
-  btn.style.cursor = 'pointer';
-  btn.style.padding = '0';
-  btn.style.display = 'inline-flex';
-  btn.style.alignItems = 'center';
-  btn.style.justifyContent = 'center';
-
-  let recognition = null;
-  let baseValue = '';
-  let finalizedText = '';
-
-  function setListening(isListening) {
-    if (isListening) {
-      btn.textContent = '\u23f9\ufe0f'; // stop-square -- distinct at a glance from the mic glyph, not just a color change alone
-      btn.title = 'Stop dictation';
-      btn.setAttribute('aria-label', 'Stop dictation');
-      btn.style.background = '#e03131';
-      btn.style.color = '#fff';
-      btn.style.borderColor = '#e03131';
-    } else {
-      btn.textContent = '\ud83c\udfa4';
-      btn.title = 'Speech to text';
-      btn.setAttribute('aria-label', 'Speech to text');
-      btn.style.background = 'var(--bg)';
-      btn.style.color = 'var(--fg)';
-      btn.style.borderColor = 'var(--border-strong)';
-    }
-  }
-  setListening(false);
-
-  function applyValue(interimText) {
-    targetEl.value = baseValue + finalizedText + interimText;
-    targetEl.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-
-  btn.onclick = () => {
-    if (recognition) {
-      recognition.stop(); // onend below does the actual state reset, so a browser-initiated stop is handled identically to this explicit one
-      return;
-    }
-    baseValue = targetEl.value;
-    finalizedText = '';
-    recognition = new SpeechRecognitionCtor();
-    recognition.lang = navigator.language || 'en-US';
-    recognition.continuous = true;
-    recognition.interimResults = true;
-
-    recognition.onresult = (event) => {
-      let interimText = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        if (result.isFinal) finalizedText += result[0].transcript;
-        else interimText += result[0].transcript;
-      }
-      applyValue(interimText);
-    };
-
-    recognition.onerror = (event) => {
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        setStatus('Microphone access was denied \u2014 check your browser/site permissions to use speech to text.');
-      } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
-        setStatus('Speech to text stopped: ' + event.error);
-      }
-    };
-
-    recognition.onend = () => {
-      recognition = null;
-      setListening(false);
-    };
-
-    try {
-      recognition.start();
-      setListening(true);
-    } catch (err) {
-      recognition = null;
-      setListening(false);
-    }
-  };
-
-  return btn;
-}
-
 function openTextFieldPopup({ label, value, defaultValue, onSave, onReset, onCancel, resetInPlace, placeholder }) {
   const overlay = document.createElement('div');
   overlay.style.position = 'fixed';
@@ -10809,19 +10654,12 @@ function openTextFieldPopup({ label, value, defaultValue, onSave, onReset, onCan
   modal.style.boxSizing = 'border-box';
   overlay.appendChild(modal);
 
-  const titleRow = document.createElement('div');
-  titleRow.style.display = 'flex';
-  titleRow.style.alignItems = 'center';
-  titleRow.style.justifyContent = 'space-between';
-  titleRow.style.gap = '8px';
-  titleRow.style.flexShrink = '0';
-  modal.appendChild(titleRow);
-
   const titleEl = document.createElement('div');
   titleEl.textContent = label;
   titleEl.style.fontWeight = '700';
   titleEl.style.fontSize = '15px';
-  titleRow.appendChild(titleEl);
+  titleEl.style.flexShrink = '0';
+  modal.appendChild(titleEl);
 
   const textarea = document.createElement('textarea');
   textarea.value = value !== undefined && value !== null ? value : '';
@@ -10838,9 +10676,6 @@ function openTextFieldPopup({ label, value, defaultValue, onSave, onReset, onCan
   textarea.style.resize = 'vertical';
   textarea.style.flex = '1 1 auto';
   textarea.style.minHeight = '0';
-
-  const micBtn = createSpeechToTextButton(textarea);
-  if (micBtn) titleRow.appendChild(micBtn);
   modal.appendChild(textarea);
 
   const btnRow = document.createElement('div');
@@ -14078,15 +13913,10 @@ function renderCapturePromptForm() {
     label.textContent = p.prompt;
     field.appendChild(label);
 
-    const inputRow = document.createElement('div');
-    inputRow.style.display = 'flex';
-    inputRow.style.gap = '6px';
-
     const input = document.createElement('input');
     input.type = 'text';
     input.value = capturePromptValues[i];
-    input.style.flex = '1 1 auto';
-    input.style.minWidth = '0';
+    input.style.width = '100%';
     input.style.boxSizing = 'border-box';
     input.style.fontSize = '15px';
     input.style.padding = '8px 10px';
@@ -14098,10 +13928,7 @@ function renderCapturePromptForm() {
       capturePromptValues[i] = input.value;
       updatePreview();
     });
-    inputRow.appendChild(input);
-    const micBtn = createSpeechToTextButton(input);
-    if (micBtn) inputRow.appendChild(micBtn);
-    field.appendChild(inputRow);
+    field.appendChild(input);
     promptInputs.push(input);
 
     if (p.completions.length > 0) {
