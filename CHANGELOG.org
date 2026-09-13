@@ -6,6 +6,21 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v331 — Speech-to-text: the log-note prompt
+Extends last release's speech-to-text button to the note prompt shown
+when marking a TODO done (or any other transition whose own logging
+spec asks for a note). Table cells, property values, and the GitHub/
+WebDAV credential fields were reconsidered too, and deliberately left
+without it — none are a fit for dictation.
+
+* v330 — Speech-to-text dictation
+A 🎤 toggle button now dictates directly into heading title/text
+editing, the plain-text editor (View > Text), and each capture
+template prompt field, wherever the browser supports speech
+recognition (absent entirely on Firefox, otherwise present). Runs
+continuously with live interim text, cleanly replaced as each phrase
+is confirmed rather than duplicated.
+
 * v329 — Fix: inf showed as "Infinity" with a format spec
 Last release's own inf fix only covered formulas with no explicit
 format spec — a formula like `if($1==90, inf, tan($1));f4` still
