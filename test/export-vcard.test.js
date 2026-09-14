@@ -139,6 +139,18 @@ test('an archived heading is excluded even with a valid EMAIL', () => {
   assert.equal(vcf, '');
 });
 
+test('THE FEATURE: a flat-style contact with a phone but no email now correctly exports, per real RFC 6350 -- only FN is mandatory, email is optional', () => {
+  const vcf = exportToVcard(docs('* Alice\n:PROPERTIES:\n:PHONE: 555-1234\n:END:\n'));
+  assert.match(vcf, /FN:Alice/);
+  assert.match(vcf, /TEL:555-1234/);
+  assert.doesNotMatch(vcf, /EMAIL/);
+});
+
+test('a flat-style heading with NO recognized contact property at all is still not treated as a contact -- FN alone (its own title, which every heading trivially has) isn\u2019t enough for bulk export, matching real org-contacts-matcher\u2019s own actual logic', () => {
+  const vcf = exportToVcard(docs('* Just a regular heading\nSome unrelated body text.\n'));
+  assert.equal(vcf, '');
+});
+
 test('an empty result (no valid contacts anywhere) produces an empty string, not a malformed empty file', () => {
   const vcf = exportToVcard(docs('* Just a heading\nNo email here.\n'));
   assert.equal(vcf, '');
@@ -245,14 +257,24 @@ test('tree style works with the alternative, equally-valid structure the real or
   assert.match(vcf, /EMAIL;TYPE=WORK:address1@example\.com/);
 });
 
-test('a tree-style heading with no email at all produces no card, same requirement as flat style', () => {
+test('THE FEATURE: a tree-style contact with a phone but no email now correctly exports, per real RFC 6350 -- only FN is mandatory, email is optional', () => {
   const doc = treeDocs(
     ['* Joan Smith', ':PROPERTIES:', ':KIND: individual', ':FIELDTYPE: name', ':END:', '** Cell', '*** 0000 999 999', ':PROPERTIES:', ':FIELDTYPE: cell', ':END:'].join(
       '\n'
     )
   );
   const vcf = exportToVcard(doc, { style: 'tree' });
-  assert.equal(vcf, '');
+  assert.match(vcf, /FN:Joan Smith/);
+  assert.match(vcf, /TEL;TYPE=CELL:0000 999 999/);
+  assert.doesNotMatch(vcf, /EMAIL/);
+});
+
+test('a bare contact heading with zero recognized descendant fields still exports a minimal, valid vCard (just FN\\/N), per real RFC 6350', () => {
+  const doc = treeDocs(['* Joan Smith', ':PROPERTIES:', ':KIND: individual', ':FIELDTYPE: name', ':END:'].join('\n'));
+  const vcf = exportToVcard(doc, { style: 'tree' });
+  assert.match(vcf, /FN:Joan Smith/);
+  assert.match(vcf, /BEGIN:VCARD/);
+  assert.match(vcf, /END:VCARD/);
 });
 
 test('a heading missing KIND: individual, or FIELDTYPE: name, is not treated as a contact in tree style', () => {
