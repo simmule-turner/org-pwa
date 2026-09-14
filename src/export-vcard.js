@@ -130,61 +130,123 @@ function buildVcard(heading, birthdayProperty) {
   return lines.map(foldLine);
 }
 
+// Tree style's own FIELDTYPE -> vCard field mapping. Real org-vcard's
+// own mapping table (org-vcard--styles-languages-mappings) is fully
+// customizable and considerably larger than this; this covers the
+// same set of vCard fields the flat style above already supports, so
+// the two styles have matching capability rather than tree covering a
+// different, larger or smaller set of information than flat does.
+const TREE_FIELDTYPE_TO_VCARD_LINE = {
+  cell: (value) => `TEL;TYPE=CELL:${escapeVcardText(value)}`,
+  phone: (value) => `TEL:${escapeVcardText(value)}`,
+  'phone-work': (value) => `TEL;TYPE=WORK:${escapeVcardText(value)}`,
+  'phone-home': (value) => `TEL;TYPE=HOME:${escapeVcardText(value)}`,
+  email: (value) => `EMAIL:${escapeVcardText(value)}`,
+  'email-work': (value) => `EMAIL;TYPE=WORK:${escapeVcardText(value)}`,
+  'email-home': (value) => `EMAIL;TYPE=HOME:${escapeVcardText(value)}`,
+  address: (value) => `ADR:;;${escapeVcardText(value)};;;;`,
+  nickname: (value) => `NICKNAME:${escapeVcardText(value)}`,
+  note: (value) => `NOTE:${escapeVcardText(value)}`,
+  birthday: (value) => {
+    const bday = parseBirthdayDate(value);
+    return bday ? `BDAY:${bday.year}-${pad2(bday.month)}-${pad2(bday.day)}` : null;
+  },
+};
+
+/** Builds one contact's own VCARD block for the tree style, or null
+ *  when `heading` isn't a genuine contact heading at all -- the
+ *  required marker is :KIND: individual plus :FIELDTYPE: name, per the
+ *  real org-vcard tree structure (confirmed directly against
+ *  https://github.com/pinoaffe/org-vcard's own README): every other
+ *  heading walkHeadings visits within a contact's own subtree (an
+ *  "Email"/"Cell" grouping heading, or the actual value leaf itself)
+ *  correctly returns null here too, since only the contact heading
+ *  itself is a card. The contact's own EMAIL address, at least one,
+ *  is still required for a valid vCard, the same as the flat style
+ *  above -- collected from any descendant heading whose own FIELDTYPE
+ *  starts with "email", not just one specifically named "email". */
+function buildVcardFromTreeContact(heading) {
+  if (String(getProperty(heading, 'KIND') || '').toLowerCase() !== 'individual') return null;
+  if (String(getProperty(heading, 'FIELDTYPE') || '').toLowerCase() !== 'name') return null;
+
+  const fullName = heading.title || '(untitled)';
+  const { family, given } = splitNameForN(fullName);
+  const lines = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${escapeVcardText(fullName)}`, `N:${escapeVcardText(family)};${escapeVcardText(given)};;;`];
+
+  let hasEmail = false;
+  function walk(node) {
+    for (const child of node.children || []) {
+      const fieldType = String(getProperty(child, 'FIELDTYPE') || '').toLowerCase();
+      const builder = TREE_FIELDTYPE_TO_VCARD_LINE[fieldType];
+      if (builder) {
+        const line = builder(child.title || '');
+        if (line) {
+          lines.push(line);
+          if (fieldType.startsWith('email')) hasEmail = true;
+        }
+      }
+      walk(child); // recurse into grouping headings ("Email" > "Work" > the actual address) as well as leaves directly under the contact
+    }
+  }
+  walk(heading);
+  if (!hasEmail) return null; // same requirement as the flat style: a contact needs at least one email to be a valid, exportable vCard
+
+  lines.push('END:VCARD');
+  return lines.map(foldLine);
+}
+
 /**
  * Exports every valid contact across `docs` (an array of `{
  * documentId, doc }` pairs, matching export-icalendar.js's own input
  * shape) to a complete .vcf file string. `opts.scope`, when given a
- * single heading, restricts the scan to that heading's own subtree
- * only (itself and its descendants) -- the same convention
- * exportToIcalendar itself already uses. `opts.birthdayProperty`
- * defaults to "BIRTHDAY", matching org-contacts-birthday-property's
- * own default and this app's already-established handling of it for
- * org-contacts-anniversaries.
+ * single heading or an array of headings, restricts the scan to just
+ * those headings' own subtrees (itself and descendants, for each) --
+ * the same convention exportToIcalendar itself already uses for a
+ * single heading, extended here to a set for exporting the current
+ * narrow-scope's own matches, which can be several discontiguous
+ * headings rather than one single subtree. Deduplicated by heading
+ * object reference, so a heading whose own ancestor is also in scope
+ * isn't exported twice. `opts.birthdayProperty` defaults to
+ * "BIRTHDAY", matching org-contacts-birthday-property's own default
+ * and this app's already-established handling of it for
+ * org-contacts-anniversaries. `opts.style` is 'flat' (default, real
+ * org-contacts.el's own convention -- one heading per contact, EMAIL/
+ * PHONE/etc. as that heading's own properties) or 'tree' (real
+ * org-vcard's own alternative style -- see buildVcardFromTreeContact
+ * below for the full structure).
  *
- * `opts.nameFilter`, when given a non-empty string, restricts the
- * export to only those contacts whose own heading title matches it --
- * the same scope and behavior as real org-contacts-export-as-vcard's
- * own optional NAME argument, confirmed directly against the actual
- * org-contacts.el source: NAME is passed straight through to
- * (org-contacts-filter name), which matches ONLY against a contact's
- * own name (the heading title), via Emacs's string-match-p -- never
- * against property keys or values at all, regardless of this app's
- * own earlier description. `opts.nameFilterRegex` (default false)
- * selects Emacs-style regex matching (case-insensitive, matching
- * string-match-p's own default there) when true, matching real
- * org-contacts' own always-regex behavior -- or a plain, case-
- * insensitive substring match when false, a friendlier option real
- * org-contacts doesn't offer at all. An invalid regex throws a clear,
- * catchable error rather than silently matching nothing or crashing
- * with an unhelpful native RegExp message.
+ * Deliberately does NOT support any kind of name/tag/property
+ * filtering -- real org-vcard-export has no filtering mechanism at
+ * all, confirmed directly against the actual source: it exports
+ * whatever's in scope (the whole buffer, or a real narrowing
+ * restriction), nothing more selective than that. An earlier version
+ * of this app modeled its own scope around org-contacts-filter's own
+ * name/tags/property arguments instead, before switching to org-vcard
+ * as the actual model to follow -- this function's own narrow-scope
+ * support above is the replacement for that: filtering happens by
+ * narrowing the outline first (Search's own Narrow button, or subtree
+ * narrowing), then exporting "This file," not through any filter
+ * option on the export itself.
  */
 export function exportToVcard(docs, opts = {}) {
-  const { scope = null, birthdayProperty = 'BIRTHDAY', nameFilter = '', nameFilterRegex = false } = opts;
-  const trimmedFilter = nameFilter.trim();
-  let filterRe = null;
-  if (trimmedFilter) {
-    if (nameFilterRegex) {
-      try {
-        filterRe = new RegExp(trimmedFilter, 'i');
-      } catch (err) {
-        throw new Error(`Invalid regex in the contact name filter: ${err.message}`);
-      }
-    } else {
-      filterRe = new RegExp(trimmedFilter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    }
-  }
+  const { scope = null, birthdayProperty = 'BIRTHDAY', style = 'flat' } = opts;
+  const scopeHeadings = scope === null ? null : Array.isArray(scope) ? scope : [scope];
 
   const cards = [];
-  const walkScope = (doc, visit) => walkHeadings(scope ? { children: [scope] } : doc, visit);
+  const seen = new Set();
+  const visit = (heading) => {
+    if (seen.has(heading)) return;
+    seen.add(heading);
+    if (isArchived(heading)) return;
+    if (isCommentedHeading(heading)) return;
+    const card = style === 'tree' ? buildVcardFromTreeContact(heading) : buildVcard(heading, birthdayProperty);
+    if (card) cards.push(card);
+  };
 
-  for (const { doc } of docs) {
-    walkScope(doc, (heading) => {
-      if (isArchived(heading)) return;
-      if (isCommentedHeading(heading)) return;
-      if (filterRe && !filterRe.test(heading.title || '')) return;
-      const card = buildVcard(heading, birthdayProperty);
-      if (card) cards.push(card);
-    });
+  if (scopeHeadings === null) {
+    for (const { doc } of docs) walkHeadings(doc, visit);
+  } else {
+    for (const heading of scopeHeadings) walkHeadings({ children: [heading] }, visit);
   }
 
   return cards.flat().join('\r\n') + (cards.length ? '\r\n' : '');

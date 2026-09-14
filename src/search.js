@@ -46,6 +46,7 @@
  */
 
 import { emacsRegexToJs } from './emacs-regex.js';
+import { parseMatchQuery, evaluateMatchQuery } from './sparse-tree-matcher.js';
 
 const SNIPPET_RADIUS = 40;
 
@@ -531,6 +532,80 @@ export function searchDocuments(docs, query, opts = {}) {
     for (const result of searchOneDocument(doc, filters, keywordMatchers, useRegex, useTagInheritance, usePropertyInheritance)) {
       results.push({ ...result, documentId });
     }
+  }
+  return results;
+}
+
+/** Collects every distinct property name a parsed match query references,
+ *  so buildMatchEntry below only has to resolve inheritance for the
+ *  properties actually in play, not every property that exists anywhere
+ *  in the document. */
+function collectPropertyNames(parsedGroups) {
+  const names = new Set();
+  for (const group of parsedGroups) {
+    for (const condition of group) {
+      if (condition.kind === 'property' && !PSEUDO_PROPERTY_NAMES.has(condition.name)) names.add(condition.name);
+    }
+  }
+  return names;
+}
+
+const PSEUDO_PROPERTY_NAMES = new Set(['TODO', 'LEVEL', 'PRIORITY', 'CATEGORY']);
+
+/** Builds the flat {tags, todo, priority, category, level, properties}
+ *  shape evaluateMatchQuery expects, resolving tags and each property
+ *  named in `propertyNames` through the SAME inheritance logic
+ *  (effectiveTags/effectivePropertyValue) the existing tag:/key: filter
+ *  syntax above already uses -- not a second, separate implementation of
+ *  the same idea. */
+function buildMatchEntry(heading, ancestors, propertyNames, useTagInheritance, usePropertyInheritance) {
+  const properties = {};
+  for (const name of propertyNames) {
+    const value = effectivePropertyValue(heading, ancestors, name, usePropertyInheritance);
+    if (value !== null) properties[name] = value;
+  }
+  return {
+    tags: effectiveTags(heading, ancestors, useTagInheritance),
+    todo: heading.todo || undefined,
+    priority: heading.priority || undefined,
+    category: effectivePropertyValue(heading, ancestors, 'CATEGORY', usePropertyInheritance) || undefined,
+    level: heading.level,
+    properties,
+  };
+}
+
+/** Searches `docs` using the real org-make-tags-matcher grammar (Match
+ *  mode) instead of the plain-text/tag:/todo:/key: filter syntax
+ *  searchDocuments above uses -- selecting Match mode replaces the whole
+ *  query's own interpretation, per direct design decision, rather than
+ *  the two grammars being merged or auto-detected from the query's own
+ *  shape. Throws the parser's own clear error on a malformed query,
+ *  surfaced by the caller the same way an invalid regex already is.
+ *  Every matching heading is purely a structured-filter result --
+ *  there's no free-text keyword concept in this mode, so every result's
+ *  own snippet is the heading title with nothing to highlight, matching
+ *  the existing "passed via structured filters" shape above exactly. */
+export function searchDocumentsByMatchQuery(docs, query, opts = {}) {
+  const { useTagInheritance = true, usePropertyInheritance = false } = opts;
+  const trimmed = String(query).trim();
+  if (!trimmed) return [];
+
+  const parsedGroups = parseMatchQuery(trimmed); // throws its own clear error on malformed input
+  const propertyNames = collectPropertyNames(parsedGroups);
+
+  const results = [];
+  for (const { documentId, doc } of docs) {
+    function walk(nodes, ancestors) {
+      for (const node of nodes) {
+        if (node.type !== 'heading') continue;
+        const entry = buildMatchEntry(node, ancestors, propertyNames, useTagInheritance, usePropertyInheritance);
+        if (evaluateMatchQuery(parsedGroups, entry)) {
+          results.push({ type: 'heading', heading: node, node, documentId, snippet: { text: node.title, highlightStart: -1, highlightLength: 0 } });
+        }
+        walk(node.children || [], [...ancestors, node]);
+      }
+    }
+    walk(doc.children, []);
   }
   return results;
 }
