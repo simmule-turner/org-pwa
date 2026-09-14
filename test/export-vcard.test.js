@@ -144,58 +144,151 @@ test('an empty result (no valid contacts anywhere) produces an empty string, not
   assert.equal(vcf, '');
 });
 
-test('THE FEATURE: nameFilter (plain mode) matches only contacts whose own heading title contains the filter, case-insensitively', () => {
-  const twoContacts = docs(
-    '* Alice Smith\n:PROPERTIES:\n:EMAIL: alice@example.com\n:END:\n* Bob Jones\n:PROPERTIES:\n:EMAIL: bob@example.com\n:END:\n'
-  );
-  const vcf = exportToVcard(twoContacts, { nameFilter: 'alice' });
-  assert.match(vcf, /FN:Alice Smith/);
-  assert.doesNotMatch(vcf, /FN:Bob Jones/);
-});
+// ---- scope as an array (narrow-scope export) -------------------------
 
-test('nameFilter matches ONLY the heading title, never a property value -- confirmed against the real org-contacts-export-as-vcard source, not assumed', () => {
-  const twoContacts = docs(
-    '* Alice\n:PROPERTIES:\n:EMAIL: alice@example.com\n:NOTE: mentions bob here\n:END:\n* Bob\n:PROPERTIES:\n:EMAIL: bob@example.com\n:END:\n'
+test('THE FEATURE: scope as an array of headings exports only those headings\u2019 own subtrees', () => {
+  const parsed = parseOrg(
+    '* Alice\n:PROPERTIES:\n:EMAIL: alice@example.com\n:END:\n* Bob\n:PROPERTIES:\n:EMAIL: bob@example.com\n:END:\n* Carol\n:PROPERTIES:\n:EMAIL: carol@example.com\n:END:\n'
   );
-  const vcf = exportToVcard(twoContacts, { nameFilter: 'bob' });
-  // Only Bob's own heading matches "bob" -- Alice's NOTE property
-  // containing the word "bob" must NOT cause Alice to match too.
-  assert.doesNotMatch(vcf, /FN:Alice/);
-  assert.match(vcf, /FN:Bob/);
-});
-
-test('nameFilter (plain mode) treats special regex characters as literal text, not regex syntax', () => {
-  const twoContacts = docs(
-    '* Smith (Work)\n:PROPERTIES:\n:EMAIL: work@example.com\n:END:\n* Smith Home\n:PROPERTIES:\n:EMAIL: home@example.com\n:END:\n'
-  );
-  const vcf = exportToVcard(twoContacts, { nameFilter: 'Smith (Work)' });
-  assert.match(vcf, /FN:Smith \(Work\)/);
-  assert.doesNotMatch(vcf, /FN:Smith Home/);
-});
-
-test('THE FEATURE: nameFilter (regex mode) matches using a genuine regex pattern', () => {
-  const threeContacts = docs(
-    '* Alice\n:PROPERTIES:\n:EMAIL: a@example.com\n:END:\n* Alison\n:PROPERTIES:\n:EMAIL: b@example.com\n:END:\n* Bob\n:PROPERTIES:\n:EMAIL: c@example.com\n:END:\n'
-  );
-  const vcf = exportToVcard(threeContacts, { nameFilter: '^Ali', nameFilterRegex: true });
+  const [alice, , carol] = parsed.children;
+  const vcf = exportToVcard([{ documentId: 'doc1', doc: parsed }], { scope: [alice, carol] });
   assert.match(vcf, /FN:Alice/);
-  assert.match(vcf, /FN:Alison/);
+  assert.doesNotMatch(vcf, /FN:Bob/);
+  assert.match(vcf, /FN:Carol/);
+});
+
+test('a single heading (not wrapped in an array) still works exactly as before, for the existing "Choose a heading" call site', () => {
+  const parsed = parseOrg('* Alice\n:PROPERTIES:\n:EMAIL: alice@example.com\n:END:\n* Bob\n:PROPERTIES:\n:EMAIL: bob@example.com\n:END:\n');
+  const [alice] = parsed.children;
+  const vcf = exportToVcard([{ documentId: 'doc1', doc: parsed }], { scope: alice });
+  assert.match(vcf, /FN:Alice/);
   assert.doesNotMatch(vcf, /FN:Bob/);
 });
 
-test('nameFilterRegex with an invalid pattern throws a clear, catchable error rather than silently matching nothing', () => {
-  const contact = docs('* Alice\n:PROPERTIES:\n:EMAIL: a@example.com\n:END:\n');
-  assert.throws(
-    () => exportToVcard(contact, { nameFilter: '(unclosed', nameFilterRegex: true }),
-    /Invalid regex/
-  );
+test('an array scope correctly exports each heading\u2019s own descendants too, not just the heading itself', () => {
+  const parsed = parseOrg('* Team\n** Alice\n:PROPERTIES:\n:EMAIL: alice@example.com\n:END:\n* Solo\n:PROPERTIES:\n:EMAIL: solo@example.com\n:END:\n');
+  const [team, solo] = parsed.children;
+  const vcf = exportToVcard([{ documentId: 'doc1', doc: parsed }], { scope: [team, solo] });
+  assert.match(vcf, /FN:Alice/);
+  assert.match(vcf, /FN:Solo/);
 });
 
-test('an empty or whitespace-only nameFilter is treated as no filter at all', () => {
-  const twoContacts = docs(
-    '* Alice\n:PROPERTIES:\n:EMAIL: a@example.com\n:END:\n* Bob\n:PROPERTIES:\n:EMAIL: b@example.com\n:END:\n'
+test('an array scope with an ancestor/descendant overlap exports the shared contact only once, not twice', () => {
+  const parsed = parseOrg('* Team\n** Alice\n:PROPERTIES:\n:EMAIL: alice@example.com\n:END:\n');
+  const [team] = parsed.children;
+  const [alice] = team.children;
+  // Team and Alice are both in scope, and Alice is Team's own descendant --
+  // without deduplication, Alice would be exported twice.
+  const vcf = exportToVcard([{ documentId: 'doc1', doc: parsed }], { scope: [team, alice] });
+  const matches = vcf.match(/FN:Alice/g) || [];
+  assert.equal(matches.length, 1);
+});
+
+// ---- tree style --------------------------------------------------------
+
+function treeDocs(orgText) {
+  return [{ documentId: 'doc1', doc: parseOrg(orgText) }];
+}
+
+test('THE FEATURE: tree style exports a contact structured per the real org-vcard tree spec', () => {
+  const doc = treeDocs(
+    [
+      '* Joan Smith',
+      ':PROPERTIES:',
+      ':KIND: individual',
+      ':FIELDTYPE: name',
+      ':END:',
+      '** Mobile',
+      '*** 0000 999 999',
+      ':PROPERTIES:',
+      ':FIELDTYPE: cell',
+      ':END:',
+      '** Email',
+      '*** Work',
+      '**** address1@example.com',
+      ':PROPERTIES:',
+      ':FIELDTYPE: email-work',
+      ':END:',
+    ].join('\n')
   );
-  const vcf = exportToVcard(twoContacts, { nameFilter: '   ' });
+  const vcf = exportToVcard(doc, { style: 'tree' });
+  assert.match(vcf, /FN:Joan Smith/);
+  assert.match(vcf, /TEL;TYPE=CELL:0000 999 999/);
+  assert.match(vcf, /EMAIL;TYPE=WORK:address1@example\.com/);
+});
+
+test('tree style works with the alternative, equally-valid structure the real org-vcard README also documents (a grouping heading above the contact)', () => {
+  const doc = treeDocs(
+    [
+      '* People',
+      '** Joan Smith',
+      ':PROPERTIES:',
+      ':KIND: individual',
+      ':FIELDTYPE: name',
+      ':END:',
+      '*** Cell',
+      '**** 0000 999 999',
+      ':PROPERTIES:',
+      ':FIELDTYPE: cell',
+      ':END:',
+      '*** Email',
+      '**** address1@example.com',
+      ':PROPERTIES:',
+      ':FIELDTYPE: email-work',
+      ':PREFERRED:',
+      ':END:',
+    ].join('\n')
+  );
+  const vcf = exportToVcard(doc, { style: 'tree' });
+  assert.match(vcf, /FN:Joan Smith/);
+  assert.match(vcf, /TEL;TYPE=CELL:0000 999 999/);
+  assert.match(vcf, /EMAIL;TYPE=WORK:address1@example\.com/);
+});
+
+test('a tree-style heading with no email at all produces no card, same requirement as flat style', () => {
+  const doc = treeDocs(
+    ['* Joan Smith', ':PROPERTIES:', ':KIND: individual', ':FIELDTYPE: name', ':END:', '** Cell', '*** 0000 999 999', ':PROPERTIES:', ':FIELDTYPE: cell', ':END:'].join(
+      '\n'
+    )
+  );
+  const vcf = exportToVcard(doc, { style: 'tree' });
+  assert.equal(vcf, '');
+});
+
+test('a heading missing KIND: individual, or FIELDTYPE: name, is not treated as a contact in tree style', () => {
+  const doc = treeDocs('* Just a regular heading\n:PROPERTIES:\n:FIELDTYPE: name\n:END:\n');
+  assert.equal(exportToVcard(doc, { style: 'tree' }), '');
+  const doc2 = treeDocs('* Also not a contact\n:PROPERTIES:\n:KIND: individual\n:END:\n');
+  assert.equal(exportToVcard(doc2, { style: 'tree' }), '');
+});
+
+test('tree style respects scope the same way flat style does', () => {
+  const doc = treeDocs(
+    [
+      '* Alice',
+      ':PROPERTIES:',
+      ':KIND: individual',
+      ':FIELDTYPE: name',
+      ':END:',
+      '** Email',
+      '*** a@example.com',
+      ':PROPERTIES:',
+      ':FIELDTYPE: email',
+      ':END:',
+      '* Bob',
+      ':PROPERTIES:',
+      ':KIND: individual',
+      ':FIELDTYPE: name',
+      ':END:',
+      '** Email',
+      '*** b@example.com',
+      ':PROPERTIES:',
+      ':FIELDTYPE: email',
+      ':END:',
+    ].join('\n')
+  );
+  const [alice] = doc[0].doc.children;
+  const vcf = exportToVcard(doc, { style: 'tree', scope: alice });
   assert.match(vcf, /FN:Alice/);
-  assert.match(vcf, /FN:Bob/);
+  assert.doesNotMatch(vcf, /FN:Bob/);
 });

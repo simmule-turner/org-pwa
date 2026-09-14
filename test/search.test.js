@@ -672,3 +672,99 @@ test('effectivePropertyValue: returns null when nothing in the chain defines it'
   assert.equal(effectivePropertyValue(heading, ancestors, 'OWNER', true), null);
   assert.equal(effectivePropertyValue(heading, ancestors, 'OWNER', false), null);
 });
+
+// ---- Match Query mode (searchDocumentsByMatchQuery) ------------------------
+
+import { searchDocumentsByMatchQuery } from '../src/search.js';
+
+function matchFixtureDoc() {
+  return parseOrg(
+    [
+      '* Alice :family:',
+      ':PROPERTIES:',
+      ':PRIORITY_TEST: A',
+      ':END:',
+      '* Bob :work:',
+      ':PROPERTIES:',
+      ':PRIORITY_TEST: B',
+      ':END:',
+      '* Carol :family:work:',
+      '* Dave :work:ex_colleague:',
+    ].join('\n')
+  );
+}
+
+function names(results) {
+  return results.map((r) => r.heading.title);
+}
+
+test('THE FEATURE: match query "family" matches Alice and Carol, mirroring the empirically-verified Emacs result', () => {
+  const results = searchDocumentsByMatchQuery([{ documentId: 'doc1', doc: matchFixtureDoc() }], 'family');
+  assert.deepEqual(names(results), ['Alice', 'Carol']);
+});
+
+test('match query "work-ex_colleague" matches Bob and Carol, excludes Dave', () => {
+  const results = searchDocumentsByMatchQuery([{ documentId: 'doc1', doc: matchFixtureDoc() }], 'work-ex_colleague');
+  assert.deepEqual(names(results), ['Bob', 'Carol']);
+});
+
+test('match query combining a tag and a property: work+PRIORITY_TEST="B" matches only Bob', () => {
+  const results = searchDocumentsByMatchQuery([{ documentId: 'doc1', doc: matchFixtureDoc() }], 'work+PRIORITY_TEST="B"');
+  assert.deepEqual(names(results), ['Bob']);
+});
+
+test('an empty query returns no results rather than throwing or matching everything', () => {
+  assert.deepEqual(searchDocumentsByMatchQuery([{ documentId: 'doc1', doc: matchFixtureDoc() }], ''), []);
+  assert.deepEqual(searchDocumentsByMatchQuery([{ documentId: 'doc1', doc: matchFixtureDoc() }], '   '), []);
+});
+
+test('a malformed match query throws the parser\u2019s own clear error, surfaced the same way an invalid regex already is', () => {
+  assert.throws(() => searchDocumentsByMatchQuery([{ documentId: 'doc1', doc: matchFixtureDoc() }], '!!!'), /could not parse/i);
+});
+
+test('results span multiple documents, each carrying its own documentId, matching searchDocuments\u2019 own existing shape', () => {
+  const docA = parseOrg('* Alpha :shared:\n');
+  const docB = parseOrg('* Beta :shared:\n');
+  const results = searchDocumentsByMatchQuery(
+    [
+      { documentId: 'docA', doc: docA },
+      { documentId: 'docB', doc: docB },
+    ],
+    'shared'
+  );
+  assert.equal(results.length, 2);
+  assert.deepEqual(
+    results.map((r) => [r.documentId, r.heading.title]).sort(),
+    [
+      ['docA', 'Alpha'],
+      ['docB', 'Beta'],
+    ]
+  );
+});
+
+test('tag inheritance is honored by default, matching effectiveTags\u2019 own default (useTagInheritance: true)', () => {
+  const doc = parseOrg('* Parent :inherited:\n** Child\n');
+  const results = searchDocumentsByMatchQuery([{ documentId: 'doc1', doc }], 'inherited');
+  assert.deepEqual(names(results), ['Parent', 'Child']);
+});
+
+test('tag inheritance can be turned off, matching searchDocuments\u2019 own opts shape', () => {
+  const doc = parseOrg('* Parent :inherited:\n** Child\n');
+  const results = searchDocumentsByMatchQuery([{ documentId: 'doc1', doc }], 'inherited', { useTagInheritance: false });
+  assert.deepEqual(names(results), ['Parent']);
+});
+
+test('property inheritance is off by default, matching searchDocuments\u2019 own default, and can be turned on', () => {
+  const doc = parseOrg('* Parent\n:PROPERTIES:\n:OWNER: alice\n:END:\n** Child\n');
+  const withoutInheritance = searchDocumentsByMatchQuery([{ documentId: 'doc1', doc }], 'OWNER="alice"');
+  assert.deepEqual(names(withoutInheritance), ['Parent']);
+  const withInheritance = searchDocumentsByMatchQuery([{ documentId: 'doc1', doc }], 'OWNER="alice"', { usePropertyInheritance: true });
+  assert.deepEqual(names(withInheritance), ['Parent', 'Child']);
+});
+
+test('results carry the same {type, heading, node, snippet} shape as the existing structured-filter results, so the shared UI needs no changes', () => {
+  const results = searchDocumentsByMatchQuery([{ documentId: 'doc1', doc: matchFixtureDoc() }], 'family');
+  assert.equal(results[0].type, 'heading');
+  assert.equal(results[0].heading, results[0].node);
+  assert.equal(results[0].snippet.highlightStart, -1);
+});
