@@ -100,27 +100,36 @@ function splitNameForN(fullName) {
  *  at all -- either requirement (1) EMAIL present, (2) not :IGNORE: t
  *  fails. */
 function buildVcard(heading, birthdayProperty) {
-  const email = getProperty(heading, 'EMAIL');
-  if (!email) return null;
   const ignore = getProperty(heading, 'IGNORE');
   if (ignore && String(ignore).trim().toLowerCase() === 't') return null;
+
+  const email = getProperty(heading, 'EMAIL');
+  const phone = getProperty(heading, 'PHONE') || getProperty(heading, 'CELL');
+  const workPhone = getProperty(heading, 'WORK_PHONE');
+  const address = getProperty(heading, 'ADDRESS') || getProperty(heading, 'ADR');
+  const nickname = getProperty(heading, 'NICKNAME');
+  const note = getProperty(heading, 'NOTE');
+  const birthdayRaw = getProperty(heading, birthdayProperty);
+  // Real RFC 6350 only mandates FN -- every one of the properties above
+  // is genuinely optional there. But FN alone (a heading's own title,
+  // which every heading trivially has) isn't enough on its own to treat
+  // an arbitrary heading as a contact for bulk export purposes -- real
+  // org-contacts-matcher's own actual logic (confirmed directly against
+  // the source: EMAIL<>""|PHONE<>""|ADDRESS<>""|BIRTHDAY<>""|...) is the
+  // model here: at least ONE recognized contact property present, not
+  // specifically email.
+  if (!email && !phone && !workPhone && !address && !nickname && !note && !birthdayRaw) return null;
 
   const fullName = heading.title || '(untitled)';
   const { family, given } = splitNameForN(fullName);
 
-  const lines = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${escapeVcardText(fullName)}`, `N:${escapeVcardText(family)};${escapeVcardText(given)};;;`, `EMAIL:${escapeVcardText(email)}`];
-
-  const phone = getProperty(heading, 'PHONE') || getProperty(heading, 'CELL');
+  const lines = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${escapeVcardText(fullName)}`, `N:${escapeVcardText(family)};${escapeVcardText(given)};;;`];
+  if (email) lines.push(`EMAIL:${escapeVcardText(email)}`);
   if (phone) lines.push(`TEL:${escapeVcardText(phone)}`);
-  const workPhone = getProperty(heading, 'WORK_PHONE');
   if (workPhone) lines.push(`TEL;TYPE=WORK:${escapeVcardText(workPhone)}`);
-  const address = getProperty(heading, 'ADDRESS') || getProperty(heading, 'ADR');
   if (address) lines.push(`ADR:;;${escapeVcardText(address)};;;;`);
-  const nickname = getProperty(heading, 'NICKNAME');
   if (nickname) lines.push(`NICKNAME:${escapeVcardText(nickname)}`);
-  const note = getProperty(heading, 'NOTE');
   if (note) lines.push(`NOTE:${escapeVcardText(note)}`);
-  const birthdayRaw = getProperty(heading, birthdayProperty);
   if (birthdayRaw) {
     const bday = parseBirthdayDate(birthdayRaw);
     if (bday) lines.push(`BDAY:${bday.year}-${pad2(bday.month)}-${pad2(bday.day)}`);
@@ -173,23 +182,22 @@ function buildVcardFromTreeContact(heading) {
   const { family, given } = splitNameForN(fullName);
   const lines = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${escapeVcardText(fullName)}`, `N:${escapeVcardText(family)};${escapeVcardText(given)};;;`];
 
-  let hasEmail = false;
   function walk(node) {
     for (const child of node.children || []) {
       const fieldType = String(getProperty(child, 'FIELDTYPE') || '').toLowerCase();
       const builder = TREE_FIELDTYPE_TO_VCARD_LINE[fieldType];
       if (builder) {
         const line = builder(child.title || '');
-        if (line) {
-          lines.push(line);
-          if (fieldType.startsWith('email')) hasEmail = true;
-        }
+        if (line) lines.push(line);
       }
       walk(child); // recurse into grouping headings ("Email" > "Work" > the actual address) as well as leaves directly under the contact
     }
   }
   walk(heading);
-  if (!hasEmail) return null; // same requirement as the flat style: a contact needs at least one email to be a valid, exportable vCard
+  // Real RFC 6350 only mandates FN, already present above regardless of
+  // whether the walk above found any further fields at all -- a contact
+  // heading with zero recognized descendant fields still correctly
+  // produces a minimal, valid vCard (just FN/N), not null.
 
   lines.push('END:VCARD');
   return lines.map(foldLine);
