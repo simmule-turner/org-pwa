@@ -314,3 +314,54 @@ test('tree style respects scope the same way flat style does', () => {
   assert.match(vcf, /FN:Alice/);
   assert.doesNotMatch(vcf, /FN:Bob/);
 });
+
+// ---- address-work/address-home fieldtypes, and note-as-VERSE-block -------
+
+test('THE FEATURE: address-work and address-home fieldtypes export as ADR;TYPE=WORK and ADR;TYPE=HOME', () => {
+  const doc = treeDocs(
+    [
+      '* Alice',
+      ':PROPERTIES:',
+      ':KIND: individual',
+      ':FIELDTYPE: name',
+      ':END:',
+      '** 1 Work Way',
+      ':PROPERTIES:',
+      ':FIELDTYPE: address-work',
+      ':END:',
+      '** 2 Home Ave',
+      ':PROPERTIES:',
+      ':FIELDTYPE: address-home',
+      ':END:',
+    ].join('\n')
+  );
+  const vcf = exportToVcard(doc, { style: 'tree' });
+  assert.match(vcf, /ADR;TYPE=WORK:;;1 Work Way;;;;/);
+  assert.match(vcf, /ADR;TYPE=HOME:;;2 Home Ave;;;;/);
+});
+
+test('THE FEATURE: a note in a #+BEGIN_VERSE block exports its real, full multi-line text, not the heading title', () => {
+  const doc = treeDocs(
+    ['* Alice', ':PROPERTIES:', ':KIND: individual', ':FIELDTYPE: name', ':END:', '** Note', ':PROPERTIES:', ':FIELDTYPE: note', ':END:', '#+BEGIN_VERSE', 'Line one', 'Line two', '#+END_VERSE'].join(
+      '\n'
+    )
+  );
+  const vcf = exportToVcard(doc, { style: 'tree' });
+  assert.match(vcf, /NOTE:Line one\\nLine two/);
+});
+
+test('a note in a #+BEGIN_QUOTE block (not VERSE) is also read correctly', () => {
+  const doc = treeDocs(
+    ['* Alice', ':PROPERTIES:', ':KIND: individual', ':FIELDTYPE: name', ':END:', '** Note', ':PROPERTIES:', ':FIELDTYPE: note', ':END:', '#+BEGIN_QUOTE', 'Quoted text', '#+END_QUOTE'].join('\n')
+  );
+  const vcf = exportToVcard(doc, { style: 'tree' });
+  assert.match(vcf, /NOTE:Quoted text/);
+});
+
+test('a note heading with no block at all falls back to its own title, for backward compatibility', () => {
+  const doc = treeDocs(
+    ['* Alice', ':PROPERTIES:', ':KIND: individual', ':FIELDTYPE: name', ':END:', '** Just a plain title', ':PROPERTIES:', ':FIELDTYPE: note', ':END:'].join('\n')
+  );
+  const vcf = exportToVcard(doc, { style: 'tree' });
+  assert.match(vcf, /NOTE:Just a plain title/);
+});

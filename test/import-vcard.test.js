@@ -49,7 +49,7 @@ test('a bare TEL/EMAIL with no TYPE param at all is still captured, with type nu
 test('ADR is joined into one readable string from its own non-empty components', () => {
   const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nADR:;;123 Main St;Springfield;IL;62704;USA\r\nEND:VCARD\r\n';
   const [contact] = parseVcards(text);
-  assert.equal(contact.adr, '123 Main St, Springfield, IL, 62704, USA');
+  assert.deepEqual(contact.adrs, [{ value: '123 Main St, Springfield, IL, 62704, USA', type: null }]);
 });
 
 test('a folded (multi-line, continuation-indented) vCard line is correctly unfolded', () => {
@@ -200,4 +200,116 @@ test('the imported org text itself round-trips correctly through this app\u2019s
   assert.equal(doc.children[0].title, 'Alice');
   assert.deepEqual(doc.children[0].tags, ['family']);
   assert.equal(doc.children[0].properties.EMAIL, 'a@example.com');
+});
+
+// ---- Fixes from the Simmule Turner real-world vCard investigation --------
+
+const REAL_MULTI_VALUE_VCARD = [
+  'BEGIN:VCARD',
+  'VERSION:3.0',
+  'FN:Simmule Turner',
+  'N:Turner;Simmule;;;',
+  'EMAIL;TYPE=INTERNET;TYPE=HOME:simmule.turner@gmail.com',
+  'EMAIL;TYPE=INTERNET;TYPE=WORK:simmule@google.com',
+  'TEL;TYPE=CELL:+1.817.918.4392',
+  'ADR;TYPE=WORK:;;200 Morris St;Durham;NC;27701;US',
+  'ADR;TYPE=HOME:;;812 Summer Bloom CT;Durham;NC;27703;United States',
+  'BDAY:19650127',
+  'NOTE:Line one\\nLine two\\n\\nLine four',
+  'CATEGORIES:Other Account,myContacts',
+  'END:VCARD',
+].join('\r\n');
+
+test('THE FEATURE (fix 1): a NOTE with embedded newlines no longer truncates on re-parse in flat style -- the actual bug from the real-world report', () => {
+  const org = importVcardsAsOrgText(REAL_MULTI_VALUE_VCARD);
+  const doc = parseOrg(org);
+  const note = doc.children[0].properties.NOTE;
+  // Every line must survive -- the original bug lost everything after
+  // the first embedded newline when the generated text was re-parsed.
+  assert.match(note, /Line one/);
+  assert.match(note, /Line two/);
+  assert.match(note, /Line four/);
+});
+
+test('THE FEATURE (fix 2): flat style keeps the FIRST address consistently, matching email/phone -- an earlier version kept the LAST due to an overwritten scalar', () => {
+  const org = importVcardsAsOrgText(REAL_MULTI_VALUE_VCARD);
+  const doc = parseOrg(org);
+  assert.match(doc.children[0].properties.ADDRESS, /200 Morris St/); // work, parsed first -- not home, parsed second
+});
+
+test('THE FEATURE (fix 3): tree style preserves BOTH addresses as separate address-work/address-home headings, not just one', () => {
+  const org = importVcardsAsOrgText(REAL_MULTI_VALUE_VCARD, { style: 'tree' });
+  assert.match(org, /200 Morris St/);
+  assert.match(org, /812 Summer Bloom CT/);
+  assert.match(org, /:FIELDTYPE: address-work/);
+  assert.match(org, /:FIELDTYPE: address-home/);
+});
+
+test('tree style preserves every email as its own heading too, none dropped', () => {
+  const org = importVcardsAsOrgText(REAL_MULTI_VALUE_VCARD, { style: 'tree' });
+  assert.match(org, /simmule\.turner@gmail\.com/);
+  assert.match(org, /simmule@google\.com/);
+});
+
+test('THE FEATURE (fix 4): tree style wraps a note in a real #+BEGIN_VERSE block, preserving every line break exactly, not collapsed into the heading title', () => {
+  const org = importVcardsAsOrgText(REAL_MULTI_VALUE_VCARD, { style: 'tree' });
+  assert.match(org, /\*\* Note\n/);
+  assert.match(org, /#\+BEGIN_VERSE\nLine one\nLine two\n\nLine four\n#\+END_VERSE/);
+});
+
+test('the tree-style #+BEGIN_VERSE note block parses back into real body content, not a heading title, confirmed directly against this app\u2019s own org parser', () => {
+  const org = importVcardsAsOrgText(REAL_MULTI_VALUE_VCARD, { style: 'tree' });
+  const doc = parseOrg(org);
+  const contact = doc.children[0];
+  const noteHeading = contact.children.find((c) => c.title === 'Note');
+  assert.ok(noteHeading, 'expected a heading titled "Note"');
+  const block = noteHeading.body.find((b) => b.type === 'block' && b.name === 'VERSE');
+  assert.ok(block, 'expected a VERSE block in the Note heading\u2019s own body');
+  assert.deepEqual(block.lines, ['Line one', 'Line two', '', 'Line four']);
+});
+
+test('THE FEATURE (full round trip): export -> import (tree) -> export produces a vCard with every email, both addresses, and the full note text, nothing dropped', () => {
+  const original = parseOrg(importVcardsAsOrgText(REAL_MULTI_VALUE_VCARD, { style: 'tree' }));
+  const reexported = exportToVcard([{ documentId: 'doc1', doc: original }], { style: 'tree' });
+  const [reparsed] = parseVcards(reexported);
+  assert.deepEqual(
+    reparsed.emails.map((e) => e.value).sort(),
+    ['simmule.turner@gmail.com', 'simmule@google.com'].sort()
+  );
+  assert.equal(reparsed.adrs.length, 2);
+  assert.ok(reparsed.adrs.some((a) => a.value.includes('200 Morris St') && a.type === 'WORK'));
+  assert.ok(reparsed.adrs.some((a) => a.value.includes('812 Summer Bloom CT') && a.type === 'HOME'));
+  assert.equal(reparsed.note, 'Line one\nLine two\n\nLine four');
+  assert.equal(reparsed.bday, '1965-01-27');
+});
+
+test('a note heading with no VERSE/QUOTE block at all (backward compatibility) still exports using its own title', () => {
+  const doc = parseOrg(
+    ['* Alice', ':PROPERTIES:', ':KIND: individual', ':FIELDTYPE: name', ':END:', '** An old-style note as the title', ':PROPERTIES:', ':FIELDTYPE: note', ':END:'].join(
+      '\n'
+    )
+  );
+  const vcf = exportToVcard([{ documentId: 'doc1', doc }], { style: 'tree' });
+  assert.match(vcf, /NOTE:An old-style note as the title/);
+});
+
+test('a note wrapped in #+BEGIN_QUOTE (not VERSE) is also read correctly on export -- either block name is accepted', () => {
+  const doc = parseOrg(
+    [
+      '* Alice',
+      ':PROPERTIES:',
+      ':KIND: individual',
+      ':FIELDTYPE: name',
+      ':END:',
+      '** Note',
+      ':PROPERTIES:',
+      ':FIELDTYPE: note',
+      ':END:',
+      '#+BEGIN_QUOTE',
+      'Quoted note text',
+      '#+END_QUOTE',
+    ].join('\n')
+  );
+  const vcf = exportToVcard([{ documentId: 'doc1', doc }], { style: 'tree' });
+  assert.match(vcf, /NOTE:Quoted note text/);
 });
