@@ -46,7 +46,7 @@ import {
 import { parseInline, stripLineBreakMarker, IMAGE_EXT_RE, extractLatexFragments } from './src/inline-markup.js';
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, toggleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
 import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
-import { searchDocument, searchDocuments } from './src/search.js';
+import { searchDocument, searchDocuments, searchDocumentsByMatchQuery } from './src/search.js';
 import { createQueryReplace } from './src/query-replace.js';
 import { emacsRegexToJs, EmacsRegexError } from './src/emacs-regex.js';
 import { applyStartupVisibility, cycleFoldLevel } from './src/fold-state.js';
@@ -2781,8 +2781,6 @@ function closeAllOverlayPanels() {
     moreOpen = false;
     moreMenuStep = null;
     exportFormat = null;
-    vcardNameFilter = '';
-    vcardNameFilterRegex = false;
     exportPickingHeading = false;
     renderMoreMenu();
   }
@@ -4111,8 +4109,7 @@ let moreMenuStep = null; // null | 'export' -- see renderMoreMenuContent
 // backend-choice pattern the rest of the file menu already uses.
 let exportFormat = null;
 let exportPickingHeading = false;
-let vcardNameFilter = '';
-let vcardNameFilterRegex = false;
+let vcardStyle = 'flat'; // 'flat' (real org-contacts.el's own convention, the default) or 'tree' (real org-vcard's own alternative) -- see export-vcard.js's own doc comment for the full structure of each
 
 // File-browser state: browseBackend non-null means the "open" step is
 // currently showing a navigable folder/file listing (see startBrowsing
@@ -4156,6 +4153,7 @@ let capturePromptValues = [];
 let moreOpen = false;
 let searchQuery = '';
 let searchUseRegex = false; // deliberately NOT reset when the search panel closes, unlike searchQuery -- this is a mode preference, not a one-off query value
+let searchUseMatch = false; // Match Query mode (C-c / m's own grammar) -- mutually exclusive with searchUseRegex, per direct decision: selecting Match replaces the whole query's own interpretation rather than layering on top of regex
 let activeQueryReplace = null; // { controller, replacementText, findPattern } while a replace walk is in progress, else null
 let viewMenuOpen = false;
 // Agenda view state: which grouping is active, and the anchor date that
@@ -4264,6 +4262,26 @@ let currentContextHeading = null;
 // findHeadingByOutlinePath already established for search-result
 // navigation surviving a fresh re-parse).
 let narrowedHeading = null;
+// The current Search-driven narrow scope: null (widened, the default) or
+// { matched: Set, visible: Set } -- `matched` is exactly the current
+// document's own search results (for an accurate count in the banner
+// below); `visible` additionally includes their own ancestors (for
+// row-filtering, so a match stays visible in its real position with
+// enough context to make sense of where it sits, matching this app's
+// own swipe-to-fold and real org sparse trees alike). An independent,
+// additional row filter alongside narrowedHeading above, not a
+// replacement for it or mutually exclusive with it -- narrowing to a
+// subtree and then narrowing further to search matches within it works
+// without any special-casing, since each filter just further restricts
+// whatever rows survived the one before it. Deliberately session-only:
+// unlike narrowedHeading, this does NOT persist across an actual
+// reload -- widens automatically instead. A real gap worth closing
+// later if this proves worth using regularly, not an oversight;
+// persisting a whole SET of headings durably across a fresh re-parse is
+// a meaningfully bigger piece of work than narrowedHeading's own single-
+// heading outline-path scheme, and this first version doesn't take it
+// on.
+let sparseNarrowScope = null;
 // Which documentId maybeRestoreNarrowState() has already attempted a
 // reload-surviving restore for -- so the kv lookup only ever fires
 // once per document, not on every single render() call, and so a
@@ -5861,6 +5879,50 @@ function widen() {
   narrowedHeading = null;
   render();
   saveNarrowState(kv, state.documentId, null).catch(() => {});
+}
+
+/** Expands `matchedHeadings` (a Set of heading object references) to
+ *  also include every one of their own current ancestors, by walking
+ *  `doc` once with an ancestor stack -- matching the sparse-tree
+ *  convention this app's own swipe-to-fold and org's real sparse trees
+ *  both already follow: a match stays visible in its own actual
+ *  position in the outline, with enough of its own ancestor chain kept
+ *  visible to make sense of where it sits, rather than being shown as a
+ *  flat, context-free list. */
+function expandScopeWithAncestors(doc, matchedHeadings) {
+  const visible = new Set();
+  function walk(nodes, ancestors) {
+    for (const node of nodes) {
+      if (node.type !== 'heading') continue;
+      if (matchedHeadings.has(node)) {
+        visible.add(node);
+        for (const ancestor of ancestors) visible.add(ancestor);
+      }
+      walk(node.children || [], [...ancestors, node]);
+    }
+  }
+  walk(doc.children, []);
+  return visible;
+}
+
+/** Narrows the outline to `matchedHeadings` (from the current document's
+ *  own search results) plus their own ancestors -- an independent,
+ *  additional row filter alongside narrowedHeading; see
+ *  sparseNarrowScope's own doc comment above for how the two compose.
+ *  Session-only, per that same doc comment -- doesn't persist across an
+ *  actual reload. */
+function narrowToSparseMatches(matchedHeadings) {
+  sparseNarrowScope = { matched: matchedHeadings, visible: expandScopeWithAncestors(state.doc, matchedHeadings) };
+  searchOpen = false;
+  render();
+  renderSearchPanel();
+}
+
+/** Clears the sparse-search narrow scope, independent of narrowedHeading
+ *  (widen() above) -- widening one never affects the other. */
+function widenSparseSearch() {
+  sparseNarrowScope = null;
+  render();
 }
 
 /** Lazily restores narrowedHeading from its own reload-surviving
@@ -8092,6 +8154,20 @@ function render() {
       })()
     : visibleRows;
 
+  // Sparse-search narrowing: an additional, independent filter step,
+  // composing with narrowedHeading's own filter above rather than
+  // replacing it. Re-validated fresh here, every render, the same as
+  // narrowedHeading itself: if every one of the scope's own headings has
+  // since been deleted, this auto-widens instead of rendering an empty
+  // outline with no way back.
+  const sparseFilteredRows = sparseNarrowScope
+    ? narrowedVisibleRows.filter((r) => sparseNarrowScope.visible.has(r.rowType === 'heading' ? r.node : r.heading))
+    : narrowedVisibleRows;
+  if (sparseNarrowScope && sparseFilteredRows.length === 0) {
+    sparseNarrowScope = null;
+  }
+  const finalVisibleRows = sparseNarrowScope ? sparseFilteredRows : narrowedVisibleRows;
+
   const todoSequence = resolveTodoSequence(state.doc, GLOBAL_TODO_DEFAULT);
 
   // Build the new row elements off-DOM (a DocumentFragment has no layout
@@ -8100,7 +8176,7 @@ function render() {
   // outlineEl and appendChild-ing each row directly onto an already
   // on-screen, already-laid-out element.
   const fragment = document.createDocumentFragment();
-  for (const row of narrowedVisibleRows) fragment.appendChild(renderRow(row, todoSequence));
+  for (const row of finalVisibleRows) fragment.appendChild(renderRow(row, todoSequence));
   outlineEl.innerHTML = '';
   outlineEl.appendChild(fragment);
 
@@ -8125,6 +8201,31 @@ function render() {
     banner.appendChild(label);
 
     banner.appendChild(menuButton('Widen', () => widen()));
+    outlineEl.insertBefore(banner, outlineEl.firstChild);
+  }
+
+  if (sparseNarrowScope) {
+    const banner = document.createElement('div');
+    banner.className = 'panel-row';
+    banner.style.background = 'var(--surface)';
+    banner.style.borderBottom = '0.5px solid var(--border)';
+    banner.style.padding = '6px 10px';
+    banner.style.fontSize = '13px';
+    banner.style.display = 'flex';
+    banner.style.alignItems = 'center';
+    banner.style.gap = '8px';
+
+    const label = document.createElement('span');
+    label.style.flex = '1';
+    label.style.minWidth = '0';
+    label.style.overflow = 'hidden';
+    label.style.textOverflow = 'ellipsis';
+    label.style.whiteSpace = 'nowrap';
+    const matchCount = sparseNarrowScope.matched.size;
+    label.textContent = `Narrowed to search: ${matchCount} heading${matchCount === 1 ? '' : 's'}`;
+    banner.appendChild(label);
+
+    banner.appendChild(menuButton('Widen', () => widenSparseSearch()));
     outlineEl.insertBefore(banner, outlineEl.firstChild);
   }
 
@@ -9267,14 +9368,22 @@ async function performExport(format, scope) {
     }
   } else if (format === 'vcard') {
     const docs = scope === 'contacts-files' ? aggregateContactsDocs() : [{ documentId: state.documentId, doc: state.doc }];
-    const vcardScope = scope && typeof scope === 'object' ? scope : null;
+    let vcardScope;
+    if (scope && typeof scope === 'object') {
+      vcardScope = scope; // "Choose a heading" -- an explicit, single-heading scope, unaffected by narrow state
+    } else if (scope === null && narrowedHeading) {
+      vcardScope = narrowedHeading; // "This file" while subtree-narrowed -- respect it rather than exporting the whole file behind it
+    } else if (scope === null && sparseNarrowScope) {
+      vcardScope = Array.from(sparseNarrowScope.matched); // "This file" while Search's own Narrow is active -- respect exactly those matches
+    } else {
+      vcardScope = null; // no narrow restriction active -- the whole file (or, for "This file + Contacts Files", every aggregated document)
+    }
     let vcf;
     try {
       vcf = exportToVcard(docs, {
         scope: vcardScope,
         birthdayProperty: getContactsBirthdayProperty(state.localVariables),
-        nameFilter: vcardNameFilter,
-        nameFilterRegex: vcardNameFilterRegex,
+        style: vcardStyle,
       });
     } catch (err) {
       setStatus(err.message);
@@ -9290,8 +9399,6 @@ async function performExport(format, scope) {
   moreOpen = false;
   moreMenuStep = null;
   exportFormat = null;
-  vcardNameFilter = '';
-  vcardNameFilterRegex = false;
   exportPickingHeading = false;
   setStatus(
     `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : format === 'vcard' ? 'Contacts (.vcf)' : 'Calendar (.ics)'}.`
@@ -9359,49 +9466,50 @@ function renderExportFlow() {
     const isVcard = exportFormat === 'vcard';
 
     if (isVcard) {
-      const filterLabel = document.createElement('div');
-      filterLabel.style.fontSize = '12px';
-      filterLabel.style.opacity = '0.7';
-      filterLabel.style.marginBottom = '4px';
-      filterLabel.textContent = 'Filter contacts by name (optional):';
-      morePanel.appendChild(filterLabel);
+      const styleLabel = document.createElement('div');
+      styleLabel.style.fontSize = '12px';
+      styleLabel.style.opacity = '0.7';
+      styleLabel.style.marginBottom = '4px';
+      styleLabel.textContent = 'Style:';
+      morePanel.appendChild(styleLabel);
 
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.value = vcardNameFilter;
-      input.placeholder = 'e.g. Smith';
-      input.style.width = '100%';
-      input.style.boxSizing = 'border-box';
-      input.style.font = 'inherit';
-      input.style.fontSize = '15px';
-      input.style.padding = '10px 12px';
-      input.style.minHeight = '44px';
-      input.style.border = '1px solid var(--border-strong)';
-      input.style.borderRadius = '8px';
-      input.style.background = 'var(--bg)';
-      input.style.color = 'var(--fg)';
-      input.style.marginBottom = '8px';
-      input.oninput = () => {
-        vcardNameFilter = input.value;
-      };
-      morePanel.appendChild(input);
+      const styleRow = document.createElement('div');
+      styleRow.style.display = 'flex';
+      styleRow.style.border = '1px solid var(--border-strong)';
+      styleRow.style.borderRadius = '8px';
+      styleRow.style.overflow = 'hidden';
+      styleRow.style.marginBottom = '8px';
+      for (const [value, text] of [
+        ['flat', 'Flat'],
+        ['tree', 'Tree'],
+      ]) {
+        const styleBtn = document.createElement('button');
+        styleBtn.textContent = text;
+        styleBtn.style.flex = '1';
+        styleBtn.style.border = 'none';
+        styleBtn.style.borderLeft = value === 'tree' ? '1px solid var(--border-strong)' : 'none';
+        styleBtn.style.padding = '8px 4px';
+        styleBtn.style.fontSize = '13px';
+        styleBtn.style.background = vcardStyle === value ? 'var(--fill-ghost-selected, rgba(127,127,127,0.15))' : 'transparent';
+        styleBtn.style.color = 'var(--fg)';
+        styleBtn.onclick = () => {
+          vcardStyle = value;
+          renderMoreMenu();
+        };
+        styleRow.appendChild(styleBtn);
+      }
+      morePanel.appendChild(styleRow);
 
-      const regexRow = document.createElement('label');
-      regexRow.style.display = 'flex';
-      regexRow.style.alignItems = 'center';
-      regexRow.style.gap = '6px';
-      regexRow.style.fontSize = '13px';
-      regexRow.style.marginBottom = '10px';
-      regexRow.style.cursor = 'pointer';
-      const regexCheckbox = document.createElement('input');
-      regexCheckbox.type = 'checkbox';
-      regexCheckbox.checked = vcardNameFilterRegex;
-      regexCheckbox.onchange = () => {
-        vcardNameFilterRegex = regexCheckbox.checked;
-      };
-      regexRow.appendChild(regexCheckbox);
-      regexRow.appendChild(document.createTextNode('Regex'));
-      morePanel.appendChild(regexRow);
+      const narrowStatus = narrowedHeading || sparseNarrowScope ? document.createElement('div') : null;
+      if (narrowStatus) {
+        narrowStatus.style.fontSize = '12px';
+        narrowStatus.style.opacity = '0.7';
+        narrowStatus.style.marginBottom = '8px';
+        narrowStatus.textContent = narrowedHeading
+          ? `"This file" will export just "${narrowedHeading.title || '(untitled)'}" \u2014 the outline is currently narrowed to it.`
+          : `"This file" will export just the ${sparseNarrowScope.matched.size} heading${sparseNarrowScope.matched.size === 1 ? '' : 's'} currently narrowed to via Search.`;
+        morePanel.appendChild(narrowStatus);
+      }
     }
 
     const label = document.createElement('div');
@@ -9442,8 +9550,6 @@ function renderExportFlow() {
     backRow.appendChild(
       menuButton('\u2039 Back', () => {
         exportFormat = null;
-        vcardNameFilter = '';
-        vcardNameFilterRegex = false;
         renderMoreMenu();
       })
     );
@@ -9516,8 +9622,6 @@ function renderExportFlow() {
   backRow.appendChild(
     menuButton('\u2039 Back', () => {
       exportFormat = null;
-      vcardNameFilter = '';
-      vcardNameFilterRegex = false;
       renderMoreMenu();
     })
   );
@@ -13372,7 +13476,7 @@ function renderMinibufferSearch() {
   const input = document.createElement('textarea');
   input.id = 'search-query-input';
   input.rows = 1;
-  input.placeholder = 'Search, +word -word, or [tag|todo|priority|key]:value\u2026';
+  input.placeholder = searchUseMatch ? 'family+work|urgent, PROP="value"\u2026' : 'Search, +word -word, or [tag|todo|priority|key]:value\u2026';
   input.value = searchQuery;
   input.style.flex = '1';
   input.style.minWidth = '0';
@@ -13391,7 +13495,7 @@ function renderMinibufferSearch() {
   input.addEventListener('input', () => {
     searchQuery = input.value;
     renderSearchResults();
-    replaceBtn.disabled = searchQuery.trim() === '';
+    replaceBtn.disabled = searchQuery.trim() === '' || searchUseMatch;
     replaceBtn.style.opacity = replaceBtn.disabled ? '0.4' : '1';
   });
   input.addEventListener('keydown', (e) => {
@@ -13421,10 +13525,31 @@ function renderMinibufferSearch() {
   regexToggle.style.flexShrink = '0';
   regexToggle.onclick = () => {
     searchUseRegex = !searchUseRegex;
+    if (searchUseRegex) searchUseMatch = false; // mutually exclusive: selecting Regex turns off Match
     renderMinibufferSearch();
     renderSearchResults();
   };
   minibufferSearchEl.appendChild(regexToggle);
+
+  const matchToggle = document.createElement('button');
+  matchToggle.textContent = 'Match';
+  matchToggle.setAttribute('aria-label', searchUseMatch ? 'Match Query mode on' : 'Match Query mode off');
+  matchToggle.style.fontFamily = 'monospace';
+  matchToggle.style.fontSize = '13px';
+  matchToggle.style.fontWeight = '700';
+  matchToggle.style.padding = '3px 9px';
+  matchToggle.style.borderRadius = '12px';
+  matchToggle.style.border = '1px solid var(--border-strong)';
+  matchToggle.style.background = searchUseMatch ? 'var(--accent)' : 'transparent';
+  matchToggle.style.color = searchUseMatch ? '#fff' : 'var(--fg)';
+  matchToggle.style.flexShrink = '0';
+  matchToggle.onclick = () => {
+    searchUseMatch = !searchUseMatch;
+    if (searchUseMatch) searchUseRegex = false; // mutually exclusive: selecting Match turns off Regex
+    renderMinibufferSearch();
+    renderSearchResults();
+  };
+  minibufferSearchEl.appendChild(matchToggle);
 
   const replaceBtn = document.createElement('button');
   replaceBtn.textContent = 'Replace';
@@ -13437,7 +13562,7 @@ function renderMinibufferSearch() {
   replaceBtn.style.background = 'transparent';
   replaceBtn.style.color = 'var(--fg)';
   replaceBtn.style.flexShrink = '0';
-  replaceBtn.disabled = searchQuery.trim() === '';
+  replaceBtn.disabled = searchQuery.trim() === '' || searchUseMatch;
   replaceBtn.style.opacity = replaceBtn.disabled ? '0.4' : '1';
   replaceBtn.onclick = () => startQueryReplace();
   minibufferSearchEl.appendChild(replaceBtn);
@@ -13620,11 +13745,16 @@ function renderSearchResults() {
 
   let results;
   try {
-    results = searchDocuments(aggregateAgendaDocs(), searchQuery, {
-      useRegex: searchUseRegex,
-      useTagInheritance: getUseTagInheritance(state.localVariables),
-      usePropertyInheritance: getUsePropertyInheritance(state.localVariables),
-    });
+    results = searchUseMatch
+      ? searchDocumentsByMatchQuery(aggregateAgendaDocs(), searchQuery, {
+          useTagInheritance: getUseTagInheritance(state.localVariables),
+          usePropertyInheritance: getUsePropertyInheritance(state.localVariables),
+        })
+      : searchDocuments(aggregateAgendaDocs(), searchQuery, {
+          useRegex: searchUseRegex,
+          useTagInheritance: getUseTagInheritance(state.localVariables),
+          usePropertyInheritance: getUsePropertyInheritance(state.localVariables),
+        });
   } catch (err) {
     const errorEl = document.createElement('div');
     errorEl.style.fontSize = '13px';
@@ -13642,6 +13772,40 @@ function renderSearchResults() {
     empty.textContent = 'No matches.';
     resultsEl.appendChild(empty);
     return;
+  }
+
+  const currentDocMatches = results.filter((r) => r.documentId === state.documentId).map((r) => r.heading);
+  if (currentDocMatches.length > 0) {
+    const header = document.createElement('div');
+    header.style.display = 'flex';
+    header.style.alignItems = 'center';
+    header.style.justifyContent = 'space-between';
+    header.style.gap = '8px';
+    header.style.padding = '4px 2px 8px';
+
+    const countLabel = document.createElement('div');
+    countLabel.style.fontSize = '12px';
+    countLabel.style.color = 'var(--fg)';
+    countLabel.style.opacity = '0.7';
+    const distinctCount = new Set(currentDocMatches).size;
+    countLabel.textContent = `${distinctCount} match${distinctCount === 1 ? '' : 'es'} in this file`;
+    header.appendChild(countLabel);
+
+    const narrowBtn = document.createElement('button');
+    narrowBtn.textContent = 'Narrow';
+    narrowBtn.style.fontFamily = 'monospace';
+    narrowBtn.style.fontSize = '12px';
+    narrowBtn.style.fontWeight = '700';
+    narrowBtn.style.padding = '3px 9px';
+    narrowBtn.style.borderRadius = '12px';
+    narrowBtn.style.border = '1px solid var(--border-strong)';
+    narrowBtn.style.background = 'transparent';
+    narrowBtn.style.color = 'var(--fg)';
+    narrowBtn.style.flexShrink = '0';
+    narrowBtn.onclick = () => narrowToSparseMatches(new Set(currentDocMatches));
+    header.appendChild(narrowBtn);
+
+    resultsEl.appendChild(header);
   }
 
   for (const result of results) {
@@ -14411,8 +14575,6 @@ function renderMoreMenuContent() {
     () => {
       moreMenuStep = 'export';
       exportFormat = null;
-      vcardNameFilter = '';
-      vcardNameFilterRegex = false;
       renderMoreMenu();
     },
     !state.doc

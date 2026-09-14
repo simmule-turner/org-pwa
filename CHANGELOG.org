@@ -6,6 +6,32 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v337 — Contacts (.vcf): org-vcard model, Tree style, respects Narrow
+Drastically simplified per direct request. The old name/Regex filter
+screen is gone — real org-vcard has no filtering at all, only
+narrowing. "This file" now automatically exports just whatever's
+currently narrowed (via subtree narrow or Search's own Narrow), with
+an explicit status line saying so. New Tree export style alongside the
+existing Flat one, structure confirmed against the real org-vcard
+README.
+
+* v336 — Search: Narrow and Widen
+Search results now offer Narrow whenever at least one match belongs to
+the currently open document — works with any search mode, not just
+Match. Restricts the outline to those matches plus their own
+ancestors, with a persistent banner and a Widen button to return to
+the full view. Composes with the existing subtree narrowing rather
+than replacing it.
+
+* v335 — Search: Match mode (real org tag/property match-query)
+A new Match toggle, next to Regex, switches the search box to real
+org's own tag/property boolean grammar — the language behind C-c / m
+— confirmed against actual Emacs rather than assumed. family+work|urgent
+means (has family AND work) OR urgent, genuinely expressible here
+unlike the plain tag:/todo: filters, which can only OR within one
+field. Property comparisons (PROPERTY="value", with =/<>/</>/<=/>=)
+combine freely with tag conditions in the same expression.
+
 * v334 — Fix: Agenda swipe silently did nothing on Android
 Worked on iOS, did nothing at all on Android. The agenda container
 never had touch-action set, unlike the heading row's own swipe

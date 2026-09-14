@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v334';
+const CACHE_NAME = 'org-pwa-shell-v337';
 
 const SHELL_FILES = [
   './',
@@ -11,6 +11,7 @@ const SHELL_FILES = [
   './src/calendar-grid.js',
   './src/checkbox-cookie.js',
   './src/search.js',
+  './src/sparse-tree-matcher.js',
   './src/document-store.js',
   './src/fold-state.js',
   './src/outbox.js',
