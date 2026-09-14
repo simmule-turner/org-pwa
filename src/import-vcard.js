@@ -65,10 +65,15 @@ function parseVcardLine(line) {
 
 /** Parses the raw text of a .vcf file -- one or more VCARD blocks --
  *  into an array of contact objects: { fn, emails: [{value, type}],
- *  tels: [{value, type}], adr, nickname, note, bday, categories: [] }.
- *  A block missing FN entirely is skipped (see this module's own doc
- *  comment above for why); every other field is collected only when
- *  present. Any line outside a BEGIN:VCARD/END:VCARD pair (a
+ *  tels: [{value, type}], adrs: [{value, type}], nickname, note, bday,
+ *  categories: [] }. A block missing FN entirely is skipped (see this
+ *  module's own doc comment above for why); every other field is
+ *  collected only when present. adrs is a real list, the same shape
+ *  as emails/tels -- confirmed directly, against a real multi-address
+ *  vCard, that storing it as a single overwritten scalar (an earlier
+ *  version of this function) silently discarded every address but the
+ *  last one parsed, before either org style ever got a chance to keep
+ *  more than one. Any line outside a BEGIN:VCARD/END:VCARD pair (a
  *  top-level VERSION, or stray blank lines) is ignored rather than
  *  causing an error, and an unrecognized property name within a block
  *  is silently skipped -- this app has no use for every one of the
@@ -83,7 +88,7 @@ export function parseVcards(text) {
     const line = rawLine.trim();
     if (!line) continue;
     if (/^BEGIN:VCARD$/i.test(line)) {
-      current = { fn: null, emails: [], tels: [], adr: null, nickname: null, note: null, bday: null, categories: [] };
+      current = { fn: null, emails: [], tels: [], adrs: [], nickname: null, note: null, bday: null, categories: [] };
       continue;
     }
     if (/^END:VCARD$/i.test(line)) {
@@ -120,7 +125,7 @@ export function parseVcards(text) {
           .map((part) => part.trim())
           .filter(Boolean)
           .join(', ');
-        if (joined) current.adr = joined;
+        if (joined) current.adrs.push({ value: joined, type: parsed.params.TYPE || null });
         break;
       }
       case 'NICKNAME':
@@ -162,15 +167,33 @@ function normalizeBday(raw) {
 
 /** A heading title can't legally contain a literal newline (a heading
  *  is one line) -- collapses one to a space, the same lossy-but-safe
- *  handling a multi-line vCard value (a NOTE, most plausibly) needs
- *  wherever it ends up as a heading's own title rather than a
- *  property value (which can hold a real newline safely). */
+ *  handling any multi-line vCard value needs wherever it ends up as a
+ *  heading's own title. */
 function forHeadingTitle(text) {
   return text.replace(/\r?\n/g, ' ').trim();
 }
 
+/** THE FIX: the same newline problem forHeadingTitle solves for
+ *  headings, but for a single-line :PROPERTY: value instead -- an org
+ *  property drawer line is just as strictly one physical line as a
+ *  heading is. Confirmed directly, against a real multi-line vCard
+ *  ADR/NOTE value, that writing one through with an embedded raw
+ *  newline (the earlier version of this module) produced invalid org
+ *  syntax that silently truncated on the very next parse: everything
+ *  after the first embedded newline was read back as unrelated
+ *  following lines, not as part of the property's own value, losing
+ *  real data on every round trip rather than just reformatting it.
+ *  " ; " (rather than forHeadingTitle's plain space) keeps each
+ *  original line visually distinct once flattened, since a property
+ *  value this dense (a multi-paragraph note, an address with several
+ *  components) reads as an unbroken run-on otherwise. */
+function forPropertyValue(text) {
+  return text.replace(/\r?\n/g, ' ; ').trim();
+}
+
 const TEL_TYPE_TO_TREE_FIELDTYPE = { WORK: 'phone-work', HOME: 'phone-home', CELL: 'cell' };
 const EMAIL_TYPE_TO_TREE_FIELDTYPE = { WORK: 'email-work', HOME: 'email-home' };
+const ADR_TYPE_TO_TREE_FIELDTYPE = { WORK: 'address-work', HOME: 'address-home' };
 
 function telFieldType(tel) {
   const type = (tel.type || '').toUpperCase();
@@ -188,17 +211,39 @@ function emailFieldType(email) {
   return 'email';
 }
 
+/** THE FEATURE: mirrors email/tel's own TYPE-based mapping, now that
+ *  adrs is a real list -- 'address-work'/'address-home', falling back
+ *  to plain 'address' for an untyped ADR line or one with some other
+ *  TYPE value (OTHER, PREF, etc.) neither WORK nor HOME covers. */
+function adrFieldType(adr) {
+  const type = (adr.type || '').toUpperCase();
+  for (const key of Object.keys(ADR_TYPE_TO_TREE_FIELDTYPE)) {
+    if (type.includes(key)) return ADR_TYPE_TO_TREE_FIELDTYPE[key];
+  }
+  return 'address';
+}
+
 /** Builds one contact's own flat-style org heading -- the reverse of
  *  buildVcard in export-vcard.js. This app's own flat structure has a
- *  single :EMAIL: and single :PHONE:/:WORK_PHONE: property each (not
- *  a list), matching real org-contacts.el's own convention already
- *  established for export here -- when a vCard carries more than one
- *  of the same type, the first is used and the rest are silently
- *  dropped, a real, known limitation (real org-vcard's own project
- *  README lists "add support for multiple instances of EMAIL
- *  property" as an open TODO too, confirmed directly -- not something
- *  this app invented, though not confirmed to be scoped to flat style
- *  specifically there). */
+ *  single :EMAIL:, single :PHONE:/:WORK_PHONE:, and single :ADDRESS:
+ *  property each (not a list), matching real org-contacts.el's own
+ *  convention already established for export here -- when a vCard
+ *  carries more than one of the same type, the FIRST is kept and the
+ *  rest are silently dropped (real org-vcard's own project README
+ *  lists "add support for multiple instances of EMAIL property" as an
+ *  open TODO too, confirmed directly -- not something this app
+ *  invented, though not confirmed to be scoped to flat style
+ *  specifically there). "First" is deliberate and now consistent
+ *  across every one of these fields -- an earlier version kept
+ *  email/phone's own first but address's own LAST (an accidental
+ *  inconsistency from ADR overwriting a scalar instead of being
+ *  looked up the same way email/phone already were), confirmed
+ *  directly against a real two-address vCard where the work address
+ *  silently won over home purely because it happened to be parsed
+ *  second, not because of any deliberate preference. This IS still a
+ *  real ceiling for anyone whose contacts genuinely need more than
+ *  one of the same field kept -- see buildTreeOrgFromContact below,
+ *  which has none. */
 function buildFlatOrgFromContact(contact) {
   const title = forHeadingTitle(contact.fn);
   const tagSuffix = contact.categories.length ? `  :${contact.categories.map((c) => c.replace(/[^A-Za-z0-9_@]/g, '_')).join(':')}:` : '';
@@ -210,9 +255,9 @@ function buildFlatOrgFromContact(contact) {
   const workTel = contact.tels.find((t) => (t.type || '').toUpperCase().includes('WORK'));
   if (nonWorkTel) propertyLines.push(`:PHONE: ${nonWorkTel.value}`);
   if (workTel) propertyLines.push(`:WORK_PHONE: ${workTel.value}`);
-  if (contact.adr) propertyLines.push(`:ADDRESS: ${contact.adr}`);
-  if (contact.nickname) propertyLines.push(`:NICKNAME: ${contact.nickname}`);
-  if (contact.note) propertyLines.push(`:NOTE: ${contact.note}`);
+  if (contact.adrs.length) propertyLines.push(`:ADDRESS: ${forPropertyValue(contact.adrs[0].value)}`);
+  if (contact.nickname) propertyLines.push(`:NICKNAME: ${forPropertyValue(contact.nickname)}`);
+  if (contact.note) propertyLines.push(`:NOTE: ${forPropertyValue(contact.note)}`);
   if (contact.bday) {
     const normalized = normalizeBday(contact.bday);
     if (normalized) propertyLines.push(`:BIRTHDAY: ${normalized}`);
@@ -227,16 +272,30 @@ function buildFlatOrgFromContact(contact) {
 /** Builds one contact's own tree-style org subtree -- the reverse of
  *  buildVcardFromTreeContact in export-vcard.js. Unlike flat style,
  *  every value of the same type becomes its own descendant heading
- *  (not just the first), since tree style has no single-property
- *  limitation to work around -- a real vCard with three EMAIL
- *  addresses correctly produces three separate email/email-work/
- *  email-home headings here. Fields sit directly under the contact
- *  heading (the simpler of the two equally-valid structures the real
+ *  (not just the first) -- a real vCard with four EMAIL addresses and
+ *  two ADR entries correctly produces six separate field headings
+ *  here, none dropped, confirmed directly against exactly such a
+ *  real-world vCard. Fields sit directly under the contact heading
+ *  (the simpler of the two equally-valid structures the real
  *  org-vcard README shows -- see export-vcard.js's own
  *  buildVcardFromTreeContact for the other, which this app's own
- *  export never produces but its own import via buildVcardFromTreeContact
- *  already reads correctly regardless of which one a file uses, since
- *  it recurses through any depth). */
+ *  export never produces but its own import already reads correctly
+ *  regardless of which one a file uses, since it recurses through any
+ *  depth).
+ *
+ *  THE FEATURE: note is the one field that does NOT use its own value
+ *  as the heading's title, unlike every other field here -- instead,
+ *  a fixed "Note" title with the real text as a #+BEGIN_VERSE block in
+ *  the heading's own body. Verse specifically, not quote: a contact
+ *  note is typically a record of distinct facts, one per original
+ *  line (old phone numbers, past addresses, each its own line) --
+ *  verse preserves each line break exactly as written, where quote's
+ *  own convention allows reflow, which would blur separate facts
+ *  together. This also sidesteps forHeadingTitle/forPropertyValue's
+ *  own newline-collapsing entirely for note specifically, since real
+ *  org body content, unlike a heading title or property value, can
+ *  safely hold real newlines -- multi-paragraph notes stay genuinely
+ *  readable instead of becoming one dense, semicolon-joined line. */
 function buildTreeOrgFromContact(contact) {
   const title = forHeadingTitle(contact.fn);
   const tagSuffix = contact.categories.length ? `  :${contact.categories.map((c) => c.replace(/[^A-Za-z0-9_@]/g, '_')).join(':')}:` : '';
@@ -248,9 +307,11 @@ function buildTreeOrgFromContact(contact) {
 
   for (const email of contact.emails) field(email.value, emailFieldType(email));
   for (const tel of contact.tels) field(tel.value, telFieldType(tel));
-  if (contact.adr) field(contact.adr, 'address');
+  for (const adr of contact.adrs) field(adr.value, adrFieldType(adr));
   if (contact.nickname) field(contact.nickname, 'nickname');
-  if (contact.note) field(contact.note, 'note');
+  if (contact.note) {
+    lines.push('** Note', ':PROPERTIES:', ':FIELDTYPE: note', ':END:', '#+BEGIN_VERSE', ...contact.note.split('\n'), '#+END_VERSE');
+  }
   if (contact.bday) {
     const normalized = normalizeBday(contact.bday);
     if (normalized) field(normalized, 'birthday');

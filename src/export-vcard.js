@@ -154,6 +154,8 @@ const TREE_FIELDTYPE_TO_VCARD_LINE = {
   'email-work': (value) => `EMAIL;TYPE=WORK:${escapeVcardText(value)}`,
   'email-home': (value) => `EMAIL;TYPE=HOME:${escapeVcardText(value)}`,
   address: (value) => `ADR:;;${escapeVcardText(value)};;;;`,
+  'address-work': (value) => `ADR;TYPE=WORK:;;${escapeVcardText(value)};;;;`,
+  'address-home': (value) => `ADR;TYPE=HOME:;;${escapeVcardText(value)};;;;`,
   nickname: (value) => `NICKNAME:${escapeVcardText(value)}`,
   note: (value) => `NOTE:${escapeVcardText(value)}`,
   birthday: (value) => {
@@ -170,10 +172,24 @@ const TREE_FIELDTYPE_TO_VCARD_LINE = {
  *  heading walkHeadings visits within a contact's own subtree (an
  *  "Email"/"Cell" grouping heading, or the actual value leaf itself)
  *  correctly returns null here too, since only the contact heading
- *  itself is a card. The contact's own EMAIL address, at least one,
- *  is still required for a valid vCard, the same as the flat style
- *  above -- collected from any descendant heading whose own FIELDTYPE
- *  starts with "email", not just one specifically named "email". */
+ *  itself is a card. Real RFC 6350 only mandates FN, already present
+ *  regardless of what the walk below finds -- no field is otherwise
+ *  required, matching this module's own flat-style requirement
+ *  exactly (see buildVcard's own doc comment for the full reasoning). */
+/** Reads a note heading's own real text: a #+BEGIN_VERSE or
+ *  #+BEGIN_QUOTE block in its body, lines rejoined with real newlines
+ *  (the exact reverse of import-vcard.js's own note.split('\n')) --
+ *  either block name is accepted, since a person might reasonably
+ *  prefer QUOTE's own reflow-friendly convention over VERSE's exact
+ *  line-break preservation when writing a note by hand. Falls back to
+ *  the heading's own title when no such block is present at all, so a
+ *  note heading written before this existed (or typed by hand without
+ *  a block) still exports correctly -- never a hard requirement. */
+function noteBlockText(heading) {
+  const block = (heading.body || []).find((b) => b.type === 'block' && (b.name === 'VERSE' || b.name === 'QUOTE'));
+  return block ? block.lines.join('\n') : heading.title || '';
+}
+
 function buildVcardFromTreeContact(heading) {
   if (String(getProperty(heading, 'KIND') || '').toLowerCase() !== 'individual') return null;
   if (String(getProperty(heading, 'FIELDTYPE') || '').toLowerCase() !== 'name') return null;
@@ -187,17 +203,14 @@ function buildVcardFromTreeContact(heading) {
       const fieldType = String(getProperty(child, 'FIELDTYPE') || '').toLowerCase();
       const builder = TREE_FIELDTYPE_TO_VCARD_LINE[fieldType];
       if (builder) {
-        const line = builder(child.title || '');
+        const value = fieldType === 'note' ? noteBlockText(child) : child.title || '';
+        const line = builder(value);
         if (line) lines.push(line);
       }
       walk(child); // recurse into grouping headings ("Email" > "Work" > the actual address) as well as leaves directly under the contact
     }
   }
   walk(heading);
-  // Real RFC 6350 only mandates FN, already present above regardless of
-  // whether the walk above found any further fields at all -- a contact
-  // heading with zero recognized descendant fields still correctly
-  // produces a minimal, valid vCard (just FN/N), not null.
 
   lines.push('END:VCARD');
   return lines.map(foldLine);
