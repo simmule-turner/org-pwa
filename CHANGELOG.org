@@ -6,6 +6,28 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v340 — Fix: agenda files weren't cached until Agenda/TODO/Search ran
+Opening a document with a valid org-agenda-files setting didn't
+actually cache anything — the fetch only started once you switched to
+Agenda, TODO, or Search. Now the cache starts warming the moment the
+setting itself is known: opening the document, undo/redo, committing
+an edit, or a Settings change all trigger it immediately.
+
+* v339 — Search bar: one options button instead of three buttons
+The Regex/Match/Replace row was crowding the search input on narrow
+screens. Replaced with a single \u22ef button that opens a small popover
+with all three, each showing a check mark when active, plus a dot on
+the button itself so mode state stays visible with the popover closed.
+
+* v338 — org-vcard-import, and email is no longer required to export
+New: More > Import — pick a .vcf file, each contact becomes a new
+heading (Flat or Tree style), appended to the current document. Built
+to round-trip cleanly with Export: exporting a contact, importing the
+result, and exporting again produces an equivalent vCard. Also
+corrects both export styles: per real RFC 6350, only a contact's own
+name (FN) is actually mandatory — a contact with a phone but no email,
+for example, now correctly exports instead of being silently skipped.
+
 * v337 — Contacts (.vcf): org-vcard model, Tree style, respects Narrow
 Drastically simplified per direct request. The old name/Regex filter
 screen is gone — real org-vcard has no filtering at all, only

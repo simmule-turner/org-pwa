@@ -123,6 +123,7 @@ import { expandIncludes } from './src/export-include.js';
 import { exportToHtml } from './src/export-html.js';
 import { exportToIcalendar } from './src/export-icalendar.js';
 import { exportToVcard } from './src/export-vcard.js';
+import { importVcardsAsOrgText } from './src/import-vcard.js';
 import { createHistory, pushSnapshot, canUndo, canRedo, undo, redo, jumpTo, currentEntry } from './src/undo-history.js';
 import { diffHunks } from './src/text-diff.js';
 import { parseOrgTimestamp, formatOrgTimestamp, parseDelay, dateKey } from './src/org-timestamp.js';
@@ -511,9 +512,24 @@ let agendaFilesConfig = [];
  *  immediately. Call this any time state.localVariables changes for
  *  any reason: opening a different document, undo/redo, committing
  *  from Text view, or a Settings change to the global value while a
- *  document is open. */
+ *  document is open.
+ *
+ *  THE FIX (per direct follow-up): also kicks off the actual cache
+ *  warm-up immediately, rather than leaving that to whichever of
+ *  Agenda/TODO/Search happens to render first -- confirmed directly
+ *  that opening a document with a real, correctly-parsing org-
+ *  agenda-files setting did NOT, on its own, cache anything at all;
+ *  the fetch only ever started once one of those views actually ran.
+ *  ensureAgendaFilesLoaded is already idempotent (already-cached or
+ *  in-flight entries are skipped), so calling it here on every one of
+ *  this function's own call sites is safe and cheap once things are
+ *  warm -- the cache now starts filling the moment the config is
+ *  known, matching the expectation that the INITIAL load should be
+ *  automatic (an explicit Refresh remains the way to force a genuinely
+ *  fresh fetch of something already cached). */
 function syncAgendaFilesConfig() {
   agendaFilesConfig = parseAgendaFilesVar(getAgendaFilesVar(state.doc ? state.localVariables : globalVariables));
+  ensureAgendaFilesLoaded();
 }
 
 let globalVariablesText = '';
@@ -4110,6 +4126,7 @@ let moreMenuStep = null; // null | 'export' -- see renderMoreMenuContent
 let exportFormat = null;
 let exportPickingHeading = false;
 let vcardStyle = 'flat'; // 'flat' (real org-contacts.el's own convention, the default) or 'tree' (real org-vcard's own alternative) -- see export-vcard.js's own doc comment for the full structure of each
+let importStyle = 'flat'; // same two options, for org-vcard-import (More > Import) -- independent of vcardStyle above, since someone might export in one style but want to import a vCard from elsewhere into the other
 
 // File-browser state: browseBackend non-null means the "open" step is
 // currently showing a navigable folder/file listing (see startBrowsing
@@ -4154,6 +4171,7 @@ let moreOpen = false;
 let searchQuery = '';
 let searchUseRegex = false; // deliberately NOT reset when the search panel closes, unlike searchQuery -- this is a mode preference, not a one-off query value
 let searchUseMatch = false; // Match Query mode (C-c / m's own grammar) -- mutually exclusive with searchUseRegex, per direct decision: selecting Match replaces the whole query's own interpretation rather than layering on top of regex
+let searchOptionsMenuOpen = false; // the overflow popover (Regex/Match/Replace) replacing the old three-button row -- reset (not persisted) whenever search itself closes, same lifetime as searchUseRegex/searchUseMatch's own containing UI
 let activeQueryReplace = null; // { controller, replacementText, findPattern } while a replace walk is in progress, else null
 let viewMenuOpen = false;
 // Agenda view state: which grouping is active, and the anchor date that
@@ -9628,6 +9646,107 @@ function renderExportFlow() {
   morePanel.appendChild(backRow);
 }
 
+function renderImportFlow() {
+  const label = document.createElement('div');
+  label.style.fontSize = '12px';
+  label.style.opacity = '0.7';
+  label.style.marginBottom = '4px';
+  label.textContent = 'Style:';
+  morePanel.appendChild(label);
+
+  const styleRow = document.createElement('div');
+  styleRow.style.display = 'flex';
+  styleRow.style.border = '1px solid var(--border-strong)';
+  styleRow.style.borderRadius = '8px';
+  styleRow.style.overflow = 'hidden';
+  styleRow.style.marginBottom = '8px';
+  for (const [value, text] of [
+    ['flat', 'Flat'],
+    ['tree', 'Tree'],
+  ]) {
+    const styleBtn = document.createElement('button');
+    styleBtn.textContent = text;
+    styleBtn.style.flex = '1';
+    styleBtn.style.border = 'none';
+    styleBtn.style.borderLeft = value === 'tree' ? '1px solid var(--border-strong)' : 'none';
+    styleBtn.style.padding = '8px 4px';
+    styleBtn.style.fontSize = '13px';
+    styleBtn.style.background = importStyle === value ? 'var(--fill-ghost-selected, rgba(127,127,127,0.15))' : 'transparent';
+    styleBtn.style.color = 'var(--fg)';
+    styleBtn.onclick = () => {
+      importStyle = value;
+      renderMoreMenu();
+    };
+    styleRow.appendChild(styleBtn);
+  }
+  morePanel.appendChild(styleRow);
+
+  const hint = document.createElement('div');
+  hint.style.fontSize = '12px';
+  hint.style.opacity = '0.6';
+  hint.style.marginBottom = '10px';
+  hint.textContent = 'Pick a .vcf file. Each contact becomes a new heading, appended to the end of this document.';
+  morePanel.appendChild(hint);
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.vcf,text/vcard';
+  fileInput.style.display = 'none';
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    let vcardText;
+    try {
+      vcardText = await file.text();
+    } catch (err) {
+      setStatus(`Could not read "${file.name}": ${err.message}`);
+      return;
+    }
+    importVcardFile(vcardText);
+  });
+  morePanel.appendChild(fileInput);
+
+  const pickRow = document.createElement('div');
+  pickRow.className = 'panel-row';
+  pickRow.appendChild(menuButton('Choose vCard file\u2026', () => fileInput.click()));
+  morePanel.appendChild(pickRow);
+
+  const backRow = document.createElement('div');
+  backRow.className = 'panel-row';
+  backRow.style.marginTop = '6px';
+  backRow.appendChild(
+    menuButton('\u2039 Back', () => {
+      moreMenuStep = null;
+      renderMoreMenu();
+    })
+  );
+  morePanel.appendChild(backRow);
+}
+
+/** Parses `vcardText` (one or more VCARD blocks) via importVcardsAsOrgText
+ *  (the currently-selected importStyle), then appends the resulting
+ *  headings as new top-level headings at the end of the current
+ *  document -- the simplest, least-surprising placement, since it
+ *  doesn't require a specific heading to already be focused and never
+ *  risks overwriting anything already in the file. A file with no
+ *  valid (FN-bearing) contacts produces a clear status message rather
+ *  than silently doing nothing. */
+function importVcardFile(vcardText) {
+  const orgText = importVcardsAsOrgText(vcardText, { style: importStyle });
+  if (!orgText) {
+    setStatus('No valid contacts found in that file \u2014 each vCard needs at least a name (FN) to import.');
+    return;
+  }
+  const parsed = parseOrg(orgText);
+  const importedHeadings = parsed.children;
+  state.doc.children.push(...importedHeadings);
+  moreOpen = false;
+  moreMenuStep = null;
+  const count = importedHeadings.length;
+  commitAndRender(`Imported ${count} contact${count === 1 ? '' : 's'} from vCard`);
+  setStatus(`Imported ${count} contact${count === 1 ? '' : 's'} from vCard.`);
+}
+
 function stopBrowsing() {
   browseBackend = null;
   browsePath = '';
@@ -13495,8 +13614,7 @@ function renderMinibufferSearch() {
   input.addEventListener('input', () => {
     searchQuery = input.value;
     renderSearchResults();
-    replaceBtn.disabled = searchQuery.trim() === '' || searchUseMatch;
-    replaceBtn.style.opacity = replaceBtn.disabled ? '0.4' : '1';
+    if (searchOptionsMenuOpen) renderSearchOptionsMenu(); // keeps the Replace row's own disabled state in sync as the query changes
   });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') e.preventDefault(); // a search query is one line; results already update live
@@ -13511,63 +13629,138 @@ function renderMinibufferSearch() {
   });
   minibufferSearchEl.appendChild(input);
 
-  const regexToggle = document.createElement('button');
-  regexToggle.textContent = 'Regex';
-  regexToggle.setAttribute('aria-label', searchUseRegex ? 'Regex search on' : 'Regex search off');
-  regexToggle.style.fontFamily = 'monospace';
-  regexToggle.style.fontSize = '13px';
-  regexToggle.style.fontWeight = '700';
-  regexToggle.style.padding = '3px 9px';
-  regexToggle.style.borderRadius = '12px';
-  regexToggle.style.border = '1px solid var(--border-strong)';
-  regexToggle.style.background = searchUseRegex ? 'var(--accent)' : 'transparent';
-  regexToggle.style.color = searchUseRegex ? '#fff' : 'var(--fg)';
-  regexToggle.style.flexShrink = '0';
-  regexToggle.onclick = () => {
-    searchUseRegex = !searchUseRegex;
-    if (searchUseRegex) searchUseMatch = false; // mutually exclusive: selecting Regex turns off Match
-    renderMinibufferSearch();
-    renderSearchResults();
+  const optionsBtn = document.createElement('button');
+  optionsBtn.id = 'search-options-btn';
+  optionsBtn.textContent = '\u22ef'; // horizontal ellipsis -- distinct from the More button's own vertical \u22ee, so the two don't read as the same control
+  optionsBtn.setAttribute('aria-label', 'Search options');
+  optionsBtn.style.position = 'relative';
+  optionsBtn.style.fontSize = '18px';
+  optionsBtn.style.padding = '3px 10px';
+  optionsBtn.style.borderRadius = '8px';
+  optionsBtn.style.border = '1px solid var(--border-strong)';
+  optionsBtn.style.background = 'transparent';
+  optionsBtn.style.color = 'var(--fg)';
+  optionsBtn.style.flexShrink = '0';
+  optionsBtn.style.lineHeight = '1';
+  if (searchUseRegex || searchUseMatch) {
+    const dot = document.createElement('span');
+    dot.style.position = 'absolute';
+    dot.style.top = '2px';
+    dot.style.right = '2px';
+    dot.style.width = '7px';
+    dot.style.height = '7px';
+    dot.style.borderRadius = '50%';
+    dot.style.background = 'var(--accent)';
+    optionsBtn.appendChild(dot);
+  }
+  optionsBtn.onclick = () => {
+    searchOptionsMenuOpen = !searchOptionsMenuOpen;
+    renderSearchOptionsMenu();
   };
-  minibufferSearchEl.appendChild(regexToggle);
-
-  const matchToggle = document.createElement('button');
-  matchToggle.textContent = 'Match';
-  matchToggle.setAttribute('aria-label', searchUseMatch ? 'Match Query mode on' : 'Match Query mode off');
-  matchToggle.style.fontFamily = 'monospace';
-  matchToggle.style.fontSize = '13px';
-  matchToggle.style.fontWeight = '700';
-  matchToggle.style.padding = '3px 9px';
-  matchToggle.style.borderRadius = '12px';
-  matchToggle.style.border = '1px solid var(--border-strong)';
-  matchToggle.style.background = searchUseMatch ? 'var(--accent)' : 'transparent';
-  matchToggle.style.color = searchUseMatch ? '#fff' : 'var(--fg)';
-  matchToggle.style.flexShrink = '0';
-  matchToggle.onclick = () => {
-    searchUseMatch = !searchUseMatch;
-    if (searchUseMatch) searchUseRegex = false; // mutually exclusive: selecting Match turns off Regex
-    renderMinibufferSearch();
-    renderSearchResults();
-  };
-  minibufferSearchEl.appendChild(matchToggle);
-
-  const replaceBtn = document.createElement('button');
-  replaceBtn.textContent = 'Replace';
-  replaceBtn.style.fontFamily = 'monospace';
-  replaceBtn.style.fontSize = '13px';
-  replaceBtn.style.fontWeight = '700';
-  replaceBtn.style.padding = '3px 9px';
-  replaceBtn.style.borderRadius = '12px';
-  replaceBtn.style.border = '1px solid var(--border-strong)';
-  replaceBtn.style.background = 'transparent';
-  replaceBtn.style.color = 'var(--fg)';
-  replaceBtn.style.flexShrink = '0';
-  replaceBtn.disabled = searchQuery.trim() === '' || searchUseMatch;
-  replaceBtn.style.opacity = replaceBtn.disabled ? '0.4' : '1';
-  replaceBtn.onclick = () => startQueryReplace();
-  minibufferSearchEl.appendChild(replaceBtn);
+  minibufferSearchEl.appendChild(optionsBtn);
 
   input.focus();
+  renderSearchOptionsMenu();
+}
+
+/** The overflow popover behind the search bar's own \u22ef button --
+ *  Regex, Match, and Replace, replacing the three-button row this app
+ *  used before. Appended to document.body (not minibufferSearchEl
+ *  itself) and positioned via the button's own getBoundingClientRect,
+ *  so it's never clipped by any overflow:hidden ancestor the search
+ *  bar's own flex row might sit inside. A transparent, full-screen
+ *  backdrop beneath the popover closes it on an outside tap --
+ *  deliberately not routed through closeAllOverlayPanels, since that
+ *  function already closes the WHOLE search panel, not just this one
+ *  small popover within it. */
+function renderSearchOptionsMenu() {
+  const existing = document.getElementById('search-options-popover');
+  if (existing) existing.remove();
+  const existingBackdrop = document.getElementById('search-options-backdrop');
+  if (existingBackdrop) existingBackdrop.remove();
+  if (!searchOptionsMenuOpen) return;
+
+  const btn = document.getElementById('search-options-btn');
+  if (!btn) return;
+  const rect = btn.getBoundingClientRect();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'search-options-backdrop';
+  backdrop.style.position = 'fixed';
+  backdrop.style.inset = '0';
+  backdrop.style.background = 'transparent';
+  backdrop.style.zIndex = '9998';
+  backdrop.onclick = () => {
+    searchOptionsMenuOpen = false;
+    renderSearchOptionsMenu();
+  };
+  document.body.appendChild(backdrop);
+
+  const popover = document.createElement('div');
+  popover.id = 'search-options-popover';
+  popover.style.position = 'fixed';
+  popover.style.top = `${rect.bottom + 4}px`;
+  popover.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+  popover.style.background = 'var(--modal-bg, var(--bg))';
+  popover.style.border = '1px solid var(--border-strong)';
+  popover.style.borderRadius = '8px';
+  popover.style.boxShadow = '0 4px 16px rgba(0,0,0,0.25)';
+  popover.style.padding = '4px';
+  popover.style.minWidth = '150px';
+  popover.style.zIndex = '9999';
+
+  function optionRow(label, checked, disabled, onClick) {
+    const row = document.createElement('button');
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = '8px';
+    row.style.width = '100%';
+    row.style.boxSizing = 'border-box';
+    row.style.textAlign = 'left';
+    row.style.fontSize = '14px';
+    row.style.padding = '8px 10px';
+    row.style.border = 'none';
+    row.style.borderRadius = '6px';
+    row.style.background = 'transparent';
+    row.style.color = 'var(--fg)';
+    row.disabled = !!disabled;
+    row.style.opacity = disabled ? '0.4' : '1';
+    const check = document.createElement('span');
+    check.style.width = '16px';
+    check.style.display = 'inline-block';
+    check.style.flexShrink = '0';
+    check.textContent = checked ? '\u2713' : '';
+    row.appendChild(check);
+    row.appendChild(document.createTextNode(label));
+    if (!disabled) row.onclick = onClick;
+    return row;
+  }
+
+  popover.appendChild(
+    optionRow('Regex', searchUseRegex, false, () => {
+      searchUseRegex = !searchUseRegex;
+      if (searchUseRegex) searchUseMatch = false; // mutually exclusive: selecting Regex turns off Match
+      renderMinibufferSearch();
+      renderSearchResults();
+    })
+  );
+  popover.appendChild(
+    optionRow('Match', searchUseMatch, false, () => {
+      searchUseMatch = !searchUseMatch;
+      if (searchUseMatch) searchUseRegex = false; // mutually exclusive: selecting Match turns off Regex
+      renderMinibufferSearch();
+      renderSearchResults();
+    })
+  );
+  popover.appendChild(
+    optionRow('Replace', false, searchQuery.trim() === '' || searchUseMatch, () => {
+      searchOptionsMenuOpen = false;
+      renderSearchOptionsMenu();
+      startQueryReplace();
+    })
+  );
+
+  document.body.appendChild(popover);
 }
 
 /** Starts an Emacs-style query-replace walk over the CURRENT document
@@ -13613,6 +13806,10 @@ function renderSearchPanel() {
   if (!searchOpen) {
     searchPanel.style.display = 'none';
     if (activeQueryReplace) finishQueryReplace();
+    if (searchOptionsMenuOpen) {
+      searchOptionsMenuOpen = false;
+      renderSearchOptionsMenu();
+    }
     return;
   }
 
@@ -14534,6 +14731,11 @@ function renderMoreMenuContent() {
     return;
   }
 
+  if (moreMenuStep === 'import') {
+    renderImportFlow();
+    return;
+  }
+
   const moreMenuAliases = parseMenuAliases(getMenuAliases(state.localVariables)).more;
 
   const historyBtnOption = aliasedMenuDivItem(
@@ -14580,11 +14782,22 @@ function renderMoreMenuContent() {
     !state.doc
   );
 
+  const importBtnOption = aliasedMenuDivItem(
+    moreMenuAliases,
+    'Import',
+    () => {
+      moreMenuStep = 'import';
+      renderMoreMenu();
+    },
+    !state.doc
+  );
+
   appendMenuButtonsInOrder(morePanel, moreMenuAliases, [
     { label: 'Capture', btn: captureBtnOption },
     { label: 'Clocking', btn: clocksBtnOption },
     { label: 'Export', btn: exportBtnOption },
     { label: 'History', btn: historyBtnOption },
+    { label: 'Import', btn: importBtnOption },
     { label: 'Settings', btn: settingsBtnOption },
   ]);
 }
