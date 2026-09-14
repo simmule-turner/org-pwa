@@ -6,6 +6,15 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v341 — Fix: vCard import silently truncated multi-line values
+A NOTE or ADR with embedded newlines (common from real-world contacts
+exports) produced invalid org syntax that silently lost everything
+past the first line break on the next parse. Also fixed: multiple
+addresses kept the last one, not the first, inconsistent with
+email/phone. Tree style now supports address-work/address-home, and a
+note gets a real, readable #+BEGIN_VERSE block instead of becoming the
+heading's own title.
+
 * v340 — Fix: agenda files weren't cached until Agenda/TODO/Search ran
 Opening a document with a valid org-agenda-files setting didn't
 actually cache anything — the fetch only started once you switched to
