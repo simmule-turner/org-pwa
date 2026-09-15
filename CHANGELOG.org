@@ -6,6 +6,15 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v342 — Text-mode search & replace; two search UI fixes
+Search no longer forces a switch out of Text view — it now works
+directly on the textarea's own live raw text, including content (like
+a #+BEGIN_VERSE block) the structured Org-view version can never
+safely touch. Also fixed: the options popover no longer dismisses the
+keyboard and jumps around on tap, and Replace now says specifically
+when matches exist only inside block content, instead of the same
+generic "nothing changed" a real zero-match search also produces.
+
 * v341 — Fix: vCard import silently truncated multi-line values
 A NOTE or ADR with embedded newlines (common from real-world contacts
 exports) produced invalid org syntax that silently lost everything

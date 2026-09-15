@@ -47,7 +47,7 @@ import { parseInline, stripLineBreakMarker, IMAGE_EXT_RE, extractLatexFragments 
 import { flattenVisibleRows, toggleFold, cycleHeadingTodo, toggleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
 import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
 import { searchDocument, searchDocuments, searchDocumentsByMatchQuery } from './src/search.js';
-import { createQueryReplace } from './src/query-replace.js';
+import { createQueryReplace, createTextQueryReplace, countBlockOnlyMatches } from './src/query-replace.js';
 import { emacsRegexToJs, EmacsRegexError } from './src/emacs-regex.js';
 import { applyStartupVisibility, cycleFoldLevel } from './src/fold-state.js';
 import { parseStartupConfig, resolveEffectiveStartupConfig, VISIBILITY_KEYWORDS } from './src/startup-config.js';
@@ -13584,6 +13584,20 @@ function buildQueryReplacePattern(query, useRegex) {
   return new RegExp(escaped, 'gi');
 }
 
+/** Prevents a button's own default focus-stealing behavior on
+ *  pointerdown/mousedown (not click -- focus-stealing happens on the
+ *  earlier event, so click's own handler still fires normally
+ *  afterward). Used throughout the search bar's own options button
+ *  and popover rows so tapping either never dismisses the on-screen
+ *  keyboard by moving focus away from the search input -- confirmed
+ *  directly that losing that focus mid-tap shifts the whole layout
+ *  (the keyboard's own dismissal changes the viewport's available
+ *  height), which was landing the popover in the wrong spot relative
+ *  to where things settled a moment later. */
+function keepInputFocused(e) {
+  e.preventDefault();
+}
+
 function renderMinibufferSearch() {
   minibufferSearchEl.innerHTML = '';
   minibufferSearchEl.style.display = 'flex';
@@ -13653,6 +13667,8 @@ function renderMinibufferSearch() {
     dot.style.background = 'var(--accent)';
     optionsBtn.appendChild(dot);
   }
+  optionsBtn.addEventListener('pointerdown', keepInputFocused);
+  optionsBtn.addEventListener('mousedown', keepInputFocused);
   optionsBtn.onclick = () => {
     searchOptionsMenuOpen = !searchOptionsMenuOpen;
     renderSearchOptionsMenu();
@@ -13732,7 +13748,11 @@ function renderSearchOptionsMenu() {
     check.textContent = checked ? '\u2713' : '';
     row.appendChild(check);
     row.appendChild(document.createTextNode(label));
-    if (!disabled) row.onclick = onClick;
+    if (!disabled) {
+      row.addEventListener('pointerdown', keepInputFocused);
+      row.addEventListener('mousedown', keepInputFocused);
+      row.onclick = onClick;
+    }
     return row;
   }
 
@@ -13744,14 +13764,16 @@ function renderSearchOptionsMenu() {
       renderSearchResults();
     })
   );
-  popover.appendChild(
-    optionRow('Match', searchUseMatch, false, () => {
-      searchUseMatch = !searchUseMatch;
-      if (searchUseMatch) searchUseRegex = false; // mutually exclusive: selecting Match turns off Regex
-      renderMinibufferSearch();
-      renderSearchResults();
-    })
-  );
+  if (currentView !== 'text') {
+    popover.appendChild(
+      optionRow('Match', searchUseMatch, false, () => {
+        searchUseMatch = !searchUseMatch;
+        if (searchUseMatch) searchUseRegex = false; // mutually exclusive: selecting Match turns off Regex
+        renderMinibufferSearch();
+        renderSearchResults();
+      })
+    );
+  }
   popover.appendChild(
     optionRow('Replace', false, searchQuery.trim() === '' || searchUseMatch, () => {
       searchOptionsMenuOpen = false;
@@ -13775,7 +13797,9 @@ function renderSearchOptionsMenu() {
  *  all, since blind text substitution into those risks corrupting the
  *  document's own syntax rather than just its content. */
 function startQueryReplace() {
-  if (!state.doc || searchQuery.trim() === '') return;
+  if (searchQuery.trim() === '') return;
+  const inTextMode = currentView === 'text';
+  if (!inTextMode && !state.doc) return;
   let pattern;
   try {
     pattern = buildQueryReplacePattern(searchQuery, searchUseRegex);
@@ -13786,16 +13810,44 @@ function startQueryReplace() {
   }
   const replacementText = window.prompt(`Query replace "${searchQuery}" with:`, '');
   if (replacementText === null) return; // cancelled
-  const controller = createQueryReplace(state.doc, pattern, replacementText);
-  activeQueryReplace = { controller, replacementText, findPattern: searchQuery };
+  let controller;
+  if (inTextMode) {
+    const textarea = document.getElementById('document-text-edit-input');
+    controller = createTextQueryReplace(textarea ? textarea.value : '', pattern, replacementText);
+  } else {
+    controller = createQueryReplace(state.doc, pattern, replacementText);
+  }
+  activeQueryReplace = { controller, replacementText, findPattern: searchQuery, pattern, inTextMode };
   renderSearchPanel();
 }
 
 function finishQueryReplace() {
-  const count = activeQueryReplace.controller.replacedCount();
+  const { controller, pattern, inTextMode } = activeQueryReplace;
+  const count = controller.replacedCount();
   activeQueryReplace = null;
-  const label = count > 0 ? 'Query-replaced ' + count + ' occurrence' + (count === 1 ? '' : 's') + '.' : 'Query-replace: nothing changed.';
-  commitAndRender('Query-replaced ' + count + ' occurrence' + (count === 1 ? '' : 's'));
+  let label;
+  if (count > 0) {
+    label = 'Query-replaced ' + count + ' occurrence' + (count === 1 ? '' : 's') + '.';
+  } else if (inTextMode) {
+    label = 'Query-replace: nothing changed.';
+  } else {
+    const blockOnly = countBlockOnlyMatches(state.doc, pattern);
+    label =
+      blockOnly > 0
+        ? blockOnly + ' match' + (blockOnly === 1 ? '' : 'es') + ' found only inside block content (e.g. #+BEGIN_VERSE) \u2014 not editable here; use Text view instead.'
+        : 'Query-replace: nothing changed.';
+  }
+  if (inTextMode) {
+    if (count > 0) {
+      const textarea = document.getElementById('document-text-edit-input');
+      if (textarea) {
+        textarea.value = controller.getText();
+        textarea.dispatchEvent(new Event('input', { bubbles: true })); // triggers the textarea's own existing auto-resize, wired to this event
+      }
+    }
+  } else {
+    commitAndRender('Query-replaced ' + count + ' occurrence' + (count === 1 ? '' : 's'));
+  }
   setStatus(label);
   renderSearchPanel();
 }
@@ -13863,7 +13915,9 @@ function renderQueryReplacePrompt() {
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '8px';
-  label.textContent = `${target.label} in "${target.heading.title || '(untitled)'}" \u2014 replace with "${replacementText}"?`;
+  label.textContent = target
+    ? `${target.label} in "${target.heading.title || '(untitled)'}" \u2014 replace with "${replacementText}"?`
+    : `Replace with "${replacementText}"?`;
   wrap.appendChild(label);
 
   const prompt = document.createElement('div');
@@ -13927,7 +13981,51 @@ function appendSnippetWithHighlight(container, snippet) {
   if (after) container.appendChild(document.createTextNode(after));
 }
 
+/** The Text-mode counterpart to renderSearchResults' own structured
+ *  results list -- just a live match count against the textarea's own
+ *  current value, since there's no parsed document (and so no
+ *  per-match "heading"/"paragraph" context) to show anything richer
+ *  than that yet. Match mode is deliberately not offered in Text mode
+ *  at all: it's a structured, tag/property-based concept that needs a
+ *  parsed document, which doesn't exist for content still being
+ *  edited as plain text. */
+function renderTextModeSearchResults() {
+  const resultsEl = document.getElementById('search-results');
+  if (!resultsEl) return;
+  resultsEl.innerHTML = '';
+
+  if (!searchQuery.trim()) {
+    searchPanel.style.display = 'none';
+    return;
+  }
+  searchPanel.style.display = 'block';
+
+  const textarea = document.getElementById('document-text-edit-input');
+  const text = textarea ? textarea.value : '';
+
+  const info = document.createElement('div');
+  info.style.fontSize = '13px';
+  info.style.padding = '6px 2px';
+  try {
+    const pattern = buildQueryReplacePattern(searchQuery, searchUseRegex);
+    const globalPattern = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g');
+    const count = (text.match(globalPattern) || []).length;
+    info.style.opacity = '0.7';
+    info.textContent = count === 0 ? 'No matches.' : count + ' match' + (count === 1 ? '' : 'es') + ' in this text.';
+  } catch (err) {
+    const message = err instanceof EmacsRegexError ? err.message : String(err.message || err);
+    info.style.color = '#c0392b';
+    info.textContent = 'Invalid regex: ' + message;
+  }
+  resultsEl.appendChild(info);
+}
+
 function renderSearchResults() {
+  if (currentView === 'text') {
+    renderTextModeSearchResults();
+    return;
+  }
+
   const resultsEl = document.getElementById('search-results');
   if (!resultsEl) return;
   resultsEl.innerHTML = '';
@@ -14064,13 +14162,6 @@ function renderSearchResults() {
 
 searchBtn.addEventListener('click', () => {
   const opening = !searchOpen;
-  if (opening && currentView === 'text') {
-    // Leaving text mode reparses the document into new objects — do this
-    // now, before any search results are computed, not later when a
-    // result is tapped. Otherwise a result computed against the old
-    // document would already be stale by the time it's tapped.
-    switchToView('org');
-  }
   closeAllOverlayPanels();
   searchOpen = opening;
   render();
