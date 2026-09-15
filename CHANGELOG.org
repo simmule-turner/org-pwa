@@ -6,6 +6,15 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v344 — Search options: inline row instead of a popover
+Replaced the floating popover entirely, per direct report of it not
+working on Android specifically. Regex/Match/Replace now expand as a
+normal second row directly below the search input, with no screen
+position to compute at all — after two straight releases of
+platform-specific popover breakage (keyboard dismissal, then
+off-screen rendering), removing the positioning logic seemed more
+durable than continuing to patch it one platform at a time.
+
 * v343 — Fix: search overflow menu regression from the last release
 The keyboard-dismiss fix in v342 introduced two compounding bugs of
 its own, found via real touch-event emulation (not the .click()-based

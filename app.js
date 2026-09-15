@@ -13587,10 +13587,16 @@ function buildQueryReplacePattern(query, useRegex) {
 function renderMinibufferSearch() {
   minibufferSearchEl.innerHTML = '';
   minibufferSearchEl.style.display = 'flex';
+  minibufferSearchEl.style.flexDirection = 'column';
   minibufferSearchEl.style.flex = '1';
   minibufferSearchEl.style.minWidth = '0';
-  minibufferSearchEl.style.alignItems = 'center';
-  minibufferSearchEl.style.gap = '8px';
+  minibufferSearchEl.style.gap = '6px';
+
+  const topRow = document.createElement('div');
+  topRow.style.display = 'flex';
+  topRow.style.alignItems = 'center';
+  topRow.style.gap = '8px';
+  minibufferSearchEl.appendChild(topRow);
 
   const input = document.createElement('textarea');
   input.id = 'search-query-input';
@@ -13627,7 +13633,7 @@ function renderMinibufferSearch() {
       renderSearchPanel();
     }
   });
-  minibufferSearchEl.appendChild(input);
+  topRow.appendChild(input);
 
   const optionsBtn = document.createElement('button');
   optionsBtn.id = 'search-options-btn';
@@ -13658,104 +13664,65 @@ function renderMinibufferSearch() {
     renderSearchOptionsMenu();
     input.focus(); // restores focus (and so the on-screen keyboard) after the button's own click naturally took it away
   };
-  minibufferSearchEl.appendChild(optionsBtn);
+  topRow.appendChild(optionsBtn);
+
+  const optionsRow = document.createElement('div');
+  optionsRow.id = 'search-options-row';
+  minibufferSearchEl.appendChild(optionsRow);
 
   input.focus();
   renderSearchOptionsMenu();
 }
 
-/** The overflow popover behind the search bar's own \u22ef button --
- *  Regex, Match, and Replace, replacing the three-button row this app
- *  used before. Appended to document.body (not minibufferSearchEl
- *  itself) and positioned via the button's own getBoundingClientRect,
- *  so it's never clipped by any overflow:hidden ancestor the search
- *  bar's own flex row might sit inside. A transparent, full-screen
- *  backdrop beneath the popover closes it on an outside tap --
- *  deliberately not routed through closeAllOverlayPanels, since that
- *  function already closes the WHOLE search panel, not just this one
- *  small popover within it. */
+/** Regex/Match/Replace, expanding inline as a second row directly
+ *  below the search input -- NOT a floating popover. That earlier
+ *  design needed its own position computed relative to the viewport
+ *  on every open, and broke in a new, platform-specific way each time
+ *  a fix landed for the last one: first dismissing the on-screen
+ *  keyboard, then rendering off-screen entirely once that was fixed
+ *  (the search bar sits at the very bottom of the screen, so "always
+ *  position below" had nowhere to go), and this exact class of bug
+ *  was suspected again on Android specifically, where the keyboard's
+ *  own real, live effect on window.innerHeight couldn't be reliably
+ *  reproduced or confirmed without a physical device to test on. This
+ *  version has no position to compute at all -- it's a normal DOM
+ *  sibling in the page's own regular layout flow, so there's nothing
+ *  left to get wrong across platforms. */
 function renderSearchOptionsMenu() {
-  const existing = document.getElementById('search-options-popover');
-  if (existing) existing.remove();
-  const existingBackdrop = document.getElementById('search-options-backdrop');
-  if (existingBackdrop) existingBackdrop.remove();
+  const optionsRow = document.getElementById('search-options-row');
+  if (!optionsRow) return;
+  optionsRow.innerHTML = '';
   if (!searchOptionsMenuOpen) return;
 
-  const btn = document.getElementById('search-options-btn');
-  if (!btn) return;
-  const rect = btn.getBoundingClientRect();
+  optionsRow.style.display = 'flex';
+  optionsRow.style.gap = '6px';
+  optionsRow.style.flexWrap = 'wrap';
 
-  const backdrop = document.createElement('div');
-  backdrop.id = 'search-options-backdrop';
-  backdrop.style.position = 'fixed';
-  backdrop.style.inset = '0';
-  backdrop.style.background = 'transparent';
-  backdrop.style.zIndex = '9998';
-  backdrop.onclick = () => {
-    searchOptionsMenuOpen = false;
-    renderSearchOptionsMenu();
-  };
-  document.body.appendChild(backdrop);
-
-  const popover = document.createElement('div');
-  popover.id = 'search-options-popover';
-  popover.style.position = 'fixed';
-  // Flip above the button when there isn't enough room below within the
-  // viewport -- confirmed directly that the search bar sits at the very
-  // bottom of the screen, so "always position below" was pushing the
-  // popover off-screen entirely, invisible and unreachable. 150px is a
-  // conservative estimate of the popover's own maximum height (up to
-  // three rows plus padding); using the CSS `bottom` property for the
-  // flipped case avoids needing to know its own exact height in
-  // advance, since the browser grows it upward from a fixed bottom
-  // edge regardless of exactly how tall it ends up being.
-  const estimatedPopoverHeight = 150;
-  const fitsBelow = rect.bottom + estimatedPopoverHeight <= window.innerHeight;
-  if (fitsBelow) {
-    popover.style.top = `${rect.bottom + 4}px`;
-  } else {
-    popover.style.bottom = `${window.innerHeight - rect.top + 4}px`;
-  }
-  popover.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
-  popover.style.background = 'var(--modal-bg, var(--bg))';
-  popover.style.border = '1px solid var(--border-strong)';
-  popover.style.borderRadius = '8px';
-  popover.style.boxShadow = '0 4px 16px rgba(0,0,0,0.25)';
-  popover.style.padding = '4px';
-  popover.style.minWidth = '150px';
-  popover.style.zIndex = '9999';
-
-  function optionRow(label, checked, disabled, onClick) {
-    const row = document.createElement('button');
-    row.style.display = 'flex';
-    row.style.alignItems = 'center';
-    row.style.gap = '8px';
-    row.style.width = '100%';
-    row.style.boxSizing = 'border-box';
-    row.style.textAlign = 'left';
-    row.style.fontSize = '14px';
-    row.style.padding = '8px 10px';
-    row.style.border = 'none';
-    row.style.borderRadius = '6px';
-    row.style.background = 'transparent';
-    row.style.color = 'var(--fg)';
-    row.disabled = !!disabled;
-    row.style.opacity = disabled ? '0.4' : '1';
+  function optionButton(label, checked, disabled, onClick) {
+    const btn = document.createElement('button');
+    btn.style.display = 'flex';
+    btn.style.alignItems = 'center';
+    btn.style.gap = '5px';
+    btn.style.fontSize = '13px';
+    btn.style.padding = '5px 10px';
+    btn.style.border = '1px solid var(--border-strong)';
+    btn.style.borderRadius = '8px';
+    btn.style.background = checked ? 'var(--fill-ghost-selected, rgba(127,127,127,0.15))' : 'transparent';
+    btn.style.color = 'var(--fg)';
+    btn.disabled = !!disabled;
+    btn.style.opacity = disabled ? '0.4' : '1';
     const check = document.createElement('span');
-    check.style.width = '16px';
+    check.style.width = '12px';
     check.style.display = 'inline-block';
-    check.style.flexShrink = '0';
     check.textContent = checked ? '\u2713' : '';
-    row.appendChild(check);
-    row.appendChild(document.createTextNode(label));
-    if (!disabled) {
-      row.onclick = onClick;
-    }
-    return row;
+    btn.appendChild(check);
+    btn.appendChild(document.createTextNode(label));
+    if (!disabled) btn.onclick = onClick;
+    return btn;
   }
 
-  popover.appendChild(
-    optionRow('Regex', searchUseRegex, false, () => {
+  optionsRow.appendChild(
+    optionButton('Regex', searchUseRegex, false, () => {
       searchUseRegex = !searchUseRegex;
       if (searchUseRegex) searchUseMatch = false; // mutually exclusive: selecting Regex turns off Match
       renderMinibufferSearch();
@@ -13763,8 +13730,8 @@ function renderSearchOptionsMenu() {
     })
   );
   if (currentView !== 'text') {
-    popover.appendChild(
-      optionRow('Match', searchUseMatch, false, () => {
+    optionsRow.appendChild(
+      optionButton('Match', searchUseMatch, false, () => {
         searchUseMatch = !searchUseMatch;
         if (searchUseMatch) searchUseRegex = false; // mutually exclusive: selecting Match turns off Regex
         renderMinibufferSearch();
@@ -13772,15 +13739,13 @@ function renderSearchOptionsMenu() {
       })
     );
   }
-  popover.appendChild(
-    optionRow('Replace', false, searchQuery.trim() === '' || searchUseMatch, () => {
+  optionsRow.appendChild(
+    optionButton('Replace', false, searchQuery.trim() === '' || searchUseMatch, () => {
       searchOptionsMenuOpen = false;
       renderSearchOptionsMenu();
       startQueryReplace();
     })
   );
-
-  document.body.appendChild(popover);
 }
 
 /** Starts an Emacs-style query-replace walk over the CURRENT document
