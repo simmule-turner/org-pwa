@@ -13584,20 +13584,6 @@ function buildQueryReplacePattern(query, useRegex) {
   return new RegExp(escaped, 'gi');
 }
 
-/** Prevents a button's own default focus-stealing behavior on
- *  pointerdown/mousedown (not click -- focus-stealing happens on the
- *  earlier event, so click's own handler still fires normally
- *  afterward). Used throughout the search bar's own options button
- *  and popover rows so tapping either never dismisses the on-screen
- *  keyboard by moving focus away from the search input -- confirmed
- *  directly that losing that focus mid-tap shifts the whole layout
- *  (the keyboard's own dismissal changes the viewport's available
- *  height), which was landing the popover in the wrong spot relative
- *  to where things settled a moment later. */
-function keepInputFocused(e) {
-  e.preventDefault();
-}
-
 function renderMinibufferSearch() {
   minibufferSearchEl.innerHTML = '';
   minibufferSearchEl.style.display = 'flex';
@@ -13667,11 +13653,10 @@ function renderMinibufferSearch() {
     dot.style.background = 'var(--accent)';
     optionsBtn.appendChild(dot);
   }
-  optionsBtn.addEventListener('pointerdown', keepInputFocused);
-  optionsBtn.addEventListener('mousedown', keepInputFocused);
   optionsBtn.onclick = () => {
     searchOptionsMenuOpen = !searchOptionsMenuOpen;
     renderSearchOptionsMenu();
+    input.focus(); // restores focus (and so the on-screen keyboard) after the button's own click naturally took it away
   };
   minibufferSearchEl.appendChild(optionsBtn);
 
@@ -13715,7 +13700,22 @@ function renderSearchOptionsMenu() {
   const popover = document.createElement('div');
   popover.id = 'search-options-popover';
   popover.style.position = 'fixed';
-  popover.style.top = `${rect.bottom + 4}px`;
+  // Flip above the button when there isn't enough room below within the
+  // viewport -- confirmed directly that the search bar sits at the very
+  // bottom of the screen, so "always position below" was pushing the
+  // popover off-screen entirely, invisible and unreachable. 150px is a
+  // conservative estimate of the popover's own maximum height (up to
+  // three rows plus padding); using the CSS `bottom` property for the
+  // flipped case avoids needing to know its own exact height in
+  // advance, since the browser grows it upward from a fixed bottom
+  // edge regardless of exactly how tall it ends up being.
+  const estimatedPopoverHeight = 150;
+  const fitsBelow = rect.bottom + estimatedPopoverHeight <= window.innerHeight;
+  if (fitsBelow) {
+    popover.style.top = `${rect.bottom + 4}px`;
+  } else {
+    popover.style.bottom = `${window.innerHeight - rect.top + 4}px`;
+  }
   popover.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
   popover.style.background = 'var(--modal-bg, var(--bg))';
   popover.style.border = '1px solid var(--border-strong)';
@@ -13749,8 +13749,6 @@ function renderSearchOptionsMenu() {
     row.appendChild(check);
     row.appendChild(document.createTextNode(label));
     if (!disabled) {
-      row.addEventListener('pointerdown', keepInputFocused);
-      row.addEventListener('mousedown', keepInputFocused);
       row.onclick = onClick;
     }
     return row;

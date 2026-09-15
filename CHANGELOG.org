@@ -6,6 +6,16 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v343 — Fix: search overflow menu regression from the last release
+The keyboard-dismiss fix in v342 introduced two compounding bugs of
+its own, found via real touch-event emulation (not the .click()-based
+testing that missed them before shipping): preventDefault on
+pointerdown can suppress the click event entirely on real touch
+devices, and — the more complete explanation — the popover always
+positioned itself below its own button, which sits at the very bottom
+of the screen, pushing it off-screen and invisible with no room below.
+Both fixed.
+
 * v342 — Text-mode search & replace; two search UI fixes
 Search no longer forces a switch out of Text view — it now works
 directly on the textarea's own live raw text, including content (like
