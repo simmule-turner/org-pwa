@@ -39,15 +39,30 @@ function unescapeVcardText(text) {
   return text.replace(/\\n/gi, '\n').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\');
 }
 
+/** THE FEATURE: Google Contacts' own vCard export quirk, per direct
+ *  report -- escapes colons with a backslash even though \: isn't a
+ *  standard vCard escape sequence at all (only \\, \;, \,, \n are
+ *  defined by RFC 6350), confirmed directly against a real
+ *  Google-exported vCard where this appeared repeatedly throughout a
+ *  NOTE field's own text. Applied only when Google mode is on (the
+ *  new checkbox in the Import screen, default on): a literal "\:"
+ *  from some other, non-Google vCard source could plausibly be
+ *  intentional, however unlikely, and shouldn't be silently rewritten
+ *  without it being clear Google-specific handling is what did it. */
+function unescapeGoogleColon(text) {
+  return text.replace(/\\:/g, ':');
+}
+
 /** Parses one already-unfolded "NAME;PARAM=VALUE;...:VALUE" line into
  *  { name, params, value } -- name and every param key upper-cased
  *  (vCard property/param names are case-insensitive per the spec),
- *  value left as the real, already-unescaped text. Returns null for a
- *  line with no ":" at all (malformed, or a blank/structural line),
- *  skipped rather than thrown on -- a real-world vCard file
- *  occasionally has stray blank lines, and one malformed line
- *  shouldn't abort parsing every other contact in the file. */
-function parseVcardLine(line) {
+ *  value left as the real, already-unescaped text (and, when
+ *  googleMode is on, also run through unescapeGoogleColon). Returns
+ *  null for a line with no ":" at all (malformed, or a blank/
+ *  structural line), skipped rather than thrown on -- a real-world
+ *  vCard file occasionally has stray blank lines, and one malformed
+ *  line shouldn't abort parsing every other contact in the file. */
+function parseVcardLine(line, googleMode) {
   const colonIndex = line.indexOf(':');
   if (colonIndex === -1) return null;
   const nameAndParams = line.slice(0, colonIndex);
@@ -60,7 +75,9 @@ function parseVcardLine(line) {
     if (eq === -1) continue;
     params[parts[i].slice(0, eq).toUpperCase()] = parts[i].slice(eq + 1).toUpperCase();
   }
-  return { name, params, value: unescapeVcardText(rawValue) };
+  let value = unescapeVcardText(rawValue);
+  if (googleMode) value = unescapeGoogleColon(value);
+  return { name, params, value };
 }
 
 /** Parses the raw text of a .vcf file -- one or more VCARD blocks --
@@ -79,7 +96,8 @@ function parseVcardLine(line) {
  *  is silently skipped -- this app has no use for every one of the
  *  many properties a real vCard can carry, and a property it doesn't
  *  map shouldn't block the ones it does. */
-export function parseVcards(text) {
+export function parseVcards(text, opts = {}) {
+  const { googleMode = true } = opts;
   const lines = unfoldVcardLines(text);
   const contacts = [];
   let current = null;
@@ -98,7 +116,7 @@ export function parseVcards(text) {
     }
     if (!current) continue;
 
-    const parsed = parseVcardLine(line);
+    const parsed = parseVcardLine(line, googleMode);
     if (!parsed) continue;
     switch (parsed.name) {
       case 'FN':
@@ -112,20 +130,17 @@ export function parseVcards(text) {
         break;
       case 'ADR': {
         // Real ADR is 7 semicolon-separated components (PO Box;
-        // Extended;Street;City;Region;PostalCode;Country). This app's
-        // own single free-text ADDRESS property has nowhere to put
-        // seven separate parts, so every non-empty component is
-        // joined into one readable string -- this correctly recovers
-        // exactly what this app's own export wrote (which only ever
-        // populates the street component), and still produces a
-        // sensible single string for a real-world vCard from another
-        // contacts app with a fully structured address.
-        const joined = parsed.value
-          .split(';')
-          .map((part) => part.trim())
-          .filter(Boolean)
-          .join(', ');
-        if (joined) current.adrs.push({ value: joined, type: parsed.params.TYPE || null });
+        // Extended;Street;City;Region;PostalCode;Country). Google's
+        // own export appends an 8th, non-standard component: the same
+        // address again, as a human-readable, multi-line label --
+        // confirmed directly against a real Google-exported vCard.
+        // When present (googleMode on), use the label directly rather
+        // than re-joining the 7 structured components, which would
+        // otherwise duplicate the same information in a worse format.
+        const rawParts = parsed.value.split(';');
+        const googleLabel = googleMode && rawParts.length >= 8 ? rawParts[7].trim() : '';
+        const value = googleLabel || rawParts.map((part) => part.trim()).filter(Boolean).join(', ');
+        if (value) current.adrs.push({ value, type: parsed.params.TYPE || null });
         break;
       }
       case 'NICKNAME':
@@ -296,22 +311,41 @@ function buildFlatOrgFromContact(contact) {
  *  org body content, unlike a heading title or property value, can
  *  safely hold real newlines -- multi-paragraph notes stay genuinely
  *  readable instead of becoming one dense, semicolon-joined line. */
+const FIELDTYPE_LABELS = {
+  cell: 'Cell',
+  phone: 'Phone',
+  'phone-work': 'Work Phone',
+  'phone-home': 'Home Phone',
+  email: 'Email',
+  'email-work': 'Work Email',
+  'email-home': 'Home Email',
+  address: 'Address',
+  'address-work': 'Work Address',
+  'address-home': 'Home Address',
+  nickname: 'Nickname',
+  note: 'Note',
+  birthday: 'Birthday',
+};
+
 function buildTreeOrgFromContact(contact) {
   const title = forHeadingTitle(contact.fn);
   const tagSuffix = contact.categories.length ? `  :${contact.categories.map((c) => c.replace(/[^A-Za-z0-9_@]/g, '_')).join(':')}:` : '';
   const lines = [`* ${title}${tagSuffix}`, ':PROPERTIES:', ':KIND: individual', ':FIELDTYPE: name', ':END:'];
 
-  const field = (value, fieldType) => {
-    lines.push(`** ${forHeadingTitle(value)}`, ':PROPERTIES:', `:FIELDTYPE: ${fieldType}`, ':END:');
+  const field = (value, fieldType, forceBlock = false) => {
+    if (forceBlock || value.includes('\n')) {
+      const label = FIELDTYPE_LABELS[fieldType] || fieldType;
+      lines.push(`** ${label}`, ':PROPERTIES:', `:FIELDTYPE: ${fieldType}`, ':END:', '#+BEGIN_VERSE', ...value.split('\n'), '#+END_VERSE');
+    } else {
+      lines.push(`** ${forHeadingTitle(value)}`, ':PROPERTIES:', `:FIELDTYPE: ${fieldType}`, ':END:');
+    }
   };
 
   for (const email of contact.emails) field(email.value, emailFieldType(email));
   for (const tel of contact.tels) field(tel.value, telFieldType(tel));
   for (const adr of contact.adrs) field(adr.value, adrFieldType(adr));
   if (contact.nickname) field(contact.nickname, 'nickname');
-  if (contact.note) {
-    lines.push('** Note', ':PROPERTIES:', ':FIELDTYPE: note', ':END:', '#+BEGIN_VERSE', ...contact.note.split('\n'), '#+END_VERSE');
-  }
+  if (contact.note) field(contact.note, 'note', true); // always the fixed-title+verse treatment, matching real contact notes' own typical multi-fact, one-per-line shape, regardless of whether this particular one happens to be single-line
   if (contact.bday) {
     const normalized = normalizeBday(contact.bday);
     if (normalized) field(normalized, 'birthday');
@@ -321,18 +355,25 @@ function buildTreeOrgFromContact(contact) {
 }
 
 /** Converts vCard text (one or more contacts) into org text ready to
- *  insert into a document -- `style` is 'flat' (default) or 'tree',
- *  matching exportToVcard's own style option exactly. Each contact
- *  becomes its own top-level heading (or heading subtree, for tree
- *  style); multiple contacts are joined with a single blank line
- *  between them, matching how a real org file's own headings are
- *  conventionally separated. Returns an empty string for a file with
- *  no valid (FN-bearing) contacts at all, the same "nothing to do,
- *  not an error" convention exportToVcard's own empty case already
- *  uses. */
+ *  insert into a document -- `style` is 'flat' or 'tree' (default),
+ *  matching exportToVcard's own style option. Tree is the default
+ *  here specifically because flat has a real ceiling (only the first
+ *  of each repeated field -- email, phone, address -- survives;
+ *  everything else is silently dropped), where tree keeps every one.
+ *  `googleMode` (default true) enables the two Google Contacts export
+ *  quirks this module specifically handles -- an 8th ADR component
+ *  read as a human-readable label, and "\:" unescaped to ":" -- see
+ *  parseVcards and unescapeGoogleColon's own doc comments for the
+ *  full reasoning on each. Each contact becomes its own top-level
+ *  heading (or heading subtree, for tree style); multiple contacts
+ *  are joined with a single blank line between them, matching how a
+ *  real org file's own headings are conventionally separated.
+ *  Returns an empty string for a file with no valid (FN-bearing)
+ *  contacts at all, the same "nothing to do, not an error" convention
+ *  exportToVcard's own empty case already uses. */
 export function importVcardsAsOrgText(vcardText, opts = {}) {
-  const { style = 'flat' } = opts;
-  const contacts = parseVcards(vcardText);
+  const { style = 'tree', googleMode = true } = opts;
+  const contacts = parseVcards(vcardText, { googleMode });
   const builder = style === 'tree' ? buildTreeOrgFromContact : buildFlatOrgFromContact;
   return contacts.map(builder).join('\n\n');
 }
