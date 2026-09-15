@@ -75,6 +75,31 @@ function collectReplaceTargets(doc) {
   return targets;
 }
 
+/** Counts how many times `re` matches inside block content specifically
+ *  (a #+BEGIN_.../#+END_... body, e.g. the #+BEGIN_VERSE a contact's own
+ *  imported note lives in) -- content collectReplaceTargets above
+ *  deliberately never includes, so a query-replace walk can never see
+ *  or touch these matches at all. Used to tell a genuine zero-match
+ *  search apart from one where real matches exist but are entirely
+ *  out of reach, so the person doing the replace gets a clear,
+ *  specific reason rather than a generic "nothing changed" either way. */
+function countBlockOnlyMatches(doc, re) {
+  let count = 0;
+  const pattern = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
+  function walk(heading) {
+    for (const node of heading.body || []) {
+      if (node.type === 'block') {
+        const text = (node.lines || []).join('\n');
+        const matches = text.match(pattern);
+        if (matches) count += matches.length;
+      }
+    }
+    for (const child of heading.children || []) walk(child);
+  }
+  for (const heading of doc.children || []) walk(heading);
+  return count;
+}
+
 /**
  * Drives an Emacs-style interactive query-replace over `doc`: finds
  * every occurrence of `re` (a global-flagged RegExp) across every
@@ -179,4 +204,82 @@ function createQueryReplace(doc, re, replacement) {
   };
 }
 
-export { createQueryReplace, collectReplaceTargets };
+/**
+ * The text-native counterpart to createQueryReplace above: the same
+ * Emacs-style interactive walk (current/replace/skip/replaceAll/quit,
+ * the same y/n/!/q vocabulary), but over one plain string instead of
+ * a document's own separately-editable targets -- built specifically
+ * so Text view can offer query-replace too, reaching content (a
+ * #+BEGIN_VERSE block, any raw syntax) the structured version can
+ * never safely touch at all, matching Text view's own stated purpose
+ * as the escape hatch for everything the tap-driven UI doesn't cover.
+ * `getText()` retrieves the current, possibly-partially-replaced
+ * string at any point -- the caller is responsible for writing it
+ * back into wherever it came from once the session ends, since this
+ * function has no document (or textarea) of its own to write into.
+ */
+function createTextQueryReplace(text, re, replacement) {
+  let currentText = text;
+  let searchFrom = 0;
+  let replacedCount = 0;
+  let done = false;
+  let pendingMatch = null; // { match, text } for the match currently awaiting a decision
+
+  const globalRe = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
+
+  function findNext() {
+    globalRe.lastIndex = searchFrom;
+    const m = globalRe.exec(currentText);
+    if (!m) {
+      pendingMatch = null;
+      done = true;
+      return null;
+    }
+    // Same zero-length-match guard as createQueryReplace above.
+    searchFrom = m.index + Math.max(m[0].length, 1);
+    pendingMatch = { match: m, text: currentText };
+    return pendingMatch;
+  }
+
+  function current() {
+    if (done) return null;
+    return pendingMatch || findNext();
+  }
+
+  function applyReplacement(match) {
+    const replaced = replacement.replace(/\$(\d)/g, (_, n) => match[n] ?? '');
+    currentText = currentText.slice(0, match.index) + replaced + currentText.slice(match.index + match[0].length);
+    replacedCount++;
+    searchFrom = match.index + replaced.length;
+    pendingMatch = null;
+  }
+
+  return {
+    current,
+    replace() {
+      const c = current();
+      if (!c) return;
+      applyReplacement(c.match);
+    },
+    skip() {
+      if (!current()) return;
+      pendingMatch = null;
+    },
+    replaceAll() {
+      let c = current();
+      while (c) {
+        applyReplacement(c.match);
+        c = current();
+      }
+    },
+    quit() {
+      done = true;
+      pendingMatch = null;
+    },
+    isDone: () => done,
+    replacedCount: () => replacedCount,
+    getText: () => currentText,
+  };
+}
+
+export { createQueryReplace, createTextQueryReplace, collectReplaceTargets, countBlockOnlyMatches };
