@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { emacsRegexToJs } from '../src/emacs-regex.js';
-import { createQueryReplace, collectReplaceTargets } from '../src/query-replace.js';
+import { createQueryReplace, createTextQueryReplace, collectReplaceTargets, countBlockOnlyMatches } from '../src/query-replace.js';
 
 function doc(lines) {
   return parseOrg(lines.join('\n'));
@@ -203,4 +203,91 @@ test('a query with no matches anywhere finishes immediately with zero replacemen
   const qr = createQueryReplace(d, re, 'x');
   assert.equal(qr.current(), null);
   assert.equal(qr.replacedCount(), 0);
+});
+
+// ---- countBlockOnlyMatches -------------------------------------------
+
+test('THE FEATURE: countBlockOnlyMatches finds a pattern inside a #+BEGIN_VERSE block, confirmed against the exact real-world report -- a "\\\\:" left over from a vCard import', () => {
+  const d = doc(['* Simmule Turner', '** Note', '#+BEGIN_VERSE', 'Permanent address\\:', 'more text', '#+END_VERSE']);
+  const re = emacsRegexToJs('\\\\:', 'gi');
+  assert.equal(countBlockOnlyMatches(d, re), 1);
+});
+
+test('countBlockOnlyMatches counts multiple occurrences across multiple blocks, not just one per block', () => {
+  const d = doc(['* Alice', '** Note', '#+BEGIN_VERSE', 'a\\:b\\:c', '#+END_VERSE', '* Bob', '** Note', '#+BEGIN_QUOTE', 'd\\:e', '#+END_QUOTE']);
+  const re = emacsRegexToJs('\\\\:', 'gi');
+  assert.equal(countBlockOnlyMatches(d, re), 3);
+});
+
+test('countBlockOnlyMatches returns 0 when the pattern doesn\u2019t appear in any block, even if it appears elsewhere (a heading title, say)', () => {
+  const d = doc(['* Contains\\:here', '** Note', '#+BEGIN_VERSE', 'nothing to see', '#+END_VERSE']);
+  const re = emacsRegexToJs('\\\\:', 'gi');
+  assert.equal(countBlockOnlyMatches(d, re), 0);
+});
+
+test('countBlockOnlyMatches ignores non-block body content (a paragraph) that happens to contain the pattern -- that content IS reachable via createQueryReplace, so it shouldn\u2019t be double-counted as "block-only"', () => {
+  const d = doc(['* Alice', 'A paragraph with a\\:b in it.']);
+  const re = emacsRegexToJs('\\\\:', 'gi');
+  assert.equal(countBlockOnlyMatches(d, re), 0);
+});
+
+// ---- createTextQueryReplace --------------------------------------------
+
+test('THE FEATURE: createTextQueryReplace walks matches in a plain string, the same interactive shape as createQueryReplace but with no document at all', () => {
+  const re = emacsRegexToJs('foo', 'gi');
+  const qr = createTextQueryReplace('foo bar foo baz', re, 'X');
+  const c1 = qr.current();
+  assert.equal(c1.match[0], 'foo');
+  assert.equal(c1.match.index, 0);
+  qr.replace();
+  const c2 = qr.current();
+  assert.equal(c2.match.index, 6); // "X bar foo baz" -- second foo now at index 6
+  qr.replace();
+  assert.equal(qr.current(), null);
+  assert.equal(qr.replacedCount(), 2);
+  assert.equal(qr.getText(), 'X bar X baz');
+});
+
+test('THE FEATURE: createTextQueryReplace can reach the exact real-world case -- "\\\\:" inside what would be a #+BEGIN_VERSE block\u2019s own raw text, which createQueryReplace can never touch', () => {
+  const rawText = '* Simmule Turner\n** Note\n#+BEGIN_VERSE\nPermanent address\\:\nmore text\n#+END_VERSE\n';
+  const re = emacsRegexToJs('\\\\:', 'gi');
+  const qr = createTextQueryReplace(rawText, re, ':');
+  qr.replaceAll();
+  assert.equal(qr.replacedCount(), 1);
+  assert.match(qr.getText(), /Permanent address:/);
+  assert.doesNotMatch(qr.getText(), /\\:/);
+});
+
+test('createTextQueryReplace.skip() advances without replacing', () => {
+  const re = emacsRegexToJs('a', 'gi');
+  const qr = createTextQueryReplace('a a a', re, 'X');
+  qr.skip();
+  qr.replace();
+  qr.skip();
+  assert.equal(qr.replacedCount(), 1);
+  assert.equal(qr.getText(), 'a X a');
+});
+
+test('createTextQueryReplace.quit() stops the walk, leaving everything after the current point untouched', () => {
+  const re = emacsRegexToJs('a', 'gi');
+  const qr = createTextQueryReplace('a a a', re, 'X');
+  qr.replace();
+  qr.quit();
+  assert.equal(qr.current(), null);
+  assert.equal(qr.getText(), 'X a a');
+});
+
+test('createTextQueryReplace with a $1 capture group substitutes correctly, the same convention createQueryReplace already uses', () => {
+  const re = emacsRegexToJs('\\(foo\\)-bar', 'gi');
+  const qr = createTextQueryReplace('foo-bar', re, 'baz-$1');
+  qr.replaceAll();
+  assert.equal(qr.getText(), 'baz-foo');
+});
+
+test('createTextQueryReplace with zero matches returns null from current() immediately, matching createQueryReplace\u2019s own behavior', () => {
+  const re = emacsRegexToJs('zzz-not-present', 'gi');
+  const qr = createTextQueryReplace('some text', re, 'x');
+  assert.equal(qr.current(), null);
+  assert.equal(qr.replacedCount(), 0);
+  assert.equal(qr.getText(), 'some text');
 });
