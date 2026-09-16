@@ -60,6 +60,15 @@ function escapeVcardText(text) {
     .replace(/\n/g, '\\n');
 }
 
+/** Escapes a label for use as a quoted ADR parameter value
+ *  (LABEL="..."). A real vCard quoted-string parameter value cannot
+ *  contain a literal double-quote at all (there's no standard escape
+ *  for one within the quotes), so any is stripped -- an extremely
+ *  rare edge case for a real address label. */
+function escapeVcardLabelParam(text) {
+  return escapeVcardText(text).replace(/"/g, '');
+}
+
 function pad2(n) {
   return String(n).padStart(2, '0');
 }
@@ -107,7 +116,12 @@ function buildVcard(heading, birthdayProperty) {
   const phone = getProperty(heading, 'PHONE') || getProperty(heading, 'CELL');
   const workPhone = getProperty(heading, 'WORK_PHONE');
   const address = getProperty(heading, 'ADDRESS') || getProperty(heading, 'ADR');
+  const addressLabel = getProperty(heading, 'ADDRESS_LABEL');
   const nickname = getProperty(heading, 'NICKNAME');
+  const org = getProperty(heading, 'ORG');
+  const jobTitle = getProperty(heading, 'JOB_TITLE');
+  const url = getProperty(heading, 'URL');
+  const photo = getProperty(heading, 'PHOTO');
   const note = getProperty(heading, 'NOTE');
   const birthdayRaw = getProperty(heading, birthdayProperty);
   // Real RFC 6350 only mandates FN -- every one of the properties above
@@ -118,7 +132,7 @@ function buildVcard(heading, birthdayProperty) {
   // the source: EMAIL<>""|PHONE<>""|ADDRESS<>""|BIRTHDAY<>""|...) is the
   // model here: at least ONE recognized contact property present, not
   // specifically email.
-  if (!email && !phone && !workPhone && !address && !nickname && !note && !birthdayRaw) return null;
+  if (!email && !phone && !workPhone && !address && !nickname && !org && !jobTitle && !url && !photo && !note && !birthdayRaw) return null;
 
   const fullName = heading.title || '(untitled)';
   const { family, given } = splitNameForN(fullName);
@@ -127,8 +141,15 @@ function buildVcard(heading, birthdayProperty) {
   if (email) lines.push(`EMAIL:${escapeVcardText(email)}`);
   if (phone) lines.push(`TEL:${escapeVcardText(phone)}`);
   if (workPhone) lines.push(`TEL;TYPE=WORK:${escapeVcardText(workPhone)}`);
-  if (address) lines.push(`ADR:;;${escapeVcardText(address)};;;;`);
+  if (address) {
+    const labelParam = addressLabel ? `;LABEL="${escapeVcardLabelParam(addressLabel)}"` : '';
+    lines.push(`ADR${labelParam}:;;${escapeVcardText(address)};;;;`);
+  }
   if (nickname) lines.push(`NICKNAME:${escapeVcardText(nickname)}`);
+  if (org) lines.push(`ORG:${escapeVcardText(org)}`);
+  if (jobTitle) lines.push(`TITLE:${escapeVcardText(jobTitle)}`);
+  if (url) lines.push(`URL:${escapeVcardText(url)}`);
+  if (photo) lines.push(`PHOTO:${escapeVcardText(photo)}`);
   if (note) lines.push(`NOTE:${escapeVcardText(note)}`);
   if (birthdayRaw) {
     const bday = parseBirthdayDate(birthdayRaw);
@@ -153,10 +174,14 @@ const TREE_FIELDTYPE_TO_VCARD_LINE = {
   email: (value) => `EMAIL:${escapeVcardText(value)}`,
   'email-work': (value) => `EMAIL;TYPE=WORK:${escapeVcardText(value)}`,
   'email-home': (value) => `EMAIL;TYPE=HOME:${escapeVcardText(value)}`,
-  address: (value) => `ADR:;;${escapeVcardText(value)};;;;`,
-  'address-work': (value) => `ADR;TYPE=WORK:;;${escapeVcardText(value)};;;;`,
-  'address-home': (value) => `ADR;TYPE=HOME:;;${escapeVcardText(value)};;;;`,
+  address: (value, label) => `ADR${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:;;${escapeVcardText(value)};;;;`,
+  'address-work': (value, label) => `ADR;TYPE=WORK${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:;;${escapeVcardText(value)};;;;`,
+  'address-home': (value, label) => `ADR;TYPE=HOME${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:;;${escapeVcardText(value)};;;;`,
   nickname: (value) => `NICKNAME:${escapeVcardText(value)}`,
+  org: (value) => `ORG:${escapeVcardText(value)}`,
+  'job-title': (value) => `TITLE:${escapeVcardText(value)}`,
+  url: (value) => `URL:${escapeVcardText(value)}`,
+  photo: (value) => `PHOTO:${escapeVcardText(value)}`,
   note: (value) => `NOTE:${escapeVcardText(value)}`,
   birthday: (value) => {
     const bday = parseBirthdayDate(value);
@@ -176,18 +201,25 @@ const TREE_FIELDTYPE_TO_VCARD_LINE = {
  *  regardless of what the walk below finds -- no field is otherwise
  *  required, matching this module's own flat-style requirement
  *  exactly (see buildVcard's own doc comment for the full reasoning). */
-/** Reads a note heading's own real text: a #+BEGIN_VERSE or
- *  #+BEGIN_QUOTE block in its body, lines rejoined with real newlines
- *  (the exact reverse of import-vcard.js's own note.split('\n')) --
- *  either block name is accepted, since a person might reasonably
- *  prefer QUOTE's own reflow-friendly convention over VERSE's exact
- *  line-break preservation when writing a note by hand. Falls back to
- *  the heading's own title when no such block is present at all, so a
- *  note heading written before this existed (or typed by hand without
- *  a block) still exports correctly -- never a hard requirement. */
-function noteBlockText(heading) {
+/** Reads a heading's own #+BEGIN_VERSE or #+BEGIN_QUOTE body block,
+ *  lines rejoined with real newlines (the exact reverse of
+ *  import-vcard.js's own value.split('\n')) -- either block name is
+ *  accepted, since a person might reasonably prefer QUOTE's own
+ *  reflow-friendly convention over VERSE's exact line-break
+ *  preservation when writing one by hand. Returns null when no such
+ *  block exists at all. */
+function blockText(heading) {
   const block = (heading.body || []).find((b) => b.type === 'block' && (b.name === 'VERSE' || b.name === 'QUOTE'));
-  return block ? block.lines.join('\n') : heading.title || '';
+  return block ? block.lines.join('\n') : null;
+}
+
+/** Reads a note heading's own real text -- blockText's own result,
+ *  falling back to the heading's own title when no block is present
+ *  at all, so a note heading written before this existed (or typed by
+ *  hand without a block) still exports correctly -- never a hard
+ *  requirement. */
+function noteBlockText(heading) {
+  return blockText(heading) ?? (heading.title || '');
 }
 
 function buildVcardFromTreeContact(heading) {
@@ -203,8 +235,10 @@ function buildVcardFromTreeContact(heading) {
       const fieldType = String(getProperty(child, 'FIELDTYPE') || '').toLowerCase();
       const builder = TREE_FIELDTYPE_TO_VCARD_LINE[fieldType];
       if (builder) {
+        const isAddressField = fieldType === 'address' || fieldType === 'address-work' || fieldType === 'address-home';
         const value = fieldType === 'note' ? noteBlockText(child) : child.title || '';
-        const line = builder(value);
+        const label = isAddressField ? blockText(child) : null;
+        const line = builder(value, label);
         if (line) lines.push(line);
       }
       walk(child); // recurse into grouping headings ("Email" > "Work" > the actual address) as well as leaves directly under the contact
