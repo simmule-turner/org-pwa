@@ -9652,7 +9652,7 @@ function renderImportFlow() {
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '4px';
-  label.textContent = 'Style:';
+  label.textContent = 'Import Contacts (.vcf) from:';
   morePanel.appendChild(label);
 
   const styleRow = document.createElement('div');
@@ -9696,15 +9696,8 @@ function renderImportFlow() {
     importGoogleMode = googleCheckbox.checked;
   };
   googleRow.appendChild(googleCheckbox);
-  googleRow.appendChild(document.createTextNode('Google Contacts (fixes an extra address label and over-escaped colons)'));
+  googleRow.appendChild(document.createTextNode('Google Contacts'));
   morePanel.appendChild(googleRow);
-
-  const hint = document.createElement('div');
-  hint.style.fontSize = '12px';
-  hint.style.opacity = '0.6';
-  hint.style.marginBottom = '10px';
-  hint.textContent = 'Pick a .vcf file. Each contact becomes a new heading, appended to the end of this document.';
-  morePanel.appendChild(hint);
 
   const fileInput = document.createElement('input');
   fileInput.type = 'file';

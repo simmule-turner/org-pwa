@@ -6,6 +6,30 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v347 — vCard import/export: ORG, TITLE, URL, PHOTO
+Four vCard properties that were being silently discarded (PHOTO named
+directly in a bug report) are now mapped, in both Flat and Tree style,
+round-tripping correctly through export and re-import. PHOTO is only
+mapped when it's a real URL — a base64-embedded image is still left
+alone, to avoid bloating the file with binary-as-text data.
+
+* v346 — vCard export: write the real ADR LABEL parameter
+Completes the address-label round trip from the last release — an
+imported Google address's own label now gets written back out on
+export too, as the real ADR;LABEL="..." parameter (vCard 4.0's own
+standard syntax), in both Flat and Tree style. An exported contact
+with a label should now be functionally equivalent to the original.
+
+* v345 — Fix: search box clipped on all platforms; address label correction
+The search options row was being clipped on every platform (not just
+Android) — #minibuffer had a fixed, too-small height left over from
+before the inline-row change. Fixed with min-height. Also corrected a
+real mistake from the last release: an imported Google address's own
+structured components (street/city/etc.) were being replaced by its
+label instead of kept alongside it, which would have lost data on
+re-export. Both now survive, separately, in Flat and Tree style alike.
+Import screen text simplified.
+
 * v344 — Search options: inline row instead of a popover
 Replaced the floating popover entirely, per direct report of it not
 working on Android specifically. Regex/Match/Replace now expand as a
