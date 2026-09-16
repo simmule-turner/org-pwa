@@ -25,6 +25,7 @@ import {
   formatContactEventLine,
   expandContactEventOccurrences,
 } from '../src/agenda.js';
+import { importVcardsAsOrgText } from '../src/import-vcard.js';
 
 function docsFixture() {
   const nrp = parseOrg(
@@ -801,9 +802,9 @@ test('parseContactEvent returns null for an out-of-range month or day', () => {
   assert.equal(parseContactEvent('1990-01-32 Birthday'), null);
 });
 
-test('parseContactEvent returns null for a bare date with no description at all', () => {
-  assert.equal(parseContactEvent('1990-05-15'), null);
-  assert.equal(parseContactEvent('1990-05-15   '), null);
+test('THE FIX: parseContactEvent now accepts a bare date with no description at all -- confirmed directly that rejecting it (the old behavior) meant a vCard-imported contact\u2019s own :BIRTHDAY: property, written as exactly this bare form, could never appear in the agenda', () => {
+  assert.deepEqual(parseContactEvent('1990-05-15'), { year: 1990, month: 5, day: 15, description: null });
+  assert.deepEqual(parseContactEvent('1990-05-15   '), { year: 1990, month: 5, day: 15, description: null });
 });
 
 test('parseContactEvent returns null for garbage input', () => {
@@ -1652,4 +1653,94 @@ test('THE FIX: org-weather also works inside the general <%%(...)> timestamp for
   assert.equal(items.length, 1, 'only today\u2019s own row, even though the <%%(...)> mechanism itself DOES scan every day in the range -- today-p is what restricts it here, not org-weather itself');
   assert.equal(items[0].date.toDateString(), today.toDateString());
   assert.match(items[0].title, /^Current Conditions: Weather: Overcast/);
+});
+
+// ---- org-contacts-anniversaries integration with vCard import/export -----
+
+test('THE FIX: a flat-style vCard-imported :BIRTHDAY: (a bare date, no description) is now found by org-contacts-anniversaries, confirmed against the exact real-world failure -- it matched zero agenda items before this fix, for any range', () => {
+  const vcardText = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nBDAY:19900515\r\nEND:VCARD\r\n';
+  const orgText = importVcardsAsOrgText(vcardText, { style: 'flat' });
+  const doc = parseOrg('* Trigger\n%%(org-contacts-anniversaries)\n' + orgText);
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 4, 1),
+    rangeEnd: new Date(2026, 4, 31),
+  });
+  const aliceItems = items.filter((i) => i.kind === 'anniversary');
+  assert.equal(aliceItems.length, 1);
+  assert.equal(aliceItems[0].title, 'Alice: Birthday (36)');
+});
+
+test('THE FIX: a tree-style vCard-imported birthday (a descendant heading, :FIELDTYPE: birthday, its own title the date) is also now found -- the birthday isn\u2019t a property on the contact heading itself at all in this style, so this needed its own separate fix from the flat-style one above', () => {
+  const vcardText = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nBDAY:19900515\r\nEND:VCARD\r\n';
+  const orgText = importVcardsAsOrgText(vcardText, { style: 'tree' });
+  const doc = parseOrg('* Trigger\n%%(org-contacts-anniversaries)\n' + orgText);
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 4, 1),
+    rangeEnd: new Date(2026, 4, 31),
+  });
+  const aliceItems = items.filter((i) => i.kind === 'anniversary');
+  assert.equal(aliceItems.length, 1);
+  assert.equal(aliceItems[0].title, 'Alice: Birthday (36)');
+});
+
+test('the default description for a bare date is derived from the configured org-contacts-birthday-property itself, not hardcoded to "Birthday" -- confirmed with a differently-named property', () => {
+  const doc = parseOrg(['* Trigger', '%%(org-contacts-anniversaries)', '* Bob', ':PROPERTIES:', ':ANNIVERSARY: 2010-06-20', ':END:'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 5, 1),
+    rangeEnd: new Date(2026, 5, 30),
+    birthdayProperty: 'ANNIVERSARY',
+  });
+  const bobItems = items.filter((i) => i.kind === 'anniversary');
+  assert.equal(bobItems.length, 1);
+  assert.equal(bobItems[0].title, 'Bob: Anniversary (16)');
+});
+
+test('a direct property on the contact heading itself still takes priority over a tree-style descendant, when a heading somehow has both -- no double-counting', () => {
+  const doc = parseOrg(
+    [
+      '* Trigger',
+      '%%(org-contacts-anniversaries)',
+      '* Alice',
+      ':PROPERTIES:',
+      ':BIRTHDAY: 1990-05-15',
+      ':END:',
+      '** 1999-01-01',
+      ':PROPERTIES:',
+      ':FIELDTYPE: birthday',
+      ':END:',
+    ].join('\n')
+  );
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 4, 1),
+    rangeEnd: new Date(2026, 4, 31),
+  });
+  const aliceItems = items.filter((i) => i.kind === 'anniversary');
+  assert.equal(aliceItems.length, 1); // not 2 -- the direct property wins, the descendant is not also counted
+  assert.equal(aliceItems[0].title, 'Alice: Birthday (36)');
+});
+
+test('a tree-style birthday nested under a grouping heading (not directly under the contact) is still found -- fields can sit at any depth', () => {
+  const doc = parseOrg(
+    [
+      '* Trigger',
+      '%%(org-contacts-anniversaries)',
+      '* Alice',
+      ':PROPERTIES:',
+      ':KIND: individual',
+      ':FIELDTYPE: name',
+      ':END:',
+      '** Dates',
+      '*** 1990-05-15',
+      ':PROPERTIES:',
+      ':FIELDTYPE: birthday',
+      ':END:',
+    ].join('\n')
+  );
+  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
+    rangeStart: new Date(2026, 4, 1),
+    rangeEnd: new Date(2026, 4, 31),
+  });
+  const aliceItems = items.filter((i) => i.kind === 'anniversary');
+  assert.equal(aliceItems.length, 1);
+  assert.equal(aliceItems[0].title, 'Alice: Birthday (36)');
 });
