@@ -221,7 +221,7 @@ function carryForwardOccurrences(itemDate, today, rangeStart, rangeEnd, earlyWar
 // and adding it back would silently exclude anyone whose birthday is
 // tracked without an email on file.
 const CONTACTS_TRIGGER_RE = /^%%\(org-contacts-anniversaries\)\s*$/;
-const EVENT_PROPERTY_RE = /^(\d{4}|nil)-(\d{2})-(\d{2})\s+(.+)$/;
+const EVENT_PROPERTY_RE = /^(\d{4}|nil)-(\d{2})-(\d{2})(?:\s+(.+))?$/;
 
 /** True if `line` is the %%(org-contacts-anniversaries) trigger,
  *  activating the whole scan below. The line's own content beyond this
@@ -233,10 +233,17 @@ function isContactsAnniversariesTrigger(line) {
 /** Parses a birthday/anniversary property value: "YYYY-MM-DD
  *  description text", or "nil-MM-DD description text" when the year is
  *  genuinely unknown (age then can't be computed — see
- *  contactEventAge below). Returns { year, month, day, description } or
- *  null if the value doesn't match: an out-of-range month/day, or no
- *  description text at all (a bare date with nothing to label it isn't
- *  something this can build a sensible "Name: ___ (age)" line from). */
+ *  contactEventAge below). The description is optional -- a bare
+ *  "YYYY-MM-DD" with nothing after it is also accepted, description
+ *  null in that case (the caller supplies a sensible default; see
+ *  buildAgendaItems' own contacts-anniversaries block below). This
+ *  matters in practice: vCard import writes exactly this bare form
+ *  into :BIRTHDAY: (the same property this reads by default), and an
+ *  earlier version of this function rejected it outright, confirmed
+ *  directly to mean a vCard-imported contact's own birthday matched
+ *  zero agenda items no matter what range was searched. Returns
+ *  { year, month, day, description } or null only for a genuinely
+ *  malformed value now: an out-of-range month/day, or no date at all. */
 function parseContactEvent(value) {
   const m = EVENT_PROPERTY_RE.exec(String(value).trim());
   if (!m) return null;
@@ -244,7 +251,7 @@ function parseContactEvent(value) {
   const month = Number(m[2]);
   const day = Number(m[3]);
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  return { year, month, day, description: m[4].trim() };
+  return { year, month, day, description: m[4] ? m[4].trim() : null };
 }
 
 /** Elapsed years as of `occurrenceDate` for an event whose stored year
@@ -255,6 +262,45 @@ function parseContactEvent(value) {
 function contactEventAge(year, occurrenceDate) {
   if (year === null) return null;
   return occurrenceDate.getFullYear() - year;
+}
+
+/** The description used for a bare date (event.description null --
+ *  see parseContactEvent's own doc comment): the configured property
+ *  name itself, lower-cased then re-capitalized ("BIRTHDAY" ->
+ *  "Birthday", "ANNIVERSARY" -> "Anniversary") -- a reasonable label
+ *  derived from whatever org-contacts-birthday-property is actually
+ *  set to, rather than a single hardcoded word that would be wrong
+ *  for anyone using this for a different kind of event. */
+function defaultEventDescription(propertyName) {
+  const lower = String(propertyName).toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+/** Case-insensitive property lookup, matching how every other
+ *  property read in this file already handles case (org property
+ *  keys are conventionally upper-case, but not enforced). */
+function getPropertyCaseInsensitive(heading, key) {
+  const foundKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === key.toLowerCase());
+  return foundKey ? heading.properties[foundKey] : undefined;
+}
+
+/** Searches `heading`'s own descendants, at any depth (a tree-style
+ *  vCard contact's own fields can sit directly under the contact or
+ *  grouped under an intermediate heading first -- see export-vcard.js's
+ *  own buildVcardFromTreeContact for the same reasoning, and
+ *  import-vcard.js's own buildTreeOrgFromContact for what actually
+ *  produces this shape), for one whose own :FIELDTYPE: is "birthday" --
+ *  returning its own title (the date, as tree style writes it) or null
+ *  if none is found anywhere in the subtree. */
+function findTreeStyleBirthdayDate(heading) {
+  for (const child of heading.children || []) {
+    if (child.type !== 'heading') continue;
+    const fieldType = getPropertyCaseInsensitive(child, 'FIELDTYPE');
+    if (String(fieldType || '').toLowerCase() === 'birthday') return child.title;
+    const nested = findTreeStyleBirthdayDate(child);
+    if (nested) return nested;
+  }
+  return null;
 }
 
 /** "Name: Description (36)", or "Name: Description (??)" when the age
@@ -646,8 +692,32 @@ function buildAgendaItems(docs, opts = {}) {
           (k) => k.toLowerCase() === birthdayProperty.toLowerCase()
         );
         const rawEvent = foundKey ? heading.properties[foundKey] : undefined;
-        const event = rawEvent ? parseContactEvent(rawEvent) : null;
+        let event = rawEvent ? parseContactEvent(rawEvent) : null;
+        if (!event) {
+          // Tree-style vCard import: this heading itself carries no
+          // birthdayProperty property at all -- the date instead lives
+          // on a descendant heading whose own :FIELDTYPE: is "birthday"
+          // and whose own title is the date (see import-vcard.js's own
+          // buildTreeOrgFromContact). Only tried for a heading that is
+          // ITSELF a tree-style contact (:KIND: individual, the same
+          // marker export-vcard.js's own buildVcardFromTreeContact
+          // requires) -- confirmed directly that without this gate, an
+          // intermediate grouping heading with no birthday of its own,
+          // but a birthday descendant several levels beneath it,
+          // incorrectly produced a spurious agenda item for itself too.
+          const isTreeStyleContact = String(getPropertyCaseInsensitive(heading, 'KIND') || '').toLowerCase() === 'individual';
+          if (isTreeStyleContact) {
+            const treeDate = findTreeStyleBirthdayDate(heading);
+            if (treeDate) event = parseContactEvent(treeDate);
+          }
+        }
         if (event) {
+          // A bare date (event.description null -- see parseContactEvent's
+          // own doc comment) gets a sensible default derived from the
+          // configured property name itself, rather than every
+          // vCard-imported contact needing hand-editing before its
+          // birthday means anything displayable here.
+          const description = event.description || defaultEventDescription(birthdayProperty);
           const occurrences = expandContactEventOccurrences(event.month, event.day, rangeStart, rangeEnd, today);
           for (const occurrenceDate of occurrences) {
             const age = contactEventAge(event.year, occurrenceDate);
@@ -660,7 +730,7 @@ function buildAgendaItems(docs, opts = {}) {
               todo: heading.todo,
               priority: heading.priority,
               tags: heading.tags,
-              title: formatContactEventLine(heading.title, event.description, age),
+              title: formatContactEventLine(heading.title, description, age),
               age,
               date: occurrenceDate,
               daysOverdue: 0,
