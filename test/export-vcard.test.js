@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
 import { exportToVcard } from '../src/export-vcard.js';
+import { parseVcards, importVcardsAsOrgText } from '../src/import-vcard.js';
 
 function docs(text, documentId = 'contacts.org') {
   return [{ documentId, doc: parseOrg(text) }];
@@ -364,4 +365,86 @@ test('a note heading with no block at all falls back to its own title, for backw
   );
   const vcf = exportToVcard(doc, { style: 'tree' });
   assert.match(vcf, /NOTE:Just a plain title/);
+});
+
+// ---- Address label round-trip (Google's own ADR extension) ---------------
+
+test('THE FEATURE: flat style writes the real LABEL="..." parameter when an :ADDRESS_LABEL: property is present', () => {
+  const doc = docs(
+    [
+      '* Alice',
+      ':PROPERTIES:',
+      ':EMAIL: alice@example.com',
+      ':ADDRESS: 200 Morris St, Durham, NC, 27701, US',
+      ':ADDRESS_LABEL: 200 Morris St ; Durham, NC 27701 ; US',
+      ':END:',
+    ].join('\n')
+  );
+  const vcf = exportToVcard(doc);
+  const [reparsed] = parseVcards(vcf);
+  assert.equal(reparsed.adrs[0].value, '200 Morris St, Durham, NC, 27701, US');
+  assert.equal(reparsed.adrs[0].label, '200 Morris St ; Durham, NC 27701 ; US');
+});
+
+test('flat style writes a plain ADR line (no LABEL param) when there is no :ADDRESS_LABEL: at all', () => {
+  const doc = docs(['* Alice', ':PROPERTIES:', ':EMAIL: alice@example.com', ':ADDRESS: 123 Main St, Springfield', ':END:'].join('\n'));
+  const vcf = exportToVcard(doc);
+  assert.match(vcf, /ADR:;;123 Main St\\, Springfield;;;;/);
+  assert.doesNotMatch(vcf, /LABEL=/);
+});
+
+test('THE FEATURE: tree style writes the real LABEL="..." parameter for an address heading that has both a title (structured value) and a #+BEGIN_VERSE body block (the label)', () => {
+  const doc = treeDocs(
+    [
+      '* Alice',
+      ':PROPERTIES:',
+      ':KIND: individual',
+      ':FIELDTYPE: name',
+      ':END:',
+      '** 200 Morris St, Durham, NC, 27701, US',
+      ':PROPERTIES:',
+      ':FIELDTYPE: address-work',
+      ':END:',
+      '#+BEGIN_VERSE',
+      '200 Morris St',
+      'Durham, NC 27701',
+      'US',
+      '#+END_VERSE',
+    ].join('\n')
+  );
+  const vcf = exportToVcard(doc, { style: 'tree' });
+  const [reparsed] = parseVcards(vcf);
+  assert.equal(reparsed.adrs[0].value, '200 Morris St, Durham, NC, 27701, US');
+  assert.equal(reparsed.adrs[0].label, '200 Morris St\nDurham, NC 27701\nUS');
+  assert.equal(reparsed.adrs[0].type, 'WORK');
+});
+
+test('tree style writes a plain ADR;TYPE=WORK line (no LABEL param) for an address heading with only a title, no body block', () => {
+  const doc = treeDocs(
+    ['* Alice', ':PROPERTIES:', ':KIND: individual', ':FIELDTYPE: name', ':END:', '** 123 Main St', ':PROPERTIES:', ':FIELDTYPE: address-work', ':END:'].join('\n')
+  );
+  const vcf = exportToVcard(doc, { style: 'tree' });
+  assert.match(vcf, /ADR;TYPE=WORK:;;123 Main St;;;;/);
+  assert.doesNotMatch(vcf, /LABEL=/);
+});
+
+test('THE FEATURE (full real-world round trip): import the exact Simmule Turner vCard, export it back out, and confirm the label survives alongside the structured value -- both directions of "functionally equivalent"', () => {
+  const originalVcard = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    'FN:Simmule Turner',
+    'N:Turner;Simmule;;;',
+    'ADR;TYPE=WORK:;;200 Morris St;Durham;NC;27701;US;200 Morris St\\nDurham\\, NC 27701\\nUS',
+    'EMAIL:a@example.com',
+    'END:VCARD',
+  ].join('\r\n');
+
+  const orgText = importVcardsAsOrgText(originalVcard, { style: 'tree' });
+  const doc = parseOrg(orgText);
+  const reexported = exportToVcard([{ documentId: 'doc1', doc }], { style: 'tree' });
+
+  const [reparsed] = parseVcards(reexported);
+  assert.equal(reparsed.adrs[0].value, '200 Morris St, Durham, NC, 27701, US');
+  assert.equal(reparsed.adrs[0].label, '200 Morris St\nDurham, NC 27701\nUS');
+  assert.equal(reparsed.adrs[0].type, 'WORK');
 });
