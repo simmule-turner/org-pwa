@@ -6,6 +6,16 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v348 — Fix: org-contacts-anniversaries didn't work with vCard import at all
+Confirmed as two complete breaks, not edge cases: a vCard-imported
+:BIRTHDAY: (a bare date, no description) matched zero agenda items in
+Flat style, and Tree style's own birthday — a separate descendant
+heading, not a property on the contact — was never even looked at.
+Both fixed: a bare date now gets a sensible default description, and
+the descendant search is gated to real contacts only, so a plain
+grouping heading with a birthday buried beneath it doesn't produce a
+spurious agenda item of its own.
+
 * v347 — vCard import/export: ORG, TITLE, URL, PHOTO
 Four vCard properties that were being silently discarded (PHOTO named
 directly in a bug report) are now mapped, in both Flat and Tree style,
