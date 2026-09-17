@@ -265,6 +265,19 @@ function renderTableHtml(table) {
   return `<table><thead>${head}</thead><tbody>${body}</tbody></table>`;
 }
 
+/** Strips org's own comma-escape convention from one block content
+ *  line for display -- a leading "," immediately before "*" or "#+"
+ *  is real org syntax that protects the file's own outer parser from
+ *  misreading a literal example/src/verse line as a real heading or
+ *  directive, but it's a source-level protection mechanism only, not
+ *  part of the actual content a reader should see. Only ever strips
+ *  the escape form itself (",*" or ",#+"); a line starting with a
+ *  plain comma followed by anything else is left untouched, since
+ *  that's not this convention at all. */
+function stripCommaEscape(line) {
+  return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
+}
+
 function renderBlockHtml(block) {
   const name = block.name;
   if (name === 'COMMENT') return '';
@@ -272,15 +285,15 @@ function renderBlockHtml(block) {
     return (block.params || '').trim().toLowerCase() === 'html' ? block.lines.join('\n') : '';
   }
   if (name === 'QUOTE') {
-    const { lines: extractedLines, fragments } = extractLatexFragments(block.lines);
+    const { lines: extractedLines, fragments } = extractLatexFragments(block.lines.map(stripCommaEscape));
     return '<blockquote>' + extractedLines.map((l) => renderInlineListHtml(parseInline(l, { latexFragments: fragments }))).join('<br>') + '</blockquote>';
   }
   if (name === 'SRC') {
     const lang = block.params.split(/\s+/)[0] || '';
     const langClass = lang ? ` class="language-${escapeHtml(lang)}"` : '';
-    return `<pre><code${langClass}>${escapeHtml(block.lines.join('\n'))}</code></pre>`;
+    return `<pre><code${langClass}>${escapeHtml(block.lines.map(stripCommaEscape).join('\n'))}</code></pre>`;
   }
-  return `<pre><code>${escapeHtml(block.lines.join('\n'))}</code></pre>`;
+  return `<pre><code>${escapeHtml(block.lines.map(stripCommaEscape).join('\n'))}</code></pre>`;
 }
 
 function renderBodyNodeHtml(node) {

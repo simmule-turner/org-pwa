@@ -235,6 +235,13 @@ function renderTableOdt(table) {
   return `<table:table>${columns}${rowsXml}</table:table>`;
 }
 
+/** Strips org's own comma-escape convention from one block content
+ *  line for display -- see export-html.js's own stripCommaEscape for
+ *  the full reasoning; the same fix, applied here too. */
+function stripCommaEscape(line) {
+  return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
+}
+
 function renderBlockOdt(block) {
   const name = block.name;
   if (name === 'COMMENT') return ''; // matches every other export backend
@@ -242,13 +249,13 @@ function renderBlockOdt(block) {
     return (block.params || '').trim().toLowerCase() === 'odt' ? block.lines.join('\n') : '';
   }
   if (name === 'QUOTE') {
-    return block.lines.map((l) => `<text:p text:style-name="Quote">${renderTextOdt(l)}</text:p>`).join('');
+    return block.lines.map(stripCommaEscape).map((l) => `<text:p text:style-name="Quote">${renderTextOdt(l)}</text:p>`).join('');
   }
   // SRC and every other/unrecognized block type: preserve verbatim in
   // a monospaced paragraph per line, same "don't try to reinterpret
   // content this app has no specific handling for" reasoning
   // export-markdown.js's own renderBlockMd already documents.
-  return block.lines.map((l) => `<text:p text:style-name="Code">${escapeXml(l) || '<text:s/>'}</text:p>`).join('');
+  return block.lines.map(stripCommaEscape).map((l) => `<text:p text:style-name="Code">${escapeXml(l) || '<text:s/>'}</text:p>`).join('');
 }
 
 function renderBodyNodeOdt(node) {

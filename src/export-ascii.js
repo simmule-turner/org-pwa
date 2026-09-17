@@ -387,13 +387,20 @@ function renderTableAscii(table, indent) {
   return out;
 }
 
+/** Strips org's own comma-escape convention from one block content
+ *  line for display -- see export-html.js's own stripCommaEscape for
+ *  the full reasoning; the same fix, applied here too. */
+function stripCommaEscape(line) {
+  return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
+}
+
 function renderBlockAscii(block, indent) {
   if (block.name === 'EXPORT') {
     if ((block.params || '').trim().toLowerCase() !== 'ascii') return [];
     return block.lines.map((line) => indent + line);
   }
   const out = [`${indent}[${block.name}]`];
-  for (const line of block.lines) out.push(indent + line);
+  for (const line of block.lines) out.push(indent + stripCommaEscape(line));
   return out;
 }
 
@@ -502,7 +509,7 @@ export function exportToAscii(doc, scope = null, textWidth = 72) {
   if (!scope) {
     for (const node of doc.body || []) {
       const rendered = renderBodyNodeAscii(node, '', textWidth);
-      if (rendered) out.push(rendered);
+      if (rendered.length) out.push(...rendered);
     }
   }
 

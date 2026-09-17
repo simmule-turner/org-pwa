@@ -281,6 +281,13 @@ function renderTableMd(table) {
   return lines.join('\n');
 }
 
+/** Strips org's own comma-escape convention from one block content
+ *  line for display -- see export-html.js's own stripCommaEscape for
+ *  the full reasoning; the same fix, applied here too. */
+function stripCommaEscape(line) {
+  return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
+}
+
 function renderBlockMd(block) {
   const name = block.name;
   if (name === 'COMMENT') return ''; // matches real org's own export behavior -- comment blocks are excluded from every export backend
@@ -289,16 +296,16 @@ function renderBlockMd(block) {
     return backend === 'md' || backend === 'markdown' ? block.lines.join('\n') : '';
   }
   if (name === 'QUOTE') {
-    return block.lines.map((l) => (l.trim() === '' ? '>' : '> ' + renderTextMd(l))).join('\n');
+    return block.lines.map(stripCommaEscape).map((l) => (l.trim() === '' ? '>' : '> ' + renderTextMd(l))).join('\n');
   }
   if (name === 'SRC') {
     const lang = block.params.split(/\s+/)[0] || '';
-    return '```' + lang + '\n' + block.lines.join('\n') + '\n```';
+    return '```' + lang + '\n' + block.lines.map(stripCommaEscape).join('\n') + '\n```';
   }
   // EXAMPLE and any other/unrecognized block type: preserve verbatim as
   // a fenced block with no language hint, rather than trying to
   // reinterpret content this app doesn't have specific handling for.
-  return '```\n' + block.lines.join('\n') + '\n```';
+  return '```\n' + block.lines.map(stripCommaEscape).join('\n') + '\n```';
 }
 
 function renderBodyNodeMd(node) {
