@@ -463,3 +463,25 @@ test('#+BEGIN_EXPORT ascii matches case-insensitively too', () => {
     assert.match(exportToAscii(doc), /raw text/, `tag "${tag}" should match`);
   }
 });
+
+// ---- comma-escape stripping in block content ------------------------------
+
+test('THE FIX: a comma-escaped line inside a #+BEGIN_SRC block has its leading comma stripped for display, mirroring the export-html.js fix', () => {
+  const doc = parseOrg('#+BEGIN_SRC org\n,#+CATEGORY: Projects\n#+END_SRC\n');
+  const ascii = exportToAscii(doc, null);
+  assert.match(ascii, /#\+CATEGORY: Projects/);
+  assert.doesNotMatch(ascii, /,#\+CATEGORY/);
+});
+
+test('the comma-escape strip also works when the escaped line is indented', () => {
+  const doc = parseOrg('* Heading\n#+BEGIN_SRC org\n  ,#+CATEGORY: Projects\n#+END_SRC\n');
+  const ascii = exportToAscii(doc, null);
+  assert.match(ascii, /#\+CATEGORY: Projects/);
+  assert.doesNotMatch(ascii, /,#\+CATEGORY/);
+});
+
+test('THE FIX: a body node before the first heading (a block, in the document\u2019s own preamble) is correctly flattened into the output, not pushed as one nested array element -- found while testing the comma-escape fix above: Array.prototype.join stringifies a nested array element by comma-joining its own contents by default, which was producing a stray, unrelated comma that looked similar to the comma-escape bug but was a separate, genuine issue', () => {
+  const doc = parseOrg('#+BEGIN_SRC org\n#+CATEGORY: Projects\n#+END_SRC\n');
+  const ascii = exportToAscii(doc, null);
+  assert.equal(ascii, '[SRC]\n#+CATEGORY: Projects\n');
+});

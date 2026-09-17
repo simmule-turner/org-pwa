@@ -662,3 +662,32 @@ test('an #+BEGIN_EXPORT html block inside a heading\u2019s own body renders in t
   const html = exportToHtml(doc);
   assert.match(html, /More content here\.[\s\S]*<footer><p>footer text<\/p><\/footer>/);
 });
+
+// ---- comma-escape stripping in block content ------------------------------
+
+test('THE FIX: a comma-escaped line inside a #+BEGIN_SRC block (real org syntax protecting the outer parser from a literal "#+..." line) has its leading comma stripped for display, per direct report of it showing up as a stray character in HTML export', () => {
+  const doc = parseOrg('#+BEGIN_SRC org\n,#+CATEGORY: Projects\n#+END_SRC\n');
+  const html = exportToHtml(doc, null);
+  assert.match(html, /#\+CATEGORY: Projects/);
+  assert.doesNotMatch(html, /,#\+CATEGORY/);
+});
+
+test('the comma-escape strip also works when the escaped line is indented (nested under a heading), not just at column 0', () => {
+  const doc = parseOrg('* Heading\n#+BEGIN_SRC org\n  ,#+CATEGORY: Projects\n#+END_SRC\n');
+  const html = exportToHtml(doc, null);
+  assert.match(html, /#\+CATEGORY: Projects/);
+  assert.doesNotMatch(html, /,#\+CATEGORY/);
+});
+
+test('a comma NOT part of the escape convention (not followed by * or #+) is left untouched', () => {
+  const doc = parseOrg('#+BEGIN_SRC text\n,just a regular line starting with a comma\n#+END_SRC\n');
+  const html = exportToHtml(doc, null);
+  assert.match(html, /,just a regular line/);
+});
+
+test('the comma-escape strip also applies inside a #+BEGIN_QUOTE block', () => {
+  const doc = parseOrg('#+BEGIN_QUOTE\n,* not a real heading\n#+END_QUOTE\n');
+  const html = exportToHtml(doc, null);
+  assert.match(html, /\* not a real heading/);
+  assert.doesNotMatch(html, />,\*/);
+});

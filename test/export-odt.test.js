@@ -414,3 +414,21 @@ test('an #+BEGIN_EXPORT odt block still produces a valid, well-formed ODT archiv
   const content = unzipEntry(bytes, 'content.xml');
   assert.match(content, /Raw content/);
 });
+
+// ---- comma-escape stripping in block content ------------------------------
+
+test('THE FIX: a comma-escaped line inside a #+BEGIN_SRC block has its leading comma stripped for display, mirroring the export-html.js fix', () => {
+  const doc = parseOrg('#+BEGIN_SRC org\n,#+CATEGORY: Projects\n#+END_SRC\n');
+  const bytes = exportToOdt(doc);
+  const content = unzipEntry(bytes, 'content.xml');
+  assert.ok(content.includes('#+CATEGORY: Projects'));
+  assert.ok(!content.includes(',#+CATEGORY'));
+});
+
+test('the comma-escape strip also works when the escaped line is indented', () => {
+  const doc = parseOrg('* Heading\n#+BEGIN_SRC org\n  ,#+CATEGORY: Projects\n#+END_SRC\n');
+  const bytes = exportToOdt(doc);
+  const content = unzipEntry(bytes, 'content.xml');
+  assert.ok(content.includes('#+CATEGORY: Projects'));
+  assert.ok(!content.includes(',#+CATEGORY'));
+});

@@ -49,7 +49,7 @@ test('a bare TEL/EMAIL with no TYPE param at all is still captured, with type nu
 test('ADR is joined into one readable string from its own non-empty components', () => {
   const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nADR:;;123 Main St;Springfield;IL;62704;USA\r\nEND:VCARD\r\n';
   const [contact] = parseVcards(text);
-  assert.deepEqual(contact.adrs, [{ value: '123 Main St, Springfield, IL, 62704, USA', label: null, type: null }]);
+  assert.deepEqual(contact.adrs, [{ value: '123 Main St, Springfield, IL, 62704, USA', label: null, raw: ';;123 Main St;Springfield;IL;62704;USA', type: null }]);
 });
 
 test('a folded (multi-line, continuation-indented) vCard line is correctly unfolded', () => {
@@ -676,4 +676,72 @@ test('a contact with no N at all (created fresh, or from a vCard that never prov
   const doc = parseOrg(['* Alice Smith', ':PROPERTIES:', ':EMAIL: alice@example.com', ':END:'].join('\n'));
   const vcf = exportToVcard([{ documentId: 'doc1', doc }]);
   assert.match(vcf, /N:Smith;Alice;;;/);
+});
+
+// ---- Repeated TYPE=, structured ADR preservation, CATEGORIES raw text ----
+
+test('THE FIX: a repeated TYPE= parameter (EMAIL;TYPE=INTERNET;TYPE=HOME) is accumulated, not overwritten -- confirmed against the exact real-world report that "INTERNET" was being silently discarded entirely', () => {
+  const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nEMAIL;TYPE=INTERNET;TYPE=HOME:alice@example.com\r\nEND:VCARD\r\n';
+  const [contact] = parseVcards(text);
+  assert.equal(contact.emails[0].type, 'INTERNET,HOME');
+});
+
+test('a single, non-repeated TYPE= parameter is unaffected by the accumulation fix', () => {
+  const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nEMAIL;TYPE=WORK:alice@example.com\r\nEND:VCARD\r\n';
+  const [contact] = parseVcards(text);
+  assert.equal(contact.emails[0].type, 'WORK');
+});
+
+test('THE FIX: the 7 real ADR components are preserved in their own original, structured form (a new raw field), not just joined into one string', () => {
+  const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nADR;TYPE=WORK:;;200 Morris St;Durham;NC;27701;US\r\nEND:VCARD\r\n';
+  const [contact] = parseVcards(text);
+  assert.equal(contact.adrs[0].raw, ';;200 Morris St;Durham;NC;27701;US');
+});
+
+test('a malformed ADR with fewer than 7 components is still padded to exactly 7 in raw, so export produces a well-formed line', () => {
+  const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nADR:;;123 Main St\r\nEND:VCARD\r\n';
+  const [contact] = parseVcards(text);
+  assert.equal(contact.adrs[0].raw, ';;123 Main St;;;;');
+});
+
+test('THE FEATURE (full real-world round trip): the exact reported address now survives export -> import -> export with its own 7 real components correctly separated, not collapsed into the street position alone -- confirmed directly against the reporter\u2019s own exact vCard, in both styles', () => {
+  const original = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    'FN:Simmule Turner',
+    'ADR;TYPE=WORK:;;200 Morris St;Durham;NC;27701;US;200 Morris St\\nDurham\\, NC 27701\\nUS',
+    'EMAIL:a@example.com',
+    'END:VCARD',
+  ].join('\r\n');
+  for (const style of ['flat', 'tree']) {
+    const orgText = importVcardsAsOrgText(original, { style });
+    const doc = parseOrg(orgText);
+    const reexported = exportToVcard([{ documentId: 'doc1', doc }], { style });
+    const [reparsed] = parseVcards(reexported);
+    assert.equal(reparsed.adrs[0].raw, ';;200 Morris St;Durham;NC;27701;US');
+    const expectedLabel = style === 'tree' ? '200 Morris St\nDurham, NC 27701\nUS' : '200 Morris St ; Durham, NC 27701 ; US';
+    assert.equal(reparsed.adrs[0].label, expectedLabel);
+  }
+});
+
+test('an address with no raw structure at all (created fresh, or a vCard that never provided separate components) still falls back to the existing street-only placement on export', () => {
+  const doc = parseOrg(['* Alice', ':PROPERTIES:', ':EMAIL: alice@example.com', ':ADDRESS: 123 Main St, Springfield', ':END:'].join('\n'));
+  const vcf = exportToVcard([{ documentId: 'doc1', doc }]);
+  assert.match(vcf, /ADR:;;123 Main St\\, Springfield;;;;/);
+});
+
+test('THE FIX: CATEGORIES with a space (e.g. "Other Account") is preserved exactly on export, not left as the sanitized "Other_Account" org tag would otherwise force it to become', () => {
+  const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nEMAIL:a@example.com\r\nCATEGORIES:Other Account,myContacts\r\nEND:VCARD\r\n';
+  for (const style of ['flat', 'tree']) {
+    const orgText = importVcardsAsOrgText(text, { style });
+    const doc = parseOrg(orgText);
+    const reexported = exportToVcard([{ documentId: 'doc1', doc }], { style });
+    assert.match(reexported, /CATEGORIES:Other Account,myContacts/);
+  }
+});
+
+test('a contact with no CATEGORIES_RAW at all (tagged directly in this app, never imported) still exports its own tags correctly', () => {
+  const doc = parseOrg(['* Alice  :family:vip:', ':PROPERTIES:', ':EMAIL: alice@example.com', ':END:'].join('\n'));
+  const vcf = exportToVcard([{ documentId: 'doc1', doc }]);
+  assert.match(vcf, /CATEGORIES:family,vip/);
 });

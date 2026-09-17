@@ -520,3 +520,19 @@ test('THE FIX: an #+BEGIN_EXPORT block for a DIFFERENT backend (html) is omitted
   const doc = parseOrg('#+BEGIN_EXPORT html\n<div>HTML-only content</div>\n#+END_EXPORT\n\n* Heading\nText.\n');
   assert.doesNotMatch(exportToMarkdown(doc), /HTML-only content/);
 });
+
+// ---- comma-escape stripping in block content ------------------------------
+
+test('THE FIX: a comma-escaped line inside a #+BEGIN_SRC block has its leading comma stripped for display, mirroring the export-html.js fix', () => {
+  const doc = parseOrg('#+BEGIN_SRC org\n,#+CATEGORY: Projects\n#+END_SRC\n');
+  const md = exportToMarkdown(doc, null);
+  assert.match(md, /#\+CATEGORY: Projects/);
+  assert.doesNotMatch(md, /,#\+CATEGORY/);
+});
+
+test('the comma-escape strip also works when the escaped line is indented', () => {
+  const doc = parseOrg('* Heading\n#+BEGIN_SRC org\n  ,#+CATEGORY: Projects\n#+END_SRC\n');
+  const md = exportToMarkdown(doc, null);
+  assert.match(md, /#\+CATEGORY: Projects/);
+  assert.doesNotMatch(md, /,#\+CATEGORY/);
+});
