@@ -11,6 +11,29 @@
  *  a vCard block with no FN at all is skipped, everything else is
  *  optional. A vCard's own EMAIL, TEL, ADR, etc. are read and mapped
  *  when present, never required.
+ *
+ *  Apple/Google "itemN." grouping: a real, standard vCard 3.0
+ *  mechanism (RFC 2426 §4, "group.name") where an arbitrary group
+ *  prefix ties two or more properties together -- Apple Contacts and
+ *  Google Contacts both use it the same specific way, confirmed
+ *  directly against numerous real-world exported vCards found during
+ *  research: item1.TEL / item1.EMAIL / item1.URL / item1.ADR paired
+ *  with a same-group item1.X-ABLabel supplying a label for it (a real
+ *  custom one like "Landline", or Apple's own
+ *  "_$!<WellKnownType>!$_"/"_$!!$_" placeholder forms -- see
+ *  interpretABLabel's own doc comment). This grouping itself is
+ *  recognized unconditionally, not gated by cleanMode below, since
+ *  without it the whole property is a different string entirely from
+ *  its bare name and was confirmed to be silently, completely
+ *  discarded -- data loss, not a formatting choice; only the
+ *  Apple/Google-specific INTERPRETATION of what's found this way
+ *  (X-ABLabel's own placeholder forms, specifically) is gated. A
+ *  same-group X-ABADR (Apple's own ISO country-code companion to an
+ *  ADR, for its own address-formatting purposes) is treated as a
+ *  known, deliberately low-value property -- not mapped, but not
+ *  counted as a genuine, warned-about loss either, since it's almost
+ *  always redundant with the ADR's own already-present country
+ *  component.
  */
 
 /** Unfolds vCard line continuations: per RFC 2425/6350, a line
@@ -78,27 +101,40 @@ function splitRespectingQuotes(text, delimiter) {
   return parts;
 }
 
-/** Parses one already-unfolded "NAME;PARAM=VALUE;...:VALUE" line into
- *  { name, params, value } -- name and every param key upper-cased
- *  (vCard property/param names are case-insensitive per the spec).
- *  A quoted parameter value (LABEL="...") has its own surrounding
- *  quotes stripped and is left in its own real case -- unlike TYPE,
- *  which stays upper-cased since it's compared case-insensitively
- *  wherever this module reads it. The main value is left as the
- *  real, already-unescaped text (and, when googleMode is on, also
- *  run through unescapeGoogleColon); a quoted LABEL value gets the
- *  same unescaping. Returns null for a line with no ":" at all
- *  (malformed, or a blank/structural line), skipped rather than
- *  thrown on -- a real-world vCard file occasionally has stray blank
- *  lines, and one malformed line shouldn't abort parsing every other
- *  contact in the file. */
-function parseVcardLine(line, googleMode) {
+/** Parses one already-unfolded "[group.]NAME;PARAM=VALUE;...:VALUE"
+ *  line into { name, group, params, value }. `group` is the part
+ *  before a leading "group." prefix on the property name (e.g.
+ *  "ITEM1" for "item1.TEL"), or null when there is none -- a real,
+ *  standard vCard 3.0 mechanism (RFC 2426 §4) that Apple and Google
+ *  both use to attach a companion X-ABLabel to an otherwise-ordinary
+ *  property; a real property name itself never contains a literal
+ *  ".", so splitting on the first one found is unambiguous. `name`
+ *  and every param key are upper-cased (vCard property/param names
+ *  are case-insensitive per the spec). A quoted parameter value
+ *  (LABEL="...") has its own surrounding quotes stripped and is left
+ *  in its own real case -- unlike TYPE, which stays upper-cased since
+ *  it's compared case-insensitively wherever this module reads it.
+ *  The main value is left as the real, already-unescaped text (and,
+ *  when cleanMode is on, also run through unescapeGoogleColon); a
+ *  quoted LABEL value gets the same unescaping. Returns null for a
+ *  line with no ":" at all (malformed, or a blank/structural line),
+ *  skipped rather than thrown on -- a real-world vCard file
+ *  occasionally has stray blank lines, and one malformed line
+ *  shouldn't abort parsing every other contact in the file. */
+function parseVcardLine(line, cleanMode) {
   const colonParts = splitRespectingQuotes(line, ':');
   if (colonParts.length < 2) return null;
   const nameAndParams = colonParts[0];
   const rawValue = colonParts.slice(1).join(':'); // only the FIRST colon is structural; a later one (unquoted, in the real value) is legitimately part of it
   const parts = splitRespectingQuotes(nameAndParams, ';');
-  const name = parts[0].toUpperCase();
+  let rawName = parts[0];
+  let group = null;
+  const dotIndex = rawName.indexOf('.');
+  if (dotIndex !== -1) {
+    group = rawName.slice(0, dotIndex).toUpperCase();
+    rawName = rawName.slice(dotIndex + 1);
+  }
+  const name = rawName.toUpperCase();
   const params = {};
   for (let i = 1; i < parts.length; i++) {
     const eq = parts[i].indexOf('=');
@@ -108,15 +144,38 @@ function parseVcardLine(line, googleMode) {
     if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
     if (key === 'LABEL') {
       val = unescapeVcardText(val);
-      if (googleMode) val = unescapeGoogleColon(val);
+      if (cleanMode) val = unescapeGoogleColon(val);
     } else {
       val = val.toUpperCase();
     }
     params[key] = val;
   }
   let value = unescapeVcardText(rawValue);
-  if (googleMode) value = unescapeGoogleColon(value);
-  return { name, params, value };
+  if (cleanMode) value = unescapeGoogleColon(value);
+  return { name, group, params, value };
+}
+
+const AB_LABEL_EMPTY_RE = /^_\$!!\$_$/;
+const AB_LABEL_PLACEHOLDER_RE = /^_\$!<(.*)>!\$_$/;
+
+/** Interprets an X-ABLabel value (Apple/Google's own real-world
+ *  convention -- see import-vcard.js's own module doc comment for
+ *  the full research). Returns null for a genuinely empty value or
+ *  Apple's own "_$!!$_" placeholder (both mean no real label was
+ *  ever assigned -- confirmed directly against a real-world vCard
+ *  using exactly the empty form, and against a widely-used vCard
+ *  parser's own regex for the placeholder form), the inner name for
+ *  Apple's own "_$!<Something>!$_" wrapper around a well-known label
+ *  type (e.g. "_$!<HomePage>!$_" -> "HomePage"), or the value itself,
+ *  verbatim, for a real, user-assigned custom label (e.g.
+ *  "Landline"). Only called when cleanMode is on -- see this
+ *  module's own callers. */
+function interpretABLabel(rawValue) {
+  const trimmed = String(rawValue || '').trim();
+  if (!trimmed || AB_LABEL_EMPTY_RE.test(trimmed)) return null;
+  const placeholderMatch = AB_LABEL_PLACEHOLDER_RE.exec(trimmed);
+  if (placeholderMatch) return placeholderMatch[1] || null;
+  return trimmed;
 }
 
 /** Parses the raw text of a .vcf file -- one or more VCARD blocks --
@@ -137,16 +196,42 @@ function parseVcardLine(line, googleMode) {
  *  vCard can carry, and a property it doesn't map shouldn't block the
  *  ones it does.
  *
- *  `googleMode` (default true) enables two Google Contacts export
- *  quirks this parser specifically handles: an 8th ADR component read
- *  as a human-readable label (see the ADR case below), and "\:"
- *  unescaped to ":" everywhere (see unescapeGoogleColon's own doc
- *  comment). */
+ *  `cleanMode` (default true) enables Google's and Apple's own real,
+ *  non-standard vCard export quirks this parser specifically handles:
+ *  an 8th ADR component read as a human-readable label, "\:" unescaped
+ *  to ":" everywhere (see unescapeGoogleColon's own doc comment), and
+ *  Apple's own X-ABLabel placeholder forms interpreted rather than
+ *  shown verbatim (see interpretABLabel's own doc comment).
+ *
+ *  `onUnmappedProperty(name)`, when given, is called once per
+ *  DISTINCT property name this parser doesn't understand at all --
+ *  used by the caller (see app.js's own Import screen) to warn that
+ *  some real data in the file wasn't imported, rather than staying
+ *  silent about it. A handful of properties are recognized but
+ *  deliberately never mapped to anything (VERSION, PRODID, REV, UID --
+ *  structural vCard metadata with no org-heading equivalent at all --
+ *  and X-ABADR, Apple's own ISO country-code companion to an ADR,
+ *  almost always redundant with the ADR's own already-present country
+ *  component) and are never passed to this callback, since their
+ *  absence is a considered choice, not an oversight; a PHOTO whose own
+ *  value isn't a URL (base64-embedded image data) IS passed to it
+ *  (as "PHOTO (embedded image data)"), since real photo data does
+ *  exist there, just not in a form this module can usefully store as
+ *  text. */
 export function parseVcards(text, opts = {}) {
-  const { googleMode = true } = opts;
+  const { cleanMode = true, onUnmappedProperty = null } = opts;
   const lines = unfoldVcardLines(text);
   const contacts = [];
   let current = null;
+  let groupRefs = null; // { [groupName]: entry } -- reset per contact, populated by EMAIL/TEL/URL/ADR, read by a same-group X-ABLabel
+  const warnedProperties = new Set(); // de-duplicates onUnmappedProperty calls across the whole file
+
+  const KNOWN_UNMAPPED = new Set(['VERSION', 'PRODID', 'REV', 'UID', 'X-ABADR']);
+  function warnUnmapped(name) {
+    if (!onUnmappedProperty || KNOWN_UNMAPPED.has(name) || warnedProperties.has(name)) return;
+    warnedProperties.add(name);
+    onUnmappedProperty(name);
+  }
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
@@ -154,66 +239,93 @@ export function parseVcards(text, opts = {}) {
     if (/^BEGIN:VCARD$/i.test(line)) {
       current = {
         fn: null,
+        n: null,
         emails: [],
         tels: [],
         adrs: [],
+        urls: [],
         nickname: null,
         note: null,
         bday: null,
         org: null,
         jobTitle: null,
-        url: null,
         photo: null,
         categories: [],
       };
+      groupRefs = {};
       continue;
     }
     if (/^END:VCARD$/i.test(line)) {
       if (current && current.fn) contacts.push(current);
       current = null;
+      groupRefs = null;
       continue;
     }
     if (!current) continue;
 
-    const parsed = parseVcardLine(line, googleMode);
+    const parsed = parseVcardLine(line, cleanMode);
     if (!parsed) continue;
     switch (parsed.name) {
       case 'FN':
         current.fn = parsed.value;
         break;
-      case 'EMAIL':
-        current.emails.push({ value: parsed.value, type: parsed.params.TYPE || null });
+      case 'N':
+        // Preserved exactly as given, never recomputed -- confirmed
+        // directly that deriving N from FN instead (an earlier version
+        // of this app's own export side always did, regardless of
+        // whether a real N was ever provided) produces nonsense for
+        // any contact whose own FN isn't a real "Given Family" person
+        // name, e.g. "605 West End" (a location used as a contact)
+        // becoming family name "End", given name "605 West". Stored
+        // as the raw, already-unescaped value (its own real semicolons
+        // kept intact, e.g. ";605 West End;;;") and re-escaped verbatim
+        // on export -- see export-vcard.js's own buildVcard.
+        current.n = parsed.value || null;
         break;
-      case 'TEL':
-        current.tels.push({ value: parsed.value, type: parsed.params.TYPE || null });
+      case 'EMAIL': {
+        const entry = { value: parsed.value, type: parsed.params.TYPE || null, label: null };
+        current.emails.push(entry);
+        if (parsed.group) groupRefs[parsed.group] = entry;
         break;
+      }
+      case 'TEL': {
+        const entry = { value: parsed.value, type: parsed.params.TYPE || null, label: null };
+        current.tels.push(entry);
+        if (parsed.group) groupRefs[parsed.group] = entry;
+        break;
+      }
       case 'ADR': {
         // Real ADR is 7 semicolon-separated components (PO Box;
         // Extended;Street;City;Region;PostalCode;Country). A LABEL
-        // can accompany it two ways: a real LABEL="..." parameter on
-        // the ADR line itself (the standard vCard 4.0 form), or --
-        // Google's own real, non-standard export convention,
-        // confirmed directly against an actual Google-exported vCard
-        // -- an 8th value component after the 7 structured ones,
-        // holding the same address again as a human-readable,
-        // multi-line label. Both structured components AND the label
-        // are preserved here, separately -- never one discarded in
-        // favor of the other, so a later export can reconstruct
-        // something equivalent to the original either way. With
-        // googleMode off, an 8th component is ignored entirely,
-        // matching real RFC 6350's own strict 7-component definition
-        // rather than Google's own non-standard extension of it.
+        // can accompany it three ways, all handled here: a real
+        // LABEL="..." parameter on the ADR line itself (the standard
+        // vCard 4.0 form); Google's own real, non-standard export
+        // convention, confirmed directly against an actual
+        // Google-exported vCard -- an 8th value component after the 7
+        // structured ones, holding the same address again as a
+        // human-readable, multi-line label; or Apple's own same-group
+        // X-ABLabel line (handled below, once its own line is reached).
+        // Structured components AND a label are preserved separately
+        // here, never one discarded in favor of the other, so a later
+        // export can reconstruct something equivalent to the original
+        // either way. With cleanMode off, an 8th component is ignored
+        // entirely, matching real RFC 6350's own strict 7-component
+        // definition rather than Google's own non-standard extension.
         const rawParts = parsed.value.split(';');
         const structured = rawParts
           .slice(0, 7)
           .map((part) => part.trim())
           .filter(Boolean)
           .join(', ');
-        const googleLabel = googleMode && rawParts.length >= 8 ? rawParts[7].trim() : '';
+        const googleLabel = cleanMode && rawParts.length >= 8 ? rawParts[7].trim() : '';
         const label = parsed.params.LABEL || googleLabel || null;
         const value = structured || label || '';
         const finalLabel = structured ? label : null; // no structured value at all -- value already equals the label, so it's not stored a second time
-        if (value) current.adrs.push({ value, label: finalLabel, type: parsed.params.TYPE || null });
+        if (value) {
+          const entry = { value, label: finalLabel, type: parsed.params.TYPE || null };
+          current.adrs.push(entry);
+          if (parsed.group) groupRefs[parsed.group] = entry;
+        }
         break;
       }
       case 'NICKNAME':
@@ -240,16 +352,33 @@ export function parseVcards(text, opts = {}) {
       case 'TITLE':
         current.jobTitle = parsed.value || null;
         break;
-      case 'URL':
-        current.url = parsed.value || null;
+      case 'URL': {
+        // A real list, not a single scalar -- the same fix already
+        // applied to EMAIL/TEL/ADR, for the same reason: a real,
+        // item-grouped vCard commonly has more than one (a homepage,
+        // a social profile, ...), and keeping only one would silently
+        // discard the rest, the exact failure this whole feature set
+        // exists to fix.
+        if (!parsed.value) break;
+        const entry = { value: parsed.value, label: null };
+        current.urls.push(entry);
+        if (parsed.group) groupRefs[parsed.group] = entry;
         break;
+      }
       case 'PHOTO':
         // Only a real URL reference (http/https) is mapped -- a
-        // base64-embedded image is left unmapped entirely, same as an
-        // unrecognized property, since inlining that much binary-as-text
-        // data into a single org property line would bloat the file for
-        // no real benefit in a text-based document viewer.
-        current.photo = /^https?:\/\//i.test(parsed.value) ? parsed.value : null;
+        // base64-embedded image is left unmapped entirely, since
+        // inlining that much binary-as-text data into a single org
+        // property line would bloat the file for no real benefit in a
+        // text-based document viewer. Warned about specially (not via
+        // the generic unmapped-property path below), since real photo
+        // data does exist here, just not importable as text.
+        if (/^https?:\/\//i.test(parsed.value)) {
+          current.photo = parsed.value;
+        } else if (parsed.value && onUnmappedProperty && !warnedProperties.has('PHOTO (embedded image data)')) {
+          warnedProperties.add('PHOTO (embedded image data)');
+          onUnmappedProperty('PHOTO (embedded image data)');
+        }
         break;
       case 'CATEGORIES':
         current.categories = parsed.value
@@ -257,8 +386,25 @@ export function parseVcards(text, opts = {}) {
           .map((s) => s.trim())
           .filter(Boolean);
         break;
+      case 'X-ABLABEL': {
+        // Apple/Google's own real-world convention -- see this
+        // module's own top doc comment for the full research. Only
+        // meaningful paired with a same-group property parsed earlier
+        // (EMAIL/TEL/URL/ADR, tracked in groupRefs above); an orphaned
+        // X-ABLabel with no matching group, or one whose own group
+        // matched nothing at all, is silently ignored rather than
+        // warned about -- it never carried any data of its own beyond
+        // the label it was meant to attach to something else.
+        if (!parsed.group) break;
+        const ref = groupRefs[parsed.group];
+        if (!ref) break;
+        const label = cleanMode ? interpretABLabel(parsed.value) : parsed.value.trim() || null;
+        if (label && !ref.label) ref.label = label; // never override a label already set from a more specific source (e.g. ADR's own LABEL= parameter or Google's own 8th component)
+        break;
+      }
       default:
-        break; // an unmapped property -- ignored, not an error
+        warnUnmapped(parsed.name);
+        break;
     }
   }
 
@@ -369,10 +515,17 @@ function buildFlatOrgFromContact(contact) {
   const lines = [`* ${title}${tagSuffix}`];
 
   const propertyLines = [];
-  if (contact.emails.length) propertyLines.push(`:EMAIL: ${contact.emails[0].value}`);
+  if (contact.n) propertyLines.push(`:N: ${contact.n}`);
+  if (contact.emails.length) {
+    propertyLines.push(`:EMAIL: ${contact.emails[0].value}`);
+    if (contact.emails[0].label) propertyLines.push(`:EMAIL_LABEL: ${forPropertyValue(contact.emails[0].label)}`);
+  }
   const nonWorkTel = contact.tels.find((t) => !(t.type || '').toUpperCase().includes('WORK'));
   const workTel = contact.tels.find((t) => (t.type || '').toUpperCase().includes('WORK'));
-  if (nonWorkTel) propertyLines.push(`:PHONE: ${nonWorkTel.value}`);
+  if (nonWorkTel) {
+    propertyLines.push(`:PHONE: ${nonWorkTel.value}`);
+    if (nonWorkTel.label) propertyLines.push(`:PHONE_LABEL: ${forPropertyValue(nonWorkTel.label)}`);
+  }
   if (workTel) propertyLines.push(`:WORK_PHONE: ${workTel.value}`);
   if (contact.adrs.length) {
     propertyLines.push(`:ADDRESS: ${forPropertyValue(contact.adrs[0].value)}`);
@@ -381,7 +534,10 @@ function buildFlatOrgFromContact(contact) {
   if (contact.nickname) propertyLines.push(`:NICKNAME: ${forPropertyValue(contact.nickname)}`);
   if (contact.org) propertyLines.push(`:ORG: ${forPropertyValue(contact.org)}`);
   if (contact.jobTitle) propertyLines.push(`:JOB_TITLE: ${forPropertyValue(contact.jobTitle)}`);
-  if (contact.url) propertyLines.push(`:URL: ${contact.url}`);
+  if (contact.urls.length) {
+    propertyLines.push(`:URL: ${contact.urls[0].value}`);
+    if (contact.urls[0].label) propertyLines.push(`:URL_LABEL: ${forPropertyValue(contact.urls[0].label)}`);
+  }
   if (contact.photo) propertyLines.push(`:PHOTO: ${contact.photo}`);
   if (contact.note) propertyLines.push(`:NOTE: ${forPropertyValue(contact.note)}`);
   if (contact.bday) {
@@ -429,6 +585,7 @@ function buildFlatOrgFromContact(contact) {
  *  discarded for the other, unlike note (which only ever has real
  *  text, no separate "structured" form to also preserve). */
 const FIELDTYPE_LABELS = {
+  n: 'Name',
   cell: 'Cell',
   phone: 'Phone',
   'phone-work': 'Work Phone',
@@ -453,27 +610,34 @@ function buildTreeOrgFromContact(contact) {
   const tagSuffix = contact.categories.length ? `  :${contact.categories.map((c) => c.replace(/[^A-Za-z0-9_@]/g, '_')).join(':')}:` : '';
   const lines = [`* ${title}${tagSuffix}`, ':PROPERTIES:', ':KIND: individual', ':FIELDTYPE: name', ':END:'];
 
-  const field = (value, fieldType, forceBlock = false, extraBlockText = null) => {
+  const field = (value, fieldType, forceBlock = false, extraBlockText = null, extraProperties = null) => {
+    const propLines = [`:FIELDTYPE: ${fieldType}`];
+    if (extraProperties) {
+      for (const [key, val] of Object.entries(extraProperties)) {
+        if (val) propLines.push(`:${key}: ${forPropertyValue(val)}`);
+      }
+    }
     if (forceBlock || value.includes('\n')) {
       const label = FIELDTYPE_LABELS[fieldType] || fieldType;
-      lines.push(`** ${label}`, ':PROPERTIES:', `:FIELDTYPE: ${fieldType}`, ':END:', '#+BEGIN_VERSE', ...value.split('\n'), '#+END_VERSE');
+      lines.push(`** ${label}`, ':PROPERTIES:', ...propLines, ':END:', '#+BEGIN_VERSE', ...value.split('\n'), '#+END_VERSE');
     } else if (extraBlockText) {
       // Both a real, single-line title AND a separate body block --
       // an address with its own structured value as well as a
       // distinct label, neither one discarded for the other.
-      lines.push(`** ${forHeadingTitle(value)}`, ':PROPERTIES:', `:FIELDTYPE: ${fieldType}`, ':END:', '#+BEGIN_VERSE', ...extraBlockText.split('\n'), '#+END_VERSE');
+      lines.push(`** ${forHeadingTitle(value)}`, ':PROPERTIES:', ...propLines, ':END:', '#+BEGIN_VERSE', ...extraBlockText.split('\n'), '#+END_VERSE');
     } else {
-      lines.push(`** ${forHeadingTitle(value)}`, ':PROPERTIES:', `:FIELDTYPE: ${fieldType}`, ':END:');
+      lines.push(`** ${forHeadingTitle(value)}`, ':PROPERTIES:', ...propLines, ':END:');
     }
   };
 
-  for (const email of contact.emails) field(email.value, emailFieldType(email));
-  for (const tel of contact.tels) field(tel.value, telFieldType(tel));
+  if (contact.n) field(contact.n, 'n');
+  for (const email of contact.emails) field(email.value, emailFieldType(email), false, null, { LABEL: email.label });
+  for (const tel of contact.tels) field(tel.value, telFieldType(tel), false, null, { LABEL: tel.label });
   for (const adr of contact.adrs) field(adr.value, adrFieldType(adr), false, adr.label);
   if (contact.nickname) field(contact.nickname, 'nickname');
   if (contact.org) field(contact.org, 'org');
   if (contact.jobTitle) field(contact.jobTitle, 'job-title');
-  if (contact.url) field(contact.url, 'url');
+  for (const url of contact.urls) field(url.value, 'url', false, null, { LABEL: url.label });
   if (contact.photo) field(contact.photo, 'photo');
   if (contact.note) field(contact.note, 'note', true); // always the fixed-title+verse treatment, matching real contact notes' own typical multi-fact, one-per-line shape, regardless of whether this particular one happens to be single-line
   if (contact.bday) {
@@ -490,20 +654,20 @@ function buildTreeOrgFromContact(contact) {
  *  here specifically because flat has a real ceiling (only the first
  *  of each repeated field -- email, phone, address -- survives;
  *  everything else is silently dropped), where tree keeps every one.
- *  `googleMode` (default true) enables the two Google Contacts export
- *  quirks this module specifically handles -- an 8th ADR component
- *  read as a human-readable label, and "\:" unescaped to ":" -- see
- *  parseVcards and unescapeGoogleColon's own doc comments for the
- *  full reasoning on each. Each contact becomes its own top-level
- *  heading (or heading subtree, for tree style); multiple contacts
- *  are joined with a single blank line between them, matching how a
- *  real org file's own headings are conventionally separated.
- *  Returns an empty string for a file with no valid (FN-bearing)
- *  contacts at all, the same "nothing to do, not an error" convention
- *  exportToVcard's own empty case already uses. */
+ *  `cleanMode` (default true) enables Google's and Apple's own real,
+ *  non-standard vCard export quirks -- see parseVcards' own doc
+ *  comment for the full reasoning. `onUnmappedProperty`, when given,
+ *  is forwarded to parseVcards unchanged -- see its own doc comment.
+ *  Each contact becomes its own top-level heading (or heading
+ *  subtree, for tree style); multiple contacts are joined with a
+ *  single blank line between them, matching how a real org file's own
+ *  headings are conventionally separated. Returns an empty string for
+ *  a file with no valid (FN-bearing) contacts at all, the same
+ *  "nothing to do, not an error" convention exportToVcard's own empty
+ *  case already uses. */
 export function importVcardsAsOrgText(vcardText, opts = {}) {
-  const { style = 'tree', googleMode = true } = opts;
-  const contacts = parseVcards(vcardText, { googleMode });
+  const { style = 'tree', cleanMode = true, onUnmappedProperty = null } = opts;
+  const contacts = parseVcards(vcardText, { cleanMode, onUnmappedProperty });
   const builder = style === 'tree' ? buildTreeOrgFromContact : buildFlatOrgFromContact;
   return contacts.map(builder).join('\n\n');
 }

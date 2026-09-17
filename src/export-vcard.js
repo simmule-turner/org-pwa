@@ -113,7 +113,9 @@ function buildVcard(heading, birthdayProperty) {
   if (ignore && String(ignore).trim().toLowerCase() === 't') return null;
 
   const email = getProperty(heading, 'EMAIL');
+  const emailLabel = getProperty(heading, 'EMAIL_LABEL');
   const phone = getProperty(heading, 'PHONE') || getProperty(heading, 'CELL');
+  const phoneLabel = getProperty(heading, 'PHONE_LABEL');
   const workPhone = getProperty(heading, 'WORK_PHONE');
   const address = getProperty(heading, 'ADDRESS') || getProperty(heading, 'ADR');
   const addressLabel = getProperty(heading, 'ADDRESS_LABEL');
@@ -121,8 +123,10 @@ function buildVcard(heading, birthdayProperty) {
   const org = getProperty(heading, 'ORG');
   const jobTitle = getProperty(heading, 'JOB_TITLE');
   const url = getProperty(heading, 'URL');
+  const urlLabel = getProperty(heading, 'URL_LABEL');
   const photo = getProperty(heading, 'PHOTO');
   const note = getProperty(heading, 'NOTE');
+  const preservedN = getProperty(heading, 'N');
   const birthdayRaw = getProperty(heading, birthdayProperty);
   // Real RFC 6350 only mandates FN -- every one of the properties above
   // is genuinely optional there. But FN alone (a heading's own title,
@@ -135,11 +139,30 @@ function buildVcard(heading, birthdayProperty) {
   if (!email && !phone && !workPhone && !address && !nickname && !org && !jobTitle && !url && !photo && !note && !birthdayRaw) return null;
 
   const fullName = heading.title || '(untitled)';
-  const { family, given } = splitNameForN(fullName);
+  // A real, preserved N (see import-vcard.js's own N case) is used
+  // exactly as given -- never recomputed from FN, confirmed directly
+  // that doing so unconditionally (an earlier version of this function)
+  // produces nonsense for any contact whose own FN isn't a real
+  // "Given Family" person name, e.g. "605 West End" (a location used
+  // as a contact) becoming family name "End", given name "605 West".
+  // splitNameForN's own heuristic is now only a fallback for a contact
+  // that never had a real N at all (one created fresh in this app, say).
+  const nLine = preservedN
+    ? `N:${preservedN.split(';').map(escapeVcardText).join(';')}`
+    : (() => {
+        const { family, given } = splitNameForN(fullName);
+        return `N:${escapeVcardText(family)};${escapeVcardText(given)};;;`;
+      })();
 
-  const lines = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${escapeVcardText(fullName)}`, `N:${escapeVcardText(family)};${escapeVcardText(given)};;;`];
-  if (email) lines.push(`EMAIL:${escapeVcardText(email)}`);
-  if (phone) lines.push(`TEL:${escapeVcardText(phone)}`);
+  const lines = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${escapeVcardText(fullName)}`, nLine];
+  if (email) {
+    const labelParam = emailLabel ? `;LABEL="${escapeVcardLabelParam(emailLabel)}"` : '';
+    lines.push(`EMAIL${labelParam}:${escapeVcardText(email)}`);
+  }
+  if (phone) {
+    const labelParam = phoneLabel ? `;LABEL="${escapeVcardLabelParam(phoneLabel)}"` : '';
+    lines.push(`TEL${labelParam}:${escapeVcardText(phone)}`);
+  }
   if (workPhone) lines.push(`TEL;TYPE=WORK:${escapeVcardText(workPhone)}`);
   if (address) {
     const labelParam = addressLabel ? `;LABEL="${escapeVcardLabelParam(addressLabel)}"` : '';
@@ -148,9 +171,13 @@ function buildVcard(heading, birthdayProperty) {
   if (nickname) lines.push(`NICKNAME:${escapeVcardText(nickname)}`);
   if (org) lines.push(`ORG:${escapeVcardText(org)}`);
   if (jobTitle) lines.push(`TITLE:${escapeVcardText(jobTitle)}`);
-  if (url) lines.push(`URL:${escapeVcardText(url)}`);
+  if (url) {
+    const labelParam = urlLabel ? `;LABEL="${escapeVcardLabelParam(urlLabel)}"` : '';
+    lines.push(`URL${labelParam}:${escapeVcardText(url)}`);
+  }
   if (photo) lines.push(`PHOTO:${escapeVcardText(photo)}`);
   if (note) lines.push(`NOTE:${escapeVcardText(note)}`);
+  if (heading.tags && heading.tags.length) lines.push(`CATEGORIES:${heading.tags.map(escapeVcardText).join(',')}`);
   if (birthdayRaw) {
     const bday = parseBirthdayDate(birthdayRaw);
     if (bday) lines.push(`BDAY:${bday.year}-${pad2(bday.month)}-${pad2(bday.day)}`);
@@ -167,20 +194,20 @@ function buildVcard(heading, birthdayProperty) {
 // the two styles have matching capability rather than tree covering a
 // different, larger or smaller set of information than flat does.
 const TREE_FIELDTYPE_TO_VCARD_LINE = {
-  cell: (value) => `TEL;TYPE=CELL:${escapeVcardText(value)}`,
-  phone: (value) => `TEL:${escapeVcardText(value)}`,
-  'phone-work': (value) => `TEL;TYPE=WORK:${escapeVcardText(value)}`,
-  'phone-home': (value) => `TEL;TYPE=HOME:${escapeVcardText(value)}`,
-  email: (value) => `EMAIL:${escapeVcardText(value)}`,
-  'email-work': (value) => `EMAIL;TYPE=WORK:${escapeVcardText(value)}`,
-  'email-home': (value) => `EMAIL;TYPE=HOME:${escapeVcardText(value)}`,
+  cell: (value, label) => `TEL;TYPE=CELL${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
+  phone: (value, label) => `TEL${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
+  'phone-work': (value, label) => `TEL;TYPE=WORK${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
+  'phone-home': (value, label) => `TEL;TYPE=HOME${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
+  email: (value, label) => `EMAIL${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
+  'email-work': (value, label) => `EMAIL;TYPE=WORK${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
+  'email-home': (value, label) => `EMAIL;TYPE=HOME${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
   address: (value, label) => `ADR${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:;;${escapeVcardText(value)};;;;`,
   'address-work': (value, label) => `ADR;TYPE=WORK${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:;;${escapeVcardText(value)};;;;`,
   'address-home': (value, label) => `ADR;TYPE=HOME${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:;;${escapeVcardText(value)};;;;`,
   nickname: (value) => `NICKNAME:${escapeVcardText(value)}`,
   org: (value) => `ORG:${escapeVcardText(value)}`,
   'job-title': (value) => `TITLE:${escapeVcardText(value)}`,
-  url: (value) => `URL:${escapeVcardText(value)}`,
+  url: (value, label) => `URL${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
   photo: (value) => `PHOTO:${escapeVcardText(value)}`,
   note: (value) => `NOTE:${escapeVcardText(value)}`,
   birthday: (value) => {
@@ -222,22 +249,49 @@ function noteBlockText(heading) {
   return blockText(heading) ?? (heading.title || '');
 }
 
+/** Recursively searches heading's own descendants, any depth, for one
+ *  whose own :FIELDTYPE: matches -- returns its own title, or null if
+ *  none is found anywhere in the subtree. Used to find the "n"
+ *  fieldtype heading (a contact's own preserved N, see import-vcard.js's
+ *  own N case) before the main walk below, since it needs to be
+ *  written immediately after FN, not wherever the walk happens to
+ *  encounter it. */
+function findFieldValue(heading, fieldType) {
+  for (const child of heading.children || []) {
+    if (String(getProperty(child, 'FIELDTYPE') || '').toLowerCase() === fieldType) return child.title;
+    const nested = findFieldValue(child, fieldType);
+    if (nested) return nested;
+  }
+  return null;
+}
+
 function buildVcardFromTreeContact(heading) {
   if (String(getProperty(heading, 'KIND') || '').toLowerCase() !== 'individual') return null;
   if (String(getProperty(heading, 'FIELDTYPE') || '').toLowerCase() !== 'name') return null;
 
   const fullName = heading.title || '(untitled)';
-  const { family, given } = splitNameForN(fullName);
-  const lines = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${escapeVcardText(fullName)}`, `N:${escapeVcardText(family)};${escapeVcardText(given)};;;`];
+  // A real, preserved N (a descendant "n" fieldtype heading -- see
+  // import-vcard.js's own N case and buildTreeOrgFromContact) is used
+  // exactly as given -- never recomputed from FN. See buildVcard's own
+  // identical fix, just above, for the full reasoning.
+  const preservedN = findFieldValue(heading, 'n');
+  const nLine = preservedN
+    ? `N:${preservedN.split(';').map(escapeVcardText).join(';')}`
+    : (() => {
+        const { family, given } = splitNameForN(fullName);
+        return `N:${escapeVcardText(family)};${escapeVcardText(given)};;;`;
+      })();
+  const lines = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${escapeVcardText(fullName)}`, nLine];
 
   function walk(node) {
     for (const child of node.children || []) {
       const fieldType = String(getProperty(child, 'FIELDTYPE') || '').toLowerCase();
+      if (fieldType === 'n') continue; // already written above, immediately after FN
       const builder = TREE_FIELDTYPE_TO_VCARD_LINE[fieldType];
       if (builder) {
         const isAddressField = fieldType === 'address' || fieldType === 'address-work' || fieldType === 'address-home';
         const value = fieldType === 'note' ? noteBlockText(child) : child.title || '';
-        const label = isAddressField ? blockText(child) : null;
+        const label = isAddressField ? blockText(child) : getProperty(child, 'LABEL');
         const line = builder(value, label);
         if (line) lines.push(line);
       }
@@ -245,6 +299,8 @@ function buildVcardFromTreeContact(heading) {
     }
   }
   walk(heading);
+
+  if (heading.tags && heading.tags.length) lines.push(`CATEGORIES:${heading.tags.map(escapeVcardText).join(',')}`);
 
   lines.push('END:VCARD');
   return lines.map(foldLine);
