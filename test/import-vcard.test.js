@@ -31,19 +31,19 @@ test('EMAIL/TEL with TYPE params are captured correctly, including multiple of e
   const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nEMAIL;TYPE=WORK:work@example.com\r\nEMAIL;TYPE=HOME:home@example.com\r\nTEL;TYPE=CELL:555-0001\r\nTEL;TYPE=WORK:555-0002\r\nEND:VCARD\r\n';
   const [contact] = parseVcards(text);
   assert.deepEqual(contact.emails, [
-    { value: 'work@example.com', type: 'WORK' },
-    { value: 'home@example.com', type: 'HOME' },
+    { value: 'work@example.com', type: 'WORK', label: null },
+    { value: 'home@example.com', type: 'HOME', label: null },
   ]);
   assert.deepEqual(contact.tels, [
-    { value: '555-0001', type: 'CELL' },
-    { value: '555-0002', type: 'WORK' },
+    { value: '555-0001', type: 'CELL', label: null },
+    { value: '555-0002', type: 'WORK', label: null },
   ]);
 });
 
 test('a bare TEL/EMAIL with no TYPE param at all is still captured, with type null', () => {
   const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nTEL:555-0000\r\nEND:VCARD\r\n';
   const [contact] = parseVcards(text);
-  assert.deepEqual(contact.tels, [{ value: '555-0000', type: null }]);
+  assert.deepEqual(contact.tels, [{ value: '555-0000', type: null, label: null }]);
 });
 
 test('ADR is joined into one readable string from its own non-empty components', () => {
@@ -336,7 +336,7 @@ test('THE FEATURE: an 8th ADR component (Google\u2019s own LABEL) is preserved s
   assert.equal(contact.adrs[0].label, '812 Summer Bloom CT\nDurham, NC 27703\nUnited States');
 });
 
-test('with googleMode explicitly off, an 8th ADR component is ignored entirely -- matching real RFC 6350\u2019s own strict 7-component ADR definition, not Google\u2019s own non-standard extension of it', () => {
+test('with cleanMode explicitly off, an 8th ADR component is ignored entirely -- matching real RFC 6350\u2019s own strict 7-component ADR definition, not Google\u2019s own non-standard extension of it', () => {
   const text = [
     'BEGIN:VCARD',
     'VERSION:3.0',
@@ -345,7 +345,7 @@ test('with googleMode explicitly off, an 8th ADR component is ignored entirely -
     'EMAIL:a@example.com',
     'END:VCARD',
   ].join('\r\n');
-  const [contact] = parseVcards(text, { googleMode: false });
+  const [contact] = parseVcards(text, { cleanMode: false });
   assert.equal(contact.adrs[0].value, '812 Summer Bloom CT, Durham, NC, 27703, United States');
   assert.equal(contact.adrs[0].label, null);
 });
@@ -358,24 +358,24 @@ test('THE FEATURE: the real, standard LABEL="..." parameter syntax (vCard 4.0\u2
   assert.equal(contact.adrs[0].type, 'WORK');
 });
 
-test('a normal, 7-component ADR (no Google label) is unaffected by googleMode either way', () => {
+test('a normal, 7-component ADR (no Google label) is unaffected by cleanMode either way', () => {
   const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nADR:;;123 Main St;Springfield;IL;62704;USA\r\nEND:VCARD\r\n';
-  const [withGoogle] = parseVcards(text, { googleMode: true });
-  const [withoutGoogle] = parseVcards(text, { googleMode: false });
+  const [withGoogle] = parseVcards(text, { cleanMode: true });
+  const [withoutGoogle] = parseVcards(text, { cleanMode: false });
   assert.equal(withGoogle.adrs[0].value, '123 Main St, Springfield, IL, 62704, USA');
   assert.equal(withoutGoogle.adrs[0].value, '123 Main St, Springfield, IL, 62704, USA');
 });
 
-test('THE FEATURE: "\\\\:" is unescaped to ":" when googleMode is on, confirmed against the exact real-world report', () => {
+test('THE FEATURE: "\\\\:" is unescaped to ":" when cleanMode is on, confirmed against the exact real-world report', () => {
   const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nNOTE:Permanent address\\:\\n\\nSimmule Turner\r\nEND:VCARD\r\n';
-  const [contact] = parseVcards(text, { googleMode: true });
+  const [contact] = parseVcards(text, { cleanMode: true });
   assert.match(contact.note, /Permanent address:/);
   assert.doesNotMatch(contact.note, /address\\:/);
 });
 
-test('with googleMode explicitly off, "\\\\:" is left untouched -- not a standard vCard escape, so left as-is rather than guessed at', () => {
+test('with cleanMode explicitly off, "\\\\:" is left untouched -- not a standard vCard escape, so left as-is rather than guessed at', () => {
   const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nNOTE:Permanent address\\:here\r\nEND:VCARD\r\n';
-  const [contact] = parseVcards(text, { googleMode: false });
+  const [contact] = parseVcards(text, { cleanMode: false });
   assert.match(contact.note, /address\\:here/);
 });
 
@@ -407,7 +407,7 @@ test('THE FEATURE: flat style preserves the label too, as a separate :ADDRESS_LA
   assert.match(org, /:ADDRESS_LABEL: 812 Summer Bloom CT ; Durham, NC 27703 ; United States/);
 });
 
-test('THE FEATURE (full real-world round trip): the exact Simmule Turner vCard, with googleMode on and tree style (both defaults), preserves every email, both addresses (structured value AND label), and the complete note text', () => {
+test('THE FEATURE (full real-world round trip): the exact Simmule Turner vCard, with cleanMode on and tree style (both defaults), preserves every email, both addresses (structured value AND label), and the complete note text', () => {
   const fullText = [
     'BEGIN:VCARD',
     'VERSION:3.0',
@@ -423,7 +423,7 @@ test('THE FEATURE (full real-world round trip): the exact Simmule Turner vCard, 
     'CATEGORIES:Other Account,myContacts',
     'END:VCARD',
   ].join('\r\n');
-  const org = importVcardsAsOrgText(fullText); // both defaults: style: 'tree', googleMode: true
+  const org = importVcardsAsOrgText(fullText); // both defaults: style: 'tree', cleanMode: true
   assert.match(org, /simmule\.turner@gmail\.com/);
   assert.match(org, /simmule@google\.com/);
   assert.match(org, /\*\* 200 Morris St, Durham, NC, 27701, US\n/);
@@ -450,7 +450,7 @@ test('THE FEATURE: ORG, TITLE, URL, and PHOTO (URL only) are now mapped instead 
   const [contact] = parseVcards(text);
   assert.equal(contact.org, 'Google');
   assert.equal(contact.jobTitle, 'Engineering Manager');
-  assert.equal(contact.url, 'https://example.com/simmule');
+  assert.equal(contact.urls[0].value, 'https://example.com/simmule');
   assert.equal(contact.photo, 'https://lh3.googleusercontent.com/contacts/AG6tpzHCbxGgWGY_LF0pZr4Vbgx2aE65Jdjnyv9PhkkB1Aa7o-ogNqdW');
 });
 
@@ -505,4 +505,175 @@ test('THE FEATURE (full real-world round trip): ORG/TITLE/URL/PHOTO survive expo
     assert.match(reexported, /URL:https:\/\/example\.com\/simmule/);
     assert.match(reexported, /PHOTO:https:\/\/lh3\.googleusercontent\.com/);
   }
+});
+
+// ---- N preservation, itemN. grouping, X-ABLabel, CATEGORIES export -------
+
+test('THE FIX: N is preserved verbatim on import, never recomputed -- confirmed against the exact real-world report ("605 West End", a location used as a contact, not a real person name)', () => {
+  const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:605 West End\r\nN:;605 West End;;;\r\nEND:VCARD\r\n';
+  const [contact] = parseVcards(text);
+  assert.equal(contact.n, ';605 West End;;;');
+});
+
+test('THE FIX: a real-world vCard\u2019s exact item1.TEL / item1.X-ABLabel pair is recognized, and an empty label correctly means no label at all', () => {
+  const text = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    'FN:605 West End',
+    'N:;605 West End;;;',
+    'item1.TEL:919-813-4301',
+    'item1.X-ABLabel:',
+    'NOTE:3 - for maintenance emergencies\\n4 - for courtesy officer',
+    'CATEGORIES:myContacts',
+    'END:VCARD',
+  ].join('\r\n');
+  const [contact] = parseVcards(text);
+  assert.deepEqual(contact.tels, [{ value: '919-813-4301', type: null, label: null }]);
+  assert.equal(contact.categories[0], 'myContacts');
+});
+
+test('a real, user-assigned X-ABLabel (not a placeholder) is preserved verbatim on TEL/EMAIL/URL/ADR', () => {
+  const text = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    'FN:Bob',
+    'item1.TEL:555-1234',
+    'item1.X-ABLabel:Landline',
+    'item2.EMAIL:bob@example.com',
+    'item2.X-ABLabel:Work Voice',
+    'item3.URL:https://example.com',
+    'item3.X-ABLabel:Main Site',
+    'item4.ADR:;;123 Main St;Springfield;IL;62704;USA',
+    'item4.X-ABLabel:POBOX',
+    'END:VCARD',
+  ].join('\r\n');
+  const [contact] = parseVcards(text);
+  assert.equal(contact.tels[0].label, 'Landline');
+  assert.equal(contact.emails[0].label, 'Work Voice');
+  assert.equal(contact.urls[0].label, 'Main Site');
+  assert.equal(contact.adrs[0].label, 'POBOX');
+});
+
+test('THE FEATURE: Apple\u2019s own "_$!<Something>!$_" placeholder is unwrapped to its inner name; the "_$!!$_" placeholder means no label at all, the same as a genuinely empty one', () => {
+  const text = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    'FN:Carol',
+    'item1.URL:https://example.com',
+    'item1.X-ABLabel:_$!<HomePage>!$_',
+    'item2.TEL:555-9999',
+    'item2.X-ABLabel:_$!!$_',
+    'END:VCARD',
+  ].join('\r\n');
+  const [contact] = parseVcards(text);
+  assert.equal(contact.urls[0].label, 'HomePage');
+  assert.equal(contact.tels[0].label, null);
+});
+
+test('with cleanMode explicitly off, X-ABLabel placeholder forms are left raw rather than interpreted', () => {
+  const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Carol\r\nitem1.URL:https://example.com\r\nitem1.X-ABLabel:_$!<HomePage>!$_\r\nEND:VCARD\r\n';
+  const [contact] = parseVcards(text, { cleanMode: false });
+  assert.equal(contact.urls[0].label, '_$!<HomePage>!$_');
+});
+
+test('an X-ABLabel never overrides a label already set from a more specific source (Google\u2019s own 8th ADR component)', () => {
+  const text = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    'FN:Dana',
+    'item1.ADR:;;123 Main St;Springfield;IL;62704;USA;123 Main St\\nSpringfield, IL 62704',
+    'item1.X-ABLabel:Custom',
+    'END:VCARD',
+  ].join('\r\n');
+  const [contact] = parseVcards(text);
+  assert.equal(contact.adrs[0].label, '123 Main St\nSpringfield, IL 62704'); // the Google label wins, not the X-ABLabel
+});
+
+test('THE FEATURE: URL is now a real list, not a single scalar -- an item-grouped vCard with several is not silently reduced to one', () => {
+  const text = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    'FN:Erin',
+    'item1.URL:https://example.com/home',
+    'item1.X-ABLabel:_$!<HomePage>!$_',
+    'item2.URL:https://example.com/work',
+    'item2.X-ABLabel:Work',
+    'END:VCARD',
+  ].join('\r\n');
+  const [contact] = parseVcards(text);
+  assert.equal(contact.urls.length, 2);
+  assert.equal(contact.urls[0].label, 'HomePage');
+  assert.equal(contact.urls[1].label, 'Work');
+});
+
+test('THE FEATURE: onUnmappedProperty reports a genuinely unrecognized property once per distinct name across the whole file, and never a known, deliberately-unmapped one (VERSION/PRODID/REV/UID/X-ABADR)', () => {
+  const text = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    'FN:Alice',
+    'PRODID:-//Apple//iOS//EN',
+    'X-ABADR:us',
+    'X-SOCIALPROFILE:https://twitter.com/alice',
+    'END:VCARD',
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    'FN:Bob',
+    'X-SOCIALPROFILE:https://twitter.com/bob', // same property name again -- only reported once
+    'X-YAHOO:bob_y',
+    'END:VCARD',
+  ].join('\r\n');
+  const warned = [];
+  parseVcards(text, { onUnmappedProperty: (name) => warned.push(name) });
+  assert.deepEqual(warned, ['X-SOCIALPROFILE', 'X-YAHOO']);
+});
+
+test('a base64-embedded PHOTO is specially reported as real, discarded data, distinct from a genuinely unrecognized property', () => {
+  const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nPHOTO;ENCODING=BASE64;TYPE=JPEG:/9j/4AAQSkZJRgABAQAAAQABAAD\r\nEND:VCARD\r\n';
+  const warned = [];
+  parseVcards(text, { onUnmappedProperty: (name) => warned.push(name) });
+  assert.deepEqual(warned, ['PHOTO (embedded image data)']);
+});
+
+test('a URL-based PHOTO does not trigger any warning at all -- it was successfully imported', () => {
+  const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nPHOTO:https://example.com/alice.jpg\r\nEND:VCARD\r\n';
+  const warned = [];
+  parseVcards(text, { onUnmappedProperty: (name) => warned.push(name) });
+  assert.deepEqual(warned, []);
+});
+
+test('THE FEATURE: CATEGORIES is now exported (the reverse of import), in both Flat and Tree style -- confirmed by direct inspection that this was previously parsed on import but never written back out at all', () => {
+  for (const style of ['flat', 'tree']) {
+    const orgText = importVcardsAsOrgText('BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nEMAIL:alice@example.com\r\nCATEGORIES:family,vip\r\nEND:VCARD\r\n', { style });
+    const doc = parseOrg(orgText);
+    const reexported = exportToVcard([{ documentId: 'doc1', doc }], { style });
+    assert.match(reexported, /CATEGORIES:family,vip/);
+  }
+});
+
+test('THE FEATURE (full real-world round trip): the exact reported vCard -- N preserved, item1.TEL recovered, CATEGORIES round-tripped -- survives export -> import -> export in both styles, matching the actual bug report line for line', () => {
+  const original = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    'FN:605 West End',
+    'N:;605 West End;;;',
+    'item1.TEL:919-813-4301',
+    'item1.X-ABLabel:',
+    'NOTE:3 - for maintenance emergencies\\n4 - for courtesy officer',
+    'CATEGORIES:myContacts',
+    'END:VCARD',
+  ].join('\r\n');
+  for (const style of ['flat', 'tree']) {
+    const orgText = importVcardsAsOrgText(original, { style });
+    const doc = parseOrg(orgText);
+    const reexported = exportToVcard([{ documentId: 'doc1', doc }], { style });
+    assert.match(reexported, /N:;605 West End;;;/);
+    assert.match(reexported, /TEL:919-813-4301/);
+    assert.match(reexported, /CATEGORIES:myContacts/);
+  }
+});
+
+test('a contact with no N at all (created fresh, or from a vCard that never provided one) still falls back to the old FN-derived heuristic on export', () => {
+  const doc = parseOrg(['* Alice Smith', ':PROPERTIES:', ':EMAIL: alice@example.com', ':END:'].join('\n'));
+  const vcf = exportToVcard([{ documentId: 'doc1', doc }]);
+  assert.match(vcf, /N:Smith;Alice;;;/);
 });
