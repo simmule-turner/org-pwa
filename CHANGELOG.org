@@ -6,6 +6,18 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v349 — Fix: N mangling, item1./itemN. data loss, CATEGORIES export
+N was never read on import, and export always recomputed it from FN
+with a naive heuristic that produces nonsense for a non-person
+contact. item1.TEL, item1.ADR and similar Apple/Google-grouped
+properties were silently, completely discarded — confirmed as real
+data loss against a reported vCard. Both fixed, along with: Apple's
+own X-ABLabel convention (including its placeholder syntax) now
+correctly interpreted; CATEGORIES now exported, not just imported;
+URL upgraded to a real list; the "Google" checkbox renamed "Clean
+data (Google, Apple)"; and a genuinely unrecognized vCard property
+now produces a real warning after import instead of silence.
+
 * v348 — Fix: org-contacts-anniversaries didn't work with vCard import at all
 Confirmed as two complete breaks, not edge cases: a vCard-imported
 :BIRTHDAY: (a bare date, no description) matched zero agenda items in

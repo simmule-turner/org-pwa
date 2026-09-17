@@ -4127,7 +4127,7 @@ let exportFormat = null;
 let exportPickingHeading = false;
 let vcardStyle = 'flat'; // 'flat' (real org-contacts.el's own convention, the default) or 'tree' (real org-vcard's own alternative) -- see export-vcard.js's own doc comment for the full structure of each
 let importStyle = 'tree'; // same two options, for org-vcard-import (More > Import) -- independent of vcardStyle above, since someone might export in one style but want to import a vCard from elsewhere into the other. Defaults to 'tree', not 'flat': flat has a real ceiling (only the first of each repeated field -- email, phone, address -- survives), where tree keeps every one, matching import-vcard.js's own library-level default.
-let importGoogleMode = true; // Google Contacts' own vCard export quirks (an 8th ADR component read as a human-readable label; "\:" unescaped to ":") -- on by default, since these are genuinely Google-specific export behaviors most real-world vCard imports into this app are likely to come from
+let importCleanMode = true; // Google's and Apple's own real, non-standard vCard export quirks (an 8th ADR component read as a human-readable label; "\:" unescaped to ":"; Apple's own X-ABLabel placeholder forms interpreted rather than shown verbatim) -- on by default, since most real-world vCard imports into this app are likely to come from one of these two sources
 
 // File-browser state: browseBackend non-null means the "open" step is
 // currently showing a navigable folder/file listing (see startBrowsing
@@ -9682,22 +9682,22 @@ function renderImportFlow() {
   }
   morePanel.appendChild(styleRow);
 
-  const googleRow = document.createElement('label');
-  googleRow.style.display = 'flex';
-  googleRow.style.alignItems = 'center';
-  googleRow.style.gap = '6px';
-  googleRow.style.fontSize = '13px';
-  googleRow.style.marginBottom = '10px';
-  googleRow.style.cursor = 'pointer';
-  const googleCheckbox = document.createElement('input');
-  googleCheckbox.type = 'checkbox';
-  googleCheckbox.checked = importGoogleMode;
-  googleCheckbox.onchange = () => {
-    importGoogleMode = googleCheckbox.checked;
+  const cleanRow = document.createElement('label');
+  cleanRow.style.display = 'flex';
+  cleanRow.style.alignItems = 'center';
+  cleanRow.style.gap = '6px';
+  cleanRow.style.fontSize = '13px';
+  cleanRow.style.marginBottom = '10px';
+  cleanRow.style.cursor = 'pointer';
+  const cleanCheckbox = document.createElement('input');
+  cleanCheckbox.type = 'checkbox';
+  cleanCheckbox.checked = importCleanMode;
+  cleanCheckbox.onchange = () => {
+    importCleanMode = cleanCheckbox.checked;
   };
-  googleRow.appendChild(googleCheckbox);
-  googleRow.appendChild(document.createTextNode('Google Contacts'));
-  morePanel.appendChild(googleRow);
+  cleanRow.appendChild(cleanCheckbox);
+  cleanRow.appendChild(document.createTextNode('Clean data (Google, Apple)'));
+  morePanel.appendChild(cleanRow);
 
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
@@ -9743,7 +9743,12 @@ function renderImportFlow() {
  *  valid (FN-bearing) contacts produces a clear status message rather
  *  than silently doing nothing. */
 function importVcardFile(vcardText) {
-  const orgText = importVcardsAsOrgText(vcardText, { style: importStyle, googleMode: importGoogleMode });
+  const unmappedProperties = [];
+  const orgText = importVcardsAsOrgText(vcardText, {
+    style: importStyle,
+    cleanMode: importCleanMode,
+    onUnmappedProperty: (name) => unmappedProperties.push(name),
+  });
   if (!orgText) {
     setStatus('No valid contacts found in that file \u2014 each vCard needs at least a name (FN) to import.');
     return;
@@ -9755,7 +9760,10 @@ function importVcardFile(vcardText) {
   moreMenuStep = null;
   const count = importedHeadings.length;
   commitAndRender(`Imported ${count} contact${count === 1 ? '' : 's'} from vCard`);
-  setStatus(`Imported ${count} contact${count === 1 ? '' : 's'} from vCard.`);
+  const warning = unmappedProperties.length
+    ? ` ${unmappedProperties.length} unrecognized propert${unmappedProperties.length === 1 ? 'y was' : 'ies were'} skipped: ${unmappedProperties.join(', ')}.`
+    : '';
+  setStatus(`Imported ${count} contact${count === 1 ? '' : 's'} from vCard.${warning}`);
 }
 
 function stopBrowsing() {
