@@ -6,6 +6,33 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v351 — Fix: README.org's own broken markup (stray ~, subscripts)
+Root cause: this app's own emphasis parser (matching real Emacs
+org-mode exactly) never allows a closing ~ to be followed by "/" —
+every "~X~/~Y~" written throughout the README as a shorthand
+separator broke silently, either leaving stray characters visible or
+getting swallowed into an unrelated, over-spanning code element
+further along the line (which is what was rendering as subscripts).
+Found and fixed every genuine instance by running the actual parser
+against every line, not by pattern-matching alone. Also fixed: two
+literal "\u22ef" escape-sequence text strings (now the real
+character), and the stray comma before #+CATEGORY: — confirmed as
+correct org syntax that was never being stripped for display in any
+exporter or the in-app renderer; now is.
+
+* v350 — Fix: address structure destroyed on export, plus two more
+Found by precisely diffing a real vCard against its own round-tripped
+output. The main one: the 7 real ADR components (street, city,
+region, postal code, country) were being joined into one string and
+crammed back into just the street position on export — City/Region/
+PostalCode/Country all ending up empty even though the original had
+them as genuinely separate fields. Now preserved and reconstructed
+exactly, the same way N already is. Also fixed: a repeated TYPE=
+parameter was silently losing every value but the last; and a
+category with a space ("Other Account") was being irreversibly
+turned into an org tag ("Other_Account") with no way back — its
+original text is now preserved and restored on export.
+
 * v349 — Fix: N mangling, item1./itemN. data loss, CATEGORIES export
 N was never read on import, and export always recomputed it from FN
 with a naive heuristic that produces nonsense for a non-person

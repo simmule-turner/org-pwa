@@ -7714,6 +7714,13 @@ function renderParagraphRow(row) {
  * literal <pre><code> treatment -- no markup interpretation, content
  * shown byte-for-byte.
  */
+/** Strips org's own comma-escape convention from one block content
+ *  line for display -- see export-html.js's own stripCommaEscape for
+ *  the full reasoning; the same fix, applied here too. */
+function stripCommaEscapeApp(line) {
+  return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
+}
+
 function renderBlockContent(block, container, linkContext) {
   const name = block.name;
 
@@ -7733,7 +7740,7 @@ function renderBlockContent(block, container, linkContext) {
     verse.style.fontStyle = 'italic';
     for (const line of block.lines) {
       const lineEl = document.createElement('div');
-      const stripped = stripLineBreakMarker(line);
+      const stripped = stripLineBreakMarker(stripCommaEscapeApp(line));
       if (stripped.trim() === '') {
         lineEl.innerHTML = '&nbsp;'; // a blank verse line is still a real, visible line break, not nothing
       } else {
@@ -7789,7 +7796,7 @@ function renderBlockContent(block, container, linkContext) {
       if (line.trim() === '') {
         flushParagraph();
       } else {
-        currentParagraphLines.push(line.trim());
+        currentParagraphLines.push(stripCommaEscapeApp(line.trim()));
       }
     }
     flushParagraph();
@@ -7809,7 +7816,7 @@ function renderBlockContent(block, container, linkContext) {
   pre.style.whiteSpace = 'pre-wrap';
   const code = document.createElement('code');
   code.style.fontFamily = 'monospace';
-  code.textContent = block.lines.join('\n');
+  code.textContent = block.lines.map(stripCommaEscapeApp).join('\n');
   pre.appendChild(code);
   container.appendChild(pre);
 }
