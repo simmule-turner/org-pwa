@@ -9765,6 +9765,7 @@ function importVcardFile(vcardText) {
   state.doc.children.push(...importedHeadings);
   moreOpen = false;
   moreMenuStep = null;
+  renderMoreMenu();
   const count = importedHeadings.length;
   commitAndRender(`Imported ${count} contact${count === 1 ? '' : 's'} from vCard`);
   const warning = unmappedProperties.length
@@ -14886,6 +14887,7 @@ moreBtn.addEventListener('click', () => {
   const opening = !moreOpen;
   closeAllOverlayPanels();
   moreOpen = opening;
+  if (opening) moreMenuStep = null; // always start at the top-level list, never wherever a previous visit left off (Import/Export, say)
   render();
   renderMoreMenu();
 });

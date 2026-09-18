@@ -6,6 +6,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v352 — Fix: More menu didn't behave like a standard menu
+Reopening the menu after navigating into Import or Export jumped
+straight back into that sub-screen instead of the top-level list —
+a shared bug in the More button's own handler, now fixed for both.
+Separately: the menu also stayed visibly open after a successful
+vCard import, even though its own internal state already said
+"closed" — the visible panel was just never told to actually hide.
+
 * v351 — Fix: README.org's own broken markup (stray ~, subscripts)
 Root cause: this app's own emphasis parser (matching real Emacs
 org-mode exactly) never allows a closing ~ to be followed by "/" —
