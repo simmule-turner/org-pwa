@@ -6,6 +6,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v353 — Agenda: diary-sexp entries no longer show a leading 🔁
+A diary-sexp entry's own title is free-form (it's the sexp's own
+return value, or the heading's own title), so the generic "this is a
+repeating diary expression" icon in front of it just added visual
+noise, especially when the entry's own title already carried its
+own, more specific icon. Removed entirely for diary-sexp and
+sexp-timestamp items; every other kind's own icon is unchanged.
+
 * v352 — Fix: More menu didn't behave like a standard menu
 Reopening the menu after navigating into Import or Export jumped
 straight back into that sub-screen instead of the top-level list —

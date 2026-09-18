@@ -10369,8 +10369,16 @@ function renderAgendaView() {
     row.appendChild(categoryLabel);
 
     const kindIcon = document.createElement('span');
-    kindIcon.textContent =
-      item.kind === 'deadline'
+    // diary-sexp/sexp-timestamp gets no leading icon at all -- an
+    // entry's own title is free-form (it's the sexp's own return
+    // value, or the heading's own title), so a generic "this is a
+    // repeating diary expression" icon in front of it just adds
+    // visual noise without conveying anything the entry's own title
+    // doesn't already.
+    const isDiarySexpKind = item.kind === 'diary-sexp' || item.kind === 'sexp-timestamp';
+    const kindIconText = isDiarySexpKind
+      ? null
+      : item.kind === 'deadline'
         ? '\u26a0'
         : item.kind === 'timestamp'
           ? '\ud83d\udcc5'
@@ -10378,15 +10386,14 @@ function renderAgendaView() {
             ? '\ud83c\udf82'
             : item.kind === 'logbook'
               ? '\ud83d\udcdd'
-              : item.kind === 'diary-sexp' || item.kind === 'sexp-timestamp'
-              ? '\ud83d\udd01'
               : item.kind === 'sunrise' || item.kind === 'sunset' || item.kind === 'civil-dawn' || item.kind === 'civil-dusk' || item.kind === 'nautical-dawn' || item.kind === 'nautical-dusk' || item.kind === 'astronomical-dawn' || item.kind === 'astronomical-dusk' || item.kind === 'day-length' || item.kind === 'weather'
                 ? '\u2600\ufe0f'
                 : '\u23f0';
+    kindIcon.textContent = kindIconText || '';
     kindIcon.style.flexShrink = '0';
     kindIcon.style.opacity = '0.6';
     kindIcon.style.fontSize = '1.3em';
-    row.appendChild(kindIcon);
+    if (kindIconText) row.appendChild(kindIcon); // suppressed entirely (not just left empty) so the row's own gap spacing doesn't leave an awkward blank slot where the icon would have been
 
     const text = document.createElement('div');
     text.style.flex = '1 1 auto';
