@@ -4126,7 +4126,10 @@ let moreMenuStep = null; // null | 'export' -- see renderMoreMenuContent
 let exportFormat = null;
 let exportPickingHeading = false;
 let vcardStyle = 'tree'; // 'flat' (real org-contacts.el's own convention) or 'tree' (real org-vcard's own alternative, the default) -- see export-vcard.js's own doc comment for the full structure of each. Defaults to 'tree' to match importStyle just below, for the same reason: flat has a real ceiling (only the first of each repeated field survives), where tree keeps every one.
+let exportVcardToNewBuffer = false; // Export > Contacts (.vcf)'s own "To: *new buffer*" checkbox -- routes the exported vCard text into a new, unsaved document (a heading titled "vCard(s)" with the raw text as its own body) instead of a file download
 let importStyle = 'tree'; // same two options, for org-vcard-import (More > Import) -- independent of vcardStyle above, since someone might export in one style but want to import a vCard from elsewhere into the other. Defaults to 'tree', not 'flat': flat has a real ceiling (only the first of each repeated field -- email, phone, address -- survives), where tree keeps every one, matching import-vcard.js's own library-level default.
+let importVcardToNewBuffer = false; // Import's own "To: *new buffer*" checkbox -- routes the imported contacts into a new, unsaved document instead of appending to the currently open one
+let importPickingHeading = false; // true while Import's own "Choose a heading..." heading list is shown, mirroring exportPickingHeading
 let importCleanMode = true; // Google's and Apple's own real, non-standard vCard export quirks (an 8th ADR component read as a human-readable label; "\:" unescaped to ":"; Apple's own X-ABLabel placeholder forms interpreted rather than shown verbatim) -- on by default, since most real-world vCard imports into this app are likely to come from one of these two sources
 
 // File-browser state: browseBackend non-null means the "open" step is
@@ -6913,6 +6916,23 @@ function applyKeyboardFocusHighlight(el, row) {
   el.style.borderRadius = '4px';
 }
 
+/** Resolves a heading's own contact photo value for display, covering
+ *  both representations import-vcard.js's own Flat and Tree builders
+ *  produce -- Flat style's own :PHOTO: property directly on the
+ *  contact heading, or Tree style's own separate "Photo" sub-heading
+ *  (:FIELDTYPE: photo), whose value is either a :DATA: property (a
+ *  base64-embedded photo, kept out of the heading's own title since
+ *  it can be tens of KB of text) or the heading's own title (a real
+ *  URL, already short and readable as a title). Returns null when
+ *  there's no real, renderable value either way -- a bare string
+ *  that isn't a real URL or a real data:image/ URI is never treated
+ *  as a displayable photo. */
+function contactPhotoValueForHeading(heading) {
+  const fieldType = String((heading.properties || {}).FIELDTYPE || '').toLowerCase();
+  const candidate = fieldType === 'photo' ? heading.properties.DATA || heading.title || '' : (heading.properties || {}).PHOTO || '';
+  return /^https?:\/\//i.test(candidate) || /^data:image\//i.test(candidate) ? candidate : null;
+}
+
 function renderRow(row, todoSequence) {
   if (row.rowType === 'heading') {
     const el = document.createElement('div');
@@ -7131,6 +7151,20 @@ function renderRow(row, todoSequence) {
       propertiesDisplayEl.style.cursor = 'pointer';
       propertiesDisplayEl.textContent = getPropertiesText(row.node);
       propertiesDisplayEl.onclick = () => toggleActionMenu(row.node);
+
+      const photoValue = contactPhotoValueForHeading(row.node);
+      const showPhotosOn = parseLispBoolean((state.localVariables || {})['org-xx-startup-with-show-photos'], false);
+      if (showPhotosOn && photoValue) {
+        const photoThumbnailEl = document.createElement('img');
+        photoThumbnailEl.src = photoValue;
+        photoThumbnailEl.alt = '';
+        photoThumbnailEl.style.display = 'block';
+        photoThumbnailEl.style.maxWidth = '80px';
+        photoThumbnailEl.style.maxHeight = '80px';
+        photoThumbnailEl.style.borderRadius = '6px';
+        photoThumbnailEl.style.margin = '4px 0 2px';
+        propertiesDisplayEl.appendChild(photoThumbnailEl);
+      }
     }
 
     let logbookDisplayEl = null;
@@ -8346,10 +8380,10 @@ async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCach
   persistOpenTabsInBackground();
 }
 
-async function createNewUnsavedDocument() {
+async function createNewUnsavedDocument(rawText = '', statusMessage = null) {
   if (commitTextModeIfActive()) render();
-  await afterDocumentLoaded(UNSAVED_DOCUMENT_ID + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), parseOrg(''), null);
-  setStatus('New unsaved document \u2014 edits are cached locally, same as any other document; Save As to keep it for good.');
+  await afterDocumentLoaded(UNSAVED_DOCUMENT_ID + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), parseOrg(rawText), null);
+  setStatus(statusMessage || 'New unsaved document \u2014 edits are cached locally, same as any other document; Save As to keep it for good.');
   render();
 }
 
@@ -9342,6 +9376,30 @@ async function renderFileMenuContent() {
  *  fold state -- a heading buried under several collapsed ancestors
  *  must still be pickable as an export scope, unlike keyboard
  *  navigation (which only moves between currently-visible rows). */
+function vcardBodyHeadingsIn(headings) {
+  const found = [];
+  for (const { heading } of headings) {
+    const bodyText = (heading.bodyLines || []).join('\n').trim();
+    if (/^BEGIN:VCARD/i.test(bodyText)) found.push(bodyText);
+  }
+  return found;
+}
+
+/** All headings within `heading`'s own subtree (itself included), in
+ *  the same {heading, depth} shape allHeadingsInOrder returns for the
+ *  whole document -- depth here is relative to `heading` itself (0),
+ *  not the document root, since this is only ever used for scanning,
+ *  never for indentation display. */
+function headingsInSubtree(heading) {
+  const out = [];
+  function walk(node, depth) {
+    out.push({ heading: node, depth });
+    for (const child of node.children || []) walk(child, depth + 1);
+  }
+  walk(heading, 0);
+  return out;
+}
+
 function allHeadingsInOrder(doc) {
   const out = [];
   function walk(nodes, depth) {
@@ -9413,6 +9471,17 @@ async function performExport(format, scope) {
       });
     } catch (err) {
       setStatus(err.message);
+      renderMoreMenu();
+      return;
+    }
+    if (exportVcardToNewBuffer) {
+      const count = (vcf.match(/^BEGIN:VCARD/gim) || []).length;
+      const rawText = `#+TITLE: *scratch*\n* vCard(s)\n${vcf.replace(/\r\n/g, '\n')}`;
+      moreOpen = false;
+      moreMenuStep = null;
+      exportFormat = null;
+      exportPickingHeading = false;
+      await createNewUnsavedDocument(rawText, `Exported ${count} contact${count === 1 ? '' : 's'} to Contacts (.vcf) in a new buffer.`);
       renderMoreMenu();
       return;
     }
@@ -9525,6 +9594,23 @@ function renderExportFlow() {
         styleRow.appendChild(styleBtn);
       }
       morePanel.appendChild(styleRow);
+
+      const newBufferRow = document.createElement('label');
+      newBufferRow.style.display = 'flex';
+      newBufferRow.style.alignItems = 'center';
+      newBufferRow.style.gap = '6px';
+      newBufferRow.style.fontSize = '13px';
+      newBufferRow.style.marginBottom = '10px';
+      newBufferRow.style.cursor = 'pointer';
+      const newBufferCheckbox = document.createElement('input');
+      newBufferCheckbox.type = 'checkbox';
+      newBufferCheckbox.checked = exportVcardToNewBuffer;
+      newBufferCheckbox.onchange = () => {
+        exportVcardToNewBuffer = newBufferCheckbox.checked;
+      };
+      newBufferRow.appendChild(newBufferCheckbox);
+      newBufferRow.appendChild(document.createTextNode('To: *new buffer*'));
+      morePanel.appendChild(newBufferRow);
 
       const narrowStatus = narrowedHeading || sparseNarrowScope ? document.createElement('div') : null;
       if (narrowStatus) {
@@ -9670,6 +9756,50 @@ function renderExportFlow() {
 }
 
 function renderImportFlow() {
+  if (importPickingHeading) {
+    const label = document.createElement('div');
+    label.style.fontSize = '12px';
+    label.style.opacity = '0.7';
+    label.style.marginBottom = '4px';
+    label.textContent = 'Choose a heading:';
+    morePanel.appendChild(label);
+
+    const list = document.createElement('div');
+    list.style.maxHeight = '260px';
+    list.style.overflowY = 'auto';
+    list.style.overscrollBehavior = 'contain';
+    const headings = allHeadingsInOrder(state.doc);
+    if (headings.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.fontSize = '13px';
+      empty.style.opacity = '0.6';
+      empty.style.padding = '8px 0';
+      empty.textContent = 'This file has no headings yet.';
+      list.appendChild(empty);
+    }
+    for (const { heading, depth } of headings) {
+      const row = document.createElement('div');
+      row.className = 'menu-list-item';
+      row.style.paddingLeft = 14 + depth * 16 + 'px';
+      row.textContent = heading.title || '(untitled)';
+      row.onclick = () => importVcardFromHeadings(headingsInSubtree(heading), heading.title || '(untitled)');
+      list.appendChild(row);
+    }
+    morePanel.appendChild(list);
+
+    const backRow = document.createElement('div');
+    backRow.className = 'panel-row';
+    backRow.style.marginTop = '6px';
+    backRow.appendChild(
+      menuButton('\u2039 Back', () => {
+        importPickingHeading = false;
+        renderMoreMenu();
+      })
+    );
+    morePanel.appendChild(backRow);
+    return;
+  }
+
   const label = document.createElement('div');
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
@@ -9709,7 +9839,7 @@ function renderImportFlow() {
   cleanRow.style.alignItems = 'center';
   cleanRow.style.gap = '6px';
   cleanRow.style.fontSize = '13px';
-  cleanRow.style.marginBottom = '10px';
+  cleanRow.style.marginBottom = '6px';
   cleanRow.style.cursor = 'pointer';
   const cleanCheckbox = document.createElement('input');
   cleanCheckbox.type = 'checkbox';
@@ -9720,6 +9850,23 @@ function renderImportFlow() {
   cleanRow.appendChild(cleanCheckbox);
   cleanRow.appendChild(document.createTextNode('Clean data (Google, Apple)'));
   morePanel.appendChild(cleanRow);
+
+  const newBufferRow = document.createElement('label');
+  newBufferRow.style.display = 'flex';
+  newBufferRow.style.alignItems = 'center';
+  newBufferRow.style.gap = '6px';
+  newBufferRow.style.fontSize = '13px';
+  newBufferRow.style.marginBottom = '10px';
+  newBufferRow.style.cursor = 'pointer';
+  const newBufferCheckbox = document.createElement('input');
+  newBufferCheckbox.type = 'checkbox';
+  newBufferCheckbox.checked = importVcardToNewBuffer;
+  newBufferCheckbox.onchange = () => {
+    importVcardToNewBuffer = newBufferCheckbox.checked;
+  };
+  newBufferRow.appendChild(newBufferCheckbox);
+  newBufferRow.appendChild(document.createTextNode('To: *new buffer*'));
+  morePanel.appendChild(newBufferRow);
 
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
@@ -9735,7 +9882,7 @@ function renderImportFlow() {
       setStatus(`Could not read "${file.name}": ${err.message}`);
       return;
     }
-    importVcardFile(vcardText);
+    await importVcardFile(vcardText);
   });
   morePanel.appendChild(fileInput);
 
@@ -9743,6 +9890,16 @@ function renderImportFlow() {
   pickRow.className = 'panel-row';
   pickRow.appendChild(menuButton('Choose vCard file\u2026', () => fileInput.click()));
   morePanel.appendChild(pickRow);
+
+  morePanel.appendChild(
+    menuDivItem('Choose a heading\u2026', () => {
+      importPickingHeading = true;
+      renderMoreMenu();
+    })
+  );
+  morePanel.appendChild(
+    menuDivItem('This file', () => importVcardFromHeadings(allHeadingsInOrder(state.doc), 'this file'))
+  );
 
   const backRow = document.createElement('div');
   backRow.className = 'panel-row';
@@ -9764,12 +9921,23 @@ function renderImportFlow() {
  *  risks overwriting anything already in the file. A file with no
  *  valid (FN-bearing) contacts produces a clear status message rather
  *  than silently doing nothing. */
-function importVcardFile(vcardText) {
+async function importVcardFromHeadings(headings, sourceLabel) {
+  const bodies = vcardBodyHeadingsIn(headings);
+  if (bodies.length === 0) {
+    setStatus(`No vCard data found in ${sourceLabel} \u2014 looking for a heading whose own body starts with "BEGIN:VCARD".`);
+    return;
+  }
+  await importVcardFile(bodies.join('\n'));
+}
+
+async function importVcardFile(vcardText) {
   const unmappedProperties = [];
+  let embeddedPhotoCount = 0;
   const orgText = importVcardsAsOrgText(vcardText, {
     style: importStyle,
     cleanMode: importCleanMode,
     onUnmappedProperty: (name) => unmappedProperties.push(name),
+    onEmbeddedPhotoImported: () => embeddedPhotoCount++,
   });
   if (!orgText) {
     setStatus('No valid contacts found in that file \u2014 each vCard needs at least a name (FN) to import.');
@@ -9777,16 +9945,23 @@ function importVcardFile(vcardText) {
   }
   const parsed = parseOrg(orgText);
   const importedHeadings = parsed.children;
-  state.doc.children.push(...importedHeadings);
-  moreOpen = false;
-  moreMenuStep = null;
-  renderMoreMenu();
   const count = importedHeadings.length;
-  commitAndRender(`Imported ${count} contact${count === 1 ? '' : 's'} from vCard`);
   const warning = unmappedProperties.length
     ? ` ${unmappedProperties.length} unrecognized propert${unmappedProperties.length === 1 ? 'y was' : 'ies were'} skipped: ${unmappedProperties.join(', ')}.`
     : '';
-  setStatus(`Imported ${count} contact${count === 1 ? '' : 's'} from vCard.${warning}`);
+  const photoNote = embeddedPhotoCount ? ` ${embeddedPhotoCount} embedded photo${embeddedPhotoCount === 1 ? '' : 's'} imported.` : '';
+  moreOpen = false;
+  moreMenuStep = null;
+  importPickingHeading = false;
+  if (importVcardToNewBuffer) {
+    renderMoreMenu();
+    await createNewUnsavedDocument(orgText, `Imported ${count} contact${count === 1 ? '' : 's'} from vCard in a new buffer.${warning}${photoNote}`);
+    return;
+  }
+  state.doc.children.push(...importedHeadings);
+  renderMoreMenu();
+  commitAndRender(`Imported ${count} contact${count === 1 ? '' : 's'} from vCard`);
+  setStatus(`Imported ${count} contact${count === 1 ? '' : 's'} from vCard.${warning}${photoNote}`);
 }
 
 function stopBrowsing() {
@@ -11712,6 +11887,14 @@ const QUICK_SETTINGS_FIELDS = [
   {
     key: 'org-startup-with-inline-images',
     label: 'Show images inline on open',
+    section: 'Startup',
+    type: 'boolean',
+    default: false,
+    helpAnchor: '#folding-and-startup',
+  },
+  {
+    key: 'org-xx-startup-with-show-photos',
+    label: 'Show contact photos',
     section: 'Startup',
     type: 'boolean',
     default: false,

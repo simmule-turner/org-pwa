@@ -6,6 +6,27 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v356 — vCard import/export: new-buffer destination, new sources
+Export > Contacts (.vcf) gets a new "To: *new buffer*" checkbox —
+instead of a file download, sends the exported vCard text to a new
+document (titled "*scratch*"), under a plain "vCard(s)" heading.
+Import gets the mirror image: "Choose a heading..." and "This file"
+as new sources alongside the existing file picker — either scans
+for any heading whose own body starts with BEGIN:VCARD and imports
+what it finds (a document can have zero, one, or several) — plus
+its own "To: *new buffer*" checkbox, routing the result into a new
+buffer instead of the currently open document.
+
+* v355 — vCard import keeps embedded photos; new photo display
+A base64-embedded PHOTO is no longer dropped on import — it's kept
+as a data: URI (the same format this app already uses for local
+images), with the import status message now saying how many photos
+were imported. New setting, off by default: "Show contact photos"
+(Settings > Startup). When on, a contact's own photo renders as a
+small thumbnail right where its own field already lives — next to
+:PHOTO: in Flat style, inside the "Photo" sub-heading's own drawer
+in Tree style — visible only when that field itself is expanded.
+
 * v354 — Export > Contacts (.vcf): Tree default, cleaner heading list
 Its own Flat/Tree toggle now defaults to Tree, matching Import's own
 default. Separately, the "Choose a heading" picker — for Tree style
