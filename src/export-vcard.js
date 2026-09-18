@@ -97,6 +97,24 @@ function parseBirthdayDate(raw) {
  *  the family name, everything before it the given name(s); a single-
  *  word name (a company, a mononym) becomes just the family name with
  *  an empty given name. */
+/** Builds the structured, semicolon-separated portion of an ADR value
+ *  (everything after the leading colon) -- from `raw` (the 7 real
+ *  components, preserved verbatim on import, re-escaped
+ *  component-by-component here, the exact same approach N already
+ *  uses) when present, or falling back to cramming the single joined
+ *  `address` value into just the street position when it isn't (a
+ *  hand-typed or simply-structured address that never had real,
+ *  separate components to begin with). Confirmed directly that always
+ *  doing the latter -- an earlier version of this module -- destroys
+ *  a real vCard's own structural separation between street, city,
+ *  region, postal code, and country, even when the original had them
+ *  as genuinely distinct, populated fields (City/Region/PostalCode/
+ *  Country all becoming empty on export). */
+function buildAdrValue(address, raw) {
+  if (raw) return raw.split(';').map(escapeVcardText).join(';');
+  return `;;${escapeVcardText(address)};;;;`;
+}
+
 function splitNameForN(fullName) {
   const trimmed = fullName.trim();
   const lastSpace = trimmed.lastIndexOf(' ');
@@ -108,6 +126,21 @@ function splitNameForN(fullName) {
  *  lines), or null if this heading isn't a valid, exportable contact
  *  at all -- either requirement (1) EMAIL present, (2) not :IGNORE: t
  *  fails. */
+/** Builds a CATEGORIES: line -- from a preserved :CATEGORIES_RAW:
+ *  property (see import-vcard.js's own categoriesRaw field) when
+ *  present, restoring the exact original text; otherwise reconstructed
+ *  from the heading's own tags. Confirmed directly that always doing
+ *  the latter loses real information irreversibly: org tags cannot
+ *  contain spaces at all, so "Other Account" becomes "Other_Account"
+ *  once stored as a tag, with no way back from the tag alone. Returns
+ *  null when there's nothing to write either way. */
+function buildCategoriesLine(heading) {
+  const raw = getProperty(heading, 'CATEGORIES_RAW');
+  if (raw) return `CATEGORIES:${raw.split(',').map(escapeVcardText).join(',')}`;
+  if (heading.tags && heading.tags.length) return `CATEGORIES:${heading.tags.map(escapeVcardText).join(',')}`;
+  return null;
+}
+
 function buildVcard(heading, birthdayProperty) {
   const ignore = getProperty(heading, 'IGNORE');
   if (ignore && String(ignore).trim().toLowerCase() === 't') return null;
@@ -119,6 +152,7 @@ function buildVcard(heading, birthdayProperty) {
   const workPhone = getProperty(heading, 'WORK_PHONE');
   const address = getProperty(heading, 'ADDRESS') || getProperty(heading, 'ADR');
   const addressLabel = getProperty(heading, 'ADDRESS_LABEL');
+  const addressRaw = getProperty(heading, 'ADDRESS_RAW');
   const nickname = getProperty(heading, 'NICKNAME');
   const org = getProperty(heading, 'ORG');
   const jobTitle = getProperty(heading, 'JOB_TITLE');
@@ -166,7 +200,7 @@ function buildVcard(heading, birthdayProperty) {
   if (workPhone) lines.push(`TEL;TYPE=WORK:${escapeVcardText(workPhone)}`);
   if (address) {
     const labelParam = addressLabel ? `;LABEL="${escapeVcardLabelParam(addressLabel)}"` : '';
-    lines.push(`ADR${labelParam}:;;${escapeVcardText(address)};;;;`);
+    lines.push(`ADR${labelParam}:${buildAdrValue(address, addressRaw)}`);
   }
   if (nickname) lines.push(`NICKNAME:${escapeVcardText(nickname)}`);
   if (org) lines.push(`ORG:${escapeVcardText(org)}`);
@@ -177,7 +211,8 @@ function buildVcard(heading, birthdayProperty) {
   }
   if (photo) lines.push(`PHOTO:${escapeVcardText(photo)}`);
   if (note) lines.push(`NOTE:${escapeVcardText(note)}`);
-  if (heading.tags && heading.tags.length) lines.push(`CATEGORIES:${heading.tags.map(escapeVcardText).join(',')}`);
+  const categoriesLine = buildCategoriesLine(heading);
+  if (categoriesLine) lines.push(categoriesLine);
   if (birthdayRaw) {
     const bday = parseBirthdayDate(birthdayRaw);
     if (bday) lines.push(`BDAY:${bday.year}-${pad2(bday.month)}-${pad2(bday.day)}`);
@@ -201,9 +236,9 @@ const TREE_FIELDTYPE_TO_VCARD_LINE = {
   email: (value, label) => `EMAIL${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
   'email-work': (value, label) => `EMAIL;TYPE=WORK${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
   'email-home': (value, label) => `EMAIL;TYPE=HOME${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
-  address: (value, label) => `ADR${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:;;${escapeVcardText(value)};;;;`,
-  'address-work': (value, label) => `ADR;TYPE=WORK${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:;;${escapeVcardText(value)};;;;`,
-  'address-home': (value, label) => `ADR;TYPE=HOME${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:;;${escapeVcardText(value)};;;;`,
+  address: (value, label, raw) => `ADR${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${buildAdrValue(value, raw)}`,
+  'address-work': (value, label, raw) => `ADR;TYPE=WORK${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${buildAdrValue(value, raw)}`,
+  'address-home': (value, label, raw) => `ADR;TYPE=HOME${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${buildAdrValue(value, raw)}`,
   nickname: (value) => `NICKNAME:${escapeVcardText(value)}`,
   org: (value) => `ORG:${escapeVcardText(value)}`,
   'job-title': (value) => `TITLE:${escapeVcardText(value)}`,
@@ -292,7 +327,8 @@ function buildVcardFromTreeContact(heading) {
         const isAddressField = fieldType === 'address' || fieldType === 'address-work' || fieldType === 'address-home';
         const value = fieldType === 'note' ? noteBlockText(child) : child.title || '';
         const label = isAddressField ? blockText(child) : getProperty(child, 'LABEL');
-        const line = builder(value, label);
+        const raw = isAddressField ? getProperty(child, 'RAW') : null;
+        const line = builder(value, label, raw);
         if (line) lines.push(line);
       }
       walk(child); // recurse into grouping headings ("Email" > "Work" > the actual address) as well as leaves directly under the contact
@@ -300,7 +336,8 @@ function buildVcardFromTreeContact(heading) {
   }
   walk(heading);
 
-  if (heading.tags && heading.tags.length) lines.push(`CATEGORIES:${heading.tags.map(escapeVcardText).join(',')}`);
+  const categoriesLine = buildCategoriesLine(heading);
+  if (categoriesLine) lines.push(categoriesLine);
 
   lines.push('END:VCARD');
   return lines.map(foldLine);

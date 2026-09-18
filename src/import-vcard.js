@@ -148,7 +148,11 @@ function parseVcardLine(line, cleanMode) {
     } else {
       val = val.toUpperCase();
     }
-    params[key] = val;
+    if (params[key] !== undefined) {
+      params[key] += ',' + val; // repeated parameter -- accumulate, don't overwrite (real vCard 3.0 allows TYPE=INTERNET;TYPE=HOME to mean both apply)
+    } else {
+      params[key] = val;
+    }
   }
   let value = unescapeVcardText(rawValue);
   if (cleanMode) value = unescapeGoogleColon(value);
@@ -251,6 +255,7 @@ export function parseVcards(text, opts = {}) {
         jobTitle: null,
         photo: null,
         categories: [],
+        categoriesRaw: null,
       };
       groupRefs = {};
       continue;
@@ -321,8 +326,17 @@ export function parseVcards(text, opts = {}) {
         const label = parsed.params.LABEL || googleLabel || null;
         const value = structured || label || '';
         const finalLabel = structured ? label : null; // no structured value at all -- value already equals the label, so it's not stored a second time
+        // THE FIX: the real 7 components, kept in their own original,
+        // structured form (padded to exactly 7 if fewer were given) --
+        // `value` above is a joined, human-readable summary for
+        // display, but export needs the real structure back to avoid
+        // collapsing City/Region/PostalCode/Country into one string,
+        // confirmed directly to have been happening before this fix.
+        const raw7 = [...rawParts.slice(0, 7)];
+        while (raw7.length < 7) raw7.push('');
+        const finalRaw = structured ? raw7.join(';') : null;
         if (value) {
-          const entry = { value, label: finalLabel, type: parsed.params.TYPE || null };
+          const entry = { value, label: finalLabel, raw: finalRaw, type: parsed.params.TYPE || null };
           current.adrs.push(entry);
           if (parsed.group) groupRefs[parsed.group] = entry;
         }
@@ -385,6 +399,7 @@ export function parseVcards(text, opts = {}) {
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean);
+        current.categoriesRaw = parsed.value;
         break;
       case 'X-ABLABEL': {
         // Apple/Google's own real-world convention -- see this
@@ -515,6 +530,7 @@ function buildFlatOrgFromContact(contact) {
   const lines = [`* ${title}${tagSuffix}`];
 
   const propertyLines = [];
+  if (contact.categoriesRaw) propertyLines.push(`:CATEGORIES_RAW: ${forPropertyValue(contact.categoriesRaw)}`);
   if (contact.n) propertyLines.push(`:N: ${contact.n}`);
   if (contact.emails.length) {
     propertyLines.push(`:EMAIL: ${contact.emails[0].value}`);
@@ -530,6 +546,7 @@ function buildFlatOrgFromContact(contact) {
   if (contact.adrs.length) {
     propertyLines.push(`:ADDRESS: ${forPropertyValue(contact.adrs[0].value)}`);
     if (contact.adrs[0].label) propertyLines.push(`:ADDRESS_LABEL: ${forPropertyValue(contact.adrs[0].label)}`);
+    if (contact.adrs[0].raw) propertyLines.push(`:ADDRESS_RAW: ${forHeadingTitle(contact.adrs[0].raw)}`);
   }
   if (contact.nickname) propertyLines.push(`:NICKNAME: ${forPropertyValue(contact.nickname)}`);
   if (contact.org) propertyLines.push(`:ORG: ${forPropertyValue(contact.org)}`);
@@ -608,7 +625,9 @@ const FIELDTYPE_LABELS = {
 function buildTreeOrgFromContact(contact) {
   const title = forHeadingTitle(contact.fn);
   const tagSuffix = contact.categories.length ? `  :${contact.categories.map((c) => c.replace(/[^A-Za-z0-9_@]/g, '_')).join(':')}:` : '';
-  const lines = [`* ${title}${tagSuffix}`, ':PROPERTIES:', ':KIND: individual', ':FIELDTYPE: name', ':END:'];
+  const contactProps = [':KIND: individual', ':FIELDTYPE: name'];
+  if (contact.categoriesRaw) contactProps.push(`:CATEGORIES_RAW: ${forPropertyValue(contact.categoriesRaw)}`);
+  const lines = [`* ${title}${tagSuffix}`, ':PROPERTIES:', ...contactProps, ':END:'];
 
   const field = (value, fieldType, forceBlock = false, extraBlockText = null, extraProperties = null) => {
     const propLines = [`:FIELDTYPE: ${fieldType}`];
@@ -633,7 +652,7 @@ function buildTreeOrgFromContact(contact) {
   if (contact.n) field(contact.n, 'n');
   for (const email of contact.emails) field(email.value, emailFieldType(email), false, null, { LABEL: email.label });
   for (const tel of contact.tels) field(tel.value, telFieldType(tel), false, null, { LABEL: tel.label });
-  for (const adr of contact.adrs) field(adr.value, adrFieldType(adr), false, adr.label);
+  for (const adr of contact.adrs) field(adr.value, adrFieldType(adr), false, adr.label, { RAW: adr.raw ? forHeadingTitle(adr.raw) : null });
   if (contact.nickname) field(contact.nickname, 'nickname');
   if (contact.org) field(contact.org, 'org');
   if (contact.jobTitle) field(contact.jobTitle, 'job-title');
