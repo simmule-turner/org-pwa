@@ -4125,7 +4125,7 @@ let moreMenuStep = null; // null | 'export' -- see renderMoreMenuContent
 // backend-choice pattern the rest of the file menu already uses.
 let exportFormat = null;
 let exportPickingHeading = false;
-let vcardStyle = 'flat'; // 'flat' (real org-contacts.el's own convention, the default) or 'tree' (real org-vcard's own alternative) -- see export-vcard.js's own doc comment for the full structure of each
+let vcardStyle = 'tree'; // 'flat' (real org-contacts.el's own convention) or 'tree' (real org-vcard's own alternative, the default) -- see export-vcard.js's own doc comment for the full structure of each. Defaults to 'tree' to match importStyle just below, for the same reason: flat has a real ceiling (only the first of each repeated field survives), where tree keeps every one.
 let importStyle = 'tree'; // same two options, for org-vcard-import (More > Import) -- independent of vcardStyle above, since someone might export in one style but want to import a vCard from elsewhere into the other. Defaults to 'tree', not 'flat': flat has a real ceiling (only the first of each repeated field -- email, phone, address -- survives), where tree keeps every one, matching import-vcard.js's own library-level default.
 let importCleanMode = true; // Google's and Apple's own real, non-standard vCard export quirks (an 8th ADR component read as a human-readable label; "\:" unescaped to ":"; Apple's own X-ABLabel placeholder forms interpreted rather than shown verbatim) -- on by default, since most real-world vCard imports into this app are likely to come from one of these two sources
 
@@ -9595,19 +9595,34 @@ function renderExportFlow() {
     list.style.maxHeight = '260px';
     list.style.overflowY = 'auto';
     list.style.overscrollBehavior = 'contain';
-    const headings = allHeadingsInOrder(state.doc);
+    // For Tree-style vCard export specifically, only real contacts (a
+    // :KIND: property set) are worth listing -- their own
+    // sub-headings (email/phone/address entries) aren't independently
+    // exportable as a vCard at all, and including them meant
+    // scrolling through hundreds of irrelevant rows to find an actual
+    // contact. Flat style never sets :KIND: at all (a flat contact is
+    // one heading with EMAIL/PHONE/ADDRESS as plain properties, not
+    // separate sub-headings), so it has no real sub-heading pollution
+    // to filter out in the first place -- every heading is already a
+    // potential top-level contact, so it keeps the unfiltered list.
+    // Every other export format (HTML, Markdown, iCalendar, etc.)
+    // also keeps the unfiltered list, since any heading is a
+    // legitimate target for those.
+    const isTreeVcard = exportFormat === 'vcard' && vcardStyle === 'tree';
+    const allHeadings = allHeadingsInOrder(state.doc);
+    const headings = isTreeVcard ? allHeadings.filter(({ heading }) => heading.properties.KIND) : allHeadings;
     if (headings.length === 0) {
       const empty = document.createElement('div');
       empty.style.fontSize = '13px';
       empty.style.opacity = '0.6';
       empty.style.padding = '8px 0';
-      empty.textContent = 'This file has no headings yet.';
+      empty.textContent = isTreeVcard ? 'This file has no contacts yet.' : 'This file has no headings yet.';
       list.appendChild(empty);
     }
     for (const { heading, depth } of headings) {
       const row = document.createElement('div');
       row.className = 'menu-list-item';
-      row.style.paddingLeft = 14 + depth * 16 + 'px';
+      row.style.paddingLeft = 14 + (isTreeVcard ? 0 : depth * 16) + 'px'; // Tree vCard's own list is already flat (contacts only, no real hierarchy to indent)
       row.textContent = heading.title || '(untitled)';
       row.onclick = () => performExport(exportFormat, heading);
       list.appendChild(row);

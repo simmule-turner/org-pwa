@@ -6,6 +6,16 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v354 — Export > Contacts (.vcf): Tree default, cleaner heading list
+Its own Flat/Tree toggle now defaults to Tree, matching Import's own
+default. Separately, the "Choose a heading" picker — for Tree style
+specifically — now only lists actual contacts (headings with a
+:KIND: property), not their own email/phone/address sub-headings,
+which aren't independently exportable as a vCard anyway and were
+turning a document with many contacts into hundreds of rows to
+scroll through. Flat style is unaffected — it never uses :KIND: at
+all, and has no such sub-headings to begin with.
+
 * v353 — Agenda: diary-sexp entries no longer show a leading 🔁
 A diary-sexp entry's own title is free-form (it's the sexp's own
 return value, or the heading's own title), so the generic "this is a
