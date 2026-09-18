@@ -6,6 +6,23 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v358 — README.org updated with the vCard/contacts accumulation
+Documents everything since its last update: Tree as the default
+export style, the new "To: *new buffer*" checkbox (Export and
+Import), Import's two new sources ("Choose a heading...", "This
+file"), the Tree-style export picker's own :KIND: filter, base64
+photo preservation, and the new org-xx-startup-with-show-photos
+setting. Also fixes one unrelated, pre-existing bug found along the
+way: a Markdown-style "**double-asterisk**" bold span in the Docs
+section, which real org doesn't support and was rendering as
+incorrect nested bold.
+
+* v357 — Fix: Export > Contacts (.vcf) screen relabeled
+"Style:" (labeling only the Flat/Tree toggle) is gone, replaced as
+the screen's own top header by "Export Contacts (.vcf) for:" —
+matching Import's own screen exactly, which has never had a
+separate "Style:" label at all.
+
 * v356 — vCard import/export: new-buffer destination, new sources
 Export > Contacts (.vcf) gets a new "To: *new buffer*" checkbox —
 instead of a file download, sends the exported vCard text to a new

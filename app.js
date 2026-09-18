@@ -9560,14 +9560,14 @@ function renderExportFlow() {
   if ((exportFormat === 'icalendar' || exportFormat === 'vcard') && !exportPickingHeading) {
     const isVcard = exportFormat === 'vcard';
 
-    if (isVcard) {
-      const styleLabel = document.createElement('div');
-      styleLabel.style.fontSize = '12px';
-      styleLabel.style.opacity = '0.7';
-      styleLabel.style.marginBottom = '4px';
-      styleLabel.textContent = 'Style:';
-      morePanel.appendChild(styleLabel);
+    const label = document.createElement('div');
+    label.style.fontSize = '12px';
+    label.style.opacity = '0.7';
+    label.style.marginBottom = '4px';
+    label.textContent = `Export ${isVcard ? 'Contacts (.vcf)' : 'Calendar (.ics)'} for:`;
+    morePanel.appendChild(label);
 
+    if (isVcard) {
       const styleRow = document.createElement('div');
       styleRow.style.display = 'flex';
       styleRow.style.border = '1px solid var(--border-strong)';
@@ -9623,13 +9623,6 @@ function renderExportFlow() {
         morePanel.appendChild(narrowStatus);
       }
     }
-
-    const label = document.createElement('div');
-    label.style.fontSize = '12px';
-    label.style.opacity = '0.7';
-    label.style.marginBottom = '4px';
-    label.textContent = `Export ${isVcard ? 'Contacts (.vcf)' : 'Calendar (.ics)'} for:`;
-    morePanel.appendChild(label);
 
     morePanel.appendChild(
       menuDivItem('Choose a heading\u2026', () => {
