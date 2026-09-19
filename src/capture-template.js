@@ -469,7 +469,26 @@ function firstListItemIn(heading) {
  * yet" and "list already exists, extend it" the same way, uniformly,
  * without needing to detect and branch on which case applies.
  */
-function insertCapture(target, type, expandedText, prepend = false) {
+/** Removes every property from `heading` (and, recursively, every
+ *  descendant heading) whose own value is empty or whitespace-only --
+ *  the omitEmptyEntries capture-template option's own implementation.
+ *  Mutates both heading.properties and heading.propertyOrder, the
+ *  same two structures a property removal always needs to keep in
+ *  sync with each other (see src/archive-model.js's own
+ *  deleteProperty for the same pattern; reimplemented locally here
+ *  rather than importing it, since this module's own template-
+ *  expansion half is deliberately self-contained and dependency-free). */
+function stripEmptyProperties(heading) {
+  for (const key of [...heading.propertyOrder]) {
+    if (!String(heading.properties[key] ?? '').trim()) {
+      delete heading.properties[key];
+      heading.propertyOrder = heading.propertyOrder.filter((k) => k !== key);
+    }
+  }
+  for (const child of heading.children || []) stripEmptyProperties(child);
+}
+
+function insertCapture(target, type, expandedText, prepend = false, omitEmptyEntries = false) {
   if (type === 'item') {
     const fragment = parseOrg('- ' + expandedText);
     mergeFragmentInto(target, fragment, prepend);
@@ -509,6 +528,7 @@ function insertCapture(target, type, expandedText, prepend = false) {
   // 'plain' (and the fallback for anything unrecognized -- inserting the
   // text verbatim is a safer default than silently discarding it)
   const fragment = parseOrg(expandedText);
+  if (omitEmptyEntries) for (const heading of fragment.children) stripEmptyProperties(heading);
   const producedHeadings = fragment.children.length > 0;
   mergeFragmentInto(target, fragment, prepend);
   if (!producedHeadings) return null;
