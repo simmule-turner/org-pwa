@@ -14383,6 +14383,7 @@ function validateCaptureTemplates(parsed) {
     if ('file' in t && typeof t.file !== 'string') return `${label}: "file" must be a string if present`;
     if ('prepend' in t && typeof t.prepend !== 'boolean') return `${label}: "prepend" must be true or false if present`;
     if ('prependHeading' in t && typeof t.prependHeading !== 'boolean') return `${label}: "prependHeading" must be true or false if present`;
+    if ('omitEmptyEntries' in t && typeof t.omitEmptyEntries !== 'boolean') return `${label}: "omitEmptyEntries" must be true or false if present`;
   }
   const keys = parsed.map((t) => t.key);
   const duplicate = keys.find((k, i) => keys.indexOf(k) !== i);
@@ -14766,7 +14767,7 @@ async function runCaptureWithAnswers(template, answers) {
           tableRowNumber = template.prepend && existingTable ? 1 : dataRowCount + 1;
         }
         const { text } = expandTemplate(template.template, { now, promptAnswers: answers, tableRowNumber });
-        insertCapture(target, template.type, text, template.prepend);
+        insertCapture(target, template.type, text, template.prepend, template.omitEmptyEntries);
         return true;
       },
     });
@@ -14799,7 +14800,7 @@ async function runCaptureWithAnswers(template, answers) {
     tableRowNumber,
   });
 
-  insertCapture(target, template.type, text, template.prepend);
+  insertCapture(target, template.type, text, template.prepend, template.omitEmptyEntries);
   commitAndRender(`Captured: ${template.description}`);
 
   switchToView('org');

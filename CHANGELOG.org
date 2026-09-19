@@ -6,6 +6,15 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v360 — Capture templates: omitEmptyEntries option
+"omitEmptyEntries": true strips any property whose own value came
+out empty (an optional prompt left blank) from the captured
+heading, instead of leaving a bare, valueless property line behind.
+Built for the vCard-entry template just above, whose own optional
+fields (phone, birthday, URL, notes) are routinely left blank per
+contact — applies to 'plain' type templates specifically, the only
+kind with a real property drawer to begin with.
+
 * v359 — Capture templates: %\N backreferences
 Matches real org-mode's own convention: %\1 re-inserts the answer
 already given to the first %^{...}/%? prompt, %\2 the second, and
