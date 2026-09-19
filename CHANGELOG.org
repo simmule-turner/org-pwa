@@ -6,6 +6,17 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v359 — Capture templates: %\N backreferences
+Matches real org-mode's own convention: %\1 re-inserts the answer
+already given to the first %^{...}/%? prompt, %\2 the second, and
+so on — never asks again, never a new prompt of its own. Built for
+a vCard-entry template that needs a name once, reused for both :FN:
+(joined) and :N: (reversed, real vCard order). One thing worth
+knowing: since templates here are real JSON, not Emacs Lisp,
+writing %\1 in one needs a doubled backslash (%\\1) — the same
+requirement Lisp string literals have too, just showing up in a
+different host language.
+
 * v358 — README.org updated with the vCard/contacts accumulation
 Documents everything since its last update: Tree as the default
 export style, the new "To: *new buffer*" checkbox (Export and
