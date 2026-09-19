@@ -469,15 +469,46 @@ function firstListItemIn(heading) {
  * yet" and "list already exists, extend it" the same way, uniformly,
  * without needing to detect and branch on which case applies.
  */
+/** A vCard-style (or any KEY:value-shaped) plain body line whose own
+ *  value is empty -- everything after the colon is nothing but
+ *  whitespace and/or semicolons. Semicolons specifically, not just
+ *  whitespace, because vCard's own multi-field properties (N, ADR)
+ *  keep their own structural separators in the template regardless of
+ *  which individual %^{...} fields were filled in -- "ADR;TYPE=home:
+ *  ;;;;;;" with every field left blank is still, semantically, an
+ *  entirely empty entry, even though literal semicolons remain. */
+const EMPTY_BODY_LINE_RE = /^[A-Za-z][A-Za-z0-9_-]*(;[^:\n]*)?:[;\s]*$/;
+
+/** A trailing, entirely empty tag list on a heading's own title --
+ *  "Title ::" specifically, not "Title :tag:". Real org's own tag
+ *  syntax requires at least one real tag between the colons, so an
+ *  empty one (every %^{...} tag prompt left blank) is never
+ *  recognized as a tag list at all by the parser -- it falls back to
+ *  being kept as plain, literal title text instead, which is exactly
+ *  what this strips back out. A tag list with at least one real tag
+ *  mixed among empty ones needs no help here: the parser already
+ *  collapses "Title :Work::Home:" to tags ["Work", "Home"] on its
+ *  own, with the title cleaned up correctly, before this ever runs. */
+const EMPTY_TRAILING_TAG_RE = /\s+:{2,}$/;
+
 /** Removes every property from `heading` (and, recursively, every
- *  descendant heading) whose own value is empty or whitespace-only --
- *  the omitEmptyEntries capture-template option's own implementation.
- *  Mutates both heading.properties and heading.propertyOrder, the
- *  same two structures a property removal always needs to keep in
- *  sync with each other (see src/archive-model.js's own
- *  deleteProperty for the same pattern; reimplemented locally here
- *  rather than importing it, since this module's own template-
- *  expansion half is deliberately self-contained and dependency-free). */
+ *  descendant heading) whose own value is empty or whitespace-only,
+ *  every plain body line whose own value is empty in the same sense
+ *  (see EMPTY_BODY_LINE_RE), and an empty trailing tag from the
+ *  heading's own title (see EMPTY_TRAILING_TAG_RE) -- together, the
+ *  omitEmptyEntries capture-template option's own full
+ *  implementation, covering both ways a template can represent its
+ *  own fields (a real :PROPERTIES: drawer, or plain body text lines
+ *  -- e.g. raw vCard content, matching the same shape this app's own
+ *  vCard export already produces for its own "new buffer"
+ *  destination). Mutates heading.properties/propertyOrder (the same
+ *  two structures a property removal always needs to keep in sync,
+ *  see src/archive-model.js's own deleteProperty for the same
+ *  pattern, reimplemented locally here rather than imported, since
+ *  this module's own template-expansion half is deliberately
+ *  self-contained and dependency-free), heading.bodyLines/body (the
+ *  same two structures every other body edit in this app keeps in
+ *  sync with each other), and heading.title. */
 function stripEmptyProperties(heading) {
   for (const key of [...heading.propertyOrder]) {
     if (!String(heading.properties[key] ?? '').trim()) {
@@ -485,6 +516,12 @@ function stripEmptyProperties(heading) {
       heading.propertyOrder = heading.propertyOrder.filter((k) => k !== key);
     }
   }
+  const keptLines = heading.bodyLines.filter((line) => !EMPTY_BODY_LINE_RE.test(line));
+  if (keptLines.length !== heading.bodyLines.length) {
+    heading.bodyLines = keptLines;
+    heading.body = parseBody(heading.bodyLines);
+  }
+  heading.title = heading.title.replace(EMPTY_TRAILING_TAG_RE, '');
   for (const child of heading.children || []) stripEmptyProperties(child);
 }
 
