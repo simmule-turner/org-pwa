@@ -101,6 +101,49 @@ test('expandTemplate leaves a missing prompt answer as empty text rather than th
   assert.equal(text, '');
 });
 
+// ---- expandTemplate: %\N backreferences -----------------------------------
+
+test('THE FEATURE: %\\N re-inserts an already-given prompt answer, matching real org-mode\u2019s own capture-template backreference convention exactly', () => {
+  const { text } = expandTemplate('%^{Name}: %\\1', { promptAnswers: ['Alice'] });
+  assert.equal(text, 'Alice: Alice');
+});
+
+test('%\\N is 1-based and does not consume its own slot in promptAnswers -- it is a reference to an existing answer, not a new prompt', () => {
+  const { text } = expandTemplate('%^{First}-%^{Second}: %\\1 / %\\2', { promptAnswers: ['A', 'B'] });
+  assert.equal(text, 'A-B: A / B');
+});
+
+test('%\\N used more than once re-inserts the same answer every time', () => {
+  const { text } = expandTemplate('%\\1, %\\1, %\\1', { promptAnswers: ['echo'] });
+  assert.equal(text, 'echo, echo, echo');
+});
+
+test('%\\N referencing an answer that was never given (out of range) resolves to empty text, the same graceful-fallback convention every other token here already uses', () => {
+  const { text } = expandTemplate('%\\5', { promptAnswers: ['only one'] });
+  assert.equal(text, '');
+});
+
+test('%\\N alongside @# -- confirms the two capture groups don\u2019t collide after %\\N\u2019s own group was added ahead of @#\u2019s in the token pattern', () => {
+  const { text } = expandTemplate('%\\1 row @#+3', { promptAnswers: ['Name'], tableRowNumber: 5 });
+  assert.equal(text, 'Name row 8');
+});
+
+test('THE FEATURE (the exact real-world vCard template that motivated this): first/last name given once each, reused for FN and the reversed N field, without asking the person twice', () => {
+  const template =
+    '* %^{First Name} %^{Last Name} :%^{Category/Tag}:\n' +
+    ':PROPERTIES:\n' +
+    ':FN:        %\\1 %\\2\n' +
+    ':N:         %\\2;%\\1;;;\n' +
+    ':EMAIL:     %^{Email}\n' +
+    ':END:\n';
+  const answers = ['Jordan', 'Rivera', 'Work', 'jordan.rivera@example.com'];
+  const { text } = expandTemplate(template, { promptAnswers: answers });
+  assert.equal(
+    text,
+    '* Jordan Rivera :Work:\n:PROPERTIES:\n:FN:        Jordan Rivera\n:N:         Rivera;Jordan;;;\n:EMAIL:     jordan.rivera@example.com\n:END:\n'
+  );
+});
+
 // ---- expandTemplate: timestamps -------------------------------------------
 
 test('expandTemplate %t is an active, date-only timestamp', () => {
