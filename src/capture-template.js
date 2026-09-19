@@ -191,7 +191,7 @@ function expandTemplate(template, context = {}) {
   const tableRowNumber = context.tableRowNumber;
 
   const hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
-  const TOKEN_RE = /%%|%<([^>]*)>|%\^\{([^}]*)\}|%[tTuU?]|@#(?:\s*([+-])\s*(\d+))?/g;
+  const TOKEN_RE = /%%|%<([^>]*)>|%\^\{([^}]*)\}|%\\(\d+)|%[tTuU?]|@#(?:\s*([+-])\s*(\d+))?/g;
 
   let result = '';
   let lastIndex = 0;
@@ -211,6 +211,18 @@ function expandTemplate(template, context = {}) {
       const answer = promptAnswers[promptIndex];
       result += answer !== undefined && answer !== null ? answer : '';
       promptIndex += 1;
+    } else if (token.startsWith('%\\')) {
+      // %\N -- real org's own backreference: re-inserts the answer
+      // already given to the Nth %^{...}/%? prompt (1-based, in the
+      // order scanPrompts found them), rather than asking for it
+      // again. Never advances promptIndex itself -- it's a reference
+      // to an existing answer, not a new prompt of its own. Out of
+      // range (e.g. %\5 with only two real prompts) resolves to
+      // empty, the same graceful-fallback convention every other
+      // token in this table already uses for unavailable data.
+      const n = Number(match[3]);
+      const answer = promptAnswers[n - 1];
+      result += answer !== undefined && answer !== null ? answer : '';
     } else if (token === '%t') {
       result += formatOrgTimestamp({ date: now, active: true });
     } else if (token === '%T') {
@@ -223,8 +235,8 @@ function expandTemplate(template, context = {}) {
       if (tableRowNumber === undefined || tableRowNumber === null) {
         result += '';
       } else {
-        const sign = match[3];
-        const offset = match[4];
+        const sign = match[4];
+        const offset = match[5];
         const n = sign && offset ? Number(sign + offset) : 0;
         result += String(tableRowNumber + n);
       }
