@@ -497,6 +497,53 @@ test('omitEmptyEntries recurses into every sub-heading a plain-type capture prod
   assert.equal('PHONE' in work.properties, false);
 });
 
+test('THE FIX: omitEmptyEntries also strips an empty plain-body "KEY:value" line, per direct follow-up report -- a template that puts its own fields directly in the body text (raw vCard content, not a :PROPERTIES: drawer) previously had nothing stripped at all', () => {
+  const doc = parseOrg('* Contacts');
+  const target = doc.children[0];
+  const template = '* Simmule Turner\nBEGIN:VCARD\nVERSION:3.0\nFN:Simmule Turner\nEMAIL:\nTEL;TYPE=cell:\nEND:VCARD\n';
+  insertCapture(target, 'plain', template, false, true);
+  const contact = target.children[0];
+  assert.deepEqual(contact.bodyLines, ['BEGIN:VCARD', 'VERSION:3.0', 'FN:Simmule Turner', 'END:VCARD', '']);
+});
+
+test('omitEmptyEntries treats a multi-field vCard line (ADR, N) as empty when every field within it is blank, even though its own structural semicolons remain', () => {
+  const doc = parseOrg('* Contacts');
+  const target = doc.children[0];
+  const template = '* Simmule Turner\nBEGIN:VCARD\nADR;TYPE=home:;;;;;;\nN:Turner;Simmule;;;\nEND:VCARD\n';
+  insertCapture(target, 'plain', template, false, true);
+  const contact = target.children[0];
+  assert.deepEqual(contact.bodyLines, ['BEGIN:VCARD', 'N:Turner;Simmule;;;', 'END:VCARD', '']);
+});
+
+test('omitEmptyEntries leaves a non-empty plain-body line completely alone, matching real content correctly (not just detecting emptiness)', () => {
+  const doc = parseOrg('* Contacts');
+  const target = doc.children[0];
+  const template = '* Alice\nBEGIN:VCARD\nEMAIL:alice@example.com\nEND:VCARD\n';
+  insertCapture(target, 'plain', template, false, true);
+  const contact = target.children[0];
+  assert.deepEqual(contact.bodyLines, ['BEGIN:VCARD', 'EMAIL:alice@example.com', 'END:VCARD', '']);
+});
+
+test('THE FIX: omitEmptyEntries strips an entirely empty trailing tag ("Title ::") from the heading title, per direct follow-up report -- real org tag syntax needs at least one real tag between the colons, so an empty one was never recognized as a tag list at all and stayed as literal title text', () => {
+  const doc = parseOrg('* Contacts');
+  const target = doc.children[0];
+  insertCapture(target, 'plain', '* Simmule Turner ::\nSome body\n', false, true);
+  const contact = target.children[0];
+  assert.equal(contact.title, 'Simmule Turner');
+  assert.deepEqual(contact.tags, []);
+});
+
+test('a real, filled-in tag survives omitEmptyEntries untouched, alongside an empty body line stripped from the same capture', () => {
+  const doc = parseOrg('* Contacts');
+  const target = doc.children[0];
+  const template = '* Jordan Rivera :Work:\nBEGIN:VCARD\nEMAIL:jordan@example.com\nNOTE:\nEND:VCARD\n';
+  insertCapture(target, 'plain', template, false, true);
+  const contact = target.children[0];
+  assert.equal(contact.title, 'Jordan Rivera');
+  assert.deepEqual(contact.tags, ['Work']);
+  assert.deepEqual(contact.bodyLines, ['BEGIN:VCARD', 'EMAIL:jordan@example.com', 'END:VCARD', '']);
+});
+
 // ---- insertCapture: table-line -- THE BUG THIS FOUND AND FIXED ---------
 
 test('insertCapture table-line creates a new table when the target has none yet', () => {
