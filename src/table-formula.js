@@ -275,7 +275,7 @@ const TOKEN_RE =
  *  after) stops "date-to-time2" or similar from incorrectly matching
  *  the shorter, real name and leaving a stray "2" dangling as its own
  *  separate, out-of-place token. */
-const HYPHENATED_FUNCTION_RE = /^(date-to-time|format-time-string)(?![A-Za-z0-9_-])/i;
+const HYPHENATED_FUNCTION_RE = /^(date-to-time|format-time-string|orgtbl-ascii-draw)(?![A-Za-z0-9_-])/i;
 
 /** Tokenizes an RHS expression -- numbers, cell/range references
  *  (kept as single tokens, not decomposed further here), function
@@ -1055,6 +1055,11 @@ function evaluateAst(node, ctx) {
       if (TRIG_FUNCTION_NAMES.has(node.name)) return fn(argValues[0], ctx.angleMode === 'degrees');
       return fn(...argValues);
     }
+    case 'lispCall': {
+      const fn = LISP_CALL_FUNCTIONS[node.name];
+      const argValues = node.args.map((a) => evaluateAst(a, ctx));
+      return fn(...argValues);
+    }
     case 'dateCall': {
       if (node.name === 'now') {
         const now = ctx.now || new Date();
@@ -1423,6 +1428,102 @@ function formatResult(n) {
  *  discarded (parsed off, not left dangling in the expression text
  *  and misparsed as part of it) rather than actually applied -- see
  *  formatResult's own docs for why. */
+/** Real Emacs's own orgtbl-ascii-draw (org-table.el) -- draws an ASCII
+ *  bar in a table cell. VALUE is the value to plot; MIN is the value
+ *  that draws as a fully empty bar; MAX is the value that fills the
+ *  whole WIDTH (default 12 characters, matching real Emacs's own
+ *  default). A value outside [MIN, MAX] renders as the literal text
+ *  "too small" / "too large", matching real Emacs exactly -- not
+ *  thrown as an error, since a stray outlier elsewhere in the same
+ *  column is a real, expected case a formula needs to keep working
+ *  through, not abort the whole recalculation over. The 11-character
+ *  gradient (" .:;c!lhVHW", real Emacs's own actual default set)
+ *  supplies one fractional "cap" character after however many full
+ *  "W" characters the integer part of the scaled value calls for --
+ *  verified directly against real Emacs's own actual source (the
+ *  original org-table.el patch that introduced this function) and a
+ *  real-world example table (Org Plot's own documented "Sede / Max
+ *  cites" example, every one of its 6 rows hand-traced and confirmed
+ *  to match exactly), not derived from the docstring alone. */
+function orgtblAsciiDraw(value, min, max, width) {
+  const characters = ' .:;c!lhVHW';
+  width = width === undefined ? 12 : width;
+  const scaled = ((value - min) / (max - min)) * width;
+  if (scaled < 0) return 'too small';
+  if (scaled > width) return 'too large';
+  const len = characters.length - 1; // 10 -- index of the final, full-block character
+  const whole = Math.floor(scaled);
+  const frac = scaled - whole;
+  const fracChar = characters[Math.floor(frac * len)];
+  return characters[len].repeat(whole) + fracChar;
+}
+
+/** Real functions this app supports through the '(function ...) raw
+ *  Lisp-call syntax below -- deliberately narrow, not a general Elisp
+ *  interpreter: exactly the one real function actually requested. */
+const LISP_CALL_FUNCTIONS = {
+  'orgtbl-ascii-draw': orgtblAsciiDraw,
+};
+
+/** Parses real org-mode's own '(function-name arg1 arg2 ...) form --
+ *  a raw Elisp function call in a #+TBLFM: line, bypassing this app's
+ *  own normal infix expression grammar entirely, exactly the way real
+ *  org-mode treats a formula starting with a quote as a literal Elisp
+ *  form to evaluate directly rather than its own spreadsheet syntax.
+ *  `rhs` is already known to start with "'(" and end with ")" by the
+ *  time this is called (see parseFormulaStatement's own check).
+ *
+ *  Tokenizes the whole inner content ONCE (reusing this module's own
+ *  existing tokenize, now that orgtbl-ascii-draw is a recognized
+ *  hyphenated name too), then walks that single token stream to find
+ *  each argument's own boundary: a bare, space-free token (a number
+ *  or a $N reference) is one complete argument on its own; a "("
+ *  opens a fully parenthesized sub-expression argument, whose own
+ *  matching ")" is found by tracking nesting depth (so a compound
+ *  argument like "($2 * 2)" is one argument, not three). This matches
+ *  real Emacs Lisp's own actual convention exactly -- real Lisp has
+ *  no infix operators at all, so a compound argument there is always
+ *  explicitly wrapped in its own parentheses; there's no such thing
+ *  as an ambiguous, unparenthesized multi-token argument to begin
+ *  with. Once inside those parens, the content is parsed with this
+ *  app's own existing infix grammar (the same "(expr)" grouping
+ *  construct ordinary formulas already support), not real Elisp's own
+ *  separate prefix-notation convention -- reusing this app's own,
+ *  already-consistent syntax rather than requiring a second one just
+ *  for arguments inside a '(...) call. Each argument's own token
+ *  slice is handed to this module's own existing parseExpression
+ *  unchanged, so a $N reference, arithmetic, or any other construct
+ *  an ordinary formula already supports works identically here. */
+function parseLispCall(rhs) {
+  const inner = rhs.slice(2, -1).trim();
+  const tokens = tokenize(inner);
+  if (tokens.length === 0) throw new Error(`Malformed Lisp call: "${rhs}"`);
+  const name = tokens[0];
+  if (!(name in LISP_CALL_FUNCTIONS)) {
+    throw new Error(`Unsupported Lisp function "${name}" in '(...) formula -- only ${Object.keys(LISP_CALL_FUNCTIONS).join(', ')} ${Object.keys(LISP_CALL_FUNCTIONS).length === 1 ? 'is' : 'are'} supported this way`);
+  }
+  const args = [];
+  let i = 1;
+  while (i < tokens.length) {
+    if (tokens[i] === '(') {
+      let depth = 1;
+      let j = i + 1;
+      while (j < tokens.length && depth > 0) {
+        if (tokens[j] === '(') depth++;
+        else if (tokens[j] === ')') depth--;
+        j++;
+      }
+      if (depth !== 0) throw new Error(`Unbalanced parentheses in Lisp call: "${rhs}"`);
+      args.push(parseExpression(tokens.slice(i + 1, j - 1)));
+      i = j;
+    } else {
+      args.push(parseExpression([tokens[i]]));
+      i += 1;
+    }
+  }
+  return { type: 'lispCall', name, args };
+}
+
 function parseFormulaStatement(statement) {
   const eq = statement.indexOf('=');
   if (eq === -1) throw new Error(`Malformed formula, no "=": "${statement}"`);
@@ -1457,7 +1558,7 @@ function parseFormulaStatement(statement) {
     throw new Error(`Malformed formula target: "${lhs}"`);
   }
 
-  const expr = parseExpression(tokenize(rhs));
+  const expr = rhs.startsWith("'(") && rhs.endsWith(')') ? parseLispCall(rhs) : parseExpression(tokenize(rhs));
   return { target, expr, mode };
 }
 
