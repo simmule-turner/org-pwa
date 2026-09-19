@@ -456,6 +456,47 @@ test('insertCapture plain with no heading syntax at all falls back to body conte
   assert.equal(target.children.length, 0);
 });
 
+// ---- insertCapture: omitEmptyEntries --------------------------------------
+
+test('THE FEATURE: omitEmptyEntries strips a property whose own expanded value came out empty, per direct request', () => {
+  const doc = parseOrg('* Contacts');
+  const target = doc.children[0];
+  const template = '* Jordan Rivera\n:PROPERTIES:\n:EMAIL:     jordan@example.com\n:CELL:      \n:END:\n';
+  insertCapture(target, 'plain', template, false, true);
+  const contact = target.children[0];
+  assert.equal(contact.properties.EMAIL, 'jordan@example.com');
+  assert.equal('CELL' in contact.properties, false);
+  assert.equal(contact.propertyOrder.includes('CELL'), false);
+});
+
+test('omitEmptyEntries off (the default) leaves an empty property in place, matching existing behavior exactly', () => {
+  const doc = parseOrg('* Contacts');
+  const target = doc.children[0];
+  const template = '* Jordan Rivera\n:PROPERTIES:\n:EMAIL:     jordan@example.com\n:CELL:      \n:END:\n';
+  insertCapture(target, 'plain', template);
+  const contact = target.children[0];
+  assert.equal(contact.properties.CELL, '');
+});
+
+test('omitEmptyEntries treats a whitespace-only value the same as a truly empty one', () => {
+  const doc = parseOrg('* Contacts');
+  const target = doc.children[0];
+  const template = '* Jordan Rivera\n:PROPERTIES:\n:NOTE:      \t \n:END:\n';
+  insertCapture(target, 'plain', template, false, true);
+  const contact = target.children[0];
+  assert.equal('NOTE' in contact.properties, false);
+});
+
+test('omitEmptyEntries recurses into every sub-heading a plain-type capture produces, not just the top one', () => {
+  const doc = parseOrg('* Root');
+  const target = doc.children[0];
+  const template = '* Alice\n:PROPERTIES:\n:EMAIL: alice@example.com\n:END:\n** Work\n:PROPERTIES:\n:PHONE:  \n:END:\n';
+  insertCapture(target, 'plain', template, false, true);
+  const alice = target.children[0];
+  const work = alice.children[0];
+  assert.equal('PHONE' in work.properties, false);
+});
+
 // ---- insertCapture: table-line -- THE BUG THIS FOUND AND FIXED ---------
 
 test('insertCapture table-line creates a new table when the target has none yet', () => {
