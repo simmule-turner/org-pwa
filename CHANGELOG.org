@@ -6,6 +6,22 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v363 — New #+TBLFM: formula: '(orgtbl-ascii-draw ...)
+Real org-mode's own raw Elisp function-call syntax — a formula
+starting with a quote, bypassing this app's own normal expression
+grammar entirely, exactly the way real org-mode does. Supports one
+real function this way: orgtbl-ascii-draw, which draws an ASCII bar
+in a table cell — verified directly against real Emacs's own actual
+source, and against every row of Org Plot's own documented example
+table, before implementing. An argument can be a full, parenthesized
+sub-expression, not just a bare token, matching real Emacs Lisp's
+own convention exactly (a compound argument is always wrapped in its
+own parentheses there too).
+
+* v362 — README.org updated with the capture-template accumulation
+Documents the %\N backreference syntax and the omitEmptyEntries
+option in the existing Capture Templates section.
+
 * v361 — Fix: omitEmptyEntries missed two real cases
 Found against the exact vCard template from the previous release: a
 template that puts its own fields directly in the body text (raw
