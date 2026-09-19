@@ -1300,3 +1300,60 @@ test('inf under a fraction format spec (F) also displays as "inf", not a garbage
   assert.equal(recalculateTable(mkTable('$1 = inf;F', [['']]))[0].cells[0], 'inf');
   assert.equal(recalculateTable(mkTable('$1 = -inf;FS', [['']]))[0].cells[0], '-inf');
 });
+
+// ---- '(orgtbl-ascii-draw ...) -- real Emacs's own raw Lisp-call formula ---
+
+test('THE FEATURE (the exact real-world example that motivated this): all 6 rows of Org Plot\u2019s own documented "Sede / Max cites" table match exactly -- verified directly against real Emacs\u2019s own actual source before implementing, not derived from the docstring alone', () => {
+  const table = mkTable("$3='(orgtbl-ascii-draw $2 0.0 257.72 12)", [
+    ['Sede', 'Max cites', ''],
+    null,
+    ['Chile', '257.72', ''],
+    ['Leeds', '165.77', ''],
+    ['Sao Paolo', '71.00', ''],
+    ['Stockholm', '134.19', ''],
+    ['Morelia', '257.56', ''],
+    ['Rochefourchat', '0.00', ''],
+  ]);
+  const result = cellsOf(recalculateTable(table));
+  assert.equal(result[2][2], 'WWWWWWWWWWWW '); // Chile -- exactly at max: 12 full blocks, trailing empty fractional char
+  assert.equal(result[3][2], 'WWWWWWWh'); // Leeds
+  assert.equal(result[4][2], 'WWW;'); // Sao Paolo
+  assert.equal(result[5][2], 'WWWWWW:'); // Stockholm
+  assert.equal(result[6][2], 'WWWWWWWWWWWH'); // Morelia
+  assert.equal(result[7][2], ' '); // Rochefourchat -- exactly at min: fully empty bar
+});
+
+test('a value above MAX renders as the literal text "too large", matching real Emacs exactly -- not thrown as an error', () => {
+  const table = mkTable("$2='(orgtbl-ascii-draw $1 0.0 100 12)", [['150', '']]);
+  assert.equal(cellsOf(recalculateTable(table))[0][1], 'too large');
+});
+
+test('a value below MIN renders as the literal text "too small"', () => {
+  const table = mkTable("$2='(orgtbl-ascii-draw $1 0.0 100 12)", [['-5', '']]);
+  assert.equal(cellsOf(recalculateTable(table))[0][1], 'too small');
+});
+
+test('WIDTH defaults to 12 when omitted, matching real Emacs\u2019s own documented default', () => {
+  const table = mkTable("$2='(orgtbl-ascii-draw $1 0.0 100)", [['50', '']]);
+  assert.equal(cellsOf(recalculateTable(table))[0][1], 'WWWWWW ');
+});
+
+test('THE FEATURE: a fully parenthesized sub-expression is a valid single argument, per direct request to maximize Emacs/org compatibility -- matching real Emacs Lisp\u2019s own actual convention, where a compound argument is always explicitly wrapped in its own parentheses', () => {
+  const table = mkTable("$2='(orgtbl-ascii-draw ($1 * 2) 0.0 20 12)", [['5', '']]);
+  assert.equal(cellsOf(recalculateTable(table))[0][1], 'WWWWWW '); // 5*2=10, scaled into [0,20] at width 12 -> 6.0 exactly
+});
+
+test('a nested sub-expression argument works the same way, two levels deep', () => {
+  const table = mkTable("$2='(orgtbl-ascii-draw (($1 + 1) * 2) 0.0 20 12)", [['4', '']]);
+  assert.equal(cellsOf(recalculateTable(table))[0][1], 'WWWWWW '); // (4+1)*2=10, same result as above
+});
+
+test('an unbalanced parenthesis in a \'(...) call is reported with a clear error rather than crashing or silently misreading the formula', () => {
+  const table = mkTable("$2='(orgtbl-ascii-draw ($1 * 2 0.0 20 12)", [['5', '']]);
+  assert.throws(() => recalculateTable(table), /[Uu]nbalanced parenthes/);
+});
+
+test('an unsupported function name in a \'(...) call is reported with a clear error naming what this app actually supports this way', () => {
+  const table = mkTable("$2='(some-unsupported-fn $1 0.0 20 12)", [['5', '']]);
+  assert.throws(() => recalculateTable(table), /orgtbl-ascii-draw/);
+});
