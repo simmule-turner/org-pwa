@@ -202,6 +202,14 @@ test('THE BUG THIS FIXES: expandOneLevel clears bodyHidden, so the slide-left ge
   assert.equal(grandparent.bodyHidden, false); // the fix
 });
 
+test('THE FEATURE: expandOneLevel resets plotVisible to null, matching drawersHidden\u2019s own reset on this same line -- "one level" shows structure, not detail, and a table\u2019s own #+PLOT: rendering is detail the same way properties are', () => {
+  const doc = deepDoc();
+  const grandparent = doc.children[0];
+  grandparent.plotVisible = new Set([3]);
+  expandOneLevel(grandparent);
+  assert.equal(grandparent.plotVisible, null);
+});
+
 test('expandFully clears bodyHidden on the whole revealed subtree', () => {
   const doc = deepDoc();
   const grandparent = doc.children[0];
@@ -242,6 +250,18 @@ test('collapseFully collapses the heading and resets every descendant to collaps
   assert.equal(grandparent.collapsed, true);
   assert.equal(grandparent.children[0].collapsed, true);
   assert.equal(grandparent.children[1].children[0].collapsed, true);
+});
+
+test('THE FEATURE: collapseFully resets plotVisible to null on the heading and recursively on every descendant, matching drawersHidden\u2019s own recursive reset just above -- a table\u2019s own #+PLOT: rendering, anywhere in the collapsed subtree, doesn\u2019t stay marked visible through the slide-gesture\u2019s own collapse step', () => {
+  const doc = deepDoc();
+  const grandparent = doc.children[0];
+  expandFully(grandparent);
+  grandparent.plotVisible = new Set([1]);
+  grandparent.children[0].plotVisible = new Set([2]);
+  collapseFully(grandparent);
+
+  assert.equal(grandparent.plotVisible, null);
+  assert.equal(grandparent.children[0].plotVisible, null);
 });
 
 test('cycleFoldLevel: collapsed -> one level -> full -> collapsed, in order', () => {

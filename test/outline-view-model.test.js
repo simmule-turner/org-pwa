@@ -131,6 +131,24 @@ test('toggleFold does not touch bodyHidden when collapsing (only clears it on ex
   assert.equal(heading.bodyHidden, false); // stays as it was — collapsing doesn't re-hide it
 });
 
+test('THE FEATURE: toggleFold resets plotVisible to null on collapse, matching drawersHidden\u2019s own exact reset just above -- a table\u2019s own #+PLOT: rendering is "revealed detail" the same way properties/photo are, so it doesn\u2019t stay marked visible through a collapse the way a real, reported bug once let drawersHidden do', () => {
+  const doc = parseOrg(['* Notes', 'Some text.'].join('\n'));
+  const heading = doc.children[0];
+  heading.collapsed = false;
+  heading.plotVisible = new Set([2]); // simulates a table's plot having been shown
+  toggleFold(heading); // collapse
+  assert.equal(heading.plotVisible, null);
+});
+
+test('toggleFold does not touch plotVisible when expanding (only resets it on collapse) -- matches drawersHidden\u2019s own asymmetry: expanding via the chevron is this app\u2019s full-reveal mechanism, so plotVisible set before a collapse/re-expand cycle is a separate concern, not something expand itself should silently clear', () => {
+  const doc = parseOrg(['* Notes', 'Some text.'].join('\n'));
+  const heading = doc.children[0];
+  heading.collapsed = true;
+  heading.plotVisible = new Set([2]);
+  toggleFold(heading); // expand
+  assert.deepEqual(heading.plotVisible, new Set([2]));
+});
+
 test('list-item rows carry a reference to their owning heading', () => {
   const doc = sampleDoc();
   const rows = flattenVisibleRows(doc);

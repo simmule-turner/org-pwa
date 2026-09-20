@@ -6,6 +6,7 @@ import {
   formatTime,
   scanPrompts,
   expandTemplate,
+  expandCaptureText,
   resolveOlpTarget,
   mergeFragmentInto,
   insertCapture,
@@ -962,4 +963,113 @@ test('computeNonCollidingKeys: an item with no key (empty/undefined) is skipped,
 
 test('computeNonCollidingKeys: empty list returns an empty map', () => {
   assert.equal(computeNonCollidingKeys([], (i) => i.key).size, 0);
+});
+
+// ---- preText/postText: expandCaptureText -----------------------------
+
+test('THE FEATURE: expandCaptureText numbers prompts continuously across preText, template, and postText -- a %^{...} in preText is prompt #1, not restarted at 0 for each piece', () => {
+  const result = expandCaptureText('#+PLOT: title:"%^{Title}"', '| %^{Week} | %^{Amount} |', 'note: %\\1', {
+    promptAnswers: ['Weekly Expenses', '1', '42.5'],
+  });
+  assert.equal(result.preText, '#+PLOT: title:"Weekly Expenses"');
+  assert.equal(result.text, '| 1 | 42.5 |');
+  assert.equal(result.postText, 'note: Weekly Expenses'); // %\1 correctly reaches back into preText's own answer
+});
+
+test('expandCaptureText with no preText/postText matches a bare expandTemplate call exactly', () => {
+  const bare = expandTemplate('| %^{Week} |', { promptAnswers: ['3'] });
+  const combined = expandCaptureText('', '| %^{Week} |', '', { promptAnswers: ['3'] });
+  assert.equal(combined.text, bare.text);
+  assert.equal(combined.preText, '');
+  assert.equal(combined.postText, '');
+});
+
+test('expandCaptureText passes tableRowNumber (@#) through to every piece, not just the main template', () => {
+  const result = expandCaptureText('row @#', 'main @#', 'end @#', { tableRowNumber: 5 });
+  assert.equal(result.preText, 'row 5');
+  assert.equal(result.text, 'main 5');
+  assert.equal(result.postText, 'end 5');
+});
+
+// ---- preText/postText: insertCapture, table-line (once-only) ---------
+
+test('THE FEATURE (the exact motivating example): the first table-line capture for a target with no existing table inserts preText, the table, and postText, with the header/hline from preText merging into the SAME table as the first row', () => {
+  const doc = parseOrg('* Expenses\n');
+  const target = doc.children[0];
+  insertCapture(
+    target,
+    'table-line',
+    '| 1 | 42.5 |',
+    false,
+    false,
+    '#+PLOT: title:"Weekly Expenses" ind:1 type:2d with:lines\n| Week | Amount |\n|------+--------|',
+    '#+TBLFM: $2=$2;%.2f'
+  );
+  const lines = serializeOrg(doc).split('\n');
+  assert.deepEqual(lines, [
+    '* Expenses',
+    '',
+    '#+PLOT: title:"Weekly Expenses" ind:1 type:2d with:lines',
+    '| Week | Amount |',
+    '|------+--------|',
+    '| 1 | 42.5 |',
+    '#+TBLFM: $2=$2;%.2f',
+  ]);
+  // Confirms the header+hline genuinely merged into ONE table with the
+  // data row (not left as separate, disconnected content): exactly one
+  // table node, holding all of header/rule/data.
+  assert.equal(target.body.filter((n) => n.type === 'table').length, 1);
+  assert.equal(target.body[0].plot, 'title:"Weekly Expenses" ind:1 type:2d with:lines');
+  assert.equal(target.body[0].tblfm, '$2=$2;%.2f');
+});
+
+test('THE FEATURE: a second table-line capture into the SAME target (table already exists) adds only a row -- preText/postText are never repeated', () => {
+  const doc = parseOrg('* Expenses\n');
+  const target = doc.children[0];
+  insertCapture(target, 'table-line', '| 1 | 42.5 |', false, false, '#+PLOT: title:"X" ind:1', '#+TBLFM: $2=$2;%.2f');
+  insertCapture(target, 'table-line', '| 2 | 18.0 |', false, false, '#+PLOT: title:"X" ind:1', '#+TBLFM: $2=$2;%.2f');
+  const lines = serializeOrg(doc).split('\n');
+  assert.deepEqual(lines, ['* Expenses', '', '#+PLOT: title:"X" ind:1', '| 1 | 42.5 |', '| 2 | 18.0 |', '#+TBLFM: $2=$2;%.2f']);
+  assert.equal(lines.filter((l) => l.startsWith('#+PLOT:')).length, 1);
+  assert.equal(lines.filter((l) => l.startsWith('#+TBLFM:')).length, 1);
+});
+
+test('table-line preText/postText do nothing at all when omitted -- matches the exact prior behavior for a template with no preText/postText fields', () => {
+  const doc = parseOrg('* T\n');
+  const target = doc.children[0];
+  insertCapture(target, 'table-line', '| a | b |', false, false);
+  assert.deepEqual(serializeOrg(doc).split('\n'), ['* T', '', '| a | b |']);
+});
+
+test('a blank-line separator is still added between preText and unrelated content that already precedes it, even though there\u2019s no separator between preText and the table itself', () => {
+  const doc = parseOrg('* T\nSome existing paragraph.\n');
+  const target = doc.children[0];
+  insertCapture(target, 'table-line', '| a |', false, false, '#+TITLE: X');
+  assert.deepEqual(serializeOrg(doc).split('\n'), ['* T', 'Some existing paragraph.', '', '#+TITLE: X', '| a |']);
+});
+
+// ---- preText/postText: insertCapture, item/checkitem/plain (every time) --
+
+test('THE FEATURE (the exact motivating example): checkitem wraps preText/postText around EVERY invocation, not just the first', () => {
+  const doc = parseOrg('* Tasks\n');
+  const target = doc.children[0];
+  insertCapture(target, 'checkitem', 'Buy milk', false, false, '[#A] ', ' :quick:');
+  insertCapture(target, 'checkitem', 'Call dentist', false, false, '[#A] ', ' :quick:');
+  assert.deepEqual(serializeOrg(doc).split('\n'), ['* Tasks', '', '- [ ] [#A] Buy milk :quick:', '- [ ] [#A] Call dentist :quick:']);
+});
+
+test('item wraps preText/postText the same way checkitem does', () => {
+  const doc = parseOrg('* Notes\n');
+  const target = doc.children[0];
+  insertCapture(target, 'item', 'apples', false, false, 'Buy: ', ' (urgent)');
+  assert.deepEqual(serializeOrg(doc).split('\n'), ['* Notes', '', '- Buy: apples (urgent)']);
+});
+
+test('plain concatenates preText + expandedText + postText directly, then parses the combined result as one fragment', () => {
+  const doc = parseOrg('* Meetings\n');
+  const target = doc.children[0];
+  insertCapture(target, 'plain', '* Standup\nDiscussed X.\n', false, false, '', 'Filed under #+standup\n');
+  const lines = serializeOrg(doc).split('\n');
+  assert.ok(lines.includes('Filed under #+standup'));
+  assert.ok(lines.includes('** Standup')); // nested one level under target (level 1), matching mergeFragmentInto's own level-offset behavior
 });
