@@ -165,6 +165,7 @@ import {
   setHeadingText,
 } from './src/body-edit.js';
 import { recalculateTable, parseTableConstants } from './src/table-formula.js';
+import { parsePlotOptions, renderPlotSvg } from './src/org-plot.js';
 import { isOrgWeatherLine, formatWeatherLine, buildWeatherApiUrl, DEFAULT_ORG_WEATHER_FORMAT } from './src/org-weather.js';
 import { initialState as godModeInitialState, processKey as godModeProcessKey } from './src/god-mode.js';
 import { documentUsesOrgWeather } from './src/sexp-eval.js';
@@ -4237,6 +4238,41 @@ let editingGeneral = null;
 // one open at a time). Not the same as editingHeading/editingListItem:
 // tapping the revealed pencil icon is what transitions into those.
 let actionMenuFor = null;
+// Content-keyed cache for rendered #+PLOT: SVGs (see renderTableRow's own
+// "Plot" button below) -- keyed by the table's own plot text plus its own
+// cell data, never by the table object's identity, which isn't stable:
+// any edit anywhere in a heading's own body fully reparses heading.body
+// (see commitLines in body-edit.js), recreating every table node within
+// it fresh, confirmed directly before choosing this design over a
+// simpler WeakMap. A plain Map survives that recreation correctly: an
+// unrelated edit elsewhere produces a table object with the exact same
+// plot+cell content, which still hashes to the same cache key and hits.
+// Capped so a long session's worth of distinct plot configurations
+// doesn't grow this unbounded -- evicts the single oldest entry (Map
+// iteration order is insertion order) once the cap is hit.
+const PLOT_SVG_CACHE_LIMIT = 200;
+const plotSvgCache = new Map();
+function plotCacheKey(table) {
+  return JSON.stringify({ plot: table.plot, rows: table.rows.filter((r) => r.type === 'row').map((r) => r.cells) });
+}
+/** Returns the rendered SVG for `table`'s own current #+PLOT: line and
+ *  data, from cache when the content hasn't changed since it was last
+ *  rendered, or by rendering (and caching) it fresh otherwise. Lets a
+ *  thrown error (unsupported plot type, an out-of-range column, not
+ *  enough data -- see org-plot.js) propagate to the caller rather than
+ *  caching a failure, so a fixed #+PLOT: line gets a fresh, real
+ *  attempt next time rather than a stale cached error. */
+function getOrRenderPlotSvg(table) {
+  const key = plotCacheKey(table);
+  const cached = plotSvgCache.get(key);
+  if (cached !== undefined) return cached;
+  const svg = renderPlotSvg(table, parsePlotOptions(table.plot));
+  if (plotSvgCache.size >= PLOT_SVG_CACHE_LIMIT) {
+    plotSvgCache.delete(plotSvgCache.keys().next().value);
+  }
+  plotSvgCache.set(key, svg);
+  return svg;
+}
 // The heading currently focused via keyboard navigation (see the
 // keydown listener near the bottom of this file) -- distinct from
 // actionMenuFor, which is about a tap-revealed action row. null until
@@ -7605,7 +7641,46 @@ function renderTableRow(row) {
       })
     );
   }
+  if (row.node.plot && row.node.plot.trim()) {
+    const isPlotVisible = !!(row.heading.plotVisible && row.heading.plotVisible.has(row.node.lineIndex));
+    controls.appendChild(
+      smallButton(isPlotVisible ? '\ud83d\udcca Hide plot' : '\ud83d\udcca Plot', isPlotVisible ? "Hide this table's plot" : "Show this table's plot", () => {
+        if (isPlotVisible) {
+          row.heading.plotVisible.delete(row.node.lineIndex);
+          render();
+          return;
+        }
+        try {
+          getOrRenderPlotSvg(row.node); // validate + warm the cache up front, so a bad #+PLOT: line surfaces immediately rather than marking it "visible" over nothing real
+        } catch (err) {
+          setStatus(`Couldn't plot: ${err.message}`);
+          render();
+          return;
+        }
+        row.heading.plotVisible = row.heading.plotVisible || new Set();
+        row.heading.plotVisible.add(row.node.lineIndex);
+        render();
+      })
+    );
+  }
   wrap.appendChild(controls);
+
+  if (row.node.plot && row.heading.plotVisible && row.heading.plotVisible.has(row.node.lineIndex)) {
+    const plotWrap = document.createElement('div');
+    plotWrap.style.marginTop = '6px';
+    try {
+      plotWrap.innerHTML = getOrRenderPlotSvg(row.node);
+    } catch (err) {
+      // The table's own content changed since the plot was last shown
+      // (a cache miss re-attempts fresh, see getOrRenderPlotSvg), and
+      // this fresh attempt failed too -- a clear inline message, never
+      // a silently empty area.
+      plotWrap.textContent = `Couldn't plot: ${err.message}`;
+      plotWrap.style.color = 'var(--text-muted, #888)';
+      plotWrap.style.fontSize = '12px';
+    }
+    wrap.appendChild(plotWrap);
+  }
 
   return withActionMenu(wrap, menuEl);
 }

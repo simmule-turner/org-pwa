@@ -6,6 +6,22 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v365 — README.org updated with the accumulation since v362
+Documents the '(orgtbl-ascii-draw ...) raw Lisp-call formula syntax
+in the existing Table formulas section, and the new #+PLOT: graphing
+feature in a new "Plots" subsection right after it.
+
+* v364 — New feature: #+PLOT: graphing (a reasonable subset of org-plot)
+Recognizes #+PLOT: lines above a table and renders type:2d
+(lines/points/boxes/impulses) and type:radar as inline SVG, via a new
+"Plot" button next to Calc. Option syntax verified directly against
+real org-plot.el's own actual source. A content-keyed cache avoids
+recomputing an unchanged plot; visibility inherits from the
+containing heading's own fold state, matching the existing
+drawersHidden pattern. 3D/grid plot types are explicitly unsupported
+(real org's own manual hedges on these too) — gnuplot's own raw
+scripting options (set/line/script/etc.) are parsed but inert.
+
 * v363 — New #+TBLFM: formula: '(orgtbl-ascii-draw ...)
 Real org-mode's own raw Elisp function-call syntax — a formula
 starting with a quote, bypassing this app's own normal expression
