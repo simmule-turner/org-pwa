@@ -144,6 +144,7 @@ function toggleFold(heading) {
     heading.drawersHidden = false; // the chevron is this app's full-reveal mechanism (see docstring above) -- for an archived heading specifically, it's the ONLY way to ever see its properties/block content at all, since swipe refuses to touch an archived heading regardless of state
   } else {
     heading.drawersHidden = true; // re-fold on collapse -- same staleness fix as fold-state.js's collapseFully: without this, properties revealed once stayed visible through every subsequent collapse, with no way to hide them again
+    heading.plotVisible = null; // same staleness fix, for a table's own #+PLOT: rendering within this heading's body
   }
   return heading.collapsed;
 }

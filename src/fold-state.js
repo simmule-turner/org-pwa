@@ -153,6 +153,7 @@ function expandOneLevel(heading) {
   heading.collapsed = false;
   heading.bodyHidden = false;
   heading.drawersHidden = true;
+  heading.plotVisible = null;
   for (const child of heading.children || []) {
     child.collapsed = true;
   }
@@ -223,6 +224,7 @@ function expandFully(heading, opts = {}) {
 function collapseFully(heading) {
   heading.collapsed = true;
   heading.drawersHidden = true;
+  heading.plotVisible = null;
   for (const child of heading.children || []) {
     collapseFully(child);
   }

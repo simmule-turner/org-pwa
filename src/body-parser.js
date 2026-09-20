@@ -39,6 +39,7 @@ const BLOCK_END_RE = /^\s*#\+end_(\w+)\s*$/i;
 const TABLE_LINE_RE = /^\s*\|.*\|?\s*$/;
 const TABLE_RULE_RE = /^\s*\|[-+]*\|?\s*$/;
 const TBLFM_RE = /^\s*#\+TBLFM:\s*(.*)$/i;
+const PLOT_RE = /^\s*#\+PLOT:\s*(.*)$/i;
 const LIST_ITEM_RE = /^(\s*)([-+]|\*|\d+[.)]|[A-Za-z][.)])\s+(?:\[([ xX-])\]\s+)?(.*)$/;
 // Real org: "a line consisting of only dashes, and at least 5 of them,
 // is exported as a horizontal line." Whitespace around the dashes is
@@ -315,6 +316,24 @@ function parseBody(lines) {
       nodes.push(node);
       i = next;
       continue;
+    }
+    if (PLOT_RE.test(line)) {
+      let j = i;
+      const plotLines = [];
+      while (j < lines.length && PLOT_RE.test(lines[j])) {
+        plotLines.push(PLOT_RE.exec(lines[j])[1]);
+        j++;
+      }
+      if (j < lines.length && TABLE_LINE_RE.test(lines[j])) {
+        const [tableNode, next] = parseTable(lines, j);
+        tableNode.plot = plotLines.join(' ');
+        nodes.push(tableNode);
+        i = next;
+        continue;
+      }
+      // Not actually followed by a table -- fall through to ordinary
+      // paragraph parsing below, same as any other "#+" line this app
+      // doesn't specifically recognize.
     }
     if (TABLE_LINE_RE.test(line)) {
       const [node, next] = parseTable(lines, i);
