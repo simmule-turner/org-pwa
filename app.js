@@ -7681,8 +7681,46 @@ function renderTableRow(row) {
   if (row.node.plot && row.heading.plotVisible && row.heading.plotVisible.has(row.node.lineIndex)) {
     const plotWrap = document.createElement('div');
     plotWrap.style.marginTop = '6px';
+    plotWrap.style.overflowX = 'auto';
+    // Reclaims wrap's own depth-based left indentation for the plot
+    // specifically (a chart is a graphic, not text continuing the
+    // indented hierarchy the way a paragraph or a table's own cells
+    // are), while still reserving a small, fixed, symmetric margin on
+    // BOTH sides rather than letting it sit flush against either true
+    // edge. wrap itself has no right-side padding at all (confirmed
+    // directly -- it's never given the .row class other row kinds
+    // elsewhere in this app get), so it's already flush-right; only
+    // the left side carries the depth indentation being reclaimed
+    // here, which is why this calc() is asymmetric between the two
+    // sides even though the visual RESULT (8px inset on each side) is
+    // symmetric.
+    const indentPx = 8 + row.depth * 16; // matches wrap's own paddingLeft formula above exactly
+    const EDGE_MARGIN = 8; // matches the "8" base already used in that same formula and in .row's own padding elsewhere
+    plotWrap.style.marginLeft = `calc(${EDGE_MARGIN}px - ${indentPx}px)`;
+    plotWrap.style.width = `calc(100% + ${indentPx}px - ${EDGE_MARGIN * 2}px)`;
     try {
       plotWrap.innerHTML = getOrRenderPlotSvg(row.node);
+      const svgEl = plotWrap.querySelector('svg');
+      if (svgEl) {
+        // Overrides the SVG's own width="480"/height="320" attributes
+        // (added for the standalone/exported case -- see org-plot.js's
+        // own comments) only here, in the live app's styled DOM: CSS
+        // always takes precedence over a presentation attribute. The
+        // chart's own viewBox is untouched, so the whole thing scales
+        // down proportionally -- text, points, everything together --
+        // to fit whatever width is actually available on a narrow
+        // phone, rather than rendering at a fixed size wider than the
+        // screen with no way to see the rest. margin: auto centers it
+        // within plotWrap's own (now edge-inset) width whenever the
+        // chart's own natural or shrunk size is narrower than that --
+        // e.g. a small chart on a wide screen that needs no shrinking
+        // at all sits centered rather than flush against plotWrap's
+        // own left edge.
+        svgEl.style.maxWidth = '100%';
+        svgEl.style.height = 'auto';
+        svgEl.style.display = 'block';
+        svgEl.style.margin = '0 auto';
+      }
     } catch (err) {
       // The table's own content changed since the plot was last shown
       // (a cache miss re-attempts fresh, see getOrRenderPlotSvg), and

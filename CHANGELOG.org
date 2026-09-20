@@ -6,6 +6,25 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v369 — Plot sizing refinement: reclaimed indentation, centered, symmetric margins
+Per direct follow-up: a plot's containing row previously carried the
+same depth-based left indentation as the table above it, wasting
+width a chart doesn't need to inherit. Now reclaims that indentation
+specifically for the chart, while keeping a small, fixed 8px margin
+on both true edges rather than sitting flush against either. The
+chart is also centered within that space, so one small enough to
+need no shrinking at all (e.g. on a wide screen) sits centered
+rather than flush left.
+
+* v368 — Fix: a plot's fixed-width SVG didn't fit narrow phone screens
+Reported directly from a real device screenshot. The chart was
+already flush-left (no centering CSS anywhere in this path) -- the
+real, complete fix is responsive scaling, not alignment. The
+embedded SVG now scales down proportionally via CSS to fit whatever
+width is actually available, live in the app; the same markup
+exported or opened standalone still renders at its correct,
+unchanged intrinsic size.
+
 * v367 — New capture-template fields: preText / postText
 Two new optional fields, designed collaboratively across several
 turns. For item/checkitem/plain they wrap every invocation. For
