@@ -6,6 +6,19 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v367 — New capture-template fields: preText / postText
+Two new optional fields, designed collaboratively across several
+turns. For item/checkitem/plain they wrap every invocation. For
+table-line specifically they're inserted exactly once -- tied to
+whether a table already exists at the target, with no new state
+needed. No blank-line separator right at the table boundary, so a
+header row + hline in preText merges into the same table as the
+first real row, and a #+TBLFM:/#+PLOT: in postText/preText gets
+picked up by this app's own existing recognition for free. The
+capture form peeks (when it can do so without a network fetch)
+whether a table already exists, so a preText/postText prompt isn't
+asked on every capture after the first.
+
 * v366 — Fix: #+PLOT: silently dropped the first data row on a header-less table
 extractPlotData unconditionally treated row 0 as a header, discarding
 the information needed to tell "has a header" from "doesn't" before

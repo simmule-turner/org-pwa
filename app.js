@@ -115,7 +115,7 @@ import {
   parseRepeater,
   itemsInRange,
 } from './src/agenda.js';
-import { scanPrompts, expandTemplate, resolveOlpTarget, insertCapture, resolveCaptureFileId, getCaptureFileScheme, CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, formatTime } from './src/capture-template.js';
+import { scanPrompts, expandTemplate, expandCaptureText, resolveOlpTarget, insertCapture, resolveCaptureFileId, getCaptureFileScheme, CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, formatTime } from './src/capture-template.js';
 import { exportToMarkdown } from './src/export-markdown.js';
 import { exportToOdt } from './src/export-odt.js';
 import { exportToAscii } from './src/export-ascii.js';
@@ -4162,6 +4162,19 @@ let extraMenuOpen = false;
 // glitches); an in-app form sidesteps that entirely, being just an
 // ordinary part of this app's own layout.
 let capturePromptTemplate = null;
+// Whether this capture's own preText/postText prompts were left off the
+// currently-open form -- set once when the form opens (see
+// peekTableAlreadyExists/openCapturePrompt below) and reused unchanged at
+// commit time, never re-derived: the peek is a best-effort hint for the
+// form's own shape only, and doing it twice risks the two disagreeing
+// (e.g. if the underlying cache changed in between), which would corrupt
+// which answer maps to which prompt token. The actual table-exists-or-not
+// STRUCTURAL decision (does insertCapture create a new table or just add a
+// row) is always separately, freshly determined at insertion time from the
+// real, just-loaded document -- this flag only ever affects which prompts
+// were asked and how the combined text was built for expansion, never
+// whether preText/postText actually get inserted.
+let capturePromptSkipPrePost = false;
 // True while a capture triggered by the extras (☰) menu is in progress
 // -- that flow already knows exactly which template to use, so once
 // it completes (success or cancel) the capture panel should close
@@ -14459,6 +14472,8 @@ function validateCaptureTemplates(parsed) {
     if ('prepend' in t && typeof t.prepend !== 'boolean') return `${label}: "prepend" must be true or false if present`;
     if ('prependHeading' in t && typeof t.prependHeading !== 'boolean') return `${label}: "prependHeading" must be true or false if present`;
     if ('omitEmptyEntries' in t && typeof t.omitEmptyEntries !== 'boolean') return `${label}: "omitEmptyEntries" must be true or false if present`;
+    if ('preText' in t && typeof t.preText !== 'string') return `${label}: "preText" must be a string if present`;
+    if ('postText' in t && typeof t.postText !== 'string') return `${label}: "postText" must be a string if present`;
   }
   const keys = parsed.map((t) => t.key);
   const duplicate = keys.find((k, i) => keys.indexOf(k) !== i);
@@ -14633,11 +14648,69 @@ async function renderCapturePanel() {
   capturePanelBox.appendChild(closeRow);
 }
 
+/** For a table-line template with preText/postText defined, determines
+ *  whether a table already exists at its own resolved target -- and
+ *  so whether preText/postText (and their own %^{...} prompts) will
+ *  actually be used this capture, or discarded. Returns:
+ *    true  -- a table already exists there; preText/postText won't be
+ *             used, so their own prompts shouldn't be asked
+ *    false -- no table there yet (or the OLP path itself doesn't
+ *             exist yet either); preText/postText WILL be used
+ *    null  -- couldn't be determined without a real network fetch (a
+ *             different file that isn't already the open document, an
+ *             already-loaded agenda file, or a local file) -- callers
+ *             should treat this the same as false (ask every prompt,
+ *             so nothing's silently skipped) rather than block the
+ *             capture form on I/O just to decide its own shape
+ *
+ *  Only ever resolves the target from what's ALREADY resident in
+ *  memory or a fast local-disk read -- never triggers a fetch of a
+ *  remote file that isn't already cached. Uses resolveOlpTarget's own
+ *  allowCreate: false, which leaves the document completely untouched
+ *  on a missing path rather than creating anything speculatively --
+ *  this is purely a peek, not a real capture, so nothing should be
+ *  left behind even if the person then cancels. */
+async function peekTableAlreadyExists(template) {
+  const targetFileId = resolveCaptureFileId(template.file, state.documentId);
+
+  let doc;
+  if (targetFileId === state.documentId) {
+    doc = state.doc;
+  } else if (state.storageKind === 'filesystem' || state.storageKind === 'input') {
+    try {
+      const existing = await activeDiskAdapter().read(targetFileId);
+      if (!existing) return null; // doesn't exist yet at all -- can't peek an OLP path in a document that isn't there; fall back to asking
+      doc = parseOrg(existing.content);
+    } catch {
+      return null;
+    }
+  } else {
+    const entry = Array.from(agendaFilesCache.values()).find((e) => e.documentId === targetFileId);
+    doc = entry && entry.doc; // undefined if not cached, or cached as {error}/{loading} rather than {doc}
+  }
+  if (!doc) return null;
+
+  const target = resolveOlpTarget(doc, template.olp, { now: new Date(), prepend: getOlpPrepend(template), allowCreate: false });
+  if (!target) return false; // the heading path itself doesn't exist yet -- definitely no table under it either
+  const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
+  return !!existingTable;
+}
+
 /** Opens the given template: straight to capturing it if it has no
  *  %^{Prompt} placeholders to fill in, otherwise shows the in-app
- *  prompt form first. */
-function openCapturePrompt(template) {
-  const prompts = scanPrompts(template.template);
+ *  prompt form first. For a table-line template with preText/postText,
+ *  first peeks (see peekTableAlreadyExists) whether a table already
+ *  exists at the target, so a form-only-used-once prompt isn't asked
+ *  on every subsequent capture when that can be determined cheaply;
+ *  the decision is captured once, in capturePromptSkipPrePost, and
+ *  reused unchanged through to the actual commit. */
+async function openCapturePrompt(template) {
+  const hasPrePost = template.type === 'table-line' && (template.preText || template.postText);
+  const skipPrePost = hasPrePost ? (await peekTableAlreadyExists(template)) === true : false;
+  capturePromptSkipPrePost = skipPrePost;
+
+  const scanText = skipPrePost ? template.template : (template.preText || '') + template.template + (template.postText || '');
+  const prompts = scanPrompts(scanText);
   if (prompts.length === 0) {
     runCaptureWithAnswers(template, []);
     return;
@@ -14653,7 +14726,8 @@ function openCapturePrompt(template) {
  *  message text used to fold in), Capture/Cancel at the bottom. */
 function renderCapturePromptForm() {
   const template = capturePromptTemplate;
-  const prompts = scanPrompts(template.template);
+  const scanText = capturePromptSkipPrePost ? template.template : (template.preText || '') + template.template + (template.postText || '');
+  const prompts = scanPrompts(scanText);
   const previewNow = new Date(); // captured once, not per-keystroke, so the displayed time doesn't visibly tick while typing
 
   const heading = document.createElement('div');
@@ -14683,8 +14757,14 @@ function renderCapturePromptForm() {
   capturePanelBox.appendChild(preview);
 
   function updatePreview() {
-    const { text } = expandTemplate(template.template, { now: previewNow, promptAnswers: capturePromptValues });
-    preview.textContent = text;
+    const context = { now: previewNow, promptAnswers: capturePromptValues };
+    if (capturePromptSkipPrePost) {
+      const { text } = expandTemplate(template.template, context);
+      preview.textContent = text;
+    } else {
+      const { preText, text, postText } = expandCaptureText(template.preText, template.template, template.postText, context);
+      preview.textContent = template.type === 'table-line' ? [preText, text, postText].filter(Boolean).join('\n') : preText + text + postText;
+    }
   }
   updatePreview();
 
@@ -14799,6 +14879,17 @@ async function runCaptureWithAnswers(template, answers) {
   }
 
   const now = new Date();
+  // capturePromptSkipPrePost is the SAME decision openCapturePrompt used
+  // to build the prompt list `answers` was collected against -- reused
+  // here unchanged (never re-derived) so promptAnswers indices stay
+  // correctly aligned with what was actually asked. When true, preText/
+  // postText are passed as empty strings to expandCaptureText below --
+  // NOT omitted from insertCapture entirely, since insertCapture itself
+  // always freshly re-checks whether a table already exists regardless
+  // of what the peek guessed, and correctly ignores empty pre/post text
+  // either way.
+  const preTextSrc = capturePromptSkipPrePost ? '' : template.preText || '';
+  const postTextSrc = capturePromptSkipPrePost ? '' : template.postText || '';
 
   const rawFile = String(template.file || '').trim();
   if (rawFile) {
@@ -14841,8 +14932,8 @@ async function runCaptureWithAnswers(template, answers) {
           // table's own default.
           tableRowNumber = template.prepend && existingTable ? 1 : dataRowCount + 1;
         }
-        const { text } = expandTemplate(template.template, { now, promptAnswers: answers, tableRowNumber });
-        insertCapture(target, template.type, text, template.prepend, template.omitEmptyEntries);
+        const { preText, text, postText } = expandCaptureText(preTextSrc, template.template, postTextSrc, { now, promptAnswers: answers, tableRowNumber });
+        insertCapture(target, template.type, text, template.prepend, template.omitEmptyEntries, preText, postText);
         return true;
       },
     });
@@ -14869,13 +14960,13 @@ async function runCaptureWithAnswers(template, answers) {
     tableRowNumber = template.prepend && existingTable ? 1 : dataRowCount + 1;
   }
 
-  const { text } = expandTemplate(template.template, {
+  const { preText, text, postText } = expandCaptureText(preTextSrc, template.template, postTextSrc, {
     now,
     promptAnswers: answers,
     tableRowNumber,
   });
 
-  insertCapture(target, template.type, text, template.prepend, template.omitEmptyEntries);
+  insertCapture(target, template.type, text, template.prepend, template.omitEmptyEntries, preText, postText);
   commitAndRender(`Captured: ${template.description}`);
 
   switchToView('org');
