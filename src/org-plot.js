@@ -148,17 +148,28 @@ export function parsePlotOptions(text) {
  *  when there's genuinely nothing plottable at all (fewer than 2
  *  columns, or no real data rows). */
 export function extractPlotData(table, options) {
-  let rows = (table.rows || []).filter((r) => r.type === 'row').map((r) => r.cells);
+  const rawRows = table.rows || [];
+  // A header exists only when the table has a real hline SOMEWHERE --
+  // matching this app's own established convention exactly (see
+  // body-edit.js's own isTableHeaderRow and the matching logic in
+  // table-formula.js): with no hline at all, nothing is a header and
+  // every row is real, plottable data. Checked here, before rule rows
+  // get filtered out below, since that's the only point this
+  // information is still available at all.
+  const hasHeader = rawRows.some((r) => r.type === 'rule');
+
+  let rows = rawRows.filter((r) => r.type === 'row').map((r) => r.cells);
   if (options.transpose === 'yes' || options.transpose === 'y' || options.transpose === 't' || options.trans === 'yes' || options.trans === 'y' || options.trans === 't') {
     const colCount = Math.max(0, ...rows.map((r) => r.length));
     rows = Array.from({ length: colCount }, (_, c) => rows.map((r) => r[c] ?? ''));
   }
-  if (rows.length < 2 || (rows[0] || []).length < 2) {
-    throw new Error('Not enough data to plot -- need at least a header row and one data row, with at least two columns.');
+  const minRows = hasHeader ? 2 : 1;
+  if (rows.length < minRows || (rows[0] || []).length < 2) {
+    throw new Error('Not enough data to plot -- need at least one data row (plus a header row, if the table has one) with at least two columns.');
   }
-  const header = rows[0];
-  const dataRows = rows.slice(1);
-  const colCount = header.length;
+  const header = hasHeader ? rows[0] : null;
+  const dataRows = hasHeader ? rows.slice(1) : rows;
+  const colCount = (header || rows[0]).length;
 
   const indCol = Number.isFinite(options.ind) ? options.ind : 1;
   const indIdx = indCol - 1;
@@ -173,7 +184,7 @@ export function extractPlotData(table, options) {
   const labelsOption = Array.isArray(options.labels) ? options.labels : null;
   const series = depIdxs.map((idx, i) => ({
     index: idx,
-    label: labelsOption && labelsOption[i] !== undefined ? String(labelsOption[i]) : String(header[idx] ?? `Column ${idx + 1}`),
+    label: labelsOption && labelsOption[i] !== undefined ? String(labelsOption[i]) : header ? String(header[idx] ?? `Column ${idx + 1}`) : `Column ${idx + 1}`,
   }));
 
   const plotRows = dataRows.map((cells) => ({
@@ -184,7 +195,7 @@ export function extractPlotData(table, options) {
     }),
   }));
 
-  return { indLabel: String(header[indIdx] ?? ''), rows: plotRows, series };
+  return { indLabel: header ? String(header[indIdx] ?? '') : '', rows: plotRows, series };
 }
 
 const SERIES_COLORS = ['#4C78A8', '#F58518', '#54A24B', '#E45756', '#72B7B2', '#EECA3B', '#B279A2', '#FF9DA6', '#9D755D', '#BAB0AC'];
