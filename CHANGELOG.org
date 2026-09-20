@@ -6,6 +6,13 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v366 — Fix: #+PLOT: silently dropped the first data row on a header-less table
+extractPlotData unconditionally treated row 0 as a header, discarding
+the information needed to tell "has a header" from "doesn't" before
+any check could use it. Now matches this app's own established
+convention (a header exists only when a real hline is present
+anywhere): with no hline, every row is real, plottable data.
+
 * v365 — README.org updated with the accumulation since v362
 Documents the '(orgtbl-ascii-draw ...) raw Lisp-call formula syntax
 in the existing Table formulas section, and the new #+PLOT: graphing
