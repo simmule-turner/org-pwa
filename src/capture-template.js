@@ -25,7 +25,7 @@
 import { formatOrgTimestamp } from './org-timestamp.js';
 import { parseOrg } from './org-parser.js';
 import { insertTopLevelHeading, insertChildHeading } from './heading-edit.js';
-import { insertTable, insertTableRow, setTableCell } from './body-edit.js';
+import { insertTable, insertTableRow, setTableCell, commitLines } from './body-edit.js';
 import { parseBody } from './body-parser.js';
 
 // ---- %<FORMAT> (format-time-string subset) -------------------------------
@@ -249,6 +249,39 @@ function expandTemplate(template, context = {}) {
   result += template.slice(lastIndex);
 
   return { text: result };
+}
+
+/** Expands a capture template's own preText/template/postText fields
+ *  together, as if they were one continuous template string, so
+ *  %^{...} prompts and %\N backreferences are numbered/resolved
+ *  consistently across all three pieces -- a %^{...} in preText is
+ *  prompt #1 if it's the first one in reading order, and %\1 anywhere
+ *  in template or postText correctly refers back to it. Calling
+ *  expandTemplate three separate times instead would restart its own
+ *  internal promptIndex at 0 for each piece, silently misassigning
+ *  which answer belongs to which prompt the moment more than one
+ *  piece has one.
+ *
+ *  Combines preText + template + postText into one string, joined by
+ *  a sentinel virtually guaranteed never to occur in real template
+ *  text (control characters, not valid in any real capture content),
+ *  expands that combined string with a single expandTemplate call,
+ *  then splits the result back into its three separately-expanded
+ *  pieces on that same sentinel -- purely an internal implementation
+ *  detail of this one function; the sentinel itself never reaches the
+ *  document.
+ *
+ *  Returns { preText, text, postText } -- `text` matches
+ *  expandTemplate's own return shape for the main template piece,
+ *  so an existing caller only passing a bare template (preText/
+ *  postText both '') still gets the exact same result out of `text`
+ *  as calling expandTemplate directly would. */
+function expandCaptureText(preText, template, postText, context = {}) {
+  const SENTINEL = '\x01\x02CAPTURE_SPLIT\x02\x01';
+  const combined = (preText || '') + SENTINEL + template + SENTINEL + (postText || '');
+  const { text } = expandTemplate(combined, context);
+  const [pre, main, post] = text.split(SENTINEL);
+  return { preText: pre, text: main, postText: post };
 }
 
 // ---- (file+olp "" "heading 1" "heading n") target resolution -------------
@@ -525,15 +558,15 @@ function stripEmptyProperties(heading) {
   for (const child of heading.children || []) stripEmptyProperties(child);
 }
 
-function insertCapture(target, type, expandedText, prepend = false, omitEmptyEntries = false) {
+function insertCapture(target, type, expandedText, prepend = false, omitEmptyEntries = false, expandedPreText = '', expandedPostText = '') {
   if (type === 'item') {
-    const fragment = parseOrg('- ' + expandedText);
+    const fragment = parseOrg('- ' + expandedPreText + expandedText + expandedPostText);
     mergeFragmentInto(target, fragment, prepend);
     return prepend ? firstListItemIn(target) : lastListItemIn(target);
   }
 
   if (type === 'checkitem') {
-    const fragment = parseOrg('- [ ] ' + expandedText);
+    const fragment = parseOrg('- [ ] ' + expandedPreText + expandedText + expandedPostText);
     mergeFragmentInto(target, fragment, prepend);
     return prepend ? firstListItemIn(target) : lastListItemIn(target);
   }
@@ -543,6 +576,9 @@ function insertCapture(target, type, expandedText, prepend = false, omitEmptyEnt
     let table = prepend ? firstTableIn(target) : lastTableIn(target);
 
     if (table) {
+      // An existing table -- preText/postText were already used (if
+      // ever) when this table was first created below; never touched
+      // again on a subsequent row.
       const hasLeadingRule = table.rows[1] && table.rows[1].type === 'rule';
       const insertAfterIndex = prepend ? (hasLeadingRule ? 1 : -1) : table.rows.length - 1;
       const newRowIndex = insertAfterIndex + 1;
@@ -553,10 +589,41 @@ function insertCapture(target, type, expandedText, prepend = false, omitEmptyEnt
         table = prepend ? firstTableIn(target) : lastTableIn(target); // re-fetch after every cell too, same reason
       }
     } else {
+      // No table yet -- this IS the "once" moment: create it (exactly
+      // as before), then wrap it with preText/postText, both inserted
+      // directly adjacent to the table itself (no separator there
+      // specifically -- see this function's own doc comment above for
+      // why), so ordinary org table-continuation and this app's own
+      // existing #+TBLFM:/#+PLOT: adjacency recognition both apply for
+      // free.
       let newTable = insertTable(target, { rows: 1, cols: cells.length || 1, headerRule: false });
       for (let i = 0; i < cells.length; i++) {
         setTableCell(target, newTable, 0, i, cells[i]);
         newTable = lastTableIn(target);
+      }
+      // Captured as plain numbers, not held as an object reference --
+      // commitLines below invalidates any object reference the moment
+      // it's called, but a position captured as a number beforehand
+      // stays valid: postText's own insertion point doesn't shift just
+      // because preText gets inserted earlier in the body (both are
+      // relative to positions computed before EITHER insertion runs).
+      const tableStart = newTable.lineIndex;
+      const tableEnd = newTable.lineIndex + newTable.lineCount;
+
+      if (expandedPostText) {
+        const postLines = expandedPostText.split('\n');
+        const needsSeparatorAfter = target.bodyLines.length > tableEnd && target.bodyLines[tableEnd].trim() !== '';
+        commitLines(target, tableEnd, 0, needsSeparatorAfter ? [...postLines, ''] : postLines);
+      }
+      if (expandedPreText) {
+        // tableStart is still correct here even after the postText
+        // insertion above: that insertion happened at tableEnd (>=
+        // tableStart), which never shifts anything AT OR BEFORE
+        // tableStart -- inserting at tableStart itself, next, is
+        // exactly as valid as if postText had never run.
+        const preLines = expandedPreText.split('\n');
+        const needsSeparatorBefore = tableStart > 0 && target.bodyLines[tableStart - 1].trim() !== '';
+        commitLines(target, tableStart, 0, needsSeparatorBefore ? ['', ...preLines] : preLines);
       }
     }
     return prepend ? firstTableIn(target) : lastTableIn(target);
@@ -564,7 +631,7 @@ function insertCapture(target, type, expandedText, prepend = false, omitEmptyEnt
 
   // 'plain' (and the fallback for anything unrecognized -- inserting the
   // text verbatim is a safer default than silently discarding it)
-  const fragment = parseOrg(expandedText);
+  const fragment = parseOrg(expandedPreText + expandedText + expandedPostText);
   if (omitEmptyEntries) for (const heading of fragment.children) stripEmptyProperties(heading);
   const producedHeadings = fragment.children.length > 0;
   mergeFragmentInto(target, fragment, prepend);
@@ -669,6 +736,7 @@ export {
   formatTime,
   scanPrompts,
   expandTemplate,
+  expandCaptureText,
   resolveOlpTarget,
   mergeFragmentInto,
   insertCapture,
