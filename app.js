@@ -120,6 +120,7 @@ import { exportToMarkdown } from './src/export-markdown.js';
 import { exportToOdt } from './src/export-odt.js';
 import { exportToAscii } from './src/export-ascii.js';
 import { expandIncludes } from './src/export-include.js';
+import { exportAsOrg } from './src/export-org.js';
 import { exportToHtml } from './src/export-html.js';
 import { exportToIcalendar } from './src/export-icalendar.js';
 import { exportToVcard } from './src/export-vcard.js';
@@ -3622,7 +3623,7 @@ document.addEventListener('pointerdown', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (confirmDialogOpen) return;
+  if (confirmDialogOpen || timestampPickerOpen) return;
   if (activeQueryReplace) {
     const { controller } = activeQueryReplace;
     if (e.key === 'y' || e.key === ' ') {
@@ -9309,6 +9310,132 @@ function confirmDialog(message, { confirmLabel = 'Delete', cancelLabel = 'Cancel
   });
 }
 
+let timestampPickerOpen = false; // true only while openTimestampPickerPopup's own overlay is showing -- mirrors confirmDialogOpen's own role for the global keydown handler
+
+/** A focused, Promise-based date/time-picker popup for the %^t/%^T/%^u/
+ *  %^U capture-template prompts (see capture-template.js's own
+ *  scanPrompts) -- reuses confirmDialog's own overlay+modal shape and
+ *  buildTimestampFieldGroup's own native <input type="date">/
+ *  <input type="time"> pattern (including its iOS-specific appearance
+ *  fix), but deliberately simpler: no repeater, no delay-warning --
+ *  neither makes sense for inserting one timestamp's own text into a
+ *  field, unlike planning a recurring/advance-warned SCHEDULED/
+ *  DEADLINE. `kind` is { active, hasTime }, exactly scanPrompts' own
+ *  prompt.timestamp shape.
+ *
+ *  Resolves the formatted timestamp string on OK, or null on Cancel/
+ *  Escape/tapping the backdrop -- the caller leaves the field's own
+ *  text completely untouched on null, so whatever the person had
+ *  already typed or erased there survives exactly as it was. Unlike
+ *  confirmDialog's own convention (Cancel filled/prominent, the safe
+ *  choice for a destructive confirmation), OK is the prominent action
+ *  here -- neither choice is dangerous, and picking a date is the
+ *  whole point of opening this -- and OK starts disabled, only
+ *  enabling once a real date is actually entered, so it can never
+ *  fire on an empty/invalid pick. */
+function openTimestampPickerPopup(kind) {
+  return new Promise((resolve) => {
+    timestampPickerOpen = true;
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.background = 'rgba(0,0,0,0.6)';
+    overlay.style.zIndex = '10000';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.padding = '16px';
+    overlay.style.boxSizing = 'border-box';
+
+    const modal = document.createElement('div');
+    modal.className = 'panel';
+    modal.style.background = 'var(--modal-bg)';
+    modal.style.color = 'var(--fg)';
+    modal.style.border = '1px solid var(--border-strong)';
+    modal.style.borderRadius = '10px';
+    modal.style.padding = '16px';
+    modal.style.width = '100%';
+    modal.style.maxWidth = '420px';
+    modal.style.boxSizing = 'border-box';
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
+    modal.style.gap = '14px';
+
+    const titleEl = document.createElement('div');
+    titleEl.textContent = (kind.active ? 'Active' : 'Inactive') + (kind.hasTime ? ' date & time' : ' date');
+    titleEl.style.fontSize = '15px';
+    titleEl.style.fontWeight = '600';
+    modal.appendChild(titleEl);
+
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    textInputStyle(dateInput);
+    dateInput.style.webkitAppearance = 'none'; // same iOS fix buildTimestampFieldGroup's own date input already needed
+    dateInput.style.appearance = 'none';
+    modal.appendChild(fieldRow('Date', dateInput));
+
+    let timeInput = null;
+    if (kind.hasTime) {
+      timeInput = document.createElement('input');
+      timeInput.type = 'time';
+      textInputStyle(timeInput);
+      timeInput.style.webkitAppearance = 'none';
+      timeInput.style.appearance = 'none';
+      modal.appendChild(fieldRow('Time (optional)', timeInput));
+    }
+
+    const buttonRow = document.createElement('div');
+    buttonRow.className = 'panel-row';
+    buttonRow.style.justifyContent = 'flex-end';
+    buttonRow.style.gap = '8px';
+
+    function finish(result) {
+      timestampPickerOpen = false;
+      document.removeEventListener('keydown', onKeyDown, true);
+      overlay.remove();
+      resolve(result);
+    }
+
+    const cancelBtn = tableActionButton('Cancel', () => finish(null));
+    const okBtn = tableActionButton('OK', () => {
+      if (!dateInput.value) return; // shouldn't be reachable while disabled, but never substitute an empty/invalid pick regardless
+      const [y, m, d] = dateInput.value.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      const time = kind.hasTime && timeInput.value ? timeInput.value : null;
+      finish(formatOrgTimestamp({ date, time, active: kind.active }));
+    });
+    okBtn.disabled = true;
+    okBtn.style.background = 'var(--accent)';
+    okBtn.style.color = '#fff';
+    okBtn.style.borderColor = 'var(--accent)';
+    okBtn.style.fontWeight = '600';
+    dateInput.addEventListener('input', () => {
+      okBtn.disabled = !dateInput.value;
+    });
+
+    buttonRow.appendChild(cancelBtn);
+    buttonRow.appendChild(okBtn);
+    modal.appendChild(buttonRow);
+    overlay.appendChild(modal);
+
+    overlay.onclick = (e) => {
+      if (e.target === overlay) finish(null);
+    };
+
+    function onKeyDown(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        finish(null);
+      }
+    }
+    document.addEventListener('keydown', onKeyDown, true);
+
+    document.body.appendChild(overlay);
+    dateInput.focus();
+  });
+}
+
 function tableActionButton(label, onClick, disabled) {
   const btn = menuButton(label, onClick, disabled);
   btn.style.fontSize = '15px';
@@ -9628,6 +9755,41 @@ async function performExport(format, scope) {
   render();
 }
 
+/** The shared implementation behind both the Export menu's own
+ *  "As-org" entry and the org-xx-extra-menu's own
+ *  'org-org-export-as-org function reference -- neither duplicates
+ *  the other's own logic. See src/export-org.js's own top-level doc
+ *  comment for exactly which of real org-mode's own documented steps
+ *  this actually performs (and the one it deliberately can't: code-
+ *  block execution). Operates on the whole current document, not a
+ *  narrowed subtree -- this command's own real, documented behavior
+ *  never mentions scoping, reading as "process my current working
+ *  file" rather than a view-level narrow's own separate concern.
+ *  Opens the result in a brand-new, unsaved buffer (reusing
+ *  createNewUnsavedDocument, the same primitive vCard's own "To: *new
+ *  buffer*" already uses) titled "*Org ORG Export*" -- the ORIGINAL
+ *  document is never touched at all, matching real org's own actual
+ *  behavior exactly ("your original working file remains completely
+ *  untouched"). */
+async function performOrgOrgExport() {
+  if (!state.doc) return;
+  setStatus('Exporting\u2026');
+  let result;
+  try {
+    result = await exportAsOrg(state.doc, resolveIncludePath, parseOrg, { minlevel: 1 });
+  } catch (err) {
+    setStatus(`Couldn't export: ${err.message}`);
+    render();
+    return;
+  }
+  const serialized = serializeOrg(result)
+    .split('\n')
+    .filter((line) => !/^\s*#\+TITLE:/i.test(line))
+    .join('\n');
+  const rawText = '#+TITLE: *Org ORG Export*\n' + serialized;
+  await createNewUnsavedDocument(rawText, 'Exported to *Org ORG Export* in a new buffer \u2014 your original document is untouched.');
+}
+
 function renderExportFlow() {
   if (exportFormat === null) {
     const label = document.createElement('div');
@@ -9662,8 +9824,17 @@ function renderExportFlow() {
       exportFormat = 'odt';
       renderMoreMenu();
     });
+    const orgexportBtn = aliasedMenuDivItem(exportMenuAliases, 'As-org', async () => {
+      moreOpen = false;
+      moreMenuStep = null;
+      exportFormat = null;
+      renderMoreMenu();
+      await performOrgOrgExport();
+      renderMoreMenu();
+    });
     appendMenuButtonsInOrder(morePanel, exportMenuAliases, [
       { label: 'ASCII', btn: asciiBtn },
+      { label: 'As-org', btn: orgexportBtn },
       { label: 'Calendar (.ics)', btn: icsBtn },
       { label: 'Contacts (.vcf)', btn: vcardBtn },
       { label: 'HTML', btn: htmlBtn },
@@ -14835,6 +15006,22 @@ function renderCapturePromptForm() {
     field.appendChild(input);
     promptInputs.push(input);
 
+    if (p.timestamp) {
+      const pickerBtn = document.createElement('button');
+      pickerBtn.textContent = '\ud83d\udcc5 Pick ' + (p.timestamp.hasTime ? 'date & time' : 'date');
+      pickerBtn.style.marginTop = '4px';
+      pickerBtn.style.fontSize = '13px';
+      pickerBtn.style.padding = '6px 10px';
+      pickerBtn.onclick = async () => {
+        const result = await openTimestampPickerPopup(p.timestamp);
+        if (result === null) return; // Cancel/Escape/backdrop -- the field itself is left exactly as it was
+        input.value = result;
+        capturePromptValues[i] = result;
+        updatePreview();
+      };
+      field.appendChild(pickerBtn);
+    }
+
     if (p.completions.length > 0) {
       const hint = document.createElement('div');
       hint.style.fontSize = '11px';
@@ -15156,6 +15343,10 @@ async function runExtraMenuEntry(entry) {
       openCalendarPanel();
     } else if (entry.name === 'org-table-recalculate-buffer-tables') {
       recalculateAllTables();
+    } else if (entry.name === 'org-org-export-as-org') {
+      extraMenuOpen = false;
+      render();
+      await performOrgOrgExport();
     }
     return;
   }

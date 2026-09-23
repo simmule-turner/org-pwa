@@ -6,6 +6,32 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v372 — Documentation: preText/postText, %^t family, As-org, worked examples
+Documents preText/postText, %^t/%^T/%^u/%^U, and org-org-export-as-org
+(in three places: the Extras Menu function list, the scope-summary
+line, and a new As-org paragraph in Export). Adds two fully
+annotated worked-example templates (Tracking, vCard Contact) --
+every factual claim verified by actually running the real code
+first, not described from memory.
+
+* v371 — New feature: org-org-export-as-org (a considered subset)
+Produces a fully processed copy of the current document in a
+brand-new, unsaved buffer -- #+INCLUDE: resolved, {{{macro}}}
+references expanded, :noexport: headings and comments dropped,
+headings scaled -- leaving the original document completely
+untouched. Code-block execution isn't implemented (this app has no
+execution sandbox for any language). Available from Export > As-org
+and as a new 'org-org-export-as-org extras-menu function reference.
+
+* v370 — Menu-aliases doc fix; new capture prompts: %^t / %^T / %^u / %^U
+Fixed a real bug in the org-xx-menu-aliases README example (empty
+aliases silently hid every button rather than reordering them) and
+added Import, the More menu's real sixth button the docs had missed.
+New capture-template tokens %^t/%^T/%^u/%^U -- real org's own
+interactive timestamp prompts -- show a date/time-picker button on
+the capture form; OK writes the formatted timestamp into the same
+freely-editable text field, Cancel leaves it untouched.
+
 * v369 — Plot sizing refinement: reclaimed indentation, centered, symmetric margins
 Per direct follow-up: a plot's containing row previously carried the
 same depth-based left indentation as the table above it, wasting
