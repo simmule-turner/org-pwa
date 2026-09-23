@@ -1073,3 +1073,43 @@ test('plain concatenates preText + expandedText + postText directly, then parses
   assert.ok(lines.includes('Filed under #+standup'));
   assert.ok(lines.includes('** Standup')); // nested one level under target (level 1), matching mergeFragmentInto's own level-offset behavior
 });
+
+// ---- %^t/%^T/%^u/%^U -- interactive timestamp prompts ------------------
+
+test('THE FEATURE: scanPrompts recognizes %^t/%^T/%^u/%^U, each with the correct active/hasTime discriminator for the capture form\u2019s own date/time-picker button', () => {
+  const prompts = scanPrompts('%^t %^T %^u %^U');
+  assert.deepEqual(
+    prompts.map((p) => p.timestamp),
+    [
+      { active: true, hasTime: false },
+      { active: true, hasTime: true },
+      { active: false, hasTime: false },
+      { active: false, hasTime: true },
+    ]
+  );
+  assert.deepEqual(
+    prompts.map((p) => p.prompt),
+    ['Date', 'Date & time', 'Date', 'Date & time']
+  );
+});
+
+test('%^t/%^T/%^u/%^U consume promptAnswers by position exactly like %^{...}/%? already do -- whatever was typed or picked into that field is substituted verbatim', () => {
+  const { text } = expandTemplate('Meeting on %^t at %^T, review by %^u, follow-up %^U', {
+    promptAnswers: ['<2026-09-22 Tue>', '<2026-09-22 Tue 18:00>', '[2026-09-25 Fri]', '[2026-09-30 Wed 09:00]'],
+  });
+  assert.equal(text, 'Meeting on <2026-09-22 Tue> at <2026-09-22 Tue 18:00>, review by [2026-09-25 Fri], follow-up [2026-09-30 Wed 09:00]');
+});
+
+test('%^t/%^T/%^u/%^U share the same promptIndex counter as ordinary %^{...} prompts -- numbered together in reading order, not counted separately', () => {
+  const prompts = scanPrompts('%^{Name} met %^t');
+  assert.equal(prompts.length, 2);
+  assert.equal(prompts[0].prompt, 'Name');
+  assert.equal(prompts[1].timestamp.active, true);
+  const { text } = expandTemplate('%^{Name} met %^t', { promptAnswers: ['Alice', '<2026-01-01 Thu>'] });
+  assert.equal(text, 'Alice met <2026-01-01 Thu>');
+});
+
+test('the existing, non-interactive %t/%T/%u/%U (no caret) are unaffected -- still substitute "now" directly, never treated as prompts', () => {
+  const prompts = scanPrompts('%t %T %u %U');
+  assert.equal(prompts.length, 0);
+});
