@@ -45,18 +45,23 @@
  *     app could mean without a cursor/point concept the way Emacs has
  *     one -- this one recalculates every #+TBLFM: formula in every
  *     table in the whole document, see app.js's own dispatch for the
- *     full behavior), and org-cut-subtree / org-paste-subtree (the
+ *     full behavior), org-cut-subtree / org-paste-subtree (the
  *     same C-c C-x C-w / C-c C-x C-y god-mode commands, run against
  *     whichever heading's own per-row action menu is currently open
  *     -- the touch-native way to designate a specific heading without
  *     a keyboard at all -- falling back to whichever heading is
  *     currently keyboard-focused if no action menu is open; a status
  *     message says so if neither is set, rather than doing nothing
- *     silently) are recognized today; more may be added later,
- *     so an unrecognized function name is treated as a malformed
- *     entry (skipped) rather than a hard parse error, the same
- *     forward-compatible tolerance every other "recognized subset"
- *     parser in this codebase already has.
+ *     silently), and org-org-export-as-org (real org's own actual
+ *     command -- a considered subset, see src/export-org.js's own doc
+ *     comment for exactly which of its real, documented steps this
+ *     app can and can't actually do -- opening the fully processed
+ *     result in a brand-new, unsaved buffer, same as this app's own
+ *     Export menu's own "As-org" entry) are recognized today; more
+ *     may be added later, so an unrecognized function name is treated
+ *     as a malformed entry (skipped) rather than a hard parse error,
+ *     the same forward-compatible tolerance every other "recognized
+ *     subset" parser in this codebase already has.
  *
  * LABEL is the display text shown for the menu item -- whatever
  * follows the FIRST top-level (bracket-depth-0) semicolon, kept
@@ -72,6 +77,7 @@ const KNOWN_FUNCTIONS = new Set([
   'org-table-recalculate-buffer-tables',
   'org-cut-subtree',
   'org-paste-subtree',
+  'org-org-export-as-org',
 ]);
 const SEPARATOR_TOKEN = '-----';
 

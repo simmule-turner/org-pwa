@@ -141,13 +141,27 @@ function formatTime(date, format) {
  * for that file to focus anything in. Gathering the value first sidesteps
  * both problems the same way any other prompt already did.
  */
+/** real org-mode's own four interactive timestamp-prompt letters --
+ *  active/inactive x date-only/date-and-time -- each mapped to the
+ *  { active, hasTime } shape formatOrgTimestamp itself expects, plus
+ *  a plain-language label for the prompt form. */
+const TIMESTAMP_PROMPT_KINDS = {
+  t: { active: true, hasTime: false, label: 'Date' },
+  T: { active: true, hasTime: true, label: 'Date & time' },
+  u: { active: false, hasTime: false, label: 'Date' },
+  U: { active: false, hasTime: true, label: 'Date & time' },
+};
+
 function scanPrompts(template) {
   const prompts = [];
-  const re = /%\^\{([^}]*)\}|%\?/g;
+  const re = /%\^\{([^}]*)\}|%\^([tTuU])|%\?/g;
   let match;
   while ((match = re.exec(template))) {
     if (match[0] === '%?') {
       prompts.push({ prompt: 'Text', default: '', completions: [] });
+    } else if (match[2]) {
+      const kind = TIMESTAMP_PROMPT_KINDS[match[2]];
+      prompts.push({ prompt: kind.label, default: '', completions: [], timestamp: { active: kind.active, hasTime: kind.hasTime } });
     } else {
       const parts = match[1].split('|');
       prompts.push({
@@ -191,7 +205,7 @@ function expandTemplate(template, context = {}) {
   const tableRowNumber = context.tableRowNumber;
 
   const hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
-  const TOKEN_RE = /%%|%<([^>]*)>|%\^\{([^}]*)\}|%\\(\d+)|%[tTuU?]|@#(?:\s*([+-])\s*(\d+))?/g;
+  const TOKEN_RE = /%%|%<([^>]*)>|%\^\{([^}]*)\}|%\\(\d+)|%[tTuU?]|@#(?:\s*([+-])\s*(\d+))?|%\^([tTuU])/g;
 
   let result = '';
   let lastIndex = 0;
@@ -241,6 +255,10 @@ function expandTemplate(template, context = {}) {
         result += String(tableRowNumber + n);
       }
     } else if (token === '%?') {
+      const answer = promptAnswers[promptIndex];
+      result += answer !== undefined && answer !== null ? answer : '';
+      promptIndex += 1;
+    } else if (token.startsWith('%^') && match[6]) {
       const answer = promptAnswers[promptIndex];
       result += answer !== undefined && answer !== null ? answer : '';
       promptIndex += 1;

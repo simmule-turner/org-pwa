@@ -114,10 +114,21 @@ export { parseMenuAliases, tokenizeMenuAliasValue };
  * order. `aliasMap` is one menu's own slice of parseMenuAliases'
  * result (e.g. `result.more`). Returns `labels` reordered to match
  * aliasMap's own key insertion order, but ONLY when every single one
- * of `labels` is a key in aliasMap -- even an empty-string value
- * counts as "mentioned" (that's how a label establishes its own
- * position in the order without changing its text or being hidden);
- * only a label missing from aliasMap entirely means "not mentioned",
+ * of `labels` is a key in aliasMap -- an empty-string value still
+ * counts as "mentioned" for THIS ordering decision specifically (that
+ * part of the claim IS accurate: it's how a label establishes its own
+ * position in the order at all), but whether that same empty value
+ * also keeps the button visible is a SEPARATE decision this function
+ * has no part in -- app.js's own aliasedMenuDivItem hides a button
+ * outright on an empty alias, with no exception for "every label is
+ * present": to reorder a label while keeping its own default text
+ * and visibility both intact, its own alias needs to be its own label
+ * text repeated, not left empty (see README.org's own Menu
+ * customization section for the full, correct worked example);
+ * only more:Settings is actually the exception this comment used to
+ * describe, since it alone renders via requiredMenuDivItem, which has
+ * no such hide-on-empty behavior at all. Only a label missing from
+ * aliasMap entirely means "not mentioned" for ordering purposes,
  * which makes reordering opt-in and all-or-nothing: a partial listing
  * leaves the default order completely untouched, so setting one or
  * two aliases never silently reorders anything as a side effect.
