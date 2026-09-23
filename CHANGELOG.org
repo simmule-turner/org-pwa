@@ -6,6 +6,13 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v373 — Documentation: LaTeX and search worked examples
+LaTeX fragment examples (an inline formula and a multi-line align
+environment, both actually rendered live through the app first) and
+search mode examples (one query each for Filter, Regex, and Match,
+verified against a real document before being documented). Completes
+the documentation pass started in v372.
+
 * v372 — Documentation: preText/postText, %^t family, As-org, worked examples
 Documents preText/postText, %^t/%^T/%^u/%^U, and org-org-export-as-org
 (in three places: the Extras Menu function list, the scope-summary

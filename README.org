@@ -330,6 +330,24 @@ A fragment KaTeX can't render (an unsupported command, a genuine syntax error) s
 
 Renders everywhere inline markup already does — the outline itself, the read-only Docs viewer, and HTML export (KaTeX's own CSS is inlined into an export automatically, but only for a document that actually contains math). Markdown, ASCII, and ODT export don't render math at all — the raw LaTeX source passes through as ordinary text.
 
+*Worked examples:*
+
+An inline fragment, the quadratic formula, written with org's own recommended ~\(...\)~ delimiters:
+
+The source: ~The quadratic formula is \(x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}\).~ Renders inline, right in the flow of the sentence, as: the quadratic formula, typeset with a proper fraction bar (numerator ~-b \pm \sqrt{b^2-4ac}~ over denominator ~2a~) and a real square-root radical, not a literal ~sqrt(...)~ left as text.
+
+A multi-line fragment -- an ~align~ environment, several equations aligned at their own ~=~ signs, each getting its own automatic equation number on the right (real KaTeX's own actual behavior for ~align~, not something this app adds):
+
+#+BEGIN_SRC
+\begin{align}
+E &= mc^2 \\
+F &= ma \\
+a^2 + b^2 &= c^2
+\end{align}
+#+END_SRC
+
+Renders as three separate, right-aligned equations stacked vertically -- ~E = mc^2~ numbered ~(1)~, ~F = ma~ numbered ~(2)~, ~a^2 + b^2 = c^2~ numbered ~(3)~ -- each line's own ~&~ marking where the alignment (and the ~=~ sign) lines up across all three, and the ~\\~ at the end of a line (not to be confused with org's own hard-line-break marker just below, a different thing entirely happening inside a completely different context) ending that equation and starting the next.
+
 *Hard line break*: a line ending in two literal backslashes (~\\~) is
 real org's own explicit line-break marker. Every source line within an
 ordinary paragraph or list item reflows together with a plain
@@ -380,6 +398,12 @@ Search looks at the entire document regardless of current fold state — a match
 - ~|~ inside any of the ~tag:~ / ~todo:~ / ~priority:~ / ~key:value~ forms above means "any of these" — ~tag:urgent|blocked~, ~todo:TODO|WAITING~, ~priority:A|B~, ~assignee:Bob|Alice~ all match either alternative. Negated, it flips to "none of these" — ~-todo:TODO|WAITING~ means neither state. This only combines alternatives *within* one filter's own value list — there's no OR *between* separate filters (e.g. "tagged urgent OR priority A" isn't expressible), and no parentheses/grouping at all; a deliberate, smaller design (see the module-level comment in ~src/search.js~ for the fuller reasoning) rather than reproducing real org's own fuller boolean match-syntax.
 
 *Match mode* (the *Match* option in the search bar's own options popover, alongside *Regex* — mutually exclusive with it, since selecting either replaces the whole query's own meaning rather than layering on top of the other; a check mark next to whichever is currently on, and a small dot on the ~⋯~ button itself when either is active, so the state stays visible even with the popover closed) is that fuller boolean match-syntax: real org's own tag/property match-query grammar (the language behind ~C-c / m~ and ~org-make-tags-matcher~ generally), confirmed directly against actual Emacs and org-mode rather than assumed. ~|~ is the lowest-precedence operator, splitting the whole query into OR'd groups; within one group, ~+family~ / ~family~ (a bare condition defaults to requiring it) and ~-work~ combine via simple juxtaposition, each one AND'd with the last — so ~family+work|urgent~ means "(has family AND has work) OR (has urgent)," genuinely expressible here unlike the plain ~tag:~ / ~todo:~ filters above. A condition can also be a property comparison — ~PROPERTY="value"~, with ~=~ / ~<>~ / ~<~ / ~>~ / ~<=~ / ~>=~ all supported — freely combined with tag conditions in the same expression (~work+PRIORITY_TEST="B"~), and ~TODO~ / ~LEVEL~ / ~PRIORITY~ / ~CATEGORY~ work as pseudo-properties the same way they do in real org. An empty query, an empty group next to a stray ~|~, or an unparseable condition all produce a clear error rather than silently matching everything or nothing. Query-replace isn't offered in this mode — a structured boolean expression isn't a find-pattern, so *Replace* is disabled (grayed out in the popover) while *Match* is active.
+
+*Worked examples, one per mode -- verified directly against a real document rather than just described:*
+
+- *Filter (default)*: ~+urgent todo:TODO budget~ -- every ~TODO~-state heading tagged ~urgent~ whose own entry (title, body, properties, anywhere this box already searches) contains "budget" somewhere. Three separate conditions, all AND'd together implicitly.
+- *Regex*: ~^\(Buy\|Fix\)~ -- any heading whose own title starts with literally "Buy" or "Fix". Real Emacs regex syntax specifically: the grouping parens and the alternation bar both need their own backslash (~\(~ ~\)~ ~\|~), unlike most other regex dialects.
+- *Match*: ~work+urgent|blocked~ -- every heading that's EITHER (tagged both ~work~ AND ~urgent~) OR (tagged ~blocked~). The ~|~ splits the whole query into two OR'd groups first; within the first group, ~work~ and ~urgent~ combine by simple juxtaposition (AND).
 
 *Narrow* — shown in the search results whenever at least one match belongs to the currently open document (not a cross-file agenda-files result; narrowing another document doesn't make sense), alongside an accurate count of just those matches. Works with any search mode, not only Match — a plain keyword search or Regex search can be narrowed to exactly the same way. Tapping it restricts the outline to those headings plus their own ancestors, kept visible so a match still reads in its real position with enough context to make sense of where it sits, rather than as a flat, context-free list — matching this app's own swipe-to-fold and real org sparse trees alike. A persistent banner shows the count and a *Widen* button to return to the full outline. This is independent of, and composes with, [[#narrowing][subtree narrowing]] above — narrowing to a subtree and then narrowing further to search matches within it works without anything special, since each is its own filter layered on the last. Deliberately session-only for now: unlike subtree narrowing, this doesn't survive an actual reload — it widens automatically instead, a real gap worth closing later rather than an oversight.
 
