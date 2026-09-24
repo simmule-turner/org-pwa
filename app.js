@@ -2759,6 +2759,36 @@ function anyOverlayPanelOpenExceptDocs() {
  *  re-rendering each one so it actually disappears -- the shared
  *  Escape-to-dismiss behavior every one of these panels was missing
  *  on its own (see anyOverlayPanelOpen's own docs for why). */
+/** Shows Help -- opening it fresh if it doesn't exist yet
+ *  (helpTabExists false), switching to it if it exists but isn't
+ *  currently the visible content (docsOpen false, e.g. a real
+ *  document tab is currently active instead), or doing nothing at all
+ *  if it's already both open and currently showing -- "?" pressed
+ *  again while Help is already displayed no longer toggles it shut,
+ *  matching standard tab semantics: the only way to close Help is its
+ *  own tab's close button (see closeHelpTab, and renderTabBar's own
+ *  Help tab, below). */
+function openOrSwitchToHelp() {
+  if (docsOpen) return; // already both open and the currently-visible content -- nothing to do
+  closeAllOverlayPanels();
+  helpTabExists = true;
+  docsOpen = true;
+  render(); // wide: syncSidePanel (called from here) already builds Help's own content into #sidePanel; narrow: correctly skips rebuilding #outline itself now that docsOpen is true, leaving that to the explicit call below
+  if (!isWideLayout()) {
+    renderDocsView(outlineEl);
+  }
+}
+
+/** Closes Help entirely -- the only way to, now that "?" itself no
+ *  longer toggles it shut once it's already open (see
+ *  openOrSwitchToHelp above) -- matching standard tab-close semantics:
+ *  tapping a tab's own close button is what actually closes it. */
+function closeHelpTab() {
+  docsOpen = false;
+  helpTabExists = false;
+  render();
+}
+
 function closeAllOverlayPanels() {
   if (fileMenuOpen) {
     fileMenuOpen = false;
@@ -2956,6 +2986,16 @@ function documentDisplayLabel(docId, doc) {
 }
 
 function renderModeline() {
+  if (docsOpen) {
+    // Help is a real-Emacs-style read-only buffer -- %% is real Emacs's
+    // own third modified-indicator state (alongside -- unmodified and **
+    // modified below), completing the convention this app's own modeline
+    // already partially implements. Checked before the !state.doc guard
+    // below: Help can be opened even with no document open at all, and
+    // the modeline should still correctly reflect that, not go blank.
+    modelineEl.textContent = '%%  Help (README.org)';
+    return;
+  }
   if (!state.doc) {
     modelineEl.textContent = '';
     return;
@@ -3952,7 +3992,17 @@ function persistOpenTabsInBackground() {
 }
 
 function switchToTab(tabId) {
-  if (tabId === activeTabId) return;
+  if (tabId === activeTabId) {
+    if (docsOpen) {
+      // Help is covering this already-active tab -- nothing to
+      // genuinely switch (same tab, same session state), just close
+      // Help and reveal it again.
+      docsOpen = false;
+      render();
+      renderTabBar();
+    }
+    return;
+  }
   // Committing (if there's anything to commit) brings state.doc fully
   // up to date -- and clears narrowedTextModeRange -- for the tab
   // being left, BEFORE the snapshot below captures it. Without this,
@@ -4049,7 +4099,7 @@ async function closeTab(tabId) {
  *  tab switch to save a fresh snapshot. */
 function renderTabBar() {
   tabBarEl.innerHTML = '';
-  if (documentSessions.length < 1) {
+  if (documentSessions.length < 1 && !helpTabExists) {
     tabBarEl.style.display = 'none';
     return;
   }
@@ -4061,7 +4111,7 @@ function renderTabBar() {
 
   let activeTabEl = null;
   for (const session of documentSessions) {
-    const isActive = session.tabId === activeTabId;
+    const isActive = session.tabId === activeTabId && !docsOpen; // docsOpen: Help is currently covering this tab's own content -- it isn't genuinely "active" (visible) even though activeTabId still points at it
     const docId = isActive ? state.documentId : session.state.documentId;
     const doc = isActive ? state.doc : session.state.doc;
     const dirty = isActive ? isDirty : session.isDirty;
@@ -4109,6 +4159,49 @@ function renderTabBar() {
     if (isActive) activeTabEl = tab;
     tabBarEl.appendChild(tab);
   }
+
+  if (helpTabExists) {
+    const tab = document.createElement('div');
+    tab.style.display = 'flex';
+    tab.style.alignItems = 'center';
+    tab.style.gap = '4px';
+    tab.style.padding = '8px 6px 8px 12px';
+    tab.style.flexShrink = '0';
+    tab.style.maxWidth = '160px';
+    tab.style.cursor = 'pointer';
+    tab.style.borderBottom = docsOpen ? '2px solid rgb(255,214,0)' : '2px solid transparent'; // the same gold navigateToHeading's own "go back to" highlight flash uses (rgba(255,214,0,0.45)), not this app's usual blue (--accent) -- distinguishes Help's own active indicator from every other, unrelated active-tab border
+    tab.style.background = 'var(--done-bg)'; // this app's own existing green convention (DONE-state badges) -- always shown, whether or not Help is the currently-active tab, so it reads as "Help exists" at a glance, the same way the dirty indicator is a constant marker rather than only an active-state one
+    tab.onclick = () => openOrSwitchToHelp();
+
+    const labelEl = document.createElement('span');
+    labelEl.textContent = 'Help';
+    labelEl.style.whiteSpace = 'nowrap';
+    labelEl.style.fontSize = '13px';
+    labelEl.style.color = 'var(--done-fg)';
+    tab.appendChild(labelEl);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '\u2715';
+    closeBtn.setAttribute('aria-label', 'Close tab: Help');
+    closeBtn.style.border = 'none';
+    closeBtn.style.background = 'transparent';
+    closeBtn.style.color = 'var(--done-fg)';
+    closeBtn.style.opacity = '0.7';
+    closeBtn.style.fontSize = '12px';
+    closeBtn.style.padding = '6px';
+    closeBtn.style.minWidth = '28px';
+    closeBtn.style.minHeight = '28px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      closeHelpTab();
+    };
+    tab.appendChild(closeBtn);
+
+    if (docsOpen) activeTabEl = tab;
+    tabBarEl.appendChild(tab);
+  }
+
   if (activeTabEl) activeTabEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
@@ -4150,6 +4243,17 @@ let browseEntries = null;
 let browseError = null;
 let settingsOpen = false;
 let docsOpen = false;
+// Separate from docsOpen (which keeps its own existing meaning --
+// "Help is currently the visible content" -- unchanged everywhere else in
+// this app): tracks only "has Help been opened and not yet explicitly
+// closed via its own tab" (see renderTabBar's own Help tab below).
+// Persists across a tab switch or opening another panel (Search,
+// Settings, etc.) -- both already set docsOpen = false via
+// closeAllOverlayPanels without touching this flag, so Help's own tab
+// stays in the bar, just not the currently-active one -- and is cleared
+// only when that tab's own close button is tapped, matching standard
+// tab-close semantics rather than the "?" button toggling it shut.
+let helpTabExists = false;
 let searchOpen = false;
 let confirmDialogOpen = false; // true only while confirmDialog()'s own overlay is showing -- lets the global keydown handler cleanly step aside rather than racing this dialog's own key handling
 let captureOpen = false;
@@ -13951,6 +14055,7 @@ async function renderDocsView(target = docsRenderTarget) {
   const container = document.createElement('div');
   container.className = 'panel';
   container.style.minHeight = '100%';
+  container.style.fontSize = 'var(--app-font-size)'; // overrides .panel's own hardcoded 13px, which otherwise silently blocked this app's own existing, already-adjustable font-size setting from ever reaching Help's own body/paragraph text
   target.appendChild(container);
 
   let restoreScrollTop = null;
@@ -14074,18 +14179,7 @@ settingsBtn.addEventListener('click', async () => {
 });
 
 helpBtn.addEventListener('click', () => {
-  const opening = !docsOpen;
-  closeAllOverlayPanels();
-  docsOpen = opening;
-  if (docsOpen) {
-    if (isWideLayout()) {
-      render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
-    } else {
-      renderDocsView(outlineEl); // narrow: replaces #outline directly, exactly as before this feature existed
-    }
-  } else {
-    render(); // restores whatever currentView was showing before Docs opened
-  }
+  openOrSwitchToHelp();
 });
 
 // ---- Search UI -----------------------------------------------------------

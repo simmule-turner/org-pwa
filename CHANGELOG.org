@@ -6,6 +6,23 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v374 — Help visibility: adjustable font-size, tab indicator, %% mode-line
+Help's own body text now respects the existing --app-font-size
+setting (previously silently overridden by .panel's own hardcoded
+13px). A new "Help" tab appears in the tab bar whenever Help is
+open -- green background fill, gold active-border (matching
+navigateToHeading's own "go back to" highlight, not this app's usual
+blue), positioned last. "?" no longer toggles Help shut once it's
+already displayed -- the only way to close it now is that tab's own
+close button. The mode-line shows %% for Help, completing real
+Emacs's own three-state --/**/%% convention. Three real bugs caught
+and fixed via live verification before shipping: a document's own
+tab kept showing itself as active while Help was actually covering
+it; switchToTab's own early-return guard blocked switching back to
+an already-active document tab when Help covered it; and the Help
+tab's active-border color needed a follow-up fix to gold per direct
+request.
+
 * v373 — Documentation: LaTeX and search worked examples
 LaTeX fragment examples (an inline formula and a multi-line align
 environment, both actually rendered live through the app first) and
