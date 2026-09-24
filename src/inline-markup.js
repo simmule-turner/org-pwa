@@ -174,6 +174,23 @@ function extractLatexFragments(lines) {
   let pos = 0;
   while (pos < fullText.length) {
     const ch = fullText[pos];
+    // A code (~...~) or verbatim (=...=) span's own content is always
+    // literal per org's own actual rule -- never further parsed, math
+    // included -- so it has to be skipped over here wholesale, exactly
+    // as written, rather than scanned for a LaTeX delimiter that
+    // happens to appear inside example text like "~\(x\)~" (showing
+    // the delimiter syntax itself, not real math to render). *bold*/
+    // _underline_/etc. are deliberately left unskipped: those CAN
+    // legitimately contain real math per org's own nesting rules, so
+    // only the two genuinely-literal markers are special-cased here.
+    if (ch === '~' || ch === '=') {
+      const span = matchEmphasisAt(fullText, pos);
+      if (span) {
+        result += fullText.slice(pos, pos + span.length);
+        pos += span.length;
+        continue;
+      }
+    }
     if (ch === '$' || ch === '\\') {
       const m = matchLatexFragmentAt(fullText, pos);
       if (m) {
