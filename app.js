@@ -10733,6 +10733,15 @@ function renderAgendaView() {
   outlineEl.innerHTML = '';
   const container = document.createElement('div');
   container.style.padding = '8px 12px';
+  // Extends the swipe-capture area (attachAgendaSwipeNav, below) across
+  // the full visible viewport, not just this container's own content --
+  // otherwise a swipe below the last agenda entry lands on the parent
+  // instead, which has no swipe listener at all. contentAreaEl (this
+  // app's own actual scroll/sizing wrapper, in both narrow and wide
+  // layout) has a real, JS-computed pixel height; a CSS percentage here
+  // doesn't work, since #outline itself (this container's own direct
+  // parent) has no defined height in narrow layout at all.
+  container.style.minHeight = contentAreaEl.clientHeight + 'px';
 
   const effectiveShowAllDates = agendaShowAllDatesOverride !== null ? agendaShowAllDatesOverride : getAgendaShowAllDates(state.localVariables);
 

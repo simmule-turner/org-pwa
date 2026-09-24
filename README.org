@@ -37,7 +37,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 - [[#file-management][File management]]
 - [[#tabs][Tabs]]
 - [[#export][Export]]
-- [[#docs][Docs]]
+- [[#docs][Help]]
 - [[#settings][Settings]]
 - [[#offline-behavior-and-sync][Offline behavior and sync]]
 - [[#platform-support][Platform support]]
@@ -422,7 +422,7 @@ A fixed two-row bar at the very bottom of the screen, styled after real Emacs's 
 
 *The modeline* is read-only, monospace, and terse, matching real Emacs's own actual convention:
 
-- *Modified indicator* — ~**~ if the buffer has unsaved changes, ~--~ if not, real Emacs's own actual convention. Real Emacs's own fuller buffer-state block also includes a coding-system and end-of-line segment; deliberately left out here rather than kept for cosmetic authenticity, since this app always writes UTF-8 and always normalizes to Unix (~\n~) line endings on save regardless of the original file's own encoding — that portion would never actually vary for anything this app could open, so it would be static decoration rather than real information.
+- *Modified indicator* — ~**~ if the buffer has unsaved changes, ~--~ if not, or ~%%~ for a genuinely read-only buffer (currently only [[#docs][Help]]) — real Emacs's own actual three-state convention. Real Emacs's own fuller buffer-state block also includes a coding-system and end-of-line segment; deliberately left out here rather than kept for cosmetic authenticity, since this app always writes UTF-8 and always normalizes to Unix (~\n~) line endings on save regardless of the original file's own encoding — that portion would never actually vary for anything this app could open, so it would be static decoration rather than real information.
 - *Buffer name* — the current document's own ~documentId~, plus its ~(GitHub~ / ~WebDAV~ / ~Local~ / ~Imported)~ suffix.
 - *Position* — ~Top~ / ~Bot~ / ~All~ / a percentage, for how far down the document the visible area currently is, plus ~L~ /line-number when a heading is focused (there's no meaningful "current line" otherwise, so it's simply omitted rather than showing something arbitrary) and ~C~ /column only while an actual text field is being actively edited, reading its own live cursor position — this app has no persistent, Emacs-style point/cursor concept between edits the way a plain text buffer does, so a column figure the rest of the time would be fabricated, not real information.
 - *Date/time*, when ~display-time-mode~ is on (the default) — formatted per ~display-time-format~ (default ~"%H:%M"~), both real Emacs variables, using the exact same ~%<FORMAT>~ strftime-style subset [[#capture][Capture templates]] already support for date insertion, not a separate implementation. Updates at least once every 30 seconds even with nothing else happening.
@@ -1194,6 +1194,8 @@ The tab bar is always present, even with just one document open — so the UI's 
 
 The full set of open tabs — not just whichever one was active — persists across closing and reopening the app entirely, restoring every tab exactly as it was left, with the previously-active one made active again.
 
+*Help has its own tab too* (see [[#docs][Help]]) — always last, styled distinctly (green background, gold active-underline) to stay visually separate from a real document — but it's not quite a document tab in every respect: switching to a document tab doesn't close it, just makes it inactive, and it doesn't survive a full close-and-reopen of the app the way every genuine document tab here does.
+
 -----
 
 ** Export
@@ -1343,16 +1345,22 @@ A ~.vcf~ file with no valid (~FN~-bearing) contacts at all produces a clear stat
 
 -----
 
-** Docs
+** Help
 :PROPERTIES:
 :CUSTOM_ID: docs
 :END:
 
-Tap *❓ (in the top bar, next to the + button)* to read this very file inside the app — same "replaces the outline" treatment as Settings, not a popup. It's fetched once per session and cached in memory, so re-opening it doesn't re-fetch; it's also cached by the service worker, so it's available offline the same as everything else here.
+Tap *❓ (in the top bar, next to the + button)* to read this very file inside the app. It's fetched once per session and cached in memory, so re-opening it doesn't re-fetch; it's also cached by the service worker, so it's available offline the same as everything else here.
 
-This documentation *is* an org file (~README.org~), rendered by this app's own org parser and outline renderer — the same engine every other file goes through, not a separate parser built just for docs. Folding works exactly like the main outline (tap a chevron to collapse/expand a section), and the table of contents' internal links use ~[[#custom-id][text]]~ specifically, not the ~[[*Heading][text]]~ style — GitHub's own org rendering (the ~org-ruby~ gem) has a confirmed, longstanding bug resolving that style into a working in-page anchor; ~#custom-id~ links work correctly there. *Read-only, deliberately*: nothing here is editable — no tap-to-edit, no action menus — and viewing it never touches whatever file you actually have open elsewhere in the app; switching back and forth loses no state and prompts for nothing. External links (anything not starting with ~[[#~) open in a real new tab.
+This documentation *is* an org file (~README.org~), rendered by this app's own org parser and outline renderer — the same engine every other file goes through, not a separate parser built just for docs. Folding works exactly like the main outline (tap a chevron to collapse/expand a section), and the table of contents' internal links use ~[[#custom-id][text]]~ specifically, not the ~[[*Heading][text]]~ style — GitHub's own org rendering (the ~org-ruby~ gem) has a confirmed, longstanding bug resolving that style into a working in-page anchor; ~#custom-id~ links work correctly there. *Read-only, deliberately*: nothing here is editable — no tap-to-edit, no action menus — and viewing it never touches whatever file you actually have open elsewhere in the app.
 
-*A genuine first-ever visit shows top-level headings only*, collapsed — a deliberate override specific to this view (not a change to ~README.org~'s own text, which has no ~#+STARTUP:~ line of its own at all — opening ~README.org~ as a regular file elsewhere is completely unaffected by this). *Returning later restores exactly where things were left*: whichever sections were expanded or collapsed, and the scroll position, both persisted across the whole app — not just within a single session, but across a full close-and-reopen — updated whenever you leave Docs (switching to Settings, a different menu, or navigating away). Stale saved state (a section that no longer exists because the docs themselves changed) is silently ignored rather than breaking anything.
+*Body text respects the same font-size setting as everything else* (Settings → Appearance → *Font Size* — see [[#settings][Settings]]), rather than a separate, fixed size of its own — heading titles keep their own distinct, larger sizes at every depth, unaffected by this setting, the same as the main outline's own headings.
+
+*Shows as its own tab in the tab bar* (see [[#tabs][Tabs]]) — always last, with a green background and a gold active-underline (not this app's usual blue, to stay visually distinct from an ordinary document tab) — rather than silently replacing the outline with no visible trace of what's currently being shown. Switching to a real document tab doesn't close Help; it keeps its own tab in the bar, simply no longer the active one, ready to switch straight back to. *The only way to close it is its own tab's ×* — pressing ❓ again while Help is already showing does nothing (it's already open and visible); while it exists but a different tab is currently active, pressing ❓ switches back to it instead of opening a second copy. Help's own tab doesn't persist across a full close-and-reopen of the app the way real document tabs do (see [[#tabs][Tabs]]) — every fresh app launch starts with it closed, whatever was showing last session.
+
+*The mode-line shows ~%%~ while Help is the active tab* — real Emacs's own third modified-indicator state (alongside ~--~ unmodified and ~**~ modified, see [[#modeline][Modeline and minibuffer]]), signaling a genuinely read-only buffer rather than reusing either of the other two.
+
+*A genuine first-ever visit shows top-level headings only*, collapsed — a deliberate override specific to this view (not a change to ~README.org~'s own text, which has no ~#+STARTUP:~ line of its own at all — opening ~README.org~ as a regular file elsewhere is completely unaffected by this). *Returning later restores exactly where things were left*: whichever sections were expanded or collapsed, and the scroll position, both persisted across the whole app — not just within a single session, but across a full close-and-reopen — updated whenever Help stops being the active tab (switching to a document, a different menu, or navigating away). Stale saved state (a section that no longer exists because the docs themselves changed) is silently ignored rather than breaking anything. External links (anything not starting with ~[[#~) open in a real new tab.
 
 -----
 

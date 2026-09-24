@@ -6,6 +6,38 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v377 — Documentation: Help section rewritten for v374's changes
+The "Docs" section (never updated after v374's Help changes) rewritten
+and renamed "Help" -- documents the new tab-based behavior (green
+background, gold active-underline, always last, persists while
+switching to another document, closes only via its own tab), the
+font-size fix (Settings -> Appearance -> Font Size), and the %%
+mode-line indicator. Also updates the Modeline section's Modified
+indicator bullet (all three states, not just two) and adds a
+reciprocal note in Tabs about how Help's own tab differs from a real
+document tab.
+
+* v376 — Fix: Agenda swipe navigation below the last visible entry
+Swiping left/right in Agenda stopped working below the last visible
+row (below 20:00 on Day view, below Sunday on Week view) -- the
+swipe-listener container had no explicit height, so a touch below
+its own content landed on the parent instead, which has no listener.
+Fixed by reading the actual scroll area's own real, JS-computed
+height directly, rather than a CSS percentage that doesn't cascade
+correctly through the narrow-layout DOM. Live-verified in both Week
+and Day view.
+
+* v375 — Fix: LaTeX-delimiter examples inside ~code~/=verbatim= spans
+extractLatexFragments had no awareness of org's own code/verbatim span
+boundaries, so a documentation example like "~\(x\)~" (showing the
+delimiter syntax itself) had its \(x\) portion incorrectly extracted
+as real math -- leaving a stray placeholder-index number visible in
+the rendered output. Reported directly against Help's own LaTeX math
+fragments section; affects any document with LaTeX-delimiter-looking
+text inside a code/verbatim span, not just this app's own docs. Fixed
+by reusing matchEmphasisAt's own border-rule logic, scoped to ~/= only
+(*bold*/_underline_/etc. can legitimately contain real math).
+
 * v374 — Help visibility: adjustable font-size, tab indicator, %% mode-line
 Help's own body text now respects the existing --app-font-size
 setting (previously silently overridden by .panel's own hardcoded
