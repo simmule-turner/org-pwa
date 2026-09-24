@@ -590,3 +590,39 @@ test('a paragraph with NO LaTeX at all is completely unaffected by going through
   const rendered = extracted.map((l) => parseInline(l, { latexFragments: fragments }));
   assert.deepEqual(rendered, [[{ type: 'text', value: 'Plain text only.' }], [{ type: 'text', value: 'Nothing to extract here.' }]]);
 });
+
+test('THE FIX (a real, reported bug): extractLatexFragments does not treat a LaTeX-delimiter example inside a ~code~ span as real math -- confirmed against the exact source line that produced a stray placeholder-index number ("1") in this app\u2019s own rendered Help documentation', () => {
+  const line = "~$...$~ requires *at least two characters* of content \u2014 ~$x$~ cannot match \u2014 while ~\\(x\\)~ has no such restriction, so that's the form for a single-character case.";
+  const { lines, fragments } = extractLatexFragments([line]);
+  assert.deepEqual(fragments, []);
+  assert.equal(lines[0], line);
+});
+
+test('THE FIX: same bug, a =verbatim= span (not just ~code~) also protects its own content from LaTeX-delimiter matching', () => {
+  const line = 'Use =\\(x\\)= for inline math.';
+  const { lines, fragments } = extractLatexFragments([line]);
+  assert.deepEqual(fragments, []);
+  assert.equal(lines[0], line);
+});
+
+test('THE FIX: multiple delimiter examples on one line (~\\(...\\)~ / ~\\[...\\]~ / ~$$...$$~) are all left alone, not just the first one', () => {
+  const line = '~\\(...\\)~ / ~\\[...\\]~ / ~$$...$$~ / ~\\begin{env}...\\end{env}~ all span multiple lines.';
+  const { lines, fragments } = extractLatexFragments([line]);
+  assert.deepEqual(fragments, []);
+  assert.equal(lines[0], line);
+});
+
+test('the fix does not over-correct: real math immediately adjacent to a code span still extracts normally', () => {
+  const line = 'See ~%^{Prompt}~ and the formula \\(x = 1\\) together.';
+  const { lines, fragments } = extractLatexFragments([line]);
+  assert.equal(fragments.length, 1);
+  assert.equal(fragments[0].source, 'x = 1');
+  assert.ok(lines[0].includes('~%^{Prompt}~')); // the code span itself is untouched, not swallowed or altered
+});
+
+test('the fix is scoped to code/verbatim only -- real math legitimately nested inside *bold*/_underline_ still extracts, since those markers CAN contain math per org\u2019s own nesting rules', () => {
+  const line = 'The result is *\\(x = 1\\)* today.';
+  const { fragments } = extractLatexFragments([line]);
+  assert.equal(fragments.length, 1);
+  assert.equal(fragments[0].source, 'x = 1');
+});
