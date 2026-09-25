@@ -174,6 +174,21 @@ const AB_LABEL_PLACEHOLDER_RE = /^_\$!<(.*)>!\$_$/;
  *  verbatim, for a real, user-assigned custom label (e.g.
  *  "Landline"). Only called when cleanMode is on -- see this
  *  module's own callers. */
+/** Builds the MIME type portion of a data: URI from a vCard PHOTO's
+ *  own TYPE= parameter -- real vCard 3.0 conventionally uses a bare
+ *  format name (JPEG/PNG/GIF/BMP), real vCard 4.0 a full MIME type
+ *  (image/jpeg) directly; both are handled here. Falls back to
+ *  image/jpeg (the most common real-world case for an embedded
+ *  contact photo) when the type is missing or unrecognized, rather
+ *  than refusing to build a data: URI at all. */
+function vcardPhotoMimeType(typeParam) {
+  const raw = String(typeParam || '').trim();
+  if (raw.includes('/')) return raw.toLowerCase();
+  const bareFormat = raw.toUpperCase();
+  const KNOWN = { JPEG: 'image/jpeg', JPG: 'image/jpeg', PNG: 'image/png', GIF: 'image/gif', BMP: 'image/bmp', TIFF: 'image/tiff', WEBP: 'image/webp' };
+  return KNOWN[bareFormat] || 'image/jpeg';
+}
+
 function interpretABLabel(rawValue) {
   const trimmed = String(rawValue || '').trim();
   if (!trimmed || AB_LABEL_EMPTY_RE.test(trimmed)) return null;
@@ -223,7 +238,7 @@ function interpretABLabel(rawValue) {
  *  exist there, just not in a form this module can usefully store as
  *  text. */
 export function parseVcards(text, opts = {}) {
-  const { cleanMode = true, onUnmappedProperty = null } = opts;
+  const { cleanMode = true, onUnmappedProperty = null, onEmbeddedPhotoImported = null } = opts;
   const lines = unfoldVcardLines(text);
   const contacts = [];
   let current = null;
@@ -380,18 +395,27 @@ export function parseVcards(text, opts = {}) {
         break;
       }
       case 'PHOTO':
-        // Only a real URL reference (http/https) is mapped -- a
-        // base64-embedded image is left unmapped entirely, since
-        // inlining that much binary-as-text data into a single org
-        // property line would bloat the file for no real benefit in a
-        // text-based document viewer. Warned about specially (not via
-        // the generic unmapped-property path below), since real photo
-        // data does exist here, just not importable as text.
+        // A real URL reference (http/https) is mapped directly. A
+        // base64-embedded image is now ALSO preserved -- converted to
+        // a data: URI (the same format this app already renders
+        // in-place for local/attachment images elsewhere), rather
+        // than being dropped -- per direct agreement that real photo
+        // data shouldn't be discarded just because it's embedded
+        // rather than linked. Still notified either way, via its own
+        // callback (distinct from onUnmappedProperty, since this is
+        // successfully imported now, not skipped).
         if (/^https?:\/\//i.test(parsed.value)) {
           current.photo = parsed.value;
-        } else if (parsed.value && onUnmappedProperty && !warnedProperties.has('PHOTO (embedded image data)')) {
-          warnedProperties.add('PHOTO (embedded image data)');
-          onUnmappedProperty('PHOTO (embedded image data)');
+        } else if (/^data:/i.test(parsed.value)) {
+          // Already a complete data: URI -- real, valid vCard 4.0
+          // syntax for PHOTO with no ENCODING=/TYPE= parameters at
+          // all, and exactly what this app's own export produces on
+          // a re-export. Used as-is; wrapping it in another data:
+          // prefix would double it.
+          current.photo = parsed.value;
+        } else if (parsed.value) {
+          current.photo = `data:${vcardPhotoMimeType(parsed.params.TYPE)};base64,${parsed.value.replace(/\s+/g, '')}`;
+          if (onEmbeddedPhotoImported) onEmbeddedPhotoImported();
         }
         break;
       case 'CATEGORIES':
@@ -657,7 +681,13 @@ function buildTreeOrgFromContact(contact) {
   if (contact.org) field(contact.org, 'org');
   if (contact.jobTitle) field(contact.jobTitle, 'job-title');
   for (const url of contact.urls) field(url.value, 'url', false, null, { LABEL: url.label });
-  if (contact.photo) field(contact.photo, 'photo');
+  if (contact.photo) {
+    if (contact.photo.startsWith('data:')) {
+      lines.push('** Photo', ':PROPERTIES:', ':FIELDTYPE: photo', `:DATA: ${contact.photo}`, ':END:');
+    } else {
+      field(contact.photo, 'photo');
+    }
+  }
   if (contact.note) field(contact.note, 'note', true); // always the fixed-title+verse treatment, matching real contact notes' own typical multi-fact, one-per-line shape, regardless of whether this particular one happens to be single-line
   if (contact.bday) {
     const normalized = normalizeBday(contact.bday);
@@ -685,8 +715,8 @@ function buildTreeOrgFromContact(contact) {
  *  "nothing to do, not an error" convention exportToVcard's own empty
  *  case already uses. */
 export function importVcardsAsOrgText(vcardText, opts = {}) {
-  const { style = 'tree', cleanMode = true, onUnmappedProperty = null } = opts;
-  const contacts = parseVcards(vcardText, { cleanMode, onUnmappedProperty });
+  const { style = 'tree', cleanMode = true, onUnmappedProperty = null, onEmbeddedPhotoImported = null } = opts;
+  const contacts = parseVcards(vcardText, { cleanMode, onUnmappedProperty, onEmbeddedPhotoImported });
   const builder = style === 'tree' ? buildTreeOrgFromContact : buildFlatOrgFromContact;
   return contacts.map(builder).join('\n\n');
 }

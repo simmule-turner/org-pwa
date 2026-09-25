@@ -325,7 +325,7 @@ function buildVcardFromTreeContact(heading) {
       const builder = TREE_FIELDTYPE_TO_VCARD_LINE[fieldType];
       if (builder) {
         const isAddressField = fieldType === 'address' || fieldType === 'address-work' || fieldType === 'address-home';
-        const value = fieldType === 'note' ? noteBlockText(child) : child.title || '';
+        const value = fieldType === 'note' ? noteBlockText(child) : fieldType === 'photo' ? getProperty(child, 'DATA') || child.title || '' : child.title || '';
         const label = isAddressField ? blockText(child) : getProperty(child, 'LABEL');
         const raw = isAddressField ? getProperty(child, 'RAW') : null;
         const line = builder(value, label, raw);
