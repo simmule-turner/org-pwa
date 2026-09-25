@@ -454,10 +454,10 @@ test('THE FEATURE: ORG, TITLE, URL, and PHOTO (URL only) are now mapped instead 
   assert.equal(contact.photo, 'https://lh3.googleusercontent.com/contacts/AG6tpzHCbxGgWGY_LF0pZr4Vbgx2aE65Jdjnyv9PhkkB1Aa7o-ogNqdW');
 });
 
-test('PHOTO is left unmapped when it\u2019s base64-embedded data rather than a real URL -- inlining that much binary-as-text into an org property would bloat the file for no benefit', () => {
+test('THE FIX: a base64-embedded PHOTO is preserved as a data: URI, per direct agreement, rather than dropped -- the same format this app already renders in-place for local/attachment images elsewhere', () => {
   const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nPHOTO;ENCODING=BASE64;TYPE=JPEG:/9j/4AAQSkZJRgABAQAAAQABAAD\r\nEND:VCARD\r\n';
   const [contact] = parseVcards(text);
-  assert.equal(contact.photo, null);
+  assert.equal(contact.photo, 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD');
 });
 
 test('ORG with several ";"-separated components (Company;Department;Unit) is joined the same way ADR\u2019s own components are', () => {
@@ -627,11 +627,14 @@ test('THE FEATURE: onUnmappedProperty reports a genuinely unrecognized property 
   assert.deepEqual(warned, ['X-SOCIALPROFILE', 'X-YAHOO']);
 });
 
-test('a base64-embedded PHOTO is specially reported as real, discarded data, distinct from a genuinely unrecognized property', () => {
+test('THE FIX: a base64-embedded PHOTO is reported via its own onEmbeddedPhotoImported callback -- distinct from onUnmappedProperty, since it\u2019s successfully imported now, not skipped', () => {
   const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nPHOTO;ENCODING=BASE64;TYPE=JPEG:/9j/4AAQSkZJRgABAQAAAQABAAD\r\nEND:VCARD\r\n';
-  const warned = [];
-  parseVcards(text, { onUnmappedProperty: (name) => warned.push(name) });
-  assert.deepEqual(warned, ['PHOTO (embedded image data)']);
+  const unmapped = [];
+  let embeddedPhotoCount = 0;
+  const [contact] = parseVcards(text, { onUnmappedProperty: (name) => unmapped.push(name), onEmbeddedPhotoImported: () => embeddedPhotoCount++ });
+  assert.deepEqual(unmapped, []);
+  assert.equal(embeddedPhotoCount, 1);
+  assert.equal(contact.photo, 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD');
 });
 
 test('a URL-based PHOTO does not trigger any warning at all -- it was successfully imported', () => {
@@ -744,4 +747,53 @@ test('a contact with no CATEGORIES_RAW at all (tagged directly in this app, neve
   const doc = parseOrg(['* Alice  :family:vip:', ':PROPERTIES:', ':EMAIL: alice@example.com', ':END:'].join('\n'));
   const vcf = exportToVcard([{ documentId: 'doc1', doc }]);
   assert.match(vcf, /CATEGORIES:family,vip/);
+});
+
+// ---- base64 photo preservation, per direct agreement ----------------------
+
+test('THE FEATURE: a vCard 3.0 bare format name (TYPE=JPEG) maps to a real image/jpeg MIME type in the data: URI', () => {
+  const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nPHOTO;ENCODING=BASE64;TYPE=PNG:aGVsbG8=\r\nEND:VCARD\r\n';
+  const [contact] = parseVcards(text);
+  assert.equal(contact.photo, 'data:image/png;base64,aGVsbG8=');
+});
+
+test('a vCard 4.0 full MIME type (TYPE=image/gif) is used directly', () => {
+  const text = 'BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Alice\r\nPHOTO;ENCODING=b;TYPE=image/gif:aGVsbG8=\r\nEND:VCARD\r\n';
+  const [contact] = parseVcards(text);
+  assert.equal(contact.photo, 'data:image/gif;base64,aGVsbG8=');
+});
+
+test('a missing or unrecognized TYPE= falls back to image/jpeg, the most common real-world case', () => {
+  const text = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nPHOTO;ENCODING=BASE64:aGVsbG8=\r\nEND:VCARD\r\n';
+  const [contact] = parseVcards(text);
+  assert.equal(contact.photo, 'data:image/jpeg;base64,aGVsbG8=');
+});
+
+test('THE FIX: an already-complete data: URI (real, valid vCard 4.0 PHOTO syntax with no ENCODING=/TYPE= params, exactly what this app\u2019s own export produces) is used as-is, not double-wrapped in another data: prefix', () => {
+  const text = 'BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Alice\r\nPHOTO:data:image/jpeg;base64,aGVsbG8=\r\nEND:VCARD\r\n';
+  const [contact] = parseVcards(text);
+  assert.equal(contact.photo, 'data:image/jpeg;base64,aGVsbG8=');
+});
+
+test('THE FEATURE (full real-world round trip): a base64-embedded photo survives export -> import -> export exactly, in both styles', () => {
+  const original = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nPHOTO;ENCODING=BASE64;TYPE=JPEG:/9j/4AAQSkZJRgABAQAAAQABAAD\r\nEND:VCARD\r\n';
+  for (const style of ['flat', 'tree']) {
+    const orgText = importVcardsAsOrgText(original, { style });
+    const doc = parseOrg(orgText);
+    const reexported = exportToVcard([{ documentId: 'doc1', doc }], { style });
+    const [reparsed] = parseVcards(reexported);
+    assert.equal(reparsed.photo, 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD');
+  }
+});
+
+test('THE FEATURE: Tree style keeps a data: URI photo\u2019s own sub-heading title short and fixed ("Photo"), storing the actual URI in a :DATA: property instead -- a base64 photo can be tens of KB of text, which would make the outline unreadable as a heading title', () => {
+  const original = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nPHOTO;ENCODING=BASE64;TYPE=JPEG:/9j/4AAQSkZJRgABAQAAAQABAAD\r\nEND:VCARD\r\n';
+  const orgText = importVcardsAsOrgText(original, { style: 'tree' });
+  assert.match(orgText, /\*\* Photo\n:PROPERTIES:\n:FIELDTYPE: photo\n:DATA: data:image\/jpeg;base64,\/9j\/4AAQSkZJRgABAQAAAQABAAD\n:END:/);
+});
+
+test('a real URL-based photo keeps the existing, simpler Tree-style behavior -- the URL itself as the sub-heading\u2019s own title, since it\u2019s already short and readable', () => {
+  const original = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice\r\nPHOTO:https://example.com/alice.jpg\r\nEND:VCARD\r\n';
+  const orgText = importVcardsAsOrgText(original, { style: 'tree' });
+  assert.match(orgText, /\*\* https:\/\/example\.com\/alice\.jpg/);
 });
