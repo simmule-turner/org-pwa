@@ -1510,43 +1510,37 @@ Sequences that are valid god-mode input but have no equivalent in this app yet r
 :CUSTOM_ID: differences-from-emacs-org-mode
 :END:
 
-This is the section to read if you know org-mode well and want to know exactly where org-pwa is a subset, a simplification, or just plain different — organized around the deltas themselves, not a feature-by-feature restatement of what already matches. See the linked section for full behavior on anything that does match.
+This is the section to read if you know org-mode well and want to know exactly where org-pwa is a subset, a simplification, or just plain different — organized strictly around the deltas: if a topic isn't mentioned here at all, it matches real org's own actual behavior. Every *what's missing/different* below is the point of this section; anything about what already works is kept to a one-line pointer at the linked section, not restated here.
 
-*Interaction model.* Touch-first, not keyboard-driven — tap-to-reveal actions and swipe gestures (swipe-left to cycle fold) are primary. God-mode (see [[#god-mode][god-mode]]) reaches real org's fuller keybinding set (~C-c C-t~, ~M-RET~, and more) without ever seeing an actual Ctrl/Alt combination held down, but still has no ~M-x~ equivalent, and its own action table doesn't cover table cells, per-list-item checkboxes, or link insertion — each reported plainly as unsupported rather than silently doing nothing.
+*Interaction model* (see [[#keybindings][Keybindings]]). Touch-first, not keyboard-driven. *Missing*: no ~M-x~ equivalent; god-mode's own action table doesn't cover table cells, per-list-item checkboxes, or link insertion (each reported plainly as unsupported, not silently ignored).
 
-*Folding.* Three flags per heading (~collapsed~, ~bodyHidden~, ~drawersHidden~) rather than Emacs's richer subtree-visibility state machine — no direct equivalent to cycling through every intermediate visibility Emacs supports, though ~overview~, ~content~, ~showall~, and ~showeverything~ (including the real ~showall~-vs-~showeverything~ distinction) are all correctly implemented on top of it.
+*Folding* (see [[#editing-your-outline][Editing your outline]]). *Missing*: no direct equivalent to Emacs's richer intermediate-visibility state machine — three flags per heading instead, though ~overview~ / ~content~ / ~showall~ / ~showeverything~ are all correctly implemented on top of it.
 
-*Priority, Tags, Properties.* All three have dedicated UI (buttons/chips/rows in the general editor — see [[#editing-your-outline][Editing your outline]]) instead of editing the raw cookie/list/drawer text directly. None of the three has org-mode-style completion. Typing something that looks like a tag (~word:~) directly into the /title/ field will still be re-parsed as an actual tag on next load — editing tags through the dedicated chips avoids this. Properties: no special handling for anything org itself treats specially beyond ~CUSTOM_ID~ and the ~ARCHIVE_*~ set.
+*Priority, Tags, Properties* (see [[#editing-your-outline][Editing your outline]]). *Missing*: no org-mode-style completion for any of the three; no special handling for anything org itself treats specially beyond ~CUSTOM_ID~ and the ~ARCHIVE_*~ set.
 
-*Inheritance.* Tag inheritance on, property inheritance off — matching real org's own defaults — but both are simple booleans here, not real org's fuller list-of-tags/regexp value space per variable, and it's search-time only: no inherited-tag badges shown inline on a heading. See [[#local-variables][Local Variables]].
+*Inheritance* (see [[#local-variables][Local Variables]]). *Missing*: a simple boolean per kind, not real org's fuller list-of-tags/regexp value space; search-time only, no inherited-tag badges shown inline on a heading.
 
-*Checkbox progress cookies* (~[2/5]~ or ~[40%]~) recalculate automatically, honoring a heading's own ~:COOKIE_DATA:~ for ~checkbox/todo~ mode and ~recursive~ scope — this is full parity with real org's default hierarchical counting; see [[#lists-tables-and-body-text][Lists, tables, and body text]] for the mechanics, nothing different to call out here.
+*Tables* (see [[#table-formulas][Table formulas]]). *Missing*: ~#+TBLFM:~ covers arithmetic plus a handful of aggregate functions only — fuller Emacs Calc compatibility is a deliberate, documented scope cut, not an oversight.
 
-*Tables.* ~#+TBLFM:~ covers arithmetic plus a handful of aggregate functions — Emacs Calc compatibility beyond that is a deliberate, documented scope cut, not an oversight. See [[#table-formulas][Table formulas]].
+*Footnotes*. *Missing*: no ~org-footnote-new~ / ~org-footnote-normalize~ commands (no auto-insert-at-point, no renumber/sort, no inline-↔separate-line conversion — editing a footnote means editing its raw text directly); no ~org-ref~ / ~org-cite~ citation-footnote integration.
 
-*Footnotes.* No ~org-footnote-new~ or ~org-footnote-normalize~ commands — no auto-insert-at-point, no renumber/sort, no inline-↔separate-line conversion; editing a footnote means editing its raw text directly. No ~org-ref~ or ~org-cite~ citation-footnote integration. Both reference forms and tap-to-jump navigation between reference and definition otherwise work as expected.
+*Clocking* (see [[#clocking][Clocking]]). *Missing*: no effort estimates.
 
-*Progress logging.* Full parity with ~org-log-done~ and the ~!~, ~@~, ~@/!~, or ~/!~ per-keyword logging spec, including the conditional leaving-log semantics — see [[#progress-logging][Progress logging]], nothing different to call out.
-
-*Clocking* (see [[#clocking][Clocking]]) covers ~org-clock-in/-out/-cancel/-continue/-display/-report~, plus a persistent modeline clock display. No effort estimates.
-
-*Archiving* (see [[#archiving][Archiving]]) matches real org's actual ~org-archive-location~ behavior exactly, including the headline-part target at an arbitrary level via its own asterisk count — full parity, nothing different to call out.
-
-*Agenda* (see [[#agenda][Agenda]]) covers day/week/month views, repeater expansion, SCHEDULED/DEADLINE carry-forward, the delay/warning-suffix direction difference (SCHEDULED's own delay pushes appearance /later/, the opposite of DEADLINE's), multi-file aggregation, and fifteen fixed diary-sexp forms plus the general ~<%%(sexp)>~ mechanism (see [[#agenda-sexp-timestamps][General <%%(sexp)> timestamps]]) — all at or near parity. What's actually different: the three repeater marks (~+~, ~++~, or ~.+~) all expand identically for the agenda's own *display* of a still-incomplete task's future occurrences (marking one done, by contrast, does correctly distinguish them — see above); the sexp evaluator supports only the documented functions, not a real elisp interpreter; and ~org-agenda-files~ only supports GitHub/WebDAV entries, not a local file.
+*Agenda* (see [[#agenda][Agenda]]). *Missing*: the three repeater marks (~+~ / ~++~ / ~.+~) don't distinguish themselves in the agenda's own display of a still-incomplete task's future occurrences (only when actually marked done is the distinction real); the sexp evaluator supports only its own documented functions, not a real elisp interpreter; ~org-agenda-files~ only supports GitHub/WebDAV entries, not a local file.
 
 *No babel, no command palette.* Scoped early on as possible future work, never built.
 
-*Undo/redo* (see [[#undoredo-and-history][Undo/redo and History]]) is snapshot-based — one step per completed edit action, not per keystroke — and persisted across a reopen, capped at 200 steps. No per-buffer undo-tree, and no attempt to preserve fold state across an undo/redo jump (reapplies the file's own ~#+STARTUP~ visibility fresh instead). Per-keystroke granularity was deliberately not built: the browser's own native field-level undo already covers that case for free before a field is even blurred, the same way real Emacs's own undo batches consecutive self-insertions rather than truly going one-per-keystroke.
+*Undo/redo* (see [[#undoredo-and-history][Undo/redo and History]]). *Missing*: no per-buffer undo-tree; no attempt to preserve fold state across an undo/redo jump (reapplies the file's own ~#+STARTUP~ visibility fresh instead); no per-keystroke granularity (the browser's own native field-level undo already covers that case for free, the same reasoning real Emacs's own undo batches consecutive self-insertions rather than truly going one-per-keystroke).
 
-*Search* (see [[#searching][Searching]]) has an optional regex mode and real Emacs-style search-and-replace, current document only. Its own separate results list can be turned into an outline restricted to just the matching headings (plus ancestors for context) via the explicit *Narrow* action — session-only, not persisted across a reload — rather than a live-filtered tree that updates automatically as you type.
+*Search* (see [[#searching][Searching]]). *Missing*: current document only, not cross-buffer; *Narrow* is session-only, not persisted across a reload.
 
-*Export* (see [[#export][Export]]) covers ASCII, Markdown, HTML, ODT, Calendar (.ics), and Contacts (.vcf), with PDF via the browser's own print dialog rather than a hand-rolled path. No LaTeX or other formats beyond what's listed. ASCII export is a plain, width-wrapped rendering, not full parity with ~ox-ascii~ (no Latin-1/UTF-8 character substitutions, no ~:width~-configurable rules, no justification blocks).
+*Export* (see [[#export][Export]]). *Missing*: no LaTeX or other formats beyond ASCII/Markdown/HTML/ODT (PDF is the browser's own print dialog, not a hand-rolled path); ASCII export doesn't implement ~ox-ascii~'s fuller feature set (no Latin-1/UTF-8-specific character substitutions, no ~:width~-configurable horizontal rules, no justification blocks).
 
-*Refile* (see [[#refile][Refile]]) covers the core case — moving a subtree to become the last child of a chosen target. Only ~:level/:maxlevel~ matching (no ~:tag~, ~:todo~, or ~:regexp~), no most-recent-targets history, no creating a new destination by typing a name that doesn't exist yet.
+*Refile* (see [[#refile][Refile]]). *Missing*: only ~:level~ / ~:maxlevel~ matching (no ~:tag~, ~:todo~, or ~:regexp~); no most-recent-targets history; no creating a new destination heading by typing a name that doesn't exist yet.
 
-*Attachments* (see [[#attachments][Attachments]]) is this app's own extension, not an ~org-attach~ port — no browsing/listing/deletion UI, no ~org-attach-dired~ bulk operations, and requires GitHub or WebDAV (same platform limitation as Agenda Files and cross-file Refile) rather than org-attach's filesystem-agnostic approach.
+*Attachments* (see [[#attachments][Attachments]]). This app's own extension, not an ~org-attach~ port. *Missing*: no browsing/listing/deletion UI, no ~org-attach-dired~ bulk operations; requires GitHub or WebDAV rather than org-attach's filesystem-agnostic approach.
 
-*Conflict resolution* is a plain confirm dialog (keep mine / keep the other version), not a diff or three-way merge view.
+*Conflict resolution.* A plain confirm dialog (keep mine / keep the other version), not a diff or three-way merge view.
 
 -----
 

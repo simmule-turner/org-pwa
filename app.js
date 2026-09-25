@@ -1163,16 +1163,60 @@ async function performRefile(heading, targetDocumentId, targetOutlinePath) {
  *  a clock is already running on THIS SAME heading -- real org
  *  doesn't let you double-start the same clock either, it just
  *  continues the existing session. */
+/** Whether ANY currently open document has a running clock -- real
+ *  org's own genuinely singular org-clock-marker model, scanning
+ *  across every open tab (the active one plus every inactive tab's
+ *  own snapshotted state in documentSessions), not just whichever one
+ *  happens to be active right now. Confirmed via direct testing that
+ *  this app's own prior behavior allowed an independent, simultaneous
+ *  clock per open tab -- a real gap from real org's own actual
+ *  behavior, not a deliberate design choice; there is genuinely only
+ *  ever supposed to be one. Returns { heading, tabId, isActive, doc }
+ *  for whichever tab has one running, or null if none does. */
+function findRunningClockAcrossSessions() {
+  if (state.doc) {
+    const heading = findHeadingWithRunningClock(state.doc);
+    if (heading) return { heading, tabId: activeTabId, isActive: true, doc: state.doc };
+  }
+  for (const session of documentSessions) {
+    if (session.tabId === activeTabId || !session.state.doc) continue; // the active tab's own live state was already checked above
+    const heading = findHeadingWithRunningClock(session.state.doc);
+    if (heading) return { heading, tabId: session.tabId, isActive: false, doc: session.state.doc };
+  }
+  return null;
+}
+
 function clockInHeading(heading) {
   const now = new Date();
   const timestamp = formatOrgTimestamp({ date: now, time: now.toTimeString().slice(0, 5), active: false });
+
+  // Real org's own singular org-clock-marker model: only one clock can
+  // ever be running at a time, across every open tab, not just within
+  // whichever document happens to be active right now. If it's running
+  // in a DIFFERENT, currently-inactive tab, clock it out there directly
+  // before starting the new one -- clockInSwitchingTasks below already
+  // correctly handles the same-document case on its own.
+  let crossTabSwitchedFrom = null;
+  const running = findRunningClockAcrossSessions();
+  if (running && !running.isActive) {
+    if (clockOut(running.heading, timestamp, now)) {
+      crossTabSwitchedFrom = running.heading;
+      const session = documentSessions.find((s) => s.tabId === running.tabId);
+      if (session) {
+        session.isDirty = true;
+        saveDocument({ documentId: session.state.documentId, doc: session.state.doc, kvAdapter: kv }).catch((err) => setStatus('Save failed: ' + err.message));
+      }
+    }
+  }
+
   const { started, switchedFrom } = clockInSwitchingTasks(state.doc, heading, timestamp, now);
   if (!started) {
     setStatus('A clock is already running on this heading.');
     render();
     return;
   }
-  commitAndRender(switchedFrom ? `Clocked in (stopped the clock on "${switchedFrom.title}")` : 'Clocked in');
+  const finalSwitchedFrom = switchedFrom || crossTabSwitchedFrom;
+  commitAndRender(finalSwitchedFrom ? `Clocked in (stopped the clock on "${finalSwitchedFrom.title}")` : 'Clocked in');
 }
 
 /** org-clock-continue: resumes clocking on whichever heading was most
@@ -1184,7 +1228,7 @@ function clockInHeading(heading) {
  *  document has ever been clocked at all. */
 function clockContinue() {
   if (!state.doc) return;
-  if (findHeadingWithRunningClock(state.doc)) {
+  if (findRunningClockAcrossSessions()) {
     setStatus('A clock is already running.');
     render();
     return;
@@ -2985,6 +3029,39 @@ function documentDisplayLabel(docId, doc) {
   return firstHeadingTitle || '*scratch*';
 }
 
+/** The shared "global-mode-string" portion of the modeline -- real
+ *  Emacs's own actual construct that BOTH display-time-mode and
+ *  org-clock append themselves to (confirmed directly: org-clock-in
+ *  does (setq global-mode-string (append global-mode-string
+ *  '(org-mode-line-string))), the exact same mechanism display-time
+ *  uses) -- which is why both genuinely show in every buffer's own
+ *  modeline in real Emacs, this app's own Help buffer included, not
+ *  something specific to an ordinary document. `vars` follows this
+ *  app's own already-established state.doc ? state.localVariables :
+ *  globalVariables fallback (already used elsewhere for agenda files,
+ *  contacts files), so a caller with no document open at all still
+ *  correctly reflects the app-wide Settings baseline rather than a
+ *  hardcoded default disconnected from it. The clock indicator scans
+ *  across every open tab (findRunningClockAcrossSessions), not just
+ *  one specific document -- now that the single-clock invariant is
+ *  properly enforced there (only one can ever be running, app-wide),
+ *  this correctly matches real Emacs's own genuinely global org-
+ *  clock-marker behavior: the clock shows in every buffer's modeline
+ *  regardless of which one it's actually running in, exactly like
+ *  display-time already does. */
+function buildGlobalModeStringParts(vars) {
+  const parts = [];
+  if (getDisplayTimeMode(vars)) {
+    parts.push(formatTime(new Date(), getDisplayTimeFormat(vars)));
+  }
+  const running = findRunningClockAcrossSessions();
+  if (running) {
+    const mins = currentClockSessionMinutes(running.heading);
+    parts.push(`[\u23f1 ${formatClockDuration(mins)}] ${running.heading.title}`);
+  }
+  return parts;
+}
+
 function renderModeline() {
   if (docsOpen) {
     // Help is a real-Emacs-style read-only buffer -- %% is real Emacs's
@@ -2993,7 +3070,15 @@ function renderModeline() {
     // already partially implements. Checked before the !state.doc guard
     // below: Help can be opened even with no document open at all, and
     // the modeline should still correctly reflect that, not go blank.
-    modelineEl.textContent = '%%  Help (README.org)';
+    // state.doc / state.localVariables stay exactly whatever they were
+    // before Help opened (a separate overlay that never touches them),
+    // so display-time correctly reflects the app-wide Settings baseline
+    // even with no document open at all -- and the clock indicator (see
+    // buildGlobalModeStringParts) now shows regardless, matching real
+    // Emacs's own genuinely global behavior once enforced elsewhere.
+    const vars = state.doc ? state.localVariables : globalVariables;
+    const parts = ['%%', 'Help (README.org)', ...buildGlobalModeStringParts(vars)];
+    modelineEl.textContent = parts.join('  ');
     return;
   }
   if (!state.doc) {
@@ -3014,16 +3099,7 @@ function renderModeline() {
 
   parts.push(state.doc ? documentDisplayLabel(state.documentId, state.doc) + ' (' + storageKindLabel(state.storageKind) + ')' : '');
   parts.push(computeBufferPositionString());
-
-  if (getDisplayTimeMode(vars)) {
-    parts.push(formatTime(new Date(), getDisplayTimeFormat(vars)));
-  }
-
-  const clockHeading = findHeadingWithRunningClock(state.doc);
-  if (clockHeading) {
-    const mins = currentClockSessionMinutes(clockHeading);
-    parts.push(`[\u23f1 ${formatClockDuration(mins)}] ${clockHeading.title}`);
-  }
+  parts.push(...buildGlobalModeStringParts(vars));
 
   modelineEl.textContent = parts.join('  ');
 }

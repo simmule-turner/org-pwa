@@ -6,6 +6,30 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v382 — Documentation: "Differences from Emacs" rewritten for clarity
+Every entry now leads with a brief "see [[#section][Section]]" pointer
+instead of restating already-documented detail, and a consistently-
+bolded *Missing*: list makes the actual gaps immediately scannable.
+Three "full parity, nothing different" entries (Checkbox cookies,
+Progress logging, Archiving) removed entirely -- the section's own
+intro now states plainly that absence from it means parity. Roughly
+40% shorter overall.
+
+* v381 — Fix: Help modeline was faked; single-clock invariant enforced
+Help's modeline previously showed a hardcoded, faked string instead
+of sharing the real modeline-building logic -- fixed by extracting a
+shared builder, confirmed against real Emacs behavior first (both
+display-time-mode and org-clock append to the same global-mode-string
+construct, which is why both genuinely show in every buffer).
+Investigating this surfaced a second, separate bug: this app's own
+clock state had no cross-tab awareness, so an independent clock per
+open tab was genuinely possible -- a real violation of real org's own
+singular clock model. Fixed: starting a clock now clocks out a
+running one in a DIFFERENT tab first, and the modeline's own clock
+indicator is now genuinely global, matching real Emacs. Verified at
+the data level, not just visually -- the cross-tab-clocked-out
+document's own raw text confirmed correct.
+
 * v380 — Documentation review complete; real god-mode Help bug fixed
 Covers the second half of the document (Agenda through Development),
 completing a full start-to-finish read of all 1587 lines. Most
