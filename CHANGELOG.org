@@ -6,6 +6,38 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v380 — Documentation review complete; real god-mode Help bug fixed
+Covers the second half of the document (Agenda through Development),
+completing a full start-to-finish read of all 1587 lines. Most
+significant finding: a real application bug, not just documentation
+-- god-mode's own "C-h i" Help binding was stale pre-v374 code,
+never updated to set helpTabExists, so Help opened that way would
+show but its own tab would never appear in the bar. Fixed and
+live-verified. Also fixed: two sections both falsely claimed Search
+has no search-and-replace and no outline-narrowing-to-matches (both
+exist and are extensively documented elsewhere -- these claims
+predated those features); a missing Local Variables table entry
+(org-weather-refresh-interval); a stale test count; a stray
+double-blank-line. Final sweep: all 228 internal links resolve, zero
+duplicates, zero missing separators.
+
+* v379 — Fix: v378's own link fix was itself broken, plus more review
+v378's link-anchor fix dropped the closing bracket on all 8 instances
+(caught via systematic review, not an external report) -- fixed
+correctly this time, verified against every real anchor in the file.
+Also fixed: a circular cross-reference in Plots, three missing
+section separators, and a cosmetic list-renumbering issue. All 227
+internal links now confirmed to resolve correctly; confirmed no
+exact-duplicate paragraphs exist anywhere in the document. Covers
+roughly the first half of the document -- review continues.
+
+* v378 — Fix: misplaced search-filter text in the Modeline section
+Two paragraphs about search filter-token parsing had ended up in
+"Modeline and minibuffer" instead of "Searching", with no connection
+to modeline content at all. Reported directly by the user; moved to
+the correct section, right after the filter-tokens list they
+elaborate on. Also proofread an ambiguous sentence along the way.
+
 * v377 — Documentation: Help section rewritten for v374's changes
 The "Docs" section (never updated after v374's Help changes) rewritten
 and renamed "Help" -- documents the new tab-based behavior (green

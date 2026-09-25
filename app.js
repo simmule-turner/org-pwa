@@ -3551,6 +3551,7 @@ const GOD_MODE_ACTIONS = {
   'C-h i': () => {
     moreOpen = false;
     renderMoreMenu();
+    helpTabExists = true; // was missing -- without this, Help would show correctly but its own tab would never appear in the tab bar (renderTabBar checks this flag, not docsOpen, to decide whether to render it)
     docsOpen = true;
     if (!isWideLayout()) renderDocsView(outlineEl); // narrow: replaces #outline directly; wide layout is handled by the outer dispatch loop's own render() call right after this returns
   },
