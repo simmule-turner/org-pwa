@@ -1,3 +1,4 @@
+# -*- buffer-read-only: t; -*-
 * org-pwa
 :PROPERTIES:
 :CUSTOM_ID: org-pwa

@@ -1,3 +1,4 @@
+# -*- buffer-read-only: t; -*-
 #+TITLE: Changelog
 #+STARTUP: overview
 
@@ -5,6 +6,11 @@ Highlights only — the "why", not every line changed. Newest first. Each
 entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
+
+* v386 — README.org and CHANGELOG.org now marked read-only
+Both files start with a "-*- buffer-read-only: t; -*-" first-line
+cookie, per direct request -- opening either in the app itself now
+shows them as genuinely read-only, matching what they're for.
 
 * v385 — Fix: preamble keyword ordering bug; adds View-menu RO/RW toggle
 Real, serious bug found via direct user report: serializeOrg always
