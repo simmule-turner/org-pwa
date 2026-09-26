@@ -61,8 +61,8 @@ test('document keywords are captured', () => {
   const text = ['#+title: The glories of Org', '#+author: A. Org Writer', '* Heading'].join('\n');
   const doc = parseOrg(text);
   assert.deepEqual(doc.keywords, [
-    { key: 'title', value: 'The glories of Org' },
-    { key: 'author', value: 'A. Org Writer' },
+    { key: 'title', value: 'The glories of Org', bodyLineIndex: 0 },
+    { key: 'author', value: 'A. Org Writer', bodyLineIndex: 0 },
   ]);
 });
 
@@ -85,6 +85,46 @@ test('round-trips structure through parse -> serialize -> parse', () => {
   const doc2 = parseOrg(text2);
 
   assert.deepEqual(doc1, doc2);
+});
+
+// ---- THE FIX: preamble keyword/body-line interleaving is preserved -------
+// A real, reported bug: serializeOrg always emitted every #+KEYWORD: line
+// before any other preamble line, discarding their original relative
+// order entirely, since doc.keywords and doc.bodyLines were two
+// completely separate arrays with no record of how they were originally
+// interleaved. Confirmed as a genuine, pre-existing bug (reproducible
+// with a plain "#" comment before a #+STARTUP: line, nothing to do with
+// any specific feature) before fixing it, not assumed.
+
+test('THE FIX: a raw comment line before a #+KEYWORD: line keeps its own original order through a round-trip', () => {
+  const text = '# a comment\n\n#+STARTUP: overview\n';
+  assert.equal(serializeOrg(parseOrg(text)), text);
+});
+
+test('THE FIX: the exact real-world case that surfaced this bug -- a "-*- ... -*-" cookie before #+STARTUP:', () => {
+  const text = '# -*- buffer-read-only: t; -*-\n\n#+STARTUP: overview showphoto\n';
+  assert.equal(serializeOrg(parseOrg(text)), text);
+});
+
+test('a #+KEYWORD: line before a raw comment line (the reverse order) also round-trips correctly', () => {
+  const text = '#+TITLE: My Doc\n# a comment\n';
+  assert.equal(serializeOrg(parseOrg(text)), text);
+});
+
+test('multiple keywords and comments interleaved all keep their own original relative order', () => {
+  const text = '#+TITLE: My Doc\n# comment 1\n#+AUTHOR: Jane\n# comment 2\n#+DATE: <2026-01-01 Thu>\n';
+  assert.equal(serializeOrg(parseOrg(text)), text);
+});
+
+test('consecutive keywords with nothing between them keep their own relative order to each other', () => {
+  const text = '#+TITLE: A\n#+AUTHOR: B\n#+DATE: <2026-01-01 Thu>\n# comment after\n';
+  assert.equal(serializeOrg(parseOrg(text)), text);
+});
+
+test('a keyword added programmatically (no bodyLineIndex at all) still serializes before every bodyLine, matching this function\u2019s own behavior for every keyword before this fix existed', () => {
+  const doc = parseOrg('# a comment\nmore text\n');
+  doc.keywords.push({ key: 'CUSTOM_NEW', value: 'added later' });
+  assert.equal(serializeOrg(doc), '#+CUSTOM_NEW: added later\n# a comment\nmore text\n');
 });
 
 test('attaches parsed body content (list) under a heading', () => {
