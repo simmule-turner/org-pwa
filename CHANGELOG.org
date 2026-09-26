@@ -6,6 +6,18 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v384 — Documentation: "Known limitations" restructured, deduplicated
+5 of 11 bullets (Export, Refile, Footnotes, Clocking, Agenda) were
+near-duplicates of entries already fixed in Differences from Emacs
+org-mode earlier this session, left behind by that rewrite -- removed
+entirely, with the intro now stating directly why (org-mode parity
+gaps live in Differences; this section is app-specific/platform
+limitations only). Every remaining bullet rewritten to lead with the
+limitation itself instead of restated built-feature detail. Also adds
+the one new, previously-undocumented limitation from the read-only
+buffer work: enforcement covers the central commit paths and a few
+common entry points directly, not every scattered tap-to-edit trigger.
+
 * v383 — New feature: read-only buffer support (buffer-read-only)
 Real Emacs's OTHER local-variables mechanism -- a "-*- var: val; -*-"
 first-line cookie -- now merges with the existing end-of-file "Local
