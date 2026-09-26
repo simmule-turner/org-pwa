@@ -3646,13 +3646,21 @@ const GOD_MODE_ACTIONS = {
     if (keyboardFocusedHeading) pasteSubtree(keyboardFocusedHeading);
   },
   'C-x C-q': () => {
-    if (!state.doc) return;
-    isBufferReadOnly = !isBufferReadOnly;
     godModeActive = false; // otherwise renderMinibuffer's own god-mode-sequence-indicator immediately overwrites this action's own status message on the very same render() below, since god-mode intentionally stays active after a successful dispatch
-    setStatus(isBufferReadOnly ? 'Buffer is read-only now.' : 'Buffer is writable now.');
-    render();
+    toggleBufferReadOnly();
   },
 };
+
+/** Toggles buffer-read-only, per real Emacs's own actual C-x C-q --
+ *  shared by that god-mode binding (see GOD_MODE_ACTIONS above) and
+ *  the touch-native toggle in the View menu (see renderViewMenuContent
+ *  below), so neither duplicates the other's own logic. */
+function toggleBufferReadOnly() {
+  if (!state.doc) return;
+  isBufferReadOnly = !isBufferReadOnly;
+  setStatus(isBufferReadOnly ? 'Buffer is read-only now.' : 'Buffer is writable now.');
+  render();
+}
 
 /** True if `chordString` is either an exact match in GOD_MODE_ACTIONS
  *  or a proper prefix of some entry there (e.g. "C-c" is a prefix of
@@ -10733,6 +10741,22 @@ function renderViewMenuContent() {
     { label: 'Text', btn: viewSwitchButtons['Text'] },
     { label: 'TODO', btn: viewSwitchButtons['TODO'] },
   ]);
+
+  // Read-only toggle -- a separate, un-aliased item (not part of the
+  // menu-alias system above), since its own label text is dynamic
+  // (changes between the two states below) rather than the fixed string
+  // that system expects to match against. Shows the ACTION tapping it
+  // would perform, not the current state -- "%%RO" (make it read-only)
+  // while currently writable, "**RW" (make it writable) while currently
+  // read-only, matching real Emacs's own -- / ** / %% / %* modeline
+  // convention this app's own modeline already shows (see
+  // buildGlobalModeStringParts's own caller, renderModeline).
+  const roToggle = menuDivItem(isBufferReadOnly ? '**RW' : '%%RO', () => {
+    toggleBufferReadOnly();
+    viewMenuOpen = false;
+    renderViewMenu();
+  }, !state.doc);
+  viewMenuPanel.appendChild(roToggle);
 }
 
 // ---- Agenda view ---------------------------------------------------------

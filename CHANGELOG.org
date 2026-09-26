@@ -6,6 +6,21 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v385 — Fix: preamble keyword ordering bug; adds View-menu RO/RW toggle
+Real, serious bug found via direct user report: serializeOrg always
+emitted every #+KEYWORD: line before any other preamble line, silently
+discarding their original relative order on every round-trip -- a raw
+comment line before a #+STARTUP: line got reordered, and that wrong
+content then got written by this app's own existing "every edit
+caches locally" mechanism. Confirmed as a genuine, pre-existing bug
+(reproduces with a plain comment, nothing specific to the new
+buffer-read-only cookie) before fixing it at the root: each keyword
+now records its own original position among body lines, and
+serialization interleaves them back correctly. 6 new regression tests.
+Also completes a previously-confirmed gap: a touch-native read-only
+toggle in the View menu (%%RO / **RW, exactly as requested), sharing
+one implementation with the god-mode C-x C-q binding.
+
 * v384 — Documentation: "Known limitations" restructured, deduplicated
 5 of 11 bullets (Export, Refile, Footnotes, Clocking, Agenda) were
 near-duplicates of entries already fixed in Differences from Emacs
