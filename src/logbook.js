@@ -26,9 +26,10 @@
  *
  * (no "from" clause at all when there was no previous keyword; a
  * trailing backslash plus indented continuation line(s) when a note
- * was taken alongside the state change.) CLOCK lines are recognized
- * structurally (for future clocking work to build on) but not acted on
- * by anything yet, matching this app's own stated, deliberate scoping.
+ * was taken alongside the state change.) CLOCK lines are parsed into
+ * their own { type: 'clock', start, end, duration } entry, same as
+ * state/note entries -- see app.js's own logbook-display rendering
+ * for how each one is actually shown.
  */
 
 const STATE_LINE_RE = /^-\s+State\s+"([^"]+)"(?:\s+from\s+"([^"]+)")?\s+(\[[^\]]+\])(\s+\\)?\s*$/;
