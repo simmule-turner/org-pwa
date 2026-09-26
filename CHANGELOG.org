@@ -7,6 +7,32 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v394 — Documentation: full document-wide review completed
+Went through every remaining section consistently rather than
+stopping partway -- cut clear implementation/history narration
+(Searching, Attachments, Clocking, Extras menu, Menu customization),
+deliberately left dense reference sections (Table formulas, Export,
+Capture Templates, Configuration, Keybindings) untouched. Found and
+fixed a real factual error along the way: Progress logging claimed
+clocking isn't built yet, flatly wrong -- confirmed directly in the
+code before fixing this and a matching stale comment in
+src/logbook.js. Also corrected a stale test count (2686 -> 2700).
+
+* v393 — Documentation: same review continued into Agenda
+Cut the weather-refresh timer's internal implementation detail and a
+full paragraph of Agenda Files cache-warming mechanism a user never
+needs. Export, Capture Templates, and Table formulas reviewed too --
+left largely as-is, since they're dense format/expression-language
+reference material rather than implementation narration.
+
+* v392 — Documentation: Help/Settings/Offline/Platform rewritten
+Rewritten to a template demonstrated directly -- what each feature
+is, not how it's implemented. Dropped entirely: an internal GitHub
+anchor-link bug workaround, an Android MIME-filtering implementation
+saga (including a note-to-future-maintainer that never belonged in
+user docs), and iOS/WebKit keyboard-positioning mechanism detail.
+~100 lines combined down to ~25.
+
 * v391 — Fix: "Paragraphs" bullet was misplaced ~140 lines from home
 Found while continuing the documentation review -- isolated after
 Plots instead of grouped with Lists/Checkboxes/Tables, the fourth
