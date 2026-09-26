@@ -27,9 +27,39 @@ import { DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
 const LOCAL_VARS_START_RE = /^#\s*Local Variables:\s*$/i;
 const LOCAL_VARS_END_RE = /^#\s*End:\s*$/i;
 const LOCAL_VAR_LINE_RE = /^#\s*([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/;
+const FIRST_LINE_COOKIE_RE = /-\*-(.*?)-\*-/;
+const COOKIE_ENTRY_RE = /^\s*([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*?)\s*$/;
+
+/** Real Emacs's OTHER, older/simpler local-variables mechanism: a
+ *  "-*- var: val; var2: val2; -*-" cookie anywhere on the file's own
+ *  first line -- distinct from, and independent of, the "# Local
+ *  Variables: ... # End:" block below. Real Emacs recognizes both at
+ *  once in the same file; this app does too, via parseLocalVariables
+ *  merging both together (the block's own values winning on conflict,
+ *  confirmed directly: real Emacs processes everything in the -*-
+ *  line first, then everything in the Local Variables list
+ *  afterward). The special "mode: modename;" entry real Emacs treats
+ *  as choosing a major mode isn't special-cased here at all -- this
+ *  app has no concept of a major mode to switch, so it's just parsed
+ *  as an ordinary, ignored (unrecognized) variable like anything else
+ *  neither side of this app knows about. Returns the same open-ended
+ *  { name: rawStringValue } shape parseLocalVariables does; an
+ *  absent/malformed cookie returns {}. */
+function parseFirstLineCookie(text) {
+  const vars = {};
+  if (!text) return vars;
+  const firstLine = text.split('\n', 1)[0];
+  const m = FIRST_LINE_COOKIE_RE.exec(firstLine);
+  if (!m) return vars;
+  for (const entry of m[1].split(';')) {
+    const kv = COOKIE_ENTRY_RE.exec(entry);
+    if (kv && kv[1]) vars[kv[1]] = kv[2];
+  }
+  return vars;
+}
 
 export function parseLocalVariables(text) {
-  const vars = {};
+  const vars = parseFirstLineCookie(text);
   if (!text) return vars;
   const lines = joinContinuedLines(text);
 
@@ -347,6 +377,18 @@ export function getUseTagInheritance(vars) {
  *  stated simplification as getUseTagInheritance above. */
 export function getUsePropertyInheritance(vars) {
   return parseLispBoolean((vars || {})['org-use-property-inheritance'], false);
+}
+
+/** buffer-read-only: real Emacs's own actual variable -- whether this
+ *  buffer is protected from editing. Settable the same two ways as
+ *  any other file-local variable here (the first-line "-*-" cookie,
+ *  e.g. "# -*- buffer-read-only: t; -*-", or the end-of-file "Local
+ *  Variables:" block), and toggled at runtime the same way real
+ *  Emacs's own C-x C-q does (see the god-mode dispatch table). false
+ *  is real Emacs's own actual default -- a buffer is read-write
+ *  unless explicitly marked otherwise. */
+export function getBufferReadOnly(vars) {
+  return parseLispBoolean((vars || {})['buffer-read-only'], false);
 }
 
 /** org-contacts-birthday-property: which property key holds a
