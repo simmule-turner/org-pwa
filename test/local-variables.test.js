@@ -28,6 +28,7 @@ import {
   getAsciiTextWidth,
   getUseTagInheritance,
   getUsePropertyInheritance,
+  getBufferReadOnly,
   getUseSubSuperscripts,
 } from '../src/local-variables.js';
 import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
@@ -474,4 +475,50 @@ test('THE FIX: getOrgTableDurationHourZeroPadding defaults to true, matching rea
 test('getOrgTableDurationHourZeroPadding reads an explicit override', () => {
   assert.equal(getOrgTableDurationHourZeroPadding({ 'org-table-duration-hour-zero-padding': 'nil' }), false);
   assert.equal(getOrgTableDurationHourZeroPadding({ 'org-table-duration-hour-zero-padding': 't' }), true);
+});
+
+// ---- THE FEATURE: the first-line "-*- ... -*-" cookie -------------------
+
+test('THE FEATURE: parseLocalVariables reads a first-line "-*- var: val; -*-" cookie, real Emacs\u2019s own other local-variables mechanism', () => {
+  const vars = parseLocalVariables('# -*- buffer-read-only: t; -*-\n* Heading\n');
+  assert.equal(vars['buffer-read-only'], 't');
+});
+
+test('the cookie supports multiple semicolon-separated entries on one line', () => {
+  const vars = parseLocalVariables('# -*- buffer-read-only: t; org-use-tag-inheritance: nil; -*-\n* Heading\n');
+  assert.equal(vars['buffer-read-only'], 't');
+  assert.equal(vars['org-use-tag-inheritance'], 'nil');
+});
+
+test('a document with no cookie and no Local Variables block returns an empty object, unaffected', () => {
+  assert.deepEqual(parseLocalVariables('* Heading\nBody text.\n'), {});
+});
+
+test('THE FEATURE: when both the cookie and the end-of-file block set the SAME variable, the block wins -- confirmed directly against real Emacs\u2019s own documented precedence (\u201cprocesses everything in the -*- line first, and everything in the local variables list afterward\u201d) before implementing this, not assumed', () => {
+  const doc = '# -*- buffer-read-only: t; -*-\n* Heading\n# Local Variables:\n# buffer-read-only: nil\n# End:\n';
+  const vars = parseLocalVariables(doc);
+  assert.equal(vars['buffer-read-only'], 'nil');
+});
+
+test('the cookie and the block can set DIFFERENT variables at once, both taking effect together', () => {
+  const doc = '# -*- buffer-read-only: t; -*-\n* Heading\n# Local Variables:\n# org-cycle-open-archived-trees: t\n# End:\n';
+  const vars = parseLocalVariables(doc);
+  assert.equal(vars['buffer-read-only'], 't');
+  assert.equal(vars['org-cycle-open-archived-trees'], 't');
+});
+
+test('a malformed/absent cookie (no closing "-*-") is silently ignored, not an error', () => {
+  assert.deepEqual(parseLocalVariables('# -*- buffer-read-only: t;\n* Heading\n'), {});
+});
+
+// ---- getBufferReadOnly ----------------------------------------------------
+
+test('getBufferReadOnly defaults to false, real Emacs\u2019s own actual default (read-write unless marked otherwise)', () => {
+  assert.equal(getBufferReadOnly({}), false);
+  assert.equal(getBufferReadOnly(undefined), false);
+});
+
+test('getBufferReadOnly reads t/nil the same Lisp-boolean way every other variable here does', () => {
+  assert.equal(getBufferReadOnly({ 'buffer-read-only': 't' }), true);
+  assert.equal(getBufferReadOnly({ 'buffer-read-only': 'nil' }), false);
 });
