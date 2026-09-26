@@ -1532,7 +1532,7 @@ This is the section to read if you know org-mode well and want to know exactly w
 
 *Undo/redo* (see [[#undoredo-and-history][Undo/redo and History]]). *Missing*: no per-buffer undo-tree; no attempt to preserve fold state across an undo/redo jump (reapplies the file's own ~#+STARTUP~ visibility fresh instead); no per-keystroke granularity (the browser's own native field-level undo already covers that case for free, the same reasoning real Emacs's own undo batches consecutive self-insertions rather than truly going one-per-keystroke).
 
-*Search* (see [[#searching][Searching]]). *Missing*: current document only, not cross-buffer; *Narrow* is session-only, not persisted across a reload.
+*Search* (see [[#searching][Searching]]). Search itself already reaches every file listed in ~org-agenda-files~, not just the current document — matching real org's own ~org-search-view~. *Missing*: *Replace* is restricted to the current document only, even when Search itself is showing cross-file matches; *Narrow* is session-only, not persisted across a reload.
 
 *Export* (see [[#export][Export]]). *Missing*: no LaTeX or other formats beyond ASCII/Markdown/HTML/ODT (PDF is the browser's own print dialog, not a hand-rolled path); ASCII export doesn't implement ~ox-ascii~'s fuller feature set (no Latin-1/UTF-8-specific character substitutions, no ~:width~-configurable horizontal rules, no justification blocks).
 

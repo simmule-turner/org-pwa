@@ -6,6 +6,21 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v383 — New feature: read-only buffer support (buffer-read-only)
+Real Emacs's OTHER local-variables mechanism -- a "-*- var: val; -*-"
+first-line cookie -- now merges with the existing end-of-file "Local
+Variables:" block (correct precedence confirmed before implementing:
+the block wins on conflict). New buffer-read-only variable, toggled
+at runtime by a new C-x C-q god-mode binding, matching real Emacs
+exactly. The mode-line's modified-indicator now has all four real
+Emacs states (--/**/ %% /%*). Enforcement: the two central commit
+paths (commitAndRender, Text view's own separate commit) both refuse
+to commit while read-only, reverting to the last saved snapshot
+rather than leaving an uncommitted change visible; the Text view
+textarea and title editor are also directly guarded. Live-verified
+end to end after finding and fixing one real bug (a status-message
+overwrite) and several of my own test-script mistakes along the way.
+
 * v382 — Documentation: "Differences from Emacs" rewritten for clarity
 Every entry now leads with a brief "see [[#section][Section]]" pointer
 instead of restating already-documented detail, and a consistently-

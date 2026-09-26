@@ -75,6 +75,7 @@ import {
   getUseSubSuperscripts,
   getUseTagInheritance,
   getUsePropertyInheritance,
+  getBufferReadOnly,
   getClosedKeepWhenNoTodo,
   getRefileTargets,
   getAsciiTextWidth,
@@ -786,6 +787,7 @@ async function reloadCurrentDocumentFromDisk() {
   const rawLocalVars = parseLocalVariables(serializeOrg(state.doc));
   state.startupConfig = resolveEffectiveStartupConfig(state.doc, rawLocalVars, globalVariables);
   state.localVariables = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
+  isBufferReadOnly = getBufferReadOnly(state.localVariables);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
   currentContextHeading = null;
@@ -3095,7 +3097,7 @@ function renderModeline() {
   // line endings on save regardless of the original file's own encoding,
   // so that portion would never actually vary for anything this app could
   // open -- static decoration, not real information, so it's not shown.
-  parts.push(isDirty ? '**' : '--');
+  parts.push(isBufferReadOnly ? (isDirty ? '%*' : '%%') : isDirty ? '**' : '--');
 
   parts.push(state.doc ? documentDisplayLabel(state.documentId, state.doc) + ' (' + storageKindLabel(state.storageKind) + ')' : '');
   parts.push(computeBufferPositionString());
@@ -3642,6 +3644,13 @@ const GOD_MODE_ACTIONS = {
   },
   'C-c C-x C-y': () => {
     if (keyboardFocusedHeading) pasteSubtree(keyboardFocusedHeading);
+  },
+  'C-x C-q': () => {
+    if (!state.doc) return;
+    isBufferReadOnly = !isBufferReadOnly;
+    godModeActive = false; // otherwise renderMinibuffer's own god-mode-sequence-indicator immediately overwrites this action's own status message on the very same render() below, since god-mode intentionally stays active after a successful dispatch
+    setStatus(isBufferReadOnly ? 'Buffer is read-only now.' : 'Buffer is writable now.');
+    render();
   },
 };
 
@@ -4570,6 +4579,15 @@ let currentView = 'org';
 // (not read from the outbox asynchronously) so the indicator can update
 // immediately, matching the app's existing optimistic-render approach.
 let isDirty = false;
+// buffer-read-only: real Emacs's own actual variable -- whether this
+// document is currently protected from editing. Set from the document's
+// own Local/Global Variables on load (see getBufferReadOnly), and toggled
+// at runtime by god-mode's own C-x C-q, matching real Emacs exactly. The
+// modeline's own four-state display (--/**/ %% /%*) combines this with
+// isDirty directly rather than tracking a separate "modified while
+// read-only" flag -- isDirty already means "unsaved changes exist"
+// regardless of how they got there, which is exactly what %* needs.
+let isBufferReadOnly = false;
 // The serialized content as of the most recent moment state.doc is
 // known to exactly match what's confirmed saved to disk/remote --
 // either just-opened-fresh (not a resumed, still-unsynced cache
@@ -4734,6 +4752,10 @@ function openHeadingTitleEditor(heading) {
 }
 
 function startEditingTitle(heading, isNew) {
+  if (isBufferReadOnly) {
+    setStatus('Buffer is read-only.');
+    return;
+  }
   editingHeading = heading;
   editingIsNew = isNew;
   render();
@@ -4800,6 +4822,18 @@ function persistHistoryInBackground() {
 }
 
 function commitAndRender(label = 'Edited') {
+  if (isBufferReadOnly) {
+    // Reverts the caller's own already-applied in-memory mutation by
+    // re-parsing the last COMMITTED snapshot, rather than leaving an
+    // uncommitted, silently-lingering change on screen -- see this
+    // function's own doc comment above for the full reasoning.
+    const archiveVisibility = getCycleOpenArchivedTrees(state.localVariables) ? 'noarchived' : 'archived';
+    state.doc = parseOrg(currentEntry(history).text);
+    applyStartupVisibility(state.doc, state.startupConfig, archiveVisibility);
+    setStatus('Buffer is read-only \u2014 change not applied.');
+    render();
+    return;
+  }
   const previousHistory = history;
   history = pushSnapshot(history, serializeOrg(state.doc), label);
   // pushSnapshot returns the SAME history object reference, unchanged,
@@ -4858,6 +4892,7 @@ function restoreFromHistory() {
   state.doc = newDoc;
   state.startupConfig = startupConfig;
   state.localVariables = localVariables;
+  isBufferReadOnly = getBufferReadOnly(state.localVariables);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
   // currentContextHeading DOES hold an actual heading object
@@ -5070,6 +5105,10 @@ function renderHistoryPanel(target = historyRenderTarget) {
 const textModeLastCommittedValue = new WeakMap(); // textarea element -> the raw value it was last successfully committed with
 function commitTextModeIfActive() {
   if (currentView !== 'text') return false;
+  if (isBufferReadOnly) {
+    setStatus('Buffer is read-only \u2014 change not applied.');
+    return false;
+  }
   const textarea = document.getElementById('document-text-edit-input');
   const rawValue = textarea ? textarea.value : narrowedHeading ? serializeHeadingSubtree(narrowedHeading) : serializeOrg(state.doc);
 
@@ -5109,6 +5148,7 @@ function commitTextModeIfActive() {
   state.doc = newDoc;
   state.startupConfig = startupConfig;
   state.localVariables = localVariables;
+  isBufferReadOnly = getBufferReadOnly(state.localVariables);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
   if (wasNarrowedTextMode) {
@@ -8401,6 +8441,7 @@ function render() {
     textarea.id = 'document-text-edit-input';
     const fullText = narrowedHeading ? serializeHeadingSubtree(narrowedHeading) : serializeOrg(state.doc);
     textarea.value = fullText;
+    textarea.readOnly = isBufferReadOnly;
     textarea.style.width = '100%';
     textarea.style.boxSizing = 'border-box';
     textarea.style.height = VH_UNIT === 'dvh' ? 'calc(100dvh - 204px)' : 'calc(100vh - 204px)';
@@ -8645,6 +8686,7 @@ async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCach
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(doc, startupConfig, archiveVisibility);
   state = { documentId, doc, startupConfig, storageKind, localVariables };
+  isBufferReadOnly = getBufferReadOnly(localVariables);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
   const openedText = serializeOrg(doc);
