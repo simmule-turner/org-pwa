@@ -7,6 +7,40 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v391 — Fix: "Paragraphs" bullet was misplaced ~140 lines from home
+Found while continuing the documentation review -- isolated after
+Plots instead of grouped with Lists/Checkboxes/Tables, the fourth
+body-content type it belongs with. Moved.
+
+* v390 — Documentation: more trims in Undo/redo and History
+Continuing the same review pass -- a self-justifying parenthetical
+about the history cap, and a redundant trailing clause, both cut.
+
+* v389 — Documentation: trimmed per direct examples; 3 factual errors fixed
+Applied a demonstrated trimming pattern across several sections.
+Corrected: "What org-pwa is" wrongly claimed capture templates and
+the agenda are missing (both are implemented); Getting Started
+restated the modeline's indicator as two states, stale since
+read-only added two more; Editing your outline claimed block content
+has no in-app editing at all, when Text view edits the whole buffer.
+
+* v388 — Documentation: distracting phrasing removed document-wide
+Removed every remaining "confirmed/verified directly against X"
+meta-commentary instance (19 across 18 lines) found on a full search
+-- the same pattern already cut from Differences/Known limitations
+last version. Underlying factual content (worked examples, genuinely
+useful source references) kept; only the process-narration framing
+removed.
+
+* v387 — Documentation: buffer-read-only documented, phrasing cleanup
+Local Variables now documents both forms (the "-*-" cookie and the
+end-of-file block) and the buffer-read-only variable; Keybindings
+gets a C-x C-q row; Modeline's modified-indicator bullet now covers
+all four states correctly. Removed distracting "reported plainly
+rather than silently..." style phrasing from Differences/Known
+limitations, and corrected one real inaccuracy found in the process:
+Save/Save As are unaffected by read-only, not blocked by it.
+
 * v386 — README.org and CHANGELOG.org now marked read-only
 Both files start with a "-*- buffer-read-only: t; -*-" first-line
 cookie, per direct request -- opening either in the app itself now
