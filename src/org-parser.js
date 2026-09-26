@@ -281,7 +281,7 @@ function parseOrg(text, opts = {}) {
     if (current.type === 'document') {
       const km = KEYWORD_RE.exec(line);
       if (km) {
-        doc.keywords.push({ key: km[1], value: km[2] });
+        doc.keywords.push({ key: km[1], value: km[2], bodyLineIndex: doc.bodyLines.length });
         i++;
         continue;
       }
@@ -360,10 +360,24 @@ function serializeNode(node, out) {
 
 function serializeOrg(doc) {
   const out = [];
-  for (const kw of doc.keywords) {
+  const bodyLines = doc.bodyLines || [];
+  const orderedKeywords = doc.keywords
+    .map((kw, originalIndex) => ({ kw, originalIndex }))
+    .sort((a, b) => {
+      const ai = a.kw.bodyLineIndex ?? 0;
+      const bi = b.kw.bodyLineIndex ?? 0;
+      return ai !== bi ? ai - bi : a.originalIndex - b.originalIndex;
+    });
+  let bodyIdx = 0;
+  for (const { kw } of orderedKeywords) {
+    const target = Math.min(kw.bodyLineIndex ?? 0, bodyLines.length);
+    while (bodyIdx < target) {
+      out.push(bodyLines[bodyIdx]);
+      bodyIdx++;
+    }
     out.push(`#+${kw.key}: ${kw.value}`);
   }
-  for (const l of doc.bodyLines || []) out.push(l);
+  for (; bodyIdx < bodyLines.length; bodyIdx++) out.push(bodyLines[bodyIdx]);
   for (const child of doc.children) serializeNode(child, out);
   return out.join('\n');
 }
