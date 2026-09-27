@@ -1,11 +1,15 @@
 #!/bin/sh
 # Regenerates src/vendor/mathjs/mathjs-custom.min.js -- a tree-shaken
-# custom mathjs build containing ONLY BigNumber, Fraction, Unit, and
-# the core arithmetic operations this app's own table-formula engine
-# needs (see src/table-formula.js's own uconv() and, eventually, its
-# F-mode/precision-mode handling). NOT the full mathjs library (which
-# includes matrices, complex numbers, statistics, and its own
-# expression parser, none of which this app uses).
+# custom mathjs build containing Unit, BigNumber, Fraction, and the
+# arithmetic/transcendental functions this app's own table-formula
+# engine needs (uconv, and F-mode/precision-mode support), plus
+# create() and the dependency collections themselves -- NOT
+# pre-constructed functions from one fixed instance, since real
+# Calc's own pN precision mode needs a fresh, differently-configured
+# instance per formula (BigNumber precision is instance-level config
+# in mathjs, not a per-value option). NOT the full mathjs library
+# either (matrices, complex numbers, statistics, its own expression
+# parser -- none of which this app uses).
 #
 # This is a dev-only, occasional script -- run by hand when mathjs
 # needs updating, not part of running or deploying the app itself.
@@ -16,7 +20,7 @@
 # Usage: sh tools/build-mathjs-vendor.sh
 #
 # Measured sizes for this exact dependency set (mathjs 15.2.0):
-#   raw minified: ~248 KB   gzipped: ~72 KB
+#   raw minified: ~251 KB   gzipped: ~73 KB
 # (for comparison, this app's own vendored KaTeX is ~266 KB raw / ~74 KB gzipped)
 
 set -e
@@ -31,7 +35,7 @@ npm init -y --silent > /dev/null
 npm install --silent mathjs esbuild
 
 cat > entry.js << 'ENTRY_EOF'
-import {
+export {
   create,
   bignumberDependencies,
   fractionDependencies,
@@ -49,36 +53,20 @@ import {
   equalDependencies,
   largerDependencies,
   smallerDependencies,
+  logDependencies,
+  log10Dependencies,
+  expDependencies,
+  sinDependencies,
+  cosDependencies,
+  tanDependencies,
+  asinDependencies,
+  acosDependencies,
+  atanDependencies,
+  roundDependencies,
+  floorDependencies,
+  ceilDependencies,
+  fixDependencies,
 } from 'mathjs';
-
-const {
-  bignumber, fraction, unit, createUnit,
-  add, subtract, multiply, divide, pow, sqrt, abs, unaryMinus,
-  compare, equal, larger, smaller,
-} = create({
-  bignumberDependencies,
-  fractionDependencies,
-  unitDependencies,
-  createUnitDependencies,
-  addDependencies,
-  subtractDependencies,
-  multiplyDependencies,
-  divideDependencies,
-  powDependencies,
-  sqrtDependencies,
-  absDependencies,
-  unaryMinusDependencies,
-  compareDependencies,
-  equalDependencies,
-  largerDependencies,
-  smallerDependencies,
-});
-
-export {
-  bignumber, fraction, unit, createUnit,
-  add, subtract, multiply, divide, pow, sqrt, abs, unaryMinus,
-  compare, equal, larger, smaller,
-};
 ENTRY_EOF
 
 npx esbuild entry.js --bundle --minify --format=esm --outfile=mathjs-custom.min.js
