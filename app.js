@@ -31,6 +31,7 @@ import {
   shiftLevels,
   setProperty,
   getProperty,
+  deleteProperty,
 } from './src/archive-model.js';
 import {
   resolveLinkTarget,
@@ -89,7 +90,7 @@ import {
 } from './src/local-variables.js';
 import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath, collectSubtreeHeadings } from './src/refile.js';
 import { saveNarrowState, loadNarrowState } from './src/narrow-state.js';
-import { clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, currentClockSessionMinutes, formatClockDuration, findHeadingWithRunningClock, findMostRecentlyClockedHeading } from './src/clock.js';
+import { clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, currentClockSessionMinutes, formatClockDuration, parseClockDuration, findHeadingWithRunningClock, findMostRecentlyClockedHeading } from './src/clock.js';
 import { computeClocktable, renderClocktable } from './src/clocktable.js';
 import { parseExtraMenu, tokenize as tokenizeExtraMenuValue } from './src/extra-menu.js';
 import { parseMenuAliases, resolveMenuOrder, tokenizeMenuAliasValue } from './src/menu-alias.js';
@@ -195,8 +196,6 @@ import {
   setTheme,
   getCustomThemeColors,
   setCustomThemeColors,
-  getDocsViewState,
-  setDocsViewState,
   getFontFamily,
   setFontFamily,
   getMenuSize,
@@ -2732,9 +2731,9 @@ function scrollContainer() {
   return isWideLayout() ? outlineEl : contentAreaEl;
 }
 
-// Which element Settings/Docs is CURRENTLY rendering into -- updated by
-// renderSettingsView/renderDocsView themselves whenever called with an
-// explicit target (see those functions below), so an internal
+// Which element Settings is CURRENTLY rendering into -- updated by
+// renderSettingsView itself whenever called with an
+// explicit target (see that function below), so an internal
 // re-render from deep inside settings (e.g. a theme button's own
 // onclick calling renderSettingsView() with no argument, to reflect
 // the just-changed value) automatically continues targeting wherever
@@ -2742,7 +2741,6 @@ function scrollContainer() {
 // #sidePanel on a wide one -- rather than defaulting back to #outline
 // unconditionally and silently rendering into the wrong place.
 let settingsRenderTarget = outlineEl;
-let docsRenderTarget = outlineEl;
 let historyRenderTarget = outlineEl;
 const saveBtnEl = document.getElementById('saveBtn');
 const statusEl = document.getElementById('status');
@@ -2772,23 +2770,6 @@ function anyOverlayPanelOpen() {
   return (
     fileMenuOpen ||
     settingsOpen ||
-    docsOpen ||
-    searchOpen ||
-    captureOpen ||
-    extraMenuOpen ||
-    calendarOpen ||
-    viewMenuOpen ||
-    moreOpen ||
-    historyOpen ||
-    !!pendingTodoWorkflowChoice ||
-    !!pendingRefile
-  );
-}
-
-function anyOverlayPanelOpenExceptDocs() {
-  return (
-    fileMenuOpen ||
-    settingsOpen ||
     searchOpen ||
     captureOpen ||
     extraMenuOpen ||
@@ -2805,36 +2786,6 @@ function anyOverlayPanelOpenExceptDocs() {
  *  re-rendering each one so it actually disappears -- the shared
  *  Escape-to-dismiss behavior every one of these panels was missing
  *  on its own (see anyOverlayPanelOpen's own docs for why). */
-/** Shows Help -- opening it fresh if it doesn't exist yet
- *  (helpTabExists false), switching to it if it exists but isn't
- *  currently the visible content (docsOpen false, e.g. a real
- *  document tab is currently active instead), or doing nothing at all
- *  if it's already both open and currently showing -- "?" pressed
- *  again while Help is already displayed no longer toggles it shut,
- *  matching standard tab semantics: the only way to close Help is its
- *  own tab's close button (see closeHelpTab, and renderTabBar's own
- *  Help tab, below). */
-function openOrSwitchToHelp() {
-  if (docsOpen) return; // already both open and the currently-visible content -- nothing to do
-  closeAllOverlayPanels();
-  helpTabExists = true;
-  docsOpen = true;
-  render(); // wide: syncSidePanel (called from here) already builds Help's own content into #sidePanel; narrow: correctly skips rebuilding #outline itself now that docsOpen is true, leaving that to the explicit call below
-  if (!isWideLayout()) {
-    renderDocsView(outlineEl);
-  }
-}
-
-/** Closes Help entirely -- the only way to, now that "?" itself no
- *  longer toggles it shut once it's already open (see
- *  openOrSwitchToHelp above) -- matching standard tab-close semantics:
- *  tapping a tab's own close button is what actually closes it. */
-function closeHelpTab() {
-  docsOpen = false;
-  helpTabExists = false;
-  render();
-}
-
 function closeAllOverlayPanels() {
   if (fileMenuOpen) {
     fileMenuOpen = false;
@@ -2844,9 +2795,6 @@ function closeAllOverlayPanels() {
   }
   if (settingsOpen) {
     settingsOpen = false;
-  }
-  if (docsOpen) {
-    docsOpen = false;
   }
   if (searchOpen) {
     searchOpen = false;
@@ -2892,7 +2840,7 @@ function closeAllOverlayPanels() {
 }
 
 function renderMinibuffer() {
-  if (anyOverlayPanelOpenExceptDocs() && godModeActive) {
+  if (anyOverlayPanelOpen() && godModeActive) {
     godModeActive = false;
     godModeState = godModeInitialState();
   }
@@ -3025,6 +2973,7 @@ function computeBufferPositionString() {
  *  once one exists, and finally to '*scratch*' -- matching real
  *  Emacs's own convention for a fresh, as-yet-unnamed buffer. */
 function documentDisplayLabel(docId, doc) {
+  if (docId === HELP_DOCUMENT_ID) return 'Help';
   const isUnsaved = !docId || docId.startsWith(UNSAVED_DOCUMENT_ID);
   if (!isUnsaved) return docId;
   const firstHeadingTitle = doc && doc.children && doc.children[0] ? doc.children[0].title : null;
@@ -3059,30 +3008,18 @@ function buildGlobalModeStringParts(vars) {
   const running = findRunningClockAcrossSessions();
   if (running) {
     const mins = currentClockSessionMinutes(running.heading);
-    parts.push(`[\u23f1 ${formatClockDuration(mins)}] ${running.heading.title}`);
+    const effortRaw = getProperty(running.heading, 'EFFORT');
+    const effortMins = effortRaw ? parseClockDuration(effortRaw) : 0;
+    const overEstimate = effortMins > 0 && mins > effortMins;
+    const clockText = effortMins > 0
+      ? `${formatClockDuration(mins)} / ${formatClockDuration(effortMins)}${overEstimate ? ' !' : ''}`
+      : formatClockDuration(mins);
+    parts.push(`[\u23f1 ${clockText}] ${running.heading.title}`);
   }
   return parts;
 }
 
 function renderModeline() {
-  if (docsOpen) {
-    // Help is a real-Emacs-style read-only buffer -- %% is real Emacs's
-    // own third modified-indicator state (alongside -- unmodified and **
-    // modified below), completing the convention this app's own modeline
-    // already partially implements. Checked before the !state.doc guard
-    // below: Help can be opened even with no document open at all, and
-    // the modeline should still correctly reflect that, not go blank.
-    // state.doc / state.localVariables stay exactly whatever they were
-    // before Help opened (a separate overlay that never touches them),
-    // so display-time correctly reflects the app-wide Settings baseline
-    // even with no document open at all -- and the clock indicator (see
-    // buildGlobalModeStringParts) now shows regardless, matching real
-    // Emacs's own genuinely global behavior once enforced elsewhere.
-    const vars = state.doc ? state.localVariables : globalVariables;
-    const parts = ['%%', 'Help (README.org)', ...buildGlobalModeStringParts(vars)];
-    modelineEl.textContent = parts.join('  ');
-    return;
-  }
   if (!state.doc) {
     modelineEl.textContent = '';
     return;
@@ -3466,6 +3403,31 @@ function cyclePriorityFor(heading) {
   commitAndRender(next ? `Priority set to ${next}` : 'Priority cleared');
 }
 
+/** Cycles a heading's own EFFORT property through a fixed preset list
+ *  -- same tap-to-cycle UX as cyclePriorityFor above, just for effort
+ *  estimates instead of priority cookies. The preset values match real
+ *  org's own default Effort_ALL completion set (confirmed directly in
+ *  org-agenda.el's org-agenda-filter-by-effort: "0 0:10 0:30 1:00 2:00
+ *  3:00 4:00 5:00 6:00 7:00"), with None first to clear the property
+ *  entirely. EFFORT is a real property (unlike priority's own headline
+ *  cookie), so this and the general editor's raw Properties row can
+ *  both touch it -- same last-write-wins relationship priority's own
+ *  badge already has with that editor's structured priority picker. */
+const EFFORT_LEVELS = [null, '0:10', '0:30', '1:00', '2:00', '3:00', '4:00', '5:00', '6:00', '7:00'];
+
+function cycleEffortFor(heading) {
+  if (!heading) return;
+  const current = getProperty(heading, 'EFFORT') || null;
+  const currentIndex = EFFORT_LEVELS.indexOf(current);
+  const next = EFFORT_LEVELS[(Math.max(currentIndex, 0) + 1) % EFFORT_LEVELS.length];
+  if (next) {
+    setProperty(heading, 'EFFORT', next);
+  } else {
+    deleteProperty(heading, 'EFFORT');
+  }
+  commitAndRender(next ? `Effort set to ${next}` : 'Effort cleared');
+}
+
 /** Cycles the WHOLE document's own fold state between 'overview'
  *  (only top-level headings shown) and 'showeverything' (everything
  *  expanded) -- god-mode's own S-TAB, a simplified two-state
@@ -3574,6 +3536,7 @@ const GOD_MODE_ACTIONS = {
   // Section 3: TODOs & Task Management
   'C-c C-t': () => keyboardFocusedHeading && openTodoOrPickWorkflow(keyboardFocusedHeading),
   'C-c ,': () => cyclePriorityFor(keyboardFocusedHeading),
+  'C-c C-x e': () => cycleEffortFor(keyboardFocusedHeading),
   'C-c C-v': () => {
     if (!state.doc) return;
     switchToView('tasklist');
@@ -3629,9 +3592,7 @@ const GOD_MODE_ACTIONS = {
   'C-h i': () => {
     moreOpen = false;
     renderMoreMenu();
-    helpTabExists = true; // was missing -- without this, Help would show correctly but its own tab would never appear in the tab bar (renderTabBar checks this flag, not docsOpen, to decide whether to render it)
-    docsOpen = true;
-    if (!isWideLayout()) renderDocsView(outlineEl); // narrow: replaces #outline directly; wide layout is handled by the outer dispatch loop's own render() call right after this returns
+    openOrSwitchToHelp();
   },
   '<up>': () => moveLineFocus(-1),
   '<down>': () => moveLineFocus(1),
@@ -3657,6 +3618,7 @@ const GOD_MODE_ACTIONS = {
  *  below), so neither duplicates the other's own logic. */
 function toggleBufferReadOnly() {
   if (!state.doc) return;
+  if (!isBufferReadOnly) commitTextModeIfActive(); // capture any pending Text-view edit while still writable -- once toggled on, the commit path would correctly (but too late) refuse it
   isBufferReadOnly = !isBufferReadOnly;
   setStatus(isBufferReadOnly ? 'Buffer is read-only now.' : 'Buffer is writable now.');
   render();
@@ -3759,7 +3721,7 @@ document.addEventListener('pointerdown', (e) => {
 document.addEventListener('keydown', (e) => {
   if (confirmDialogOpen || timestampPickerOpen) return;
   if (activeQueryReplace) {
-    const { controller } = activeQueryReplace;
+    const { controller, inTextMode } = activeQueryReplace;
     if (e.key === 'y' || e.key === ' ') {
       e.preventDefault();
       controller.replace();
@@ -3775,7 +3737,8 @@ document.addEventListener('keydown', (e) => {
     } else if (e.key === '!') {
       e.preventDefault();
       controller.replaceAll();
-      finishQueryReplace();
+      if (inTextMode) finishQueryReplace();
+      else advanceToNextFileOrFinish();
     } else if (e.key === 'q' || e.key === 'Enter' || e.key === 'Escape') {
       e.preventDefault();
       controller.quit();
@@ -3791,16 +3754,7 @@ document.addEventListener('keydown', (e) => {
 
   if (statusEl.textContent) setStatus('');
 
-  // Help/Docs is the one panel that doesn't swallow keyboard input
-  // while god-mode is active -- see anyOverlayPanelOpenExceptDocs's
-  // own docs for why. If it's the ONLY thing currently open, skip the
-  // swallow-everything gate below entirely and let this keystroke
-  // flow through to god-mode's own normal handling -- Escape
-  // included, which should follow god-mode's own cancel-sequence/
-  // exit-god-mode priority here, not specifically close Help.
-  const docsOnlyWhileGodMode = godModeActive && docsOpen && !anyOverlayPanelOpenExceptDocs();
-
-  if (anyOverlayPanelOpen() && !docsOnlyWhileGodMode) {
+  if (anyOverlayPanelOpen()) {
     if (e.key === 'Escape') {
       e.preventDefault();
       closeAllOverlayPanels();
@@ -4086,17 +4040,7 @@ function persistOpenTabsInBackground() {
 }
 
 function switchToTab(tabId) {
-  if (tabId === activeTabId) {
-    if (docsOpen) {
-      // Help is covering this already-active tab -- nothing to
-      // genuinely switch (same tab, same session state), just close
-      // Help and reveal it again.
-      docsOpen = false;
-      render();
-      renderTabBar();
-    }
-    return;
-  }
+  if (tabId === activeTabId) return;
   // Committing (if there's anything to commit) brings state.doc fully
   // up to date -- and clears narrowedTextModeRange -- for the tab
   // being left, BEFORE the snapshot below captures it. Without this,
@@ -4193,7 +4137,7 @@ async function closeTab(tabId) {
  *  tab switch to save a fresh snapshot. */
 function renderTabBar() {
   tabBarEl.innerHTML = '';
-  if (documentSessions.length < 1 && !helpTabExists) {
+  if (documentSessions.length < 1) {
     tabBarEl.style.display = 'none';
     return;
   }
@@ -4203,12 +4147,22 @@ function renderTabBar() {
   tabBarEl.style.borderBottom = '1px solid var(--border)';
   tabBarEl.style.background = 'var(--surface)';
 
+  // Help always renders last, regardless of when it was opened -- a
+  // render-time-only sort, so documentSessions' own order (used
+  // elsewhere for tab-cycling) is unaffected.
+  const sessionsInOrder = [...documentSessions].sort((a, b) => {
+    const aIsHelp = a.state.documentId === HELP_DOCUMENT_ID;
+    const bIsHelp = b.state.documentId === HELP_DOCUMENT_ID;
+    return aIsHelp === bIsHelp ? 0 : aIsHelp ? 1 : -1;
+  });
+
   let activeTabEl = null;
-  for (const session of documentSessions) {
-    const isActive = session.tabId === activeTabId && !docsOpen; // docsOpen: Help is currently covering this tab's own content -- it isn't genuinely "active" (visible) even though activeTabId still points at it
+  for (const session of sessionsInOrder) {
+    const isActive = session.tabId === activeTabId;
     const docId = isActive ? state.documentId : session.state.documentId;
     const doc = isActive ? state.doc : session.state.doc;
     const dirty = isActive ? isDirty : session.isDirty;
+    const isHelp = docId === HELP_DOCUMENT_ID;
     const label = documentDisplayLabel(docId, doc);
 
     const tab = document.createElement('div');
@@ -4219,9 +4173,18 @@ function renderTabBar() {
     tab.style.flexShrink = '0';
     tab.style.maxWidth = '160px';
     tab.style.cursor = 'pointer';
-    tab.style.borderBottom = isActive ? '2px solid var(--accent)' : '2px solid transparent';
-    tab.style.background = isActive ? 'var(--bg)' : 'transparent';
-    tab.onclick = () => switchToTab(session.tabId);
+    // Help's own active-tab border is the same gold navigateToHeading's
+    // own "go back to" highlight flash uses (rgba(255,214,0,0.45)), not
+    // this app's usual blue (--accent) -- distinguishes it from every
+    // other, unrelated active-tab border.
+    tab.style.borderBottom = isActive ? (isHelp ? '2px solid rgb(255,214,0)' : '2px solid var(--accent)') : '2px solid transparent';
+    // Help's own background is this app's existing green convention
+    // (DONE-state badges) -- always shown, whether or not it's the
+    // currently-active tab, so it reads as "Help exists" at a glance,
+    // the same way the dirty indicator is a constant marker rather
+    // than only an active-state one.
+    tab.style.background = isHelp ? 'var(--done-bg)' : isActive ? 'var(--bg)' : 'transparent';
+    tab.onclick = () => (isHelp ? openOrSwitchToHelp() : switchToTab(session.tabId));
 
     const labelEl = document.createElement('span');
     labelEl.textContent = (dirty ? '\u25cf ' : '') + label;
@@ -4230,7 +4193,7 @@ function renderTabBar() {
     labelEl.style.textOverflow = 'ellipsis';
     labelEl.style.whiteSpace = 'nowrap';
     labelEl.style.fontSize = '13px';
-    labelEl.style.color = dirty ? '#c0392b' : 'var(--fg)';
+    labelEl.style.color = isHelp ? 'var(--done-fg)' : dirty ? '#c0392b' : 'var(--fg)';
     tab.appendChild(labelEl);
 
     const closeBtn = document.createElement('button');
@@ -4238,7 +4201,8 @@ function renderTabBar() {
     closeBtn.setAttribute('aria-label', 'Close tab: ' + label);
     closeBtn.style.border = 'none';
     closeBtn.style.background = 'transparent';
-    closeBtn.style.color = 'var(--muted)';
+    closeBtn.style.color = isHelp ? 'var(--done-fg)' : 'var(--muted)';
+    closeBtn.style.opacity = isHelp ? '0.7' : '1';
     closeBtn.style.fontSize = '12px';
     closeBtn.style.padding = '6px';
     closeBtn.style.minWidth = '28px';
@@ -4251,48 +4215,6 @@ function renderTabBar() {
     tab.appendChild(closeBtn);
 
     if (isActive) activeTabEl = tab;
-    tabBarEl.appendChild(tab);
-  }
-
-  if (helpTabExists) {
-    const tab = document.createElement('div');
-    tab.style.display = 'flex';
-    tab.style.alignItems = 'center';
-    tab.style.gap = '4px';
-    tab.style.padding = '8px 6px 8px 12px';
-    tab.style.flexShrink = '0';
-    tab.style.maxWidth = '160px';
-    tab.style.cursor = 'pointer';
-    tab.style.borderBottom = docsOpen ? '2px solid rgb(255,214,0)' : '2px solid transparent'; // the same gold navigateToHeading's own "go back to" highlight flash uses (rgba(255,214,0,0.45)), not this app's usual blue (--accent) -- distinguishes Help's own active indicator from every other, unrelated active-tab border
-    tab.style.background = 'var(--done-bg)'; // this app's own existing green convention (DONE-state badges) -- always shown, whether or not Help is the currently-active tab, so it reads as "Help exists" at a glance, the same way the dirty indicator is a constant marker rather than only an active-state one
-    tab.onclick = () => openOrSwitchToHelp();
-
-    const labelEl = document.createElement('span');
-    labelEl.textContent = 'Help';
-    labelEl.style.whiteSpace = 'nowrap';
-    labelEl.style.fontSize = '13px';
-    labelEl.style.color = 'var(--done-fg)';
-    tab.appendChild(labelEl);
-
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = '\u2715';
-    closeBtn.setAttribute('aria-label', 'Close tab: Help');
-    closeBtn.style.border = 'none';
-    closeBtn.style.background = 'transparent';
-    closeBtn.style.color = 'var(--done-fg)';
-    closeBtn.style.opacity = '0.7';
-    closeBtn.style.fontSize = '12px';
-    closeBtn.style.padding = '6px';
-    closeBtn.style.minWidth = '28px';
-    closeBtn.style.minHeight = '28px';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.onclick = (e) => {
-      e.stopPropagation();
-      closeHelpTab();
-    };
-    tab.appendChild(closeBtn);
-
-    if (docsOpen) activeTabEl = tab;
     tabBarEl.appendChild(tab);
   }
 
@@ -4336,18 +4258,6 @@ let browsePath = '';
 let browseEntries = null;
 let browseError = null;
 let settingsOpen = false;
-let docsOpen = false;
-// Separate from docsOpen (which keeps its own existing meaning --
-// "Help is currently the visible content" -- unchanged everywhere else in
-// this app): tracks only "has Help been opened and not yet explicitly
-// closed via its own tab" (see renderTabBar's own Help tab below).
-// Persists across a tab switch or opening another panel (Search,
-// Settings, etc.) -- both already set docsOpen = false via
-// closeAllOverlayPanels without touching this flag, so Help's own tab
-// stays in the bar, just not the currently-active one -- and is cleared
-// only when that tab's own close button is tapped, matching standard
-// tab-close semantics rather than the "?" button toggling it shut.
-let helpTabExists = false;
 let searchOpen = false;
 let confirmDialogOpen = false; // true only while confirmDialog()'s own overlay is showing -- lets the global keydown handler cleanly step aside rather than racing this dialog's own key handling
 let captureOpen = false;
@@ -4907,8 +4817,8 @@ function restoreFromHistory() {
   // reference, now stale -- a fresh parseOrg call always produces
   // brand new heading instances, even when re-parsing what is
   // nominally "the same" file. navigationBackStack does NOT hold any
-  // such reference (just documentId/storageKind/scrollTop/view/
-  // docsOpen, all plain data unaffected by re-parsing the CURRENT
+  // such reference (just documentId/storageKind/scrollTop/view, all
+  // plain data unaffected by re-parsing the CURRENT
   // document), so it's deliberately left untouched here -- clearing
   // it unconditionally used to destroy cross-document back-navigation
   // the moment a user did anything that re-parsed the current
@@ -5171,7 +5081,7 @@ function commitTextModeIfActive() {
   // now stale -- a fresh parseOrg call always produces brand new
   // heading instances, even when re-parsing what is nominally "the
   // same" file. navigationBackStack does NOT hold any such reference
-  // (just documentId/storageKind/scrollTop/view/docsOpen, all plain
+  // (just documentId/storageKind/scrollTop/view, all plain
   // data unaffected by re-parsing the CURRENT document), so it's
   // deliberately left untouched here -- clearing it unconditionally
   // used to destroy cross-document back-navigation the moment a user
@@ -5680,7 +5590,6 @@ function navigateToHeading(heading, { revealOwnBody = false, targetNode = headin
   if (pushToBackStack) {
     navigationBackStack.push({
       view: currentView,
-      docsOpen,
       documentId: state.documentId,
       storageKind: state.storageKind,
       scrollTop: scrollContainer().scrollTop,
@@ -5790,7 +5699,6 @@ async function navigateToHeadingByPath(documentId, outlinePath, opts = {}) {
 
   const originEntry = {
     view: currentView,
-    docsOpen,
     documentId: state.documentId,
     storageKind: state.storageKind,
     scrollTop: scrollContainer().scrollTop,
@@ -5823,26 +5731,30 @@ async function navigateBack() {
   if (!target) return;
 
   if (target.documentId && target.documentId !== state.documentId) {
-    let adapter, label;
-    if (target.storageKind === 'github') {
-      adapter = githubAdapter;
-      label = 'GitHub';
-    } else if (target.storageKind === 'webdav') {
-      adapter = webdavAdapter;
-      label = 'WebDAV';
+    if (target.documentId === HELP_DOCUMENT_ID) {
+      await openOrSwitchToHelp();
     } else {
-      setStatus(
-        `Can't automatically return to "${target.documentId}" — local files need a file picker per file (browser security), which can't happen from the back button.`
-      );
-      syncNavBackButtonVisibility();
-      return;
+      let adapter, label;
+      if (target.storageKind === 'github') {
+        adapter = githubAdapter;
+        label = 'GitHub';
+      } else if (target.storageKind === 'webdav') {
+        adapter = webdavAdapter;
+        label = 'WebDAV';
+      } else {
+        setStatus(
+          `Can't automatically return to "${target.documentId}" — local files need a file picker per file (browser security), which can't happen from the back button.`
+        );
+        syncNavBackButtonVisibility();
+        return;
+      }
+      await openRemotePath(target.documentId, target.storageKind, adapter, label);
     }
-    await openRemotePath(target.documentId, target.storageKind, adapter, label);
-    // openRemotePath catches and reports its own errors via setStatus
-    // rather than throwing -- confirm it actually landed on the
-    // origin document before restoring any of its own view/scroll
-    // state below, the same "did this actually succeed" check
-    // openFileLink's own forward-navigation already uses.
+    // openRemotePath/openOrSwitchToHelp each catch and report their own
+    // errors via setStatus rather than throwing -- confirm one of them
+    // actually landed on the origin document before restoring any of
+    // its own view/scroll state below, the same "did this actually
+    // succeed" check openFileLink's own forward-navigation already uses.
     if (!state.doc || state.documentId !== target.documentId) {
       syncNavBackButtonVisibility();
       return;
@@ -5863,11 +5775,7 @@ async function navigateBack() {
 
   if (target.settingsOpen && !settingsOpen) {
     // The jump away (a Quick Settings help link, or the Capture
-    // Templates reference link) came FROM Settings -- return there,
-    // closing Docs in the process, rather than falling through to the
-    // docsOpen/view restoration below (which has no notion of
-    // Settings at all).
-    docsOpen = false;
+    // Templates reference link) came FROM Settings -- return there.
     settingsOpen = true;
     if (isWideLayout()) {
       sidePanelEl.style.display = 'block';
@@ -5875,18 +5783,6 @@ async function navigateBack() {
       render();
     } else {
       await renderSettingsView(outlineEl);
-    }
-  } else if (target.docsOpen && !docsOpen) {
-    // The jump away closed Docs (navigateToHeading's own switchToView
-    // forces 'org' and closes it) -- reopen and re-render it before
-    // restoring scroll, the same sequence the "?" button itself uses.
-    docsOpen = true;
-    if (isWideLayout()) {
-      sidePanelEl.style.display = 'block';
-      await renderDocsView(sidePanelEl);
-      render();
-    } else {
-      await renderDocsView(outlineEl);
     }
   } else if (target.view !== currentView) {
     switchToView(target.view);
@@ -7252,6 +7148,15 @@ function renderRow(row, todoSequence) {
       el.appendChild(priorityBadge);
     }
 
+    const rowEffort = getProperty(row.node, 'EFFORT');
+    if (rowEffort) {
+      const effortBadge = document.createElement('span');
+      effortBadge.className = 'priority-badge';
+      effortBadge.textContent = `\u23f1 ${rowEffort}`;
+      effortBadge.onclick = () => cycleEffortFor(row.node);
+      el.appendChild(effortBadge);
+    }
+
     let menuEl = null;
 
     {
@@ -7346,6 +7251,14 @@ function renderRow(row, todoSequence) {
               onClick: () => {
                 actionMenuFor = null;
                 openTodoOrPickWorkflow(row.node);
+              },
+            },
+            {
+              icon: '\u23f1',
+              label: 'Effort',
+              onClick: () => {
+                actionMenuFor = null;
+                cycleEffortFor(row.node);
               },
             },
             {
@@ -8263,10 +8176,6 @@ function syncSidePanel() {
     sidePanelEl.style.display = 'block';
     sidePanelDividerEl.style.display = 'block';
     renderSettingsView(sidePanelEl);
-  } else if (wide && docsOpen) {
-    sidePanelEl.style.display = 'block';
-    sidePanelDividerEl.style.display = 'block';
-    renderDocsView(sidePanelEl);
   } else if (wide && historyOpen) {
     sidePanelEl.style.display = 'block';
     sidePanelDividerEl.style.display = 'block';
@@ -8391,7 +8300,6 @@ function render() {
   // instead, so #outline should keep rendering normally below rather
   // than being replaced too.
   if (settingsOpen && !wide) return;
-  if (docsOpen && !wide) return;
   if (historyOpen && !wide) return;
 
   if (!state.doc) {
@@ -8661,6 +8569,7 @@ function storageKindLabel(kind) {
   if (kind === 'github') return 'GitHub';
   if (kind === 'webdav') return 'WebDAV';
   if (kind === 'input') return 'Imported';
+  if (kind === 'help') return 'Help';
   return 'Local';
 }
 
@@ -8670,7 +8579,7 @@ function storageKindLabel(kind) {
  *  state.documentId/storageKind/isDirty to separately remember to update
  *  it) rather than being set ad hoc in half a dozen different places. */
 function updateSaveButtonState() {
-  saveBtnEl.disabled = !state.doc || !state.storageKind;
+  saveBtnEl.disabled = !state.doc || !state.storageKind || state.storageKind === 'help';
   saveBtnEl.style.color = !saveBtnEl.disabled && isDirty ? '#c0392b' : '';
 }
 
@@ -8926,7 +8835,6 @@ async function openFileLink(resolution, containingHeading = null) {
     : null;
   const originEntry = {
     view: currentView,
-    docsOpen,
     documentId: state.documentId,
     storageKind: state.storageKind,
     scrollTop: scrollContainer().scrollTop,
@@ -10661,10 +10569,6 @@ navBackBtn.addEventListener('click', async () => {
 function switchToView(view) {
   if (settingsOpen) {
     settingsOpen = false;
-    render();
-  }
-  if (docsOpen) {
-    closeDocsView();
     render();
   }
   if (historyOpen) {
@@ -13876,402 +13780,43 @@ async function renderSettingsView(target = settingsRenderTarget) {
   scrollingEl.scrollTop = savedScrollTop;
 }
 
-// ---- Docs (README, rendered in-app) --------------------------------------
+// ---- Help (README.org, opened as a real document) -------------------
 
-let cachedDocsDoc = null; // parsed once per session from README.org, not re-fetched/re-parsed on every "Docs" tap
+const HELP_DOCUMENT_ID = '\u0000help-README.org';
 
-/** Every "/"-joined title path (e.g. "Export/ODT") for a heading that's
- *  currently collapsed within `doc` -- the minority, worth-persisting
- *  case, since README.org's own default startup visibility is fully
- *  expanded (see startup-config.js's own DEFAULT_STARTUP_CONFIG). Used
- *  to save Docs' own fold state when leaving it. */
-function collectCollapsedPaths(headings, prefix = '') {
-  let paths = [];
-  for (const h of headings) {
-    const path = prefix ? prefix + '/' + h.title : h.title;
-    if (h.collapsed) paths.push(path);
-    paths = paths.concat(collectCollapsedPaths(h.children, path));
-  }
-  return paths;
-}
-
-/** The inverse of collectCollapsedPaths: given a previously-saved list
- *  of collapsed title-paths, folds exactly those headings within a
- *  freshly re-parsed `doc` -- everything else is left at whatever
- *  applyStartupVisibility already set it to (expanded, by default). A
- *  path that no longer matches anything (the docs changed since it was
- *  saved) is silently ignored rather than erroring — stale saved state
- *  should degrade gracefully, not break the view. */
-function applyCollapsedPaths(headings, collapsedPaths, prefix = '') {
-  for (const h of headings) {
-    const path = prefix ? prefix + '/' + h.title : h.title;
-    if (collapsedPaths.includes(path)) h.collapsed = true;
-    applyCollapsedPaths(h.children, collapsedPaths, path);
+/** Opens Help by fetching and opening README.org through the exact
+ *  same pipeline any other document uses (afterDocumentLoaded) --
+ *  read-only (its own first-line cookie), first-visit-collapsed (its
+ *  own #+STARTUP: line), and "switch to it if it's already open as a
+ *  tab" (afterDocumentLoaded's own existing, general logic) all come
+ *  from that pipeline directly, not from anything Help-specific here.
+ *  storageKind 'help' -- see storageKindLabel's own one-line case for
+ *  it, and updateSaveButtonState's own explicit exclusion of it (a
+ *  real, truthy string, so the usual falsy-storageKind check alone
+ *  wouldn't have disabled Save on its own). */
+async function openOrSwitchToHelp() {
+  closeAllOverlayPanels();
+  try {
+    const response = await fetch('./README.org');
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const text = await response.text();
+    await afterDocumentLoaded(HELP_DOCUMENT_ID, parseOrg(text), 'help');
+  } catch (err) {
+    setStatus("Couldn't load Help (" + err.message + '). Try again once you\u2019re back online.');
+    render();
   }
 }
 
-/** Persists Docs' own current fold state and scroll position, so
- *  returning later -- even after a full app restart, not just within
- *  this same session -- can restore roughly where the person left
- *  off. Fire-and-forget (doesn't block whatever's actually closing
- *  Docs) and a no-op if Docs was never actually opened this session
- *  (cachedDocsDoc still null -- nothing to save). */
-function saveDocsViewState() {
-  if (!cachedDocsDoc) return;
-  setDocsViewState(kv, {
-    scrollTop: scrollContainer().scrollTop,
-    collapsedPaths: collectCollapsedPaths(cachedDocsDoc.children),
-  }).catch(() => {});
-}
-
-/** The shared "leaving Docs" path -- every one of the several places
- *  Docs can be closed from (opening a different menu, switching
- *  views, navigating away) goes through this rather than setting
- *  docsOpen = false directly, so saving state on the way out can never
- *  be forgotten at any individual call site. */
-function closeDocsView() {
-  saveDocsViewState();
-  docsOpen = false;
-}
-
-/**
- * Renders `doc` (a fully separate, parsed org document -- currently only
- * used for README.org in the Docs view) read-only into `container`:
- * headings with working fold/unfold, TODO badges, tags, and body content
- * (paragraphs, lists, tables, blocks), but nothing editable at all -- no
- * tap-to-edit, no action menus, no swipe gestures, no commitAndRender.
- * Deliberately a separate, much simpler rendering path from renderRow
- * rather than a reuse of it: that function is deeply wired for editing
- * throughout (mutation calls, action menus, swipe-to-fold), and threading
- * readOnly conditionals through an already-large core function would risk
- * the main app's actual editing path for the sake of a docs-only feature.
- *
- * Fold state lives directly on `doc`'s own heading objects (the same
- * `collapsed` field the main app's headings already have) -- toggling it
- * only ever mutates this separate, local document, never state.doc, and
- * only ever triggers `rerender()` (a full re-render of this container),
- * never the main app's own render().
- */
-let docsScrollTarget = null; // set right before a docs-internal link scrolls to a heading; read once by the next render pass, then left alone (not cleared) so subsequent re-renders from folding elsewhere don't lose the anchor
-
-function renderReadOnlyOutline(doc, container, rerender) {
-  container.innerHTML = '';
-  const todoSequence = resolveTodoSequence(doc, GLOBAL_TODO_DEFAULT);
-  const linkContext = {
-    doc,
-    onHeadingLinkClick(heading) {
-      navigationBackStack.push({
-        view: currentView,
-        docsOpen,
-        documentId: state.documentId,
-        storageKind: state.storageKind,
-        scrollTop: scrollContainer().scrollTop,
-      });
-      if (navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) navigationBackStack.shift();
-      syncNavBackButtonVisibility();
-      // Expand every ancestor of the link's target (mirroring
-      // navigateToHeading's own ancestor-expansion, but against this
-      // local doc, never state.doc) so the target is actually visible
-      // once scrolled to, then scroll it into view.
-      const stack = [];
-      function findPath(headings, target, path) {
-        for (const h of headings) {
-          const next = [...path, h];
-          if (h === target) {
-            stack.push(...next);
-            return true;
-          }
-          if (findPath(h.children, target, next)) return true;
-        }
-        return false;
-      }
-      findPath(doc.children, heading, []);
-      for (const ancestor of stack) ancestor.collapsed = false;
-      docsScrollTarget = heading;
-      rerender();
-      requestAnimationFrame(() => {
-        const el = document.getElementById('docs-heading-target');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    },
-  };
-  for (const heading of doc.children) {
-    renderReadOnlyHeading(heading, 0, container, todoSequence, linkContext, rerender);
-  }
-}
-
-function renderReadOnlyHeading(heading, depth, container, todoSequence, linkContext, rerender) {
-  const wrap = document.createElement('div');
-  wrap.style.paddingLeft = 8 + depth * 16 + 'px';
-  wrap.style.padding = `4px 4px 4px ${8 + depth * 16}px`;
-  if (docsScrollTarget === heading) wrap.id = 'docs-heading-target';
-  attachSlideLeftToFold(wrap, heading, { onFolded: rerender, archiveVisibility: 'archived' });
-
-  const row = document.createElement('div');
-  row.style.display = 'flex';
-  row.style.alignItems = 'flex-start';
-  row.style.gap = '4px';
-
-  const hasChildren = heading.children.length > 0;
-  const hasFoldableContent = hasChildren || heading.body.length > 0;
-  const fold = document.createElement('span');
-  fold.textContent = hasFoldableContent ? (heading.collapsed ? '\u25b8' : '\u25be') : ' ';
-  fold.style.cursor = hasFoldableContent ? 'pointer' : 'default';
-  fold.style.width = '16px';
-  fold.style.flexShrink = '0';
-  fold.style.userSelect = 'none';
-  if (hasFoldableContent) {
-    fold.onclick = () => {
-      toggleFold(heading);
-      rerender();
-    };
-  }
-  row.appendChild(fold);
-
-  const titleWrap = document.createElement('div');
-  titleWrap.style.flex = '1';
-
-  if (heading.todo) {
-    const badge = document.createElement('span');
-    badge.className = 'todo-badge ' + (todoSequence.doneKeywords.includes(heading.todo) ? 'done' : 'todo');
-    badge.textContent = heading.todo;
-    badge.style.marginRight = '4px';
-    titleWrap.appendChild(badge);
-  }
-
-  const title = document.createElement('span');
-  title.style.fontWeight = depth === 0 ? '700' : '600';
-  title.style.fontSize = depth === 0 ? '17px' : depth === 1 ? '15px' : '14px';
-  renderInlineNodes(parseInline(heading.title, currentInlineOpts()), title, linkContext);
-  titleWrap.appendChild(title);
-
-  for (const tag of heading.tags) {
-    const t = document.createElement('span');
-    t.className = 'tag';
-    t.style.marginLeft = '4px';
-    t.textContent = tag;
-    titleWrap.appendChild(t);
-  }
-
-  row.appendChild(titleWrap);
-  wrap.appendChild(row);
-  container.appendChild(wrap);
-
-  if (!heading.collapsed) {
-    if (!heading.bodyHidden) {
-      for (const node of heading.body) {
-        renderReadOnlyBodyNode(node, depth, container, linkContext, heading.drawersHidden);
-      }
-    }
-    for (const child of heading.children) {
-      renderReadOnlyHeading(child, depth + 1, container, todoSequence, linkContext, rerender);
-    }
-  }
-}
-
-function renderReadOnlyBodyNode(node, depth, container, linkContext, drawersHidden) {
-  const indent = 8 + depth * 16 + 16;
-  if (node.type === 'paragraph') {
-    const p = document.createElement('div');
-    p.style.paddingLeft = indent + 'px';
-    p.style.margin = '4px 0';
-    p.style.lineHeight = '1.4';
-    if (node.footnoteLabel !== null) {
-      p.style.fontSize = '0.92em';
-      p.style.opacity = '0.85';
-      const labelEl = document.createElement('sup');
-      labelEl.textContent = '[' + node.footnoteLabel + '] ';
-      labelEl.style.opacity = '0.7';
-      p.appendChild(labelEl);
-    }
-    node.inlineLines.forEach((inline, i) => {
-      if (i > 0) {
-        const prevForcedBreak = stripLineBreakMarker(node.extractedLines[i - 1]) !== node.extractedLines[i - 1];
-        p.appendChild(prevForcedBreak ? document.createElement('br') : document.createTextNode(' '));
-      }
-      renderInlineNodes(inline, p, linkContext);
-    });
-    container.appendChild(p);
-  } else if (node.type === 'hr') {
-    const hr = document.createElement('hr');
-    hr.style.marginLeft = indent + 'px';
-    hr.style.border = 'none';
-    hr.style.borderTop = '1px solid var(--border)';
-    container.appendChild(hr);
-  } else if (node.type === 'list') {
-    renderReadOnlyList(node, depth, container, linkContext);
-  } else if (node.type === 'table') {
-    renderReadOnlyTable(node, depth, container);
-  } else if (node.type === 'block') {
-    renderReadOnlyBlock(node, depth, container, drawersHidden, linkContext);
-  }
-}
-
-function renderReadOnlyList(list, depth, container, linkContext, listDepth = 0) {
-  let orderedCounter = 0;
-  for (const item of list.items) {
-    const row = document.createElement('div');
-    row.style.paddingLeft = 8 + depth * 16 + 16 + listDepth * 16 + 'px';
-    row.style.margin = '2px 0';
-    row.style.display = 'flex';
-    row.style.gap = '6px';
-
-    const marker = document.createElement('span');
-    marker.style.flexShrink = '0';
-    marker.style.opacity = '0.6';
-    if (item.checkbox) {
-      marker.textContent = item.checkbox === 'X' || item.checkbox === 'x' ? '\u2611' : item.checkbox === '-' ? '\u2612' : '\u2610';
-    } else if (item.ordered) {
-      orderedCounter = item.startValue != null ? item.startValue : orderedCounter + 1;
-      marker.textContent = orderedCounter + '.';
-    } else {
-      marker.textContent = '\u2022';
-    }
-    row.appendChild(marker);
-
-    const text = document.createElement('span');
-    if (item.tag) {
-      const tagEl = document.createElement('b');
-      tagEl.textContent = item.tag;
-      text.appendChild(tagEl);
-      text.appendChild(document.createTextNode(' \u2014 '));
-    }
-    renderInlineNodes(item.inline, text, linkContext);
-    row.appendChild(text);
-
-    container.appendChild(row);
-
-    for (const nested of item.children) {
-      renderReadOnlyList(nested, depth, container, linkContext, listDepth + 1);
-    }
-  }
-}
-
-function renderReadOnlyTable(table, depth, container) {
-  const el = document.createElement('table');
-  el.style.marginLeft = 8 + depth * 16 + 16 + 'px';
-  el.style.borderCollapse = 'collapse';
-  el.style.fontSize = '13px';
-  table.rows.forEach((row, rowIndex) => {
-    if (row.type === 'rule') return; // a rule row is a visual-only separator, nothing to render as content
-    const tr = document.createElement('tr');
-    const isHeader = isTableHeaderRow(table, rowIndex);
-    for (const cellInline of row.cellsInline) {
-      const td = document.createElement('td');
-      td.style.border = '1px solid var(--border)';
-      td.style.padding = '4px 8px';
-      if (isHeader) td.style.fontWeight = '600';
-      renderInlineNodes(cellInline, td, null);
-      tr.appendChild(td);
-    }
-    el.appendChild(tr);
-  });
-  container.appendChild(el);
-}
-
-/** A block starts collapsed to a single label, matching the same
- *  "collapsed block" convention the main app already uses for
- *  #+BEGIN_SRC/#+BEGIN_QUOTE/etc. -- tap to reveal, tap again to
- *  re-fold. Local, closure-captured state (not stored on the node
- *  itself), since a block's own expand/collapse state doesn't need to
- *  survive a full docs re-render the way heading fold state does. */
-function renderReadOnlyBlock(block, depth, container, drawersHidden, linkContext) {
-  let expanded = !drawersHidden;
-  const wrap = document.createElement('div');
-  wrap.style.marginLeft = 8 + depth * 16 + 16 + 'px';
-  wrap.style.margin = '4px 0';
-
-  const label = document.createElement('div');
-  label.style.fontSize = '11px';
-  label.style.opacity = '0.6';
-  label.style.cursor = 'pointer';
-  label.textContent = `[${block.name}]`;
-  wrap.appendChild(label);
-
-  const content = document.createElement('div');
-  content.style.display = expanded ? 'block' : 'none';
-  renderBlockContent(block, content, linkContext);
-  wrap.appendChild(content);
-
-  label.onclick = () => {
-    expanded = !expanded;
-    content.style.display = expanded ? 'block' : 'none';
-  };
-
-  container.appendChild(wrap);
-}
-
-async function renderDocsView(target = docsRenderTarget) {
-  docsRenderTarget = target;
-  target.innerHTML = '';
-  const container = document.createElement('div');
-  container.className = 'panel';
-  container.style.minHeight = '100%';
-  container.style.fontSize = 'var(--app-font-size)'; // overrides .panel's own hardcoded 13px, which otherwise silently blocked this app's own existing, already-adjustable font-size setting from ever reaching Help's own body/paragraph text
-  target.appendChild(container);
-
-  let restoreScrollTop = null;
-
-  if (cachedDocsDoc === null) {
-    try {
-      const response = await fetch('./README.org');
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      const text = await response.text();
-      cachedDocsDoc = parseOrg(text);
-
-      const savedState = await getDocsViewState(kv);
-      if (savedState) {
-        // A returning visit: start fully expanded, then re-apply exactly
-        // the previously-saved fold state on top -- restoring where
-        // things were left, not a fresh reset.
-        applyStartupVisibility(cachedDocsDoc, { visibility: 'showeverything', imageVisibility: 'noinlineimages', logDone: null }, 'archived');
-        applyCollapsedPaths(cachedDocsDoc.children, savedState.collapsedPaths || []);
-        restoreScrollTop = savedState.scrollTop;
-      } else {
-        // A genuine first-ever visit (this device has never left Docs
-        // with anything to remember) -- top-level headers only, a
-        // Docs-specific override independent of whatever README.org's
-        // own #+STARTUP line says (there isn't one), so opening
-        // README.org as a regular file elsewhere is completely
-        // unaffected by this choice.
-        applyStartupVisibility(cachedDocsDoc, { visibility: 'overview', imageVisibility: 'noinlineimages', logDone: null }, 'archived');
-      }
-
-      docsScrollTarget = null; // a genuinely fresh load -- no stale scroll target from a previous session
-    } catch (err) {
-      const errorEl = document.createElement('div');
-      errorEl.style.padding = '20px';
-      errorEl.style.opacity = '0.7';
-      errorEl.textContent = "Couldn't load the documentation (" + err.message + '). Try again once you\u2019re back online.';
-      container.appendChild(errorEl);
-      return;
-    }
-  }
-
-  if (!docsOpen) return; // closed again while the fetch above was in flight
-
-  renderReadOnlyOutline(cachedDocsDoc, container, () => renderDocsView(docsRenderTarget));
-
-  if (restoreScrollTop !== null) {
-    requestAnimationFrame(() => {
-      scrollContainer().scrollTop = restoreScrollTop;
-    });
-  }
-}
-
-/** Opens Docs and scrolls directly to a specific section, identified
+/** Opens Help and scrolls directly to a specific section, identified
  *  by its CUSTOM_ID anchor (e.g. "#capture-templates") -- the same
  *  resolution resolveLinkTarget already uses for [[#id][...]]-style
- *  links, and the same ancestor-expansion + docsScrollTarget mechanism
- *  onHeadingLinkClick (Docs' own internal link handling) already
- *  established, just triggered from outside Docs itself rather than
- *  from a tap on a link within it. Used by Settings' own hotlinks to
+ *  links, and the same navigateToHeading every other internal-link
+ *  jump in this app already uses. Used by Settings' own hotlinks to
  *  the corresponding help section, so a streamlined settings hint can
  *  point at the full documentation instead of duplicating it inline. */
 async function openDocsAtHeading(anchorId) {
   navigationBackStack.push({
     view: currentView,
-    docsOpen,
     settingsOpen,
     documentId: state.documentId,
     storageKind: state.storageKind,
@@ -14279,41 +13824,16 @@ async function openDocsAtHeading(anchorId) {
   });
   if (navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) navigationBackStack.shift();
   syncNavBackButtonVisibility();
-  closeAllOverlayPanels();
-  docsOpen = true;
-  render();
-  await renderDocsView(outlineEl); // ensures cachedDocsDoc is loaded, regardless of layout
-  if (!cachedDocsDoc) return; // load failed -- renderDocsView already showed its own error message
 
-  const resolution = resolveLinkTarget(cachedDocsDoc, anchorId);
+  await openOrSwitchToHelp();
+  if (!state.doc || state.documentId !== HELP_DOCUMENT_ID) return; // load failed -- openOrSwitchToHelp already showed its own error message
+
+  const resolution = resolveLinkTarget(state.doc, anchorId);
   if (resolution.type !== 'heading') return; // an unresolvable anchor is a documentation bug, not something to surface as a runtime error
 
-  const stack = [];
-  function findPath(headings, target, path) {
-    for (const h of headings) {
-      const next = [...path, h];
-      if (h === target) {
-        stack.push(...next);
-        return true;
-      }
-      if (findPath(h.children, target, next)) return true;
-    }
-    return false;
-  }
-  findPath(cachedDocsDoc.children, resolution.heading, []);
-  for (const ancestor of stack) ancestor.collapsed = false;
-  docsScrollTarget = resolution.heading;
-
-  if (isWideLayout()) {
-    render();
-  } else {
-    await renderDocsView(outlineEl);
-  }
-  requestAnimationFrame(() => {
-    const el = document.getElementById('docs-heading-target');
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
+  navigateToHeading(resolution.heading, { pushToBackStack: false, revealOwnBody: true });
 }
+
 
 settingsBtn.addEventListener('click', async () => {
   const opening = !settingsOpen;
@@ -14527,7 +14047,7 @@ function renderSearchOptionsMenu() {
  *  block content are silently skipped, never offered as a match at
  *  all, since blind text substitution into those risks corrupting the
  *  document's own syntax rather than just its content. */
-function startQueryReplace() {
+async function startQueryReplace() {
   if (searchQuery.trim() === '') return;
   const inTextMode = currentView === 'text';
   if (!inTextMode && !state.doc) return;
@@ -14541,24 +14061,143 @@ function startQueryReplace() {
   }
   const replacementText = window.prompt(`Query replace "${searchQuery}" with:`, '');
   if (replacementText === null) return; // cancelled
-  let controller;
+
   if (inTextMode) {
     const textarea = document.getElementById('document-text-edit-input');
-    controller = createTextQueryReplace(textarea ? textarea.value : '', pattern, replacementText);
-  } else {
-    controller = createQueryReplace(state.doc, pattern, replacementText);
+    const controller = createTextQueryReplace(textarea ? textarea.value : '', pattern, replacementText);
+    activeQueryReplace = { controller, replacementText, findPattern: searchQuery, pattern, inTextMode };
+    renderSearchPanel();
+    return;
   }
-  activeQueryReplace = { controller, replacementText, findPattern: searchQuery, pattern, inTextMode };
+
+  ensureAgendaFilesLoaded();
+  const matchingIds = aggregateAgendaDocs()
+    .filter(({ doc }) => createQueryReplace(doc, pattern, replacementText).current() !== null)
+    .map(({ documentId }) => documentId);
+  if (matchingIds.length === 0) {
+    setStatus('No matches to replace.');
+    return;
+  }
+
+  const [firstId, ...restIds] = matchingIds;
+  if (firstId !== state.documentId) {
+    const opened = await switchToAgendaDoc(firstId);
+    if (!opened) {
+      setStatus(`Couldn't open "${firstId}" to start replacing there.`);
+      return;
+    }
+  }
+
+  activeQueryReplace = {
+    controller: createQueryReplace(state.doc, pattern, replacementText),
+    replacementText,
+    findPattern: searchQuery,
+    pattern,
+    inTextMode: false,
+    remainingFiles: restIds,
+    totalReplaced: 0,
+    filesChanged: 0,
+  };
+  renderSearchPanel();
+}
+
+/** Switches the live document to `documentId` for the multi-file
+ *  replace walk -- reuses the tab already open for it if there is one
+ *  (switchToTab), otherwise fetches and opens it fresh (openRemotePath),
+ *  via whichever of GitHub/WebDAV it's configured under in
+ *  agendaFilesCache -- the only two schemes a not-already-open agenda
+ *  file can ever be (see ensureAgendaFilesLoaded's own docs; a local
+ *  file can never appear here unless it's the one already open, which
+ *  the existing-session branch above already handles). Returns true
+ *  once state.doc genuinely is `documentId`, false if opening it
+ *  failed (network error, etc.) -- callers should skip it and move on
+ *  rather than lose the rest of the walk over one file's own failure. */
+async function switchToAgendaDoc(documentId) {
+  const existingSession = documentSessions.find((s) => (s.tabId === activeTabId ? state.documentId : s.state.documentId) === documentId);
+  if (existingSession) {
+    if (existingSession.tabId !== activeTabId) switchToTab(existingSession.tabId);
+    return state.documentId === documentId;
+  }
+  const cacheEntry = [...agendaFilesCache.entries()].find(([, v]) => v.documentId === documentId);
+  if (!cacheEntry) return false;
+  const [key] = cacheEntry;
+  const scheme = key.slice(0, key.indexOf(':'));
+  const adapter = scheme === 'github' ? githubAdapter : webdavAdapter;
+  const label = scheme === 'github' ? 'GitHub' : 'WebDAV';
+  await openRemotePath(documentId, scheme, adapter, label);
+  return !!state.doc && state.documentId === documentId;
+}
+
+/** Called whenever the current file's own controller is exhausted --
+ *  either naturally (walking y/n through every match) or after !
+ *  finishes the rest of the current file. Real Calc's own ! is scoped
+ *  to the current buffer only, never cascading unconditionally across
+ *  the rest of a multi-file walk (confirmed directly against
+ *  tags-query-replace's own documented behavior) -- ! callers reach
+ *  this same function, not a separate "replace everywhere" path.
+ *  Commits the current file's own changes via the same commitAndRender
+ *  a single-file replace already uses (files are never auto-saved
+ *  during the walk, matching every real multi-file Emacs replace
+ *  command -- this is this app's own equivalent of "the buffer's own
+ *  edits are applied", not a disk write), then either continues the
+ *  walk on the next file with a match, or -- none remaining -- ends
+ *  the whole operation via the existing finishQueryReplace. */
+async function advanceToNextFileOrFinish() {
+  const aq = activeQueryReplace;
+  if (aq.remainingFiles.length === 0) {
+    finishQueryReplace(); // handles committing + reporting this (the last, or only) file entirely on its own
+    return;
+  }
+  // More files remain -- commit this one's own changes and fold its
+  // count into the running total before moving on, since
+  // finishQueryReplace (called exactly once, only at the very end)
+  // needs an accurate running total to add the FINAL file's own count
+  // to, not a double-counted one.
+  const countThisFile = aq.controller.replacedCount();
+  commitAndRender('Query-replaced ' + countThisFile + ' occurrence' + (countThisFile === 1 ? '' : 's'));
+  aq.totalReplaced += countThisFile;
+  if (countThisFile > 0) aq.filesChanged += 1;
+
+  const [nextId, ...rest] = aq.remainingFiles;
+  aq.remainingFiles = rest;
+  // afterDocumentLoaded (reached via either of switchToAgendaDoc's own
+  // paths -- openRemotePath for a not-yet-open file, or switchToTab's
+  // own closeAllOverlayPanels for an already-open one) unconditionally
+  // resets searchOpen and calls renderSearchPanel() as part of its
+  // own general "a document was just opened" bookkeeping -- with
+  // activeQueryReplace still set at that moment, that stray call
+  // would incorrectly finish the whole walk early. Clearing it here
+  // means there's nothing for that call to prematurely finish; it's
+  // restored right after, rebuilt against the newly-current document.
+  activeQueryReplace = null;
+  const opened = await switchToAgendaDoc(nextId);
+  if (!opened) {
+    activeQueryReplace = aq;
+    setStatus(`Couldn't open "${nextId}" \u2014 skipped, continuing with the rest.`);
+    await advanceToNextFileOrFinish();
+    return;
+  }
+  aq.controller = createQueryReplace(state.doc, aq.pattern, aq.replacementText);
+  activeQueryReplace = aq;
+  searchOpen = true;
   renderSearchPanel();
 }
 
 function finishQueryReplace() {
-  const { controller, pattern, inTextMode } = activeQueryReplace;
+  const { controller, pattern, inTextMode, totalReplaced, filesChanged } = activeQueryReplace;
   const count = controller.replacedCount();
+  const grandTotal = (totalReplaced ?? 0) + count;
+  const filesTouched = (filesChanged ?? 0) + (count > 0 ? 1 : 0);
   activeQueryReplace = null;
   let label;
-  if (count > 0) {
-    label = 'Query-replaced ' + count + ' occurrence' + (count === 1 ? '' : 's') + '.';
+  if (grandTotal > 0) {
+    label =
+      'Query-replaced ' +
+      grandTotal +
+      ' occurrence' +
+      (grandTotal === 1 ? '' : 's') +
+      (filesTouched > 1 ? ' across ' + filesTouched + ' files' : '') +
+      '.';
   } else if (inTextMode) {
     label = 'Query-replace: nothing changed.';
   } else {
@@ -14613,10 +14252,11 @@ function renderSearchPanel() {
 
 function renderQueryReplacePrompt() {
   searchPanel.style.display = 'block';
-  const { controller, replacementText } = activeQueryReplace;
+  const { controller, replacementText, inTextMode, remainingFiles } = activeQueryReplace;
   const c = controller.current();
   if (!c) {
-    finishQueryReplace();
+    if (inTextMode) finishQueryReplace();
+    else advanceToNextFileOrFinish();
     return;
   }
   const { target, match, text } = c;
@@ -14646,9 +14286,11 @@ function renderQueryReplacePrompt() {
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '8px';
-  label.textContent = target
-    ? `${target.label} in "${target.heading.title || '(untitled)'}" \u2014 replace with "${replacementText}"?`
-    : `Replace with "${replacementText}"?`;
+  const moreFilesHint = remainingFiles && remainingFiles.length > 0 ? ` (${remainingFiles.length} more file${remainingFiles.length === 1 ? '' : 's'} after this one)` : '';
+  label.textContent =
+    (target
+      ? `${target.label} in "${target.heading.title || '(untitled)'}" \u2014 replace with "${replacementText}"?`
+      : `Replace with "${replacementText}"?`) + moreFilesHint;
   wrap.appendChild(label);
 
   const prompt = document.createElement('div');
@@ -14681,7 +14323,8 @@ function renderQueryReplacePrompt() {
   row.appendChild(
     tableActionButton('! \u2014 replace all', () => {
       controller.replaceAll();
-      finishQueryReplace();
+      if (inTextMode) finishQueryReplace();
+      else advanceToNextFileOrFinish();
     })
   );
   row.appendChild(

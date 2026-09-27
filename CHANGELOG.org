@@ -7,6 +7,128 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v402 — New feature: effort estimates; doc fix: repeater-mark agenda display already matches real Emacs
+EFFORT property (H:MM, same format as a clock line) now shows as a
+⏱ H:MM badge next to a heading's title, tap-to-cycle through real
+org's own default Effort_ALL preset list (None, 0:10 through 7:00) --
+same UX as the existing priority badge. Same cycle also reachable from
+a heading's own action menu (⏱ Effort) and via C-c C-x e, matching
+real org's own org-set-effort keybinding. While that heading is
+clocked in, the modeline's clock display shows elapsed time against
+the estimate ([⏱ 0:45 / 2:00] Heading title), with a trailing ! once
+past it. Not built: a real free-entry org-set-effort prompt (the cycle
+is fixed-preset only) or any notification beyond the modeline's own
+marker.
+
+Also traced real org-agenda.el directly (per request, not assumed):
+org-agenda-get-scheduled/-get-deadlines compute a future occurrence's
+date for +, ++, and .+ through the exact same org-time-string-to-
+absolute call -- the mark-specific logic that actually distinguishes
+.+ only exists in org-auto-repeat-maybe, which fires at real
+completion time and has no equivalent in agenda preview. This app's
+existing behavior (treating all three the same in the agenda display)
+already matches real Emacs precisely, so the "Missing" bullet claiming
+otherwise was itself inaccurate and has been removed from the README.
+
+* v401 — Fix: read-only toggle could silently discard a pending edit
+Found while directly verifying a documentation claim (per request,
+not assumed true): toggling read-only ON while Text view had a
+pending, uncommitted edit silently discarded it -- the toggle flipped
+isBufferReadOnly before committing, so by the time anything tried to
+commit afterward, the read-only guard correctly but too-late refused.
+Fixed by committing first, while still writable. Confirmed via a live
+before/after test. Also simplifies two README passages: read-only
+enforcement now states the outcome plainly (true without caveats now
+that the bug above is fixed) rather than the commit-path mechanics it
+depended on, and Export's own "Missing" line drops an implementation
+aside and a cross-reference to a separate, already-built feature,
+focusing on the actual gaps.
+
+* v400 — New feature: search and replace across org-agenda-files
+Replace now walks every agenda-files file with a match, not just the
+current one -- researched real Emacs's own tags-query-replace directly
+rather than inventing behavior: ! is scoped to the current file only,
+never cascading across the rest of the walk; files are committed but
+never auto-saved, matching every real multi-file Emacs replace
+command. Caught and fixed two serious bugs via live browser testing
+(app.js isn't unit tested, so only live testing could catch these): a
+double-counting bug in the cross-file total ("4 occurrences across 2
+files" for a single 2-match file), and a bug where the shared
+afterDocumentLoaded function's own general bookkeeping silently ended
+the whole walk the instant it switched to a second file. Full
+cross-file walk verified live end to end with a mocked GitHub fetch.
+README's own Searching and Differences-from-Emacs sections updated to
+match, replacing what previously and correctly said Replace was
+single-file only.
+
+* v399 — Fix: uconv() unit-name/semantics follow-up (real Calc mapping)
+Aliases real Calc's own tsp/tbsp abbreviations (mathjs only has the
+full words teaspoon/tablespoon -- confirmed directly, not assumed).
+Documents a real, previously-undocumented semantic difference:
+uconv() always does the absolute temperature reading, matching real
+Calc's own separate u t command -- not real Calc's own default u c
+command, which treats degC/degF as relative changes by default (10
+degC -> 18 degF, not an absolute reading). Adds links to the real
+Calc manual and reference card confirming both claims. 2 new tests.
+
+* v398 — Fix: "ugly" F-mode fractions; README uconv() unit examples
+sqrt(2);F was producing a mathematically accurate but unreadable
+huge-denominator fraction -- mathjs's own fraction() constructor does
+a literal decimal-to-fraction conversion, not an approximation search
+(confirmed directly: even 15 significant digits still gave a 10^13
+denominator). An exact Fraction with a reasonable denominator now
+displays exactly, unchanged; an unreasonably large one falls back to
+a small-denominator approximation at display time only, so nothing
+about intermediate computation changes. Surfaced two further bugs
+while testing this: uconv() and and()/or()/not() both called the
+BigNumber-only .toNumber() unconditionally, which doesn't exist on
+mathjs's Fraction type -- both would have thrown under F mode. 3 new
+tests. Also fixes README.org's own uconv() documentation, which named
+no actual unit strings at all (degC/degF aren't guessable) -- added a
+short, individually-verified list of common units by category plus a
+link to mathjs's own full reference.
+
+* v397 — New feature: F/pN now genuinely affect computation, not display
+Fraction mode (F) is now exact throughout computation, backed by
+mathjs's own Fraction type -- not a post-hoc reconstruction from an
+already-rounded float as before. Precision mode (pN) genuinely
+configures calculation precision (real Calc's own pN semantics),
+verified directly: 1/3;p50 produces 50 real digits. Both now carry
+through sqrt/log/trig too, not just the four arithmetic operators,
+with the same domain checks as the plain-number path (no complex
+numbers, by deliberate choice after weighing what that would actually
+require). Caught and fixed several real bugs along the way: a broad
+"any object" check that would have misclassified every mathjs value
+as a date/duration value at all 12 of its own call sites; a second,
+incomplete default mode object that caused ordinary arithmetic with
+no mode flags at all to silently break (32 test failures, caught via
+the full suite, not assumed fine); mathjs itself refusing to wrap
+Infinity (real Calc's own inf constant hit this). Two honest,
+documented limitations: degrees-mode trig's own conversion factor
+stays double precision, and Fraction mode's approximation of an
+irrational result can be an unwieldy large fraction rather than a
+"pretty" small one. 9 new tests, live-verified in a real browser.
+
+* v396 — Fix: Help rebuilt as a real document (search, buffer-swap bug)
+Help now opens through the exact same document pipeline as any other
+file (afterDocumentLoaded), rather than a separate, hand-rolled fetch/
+cache/render system. This is what actually fixes the reported bug --
+Search not working in Help, and Help getting displaced by whatever
+buffer was open before it -- not a targeted patch, but removing the
+reason it was ever wrong: once state.doc IS README.org, search,
+modeline, tabs, and view-switching all just work on it already.
+Deleted entirely: the ~440-line read-only-render function family, the
+separate cachedDocsDoc/docsOpen state, the fold/scroll persistence
+mechanism (and its own now-orphaned KV functions and tests), and the
+"Help doesn't exit god-mode" exemption -- Help behaves exactly like
+any other tab now, with one deliberate, localized exception (its own
+tab styling and always-last position). Caught and fixed several real
+bugs along the way: Save being left incorrectly enabled for Help,
+"back" navigation not knowing how to reopen it at all, and the
+modeline leaking its raw internal id instead of showing "Help." Live-
+verified end to end in a real browser, including the exact original
+bug scenario. 2,705/2,705 tests passing.
+
 * v395 — New feature: uconv() for #+TBLFM:, mathjs vendored (first dep)
 ~uconv(value, "from", "to")~ -- real unit conversion (compound units,
 temperature's affine conversion, a real curated unit database) backed
