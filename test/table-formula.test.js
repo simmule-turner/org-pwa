@@ -1150,6 +1150,42 @@ test('log() with an invalid base (<=0 or exactly 1) produces #ERROR rather than 
   assert.equal(recalculateTable(mkTable('$1 = log(10, -2)', [['']]))[0].cells[0], '#ERROR');
 });
 
+// ---- THE FEATURE: uconv(value, "from", "to") -- unit conversion -----------
+// Backed by mathjs's own real Unit system (see this file's own top-of-file
+// import), not a hand-rolled lookup table. A deliberate 3-argument form,
+// unlike real Calc's own 2-argument math-convert-units -- see the function's
+// own comment in src/table-formula.js for why.
+
+test('THE FEATURE: uconv() converts simple units, matching real Calc\u2019s own documented worked example exactly (55 mph -> 24.5872 m/s)', () => {
+  assert.equal(recalculateTable(mkTable('$2 = uconv($1, "mi/hr", "m/s")', [['55', '']]))[0].cells[1], '24.5872');
+});
+
+test('uconv() handles temperature\u2019s own affine conversion correctly, not just a scale factor', () => {
+  assert.equal(recalculateTable(mkTable('$2 = uconv($1, "degC", "degF")', [['20', '']]))[0].cells[1], '68');
+  assert.equal(recalculateTable(mkTable('$2 = uconv($1, "degC", "degF")', [['0', '']]))[0].cells[1], '32');
+});
+
+test('uconv() handles compound units (kg/m^3 -> lb/ft^3)', () => {
+  const result = recalculateTable(mkTable('$2 = uconv($1, "kg/m^3", "lb/ft^3")', [['1000', '']]))[0].cells[1];
+  assert.ok(Math.abs(parseFloat(result) - 62.427961) < 1e-4);
+});
+
+test('uconv() produces #ERROR on incompatible units, matching this app\u2019s own convention for every other function (sqrt/log/arcsin all throw rather than return something misleading) -- not real Calc\u2019s own "leftover remainder units" behavior', () => {
+  assert.equal(recalculateTable(mkTable('$2 = uconv($1, "m", "kg")', [['5', '']]))[0].cells[1], '#ERROR');
+});
+
+test('uconv() produces #ERROR on an unrecognized unit name', () => {
+  assert.equal(recalculateTable(mkTable('$2 = uconv($1, "m", "bogusunit")', [['5', '']]))[0].cells[1], '#ERROR');
+});
+
+test('uconv() produces #ERROR when a unit argument isn\u2019t a quoted string', () => {
+  assert.equal(recalculateTable(mkTable('$2 = uconv($1, $1, "m")', [['5', '']]))[0].cells[1], '#ERROR');
+});
+
+test('uconv() rejects a 4th argument at parse time, matching its own documented 3-argument shape', () => {
+  assert.throws(() => recalculateTable(mkTable('$2 = uconv($1, "m", "ft", "extra")', [['5', '']])), /uconv.*at most 3 argument/);
+});
+
 test('trig and log functions compose with ordinary arithmetic and other functions', () => {
   const result = recalculateTable(mkTable('$1 = round(sin(30) * 100)', [['']]));
   assert.equal(result[0].cells[0], '50');
