@@ -10,8 +10,6 @@ import {
   setTheme,
   getCustomThemeColors,
   setCustomThemeColors,
-  getDocsViewState,
-  setDocsViewState,
   getFontFamily,
   setFontFamily,
   getFontSize,
@@ -240,19 +238,6 @@ test('a full export/import round trip preserves every setting exactly', async ()
   assert.equal(await getTablesFontSize(kv2), 12);
   assert.deepEqual(await getGithubConfig(kv2), await getGithubConfig(kv1));
   assert.deepEqual(await getWebdavConfig(kv2), await getWebdavConfig(kv1));
-});
-
-// ---- docs view state ------------------------------------------------------
-
-test('getDocsViewState defaults to null -- nothing recorded yet', async () => {
-  const kv = createInMemoryAdapter();
-  assert.equal(await getDocsViewState(kv), null);
-});
-
-test('setDocsViewState then getDocsViewState round-trips', async () => {
-  const kv = createInMemoryAdapter();
-  await setDocsViewState(kv, { scrollTop: 400, collapsedPaths: ['Export', 'Export/ODT'] });
-  assert.deepEqual(await getDocsViewState(kv), { scrollTop: 400, collapsedPaths: ['Export', 'Export/ODT'] });
 });
 
 // ---- recently opened files -------------------------------------------------

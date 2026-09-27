@@ -666,9 +666,11 @@ test('THE FIX: eN (engineering notation, exponent always a multiple of 3) matche
   assert.equal(result[0].cells[0], '123e3');
 });
 
-test('pN (precision) is accepted without erroring but has no effect on the displayed result -- confirmed directly against real Emacs org-mode, where p alone doesn\u2019t change the display format either', () => {
-  const result = recalculateTable(mkTable('@1$1=1/3;p20', [['999']]));
-  assert.equal(result[0].cells[0], '0.33333333', 'still the default 8-significant-figure format, not 20 digits');
+test('pN (precision) genuinely configures the calculation precision, matching real Calc\u2019s own pN semantics -- exact digits, not the default 8-significant-figure format', () => {
+  const result20 = recalculateTable(mkTable('@1$1=1/3;p20', [['999']]));
+  assert.equal(result20[0].cells[0], '0.33333333333333333333');
+  const result50 = recalculateTable(mkTable('@1$1=1/3;p50', [['999']]));
+  assert.equal(result50[0].cells[0], '0.33333333333333333333333333333333333333333333333333');
 });
 
 test('flags can be concatenated with no separator, in either order', () => {
@@ -1160,6 +1162,11 @@ test('THE FEATURE: uconv() converts simple units, matching real Calc\u2019s own 
   assert.equal(recalculateTable(mkTable('$2 = uconv($1, "mi/hr", "m/s")', [['55', '']]))[0].cells[1], '24.5872');
 });
 
+test('uconv() recognizes real Calc\u2019s own tsp/tbsp abbreviations, aliased since mathjs itself only has the full words teaspoon/tablespoon', () => {
+  assert.equal(recalculateTable(mkTable('$1=uconv(1,"tsp","mL")', [['']]))[0].cells[0], '5');
+  assert.equal(recalculateTable(mkTable('$1=uconv(1,"tbsp","mL")', [['']]))[0].cells[0], '15');
+});
+
 test('uconv() handles temperature\u2019s own affine conversion correctly, not just a scale factor', () => {
   assert.equal(recalculateTable(mkTable('$2 = uconv($1, "degC", "degF")', [['20', '']]))[0].cells[1], '68');
   assert.equal(recalculateTable(mkTable('$2 = uconv($1, "degC", "degF")', [['0', '']]))[0].cells[1], '32');
@@ -1184,6 +1191,76 @@ test('uconv() produces #ERROR when a unit argument isn\u2019t a quoted string', 
 
 test('uconv() rejects a 4th argument at parse time, matching its own documented 3-argument shape', () => {
   assert.throws(() => recalculateTable(mkTable('$2 = uconv($1, "m", "ft", "extra")', [['5', '']])), /uconv.*at most 3 argument/);
+});
+
+// ---- THE FEATURE: pN (precision) and F (fraction) genuinely affect ------
+// computation, not just display -- backed by mathjs's own BigNumber/
+// Fraction types (see this file's own top-of-file mathjs docs).
+
+test('THE FEATURE: pN gives real, exact-to-the-configured-digit precision for ordinary arithmetic, well beyond double precision', () => {
+  const result20 = recalculateTable(mkTable('@1$1=1/3;p20', [['999']]));
+  assert.equal(result20[0].cells[0], '0.33333333333333333333');
+  const result50 = recalculateTable(mkTable('@1$1=1/3;p50', [['999']]));
+  assert.equal(result50[0].cells[0], '0.33333333333333333333333333333333333333333333333333');
+});
+
+test('pN also carries through transcendental functions (sqrt/ln/log), not just the four arithmetic operators', () => {
+  const sqrtResult = recalculateTable(mkTable('$1=sqrt(2);p50', [['']]))[0].cells[0];
+  assert.equal(sqrtResult, '1.4142135623730950488016887242096980785696718753769');
+  const lnResult = recalculateTable(mkTable('$1=ln(2);p30', [['']]))[0].cells[0];
+  assert.equal(lnResult, '0.693147180559945309417232121458');
+  const logResult = recalculateTable(mkTable('$1=log(1024,2);p20', [['']]))[0].cells[0];
+  assert.equal(logResult, '10');
+});
+
+test('pN\u2019s own degree-to-radian conversion factor is double precision, a known, documented limitation -- radians mode has no such conversion and isn\u2019t affected', () => {
+  const degreesResult = recalculateTable(mkTable('$1=sin(30);p20', [['']]))[0].cells[0];
+  assert.ok(degreesResult.startsWith('0.4999999999999999'), 'degrees mode: accurate only to about double precision, not the full 20 digits requested');
+  const radiansResult = recalculateTable(mkTable('$1=sin(0);p20R', [['']]))[0].cells[0];
+  assert.equal(radiansResult, '0');
+});
+
+test('a domain violation (sqrt of a negative number) still throws under pN/F, matching the plain-number path exactly -- deliberately no complex-number support under any mode', () => {
+  assert.equal(recalculateTable(mkTable('$1=sqrt(-1);p20', [['']]))[0].cells[0], '#ERROR');
+  assert.equal(recalculateTable(mkTable('$1=sqrt(-1);F', [['']]))[0].cells[0], '#ERROR');
+});
+
+test('round/floor/ceil/trunc with a digit count still work correctly under pN', () => {
+  assert.equal(recalculateTable(mkTable('$1=round(2.3456,2);p20', [['']]))[0].cells[0], '2.35');
+  assert.equal(recalculateTable(mkTable('$1=trunc(-2.789,1);p20', [['']]))[0].cells[0], '-2.7');
+});
+
+test('F makes ordinary division exact from the start, not a post-hoc reconstruction from an already-rounded float', () => {
+  assert.equal(recalculateTable(mkTable('$1=1/3;F', [['']]))[0].cells[0], '1/3');
+});
+
+test('F round-trips a transcendental function exactly when the true result happens to be rational (a perfect square)', () => {
+  assert.equal(recalculateTable(mkTable('$1=sqrt(4);F', [['']]))[0].cells[0], '2');
+});
+
+test('F on a genuinely irrational transcendental result falls back to a small, readable approximation rather than the literal, exact-but-huge-denominator representation of a 64-digit decimal', () => {
+  const result = recalculateTable(mkTable('$1=sqrt(2);F', [['']]))[0].cells[0];
+  const [num, den] = result.split('/').map(Number);
+  assert.ok(den < 1000000, `denominator should be small and readable, got ${den}`);
+  assert.ok(Math.abs(num / den - Math.SQRT2) < 1e-8, 'still an accurate approximation of the true value');
+});
+
+test('and()/or()/not() and uconv() all still work correctly under F mode, rather than throwing (both once called the BigNumber-only .toNumber() on a Fraction, which has no such method)', () => {
+  assert.equal(recalculateTable(mkTable('$1=and(1,0);F', [['']]))[0].cells[0], '0');
+  assert.equal(recalculateTable(mkTable('$1=or(1,0);F', [['']]))[0].cells[0], '1');
+  assert.equal(recalculateTable(mkTable('$1=not(0);F', [['']]))[0].cells[0], '1');
+  const result = recalculateTable(mkTable('$2=uconv($1,"m","ft");F', [['5', '']]))[0].cells[1];
+  assert.ok(/^\d+\/\d+$/.test(result), `expected a fraction, got ${result}`);
+});
+
+test('F and p together: F takes precedence, per the earlier design decision (a Fraction is already exact, so a digit count alongside it is moot)', () => {
+  assert.equal(recalculateTable(mkTable('$1=1/3;Fp20', [['']]))[0].cells[0], '1/3');
+});
+
+test('inf and nan stay inf/nan under pN and F, rather than throwing (mathjs itself refuses to wrap a non-finite value as an exact Fraction/BigNumber)', () => {
+  assert.equal(recalculateTable(mkTable('$1 = inf;p20', [['']]))[0].cells[0], 'inf');
+  assert.equal(recalculateTable(mkTable('$1 = inf;F', [['']]))[0].cells[0], 'inf');
+  assert.equal(recalculateTable(mkTable('$1 = -inf;Fp20', [['']]))[0].cells[0], '-inf');
 });
 
 test('trig and log functions compose with ordinary arithmetic and other functions', () => {
