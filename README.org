@@ -265,6 +265,8 @@ An unrecognized flag is ignored, falling back to whatever was already parsed. Ex
 
 *A raw Elisp function call*, real org-mode's own ~'(function-name arg1 arg2 ...)~ form — a formula starting with a quote, bypassing this app's own expression grammar above entirely, exactly the way real org-mode treats it. Supports one real function this way: ~orgtbl-ascii-draw(value, min, max, width)~, real Emacs's own ~org-table.el~ function that draws an ASCII bar in a table cell (a space, then ~.~, ~:~, ~;~, ~c~, ~!~, ~l~, ~h~, ~V~, ~H~, ~W~ — real Emacs's own actual 11-character gradient, one fractional "cap" character after however many full ~W~ characters the scaled value calls for). ~value~ outside ~[min, max]~ renders as the literal text ~too small~ / ~too large~, matching real Emacs exactly. ~width~ (characters, default 12) is optional. Each argument can be a plain number, a ~$N~ reference, or a fully parenthesized sub-expression using this app's own ordinary infix grammar above (~($2 * 2)~) — matching real Emacs Lisp's own actual convention that a compound argument is always explicitly wrapped in its own parentheses, since Lisp has no infix operators at all.
 
+*Unit conversion*: ~uconv(value, "from", "to")~ — e.g. ~uconv($1, "mi/hr", "m/s")~. Backed by a real unit-conversion library (mathjs, vendored locally — see [[#development][Development]]), covering compound units (~kg/m^3~), temperature's own affine conversion, and a real, curated unit database, rather than a hand-rolled table this app would have to build and verify unit-by-unit. A deliberate 3-argument form, not real Calc's own 2-argument ~math-convert-units~ — this app's own cells don't carry an embedded unit the way a Calc stack value does, so the source unit is an explicit argument. Produces ~#ERROR~ on an incompatible pair (~m~ to ~kg~) or an unrecognized unit name, matching every other function in this table, rather than real Calc's own "leftover remainder units" behavior on a mismatch.
+
 Out of scope: Emacs Calc compatibility beyond what's documented above (date arithmetic, unit conversions other than duration/seconds, complex numbers, matrices, symbolic algebra); named-field references; automatic reactive recalculation on every keystroke.
 
 *** Plots
@@ -1549,12 +1551,14 @@ Org-mode parity gaps live in [[#differences-from-emacs-org-mode][Differences fro
 :CUSTOM_ID: development
 :END:
 
-Pure static site — ~index.html~ + ES modules, no build step. Serve any way you like (including directly from the filesystem via ~python3 -m http.server~, or GitHub Pages).
+Pure static site — ~index.html~ + ES modules, no build step to run or deploy it. Serve any way you like (including directly from the filesystem via ~python3 -m http.server~, or GitHub Pages).
 
-Engine code (~src/~) and browser-specific adapters (~src-browser/~) are unit tested with Node's built-in test runner, zero external dependencies:
+One exception: ~src/vendor/mathjs/mathjs-custom.min.js~ is a tree-shaken custom mathjs build (Unit/BigNumber/Fraction, used by [[#table-formulas][Table formulas]]'s own ~uconv()~), regenerated occasionally via ~tools/build-mathjs-vendor.sh~ — a dev-only, one-off step; the committed output is what actually ships, the same way the vendored KaTeX files already work.
+
+Engine code (~src/~) and browser-specific adapters (~src-browser/~) are unit tested with Node's built-in test runner, zero external test dependencies:
 
 #+BEGIN_SRC
 node --test
 #+END_SRC
 
-2700 tests as of this writing, covering every editing operation and real bug caught along the way in detail. See [[test/testing.org][test/testing.org]] for the full record — this file stays focused on what the app does, not how it's verified.
+A real test suite covering every editing operation and real bug caught along the way in detail. See [[test/testing.org][test/testing.org]] for the full record — this file stays focused on what the app does, not how it's verified.

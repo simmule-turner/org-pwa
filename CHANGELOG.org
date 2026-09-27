@@ -7,6 +7,25 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v395 — New feature: uconv() for #+TBLFM:, mathjs vendored (first dep)
+~uconv(value, "from", "to")~ -- real unit conversion (compound units,
+temperature's affine conversion, a real curated unit database) backed
+by mathjs's own Unit system. This is the app's first external runtime
+dependency, decided only after measuring real numbers: a tree-shaken
+custom subset (Unit/BigNumber/Fraction/core arithmetic) costs 72 KB
+gzipped, built and verified working via a real esbuild run -- almost
+exactly what this app's own already-vendored KaTeX costs (74 KB).
+Vendored locally, precached like KaTeX, no CDN. Regenerated via a new
+tools/build-mathjs-vendor.sh (self-contained scratch install, nothing
+added to this repo's own package.json). Caught and fixed two real
+bugs along the way: a path bug in that script itself, and a hardcoded
+"max 2 arguments" cap in the formula parser that predated any
+3-argument function existing. 7 new tests, including an exact match
+against real Calc's own documented worked example. Live-verified in a
+real browser, not just Node. BigNumber/Fraction are vendored now too
+(negligible marginal cost) but not yet wired in -- exact-fraction and
+precision support remains its own, larger, not-yet-started design task.
+
 * v394 — Documentation: full document-wide review completed
 Went through every remaining section consistently rather than
 stopping partway -- cut clear implementation/history narration

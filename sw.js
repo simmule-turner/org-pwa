@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v394';
+const CACHE_NAME = 'org-pwa-shell-v395';
 
 const SHELL_FILES = [
   './',
@@ -60,6 +60,7 @@ const SHELL_FILES = [
   './src/vendor/katex/fonts/KaTeX_Typewriter-Regular.woff2',
   './src/vendor/katex/katex.min.css',
   './src/vendor/katex/katex.min.js',
+  './src/vendor/mathjs/mathjs-custom.min.js',
   './src/global-variables.js',
   './src/comment-model.js',
   './src/outline-view-model.js',
