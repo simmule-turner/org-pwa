@@ -56,13 +56,68 @@
 // untouched" fallback) so the two stay interchangeable in practice.
 
 // This module's first (and so far only) external dependency -- a
-// tree-shaken mathjs subset (Unit, BigNumber, Fraction, plus the core
-// arithmetic each depends on) vendored locally, not fetched from a
-// CDN. See tools/build-mathjs-vendor.sh for exactly what's included
-// and how to regenerate it. Only Unit is actually used below (uconv);
-// BigNumber/Fraction are vendored ahead of time for future F-mode /
-// precision-mode work, not yet wired into this evaluator.
-import { unit as mathjsUnit } from './vendor/mathjs/mathjs-custom.min.js';
+// tree-shaken mathjs subset (Unit, BigNumber, Fraction, plus the
+// arithmetic/transcendental functions each depends on) vendored
+// locally, not fetched from a CDN. See tools/build-mathjs-vendor.sh
+// for exactly what's included, how to regenerate it, and the real,
+// measured sizes/benchmarks behind the choices below.
+import {
+  create,
+  bignumberDependencies, fractionDependencies, unitDependencies, createUnitDependencies,
+  addDependencies, subtractDependencies, multiplyDependencies, divideDependencies, powDependencies,
+  sqrtDependencies, absDependencies, unaryMinusDependencies,
+  compareDependencies, equalDependencies, largerDependencies, smallerDependencies,
+  logDependencies, log10Dependencies, expDependencies,
+  sinDependencies, cosDependencies, tanDependencies, asinDependencies, acosDependencies, atanDependencies,
+  roundDependencies, floorDependencies, ceilDependencies, fixDependencies,
+} from './vendor/mathjs/mathjs-custom.min.js';
+
+// The full dependency set every instance below is built from, every
+// time, rather than a different narrower subset per instance purpose
+// -- simpler, and the marginal size cost between subsets was already
+// shown to be negligible (see the build script's own measurements).
+const MATHJS_DEPENDENCIES = {
+  bignumberDependencies, fractionDependencies, unitDependencies, createUnitDependencies,
+  addDependencies, subtractDependencies, multiplyDependencies, divideDependencies, powDependencies,
+  sqrtDependencies, absDependencies, unaryMinusDependencies,
+  compareDependencies, equalDependencies, largerDependencies, smallerDependencies,
+  logDependencies, log10Dependencies, expDependencies,
+  sinDependencies, cosDependencies, tanDependencies, asinDependencies, acosDependencies, atanDependencies,
+  roundDependencies, floorDependencies, ceilDependencies, fixDependencies,
+};
+
+// A single, shared instance at mathjs's own default precision -- used
+// for uconv() (Unit conversion doesn't need configurable precision at
+// all) and as the Fraction-mode instance (Fraction arithmetic is
+// exact by definition, so precision doesn't apply to it either; one
+// shared instance covers every Fraction-mode formula, no caching
+// needed).
+const mathjsDefault = create(MATHJS_DEPENDENCIES);
+
+// Real Calc's own tsp/tbsp abbreviations don't exist in mathjs's unit
+// table at all (confirmed directly) -- it only has the full words
+// teaspoon/tablespoon. Aliased here so uconv() recognizes the name
+// real Calc itself uses, without disturbing the original spelling.
+mathjsDefault.createUnit('tsp', '1 teaspoon');
+mathjsDefault.createUnit('tbsp', '1 tablespoon');
+
+// Real Calc's own pN precision mode needs a genuinely different,
+// differently-configured instance per distinct N -- BigNumber
+// precision is instance-level config in mathjs, not a per-value
+// option. Cached by precision so a repeated pN doesn't pay create()'s
+// own real, measured cost more than once per distinct value seen
+// (benchmarked directly: ~1.5ms uncached, ~0.01ms once cached --
+// effectively free for the handful of distinct precisions any real
+// document would realistically use).
+const mathjsByPrecision = new Map();
+function mathjsForPrecision(precision) {
+  let instance = mathjsByPrecision.get(precision);
+  if (!instance) {
+    instance = create(MATHJS_DEPENDENCIES, { precision });
+    mathjsByPrecision.set(precision, instance);
+  }
+  return instance;
+}
 
 const TIME_FORMAT_DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const TIME_FORMAT_DAY_NAMES_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -390,7 +445,7 @@ const SCALAR_FUNCTIONS = {
   ceil: (x, digits) => roundToDigits(x, digits, Math.ceil),
   round: (x, digits) => roundToDigits(x, digits, roundHalfAwayFromZero),
   trunc: (x, digits) => roundToDigits(x, digits, Math.trunc),
-  deg: (x) => (x && typeof x === 'object' ? x.days : x),
+  deg: (x) => (isTaggedValue(x) ? x.days : x),
   and: (a, b) => (isTruthyValue(a) && isTruthyValue(b) ? 1 : 0),
   or: (a, b) => (isTruthyValue(a) || isTruthyValue(b) ? 1 : 0),
   not: (a) => (isTruthyValue(a) ? 0 : 1),
@@ -463,7 +518,7 @@ const SCALAR_FUNCTIONS = {
       throw new Error('uconv requires its unit arguments as quoted strings, e.g. uconv($1, "m", "ft")');
     }
     try {
-      return mathjsUnit(value, fromUnit).toNumber(toUnit);
+      return mathjsDefault.unit(isMathjsValue(value) ? (value.isFraction ? value.valueOf() : value.toNumber()) : value, fromUnit).toNumber(toUnit);
     } catch (err) {
       throw new Error(`uconv: cannot convert "${fromUnit}" to "${toUnit}" (${err.message})`);
     }
@@ -950,10 +1005,23 @@ function resolveRef(ref, currentRow, dataRowCount, colCount, currentCol, hlinePo
   return { row, col };
 }
 
+/** True for a mathjs Fraction or BigNumber value -- both instance
+ *  types set their own `.isFraction`/`.isBigNumber` tag, the standard
+ *  way to type-check a mathjs value without importing its class
+ *  constructors just for an instanceof check. Checked first by
+ *  isTaggedValue below, since both are otherwise-ordinary objects
+ *  that would (wrongly) satisfy its own broader "any non-null
+ *  object" test -- every one of isTaggedValue's own 12 call sites
+ *  expects date/duration semantics (.days, .type) a mathjs value
+ *  doesn't have. */
+function isMathjsValue(v) {
+  return v !== null && typeof v === 'object' && (v.isFraction === true || v.isBigNumber === true);
+}
+
 /** True if `v` is a date/hms-tagged value (see this module's own
  *  top-level date-arithmetic docs) rather than a plain number. */
 function isTaggedValue(v) {
-  return v !== null && typeof v === 'object';
+  return v !== null && typeof v === 'object' && !isMathjsValue(v);
 }
 
 /** Calc's own boolean convention -- a non-zero number is true, zero
@@ -964,6 +1032,7 @@ function isTaggedValue(v) {
 function isTruthyValue(v) {
   if (typeof v === 'string') return v !== '';
   if (isTaggedValue(v)) return v.days !== 0;
+  if (isMathjsValue(v)) return (v.isFraction ? v.valueOf() : v.toNumber()) !== 0;
   return v !== 0;
 }
 
@@ -978,7 +1047,19 @@ function isTruthyValue(v) {
  *  boolean. */
 const COMPARISON_OPS = new Set(['==', '!=', '<', '>', '<=', '>=']);
 
-function compareValues(l, r, op) {
+function compareValues(l, r, op, ctx) {
+  if (isMathjsValue(l) || isMathjsValue(r)) {
+    const m = ctx.numericMode.instance;
+    let result;
+    if (op === '==') result = m.equal(l, r);
+    else if (op === '!=') result = !m.equal(l, r);
+    else if (op === '<') result = m.smaller(l, r);
+    else if (op === '>') result = m.larger(l, r);
+    else if (op === '<=') result = !m.larger(l, r);
+    else if (op === '>=') result = !m.smaller(l, r);
+    else throw new Error(`Unknown comparison operator "${op}"`);
+    return result ? 1 : 0;
+  }
   const lVal = isTaggedValue(l) ? l.days : l;
   const rVal = isTaggedValue(r) ? r.days : r;
   let result;
@@ -1029,14 +1110,91 @@ function evaluateDateArithmetic(l, r, op) {
   return tagged.type === 'date' ? { type: 'date', days, hasTime: tagged.hasTime } : { type: 'hms', days };
 }
 
+function wrapNumericLiteral(value, ctx) {
+  if (!ctx.numericMode || typeof value !== 'number' || !Number.isFinite(value)) return value;
+  return ctx.numericMode.kind === 'fraction' ? ctx.numericMode.instance.fraction(value) : ctx.numericMode.instance.bignumber(value);
+}
+
+const MATHJS_SCALAR_FUNCTION_NAMES = new Set(['sqrt', 'floor', 'ceil', 'round', 'trunc', 'ln', 'log10', 'exp', 'exp10', 'log', 'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan']);
+
+function evaluateMathjsScalarCall(name, argValues, ctx) {
+  const isFractionMode = ctx.numericMode.kind === 'fraction';
+  const m = ctx.numericMode.instance;
+  // Fraction mode: convert explicitly to BigNumber first (mathjs
+  // refuses to implicitly convert Fraction<->BigNumber), compute at
+  // mathjsDefault's own default precision (Fraction mode has no
+  // configured precision of its own), convert back to a Fraction
+  // approximation at the very end -- see this function's own docs
+  // above for why this can't be truly exact for most results.
+  const x = isFractionMode ? m.bignumber(argValues[0]) : argValues[0];
+  const xNum = x.toNumber(); // quick, approximate read for domain/sign checks only
+  const finish = (result) => (isFractionMode ? m.fraction(result) : result);
+
+  switch (name) {
+    case 'sqrt':
+      if (xNum < 0) throw new Error('sqrt of a negative number has no real result');
+      return finish(m.sqrt(x));
+    case 'ln':
+      if (xNum <= 0) throw new Error('ln of a non-positive number has no real result');
+      return finish(m.log(x));
+    case 'log10':
+      if (xNum <= 0) throw new Error('log10 of a non-positive number has no real result');
+      return finish(m.log10(x));
+    case 'exp':
+      return finish(m.exp(x));
+    case 'exp10':
+      return finish(m.pow(m.bignumber(10), x));
+    case 'log': {
+      if (xNum <= 0) throw new Error('log of a non-positive number has no real result');
+      if (argValues[1] === undefined) return finish(m.log(x));
+      const base = isFractionMode ? m.bignumber(argValues[1]) : argValues[1];
+      const baseNum = base.toNumber();
+      if (baseNum <= 0 || baseNum === 1) throw new Error('log with an undefined base (must be positive and not 1)');
+      return finish(m.log(x, base));
+    }
+    case 'sin':
+    case 'cos':
+    case 'tan': {
+      const isDegrees = ctx.angleMode === 'degrees';
+      const radians = isDegrees ? m.multiply(x, m.bignumber(DEG_TO_RAD)) : x;
+      return finish(m[name](radians));
+    }
+    case 'arcsin':
+    case 'arccos': {
+      if (xNum < -1 || xNum > 1) throw new Error(`${name} input must be between -1 and 1`);
+      const mathjsName = name === 'arcsin' ? 'asin' : 'acos';
+      const radians = m[mathjsName](x);
+      return finish(ctx.angleMode === 'degrees' ? m.divide(radians, m.bignumber(DEG_TO_RAD)) : radians);
+    }
+    case 'arctan': {
+      const radians = m.atan(x);
+      return finish(ctx.angleMode === 'degrees' ? m.divide(radians, m.bignumber(DEG_TO_RAD)) : radians);
+    }
+    case 'floor':
+    case 'ceil':
+    case 'round': {
+      const digits = isFractionMode && argValues[1] !== undefined ? m.bignumber(argValues[1]) : argValues[1];
+      return finish(digits === undefined ? m[name](x) : m[name](x, digits));
+    }
+    case 'trunc': {
+      const digits = isFractionMode && argValues[1] !== undefined ? m.bignumber(argValues[1]) : argValues[1];
+      return finish(digits === undefined ? m.fix(x) : m.fix(x, digits));
+    }
+    default:
+      throw new Error(`"${name}" has no mathjs-routed implementation`);
+  }
+}
+
 function evaluateAst(node, ctx) {
   switch (node.type) {
     case 'number':
-      return node.value;
+      return wrapNumericLiteral(node.value, ctx);
     case 'string':
       return node.value;
-    case 'neg':
-      return -evaluateAst(node.operand, ctx);
+    case 'neg': {
+      const operand = evaluateAst(node.operand, ctx);
+      return isMathjsValue(operand) ? ctx.numericMode.instance.unaryMinus(operand) : -operand;
+    }
     case 'not':
       return isTruthyValue(evaluateAst(node.operand, ctx)) ? 0 : 1;
     case 'binop': {
@@ -1052,9 +1210,21 @@ function evaluateAst(node, ctx) {
       }
       const l = evaluateAst(node.left, ctx);
       const r = evaluateAst(node.right, ctx);
-      if (COMPARISON_OPS.has(node.op)) return compareValues(l, r, node.op);
+      if (COMPARISON_OPS.has(node.op)) return compareValues(l, r, node.op, ctx);
       if ((node.op === '+' || node.op === '-') && (isTaggedValue(l) || isTaggedValue(r))) {
         return evaluateDateArithmetic(l, r, node.op);
+      }
+      if (isMathjsValue(l) || isMathjsValue(r)) {
+        const m = ctx.numericMode.instance;
+        if (node.op === '+') return m.add(l, r);
+        if (node.op === '-') return m.subtract(l, r);
+        if (node.op === '*') return m.multiply(l, r);
+        if (node.op === '/') {
+          if (m.equal(r, 0)) throw new Error('Division by zero');
+          return m.divide(l, r);
+        }
+        if (node.op === '^') return m.pow(l, r);
+        throw new Error(`Unknown operator "${node.op}"`);
       }
       const lNum = isTaggedValue(l) ? l.days : l;
       const rNum = isTaggedValue(r) ? r.days : r;
@@ -1088,6 +1258,9 @@ function evaluateAst(node, ctx) {
     case 'scalarCall': {
       const fn = SCALAR_FUNCTIONS[node.name];
       const argValues = node.args.map((a) => evaluateAst(a, ctx));
+      if (ctx.numericMode && isMathjsValue(argValues[0]) && MATHJS_SCALAR_FUNCTION_NAMES.has(node.name)) {
+        return evaluateMathjsScalarCall(node.name, argValues, ctx);
+      }
       if (TRIG_FUNCTION_NAMES.has(node.name)) return fn(argValues[0], ctx.angleMode === 'degrees');
       return fn(...argValues);
     }
@@ -1291,16 +1464,15 @@ const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUENFSD
  *  there, falling back to whatever was already parsed rather than
  *  discarding the whole mode string. */
 function parseModeString(suffix) {
-  const mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees' };
+  const mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees', precision: null };
   MODE_TOKEN_RE.lastIndex = 0;
   let m;
   while ((m = MODE_TOKEN_RE.exec(suffix))) {
     const token = m[0];
     if (m[1] !== undefined) mode.format = { type: 'fixed', digits: Number(m[1]) }; // %.Nf
     else if (token === '%d') mode.format = { type: 'integer' };
-    else if (token.startsWith('p')) {
-      // precision -- consumed, no effect (see docs above)
-    } else if (m[2] !== undefined) mode.format = { type: 'normal', digits: Number(m[2]) };
+    else if (token.startsWith('p')) mode.precision = Number(token.slice(1));
+    else if (m[2] !== undefined) mode.format = { type: 'normal', digits: Number(m[2]) };
     else if (m[3] !== undefined) mode.format = { type: 'scientific', digits: Number(m[3]) };
     else if (m[4] !== undefined) mode.format = { type: 'engineering', digits: Number(m[4]) };
     else if (m[5] !== undefined) mode.format = { type: 'fixed', digits: Number(m[5]) }; // fN
@@ -1566,7 +1738,7 @@ function parseFormulaStatement(statement) {
   const lhs = statement.slice(0, eq).trim();
   let rhs = statement.slice(eq + 1).trim();
   const formatSuffix = /;[^;]*$/.exec(rhs);
-  let mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false, angleMode: 'degrees' };
+  let mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees', precision: null };
   if (formatSuffix) {
     rhs = rhs.slice(0, formatSuffix.index).trim();
     mode = parseModeString(formatSuffix[0].slice(1)); // slice(1): drop the leading ";" itself
@@ -1674,7 +1846,23 @@ function toRationalApproximation(x, tolerance = 1e-9, maxDenominator = 1000000) 
  *  default. A proper fraction (|numerator| < denominator) has no
  *  whole part to extract regardless of `mixedNumber`, so it's always
  *  shown the same plain way either way. */
+const FRACTION_DISPLAY_MAX_DENOMINATOR = 1000000n; // matches toRationalApproximation's own default maxDenominator below -- beyond this, an exact mathjs Fraction is almost certainly the literal representation of a high-precision transcendental result, not a fraction anyone would want to read as-is
+
 function formatAsFraction(n, mixedNumber) {
+  if (isMathjsValue(n) && n.isFraction && n.d <= FRACTION_DISPLAY_MAX_DENOMINATOR) {
+    const numerator = n.n; // BigInt, unsigned
+    const denominator = n.d; // BigInt, unsigned
+    const sign = n.s; // BigInt, 1n or -1n
+    if (denominator === 1n) return String(sign * numerator);
+    if (!mixedNumber) return `${sign * numerator}/${denominator}`;
+    const whole = numerator / denominator; // BigInt division truncates toward zero
+    if (whole === 0n) return `${sign * numerator}/${denominator}`; // proper fraction -- nothing to extract
+    const remainder = numerator % denominator;
+    if (remainder === 0n) return String(sign * whole); // reduces to an exact whole number after all
+    const connector = sign < 0n ? ' - ' : ' + ';
+    return `${sign * whole}${connector}${remainder}/${denominator}`;
+  }
+  if (isMathjsValue(n)) n = n.isFraction ? n.valueOf() : n.toNumber(); // an exact Fraction with an unreasonably large denominator (uses valueOf(), a plain number -- Fraction has no toNumber()), or a BigNumber (formatFinalValue only routes a BigNumber here when F is combined with another format spec; toNumber(), NOT valueOf(), which returns a string for BigNumber) -- either way, approximate from here down exactly like an ordinary double would
   if (Number.isNaN(n)) return 'nan';
   if (!Number.isFinite(n)) return n > 0 ? 'inf' : '-inf'; // inf isn't a ratio of two finite integers -- no fraction to show
   const { numerator, denominator } = toRationalApproximation(n);
@@ -1700,6 +1888,10 @@ function formatAsFraction(n, mixedNumber) {
 function formatFinalValue(value, mode, hourZeroPad) {
   if (typeof value === 'string') return value;
   if (isTaggedValue(value)) return value.type === 'date' ? formatDateValue(value) : formatHmsValue(value);
+  if (isMathjsValue(value) && value.isBigNumber) {
+    if (!mode.duration && !mode.format) return value.toString(); // the common case -- full, exact configured precision, no other format spec to combine with
+    value = value.toNumber(); // pN combined with a duration mode or another format spec: an honest, documented precision loss at this specific display step -- see this function's own docs above
+  }
   if (mode.duration) return formatDuration(value, mode.duration, hourZeroPad);
   if (mode.fraction) return formatAsFraction(value, mode.mixedNumber);
   if (mode.format) return applyFormatSpec(value, mode.format);
@@ -1771,7 +1963,12 @@ export function recalculateTable(table, options = {}) {
   const { positions: hlinePositions } = computeHlinePositions(workingRows);
 
   for (const { target, expr, mode } of statements) {
-    const evalCtx = { dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode, constants: options.constants || {} };
+    const numericMode = mode.fraction
+      ? { kind: 'fraction', instance: mathjsDefault }
+      : mode.precision !== null
+      ? { kind: 'bignumber', instance: mathjsForPrecision(mode.precision) }
+      : null;
+    const evalCtx = { dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode, constants: options.constants || {}, numericMode };
     // Evaluates the expression for one specific (row, col) and writes
     // either its formatted result or, if evaluation itself throws,
     // the literal text "#ERROR" into that cell -- confirmed directly
