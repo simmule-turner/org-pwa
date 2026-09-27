@@ -55,6 +55,15 @@
 // identical (same format codes, same "leave the unrecognized specifier
 // untouched" fallback) so the two stay interchangeable in practice.
 
+// This module's first (and so far only) external dependency -- a
+// tree-shaken mathjs subset (Unit, BigNumber, Fraction, plus the core
+// arithmetic each depends on) vendored locally, not fetched from a
+// CDN. See tools/build-mathjs-vendor.sh for exactly what's included
+// and how to regenerate it. Only Unit is actually used below (uconv);
+// BigNumber/Fraction are vendored ahead of time for future F-mode /
+// precision-mode work, not yet wired into this evaluator.
+import { unit as mathjsUnit } from './vendor/mathjs/mathjs-custom.min.js';
+
 const TIME_FORMAT_DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const TIME_FORMAT_DAY_NAMES_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TIME_FORMAT_MONTH_NAMES_FULL = [
@@ -436,6 +445,29 @@ const SCALAR_FUNCTIONS = {
     if (base <= 0 || base === 1) throw new Error('log with an undefined base (must be positive and not 1)');
     return Math.log(x) / Math.log(base);
   },
+  // Unit conversion, backed by mathjs's own real Unit system (see this
+  // file's own top-of-file import) rather than a hand-rolled lookup
+  // table -- covers compound units (m/s, kg/m^3), temperature's own
+  // affine conversion (not just a scale factor), and a real, curated
+  // unit database. A deliberate, 3-argument form, not real Calc's own
+  // 2-argument math-convert-units(value-with-embedded-unit, to-unit):
+  // this app's own cells don't carry an embedded unit the way a Calc
+  // stack value does, so the source unit is an explicit argument here.
+  // Always throws on an incompatible pair (matching every other
+  // function in this table -- sqrt, log, arcsin all throw rather than
+  // return something misleading) rather than reproducing real Calc's
+  // own "leftover remainder units" behavior on a mismatch -- a
+  // deliberate scope cut, not an oversight.
+  uconv: (value, fromUnit, toUnit) => {
+    if (typeof fromUnit !== 'string' || typeof toUnit !== 'string') {
+      throw new Error('uconv requires its unit arguments as quoted strings, e.g. uconv($1, "m", "ft")');
+    }
+    try {
+      return mathjsUnit(value, fromUnit).toNumber(toUnit);
+    } catch (err) {
+      throw new Error(`uconv: cannot convert "${fromUnit}" to "${toUnit}" (${err.message})`);
+    }
+  },
 };
 
 function roundHalfAwayFromZero(x) {
@@ -777,14 +809,18 @@ function parseExpression(tokens) {
         expect(')');
         return { type: 'call', name, arg };
       }
-      // Scalar: 1 or 2 comma-separated plain-expression arguments (value, optional decimal-places).
+      // Scalar: most take 1 or 2 comma-separated plain-expression
+      // arguments (value, optional decimal-places/base); uconv is the
+      // one exception, needing a third (the source unit, since a cell
+      // doesn't carry an embedded unit the way a Calc stack value does).
       const args = [parseExpr()];
       while (peek() === ',') {
         next();
         args.push(parseExpr());
       }
       expect(')');
-      if (args.length > 2) throw new Error(`"${name}" takes at most 2 arguments, got ${args.length}`);
+      const maxArgs = name === 'uconv' ? 3 : 2;
+      if (args.length > maxArgs) throw new Error(`"${name}" takes at most ${maxArgs} argument${maxArgs === 1 ? '' : 's'}, got ${args.length}`);
       return { type: 'scalarCall', name, args };
     }
     if (tok.startsWith('$')) {
