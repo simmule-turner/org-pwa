@@ -19,7 +19,7 @@ import { render } from './render.js';
 import { getCaptureTemplates } from './settings.js';
 import { kv } from './singletons.js';
 import { recalculateAllTables } from './table-recalc.js';
-import { aliasedMenuDivItem, appendMenuButtonsInOrder, isWideLayout, menuDivItem, positionPopupNearButton, requiredMenuDivItem } from './ui-widgets.js';
+import { aliasedMenuDivItem, appendMenuButtonsInOrder, isWideLayout, positionPopupNearButton, requiredMenuDivItem } from './ui-widgets.js';
 import { switchToView } from './views.js';
 
 /** Shows/hides the floating extras (☰) button based on whether
@@ -255,18 +255,14 @@ export function renderMoreMenuContent() {
     !S.state.doc
   );
 
-  // Fixed at the top and deliberately outside the alias/ordering set:
-  // adding a label to that set would silently switch off the reordering
-  // of anyone who has already listed the other six.
-  morePanel.appendChild(
-    menuDivItem('Commands', () => {
-      S.moreOpen = false;
-      renderMoreMenu();
-      openCommandPalette();
-    })
-  );
+  const commandsBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Commands', () => {
+    S.moreOpen = false;
+    renderMoreMenu();
+    openCommandPalette();
+  });
 
   appendMenuButtonsInOrder(morePanel, moreMenuAliases, [
+    { label: 'Commands', btn: commandsBtnOption },
     { label: 'Capture', btn: captureBtnOption },
     { label: 'Clocking', btn: clocksBtnOption },
     { label: 'Export', btn: exportBtnOption },
