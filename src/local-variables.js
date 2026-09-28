@@ -247,6 +247,14 @@ export function getRefileTargets(vars) {
   return (vars || {})['org-refile-targets'] || '';
 }
 
+/** org-global-properties: real org's own variable name -- properties that
+ *  apply everywhere unless a file or heading says otherwise. Here a plain
+ *  line of semicolon-separated `NAME: value` entries (real org's is a Lisp
+ *  alist); only Effort_ALL is used, and src/effort-values.js owns parsing. */
+export function getGlobalProperties(vars) {
+  return (vars || {})['org-global-properties'] || '';
+}
+
 /** org-agenda-files: real org's own exact variable name -- additional
  *  files the Agenda and TODO views scan across, beyond whichever file
  *  is currently open. Semicolon-separated "scheme:path" entries (the

@@ -62,7 +62,7 @@ async function openDocument({ documentId, kvAdapter, diskAdapter, preferCache = 
   const diskEntry = await diskAdapter.read(documentId);
   if (diskEntry) {
     await kvAdapter.set(cacheKey, diskEntry.content);
-    await setSyncMeta(kvAdapter, documentId, { lastSyncedHash: diskEntry.hash });
+    await setSyncMeta(kvAdapter, documentId, { lastSyncedHash: diskEntry.hash, baseContent: diskEntry.content });
     return { documentId, doc: parseOrg(diskEntry.content), source: 'disk' };
   }
 

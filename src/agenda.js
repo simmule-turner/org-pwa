@@ -15,10 +15,11 @@
  */
 
 import { isArchived } from './archive-model.js';
+import { parseOrgDuration } from './org-duration.js';
 import { isCommentedHeading } from './comment-model.js';
 import { parseOrgTimestamp, findTimestamps, parseDelay, dateKey, isSameDay } from './org-timestamp.js';
 import { parseLogbookEntries } from './logbook.js';
-import { findSexpTimestamps, evaluateSexpTimestamp, isTruthy } from './sexp-eval.js';
+import { findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy } from './sexp-eval.js';
 import {
   parseOrgAnniversaryLine,
   expandOrgAnniversaryOccurrences,
@@ -48,6 +49,7 @@ import {
   isDiaryDayLengthLine,
   formatDayLengthLine,
   enumerateDays,
+  unquoteDiaryFloatMonthList,
 } from './diary-sexp.js';
 import { isOrgWeatherLine, formatWeatherLine, DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
 
@@ -282,6 +284,127 @@ function defaultEventDescription(propertyName) {
 function getPropertyCaseInsensitive(heading, key) {
   const foundKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === key.toLowerCase());
   return foundKey ? heading.properties[foundKey] : undefined;
+}
+
+/** The EFFORT property of an agenda item's heading, trimmed, or null
+ *  (also null for an item with no heading behind it -- a sunrise line,
+ *  an anniversary). */
+function itemEffortText(item) {
+  const raw = item && item.heading ? getPropertyCaseInsensitive(item.heading, 'EFFORT') : undefined;
+  return typeof raw === 'string' && raw.trim() !== '' ? raw.trim() : null;
+}
+
+/** That effort in minutes, or null when there is none or it isn't a
+ *  valid org duration. */
+function itemEffortMinutes(item) {
+  const text = itemEffortText(item);
+  return text === null ? null : parseOrgDuration(text);
+}
+
+// The kinds that are things to do or attend, as opposed to a logged past
+// event, a diary line, or an astronomical time.
+const EFFORT_PLANNING_KINDS = new Set(['scheduled', 'deadline', 'timestamp']);
+
+/**
+ * Planned effort for one day's agenda items, for a "how much have I taken
+ * on today" total:
+ *
+ *   { minutes, estimated, unestimated }
+ *
+ * `minutes` sums the effort of every scheduled / deadline / timestamped
+ * heading that has a valid one, counting each heading once per day even if
+ * it appears twice (say, both SCHEDULED and DEADLINE that day). An item
+ * carried forward from an earlier date counts on the day it is shown --
+ * that's when the time is needed. `unestimated` counts only headings with
+ * a TODO keyword and no usable estimate: an appointment without an effort
+ * isn't a gap in the estimates, so it isn't counted as one.
+ */
+function summarizeDayEffort(items) {
+  const seen = new Set();
+  let minutes = 0;
+  let estimated = 0;
+  let unestimated = 0;
+  for (const item of items) {
+    if (!item.heading || !EFFORT_PLANNING_KINDS.has(item.kind)) continue;
+    if (seen.has(item.heading)) continue;
+    seen.add(item.heading);
+    const effort = itemEffortMinutes(item);
+    if (effort !== null) {
+      minutes += effort;
+      estimated++;
+    } else if (item.todo) {
+      unestimated++;
+    }
+  }
+  return { minutes, estimated, unestimated };
+}
+
+// ---- sorting, filtering and limiting by effort ---------------------------------
+//
+// Real org's agenda offers all three: the `effort-up` / `effort-down` sorting
+// strategies, the `_` filter (org-agenda-filter-by-effort) and
+// org-agenda-max-effort. They follow org-agenda.el's own rules, including two
+// that surprise people:
+//   - the filter's < and > are INCLUSIVE (+<1:00 keeps a task of exactly 1:00);
+//   - the limit keeps a PREFIX of the sorted day: once the running total passes
+//     the maximum, everything after it is dropped, even a task small enough to
+//     have fitted.
+// An item with no effort counts as very high effort (org-agenda-sort-noeffort-
+// is-high, default t): last when sorting up, excluded by < and =, kept by >,
+// and -- since its "effort" is unbounded -- the end of the line for a limit.
+// Items with no heading behind them (sunrise, anniversaries) are not tasks, so
+// they are never filtered or counted.
+
+/** Minutes for sorting/filtering/limiting an item: its effort, else the
+ *  no-effort stand-in. */
+function effortSortValue(item, noEffortIsHigh = true) {
+  const minutes = itemEffortMinutes(item);
+  if (minutes !== null) return minutes;
+  return noEffortIsHigh ? Infinity : -1;
+}
+
+/** A stably sorted copy: 'up' = least effort first, 'down' = most first. */
+function sortItemsByEffort(items, direction = 'up', noEffortIsHigh = true) {
+  const sign = direction === 'down' ? -1 : 1;
+  return items
+    .map((item, index) => ({ item, index, value: effortSortValue(item, noEffortIsHigh) }))
+    .sort((a, b) => (a.value === b.value ? a.index - b.index : sign * (a.value < b.value ? -1 : 1)))
+    .map((entry) => entry.item);
+}
+
+/** Keeps items whose effort satisfies `{ op, minutes }` -- op '<' (at most),
+ *  '>' (at least) or '=' (exactly). Non-task items are always kept. */
+function filterItemsByEffort(items, filter, noEffortIsHigh = true) {
+  if (!filter) return items;
+  const test = { '<': (v) => v <= filter.minutes, '>': (v) => v >= filter.minutes, '=': (v) => v === filter.minutes }[filter.op];
+  if (!test) return items;
+  return items.filter((item) => !item.heading || test(effortSortValue(item, noEffortIsHigh)));
+}
+
+/** org-agenda-max-effort for one day's (already sorted) items: keeps items
+ *  while the running total stays within `maxMinutes`. */
+function limitItemsByEffort(items, maxMinutes, noEffortIsHigh = true) {
+  if (maxMinutes === null || maxMinutes === undefined) return items;
+  let running = 0;
+  const kept = [];
+  for (const item of items) {
+    if (!item.heading) {
+      kept.push(item);
+      continue;
+    }
+    running += effortSortValue(item, noEffortIsHigh);
+    if (running <= maxMinutes) kept.push(item);
+  }
+  return kept;
+}
+
+/** All three, in the order Emacs applies them: sort, then limit (both while
+ *  the day's entries are assembled), then the filter (which only hides). */
+function applyAgendaEffortView(items, { sort = null, filter = null, maxMinutes = null, noEffortIsHigh = true } = {}) {
+  let result = items;
+  if (sort) result = sortItemsByEffort(result, sort, noEffortIsHigh);
+  result = limitItemsByEffort(result, maxMinutes, noEffortIsHigh);
+  return filterItemsByEffort(result, filter, noEffortIsHigh);
 }
 
 /** Searches `heading`'s own descendants, at any depth (a tree-style
@@ -748,7 +871,7 @@ function buildAgendaItems(docs, opts = {}) {
       // each pattern directly.
       if (rangeStart && rangeEnd) {
         for (const line of heading.bodyLines || []) {
-          const trimmed = line.trim();
+          const trimmed = unquoteDiaryFloatMonthList(line.trim());
           if (!trimmed.startsWith('%%(')) continue; // fast skip -- every one of these five forms starts this way
 
           const pushDiarySexpItem = (occurrenceDate, title) => {
@@ -767,9 +890,33 @@ function buildAgendaItems(docs, opts = {}) {
             });
           };
 
+          // A line built from and / or / not / when / org-class / org-date /
+          // diary-date has no dedicated form of its own: it goes through the
+          // same evaluator as a <%%(...)> timestamp, once per day.
+          const general = parseGeneralBodyLine(trimmed);
+          if (general) {
+            for (const day of enumerateDays(rangeStart, rangeEnd)) {
+              const result = evaluateSexpTimestamp(general.expr, {
+                candidateDate: day,
+                today,
+                calendarLatitude,
+                calendarLongitude,
+                solarAmpm,
+                solarHideLabel,
+                weatherData,
+                orgWeatherFormat,
+                orgWeatherTemperatureUnit,
+                orgWeatherSpeedUnit,
+              });
+              if (!isTruthy(result)) continue;
+              pushDiarySexpItem(day, typeof result === 'string' ? result : general.text || heading.title || '(untitled)');
+            }
+            continue;
+          }
+
           const anniv = parseOrgAnniversaryLine(trimmed);
           if (anniv) {
-            for (const occ of expandOrgAnniversaryOccurrences(anniv.month, anniv.day, rangeStart, rangeEnd)) {
+            for (const occ of expandOrgAnniversaryOccurrences(anniv.month, anniv.day, rangeStart, rangeEnd, anniv.year)) {
               pushDiarySexpItem(occ, formatOrgAnniversaryTitle(anniv.template, occ.getFullYear() - anniv.year));
             }
             continue;
@@ -1166,6 +1313,13 @@ function buildTaskList(docs, opts = {}) {
 
 export {
   UNSAVED_DOCUMENT_ID,
+  itemEffortText,
+  itemEffortMinutes,
+  summarizeDayEffort,
+  sortItemsByEffort,
+  filterItemsByEffort,
+  limitItemsByEffort,
+  applyAgendaEffortView,
   walkHeadings,
   buildAgendaItems,
   buildTaskList,

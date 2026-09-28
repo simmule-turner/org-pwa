@@ -2,10 +2,12 @@
 /**
  * Sync engine: reconciles the local outbox (instant, offline-safe writes
  * already applied to the kv store) against a disk-like target, per the
- * storage requirements decision: conflict resolution is kept simple for
- * v1 — hash comparison, then a straightforward keep-mine/keep-disk choice.
- * No diff/merge UI here; that's an explicit v2 candidate, not something
- * this module pretends to do.
+ * storage requirements decision: a hash comparison detects that disk
+ * changed underneath a pending local edit, and an injected callback
+ * decides what to do about it. This module stays policy-free: it hands
+ * the callback the local text, the disk text, and the text as of the
+ * last sync (the common ancestor a three-way merge needs -- see
+ * merge3.js), and acts on whatever comes back.
  *
  * `diskAdapter` is an abstraction over "the durable, external copy of the
  * file" — concretely, the File System Access API in-browser. Shape:
@@ -16,9 +18,11 @@
  * methods; nothing else in this module cares how "disk" is actually
  * reached, which is what makes it testable without a browser.
  *
- * Sync metadata (the hash disk had at last successful sync) lives in the
- * kv store alongside the outbox, keyed per document, so conflict detection
- * survives app restarts.
+ * Sync metadata (the hash disk had at last successful sync, and -- when
+ * known -- that version's full text, `baseContent`) lives in the kv store
+ * alongside the outbox, keyed per document, so conflict detection
+ * survives app restarts. Metadata written before `baseContent` existed
+ * simply has none; the callback is then told `base: null`.
  */
 
 import { getPendingChange, clearPendingChange } from './outbox.js';
@@ -71,10 +75,16 @@ const SYNC_RESULT = {
  * would be lost by picking up disk's version; callers can just re-read.)
  *
  * `resolveConflict(ctx)` — required only when a conflict is detected —
- * receives { mine: string, disk: string } and must return 'mine' or
- * 'disk'. Keeping this as an injected callback (rather than a hardcoded
- * policy) is what makes "keep mine / keep disk" an actual user choice in
- * the UI rather than a decision baked into this module.
+ * receives { mine: string, disk: string, base: string | null } and
+ * returns one of:
+ *   'mine'            overwrite disk with the local version
+ *   'disk'            discard the local edit, keep disk's version
+ *   { merged: text }  write this merged text (see merge3.js) instead
+ *   'cancel'          do nothing at all: nothing is written, and the
+ *                     local edit stays pending for a later attempt
+ * Keeping this as an injected callback (rather than a hardcoded policy)
+ * is what makes the resolution an actual user choice in the UI rather
+ * than a decision baked into this module.
  */
 async function syncDocument({ documentId, kvAdapter, diskAdapter, resolveConflict }) {
   const pending = await getPendingChange(kvAdapter, documentId);
@@ -94,18 +104,28 @@ async function syncDocument({ documentId, kvAdapter, diskAdapter, resolveConflic
         `syncDocument: conflict on "${documentId}" but no resolveConflict callback was provided`
       );
     }
-    const choice = await resolveConflict({ mine: pending.content, disk: diskEntry.content });
+    const base = meta && typeof meta.baseContent === 'string' ? meta.baseContent : null;
+    const choice = await resolveConflict({ mine: pending.content, disk: diskEntry.content, base });
+    if (choice === 'cancel') {
+      return { status: SYNC_RESULT.CONFLICT, resolution: 'cancelled' };
+    }
     if (choice === 'disk') {
       await clearPendingChange(kvAdapter, documentId);
-      await setSyncMeta(kvAdapter, documentId, { lastSyncedHash: diskEntry.hash });
+      await setSyncMeta(kvAdapter, documentId, { lastSyncedHash: diskEntry.hash, baseContent: diskEntry.content });
       return { status: SYNC_RESULT.CONFLICT, resolution: 'disk', content: diskEntry.content };
+    }
+    if (choice && typeof choice === 'object' && typeof choice.merged === 'string') {
+      const mergedWrite = await diskAdapter.write(documentId, choice.merged);
+      await clearPendingChange(kvAdapter, documentId);
+      await setSyncMeta(kvAdapter, documentId, { lastSyncedHash: mergedWrite.hash, baseContent: choice.merged });
+      return { status: SYNC_RESULT.CONFLICT, resolution: 'merged', content: choice.merged };
     }
     // choice === 'mine': fall through and overwrite disk with the local version.
   }
 
   const written = await diskAdapter.write(documentId, pending.content);
   await clearPendingChange(kvAdapter, documentId);
-  await setSyncMeta(kvAdapter, documentId, { lastSyncedHash: written.hash });
+  await setSyncMeta(kvAdapter, documentId, { lastSyncedHash: written.hash, baseContent: pending.content });
 
   return {
     status: diskChangedSinceSync ? SYNC_RESULT.CONFLICT : SYNC_RESULT.SYNCED,

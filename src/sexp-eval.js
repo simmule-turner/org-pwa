@@ -15,9 +15,10 @@
  * a non-nil result means a match, and a STRING result becomes the
  * entry's own displayed text for that occurrence.
  *
- * Deliberately NOT a general elisp interpreter -- only `when` (the
- * one control-flow form needed for the requested composability) and
- * a closed set of named functions are recognized; anything else
+ * Deliberately NOT a general elisp interpreter -- only `when`, `and`,
+ * `or` and `not` (enough to combine the functions below) and a closed set
+ * of named functions are recognized -- no `let`, no `date` variable, no
+ * arithmetic, no `calendar-*` helpers; anything else
  * (an unrecognized function name, a malformed expression) evaluates
  * to "no match" rather than throwing, the same tolerant-of-the-
  * unexpected stance every other sexp/timestamp parser in this app
@@ -125,6 +126,13 @@ function parseSexpr(text) {
       return list;
     }
     if (tok === ')') throw new Error('Unexpected )');
+    // A leading ' (real Lisp's quote) is transparent here: '(10 11 12) is
+    // the list itself, which is how Emacs passes a list to diary-float or
+    // org-date, and an unquoted list keeps working too.
+    if (typeof tok === 'string' && tok.startsWith("'")) {
+      pos++;
+      return tok === "'" ? parseOne() : atomNode(tok.slice(1));
+    }
     pos++;
     return atomNode(tok);
   }
@@ -156,6 +164,37 @@ function occursOn(expandFn, date, ...args) {
   return expandFn(...args, date, date).length > 0;
 }
 
+// ---- helpers for the standard calendar functions ----------------------------
+
+/** A number node's integer value, else null. */
+function intArg(node) {
+  return node && !Array.isArray(node) && node.type === 'number' && Number.isInteger(node.value) ? node.value : null;
+}
+
+/** A real Date for year/month/day, or null when it isn't a real calendar
+ *  date (month 13, February 30) rather than letting Date roll it over. */
+function realDate(year, month, day) {
+  if (year === null || month === null || day === null) return null;
+  const d = new Date(year, month - 1, day);
+  return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day ? d : null;
+}
+
+/** org-date's field rule (the same as diary-date's): an integer, a list
+ *  of integers, or `t` (every value). */
+function fieldMatches(node, value) {
+  if (Array.isArray(node)) return node.some((n) => intArg(n) === value);
+  if (node.type === 'symbol' && node.value === 't') return true;
+  return intArg(node) === value;
+}
+
+/** ISO 8601 week number (org-class's skip-weeks are ISO weeks). */
+function isoWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = Date.UTC(d.getUTCFullYear(), 0, 1);
+  return Math.ceil(((d.getTime() - yearStart) / 86400000 + 1) / 7);
+}
+
 /** Evaluates one already-parsed expression node against `context`
  *  (`{ candidateDate, today, calendarLatitude, calendarLongitude,
  *  solarAmpm, solarHideLabel }`).
@@ -172,7 +211,8 @@ function evaluateSexpr(node, context) {
     // expects a function call), so this can't match anything.
     if (node.type === 'number') return node.value !== 0;
     if (node.type === 'string') return node.value;
-    return false;
+    if (node.type === 'symbol' && node.value === 't') return true;
+    return false; // nil, and any other symbol
   }
 
   const [head, ...args] = node;
@@ -189,6 +229,78 @@ function evaluateSexpr(node, context) {
     case 'today-p':
       return startOfDay(context.candidateDate).getTime() === startOfDay(context.today).getTime();
 
+    // Boolean combinators. Like Lisp: `and` yields its last value when
+    // every argument is non-nil (so a string result survives), `or` its
+    // first non-nil one.
+    case 'and': {
+      let last = true;
+      for (const arg of args) {
+        last = evaluateSexpr(arg, context);
+        if (!isTruthy(last)) return false;
+      }
+      return last;
+    }
+    case 'or': {
+      for (const arg of args) {
+        const value = evaluateSexpr(arg, context);
+        if (isTruthy(value)) return value;
+      }
+      return false;
+    }
+    case 'not':
+      return args.length === 1 ? !isTruthy(evaluateSexpr(args[0], context)) : false;
+
+    // org-block: every date from the first through the second, inclusive,
+    // written year month day (ISO) as org-agenda.el defines it. Either
+    // order of the two dates works, as the %%(org-block ...) body-line form
+    // has always allowed.
+    //
+    // There is deliberately NO diary-block / diary-anniversary / diary-cyclic
+    // / diary-date here: each has an org-* twin taking ISO (year month day)
+    // arguments, whereas the diary-* ones read their arguments in an order
+    // that depends on calendar-date-style (month-day-year by default), so
+    // the same line would mean different dates depending on a setting this
+    // app doesn't have. An unrecognized name matches nothing.
+    case 'org-block': {
+      if (args.length < 6) return false;
+      const n = args.slice(0, 6).map(intArg);
+      const start = realDate(n[0], n[1], n[2]);
+      const end = realDate(n[3], n[4], n[5]);
+      if (!start || !end) return false;
+      const [from, to] = start <= end ? [start, end] : [end, start];
+      const day = startOfDay(context.candidateDate);
+      return day >= from && day <= to;
+    }
+
+    // org-date (year month day): each field an integer, a list of
+    // integers, or t for every value.
+    case 'org-date': {
+      if (args.length < 3) return false;
+      const c = context.candidateDate;
+      return fieldMatches(args[0], c.getFullYear()) && fieldMatches(args[1], c.getMonth() + 1) && fieldMatches(args[2], c.getDate());
+    }
+
+    // (org-class Y1 M1 D1 Y2 M2 D2 DAYNAME SKIP-WEEK...): DAYNAME (0 =
+    // Sunday) on every week between the two dates, except the ISO weeks
+    // listed. Skipping holidays -- the symbol `holidays` or a holiday's
+    // name -- needs Emacs's holiday database, which this app doesn't have,
+    // so such an expression matches nothing rather than quietly showing
+    // the class on a holiday.
+    case 'org-class': {
+      if (args.length < 7) return false;
+      const n = args.slice(0, 7).map(intArg);
+      const start = realDate(n[0], n[1], n[2]);
+      const end = realDate(n[3], n[4], n[5]);
+      const dayname = n[6];
+      if (!start || !end || dayname === null || dayname < 0 || dayname > 6) return false;
+      const skip = args.slice(7);
+      if (skip.some((a) => intArg(a) === null)) return false;
+      const day = startOfDay(context.candidateDate);
+      if (day < start || day > end || day.getDay() !== dayname) return false;
+      const week = isoWeekNumber(day);
+      return !skip.some((a) => intArg(a) === week);
+    }
+
     case 'org-cyclic': {
       if (args.length < 4) return false;
       const [n, year, month, day] = args.map((a) => a.value);
@@ -199,7 +311,8 @@ function evaluateSexpr(node, context) {
     case 'org-anniversary': {
       if (args.length < 3) return false;
       const [year, month, day] = args.map((a) => a.value);
-      return occursOn(expandOrgAnniversaryOccurrences, context.candidateDate, month, day);
+      // Only years after the given one, as in real diary-anniversary.
+      return expandOrgAnniversaryOccurrences(month, day, context.candidateDate, context.candidateDate, year).length > 0;
     }
 
     case 'diary-float': {
@@ -366,6 +479,47 @@ function documentUsesOrgWeather(doc) {
   return (doc.children || []).some(usesIt);
 }
 
+// The heads a "%%(...) text" body line is evaluated by the general evaluator
+// for. Every other function a body line can use (org-anniversary, org-cyclic,
+// org-block, diary-float, the solar lines, org-weather) has its own dedicated
+// form in diary-sexp.js, with its own text handling, and is left to that.
+const GENERAL_BODY_LINE_HEADS = new Set(['and', 'or', 'not', 'when', 'org-class', 'org-date']);
+
+/** Parses a `%%(expr) text` body line whose expression is one the general
+ *  evaluator handles -- so `%%(and (org-block ...) (diary-float ...)) Term`
+ *  works as a line exactly as it does inside a <%%(...)> timestamp. Returns
+ *  `{ expr, text }`, or null for any other line. */
+function parseGeneralBodyLine(line) {
+  const text = String(line).trim();
+  if (!text.startsWith('%%(')) return null;
+  let depth = 0;
+  let inString = false;
+  let end = -1;
+  for (let i = 2; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === '(') {
+      depth++;
+    } else if (ch === ')' && --depth === 0) {
+      end = i + 1;
+      break;
+    }
+  }
+  if (end === -1) return null;
+  let expr;
+  try {
+    expr = parseSexpr(text.slice(2, end));
+  } catch {
+    return null;
+  }
+  const head = Array.isArray(expr) ? expr[0] : null;
+  if (!head || head.type !== 'symbol' || !GENERAL_BODY_LINE_HEADS.has(head.value)) return null;
+  return { expr, text: text.slice(end).trim() };
+}
+
 /** Evaluates one findSexpTimestamps result's own `expr` against
  *  `context` -- a thin wrapper that also handles the "failed to
  *  parse at all" (`expr === null`) case, folding it into the same
@@ -376,4 +530,4 @@ function evaluateSexpTimestamp(expr, context) {
   return evaluateSexpr(expr, context);
 }
 
-export { parseSexpr, evaluateSexpr, findSexpTimestamps, evaluateSexpTimestamp, isTruthy, documentUsesOrgWeather };
+export { parseSexpr, evaluateSexpr, findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy, documentUsesOrgWeather };

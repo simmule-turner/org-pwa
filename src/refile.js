@@ -275,4 +275,35 @@ function findHeadingByOutlinePath(doc, outlinePath) {
   return found;
 }
 
-export { parseRefileTargets, parseRefileTargetsWithErrors, headingMatchesCriteria, resolveEntryFileIds, getRefileCandidates, findHeadingByOutlinePath, collectSubtreeHeadings };
+// ---- recently used targets ----------------------------------------------------
+//
+// Real org keeps org-refile-history so the refile prompt can offer the
+// targets you used last. Here the picker lists the most recent ones first,
+// above the full list -- but only ones that are STILL valid candidates
+// (the file, the heading, org-refile-targets and the refiled subtree's own
+// exclusion are all re-checked), so a stale entry never shows.
+
+const refileTargetKey = (target) => target.documentId + '\u0000' + target.outlinePath.join('\u0001');
+
+/** `recent` with `target` moved to the front, de-duplicated and capped.
+ *  Stores only what is needed to find the target again. */
+function pushRecentRefileTarget(recent, target, max = 8) {
+  const entry = { documentId: target.documentId, outlinePath: [...target.outlinePath] };
+  const key = refileTargetKey(entry);
+  return [entry, ...recent.filter((r) => refileTargetKey(r) !== key)].slice(0, max);
+}
+
+/** The current candidates that appear in `recent`, in recent-first order,
+ *  at most `limit` of them. */
+function recentRefileCandidates(candidates, recent, limit = 5) {
+  const byKey = new Map(candidates.map((c) => [refileTargetKey(c), c]));
+  const result = [];
+  for (const r of recent) {
+    const candidate = byKey.get(refileTargetKey(r));
+    if (candidate) result.push(candidate);
+    if (result.length >= limit) break;
+  }
+  return result;
+}
+
+export { pushRecentRefileTarget, recentRefileCandidates, refileTargetKey, parseRefileTargets, parseRefileTargetsWithErrors, headingMatchesCriteria, resolveEntryFileIds, getRefileCandidates, findHeadingByOutlinePath, collectSubtreeHeadings };

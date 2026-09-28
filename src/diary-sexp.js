@@ -86,12 +86,19 @@ function parseOrgAnniversaryLine(line) {
  *  expandContactEventOccurrences, but with real diary-anniversary's
  *  own confirmed special case added: February 29 is treated as March
  *  1 in a non-leap year, rather than simply not occurring that year
- *  at all. */
-function expandOrgAnniversaryOccurrences(month, day, rangeStart, rangeEnd) {
+ *  at all.
+ *
+ *  `afterYear`, when given, is the anniversary's own start year: like
+ *  real diary-anniversary (the Emacs manual: "applies to October 31 in
+ *  any year after 1948"), it applies only to years AFTER that one -- so
+ *  no "-8th birthday" before the person was born, and no "0th" in the
+ *  year itself. */
+function expandOrgAnniversaryOccurrences(month, day, rangeStart, rangeEnd, afterYear = null) {
   const rangeStartDay = startOfDay(rangeStart);
   const rangeEndDay = endOfDay(rangeEnd);
   const dates = [];
   for (let year = rangeStart.getFullYear(); year <= rangeEnd.getFullYear(); year++) {
+    if (afterYear !== null && year <= afterYear) continue;
     let m = month;
     let d = day;
     if (month === 2 && day === 29 && !isLeapYear(year)) {
@@ -109,6 +116,19 @@ function expandOrgAnniversaryOccurrences(month, day, rangeStart, rangeEnd) {
  *  confirmed two placeholders, nothing else recognized. */
 function formatOrgAnniversaryTitle(template, age) {
   return template.replace(/%d/g, String(age)).replace(/%s/g, ordinalSuffix(age));
+}
+
+// ---- quoted month list in diary-float ------------------------------------------
+
+/** Emacs writes diary-float's month list quoted -- `(diary-float '(1 4 7 10)
+ *  4 3)` -- so this drops that quote before the line is matched. Nothing
+ *  else is rewritten: in particular the standard diary-anniversary /
+ *  diary-cyclic / diary-block / diary-date are NOT translated into their
+ *  org-* twins. Their argument order depends on calendar-date-style (month
+ *  day year by default), so the same line would mean different dates under
+ *  different settings; the org-* versions always read year month day. */
+function unquoteDiaryFloatMonthList(line) {
+  return line.replace(/^(%%\(diary-float\s+)'(?=\()/, '$1');
 }
 
 // ---- org-cyclic ---------------------------------------------------------
@@ -593,6 +613,7 @@ export {
   ordinalSuffix,
   parseOrgAnniversaryLine,
   expandOrgAnniversaryOccurrences,
+  unquoteDiaryFloatMonthList,
   formatOrgAnniversaryTitle,
   parseOrgCyclicLine,
   expandOrgCyclicOccurrences,
