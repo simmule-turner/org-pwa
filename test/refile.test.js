@@ -351,3 +351,57 @@ test('valid and unset values report no errors', () => {
   assert.deepEqual(errorsFor(''), []);
   assert.deepEqual(errorsFor('current maxlevel=3; notes.org tag=work level=2'), []);
 });
+
+// ---- recently used targets ----------------------------------------------------
+
+import { pushRecentRefileTarget, recentRefileCandidates } from '../src/refile.js';
+
+const cand = (documentId, ...path) => ({ documentId, outlinePath: path, heading: { title: path[path.length - 1] } });
+
+test('pushRecentRefileTarget: newest first, de-duplicated, capped', () => {
+  let recent = [];
+  recent = pushRecentRefileTarget(recent, cand('a.org', 'Projects'));
+  recent = pushRecentRefileTarget(recent, cand('a.org', 'Home'));
+  recent = pushRecentRefileTarget(recent, cand('a.org', 'Projects'));
+  assert.deepEqual(recent.map((r) => r.outlinePath.join('/')), ['Projects', 'Home']);
+  for (let i = 0; i < 20; i++) recent = pushRecentRefileTarget(recent, cand('a.org', 'T' + i));
+  assert.equal(recent.length, 8);
+  assert.equal(recent[0].outlinePath[0], 'T19');
+});
+
+test('the same heading title in a different file is a different target', () => {
+  let recent = pushRecentRefileTarget([], cand('a.org', 'Inbox'));
+  recent = pushRecentRefileTarget(recent, cand('b.org', 'Inbox'));
+  assert.equal(recent.length, 2);
+});
+
+test('pushRecentRefileTarget stores only what is needed and does not modify its input', () => {
+  const before = [{ documentId: 'a.org', outlinePath: ['X'] }];
+  const after = pushRecentRefileTarget(before, cand('a.org', 'Y'));
+  assert.equal(before.length, 1);
+  assert.deepEqual(Object.keys(after[0]).sort(), ['documentId', 'outlinePath']);
+});
+
+test('recentRefileCandidates: current candidates only, in recent-first order', () => {
+  const candidates = [cand('a.org', 'Projects'), cand('a.org', 'Home'), cand('a.org', 'Inbox')];
+  const recent = [
+    { documentId: 'a.org', outlinePath: ['Inbox'] },
+    { documentId: 'a.org', outlinePath: ['Gone'] }, // no longer a candidate
+    { documentId: 'a.org', outlinePath: ['Projects'] },
+  ];
+  assert.deepEqual(recentRefileCandidates(candidates, recent).map((c) => c.outlinePath[0]), ['Inbox', 'Projects']);
+});
+
+test('a recent target is dropped when org-refile-targets no longer offers it', () => {
+  const { entries } = parseRefileTargetsWithErrors('current level=1');
+  const candidates = getRefileCandidates(entries, { 'x.org': CRIT_DOC }, 'x.org', []);
+  const recent = [{ documentId: 'x.org', outlinePath: ['Projects', 'Alpha'] }, { documentId: 'x.org', outlinePath: ['Home'] }];
+  assert.deepEqual(recentRefileCandidates(candidates, recent).map((c) => c.outlinePath.join('/')), ['Home'], 'a level-2 heading is not a level=1 target');
+});
+
+test('recentRefileCandidates respects its limit, and an empty history gives nothing', () => {
+  const candidates = Array.from({ length: 10 }, (_, i) => cand('a.org', 'T' + i));
+  const recent = candidates.map((c) => ({ documentId: c.documentId, outlinePath: c.outlinePath }));
+  assert.equal(recentRefileCandidates(candidates, recent, 3).length, 3);
+  assert.deepEqual(recentRefileCandidates(candidates, []), []);
+});

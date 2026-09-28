@@ -235,3 +235,11 @@ test('archive file is just another documentId — no special-casing needed to op
   const ids = await listOpenDocuments(kv);
   assert.deepEqual(ids, ['nrp.org', 'nrp_archive.org']);
 });
+
+test('openDocument records the text it read from disk as the common ancestor for a later merge', async () => {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  disk._simulateExternalEdit('a.org', '* From disk\n');
+  await openDocument({ documentId: 'a.org', kvAdapter: kv, diskAdapter: disk });
+  assert.equal((await getSyncMeta(kv, 'a.org')).baseContent, '* From disk\n');
+});

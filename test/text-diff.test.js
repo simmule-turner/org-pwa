@@ -133,3 +133,63 @@ test('a change at the very end does not request out-of-range context past the la
     ['a', 'b', 'c', 'X']
   );
 });
+
+// ---- large inputs and the too-different fallback ----------------------------
+
+function rebuild(ops, side) {
+  return ops.filter((o) => o.type === 'same' || o.type === side).map((o) => o.line).join('\n');
+}
+
+test('a 20,000-line file with one changed line diffs instantly (the old n*m table would have needed ~400 million cells)', () => {
+  const lines = Array.from({ length: 20000 }, (_, i) => '* Heading ' + i);
+  const edited = [...lines];
+  edited[12345] = '* Heading 12345 (edited)';
+  const t0 = Date.now();
+  const ops = diffLines(lines.join('\n'), edited.join('\n'));
+  const ms = Date.now() - t0;
+  assert.ok(ms < 1000, `took ${ms}ms`);
+  assert.equal(ops.filter((o) => o.type === 'removed').length, 1);
+  assert.equal(ops.filter((o) => o.type === 'added').length, 1);
+  assert.equal(ops.length, 20001);
+});
+
+test('diffHunks on that large file gives one small hunk, not a wall of unchanged lines', () => {
+  const lines = Array.from({ length: 20000 }, (_, i) => 'line ' + i);
+  const edited = [...lines];
+  edited[100] = 'changed';
+  const hunks = diffHunks(lines.join('\n'), edited.join('\n'), 2);
+  assert.equal(hunks.length, 1);
+  assert.equal(hunks[0].lines.length, 6); // 2 before, removed, added, 2 after
+});
+
+test('two texts far too different to diff minimally still give a CORRECT diff (one replaced block)', () => {
+  const a = ['keep top', ...Array.from({ length: 3000 }, (_, i) => 'a' + i), 'keep bottom'].join('\n');
+  const b = ['keep top', ...Array.from({ length: 3000 }, (_, i) => 'b' + i), 'keep bottom'].join('\n');
+  const ops = diffLines(a, b);
+  assert.equal(rebuild(ops, 'removed'), a);
+  assert.equal(rebuild(ops, 'added'), b);
+  assert.equal(ops[0].type, 'same');
+  assert.equal(ops[ops.length - 1].type, 'same');
+  assert.equal(ops.filter((o) => o.type === 'same').length, 2, 'the shared head and tail are still recognised');
+});
+
+test('on random small inputs the diff reproduces both sides exactly and is minimal', () => {
+  let seed = 4242;
+  const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 0x100000000);
+  const lcs = (a, b) => {
+    const dp = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+    for (let i = a.length - 1; i >= 0; i--) for (let j = b.length - 1; j >= 0; j--) dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    return dp[0][0];
+  };
+  for (let round = 0; round < 200; round++) {
+    const mk = () => Array.from({ length: Math.floor(rand() * 12) }, () => 'l' + Math.floor(rand() * 4));
+    const a = mk();
+    const b = mk();
+    const ops = diffLines(a.join('\n'), b.join('\n'));
+    assert.equal(rebuild(ops, 'removed'), a.join('\n'), `round ${round} old side`);
+    assert.equal(rebuild(ops, 'added'), b.join('\n'), `round ${round} new side`);
+    const sameCount = ops.filter((o) => o.type === 'same').length;
+    // '' splits to [''] so compare against the split arrays the function itself uses
+    assert.equal(sameCount, lcs(a.join('\n').split('\n'), b.join('\n').split('\n')), `round ${round} minimal`);
+  }
+});

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createInMemoryAdapter } from '../src/kv-adapter.js';
 import { enqueueChange, hasPendingChange } from '../src/outbox.js';
-import { SYNC_RESULT, syncDocument, createInMemoryDiskAdapter } from '../src/sync-engine.js';
+import { SYNC_RESULT, syncDocument, createInMemoryDiskAdapter, getSyncMeta, setSyncMeta } from '../src/sync-engine.js';
 
 test('up-to-date: nothing pending means nothing to sync', async () => {
   const kv = createInMemoryAdapter();
@@ -56,7 +56,8 @@ test('conflict detected when disk changed externally since last sync', async () 
   });
 
   assert.equal(result.status, SYNC_RESULT.CONFLICT);
-  assert.deepEqual(resolveCalledWith, { mine: '* my local edit', disk: '* edited elsewhere' });
+  // `base` is the text as of the last successful sync -- the common ancestor a merge needs.
+  assert.deepEqual(resolveCalledWith, { mine: '* my local edit', disk: '* edited elsewhere', base: '* v1' });
 });
 
 test('conflict resolved keep-mine overwrites disk', async () => {
@@ -132,4 +133,109 @@ test('independent documents sync independently', async () => {
   await syncDocument({ documentId: 'b.org', kvAdapter: kv, diskAdapter: disk });
   assert.equal((await disk.read('a.org')).content, '* A');
   assert.equal((await disk.read('b.org')).content, '* B');
+});
+
+// ---- common ancestor + richer conflict resolutions -------------------------
+
+async function conflictedSetup() {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  await enqueueChange(kv, 'a.org', 'base text');
+  await syncDocument({ documentId: 'a.org', kvAdapter: kv, diskAdapter: disk });
+  disk._simulateExternalEdit('a.org', 'their text');
+  await enqueueChange(kv, 'a.org', 'my text');
+  return { kv, disk };
+}
+
+test('a successful write records what was written as the new common ancestor', async () => {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  await enqueueChange(kv, 'a.org', 'v1 text');
+  await syncDocument({ documentId: 'a.org', kvAdapter: kv, diskAdapter: disk });
+  const meta = await getSyncMeta(kv, 'a.org');
+  assert.equal(meta.baseContent, 'v1 text');
+  assert.equal(meta.lastSyncedHash, (await disk.read('a.org')).hash);
+});
+
+test('metadata written before baseContent existed still works: the callback just gets base: null', async () => {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  disk._simulateExternalEdit('a.org', 'their text');
+  await setSyncMeta(kv, 'a.org', { lastSyncedHash: 'stale-hash' }); // the old shape
+  await enqueueChange(kv, 'a.org', 'my text');
+  let ctx;
+  await syncDocument({ documentId: 'a.org', kvAdapter: kv, diskAdapter: disk, resolveConflict: async (c) => ((ctx = c), 'mine') });
+  assert.equal(ctx.base, null);
+});
+
+test("resolving with { merged } writes the merged text, clears the pending edit, and makes it the new base", async () => {
+  const { kv, disk } = await conflictedSetup();
+  const result = await syncDocument({
+    documentId: 'a.org',
+    kvAdapter: kv,
+    diskAdapter: disk,
+    resolveConflict: async () => ({ merged: 'merged text' }),
+  });
+  assert.equal(result.status, SYNC_RESULT.CONFLICT);
+  assert.equal(result.resolution, 'merged');
+  assert.equal(result.content, 'merged text');
+  assert.equal((await disk.read('a.org')).content, 'merged text');
+  assert.equal(await hasPendingChange(kv, 'a.org'), false);
+  const meta = await getSyncMeta(kv, 'a.org');
+  assert.equal(meta.baseContent, 'merged text');
+  assert.equal(meta.lastSyncedHash, (await disk.read('a.org')).hash);
+});
+
+test("resolving with 'cancel' changes nothing: disk untouched, the local edit still pending, no metadata change", async () => {
+  const { kv, disk } = await conflictedSetup();
+  const metaBefore = await getSyncMeta(kv, 'a.org');
+  const result = await syncDocument({ documentId: 'a.org', kvAdapter: kv, diskAdapter: disk, resolveConflict: async () => 'cancel' });
+  assert.equal(result.status, SYNC_RESULT.CONFLICT);
+  assert.equal(result.resolution, 'cancelled');
+  assert.equal((await disk.read('a.org')).content, 'their text');
+  assert.equal(await hasPendingChange(kv, 'a.org'), true);
+  assert.deepEqual(await getSyncMeta(kv, 'a.org'), metaBefore);
+});
+
+test("after 'cancel', a later sync detects the same conflict again -- nothing was silently accepted", async () => {
+  const { kv, disk } = await conflictedSetup();
+  await syncDocument({ documentId: 'a.org', kvAdapter: kv, diskAdapter: disk, resolveConflict: async () => 'cancel' });
+  let asked = false;
+  const result = await syncDocument({
+    documentId: 'a.org',
+    kvAdapter: kv,
+    diskAdapter: disk,
+    resolveConflict: async () => ((asked = true), 'mine'),
+  });
+  assert.equal(asked, true);
+  assert.equal(result.resolution, 'mine');
+});
+
+test("keeping disk records disk's text as the new common ancestor", async () => {
+  const { kv, disk } = await conflictedSetup();
+  await syncDocument({ documentId: 'a.org', kvAdapter: kv, diskAdapter: disk, resolveConflict: async () => 'disk' });
+  assert.equal((await getSyncMeta(kv, 'a.org')).baseContent, 'their text');
+});
+
+test('the three resolutions compose with the real merge: a clean merge of two different edits reaches disk', async () => {
+  const { planConflict } = await import('../src/merge3.js');
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  const base = ['* A', 'a body', '* B', 'b body', '* C', 'c body', ''].join('\n');
+  await enqueueChange(kv, 'a.org', base);
+  await syncDocument({ documentId: 'a.org', kvAdapter: kv, diskAdapter: disk });
+  disk._simulateExternalEdit('a.org', base.replace('c body', 'c body (edited elsewhere)'));
+  await enqueueChange(kv, 'a.org', base.replace('a body', 'a body (edited here)'));
+  const result = await syncDocument({
+    documentId: 'a.org',
+    kvAdapter: kv,
+    diskAdapter: disk,
+    resolveConflict: async ({ mine, disk: theirs, base: b }) => {
+      const plan = planConflict(mine, theirs, b);
+      assert.equal(plan.kind, 'auto');
+      return { merged: plan.mergedText };
+    },
+  });
+  assert.equal(result.resolution, 'merged');
+  assert.equal((await disk.read('a.org')).content, base.replace('a body', 'a body (edited here)').replace('c body', 'c body (edited elsewhere)'));
 });
