@@ -527,6 +527,110 @@ check('tabs: two documents keep their own content, unsaved state and read-only f
   await context.close();
 });
 
+check('tags: the editor suggests tags already used or declared on #+TAGS:, narrows as you type, and one tap adds it', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, ['#+TAGS: errand', '* Alpha :work:home:', ':PROPERTIES:', ':OWNER: me', ':END:', '* Beta :work:', '* Gamma', ''].join('\n'));
+  await page.locator('.heading-title', { hasText: 'Gamma' }).first().click();
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Commands');
+  await page.waitForSelector('#command-palette');
+  await page.keyboard.type('edit details');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('[data-tag-suggestions]', { state: 'attached' });
+  const offered = () => page.locator('[data-tag-suggestion]').evaluateAll((els) => els.map((e) => e.getAttribute('data-tag-suggestion')));
+  expect(JSON.stringify(await offered()) === '["work","home","errand"]', `all suggestions: ${JSON.stringify(await offered())} (most used first, then the declared-only tag)`);
+
+  await page.locator('input[placeholder="New tag"]').fill('ho');
+  expect(JSON.stringify(await offered()) === '["home"]', `after typing "ho": ${JSON.stringify(await offered())}`);
+  await page.locator('[data-tag-suggestion="home"]').click();
+  expect((await page.locator('[aria-label="Remove tag home"]').count()) === 1, 'tapping a suggestion should add that tag');
+  expect(!(await offered()).includes('home'), 'an applied tag must not be offered again');
+  await page.locator('input[placeholder="New tag"]').fill('');
+  expect(JSON.stringify(await offered()) === '["work","errand"]', `after adding home: ${JSON.stringify(await offered())}`);
+
+  // Enter adds what was typed, suggested or not
+  await page.locator('input[placeholder="New tag"]').fill('brandnew');
+  await page.locator('input[placeholder="New tag"]').press('Enter');
+  expect((await page.locator('[aria-label="Remove tag brandnew"]').count()) === 1, 'Enter should add the typed tag');
+
+  // property keys are offered too: one already used, and ones the app knows
+  await page.getByText('+ Add property').click();
+  const keys = await page.evaluate(() => [...document.querySelectorAll('datalist[id^="property-keys-"] option')].map((o) => o.value));
+  expect(keys.includes('OWNER') && keys.includes('EFFORT') && keys.includes('CUSTOM_ID'), `property keys offered: ${JSON.stringify(keys)}`);
+
+  await page.getByText('OK', { exact: true }).last().click();
+  await page.waitForTimeout(500);
+  const text = await documentText(page);
+  expect(/^\* Gamma\s+:home:brandnew:\s*$/m.test(text), `saved heading: ${JSON.stringify(text.split('\n').find((l) => l.includes('Gamma')))}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('command palette: capture templates and Extras entries are commands you can run by name', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, ['* Note', '', '# Local Variables:', '# org-xx-extra-menu: "\'org-clock-out;Stop the clock"', '# End:', ''].join('\n'));
+  const { DEFAULT_CAPTURE_TEMPLATES } = await import(ROOT + '/src-browser/settings.js');
+
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Commands');
+  await page.waitForSelector('#command-palette');
+  await page.keyboard.type('capture:');
+  const captureRows = (await paletteRows(page)).map((r) => r.split('\n')[0]);
+  const expected = DEFAULT_CAPTURE_TEMPLATES.map((t) => `Capture: ${t.description}`);
+  expect(JSON.stringify([...captureRows].sort()) === JSON.stringify([...expected].sort()), `capture rows: ${JSON.stringify(captureRows)} vs ${JSON.stringify(expected)}`);
+
+  // an Extras entry from the document's own Local Variables
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('extras');
+  const extraRows = (await paletteRows(page)).map((r) => r.split('\n')[0]);
+  expect(extraRows.length === 1 && extraRows[0] === 'Extras: Stop the clock', `extras rows: ${JSON.stringify(extraRows)}`);
+
+  // running a template that asks questions opens its form
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('capture: meeting');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#capturePanel', { state: 'visible', timeout: 5000 });
+  const panel = await page.locator('#capturePanel').innerText();
+  expect(panel.includes('Meeting'), `the capture form for the chosen template should be showing: ${JSON.stringify(panel.slice(0, 120))}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('more menu: the Commands entry can be renamed or omitted via org-xx-menu-aliases, and stays visible (default order) when left unmentioned', async () => {
+  const localVars = (line) => ['* A', '', '# Local Variables:', `# ${line}`, '# End:', ''].join('\n');
+
+  let { context, page, errors } = await freshPage();
+  await newDocument(page, localVars('org-xx-menu-aliases: "more:Commands;\u{1F4B2}Commands"'));
+  await page.click('#moreBtn');
+  let menuText = await page.locator('#morePanel').innerText();
+  expect(menuText.includes('\u{1F4B2}Commands'), `renamed label should appear: ${JSON.stringify(menuText)}`);
+  expect(!/(^|\n)Commands(\n|$)/.test(menuText), 'the original label should no longer appear on its own');
+  await page.locator('#morePanel').getByText('\u{1F4B2}Commands').click();
+  await page.waitForSelector('#command-palette');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+
+  ({ context, page, errors } = await freshPage());
+  await newDocument(page, localVars('org-xx-menu-aliases: "more:Commands;"'));
+  await page.click('#moreBtn');
+  menuText = await page.locator('#morePanel').innerText();
+  expect(!menuText.includes('Commands'), `Commands should be omitted entirely: ${JSON.stringify(menuText)}`);
+  expect(menuText.includes('Capture') && menuText.includes('Settings'), 'the other entries should be unaffected');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+
+  ({ context, page, errors } = await freshPage());
+  await newDocument(
+    page,
+    localVars('org-xx-menu-aliases: "more:Capture;" "more:Clocking;" "more:Export;" "more:History;" "more:Import;" "more:Settings;\u2699\uFE0F"')
+  );
+  await page.click('#moreBtn');
+  menuText = await page.locator('#morePanel').innerText();
+  expect(menuText.includes('Commands'), `Commands should still show even though this alias list never mentions it: ${JSON.stringify(menuText)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 async function openPalette(page) {
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Commands');
