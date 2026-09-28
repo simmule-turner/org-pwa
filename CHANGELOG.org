@@ -7,6 +7,41 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v407 — Full org-duration effort values; refile by tag/todo/regexp; offline fix
+Effort estimates now accept every org-duration form (H:MM, H:MM:SS,
+unit sequences like 1y 3d 3h 4min or 1d3h5min, 3d 13:35, 2.35h, a bare
+number as minutes) with Emacs's default units, stored exactly as typed.
+"m" is a month, as in Org; minutes are "min". Researched against
+org-duration.el and the Org manual rather than guessed.
+
+Refile targets gain tag=, todo= and regexp= beside level=/maxlevel=,
+following org-refile-get-targets: tag is the headline's own tags only
+(no inheritance), todo is the exact keyword, regexp is an Emacs regexp
+matched against the headline line as written. Several criteria on one
+entry must all match (an extension: Emacs needs a Lisp verify function
+for that); regexp= takes the rest of the entry so it goes last, and a
+literal ; inside it is written \;. Entries that can't be understood are
+now listed at the top of the picker with the reason instead of being
+silently dropped -- this also covers malformed entries that used to
+vanish without a word. Entry shape changed from {fileSpec, kind, n} to
+{fileSpec, criteria}; the 24 existing test entries were converted with no
+change in what they assert, and 21 tests were added.
+
+Fix (found while checking the precache list for the new module): five
+modules the app imports (history-store, query-replace, emacs-regex,
+export-org, org-plot) were never in the service worker's precache list,
+and its fetch handler doesn't cache at runtime, so a cold start with no
+network failed to load the app at all. Reproduced with the server really
+stopped (not just a browser offline flag, which doesn't reach the
+service worker) and confirmed fixed; every one of the 73 modules
+reachable from app.js is now precached.
+
+* v406 — Doc fix: Folding's "Missing" line left out showNlevels
+The Differences section's Folding entry listed only overview, content,
+showall and showeverything as implemented. show2levels through
+show5levels are implemented (and tested), and documented elsewhere in
+the README; the line now names them too.
+
 * v405 — Effort estimates move to More > Clocking, with a free-entry value
 The row action menu's Effort button is gone. Setting an estimate is now
 More > Clocking > Effort, which prompts for an H:MM value (blank clears

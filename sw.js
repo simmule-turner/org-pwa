@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v405';
+const CACHE_NAME = 'org-pwa-shell-v407';
 
 const SHELL_FILES = [
   './',
@@ -25,6 +25,12 @@ const SHELL_FILES = [
   './src/local-variables.js',
   './src/refile.js',
   './src/clock.js',
+  './src/org-duration.js',
+  './src/history-store.js',
+  './src/query-replace.js',
+  './src/emacs-regex.js',
+  './src/export-org.js',
+  './src/org-plot.js',
   './src/clocktable.js',
   './src/extra-menu.js',
   './src/menu-alias.js',

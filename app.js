@@ -88,9 +88,10 @@ import {
   getContactsFilesVar,
   parseAgendaFilesVar,
 } from './src/local-variables.js';
-import { parseRefileTargets, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath, collectSubtreeHeadings } from './src/refile.js';
+import { parseRefileTargetsWithErrors, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath, collectSubtreeHeadings } from './src/refile.js';
 import { saveNarrowState, loadNarrowState } from './src/narrow-state.js';
-import { clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, currentClockSessionMinutes, formatClockDuration, parseClockDuration, findHeadingWithRunningClock, findMostRecentlyClockedHeading } from './src/clock.js';
+import { clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, currentClockSessionMinutes, formatClockDuration, findHeadingWithRunningClock, findMostRecentlyClockedHeading } from './src/clock.js';
+import { parseOrgDuration } from './src/org-duration.js';
 import { computeClocktable, renderClocktable } from './src/clocktable.js';
 import { parseExtraMenu, tokenize as tokenizeExtraMenuValue } from './src/extra-menu.js';
 import { parseMenuAliases, resolveMenuOrder, tokenizeMenuAliasValue } from './src/menu-alias.js';
@@ -1004,16 +1005,16 @@ async function loadRefileTargetDocs(targetsSpec) {
 }
 
 async function openRefilePicker(heading) {
-  pendingRefile = { heading, loading: true, candidates: [] };
+  const { entries: targetsSpec, errors: targetErrors } = parseRefileTargetsWithErrors(getRefileTargets(state.localVariables));
+  pendingRefile = { heading, loading: true, candidates: [], errors: targetErrors };
   renderRefilePanel();
-  const targetsSpec = parseRefileTargets(getRefileTargets(state.localVariables));
   if (targetsSpec.some((entry) => entry.fileSpec === 'agenda-files')) {
     await ensureAgendaFilesLoadedAndWait();
   }
   const docsById = await loadRefileTargetDocs(targetsSpec);
   if (!pendingRefile || pendingRefile.heading !== heading) return; // dismissed while loading
   const candidates = getRefileCandidates(targetsSpec, docsById, state.documentId, agendaFilesConfig, heading);
-  pendingRefile = { heading, loading: false, candidates };
+  pendingRefile = { heading, loading: false, candidates, errors: targetErrors };
   renderRefilePanel();
 }
 
@@ -1031,6 +1032,18 @@ function renderRefilePanel() {
   label.style.marginBottom = '6px';
   label.textContent = `Refile "${pendingRefile.heading.title || '(untitled)'}" to:`;
   refilePanelBox.appendChild(label);
+
+  // Target entries that couldn't be understood are skipped, not
+  // guessed at -- but never silently: each one is listed here, so a
+  // typo in org-refile-targets shows up instead of a target just missing.
+  for (const err of pendingRefile.errors || []) {
+    const errEl = document.createElement('div');
+    errEl.style.fontSize = '12px';
+    errEl.style.color = '#c0392b';
+    errEl.style.marginBottom = '6px';
+    errEl.textContent = `Skipped target entry "${err.entry}": ${err.message}`;
+    refilePanelBox.appendChild(errEl);
+  }
 
   if (pendingRefile.loading) {
     const loading = document.createElement('div');
@@ -3020,7 +3033,7 @@ function buildGlobalModeStringParts(vars) {
   if (running) {
     const mins = currentClockSessionMinutes(running.heading);
     const effortRaw = getProperty(running.heading, 'EFFORT');
-    const effortMins = effortRaw ? parseClockDuration(effortRaw) : 0;
+    const effortMins = Math.round(effortRaw ? parseOrgDuration(effortRaw) || 0 : 0);
     const overEstimate = effortMins > 0 && mins > effortMins;
     const clockText = effortMins > 0
       ? `${formatClockDuration(mins)} / ${formatClockDuration(effortMins)}${overEstimate ? ' !' : ''}`
@@ -3414,12 +3427,11 @@ function cyclePriorityFor(heading) {
   commitAndRender(next ? `Priority set to ${next}` : 'Priority cleared');
 }
 
-/** Prompts for a heading's EFFORT estimate as free text (H:MM, same
- *  format as a clock line; blank clears it), like real org's own
- *  org-set-effort prompt. Anything that isn't H:MM is refused with a
- *  status message and the existing value is left untouched -- the
- *  modeline's over-estimate check reads this with parseClockDuration,
- *  which only understands H:MM. */
+/** Prompts for a heading's EFFORT estimate as free text, like real
+ *  org's own org-set-effort prompt; blank clears it. Any org-duration
+ *  form is accepted (see src/org-duration.js) and stored exactly as
+ *  typed, as Emacs does. Anything else is refused with a status message
+ *  and the existing value is left untouched. */
 function openEffortEditor(heading) {
   if (!heading) return;
   if (isBufferReadOnly) {
@@ -3427,7 +3439,7 @@ function openEffortEditor(heading) {
     return;
   }
   const overlay = openTextFieldPopup({
-    label: 'Effort estimate (H:MM, blank to clear)',
+    label: 'Effort estimate (e.g. 1:30, 2h, 1d 3h; blank to clear)',
     value: getProperty(heading, 'EFFORT') || '',
     placeholder: '1:30',
     resetInPlace: true,
@@ -3436,11 +3448,11 @@ function openEffortEditor(heading) {
       if (value === '') {
         deleteProperty(heading, 'EFFORT');
         commitAndRender('Effort cleared');
-      } else if (/^\d+:[0-5]\d$/.test(value)) {
+      } else if (parseOrgDuration(value) !== null) {
         setProperty(heading, 'EFFORT', value);
         commitAndRender(`Effort set to ${value}`);
       } else {
-        setStatus('Effort must be H:MM, e.g. 1:30 -- not changed.');
+        setStatus('Not a valid duration (try 1:30, 2h, or 1d 3h) -- effort not changed.');
         render();
       }
     },
