@@ -7,6 +7,225 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v413 — app.js split: shared state in one object, features in modules
+v412 left app.js at 14,606 lines because 254 functions each read or wrote
+one of 113 shared `let` variables (`state` alone in 117 of them), and a `let`
+can't be shared across files. This finishes the job in three steps.
+
+1. One state object. All 113 variables are now properties of `S`
+(src-browser/app-state.js), which any module can read and write. Done with
+a real scope analysis (eslint-scope), not text search, so shadowed names,
+`x++`, destructuring assignment and shorthand properties are right: 1,794
+edits -- 1,175 reads, 506 writes, 29 `{ x }` -> `{ x: S.x }`. Declarations
+keep their place and order (`let a = 1` became `S.a = 1`), so initialisation
+is exactly what it was.
+2. The 40 DOM-element constants moved to src-browser/dom.js.
+3. With nothing left holding them, all 254 functions moved into 34 feature
+modules by area (render, row-render, editing, tabs, documents-io,
+external-sync, refile-flow, clock-flow, agenda-view, search-ui, capture-ui,
+settings-view, god-mode-palette, dialogs, ...), moved verbatim by script with
+their doc comments, imports generated from the code. app.js: 14,606 -> 1,397
+lines: imports, state initialisation, event wiring, bootstrap. No
+constant runs code at load across a module boundary (checked), which is what
+could have broken under circular imports.
+
+A real bug found on the way, and it predates this work: buffer-read-only
+was the one per-document flag missing from the tab snapshot, so making one
+document read-only made every tab read-only when you switched. (In Emacs it
+is buffer-local.) The new tabs smoke check failed identically on v412's
+untouched code, which is how I knew it wasn't the refactor. Now saved and
+restored per tab.
+
+Honest limits: the split is by file, not decoupled. Modules call each other
+freely (render draws the views, the views call render), so there are 32
+circular import pairs. It works because they only call each other after
+everything has loaded, but the modules can't be understood or tested in
+isolation, and none can be imported in Node.
+
+Verified by: syntax and scope analysis of all 53 browser files (nothing
+undeclared but real browser globals); all 122 reachable modules precached
+(offline check); 2,907 unit tests; 21 browser checks; every one of the 45
+palette commands run with no page error; Settings (34/34 labels) and
+History. Guards so it doesn't decay: test/module-structure.test.js (no
+module-level let, every import really exported, no duplicate imports,
+app.js stays small -- each mutation-checked) and tools/check-scope.mjs
+(dev-only; reports any name used but never imported). tools/coupling-report
+is removed; its job is done.
+
+* v412 — First stage of splitting app.js: everything that can move, has
+Measured first, with a real parser (acorn), not guessed: app.js was 16,589
+lines, 324 functions and 113 shared `let` variables. A function can move
+verbatim only if it -- and everything it calls -- touches none of those
+variables and none of the document-derived constants. Only 71 functions and
+32 constants qualified. They are now in ten modules under src-browser/:
+ui-widgets (28), field-groups, agenda-format, appearance, settings-fields
+(the 34-field quick-settings table), doc-helpers, sync-helpers,
+render-helpers, constants and singletons (the storage adapter and the
+caches -- same objects, now shared by import). app.js: 16,589 -> 14,606
+lines. No behaviour change intended or observed.
+
+How it was done: an AST-based script moved each declaration verbatim with
+its doc comment, added `export`, and generated every import from the code
+itself; nothing was retyped. Verified by: syntax of all 11 files; a scope
+analysis for undeclared identifiers (only the browser global MessageChannel
+turned up); every one of the 86 reachable modules being precached (the
+offline check passes); all 2901 unit tests; all 20 browser checks; every one
+of the 45 palette commands run once with no page error; Settings, History
+and its diff opening; and all 34 quick-settings labels found on the rendered
+Settings screen, from their new home.
+
+What this does NOT do, stated plainly: the other 254 functions (11,278
+lines) cannot move by extraction, because each reads or writes shared
+state -- `state` alone is touched directly by 117 of them, then currentView,
+keyboardFocusedBodyRow, isDirty and so on. Splitting those means first
+giving the state one exported home and rewriting its references, a much
+bigger and riskier change than moving code. New tools/coupling-report.mjs
+(dev-only; needs acorn installed once) reports exactly this and is the way
+to re-measure after each step.
+
+* v411 — History diff that scales; effort sort/filter/limit; Effort_ALL; refile recents
+History diff: text-diff.js was a textbook LCS table, O(n*m) in time AND
+memory, so "show what changed" on a 20,000-line journal needed ~400 million
+cells -- a frozen tab. It now runs on merge3.js's Myers diff (cost tracks
+the number of differing lines, not the file size); versions that differ by
+thousands of lines fall back to one replaced block, still correct. All 15
+existing tests pass unchanged; new ones cover a 20,000-line file (instant),
+the fallback, and 200 random inputs against a brute-force reference.
+
+Agenda effort, following org-agenda.el's own rules: the clock button in the
+toolbar opens Sort (effort-up / effort-down), Filter (the `_` filter: at
+most / at least / exactly) and Max per day (org-agenda-max-effort). Applied
+where days are grouped, so rows, empty-day hiding and day totals agree.
+Rules kept from Emacs, including the surprising ones: < and > are inclusive;
+the limit keeps a PREFIX of the sorted day; a task with no effort counts as
+high effort. Entries with no heading are never filtered or counted (Emacs
+would drop them under a limit). Session-only; documented.
+
+Effort_ALL: the allowed effort values, from the heading or nearest ancestor,
+the file's #+PROPERTY: Effort_ALL line, or a new org-global-properties
+setting -- first that yields a usable value wins. When one applies, the
+effort prompt shows its values as buttons and one tap saves; otherwise the
+prompt stays free text (you had declined presets nobody configured). The
+Agenda filter draws its values from the same list, or org's own default set.
+
+Refile recent targets: the picker lists the last destinations under RECENT,
+above ALL TARGETS. Only ones still valid (file, heading, org-refile-targets,
+subtree exclusion re-checked); only successful refiles recorded; the last
+eight kept across sessions.
+
+Tests: 2901 unit (37 new) and 20 browser checks (3 new: Effort_ALL incl. the
+Local Variables path, agenda sort/limit/filter/reset, refile recents).
+Every new rule mutation-checked; the agenda smoke check was also confirmed
+to fail when the effort view is not applied. One check initially failed
+because the tab is named after the first heading and matched the row text.
+
+* v410 — Remove the diary-* twins added in v409
+v409's sexp audit added diary-anniversary, diary-cyclic, diary-block and
+diary-date. Each already has an org-* twin (org-anniversary, org-cyclic,
+org-block, org-date) taking year-month-day, which is why the diary-* names
+were left out originally: their argument order follows calendar-date-style
+(month-day-year by default), so one line would mean different dates under
+different settings. They are removed again, from the timestamp evaluator
+and from body lines (where v409 had rewritten them into the org-* forms).
+The README now says they are absent on purpose and how to convert a line
+from an Emacs diary (rename it, put the year first), and tests pin the
+decision: the four names match nothing in either argument order, are not
+translated, and their org-* twins still work.
+
+Kept from v409's audit, none of which has an org-* twin or needs one: the
+org-anniversary start-year fix, org-block working inside <%%(...)>, and/or/
+not with t/nil, org-date, org-class, quoted lists (including diary-float's
+month list, since diary-float has no org-* twin), and the general body-line
+path for lines built from those. The normalizer that did the rewriting is
+now just unquoteDiaryFloatMonthList.
+
+* v409 — Command palette; effort in the Agenda; sexp audit (one real bug, several gaps)
+Command palette: More > Commands (a fixed first entry) or god-mode `g x`
+(M-x) opens a searchable list of 45 commands -- heading, clocking,
+document, view, export, app. Type a name or the real Org one (org-todo,
+org-clock-in); every word must match, and a hyphenated word matches as
+one phrase, so org-clock-in doesn't also list org-clock-out. Commands
+that can run come first; the rest are dimmed with the reason (nothing is
+narrowed, no clock is running, tap a heading first). Recents lead when
+nothing is typed. Heading commands act on the heading whose action menu
+is open, else the keyboard-focused one. Keys are shown only where
+god-mode really binds them, and those commands run through the same table
+entry as the key. Commands is deliberately outside the menu-alias set:
+adding a label to it would have silently switched off the reordering of
+anyone who had already listed the other six. Found by the smoke test while
+building it: the Enter that ran a command also reached the global key
+handler and wiped the status message the command had just set.
+
+Effort in the Agenda: scheduled, deadline and timestamped headings show
+their EFFORT as typed (a small clock badge) on agenda rows and in the TODO
+view; each day header totals the day's estimates, with +N? for TODOs that
+have none yet. Counted once per heading per day; carried-forward tasks
+count on the day shown; appointments without a TODO keyword or effort are
+not a gap; an explicit 0:00 is an estimate; invalid efforts are treated as
+missing. No sorting or filtering by effort yet (documented).
+
+Sexp audit, against the Emacs manual and org-agenda.el:
+- BUG: org-anniversary ignored its start year, so the agenda showed
+  "Arthur's -8th birthday" before he was born and "0th" in the year itself,
+  and <%%(org-anniversary ...)> matched every earlier year. Like real
+  diary-anniversary ("any year after 1948") it now applies only afterwards.
+- INCONSISTENCY: org-block worked as a body line but silently never matched
+  inside <%%(...)>; the header comment even listed it as supported.
+- ADDED: and / or / not, t / nil, quoted lists ('(10 11 12), as Emacs
+  writes them -- diary-float's month list too), org-block, org-date,
+  org-class, and the standard American-order diary-anniversary /
+  diary-cyclic / diary-block / diary-date. Body lines: the diary-* spellings
+  keep their text and %d%s; lines built from the general functions go
+  through the same evaluator as timestamps.
+- Deliberately NOT added, and now documented: let / date / calendar-*
+  helpers (the manual's own pay-check example needs them), diary-remind,
+  the display-only day-of-year / ISO / Julian / lunar-phase / other-calendar
+  functions, calendar-date-style, and holiday-skipping in org-class (which
+  matches nothing rather than show a class on a holiday).
+
+Tests: 2865 unit (76 new across palette search and registry, agenda effort,
+and the sexp audit -- every one mutation-checked, which found and closed
+gaps in three of them) and 17 browser checks (5 new).
+
+* v408 — Sync conflicts get a real three-way merge; browser smoke test; README fixes
+Save used to answer any conflict with a two-way "keep mine or keep theirs"
+confirm. The app now keeps the text of the file as of the last successful
+open or save (the common ancestor) and merges by line: changes in
+different places combine automatically; only regions where both sides
+changed the same lines reach a dialog, which shows each one (yours / the
+other version) and asks for Yours, Other or Both, with Apply disabled
+until every region is decided. Cancel changes nothing anywhere -- disk,
+pending edit and sync metadata all untouched -- and the same conflict
+returns on the next Save. An automatic merge is its own undo step
+(verified live: Undo restores the pre-merge text). A "conflict" where the
+other side never really changed (e.g. a server ETag change with identical
+content) now resolves silently. Files last synced by an older version have
+no ancestor: every difference is shown; versions too different to diff
+line by line are offered as one whole-file choice.
+
+The external-change banner gains Merge (beside Reload and Dismiss): it
+merges the unsaved local text with the version now on the server, using
+the same dialog, as an ordinary undoable unsaved edit, and makes the
+other version the new baseline so the following Save is a plain write.
+
+Under the hood: new src/merge3.js (Myers O(ND) diff -- text-diff.js's
+O(n*m) table is fine for undo snapshots, not a large journal -- plus
+diff3-style clustering, where touching edits count as one place, like git);
+syncDocument passes the callback { mine, disk, base } and accepts 'mine',
+'disk', { merged } or 'cancel'; sync metadata gains baseContent.
+
+New tools/smoke.mjs: 12 real-browser checks (cold start offline, the
+read-only toggle, effort, refile, the whole conflict path, narrowing across
+a reload) against a built-in static server and mock WebDAV server, no new
+dependency. Mutation-checked: reintroducing three earlier bugs makes the
+matching checks fail. New test/sw-precache.test.js fails if a module the
+app imports is missing from the service worker's precache list.
+
+README: Differences no longer says Narrow is session-only (it persists,
+now covered by a smoke check) or that Attachments has no deletion UI
+(Open, Save and Delete exist, per heading); the conflict sections describe
+what actually happens; Development documents the smoke test.
+
 * v407 — Full org-duration effort values; refile by tag/todo/regexp; offline fix
 Effort estimates now accept every org-duration form (H:MM, H:MM:SS,
 unit sequences like 1y 3d 3h 4min or 1d3h5min, 3d 13:35, 2.35h, a bare
