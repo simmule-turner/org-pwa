@@ -2,9 +2,9 @@
  * org-refile-targets, translated into this app's own plain-text
  * Global/Local Variables format (a single line can't hold real org's
  * actual Lisp list-of-cons-cells syntax). One line, semicolon-separated
- * entries, each `<file-spec> <level-spec>`:
+ * entries, each `<file-spec> <criterion> [<criterion> ...]`:
  *
- *   org-refile-targets: current maxlevel=3; notes.org maxlevel=2; agenda-files level=1
+ *   org-refile-targets: current maxlevel=3; notes.org tag=work level=2; agenda-files todo=NEXT
  *
  * File spec is one of:
  *   - `current`      -- this file only (org's own `nil`)
@@ -17,10 +17,26 @@
  *                       current file; a name containing "/" is used
  *                       as-is) -- not a second, parallel convention.
  *
- * Level spec is `maxlevel=N` (this level and shallower) or `level=N`
- * (exactly this level) -- required on every entry when the variable is
- * set at all, matching real org's own stricter requirement there; an
- * entry missing one is skipped rather than guessing at a default.
+ * Criteria (real org's own :level / :maxlevel / :tag / :todo /
+ * :regexp target specs). An entry may list several; a heading must
+ * satisfy ALL of them -- one deliberate extension: real org takes one
+ * criterion per entry and needs a Lisp verify function to combine them.
+ *
+ *   level=N      exactly level N
+ *   maxlevel=N   level N or shallower
+ *   tag=NAME     NAME is one of the headline's OWN tags (no
+ *                inheritance, as in org; case-sensitive)
+ *   todo=KEYWORD the headline's TODO keyword is exactly KEYWORD
+ *                (case-sensitive; a DONE keyword works too)
+ *   regexp=PATTERN an Emacs regexp matched against the headline line as
+ *                written in the file (`** TODO [#A] Title :tag:`),
+ *                case-sensitively. Takes the REST of the entry, spaces
+ *                included, so it must be the last criterion. A literal
+ *                ";" inside it is written "\;".
+ *
+ * At least one criterion is required on every entry. An entry that
+ * can't be understood is skipped AND reported (see
+ * parseRefileTargetsWithErrors), never guessed at.
  *
  * Default when org-refile-targets is entirely unset (matches real
  * org's own actual, documented nil-default exactly): current file
@@ -28,23 +44,129 @@
  */
 
 import { resolveCaptureFileId } from './capture-template.js';
+import { emacsRegexToJs, EmacsRegexError } from './emacs-regex.js';
+import { serializeHeadingLine } from './org-parser.js';
 
-const ENTRY_RE = /^(\S+)\s+(maxlevel|level)=(\d+)$/;
+const CRITERION_KEYS = ['level', 'maxlevel', 'tag', 'todo', 'regexp'];
 
-function parseRefileTargets(text) {
+/** Splits on ";" separators, treating a backslash as escaping the next
+ *  character (so "\;" stays inside its entry, and "\\;" is an escaped
+ *  backslash followed by a real separator). Escapes are kept as written. */
+function splitEntries(text) {
+  const entries = [];
+  let current = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '\\' && i + 1 < text.length) {
+      current += ch + text[i + 1];
+      i++;
+    } else if (ch === ';') {
+      entries.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  entries.push(current);
+  return entries;
+}
+
+/** Parses one entry; returns { entry } or { error }. */
+function parseOneEntry(entryText) {
+  const firstSpace = entryText.search(/\s/);
+  const fileSpec = firstSpace === -1 ? entryText : entryText.slice(0, firstSpace);
+  if (fileSpec.includes('=')) {
+    return { error: `starts with "${fileSpec}" -- expected a file first (current, agenda-files, or a filename), then criteria` };
+  }
+  let rest = firstSpace === -1 ? '' : entryText.slice(firstSpace).trim();
+  if (!rest) {
+    return { error: 'needs at least one criterion (level=, maxlevel=, tag=, todo=, or regexp=)' };
+  }
+
+  const criteria = [];
+  while (rest) {
+    const eq = rest.indexOf('=');
+    const space = rest.search(/\s/);
+    if (eq === -1 || (space !== -1 && space < eq)) {
+      const token = space === -1 ? rest : rest.slice(0, space);
+      return { error: `"${token}" isn't a criterion (expected key=value, e.g. level=2 or tag=work)` };
+    }
+    const key = rest.slice(0, eq);
+    if (!CRITERION_KEYS.includes(key)) {
+      return { error: `unknown criterion "${key}" (expected level, maxlevel, tag, todo, or regexp)` };
+    }
+    let value;
+    if (key === 'regexp') {
+      value = rest.slice(eq + 1); // the rest of the entry, spaces and all
+      rest = '';
+    } else {
+      const afterEq = rest.slice(eq + 1);
+      const valueEnd = afterEq.search(/\s/);
+      value = valueEnd === -1 ? afterEq : afterEq.slice(0, valueEnd);
+      rest = valueEnd === -1 ? '' : afterEq.slice(valueEnd).trim();
+    }
+    if (value === '') return { error: `${key}= needs a value` };
+
+    if (key === 'level' || key === 'maxlevel') {
+      if (!/^\d+$/.test(value)) return { error: `${key}= needs a whole number, not "${value}"` };
+      criteria.push({ kind: key, n: Number(value) });
+    } else if (key === 'tag') {
+      criteria.push({ kind: 'tag', name: value });
+    } else if (key === 'todo') {
+      criteria.push({ kind: 'todo', keyword: value });
+    } else {
+      try {
+        criteria.push({ kind: 'regexp', source: value, regex: emacsRegexToJs(value) });
+      } catch (err) {
+        if (!(err instanceof EmacsRegexError)) throw err;
+        return { error: `regexp "${value}" isn't valid: ${err.message}` };
+      }
+    }
+  }
+  return { entry: { fileSpec, criteria } };
+}
+
+/** Parses org-refile-targets text into `{ entries, errors }`. `errors`
+ *  lists every entry that was skipped and why, so the caller can show
+ *  it rather than have a target quietly disappear. */
+function parseRefileTargetsWithErrors(text) {
   if (!text || !text.trim()) {
-    return [{ fileSpec: 'current', kind: 'level', n: 1 }];
+    return { entries: [{ fileSpec: 'current', criteria: [{ kind: 'level', n: 1 }] }], errors: [] };
   }
   const entries = [];
-  for (const rawEntry of text.split(';')) {
-    const entry = rawEntry.trim();
-    if (!entry) continue;
-    const m = ENTRY_RE.exec(entry);
-    if (!m) continue; // malformed entry -- skipped, not guessed at, matching real org's own stricter requirement
-    const [, fileSpec, kind, n] = m;
-    entries.push({ fileSpec, kind, n: Number(n) });
+  const errors = [];
+  for (const rawEntry of splitEntries(text)) {
+    const entryText = rawEntry.trim();
+    if (!entryText) continue;
+    const result = parseOneEntry(entryText);
+    if (result.entry) entries.push(result.entry);
+    else errors.push({ entry: entryText, message: result.error });
   }
-  return entries;
+  return { entries, errors };
+}
+
+function parseRefileTargets(text) {
+  return parseRefileTargetsWithErrors(text).entries;
+}
+
+/** Whether `heading` satisfies every criterion of one entry. */
+function headingMatchesCriteria(heading, criteria) {
+  return criteria.every((c) => {
+    switch (c.kind) {
+      case 'level':
+        return heading.level === c.n;
+      case 'maxlevel':
+        return heading.level <= c.n;
+      case 'tag':
+        return (heading.tags || []).includes(c.name);
+      case 'todo':
+        return heading.todo === c.keyword;
+      case 'regexp':
+        return c.regex.test(serializeHeadingLine(heading));
+      default:
+        return false;
+    }
+  });
 }
 
 /** Strips a "scheme:path" entry down to its own bare path -- every
@@ -98,7 +220,7 @@ function getRefileCandidates(targetsSpec, docsById, currentFileId, agendaFilesCo
 
 function walkForCandidates(headings, outlinePath, entry, documentId, excludeSet, candidates, seen) {
   for (const heading of headings) {
-    const matches = entry.kind === 'level' ? heading.level === entry.n : heading.level <= entry.n;
+    const matches = headingMatchesCriteria(heading, entry.criteria);
     const path = [...outlinePath, heading.title];
     if (matches && !(excludeSet && excludeSet.has(heading))) {
       const key = documentId + '\u0000' + path.join('\u0000');
@@ -153,4 +275,4 @@ function findHeadingByOutlinePath(doc, outlinePath) {
   return found;
 }
 
-export { parseRefileTargets, resolveEntryFileIds, getRefileCandidates, findHeadingByOutlinePath, collectSubtreeHeadings };
+export { parseRefileTargets, parseRefileTargetsWithErrors, headingMatchesCriteria, resolveEntryFileIds, getRefileCandidates, findHeadingByOutlinePath, collectSubtreeHeadings };

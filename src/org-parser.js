@@ -467,6 +467,7 @@ export {
   parseOrg,
   serializeOrg,
   serializeHeadingSubtree,
+  serializeHeadingLine,
   findHeadingLineNumber,
   findHeadingAtLine,
   DEFAULT_TODO_KEYWORDS,
