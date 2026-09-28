@@ -768,7 +768,7 @@ A picked filename is lightly sanitized first — path separators and a few other
 :CUSTOM_ID: clocking
 :END:
 
-*More → Clocking* opens as a step within the same More menu, exactly like Export does, listing every clocking action together as plain text: *Clock-cancel*, *Clock-continue*, *Clock-in*, *Clock-out*. Only one heading can have a running clock at a time within this app's own UI, though a hand-edited file with more than one running ~CLOCK:~ line round-trips fine.
+*More → Clocking* opens as a step within the same More menu, exactly like Export does, listing every clocking action together as plain text: *Clock-cancel*, *Clock-continue*, *Clock-in*, *Clock-out*, *Effort* (see below). Only one heading can have a running clock at a time within this app's own UI, though a hand-edited file with more than one running ~CLOCK:~ line round-trips fine.
 
 *org-clock-in* inserts a bare ~CLOCK: [timestamp]~ line marking the start of a clocking session, on whichever heading's own action menu is currently open, falling back to whichever is keyboard-focused if neither is available at all (a status message says so, rather than doing nothing silently) — the same target-resolution real org itself effectively gets for free from wherever point happens to be, since this menu isn't tied to any one specific heading the way the action menu itself is. Tapping it while already running on the *same* heading is a no-op — real org itself doesn't let you double-start the same clock either, it just continues the existing session. Tapping it on a *different* heading while another one's clock is running auto-clocks-out that previous one first, at the exact same moment the new one starts (no gap between them), matching real org's own actual behavior — only one clock can ever meaningfully be "the current task" at a time.
 
@@ -784,9 +784,9 @@ A picked filename is lightly sanitized first — path separators and a few other
 
 *A persistent modeline clock display*: whenever a clock is running anywhere, the modeline (see [[#modeline][Modeline and minibuffer]]) shows ~[⏱ H:MM] Heading title~ — the currently-running session's own elapsed time plus which heading it's for, visible regardless of what's currently on screen. Refreshes every 30 seconds, matching the same minute-level granularity ~org-clock-display~'s own total already uses — there's no value in a faster refresh when the displayed number wouldn't actually change between them.
 
-*Effort estimates*: a heading's ~EFFORT~ property (a plain ~H:MM~ duration, same format as a clock line — set it directly in *Edit details → Properties*, or see the quick-set options just below) shows next to that heading's title as a ~⏱ H:MM~ badge whenever it's set. Tapping the badge cycles it through a fixed preset list (matching real org's own default ~Effort_ALL~ completion set: None, 0:10, 0:30, 1:00, 2:00, 3:00, 4:00, 5:00, 6:00, 7:00) — the same tap-to-cycle behavior the priority badge already has. The same cycle is also reachable from a heading's own action menu (*⏱ Effort*) and via ~C-c C-x e~, matching real org's own ~org-set-effort~ keybinding. While that heading is the one currently clocked in, the modeline's clock display shows the running time against the estimate — ~[⏱ 0:45 / 2:00] Heading title~ — with a trailing ~!~ once the elapsed time has passed the estimate.
+*Effort estimates*: a heading's ~EFFORT~ property (a plain ~H:MM~ duration, same format as a clock line) is set from *More → Clocking → Effort*, which prompts for the value on whichever heading's action menu is open (falling back to the keyboard-focused one, same as Clock-in). Type any ~H:MM~ (~0:45~, ~1:30~, ~12:00~); leave it blank to clear the estimate; anything that isn't ~H:MM~ is refused with a status message and the existing value is left alone. It can also still be typed directly into *Edit details → Properties*. Whenever ~EFFORT~ is set, it shows next to the heading's title as a ~⏱ H:MM~ badge; tapping the badge, or ~C-c C-x e~ (real org's own ~org-set-effort~ binding), opens the same prompt. While that heading is the one currently clocked in, the modeline's clock display shows the running time against the estimate — ~[⏱ 0:45 / 2:00] Heading title~ — with a trailing ~!~ once the elapsed time has passed the estimate.
 
-*What's not built*: a real org-set-effort minibuffer prompt for an arbitrary duration (the quick-set cycle only offers the fixed preset list above, not free entry — free entry is still available by typing the ~EFFORT~ property directly into Properties); a clock-in reminder or notification tied to the estimate, beyond the modeline's own ~!~ marker. See [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]].
+*What's not built*: effort values in ~org-duration~ forms other than ~H:MM~ (such as ~2h~ or ~1d 3h~) are refused by the prompt; a clock-in reminder or notification tied to the estimate, beyond the modeline's own ~!~ marker. See [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]].
 
 -----
 
@@ -1177,7 +1177,7 @@ The five menus' own real labels, exactly as they'd appear in ~"menu:Label;alias"
 | ~more~ | ~Capture~, ~Clocking~, ~Export~, ~History~, ~Import~, ~Settings~ |
 | ~export~ | ~ASCII~, ~As-org~, ~Calendar (.ics)~, ~Contacts (.vcf)~, ~HTML~, ~Markdown~, ~ODT~ |
 | ~view~ | ~Agenda~, ~Org~, ~Text~, ~TODO~ |
-| ~clocking~ | ~Clock-cancel~, ~Clock-continue~, ~Clock-in~, ~Clock-out~ |
+| ~clocking~ | ~Clock-cancel~, ~Clock-continue~, ~Clock-in~, ~Clock-out~, ~Effort~ |
 
 -----
 
@@ -1514,7 +1514,7 @@ This is the section to read if you know org-mode well and want to know exactly w
 
 *Footnotes*. *Missing*: no ~org-footnote-new~ / ~org-footnote-normalize~ commands (no auto-insert-at-point, no renumber/sort, no inline-↔separate-line conversion — editing a footnote means editing its raw text directly); no ~org-ref~ / ~org-cite~ citation-footnote integration.
 
-*Clocking* (see [[#clocking][Clocking]]). *Missing*: effort estimates only offer a fixed preset cycle, not a real ~org-set-effort~ free-entry prompt; no clock-in reminder or notification tied to an estimate beyond the modeline's own over-estimate marker.
+*Clocking* (see [[#clocking][Clocking]]). *Missing*: effort estimates accept only ~H:MM~, not other ~org-duration~ forms like ~2h~; no clock-in reminder or notification tied to an estimate beyond the modeline's own over-estimate marker.
 
 *Agenda* (see [[#agenda][Agenda]]). *Missing*: the sexp evaluator supports only its own documented functions, not a real elisp interpreter; ~org-agenda-files~ only supports GitHub/WebDAV entries, not a local file.
 

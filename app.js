@@ -1572,12 +1572,23 @@ function renderClockOptionsFlow() {
     clockInHeading(target);
   });
   const outBtn = aliasedMenuDivItem(clockingMenuAliases, 'Clock-out', () => runningClockAction(clockOutHeading));
+  const effortBtn = aliasedMenuDivItem(clockingMenuAliases, 'Effort', () => {
+    const target = extraMenuTargetHeading();
+    finish();
+    if (!target) {
+      setStatus('No heading to set an effort estimate on -- tap a heading first.');
+      render();
+      return;
+    }
+    openEffortEditor(target);
+  });
 
   appendMenuButtonsInOrder(morePanel, clockingMenuAliases, [
     { label: 'Clock-cancel', btn: cancelBtn },
     { label: 'Clock-continue', btn: continueBtn },
     { label: 'Clock-in', btn: inBtn },
     { label: 'Clock-out', btn: outBtn },
+    { label: 'Effort', btn: effortBtn },
   ]);
 
   const backRow = document.createElement('div');
@@ -3403,29 +3414,39 @@ function cyclePriorityFor(heading) {
   commitAndRender(next ? `Priority set to ${next}` : 'Priority cleared');
 }
 
-/** Cycles a heading's own EFFORT property through a fixed preset list
- *  -- same tap-to-cycle UX as cyclePriorityFor above, just for effort
- *  estimates instead of priority cookies. The preset values match real
- *  org's own default Effort_ALL completion set (confirmed directly in
- *  org-agenda.el's org-agenda-filter-by-effort: "0 0:10 0:30 1:00 2:00
- *  3:00 4:00 5:00 6:00 7:00"), with None first to clear the property
- *  entirely. EFFORT is a real property (unlike priority's own headline
- *  cookie), so this and the general editor's raw Properties row can
- *  both touch it -- same last-write-wins relationship priority's own
- *  badge already has with that editor's structured priority picker. */
-const EFFORT_LEVELS = [null, '0:10', '0:30', '1:00', '2:00', '3:00', '4:00', '5:00', '6:00', '7:00'];
-
-function cycleEffortFor(heading) {
+/** Prompts for a heading's EFFORT estimate as free text (H:MM, same
+ *  format as a clock line; blank clears it), like real org's own
+ *  org-set-effort prompt. Anything that isn't H:MM is refused with a
+ *  status message and the existing value is left untouched -- the
+ *  modeline's over-estimate check reads this with parseClockDuration,
+ *  which only understands H:MM. */
+function openEffortEditor(heading) {
   if (!heading) return;
-  const current = getProperty(heading, 'EFFORT') || null;
-  const currentIndex = EFFORT_LEVELS.indexOf(current);
-  const next = EFFORT_LEVELS[(Math.max(currentIndex, 0) + 1) % EFFORT_LEVELS.length];
-  if (next) {
-    setProperty(heading, 'EFFORT', next);
-  } else {
-    deleteProperty(heading, 'EFFORT');
+  if (isBufferReadOnly) {
+    setStatus('Buffer is read-only.');
+    return;
   }
-  commitAndRender(next ? `Effort set to ${next}` : 'Effort cleared');
+  const overlay = openTextFieldPopup({
+    label: 'Effort estimate (H:MM, blank to clear)',
+    value: getProperty(heading, 'EFFORT') || '',
+    placeholder: '1:30',
+    resetInPlace: true,
+    onSave: (raw) => {
+      const value = String(raw).trim();
+      if (value === '') {
+        deleteProperty(heading, 'EFFORT');
+        commitAndRender('Effort cleared');
+      } else if (/^\d+:[0-5]\d$/.test(value)) {
+        setProperty(heading, 'EFFORT', value);
+        commitAndRender(`Effort set to ${value}`);
+      } else {
+        setStatus('Effort must be H:MM, e.g. 1:30 -- not changed.');
+        render();
+      }
+    },
+  });
+  const ta = overlay.querySelector('textarea');
+  if (ta) ta.rows = 2;
 }
 
 /** Cycles the WHOLE document's own fold state between 'overview'
@@ -3536,7 +3557,7 @@ const GOD_MODE_ACTIONS = {
   // Section 3: TODOs & Task Management
   'C-c C-t': () => keyboardFocusedHeading && openTodoOrPickWorkflow(keyboardFocusedHeading),
   'C-c ,': () => cyclePriorityFor(keyboardFocusedHeading),
-  'C-c C-x e': () => cycleEffortFor(keyboardFocusedHeading),
+  'C-c C-x e': () => openEffortEditor(keyboardFocusedHeading),
   'C-c C-v': () => {
     if (!state.doc) return;
     switchToView('tasklist');
@@ -7164,7 +7185,7 @@ function renderRow(row, todoSequence) {
       const effortBadge = document.createElement('span');
       effortBadge.className = 'priority-badge';
       effortBadge.textContent = `\u23f1 ${rowEffort}`;
-      effortBadge.onclick = () => cycleEffortFor(row.node);
+      effortBadge.onclick = () => openEffortEditor(row.node);
       el.appendChild(effortBadge);
     }
 
@@ -7262,14 +7283,6 @@ function renderRow(row, todoSequence) {
               onClick: () => {
                 actionMenuFor = null;
                 openTodoOrPickWorkflow(row.node);
-              },
-            },
-            {
-              icon: '\u23f1',
-              label: 'Effort',
-              onClick: () => {
-                actionMenuFor = null;
-                cycleEffortFor(row.node);
               },
             },
             {

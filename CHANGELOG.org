@@ -7,6 +7,18 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v405 — Effort estimates move to More > Clocking, with a free-entry value
+The row action menu's Effort button is gone. Setting an estimate is now
+More > Clocking > Effort, which prompts for an H:MM value (blank clears
+it, anything else is refused and leaves the old value alone) instead of
+cycling a fixed preset list. The badge next to a heading's title and
+C-c C-x e now open that same prompt, since a tap-to-cycle would have
+overwritten any custom value the prompt now allows. The Effort label
+works with the clocking menu-alias setting like the other items.
+Verified live in a real browser: entry absent from the action menu,
+present in Clocking, valid value saved and badged, invalid value
+rejected, blank clears.
+
 * v404 — README opens at two levels
 README.org's own #+STARTUP changed from overview to show2levels, so
 Help opens with top-level sections and their subsections visible
