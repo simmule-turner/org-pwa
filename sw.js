@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v413';
+const CACHE_NAME = 'org-pwa-shell-v414';
 
 const SHELL_FILES = [
   './',
@@ -27,6 +27,7 @@ const SHELL_FILES = [
   './src/clock.js',
   './src/org-duration.js',
   './src/effort-values.js',
+  './src/completion.js',
   './src/merge3.js',
   './src/command-palette.js',
   './src/history-store.js',

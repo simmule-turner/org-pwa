@@ -7,7 +7,62 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
-* v413 — app.js split: shared state in one object, features in modules
+* v414 — Tag/property completion; capture templates and Extras in the palette; Commands is now an ordinary More entry
+Tag and property-key completion (src/completion.js): the general editor's
+Tags field now suggests tags already used anywhere in the open document or
+a loaded agenda file (most-used first), plus any declared on a #+TAGS:
+line but not yet used by a heading -- narrowed as you type, one tap adds
+it, Enter adds whatever's typed. The Properties editor's Key field
+completes the same way against keys already in use, plus the handful this
+app itself reads or writes (CUSTOM_ID, EFFORT, Effort_ALL, ID, the
+ARCHIVE_* set). Neither list ever re-offers a tag/key the heading already
+has.
+
+Capture templates and Extras-menu entries are now commands in the palette
+too -- "Capture: <description>" runs that template directly (skipping the
+picker), "Extras: <label>" runs that entry exactly as tapping it would.
+Both are read fresh each time the palette opens, so an edited template
+list or a different document's own Extras menu is always current. The
+plain "Capture" command still opens the ordinary picker.
+
+Bug fix: More -> Commands was hard-coded outside org-xx-menu-aliases, so no
+alias entry for it ever did anything -- reported by the person using the
+app. My first explanation for why was wrong: I'd said adding it to the
+alias set would silently hide it for anyone with an existing config, but
+resolveMenuOrder only hides a label via its OWN explicit empty entry
+("more:Commands;") -- being unmentioned only means the custom ORDER falls
+back to default, never that the label disappears. Verified this with the
+function directly before touching anything. Commands is now an ordinary
+more: label like the other six: can be renamed, hidden, or reordered via
+org-xx-menu-aliases, and renders first by default when unmentioned. The
+menu-customization docs, its labels table, and its worked example are
+updated to match (the "all labels must be listed to reorder" set is now
+seven, not six).
+
+README audit, continued from v413's two fixes (Narrow persistence,
+Attachments deletion): the Tags/Properties/Priority Differences line
+still said "no completion for any of the three" -- now says what's true.
+The Tables line undersold what's built (said "arithmetic plus a handful of
+aggregate functions"; the section itself already documented conditionals,
+named constants, date/time arithmetic and formatting, and unit
+conversion) -- now matches the section's own "Out of scope" line. Checked
+and left alone, confirmed still accurate against the code: Folding
+(three flags: collapsed/bodyHidden/drawersHidden), Inheritance (no inline
+badge, search-time only), Clocking (no reminder), Agenda (org-agenda-files
+is github:/webdav: only, confirmed in parseAgendaFilesVar), Footnotes (no
+insert/renumber/convert command), Undo/redo (restoreFromHistory reapplies
+#+STARTUP fresh every time), Attachments (no browser, no bulk ops), and
+Conflict resolution (no word-level/side-by-side diff in a region).
+
+Tests: 2930 unit (23 new: 16 for completion, 7 for the palette's dynamic
+capture/Extras commands) and 24 browser checks (3 new: tag/property
+completion end-to-end including a saved-file check, capture templates and
+Extras entries running from the palette, and the three menu-alias
+scenarios -- renamed, omitted, and unmentioned-stays-visible, the last one
+confirmed to fail against the old fixed-Commands code via a throwaway copy
+before being trusted).
+
+
 v412 left app.js at 14,606 lines because 254 functions each read or wrote
 one of 113 shared `let` variables (`state` alone in 117 of them), and a `let`
 can't be shared across files. This finishes the job in three steps.
