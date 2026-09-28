@@ -7,6 +7,26 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v404 — README opens at two levels
+README.org's own #+STARTUP changed from overview to show2levels, so
+Help opens with top-level sections and their subsections visible
+instead of only the top-level headings.
+
+* v403 — Fix: read-only toggle ignored in Text view, and reset on leaving it
+Reported: on a file that is read-only via its own buffer-read-only
+local variable, View > Text then toggling to read/write still didn't
+allow editing, and switching back to Org silently re-enabled
+read-only. Two separate causes. First, render() deliberately leaves an
+already-showing Text-view textarea alone (to protect unsaved typing),
+so the textarea's readOnly flag was never updated by the toggle; it now
+syncs just that flag. Second, leaving Text view (and undo/redo) reparsed
+the document and re-derived read-only from the file's local variable,
+undoing the runtime toggle -- unlike real Emacs, where that variable
+only applies when the file is loaded. Read-only is now re-derived after a
+reparse only if the variable's own value actually changed. Verified live
+in a real browser against the Help buffer (read-only via its own file
+header): toggle to RW, type in Text view, switch to Org -- stays writable.
+
 * v402 — New feature: effort estimates; doc fix: repeater-mark agenda display already matches real Emacs
 EFFORT property (H:MM, same format as a clock line) now shows as a
 ⏱ H:MM badge next to a heading's title, tap-to-cycle through real

@@ -3612,6 +3612,17 @@ const GOD_MODE_ACTIONS = {
   },
 };
 
+/** After a reparse (undo/redo, leaving Text view), re-derives
+ *  read-only from the file's own buffer-read-only local variable ONLY
+ *  if that variable itself changed -- otherwise a runtime C-x C-q
+ *  toggle would be silently reverted, unlike real Emacs, where the
+ *  local variable only applies when the file is loaded. */
+function reconcileReadOnlyAfterReparse(previousVars, newVars) {
+  const before = getBufferReadOnly(previousVars);
+  const after = getBufferReadOnly(newVars);
+  if (before !== after) isBufferReadOnly = after;
+}
+
 /** Toggles buffer-read-only, per real Emacs's own actual C-x C-q --
  *  shared by that god-mode binding (see GOD_MODE_ACTIONS above) and
  *  the touch-native toggle in the View menu (see renderViewMenuContent
@@ -4809,8 +4820,8 @@ function restoreFromHistory() {
   applyStartupVisibility(newDoc, startupConfig, archiveVisibility);
   state.doc = newDoc;
   state.startupConfig = startupConfig;
+  reconcileReadOnlyAfterReparse(state.localVariables, localVariables);
   state.localVariables = localVariables;
-  isBufferReadOnly = getBufferReadOnly(state.localVariables);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
   // currentContextHeading DOES hold an actual heading object
@@ -5065,8 +5076,8 @@ function commitTextModeIfActive() {
   applyStartupVisibility(newDoc, startupConfig, archiveVisibility);
   state.doc = newDoc;
   state.startupConfig = startupConfig;
+  reconcileReadOnlyAfterReparse(state.localVariables, localVariables);
   state.localVariables = localVariables;
-  isBufferReadOnly = getBufferReadOnly(state.localVariables);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
   if (wasNarrowedTextMode) {
@@ -8321,6 +8332,9 @@ function render() {
       // alone. Rebuilding it here from state.doc (stale until the
       // person explicitly switches away, which commits first) would
       // silently discard whatever they've typed but not yet saved.
+      // Only the read-only flag is synced: toggling read-only while
+      // already in Text view otherwise never reached this textarea.
+      existingTextarea.readOnly = isBufferReadOnly;
       return;
     }
     outlineEl.innerHTML = '';

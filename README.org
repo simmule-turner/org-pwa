@@ -1,5 +1,5 @@
 # -*- buffer-read-only: t; -*-
-#+STARTUP: overview
+#+STARTUP: show2levels
 * org-pwa
 :PROPERTIES:
 :CUSTOM_ID: org-pwa
