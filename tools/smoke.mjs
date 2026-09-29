@@ -721,6 +721,110 @@ check('god-mode: C-h m opens Help, and C-s opens search', async () => {
   await context.close();
 });
 
+check('god-mode: C-/ undoes, and C-f then C-/ redoes -- repeatedly, until it falls back to undo again', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Alpha\n* Beta\n');
+  const godSeq = async (...keys) => {
+    await page.locator('body').click({ position: { x: 200, y: 800 } });
+    await page.keyboard.press('Escape');
+    // Escape's first press only clears keyboard focus if a heading is
+    // currently focused (real, correct behavior) -- a second press is
+    // then needed to actually enter god-mode. Neither undo nor redo
+    // cares which heading ends up focused, so this is safe here.
+    if (!(await page.locator('#minibuffer').innerText()).includes('God-mode')) {
+      await page.keyboard.press('Escape');
+    }
+    for (const k of keys) await page.keyboard.press(k);
+    await page.waitForTimeout(250);
+  };
+  // two edits: title changes, made via the title editor (each is its own undo step)
+  const renameHeading = async (from, to) => {
+    await page.locator('.heading-title', { hasText: from }).first().click();
+    await page.getByRole('button', { name: 'Edit title' }).click();
+    await page.waitForSelector('#heading-title-edit-popup');
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type(to);
+    await page.getByText('OK', { exact: true }).last().click();
+    await page.waitForTimeout(300);
+  };
+  await renameHeading('Alpha', 'Alpha1');
+  await renameHeading('Beta', 'Beta1');
+  expect((await documentText(page)).includes('Alpha1') && (await documentText(page)).includes('Beta1'), `both edits should be applied: ${await documentText(page)}`);
+
+  await godSeq('/'); // plain undo: reverts the second edit (Beta1 -> Beta)
+  expect((await documentText(page)).includes('Alpha1') && (await documentText(page)).includes('* Beta\n'), `first undo should revert only Beta1: ${await documentText(page)}`);
+
+  await godSeq('/'); // undo again: reverts the first edit too (Alpha1 -> Alpha)
+  expect((await documentText(page)).includes('* Alpha\n') && (await documentText(page)).includes('* Beta\n'), `second undo should also revert Alpha1: ${await documentText(page)}`);
+
+  await godSeq('f', '/'); // break the chain, then redo: brings Alpha1 back
+  expect((await documentText(page)).includes('Alpha1') && !(await documentText(page)).includes('Beta1'), `C-f then C-/ should redo just the first step: ${await documentText(page)}`);
+
+  await godSeq('/'); // keep pressing / to continue redoing, no further C-f needed: brings Beta1 back too
+  expect((await documentText(page)).includes('Alpha1') && (await documentText(page)).includes('Beta1'), `a second C-/ should continue redoing: ${await documentText(page)}`);
+
+  await godSeq('/'); // nothing left to redo -- falls back to a plain undo (reverts Beta1 again)
+  expect((await documentText(page)).includes('Alpha1') && !(await documentText(page)).includes('Beta1'), `redo exhausted should fall back to undo: ${await documentText(page)}`);
+
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('god-mode: the new chords for refile/attach/clocking/export reach their real targets', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Write report\n');
+  await page.locator('.heading-title').first().click();
+  await page.locator('body').click({ position: { x: 200, y: 800 } });
+  const godSeq = async (...keys) => {
+    // god-mode stays active across dispatches by design, so only press
+    // Escape (once or twice, as needed) when NOT already in a clean,
+    // ready-for-a-fresh-chord god-mode state -- pressing it unconditionally
+    // would otherwise EXIT an already-active god-mode instead of entering it.
+    if ((await page.locator('#minibuffer').innerText()) !== '\ud83e\udde0 God-mode (Esc to exit)') {
+      await page.keyboard.press('Escape');
+      if (!(await page.locator('#minibuffer').innerText()).includes('God-mode')) {
+        await page.keyboard.press('Escape');
+      }
+    }
+    for (const k of keys) await page.keyboard.press(k);
+    await page.waitForTimeout(300);
+  };
+
+  await godSeq('c', 'w'); // C-c C-w: refile
+  const refileVisible = (await page.locator('body').innerText()).includes('Refile');
+  expect(refileVisible, 'C-c C-w should open the refile picker');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+
+  await godSeq('c', 'a'); // C-c C-a: attach
+  const attachVisible = (await page.locator('body').innerText()).includes('Attachments for');
+  expect(attachVisible, 'C-c C-a should open the attachment choice prompt');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+
+  await godSeq('c', 'x', 'i'); // C-c C-x C-i: clock in
+  expect((await modeline(page)).includes('\u23f1'), `clock-in should show in the modeline: ${await modeline(page)}`);
+
+  await godSeq('c', 'x', 'o'); // C-c C-x C-o: clock out
+  expect(!(await modeline(page)).includes('\u23f1'), `clock-out should clear the modeline's clock indicator: ${await modeline(page)}`);
+
+  await godSeq('c', 'x', 'i'); // clock in again, then cancel
+  await page.waitForTimeout(200);
+  expect((await modeline(page)).includes('\u23f1'), `clock-in (second time) should show in the modeline: ${await modeline(page)}`);
+  await godSeq('c', 'x', 'q'); // C-c C-x C-q: cancel clock
+  expect(!(await modeline(page)).includes('\u23f1'), `clock-cancel should clear the modeline's clock indicator: ${await modeline(page)}`);
+
+  await godSeq('c', 'x', 'x'); // C-c C-x C-x: continue last clock
+  await page.waitForTimeout(200);
+  expect((await modeline(page)).includes('\u23f1'), `C-c C-x C-x should resume clocking: ${await modeline(page)}`);
+
+  await godSeq('c', 'e'); // C-c C-e: export dispatcher, within the More menu
+  expect((await page.locator('body').innerText()).includes('HTML'), 'C-c C-e should open the export flow');
+
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('add heading: inserts as a sibling right after the selected heading (the common case); works on a genuinely empty document (M-RET and M-S-RET both insert at the top); appends at the bottom when nothing is selected', async () => {
   // 1. a truly empty document: M-RET (god-mode "g" then Enter) inserts a
   // single top-level heading at the top, cursor ready to type.
