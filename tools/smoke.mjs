@@ -190,7 +190,9 @@ async function waitForModeline(page, text, timeout = 8000) {
   await page.waitForFunction((t) => document.getElementById('modeline').innerText.includes(t), text, { timeout });
 }
 async function openHelp(page) {
-  await page.click('#helpBtn');
+  await openPalette(page);
+  await page.keyboard.type('help');
+  await page.keyboard.press('Enter');
   await waitForModeline(page, 'Help');
 }
 const status = (page) => page.locator('#status').innerText();
@@ -268,8 +270,9 @@ check('read-only toggle: a read-only buffer becomes editable in Text view and st
   expect((await modeline(page)).startsWith('%%'), 'Help should start read-only');
   await viewMenu(page, 'Text');
   expect(await page.locator('#document-text-edit-input').evaluate((t) => t.readOnly), 'textarea should start read-only');
-  await page.click('#viewMenuBtn');
-  await pick(page, '#viewMenuPanel', '**RW');
+  await openPalette(page);
+  await page.keyboard.type('toggle read-only');
+  await page.keyboard.press('Enter');
   await page.waitForTimeout(300);
   expect(!(await page.locator('#document-text-edit-input').evaluate((t) => t.readOnly)), 'textarea stayed read-only after toggling');
   await page.locator('#document-text-edit-input').click();
@@ -314,9 +317,9 @@ check('effort: any duration form is stored as typed, an invalid one is refused, 
   await newDocument(page, '* Write report\n');
   const setEffort = async (value) => {
     await page.locator('.heading-title').first().click();
-    await page.click('#moreBtn');
-    await pick(page, '#morePanel', 'Clocking');
-    await pick(page, '#morePanel', 'Effort');
+    await openPalette(page);
+    await page.keyboard.type('set effort estimate');
+    await page.keyboard.press('Enter');
     await page.locator('textarea').last().fill(value);
     await page.getByText('OK', { exact: true }).last().click();
     await page.waitForTimeout(400);
@@ -331,9 +334,9 @@ check('effort: any duration form is stored as typed, an invalid one is refused, 
   expect((await status(page)).includes('Not a valid duration'), `no refusal message: ${await status(page)}`);
   await setEffort('1.5h');
   await page.locator('.heading-title').first().click();
-  await page.click('#moreBtn');
-  await pick(page, '#morePanel', 'Clocking');
-  await pick(page, '#morePanel', 'Clock-in');
+  await openPalette(page);
+  await page.keyboard.type('clock in');
+  await page.keyboard.press('Enter');
   await page.waitForTimeout(500);
   // the elapsed part ticks, so only the estimate (1.5h -> 1:30) is asserted exactly
   expect(/\[\u23f1 \d+:\d\d \/ 1:30\]/.test(await modeline(page)), `modeline: ${await modeline(page)}`);
@@ -414,9 +417,9 @@ check('effort: Effort_ALL shows quick-picks (from #+PROPERTY), one tap saves the
   const { context, page } = await freshPage();
   await newDocument(page, '#+PROPERTY: Effort_ALL 0:15 0:30 1:00 bogus\n* Write report\n');
   await page.locator('.heading-title').first().click();
-  await page.click('#moreBtn');
-  await pick(page, '#morePanel', 'Clocking');
-  await pick(page, '#morePanel', 'Effort');
+  await openPalette(page);
+  await page.keyboard.type('set effort estimate');
+  await page.keyboard.press('Enter');
   await page.waitForSelector('[data-quick-picks]');
   const picks = await page.locator('[data-quick-pick]').evaluateAll((els) => els.map((e) => e.getAttribute('data-quick-pick')));
   expect(JSON.stringify(picks) === '["0:15","0:30","1:00"]', `quick-picks: ${JSON.stringify(picks)} (the invalid "bogus" must not be offered)`);
@@ -428,9 +431,9 @@ check('effort: Effort_ALL shows quick-picks (from #+PROPERTY), one tap saves the
   const second = await freshPage();
   await newDocument(second.page, '* No list defined\n');
   await second.page.locator('.heading-title').first().click();
-  await second.page.click('#moreBtn');
-  await pick(second.page, '#morePanel', 'Clocking');
-  await pick(second.page, '#morePanel', 'Effort');
+  await openPalette(second.page);
+  await second.page.keyboard.type('set effort estimate');
+  await second.page.keyboard.press('Enter');
   await second.page.waitForSelector('textarea');
   expect((await second.page.locator('[data-quick-picks]').count()) === 0, 'no Effort_ALL means the prompt stays plain free text');
   await second.context.close();
@@ -439,9 +442,9 @@ check('effort: Effort_ALL shows quick-picks (from #+PROPERTY), one tap saves the
   const third = await freshPage();
   await newDocument(third.page, '* Global list\n\n# Local Variables:\n# org-global-properties: Effort_ALL: 0:15 0:45 3:00\n# End:\n');
   await third.page.locator('.heading-title').first().click();
-  await third.page.click('#moreBtn');
-  await pick(third.page, '#morePanel', 'Clocking');
-  await pick(third.page, '#morePanel', 'Effort');
+  await openPalette(third.page);
+  await third.page.keyboard.type('set effort estimate');
+  await third.page.keyboard.press('Enter');
   await third.page.waitForSelector('[data-quick-picks]');
   const globalPicks = await third.page.locator('[data-quick-pick]').evaluateAll((els) => els.map((e) => e.getAttribute('data-quick-pick')));
   expect(JSON.stringify(globalPicks) === '["0:15","0:45","3:00"]', `org-global-properties quick-picks: ${JSON.stringify(globalPicks)}`);
@@ -502,8 +505,9 @@ check('tabs: two documents keep their own content, unsaved state and read-only f
   expect((await outline()).includes('Beta heading') && !(await outline()).includes('Alpha heading'), 'the second document should be showing');
 
   // make Beta read-only, then look at Alpha: it must be writable and show its own text
-  await page.click('#viewMenuBtn');
-  await pick(page, '#viewMenuPanel', '%%RO');
+  await openPalette(page);
+  await page.keyboard.type('toggle read-only');
+  await page.keyboard.press('Enter');
   await page.waitForTimeout(300);
   expect((await modeline(page)).startsWith('%'), `Beta should now be read-only: ${await modeline(page)}`);
 
@@ -615,15 +619,12 @@ check('more menu: the Commands entry can be renamed or omitted via org-xx-menu-a
   await page.click('#moreBtn');
   menuText = await page.locator('#morePanel').innerText();
   expect(!menuText.includes('Commands'), `Commands should be omitted entirely: ${JSON.stringify(menuText)}`);
-  expect(menuText.includes('Capture') && menuText.includes('Settings'), 'the other entries should be unaffected');
+  expect(menuText.includes('Export') && menuText.includes('Settings'), 'the other entries should be unaffected');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 
   ({ context, page, errors } = await freshPage());
-  await newDocument(
-    page,
-    localVars('org-xx-menu-aliases: "more:Capture;" "more:Clocking;" "more:Export;" "more:History;" "more:Import;" "more:Settings;\u2699\uFE0F"')
-  );
+  await newDocument(page, localVars('org-xx-menu-aliases: "more:Export;" "more:Import;" "more:Settings;\u2699\uFE0F"'));
   await page.click('#moreBtn');
   menuText = await page.locator('#morePanel').innerText();
   expect(menuText.includes('Commands'), `Commands should still show even though this alias list never mentions it: ${JSON.stringify(menuText)}`);
@@ -694,6 +695,106 @@ check('command palette: opens from the keyboard with god-mode "g x" (M-x)', asyn
   await page.keyboard.press('g');
   await page.keyboard.press('x');
   await page.waitForSelector('#command-palette', { timeout: 4000 });
+  await context.close();
+});
+
+check('god-mode: C-h m opens Help, and C-s opens search', async () => {
+  let { context, page, errors } = await freshPage();
+  await newDocument(page, '* Write report\n');
+  await page.locator('body').click({ position: { x: 200, y: 800 } });
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('h');
+  await page.keyboard.press(' ');
+  await page.keyboard.press('m');
+  await waitForModeline(page, 'Help');
+  expect((await modeline(page)).includes('Help'), `expected Help to open: ${await modeline(page)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+
+  ({ context, page, errors } = await freshPage());
+  await newDocument(page, '* Write report\n');
+  await page.locator('body').click({ position: { x: 200, y: 800 } });
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('s');
+  await page.waitForSelector('#search-query-input', { state: 'visible', timeout: 4000 });
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('add heading: inserts as a sibling right after the selected heading (the common case); works on a genuinely empty document (M-RET and M-S-RET both insert at the top); appends at the bottom when nothing is selected', async () => {
+  // 1. a truly empty document: M-RET (god-mode "g" then Enter) inserts a
+  // single top-level heading at the top, cursor ready to type.
+  let { context, page, errors } = await freshPage();
+  await newDocument(page, '');
+  await page.locator('body').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('Escape'); // enter god-mode
+  await page.keyboard.press('g');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#heading-title-edit-popup');
+  await page.keyboard.type('First');
+  await page.getByText('OK', { exact: true }).last().click();
+  await page.waitForTimeout(300);
+  expect((await documentText(page)).trim() === '* First', `M-RET on an empty doc: ${JSON.stringify(await documentText(page))}`);
+  await context.close();
+
+  // 2. M-S-RET on an empty document: a top-level heading with the default
+  // TODO keyword, also at the top.
+  ({ context, page } = await freshPage());
+  await newDocument(page, '');
+  await page.locator('body').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('g');
+  await page.keyboard.press('Shift+Enter');
+  await page.waitForSelector('#heading-title-edit-popup');
+  await page.keyboard.type('Second');
+  await page.getByText('OK', { exact: true }).last().click();
+  await page.waitForTimeout(300);
+  expect((await documentText(page)).trim() === '* TODO Second', `M-S-RET on an empty doc: ${JSON.stringify(await documentText(page))}`);
+  await context.close();
+
+  // 3. a document WITH headings, but nothing selected: running "Add heading
+  // after" from the palette (where the palette itself must now let the
+  // command through, not dim it for lack of a target) appends at the
+  // bottom rather than doing nothing.
+  ({ context, page, errors } = await freshPage());
+  await newDocument(page, '* One\n* Two\n');
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Commands');
+  await page.waitForSelector('#command-palette');
+  await page.keyboard.type('add heading after');
+  const rows = await page.locator('#command-palette [role=option]').allInnerTexts();
+  expect(!rows.join('\n').includes('unavailable'), `should not be dimmed with nothing selected: ${JSON.stringify(rows)}`);
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#heading-title-edit-popup');
+  await page.keyboard.type('Third');
+  await page.getByText('OK', { exact: true }).last().click();
+  await page.waitForTimeout(300);
+  const text = await documentText(page);
+  expect(text.trim().endsWith('* Third'), `expected the new heading appended at the bottom: ${JSON.stringify(text)}`);
+  expect(text.startsWith('* One'), `existing headings should be untouched: ${JSON.stringify(text)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+
+  // 4. the common case: a heading IS selected, so the new one is inserted
+  // as its sibling right after it -- not at the top or bottom.
+  ({ context, page, errors } = await freshPage());
+  await newDocument(page, '* One\n* Two\n* Three\n');
+  await page.locator('.heading-title', { hasText: 'Two' }).first().click();
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Commands');
+  await page.waitForSelector('#command-palette');
+  await page.keyboard.type('add heading after');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#heading-title-edit-popup');
+  await page.keyboard.type('Inserted');
+  await page.getByText('OK', { exact: true }).last().click();
+  await page.waitForTimeout(300);
+  const siblingText = await documentText(page);
+  expect(
+    siblingText.trim() === '* One\n* Two\n* Inserted\n* Three'.trim(),
+    `expected Inserted right after Two, before Three: ${JSON.stringify(siblingText)}`
+  );
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
 
