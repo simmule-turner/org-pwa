@@ -1,18 +1,11 @@
 // Extracted from app.js: clock flow.
 import { clockCancel, clockIn, clockInSwitchingTasks, clockOut, findHeadingWithRunningClock, findMostRecentlyClockedHeading } from '../src/clock.js';
 import { saveDocument } from '../src/document-store.js';
-import { getMenuAliases } from '../src/local-variables.js';
-import { parseMenuAliases } from '../src/menu-alias.js';
 import { formatOrgTimestamp } from '../src/org-timestamp.js';
 import { S } from './app-state.js';
-import { morePanel } from './dom.js';
 import { commitAndRender, setStatus } from './editing.js';
-import { extraMenuTargetHeading } from './gestures-structure.js';
-import { openEffortEditor } from './heading-commands.js';
-import { renderMoreMenu } from './menus.js';
 import { render } from './render.js';
 import { kv } from './singletons.js';
-import { aliasedMenuDivItem, appendMenuButtonsInOrder, menuButton } from './ui-widgets.js';
 
 /** The human-readable "where this would go" label for confirming an
  *  archive. */
@@ -137,85 +130,4 @@ export function clockCancelHeading(heading) {
   commitAndRender('Clock cancelled \u2014 time discarded');
 }
 
-/** The More menu's own entry point for every org-clock action in one
- *  place, structured exactly like Export's own sub-flow (renderExportFlow
- *  above): a step within this same panel, not a separate overlay.
- *  Clock-in resolves its own target heading dynamically, the same way
- *  org-cut-subtree/org-paste-subtree already do from this same kind of
- *  not-heading-specific menu context: whichever heading's own action
- *  menu is currently open, falling back to whichever is
- *  keyboard-focused. Clock-out/clock-cancel act on whichever clock is
- *  actually running anywhere in the document, matching real org's own
- *  actual "only one clock is ever the current one" semantics. */
-export function renderClockOptionsFlow() {
-  const label = document.createElement('div');
-  label.style.fontSize = '12px';
-  label.style.opacity = '0.7';
-  label.style.marginBottom = '4px';
-  label.textContent = 'Clocking:';
-  morePanel.appendChild(label);
 
-  const finish = () => {
-    S.moreOpen = false;
-    S.moreMenuStep = null;
-    renderMoreMenu();
-  };
-
-  const runningClockAction = (action) => {
-    const running = findHeadingWithRunningClock(S.state.doc);
-    finish();
-    if (!running) {
-      setStatus('No clock is currently running.');
-      render();
-      return;
-    }
-    action(running);
-  };
-
-  const clockingMenuAliases = parseMenuAliases(getMenuAliases(S.state.localVariables)).clocking;
-  const cancelBtn = aliasedMenuDivItem(clockingMenuAliases, 'Clock-cancel', () => runningClockAction(clockCancelHeading));
-  const continueBtn = aliasedMenuDivItem(clockingMenuAliases, 'Clock-continue', () => {
-    finish();
-    clockContinue();
-  });
-  const inBtn = aliasedMenuDivItem(clockingMenuAliases, 'Clock-in', () => {
-    const target = extraMenuTargetHeading();
-    finish();
-    if (!target) {
-      setStatus('No heading to clock in on -- tap a heading first.');
-      render();
-      return;
-    }
-    clockInHeading(target);
-  });
-  const outBtn = aliasedMenuDivItem(clockingMenuAliases, 'Clock-out', () => runningClockAction(clockOutHeading));
-  const effortBtn = aliasedMenuDivItem(clockingMenuAliases, 'Effort', () => {
-    const target = extraMenuTargetHeading();
-    finish();
-    if (!target) {
-      setStatus('No heading to set an effort estimate on -- tap a heading first.');
-      render();
-      return;
-    }
-    openEffortEditor(target);
-  });
-
-  appendMenuButtonsInOrder(morePanel, clockingMenuAliases, [
-    { label: 'Clock-cancel', btn: cancelBtn },
-    { label: 'Clock-continue', btn: continueBtn },
-    { label: 'Clock-in', btn: inBtn },
-    { label: 'Clock-out', btn: outBtn },
-    { label: 'Effort', btn: effortBtn },
-  ]);
-
-  const backRow = document.createElement('div');
-  backRow.className = 'panel-row';
-  backRow.style.marginTop = '6px';
-  backRow.appendChild(
-    menuButton('\u2039 Back', () => {
-      S.moreMenuStep = null;
-      renderMoreMenu();
-    })
-  );
-  morePanel.appendChild(backRow);
-}

@@ -49,8 +49,6 @@ export const minibufferEl = document.getElementById('minibuffer');
 
 export const minibufferSearchEl = document.getElementById('minibufferSearch');
 
-export const addBtn = document.getElementById('addBtn');
-
 export const navBackBtn = document.getElementById('navBackBtn');
 
 export const extraMenuBtn = document.getElementById('extraMenuBtn');
@@ -66,8 +64,6 @@ export const fileMenuBtn = document.getElementById('fileMenuBtn');
 export const fileMenuPanel = document.getElementById('fileMenuPanel');
 
 export const settingsBtn = document.getElementById('settingsBtn');
-
-export const helpBtn = document.getElementById('helpBtn');
 
 export const searchBtn = document.getElementById('searchBtn');
 

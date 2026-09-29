@@ -9,11 +9,10 @@ import { HELP_DOCUMENT_ID, NAVIGATION_BACK_STACK_LIMIT } from './constants.js';
 import { afterDocumentLoaded } from './documents-io.js';
 import { viewMenuBtn, viewMenuPanel } from './dom.js';
 import { commitTextModeIfActive, setStatus } from './editing.js';
-import { toggleBufferReadOnly } from './god-mode-palette.js';
 import { navigateToHeading, syncNavBackButtonVisibility } from './navigation.js';
 import { render } from './render.js';
 import { renderSearchPanel } from './search-ui.js';
-import { aliasedMenuDivItem, appendMenuButtonsInOrder, menuDivItem, positionPopupNearButton } from './ui-widgets.js';
+import { aliasedMenuDivItem, appendMenuButtonsInOrder, positionPopupNearButton } from './ui-widgets.js';
 
 /** Switches between the three top-level views, handling the
  *  enter/exit bookkeeping each transition needs: leaving 'text' commits
@@ -99,22 +98,9 @@ export function renderViewMenuContent() {
     { label: 'Text', btn: viewSwitchButtons['Text'] },
     { label: 'TODO', btn: viewSwitchButtons['TODO'] },
   ]);
-
-  // Read-only toggle -- a separate, un-aliased item (not part of the
-  // menu-alias system above), since its own label text is dynamic
-  // (changes between the two states below) rather than the fixed string
-  // that system expects to match against. Shows the ACTION tapping it
-  // would perform, not the current state -- "%%RO" (make it read-only)
-  // while currently writable, "**RW" (make it writable) while currently
-  // read-only, matching real Emacs's own -- / ** / %% / %* modeline
-  // convention this app's own modeline already shows (see
-  // buildGlobalModeStringParts's own caller, renderModeline).
-  const roToggle = menuDivItem(S.isBufferReadOnly ? '**RW' : '%%RO', () => {
-    toggleBufferReadOnly();
-    S.viewMenuOpen = false;
-    renderViewMenu();
-  }, !S.state.doc);
-  viewMenuPanel.appendChild(roToggle);
+  // The read-only toggle ("%%RO" / "**RW") used to be a separate item here.
+  // It's reached through the command palette now (Toggle read-only) or
+  // god-mode's own C-x C-q -- see toggleBufferReadOnly's own docs.
 }
 
 /** Opens Help by fetching and opening README.org through the exact

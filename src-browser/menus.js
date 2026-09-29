@@ -6,11 +6,11 @@ import { getExtraMenu, getMenuAliases } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
 import { S } from './app-state.js';
 import { openCalendarPanel } from './calendar-panel.js';
-import { openCapturePrompt, renderCaptureFlow } from './capture-ui.js';
+import { openCapturePrompt } from './capture-ui.js';
 import { closeAllOverlayPanels } from './chrome.js';
-import { clockCancelHeading, clockContinue, clockOutHeading, renderClockOptionsFlow } from './clock-flow.js';
-import { extraMenuBtn, extraMenuPanel, moreBtn, morePanel, outlineEl, settingsBtn } from './dom.js';
-import { renderHistoryPanel, setStatus } from './editing.js';
+import { clockCancelHeading, clockContinue, clockOutHeading } from './clock-flow.js';
+import { extraMenuBtn, extraMenuPanel, moreBtn, morePanel, settingsBtn } from './dom.js';
+import { setStatus } from './editing.js';
 import { performOrgOrgExport, renderExportFlow, renderImportFlow } from './export-import.js';
 import { cutSubtree, extraMenuTargetHeading, pasteSubtree } from './gestures-structure.js';
 import { openCommandPalette } from './god-mode-palette.js';
@@ -19,7 +19,7 @@ import { render } from './render.js';
 import { getCaptureTemplates } from './settings.js';
 import { kv } from './singletons.js';
 import { recalculateAllTables } from './table-recalc.js';
-import { aliasedMenuDivItem, appendMenuButtonsInOrder, isWideLayout, positionPopupNearButton, requiredMenuDivItem } from './ui-widgets.js';
+import { aliasedMenuDivItem, appendMenuButtonsInOrder, positionPopupNearButton, requiredMenuDivItem } from './ui-widgets.js';
 import { switchToView } from './views.js';
 
 /** Shows/hides the floating extras (☰) button based on whether
@@ -184,16 +184,6 @@ export function renderMoreMenuContent() {
     return;
   }
 
-  if (S.moreMenuStep === 'clocks') {
-    renderClockOptionsFlow();
-    return;
-  }
-
-  if (S.moreMenuStep === 'capture') {
-    renderCaptureFlow();
-    return;
-  }
-
   if (S.moreMenuStep === 'import') {
     renderImportFlow();
     return;
@@ -201,37 +191,10 @@ export function renderMoreMenuContent() {
 
   const moreMenuAliases = parseMenuAliases(getMenuAliases(S.state.localVariables)).more;
 
-  const historyBtnOption = aliasedMenuDivItem(
-    moreMenuAliases,
-    'History',
-    () => {
-      S.moreOpen = false;
-      renderMoreMenu();
-      S.historyOpen = true;
-      if (isWideLayout()) {
-        render(); // syncSidePanel (called by render) populates and shows #sidePanel; #outline renders normally alongside it
-      } else {
-        renderHistoryPanel(outlineEl); // narrow: replaces #outline directly, matching Settings' own treatment
-      }
-    },
-    !S.state.doc
-  );
-  if (historyBtnOption) historyBtnOption.setAttribute('aria-label', 'Undo history');
-
-  const captureBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Capture', () => {
-    S.moreMenuStep = 'capture';
-    renderMoreMenu();
-  });
-
   const settingsBtnOption = requiredMenuDivItem(moreMenuAliases, 'Settings', () => {
     S.moreOpen = false;
     renderMoreMenu();
     settingsBtn.click();
-  });
-
-  const clocksBtnOption = aliasedMenuDivItem(moreMenuAliases, 'Clocking', () => {
-    S.moreMenuStep = 'clocks';
-    renderMoreMenu();
   });
 
   const exportBtnOption = aliasedMenuDivItem(
@@ -263,10 +226,7 @@ export function renderMoreMenuContent() {
 
   appendMenuButtonsInOrder(morePanel, moreMenuAliases, [
     { label: 'Commands', btn: commandsBtnOption },
-    { label: 'Capture', btn: captureBtnOption },
-    { label: 'Clocking', btn: clocksBtnOption },
     { label: 'Export', btn: exportBtnOption },
-    { label: 'History', btn: historyBtnOption },
     { label: 'Import', btn: importBtnOption },
     { label: 'Settings', btn: settingsBtnOption },
   ]);

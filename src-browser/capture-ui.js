@@ -4,14 +4,13 @@ import { parseOrg } from '../src/org-parser.js';
 import { S } from './app-state.js';
 import { openTimestampPickerPopup, showModalOverlay } from './dialogs.js';
 import { getOlpPrepend } from './doc-helpers.js';
-import { capturePanel, capturePanelBox, moreBtn, morePanel } from './dom.js';
+import { capturePanel, capturePanelBox } from './dom.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { activeDiskAdapter, writeToOtherFile } from './external-sync.js';
-import { renderMoreMenu } from './menus.js';
 import { navigateToHeading } from './navigation.js';
 import { getCaptureTemplates } from './settings.js';
 import { agendaFilesCache, kv } from './singletons.js';
-import { hideModalOverlay, menuButton, menuDivItem, positionPopupNearButton } from './ui-widgets.js';
+import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { switchToView } from './views.js';
 
 /** Converts org-agenda-files' own raw string value (semicolon-
@@ -35,54 +34,6 @@ import { switchToView } from './views.js';
  *  template hands off to the unchanged capturePanel-based flow
  *  (openCapturePrompt) for the actual capture/prompt-form, exactly as
  *  before -- only how the picker itself looks and is reached changes. */
-export async function renderCaptureFlow() {
-  const label = document.createElement('div');
-  label.style.fontSize = '12px';
-  label.style.opacity = '0.7';
-  label.style.marginBottom = '4px';
-  label.textContent = 'Capture:';
-  morePanel.appendChild(label);
-
-  const backRow = document.createElement('div');
-  backRow.className = 'panel-row';
-  backRow.style.marginTop = '6px';
-  backRow.appendChild(
-    menuButton('\u2039 Back', () => {
-      S.moreMenuStep = null;
-      renderMoreMenu();
-    })
-  );
-
-  const templates = await getCaptureTemplates(kv);
-  if (!S.moreOpen || S.moreMenuStep !== 'capture') return; // menu was closed/changed before this resolved
-
-  morePanel.innerHTML = '';
-  morePanel.appendChild(label);
-
-  if (templates.length === 0) {
-    const empty = document.createElement('div');
-    empty.style.opacity = '0.6';
-    empty.style.fontSize = '13px';
-    empty.style.padding = '8px 4px';
-    empty.textContent = 'No capture templates configured yet \u2014 add some in Settings.';
-    morePanel.appendChild(empty);
-  } else {
-    for (const template of templates) {
-      morePanel.appendChild(
-        menuDivItem(template.description, () => {
-          S.moreOpen = false;
-          S.moreMenuStep = null;
-          S.captureOpen = true;
-          renderMoreMenu();
-          openCapturePrompt(template);
-        })
-      );
-    }
-  }
-  morePanel.appendChild(backRow);
-  positionPopupNearButton(morePanel, moreBtn); // content just changed size/shape -- re-check placement
-}
-
 export async function renderCapturePanel() {
   capturePanelBox.innerHTML = '';
   if (!S.captureOpen) {

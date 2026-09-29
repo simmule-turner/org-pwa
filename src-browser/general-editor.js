@@ -4,11 +4,21 @@ import { getPlainTimestampInTitle, setHeadingTags, setPlainTimestampInTitle, set
 import { S } from './app-state.js';
 import { openAttachChoicePrompt } from './attachments-flow.js';
 import { confirmDialog, lockBackgroundScroll, openButtonChoiceModal } from './dialogs.js';
-import { addBtn } from './dom.js';
 import { commitAndRender } from './editing.js';
 import { buildPriorityFieldGroup, buildTimestampFieldGroup } from './field-groups.js';
 import { withKeyboardFocusPreserved } from './keyboard-focus.js';
 import { keepOverlayInVisibleViewport, menuButton, tableActionButton, textInputStyle, wizardButton } from './ui-widgets.js';
+import { aggregateAgendaDocs } from './agenda-files.js';
+import { suggestTags, suggestPropertyKeys } from '../src/completion.js';
+
+/** The documents completion draws on: the open one plus every agenda file already loaded. */
+function completionDocs() {
+  try {
+    return aggregateAgendaDocs().map((entry) => entry.doc);
+  } catch {
+    return [];
+  }
+}
 
 /** Structured tag editor: existing tags shown as removable chips, plus
  *  an input+button to add a new one. Working state is local to this
@@ -49,18 +59,57 @@ export function buildTagsFieldGroup(heading) {
   addInput.type = 'text';
   textInputStyle(addInput);
   addInput.placeholder = 'New tag';
-  const addBtn = wizardButton('Add', () => {
-    const val = addInput.value.trim().replace(/:/g, '');
+  const addTag = (raw) => {
+    const val = String(raw).trim().replace(/:/g, '');
     if (val && !currentTags.includes(val)) {
       currentTags.push(val);
       addInput.value = '';
       renderChips();
     }
-  });
+  };
+  const addBtn = wizardButton('Add', () => addTag(addInput.value));
   addBtn.style.flex = '0 0 auto';
+  addInput.setAttribute('autocapitalize', 'off');
+  addInput.setAttribute('autocomplete', 'off');
+  addInput.setAttribute('enterkeyhint', 'done');
+  addInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addTag(addInput.value);
+    }
+  });
   addRow.appendChild(addInput);
   addRow.appendChild(addBtn);
   wrap.appendChild(addRow);
+
+  // Completion: tags already used (most used first) and any declared on a
+  // #+TAGS: line, narrowed by what's typed. One tap adds one.
+  const docsForCompletion = completionDocs();
+  const suggestionsRow = document.createElement('div');
+  suggestionsRow.setAttribute('data-tag-suggestions', '');
+  suggestionsRow.style.display = 'flex';
+  suggestionsRow.style.flexWrap = 'wrap';
+  suggestionsRow.style.gap = '6px';
+  suggestionsRow.style.marginTop = '8px';
+  wrap.appendChild(suggestionsRow);
+  function renderSuggestions() {
+    suggestionsRow.innerHTML = '';
+    for (const tag of suggestTags({ docs: docsForCompletion, applied: currentTags, query: addInput.value })) {
+      const chip = document.createElement('button');
+      chip.textContent = '+ ' + tag;
+      chip.setAttribute('data-tag-suggestion', tag);
+      chip.setAttribute('aria-label', 'Add tag ' + tag);
+      chip.style.fontSize = '13px';
+      chip.style.padding = '5px 10px';
+      chip.style.borderRadius = '12px';
+      chip.style.border = '1px dashed var(--border-strong)';
+      chip.style.background = 'transparent';
+      chip.style.color = 'var(--fg)';
+      chip.onclick = () => addTag(tag);
+      suggestionsRow.appendChild(chip);
+    }
+  }
+  addInput.addEventListener('input', renderSuggestions);
 
   function renderChips() {
     chipsRow.innerHTML = '';
@@ -81,6 +130,7 @@ export function buildTagsFieldGroup(heading) {
       };
       chipsRow.appendChild(chip);
     }
+    renderSuggestions();
   }
   renderChips();
 
@@ -120,7 +170,25 @@ export function buildPropertiesFieldGroup(heading) {
   const rowsContainer = document.createElement('div');
   wrap.appendChild(rowsContainer);
 
+  // Key completion: keys already used on any heading, then the ones this
+  // app itself writes or reads; not the ones this heading already has.
+  const keyListId = 'property-keys-' + Math.random().toString(36).slice(2, 8);
+  const keyList = document.createElement('datalist');
+  keyList.id = keyListId;
+  wrap.appendChild(keyList);
+  const docsForCompletion = completionDocs();
+  function refreshKeyList() {
+    keyList.innerHTML = '';
+    const current = currentProps.map((p) => p.key).filter(Boolean);
+    for (const key of suggestPropertyKeys({ docs: docsForCompletion, applied: current })) {
+      const option = document.createElement('option');
+      option.value = key;
+      keyList.appendChild(option);
+    }
+  }
+
   function renderRows() {
+    refreshKeyList();
     rowsContainer.innerHTML = '';
     currentProps.forEach((prop, idx) => {
       const row = document.createElement('div');
@@ -133,6 +201,8 @@ export function buildPropertiesFieldGroup(heading) {
       textInputStyle(keyInput);
       keyInput.style.flex = '1 1 40%';
       keyInput.placeholder = 'Key';
+      keyInput.setAttribute('list', keyListId);
+      keyInput.setAttribute('autocapitalize', 'off');
       keyInput.value = prop.key;
       keyInput.oninput = () => {
         prop.key = keyInput.value;

@@ -16,7 +16,7 @@ import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.j
 import { S } from './app-state.js';
 import { scrollContainer } from './chrome.js';
 import { NAVIGATION_BACK_STACK_LIMIT } from './constants.js';
-import { addBtn, captureBtn, moreBtn, searchBtn, viewMenuBtn } from './dom.js';
+import { captureBtn, moreBtn, searchBtn, viewMenuBtn } from './dom.js';
 import { commitTextModeIfActive, persistHistoryInBackground, setStatus } from './editing.js';
 import { activeDiskAdapter, hideExternalChangeBanner, reloadCurrentDocumentFromDisk, resolveSaveConflict } from './external-sync.js';
 import { closeFileMenu, renderFileMenu } from './file-menu.js';
@@ -83,7 +83,6 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
   await recordRecentFile(kv, documentId, storageKind);
   S.currentView = 'org';
   S.agendaAnchorDate = new Date();
-  addBtn.disabled = false;
   viewMenuBtn.disabled = false;
   searchBtn.disabled = false;
   captureBtn.disabled = false;

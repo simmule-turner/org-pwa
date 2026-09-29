@@ -2,10 +2,11 @@
 import { isArchivedInPlace } from '../src/archive-model.js';
 import { computeNonCollidingKeys } from '../src/capture-template.js';
 import { findHeadingWithRunningClock } from '../src/clock.js';
-import { pushRecent, searchCommands } from '../src/command-palette.js';
+import { dynamicCommandSpecs, pushRecent, searchCommands } from '../src/command-palette.js';
+import { parseExtraMenu } from '../src/extra-menu.js';
 import { applyStartupVisibility, cycleFoldLevel } from '../src/fold-state.js';
-import { demoteHeading, insertHeadingAfter, moveHeadingDown, moveHeadingUp, promoteHeading } from '../src/heading-edit.js';
-import { getBufferReadOnly, getCycleOpenArchivedTrees } from '../src/local-variables.js';
+import { demoteHeading, insertHeadingAfter, insertTopLevelHeading, moveHeadingDown, moveHeadingUp, promoteHeading } from '../src/heading-edit.js';
+import { getBufferReadOnly, getCycleOpenArchivedTrees, getExtraMenu } from '../src/local-variables.js';
 import { resolveTodoSequences } from '../src/todo-cycle.js';
 import { canRedo, canUndo } from '../src/undo-history.js';
 import { S } from './app-state.js';
@@ -26,10 +27,11 @@ import { openGeneralEditor } from './general-editor.js';
 import { cutSubtree, extraMenuTargetHeading, narrowToHeading, pasteSubtree, widen } from './gestures-structure.js';
 import { cyclePriorityFor, openEffortEditor } from './heading-commands.js';
 import { moveKeyboardFocus, moveLineFocus, moveTableCellFocus, moveToParentHeading, moveToSameLevelHeading, setKeyboardFocusToHeading } from './keyboard-focus.js';
-import { renderMoreMenu } from './menus.js';
+import { renderMoreMenu, runExtraMenuEntry } from './menus.js';
 import { openRefilePicker } from './refile-flow.js';
 import { scrollFocusedHeadingIntoView } from './render-helpers.js';
 import { render } from './render.js';
+import { getCaptureTemplates } from './settings.js';
 import { kv } from './singletons.js';
 import { loadPaletteRecent } from './sync-helpers.js';
 import { chooseTodoWorkflowState, openTodoOrPickWorkflow } from './todo-workflow.js';
@@ -56,6 +58,41 @@ export function globalCycleFold() {
 export function godModeNotSupported(reason) {
   setStatus(`God-mode: ${reason}`);
   render();
+}
+
+/**
+ * Inserts a new heading the way M-RET / C-RET / M-S-RET do (real org's
+ * org-insert-heading, relative to point). This app has no literal
+ * text-cursor concept in the outline view, so "point" is approximated:
+ *
+ *   - a heading is keyboard-focused -> insert as its sibling, right
+ *     after it (the normal, most common case);
+ *   - otherwise, an EMPTY document (no headings at all) -> a single
+ *     top-level heading at the top of the file, matching what M-RET
+ *     does at position 1 of a truly empty buffer in real Emacs;
+ *   - otherwise (headings exist, but none is focused -- e.g. invoked
+ *     from the command palette with nothing selected) -> a new
+ *     top-level heading at the BOTTOM of the file, so the command is
+ *     never simply a silent no-op just because nothing happened to be
+ *     focused when it was run.
+ *
+ * `opts` is passed straight through to createHeading (e.g. `{ todo:
+ * 'TODO' }` for M-S-RET). No-op if there's no open document.
+ */
+function insertHeadingSmart(opts) {
+  if (!S.state.doc) return;
+  let heading;
+  if (S.state.doc.children.length === 0) {
+    heading = insertTopLevelHeading(S.state.doc, opts, true); // "top of file" -- doc is empty, so prepend vs. append makes no practical difference, but this names the intent
+  } else if (S.keyboardFocusedHeading) {
+    heading = insertHeadingAfter(S.state.doc, S.keyboardFocusedHeading, opts);
+  } else {
+    heading = insertTopLevelHeading(S.state.doc, opts); // bottom of file
+  }
+  if (heading) {
+    setKeyboardFocusToHeading(heading);
+    startEditingTitle(heading, true);
+  }
 }
 
 /** god-mode's own action table -- maps a normalized chord string (see
@@ -116,22 +153,8 @@ export const GOD_MODE_ACTIONS = {
   },
 
   // Section 2: Item & Headline Creation
-  'M-RET': () => {
-    if (!S.keyboardFocusedHeading || !S.state.doc) return;
-    const heading = insertHeadingAfter(S.state.doc, S.keyboardFocusedHeading, {});
-    if (heading) {
-      setKeyboardFocusToHeading(heading);
-      startEditingTitle(heading, true);
-    }
-  },
-  'M-S-RET': () => {
-    if (!S.keyboardFocusedHeading || !S.state.doc) return;
-    const heading = insertHeadingAfter(S.state.doc, S.keyboardFocusedHeading, { todo: 'TODO' });
-    if (heading) {
-      setKeyboardFocusToHeading(heading);
-      startEditingTitle(heading, true);
-    }
-  },
+  'M-RET': () => insertHeadingSmart({}),
+  'M-S-RET': () => insertHeadingSmart({ todo: 'TODO' }),
   'C-c C-c': () => godModeNotSupported('checkbox toggling and code execution both need a finer keyboard focus than headings -- tap the checkbox or block directly'),
 
   // Section 3: TODOs & Task Management
@@ -190,11 +213,12 @@ export const GOD_MODE_ACTIONS = {
     renderCapturePanel();
   },
   'C-c C-e': () => godModeNotSupported('use File \u2192 Export instead'),
-  'C-h i': () => {
+  'C-h m': () => {
     S.moreOpen = false;
     renderMoreMenu();
     openOrSwitchToHelp();
   },
+  'C-s': () => searchBtn.click(),
   '<up>': () => moveLineFocus(-1),
   '<down>': () => moveLineFocus(1),
   'S-<up>': () => moveTableCellFocus(-1, 0),
@@ -300,8 +324,8 @@ export function paletteCommandList() {
       needs: ['doc', 'heading'],
       run: chord('C-c C-s'),
     },
-    { id: 'add-heading', label: 'Add heading after', orgName: 'org-insert-heading', keys: 'M-RET', group: 'Heading', needs: HEAD, run: chord('M-RET') },
-    { id: 'add-todo-heading', label: 'Add TODO heading after', orgName: 'org-insert-todo-heading', keys: 'M-S-RET', group: 'Heading', needs: HEAD, run: chord('M-S-RET') },
+    { id: 'add-heading', label: 'Add heading after', orgName: 'org-insert-heading', keys: 'M-RET', group: 'Heading', needs: ['doc', 'writable'], run: chord('M-RET') },
+    { id: 'add-todo-heading', label: 'Add TODO heading after', orgName: 'org-insert-todo-heading', keys: 'M-S-RET', group: 'Heading', needs: ['doc', 'writable'], run: chord('M-S-RET') },
     { id: 'promote', label: 'Promote subtree', orgName: 'org-promote-subtree', keys: 'M-<left>', group: 'Heading', needs: HEAD, run: chord('M-<left>') },
     { id: 'demote', label: 'Demote subtree', orgName: 'org-demote-subtree', keys: 'M-<right>', group: 'Heading', needs: HEAD, run: chord('M-<right>') },
     { id: 'move-up', label: 'Move subtree up', orgName: 'org-move-subtree-up', keys: 'M-<up>', group: 'Heading', needs: HEAD, run: chord('M-<up>') },
@@ -350,7 +374,7 @@ export function paletteCommandList() {
     { id: 'view-text', label: 'Text view', group: 'View', keywords: ['raw', 'source'], needs: ['doc'], run: () => switchToView('text') },
     { id: 'cycle-visibility', label: 'Cycle visibility of the whole document', orgName: 'org-global-cycle', keys: 'S-TAB', group: 'View', keywords: ['fold', 'unfold', 'collapse', 'expand'], needs: ['doc'], run: () => globalCycleFold() },
     { id: 'calendar', label: 'Calendar', group: 'View', needs: ['doc'], run: () => openCalendarPanel() },
-    { id: 'search', label: 'Search', group: 'View', keywords: ['find', 'replace'], run: () => searchBtn.click() },
+    { id: 'search', label: 'Search', keys: 'C-s', group: 'View', keywords: ['find', 'replace'], run: () => searchBtn.click() },
 
     // -- Export
     {
@@ -373,7 +397,7 @@ export function paletteCommandList() {
 
     // -- App
     { id: 'settings', label: 'Settings', group: 'App', run: () => settingsBtn.click() },
-    { id: 'help', label: 'Help', group: 'App', keywords: ['readme', 'docs', 'manual'], run: chord('C-h i') },
+    { id: 'help', label: 'Help', keys: 'C-h m', group: 'App', keywords: ['readme', 'docs', 'manual'], run: chord('C-h m') },
   ];
 }
 
@@ -382,7 +406,7 @@ export async function openCommandPalette() {
   if (S.confirmDialogOpen) return;
   const target = extraMenuTargetHeading();
   if (S.paletteRecentIds === null) S.paletteRecentIds = await loadPaletteRecent();
-  const commands = paletteCommandList();
+  const commands = [...paletteCommandList(), ...(await paletteDynamicCommands())];
 
   S.confirmDialogOpen = true;
   const overlay = document.createElement('div');
@@ -576,6 +600,37 @@ export async function openCommandPalette() {
   refreshResults();
   document.body.appendChild(overlay);
   input.focus();
+}
+
+
+/**
+ * The commands that come from the person's own configuration -- one per
+ * capture template and one per Extras-menu entry (see dynamicCommandSpecs in
+ * src/command-palette.js for the naming) -- so either can be run by name.
+ * Read fresh each time the palette opens, so an edited template list or a
+ * different document's Extras menu is always current.
+ */
+async function paletteDynamicCommands() {
+  let templates = [];
+  try {
+    templates = await getCaptureTemplates(kv);
+  } catch {
+    templates = []; // a broken template list must never stop the palette opening
+  }
+  const extraEntries = S.state && S.state.localVariables ? parseExtraMenu(getExtraMenu(S.state.localVariables)) : [];
+  return dynamicCommandSpecs({ templates, extraEntries }).map((spec) => ({
+    ...spec,
+    run:
+      spec.source === 'capture'
+        ? () => {
+            // the same steps as the C-c c chord, then straight to this template
+            closeAllOverlayPanels();
+            S.captureOpen = true;
+            render();
+            return openCapturePrompt(templates[spec.index]);
+          }
+        : () => runExtraMenuEntry(extraEntries[spec.index]),
+  }));
 }
 
 /** True if `chordString` is either an exact match in GOD_MODE_ACTIONS
