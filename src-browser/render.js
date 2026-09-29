@@ -5,6 +5,7 @@ import { flattenVisibleRows } from '../src/outline-view-model.js';
 import { collectSubtreeHeadings } from '../src/refile.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { renderAgendaView, renderTaskListView } from './agenda-view.js';
+import { renderFloatingKeyboard } from './floating-keyboard.js';
 import { S } from './app-state.js';
 import { renderMinibuffer, renderModeline, syncContentOffset } from './chrome.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
@@ -22,6 +23,7 @@ export function render() {
   syncSidePanel();
   syncExtraMenuButtonVisibility();
   renderMinibuffer();
+  renderFloatingKeyboard();
   renderModeline();
   syncContentOffset();
 

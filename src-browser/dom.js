@@ -57,6 +57,8 @@ export const extraMenuPanel = document.getElementById('extraMenuPanel');
 
 export const viewMenuBtn = document.getElementById('viewMenuBtn');
 
+export const godModeBtn = document.getElementById('godModeBtn');
+
 export const viewMenuPanel = document.getElementById('viewMenuPanel');
 
 export const fileMenuBtn = document.getElementById('fileMenuBtn');
@@ -68,6 +70,10 @@ export const settingsBtn = document.getElementById('settingsBtn');
 export const searchBtn = document.getElementById('searchBtn');
 
 export const searchPanel = document.getElementById('searchPanel');
+
+export const godModeKeyboardInput = document.getElementById('godModeKeyboardInput');
+
+export const floatingKeyboard = document.getElementById('floatingKeyboard');
 
 export const captureBtn = document.getElementById('captureBtn');
 

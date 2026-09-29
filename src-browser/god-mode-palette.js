@@ -4,7 +4,8 @@ import { computeNonCollidingKeys } from '../src/capture-template.js';
 import { findHeadingWithRunningClock } from '../src/clock.js';
 import { dynamicCommandSpecs, pushRecent, searchCommands } from '../src/command-palette.js';
 import { parseExtraMenu } from '../src/extra-menu.js';
-import { applyStartupVisibility, cycleFoldLevel } from '../src/fold-state.js';
+import { applyStartupVisibility, collapseFully, cycleFoldLevel, expandOneLevel } from '../src/fold-state.js';
+import { initialState as godModeInitialState, processKey as godModeProcessKey } from '../src/god-mode.js';
 import { demoteHeading, insertHeadingAfter, insertTopLevelHeading, moveHeadingDown, moveHeadingUp, promoteHeading } from '../src/heading-edit.js';
 import { getBufferReadOnly, getCycleOpenArchivedTrees, getExtraMenu } from '../src/local-variables.js';
 import { resolveTodoSequences } from '../src/todo-cycle.js';
@@ -26,7 +27,7 @@ import { renderFileMenu } from './file-menu.js';
 import { openGeneralEditor } from './general-editor.js';
 import { cutSubtree, extraMenuTargetHeading, narrowToHeading, pasteSubtree, widen } from './gestures-structure.js';
 import { cyclePriorityFor, openEffortEditor } from './heading-commands.js';
-import { moveKeyboardFocus, moveLineFocus, moveTableCellFocus, moveToParentHeading, moveToSameLevelHeading, setKeyboardFocusToHeading } from './keyboard-focus.js';
+import { moveKeyboardFocus, moveLineFocus, moveTableCellFocus, moveToParentHeading, moveToSameLevelHeading, setKeyboardFocusToHeading, enterInsertModeAtCurrentLine, visibleHeadingsInOrder } from './keyboard-focus.js';
 import { renderMoreMenu, runExtraMenuEntry } from './menus.js';
 import { openRefilePicker } from './refile-flow.js';
 import { scrollFocusedHeadingIntoView } from './render-helpers.js';
@@ -119,6 +120,23 @@ export const GOD_MODE_ACTIONS = {
     render();
   },
   'S-TAB': () => globalCycleFold(),
+  // Bare left/right have no other meaning anywhere in this app (only
+  // their Shift forms do, for table-cell navigation) -- added here
+  // specifically so the floating keyboard's own \u2190/\u2192 buttons (see
+  // src-browser/floating-keyboard.js) are never dead, using the
+  // conventional collapse/expand-one-level pairing every outline-style
+  // tree view uses. A genuinely new capability, not a rebinding of an
+  // existing one -- see the README's own note on this.
+  '<left>': () => {
+    if (!S.keyboardFocusedHeading) return;
+    collapseFully(S.keyboardFocusedHeading);
+    render();
+  },
+  '<right>': () => {
+    if (!S.keyboardFocusedHeading) return;
+    expandOneLevel(S.keyboardFocusedHeading);
+    render();
+  },
   'M-<up>': () => {
     if (S.keyboardFocusedHeading && moveHeadingUp(S.state.doc, S.keyboardFocusedHeading)) {
       commitAndRender('Moved heading up');
@@ -688,6 +706,77 @@ async function paletteDynamicCommands() {
 export function isValidGodModePrefix(chordString) {
   if (chordString === '') return true;
   return Object.keys(GOD_MODE_ACTIONS).some((k) => k === chordString || k.startsWith(chordString + ' '));
+}
+
+/**
+ * Activates god-mode: resets the in-progress key sequence, and -- if no
+ * heading is currently keyboard-focused -- focuses the first visible one,
+ * so a heading-targeted chord always has something to act on. Shared by
+ * the real Escape key's own entry path and the [g] toolbar button (see
+ * src-browser/floating-keyboard.js), which layers its own extra setup
+ * (the floating keyboard, the hidden input for the native keyboard) on
+ * top of this same common part. Does NOT call render() or scroll the
+ * focused heading into view -- callers do that themselves, since the
+ * right moment differs slightly between the two (the floating keyboard
+ * needs to focus its own hidden input first).
+ */
+export function enterGodMode() {
+  S.godModeActive = true;
+  S.godModeState = godModeInitialState();
+  if (!S.keyboardFocusedHeading) {
+    const headings = visibleHeadingsInOrder();
+    if (headings.length > 0) setKeyboardFocusToHeading(headings[0]);
+  }
+}
+
+/**
+ * Processes one god-mode keystroke -- real or synthesized -- through
+ * exactly the same logic regardless of where it came from: a real
+ * keydown while `S.godModeActive`, or a tap on the floating keyboard's
+ * own buttons (see src-browser/floating-keyboard.js). Neither caller
+ * needs to know anything about chord-building, the i/a/e special
+ * cases, or the redo-arm reset -- that's the whole point of sharing
+ * this, so the two routes provably can't drift apart.
+ *
+ * `rawKey` is a raw key name exactly as `KeyboardEvent.key` would give
+ * it (a single character like 'g', or a named key like 'Tab' /
+ * 'ArrowUp' / 'Enter'), `shiftKey` whether Shift applies. Does NOT
+ * call `e.preventDefault()` -- callers with a real DOM event handle
+ * that themselves, since a synthesized call has no event to prevent.
+ * Does NOT check for a bare modifier keypress (Shift/Control/Alt/Meta
+ * alone) either -- callers filter that out first, since it's specific
+ * to real keydown events and never arises from a button tap.
+ */
+export function dispatchGodModeKeystroke(rawKey, shiftKey) {
+  const freshSequence = S.godModeState.chordString === '' && S.godModeState.pendingModifier === null && !S.godModeState.literalActive;
+  if (freshSequence && !shiftKey && rawKey === 'i') {
+    enterInsertModeAtCurrentLine();
+    render();
+    return;
+  }
+  if (freshSequence && !shiftKey && rawKey === 'a') {
+    S.pendingCursorPosition = 'start';
+    return;
+  }
+  if (freshSequence && !shiftKey && rawKey === 'e') {
+    S.pendingCursorPosition = 'end';
+    return;
+  }
+  const { state: newState, chordString } = godModeProcessKey(S.godModeState, rawKey, shiftKey);
+  S.godModeState = newState;
+  const stillWaiting = newState.pendingModifier !== null;
+  if (!stillWaiting && chordString in GOD_MODE_ACTIONS) {
+    // C-f arms the next C-/ to mean redo instead of undo (see that
+    // chord's own comment); any OTHER action breaks the chain back to
+    // plain undo, matching real Emacs -- almost any command does.
+    if (chordString !== 'C-f' && chordString !== 'C-/') S.godModeRedoArmed = false;
+    GOD_MODE_ACTIONS[chordString]();
+    S.godModeState = godModeInitialState();
+  } else if (!stillWaiting && !isValidGodModePrefix(chordString)) {
+    setStatus(`God-mode: "${chordString}" isn\u2019t a recognized sequence.`);
+    S.godModeState = godModeInitialState();
+  }
+  render();
 }
 
 /**
