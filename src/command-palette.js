@@ -114,4 +114,47 @@ function pushRecent(recentIds, id, max = 8) {
   return [id, ...recentIds.filter((existing) => existing !== id)].slice(0, max);
 }
 
-export { normalize, searchCommands, pushRecent };
+/**
+ * Palette entries for things the person has configured themselves: each
+ * capture template ("Capture: Todo") and each Extras-menu entry ("Extras:
+ * Tracking"), so either can be run by name without opening its menu. Returns
+ * descriptors only -- `{ id, label, group, keywords, source, index }` -- and
+ * the caller supplies what running one does. `source` is 'capture' or
+ * 'extra' and `index` is the entry's position in the list it came from.
+ *
+ * Ids are stable across sessions (they are what the recent-commands list
+ * remembers): a template's own key when it has one, else the label; a repeat
+ * gets a numeric suffix so two entries never share an id. Separators, and
+ * entries with no label, are skipped.
+ */
+function dynamicCommandSpecs({ templates = [], extraEntries = [] } = {}) {
+  const specs = [];
+  const taken = new Set();
+  const unique = (base) => {
+    let id = base;
+    for (let n = 2; taken.has(id); n++) id = `${base}#${n}`;
+    taken.add(id);
+    return id;
+  };
+  templates.forEach((template, index) => {
+    const name = String(template.description || '').trim() || String(template.key || '').trim();
+    if (!name) return;
+    specs.push({
+      id: unique(`capture:${template.key || name}`),
+      label: `Capture: ${name}`,
+      group: 'Capture',
+      keywords: ['template', ...(template.key ? [String(template.key)] : [])],
+      source: 'capture',
+      index,
+    });
+  });
+  extraEntries.forEach((entry, index) => {
+    if (!entry || entry.type === 'separator') return;
+    const name = String(entry.label || '').trim();
+    if (!name) return;
+    specs.push({ id: unique(`extra:${name}`), label: `Extras: ${name}`, group: 'Extras', keywords: [], source: 'extra', index });
+  });
+  return specs;
+}
+
+export { normalize, searchCommands, pushRecent, dynamicCommandSpecs };
