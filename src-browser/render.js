@@ -23,9 +23,9 @@ export function render() {
   syncSidePanel();
   syncExtraMenuButtonVisibility();
   renderMinibuffer();
-  renderFloatingKeyboard();
   renderModeline();
   syncContentOffset();
+  renderFloatingKeyboard(); // after syncContentOffset: it positions itself against the mode line that call just placed
 
   const wide = isWideLayout();
   // renderSettingsView()/renderDocsView()/renderHistoryPanel() own

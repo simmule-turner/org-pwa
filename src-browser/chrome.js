@@ -10,9 +10,10 @@ import { S } from './app-state.js';
 import { renderCalendarPanel } from './calendar-panel.js';
 import { renderCapturePanel } from './capture-ui.js';
 import { findRunningClockAcrossSessions } from './clock-flow.js';
-import { contentAreaEl, extraMenuBtn, minibufferSearchEl, modelineBarEl, modelineEl, navBackBtn, outlineEl, statusEl, topBarEl } from './dom.js';
+import { contentAreaEl, extraMenuBtn, godModeBtn, minibufferSearchEl, modelineBarEl, modelineEl, navBackBtn, outlineEl, statusEl, topBarEl } from './dom.js';
 import { setStatus } from './editing.js';
 import { renderFileMenu, stopBrowsing } from './file-menu.js';
+import { FLOATING_BUTTON_GAP, FLOATING_BUTTON_SIZE, positionFloatingKeyboard } from './floating-keyboard.js';
 import { renderExtraMenu, renderMoreMenu } from './menus.js';
 import { renderRefilePanel } from './refile-flow.js';
 import { renderMinibufferSearch, renderSearchPanel } from './search-ui.js';
@@ -149,6 +150,12 @@ export function syncContentOffset() {
   contentAreaEl.style.height = `calc(100% - ${barHeight}px - ${bottomBarHeight}px - ${keyboardInset}px)`;
   extraMenuBtn.style.bottom = bottomBarHeight + keyboardInset + 16 + 'px';
   navBackBtn.style.bottom = bottomBarHeight + keyboardInset + 16 + 'px';
+  // [g] rides with them: stacked directly above the Extras button while that
+  // one is showing, in its slot when there is no Extras menu. Nothing that was
+  // already floating moves to make room.
+  const extrasShowing = extraMenuBtn.style.display !== 'none';
+  godModeBtn.style.bottom = bottomBarHeight + keyboardInset + 16 + (extrasShowing ? FLOATING_BUTTON_SIZE + FLOATING_BUTTON_GAP : 0) + 'px';
+  positionFloatingKeyboard();
 }
 
 /** Top/Bot/All/percentage -- real Emacs's own actual "how far down
