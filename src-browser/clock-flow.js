@@ -4,8 +4,10 @@ import { saveDocument } from '../src/document-store.js';
 import { formatOrgTimestamp } from '../src/org-timestamp.js';
 import { S } from './app-state.js';
 import { commitAndRender, setStatus } from './editing.js';
+import { navigateToHeading } from './navigation.js';
 import { render } from './render.js';
 import { kv } from './singletons.js';
+import { switchToTab } from './tabs.js';
 
 /** The human-readable "where this would go" label for confirming an
  *  archive. */
@@ -99,6 +101,30 @@ export function clockContinue() {
   const timestamp = formatOrgTimestamp({ date: now, time: now.toTimeString().slice(0, 5), active: false });
   clockIn(target, timestamp);
   commitAndRender(`Resumed clock on "${target.title}"`);
+}
+
+/** org-clock-goto (C-c C-x C-j): jumps to the headline of the currently
+ *  clocked-in task -- in whichever open tab it is running, since there is
+ *  only ever one clock across all of them (see findRunningClockAcrossSessions).
+ *  Real org also offers, with C-u, a list of recently clocked tasks to pick
+ *  from; that variant isn't implemented here. */
+export function clockGoto() {
+  const running = findRunningClockAcrossSessions();
+  if (!running) {
+    setStatus('No clock is currently running.');
+    render();
+    return;
+  }
+  if (!running.isActive) {
+    switchToTab(running.tabId);
+    // the switch restores that tab's own session state, so find the clock
+    // again in it rather than trust a heading from before the switch
+    const restored = findRunningClockAcrossSessions();
+    if (!restored || !restored.isActive) return;
+    navigateToHeading(restored.heading);
+    return;
+  }
+  navigateToHeading(running.heading);
 }
 
 /** org-clock-out: stops whatever clock is currently running on

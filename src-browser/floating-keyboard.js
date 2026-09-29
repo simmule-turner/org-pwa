@@ -19,6 +19,7 @@
 // the keyboard comes and goes or however far it was dragged.
 import { S } from './app-state.js';
 import { extraMenuBtn, floatingKeyboard, godModeBtn, godModeKeyboardInput, modelineBarEl } from './dom.js';
+import { getGodModeButton } from '../src/local-variables.js';
 import { dispatchGodModeKeystroke } from './god-mode-palette.js';
 
 export const FLOATING_BUTTON_SIZE = 44;
@@ -159,9 +160,21 @@ function wireHandle(handle) {
   });
 }
 
+/** Whether the [g] button is enabled (the org-xx-god-mode-button quick
+ *  setting): the open document's own merged variables when there is one, the
+ *  global ones otherwise, so it is right on the empty start screen too. */
+function godModeButtonEnabled() {
+  return getGodModeButton(S.state.localVariables || S.globalVariables);
+}
+
 /** Builds/shows/hides the panel and keeps the [g] button's look in step with
  *  it; called from render(). */
 export function renderFloatingKeyboard() {
+  const enabled = godModeButtonEnabled();
+  godModeBtn.style.display = enabled ? 'flex' : 'none';
+  // turned off while the panel is up (its only way to close is that button):
+  // end god-mode, and the line below takes the panel down with it
+  if (!enabled && S.floatingKeyboardOpen) S.godModeActive = false;
   // god-mode ended by some other route (a real Escape, a chord that opened
   // another panel, ...): follow it, so the two can never disagree.
   if (S.floatingKeyboardOpen && !S.godModeActive) closeFloatingKeyboard();
