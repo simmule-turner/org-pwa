@@ -399,6 +399,15 @@ export function getBufferReadOnly(vars) {
   return parseLispBoolean((vars || {})['buffer-read-only'], false);
 }
 
+/** org-xx-god-mode-button: whether the floating [g] button (god-mode
+ *  without an Escape key -- see the README's "God-mode without a hardware
+ *  keyboard") is shown. Not a real org-mode variable, same org-xx-
+ *  convention as org-xx-extra-menu. Default t: the button is there unless
+ *  someone turns it off, e.g. on a desktop with a real Escape key. */
+export function getGodModeButton(vars) {
+  return parseLispBoolean((vars || {})['org-xx-god-mode-button'], true);
+}
+
 /** org-contacts-birthday-property: which property key holds a
  *  heading's birthday/anniversary date+description (see agenda.js's
  *  org-contacts-anniversaries support). Default "BIRTHDAY", matching
