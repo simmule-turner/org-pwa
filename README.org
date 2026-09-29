@@ -1542,6 +1542,7 @@ Translation rules — this is a direct implementation of real god-mode.el's own 
 | ~e~ | ~C-e~ | Before pressing ~i~: the eventual cursor lands at the END of the line instead of the default |
 | ~Tab~ | ~Tab~ | Cycle the focused heading's fold state |
 | ~S-Tab~ | ~S-Tab~ | Cycle the whole document's fold state (two-state: overview / fully shown) |
+| ~←~ / ~→~ | ~<left>~ / ~<right>~ | Collapse the focused heading fully / expand it one level. New in this app rather than a rebinding: bare left and right had no meaning anywhere before (only their Shift forms did), and are here so the [[#god-mode-mobile][floating keyboard's]] arrow buttons are never dead |
 | ~g↑~ / ~g↓~ | ~M-↑~ / ~M-↓~ | Move the focused heading up/down among its siblings |
 | ~g←~ / ~g→~ | ~M-←~ / ~M-→~ | Promote/demote the focused heading (and its subtree — this app doesn't distinguish single-heading from whole-subtree) |
 | ~gS-←~ / ~gS-→~ | ~M-S-←~ / ~M-S-→~ | Same as above — no separate "whole subtree" action exists to map to |
@@ -1589,6 +1590,19 @@ Sequences that are valid god-mode input but have no equivalent in this app yet r
 *~i~ / ~a~ / ~e~ bypass god-mode's own chord system entirely* — they're not translated into any Control/Meta chord at all (unlike everything else on this page), loosely inspired by vim's own modal-editing keys rather than any real Emacs binding. This only applies at the very START of a fresh sequence, with nothing else pending — typed as the second (or later) key of a deliberate sequence, they behave completely normally instead: ~g i~ still reaches ~M-i~, ~c i~ still reaches ~C-c C-i~ within the chain. ~a~ / ~e~ on their own do nothing visible — they just set where the cursor will land the next time ~i~ is actually pressed, exactly as ~C-a~ / ~C-e~ would in real Emacs before typing. Once ~i~ has actually entered edit mode, left/right (and every other key) work exactly as normal browser text-field editing — nothing in this app intercepts them there at all, in either mode; ordinary typing always takes priority over any keyboard shortcut the moment an actual text field has focus.
 
 -----
+
+*** God-mode without a hardware keyboard
+:PROPERTIES:
+:CUSTOM_ID: god-mode-mobile
+:END:
+
+A phone has no ~Escape~ key, so the top bar has a *[g]* button. Tapping it does three things together: enters god-mode (exactly what ~Escape~ does), shows a small *floating keyboard*, and brings up the device's own keyboard. Tapping *[g]* again ends all three.
+
+The floating keyboard holds the keys a phone keyboard cannot type, in one row: ~Tab~, ~←~, ~→~, ~↑~, ~↓~, ~S~ (Shift) and ~g~. Every button feeds god-mode through the very same code a real keystroke uses, so the two cannot drift apart. *S* is one-shot: tap it (it lights up), and the next button tapped is shifted — ~Tab~ becomes ~S-Tab~, the arrows become their table-navigation forms, and ~g~ becomes ~G~, which is god-mode's C-M- prefix rather than its M- prefix. Tapping *S* twice disarms it. The panel is draggable by its ⠿ handle, and remembers where you put it until the page is reloaded; the position is not saved as a setting.
+
+The device keyboard supplies every other letter. Its state is tracked, so nothing is left half-on: dismissing it by tapping elsewhere, or with the phone's own gesture, ends god-mode and hides the floating keyboard too, exactly as tapping *[g]* would. Ending god-mode any other way (a chord that opens a panel, say) hides the floating keyboard as well. Entering god-mode with a real ~Escape~ never shows it — a desktop has no use for one.
+
+*A limit worth knowing about.* The floating keyboard's own buttons are plain taps and always work. Letters typed on the device keyboard depend on the browser delivering a keydown event for each isolated keystroke, and mobile browsers are documented as unreliable at that — terminal emulators such as xterm.js, which need exactly this, have open reports of it failing on iOS Safari and Android Chrome. The hidden field is set up to help (autocorrect, autocapitalise and spellcheck off, and sized so iOS does not zoom the page), but this could only be verified with an emulated keyboard, not a real phone. If a letter fails to register on your device, the command palette reaches the same commands by name.
 
 ** Differences from Emacs org-mode
 :PROPERTIES:

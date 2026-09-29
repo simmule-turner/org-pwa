@@ -177,7 +177,7 @@ import {
 import { recalculateTable, parseTableConstants } from './src/table-formula.js';
 import { parsePlotOptions, renderPlotSvg } from './src/org-plot.js';
 import { isOrgWeatherLine, formatWeatherLine, buildWeatherApiUrl, DEFAULT_ORG_WEATHER_FORMAT } from './src/org-weather.js';
-import { initialState as godModeInitialState, processKey as godModeProcessKey } from './src/god-mode.js';
+import { initialState as godModeInitialState } from './src/god-mode.js';
 import { documentUsesOrgWeather } from './src/sexp-eval.js';
 import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
 import {
@@ -242,7 +242,7 @@ import { agendaFilesCache, contactsFilesCache, imageDataUrlCache, kv, textModeLa
 import { ALWAYS_KEEP_MINE, documentDisplayLabel, formatPendingChangeTimestamp, loadPaletteRecent, loadRefileRecent, recordSyncedWrite, rememberRefileTarget, resolvePendingChangeChoice, storageKindLabel } from './src-browser/sync-helpers.js';
 import { SWIPE_THRESHOLD_PX, VH_UNIT, WIDE_LAYOUT_QUERY, aliasedMenuDivItem, appendMenuButtonsInOrder, appendSnippetWithHighlight, attachLongPress, autoGrowTextarea, entryFieldButtonStyle, fieldRow, hideModalOverlay, isWideLayout, keepOverlayInVisibleViewport, labeledInput, menuButton, menuDivItem, modalFieldRow, modalOverlayCleanups, pickTextFile, populateSelectOptions, positionPopupNearButton, requiredMenuDivItem, smallButton, tableActionButton, textInputStyle, withActionMenu, wizardButton } from './src-browser/ui-widgets.js';
 import { S } from './src-browser/app-state.js';
-import { captureBtn, capturePanel, capturePanelBox, contentAreaEl, doneNotePanel, doneNotePanelBox, externalChangeBanner, externalChangeDismissBtn, externalChangeMergeBtn, externalChangeReloadBtn, externalChangeText, extraMenuBtn, extraMenuPanel, fileMenuBtn, fileMenuPanel, minibufferEl, minibufferSearchEl, modelineBarEl, modelineEl, moreBtn, morePanel, nativeCreateElement, navBackBtn, outlineEl, refilePanel, refilePanelBox, saveBtnEl, searchBtn, searchPanel, settingsBtn, sidePanelDividerEl, sidePanelEl, splitRowEl, statusEl, tabBarEl, topBarEl, viewMenuBtn, viewMenuPanel } from './src-browser/dom.js';
+import { godModeBtn, godModeKeyboardInput, captureBtn, capturePanel, capturePanelBox, contentAreaEl, doneNotePanel, doneNotePanelBox, externalChangeBanner, externalChangeDismissBtn, externalChangeMergeBtn, externalChangeReloadBtn, externalChangeText, extraMenuBtn, extraMenuPanel, fileMenuBtn, fileMenuPanel, minibufferEl, minibufferSearchEl, modelineBarEl, modelineEl, moreBtn, morePanel, nativeCreateElement, navBackBtn, outlineEl, refilePanel, refilePanelBox, saveBtnEl, searchBtn, searchPanel, settingsBtn, sidePanelDividerEl, sidePanelEl, splitRowEl, statusEl, tabBarEl, topBarEl, viewMenuBtn, viewMenuPanel } from './src-browser/dom.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './src-browser/agenda-files.js';
 import { renderCapturePanel } from './src-browser/capture-ui.js';
 import { anyOverlayPanelOpen, closeAllOverlayPanels, renderModeline, syncContentOffset } from './src-browser/chrome.js';
@@ -251,8 +251,9 @@ import { afterDocumentLoaded, saveCurrent } from './src-browser/documents-io.js'
 import { commitAndRender, setStatus, startEditingTitle } from './src-browser/editing.js';
 import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, reloadCurrentDocumentFromDisk } from './src-browser/external-sync.js';
 import { renderFileMenu, stopBrowsing } from './src-browser/file-menu.js';
-import { GOD_MODE_ACTIONS, isValidGodModePrefix, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
-import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, moveTableCellFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading, visibleHeadingsInOrder } from './src-browser/keyboard-focus.js';
+import { closeFloatingKeyboard } from './src-browser/floating-keyboard.js';
+import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
+import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, moveTableCellFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading } from './src-browser/keyboard-focus.js';
 import { renderExtraMenu, renderMoreMenu } from './src-browser/menus.js';
 import { navigateBack, toggleActionMenu } from './src-browser/navigation.js';
 import { render, updateSaveButtonState } from './src-browser/render.js';
@@ -553,7 +554,10 @@ document.addEventListener('keydown', (e) => {
   }
 
   const activeTag = document.activeElement && document.activeElement.tagName;
-  if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return; // never hijack actual typing; each field's own keydown handler (Escape to cancel, etc.) already owns this
+  // never hijack actual typing; each field's own keydown handler (Escape to cancel, etc.) already owns this --
+  // except the floating keyboard's hidden input, which exists ONLY to bring up the device keyboard so its
+  // keystrokes reach god-mode; it holds no text of its own to protect
+  if ((activeTag === 'INPUT' || activeTag === 'TEXTAREA') && document.activeElement !== godModeKeyboardInput) return;
 
   if (e.metaKey || e.ctrlKey) return; // Cmd/Ctrl combinations are the browser's own territory (new tab, save, find, ...) -- never treated as one of these shortcuts, avoiding a silent double-action
 
@@ -587,12 +591,7 @@ document.addEventListener('keydown', (e) => {
       setKeyboardFocusToHeading(null);
       render();
     } else {
-      S.godModeActive = true;
-      S.godModeState = godModeInitialState();
-      if (!S.keyboardFocusedHeading) {
-        const headings = visibleHeadingsInOrder();
-        if (headings.length > 0) setKeyboardFocusToHeading(headings[0]);
-      }
+      enterGodMode();
       render();
       scrollFocusedHeadingIntoView();
     }
@@ -601,39 +600,8 @@ document.addEventListener('keydown', (e) => {
 
   if (S.godModeActive) {
     if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return; // a bare modifier key press isn't a god-mode keystroke of its own
-    const freshSequence = S.godModeState.chordString === '' && S.godModeState.pendingModifier === null && !S.godModeState.literalActive;
-    if (freshSequence && !e.shiftKey && e.key === 'i') {
-      e.preventDefault();
-      enterInsertModeAtCurrentLine();
-      render();
-      return;
-    }
-    if (freshSequence && !e.shiftKey && e.key === 'a') {
-      e.preventDefault();
-      S.pendingCursorPosition = 'start';
-      return;
-    }
-    if (freshSequence && !e.shiftKey && e.key === 'e') {
-      e.preventDefault();
-      S.pendingCursorPosition = 'end';
-      return;
-    }
     e.preventDefault();
-    const { state: newState, chordString } = godModeProcessKey(S.godModeState, e.key, e.shiftKey);
-    S.godModeState = newState;
-    const stillWaiting = newState.pendingModifier !== null;
-    if (!stillWaiting && chordString in GOD_MODE_ACTIONS) {
-      // C-f arms the next C-/ to mean redo instead of undo (see that
-      // chord's own comment); any OTHER action breaks the chain back to
-      // plain undo, matching real Emacs -- almost any command does.
-      if (chordString !== 'C-f' && chordString !== 'C-/') S.godModeRedoArmed = false;
-      GOD_MODE_ACTIONS[chordString]();
-      S.godModeState = godModeInitialState();
-    } else if (!stillWaiting && !isValidGodModePrefix(chordString)) {
-      setStatus(`God-mode: "${chordString}" isn\u2019t a recognized sequence.`);
-      S.godModeState = godModeInitialState();
-    }
-    render();
+    dispatchGodModeKeystroke(e.key, e.shiftKey);
     return;
   }
 
@@ -888,6 +856,18 @@ S.godModeState = godModeInitialState();
 // (src-browser/god-mode-palette.js) for the real-Emacs-derived redo
 // technique this implements.
 S.godModeRedoArmed = false;
+// The floating keyboard (src-browser/floating-keyboard.js): true only while
+// god-mode was entered via the [g] toolbar button, which also brings up
+// the device's own keyboard through a hidden input. Deliberately NOT
+// simply "godModeActive" -- a desktop user entering god-mode with a real
+// Escape key has no use for an on-screen keyboard, and shouldn't get one.
+S.floatingKeyboardOpen = false;
+// One-shot Shift for the floating keyboard's own buttons: armed by tapping
+// S, consumed by the next button tapped.
+S.floatingKeyboardShiftArmed = false;
+// Where the floating keyboard has been dragged to ({ left, top } in px),
+// or null for its default corner. Session-only, not persisted.
+S.floatingKeyboardPos = null;
 // The heading most recently navigated to via navigateToHeading (a
 // search result, an internal link, an agenda item) -- tracked
 // specifically so switching into the plain-text editor can land near
@@ -1168,6 +1148,42 @@ settingsBtn.addEventListener('click', async () => {
 });
 
 // ---- Search UI -----------------------------------------------------------
+
+// [g]: god-mode without an Escape key. Tapping it enters god-mode, shows the
+// floating keyboard, and focuses a hidden input so the device's own keyboard
+// comes up too; tapping it again -- or the device keyboard being dismissed
+// any other way (the input's blur, below) -- undoes all three together.
+// pointerdown is prevented so tapping [g] itself never blurs the input and
+// looks like a dismissal: the click handler alone decides.
+godModeBtn.addEventListener('pointerdown', (e) => e.preventDefault());
+godModeBtn.addEventListener('click', () => {
+  if (S.floatingKeyboardOpen) {
+    S.godModeActive = false;
+    S.godModeState = godModeInitialState();
+    closeFloatingKeyboard();
+    setStatus(''); // the indicator is only rewritten while god-mode is on
+    render();
+    return;
+  }
+  closeAllOverlayPanels();
+  enterGodMode();
+  S.floatingKeyboardOpen = true;
+  S.floatingKeyboardShiftArmed = false;
+  godModeKeyboardInput.value = '';
+  render();
+  godModeKeyboardInput.focus({ preventScroll: true });
+  scrollFocusedHeadingIntoView();
+});
+godModeKeyboardInput.addEventListener('blur', () => {
+  if (!S.floatingKeyboardOpen) return;
+  // the device keyboard was dismissed (tap elsewhere, the OS's own gesture):
+  // end god-mode and hide the floating keyboard so nothing is left half-on
+  S.godModeActive = false;
+  S.godModeState = godModeInitialState();
+  closeFloatingKeyboard();
+  setStatus('');
+  render();
+});
 
 searchBtn.addEventListener('click', () => {
   const opening = !S.searchOpen;

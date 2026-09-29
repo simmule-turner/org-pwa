@@ -343,6 +343,7 @@
       <button id="saveBtn" class="icon-btn" disabled aria-label="Save">&#128190;</button>
       <div id="topBarSpacer"></div>
       <button id="viewMenuBtn" class="icon-btn" disabled aria-label="View">&#128065;</button>
+      <button id="godModeBtn" class="icon-btn" aria-label="God-mode (mobile keyboard)">g</button>
       <button id="moreBtn" class="icon-btn" aria-label="More">&#8942;</button>
     </header>
     <div id="tabBar" style="display: none;"></div>
@@ -459,6 +460,27 @@
       <div id="minibufferSearch" style="display: none;"></div>
     </div>
   </div>
+  <!-- Direct children of <body>, NOT inside the top bar: that container makes
+         position:fixed resolve against itself rather than the viewport, which put the
+         floating keyboard off-screen. Focused while god-mode is active via the [g] toolbar button, to bring
+       up the device's own on-screen keyboard for the letters the floating
+       keyboard itself doesn't cover. Positioned off-screen (not display:none
+       or visibility:hidden -- either would make it unfocusable, and a mobile
+       OS keyboard only appears for a genuinely focused, visible field) with
+       font-size:16px specifically to stop iOS Safari auto-zooming the page
+       on focus, a well-known side effect of a smaller focused input. -->
+  <input
+    id="godModeKeyboardInput"
+    type="text"
+    autocapitalize="off"
+    autocomplete="off"
+    autocorrect="off"
+    spellcheck="false"
+    aria-hidden="true"
+    tabindex="-1"
+    style="position: fixed; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; font-size: 16px; border: none; padding: 0;"
+  />
+  <div id="floatingKeyboard" style="display: none;"></div>
   <script src="src/vendor/katex/katex.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>

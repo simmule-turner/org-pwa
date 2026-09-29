@@ -7,6 +7,53 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v417 — [g] toolbar button and a floating keyboard, so god-mode works on a phone with no Escape key
+A phone has no Escape key, so god-mode was unreachable there. The top bar
+gains a [g] button: it enters god-mode, shows a small draggable floating
+keyboard (Tab, the four arrows, Shift, g), and focuses a hidden field so the
+device's own keyboard comes up for the other letters. Tapping [g] again ends
+all three. The device keyboard's state is tracked: dismissing it any other way
+(tap elsewhere, the OS gesture) ends god-mode and hides the panel too, and
+ending god-mode by any other route hides the panel as well. Entering god-mode
+with a real Escape never shows it. Shift is one-shot and shifts whichever
+button is tapped next (Tab -> S-Tab, arrows -> their table-navigation forms,
+g -> G, god-mode's C-M- prefix instead of M-). The panel drags by its handle
+and remembers its place for the session only.
+
+Design driven by research, not assumption: terminal emulators (xterm.js, whose
+own tracker still lists it as open in July 2025) report native on-screen
+keyboards failing to deliver keydown for isolated keystrokes on iOS Safari and
+Android Chrome, and the workaround people ship is their own on-screen keyboard
+dispatching directly. So the floating keyboard's buttons never depend on native
+keydown -- they call the same dispatch function a real keystroke does. The
+device keyboard is kept for the rest of the alphabet, but its reliability could
+only be tested with an emulated keyboard here, not a real phone; the README says
+so plainly.
+
+Refactors that made this safe: the inline god-mode dispatch in app.js became one
+shared function, dispatchGodModeKeystroke, used by both real keydowns and the
+panel's buttons, so they cannot drift apart; entering god-mode became a second
+shared function, enterGodMode. Both verified behavior-preserving against the
+full suites before anything was built on them.
+
+Two things the tests caught. (1) The global keydown handler returns early
+whenever any input has focus, so keys typed into the hidden field would never
+have reached god-mode at all; it is now exempt. Found only because the check
+that a real Escape closes the panel timed out. (2) The panel first rendered
+off-screen: inside the top bar's container, position:fixed resolves against the
+container, not the viewport. Now a direct child of body.
+
+New capability, flagged because it is not just wiring: bare left/right had no
+meaning anywhere in the app (only their Shift forms did), which would have left
+two dead buttons, so in god-mode they now collapse the focused heading fully and
+expand it one level -- the usual outline convention. Separately, a check for
+god-mode's i/a/e special cases was added, since moving that code exposed that
+nothing covered it.
+
+Tests: 2930 unit (unchanged) and 32 browser checks (4 new: floating keyboard
+interaction end to end, its desktop/Escape behavior, left/right collapse and
+expand, and i/a/e).
+
 * v416 — God-mode gains real-Emacs chords for file/refile/attach/clocking/export, plus a redo technique; two modals gain proper Escape-to-close
 New god-mode chords, all verified against the real Emacs manual/source
 before implementation, not assumed: C-x C-s (save-buffer), C-x C-w
