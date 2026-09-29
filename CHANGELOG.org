@@ -7,6 +7,53 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v418 — [g] moves out of the top bar to a floating button; the floating keyboard rides above the mode line and minimizes on tap; Android letters fixed
+Fixes to v417, from real use on phones.
+
+[g] is now a floating button, the third one beside go-back and Extras, stacked
+directly above Extras (in its place when there is no Extras menu) and
+positioned by the same syncContentOffset code, so it floats up and down with
+the mode line and the device keyboard exactly as they do. v417 had put it in
+the top bar, which pushed the buttons already there out of place -- a UI
+element should not be displaced without asking first, and this one was, so it
+is out of the top bar entirely. Nothing that was already on screen moves.
+
+The floating keyboard was being hidden. It was positioned against the screen
+bottom, so on a phone the device keyboard covered it. It is now positioned
+against the mode line's top edge (which the app already keeps above the device
+keyboard) plus a lift, so it can never sit under the keyboard or cover the
+mode line, and dragging stops at the mode line. By default it sits just above
+the floating buttons so the [g] that closes it is not underneath it; [g] is
+raised above the panel while it is open in case it is dragged there.
+Tapping the move area (a press that does not travel) minimizes the panel to
+just the handle so what is behind it can be seen; tapping the handle restores
+it; a drag still just moves it.
+
+Android: typing a letter did nothing. Most Android keyboards type through an
+input-method editor -- every keydown arrives as key "Unidentified" (keyCode
+229) and the letter shows up only as an input event or inside a composition.
+The handler listened to keydown only, so it never saw the letter; this is the
+failure the v417 README warned about, now confirmed on a device. The hidden
+field now feeds god-mode from its beforeinput and input events too, follows a
+composition as it grows (one keystroke per new character, never one twice),
+counts a keyboard that sends both a keydown and an input event once, and the
+global keydown handler ignores the key-less keydown -- it would otherwise be an
+unrecognized key that resets a sequence in progress.
+
+Honest limits. The Android path was tested by reproducing what Android sends
+(a keyless keydown, then an input event, then a step-by-step composition driven
+through Chromium's own protocol for input-method text), not on a physical
+Android phone, and keyboards differ; and the device keyboard is emulated for
+the placement test by patching visualViewport, the signal the app itself uses.
+
+Tests: 2930 unit (unchanged) and 36 browser checks (4 new: [g]'s placement and
+that the top bar and the other floating buttons do not move; the panel staying
+above the mode line by default, when dragged and with a 300px emulated device
+keyboard up; minimize on tap; the Android input paths). Each new check was
+confirmed to fail when its fix is removed, which also showed one assertion in
+the first draft was hollow -- the status message it looked for is overwritten
+at once, so it could never fail -- and it was replaced by one that can.
+
 * v417 — [g] toolbar button and a floating keyboard, so god-mode works on a phone with no Escape key
 A phone has no Escape key, so god-mode was unreachable there. The top bar
 gains a [g] button: it enters god-mode, shows a small draggable floating

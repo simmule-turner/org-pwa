@@ -251,7 +251,7 @@ import { afterDocumentLoaded, saveCurrent } from './src-browser/documents-io.js'
 import { commitAndRender, setStatus, startEditingTitle } from './src-browser/editing.js';
 import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, reloadCurrentDocumentFromDisk } from './src-browser/external-sync.js';
 import { renderFileMenu, stopBrowsing } from './src-browser/file-menu.js';
-import { closeFloatingKeyboard } from './src-browser/floating-keyboard.js';
+import { closeFloatingKeyboard, noteKeydownDelivered } from './src-browser/floating-keyboard.js';
 import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
 import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, moveTableCellFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading } from './src-browser/keyboard-focus.js';
 import { renderExtraMenu, renderMoreMenu } from './src-browser/menus.js';
@@ -600,7 +600,14 @@ document.addEventListener('keydown', (e) => {
 
   if (S.godModeActive) {
     if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return; // a bare modifier key press isn't a god-mode keystroke of its own
+    // Most Android keyboards report every keystroke as key "Unidentified"
+    // (keyCode 229, mid-composition) and deliver the letter only as an input
+    // event -- handled by floating-keyboard.js from the hidden input's own
+    // beforeinput/input. Treating that keydown as a keystroke would feed
+    // god-mode the meaningless key name "Unidentified", so it is left alone.
+    if (e.key === 'Unidentified' || e.keyCode === 229 || e.isComposing) return;
     e.preventDefault();
+    if (e.target === godModeKeyboardInput && e.key.length === 1) noteKeydownDelivered(e.key);
     dispatchGodModeKeystroke(e.key, e.shiftKey);
     return;
   }
@@ -865,9 +872,16 @@ S.floatingKeyboardOpen = false;
 // One-shot Shift for the floating keyboard's own buttons: armed by tapping
 // S, consumed by the next button tapped.
 S.floatingKeyboardShiftArmed = false;
-// Where the floating keyboard has been dragged to ({ left, top } in px),
-// or null for its default corner. Session-only, not persisted.
+// Tapping the panel's move area shrinks it to just that handle, to see what
+// is behind it; tapping again restores it.
+S.floatingKeyboardMinimized = false;
+// Where the floating keyboard has been dragged to: { left } in px and { lift }
+// in px ABOVE THE MODE LINE (never an absolute screen position, so it can't
+// end up under the device keyboard), or null for its default spot above the
+// floating buttons. Session-only, not persisted.
 S.floatingKeyboardPos = null;
+S.godModeInputFedLength = 0; // see floating-keyboard.js's input handling
+S.godModeRecentKeydown = null;
 // The heading most recently navigated to via navigateToHeading (a
 // search result, an internal link, an agenda item) -- tracked
 // specifically so switching into the plain-text editor can land near
@@ -1169,6 +1183,7 @@ godModeBtn.addEventListener('click', () => {
   enterGodMode();
   S.floatingKeyboardOpen = true;
   S.floatingKeyboardShiftArmed = false;
+  S.floatingKeyboardMinimized = false;
   godModeKeyboardInput.value = '';
   render();
   godModeKeyboardInput.focus({ preventScroll: true });

@@ -343,7 +343,6 @@
       <button id="saveBtn" class="icon-btn" disabled aria-label="Save">&#128190;</button>
       <div id="topBarSpacer"></div>
       <button id="viewMenuBtn" class="icon-btn" disabled aria-label="View">&#128065;</button>
-      <button id="godModeBtn" class="icon-btn" aria-label="God-mode (mobile keyboard)">g</button>
       <button id="moreBtn" class="icon-btn" aria-label="More">&#8942;</button>
     </header>
     <div id="tabBar" style="display: none;"></div>
@@ -441,6 +440,37 @@
       cursor: pointer;
     "
   >&#9776;</button>
+  <!-- [g]: god-mode without an Escape key (see the README's "God-mode without a
+       hardware keyboard"). A floating button like the two above -- its bottom is
+       set by syncContentOffset so it rides above the mode line and the device
+       keyboard, stacked directly above the Extras button (or in its place when
+       there is no Extras menu). -->
+  <button
+    id="godModeBtn"
+    aria-label="God-mode keyboard"
+    style="
+      display: flex;
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 50;
+      width: 44px;
+      height: 44px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      border: 1px solid var(--border-strong);
+      background: var(--fg);
+      opacity: 0.35;
+      color: var(--bg);
+      font-size: 20px;
+      font-weight: 600;
+      line-height: 1;
+      box-shadow: 0 2px 8px #0004;
+      cursor: pointer;
+      touch-action: manipulation;
+    "
+  >g</button>
   <div
     id="extraMenuPanel"
     class="popup-menu"
