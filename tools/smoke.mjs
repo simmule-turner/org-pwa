@@ -698,6 +698,124 @@ check('command palette: opens from the keyboard with god-mode "g x" (M-x)', asyn
   await context.close();
 });
 
+check('god-mode: bare left/right collapse/expand the focused heading (a new capability, since only their Shift forms had any meaning before)', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Parent\n** Child\nbody text\n');
+  const godSeq = async (...keys) => {
+    if ((await page.locator('#minibuffer').innerText()) !== '\ud83e\udde0 God-mode (Esc to exit)') {
+      await page.keyboard.press('Escape');
+      if (!(await page.locator('#minibuffer').innerText()).includes('God-mode')) {
+        await page.keyboard.press('Escape');
+      }
+    }
+    for (const k of keys) await page.keyboard.press(k);
+    await page.waitForTimeout(250);
+  };
+  await page.locator('.heading-title', { hasText: 'Parent' }).first().click();
+  await godSeq('ArrowLeft'); // collapseFully
+  const foldGlyph = () => page.locator('.heading-title', { hasText: 'Parent' }).locator('xpath=..').innerText();
+  expect((await foldGlyph()).includes('\u25b8'), `expected the collapsed glyph after ArrowLeft: ${await foldGlyph()}`);
+  expect(!(await page.locator('body').innerText()).includes('Child'), 'Child should be hidden once collapsed');
+
+  await page.locator('.heading-title', { hasText: 'Parent' }).first().click();
+  await godSeq('ArrowRight'); // expandOneLevel
+  expect((await page.locator('body').innerText()).includes('Child'), 'Child should be visible again after ArrowRight');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('floating keyboard: [g] opens it with god-mode and the hidden input; its buttons work without stealing focus; Shift is one-shot; it drags; [g] again or a dismissed device keyboard closes everything', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Parent\n** Child\nbody\n');
+  const fk = page.locator('#floatingKeyboard');
+  const activeId = () => page.evaluate(() => document.activeElement && document.activeElement.id);
+  const godOn = async () => (await page.locator('#minibuffer').innerText()).includes('God-mode');
+
+  await page.click('#godModeBtn');
+  await fk.waitFor({ state: 'visible' });
+  expect(await godOn(), 'tapping [g] should enter god-mode');
+  expect((await activeId()) === 'godModeKeyboardInput', `the hidden input should hold focus: ${await activeId()}`);
+  const labels = await fk.locator('button').allInnerTexts();
+  expect(JSON.stringify(labels) === JSON.stringify(['Tab', '\u2190', '\u2192', '\u2191', '\u2193', 'S', 'g']), `layout T \u2190 \u2192 \u2191 \u2193 S g: ${JSON.stringify(labels)}`);
+
+  await fk.locator('[data-fk-key=ArrowLeft]').click(); // collapse the auto-focused Parent
+  expect(!(await page.locator('#outline').innerText()).includes('Child'), 'the left-arrow button should collapse the focused heading');
+  expect((await activeId()) === 'godModeKeyboardInput', 'tapping a floating-keyboard button must not move focus off the input');
+  expect(await godOn(), 'god-mode should stay on after a button tap');
+  await fk.locator('[data-fk-key=ArrowRight]').click();
+  expect((await page.locator('#outline').innerText()).includes('Child'), 'the right-arrow button should expand it again');
+
+  const shift = fk.locator('[data-fk-shift]');
+  await shift.click();
+  expect((await shift.getAttribute('aria-pressed')) === 'true', 'S should arm Shift');
+  expect((await fk.locator('[data-fk-key=g]').innerText()) === 'G', 'g should read G while Shift is armed');
+  await fk.locator('[data-fk-key=g]').click();
+  expect((await shift.getAttribute('aria-pressed')) === 'false', 'Shift should be consumed by the next tap');
+  expect((await fk.locator('[data-fk-key=g]').innerText()) === 'g', 'g should read g again');
+  await shift.click();
+  await shift.click();
+  expect((await shift.getAttribute('aria-pressed')) === 'false', 'tapping S twice should disarm it');
+
+  const before = await fk.boundingBox();
+  const handle = await fk.locator('[data-fk-handle]').boundingBox();
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x - 90, handle.y - 120, { steps: 6 });
+  await page.mouse.up();
+  const after = await fk.boundingBox();
+  expect(Math.abs(after.y - before.y) > 40, `dragging the handle should move it (horizontal travel is legitimately clamped on a phone-width viewport): ${JSON.stringify(before)} -> ${JSON.stringify(after)}`);
+  expect((await activeId()) === 'godModeKeyboardInput', 'dragging must not move focus off the input');
+
+  await page.click('#godModeBtn'); // toggle off
+  await fk.waitFor({ state: 'hidden' });
+  expect(!(await godOn()), 'tapping [g] again should leave god-mode');
+  expect((await activeId()) !== 'godModeKeyboardInput', 'and dismiss the device keyboard');
+
+  await page.click('#godModeBtn'); // on again -- keeps its dragged position
+  await fk.waitFor({ state: 'visible' });
+  const again = await fk.boundingBox();
+  expect(Math.abs(again.x - after.x) < 2 && Math.abs(again.y - after.y) < 2, 'the dragged position should be remembered for the session');
+  await page.evaluate(() => document.getElementById('godModeKeyboardInput').blur()); // the device keyboard dismissed itself
+  await fk.waitFor({ state: 'hidden' });
+  expect(!(await godOn()), 'a dismissed device keyboard should end god-mode too');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('floating keyboard: entering god-mode with a real Escape does NOT show it, and ending god-mode any other way hides it', async () => {
+  const { context, page } = await freshPage();
+  await newDocument(page, '* Parent\n');
+  await page.locator('body').click({ position: { x: 200, y: 800 } });
+  await page.keyboard.press('Escape');
+  if (!(await page.locator('#minibuffer').innerText()).includes('God-mode')) await page.keyboard.press('Escape');
+  expect((await page.locator('#floatingKeyboard').isVisible()) === false, 'a desktop Escape should not bring up an on-screen keyboard');
+  await page.keyboard.press('Escape'); // leave
+  await page.click('#godModeBtn');
+  await page.locator('#floatingKeyboard').waitFor({ state: 'visible' });
+  // keys typed on the device keyboard land in the hidden input and must still reach god-mode
+  await page.keyboard.press('x'); // x then q would toggle read-only; just prove the sequence advances
+  expect((await page.locator('#minibuffer').innerText()).includes('C-x'), `a key typed into the hidden input should reach god-mode: ${await page.locator('#minibuffer').innerText()}`);
+  await page.keyboard.press('Escape'); // cancels that sequence
+  await page.keyboard.press('Escape'); // a real Escape ends god-mode from the hidden input too
+  await page.locator('#floatingKeyboard').waitFor({ state: 'hidden' });
+  await context.close();
+});
+
+check('god-mode: i/a/e enter insert mode at the focused row (the special, non-chord fresh-sequence cases)', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Write report\n');
+  await page.locator('.heading-title').first().click();
+  await page.keyboard.press('Escape');
+  if (!(await page.locator('#minibuffer').innerText()).includes('God-mode')) {
+    await page.keyboard.press('Escape');
+  }
+  await page.keyboard.press('i');
+  await page.waitForSelector('#heading-title-edit-popup', { timeout: 4000 });
+  expect(true, 'i should open the title editor for the keyboard-focused heading');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('god-mode: C-h m opens Help, and C-s opens search', async () => {
   let { context, page, errors } = await freshPage();
   await newDocument(page, '* Write report\n');
