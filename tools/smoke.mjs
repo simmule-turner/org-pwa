@@ -801,6 +801,160 @@ check('floating keyboard: entering god-mode with a real Escape does NOT show it,
   await context.close();
 });
 
+check('floating [g]: a floating button stacked directly above Extras (taking its place when there is none); it is not in the top bar and nothing already on screen moves', async () => {
+  let { context, page } = await freshPage();
+  await newDocument(page, '* Plain\n');
+  expect((await page.locator('#topBar #godModeBtn').count()) === 0, '[g] must not be in the top bar -- that displaced the buttons already there');
+  expect((await page.locator('#godModeBtn').evaluate((el) => getComputedStyle(el).position)) === 'fixed', '[g] should be a floating button');
+  let ml = await page.locator('#modelineBar').boundingBox();
+  let g = await page.locator('#godModeBtn').boundingBox();
+  expect(Math.abs(g.y + g.height - (ml.y - 16)) < 1.5, `with no Extras menu [g] takes the Extras slot, 16px above the mode line: g bottom ${g.y + g.height}, mode line top ${ml.y}`);
+  await context.close();
+
+  ({ context, page } = await freshPage());
+  await newDocument(page, ['* Plain', '', '# Local Variables:', '# org-xx-extra-menu: "\'org-clock-out;Stop the clock"', '# End:', ''].join('\n'));
+  await page.locator('#extraMenuBtn').waitFor({ state: 'visible' });
+  ml = await page.locator('#modelineBar').boundingBox();
+  const extras = await page.locator('#extraMenuBtn').boundingBox();
+  g = await page.locator('#godModeBtn').boundingBox();
+  expect(Math.abs(extras.y + extras.height - (ml.y - 16)) < 1.5, `the Extras button must not move: bottom ${extras.y + extras.height}, mode line top ${ml.y}`);
+  expect(g.y + g.height <= extras.y - 5, `[g] sits above Extras: g bottom ${g.y + g.height}, extras top ${extras.y}`);
+  expect(Math.abs(g.x + g.width - (extras.x + extras.width)) < 1.5, '[g] lines up with Extras on the right');
+  await context.close();
+});
+
+check('floating keyboard: always above the mode line -- by default, however far it is dragged, and when the viewport shrinks', async () => {
+  const { context, page } = await freshPage();
+  await newDocument(page, '* Parent\n');
+  const fk = page.locator('#floatingKeyboard');
+  const clear = async (what) => {
+    const ml = await page.locator('#modelineBar').boundingBox();
+    const box = await fk.boundingBox();
+    expect(box.y + box.height <= ml.y + 0.5, `${what}: panel bottom ${box.y + box.height} must be at or above the mode line top ${ml.y}`);
+    expect(box.y >= -0.5, `${what}: panel top ${box.y} must stay on screen`);
+    return box;
+  };
+  await page.click('#godModeBtn');
+  await fk.waitFor({ state: 'visible' });
+  await clear('by default');
+  const g = await page.locator('#godModeBtn').boundingBox();
+  const start = await fk.boundingBox();
+  expect(start.y + start.height <= g.y, 'by default the panel is clear of the [g] button that closes it');
+
+  const handle = await fk.locator('[data-fk-handle]').boundingBox();
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x, handle.y + 900, { steps: 8 }); // dragged far below the mode line
+  await page.mouse.up();
+  await clear('dragged far down');
+  const moved = await fk.boundingBox();
+  // the device keyboard: the app learns of it only through visualViewport, and lifts its mode line by the
+  // covered height -- the panel must ride up with it instead of staying underneath (the reported bug)
+  const setKeyboard = (px) => page.evaluate((h) => {
+    const vv = window.visualViewport;
+    if (h) Object.defineProperty(vv, 'height', { configurable: true, get: () => window.innerHeight - h });
+    else delete vv.height;
+    vv.dispatchEvent(new Event('resize'));
+  }, px);
+  await setKeyboard(300);
+  await page.waitForTimeout(300);
+  const lifted = await page.locator('#modelineBar').boundingBox();
+  expect(lifted.y < (await page.viewportSize()).height - 250, `the app should have lifted its mode line above the emulated keyboard: ${lifted.y}`);
+  await clear('with a 300px device keyboard up');
+  const withKeyboard = await fk.boundingBox();
+  await setKeyboard(0);
+  await page.waitForTimeout(300);
+  await clear('after the device keyboard went away');
+  expect(withKeyboard.y < (await fk.boundingBox()).y, 'the panel should come back down with the mode line');
+  await page.setViewportSize({ width: 400, height: 420 });
+  await page.waitForTimeout(300);
+  await clear('after the viewport shrank');
+  await page.setViewportSize({ width: 400, height: 800 });
+  await page.waitForTimeout(300);
+  await clear('after it grew back');
+  expect(moved.y > start.y, 'the drag itself should have moved it down toward the mode line');
+  await context.close();
+});
+
+check('floating keyboard: tapping the move area minimizes it to just that handle, tapping again restores it, and dragging does neither', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Parent\n');
+  const fk = page.locator('#floatingKeyboard');
+  const activeId = () => page.evaluate(() => document.activeElement && document.activeElement.id);
+  await page.click('#godModeBtn');
+  await fk.waitFor({ state: 'visible' });
+  const full = await fk.boundingBox();
+  const handle = fk.locator('[data-fk-handle]');
+
+  const h = await handle.boundingBox(); // a drag must not count as a tap
+  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(h.x + h.width / 2 - 30, h.y + h.height / 2 - 50, { steps: 5 });
+  await page.mouse.up();
+  expect((await fk.locator('button').count()) === 7, 'a drag should not minimize it');
+
+  await handle.click();
+  expect((await fk.locator('button').count()) === 0, 'a tap on the move area should hide every key');
+  expect((await fk.getAttribute('role')) === 'toolbar' && (await handle.isVisible()), 'the handle stays, so it can be restored');
+  const small = await fk.boundingBox();
+  expect(small.width < full.width / 2, `minimized should be far narrower: ${full.width} -> ${small.width}`);
+  expect((await page.locator('#minibuffer').innerText()).includes('God-mode'), 'minimizing must not end god-mode');
+  expect((await activeId()) === 'godModeKeyboardInput', 'or dismiss the device keyboard');
+
+  await handle.click();
+  expect((await fk.locator('button').count()) === 7, 'tapping the minimized handle restores every key');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('floating keyboard: letters typed the way Android delivers them (keydown "Unidentified"/229, then an input event or an IME composition) reach god-mode, exactly once', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Parent\n');
+  const mini = async () => (await page.locator('#minibuffer').innerText()).replace(/\s+/g, ' ');
+  await page.click('#godModeBtn');
+  await page.locator('#floatingKeyboard').waitFor({ state: 'visible' });
+  const androidKeydown = () => page.evaluate(() => {
+    document.getElementById('godModeKeyboardInput').dispatchEvent(new KeyboardEvent('keydown', { key: 'Unidentified', keyCode: 229, bubbles: true, cancelable: true }));
+  });
+
+  // 1. a plain insertText, as after a 229 keydown on a keyboard that does not compose
+  await androidKeydown();
+  await page.keyboard.insertText('h');
+  expect((await mini()).includes('C-h'), `typing h should show C-h in the minibuffer, as it does everywhere else: ${await mini()}`);
+  await page.click('#godModeBtn'); // off, then on: a clean sequence
+  await page.click('#godModeBtn');
+  await page.locator('#floatingKeyboard').waitFor({ state: 'visible' });
+
+  // 2. an IME composition growing in place: c, then cx -- two keystrokes, not one and not three. Each is preceded by
+  //    the keydown with no key; if that were treated as a keystroke it would be an unrecognized dead end that resets
+  //    the sequence in progress (the status message it sets is overwritten at once, so the sequence is what shows it)
+  const cdp = await context.newCDPSession(page);
+  await androidKeydown();
+  await cdp.send('Input.imeSetComposition', { text: 'c', selectionStart: 1, selectionEnd: 1 });
+  await androidKeydown();
+  await cdp.send('Input.imeSetComposition', { text: 'cx', selectionStart: 2, selectionEnd: 2 });
+  expect((await mini()).includes('C-c C-x'), `a composition c then cx should be C-c then C-x: ${await mini()}`);
+  await page.click('#godModeBtn');
+  await page.click('#godModeBtn');
+  await page.locator('#floatingKeyboard').waitFor({ state: 'visible' });
+
+  // 3. a keyboard that sends BOTH a real keydown and the input event must not double-count
+  await page.evaluate(() => {
+    document.getElementById('godModeKeyboardInput').dispatchEvent(new KeyboardEvent('keydown', { key: 'h', keyCode: 72, bubbles: true, cancelable: true }));
+  });
+  await page.keyboard.insertText('h');
+  expect((await mini()).endsWith('C-h'), `one h, seen twice, must count once: ${await mini()}`);
+  await page.click('#godModeBtn');
+  await page.click('#godModeBtn');
+  await page.locator('#floatingKeyboard').waitFor({ state: 'visible' });
+
+  // 4. an uppercase letter carries its own shift: G is god-mode's C-M- prefix
+  await page.keyboard.insertText('G');
+  expect((await mini()).includes('\u2026'), `G should leave god-mode waiting on a C-M- prefix: ${await mini()}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('god-mode: i/a/e enter insert mode at the focused row (the special, non-chord fresh-sequence cases)', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Write report\n');
