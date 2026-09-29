@@ -342,9 +342,6 @@
       <button id="fileMenuBtn" class="icon-btn" aria-label="File">&#128193;</button>
       <button id="saveBtn" class="icon-btn" disabled aria-label="Save">&#128190;</button>
       <div id="topBarSpacer"></div>
-      <button id="addBtn" class="icon-btn" disabled aria-label="Add heading">+</button>
-      <button id="helpBtn" class="icon-btn" aria-label="Help / Docs">&#10067;</button>
-      <button id="searchBtn" class="icon-btn" disabled aria-label="Search">&#128269;</button>
       <button id="viewMenuBtn" class="icon-btn" disabled aria-label="View">&#128065;</button>
       <button id="moreBtn" class="icon-btn" aria-label="More">&#8942;</button>
     </header>
@@ -363,12 +360,13 @@
     </div>
     <div id="searchPanel" class="panel" style="display: none;"></div>
     <!-- Kept in the DOM so their existing click handlers and disabled-state
-         logic stay completely untouched -- the More panel's own buttons
-         just call .click() on these rather than duplicating any logic.
-         addBtn and searchBtn are no longer part of this group -- both are
-         real, visible toolbar buttons now (see the header block above). -->
+         logic stay completely untouched -- the command palette and god-mode
+         (C-s for search) just call .click() on these rather than duplicating
+         any logic. Not real, visible toolbar buttons -- see the README's
+         Command palette / Keybindings sections for how each is reached now. -->
     <button id="captureBtn" disabled aria-label="Capture" style="display: none;">&#128229;</button>
     <button id="settingsBtn" aria-label="Settings" style="display: none;">&#9881;</button>
+    <button id="searchBtn" disabled aria-label="Search" style="display: none;">&#128269;</button>
   </div>
   <div id="capturePanel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
     <div id="capturePanelBox" class="panel" style="background: var(--modal-bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 10px; padding: 18px; width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box;"></div>

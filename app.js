@@ -144,7 +144,6 @@ import {
   setPriority,
   getPlainTimestampInTitle,
   setPlainTimestampInTitle,
-  insertTopLevelHeading,
   insertChildHeading,
   insertHeadingAfter,
   removeHeading,
@@ -243,7 +242,7 @@ import { agendaFilesCache, contactsFilesCache, imageDataUrlCache, kv, textModeLa
 import { ALWAYS_KEEP_MINE, documentDisplayLabel, formatPendingChangeTimestamp, loadPaletteRecent, loadRefileRecent, recordSyncedWrite, rememberRefileTarget, resolvePendingChangeChoice, storageKindLabel } from './src-browser/sync-helpers.js';
 import { SWIPE_THRESHOLD_PX, VH_UNIT, WIDE_LAYOUT_QUERY, aliasedMenuDivItem, appendMenuButtonsInOrder, appendSnippetWithHighlight, attachLongPress, autoGrowTextarea, entryFieldButtonStyle, fieldRow, hideModalOverlay, isWideLayout, keepOverlayInVisibleViewport, labeledInput, menuButton, menuDivItem, modalFieldRow, modalOverlayCleanups, pickTextFile, populateSelectOptions, positionPopupNearButton, requiredMenuDivItem, smallButton, tableActionButton, textInputStyle, withActionMenu, wizardButton } from './src-browser/ui-widgets.js';
 import { S } from './src-browser/app-state.js';
-import { addBtn, captureBtn, capturePanel, capturePanelBox, contentAreaEl, doneNotePanel, doneNotePanelBox, externalChangeBanner, externalChangeDismissBtn, externalChangeMergeBtn, externalChangeReloadBtn, externalChangeText, extraMenuBtn, extraMenuPanel, fileMenuBtn, fileMenuPanel, helpBtn, minibufferEl, minibufferSearchEl, modelineBarEl, modelineEl, moreBtn, morePanel, nativeCreateElement, navBackBtn, outlineEl, refilePanel, refilePanelBox, saveBtnEl, searchBtn, searchPanel, settingsBtn, sidePanelDividerEl, sidePanelEl, splitRowEl, statusEl, tabBarEl, topBarEl, viewMenuBtn, viewMenuPanel } from './src-browser/dom.js';
+import { captureBtn, capturePanel, capturePanelBox, contentAreaEl, doneNotePanel, doneNotePanelBox, externalChangeBanner, externalChangeDismissBtn, externalChangeMergeBtn, externalChangeReloadBtn, externalChangeText, extraMenuBtn, extraMenuPanel, fileMenuBtn, fileMenuPanel, minibufferEl, minibufferSearchEl, modelineBarEl, modelineEl, moreBtn, morePanel, nativeCreateElement, navBackBtn, outlineEl, refilePanel, refilePanelBox, saveBtnEl, searchBtn, searchPanel, settingsBtn, sidePanelDividerEl, sidePanelEl, splitRowEl, statusEl, tabBarEl, topBarEl, viewMenuBtn, viewMenuPanel } from './src-browser/dom.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './src-browser/agenda-files.js';
 import { renderCapturePanel } from './src-browser/capture-ui.js';
 import { anyOverlayPanelOpen, closeAllOverlayPanels, renderModeline, syncContentOffset } from './src-browser/chrome.js';
@@ -261,7 +260,7 @@ import { setupSidePanelResize } from './src-browser/row-render.js';
 import { advanceToNextFileOrFinish, finishQueryReplace, renderSearchPanel } from './src-browser/search-ui.js';
 import { applySidePanelWidth, applyTheme, renderSettingsView } from './src-browser/settings-view.js';
 import { switchToTab } from './src-browser/tabs.js';
-import { openOrSwitchToHelp, renderViewMenu } from './src-browser/views.js';
+import { renderViewMenu } from './src-browser/views.js';
 import { checkWeatherAutoRefresh, loadCachedWeatherData } from './src-browser/weather-flow.js';
 
 document.createElement = function (tagName, options) {
@@ -1116,13 +1115,6 @@ saveBtnEl.addEventListener('click', () => {
   saveCurrent();
 });
 
-addBtn.addEventListener('click', () => {
-  if (!S.state.doc) return;
-  closeAllOverlayPanels();
-  const heading = insertTopLevelHeading(S.state.doc, {});
-  startEditingTitle(heading, true);
-});
-
 navBackBtn.addEventListener('click', async () => {
   await navigateBack();
 });
@@ -1163,10 +1155,6 @@ settingsBtn.addEventListener('click', async () => {
   } else {
     render(); // restores whatever currentView was showing before settings opened
   }
-});
-
-helpBtn.addEventListener('click', () => {
-  openOrSwitchToHelp();
 });
 
 // ---- Search UI -----------------------------------------------------------

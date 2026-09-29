@@ -7,6 +7,81 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v415 — More menu loses Capture/Clocking/History; View menu loses its read-only toggle; ⊕/❓/🔍 toolbar buttons retired; a real Add-heading bug fixed
+Everything these three menu steps and three toolbar buttons did was
+already reachable from the command palette (added in v409/v411), so all
+six are gone now that the palette covers them:
+
+- More menu: Capture and Clocking steps removed (each was its own
+  sub-panel, entirely separate machinery from what the palette's own
+  Capture/Clocking commands already used) -- both orphaned functions,
+  renderCaptureFlow and renderClockOptionsFlow, deleted outright rather
+  than left unreachable. History step removed too (its palette command
+  already used the same direct mechanism, so nothing there was orphaned).
+- View menu: the %%RO / **RW read-only toggle removed -- the palette's
+  Toggle read-only (C-x C-q) already did the same thing.
+- Toolbar: the ❓ Help and 🔍 Search buttons removed, replaced by new
+  god-mode bindings -- C-h m (h SPC m; real Emacs's own actual
+  describe-mode binding, "Display documentation of the current major
+  mode") for Help, C-s (s) for Search. The ⊕ Add-heading button removed
+  once the bug below was fixed, since the palette/god-mode path now
+  covers everything it did and more.
+
+Bug fix, reported by the person using the app: "Add heading after"
+(M-RET) silently did nothing on a genuinely empty document, and the
+command palette dimmed it entirely rather than running it when nothing
+was selected. It required keyboardFocusedHeading unconditionally; the
+palette's own needs list blocked it the same way. Fixed with one shared
+insertHeadingSmart helper covering all three cases: a focused heading
+gets a sibling right after it (the common case, unchanged); a genuinely
+empty document gets a heading at the top (matching what real M-RET does
+at position 1 of an empty buffer); a document with headings but nothing
+selected gets one appended at the bottom rather than doing nothing. A
+new god-mode chord, C-RET, was requested alongside M-RET/M-S-RET for
+this, but real god-mode's own actual translation rules have no way to
+produce a bare Control chord for a named key like RET -- confirmed by
+reading the real god-mode.el source directly rather than assuming, after
+an initial back-and-forth about it -- so it isn't included; M-RET (g RET)
+already covers the one behavior it was asked to share anyway.
+
+A debugging note worth recording for the path, not the bug: there wasn't
+one. The new C-s binding looked broken -- a check waiting on #searchPanel
+timed out, with a lone "⋯" sitting in the minibuffer that looked exactly
+like a stuck god-mode prefix. It turned out renderSearchPanel's normal
+path never touches that element's display style at all (only its
+query-replace sibling does -- the real search UI lives in
+#minibufferSearch), and the "⋯" was #search-options-btn's own real label.
+Search had been working the whole time; the check was asserting against
+the wrong element. Fixed the assertion, not the app.
+
+Scope question raised and resolved by asking rather than assuming or
+silently expanding: removing the Clocking menu step exposed that
+src/menu-alias.js treats clocking as a fifth, fully documented menu
+category with its own alias namespace. Clocking itself stays fully
+available -- every action is still a command in the palette, untouched --
+but every reference to the retired MENU is now gone completely, including
+a first draft's "here's what changed and why" narration that doesn't
+belong in reference documentation.
+
+README: the menu-customization section rewritten for four menus instead
+of five (labels table, both worked examples, the alias-namespace
+explanation); separately-stale references fixed in the Clocking feature
+section, Capture Templates, History, Effort_ALL, the command palette's
+own target-resolution paragraph, the Keybindings table and its
+surrounding prose, and the Help/Search toolbar paragraphs -- found only
+by a second, broader sweep for icons and button IDs after the obvious
+"More →" grep missed several.
+
+Tests: 2930 unit (unchanged -- everything here is browser wiring) and 26
+browser checks (2 new: add-heading's four scenarios including the
+ordinary sibling-insertion case explicitly, and god-mode C-h m/C-s; 5
+existing checks updated where they navigated through a since-removed menu
+step or button -- the menu-alias check's own label lists, both effort
+checks, the read-only toggle check, and the tabs check). Both new checks
+confirmed to fail against a reverted copy of the relevant code before
+being trusted; the 5 updated checks kept their own pre-existing coverage,
+just pointed at the palette instead of the retired menu path.
+
 * v414 — Tag/property completion; capture templates and Extras in the palette; Commands is now an ordinary More entry
 Tag and property-key completion (src/completion.js): the general editor's
 Tags field now suggests tags already used anywhere in the open document or
