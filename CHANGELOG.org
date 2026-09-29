@@ -7,6 +7,52 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v416 — God-mode gains real-Emacs chords for file/refile/attach/clocking/export, plus a redo technique; two modals gain proper Escape-to-close
+New god-mode chords, all verified against the real Emacs manual/source
+before implementation, not assumed: C-x C-s (save-buffer), C-x C-w
+(write-file), C-x C-f (find-file), C-c C-w (org-refile), C-c C-a
+(org-attach), C-c C-x C-i/C-o/C-q/C-x (clock in/out/cancel/continue),
+C-c C-e (org-export-dispatch -- was a "not supported" placeholder, now a
+real dispatcher). Each empirically checked against the actual key
+translator (not assumed): the naive approach of inserting SPC between
+letters to "space out" a chord is wrong here -- SPC toggles literal mode,
+un-Controlling the NEXT key, the opposite of what's needed. Every one now
+shows its chord in the command palette too (a new keys: field per entry).
+
+Redo: real Emacs's own undo has no separate redo command -- redoing means
+undoing the undo itself, which only works once the chain is broken by some
+other command (conventionally C-f, forward-char, in god-mode). This app's
+undo/redo is already a clean separate pair, so C-f doesn't move anything
+here -- it arms the next C-/ to call redo instead of undo. The arming
+survives further C-/ presses (keep pressing C-/ to keep redoing, matching
+real muscle memory) but is dropped by any other key, and falls back to
+plain undo once there's nothing left to redo. Verified with two edits:
+undo, undo, C-f + C-/ (redo #1), C-/ again (redo #2, no C-f needed), C-/
+again (nothing left -- falls back to undo).
+
+Real bug found and fixed along the way, independent of the god-mode work:
+openTextFieldPopup and openButtonChoiceModal (the heading-title/effort
+prompt and the archive/attach/general-editor choice modals) had no
+Escape-to-close handling at all, and weren't tracked by the app's own
+anyOverlayPanelOpen() system -- unlike confirmDialog, which already did
+this correctly. Found because a smoke check's Escape press silently did
+nothing while the Attach modal was open, leaving it absorbing every
+subsequent keystroke. Both now follow confirmDialog's own established
+pattern (a dedicated S.*Open flag, a capture-phase keydown listener
+cleaned up on every close path) -- a real, user-facing fix: these dialogs
+were silently un-closeable via Escape before, keyboard or not.
+
+Tests: 2930 unit (unchanged) and 28 browser checks (2 new, covering every
+new chord and the full redo-arm state machine; the Escape-to-close fix is
+covered by both of them, since it's what unblocked the refile/attach one
+in the first place). Debugging note worth recording: three of my own test
+assertions were wrong, not the app -- checking a row-level badge for a
+clock that actually shows in the modeline; checking a status message that
+god-mode's own status indicator legitimately overwrites after every
+dispatch; and a test helper that pressed Escape unconditionally, which
+EXITS an already-active god-mode (it persists across dispatches by design)
+rather than entering it, once a test chained several chords in sequence.
+
 * v415 — More menu loses Capture/Clocking/History; View menu loses its read-only toggle; ⊕/❓/🔍 toolbar buttons retired; a real Add-heading bug fixed
 Everything these three menu steps and three toolbar buttons did was
 already reachable from the command palette (added in v409/v411), so all

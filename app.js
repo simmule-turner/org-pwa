@@ -524,7 +524,7 @@ document.addEventListener('pointerdown', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (S.confirmDialogOpen || S.timestampPickerOpen) return;
+  if (S.confirmDialogOpen || S.timestampPickerOpen || S.textFieldPopupOpen || S.buttonChoiceModalOpen) return;
   if (S.activeQueryReplace) {
     const { controller, inTextMode } = S.activeQueryReplace;
     if (e.key === 'y' || e.key === ' ') {
@@ -623,6 +623,10 @@ document.addEventListener('keydown', (e) => {
     S.godModeState = newState;
     const stillWaiting = newState.pendingModifier !== null;
     if (!stillWaiting && chordString in GOD_MODE_ACTIONS) {
+      // C-f arms the next C-/ to mean redo instead of undo (see that
+      // chord's own comment); any OTHER action breaks the chain back to
+      // plain undo, matching real Emacs -- almost any command does.
+      if (chordString !== 'C-f' && chordString !== 'C-/') S.godModeRedoArmed = false;
       GOD_MODE_ACTIONS[chordString]();
       S.godModeState = godModeInitialState();
     } else if (!stillWaiting && !isValidGodModePrefix(chordString)) {
@@ -880,6 +884,10 @@ S.pendingCursorPosition = null;
 // explicitly toggled off" behavior, not a one-shot mode.
 S.godModeActive = false;
 S.godModeState = godModeInitialState();
+// Armed by C-f, consumed by C-/ -- see that chord's own comment
+// (src-browser/god-mode-palette.js) for the real-Emacs-derived redo
+// technique this implements.
+S.godModeRedoArmed = false;
 // The heading most recently navigated to via navigateToHeading (a
 // search result, an internal link, an agenda item) -- tracked
 // specifically so switching into the plain-text editor can land near
@@ -1100,6 +1108,8 @@ if (window.visualViewport) {
 }
 
 S.timestampPickerOpen = false; // true only while openTimestampPickerPopup's own overlay is showing -- mirrors confirmDialogOpen's own role for the global keydown handler
+S.textFieldPopupOpen = false; // true only while openTextFieldPopup's own overlay is showing -- same role, for the heading-title/effort/general-editor text prompts
+S.buttonChoiceModalOpen = false; // true only while openButtonChoiceModal's own overlay is showing -- same role, for the archive/attach/general-editor choice prompts
 
 fileMenuBtn.addEventListener('click', () => {
   const opening = !S.fileMenuOpen;
