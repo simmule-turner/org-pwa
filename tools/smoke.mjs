@@ -782,6 +782,108 @@ check('floating keyboard: [g] opens it with god-mode and the hidden input; its b
   await context.close();
 });
 
+check('org-clock-goto (C-c C-x C-j, "Go to clocked task"): dimmed with no clock, then jumps to the clocked heading -- revealing it if folded away, and switching tabs if the clock is in another one', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Parent\n** Child\n* Other\n');
+  const outline = () => page.locator('#outline').innerText();
+  const palette = async (text) => {
+    await openPalette(page);
+    await page.keyboard.type(text);
+  };
+
+  // no clock running: the command is listed but dimmed, with the reason
+  await palette('go to clocked');
+  const rows = await paletteRows(page);
+  expect(rows.some((r) => r.includes('Go to clocked task') && r.includes('no clock is running')), `should be dimmed with no clock: ${JSON.stringify(rows)}`);
+  await page.keyboard.press('Escape');
+
+  // clock in on Child, then fold it out of sight
+  await page.locator('.heading-title', { hasText: 'Child' }).first().click();
+  await palette('clock in');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  expect((await modeline(page)).includes('\u23f1') && (await modeline(page)).includes('Child'), `Child should be clocked: ${await modeline(page)}`);
+  await page.locator('.fold-btn').first().click(); // fold Parent
+  expect(!(await outline()).includes('Child'), 'Child should be folded out of sight');
+  expect(!(await page.locator('#navBackBtn').isVisible()), 'nothing has been navigated yet');
+
+  await palette('go to clocked');
+  const live = await paletteRows(page); // available now, so it shows its chord instead of a reason
+  expect(live.some((r) => r.includes('Go to clocked task') && r.includes('C-c C-x C-j') && !r.includes('unavailable')), `available, with its chord, once a clock runs: ${JSON.stringify(live)}`);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(500);
+  expect((await outline()).includes('Child'), 'going to the clocked task should unfold whatever hides it');
+  expect(await page.locator('#navBackBtn').isVisible(), 'and, like every jump, leave a way back');
+
+  // the same chord from god-mode
+  await page.locator('.fold-btn').first().click(); // fold it away again
+  expect(!(await outline()).includes('Child'), 'Child folded again');
+  await page.locator('body').click({ position: { x: 200, y: 800 } });
+  await page.keyboard.press('Escape');
+  if (!(await page.locator('#minibuffer').innerText()).includes('God-mode')) await page.keyboard.press('Escape');
+  for (const k of ['c', 'x', 'j']) await page.keyboard.press(k);
+  await page.waitForTimeout(400);
+  expect((await outline()).includes('Child'), 'C-c C-x C-j should do the same from god-mode');
+
+  // the clock is in the first tab; open a second and go to it from there
+  await newDocument(page, '* Second document\nsecond body\n');
+  expect(!(await outline()).includes('Child') && (await outline()).includes('Second document'), 'the second tab should be showing');
+  await palette('go to clocked');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(600);
+  expect((await outline()).includes('Child') && !(await outline()).includes('Second document'), `it should switch to the tab holding the clock: ${await outline()}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('quick setting: "Show the floating [g] god-mode button" hides and shows [g], survives a reload (even on the empty start screen), and a document\u2019s own Local Variables line overrides it', async () => {
+  const { context, page, errors } = await freshPage();
+  const g = page.locator('#godModeBtn');
+  const box = () => page.locator('label', { hasText: 'Show the floating [g] god-mode button' }).locator('input[type=checkbox]');
+  // the checkbox handler saves, then re-renders: wait for the result rather than sampling mid-way
+  const becomes = async (visible, msg) => {
+    try { await g.waitFor({ state: visible ? 'visible' : 'hidden', timeout: 4000 }); } catch { throw new Error(msg); }
+  };
+  const openSettings = async () => {
+    await page.click('#moreBtn');
+    await pick(page, '#morePanel', 'Settings');
+    await box().waitFor({ state: 'visible' });
+  };
+  expect(await g.isVisible(), '[g] is on by default');
+  await openSettings();
+  expect(await box().isChecked(), 'the setting should default to on');
+  await box().uncheck();
+  await becomes(false, 'turning the setting off should hide [g] at once');
+
+  await page.reload();
+  await page.locator('#moreBtn').waitFor({ state: 'visible' });
+  await page.waitForTimeout(400);
+  await becomes(false, 'the setting is remembered across a reload, with no document open');
+  await openSettings();
+  expect(!(await box().isChecked()), 'and the checkbox shows it off');
+  await box().check();
+  await becomes(true, 'turning it back on shows [g] again');
+
+  // a document's own Local Variables line wins over the global value, as for every other variable
+  await box().uncheck();
+  const local = (v) => ['* Plain', '', '# Local Variables:', `# org-xx-god-mode-button: ${v}`, '# End:', ''].join('\n');
+  await newDocument(page, local('t'));
+  await becomes(true, 'a document that says t shows it even though the global setting is off');
+  await openSettings(); // opening a document closed Settings
+  await box().check();
+  await newDocument(page, local('nil'));
+  await becomes(false, 'a document that says nil hides it even though the global setting is on');
+
+  // hiding it moves nothing else: the Extras button stays exactly where it was
+  await newDocument(page, ['* Plain', '', '# Local Variables:', '# org-xx-god-mode-button: nil', '# org-xx-extra-menu: "\'org-clock-out;Stop the clock"', '# End:', ''].join('\n'));
+  await page.locator('#extraMenuBtn').waitFor({ state: 'visible' });
+  const ml = await page.locator('#modelineBar').boundingBox();
+  const extras = await page.locator('#extraMenuBtn').boundingBox();
+  expect(Math.abs(extras.y + extras.height - (ml.y - 16)) < 1.5, `Extras must not move when [g] is hidden: bottom ${extras.y + extras.height}, mode line top ${ml.y}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('floating keyboard: entering god-mode with a real Escape does NOT show it, and ending god-mode any other way hides it', async () => {
   const { context, page } = await freshPage();
   await newDocument(page, '* Parent\n');
