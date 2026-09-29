@@ -29,6 +29,7 @@ import {
   getUseTagInheritance,
   getUsePropertyInheritance,
   getBufferReadOnly,
+  getGodModeButton,
   getUseSubSuperscripts,
 } from '../src/local-variables.js';
 import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
@@ -521,4 +522,23 @@ test('getBufferReadOnly defaults to false, real Emacs\u2019s own actual default 
 test('getBufferReadOnly reads t/nil the same Lisp-boolean way every other variable here does', () => {
   assert.equal(getBufferReadOnly({ 'buffer-read-only': 't' }), true);
   assert.equal(getBufferReadOnly({ 'buffer-read-only': 'nil' }), false);
+});
+
+// ---- getGodModeButton -----------------------------------------------------
+
+test('getGodModeButton defaults to on: the [g] button is shown unless someone turns it off', () => {
+  assert.equal(getGodModeButton({}), true);
+  assert.equal(getGodModeButton(undefined), true);
+});
+
+test('getGodModeButton reads t/nil the same Lisp-boolean way every other variable here does, and ignores anything else', () => {
+  assert.equal(getGodModeButton({ 'org-xx-god-mode-button': 't' }), true);
+  assert.equal(getGodModeButton({ 'org-xx-god-mode-button': 'nil' }), false);
+  assert.equal(getGodModeButton({ 'org-xx-god-mode-button': 'maybe' }), true);
+});
+
+test('getGodModeButton: a document\u2019s own Local Variables line overrides the global setting, like every other variable', () => {
+  const merged = mergeGlobalAndLocalVariables({ 'org-xx-god-mode-button': 'nil' }, { 'org-xx-god-mode-button': 't' });
+  assert.equal(getGodModeButton(merged), true);
+  assert.equal(getGodModeButton(mergeGlobalAndLocalVariables({ 'org-xx-god-mode-button': 'nil' }, {})), false);
 });
