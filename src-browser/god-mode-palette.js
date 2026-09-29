@@ -60,6 +60,16 @@ export function godModeNotSupported(reason) {
   render();
 }
 
+/** Opens the File menu already on a specific step (Save As, Open) --
+ *  shared by the palette's own Save as / Open commands and their
+ *  matching god-mode chords (C-x C-w / C-x C-f), so both routes run
+ *  through exactly the same code. */
+function openFileMenuAt(step) {
+  fileMenuBtn.click();
+  S.fileMenuStep = step;
+  renderFileMenu();
+}
+
 /**
  * Inserts a new heading the way M-RET / C-RET / M-S-RET do (real org's
  * org-insert-heading, relative to point). This app has no literal
@@ -161,6 +171,20 @@ export const GOD_MODE_ACTIONS = {
   'C-c C-t': () => S.keyboardFocusedHeading && openTodoOrPickWorkflow(S.keyboardFocusedHeading),
   'C-c ,': () => cyclePriorityFor(S.keyboardFocusedHeading),
   'C-c C-x e': () => openEffortEditor(S.keyboardFocusedHeading),
+  'C-c C-w': () => S.keyboardFocusedHeading && openRefilePicker(S.keyboardFocusedHeading),
+  'C-c C-a': () => S.keyboardFocusedHeading && openAttachChoicePrompt(S.keyboardFocusedHeading),
+  'C-c C-x C-i': () => S.keyboardFocusedHeading && clockInHeading(S.keyboardFocusedHeading),
+  'C-c C-x C-o': () => {
+    const running = findHeadingWithRunningClock(S.state.doc);
+    if (running) clockOutHeading(running);
+    else setStatus('No clock is currently running.');
+  },
+  'C-c C-x C-q': () => {
+    const running = findHeadingWithRunningClock(S.state.doc);
+    if (running) clockCancelHeading(running);
+    else setStatus('No clock is currently running.');
+  },
+  'C-c C-x C-x': () => clockContinue(),
   'C-c C-v': () => {
     if (!S.state.doc) return;
     switchToView('tasklist');
@@ -212,7 +236,13 @@ export const GOD_MODE_ACTIONS = {
     render();
     renderCapturePanel();
   },
-  'C-c C-e': () => godModeNotSupported('use File \u2192 Export instead'),
+  'C-c C-e': () => {
+    if (!S.state.doc) return;
+    moreBtn.click();
+    S.moreMenuStep = 'export';
+    S.exportFormat = null;
+    renderMoreMenu();
+  },
   'C-h m': () => {
     S.moreOpen = false;
     renderMoreMenu();
@@ -236,9 +266,33 @@ export const GOD_MODE_ACTIONS = {
     S.godModeActive = false;
     openCommandPalette();
   },
+  'C-x C-s': () => saveCurrent(),
+  'C-x C-w': () => openFileMenuAt('saveas'),
+  'C-x C-f': () => openFileMenuAt('open'),
   'C-x C-q': () => {
     S.godModeActive = false; // otherwise renderMinibuffer's own god-mode-sequence-indicator immediately overwrites this action's own status message on the very same render() below, since god-mode intentionally stays active after a successful dispatch
     toggleBufferReadOnly();
+  },
+  // Redo, real god-mode's own actual way: Emacs's own undo has no separate
+  // redo command -- redo IS undo, applied to the undo history itself, which
+  // only works once the undo chain has been broken by some other command
+  // (real Emacs: moving point is enough). god-mode's own C-f (forward-char)
+  // is the conventional affirming keystroke for this. This app's own
+  // undo/redo is a clean, separate pair rather than Emacs's own undo-of-undo
+  // trick, so C-f here just arms the NEXT C-/ to mean redo instead of undo
+  // -- consumed only by something other than C-f/C-/ itself, so "C-f, then
+  // C-/ repeatedly" keeps redoing, matching real god-mode's own behavior,
+  // and running out of redo (or skipping C-f) falls back to a plain undo.
+  'C-f': () => {
+    S.godModeRedoArmed = true;
+  },
+  'C-/': () => {
+    if (S.godModeRedoArmed && canRedo(S.history)) {
+      performRedo();
+    } else {
+      S.godModeRedoArmed = false;
+      performUndo();
+    }
   },
 };
 
@@ -302,11 +356,6 @@ export function paletteCommandList() {
   };
   const HEAD = ['doc', 'heading', 'writable'];
   const runningClock = () => findHeadingWithRunningClock(S.state.doc);
-  const openFileMenuAt = (step) => {
-    fileMenuBtn.click();
-    S.fileMenuStep = step;
-    renderFileMenu();
-  };
   const exportAs = (format) => () => performExport(format, null);
 
   return [
@@ -334,23 +383,23 @@ export function paletteCommandList() {
     { id: 'paste', label: 'Paste subtree', orgName: 'org-paste-subtree', keys: 'C-c C-x C-y', group: 'Heading', needs: HEAD, run: chord('C-c C-x C-y') },
     { id: 'archive', label: 'Archive subtree', orgName: 'org-archive-subtree', group: 'Heading', needs: [...HEAD, 'notArchived'], run: onHeading(openArchiveConfirmPrompt) },
     { id: 'unarchive', label: 'Unarchive (restore)', group: 'Heading', needs: [...HEAD, 'archived'], run: onHeading(unarchiveHeadingToOriginalLocation) },
-    { id: 'refile', label: 'Refile', orgName: 'org-refile', group: 'Heading', needs: HEAD, run: onHeading(openRefilePicker) },
-    { id: 'attach', label: 'Attachments', orgName: 'org-attach', group: 'Heading', keywords: ['attach', 'file', 'audio', 'record'], needs: HEAD, run: onHeading(openAttachChoicePrompt) },
+    { id: 'refile', label: 'Refile', orgName: 'org-refile', keys: 'C-c C-w', group: 'Heading', needs: HEAD, run: onHeading(openRefilePicker) },
+    { id: 'attach', label: 'Attachments', orgName: 'org-attach', keys: 'C-c C-a', group: 'Heading', keywords: ['attach', 'file', 'audio', 'record'], needs: HEAD, run: onHeading(openAttachChoicePrompt) },
     { id: 'narrow', label: 'Narrow to subtree', orgName: 'org-narrow-to-subtree', keys: 'C-x n s', group: 'Heading', needs: ['doc', 'heading'], run: chord('C-x n s') },
     { id: 'widen', label: 'Widen', orgName: 'widen', keys: 'C-x n w', group: 'Heading', needs: ['doc', 'narrowed'], run: () => widen() },
 
     // -- Clocking
-    { id: 'clock-in', label: 'Clock in', orgName: 'org-clock-in', group: 'Clocking', needs: HEAD, run: onHeading(clockInHeading) },
-    { id: 'clock-out', label: 'Clock out', orgName: 'org-clock-out', group: 'Clocking', needs: ['doc', 'clock'], run: () => clockOutHeading(runningClock()) },
-    { id: 'clock-cancel', label: 'Cancel clock', orgName: 'org-clock-cancel', group: 'Clocking', needs: ['doc', 'clock'], run: () => clockCancelHeading(runningClock()) },
-    { id: 'clock-continue', label: 'Continue last clock', group: 'Clocking', needs: ['doc'], run: () => clockContinue() },
+    { id: 'clock-in', label: 'Clock in', orgName: 'org-clock-in', keys: 'C-c C-x C-i', group: 'Clocking', needs: HEAD, run: onHeading(clockInHeading) },
+    { id: 'clock-out', label: 'Clock out', orgName: 'org-clock-out', keys: 'C-c C-x C-o', group: 'Clocking', needs: ['doc', 'clock'], run: () => clockOutHeading(runningClock()) },
+    { id: 'clock-cancel', label: 'Cancel clock', orgName: 'org-clock-cancel', keys: 'C-c C-x C-q', group: 'Clocking', needs: ['doc', 'clock'], run: () => clockCancelHeading(runningClock()) },
+    { id: 'clock-continue', label: 'Continue last clock', orgName: 'org-clock-in-last', keys: 'C-c C-x C-x', group: 'Clocking', needs: ['doc'], run: () => clockContinue() },
 
     // -- Document
-    { id: 'save', label: 'Save', orgName: 'save-buffer', group: 'Document', needs: ['doc', 'storage'], run: () => saveCurrent() },
-    { id: 'save-as', label: 'Save as\u2026', orgName: 'write-file', group: 'Document', needs: ['doc'], run: () => openFileMenuAt('saveas') },
-    { id: 'open', label: 'Open file\u2026', orgName: 'find-file', group: 'Document', run: () => openFileMenuAt('open') },
+    { id: 'save', label: 'Save', orgName: 'save-buffer', keys: 'C-x C-s', group: 'Document', needs: ['doc', 'storage'], run: () => saveCurrent() },
+    { id: 'save-as', label: 'Save as\u2026', orgName: 'write-file', keys: 'C-x C-w', group: 'Document', needs: ['doc'], run: () => openFileMenuAt('saveas') },
+    { id: 'open', label: 'Open file\u2026', orgName: 'find-file', keys: 'C-x C-f', group: 'Document', run: () => openFileMenuAt('open') },
     { id: 'new', label: 'New document', group: 'Document', run: () => createNewUnsavedDocument() },
-    { id: 'undo', label: 'Undo', orgName: 'undo', group: 'Document', needs: ['doc', 'undo'], run: () => performUndo() },
+    { id: 'undo', label: 'Undo', orgName: 'undo', keys: 'C-/', group: 'Document', needs: ['doc', 'undo'], run: () => performUndo() },
     { id: 'redo', label: 'Redo', orgName: 'undo-redo', group: 'Document', needs: ['doc', 'redo'], run: () => performRedo() },
     {
       id: 'history',
@@ -381,14 +430,10 @@ export function paletteCommandList() {
       id: 'export',
       label: 'Export\u2026',
       orgName: 'org-export-dispatch',
+      keys: 'C-c C-e',
       group: 'Export',
       needs: ['doc'],
-      run: () => {
-        moreBtn.click();
-        S.moreMenuStep = 'export';
-        S.exportFormat = null;
-        renderMoreMenu();
-      },
+      run: chord('C-c C-e'),
     },
     { id: 'export-html', label: 'Export this file as HTML', group: 'Export', needs: ['doc'], run: exportAs('html') },
     { id: 'export-markdown', label: 'Export this file as Markdown', group: 'Export', needs: ['doc'], run: exportAs('markdown') },

@@ -403,12 +403,28 @@ export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset
 
   const stopTrackingViewport = keepOverlayInVisibleViewport(overlay);
   const unlockScroll = lockBackgroundScroll(overlay);
+  S.textFieldPopupOpen = true;
 
   function close() {
+    S.textFieldPopupOpen = false;
+    document.removeEventListener('keydown', onKeyDown, true);
     stopTrackingViewport();
     unlockScroll();
     document.body.removeChild(overlay);
   }
+
+  function onKeyDown(e) {
+    // Capture phase, ahead of the global god-mode handler's own guard
+    // (which also checks textFieldPopupOpen and steps aside) -- same
+    // belt-and-suspenders reasoning as confirmDialog's own onKeyDown.
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (onCancel) onCancel();
+      close();
+    }
+  }
+  document.addEventListener('keydown', onKeyDown, true);
 
   btnRow.appendChild(
     menuButton('Cancel', () => {
@@ -495,12 +511,31 @@ export function openButtonChoiceModal({ label, buttons }) {
 
   const stopTrackingViewport = keepOverlayInVisibleViewport(overlay);
   const unlockScroll = lockBackgroundScroll(overlay);
+  S.buttonChoiceModalOpen = true;
 
   function close() {
+    S.buttonChoiceModalOpen = false;
+    document.removeEventListener('keydown', onKeyDown, true);
     stopTrackingViewport();
     unlockScroll();
     document.body.removeChild(overlay);
   }
+
+  function onKeyDown(e) {
+    // Capture phase, ahead of the global god-mode handler's own guard
+    // (which also checks buttonChoiceModalOpen and steps aside) -- same
+    // belt-and-suspenders reasoning as confirmDialog's own onKeyDown.
+    // This primitive has no built-in "Cancel" semantics of its own (its
+    // buttons are entirely caller-defined -- see openAttachChoicePrompt's
+    // own explicit Cancel button, a no-op onClick), so Escape here only
+    // ever dismisses the overlay -- it never invokes any button's onClick.
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+    }
+  }
+  document.addEventListener('keydown', onKeyDown, true);
 
   for (const { text, onClick, disabled } of buttons) {
     row.appendChild(
