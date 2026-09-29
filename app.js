@@ -251,7 +251,7 @@ import { afterDocumentLoaded, saveCurrent } from './src-browser/documents-io.js'
 import { commitAndRender, setStatus, startEditingTitle } from './src-browser/editing.js';
 import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, reloadCurrentDocumentFromDisk } from './src-browser/external-sync.js';
 import { renderFileMenu, stopBrowsing } from './src-browser/file-menu.js';
-import { closeFloatingKeyboard, noteKeydownDelivered } from './src-browser/floating-keyboard.js';
+import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard } from './src-browser/floating-keyboard.js';
 import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
 import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, moveTableCellFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading } from './src-browser/keyboard-focus.js';
 import { renderExtraMenu, renderMoreMenu } from './src-browser/menus.js';
@@ -1318,6 +1318,7 @@ async function bootstrap() {
   S.globalVariables = parseGlobalVariables(S.globalVariablesText);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
+  renderFloatingKeyboard(); // a disabled [g] button should not flash on before the first full render
 
   S.customThemeColors = await getCustomThemeColors(kv);
   applyTheme(await getTheme(kv));

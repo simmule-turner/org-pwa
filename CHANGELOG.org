@@ -7,6 +7,40 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v419 — A quick setting to hide the floating [g] button; org-clock-goto (C-c C-x C-j) added to the palette and god-mode
+Quick Settings gains a "Keyboard" section with one checkbox, "Show the floating
+[g] god-mode button" (the org-xx-god-mode-button variable, on by default). Off
+hides the button and nothing else moves, since the floating buttons are
+fixed-position. It is a normal variable, so a document's own Local Variables
+line overrides the global setting, and it is remembered across a reload even on
+the empty start screen (the button is hidden as soon as the saved settings load,
+so a disabled button does not flash on first). Turning it off while the floating
+keyboard is up ends god-mode and closes the panel, since that button was the
+panel's way out.
+
+org-clock-goto (real org's C-c C-x C-j): jumps to the headline of the
+currently clocked-in task. It is in the command palette as "Go to clocked task"
+and bound to c x j in god-mode. There is one clock across every open tab, so it
+switches to the tab holding it if that is not the active one, and unfolds
+whatever hides the task; like every jump it leaves the floating back button
+behind. Its palette availability follows the clock in ANY tab, not just the
+active document like the existing clock rule, because "the clock is somewhere
+else" is exactly when it is useful.
+
+Scope kept to what real org's manual documents: it jumps to the running clock,
+and the C-u form (pick from recently clocked tasks) is not implemented. Real org
+may also fall back to the most recent task when nothing is running; the manual
+does not say so, so that was not guessed at -- with no clock it says so plainly.
+
+Tests: 2933 unit (3 new, for the variable's reader: default on, Lisp t/nil, and a
+document's Local Variables overriding the global value) and 38 browser checks
+(2 new: the quick setting end to end -- hide, show, reload, override, and that
+the Extras button does not move -- and org-clock-goto through the palette, the
+chord and a cross-tab jump). Each part of both was confirmed to fail when its
+implementation is removed; two first-draft assertions were wrong rather than the
+app (a dimmed palette row shows its reason, not its chord; opening a document
+closes Settings) and were fixed in the tests.
+
 * v418 — [g] moves out of the top bar to a floating button; the floating keyboard rides above the mode line and minimizes on tap; Android letters fixed
 Fixes to v417, from real use on phones.
 
