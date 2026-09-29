@@ -211,3 +211,50 @@ test('a hyphenated word must appear as that phrase: the same words in another or
   // typed with spaces, they're separate words and either order is fine
   assert.deepEqual(ids(searchCommands(commands, 'org clock in')).sort(), ['phrase', 'scrambled']);
 });
+
+// ---- capture templates and Extras entries as commands --------------------------
+
+import { dynamicCommandSpecs } from '../src/command-palette.js';
+
+test('dynamicCommandSpecs: one command per capture template, named "Capture: <description>"', () => {
+  const specs = dynamicCommandSpecs({ templates: [{ key: 't', description: 'Todo' }, { key: 'j', description: 'Journal entry' }] });
+  assert.deepEqual(specs.map((s) => s.label), ['Capture: Todo', 'Capture: Journal entry']);
+  assert.deepEqual(specs.map((s) => s.id), ['capture:t', 'capture:j']);
+  assert.ok(specs.every((s) => s.group === 'Capture' && s.source === 'capture'));
+  assert.deepEqual(specs.map((s) => s.index), [0, 1]);
+});
+
+test('dynamicCommandSpecs: Extras entries are named "Extras: <label>", and separators are skipped', () => {
+  const specs = dynamicCommandSpecs({ extraEntries: [{ type: 'function', label: 'Tracking' }, { type: 'separator' }, { type: 'function', label: 'Weekly review' }] });
+  assert.deepEqual(specs.map((s) => s.label), ['Extras: Tracking', 'Extras: Weekly review']);
+  assert.deepEqual(specs.map((s) => s.index), [0, 2], 'index is the entry\'s own position, separators included');
+  assert.ok(specs.every((s) => s.group === 'Extras' && s.source === 'extra'));
+});
+
+test('dynamicCommandSpecs: ids stay unique when two entries would collide', () => {
+  const specs = dynamicCommandSpecs({ templates: [{ key: 't', description: 'A' }, { key: 't', description: 'B' }], extraEntries: [{ label: 'Same' }, { label: 'Same' }] });
+  assert.equal(new Set(specs.map((s) => s.id)).size, 4);
+});
+
+test('dynamicCommandSpecs: a template without a description falls back on its key, and one with neither is skipped', () => {
+  const specs = dynamicCommandSpecs({ templates: [{ key: 'x' }, { description: 'Only text' }, {}], extraEntries: [{ label: '  ' }, null] });
+  assert.deepEqual(specs.map((s) => s.label), ['Capture: x', 'Capture: Only text']);
+});
+
+test('dynamicCommandSpecs: nothing configured, nothing added', () => {
+  assert.deepEqual(dynamicCommandSpecs(), []);
+  assert.deepEqual(dynamicCommandSpecs({ templates: [], extraEntries: [] }), []);
+});
+
+test('the template key is a search keyword, so typing it finds the template', () => {
+  const specs = dynamicCommandSpecs({ templates: [{ key: 'j', description: 'Journal' }, { key: 'q', description: 'Quick note' }] });
+  const found = searchCommands(specs, 'j').map((r) => r.command.id);
+  assert.equal(found[0], 'capture:j');
+});
+
+test('dynamic commands are found by name, group and "capture" alike', () => {
+  const specs = dynamicCommandSpecs({ templates: [{ key: 't', description: 'Todo' }], extraEntries: [{ label: 'Tracking' }] });
+  assert.deepEqual(searchCommands(specs, 'tracking').map((r) => r.command.id), ['extra:Tracking']);
+  assert.deepEqual(searchCommands(specs, 'capture todo').map((r) => r.command.id), ['capture:t']);
+  assert.equal(searchCommands(specs, 'extras').length, 1);
+});
