@@ -14,7 +14,8 @@ import { render } from './render.js';
 import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { switchToView } from './views.js';
 
-/** org-xx-extra-menu's own 'org-xx-calendar function reference --
+/** The palette's Calendar command (its real Emacs name is `calendar`, which is
+ *  also what an Extras-menu entry names it: 'calendar) --
  *  opens the single-month calendar overview, initializing the
  *  displayed month/year to today's own if this is the first time it's
  *  been opened this session (a later re-open remembers wherever it

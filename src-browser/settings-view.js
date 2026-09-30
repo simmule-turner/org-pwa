@@ -1330,7 +1330,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   updatesSection.className = 'settings-section';
   // org-xx-updates-at-top (this app's own extension, not a real
   // org-mode variable -- same "org-xx-" convention as
-  // org-xx-extra-menu/org-xx-calendar/org-xx-menu-aliases): true (the
+  // org-xx-extra-menu/org-xx-menu-aliases): true (the
   // default, matching real org's own t/nil convention for "unset"
   // meaning "on") puts Updates at the very top of Settings, since for
   // many people it's the single most-used entry on this whole page;

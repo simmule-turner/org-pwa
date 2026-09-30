@@ -1,24 +1,20 @@
 // Extracted from app.js: menus.
 import { resolveOlpTarget } from '../src/capture-template.js';
-import { findHeadingWithRunningClock } from '../src/clock.js';
 import { parseExtraMenu } from '../src/extra-menu.js';
 import { getExtraMenu, getMenuAliases } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
 import { S } from './app-state.js';
-import { openCalendarPanel } from './calendar-panel.js';
 import { openCapturePrompt } from './capture-ui.js';
 import { closeAllOverlayPanels } from './chrome.js';
-import { clockCancelHeading, clockContinue, clockOutHeading } from './clock-flow.js';
 import { extraMenuBtn, extraMenuPanel, moreBtn, morePanel, settingsBtn } from './dom.js';
 import { setStatus } from './editing.js';
-import { performOrgOrgExport, renderExportFlow, renderImportFlow } from './export-import.js';
-import { cutSubtree, extraMenuTargetHeading, pasteSubtree } from './gestures-structure.js';
-import { openCommandPalette } from './god-mode-palette.js';
+import { renderExportFlow, renderImportFlow } from './export-import.js';
+import { extraMenuTargetHeading } from './gestures-structure.js';
+import { findPaletteCommandByOrgName, openCommandPalette, runPaletteCommand } from './god-mode-palette.js';
 import { navigateToHeading } from './navigation.js';
 import { render } from './render.js';
 import { getCaptureTemplates } from './settings.js';
 import { kv } from './singletons.js';
-import { recalculateAllTables } from './table-recalc.js';
 import { aliasedMenuDivItem, appendMenuButtonsInOrder, positionPopupNearButton, requiredMenuDivItem } from './ui-widgets.js';
 import { switchToView } from './views.js';
 
@@ -84,8 +80,9 @@ export function renderExtraMenuContent() {
  *    resolveOlpTarget capture templates themselves already use,
  *    including its own %<FORMAT> expansion) the target heading, then
  *    navigates to it.
- *  - function: runs a built-in function by name. Only org-clock-out
- *    is recognized today; more may be added later.
+ *  - function: runs the command palette command with that real
+ *    Emacs/Org function name (findPaletteCommandByOrgName), or says the
+ *    name is not a recognized function.
  */
 export async function runExtraMenuEntry(entry) {
   S.extraMenuOpen = false;
@@ -121,42 +118,17 @@ export async function runExtraMenuEntry(entry) {
   }
 
   if (entry.type === 'function') {
-    if (entry.name === 'org-clock-out' || entry.name === 'org-clock-cancel') {
-      const running = S.state.doc ? findHeadingWithRunningClock(S.state.doc) : null;
-      if (!running) {
-        setStatus('No clock is currently running.');
-        render();
-        return;
-      }
-      if (entry.name === 'org-clock-out') {
-        clockOutHeading(running);
-      } else {
-        clockCancelHeading(running);
-      }
-    } else if (entry.name === 'org-clock-continue') {
-      clockContinue();
-    } else if (entry.name === 'org-cut-subtree' || entry.name === 'org-paste-subtree') {
-      const target = extraMenuTargetHeading();
-      if (!target) {
-        setStatus('No heading selected \u2014 open a heading\u2019s own menu first.');
-        render();
-        return;
-      }
-      if (entry.name === 'org-cut-subtree') {
-        await cutSubtree(target);
-      } else {
-        await pasteSubtree(target);
-      }
-    } else if (entry.name === 'org-xx-calendar') {
-      openCalendarPanel();
-    } else if (entry.name === 'org-table-recalculate-buffer-tables') {
-      recalculateAllTables();
-    } else if (entry.name === 'org-org-export-as-org') {
-      S.extraMenuOpen = false;
+    // A quoted function is a command palette command, named by its real
+    // Emacs/Org function name: run it exactly as the palette would, acting on
+    // the same heading (the one whose action menu is open, else the keyboard-
+    // focused one) and reporting why it can't run when it can't.
+    const command = findPaletteCommandByOrgName(entry.name);
+    if (!command) {
+      setStatus(`'${entry.name} is not a recognized function.`);
       render();
-      await performOrgOrgExport();
+      return;
     }
-    return;
+    runPaletteCommand(command, extraMenuTargetHeading());
   }
 }
 

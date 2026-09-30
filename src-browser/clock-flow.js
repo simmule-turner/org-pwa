@@ -77,7 +77,7 @@ export function clockInHeading(heading) {
   commitAndRender(finalSwitchedFrom ? `Clocked in (stopped the clock on "${finalSwitchedFrom.title}")` : 'Clocked in');
 }
 
-/** org-clock-continue: resumes clocking on whichever heading was most
+/** org-clock-in-last: resumes clocking on whichever heading was most
  *  recently clocked, without needing to navigate back to find it
  *  first. A no-op (with a status message) if a clock is already
  *  running anywhere -- "continue the last one" doesn't have a

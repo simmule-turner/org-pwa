@@ -22,7 +22,7 @@ import { lockBackgroundScroll } from './dialogs.js';
 import { createNewUnsavedDocument, saveCurrent } from './documents-io.js';
 import { fileMenuBtn, moreBtn, outlineEl, searchBtn, settingsBtn } from './dom.js';
 import { commitAndRender, commitTextModeIfActive, performRedo, performUndo, renderHistoryPanel, setStatus, startEditingTitle } from './editing.js';
-import { performExport } from './export-import.js';
+import { performExport, performOrgOrgExport } from './export-import.js';
 import { renderFileMenu } from './file-menu.js';
 import { openGeneralEditor } from './general-editor.js';
 import { cutSubtree, extraMenuTargetHeading, narrowToHeading, pasteSubtree, widen } from './gestures-structure.js';
@@ -35,6 +35,7 @@ import { render } from './render.js';
 import { getCaptureTemplates } from './settings.js';
 import { kv } from './singletons.js';
 import { loadPaletteRecent } from './sync-helpers.js';
+import { recalculateAllTables } from './table-recalc.js';
 import { chooseTodoWorkflowState, openTodoOrPickWorkflow } from './todo-workflow.js';
 import { isWideLayout, keepOverlayInVisibleViewport } from './ui-widgets.js';
 import { openOrSwitchToHelp, switchToView } from './views.js';
@@ -328,8 +329,8 @@ export function reconcileReadOnlyAfterReparse(previousVars, newVars) {
 
 /** Toggles buffer-read-only, per real Emacs's own actual C-x C-q --
  *  shared by that god-mode binding (see GOD_MODE_ACTIONS above) and
- *  the touch-native toggle in the View menu (see renderViewMenuContent
- *  below), so neither duplicates the other's own logic. */
+ *  the palette's Toggle read-only command, so neither duplicates the
+ *  other's own logic. */
 export function toggleBufferReadOnly() {
   if (!S.state.doc) return;
   if (!S.isBufferReadOnly) commitTextModeIfActive(); // capture any pending Text-view edit while still writable -- once toggled on, the commit path would correctly (but too late) refuse it
@@ -342,7 +343,7 @@ export function toggleBufferReadOnly() {
 export const PALETTE_NEEDS = {
   doc: () => (S.state.doc ? null : 'open a document first'),
   heading: (target) => (target ? null : 'tap a heading first, or focus one with Escape'),
-  writable: () => (S.isBufferReadOnly ? 'the buffer is read-only \u2014 toggle it in the View menu' : null),
+  writable: () => (S.isBufferReadOnly ? 'the buffer is read-only \u2014 run Toggle read-only (C-x C-q)' : null),
   storage: () => (S.state.storageKind ? null : 'this document has no file yet \u2014 use Save as'),
   narrowed: () => (S.narrowedHeading ? null : 'nothing is narrowed'),
   undo: () => (canUndo(S.history) ? null : 'nothing to undo'),
@@ -360,6 +361,31 @@ export function paletteUnavailableReason(command, target) {
     if (reason) return reason;
   }
   return null;
+}
+
+/** The palette command whose real Emacs/Org function name is `name`, or null.
+ *  This is what a quoted function in an Extras-menu entry (`'org-clock-out`)
+ *  resolves to, so the two vocabularies are one. */
+export function findPaletteCommandByOrgName(name) {
+  return paletteCommandList().find((command) => command.orgName === name) || null;
+}
+
+/** Runs `command` against `target` exactly as the palette does: a command that
+ *  is unavailable right now says why instead of doing nothing, and one that
+ *  throws says so. Shared by the palette itself and the Extras menu. */
+export function runPaletteCommand(command, target) {
+  const reason = paletteUnavailableReason(command, target);
+  if (reason) {
+    setStatus(`${command.label}: ${reason}.`);
+    render();
+    return;
+  }
+  try {
+    command.run(target);
+  } catch (err) {
+    setStatus(`${command.label} failed: ${err.message}`);
+    render();
+  }
 }
 
 /** The registry. `keys` is only shown where this app's own god-mode
@@ -444,8 +470,8 @@ export function paletteCommandList() {
     { id: 'view-org', label: 'Outline view', group: 'View', keywords: ['org'], needs: ['doc'], run: () => switchToView('org') },
     { id: 'view-text', label: 'Text view', group: 'View', keywords: ['raw', 'source'], needs: ['doc'], run: () => switchToView('text') },
     { id: 'cycle-visibility', label: 'Cycle visibility of the whole document', orgName: 'org-global-cycle', keys: 'S-TAB', group: 'View', keywords: ['fold', 'unfold', 'collapse', 'expand'], needs: ['doc'], run: () => globalCycleFold() },
-    { id: 'calendar', label: 'Calendar', group: 'View', needs: ['doc'], run: () => openCalendarPanel() },
-    { id: 'search', label: 'Search', keys: 'C-s', group: 'View', keywords: ['find', 'replace'], run: () => searchBtn.click() },
+    { id: 'calendar', label: 'Calendar', orgName: 'calendar', group: 'View', needs: ['doc'], run: () => openCalendarPanel() },
+    { id: 'search', label: 'Search', orgName: 'isearch-forward', keys: 'C-s', group: 'View', keywords: ['find', 'replace'], run: () => searchBtn.click() },
 
     // -- Export
     {
@@ -457,14 +483,18 @@ export function paletteCommandList() {
       needs: ['doc'],
       run: chord('C-c C-e'),
     },
-    { id: 'export-html', label: 'Export this file as HTML', group: 'Export', needs: ['doc'], run: exportAs('html') },
-    { id: 'export-markdown', label: 'Export this file as Markdown', group: 'Export', needs: ['doc'], run: exportAs('markdown') },
-    { id: 'export-ascii', label: 'Export this file as ASCII', group: 'Export', needs: ['doc'], run: exportAs('ascii') },
-    { id: 'export-odt', label: 'Export this file as ODT', group: 'Export', needs: ['doc'], run: exportAs('odt') },
+    { id: 'export-html', label: 'Export this file as HTML', orgName: 'org-html-export-to-html', group: 'Export', needs: ['doc'], run: exportAs('html') },
+    { id: 'export-markdown', label: 'Export this file as Markdown', orgName: 'org-md-export-to-markdown', group: 'Export', needs: ['doc'], run: exportAs('markdown') },
+    { id: 'export-ascii', label: 'Export this file as ASCII', orgName: 'org-ascii-export-to-ascii', group: 'Export', needs: ['doc'], run: exportAs('ascii') },
+    { id: 'export-odt', label: 'Export this file as ODT', orgName: 'org-odt-export-to-odt', group: 'Export', needs: ['doc'], run: exportAs('odt') },
+    // Two commands that used to exist only as Extras-menu functions; now ordinary palette commands, so every
+    // quoted function an Extras entry can name is a palette command (see runExtraMenuEntry)
+    { id: 'export-org', label: 'Export as an Org buffer', orgName: 'org-org-export-as-org', group: 'Export', needs: ['doc'], run: () => performOrgOrgExport() },
+    { id: 'recalculate-tables', label: 'Recalculate all tables', orgName: 'org-table-recalculate-buffer-tables', group: 'Document', keywords: ['formula', 'TBLFM'], needs: ['doc', 'writable'], run: () => recalculateAllTables() },
 
     // -- App
-    { id: 'settings', label: 'Settings', group: 'App', run: () => settingsBtn.click() },
-    { id: 'help', label: 'Help', keys: 'C-h m', group: 'App', keywords: ['readme', 'docs', 'manual'], run: chord('C-h m') },
+    { id: 'settings', label: 'Settings', orgName: 'customize', group: 'App', run: () => settingsBtn.click() },
+    { id: 'help', label: 'Help', orgName: 'describe-mode', keys: 'C-h m', group: 'App', keywords: ['readme', 'docs', 'manual'], run: chord('C-h m') },
   ];
 }
 
@@ -548,21 +578,13 @@ export async function openCommandPalette() {
 
   function run(entry) {
     const { command } = entry;
-    const reason = paletteUnavailableReason(command, target);
+    const available = !paletteUnavailableReason(command, target);
     finish();
-    if (reason) {
-      setStatus(`${command.label}: ${reason}.`);
-      render();
-      return;
+    if (available) {
+      S.paletteRecentIds = pushRecent(S.paletteRecentIds, command.id);
+      kv.set(PALETTE_RECENT_KEY, JSON.stringify(S.paletteRecentIds)).catch(() => {});
     }
-    S.paletteRecentIds = pushRecent(S.paletteRecentIds, command.id);
-    kv.set(PALETTE_RECENT_KEY, JSON.stringify(S.paletteRecentIds)).catch(() => {});
-    try {
-      command.run(target);
-    } catch (err) {
-      setStatus(`${command.label} failed: ${err.message}`);
-      render();
-    }
+    runPaletteCommand(command, target);
   }
 
   function renderList() {
