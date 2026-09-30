@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseExtraMenu, KNOWN_FUNCTIONS } from '../src/extra-menu.js';
+import { parseExtraMenu } from '../src/extra-menu.js';
 
 // ---- basic cases -------------------------------------------------------
 
@@ -84,54 +84,63 @@ test('parses a recognized function reference', () => {
   ]);
 });
 
-test('an unrecognized function name is skipped, not a hard error -- forward-compatible tolerance for a name that might be added later', () => {
-  assert.deepEqual(parseExtraMenu("\"'org-nonexistent-function;Nope\""), []);
+test('a function name the parser has never heard of is KEPT: recognizing it is the palette\u2019s job, at the moment the item is tapped, so it can be reported by name instead of the entry silently vanishing', () => {
+  assert.deepEqual(parseExtraMenu("\"'org-nonexistent-function;Nope\""), [
+    { type: 'function', name: 'org-nonexistent-function', label: 'Nope' },
+  ]);
 });
 
-test('KNOWN_FUNCTIONS currently contains exactly org-clock-out, org-clock-cancel, org-clock-continue, org-xx-calendar, org-table-recalculate-buffer-tables, org-cut-subtree, org-paste-subtree, and org-org-export-as-org, matching what\u2019s actually implemented', () => {
-  assert.deepEqual(
-    [...KNOWN_FUNCTIONS],
-    ['org-clock-out', 'org-clock-cancel', 'org-clock-continue', 'org-xx-calendar', 'org-table-recalculate-buffer-tables', 'org-cut-subtree', 'org-paste-subtree', 'org-org-export-as-org']
-  );
+test('the parser keeps any well-formed function name, including ones from outside org (Emacs commands the palette also names)', () => {
+  assert.deepEqual(parseExtraMenu("\"'isearch-forward;Search\" \"'calendar;Calendar\" \"'org-clock-in-last;Resume\""), [
+    { type: 'function', name: 'isearch-forward', label: 'Search' },
+    { type: 'function', name: 'calendar', label: 'Calendar' },
+    { type: 'function', name: 'org-clock-in-last', label: 'Resume' },
+  ]);
 });
 
-test('parses org-clock-cancel as a recognized function-reference entry', () => {
+test('a malformed function symbol (does not start with a letter, or has characters a symbol cannot) is still skipped', () => {
+  assert.deepEqual(parseExtraMenu("\"'123abc;Nope\""), []);
+  assert.deepEqual(parseExtraMenu("\"'org clock;Nope\""), []);
+  assert.deepEqual(parseExtraMenu("\"';Nope\""), []);
+});
+
+test('parses org-clock-cancel as a function-reference entry', () => {
   assert.deepEqual(parseExtraMenu("\"'org-clock-cancel;\u274c Cancel clock\""), [
     { type: 'function', name: 'org-clock-cancel', label: '\u274c Cancel clock' },
   ]);
 });
 
-test('parses org-org-export-as-org as a recognized function-reference entry', () => {
+test('parses org-org-export-as-org as a function-reference entry', () => {
   assert.deepEqual(parseExtraMenu("\"'org-org-export-as-org;\ud83d\udcc4 Export as org\""), [
     { type: 'function', name: 'org-org-export-as-org', label: '\ud83d\udcc4 Export as org' },
   ]);
 });
 
-test('parses org-clock-continue as a recognized function-reference entry', () => {
-  assert.deepEqual(parseExtraMenu("\"'org-clock-continue;\u25b6\ufe0f Resume last clock\""), [
-    { type: 'function', name: 'org-clock-continue', label: '\u25b6\ufe0f Resume last clock' },
+test('parses org-clock-in-last (real org\u2019s name for resuming the last clock) as a function-reference entry', () => {
+  assert.deepEqual(parseExtraMenu("\"'org-clock-in-last;\u25b6\ufe0f Resume last clock\""), [
+    { type: 'function', name: 'org-clock-in-last', label: '\u25b6\ufe0f Resume last clock' },
   ]);
 });
 
-test('THE FIX: parses org-table-recalculate-buffer-tables as a recognized function-reference entry', () => {
+test('THE FIX: parses org-table-recalculate-buffer-tables as a function-reference entry', () => {
   assert.deepEqual(parseExtraMenu("\"'org-table-recalculate-buffer-tables;\ud83d\udd22 Recalc tables\""), [
     { type: 'function', name: 'org-table-recalculate-buffer-tables', label: '\ud83d\udd22 Recalc tables' },
   ]);
 });
 
-test('parses org-xx-calendar as a recognized function-reference entry', () => {
-  assert.deepEqual(parseExtraMenu("\"'org-xx-calendar;\ud83d\udcc5 Calendar\""), [
-    { type: 'function', name: 'org-xx-calendar', label: '\ud83d\udcc5 Calendar' },
+test('parses calendar (Emacs\u2019s own command name) as a function-reference entry', () => {
+  assert.deepEqual(parseExtraMenu("\"'calendar;\ud83d\udcc5 Calendar\""), [
+    { type: 'function', name: 'calendar', label: '\ud83d\udcc5 Calendar' },
   ]);
 });
 
-test('parses org-cut-subtree as a recognized function-reference entry', () => {
+test('parses org-cut-subtree as a function-reference entry', () => {
   assert.deepEqual(parseExtraMenu("\"'org-cut-subtree;\u2702\ufe0f Cut Subtree\""), [
     { type: 'function', name: 'org-cut-subtree', label: '\u2702\ufe0f Cut Subtree' },
   ]);
 });
 
-test('parses org-paste-subtree as a recognized function-reference entry', () => {
+test('parses org-paste-subtree as a function-reference entry', () => {
   assert.deepEqual(parseExtraMenu("\"'org-paste-subtree;\ud83d\udccb Paste Subtree\""), [
     { type: 'function', name: 'org-paste-subtree', label: '\ud83d\udccb Paste Subtree' },
   ]);

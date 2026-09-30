@@ -193,6 +193,37 @@ test('registry: command ids are unique', () => {
   assert.deepEqual(ids.filter((id, i) => ids.indexOf(id) !== i), []);
 });
 
+// id -> orgName (or null) for every static palette command, read from the registry source
+function paletteOrgNames() {
+  const src = paletteSource();
+  const starts = [...src.matchAll(/\bid: '([^']+)'/g)];
+  return starts.map((m, n) => {
+    const chunk = src.slice(m.index, n + 1 < starts.length ? starts[n + 1].index : src.length);
+    const org = /orgName: '([^']+)'/.exec(chunk);
+    return { id: m[1], orgName: org ? org[1] : null };
+  });
+}
+
+test('registry: every real Emacs/Org function name is unique, so a quoted function in an Extras entry resolves to exactly one command', () => {
+  const names = paletteOrgNames().map((e) => e.orgName).filter(Boolean);
+  assert.ok(names.length > 30, 'expected many commands to carry a real function name');
+  assert.deepEqual(names.filter((n, i) => names.indexOf(n) !== i), []);
+});
+
+test('registry: the palette commands WITHOUT a real Emacs/Org name are exactly the exceptions the README lists (this app\u2019s own, with no Emacs equivalent)', () => {
+  const without = paletteOrgNames().filter((e) => !e.orgName).map((e) => e.id).sort();
+  assert.deepEqual(without, ['history', 'new', 'unarchive', 'view-org', 'view-text']);
+});
+
+test('registry: the names Extras entries used to hard-code are all palette commands now, under their real names', () => {
+  const names = new Set(paletteOrgNames().map((e) => e.orgName));
+  for (const name of ['org-clock-out', 'org-clock-cancel', 'org-clock-in-last', 'calendar', 'org-table-recalculate-buffer-tables', 'org-cut-subtree', 'org-paste-subtree', 'org-org-export-as-org']) {
+    assert.ok(names.has(name), `${name} should be a palette command`);
+  }
+  // the two that were invented or wrong are NOT names any more
+  assert.ok(!names.has('org-xx-calendar') && !names.has('org-clock-continue'));
+});
+
 test('registry: every "needs" names a real availability check', () => {
   const declared = new Set([...APP.slice(APP.indexOf('const PALETTE_NEEDS = {')).matchAll(/^  (\w+): /gm)].map((m) => m[1]));
   const used = new Set();

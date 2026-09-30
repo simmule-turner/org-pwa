@@ -231,7 +231,7 @@ test('findHeadingWithRunningClock ignores a completed (non-running) clock', () =
   assert.equal(findHeadingWithRunningClock(doc), null);
 });
 
-// ---- findMostRecentlyClockedHeading (org-clock-continue's own target-finding half) ----
+// ---- findMostRecentlyClockedHeading (org-clock-in-last's own target-finding half) ----
 
 test('findMostRecentlyClockedHeading returns null when nothing has ever been clocked anywhere', () => {
   const doc = parseOrg('* A\n** B\n');
