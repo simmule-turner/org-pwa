@@ -702,7 +702,9 @@ check('god-mode: bare left/right collapse/expand the focused heading (a new capa
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Parent\n** Child\nbody text\n');
   const godSeq = async (...keys) => {
-    if ((await page.locator('#minibuffer').innerText()) !== '\ud83e\udde0 God-mode (Esc to exit)') {
+    // ready for a fresh chord = in god-mode and not mid-sequence ("God-mode: C-c"); it may be showing the last command's name
+    const ready = await page.locator('#minibuffer').innerText().then((t) => t.includes('God-mode') && !t.includes('God-mode: '));
+    if (!ready) {
       await page.keyboard.press('Escape');
       if (!(await page.locator('#minibuffer').innerText()).includes('God-mode')) {
         await page.keyboard.press('Escape');
@@ -724,7 +726,7 @@ check('god-mode: bare left/right collapse/expand the focused heading (a new capa
   await context.close();
 });
 
-check('floating keyboard: [g] opens it with god-mode and the hidden input; its buttons work without stealing focus; Shift is one-shot; it drags; [g] again or a dismissed device keyboard closes everything', async () => {
+check('floating keyboard: [g] opens it with god-mode and the hidden input; its buttons work without stealing focus; Shift is one-shot; it drags; [g] again ends everything, but a dismissed device keyboard does not', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Parent\n** Child\nbody\n');
   const fk = page.locator('#floatingKeyboard');
@@ -736,7 +738,7 @@ check('floating keyboard: [g] opens it with god-mode and the hidden input; its b
   expect(await godOn(), 'tapping [g] should enter god-mode');
   expect((await activeId()) === 'godModeKeyboardInput', `the hidden input should hold focus: ${await activeId()}`);
   const labels = await fk.locator('button').allInnerTexts();
-  expect(JSON.stringify(labels) === JSON.stringify(['Tab', '\u2190', '\u2192', '\u2191', '\u2193', 'S', 'g']), `layout T \u2190 \u2192 \u2191 \u2193 S g: ${JSON.stringify(labels)}`);
+  expect(JSON.stringify(labels) === JSON.stringify(['\u2328', 'Tab', '\u2190', '\u2192', '\u2191', '\u2193', 'S', 'g']), `layout \u2328 T \u2190 \u2192 \u2191 \u2193 S g: ${JSON.stringify(labels)}`);
 
   await fk.locator('[data-fk-key=ArrowLeft]').click(); // collapse the auto-focused Parent
   expect(!(await page.locator('#outline').innerText()).includes('Child'), 'the left-arrow button should collapse the focused heading');
@@ -776,8 +778,12 @@ check('floating keyboard: [g] opens it with god-mode and the hidden input; its b
   const again = await fk.boundingBox();
   expect(Math.abs(again.x - after.x) < 2 && Math.abs(again.y - after.y) < 2, 'the dragged position should be remembered for the session');
   await page.evaluate(() => document.getElementById('godModeKeyboardInput').blur()); // the device keyboard dismissed itself
+  await page.waitForTimeout(300);
+  expect(await fk.isVisible(), 'a dismissed device keyboard must NOT hide the floating keyboard');
+  expect(await godOn(), 'nor end god-mode: that is what [g] and Escape are for');
+  await page.click('#godModeBtn');
   await fk.waitFor({ state: 'hidden' });
-  expect(!(await godOn()), 'a dismissed device keyboard should end god-mode too');
+  expect(!(await godOn()), '[g] still ends it');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -1044,6 +1050,7 @@ check('floating keyboard: always above the mode line -- by default, however far 
   await page.mouse.up();
   await clear('dragged far down');
   const moved = await fk.boundingBox();
+  expect(moved.y + moved.height <= g.y, 'dragged down as far as it goes it still stops above the floating buttons, never over [g]');
   // the device keyboard: the app learns of it only through visualViewport, and lifts its mode line by the
   // covered height -- the panel must ride up with it instead of staying underneath (the reported bug)
   const setKeyboard = (px) => page.evaluate((h) => {
@@ -1053,22 +1060,161 @@ check('floating keyboard: always above the mode line -- by default, however far 
     vv.dispatchEvent(new Event('resize'));
   }, px);
   await setKeyboard(300);
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(900); // long enough for the panel to settle and keep its push, as a person's own pace is
   const lifted = await page.locator('#modelineBar').boundingBox();
   expect(lifted.y < (await page.viewportSize()).height - 250, `the app should have lifted its mode line above the emulated keyboard: ${lifted.y}`);
   await clear('with a 300px device keyboard up');
   const withKeyboard = await fk.boundingBox();
   await setKeyboard(0);
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(900);
   await clear('after the device keyboard went away');
-  expect(withKeyboard.y < (await fk.boundingBox()).y, 'the panel should come back down with the mode line');
+  expect(Math.abs(withKeyboard.y - (await fk.boundingBox()).y) < 2, 'the panel must STAY where the keyboard pushed it, not drop back down when the keyboard goes');
   await page.setViewportSize({ width: 400, height: 420 });
   await page.waitForTimeout(300);
   await clear('after the viewport shrank');
   await page.setViewportSize({ width: 400, height: 800 });
   await page.waitForTimeout(300);
   await clear('after it grew back');
-  expect(moved.y > start.y, 'the drag itself should have moved it down toward the mode line');
+  expect(Math.abs(moved.y - start.y) < 2, 'its default spot is already the lowest it may go, so dragging down changes nothing');
+  await context.close();
+});
+
+// the device keyboard, as the app itself learns of it: through visualViewport, which it lifts its mode line by
+const emulateDeviceKeyboard = (page, px) => page.evaluate((h) => {
+  const vv = window.visualViewport;
+  if (h) Object.defineProperty(vv, 'height', { configurable: true, get: () => window.innerHeight - h });
+  else delete vv.height;
+  vv.dispatchEvent(new Event('resize'));
+}, px);
+
+check('floating keyboard: its keyboard key hides and shows the device keyboard without ending god-mode; the device keyboard going away any other way changes nothing but that key', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 360, height: 740 });
+  await newDocument(page, '* One\n');
+  const fk = page.locator('#floatingKeyboard');
+  const key = fk.locator('[data-fk-keyboard]');
+  const activeId = () => page.evaluate(() => document.activeElement && document.activeElement.id);
+  const stillOn = async () => (await fk.isVisible()) && (await page.locator('#minibuffer').innerText()).includes('God-mode');
+  await page.click('#godModeBtn');
+  await fk.waitFor({ state: 'visible' });
+  expect((await key.count()) === 1 && (await key.innerText()) === '\u2328', 'the panel has one keyboard key, first after the move area');
+  expect((await fk.locator('button').first().getAttribute('data-fk-keyboard')) !== null, 'and it comes before Tab');
+
+  await emulateDeviceKeyboard(page, 300);
+  await page.waitForTimeout(400);
+  expect((await key.getAttribute('aria-pressed')) === 'true', 'lit while the device keyboard is up');
+
+  await key.click(); // hide
+  expect((await activeId()) !== 'godModeKeyboardInput', 'tapping it hides the device keyboard (the field lets go of focus)');
+  expect(await stillOn(), 'and god-mode and the panel stay exactly as they were');
+  expect((await key.getAttribute('aria-pressed')) === 'false', 'the key goes dark');
+  await emulateDeviceKeyboard(page, 0); // the OS lowers it
+  await page.waitForTimeout(400);
+
+  await emulateDeviceKeyboard(page, 300);
+  await key.click(); // show again
+  expect((await activeId()) === 'godModeKeyboardInput', 'tapping it again gives the field focus, which is what brings the keyboard back');
+  await page.waitForTimeout(400);
+  expect((await key.getAttribute('aria-pressed')) === 'true', 'lit again');
+
+  // the device keyboard hidden some other way (its own dismiss control, a popup taking focus): nothing ends
+  await page.evaluate(() => document.getElementById('godModeKeyboardInput').blur());
+  await emulateDeviceKeyboard(page, 0);
+  await page.waitForTimeout(400);
+  expect(await stillOn(), 'the device keyboard going away by itself must not end god-mode or hide the panel');
+  expect((await key.getAttribute('aria-pressed')) === 'false', 'only the key changes');
+
+  // Android's back gesture hides the keyboard but can leave the field focused: the key reads unlit, and a tap still brings it back
+  await page.evaluate(() => document.getElementById('godModeKeyboardInput').focus());
+  await page.waitForTimeout(200);
+  expect((await key.getAttribute('aria-pressed')) === 'false', 'focused but no keyboard on screen must not read as showing');
+  await key.click();
+  expect((await activeId()) === 'godModeKeyboardInput', 'a tap still leaves the field focused, having blurred and refocused it to bring the keyboard back');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('floating keyboard: pushed up by the device keyboard it STAYS up when the keyboard goes away (no drop lower); only a drag lowers it', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 360, height: 740 });
+  await newDocument(page, '* One\n');
+  const fk = page.locator('#floatingKeyboard');
+  const y = async () => Math.round((await fk.boundingBox()).y);
+  const settle = () => page.waitForTimeout(900);
+  const aboveModeLine = async (what) => {
+    const ml = await page.locator('#modelineBar').boundingBox();
+    const b = await fk.boundingBox();
+    expect(b.y + b.height <= ml.y + 0.5, `${what}: panel bottom ${b.y + b.height} must be above the mode line top ${ml.y}`);
+  };
+  await page.click('#godModeBtn');
+  await fk.waitFor({ state: 'visible' });
+  await settle();
+  const resting = await y();
+
+  await emulateDeviceKeyboard(page, 300);
+  await settle();
+  const up = await y();
+  expect(up < resting - 150, `the device keyboard pushes it up: ${resting} -> ${up}`);
+  await aboveModeLine('keyboard up');
+
+  await emulateDeviceKeyboard(page, 0); // hiding the phone keyboard: the reported bug was the panel dropping lower right here
+  await settle();
+  expect(Math.abs((await y()) - up) < 2, `it stays where it was pushed instead of dropping: ${up} -> ${await y()}`);
+  await aboveModeLine('keyboard gone');
+
+  await emulateDeviceKeyboard(page, 300); // and back up: it is already clear, so it does not move
+  await settle();
+  expect(Math.abs((await y()) - up) < 2, `and does not move when the keyboard returns: ${up} -> ${await y()}`);
+  await emulateDeviceKeyboard(page, 0);
+  await settle();
+
+  // only a drag lowers it
+  const handle = await fk.locator('[data-fk-handle]').boundingBox();
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + 400, { steps: 8 });
+  await page.mouse.up();
+  const dragged = await y();
+  expect(dragged > up + 100, `a drag does lower it: ${up} -> ${dragged}`);
+  await aboveModeLine('after dragging down');
+  await emulateDeviceKeyboard(page, 300); // a panel dragged low is covered by the keyboard, so it is pushed up again ...
+  await settle();
+  const pushed = await y();
+  expect(pushed < dragged - 100, `covered, so pushed up: ${dragged} -> ${pushed}`);
+  await aboveModeLine('pushed again');
+  await emulateDeviceKeyboard(page, 0); // ... and stays up when it leaves
+  await settle();
+  expect(Math.abs((await y()) - pushed) < 2, `still no drop: ${pushed} -> ${await y()}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('floating keyboard: a thick accent-coloured border identifies it, and it fits a 360px screen with every key at least 34px wide and 44px tall', async () => {
+  const { context, page } = await freshPage();
+  await page.setViewportSize({ width: 360, height: 740 });
+  await newDocument(page, '* One\n');
+  const fk = page.locator('#floatingKeyboard');
+  await page.click('#godModeBtn');
+  await fk.waitFor({ state: 'visible' });
+  const look = await fk.evaluate((el) => {
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--accent)';
+    document.body.appendChild(probe);
+    const accent = getComputedStyle(probe).color;
+    probe.remove();
+    const cs = getComputedStyle(el);
+    return { width: cs.borderTopWidth, style: cs.borderTopStyle, color: cs.borderTopColor, accent, scroll: el.scrollWidth, client: el.clientWidth, glow: cs.boxShadow };
+  });
+  expect(look.width === '3px' && look.style === 'solid', `a 3px solid border: ${look.width} ${look.style}`);
+  expect(look.color === look.accent, `in the theme's accent colour: ${look.color} vs ${look.accent}`);
+  expect(look.glow.includes(look.accent), `with a faint glow of it: ${look.glow}`);
+  const box = await fk.boundingBox();
+  expect(box.x >= 0 && box.x + box.width <= 360, `inside a 360px screen: x=${box.x} width=${box.width}`);
+  expect(look.scroll <= look.client + 1, `nothing overflows the panel: ${look.scroll} > ${look.client}`);
+  const keys = await fk.locator('button').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
+  expect(keys.length === 8 && keys.every(([w, h]) => w >= 34 && h >= 44), `every key at least 34 wide and 44 tall: ${JSON.stringify(keys)}`);
+  await page.locator('[data-fk-handle]').click(); // minimized keeps the border, so it is still findable
+  expect((await fk.evaluate((el) => getComputedStyle(el).borderTopWidth)) === '3px', 'the minimized handle keeps the border');
   await context.close();
 });
 
@@ -1087,7 +1233,7 @@ check('floating keyboard: tapping the move area minimizes it to just that handle
   await page.mouse.down();
   await page.mouse.move(h.x + h.width / 2 - 30, h.y + h.height / 2 - 50, { steps: 5 });
   await page.mouse.up();
-  expect((await fk.locator('button').count()) === 7, 'a drag should not minimize it');
+  expect((await fk.locator('button').count()) === 8, 'a drag should not minimize it');
 
   await handle.click();
   expect((await fk.locator('button').count()) === 0, 'a tap on the move area should hide every key');
@@ -1098,7 +1244,7 @@ check('floating keyboard: tapping the move area minimizes it to just that handle
   expect((await activeId()) === 'godModeKeyboardInput', 'or dismiss the device keyboard');
 
   await handle.click();
-  expect((await fk.locator('button').count()) === 7, 'tapping the minimized handle restores every key');
+  expect((await fk.locator('button').count()) === 8, 'tapping the minimized handle restores every key');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -1147,6 +1293,37 @@ check('floating keyboard: letters typed the way Android delivers them (keydown "
   // 4. an uppercase letter carries its own shift: G is god-mode's C-M- prefix
   await page.keyboard.insertText('G');
   expect((await mini()).includes('\u2026'), `G should leave god-mode waiting on a C-M- prefix: ${await mini()}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('god-mode: once a chord completes the minibuffer names the palette command that ran (just the chord when it has none), and the next keystroke clears it', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* One\n');
+  const mini = async () => (await page.locator('#minibuffer').innerText()).replace(/\s+/g, ' ');
+  await page.locator('body').click({ position: { x: 200, y: 800 } });
+  await page.keyboard.press('Escape');
+  if (!(await page.locator('#minibuffer').innerText()).includes('God-mode')) await page.keyboard.press('Escape');
+  expect((await mini()).includes('Esc to exit'), `ready prompt before anything runs: ${await mini()}`);
+
+  for (const k of ['c', 'x', 'o']) await page.keyboard.press(k); // C-c C-x C-o: Clock out
+  expect((await mini()).includes('C-c C-x C-o') && (await mini()).includes('Clock out'), `a completed chord should name the palette command: ${await mini()}`);
+  expect(!(await mini()).includes('God-mode: '), `and not look like a sequence still being built: ${await mini()}`);
+
+  await page.keyboard.press('c'); // starting the next sequence replaces it
+  expect((await mini()).includes('God-mode: C-c') && !(await mini()).includes('Clock out'), `the next keystroke should clear the name: ${await mini()}`);
+  await page.keyboard.press('Escape'); // cancel that sequence
+
+  await page.keyboard.press('f'); // C-f arms redo: a chord with no palette command shows just the chord
+  expect((await mini()).includes('C-f') && !(await mini()).includes('\u2192'), `a chord with no palette command is shown bare: ${await mini()}`);
+  await page.keyboard.press('z'); // C-z is bound to nothing: back to the ready prompt, not the previous command as if it had just run
+  expect((await mini()).includes('Esc to exit') && !(await mini()).includes('C-f'), `a key that runs nothing must not leave the last command showing: ${await mini()}`);
+
+  // the floating keyboard feeds the same dispatch, so it is named the same way
+  await page.click('#godModeBtn'); // god-mode is already on from the Escape, so this just brings up the floating keyboard
+  await page.locator('#floatingKeyboard').waitFor({ state: 'visible' });
+  for (const k of ['c', 'x', 'x']) await page.keyboard.press(k); // typed on the device keyboard: C-c C-x C-x
+  expect((await mini()).includes('Continue last clock'), `the device keyboard path names it too: ${await mini()}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -1248,7 +1425,9 @@ check('god-mode: the new chords for refile/attach/clocking/export reach their re
     // Escape (once or twice, as needed) when NOT already in a clean,
     // ready-for-a-fresh-chord god-mode state -- pressing it unconditionally
     // would otherwise EXIT an already-active god-mode instead of entering it.
-    if ((await page.locator('#minibuffer').innerText()) !== '\ud83e\udde0 God-mode (Esc to exit)') {
+    // ready for a fresh chord = in god-mode and not mid-sequence ("God-mode: C-c"); it may be showing the last command's name
+    const ready = await page.locator('#minibuffer').innerText().then((t) => t.includes('God-mode') && !t.includes('God-mode: '));
+    if (!ready) {
       await page.keyboard.press('Escape');
       if (!(await page.locator('#minibuffer').innerText()).includes('God-mode')) {
         await page.keyboard.press('Escape');
