@@ -1,5 +1,5 @@
 // Extracted from app.js: god mode palette.
-import { isArchivedInPlace } from '../src/archive-model.js';
+import { findAncestorPath, isArchivedInPlace } from '../src/archive-model.js';
 import { computeNonCollidingKeys } from '../src/capture-template.js';
 import { findHeadingWithRunningClock } from '../src/clock.js';
 import { dynamicCommandSpecs, pushRecent, searchCommands } from '../src/command-palette.js';
@@ -727,6 +727,13 @@ export function isValidGodModePrefix(chordString) {
 export function enterGodMode() {
   S.godModeActive = true;
   S.godModeState = godModeInitialState();
+  // Keyboard focus survives a tab or document switch, so it can be left over
+  // from ANOTHER document: a heading that isn't in this one, which every
+  // heading-targeted chord would then silently fail on. (A real Escape masks
+  // this -- its first press clears focus -- but the [g] button has no such step.)
+  if (S.keyboardFocusedHeading && !(S.state.doc && findAncestorPath(S.state.doc, S.keyboardFocusedHeading))) {
+    setKeyboardFocusToHeading(null);
+  }
   if (!S.keyboardFocusedHeading) {
     const headings = visibleHeadingsInOrder();
     if (headings.length > 0) setKeyboardFocusToHeading(headings[0]);

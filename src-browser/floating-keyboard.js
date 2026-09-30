@@ -50,6 +50,22 @@ export function keystrokeFor(key, shiftArmed) {
   return { rawKey: shiftArmed && key.shiftedRawKey ? key.shiftedRawKey : key.rawKey, shiftKey: shiftArmed };
 }
 
+/** The floating S also shifts the next key typed on the DEVICE keyboard, which
+ *  has no Shift+Enter (or Shift+anything-but-a-letter) of its own to send:
+ *  tap g, tap S, then tap Return, and god-mode sees Shift+Enter (M-S-RET).
+ *  Applies the armed Shift to a keystroke that came from the device keyboard
+ *  and, like the floating buttons, consumes it -- one-shot, whichever keyboard
+ *  the next key comes from. A letter becomes its capital (the shift a printable
+ *  key carries in the character itself, see KEYS); a named key such as Enter
+ *  gets the shiftKey flag. */
+export function withArmedShift(rawKey, shiftKey) {
+  if (!S.floatingKeyboardShiftArmed) return { rawKey, shiftKey };
+  S.floatingKeyboardShiftArmed = false;
+  // only a plain single character changes case (a few, like the German sharp s, would become two)
+  const upper = rawKey.length === 1 && rawKey.toUpperCase().length === 1 ? rawKey.toUpperCase() : rawKey;
+  return { rawKey: upper, shiftKey: true };
+}
+
 const clamp = (n, lo, hi) => Math.min(Math.max(n, lo), Math.max(lo, hi));
 
 /** Distance from the mode line's top edge up to where the panel sits by
@@ -307,7 +323,8 @@ function feedText(text) {
       continue;
     }
     // a printable letter carries its own shift in the character (see KEYS above)
-    dispatchGodModeKeystroke(ch === '\n' ? 'Enter' : ch, ch.length === 1 && ch !== ch.toLowerCase());
+    const { rawKey, shiftKey } = withArmedShift(ch === '\n' ? 'Enter' : ch, ch.length === 1 && ch !== ch.toLowerCase());
+    dispatchGodModeKeystroke(rawKey, shiftKey);
   }
 }
 
