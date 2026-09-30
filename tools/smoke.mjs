@@ -1003,6 +1003,94 @@ check('floating keyboard: entering god-mode with a real Escape does NOT show it,
   await context.close();
 });
 
+check('Extras menu: a quoted function is the palette command with that real Emacs/Org name -- it runs like the palette (acting on the tapped heading), says why when it cannot run, and names any function it does not recognize, including the two retired names', async () => {
+  const { context, page, errors } = await freshPage();
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']); // cut copies before it deletes, and refuses to delete what it could not copy
+  const names = [
+    ["'org-clock-out", 'Stop'], ["'org-frobnicate", 'Mystery'], ["'org-xx-calendar", 'OldCal'], ["'org-clock-continue", 'OldResume'],
+    ["'calendar", 'Cal'], ["'isearch-forward", 'Find'], ["'org-clock-in-last", 'Resume'], ["'org-cut-subtree", 'Cut'],
+    ["'org-table-recalculate-buffer-tables", 'Recalc'], ["'org-org-export-as-org", 'AsOrg'],
+  ];
+  const vars = ['# Local Variables:', `# org-xx-extra-menu: ${names.map(([n, l]) => `"${n};${l}"`).join(' ')}`, '# End:'].join('\n');
+  const doc = ['* One', '* Two', '* Three', '** Table', '| 3 | |', '#+TBLFM: $2=$1*2', '', vars, ''].join('\n');
+  await newDocument(page, doc);
+  await page.locator('#extraMenuBtn').waitFor({ state: 'visible' });
+  const status = async () => (await page.locator('#status').innerText()).replace(/\s+/g, ' ');
+  const pick = async (label) => {
+    await page.click('#extraMenuBtn');
+    await page.locator('#extraMenuPanel').getByText(label, { exact: true }).click();
+    await page.waitForTimeout(250);
+  };
+  const text = async () => {
+    await viewMenu(page, 'Text');
+    const t = await page.locator('#document-text-edit-input').inputValue();
+    await viewMenu(page, 'Org');
+    return t;
+  };
+
+  await pick('Stop'); // org-clock-out with nothing running: the palette's own reason, not a silent no-op
+  expect((await status()).includes('Clock out') && (await status()).includes('no clock is running'), `an unavailable command says why: ${await status()}`);
+  await pick('Mystery');
+  expect((await status()) === "'org-frobnicate is not a recognized function.", `an unknown name is reported by name: ${await status()}`);
+  await pick('OldCal'); // no backwards compatibility: the retired names are unknown now
+  expect((await status()) === "'org-xx-calendar is not a recognized function.", `the retired calendar name: ${await status()}`);
+  await pick('OldResume');
+  expect((await status()) === "'org-clock-continue is not a recognized function.", `the retired resume name: ${await status()}`);
+
+  await pick('Resume'); // org-clock-in-last: real org's name for it
+  expect((await status()).includes('Nothing has been clocked yet'), `org-clock-in-last resumes the last clock (nothing yet): ${await status()}`);
+  await pick('Find'); // isearch-forward is Search
+  await page.locator('#search-query-input').waitFor({ state: 'visible', timeout: 4000 });
+  await page.keyboard.press('Escape');
+  await pick('Cal'); // calendar is the calendar overview
+  await page.locator('#refilePanel').waitFor({ state: 'visible', timeout: 4000 });
+  expect((await page.locator('#refilePanel').innerText()).includes('Today'), 'calendar opens the calendar overview');
+  await page.keyboard.press('Escape');
+
+  await pick('Recalc'); // org-table-recalculate-buffer-tables, now an ordinary palette command
+  expect((await text()).includes('| 3 | 6 |'), `every table formula is recalculated: ${JSON.stringify((await text()).split('\n').filter((l) => l.startsWith('|')))}`);
+  await pick('AsOrg'); // org-org-export-as-org
+  await page.waitForTimeout(600);
+  expect((await status()).includes('Exported to *Org ORG Export* in a new buffer'), `export-as-org opens its own buffer: ${await status()}`);
+  expect((await page.locator('#tabBar > div').count()) === 2, 'as a second tab, leaving the original document alone');
+
+  // back in the first tab: cut acts on the heading whose menu is open, like the palette
+  await page.locator('#tabBar > div').first().click();
+  await page.waitForTimeout(300);
+  await page.locator('.heading-title', { hasText: 'Two' }).first().click();
+  await pick('Cut');
+  expect(!(await text()).includes('* Two') && (await text()).includes('* One') && (await text()).includes('* Three'), 'org-cut-subtree cuts the tapped heading and only it');
+  await viewMenu(page, 'Org');
+  await page.locator('.heading-title', { hasText: 'One' }).first().click(); // and with no heading chosen it says so instead of nothing
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('command palette: the real Emacs/Org names are searchable, the two former Extras-only functions are palette commands, and a read-only buffer points at Toggle read-only (not the removed View-menu item)', async () => {
+  const { context, page } = await freshPage();
+  await newDocument(page, '* One\n');
+  const find = async (q) => {
+    await openPalette(page);
+    await page.keyboard.type(q);
+    const rows = await paletteRows(page);
+    await page.keyboard.press('Escape');
+    return rows;
+  };
+  const html = await find('org-html-export-to-html');
+  expect(html.some((r) => r.includes('Export this file as HTML')), `the Emacs name finds the command: ${JSON.stringify(html)}`);
+  expect((await find('isearch-forward')).some((r) => r.includes('Search')), 'Search is isearch-forward');
+  expect((await find('describe-mode')).some((r) => r.includes('Help')), 'Help is describe-mode');
+  expect((await find('org-table-recalculate-buffer-tables')).some((r) => r.includes('Recalculate all tables')), 'the former Extras-only table command is in the palette');
+  expect((await find('org-org-export-as-org')).some((r) => r.includes('Export as an Org buffer')), 'and so is export-as-org');
+  await openPalette(page);
+  await page.keyboard.type('toggle read-only');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  const rows = await find('recalculate all');
+  expect(rows.some((r) => r.includes('Recalculate all tables') && r.includes('Toggle read-only') && !r.includes('View menu')), `a read-only buffer names the real way out: ${JSON.stringify(rows)}`);
+  await context.close();
+});
+
 check('floating [g]: a floating button stacked directly above Extras (taking its place when there is none); it is not in the top bar and nothing already on screen moves', async () => {
   let { context, page } = await freshPage();
   await newDocument(page, '* Plain\n');
