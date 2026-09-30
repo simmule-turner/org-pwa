@@ -136,7 +136,11 @@ export function renderMinibuffer() {
 
   if (S.godModeActive) {
     const seq = S.godModeState.chordString || (S.godModeState.pendingModifier ? '\u2026' : '');
-    setStatus(seq ? `\ud83e\udde0 God-mode: ${seq}` : '\ud83e\udde0 God-mode (Esc to exit)');
+    // a chord that has just completed: name what ran (the palette's own label,
+    // when the chord has a palette command) instead of the bare ready prompt
+    const done = S.godModeLastCommand;
+    const ran = done ? `\ud83e\udde0 God-mode \u00b7 ${done.chord}${done.label ? ` \u2192 ${done.label}` : ''}` : '\ud83e\udde0 God-mode (Esc to exit)';
+    setStatus(seq ? `\ud83e\udde0 God-mode: ${seq}` : ran);
   }
 }
 

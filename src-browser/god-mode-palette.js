@@ -712,6 +712,22 @@ export function isValidGodModePrefix(chordString) {
   return Object.keys(GOD_MODE_ACTIONS).some((k) => k === chordString || k.startsWith(chordString + ' '));
 }
 
+/** chord -> the palette's own label for the command bound to it, built once
+ *  from the palette's list so the two can never disagree about a name. Each
+ *  chord is bound to at most one palette command (checked when this was added). */
+const CHORD_LABELS = new Map();
+
+/** The palette label for the command a completed chord runs, or null when the
+ *  chord has no palette command (Tab, the arrows, C-f, ...). */
+export function labelForChord(chordString) {
+  if (CHORD_LABELS.size === 0) {
+    for (const command of paletteCommandList()) {
+      if (command.keys && !CHORD_LABELS.has(command.keys)) CHORD_LABELS.set(command.keys, command.label);
+    }
+  }
+  return CHORD_LABELS.get(chordString) || null;
+}
+
 /**
  * Activates god-mode: resets the in-progress key sequence, and -- if no
  * heading is currently keyboard-focused -- focuses the first visible one,
@@ -727,6 +743,7 @@ export function isValidGodModePrefix(chordString) {
 export function enterGodMode() {
   S.godModeActive = true;
   S.godModeState = godModeInitialState();
+  S.godModeLastCommand = null;
   // Keyboard focus survives a tab or document switch, so it can be left over
   // from ANOTHER document: a heading that isn't in this one, which every
   // heading-targeted chord would then silently fail on. (A real Escape masks
@@ -759,6 +776,7 @@ export function enterGodMode() {
  * to real keydown events and never arises from a button tap.
  */
 export function dispatchGodModeKeystroke(rawKey, shiftKey) {
+  S.godModeLastCommand = null; // any new keystroke starts over: the minibuffer shows the sequence being built, not the last result
   const freshSequence = S.godModeState.chordString === '' && S.godModeState.pendingModifier === null && !S.godModeState.literalActive;
   if (freshSequence && !shiftKey && rawKey === 'i') {
     enterInsertModeAtCurrentLine();
@@ -781,6 +799,8 @@ export function dispatchGodModeKeystroke(rawKey, shiftKey) {
     // chord's own comment); any OTHER action breaks the chain back to
     // plain undo, matching real Emacs -- almost any command does.
     if (chordString !== 'C-f' && chordString !== 'C-/') S.godModeRedoArmed = false;
+    // named in the minibuffer once it has run, so it is clear what was executed
+    S.godModeLastCommand = { chord: chordString, label: labelForChord(chordString) };
     GOD_MODE_ACTIONS[chordString]();
     S.godModeState = godModeInitialState();
   } else if (!stillWaiting && !isValidGodModePrefix(chordString)) {
