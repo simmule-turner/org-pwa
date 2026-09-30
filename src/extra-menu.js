@@ -28,40 +28,15 @@
  *     first if it doesn't already exist (the same resolveOlpTarget
  *     capture templates themselves already use).
  *   - A quoted-symbol function reference (e.g. 'org-clock-out) --
- *     selecting this menu item runs that built-in function directly.
- *     org-clock-out, org-clock-cancel, org-clock-continue (real org's
- *     own command -- C-u C-u C-c C-x C-i -- for resuming whichever
- *     heading was most recently clocked, without needing to navigate
- *     back to find it first; a no-op with a status message if a clock
- *     is already running, or if nothing anywhere has ever been
- *     clocked), org-xx-calendar (not a real org-mode function -- this
- *     app's own single-month calendar overview, see app.js's own
- *     openCalendarPanel), and org-table-recalculate-buffer-tables
- *     (real org's own actual, distinct command -- confirmed directly
- *     against the Org Manual: recalculating just the CURRENT table is
- *     C-c C-c / C-u C-c C-c instead, a completely separate command,
- *     which has its own per-table Calc button on every table here
- *     instead of a menu entry, since there's no "current table" this
- *     app could mean without a cursor/point concept the way Emacs has
- *     one -- this one recalculates every #+TBLFM: formula in every
- *     table in the whole document, see app.js's own dispatch for the
- *     full behavior), org-cut-subtree / org-paste-subtree (the
- *     same C-c C-x C-w / C-c C-x C-y god-mode commands, run against
- *     whichever heading's own per-row action menu is currently open
- *     -- the touch-native way to designate a specific heading without
- *     a keyboard at all -- falling back to whichever heading is
- *     currently keyboard-focused if no action menu is open; a status
- *     message says so if neither is set, rather than doing nothing
- *     silently), and org-org-export-as-org (real org's own actual
- *     command -- a considered subset, see src/export-org.js's own doc
- *     comment for exactly which of its real, documented steps this
- *     app can and can't actually do -- opening the fully processed
- *     result in a brand-new, unsaved buffer, same as this app's own
- *     Export menu's own "As-org" entry) are recognized today; more
- *     may be added later, so an unrecognized function name is treated
- *     as a malformed entry (skipped) rather than a hard parse error,
- *     the same forward-compatible tolerance every other "recognized
- *     subset" parser in this codebase already has.
+ *     selecting this menu item runs the command palette command whose
+ *     real Emacs/Org function name that is (its `orgName` in
+ *     src-browser/god-mode-palette.js), exactly as the palette would:
+ *     one that can't run right now says why, and a name no palette
+ *     command has says it isn't a recognized function. This parser does
+ *     NOT know which names exist -- it keeps any well-formed symbol,
+ *     because the palette's own registry is the single list, and
+ *     recognizing a name happens when the item is tapped, where it can
+ *     be reported by name instead of the entry silently vanishing.
  *
  * LABEL is the display text shown for the menu item -- whatever
  * follows the FIRST top-level (bracket-depth-0) semicolon, kept
@@ -69,16 +44,6 @@
  * chose to put there).
  */
 
-const KNOWN_FUNCTIONS = new Set([
-  'org-clock-out',
-  'org-clock-cancel',
-  'org-clock-continue',
-  'org-xx-calendar',
-  'org-table-recalculate-buffer-tables',
-  'org-cut-subtree',
-  'org-paste-subtree',
-  'org-org-export-as-org',
-]);
 const SEPARATOR_TOKEN = '-----';
 
 /** Splits the raw, already-line-joined org-xx-extra-menu value into its
@@ -158,10 +123,7 @@ function parseSpec(spec) {
     return { type: 'olp', headers };
   }
   const functionMatch = /^'([A-Za-z][A-Za-z0-9_-]*)$/.exec(spec);
-  if (functionMatch) {
-    const name = functionMatch[1];
-    return KNOWN_FUNCTIONS.has(name) ? { type: 'function', name } : null;
-  }
+  if (functionMatch) return { type: 'function', name: functionMatch[1] };
   if (/^[A-Za-z0-9]+$/.test(spec)) {
     return { type: 'capture', key: spec };
   }
@@ -194,4 +156,4 @@ function parseExtraMenu(text) {
   return entries;
 }
 
-export { parseExtraMenu, tokenize, KNOWN_FUNCTIONS };
+export { parseExtraMenu, tokenize };

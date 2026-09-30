@@ -233,7 +233,7 @@ function clockInSwitchingTasks(doc, heading, timestamp, now) {
   return { started, switchedFrom };
 }
 
-/** org-clock-continue's own target-finding half: the heading whose
+/** org-clock-in-last's own target-finding half: the heading whose
  *  most recent CLOCK line (running or already-completed, either
  *  counts) started more recently than any other heading's own most
  *  recent one, searched across the whole document. Real org's own
