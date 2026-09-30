@@ -7,6 +7,31 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v421 — God-mode's minibuffer now names the command a completed chord ran
+When a god-mode chord completes, the minibuffer shows the chord and the command
+palette's own name for it -- "God-mode · C-c C-x C-j → Go to clocked task" --
+instead of going straight back to the bare ready prompt, so it is clear what was
+executed. That matters most on a phone, where keys are tapped rather than seen and
+a mistap that ran a different chord was invisible. The names come from the
+palette's own list (looked up by chord, built once), so the two cannot disagree; a
+chord with no palette command (Tab, the arrows, C-f) is shown as just the chord.
+The name stays until the next keystroke, which replaces it with the sequence being
+built, or with the ready prompt if that key runs nothing. It works the same for
+keys from the floating keyboard and the device keyboard, since they share one
+dispatch. While a sequence is still being built the display is unchanged
+("God-mode: C-c"); every state still contains the word "God-mode".
+
+Only what was asked: it names the command AFTER it runs. Showing, mid-sequence, the
+commands the typed prefix could still lead to (a which-key style list) is a
+separate, larger feature and was not added.
+
+Tests: 2933 unit (unchanged) and 41 browser checks (1 new: a chord with a palette
+command, one without, the name clearing on the next key -- including an unbound key,
+which is where clearing is visible -- and the device-keyboard path). Each of the
+lookup, the display and the clearing was confirmed to fail when removed; the first
+draft did not cover the clearing at all (the next key builds a sequence, which takes
+display priority anyway) until a key that runs nothing was added.
+
 * v420 — The floating S now also shifts the next key typed on the phone keyboard (so gS-RET works on a phone); [g] no longer acts on a heading left over from another document
 A phone keyboard has no Shift+Return, so M-S-RET (gS-RET on a desktop, "add a
 TODO heading") could not be entered at all: the floating keyboard has no Return

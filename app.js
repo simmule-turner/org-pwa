@@ -869,6 +869,9 @@ S.godModeState = godModeInitialState();
 // (src-browser/god-mode-palette.js) for the real-Emacs-derived redo
 // technique this implements.
 S.godModeRedoArmed = false;
+// { chord, label } for the chord god-mode has just run, shown in the minibuffer
+// until the next keystroke (label is the palette's name for it, or null).
+S.godModeLastCommand = null;
 // The floating keyboard (src-browser/floating-keyboard.js): true only while
 // god-mode was entered via the [g] toolbar button, which also brings up
 // the device's own keyboard through a hidden input. Deliberately NOT
