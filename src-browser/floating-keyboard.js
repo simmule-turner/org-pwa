@@ -12,11 +12,15 @@
 // god-mode through the hidden input's beforeinput/input events as well as
 // keydown -- see the bottom of this file.
 //
-// PLACEMENT. The panel is positioned relative to the MODE LINE, never the
-// screen: its bottom is the mode line's own top edge (which the app already
-// keeps above the device keyboard, see syncContentOffset) plus a "lift". So
-// it can never sit under the device keyboard or cover the mode line, however
-// the keyboard comes and goes or however far it was dragged.
+// PLACEMENT. The panel always sits above the mode line (which the app already
+// keeps above the device keyboard, see syncContentOffset) and above the floating
+// buttons, so it can never be hidden behind the device keyboard or cover either.
+// If the keyboard comes up under it, it is pushed up -- and then STAYS there when
+// the keyboard goes away: it never moves down on its own, only when dragged.
+//
+// LIFETIME. The panel follows god-mode ([g], Escape, another panel opening), not
+// the device keyboard: hiding the keyboard leaves both alone, and the panel's
+// own keyboard key shows or hides it again.
 import { S } from './app-state.js';
 import { extraMenuBtn, floatingKeyboard, godModeBtn, godModeKeyboardInput, modelineBarEl } from './dom.js';
 import { getGodModeButton } from '../src/local-variables.js';
@@ -29,6 +33,12 @@ export const FLOATING_BUTTON_GAP = 10;
  *  than the start of a drag. */
 const TAP_SLOP_PX = 6;
 const SCREEN_MARGIN = 8;
+/** Keys are narrower than a full touch target wide (they stay 44px tall) so the
+ *  panel, with its keyboard key, still fits a 360px-wide screen. */
+const KEY_MIN_WIDTH = 34;
+/** How much of the screen the app must have lifted its mode line for, before
+ *  the device keyboard counts as showing. */
+const KEYBOARD_INSET_PX = 80;
 
 /** The six buttons that dispatch a key, in display order (Shift, which
  *  dispatches nothing itself, sits just before `g`). `rawKey` is what a real
@@ -68,52 +78,89 @@ export function withArmedShift(rawKey, shiftKey) {
 
 const clamp = (n, lo, hi) => Math.min(Math.max(n, lo), Math.max(lo, hi));
 
-/** Distance from the mode line's top edge up to where the panel sits by
- *  default: clear of the floating buttons stacked in the corner, so the [g]
- *  button that closes it is never underneath it. */
-function defaultLift() {
+/** The room the panel must leave above the mode line so it never covers the
+ *  floating buttons stacked in the corner -- above all the [g] that closes it. */
+function buttonClearance() {
   const extras = extraMenuBtn.style.display !== 'none';
-  const stackHeight = 16 + FLOATING_BUTTON_SIZE + (extras ? FLOATING_BUTTON_SIZE + FLOATING_BUTTON_GAP : 0);
-  return stackHeight + FLOATING_BUTTON_GAP;
+  return 16 + FLOATING_BUTTON_SIZE + (extras ? FLOATING_BUTTON_SIZE + FLOATING_BUTTON_GAP : 0) + FLOATING_BUTTON_GAP;
 }
 
-function currentLift() {
-  return S.floatingKeyboardPos ? S.floatingKeyboardPos.lift : defaultLift();
-}
-
-/** The bottom edge of the panel's allowed area, measured from the layout
- *  viewport's bottom: the mode line's height plus however far up the app has
- *  already lifted it to clear the device keyboard. */
+/** The mode line's top edge, measured up from the layout viewport's bottom: its
+ *  height plus however far the app has already lifted it to clear the device
+ *  keyboard. */
 function modeLineTopOffset() {
   return modelineBarEl.offsetHeight + (parseFloat(modelineBarEl.style.bottom) || 0);
 }
 
-/** Puts the panel where S.floatingKeyboardPos says (or the default), kept
- *  above the mode line and inside the visible area. Called after every
- *  render and from syncContentOffset, i.e. whenever the keyboard or viewport
- *  changes. */
+/** The lowest the panel may sit: clear of the mode line and of the floating buttons above it. */
+function lowestBottom() {
+  return modeLineTopOffset() + buttonClearance();
+}
+
+/** The highest it may sit and still be entirely on screen. */
+function highestBottom() {
+  const vv = window.visualViewport;
+  return window.innerHeight - (vv ? vv.offsetTop : 0) - floatingKeyboard.offsetHeight;
+}
+
+/** Where the panel wants to be, before the limits: where it was last left, or
+ *  -- before it has been moved or pushed anywhere -- just above the buttons. */
+function storedBottom() {
+  return S.floatingKeyboardPos ? S.floatingKeyboardPos.bottom : modelineBarEl.offsetHeight + buttonClearance();
+}
+
+/** Where the panel actually sits: where it wants to be, pushed up if the mode
+ *  line or the device keyboard has come up under it, and kept on screen. */
+function effectiveBottom() {
+  const low = lowestBottom();
+  return clamp(Math.max(storedBottom(), low), low, highestBottom());
+}
+
+/** How long the keyboard and viewport must stay quiet before a push is kept. */
+const SETTLE_MS = 200;
+
+/** Keeps where the panel was pushed to. When the device keyboard comes up and
+ *  covers the panel it is pushed up above it; this makes that the panel's place,
+ *  so when the keyboard goes away again the panel STAYS -- it never drops back
+ *  down on its own (only dragging lowers it). Waits for the viewport to settle so
+ *  a value seen mid-way through the keyboard's animation is not kept. */
+function holdPosition() {
+  S.floatingKeyboardSettleTimer = null;
+  if (!S.floatingKeyboardOpen) return;
+  const now = effectiveBottom();
+  if (now > storedBottom() + 0.5) {
+    S.floatingKeyboardPos = { left: S.floatingKeyboardPos ? S.floatingKeyboardPos.left : null, bottom: now };
+  }
+}
+
+/** Puts the panel where it belongs: above the mode line and the floating
+ *  buttons, inside the visible area, and -- unless it has been pushed up by the
+ *  device keyboard or dragged elsewhere -- in its default corner. Called after
+ *  every render and from syncContentOffset, i.e. whenever the keyboard or
+ *  viewport changes. */
 export function positionFloatingKeyboard() {
   if (!S.floatingKeyboardOpen) return;
-  const vv = window.visualViewport;
-  const visibleHeight = vv ? vv.height : window.innerHeight;
-  const maxLift = visibleHeight - modelineBarEl.offsetHeight - floatingKeyboard.offsetHeight;
-  const lift = clamp(currentLift(), 0, maxLift);
   floatingKeyboard.style.top = 'auto';
-  floatingKeyboard.style.bottom = modeLineTopOffset() + lift + 'px';
-  if (S.floatingKeyboardPos) {
-    const left = clamp(S.floatingKeyboardPos.left, 0, window.innerWidth - floatingKeyboard.offsetWidth);
-    floatingKeyboard.style.left = left + 'px';
+  floatingKeyboard.style.bottom = effectiveBottom() + 'px';
+  const left = S.floatingKeyboardPos ? S.floatingKeyboardPos.left : null;
+  if (left != null) {
+    floatingKeyboard.style.left = clamp(left, 0, window.innerWidth - floatingKeyboard.offsetWidth) + 'px';
     floatingKeyboard.style.right = 'auto';
   } else {
     floatingKeyboard.style.left = 'auto';
     floatingKeyboard.style.right = SCREEN_MARGIN + 'px';
   }
+  syncKeyboardToggle();
+  clearTimeout(S.floatingKeyboardSettleTimer);
+  S.floatingKeyboardSettleTimer = setTimeout(holdPosition, SETTLE_MS);
 }
 
 /** Closes the floating keyboard's own state and dismisses the device keyboard
  *  -- the one place that happens, whether the person tapped [g] again, god-mode
  *  ended some other way, or the device keyboard was dismissed. */
 export function closeFloatingKeyboard() {
+  clearTimeout(S.floatingKeyboardSettleTimer);
+  S.floatingKeyboardSettleTimer = null;
   S.floatingKeyboardOpen = false;
   S.floatingKeyboardShiftArmed = false;
   S.floatingKeyboardMinimized = false;
@@ -124,11 +171,11 @@ export function closeFloatingKeyboard() {
 function styleButton(btn, { armed = false } = {}) {
   btn.type = 'button';
   btn.tabIndex = -1;
-  btn.style.minWidth = '40px';
+  btn.style.minWidth = KEY_MIN_WIDTH + 'px';
   btn.style.minHeight = FLOATING_BUTTON_SIZE + 'px';
   btn.style.fontSize = '16px';
   btn.style.margin = '0';
-  btn.style.padding = '0 4px';
+  btn.style.padding = '0 2px';
   btn.style.border = '1px solid var(--border-strong)';
   btn.style.borderRadius = '8px';
   btn.style.background = armed ? 'var(--accent)' : 'var(--surface)';
@@ -148,7 +195,7 @@ function wireHandle(handle) {
     const startX = e.clientX;
     const startY = e.clientY;
     const left0 = floatingKeyboard.getBoundingClientRect().left;
-    const lift0 = currentLift();
+    const bottom0 = effectiveBottom();
     let dragging = false;
     handle.setPointerCapture(e.pointerId);
     const move = (ev) => {
@@ -156,7 +203,11 @@ function wireHandle(handle) {
       const dy = ev.clientY - startY;
       if (!dragging && Math.hypot(dx, dy) <= TAP_SLOP_PX) return;
       dragging = true;
-      S.floatingKeyboardPos = { left: left0 + dx, lift: lift0 - dy };
+      // stored within the limits, so dragging back the other way responds at once
+      S.floatingKeyboardPos = {
+        left: clamp(left0 + dx, 0, window.innerWidth - floatingKeyboard.offsetWidth),
+        bottom: clamp(bottom0 - dy, lowestBottom(), highestBottom()),
+      };
       positionFloatingKeyboard();
     };
     const finish = (isTap) => {
@@ -174,6 +225,24 @@ function wireHandle(handle) {
     handle.addEventListener('pointerup', up);
     handle.addEventListener('pointercancel', cancel);
   });
+}
+
+/** Whether the device keyboard is really up: the hidden input has focus AND the
+ *  app has lifted its mode line to clear a keyboard. Focus alone would not do:
+ *  Android's back gesture can hide the keyboard and leave the field focused. On a
+ *  desktop there is no on-screen keyboard, so this is never true there. */
+function deviceKeyboardShowing() {
+  return document.activeElement === godModeKeyboardInput && (parseFloat(modelineBarEl.style.bottom) || 0) > KEYBOARD_INSET_PX;
+}
+
+/** Lights the panel's keyboard key while the device keyboard is showing. Cheap,
+ *  and safe to call when the panel is not there. */
+export function syncKeyboardToggle() {
+  const btn = floatingKeyboard.querySelector('[data-fk-keyboard]');
+  if (!btn) return;
+  const showing = deviceKeyboardShowing();
+  btn.setAttribute('aria-pressed', showing ? 'true' : 'false');
+  styleButton(btn, { armed: showing });
 }
 
 /** Whether the [g] button is enabled (the org-xx-god-mode-button quick
@@ -219,9 +288,11 @@ export function renderFloatingKeyboard() {
   floatingKeyboard.style.maxWidth = 'calc(100vw - ' + 2 * SCREEN_MARGIN + 'px)';
   floatingKeyboard.style.boxSizing = 'border-box';
   floatingKeyboard.style.background = 'var(--modal-bg)';
-  floatingKeyboard.style.border = '1px solid var(--border-strong)';
+  // a thick border in the theme's accent colour (with a faint glow of it), so the
+  // panel is easy to pick out from whatever it is floating over
+  floatingKeyboard.style.border = '3px solid var(--accent)';
   floatingKeyboard.style.borderRadius = '10px';
-  floatingKeyboard.style.boxShadow = '0 4px 14px rgba(0,0,0,0.35)';
+  floatingKeyboard.style.boxShadow = '0 0 8px 1px var(--accent), 0 4px 14px rgba(0,0,0,0.35)';
   floatingKeyboard.setAttribute('role', 'toolbar');
   floatingKeyboard.setAttribute('aria-label', 'God-mode keys');
 
@@ -246,6 +317,27 @@ export function renderFloatingKeyboard() {
   wireHandle(handle);
 
   if (!minimized) {
+    // hides / shows the device keyboard without touching god-mode
+    const keyboardBtn = document.createElement('button');
+    keyboardBtn.textContent = '\u2328';
+    keyboardBtn.setAttribute('aria-label', 'Device keyboard: tap to hide or show');
+    keyboardBtn.setAttribute('data-fk-keyboard', '');
+    styleButton(keyboardBtn);
+    // pointerdown only keeps focus where it is until the click decides; the
+    // focus call itself is in the click, which is what iOS counts as the tap
+    // that may bring the keyboard up
+    keyboardBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    keyboardBtn.addEventListener('click', () => {
+      const wasShowing = deviceKeyboardShowing();
+      godModeKeyboardInput.blur();
+      if (!wasShowing) godModeKeyboardInput.focus({ preventScroll: true }); // blur first so an already-focused field brings the keyboard back
+      syncKeyboardToggle();
+    });
+    floatingKeyboard.appendChild(keyboardBtn);
+
     const shiftBtn = document.createElement('button');
     shiftBtn.textContent = 'S';
     shiftBtn.setAttribute('aria-label', 'Shift');
