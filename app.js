@@ -251,7 +251,7 @@ import { afterDocumentLoaded, saveCurrent } from './src-browser/documents-io.js'
 import { commitAndRender, setStatus, startEditingTitle } from './src-browser/editing.js';
 import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, reloadCurrentDocumentFromDisk } from './src-browser/external-sync.js';
 import { renderFileMenu, stopBrowsing } from './src-browser/file-menu.js';
-import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard } from './src-browser/floating-keyboard.js';
+import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, withArmedShift } from './src-browser/floating-keyboard.js';
 import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
 import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, moveTableCellFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading } from './src-browser/keyboard-focus.js';
 import { renderExtraMenu, renderMoreMenu } from './src-browser/menus.js';
@@ -607,7 +607,13 @@ document.addEventListener('keydown', (e) => {
     // god-mode the meaningless key name "Unidentified", so it is left alone.
     if (e.key === 'Unidentified' || e.keyCode === 229 || e.isComposing) return;
     e.preventDefault();
-    if (e.target === godModeKeyboardInput && e.key.length === 1) noteKeydownDelivered(e.key);
+    if (e.target === godModeKeyboardInput) {
+      if (e.key.length === 1) noteKeydownDelivered(e.key);
+      // a key typed on the device keyboard gets the floating S if it is armed
+      const { rawKey, shiftKey } = withArmedShift(e.key, e.shiftKey);
+      dispatchGodModeKeystroke(rawKey, shiftKey);
+      return;
+    }
     dispatchGodModeKeystroke(e.key, e.shiftKey);
     return;
   }

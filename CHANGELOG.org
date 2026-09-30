@@ -7,6 +7,36 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v420 — The floating S now also shifts the next key typed on the phone keyboard (so gS-RET works on a phone); [g] no longer acts on a heading left over from another document
+A phone keyboard has no Shift+Return, so M-S-RET (gS-RET on a desktop, "add a
+TODO heading") could not be entered at all: the floating keyboard has no Return
+key and its S only ever shifted the floating keyboard's own buttons. S now also
+applies to the next key typed on the device keyboard, one-shot, whichever keyboard
+supplies it: tap g, tap S, tap Return, and god-mode receives Shift+Return. A
+letter typed after S becomes its capital, as the floating g already did. It works
+on both paths a device keyboard uses -- a real keydown (iOS, physical keyboards)
+and an input event (Android) -- and adds no buttons and moves nothing, which is
+why it was chosen over adding a Return key to the panel.
+
+A real bug found by the test for this, unrelated to shifting: keyboard focus
+survives a tab or document switch, so after leaving one document, opening another
+and tapping [g], god-mode still held the OLD document's heading, and every
+heading-targeted chord (add heading, TODO, refile, clock in...) silently did
+nothing. A real Escape had always masked it, because its first press clears
+keyboard focus; the [g] button, which exists for devices with no Escape, has no such step,
+so it would have hit this on every document switch. enterGodMode now drops focus
+that points into a different document before choosing the first heading. My first
+theory was that this could not happen -- a probe seemed to show it working -- and
+the probe was wrong for exactly that reason (it pressed Escape twice, and the
+first press cleared the stale focus). Found by looking at what the app was actually
+doing after the failing step instead of trusting that probe.
+
+Tests: 2933 unit (unchanged) and 40 browser checks (2 new: g, S, Return through the
+real-keydown and the input-event paths -- including that S is one-shot and that
+a typed letter is capitalised -- and god-mode acting on the new document after a
+switch). Each piece was confirmed to fail when removed. As before, the Android path
+is the reproduced event sequence, not a physical Android phone.
+
 * v419 — A quick setting to hide the floating [g] button; org-clock-goto (C-c C-x C-j) added to the palette and god-mode
 Quick Settings gains a "Keyboard" section with one checkbox, "Show the floating
 [g] god-mode button" (the org-xx-god-mode-button variable, on by default). Off
