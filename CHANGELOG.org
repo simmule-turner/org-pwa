@@ -7,6 +7,55 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v422 — The floating keyboard outlives the device keyboard, gains a keyboard key, and stops dropping lower
+Designed with the person using it first, then built; three changes.
+
+Lifetime. God-mode and the floating keyboard used to end whenever the device
+keyboard went away, a coupling v417 added as a safety net that was never asked for.
+They now end only through [g], Escape, or another panel opening. Hiding the device
+keyboard by any route (its dismiss control, a tap elsewhere, the OS gesture, a popup
+taking focus) leaves both alone. That is worth having: Tab, the arrows, S and g
+never needed the device keyboard, so with it hidden the whole screen is free to read
+the outline while navigating.
+
+A keyboard key on the panel (the first key, before Tab) hides and shows the device
+keyboard and changes nothing else; it is lit while the keyboard is up. "Up" is the
+field having focus AND the screen having been lifted to clear a keyboard, not focus
+alone, because Android's back gesture can hide the keyboard and leave the field
+focused; if the key reads dark a tap still brings the keyboard back (it blurs then
+refocuses). The focus call is made in the tap's click event, which is what iOS
+requires. After a popup closes the keyboard is not brought back on its own. To fit
+the extra key on a 360px screen the keys are 34px wide (still 44px tall).
+
+The panel dropped lower right after hiding the device keyboard. It was positioned
+relative to the mode line, which falls by the keyboard's whole height when the
+keyboard goes, so the panel fell with it even when nothing had been covering it.
+Now it is pushed up when the keyboard would cover it and then STAYS there; only a
+drag lowers it, and it does not move when the keyboard returns because it is
+already clear. It waits for the keyboard's animation to settle before keeping a
+push, so a transient value is not kept. This deliberately differs from the first
+design ("goes back to its own spot"), which would have kept the very symptom for a
+panel left at the bottom -- the answer to "when does it shift?" (right after hiding
+the phone keyboard) showed it, so the rule was changed to "stays".
+
+Side effect, disclosed: the panel can no longer be dragged down over the floating
+buttons; its lowest position is now just above them (v418 let it overlap and relied
+on [g] being drawn on top). It also has a 3px accent-coloured border with a faint
+glow, kept when minimized, so it is easy to pick out.
+
+Not verified on a physical phone: the keyboard is emulated through the visual
+viewport (the signal the app itself uses), so what real devices report during the
+animation, whether the key brings the keyboard back on iOS, and whether Android's
+back gesture leaves the field focused are all assumptions. The README says so.
+
+Tests: 2933 unit (unchanged) and 44 browser checks (3 new: the keyboard key and the
+device keyboard going away; stay-put placement, including that only a drag lowers
+it; the border and the 360px fit). Three existing checks that asserted the old
+behaviour (a dismissed keyboard ends god-mode, the panel comes back down with the
+mode line, seven buttons) were changed to the new. All seven behaviours were
+confirmed to fail when removed; without the stay-put rule the panel falls from 253 to
+553, which is the reported bug.
+
 * v421 — God-mode's minibuffer now names the command a completed chord ran
 When a god-mode chord completes, the minibuffer shows the chord and the command
 palette's own name for it -- "God-mode · C-c C-x C-j → Go to clocked task" --

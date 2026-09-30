@@ -251,7 +251,7 @@ import { afterDocumentLoaded, saveCurrent } from './src-browser/documents-io.js'
 import { commitAndRender, setStatus, startEditingTitle } from './src-browser/editing.js';
 import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, reloadCurrentDocumentFromDisk } from './src-browser/external-sync.js';
 import { renderFileMenu, stopBrowsing } from './src-browser/file-menu.js';
-import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, withArmedShift } from './src-browser/floating-keyboard.js';
+import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, withArmedShift } from './src-browser/floating-keyboard.js';
 import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
 import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, moveTableCellFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading } from './src-browser/keyboard-focus.js';
 import { renderExtraMenu, renderMoreMenu } from './src-browser/menus.js';
@@ -884,11 +884,14 @@ S.floatingKeyboardShiftArmed = false;
 // Tapping the panel's move area shrinks it to just that handle, to see what
 // is behind it; tapping again restores it.
 S.floatingKeyboardMinimized = false;
-// Where the floating keyboard has been dragged to: { left } in px and { lift }
-// in px ABOVE THE MODE LINE (never an absolute screen position, so it can't
-// end up under the device keyboard), or null for its default spot above the
-// floating buttons. Session-only, not persisted.
+// Where the floating keyboard was last left: { left } in px (null = its default
+// right-hand corner) and { bottom } in px up from the bottom of the screen.
+// It is set by dragging, and by the device keyboard pushing the panel up (which
+// then STAYS pushed up when the keyboard goes away). null = its default spot
+// just above the floating buttons. Always kept above the mode line and the
+// floating buttons when applied. Session-only, not persisted.
 S.floatingKeyboardPos = null;
+S.floatingKeyboardSettleTimer = null; // pending "keep this push" timer, see floating-keyboard.js
 S.godModeInputFedLength = 0; // see floating-keyboard.js's input handling
 S.godModeRecentKeydown = null;
 // The heading most recently navigated to via navigateToHeading (a
@@ -1198,16 +1201,12 @@ godModeBtn.addEventListener('click', () => {
   godModeKeyboardInput.focus({ preventScroll: true });
   scrollFocusedHeadingIntoView();
 });
-godModeKeyboardInput.addEventListener('blur', () => {
-  if (!S.floatingKeyboardOpen) return;
-  // the device keyboard was dismissed (tap elsewhere, the OS's own gesture):
-  // end god-mode and hide the floating keyboard so nothing is left half-on
-  S.godModeActive = false;
-  S.godModeState = godModeInitialState();
-  closeFloatingKeyboard();
-  setStatus('');
-  render();
-});
+// The device keyboard going away (a tap elsewhere, the OS's own gesture, a popup
+// taking focus) does NOT end god-mode or hide the floating keyboard: they end
+// through [g], Escape, or another panel opening. It only changes whether the
+// panel's own keyboard key is lit.
+godModeKeyboardInput.addEventListener('blur', syncKeyboardToggle);
+godModeKeyboardInput.addEventListener('focus', syncKeyboardToggle);
 
 searchBtn.addEventListener('click', () => {
   const opening = !S.searchOpen;
