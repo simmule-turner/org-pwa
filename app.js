@@ -314,8 +314,8 @@ S.pendingAttachFileList = null;
 // overwhelming common case) never touches this at all -- the TODO
 // action keeps behaving exactly as it always has.
 S.pendingTodoWorkflowChoice = null;
-// Set to true when org-xx-calendar (a org-xx-extra-menu function
-// reference) is selected -- a single-month calendar overview,
+// Set to true when the Calendar command (the palette's, or an Extras
+// entry naming 'calendar) is run -- a single-month calendar overview,
 // reusing refilePanel's own DOM element, same pattern as every other
 // pendingXxx flow above. calendarViewYear/Month track which month is
 // currently displayed -- null until first opened (initialized to

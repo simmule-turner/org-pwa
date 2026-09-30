@@ -7,6 +7,58 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v423 — Extras-menu quoted functions are now the command palette's commands, named by their real Emacs/Org names
+An Extras entry like 'org-clock-out used to be checked against a hard-coded list of
+eight names with a separate hand-written dispatcher, so the palette's 33 commands
+with real names were unavailable to it and the README carried a long paragraph per
+function. A quoted function now resolves to the palette command whose real
+Emacs/Org function name that is and runs it exactly as the palette does: it acts on
+the heading whose menu is open (the same target function the palette already used),
+a command that can't run right now says why in the status line, and a name no
+command has says "'name is not a recognized function." with the name as written.
+The entry stays in the menu, so a typo is visible instead of the item vanishing
+(the parser used to skip unknown names silently). The README reference is now one
+rule plus a short exceptions list.
+
+Decided with the person using it: the two name mismatches are fixed with NO
+backwards compatibility -- 'org-clock-continue is now 'org-clock-in-last, the name
+the palette already used, and 'org-xx-calendar is now 'calendar, Emacs's own
+command name; the old names are simply unrecognized. Commands that had no real name
+got their Emacs equivalents: Search is isearch-forward, Help is describe-mode,
+Settings is customize, Calendar is calendar, and the HTML / Markdown / ASCII / ODT
+exports are org-html-export-to-html, org-md-export-to-markdown,
+org-ascii-export-to-ascii and org-odt-export-to-odt (the export names checked
+against the Org manual). Five commands have no equivalent and remain the listed
+exceptions: Unarchive, New document, Undo history, Outline view, Text view. Those
+five are judgment calls -- org-mode and text-mode were candidates for the two views
+and were not used, since they name switching a major mode, not this app's view.
+
+The two functions that existed only in Extras are ordinary palette commands now,
+because the hard-coded dispatcher that held them is gone: "Recalculate all tables"
+(org-table-recalculate-buffer-tables) and "Export as an Org buffer"
+(org-org-export-as-org). One behaviour change comes with that: Recalculate all
+tables now requires a writable buffer, like every other command that edits; the old
+Extras path had no such check.
+
+A stale string found on the way, my own miss from v415: the palette's read-only
+reason still said "toggle it in the View menu", though that toggle was removed then.
+Extras now shows the palette's reasons, so it would have reached more people. It now
+says to run Toggle read-only (C-x C-q).
+
+The palette's own run and the Extras dispatcher share one function
+(runPaletteCommand), so a command is explained, run and reported the same way from
+either. Mutation-check showed why the availability step matters: without it,
+org-clock-out with no clock crashes rather than explaining itself.
+
+Tests: 2937 unit (net +4: the allowlist-pinning test removed; new ones for the
+parser keeping any well-formed name, malformed symbols still skipped, unique names, the
+exact exceptions list, and the renamed functions) and 46 browser checks (2 new: the
+Extras menu end to end, and the palette's names). Each behaviour was confirmed to
+fail when removed. Two first-draft assertions were wrong rather than the app: the tab
+bar labels tabs by first heading, so export-as-org was checked by its status message,
+and the headless browser denies clipboard access, so the cut check grants it (the cut
+correctly refuses to delete what it could not copy).
+
 * v422 — The floating keyboard outlives the device keyboard, gains a keyboard key, and stops dropping lower
 Designed with the person using it first, then built; three changes.
 
