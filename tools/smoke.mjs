@@ -884,6 +884,100 @@ check('quick setting: "Show the floating [g] god-mode button" hides and shows [g
   await context.close();
 });
 
+check('floating [g]: after switching documents, god-mode acts on the NEW document (keyboard focus left over from the old one is dropped)', async () => {
+  const { context, page, errors } = await freshPage();
+  const fk = page.locator('#floatingKeyboard');
+  await newDocument(page, '* Old\n');
+  await page.click('#godModeBtn'); // focuses Old
+  await fk.waitFor({ state: 'visible' });
+  await page.click('#godModeBtn'); // and leave, with keyboard focus still on Old
+  await newDocument(page, '* New\n');
+  await page.click('#godModeBtn');
+  await fk.waitFor({ state: 'visible' });
+  await fk.locator('[data-fk-key=g]').click();
+  await page.keyboard.press('Enter'); // M-RET: add a heading after the focused one
+  await page.waitForSelector('#heading-title-edit-popup', { timeout: 4000 });
+  await page.keyboard.type('Added');
+  await page.getByText('OK', { exact: true }).last().click();
+  await page.waitForTimeout(300);
+  await viewMenu(page, 'Text');
+  const text = (await page.locator('#document-text-edit-input').inputValue()).replace(/\n\n+/g, '\n').trim();
+  expect(text === '* New\n* Added', `the new heading should land in the new document: ${JSON.stringify(text)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('floating keyboard: g, then S, then Return on the DEVICE keyboard is M-S-RET (a TODO heading) -- whether the Return arrives as a real keydown (iOS) or an input event (Android); S is one-shot and also capitalises a typed letter', async () => {
+  const { context, page, errors } = await freshPage();
+  const fk = page.locator('#floatingKeyboard');
+  const shift = fk.locator('[data-fk-shift]');
+  const outlineText = async () => {
+    await viewMenu(page, 'Text');
+    const t = await page.locator('#document-text-edit-input').inputValue();
+    await viewMenu(page, 'Org');
+    return t.replace(/\n\n+/g, '\n'); // adding a heading after the last one puts a blank line before it; not what is under test
+  };
+  const fresh = async () => {
+    await newDocument(page, '* One\n');
+    await page.click('#godModeBtn');
+    await fk.waitFor({ state: 'visible' });
+  };
+  const androidReturn = () => page.evaluate(() => {
+    document.getElementById('godModeKeyboardInput').dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertLineBreak', bubbles: true, cancelable: true }));
+  });
+  const finishTitle = async (title) => {
+    await page.waitForSelector('#heading-title-edit-popup', { timeout: 4000 });
+    await page.keyboard.type(title);
+    await page.getByText('OK', { exact: true }).last().click();
+    await page.waitForTimeout(300);
+  };
+
+  // 1. iOS-style: the device keyboard's Return is a real keydown
+  await fresh();
+  await fk.locator('[data-fk-key=g]').click(); // g: waits for the next key
+  await shift.click();
+  expect((await shift.getAttribute('aria-pressed')) === 'true', 'S should light up');
+  await page.keyboard.press('Enter'); // the phone keyboard's Return
+  await finishTitle('Two');
+  expect((await outlineText()).trim() === '* One\n* TODO Two'.trim(), `g, S, Return should insert a TODO heading (M-S-RET): ${JSON.stringify(await outlineText())}`);
+
+  // 2. Android-style: the Return arrives as an input event, not a keydown
+  await fresh();
+  await fk.locator('[data-fk-key=g]').click();
+  await shift.click();
+  await androidReturn();
+  await finishTitle('Three');
+  expect((await outlineText()).trim() === '* One\n* TODO Three'.trim(), `the same through an input event: ${JSON.stringify(await outlineText())}`);
+
+  // 3. without S the very same taps are plain M-RET: a heading, no TODO keyword
+  await fresh();
+  await fk.locator('[data-fk-key=g]').click();
+  await page.keyboard.press('Enter');
+  await finishTitle('Plain');
+  expect((await outlineText()).trim() === '* One\n* Plain'.trim(), `g then Return alone is M-RET: ${JSON.stringify(await outlineText())}`);
+
+  // 4. one-shot: S is consumed by the device-keyboard key, so a later Return is plain again
+  await fresh();
+  await shift.click();
+  await page.keyboard.press('h'); // consumes S (it becomes H, an unrecognized chord -- irrelevant here)
+  expect((await shift.getAttribute('aria-pressed')) === 'false', 'S should be used up by the device-keyboard key');
+  await fk.locator('[data-fk-key=g]').click();
+  await page.keyboard.press('Enter');
+  await finishTitle('After');
+  expect((await outlineText()).trim() === '* One\n* After'.trim(), `a Return after S was consumed is plain M-RET: ${JSON.stringify(await outlineText())}`);
+
+  // 5. a letter typed after S is capitalised: g becomes G (C-M-), so the Return that follows is C-M-RET, not M-RET
+  await fresh();
+  await shift.click();
+  await page.keyboard.press('g');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(400);
+  expect((await page.locator('#heading-title-edit-popup').count()) === 0, 'S then a typed g is G (C-M-), which is not M-: no heading should be inserted');
+  expect((await outlineText()).trim() === '* One', `nothing inserted: ${JSON.stringify(await outlineText())}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('floating keyboard: entering god-mode with a real Escape does NOT show it, and ending god-mode any other way hides it', async () => {
   const { context, page } = await freshPage();
   await newDocument(page, '* Parent\n');
