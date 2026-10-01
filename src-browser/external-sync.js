@@ -173,7 +173,12 @@ export async function checkForExternalChange() {
   try {
     const meta = await getSyncMeta(kv, S.state.documentId);
     if (!meta) return; // no baseline recorded yet -- nothing to compare against
-    const fresh = await activeDiskAdapter().read(S.state.documentId);
+    // prompt: false -- this runs on every tab switch and every focus change, so for
+    // a local file it must never ask for permission (the browser shows its "allow
+    // this site to view and copy" prompt each time otherwise). Without access it
+    // simply compares nothing; Save, Reload and Merge, which the person starts,
+    // still ask.
+    const fresh = await activeDiskAdapter().read(S.state.documentId, { prompt: false });
     if (!fresh) return;
     if (fresh.hash !== meta.lastSyncedHash && fresh.hash !== S.externalChangeDismissedHash) {
       showExternalChangeBanner(fresh.hash);

@@ -19,9 +19,16 @@ function handleKey(fileId) {
   return 'filehandle:' + fileId;
 }
 
-async function verifyPermission(handle, mode) {
+/** Whether `handle` may be used in `mode`. `queryPermission` only reports; it
+ *  never shows anything. `requestPermission` is what puts the browser's "allow
+ *  this site to view and copy ..." prompt on screen, so it is skipped when
+ *  `prompt` is false: a background check must not interrupt the person with a
+ *  prompt they didn't ask for (tapping a tab counts as a user gesture, so the
+ *  browser would show it every time). */
+async function verifyPermission(handle, mode, { prompt = true } = {}) {
   const opts = { mode };
   if ((await handle.queryPermission(opts)) === 'granted') return true;
+  if (!prompt) return false;
   if ((await handle.requestPermission(opts)) === 'granted') return true;
   return false;
 }
@@ -74,11 +81,18 @@ export function createFileSystemAccessAdapter(kvAdapter) {
   }
 
   return {
-    async read(documentId) {
+    /** `{ prompt: false }` is for background checks: read the file only if the
+     *  browser has already granted access, and otherwise return null (nothing to
+     *  compare) instead of asking. The default still asks, for anything the
+     *  person started themselves. */
+    async read(documentId, { prompt = true } = {}) {
       const handle = await getHandle(documentId);
       if (!handle) return null;
-      const ok = await verifyPermission(handle, 'read');
-      if (!ok) throw new Error(`Permission denied reading "${documentId}"`);
+      const ok = await verifyPermission(handle, 'read', { prompt });
+      if (!ok) {
+        if (!prompt) return null;
+        throw new Error(`Permission denied reading "${documentId}"`);
+      }
       const file = await handle.getFile();
       const content = await file.text();
       return { content, hash: contentHash(content) };
