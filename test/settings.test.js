@@ -16,6 +16,11 @@ import {
   setFontSize,
   getTablesFontSize,
   setTablesFontSize,
+  getParagraphSpacing,
+  setParagraphSpacing,
+  getTablesSpacing,
+  setTablesSpacing,
+  clampSpacing,
   exportAllSettings,
   importAllSettings,
   getRecentFiles,
@@ -25,6 +30,10 @@ import {
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONT_SIZE,
   DEFAULT_TABLES_FONT_SIZE,
+  DEFAULT_PARAGRAPH_SPACING,
+  DEFAULT_TABLES_SPACING,
+  MIN_SPACING,
+  MAX_SPACING,
 } from '../src-browser/settings.js';
 
 // ---- GitHub config --------------------------------------------------------
@@ -307,4 +316,72 @@ test('clearRecentFiles empties the list', async () => {
   await recordRecentFile(kv, 'notes.org', 'github');
   await clearRecentFiles(kv);
   assert.deepEqual(await getRecentFiles(kv), []);
+});
+
+// ---- paragraph spacing (two values, like the two font sizes) -----------------
+
+test('both spacing values default to 10px, within a shared 0 to 32px range', async () => {
+  assert.equal(DEFAULT_PARAGRAPH_SPACING, 10);
+  assert.equal(DEFAULT_TABLES_SPACING, 10);
+  assert.equal(MIN_SPACING, 0);
+  assert.equal(MAX_SPACING, 32);
+  const kv = createInMemoryAdapter();
+  assert.equal(await getParagraphSpacing(kv), 10);
+  assert.equal(await getTablesSpacing(kv), 10);
+});
+
+test('each spacing value round-trips, including 0 (dense) and 32 (the maximum)', async () => {
+  const kv = createInMemoryAdapter();
+  for (const px of [0, 1, 14, 32]) {
+    await setParagraphSpacing(kv, px);
+    assert.equal(await getParagraphSpacing(kv), px);
+    await setTablesSpacing(kv, px);
+    assert.equal(await getTablesSpacing(kv), px);
+  }
+});
+
+test('the paragraph and the Tables value are independent: setting one never changes the other', async () => {
+  const kv = createInMemoryAdapter();
+  await setParagraphSpacing(kv, 24);
+  assert.equal(await getTablesSpacing(kv), 10, 'setting paragraphs left Tables alone');
+  await setTablesSpacing(kv, 3);
+  assert.equal(await getParagraphSpacing(kv), 24, 'setting Tables left paragraphs alone');
+});
+
+test('spacing is forced into range when set, and to whole pixels', async () => {
+  const kv = createInMemoryAdapter();
+  for (const [set, get] of [[setParagraphSpacing, getParagraphSpacing], [setTablesSpacing, getTablesSpacing]]) {
+    await set(kv, 99);
+    assert.equal(await get(kv), 32);
+    await set(kv, -7);
+    assert.equal(await get(kv), 0);
+    await set(kv, 11.6);
+    assert.equal(await get(kv), 12);
+  }
+});
+
+test('a stored value that is not a number falls back to the DEFAULT, never to 0 (which would pack everything together)', async () => {
+  const kv = createInMemoryAdapter();
+  for (const bad of ['abc', '12', null, NaN, Infinity, undefined, {}, []]) {
+    assert.equal(clampSpacing(bad), 10, `clamp of ${String(bad)}`);
+  }
+  for (const [key, get] of [['settings:paragraphSpacing', getParagraphSpacing], ['settings:tablesSpacing', getTablesSpacing]]) {
+    await kv.set(key, JSON.stringify('wide'));
+    assert.equal(await get(kv), 10);
+    await kv.set(key, JSON.stringify(500));
+    assert.equal(await get(kv), 32, 'a hand-edited out-of-range number is clamped on read too');
+  }
+});
+
+test('both spacing values are part of a settings backup, and importing writes them back', async () => {
+  const kv = createInMemoryAdapter();
+  await setParagraphSpacing(kv, 18);
+  await setTablesSpacing(kv, 6);
+  const bundle = await exportAllSettings(kv);
+  assert.equal(bundle.settings.paragraphSpacing, 18);
+  assert.equal(bundle.settings.tablesSpacing, 6);
+  const other = createInMemoryAdapter();
+  await importAllSettings(other, bundle);
+  assert.equal(await getParagraphSpacing(other), 18);
+  assert.equal(await getTablesSpacing(other), 6);
 });

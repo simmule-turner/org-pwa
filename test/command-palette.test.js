@@ -212,7 +212,18 @@ test('registry: every real Emacs/Org function name is unique, so a quoted functi
 
 test('registry: the palette commands WITHOUT a real Emacs/Org name are exactly the exceptions the README lists (this app\u2019s own, with no Emacs equivalent)', () => {
   const without = paletteOrgNames().filter((e) => !e.orgName).map((e) => e.id).sort();
-  assert.deepEqual(without, ['history', 'new', 'unarchive', 'view-org', 'view-text']);
+  assert.deepEqual(without, ['history', 'new']);
+});
+
+test('registry: Unarchive carries org-unarchive-subtree, the name proposed for Org itself and used by the org-unarchive package', () => {
+  const byId = Object.fromEntries(paletteOrgNames().map((e) => [e.id, e.orgName]));
+  assert.equal(byId.unarchive, 'org-unarchive-subtree');
+});
+
+test('registry: the Outline and Text views carry the Emacs major-mode names org-mode and text-mode, so an Extras entry can switch views', () => {
+  const byId = Object.fromEntries(paletteOrgNames().map((e) => [e.id, e.orgName]));
+  assert.equal(byId['view-org'], 'org-mode');
+  assert.equal(byId['view-text'], 'text-mode');
 });
 
 test('registry: the names Extras entries used to hard-code are all palette commands now, under their real names', () => {
