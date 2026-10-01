@@ -1010,9 +1010,10 @@ check('Extras menu: a quoted function is the palette command with that real Emac
     ["'org-clock-out", 'Stop'], ["'org-frobnicate", 'Mystery'], ["'org-xx-calendar", 'OldCal'], ["'org-clock-continue", 'OldResume'],
     ["'calendar", 'Cal'], ["'isearch-forward", 'Find'], ["'org-clock-in-last", 'Resume'], ["'org-cut-subtree", 'Cut'],
     ["'org-table-recalculate-buffer-tables", 'Recalc'], ["'org-org-export-as-org", 'AsOrg'],
+    ["'text-mode", 'TextV'], ["'org-mode", 'OrgV'], ["'org-unarchive-subtree", 'Unarch'],
   ];
   const vars = ['# Local Variables:', `# org-xx-extra-menu: ${names.map(([n, l]) => `"${n};${l}"`).join(' ')}`, '# End:'].join('\n');
-  const doc = ['* One', '* Two', '* Three', '** Table', '| 3 | |', '#+TBLFM: $2=$1*2', '', vars, ''].join('\n');
+  const doc = ['* One', '* Two', '* Three', '** Table', '| 3 | |', '#+TBLFM: $2=$1*2', '', '* Old thing :ARCHIVE:', '', vars, ''].join('\n');
   await newDocument(page, doc);
   await page.locator('#extraMenuBtn').waitFor({ state: 'visible' });
   const status = async () => (await page.locator('#status').innerText()).replace(/\s+/g, ' ');
@@ -1061,7 +1062,20 @@ check('Extras menu: a quoted function is the palette command with that real Emac
   await pick('Cut');
   expect(!(await text()).includes('* Two') && (await text()).includes('* One') && (await text()).includes('* Three'), 'org-cut-subtree cuts the tapped heading and only it');
   await viewMenu(page, 'Org');
-  await page.locator('.heading-title', { hasText: 'One' }).first().click(); // and with no heading chosen it says so instead of nothing
+  await pick('TextV'); // the two views have the Emacs major-mode names
+  expect(await page.locator('#document-text-edit-input').isVisible(), "'text-mode switches to the Text view");
+  await pick('OrgV');
+  expect(!(await page.locator('#document-text-edit-input').isVisible()), "'org-mode switches back to the Outline view");
+
+  // org-unarchive-subtree: a heading that is not archived says so; a hand-tagged one is restored (here: its tag stripped, as no location was recorded)
+  await page.locator('.heading-title', { hasText: 'One' }).first().click();
+  await pick('Unarch');
+  expect((await status()).includes('Unarchive (restore)') && (await status()).includes('archived'), `an unarchived heading explains itself: ${await status()}`);
+  await page.locator('.heading-title', { hasText: 'Old thing' }).first().click();
+  page.once('dialog', (d) => d.accept()); // it confirms first, naming where the heading is going back to
+  await pick('Unarch');
+  expect(!(await text()).includes(':ARCHIVE:') && (await text()).includes('Old thing'), "org-unarchive-subtree restores an archived heading: the tag is gone and the heading is kept");
+  await viewMenu(page, 'Org');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -1082,6 +1096,7 @@ check('command palette: the real Emacs/Org names are searchable, the two former 
   expect((await find('describe-mode')).some((r) => r.includes('Help')), 'Help is describe-mode');
   expect((await find('org-table-recalculate-buffer-tables')).some((r) => r.includes('Recalculate all tables')), 'the former Extras-only table command is in the palette');
   expect((await find('org-org-export-as-org')).some((r) => r.includes('Export as an Org buffer')), 'and so is export-as-org');
+  expect((await find('org-unarchive-subtree')).some((r) => r.includes('Unarchive (restore)')), 'Unarchive is org-unarchive-subtree');
   await openPalette(page);
   await page.keyboard.type('toggle read-only');
   await page.keyboard.press('Enter');
@@ -1416,7 +1431,145 @@ check('god-mode: once a chord completes the minibuffer names the palette command
   await context.close();
 });
 
-check('god-mode: i/a/e enter insert mode at the focused row (the special, non-chord fresh-sequence cases)', async () => {
+check('paragraph spacing: two values like font size -- one for paragraphs, one for Tables and the other secondary blocks; 10px by default (paragraphs were 4px apart), independent, 0 to 32px, immediate, remembered across a reload, list items untouched', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 412, height: 900 });
+  const doc = ['* H', 'First paragraph.', '', 'Second paragraph.', '', '| a | b |', '|---+---|', '| 1 | 2 |', '', '#+BEGIN_SRC js', 'x = 1', '#+END_SRC', '', 'Last paragraph.', '', '- item one', '- item two', ''].join('\n');
+  const expandAll = async () => {
+    for (let round = 0; round < 4; round++) {
+      const n = await page.evaluate(() => {
+        const folds = [...document.querySelectorAll('#outline .row *')].filter((el) => el.children.length === 0 && el.textContent === '\u25b8');
+        folds.forEach((el) => el.click());
+        return folds.length;
+      });
+      if (!n) break;
+      await page.waitForTimeout(250);
+    }
+  };
+  // gaps, top to bottom, between consecutive body blocks: paragraph->paragraph, paragraph->table, table->block, block->paragraph
+  const gaps = () => page.evaluate(() => {
+    const isPara = (el) => !el.classList.contains('row') && [...el.children].some((c) => c.style && c.style.whiteSpace === 'pre-wrap' && c.style.cursor === 'text');
+    const first = [...document.querySelectorAll('#outline div')].find((el) => isPara(el) && el.innerText.startsWith('First paragraph'));
+    const out = [];
+    let el = first;
+    while (el && el.nextElementSibling && out.length < 4) {
+      const next = el.nextElementSibling;
+      if (next.classList.contains('row')) break;
+      out.push(Math.round((next.getBoundingClientRect().top - el.getBoundingClientRect().bottom) * 10) / 10);
+      el = next;
+    }
+    const one = [...document.querySelectorAll('#outline .row')].find((r) => r.innerText.includes('item one'));
+    const two = [...document.querySelectorAll('#outline .row')].find((r) => r.innerText.includes('item two'));
+    const rowGap = one && two ? Math.round((two.getBoundingClientRect().top - one.getBoundingClientRect().bottom) * 10) / 10 : null;
+    return { out, rowGap };
+  });
+  const vars = () => page.evaluate(() => { const cs = getComputedStyle(document.documentElement); return [cs.getPropertyValue('--paragraph-gap').trim(), cs.getPropertyValue('--paragraph-gap-tables').trim()]; });
+  const near = (actual, expected) => actual.length === expected.length && actual.every((v, n) => Math.abs(v - expected[n]) < 0.6);
+  const showDoc = async () => { await viewMenu(page, 'Org'); await expandAll(); };
+  const openSettings = async () => {
+    await page.click('#moreBtn');
+    await pick(page, '#morePanel', 'Settings');
+    await page.locator('#paragraph-spacing-value').waitFor({ state: 'visible' });
+  };
+  const label = (id) => page.locator('#' + id).innerText();
+  const step = async (aria, id, expected) => {
+    await page.getByRole('button', { name: aria }).click();
+    await page.waitForFunction(([i, t]) => document.getElementById(i) && document.getElementById(i).innerText === t, [id, expected], { timeout: 4000 });
+  };
+  const pressPastLimit = async (aria, id, expected) => { // one more press at a limit changes nothing
+    await page.getByRole('button', { name: aria }).click();
+    await page.waitForTimeout(400);
+    expect((await label(id)) === expected, `${aria} at the limit should stay ${expected}: ${await label(id)}`);
+  };
+  const seed = async (paragraphs, tables) => { // write the saved values straight into storage, then reload: tests that startup applies them
+    await page.evaluate(([p, t]) => new Promise((resolve, reject) => {
+      const req = indexedDB.open('org-pwa');
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(JSON.stringify(p), 'settings:paragraphSpacing');
+        tx.objectStore('kv').put(JSON.stringify(t), 'settings:tablesSpacing');
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => reject(tx.error);
+      };
+      req.onerror = () => reject(req.error);
+    }), [paragraphs, tables]);
+    await page.reload();
+    await page.locator('#moreBtn').waitFor({ state: 'visible' });
+    await page.waitForTimeout(500);
+  };
+
+  await newDocument(page, doc);
+  await expandAll();
+  let g = await gaps();
+  expect(near(g.out, [10, 10, 10, 10]), `every gap is 10px by default (paragraphs used to be 4px apart): ${JSON.stringify(g)}`);
+  const listGap = g.rowGap;
+  expect(typeof listGap === 'number', `the two list items should be found, else the untouched check proves nothing: ${listGap}`);
+
+  // -- stepping in Settings: laid out like Font Size, two independent values
+  await openSettings();
+  expect((await label('paragraph-spacing-value')) === '10px' && (await label('tables-spacing-value')) === '10px', 'both show the 10px default');
+  expect((await page.locator('#tables-spacing-value').locator('xpath=preceding-sibling::span[contains(., "Tables:")]').count()) === 1, 'the second value is labelled Tables:, as in Font Size');
+  await step('More paragraph spacing', 'paragraph-spacing-value', '11px');
+  await step('More paragraph spacing', 'paragraph-spacing-value', '12px');
+  expect(JSON.stringify(await vars()) === '["12px","10px"]', `paragraphs changed, Tables did not, at once: ${JSON.stringify(await vars())}`);
+  await showDoc();
+  g = await gaps();
+  expect(near(g.out, [12, 12, 10, 12]), `paragraph-to-paragraph follows the paragraph value; where a paragraph meets a table or block the larger of the two wins: ${JSON.stringify(g)}`);
+  await openSettings();
+  for (let v = 11; v <= 20; v++) await step('More table spacing', 'tables-spacing-value', v + 'px');
+  expect(JSON.stringify(await vars()) === '["12px","20px"]', `now Tables changed and paragraphs did not: ${JSON.stringify(await vars())}`);
+  await showDoc();
+  g = await gaps();
+  expect(near(g.out, [12, 20, 20, 20]), `tables and blocks follow the Tables value: ${JSON.stringify(g)}`);
+
+  // -- the limits, from the saved values (31/1 and 1/31), which also shows startup applies what was saved
+  await seed(31, 1);
+  expect(JSON.stringify(await vars()) === '["31px","1px"]', `saved values applied at startup: ${JSON.stringify(await vars())}`);
+  await openSettings();
+  expect((await label('paragraph-spacing-value')) === '31px' && (await label('tables-spacing-value')) === '1px', 'and shown in Settings');
+  await step('More paragraph spacing', 'paragraph-spacing-value', '32px');
+  await pressPastLimit('More paragraph spacing', 'paragraph-spacing-value', '32px');
+  await step('Less table spacing', 'tables-spacing-value', '0px');
+  await pressPastLimit('Less table spacing', 'tables-spacing-value', '0px');
+  await newDocument(page, doc);
+  await expandAll();
+  g = await gaps();
+  expect(near(g.out, [32, 32, 0, 32]), `paragraphs at 32 and Tables at 0, independently: ${JSON.stringify(g)}`);
+  expect(g.rowGap === listGap, `list items are untouched by either value: ${listGap} -> ${g.rowGap}`);
+
+  await seed(1, 31);
+  await openSettings();
+  await step('Less paragraph spacing', 'paragraph-spacing-value', '0px');
+  await pressPastLimit('Less paragraph spacing', 'paragraph-spacing-value', '0px');
+  await step('More table spacing', 'tables-spacing-value', '32px');
+  await pressPastLimit('More table spacing', 'tables-spacing-value', '32px');
+  await newDocument(page, doc);
+  await expandAll();
+  g = await gaps();
+  expect(near(g.out, [0, 32, 32, 32]), `0 packs paragraphs together (for anyone who likes dense text) while Tables stays at 32: ${JSON.stringify(g)}`);
+
+  // a quote block has both roles: the block itself is a secondary item (Tables), the prose inside it is paragraphs
+  await seed(0, 25);
+  await newDocument(page, ['* Q', 'Intro.', '', '#+BEGIN_QUOTE', 'Quote one.', '', 'Quote two.', '#+END_QUOTE', '', 'Outro.', ''].join('\n'));
+  await expandAll();
+  const q = await page.evaluate(() => {
+    const isPara = (el) => !el.classList.contains('row') && [...el.children].some((c) => c.style && c.style.whiteSpace === 'pre-wrap' && c.style.cursor === 'text');
+    const intro = [...document.querySelectorAll('#outline div')].find((el) => isPara(el) && el.innerText.startsWith('Intro.'));
+    const block = intro && intro.nextElementSibling;
+    const ps = block ? [...block.querySelectorAll('p')] : [];
+    const outro = block && block.nextElementSibling;
+    const r = (el) => el.getBoundingClientRect();
+    return { paragraphsInside: ps.length, inner: ps.length > 1 ? Math.round((r(ps[1]).top - r(ps[0]).bottom) * 10) / 10 : null, before: block ? Math.round((r(block).top - r(intro).bottom) * 10) / 10 : null, after: outro ? Math.round((r(outro).top - r(block).bottom) * 10) / 10 : null };
+  });
+  expect(q.paragraphsInside === 2, `the quote should hold two paragraphs: ${JSON.stringify(q)}`);
+  expect(Math.abs(q.inner - 0) < 0.6, `the paragraphs INSIDE the quote follow the paragraph value (0): ${JSON.stringify(q)}`);
+  expect(Math.abs(q.before - 25) < 0.6 && Math.abs(q.after - 25) < 0.6, `the quote block itself follows the Tables value (25): ${JSON.stringify(q)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('god-mode: a and e say what they did (and clear the last command\u2019s name); i opens the editor at the focused row, with the cursor where a or e chose', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Write report\n');
   await page.locator('.heading-title').first().click();
@@ -1424,9 +1577,31 @@ check('god-mode: i/a/e enter insert mode at the focused row (the special, non-ch
   if (!(await page.locator('#minibuffer').innerText()).includes('God-mode')) {
     await page.keyboard.press('Escape');
   }
+  const mini = async () => (await page.locator('#minibuffer').innerText()).replace(/\s+/g, ' ');
+  const cursor = () => page.evaluate(() => { const t = document.querySelector('#heading-title-edit-popup textarea'); return t ? [t.selectionStart, t.value.length] : null; });
+
+  await page.keyboard.press('f'); // a completed chord leaves its name showing ...
+  expect((await mini()).includes('C-f'), `C-f is showing: ${await mini()}`);
+  await page.keyboard.press('a'); // ... which a must replace, not leave behind
+  expect((await mini()).includes('C-a') && (await mini()).includes('start') && !(await mini()).includes('C-f'), `a should report itself and clear the previous name: ${await mini()}`);
+  await page.keyboard.press('e');
+  expect((await mini()).includes('C-e') && (await mini()).includes('end'), `e should report itself: ${await mini()}`);
+
+  await page.keyboard.press('a');
   await page.keyboard.press('i');
   await page.waitForSelector('#heading-title-edit-popup', { timeout: 4000 });
-  expect(true, 'i should open the title editor for the keyboard-focused heading');
+  const atStart = await cursor();
+  expect(atStart[0] === 0, `a then i puts the cursor at the start: ${JSON.stringify(atStart)}`);
+  await page.keyboard.press('Escape'); // closes the editor
+  await page.locator('#heading-title-edit-popup').waitFor({ state: 'detached' });
+
+  // god-mode is still on after the editor closed, so do not press Escape (that would EXIT it)
+  expect((await mini()).includes('God-mode'), `god-mode should still be on: ${await mini()}`);
+  await page.keyboard.press('e');
+  await page.keyboard.press('i');
+  await page.waitForSelector('#heading-title-edit-popup', { timeout: 4000 });
+  const atEnd = await cursor();
+  expect(atEnd[0] === atEnd[1] && atEnd[1] > 0, `e then i puts the cursor at the end: ${JSON.stringify(atEnd)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
