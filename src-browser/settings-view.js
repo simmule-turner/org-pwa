@@ -10,7 +10,7 @@ import { findScrollingAncestor } from '../src/scroll-util.js';
 import { normalizeSmartQuotes } from '../src/text-normalize.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
 import { S } from './app-state.js';
-import { THEME_CSS_VARS, THEME_DEFAULTS, THEME_VAR_LABELS, applyFontFamily, applyFontSize, applyMenuSize, applyReadingWidth, applyTablesFontSize, resolvedThemeName } from './appearance.js';
+import { THEME_CSS_VARS, THEME_DEFAULTS, THEME_VAR_LABELS, applyFontFamily, applyFontSize, applyMenuSize, applyParagraphSpacing, applyReadingWidth, applyTablesFontSize, applyTablesSpacing, resolvedThemeName } from './appearance.js';
 import { confirmDialog, openMultiFieldPopup, openTextFieldPopup } from './dialogs.js';
 import { validateCaptureTemplates } from './doc-helpers.js';
 import { sidePanelEl } from './dom.js';
@@ -20,7 +20,7 @@ import { syncExtraMenuButtonVisibility } from './menus.js';
 import { getServiceWorkerVersion } from './render-helpers.js';
 import { render } from './render.js';
 import { QUICK_SETTINGS_FIELDS } from './settings-fields.js';
-import { DEFAULT_CAPTURE_TEMPLATES, DEFAULT_GLOBAL_VARIABLES, exportAllSettings, getCaptureTemplates, getCustomThemeColors, getFontFamily, getFontSize, getGithubConfig, getGlobalVariables, getMenuSize, getReadingWidth, getTablesFontSize, getTheme, getWebdavConfig, importAllSettings, setCaptureTemplates, setCustomThemeColors, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setReadingWidth, setTablesFontSize, setTheme, setWebdavConfig } from './settings.js';
+import { DEFAULT_CAPTURE_TEMPLATES, DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getCaptureTemplates, getCustomThemeColors, getFontFamily, getFontSize, getGithubConfig, getGlobalVariables, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setCaptureTemplates, setCustomThemeColors, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig } from './settings.js';
 import { kv } from './singletons.js';
 import { formatPendingChangeTimestamp } from './sync-helpers.js';
 import { entryFieldButtonStyle, labeledInput, menuButton, pickTextFile, populateSelectOptions, textInputStyle } from './ui-widgets.js';
@@ -693,6 +693,8 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   const fontFamily = await getFontFamily(kv);
   const fontSize = await getFontSize(kv);
   const menuSize = await getMenuSize(kv);
+  const paragraphSpacing = await getParagraphSpacing(kv);
+  const tablesSpacing = await getTablesSpacing(kv);
   const readingWidth = await getReadingWidth(kv);
 
   const appearanceSection = document.createElement('div');
@@ -909,6 +911,61 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   menuSizeHint.style.opacity = '0.6';
   menuSizeHint.style.margin = '4px 0 8px';
   appearanceSection.appendChild(menuSizeHint);
+
+  const paragraphSpacingTitle = document.createElement('div');
+  paragraphSpacingTitle.className = 'panel-section-title';
+  paragraphSpacingTitle.textContent = 'Paragraph Spacing';
+  appearanceSection.appendChild(paragraphSpacingTitle);
+
+  // Laid out exactly like Font Size above: the main value, a divider, then "Tables:" and
+  // its own value, which applies to tables and the other secondary blocks independently.
+  const spacingRow = document.createElement('div');
+  spacingRow.className = 'panel-row';
+  spacingRow.style.alignItems = 'center'; // same reason as the Font Size row: a number between two taller buttons
+  spacingRow.style.flexWrap = 'wrap'; // lets the Tables group drop to its own line on a narrow phone rather than clipping
+  const addSpacingStepper = (valueId, current, lessLabel, moreLabel, save, apply) => {
+    const step = async (delta) => {
+      const next = Math.min(MAX_SPACING, Math.max(MIN_SPACING, current + delta));
+      await save(kv, next);
+      apply(next);
+      renderSettingsView();
+    };
+    const less = menuButton('\u2212', () => step(-1));
+    less.setAttribute('aria-label', lessLabel);
+    spacingRow.appendChild(less);
+    const value = document.createElement('span');
+    value.id = valueId;
+    value.textContent = current + 'px';
+    value.style.fontSize = '14px';
+    value.style.minWidth = '40px';
+    value.style.textAlign = 'center';
+    spacingRow.appendChild(value);
+    const more = menuButton('+', () => step(1));
+    more.setAttribute('aria-label', moreLabel);
+    spacingRow.appendChild(more);
+  };
+  addSpacingStepper('paragraph-spacing-value', paragraphSpacing, 'Less paragraph spacing', 'More paragraph spacing', setParagraphSpacing, applyParagraphSpacing);
+
+  const spacingDivider = document.createElement('span');
+  spacingDivider.textContent = '\u2502'; // visual separator between the paragraph and Tables groups on the same row
+  spacingDivider.style.opacity = '0.3';
+  spacingDivider.style.margin = '0 4px';
+  spacingRow.appendChild(spacingDivider);
+
+  const tablesSpacingLabel = document.createElement('span');
+  tablesSpacingLabel.textContent = 'Tables:';
+  tablesSpacingLabel.style.fontSize = '13px';
+  tablesSpacingLabel.style.opacity = '0.7';
+  spacingRow.appendChild(tablesSpacingLabel);
+  addSpacingStepper('tables-spacing-value', tablesSpacing, 'Less table spacing', 'More table spacing', setTablesSpacing, applyTablesSpacing);
+  appearanceSection.appendChild(spacingRow);
+
+  const paragraphSpacingHint = document.createElement('div');
+  paragraphSpacingHint.textContent = 'The gap between paragraphs, 0 to 32px (default 10px; 0 packs them together). Tables applies to tables and other secondary blocks (source and quote blocks, rules), independent of the paragraph spacing.';
+  paragraphSpacingHint.style.fontSize = '11px';
+  paragraphSpacingHint.style.opacity = '0.6';
+  paragraphSpacingHint.style.margin = '4px 0 8px';
+  appearanceSection.appendChild(paragraphSpacingHint);
 
   container.appendChild(renderQuickSettingsSection());
 
@@ -1298,6 +1355,8 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
       }
       if (imported.includes('fontFamily')) applyFontFamily(await getFontFamily(kv));
       if (imported.includes('menuSize')) applyMenuSize(await getMenuSize(kv));
+      if (imported.includes('paragraphSpacing')) applyParagraphSpacing(await getParagraphSpacing(kv));
+      if (imported.includes('tablesSpacing')) applyTablesSpacing(await getTablesSpacing(kv));
       if (imported.includes('fontSize')) applyFontSize(await getFontSize(kv));
       if (imported.includes('tablesFontSize')) applyTablesFontSize(await getTablesFontSize(kv));
       if (imported.includes('github')) S.githubConfig = await getGithubConfig(kv);

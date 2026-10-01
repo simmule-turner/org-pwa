@@ -105,6 +105,19 @@ export function applyMenuSize(menuSize) {
   }
 }
 
+/** The vertical gap between paragraphs, as a CSS variable the row renderers'
+ *  margins read -- so changing the setting restyles the page at once with no
+ *  re-render. */
+export function applyParagraphSpacing(px) {
+  document.documentElement.style.setProperty('--paragraph-gap', px + 'px');
+}
+
+/** The same for tables and the other secondary blocks (the counterpart of
+ *  applyTablesFontSize). */
+export function applyTablesSpacing(px) {
+  document.documentElement.style.setProperty('--paragraph-gap-tables', px + 'px');
+}
+
 export function applyFontSize(size) {
   document.documentElement.style.setProperty('--app-font-size', size + 'px');
 }

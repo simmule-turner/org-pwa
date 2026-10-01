@@ -20,6 +20,8 @@ const KEYS = {
   fontSize: 'settings:fontSize',
   tablesFontSize: 'settings:otherFontSize', // storage key deliberately left as "otherFontSize" -- renaming the key itself would silently reset every existing user's saved table font size back to default
   menuSize: 'settings:menuSize',
+  paragraphSpacing: 'settings:paragraphSpacing',
+  tablesSpacing: 'settings:tablesSpacing',
   readingWidth: 'settings:readingWidth',
   sidePanelWidth: 'settings:sidePanelWidth',
   lastActiveDocument: 'settings:lastActiveDocument',
@@ -78,6 +80,10 @@ const DEFAULT_WEBDAV_CONFIG = { baseUrl: '', username: '', password: '' };
 const DEFAULT_THEME = 'system'; // 'system' | 'light' | 'dark'
 const DEFAULT_FONT_FAMILY = 'system'; // 'system' | 'serif' | 'monospace'
 const DEFAULT_MENU_SIZE = 'regular'; // 'regular' | 'small'
+const DEFAULT_PARAGRAPH_SPACING = 10; // px between paragraphs
+const DEFAULT_TABLES_SPACING = 10; // px around tables and the other secondary blocks (source/quote blocks, rules), independent of the paragraph value
+const MIN_SPACING = 0; // px -- 0 packs things solid, for anyone who likes dense text
+const MAX_SPACING = 32; // px
 const DEFAULT_READING_WIDTH = null; // null = unlimited (full width); otherwise a ch value
 const DEFAULT_SIDE_PANEL_WIDTH = 420; // px -- matches the previous hard-coded side panel width
 const DEFAULT_FONT_SIZE = 16; // px
@@ -181,6 +187,42 @@ export async function getMenuSize(kvAdapter) {
 
 export async function setMenuSize(kvAdapter, menuSize) {
   await setJson(kvAdapter, KEYS.menuSize, menuSize);
+}
+
+/** Forces a spacing value into the allowed whole-pixel range. Anything that is
+ *  not a finite number -- a missing key, a hand-edited or imported bundle
+ *  holding text, null -- falls back to the DEFAULT rather than to 0, so a bad
+ *  value can never silently pack everything together. */
+export function clampSpacing(value, fallback = DEFAULT_PARAGRAPH_SPACING) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.min(MAX_SPACING, Math.max(MIN_SPACING, Math.round(value)));
+}
+
+/** The vertical space, in px, between paragraphs in the outline: 0 to 32,
+ *  default 10. Before this setting every paragraph had a fixed 4px margin,
+ *  which collapses between two paragraphs to a 4px gap -- less than a blank
+ *  line in the source, so consecutive paragraphs ran together. Headings and
+ *  list items are unaffected; they already separate themselves with their own
+ *  padding and border. Like font size, there is a second, independent value
+ *  (getTablesSpacing) for tables and other secondary blocks. Where a paragraph
+ *  meets one of those, CSS margin collapsing gives the larger of the two. */
+export async function getParagraphSpacing(kvAdapter) {
+  return clampSpacing(await getJson(kvAdapter, KEYS.paragraphSpacing, DEFAULT_PARAGRAPH_SPACING), DEFAULT_PARAGRAPH_SPACING);
+}
+
+export async function setParagraphSpacing(kvAdapter, px) {
+  await setJson(kvAdapter, KEYS.paragraphSpacing, clampSpacing(px, DEFAULT_PARAGRAPH_SPACING));
+}
+
+/** The second spacing value, the counterpart of the tables font size: the
+ *  vertical space around tables and the other secondary blocks (source, quote
+ *  and other blocks, horizontal rules), 0 to 32, default 10. */
+export async function getTablesSpacing(kvAdapter) {
+  return clampSpacing(await getJson(kvAdapter, KEYS.tablesSpacing, DEFAULT_TABLES_SPACING), DEFAULT_TABLES_SPACING);
+}
+
+export async function setTablesSpacing(kvAdapter, px) {
+  await setJson(kvAdapter, KEYS.tablesSpacing, clampSpacing(px, DEFAULT_TABLES_SPACING));
 }
 
 /** Opt-in maximum width for the outline/content column, in ch units
@@ -369,6 +411,10 @@ export {
   DEFAULT_THEME,
   DEFAULT_FONT_FAMILY,
   DEFAULT_MENU_SIZE,
+  DEFAULT_PARAGRAPH_SPACING,
+  DEFAULT_TABLES_SPACING,
+  MIN_SPACING,
+  MAX_SPACING,
   DEFAULT_FONT_SIZE,
   DEFAULT_TABLES_FONT_SIZE,
   DEFAULT_READING_WIDTH,

@@ -429,7 +429,7 @@ export function paletteCommandList() {
     { id: 'cut', label: 'Cut subtree', orgName: 'org-cut-subtree', keys: 'C-c C-x C-w', group: 'Heading', needs: HEAD, run: chord('C-c C-x C-w') },
     { id: 'paste', label: 'Paste subtree', orgName: 'org-paste-subtree', keys: 'C-c C-x C-y', group: 'Heading', needs: HEAD, run: chord('C-c C-x C-y') },
     { id: 'archive', label: 'Archive subtree', orgName: 'org-archive-subtree', group: 'Heading', needs: [...HEAD, 'notArchived'], run: onHeading(openArchiveConfirmPrompt) },
-    { id: 'unarchive', label: 'Unarchive (restore)', group: 'Heading', needs: [...HEAD, 'archived'], run: onHeading(unarchiveHeadingToOriginalLocation) },
+    { id: 'unarchive', label: 'Unarchive (restore)', orgName: 'org-unarchive-subtree', group: 'Heading', needs: [...HEAD, 'archived'], run: onHeading(unarchiveHeadingToOriginalLocation) },
     { id: 'refile', label: 'Refile', orgName: 'org-refile', keys: 'C-c C-w', group: 'Heading', needs: HEAD, run: onHeading(openRefilePicker) },
     { id: 'attach', label: 'Attachments', orgName: 'org-attach', keys: 'C-c C-a', group: 'Heading', keywords: ['attach', 'file', 'audio', 'record'], needs: HEAD, run: onHeading(openAttachChoicePrompt) },
     { id: 'narrow', label: 'Narrow to subtree', orgName: 'org-narrow-to-subtree', keys: 'C-x n s', group: 'Heading', needs: ['doc', 'heading'], run: chord('C-x n s') },
@@ -467,8 +467,8 @@ export function paletteCommandList() {
     // -- View
     { id: 'agenda', label: 'Agenda', orgName: 'org-agenda', keys: 'C-c a', group: 'View', needs: ['doc'], run: chord('C-c a') },
     { id: 'tasklist', label: 'TODO list', orgName: 'org-todo-list', keys: 'C-c C-v', group: 'View', keywords: ['tasks'], needs: ['doc'], run: chord('C-c C-v') },
-    { id: 'view-org', label: 'Outline view', group: 'View', keywords: ['org'], needs: ['doc'], run: () => switchToView('org') },
-    { id: 'view-text', label: 'Text view', group: 'View', keywords: ['raw', 'source'], needs: ['doc'], run: () => switchToView('text') },
+    { id: 'view-org', label: 'Outline view', orgName: 'org-mode', group: 'View', keywords: ['org'], needs: ['doc'], run: () => switchToView('org') },
+    { id: 'view-text', label: 'Text view', orgName: 'text-mode', group: 'View', keywords: ['raw', 'source'], needs: ['doc'], run: () => switchToView('text') },
     { id: 'cycle-visibility', label: 'Cycle visibility of the whole document', orgName: 'org-global-cycle', keys: 'S-TAB', group: 'View', keywords: ['fold', 'unfold', 'collapse', 'expand'], needs: ['doc'], run: () => globalCycleFold() },
     { id: 'calendar', label: 'Calendar', orgName: 'calendar', group: 'View', needs: ['doc'], run: () => openCalendarPanel() },
     { id: 'search', label: 'Search', orgName: 'isearch-forward', keys: 'C-s', group: 'View', keywords: ['find', 'replace'], run: () => searchBtn.click() },
@@ -805,12 +805,20 @@ export function dispatchGodModeKeystroke(rawKey, shiftKey) {
     render();
     return;
   }
+  // a and e don't run a command: they only choose where the cursor lands when i
+  // opens the editor next. They used to return without redrawing, so the minibuffer
+  // gave no sign the key had registered (and could keep showing the previous
+  // command's name); they now say what they did, the same way a chord does.
   if (freshSequence && !shiftKey && rawKey === 'a') {
     S.pendingCursorPosition = 'start';
+    S.godModeLastCommand = { chord: 'C-a', label: 'edit at start (press i)' };
+    render();
     return;
   }
   if (freshSequence && !shiftKey && rawKey === 'e') {
     S.pendingCursorPosition = 'end';
+    S.godModeLastCommand = { chord: 'C-e', label: 'edit at end (press i)' };
+    render();
     return;
   }
   const { state: newState, chordString } = godModeProcessKey(S.godModeState, rawKey, shiftKey);

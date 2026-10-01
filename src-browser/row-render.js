@@ -29,6 +29,16 @@ import { recalculateOneTable } from './table-recalc.js';
 import { applyTodoTransition, openTodoOrPickWorkflow } from './todo-workflow.js';
 import { autoGrowTextarea, isWideLayout, smallButton, withActionMenu } from './ui-widgets.js';
 
+/** The vertical margin around a paragraph, and around everything else in the
+ *  body (tables, rules, source/quote/other blocks). Two adjacent blocks' margins
+ *  collapse to ONE gap -- the larger of the two -- so the paragraph value is the
+ *  space between consecutive paragraphs. They are two values, like the main and
+ *  tables font sizes, read from CSS variables set by Settings -> Appearance ->
+ *  Paragraph Spacing (src-browser/appearance.js); the literals here are only what
+ *  applies before those settings have loaded. */
+const PARAGRAPH_MARGIN = 'var(--paragraph-gap, 10px) 0';
+const TABLES_MARGIN = 'var(--paragraph-gap-tables, 10px) 0';
+
 export function renderActionMenu(actions, columns = 5) {
   const menu = document.createElement('div');
   menu.style.display = 'grid';
@@ -476,7 +486,7 @@ export function renderRow(row, todoSequence) {
 export function renderTableRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
-  wrap.style.margin = '4px 0';
+  wrap.style.margin = TABLES_MARGIN;
   applyKeyboardFocusHighlight(wrap, row);
 
   // A table has no single "tap the text" affordance the way a paragraph
@@ -831,7 +841,7 @@ export function renderHrRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
   wrap.style.paddingRight = '8px';
-  wrap.style.margin = '4px 0';
+  wrap.style.margin = TABLES_MARGIN;
   applyKeyboardFocusHighlight(wrap, row);
   const hr = document.createElement('hr');
   hr.style.border = 'none';
@@ -844,7 +854,7 @@ export function renderHrRow(row) {
 export function renderParagraphRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
-  wrap.style.margin = '4px 0';
+  wrap.style.margin = PARAGRAPH_MARGIN;
   applyKeyboardFocusHighlight(wrap, row);
 
   const p = document.createElement('div');
@@ -976,7 +986,7 @@ export function renderBlockContent(block, container, linkContext) {
       // specific thing real org's own manual describes ("indented on
       // both the left and the right margin").
       wrap.style.padding = '4px 16px';
-      wrap.style.margin = '4px 0';
+      wrap.style.margin = TABLES_MARGIN;
       wrap.style.borderLeft = '3px solid var(--border)';
       wrap.style.fontStyle = 'italic';
     } else {
@@ -994,7 +1004,7 @@ export function renderBlockContent(block, container, linkContext) {
     const flushParagraph = () => {
       if (currentParagraphLines.length === 0) return;
       const p = document.createElement('p');
-      p.style.margin = '4px 0';
+      p.style.margin = PARAGRAPH_MARGIN; // prose inside a quote: the paragraph value
       const { lines: extractedLines, fragments } = extractLatexFragments(currentParagraphLines);
       const inlineOpts = { ...currentInlineOpts(), latexFragments: fragments };
       extractedLines.forEach((line, i) => {
@@ -1023,7 +1033,7 @@ export function renderBlockContent(block, container, linkContext) {
   // SRC, EXAMPLE, or any other/custom name -- literal, verbatim, no
   // markup interpretation, unchanged from before.
   const pre = document.createElement('pre');
-  pre.style.margin = '2px 0';
+  pre.style.margin = TABLES_MARGIN; // follows the spacing setting, so 0 really is 0
   pre.style.padding = '8px';
   pre.style.background = 'var(--surface)';
   pre.style.borderRadius = '6px';
@@ -1040,7 +1050,7 @@ export function renderBlockContent(block, container, linkContext) {
 export function renderBlockRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
-  wrap.style.margin = '4px 0';
+  wrap.style.margin = TABLES_MARGIN;
   applyKeyboardFocusHighlight(wrap, row);
 
   const label = row.node.name + (row.node.params ? ' ' + row.node.params : '');
