@@ -1106,6 +1106,74 @@ check('command palette: the real Emacs/Org names are searchable, the two former 
   await context.close();
 });
 
+check('local file: switching tabs and regaining focus never ask the browser for permission (only Save, which the person starts, does), yet a granted file is still checked for outside changes', async () => {
+  const { context, page, errors } = await freshPage();
+  // A real file handle from the browser's private file system stands in for a file picked from the device,
+  // and the permission calls are replaced by ones that report whatever state the check sets and count how often they are made.
+  await page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    const fh = await root.getFileHandle('perm-test.org', { create: true });
+    const w = await fh.createWritable();
+    await w.write('* One\n');
+    await w.close();
+    window.__perm = { query: 0, request: 0, state: 'granted' };
+    window.showOpenFilePicker = async () => [fh];
+    FileSystemHandle.prototype.queryPermission = async function () { window.__perm.query += 1; return window.__perm.state; };
+    FileSystemHandle.prototype.requestPermission = async function () { window.__perm.request += 1; window.__perm.state = 'granted'; return 'granted'; };
+  });
+  const perm = () => page.evaluate(() => ({ ...window.__perm }));
+  const setPerm = (state) => page.evaluate((st) => { window.__perm = { query: 0, request: 0, state: st }; }, state);
+  const status = async () => (await page.locator('#status').innerText()).replace(/\s+/g, ' ');
+  const tab = (n) => page.locator('#tabBar > div').nth(n);
+
+  await fileMenu(page, 'Open', 'Local file');
+  await page.waitForFunction(() => document.getElementById('status').innerText.includes('Opened'), null, { timeout: 8000 });
+  await fileMenu(page, 'New'); // a second tab, so there is something to switch away from and back to
+  await page.waitForFunction(() => document.querySelectorAll('#tabBar > div').length === 2);
+
+  // 1. the browser has NOT granted access (it reports "prompt"): switching to the local file's tab must not ask
+  await setPerm('prompt');
+  await tab(0).click();
+  await page.waitForTimeout(900);
+  let p = await perm();
+  expect(p.query >= 1, `the check should still have looked at the permission (else this proves nothing): ${JSON.stringify(p)}`);
+  expect(p.request === 0, `switching tabs must not request permission, which is what shows the prompt: ${JSON.stringify(p)}`);
+
+  // 2. nor does the app regaining focus, or returning to the page
+  await setPerm('prompt');
+  await page.evaluate(() => { window.dispatchEvent(new Event('focus')); document.dispatchEvent(new Event('visibilitychange')); });
+  await page.waitForTimeout(900);
+  p = await perm();
+  expect(p.request === 0, `focus and visibility changes must not request permission: ${JSON.stringify(p)}`);
+
+  // 3. something the person starts still asks: an edit, then Save, with access not yet granted
+  await setDocumentText(page, '* One\n* Two\n');
+  await setPerm('prompt');
+  await page.click('#saveBtn');
+  await page.waitForFunction(() => document.getElementById('status').innerText.includes('Saved'), null, { timeout: 8000 });
+  p = await perm();
+  expect(p.request >= 1, `Save is user-initiated, so it may still ask: ${JSON.stringify(p)}`);
+
+  // 4. when access IS granted the background check still works: a change made outside the app raises the banner
+  await setPerm('granted');
+  await page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    const fh = await root.getFileHandle('perm-test.org');
+    const w = await fh.createWritable();
+    await w.write('* One\n* Two\n* Added elsewhere\n');
+    await w.close();
+  });
+  await tab(1).click();
+  await page.waitForTimeout(400);
+  await tab(0).click();
+  await page.waitForFunction(() => getComputedStyle(document.getElementById('externalChangeBanner')).display !== 'none', null, { timeout: 6000 });
+  expect((await page.locator('#externalChangeBanner').innerText()).includes('changed elsewhere'), 'a granted file is still checked, and the banner says it changed');
+  p = await perm();
+  expect(p.request === 0, `and it still asked for nothing: ${JSON.stringify(p)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('floating [g]: a floating button stacked directly above Extras (taking its place when there is none); it is not in the top bar and nothing already on screen moves', async () => {
   let { context, page } = await freshPage();
   await newDocument(page, '* Plain\n');
