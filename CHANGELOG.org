@@ -7,797 +7,177 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v425 — Switching tabs no longer asks for permission on a local file; the README is half its length
+On a local file, every tab switch and every return to the app re-read
+the file to look for outside changes, which made the browser show its
+"allow this site to view and copy" prompt each time. That check now only
+looks at permission, and reads the file when access is already granted;
+Save, Reload and Merge, which you start, still ask. The README was
+rewritten to about half its length (52,500 to 26,600 words), keeping
+every section, anchor and reference table, with a few stale statements
+corrected. Verified in a browser check, including that a granted file
+still raises the changed-elsewhere banner.
+
 * v424 — Paragraph spacing (with a setting for it); Unarchive and the two views get Emacs names; a and e say what they did; documentation repairs
-Paragraphs ran together. Measured on the real README at a phone width, all 205
-gaps between consecutive paragraphs were exactly 4px: a paragraph row had a bare
-4px margin, which collapses between two paragraphs to 4px, less than the blank
-line between them in the source, while headings and list items carry their own
-padding and border and so looked fine. That is why Getting started and File
-management (mostly lists) looked right and Searching and Clocking (plain
-paragraphs) did not. It is the renderer, so it affected every document, not just
-the README. The renderer's margins now read CSS variables set by Settings ->
-Appearance -> Paragraph Spacing, laid out like Font Size: one value for
-paragraphs and a second, "Tables:", for tables and the other secondary blocks
-(source and quote blocks, rules), each 0 to 32px with a 10px default, saved,
-included in settings backups and applied at startup. Where a paragraph meets a
-table the larger value applies (CSS margin collapsing); the prose inside a quote
-block follows the paragraph value; headings and list items are untouched; rules
-keep a built-in 8px margin so they never reach exactly 0.
-
-A content fix was considered first and rejected after testing. Ending each
-paragraph with the backslash line break does not give a blank line in the form
-proposed (a line ending in two backslashes followed by a line of two backslashes
-renders 4px apart, unchanged, because a trailing break collapses); it takes
-three lines per paragraph, would need about 300 README edits, adds breaks to
-every export, and helps nobody's own documents.
-
-Emacs names, for the Extras menu's quoted functions: Unarchive is
-org-unarchive-subtree (the name of a command proposed for Org itself in Nov 2025;
-whether it has been merged was not confirmed), the Outline view is org-mode and
-the Text view is text-mode. Two commands remain without a name, by decision:
-New document (Emacs has no dedicated new-buffer command; scratch is only a
-third-party package name, and the built-in scratch-buffer of Emacs 29.1 just
-returns to the single *scratch* buffer) and Undo history (Emacs's undo record is
-the variable buffer-undo-list, not a command; vundo and undo-tree are packages,
-not core). The README's exceptions list was stale and now lists those two, with
-the reasons.
-
-God-mode's a and e (choose where the cursor lands when i opens the editor)
-returned before redrawing, so the minibuffer gave no sign the key registered and,
-since v421, could keep showing the previous command's name. They now report
-themselves the way every chord does ("God-mode . C-a -> edit at start (press i)").
-Their old test contained expect(true, ...) and only proved the popup opened; it
-now asserts that a then i puts the cursor at the start and e then i at the end.
-
-Documentation repairs. The README's menu-aliases example showed raw backslash-u
-escape text instead of emoji (my v415 edit typed the escapes where the original
-had real characters; the check tools cannot catch it because the result is valid
-Org); restored, with the Commands label now a dollar-sign emoji at the author's
-choice, and one more instance in the paragraph below it. This CHANGELOG: the v413
-entry, which shipped in v413's own CHANGELOG and was dropped during v414, is
-restored verbatim from that release; the v339 line that showed a raw escape for
-the button now shows it; and six paragraphs flagged for stray tildes are repaired.
-My earlier claim that all six were rendering bugs was an overcount: two (the v351
-and v272 entries) really were, because they showed the broken pattern as bare text
-and so rendered broken themselves; the other four were accurate prose (a lone tilde
-meaning "approximately", and a deliberate pair of characters) and were reworded
-only to remove ambiguity. The Android back gesture, which I had assumed could leave
-the keyboard's field focused, closes the installed app instead; the README's
-rationale for the keyboard key and its verification paragraph now say so, and record
-what the author tested on a real Android phone (letters typed on the device
-keyboard, the keyboard key, and the panel's placement) and that iOS is still
-unconfirmed.
-
-Tests: 2945 unit (+8: the settings tests, the view names, the Unarchive name) and
-47 browser checks (1 new, for paragraph spacing; the Extras, palette and
-a/e checks extended). The spacing check measures the gaps actually rendered
-rather than reading CSS, and each part of everything above was confirmed to fail
-when removed (one quote-block mutation changes nothing observable, because an
-inner wrapper's margin is shadowed by its parent's, and is noted as equivalent).
+Paragraphs ran together, only 4px apart. Settings > Appearance >
+Paragraph Spacing now sets the gap: one value for paragraphs and a
+second, Tables:, for tables and other secondary blocks, each 0 to 32px
+with a 10px default. Unarchive is now org-unarchive-subtree, Outline
+view org-mode and Text view text-mode, so Extras can name them; only New
+document and Undo history have no Emacs name. God-mode's a and e now
+report what they did. Verified on a real Android phone: letters, the ⌨
+key and the panel's placement.
 
 * v423 — Extras-menu quoted functions are now the command palette's commands, named by their real Emacs/Org names
-An Extras entry like 'org-clock-out used to be checked against a hard-coded list of
-eight names with a separate hand-written dispatcher, so the palette's 33 commands
-with real names were unavailable to it and the README carried a long paragraph per
-function. A quoted function now resolves to the palette command whose real
-Emacs/Org function name that is and runs it exactly as the palette does: it acts on
-the heading whose menu is open (the same target function the palette already used),
-a command that can't run right now says why in the status line, and a name no
-command has says "'name is not a recognized function." with the name as written.
-The entry stays in the menu, so a typo is visible instead of the item vanishing
-(the parser used to skip unknown names silently). The README reference is now one
-rule plus a short exceptions list.
-
-Decided with the person using it: the two name mismatches are fixed with NO
-backwards compatibility -- 'org-clock-continue is now 'org-clock-in-last, the name
-the palette already used, and 'org-xx-calendar is now 'calendar, Emacs's own
-command name; the old names are simply unrecognized. Commands that had no real name
-got their Emacs equivalents: Search is isearch-forward, Help is describe-mode,
-Settings is customize, Calendar is calendar, and the HTML / Markdown / ASCII / ODT
-exports are org-html-export-to-html, org-md-export-to-markdown,
-org-ascii-export-to-ascii and org-odt-export-to-odt (the export names checked
-against the Org manual). Five commands have no equivalent and remain the listed
-exceptions: Unarchive, New document, Undo history, Outline view, Text view. Those
-five are judgment calls -- org-mode and text-mode were candidates for the two views
-and were not used, since they name switching a major mode, not this app's view.
-
-The two functions that existed only in Extras are ordinary palette commands now,
-because the hard-coded dispatcher that held them is gone: "Recalculate all tables"
-(org-table-recalculate-buffer-tables) and "Export as an Org buffer"
-(org-org-export-as-org). One behaviour change comes with that: Recalculate all
-tables now requires a writable buffer, like every other command that edits; the old
-Extras path had no such check.
-
-A stale string found on the way, my own miss from v415: the palette's read-only
-reason still said "toggle it in the View menu", though that toggle was removed then.
-Extras now shows the palette's reasons, so it would have reached more people. It now
-says to run Toggle read-only (C-x C-q).
-
-The palette's own run and the Extras dispatcher share one function
-(runPaletteCommand), so a command is explained, run and reported the same way from
-either. Mutation-check showed why the availability step matters: without it,
-org-clock-out with no clock crashes rather than explaining itself.
-
-Tests: 2937 unit (net +4: the allowlist-pinning test removed; new ones for the
-parser keeping any well-formed name, malformed symbols still skipped, unique names, the
-exact exceptions list, and the renamed functions) and 46 browser checks (2 new: the
-Extras menu end to end, and the palette's names). Each behaviour was confirmed to
-fail when removed. Two first-draft assertions were wrong rather than the app: the tab
-bar labels tabs by first heading, so export-as-org was checked by its status message,
-and the headless browser denies clipboard access, so the cut check grants it (the cut
-correctly refuses to delete what it could not copy).
+A quoted function in an Extras entry, such as 'org-clock-out, now runs
+the command palette command with that real Emacs or Org name, instead of
+being checked against a hard-coded list of eight. It acts on the same
+heading the palette does, says why when a command can't run, and reports
+"is not a recognized function" for any other name. Two names changed
+with no alias: 'org-clock-continue is now 'org-clock-in-last and
+'org-xx-calendar is now 'calendar. Search, Help, Settings, Calendar and
+four exports gained Emacs names, and Recalculate all tables and Export
+as an Org buffer became palette commands.
 
 * v422 — The floating keyboard outlives the device keyboard, gains a keyboard key, and stops dropping lower
-Designed with the person using it first, then built; three changes.
-
-Lifetime. God-mode and the floating keyboard used to end whenever the device
-keyboard went away, a coupling v417 added as a safety net that was never asked for.
-They now end only through [g], Escape, or another panel opening. Hiding the device
-keyboard by any route (its dismiss control, a tap elsewhere, the OS gesture, a popup
-taking focus) leaves both alone. That is worth having: Tab, the arrows, S and g
-never needed the device keyboard, so with it hidden the whole screen is free to read
-the outline while navigating.
-
-A keyboard key on the panel (the first key, before Tab) hides and shows the device
-keyboard and changes nothing else; it is lit while the keyboard is up. "Up" is the
-field having focus AND the screen having been lifted to clear a keyboard, not focus
-alone, because Android's back gesture can hide the keyboard and leave the field
-focused; if the key reads dark a tap still brings the keyboard back (it blurs then
-refocuses). The focus call is made in the tap's click event, which is what iOS
-requires. After a popup closes the keyboard is not brought back on its own. To fit
-the extra key on a 360px screen the keys are 34px wide (still 44px tall).
-
-The panel dropped lower right after hiding the device keyboard. It was positioned
-relative to the mode line, which falls by the keyboard's whole height when the
-keyboard goes, so the panel fell with it even when nothing had been covering it.
-Now it is pushed up when the keyboard would cover it and then STAYS there; only a
-drag lowers it, and it does not move when the keyboard returns because it is
-already clear. It waits for the keyboard's animation to settle before keeping a
-push, so a transient value is not kept. This deliberately differs from the first
-design ("goes back to its own spot"), which would have kept the very symptom for a
-panel left at the bottom -- the answer to "when does it shift?" (right after hiding
-the phone keyboard) showed it, so the rule was changed to "stays".
-
-Side effect, disclosed: the panel can no longer be dragged down over the floating
-buttons; its lowest position is now just above them (v418 let it overlap and relied
-on [g] being drawn on top). It also has a 3px accent-coloured border with a faint
-glow, kept when minimized, so it is easy to pick out.
-
-Not verified on a physical phone: the keyboard is emulated through the visual
-viewport (the signal the app itself uses), so what real devices report during the
-animation, whether the key brings the keyboard back on iOS, and whether Android's
-back gesture leaves the field focused are all assumptions. The README says so.
-
-Tests: 2933 unit (unchanged) and 44 browser checks (3 new: the keyboard key and the
-device keyboard going away; stay-put placement, including that only a drag lowers
-it; the border and the 360px fit). Three existing checks that asserted the old
-behaviour (a dismissed keyboard ends god-mode, the panel comes back down with the
-mode line, seven buttons) were changed to the new. All seven behaviours were
-confirmed to fail when removed; without the stay-put rule the panel falls from 253 to
-553, which is the reported bug.
+God-mode and the floating keyboard now end only through [g], Escape or
+another panel opening, not when the device keyboard goes away, so hiding
+it frees the screen for outline navigation. A new ⌨ key, first on the
+panel, hides and shows the device keyboard. The panel used to drop lower
+whenever the keyboard was hidden, because it followed the mode line
+down; it now stays where the keyboard pushed it, and only a drag lowers
+it. It also has a thick accent-coloured border, 34px keys so it fits a
+360px screen, and can no longer be dragged over the floating buttons.
+Verified on a real Android phone.
 
 * v421 — God-mode's minibuffer now names the command a completed chord ran
-When a god-mode chord completes, the minibuffer shows the chord and the command
-palette's own name for it -- "God-mode · C-c C-x C-j → Go to clocked task" --
-instead of going straight back to the bare ready prompt, so it is clear what was
-executed. That matters most on a phone, where keys are tapped rather than seen and
-a mistap that ran a different chord was invisible. The names come from the
-palette's own list (looked up by chord, built once), so the two cannot disagree; a
-chord with no palette command (Tab, the arrows, C-f) is shown as just the chord.
-The name stays until the next keystroke, which replaces it with the sequence being
-built, or with the ready prompt if that key runs nothing. It works the same for
-keys from the floating keyboard and the device keyboard, since they share one
-dispatch. While a sequence is still being built the display is unchanged
-("God-mode: C-c"); every state still contains the word "God-mode".
-
-Only what was asked: it names the command AFTER it runs. Showing, mid-sequence, the
-commands the typed prefix could still lead to (a which-key style list) is a
-separate, larger feature and was not added.
-
-Tests: 2933 unit (unchanged) and 41 browser checks (1 new: a chord with a palette
-command, one without, the name clearing on the next key -- including an unbound key,
-which is where clearing is visible -- and the device-keyboard path). Each of the
-lookup, the display and the clearing was confirmed to fail when removed; the first
-draft did not cover the clearing at all (the next key builds a sequence, which takes
-display priority anyway) until a key that runs nothing was added.
+When a god-mode chord completes, the minibuffer now names what ran,
+using the palette's own label: "God-mode · C-c C-x C-j → Go to clocked
+task". This matters most on a phone, where keys are tapped rather than
+seen. A chord with no palette command (Tab, the arrows, C-f) shows just
+the chord. A which-key style list of where a half-typed prefix leads is
+not included.
 
 * v420 — The floating S now also shifts the next key typed on the phone keyboard (so gS-RET works on a phone); [g] no longer acts on a heading left over from another document
-A phone keyboard has no Shift+Return, so M-S-RET (gS-RET on a desktop, "add a
-TODO heading") could not be entered at all: the floating keyboard has no Return
-key and its S only ever shifted the floating keyboard's own buttons. S now also
-applies to the next key typed on the device keyboard, one-shot, whichever keyboard
-supplies it: tap g, tap S, tap Return, and god-mode receives Shift+Return. A
-letter typed after S becomes its capital, as the floating g already did. It works
-on both paths a device keyboard uses -- a real keydown (iOS, physical keyboards)
-and an input event (Android) -- and adds no buttons and moves nothing, which is
-why it was chosen over adding a Return key to the panel.
-
-A real bug found by the test for this, unrelated to shifting: keyboard focus
-survives a tab or document switch, so after leaving one document, opening another
-and tapping [g], god-mode still held the OLD document's heading, and every
-heading-targeted chord (add heading, TODO, refile, clock in...) silently did
-nothing. A real Escape had always masked it, because its first press clears
-keyboard focus; the [g] button, which exists for devices with no Escape, has no such step,
-so it would have hit this on every document switch. enterGodMode now drops focus
-that points into a different document before choosing the first heading. My first
-theory was that this could not happen -- a probe seemed to show it working -- and
-the probe was wrong for exactly that reason (it pressed Escape twice, and the
-first press cleared the stale focus). Found by looking at what the app was actually
-doing after the failing step instead of trusting that probe.
-
-Tests: 2933 unit (unchanged) and 40 browser checks (2 new: g, S, Return through the
-real-keydown and the input-event paths -- including that S is one-shot and that
-a typed letter is capitalised -- and god-mode acting on the new document after a
-switch). Each piece was confirmed to fail when removed. As before, the Android path
-is the reproduced event sequence, not a physical Android phone.
+A phone keyboard has no Shift+Return, so the TODO-heading chord M-S-RET
+(gS-RET) could not be entered there. The floating S now also shifts the
+next key typed on the device keyboard: tap g, S, then Return. Fixed:
+after switching documents, [g] left god-mode aimed at a heading from the
+old document, so heading chords silently did nothing; it now drops that
+stale focus.
 
 * v419 — A quick setting to hide the floating [g] button; org-clock-goto (C-c C-x C-j) added to the palette and god-mode
-Quick Settings gains a "Keyboard" section with one checkbox, "Show the floating
-[g] god-mode button" (the org-xx-god-mode-button variable, on by default). Off
-hides the button and nothing else moves, since the floating buttons are
-fixed-position. It is a normal variable, so a document's own Local Variables
-line overrides the global setting, and it is remembered across a reload even on
-the empty start screen (the button is hidden as soon as the saved settings load,
-so a disabled button does not flash on first). Turning it off while the floating
-keyboard is up ends god-mode and closes the panel, since that button was the
-panel's way out.
-
-org-clock-goto (real org's C-c C-x C-j): jumps to the headline of the
-currently clocked-in task. It is in the command palette as "Go to clocked task"
-and bound to c x j in god-mode. There is one clock across every open tab, so it
-switches to the tab holding it if that is not the active one, and unfolds
-whatever hides the task; like every jump it leaves the floating back button
-behind. Its palette availability follows the clock in ANY tab, not just the
-active document like the existing clock rule, because "the clock is somewhere
-else" is exactly when it is useful.
-
-Scope kept to what real org's manual documents: it jumps to the running clock,
-and the C-u form (pick from recently clocked tasks) is not implemented. Real org
-may also fall back to the most recent task when nothing is running; the manual
-does not say so, so that was not guessed at -- with no clock it says so plainly.
-
-Tests: 2933 unit (3 new, for the variable's reader: default on, Lisp t/nil, and a
-document's Local Variables overriding the global value) and 38 browser checks
-(2 new: the quick setting end to end -- hide, show, reload, override, and that
-the Extras button does not move -- and org-clock-goto through the palette, the
-chord and a cross-tab jump). Each part of both was confirmed to fail when its
-implementation is removed; two first-draft assertions were wrong rather than the
-app (a dimmed palette row shows its reason, not its chord; opening a document
-closes Settings) and were fixed in the tests.
+A quick setting, Quick Settings > Keyboard > "Show the floating [g]
+god-mode button" (org-xx-god-mode-button, on by default), hides the
+button without moving anything else, and a document's own Local
+Variables can override it. org-clock-goto (C-c C-x C-j) jumps to the
+clocked-in task, switching tab if needed; it is in the palette as "Go to
+clocked task" and bound to c x j. Real org's C-u form (pick a recent
+task) is not implemented.
 
 * v418 — [g] moves out of the top bar to a floating button; the floating keyboard rides above the mode line and minimizes on tap; Android letters fixed
-Fixes to v417, from real use on phones.
-
-[g] is now a floating button, the third one beside go-back and Extras, stacked
-directly above Extras (in its place when there is no Extras menu) and
-positioned by the same syncContentOffset code, so it floats up and down with
-the mode line and the device keyboard exactly as they do. v417 had put it in
-the top bar, which pushed the buttons already there out of place -- a UI
-element should not be displaced without asking first, and this one was, so it
-is out of the top bar entirely. Nothing that was already on screen moves.
-
-The floating keyboard was being hidden. It was positioned against the screen
-bottom, so on a phone the device keyboard covered it. It is now positioned
-against the mode line's top edge (which the app already keeps above the device
-keyboard) plus a lift, so it can never sit under the keyboard or cover the
-mode line, and dragging stops at the mode line. By default it sits just above
-the floating buttons so the [g] that closes it is not underneath it; [g] is
-raised above the panel while it is open in case it is dragged there.
-Tapping the move area (a press that does not travel) minimizes the panel to
-just the handle so what is behind it can be seen; tapping the handle restores
-it; a drag still just moves it.
-
-Android: typing a letter did nothing. Most Android keyboards type through an
-input-method editor -- every keydown arrives as key "Unidentified" (keyCode
-229) and the letter shows up only as an input event or inside a composition.
-The handler listened to keydown only, so it never saw the letter; this is the
-failure the v417 README warned about, now confirmed on a device. The hidden
-field now feeds god-mode from its beforeinput and input events too, follows a
-composition as it grows (one keystroke per new character, never one twice),
-counts a keyboard that sends both a keydown and an input event once, and the
-global keydown handler ignores the key-less keydown -- it would otherwise be an
-unrecognized key that resets a sequence in progress.
-
-Honest limits. The Android path was tested by reproducing what Android sends
-(a keyless keydown, then an input event, then a step-by-step composition driven
-through Chromium's own protocol for input-method text), not on a physical
-Android phone, and keyboards differ; and the device keyboard is emulated for
-the placement test by patching visualViewport, the signal the app itself uses.
-
-Tests: 2930 unit (unchanged) and 36 browser checks (4 new: [g]'s placement and
-that the top bar and the other floating buttons do not move; the panel staying
-above the mode line by default, when dragged and with a 300px emulated device
-keyboard up; minimize on tap; the Android input paths). Each new check was
-confirmed to fail when its fix is removed, which also showed one assertion in
-the first draft was hollow -- the status message it looked for is overwritten
-at once, so it could never fail -- and it was replaced by one that can.
+Fixes to v417 from real phone use. [g] is now a floating button above
+Extras, because putting it in the top bar had pushed the buttons already
+there out of place. The floating keyboard is positioned against the mode
+line, so the device keyboard can no longer cover it, and tapping its
+handle minimizes it. On Android, typed letters did nothing: Android
+keyboards send an "Unidentified" keydown and the letter only as an input
+event, and the hidden field now reads those events too.
 
 * v417 — [g] toolbar button and a floating keyboard, so god-mode works on a phone with no Escape key
-A phone has no Escape key, so god-mode was unreachable there. The top bar
-gains a [g] button: it enters god-mode, shows a small draggable floating
-keyboard (Tab, the four arrows, Shift, g), and focuses a hidden field so the
-device's own keyboard comes up for the other letters. Tapping [g] again ends
-all three. The device keyboard's state is tracked: dismissing it any other way
-(tap elsewhere, the OS gesture) ends god-mode and hides the panel too, and
-ending god-mode by any other route hides the panel as well. Entering god-mode
-with a real Escape never shows it. Shift is one-shot and shifts whichever
-button is tapped next (Tab -> S-Tab, arrows -> their table-navigation forms,
-g -> G, god-mode's C-M- prefix instead of M-). The panel drags by its handle
-and remembers its place for the session only.
-
-Design driven by research, not assumption: terminal emulators (xterm.js, whose
-own tracker still lists it as open in July 2025) report native on-screen
-keyboards failing to deliver keydown for isolated keystrokes on iOS Safari and
-Android Chrome, and the workaround people ship is their own on-screen keyboard
-dispatching directly. So the floating keyboard's buttons never depend on native
-keydown -- they call the same dispatch function a real keystroke does. The
-device keyboard is kept for the rest of the alphabet, but its reliability could
-only be tested with an emulated keyboard here, not a real phone; the README says
-so plainly.
-
-Refactors that made this safe: the inline god-mode dispatch in app.js became one
-shared function, dispatchGodModeKeystroke, used by both real keydowns and the
-panel's buttons, so they cannot drift apart; entering god-mode became a second
-shared function, enterGodMode. Both verified behavior-preserving against the
-full suites before anything was built on them.
-
-Two things the tests caught. (1) The global keydown handler returns early
-whenever any input has focus, so keys typed into the hidden field would never
-have reached god-mode at all; it is now exempt. Found only because the check
-that a real Escape closes the panel timed out. (2) The panel first rendered
-off-screen: inside the top bar's container, position:fixed resolves against the
-container, not the viewport. Now a direct child of body.
-
-New capability, flagged because it is not just wiring: bare left/right had no
-meaning anywhere in the app (only their Shift forms did), which would have left
-two dead buttons, so in god-mode they now collapse the focused heading fully and
-expand it one level -- the usual outline convention. Separately, a check for
-god-mode's i/a/e special cases was added, since moving that code exposed that
-nothing covered it.
-
-Tests: 2930 unit (unchanged) and 32 browser checks (4 new: floating keyboard
-interaction end to end, its desktop/Escape behavior, left/right collapse and
-expand, and i/a/e).
+A phone has no Escape key, so god-mode was unreachable there. A [g]
+button now enters god-mode, shows a small draggable floating keyboard
+(Tab, arrows, Shift, g) and brings up the device keyboard for the other
+letters; tapping [g] again ends all three. The panel's buttons call the
+same dispatch as a real keystroke, because on-screen keyboards are
+reported to fail at delivering isolated keystrokes. Bare left and right
+now collapse and expand the focused heading. The device keyboard could
+only be tested emulated, and the README says so.
 
 * v416 — God-mode gains real-Emacs chords for file/refile/attach/clocking/export, plus a redo technique; two modals gain proper Escape-to-close
-New god-mode chords, all verified against the real Emacs manual/source
-before implementation, not assumed: C-x C-s (save-buffer), C-x C-w
-(write-file), C-x C-f (find-file), C-c C-w (org-refile), C-c C-a
-(org-attach), C-c C-x C-i/C-o/C-q/C-x (clock in/out/cancel/continue),
-C-c C-e (org-export-dispatch -- was a "not supported" placeholder, now a
-real dispatcher). Each empirically checked against the actual key
-translator (not assumed): the naive approach of inserting SPC between
-letters to "space out" a chord is wrong here -- SPC toggles literal mode,
-un-Controlling the NEXT key, the opposite of what's needed. Every one now
-shows its chord in the command palette too (a new keys: field per entry).
-
-Redo: real Emacs's own undo has no separate redo command -- redoing means
-undoing the undo itself, which only works once the chain is broken by some
-other command (conventionally C-f, forward-char, in god-mode). This app's
-undo/redo is already a clean separate pair, so C-f doesn't move anything
-here -- it arms the next C-/ to call redo instead of undo. The arming
-survives further C-/ presses (keep pressing C-/ to keep redoing, matching
-real muscle memory) but is dropped by any other key, and falls back to
-plain undo once there's nothing left to redo. Verified with two edits:
-undo, undo, C-f + C-/ (redo #1), C-/ again (redo #2, no C-f needed), C-/
-again (nothing left -- falls back to undo).
-
-Real bug found and fixed along the way, independent of the god-mode work:
-openTextFieldPopup and openButtonChoiceModal (the heading-title/effort
-prompt and the archive/attach/general-editor choice modals) had no
-Escape-to-close handling at all, and weren't tracked by the app's own
-anyOverlayPanelOpen() system -- unlike confirmDialog, which already did
-this correctly. Found because a smoke check's Escape press silently did
-nothing while the Attach modal was open, leaving it absorbing every
-subsequent keystroke. Both now follow confirmDialog's own established
-pattern (a dedicated S.*Open flag, a capture-phase keydown listener
-cleaned up on every close path) -- a real, user-facing fix: these dialogs
-were silently un-closeable via Escape before, keyboard or not.
-
-Tests: 2930 unit (unchanged) and 28 browser checks (2 new, covering every
-new chord and the full redo-arm state machine; the Escape-to-close fix is
-covered by both of them, since it's what unblocked the refile/attach one
-in the first place). Debugging note worth recording: three of my own test
-assertions were wrong, not the app -- checking a row-level badge for a
-clock that actually shows in the modeline; checking a status message that
-god-mode's own status indicator legitimately overwrites after every
-dispatch; and a test helper that pressed Escape unconditionally, which
-EXITS an already-active god-mode (it persists across dispatches by design)
-rather than entering it, once a test chained several chords in sequence.
+God-mode gains the real Emacs chords for file, refile, attach, clocking
+and export (C-x C-s, C-x C-w, C-x C-f, C-c C-w, C-c C-a, C-c C-x
+C-i/C-o/C-q/C-x, and C-c C-e, now a real export dispatcher), each shown
+in the command palette. Redo works the Emacs way: C-f, then C-/ redoes,
+and further C-/ keep redoing. Fixed: the heading-title and effort
+prompts and the choice modals had no Escape-to-close and silently
+absorbed keystrokes while open.
 
 * v415 — More menu loses Capture/Clocking/History; View menu loses its read-only toggle; ⊕/❓/🔍 toolbar buttons retired; a real Add-heading bug fixed
-Everything these three menu steps and three toolbar buttons did was
-already reachable from the command palette (added in v409/v411), so all
-six are gone now that the palette covers them:
-
-- More menu: Capture and Clocking steps removed (each was its own
-  sub-panel, entirely separate machinery from what the palette's own
-  Capture/Clocking commands already used) -- both orphaned functions,
-  renderCaptureFlow and renderClockOptionsFlow, deleted outright rather
-  than left unreachable. History step removed too (its palette command
-  already used the same direct mechanism, so nothing there was orphaned).
-- View menu: the %%RO / **RW read-only toggle removed -- the palette's
-  Toggle read-only (C-x C-q) already did the same thing.
-- Toolbar: the ❓ Help and 🔍 Search buttons removed, replaced by new
-  god-mode bindings -- C-h m (h SPC m; real Emacs's own actual
-  describe-mode binding, "Display documentation of the current major
-  mode") for Help, C-s (s) for Search. The ⊕ Add-heading button removed
-  once the bug below was fixed, since the palette/god-mode path now
-  covers everything it did and more.
-
-Bug fix, reported by the person using the app: "Add heading after"
-(M-RET) silently did nothing on a genuinely empty document, and the
-command palette dimmed it entirely rather than running it when nothing
-was selected. It required keyboardFocusedHeading unconditionally; the
-palette's own needs list blocked it the same way. Fixed with one shared
-insertHeadingSmart helper covering all three cases: a focused heading
-gets a sibling right after it (the common case, unchanged); a genuinely
-empty document gets a heading at the top (matching what real M-RET does
-at position 1 of an empty buffer); a document with headings but nothing
-selected gets one appended at the bottom rather than doing nothing. A
-new god-mode chord, C-RET, was requested alongside M-RET/M-S-RET for
-this, but real god-mode's own actual translation rules have no way to
-produce a bare Control chord for a named key like RET -- confirmed by
-reading the real god-mode.el source directly rather than assuming, after
-an initial back-and-forth about it -- so it isn't included; M-RET (g RET)
-already covers the one behavior it was asked to share anyway.
-
-A debugging note worth recording for the path, not the bug: there wasn't
-one. The new C-s binding looked broken -- a check waiting on #searchPanel
-timed out, with a lone "⋯" sitting in the minibuffer that looked exactly
-like a stuck god-mode prefix. It turned out renderSearchPanel's normal
-path never touches that element's display style at all (only its
-query-replace sibling does -- the real search UI lives in
-#minibufferSearch), and the "⋯" was #search-options-btn's own real label.
-Search had been working the whole time; the check was asserting against
-the wrong element. Fixed the assertion, not the app.
-
-Scope question raised and resolved by asking rather than assuming or
-silently expanding: removing the Clocking menu step exposed that
-src/menu-alias.js treats clocking as a fifth, fully documented menu
-category with its own alias namespace. Clocking itself stays fully
-available -- every action is still a command in the palette, untouched --
-but every reference to the retired MENU is now gone completely, including
-a first draft's "here's what changed and why" narration that doesn't
-belong in reference documentation.
-
-README: the menu-customization section rewritten for four menus instead
-of five (labels table, both worked examples, the alias-namespace
-explanation); separately-stale references fixed in the Clocking feature
-section, Capture Templates, History, Effort_ALL, the command palette's
-own target-resolution paragraph, the Keybindings table and its
-surrounding prose, and the Help/Search toolbar paragraphs -- found only
-by a second, broader sweep for icons and button IDs after the obvious
-"More →" grep missed several.
-
-Tests: 2930 unit (unchanged -- everything here is browser wiring) and 26
-browser checks (2 new: add-heading's four scenarios including the
-ordinary sibling-insertion case explicitly, and god-mode C-h m/C-s; 5
-existing checks updated where they navigated through a since-removed menu
-step or button -- the menu-alias check's own label lists, both effort
-checks, the read-only toggle check, and the tabs check). Both new checks
-confirmed to fail against a reverted copy of the relevant code before
-being trusted; the 5 updated checks kept their own pre-existing coverage,
-just pointed at the palette instead of the retired menu path.
+Menu steps and toolbar buttons the command palette already covered are
+removed: More's Capture, Clocking and History, the View menu's read-only
+toggle, and the Help, Search and Add-heading toolbar buttons. Help and
+Search get god-mode bindings (C-h m, C-s). Fixed: "Add heading after"
+silently did nothing on an empty document; it now adds a heading at the
+top there, after the focused heading otherwise, and at the bottom when
+nothing is selected. The menu-customization docs now describe four
+menus.
 
 * v414 — Tag/property completion; capture templates and Extras in the palette; Commands is now an ordinary More entry
-Tag and property-key completion (src/completion.js): the general editor's
-Tags field now suggests tags already used anywhere in the open document or
-a loaded agenda file (most-used first), plus any declared on a #+TAGS:
-line but not yet used by a heading -- narrowed as you type, one tap adds
-it, Enter adds whatever's typed. The Properties editor's Key field
-completes the same way against keys already in use, plus the handful this
-app itself reads or writes (CUSTOM_ID, EFFORT, Effort_ALL, ID, the
-ARCHIVE_* set). Neither list ever re-offers a tag/key the heading already
-has.
-
-Capture templates and Extras-menu entries are now commands in the palette
-too -- "Capture: <description>" runs that template directly (skipping the
-picker), "Extras: <label>" runs that entry exactly as tapping it would.
-Both are read fresh each time the palette opens, so an edited template
-list or a different document's own Extras menu is always current. The
-plain "Capture" command still opens the ordinary picker.
-
-Bug fix: More -> Commands was hard-coded outside org-xx-menu-aliases, so no
-alias entry for it ever did anything -- reported by the person using the
-app. My first explanation for why was wrong: I'd said adding it to the
-alias set would silently hide it for anyone with an existing config, but
-resolveMenuOrder only hides a label via its OWN explicit empty entry
-("more:Commands;") -- being unmentioned only means the custom ORDER falls
-back to default, never that the label disappears. Verified this with the
-function directly before touching anything. Commands is now an ordinary
-more: label like the other six: can be renamed, hidden, or reordered via
-org-xx-menu-aliases, and renders first by default when unmentioned. The
-menu-customization docs, its labels table, and its worked example are
-updated to match (the "all labels must be listed to reorder" set is now
-seven, not six).
-
-README audit, continued from v413's two fixes (Narrow persistence,
-Attachments deletion): the Tags/Properties/Priority Differences line
-still said "no completion for any of the three" -- now says what's true.
-The Tables line undersold what's built (said "arithmetic plus a handful of
-aggregate functions"; the section itself already documented conditionals,
-named constants, date/time arithmetic and formatting, and unit
-conversion) -- now matches the section's own "Out of scope" line. Checked
-and left alone, confirmed still accurate against the code: Folding
-(three flags: collapsed/bodyHidden/drawersHidden), Inheritance (no inline
-badge, search-time only), Clocking (no reminder), Agenda (org-agenda-files
-is github:/webdav: only, confirmed in parseAgendaFilesVar), Footnotes (no
-insert/renumber/convert command), Undo/redo (restoreFromHistory reapplies
-#+STARTUP fresh every time), Attachments (no browser, no bulk ops), and
-Conflict resolution (no word-level/side-by-side diff in a region).
-
-Tests: 2930 unit (23 new: 16 for completion, 7 for the palette's dynamic
-capture/Extras commands) and 24 browser checks (3 new: tag/property
-completion end-to-end including a saved-file check, capture templates and
-Extras entries running from the palette, and the three menu-alias
-scenarios -- renamed, omitted, and unmentioned-stays-visible, the last one
-confirmed to fail against the old fixed-Commands code via a throwaway copy
-before being trusted).
-
-
-v412 left app.js at 14,606 lines because 254 functions each read or wrote
-one of 113 shared `let` variables (`state` alone in 117 of them), and a `let`
-can't be shared across files. This finishes the job in three steps.
-
-1. One state object. All 113 variables are now properties of `S`
-(src-browser/app-state.js), which any module can read and write. Done with
-a real scope analysis (eslint-scope), not text search, so shadowed names,
-`x++`, destructuring assignment and shorthand properties are right: 1,794
-edits -- 1,175 reads, 506 writes, 29 `{ x }` -> `{ x: S.x }`. Declarations
-keep their place and order (`let a = 1` became `S.a = 1`), so initialisation
-is exactly what it was.
-2. The 40 DOM-element constants moved to src-browser/dom.js.
-3. With nothing left holding them, all 254 functions moved into 34 feature
-modules by area (render, row-render, editing, tabs, documents-io,
-external-sync, refile-flow, clock-flow, agenda-view, search-ui, capture-ui,
-settings-view, god-mode-palette, dialogs, ...), moved verbatim by script with
-their doc comments, imports generated from the code. app.js: 14,606 -> 1,397
-lines: imports, state initialisation, event wiring, bootstrap. No
-constant runs code at load across a module boundary (checked), which is what
-could have broken under circular imports.
-
-A real bug found on the way, and it predates this work: buffer-read-only
-was the one per-document flag missing from the tab snapshot, so making one
-document read-only made every tab read-only when you switched. (In Emacs it
-is buffer-local.) The new tabs smoke check failed identically on v412's
-untouched code, which is how I knew it wasn't the refactor. Now saved and
-restored per tab.
-
-Honest limits: the split is by file, not decoupled. Modules call each other
-freely (render draws the views, the views call render), so there are 32
-circular import pairs. It works because they only call each other after
-everything has loaded, but the modules can't be understood or tested in
-isolation, and none can be imported in Node.
-
-Verified by: syntax and scope analysis of all 53 browser files (nothing
-undeclared but real browser globals); all 122 reachable modules precached
-(offline check); 2,907 unit tests; 21 browser checks; every one of the 45
-palette commands run with no page error; Settings (34/34 labels) and
-History. Guards so it doesn't decay: test/module-structure.test.js (no
-module-level let, every import really exported, no duplicate imports,
-app.js stays small -- each mutation-checked) and tools/check-scope.mjs
-(dev-only; reports any name used but never imported). tools/coupling-report
-is removed; its job is done.
+The Tags editor now suggests tags already used in the open document or a
+loaded agenda file, plus any declared on a #+TAGS: line, and the
+Properties editor's Key field completes the same way. Capture templates
+and Extras entries are now palette commands ("Capture: <description>",
+"Extras: <label>"). Fixed: More > Commands was hard-coded outside
+org-xx-menu-aliases, so no alias ever affected it; it is now an ordinary
+label that can be renamed, hidden or reordered. README descriptions of
+tag completion and tables corrected.
 
 * v413 — app.js split: shared state in one object, features in modules
-v412 left app.js at 14,606 lines because 254 functions each read or wrote
-one of 113 shared `let` variables (`state` alone in 117 of them), and a `let`
-can't be shared across files. This finishes the job in three steps.
-
-1. One state object. All 113 variables are now properties of `S`
-(src-browser/app-state.js), which any module can read and write. Done with
-a real scope analysis (eslint-scope), not text search, so shadowed names,
-`x++`, destructuring assignment and shorthand properties are right: 1,794
-edits -- 1,175 reads, 506 writes, 29 `{ x }` -> `{ x: S.x }`. Declarations
-keep their place and order (`let a = 1` became `S.a = 1`), so initialisation
-is exactly what it was.
-2. The 40 DOM-element constants moved to src-browser/dom.js.
-3. With nothing left holding them, all 254 functions moved into 34 feature
-modules by area (render, row-render, editing, tabs, documents-io,
-external-sync, refile-flow, clock-flow, agenda-view, search-ui, capture-ui,
-settings-view, god-mode-palette, dialogs, ...), moved verbatim by script with
-their doc comments, imports generated from the code. app.js: 14,606 -> 1,397
-lines: imports, state initialisation, event wiring, bootstrap. No
-constant runs code at load across a module boundary (checked), which is what
-could have broken under circular imports.
-
-A real bug found on the way, and it predates this work: buffer-read-only
-was the one per-document flag missing from the tab snapshot, so making one
-document read-only made every tab read-only when you switched. (In Emacs it
-is buffer-local.) The new tabs smoke check failed identically on v412's
-untouched code, which is how I knew it wasn't the refactor. Now saved and
-restored per tab.
-
-Honest limits: the split is by file, not decoupled. Modules call each other
-freely (render draws the views, the views call render), so there are 32
-circular import pairs. It works because they only call each other after
-everything has loaded, but the modules can't be understood or tested in
-isolation, and none can be imported in Node.
-
-Verified by: syntax and scope analysis of all 53 browser files (nothing
-undeclared but real browser globals); all 122 reachable modules precached
-(offline check); 2,907 unit tests; 21 browser checks; every one of the 45
-palette commands run with no page error; Settings (34/34 labels) and
-History. Guards so it doesn't decay: test/module-structure.test.js (no
-module-level let, every import really exported, no duplicate imports,
-app.js stays small -- each mutation-checked) and tools/check-scope.mjs
-(dev-only; reports any name used but never imported). tools/coupling-report
-is removed; its job is done.
+The rest of app.js moved out. All 113 shared variables became properties
+of one state object (src-browser/app-state.js), the DOM constants moved
+to dom.js, and the 254 functions moved verbatim into 34 feature modules;
+app.js is now 1,397 lines of imports and event wiring. A real bug
+surfaced on the way: buffer-read-only was missing from the per-tab
+snapshot, so making one document read-only made every tab read-only. It
+is now saved per tab. A module-structure test and a scope check keep the
+split from decaying.
 
 * v412 — First stage of splitting app.js: everything that can move, has
-Measured first, with a real parser (acorn), not guessed: app.js was 16,589
-lines, 324 functions and 113 shared `let` variables. A function can move
-verbatim only if it -- and everything it calls -- touches none of those
-variables and none of the document-derived constants. Only 71 functions and
-32 constants qualified. They are now in ten modules under src-browser/:
-ui-widgets (28), field-groups, agenda-format, appearance, settings-fields
-(the 34-field quick-settings table), doc-helpers, sync-helpers,
-render-helpers, constants and singletons (the storage adapter and the
-caches -- same objects, now shared by import). app.js: 16,589 -> 14,606
-lines. No behaviour change intended or observed.
-
-How it was done: an AST-based script moved each declaration verbatim with
-its doc comment, added `export`, and generated every import from the code
-itself; nothing was retyped. Verified by: syntax of all 11 files; a scope
-analysis for undeclared identifiers (only the browser global MessageChannel
-turned up); every one of the 86 reachable modules being precached (the
-offline check passes); all 2901 unit tests; all 20 browser checks; every one
-of the 45 palette commands run once with no page error; Settings, History
-and its diff opening; and all 34 quick-settings labels found on the rendered
-Settings screen, from their new home.
-
-What this does NOT do, stated plainly: the other 254 functions (11,278
-lines) cannot move by extraction, because each reads or writes shared
-state -- `state` alone is touched directly by 117 of them, then currentView,
-keyboardFocusedBodyRow, isDirty and so on. Splitting those means first
-giving the state one exported home and rewriting its references, a much
-bigger and riskier change than moving code. New tools/coupling-report.mjs
-(dev-only; needs acorn installed once) reports exactly this and is the way
-to re-measure after each step.
+app.js had grown to 16,589 lines. A parser-based analysis showed only 71
+functions and 32 constants touch none of its 113 shared variables, so
+those moved verbatim into ten modules under src-browser/ (app.js is now
+14,606 lines). No behavior change. The other 254 functions share state
+and cannot move until that state has one exported home, which v413
+provides.
 
 * v411 — History diff that scales; effort sort/filter/limit; Effort_ALL; refile recents
-History diff: text-diff.js was a textbook LCS table, O(n*m) in time AND
-memory, so "show what changed" on a 20,000-line journal needed about 400 million
-cells -- a frozen tab. It now runs on merge3.js's Myers diff (cost tracks
-the number of differing lines, not the file size); versions that differ by
-thousands of lines fall back to one replaced block, still correct. All 15
-existing tests pass unchanged; new ones cover a 20,000-line file (instant),
-the fallback, and 200 random inputs against a brute-force reference.
-
-Agenda effort, following org-agenda.el's own rules: the clock button in the
-toolbar opens Sort (effort-up / effort-down), Filter (the `_` filter: at
-most / at least / exactly) and Max per day (org-agenda-max-effort). Applied
-where days are grouped, so rows, empty-day hiding and day totals agree.
-Rules kept from Emacs, including the surprising ones: < and > are inclusive;
-the limit keeps a PREFIX of the sorted day; a task with no effort counts as
-high effort. Entries with no heading are never filtered or counted (Emacs
-would drop them under a limit). Session-only; documented.
-
-Effort_ALL: the allowed effort values, from the heading or nearest ancestor,
-the file's #+PROPERTY: Effort_ALL line, or a new org-global-properties
-setting -- first that yields a usable value wins. When one applies, the
-effort prompt shows its values as buttons and one tap saves; otherwise the
-prompt stays free text (you had declined presets nobody configured). The
-Agenda filter draws its values from the same list, or org's own default set.
-
-Refile recent targets: the picker lists the last destinations under RECENT,
-above ALL TARGETS. Only ones still valid (file, heading, org-refile-targets,
-subtree exclusion re-checked); only successful refiles recorded; the last
-eight kept across sessions.
-
-Tests: 2901 unit (37 new) and 20 browser checks (3 new: Effort_ALL incl. the
-Local Variables path, agenda sort/limit/filter/reset, refile recents).
-Every new rule mutation-checked; the agenda smoke check was also confirmed
-to fail when the effort view is not applied. One check initially failed
-because the tab is named after the first heading and matched the row text.
+History's "show what changed" froze the tab on a 20,000-line journal
+(about 400 million cells); it now uses the Myers diff, so cost follows
+the number of differing lines. Agenda effort follows Emacs's own rules:
+a toolbar button opens Sort, Filter (at most, at least, exactly) and Max
+per day. Effort_ALL supplies preset effort values (from the heading or
+an ancestor, the file's #+PROPERTY: line, or org-global-properties),
+shown as one-tap buttons; otherwise the prompt stays free text. The
+refile picker lists recent targets above ALL TARGETS.
 
 * v410 — Remove the diary-* twins added in v409
-v409's sexp audit added diary-anniversary, diary-cyclic, diary-block and
-diary-date. Each already has an org-* twin (org-anniversary, org-cyclic,
-org-block, org-date) taking year-month-day, which is why the diary-* names
-were left out originally: their argument order follows calendar-date-style
-(month-day-year by default), so one line would mean different dates under
-different settings. They are removed again, from the timestamp evaluator
-and from body lines (where v409 had rewritten them into the org-* forms).
-The README now says they are absent on purpose and how to convert a line
-from an Emacs diary (rename it, put the year first), and tests pin the
-decision: the four names match nothing in either argument order, are not
-translated, and their org-* twins still work.
-
-Kept from v409's audit, none of which has an org-* twin or needs one: the
-org-anniversary start-year fix, org-block working inside <%%(...)>, and/or/
-not with t/nil, org-date, org-class, quoted lists (including diary-float's
-month list, since diary-float has no org-* twin), and the general body-line
-path for lines built from those. The normalizer that did the rewriting is
-now just unquoteDiaryFloatMonthList.
+v409 added diary-anniversary, diary-cyclic, diary-block and diary-date,
+but each already has an org-* twin taking year-month-day, and the diary
+names' argument order follows calendar-date-style, so one line would
+mean different dates under different settings. They are removed again.
+The README explains how to convert a line from an Emacs diary (rename
+it, put the year first). The rest of v409's audit stays.
 
 * v409 — Command palette; effort in the Agenda; sexp audit (one real bug, several gaps)
-Command palette: More > Commands (a fixed first entry) or god-mode `g x`
-(M-x) opens a searchable list of 45 commands -- heading, clocking,
-document, view, export, app. Type a name or the real Org one (org-todo,
-org-clock-in); every word must match, and a hyphenated word matches as
-one phrase, so org-clock-in doesn't also list org-clock-out. Commands
-that can run come first; the rest are dimmed with the reason (nothing is
-narrowed, no clock is running, tap a heading first). Recents lead when
-nothing is typed. Heading commands act on the heading whose action menu
-is open, else the keyboard-focused one. Keys are shown only where
-god-mode really binds them, and those commands run through the same table
-entry as the key. Commands is deliberately outside the menu-alias set:
-adding a label to it would have silently switched off the reordering of
-anyone who had already listed the other six. Found by the smoke test while
-building it: the Enter that ran a command also reached the global key
-handler and wiped the status message the command had just set.
-
-Effort in the Agenda: scheduled, deadline and timestamped headings show
-their EFFORT as typed (a small clock badge) on agenda rows and in the TODO
-view; each day header totals the day's estimates, with +N? for TODOs that
-have none yet. Counted once per heading per day; carried-forward tasks
-count on the day shown; appointments without a TODO keyword or effort are
-not a gap; an explicit 0:00 is an estimate; invalid efforts are treated as
-missing. No sorting or filtering by effort yet (documented).
-
-Sexp audit, against the Emacs manual and org-agenda.el:
-- BUG: org-anniversary ignored its start year, so the agenda showed
-  "Arthur's -8th birthday" before he was born and "0th" in the year itself,
-  and <%%(org-anniversary ...)> matched every earlier year. Like real
-  diary-anniversary ("any year after 1948") it now applies only afterwards.
-- INCONSISTENCY: org-block worked as a body line but silently never matched
-  inside <%%(...)>; the header comment even listed it as supported.
-- ADDED: and / or / not, t / nil, quoted lists ('(10 11 12), as Emacs
-  writes them -- diary-float's month list too), org-block, org-date,
-  org-class, and the standard American-order diary-anniversary /
-  diary-cyclic / diary-block / diary-date. Body lines: the diary-* spellings
-  keep their text and %d%s; lines built from the general functions go
-  through the same evaluator as timestamps.
-- Deliberately NOT added, and now documented: let / date / calendar-*
-  helpers (the manual's own pay-check example needs them), diary-remind,
-  the display-only day-of-year / ISO / Julian / lunar-phase / other-calendar
-  functions, calendar-date-style, and holiday-skipping in org-class (which
-  matches nothing rather than show a class on a holiday).
-
-Tests: 2865 unit (76 new across palette search and registry, agenda effort,
-and the sexp audit -- every one mutation-checked, which found and closed
-gaps in three of them) and 17 browser checks (5 new).
+A searchable command palette (More > Commands, or god-mode g x) lists 45
+commands by name or by real Org name; unavailable ones are dimmed with
+the reason, and heading commands act on the open or focused heading.
+Agenda and TODO rows show each heading's effort, with a daily total. A
+sexp audit fixed org-anniversary ignoring its start year (the agenda
+showed "Arthur's -8th birthday"), made org-block work inside <%%(...)>,
+and added and/or/not, quoted lists, org-date and org-class. The diary-*
+spellings it also added were removed in v410.
 
 * v408 — Sync conflicts get a real three-way merge; browser smoke test; README fixes
-Save used to answer any conflict with a two-way "keep mine or keep theirs"
-confirm. The app now keeps the text of the file as of the last successful
-open or save (the common ancestor) and merges by line: changes in
-different places combine automatically; only regions where both sides
-changed the same lines reach a dialog, which shows each one (yours / the
-other version) and asks for Yours, Other or Both, with Apply disabled
-until every region is decided. Cancel changes nothing anywhere -- disk,
-pending edit and sync metadata all untouched -- and the same conflict
-returns on the next Save. An automatic merge is its own undo step
-(verified live: Undo restores the pre-merge text). A "conflict" where the
-other side never really changed (e.g. a server ETag change with identical
-content) now resolves silently. Files last synced by an older version have
-no ancestor: every difference is shown; versions too different to diff
-line by line are offered as one whole-file choice.
-
-The external-change banner gains Merge (beside Reload and Dismiss): it
-merges the unsaved local text with the version now on the server, using
-the same dialog, as an ordinary undoable unsaved edit, and makes the
-other version the new baseline so the following Save is a plain write.
-
-Under the hood: new src/merge3.js (Myers O(ND) diff -- text-diff.js's
-O(n*m) table is fine for undo snapshots, not a large journal -- plus
-diff3-style clustering, where touching edits count as one place, like git);
-syncDocument passes the callback { mine, disk, base } and accepts 'mine',
-'disk', { merged } or 'cancel'; sync metadata gains baseContent.
-
-New tools/smoke.mjs: 12 real-browser checks (cold start offline, the
-read-only toggle, effort, refile, the whole conflict path, narrowing across
-a reload) against a built-in static server and mock WebDAV server, no new
-dependency. Mutation-checked: reintroducing three earlier bugs makes the
-matching checks fail. New test/sw-precache.test.js fails if a module the
-app imports is missing from the service worker's precache list.
-
-README: Differences no longer says Narrow is session-only (it persists,
-now covered by a smoke check) or that Attachments has no deletion UI
-(Open, Save and Delete exist, per heading); the conflict sections describe
-what actually happens; Development documents the smoke test.
+A sync conflict used to offer only "keep mine or keep theirs". Save now
+merges by line against the file as of the last successful open or save:
+changes in different places combine automatically, and only regions
+where both sides changed the same lines reach a dialog (Yours, Other or
+Both for each; Cancel changes nothing). The external-change banner gains
+a Merge button using the same dialog. Also added: a real-browser smoke
+test (tools/smoke.mjs) and a check that every imported module is in the
+service worker's precache. README corrected on Narrow and Attachments.
 
 * v407 — Full org-duration effort values; refile by tag/todo/regexp; offline fix
 Effort estimates now accept every org-duration form (H:MM, H:MM:SS,
