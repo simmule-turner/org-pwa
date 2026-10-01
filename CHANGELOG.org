@@ -7,6 +7,74 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v424 — Paragraph spacing (with a setting for it); Unarchive and the two views get Emacs names; a and e say what they did; documentation repairs
+Paragraphs ran together. Measured on the real README at a phone width, all 205
+gaps between consecutive paragraphs were exactly 4px: a paragraph row had a bare
+4px margin, which collapses between two paragraphs to 4px, less than the blank
+line between them in the source, while headings and list items carry their own
+padding and border and so looked fine. That is why Getting started and File
+management (mostly lists) looked right and Searching and Clocking (plain
+paragraphs) did not. It is the renderer, so it affected every document, not just
+the README. The renderer's margins now read CSS variables set by Settings ->
+Appearance -> Paragraph Spacing, laid out like Font Size: one value for
+paragraphs and a second, "Tables:", for tables and the other secondary blocks
+(source and quote blocks, rules), each 0 to 32px with a 10px default, saved,
+included in settings backups and applied at startup. Where a paragraph meets a
+table the larger value applies (CSS margin collapsing); the prose inside a quote
+block follows the paragraph value; headings and list items are untouched; rules
+keep a built-in 8px margin so they never reach exactly 0.
+
+A content fix was considered first and rejected after testing. Ending each
+paragraph with the backslash line break does not give a blank line in the form
+proposed (a line ending in two backslashes followed by a line of two backslashes
+renders 4px apart, unchanged, because a trailing break collapses); it takes
+three lines per paragraph, would need about 300 README edits, adds breaks to
+every export, and helps nobody's own documents.
+
+Emacs names, for the Extras menu's quoted functions: Unarchive is
+org-unarchive-subtree (the name of a command proposed for Org itself in Nov 2025;
+whether it has been merged was not confirmed), the Outline view is org-mode and
+the Text view is text-mode. Two commands remain without a name, by decision:
+New document (Emacs has no dedicated new-buffer command; scratch is only a
+third-party package name, and the built-in scratch-buffer of Emacs 29.1 just
+returns to the single *scratch* buffer) and Undo history (Emacs's undo record is
+the variable buffer-undo-list, not a command; vundo and undo-tree are packages,
+not core). The README's exceptions list was stale and now lists those two, with
+the reasons.
+
+God-mode's a and e (choose where the cursor lands when i opens the editor)
+returned before redrawing, so the minibuffer gave no sign the key registered and,
+since v421, could keep showing the previous command's name. They now report
+themselves the way every chord does ("God-mode . C-a -> edit at start (press i)").
+Their old test contained expect(true, ...) and only proved the popup opened; it
+now asserts that a then i puts the cursor at the start and e then i at the end.
+
+Documentation repairs. The README's menu-aliases example showed raw backslash-u
+escape text instead of emoji (my v415 edit typed the escapes where the original
+had real characters; the check tools cannot catch it because the result is valid
+Org); restored, with the Commands label now a dollar-sign emoji at the author's
+choice, and one more instance in the paragraph below it. This CHANGELOG: the v413
+entry, which shipped in v413's own CHANGELOG and was dropped during v414, is
+restored verbatim from that release; the v339 line that showed a raw escape for
+the button now shows it; and six paragraphs flagged for stray tildes are repaired.
+My earlier claim that all six were rendering bugs was an overcount: two (the v351
+and v272 entries) really were, because they showed the broken pattern as bare text
+and so rendered broken themselves; the other four were accurate prose (a lone tilde
+meaning "approximately", and a deliberate pair of characters) and were reworded
+only to remove ambiguity. The Android back gesture, which I had assumed could leave
+the keyboard's field focused, closes the installed app instead; the README's
+rationale for the keyboard key and its verification paragraph now say so, and record
+what the author tested on a real Android phone (letters typed on the device
+keyboard, the keyboard key, and the panel's placement) and that iOS is still
+unconfirmed.
+
+Tests: 2945 unit (+8: the settings tests, the view names, the Unarchive name) and
+47 browser checks (1 new, for paragraph spacing; the Extras, palette and
+a/e checks extended). The spacing check measures the gaps actually rendered
+rather than reading CSS, and each part of everything above was confirmed to fail
+when removed (one quote-block mutation changes nothing observable, because an
+inner wrapper's margin is shadowed by its parent's, and is noted as equivalent).
+
 * v423 — Extras-menu quoted functions are now the command palette's commands, named by their real Emacs/Org names
 An Extras entry like 'org-clock-out used to be checked against a hard-coded list of
 eight names with a separate hand-written dispatcher, so the palette's 33 commands
@@ -512,6 +580,51 @@ app.js stays small -- each mutation-checked) and tools/check-scope.mjs
 (dev-only; reports any name used but never imported). tools/coupling-report
 is removed; its job is done.
 
+* v413 — app.js split: shared state in one object, features in modules
+v412 left app.js at 14,606 lines because 254 functions each read or wrote
+one of 113 shared `let` variables (`state` alone in 117 of them), and a `let`
+can't be shared across files. This finishes the job in three steps.
+
+1. One state object. All 113 variables are now properties of `S`
+(src-browser/app-state.js), which any module can read and write. Done with
+a real scope analysis (eslint-scope), not text search, so shadowed names,
+`x++`, destructuring assignment and shorthand properties are right: 1,794
+edits -- 1,175 reads, 506 writes, 29 `{ x }` -> `{ x: S.x }`. Declarations
+keep their place and order (`let a = 1` became `S.a = 1`), so initialisation
+is exactly what it was.
+2. The 40 DOM-element constants moved to src-browser/dom.js.
+3. With nothing left holding them, all 254 functions moved into 34 feature
+modules by area (render, row-render, editing, tabs, documents-io,
+external-sync, refile-flow, clock-flow, agenda-view, search-ui, capture-ui,
+settings-view, god-mode-palette, dialogs, ...), moved verbatim by script with
+their doc comments, imports generated from the code. app.js: 14,606 -> 1,397
+lines: imports, state initialisation, event wiring, bootstrap. No
+constant runs code at load across a module boundary (checked), which is what
+could have broken under circular imports.
+
+A real bug found on the way, and it predates this work: buffer-read-only
+was the one per-document flag missing from the tab snapshot, so making one
+document read-only made every tab read-only when you switched. (In Emacs it
+is buffer-local.) The new tabs smoke check failed identically on v412's
+untouched code, which is how I knew it wasn't the refactor. Now saved and
+restored per tab.
+
+Honest limits: the split is by file, not decoupled. Modules call each other
+freely (render draws the views, the views call render), so there are 32
+circular import pairs. It works because they only call each other after
+everything has loaded, but the modules can't be understood or tested in
+isolation, and none can be imported in Node.
+
+Verified by: syntax and scope analysis of all 53 browser files (nothing
+undeclared but real browser globals); all 122 reachable modules precached
+(offline check); 2,907 unit tests; 21 browser checks; every one of the 45
+palette commands run with no page error; Settings (34/34 labels) and
+History. Guards so it doesn't decay: test/module-structure.test.js (no
+module-level let, every import really exported, no duplicate imports,
+app.js stays small -- each mutation-checked) and tools/check-scope.mjs
+(dev-only; reports any name used but never imported). tools/coupling-report
+is removed; its job is done.
+
 * v412 — First stage of splitting app.js: everything that can move, has
 Measured first, with a real parser (acorn), not guessed: app.js was 16,589
 lines, 324 functions and 113 shared `let` variables. A function can move
@@ -545,7 +658,7 @@ to re-measure after each step.
 
 * v411 — History diff that scales; effort sort/filter/limit; Effort_ALL; refile recents
 History diff: text-diff.js was a textbook LCS table, O(n*m) in time AND
-memory, so "show what changed" on a 20,000-line journal needed ~400 million
+memory, so "show what changed" on a 20,000-line journal needed about 400 million
 cells -- a frozen tab. It now runs on merge3.js's Myers diff (cost tracks
 the number of differing lines, not the file size); versions that differ by
 thousands of lines fall back to one replaced block, still correct. All 15
@@ -863,7 +976,7 @@ Search not working in Help, and Help getting displaced by whatever
 buffer was open before it -- not a targeted patch, but removing the
 reason it was ever wrong: once state.doc IS README.org, search,
 modeline, tabs, and view-switching all just work on it already.
-Deleted entirely: the ~440-line read-only-render function family, the
+Deleted entirely: the roughly 440-line read-only-render function family, the
 separate cachedDocsDoc/docsOpen state, the fold/scroll persistence
 mechanism (and its own now-orphaned KV functions and tests), and the
 "Help doesn't exit god-mode" exemption -- Help behaves exactly like
@@ -918,7 +1031,7 @@ is, not how it's implemented. Dropped entirely: an internal GitHub
 anchor-link bug workaround, an Android MIME-filtering implementation
 saga (including a note-to-future-maintainer that never belonged in
 user docs), and iOS/WebKit keyboard-positioning mechanism detail.
-~100 lines combined down to ~25.
+about 100 lines combined down to about 25.
 
 * v391 — Fix: "Paragraphs" bullet was misplaced ~140 lines from home
 Found while continuing the documentation review -- isolated after
@@ -1086,7 +1199,7 @@ as real math -- leaving a stray placeholder-index number visible in
 the rendered output. Reported directly against Help's own LaTeX math
 fragments section; affects any document with LaTeX-delimiter-looking
 text inside a code/verbatim span, not just this app's own docs. Fixed
-by reusing matchEmphasisAt's own border-rule logic, scoped to ~/= only
+by reusing matchEmphasisAt's own border-rule logic, scoped to the tilde and equals-sign spans only
 (*bold*/_underline_/etc. can legitimately contain real math).
 
 * v374 — Help visibility: adjustable font-size, tab indicator, %% mode-line
@@ -1308,8 +1421,8 @@ vCard import, even though its own internal state already said
 
 * v351 — Fix: README.org's own broken markup (stray ~, subscripts)
 Root cause: this app's own emphasis parser (matching real Emacs
-org-mode exactly) never allows a closing ~ to be followed by "/" —
-every "~X~/~Y~" written throughout the README as a shorthand
+org-mode exactly) never allows a closing =~= to be followed by "/" —
+every =~X~/~Y~= written throughout the README as a shorthand
 separator broke silently, either leaving stray characters visible or
 getting swallowed into an unrelated, over-spanning code element
 further along the line (which is what was rendering as subscripts).
@@ -1425,7 +1538,7 @@ an edit, or a Settings change all trigger it immediately.
 
 * v339 — Search bar: one options button instead of three buttons
 The Regex/Match/Replace row was crowding the search input on narrow
-screens. Replaced with a single \u22ef button that opens a small popover
+screens. Replaced with a single ⋯ button that opens a small popover
 with all three, each showing a check mark when active, plus a dot on
 the button itself so mode state stays visible with the popover closed.
 
@@ -2211,15 +2324,15 @@ defaulting to a header/first-cell position instead.
   edited. Testing this surfaced and fixed a real, separate crash in
   the same code path (Escape's own re-render triggering a native
   ~blur~ afterward, throwing on an already-null ~editingCell~).
-- *Capture template ~%?~/~%^{Prompt}~ fields now actually receive
+- *Capture template ~%?~ and ~%^{Prompt}~ fields now actually receive
   focus* — an existing focus attempt was deferred one frame too late
   to count as within the original tap's own user gesture on iOS
   Safari, so the on-screen keyboard never actually opened despite
   focus programmatically succeeding.
-- Fixed 10 README rendering bugs (~x~/~y~ with no space around the
+- Fixed 10 README rendering bugs (=~x~/~y~= with no space around the
   slash silently fails org's own inline-markup rules and shows as
   literal tildes) and 4 stale references to the retired bare
-  ~+tag~/~-tag~ search shorthand.
+  ~+tag~ and ~-tag~ search shorthand.
 
 * v270 — Action row, Export, and a recently-opened files list
 - *TODO toggle* moved from the heading action row into the general

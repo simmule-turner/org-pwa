@@ -207,6 +207,8 @@ import {
   setFontFamily,
   getMenuSize,
   setMenuSize,
+  getParagraphSpacing,
+  getTablesSpacing,
   getFontSize,
   setFontSize,
   getReadingWidth,
@@ -232,7 +234,7 @@ import {
   DEFAULT_GLOBAL_VARIABLES,
 } from './src-browser/settings.js';
 import { agendaItemKindLabel, agendaStepAnchor, buildDayHeaderRow, formatAgendaItemTimeText, formatAgendaRangeLabel } from './src-browser/agenda-format.js';
-import { THEME_CSS_VARS, THEME_DEFAULTS, THEME_VAR_LABELS, applyFontFamily, applyFontSize, applyMenuSize, applyReadingWidth, applyTablesFontSize, resolvedThemeName } from './src-browser/appearance.js';
+import { THEME_CSS_VARS, THEME_DEFAULTS, THEME_VAR_LABELS, applyFontFamily, applyFontSize, applyMenuSize, applyParagraphSpacing, applyTablesSpacing, applyReadingWidth, applyTablesFontSize, resolvedThemeName } from './src-browser/appearance.js';
 import { CONFLICT_PREVIEW_LINES, GLOBAL_TODO_DEFAULT, HELP_DOCUMENT_ID, INLINE_LINK_ATTR, NAVIGATION_BACK_STACK_LIMIT, PALETTE_RECENT_KEY, RECENT_FILES_DISPLAY_LIMIT, SEARCH_TYPE_ICON, SIDE_PANEL_MIN_WIDTH, WEATHER_CACHE_KEY } from './src-browser/constants.js';
 import { allHeadingsInOrder, buildQueryReplacePattern, contactPhotoValueForHeading, expandScopeWithAncestors, findListItemByLineIndex, firstDataRowIndex, getOlpPrepend, hasBodyContent, headingsInSubtree, listItemDescendantCount, paragraphHasContent, stripCommaEscapeApp, tableHasContent, validateCaptureTemplates, vcardBodyHeadingsIn } from './src-browser/doc-helpers.js';
 import { buildPriorityFieldGroup, buildTimestampFieldGroup, dateInputValue } from './src-browser/field-groups.js';
@@ -1332,6 +1334,8 @@ async function bootstrap() {
   applyTheme(await getTheme(kv));
   applyFontFamily(await getFontFamily(kv));
   applyMenuSize(await getMenuSize(kv));
+  applyParagraphSpacing(await getParagraphSpacing(kv));
+  applyTablesSpacing(await getTablesSpacing(kv));
   applyFontSize(await getFontSize(kv));
   applyTablesFontSize(await getTablesFontSize(kv));
   applyReadingWidth(await getReadingWidth(kv));
