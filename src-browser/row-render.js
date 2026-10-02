@@ -1,4 +1,5 @@
 // Extracted from app.js: row render.
+import { captionText, imageOptions, splitAffiliated } from '../src/affiliated.js';
 import { getPropertiesText, getProperty, isArchivedInPlace } from '../src/archive-model.js';
 import { deleteListItem, deleteParagraph, deleteTable, deleteTableColumn, deleteTableRow, insertListItem, insertParagraphAfter, insertTableColumn, insertTableRow, isTableHeaderRow, setTableCell } from '../src/body-edit.js';
 import { updateCheckboxCookiesUpward } from '../src/checkbox-cookie.js';
@@ -851,6 +852,27 @@ export function renderHrRow(row) {
   return wrap;
 }
 
+/** The `#+NAME:`, `#+ATTR_*:`, `#+HEADER:` and `#+RESULTS:` lines above a paragraph, as small muted text
+ *  (shown, not hidden, since they are part of the document). `#+CAPTION:` is not here; see renderCaption. */
+function renderAffiliatedPrefix(affiliated) {
+  const lines = affiliated.filter((a) => a.key !== 'CAPTION');
+  if (!lines.length) return null;
+  const box = document.createElement('div');
+  box.setAttribute('data-affiliated', 'meta');
+  box.style.cssText = 'font-size:11px;opacity:0.6;font-family:monospace;white-space:pre-wrap;overflow-wrap:anywhere;';
+  box.textContent = lines.map((a) => a.line.trim()).join('\n');
+  return box;
+}
+
+/** A `#+CAPTION:` as an italic caption, with its inline markup rendered. */
+function renderCaption(text, heading) {
+  const el = document.createElement('div');
+  el.setAttribute('data-affiliated', 'caption');
+  el.style.cssText = 'font-style:italic;font-size:0.92em;opacity:0.85;margin:2px 0;';
+  renderInlineNodes(parseInline(text, currentInlineOpts()), el, null, heading);
+  return el;
+}
+
 export function renderParagraphRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
@@ -869,9 +891,15 @@ export function renderParagraphRow(row) {
     labelEl.style.opacity = '0.7';
     p.appendChild(labelEl);
   }
-  const hasContent = row.node.lines.some((l) => l.trim() !== '');
+  // Leading #+NAME / #+CAPTION / #+ATTR_* lines describe what follows (the image, table or block); show them as that
+  // instead of as raw paragraph text. The lines themselves are untouched and are still what gets edited and saved.
+  const { affiliated, rest: contentLines } = splitAffiliated(row.node.lines);
+  const affiliatedPrefix = renderAffiliatedPrefix(affiliated);
+  if (affiliatedPrefix) p.appendChild(affiliatedPrefix);
+  const caption = captionText(affiliated);
+  const hasContent = contentLines.some((l) => l.trim() !== '');
   if (hasContent) {
-    const strippedLines = row.node.lines.map((line, i) =>
+    const strippedLines = contentLines.map((line, i) =>
       i === 0 && row.node.footnoteLabel !== null
         ? line.replace(new RegExp('^\\[fn:' + row.node.footnoteLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\]\\s?'), '')
         : line
@@ -886,10 +914,22 @@ export function renderParagraphRow(row) {
       }
       renderInlineNodes(parseInline(stripLineBreakMarker(line), inlineOpts), p, null, row.heading);
     });
-  } else {
+  } else if (!affiliated.length) {
     p.textContent = '(empty note \u2014 tap to edit)';
     p.style.opacity = '0.5';
   }
+  const sizing = imageOptions(affiliated);
+  if (sizing.width || sizing.height || sizing.center) {
+    p.querySelectorAll('img').forEach((img) => {
+      if (sizing.width) img.style.width = sizing.width;
+      if (sizing.height) img.style.height = sizing.height;
+      if (sizing.center) {
+        img.style.marginLeft = 'auto';
+        img.style.marginRight = 'auto';
+      }
+    });
+  }
+  if (caption) p.appendChild(renderCaption(caption, row.heading));
   // Tapping the text reveals the contextual menu (edit/add/delete),
   // matching list items and headings, instead of jumping straight into
   // editing and showing a standalone always-visible delete button.
