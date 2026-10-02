@@ -55,4 +55,35 @@ async function loadNarrowState(adapter, documentId) {
   }
 }
 
-export { saveNarrowState, loadNarrowState };
+function sparseNarrowKey(documentId) {
+  return 'sparseNarrow:' + documentId;
+}
+
+/** Saves the headings Search's Narrow is restricted to, as outline paths (arrays of ancestor titles, root first),
+ *  the same reload-surviving identifier the subtree narrow uses. null or an empty list (widened) deletes the key,
+ *  so a document that is not narrowed leaves nothing behind. */
+async function saveSparseNarrowState(adapter, documentId, outlinePaths) {
+  if (!outlinePaths || outlinePaths.length === 0) {
+    await adapter.delete(sparseNarrowKey(documentId));
+    return;
+  }
+  await adapter.set(sparseNarrowKey(documentId), JSON.stringify({ outlinePaths }));
+}
+
+/** `documentId`'s saved Search-Narrow outline paths, or null if there are none (or the value is unusable). The
+ *  caller resolves them against the freshly parsed document, as with loadNarrowState. */
+async function loadSparseNarrowState(adapter, documentId) {
+  try {
+    const result = await adapter.get(sparseNarrowKey(documentId));
+    if (!result) return null;
+    const raw = result && typeof result === 'object' && 'value' in result ? result.value : result;
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!parsed || !Array.isArray(parsed.outlinePaths)) return null;
+    const paths = parsed.outlinePaths.filter((p) => Array.isArray(p) && p.length > 0 && p.every((t) => typeof t === 'string'));
+    return paths.length ? paths : null;
+  } catch {
+    return null;
+  }
+}
+
+export { saveNarrowState, loadNarrowState, saveSparseNarrowState, loadSparseNarrowState };

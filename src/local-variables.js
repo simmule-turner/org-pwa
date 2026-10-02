@@ -298,7 +298,9 @@ export function getContactsFilesVar(vars) {
 /** Parses org-agenda-files' own raw string value (semicolon-separated
  *  "scheme:path" entries) into a validated array of just the entries
  *  that actually look like a real, recognized backend reference --
- *  "github:path" or "webdav:path", non-empty path required. An entry
+ *  "github:path", "webdav:path" or "local:name.org" (a file already
+ *  opened on this device with File -> Open -> Local file), non-empty
+ *  path required. An entry
  *  with no recognized scheme, or an empty path, is silently dropped
  *  rather than causing the whole list to fail -- one malformed entry
  *  shouldn't take down every other, valid one alongside it. */
@@ -312,7 +314,7 @@ export function parseAgendaFilesVar(text) {
     if (colonIndex === -1) return false;
     const scheme = entry.slice(0, colonIndex);
     const path = entry.slice(colonIndex + 1);
-    return (scheme === 'github' || scheme === 'webdav') && path.length > 0;
+    return (scheme === 'github' || scheme === 'webdav' || scheme === 'local') && path.length > 0;
   });
 }
 

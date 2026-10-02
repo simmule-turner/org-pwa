@@ -244,6 +244,37 @@ function clockInSwitchingTasks(doc, heading, timestamp, now) {
  *  have already confirmed nothing is currently running before calling
  *  this -- resuming "the last clock" while one is already active
  *  doesn't have a sensible meaning of its own. */
+/** Every heading in `doc` that has ever been clocked (a finished clock or a running one), most recently
+ *  clocked INTO first, at most `limit` of them: the data behind org-clock-goto's C-u form, which offers
+ *  "a list of recently clocked tasks". Ordered by when each heading's latest clock STARTED, the same
+ *  measure findMostRecentlyClockedHeading uses. Unlike Emacs's clock history, which only holds what was
+ *  clocked in the current session, this reads the document's own CLOCK lines, so it is complete and
+ *  survives a reload. @returns {{ heading: object, start: Date }[]} */
+function listRecentlyClockedHeadings(doc, limit = 15) {
+  const found = [];
+  const consider = (heading) => {
+    let latest = null;
+    for (const line of heading.logbookLines || []) {
+      const running = RUNNING_CLOCK_RE.exec(line);
+      const completed = COMPLETED_CLOCK_RE.exec(line);
+      const startRaw = running ? running[1] : completed ? completed[1] : null;
+      if (!startRaw) continue;
+      const start = parseClockTimestampToDate(startRaw);
+      if (start && (!latest || start > latest)) latest = start;
+    }
+    if (latest) found.push({ heading, start: latest });
+  };
+  const walk = (headings) => {
+    for (const heading of headings) {
+      consider(heading);
+      walk(heading.children || []);
+    }
+  };
+  walk((doc && doc.children) || []);
+  found.sort((a, b) => b.start - a.start);
+  return found.slice(0, limit);
+}
+
 function findMostRecentlyClockedHeading(doc) {
   let best = null;
   let bestStart = null;
@@ -272,6 +303,7 @@ function findMostRecentlyClockedHeading(doc) {
 }
 
 export {
+  listRecentlyClockedHeadings,
   isClockRunning,
   clockIn,
   clockInSwitchingTasks,
