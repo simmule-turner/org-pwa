@@ -2111,6 +2111,156 @@ check('narrowing persists across a reload', async () => {
   await context.close();
 });
 
+check('capture from outside: a share URL runs the named template with the shared text and link, the URL is cleaned so a reload does not repeat it, a share with no key offers the templates, and an unknown key says so', async () => {
+  dav.reset({ 'notes.org': SAMPLE, 'inbox.org': '* Inbox\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  const templates = [
+    { key: 'n', description: 'Shared note', type: 'entry', file: 'inbox.org', olp: ['Inbox'], template: '* Note\n  %i\n  %a', emptyLines: 0 },
+  ];
+  await page.evaluate((json) => new Promise((resolve, reject) => {
+    const open = indexedDB.open('org-pwa');
+    open.onsuccess = () => {
+      const db = open.result;
+      const tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(json, 'settings:captureTemplates');
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => reject(tx.error);
+    };
+    open.onerror = () => reject(open.error);
+  }), JSON.stringify(templates));
+  // Capture to another file needs a document open on the same backend; the app restores the tab that was open when a launch URL starts it.
+  await openDav(page, 'notes.org');
+  const waitForFile = async (needle) => {
+    for (let n = 0; n < 40 && !dav.get('inbox.org').includes(needle); n++) await page.waitForTimeout(250);
+    return dav.get('inbox.org');
+  };
+
+  // 1. the share target's URL: key, title, text and url
+  const share = '?capture=n&title=Example%20page&text=First%20line%0A*%20starred&url=https%3A%2F%2Fexample.com%2Fa';
+  await page.goto(`${main.base}/index.html${share}`, { waitUntil: 'load' });
+  const file = await waitForFile('** Note');
+  const logs = [];
+  page.on('console', (m) => logs.push(m.text().slice(0, 140)));
+  const said = async () => `tabs: ${JSON.stringify((await page.locator('#tabBar').innerText()).slice(0, 80))} | modeline: ${JSON.stringify((await page.locator('#modelineBar').innerText()).replace(/\\s+/g, ' ').slice(0, 160))} | url: ${page.url().slice(-60)} | console: ${JSON.stringify(logs.slice(-4))} | minibuffer: ${JSON.stringify((await page.locator('#minibuffer').innerText()).slice(0, 200))} | panel: ${JSON.stringify((await page.locator('#capturePanel').innerText().catch(() => '')).slice(0, 200))}`;
+  expect(file.includes('** Note\n  First line\n  * starred\n  [[https://example.com/a][Example page]]'), `the template ran with %i and %a: ${JSON.stringify(file)} -- ${await said()}`);
+  expect((await page.evaluate(() => window.location.search)) === '', 'the parameters were removed from the address');
+
+  // 2. a reload does not capture a second time
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  expect((dav.get('inbox.org').match(/\*\* Note/g) || []).length === 1, `a reload must not repeat the capture: ${JSON.stringify(dav.get('inbox.org'))}`);
+
+  // 3. a share with no key shows the template list, with the shared text kept for whichever is chosen
+  await page.goto(`${main.base}/index.html?title=T&text=chosen%20later`, { waitUntil: 'load' });
+  await page.waitForSelector('#capturePanel', { state: 'visible', timeout: 6000 });
+  expect((await page.locator('#capturePanel').innerText()).includes('Shared note'), 'the template list is showing');
+  await page.locator('#capturePanel button', { hasText: 'Shared note' }).first().click();
+  const second = await waitForFile('chosen later');
+  expect(second.includes('  chosen later'), `the shared text went into the template that was picked: ${JSON.stringify(second)}`);
+
+  // 4. an unknown key says so and still offers the list
+  await page.goto(`${main.base}/index.html?capture=zzz&text=x`, { waitUntil: 'load' });
+  await page.waitForSelector('#capturePanel', { state: 'visible', timeout: 6000 });
+  const panel = await page.locator('#capturePanel').innerText();
+  expect(panel.includes('Shared note'), 'an unknown key falls back to the list');
+  expect((await page.locator('#minibuffer').innerText()).includes('No capture template "zzz"'), 'and says why');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('capture from outside: %x takes the clipboard (read only for a template that uses it), and a refused clipboard leaves %x empty but still captures, saying why', async () => {
+  const seed = (page, templates) => page.evaluate((json) => new Promise((resolve, reject) => {
+    const open = indexedDB.open('org-pwa');
+    open.onsuccess = () => {
+      const db = open.result;
+      const tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(json, 'settings:captureTemplates');
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => reject(tx.error);
+    };
+    open.onerror = () => reject(open.error);
+  }), JSON.stringify(templates));
+  const templates = [
+    { key: 'x', description: 'Clip', type: 'entry', olp: ['Inbox'], template: '* Clip\n  %x', emptyLines: 0 },
+    { key: 'p', description: 'Plain', type: 'entry', olp: ['Inbox'], template: '* Plain', emptyLines: 0 },
+  ];
+  const at = (step) => (e) => { e.message = `[${step}] ${e.message}`; throw e; };
+  const runTemplate = async (page, name) => {
+    await openPalette(page).catch(at('openPalette'));
+    await page.keyboard.type('capture: ' + name);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(700);
+    // the capture panel stays open after a capture (as it always has); close it so the next click is not covered
+    if (await page.locator('#capturePanel').isVisible()) await page.locator('#capturePanel button', { hasText: 'Close' }).first().click();
+  };
+  const documentText = async (page) => {
+    await viewMenu(page, 'Text').catch(at('viewMenu Text'));
+    const text = await page.locator('#document-text-edit-input').inputValue();
+    await viewMenu(page, 'Org').catch(at('viewMenu Org'));
+    return text;
+  };
+
+  // 1. permission granted: %x is the clipboard, and a template without %x never reads it
+  {
+    const { context, page, errors } = await freshPage();
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await newDocument(page, '* Inbox\n');
+    await seed(page, templates);
+    await page.evaluate(async () => {
+      window.__clipboardReads = 0;
+      const real = navigator.clipboard.readText.bind(navigator.clipboard);
+      navigator.clipboard.readText = async () => { window.__clipboardReads += 1; return real(); };
+      await navigator.clipboard.writeText('from the clipboard\n* not a heading');
+    });
+    await runTemplate(page, 'plain');
+    expect((await page.evaluate(() => window.__clipboardReads)) === 0, 'a template without %x never reads the clipboard');
+    await runTemplate(page, 'clip');
+    expect((await page.evaluate(() => window.__clipboardReads)) === 1, 'a template with %x reads it once');
+    const text = await documentText(page);
+    expect(text.includes('** Clip\n  from the clipboard\n  * not a heading'), `%x was filled from the clipboard: ${JSON.stringify(text)}`);
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  // 2. permission refused: %x is empty, the capture still happens, and the person is told
+  {
+    const { context, page } = await freshPage();
+    await newDocument(page, '* Inbox\n');
+    await seed(page, templates);
+    await page.evaluate(() => { navigator.clipboard.readText = async () => { throw new DOMException('denied', 'NotAllowedError'); }; });
+    await runTemplate(page, 'clip');
+    const text = await documentText(page);
+    expect(text.includes('** Clip'), `the capture still went ahead: ${JSON.stringify(text)}`);
+    expect(!text.includes('from the clipboard'), 'with %x empty');
+    await context.close();
+  }
+});
+
+check('capture from outside, offline: a launch URL with a query string (share sheet or icon shortcut) loads from the cache with the server gone', async () => {
+  const dead = await startServer(createDav());
+  const { context, page } = await freshPage(dead, { serviceWorkers: 'allow' });
+  const expected = (fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8').match(/^\s+'\.\/[^']*',?$/gm) || []).length;
+  let cached = 0;
+  for (let attempt = 0; attempt < 40 && cached < expected; attempt++) {
+    try {
+      cached = await page.evaluate(async () => {
+        const names = await caches.keys();
+        return names.length ? (await (await caches.open(names[0])).keys()).length : 0;
+      });
+    } catch {
+      // navigated mid-poll -- try again
+    }
+    if (cached < expected) await page.waitForTimeout(500);
+  }
+  expect(cached >= expected, `the service worker cached only ${cached} of ${expected} shell files`);
+  await page.reload({ waitUntil: 'load' }); // so the page is controlled by the worker
+  await dead.stop();
+  await page.goto(`${dead.base}/index.html?capture`, { waitUntil: 'load' });
+  await page.waitForSelector('#capturePanel', { state: 'visible', timeout: 8000 });
+  expect((await page.locator('#capturePanel').innerText()).includes('Capture'), 'the app started offline from a URL with a query string, and opened Capture');
+  await context.close();
+});
+
 check('god-mode hints: while a sequence is in progress a card lists the keys that continue it and what each does; tapping one runs it; it goes away when the sequence ends or is cancelled', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* TODO Task\n');
@@ -2286,6 +2436,16 @@ check('local agenda files: a local: entry loads without any prompt when access i
   await context.close();
 });
 
+check('agenda files: the same file name under two schemes is reported, not silently dropped', async () => {
+  const { context, page } = await freshPage();
+  await newDocument(page, ['* Main document', '# Local Variables:', '# org-agenda-files: webdav:dup.org;local:dup.org', '# End:', ''].join('\n'));
+  await viewMenu(page, 'Agenda');
+  await page.waitForTimeout(1200);
+  const text = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+  expect(text.includes('"local:dup.org" has the same file name as "webdav:dup.org"') && text.includes('so only "webdav:dup.org" is used'), `the second entry says why it is not used: ${text.slice(0, 400)}`);
+  await context.close();
+});
+
 check('Search\u2019s Narrow persists across a reload, and Widen forgets it', async () => {
   dav.reset({ 'notes.org': ['* Alpha apple', '* Beta banana', '* Gamma apple', '* Delta', ''].join('\n') });
   const { context, page } = await freshPage(main, { withDav: true });
@@ -2316,6 +2476,63 @@ check('Search\u2019s Narrow persists across a reload, and Widen forgets it', asy
   expect((await titles()).length === 4, `Widen shows everything again: ${JSON.stringify(await titles())}`);
   await reload();
   expect((await titles()).length === 4 && (await page.getByText('Narrowed to search').count()) === 0, `and a widened document stays widened after a reload: ${JSON.stringify(await titles())}`);
+  await context.close();
+});
+
+check('Search\u2019s Narrow restores every one of several headings that share a title, under the same or different parents', async () => {
+  dav.reset({ 'notes.org': ['* Group', '** Dup apple', '** Other', '* Group', '** Dup apple', '* Dup apple', '* Dup apple', '* Tail', ''].join('\n') });
+  const { context, page } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const titles = async () => (await page.locator('.heading-title').allInnerTexts()).map((t) => t.trim());
+  await page.locator('body').click({ position: { x: 200, y: 850 } });
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('s');
+  await page.locator('#search-query-input').fill('apple');
+  await page.waitForTimeout(700);
+  await page.locator('button', { hasText: /^Narrow$/ }).first().click();
+  await page.waitForTimeout(500);
+  const before = await titles();
+  expect(before.filter((t) => t === 'Dup apple').length === 4 && !before.includes('Other') && !before.includes('Tail'), `Narrow shows all four matches and no others: ${JSON.stringify(before)}`);
+  expect((await page.getByText('Narrowed to search: 4 headings').count()) === 1, 'the banner counts all four');
+
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  if (!(await page.locator('.heading-title').count())) await openDav(page, 'notes.org');
+  await page.waitForTimeout(700);
+  const after = await titles();
+  expect(JSON.stringify(after) === JSON.stringify(before), `after a reload the same headings are showing, not just the first of each title: ${JSON.stringify(after)} vs ${JSON.stringify(before)}`);
+  expect((await page.getByText('Narrowed to search: 4 headings').count()) === 1, 'and the banner still counts four');
+  await context.close();
+});
+
+check('line endings: a Windows-style (CRLF) file on the server is edited and saved with every line still CRLF, and a Unix-style one stays Unix-style', async () => {
+  dav.reset({ 'crlf.org': '* One\r\n* Two\r\nbody text\r\n', 'unix.org': '* One\n* Two\nbody text\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  const at = (step) => (e) => { e.message = `[${step}] ${e.message}`; throw e; };
+
+  await openDav(page, 'crlf.org').catch(at('open crlf'));
+  await setDocumentText(page, '* One\n* Two changed\nbody text\n').catch(at('edit 1'));
+  await fileMenu(page, 'Save').catch(at('save 1'));
+  await waitForStatus(page, 'Saved').catch(at('status 1'));
+  expect(dav.get('crlf.org') === '* One\r\n* Two changed\r\nbody text\r\n', `every line is still CRLF and only the edited one changed: ${JSON.stringify(dav.get('crlf.org'))}`);
+
+  // saving did not leave the app thinking the file changed underneath it (a hash the app compares must agree with what it wrote)
+  await page.waitForTimeout(800);
+  expect(!(await page.locator('#externalChangeBanner').isVisible().catch(at('banner'))), 'no "changed elsewhere" banner after our own save');
+
+  // a second edit and save, to be sure the remembered style holds for the whole session
+  await setDocumentText(page, '* One\n* Two changed\nbody text\n* Three\n').catch(at('edit 2'));
+  await fileMenu(page, 'Save').catch(at('save 2'));
+  await waitForStatus(page, 'Saved').catch(at('status 2'));
+  expect(dav.get('crlf.org') === '* One\r\n* Two changed\r\nbody text\r\n* Three\r\n', `still CRLF after a second save: ${JSON.stringify(dav.get('crlf.org'))}`);
+
+  // a Unix-style file is not turned into a Windows-style one
+  await openDav(page, 'unix.org').catch(at('open unix'));
+  await setDocumentText(page, '* One\n* Two edited\nbody text\n').catch(at('edit 3'));
+  await fileMenu(page, 'Save').catch(at('save 3'));
+  await waitForStatus(page, 'Saved').catch(at('status 3'));
+  expect(dav.get('unix.org') === '* One\n* Two edited\nbody text\n', `a Unix-style file stays Unix-style: ${JSON.stringify(dav.get('unix.org'))}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
 
