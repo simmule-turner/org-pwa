@@ -1396,6 +1396,65 @@ check('floating keyboard: pushed up by the device keyboard it STAYS up when the 
   await context.close();
 });
 
+check('floating keyboard: where the person drags it is remembered across a reload, but a push by the device keyboard is not', async () => {
+  const dragTop = async (page) => { // drag the panel up by 220px and report its top edge before and after
+    const fk = page.locator('#floatingKeyboard');
+    const before = Math.round((await fk.boundingBox()).y);
+    const handle = await fk.locator('[data-fk-handle]').boundingBox();
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2 - 220, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    return [before, Math.round((await fk.boundingBox()).y)];
+  };
+  const reopen = async (page) => {
+    await page.reload();
+    await page.locator('#moreBtn').waitFor({ state: 'visible' });
+    await page.waitForTimeout(500);
+    await newDocument(page, '* One\n');
+    await page.click('#godModeBtn');
+    await page.locator('#floatingKeyboard').waitFor({ state: 'visible' });
+    await page.waitForTimeout(400);
+    return Math.round((await page.locator('#floatingKeyboard').boundingBox()).y);
+  };
+
+  // 1. a drag is remembered
+  {
+    const { context, page, errors } = await freshPage();
+    await page.setViewportSize({ width: 360, height: 740 });
+    await newDocument(page, '* One\n');
+    await page.click('#godModeBtn');
+    await page.locator('#floatingKeyboard').waitFor({ state: 'visible' });
+    await page.waitForTimeout(400);
+    const [before, after] = await dragTop(page);
+    expect(after < before - 150, `the drag should move the panel up: ${before} -> ${after}`);
+    const restored = await reopen(page);
+    expect(Math.abs(restored - after) <= 3, `after a reload the panel opens where it was dragged to: dragged to ${after}, reopened at ${restored}`);
+    expect(restored < before - 150, `and not at its default spot (${before}): ${restored}`);
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  // 2. being pushed up by the device keyboard is not
+  {
+    const { context, page } = await freshPage();
+    await page.setViewportSize({ width: 360, height: 740 });
+    await newDocument(page, '* One\n');
+    await page.click('#godModeBtn');
+    await page.locator('#floatingKeyboard').waitFor({ state: 'visible' });
+    await page.waitForTimeout(400);
+    const resting = Math.round((await page.locator('#floatingKeyboard').boundingBox()).y);
+    await emulateDeviceKeyboard(page, 300);
+    await page.waitForTimeout(900);
+    const pushed = Math.round((await page.locator('#floatingKeyboard').boundingBox()).y);
+    expect(pushed < resting - 150, `the keyboard pushes it up: ${resting} -> ${pushed}`);
+    const reopened = await reopen(page);
+    expect(Math.abs(reopened - resting) <= 3, `a one-off push is not kept: it should reopen at its default (${resting}), not ${reopened}`);
+    await context.close();
+  }
+});
+
 check('floating keyboard: a thick accent-coloured border identifies it, and it fits a 360px screen with every key at least 34px wide and 44px tall', async () => {
   const { context, page } = await freshPage();
   await page.setViewportSize({ width: 360, height: 740 });
@@ -2052,10 +2111,222 @@ check('narrowing persists across a reload', async () => {
   await context.close();
 });
 
+check('god-mode hints: while a sequence is in progress a card lists the keys that continue it and what each does; tapping one runs it; it goes away when the sequence ends or is cancelled', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* TODO Task\n');
+  const hints = page.locator('#godModeHints');
+  const visible = () => hints.isVisible();
+  const entry = (key) => hints.locator(`[data-hint-key="${key}"]`).first();
+  const header = async () => (await hints.innerText()).split('\n')[0].replace(/\s+/g, ' ');
+  expect(!(await visible()), 'no card when god-mode is off');
+
+  await page.locator('body').click({ position: { x: 200, y: 850 } });
+  await page.keyboard.press('Escape');
+  if (!(await page.locator('#minibuffer').innerText()).includes('God-mode')) await page.keyboard.press('Escape');
+  expect(!(await visible()), 'and none in god-mode before a key is typed');
+
+  await page.keyboard.press('c');
+  await hints.waitFor({ state: 'visible', timeout: 3000 });
+  expect((await header()).startsWith('C-c'), `the card says what has been typed: ${await header()}`);
+  const t = (await entry('t').innerText()).replace(/\s+/g, ' ');
+  expect(/TODO/i.test(t), `t is labelled with what it does: ${t}`);
+  expect((await hints.locator('[data-hint-key]').count()) >= 8, 'and the other keys that continue C-c are listed');
+  expect((await entry('x').innerText()).includes('\u2026'), 'x leads on to more, and is marked so');
+
+  await entry('x').click(); // a prefix: tapping it continues the sequence
+  expect((await header()).includes('C-c C-x'), `tapping a prefix key continues the sequence: ${await header()}`);
+  expect((await entry('i').innerText()).includes('Clock in'), 'and shows the clock keys');
+
+  await page.keyboard.press('Escape'); // cancels the sequence
+  await page.waitForTimeout(300);
+  expect(!(await visible()), 'Escape cancels the sequence and the card goes away');
+
+  // tapping to finish a chord runs the command: c then t cycles the TODO state
+  await page.keyboard.press('c');
+  await hints.waitFor({ state: 'visible', timeout: 3000 });
+  await entry('t').click();
+  await page.waitForTimeout(400);
+  expect((await page.locator('#outline').innerText()).includes('DONE'), 'tapping t ran C-c C-t: the TODO state moved on');
+  expect(!(await visible()), 'and the card goes away once the chord is finished');
+
+  // g (Meta) shows the Meta keys
+  await page.keyboard.press('g');
+  await hints.waitFor({ state: 'visible', timeout: 3000 });
+  expect((await header()).includes('M-'), `after g the card is about Meta: ${await header()}`);
+  expect(/palette/i.test(await entry('x').innerText()), 'g x is the command palette');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  expect(!(await visible()), 'cancelled again');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('org-clock-goto with C-u (u c x j): lists recently clocked tasks, most recent first, from every tab, and jumps to the one chosen; it is in the palette as org-clock-select-task, dimmed when nothing has been clocked', async () => {
+  const doc = ['* Old task', ':LOGBOOK:', 'CLOCK: [2026-09-01 Tue 09:00]--[2026-09-01 Tue 10:00] =>  1:00', ':END:',
+    '* Newest task', ':LOGBOOK:', 'CLOCK: [2026-09-02 Wed 08:00]--[2026-09-02 Wed 08:30] =>  0:30', 'CLOCK: [2026-09-05 Sat 14:00]--[2026-09-05 Sat 15:00] =>  1:00', ':END:',
+    '* Never clocked', '** Clocked in the middle', ':LOGBOOK:', 'CLOCK: [2026-09-03 Thu 10:00]--[2026-09-03 Thu 11:00] =>  1:00', ':END:', ''].join('\n');
+  const enterGodMode = async (page) => {
+    await page.locator('body').click({ position: { x: 200, y: 850 } });
+    await page.keyboard.press('Escape');
+    if (!(await page.locator('#minibuffer').innerText()).includes('God-mode')) await page.keyboard.press('Escape');
+  };
+  const choices = (page) => page.getByText('Go to which recently clocked task?').locator('xpath=following-sibling::div[contains(@class,"panel-row")]//button').allInnerTexts();
+
+  // 1. nothing clocked: the palette row is there but dimmed, with the reason
+  {
+    const { context, page } = await freshPage();
+    await newDocument(page, '* Nothing clocked here\n');
+    await openPalette(page);
+    await page.keyboard.type('recently clocked');
+    const rows = await paletteRows(page);
+    expect(rows.some((r) => r.includes('Go to a recently clocked task') && r.includes('nothing has been clocked yet')), `dimmed with the reason: ${JSON.stringify(rows)}`);
+    await context.close();
+  }
+
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, doc);
+
+  // 2. the palette row shows its real name and chord
+  await openPalette(page);
+  await page.keyboard.type('recently clocked');
+  const rows = await paletteRows(page);
+  expect(rows.some((r) => r.includes('Go to a recently clocked task') && r.includes('C-u C-c C-x C-j') && r.includes('org-clock-select-task') && !r.includes('unavailable')), `available, with its chord and real name: ${JSON.stringify(rows)}`);
+  await page.keyboard.press('Escape');
+
+  // 3. the god-mode chord opens the list, newest first, and never lists a heading that was not clocked
+  await enterGodMode(page);
+  for (const k of ['u', 'c', 'x', 'j']) await page.keyboard.press(k);
+  await page.getByText('Go to which recently clocked task?').waitFor({ state: 'visible', timeout: 4000 });
+  const list = (await choices(page)).map((t) => t.split(' \u00b7 ')[0]);
+  expect(JSON.stringify(list) === JSON.stringify(['Newest task', 'Clocked in the middle', 'Old task']), `most recently clocked first, and only clocked tasks: ${JSON.stringify(list)}`);
+
+  // 4. choosing one jumps to it (and leaves the way back, like every jump)
+  expect(!(await page.locator('#navBackBtn').isVisible()), 'nothing has been navigated yet');
+  await page.getByRole('button', { name: /^Old task/ }).click();
+  await page.waitForTimeout(500);
+  expect(await page.locator('#navBackBtn').isVisible(), 'choosing a task jumps to it and leaves the floating back button');
+
+  // 5. from another tab it lists the first tab\u2019s tasks and switches back to that tab
+  await newDocument(page, '* A different document\n');
+  expect((await page.locator('#outline').innerText()).includes('A different document'), 'the second tab is showing');
+  await enterGodMode(page);
+  for (const k of ['u', 'c', 'x', 'j']) await page.keyboard.press(k);
+  await page.getByText('Go to which recently clocked task?').waitFor({ state: 'visible', timeout: 4000 });
+  await page.getByRole('button', { name: /^Newest task/ }).click();
+  await page.waitForTimeout(700);
+  const shown = await page.locator('#outline').innerText();
+  expect(shown.includes('Newest task') && !shown.includes('A different document'), `it switched to the tab holding that task: ${shown.slice(0, 120)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('local agenda files: a local: entry loads without any prompt when access is granted, says what to do when it is not, asks only on the refresh button, opens from this device when tapped, and is never written into', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 412, height: 900 });
+  // A real file handle from the browser's private file system stands in for a file opened on this device earlier;
+  // it is registered where the app keeps such handles, and the permission calls are ones this check controls and counts.
+  await page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    const fh = await root.getFileHandle('agenda-local.org', { create: true });
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp = `<${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]}>`;
+    const w = await fh.createWritable();
+    await w.write(`* TODO Local task\nSCHEDULED: ${stamp}\n`);
+    await w.close();
+    await new Promise((resolve, reject) => {
+      const req = indexedDB.open('org-pwa');
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(fh, 'filehandle:agenda-local.org');
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => reject(tx.error);
+      };
+      req.onerror = () => reject(req.error);
+    });
+    window.__perm = { query: 0, request: 0, state: 'prompt' };
+    FileSystemHandle.prototype.queryPermission = async function () { window.__perm.query += 1; return window.__perm.state; };
+    FileSystemHandle.prototype.requestPermission = async function () { window.__perm.request += 1; window.__perm.state = 'granted'; return 'granted'; };
+  });
+  const perm = () => page.evaluate(() => ({ ...window.__perm }));
+  const pageText = async () => (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+
+  await newDocument(page, ['* Main document', '# Local Variables:', '# org-agenda-files: local:agenda-local.org', '# End:', ''].join('\n'));
+  await viewMenu(page, 'Agenda');
+  await page.waitForTimeout(1200);
+  let t = await pageText();
+  expect(t.includes('needs permission to be read') && t.includes('Tap \u21bb to allow it'), `without access the agenda says what to do: ${t.slice(0, 300)}`);
+  expect(!t.includes('Local task'), 'and shows nothing from the file yet');
+  let p = await perm();
+  expect(p.query >= 1 && p.request === 0, `loading it must only LOOK at the permission, never ask: ${JSON.stringify(p)}`);
+
+  // the refresh button is a tap, so it is allowed to ask
+  await page.locator('button', { hasText: '\u21bb' }).first().click();
+  await page.waitForFunction(() => document.body.innerText.includes('Local task'), null, { timeout: 8000 });
+  p = await perm();
+  expect(p.request >= 1, `the refresh button asks for access: ${JSON.stringify(p)}`);
+  expect(!(await pageText()).includes('needs permission to be read'), 'and the message is gone once it is read');
+
+  // read-only: every view may use it, but nothing that writes back may
+  const ids = await page.evaluate(async () => {
+    const { aggregateAgendaDocs } = await import('/src-browser/agenda-files.js');
+    return { all: aggregateAgendaDocs().map((d) => d.documentId), writable: aggregateAgendaDocs({ writable: true }).map((d) => d.documentId) };
+  });
+  expect(ids.all.includes('agenda-local.org'), `the agenda and search can use it: ${JSON.stringify(ids)}`);
+  expect(!ids.writable.includes('agenda-local.org'), `but Refile and Replace never see it as somewhere to write: ${JSON.stringify(ids)}`);
+
+  // tapping the item opens the file from this device
+  await page.getByText('Local task').first().click();
+  // the modeline bar also holds the status message, so look for the buffer name with its (Local) suffix, which only an opened local file has
+  await page.waitForFunction(() => document.getElementById('modelineBar').innerText.includes('agenda-local.org (Local)'), null, { timeout: 8000 });
+  expect((await page.locator('#modelineBar').innerText()).includes('agenda-local.org (Local)'), 'the file opened, as a local file');
+  expect((await page.locator('#tabBar > div').count()) === 2, 'in its own tab');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Search\u2019s Narrow persists across a reload, and Widen forgets it', async () => {
+  dav.reset({ 'notes.org': ['* Alpha apple', '* Beta banana', '* Gamma apple', '* Delta', ''].join('\n') });
+  const { context, page } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const titles = async () => (await page.locator('.heading-title').allInnerTexts()).map((t) => t.trim());
+  await page.locator('body').click({ position: { x: 200, y: 850 } });
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('s');
+  await page.locator('#search-query-input').fill('apple');
+  await page.waitForTimeout(700);
+  await page.locator('button', { hasText: /^Narrow$/ }).first().click();
+  await page.waitForTimeout(500);
+  expect(JSON.stringify(await titles()) === JSON.stringify(['Alpha apple', 'Gamma apple']), `Narrow should show only the two matches: ${JSON.stringify(await titles())}`);
+  expect((await page.getByText('Narrowed to search: 2 headings').count()) === 1, 'and a banner says so');
+
+  const reload = async () => {
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForTimeout(1500);
+    if (!(await page.locator('.heading-title').count())) await openDav(page, 'notes.org');
+    await page.waitForTimeout(700);
+  };
+  await reload();
+  expect(JSON.stringify(await titles()) === JSON.stringify(['Alpha apple', 'Gamma apple']), `after a reload it is still narrowed to the same two: ${JSON.stringify(await titles())}`);
+  expect((await page.getByText('Narrowed to search: 2 headings').count()) === 1, 'with its banner');
+
+  await page.getByRole('button', { name: 'Widen', exact: true }).first().click();
+  await page.waitForTimeout(500);
+  expect((await titles()).length === 4, `Widen shows everything again: ${JSON.stringify(await titles())}`);
+  await reload();
+  expect((await titles()).length === 4 && (await page.getByText('Narrowed to search').count()) === 0, `and a widened document stays widened after a reload: ${JSON.stringify(await titles())}`);
+  await context.close();
+});
+
 // ---- runner -------------------------------------------------------------------
 
 const filter = process.argv[2];
-const selected = filter ? checks.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase())) : checks;
+const matching = filter ? checks.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase())) : checks;
+// SMOKE_SLICE=0:20 runs only the first twenty of the selected checks (start inclusive, end exclusive), so a long
+// suite can be run in parts where one command has a time limit.
+const [sliceStart, sliceEnd] = (process.env.SMOKE_SLICE || '').split(':').map((n) => (n === '' || n === undefined ? undefined : Number(n)));
+const selected = process.env.SMOKE_SLICE ? matching.slice(sliceStart || 0, sliceEnd) : matching;
 if (selected.length === 0) {
   console.error(`no checks match "${filter}"`);
   process.exit(2);
