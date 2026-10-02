@@ -1106,6 +1106,42 @@ check('command palette: the real Emacs/Org names are searchable, the two former 
   await context.close();
 });
 
+check('affiliated keywords: #+CAPTION shows as a caption, #+NAME and #+ATTR_* show as muted lines, #+ATTR_HTML sizes the image, a plain paragraph is untouched, and the saved text does not change', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 412, height: 900 });
+  const doc = ['#+STARTUP: inlineimages', '* Figures', '#+NAME: fig:cat', '#+CAPTION: A *fluffy* cat', '#+ATTR_HTML: :width 300 :align center', '[[https://example.invalid/cat.png]]', '',
+    '#+NAME: tbl:scores', '#+CAPTION: Scores by term', '| a | b |', '|---+---|', '| 1 | 2 |', '', 'A plain paragraph with no keywords.', ''].join('\n');
+  await newDocument(page, doc);
+  for (let round = 0; round < 4; round++) {
+    const n = await page.evaluate(() => {
+      const folds = [...document.querySelectorAll('#outline .row *')].filter((el) => el.children.length === 0 && el.textContent === '\u25b8');
+      folds.forEach((el) => el.click());
+      return folds.length;
+    });
+    if (!n) break;
+    await page.waitForTimeout(250);
+  }
+  const caps = await page.locator('[data-affiliated="caption"]').allInnerTexts();
+  expect(JSON.stringify(caps) === JSON.stringify(['A fluffy cat', 'Scores by term']), `both captions show as captions, without the #+CAPTION: prefix: ${JSON.stringify(caps)}`);
+  expect((await page.locator('[data-affiliated="caption"] b').count()) === 1, 'and a caption\u2019s inline markup is rendered (*fluffy* is bold)');
+  const metas = (await page.locator('[data-affiliated="meta"]').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+  expect(JSON.stringify(metas) === JSON.stringify(['#+NAME: fig:cat #+ATTR_HTML: :width 300 :align center', '#+NAME: tbl:scores']), `the other keyword lines stay visible, muted: ${JSON.stringify(metas)}`);
+  const img = await page.locator('#outline img').first().evaluate((el) => ({ width: el.style.width, left: el.style.marginLeft, right: el.style.marginRight }));
+  expect(img.width === '300px' && img.left === 'auto' && img.right === 'auto', `#+ATTR_HTML :width 300 :align center sizes and centers the image: ${JSON.stringify(img)}`);
+  const outlineText = await page.locator('#outline').innerText();
+  expect(!outlineText.includes('#+CAPTION'), 'no raw #+CAPTION: line is shown as text');
+  const plainUntouched = await page.evaluate(() => {
+    const els = [...document.querySelectorAll('#outline div')].filter((d) => d.style.whiteSpace === 'pre-wrap' && d.innerText.trim() === 'A plain paragraph with no keywords.');
+    return els.length === 1 && els[0].querySelector('[data-affiliated]') === null;
+  });
+  expect(plainUntouched, 'a paragraph with no keywords has no decoration');
+  await viewMenu(page, 'Text');
+  const text = await page.locator('#document-text-edit-input').inputValue();
+  expect(text.includes('#+CAPTION: A *fluffy* cat\n#+ATTR_HTML: :width 300 :align center\n[[https://example.invalid/cat.png]]') && text.includes('#+NAME: tbl:scores\n#+CAPTION: Scores by term\n| a | b |'), 'the saved text still has every keyword line exactly as written');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('local file: switching tabs and regaining focus never ask the browser for permission (only Save, which the person starts, does), yet a granted file is still checked for outside changes', async () => {
   const { context, page, errors } = await freshPage();
   // A real file handle from the browser's private file system stands in for a file picked from the device,
