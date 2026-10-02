@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v426';
+const CACHE_NAME = 'org-pwa-shell-v427';
 
 const SHELL_FILES = [
   './',
@@ -43,6 +43,7 @@ const SHELL_FILES = [
   './src/text-normalize.js',
   './src/hex-alpha.js',
   './src/org-weather.js',
+  './src/god-mode-hints.js',
   './src/god-mode.js',
   './src/math-render.js',
   './src/katex-export-css.js',
@@ -126,6 +127,7 @@ const SHELL_FILES = [
   './src-browser/gestures-structure.js',
   './src-browser/god-mode-palette.js',
   './src-browser/floating-keyboard.js',
+  './src-browser/god-mode-hints.js',
   './src-browser/heading-commands.js',
   './src-browser/inline-render.js',
   './src-browser/keyboard-focus.js',

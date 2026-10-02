@@ -7,6 +7,16 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v427 — God-mode key hints; local agenda files; C-u clock-goto; Search's Narrow and the panel position persist
+Four gaps closed. The floating keyboard remembers where you drag it (a
+push by the device keyboard is not saved). Search's Narrow survives a
+reload. Local files can be agenda files (`local:name.org`): read-only,
+loaded only if the browser already allows access, and the refresh button
+is what asks. `C-u C-c C-x C-j` (`u c x j`) picks from recently clocked
+tasks across your tabs. And while you type a god-mode prefix, a card
+lists the keys that continue it and what each does; tap one to send it,
+so a whole chord works without the device keyboard.
+
 * v426 — Files round-trip byte for byte; captions and image sizes; #+SEQ_TODO
 Opening and saving a file without editing it now returns it byte for
 byte. Of 54 real org files, 23 changed on a plain open and save:

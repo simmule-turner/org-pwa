@@ -408,7 +408,7 @@ Replace works on heading titles, paragraphs, list items and table cells. Tags, T
 
 *** Narrow
 
-When at least one match is in the open document, the results show *Narrow* with a count of those matches (cross-file results aren't counted). It works with any search mode. Tapping it restricts the outline to the matching headings plus their ancestors, so each match keeps its context, and a banner shows the count with a *Widen* button. It composes with [[#narrowing][subtree narrowing]]: narrow to a subtree, then to matches within it. Unlike subtree narrowing, it is session-only and widens on reload.
+When at least one match is in the open document, the results show *Narrow* with a count of those matches (cross-file results aren't counted). It works with any search mode. Tapping it restricts the outline to the matching headings plus their ancestors, so each match keeps its context, and a banner shows the count with a *Widen* button. It composes with [[#narrowing][subtree narrowing]]: narrow to a subtree, then to matches within it. Like subtree narrowing it survives a reload, and a heading renamed or removed in the meantime simply drops out.
 
 Org's own search is several separate tools: sparse trees (~C-c /~), a match grammar, and ~org-search-view~. Here one box covers tags, TODO state, priority, properties and free text together, with Match mode for the fuller boolean grammar. Not included: sparse-tree-style in-place refolding; Narrow is the nearest equivalent.
 
@@ -726,7 +726,7 @@ Every clocking action is a [[#command-palette][command palette]] command: *Clock
 - *org-clock-in* inserts a bare ~CLOCK: [timestamp]~ line on the heading whose action menu is open, else the keyboard-focused one (a status message says so when there is neither). On the heading already clocked it does nothing. On a different heading it clocks the running one out at the same moment, with no gap.
 - *org-clock-out* turns the line into ~CLOCK: [start]--[end] =>  H:MM~, with the duration computed. *org-clock-cancel* removes the running ~CLOCK:~ line entirely and records no duration, for a clock started by mistake. Both act on whichever clock is running anywhere in the document; with none running they do nothing and say so.
 - *org-clock-in-last* (~C-c C-x C-x~; the palette's *Continue last clock*, ~c x x~ in god-mode) resumes clocking on the most recently clocked heading, anywhere in the document. A status message covers "a clock is already running" and "nothing has been clocked yet". In an Extras entry it is ~'org-clock-in-last~ (see [[#extras-menu][Extras Menu]]).
-- *org-clock-goto* (~C-c C-x C-j~; the palette's *Go to clocked task*, ~c x j~) jumps to the clocked-in heading. There is one clock across all open tabs, so it works from anywhere: it switches to the clock's tab, unfolds whatever hides the task, and leaves the floating back button behind. With no clock running the palette shows it dimmed ("no clock is running"). Not implemented: org's ~C-u~ form, a list of recently clocked tasks.
+- *org-clock-goto* (~C-c C-x C-j~; the palette's *Go to clocked task*, ~c x j~) jumps to the clocked-in heading. There is one clock across all open tabs, so it works from anywhere: it switches to the clock's tab, unfolds whatever hides the task, and leaves the floating back button behind. With no clock running the palette shows it dimmed ("no clock is running"). With ~C-u~ (~u c x j~ in god-mode, or the palette's *Go to a recently clocked task*, named ~org-clock-select-task~) it lists recently clocked tasks from every open tab, most recent first, and jumps to the one you choose.
 
 Clock lines live in a ~:LOGBOOK:~ drawer from the first one. Org itself keeps the first one bare (see [[#progress-logging][Progress logging]]).
 
@@ -939,9 +939,9 @@ A trailing tag needs a space before it (~<2000-01-01 Sat +1y> :BDAY:~), as in or
 :CUSTOM_ID: agenda-files
 :END:
 
-Add files in *Settings → Quick Settings → Agenda files*, or in a document's own ~# Local Variables:~ block to override that for the one file (see [[#local-variables][Local Variables]]). Entries are semicolon-separated ~scheme:path~ pairs, like ~github:journal.org;webdav:notes/todo.org~, the same syntax as ~org-refile-targets~ (see [[#refile][Refile]]). The Agenda and TODO views then scan all of them. Only ~github~ and ~webdav~ are supported, and a malformed entry is skipped. If the open file is in the list, its live in-memory version is used.
+Add files in *Settings → Quick Settings → Agenda files*, or in a document's own ~# Local Variables:~ block to override that for the one file (see [[#local-variables][Local Variables]]). Entries are semicolon-separated ~scheme:path~ pairs, like ~github:journal.org;webdav:notes/todo.org~, the same syntax as ~org-refile-targets~ (see [[#refile][Refile]]). The Agenda and TODO views then scan all of them. ~github~ and ~webdav~ files are fetched; ~local:name.org~ reads a file you have already opened on this device (*File → Open → Local file*). A malformed entry is skipped. If the open file is in the list, its live in-memory version is used.
 
-Files are fetched once per session. Once any are configured, a *↻* button in the agenda controls refetches them, and a file that fails to load is reported above the list. Export's *This file + Agenda Files* scope always fetches fresh (see [[#export][Export]]).
+Files are fetched once per session. Once any are configured, a *↻* button in the agenda controls refetches them, and a file that fails to load is reported above the list. A local file is read-only here: Agenda, TODO, Search and Export use it, but Refile, Replace and Capture never write into it. It loads only if the browser already allows access; otherwise the agenda says it "needs permission", and the *↻* button, being a tap, is what asks. Export's *This file + Agenda Files* scope always fetches fresh (see [[#export][Export]]).
 
 *** Contacts Files
 :PROPERTIES:
@@ -1468,7 +1468,7 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 | Group | Commands |
 |---+---|
 | *Heading* | cycle TODO state, set priority, set effort estimate, edit details (schedule, deadline, timestamps, tags, properties), add heading or TODO heading after, promote, demote, move up, move down, cut, paste, archive, unarchive, refile, attachments, narrow, widen |
-| *Clocking* | clock in, clock out, cancel clock, continue last clock, go to clocked task |
+| *Clocking* | clock in, clock out, cancel clock, continue last clock, go to clocked task, go to a recently clocked task |
 | *Document* | save, save as, open, new, undo, redo, undo history, toggle read-only, capture, recalculate all tables |
 | *View* | agenda, TODO list, outline view, text view, cycle visibility of the whole document, calendar, search |
 | *Export* | the Export menu; this file as HTML, Markdown, ASCII, ODT or an Org buffer |
@@ -1511,6 +1511,8 @@ Cycling TODO state, moving a heading, promoting and demoting, and inserting a he
 An alternate input mode that reaches org's fuller keybinding set (~C-c C-t~, ~M-RET~ and the rest) without the browser ever seeing a held Ctrl or Alt. ~Escape~ turns it on (see the priority order above), or on a phone the *[g]* button does ([[#god-mode-mobile][below]]). While it is on, every key is part of a sequence instead of a plain shortcut, and the minibuffer (see [[#modeline][Modeline and minibuffer]]) echoes the sequence.
 
 When a sequence completes, the minibuffer names what ran, using the command palette's own label: ~God-mode · C-c C-x C-j → Go to clocked task~. A chord with no palette command (~Tab~, the arrows, ~C-f~) shows just the chord. The name stays until the next keystroke. Entering god-mode focuses the first visible heading if none is focused, since its actions need one.
+
+While a sequence is in progress, a card under the top bar lists the keys that would continue it and what each does, as Emacs's which-key does. Each entry is a button: tap it to send that key, so a whole chord can be completed by tapping, with no device keyboard. A key that leads on to more is marked ~…~. ~Escape~ cancels the sequence and the card goes away.
 
 Opening an overlay panel (the Extras menu, Settings, Docs, Capture, Search, the File, View and More menus, the History panel or the Calendar) exits god-mode, and the plain shortcuts don't act while a panel is open; ~Escape~ closes the open panel first. Help opened with ~h SPC m~ is the exception (see below).
 
@@ -1564,6 +1566,7 @@ The translation rules follow real god-mode.el (github.com/emacsorphanage/god-mod
 | ~c x q~ | ~C-c C-x C-q~ | Cancel the running clock without recording its time (~org-clock-cancel~) |
 | ~c x x~ | ~C-c C-x C-x~ | Resume the most recently clocked heading (~org-clock-in-last~) |
 | ~c x j~ | ~C-c C-x C-j~ | Jump to the clocked-in heading, in whichever tab it runs (~org-clock-goto~) |
+| ~u c x j~ | ~C-u C-c C-x C-j~ | Choose from recently clocked tasks and jump to it (~org-clock-select-task~) |
 | ~c e~ | ~C-c C-e~ | Open the export dispatcher (~org-export-dispatch~, see [[#export][Export]]) |
 | ~f~ | ~C-f~ | Arm the next ~/~ to redo instead of undo |
 | ~/~ | ~C-/~ | Undo, or redo if armed |
@@ -1592,7 +1595,7 @@ The floating keyboard has the keys a phone keyboard can't type, in one row: *⌨
 
 - *S* is one-shot: tap it, and the next key is shifted (~Tab~ becomes ~S-Tab~, the arrows their table-navigation forms, ~g~ becomes ~G~, the Control+Meta prefix). It also shifts the next key typed on the phone keyboard, so ~gS-RET~ (~M-S-RET~, a TODO heading) is: tap ~g~, tap *S*, tap Return. A letter typed after *S* becomes its capital. Tapping *S* again disarms it.
 - *⌨* hides or shows the device keyboard and changes nothing else. It is lit while the keyboard is up. After a popup closes, the keyboard doesn't return by itself; tap ⌨.
-- The move area (⠿) drags the panel, and its position lasts until the page reloads. Tap it without dragging to minimize the panel to its handle, and tap the handle to restore it.
+- The move area (⠿) drags the panel, and its position is remembered. Tap it without dragging to minimize the panel to its handle, and tap the handle to restore it.
 
 *Placement*: the panel sits above the mode line and the floating buttons, so the device keyboard never hides it and it never covers the mode line or *[g]*. By default it sits just above the floating buttons. If the keyboard comes up under it, it is pushed up and stays there when the keyboard goes away; only dragging lowers it.
 
@@ -1622,7 +1625,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Clocking* (see [[#clocking][Clocking]]): no custom ~org-duration-units~, no ~Effort_ALL+~, and no clock-in reminder beyond the modeline's over-estimate marker.
 
-*Agenda* (see [[#agenda][Agenda]]): effort sorting, filtering and the per-day limit are session settings in the ⏱ panel, not ~org-agenda-sorting-strategy~ or ~org-agenda-max-effort~. There is no negated (~-<~) filter, no effort column format (~%e~) and no effort sort in the TODO view. The sexp evaluator supports a closed, documented set of functions (including ~org-class~, ~org-date~ and ~and~, ~or~, ~not~), not a Lisp interpreter: no ~let~, ~date~ variable or ~calendar-*~ helpers, no ~diary-remind~, and no holiday-skipping in ~org-class~. ~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~ are left out on purpose, since their ~org-*~ twins take unambiguous year-month-day dates (see [[#agenda-sexp-timestamps][General sexp timestamps]]). ~org-agenda-files~ supports only GitHub and WebDAV entries, not local files.
+*Agenda* (see [[#agenda][Agenda]]): effort sorting, filtering and the per-day limit are session settings in the ⏱ panel, not ~org-agenda-sorting-strategy~ or ~org-agenda-max-effort~. There is no negated (~-<~) filter, no effort column format (~%e~) and no effort sort in the TODO view. The sexp evaluator supports a closed, documented set of functions (including ~org-class~, ~org-date~ and ~and~, ~or~, ~not~), not a Lisp interpreter: no ~let~, ~date~ variable or ~calendar-*~ helpers, no ~diary-remind~, and no holiday-skipping in ~org-class~. ~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~ are left out on purpose, since their ~org-*~ twins take unambiguous year-month-day dates (see [[#agenda-sexp-timestamps][General sexp timestamps]]). A ~local:~ agenda file is read-only, and only a file already opened on this device can be named.
 
 *Babel*: not built.
 
@@ -1630,7 +1633,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Undo/redo* (see [[#undoredo-and-history][Undo/redo and History]]): no undo tree, and fold state isn't preserved across an undo or redo jump (the file's ~#+STARTUP~ visibility is reapplied). There is no per-keystroke granularity; the browser's field-level undo covers that, much as Emacs batches consecutive typing.
 
-*Search* (see [[#searching][Searching]]): Search and Replace both reach every file in ~org-agenda-files~, as org's ~org-search-view~ and ~tags-query-replace~ do. Subtree narrowing survives a reload (see [[#narrowing][Narrowing]]); Search's Narrow does not.
+*Search* (see [[#searching][Searching]]): Search and Replace both reach every file in ~org-agenda-files~, as org's ~org-search-view~ and ~tags-query-replace~ do. Both subtree narrowing (see [[#narrowing][Narrowing]]) and Search's Narrow survive a reload.
 
 *Export* (see [[#export][Export]]): no LaTeX export, and ASCII export lacks ~ox-ascii~'s fuller features (Latin-1 and UTF-8 substitutions, ~:width~ rules, justification blocks).
 
@@ -1683,6 +1686,7 @@ One test checks that every module the app imports is in the service worker's pre
 #+BEGIN_SRC
 node tools/smoke.mjs             # everything
 node tools/smoke.mjs conflict    # only checks whose name contains "conflict"
+SMOKE_SLICE=0:27 node tools/smoke.mjs    # only the first 27 checks; 27: runs the rest
 #+END_SRC
 
 It drives the real app in headless Chromium through flows that have broken before, against a built-in static server and a small in-memory WebDAV server. It is dev-only, adds nothing to ~package.json~, needs Playwright and a Chromium once (~npm install -g playwright && npx playwright install chromium~, or set ~CHROMIUM_PATH~), and exits non-zero on any failure.

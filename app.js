@@ -208,6 +208,7 @@ import {
   getMenuSize,
   setMenuSize,
   getParagraphSpacing,
+  getFloatingKeyboardPos,
   getTablesSpacing,
   getFontSize,
   setFontSize,
@@ -947,6 +948,11 @@ S.sparseNarrowScope = null;
 // slow, in-flight lookup for a document that's since been navigated
 // away from can't come back and clobber whatever's true now.
 S.narrowStateRestoreAttemptedFor = null;
+// Same, for Search's Narrow (maybeRestoreSparseNarrow()).
+S.sparseNarrowRestoreAttemptedFor = null;
+// The god-mode hint card (src-browser/god-mode-hints.js): its element, and the index of bound chords it searches.
+S.godModeHintsEl = null;
+S.godModeChordIndex = null;
 // { startLine, lineCount } within serializeOrg(state.doc)'s own full
 // text, or null -- see this feature's own doc comment on the render()
 // text-view block above for the full reasoning on why this is fixed
@@ -1336,6 +1342,7 @@ async function bootstrap() {
   applyMenuSize(await getMenuSize(kv));
   applyParagraphSpacing(await getParagraphSpacing(kv));
   applyTablesSpacing(await getTablesSpacing(kv));
+  S.floatingKeyboardPos = await getFloatingKeyboardPos(kv); // where the floating keyboard was last dragged to, if ever
   applyFontSize(await getFontSize(kv));
   applyTablesFontSize(await getTablesFontSize(kv));
   applyReadingWidth(await getReadingWidth(kv));
