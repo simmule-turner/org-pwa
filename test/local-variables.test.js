@@ -17,6 +17,7 @@ import {
   getOrgTableDurationHourZeroPadding,
   getAgendaFilesVar,
   parseAgendaFilesVar,
+  findDuplicateAgendaFiles,
   getCycleOpenArchivedTrees,
   getAgendaShowAllDates,
   getAgendaSkipCommentTrees,
@@ -541,4 +542,28 @@ test('getGodModeButton: a document\u2019s own Local Variables line overrides the
   const merged = mergeGlobalAndLocalVariables({ 'org-xx-god-mode-button': 'nil' }, { 'org-xx-god-mode-button': 't' });
   assert.equal(getGodModeButton(merged), true);
   assert.equal(getGodModeButton(mergeGlobalAndLocalVariables({ 'org-xx-god-mode-button': 'nil' }, {})), false);
+});
+
+test('parseAgendaFilesVar accepts local: entries (a file opened on this device) next to github: and webdav:', () => {
+  assert.deepEqual(parseAgendaFilesVar('github:a.org; local:notes.org ;webdav:b/c.org'), ['github:a.org', 'local:notes.org', 'webdav:b/c.org']);
+});
+
+test('parseAgendaFilesVar still drops a local: entry with no name, and any other scheme', () => {
+  assert.deepEqual(parseAgendaFilesVar('local:;file:x.org;ftp:y.org;local:ok.org'), ['local:ok.org']);
+});
+
+// ---- findDuplicateAgendaFiles ---------------------------------------------------
+
+test('the same file name under two schemes is a duplicate, and the first entry is the one that is used', () => {
+  assert.deepEqual([...findDuplicateAgendaFiles(['github:notes.org', 'local:notes.org'])], [['local:notes.org', 'github:notes.org']]);
+  assert.deepEqual([...findDuplicateAgendaFiles(['webdav:a/x.org', 'github:a/x.org', 'local:a/x.org'])], [['github:a/x.org', 'webdav:a/x.org'], ['local:a/x.org', 'webdav:a/x.org']]);
+});
+
+test('different paths are not duplicates, even with the same file name in different folders', () => {
+  assert.equal(findDuplicateAgendaFiles(['github:work/notes.org', 'webdav:home/notes.org', 'local:notes.org']).size, 0);
+});
+
+test('the same entry written twice is not a conflict, and an empty list has none', () => {
+  assert.equal(findDuplicateAgendaFiles(['github:a.org', 'github:a.org']).size, 0);
+  assert.equal(findDuplicateAgendaFiles([]).size, 0);
 });

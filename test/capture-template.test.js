@@ -1113,3 +1113,50 @@ test('the existing, non-interactive %t/%T/%u/%U (no caret) are unaffected -- sti
   const prompts = scanPrompts('%t %T %u %U');
   assert.equal(prompts.length, 0);
 });
+
+// ---- %i, %a and %x: content from outside (shared from another app, or the clipboard) -------------
+
+const SHARED = { title: 'Example page', text: 'First line\nSecond line', url: 'https://example.com/a' };
+const now = new Date(2026, 8, 22, 10, 30);
+
+test('%i is the shared text and %a a link to the shared page', () => {
+  assert.equal(expandTemplate('%i', { now, shared: SHARED }).text, 'First line\nSecond line');
+  assert.equal(expandTemplate('%a', { now, shared: SHARED }).text, '[[https://example.com/a][Example page]]');
+});
+
+test('text before %i on its line is added before every later line, as org does, so an indented %i stays indented', () => {
+  assert.equal(expandTemplate('* Note\n  %i\n  %a', { now, shared: SHARED }).text, '* Note\n  First line\n  Second line\n  [[https://example.com/a][Example page]]');
+});
+
+test('with nothing shared, %i and %a expand to nothing instead of staying visible', () => {
+  assert.equal(expandTemplate('a%ib%ac', { now }).text, 'abc');
+  assert.equal(expandTemplate('a%ib%ac', { now, shared: null }).text, 'abc');
+});
+
+test('%x is the clipboard, and nothing when there is none', () => {
+  assert.equal(expandTemplate('clip: %x', { now, clipboard: 'copied text' }).text, 'clip: copied text');
+  assert.equal(expandTemplate('clip: %x', { now }).text, 'clip: ');
+});
+
+test('shared and clipboard text cannot change the document structure: heading-looking lines are escaped at the start of a line', () => {
+  assert.equal(expandTemplate('%i', { now, shared: { text: '* one\n* two' } }).text, ',* one\n,* two');
+  assert.equal(expandTemplate('%x', { now, clipboard: '#+begin_src\nx' }).text, ',#+begin_src\nx');
+});
+
+test('%<...> still takes its own %a (weekday): the new token does not reach inside a time format', () => {
+  assert.equal(expandTemplate('%<%a %b>', { now, shared: SHARED }).text, 'Tue Sep');
+});
+
+test('%%i is a literal percent followed by i, not the new token', () => {
+  assert.equal(expandTemplate('%%i and %%a and %%x', { now, shared: SHARED, clipboard: 'c' }).text, '%i and %a and %x');
+});
+
+test('the new tokens are not prompts: they add no question to a template\u2019s form', () => {
+  assert.equal(scanPrompts('* %i\n%a\n%x').length, 0);
+  assert.equal(scanPrompts('* %^{Title}\n%i').length, 1);
+});
+
+test('they work in preText and postText too, expanded together with the template', () => {
+  const r = expandCaptureText('pre %i\n', 'body %a', '\npost %x', { now, shared: SHARED, clipboard: 'clip' });
+  assert.deepEqual([r.preText, r.text, r.postText], ['pre First line\npre Second line\n', 'body [[https://example.com/a][Example page]]', '\npost clip']);
+});
