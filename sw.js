@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v427';
+const CACHE_NAME = 'org-pwa-shell-v428';
 
 const SHELL_FILES = [
   './',
@@ -22,7 +22,9 @@ const SHELL_FILES = [
   './src/diary-sexp.js',
   './src/sexp-eval.js',
   './src/repeater-shift.js',
+  './src/capture-shared.js',
   './src/capture-template.js',
+  './src/line-endings.js',
   './src/local-variables.js',
   './src/refile.js',
   './src/clock.js',
@@ -126,6 +128,8 @@ const SHELL_FILES = [
   './src-browser/general-editor.js',
   './src-browser/gestures-structure.js',
   './src-browser/god-mode-palette.js',
+  './src-browser/launch-params.js',
+  './src-browser/line-endings-adapter.js',
   './src-browser/floating-keyboard.js',
   './src-browser/god-mode-hints.js',
   './src-browser/heading-commands.js',
@@ -218,7 +222,10 @@ self.addEventListener('activate', (event) => {
 // offline", which is what the outbox/sync-engine split already handles at
 // the data layer.
 self.addEventListener('fetch', (event) => {
+  // A launch from the share sheet or an icon shortcut is a navigation to index.html?capture=... . The cache holds
+  // index.html without a query string, so match navigations ignoring it, or such a launch would need the network.
+  const options = event.request.mode === 'navigate' ? { ignoreSearch: true } : undefined;
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    caches.match(event.request, options).then((cached) => cached || fetch(event.request))
   );
 });

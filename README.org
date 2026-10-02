@@ -941,7 +941,7 @@ A trailing tag needs a space before it (~<2000-01-01 Sat +1y> :BDAY:~), as in or
 
 Add files in *Settings → Quick Settings → Agenda files*, or in a document's own ~# Local Variables:~ block to override that for the one file (see [[#local-variables][Local Variables]]). Entries are semicolon-separated ~scheme:path~ pairs, like ~github:journal.org;webdav:notes/todo.org~, the same syntax as ~org-refile-targets~ (see [[#refile][Refile]]). The Agenda and TODO views then scan all of them. ~github~ and ~webdav~ files are fetched; ~local:name.org~ reads a file you have already opened on this device (*File → Open → Local file*). A malformed entry is skipped. If the open file is in the list, its live in-memory version is used.
 
-Files are fetched once per session. Once any are configured, a *↻* button in the agenda controls refetches them, and a file that fails to load is reported above the list. A local file is read-only here: Agenda, TODO, Search and Export use it, but Refile, Replace and Capture never write into it. It loads only if the browser already allows access; otherwise the agenda says it "needs permission", and the *↻* button, being a tap, is what asks. Export's *This file + Agenda Files* scope always fetches fresh (see [[#export][Export]]).
+Files are fetched once per session. Once any are configured, a *↻* button in the agenda controls refetches them, and a file that fails to load is reported above the list. A local file is read-only here: Agenda, TODO, Search and Export use it, but Refile, Replace and Capture never write into it. It loads only if the browser already allows access; otherwise the agenda says it "needs permission", and the *↻* button, being a tap, is what asks. Export's *This file + Agenda Files* scope always fetches fresh (see [[#export][Export]]). Two entries with the same file name, such as ~github:notes.org~ and ~local:notes.org~, can't both be used: the first is, and the agenda says so for the second.
 
 *** Contacts Files
 :PROPERTIES:
@@ -1034,6 +1034,8 @@ Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meetin
   An unrecognized specifier is left visible (~%Q~ stays ~%Q~).
 
 - ~%t~, ~%T~: an active timestamp, date only or date and time. ~%u~, ~%U~: the same, inactive (~[...]~ instead of ~<...>~).
+- ~%i~ is content shared in from another app (see [[#capture-from-other-apps][Capturing from other apps]]), and ~%a~ is a link to the shared page, ~[[url][title]]~. Text before ~%i~ on its line is added before every later line, so a ~%i~ that follows indentation keeps every line indented. A shared line that would start a heading or a ~#+~ line gets a leading comma, so shared text can never change the document's structure, and only web and mail addresses become links. Both are empty when nothing was shared.
+- ~%x~ is the clipboard. It is read only for a template that uses it, the browser may ask permission (iOS shows a Paste confirmation), and a refusal leaves it empty while the capture still goes ahead.
 - ~%^{Prompt}~ asks a question on the in-app form. ~%^{Prompt|default}~ pre-fills an answer, and ~%^{Prompt|default|choice1|choice2}~ also lists the choices as a hint under the field (there is no dropdown). Several prompts share one form, and cancelling discards the whole capture.
 - ~%^t~, ~%^T~, ~%^u~, ~%^U~ are interactive timestamps: active date (~<2026-09-22 Tue>~), active date and time, inactive date (~[2026-09-22 Tue]~), inactive date and time. Active timestamps show in the [[#agenda][Agenda]]; inactive ones don't. Each is a text field with a *📅 Pick date* (or *📅 Pick date & time*) button. In the popup, *OK* writes the timestamp into the field, where it stays editable, and *Cancel* leaves the field as it was. They count as prompts, in reading order, for ~%\N~ and the live preview.
 - ~%\N~ (~%\1~, ~%\2~, ...) re-inserts the answer already given to the Nth ~%^{Prompt}~ or ~%?~ (1-based) instead of asking again. Out of range gives empty text. In the JSON text the backslash must be doubled: ~%\\1~.
@@ -1078,6 +1080,25 @@ Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meetin
 #+END_SRC
 
 *vCard Contact* builds a whole heading with a ~plain~ capture: a title with an inline tag prompt, and a raw multi-line body. ~FN:%\1 %\2~ and ~N:%\2;%\1;;;~ reuse the two name answers through backreferences instead of asking twice. The body has the shape the vCard export produces for its *new buffer* destination (see [[#export][Contacts (.vcf) export]]), which Import reads back (see [[#import][Import]]). ~omitEmptyEntries: true~ drops every blank field, and the trailing ~%?~ leaves the cursor below the vCard for a free-form note.
+
+*** Capturing from other apps
+:PROPERTIES:
+:CUSTOM_ID: capture-from-other-apps
+:END:
+
+On Android, the installed app is a share target: choose *org-pwa* in another app's Share sheet and the shared title, text and link open Capture. Pick a template, and its ~%i~ and ~%a~ take the content. Long-press the app icon for a *Capture* shortcut.
+
+Any link or bookmark can do the same. ~index.html?capture=KEY~ runs the template with that key, a bare ~?capture~ shows the list, and ~&text=~, ~&title=~ and ~&url=~ carry content. The address is cleaned afterwards, so reloading never captures twice, and it works offline.
+
+Example: ~index.html?capture=n&text=Buy%20milk~ with this template files the text under *Inbox*:
+
+#+BEGIN_SRC json
+{ "key": "n", "description": "Shared note", "type": "entry", "olp": ["Inbox"], "template": "* Note\n  %i\n  %a" }
+#+END_SRC
+
+A template that files into another file (~file:~) needs a document from the same backend open; the app restores your tabs when it starts.
+
+*iPhone*: iOS lists neither installed web apps in the Share sheet nor opens them from a link, so none of this reaches it. Copy the text instead (a Shortcut can do it), open the app and run a template that contains ~%x~.
 
 -----
 
@@ -1175,6 +1196,7 @@ The real labels of each menu, as used in ~"menu:Label;alias"~:
 - *Open* asks for a backend: Local/Import, GitHub or WebDAV.
 - *GitHub and WebDAV show a real folder listing.* Tap a folder (📁) to enter it. Files shown are ~.org~ files (📄) and ~_archive~ files (🗄️, org's archive-file naming; see [[#archiving][Archiving]]), and other files are hidden. An *↑ Up* button appears below the root. GitHub uses its Contents API, and WebDAV uses ~PROPFIND~, which Nextcloud, ownCloud and Apache ~mod_dav~ support. If listing fails (a server without good ~PROPFIND~, a token without list permission on a folder), *Type a path instead…* is always available.
 - *Save* writes back to the backend the file came from, without asking again.
+- *Line endings* are kept. A Windows-style (CRLF) file is edited as ordinary text and saved back with CRLF, and a Unix-style one stays Unix-style, so a save changes only the lines you edited.
 - *Save As* picks a new destination, possibly on a different backend, or the first destination of a new unsaved document.
 - If a file has unsaved local edits when you open it, you are asked whether to *resume* them or *discard* them and load the current version; either way the file opens. The prompt shows when the edit was made, and discarding clears it. *Settings → Pending Local Changes* lists every file with unsynced edits, with a Discard button for each and *Discard all* when there is more than one.
 - *Conflicts*: if the stored version changed since the last sync, Save merges the two where it safely can and asks only about the parts that clash (see [[#offline-behavior-and-sync][Offline behavior and sync]]).
@@ -1441,6 +1463,8 @@ Edits are cached locally at once; writing to disk, GitHub or WebDAV happens only
 Local file access ("Local", a live writable handle) requires the File System Access API -- Chrome/Edge, desktop or Android. Not supported on iOS, a WebKit limitation.
 
 On unsupported platforms, *Import* replaces "Local": pick a file, edit it, and Save downloads the new version for you to move into place yourself. GitHub and WebDAV work the same everywhere, including iOS.
+
+*Sharing into the app*: Android's Share sheet and the icon's *Capture* shortcut work for the installed app. iOS has no equivalent, so use the clipboard (~%x~); see [[#capture-from-other-apps][Capturing from other apps]].
 
 *Screen size*: mobile-first below 900px wide. Above that, Settings and Help open in a resizable side panel next to the outline instead of replacing it, and the app uses the full window width. Reading width is unlimited by default; Settings → Appearance has an opt-in narrower column.
 

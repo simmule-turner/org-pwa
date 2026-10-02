@@ -7,6 +7,16 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v428 — Capture from other apps; CRLF files kept; Narrow and agenda-file fixes
+Capture from other apps. On Android, share text or a page to org-pwa
+(and long-press the icon for Capture) and the title, text and link flow
+into a template through new `%i`, `%a` and `%x` (clipboard) tokens; a
+`?capture=KEY&text=...` link does the same, offline too. iPhone cannot
+receive shares, so use `%x`. Windows (CRLF) files are now saved with
+their own line endings instead of being rewritten line by line. Search's
+Narrow restores headings that share a title, and two agenda files with
+the same name are reported instead of one vanishing.
+
 * v427 — God-mode key hints; local agenda files; C-u clock-goto; Search's Narrow and the panel position persist
 Four gaps closed. The floating keyboard remembers where you drag it (a
 push by the device keyboard is not saved). Search's Narrow survives a

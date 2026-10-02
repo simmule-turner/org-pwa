@@ -256,6 +256,7 @@ import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, 
 import { renderFileMenu, stopBrowsing } from './src-browser/file-menu.js';
 import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, withArmedShift } from './src-browser/floating-keyboard.js';
 import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
+import { handleLaunchParams } from './src-browser/launch-params.js';
 import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, moveTableCellFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading } from './src-browser/keyboard-focus.js';
 import { renderExtraMenu, renderMoreMenu } from './src-browser/menus.js';
 import { navigateBack, toggleActionMenu } from './src-browser/navigation.js';
@@ -952,6 +953,9 @@ S.narrowStateRestoreAttemptedFor = null;
 S.sparseNarrowRestoreAttemptedFor = null;
 // The god-mode hint card (src-browser/god-mode-hints.js): its element, and the index of bound chords it searches.
 S.godModeHintsEl = null;
+// Content for the Capture in progress that came from outside: shared from another app (%i, %a), and the clipboard (%x).
+S.captureShared = null;
+S.captureClipboard = '';
 S.godModeChordIndex = null;
 // { startLine, lineCount } within serializeOrg(state.doc)'s own full
 // text, or null -- see this feature's own doc comment on the render()
@@ -1443,4 +1447,6 @@ if (window.matchMedia) {
   });
 }
 
-bootstrap();
+// bootstrap() has several ways out (a restored set of tabs, a resumed document, a fresh start), so a share or an icon
+// shortcut that asked for Capture is acted on here, once whichever of them finished (see launch-params.js).
+bootstrap().then(() => handleLaunchParams().catch(() => {}));
