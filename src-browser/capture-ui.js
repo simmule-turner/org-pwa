@@ -40,6 +40,8 @@ export async function renderCapturePanel() {
     hideModalOverlay(capturePanel);
     S.capturePromptTemplate = null;
     S.currentCaptureTemplates = [];
+    S.captureShared = null; // shared-in content and the clipboard belong to one capture only
+    S.captureClipboard = '';
     return;
   }
   showModalOverlay(capturePanel);
@@ -189,6 +191,7 @@ export async function peekTableAlreadyExists(template) {
  *  the decision is captured once, in capturePromptSkipPrePost, and
  *  reused unchanged through to the actual commit. */
 export async function openCapturePrompt(template) {
+  await readClipboardIfUsed(template); // first, while the tap that chose the template still counts as a gesture
   const hasPrePost = template.type === 'table-line' && (template.preText || template.postText);
   const skipPrePost = hasPrePost ? (await peekTableAlreadyExists(template)) === true : false;
   S.capturePromptSkipPrePost = skipPrePost;
@@ -202,6 +205,24 @@ export async function openCapturePrompt(template) {
   S.capturePromptTemplate = template;
   S.capturePromptValues = prompts.map((p) => p.default || '');
   renderCapturePanel();
+}
+
+/** Whether `text` uses %x (the clipboard), not counting an escaped %%x. */
+function usesClipboardToken(text) {
+  return /(?:^|[^%])(?:%%)*%x/.test(text);
+}
+
+/** Reads the clipboard into S.captureClipboard, but only for a template that has %x, so a template that does not
+ *  never touches it (the browser may ask permission, and iOS shows a Paste confirmation). A refusal or failure
+ *  leaves %x empty and says so, so the capture still goes ahead. */
+async function readClipboardIfUsed(template) {
+  S.captureClipboard = '';
+  if (!usesClipboardToken((template.preText || '') + template.template + (template.postText || ''))) return;
+  try {
+    S.captureClipboard = await navigator.clipboard.readText();
+  } catch {
+    setStatus("Couldn't read the clipboard (allow pasting if asked), so %x is empty.");
+  }
 }
 
 /** Renders the in-app form for answering a template's %^{Prompt}
@@ -241,7 +262,7 @@ export function renderCapturePromptForm() {
   capturePanelBox.appendChild(preview);
 
   function updatePreview() {
-    const context = { now: previewNow, promptAnswers: S.capturePromptValues };
+    const context = { now: previewNow, promptAnswers: S.capturePromptValues, shared: S.captureShared, clipboard: S.captureClipboard };
     if (S.capturePromptSkipPrePost) {
       const { text } = expandTemplate(template.template, context);
       preview.textContent = text;
@@ -402,7 +423,7 @@ export async function runCaptureWithAnswers(template, answers) {
           // table's own default.
           tableRowNumber = template.prepend && existingTable ? 1 : dataRowCount + 1;
         }
-        const { preText, text, postText } = expandCaptureText(preTextSrc, template.template, postTextSrc, { now, promptAnswers: answers, tableRowNumber });
+        const { preText, text, postText } = expandCaptureText(preTextSrc, template.template, postTextSrc, { now, promptAnswers: answers, tableRowNumber, shared: S.captureShared, clipboard: S.captureClipboard });
         insertCapture(target, template.type, text, template.prepend, template.omitEmptyEntries, preText, postText);
         return true;
       },
@@ -434,6 +455,8 @@ export async function runCaptureWithAnswers(template, answers) {
     now,
     promptAnswers: answers,
     tableRowNumber,
+    shared: S.captureShared,
+    clipboard: S.captureClipboard,
   });
 
   insertCapture(target, template.type, text, template.prepend, template.omitEmptyEntries, preText, postText);

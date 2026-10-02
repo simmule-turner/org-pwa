@@ -1,5 +1,5 @@
 // Extracted from app.js: agenda files.
-import { getAgendaFilesVar, getContactsFilesVar, parseAgendaFilesVar } from '../src/local-variables.js';
+import { findDuplicateAgendaFiles, getAgendaFilesVar, getContactsFilesVar, parseAgendaFilesVar } from '../src/local-variables.js';
 import { parseOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { S } from './app-state.js';
@@ -62,9 +62,16 @@ export function ensureAgendaFilesLoaded({ prompt = false } = {}) {
     S.agendaFilesCacheLoadedFor = configKey;
   }
 
+  const duplicates = findDuplicateAgendaFiles(S.agendaFilesConfig);
   const localEntries = [];
   for (const key of S.agendaFilesConfig) {
     if (agendaFilesCache.has(key)) continue; // already loaded, errored, or currently loading
+    if (duplicates.has(key)) {
+      // the same path under another scheme: say so, instead of one of the two silently disappearing
+      const first = duplicates.get(key);
+      agendaFilesCache.set(key, { readOnly: true, error: `"${key}" has the same file name as "${first}", and agenda files must have different names, so only "${first}" is used.` });
+      continue;
+    }
 
     const colonIndex = key.indexOf(':');
     const scheme = colonIndex === -1 ? key : key.slice(0, colonIndex);

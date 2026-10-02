@@ -3,7 +3,7 @@ import { findContainer, isArchivedInPlace, shiftLevels } from '../src/archive-mo
 import { cycleFoldLevel } from '../src/fold-state.js';
 import { removeHeading } from '../src/heading-edit.js';
 import { getCycleOpenArchivedTrees } from '../src/local-variables.js';
-import { loadNarrowState, loadSparseNarrowState, saveNarrowState, saveSparseNarrowState } from '../src/narrow-state.js';
+import { findHeadingByOutlineKey, loadNarrowState, loadSparseNarrowState, outlineKeyForHeading, saveNarrowState, saveSparseNarrowState } from '../src/narrow-state.js';
 import { parseOrg, serializeHeadingSubtree } from '../src/org-parser.js';
 import { findHeadingByOutlinePath } from '../src/refile.js';
 import { isDoneKeyword, resolveTodoSequence, setTodoState } from '../src/todo-cycle.js';
@@ -226,8 +226,8 @@ export function widen() {
 export function narrowToSparseMatches(matchedHeadings) {
   S.sparseNarrowScope = { matched: matchedHeadings, visible: expandScopeWithAncestors(S.state.doc, matchedHeadings) };
   const documentId = S.state.documentId;
-  const paths = [...matchedHeadings].map((h) => outlinePathForHeadingInDocument(documentId, h)).filter(Boolean);
-  saveSparseNarrowState(kv, documentId, paths).catch(() => {});
+  const keys = [...matchedHeadings].map((h) => outlineKeyForHeading(S.state.doc, h)).filter(Boolean);
+  saveSparseNarrowState(kv, documentId, keys).catch(() => {});
   S.searchOpen = false;
   render();
   renderSearchPanel();
@@ -258,10 +258,10 @@ export function maybeRestoreSparseNarrow() {
   S.sparseNarrowRestoreAttemptedFor = S.state.documentId;
   const documentId = S.state.documentId;
   loadSparseNarrowState(kv, documentId)
-    .then((paths) => {
-      if (!paths) return;
+    .then((keys) => {
+      if (!keys) return;
       if (S.state.documentId !== documentId || S.sparseNarrowScope) return;
-      const matched = new Set(paths.map((p) => findHeadingByOutlinePath(S.state.doc, p)).filter(Boolean));
+      const matched = new Set(keys.map((k) => findHeadingByOutlineKey(S.state.doc, k)).filter(Boolean));
       if (matched.size === 0) {
         saveSparseNarrowState(kv, documentId, null).catch(() => {});
         return;
