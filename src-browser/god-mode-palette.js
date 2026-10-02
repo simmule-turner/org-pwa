@@ -16,7 +16,7 @@ import { openAttachChoicePrompt } from './attachments-flow.js';
 import { openCalendarPanel } from './calendar-panel.js';
 import { openCapturePrompt, renderCapturePanel } from './capture-ui.js';
 import { closeAllOverlayPanels } from './chrome.js';
-import { clockCancelHeading, clockContinue, clockGoto, clockInHeading, clockOutHeading, findRunningClockAcrossSessions } from './clock-flow.js';
+import { clockCancelHeading, clockContinue, clockGoto, clockGotoRecent, clockInHeading, clockOutHeading, findRunningClockAcrossSessions, recentlyClockedAcrossSessions } from './clock-flow.js';
 import { GLOBAL_TODO_DEFAULT, PALETTE_RECENT_KEY } from './constants.js';
 import { lockBackgroundScroll } from './dialogs.js';
 import { createNewUnsavedDocument, saveCurrent } from './documents-io.js';
@@ -205,6 +205,7 @@ export const GOD_MODE_ACTIONS = {
   },
   'C-c C-x C-x': () => clockContinue(),
   'C-c C-x C-j': () => clockGoto(),
+  'C-u C-c C-x C-j': () => clockGotoRecent(),
   'C-c C-v': () => {
     if (!S.state.doc) return;
     switchToView('tasklist');
@@ -351,6 +352,7 @@ export const PALETTE_NEEDS = {
   clock: () => (S.state.doc && findHeadingWithRunningClock(S.state.doc) ? null : 'no clock is running'),
   // unlike `clock`, any open tab counts: org-clock-goto is most useful exactly when the clock is somewhere else
   anyClock: () => (findRunningClockAcrossSessions() ? null : 'no clock is running'),
+  anyClocked: () => (recentlyClockedAcrossSessions(1).length ? null : 'nothing has been clocked yet'),
   archived: (target) => (target && isArchivedInPlace(target) ? null : 'this heading isn\u2019t archived'),
   notArchived: (target) => (target && isArchivedInPlace(target) ? 'it is already archived \u2014 use Unarchive' : null),
 };
@@ -441,6 +443,7 @@ export function paletteCommandList() {
     { id: 'clock-cancel', label: 'Cancel clock', orgName: 'org-clock-cancel', keys: 'C-c C-x C-q', group: 'Clocking', needs: ['doc', 'clock'], run: () => clockCancelHeading(runningClock()) },
     { id: 'clock-continue', label: 'Continue last clock', orgName: 'org-clock-in-last', keys: 'C-c C-x C-x', group: 'Clocking', needs: ['doc'], run: () => clockContinue() },
     { id: 'clock-goto', label: 'Go to clocked task', orgName: 'org-clock-goto', keys: 'C-c C-x C-j', group: 'Clocking', keywords: ['jump', 'running', 'current'], needs: ['doc', 'anyClock'], run: chord('C-c C-x C-j') },
+    { id: 'clock-goto-recent', label: 'Go to a recently clocked task', orgName: 'org-clock-select-task', keys: 'C-u C-c C-x C-j', group: 'Clocking', keywords: ['history', 'recent', 'select', 'list'], needs: ['doc', 'anyClocked'], run: chord('C-u C-c C-x C-j') },
 
     // -- Document
     { id: 'save', label: 'Save', orgName: 'save-buffer', keys: 'C-x C-s', group: 'Document', needs: ['doc', 'storage'], run: () => saveCurrent() },

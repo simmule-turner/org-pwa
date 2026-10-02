@@ -22,6 +22,7 @@ const KEYS = {
   menuSize: 'settings:menuSize',
   paragraphSpacing: 'settings:paragraphSpacing',
   tablesSpacing: 'settings:tablesSpacing',
+  floatingKeyboardPos: 'settings:floatingKeyboardPos',
   readingWidth: 'settings:readingWidth',
   sidePanelWidth: 'settings:sidePanelWidth',
   lastActiveDocument: 'settings:lastActiveDocument',
@@ -219,6 +220,29 @@ export async function setParagraphSpacing(kvAdapter, px) {
  *  and other blocks, horizontal rules), 0 to 32, default 10. */
 export async function getTablesSpacing(kvAdapter) {
   return clampSpacing(await getJson(kvAdapter, KEYS.tablesSpacing, DEFAULT_TABLES_SPACING), DEFAULT_TABLES_SPACING);
+}
+
+/** A saved floating-keyboard position -- `{ left, bottom }` in px (`left` null = its default right-hand
+ *  corner) -- or null when the value is missing or malformed, so a bad stored value falls back to the
+ *  default spot and never moves the panel somewhere unreachable. The panel's own placement code still
+ *  keeps whatever is restored on screen and clear of the mode line, so a position saved on one screen
+ *  size is safe on another. */
+export function normalizeFloatingKeyboardPos(value) {
+  if (!value || typeof value !== 'object') return null;
+  const { bottom } = value;
+  const left = value.left === undefined ? null : value.left;
+  if (typeof bottom !== 'number' || !Number.isFinite(bottom)) return null;
+  if (left !== null && (typeof left !== 'number' || !Number.isFinite(left))) return null;
+  return { left, bottom };
+}
+
+/** Where the person last dragged the floating keyboard, or null for its default spot. */
+export async function getFloatingKeyboardPos(kvAdapter) {
+  return normalizeFloatingKeyboardPos(await getJson(kvAdapter, KEYS.floatingKeyboardPos, null));
+}
+
+export async function setFloatingKeyboardPos(kvAdapter, pos) {
+  await setJson(kvAdapter, KEYS.floatingKeyboardPos, normalizeFloatingKeyboardPos(pos));
 }
 
 export async function setTablesSpacing(kvAdapter, px) {

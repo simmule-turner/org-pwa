@@ -2,7 +2,7 @@
 import { findAncestorPath } from '../src/archive-model.js';
 import { flattenVisibleRows } from '../src/outline-view-model.js';
 import { findHeadingByOutlinePath } from '../src/refile.js';
-import { githubAdapter, webdavAdapter } from './adapters.js';
+import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { S } from './app-state.js';
 import { scrollContainer } from './chrome.js';
 import { HELP_DOCUMENT_ID, NAVIGATION_BACK_STACK_LIMIT } from './constants.js';
@@ -141,8 +141,8 @@ export async function navigateToHeadingByPath(documentId, outlinePath, opts = {}
   }
 
   const storageKind = storageKindForDocumentId(documentId);
-  const adapter = storageKind === 'github' ? githubAdapter : storageKind === 'webdav' ? webdavAdapter : null;
-  const label = storageKind === 'github' ? 'GitHub' : storageKind === 'webdav' ? 'WebDAV' : null;
+  const adapter = storageKind === 'github' ? githubAdapter : storageKind === 'webdav' ? webdavAdapter : storageKind === 'local' ? filesystemAdapter : null;
+  const label = storageKind === 'github' ? 'GitHub' : storageKind === 'webdav' ? 'WebDAV' : storageKind === 'local' ? 'this device' : null;
   if (!adapter) {
     setStatus(`Can't open "${documentId}" \u2014 unrecognized source.`);
     return;
@@ -155,7 +155,8 @@ export async function navigateToHeadingByPath(documentId, outlinePath, opts = {}
     scrollTop: scrollContainer().scrollTop,
   };
 
-  await openRemotePath(documentId, storageKind, adapter, label);
+  // an agenda entry's "local" scheme is the app's own "filesystem" storage kind once the file is open
+  await openRemotePath(documentId, storageKind === 'local' ? 'filesystem' : storageKind, adapter, label);
   if (!S.state.doc || S.state.documentId !== documentId) return;
 
   S.navigationBackStack.push(originEntry);

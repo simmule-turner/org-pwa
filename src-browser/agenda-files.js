@@ -1,7 +1,7 @@
 // Extracted from app.js: agenda files.
 import { getAgendaFilesVar, getContactsFilesVar, parseAgendaFilesVar } from '../src/local-variables.js';
 import { parseOrg } from '../src/org-parser.js';
-import { githubAdapter, webdavAdapter } from './adapters.js';
+import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { S } from './app-state.js';
 import { render } from './render.js';
 import { renderSearchPanel } from './search-ui.js';
@@ -55,19 +55,24 @@ export function syncAgendaFilesConfig() {
  *  everything's loaded. A config change (different agendaFilesConfig
  *  than the cache currently reflects) clears the whole cache first, so
  *  a removed entry doesn't linger and a changed path gets refetched. */
-export function ensureAgendaFilesLoaded() {
+export function ensureAgendaFilesLoaded({ prompt = false } = {}) {
   const configKey = JSON.stringify(S.agendaFilesConfig);
   if (S.agendaFilesCacheLoadedFor !== configKey) {
     agendaFilesCache.clear();
     S.agendaFilesCacheLoadedFor = configKey;
   }
 
+  const localEntries = [];
   for (const key of S.agendaFilesConfig) {
     if (agendaFilesCache.has(key)) continue; // already loaded, errored, or currently loading
 
     const colonIndex = key.indexOf(':');
     const scheme = colonIndex === -1 ? key : key.slice(0, colonIndex);
     const path = colonIndex === -1 ? '' : key.slice(colonIndex + 1);
+    if (scheme === 'local') {
+      localEntries.push({ key, path });
+      continue;
+    }
     const adapter = scheme === 'github' ? githubAdapter : scheme === 'webdav' ? webdavAdapter : null;
     if (!adapter) {
       agendaFilesCache.set(key, { error: `Unsupported scheme "${scheme}" \u2014 only github/webdav are supported for agenda files.` });
@@ -91,6 +96,42 @@ export function ensureAgendaFilesLoaded() {
         if (S.searchOpen) renderSearchPanel();
       });
     agendaFilesCache.set(key, { loading: true, promise });
+  }
+
+  if (localEntries.length > 0) {
+    const promise = loadLocalAgendaFiles(localEntries, prompt);
+    for (const { key } of localEntries) agendaFilesCache.set(key, { loading: true, promise });
+  }
+}
+
+/** Loads `local:` agenda files, one at a time: a file opened on this device earlier with File -> Open -> Local
+ *  file. The browser keeps access to such a file only while it says so, and asking for it shows a prompt, so this
+ *  NEVER asks unless `prompt` is true, which only a person's own tap on the refresh button passes. Without
+ *  access the entry is an error that says what to do (shown above the agenda, like any file that fails to
+ *  load), and with it the file is read like any other. Always marked readOnly: nothing may be written into one of
+ *  these (Refile, Capture and Replace use only writable entries), since writing a local file back needs its own
+ *  permission and its own adapter. One at a time because concurrent permission prompts are not reliable. */
+async function loadLocalAgendaFiles(entries, prompt) {
+  for (const { key, path } of entries) {
+    const marks = { local: true, readOnly: true };
+    let entry;
+    try {
+      const access = await filesystemAdapter.access(path);
+      if (access === 'none') {
+        entry = { ...marks, error: `"${path}" hasn't been opened on this device yet. Open it once with File \u2192 Open \u2192 Local file.` };
+      } else if (access !== 'granted' && !prompt) {
+        entry = { ...marks, needsAccess: true, error: `"${path}" needs permission to be read. Tap \u21bb to allow it.` };
+      } else {
+        const result = await filesystemAdapter.read(path, { prompt });
+        entry = result ? { ...marks, doc: parseOrg(result.content), documentId: path } : { ...marks, error: `"${path}" not found.` };
+      }
+    } catch (err) {
+      entry = { ...marks, needsAccess: true, error: `"${path}" could not be read: ${err.message}. Tap \u21bb to try again.` };
+    }
+    agendaFilesCache.set(key, entry);
+    if (S.currentView === 'agenda' || S.currentView === 'tasklist') render();
+    if (S.settingsOpen) renderSettingsView();
+    if (S.searchOpen) renderSearchPanel();
   }
 }
 
@@ -119,7 +160,7 @@ export async function ensureAgendaFilesLoadedAndWait() {
 export function refreshAgendaFiles() {
   agendaFilesCache.clear();
   S.agendaFilesCacheLoadedFor = null;
-  ensureAgendaFilesLoaded();
+  ensureAgendaFilesLoaded({ prompt: true }); // a tap on the refresh button is the one thing allowed to ask for a local file's permission
   render();
 }
 
@@ -160,10 +201,11 @@ export function waitForAgendaFilesLoaded() {
  *  be in the configured list, the live in-memory version (with
  *  whatever unsaved edits exist right now) wins over a separately
  *  fetched, possibly-stale read of the same file. */
-export function aggregateAgendaDocs() {
+export function aggregateAgendaDocs({ writable = false } = {}) {
   const docs = [{ documentId: S.state.documentId, doc: S.state.doc }];
   const seen = new Set([S.state.documentId]);
   for (const entry of agendaFilesCache.values()) {
+    if (writable && entry.readOnly) continue; // `writable`: only for callers that write back (Refile, Replace); a local agenda file is read-only
     if (entry.doc && !seen.has(entry.documentId)) {
       docs.push({ documentId: entry.documentId, doc: entry.doc });
       seen.add(entry.documentId);

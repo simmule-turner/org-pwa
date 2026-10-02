@@ -218,7 +218,7 @@ export async function startQueryReplace() {
   }
 
   ensureAgendaFilesLoaded();
-  const matchingIds = aggregateAgendaDocs()
+  const matchingIds = aggregateAgendaDocs({ writable: true }) // a local agenda file is read-only, so a replace never walks into one
     .filter(({ doc }) => createQueryReplace(doc, pattern, replacementText).current() !== null)
     .map(({ documentId }) => documentId);
   if (matchingIds.length === 0) {
@@ -269,6 +269,7 @@ export async function switchToAgendaDoc(documentId) {
   if (!cacheEntry) return false;
   const [key] = cacheEntry;
   const scheme = key.slice(0, key.indexOf(':'));
+  if (scheme === 'local') return false; // never written into by a replace (see aggregateAgendaDocs' writable option)
   const adapter = scheme === 'github' ? githubAdapter : webdavAdapter;
   const label = scheme === 'github' ? 'GitHub' : 'WebDAV';
   await openRemotePath(documentId, scheme, adapter, label);

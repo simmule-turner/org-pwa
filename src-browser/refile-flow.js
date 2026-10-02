@@ -49,7 +49,7 @@ import { hideModalOverlay, menuButton } from './ui-widgets.js';
  *  the whole picker on one bad/inaccessible target. */
 export async function loadRefileTargetDocs(targetsSpec) {
   const docsById = {};
-  for (const { documentId, doc } of aggregateAgendaDocs()) {
+  for (const { documentId, doc } of aggregateAgendaDocs({ writable: true })) { // a local agenda file is read-only, so never a destination
     docsById[documentId] = doc;
   }
   const adapter = activeDiskAdapter();

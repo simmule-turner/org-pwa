@@ -3,7 +3,7 @@ import { findContainer, isArchivedInPlace, shiftLevels } from '../src/archive-mo
 import { cycleFoldLevel } from '../src/fold-state.js';
 import { removeHeading } from '../src/heading-edit.js';
 import { getCycleOpenArchivedTrees } from '../src/local-variables.js';
-import { loadNarrowState, saveNarrowState } from '../src/narrow-state.js';
+import { loadNarrowState, loadSparseNarrowState, saveNarrowState, saveSparseNarrowState } from '../src/narrow-state.js';
 import { parseOrg, serializeHeadingSubtree } from '../src/org-parser.js';
 import { findHeadingByOutlinePath } from '../src/refile.js';
 import { isDoneKeyword, resolveTodoSequence, setTodoState } from '../src/todo-cycle.js';
@@ -221,20 +221,55 @@ export function widen() {
  *  own search results) plus their own ancestors -- an independent,
  *  additional row filter alongside narrowedHeading; see
  *  sparseNarrowScope's own doc comment above for how the two compose.
- *  Session-only, per that same doc comment -- doesn't persist across an
- *  actual reload. */
+ *  Saved per document (as outline paths, like narrowedHeading), so it
+ *  survives a reload. */
 export function narrowToSparseMatches(matchedHeadings) {
   S.sparseNarrowScope = { matched: matchedHeadings, visible: expandScopeWithAncestors(S.state.doc, matchedHeadings) };
+  const documentId = S.state.documentId;
+  const paths = [...matchedHeadings].map((h) => outlinePathForHeadingInDocument(documentId, h)).filter(Boolean);
+  saveSparseNarrowState(kv, documentId, paths).catch(() => {});
   S.searchOpen = false;
   render();
   renderSearchPanel();
 }
 
+/** Drops the sparse-search narrow scope and its saved copy, without rendering -- for render() itself, which
+ *  clears it when nothing matches any more, as well as for widenSparseSearch. Forgetting only the in-memory
+ *  scope would let a stale saved copy bring a dismissed narrow back on the next reload. */
+export function forgetSparseNarrow() {
+  S.sparseNarrowScope = null;
+  if (S.state.documentId) saveSparseNarrowState(kv, S.state.documentId, null).catch(() => {});
+}
+
 /** Clears the sparse-search narrow scope, independent of narrowedHeading
  *  (widen() above) -- widening one never affects the other. */
 export function widenSparseSearch() {
-  S.sparseNarrowScope = null;
+  forgetSparseNarrow();
   render();
+}
+
+/** Restores Search's Narrow after a reload, from its saved outline paths. Called from render() like
+ *  maybeRestoreNarrowState, with the same guards: only once per document, and a slow lookup never overrides a
+ *  document change or a narrow made in the meantime. The headings are looked up in the freshly parsed
+ *  document, so one that was renamed or removed simply drops out of the narrowed set. */
+export function maybeRestoreSparseNarrow() {
+  if (!S.state.doc || !S.state.documentId) return;
+  if (S.sparseNarrowRestoreAttemptedFor === S.state.documentId) return;
+  S.sparseNarrowRestoreAttemptedFor = S.state.documentId;
+  const documentId = S.state.documentId;
+  loadSparseNarrowState(kv, documentId)
+    .then((paths) => {
+      if (!paths) return;
+      if (S.state.documentId !== documentId || S.sparseNarrowScope) return;
+      const matched = new Set(paths.map((p) => findHeadingByOutlinePath(S.state.doc, p)).filter(Boolean));
+      if (matched.size === 0) {
+        saveSparseNarrowState(kv, documentId, null).catch(() => {});
+        return;
+      }
+      S.sparseNarrowScope = { matched, visible: expandScopeWithAncestors(S.state.doc, matched) };
+      render();
+    })
+    .catch(() => {});
 }
 
 /** Lazily restores narrowedHeading from its own reload-surviving

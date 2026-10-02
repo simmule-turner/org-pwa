@@ -81,6 +81,15 @@ export function createFileSystemAccessAdapter(kvAdapter) {
   }
 
   return {
+    /** What the browser currently allows for `documentId`, without ever showing a prompt:
+     *  'none' (no file by that name has been opened on this device), 'granted', or 'prompt' (known,
+     *  but access must be granted again, which only a person's own tap can do). */
+    async access(documentId) {
+      const handle = await getHandle(documentId);
+      if (!handle) return 'none';
+      return (await handle.queryPermission({ mode: 'read' })) === 'granted' ? 'granted' : 'prompt';
+    },
+
     /** `{ prompt: false }` is for background checks: read the file only if the
      *  browser has already granted access, and otherwise return null (nothing to
      *  compare) instead of asking. The default still asks, for anything the

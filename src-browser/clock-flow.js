@@ -1,12 +1,16 @@
 // Extracted from app.js: clock flow.
-import { clockCancel, clockIn, clockInSwitchingTasks, clockOut, findHeadingWithRunningClock, findMostRecentlyClockedHeading } from '../src/clock.js';
+import { clockCancel, clockIn, clockInSwitchingTasks, clockOut, findHeadingWithRunningClock, findMostRecentlyClockedHeading, isClockRunning, listRecentlyClockedHeadings } from '../src/clock.js';
+import { findAncestorPath } from '../src/archive-model.js';
 import { saveDocument } from '../src/document-store.js';
 import { formatOrgTimestamp } from '../src/org-timestamp.js';
+import { findHeadingByOutlinePath } from '../src/refile.js';
 import { S } from './app-state.js';
+import { openButtonChoiceModal } from './dialogs.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { navigateToHeading } from './navigation.js';
 import { render } from './render.js';
 import { kv } from './singletons.js';
+import { documentDisplayLabel } from './sync-helpers.js';
 import { switchToTab } from './tabs.js';
 
 /** The human-readable "where this would go" label for confirming an
@@ -156,4 +160,50 @@ export function clockCancelHeading(heading) {
   commitAndRender('Clock cancelled \u2014 time discarded');
 }
 
+/** The recently clocked tasks across every open tab, most recently clocked first. */
+export function recentlyClockedAcrossSessions(limit = 12) {
+  const sources = [];
+  if (S.state.doc) sources.push({ tabId: S.activeTabId, documentId: S.state.documentId, doc: S.state.doc });
+  for (const session of S.documentSessions) {
+    if (session.tabId === S.activeTabId || !session.state.doc) continue; // the active tab's live state is already in
+    sources.push({ tabId: session.tabId, documentId: session.state.documentId, doc: session.state.doc });
+  }
+  const all = [];
+  for (const source of sources) {
+    for (const item of listRecentlyClockedHeadings(source.doc, limit)) all.push({ ...source, ...item });
+  }
+  all.sort((a, b) => b.start - a.start);
+  return all.slice(0, limit);
+}
 
+/** org-clock-goto's C-u form (org-clock-select-task): offers a list of recently clocked tasks, from every open
+ *  tab, and jumps to the one chosen, switching tab if it lives in another. */
+export function clockGotoRecent() {
+  const recent = recentlyClockedAcrossSessions();
+  if (recent.length === 0) {
+    setStatus('Nothing has been clocked yet.');
+    render();
+    return;
+  }
+  const severalDocuments = new Set(recent.map((r) => r.tabId)).size > 1;
+  const when = (date) => date.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  openButtonChoiceModal({
+    label: 'Go to which recently clocked task?',
+    buttons: recent.map((entry) => ({
+      text: `${isClockRunning(entry.heading) ? '\u25b6 ' : ''}${entry.heading.title || '(untitled)'} \u00b7 ${when(entry.start)}${severalDocuments ? ` \u00b7 ${documentDisplayLabel(entry.documentId, entry.doc)}` : ''}`,
+      onClick: () => goToClockedEntry(entry),
+    })),
+  });
+}
+
+function goToClockedEntry(entry) {
+  if (entry.tabId === S.activeTabId) {
+    navigateToHeading(entry.heading);
+    return;
+  }
+  // another tab: switching restores that tab's own state, so find the heading again there, by its outline path
+  const path = [...(findAncestorPath(entry.doc, entry.heading) || []).map((h) => h.title), entry.heading.title];
+  switchToTab(entry.tabId);
+  const heading = S.state.doc ? findHeadingByOutlinePath(S.state.doc, path) : null;
+  if (heading) navigateToHeading(heading);
+}

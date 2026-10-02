@@ -169,7 +169,7 @@ export async function peekTableAlreadyExists(template) {
       return null;
     }
   } else {
-    const entry = Array.from(agendaFilesCache.values()).find((e) => e.documentId === targetFileId);
+    const entry = Array.from(agendaFilesCache.values()).find((e) => e.documentId === targetFileId && !e.readOnly); // not a read-only local file that happens to share the name
     doc = entry && entry.doc; // undefined if not cached, or cached as {error}/{loading} rather than {doc}
   }
   if (!doc) return null;

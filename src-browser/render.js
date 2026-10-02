@@ -6,12 +6,13 @@ import { collectSubtreeHeadings } from '../src/refile.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { renderAgendaView, renderTaskListView } from './agenda-view.js';
 import { renderFloatingKeyboard } from './floating-keyboard.js';
+import { renderGodModeHints } from './god-mode-hints.js';
 import { S } from './app-state.js';
 import { renderMinibuffer, renderModeline, syncContentOffset } from './chrome.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { outlineEl, saveBtnEl } from './dom.js';
 import { applyPendingCursorPosition, setStatus } from './editing.js';
-import { maybeRestoreNarrowState, widen, widenSparseSearch } from './gestures-structure.js';
+import { forgetSparseNarrow, maybeRestoreNarrowState, maybeRestoreSparseNarrow, widen, widenSparseSearch } from './gestures-structure.js';
 import { syncExtraMenuButtonVisibility } from './menus.js';
 import { renderRow, syncSidePanel } from './row-render.js';
 import { renderTabBar } from './tabs.js';
@@ -26,6 +27,7 @@ export function render() {
   renderModeline();
   syncContentOffset();
   renderFloatingKeyboard(); // after syncContentOffset: it positions itself against the mode line that call just placed
+  renderGodModeHints(); // the card listing where a half-typed god-mode sequence can lead
 
   const wide = isWideLayout();
   // renderSettingsView()/renderDocsView()/renderHistoryPanel() own
@@ -46,6 +48,7 @@ export function render() {
   }
 
   maybeRestoreNarrowState();
+  maybeRestoreSparseNarrow();
 
   if (S.currentView === 'text') {
     const existingTextarea = document.getElementById('document-text-edit-input');
@@ -226,7 +229,7 @@ export function render() {
     ? narrowedVisibleRows.filter((r) => S.sparseNarrowScope.visible.has(r.rowType === 'heading' ? r.node : r.heading))
     : narrowedVisibleRows;
   if (S.sparseNarrowScope && sparseFilteredRows.length === 0) {
-    S.sparseNarrowScope = null;
+    forgetSparseNarrow();
   }
   const finalVisibleRows = S.sparseNarrowScope ? sparseFilteredRows : narrowedVisibleRows;
 

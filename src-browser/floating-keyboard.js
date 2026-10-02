@@ -25,6 +25,8 @@ import { S } from './app-state.js';
 import { extraMenuBtn, floatingKeyboard, godModeBtn, godModeKeyboardInput, modelineBarEl } from './dom.js';
 import { getGodModeButton } from '../src/local-variables.js';
 import { dispatchGodModeKeystroke } from './god-mode-palette.js';
+import { setFloatingKeyboardPos } from './settings.js';
+import { kv } from './singletons.js';
 
 export const FLOATING_BUTTON_SIZE = 44;
 export const FLOATING_BUTTON_GAP = 10;
@@ -214,6 +216,9 @@ function wireHandle(handle) {
       handle.removeEventListener('pointermove', move);
       handle.removeEventListener('pointerup', up);
       handle.removeEventListener('pointercancel', cancel);
+      // Only a drag the person made is remembered. The panel being pushed up by the device keyboard is not:
+      // that is a one-off adjustment, and saving it would make a temporary push the panel's place for good.
+      if (dragging && S.floatingKeyboardPos) setFloatingKeyboardPos(kv, S.floatingKeyboardPos).catch(() => {});
       if (isTap) {
         S.floatingKeyboardMinimized = !S.floatingKeyboardMinimized;
         renderFloatingKeyboard();
