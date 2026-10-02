@@ -304,6 +304,23 @@ export function getContactsFilesVar(vars) {
  *  with no recognized scheme, or an empty path, is silently dropped
  *  rather than causing the whole list to fail -- one malformed entry
  *  shouldn't take down every other, valid one alongside it. */
+/** Agenda files are identified by their path alone (a file from GitHub, WebDAV or this device is "notes.org"
+ *  whichever it came from), so two entries with the same path would be the same file to everything that looks
+ *  one up, and one would silently vanish. This finds them: returns a Map from each LATER entry that repeats an
+ *  earlier entry's path (under a different scheme) to the entry that was first, which is the one that is used.
+ *  The same entry written twice is not a conflict. */
+export function findDuplicateAgendaFiles(keys) {
+  const pathOf = (key) => key.slice(key.indexOf(':') + 1);
+  const first = new Map();
+  const duplicates = new Map();
+  for (const key of keys) {
+    const path = pathOf(key);
+    if (!first.has(path)) first.set(path, key);
+    else if (first.get(path) !== key) duplicates.set(key, first.get(path));
+  }
+  return duplicates;
+}
+
 export function parseAgendaFilesVar(text) {
   const entries = (text || '')
     .split(';')

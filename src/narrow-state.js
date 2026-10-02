@@ -59,31 +59,89 @@ function sparseNarrowKey(documentId) {
   return 'sparseNarrow:' + documentId;
 }
 
-/** Saves the headings Search's Narrow is restricted to, as outline paths (arrays of ancestor titles, root first),
- *  the same reload-surviving identifier the subtree narrow uses. null or an empty list (widened) deletes the key,
- *  so a document that is not narrowed leaves nothing behind. */
-async function saveSparseNarrowState(adapter, documentId, outlinePaths) {
-  if (!outlinePaths || outlinePaths.length === 0) {
+/** An identifier for a heading that survives a reload: the titles down to it (`path`) and the position taken at each
+ *  level (`idx`). Titles alone are not enough: two headings can share a title under the same parent, or sit under
+ *  parents that share one, and then every title path points at the first. null if `heading` is not in `doc`. */
+function outlineKeyForHeading(doc, heading) {
+  const trail = [];
+  const walk = (children) => {
+    for (let i = 0; i < children.length; i++) {
+      trail.push({ title: children[i].title, i });
+      if (children[i] === heading || walk(children[i].children || [])) return true;
+      trail.pop();
+    }
+    return false;
+  };
+  if (!walk((doc && doc.children) || [])) return null;
+  return { path: trail.map((t) => t.title), idx: trail.map((t) => t.i) };
+}
+
+/** The heading `key` (from outlineKeyForHeading) names in `doc`, or null. The recorded positions are tried first and
+ *  only trusted if the title at every level still matches, so a document edited since can never land on the wrong
+ *  heading by position alone; otherwise the titles are followed from the top, taking the first match at each
+ *  level, which is all a key saved without positions (an older save) can do. */
+function findHeadingByOutlineKey(doc, key) {
+  if (!doc || !key || !Array.isArray(key.path) || key.path.length === 0) return null;
+  if (Array.isArray(key.idx) && key.idx.length === key.path.length) {
+    let level = doc.children || [];
+    let found = null;
+    let exact = true;
+    for (let d = 0; d < key.path.length; d++) {
+      const heading = level[key.idx[d]];
+      if (!heading || heading.title !== key.path[d]) {
+        exact = false;
+        break;
+      }
+      found = heading;
+      level = heading.children || [];
+    }
+    if (exact) return found;
+  }
+  let level = doc.children || [];
+  let found = null;
+  for (const title of key.path) {
+    found = level.find((h) => h.title === title);
+    if (!found) return null;
+    level = found.children || [];
+  }
+  return found;
+}
+
+/** Saves the headings Search's Narrow is restricted to, as outline keys (see outlineKeyForHeading). null or an empty
+ *  list (widened) deletes the key, so a document that is not narrowed leaves nothing behind. */
+async function saveSparseNarrowState(adapter, documentId, keys) {
+  if (!keys || keys.length === 0) {
     await adapter.delete(sparseNarrowKey(documentId));
     return;
   }
-  await adapter.set(sparseNarrowKey(documentId), JSON.stringify({ outlinePaths }));
+  await adapter.set(sparseNarrowKey(documentId), JSON.stringify({ headings: keys }));
 }
 
-/** `documentId`'s saved Search-Narrow outline paths, or null if there are none (or the value is unusable). The
- *  caller resolves them against the freshly parsed document, as with loadNarrowState. */
+/** `documentId`'s saved Search-Narrow keys, or null if there are none (or the value is unusable). Understands both
+ *  the current format and the earlier one, which held bare title paths. The caller resolves them against the freshly
+ *  parsed document with findHeadingByOutlineKey. */
 async function loadSparseNarrowState(adapter, documentId) {
   try {
     const result = await adapter.get(sparseNarrowKey(documentId));
     if (!result) return null;
     const raw = result && typeof result === 'object' && 'value' in result ? result.value : result;
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    if (!parsed || !Array.isArray(parsed.outlinePaths)) return null;
-    const paths = parsed.outlinePaths.filter((p) => Array.isArray(p) && p.length > 0 && p.every((t) => typeof t === 'string'));
-    return paths.length ? paths : null;
+    if (!parsed) return null;
+    const titles = (p) => Array.isArray(p) && p.length > 0 && p.every((t) => typeof t === 'string');
+    const keys = [];
+    for (const entry of Array.isArray(parsed.headings) ? parsed.headings : []) {
+      if (!entry || !titles(entry.path)) continue;
+      const key = { path: entry.path };
+      if (Array.isArray(entry.idx) && entry.idx.every(Number.isInteger)) key.idx = entry.idx;
+      keys.push(key);
+    }
+    for (const path of Array.isArray(parsed.outlinePaths) ? parsed.outlinePaths : []) {
+      if (titles(path)) keys.push({ path });
+    }
+    return keys.length ? keys : null;
   } catch {
     return null;
   }
 }
 
-export { saveNarrowState, loadNarrowState, saveSparseNarrowState, loadSparseNarrowState };
+export { saveNarrowState, loadNarrowState, saveSparseNarrowState, loadSparseNarrowState, outlineKeyForHeading, findHeadingByOutlineKey };

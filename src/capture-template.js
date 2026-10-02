@@ -22,6 +22,7 @@
  * to reflect.
  */
 
+import { placeInsertedText, sharedAnnotation } from './capture-shared.js';
 import { formatOrgTimestamp } from './org-timestamp.js';
 import { parseOrg } from './org-parser.js';
 import { insertTopLevelHeading, insertChildHeading } from './heading-edit.js';
@@ -203,9 +204,11 @@ function expandTemplate(template, context = {}) {
   const now = context.now instanceof Date ? context.now : new Date();
   const promptAnswers = context.promptAnswers || [];
   const tableRowNumber = context.tableRowNumber;
+  const shared = context.shared || null; // content shared in from another app, for %i and %a (see capture-shared.js)
+  const clipboard = typeof context.clipboard === 'string' ? context.clipboard : ''; // for %x
 
   const hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
-  const TOKEN_RE = /%%|%<([^>]*)>|%\^\{([^}]*)\}|%\\(\d+)|%[tTuU?]|@#(?:\s*([+-])\s*(\d+))?|%\^([tTuU])/g;
+  const TOKEN_RE = /%%|%<([^>]*)>|%\^\{([^}]*)\}|%\\(\d+)|%[tTuU?iax]|@#(?:\s*([+-])\s*(\d+))?|%\^([tTuU])/g;
 
   let result = '';
   let lastIndex = 0;
@@ -237,6 +240,13 @@ function expandTemplate(template, context = {}) {
       const n = Number(match[3]);
       const answer = promptAnswers[n - 1];
       result += answer !== undefined && answer !== null ? answer : '';
+    } else if (token === '%i' || token === '%x') {
+      // org: initial content (here, what was shared in) and the clipboard. Later lines take whatever precedes the
+      // token on its line, and structure-looking lines are escaped (placeInsertedText).
+      const prefix = result.slice(result.lastIndexOf('\n') + 1);
+      result += placeInsertedText(token === '%i' ? (shared && shared.text) || '' : clipboard, prefix);
+    } else if (token === '%a') {
+      result += sharedAnnotation(shared || {}); // org: the annotation, normally a link; here, a link to the shared page
     } else if (token === '%t') {
       result += formatOrgTimestamp({ date: now, active: true });
     } else if (token === '%T') {
