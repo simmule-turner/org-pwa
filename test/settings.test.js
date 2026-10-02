@@ -21,6 +21,9 @@ import {
   getTablesSpacing,
   setTablesSpacing,
   clampSpacing,
+  getFloatingKeyboardPos,
+  setFloatingKeyboardPos,
+  normalizeFloatingKeyboardPos,
   exportAllSettings,
   importAllSettings,
   getRecentFiles,
@@ -384,4 +387,39 @@ test('both spacing values are part of a settings backup, and importing writes th
   await importAllSettings(other, bundle);
   assert.equal(await getParagraphSpacing(other), 18);
   assert.equal(await getTablesSpacing(other), 6);
+});
+
+// ---- the floating keyboard's remembered position ----------------------------
+
+test('no saved floating-keyboard position means the default spot (null)', async () => {
+  assert.equal(await getFloatingKeyboardPos(createInMemoryAdapter()), null);
+});
+
+test('a dragged position round-trips, with left either a number or null (the default right-hand corner)', async () => {
+  const kv = createInMemoryAdapter();
+  await setFloatingKeyboardPos(kv, { left: 42.5, bottom: 310 });
+  assert.deepEqual(await getFloatingKeyboardPos(kv), { left: 42.5, bottom: 310 });
+  await setFloatingKeyboardPos(kv, { left: null, bottom: 200 });
+  assert.deepEqual(await getFloatingKeyboardPos(kv), { left: null, bottom: 200 });
+  await setFloatingKeyboardPos(kv, { bottom: 120 });
+  assert.deepEqual(await getFloatingKeyboardPos(kv), { left: null, bottom: 120 }, 'a missing left means the default corner');
+});
+
+test('a malformed stored position falls back to the default spot instead of moving the panel somewhere odd', async () => {
+  for (const bad of [undefined, null, 5, 'x', [], {}, { bottom: 'high' }, { bottom: NaN }, { bottom: Infinity }, { left: 'a', bottom: 10 }, { left: NaN, bottom: 10 }]) {
+    assert.equal(normalizeFloatingKeyboardPos(bad), null, JSON.stringify(bad));
+  }
+  const kv = createInMemoryAdapter();
+  await kv.set('settings:floatingKeyboardPos', JSON.stringify({ left: 'oops', bottom: 5 }));
+  assert.equal(await getFloatingKeyboardPos(kv), null);
+});
+
+test('the saved position is part of a settings backup and importing writes it back', async () => {
+  const kv = createInMemoryAdapter();
+  await setFloatingKeyboardPos(kv, { left: 7, bottom: 99 });
+  const bundle = await exportAllSettings(kv);
+  assert.deepEqual(bundle.settings.floatingKeyboardPos, { left: 7, bottom: 99 });
+  const other = createInMemoryAdapter();
+  await importAllSettings(other, bundle);
+  assert.deepEqual(await getFloatingKeyboardPos(other), { left: 7, bottom: 99 });
 });

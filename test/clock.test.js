@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
 import { formatOrgTimestamp } from '../src/org-timestamp.js';
-import { isClockRunning, clockIn, clockOut, clockCancel, clockInSwitchingTasks, formatClockDuration, parseClockDuration, totalClockedMinutes, findHeadingWithRunningClock, findMostRecentlyClockedHeading } from '../src/clock.js';
+import { isClockRunning, clockIn, clockOut, clockCancel, clockInSwitchingTasks, formatClockDuration, parseClockDuration, totalClockedMinutes, findHeadingWithRunningClock, findMostRecentlyClockedHeading, listRecentlyClockedHeadings } from '../src/clock.js';
 
 function ts(date, timeStr) {
   return formatOrgTimestamp({ date, time: timeStr, active: false });
@@ -339,4 +339,56 @@ test('clockInSwitchingTasks correctly finds and switches from a running clock on
   assert.equal(result.switchedFrom, taskA);
   assert.equal(isClockRunning(taskA), false);
   assert.equal(isClockRunning(taskB), true);
+});
+
+// ---- listRecentlyClockedHeadings (the C-u form of org-clock-goto) -------------------------
+
+const CLOCKED = [
+  '* Old task',
+  ':LOGBOOK:',
+  'CLOCK: [2026-09-01 Tue 09:00]--[2026-09-01 Tue 10:00] =>  1:00',
+  ':END:',
+  '* Newest task',
+  ':LOGBOOK:',
+  'CLOCK: [2026-09-02 Wed 08:00]--[2026-09-02 Wed 08:30] =>  0:30',
+  'CLOCK: [2026-09-05 Sat 14:00]--[2026-09-05 Sat 15:00] =>  1:00',
+  ':END:',
+  '* Never clocked',
+  '** Nested and clocked in the middle',
+  ':LOGBOOK:',
+  'CLOCK: [2026-09-03 Thu 10:00]--[2026-09-03 Thu 11:00] =>  1:00',
+  ':END:',
+  '',
+].join('\n');
+
+test('lists clocked headings, most recently clocked first, using each heading\u2019s latest clock', () => {
+  const list = listRecentlyClockedHeadings(parseOrg(CLOCKED));
+  assert.deepEqual(list.map((e) => e.heading.title), ['Newest task', 'Nested and clocked in the middle', 'Old task']);
+});
+
+test('a heading that was never clocked is not listed', () => {
+  assert.ok(!listRecentlyClockedHeadings(parseOrg(CLOCKED)).some((e) => e.heading.title === 'Never clocked'));
+  assert.deepEqual(listRecentlyClockedHeadings(parseOrg('* Nothing here\n')), []);
+});
+
+test('a still-running clock counts, as the most recent when it started last', () => {
+  const doc = parseOrg('* Finished\n:LOGBOOK:\nCLOCK: [2026-09-01 Tue 09:00]--[2026-09-01 Tue 10:00] =>  1:00\n:END:\n* Running\n:LOGBOOK:\nCLOCK: [2026-09-09 Wed 09:00]\n:END:\n');
+  assert.deepEqual(listRecentlyClockedHeadings(doc).map((e) => e.heading.title), ['Running', 'Finished']);
+});
+
+test('the list is capped at the limit, keeping the most recent', () => {
+  assert.deepEqual(listRecentlyClockedHeadings(parseOrg(CLOCKED), 2).map((e) => e.heading.title), ['Newest task', 'Nested and clocked in the middle']);
+});
+
+test('each entry carries when that heading was last clocked into', () => {
+  const [first] = listRecentlyClockedHeadings(parseOrg(CLOCKED));
+  assert.equal(first.start.getFullYear(), 2026);
+  assert.equal(first.start.getMonth(), 8);
+  assert.equal(first.start.getDate(), 5);
+  assert.equal(first.start.getHours(), 14);
+});
+
+test('an empty or missing document gives an empty list, not an error', () => {
+  assert.deepEqual(listRecentlyClockedHeadings(null), []);
+  assert.deepEqual(listRecentlyClockedHeadings({ children: [] }), []);
 });

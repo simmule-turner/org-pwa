@@ -65,3 +65,17 @@ test('writing is user-initiated and still asks for permission, unchanged', async
   assert.equal(h.calls.request, 1);
   assert.deepEqual(h.calls.writes, ['new text']);
 });
+
+test('access() reports what the browser allows without ever asking: none, prompt, or granted', async () => {
+  assert.equal(await adapterFor(null).access('a.org'), 'none');
+  const asking = fakeHandle({ state: { value: 'prompt' } });
+  assert.equal(await adapterFor(asking).access('a.org'), 'prompt');
+  assert.equal(asking.calls.request, 0, 'asking what is allowed must never show the prompt');
+  const granted = fakeHandle({ state: { value: 'granted' } });
+  assert.equal(await adapterFor(granted).access('a.org'), 'granted');
+  assert.equal(granted.calls.request, 0);
+});
+
+test('a "denied" answer also reads as needing permission again, not as missing', async () => {
+  assert.equal(await adapterFor(fakeHandle({ state: { value: 'denied' } })).access('a.org'), 'prompt');
+});
