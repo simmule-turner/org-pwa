@@ -7,6 +7,11 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v429 — The Capture shortcut has its own icon
+The Capture shortcut in the Android icon menu now has its own icon: the
+same unicorn with the colours reversed, teal on white, so it is easy to
+tell from the app icon at a glance.
+
 * v428 — Capture from other apps; CRLF files kept; Narrow and agenda-file fixes
 Capture from other apps. On Android, share text or a page to org-pwa
 (and long-press the icon for Capture) and the title, text and link flow

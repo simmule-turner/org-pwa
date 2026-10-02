@@ -33,7 +33,21 @@
       "name": "Capture",
       "short_name": "Capture",
       "description": "Open the capture panel",
-      "url": "./index.html?capture"
+      "url": "./index.html?capture",
+      "icons": [
+        {
+          "src": "icons/shortcut-capture-96.png",
+          "sizes": "96x96",
+          "type": "image/png",
+          "purpose": "any maskable"
+        },
+        {
+          "src": "icons/shortcut-capture-192.png",
+          "sizes": "192x192",
+          "type": "image/png",
+          "purpose": "any maskable"
+        }
+      ]
     }
   ]
 }
