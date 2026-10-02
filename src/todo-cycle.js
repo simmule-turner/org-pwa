@@ -34,7 +34,7 @@
  * fully fixed by that earlier pass.
  */
 
-import { DEFAULT_TODO_KEYWORDS, DEFAULT_DONE_KEYWORDS, parseTodoSpecValue } from './org-parser.js';
+import { DEFAULT_TODO_KEYWORDS, DEFAULT_DONE_KEYWORDS, isTodoSequenceKey, parseTodoSpecValue } from './org-parser.js';
 
 const DEFAULT_SEQUENCE = { todoKeywords: ['TODO'], doneKeywords: ['DONE'], keySpecs: {}, logSpecs: {} };
 
@@ -50,7 +50,7 @@ function resolveTodoSequences(doc, globalDefault) {
   if (!doc || !Array.isArray(doc.keywords)) return [fallback];
   const sequences = [];
   for (const kw of doc.keywords) {
-    if (kw.key.toUpperCase() !== 'TODO') continue;
+    if (!isTodoSequenceKey(kw.key)) continue;
     const parsed = parseTodoSpecValue(kw.value);
     sequences.push({
       todoKeywords: parsed.todoKeywords.length ? parsed.todoKeywords : [...DEFAULT_TODO_KEYWORDS],

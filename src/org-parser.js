@@ -16,16 +16,32 @@
  * richer `body: Node[]` later without touching heading/planning/property
  * logic.
  *
- * Known round-trip limitation: tag columns are not re-aligned to their
- * original character position on serialize (a single space is used before
- * the tag string instead of Emacs's right-aligned column). Structure and
- * content survive round-trip; exact visual alignment of the tag column
- * does not yet. Flagging this rather than papering over it.
+ * ROUND TRIP. A file that is opened and saved without being edited must come
+ * back byte for byte (the GitHub and WebDAV backends turn any difference into
+ * a diff in the person's history). So each heading keeps `heading.raw`: the
+ * original header line, planning line and drawer lines, plus a signature of
+ * the parsed fields they were read into. The serializer writes the original
+ * text for any part whose fields are unchanged, and regenerates only the parts
+ * that were edited (a property that was not touched keeps its own line, with
+ * its own spacing). Tag alignment, drawer indentation, padded property
+ * values, planning order, empty or repeated drawers and property names with
+ * a `+` or a `:` in them (`:header-args+:`, `:header-args:emacs-lisp:`) all
+ * survive that way. `raw` is plain data, so structuredClone keeps it.
+ *
+ * Not handled here: CRLF line endings, which parseOrg reads but serializeOrg
+ * writes as LF.
  */
 
 import { parseBody } from './body-parser.js';
 
 const DEFAULT_TODO_KEYWORDS = ['TODO'];
+
+/** Whether a `#+KEY:` line defines a TODO sequence. `#+SEQ_TODO:` and `#+TYP_TODO:` are
+ *  org's standard aliases of `#+TODO:` (a file using one would otherwise show its custom
+ *  keywords as plain title text). */
+function isTodoSequenceKey(key) {
+  return /^(TODO|SEQ_TODO|TYP_TODO)$/i.test(key);
+}
 const DEFAULT_DONE_KEYWORDS = ['DONE'];
 
 // ---- tokenizing helpers -------------------------------------------------
@@ -36,7 +52,9 @@ const PROPERTY_DRAWER_START_RE = /^\s*:PROPERTIES:\s*$/i;
 const PROPERTY_DRAWER_END_RE = /^\s*:END:\s*$/i;
 const LOGBOOK_DRAWER_START_RE = /^\s*:LOGBOOK:\s*$/i;
 const LOGBOOK_DRAWER_END_RE = /^\s*:END:\s*$/i;
-const PROPERTY_LINE_RE = /^\s*:([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/;
+// Org's own rule (org-property-re): the name is the first token without its closing colon, however many
+// colons or plus signs it contains -- :ID:, :header-args+:, :header-args:emacs-lisp:, :Effort_ALL:.
+const PROPERTY_LINE_RE = /^\s*:(\S+):[ \t]*(.*?)[ \t]*$/;
 const TAGS_RE = /\s+(:[A-Za-z0-9_@#%:]+:)\s*$/;
 const PRIORITY_RE = /^\[#([A-Za-z0-9])\]\s*/;
 
@@ -171,7 +189,7 @@ function parseOrg(text, opts = {}) {
   let sawAnyTodoLine = false;
   for (const line of lines) {
     const m = KEYWORD_RE.exec(line);
-    if (m && m[1].toUpperCase() === 'TODO') {
+    if (m && isTodoSequenceKey(m[1])) {
       sawAnyTodoLine = true;
       const spec = parseTodoSpecValue(m[2]);
       todoKeywordsUnion.push(...spec.todoKeywords);
@@ -230,6 +248,17 @@ function parseOrg(text, opts = {}) {
         bodyHidden: false,
         children: [],
       };
+      // The original text of the lines above the body, so an unedited heading is written back exactly as it was read.
+      heading.raw = {
+        header: line,
+        headerSig: serializeHeadingLine(heading),
+        planning: null,
+        planningSig: null,
+        drawers: [],
+        propertyLines: {},
+        propsSig: '',
+        logSig: '',
+      };
 
       while (stack.length > 1 && stack[stack.length - 1].level >= level) {
         stack.pop();
@@ -242,6 +271,8 @@ function parseOrg(text, opts = {}) {
       if (i < lines.length && isPlanningLine(lines[i])) {
         const planning = parsePlanningLine(lines[i]);
         if (planning) heading.planning = planning;
+        heading.raw.planning = lines[i];
+        heading.raw.planningSig = serializePlanningLine(heading.planning);
         i++;
       }
 
@@ -250,27 +281,38 @@ function parseOrg(text, opts = {}) {
         sawDrawer = false;
         if (PROPERTY_DRAWER_START_RE.test(lines[i])) {
           sawDrawer = true;
+          const segment = { type: 'properties', lines: [lines[i]] };
           i++;
           while (i < lines.length && !PROPERTY_DRAWER_END_RE.test(lines[i])) {
+            segment.lines.push(lines[i]);
             const pm = PROPERTY_LINE_RE.exec(lines[i]);
             if (pm) {
               const [, key, value] = pm;
-              if (!(key in heading.properties)) heading.propertyOrder.push(key);
+              if (!Object.prototype.hasOwnProperty.call(heading.properties, key)) heading.propertyOrder.push(key);
               heading.properties[key] = value;
+              heading.raw.propertyLines[key] = { line: lines[i], value };
             }
             i++;
           }
+          if (i < lines.length) segment.lines.push(lines[i]); // :END:
           i++; // consume :END:
+          heading.raw.drawers.push(segment);
         } else if (LOGBOOK_DRAWER_START_RE.test(lines[i])) {
           sawDrawer = true;
+          const segment = { type: 'logbook', lines: [lines[i]] };
           i++;
           while (i < lines.length && !LOGBOOK_DRAWER_END_RE.test(lines[i])) {
             heading.logbookLines.push(lines[i]);
+            segment.lines.push(lines[i]);
             i++;
           }
+          if (i < lines.length) segment.lines.push(lines[i]); // :END:
           i++; // consume :END:
+          heading.raw.drawers.push(segment);
         }
       }
+      heading.raw.propsSig = propertiesSignature(heading);
+      heading.raw.logSig = JSON.stringify(heading.logbookLines);
 
       continue;
     }
@@ -330,26 +372,78 @@ function serializePlanningLine(planning) {
   return parts.length ? parts.join(' ') : null;
 }
 
+/** A fingerprint of the property fields, to tell whether they still match what was read from the file. */
+function propertiesSignature(node) {
+  const order = node.propertyOrder || [];
+  const props = node.properties || {};
+  return JSON.stringify(order.map((key) => [key, props[key]]));
+}
+
+/** A property written from scratch: `:KEY: value`, or just `:KEY:` when the value is empty (as org writes it). */
+function canonicalPropertyLine(key, value, indent = '') {
+  return value === '' || value == null ? `${indent}:${key}:` : `${indent}:${key}: ${value}`;
+}
+
+const leadingSpace = (line) => /^\s*/.exec(line)[0];
+
+/** The properties drawer as lines. A property that was not touched keeps the
+ *  line it was read from, spacing and all; one that is new or changed is
+ *  written fresh, in the drawer's own indentation. */
+function propertiesDrawerLines(node) {
+  const order = node.propertyOrder || [];
+  if (!order.length) return [];
+  const raw = node.raw;
+  const first = raw && raw.drawers.find((d) => d.type === 'properties');
+  const indent = first ? leadingSpace(first.lines[0]) : '';
+  const lines = [`${indent}:PROPERTIES:`];
+  for (const key of order) {
+    const kept = raw && raw.propertyLines && Object.prototype.hasOwnProperty.call(raw.propertyLines, key) ? raw.propertyLines[key] : null;
+    lines.push(kept && kept.value === node.properties[key] ? kept.line : canonicalPropertyLine(key, node.properties[key], indent));
+  }
+  lines.push(`${indent}:END:`);
+  return lines;
+}
+
+function logbookDrawerLines(node) {
+  const log = node.logbookLines || [];
+  if (!log.length) return [];
+  const first = node.raw && node.raw.drawers.find((d) => d.type === 'logbook');
+  const indent = first ? leadingSpace(first.lines[0]) : '';
+  return [`${indent}:LOGBOOK:`, ...log, `${indent}:END:`];
+}
+
+/** Every line from a heading's own line down to (not including) its body, in
+ *  file order: the heading line, the planning line, and the drawers. Each
+ *  part is the original text when its fields are unchanged since the file was
+ *  read, and regenerated only when they were edited. The one place that
+ *  decides this, so the serializer and the line-number lookups below cannot
+ *  disagree about how many lines a heading takes. */
+function headingPreambleLines(node) {
+  const raw = node.raw;
+  const lines = [];
+
+  const header = serializeHeadingLine(node);
+  lines.push(raw && raw.headerSig === header ? raw.header : header);
+
+  const planning = serializePlanningLine(node.planning);
+  if (raw && raw.planning != null && raw.planningSig === planning) lines.push(raw.planning);
+  else if (planning) lines.push(planning);
+
+  const propsUnchanged = !!raw && raw.propsSig === propertiesSignature(node);
+  const logUnchanged = !!raw && raw.logSig === JSON.stringify(node.logbookLines || []);
+  if (propsUnchanged && logUnchanged) {
+    for (const drawer of raw.drawers) lines.push(...drawer.lines); // exactly as read: order, indentation, repeats, empty drawers
+  } else {
+    const keep = (type) => raw.drawers.filter((d) => d.type === type).flatMap((d) => d.lines);
+    lines.push(...(propsUnchanged ? keep('properties') : propertiesDrawerLines(node)));
+    lines.push(...(logUnchanged ? keep('logbook') : logbookDrawerLines(node)));
+  }
+  return lines;
+}
+
 function serializeNode(node, out) {
   if (node.type === 'heading') {
-    out.push(serializeHeadingLine(node));
-
-    const planningLine = serializePlanningLine(node.planning);
-    if (planningLine) out.push(planningLine);
-
-    if (node.propertyOrder && node.propertyOrder.length) {
-      out.push(':PROPERTIES:');
-      for (const key of node.propertyOrder) {
-        out.push(`:${key}: ${node.properties[key]}`);
-      }
-      out.push(':END:');
-    }
-
-    if (node.logbookLines && node.logbookLines.length) {
-      out.push(':LOGBOOK:');
-      for (const l of node.logbookLines) out.push(l);
-      out.push(':END:');
-    }
+    out.push(...headingPreambleLines(node));
 
     for (const l of node.bodyLines || []) out.push(l);
     for (const child of node.children || []) serializeNode(child, out);
@@ -410,11 +504,7 @@ function findHeadingLineNumber(doc, targetHeading) {
 
   function walk(node) {
     if (node === targetHeading) return true;
-    count += 1; // the heading's own "* Title" line
-    if (serializePlanningLine(node.planning)) count += 1;
-    if (node.propertyOrder && node.propertyOrder.length) {
-      count += 2 + node.propertyOrder.length; // :PROPERTIES: + one line per property + :END:
-    }
+    count += headingPreambleLines(node).length; // heading line, planning line and drawers, exactly as serialized
     count += (node.bodyLines || []).length;
     for (const child of node.children || []) {
       if (walk(child)) return true;
@@ -443,11 +533,7 @@ function findHeadingAtLine(doc, targetLine) {
 
   function walk(node) {
     if (count === targetLine) return node;
-    count += 1; // the heading's own "* Title" line
-    if (serializePlanningLine(node.planning)) count += 1;
-    if (node.propertyOrder && node.propertyOrder.length) {
-      count += 2 + node.propertyOrder.length; // :PROPERTIES: + one line per property + :END:
-    }
+    count += headingPreambleLines(node).length; // heading line, planning line and drawers, exactly as serialized
     count += (node.bodyLines || []).length;
     for (const child of node.children || []) {
       const found = walk(child);
@@ -474,4 +560,5 @@ export {
   DEFAULT_DONE_KEYWORDS,
   parseTodoKeywordToken,
   parseTodoSpecValue,
+  isTodoSequenceKey,
 };
