@@ -148,6 +148,7 @@ Landing on a step whose text is identical to the last confirmed saved version (w
 - *Checkboxes* cycle unchecked → in-progress → done. A progress cookie in a heading's title (~[3/8]~, ~[40%]~, or the blank ~[/]~ and ~[/8]~) is recalculated whenever a checkbox in the heading's subtree changes, counting the heading's own list and every descendant heading's, as org does. A heading's ~:COOKIE_DATA:~ property changes what is counted: ~checkbox~ or ~todo~ picks which kind when a heading has both, both words count both kinds, and ~recursive~ with ~todo~ extends TODO counting to the whole subtree. Without it, only checkboxes are counted, recursively.
 - *Tables*: tap a cell to edit it in place. A *⎌* button beside the field discards the edit and restores the cell's text, which is the way out on a phone, where there is no Escape key (~Escape~ also works with a hardware keyboard). Row and column add and remove controls sit below the table. ~#+TBLFM:~ formulas are evaluated (see [[#table-formulas][Table formulas]]). *Header rows* are the rows before the table's first horizontal rule (~|---+---|~) and render bold; a table with no rule has no header, and a later rule is only a group separator.
 - *Paragraphs*: tap the text for edit, add-below and delete actions.
+- *Captions, names and image sizes*: ~#+CAPTION:~, ~#+NAME:~, ~#+ATTR_HTML:~ (or ~#+ATTR_ORG:~), ~#+HEADER:~ and ~#+RESULTS:~ lines directly above a paragraph, image, table or block describe it. ~#+CAPTION:~ shows as an italic caption, with its inline markup rendered. ~#+ATTR_HTML: :width 300 :align center~ sizes and centers the images in that paragraph (a plain number is pixels; ~%~, ~em~ and similar lengths work). The other lines stay visible as small muted text, and every line is kept exactly as written.
 
 Every delete asks for confirmation, and Undo/redo covers every edit (see [[#undoredo-and-history][Undo/redo and History]]).
 
@@ -621,7 +622,7 @@ An explicit per-keyword spec always beats ~org-log-done~, which only fills in fo
 
 *Fast-access keys* (the letter before any ~@~ or ~!~, as in ~TODO(t)~) are parsed, so a ~#+TODO:~ line using them doesn't break TODO recognition. A ~#+TODO:~ line with no ~|~ treats its last keyword as the only done state, as in org.
 
-*Parallel workflows*: several ~#+TODO:~ lines in one file (~#+TODO: TODO(t) | DONE(d)~ then ~#+TODO: REPORT(r) BUG(b) KNOWNCAUSE(k) | FIXED(f)~) define coexisting workflows, as in org. Tapping the badge cycles within the sequence a heading's keyword already belongs to. For a heading with no TODO state, the badge, the action menu's *TODO* button and ~C-c C-t~ all behave alike: with one workflow they cycle as usual, and with more than one they open a picker showing every state of every workflow, one row per sequence, so you can jump to any state. Each sequence's first state (where a fresh heading starts) is green and its done-type states are red, since a workflow can wrap onto several lines and the last button isn't always its end. *Clear* resets the heading to blank, and *Cancel* dismisses the picker unchanged.
+*Parallel workflows*: several ~#+TODO:~ lines in one file (~#+TODO: TODO(t) | DONE(d)~ then ~#+TODO: REPORT(r) BUG(b) KNOWNCAUSE(k) | FIXED(f)~) define coexisting workflows, as in org. Tapping the badge cycles within the sequence a heading's keyword already belongs to. For a heading with no TODO state, the badge, the action menu's *TODO* button and ~C-c C-t~ all behave alike: with one workflow they cycle as usual, and with more than one they open a picker showing every state of every workflow, one row per sequence, so you can jump to any state. Each sequence's first state (where a fresh heading starts) is green and its done-type states are red, since a workflow can wrap onto several lines and the last button isn't always its end. *Clear* resets the heading to blank, and *Cancel* dismisses the picker unchanged. ~#+SEQ_TODO:~ and ~#+TYP_TODO:~ are read the same way as ~#+TODO:~.
 
 *** The ~:LOGBOOK:~ drawer
 
@@ -1625,6 +1626,8 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Babel*: not built.
 
+*Links and structure*: no ~[[id:...]]~ links, ~<<targets>>~, habits (~:STYLE: habit~), ~#+SETUPFILE:~ or ~org-cite~ citations. They are kept exactly as written, and never altered by a save.
+
 *Undo/redo* (see [[#undoredo-and-history][Undo/redo and History]]): no undo tree, and fold state isn't preserved across an undo or redo jump (the file's ~#+STARTUP~ visibility is reapplied). There is no per-keystroke granularity; the browser's field-level undo covers that, much as Emacs batches consecutive typing.
 
 *Search* (see [[#searching][Searching]]): Search and Replace both reach every file in ~org-agenda-files~, as org's ~org-search-view~ and ~tags-query-replace~ do. Subtree narrowing survives a reload (see [[#narrowing][Narrowing]]); Search's Narrow does not.
@@ -1668,6 +1671,8 @@ The one exception is ~src/vendor/mathjs/mathjs-custom.min.js~, a tree-shaken cus
 #+BEGIN_SRC
 node --test
 #+END_SRC
+
+~node tools/roundtrip-corpus.mjs DIR~ checks that every ~.org~ file in a directory comes back byte for byte after an open and save with no edit.
 
 One test checks that every module the app imports is in the service worker's precache list, because nothing is cached at runtime and a missing module would stop the app starting offline.
 

@@ -7,6 +7,17 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v426 — Files round-trip byte for byte; captions and image sizes; #+SEQ_TODO
+Opening and saving a file without editing it now returns it byte for
+byte. Of 54 real org files, 23 changed on a plain open and save:
+property lines like `:header-args+:` were deleted or merged,
+`:header-args:emacs-lisp:` was split into a name and a value, and drawer
+indentation, padded values, tag alignment and CLOSED/SCHEDULED order
+were rewritten. Only a part you edit is rewritten now. Also:
+`#+CAPTION:` shows as a caption and `#+ATTR_HTML: :width` sizes images,
+`#+SEQ_TODO:` and `#+TYP_TODO:` work like `#+TODO:`, and narrowed Text
+view no longer misplaces a heading after a logbook.
+
 * v425 — Switching tabs no longer asks for permission on a local file; the README is half its length
 On a local file, every tab switch and every return to the app re-read
 the file to look for outside changes, which made the browser show its
