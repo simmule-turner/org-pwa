@@ -2,6 +2,7 @@
 import { findDuplicateAgendaFiles, getAgendaFilesVar, getContactsFilesVar, parseAgendaFilesVar } from '../src/local-variables.js';
 import { parseOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
+import { scheduleCalendarSync } from './calendar-sync.js';
 import { S } from './app-state.js';
 import { render } from './render.js';
 import { renderSearchPanel } from './search-ui.js';
@@ -169,6 +170,7 @@ export function refreshAgendaFiles() {
   S.agendaFilesCacheLoadedFor = null;
   ensureAgendaFilesLoaded({ prompt: true }); // a tap on the refresh button is the one thing allowed to ask for a local file's permission
   render();
+  scheduleCalendarSync(); // freshly fetched files may hold different dates
 }
 
 /** Waits until every currently-configured agenda file has actually
@@ -199,6 +201,15 @@ export function waitForAgendaFilesLoaded() {
       }
     };
     check();
+  });
+}
+
+/** The configured agenda files that have not loaded (still loading, or failed), for anything that has to say what it
+ *  could not take into account. */
+export function unloadedAgendaFiles() {
+  return S.agendaFilesConfig.filter((key) => {
+    const entry = agendaFilesCache.get(key);
+    return !(entry && entry.doc);
   });
 }
 

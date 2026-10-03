@@ -16,6 +16,7 @@ import { openAttachChoicePrompt } from './attachments-flow.js';
 import { openCalendarPanel } from './calendar-panel.js';
 import { openCapturePrompt, renderCapturePanel } from './capture-ui.js';
 import { closeAllOverlayPanels } from './chrome.js';
+import { effectiveCalendarConfig, syncAgendaToCalendar } from './calendar-sync.js';
 import { clockCancelHeading, clockContinue, clockGoto, clockGotoRecent, clockInHeading, clockOutHeading, findRunningClockAcrossSessions, recentlyClockedAcrossSessions } from './clock-flow.js';
 import { GLOBAL_TODO_DEFAULT, PALETTE_RECENT_KEY } from './constants.js';
 import { lockBackgroundScroll } from './dialogs.js';
@@ -353,6 +354,7 @@ export const PALETTE_NEEDS = {
   // unlike `clock`, any open tab counts: org-clock-goto is most useful exactly when the clock is somewhere else
   anyClock: () => (findRunningClockAcrossSessions() ? null : 'no clock is running'),
   anyClocked: () => (recentlyClockedAcrossSessions(1).length ? null : 'nothing has been clocked yet'),
+  calendar: () => (effectiveCalendarConfig() ? null : 'no calendar address is set (Settings \u2192 Calendar)'),
   archived: (target) => (target && isArchivedInPlace(target) ? null : 'this heading isn\u2019t archived'),
   notArchived: (target) => (target && isArchivedInPlace(target) ? 'it is already archived \u2014 use Unarchive' : null),
 };
@@ -469,6 +471,8 @@ export function paletteCommandList() {
 
     // -- View
     { id: 'agenda', label: 'Agenda', orgName: 'org-agenda', keys: 'C-c a', group: 'View', needs: ['doc'], run: chord('C-c a') },
+    { id: 'calendar-sync', label: 'Sync agenda to calendar', group: 'View', keywords: ['caldav', 'calendar', 'radicale', 'mirror', 'events'], needs: ['calendar'], run: () => syncAgendaToCalendar({ manual: true }) },
+    { id: 'calendar-rebuild', label: 'Rebuild calendar from the agenda', group: 'View', keywords: ['caldav', 'calendar', 'radicale', 'mirror', 'reset'], needs: ['calendar'], run: () => syncAgendaToCalendar({ manual: true, rebuild: true }) },
     { id: 'tasklist', label: 'TODO list', orgName: 'org-todo-list', keys: 'C-c C-v', group: 'View', keywords: ['tasks'], needs: ['doc'], run: chord('C-c C-v') },
     { id: 'view-org', label: 'Outline view', orgName: 'org-mode', group: 'View', keywords: ['org'], needs: ['doc'], run: () => switchToView('org') },
     { id: 'view-text', label: 'Text view', orgName: 'text-mode', group: 'View', keywords: ['raw', 'source'], needs: ['doc'], run: () => switchToView('text') },

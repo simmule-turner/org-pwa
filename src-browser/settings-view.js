@@ -11,6 +11,7 @@ import { normalizeSmartQuotes } from '../src/text-normalize.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
 import { S } from './app-state.js';
 import { THEME_CSS_VARS, THEME_DEFAULTS, THEME_VAR_LABELS, applyFontFamily, applyFontSize, applyMenuSize, applyParagraphSpacing, applyReadingWidth, applyTablesFontSize, applyTablesSpacing, resolvedThemeName } from './appearance.js';
+import { syncAgendaToCalendar } from './calendar-sync.js';
 import { confirmDialog, openMultiFieldPopup, openTextFieldPopup } from './dialogs.js';
 import { validateCaptureTemplates } from './doc-helpers.js';
 import { sidePanelEl } from './dom.js';
@@ -20,7 +21,7 @@ import { syncExtraMenuButtonVisibility } from './menus.js';
 import { getServiceWorkerVersion } from './render-helpers.js';
 import { render } from './render.js';
 import { QUICK_SETTINGS_FIELDS } from './settings-fields.js';
-import { DEFAULT_CAPTURE_TEMPLATES, DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getCaptureTemplates, getCustomThemeColors, getFontFamily, getFontSize, getGithubConfig, getGlobalVariables, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setCaptureTemplates, setCustomThemeColors, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig } from './settings.js';
+import { DEFAULT_CAPTURE_TEMPLATES, DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getCaptureTemplates, getCustomThemeColors, getFontFamily, getFontSize, getGithubConfig, getGlobalVariables, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setCaptureTemplates, setCustomThemeColors, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig, getCaldavConfig, setCaldavConfig } from './settings.js';
 import { kv } from './singletons.js';
 import { formatPendingChangeTimestamp } from './sync-helpers.js';
 import { entryFieldButtonStyle, labeledInput, menuButton, pickTextFile, populateSelectOptions, textInputStyle } from './ui-widgets.js';
@@ -1311,11 +1312,11 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     menuButton('Export Settings', async () => {
       const bundle = await exportAllSettings(kv);
       bundle.settings.globalVariables = buildFullyResolvedGlobalVariablesText();
-      const hasCredentials = !!(bundle.settings.github && bundle.settings.github.token) || !!(bundle.settings.webdav && bundle.settings.webdav.password);
+      const hasCredentials = !!(bundle.settings.github && bundle.settings.github.token) || !!(bundle.settings.webdav && bundle.settings.webdav.password) || !!(bundle.settings.caldav && bundle.settings.caldav.password);
       if (
         hasCredentials &&
         !(await confirmDialog(
-          'This file will include your GitHub token and/or WebDAV password in plain text. Keep it private, and only share it with something you trust. Continue?',
+          'This file will include your GitHub token and/or WebDAV or calendar password in plain text. Keep it private, and only share it with something you trust. Continue?',
           { confirmLabel: 'Continue', danger: true }
         ))
       ) {
@@ -1480,5 +1481,68 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
             ? 'Couldn\u2019t check for updates right now.'
             : '';
   updatesSection.appendChild(updatesStatus);
+
+  // The calendar the agenda is mirrored to. Last on purpose, so nothing above it moves.
+  const calendarConfigStored = await getCaldavConfig(kv);
+  const calendarSection = document.createElement('div');
+  calendarSection.className = 'settings-section';
+  container.appendChild(calendarSection);
+  const calendarTitle = document.createElement('div');
+  calendarTitle.className = 'panel-section-title';
+  calendarTitle.textContent = 'Calendar (CalDAV)';
+  calendarSection.appendChild(calendarTitle);
+
+  function openCalendarFormPopup() {
+    openMultiFieldPopup({
+      label: 'Calendar (CalDAV)',
+      fields: [
+        { key: 'url', label: 'Calendar address', type: 'text', value: calendarConfigStored.url, placeholder: 'e.g. https://dav.example.com/radicale/me/calendar/' },
+        { key: 'username', label: 'Username (blank = the WebDAV one)', type: 'text', value: calendarConfigStored.username },
+        { key: 'password', label: 'Password (blank = the WebDAV one)', type: 'password', value: calendarConfigStored.password },
+      ],
+      onSave: async (values) => {
+        S.caldavConfig = await setCaldavConfig(kv, { url: values.url, username: values.username, password: values.password });
+        S.calendarSyncPaused = false;
+        S.calendarSyncLastError = null;
+        setStatus('Calendar settings saved.');
+        renderSettingsView();
+        if (S.caldavConfig.url) syncAgendaToCalendar({ manual: true });
+      },
+    });
+  }
+
+  const calendarPreviewFields = [
+    labeledInput('Calendar address', 'text', calendarConfigStored.url, 'e.g. https://dav.example.com/radicale/me/calendar/'),
+    labeledInput('Username', 'text', calendarConfigStored.username, 'blank = the WebDAV one'),
+    labeledInput('Password', 'password', calendarConfigStored.password, 'blank = the WebDAV one'),
+  ];
+  for (const field of calendarPreviewFields) {
+    field.input.readOnly = true;
+    field.input.onfocus = () => {
+      field.input.blur();
+      openCalendarFormPopup();
+    };
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    row.appendChild(field.wrap);
+    calendarSection.appendChild(row);
+  }
+
+  const calendarButtons = document.createElement('div');
+  calendarButtons.className = 'panel-row';
+  calendarButtons.appendChild(menuButton('Sync now', () => syncAgendaToCalendar({ manual: true }), !calendarConfigStored.url));
+  calendarButtons.appendChild(menuButton('Rebuild calendar', () => syncAgendaToCalendar({ manual: true, rebuild: true }), !calendarConfigStored.url));
+  calendarSection.appendChild(calendarButtons);
+
+  const calendarHint = document.createElement('div');
+  calendarHint.style.fontSize = '11px';
+  calendarHint.style.opacity = '0.6';
+  calendarHint.style.margin = '2px 0 6px';
+  calendarHint.textContent =
+    'Mirrors your agenda, one way, into a calendar you create on the server first. Use a calendar of its own: the app only ever ' +
+    'removes events it put there, but edits you make to those in a calendar app are overwritten. Like WebDAV, the server must ' +
+    'allow requests from this app (CORS). Leave the address blank to turn it off.';
+  calendarSection.appendChild(calendarHint);
+
   scrollingEl.scrollTop = savedScrollTop;
 }

@@ -14,6 +14,7 @@
 const KEYS = {
   github: 'settings:github',
   webdav: 'settings:webdav',
+  caldav: 'settings:caldav',
   theme: 'settings:theme',
   customThemeColors: 'settings:customThemeColors',
   fontFamily: 'settings:fontFamily',
@@ -134,6 +135,34 @@ export async function setWebdavConfig(kvAdapter, config) {
   const merged = { ...DEFAULT_WEBDAV_CONFIG, ...config };
   await setJson(kvAdapter, KEYS.webdav, merged);
   return merged;
+}
+
+// ---- CalDAV (the calendar the agenda is mirrored to) ----------------------
+
+const DEFAULT_CALDAV_CONFIG = { url: '', username: '', password: '' };
+const CALDAV_SYNC_KEY = 'caldavSync'; // not in KEYS on purpose: KEYS is what backups export, and this is not a setting
+
+/** The calendar address and credentials. A blank username or password means "use the WebDAV ones" (a CalDAV server is
+ *  often the same host), which calendar-sync.js applies; what is stored here is only what was typed. */
+export async function getCaldavConfig(kvAdapter) {
+  const stored = await getJson(kvAdapter, KEYS.caldav, {});
+  return { ...DEFAULT_CALDAV_CONFIG, ...stored };
+}
+
+export async function setCaldavConfig(kvAdapter, config) {
+  const merged = { ...DEFAULT_CALDAV_CONFIG, ...config, url: String((config && config.url) || '').trim() };
+  await setJson(kvAdapter, KEYS.caldav, merged);
+  return merged;
+}
+
+/** What the calendar mirror last sent, per event: `{ url, resources: { name: { hash, doc } } }`. Not a setting, and
+ *  deliberately kept out of settings backups (see exportAllSettings), since it describes one device's last sync. */
+export async function getCaldavSyncState(kvAdapter) {
+  return getJson(kvAdapter, CALDAV_SYNC_KEY, { url: '', resources: {} });
+}
+
+export async function setCaldavSyncState(kvAdapter, state) {
+  await setJson(kvAdapter, CALDAV_SYNC_KEY, state);
 }
 
 // ---- theme -----------------------------------------------------------
