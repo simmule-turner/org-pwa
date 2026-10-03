@@ -822,6 +822,61 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   otherFontHint.style.margin = '4px 0 8px';
   appearanceSection.appendChild(otherFontHint);
 
+  const paragraphSpacingTitle = document.createElement('div');
+  paragraphSpacingTitle.className = 'panel-section-title';
+  paragraphSpacingTitle.textContent = 'Paragraph Spacing';
+  appearanceSection.appendChild(paragraphSpacingTitle);
+
+  // Laid out exactly like Font Size above: the main value, a divider, then "Tables:" and
+  // its own value, which applies to tables and the other secondary blocks independently.
+  const spacingRow = document.createElement('div');
+  spacingRow.className = 'panel-row';
+  spacingRow.style.alignItems = 'center'; // same reason as the Font Size row: a number between two taller buttons
+  spacingRow.style.flexWrap = 'wrap'; // lets the Tables group drop to its own line on a narrow phone rather than clipping
+  const addSpacingStepper = (valueId, current, lessLabel, moreLabel, save, apply) => {
+    const step = async (delta) => {
+      const next = Math.min(MAX_SPACING, Math.max(MIN_SPACING, current + delta));
+      await save(kv, next);
+      apply(next);
+      renderSettingsView();
+    };
+    const less = menuButton('\u2212', () => step(-1));
+    less.setAttribute('aria-label', lessLabel);
+    spacingRow.appendChild(less);
+    const value = document.createElement('span');
+    value.id = valueId;
+    value.textContent = current + 'px';
+    value.style.fontSize = '14px';
+    value.style.minWidth = '40px';
+    value.style.textAlign = 'center';
+    spacingRow.appendChild(value);
+    const more = menuButton('+', () => step(1));
+    more.setAttribute('aria-label', moreLabel);
+    spacingRow.appendChild(more);
+  };
+  addSpacingStepper('paragraph-spacing-value', paragraphSpacing, 'Less paragraph spacing', 'More paragraph spacing', setParagraphSpacing, applyParagraphSpacing);
+
+  const spacingDivider = document.createElement('span');
+  spacingDivider.textContent = '\u2502'; // visual separator between the paragraph and Tables groups on the same row
+  spacingDivider.style.opacity = '0.3';
+  spacingDivider.style.margin = '0 4px';
+  spacingRow.appendChild(spacingDivider);
+
+  const tablesSpacingLabel = document.createElement('span');
+  tablesSpacingLabel.textContent = 'Tables:';
+  tablesSpacingLabel.style.fontSize = '13px';
+  tablesSpacingLabel.style.opacity = '0.7';
+  spacingRow.appendChild(tablesSpacingLabel);
+  addSpacingStepper('tables-spacing-value', tablesSpacing, 'Less table spacing', 'More table spacing', setTablesSpacing, applyTablesSpacing);
+  appearanceSection.appendChild(spacingRow);
+
+  const paragraphSpacingHint = document.createElement('div');
+  paragraphSpacingHint.textContent = 'The gap between paragraphs, 0 to 32px (default 10px; 0 packs them together). Tables applies to tables and other secondary blocks (source and quote blocks, rules), independent of the paragraph spacing.';
+  paragraphSpacingHint.style.fontSize = '11px';
+  paragraphSpacingHint.style.opacity = '0.6';
+  paragraphSpacingHint.style.margin = '4px 0 8px';
+  appearanceSection.appendChild(paragraphSpacingHint);
+
   const readingWidthTitle = document.createElement('div');
   readingWidthTitle.className = 'panel-section-title';
   readingWidthTitle.textContent = 'Reading Width';
@@ -912,61 +967,6 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   menuSizeHint.style.opacity = '0.6';
   menuSizeHint.style.margin = '4px 0 8px';
   appearanceSection.appendChild(menuSizeHint);
-
-  const paragraphSpacingTitle = document.createElement('div');
-  paragraphSpacingTitle.className = 'panel-section-title';
-  paragraphSpacingTitle.textContent = 'Paragraph Spacing';
-  appearanceSection.appendChild(paragraphSpacingTitle);
-
-  // Laid out exactly like Font Size above: the main value, a divider, then "Tables:" and
-  // its own value, which applies to tables and the other secondary blocks independently.
-  const spacingRow = document.createElement('div');
-  spacingRow.className = 'panel-row';
-  spacingRow.style.alignItems = 'center'; // same reason as the Font Size row: a number between two taller buttons
-  spacingRow.style.flexWrap = 'wrap'; // lets the Tables group drop to its own line on a narrow phone rather than clipping
-  const addSpacingStepper = (valueId, current, lessLabel, moreLabel, save, apply) => {
-    const step = async (delta) => {
-      const next = Math.min(MAX_SPACING, Math.max(MIN_SPACING, current + delta));
-      await save(kv, next);
-      apply(next);
-      renderSettingsView();
-    };
-    const less = menuButton('\u2212', () => step(-1));
-    less.setAttribute('aria-label', lessLabel);
-    spacingRow.appendChild(less);
-    const value = document.createElement('span');
-    value.id = valueId;
-    value.textContent = current + 'px';
-    value.style.fontSize = '14px';
-    value.style.minWidth = '40px';
-    value.style.textAlign = 'center';
-    spacingRow.appendChild(value);
-    const more = menuButton('+', () => step(1));
-    more.setAttribute('aria-label', moreLabel);
-    spacingRow.appendChild(more);
-  };
-  addSpacingStepper('paragraph-spacing-value', paragraphSpacing, 'Less paragraph spacing', 'More paragraph spacing', setParagraphSpacing, applyParagraphSpacing);
-
-  const spacingDivider = document.createElement('span');
-  spacingDivider.textContent = '\u2502'; // visual separator between the paragraph and Tables groups on the same row
-  spacingDivider.style.opacity = '0.3';
-  spacingDivider.style.margin = '0 4px';
-  spacingRow.appendChild(spacingDivider);
-
-  const tablesSpacingLabel = document.createElement('span');
-  tablesSpacingLabel.textContent = 'Tables:';
-  tablesSpacingLabel.style.fontSize = '13px';
-  tablesSpacingLabel.style.opacity = '0.7';
-  spacingRow.appendChild(tablesSpacingLabel);
-  addSpacingStepper('tables-spacing-value', tablesSpacing, 'Less table spacing', 'More table spacing', setTablesSpacing, applyTablesSpacing);
-  appearanceSection.appendChild(spacingRow);
-
-  const paragraphSpacingHint = document.createElement('div');
-  paragraphSpacingHint.textContent = 'The gap between paragraphs, 0 to 32px (default 10px; 0 packs them together). Tables applies to tables and other secondary blocks (source and quote blocks, rules), independent of the paragraph spacing.';
-  paragraphSpacingHint.style.fontSize = '11px';
-  paragraphSpacingHint.style.opacity = '0.6';
-  paragraphSpacingHint.style.margin = '4px 0 8px';
-  appearanceSection.appendChild(paragraphSpacingHint);
 
   container.appendChild(renderQuickSettingsSection());
 
@@ -1297,6 +1297,68 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     'if Open/Save fails with a network error, that\u2019s the first thing to check on the server side.';
   webdavSection.appendChild(webdavHint);
 
+  // The calendar the agenda is mirrored to, right after WebDAV: a CalDAV server is often the same host.
+  const calendarConfigStored = await getCaldavConfig(kv);
+  const calendarSection = document.createElement('div');
+  calendarSection.className = 'settings-section';
+  container.appendChild(calendarSection);
+  const calendarTitle = document.createElement('div');
+  calendarTitle.className = 'panel-section-title';
+  calendarTitle.textContent = 'Calendar (CalDAV)';
+  calendarSection.appendChild(calendarTitle);
+
+  function openCalendarFormPopup() {
+    openMultiFieldPopup({
+      label: 'Calendar (CalDAV)',
+      fields: [
+        { key: 'url', label: 'Calendar address', type: 'text', value: calendarConfigStored.url, placeholder: 'e.g. https://dav.example.com/radicale/me/calendar/' },
+        { key: 'username', label: 'Username (blank = the WebDAV one)', type: 'text', value: calendarConfigStored.username },
+        { key: 'password', label: 'Password (blank = the WebDAV one)', type: 'password', value: calendarConfigStored.password },
+      ],
+      onSave: async (values) => {
+        S.caldavConfig = await setCaldavConfig(kv, { url: values.url, username: values.username, password: values.password });
+        S.calendarSyncPaused = false;
+        S.calendarSyncLastError = null;
+        setStatus('Calendar settings saved.');
+        renderSettingsView();
+        if (S.caldavConfig.url) syncAgendaToCalendar({ manual: true });
+      },
+    });
+  }
+
+  const calendarPreviewFields = [
+    labeledInput('Calendar address', 'text', calendarConfigStored.url, 'e.g. https://dav.example.com/radicale/me/calendar/'),
+    labeledInput('Username', 'text', calendarConfigStored.username, 'blank = the WebDAV one'),
+    labeledInput('Password', 'password', calendarConfigStored.password, 'blank = the WebDAV one'),
+  ];
+  for (const field of calendarPreviewFields) {
+    field.input.readOnly = true;
+    field.input.onfocus = () => {
+      field.input.blur();
+      openCalendarFormPopup();
+    };
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    row.appendChild(field.wrap);
+    calendarSection.appendChild(row);
+  }
+
+  const calendarButtons = document.createElement('div');
+  calendarButtons.className = 'panel-row';
+  calendarButtons.appendChild(menuButton('Sync now', () => syncAgendaToCalendar({ manual: true }), !calendarConfigStored.url));
+  calendarButtons.appendChild(menuButton('Rebuild calendar', () => syncAgendaToCalendar({ manual: true, rebuild: true }), !calendarConfigStored.url));
+  calendarSection.appendChild(calendarButtons);
+
+  const calendarHint = document.createElement('div');
+  calendarHint.style.fontSize = '11px';
+  calendarHint.style.opacity = '0.6';
+  calendarHint.style.margin = '2px 0 6px';
+  calendarHint.textContent =
+    'Mirrors your agenda, one way, into a calendar you create on the server first. Use a calendar of its own: the app only ever ' +
+    'removes events it put there, but edits you make to those in a calendar app are overwritten. Like WebDAV, the server must ' +
+    'allow requests from this app (CORS). Leave the address blank to turn it off.';
+  calendarSection.appendChild(calendarHint);
+
   const backupSection = document.createElement('div');
   backupSection.className = 'settings-section';
   container.appendChild(backupSection);
@@ -1481,68 +1543,6 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
             ? 'Couldn\u2019t check for updates right now.'
             : '';
   updatesSection.appendChild(updatesStatus);
-
-  // The calendar the agenda is mirrored to. Last on purpose, so nothing above it moves.
-  const calendarConfigStored = await getCaldavConfig(kv);
-  const calendarSection = document.createElement('div');
-  calendarSection.className = 'settings-section';
-  container.appendChild(calendarSection);
-  const calendarTitle = document.createElement('div');
-  calendarTitle.className = 'panel-section-title';
-  calendarTitle.textContent = 'Calendar (CalDAV)';
-  calendarSection.appendChild(calendarTitle);
-
-  function openCalendarFormPopup() {
-    openMultiFieldPopup({
-      label: 'Calendar (CalDAV)',
-      fields: [
-        { key: 'url', label: 'Calendar address', type: 'text', value: calendarConfigStored.url, placeholder: 'e.g. https://dav.example.com/radicale/me/calendar/' },
-        { key: 'username', label: 'Username (blank = the WebDAV one)', type: 'text', value: calendarConfigStored.username },
-        { key: 'password', label: 'Password (blank = the WebDAV one)', type: 'password', value: calendarConfigStored.password },
-      ],
-      onSave: async (values) => {
-        S.caldavConfig = await setCaldavConfig(kv, { url: values.url, username: values.username, password: values.password });
-        S.calendarSyncPaused = false;
-        S.calendarSyncLastError = null;
-        setStatus('Calendar settings saved.');
-        renderSettingsView();
-        if (S.caldavConfig.url) syncAgendaToCalendar({ manual: true });
-      },
-    });
-  }
-
-  const calendarPreviewFields = [
-    labeledInput('Calendar address', 'text', calendarConfigStored.url, 'e.g. https://dav.example.com/radicale/me/calendar/'),
-    labeledInput('Username', 'text', calendarConfigStored.username, 'blank = the WebDAV one'),
-    labeledInput('Password', 'password', calendarConfigStored.password, 'blank = the WebDAV one'),
-  ];
-  for (const field of calendarPreviewFields) {
-    field.input.readOnly = true;
-    field.input.onfocus = () => {
-      field.input.blur();
-      openCalendarFormPopup();
-    };
-    const row = document.createElement('div');
-    row.className = 'panel-row';
-    row.appendChild(field.wrap);
-    calendarSection.appendChild(row);
-  }
-
-  const calendarButtons = document.createElement('div');
-  calendarButtons.className = 'panel-row';
-  calendarButtons.appendChild(menuButton('Sync now', () => syncAgendaToCalendar({ manual: true }), !calendarConfigStored.url));
-  calendarButtons.appendChild(menuButton('Rebuild calendar', () => syncAgendaToCalendar({ manual: true, rebuild: true }), !calendarConfigStored.url));
-  calendarSection.appendChild(calendarButtons);
-
-  const calendarHint = document.createElement('div');
-  calendarHint.style.fontSize = '11px';
-  calendarHint.style.opacity = '0.6';
-  calendarHint.style.margin = '2px 0 6px';
-  calendarHint.textContent =
-    'Mirrors your agenda, one way, into a calendar you create on the server first. Use a calendar of its own: the app only ever ' +
-    'removes events it put there, but edits you make to those in a calendar app are overwritten. Like WebDAV, the server must ' +
-    'allow requests from this app (CORS). Leave the address blank to turn it off.';
-  calendarSection.appendChild(calendarHint);
 
   scrollingEl.scrollTop = savedScrollTop;
 }
