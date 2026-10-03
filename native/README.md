@@ -19,10 +19,15 @@ If the build fails, open the "Show the toolchain" step first: it prints the Java
   status bar, and the keyboard key lowers the keyboard as well as raising it.
 - **Sharing in:** share a link or some text from another app. org-pwa appears in the Share sheet, and picking it opens
   Capture with what you shared.
-- **Capture shortcuts:** long-press the app icon. Your capture templates are listed (in the order they are in Settings),
-  with a plain "Capture" for the template list. Tapping one opens that template. Drag one out of the list to put an icon
-  for it on the home screen, or use the command *Add a capture icon to the home screen*. Editing the templates in
-  Settings updates the list.
+- **Capture shortcuts:** long-press the app icon on the home screen or app drawer. A list pops up with **Capture**
+  (always there: it opens the template list) and, below or above it, one entry per capture template (as many as your
+  launcher allows, in the order they are in Settings). Tap one to open that template.
+  - **To get an icon on the home screen:** while that list is showing, press and hold one of the entries and drag it out
+    onto the home screen. The new icon opens that template directly. Or run the command *Add a capture icon to the home
+    screen*, pick a template, and confirm when the launcher asks "add to home screen?".
+  - **If the list is missing the templates, or empty:** run *Show display measurements*, press OK to copy, and send me
+    the "launcher shortcuts" line. It says what the launcher has and whether publishing failed (a failure also shows in
+    the status line when the app starts).
 - **Files on the device:** File > Open > Local file opens Android's file picker; the file can be edited, saved, and
   reopened from the recent list later without picking it again. Save As > Local file names a new one. Exports and
   attachments saved out ask where to save them.

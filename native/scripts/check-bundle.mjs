@@ -56,7 +56,8 @@ function fakeCapacitor() {
   const plugins = {
     ShareTarget: {},
     CaptureShortcuts: {
-      setShortcuts: async (a) => { window.__calls.push(['setShortcuts', a]); return { count: a.shortcuts.length + 1 }; },
+      setShortcuts: async (a) => { if (window.__failShortcuts) throw new Error('boom'); window.__calls.push(['setShortcuts', a]); return { sent: a.shortcuts.length, max: 4, published: a.shortcuts.length }; },
+      info: async () => ({ max: 4, dynamic: ['capture:b'], canPin: true }),
       canPin: async () => ({ value: true }),
       pin: async (a) => { window.__calls.push(['pin', a]); return { requested: true }; },
     },
@@ -153,7 +154,19 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
   await page.waitForTimeout(300);
   const pins = await calls(page, 'pin');
   check(pins.length === 1 && pins[0][1].key === '' && pins[0][1].label === 'Capture (the template list)', 'adding a capture icon asks the plugin to pin it', JSON.stringify(pins));
+  // the measurements report carries what the launcher says, so a missing long-press list can be diagnosed
+  await page.evaluate(async () => (await import('/src-browser/display-info.js')).showDisplayMeasurements());
+  const report = await page.locator('textarea').last().inputValue();
+  check(report.includes('launcher shortcuts: launcher {"max":4,"dynamic":["capture:b"],"canPin":true}; last publish: ') && report.includes('tab bar: top, height:'), 'the display measurements include the launcher\'s report and the tab bar', JSON.stringify(report.split('\n').filter((l) => /launcher|tab bar/.test(l))));
   check(problems.length === 0 && info.unhandled.length === 0, 'no errors or unhandled rejections', JSON.stringify([...problems, ...info.unhandled]));
+  await context.close();
+}
+
+// 1b. Publishing the shortcuts fails: it is shown, not hidden
+{
+  const { context, page, problems } = await open({ __failShortcuts: true });
+  const status = await page.locator('#status').innerText();
+  check(status.includes('Launcher shortcuts could not be published: boom') && problems.length === 0, 'a failure to publish the shortcuts is shown in the status line', status);
   await context.close();
 }
 

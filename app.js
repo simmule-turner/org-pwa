@@ -366,6 +366,7 @@ S.calendarSyncTimer = null;
 S.calendarSyncLastError = null;
 // The tallest the window has been at its current width, to tell a keyboard that resizes the window from one that does not.
 S.viewportBaseline = null;
+S.captureShortcutsResult = null; // what the last attempt to publish the launcher's capture shortcuts did
 
 
 // org-agenda-files equivalent: additional GitHub/WebDAV files the

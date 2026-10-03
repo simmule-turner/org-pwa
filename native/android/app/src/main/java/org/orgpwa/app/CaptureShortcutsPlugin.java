@@ -20,7 +20,8 @@ import org.json.JSONObject;
 
 /**
  * Capture templates as launcher shortcuts: the list that appears when the app icon is long-pressed, and icons for them on
- * the home screen. The web app publishes one shortcut per template with setShortcuts; tapping one starts (or returns to)
+ * the home screen. A static "Capture" shortcut (res/xml/shortcuts.xml) opens the template list; the web app publishes one
+ * dynamic shortcut per template with setShortcuts. Tapping one starts (or returns to)
  * the app with a CAPTURE intent, which arrives in handleOnNewIntent, the same hook a cold start uses, and is raised as a
  * "captureRequested" event with the template's key ('' for the template list). The event is retained until the page has a
  * listener, so a shortcut that starts the app is not lost while the page loads. native-platform.js connects both ends.
@@ -55,9 +56,10 @@ public class CaptureShortcutsPlugin extends Plugin {
             return;
         }
         Context context = getContext();
-        // A launcher shows only a few, and publishing more than it allows throws: the templates come first, in their
-        // order, and the last place is for the template list itself.
-        int room = Math.max(1, ShortcutManagerCompat.getMaxShortcutCountPerActivity(context)) - 1;
+        // A launcher shows only a few, and publishing more than it allows throws. The static "Capture" shortcut takes one
+        // place, and the templates fill the rest, in their order.
+        int max = ShortcutManagerCompat.getMaxShortcutCountPerActivity(context);
+        int room = Math.max(0, max - 1);
         List<ShortcutInfoCompat> shortcuts = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         try {
@@ -71,7 +73,6 @@ public class CaptureShortcutsPlugin extends Plugin {
             call.reject("shortcuts must be a list of { key, label }");
             return;
         }
-        shortcuts.add(build(context, "", "Capture", shortcuts.size()));
         try {
             ShortcutManagerCompat.setDynamicShortcuts(context, shortcuts);
         } catch (IllegalArgumentException e) {
@@ -79,7 +80,22 @@ public class CaptureShortcutsPlugin extends Plugin {
             return;
         }
         JSObject result = new JSObject();
-        result.put("count", shortcuts.size());
+        result.put("sent", shortcuts.size());
+        result.put("max", max);
+        result.put("published", ShortcutManagerCompat.getDynamicShortcuts(context).size());
+        call.resolve(result);
+    }
+
+    /** What the launcher reports, for diagnosing: its limit, the ids of the dynamic shortcuts published, and pinning. */
+    @PluginMethod
+    public void info(PluginCall call) {
+        Context context = getContext();
+        JSArray ids = new JSArray();
+        for (ShortcutInfoCompat shortcut : ShortcutManagerCompat.getDynamicShortcuts(context)) ids.put(shortcut.getId());
+        JSObject result = new JSObject();
+        result.put("max", ShortcutManagerCompat.getMaxShortcutCountPerActivity(context));
+        result.put("dynamic", ids);
+        result.put("canPin", ShortcutManagerCompat.isRequestPinShortcutSupported(context));
         call.resolve(result);
     }
 

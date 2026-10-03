@@ -18,9 +18,14 @@ function shortcutsFor(templates) {
 export async function syncCaptureShortcuts() {
   if (!platform.captureShortcuts.supported()) return;
   try {
-    await platform.captureShortcuts.set(shortcutsFor(await getCaptureTemplates(kv)));
-  } catch {
-    // shortcuts are a convenience: a launcher that refuses them must never get in the way of the app
+    const sent = shortcutsFor(await getCaptureTemplates(kv));
+    const reply = await platform.captureShortcuts.set(sent);
+    S.captureShortcutsResult = { ok: true, sent: sent.length, reply: reply || null };
+  } catch (error) {
+    // shortcuts are a convenience, so a refusal never gets in the way of the app, but it is shown rather than hidden
+    const message = error && error.message ? error.message : String(error);
+    S.captureShortcutsResult = { ok: false, error: message };
+    setStatus('Launcher shortcuts could not be published: ' + message);
   }
 }
 
@@ -42,7 +47,7 @@ export async function addCaptureIconToHomeScreen() {
   }
   const choices = [{ key: '', label: 'Capture (the template list)' }, ...shortcutsFor(await getCaptureTemplates(kv))];
   openButtonChoiceModal({
-    label: 'Add an icon for which capture?',
+    label: 'Add an icon for which capture? Your launcher will ask you to confirm it.',
     buttons: choices.map((choice) => ({
       text: choice.label,
       onClick: async () => {

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The "Capture" shortcut in the app icon's long-press list. It is declared here, so it is there from install, even if the
+     app has never run; the per-template shortcuts are published by CaptureShortcutsPlugin. The package and class must match
+     the app id (capacitor.config.json, android/app/build.gradle) if it is ever changed. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="capture-static"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_capture"
+        android:shortcutShortLabel="@string/shortcut_capture_short"
+        android:shortcutLongLabel="@string/shortcut_capture_long">
+        <intent
+            android:action="org.orgpwa.app.CAPTURE"
+            android:targetPackage="org.orgpwa.app"
+            android:targetClass="org.orgpwa.app.MainActivity" />
+    </shortcut>
+</shortcuts>

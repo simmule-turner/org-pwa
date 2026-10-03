@@ -29,6 +29,9 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
 
+            <!-- The long-press list on the app icon: a static "Capture" shortcut (res/xml/shortcuts.xml) -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+
         </activity>
 
         <provider

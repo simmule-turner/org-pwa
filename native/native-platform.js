@@ -81,6 +81,9 @@
           return !!result.requested;
         });
       },
+      info: function () {
+        return shortcuts.info();
+      },
     };
   }
 

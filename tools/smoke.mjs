@@ -2849,26 +2849,41 @@ check('platform seam: a native shell can hand the app a share directly (runLaunc
   await context.close();
 });
 
-check('status bar: the top bar starts below the status bar (and its buttons are tappable there) when the page draws edge to edge, and is unchanged when there is no inset', async () => {
+check('status bar: the app bar starts below the status bar with the tab bar directly beneath it (not hidden behind it), also when the bar is scrolled, and nothing changes with no inset', async () => {
   const { context, page, errors } = await freshPage();
-  await page.setViewportSize({ width: 360, height: 740 });
+  await page.setViewportSize({ width: 411, height: 924 });
+  await newDocument(page, '* One\n'); // a document, so the tab bar exists: without one the bug below cannot show
   const measure = () => page.evaluate(() => {
-    const first = document.querySelector('#topBar header button').getBoundingClientRect();
-    return { padding: getComputedStyle(document.getElementById('topBar')).paddingTop, buttonTop: Math.round(first.top), contentTop: Math.round(document.getElementById('contentArea').getBoundingClientRect().top), barBottom: Math.round(document.getElementById('topBar').getBoundingClientRect().bottom) };
+    const r = (el) => { const b = el.getBoundingClientRect(); return { top: Math.round(b.top * 10) / 10, bottom: Math.round(b.bottom * 10) / 10 }; };
+    const header = document.querySelector('#topBar header');
+    return { padding: getComputedStyle(document.getElementById('topBar')).paddingTop, header: r(header), tabBar: r(document.getElementById('tabBar')), button: Math.round(header.querySelector('button').getBoundingClientRect().top * 10) / 10, tabsShown: document.getElementById('tabBar').style.display !== 'none', contentTop: Math.round(document.getElementById('contentArea').getBoundingClientRect().top), barBottom: r(document.getElementById('topBar')).bottom };
   });
   const before = await measure();
-  expect(before.padding === '0px' && before.buttonTop < 20, `with no inset nothing changes: ${JSON.stringify(before)}`);
+  expect(before.tabsShown && before.padding === '0px' && before.header.top === 0 && before.tabBar.top === before.header.bottom, `with no inset nothing changes: ${JSON.stringify(before)}`);
 
   const cdp = await context.newCDPSession(page);
-  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 32, bottom: 0, left: 0, right: 0 } });
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 58, bottom: 0, left: 0, right: 0 } });
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
   await page.waitForTimeout(400);
   const after = await measure();
-  expect(after.padding === '32px', `the top bar pads by the status-bar height: ${JSON.stringify(after)}`);
-  expect(after.buttonTop >= 32, `so its buttons start below the status bar, not under it: ${JSON.stringify(after)}`);
+  expect(after.padding === '58px', `the top bar pads by the status-bar height: ${JSON.stringify(after)}`);
+  expect(after.header.top === 58, `the app bar starts exactly below the status bar, not lower: ${JSON.stringify(after)}`);
+  expect(after.tabBar.top === after.header.bottom, `and the tab bar is directly beneath it, not hidden behind it: ${JSON.stringify(after)}`);
+  expect(after.button === 66, `so the first button is 8px into the bar (66px): ${JSON.stringify(after)}`);
   expect(after.contentTop >= after.barBottom - 1, `and the document still starts below the bar: ${JSON.stringify(after)}`);
 
-  // a tap where the first button now is really reaches it (the File menu opens)
+  // when something tall makes the bar scroll, the app bar sticks just below the status bar, not under it
+  await page.evaluate(() => {
+    const bar = document.getElementById('topBar');
+    bar.style.maxHeight = '120px';
+    bar.scrollTop = 40;
+  });
+  await page.waitForTimeout(200);
+  const scrolled = await measure();
+  expect(scrolled.header.top === 58, `a scrolled bar keeps the app bar just below the status bar: ${JSON.stringify(scrolled)}`);
+
+  // a tap where the first button is really reaches it
+  await page.evaluate(() => { const bar = document.getElementById('topBar'); bar.style.maxHeight = ''; bar.scrollTop = 0; });
   const box = await page.locator('#topBar header button').first().boundingBox();
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await page.locator('#fileMenuPanel').waitFor({ state: 'visible', timeout: 3000 });
@@ -3017,6 +3032,23 @@ check('capture shortcuts: a launcher platform gets one shortcut per capture temp
   await context.close();
 });
 
+check('capture shortcuts: a launcher that refuses them is reported in the status line (not hidden), and the app carries on', async () => {
+  const { context, page, errors } = await freshPage(main, {
+    initScript: () => {
+      window.orgPwaPlatform = {
+        name: 'fake-android',
+        captureShortcuts: { supported: () => true, set: async () => { throw new Error('the launcher said no'); }, canPin: async () => false, pin: async () => false, info: async () => ({ max: 4 }) },
+      };
+    },
+  });
+  await page.waitForFunction(() => document.getElementById('status').innerText.includes('Launcher shortcuts could not be published: the launcher said no'), null, { timeout: 6000 });
+  expect(!!(await page.locator('#moreBtn').isVisible()), 'and the app still works');
+  const recorded = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.captureShortcutsResult);
+  expect(recorded && recorded.ok === false && recorded.error === 'the launcher said no', `the outcome is recorded for the report: ${JSON.stringify(recorded)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('capture shortcuts: in a browser the capture-icon command is dimmed with its reason, and nothing is published', async () => {
   const { context, page, errors } = await freshPage();
   await openPalette(page);
@@ -3047,7 +3079,7 @@ check('display measurements: the command reports what the screen and web view gi
   const box = page.locator('textarea').last();
   await box.waitFor({ state: 'visible', timeout: 4000 });
   const text = await box.inputValue();
-  for (const want of ['platform: web', 'devicePixelRatio:', 'window (innerWidth x innerHeight): 360 x 740', 'env(safe-area-inset) top/right/bottom/left: 32px / 0px / 0px / 0px', '--safe-area-inset (injected by Capacitor) top/right/bottom/left: (not set)', 'top bar: padding-top, height: 32px', 'first button: top, height: 40px']) {
+  for (const want of ['platform: web', 'devicePixelRatio:', 'window (innerWidth x innerHeight): 360 x 740', 'env(safe-area-inset) top/right/bottom/left: 32px / 0px / 0px / 0px', '--safe-area-inset (injected by Capacitor) top/right/bottom/left: (not set)', 'top bar: padding-top, height: 32px', 'first button: top, height: 40px', 'tab bar: top, height: not shown', 'launcher shortcuts: not available here']) {
     expect(text.includes(want), `the report has "${want}": ${JSON.stringify(text.split('\n').filter((l) => l.split(':')[0] === want.split(':')[0]))}`);
   }
   await page.getByRole('button', { name: 'OK', exact: true }).click();

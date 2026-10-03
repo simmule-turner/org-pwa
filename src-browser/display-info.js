@@ -20,13 +20,14 @@ function resolveLength(cssValue) {
 }
 
 /** The report, as `[label, value]` pairs. */
-export function collectDisplayMeasurements() {
+export function collectDisplayMeasurements(launcher = null) {
   const sides = ['top', 'right', 'bottom', 'left'];
   const root = getComputedStyle(document.documentElement);
   const vv = window.visualViewport;
   const chrome = /Chrome\/(\d+)/.exec(navigator.userAgent);
   const firstButton = document.querySelector('#topBar header button');
   const header = document.querySelector('#topBar header');
+  const tabBar = document.getElementById('tabBar');
   const base = S.viewportBaseline;
   const rect = (el) => (el ? el.getBoundingClientRect() : null);
   const first = rect(firstButton);
@@ -40,17 +41,33 @@ export function collectDisplayMeasurements() {
     ['env(safe-area-inset) top/right/bottom/left', sides.map((side) => resolveLength(`env(safe-area-inset-${side}, 0px)`)).join(' / ')],
     ['--safe-area-inset (injected by Capacitor) top/right/bottom/left', sides.map((side) => root.getPropertyValue(`--safe-area-inset-${side}`).trim() || '(not set)').join(' / ')],
     ['top bar: padding-top, height', `${getComputedStyle(topBarEl).paddingTop}, ${px(topBarEl.offsetHeight)}`],
-    ['top bar header: height', header ? px(header.getBoundingClientRect().height) : 'none'],
+    ['top bar header: top, height', header ? `${px(header.getBoundingClientRect().top)}, ${px(header.getBoundingClientRect().height)}` : 'none'],
+    ['tab bar: top, height', tabBar && tabBar.style.display !== 'none' ? `${px(tabBar.getBoundingClientRect().top)}, ${px(tabBar.getBoundingClientRect().height)}` : 'not shown'],
     ['first button: top, height', first ? `${px(first.top)}, ${px(first.height)}` : 'none'],
     ['document area starts at', px(contentAreaEl.getBoundingClientRect().top)],
     ['mode line: bottom offset', modelineBarEl.style.bottom || '0'],
     ['tallest window at this width', base ? `${base.height} (width ${base.width})` : 'not yet measured'],
+    ['launcher shortcuts', launcher || 'not available here'],
   ];
   return rows;
 }
 
-export function showDisplayMeasurements() {
-  const text = collectDisplayMeasurements().map(([label, value]) => `${label}: ${value}`).join('\n');
+/** What the launcher reports about the capture shortcuts, and what the last attempt to publish them did, as one line. */
+async function describeLauncher() {
+  if (!platform.captureShortcuts.supported()) return null;
+  const parts = [];
+  try {
+    parts.push('launcher ' + JSON.stringify(await platform.captureShortcuts.info()));
+  } catch (error) {
+    parts.push('launcher info failed: ' + (error && error.message ? error.message : error));
+  }
+  const last = S.captureShortcutsResult;
+  parts.push(last ? (last.ok ? `last publish: ${last.sent} sent, reply ${JSON.stringify(last.reply)}` : `last publish FAILED: ${last.error}`) : 'last publish: none yet');
+  return parts.join('; ');
+}
+
+export async function showDisplayMeasurements() {
+  const text = collectDisplayMeasurements(await describeLauncher()).map(([label, value]) => `${label}: ${value}`).join('\n');
   openTextFieldPopup({
     label: 'Display measurements (OK copies them)',
     value: text,

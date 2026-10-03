@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v435 — App bar no longer covers the tab bar under a status bar
+Fixes the app bar sitting too low in the Android app: it covered the tab
+bar and pushed itself down by the tab bar's height; it now starts just
+below the status bar with the tabs directly beneath it. Show display
+measurements now also reports the tab bar and the launcher's capture
+shortcuts, and a failure to publish those shortcuts is shown instead of
+hidden.
+
 * v434 — Display measurements, and Android capture shortcuts and files
 New command, Show display measurements: it reports what the screen and
 web view give the page (status-bar inset, viewport, keyboard), so layout

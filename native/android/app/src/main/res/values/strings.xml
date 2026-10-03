@@ -4,4 +4,6 @@
     <string name="title_activity_main">org-pwa</string>
     <string name="package_name">org.orgpwa.app</string>
     <string name="custom_url_scheme">org.orgpwa.app</string>
+    <string name="shortcut_capture_short">Capture</string>
+    <string name="shortcut_capture_long">Capture a note</string>
 </resources>
