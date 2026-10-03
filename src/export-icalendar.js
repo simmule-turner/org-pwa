@@ -119,7 +119,7 @@ export function foldLine(line) {
  *  built from the document, heading title, and item kind/index --
  *  sanitized to a safe character set, since a UID must not contain
  *  control characters, semicolons, or line breaks. */
-function generateUid(documentId, heading, kind, index, date) {
+export function generateUid(documentId, heading, kind, index, date) {
   const existingId = getProperty(heading, 'ID');
   const base = existingId ? existingId : `${documentId || 'doc'}-${heading.title}-${kind}-${index}-${formatIcsDate(date)}`;
   const safe = base.replace(/[^A-Za-z0-9._-]/g, '-');
@@ -128,7 +128,7 @@ function generateUid(documentId, heading, kind, index, date) {
 
 // ---- VEVENT building -----------------------------------------------------
 
-function buildVevent({ uid, summary, description, date, hasTime, rrule, alarmDaysBefore, stamp }) {
+export function buildVevent({ uid, summary, description, date, hasTime, rrule, alarmDaysBefore, stamp }) {
   const lines = [
     'BEGIN:VEVENT',
     `UID:${uid}`,
@@ -165,8 +165,39 @@ function buildVevent({ uid, summary, description, date, hasTime, rrule, alarmDay
  * already uses for its own `today` option.
  */
 export function exportToIcalendar(docs, opts = {}) {
-  const { today = new Date(), birthdayProperty = 'BIRTHDAY', scope = null } = opts;
+  const events = collectCalendarEvents(docs, opts);
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//org-pwa//org-pwa//EN', 'CALSCALE:GREGORIAN', ...events.flatMap((e) => e.lines), 'END:VCALENDAR'];
+  return lines.join('\r\n') + '\r\n';
+}
+
+/**
+ * The dated items of `docs` as separate events, `[{ uid, documentId, lines }]` (`lines` is one folded VEVENT, and
+ * `documentId` is the file it came from). The .ics export
+ * above joins them into one file; the CalDAV mirror (calendar-mirror.js) needs them one by one, because a calendar
+ * server stores one object per event. Options beyond the export's own:
+ *   includeDone -- keep completed items (the export leaves them out, as the agenda does; the mirror keeps them)
+ *   window      -- `{ start, end }`: a one-off item is kept only if its date falls inside it. A repeating item has no
+ *                  end, so it is kept whenever it has started by `window.end`. Birthdays are always kept.
+ * A heading with an :ID: property would give its SCHEDULED and its DEADLINE the same UID, one overwriting the other
+ * in any store that keys by UID; the first keeps the plain id (so earlier exports still match) and later ones get a
+ * suffix.
+ */
+export function collectCalendarEvents(docs, opts = {}) {
+  const { today = new Date(), birthdayProperty = 'BIRTHDAY', scope = null, includeDone = false, window = null } = opts;
   const events = [];
+  const usedUids = new Set();
+  const uniqueUid = (documentId, heading, kind, index, date) => {
+    let uid = generateUid(documentId, heading, kind, index, date);
+    if (usedUids.has(uid)) uid = uid.replace(/@org-pwa$/, `-${kind}${index}@org-pwa`);
+    usedUids.add(uid);
+    return uid;
+  };
+  const dayNumber = (d) => Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 86400000);
+  const keep = (parsed) => {
+    if (!window) return true;
+    if (parsed.repeater) return dayNumber(parsed.date) <= dayNumber(window.end);
+    return dayNumber(parsed.date) >= dayNumber(window.start) && dayNumber(parsed.date) <= dayNumber(window.end);
+  };
 
   // When scoped to a single heading, walk just that heading's own
   // subtree (itself and its descendants) -- a lightweight, doc-shaped
@@ -195,7 +226,9 @@ export function exportToIcalendar(docs, opts = {}) {
     walkScope(doc, (heading) => {
       if (isArchived(heading)) return;
       if (isCommentedHeading(heading)) return;
-      if (doneKeywords.includes(heading.todo)) return; // matches the agenda/TODO views' own default exclusion of completed items
+      const isDone = doneKeywords.includes(heading.todo);
+      if (isDone && !includeDone) return; // matches the agenda/TODO views' own default exclusion of completed items
+      const doneNote = isDone ? ` (${heading.todo})` : '';
 
       let hasPlanning = false;
       for (const kind of ['scheduled', 'deadline']) {
@@ -204,19 +237,23 @@ export function exportToIcalendar(docs, opts = {}) {
         const parsed = parseOrgTimestamp(raw);
         if (!parsed) continue;
         hasPlanning = true;
+        if (!keep(parsed)) continue;
         const delay = kind === 'deadline' && parsed.delay ? parseDelay(parsed.delay) : null;
-        events.push(
-          buildVevent({
-            uid: generateUid(documentId, heading, kind, 0, parsed.date),
+        const uid = uniqueUid(documentId, heading, kind, 0, parsed.date);
+        events.push({
+          uid,
+          documentId,
+          lines: buildVevent({
+            uid,
             summary: heading.title,
-            description: kind === 'deadline' ? 'Deadline' : 'Scheduled',
+            description: (kind === 'deadline' ? 'Deadline' : 'Scheduled') + doneNote,
             date: parsed.date,
             hasTime: parsed.hasTime,
             rrule: parsed.repeater ? repeaterToRRule(parsed.repeater) : null,
             alarmDaysBefore: delay ? delayToDays(delay) : 0,
             stamp: today,
-          })
-        );
+          }),
+        });
       }
 
       // Plain timestamps written directly in the heading title -- same
@@ -227,18 +264,22 @@ export function exportToIcalendar(docs, opts = {}) {
       if (!hasPlanning) {
         findTimestamps(heading.title).forEach((parsed, index) => {
           if (!parsed.active) return;
-          events.push(
-            buildVevent({
-              uid: generateUid(documentId, heading, 'timestamp', index, parsed.date),
+          if (!keep(parsed)) return;
+          const uid = uniqueUid(documentId, heading, 'timestamp', index, parsed.date);
+          events.push({
+            uid,
+            documentId,
+            lines: buildVevent({
+              uid,
               summary: heading.title,
-              description: null,
+              description: doneNote ? doneNote.trim() : null,
               date: parsed.date,
               hasTime: parsed.hasTime,
               rrule: parsed.repeater ? repeaterToRRule(parsed.repeater) : null,
               alarmDaysBefore: 0,
               stamp: today,
-            })
-          );
+            }),
+          });
         });
       }
 
@@ -253,9 +294,12 @@ export function exportToIcalendar(docs, opts = {}) {
           // a yearly-recurring anniversary going forward from here.
           const anchorYear = event.year != null ? event.year : today.getFullYear();
           const anchorDate = new Date(anchorYear, event.month - 1, event.day);
-          events.push(
-            buildVevent({
-              uid: generateUid(documentId, heading, 'anniversary', 0, anchorDate),
+          const uid = uniqueUid(documentId, heading, 'anniversary', 0, anchorDate);
+          events.push({
+            uid,
+            documentId,
+            lines: buildVevent({
+              uid,
               summary: `${heading.title}: ${event.description}`,
               description: null,
               date: anchorDate,
@@ -263,13 +307,12 @@ export function exportToIcalendar(docs, opts = {}) {
               rrule: 'FREQ=YEARLY',
               alarmDaysBefore: 0,
               stamp: today,
-            })
-          );
+            }),
+          });
         }
       }
     });
   }
 
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//org-pwa//org-pwa//EN', 'CALSCALE:GREGORIAN', ...events.flat(), 'END:VCALENDAR'];
-  return lines.join('\r\n') + '\r\n';
+  return events;
 }
