@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">org-pwa</string>
+    <string name="title_activity_main">org-pwa</string>
+    <string name="package_name">org.orgpwa.app</string>
+    <string name="custom_url_scheme">org.orgpwa.app</string>
+</resources>

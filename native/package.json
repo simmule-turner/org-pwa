@@ -1,0 +1,19 @@
+{
+  "name": "org-pwa-native",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A native (Capacitor) shell around org-pwa. The PWA in the parent folder stays the source of truth; this only bundles it.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "bundle": "node scripts/sync.mjs",
+    "sync": "node scripts/sync.mjs && cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/core": "8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2"
+  }
+}

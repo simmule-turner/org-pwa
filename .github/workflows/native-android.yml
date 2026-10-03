@@ -1,0 +1,74 @@
+# Builds the native Android shell (a debug APK) around the PWA. Runs on demand (Actions -> native-android -> Run workflow),
+# on a tag like native-v0.1.0, and whenever something under native/ changes. The APK is attached to the run as an artifact.
+name: native-android
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['native-v*']
+    paths: ['native/**', '.github/workflows/native-android.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: native
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: native/package-lock.json
+
+      # The generated Android project sets Java 21 (see native/android/app/capacitor.build.gradle).
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+          cache-dependency-path: |
+            native/android/**/*.gradle*
+            native/android/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Install the shell's dependencies
+        run: npm ci
+
+      - name: Bundle the PWA and sync it into the Android project
+        run: npm run sync
+
+      - name: Show the toolchain (this is what to read first if the build fails)
+        run: |
+          node --version
+          java -version
+          echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
+          ls "${ANDROID_HOME:-/nonexistent}/platforms" 2>/dev/null || echo "no Android platforms listed"
+
+      - name: Build the debug APK
+        working-directory: native/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Name the APK after the shell and the web version it wraps
+        id: apk
+        run: |
+          shell=$(node -p "JSON.parse(require('fs').readFileSync('www/native-shell.json','utf8')).shell")
+          web=$(node -p "JSON.parse(require('fs').readFileSync('www/native-shell.json','utf8')).web")
+          web="${web#org-pwa-shell-}"   # the web version is stored as org-pwa-shell-vNNN; the file name only needs vNNN
+          name="org-pwa-shell-${shell}-${web}-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "$name"
+          sha256sum "$name"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.apk.outputs.name }}
+          path: native/${{ steps.apk.outputs.name }}
+          if-no-files-found: error
