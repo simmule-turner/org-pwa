@@ -258,6 +258,7 @@ import { renderFileMenu, stopBrowsing } from './src-browser/file-menu.js';
 import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, withArmedShift } from './src-browser/floating-keyboard.js';
 import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
 import { scheduleCalendarSync } from './src-browser/calendar-sync.js';
+import { platform } from './src-browser/platform.js';
 import { handleLaunchParams } from './src-browser/launch-params.js';
 import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, moveTableCellFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading } from './src-browser/keyboard-focus.js';
 import { renderExtraMenu, renderMoreMenu } from './src-browser/menus.js';
@@ -1270,7 +1271,7 @@ moreBtn.addEventListener('click', () => {
   renderMoreMenu();
 });
 
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && platform.usesServiceWorker) {
   const updateBanner = document.getElementById('updateBanner');
   const updateReloadBtn = document.getElementById('updateReloadBtn');
   let reloadedForUpdate = false;

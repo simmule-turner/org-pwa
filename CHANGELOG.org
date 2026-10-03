@@ -7,6 +7,12 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v432 — One platform layer, groundwork for native apps
+No visible change. The app now reaches the device (files on it, saving a
+file out, the clipboard, the service worker) through one platform layer,
+groundwork for native iPhone, iPad and Android apps. Everything behaves
+as before.
+
 * v431 — Settings page: related sections moved together
 On the Settings page, Calendar (CalDAV) now sits right after WebDAV,
 which leaves Backup as the last section, and Paragraph Spacing now

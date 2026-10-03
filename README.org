@@ -1721,6 +1721,8 @@ One test checks that every module the app imports is in the service worker's pre
 
 *Code layout*: ~app.js~ is the entry point (about 1,400 lines): it imports everything, sets up the shared state, wires event listeners and runs ~bootstrap~. Features live in ~src-browser/~, one module per area. All runtime state is one object, ~S~, in ~app-state.js~, and the page's DOM elements are looked up once in ~dom.js~. The split is by file rather than decoupled (modules call each other, so the import graph has cycles), and browser modules need a DOM, so Node can't import them. ~test/module-structure.test.js~ and ~tools/check-scope.mjs~, a scope analysis that needs the acorn and eslint-scope parsers installed once (~npm install --prefix /tmp/acorn acorn eslint-scope~), keep the structure from decaying.
 
+Everything the app asks of the device (files on the device, saving a file out, the clipboard, the service worker) goes through ~src-browser/platform.js~, which has browser defaults. A native shell supplies its own by setting ~window.orgPwaPlatform~ before the app loads, and hands a share to ~runLaunch()~ in ~launch-params.js~. The browser tests use a fake platform the same way.
+
 *Browser smoke test*: it covers what unit tests can't reach, since ~app.js~ is UI wiring:
 
 #+BEGIN_SRC
