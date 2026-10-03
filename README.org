@@ -1501,7 +1501,7 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 
 *What it acts on*: heading commands work on the heading whose action menu is open (tap a heading's title first), else the keyboard-focused heading. A command that needs a heading and can't find one says so, except *Add heading after* and *Add TODO heading after*, which also work with nothing selected (see the table in [[#keybindings][Keybindings]] for where the new heading lands).
 
-*Names*: a command's real Emacs or Org function name is shown beside it and is searchable. The same name, quoted, names the command in an Extras-menu entry (see [[#extras-menu][Extras menu]]), so the palette, the god-mode chords and Extras share one vocabulary. The commands with no real name are this app's own: *New document*, *Undo history*, *Sync agenda to calendar* and *Rebuild calendar from the agenda*. A command with a [[#god-mode][god-mode]] key runs the same code as that key and shows it.
+*Names*: a command's real Emacs or Org function name is shown beside it and is searchable. The same name, quoted, names the command in an Extras-menu entry (see [[#extras-menu][Extras menu]]), so the palette, the god-mode chords and Extras share one vocabulary. The commands with no real name are this app's own: *New document*, *Undo history*, *Sync agenda to calendar*, *Rebuild calendar from the agenda*, *Show display measurements* and *Add a capture icon to the home screen*. A command with a [[#god-mode][god-mode]] key runs the same code as that key and shows it.
 
 *What's in it*, by group:
 
@@ -1512,7 +1512,7 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 | *Document* | save, save as, open, new, undo, redo, undo history, toggle read-only, capture, recalculate all tables |
 | *View* | agenda, TODO list, outline view, text view, cycle visibility of the whole document, calendar, search, sync agenda to calendar, rebuild calendar |
 | *Export* | the Export menu; this file as HTML, Markdown, ASCII, ODT or an Org buffer |
-| *App* | settings, help |
+| *App* | settings, help, show display measurements, add a capture icon to the home screen (Android app only) |
 
 *Also in it*: your own capture templates and [[#extras-menu][Extras menu]] entries, one command each. *Capture: <description>* (such as *Capture: Meeting*) runs that template directly, and *Extras: <label>* runs that Extras entry as tapping it would. Both are read fresh each time the palette opens, so an edited template list or a document's own Extras menu (set in its Local Variables) is current. The plain *Capture* command still opens the template picker.
 

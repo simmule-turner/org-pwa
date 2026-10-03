@@ -19,6 +19,15 @@ If the build fails, open the "Show the toolchain" step first: it prints the Java
   status bar, and the keyboard key lowers the keyboard as well as raising it.
 - **Sharing in:** share a link or some text from another app. org-pwa appears in the Share sheet, and picking it opens
   Capture with what you shared.
+- **Capture shortcuts:** long-press the app icon. Your capture templates are listed (in the order they are in Settings),
+  with a plain "Capture" for the template list. Tapping one opens that template. Drag one out of the list to put an icon
+  for it on the home screen, or use the command *Add a capture icon to the home screen*. Editing the templates in
+  Settings updates the list.
+- **Files on the device:** File > Open > Local file opens Android's file picker; the file can be edited, saved, and
+  reopened from the recent list later without picking it again. Save As > Local file names a new one. Exports and
+  attachments saved out ask where to save them.
+- **Placing the app bar:** if the bar sits too low or too high, run the command *Show display measurements*, press OK
+  to copy the numbers, and send them.
 - It does **not** share data with the PWA: the shell's address is `https://localhost`, so its settings, tokens and
   cached documents are its own. Enter GitHub / WebDAV / calendar settings again.
 - **WebDAV and CalDAV servers must allow the origin `https://localhost`** for CORS, as they do for the PWA's own address.

@@ -212,7 +212,7 @@ test('registry: every real Emacs/Org function name is unique, so a quoted functi
 
 test('registry: the palette commands WITHOUT a real Emacs/Org name are exactly the exceptions the README lists (this app\u2019s own, with no Emacs equivalent)', () => {
   const without = paletteOrgNames().filter((e) => !e.orgName).map((e) => e.id).sort();
-  assert.deepEqual(without, ['calendar-rebuild', 'calendar-sync', 'history', 'new']);
+  assert.deepEqual(without, ['calendar-rebuild', 'calendar-sync', 'capture-icon', 'display-info', 'history', 'new']);
 });
 
 test('registry: Unarchive carries org-unarchive-subtree, the name proposed for Org itself and used by the org-unarchive package', () => {

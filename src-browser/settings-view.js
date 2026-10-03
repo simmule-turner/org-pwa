@@ -12,6 +12,7 @@ import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.j
 import { S } from './app-state.js';
 import { THEME_CSS_VARS, THEME_DEFAULTS, THEME_VAR_LABELS, applyFontFamily, applyFontSize, applyMenuSize, applyParagraphSpacing, applyReadingWidth, applyTablesFontSize, applyTablesSpacing, resolvedThemeName } from './appearance.js';
 import { syncAgendaToCalendar } from './calendar-sync.js';
+import { syncCaptureShortcuts } from './capture-shortcuts.js';
 import { confirmDialog, openMultiFieldPopup, openTextFieldPopup } from './dialogs.js';
 import { validateCaptureTemplates } from './doc-helpers.js';
 import { sidePanelEl } from './dom.js';
@@ -1091,6 +1092,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
           return;
         }
         await setCaptureTemplates(kv, parsed);
+        syncCaptureShortcuts();
         setStatus('Capture templates saved.');
         renderSettingsView();
         render();
@@ -1099,6 +1101,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
         currentTemplatesText !== defaultTemplatesText
           ? async () => {
               await setCaptureTemplates(kv, DEFAULT_CAPTURE_TEMPLATES);
+              syncCaptureShortcuts();
               setStatus('Capture templates reset to defaults.');
               renderSettingsView();
             }
@@ -1404,6 +1407,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
         return;
       }
       const imported = await importAllSettings(kv, bundle);
+      syncCaptureShortcuts();
       if (imported.length === 0) {
         setStatus('No recognizable settings found in that file.');
         return;

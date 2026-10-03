@@ -12,6 +12,9 @@
 //   viewFile           viewFile(blob, name): show a file in whatever the platform views it with
 //   clipboard          { readText(), writeText(text) }
 //   usesServiceWorker  whether the app registers its service worker; a shell that bundles the app has no use for it
+//   captureShortcuts   the launcher's own shortcuts for Capture: supported() -- whether there are any here; set(list) --
+//                      publish one per capture template, `list` being [{ key, label }]; canPin() / pin({ key, label }) --
+//                      put an icon for one on the home screen ('' as the key is the template list)
 //
 // Share-in is not here: a shell hands the app a share through `window.orgPwaLaunch({ title, text, url })`, queueing on
 // `window.orgPwaLaunchQueue` until the app has started (see acceptNativeLaunches in launch-params.js).
@@ -36,6 +39,13 @@ export const platform = {
     writeText: (text) => navigator.clipboard.writeText(text),
   },
   usesServiceWorker: true,
+  // A browser has no launcher shortcuts to publish here; the installed PWA gets its one Capture shortcut from the manifest.
+  captureShortcuts: {
+    supported: () => false,
+    set: async () => {},
+    canPin: async () => false,
+    pin: async () => false,
+  },
 };
 
 /** Replaces any part of the platform. A group (localFiles, clipboard) is merged, so a shell can override just the

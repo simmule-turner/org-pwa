@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v433';
+const CACHE_NAME = 'org-pwa-shell-v434';
 
 const SHELL_FILES = [
   './',
@@ -131,6 +131,7 @@ const SHELL_FILES = [
   './src-browser/gestures-structure.js',
   './src-browser/god-mode-palette.js',
   './src-browser/calendar-sync.js',
+  './src-browser/capture-shortcuts.js',
   './src-browser/launch-params.js',
   './src-browser/platform.js',
   './src-browser/line-endings-adapter.js',
@@ -158,6 +159,7 @@ const SHELL_FILES = [
   './src-browser/singletons.js',
   './src-browser/constants.js',
   './src-browser/doc-helpers.js',
+  './src-browser/display-info.js',
   './src-browser/sync-helpers.js',
   './src-browser/render-helpers.js',
   './src-browser/indexeddb-adapter.js',

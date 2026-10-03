@@ -9,6 +9,8 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // Local plugins are registered before super.onCreate, which builds the bridge.
         registerPlugin(ShareTargetPlugin.class);
+        registerPlugin(CaptureShortcutsPlugin.class);
+        registerPlugin(LocalFilesPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

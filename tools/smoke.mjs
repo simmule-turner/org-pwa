@@ -2967,6 +2967,97 @@ check('native shell: a share queued before the app was ready, and one that arriv
   await context.close();
 });
 
+check('capture shortcuts: a launcher platform gets one shortcut per capture template at startup and again when the templates change, and "Add a capture icon" pins the one chosen', async () => {
+  const { context, page, errors } = await freshPage(main, {
+    initScript: () => {
+      window.__sets = [];
+      window.__pins = [];
+      window.orgPwaPlatform = {
+        name: 'fake-android',
+        captureShortcuts: {
+          supported: () => true,
+          set: async (list) => { window.__sets.push(JSON.parse(JSON.stringify(list))); },
+          canPin: async () => true,
+          pin: async (choice) => { window.__pins.push(JSON.parse(JSON.stringify(choice))); return true; },
+        },
+      };
+    },
+  });
+  await page.waitForFunction(() => window.__sets.length >= 1, null, { timeout: 6000 });
+  const first = await page.evaluate(() => window.__sets[0]);
+  expect(Array.isArray(first) && first.length > 0 && first.every((x) => typeof x.key === 'string' && x.key && typeof x.label === 'string' && x.label), `at startup: one {key, label} per template: ${JSON.stringify(first).slice(0, 160)}`);
+
+  // edit the templates in Settings: the launcher's list follows
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  const section = page.locator('.settings-section', { has: page.locator('.panel-section-title', { hasText: 'Capture Templates' }) });
+  const current = await section.locator('textarea').first().inputValue();
+  const two = JSON.parse(current).slice(0, 2).map((t, n) => ({ ...t, key: ['x', 'y'][n], description: ['Alpha', 'Beta'][n] }));
+  await section.locator('textarea').first().focus();
+  const popup = page.locator('textarea').last();
+  await popup.fill(JSON.stringify(two));
+  await popup.locator("xpath=ancestor::div[@class='panel'][1]").getByRole('button', { name: 'OK', exact: true }).click();
+  await page.waitForFunction(() => window.__sets.length >= 2, null, { timeout: 5000 });
+  const after = await page.evaluate(() => window.__sets[window.__sets.length - 1]);
+  expect(JSON.stringify(after) === JSON.stringify([{ key: 'x', label: 'Alpha' }, { key: 'y', label: 'Beta' }]), `after the edit: ${JSON.stringify(after)}`);
+
+  // put an icon for one on the home screen
+  await page.keyboard.press('Escape');
+  await openPalette(page);
+  await page.keyboard.type('add a capture icon');
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Beta', exact: true }).waitFor({ state: 'visible', timeout: 4000 });
+  const offered = await page.evaluate(() => [...document.querySelectorAll('button')].map((b) => b.textContent).filter((t) => /Capture \(the template list\)|Alpha|Beta/.test(t)));
+  expect(JSON.stringify(offered) === JSON.stringify(['Capture (the template list)', 'Alpha', 'Beta']), `the template list and each template are offered: ${JSON.stringify(offered)}`);
+  await page.getByRole('button', { name: 'Beta', exact: true }).click();
+  await page.waitForFunction(() => window.__pins.length === 1, null, { timeout: 3000 });
+  expect(JSON.stringify(await page.evaluate(() => window.__pins[0])) === JSON.stringify({ key: 'y', label: 'Beta' }), 'the launcher is asked to pin that template');
+  expect((await page.locator('#minibuffer').innerText()).includes('Asked the launcher'), 'and the status says so');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('capture shortcuts: in a browser the capture-icon command is dimmed with its reason, and nothing is published', async () => {
+  const { context, page, errors } = await freshPage();
+  await openPalette(page);
+  await page.keyboard.type('add a capture icon');
+  const rows = await paletteRows(page);
+  expect(rows.some((r) => r.includes('Add a capture icon to the home screen') && r.includes('only in the Android app')), `dimmed with the reason: ${JSON.stringify(rows)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('display measurements: the command reports what the screen and web view give the page, including the status-bar inset and where the bar\u2019s buttons land, and OK copies it', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 360, height: 740 });
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 32, bottom: 0, left: 0, right: 0 } });
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('resize'));
+    window.__copied = null;
+  });
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    installPlatform({ clipboard: { writeText: async (t) => { window.__copied = t; }, readText: async () => '' } });
+  });
+  await page.waitForTimeout(300);
+  await openPalette(page);
+  await page.keyboard.type('display measurements');
+  await page.keyboard.press('Enter');
+  const box = page.locator('textarea').last();
+  await box.waitFor({ state: 'visible', timeout: 4000 });
+  const text = await box.inputValue();
+  for (const want of ['platform: web', 'devicePixelRatio:', 'window (innerWidth x innerHeight): 360 x 740', 'env(safe-area-inset) top/right/bottom/left: 32px / 0px / 0px / 0px', '--safe-area-inset (injected by Capacitor) top/right/bottom/left: (not set)', 'top bar: padding-top, height: 32px', 'first button: top, height: 40px']) {
+    expect(text.includes(want), `the report has "${want}": ${JSON.stringify(text.split('\n').filter((l) => l.split(':')[0] === want.split(':')[0]))}`);
+  }
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await page.waitForFunction(() => window.__copied !== null, null, { timeout: 3000 });
+  expect((await page.evaluate(() => window.__copied)) === text, 'OK copies exactly what is shown');
+  expect((await page.locator('#minibuffer').innerText()).includes('Display measurements copied'), 'and says so');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 // ---- runner -------------------------------------------------------------------
 
 const filter = process.argv[2];

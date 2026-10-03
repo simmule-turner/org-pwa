@@ -258,6 +258,7 @@ import { renderFileMenu, stopBrowsing } from './src-browser/file-menu.js';
 import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, withArmedShift } from './src-browser/floating-keyboard.js';
 import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
 import { scheduleCalendarSync } from './src-browser/calendar-sync.js';
+import { syncCaptureShortcuts } from './src-browser/capture-shortcuts.js';
 import { platform } from './src-browser/platform.js';
 import { acceptNativeLaunches, handleLaunchParams } from './src-browser/launch-params.js';
 import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, moveTableCellFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading } from './src-browser/keyboard-focus.js';
@@ -1468,5 +1469,6 @@ if (window.matchMedia) {
 bootstrap().then(() => {
   handleLaunchParams().catch(() => {});
   acceptNativeLaunches(); // a native shell's shares that arrived while the app was starting
+  syncCaptureShortcuts(); // the launcher's long-press list follows the capture templates
   scheduleCalendarSync();
 });

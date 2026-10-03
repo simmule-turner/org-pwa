@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v434 — Display measurements, and Android capture shortcuts and files
+New command, Show display measurements: it reports what the screen and
+web view give the page (status-bar inset, viewport, keyboard), so layout
+problems can be diagnosed from real numbers. In the Android app, capture
+templates become the launcher's long-press shortcuts, Add a capture icon
+to the home screen pins one, and files open, save and export through the
+system file picker.
+
 * v433 — Android shell fixes: status bar, keyboard key, h SPC a
 Fixes for running inside the Android shell, which also help the PWA on
 notched phones: the top bar now starts below the status bar, so its
