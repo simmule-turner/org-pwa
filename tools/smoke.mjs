@@ -187,13 +187,14 @@ const dav = createDav();
 let browser;
 let main;
 
-async function freshPage(server = main, { withDav = false, serviceWorkers = 'block' } = {}) {
+async function freshPage(server = main, { withDav = false, serviceWorkers = 'block', initScript = null } = {}) {
   // The service worker is blocked except where it is the thing under test:
   // its activation can reload the page mid-check and make the rest flaky.
   const context = await browser.newContext({ viewport: { width: 420, height: 900 }, serviceWorkers });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  if (initScript) await context.addInitScript(initScript); // runs before the app's own code, on every load of every page in this context
   await page.goto(`${server.base}/index.html`, { waitUntil: 'load' });
   await page.waitForTimeout(400);
   if (withDav) {
@@ -2706,6 +2707,145 @@ check('settings page order: Calendar (CalDAV) comes right after WebDAV so Backup
     return [...sec.querySelectorAll('button')].map((b) => [b.textContent, b.disabled]);
   });
   expect(JSON.stringify(disabled) === JSON.stringify([['Sync now', true], ['Rebuild calendar', true]]), `both calendar buttons start disabled: ${JSON.stringify(disabled)}`);
+  await context.close();
+});
+
+check('platform seam: a platform injected before startup (as a native shell would) is used for saving a file out, for the clipboard and for viewing, and the service worker is skipped', async () => {
+  // the platform is there from the very first load, so nothing has registered a service worker yet
+  const { context, page, errors } = await freshPage(main, { serviceWorkers: 'allow', initScript: () => { window.orgPwaPlatform = { name: 'fake-native', usesServiceWorker: false }; } });
+  let browserDownloads = 0;
+  page.on('download', () => { browserDownloads++; });
+  await page.locator('#moreBtn').waitFor({ state: 'visible' });
+  await page.waitForTimeout(1500);
+
+  expect((await page.evaluate(async () => (await import('/src-browser/platform.js')).platform.name)) === 'fake-native', 'the injected platform is the one in use from the start');
+  expect((await page.evaluate(() => navigator.serviceWorker.getRegistrations().then((r) => r.length))) === 0, 'a platform that bundles the app does not register the service worker');
+
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    window.__saved = [];
+    window.__viewed = [];
+    installPlatform({
+      saveFile: (name, content, mime) => window.__saved.push({ name, mime, text: typeof content === 'string' ? content : '(bytes)' }),
+      viewFile: (blob, name) => window.__viewed.push(name),
+      clipboard: { readText: async () => 'FROM-THE-FAKE-CLIPBOARD', writeText: async () => {} },
+    });
+  });
+
+  // a file handed out goes to the platform, not to the browser's download
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await page.getByRole('button', { name: 'Export Settings' }).click();
+  await page.waitForFunction(() => window.__saved.length === 1, null, { timeout: 5000 });
+  const saved = await page.evaluate(() => window.__saved[0]);
+  expect(saved.name === 'org-pwa-settings.json' && saved.text.includes('"format": "org-pwa-settings"'), `Export Settings went to platform.saveFile: ${JSON.stringify(saved).slice(0, 120)}`);
+  expect(browserDownloads === 0, 'and the browser downloaded nothing itself');
+
+  // the clipboard token reads the platform's clipboard (the real one would be refused in this browser)
+  await newDocument(page, '* Inbox\n');
+  await page.evaluate((json) => new Promise((resolve, reject) => {
+    const open = indexedDB.open('org-pwa');
+    open.onsuccess = () => {
+      const db = open.result;
+      const tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(json, 'settings:captureTemplates');
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => reject(tx.error);
+    };
+    open.onerror = () => reject(open.error);
+  }), JSON.stringify([{ key: 'x', description: 'Clip', type: 'entry', olp: ['Inbox'], template: '* Clip\n  %x', emptyLines: 0 }]));
+  await openPalette(page);
+  await page.keyboard.type('capture: clip');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(800);
+  if (await page.locator('#capturePanel').isVisible()) await page.locator('#capturePanel button', { hasText: 'Close' }).first().click();
+  await viewMenu(page, 'Text');
+  const text = await page.locator('#document-text-edit-input').inputValue();
+  expect(text.includes('FROM-THE-FAKE-CLIPBOARD'), `%x came from platform.clipboard: ${JSON.stringify(text)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+
+  // the default platform, for contrast: it does register the service worker
+  const base = await freshPage(main, { serviceWorkers: 'allow' });
+  await base.page.waitForTimeout(2500);
+  expect((await base.page.evaluate(() => navigator.serviceWorker.getRegistrations().then((r) => r.length))) === 1, 'the default web platform registers it');
+  expect((await base.page.evaluate(async () => (await import('/src-browser/platform.js')).platform.name)) === 'web', 'and calls itself web');
+  await base.context.close();
+});
+
+check('platform seam: opening, editing and saving a local file goes through platform.localFiles, and a CRLF file keeps its line endings through it', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    const store = new Map([['phone.org', '* From the phone\r\nbody text\r\n']]);
+    window.__writes = [];
+    window.__picked = 0;
+    installPlatform({
+      localFiles: {
+        supported: () => true,
+        pickOpen: async () => { window.__picked++; return 'phone.org'; },
+        pickNew: async (kv, name) => { store.set(name, ''); return name; },
+        adapter: {
+          async read(id) { if (!store.has(id)) return null; const content = store.get(id); return { content, hash: 'h' + content.length }; },
+          async write(id, content) { store.set(id, content); window.__writes.push({ id, content }); return { hash: 'h' + content.length }; },
+          async exists(id) { return store.has(id); },
+          async access() { return 'granted'; },
+        },
+      },
+    });
+  });
+  await fileMenu(page, 'Open', 'Local file');
+  await page.waitForFunction(() => document.getElementById('modelineBar').innerText.includes('phone.org'), null, { timeout: 8000 });
+  expect((await page.evaluate(() => window.__picked)) === 1, 'the open went through platform.localFiles.pickOpen');
+  expect((await page.locator('#outline').innerText()).includes('From the phone'), 'the file was read through the platform\u2019s adapter');
+
+  await setDocumentText(page, '* From the phone\n* Added here\nbody text\n');
+  await fileMenu(page, 'Save');
+  await waitForStatus(page, 'Saved');
+  const writes = await page.evaluate(() => window.__writes);
+  expect(writes.length === 1 && writes[0].id === 'phone.org', `the save went through platform.localFiles.adapter.write: ${JSON.stringify(writes)}`);
+  expect(writes[0].content === '* From the phone\r\n* Added here\r\nbody text\r\n', `and the file kept its Windows line endings: ${JSON.stringify(writes[0].content)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('platform seam: a native shell can hand the app a share directly (runLaunch), with no URL involved, and it captures like the share URL does', async () => {
+  dav.reset({ 'notes.org': SAMPLE, 'inbox.org': '* Inbox\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  const templates = [{ key: 'n', description: 'Shared note', type: 'entry', file: 'inbox.org', olp: ['Inbox'], template: '* Note\n  %i\n  %a', emptyLines: 0 }];
+  await page.evaluate((json) => new Promise((resolve, reject) => {
+    const open = indexedDB.open('org-pwa');
+    open.onsuccess = () => {
+      const db = open.result;
+      const tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(json, 'settings:captureTemplates');
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => reject(tx.error);
+    };
+    open.onerror = () => reject(open.error);
+  }), JSON.stringify(templates));
+  await openDav(page, 'notes.org');
+  const urlBefore = page.url();
+
+  await page.evaluate(async () => {
+    const { runLaunch } = await import('/src-browser/launch-params.js');
+    await runLaunch({ capture: 'n', shared: { title: 'Native page', text: 'handed over by a share extension', url: 'https://example.com/native' } });
+  });
+  for (let n = 0; n < 40 && !dav.get('inbox.org').includes('handed over'); n++) await page.waitForTimeout(250);
+  const file = dav.get('inbox.org');
+  expect(file.includes('** Note\n  handed over by a share extension\n  [[https://example.com/native][Native page]]'), `the template ran with the shared content: ${JSON.stringify(file)}`);
+  expect(page.url() === urlBefore, 'and no URL was involved: the address is untouched');
+
+  // with no key, the template list opens and keeps what was shared for the one that is picked
+  await page.evaluate(async () => {
+    const { runLaunch } = await import('/src-browser/launch-params.js');
+    await runLaunch({ capture: '', shared: { title: '', text: 'second share', url: '' } });
+  });
+  await page.waitForSelector('#capturePanel', { state: 'visible', timeout: 5000 });
+  await page.locator('#capturePanel button', { hasText: 'Shared note' }).first().click();
+  for (let n = 0; n < 40 && !dav.get('inbox.org').includes('second share'); n++) await page.waitForTimeout(250);
+  expect(dav.get('inbox.org').includes('  second share'), 'a share with no key shows the list and the picked template gets the text');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
 
