@@ -2686,19 +2686,26 @@ check('calendar mirror: a calendar that does not exist is reported clearly, auto
   await context.close();
 });
 
-check('calendar mirror: Settings has a Calendar section as the LAST section, so nothing above it moved, and Sync now is disabled until an address is set', async () => {
+check('settings page order: Calendar (CalDAV) comes right after WebDAV so Backup is last, and Paragraph Spacing comes right after Font Size; Sync now is disabled until an address is set', async () => {
   const { context, page } = await freshPage();
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
   await page.locator('.settings-section').last().waitFor({ state: 'visible' });
-  const titles = await page.evaluate(() => [...document.querySelectorAll('.settings-section')].map((sec) => (sec.querySelector('.panel-section-title') || {}).textContent || ''));
-  expect(titles[titles.length - 1] === 'Calendar (CalDAV)', `the Calendar section is last: ${JSON.stringify(titles)}`);
-  expect(titles.includes('WebDAV') && titles.includes('Backup') && titles.includes('Updates'), 'and the sections that were there are still there');
+  const sections = await page.evaluate(() => [...document.querySelectorAll('.settings-section')].map((sec) => (sec.querySelector('.panel-section-title') || {}).textContent || ''));
+  expect(sections[sections.length - 1] === 'Backup', `Backup is the last section: ${JSON.stringify(sections)}`);
+  const w = sections.indexOf('WebDAV');
+  expect(w >= 0 && sections[w + 1] === 'Calendar (CalDAV)' && sections[w + 2] === 'Backup', `Calendar (CalDAV) directly follows WebDAV: ${JSON.stringify(sections)}`);
+  expect(sections.includes('GitHub') && sections.includes('Updates') && sections.includes('Capture Templates'), 'and the sections that were there are still there');
+  const appearance = await page.evaluate(() => {
+    const sec = [...document.querySelectorAll('.settings-section')].find((x) => (x.querySelector('.panel-section-title') || {}).textContent === 'Appearance');
+    return [...sec.querySelectorAll('.panel-section-title')].map((t) => t.textContent);
+  });
+  expect(JSON.stringify(appearance) === JSON.stringify(['Appearance', 'Font', 'Font Size', 'Paragraph Spacing', 'Reading Width', 'Menu Size']), `Paragraph Spacing follows Font Size: ${JSON.stringify(appearance)}`);
   const disabled = await page.evaluate(() => {
-    const sec = [...document.querySelectorAll('.settings-section')].pop();
+    const sec = [...document.querySelectorAll('.settings-section')].find((x) => (x.querySelector('.panel-section-title') || {}).textContent === 'Calendar (CalDAV)');
     return [...sec.querySelectorAll('button')].map((b) => [b.textContent, b.disabled]);
   });
-  expect(JSON.stringify(disabled) === JSON.stringify([['Sync now', true], ['Rebuild calendar', true]]), `both buttons start disabled: ${JSON.stringify(disabled)}`);
+  expect(JSON.stringify(disabled) === JSON.stringify([['Sync now', true], ['Rebuild calendar', true]]), `both calendar buttons start disabled: ${JSON.stringify(disabled)}`);
   await context.close();
 });
 
