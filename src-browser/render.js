@@ -17,6 +17,7 @@ import { syncExtraMenuButtonVisibility } from './menus.js';
 import { renderRow, syncSidePanel } from './row-render.js';
 import { renderTabBar } from './tabs.js';
 import { VH_UNIT, isWideLayout, menuButton, tableActionButton } from './ui-widgets.js';
+import { platform } from './platform.js';
 
 export function render() {
   updateSaveButtonState();
@@ -77,7 +78,7 @@ export function render() {
     toolbar.appendChild(
       tableActionButton('Copy All', async () => {
         try {
-          await navigator.clipboard.writeText(textarea.value);
+          await platform.clipboard.writeText(textarea.value);
           setStatus('Copied to clipboard.');
         } catch {
           // navigator.clipboard can fail or be unavailable (a non-secure

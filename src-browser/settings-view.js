@@ -16,7 +16,6 @@ import { confirmDialog, openMultiFieldPopup, openTextFieldPopup } from './dialog
 import { validateCaptureTemplates } from './doc-helpers.js';
 import { sidePanelEl } from './dom.js';
 import { setStatus } from './editing.js';
-import { downloadFile } from './input-file-adapter.js';
 import { syncExtraMenuButtonVisibility } from './menus.js';
 import { getServiceWorkerVersion } from './render-helpers.js';
 import { render } from './render.js';
@@ -27,6 +26,7 @@ import { formatPendingChangeTimestamp } from './sync-helpers.js';
 import { entryFieldButtonStyle, labeledInput, menuButton, pickTextFile, populateSelectOptions, textInputStyle } from './ui-widgets.js';
 import { openDocsAtHeading } from './views.js';
 import { refreshLocationFromDevice, refreshWeather, whereOrgWeatherIsUsed } from './weather-flow.js';
+import { platform } from './platform.js';
 
 export function applyTheme(theme) {
   if (theme === 'light' || theme === 'dark') {
@@ -1384,7 +1384,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
       ) {
         return;
       }
-      downloadFile('org-pwa-settings.json', JSON.stringify(bundle, null, 2));
+      platform.saveFile('org-pwa-settings.json', JSON.stringify(bundle, null, 2));
       setStatus('Settings exported \u2014 check your downloads.');
     })
   );

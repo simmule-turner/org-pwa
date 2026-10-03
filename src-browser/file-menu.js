@@ -8,11 +8,11 @@ import { confirmDialog } from './dialogs.js';
 import { createNewUnsavedDocument, loadBrowseEntries, openFromFilesystem, openFromGithub, openFromImport, openFromWebdav, openGithubByPrompt, openRemotePath, openWebdavByPrompt, saveAsFilesystem, saveAsGithub, saveAsImport, saveAsWebdav, saveCurrent } from './documents-io.js';
 import { fileMenuBtn, fileMenuPanel } from './dom.js';
 import { setStatus } from './editing.js';
-import { isFileSystemAccessUnsupported } from './input-file-adapter.js';
 import { clearRecentFiles, getRecentFiles } from './settings.js';
 import { kv } from './singletons.js';
 import { storageKindLabel } from './sync-helpers.js';
 import { VH_UNIT, aliasedMenuDivItem, appendMenuButtonsInOrder, attachLongPress, menuButton, menuDivItem, positionPopupNearButton } from './ui-widgets.js';
+import { platform } from './platform.js';
 
 export function closeFileMenu() {
   S.fileMenuOpen = false;
@@ -162,7 +162,7 @@ export async function renderFileMenuContent() {
     })
   );
 
-  if (!isFileSystemAccessUnsupported()) {
+  if (platform.localFiles.supported()) {
     fileMenuPanel.appendChild(
       menuDivItem('Local file', () => {
         if (S.fileMenuStep === 'open') openFromFilesystem();

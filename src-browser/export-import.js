@@ -19,11 +19,11 @@ import { createNewUnsavedDocument, suggestedSaveAsName } from './documents-io.js
 import { morePanel } from './dom.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { activeDiskAdapter } from './external-sync.js';
-import { downloadFile } from './input-file-adapter.js';
 import { renderMoreMenu } from './menus.js';
 import { render } from './render.js';
 import { agendaFilesCache, contactsFilesCache } from './singletons.js';
 import { aliasedMenuDivItem, appendMenuButtonsInOrder, menuButton, menuDivItem } from './ui-widgets.js';
+import { platform } from './platform.js';
 
 /** Resolves a raw #+INCLUDE: path (see src/export-include.js's own
  *  docs for the full directive syntax this feeds into) against this
@@ -54,13 +54,13 @@ export async function performExport(format, scope) {
   if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt') {
     const doc = await expandIncludes(S.state.doc, resolveIncludePath, parseOrg);
     if (format === 'ascii') {
-      downloadFile(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables)), 'text/plain');
+      platform.saveFile(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables)), 'text/plain');
     } else if (format === 'markdown') {
-      downloadFile(baseName + '.md', exportToMarkdown(doc, scope), 'text/markdown');
+      platform.saveFile(baseName + '.md', exportToMarkdown(doc, scope), 'text/markdown');
     } else if (format === 'html') {
-      downloadFile(baseName + '.html', exportToHtml(doc, scope), 'text/html');
+      platform.saveFile(baseName + '.html', exportToHtml(doc, scope), 'text/html');
     } else {
-      downloadFile(baseName + '.odt', exportToOdt(doc, scope), 'application/vnd.oasis.opendocument.text');
+      platform.saveFile(baseName + '.odt', exportToOdt(doc, scope), 'application/vnd.oasis.opendocument.text');
     }
   } else if (format === 'vcard') {
     const docs = scope === 'contacts-files' ? aggregateContactsDocs() : [{ documentId: S.state.documentId, doc: S.state.doc }];
@@ -97,11 +97,11 @@ export async function performExport(format, scope) {
       renderMoreMenu();
       return;
     }
-    downloadFile(baseName + '.vcf', vcf, 'text/vcard');
+    platform.saveFile(baseName + '.vcf', vcf, 'text/vcard');
   } else {
     const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: S.state.documentId, doc: S.state.doc }];
     const icsScope = scope && typeof scope === 'object' ? scope : null;
-    downloadFile(baseName + '.ics', exportToIcalendar(docs, { scope: icsScope }), 'text/calendar');
+    platform.saveFile(baseName + '.ics', exportToIcalendar(docs, { scope: icsScope }), 'text/calendar');
   }
   S.moreOpen = false;
   S.moreMenuStep = null;

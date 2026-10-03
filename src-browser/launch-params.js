@@ -15,7 +15,13 @@ export async function handleLaunchParams() {
   if (!params) return;
   // Remove the parameters first, so a reload (or the app being restored) never runs the capture a second time.
   window.history.replaceState(window.history.state, '', window.location.pathname + window.location.hash);
+  await runLaunch(params);
+}
 
+/** Runs a launch: `{ capture, shared }` as parseLaunchParams makes it. This is what a launch URL ends up calling, and
+ *  what a native shell calls directly when something is shared to the app (there is no URL to parse then). `capture` is
+ *  a template key ('' to show the list, null for none), and `shared` is `{ title, text, url }` or null. */
+export async function runLaunch(params) {
   S.captureShared = params.shared;
   S.captureOpen = true;
   const templates = await getCaptureTemplates(kv);

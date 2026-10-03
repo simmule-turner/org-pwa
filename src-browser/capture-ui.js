@@ -12,6 +12,7 @@ import { getCaptureTemplates } from './settings.js';
 import { agendaFilesCache, kv } from './singletons.js';
 import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { switchToView } from './views.js';
+import { platform } from './platform.js';
 
 /** Converts org-agenda-files' own raw string value (semicolon-
  *  separated "scheme:path" entries, the same separator convention
@@ -219,7 +220,7 @@ async function readClipboardIfUsed(template) {
   S.captureClipboard = '';
   if (!usesClipboardToken((template.preText || '') + template.template + (template.postText || ''))) return;
   try {
-    S.captureClipboard = await navigator.clipboard.readText();
+    S.captureClipboard = await platform.clipboard.readText();
   } catch {
     setStatus("Couldn't read the clipboard (allow pasting if asked), so %x is empty.");
   }

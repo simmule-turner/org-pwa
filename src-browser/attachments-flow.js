@@ -10,12 +10,12 @@ import { confirmDialog, openButtonChoiceModal, pickBinaryFile, showModalOverlay 
 import { refilePanel, refilePanelBox } from './dom.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { activeDiskAdapter } from './external-sync.js';
-import { downloadFile } from './input-file-adapter.js';
 import { guessAnyAttachmentMimeType } from './render-helpers.js';
 import { render } from './render.js';
 import { imageDataUrlCache } from './singletons.js';
 import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { base64ToArrayBuffer } from './webdav-adapter.js';
+import { platform } from './platform.js';
 
 /** Attaches a picked file to `heading` -- this app's own extension,
  *  inspired by real org's own org-attach (see src/attach.js's own
@@ -167,7 +167,7 @@ export async function saveAttachmentLink(target, heading) {
   const attachment = await resolveAndReadAttachment(target, heading);
   if (!attachment) return;
   const { filename, resolvedPath, result } = attachment;
-  downloadFile(filename, base64ToArrayBuffer(result.base64), guessAnyAttachmentMimeType(resolvedPath));
+  platform.saveFile(filename, base64ToArrayBuffer(result.base64), guessAnyAttachmentMimeType(resolvedPath));
   setStatus(`Downloaded "${filename}".`);
   render();
 }
@@ -200,14 +200,13 @@ export async function openAttachmentLink(target, heading) {
     // hasVideo === null (couldn't determine) -- keep the existing heuristic result rather than guessing differently
   }
   if (!viewableMimeType) {
-    downloadFile(filename, base64ToArrayBuffer(result.base64), guessAnyAttachmentMimeType(resolvedPath));
+    platform.saveFile(filename, base64ToArrayBuffer(result.base64), guessAnyAttachmentMimeType(resolvedPath));
     setStatus(`No viewer available for "${filename}" \u2014 downloaded instead.`);
     render();
     return;
   }
   const blob = new Blob([base64ToArrayBuffer(result.base64)], { type: viewableMimeType });
-  const blobUrl = URL.createObjectURL(blob);
-  window.open(blobUrl, '_blank');
+  platform.viewFile(blob, filename);
   setStatus(`Opened "${filename}".`);
   render();
 }

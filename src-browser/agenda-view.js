@@ -18,6 +18,7 @@ import { navigateToHeadingByPath, outlinePathForHeadingInDocument } from './navi
 import { render } from './render.js';
 import { agendaFilesCache } from './singletons.js';
 import { menuButton, textInputStyle } from './ui-widgets.js';
+import { platform } from './platform.js';
 
 export function agendaRangeFor(viewType, anchorDate) {
   if (viewType === 'day') {
@@ -664,7 +665,7 @@ export function buildClocktableSection() {
 
     const copyBtn = menuButton('\ud83d\udccb Copy', async () => {
       try {
-        await navigator.clipboard.writeText(rendered);
+        await platform.clipboard.writeText(rendered);
         setStatus('Clocktable copied to clipboard.');
       } catch {
         setStatus("Couldn't copy \u2014 your browser may not allow clipboard access here.");

@@ -21,6 +21,7 @@ import { renderSearchPanel } from './search-ui.js';
 import { kv } from './singletons.js';
 import { applyTodoTransition } from './todo-workflow.js';
 import { SWIPE_THRESHOLD_PX } from './ui-widgets.js';
+import { platform } from './platform.js';
 
 export function attachSlideLeftToFold(el, heading, opts = {}) {
   const onFolded = opts.onFolded || render;
@@ -144,7 +145,7 @@ export async function confirmHeadingDelete(heading) {
 export async function cutSubtree(heading) {
   const text = serializeHeadingSubtree(heading);
   try {
-    await navigator.clipboard.writeText(text);
+    await platform.clipboard.writeText(text);
   } catch {
     setStatus("Couldn't copy to clipboard \u2014 your browser may not allow clipboard access here. Nothing was deleted.");
     return;
@@ -169,7 +170,7 @@ export async function pasteSubtree(heading) {
   if (!S.state.doc) return;
   let text;
   try {
-    text = await navigator.clipboard.readText();
+    text = await platform.clipboard.readText();
   } catch {
     setStatus("Couldn't read from the clipboard \u2014 your browser may not allow clipboard access here.");
     return;

@@ -21,7 +21,6 @@ import { captureBtn, moreBtn, searchBtn, viewMenuBtn } from './dom.js';
 import { commitTextModeIfActive, persistHistoryInBackground, setStatus } from './editing.js';
 import { activeDiskAdapter, hideExternalChangeBanner, reloadCurrentDocumentFromDisk, resolveSaveConflict } from './external-sync.js';
 import { closeFileMenu, renderFileMenu } from './file-menu.js';
-import { isFileSystemAccessSupported, pickAndRegisterFile, pickAndRegisterNewFile } from './filesystem-adapter.js';
 import { isGithubConfigured } from './github-adapter.js';
 import { pickAndImportFile } from './input-file-adapter.js';
 import { navigateToHeading, syncNavBackButtonVisibility } from './navigation.js';
@@ -33,6 +32,7 @@ import { ALWAYS_KEEP_MINE, resolvePendingChangeChoice } from './sync-helpers.js'
 import { persistOpenTabsInBackground, renderTabBar, saveSessionSnapshot, switchToTab } from './tabs.js';
 import { renderViewMenu } from './views.js';
 import { isWebdavConfigured } from './webdav-adapter.js';
+import { platform } from './platform.js';
 
 export function suggestedSaveAsName(fallback) {
   return S.state.documentId && S.state.documentId.startsWith(UNSAVED_DOCUMENT_ID) ? fallback : S.state.documentId || fallback;
@@ -110,12 +110,12 @@ export async function createNewUnsavedDocument(rawText = '', statusMessage = nul
 
 export async function openFromFilesystem() {
   if (commitTextModeIfActive()) render();
-  if (!isFileSystemAccessSupported()) {
+  if (!platform.localFiles.supported()) {
     setStatus('This browser lacks File System Access support.');
     return;
   }
   try {
-    const documentId = await pickAndRegisterFile(kv);
+    const documentId = await platform.localFiles.pickOpen(kv);
     const { preferCache } = await resolvePendingChangeChoice(documentId);
     await markDocumentOpen(kv, documentId);
     setStatus('Opening\u2026');
@@ -422,12 +422,12 @@ export async function saveCurrent() {
 export async function saveAsFilesystem() {
   if (!S.state.doc) return;
   if (commitTextModeIfActive()) render();
-  if (!isFileSystemAccessSupported()) {
+  if (!platform.localFiles.supported()) {
     setStatus('This browser lacks File System Access support.');
     return;
   }
   try {
-    const documentId = await pickAndRegisterNewFile(kv, suggestedSaveAsName('untitled.org'));
+    const documentId = await platform.localFiles.pickNew(kv, suggestedSaveAsName('untitled.org'));
     S.state.documentId = documentId;
     S.state.storageKind = 'filesystem';
     await markDocumentOpen(kv, documentId);
