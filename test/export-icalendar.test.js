@@ -295,3 +295,45 @@ test('scope: org-contacts-anniversaries still activates correctly when scoped, i
   const ics = exportToIcalendar([{ documentId: 't.org', doc }], { today: TODAY, scope: scopeHeading });
   assert.match(ics, /SUMMARY:Jane Doe: Birthday/);
 });
+
+// ---- collectCalendarEvents: what the CalDAV mirror builds on ---------------------------------------------
+
+import { collectCalendarEvents } from '../src/export-icalendar.js';
+
+const COLLECT_TODAY = new Date(2026, 9, 2, 12, 0);
+const collectFor = (text, opts = {}) => collectCalendarEvents([{ documentId: 'a.org', doc: parseOrg(text) }], { today: COLLECT_TODAY, ...opts });
+
+test('collectCalendarEvents returns each event on its own, and the .ics export is exactly those events joined', () => {
+  const text = '* One\nSCHEDULED: <2026-10-06 Tue>\n* Two\nDEADLINE: <2026-10-09 Fri>\n';
+  const events = collectFor(text);
+  assert.equal(events.length, 2);
+  assert.ok(events.every((e) => e.uid.endsWith('@org-pwa') && e.lines[0] === 'BEGIN:VEVENT'));
+  const ics = exportToIcalendar([{ documentId: 'a.org', doc: parseOrg(text) }], { today: COLLECT_TODAY });
+  assert.equal(ics, ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//org-pwa//org-pwa//EN', 'CALSCALE:GREGORIAN', ...events.flatMap((e) => e.lines), 'END:VCALENDAR'].join('\r\n') + '\r\n');
+});
+
+test('completed items are left out by default (as the agenda does) and kept with includeDone', () => {
+  const text = '* DONE Finished\nSCHEDULED: <2026-10-06 Tue>\n* TODO Open\nSCHEDULED: <2026-10-06 Tue>\n';
+  assert.equal(collectFor(text).length, 1);
+  assert.equal(collectFor(text, { includeDone: true }).length, 2);
+});
+
+test('a window keeps one-off items inside it, and any repeating item that has started by its end', () => {
+  const text = '* Back\nSCHEDULED: <2026-09-01 Tue>\n* In\nSCHEDULED: <2026-10-10 Sat>\n* Habit\nSCHEDULED: <2025-01-01 Wed +1w>\n* Later habit\nSCHEDULED: <2026-12-01 Tue +1w>\n';
+  const window = { start: new Date(2026, 9, 1), end: new Date(2026, 9, 31) };
+  const titles = collectFor(text, { window }).map((e) => e.lines.find((l) => l.startsWith('SUMMARY:')).slice(8));
+  assert.deepEqual(titles.sort(), ['Habit', 'In']);
+});
+
+test('without a window nothing is dropped for its date', () => {
+  assert.equal(collectFor('* Ancient\nSCHEDULED: <1999-01-01 Fri>\n').length, 1);
+});
+
+test('two events from one heading with an :ID: no longer share a UID; the first keeps the plain id', () => {
+  const events = collectFor('* Ship\nSCHEDULED: <2026-10-06 Tue> DEADLINE: <2026-10-09 Fri>\n:PROPERTIES:\n:ID: abc-123\n:END:\n');
+  assert.deepEqual(events.map((e) => e.uid), ['abc-123@org-pwa', 'abc-123-deadline0@org-pwa']);
+});
+
+test('a heading with an :ID: and only one dated item keeps exactly the UID it always had', () => {
+  assert.deepEqual(collectFor('* Only\nDEADLINE: <2026-10-09 Fri>\n:PROPERTIES:\n:ID: solo\n:END:\n').map((e) => e.uid), ['solo@org-pwa']);
+});

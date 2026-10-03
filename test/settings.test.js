@@ -24,6 +24,10 @@ import {
   getFloatingKeyboardPos,
   setFloatingKeyboardPos,
   normalizeFloatingKeyboardPos,
+  getCaldavConfig,
+  setCaldavConfig,
+  getCaldavSyncState,
+  setCaldavSyncState,
   exportAllSettings,
   importAllSettings,
   getRecentFiles,
@@ -422,4 +426,40 @@ test('the saved position is part of a settings backup and importing writes it ba
   const other = createInMemoryAdapter();
   await importAllSettings(other, bundle);
   assert.deepEqual(await getFloatingKeyboardPos(other), { left: 7, bottom: 99 });
+});
+
+// ---- the calendar (CalDAV) settings -------------------------------------------
+
+test('no calendar is configured by default', async () => {
+  assert.deepEqual(await getCaldavConfig(createInMemoryAdapter()), { url: '', username: '', password: '' });
+});
+
+test('the calendar address and credentials round-trip, and the address is trimmed', async () => {
+  const kv = createInMemoryAdapter();
+  const saved = await setCaldavConfig(kv, { url: '  https://dav.example.com/radicale/me/cal/  ', username: 'me', password: 'pw' });
+  assert.deepEqual(saved, { url: 'https://dav.example.com/radicale/me/cal/', username: 'me', password: 'pw' });
+  assert.deepEqual(await getCaldavConfig(kv), saved);
+});
+
+test('blank credentials stay blank in storage (the WebDAV ones are applied when syncing, not copied here)', async () => {
+  const kv = createInMemoryAdapter();
+  assert.deepEqual(await setCaldavConfig(kv, { url: 'https://h/cal/' }), { url: 'https://h/cal/', username: '', password: '' });
+});
+
+test('the calendar settings are in a settings backup, and the sync state is NOT (it describes one device\u2019s last sync)', async () => {
+  const kv = createInMemoryAdapter();
+  await setCaldavConfig(kv, { url: 'https://h/cal/', username: 'u', password: 'p' });
+  await setCaldavSyncState(kv, { url: 'https://h/cal/', resources: { 'orgpwa-a.ics': { hash: 'h', doc: 'a.org' } } });
+  const bundle = await exportAllSettings(kv);
+  assert.deepEqual(bundle.settings.caldav, { url: 'https://h/cal/', username: 'u', password: 'p' });
+  assert.equal(JSON.stringify(bundle).includes('orgpwa-a.ics'), false);
+  assert.equal('caldavSync' in bundle.settings, false);
+});
+
+test('the sync state round-trips and defaults to nothing sent', async () => {
+  const kv = createInMemoryAdapter();
+  assert.deepEqual(await getCaldavSyncState(kv), { url: '', resources: {} });
+  const state = { url: 'https://h/cal/', resources: { 'orgpwa-a.ics': { hash: 'h1', doc: 'a.org' } } };
+  await setCaldavSyncState(kv, state);
+  assert.deepEqual(await getCaldavSyncState(kv), state);
 });
