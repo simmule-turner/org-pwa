@@ -2,7 +2,7 @@
 // with that key, a bare `?capture` shows the template list, and `&text=...&title=...&url=...` hand content to the
 // template's %i and %a. The manifest points Android's share sheet at the same URL (share_target) and offers
 // `?capture` as an icon shortcut. The parsing is src/capture-shared.js; this is the browser half.
-import { parseLaunchParams } from '../src/capture-shared.js';
+import { launchFromShare, parseLaunchParams } from '../src/capture-shared.js';
 import { S } from './app-state.js';
 import { openCapturePrompt, renderCapturePanel } from './capture-ui.js';
 import { setStatus } from './editing.js';
@@ -37,4 +37,16 @@ export async function runLaunch(params) {
     setStatus(`No capture template "${params.capture}" \u2014 pick one.`);
   }
   renderCapturePanel();
+}
+
+/**
+ * Takes over launches from a native shell, once the app is ready. A shell cannot call into the app until it has started,
+ * so before then it queues what arrives on `orgPwaLaunchQueue` and offers `orgPwaLaunch(payload)` (see
+ * native/native-platform.js). From here on `orgPwaLaunch` runs a launch at once, and anything queued runs now.
+ * A payload is `{ title, text, url, capture? }`; see launchFromShare.
+ */
+export function acceptNativeLaunches() {
+  const queued = Array.isArray(globalThis.orgPwaLaunchQueue) ? globalThis.orgPwaLaunchQueue.splice(0) : [];
+  globalThis.orgPwaLaunch = (payload) => runLaunch(launchFromShare(payload)).catch(() => {});
+  for (const payload of queued) globalThis.orgPwaLaunch(payload);
 }

@@ -66,4 +66,17 @@ function placeInsertedText(value, prefix) {
   return lines.map((line, i) => (i === 0 ? guard(line) : prefix + guard(line))).join('\n');
 }
 
-export { MAX_FIELD, normalizeShared, parseLaunchParams, sharedAnnotation, placeInsertedText };
+/**
+ * What a native shell hands the app when something is shared to it: `{ title, text, url, capture? }`, any of them possibly
+ * missing, as `{ capture, shared }` in the form runLaunch takes. With no `capture` key the template list opens, as it does
+ * for the web share target. The same limits and the same "address inside the text" handling as a share URL.
+ */
+function launchFromShare(payload) {
+  const p = payload && typeof payload === 'object' ? payload : {};
+  const field = (value) => (typeof value === 'string' ? value : '').slice(0, MAX_FIELD).trim();
+  const shared = normalizeShared({ title: field(p.title), text: field(p.text), url: field(p.url) });
+  const any = !!(shared.title || shared.text || shared.url);
+  return { capture: typeof p.capture === 'string' ? field(p.capture) : '', shared: any ? shared : null };
+}
+
+export { MAX_FIELD, normalizeShared, parseLaunchParams, sharedAnnotation, placeInsertedText, launchFromShare };

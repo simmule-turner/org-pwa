@@ -35,6 +35,7 @@ export const UNNAMED_CHORD_LABELS = {
   'C-c C-l': 'Insert link (not available yet)',
   'C-c C-o': 'Open link (not available yet)',
   'M-x': 'Command palette',
+  'C-h a': 'Command palette (apropos)',
   'C-f': 'Arm redo (then / redoes)',
 };
 

@@ -1493,7 +1493,7 @@ No auto-capitalization anywhere in this app.
 :CUSTOM_ID: command-palette
 :END:
 
-A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~. Open it from *More → Commands* (first by default) or, from a keyboard, in [[#god-mode][god-mode]] with ~g x~ (which is ~M-x~).
+A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~. Open it from *More → Commands* (first by default) or, from a keyboard, in [[#god-mode][god-mode]] with ~g x~ (which is ~M-x~) or ~h SPC a~ (~C-h a~).
 
 *Searching*: type a few letters or words. Each word must match the command's name, the real Org or Emacs command it corresponds to, or one of a few extra keywords (so ~deadline~ finds *Edit details*). Case doesn't matter. Real names work as you'd type them in ~M-x~: ~org-clock-in~ finds *Clock in* but not *Clock out*, because a hyphenated word is matched as that exact phrase, while ~clock in~ typed with a space is two words that can match anywhere. A category name (*Clocking*, *Heading*, *Export*) also matches at the start of its words. There is no fuzzy or skip-letter matching.
 
@@ -1611,6 +1611,7 @@ The translation rules follow real god-mode.el (github.com/emacsorphanage/god-mod
 | ~f~ | ~C-f~ | Arm the next ~/~ to redo instead of undo |
 | ~/~ | ~C-/~ | Undo, or redo if armed |
 | ~g x~ | ~M-x~ | Open the [[#command-palette][command palette]] |
+| ~h SPC a~ | ~C-h a~ | The same (~apropos-command~: find the commands that match) |
 
 Some valid sequences have no equivalent yet and say so instead of doing nothing: ~c c~ (toggling a checkbox or running a code block needs finer focus than a heading), ~c |~ and the table row and column inserts (use the +row and +col controls under any table), and ~c SPC l~, ~c l~ and ~c o~ (there is no link insertion or cursor-based link opening).
 
@@ -1721,7 +1722,7 @@ One test checks that every module the app imports is in the service worker's pre
 
 *Code layout*: ~app.js~ is the entry point (about 1,400 lines): it imports everything, sets up the shared state, wires event listeners and runs ~bootstrap~. Features live in ~src-browser/~, one module per area. All runtime state is one object, ~S~, in ~app-state.js~, and the page's DOM elements are looked up once in ~dom.js~. The split is by file rather than decoupled (modules call each other, so the import graph has cycles), and browser modules need a DOM, so Node can't import them. ~test/module-structure.test.js~ and ~tools/check-scope.mjs~, a scope analysis that needs the acorn and eslint-scope parsers installed once (~npm install --prefix /tmp/acorn acorn eslint-scope~), keep the structure from decaying.
 
-Everything the app asks of the device (files on the device, saving a file out, the clipboard, the service worker) goes through ~src-browser/platform.js~, which has browser defaults. A native shell supplies its own by setting ~window.orgPwaPlatform~ before the app loads, and hands a share to ~runLaunch()~ in ~launch-params.js~. The browser tests use a fake platform the same way.
+Everything the app asks of the device (files on the device, saving a file out, the clipboard, the service worker) goes through ~src-browser/platform.js~, which has browser defaults. A native shell supplies its own by setting ~window.orgPwaPlatform~ before the app loads, and hands a share to ~window.orgPwaLaunch()~. The browser tests use a fake platform the same way.
 
 *Browser smoke test*: it covers what unit tests can't reach, since ~app.js~ is UI wiring:
 

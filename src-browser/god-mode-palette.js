@@ -270,6 +270,12 @@ export const GOD_MODE_ACTIONS = {
     renderMoreMenu();
     openOrSwitchToHelp();
   },
+  // C-h a is Emacs's apropos-command, "find the commands that match": this app's command palette does just that. On the
+  // keys it is `h SPC a`, like `h SPC m`, since a bare `a` after `h` would mean C-a.
+  'C-h a': () => {
+    S.godModeActive = false;
+    openCommandPalette();
+  },
   'C-s': () => searchBtn.click(),
   '<up>': () => moveLineFocus(-1),
   '<down>': () => moveLineFocus(1),

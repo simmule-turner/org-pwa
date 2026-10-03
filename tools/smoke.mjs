@@ -2849,6 +2849,124 @@ check('platform seam: a native shell can hand the app a share directly (runLaunc
   await context.close();
 });
 
+check('status bar: the top bar starts below the status bar (and its buttons are tappable there) when the page draws edge to edge, and is unchanged when there is no inset', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 360, height: 740 });
+  const measure = () => page.evaluate(() => {
+    const first = document.querySelector('#topBar header button').getBoundingClientRect();
+    return { padding: getComputedStyle(document.getElementById('topBar')).paddingTop, buttonTop: Math.round(first.top), contentTop: Math.round(document.getElementById('contentArea').getBoundingClientRect().top), barBottom: Math.round(document.getElementById('topBar').getBoundingClientRect().bottom) };
+  });
+  const before = await measure();
+  expect(before.padding === '0px' && before.buttonTop < 20, `with no inset nothing changes: ${JSON.stringify(before)}`);
+
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 32, bottom: 0, left: 0, right: 0 } });
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await page.waitForTimeout(400);
+  const after = await measure();
+  expect(after.padding === '32px', `the top bar pads by the status-bar height: ${JSON.stringify(after)}`);
+  expect(after.buttonTop >= 32, `so its buttons start below the status bar, not under it: ${JSON.stringify(after)}`);
+  expect(after.contentTop >= after.barBottom - 1, `and the document still starts below the bar: ${JSON.stringify(after)}`);
+
+  // a tap where the first button now is really reaches it (the File menu opens)
+  const box = await page.locator('#topBar header button').first().boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.locator('#fileMenuPanel').waitFor({ state: 'visible', timeout: 3000 });
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('floating keyboard: its key lowers a keyboard that shrinks the whole WINDOW (an Android WebView) as well as one that shrinks only the visual viewport', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 360, height: 740 });
+  await newDocument(page, '* One\n');
+  const fk = page.locator('#floatingKeyboard');
+  const key = fk.locator('[data-fk-keyboard]');
+  const activeId = () => page.evaluate(() => document.activeElement && document.activeElement.id);
+  await page.click('#godModeBtn');
+  await fk.waitFor({ state: 'visible' });
+  await page.waitForTimeout(400);
+
+  // the keyboard comes up by shrinking the window itself: the visual viewport shrinks WITH it, so the old inset test sees nothing
+  await page.setViewportSize({ width: 360, height: 440 });
+  await page.waitForTimeout(500);
+  const seen = await page.evaluate(() => ({ lift: parseFloat(document.getElementById('modelineBar').style.bottom) || 0, same: window.visualViewport.height === window.innerHeight }));
+  expect(seen.lift === 0 && seen.same, `precondition: the visual viewport tracks the window, so the mode-line lift is 0: ${JSON.stringify(seen)}`);
+  expect((await key.getAttribute('aria-pressed')) === 'true', 'the key is lit while the window is shrunk by the keyboard');
+  expect((await activeId()) === 'godModeKeyboardInput', 'and the field has focus');
+
+  await key.click();
+  expect((await activeId()) !== 'godModeKeyboardInput', 'tapping it lowers the keyboard (the field lets go of focus) instead of raising it again');
+  await page.setViewportSize({ width: 360, height: 740 }); // the OS lowers it
+  await page.waitForTimeout(500);
+  expect((await key.getAttribute('aria-pressed')) === 'false', 'and the key goes dark');
+
+  await key.click();
+  expect((await activeId()) === 'godModeKeyboardInput', 'tapping it again raises the keyboard');
+
+  // rotating the phone changes the window too, but it is not a keyboard
+  await page.evaluate(() => document.getElementById('godModeKeyboardInput').focus());
+  await page.setViewportSize({ width: 740, height: 360 });
+  await page.waitForTimeout(500);
+  expect((await key.getAttribute('aria-pressed')) === 'false', 'a rotation (a new width) is not read as a keyboard');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('god-mode: h SPC a (C-h a, apropos-command) opens the command palette, as g x (M-x) does, and the hint card names it', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* One\n');
+  const enterGodMode = async () => {
+    await page.locator('body').click({ position: { x: 200, y: 850 } });
+    await page.keyboard.press('Escape');
+    if (!(await page.locator('#minibuffer').innerText()).includes('God-mode')) await page.keyboard.press('Escape');
+  };
+  await enterGodMode();
+  await page.keyboard.press('h');
+  await page.locator('#godModeHints').waitFor({ state: 'visible', timeout: 3000 });
+  await page.keyboard.press(' ');
+  await page.waitForTimeout(200);
+  const hinted = await page.locator('#godModeHints [data-hint-key="a"]').first().innerText();
+  expect(/palette/i.test(hinted), `after h SPC the card offers a for the command palette: ${hinted}`);
+  await page.keyboard.press('a');
+  await page.locator('#command-palette').waitFor({ state: 'visible', timeout: 3000 });
+  expect(true, 'the palette is open');
+  await page.keyboard.press('Escape');
+  await page.locator('#command-palette').waitFor({ state: 'hidden', timeout: 3000 });
+
+  await enterGodMode();
+  await page.keyboard.press('g');
+  await page.keyboard.press('x');
+  await page.locator('#command-palette').waitFor({ state: 'visible', timeout: 3000 });
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('native shell: a share queued before the app was ready, and one that arrives later, both reach Capture with what was shared', async () => {
+  const { context, page, errors } = await freshPage(main, {
+    initScript: () => {
+      // what native-platform.js does before the app starts: queue, and offer the function the shell calls
+      window.orgPwaLaunchQueue = [{ title: 'Early', text: 'shared before the app was ready' }];
+      window.orgPwaLaunch = (payload) => window.orgPwaLaunchQueue.push(payload);
+    },
+  });
+  await page.locator('#capturePanel').waitFor({ state: 'visible', timeout: 6000 });
+  const shared = () => page.evaluate(async () => { const { S } = await import('/src-browser/app-state.js'); return S.captureShared; });
+  const first = await shared();
+  expect(first && first.text === 'shared before the app was ready' && first.title === 'Early', `the queued share opened Capture with it: ${JSON.stringify(first)}`);
+  expect((await page.evaluate(() => window.orgPwaLaunchQueue.length)) === 0, 'and the queue was emptied');
+
+  await page.evaluate(() => { document.getElementById('capturePanel').querySelector('button').scrollIntoView(); });
+  await page.locator('#capturePanel button', { hasText: 'Close' }).first().click();
+  await page.locator('#capturePanel').waitFor({ state: 'hidden', timeout: 3000 });
+  await page.evaluate(() => window.orgPwaLaunch({ text: 'a second share', url: 'https://example.com/later' }));
+  await page.locator('#capturePanel').waitFor({ state: 'visible', timeout: 4000 });
+  const second = await shared();
+  expect(second && second.text === 'a second share' && second.url === 'https://example.com/later', `a later share is run at once: ${JSON.stringify(second)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 // ---- runner -------------------------------------------------------------------
 
 const filter = process.argv[2];

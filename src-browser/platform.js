@@ -13,8 +13,8 @@
 //   clipboard          { readText(), writeText(text) }
 //   usesServiceWorker  whether the app registers its service worker; a shell that bundles the app has no use for it
 //
-// Launch and share-in are not here: a launch is handed straight to runLaunch() in launch-params.js, which a shell calls
-// with `{ capture, shared }` exactly as the share target and the launch URL do.
+// Share-in is not here: a shell hands the app a share through `window.orgPwaLaunch({ title, text, url })`, queueing on
+// `window.orgPwaLaunchQueue` until the app has started (see acceptNativeLaunches in launch-params.js).
 import { createFileSystemAccessAdapter, isFileSystemAccessSupported, pickAndRegisterFile, pickAndRegisterNewFile } from './filesystem-adapter.js';
 import { downloadFile } from './input-file-adapter.js';
 import { kv } from './singletons.js';

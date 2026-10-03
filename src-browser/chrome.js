@@ -150,6 +150,11 @@ export function syncContentOffset() {
   const vv = window.visualViewport;
   const keyboardInset = vv ? Math.max(0, window.innerHeight - (vv.height + vv.offsetTop)) : 0;
   modelineBarEl.style.bottom = keyboardInset + 'px';
+  // A browser shows the keyboard as a smaller visual viewport (the inset above). An Android WebView shell resizes the
+  // window itself instead, which leaves the visual viewport equal to it and the inset 0. So also remember the tallest the
+  // window has been at this width: floating-keyboard.js compares against it to know the keyboard is up either way.
+  const base = S.viewportBaseline;
+  S.viewportBaseline = base && base.width === window.innerWidth ? { width: base.width, height: Math.max(base.height, window.innerHeight) } : { width: window.innerWidth, height: window.innerHeight };
   contentAreaEl.style.marginTop = barHeight + 'px';
   contentAreaEl.style.height = `calc(100% - ${barHeight}px - ${bottomBarHeight}px - ${keyboardInset}px)`;
   extraMenuBtn.style.bottom = bottomBarHeight + keyboardInset + 16 + 'px';

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_FIELD, normalizeShared, parseLaunchParams, placeInsertedText, sharedAnnotation } from '../src/capture-shared.js';
+import { MAX_FIELD, launchFromShare, normalizeShared, parseLaunchParams, placeInsertedText, sharedAnnotation } from '../src/capture-shared.js';
 
 test('a launch URL with nothing for Capture reads as null, so an ordinary start is never touched', () => {
   assert.equal(parseLaunchParams(''), null);
@@ -74,4 +74,30 @@ test('under an indent a star line is already harmless, but a #+ line is still es
 
 test('when the template\u2019s own text precedes the token, the shared text cannot start a line, so nothing is escaped', () => {
   assert.equal(placeInsertedText('* a', 'Note: '), '* a');
+});
+
+// ---- a share handed over by a native shell ---------------------------------------------------------
+
+test('a native share with no template key opens the template list, carrying what was shared', () => {
+  assert.deepEqual(launchFromShare({ title: 'A page', text: 'Some words', url: 'https://example.com/a' }), { capture: '', shared: { title: 'A page', text: 'Some words', url: 'https://example.com/a' } });
+});
+
+test('an address inside the shared text is moved to url, as for the web share target', () => {
+  assert.deepEqual(launchFromShare({ text: 'Read this\nhttps://example.com/x' }), { capture: '', shared: { title: '', text: 'Read this', url: 'https://example.com/x' } });
+  assert.deepEqual(launchFromShare({ text: 'https://example.com/x' }).shared, { title: '', text: '', url: 'https://example.com/x' });
+});
+
+test('a template key in the payload is kept, so a shell can ask for a specific template', () => {
+  assert.equal(launchFromShare({ capture: 'n', text: 'x' }).capture, 'n');
+});
+
+test('missing, empty or odd payloads give no shared content instead of throwing', () => {
+  for (const payload of [undefined, null, {}, { text: '   ' }, 'a string', 42, { text: 5, title: null, url: {} }]) {
+    assert.deepEqual(launchFromShare(payload), { capture: '', shared: null }, JSON.stringify(payload));
+  }
+});
+
+test('a native share is trimmed and capped like a share URL', () => {
+  assert.equal(launchFromShare({ text: '  hi  ' }).shared.text, 'hi');
+  assert.equal(launchFromShare({ text: 'x'.repeat(MAX_FIELD + 500) }).shared.text.length, MAX_FIELD);
 });

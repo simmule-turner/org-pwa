@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v433 — Android shell fixes: status bar, keyboard key, h SPC a
+Fixes for running inside the Android shell, which also help the PWA on
+notched phones: the top bar now starts below the status bar, so its
+buttons can be tapped; the keyboard key lowers a keyboard that resizes
+the whole window, not only one that raises it; and h SPC a opens the
+command palette in god-mode. A native shell can also hand the app a
+share.
+
 * v432 — One platform layer, groundwork for native apps
 No visible change. The app now reaches the device (files on it, saving a
 file out, the clipboard, the service worker) through one platform layer,

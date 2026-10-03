@@ -237,7 +237,17 @@ function wireHandle(handle) {
  *  Android's back gesture can hide the keyboard and leave the field focused. On a
  *  desktop there is no on-screen keyboard, so this is never true there. */
 function deviceKeyboardShowing() {
-  return document.activeElement === godModeKeyboardInput && (parseFloat(modelineBarEl.style.bottom) || 0) > KEYBOARD_INSET_PX;
+  return document.activeElement === godModeKeyboardInput && keyboardLift() > KEYBOARD_INSET_PX;
+}
+
+/** How far the device keyboard has pushed the page up, however the platform shows it: the app lifts its mode line when
+ *  the visual viewport shrinks (a browser), and when the window itself shrinks (an Android WebView) it is how far it
+ *  is now below the tallest it has been at this width (see syncContentOffset). */
+function keyboardLift() {
+  const lifted = parseFloat(modelineBarEl.style.bottom) || 0;
+  const base = S.viewportBaseline;
+  const shrunk = base && base.width === window.innerWidth ? base.height - window.innerHeight : 0;
+  return Math.max(lifted, shrunk);
 }
 
 /** Lights the panel's keyboard key while the device keyboard is showing. Cheap,

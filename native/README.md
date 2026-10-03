@@ -15,7 +15,10 @@ If the build fails, open the "Show the toolchain" step first: it prints the Java
 ## What to check on the first run
 
 - The app opens full screen, with the org-pwa icon and splash, and no browser bars.
-- It looks and behaves like the PWA. Help opens, and you can create and edit a document.
+- It looks and behaves like the PWA. Help opens, and you can create and edit a document. The top bar sits below the
+  status bar, and the keyboard key lowers the keyboard as well as raising it.
+- **Sharing in:** share a link or some text from another app. org-pwa appears in the Share sheet, and picking it opens
+  Capture with what you shared.
 - It does **not** share data with the PWA: the shell's address is `https://localhost`, so its settings, tokens and
   cached documents are its own. Enter GitHub / WebDAV / calendar settings again.
 - **WebDAV and CalDAV servers must allow the origin `https://localhost`** for CORS, as they do for the PWA's own address.
@@ -28,5 +31,7 @@ If the build fails, open the "Show the toolchain" step first: it prints the Java
   APK name also says which web version it bundles.
 - The app id is `org.orgpwa.app`. Change it in `capacitor.config.json`, `android/app/build.gradle` and
   `android/app/src/main/res/values/strings.xml` before putting this anywhere public.
-- `native-platform.js` runs before the app and tells it which platform it is on. Native implementations of files,
-  sharing and so on will be added there, one at a time.
+- `native-platform.js` runs before the app and tells it which platform it is on, and connects the native pieces to it.
+  Native implementations of files and so on will be added there, one at a time.
+- `node scripts/check-bundle.mjs` bundles the PWA and checks that glue in a real browser against a stand-in for
+  Capacitor (it needs Playwright). It cannot check the Android side: that is what the CI build and the phone are for.

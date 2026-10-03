@@ -259,7 +259,7 @@ import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, sy
 import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
 import { scheduleCalendarSync } from './src-browser/calendar-sync.js';
 import { platform } from './src-browser/platform.js';
-import { handleLaunchParams } from './src-browser/launch-params.js';
+import { acceptNativeLaunches, handleLaunchParams } from './src-browser/launch-params.js';
 import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, moveTableCellFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading } from './src-browser/keyboard-focus.js';
 import { renderExtraMenu, renderMoreMenu } from './src-browser/menus.js';
 import { navigateBack, toggleActionMenu } from './src-browser/navigation.js';
@@ -363,6 +363,8 @@ S.calendarSyncQueued = false;
 S.calendarSyncPaused = false; // after a login or address failure, until the person changes the settings or syncs by hand
 S.calendarSyncTimer = null;
 S.calendarSyncLastError = null;
+// The tallest the window has been at its current width, to tell a keyboard that resizes the window from one that does not.
+S.viewportBaseline = null;
 
 
 // org-agenda-files equivalent: additional GitHub/WebDAV files the
@@ -1465,5 +1467,6 @@ if (window.matchMedia) {
 // shortcut that asked for Capture is acted on here, once whichever of them finished (see launch-params.js).
 bootstrap().then(() => {
   handleLaunchParams().catch(() => {});
+  acceptNativeLaunches(); // a native shell's shares that arrived while the app was starting
   scheduleCalendarSync();
 });

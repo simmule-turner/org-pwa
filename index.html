@@ -110,10 +110,13 @@
      (syncContentOffset). */
   #topBar {
     position: fixed; top: 0; left: 0;
+    /* The page declares viewport-fit=cover, so on an Android phone or in a native shell it draws under the status bar:
+       the bar starts below it. The inset is 0 everywhere else. */
+    padding-top: env(safe-area-inset-top, 0px);
     width: 100%; z-index: 5; background: var(--bg);
     max-height: 92vh; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain;
   }
-  header { position: sticky; top: 0; z-index: 1; background: var(--bg); display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); flex-wrap: nowrap; width: 100%; }
+  header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 1; background: var(--bg); display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); flex-wrap: nowrap; width: 100%; }
   #topBarSpacer { flex: 1 1 auto; }
   /* Uniform icon buttons — item 1: larger, icon-based, consistent touch
      target size (44px meets the standard mobile minimum) instead of
