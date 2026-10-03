@@ -70,17 +70,49 @@ const MIME = {
  *  way a real server behaves. */
 function createDav() {
   const files = new Map();
+  // Which folders exist, for a folder-aware PROPFIND (a calendar is a folder). null means any folder does.
+  let collections = null;
+  const requests = []; // every request the server saw, as "METHOD name", so a check can prove something stopped asking
   const etag = (text) => '"' + crypto.createHash('md5').update(text).digest('hex') + '"';
   return {
     files,
+    requests,
+    setCollections: (names) => { collections = names ? new Set(names) : null; },
     set: (name, text) => files.set(name, text),
     get: (name) => files.get(name),
     reset(initial = {}) {
+      collections = null;
+      requests.length = 0;
       files.clear();
       for (const [name, text] of Object.entries(initial)) files.set(name, text);
     },
     handle(req, res, name, body) {
+      requests.push(`${req.method} ${name}`);
       const has = files.has(name);
+      if (req.method === 'PROPFIND' && name !== '') {
+        // a folder other than the root: list just what is directly inside it, with real (unencoded) slashes in the path
+        const prefix = name.endsWith('/') ? name : name + '/';
+        if (collections && !collections.has(prefix)) {
+          res.writeHead(404);
+          return res.end();
+        }
+        const children = [...files.keys()].filter((n) => n.startsWith(prefix) && !n.slice(prefix.length).includes('/'));
+        const items = [
+          `<d:response><d:href>/dav/${prefix}</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>`,
+          ...children.map((n) => `<d:response><d:href>/dav/${prefix}${encodeURIComponent(n.slice(prefix.length))}</d:href><d:propstat><d:prop><d:resourcetype/></d:prop></d:propstat></d:response>`),
+        ];
+        res.writeHead(207, { 'Content-Type': 'application/xml' });
+        return res.end(`<?xml version="1.0"?><d:multistatus xmlns:d="DAV:">${items.join('')}</d:multistatus>`);
+      }
+      if (req.method === 'DELETE') {
+        if (!has) {
+          res.writeHead(404);
+          return res.end();
+        }
+        files.delete(name);
+        res.writeHead(204);
+        return res.end();
+      }
       if (req.method === 'PROPFIND') {
         const items = [
           '<d:response><d:href>/dav/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>',
@@ -2533,6 +2565,140 @@ check('line endings: a Windows-style (CRLF) file on the server is edited and sav
   await waitForStatus(page, 'Saved').catch(at('status 3'));
   expect(dav.get('unix.org') === '* One\n* Two edited\nbody text\n', `a Unix-style file stays Unix-style: ${JSON.stringify(dav.get('unix.org'))}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+const calDay = (offset) => {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]}`;
+};
+
+check('calendar mirror: the agenda reaches a CalDAV calendar through the palette, edits follow a save, an event the app did not make is never touched, switching files removes nothing, and Rebuild cleans only the app\u2019s own', async () => {
+  const notes = ['* TODO Pay rent', `DEADLINE: <${calDay(3)} -2d>`, '* DONE Call dentist', `SCHEDULED: <${calDay(-1)}>`, '* Standup', `SCHEDULED: <${calDay(1)} 09:30 +1d>`, '* Just a note', ''].join('\n');
+  const other = ['* Other file task', `SCHEDULED: <${calDay(5)}>`, ''].join('\n');
+  dav.reset({ 'notes.org': notes, 'other.org': other });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const ours = () => [...dav.files.entries()].filter(([n]) => n.startsWith('cal/orgpwa-'));
+  const summaries = () => ours().map(([, t]) => (t.match(/^SUMMARY:(.*)$/m) || [])[1]).sort();
+  const until = async (pred, what) => {
+    for (let n = 0; n < 70; n++) {
+      if (pred()) return;
+      await page.waitForTimeout(250);
+    }
+    throw new Error(`timed out waiting for: ${what} -- on the server: ${JSON.stringify(summaries())}`);
+  };
+  const runCommand = async (words) => {
+    await openPalette(page);
+    await page.keyboard.type(words);
+    await page.keyboard.press('Enter');
+  };
+
+  // with no calendar set, the commands are there but dimmed, and say why
+  await openPalette(page);
+  await page.keyboard.type('sync agenda to calendar');
+  const dimmed = await paletteRows(page);
+  expect(dimmed.some((r) => r.includes('Sync agenda to calendar') && r.includes('no calendar address is set')), `dimmed with the reason: ${JSON.stringify(dimmed)}`);
+  await page.keyboard.press('Escape');
+
+  // set the calendar the way Settings would, then run the command
+  await page.evaluate(async (url) => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.caldavConfig = { url, username: '', password: '' };
+  }, `${main.base}/dav/cal/`);
+  dav.requests.length = 0;
+  await runCommand('sync agenda to calendar');
+  await until(() => ours().length === 3, 'three events on the server');
+  expect(JSON.stringify(summaries()) === JSON.stringify(['Call dentist', 'Pay rent', 'Standup']), `the agenda items arrived: ${JSON.stringify(summaries())}`);
+  const all = ours().map(([, t]) => t).join('\n');
+  expect(all.includes('DESCRIPTION:Scheduled (DONE)'), 'a completed item is kept, with its state');
+  expect(all.includes('RRULE:FREQ=DAILY'), 'a repeating item is one event with a recurrence rule');
+  expect(all.includes('BEGIN:VALARM') && all.includes('TRIGGER:-P2D'), 'a deadline\u2019s warning delay became an alarm');
+  expect((await page.locator('#minibuffer').innerText()).includes('Calendar synced: 3 sent'), 'and the status line says what happened');
+
+  // an event somebody else put in this calendar
+  dav.set('cal/personal.ics', 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:mine\r\nDTSTART;VALUE=DATE:20300101\r\nSUMMARY:My own event\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n');
+
+  // an edit and a save: the calendar follows by itself
+  await setDocumentText(page, notes.replace('* Standup', '* Brand new item').replace(`SCHEDULED: <${calDay(1)} 09:30 +1d>`, `SCHEDULED: <${calDay(2)}>`));
+  await fileMenu(page, 'Save');
+  await waitForStatus(page, 'Saved');
+  await until(() => JSON.stringify(summaries()) === JSON.stringify(['Brand new item', 'Call dentist', 'Pay rent']), 'the calendar to follow the save');
+  expect(dav.files.has('cal/personal.ics'), 'the event the app did not create is untouched');
+
+  // a second sync with nothing changed sends nothing
+  dav.requests.length = 0;
+  await runCommand('sync agenda to calendar');
+  await page.waitForTimeout(1200);
+  expect(!dav.requests.some((r) => r.startsWith('PUT') || r.startsWith('DELETE')), `an unchanged agenda sends nothing: ${JSON.stringify(dav.requests)}`);
+
+  // opening another file must not remove this one's events
+  await openDav(page, 'other.org');
+  await runCommand('sync agenda to calendar');
+  await until(() => summaries().includes('Other file task'), 'the other file\u2019s event');
+  expect(JSON.stringify(summaries()) === JSON.stringify(['Brand new item', 'Call dentist', 'Other file task', 'Pay rent']), `both files\u2019 events are there: ${JSON.stringify(summaries())}`);
+
+  // Rebuild: leftovers of the app's own go, anything else stays
+  dav.set('cal/orgpwa-stale-left-over-00000000.ics', 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:stale\r\nDTSTART;VALUE=DATE:20300101\r\nSUMMARY:Stale\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n');
+  await runCommand('rebuild calendar');
+  await until(() => !dav.files.has('cal/orgpwa-stale-left-over-00000000.ics') && summaries().includes('Other file task'), 'the rebuild');
+  expect(dav.files.has('cal/personal.ics'), 'a rebuild leaves events that are not the app\u2019s');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('calendar mirror: a calendar that does not exist is reported clearly, automatic runs then stop asking until the settings change, and a manual sync tries again', async () => {
+  dav.reset({ 'notes.org': ['* Task', `SCHEDULED: <${calDay(1)}>`, ''].join('\n') });
+  dav.setCollections(['cal/']); // only cal/ exists
+  const { context, page } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  await page.evaluate(async (url) => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.caldavConfig = { url, username: '', password: '' };
+  }, `${main.base}/dav/nope/`);
+  dav.requests.length = 0;
+  await openPalette(page);
+  await page.keyboard.type('sync agenda to calendar');
+  await page.keyboard.press('Enter');
+  await waitForStatus(page, 'Calendar not found');
+  // only requests to a calendar folder count: the app also checks its own open file for outside changes on resume
+  const calendarRequests = () => dav.requests.filter((r) => /^\S+ (nope|cal)\//.test(r));
+  const first = calendarRequests().length;
+  expect(first >= 1 && calendarRequests().every((r) => r.startsWith('PROPFIND')), `only the one check request was made, no writes: ${JSON.stringify(calendarRequests())}`);
+
+  // coming back to the app asks for an automatic sync; it must not even try
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await page.waitForTimeout(3600);
+  expect(calendarRequests().length === first, `no further calendar requests after the failure: ${JSON.stringify(calendarRequests())}`);
+
+  // pointing it at a real calendar and syncing by hand works again
+  await page.evaluate(async (url) => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.caldavConfig = { url, username: '', password: '' };
+  }, `${main.base}/dav/cal/`);
+  await openPalette(page);
+  await page.keyboard.type('sync agenda to calendar');
+  await page.keyboard.press('Enter');
+  await waitForStatus(page, 'Calendar synced');
+  expect([...dav.files.keys()].some((n) => n.startsWith('cal/orgpwa-')), 'the event arrived once the address was right');
+  await context.close();
+});
+
+check('calendar mirror: Settings has a Calendar section as the LAST section, so nothing above it moved, and Sync now is disabled until an address is set', async () => {
+  const { context, page } = await freshPage();
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await page.locator('.settings-section').last().waitFor({ state: 'visible' });
+  const titles = await page.evaluate(() => [...document.querySelectorAll('.settings-section')].map((sec) => (sec.querySelector('.panel-section-title') || {}).textContent || ''));
+  expect(titles[titles.length - 1] === 'Calendar (CalDAV)', `the Calendar section is last: ${JSON.stringify(titles)}`);
+  expect(titles.includes('WebDAV') && titles.includes('Backup') && titles.includes('Updates'), 'and the sections that were there are still there');
+  const disabled = await page.evaluate(() => {
+    const sec = [...document.querySelectorAll('.settings-section')].pop();
+    return [...sec.querySelectorAll('button')].map((b) => [b.textContent, b.disabled]);
+  });
+  expect(JSON.stringify(disabled) === JSON.stringify([['Sync now', true], ['Rebuild calendar', true]]), `both buttons start disabled: ${JSON.stringify(disabled)}`);
   await context.close();
 });
 
