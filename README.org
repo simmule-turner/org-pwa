@@ -950,6 +950,21 @@ Files are fetched once per session. Once any are configured, a *↻* button in t
 
 Set in *Settings → Quick Settings → Contacts files*, or per document in Local Variables, exactly like [[#agenda-files][Agenda Files]] (real org-contacts' ~org-contacts-files~; ~github~ and ~webdav~ only). [[#export][Contacts (.vcf)]] export's *This file + Contacts Files* scope scans them. The list is independent of Agenda Files, because the two commonly differ.
 
+*** Calendar sync (CalDAV)
+:PROPERTIES:
+:CUSTOM_ID: calendar-sync
+:END:
+
+Mirror your agenda into a calendar on your own server, so its items appear, with alarms, in your phone's calendar app. Create a calendar on the server first (a Radicale or Nextcloud calendar), then set it in *Settings → Calendar (CalDAV)*: the calendar's address, and a username and password (blank means the WebDAV ones). Leave the address blank to turn it off.
+
+It is one-way: the calendar follows the agenda, and edits made in a calendar app are overwritten, so give it a calendar of its own. The app only ever removes events it created, and an event is removed only when its own file was loaded, so opening a different file never removes another file's events.
+
+What goes in: SCHEDULED, DEADLINE and plain timestamps, birthdays and diary entries, from the open file and your [[#agenda-files][Agenda Files]], completed items included (their state is in the description). A repeating item is one event with a recurrence rule, and a deadline's warning delay (~-3d~) becomes an alarm. One-off items are kept from a month back to six months ahead.
+
+It syncs after a save, when you return to the app, and at launch. *Sync agenda to calendar* does it now, and *Rebuild calendar from the agenda* removes the app's events and sends them all again. After a wrong address or password, automatic syncing stops until you change the settings or sync by hand.
+
+Example: ~https://dav.example.com/radicale/me/calendar/~. Like WebDAV, the server must allow requests from the app (CORS), including ~PUT~, ~DELETE~ and ~PROPFIND~ with the ~Authorization~, ~Content-Type~ and ~Depth~ headers.
+
 -----
 
 ** The TODO view
@@ -1428,6 +1443,7 @@ Reached via *More (⋮) → Settings*, which replaces the outline until you navi
 - *Appearance*: theme (System, Light or Dark), fonts, independent font sizes for main text, tables and menus, reading width, custom colors for Light and Dark, and *Paragraph Spacing*. Paragraph Spacing is two independent values laid out like the font sizes: one for paragraphs and one, *Tables*, for tables and other secondary blocks (source and quote blocks, rules). Each is 0 to 32px with a 10px default. Where a paragraph meets a table or block the larger value applies, and headings and list items space themselves.
 - *Backup*: *Export Settings* bundles everything on this page into one downloadable JSON file, and *Import Settings* merges a previously exported file back in, leaving anything it doesn't mention untouched.
 - *Updates*: shows the running version and checks for a new one. ~org-xx-updates-at-top~ controls whether it appears at the top of the page or further down.
+- *Calendar (CalDAV)*: the calendar your agenda is mirrored to, last on the page (see [[#calendar-sync][Calendar sync]]).
 
 A file's own ~#+STARTUP:~ or Local Variables block still overrides an app-wide default set here.
 
@@ -1485,7 +1501,7 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 
 *What it acts on*: heading commands work on the heading whose action menu is open (tap a heading's title first), else the keyboard-focused heading. A command that needs a heading and can't find one says so, except *Add heading after* and *Add TODO heading after*, which also work with nothing selected (see the table in [[#keybindings][Keybindings]] for where the new heading lands).
 
-*Names*: a command's real Emacs or Org function name is shown beside it and is searchable. The same name, quoted, names the command in an Extras-menu entry (see [[#extras-menu][Extras menu]]), so the palette, the god-mode chords and Extras share one vocabulary. The commands with no real name are this app's own: *New document* and *Undo history*. A command with a [[#god-mode][god-mode]] key runs the same code as that key and shows it.
+*Names*: a command's real Emacs or Org function name is shown beside it and is searchable. The same name, quoted, names the command in an Extras-menu entry (see [[#extras-menu][Extras menu]]), so the palette, the god-mode chords and Extras share one vocabulary. The commands with no real name are this app's own: *New document*, *Undo history*, *Sync agenda to calendar* and *Rebuild calendar from the agenda*. A command with a [[#god-mode][god-mode]] key runs the same code as that key and shows it.
 
 *What's in it*, by group:
 
@@ -1494,7 +1510,7 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 | *Heading* | cycle TODO state, set priority, set effort estimate, edit details (schedule, deadline, timestamps, tags, properties), add heading or TODO heading after, promote, demote, move up, move down, cut, paste, archive, unarchive, refile, attachments, narrow, widen |
 | *Clocking* | clock in, clock out, cancel clock, continue last clock, go to clocked task, go to a recently clocked task |
 | *Document* | save, save as, open, new, undo, redo, undo history, toggle read-only, capture, recalculate all tables |
-| *View* | agenda, TODO list, outline view, text view, cycle visibility of the whole document, calendar, search |
+| *View* | agenda, TODO list, outline view, text view, cycle visibility of the whole document, calendar, search, sync agenda to calendar, rebuild calendar |
 | *Export* | the Export menu; this file as HTML, Markdown, ASCII, ODT or an Org buffer |
 | *App* | settings, help |
 

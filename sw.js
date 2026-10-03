@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v429';
+const CACHE_NAME = 'org-pwa-shell-v430';
 
 const SHELL_FILES = [
   './',
@@ -22,6 +22,8 @@ const SHELL_FILES = [
   './src/diary-sexp.js',
   './src/sexp-eval.js',
   './src/repeater-shift.js',
+  './src/caldav-client.js',
+  './src/calendar-mirror.js',
   './src/capture-shared.js',
   './src/capture-template.js',
   './src/line-endings.js',
@@ -128,6 +130,7 @@ const SHELL_FILES = [
   './src-browser/general-editor.js',
   './src-browser/gestures-structure.js',
   './src-browser/god-mode-palette.js',
+  './src-browser/calendar-sync.js',
   './src-browser/launch-params.js',
   './src-browser/line-endings-adapter.js',
   './src-browser/floating-keyboard.js',

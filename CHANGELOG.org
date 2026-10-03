@@ -7,6 +7,15 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v430 — The agenda mirrors to a CalDAV calendar
+Your agenda can now appear in your phone's calendar. Point Settings →
+Calendar (CalDAV) at a calendar on your server (Radicale, Nextcloud) and
+every scheduled, deadline, timestamped, birthday and diary item is
+mirrored there, with alarms, after each save and when you return to the
+app. It is one-way, removes only events it created, and never removes
+another file's events when you switch files. Checked against a real
+Radicale server.
+
 * v429 — The Capture shortcut has its own icon
 The Capture shortcut in the Android icon menu now has its own icon: the
 same unicorn with the colours reversed, teal on white, so it is easy to

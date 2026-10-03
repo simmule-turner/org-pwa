@@ -197,6 +197,7 @@ import {
 import {
   getGithubConfig,
   setGithubConfig,
+  getCaldavConfig,
   getWebdavConfig,
   setWebdavConfig,
   getTheme,
@@ -256,6 +257,7 @@ import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, 
 import { renderFileMenu, stopBrowsing } from './src-browser/file-menu.js';
 import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, withArmedShift } from './src-browser/floating-keyboard.js';
 import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
+import { scheduleCalendarSync } from './src-browser/calendar-sync.js';
 import { handleLaunchParams } from './src-browser/launch-params.js';
 import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, moveTableCellFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading } from './src-browser/keyboard-focus.js';
 import { renderExtraMenu, renderMoreMenu } from './src-browser/menus.js';
@@ -353,6 +355,13 @@ S.recordedBlobUrl = null; // set once recording stops, for the review-before-sav
 S.githubConfig = { token: '', owner: '', repo: '', branch: 'main' };
 
 S.webdavConfig = { baseUrl: '', username: '', password: '' };
+// The calendar the agenda is mirrored to (src-browser/calendar-sync.js): its settings, and the state of the sync.
+S.caldavConfig = { url: '', username: '', password: '' };
+S.calendarSyncRunning = false;
+S.calendarSyncQueued = false;
+S.calendarSyncPaused = false; // after a login or address failure, until the person changes the settings or syncs by hand
+S.calendarSyncTimer = null;
+S.calendarSyncLastError = null;
 
 
 // org-agenda-files equivalent: additional GitHub/WebDAV files the
@@ -1333,6 +1342,7 @@ async function bootstrap() {
   });
   S.githubConfig = await getGithubConfig(kv);
   S.webdavConfig = await getWebdavConfig(kv);
+  S.caldavConfig = await getCaldavConfig(kv);
   await loadCachedWeatherData();
   S.globalVariablesText = await getGlobalVariables(kv);
   S.globalVariables = parseGlobalVariables(S.globalVariablesText);
@@ -1438,7 +1448,10 @@ externalChangeDismissBtn.addEventListener('click', () => {
 // however much longer the person keeps working here. Best-effort (see
 // checkForExternalChange's own doc comment) -- never blocks anything.
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) checkForExternalChange();
+  if (!document.hidden) {
+    checkForExternalChange();
+    scheduleCalendarSync(); // coming back to the app: the files may have changed while it was away
+  }
 });
 
 if (window.matchMedia) {
@@ -1449,4 +1462,7 @@ if (window.matchMedia) {
 
 // bootstrap() has several ways out (a restored set of tabs, a resumed document, a fresh start), so a share or an icon
 // shortcut that asked for Capture is acted on here, once whichever of them finished (see launch-params.js).
-bootstrap().then(() => handleLaunchParams().catch(() => {}));
+bootstrap().then(() => {
+  handleLaunchParams().catch(() => {});
+  scheduleCalendarSync();
+});
