@@ -7,6 +7,11 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v431 — Settings page: related sections moved together
+On the Settings page, Calendar (CalDAV) now sits right after WebDAV,
+which leaves Backup as the last section, and Paragraph Spacing now
+follows Font Size in Appearance, so related settings are together.
+
 * v430 — The agenda mirrors to a CalDAV calendar
 Your agenda can now appear in your phone's calendar. Point Settings →
 Calendar (CalDAV) at a calendar on your server (Radicale, Nextcloud) and
