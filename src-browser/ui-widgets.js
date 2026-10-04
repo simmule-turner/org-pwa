@@ -397,6 +397,20 @@ export function tableActionButton(label, onClick, disabled) {
   return btn;
 }
 
+/** The height of whatever the page draws underneath at the top of the screen: an Android status bar, an iPhone's notch. The
+ *  page declares viewport-fit=cover, so it is drawn edge to edge, and anything fixed to the top has to start below this
+ *  (it is 0 in a browser tab). Read back through env(), the only way a page can ask. */
+export function safeAreaTop() {
+  let probe = document.getElementById('safeAreaProbe');
+  if (!probe) {
+    probe = document.createElement('div');
+    probe.id = 'safeAreaProbe';
+    probe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top, 0px)';
+    document.body.appendChild(probe);
+  }
+  return parseFloat(getComputedStyle(probe).paddingTop) || 0;
+}
+
 /** Keeps a fixed-position overlay element aligned with the ACTUALLY
  *  visible viewport, even while an on-screen keyboard is open -- the
  *  same visualViewport-based technique already used for #topBar (see
@@ -412,10 +426,12 @@ export function keepOverlayInVisibleViewport(overlay) {
   const vv = window.visualViewport;
   function reposition() {
     if (!vv) return; // inset: 0 (already set by the caller) is the correct fallback
-    overlay.style.top = vv.offsetTop + 'px';
+    // below the status bar, so nothing in the overlay (a menu, a dialog, the top of a tall form) can end up under it
+    const inset = safeAreaTop();
+    overlay.style.top = vv.offsetTop + inset + 'px';
     overlay.style.left = vv.offsetLeft + 'px';
     overlay.style.width = vv.width + 'px';
-    overlay.style.height = vv.height + 'px';
+    overlay.style.height = Math.max(0, vv.height - inset) + 'px';
   }
   reposition();
   const cleanups = [];

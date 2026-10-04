@@ -52,9 +52,11 @@ export function confirmDialog(message, { confirmLabel = 'Delete', cancelLabel = 
     buttonRow.style.justifyContent = 'flex-end';
     buttonRow.style.gap = '8px';
 
+    let stopTrackingViewport = () => {};
     function finish(result) {
       S.confirmDialogOpen = false;
       document.removeEventListener('keydown', onKeyDown, true);
+      stopTrackingViewport();
       overlay.remove();
       resolve(result);
     }
@@ -106,6 +108,7 @@ export function confirmDialog(message, { confirmLabel = 'Delete', cancelLabel = 
     document.addEventListener('keydown', onKeyDown, true);
 
     document.body.appendChild(overlay);
+    stopTrackingViewport = keepOverlayInVisibleViewport(overlay); // starts below the status bar, and follows the keyboard
     cancelBtn.focus();
   });
 }
@@ -187,9 +190,11 @@ export function openTimestampPickerPopup(kind) {
     buttonRow.style.justifyContent = 'flex-end';
     buttonRow.style.gap = '8px';
 
+    let stopTrackingViewport = () => {};
     function finish(result) {
       S.timestampPickerOpen = false;
       document.removeEventListener('keydown', onKeyDown, true);
+      stopTrackingViewport();
       overlay.remove();
       resolve(result);
     }
@@ -230,6 +235,7 @@ export function openTimestampPickerPopup(kind) {
     document.addEventListener('keydown', onKeyDown, true);
 
     document.body.appendChild(overlay);
+    stopTrackingViewport = keepOverlayInVisibleViewport(overlay); // starts below the status bar, and follows the keyboard
     dateInput.focus();
   });
 }

@@ -27,6 +27,7 @@ import { getGodModeButton } from '../src/local-variables.js';
 import { dispatchGodModeKeystroke } from './god-mode-palette.js';
 import { setFloatingKeyboardPos } from './settings.js';
 import { kv } from './singletons.js';
+import { safeAreaTop } from './ui-widgets.js';
 
 export const FLOATING_BUTTON_SIZE = 44;
 export const FLOATING_BUTTON_GAP = 10;
@@ -99,10 +100,10 @@ function lowestBottom() {
   return modeLineTopOffset() + buttonClearance();
 }
 
-/** The highest it may sit and still be entirely on screen. */
+/** The highest it may sit and still be entirely on screen, and below the status bar. */
 function highestBottom() {
   const vv = window.visualViewport;
-  return window.innerHeight - (vv ? vv.offsetTop : 0) - floatingKeyboard.offsetHeight;
+  return window.innerHeight - (vv ? vv.offsetTop : 0) - safeAreaTop() - floatingKeyboard.offsetHeight;
 }
 
 /** Where the panel wants to be, before the limits: where it was last left, or

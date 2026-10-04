@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v436 — Nothing starts under the status bar; Android plugins reach the app
+Menus and dialogs no longer start under the status bar: the command
+palette, the confirm and date-picker dialogs, and the floating keyboard
+(which can no longer be dragged under it) now stay below it, and any
+future dialog gets this automatically. In the Android app, sharing in,
+launcher shortcuts and local files now actually reach the native side;
+the app could not see its plugins before.
+
 * v435 — App bar no longer covers the tab bar under a status bar
 Fixes the app bar sitting too low in the Android app: it covered the tab
 bar and pushed itself down by the tab bar's height; it now starts just

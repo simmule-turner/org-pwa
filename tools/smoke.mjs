@@ -2891,6 +2891,68 @@ check('status bar: the app bar starts below the status bar with the tab bar dire
   await context.close();
 });
 
+check('status bar: no menu, dialog, overlay or the dragged floating keyboard reaches under the status bar (only the top bar itself starts there, padded)', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 411, height: 924 });
+  await newDocument(page, '* One\n');
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 58, bottom: 0, left: 0, right: 0 } });
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await page.waitForTimeout(400);
+  // every visible element fixed to the screen, other than the top bar, whose top edge is inside the status bar
+  const intruders = () => page.evaluate(() => {
+    const found = [];
+    for (const el of document.querySelectorAll('body *')) {
+      const cs = getComputedStyle(el);
+      if (cs.position !== 'fixed' || cs.display === 'none' || cs.visibility === 'hidden' || el.id === 'topBar') continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) continue;
+      if (r.top < 57.5) found.push(`${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''} top=${Math.round(r.top)}`);
+    }
+    return found;
+  });
+  const closeAll = async () => {
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => { for (const el of document.querySelectorAll('body > div')) { if (el.id !== 'safeAreaProbe' && getComputedStyle(el).position === 'fixed' && el.style.zIndex === '10000' && !el.id.endsWith('Panel')) el.remove(); } });
+    await page.evaluate(() => { for (const id of ['capturePanel', 'doneNotePanel', 'refilePanel']) document.getElementById(id).style.display = 'none'; });
+    await page.waitForTimeout(150);
+  };
+  const states = {
+    'the command palette (More > Commands)': async () => { await page.click('#moreBtn'); await pick(page, '#morePanel', 'Commands'); },
+    'the More menu': async () => { await page.click('#moreBtn'); },
+    'the File menu': async () => { await page.click('#fileMenuBtn'); },
+    'the View menu': async () => { await page.click('#viewMenuBtn'); },
+    'the capture template list': async () => { await page.evaluate(async () => (await import('/src-browser/launch-params.js')).runLaunch({ capture: '', shared: null })); },
+    'a capture template form': async () => { await page.evaluate(async () => (await import('/src-browser/launch-params.js')).runLaunch({ capture: 'm', shared: null })); },
+    'a text popup': async () => { await page.evaluate(async () => { (await import('/src-browser/dialogs.js')).openTextFieldPopup({ label: 'Edit', value: 'x', onSave() {} }); }); },
+    'a confirm dialog': async () => { await page.evaluate(async () => { (await import('/src-browser/dialogs.js')).confirmDialog('Delete this?'); }); }, // not returned: its promise waits for an answer, and evaluate would wait too
+    'the date picker popup': async () => { await page.evaluate(async () => { (await import('/src-browser/dialogs.js')).openTimestampPickerPopup({ active: true, hasTime: false }); }); },
+    'a TALL dialog (forty choices: it fills the screen)': async () => { await page.evaluate(async () => { (await import('/src-browser/dialogs.js')).openButtonChoiceModal({ label: 'Pick one', buttons: Array.from({ length: 40 }, (_, n) => ({ text: 'Choice ' + n, onClick() {} })) }); }); },
+    'the god-mode hint card': async () => { await page.click('#godModeBtn'); await page.keyboard.press('g'); },
+  };
+  for (const [name, open] of Object.entries(states)) {
+    await open();
+    await page.waitForTimeout(450);
+    const bad = await intruders();
+    expect(bad.length === 0, `${name}: nothing starts inside the status bar${bad.length ? ': ' + bad.join(', ') : ''}`);
+    await closeAll();
+  }
+
+  // the floating keyboard can be dragged anywhere, but not under the status bar
+  const fk = page.locator('#floatingKeyboard');
+  if (!(await fk.isVisible())) await page.click('#godModeBtn'); // the last state may have left god-mode on: a click would turn it off
+  await fk.waitFor({ state: 'visible', timeout: 5000 });
+  const handle = await fk.locator('[data-fk-handle]').boundingBox();
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x + 5, -400, { steps: 10 }); // as far up as the pointer goes
+  await page.mouse.up();
+  const top = (await fk.boundingBox()).y;
+  expect(top >= 57.5, `dragged as high as it goes, the floating keyboard stops below the status bar (top ${Math.round(top)}, needs 58)`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('floating keyboard: its key lowers a keyboard that shrinks the whole WINDOW (an Android WebView) as well as one that shrinks only the visual viewport', async () => {
   const { context, page, errors } = await freshPage();
   await page.setViewportSize({ width: 360, height: 740 });

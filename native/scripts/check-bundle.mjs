@@ -1,5 +1,6 @@
-// Dev check, not part of the build: bundles the PWA, serves ./www, and loads it in a real browser against a stand-in for
-// Capacitor and its plugins, to check that native-platform.js and the app work together the way the shell relies on:
+// Dev check, not part of the build: bundles the PWA, serves ./www, and loads it in a real browser together with Capacitor's
+// REAL native-bridge.js (the script Android injects into the page), with only the native plugins beneath it faked, to check
+// that native-platform.js and the app work together the way the shell relies on:
 // the platform is named, the service worker is skipped, shares and launcher shortcuts reach Capture (whether they arrived
 // before the app started or after), capture shortcuts are published and can be pinned, files on the device open, save and
 // can be cancelled, and a file saved out goes through the plugin. It cannot check the Android side (the Java plugins):
@@ -46,14 +47,20 @@ const check = (ok, what, extra = '') => {
   if (!ok) failures++;
 };
 
-// A stand-in for Capacitor: the plugins the shell has, as plain functions that record what they are asked.
-function fakeCapacitor() {
+// What Android puts in the page before any of the app's own scripts, as faithfully as a browser allows: the shell's JavaScript
+// interface (window.androidBridge), Capacitor's REAL bridge script (native-bridge.js, read from node_modules), and the plugin
+// objects the native side generates for each plugin it registered (Capacitor.Plugins.<Name>, built as JSExport.java builds
+// them: an addListener, and one nativePromise call per @PluginMethod). Only what is beneath androidBridge is faked: the
+// native plugins, as plain functions that record what they are asked. A page that assumes more than the real bridge offers
+// (the standalone @capacitor/core runtime has registerPlugin; this bridge does not) fails here, as it would on the phone.
+const BRIDGE_JS = fs.readFileSync(path.join(nativeDir, 'node_modules/@capacitor/android/capacitor/src/main/assets/native-bridge.js'), 'utf8');
+
+function nativeSide() {
   window.__calls = [];
-  window.__listeners = {};
   window.__unhandled = [];
   window.addEventListener('unhandledrejection', (e) => window.__unhandled.push(String(e.reason)));
   const files = new Map([['phone.org', '* From the phone\nbody text\n']]);
-  const plugins = {
+  const impls = {
     ShareTarget: {},
     CaptureShortcuts: {
       setShortcuts: async (a) => { if (window.__failShortcuts) throw new Error('boom'); window.__calls.push(['setShortcuts', a]); return { sent: a.shortcuts.length, max: 4, published: a.shortcuts.length }; },
@@ -71,27 +78,58 @@ function fakeCapacitor() {
       saveFile: async (a) => { window.__calls.push(['saveFile', a]); return { saved: true }; },
     },
   };
-  window.Capacitor = {
-    getPlatform: () => 'android',
-    isNativePlatform: () => true,
-    isPluginAvailable: (name) => name in plugins && !(window.__missing || []).includes(name),
-    registerPlugin: (name) => ({
-      ...(plugins[name] || {}),
-      addListener: (event, callback) => {
-        if (window.__refuseListeners) return Promise.reject(new Error('listener refused'));
-        window.__listeners[`${name}:${event}`] = callback;
-        if (name === 'ShareTarget' && window.__earlyShare) callback(window.__earlyShare); // retained natively, delivered on registration
-        if (name === 'CaptureShortcuts' && window.__earlyCapture) callback(window.__earlyCapture);
-        return Promise.resolve({ remove() {} });
-      },
-    }),
+  const listeners = [];
+  let retained = [];
+  const reply = (callbackId, pluginId, methodName, success, data, error) => window.Capacitor.fromNative({ callbackId, pluginId, methodName, success, data, error, save: false });
+  window.__native = {
+    impls,
+    listenerKeys: () => listeners.map((l) => `${l.pluginId}:${l.eventName}`).sort(),
+    // Plugin.notifyListeners(name, data, retainUntilConsumed=true): held until a listener exists, then delivered
+    emit(pluginId, eventName, data) {
+      const targets = listeners.filter((l) => l.pluginId === pluginId && l.eventName === eventName);
+      if (targets.length === 0) { retained.push({ pluginId, eventName, data }); return; }
+      for (const l of targets) window.Capacitor.fromNative({ callbackId: l.callbackId, pluginId, methodName: 'addListener', save: true, success: true, data });
+    },
   };
+  window.androidBridge = {
+    postMessage(json) {
+      const message = JSON.parse(json);
+      if (message.methodName === 'addListener') {
+        if (window.__refuseListeners) return reply(message.callbackId, message.pluginId, 'addListener', false, undefined, { message: 'listener refused' });
+        listeners.push({ callbackId: message.callbackId, pluginId: message.pluginId, eventName: message.options.eventName });
+        const waiting = retained;
+        retained = [];
+        for (const r of waiting) window.__native.emit(r.pluginId, r.eventName, r.data);
+        return;
+      }
+      const impl = (impls[message.pluginId] || {})[message.methodName];
+      if (!impl) return reply(message.callbackId, message.pluginId, message.methodName, false, undefined, { message: `"${message.pluginId}.${message.methodName}()" is not implemented on android` });
+      Promise.resolve()
+        .then(() => impl(message.options))
+        .then((data) => reply(message.callbackId, message.pluginId, message.methodName, true, data), (e) => reply(message.callbackId, message.pluginId, message.methodName, false, undefined, { message: e.message }));
+    },
+  };
+  if (window.__earlyShare) window.__native.emit('ShareTarget', 'shareReceived', window.__earlyShare);
+  if (window.__earlyCapture) window.__native.emit('CaptureShortcuts', 'captureRequested', window.__earlyCapture);
+}
+
+// The plugin objects, generated as JSExport.getPluginJS does, for the plugins the native side registered.
+function definePlugins() {
+  const missing = window.__missing || [];
+  for (const id of Object.keys(window.__native.impls)) {
+    if (missing.includes(id)) continue;
+    const plugins = (window.Capacitor.Plugins = window.Capacitor.Plugins || {});
+    const t = (plugins[id] = {});
+    t.addListener = function (eventName, callback) { return window.Capacitor.addListener(id, eventName, callback); };
+    for (const method of Object.keys(window.__native.impls[id])) t[method] = function (_options) { return window.Capacitor.nativePromise(id, method, _options); };
+  }
 }
 
 // `flags` are set on window before anything runs; `capacitor: false` means no Capacitor at all (a plain browser).
 async function open(flags = {}, { capacitor = true } = {}) {
   const context = await browser.newContext({ viewport: { width: 412, height: 900 }, serviceWorkers: 'allow' });
-  await context.addInitScript({ content: `Object.assign(window, ${JSON.stringify(flags)}); ${capacitor ? `(${fakeCapacitor.toString()})();` : ''}` });
+  const shell = `(${nativeSide.toString()})(); ${BRIDGE_JS}\n;(${definePlugins.toString()})();`;
+  await context.addInitScript({ content: `Object.assign(window, ${JSON.stringify(flags)}); ${capacitor ? shell : ''}` });
   const page = await context.newPage();
   const problems = [];
   page.on('pageerror', (e) => problems.push(e.message));
@@ -122,14 +160,14 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
   const { context, page, problems } = await open({ __earlyShare: { title: 'Early', text: 'shared before the app was ready' } });
   const info = await page.evaluate(async () => {
     const { platform } = await import('/src-browser/platform.js');
-    return { name: platform.name, sw: platform.usesServiceWorker, registrations: (await navigator.serviceWorker.getRegistrations()).length, listeners: Object.keys(window.__listeners).sort(), unhandled: window.__unhandled };
+    return { name: platform.name, sw: platform.usesServiceWorker, registrations: (await navigator.serviceWorker.getRegistrations()).length, listeners: window.__native.listenerKeys(), unhandled: window.__unhandled };
   });
   check(info.name === 'capacitor-android' && info.sw === false && info.registrations === 0, 'the platform is named, and no service worker is registered', JSON.stringify({ name: info.name, registrations: info.registrations }));
   check(JSON.stringify(info.listeners) === JSON.stringify(['CaptureShortcuts:captureRequested', 'ShareTarget:shareReceived']), 'both native events are listened for', JSON.stringify(info.listeners));
   const early = await sharedNow(page);
   check((await captureShown(page)) && early && early.text === 'shared before the app was ready', 'a share that arrived before the app started opens Capture with it', JSON.stringify(early));
   await closeCapture(page);
-  await page.evaluate(() => window.__listeners['ShareTarget:shareReceived']({ title: 'Later', text: 'shared while the app was open' }));
+  await page.evaluate(() => window.__native.emit('ShareTarget', 'shareReceived', { title: 'Later', text: 'shared while the app was open' }));
   await page.waitForTimeout(600);
   const later = await sharedNow(page);
   check((await captureShown(page)) && later && later.text === 'shared while the app was open', 'a share that arrives while the app is open is handled at once', JSON.stringify(later));
@@ -139,11 +177,11 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
   const published = await calls(page, 'setShortcuts');
   const list = published.length ? published[published.length - 1][1].shortcuts : [];
   check(list.length > 0 && list.every((x) => x.key && x.label), 'the capture templates were published to the launcher at startup', JSON.stringify(list).slice(0, 140));
-  await page.evaluate(() => window.__listeners['CaptureShortcuts:captureRequested']({ key: '' }));
+  await page.evaluate(() => window.__native.emit('CaptureShortcuts', 'captureRequested', { key: '' }));
   await page.waitForTimeout(600);
   check(await captureShown(page), 'tapping the Capture shortcut opens the template list');
   await closeCapture(page);
-  await page.evaluate((key) => window.__listeners['CaptureShortcuts:captureRequested']({ key }), list[0].key);
+  await page.evaluate((key) => window.__native.emit('CaptureShortcuts', 'captureRequested', { key }), list[0].key);
   await page.waitForTimeout(800);
   const panelText = await page.locator('#capturePanel').innerText();
   // the list shows every template, so the template's own form is told apart by the OTHER templates being absent

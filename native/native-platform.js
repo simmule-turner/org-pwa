@@ -23,16 +23,12 @@
     console.warn('org-pwa: ' + what + ' is unavailable:', error && error.message ? error.message : error);
   }
 
-  // The native plugin called `name`, or null if this build of the shell does not have it.
+  // The native plugin called `name`, or null if this build of the shell does not have it. The native bridge defines
+  // Capacitor.Plugins.<name> for every plugin the native side registered, with its methods and addListener. (There is no
+  // registerPlugin here: that belongs to the bundled @capacitor/core runtime, which this shell does not load.)
   function plugin(name) {
-    if (!capacitor || typeof capacitor.registerPlugin !== 'function') return null;
-    if (typeof capacitor.isPluginAvailable === 'function' && !capacitor.isPluginAvailable(name)) return null;
-    try {
-      return capacitor.registerPlugin(name);
-    } catch (error) {
-      warn(name, error);
-      return null;
-    }
+    var plugins = capacitor && capacitor.Plugins;
+    return plugins && Object.prototype.hasOwnProperty.call(plugins, name) ? plugins[name] : null;
   }
 
   function listen(source, event, handler) {
@@ -53,7 +49,7 @@
   var shareTarget = plugin('ShareTarget');
   if (shareTarget) {
     listen(shareTarget, 'shareReceived', function (share) {
-      window.orgPwaLaunch(share); // looked up on each call, so it reaches the app's own function once that exists
+      if (share) window.orgPwaLaunch(share); // looked up on each call, so it reaches the app's own function once that exists
     });
   }
 
@@ -62,7 +58,7 @@
   var shortcuts = plugin('CaptureShortcuts');
   if (shortcuts) {
     listen(shortcuts, 'captureRequested', function (request) {
-      window.orgPwaLaunch({ capture: request && typeof request.key === 'string' ? request.key : '' });
+      if (request) window.orgPwaLaunch({ capture: typeof request.key === 'string' ? request.key : '' });
     });
     platform.captureShortcuts = {
       supported: function () {

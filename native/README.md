@@ -17,7 +17,8 @@ If the build fails, open the "Show the toolchain" step first: it prints the Java
 - The app opens full screen, with the org-pwa icon and splash, and no browser bars.
 - It looks and behaves like the PWA. Help opens, and you can create and edit a document. The top bar sits below the
   status bar, and the keyboard key lowers the keyboard as well as raising it.
-- **Sharing in:** share a link or some text from another app. org-pwa appears in the Share sheet, and picking it opens
+- **Sharing in** (this and the next two did nothing in 0.3.1 and earlier, because the app could not see the native
+  plugins; fixed in 0.3.2): share a link or some text from another app. org-pwa appears in the Share sheet, and picking it opens
   Capture with what you shared.
 - **Capture shortcuts:** long-press the app icon on the home screen or app drawer. A list pops up with **Capture**
   (always there: it opens the template list) and, below or above it, one entry per capture template (as many as your
@@ -28,7 +29,8 @@ If the build fails, open the "Show the toolchain" step first: it prints the Java
   - **If the list is missing the templates, or empty:** run *Show display measurements*, press OK to copy, and send me
     the "launcher shortcuts" line. It says what the launcher has and whether publishing failed (a failure also shows in
     the status line when the app starts).
-- **Files on the device:** File > Open > Local file opens Android's file picker; the file can be edited, saved, and
+- **Files on the device:** File > Open now says **Local file** (before, it said *Import file…*, the browser-style fallback
+  that is used when the native plugin is missing) and opens Android's file picker; the file can be edited, saved, and
   reopened from the recent list later without picking it again. Save As > Local file names a new one. Exports and
   attachments saved out ask where to save them.
 - **Placing the app bar:** if the bar sits too low or too high, run the command *Show display measurements*, press OK
