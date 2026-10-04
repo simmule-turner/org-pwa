@@ -13,6 +13,7 @@
 //                      which rejects with the reason if nothing can show it
 //   clipboard          { readText(), writeText(text) }
 //   usesServiceWorker  whether the app registers its service worker; a shell that bundles the app has no use for it
+//   versionInfo        versionInfo(): the version being run, as text, for a platform that has no service worker to ask
 //   captureShortcuts   the launcher's own shortcuts for Capture: supported() -- whether there are any here; set(list) --
 //                      publish one per capture template, `list` being [{ key, label }]; canPin() / pin({ key, label }) --
 //                      put an icon for one on the home screen ('' as the key is the template list); info() -- what the
@@ -41,6 +42,7 @@ export const platform = {
     writeText: (text) => navigator.clipboard.writeText(text),
   },
   usesServiceWorker: true,
+  versionInfo: async () => null,
   // A browser has no launcher shortcuts to publish here; the installed PWA gets its one Capture shortcut from the manifest.
   captureShortcuts: {
     supported: () => false,

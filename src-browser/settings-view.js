@@ -1486,7 +1486,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     versionDisplay.textContent = 'Version: checking\u2026';
     if (S.appVersionCheckState === 'pending') {
       S.appVersionCheckState = 'checking';
-      getServiceWorkerVersion().then((version) => {
+      (platform.usesServiceWorker ? getServiceWorkerVersion() : platform.versionInfo()).then((version) => {
         S.currentAppVersion = version;
         S.appVersionCheckState = 'done';
         if (S.settingsOpen) renderSettingsView();
@@ -1528,7 +1528,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
           renderSettingsView();
         }
       },
-      !('serviceWorker' in navigator)
+      !('serviceWorker' in navigator) || !platform.usesServiceWorker // a platform without a service worker has nothing to check
     )
   );
   updatesSection.appendChild(updatesRow);
@@ -1536,8 +1536,9 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   const updatesStatus = document.createElement('div');
   updatesStatus.style.fontSize = '12px';
   updatesStatus.style.marginTop = '6px';
-  updatesStatus.textContent =
-    S.updateCheckStatus === 'checking'
+  updatesStatus.textContent = !platform.usesServiceWorker
+    ? 'This app is updated by installing a newer version of it.'
+    : S.updateCheckStatus === 'checking'
       ? 'Checking\u2026'
       : S.updateCheckStatus === 'up-to-date'
         ? 'You\u2019re on the latest version.'

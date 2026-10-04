@@ -197,6 +197,15 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
   await page.evaluate(async () => (await import('/src-browser/display-info.js')).showDisplayMeasurements());
   const report = await page.locator('textarea').last().inputValue();
   check(report.includes('launcher shortcuts: launcher {"max":4,"dynamic":["capture:b"],"canPin":true}; last publish: ') && report.includes('tab bar: top, height:'), 'the display measurements include the launcher\'s report and the tab bar', JSON.stringify(report.split('\n').filter((l) => /launcher|tab bar/.test(l))));
+  // Settings > Updates names the real versions, read from the files the shell is built from
+  const web = /CACHE_NAME\s*=\s*'org-pwa-shell-(v\d+)'/.exec(fs.readFileSync(path.join(nativeDir, '..', 'sw.js'), 'utf8'))[1];
+  const shell = JSON.parse(fs.readFileSync(path.join(nativeDir, 'package.json'), 'utf8')).version;
+  await page.locator('textarea').last().locator("xpath=ancestor::div[@class='panel'][1]").getByRole('button', { name: 'Cancel' }).click(); // the measurements popup is still open
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await page.waitForTimeout(1200);
+  const updates = await page.evaluate(() => [...document.querySelectorAll('.settings-section')].find((x) => (x.querySelector('.panel-section-title') || {}).textContent === 'Updates').innerText.replace(/\n+/g, ' | '));
+  check(updates.includes(`Version: ${web} (app ${shell})`) && updates.includes('updated by installing a newer version'), 'Settings > Updates shows the web and app versions, and how the app is updated', updates);
   check(problems.length === 0 && info.unhandled.length === 0, 'no errors or unhandled rejections', JSON.stringify([...problems, ...info.unhandled]));
   await context.close();
 }

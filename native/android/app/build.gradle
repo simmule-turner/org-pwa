@@ -7,8 +7,8 @@ android {
         applicationId "org.orgpwa.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "0.4.0"
+        versionCode 7
+        versionName "0.4.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -44,6 +44,11 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+
+// A stable signing key, when the build is given one (see signing.gradle)
+if (System.getenv('ORGPWA_KEYSTORE')) {
+    apply from: 'signing.gradle'
+}
 
 try {
     def servicesJSON = file('google-services.json')

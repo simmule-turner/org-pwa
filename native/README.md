@@ -7,10 +7,41 @@ Android project. This first version is a "hello world": the app, inside a native
 ## Build the APK (no Android Studio needed)
 
 1. On GitHub: **Actions → native-android → Run workflow**. It builds on a free Linux runner.
-2. When it finishes, download the artifact `org-pwa-shell-<shell>-<web>-debug.apk` from the run page and unzip it.
+2. When it finishes, download the artifact `org-pwa-shell-<shell>-<web>-debug.apk` from the run page and unzip it. (Without
+   a signing key of your own it ends `-debug-one-off-key.apk`: see *Keeping your data across updates*.)
 3. Install it on the phone (allow installs from the app you open it with, or `adb install -r <file>.apk`).
 
 If the build fails, open the "Show the toolchain" step first: it prints the Java, Node and Android SDK the runner has.
+
+## Keeping your data across updates (one-time setup)
+
+Android installs a new build over the one on the phone only if both were signed with the **same key**. Without a key of
+your own, every CI build gets a one-off key (its file name ends in `-one-off-key`), so each new build has to be installed
+by uninstalling the old one first, which also deletes the app's settings, tokens and its access to your local files. With
+your own key, an update installs over the old app and keeps all of that.
+
+You do this once, on any computer with a JDK (Android Studio includes one):
+
+1. **Make the key.** It asks for a password (use the same one if it asks twice) and some name fields (anything will do):
+
+       keytool -genkeypair -keystore orgpwa.keystore -alias orgpwa -keyalg RSA -keysize 4096 -validity 36500
+
+2. **Back up `orgpwa.keystore`** somewhere safe. If you lose it, you can never update an installed copy again, only
+   reinstall. Never commit it, and never paste it or its password anywhere public: this repository is public.
+3. **Turn it into text** for GitHub:
+   - Linux: `base64 -w0 orgpwa.keystore`
+   - macOS: `base64 -i orgpwa.keystore`
+   - Windows PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("orgpwa.keystore"))`
+4. **Add four secrets** on GitHub: the repository's **Settings → Secrets and variables → Actions → New repository secret**.
+   - `ORGPWA_KEYSTORE_BASE64`: the text from step 3
+   - `ORGPWA_KEYSTORE_PASSWORD`: the password
+   - `ORGPWA_KEY_ALIAS`: `orgpwa`
+   - `ORGPWA_KEY_PASSWORD`: the same password
+5. **Run the workflow.** Its run page now has a **Signing** summary: `Key: stable` and the certificate's fingerprint. Any two
+   builds that show the same fingerprint can update each other.
+6. **Move over once.** The app on the phone now was signed with some other key, so uninstall it, install the new APK, and
+   from then on install each new build over the top. Before uninstalling, use **Settings → Backup → Export Settings**,
+   and import that file afterwards. You will need to pick your local files again once.
 
 ## What to check on the first run
 

@@ -3149,6 +3149,35 @@ check('attachments: opening one hands it to the platform, and the status says ho
   await context.close();
 });
 
+check('settings: on a platform with no service worker, Updates shows the platform\u2019s own version, offers nothing to check, and says how the app is updated', async () => {
+  const { context, page, errors } = await freshPage(main, {
+    initScript: () => { window.orgPwaPlatform = { name: 'fake-android', usesServiceWorker: false, versionInfo: async () => 'v999 (app 9.9.9)' }; },
+  });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  const section = page.locator('.settings-section', { has: page.locator('.panel-section-title', { hasText: 'Updates' }) });
+  await section.getByText('Version: v999 (app 9.9.9)').waitFor({ state: 'visible', timeout: 5000 });
+  expect(await section.getByRole('button', { name: 'Check for updates' }).isDisabled(), 'the Check for updates button is there, but disabled (there is nothing for it to check)');
+  expect((await section.innerText()).includes('This app is updated by installing a newer version of it.'), 'and the section says how the app is updated');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('settings: with a service worker the Updates section is unchanged (the version from the worker, the button enabled)', async () => {
+  const { context, page, errors } = await freshPage(main, { serviceWorkers: 'allow' });
+  await page.waitForTimeout(2500);
+  await page.reload({ waitUntil: 'load' }); // the worker controls the page from its second load
+  await page.waitForTimeout(1500);
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  const section = page.locator('.settings-section', { has: page.locator('.panel-section-title', { hasText: 'Updates' }) });
+  await section.getByText(/^Version: org-pwa-shell-v\d+/).waitFor({ state: 'visible', timeout: 6000 });
+  expect(!(await section.getByRole('button', { name: 'Check for updates' }).isDisabled()), 'the button is enabled');
+  expect(!(await section.innerText()).includes('installing a newer version'), 'and there is no APK message');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('capture shortcuts: in a browser the capture-icon command is dimmed with its reason, and nothing is published', async () => {
   const { context, page, errors } = await freshPage();
   await openPalette(page);

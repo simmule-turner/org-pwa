@@ -7,6 +7,11 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v438 — Android app shows its version under Settings → Updates
+In the Android app, Settings → Updates now shows which version is
+running and how the app is updated (by installing a newer one), instead
+of "unavailable" and a button that could not do anything.
+
 * v437 — Web page or text capture template; attachments open on Android
 New built-in capture template, Web page or text: share a web page from
 another app and it files a heading under Inbox that links to the page,

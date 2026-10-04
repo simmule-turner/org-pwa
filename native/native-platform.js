@@ -9,6 +9,16 @@
   var platform = (window.orgPwaPlatform = {
     name: kind ? 'capacitor-' + kind : 'capacitor',
     usesServiceWorker: false,
+    // Which web version the app bundles, and which version of the app that is (written by scripts/sync.mjs).
+    versionInfo: function () {
+      return fetch('native-shell.json')
+        .then(function (response) {
+          return response.json();
+        })
+        .then(function (info) {
+          return String(info.web).replace(/^org-pwa-shell-/, '') + ' (app ' + info.shell + ')';
+        });
+    },
   });
 
   // Launches from outside the app (a share, a launcher shortcut). The app is not running yet, so they are queued, and

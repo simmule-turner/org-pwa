@@ -50,11 +50,47 @@ jobs:
           echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
           ls "${ANDROID_HOME:-/nonexistent}/platforms" 2>/dev/null || echo "no Android platforms listed"
 
+      # One stable key keeps a new build installable over the app already on the phone: Android refuses an update that is
+      # signed with a different key. The key comes from four repository secrets (native/README.md says how to make them);
+      # without them the build still works, with a one-off key.
+      - name: Prepare the signing key
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ORGPWA_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/orgpwa.keystore"
+            echo "ORGPWA_KEYSTORE=$RUNNER_TEMP/orgpwa.keystore" >> "$GITHUB_ENV"
+            echo "mode=stable" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=No signing key configured::This APK is signed with a one-off key, so Android will not install it over an earlier build. See native/README.md, Keeping your data across updates."
+            echo "mode=one-off" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build the debug APK
         working-directory: native/android
+        env:
+          ORGPWA_KEYSTORE_PASSWORD: ${{ secrets.ORGPWA_KEYSTORE_PASSWORD }}
+          ORGPWA_KEY_ALIAS: ${{ secrets.ORGPWA_KEY_ALIAS }}
+          ORGPWA_KEY_PASSWORD: ${{ secrets.ORGPWA_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
+
+      # The certificate's fingerprint is not secret. Two builds that show the same one can update each other.
+      - name: Show which key signed the APK
+        run: |
+          apk=android/app/build/outputs/apk/debug/app-debug.apk
+          apksigner=$(ls "${ANDROID_HOME:-/nonexistent}"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+          {
+            echo "### Signing"
+            echo "Key: ${{ steps.signing.outputs.mode }}"
+            if [ -n "$apksigner" ]; then
+              "$apksigner" verify --print-certs "$apk" | grep -E "certificate (DN|SHA-256)" | sed 's/^/    /'
+            else
+              echo "(apksigner was not found on this runner, so the fingerprint is not shown)"
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Name the APK after the shell and the web version it wraps
         id: apk
@@ -62,7 +98,9 @@ jobs:
           shell=$(node -p "JSON.parse(require('fs').readFileSync('www/native-shell.json','utf8')).shell")
           web=$(node -p "JSON.parse(require('fs').readFileSync('www/native-shell.json','utf8')).web")
           web="${web#org-pwa-shell-}"   # the web version is stored as org-pwa-shell-vNNN; the file name only needs vNNN
-          name="org-pwa-shell-${shell}-${web}-debug.apk"
+          suffix=""
+          if [ "${{ steps.signing.outputs.mode }}" = "one-off" ]; then suffix="-one-off-key"; fi
+          name="org-pwa-shell-${shell}-${web}-debug${suffix}.apk"
           cp android/app/build/outputs/apk/debug/app-debug.apk "$name"
           sha256sum "$name"
           echo "name=$name" >> "$GITHUB_OUTPUT"

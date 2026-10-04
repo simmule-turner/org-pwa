@@ -1,0 +1,18 @@
+// Signs the APK with a key of your own, so that a newer build can be installed over the one on the phone (Android refuses an
+// update signed with a different key). build.gradle applies this only when ORGPWA_KEYSTORE is set, which the CI workflow does
+// when the four ORGPWA_* repository secrets exist (see native/README.md); without them the build is unchanged.
+android {
+    signingConfigs {
+        orgpwa {
+            storeFile file(System.getenv('ORGPWA_KEYSTORE'))
+            storePassword System.getenv('ORGPWA_KEYSTORE_PASSWORD')
+            keyAlias System.getenv('ORGPWA_KEY_ALIAS')
+            keyPassword System.getenv('ORGPWA_KEY_PASSWORD')
+        }
+    }
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.orgpwa
+        }
+    }
+}

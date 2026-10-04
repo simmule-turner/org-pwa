@@ -1502,7 +1502,7 @@ The Android app is the same app in a native wrapper, with a few things done the 
 - *Long-press the app icon*: your capture templates are listed, in the order they are in *Settings → Capture Templates*, as many as the launcher shows. Tapping one opens that template. Drag one onto the home screen for an icon, or run *Add a capture icon to the home screen*.
 - *Sharing in*: share a link or text from any app to *org-pwa*; Capture opens with it (see [[#capture-from-other-apps][Capturing from other apps]]).
 - *Separate from the browser*: the app keeps its own settings, tokens and documents, so enter GitHub, WebDAV and calendar settings again. A WebDAV or CalDAV server must allow the origin ~https://localhost~ (CORS).
-- *Updates*: the app is updated by installing a newer APK.
+- *Updates*: the app is updated by installing a newer APK over the old one. *Settings → Updates* shows which version you have.
 
 *Screen size*: mobile-first below 900px wide. Above that, Settings and Help open in a resizable side panel next to the outline instead of replacing it, and the app uses the full window width. Reading width is unlimited by default; Settings → Appearance has an opt-in narrower column.
 
