@@ -8,6 +8,7 @@ import { S } from './app-state.js';
 import { openAudioRecordingPanel } from './audio-recording.js';
 import { confirmDialog, openButtonChoiceModal, pickBinaryFile, showModalOverlay } from './dialogs.js';
 import { refilePanel, refilePanelBox } from './dom.js';
+import { attachmentsAvailable, attachmentsFolderMissingMessage, ensureAttachmentsStorage } from './attachments-store.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { activeDiskAdapter } from './external-sync.js';
 import { guessAnyAttachmentMimeType } from './render-helpers.js';
@@ -16,6 +17,7 @@ import { imageDataUrlCache } from './singletons.js';
 import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { base64ToArrayBuffer } from './webdav-adapter.js';
 import { platform } from './platform.js';
+import { saveOut } from './save-out.js';
 
 /** Attaches a picked file to `heading` -- this app's own extension,
  *  inspired by real org's own org-attach (see src/attach.js's own
@@ -43,7 +45,9 @@ import { platform } from './platform.js';
  * needed here.
  */
 export async function attachFileToHeading(heading) {
-  if (S.state.storageKind !== 'github' && S.state.storageKind !== 'webdav') {
+  const storage = await ensureAttachmentsStorage(); // a local document asks for its attachments folder here, once
+  if (storage === 'cancelled') return; // the person backed out of choosing it
+  if (storage !== 'ok') {
     setStatus(
       "Attachments need automatic file-write access \u2014 only available with GitHub or WebDAV connected (a local file needs a fresh picker gesture per file, which browser security doesn't allow this app to do on its own for a brand-new attachment file). Connect GitHub or WebDAV in Settings first."
     );
@@ -128,9 +132,10 @@ export async function uploadAttachmentToHeading(heading, picked) {
  *  a second time. */
 export async function resolveAndReadAttachment(target, heading) {
   const filename = target.replace(/^attachment:/i, '');
-  if (S.state.storageKind !== 'github' && S.state.storageKind !== 'webdav') {
+  if (!attachmentsAvailable()) {
     setStatus(
-      "Can't access this attachment \u2014 only available with GitHub or WebDAV connected, the same backends attachments themselves are only ever stored on."
+      attachmentsFolderMissingMessage() ||
+        "Can't access this attachment \u2014 only available with GitHub or WebDAV connected, the same backends attachments themselves are only ever stored on."
     );
     render();
     return null;
@@ -167,7 +172,7 @@ export async function saveAttachmentLink(target, heading) {
   const attachment = await resolveAndReadAttachment(target, heading);
   if (!attachment) return;
   const { filename, resolvedPath, result } = attachment;
-  platform.saveFile(filename, base64ToArrayBuffer(result.base64), guessAnyAttachmentMimeType(resolvedPath));
+  saveOut(filename, base64ToArrayBuffer(result.base64), guessAnyAttachmentMimeType(resolvedPath));
   setStatus(`Downloaded "${filename}".`);
   render();
 }
@@ -200,7 +205,7 @@ export async function openAttachmentLink(target, heading) {
     // hasVideo === null (couldn't determine) -- keep the existing heuristic result rather than guessing differently
   }
   if (!viewableMimeType) {
-    platform.saveFile(filename, base64ToArrayBuffer(result.base64), guessAnyAttachmentMimeType(resolvedPath));
+    saveOut(filename, base64ToArrayBuffer(result.base64), guessAnyAttachmentMimeType(resolvedPath));
     setStatus(`No viewer available for "${filename}" \u2014 downloaded instead.`);
     render();
     return;
@@ -224,9 +229,10 @@ export async function openAttachmentLink(target, heading) {
  *  the attachment is gone but the actual file is still sitting on
  *  GitHub/WebDAV. */
 export async function deleteAttachment(heading, filename) {
-  if (S.state.storageKind !== 'github' && S.state.storageKind !== 'webdav') {
+  if (!attachmentsAvailable()) {
     setStatus(
-      "Can't delete this attachment \u2014 only available with GitHub or WebDAV connected, the same backends attachments themselves are only ever stored on."
+      attachmentsFolderMissingMessage() ||
+        "Can't delete this attachment \u2014 only available with GitHub or WebDAV connected, the same backends attachments themselves are only ever stored on."
     );
     render();
     return;

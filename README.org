@@ -703,7 +703,7 @@ Tapping an ~attachment:~ link in a body does the same as *Open*.
 
 *Resolving links*: an ~attachment:~ link resolves against the ~:ID:~ of the heading it is written in, else the nearest ancestor's, as in org. With no ~:ID:~ in that chain it shows as an unresolved link.
 
-*Requirements*: GitHub or WebDAV must be connected, since writing, reading and deleting files needs a backend that can do that without a fresh file picker; a local or iOS-imported file can't. *Attach* is always visible, and explains the limitation if tapped without one.
+*Requirements*: GitHub or WebDAV must be connected, since writing, reading and deleting files needs a backend that can do that without a fresh file picker; a local or iOS-imported file can't. *Attach* is always visible, and explains the limitation if tapped without one. The [[#android-app][Android app]] is the exception: it keeps a local file's attachments in a folder you choose once.
 
 - *GitHub*: files over 1MB (an ordinary camera photo) are read back through GitHub's Blobs API, which allows 100MB.
 - *WebDAV*: every folder in the path is created first, as the server requires.
@@ -1496,9 +1496,10 @@ On unsupported platforms, *Import* replaces "Local": pick a file, edit it, and S
 
 The Android app is the same app in a native wrapper, with a few things done the Android way.
 
-- *Local files*: *File → Open → Local file* uses Android's file picker, and the app keeps access to the file, so Save writes straight back and the file reopens from the recent list. *Save As → Local file* names a new one. A file is known by its name, so two files with the same name from different folders replace each other.
+- *Local files*: *File → Open → Local file* uses Android's file picker, and the app keeps access to the file, so Save writes straight back and the file reopens from the recent list. *Save As → Local file* names a new one. The picker starts in ~Documents/org-pwa~, in the shared Documents folder where a file manager finds it, and you can choose any other folder. A file is known by its name, so two files with the same name from different folders replace each other.
 - *Agenda files*: name a local file as ~local:name.org~, with the file name only, like ~github:journal.org;local:home.org~. Open it once first with *Open → Local file*; after that it loads silently, read-only.
-- *Saving a file out*: exports and settings backups open Android's *save as* screen.
+- *Saving a file out*: exports and settings backups go straight into the *Downloads* folder, and the status line says so.
+- *Attachments*: a local file's first attachment asks you to choose a folder, which starts at ~Documents/org-pwa~. Attachments go under ~data/~ inside it, as on GitHub and WebDAV, and one folder serves every local file. *Choose the attachments folder* changes it.
 - *Long-press the app icon*: your capture templates are listed, in the order they are in *Settings → Capture Templates*, as many as the launcher shows. Tapping one opens that template. Drag one onto the home screen for an icon, or run *Add a capture icon to the home screen*.
 - *Sharing in*: share a link or text from any app to *org-pwa*; Capture opens with it (see [[#capture-from-other-apps][Capturing from other apps]]).
 - *Separate from the browser*: the app keeps its own settings, tokens and documents, so enter GitHub, WebDAV and calendar settings again. A WebDAV or CalDAV server must allow the origin ~https://localhost~ (CORS).
@@ -1523,7 +1524,7 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 
 *What it acts on*: heading commands work on the heading whose action menu is open (tap a heading's title first), else the keyboard-focused heading. A command that needs a heading and can't find one says so, except *Add heading after* and *Add TODO heading after*, which also work with nothing selected (see the table in [[#keybindings][Keybindings]] for where the new heading lands).
 
-*Names*: a command's real Emacs or Org function name is shown beside it and is searchable. The same name, quoted, names the command in an Extras-menu entry (see [[#extras-menu][Extras menu]]), so the palette, the god-mode chords and Extras share one vocabulary. The commands with no real name are this app's own: *New document*, *Undo history*, *Sync agenda to calendar*, *Rebuild calendar from the agenda*, *Show display measurements* and *Add a capture icon to the home screen*. A command with a [[#god-mode][god-mode]] key runs the same code as that key and shows it.
+*Names*: a command's real Emacs or Org function name is shown beside it and is searchable. The same name, quoted, names the command in an Extras-menu entry (see [[#extras-menu][Extras menu]]), so the palette, the god-mode chords and Extras share one vocabulary. The commands with no real name are this app's own: *New document*, *Undo history*, *Sync agenda to calendar*, *Rebuild calendar from the agenda*, *Show display measurements*, *Add a capture icon to the home screen* and *Choose the attachments folder*. A command with a [[#god-mode][god-mode]] key runs the same code as that key and shows it.
 
 *What's in it*, by group:
 
@@ -1534,7 +1535,7 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 | *Document* | save, save as, open, new, undo, redo, undo history, toggle read-only, capture, recalculate all tables |
 | *View* | agenda, TODO list, outline view, text view, cycle visibility of the whole document, calendar, search, sync agenda to calendar, rebuild calendar |
 | *Export* | the Export menu; this file as HTML, Markdown, ASCII, ODT or an Org buffer |
-| *App* | settings, help, show display measurements, add a capture icon to the home screen (Android app only) |
+| *App* | settings, help, show display measurements, add a capture icon to the home screen and choose the attachments folder (Android app only) |
 
 *Also in it*: your own capture templates and [[#extras-menu][Extras menu]] entries, one command each. *Capture: <description>* (such as *Capture: Meeting*) runs that template directly, and *Extras: <label>* runs that Extras entry as tapping it would. Both are read fresh each time the palette opens, so an edited template list or a document's own Extras menu (set in its Local Variables) is current. The plain *Capture* command still opens the template picker.
 
@@ -1702,7 +1703,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Refile* (see [[#refile][Refile]]): you can't create a new destination heading by typing a name that doesn't exist yet.
 
-*Attachments* (see [[#attachments][Attachments]]): this app's own feature, not an ~org-attach~ port. There is no document-wide attachment browser (Open, Save and Delete work one heading at a time) and no ~org-attach-dired~ bulk operations, and it requires GitHub or WebDAV.
+*Attachments* (see [[#attachments][Attachments]]): this app's own feature, not an ~org-attach~ port. There is no document-wide attachment browser (Open, Save and Delete work one heading at a time) and no ~org-attach-dired~ bulk operations, and it requires GitHub, WebDAV or, in the Android app, an attachments folder.
 
 *Conflict resolution* (see [[#offline-behavior-and-sync][Offline behavior and sync]]): a line-based three-way merge with a region-by-region resolver. It merges lines, not org structure, so a subtree moved on one side and edited on the other is an ordinary clash, and a region has no side-by-side or word-level diff.
 

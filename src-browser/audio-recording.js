@@ -4,6 +4,7 @@ import { S } from './app-state.js';
 import { uploadAttachmentToHeading } from './attachments-flow.js';
 import { showModalOverlay } from './dialogs.js';
 import { refilePanel, refilePanelBox } from './dom.js';
+import { ensureAttachmentsStorage } from './attachments-store.js';
 import { setStatus } from './editing.js';
 import { render } from './render.js';
 import { hideModalOverlay, menuButton } from './ui-widgets.js';
@@ -13,8 +14,10 @@ import { hideModalOverlay, menuButton } from './ui-widgets.js';
  *  a previous recording session (own defensive cleanup, in case a
  *  prior session was ever abandoned mid-flow without going through
  *  discardAudioRecording's own explicit cleanup). */
-export function openAudioRecordingPanel(heading) {
-  if (S.state.storageKind !== 'github' && S.state.storageKind !== 'webdav') {
+export async function openAudioRecordingPanel(heading) {
+  const storage = await ensureAttachmentsStorage(); // a local document asks for its attachments folder here, once
+  if (storage === 'cancelled') return; // the person backed out of choosing it
+  if (storage !== 'ok') {
     setStatus(
       "Attachments need automatic file-write access \u2014 only available with GitHub or WebDAV connected (a local file needs a fresh picker gesture per file, which browser security doesn't allow this app to do on its own for a brand-new attachment file). Connect GitHub or WebDAV in Settings first."
     );

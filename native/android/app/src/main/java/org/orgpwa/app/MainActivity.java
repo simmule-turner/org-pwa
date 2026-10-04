@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ShareTargetPlugin.class);
         registerPlugin(CaptureShortcutsPlugin.class);
         registerPlugin(LocalFilesPlugin.class);
+        registerPlugin(AttachmentsPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

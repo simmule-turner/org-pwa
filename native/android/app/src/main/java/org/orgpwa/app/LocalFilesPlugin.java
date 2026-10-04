@@ -2,12 +2,17 @@ package org.orgpwa.app;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.UriPermission;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.util.Base64;
 import androidx.activity.result.ActivityResult;
@@ -50,6 +55,7 @@ public class LocalFilesPlugin extends Plugin {
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("*/*"); // Android does not know .org, so a narrower type would hide the files
         intent.addFlags(GRANT);
+        Locations.startInOrgPwaFolder(intent);
         startActivityForResult(call, intent, "pickedFile");
     }
 
@@ -62,6 +68,7 @@ public class LocalFilesPlugin extends Plugin {
         intent.setType("application/octet-stream"); // a text type can make a provider add its own extension to the name
         intent.putExtra(Intent.EXTRA_TITLE, name == null || name.isEmpty() ? "untitled.org" : name);
         intent.addFlags(GRANT);
+        Locations.startInOrgPwaFolder(intent);
         startActivityForResult(call, intent, "pickedFile");
     }
 
@@ -172,15 +179,60 @@ public class LocalFilesPlugin extends Plugin {
         call.resolve(out);
     }
 
-    /** Hands a file to the person: the system "save as" screen, then the bytes (`base64`) written where they choose. */
+    /**
+     * Hands a file to the person (an export, a backup). From Android 10 it goes straight into the Downloads folder, as a
+     * browser's downloads do, with no screen to go through; before that, through the system "save as" screen, which starts in
+     * Downloads. Resolves { saved, where }: where it went, for the app to say so; saved false if the person backed out.
+     */
     @PluginMethod
     public void saveFile(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            saveToDownloads(call);
+            return;
+        }
         String name = call.getString("name");
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("application/octet-stream"); // keeps the name exactly as given
         intent.putExtra(Intent.EXTRA_TITLE, name == null || name.isEmpty() ? "download" : name);
+        Locations.startInDownloads(intent);
         startActivityForResult(call, intent, "savedFile");
+    }
+
+    private void saveToDownloads(PluginCall call) {
+        String name = call.getString("name");
+        String encoded = call.getString("base64");
+        if (name == null || name.isEmpty() || encoded == null) {
+            call.reject("Nothing to save");
+            return;
+        }
+        ContentResolver resolver = getContext().getContentResolver();
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+        // a more specific type can make MediaStore add its own extension to the name; this keeps it exactly as given
+        values.put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream");
+        values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+        values.put(MediaStore.MediaColumns.IS_PENDING, 1); // hidden from other apps until it is complete
+        Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+        if (uri == null) {
+            call.reject("Could not create " + name + " in Downloads");
+            return;
+        }
+        try (OutputStream out = resolver.openOutputStream(uri)) {
+            if (out == null) throw new IOException("the new file could not be opened");
+            out.write(Base64.decode(encoded, Base64.DEFAULT));
+        } catch (IOException | SecurityException | IllegalArgumentException e) {
+            resolver.delete(uri, null, null); // no half-written file left behind
+            call.reject("Could not save " + name + ": " + e.getMessage());
+            return;
+        }
+        values.clear();
+        values.put(MediaStore.MediaColumns.IS_PENDING, 0);
+        resolver.update(uri, values, null, null);
+        JSObject out = new JSObject();
+        out.put("saved", true);
+        out.put("where", "Downloads");
+        call.resolve(out);
     }
 
     @ActivityCallback
@@ -205,6 +257,7 @@ public class LocalFilesPlugin extends Plugin {
             }
             stream.write(Base64.decode(encoded, Base64.DEFAULT));
             out.put("saved", true);
+            out.put("where", "the place you chose");
             call.resolve(out);
         } catch (IOException | SecurityException | IllegalArgumentException e) {
             call.reject("Could not save the file: " + e.getMessage());

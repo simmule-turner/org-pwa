@@ -3178,6 +3178,141 @@ check('settings: with a service worker the Updates section is unchanged (the ver
   await context.close();
 });
 
+check('attachments on a LOCAL document: refused with a pointer before a folder is chosen, the folder is asked for once, backing out is silent, and attach, open and delete then go through that folder', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    const files = new Map([['phone.org', '* Report\nbody\n']]);
+    const tree = { name: null, files: new Map() };
+    window.__log = [];
+    window.__viewed = [];
+    window.__backOut = false;
+    installPlatform({
+      localFiles: {
+        supported: () => true,
+        pickOpen: async () => 'phone.org',
+        pickNew: async (kv, name) => name,
+        adapter: { async read(id) { return files.has(id) ? { content: files.get(id), hash: 'h' } : null; }, async write(id, content) { files.set(id, content); return { hash: 'h' }; }, async exists(id) { return files.has(id); }, async access() { return 'granted'; } },
+      },
+      attachments: {
+        supported: () => true,
+        folder: async () => (tree.name ? { name: tree.name } : null),
+        pickFolder: async () => { window.__log.push('pickFolder'); if (window.__backOut) { const e = new Error('cancelled'); e.name = 'AbortError'; throw e; } tree.name = 'Notes'; return { name: 'Notes' }; },
+        adapter: {
+          readBinary: async (path) => { window.__log.push('read ' + path); return tree.files.has(path) ? { base64: tree.files.get(path) } : null; },
+          writeBinary: async (path, base64) => { window.__log.push('write ' + path); tree.files.set(path, base64); },
+          delete: async (path) => { window.__log.push('delete ' + path); tree.files.delete(path); },
+        },
+      },
+      viewFile: async (blob, name) => { window.__viewed.push({ name, type: blob.type }); },
+    });
+  });
+  await fileMenu(page, 'Open', 'Local file');
+  await page.waitForFunction(() => document.getElementById('modelineBar').innerText.includes('phone.org'), null, { timeout: 8000 });
+  const status = () => page.locator('#minibuffer').innerText();
+  const heading = `(await import('/src-browser/app-state.js')).S.state.doc.children[0]`;
+
+  // 1. no folder yet: reading is refused, with the way forward
+  await page.evaluate(`(async () => { const { openAttachmentLink } = await import('/src-browser/attachments-flow.js'); await openAttachmentLink('attachment:doc.pdf', ${heading}); })()`);
+  expect((await status()).includes('Choose the attachments folder first'), `before a folder: ${await status()}`);
+
+  // 2. backing out of the folder picker when attaching is silent: no folder, no error message
+  await page.evaluate(() => { window.__backOut = true; });
+  await page.evaluate(`(async () => { const { attachFileToHeading } = await import('/src-browser/attachments-flow.js'); await attachFileToHeading(${heading}); })()`);
+  expect(!(await status()).includes('Attachments need automatic file-write access'), 'backing out does not show the old "needs GitHub or WebDAV" message');
+  expect((await page.evaluate(() => window.__log)).filter((l) => l === 'pickFolder').length === 1, 'the picker was offered');
+  await page.evaluate(() => { window.__backOut = false; });
+
+  // 3. attaching: the folder is asked for (once), then the file is written under data/<id prefix>/<rest>/ in it
+  const result = await page.evaluate(`(async () => {
+    const { ensureAttachmentsStorage } = await import('/src-browser/attachments-store.js');
+    const { uploadAttachmentToHeading } = await import('/src-browser/attachments-flow.js');
+    const { S } = await import('/src-browser/app-state.js');
+    const first = await ensureAttachmentsStorage();
+    const second = await ensureAttachmentsStorage();
+    const h = S.state.doc.children[0];
+    await uploadAttachmentToHeading(h, { name: 'doc.pdf', type: 'application/pdf', base64: 'JVBERi0xLjQ=' });
+    return { first, second, folder: S.attachmentsFolder, body: h.bodyLines.join('|'), id: h.properties && h.properties.ID };
+  })()`);
+  const log = await page.evaluate(() => window.__log);
+  expect(result.first === 'ok' && result.second === 'ok' && result.folder === 'Notes', `the folder is chosen once: ${JSON.stringify(result)}`);
+  expect(log.filter((l) => l === 'pickFolder').length === 2, 'the picker ran once more for the attach, and not again for the second use (two in all: the backed-out one and the real one)');
+  const written = log.find((l) => l.startsWith('write '));
+  expect(/^write data\/[^/]{2}\/[^/]+\/doc\.pdf$/.test(written || ''), `written under data/xx/rest/ in the folder: ${written}`);
+  expect(result.body.includes('[[attachment:doc.pdf]]') || result.body.includes('attachment:doc.pdf'), `and linked from the heading: ${result.body}`);
+
+  // 4. opening it reads from the same place and hands the bytes to the platform
+  await page.evaluate(`(async () => { const { openAttachmentLink } = await import('/src-browser/attachments-flow.js'); const { S } = await import('/src-browser/app-state.js'); await openAttachmentLink('attachment:doc.pdf', S.state.doc.children[0]); })()`);
+  const viewed = await page.evaluate(() => window.__viewed);
+  expect(viewed.length === 1 && viewed[0].name === 'doc.pdf' && viewed[0].type === 'application/pdf', `opened through the platform: ${JSON.stringify(viewed)}`);
+  expect((await page.evaluate(() => window.__log)).some((l) => l === 'read ' + written.slice(6)), 'after reading the same path from the folder');
+
+  // 5. deleting removes the file from the folder and the link from the heading
+  const after = await page.evaluate(`(async () => { const { deleteAttachment } = await import('/src-browser/attachments-flow.js'); const { S } = await import('/src-browser/app-state.js'); const h = S.state.doc.children[0]; await deleteAttachment(h, 'doc.pdf'); return h.bodyLines.join('|'); })()`);
+  expect((await page.evaluate(() => window.__log)).includes('delete ' + written.slice(6)), 'the file was deleted from the folder');
+  expect(!after.includes('attachment:doc.pdf'), `and the link removed: ${after}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('attachments on a local document where the platform has no folder support (a browser): unavailable, with the explanation it always had', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    installPlatform({ localFiles: { supported: () => true, pickOpen: async () => 'phone.org', pickNew: async (kv, n) => n, adapter: { async read(id) { return { content: '* Report\n', hash: 'h' }; }, async write() { return { hash: 'h' }; }, async exists() { return true; }, async access() { return 'granted'; } } } });
+  });
+  await fileMenu(page, 'Open', 'Local file');
+  await page.waitForFunction(() => document.getElementById('modelineBar').innerText.includes('phone.org'), null, { timeout: 8000 });
+  const outcome = await page.evaluate(async () => {
+    const { ensureAttachmentsStorage } = await import('/src-browser/attachments-store.js');
+    const { attachFileToHeading } = await import('/src-browser/attachments-flow.js');
+    const { S } = await import('/src-browser/app-state.js');
+    const storage = await ensureAttachmentsStorage();
+    await attachFileToHeading(S.state.doc.children[0]);
+    return storage;
+  });
+  expect(outcome === 'unavailable', `nothing can hold attachments here: ${outcome}`);
+  expect((await page.locator('#minibuffer').innerText()).includes('Attachments need automatic file-write access'), 'and the usual explanation is shown');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('saving a file out: the status says where it went when the platform reports it, says why when it fails, stays quiet if the person backs out, and a browser (which reports nothing) stays quiet too', async () => {
+  const { context, page, errors } = await freshPage();
+  const exportSettings = async () => {
+    await page.click('#moreBtn');
+    await pick(page, '#morePanel', 'Settings');
+    await page.getByRole('button', { name: 'Export Settings' }).click();
+    await page.waitForTimeout(500);
+  };
+  const status = () => page.locator('#minibuffer').innerText();
+  const useSaveFile = (body) => page.evaluate(async (src) => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    installPlatform({ saveFile: new Function('return (' + src + ')')() });
+  }, body);
+
+  await useSaveFile('async () => ({ where: "Downloads" })');
+  await exportSettings();
+  expect((await status()).includes('Saved \u201corg-pwa-settings.json\u201d to Downloads.'), `it says where: ${await status()}`);
+
+  await page.evaluate(async () => { const { setStatus } = await import('/src-browser/editing.js'); setStatus('untouched'); });
+  await useSaveFile('async () => { throw new Error("disk full"); }');
+  await exportSettings();
+  expect((await status()).includes('Couldn\'t save \u201corg-pwa-settings.json\u201d: disk full'), `it says why it failed: ${await status()}`);
+
+  await page.evaluate(async () => { const { setStatus } = await import('/src-browser/editing.js'); setStatus('untouched'); });
+  await useSaveFile('async () => null');
+  await exportSettings();
+  expect(!(await status()).includes('Saved') && !(await status()).includes('Couldn'), `backing out says nothing about saving: ${await status()}`);
+
+  await page.evaluate(async () => { const { setStatus } = await import('/src-browser/editing.js'); setStatus('untouched'); });
+  await useSaveFile('() => {}'); // what a browser's download does: nothing to report
+  await exportSettings();
+  expect(!(await status()).includes('Saved') && !(await status()).includes('Couldn'), `a platform that reports nothing adds nothing: ${await status()}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('capture shortcuts: in a browser the capture-icon command is dimmed with its reason, and nothing is published', async () => {
   const { context, page, errors } = await freshPage();
   await openPalette(page);

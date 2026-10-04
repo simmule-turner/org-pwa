@@ -7,6 +7,13 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v439 — Android: exports to Downloads, local files in Documents/org-pwa, attachments on local files
+In the Android app, exports and backups now go straight into the
+Downloads folder and the status line says so; opening and creating local
+files starts in Documents/org-pwa; and attachments now work on local
+files: the first one asks for a folder (starting in Documents/org-pwa)
+that is kept for all of them.
+
 * v438 — Android app shows its version under Settings → Updates
 In the Android app, Settings → Updates now shows which version is
 running and how the app is updated (by installing a newer one), instead

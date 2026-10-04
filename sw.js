@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v438';
+const CACHE_NAME = 'org-pwa-shell-v439';
 
 const SHELL_FILES = [
   './',
@@ -116,6 +116,7 @@ const SHELL_FILES = [
   './src-browser/agenda-view.js',
   './src-browser/archive-flow.js',
   './src-browser/attachments-flow.js',
+  './src-browser/attachments-store.js',
   './src-browser/audio-recording.js',
   './src-browser/calendar-panel.js',
   './src-browser/capture-ui.js',
@@ -145,6 +146,7 @@ const SHELL_FILES = [
   './src-browser/refile-flow.js',
   './src-browser/render.js',
   './src-browser/row-render.js',
+  './src-browser/save-out.js',
   './src-browser/search-ui.js',
   './src-browser/settings-view.js',
   './src-browser/table-recalc.js',

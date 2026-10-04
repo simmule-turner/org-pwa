@@ -4,6 +4,7 @@ import { findFootnoteDefinition, guessAudioMimeType, guessImageMimeType, isExter
 import { getUseSubSuperscripts } from '../src/local-variables.js';
 import { S } from './app-state.js';
 import { openAttachmentLink } from './attachments-flow.js';
+import { attachmentsAvailable, attachmentsFolderMissingMessage } from './attachments-store.js';
 import { INLINE_LINK_ATTR } from './constants.js';
 import { openFileLink } from './documents-io.js';
 import { setStatus } from './editing.js';
@@ -39,7 +40,8 @@ export function renderImageNode(node, heading = null) {
   // same File System Access permission wall already documented for
   // archiving and capture-to-file, so those keep the honest
   // placeholder below rather than attempting (and failing) a read.
-  const canReadArbitraryPaths = S.state.storageKind === 'github' || S.state.storageKind === 'webdav';
+  // (A local document in a native shell can read its ATTACHMENTS, from the folder chosen for them, but not an arbitrary path.)
+  const canReadArbitraryPaths = S.state.storageKind === 'github' || S.state.storageKind === 'webdav' || (isAttachment && attachmentsAvailable());
   if (inlineImagesOn && canReadArbitraryPaths && (isAttachment || !isExternalUrl(node.target))) {
     const resolvedPath = isAttachment ? resolveAttachmentTarget(S.state.doc, heading, node.target, S.state.documentId) : resolveImagePath(node.target, S.state.documentId);
     if (!resolvedPath) {
@@ -197,9 +199,10 @@ export function renderAudioAttachmentLink(target, filename, heading) {
   btn.onclick = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (S.state.storageKind !== 'github' && S.state.storageKind !== 'webdav') {
+    if (!attachmentsAvailable()) {
       setStatus(
-        "Can't play this attachment \u2014 only available with GitHub or WebDAV connected, the same backends attachments themselves are only ever stored on."
+        attachmentsFolderMissingMessage() ||
+          "Can't play this attachment \u2014 only available with GitHub or WebDAV connected, the same backends attachments themselves are only ever stored on."
       );
       render();
       return;

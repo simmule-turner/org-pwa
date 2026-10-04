@@ -33,6 +33,14 @@
     console.warn('org-pwa: ' + what + ' is unavailable:', error && error.message ? error.message : error);
   }
 
+  // A native error as the page expects it: a cancelled picker is an error named AbortError, like the browser's own.
+  function failure(error) {
+    var message = error && error.message ? error.message : String(error);
+    var result = error instanceof Error ? error : new Error(message);
+    if (message === 'cancelled') result.name = 'AbortError';
+    return result;
+  }
+
   // The native plugin called `name`, or null if this build of the shell does not have it. The native bridge defines
   // Capacitor.Plugins.<name> for every plugin the native side registered, with its methods and addListener. (There is no
   // registerPlugin here: that belongs to the bundled @capacitor/core runtime, which this shell does not load.)
@@ -93,16 +101,50 @@
     };
   }
 
+  // Attachments for local documents: the person chooses one folder, once, and they are kept inside it (AttachmentsPlugin).
+  var attachments = plugin('Attachments');
+  if (attachments) {
+    platform.attachments = {
+      supported: function () {
+        return true;
+      },
+      folder: function () {
+        return attachments.folder().then(function (result) {
+          return result && result.name ? { name: result.name } : null;
+        });
+      },
+      pickFolder: function () {
+        return attachments.pickFolder().then(
+          function (result) {
+            return { name: result.name };
+          },
+          function (error) {
+            throw failure(error);
+          }
+        );
+      },
+      adapter: {
+        readBinary: function (path) {
+          return attachments.read({ path: path }).then(function (result) {
+            return result.found === false ? null : { base64: result.base64 };
+          });
+        },
+        writeBinary: function (path, base64) {
+          return attachments.write({ path: path, base64: base64 }).then(function () {
+            return {};
+          });
+        },
+        delete: function (path) {
+          return attachments.remove({ path: path }).then(function () {});
+        },
+      },
+    };
+  }
+
   // Files on the device (Android's file picker, with the permission kept), and saving a file out through the same
   // "save as" screen. A cancelled picker must look like the browser's: an error named AbortError, which the app ignores.
   var localFiles = plugin('LocalFiles');
   if (localFiles) {
-    var failure = function (error) {
-      var message = error && error.message ? error.message : String(error);
-      var result = error instanceof Error ? error : new Error(message);
-      if (message === 'cancelled') result.name = 'AbortError';
-      return result;
-    };
     var adapter = {
       access: function (id) {
         return localFiles.access({ name: id }).then(function (result) {
@@ -185,13 +227,14 @@
         })
         .then(function () {});
     };
+    // Resolves { where } (Downloads, on current Android), or null if the person backed out; a failure rejects, and the app says so.
     platform.saveFile = function (name, content, mime) {
-      toBase64(content)
+      return toBase64(content)
         .then(function (base64) {
           return localFiles.saveFile({ name: name, mime: mime || '', base64: base64 });
         })
-        .catch(function (error) {
-          warn('saving ' + name, error);
+        .then(function (result) {
+          return result && result.saved === false ? null : { where: (result && result.where) || 'your device' };
         });
     };
   }

@@ -8,12 +8,18 @@
 //                      keeps a way back to it. supported() -- whether this platform can do that at all;
 //                      pickOpen(kv) / pickNew(kv, suggestedName) -- ask the person, remember the choice in `kv`, and
 //                      return the document id; adapter -- { read, write, exists, access } for those files
-//   saveFile           saveFile(name, content, mimeType): hand a file to the person (a download, in a browser)
+//   saveFile           saveFile(name, content, mimeType): hand a file to the person (a download, in a browser). May return a
+//                      promise: resolving { where } says where it went (a shell may put it straight into a folder), or null
+//                      if the person backed out; rejecting says why it failed. See save-out.js.
 //   viewFile           viewFile(blob, name): show a file in whatever the platform views it with; may return a promise,
 //                      which rejects with the reason if nothing can show it
 //   clipboard          { readText(), writeText(text) }
 //   usesServiceWorker  whether the app registers its service worker; a shell that bundles the app has no use for it
 //   versionInfo        versionInfo(): the version being run, as text, for a platform that has no service worker to ask
+//   attachments        a place for the attachments of a LOCAL document, which a browser has none of: supported(); folder() --
+//                      the folder chosen for them, { name }, or null; pickFolder() -- ask the person, resolving { name }
+//                      (an AbortError if they back out); adapter -- { readBinary(path) -> { base64 } or null,
+//                      writeBinary(path, base64), delete(path) } on paths relative to that folder
 //   captureShortcuts   the launcher's own shortcuts for Capture: supported() -- whether there are any here; set(list) --
 //                      publish one per capture template, `list` being [{ key, label }]; canPin() / pin({ key, label }) --
 //                      put an icon for one on the home screen ('' as the key is the template list); info() -- what the
@@ -43,6 +49,14 @@ export const platform = {
   },
   usesServiceWorker: true,
   versionInfo: async () => null,
+  attachments: {
+    supported: () => false,
+    folder: async () => null,
+    pickFolder: async () => {
+      throw new Error('no folder can be chosen here');
+    },
+    adapter: null,
+  },
   // A browser has no launcher shortcuts to publish here; the installed PWA gets its one Capture shortcut from the manifest.
   captureShortcuts: {
     supported: () => false,

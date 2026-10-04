@@ -62,10 +62,16 @@ You do this once, on any computer with a JDK (Android Studio includes one):
     the status line when the app starts).
 - **Attachments:** the Open button on an attachment hands the file to whichever app you have for its type. If no app can
   open it, the status line says so.
-- **Files on the device:** File > Open now says **Local file** (before, it said *Import file…*, the browser-style fallback
-  that is used when the native plugin is missing) and opens Android's file picker; the file can be edited, saved, and
-  reopened from the recent list later without picking it again. Save As > Local file names a new one. Exports and
-  attachments saved out ask where to save them.
+- **Files on the device:** File > Open says **Local file** and opens Android's file picker, which now starts in
+  `Documents/org-pwa` (in the shared Documents folder; pick any other folder if you like). The app keeps access to the
+  file, so it can be edited, saved, and reopened from the recent list later without picking it again. Save As > Local
+  file names a new one, also starting there.
+- **Saving a file out:** exports and settings backups go straight into **Downloads**, with no screen in between, and the
+  status line says `Saved "name" to Downloads.` (On Android 9 and older it still opens the "save as" screen.)
+- **Attachments on a local file:** the first time you attach something (or record audio) to a heading of a local file,
+  Android's folder picker opens, starting at `Documents/org-pwa`. Choose a folder and tap "Use this folder". Attachments are
+  then written under `data/xx/yyyy/` inside it, and Open, Save and Delete work as on GitHub or WebDAV. The command
+  *Choose the attachments folder* changes it.
 - **Placing the app bar:** if the bar sits too low or too high, run the command *Show display measurements*, press OK
   to copy the numbers, and send them.
 - It does **not** share data with the PWA: the shell's address is `https://localhost`, so its settings, tokens and

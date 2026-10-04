@@ -258,6 +258,7 @@ import { renderFileMenu, stopBrowsing } from './src-browser/file-menu.js';
 import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, withArmedShift } from './src-browser/floating-keyboard.js';
 import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
 import { scheduleCalendarSync } from './src-browser/calendar-sync.js';
+import { loadAttachmentsFolder } from './src-browser/attachments-store.js';
 import { syncCaptureShortcuts } from './src-browser/capture-shortcuts.js';
 import { platform } from './src-browser/platform.js';
 import { acceptNativeLaunches, handleLaunchParams } from './src-browser/launch-params.js';
@@ -367,6 +368,7 @@ S.calendarSyncLastError = null;
 // The tallest the window has been at its current width, to tell a keyboard that resizes the window from one that does not.
 S.viewportBaseline = null;
 S.captureShortcutsResult = null; // what the last attempt to publish the launcher's capture shortcuts did
+S.attachmentsFolder = null; // the name of the folder chosen for a local document's attachments, where the platform has one
 
 
 // org-agenda-files equivalent: additional GitHub/WebDAV files the
@@ -1471,5 +1473,6 @@ bootstrap().then(() => {
   handleLaunchParams().catch(() => {});
   acceptNativeLaunches(); // a native shell's shares that arrived while the app was starting
   syncCaptureShortcuts(); // the launcher's long-press list follows the capture templates
+  loadAttachmentsFolder(); // and the attachments folder chosen earlier, if the platform keeps one
   scheduleCalendarSync();
 });

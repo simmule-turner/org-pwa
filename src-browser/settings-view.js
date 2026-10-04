@@ -28,6 +28,7 @@ import { entryFieldButtonStyle, labeledInput, menuButton, pickTextFile, populate
 import { openDocsAtHeading } from './views.js';
 import { refreshLocationFromDevice, refreshWeather, whereOrgWeatherIsUsed } from './weather-flow.js';
 import { platform } from './platform.js';
+import { saveOut } from './save-out.js';
 
 export function applyTheme(theme) {
   if (theme === 'light' || theme === 'dark') {
@@ -1387,7 +1388,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
       ) {
         return;
       }
-      platform.saveFile('org-pwa-settings.json', JSON.stringify(bundle, null, 2));
+      saveOut('org-pwa-settings.json', JSON.stringify(bundle, null, 2));
       setStatus('Settings exported \u2014 check your downloads.');
     })
   );

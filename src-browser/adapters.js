@@ -16,6 +16,10 @@ const localFileAdapter = {
   write: (...args) => platform.localFiles.adapter.write(...args),
   exists: (...args) => platform.localFiles.adapter.exists(...args),
   access: (...args) => platform.localFiles.adapter.access(...args),
+  // attachments live in a folder the platform keeps for them (see attachments-store.js), not beside the document
+  readBinary: (...args) => platform.attachments.adapter.readBinary(...args),
+  writeBinary: (...args) => platform.attachments.adapter.writeBinary(...args),
+  delete: (...args) => platform.attachments.adapter.delete(...args),
 };
 export const filesystemAdapter = withLineEndings(localFileAdapter, kv, { contentDerivedHash: true });
 

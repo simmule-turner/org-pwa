@@ -60,6 +60,7 @@ function nativeSide() {
   window.__unhandled = [];
   window.addEventListener('unhandledrejection', (e) => window.__unhandled.push(String(e.reason)));
   const files = new Map([['phone.org', '* From the phone\nbody text\n']]);
+  const tree = { name: null, files: new Map() }; // the attachments folder
   const impls = {
     ShareTarget: {},
     CaptureShortcuts: {
@@ -68,6 +69,13 @@ function nativeSide() {
       canPin: async () => ({ value: true }),
       pin: async (a) => { window.__calls.push(['pin', a]); return { requested: true }; },
     },
+    Attachments: {
+      pickFolder: async () => { if (window.__cancelFolder) { window.__cancelFolder = false; throw new Error('cancelled'); } tree.name = 'org-pwa'; return { name: 'org-pwa' }; },
+      folder: async () => (tree.name ? { name: tree.name } : {}),
+      read: async ({ path }) => (tree.files.has(path) ? { found: true, base64: tree.files.get(path) } : { found: false }),
+      write: async ({ path, base64 }) => { tree.files.set(path, base64); window.__calls.push(['attachWrite', path, base64]); },
+      remove: async ({ path }) => ({ deleted: tree.files.delete(path) }),
+    },
     LocalFiles: {
       pickOpen: async () => { if (window.__cancelNext) { window.__cancelNext = false; throw new Error('cancelled'); } return { name: 'phone.org' }; },
       pickNew: async ({ name }) => { files.set(name, ''); return { name }; },
@@ -75,7 +83,7 @@ function nativeSide() {
       write: async ({ name, content }) => { files.set(name, content); window.__calls.push(['write', name, content]); },
       exists: async ({ name }) => ({ value: files.has(name) }),
       access: async ({ name }) => ({ value: files.has(name) ? 'granted' : 'none' }),
-      saveFile: async (a) => { window.__calls.push(['saveFile', a]); return { saved: true }; },
+      saveFile: async (a) => { if (window.__saveFails) throw new Error('disk full'); if (window.__saveBackedOut) return { saved: false }; window.__calls.push(['saveFile', a]); return { saved: true, where: 'Downloads' }; },
       viewFile: async (a) => { if (window.__noViewer) throw new Error('No app on this phone can open ' + a.name); window.__calls.push(['viewFile', a]); return { opened: true }; },
     },
   };
@@ -252,6 +260,20 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
   const saved = (await calls(page, 'saveFile'))[0][1];
   const decoded = Buffer.from(saved.base64, 'base64').toString('utf8');
   check(saved.name === 'org-pwa-settings.json' && decoded.includes('"format": "org-pwa-settings"'), 'a file saved out goes to the plugin, as UTF-8 bytes', `${saved.name}: ${decoded.slice(0, 50)}`);
+  const said = await page.locator('#status').innerText();
+  check(said.includes('Saved \u201corg-pwa-settings.json\u201d to Downloads.'), 'and the app says where it went', said);
+  await page.evaluate(() => { window.__saveFails = true; });
+  await page.getByRole('button', { name: 'Export Settings' }).click();
+  await page.waitForTimeout(700);
+  const failed = await page.locator('#status').innerText();
+  check(failed.includes('Couldn\u2019t save') || failed.includes("Couldn't save"), 'a failure of the phone to save it is reported', failed);
+  await page.evaluate(() => { window.__saveFails = false; });
+  await page.evaluate(async () => { const { setStatus } = await import('/src-browser/editing.js'); setStatus('untouched'); window.__saveBackedOut = true; });
+  await page.getByRole('button', { name: 'Export Settings' }).click();
+  await page.waitForTimeout(700);
+  const quiet = await page.locator('#status').innerText();
+  check(!quiet.includes('Saved \u201c') && !quiet.includes('Couldn'), 'a save the person backed out of is not reported as one', quiet);
+  await page.evaluate(() => { window.__saveBackedOut = false; });
   // an attachment opened in another app: the bytes go across as base64 with their type, and a refusal reaches the caller
   const viewResult = await page.evaluate(async () => {
     const { platform } = await import('/src-browser/platform.js');
@@ -271,14 +293,55 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
   await context.close();
 }
 
+// 3b. Attachments for a local document, kept in a folder the person chooses once
+{
+  const { context, page, problems } = await open();
+  const first = await page.evaluate(async () => {
+    const { platform } = await import('/src-browser/platform.js');
+    return { supported: platform.attachments.supported(), folderBefore: await platform.attachments.folder() };
+  });
+  check(first.supported === true && first.folderBefore === null, 'before a choice there is a platform folder service but no folder', JSON.stringify(first));
+  await page.evaluate(() => { window.__cancelFolder = true; });
+  const cancelled = await page.evaluate(async () => {
+    const { platform } = await import('/src-browser/platform.js');
+    try { await platform.attachments.pickFolder(); return 'resolved'; } catch (e) { return e.name; }
+  });
+  check(cancelled === 'AbortError', 'backing out of the folder picker is an AbortError, which the app ignores', cancelled);
+
+  await fileMenu(page, 'Open', 'Local file');
+  await page.waitForFunction(() => document.getElementById('modelineBar').innerText.includes('phone.org'), null, { timeout: 8000 });
+  const outcome = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { ensureAttachmentsStorage } = await import('/src-browser/attachments-store.js');
+    const { uploadAttachmentToHeading, openAttachmentLink, deleteAttachment } = await import('/src-browser/attachments-flow.js');
+    const { platform } = await import('/src-browser/platform.js');
+    const storage = await ensureAttachmentsStorage();
+    const heading = S.state.doc.children[0];
+    await uploadAttachmentToHeading(heading, { name: 'doc.pdf', type: 'application/pdf', base64: 'JVBERi0xLjQ=' });
+    const link = heading.bodyLines.join('|');
+    await openAttachmentLink('attachment:doc.pdf', heading);
+    await deleteAttachment(heading, 'doc.pdf');
+    return { storage, link, after: heading.bodyLines.join('|'), folder: await platform.attachments.folder() };
+  });
+  const wrote = (await calls(page, 'attachWrite'))[0];
+  const viewedAttachment = (await calls(page, 'viewFile')).pop();
+  check(outcome.storage === 'ok' && outcome.folder && outcome.folder.name === 'org-pwa', 'the first attach asks for the folder, which is then remembered', JSON.stringify(outcome.folder));
+  check(wrote && /^data\/[^/]{2}\/[^/]+\/doc\.pdf$/.test(wrote[1]) && wrote[2] === 'JVBERi0xLjQ=', 'the attachment is written under data/xx/rest/ with its bytes intact', wrote && wrote[1]);
+  check(outcome.link.includes('attachment:doc.pdf'), 'and linked from the heading', outcome.link);
+  check(viewedAttachment && viewedAttachment[1].name === 'doc.pdf' && Buffer.from(viewedAttachment[1].base64, 'base64').toString() === '%PDF-1.4', 'opening it reads the same bytes back from the folder and hands them to the viewer');
+  check(!outcome.after.includes('attachment:doc.pdf'), 'deleting removes the link', outcome.after);
+  check(problems.length === 0, 'no page errors', JSON.stringify(problems));
+  await context.close();
+}
+
 // 4. A build of the shell missing its plugins: the app starts, and offers nothing it cannot do
 {
-  const { context, page, problems } = await open({ __missing: ['ShareTarget', 'CaptureShortcuts', 'LocalFiles'] });
+  const { context, page, problems } = await open({ __missing: ['ShareTarget', 'CaptureShortcuts', 'LocalFiles', 'Attachments'] });
   const info = await page.evaluate(async () => {
     const { platform } = await import('/src-browser/platform.js');
-    return { ui: !!document.getElementById('moreBtn'), shortcuts: platform.captureShortcuts.supported(), files: platform.localFiles.supported(), unhandled: window.__unhandled };
+    return { ui: !!document.getElementById('moreBtn'), shortcuts: platform.captureShortcuts.supported(), files: platform.localFiles.supported(), folders: platform.attachments.supported(), unhandled: window.__unhandled };
   });
-  check(info.ui && !info.shortcuts && info.unhandled.length === 0 && problems.length === 0, 'with the plugins missing the app still starts, and does not claim shortcuts', JSON.stringify({ ...info, problems }));
+  check(info.ui && !info.shortcuts && !info.folders && info.unhandled.length === 0 && problems.length === 0, 'with the plugins missing the app still starts, and does not claim shortcuts or an attachments folder', JSON.stringify({ ...info, problems }));
   await context.close();
 }
 

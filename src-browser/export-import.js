@@ -24,6 +24,7 @@ import { render } from './render.js';
 import { agendaFilesCache, contactsFilesCache } from './singletons.js';
 import { aliasedMenuDivItem, appendMenuButtonsInOrder, menuButton, menuDivItem } from './ui-widgets.js';
 import { platform } from './platform.js';
+import { saveOut } from './save-out.js';
 
 /** Resolves a raw #+INCLUDE: path (see src/export-include.js's own
  *  docs for the full directive syntax this feeds into) against this
@@ -54,13 +55,13 @@ export async function performExport(format, scope) {
   if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt') {
     const doc = await expandIncludes(S.state.doc, resolveIncludePath, parseOrg);
     if (format === 'ascii') {
-      platform.saveFile(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables)), 'text/plain');
+      saveOut(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables)), 'text/plain');
     } else if (format === 'markdown') {
-      platform.saveFile(baseName + '.md', exportToMarkdown(doc, scope), 'text/markdown');
+      saveOut(baseName + '.md', exportToMarkdown(doc, scope), 'text/markdown');
     } else if (format === 'html') {
-      platform.saveFile(baseName + '.html', exportToHtml(doc, scope), 'text/html');
+      saveOut(baseName + '.html', exportToHtml(doc, scope), 'text/html');
     } else {
-      platform.saveFile(baseName + '.odt', exportToOdt(doc, scope), 'application/vnd.oasis.opendocument.text');
+      saveOut(baseName + '.odt', exportToOdt(doc, scope), 'application/vnd.oasis.opendocument.text');
     }
   } else if (format === 'vcard') {
     const docs = scope === 'contacts-files' ? aggregateContactsDocs() : [{ documentId: S.state.documentId, doc: S.state.doc }];
@@ -97,11 +98,11 @@ export async function performExport(format, scope) {
       renderMoreMenu();
       return;
     }
-    platform.saveFile(baseName + '.vcf', vcf, 'text/vcard');
+    saveOut(baseName + '.vcf', vcf, 'text/vcard');
   } else {
     const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: S.state.documentId, doc: S.state.doc }];
     const icsScope = scope && typeof scope === 'object' ? scope : null;
-    platform.saveFile(baseName + '.ics', exportToIcalendar(docs, { scope: icsScope }), 'text/calendar');
+    saveOut(baseName + '.ics', exportToIcalendar(docs, { scope: icsScope }), 'text/calendar');
   }
   S.moreOpen = false;
   S.moreMenuStep = null;
