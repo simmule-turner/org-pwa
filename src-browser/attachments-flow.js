@@ -206,8 +206,12 @@ export async function openAttachmentLink(target, heading) {
     return;
   }
   const blob = new Blob([base64ToArrayBuffer(result.base64)], { type: viewableMimeType });
-  platform.viewFile(blob, filename);
-  setStatus(`Opened "${filename}".`);
+  try {
+    await platform.viewFile(blob, filename); // a browser opens it at once; a native shell may find no app that can
+    setStatus(`Opened "${filename}".`);
+  } catch (error) {
+    setStatus(`Couldn't open "${filename}": ${error && error.message ? error.message : error}`);
+  }
   render();
 }
 

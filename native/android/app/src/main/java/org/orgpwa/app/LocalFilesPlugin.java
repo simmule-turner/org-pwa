@@ -1,6 +1,7 @@
 package org.orgpwa.app;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -10,6 +11,7 @@ import android.net.Uri;
 import android.provider.OpenableColumns;
 import android.util.Base64;
 import androidx.activity.result.ActivityResult;
+import androidx.core.content.FileProvider;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -17,6 +19,8 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -204,6 +208,47 @@ public class LocalFilesPlugin extends Plugin {
             call.resolve(out);
         } catch (IOException | SecurityException | IllegalArgumentException e) {
             call.reject("Could not save the file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Opens a file (an attachment, say) in whatever app the person has for it. The bytes (`base64`) are written to the app's
+     * cache and handed to the other app through the FileProvider declared in the manifest, which shares that one file for
+     * reading and nothing else. Rejects if no installed app can open the type.
+     */
+    @PluginMethod
+    public void viewFile(PluginCall call) {
+        String name = call.getString("name");
+        String mime = call.getString("mime");
+        String encoded = call.getString("base64");
+        if (name == null || name.isEmpty() || encoded == null) {
+            call.reject("Nothing to open");
+            return;
+        }
+        try {
+            File directory = new File(getContext().getCacheDir(), "opened");
+            if (!directory.isDirectory() && !directory.mkdirs()) {
+                call.reject("Could not prepare " + name + " for opening");
+                return;
+            }
+            File[] earlier = directory.listFiles();
+            if (earlier != null) for (File old : earlier) old.delete(); // files opened this way before are not needed again
+            File file = new File(directory, name.replaceAll("[\\\\/:*?\"<>|]", "_"));
+            try (OutputStream out = new FileOutputStream(file)) {
+                out.write(Base64.decode(encoded, Base64.DEFAULT));
+            }
+            Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", file);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, mime == null || mime.isEmpty() ? "*/*" : mime);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            getActivity().startActivity(intent);
+            JSObject out = new JSObject();
+            out.put("opened", true);
+            call.resolve(out);
+        } catch (ActivityNotFoundException e) {
+            call.reject("No app on this phone can open " + name);
+        } catch (IOException | IllegalArgumentException e) {
+            call.reject("Could not open " + name + ": " + e.getMessage());
         }
     }
 

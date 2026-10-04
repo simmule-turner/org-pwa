@@ -2148,7 +2148,7 @@ check('capture from outside: a share URL runs the named template with the shared
   dav.reset({ 'notes.org': SAMPLE, 'inbox.org': '* Inbox\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   const templates = [
-    { key: 'n', description: 'Shared note', type: 'entry', file: 'inbox.org', olp: ['Inbox'], template: '* Note\n  %i\n  %a', emptyLines: 0 },
+    { key: 'n', description: 'Shared note', type: 'plain', file: 'inbox.org', olp: ['Inbox'], template: '* Note\n  %i\n  %a', emptyLines: 0 },
   ];
   await page.evaluate((json) => new Promise((resolve, reject) => {
     const open = indexedDB.open('org-pwa');
@@ -2214,8 +2214,8 @@ check('capture from outside: %x takes the clipboard (read only for a template th
     open.onerror = () => reject(open.error);
   }), JSON.stringify(templates));
   const templates = [
-    { key: 'x', description: 'Clip', type: 'entry', olp: ['Inbox'], template: '* Clip\n  %x', emptyLines: 0 },
-    { key: 'p', description: 'Plain', type: 'entry', olp: ['Inbox'], template: '* Plain', emptyLines: 0 },
+    { key: 'x', description: 'Clip', type: 'plain', olp: ['Inbox'], template: '* Clip\n  %x', emptyLines: 0 },
+    { key: 'p', description: 'Plain', type: 'plain', olp: ['Inbox'], template: '* Plain', emptyLines: 0 },
   ];
   const at = (step) => (e) => { e.message = `[${step}] ${e.message}`; throw e; };
   const runTemplate = async (page, name) => {
@@ -2753,7 +2753,7 @@ check('platform seam: a platform injected before startup (as a native shell woul
       tx.onerror = () => reject(tx.error);
     };
     open.onerror = () => reject(open.error);
-  }), JSON.stringify([{ key: 'x', description: 'Clip', type: 'entry', olp: ['Inbox'], template: '* Clip\n  %x', emptyLines: 0 }]));
+  }), JSON.stringify([{ key: 'x', description: 'Clip', type: 'plain', olp: ['Inbox'], template: '* Clip\n  %x', emptyLines: 0 }]));
   await openPalette(page);
   await page.keyboard.type('capture: clip');
   await page.keyboard.press('Enter');
@@ -2812,7 +2812,7 @@ check('platform seam: opening, editing and saving a local file goes through plat
 check('platform seam: a native shell can hand the app a share directly (runLaunch), with no URL involved, and it captures like the share URL does', async () => {
   dav.reset({ 'notes.org': SAMPLE, 'inbox.org': '* Inbox\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
-  const templates = [{ key: 'n', description: 'Shared note', type: 'entry', file: 'inbox.org', olp: ['Inbox'], template: '* Note\n  %i\n  %a', emptyLines: 0 }];
+  const templates = [{ key: 'n', description: 'Shared note', type: 'plain', file: 'inbox.org', olp: ['Inbox'], template: '* Note\n  %i\n  %a', emptyLines: 0 }];
   await page.evaluate((json) => new Promise((resolve, reject) => {
     const open = indexedDB.open('org-pwa');
     open.onsuccess = () => {
@@ -3107,6 +3107,44 @@ check('capture shortcuts: a launcher that refuses them is reported in the status
   expect(!!(await page.locator('#moreBtn').isVisible()), 'and the app still works');
   const recorded = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.captureShortcutsResult);
   expect(recorded && recorded.ok === false && recorded.error === 'the launcher said no', `the outcome is recorded for the report: ${JSON.stringify(recorded)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('attachments: opening one hands it to the platform, and the status says honestly when the platform has nothing to show it with', async () => {
+  dav.reset({ 'notes.org': '* Report\n:PROPERTIES:\n:ID: att-test-1\n:END:\n[[attachment:doc.pdf]]\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const stored = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { resolveAttachmentTarget } = await import('/src/link-resolve.js');
+    return resolveAttachmentTarget(S.state.doc, S.state.doc.children[0], 'attachment:doc.pdf', S.state.documentId);
+  });
+  dav.set(stored, '%PDF-1.4 fake attachment'); // where the app will look for it
+  const open = () => page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { openAttachmentLink } = await import('/src-browser/attachments-flow.js');
+    await openAttachmentLink('attachment:doc.pdf', S.state.doc.children[0]);
+  });
+  const status = () => page.locator('#minibuffer').innerText();
+
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    window.__viewed = [];
+    installPlatform({ viewFile: async (blob, name) => { window.__viewed.push({ name, type: blob.type, size: blob.size }); } });
+  });
+  await open();
+  const viewed = await page.evaluate(() => window.__viewed);
+  expect(viewed.length === 1 && viewed[0].name === 'doc.pdf' && viewed[0].type === 'application/pdf' && viewed[0].size === 24, `the platform was handed the file: ${JSON.stringify(viewed)}`);
+  expect((await status()).includes('Opened "doc.pdf"'), `and the status says it opened: ${await status()}`);
+
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    installPlatform({ viewFile: async () => { throw new Error('No app on this phone can open doc.pdf'); } });
+  });
+  await open();
+  const failed = await status();
+  expect(failed.includes('Couldn\'t open "doc.pdf": No app on this phone can open doc.pdf') && !failed.includes('Opened "doc.pdf"'), `a platform with nothing to show it with is reported, not claimed as opened: ${failed}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

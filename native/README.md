@@ -20,15 +20,17 @@ If the build fails, open the "Show the toolchain" step first: it prints the Java
 - **Sharing in** (this and the next two did nothing in 0.3.1 and earlier, because the app could not see the native
   plugins; fixed in 0.3.2): share a link or some text from another app. org-pwa appears in the Share sheet, and picking it opens
   Capture with what you shared.
-- **Capture shortcuts:** long-press the app icon on the home screen or app drawer. A list pops up with **Capture**
-  (always there: it opens the template list) and, below or above it, one entry per capture template (as many as your
-  launcher allows, in the order they are in Settings). Tap one to open that template.
+- **Capture shortcuts:** long-press the app icon on the home screen or app drawer. A list pops up with one entry per
+  capture template (as many as your launcher allows, in the order they are in Settings > Capture Templates). Tap one to
+  open that template; *Web page or text* is the one for things shared in from other apps.
   - **To get an icon on the home screen:** while that list is showing, press and hold one of the entries and drag it out
     onto the home screen. The new icon opens that template directly. Or run the command *Add a capture icon to the home
-    screen*, pick a template, and confirm when the launcher asks "add to home screen?".
+    screen*, pick a template (or *the template list*), and confirm when the launcher asks "add to home screen?".
   - **If the list is missing the templates, or empty:** run *Show display measurements*, press OK to copy, and send me
     the "launcher shortcuts" line. It says what the launcher has and whether publishing failed (a failure also shows in
     the status line when the app starts).
+- **Attachments:** the Open button on an attachment hands the file to whichever app you have for its type. If no app can
+  open it, the status line says so.
 - **Files on the device:** File > Open now says **Local file** (before, it said *Import file…*, the browser-style fallback
   that is used when the native plugin is missing) and opens Android's file picker; the file can be edited, saved, and
   reopened from the recent list later without picking it again. Save As > Local file names a new one. Exports and
@@ -41,6 +43,9 @@ If the build fails, open the "Show the toolchain" step first: it prints the Java
   GitHub needs nothing.
 
 ## Layout and versions
+
+- 0.4.0 removed the fixed "Capture a note" shortcut. If you copy the changes by hand, also delete
+  `native/android/app/src/main/res/xml/shortcuts.xml` (the build works without deleting it, but nothing uses it).
 
 - `native/` and `.github/` are not part of the PWA release zip, so the PWA runs standalone exactly as before.
 - This shell has its own version (`package.json`, and `versionName` in `android/app/build.gradle`: keep them equal). The

@@ -167,6 +167,14 @@
         reader.readAsDataURL(blob);
       });
     };
+    // Shows a file (an attachment) in another app; the caller waits for this, so a phone with no app for it can say so.
+    platform.viewFile = function (blob, name) {
+      return toBase64(blob)
+        .then(function (base64) {
+          return localFiles.viewFile({ name: name, mime: blob.type || '', base64: base64 });
+        })
+        .then(function () {});
+    };
     platform.saveFile = function (name, content, mime) {
       toBase64(content)
         .then(function (base64) {

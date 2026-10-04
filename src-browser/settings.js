@@ -43,6 +43,17 @@ const KEYS = {
  *  `emptyLines: N`. */
 const DEFAULT_CAPTURE_TEMPLATES = [
   {
+    // For anything shared in from another app (see "Capturing from other apps" in the README): a web page becomes a heading
+    // that is a link to it, titled as the page is, and shared text goes in the body. With no link shared there is no
+    // heading text, so the prompt asks for a title; for a web page it is left blank.
+    key: 'w',
+    description: 'Web page or text',
+    type: 'plain',
+    olp: ['Inbox'],
+    template: '* %a%^{Title (leave blank for a web page)}\n:PROPERTIES:\n:CREATED: %U\n:END:\n  %i\n  %?',
+    emptyLines: 1,
+  },
+  {
     key: 'b',
     description: 'Bullet List',
     type: 'item',

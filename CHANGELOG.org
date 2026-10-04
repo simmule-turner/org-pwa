@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v437 — Web page or text capture template; attachments open on Android
+New built-in capture template, Web page or text: share a web page from
+another app and it files a heading under Inbox that links to the page,
+titled as the page is; share some text and it files that under a title
+you type. In the Android app, an attachment's Open button now hands the
+file to another app, and says so when no app can open it, and the app
+icon's long-press list gives every place to a capture template.
+
 * v436 — Nothing starts under the status bar; Android plugins reach the app
 Menus and dialogs no longer start under the status bar: the command
 palette, the confirm and date-picker dialogs, and the floating keyboard

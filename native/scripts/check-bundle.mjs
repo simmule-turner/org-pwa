@@ -76,6 +76,7 @@ function nativeSide() {
       exists: async ({ name }) => ({ value: files.has(name) }),
       access: async ({ name }) => ({ value: files.has(name) ? 'granted' : 'none' }),
       saveFile: async (a) => { window.__calls.push(['saveFile', a]); return { saved: true }; },
+      viewFile: async (a) => { if (window.__noViewer) throw new Error('No app on this phone can open ' + a.name); window.__calls.push(['viewFile', a]); return { opened: true }; },
     },
   };
   const listeners = [];
@@ -242,6 +243,21 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
   const saved = (await calls(page, 'saveFile'))[0][1];
   const decoded = Buffer.from(saved.base64, 'base64').toString('utf8');
   check(saved.name === 'org-pwa-settings.json' && decoded.includes('"format": "org-pwa-settings"'), 'a file saved out goes to the plugin, as UTF-8 bytes', `${saved.name}: ${decoded.slice(0, 50)}`);
+  // an attachment opened in another app: the bytes go across as base64 with their type, and a refusal reaches the caller
+  const viewResult = await page.evaluate(async () => {
+    const { platform } = await import('/src-browser/platform.js');
+    await platform.viewFile(new Blob(['%PDF-1.4'], { type: 'application/pdf' }), 'doc.pdf');
+    window.__noViewer = true;
+    try {
+      await platform.viewFile(new Blob(['x'], { type: 'application/pdf' }), 'other.pdf');
+      return 'resolved';
+    } catch (e) {
+      return e.message;
+    }
+  });
+  const viewed = (await calls(page, 'viewFile'))[0];
+  check(viewed && viewed[1].name === 'doc.pdf' && viewed[1].mime === 'application/pdf' && Buffer.from(viewed[1].base64, 'base64').toString() === '%PDF-1.4', 'viewFile sends the name, the type and the bytes to the plugin', JSON.stringify(viewed).slice(0, 120));
+  check(viewResult === 'No app on this phone can open other.pdf', 'and a refusal from the phone reaches the caller as an error', viewResult);
   check(problems.length === 0, 'no page errors', JSON.stringify(problems));
   await context.close();
 }

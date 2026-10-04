@@ -1103,12 +1103,19 @@ Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meetin
 
 On Android, the installed app is a share target: choose *org-pwa* in another app's Share sheet and the shared title, text and link open Capture. Pick a template, and its ~%i~ and ~%a~ take the content. Long-press the app icon for a *Capture* shortcut.
 
+The built-in *Web page or text* template is made for this. Share a web page and it files a heading under *Inbox* that links to the page, titled as the page is; leave its title prompt blank. Share some text from a document and it files the text under a heading with the title you type. Either way the second prompt takes your own note, and ~:CREATED:~ records when. A part that isn't there (no text, no note) leaves a blank line. If you already have templates of your own, add it in *Settings → Capture Templates*:
+
+#+BEGIN_SRC json
+{ "key": "w", "description": "Web page or text", "type": "plain", "olp": ["Inbox"],
+  "template": "* %a%^{Title (leave blank for a web page)}\n:PROPERTIES:\n:CREATED: %U\n:END:\n  %i\n  %?", "emptyLines": 1 }
+#+END_SRC
+
 Any link or bookmark can do the same. ~index.html?capture=KEY~ runs the template with that key, a bare ~?capture~ shows the list, and ~&text=~, ~&title=~ and ~&url=~ carry content. The address is cleaned afterwards, so reloading never captures twice, and it works offline.
 
 Example: ~index.html?capture=n&text=Buy%20milk~ with this template files the text under *Inbox*:
 
 #+BEGIN_SRC json
-{ "key": "n", "description": "Shared note", "type": "entry", "olp": ["Inbox"], "template": "* Note\n  %i\n  %a" }
+{ "key": "n", "description": "Shared note", "type": "plain", "olp": ["Inbox"], "template": "* Note\n  %i\n  %a" }
 #+END_SRC
 
 A template that files into another file (~file:~) needs a document from the same backend open; the app restores your tabs when it starts.
@@ -1481,6 +1488,21 @@ Local file access ("Local", a live writable handle) requires the File System Acc
 On unsupported platforms, *Import* replaces "Local": pick a file, edit it, and Save downloads the new version for you to move into place yourself. GitHub and WebDAV work the same everywhere, including iOS.
 
 *Sharing into the app*: Android's Share sheet and the icon's *Capture* shortcut work for the installed app. iOS has no equivalent, so use the clipboard (~%x~); see [[#capture-from-other-apps][Capturing from other apps]].
+
+*** Android app
+:PROPERTIES:
+:CUSTOM_ID: android-app
+:END:
+
+The Android app is the same app in a native wrapper, with a few things done the Android way.
+
+- *Local files*: *File → Open → Local file* uses Android's file picker, and the app keeps access to the file, so Save writes straight back and the file reopens from the recent list. *Save As → Local file* names a new one. A file is known by its name, so two files with the same name from different folders replace each other.
+- *Agenda files*: name a local file as ~local:name.org~, with the file name only, like ~github:journal.org;local:home.org~. Open it once first with *Open → Local file*; after that it loads silently, read-only.
+- *Saving a file out*: exports and settings backups open Android's *save as* screen.
+- *Long-press the app icon*: your capture templates are listed, in the order they are in *Settings → Capture Templates*, as many as the launcher shows. Tapping one opens that template. Drag one onto the home screen for an icon, or run *Add a capture icon to the home screen*.
+- *Sharing in*: share a link or text from any app to *org-pwa*; Capture opens with it (see [[#capture-from-other-apps][Capturing from other apps]]).
+- *Separate from the browser*: the app keeps its own settings, tokens and documents, so enter GitHub, WebDAV and calendar settings again. A WebDAV or CalDAV server must allow the origin ~https://localhost~ (CORS).
+- *Updates*: the app is updated by installing a newer APK.
 
 *Screen size*: mobile-first below 900px wide. Above that, Settings and Help open in a resizable side panel next to the outline instead of replacing it, and the app uses the full window width. Reading width is unlimited by default; Settings → Appearance has an opt-in narrower column.
 

@@ -9,7 +9,8 @@
 //                      pickOpen(kv) / pickNew(kv, suggestedName) -- ask the person, remember the choice in `kv`, and
 //                      return the document id; adapter -- { read, write, exists, access } for those files
 //   saveFile           saveFile(name, content, mimeType): hand a file to the person (a download, in a browser)
-//   viewFile           viewFile(blob, name): show a file in whatever the platform views it with
+//   viewFile           viewFile(blob, name): show a file in whatever the platform views it with; may return a promise,
+//                      which rejects with the reason if nothing can show it
 //   clipboard          { readText(), writeText(text) }
 //   usesServiceWorker  whether the app registers its service worker; a shell that bundles the app has no use for it
 //   captureShortcuts   the launcher's own shortcuts for Capture: supported() -- whether there are any here; set(list) --
