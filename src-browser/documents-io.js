@@ -32,6 +32,7 @@ import { ALWAYS_KEEP_MINE, resolvePendingChangeChoice } from './sync-helpers.js'
 import { persistOpenTabsInBackground, renderTabBar, saveSessionSnapshot, switchToTab } from './tabs.js';
 import { renderViewMenu } from './views.js';
 import { isWebdavConfigured } from './webdav-adapter.js';
+import { folderAvailable } from './local-folder.js';
 import { platform } from './platform.js';
 
 export function suggestedSaveAsName(fallback) {
@@ -221,6 +222,15 @@ export async function openFileLink(resolution, containingHeading = null) {
     adapter = webdavAdapter;
     kind = 'webdav';
     label = 'WebDAV';
+  } else if (resolution.scheme === 'local') {
+    adapter = filesystemAdapter; // a file opened here earlier, or in the org-pwa folder (see local-folder.js)
+    kind = 'filesystem';
+    label = 'Local';
+  } else if (S.state.storageKind === 'filesystem' && folderAvailable()) {
+    // a plain file: link in a local document: a file in the org-pwa folder
+    adapter = filesystemAdapter;
+    kind = 'filesystem';
+    label = 'Local';
   } else {
     // 'file' scheme, no explicit backend named — use whichever backend
     // the CURRENT document itself came from.

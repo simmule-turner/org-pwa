@@ -11,7 +11,7 @@ import { importVcardsAsOrgText } from '../src/import-vcard.js';
 import { getAsciiTextWidth, getContactsBirthdayProperty, getMenuAliases } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
-import { githubAdapter, webdavAdapter } from './adapters.js';
+import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { aggregateAgendaDocs, aggregateContactsDocs, ensureContactsFilesLoadedAndWait, waitForAgendaFilesLoaded } from './agenda-files.js';
 import { S } from './app-state.js';
 import { allHeadingsInOrder, headingsInSubtree, vcardBodyHeadingsIn } from './doc-helpers.js';
@@ -28,7 +28,7 @@ import { saveOut } from './save-out.js';
 
 /** Resolves a raw #+INCLUDE: path (see src/export-include.js's own
  *  docs for the full directive syntax this feeds into) against this
- *  app's own storage. An explicit "github:"/"webdav:" prefix -- the
+ *  app's own storage. An explicit "github:"/"webdav:"/"local:" prefix -- the
  *  same scheme:path convention org-agenda-files/org-refile-targets
  *  already use -- reads from that specific adapter regardless of
  *  what's currently open; a bare path instead resolves against the
@@ -42,6 +42,7 @@ export async function resolveIncludePath(path) {
   const scheme = colonIndex === -1 ? null : path.slice(0, colonIndex);
   if (scheme === 'github') return githubAdapter.read(path.slice(colonIndex + 1));
   if (scheme === 'webdav') return webdavAdapter.read(path.slice(colonIndex + 1));
+  if (scheme === 'local') return filesystemAdapter.read(path.slice(colonIndex + 1)); // opened here earlier, or in the org-pwa folder
   return activeDiskAdapter().read(path);
 }
 

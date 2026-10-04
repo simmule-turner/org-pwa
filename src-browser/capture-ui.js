@@ -1,5 +1,5 @@
 // Extracted from app.js: capture ui.
-import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandCaptureText, expandTemplate, getCaptureFileScheme, insertCapture, resolveCaptureFileId, resolveOlpTarget, scanPrompts } from '../src/capture-template.js';
+import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandCaptureText, expandTemplate, getCaptureFileScheme, insertCapture, resolveCaptureFileId, resolveOlpTarget, scanPrompts, storageKindForScheme } from '../src/capture-template.js';
 import { parseOrg } from '../src/org-parser.js';
 import { S } from './app-state.js';
 import { openTimestampPickerPopup, showModalOverlay } from './dialogs.js';
@@ -387,13 +387,13 @@ export async function runCaptureWithAnswers(template, answers) {
   if (rawFile) {
     const { scheme } = getCaptureFileScheme(rawFile);
     if (scheme && !CAPTURE_FILE_SCHEMES.has(scheme)) {
-      setStatus(`Can't capture: "${template.file}" starts with an unrecognized scheme ("${scheme}:") \u2014 only "github:" and "webdav:" are understood. Remove the prefix for a plain path, or fix the scheme name.`);
+      setStatus(`Can't capture: "${template.file}" starts with an unrecognized scheme ("${scheme}:") \u2014 only "github:", "webdav:" and "local:" are understood. Remove the prefix for a plain path, or fix the scheme name.`);
       renderCapturePanel();
       return;
     }
-    if (scheme && scheme !== S.state.storageKind) {
+    if (scheme && storageKindForScheme(scheme) !== S.state.storageKind) {
       setStatus(
-        `Can't capture: "${template.file}" targets ${scheme}, but the currently open document is on ${S.state.storageKind === 'github' ? 'GitHub' : S.state.storageKind === 'webdav' ? 'WebDAV' : S.state.storageKind} \u2014 capture can't switch backends. Remove the "${scheme}:" prefix to capture into a sibling file on the same backend as whatever's currently open instead.`
+        `Can't capture: "${template.file}" targets ${scheme}, but the currently open document is on ${S.state.storageKind === 'github' ? 'GitHub' : S.state.storageKind === 'webdav' ? 'WebDAV' : S.state.storageKind === 'filesystem' ? 'a local file' : 'an imported file'} \u2014 capture can't switch backends. Remove the "${scheme}:" prefix to capture into a sibling file on the same backend as whatever's currently open instead.`
       );
       renderCapturePanel();
       return;

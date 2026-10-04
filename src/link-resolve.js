@@ -36,7 +36,7 @@ import { attachmentPath } from './attach.js';
 const EXTERNAL_URL_RE = /^[a-z][a-z0-9+.-]*:\/\//i;
 const MAILTO_RE = /^mailto:/i;
 const DOI_RE = /^doi:/i;
-const FILE_LIKE_RE = /^(file:|github:|webdav:|\.{1,2}\/|~\/|\/)/i;
+const FILE_LIKE_RE = /^(file:|github:|webdav:|local:|\.{1,2}\/|~\/|\/)/i;
 
 export function isExternalUrl(target) {
   return EXTERNAL_URL_RE.test(target) || MAILTO_RE.test(target);
@@ -62,13 +62,15 @@ export function isFileLink(target) {
 /** Which explicit scheme a file-like target uses, or 'file' as the
  *  default for a path-only target with no scheme prefix at all (a
  *  bare "./notes.org", "~/notes.org", "/notes.org", or "file:..." are
- *  all treated as the same 'file' scheme — only "github:"/"webdav:"
+ *  all treated as the same 'file' scheme — only "github:"/"webdav:"/"local:"
  *  are their own distinct schemes, since those specifically mean "a
- *  path within whichever GitHub repo / WebDAV server is configured,"
- *  not a path on the local filesystem). */
+ *  path within whichever GitHub repo / WebDAV server is configured" or
+ *  "a file on this device (in the org-pwa folder, or opened earlier)",
+ *  not a path relative to the current document). */
 export function fileLinkScheme(target) {
   if (/^github:/i.test(target)) return 'github';
   if (/^webdav:/i.test(target)) return 'webdav';
+  if (/^local:/i.test(target)) return 'local';
   return 'file';
 }
 
@@ -90,7 +92,7 @@ export function fileLinkScheme(target) {
  * this "no explicit directory given" case.
  */
 export function resolveImagePath(target, currentDocumentId) {
-  let path = target.replace(/^(file:|github:|webdav:)/i, '');
+  let path = target.replace(/^(file:|github:|webdav:|local:)/i, '');
   path = path.replace(/^\.\//, '');
   if (path.startsWith('/')) return path.slice(1);
   if (path.includes('/') || !currentDocumentId) return path;
@@ -422,7 +424,7 @@ export function resolveLinkTarget(doc, rawTarget) {
 
   if (isFileLink(target)) {
     const scheme = fileLinkScheme(target);
-    const withoutScheme = target.replace(/^(file:|github:|webdav:)/i, '');
+    const withoutScheme = target.replace(/^(file:|github:|webdav:|local:)/i, '');
     const { path, inFileTarget } = splitFileLinkTarget(withoutScheme);
     return { type: 'file', scheme, path, inFileTarget };
   }

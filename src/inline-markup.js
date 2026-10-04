@@ -260,7 +260,7 @@ function matchFootnoteAt(text, pos) {
 // link-resolve.js) -- http/https/ftp/mailto for ordinary external
 // links, doi for academic citations (resolved to doi.org), and
 // file/github/webdav for the file-linking schemes this app supports.
-const AUTOLINK_SCHEMES = ['https', 'http', 'ftp', 'mailto', 'doi', 'file', 'github', 'webdav'];
+const AUTOLINK_SCHEMES = ['https', 'http', 'ftp', 'mailto', 'doi', 'file', 'github', 'webdav', 'local'];
 const BARE_URL_RE = new RegExp('^(?:' + AUTOLINK_SCHEMES.join('|') + '):[^\\s<>]+', 'i');
 // Trailing sentence punctuation almost never belongs to the URL itself
 // ("see https://example.com/page." -- the period ends the sentence,
@@ -276,7 +276,7 @@ const TRAILING_PUNCTUATION_RE = /[.,;:!?)\]}'"]+$/;
 // explicitly called out in org's own manual as equivalent to the bare
 // form above, just with angle brackets marking the boundary instead of
 // relying on trailing-punctuation heuristics.
-const ANGLE_URL_RE = /^<((?:https?|ftp|mailto|doi|file|github|webdav):[^\s<>]+)>/i;
+const ANGLE_URL_RE = /^<((?:https?|ftp|mailto|doi|file|github|webdav|local):[^\s<>]+)>/i;
 
 const OPEN_PRE_RE = /[\s\-({'"]/;
 const CLOSE_POST_RE = /[\s.,;:!?)\]}'"-]/;

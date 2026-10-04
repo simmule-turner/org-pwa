@@ -446,13 +446,13 @@ Two variables control it, set in Global or Local Variables or in Settings → Qu
 :END:
 
 - ~[[target][description]]~ links render as tappable text.
-- *Bare URLs* link too: ~https://example.com~ typed in a sentence, or wrapped as ~<https://example.com>~. The recognized schemes are ~http~, ~https~, ~ftp~, ~mailto~, ~doi~, ~file~, ~github~ and ~webdav~, so a time like ~10:30~ or a ratio like ~3:4~ is never read as a link. Trailing sentence punctuation (~.~, ~,~, ~)~) is left out: ~see https://example.com/page.~ links the URL without the period. Wrap a URL in ~<...>~ or ~[[...]]~ if it must end in one of those characters.
+- *Bare URLs* link too: ~https://example.com~ typed in a sentence, or wrapped as ~<https://example.com>~. The recognized schemes are ~http~, ~https~, ~ftp~, ~mailto~, ~doi~, ~file~, ~github~, ~webdav~ and ~local~, so a time like ~10:30~ or a ratio like ~3:4~ is never read as a link. Trailing sentence punctuation (~.~, ~,~, ~)~) is left out: ~see https://example.com/page.~ links the URL without the period. Wrap a URL in ~<...>~ or ~[[...]]~ if it must end in one of those characters.
 - ~doi:10.1145/1327452.1327492~ resolves to ~https://doi.org/...~ and opens like any external link, bracketed or bare.
 - *Internal links* resolve by heading title (~[[*Some Heading]]~), by ~CUSTOM_ID~ (~[[#my-id]]~), or by a title search for bare text. Tapping one expands the ancestors and scrolls to the target. Set a ~CUSTOM_ID~ in the general editor (see [[#editing-your-outline][Editing your outline]]).
 - *The ⏎ button*: after you follow a link, a floating ⏎ button appears at bottom-left to go back, so a document with a table of contents (Docs' own included) is navigable on a touch device without a browser Back. Chained links unwind one hop at a time, and the button disappears when there is nowhere left to go back to. It is low-opacity at rest and uses the theme's text colours.
 - *Image links*: ~http://~ and ~https://~ image links render inline when ~#+STARTUP: inlineimages~ is set (off by default).
 - *Local and relative image paths* on GitHub and WebDAV render too: ~[[photo.png]]~, ~[[images/photo.png]]~, ~[[file:photo.png]]~ and ~[[github:images/photo.png]]~ resolve relative to the document's path (a bare filename lands beside it), under the same ~#+STARTUP: inlineimages~ gate, and are cached for the session. Local files (File System Access) and iOS imports show an ~[image: path]~ placeholder instead, because reading a sibling file needs browser permission that can't be granted mid-render.
-- *~file:~, ~github:~ and ~webdav:~ links* parse into a scheme, a path and an optional in-file target, using org's ~::~ convention: an absolute path (~file:/home/user/documents/notes.org~), a relative one (~file:projects/todo.org~), a headline (=file:~/notes.org::*Project Alpha=) or a text search (=file:~/notes.org::exact phrase=). Tapping one opens the document, as File → Open does (with its unsaved-changes handling), and jumps to the headline or match. A path with no scheme uses the backend the current document came from; an explicit ~github:~ or ~webdav:~ always uses that backend.
+- *~file:~, ~github:~, ~webdav:~ and ~local:~ links* parse into a scheme, a path and an optional in-file target, using org's ~::~ convention: an absolute path (~file:/home/user/documents/notes.org~), a relative one (~file:projects/todo.org~), a headline (=file:~/notes.org::*Project Alpha=) or a text search (=file:~/notes.org::exact phrase=). Tapping one opens the document, as File → Open does (with its unsaved-changes handling), and jumps to the headline or match. A path with no scheme uses the backend the current document came from; an explicit ~github:~, ~webdav:~ or ~local:~ always uses that backend (~local:~ is a file on this device: see [[#android-app][Android app]]).
 
   The back button follows these links across documents: it returns to the heading the link was in, with its ancestors and body expanded, found by the heading's title path (a scroll offset wouldn't survive a re-parse). It falls back to the remembered scroll position when the link had no heading (it was in the preamble) or the heading has since been renamed or removed. This works only when both documents are on GitHub or WebDAV. A local file or iOS import can't be reopened from a link tap or the back button, because opening a path needs a file-picker gesture the browser requires for each file, so a clear message is shown instead.
 - *~attachment:~ links* are org-attach's link type, produced by *Attach* (see [[#attachments][Attachments]]). They are bracketed only (~[[attachment:photo.jpg]]~); a bare ~attachment:photo.jpg~ in text is not a link.
@@ -676,10 +676,10 @@ Targets come from ~org-refile-targets~ (see [[#local-variables][Local Variables]
 org-refile-targets: current maxlevel=3; notes.org tag=work level=2; agenda-files todo=NEXT
 #+END_SRC
 
-- *File*: ~current~, ~agenda-files~, or a file name (a bare name is a sibling of the current file).
+- *File*: ~current~, ~agenda-files~, or a file name (a bare name is a sibling of the current file), optionally with a ~github:~, ~webdav:~ or ~local:~ prefix, like ~local:inbox.org level=1~.
 - *Criteria*: ~level=N~, ~maxlevel=N~, ~tag=NAME~ (the heading's own tag; inheritance is not considered), ~todo=KEYWORD~, and ~regexp=PATTERN~ (matched against the whole heading line, so it must come last; write a literal ~;~ as ~\;~). Several criteria on one entry must all match, which goes beyond real org.
 
-An entry the app can't understand is skipped and listed with the reason at the top of the picker. Refiling to another file works on GitHub and WebDAV; a local file must have been opened once. Not built: creating a new heading as the destination.
+An entry the app can't understand is skipped and listed with the reason at the top of the picker. Refiling to another file works on GitHub and WebDAV; a local file must have been opened once, except in the [[#android-app][Android app]], where a file in the org-pwa folder works. Not built: creating a new heading as the destination.
 
 -----
 
@@ -703,7 +703,7 @@ Tapping an ~attachment:~ link in a body does the same as *Open*.
 
 *Resolving links*: an ~attachment:~ link resolves against the ~:ID:~ of the heading it is written in, else the nearest ancestor's, as in org. With no ~:ID:~ in that chain it shows as an unresolved link.
 
-*Requirements*: GitHub or WebDAV must be connected, since writing, reading and deleting files needs a backend that can do that without a fresh file picker; a local or iOS-imported file can't. *Attach* is always visible, and explains the limitation if tapped without one. The [[#android-app][Android app]] is the exception: it keeps a local file's attachments in a folder you choose once.
+*Requirements*: GitHub or WebDAV must be connected, since writing, reading and deleting files needs a backend that can do that without a fresh file picker; a local or iOS-imported file can't. *Attach* is always visible, and explains the limitation if tapped without one. The [[#android-app][Android app]] is the exception: it keeps a local file's attachments in the org-pwa folder you choose once.
 
 - *GitHub*: files over 1MB (an ordinary camera photo) are read back through GitHub's Blobs API, which allows 100MB.
 - *WebDAV*: every folder in the path is created first, as the server requires.
@@ -939,7 +939,7 @@ A trailing tag needs a space before it (~<2000-01-01 Sat +1y> :BDAY:~), as in or
 :CUSTOM_ID: agenda-files
 :END:
 
-Add files in *Settings → Quick Settings → Agenda files*, or in a document's own ~# Local Variables:~ block to override that for the one file (see [[#local-variables][Local Variables]]). Entries are semicolon-separated ~scheme:path~ pairs, like ~github:journal.org;webdav:notes/todo.org~, the same syntax as ~org-refile-targets~ (see [[#refile][Refile]]). The Agenda and TODO views then scan all of them. ~github~ and ~webdav~ files are fetched; ~local:name.org~ reads a file you have already opened on this device (*File → Open → Local file*). A malformed entry is skipped. If the open file is in the list, its live in-memory version is used.
+Add files in *Settings → Quick Settings → Agenda files*, or in a document's own ~# Local Variables:~ block to override that for the one file (see [[#local-variables][Local Variables]]). Entries are semicolon-separated ~scheme:path~ pairs, like ~github:journal.org;webdav:notes/todo.org~, the same syntax as ~org-refile-targets~ (see [[#refile][Refile]]). The Agenda and TODO views then scan all of them. ~github~ and ~webdav~ files are fetched; ~local:name.org~ reads a file on this device: one you have opened with *File → Open → Local file* or, in the [[#android-app][Android app]], one in the org-pwa folder. A malformed entry is skipped. If the open file is in the list, its live in-memory version is used.
 
 Files are fetched once per session. Once any are configured, a *↻* button in the agenda controls refetches them, and a file that fails to load is reported above the list. A local file is read-only here: Agenda, TODO, Search and Export use it, but Refile, Replace and Capture never write into it. It loads only if the browser already allows access; otherwise the agenda says it "needs permission", and the *↻* button, being a tap, is what asks. Export's *This file + Agenda Files* scope always fetches fresh (see [[#export][Export]]). Two entries with the same file name, such as ~github:notes.org~ and ~local:notes.org~, can't both be used: the first is, and the agenda says so for the second.
 
@@ -948,7 +948,7 @@ Files are fetched once per session. Once any are configured, a *↻* button in t
 :CUSTOM_ID: contacts-files
 :END:
 
-Set in *Settings → Quick Settings → Contacts files*, or per document in Local Variables, exactly like [[#agenda-files][Agenda Files]] (real org-contacts' ~org-contacts-files~; ~github~ and ~webdav~ only). [[#export][Contacts (.vcf)]] export's *This file + Contacts Files* scope scans them. The list is independent of Agenda Files, because the two commonly differ.
+Set in *Settings → Quick Settings → Contacts files*, or per document in Local Variables, exactly like [[#agenda-files][Agenda Files]] (real org-contacts' ~org-contacts-files~; ~github~, ~webdav~ and ~local~). [[#export][Contacts (.vcf)]] export's *This file + Contacts Files* scope scans them. The list is independent of Agenda Files, because the two commonly differ.
 
 *** Calendar sync (CalDAV)
 :PROPERTIES:
@@ -1011,7 +1011,7 @@ Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meetin
 - ~key~: must be unique. It is the hotkey in a god-mode picker and shows beside the description on the capture form.
 - ~type~: ~item~ (a bullet), ~checkitem~ (a checkbox item), ~plain~ (raw text parsed as an org fragment; the only type that can contain headings, drawers or TODO keywords) or ~table-line~ (a row added to the nearest table under the target, or a new table).
 - ~olp~: the outline path to insert into, found or created heading by heading. A segment wrapped in ~%<FORMAT>~ (like ~"%<%Y-%m>"~) expands dynamically, so a monthly table can target "2026-07" without creating that heading by hand. Other segments are literal.
-- ~file~ (optional): capture into a different file (org's ~file+olp~). A bare name is a sibling of the open file, a path containing ~/~ is used as is, and an optional ~github:~ or ~webdav:~ prefix names the backend; a prefix that doesn't match the open document's backend is refused. If it resolves to the open file, the capture lands in that live document. Otherwise the other file is read, changed and written back without being opened, and nothing changes if the write fails. Omit it to capture into the open file. GitHub and WebDAV targets work automatically; a local or iOS-imported target must have been opened or saved once first.
+- ~file~ (optional): capture into a different file (org's ~file+olp~). A bare name is a sibling of the open file, a path containing ~/~ is used as is, and an optional ~github:~, ~webdav:~ or ~local:~ prefix names the backend; a prefix that doesn't match the open document's backend is refused. If it resolves to the open file, the capture lands in that live document. Otherwise the other file is read, changed and written back without being opened, and nothing changes if the write fails. Omit it to capture into the open file. GitHub and WebDAV targets work automatically; a local or iOS-imported target must have been opened or saved once first, except in the [[#android-app][Android app]], where a file in the org-pwa folder works automatically and is created if it doesn't exist.
 - ~template~: the text inserted, after %-expansion. A JSON ~\n~ is a newline; a blank line after the entry is ~"...%?\n"~.
 - ~prepend~ (default ~false~): put the new entry at the top instead of the bottom. A new list item goes before the first item, and a new table row goes right after the header row and rule. For ~item~, ~checkitem~ and ~plain~ it also puts any auto-created ~olp~ heading first among its siblings.
 - ~prependHeading~ (default ~false~; ~table-line~ only): put newly created ~olp~ headings first among their siblings, independently of ~prepend~. That keeps the newest month's heading on top while its rows still append in order. It applies at every level that has to be created; existing segments are reused as they are.
@@ -1266,7 +1266,7 @@ The full set of open tabs persists across closing and reopening the app, each re
 
 Markdown supports only ~toc:~ and ~num:~.
 
-~#+INCLUDE: "path" [block-type] [language] [:lines "N-M"] [:minlevel N]~ splices another document in at export time, before the first heading or in a heading's body. In a body it nests as children of that heading, one level deeper by default; at document level it keeps its own levels. The path is read from an explicit ~github:~ or ~webdav:~ prefix, or else relative to the open file.
+~#+INCLUDE: "path" [block-type] [language] [:lines "N-M"] [:minlevel N]~ splices another document in at export time, before the first heading or in a heading's body. In a body it nests as children of that heading, one level deeper by default; at document level it keeps its own levels. The path is read from an explicit ~github:~, ~webdav:~ or ~local:~ prefix, or else relative to the open file.
 
 - With no block type, the file is parsed as org and its headings are spliced in (its own ~#+TITLE~ and similar keywords are not). ~:minlevel N~ shifts its top level to N.
 - With a block type (~src~, ~example~, ~quote~ or ~export~, optionally with a language or backend, as in ~#+INCLUDE: "path" export html~), the raw text is wrapped in that block and placed in the body.
@@ -1497,9 +1497,9 @@ On unsupported platforms, *Import* replaces "Local": pick a file, edit it, and S
 The Android app is the same app in a native wrapper, with a few things done the Android way.
 
 - *Local files*: *File → Open → Local file* uses Android's file picker, and the app keeps access to the file, so Save writes straight back and the file reopens from the recent list. *Save As → Local file* names a new one. The picker starts in ~Documents/org-pwa~, in the shared Documents folder where a file manager finds it, and you can choose any other folder. A file is known by its name, so two files with the same name from different folders replace each other.
-- *Agenda files*: name a local file as ~local:name.org~, with the file name only, like ~github:journal.org;local:home.org~. Open it once first with *Open → Local file*; after that it loads silently, read-only.
+- *Agenda files*: ~local:name.org~ names a file in the org-pwa folder (below), like ~github:journal.org;local:home.org~. It loads silently and read-only; a file you opened with *Open → Local file* works too.
 - *Saving a file out*: exports and settings backups go straight into the *Downloads* folder, and the status line says so.
-- *Attachments*: a local file's first attachment asks you to choose a folder, which starts at ~Documents/org-pwa~. Attachments go under ~data/~ inside it, as on GitHub and WebDAV, and one folder serves every local file. *Choose the attachments folder* changes it.
+- *The org-pwa folder*: the first time something needs it (a local file's first attachment, or a ~local:~ name that isn't found), the app asks you to choose a folder, starting at ~Documents/org-pwa~. Attachments go under ~data/~ inside it, as on GitHub and WebDAV, and ~local:~ files are found in it by name, anywhere a ~github:~ or ~webdav:~ file can be named: ~org-agenda-files~, ~org-contacts-files~, ~org-refile-targets~, a capture template's ~file~, a link or ~#+INCLUDE~. ~local:contacts.org~ is ~contacts.org~ in that folder, and ~local:areas/home.org~ is ~home.org~ in its ~areas~ folder. A file you opened with the file picker is found by its name first. *Choose the org-pwa folder* changes it.
 - *Long-press the app icon*: your capture templates are listed, in the order they are in *Settings → Capture Templates*, as many as the launcher shows. Tapping one opens that template. Drag one onto the home screen for an icon, or run *Add a capture icon to the home screen*.
 - *Sharing in*: share a link or text from any app to *org-pwa*; Capture opens with it (see [[#capture-from-other-apps][Capturing from other apps]]).
 - *Separate from the browser*: the app keeps its own settings, tokens and documents, so enter GitHub, WebDAV and calendar settings again. A WebDAV or CalDAV server must allow the origin ~https://localhost~ (CORS).
@@ -1524,7 +1524,7 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 
 *What it acts on*: heading commands work on the heading whose action menu is open (tap a heading's title first), else the keyboard-focused heading. A command that needs a heading and can't find one says so, except *Add heading after* and *Add TODO heading after*, which also work with nothing selected (see the table in [[#keybindings][Keybindings]] for where the new heading lands).
 
-*Names*: a command's real Emacs or Org function name is shown beside it and is searchable. The same name, quoted, names the command in an Extras-menu entry (see [[#extras-menu][Extras menu]]), so the palette, the god-mode chords and Extras share one vocabulary. The commands with no real name are this app's own: *New document*, *Undo history*, *Sync agenda to calendar*, *Rebuild calendar from the agenda*, *Show display measurements*, *Add a capture icon to the home screen* and *Choose the attachments folder*. A command with a [[#god-mode][god-mode]] key runs the same code as that key and shows it.
+*Names*: a command's real Emacs or Org function name is shown beside it and is searchable. The same name, quoted, names the command in an Extras-menu entry (see [[#extras-menu][Extras menu]]), so the palette, the god-mode chords and Extras share one vocabulary. The commands with no real name are this app's own: *New document*, *Undo history*, *Sync agenda to calendar*, *Rebuild calendar from the agenda*, *Show display measurements*, *Add a capture icon to the home screen* and *Choose the org-pwa folder*. A command with a [[#god-mode][god-mode]] key runs the same code as that key and shows it.
 
 *What's in it*, by group:
 
@@ -1535,7 +1535,7 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 | *Document* | save, save as, open, new, undo, redo, undo history, toggle read-only, capture, recalculate all tables |
 | *View* | agenda, TODO list, outline view, text view, cycle visibility of the whole document, calendar, search, sync agenda to calendar, rebuild calendar |
 | *Export* | the Export menu; this file as HTML, Markdown, ASCII, ODT or an Org buffer |
-| *App* | settings, help, show display measurements, add a capture icon to the home screen and choose the attachments folder (Android app only) |
+| *App* | settings, help, show display measurements, add a capture icon to the home screen and choose the org-pwa folder (Android app only) |
 
 *Also in it*: your own capture templates and [[#extras-menu][Extras menu]] entries, one command each. *Capture: <description>* (such as *Capture: Meeting*) runs that template directly, and *Extras: <label>* runs that Extras entry as tapping it would. Both are read fresh each time the palette opens, so an edited template list or a document's own Extras menu (set in its Local Variables) is current. The plain *Capture* command still opens the template picker.
 
@@ -1703,7 +1703,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Refile* (see [[#refile][Refile]]): you can't create a new destination heading by typing a name that doesn't exist yet.
 
-*Attachments* (see [[#attachments][Attachments]]): this app's own feature, not an ~org-attach~ port. There is no document-wide attachment browser (Open, Save and Delete work one heading at a time) and no ~org-attach-dired~ bulk operations, and it requires GitHub, WebDAV or, in the Android app, an attachments folder.
+*Attachments* (see [[#attachments][Attachments]]): this app's own feature, not an ~org-attach~ port. There is no document-wide attachment browser (Open, Save and Delete work one heading at a time) and no ~org-attach-dired~ bulk operations, and it requires GitHub, WebDAV or, in the Android app, the org-pwa folder.
 
 *Conflict resolution* (see [[#offline-behavior-and-sync][Offline behavior and sync]]): a line-based three-way merge with a region-by-region resolver. It merges lines, not org structure, so a subtree moved on one side and edited on the other is an ordinary clash, and a region has no side-by-side or word-level diff.
 

@@ -405,3 +405,13 @@ test('recentRefileCandidates respects its limit, and an empty history gives noth
   assert.equal(recentRefileCandidates(candidates, recent, 3).length, 3);
   assert.deepEqual(recentRefileCandidates(candidates, []), []);
 });
+
+// ---- local: --------------------------------------------------------------------------------------
+
+test('a local: file in org-refile-targets is accepted, and its file id is the bare path, like github: and webdav:', () => {
+  const { entries, errors } = parseRefileTargetsWithErrors('local:inbox.org level=2; local:areas/home.org level=1');
+  assert.equal(errors.length, 0);
+  assert.deepEqual(entries.map((e) => e.fileSpec), ['local:inbox.org', 'local:areas/home.org']);
+  assert.deepEqual(resolveEntryFileIds(entries[0], 'notes.org', []), ['inbox.org']);
+  assert.deepEqual(resolveEntryFileIds(entries[1], 'notes.org', []), ['areas/home.org']);
+});

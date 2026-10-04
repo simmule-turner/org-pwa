@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v439';
+const CACHE_NAME = 'org-pwa-shell-v440';
 
 const SHELL_FILES = [
   './',
@@ -134,6 +134,7 @@ const SHELL_FILES = [
   './src-browser/calendar-sync.js',
   './src-browser/capture-shortcuts.js',
   './src-browser/launch-params.js',
+  './src-browser/local-folder.js',
   './src-browser/platform.js',
   './src-browser/line-endings-adapter.js',
   './src-browser/floating-keyboard.js',

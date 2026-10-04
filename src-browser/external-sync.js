@@ -10,6 +10,7 @@ import { resolveEffectiveStartupConfig } from '../src/startup-config.js';
 import { getSyncMeta, setSyncMeta } from '../src/sync-engine.js';
 import { pushSnapshot } from '../src/undo-history.js';
 import { filesystemAdapter, githubAdapter, inputFileAdapter, webdavAdapter } from './adapters.js';
+import { folderAvailable } from './local-folder.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
 import { S } from './app-state.js';
 import { syncContentOffset } from './chrome.js';
@@ -117,7 +118,9 @@ export async function writeToOtherFile(fileId, { label, allowMissing, mutate }) 
   }
 
   const adapter = activeDiskAdapter();
-  if ((S.state.storageKind === 'filesystem' || S.state.storageKind === 'input') && !(await adapter.exists(fileId))) {
+  // a local file must exist already (a picker makes it); but with an org-pwa folder a missing one is created there, as on GitHub
+  const creatable = allowMissing && S.state.storageKind === 'filesystem' && folderAvailable();
+  if ((S.state.storageKind === 'filesystem' || S.state.storageKind === 'input') && !creatable && !(await adapter.exists(fileId))) {
     setStatus(
       `Can't ${label} to "${fileId}" automatically \u2014 local files need that file picked/created once first (browser security requires a file picker per file, not something this can do on its own). Try File \u2192 Open or Save As on "${fileId}" first, or use GitHub/WebDAV for automatic cross-file ${label}ing.`
     );

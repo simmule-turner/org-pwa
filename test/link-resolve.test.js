@@ -509,3 +509,16 @@ test('resolveAttachmentTarget document-relative resolution still correctly inher
   const result = resolveAttachmentTarget(doc, child, 'attachment:notes.pdf', 'journal/2026.org');
   assert.equal(result, 'journal/data/xy/z789/notes.pdf');
 });
+
+// ---- local: ------------------------------------------------------------------------------------
+
+test('local: is a file-link scheme of its own, and a local: link resolves like github: and webdav: with the same ::target syntax', () => {
+  assert.equal(isFileLink('local:contacts.org'), true);
+  assert.equal(fileLinkScheme('local:contacts.org'), 'local');
+  const doc = parseOrg('* A');
+  assert.deepEqual(resolveLinkTarget(doc, 'local:notes/todo.org::*Inbox'), { type: 'file', scheme: 'local', path: 'notes/todo.org', inFileTarget: '*Inbox' });
+});
+
+test('resolveImagePath: a local: prefix is stripped like the other schemes', () => {
+  assert.equal(resolveImagePath('local:photo.png', 'journal/notes.org'), 'journal/photo.png');
+});

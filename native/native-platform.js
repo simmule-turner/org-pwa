@@ -137,6 +137,11 @@
         delete: function (path) {
           return attachments.remove({ path: path }).then(function () {});
         },
+        exists: function (path) {
+          return attachments.exists({ path: path }).then(function (result) {
+            return !!result.value;
+          });
+        },
       },
     };
   }

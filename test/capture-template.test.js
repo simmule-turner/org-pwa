@@ -12,6 +12,7 @@ import {
   insertCapture,
   resolveCaptureFileId,
   getCaptureFileScheme,
+  storageKindForScheme,
   computeNonCollidingKeys,
 } from '../src/capture-template.js';
 
@@ -1159,4 +1160,20 @@ test('the new tokens are not prompts: they add no question to a template\u2019s 
 test('they work in preText and postText too, expanded together with the template', () => {
   const r = expandCaptureText('pre %i\n', 'body %a', '\npost %x', { now, shared: SHARED, clipboard: 'clip' });
   assert.deepEqual([r.preText, r.text, r.postText], ['pre First line\npre Second line\n', 'body [[https://example.com/a][Example page]]', '\npost clip']);
+});
+
+// ---- local: ---------------------------------------------------------------------------------------
+
+test('local: is a capture/refile file scheme like github: and webdav:, lowercased, and its prefix is stripped from the file id', () => {
+  assert.deepEqual(getCaptureFileScheme('local:inbox.org'), { scheme: 'local', path: 'inbox.org' });
+  assert.deepEqual(getCaptureFileScheme('Local:inbox.org'), { scheme: 'local', path: 'inbox.org' });
+  assert.equal(resolveCaptureFileId('local:inbox.org', 'notes.org'), 'inbox.org');
+  assert.equal(resolveCaptureFileId('local:inbox.org', 'journal/notes.org'), 'journal/inbox.org', 'a bare name is a sibling of the open file, as for the other schemes');
+  assert.equal(resolveCaptureFileId('local:areas/work.org', 'notes.org'), 'areas/work.org', 'a path with a folder is used as it is');
+});
+
+test('storageKindForScheme: local: names the device\u2019s own storage, which the app calls filesystem; the others are named as they are', () => {
+  assert.equal(storageKindForScheme('local'), 'filesystem');
+  assert.equal(storageKindForScheme('github'), 'github');
+  assert.equal(storageKindForScheme('webdav'), 'webdav');
 });

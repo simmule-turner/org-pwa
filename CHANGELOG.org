@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v440 — local: files everywhere a scheme is accepted
+local: now works wherever github: and webdav: do: org-agenda-files,
+org-contacts-files (new), org-refile-targets, a capture template's file,
+links and #+INCLUDE. In the Android app a local: name is found in the
+org-pwa folder (Documents/org-pwa by default), so local:contacts.org
+needs no picking, capture and refile can write there, and capture
+creates a missing file.
+
 * v439 — Android: exports to Downloads, local files in Documents/org-pwa, attachments on local files
 In the Android app, exports and backups now go straight into the
 Downloads folder and the status line says so; opening and creating local

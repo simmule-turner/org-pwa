@@ -626,3 +626,14 @@ test('the fix is scoped to code/verbatim only -- real math legitimately nested i
   assert.equal(fragments.length, 1);
   assert.equal(fragments[0].source, 'x = 1');
 });
+
+test('a bare local: link auto-links, and so does an angle-bracketed one', () => {
+  const bare = parseInline('contacts live in local:contacts.org today').find((n) => n.type === 'link');
+  assert.equal(bare && bare.target, 'local:contacts.org');
+  const angle = parseInline('see <local:notes/todo.org> now').find((n) => n.type === 'link');
+  assert.equal(angle && angle.target, 'local:notes/todo.org');
+});
+
+test('the word local: followed by a space is ordinary text, not a link', () => {
+  assert.equal(parseInline('the local: setting').some((n) => n.type === 'link'), false);
+});

@@ -68,10 +68,14 @@ You do this once, on any computer with a JDK (Android Studio includes one):
   file names a new one, also starting there.
 - **Saving a file out:** exports and settings backups go straight into **Downloads**, with no screen in between, and the
   status line says `Saved "name" to Downloads.` (On Android 9 and older it still opens the "save as" screen.)
-- **Attachments on a local file:** the first time you attach something (or record audio) to a heading of a local file,
-  Android's folder picker opens, starting at `Documents/org-pwa`. Choose a folder and tap "Use this folder". Attachments are
-  then written under `data/xx/yyyy/` inside it, and Open, Save and Delete work as on GitHub or WebDAV. The command
-  *Choose the attachments folder* changes it.
+- **The org-pwa folder:** the first time something needs it (a local file's first attachment, or a `local:` name that is
+  not found), Android's folder picker opens, starting at `Documents/org-pwa`. Choose a folder and tap "Use this folder".
+  - **Attachments** are written under `data/xx/yyyy/` inside it, and Open, Save and Delete work as on GitHub or WebDAV.
+  - **`local:` files** are found in it by name, anywhere `github:` or `webdav:` can be written: `org-agenda-files`,
+    `org-contacts-files`, `org-refile-targets`, a capture template's `file`, a link, or `#+INCLUDE`. `local:contacts.org`
+    is `contacts.org` in the folder; `local:areas/home.org` is in its `areas` folder. A file opened through the file
+    picker is found by name first. Capture and refile into such a file can write to it (and create it, for capture).
+  - The command *Choose the org-pwa folder* changes it.
 - **Placing the app bar:** if the bar sits too low or too high, run the command *Show display measurements*, press OK
   to copy the numbers, and send them.
 - It does **not** share data with the PWA: the shell's address is `https://localhost`, so its settings, tokens and

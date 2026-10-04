@@ -75,6 +75,7 @@ function nativeSide() {
       read: async ({ path }) => (tree.files.has(path) ? { found: true, base64: tree.files.get(path) } : { found: false }),
       write: async ({ path, base64 }) => { tree.files.set(path, base64); window.__calls.push(['attachWrite', path, base64]); },
       remove: async ({ path }) => ({ deleted: tree.files.delete(path) }),
+      exists: async ({ path }) => ({ value: tree.files.has(path) }),
     },
     LocalFiles: {
       pickOpen: async () => { if (window.__cancelNext) { window.__cancelNext = false; throw new Error('cancelled'); } return { name: 'phone.org' }; },
@@ -330,6 +331,26 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
   check(outcome.link.includes('attachment:doc.pdf'), 'and linked from the heading', outcome.link);
   check(viewedAttachment && viewedAttachment[1].name === 'doc.pdf' && Buffer.from(viewedAttachment[1].base64, 'base64').toString() === '%PDF-1.4', 'opening it reads the same bytes back from the folder and hands them to the viewer');
   check(!outcome.after.includes('attachment:doc.pdf'), 'deleting removes the link', outcome.after);
+
+  // local files by name, found in the same folder: read, written, listed as present or absent, with text that is not ASCII
+  // and a file far larger than a function call can take as arguments (the base64 conversion must go in pieces)
+  const byName = await page.evaluate(async () => {
+    const { filesystemAdapter } = await import('/src-browser/adapters.js');
+    const text = '* Caf\u00e9 \u2014 \u2713 \u65e5\u672c\u8a9e\n' + 'x'.repeat(400000) + '\n';
+    await filesystemAdapter.write('notes/new.org', text);
+    const back = await filesystemAdapter.read('notes/new.org');
+    return {
+      access: await filesystemAdapter.access('notes/new.org'),
+      exists: await filesystemAdapter.exists('notes/new.org'),
+      same: !!back && back.content === text,
+      length: back ? back.content.length : 0,
+      missing: await filesystemAdapter.read('nope.org'),
+      missingAccess: await filesystemAdapter.access('nope.org'),
+      missingExists: await filesystemAdapter.exists('nope.org'),
+    };
+  });
+  check(byName.access === 'granted' && byName.exists === true && byName.same === true, 'a local file by name is written to the folder and read back exactly, non-ASCII text and 400 KB included', JSON.stringify(byName));
+  check(byName.missing === null && byName.missingAccess === 'none' && byName.missingExists === false, 'a name that is in neither place is reported as absent, not as an error', JSON.stringify(byName));
   check(problems.length === 0, 'no page errors', JSON.stringify(problems));
   await context.close();
 }

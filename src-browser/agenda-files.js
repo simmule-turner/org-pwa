@@ -4,6 +4,7 @@ import { parseOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { scheduleCalendarSync } from './calendar-sync.js';
 import { S } from './app-state.js';
+import { platform } from './platform.js';
 import { render } from './render.js';
 import { renderSearchPanel } from './search-ui.js';
 import { renderSettingsView } from './settings-view.js';
@@ -83,7 +84,7 @@ export function ensureAgendaFilesLoaded({ prompt = false } = {}) {
     }
     const adapter = scheme === 'github' ? githubAdapter : scheme === 'webdav' ? webdavAdapter : null;
     if (!adapter) {
-      agendaFilesCache.set(key, { error: `Unsupported scheme "${scheme}" \u2014 only github/webdav are supported for agenda files.` });
+      agendaFilesCache.set(key, { error: `Unsupported scheme "${scheme}" \u2014 only github, webdav and local are supported for agenda files.` });
       continue;
     }
 
@@ -112,31 +113,38 @@ export function ensureAgendaFilesLoaded({ prompt = false } = {}) {
   }
 }
 
-/** Loads `local:` agenda files, one at a time: a file opened on this device earlier with File -> Open -> Local
- *  file. The browser keeps access to such a file only while it says so, and asking for it shows a prompt, so this
- *  NEVER asks unless `prompt` is true, which only a person's own tap on the refresh button passes. Without
- *  access the entry is an error that says what to do (shown above the agenda, like any file that fails to
- *  load), and with it the file is read like any other. Always marked readOnly: nothing may be written into one of
- *  these (Refile, Capture and Replace use only writable entries), since writing a local file back needs its own
- *  permission and its own adapter. One at a time because concurrent permission prompts are not reliable. */
+/** What to tell the person when a `local:` file is not found: it is looked up among the files opened through the picker, and
+ *  then in the org-pwa folder (local-folder.js), so say which of those is missing. */
+function localNotFoundMessage(path) {
+  if (!platform.attachments.supported()) return `"${path}" hasn't been opened on this device yet. Open it once with File \u2192 Open \u2192 Local file.`;
+  return S.attachmentsFolder
+    ? `"${path}" isn't in the org-pwa folder "${S.attachmentsFolder}", and hasn't been opened on this device.`
+    : `"${path}" hasn't been opened on this device, and no org-pwa folder is chosen. Choose the folder once (the command "Choose the org-pwa folder"), or open the file with File \u2192 Open \u2192 Local file.`;
+}
+
+/** Reads one `local:` file for a list of agenda or contacts files: found by name, among the files opened on this device with
+ *  File -> Open -> Local file or else in the org-pwa folder. The browser keeps access to a picked file only while it says so,
+ *  and asking for it shows a prompt, so this NEVER asks unless `prompt` is true, which only a person's own tap on the refresh
+ *  button passes. Without access the entry is an error that says what to do (shown above the list, like any file that fails to
+ *  load). Always marked readOnly: nothing may be written into one of these (Refile, Capture and Replace use only writable
+ *  entries), since writing it back needs the adapter of the open document, which may be on another backend. */
+async function readLocalEntry(path, prompt) {
+  const marks = { local: true, readOnly: true };
+  try {
+    const access = await filesystemAdapter.access(path);
+    if (access === 'none') return { ...marks, error: localNotFoundMessage(path) };
+    if (access !== 'granted' && !prompt) return { ...marks, needsAccess: true, error: `"${path}" needs permission to be read. Tap \u21bb to allow it.` };
+    const result = await filesystemAdapter.read(path, { prompt });
+    return result ? { ...marks, doc: parseOrg(result.content), documentId: path } : { ...marks, error: `"${path}" not found.` };
+  } catch (err) {
+    return { ...marks, needsAccess: true, error: `"${path}" could not be read: ${err.message}. Tap \u21bb to try again.` };
+  }
+}
+
+/** Loads the `local:` agenda files, one at a time (concurrent permission prompts are not reliable). */
 async function loadLocalAgendaFiles(entries, prompt) {
   for (const { key, path } of entries) {
-    const marks = { local: true, readOnly: true };
-    let entry;
-    try {
-      const access = await filesystemAdapter.access(path);
-      if (access === 'none') {
-        entry = { ...marks, error: `"${path}" hasn't been opened on this device yet. Open it once with File \u2192 Open \u2192 Local file.` };
-      } else if (access !== 'granted' && !prompt) {
-        entry = { ...marks, needsAccess: true, error: `"${path}" needs permission to be read. Tap \u21bb to allow it.` };
-      } else {
-        const result = await filesystemAdapter.read(path, { prompt });
-        entry = result ? { ...marks, doc: parseOrg(result.content), documentId: path } : { ...marks, error: `"${path}" not found.` };
-      }
-    } catch (err) {
-      entry = { ...marks, needsAccess: true, error: `"${path}" could not be read: ${err.message}. Tap \u21bb to try again.` };
-    }
-    agendaFilesCache.set(key, entry);
+    agendaFilesCache.set(key, await readLocalEntry(path, prompt));
     if (S.currentView === 'agenda' || S.currentView === 'tasklist') render();
     if (S.settingsOpen) renderSettingsView();
     if (S.searchOpen) renderSearchPanel();
@@ -258,9 +266,18 @@ export function ensureContactsFilesLoaded() {
     const colonIndex = key.indexOf(':');
     const scheme = colonIndex === -1 ? key : key.slice(0, colonIndex);
     const path = colonIndex === -1 ? '' : key.slice(colonIndex + 1);
+    if (scheme === 'local') {
+      // never asks for permission: a contacts file that needs it says so, and the agenda's refresh button is the one place that asks
+      const promise = readLocalEntry(path, false).then((entry) => {
+        contactsFilesCache.set(key, entry);
+        if (S.settingsOpen) renderSettingsView();
+      });
+      contactsFilesCache.set(key, { loading: true, promise });
+      continue;
+    }
     const adapter = scheme === 'github' ? githubAdapter : scheme === 'webdav' ? webdavAdapter : null;
     if (!adapter) {
-      contactsFilesCache.set(key, { error: `Unsupported scheme "${scheme}" \u2014 only github/webdav are supported for contacts files.` });
+      contactsFilesCache.set(key, { error: `Unsupported scheme "${scheme}" \u2014 only github, webdav and local are supported for contacts files.` });
       continue;
     }
 

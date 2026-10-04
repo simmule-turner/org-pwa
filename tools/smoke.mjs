@@ -3214,7 +3214,7 @@ check('attachments on a LOCAL document: refused with a pointer before a folder i
 
   // 1. no folder yet: reading is refused, with the way forward
   await page.evaluate(`(async () => { const { openAttachmentLink } = await import('/src-browser/attachments-flow.js'); await openAttachmentLink('attachment:doc.pdf', ${heading}); })()`);
-  expect((await status()).includes('Choose the attachments folder first'), `before a folder: ${await status()}`);
+  expect((await status()).includes('Choose the org-pwa folder first'), `before a folder: ${await status()}`);
 
   // 2. backing out of the folder picker when attaching is silent: no folder, no error message
   await page.evaluate(() => { window.__backOut = true; });
@@ -3309,6 +3309,153 @@ check('saving a file out: the status says where it went when the platform report
   await useSaveFile('() => {}'); // what a browser's download does: nothing to report
   await exportSettings();
   expect(!(await status()).includes('Saved') && !(await status()).includes('Couldn'), `a platform that reports nothing adds nothing: ${await status()}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('local: resolves in the org-pwa folder wherever a scheme is accepted: org-agenda-files, org-contacts-files, org-refile-targets, a capture template\u2019s file, a link and #+INCLUDE, with the right message when there is no folder or the file is not in it', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 412, height: 900 });
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `<${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]}>`;
+  const phone = ['* Main', '# Local Variables:', '# org-agenda-files: local:agenda.org', '# org-contacts-files: local:contacts.org', '# org-refile-targets: local:inbox.org level=1', '# End:', ''].join('\n');
+  await page.evaluate(async ({ phone, stamp }) => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    const picked = new Map([['phone.org', phone]]); // the one file opened through the picker
+    const tree = new Map([
+      ['agenda.org', `* TODO Folder task\nSCHEDULED: ${stamp}\n`],
+      ['contacts.org', '* Alex Example\n:PROPERTIES:\n:BIRTHDAY: 1990-10-08\n:END:\n'],
+      ['inbox.org', '* Inbox\n'],
+      ['included.org', 'Text from the folder\n'],
+    ]);
+    const enc = (t) => btoa(String.fromCharCode(...new TextEncoder().encode(t)));
+    const dec = (b) => new TextDecoder().decode(Uint8Array.from(atob(b), (c) => c.charCodeAt(0)));
+    window.__tree = tree;
+    window.__folder = null;
+    installPlatform({
+      localFiles: {
+        supported: () => true,
+        pickOpen: async () => 'phone.org',
+        pickNew: async (kv, name) => name,
+        adapter: {
+          async read(id) { return picked.has(id) ? { content: picked.get(id), hash: 'h' } : null; },
+          async write(id, content) { picked.set(id, content); return { hash: 'h' }; },
+          async exists(id) { return picked.has(id); },
+          async access(id) { return picked.has(id) ? 'granted' : 'none'; },
+        },
+      },
+      attachments: {
+        supported: () => true,
+        folder: async () => (window.__folder ? { name: window.__folder } : null),
+        pickFolder: async () => { window.__folder = 'org-pwa'; return { name: 'org-pwa' }; },
+        adapter: {
+          readBinary: async (path) => (tree.has(path) ? { base64: enc(tree.get(path)) } : null),
+          writeBinary: async (path, base64) => { tree.set(path, dec(base64)); },
+          delete: async (path) => { tree.delete(path); },
+          exists: async (path) => tree.has(path),
+        },
+      },
+    });
+  }, { phone, stamp });
+  await fileMenu(page, 'Open', 'Local file');
+  await page.waitForFunction(() => document.getElementById('modelineBar').innerText.includes('phone.org'), null, { timeout: 8000 });
+  const bodyText = async () => (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+
+  // 1. no folder chosen yet: the agenda says so, and names the way forward
+  await viewMenu(page, 'Agenda');
+  await page.waitForTimeout(1200);
+  let t = await bodyText();
+  expect(t.includes('no org-pwa folder is chosen') && t.includes('Choose the org-pwa folder'), `with no folder: ${t.slice(0, 260)}`);
+
+  // 2. a folder is chosen, but the file is not in it: the message names the folder
+  await page.evaluate(async () => {
+    window.__tree.delete('agenda.org');
+    const { chooseAttachmentsFolder } = await import('/src-browser/attachments-store.js');
+    await chooseAttachmentsFolder();
+    const { ensureAgendaFilesLoaded } = await import('/src-browser/agenda-files.js');
+    const { agendaFilesCache } = await import('/src-browser/singletons.js');
+    agendaFilesCache.clear();
+    ensureAgendaFilesLoaded();
+  });
+  await page.waitForTimeout(800);
+  t = await bodyText();
+  expect(t.includes('isn\'t in the org-pwa folder "org-pwa"'), `with a folder but no file: ${t.slice(0, 260)}`);
+
+  // 3. org-agenda-files: the file is there now, and the agenda shows it
+  await page.evaluate(async ({ stamp }) => {
+    window.__tree.set('agenda.org', `* TODO Folder task\nSCHEDULED: ${stamp}\n`);
+    const { ensureAgendaFilesLoaded } = await import('/src-browser/agenda-files.js');
+    const { agendaFilesCache } = await import('/src-browser/singletons.js');
+    agendaFilesCache.clear();
+    ensureAgendaFilesLoaded();
+  }, { stamp });
+  await page.waitForFunction(() => document.body.innerText.includes('Folder task'), null, { timeout: 8000 });
+  expect(true, 'org-agenda-files: local:agenda.org is read from the folder');
+
+  // 4. org-contacts-files
+  const contacts = await page.evaluate(async () => {
+    const { syncContactsFilesConfig, ensureContactsFilesLoadedAndWait } = await import('/src-browser/agenda-files.js');
+    const { contactsFilesCache } = await import('/src-browser/singletons.js');
+    syncContactsFilesConfig();
+    await ensureContactsFilesLoadedAndWait();
+    return [...contactsFilesCache.entries()].map(([k, e]) => ({ key: k, hasDoc: !!e.doc, error: e.error || null, title: e.doc && e.doc.children[0] && e.doc.children[0].title }));
+  });
+  expect(contacts.length === 1 && contacts[0].hasDoc && contacts[0].title === 'Alex Example', `org-contacts-files: local:contacts.org is read from the folder: ${JSON.stringify(contacts)}`);
+
+  // 5. org-refile-targets
+  const refile = await page.evaluate(async () => {
+    const { parseRefileTargetsWithErrors } = await import('/src/refile.js');
+    const { loadRefileTargetDocs } = await import('/src-browser/refile-flow.js');
+    const { entries, errors } = parseRefileTargetsWithErrors('local:inbox.org level=1');
+    const docs = await loadRefileTargetDocs(entries);
+    return { errors: errors.length, ids: Object.keys(docs) };
+  });
+  expect(refile.errors === 0 && refile.ids.includes('inbox.org'), `org-refile-targets: local:inbox.org is loaded as a target: ${JSON.stringify(refile)}`);
+
+  // 6. a capture template's file: into a file in the folder, and into one that does not exist yet (created there)
+  const captured = await page.evaluate(async () => {
+    const { runCaptureWithAnswers } = await import('/src-browser/capture-ui.js');
+    await runCaptureWithAnswers({ key: 'z', description: 'Z', type: 'item', olp: ['Inbox'], template: 'Captured into the folder', file: 'local:inbox.org', emptyLines: 0 }, []);
+    await runCaptureWithAnswers({ key: 'y', description: 'Y', type: 'item', olp: ['Fresh'], template: 'Into a new file', file: 'local:fresh.org', emptyLines: 0 }, []);
+    return { inbox: window.__tree.get('inbox.org') || null, fresh: window.__tree.get('fresh.org') || null };
+  });
+  expect(captured.inbox && captured.inbox.includes('Captured into the folder'), `a capture template with file: local:inbox.org writes into the folder: ${JSON.stringify(captured.inbox)}`);
+  expect(captured.fresh && captured.fresh.includes('Into a new file'), `and a missing file is created there: ${JSON.stringify(captured.fresh)}`);
+  const mismatch = await page.evaluate(async () => {
+    const { runCaptureWithAnswers } = await import('/src-browser/capture-ui.js');
+    await runCaptureWithAnswers({ key: 'g', description: 'G', type: 'item', olp: ['Inbox'], template: 'x', file: 'github:other.org', emptyLines: 0 }, []);
+    return document.getElementById('minibuffer').innerText;
+  });
+  expect(mismatch.includes('targets github, but the currently open document is on a local file'), `another scheme is still refused, now naming the local file: ${mismatch}`);
+
+  // 7. links: the explicit scheme works from a document on another backend (here, one that says it is on WebDAV), and a plain
+  //    file: link inside a local document finds the file in the folder too
+  const kindAfter = async (link) => page.evaluate(async (link) => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { openFileLink } = await import('/src-browser/documents-io.js');
+    await openFileLink(link);
+    return { kind: S.state.storageKind, id: S.state.documentId };
+  }, link);
+  await page.evaluate(async () => { (await import('/src-browser/app-state.js')).S.state.storageKind = 'webdav'; });
+  const viaScheme = await kindAfter({ type: 'file', scheme: 'local', path: 'inbox.org', inFileTarget: null });
+  expect(viaScheme.kind === 'filesystem' && viaScheme.id === 'inbox.org', `[[local:inbox.org]] opens the file from the folder even from a WebDAV document: ${JSON.stringify(viaScheme)}`);
+  const viaPlain = await kindAfter({ type: 'file', scheme: 'file', path: 'fresh.org', inFileTarget: null });
+  expect(viaPlain.kind === 'filesystem' && viaPlain.id === 'fresh.org', `and a plain [[file:fresh.org]] link in a local document finds it in the folder: ${JSON.stringify(viaPlain)}`);
+  const included = await page.evaluate(async () => (await (await import('/src-browser/export-import.js')).resolveIncludePath('local:included.org')) || null);
+  expect(included && included.content === 'Text from the folder\n', `#+INCLUDE: local:included.org reads it: ${JSON.stringify(included)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('local: without an org-pwa folder (a browser) behaves as it did: only files opened through the picker, and the message says so', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 412, height: 900 });
+  await newDocument(page, ['* Main', '# Local Variables:', '# org-agenda-files: local:nothere.org', '# End:', ''].join('\n'));
+  await viewMenu(page, 'Agenda');
+  await page.waitForTimeout(1200);
+  const t = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+  expect(t.includes('hasn\'t been opened on this device yet. Open it once with File') && !t.includes('org-pwa folder'), `the browser message is unchanged: ${t.slice(0, 260)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

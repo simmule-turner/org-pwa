@@ -701,13 +701,19 @@ function resolveCaptureFileId(file, currentFileId) {
   return dir + resolved;
 }
 
-const CAPTURE_FILE_SCHEMES = new Set(['github', 'webdav']);
+const CAPTURE_FILE_SCHEMES = new Set(['github', 'webdav', 'local']);
+
+/** The storage kind (S.state.storageKind) a scheme names. They differ for exactly one: `local:` is the device's own storage,
+ *  which the app calls 'filesystem'. The caller compares this with the open document's kind (see getCaptureFileScheme). */
+function storageKindForScheme(scheme) {
+  return scheme === 'local' ? 'filesystem' : scheme;
+}
 
 /**
  * Splits a capture template's raw `file` value into `{ scheme, path }`
  * -- `scheme` is null if there's no "word:" prefix at all (an ordinary
  * bare filename or path, ":" not being a normal character in one);
- * a recognized backend name ("github"/"webdav", always lowercased,
+ * a recognized backend name ("github"/"webdav"/"local", always lowercased,
  * matching however it was actually cased in the template) if the
  * prefix matches one of those; or the VERBATIM, unrecognized prefix
  * text itself (original casing preserved) for anything else that
@@ -771,5 +777,6 @@ export {
   resolveCaptureFileId,
   getCaptureFileScheme,
   CAPTURE_FILE_SCHEMES,
+  storageKindForScheme,
   computeNonCollidingKeys,
 };

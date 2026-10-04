@@ -21,10 +21,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * A place for the attachments of local documents. A local document is one file the person picked, and access to one file is
- * not access to the folder around it, so an attachment has nowhere to go beside it. Instead the person chooses ONE folder,
- * once, in Android's folder picker; the app keeps permission to it, and attachments are read and written inside it by
- * relative path (data/xx/yyyy/name, as on GitHub and WebDAV). native-platform.js turns these methods into the shape the web
+ * The org-pwa folder: a place for the attachments of local documents, and for local files found by name. A local document is
+ * one file the person picked, and access to one file is not access to the folder around it, so an attachment has nowhere to go
+ * beside it, and `local:contacts.org` has nowhere to be found. Instead the person chooses ONE folder, once, in Android's folder
+ * picker (it starts at Documents/org-pwa); the app keeps permission to it, and files are read and written inside it by relative
+ * path (data/xx/yyyy/name for attachments, as on GitHub and WebDAV; contacts.org for a local file). native-platform.js turns these methods into the shape the web
  * app's platform layer expects (src-browser/platform.js, attachments).
  */
 @CapacitorPlugin(name = "Attachments")
@@ -136,6 +137,15 @@ public class AttachmentsPlugin extends Plugin {
         } catch (IOException | SecurityException | IllegalArgumentException e) {
             call.reject("Could not write " + path + ": " + e.getMessage());
         }
+    }
+
+    /** Whether a file is there, by its path inside the folder. Resolves { value }. */
+    @PluginMethod
+    public void exists(PluginCall call) {
+        DocumentFile file = locate(call.getString("path"), false);
+        JSObject out = new JSObject();
+        out.put("value", file != null && file.isFile());
+        call.resolve(out);
     }
 
     /** Deletes a file by its path inside the folder. Resolves { deleted }: false if it was not there. */

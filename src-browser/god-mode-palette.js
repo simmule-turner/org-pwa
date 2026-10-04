@@ -366,7 +366,7 @@ export const PALETTE_NEEDS = {
   anyClocked: () => (recentlyClockedAcrossSessions(1).length ? null : 'nothing has been clocked yet'),
   calendar: () => (effectiveCalendarConfig() ? null : 'no calendar address is set (Settings \u2192 Calendar)'),
   captureShortcuts: () => (platform.captureShortcuts.supported() ? null : 'only in the Android app'),
-  attachmentsFolder: () => (platform.attachments.supported() ? null : 'only in the Android app'),
+  orgPwaFolder: () => (platform.attachments.supported() ? null : 'only in the Android app'),
   archived: (target) => (target && isArchivedInPlace(target) ? null : 'this heading isn\u2019t archived'),
   notArchived: (target) => (target && isArchivedInPlace(target) ? 'it is already archived \u2014 use Unarchive' : null),
 };
@@ -516,7 +516,7 @@ export function paletteCommandList() {
     { id: 'help', label: 'Help', orgName: 'describe-mode', keys: 'C-h m', group: 'App', keywords: ['readme', 'docs', 'manual'], run: chord('C-h m') },
     { id: 'display-info', label: 'Show display measurements', group: 'App', keywords: ['status bar', 'inset', 'viewport', 'keyboard', 'screen', 'notch', 'debug'], run: () => showDisplayMeasurements() },
     { id: 'capture-icon', label: 'Add a capture icon to the home screen', group: 'App', keywords: ['shortcut', 'launcher', 'pin', 'capture template'], needs: ['captureShortcuts'], run: () => addCaptureIconToHomeScreen() },
-    { id: 'attachments-folder', label: 'Choose the attachments folder', group: 'App', keywords: ['attachment', 'attach', 'folder', 'local file', 'data'], needs: ['attachmentsFolder'], run: () => chooseAttachmentsFolder() },
+    { id: 'org-pwa-folder', label: 'Choose the org-pwa folder', group: 'App', keywords: ['folder', 'local', 'attachments', 'attach', 'documents', 'data'], needs: ['orgPwaFolder'], run: () => chooseAttachmentsFolder() },
   ];
 }
 
