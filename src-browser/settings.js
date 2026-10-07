@@ -148,20 +148,22 @@ export async function setWebdavConfig(kvAdapter, config) {
   return merged;
 }
 
-// ---- CalDAV (the calendar the agenda is mirrored to) ----------------------
+// ---- CalDAV and CardDAV (the calendar the agenda is mirrored to, the address book the contacts are) ----------------
 
-const DEFAULT_CALDAV_CONFIG = { url: '', username: '', password: '' };
+const DEFAULT_CALDAV_CONFIG = { url: '', contactsUrl: '', username: '', password: '' };
 const CALDAV_SYNC_KEY = 'caldavSync'; // not in KEYS on purpose: KEYS is what backups export, and this is not a setting
+const CARDDAV_SYNC_KEY = 'carddavSync'; // likewise
 
-/** The calendar address and credentials. A blank username or password means "use the WebDAV ones" (a CalDAV server is
- *  often the same host), which calendar-sync.js applies; what is stored here is only what was typed. */
+/** The calendar address (`url`), the contacts address (`contactsUrl`), and the credentials both use. A blank username or
+ *  password means "use the WebDAV ones" (a CalDAV server is often the same host), which calendar-sync.js applies; what is
+ *  stored here is only what was typed. */
 export async function getCaldavConfig(kvAdapter) {
   const stored = await getJson(kvAdapter, KEYS.caldav, {});
   return { ...DEFAULT_CALDAV_CONFIG, ...stored };
 }
 
 export async function setCaldavConfig(kvAdapter, config) {
-  const merged = { ...DEFAULT_CALDAV_CONFIG, ...config, url: String((config && config.url) || '').trim() };
+  const merged = { ...DEFAULT_CALDAV_CONFIG, ...config, url: String((config && config.url) || '').trim(), contactsUrl: String((config && config.contactsUrl) || '').trim() };
   await setJson(kvAdapter, KEYS.caldav, merged);
   return merged;
 }
@@ -174,6 +176,15 @@ export async function getCaldavSyncState(kvAdapter) {
 
 export async function setCaldavSyncState(kvAdapter, state) {
   await setJson(kvAdapter, CALDAV_SYNC_KEY, state);
+}
+
+/** The same for the address book: what the contacts mirror last sent, per contact. Kept out of backups for the same reason. */
+export async function getCarddavSyncState(kvAdapter) {
+  return getJson(kvAdapter, CARDDAV_SYNC_KEY, { url: '', resources: {} });
+}
+
+export async function setCarddavSyncState(kvAdapter, state) {
+  await setJson(kvAdapter, CARDDAV_SYNC_KEY, state);
 }
 
 // ---- theme -----------------------------------------------------------

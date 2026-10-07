@@ -573,7 +573,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-weather-temperature-unit~ | ~°F~ | (own) ~°C~ or ~°F~ |
 | ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
 | ~org-xx-god-mode-button~ | ~t~ (shown) | (own) Whether the floating *[g]* god-mode button is shown (see [[#god-mode-mobile][God-mode without a hardware keyboard]]); also Settings → Quick Settings → *Keyboard* |
-| ~org-xx-menu-aliases~ | unset (no relabeling) | (own) Relabel or hide buttons across the File, More, Export and View menus (see [[#menu-customization][Menu customization]]) |
+| ~org-xx-menu-aliases~ | unset (no relabeling) | (own) Relabel or hide buttons across the File, More, Export, Import and View menus (see [[#menu-customization][Menu customization]]) |
 | ~org-xx-startup-with-show-photos~ | ~nil~ | (own) ~t~ shows a contact's photo as a thumbnail beside its field when a file opens: next to ~:PHOTO:~ in Flat style, in the "Photo" sub-heading's drawer in Tree style. It follows that field's visibility, so a collapsed contact or folded drawer shows no photo. It has no ~#+STARTUP:~ keyword (see [[#export][Contacts (.vcf) export]]) |
 | ~org-xx-updates-at-top~ | ~t~ | (own) Whether the Updates section is at the top of Settings or at the bottom |
 | ~solar-ampm~ | ~nil~ (24-hour) | (own) ~t~ uses 12-hour am/pm for the solar forms |
@@ -950,20 +950,22 @@ Files are fetched once per session. Once any are configured, a *↻* button in t
 
 Set in *Settings → Quick Settings → Contacts files*, or per document in Local Variables, exactly like [[#agenda-files][Agenda Files]] (real org-contacts' ~org-contacts-files~; ~github~, ~webdav~ and ~local~). [[#export][Contacts (.vcf)]] export's *This file + Contacts Files* scope scans them. The list is independent of Agenda Files, because the two commonly differ.
 
-*** Calendar sync (CalDAV)
+*** Calendar and contacts sync (CalDAV, CardDAV)
 :PROPERTIES:
 :CUSTOM_ID: calendar-sync
 :END:
 
-Mirror your agenda into a calendar on your own server, so its items appear, with alarms, in your phone's calendar app. Create a calendar on the server first (a Radicale or Nextcloud calendar), then set it in *Settings → Calendar (CalDAV)*: the calendar's address, and a username and password (blank means the WebDAV ones). Leave the address blank to turn it off.
+Mirror your agenda into a calendar on your own server, so its items appear, with alarms, in your phone's calendar app. Create a calendar on the server first (a Radicale or Nextcloud calendar), then set it in *Settings → Calendar (CalDAV) / Contacts (CardDAV)*: the calendar's address, and a username and password (blank means the WebDAV ones). Leave the address blank to turn it off.
 
 It is one-way: the calendar follows the agenda, and edits made in a calendar app are overwritten, so give it a calendar of its own. The app only ever removes events it created, and an event is removed only when its own file was loaded, so opening a different file never removes another file's events.
 
 What goes in: SCHEDULED, DEADLINE and plain timestamps, birthdays and diary entries, from the open file and your [[#agenda-files][Agenda Files]], completed items included (their state is in the description). A repeating item is one event with a recurrence rule, and a deadline's warning delay (~-3d~) becomes an alarm. One-off items are kept from a month back to six months ahead.
 
-It syncs after a save, when you return to the app, and at launch. *Sync agenda to calendar* does it now, and *Rebuild calendar from the agenda* removes the app's events and sends them all again. After a wrong address or password, automatic syncing stops until you change the settings or sync by hand.
+It syncs after a save, when you return to the app, and at launch. *Sync* in Settings does it now, and *Rebuild calendar* (or the palette's *Rebuild calendar from the agenda*) removes the app's events and sends them all again. After a wrong address or password, automatic syncing stops until you change the settings or sync by hand.
 
-Example: ~https://dav.example.com/radicale/me/calendar/~. Like WebDAV, the server must allow requests from the app (CORS), including ~PUT~, ~DELETE~ and ~PROPFIND~ with the ~Authorization~, ~Content-Type~ and ~Depth~ headers.
+*Contacts* work the same way. Create an address book on the server, and set its address as the *Contacts address*. It uses the same username and password as the calendar, and either address can be left blank. Your [[#contacts-files][Contacts Files]] are mirrored into it, one vCard per contact, in Flat or Tree style. The open file is not sent unless it is one of them, and a contact is removed only when its own file was loaded. *Sync* does the calendar and the contacts together, and says how each went. *Rebuild contacts* (or *Rebuild contacts from the contacts files*) removes the app's contacts and sends them all again. *Sync agenda to calendar* and *Sync contacts to the address book* do one each.
+
+Examples: ~https://dav.example.com/radicale/me/calendar/~ and ~https://dav.example.com/radicale/me/contacts/~. Like WebDAV, the server must allow requests from the app (CORS), including ~PUT~, ~DELETE~ and ~PROPFIND~ with the ~Authorization~, ~Content-Type~ and ~Depth~ headers.
 
 -----
 
@@ -1167,9 +1169,9 @@ A malformed entry (bad JSON in an OLP array, a function symbol that isn't a vali
 :CUSTOM_ID: menu-customization
 :END:
 
-~org-xx-menu-aliases~ (a Global or Local Variable; this app's own, not an org variable) relabels or hides buttons across the File, More, Export and View menus at once. Its sibling ~org-xx-extra-menu~ adds a new quick-access menu instead (see [[#extras-menu][Extras menu]]).
+~org-xx-menu-aliases~ (a Global or Local Variable; this app's own, not an org variable) relabels or hides buttons across the File, More, Export, Import and View menus at once. Its sibling ~org-xx-extra-menu~ adds a new quick-access menu instead (see [[#extras-menu][Extras menu]]).
 
-*Syntax*: double-quoted ~"menu:Label;alias"~ entries, space-separated and spread over several lines with a trailing ~\~. ~menu~ is ~file~, ~more~, ~export~ or ~view~. Settings → Quick Settings shows and edits it one entry per line (see [[#settings][Settings]]):
+*Syntax*: double-quoted ~"menu:Label;alias"~ entries, space-separated and spread over several lines with a trailing ~\~. ~menu~ is ~file~, ~more~, ~export~, ~import~ or ~view~. Settings → Quick Settings shows and edits it one entry per line (see [[#settings][Settings]]):
 
 #+BEGIN_SRC
 org-xx-menu-aliases: "more:Commands;💲 Commands" \
@@ -1178,9 +1180,9 @@ org-xx-menu-aliases: "more:Commands;💲 Commands" \
                      "more:Settings;⚙️ Settings"
 #+END_SRC
 
-Export is a step within the More menu and has its own namespace, ~export:~. A form like ~"more:export:HTML;📄"~ isn't valid: the colon splits only once, so it is read as the label ~export:HTML~ in the ~more~ namespace, which matches nothing and has no effect, without an error.
+Export and Import are steps within the More menu and have their own namespaces, ~export:~ and ~import:~. A form like ~"more:export:HTML;📄"~ isn't valid: the colon splits only once, so it is read as the label ~export:HTML~ in the ~more~ namespace, which matches nothing and has no effect, without an error.
 
-~Label~ is one of the menu's built-in button labels (the table below). A label that matches no button, or a ~menu~ other than the four, is skipped without an error. A label never mentioned keeps its default text: this is an override list, not a full redefinition.
+~Label~ is one of the menu's built-in button labels (the table below). A label that matches no button, or a ~menu~ other than the five, is skipped without an error. A label never mentioned keeps its default text: this is an override list, not a full redefinition.
 
 *~alias~*, after the semicolon:
 
@@ -1203,6 +1205,7 @@ The real labels of each menu, as used in ~"menu:Label;alias"~:
 | ~file~ | ~Export~, ~New~, ~Open~, ~Save~, ~Save As~ |
 | ~more~ | ~Commands~, ~Export~, ~Import~, ~Settings~ |
 | ~export~ | ~ASCII~, ~As-org~, ~Calendar (.ics)~, ~Contacts (.vcf)~, ~HTML~, ~Markdown~, ~ODT~ |
+| ~import~ | ~Contacts (.vcf)~, ~iCalendar (.ics)~ |
 | ~view~ | ~Agenda~, ~Org~, ~Text~, ~TODO~ |
 
 -----
@@ -1396,7 +1399,9 @@ Property drawers and ~ARCHIVE_*~ properties (see [[#archiving][Archiving]]) are 
 :CUSTOM_ID: import
 :END:
 
-*More → Import* currently reads vCard (.vcf) only, the reverse of [[#export][Contacts (.vcf) export]]. A ~.vcf~ file can hold one contact or many, and each becomes a new heading appended to the end of the open document. Nothing already in the file is touched.
+*More → Import* lists the formats it reads, as Export does: *Contacts (.vcf)* and *iCalendar (.ics)*. Each opens its own panel. The palette commands are ~org-vcard-import~ and ~icalendar-import-file~.
+
+*Contacts (.vcf)* is the reverse of [[#export][Contacts (.vcf) export]]. A ~.vcf~ file can hold one contact or many, and each becomes a new heading appended to the end of the open document. Nothing already in the file is touched.
 
 *Style*: *Flat* or *Tree*, the two structures Export supports, independent of the style you last exported. Tree is the default, because Flat keeps only one value per field type (see below). Exporting a contact, importing that file and exporting again gives an equivalent vCard.
 
@@ -1426,6 +1431,15 @@ Property drawers and ~ARCHIVE_*~ properties (see [[#archiving][Archiving]]) are 
 
 A ~.vcf~ file with no valid (~FN~) contacts gives a clear status message. A malformed line inside an otherwise valid contact is skipped without aborting the import.
 
+*iCalendar (.ics)* is the reverse of [[#export][Calendar (.ics) export]], and reads a calendar exported from Google, Apple, Outlook or Nextcloud. Each event becomes a new heading appended to the end of the open document, and each task a TODO heading. Nothing already in the file is touched. The sources are the same as for Contacts: *Choose iCalendar file…*, *Choose a heading…* and *This file* (which look for bodies starting with ~BEGIN:VCALENDAR~), and the *To: new buffer* checkbox, which has its own setting. There is no style or clean-up option.
+
+- An event's time is a timestamp in the heading's title, where the agenda looks for one: ~* Dentist <2026-10-05 Mon 09:00-10:30>~. An all-day event has a date only. A multi-day event is a range, ~<2026-10-05 Mon>--<2026-10-07 Wed>~, which the agenda shows on its first and last day.
+- Times are shown in this device's time zone. A time in UTC or in a named zone (~TZID~) is converted, as Emacs's ~icalendar-import-file~ does. A time with no zone is kept as written, and so is one in a zone name the browser doesn't know (Outlook's own names, for example); the status line says so.
+- ~LOCATION~, ~URL~ and ~UID~ become properties, ~CATEGORIES~ become tags, ~DESCRIPTION~ becomes the body, and a cancelled event keeps ~:STATUS: CANCELLED~.
+- A recurrence becomes a repeater when one says the same thing (~FREQ~ with ~INTERVAL~, such as ~+1w~). A rule a repeater cannot express (an end date or ~COUNT~, several weekdays, "the second Tuesday") is imported once, at its first date, with the rule in an ~:RRULE:~ property, and the status line counts them. Nothing becomes a repeater that would run on the wrong days or for ever.
+- A task (~VTODO~) becomes a ~TODO~ heading, or ~DONE~ with ~CLOSED~ once completed. ~DUE~ is its ~DEADLINE~, ~DTSTART~ its ~SCHEDULED~, and ~PRIORITY~ becomes ~[#A]~, ~[#B]~ or ~[#C]~.
+- Attendees, organizer, attachments and exceptions (~EXDATE~) are not carried over, and the status line names them ("Imported 2 events and 1 task from iCalendar. 1 unrecognized property was skipped: ATTENDEE."). Alarms are ignored.
+
 -----
 
 ** Help
@@ -1447,7 +1461,7 @@ Reached via *More (⋮) → Settings*, which replaces the outline until you navi
 - *Quick Settings*: labeled controls for the Global and Local Variables the app supports (see [[#local-variables][Local Variables]]), grouped by area, with an *Advanced* group for those with more complex syntax (refile targets, agenda files, the ~org-xx-*~ menu variables; see [[#extras-menu][Extras menu]] and [[#menu-customization][Menu customization]]). It shares storage with the Global Variables text box, so each reflects changes made in the other.
 - *Global Variables* and *Capture Templates*: raw ~name: value~ lines and raw JSON, each edited in a popup.
 - *GitHub* and *WebDAV*: connection details for each backend. Use a fine-grained GitHub token scoped to just that repository (Contents read and write only), and for WebDAV an app-specific password if your server offers one.
-- *Calendar (CalDAV)*: the calendar your agenda is mirrored to, right after WebDAV (see [[#calendar-sync][Calendar sync]]).
+- *Calendar (CalDAV) / Contacts (CardDAV)*: the calendar your agenda is mirrored to and the address book your contacts are, right after WebDAV (see [[#calendar-sync][Calendar and contacts sync]]).
 - *Appearance*: theme (System, Light or Dark), fonts, independent font sizes for main text, tables and menus, reading width, custom colors for Light and Dark, and *Paragraph Spacing*. Paragraph Spacing is two independent values laid out like the font sizes: one for paragraphs and one, *Tables*, for tables and other secondary blocks (source and quote blocks, rules). Each is 0 to 32px with a 10px default. Where a paragraph meets a table or block the larger value applies, and headings and list items space themselves.
 - *Backup*: *Export Settings* bundles everything on this page into one downloadable JSON file, and *Import Settings* merges a previously exported file back in, leaving anything it doesn't mention untouched.
 - *Updates*: shows the running version and checks for a new one. ~org-xx-updates-at-top~ controls whether it appears at the top of the page or further down.
@@ -1503,7 +1517,7 @@ The Android app is the same app in a native wrapper, with a few things done the 
 - *The org-pwa folder*: the first time something needs it (a local file's first attachment, or a ~local:~ name that isn't found), the app asks you to choose a folder, starting at ~Documents/org-pwa~. Attachments go under ~data/~ inside it, as on GitHub and WebDAV, and ~local:~ files are found in it by name, anywhere a ~github:~ or ~webdav:~ file can be named: ~org-agenda-files~, ~org-contacts-files~, ~org-refile-targets~, a capture template's ~file~, a link or ~#+INCLUDE~. ~local:contacts.org~ is ~contacts.org~ in that folder, and ~local:areas/home.org~ is ~home.org~ in its ~areas~ folder. A file you opened with the file picker is found by its name first. *Choose the org-pwa folder* changes it.
 - *Long-press the app icon*: your capture templates are listed, in the order they are in *Settings → Capture Templates*, as many as the launcher shows. Tapping one opens that template. Drag one onto the home screen for an icon, or run *Add a capture icon to the home screen*.
 - *Sharing in*: share a link or text from any app to *org-pwa*; Capture opens with it (see [[#capture-from-other-apps][Capturing from other apps]]).
-- *Separate from the browser*: the app keeps its own settings, tokens and documents, so enter GitHub, WebDAV and calendar settings again. A WebDAV or CalDAV server must allow the origin ~https://localhost~ (CORS).
+- *Separate from the browser*: the app keeps its own settings, tokens and documents, so enter GitHub, WebDAV, calendar and contacts settings again. A WebDAV, CalDAV or CardDAV server must allow the origin ~https://localhost~ (CORS).
 - *Updates*: the app is updated by installing a newer APK over the old one. *Settings → Updates* shows which version you have.
 
 *Screen size*: mobile-first below 900px wide. Above that, Settings and Help open in a resizable side panel next to the outline instead of replacing it, and the app uses the full window width. Reading width is unlimited by default; Settings → Appearance has an opt-in narrower column.
@@ -1534,8 +1548,9 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 | *Heading* | cycle TODO state, set priority, set effort estimate, edit details (schedule, deadline, timestamps, tags, properties), add heading or TODO heading after, promote, demote, move up, move down, cut, paste, archive, unarchive, refile, attachments, narrow, widen |
 | *Clocking* | clock in, clock out, cancel clock, continue last clock, go to clocked task, go to a recently clocked task |
 | *Document* | save, save as, open, new, undo, redo, undo history, toggle read-only, capture, recalculate all tables |
-| *View* | agenda, TODO list, outline view, text view, cycle visibility of the whole document, calendar, search, sync agenda to calendar, rebuild calendar |
+| *View* | agenda, TODO list, outline view, text view, cycle visibility of the whole document, calendar, search, sync agenda to calendar, rebuild calendar, sync contacts to the address book, rebuild contacts |
 | *Export* | the Export menu; this file as HTML, Markdown, ASCII, ODT or an Org buffer |
+| *Import* | Contacts (.vcf), ~org-vcard-import~; iCalendar (.ics), ~icalendar-import-file~ |
 | *App* | settings, help, show display measurements, add a capture icon to the home screen and choose the org-pwa folder (Android app only) |
 
 *Also in it*: your own capture templates and [[#extras-menu][Extras menu]] entries, one command each. *Capture: <description>* (such as *Capture: Meeting*) runs that template directly, and *Extras: <label>* runs that Extras entry as tapping it would. Both are read fresh each time the palette opens, so an edited template list or a document's own Extras menu (set in its Local Variables) is current. The plain *Capture* command still opens the template picker.

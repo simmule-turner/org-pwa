@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
-import { exportToVcard } from '../src/export-vcard.js';
+import { collectContactCards, exportToVcard } from '../src/export-vcard.js';
 import { parseVcards, importVcardsAsOrgText } from '../src/import-vcard.js';
 
 function docs(text, documentId = 'contacts.org') {
@@ -448,3 +448,33 @@ test('THE FEATURE (full real-world round trip): import the exact Simmule Turner 
   assert.equal(reparsed.adrs[0].label, '200 Morris St\nDurham, NC 27701\nUS');
   assert.equal(reparsed.adrs[0].type, 'WORK');
 });
+
+// ---- collectContactCards: one vCard per contact, for the CardDAV mirror -----------------------------
+
+const cardDocs = (...texts) => texts.map((text, i) => ({ documentId: `c${i}.org`, doc: parseOrg(text) }));
+
+test('collectContactCards: each contact is a vCard of its own, with the file and heading it came from', () => {
+  const docs = cardDocs('* Jane\n:PROPERTIES:\n:EMAIL: jane@example.com\n:END:\n* Just a note\nprose\n', '* Sam\n:PROPERTIES:\n:PHONE: 555\n:END:\n');
+  const cards = collectContactCards(docs);
+  assert.deepEqual(cards.map((c) => [c.documentId, c.heading.title]), [['c0.org', 'Jane'], ['c1.org', 'Sam']]);
+  for (const { lines } of cards) assert.deepEqual([lines[0], lines[lines.length - 1]], ['BEGIN:VCARD', 'END:VCARD']);
+  assert.ok(cards[0].lines.includes('EMAIL:jane@example.com') && cards[1].lines.includes('TEL:555'));
+});
+
+test('collectContactCards: Flat and Tree contacts are both found, in one file, with no style to choose', () => {
+  const doc = '* Flat Fran\n:PROPERTIES:\n:EMAIL: fran@example.com\n:END:\n* Tree Tom\n:PROPERTIES:\n:KIND: individual\n:FIELDTYPE: name\n:END:\n** tom@example.com\n:PROPERTIES:\n:FIELDTYPE: email\n:END:\n';
+  const cards = collectContactCards(cardDocs(doc));
+  assert.deepEqual(cards.map((c) => c.heading.title), ['Flat Fran', 'Tree Tom'], 'the field heading under Tom is not a contact of its own');
+  assert.ok(cards[1].lines.includes('EMAIL:tom@example.com'));
+});
+
+test('collectContactCards: archived, commented and :IGNORE: contacts are left out, as in the export', () => {
+  const doc = '* Kept\n:PROPERTIES:\n:EMAIL: k@example.com\n:END:\n* Archived :ARCHIVE:\n:PROPERTIES:\n:EMAIL: a@example.com\n:END:\n* # Commented\n:PROPERTIES:\n:EMAIL: c@example.com\n:END:\n* Ignored\n:PROPERTIES:\n:EMAIL: i@example.com\n:IGNORE: t\n:END:\n';
+  assert.deepEqual(collectContactCards(cardDocs(doc)).map((c) => c.heading.title), ['Kept']);
+});
+
+test('collectContactCards: the cards are the ones the export writes, so what is mirrored is what is exported', () => {
+  const docs = cardDocs('* Jane\n:PROPERTIES:\n:EMAIL: jane@example.com\n:PHONE: 555\n:ORG: Acme\n:END:\n');
+  assert.equal(collectContactCards(docs).map((c) => c.lines.join('\r\n')).join('\r\n') + '\r\n', exportToVcard(docs, { style: 'flat' }));
+});
+

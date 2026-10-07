@@ -12,16 +12,21 @@ import { kv } from './singletons.js';
 const CONCURRENCY = 4; // requests in flight at once: quick on a LAN without swamping a small server
 const AUTO_DELAY_MS = 2500; // a burst of saves or focus changes becomes one sync
 
-/** The calendar to use, or null when none is set. A blank username or password falls back to the WebDAV ones,
- *  since a CalDAV server is often the same host. */
-export function effectiveCalendarConfig() {
-  const c = S.caldavConfig;
-  if (!c || !c.url || !c.url.trim()) return null;
+/** The username and password for the calendar AND the address book (contacts-sync.js uses the same ones). A blank one falls
+ *  back to the WebDAV ones, since a CalDAV or CardDAV server is often the same host. */
+export function effectiveCaldavCredentials() {
+  const c = S.caldavConfig || {};
   return {
-    url: c.url.trim(),
     username: c.username || (S.webdavConfig && S.webdavConfig.username) || '',
     password: c.password || (S.webdavConfig && S.webdavConfig.password) || '',
   };
+}
+
+/** The calendar to use, or null when none is set. */
+export function effectiveCalendarConfig() {
+  const c = S.caldavConfig;
+  if (!c || !c.url || !c.url.trim()) return null;
+  return { url: c.url.trim(), ...effectiveCaldavCredentials() };
 }
 
 function plural(n, word) {
@@ -32,12 +37,13 @@ function plural(n, word) {
  * Brings the calendar in line with the agenda. `manual` is a person asking: it reports what happened and retries
  * after an earlier login failure. An automatic run says nothing unless something went wrong, and says that once.
  * `rebuild` first removes every event this app ever put in the calendar, then sends them all again; anything else in
- * the calendar is left alone.
+ * the calendar is left alone. `report` receives the final message of a run (the status line by default), so the Sync
+ * button can put the calendar's and the contacts' together in one line.
  */
-export async function syncAgendaToCalendar({ manual = false, rebuild = false } = {}) {
+export async function syncAgendaToCalendar({ manual = false, rebuild = false, report = setStatus } = {}) {
   const config = effectiveCalendarConfig();
   if (!config) {
-    if (manual) setStatus('Set the calendar address first (Settings \u2192 Calendar).');
+    if (manual) report('Set the calendar address first (Settings \u2192 Calendar).');
     return;
   }
   if (S.calendarSyncPaused && !manual) return;
@@ -54,7 +60,7 @@ export async function syncAgendaToCalendar({ manual = false, rebuild = false } =
     await waitForAgendaFilesLoaded();
     const docs = aggregateAgendaDocs().filter((d) => d.doc);
     if (docs.length === 0) {
-      if (manual) setStatus('Nothing to sync: no document is open and no agenda files are loaded.');
+      if (manual) report('Nothing to sync: no document is open and no agenda files are loaded.');
       return;
     }
     const wanted = buildCalendarResources(docs, { today: new Date() });
@@ -94,17 +100,17 @@ export async function syncAgendaToCalendar({ manual = false, rebuild = false } =
     S.calendarSyncLastError = null;
     const failures = [...puts.failed, ...dels.failed];
     if (failures.length > 0) {
-      reportProblem(`${plural(failures.length, 'event')} could not be synced and will be retried (${failures[0].error.message})`, manual);
+      reportProblem(`${plural(failures.length, 'event')} could not be synced and will be retried (${failures[0].error.message})`, manual, report);
     } else if (manual) {
       const parts = [];
       if (puts.ok.length) parts.push(`${puts.ok.length} sent`);
       if (dels.ok.length) parts.push(`${dels.ok.length} removed`);
       const skipped = unloadedAgendaFiles().length;
-      setStatus(`Calendar synced: ${parts.join(', ') || 'already up to date'}.` + (skipped ? ` ${plural(skipped, 'agenda file')} could not be loaded, so their events were left as they are.` : ''));
+      report(`Calendar synced: ${parts.join(', ') || 'already up to date'}.` + (skipped ? ` ${plural(skipped, 'agenda file')} could not be loaded, so their events were left as they are.` : ''));
     }
   } catch (err) {
     if (err && (err.kind === 'auth' || err.kind === 'not-found')) S.calendarSyncPaused = true; // asking again would only repeat it
-    reportProblem(err && err.message ? err.message : String(err), manual);
+    reportProblem(err && err.message ? err.message : String(err), manual, report);
   } finally {
     S.calendarSyncRunning = false;
     if (S.calendarSyncQueued) {
@@ -115,10 +121,10 @@ export async function syncAgendaToCalendar({ manual = false, rebuild = false } =
 }
 
 /** An automatic run shows a given problem once, so a server that is down does not nag at every save. */
-function reportProblem(message, manual) {
+function reportProblem(message, manual, report = setStatus) {
   if (!manual && S.calendarSyncLastError === message) return;
   S.calendarSyncLastError = message;
-  setStatus('Calendar sync: ' + message);
+  report('Calendar sync: ' + message);
 }
 
 /** Asks for a sync soon. Cheap to call from anywhere (a save, coming back to the app): calls close together become one. */

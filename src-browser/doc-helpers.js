@@ -169,6 +169,16 @@ export function vcardBodyHeadingsIn(headings) {
   return found;
 }
 
+/** Like vcardBodyHeadingsIn, for iCalendar text: the body text of each heading whose own body starts with BEGIN:VCALENDAR. */
+export function icalendarBodyHeadingsIn(headings) {
+  const found = [];
+  for (const { heading } of headings) {
+    const bodyText = (heading.bodyLines || []).join('\n').trim();
+    if (/^BEGIN:VCALENDAR/i.test(bodyText)) found.push(bodyText);
+  }
+  return found;
+}
+
 /** All headings within `heading`'s own subtree (itself included), in
  *  the same {heading, depth} shape allHeadingsInOrder returns for the
  *  whole document -- depth here is relative to `heading` itself (0),

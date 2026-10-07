@@ -185,6 +185,8 @@ export function renderMoreMenuContent() {
     'Import',
     () => {
       S.moreMenuStep = 'import';
+      S.importFormat = null;
+      S.importPickingHeading = false;
       renderMoreMenu();
     },
     !S.state.doc

@@ -27,7 +27,9 @@ import {
   getCaldavConfig,
   setCaldavConfig,
   getCaldavSyncState,
+  getCarddavSyncState,
   setCaldavSyncState,
+  setCarddavSyncState,
   exportAllSettings,
   importAllSettings,
   getRecentFiles,
@@ -431,19 +433,19 @@ test('the saved position is part of a settings backup and importing writes it ba
 // ---- the calendar (CalDAV) settings -------------------------------------------
 
 test('no calendar is configured by default', async () => {
-  assert.deepEqual(await getCaldavConfig(createInMemoryAdapter()), { url: '', username: '', password: '' });
+  assert.deepEqual(await getCaldavConfig(createInMemoryAdapter()), { url: '', contactsUrl: '', username: '', password: '' });
 });
 
 test('the calendar address and credentials round-trip, and the address is trimmed', async () => {
   const kv = createInMemoryAdapter();
   const saved = await setCaldavConfig(kv, { url: '  https://dav.example.com/radicale/me/cal/  ', username: 'me', password: 'pw' });
-  assert.deepEqual(saved, { url: 'https://dav.example.com/radicale/me/cal/', username: 'me', password: 'pw' });
+  assert.deepEqual(saved, { url: 'https://dav.example.com/radicale/me/cal/', contactsUrl: '', username: 'me', password: 'pw' });
   assert.deepEqual(await getCaldavConfig(kv), saved);
 });
 
 test('blank credentials stay blank in storage (the WebDAV ones are applied when syncing, not copied here)', async () => {
   const kv = createInMemoryAdapter();
-  assert.deepEqual(await setCaldavConfig(kv, { url: 'https://h/cal/' }), { url: 'https://h/cal/', username: '', password: '' });
+  assert.deepEqual(await setCaldavConfig(kv, { url: 'https://h/cal/' }), { url: 'https://h/cal/', contactsUrl: '', username: '', password: '' });
 });
 
 test('the calendar settings are in a settings backup, and the sync state is NOT (it describes one device\u2019s last sync)', async () => {
@@ -451,7 +453,7 @@ test('the calendar settings are in a settings backup, and the sync state is NOT 
   await setCaldavConfig(kv, { url: 'https://h/cal/', username: 'u', password: 'p' });
   await setCaldavSyncState(kv, { url: 'https://h/cal/', resources: { 'orgpwa-a.ics': { hash: 'h', doc: 'a.org' } } });
   const bundle = await exportAllSettings(kv);
-  assert.deepEqual(bundle.settings.caldav, { url: 'https://h/cal/', username: 'u', password: 'p' });
+  assert.deepEqual(bundle.settings.caldav, { url: 'https://h/cal/', contactsUrl: '', username: 'u', password: 'p' });
   assert.equal(JSON.stringify(bundle).includes('orgpwa-a.ics'), false);
   assert.equal('caldavSync' in bundle.settings, false);
 });
@@ -463,3 +465,39 @@ test('the sync state round-trips and defaults to nothing sent', async () => {
   await setCaldavSyncState(kv, state);
   assert.deepEqual(await getCaldavSyncState(kv), state);
 });
+
+// ---- the contacts (CardDAV) address, kept with the calendar's settings ---------------------------
+
+test('the contacts address is stored beside the calendar one, trimmed, and the login is shared (one username and password)', async () => {
+  const kv = createInMemoryAdapter();
+  const saved = await setCaldavConfig(kv, { url: 'https://h/cal/', contactsUrl: '  https://h/contacts/  ', username: 'me', password: 'pw' });
+  assert.deepEqual(saved, { url: 'https://h/cal/', contactsUrl: 'https://h/contacts/', username: 'me', password: 'pw' });
+  assert.deepEqual(await getCaldavConfig(kv), saved);
+  assert.deepEqual(await setCaldavConfig(kv, { contactsUrl: 'https://h/contacts/' }), { url: '', contactsUrl: 'https://h/contacts/', username: '', password: '' }, 'a contacts address alone is valid: the calendar is optional');
+});
+
+test('a record stored before there was a contacts address still loads, with none set', async () => {
+  const kv = createInMemoryAdapter();
+  await kv.set('settings:caldav', JSON.stringify({ url: 'https://h/cal/', username: 'u', password: 'p' }));
+  assert.deepEqual(await getCaldavConfig(kv), { url: 'https://h/cal/', contactsUrl: '', username: 'u', password: 'p' });
+});
+
+test('the contacts address is in a settings backup, and the address book\u2019s sync state is NOT, and is separate from the calendar\u2019s', async () => {
+  const kv = createInMemoryAdapter();
+  await setCaldavConfig(kv, { contactsUrl: 'https://h/contacts/', username: 'u', password: 'p' });
+  await setCarddavSyncState(kv, { url: 'https://h/contacts/', resources: { 'orgpwa-jane-1.vcf': { hash: 'h', doc: 'people.org' } } });
+  const bundle = await exportAllSettings(kv);
+  assert.equal(bundle.settings.caldav.contactsUrl, 'https://h/contacts/');
+  assert.equal(JSON.stringify(bundle).includes('orgpwa-jane-1.vcf'), false);
+  assert.equal('carddavSync' in bundle.settings, false);
+  assert.deepEqual(await getCaldavSyncState(kv), { url: '', resources: {} }, 'the calendar\u2019s own state is untouched by the address book\u2019s');
+});
+
+test('the address book\u2019s sync state round-trips and defaults to nothing sent', async () => {
+  const kv = createInMemoryAdapter();
+  assert.deepEqual(await getCarddavSyncState(kv), { url: '', resources: {} });
+  const state = { url: 'https://h/contacts/', resources: { 'orgpwa-a.vcf': { hash: 'h1', doc: 'people.org' } } };
+  await setCarddavSyncState(kv, state);
+  assert.deepEqual(await getCarddavSyncState(kv), state);
+});
+

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v441';
+const CACHE_NAME = 'org-pwa-shell-v444';
 
 const SHELL_FILES = [
   './',
@@ -24,6 +24,7 @@ const SHELL_FILES = [
   './src/repeater-shift.js',
   './src/caldav-client.js',
   './src/calendar-mirror.js',
+  './src/contacts-mirror.js',
   './src/capture-shared.js',
   './src/capture-template.js',
   './src/line-endings.js',
@@ -101,6 +102,7 @@ const SHELL_FILES = [
   './src/export-include.js',
   './src/export-icalendar.js',
   './src/export-vcard.js',
+  './src/import-icalendar.js',
   './src/import-vcard.js',
   './src/undo-history.js',
   './src/text-diff.js',
@@ -108,6 +110,8 @@ const SHELL_FILES = [
   './src/webm-track-detect.js',
   './src/scroll-util.js',
   './src/table-formula.js',
+  './src-browser/contacts-sync.js',
+  './src-browser/mirror-sync.js',
   './src-browser/ui-widgets.js',
   './src-browser/app-state.js',
   './src-browser/dom.js',

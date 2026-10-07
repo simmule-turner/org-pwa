@@ -104,6 +104,8 @@ export function closeAllOverlayPanels() {
     S.moreMenuStep = null;
     S.exportFormat = null;
     S.exportPickingHeading = false;
+    S.importFormat = null;
+    S.importPickingHeading = false;
     renderMoreMenu();
   }
   if (S.historyOpen) {

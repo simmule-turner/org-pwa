@@ -73,21 +73,25 @@ function createDav() {
   // Which folders exist, for a folder-aware PROPFIND (a calendar is a folder). null means any folder does.
   let collections = null;
   const requests = []; // every request the server saw, as "METHOD name", so a check can prove something stopped asking
+  const auths = []; // and the Authorization header each carried, as { request, authorization }
   const etag = (text) => '"' + crypto.createHash('md5').update(text).digest('hex') + '"';
   return {
     files,
     requests,
+    auths,
     setCollections: (names) => { collections = names ? new Set(names) : null; },
     set: (name, text) => files.set(name, text),
     get: (name) => files.get(name),
     reset(initial = {}) {
       collections = null;
       requests.length = 0;
+      auths.length = 0;
       files.clear();
       for (const [name, text] of Object.entries(initial)) files.set(name, text);
     },
     handle(req, res, name, body) {
       requests.push(`${req.method} ${name}`);
+      auths.push({ request: `${req.method} ${name}`, authorization: req.headers.authorization || '' });
       const has = files.has(name);
       if (req.method === 'PROPFIND' && name !== '') {
         // a folder other than the root: list just what is directly inside it, with real (unencoded) slashes in the path
@@ -2687,7 +2691,198 @@ check('calendar mirror: a calendar that does not exist is reported clearly, auto
   await context.close();
 });
 
-check('settings page order: Calendar (CalDAV) comes right after WebDAV so Backup is last, and Paragraph Spacing comes right after Font Size; Sync now is disabled until an address is set', async () => {
+const contactsVars = (files) => ['# Local Variables:', `# org-contacts-files: ${files}`, '# End:'];
+const peopleFile = (extra = []) => ['* Jane Doe', ':PROPERTIES:', ':ID: jane-1', ':EMAIL: jane@example.com', ':PHONE: 555-0100', ':END:', '* Not a contact', 'some prose', '* Tree Tom', ':PROPERTIES:', ':KIND: individual', ':FIELDTYPE: name', ':END:', '** tom@example.com', ':PROPERTIES:', ':FIELDTYPE: email', ':END:', ...extra, ...contactsVars('webdav:people.org'), ''].join('\n');
+
+check('contacts mirror: org-contacts-files reach a CardDAV address book through the palette, the open file is not sent unless it is one of them, edits follow a save, a contact the app did not make is never touched, and Rebuild cleans only the app\u2019s own', async () => {
+  const notes = ['* Notes', '* Dave Notes', ':PROPERTIES:', ':EMAIL: dave@example.com', ':END:', ...contactsVars('webdav:people.org'), ''].join('\n');
+  dav.reset({ 'notes.org': notes, 'people.org': peopleFile() });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const ours = () => [...dav.files.entries()].filter(([n]) => n.startsWith('card/orgpwa-'));
+  const names = () => ours().map(([, t]) => (t.match(/^FN:(.*)$/m) || [])[1]).sort();
+  const until = async (pred, what) => {
+    for (let n = 0; n < 70; n++) {
+      if (pred()) return;
+      await page.waitForTimeout(250);
+    }
+    throw new Error(`timed out waiting for: ${what} -- on the server: ${JSON.stringify(names())}`);
+  };
+  const runCommand = async (words) => {
+    await openPalette(page);
+    await page.keyboard.type(words);
+    await page.keyboard.press('Enter');
+  };
+
+  // with no contacts address set, the commands are there but dimmed, and say why
+  await openPalette(page);
+  await page.keyboard.type('sync contacts to the address book');
+  const dimmed = await paletteRows(page);
+  expect(dimmed.some((r) => r.includes('Sync contacts to the address book') && r.includes('no contacts address is set')), `dimmed with the reason: ${JSON.stringify(dimmed)}`);
+  await page.keyboard.press('Escape');
+
+  // set the address the way Settings would (the contacts address only: no calendar), then run the command
+  await page.evaluate(async (url) => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.caldavConfig = { url: '', contactsUrl: url, username: 'me', password: 'secret' };
+  }, `${main.base}/dav/card/`);
+  dav.auths.length = 0;
+  await runCommand('sync contacts to the address book');
+  await until(() => ours().length === 2, 'two contacts on the server');
+  const login = 'Basic ' + Buffer.from('me:secret').toString('base64');
+  const cardAuths = dav.auths.filter((a) => /^\S+ card\//.test(a.request));
+  expect(cardAuths.length >= 3 && cardAuths.every((a) => a.authorization === login), `every request to the address book carried the one username and password: ${JSON.stringify(cardAuths.map((a) => [a.request, a.authorization === login]))}`);
+  // with the username and password left blank, the WebDAV ones are used, as for the calendar
+  const fallback = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { effectiveContactsConfig } = await import('/src-browser/contacts-sync.js');
+    const saved = S.caldavConfig;
+    S.webdavConfig = { ...S.webdavConfig, username: 'dav-user', password: 'dav-pass' };
+    S.caldavConfig = { url: '', contactsUrl: 'https://h/book/', username: '', password: '' };
+    const blank = effectiveContactsConfig();
+    S.caldavConfig = { url: 'https://h/cal/', contactsUrl: '', username: 'me', password: 'secret' };
+    const none = effectiveContactsConfig();
+    S.caldavConfig = saved;
+    return { blank, none };
+  });
+  expect(fallback.blank && fallback.blank.username === 'dav-user' && fallback.blank.password === 'dav-pass' && fallback.blank.url === 'https://h/book/', `blank credentials fall back to the WebDAV ones: ${JSON.stringify(fallback.blank)}`);
+  expect(fallback.none === null, 'and with no contacts address there is nothing to sync, even with a calendar set');
+  expect(JSON.stringify(names()) === JSON.stringify(['Jane Doe', 'Tree Tom']), `the contacts files\u2019 contacts arrived, Flat and Tree: ${JSON.stringify(names())}`);
+  const all = ours().map(([, t]) => t).join('\n');
+  expect(all.includes('UID:jane-1@org-pwa') && all.includes('EMAIL:jane@example.com') && all.includes('EMAIL:tom@example.com'), 'each is a vCard with a UID and its fields');
+  expect(!all.includes('Dave Notes') && !all.includes('Not a contact'), 'the open file is not sent (it is not one of org-contacts-files), and plain headings are not contacts');
+  expect(ours().every(([n]) => n.endsWith('.vcf')), 'stored as .vcf files');
+  expect((await page.locator('#minibuffer').innerText()).includes('Contacts synced: 2 sent'), `the status line says what happened: ${await page.locator('#minibuffer').innerText()}`);
+
+  // a contact somebody else put in this address book
+  dav.set('card/personal.vcf', 'BEGIN:VCARD\r\nVERSION:3.0\r\nUID:mine\r\nFN:My Own Contact\r\nEND:VCARD\r\n');
+
+  // a second sync with nothing changed sends nothing
+  dav.requests.length = 0;
+  await runCommand('sync contacts to the address book');
+  await page.waitForTimeout(1200);
+  expect(!dav.requests.some((r) => r.startsWith('PUT card') || r.startsWith('DELETE card')), `unchanged contacts send nothing: ${JSON.stringify(dav.requests)}`);
+
+  // an edit and a save in the contacts file itself: the address book follows by itself, a removed contact goes
+  await openDav(page, 'people.org');
+  await setDocumentText(page, peopleFile().replace('jane@example.com', 'jane.new@example.com').replace(/\* Tree Tom[\s\S]*?:FIELDTYPE: email\n:END:\n/, ''));
+  await fileMenu(page, 'Save');
+  await waitForStatus(page, 'Saved');
+  await until(() => JSON.stringify(names()) === JSON.stringify(['Jane Doe']), 'the address book to follow the save');
+  expect(ours()[0][1].includes('jane.new@example.com'), 'the edited contact was sent again');
+  expect(dav.files.has('card/personal.vcf'), 'the contact the app did not create is untouched');
+
+  // Rebuild: leftovers of the app's own go, anything else stays
+  dav.set('card/orgpwa-stale-left-over-00000000.vcf', 'BEGIN:VCARD\r\nVERSION:3.0\r\nUID:stale\r\nFN:Stale\r\nEND:VCARD\r\n');
+  await runCommand('rebuild contacts');
+  await until(() => !dav.files.has('card/orgpwa-stale-left-over-00000000.vcf') && JSON.stringify(names()) === JSON.stringify(['Jane Doe']), 'the rebuild');
+  expect(dav.files.has('card/personal.vcf'), 'a rebuild leaves contacts that are not the app\u2019s');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('contacts mirror: an address book that does not exist is reported clearly, automatic runs then stop asking until the settings change, and a manual sync tries again', async () => {
+  dav.reset({ 'people.org': peopleFile() });
+  dav.setCollections(['card/']); // only card/ exists
+  const { context, page } = await freshPage(main, { withDav: true });
+  await openDav(page, 'people.org');
+  await page.evaluate(async (url) => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.caldavConfig = { url: '', contactsUrl: url, username: '', password: '' };
+  }, `${main.base}/dav/nope/`);
+  dav.requests.length = 0;
+  await openPalette(page);
+  await page.keyboard.type('sync contacts to the address book');
+  await page.keyboard.press('Enter');
+  await waitForStatus(page, 'Address book not found');
+  const bookRequests = () => dav.requests.filter((r) => /^\S+ (nope|card)\//.test(r));
+  const first = bookRequests().length;
+  expect(first >= 1 && bookRequests().every((r) => r.startsWith('PROPFIND')), `only the one check request was made, no writes: ${JSON.stringify(bookRequests())}`);
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); // coming back to the app asks for an automatic sync
+  await page.waitForTimeout(3600);
+  expect(bookRequests().length === first, `no further address book requests after the failure: ${JSON.stringify(bookRequests())}`);
+  await page.evaluate(async (url) => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.caldavConfig = { url: '', contactsUrl: url, username: '', password: '' };
+  }, `${main.base}/dav/card/`);
+  await openPalette(page);
+  await page.keyboard.type('sync contacts to the address book');
+  await page.keyboard.press('Enter');
+  await waitForStatus(page, 'Contacts synced');
+  expect([...dav.files.keys()].some((n) => n.startsWith('card/orgpwa-')), 'the contacts arrived once the address was right');
+  await context.close();
+});
+
+check('contacts mirror: with an address set but no org-contacts-files, a manual sync says so and makes no request, and an automatic one stays silent', async () => {
+  dav.reset({ 'plain.org': '* Just a note\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'plain.org');
+  await page.evaluate(async (url) => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.caldavConfig = { url: '', contactsUrl: url, username: '', password: '' };
+  }, `${main.base}/dav/card/`);
+  dav.requests.length = 0;
+  await openPalette(page);
+  await page.keyboard.type('sync contacts to the address book');
+  await page.keyboard.press('Enter');
+  await waitForStatus(page, 'no contacts files are set');
+  expect((await page.locator('#minibuffer').innerText()).includes('org-contacts-files'), 'it names the setting to fill in');
+  expect(!dav.requests.some((r) => /^\S+ card\//.test(r)), `nothing was asked of the server: ${JSON.stringify(dav.requests)}`);
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await page.waitForTimeout(3600);
+  expect(!dav.requests.some((r) => /^\S+ card\//.test(r)), 'an automatic run makes no request either');
+  expect(!(await page.locator('#minibuffer').innerText()).includes('Contacts sync:'), 'and says nothing');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Settings > Sync syncs the calendar and the contacts and says how each went in one line, an error in one is not hidden by the other, and the three buttons wrap on a narrow phone instead of overflowing', async () => {
+  const notes = ['* TODO Pay rent', `DEADLINE: <${calDay(3)}>`, ...contactsVars('webdav:people.org'), ''].join('\n');
+  dav.reset({ 'notes.org': notes, 'people.org': peopleFile() });
+  dav.setCollections(['cal/', 'card/']);
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await page.setViewportSize({ width: 340, height: 800 });
+  await openDav(page, 'notes.org');
+  const configure = (calendar, contacts) => page.evaluate(async ({ calendar, contacts }) => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { setCaldavConfig } = await import('/src-browser/settings.js');
+    const { kv } = await import('/src-browser/singletons.js');
+    S.caldavConfig = await setCaldavConfig(kv, { url: calendar, contactsUrl: contacts, username: '', password: '' });
+    S.calendarSyncPaused = false;
+    S.contactsSyncPaused = false;
+  }, { calendar, contacts });
+  await configure(`${main.base}/dav/cal/`, `${main.base}/dav/card/`);
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  // the page builds its sections one after another: wait for the one measured below, not just for some section
+  await page.waitForFunction(() => [...document.querySelectorAll('.settings-section .panel-section-title')].some((t) => t.textContent === 'Calendar (CalDAV) / Contacts (CardDAV)'));
+
+  // narrow screen: every button stays inside its section and the page does not scroll sideways
+  const fit = await page.evaluate(() => {
+    const sec = [...document.querySelectorAll('.settings-section')].find((x) => (x.querySelector('.panel-section-title') || {}).textContent === 'Calendar (CalDAV) / Contacts (CardDAV)');
+    const box = sec.getBoundingClientRect();
+    const buttons = [...sec.querySelectorAll('button')].map((b) => ({ label: b.textContent, right: b.getBoundingClientRect().right, left: b.getBoundingClientRect().left }));
+    return { sectionRight: box.right, buttons, scrolls: document.documentElement.scrollWidth > window.innerWidth + 1 };
+  });
+  expect(fit.buttons.length === 3 && fit.buttons.every((b) => b.right <= fit.sectionRight + 1 && b.left >= 0) && !fit.scrolls, `the three buttons fit a 340px screen: ${JSON.stringify(fit)}`);
+
+  await page.getByRole('button', { name: 'Sync', exact: true }).click();
+  await waitForStatus(page, 'Contacts synced');
+  let said = await page.locator('#minibuffer').innerText();
+  expect(said.includes('Calendar synced: 1 sent') && said.includes('Contacts synced: 2 sent'), `one line says how both went: ${said}`);
+  expect([...dav.files.keys()].some((n) => n.startsWith('cal/orgpwa-')) && [...dav.files.keys()].some((n) => n.startsWith('card/orgpwa-')), 'both servers have their data');
+
+  // a calendar that is not there: its error is in the line, next to the contacts' success
+  await configure(`${main.base}/dav/nowhere/`, `${main.base}/dav/card/`);
+  await page.getByRole('button', { name: 'Sync', exact: true }).click();
+  await waitForStatus(page, 'Contacts synced');
+  said = await page.locator('#minibuffer').innerText();
+  expect(said.includes('Calendar sync: Calendar not found') && said.includes('Contacts synced'), `the calendar\u2019s failure is not hidden by the contacts\u2019 success: ${said}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('settings page order: Calendar (CalDAV) / Contacts (CardDAV) comes right after WebDAV so Backup is last, and Paragraph Spacing comes right after Font Size; its buttons follow which addresses are set', async () => {
   const { context, page } = await freshPage();
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
@@ -2695,7 +2890,7 @@ check('settings page order: Calendar (CalDAV) comes right after WebDAV so Backup
   const sections = await page.evaluate(() => [...document.querySelectorAll('.settings-section')].map((sec) => (sec.querySelector('.panel-section-title') || {}).textContent || ''));
   expect(sections[sections.length - 1] === 'Backup', `Backup is the last section: ${JSON.stringify(sections)}`);
   const w = sections.indexOf('WebDAV');
-  expect(w >= 0 && sections[w + 1] === 'Calendar (CalDAV)' && sections[w + 2] === 'Backup', `Calendar (CalDAV) directly follows WebDAV: ${JSON.stringify(sections)}`);
+  expect(w >= 0 && sections[w + 1] === 'Calendar (CalDAV) / Contacts (CardDAV)' && sections[w + 2] === 'Backup', `Calendar (CalDAV) / Contacts (CardDAV) directly follows WebDAV: ${JSON.stringify(sections)}`);
   expect(sections.includes('GitHub') && sections.includes('Updates') && sections.includes('Capture Templates'), 'and the sections that were there are still there');
   const appearance = await page.evaluate(() => {
     const sec = [...document.querySelectorAll('.settings-section')].find((x) => (x.querySelector('.panel-section-title') || {}).textContent === 'Appearance');
@@ -2703,10 +2898,37 @@ check('settings page order: Calendar (CalDAV) comes right after WebDAV so Backup
   });
   expect(JSON.stringify(appearance) === JSON.stringify(['Appearance', 'Font', 'Font Size', 'Paragraph Spacing', 'Reading Width', 'Menu Size']), `Paragraph Spacing follows Font Size: ${JSON.stringify(appearance)}`);
   const disabled = await page.evaluate(() => {
-    const sec = [...document.querySelectorAll('.settings-section')].find((x) => (x.querySelector('.panel-section-title') || {}).textContent === 'Calendar (CalDAV)');
+    const sec = [...document.querySelectorAll('.settings-section')].find((x) => (x.querySelector('.panel-section-title') || {}).textContent === 'Calendar (CalDAV) / Contacts (CardDAV)');
     return [...sec.querySelectorAll('button')].map((b) => [b.textContent, b.disabled]);
   });
-  expect(JSON.stringify(disabled) === JSON.stringify([['Sync now', true], ['Rebuild calendar', true]]), `both calendar buttons start disabled: ${JSON.stringify(disabled)}`);
+  expect(JSON.stringify(disabled) === JSON.stringify([['Sync', true], ['Rebuild calendar', true], ['Rebuild contacts', true]]), `all three buttons start disabled: ${JSON.stringify(disabled)}`);
+
+  // the fields: Contacts address sits directly under Calendar address, and the login fields follow
+  const fieldOrder = await page.evaluate(() => {
+    const sec = [...document.querySelectorAll('.settings-section')].find((x) => (x.querySelector('.panel-section-title') || {}).textContent === 'Calendar (CalDAV) / Contacts (CardDAV)');
+    const text = sec.innerText;
+    return ['Calendar address', 'Contacts address (same username and password)', 'Username', 'Password'].map((label) => text.indexOf(label));
+  });
+  expect(fieldOrder.every((n, i) => n >= 0 && (i === 0 || n > fieldOrder[i - 1])), `Calendar address, Contacts address, then Username and Password: ${JSON.stringify(fieldOrder)}`);
+
+  // which buttons are on follows which addresses are set
+  const buttonsWith = async (config) => {
+    await page.evaluate(async (config) => {
+      const { setCaldavConfig } = await import('/src-browser/settings.js');
+      const { kv } = await import('/src-browser/singletons.js');
+      await setCaldavConfig(kv, config);
+      await (await import('/src-browser/settings-view.js')).renderSettingsView();
+    }, config);
+    await page.waitForTimeout(400);
+    return page.evaluate(() => {
+      const sec = [...document.querySelectorAll('.settings-section')].find((x) => (x.querySelector('.panel-section-title') || {}).textContent === 'Calendar (CalDAV) / Contacts (CardDAV)');
+      return [...sec.querySelectorAll('button')].map((b) => [b.textContent, b.disabled]);
+    });
+  };
+  const only = (rows) => JSON.stringify(rows);
+  expect(only(await buttonsWith({ url: 'https://h/cal/' })) === only([['Sync', false], ['Rebuild calendar', false], ['Rebuild contacts', true]]), 'with only a calendar: Rebuild contacts is off');
+  expect(only(await buttonsWith({ contactsUrl: 'https://h/contacts/' })) === only([['Sync', false], ['Rebuild calendar', true], ['Rebuild contacts', false]]), 'with only contacts: Rebuild calendar is off, and Sync is on');
+  expect(only(await buttonsWith({ url: 'https://h/cal/', contactsUrl: 'https://h/contacts/' })) === only([['Sync', false], ['Rebuild calendar', false], ['Rebuild contacts', false]]), 'with both: all on');
   await context.close();
 });
 
@@ -3498,6 +3720,128 @@ check('local: without an org-pwa folder (a browser) behaves as it did: only file
   await page.waitForTimeout(1200);
   const t = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
   expect(t.includes('hasn\'t been opened on this device yet. Open it once with File') && !t.includes('org-pwa folder'), `the browser message is unchanged: ${t.slice(0, 260)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('More > Import lists Contacts (.vcf) and iCalendar (.ics); each opens its own panel, only Contacts has Flat/Tree and Clean data, and Back climbs one level at a time', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Existing\n');
+  const panel = async () => (await page.locator('#morePanel').innerText()).replace(/\s+/g, ' ');
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Import');
+  let t = await panel();
+  expect(t.includes('Contacts (.vcf)') && t.includes('iCalendar (.ics)') && !t.includes('Choose vCard file') && !t.includes('Flat'), `the list: ${t}`);
+
+  await pick(page, '#morePanel', 'Contacts (.vcf)');
+  t = await panel();
+  expect(t.includes('Import Contacts (.vcf) from:') && t.includes('Flat') && t.includes('Tree') && t.includes('Clean data (Google, Apple)') && t.includes('Choose vCard file') && t.includes('To: *new buffer*') && t.includes('This file'), `the Contacts panel: ${t}`);
+  await pick(page, '#morePanel', '\u2039 Back');
+  t = await panel();
+  expect(t.includes('iCalendar (.ics)') && !t.includes('Choose vCard file'), `Back from Contacts returns to the list: ${t}`);
+
+  await pick(page, '#morePanel', 'iCalendar (.ics)');
+  t = await panel();
+  expect(t.includes('Import iCalendar (.ics) from:') && t.includes('Choose iCalendar file') && t.includes('To: *new buffer*') && t.includes('Choose a heading') && t.includes('This file'), `the iCalendar panel: ${t}`);
+  expect(!t.includes('Flat') && !t.includes('Tree') && !t.includes('Clean data'), `and none of the Contacts-only options: ${t}`);
+  expect((await page.locator('#morePanel input[type=file]').getAttribute('accept')) === '.ics,text/calendar', 'it offers calendar files');
+  await pick(page, '#morePanel', '\u2039 Back');
+  await pick(page, '#morePanel', '\u2039 Back');
+  t = await panel();
+  expect(t.startsWith('Commands') && t.includes('Import') && t.includes('Export'), `a second Back is the More menu: ${t}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('More > Import > iCalendar (.ics): a file adds its events and tasks to the open document, says what it could not carry over, can go to a new buffer, and reads calendar text from the document itself', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Existing\n* Plain heading\n* Cal\nBEGIN:VCALENDAR\nBEGIN:VEVENT\nSUMMARY:From text\nDTSTART;VALUE=DATE:20261012\nEND:VEVENT\nEND:VCALENDAR\n');
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', 'UID:e1', 'SUMMARY:Dentist', 'DTSTART:20261005T090000', 'DTEND:20261005T100000', 'LOCATION:Main St', 'ATTENDEE:mailto:a@b.c', 'END:VEVENT',
+    'BEGIN:VEVENT', 'SUMMARY:Weekly review', 'DTSTART;VALUE=DATE:20261009', 'RRULE:FREQ=WEEKLY;COUNT=4', 'END:VEVENT', 'BEGIN:VTODO', 'SUMMARY:Pay rent', 'DUE;VALUE=DATE:20261031', 'END:VTODO', 'END:VCALENDAR', ''].join('\r\n');
+  const docText = () => page.evaluate(async () => (await import('/src/org-parser.js')).serializeOrg((await import('/src-browser/app-state.js')).S.state.doc));
+  const status = () => page.locator('#minibuffer').innerText();
+  const openPanel = async () => {
+    await page.click('#moreBtn');
+    await pick(page, '#morePanel', 'Import');
+    await pick(page, '#morePanel', 'iCalendar (.ics)');
+  };
+  const chooseFile = async (name, content) => {
+    await page.locator('#morePanel input[type=file]').setInputFiles({ name, mimeType: 'text/calendar', buffer: Buffer.from(content) });
+    await page.waitForTimeout(700);
+  };
+
+  await openPanel();
+  await chooseFile('junk.ics', 'this is not a calendar');
+  expect((await status()).includes('No events or tasks found in that file'), `a file with nothing to import says so: ${await status()}`);
+  expect(await page.locator('#morePanel').isVisible(), 'and the panel stays open, to try another file');
+
+  await chooseFile('cal.ics', ics);
+  let t = await docText();
+  expect(t.startsWith('* Existing\n'), `what was there is untouched and first: ${t.slice(0, 60)}`);
+  expect(t.includes('* Dentist <2026-10-05 Mon 09:00-10:00>\n:PROPERTIES:\n:UID: e1\n:LOCATION: Main St\n:END:'), `an event, its time in the title and its properties: ${t}`);
+  expect(t.includes('* Weekly review <2026-10-09 Fri>\n:PROPERTIES:\n:RRULE: FREQ=WEEKLY;COUNT=4\n:END:'), `a recurrence a repeater cannot say keeps its rule: ${t}`);
+  expect(t.includes('* TODO Pay rent\nDEADLINE: <2026-10-31 Sat>'), `a task: ${t}`);
+  const said = await status();
+  expect(said.includes('Imported 2 events and 1 task from iCalendar.') && said.includes('1 unrecognized property was skipped: ATTENDEE.') && said.includes('1 recurring event could not become a repeater'), `the status says what came and what did not: ${said}`);
+  expect(!(await page.locator('#morePanel').isVisible()), 'the menu closes after an import');
+
+  // the imported events are on the agenda, where the timestamp in the title puts them
+  await viewMenu(page, 'Agenda');
+  await page.waitForTimeout(500);
+  expect((await page.locator('body').innerText()).includes('Dentist'), 'and the agenda shows an imported event');
+  await viewMenu(page, 'Org');
+  await page.waitForTimeout(300);
+
+  // "To: *new buffer*" has its own setting, apart from Contacts'
+  await openPanel();
+  await page.locator('#morePanel').getByText('To: *new buffer*', { exact: true }).click();
+  await chooseFile('cal.ics', ics);
+  t = await docText();
+  expect(!t.includes('Existing') && t.includes('* Dentist <2026-10-05 Mon 09:00-10:00>'), `to a new buffer: only the imported headings: ${t.slice(0, 120)}`);
+  const flags = await page.evaluate(async () => { const { S } = await import('/src-browser/app-state.js'); return [S.importIcalendarToNewBuffer, S.importVcardToNewBuffer]; });
+  expect(flags[0] === true && flags[1] === false, `the two new-buffer settings are independent: ${JSON.stringify(flags)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+
+  // calendar text kept in the document itself: "This file" and "Choose a heading"
+  const second = await freshPage();
+  await newDocument(second.page, '* Plain heading\n* Cal\nBEGIN:VCALENDAR\nBEGIN:VEVENT\nSUMMARY:From text\nDTSTART;VALUE=DATE:20261012\nEND:VEVENT\nEND:VCALENDAR\n');
+  const p2 = second.page;
+  const openPanel2 = async () => { await p2.click('#moreBtn'); await pick(p2, '#morePanel', 'Import'); await pick(p2, '#morePanel', 'iCalendar (.ics)'); };
+  const doc2 = () => p2.evaluate(async () => (await import('/src/org-parser.js')).serializeOrg((await import('/src-browser/app-state.js')).S.state.doc));
+  await openPanel2();
+  await pick(p2, '#morePanel', 'Choose a heading\u2026');
+  await p2.locator('#morePanel').getByText('Plain heading', { exact: true }).click();
+  await p2.waitForTimeout(400);
+  expect((await p2.locator('#minibuffer').innerText()).includes('No iCalendar data found in Plain heading'), `a heading with none says so: ${await p2.locator('#minibuffer').innerText()}`);
+  await pick(p2, '#morePanel', '\u2039 Back'); // out of the heading list, into the panel
+  await pick(p2, '#morePanel', 'This file');
+  await p2.waitForTimeout(500);
+  expect((await doc2()).includes('* From text <2026-10-12 Mon>'), `"This file" reads the calendar text in the document: ${(await doc2()).slice(-120)}`);
+  expect(second.errors.length === 0, `page errors: ${second.errors.join(' | ')}`);
+  await second.context.close();
+});
+
+check('palette: org-vcard-import and icalendar-import-file open More > Import on the Contacts and iCalendar panels', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Existing\n');
+  await openPalette(page);
+  await page.keyboard.type('icalendar-import-file');
+  let rows = await paletteRows(page);
+  expect(rows.length === 1 && rows[0].includes('Import iCalendar (.ics)') && rows[0].includes('Import'), `rows: ${JSON.stringify(rows)}`);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  let t = (await page.locator('#morePanel').innerText()).replace(/\s+/g, ' ');
+  expect(t.includes('Import iCalendar (.ics) from:') && !t.includes('Flat'), `icalendar-import-file opens the iCalendar panel: ${t}`);
+  await page.click('#moreBtn'); // close
+  await openPalette(page);
+  await page.keyboard.type('org-vcard-import');
+  rows = await paletteRows(page);
+  expect(rows.length === 1 && rows[0].includes('Import Contacts (.vcf)'), `rows: ${JSON.stringify(rows)}`);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  t = (await page.locator('#morePanel').innerText()).replace(/\s+/g, ' ');
+  expect(t.includes('Import Contacts (.vcf) from:') && t.includes('Flat'), `org-vcard-import opens the Contacts panel: ${t}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

@@ -7,6 +7,7 @@ import { exportToMarkdown } from '../src/export-markdown.js';
 import { exportToOdt } from '../src/export-odt.js';
 import { exportAsOrg } from '../src/export-org.js';
 import { exportToVcard } from '../src/export-vcard.js';
+import { importIcalendarAsOrgText } from '../src/import-icalendar.js';
 import { importVcardsAsOrgText } from '../src/import-vcard.js';
 import { getAsciiTextWidth, getContactsBirthdayProperty, getMenuAliases } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
@@ -14,7 +15,7 @@ import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { aggregateAgendaDocs, aggregateContactsDocs, ensureContactsFilesLoadedAndWait, waitForAgendaFilesLoaded } from './agenda-files.js';
 import { S } from './app-state.js';
-import { allHeadingsInOrder, headingsInSubtree, vcardBodyHeadingsIn } from './doc-helpers.js';
+import { allHeadingsInOrder, headingsInSubtree, icalendarBodyHeadingsIn, vcardBodyHeadingsIn } from './doc-helpers.js';
 import { createNewUnsavedDocument, suggestedSaveAsName } from './documents-io.js';
 import { morePanel } from './dom.js';
 import { commitAndRender, setStatus } from './editing.js';
@@ -406,58 +407,9 @@ export function renderExportFlow() {
   morePanel.appendChild(backRow);
 }
 
-export function renderImportFlow() {
-  if (S.importPickingHeading) {
-    const label = document.createElement('div');
-    label.style.fontSize = '12px';
-    label.style.opacity = '0.7';
-    label.style.marginBottom = '4px';
-    label.textContent = 'Choose a heading:';
-    morePanel.appendChild(label);
-
-    const list = document.createElement('div');
-    list.style.maxHeight = '260px';
-    list.style.overflowY = 'auto';
-    list.style.overscrollBehavior = 'contain';
-    const headings = allHeadingsInOrder(S.state.doc);
-    if (headings.length === 0) {
-      const empty = document.createElement('div');
-      empty.style.fontSize = '13px';
-      empty.style.opacity = '0.6';
-      empty.style.padding = '8px 0';
-      empty.textContent = 'This file has no headings yet.';
-      list.appendChild(empty);
-    }
-    for (const { heading, depth } of headings) {
-      const row = document.createElement('div');
-      row.className = 'menu-list-item';
-      row.style.paddingLeft = 14 + depth * 16 + 'px';
-      row.textContent = heading.title || '(untitled)';
-      row.onclick = () => importVcardFromHeadings(headingsInSubtree(heading), heading.title || '(untitled)');
-      list.appendChild(row);
-    }
-    morePanel.appendChild(list);
-
-    const backRow = document.createElement('div');
-    backRow.className = 'panel-row';
-    backRow.style.marginTop = '6px';
-    backRow.appendChild(
-      menuButton('\u2039 Back', () => {
-        S.importPickingHeading = false;
-        renderMoreMenu();
-      })
-    );
-    morePanel.appendChild(backRow);
-    return;
-  }
-
-  const label = document.createElement('div');
-  label.style.fontSize = '12px';
-  label.style.opacity = '0.7';
-  label.style.marginBottom = '4px';
-  label.textContent = 'Import Contacts (.vcf) from:';
-  morePanel.appendChild(label);
-
+/** Contacts (.vcf) import's own options: the Flat or Tree style the contacts are written in, and cleaning up Google's and Apple's own
+ *  non-standard vCard quirks. (iCalendar has neither.) */
+function appendVcardImportOptions() {
   const styleRow = document.createElement('div');
   styleRow.style.display = 'flex';
   styleRow.style.border = '1px solid var(--border-strong)';
@@ -501,6 +453,120 @@ export function renderImportFlow() {
   cleanRow.appendChild(cleanCheckbox);
   cleanRow.appendChild(document.createTextNode('Clean data (Google, Apple)'));
   morePanel.appendChild(cleanRow);
+}
+
+// What differs between the formats the Import menu reads. The panel, the heading picker and where the result goes are the same.
+const IMPORT_FORMATS = {
+  vcard: {
+    heading: 'Import Contacts (.vcf) from:',
+    accept: '.vcf,text/vcard',
+    chooseLabel: 'Choose vCard file\u2026',
+    newBufferField: 'importVcardToNewBuffer',
+    importText: (text) => importVcardFile(text),
+    importHeadings: (headings, sourceLabel) => importVcardFromHeadings(headings, sourceLabel),
+  },
+  icalendar: {
+    heading: 'Import iCalendar (.ics) from:',
+    accept: '.ics,text/calendar',
+    chooseLabel: 'Choose iCalendar file\u2026',
+    newBufferField: 'importIcalendarToNewBuffer',
+    importText: (text) => importIcalendarFile(text),
+    importHeadings: (headings, sourceLabel) => importIcalendarFromHeadings(headings, sourceLabel),
+  },
+};
+
+/** More > Import: the formats it reads, as a list, the way Export lists its own. */
+function renderImportList() {
+  const label = document.createElement('div');
+  label.style.fontSize = '12px';
+  label.style.opacity = '0.7';
+  label.style.marginBottom = '4px';
+  label.textContent = 'Import:';
+  morePanel.appendChild(label);
+
+  const importMenuAliases = parseMenuAliases(getMenuAliases(S.state.localVariables)).import;
+  const vcardBtn = aliasedMenuDivItem(importMenuAliases, 'Contacts (.vcf)', () => {
+    S.importFormat = 'vcard';
+    renderMoreMenu();
+  });
+  const icsBtn = aliasedMenuDivItem(importMenuAliases, 'iCalendar (.ics)', () => {
+    S.importFormat = 'icalendar';
+    renderMoreMenu();
+  });
+  appendMenuButtonsInOrder(morePanel, importMenuAliases, [
+    { label: 'Contacts (.vcf)', btn: vcardBtn },
+    { label: 'iCalendar (.ics)', btn: icsBtn },
+  ]);
+  const backRow = document.createElement('div');
+  backRow.className = 'panel-row';
+  backRow.style.marginTop = '6px';
+  backRow.appendChild(
+    menuButton('\u2039 Back', () => {
+      S.moreMenuStep = null;
+      renderMoreMenu();
+    })
+  );
+  morePanel.appendChild(backRow);
+}
+
+export function renderImportFlow() {
+  const format = IMPORT_FORMATS[S.importFormat];
+  if (!format) {
+    renderImportList();
+    return;
+  }
+  if (S.importPickingHeading) {
+    const label = document.createElement('div');
+    label.style.fontSize = '12px';
+    label.style.opacity = '0.7';
+    label.style.marginBottom = '4px';
+    label.textContent = 'Choose a heading:';
+    morePanel.appendChild(label);
+
+    const list = document.createElement('div');
+    list.style.maxHeight = '260px';
+    list.style.overflowY = 'auto';
+    list.style.overscrollBehavior = 'contain';
+    const headings = allHeadingsInOrder(S.state.doc);
+    if (headings.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.fontSize = '13px';
+      empty.style.opacity = '0.6';
+      empty.style.padding = '8px 0';
+      empty.textContent = 'This file has no headings yet.';
+      list.appendChild(empty);
+    }
+    for (const { heading, depth } of headings) {
+      const row = document.createElement('div');
+      row.className = 'menu-list-item';
+      row.style.paddingLeft = 14 + depth * 16 + 'px';
+      row.textContent = heading.title || '(untitled)';
+      row.onclick = () => format.importHeadings(headingsInSubtree(heading), heading.title || '(untitled)');
+      list.appendChild(row);
+    }
+    morePanel.appendChild(list);
+
+    const backRow = document.createElement('div');
+    backRow.className = 'panel-row';
+    backRow.style.marginTop = '6px';
+    backRow.appendChild(
+      menuButton('\u2039 Back', () => {
+        S.importPickingHeading = false;
+        renderMoreMenu();
+      })
+    );
+    morePanel.appendChild(backRow);
+    return;
+  }
+
+  const label = document.createElement('div');
+  label.style.fontSize = '12px';
+  label.style.opacity = '0.7';
+  label.style.marginBottom = '4px';
+  label.textContent = format.heading;
+  morePanel.appendChild(label);
+
+  if (S.importFormat === 'vcard') appendVcardImportOptions();
 
   const newBufferRow = document.createElement('label');
   newBufferRow.style.display = 'flex';
@@ -511,9 +577,9 @@ export function renderImportFlow() {
   newBufferRow.style.cursor = 'pointer';
   const newBufferCheckbox = document.createElement('input');
   newBufferCheckbox.type = 'checkbox';
-  newBufferCheckbox.checked = S.importVcardToNewBuffer;
+  newBufferCheckbox.checked = S[format.newBufferField];
   newBufferCheckbox.onchange = () => {
-    S.importVcardToNewBuffer = newBufferCheckbox.checked;
+    S[format.newBufferField] = newBufferCheckbox.checked;
   };
   newBufferRow.appendChild(newBufferCheckbox);
   newBufferRow.appendChild(document.createTextNode('To: *new buffer*'));
@@ -521,25 +587,25 @@ export function renderImportFlow() {
 
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
-  fileInput.accept = '.vcf,text/vcard';
+  fileInput.accept = format.accept;
   fileInput.style.display = 'none';
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files && fileInput.files[0];
     if (!file) return;
-    let vcardText;
+    let fileText;
     try {
-      vcardText = await file.text();
+      fileText = await file.text();
     } catch (err) {
       setStatus(`Could not read "${file.name}": ${err.message}`);
       return;
     }
-    await importVcardFile(vcardText);
+    await format.importText(fileText);
   });
   morePanel.appendChild(fileInput);
 
   const pickRow = document.createElement('div');
   pickRow.className = 'panel-row';
-  pickRow.appendChild(menuButton('Choose vCard file\u2026', () => fileInput.click()));
+  pickRow.appendChild(menuButton(format.chooseLabel, () => fileInput.click()));
   morePanel.appendChild(pickRow);
 
   morePanel.appendChild(
@@ -549,7 +615,7 @@ export function renderImportFlow() {
     })
   );
   morePanel.appendChild(
-    menuDivItem('This file', () => importVcardFromHeadings(allHeadingsInOrder(S.state.doc), 'this file'))
+    menuDivItem('This file', () => format.importHeadings(allHeadingsInOrder(S.state.doc), 'this file'))
   );
 
   const backRow = document.createElement('div');
@@ -557,7 +623,7 @@ export function renderImportFlow() {
   backRow.style.marginTop = '6px';
   backRow.appendChild(
     menuButton('\u2039 Back', () => {
-      S.moreMenuStep = null;
+      S.importFormat = null;
       renderMoreMenu();
     })
   );
@@ -603,6 +669,7 @@ export async function importVcardFile(vcardText) {
   const photoNote = embeddedPhotoCount ? ` ${embeddedPhotoCount} embedded photo${embeddedPhotoCount === 1 ? '' : 's'} imported.` : '';
   S.moreOpen = false;
   S.moreMenuStep = null;
+  S.importFormat = null;
   S.importPickingHeading = false;
   if (S.importVcardToNewBuffer) {
     renderMoreMenu();
@@ -613,4 +680,57 @@ export async function importVcardFile(vcardText) {
   renderMoreMenu();
   commitAndRender(`Imported ${count} contact${count === 1 ? '' : 's'} from vCard`);
   setStatus(`Imported ${count} contact${count === 1 ? '' : 's'} from vCard.${warning}${photoNote}`);
+}
+
+/** The iCalendar twin of importVcardFromHeadings: reads the iCalendar text found in the bodies of `headings` (a heading whose own
+ *  body starts with "BEGIN:VCALENDAR", as Export > Calendar (.ics) > To: *new buffer* leaves it). */
+export async function importIcalendarFromHeadings(headings, sourceLabel) {
+  const bodies = icalendarBodyHeadingsIn(headings);
+  if (bodies.length === 0) {
+    setStatus(`No iCalendar data found in ${sourceLabel} \u2014 looking for a heading whose own body starts with "BEGIN:VCALENDAR".`);
+    return;
+  }
+  await importIcalendarFile(bodies.join('\n'));
+}
+
+/** Parses `icsText` via importIcalendarAsOrgText, then places the headings exactly as importVcardFile does: appended as new
+ *  top-level headings at the end of the open document (nothing already there is touched), or, with "To: *new buffer*", in a new
+ *  unsaved one. Times are shown in this device's own time zone. Says what was not carried over, as the vCard import does. */
+export async function importIcalendarFile(icsText) {
+  const unmappedProperties = [];
+  const keptRecurrences = [];
+  const unknownZones = [];
+  const { orgText, eventCount, todoCount } = importIcalendarAsOrgText(icsText, {
+    onUnmappedProperty: (name) => {
+      if (!unmappedProperties.includes(name)) unmappedProperties.push(name);
+    },
+    onRecurrenceKept: (summary) => keptRecurrences.push(summary),
+    onUnknownTimeZone: (name) => {
+      if (!unknownZones.includes(name)) unknownZones.push(name);
+    },
+  });
+  if (!orgText) {
+    setStatus('No events or tasks found in that file \u2014 each needs a start (DTSTART) to import, or to be a task (VTODO).');
+    return;
+  }
+  const importedHeadings = parseOrg(orgText).children;
+  const what = [eventCount ? `${eventCount} event${eventCount === 1 ? '' : 's'}` : '', todoCount ? `${todoCount} task${todoCount === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
+  const notes = [];
+  if (unmappedProperties.length) notes.push(`${unmappedProperties.length} unrecognized propert${unmappedProperties.length === 1 ? 'y was' : 'ies were'} skipped: ${unmappedProperties.join(', ')}.`);
+  if (keptRecurrences.length) notes.push(`${keptRecurrences.length} recurring event${keptRecurrences.length === 1 ? '' : 's'} could not become a repeater (an end date, several weekdays, ...) and ${keptRecurrences.length === 1 ? 'was' : 'were'} imported once, with the rule in an :RRULE: property.`);
+  if (unknownZones.length) notes.push(`Times in an unknown time zone (${unknownZones.join(', ')}) were kept as written.`);
+  const warning = notes.length ? ` ${notes.join(' ')}` : '';
+  S.moreOpen = false;
+  S.moreMenuStep = null;
+  S.importFormat = null;
+  S.importPickingHeading = false;
+  if (S.importIcalendarToNewBuffer) {
+    renderMoreMenu();
+    await createNewUnsavedDocument(orgText, `Imported ${what} from iCalendar in a new buffer.${warning}`);
+    return;
+  }
+  S.state.doc.children.push(...importedHeadings);
+  renderMoreMenu();
+  commitAndRender(`Imported ${what} from iCalendar`);
+  setStatus(`Imported ${what} from iCalendar.${warning}`);
 }

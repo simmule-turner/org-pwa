@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseMenuAliases, resolveMenuOrder } from '../src/menu-alias.js';
 
-const EMPTY = { file: {}, more: {}, export: {}, view: {}, clocking: {} };
+const EMPTY = { file: {}, more: {}, export: {}, import: {}, view: {}, clocking: {} };
 
 // ---- basic cases -------------------------------------------------------
 
@@ -30,6 +30,7 @@ test('parses entries spread across DIFFERENT menus in the same value, each landi
     file: { New: '\u2795' },
     more: { Search: '\ud83d\udd0d' },
     export: { ASCII: '\ud83d\udcc4' },
+    import: {},
     view: { Org: '\ud83d\udcdd' },
     clocking: { 'Clock-in': '\u25b6\ufe0f' },
   });
@@ -169,3 +170,12 @@ test('hiding a button (empty alias) still lets it establish its own position -- 
   // Even though 'B' would be hidden by its own empty alias in the actual rendering, its POSITION in the order is still honored here -- appendMenuButtonsInOrder's own null-btn check is what actually omits it from the DOM.
   assert.deepEqual(resolveMenuOrder({ C: '', B: '', A: '' }, ['A', 'B', 'C']), ['C', 'B', 'A']);
 });
+
+test('import: is a menu of its own, like export:, so the Import list can be relabelled, reordered and hidden', () => {
+  const result = parseMenuAliases('"import:Contacts (.vcf);📇" "import:iCalendar (.ics);📅" "export:ASCII;📄"');
+  assert.deepEqual(result.import, { 'Contacts (.vcf)': '📇', 'iCalendar (.ics)': '📅' });
+  assert.deepEqual(result.export, { ASCII: '📄' });
+  assert.deepEqual(parseMenuAliases('"import:Contacts (.vcf);"').import, { 'Contacts (.vcf)': '' }, 'an empty alias hides it');
+  assert.deepEqual(parseMenuAliases('"more:import:Contacts (.vcf);📇"').import, {}, 'a more:import: form matches nothing, as more:export: does not');
+});
+

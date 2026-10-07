@@ -17,6 +17,7 @@ import { openCalendarPanel } from './calendar-panel.js';
 import { openCapturePrompt, renderCapturePanel } from './capture-ui.js';
 import { closeAllOverlayPanels } from './chrome.js';
 import { effectiveCalendarConfig, syncAgendaToCalendar } from './calendar-sync.js';
+import { effectiveContactsConfig, syncContactsToAddressBook } from './contacts-sync.js';
 import { chooseAttachmentsFolder } from './attachments-store.js';
 import { addCaptureIconToHomeScreen } from './capture-shortcuts.js';
 import { showDisplayMeasurements } from './display-info.js';
@@ -365,6 +366,7 @@ export const PALETTE_NEEDS = {
   anyClock: () => (findRunningClockAcrossSessions() ? null : 'no clock is running'),
   anyClocked: () => (recentlyClockedAcrossSessions(1).length ? null : 'nothing has been clocked yet'),
   calendar: () => (effectiveCalendarConfig() ? null : 'no calendar address is set (Settings \u2192 Calendar)'),
+  contacts: () => (effectiveContactsConfig() ? null : 'no contacts address is set (Settings \u2192 Contacts)'),
   captureShortcuts: () => (platform.captureShortcuts.supported() ? null : 'only in the Android app'),
   orgPwaFolder: () => (platform.attachments.supported() ? null : 'only in the Android app'),
   archived: (target) => (target && isArchivedInPlace(target) ? null : 'this heading isn\u2019t archived'),
@@ -420,6 +422,15 @@ export function paletteCommandList() {
   const HEAD = ['doc', 'heading', 'writable'];
   const runningClock = () => findHeadingWithRunningClock(S.state.doc);
   const exportAs = (format) => () => performExport(format, null);
+  // More > Import opened on one format's panel, the way the C-c C-e chord opens More > Export (moreBtn toggles the menu, and the
+  // palette has closed it by the time a command runs)
+  const openImport = (format) => {
+    moreBtn.click();
+    S.moreMenuStep = 'import';
+    S.importFormat = format;
+    S.importPickingHeading = false;
+    renderMoreMenu();
+  };
 
   return [
     // -- Heading
@@ -484,6 +495,8 @@ export function paletteCommandList() {
     // -- View
     { id: 'agenda', label: 'Agenda', orgName: 'org-agenda', keys: 'C-c a', group: 'View', needs: ['doc'], run: chord('C-c a') },
     { id: 'calendar-sync', label: 'Sync agenda to calendar', group: 'View', keywords: ['caldav', 'calendar', 'radicale', 'mirror', 'events'], needs: ['calendar'], run: () => syncAgendaToCalendar({ manual: true }) },
+    { id: 'contacts-sync', label: 'Sync contacts to the address book', group: 'View', keywords: ['carddav', 'contacts', 'address book', 'radicale', 'mirror', 'vcard'], needs: ['contacts'], run: () => syncContactsToAddressBook({ manual: true }) },
+    { id: 'contacts-rebuild', label: 'Rebuild contacts from the contacts files', group: 'View', keywords: ['carddav', 'contacts', 'address book', 'radicale', 'mirror', 'reset', 'vcard'], needs: ['contacts'], run: () => syncContactsToAddressBook({ manual: true, rebuild: true }) },
     { id: 'calendar-rebuild', label: 'Rebuild calendar from the agenda', group: 'View', keywords: ['caldav', 'calendar', 'radicale', 'mirror', 'reset'], needs: ['calendar'], run: () => syncAgendaToCalendar({ manual: true, rebuild: true }) },
     { id: 'tasklist', label: 'TODO list', orgName: 'org-todo-list', keys: 'C-c C-v', group: 'View', keywords: ['tasks'], needs: ['doc'], run: chord('C-c C-v') },
     { id: 'view-org', label: 'Outline view', orgName: 'org-mode', group: 'View', keywords: ['org'], needs: ['doc'], run: () => switchToView('org') },
@@ -508,6 +521,9 @@ export function paletteCommandList() {
     { id: 'export-odt', label: 'Export this file as ODT', orgName: 'org-odt-export-to-odt', group: 'Export', needs: ['doc'], run: exportAs('odt') },
     // Two commands that used to exist only as Extras-menu functions; now ordinary palette commands, so every
     // quoted function an Extras entry can name is a palette command (see runExtraMenuEntry)
+    // -- Import: the two panels of More > Import, opened the way C-c C-e opens More > Export
+    { id: 'import-vcard', label: 'Import Contacts (.vcf)', orgName: 'org-vcard-import', group: 'Import', keywords: ['vcard', 'vcf', 'contacts', 'address book'], needs: ['doc'], run: () => openImport('vcard') },
+    { id: 'import-icalendar', label: 'Import iCalendar (.ics)', orgName: 'icalendar-import-file', group: 'Import', keywords: ['ics', 'ical', 'calendar', 'events'], needs: ['doc'], run: () => openImport('icalendar') },
     { id: 'export-org', label: 'Export as an Org buffer', orgName: 'org-org-export-as-org', group: 'Export', needs: ['doc'], run: () => performOrgOrgExport() },
     { id: 'recalculate-tables', label: 'Recalculate all tables', orgName: 'org-table-recalculate-buffer-tables', group: 'Document', keywords: ['formula', 'TBLFM'], needs: ['doc', 'writable'], run: () => recalculateAllTables() },
 

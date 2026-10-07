@@ -399,3 +399,27 @@ export function exportToVcard(docs, opts = {}) {
 
   return cards.flat().join('\r\n') + (cards.length ? '\r\n' : '');
 }
+
+/**
+ * Every contact in `docs` as a vCard of its own: `[{ documentId, heading, lines }]`, `lines` being one folded vCard. This is
+ * for the CardDAV mirror, which stores one vCard per contact; exportToVcard joins them into one file instead.
+ *
+ * It needs no style. A heading is a Tree contact if it says so (KIND individual and FIELDTYPE name) and a Flat contact if
+ * it has a contact property of its own, and a heading that is neither is not a contact, so each heading is tried as Tree
+ * and then as Flat, and a file may mix the two. Archived and commented headings are skipped, as in the export.
+ */
+export function collectContactCards(docs, opts = {}) {
+  const { birthdayProperty = 'BIRTHDAY' } = opts;
+  const cards = [];
+  const seen = new Set();
+  for (const { documentId, doc } of docs) {
+    walkHeadings(doc, (heading) => {
+      if (seen.has(heading)) return;
+      seen.add(heading);
+      if (isArchived(heading) || isCommentedHeading(heading)) return;
+      const lines = buildVcardFromTreeContact(heading) || buildVcard(heading, birthdayProperty);
+      if (lines) cards.push({ documentId, heading, lines });
+    });
+  }
+  return cards;
+}

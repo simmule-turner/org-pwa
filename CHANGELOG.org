@@ -7,6 +7,38 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v444 — Contacts address under the Calendar address
+In Settings → Calendar (CalDAV) / Contacts (CardDAV), the Contacts
+address now sits directly under the Calendar address, with the username
+and password below both, so the form reads in the order they apply.
+
+* v444 — Contacts address under the calendar address
+In Settings → Calendar (CalDAV) / Contacts (CardDAV), the Contacts
+address now sits directly under the Calendar address, with the username
+and password below, so the two addresses that share one login read
+together.
+
+* v443 — Contacts mirrored to a CardDAV address book
+Settings → Calendar (CalDAV) / Contacts (CardDAV) now also mirrors your
+contacts to an address book on your own server, so they appear in your
+phone's contacts app. Set a contacts address; it uses the calendar's
+username and password. Every contact in your org-contacts-files goes as
+a vCard of its own, in Flat or Tree style, and only contacts the app
+made are ever removed. Sync (formerly Sync now) does the calendar and
+the contacts together and says how each went; Rebuild contacts matches
+Rebuild calendar.
+
+* v442 — Import iCalendar (.ics) events and tasks
+More → Import is now a list: Contacts (.vcf) and iCalendar (.ics), each
+with its own panel and palette command (org-vcard-import,
+icalendar-import-file). The iCalendar import reads a calendar from
+Google, Apple, Outlook or Nextcloud: events become headings with their
+time in the title, where the agenda finds it, converted to your time
+zone, and tasks become TODOs. A recurrence becomes a repeater only when
+one says the same thing; otherwise the rule is kept in a property
+instead of guessed. The status line names what could not be carried
+over.
+
 * v441 — Android: attach a photo or video from the camera
 In the Android app, Attach now offers the camera beside your files, as
 the browser's chooser does: take a photo or record a video from the same

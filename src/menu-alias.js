@@ -10,12 +10,12 @@
  * entries, space-separated (optionally spread across multiple
  * physical lines with a trailing `\`, same line-continuation
  * mechanism every other multi-entry Global/Local Variable already
- * uses). `menu` is one of `file`, `more`, `export`, `view`, `clocking`:
+ * uses). `menu` is one of `file`, `more`, `export`, `import`, `view`, `clocking`:
  *
  *   org-xx-menu-aliases: "file:New;➕" "file:Open;📂" "export:ASCII;📄" "view:Org;📝" "clocking:Clock-in;▶️"
  *
- * `export` and `clocking` both cover a sub-flow reached as a STEP
- * within the More menu (tapping More's own Export or Clocking button
+ * `export`, `import` and `clocking` each cover a sub-flow reached as a STEP
+ * within the More menu (tapping More's own Export, Import or Clocking button
  * opens one, replacing the More menu's own top-level list in place --
  * see app.js's own renderExportFlow/renderClockOptionsFlow) rather
  * than the More menu's own top-level label set itself, which is why
@@ -47,13 +47,13 @@
  * unchanged text -- this is an opt-in override list, not a full
  * redefinition of any menu.
  *
- * Returns `{ file: {...}, more: {...}, export: {...}, view: {...},
- * clocking: {...} }` -- each of the five always present (possibly
- * empty `{}`), for direct `result[menu][label]` lookup by any call
- * site. An unset/empty value returns all five as `{}`.
+ * Returns `{ file: {...}, more: {...}, export: {...}, import: {...},
+ * view: {...}, clocking: {...} }` -- each of the six always present
+ * (possibly empty `{}`), for direct `result[menu][label]` lookup by any
+ * call site. An unset/empty value returns all six as `{}`.
  */
 function parseMenuAliases(rawValue) {
-  const result = { file: {}, more: {}, export: {}, view: {}, clocking: {} };
+  const result = { file: {}, more: {}, export: {}, import: {}, view: {}, clocking: {} };
   if (!rawValue || !rawValue.trim()) return result;
 
   const tokens = tokenizeMenuAliasValue(rawValue);
@@ -61,7 +61,7 @@ function parseMenuAliases(rawValue) {
     const colonIndex = token.indexOf(':');
     if (colonIndex === -1) continue; // no "menu:" prefix at all -- malformed, skip rather than error
     const menu = token.slice(0, colonIndex).trim();
-    if (!(menu in result)) continue; // not one of the five known menus -- skip
+    if (!(menu in result)) continue; // not one of the six known menus -- skip
 
     const rest = token.slice(colonIndex + 1);
     const semicolonIndex = rest.indexOf(';');

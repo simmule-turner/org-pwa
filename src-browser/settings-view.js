@@ -12,6 +12,8 @@ import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.j
 import { S } from './app-state.js';
 import { THEME_CSS_VARS, THEME_DEFAULTS, THEME_VAR_LABELS, applyFontFamily, applyFontSize, applyMenuSize, applyParagraphSpacing, applyReadingWidth, applyTablesFontSize, applyTablesSpacing, resolvedThemeName } from './appearance.js';
 import { syncAgendaToCalendar } from './calendar-sync.js';
+import { syncContactsToAddressBook } from './contacts-sync.js';
+import { syncNow } from './mirror-sync.js';
 import { syncCaptureShortcuts } from './capture-shortcuts.js';
 import { confirmDialog, openMultiFieldPopup, openTextFieldPopup } from './dialogs.js';
 import { validateCaptureTemplates } from './doc-helpers.js';
@@ -1301,37 +1303,42 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     'if Open/Save fails with a network error, that\u2019s the first thing to check on the server side.';
   webdavSection.appendChild(webdavHint);
 
-  // The calendar the agenda is mirrored to, right after WebDAV: a CalDAV server is often the same host.
+  // The calendar the agenda is mirrored to and the address book the contacts are, right after WebDAV: a CalDAV or CardDAV
+  // server is often the same host, and one username and password serves both.
   const calendarConfigStored = await getCaldavConfig(kv);
   const calendarSection = document.createElement('div');
   calendarSection.className = 'settings-section';
   container.appendChild(calendarSection);
   const calendarTitle = document.createElement('div');
   calendarTitle.className = 'panel-section-title';
-  calendarTitle.textContent = 'Calendar (CalDAV)';
+  calendarTitle.textContent = 'Calendar (CalDAV) / Contacts (CardDAV)';
   calendarSection.appendChild(calendarTitle);
 
   function openCalendarFormPopup() {
     openMultiFieldPopup({
-      label: 'Calendar (CalDAV)',
+      label: 'Calendar (CalDAV) / Contacts (CardDAV)',
       fields: [
         { key: 'url', label: 'Calendar address', type: 'text', value: calendarConfigStored.url, placeholder: 'e.g. https://dav.example.com/radicale/me/calendar/' },
+        { key: 'contactsUrl', label: 'Contacts address (same username and password)', type: 'text', value: calendarConfigStored.contactsUrl, placeholder: 'e.g. https://dav.example.com/radicale/me/contacts/' },
         { key: 'username', label: 'Username (blank = the WebDAV one)', type: 'text', value: calendarConfigStored.username },
         { key: 'password', label: 'Password (blank = the WebDAV one)', type: 'password', value: calendarConfigStored.password },
       ],
       onSave: async (values) => {
-        S.caldavConfig = await setCaldavConfig(kv, { url: values.url, username: values.username, password: values.password });
+        S.caldavConfig = await setCaldavConfig(kv, { url: values.url, contactsUrl: values.contactsUrl, username: values.username, password: values.password });
         S.calendarSyncPaused = false;
         S.calendarSyncLastError = null;
-        setStatus('Calendar settings saved.');
+        S.contactsSyncPaused = false;
+        S.contactsSyncLastError = null;
+        setStatus('Calendar and contacts settings saved.');
         renderSettingsView();
-        if (S.caldavConfig.url) syncAgendaToCalendar({ manual: true });
+        if (S.caldavConfig.url || S.caldavConfig.contactsUrl) syncNow();
       },
     });
   }
 
   const calendarPreviewFields = [
     labeledInput('Calendar address', 'text', calendarConfigStored.url, 'e.g. https://dav.example.com/radicale/me/calendar/'),
+    labeledInput('Contacts address (same username and password)', 'text', calendarConfigStored.contactsUrl, 'e.g. https://dav.example.com/radicale/me/contacts/'),
     labeledInput('Username', 'text', calendarConfigStored.username, 'blank = the WebDAV one'),
     labeledInput('Password', 'password', calendarConfigStored.password, 'blank = the WebDAV one'),
   ];
@@ -1349,8 +1356,9 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
 
   const calendarButtons = document.createElement('div');
   calendarButtons.className = 'panel-row';
-  calendarButtons.appendChild(menuButton('Sync now', () => syncAgendaToCalendar({ manual: true }), !calendarConfigStored.url));
+  calendarButtons.appendChild(menuButton('Sync', () => syncNow(), !calendarConfigStored.url && !calendarConfigStored.contactsUrl));
   calendarButtons.appendChild(menuButton('Rebuild calendar', () => syncAgendaToCalendar({ manual: true, rebuild: true }), !calendarConfigStored.url));
+  calendarButtons.appendChild(menuButton('Rebuild contacts', () => syncContactsToAddressBook({ manual: true, rebuild: true }), !calendarConfigStored.contactsUrl));
   calendarSection.appendChild(calendarButtons);
 
   const calendarHint = document.createElement('div');
@@ -1360,7 +1368,9 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   calendarHint.textContent =
     'Mirrors your agenda, one way, into a calendar you create on the server first. Use a calendar of its own: the app only ever ' +
     'removes events it put there, but edits you make to those in a calendar app are overwritten. Like WebDAV, the server must ' +
-    'allow requests from this app (CORS). Leave the address blank to turn it off.';
+    'allow requests from this app (CORS). Leave the address blank to turn it off. ' +
+    'Contacts go the same way: your contacts files (org-contacts-files) are mirrored, one way, into an address book you create on the ' +
+    'server first, using the same username and password. Sync does both.';
   calendarSection.appendChild(calendarHint);
 
   const backupSection = document.createElement('div');

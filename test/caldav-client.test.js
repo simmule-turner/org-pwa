@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CaldavError, basicAuthHeader, createCaldavClient, icsNamesFromHrefs, parseHrefs, runLimited } from '../src/caldav-client.js';
+import { CaldavError, basicAuthHeader, createCaldavClient, createCarddavClient, icsNamesFromHrefs, parseHrefs, runLimited } from '../src/caldav-client.js';
 
 // A fetch that records every request and answers from a script.
 function fakeFetch(answer = () => ({ status: 201 })) {
@@ -138,3 +138,48 @@ test('nothing to do is fine', async () => {
   const result = await runLimited([], 4, async () => { throw new Error('never'); });
   assert.deepEqual(result, { ok: [], failed: [], stopped: null });
 });
+
+// ---- CardDAV: the same client, for an address book --------------------------------------------------
+
+const bookClient = (fetch, extra = {}) => createCarddavClient({ url: 'https://dav.example.com/radicale/me/contacts', username: 'me', password: 'pw', fetch, ...extra });
+
+test('a CardDAV client writes a contact as text/vcard to <address book>/<name>, with the credentials', async () => {
+  const f = fakeFetch(() => ({ status: 201 }));
+  await bookClient(f).put('orgpwa-jane-1.vcf', 'BEGIN:VCARD\r\nEND:VCARD\r\n');
+  const c = f.calls[0];
+  assert.equal(c.method, 'PUT');
+  assert.equal(c.url, 'https://dav.example.com/radicale/me/contacts/orgpwa-jane-1.vcf');
+  assert.equal(c.headers['Content-Type'], 'text/vcard; charset=utf-8');
+  assert.equal(c.headers.Authorization, basicAuthHeader('me', 'pw'));
+});
+
+test('a CardDAV client lists only the .vcf files, and a calendar client still lists only the .ics files', async () => {
+  const body = '<multistatus xmlns="DAV:"><response><href>/radicale/me/contacts/</href></response><response><href>/radicale/me/contacts/orgpwa-a.vcf</href></response><response><href>/radicale/me/contacts/orgpwa-b.ics</href></response><response><href>/radicale/me/contacts/mine%20too.vcf</href></response></multistatus>';
+  assert.deepEqual(await bookClient(fakeFetch(() => ({ status: 207, body }))).list(), ['orgpwa-a.vcf', 'mine too.vcf']);
+  assert.deepEqual(await client(fakeFetch(() => ({ status: 207, body }))).list(), ['orgpwa-b.ics']);
+  assert.deepEqual(icsNamesFromHrefs(['/x/a.vcf', '/x/b.ics'], '.vcf'), ['a.vcf']);
+  assert.deepEqual(icsNamesFromHrefs(['/x/a.vcf', '/x/b.ics']), ['b.ics'], 'the default is still .ics');
+});
+
+test('a CardDAV client\u2019s errors say address book, with the same kinds the caller acts on', async () => {
+  const fail = async (status, op = 'put') => bookClient(fakeFetch(() => ({ status })))[op]('a.vcf', 'x').then(() => null, (e) => e);
+  const wrong = await fail(401);
+  assert.deepEqual([wrong.kind, wrong.message], ['auth', 'The address book server rejected the username or password.']);
+  assert.equal((await fail(403)).message, 'The address book server does not allow this account to change that address book.');
+  const missing = await fail(404);
+  assert.deepEqual([missing.kind, missing.message], ['not-found', 'Address book not found. Create it on the server first; the address must end at the address book itself.']);
+  assert.equal((await fail(500)).message, 'The address book server answered 500 (writing a.vcf).');
+  const down = await bookClient(fakeFetch(() => new TypeError('Failed to fetch'))).put('a.vcf', 'x').then(() => null, (e) => e);
+  assert.equal(down.kind, 'network');
+  assert.ok(down.message.startsWith("Couldn't reach the address book server."), down.message);
+  // and the calendar's own wording is unchanged
+  assert.equal((await client(fakeFetch(() => ({ status: 401 }))).put('a.ics', 'x').then(() => null, (e) => e)).message, 'The calendar server rejected the username or password.');
+});
+
+test('a CardDAV client\u2019s check asks about the address book, and says so when it is not there', async () => {
+  await bookClient(fakeFetch(() => ({ status: 207 }))).check();
+  const e = await bookClient(fakeFetch(() => ({ status: 404 }))).check().then(() => null, (err) => err);
+  assert.equal(e.kind, 'not-found');
+  assert.ok(e.message.startsWith('Address book not found.'));
+});
+

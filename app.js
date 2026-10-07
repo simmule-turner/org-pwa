@@ -257,7 +257,7 @@ import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, 
 import { renderFileMenu, stopBrowsing } from './src-browser/file-menu.js';
 import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, withArmedShift } from './src-browser/floating-keyboard.js';
 import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
-import { scheduleCalendarSync } from './src-browser/calendar-sync.js';
+import { scheduleSync } from './src-browser/mirror-sync.js';
 import { loadAttachmentsFolder } from './src-browser/attachments-store.js';
 import { syncCaptureShortcuts } from './src-browser/capture-shortcuts.js';
 import { platform } from './src-browser/platform.js';
@@ -359,12 +359,17 @@ S.githubConfig = { token: '', owner: '', repo: '', branch: 'main' };
 
 S.webdavConfig = { baseUrl: '', username: '', password: '' };
 // The calendar the agenda is mirrored to (src-browser/calendar-sync.js): its settings, and the state of the sync.
-S.caldavConfig = { url: '', username: '', password: '' };
+S.caldavConfig = { url: '', contactsUrl: '', username: '', password: '' }; // the calendar and contacts addresses, and the one login both use
 S.calendarSyncRunning = false;
 S.calendarSyncQueued = false;
 S.calendarSyncPaused = false; // after a login or address failure, until the person changes the settings or syncs by hand
 S.calendarSyncTimer = null;
 S.calendarSyncLastError = null;
+S.contactsSyncRunning = false; // the contacts mirror's own copies of the five fields above (see contacts-sync.js)
+S.contactsSyncQueued = false;
+S.contactsSyncPaused = false;
+S.contactsSyncTimer = null;
+S.contactsSyncLastError = null;
 // The tallest the window has been at its current width, to tell a keyboard that resizes the window from one that does not.
 S.viewportBaseline = null;
 S.captureShortcutsResult = null; // what the last attempt to publish the launcher's capture shortcuts did
@@ -738,7 +743,9 @@ S.exportFormat = null;
 S.exportPickingHeading = false;
 S.vcardStyle = 'tree'; // 'flat' (real org-contacts.el's own convention) or 'tree' (real org-vcard's own alternative, the default) -- see export-vcard.js's own doc comment for the full structure of each. Defaults to 'tree' to match importStyle just below, for the same reason: flat has a real ceiling (only the first of each repeated field survives), where tree keeps every one.
 S.exportVcardToNewBuffer = false; // Export > Contacts (.vcf)'s own "To: *new buffer*" checkbox -- routes the exported vCard text into a new, unsaved document (a heading titled "vCard(s)" with the raw text as its own body) instead of a file download
-S.importStyle = 'tree'; // same two options, for org-vcard-import (More > Import) -- independent of vcardStyle above, since someone might export in one style but want to import a vCard from elsewhere into the other. Defaults to 'tree', not 'flat': flat has a real ceiling (only the first of each repeated field -- email, phone, address -- survives), where tree keeps every one, matching import-vcard.js's own library-level default.
+S.importStyle = 'tree'; // same two options, for org-vcard-import (More > Import > Contacts (.vcf)) -- independent of vcardStyle above, since someone might export in one style but want to import a vCard from elsewhere into the other. Defaults to 'tree', not 'flat': flat has a real ceiling (only the first of each repeated field -- email, phone, address -- survives), where tree keeps every one, matching import-vcard.js's own library-level default.
+S.importFormat = null; // More > Import: null while its list of formats shows, then 'vcard' (Contacts (.vcf)) or 'icalendar' (iCalendar (.ics)), mirroring exportFormat
+S.importIcalendarToNewBuffer = false; // iCalendar (.ics) import's own "To: *new buffer*" checkbox, independent of the vCard one below
 S.importVcardToNewBuffer = false; // Import's own "To: *new buffer*" checkbox -- routes the imported contacts into a new, unsaved document instead of appending to the currently open one
 S.importPickingHeading = false; // true while Import's own "Choose a heading..." heading list is shown, mirroring exportPickingHeading
 S.importCleanMode = true; // Google's and Apple's own real, non-standard vCard export quirks (an 8th ADR component read as a human-readable label; "\:" unescaped to ":"; Apple's own X-ABLabel placeholder forms interpreted rather than shown verbatim) -- on by default, since most real-world vCard imports into this app are likely to come from one of these two sources
@@ -1457,7 +1464,7 @@ externalChangeDismissBtn.addEventListener('click', () => {
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     checkForExternalChange();
-    scheduleCalendarSync(); // coming back to the app: the files may have changed while it was away
+    scheduleSync(); // coming back to the app: the files may have changed while it was away
   }
 });
 
@@ -1474,5 +1481,5 @@ bootstrap().then(() => {
   acceptNativeLaunches(); // a native shell's shares that arrived while the app was starting
   syncCaptureShortcuts(); // the launcher's long-press list follows the capture templates
   loadAttachmentsFolder(); // and the attachments folder chosen earlier, if the platform keeps one
-  scheduleCalendarSync();
+  scheduleSync();
 });

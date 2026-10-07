@@ -3,6 +3,9 @@
  * network (and run against a real server in Node). CalDAV is WebDAV plus iCalendar: an event is one .ics file in a
  * calendar folder, written with PUT, removed with DELETE, and the folder is listed with PROPFIND.
  *
+ * CardDAV is the same thing for contacts: a contact is one .vcf file (a vCard) in an address book folder, with the same
+ * three requests. `createCarddavClient` is this client told to speak that, and only the file type and the wording differ.
+ *
  * Every failure becomes a CaldavError with a `kind` the caller can act on and a message fit to show a person:
  *   'auth'       the server said no to the credentials (401, 403)
  *   'not-found'  the calendar address does not exist (404, or 409 for a missing parent)
@@ -36,9 +39,15 @@ function parseHrefs(xml) {
   return hrefs;
 }
 
-/** The .ics file names among `hrefs` (each a path or a full URL, possibly percent-encoded). The folder itself and
- *  anything that is not an .ics file are skipped. */
-function icsNamesFromHrefs(hrefs) {
+/** What differs between a calendar and an address book: the file type, what it is sent as, and what to call it. */
+const KINDS = {
+  calendar: { extension: '.ics', contentType: 'text/calendar; charset=utf-8', noun: 'calendar', Noun: 'Calendar' },
+  contacts: { extension: '.vcf', contentType: 'text/vcard; charset=utf-8', noun: 'address book', Noun: 'Address book' },
+};
+
+/** The file names with `extension` among `hrefs` (each a path or a full URL, possibly percent-encoded). The folder itself and
+ *  anything with another extension are skipped. */
+function icsNamesFromHrefs(hrefs, extension = '.ics') {
   const names = [];
   for (const href of hrefs) {
     let path = href;
@@ -55,20 +64,21 @@ function icsNamesFromHrefs(hrefs) {
     } catch {
       // keep it as it is
     }
-    if (name.endsWith('.ics')) names.push(name);
+    if (name.endsWith(extension)) names.push(name);
   }
   return names;
 }
 
-function errorForResponse(response, what) {
+function errorForResponse(response, what, { noun, Noun }) {
   const status = response.status;
-  if (status === 401) return new CaldavError('auth', 'The calendar server rejected the username or password.', status);
-  if (status === 403) return new CaldavError('auth', 'The calendar server does not allow this account to change that calendar.', status);
-  if (status === 404 || status === 409) return new CaldavError('not-found', 'Calendar not found. Create it on the server first; the address must end at the calendar itself.', status);
-  return new CaldavError('server', `The calendar server answered ${status}${response.statusText ? ' ' + response.statusText : ''} (${what}).`, status);
+  if (status === 401) return new CaldavError('auth', `The ${noun} server rejected the username or password.`, status);
+  if (status === 403) return new CaldavError('auth', `The ${noun} server does not allow this account to change that ${noun}.`, status);
+  if (status === 404 || status === 409) return new CaldavError('not-found', `${Noun} not found. Create it on the server first; the address must end at the ${noun} itself.`, status);
+  return new CaldavError('server', `The ${noun} server answered ${status}${response.statusText ? ' ' + response.statusText : ''} (${what}).`, status);
 }
 
-function createCaldavClient({ url, username, password, fetch: fetchImpl = (...args) => globalThis.fetch(...args), timeoutMs = 20000 }) {
+function createCaldavClient({ url, username, password, kind = 'calendar', fetch: fetchImpl = (...args) => globalThis.fetch(...args), timeoutMs = 20000 }) {
+  const what = KINDS[kind] || KINDS.calendar;
   const base = url.endsWith('/') ? url : url + '/';
   const authorization = basicAuthHeader(username || '', password || '');
 
@@ -79,41 +89,46 @@ function createCaldavClient({ url, username, password, fetch: fetchImpl = (...ar
     try {
       return await fetchImpl(target, { method, headers: { Authorization: authorization, ...headers }, body, signal: controller ? controller.signal : undefined });
     } catch {
-      throw new CaldavError('network', "Couldn't reach the calendar server. Check the address, and that the server allows requests from this app (CORS).");
+      throw new CaldavError('network', `Couldn't reach the ${what.noun} server. Check the address, and that the server allows requests from this app (CORS).`);
     } finally {
       if (timer) clearTimeout(timer);
     }
   }
 
   return {
-    /** Writes (creates or replaces) one event file. */
+    /** Writes (creates or replaces) one event file (or contact file). */
     async put(name, ics) {
-      const response = await request('PUT', name, { headers: { 'Content-Type': 'text/calendar; charset=utf-8' }, body: ics });
-      if (!response.ok) throw errorForResponse(response, `writing ${name}`);
+      const response = await request('PUT', name, { headers: { 'Content-Type': what.contentType }, body: ics });
+      if (!response.ok) throw errorForResponse(response, `writing ${name}`, what);
     },
     /** Removes one event file. Already gone counts as removed. */
     async remove(name) {
       const response = await request('DELETE', name);
-      if (!response.ok && response.status !== 404) throw errorForResponse(response, `removing ${name}`);
+      if (!response.ok && response.status !== 404) throw errorForResponse(response, `removing ${name}`, what);
     },
-    /** The names of the .ics files in the calendar. */
+    /** The names of the .ics files in the calendar (the .vcf files in an address book). */
     async list() {
       const response = await request('PROPFIND', null, {
         headers: { Depth: '1', 'Content-Type': 'application/xml; charset=utf-8' },
         body: '<?xml version="1.0" encoding="utf-8"?><propfind xmlns="DAV:"><prop><getetag/></prop></propfind>',
       });
-      if (response.status !== 207 && !response.ok) throw errorForResponse(response, 'listing the calendar');
-      return icsNamesFromHrefs(parseHrefs(await response.text()));
+      if (response.status !== 207 && !response.ok) throw errorForResponse(response, `listing the ${what.noun}`, what);
+      return icsNamesFromHrefs(parseHrefs(await response.text()), what.extension);
     },
-    /** Whether the calendar address and credentials work. Throws a CaldavError if not. */
+    /** Whether the address and credentials work. Throws a CaldavError if not. */
     async check() {
       const response = await request('PROPFIND', null, {
         headers: { Depth: '0', 'Content-Type': 'application/xml; charset=utf-8' },
         body: '<?xml version="1.0" encoding="utf-8"?><propfind xmlns="DAV:"><prop><resourcetype/></prop></propfind>',
       });
-      if (response.status !== 207 && !response.ok) throw errorForResponse(response, 'checking the calendar');
+      if (response.status !== 207 && !response.ok) throw errorForResponse(response, `checking the ${what.noun}`, what);
     },
   };
+}
+
+/** The same client for an address book (CardDAV): .vcf files, sent as text/vcard, with the wording to match. */
+function createCarddavClient(options) {
+  return createCaldavClient({ ...options, kind: 'contacts' });
 }
 
 /**
@@ -143,4 +158,4 @@ async function runLimited(items, limit, worker) {
   return { ok, failed, stopped };
 }
 
-export { CaldavError, basicAuthHeader, parseHrefs, icsNamesFromHrefs, createCaldavClient, runLimited };
+export { CaldavError, basicAuthHeader, parseHrefs, icsNamesFromHrefs, createCaldavClient, createCarddavClient, runLimited };

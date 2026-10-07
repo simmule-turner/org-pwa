@@ -83,7 +83,7 @@ You do this once, on any computer with a JDK (Android Studio includes one):
   to copy the numbers, and send them.
 - It does **not** share data with the PWA: the shell's address is `https://localhost`, so its settings, tokens and
   cached documents are its own. Enter GitHub / WebDAV / calendar settings again.
-- **WebDAV and CalDAV servers must allow the origin `https://localhost`** for CORS, as they do for the PWA's own address.
+- **WebDAV, CalDAV and CardDAV servers must allow the origin `https://localhost`** for CORS, as they do for the PWA's own address.
   GitHub needs nothing.
 
 ## Layout and versions
