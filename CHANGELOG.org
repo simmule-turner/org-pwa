@@ -7,6 +7,13 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v441 — Android: attach a photo or video from the camera
+In the Android app, Attach now offers the camera beside your files, as
+the browser's chooser does: take a photo or record a video from the same
+chooser and it is attached. The chosen file is read from a temporary
+copy rather than passed through the app's bridge in one piece, so a long
+video does not have to fit through it.
+
 * v440 — local: files everywhere a scheme is accepted
 local: now works wherever github: and webdav: do: org-agenda-files,
 org-contacts-files (new), org-refile-targets, a capture template's file,

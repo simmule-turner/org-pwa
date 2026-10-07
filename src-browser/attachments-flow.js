@@ -57,7 +57,7 @@ export async function attachFileToHeading(heading) {
 
   let picked;
   try {
-    picked = await pickBinaryFile();
+    picked = await (platform.pickFile ? platform.pickFile() : pickBinaryFile()); // a shell may offer the camera beside the files
   } catch {
     return; // no file selected -- silently do nothing, matching every other cancel-a-picker path in this app
   }

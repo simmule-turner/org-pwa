@@ -66,6 +66,9 @@ You do this once, on any computer with a JDK (Android Studio includes one):
   `Documents/org-pwa` (in the shared Documents folder; pick any other folder if you like). The app keeps access to the
   file, so it can be edited, saved, and reopened from the recent list later without picking it again. Save As > Local
   file names a new one, also starting there.
+- **Attaching a photo or video:** *Attach* opens Android's chooser. Besides your file sources it lists the camera apps as
+  **Take a photo (…)** and **Record a video (…)**. Take one: it should come back attached. Try a video of a minute or
+  two as well, and tell me if it is slow or fails.
 - **Saving a file out:** exports and settings backups go straight into **Downloads**, with no screen in between, and the
   status line says `Saved "name" to Downloads.` (On Android 9 and older it still opens the "save as" screen.)
 - **The org-pwa folder:** the first time something needs it (a local file's first attachment, or a `local:` name that is

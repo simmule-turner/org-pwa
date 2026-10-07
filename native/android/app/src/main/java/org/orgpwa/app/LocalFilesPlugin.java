@@ -2,12 +2,17 @@ package org.orgpwa.app;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.UriPermission;
+import android.content.pm.LabeledIntent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
@@ -30,6 +35,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 
 /**
  * Files on the device through Android's Storage Access Framework: the person picks a file (or names a new one) in the
@@ -303,6 +313,115 @@ public class LocalFilesPlugin extends Plugin {
         } catch (IOException | IllegalArgumentException e) {
             call.reject("Could not open " + name + ": " + e.getMessage());
         }
+    }
+
+    // The two files a camera app may be asked to write, for the pick in progress (one pick at a time).
+    private File photoTarget;
+    private File videoTarget;
+
+    /**
+     * Attaching a file the way Chrome's own picker lets you: one system chooser that lists your files AND, beside them, the
+     * camera apps, to take a photo or record a video. (A plain file input in a WebView offers only the file sources; Capacitor
+     * opens the camera only for an input marked capture, which has no choice in it.) Whatever is chosen ends up as a file in
+     * the app's cache, and resolves { path, name, type }: the page reads it from there, so a long video never has to travel
+     * through the bridge as one huge string. Rejects "cancelled" if the person backs out.
+     */
+    @PluginMethod
+    public void pickAttachment(PluginCall call) {
+        File directory = capturesDirectory();
+        if (directory == null) {
+            call.reject("Could not prepare a place for the new file");
+            return;
+        }
+        File[] earlier = directory.listFiles();
+        if (earlier != null) for (File old : earlier) old.delete(); // what an earlier pick left is not needed any more
+        String stamp = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(new Date());
+        photoTarget = new File(directory, "photo-" + stamp + ".jpg");
+        videoTarget = new File(directory, "video-" + stamp + ".mp4");
+
+        Intent files = new Intent(Intent.ACTION_GET_CONTENT);
+        files.addCategory(Intent.CATEGORY_OPENABLE);
+        files.setType("*/*");
+        List<Intent> cameras = new ArrayList<>();
+        cameras.addAll(captureOptions(MediaStore.ACTION_IMAGE_CAPTURE, photoTarget, "Take a photo"));
+        cameras.addAll(captureOptions(MediaStore.ACTION_VIDEO_CAPTURE, videoTarget, "Record a video"));
+        Intent chooser = Intent.createChooser(files, "Attach");
+        if (!cameras.isEmpty()) chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, cameras.toArray(new Intent[0]));
+        startActivityForResult(call, chooser, "pickedAttachment");
+    }
+
+    /** One chooser entry per camera app that can do `action`, each told to write to `target` and labelled "<verb> (<app>)". */
+    private List<Intent> captureOptions(String action, File target, String verb) {
+        List<Intent> options = new ArrayList<>();
+        PackageManager packages = getContext().getPackageManager();
+        Uri output;
+        try {
+            output = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", target);
+        } catch (IllegalArgumentException e) {
+            return options; // no way to hand a camera app a place to write: offer only the files
+        }
+        for (ResolveInfo app : packages.queryIntentActivities(new Intent(action), 0)) {
+            Intent intent = new Intent(action);
+            intent.setComponent(new ComponentName(app.activityInfo.packageName, app.activityInfo.name));
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, output);
+            intent.setClipData(ClipData.newRawUri("", output)); // so the permission below covers the address in EXTRA_OUTPUT
+            intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            options.add(new LabeledIntent(intent, app.activityInfo.packageName, verb + " (" + app.loadLabel(packages) + ")", app.getIconResource()));
+        }
+        return options;
+    }
+
+    @ActivityCallback
+    private void pickedAttachment(PluginCall call, ActivityResult result) {
+        if (call == null) return;
+        if (result.getResultCode() != Activity.RESULT_OK) {
+            call.reject("cancelled");
+            return;
+        }
+        JSObject out = new JSObject();
+        // A camera app writes to the file it was given, and some also return that file's address. The file it was given wins:
+        // copying it onto itself would empty it.
+        File made = photoTarget != null && photoTarget.length() > 0 ? photoTarget : videoTarget != null && videoTarget.length() > 0 ? videoTarget : null;
+        if (made != null) {
+            out.put("path", made.getAbsolutePath());
+            out.put("name", made.getName());
+            out.put("type", made == photoTarget ? "image/jpeg" : "video/mp4");
+            call.resolve(out);
+            return;
+        }
+        Intent data = result.getData();
+        Uri picked = data == null ? null : data.getData();
+        if (picked == null) {
+            call.reject("Nothing was captured");
+            return;
+        }
+        String name = displayName(picked);
+        String type = getContext().getContentResolver().getType(picked);
+        File directory = capturesDirectory();
+        if (directory == null) {
+            call.reject("Could not prepare a place for the file");
+            return;
+        }
+        File copy = new File(directory, name.replaceAll("[\\\\/:*?\"<>|]", "_"));
+        try (InputStream in = getContext().getContentResolver().openInputStream(picked); OutputStream copyOut = new FileOutputStream(copy)) {
+            if (in == null) throw new IOException("the file could not be opened");
+            byte[] chunk = new byte[65536];
+            int n;
+            while ((n = in.read(chunk)) != -1) copyOut.write(chunk, 0, n);
+        } catch (IOException | SecurityException e) {
+            call.reject("Could not read " + name + ": " + e.getMessage());
+            return;
+        }
+        out.put("path", copy.getAbsolutePath());
+        out.put("name", name);
+        out.put("type", type == null ? "application/octet-stream" : type);
+        call.resolve(out);
+    }
+
+    /** Where a picked or captured file waits for the page to read it: the app's cache, which the FileProvider already shares. */
+    private File capturesDirectory() {
+        File directory = new File(getContext().getCacheDir(), "captures");
+        return directory.isDirectory() || directory.mkdirs() ? directory : null;
     }
 
     private Uri uriFor(String name) {

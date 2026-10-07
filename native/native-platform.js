@@ -232,6 +232,29 @@
         })
         .then(function () {});
     };
+    // Attaching: Android's chooser, with the camera apps beside the files (LocalFilesPlugin.pickAttachment). Whatever is chosen
+    // waits in the app's cache and is read from there through the local web server, so a long video never crosses the bridge as
+    // one huge string. Resolves { name, type, base64 }; backing out is an AbortError.
+    platform.pickFile = function () {
+      return localFiles.pickAttachment().then(
+        function (picked) {
+          return fetch(capacitor.convertFileSrc(picked.path))
+            .then(function (response) {
+              if (!response.ok) throw new Error('Could not read ' + picked.name);
+              return response.blob();
+            })
+            .then(function (blob) {
+              return toBase64(blob).then(function (base64) {
+                return { name: picked.name, type: picked.type || blob.type, base64: base64 };
+              });
+            });
+        },
+        function (error) {
+          throw failure(error);
+        }
+      );
+    };
+
     // Resolves { where } (Downloads, on current Android), or null if the person backed out; a failure rejects, and the app says so.
     platform.saveFile = function (name, content, mime) {
       return toBase64(content)

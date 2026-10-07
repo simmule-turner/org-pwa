@@ -28,6 +28,11 @@ try {
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.org': 'text/plain' };
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
+  if (url.pathname.startsWith('/_capacitor_file_/')) {
+    // what Capacitor's local web server does for a file on the device: here, bytes that say where they came from
+    res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+    return res.end(Buffer.from('CAPTURED:' + url.pathname));
+  }
   let file = path.join(www, decodeURIComponent(url.pathname));
   if (file.endsWith('/')) file += 'index.html';
   if (!file.startsWith(www) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
@@ -78,6 +83,7 @@ function nativeSide() {
       exists: async ({ path }) => ({ value: tree.files.has(path) }),
     },
     LocalFiles: {
+      pickAttachment: async () => { if (window.__cancelPick) { window.__cancelPick = false; throw new Error('cancelled'); } window.__calls.push(['pickAttachment']); return { path: '/data/user/0/org.orgpwa.app/cache/captures/photo-1.jpg', name: 'photo-1.jpg', type: 'image/jpeg' }; },
       pickOpen: async () => { if (window.__cancelNext) { window.__cancelNext = false; throw new Error('cancelled'); } return { name: 'phone.org' }; },
       pickNew: async ({ name }) => { files.set(name, ''); return { name }; },
       read: async ({ name }) => (files.has(name) ? { found: true, content: files.get(name) } : { found: false }),
@@ -331,6 +337,26 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
   check(outcome.link.includes('attachment:doc.pdf'), 'and linked from the heading', outcome.link);
   check(viewedAttachment && viewedAttachment[1].name === 'doc.pdf' && Buffer.from(viewedAttachment[1].base64, 'base64').toString() === '%PDF-1.4', 'opening it reads the same bytes back from the folder and hands them to the viewer');
   check(!outcome.after.includes('attachment:doc.pdf'), 'deleting removes the link', outcome.after);
+
+  // attaching through the chooser that has the camera in it: the file is read from the cache through the web server, and the
+  // whole attach flow runs on what the picker returns
+  const expectBytes = 'CAPTURED:/_capacitor_file_/data/user/0/org.orgpwa.app/cache/captures/photo-1.jpg';
+  const viaChooser = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { attachFileToHeading } = await import('/src-browser/attachments-flow.js');
+    const { platform } = await import('/src-browser/platform.js');
+    const direct = await platform.pickFile();
+    const heading = S.state.doc.children[0];
+    await attachFileToHeading(heading);
+    window.__cancelPick = true;
+    let cancelled = 'resolved';
+    try { await platform.pickFile(); } catch (e) { cancelled = e.name; }
+    return { direct, body: heading.bodyLines.join('|'), cancelled };
+  });
+  const attachedWrite = (await calls(page, 'attachWrite')).find((c) => c[1].endsWith('/photo-1.jpg'));
+  check(viaChooser.direct.name === 'photo-1.jpg' && viaChooser.direct.type === 'image/jpeg' && Buffer.from(viaChooser.direct.base64, 'base64').toString() === expectBytes, 'the chooser\u2019s file is read from the cache through the web server, with its name and type', JSON.stringify({ ...viaChooser.direct, base64: viaChooser.direct.base64.slice(0, 12) + '\u2026' }));
+  check(attachedWrite && Buffer.from(attachedWrite[2], 'base64').toString() === expectBytes && viaChooser.body.includes('attachment:photo-1.jpg'), 'Attach uses it: the bytes are written to the folder under data/ and the heading links to the photo', attachedWrite && attachedWrite[1]);
+  check(viaChooser.cancelled === 'AbortError', 'backing out of the chooser is an AbortError, which the attach flow ignores', viaChooser.cancelled);
 
   // local files by name, found in the same folder: read, written, listed as present or absent, with text that is not ASCII
   // and a file far larger than a function call can take as arguments (the base64 conversion must go in pieces)

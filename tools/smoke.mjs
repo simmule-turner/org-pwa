@@ -3255,6 +3255,48 @@ check('attachments on a LOCAL document: refused with a pointer before a folder i
   await context.close();
 });
 
+check('attach: a platform that supplies its own picker (the camera beside the files) is used instead of the browser\u2019s file input; without one the browser\u2019s input is used', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    const tree = new Map();
+    window.__tree = tree;
+    installPlatform({
+      localFiles: { supported: () => true, pickOpen: async () => 'phone.org', pickNew: async (kv, n) => n, adapter: { async read() { return { content: '* Report\n', hash: 'h' }; }, async write() { return { hash: 'h' }; }, async exists() { return true; }, async access() { return 'granted'; } } },
+      attachments: { supported: () => true, folder: async () => ({ name: 'org-pwa' }), pickFolder: async () => ({ name: 'org-pwa' }), adapter: { readBinary: async () => null, writeBinary: async (path, base64) => { tree.set(path, base64); }, delete: async () => {}, exists: async () => false } },
+      pickFile: async () => ({ name: 'shot.png', type: 'image/png', base64: 'iVBORw0KGgo=' }),
+    });
+    (await import('/src-browser/app-state.js')).S.attachmentsFolder = 'org-pwa';
+  });
+  await fileMenu(page, 'Open', 'Local file');
+  await page.waitForFunction(() => document.getElementById('modelineBar').innerText.includes('phone.org'), null, { timeout: 8000 });
+  const outcome = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { attachFileToHeading } = await import('/src-browser/attachments-flow.js');
+    const heading = S.state.doc.children[0];
+    const pending = attachFileToHeading(heading); // never awaited: without the hook it would wait on a file input for ever
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    const written = [...window.__tree.entries()];
+    return { inputs: document.querySelectorAll('input[type=file]').length, written, body: heading.bodyLines.join('|'), pending: !!pending };
+  });
+  expect(outcome.inputs === 0, `no browser file input was opened: ${outcome.inputs}`);
+  expect(outcome.written.length === 1 && /^data\/[^/]{2}\/[^/]+\/shot\.png$/.test(outcome.written[0][0]) && outcome.written[0][1] === 'iVBORw0KGgo=', `the platform's file was attached: ${JSON.stringify(outcome.written)}`);
+  expect(outcome.body.includes('attachment:shot.png'), `and linked: ${outcome.body}`);
+
+  // with no picker of its own the browser's input is what opens
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    installPlatform({ pickFile: null });
+    const { S } = await import('/src-browser/app-state.js');
+    const { attachFileToHeading } = await import('/src-browser/attachments-flow.js');
+    attachFileToHeading(S.state.doc.children[0]);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  });
+  expect((await page.evaluate(() => document.querySelectorAll('input[type=file]').length)) === 1, 'without pickFile the browser\u2019s own file input opens, as it always did');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('attachments on a local document where the platform has no folder support (a browser): unavailable, with the explanation it always had', async () => {
   const { context, page, errors } = await freshPage();
   await page.evaluate(async () => {
