@@ -71,6 +71,112 @@
     });
   }
 
+  // Agenda reminders: the Local Notifications plugin holds them for later, so they arrive with the app closed. The app hands over
+  // the whole coming list (schedule replaces whatever was held), asks for permission with a tap, and hears a tap on one as the
+  // day to open. Exact timing needs the system's "Alarms & reminders" switch; without it the plugin would open that screen on every
+  // schedule, so exactness is only asked for once it is granted and reminders are otherwise inexact (a few minutes' slack).
+  var localNotifications = plugin('LocalNotifications');
+  if (localNotifications) {
+    var CHANNEL = 'appt';
+    var channelReady = null;
+    var ensureChannel = function () {
+      if (!channelReady) {
+        channelReady = Promise.resolve(
+          localNotifications.createChannel({ id: CHANNEL, name: 'Agenda reminders', description: 'Appointments from your agenda, shortly before they start', importance: 4, visibility: 1 })
+        ).catch(function (error) {
+          channelReady = null;
+          warn('the reminders channel', error);
+        });
+      }
+      return channelReady;
+    };
+    var permissionOf = function (status) {
+      var state = status && status.display;
+      return state === 'granted' ? 'granted' : state === 'denied' ? 'denied' : 'default';
+    };
+    var exactGranted = function () {
+      return Promise.resolve(localNotifications.checkExactNotificationSetting()).then(
+        function (status) {
+          return !!status && status.exact_alarm === 'granted';
+        },
+        function () {
+          return false;
+        }
+      );
+    };
+    var build = function (item, exact) {
+      return {
+        id: item.id,
+        title: item.title,
+        body: item.body,
+        channelId: CHANNEL,
+        autoCancel: true,
+        schedule: { at: item.at.toISOString(), allowWhileIdle: true },
+        isExactNotification: exact,
+        extra: { day: item.day },
+      };
+    };
+    platform.notifications = {
+      supported: function () {
+        return true;
+      },
+      permission: function () {
+        return Promise.resolve(localNotifications.checkPermissions()).then(permissionOf, function () {
+          return 'denied';
+        });
+      },
+      request: function () {
+        return Promise.resolve(localNotifications.requestPermissions()).then(permissionOf, function () {
+          return 'denied';
+        });
+      },
+      scheduled: true,
+      // one right now: used for an appointment that is already inside its warning time when the app looks
+      show: function (item) {
+        return ensureChannel().then(function () {
+          return localNotifications.schedule({
+            notifications: [build({ id: item.id, title: item.title, body: item.body, at: new Date(Date.now() + 1000), day: item.day }, false)],
+          });
+        });
+      },
+      // replaces everything held with `list`
+      schedule: function (list) {
+        return Promise.all([ensureChannel(), exactGranted(), localNotifications.cancelAll()]).then(function (results) {
+          if (!list.length) return null;
+          var exact = results[1];
+          return localNotifications.schedule({ notifications: list.map(function (item) { return build(item, exact); }) });
+        });
+      },
+      cancelAll: function () {
+        return Promise.resolve(localNotifications.cancelAll());
+      },
+      onTap: function (handler) {
+        listen(localNotifications, 'localNotificationActionPerformed', function (event) {
+          var extra = event && event.notification && event.notification.extra;
+          if (extra && extra.day !== undefined) handler(extra.day);
+        });
+      },
+      // Whether reminders can be exact: status() is 'granted' or not; request() opens the system switch and resolves the new status.
+      exact: {
+        status: function () {
+          return exactGranted().then(function (ok) {
+            return ok ? 'granted' : 'denied';
+          });
+        },
+        request: function () {
+          return Promise.resolve(localNotifications.changeExactNotificationSetting()).then(
+            function (status) {
+              return status && status.exact_alarm === 'granted' ? 'granted' : 'denied';
+            },
+            function () {
+              return 'denied';
+            }
+          );
+        },
+      },
+    };
+  }
+
   // Capture templates as launcher shortcuts: CaptureShortcutsPlugin raises "captureRequested" with the template's key
   // ('' for the template list) when one is tapped, and publishes the shortcuts the app asks for.
   var shortcuts = plugin('CaptureShortcuts');

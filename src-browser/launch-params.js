@@ -6,11 +6,18 @@ import { launchFromShare, parseLaunchParams } from '../src/capture-shared.js';
 import { S } from './app-state.js';
 import { openCapturePrompt, renderCapturePanel } from './capture-ui.js';
 import { setStatus } from './editing.js';
+import { openApptDay } from './appt-flow.js';
 import { getCaptureTemplates } from './settings.js';
 import { kv } from './singletons.js';
 
 /** Acts on the launch URL, once, after startup has restored everything. A URL with nothing for Capture does nothing. */
 export async function handleLaunchParams() {
+  const apptDay = new URLSearchParams(window.location.search).get('appt-day'); // tapping a reminder with the app closed
+  if (apptDay) {
+    window.history.replaceState(window.history.state, '', window.location.pathname + window.location.hash);
+    openApptDay(apptDay);
+    return;
+  }
   const params = parseLaunchParams(window.location.search);
   if (!params) return;
   // Remove the parameters first, so a reload (or the app being restored) never runs the capture a second time.

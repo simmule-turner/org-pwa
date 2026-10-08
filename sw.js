@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v447';
+const CACHE_NAME = 'org-pwa-shell-v448';
 
 const SHELL_FILES = [
   './',
@@ -19,6 +19,7 @@ const SHELL_FILES = [
   './src/org-parser.js',
   './src/affiliated.js',
   './src/agenda.js',
+  './src/appt.js',
   './src/diary-sexp.js',
   './src/sexp-eval.js',
   './src/repeater-shift.js',
@@ -160,6 +161,7 @@ const SHELL_FILES = [
   './src-browser/todo-workflow.js',
   './src-browser/views.js',
   './src-browser/weather-flow.js',
+  './src-browser/appt-flow.js',
   './src-browser/field-groups.js',
   './src-browser/agenda-format.js',
   './src-browser/appearance.js',
@@ -218,6 +220,22 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'GET_VERSION' && event.ports && event.ports[0]) {
     event.ports[0].postMessage({ version: CACHE_NAME });
   }
+});
+
+// Tapping an agenda reminder opens that day: an open window is told which day, and a closed app is launched with it.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const day = event.notification.data && event.notification.data.day;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      const open = windows[0];
+      if (open) {
+        open.postMessage({ type: 'appt-open', day });
+        return open.focus();
+      }
+      return self.clients.openWindow('./?appt-day=' + encodeURIComponent(day));
+    })
+  );
 });
 
 self.addEventListener('activate', (event) => {

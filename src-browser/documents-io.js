@@ -13,6 +13,7 @@ import { resolveEffectiveStartupConfig } from '../src/startup-config.js';
 import { createHistory, pushSnapshot } from '../src/undo-history.js';
 import { filesystemAdapter, githubAdapter, inputFileAdapter, webdavAdapter } from './adapters.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
+import { requestApptScan } from './appt-flow.js';
 import { scheduleSync } from './mirror-sync.js';
 import { S } from './app-state.js';
 import { scrollContainer } from './chrome.js';
@@ -423,6 +424,7 @@ export async function saveCurrent() {
     render();
     setStatus(result.resolution === 'merged' ? 'Saved \u2014 merged with the changes made elsewhere.' : 'Saved (' + result.status + ').');
     scheduleSync(); // the agenda, or the contacts, may have changed
+    requestApptScan(); // and so may the appointments
   } catch (err) {
     setStatus('Save failed: ' + err.message);
   }

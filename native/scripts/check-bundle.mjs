@@ -64,7 +64,7 @@ function nativeSide() {
   window.__calls = [];
   window.__unhandled = [];
   window.addEventListener('unhandledrejection', (e) => window.__unhandled.push(String(e.reason)));
-  const files = new Map([['phone.org', '* From the phone\nbody text\n']]);
+  const files = new Map([['phone.org', window.__phoneOrg || '* From the phone\nbody text\n']]);
   const tree = { name: null, files: new Map() }; // the attachments folder
   const impls = {
     ShareTarget: {},
@@ -73,6 +73,15 @@ function nativeSide() {
       info: async () => ({ max: 4, dynamic: ['capture:b'], canPin: true }),
       canPin: async () => ({ value: true }),
       pin: async (a) => { window.__calls.push(['pin', a]); return { requested: true }; },
+    },
+    LocalNotifications: {
+      checkPermissions: async () => ({ display: window.__notifPermission || 'granted' }),
+      requestPermissions: async () => { window.__calls.push(['requestPermissions']); window.__notifPermission = 'granted'; return { display: 'granted' }; },
+      checkExactNotificationSetting: async () => ({ exact_alarm: window.__exactAlarm || 'denied' }),
+      changeExactNotificationSetting: async () => { window.__calls.push(['changeExact']); window.__exactAlarm = 'granted'; return { exact_alarm: 'granted' }; },
+      createChannel: async (a) => { window.__calls.push(['createChannel', a]); },
+      schedule: async (a) => { window.__calls.push(['notify', a]); return { notifications: a.notifications.map((n) => ({ id: n.id })) }; },
+      cancelAll: async () => { window.__calls.push(['cancelAll']); },
     },
     Attachments: {
       pickFolder: async () => { if (window.__cancelFolder) { window.__cancelFolder = false; throw new Error('cancelled'); } tree.name = 'org-pwa'; return { name: 'org-pwa' }; },
@@ -179,7 +188,7 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
     return { name: platform.name, sw: platform.usesServiceWorker, registrations: (await navigator.serviceWorker.getRegistrations()).length, listeners: window.__native.listenerKeys(), unhandled: window.__unhandled };
   });
   check(info.name === 'capacitor-android' && info.sw === false && info.registrations === 0, 'the platform is named, and no service worker is registered', JSON.stringify({ name: info.name, registrations: info.registrations }));
-  check(JSON.stringify(info.listeners) === JSON.stringify(['CaptureShortcuts:captureRequested', 'ShareTarget:shareReceived']), 'both native events are listened for', JSON.stringify(info.listeners));
+  check(JSON.stringify(info.listeners) === JSON.stringify(['CaptureShortcuts:captureRequested', 'LocalNotifications:localNotificationActionPerformed', 'ShareTarget:shareReceived']), 'the native events (shares, launcher shortcuts, a tapped reminder) are listened for', JSON.stringify(info.listeners));
   const early = await sharedNow(page);
   check((await captureShown(page)) && early && early.text === 'shared before the app was ready', 'a share that arrived before the app started opens Capture with it', JSON.stringify(early));
   await closeCapture(page);
@@ -213,7 +222,7 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
   const report = await page.locator('textarea').last().inputValue();
   check(report.includes('launcher shortcuts: launcher {"max":4,"dynamic":["capture:b"],"canPin":true}; last publish: ') && report.includes('tab bar: top, height:'), 'the display measurements include the launcher\'s report and the tab bar', JSON.stringify(report.split('\n').filter((l) => /launcher|tab bar/.test(l))));
   // Settings > Updates names the real versions, read from the files the shell is built from
-  const web = /CACHE_NAME\s*=\s*'org-pwa-shell-(v\d+)'/.exec(fs.readFileSync(path.join(nativeDir, '..', 'sw.js'), 'utf8'))[1];
+  const web = /CACHE_NAME\s*=\s*'org-pwa-shell-(v\d+)'/.exec(fs.readFileSync(path.join(path.resolve(process.env.ORG_PWA_ROOT || path.join(nativeDir, '..')), 'sw.js'), 'utf8'))[1];
   const shell = JSON.parse(fs.readFileSync(path.join(nativeDir, 'package.json'), 'utf8')).version;
   await page.locator('textarea').last().locator("xpath=ancestor::div[@class='panel'][1]").getByRole('button', { name: 'Cancel' }).click(); // the measurements popup is still open
   await page.click('#moreBtn');
@@ -383,7 +392,7 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
 
 // 4. A build of the shell missing its plugins: the app starts, and offers nothing it cannot do
 {
-  const { context, page, problems } = await open({ __missing: ['ShareTarget', 'CaptureShortcuts', 'LocalFiles', 'Attachments'] });
+  const { context, page, problems } = await open({ __missing: ['ShareTarget', 'CaptureShortcuts', 'LocalFiles', 'Attachments', 'LocalNotifications'] });
   const info = await page.evaluate(async () => {
     const { platform } = await import('/src-browser/platform.js');
     return { ui: !!document.getElementById('moreBtn'), shortcuts: platform.captureShortcuts.supported(), files: platform.localFiles.supported(), folders: platform.attachments.supported(), unhandled: window.__unhandled };
@@ -405,6 +414,62 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
   const { context, page, problems } = await open({}, { capacitor: false });
   const info = await page.evaluate(async () => ({ ui: !!document.getElementById('moreBtn'), name: (await import('/src-browser/platform.js')).platform.name }));
   check(info.ui && info.name === 'capacitor' && problems.length === 0, 'without Capacitor it still starts, as plain "capacitor"', JSON.stringify(info));
+  await context.close();
+}
+
+// 7. Agenda reminders: held by the Local Notifications plugin, so they arrive with the app closed
+{
+  const pad = (n) => String(n).padStart(2, '0');
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const stamp = (d) => `<${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${days[d.getDay()]} ${pad(d.getHours())}:${pad(d.getMinutes())}>`;
+  const start = new Date(Date.now() + 30 * 60000);
+  start.setSeconds(0, 0);
+  const far = new Date(start.getTime() + 20 * 3600000); // tomorrow, still inside the 48 hours the shell is told about
+  const { context, page, problems } = await open({ __phoneOrg: `* Dentist ${stamp(start)}\n* Tomorrow ${stamp(far)}\n* No time of day <${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())} ${days[start.getDay()]}>\n` });
+  await fileMenu(page, 'Open', 'Local file');
+  await page.waitForFunction(() => document.getElementById('modelineBar').innerText.includes('phone.org'), null, { timeout: 8000 });
+  const state = await page.evaluate(async () => {
+    const { platform } = await import('/src-browser/platform.js');
+    const flow = await import('/src-browser/appt-flow.js');
+    const before = { supported: platform.notifications.supported(), scheduled: platform.notifications.scheduled, permission: await platform.notifications.permission(), label: await flow.notificationPermissionLabel() };
+    await flow.saveApptSettings({ 'appt-activate': true, 'appt-message-warning-time': 10 });
+    return before;
+  });
+  check(state.supported && state.scheduled && state.permission === 'granted' && state.label === 'allowed', 'the shell reports notifications as supported, schedulable and allowed', JSON.stringify(state));
+  const sent = (await calls(page, 'notify')).map((c) => c[1].notifications).flat();
+  const dentist = sent.find((n) => n.body.startsWith('Dentist'));
+  check(sent.length === 2 && dentist, 'the two timed appointments are handed over (the one without a time of day is not)', JSON.stringify(sent.map((n) => n.body)));
+  check(dentist && Math.abs(new Date(dentist.schedule.at).getTime() - (start.getTime() - 10 * 60000)) < 1000, 'each is due the warning time before it starts, as an exact instant', dentist && dentist.schedule.at);
+  check(dentist && dentist.body.includes('in 10 min') && dentist.channelId === 'appt' && Number.isInteger(dentist.id) && dentist.extra && typeof dentist.extra.day === 'number', 'worded for then, on its own channel, with a numeric id and the day to open', JSON.stringify(dentist));
+  check(dentist && dentist.isExactNotification === false, 'without the exact-alarm switch the plugin is not asked for exact timing (it would open system settings on every scan)', String(dentist && dentist.isExactNotification));
+  check((await calls(page, 'createChannel')).length === 1 && (await calls(page, 'cancelAll')).length >= 1, 'the channel is made once, and what was held is replaced rather than added to');
+  // exact timing, once the person has switched it on
+  await page.evaluate(async () => { const { platform } = await import('/src-browser/platform.js'); await platform.notifications.exact.request(); });
+  await page.evaluate(async () => { const flow = await import('/src-browser/appt-flow.js'); await flow.scanAppointments(); });
+  const lastBatch = (await calls(page, 'notify')).at(-1)[1].notifications;
+  check(lastBatch.every((n) => n.isExactNotification === true), 'once exact alarms are allowed the next scan asks for exact timing', JSON.stringify(lastBatch.map((n) => n.isExactNotification)));
+  // echo mode: the status line only, nothing held
+  const heldBefore = (await calls(page, 'notify')).length;
+  await page.evaluate(async () => { const flow = await import('/src-browser/appt-flow.js'); await flow.saveApptSettings({ 'appt-display-format': 'echo' }); });
+  check((await calls(page, 'notify')).length === heldBefore, 'in echo mode nothing is handed to the system', String((await calls(page, 'notify')).length - heldBefore));
+  await page.evaluate(async () => { const flow = await import('/src-browser/appt-flow.js'); await flow.saveApptSettings({ 'appt-display-format': 'window' }); });
+  // blocked: nothing is scheduled, and the label says so
+  await page.evaluate(async () => { window.__notifPermission = 'denied'; const flow = await import('/src-browser/appt-flow.js'); await flow.scanAppointments(); });
+  const blockedLabel = await page.evaluate(async () => (await import('/src-browser/appt-flow.js')).notificationPermissionLabel());
+  const afterBlocked = (await calls(page, 'notify')).length;
+  check(blockedLabel === 'blocked', 'a blocked permission reads "blocked"', blockedLabel);
+  await page.evaluate(() => { window.__notifPermission = 'granted'; });
+  // a tap on one opens that day in the agenda
+  const dayMs = new Date(far.getFullYear(), far.getMonth(), far.getDate()).getTime();
+  await page.evaluate((day) => window.__native.emit('LocalNotifications', 'localNotificationActionPerformed', { actionId: 'tap', notification: { extra: { day } } }), dayMs);
+  await page.waitForTimeout(600);
+  const opened = await page.evaluate(async () => { const { S } = await import('/src-browser/app-state.js'); return { view: S.currentView, type: S.agendaViewType, day: new Date(S.agendaAnchorDate).setHours(0, 0, 0, 0) }; });
+  check(opened.view === 'agenda' && opened.type === 'day' && opened.day === dayMs, 'tapping a reminder opens that day in the agenda', JSON.stringify(opened));
+  // turning it off cancels what is held
+  const cancelsBefore = (await calls(page, 'cancelAll')).length;
+  await page.evaluate(async () => { const flow = await import('/src-browser/appt-flow.js'); await flow.saveApptSettings({ 'appt-activate': false }); });
+  check((await calls(page, 'cancelAll')).length === cancelsBefore + 1, 'turning it off cancels the reminders the system holds');
+  check(problems.length === 0 && (await page.evaluate(() => window.__unhandled)).length === 0 && afterBlocked > 0, 'no page errors', JSON.stringify(problems));
   await context.close();
 }
 

@@ -24,6 +24,8 @@ import { getServiceWorkerVersion } from './render-helpers.js';
 import { render } from './render.js';
 import { QUICK_SETTINGS_FIELDS } from './settings-fields.js';
 import { DEFAULT_CAPTURE_TEMPLATES, DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getCaptureTemplates, getCustomThemeColors, getFontFamily, getFontSize, getGithubConfig, getGlobalVariables, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setCaptureTemplates, setCustomThemeColors, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig, getCaldavConfig, setCaldavConfig } from './settings.js';
+import { APPT_LIMITS, normalizeApptSettings } from '../src/appt.js';
+import { notificationPermissionLabel, requestNotificationPermission, saveApptSettings, scanAppointments } from './appt-flow.js';
 import { kv } from './singletons.js';
 import { formatPendingChangeTimestamp } from './sync-helpers.js';
 import { entryFieldButtonStyle, labeledInput, menuButton, pickTextFile, populateSelectOptions, textInputStyle } from './ui-widgets.js';
@@ -1198,6 +1200,139 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   }
 
   await renderPendingList();
+
+  // ---- Agenda notifications (appt): a device setting, stored under the Emacs names ------------------------------------------
+  const apptSection = document.createElement('div');
+  apptSection.className = 'settings-section';
+  container.appendChild(apptSection);
+  const apptTitle = document.createElement('div');
+  apptTitle.className = 'panel-section-title';
+  apptTitle.textContent = 'Agenda notifications';
+  apptSection.appendChild(apptTitle);
+
+  const appt = S.apptSettings || normalizeApptSettings(null);
+  const saveAppt = async (change) => {
+    await saveApptSettings(change);
+    renderSettingsView();
+  };
+  const apptCheckbox = (label, key, hint) => {
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    const wrap = document.createElement('label');
+    wrap.style.cssText = 'display:flex;align-items:center;gap:8px;cursor:pointer;flex:1 1 auto;';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = appt[key];
+    box.onchange = () => saveAppt({ [key]: box.checked });
+    wrap.appendChild(box);
+    wrap.appendChild(document.createTextNode(label));
+    if (hint) {
+      const code = document.createElement('span');
+      code.textContent = ' ' + hint;
+      code.style.cssText = 'font-size:11px;opacity:.55;margin-left:auto;';
+      wrap.appendChild(code);
+    }
+    row.appendChild(wrap);
+    return row;
+  };
+  const apptStepper = (label, key, hint, [min, max], step, unit) => {
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    row.style.alignItems = 'center';
+    const text = document.createElement('span');
+    text.textContent = label;
+    text.style.flex = '1 1 auto';
+    row.appendChild(text);
+    row.appendChild(menuButton('−', () => saveAppt({ [key]: Math.max(min, appt[key] - step) }), !appt['appt-activate']));
+    const value = document.createElement('span');
+    value.textContent = `${appt[key]} ${unit}`;
+    value.style.cssText = 'font-size:14px;min-width:64px;text-align:center;';
+    row.appendChild(value);
+    row.appendChild(menuButton('+', () => saveAppt({ [key]: Math.min(max, appt[key] + step) }), !appt['appt-activate']));
+    const code = document.createElement('span');
+    code.textContent = hint;
+    code.style.cssText = 'font-size:11px;opacity:.55;flex-basis:100%;';
+    row.style.flexWrap = 'wrap';
+    row.appendChild(code);
+    return row;
+  };
+  apptSection.appendChild(apptCheckbox('Agenda notifications', 'appt-activate', 'appt-activate'));
+  apptSection.appendChild(apptStepper('Warn this many minutes before', 'appt-message-warning-time', 'appt-message-warning-time', APPT_LIMITS.warning, 5, 'min'));
+  apptSection.appendChild(apptStepper('Scan agenda files every', 'appt-agenda-scan-interval', 'appt-agenda-scan-interval', APPT_LIMITS.scan, 1, 'min'));
+  apptSection.appendChild(apptCheckbox('Countdown in the mode line', 'appt-display-mode-line', 'appt-display-mode-line'));
+  const formatRow = document.createElement('div');
+  formatRow.className = 'panel-row';
+  formatRow.style.cssText = 'align-items:center;flex-wrap:wrap;gap:12px;';
+  const formatLabel = document.createElement('span');
+  formatLabel.textContent = 'Show reminders as';
+  formatRow.appendChild(formatLabel);
+  for (const [value, label] of [['window', 'window'], ['echo', 'echo']]) {
+    const choice = document.createElement('label');
+    choice.style.cssText = 'display:flex;align-items:center;gap:4px;cursor:pointer;';
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'apptDisplayFormat';
+    radio.checked = appt['appt-display-format'] === value;
+    radio.onchange = () => saveAppt({ 'appt-display-format': value });
+    choice.appendChild(radio);
+    choice.appendChild(document.createTextNode(label));
+    formatRow.appendChild(choice);
+  }
+  const formatCode = document.createElement('span');
+  formatCode.textContent = 'appt-display-format';
+  formatCode.style.cssText = 'font-size:11px;opacity:.55;flex-basis:100%;';
+  formatRow.appendChild(formatCode);
+  apptSection.appendChild(formatRow);
+
+  const permissionRow = document.createElement('div');
+  permissionRow.className = 'panel-row';
+  permissionRow.style.alignItems = 'center';
+  const permissionText = document.createElement('span');
+  permissionText.style.flex = '1 1 auto';
+  permissionText.textContent = 'Notifications: …';
+  permissionRow.appendChild(permissionText);
+  const permissionButton = menuButton('Allow notifications', async () => {
+    await requestNotificationPermission();
+    renderSettingsView();
+  });
+  permissionButton.style.display = 'none';
+  permissionRow.appendChild(permissionButton);
+  apptSection.appendChild(permissionRow);
+  notificationPermissionLabel().then((label) => {
+    permissionText.textContent = `Notifications: ${label}`;
+    permissionButton.style.display = label === 'not asked yet' ? '' : 'none';
+    if (label === 'blocked') permissionText.textContent += ' (allow them in the system settings for this app; reminders still show in the app)';
+  });
+
+  const exactTiming = platform.notifications.exact;
+  if (exactTiming) {
+    const exactRow = document.createElement('div');
+    exactRow.className = 'panel-row';
+    exactRow.style.alignItems = 'center';
+    const exactText = document.createElement('span');
+    exactText.style.flex = '1 1 auto';
+    exactText.textContent = 'Exact timing: \u2026';
+    exactRow.appendChild(exactText);
+    const exactButton = menuButton('Allow exact timing', async () => {
+      await exactTiming.request();
+      if (S.apptSettings && S.apptSettings['appt-activate']) await scanAppointments();
+      renderSettingsView();
+    });
+    exactButton.style.display = 'none';
+    exactRow.appendChild(exactButton);
+    apptSection.appendChild(exactRow);
+    exactTiming.status().then((status) => {
+      exactText.textContent = status === 'granted' ? 'Exact timing: allowed' : 'Exact timing: not allowed (reminders may be a few minutes late)';
+      exactButton.style.display = status === 'granted' ? 'none' : '';
+    });
+  }
+
+  const apptHint = document.createElement('div');
+  apptHint.style.cssText = 'font-size:11px;opacity:.6;margin:2px 0 6px;';
+  apptHint.textContent =
+    'Announces appointments (agenda items with a time of day, from the open file and your agenda files) once, the warning time before they start. ' +
+    'window shows a system notification and a banner in the app; echo uses the status line only. In the Android app, reminders arrive even when the app is closed.';
+  apptSection.appendChild(apptHint);
 
   const githubSection = document.createElement('div');
   githubSection.className = 'settings-section';

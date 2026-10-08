@@ -66,6 +66,11 @@ You do this once, on any computer with a JDK (Android Studio includes one):
   `Documents/org-pwa` (in the shared Documents folder; pick any other folder if you like). The app keeps access to the
   file, so it can be edited, saved, and reopened from the recent list later without picking it again. Save As > Local
   file names a new one, also starting there.
+- **Agenda reminders (0.7.0, new native dependency `@capacitor/local-notifications`):** in Settings > Agenda notifications turn
+  the first line on, tap **Allow notifications**, and give an item a time of day a few minutes ahead (for example
+  `* Test <2026-10-08 Thu 14:35>`). A system notification should arrive 10 minutes before it, **with the app closed**;
+  tapping it opens that day in the Agenda. Without **Exact timing** (the button under it) Android may be a few minutes
+  late. `npm run sync` (the workflow does this) picks the plugin up; nothing else changes in the Android project.
 - **Attaching a photo or video:** *Attach* opens Android's chooser. Besides your file sources it lists the camera apps as
   **Take a photo (…)** and **Record a video (…)**. Take one: it should come back attached. Try a video of a minute or
   two as well, and tell me if it is slow or fails.

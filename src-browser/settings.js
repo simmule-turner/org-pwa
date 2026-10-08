@@ -11,10 +11,13 @@
  * used throughout the storage layer.
  */
 
+import { normalizeApptSettings } from '../src/appt.js';
+
 const KEYS = {
   github: 'settings:github',
   webdav: 'settings:webdav',
   caldav: 'settings:caldav',
+  appt: 'settings:appt',
   theme: 'settings:theme',
   customThemeColors: 'settings:customThemeColors',
   fontFamily: 'settings:fontFamily',
@@ -185,6 +188,20 @@ export async function getCarddavSyncState(kvAdapter) {
 
 export async function setCarddavSyncState(kvAdapter, state) {
   await setJson(kvAdapter, CARDDAV_SYNC_KEY, state);
+}
+
+// ---- agenda notifications (appt) ---------------------------------------------------------------------------------------
+
+/** The agenda-notification settings, kept under their Emacs names (appt-activate, appt-message-warning-time, ...). A device
+ *  setting: each device has its own, and a settings backup carries them. */
+export async function getApptSettings(kvAdapter) {
+  return normalizeApptSettings(await getJson(kvAdapter, KEYS.appt, {}));
+}
+
+export async function setApptSettings(kvAdapter, settings) {
+  const merged = normalizeApptSettings(settings);
+  await setJson(kvAdapter, KEYS.appt, merged);
+  return merged;
 }
 
 // ---- theme -----------------------------------------------------------

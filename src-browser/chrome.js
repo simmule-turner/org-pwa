@@ -234,6 +234,7 @@ export function buildGlobalModeStringParts(vars) {
   if (getDisplayTimeMode(vars)) {
     parts.push(formatTime(new Date(), getDisplayTimeFormat(vars)));
   }
+  if (S.apptModeLine) parts.push(S.apptModeLine); // appt-display-mode-line: "Appt: 10m", only while an appointment is inside its warning time
   const running = findRunningClockAcrossSessions();
   if (running) {
     const mins = currentClockSessionMinutes(running.heading);

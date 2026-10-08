@@ -4022,6 +4022,59 @@ check('display measurements: the command reports what the screen and web view gi
   await context.close();
 });
 
+check('agenda notifications: an appointment inside its warning time gets a system notification and a banner, the mode line counts down, echo uses the status line only, and turning it off clears all of it', async () => {
+  const stub = () => {
+    window.__shown = [];
+    window.Notification = class {
+      constructor(title, options) { window.__shown.push({ title, ...options }); }
+      static permission = 'granted';
+      static requestPermission() { return Promise.resolve('granted'); }
+    };
+  };
+  const { context, page, errors } = await freshPage(main, { initScript: stub });
+  const pad = (n) => String(n).padStart(2, '0');
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const soon = new Date(Date.now() + 8 * 60000);
+  const stamp = `<${soon.getFullYear()}-${pad(soon.getMonth() + 1)}-${pad(soon.getDate())} ${days[soon.getDay()]} ${pad(soon.getHours())}:${pad(soon.getMinutes())}>`;
+  await newDocument(page, `* Dentist ${stamp}\n* No time of day <${soon.getFullYear()}-${pad(soon.getMonth() + 1)}-${pad(soon.getDate())} ${days[soon.getDay()]}>\n`);
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await page.waitForFunction(() => document.body.innerText.includes('Show reminders as'), null, { timeout: 8000 });
+  const settingsText = await page.evaluate(() => document.body.innerText);
+  expect(settingsText.toLowerCase().split('agenda notifications').length >= 3 && settingsText.includes('Warn this many minutes before') && settingsText.includes('Scan agenda files every') && settingsText.includes('Countdown in the mode line') && settingsText.includes('Show reminders as'), `Settings has the Agenda notifications section with its five lines: ${JSON.stringify(settingsText.slice(0, 300))}`);
+  await page.waitForFunction(() => document.body.innerText.includes('Notifications: allowed'), null, { timeout: 5000 });
+  await page.evaluate(async () => {
+    const flow = await import('/src-browser/appt-flow.js');
+    await flow.saveApptSettings({ 'appt-activate': true, 'appt-message-warning-time': 10 });
+  });
+  await page.waitForFunction(() => document.getElementById('apptBanner') && getComputedStyle(document.getElementById('apptBanner')).display !== 'none', null, { timeout: 5000 });
+  const banner = await page.locator('#apptBanner').innerText();
+  expect(/^Dentist \u00b7 in [78] min \u00b7 \d\d:\d\d$/.test(banner), `the banner reads like the reminder: ${banner}`);
+  expect(!banner.includes('<'), 'and the timestamp is not in the title');
+  const shown = await page.evaluate(() => window.__shown);
+  expect(shown.length === 1 && shown[0].body === banner, `one system notification, with the same text: ${JSON.stringify(shown)}`);
+  await page.evaluate(async () => { const flow = await import('/src-browser/appt-flow.js'); await flow.scanAppointments(); await flow.scanAppointments(); });
+  expect((await page.evaluate(() => window.__shown.length)) === 1, 'a rescan does not announce it again');
+  await page.evaluate(async () => { const { renderModeline } = await import('/src-browser/chrome.js'); renderModeline(); });
+  expect(/Appt: [78]m/.test(await modeline(page)), `the mode line counts down: ${await modeline(page)}`);
+  await page.locator('#apptBanner').click();
+  await page.waitForTimeout(400);
+  expect((await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.currentView)) === 'agenda', 'tapping the banner opens that day in the agenda');
+  await page.evaluate(async () => {
+    const flow = await import('/src-browser/appt-flow.js');
+    await flow.saveApptSettings({ 'appt-display-format': 'echo' });
+    window.__shown.length = 0;
+  });
+  await page.waitForFunction(() => document.getElementById('status').innerText.includes('Dentist'), null, { timeout: 5000 });
+  expect((await page.evaluate(() => window.__shown.length)) === 0, 'in echo mode there is no system notification');
+  await page.evaluate(async () => { await (await import('/src-browser/appt-flow.js')).saveApptSettings({ 'appt-activate': false }); const { renderModeline } = await import('/src-browser/chrome.js'); renderModeline(); });
+  expect(!(await modeline(page)).includes('Appt:'), 'turning it off clears the countdown');
+  const stored = await page.evaluate(async () => { const { kv } = await import('/src-browser/singletons.js'); const r = await kv.get('settings:appt'); return JSON.parse(r && r.value ? r.value : r); });
+  expect(stored['appt-activate'] === false && stored['appt-message-warning-time'] === 10 && stored['appt-display-format'] === 'echo', `the settings are stored under the Emacs names: ${JSON.stringify(stored)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 // ---- runner -------------------------------------------------------------------
 
 const filter = process.argv[2];

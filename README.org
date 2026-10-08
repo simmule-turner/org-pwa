@@ -990,6 +990,23 @@ It syncs after a save, when you return to the app, and at launch. *Sync* in Sett
 
 Examples: ~https://dav.example.com/radicale/me/calendar/~ and ~https://dav.example.com/radicale/me/contacts/~. Like WebDAV, the server must allow requests from the app (CORS), including ~PUT~, ~DELETE~ and ~PROPFIND~ with the ~Authorization~, ~Content-Type~ and ~Depth~ headers.
 
+*** Agenda notifications
+:PROPERTIES:
+:CUSTOM_ID: agenda-notifications
+:END:
+
+Get a reminder shortly before an appointment, as Emacs's ~appt~ does. Turn it on in *Settings → Agenda notifications*; the settings use Emacs's names and belong to this device.
+
+- *Agenda notifications* (~appt-activate~): on or off.
+- *Warn this many minutes before* (~appt-message-warning-time~): 10 by default.
+- *Scan agenda files every* (~appt-agenda-scan-interval~): 5 minutes by default. The app also looks again at launch, when you return to it, and after a save.
+- *Countdown in the mode line* (~appt-display-mode-line~): shows ~Appt: 10m~ while an appointment is inside its warning time.
+- *Show reminders as* (~appt-display-format~): *window* is a system notification plus a banner in the app; *echo* is the status line only.
+
+An appointment is an item with a time of day, from the open file and your [[#agenda-files][Agenda Files]]: SCHEDULED, DEADLINE or a plain timestamp, repeating ones included. Done items and items with no time of day are ignored. Each is announced once, as ~Dentist · in 10 min · 09:30–10:15~. Tapping a reminder opens that day in the Agenda.
+
+The first time, tap *Allow notifications*. If they are blocked, reminders still show in the app. In the browser, reminders appear while the app is open. In the [[#android-app][Android app]] they are scheduled with the system, so they arrive when the app is closed; allowing *Exact timing* keeps them on the minute.
+
 -----
 
 ** The TODO view
@@ -1495,6 +1512,7 @@ Reached via *More (⋮) → Settings*, which replaces the outline until you navi
 - *Global Variables* and *Capture Templates*: raw ~name: value~ lines and raw JSON, each edited in a popup.
 - *GitHub* and *WebDAV*: connection details for each backend. Use a fine-grained GitHub token scoped to just that repository (Contents read and write only), and for WebDAV an app-specific password if your server offers one.
 - *Calendar (CalDAV) / Contacts (CardDAV)*: the calendar your agenda is mirrored to and the address book your contacts are, right after WebDAV (see [[#calendar-sync][Calendar and contacts sync]]).
+- *Agenda notifications*: reminders before appointments, just before GitHub (see [[#agenda-notifications][Agenda notifications]]).
 - *Appearance*: theme (System, Light or Dark), fonts, independent font sizes for main text, tables and menus, reading width, custom colors for Light and Dark, and *Paragraph Spacing*. Paragraph Spacing is two independent values laid out like the font sizes: one for paragraphs and one, *Tables*, for tables and other secondary blocks (source and quote blocks, rules). Each is 0 to 32px with a 10px default. Where a paragraph meets a table or block the larger value applies, and headings and list items space themselves.
 - *Backup*: *Export Settings* bundles everything on this page into one downloadable JSON file, and *Import Settings* merges a previously exported file back in, leaving anything it doesn't mention untouched.
 - *Updates*: shows the running version and checks for a new one. ~org-xx-updates-at-top~ controls whether it appears at the top of the page or further down.
@@ -1548,6 +1566,7 @@ The Android app is the same app in a native wrapper, with a few things done the 
 - *Attaching a file*: *Attach* opens Android's chooser with the camera apps beside your files, as the browser's does. Pick *Take a photo* or *Record a video*, and the result is attached.
 - *Saving a file out*: exports and settings backups go straight into the *Downloads* folder, and the status line says so.
 - *The org-pwa folder*: the first time something needs it (a local file's first attachment, or a ~local:~ name that isn't found), the app asks you to choose a folder, starting at ~Documents/org-pwa~. Attachments go under ~data/~ inside it, as on GitHub and WebDAV, and ~local:~ files are found in it by name, anywhere a ~github:~ or ~webdav:~ file can be named: ~org-agenda-files~, ~org-contacts-files~, ~org-refile-targets~, a capture template's ~file~, a link or ~#+INCLUDE~. ~local:contacts.org~ is ~contacts.org~ in that folder, and ~local:areas/home.org~ is ~home.org~ in its ~areas~ folder. A file you opened with the file picker is found by its name first. *Choose the org-pwa folder* changes it.
+- *Reminders*: agenda notifications (see [[#agenda-notifications][Agenda notifications]]) are handed to Android, so they arrive with the app closed. Allow notifications when asked; without the *Alarms & reminders* setting they may be a few minutes late.
 - *Long-press the app icon*: your capture templates are listed, in the order they are in *Settings → Capture Templates*, as many as the launcher shows. Tapping one opens that template. Drag one onto the home screen for an icon, or run *Add a capture icon to the home screen*.
 - *Sharing in*: share a link or text from any app to *org-pwa*; Capture opens with it (see [[#capture-from-other-apps][Capturing from other apps]]).
 - *Separate from the browser*: the app keeps its own settings, tokens and documents, so enter GitHub, WebDAV, calendar and contacts settings again. A WebDAV, CalDAV or CardDAV server must allow the origin ~https://localhost~ (CORS).

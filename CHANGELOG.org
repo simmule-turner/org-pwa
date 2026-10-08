@@ -7,6 +7,20 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v448 — Agenda notifications
+Appointments now remind you before they start, as Emacs's appt does.
+Settings → Agenda notifications has appt-activate,
+appt-message-warning-time, appt-agenda-scan-interval,
+appt-display-mode-line and appt-display-format. A reminder reads
+"Dentist · in 10 min · 09:30–10:15", comes as a system notification and an
+in-app banner (or on the status line only), and tapping it opens that
+day. The Android app schedules them with the system, so they arrive with
+the app closed.
+
+* v447 — Contacts trigger at the top of a file
+A %%(org-contacts-anniversaries ...) line above a file's first heading
+now works, so it no longer has to sit under a heading.
+
 * v446 — Search extra files
 Text search can now look in extra files:
 org-agenda-text-search-extra-files lists them, in the same

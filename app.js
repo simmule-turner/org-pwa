@@ -257,6 +257,7 @@ import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, 
 import { renderFileMenu, stopBrowsing } from './src-browser/file-menu.js';
 import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, withArmedShift } from './src-browser/floating-keyboard.js';
 import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
+import { apptTick, loadApptSettings, requestApptScan } from './src-browser/appt-flow.js';
 import { scheduleSync } from './src-browser/mirror-sync.js';
 import { loadAttachmentsFolder } from './src-browser/attachments-store.js';
 import { syncCaptureShortcuts } from './src-browser/capture-shortcuts.js';
@@ -362,6 +363,8 @@ S.webdavConfig = { baseUrl: '', username: '', password: '' };
 S.caldavConfig = { url: '', contactsUrl: '', username: '', password: '' }; // the calendar and contacts addresses, and the one login both use
 S.calendarSyncRunning = false;
 S.calendarSyncQueued = false;
+S.apptSettings = null; // agenda notifications (loaded at start)
+S.apptModeLine = null; // "Appt: 10m" for the modeline, or null
 S.calendarSyncPaused = false; // after a login or address failure, until the person changes the settings or syncs by hand
 S.calendarSyncTimer = null;
 S.calendarSyncLastError = null;
@@ -431,6 +434,7 @@ S.historyRenderTarget = outlineEl;
 window.addEventListener('resize', syncContentOffset);
 
 setInterval(() => {
+  apptTick(); // announces what has come due and keeps the countdown, before the modeline is drawn
   if (S.state.doc) renderModeline();
   checkWeatherAutoRefresh();
 }, 30000);
@@ -1467,6 +1471,7 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     checkForExternalChange();
     scheduleSync(); // coming back to the app: the files may have changed while it was away
+    requestApptScan(); // and the day's appointments may have moved on
   }
 });
 
@@ -1484,4 +1489,5 @@ bootstrap().then(() => {
   syncCaptureShortcuts(); // the launcher's long-press list follows the capture templates
   loadAttachmentsFolder(); // and the attachments folder chosen earlier, if the platform keeps one
   scheduleSync();
+  loadApptSettings(); // agenda notifications, if they are on
 });
