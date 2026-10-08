@@ -7,6 +7,13 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v450 — The heading's text in reminders
+A reminder now shows the start of the appointment's body under the time,
+up to 400 characters: in the banner, in the system notification, and
+when an Android notification is expanded. The calendar sync's event
+description uses the same 400 characters (it was 256), so a phone's
+calendar and its reminders read alike.
+
 * v449 — Reminders repeat and stay
 Agenda reminders now repeat as Emacs's appt does: when the warning time
 is reached, then every "Remind again every" minutes (3 by default). The

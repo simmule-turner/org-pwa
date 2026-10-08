@@ -425,7 +425,7 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
   const start = new Date(Date.now() + 30 * 60000);
   start.setSeconds(0, 0);
   const far = new Date(start.getTime() + 20 * 3600000); // tomorrow, still inside the 48 hours the shell is told about
-  const { context, page, problems } = await open({ __phoneOrg: `* Dentist ${stamp(start)}\n* Tomorrow ${stamp(far)}\n* No time of day <${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())} ${days[start.getDay()]}>\n` });
+  const { context, page, problems } = await open({ __phoneOrg: `* Dentist ${stamp(start)}\nbring the insurance card\n* Tomorrow ${stamp(far)}\n* No time of day <${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())} ${days[start.getDay()]}>\n` });
   await fileMenu(page, 'Open', 'Local file');
   await page.waitForFunction(() => document.getElementById('modelineBar').innerText.includes('phone.org'), null, { timeout: 8000 });
   const state = await page.evaluate(async () => {
@@ -442,7 +442,7 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
   check(sent.every((n) => n.title === 'Dentist' || n.title === 'Tomorrow') && dentistAll.length === 4 && sent.length === 8, 'both timed appointments are handed over, each titled by itself and held for every reminder time (the one without a time of day is not)', JSON.stringify(sent.map((n) => n.title + ': ' + n.body)));
   check(dentistAll.map((n) => n.body.split(' · ')[0]).join() === 'in 10 min,in 7 min,in 4 min,in 1 min', 'a reminder is held for the warning time and then every 3 minutes, as Emacs repeats them', dentistAll.map((n) => n.body).join(' | '));
   check(dentist && Math.abs(new Date(dentist.schedule.at).getTime() - (start.getTime() - 10 * 60000)) < 1000 && Math.abs(new Date(dentistAll[1].schedule.at).getTime() - (start.getTime() - 7 * 60000)) < 1000, 'each is due at its own exact instant', dentist && dentist.schedule.at);
-  check(dentist && dentist.largeBody === dentist.body && new Set(dentistAll.map((n) => n.group)).size === 1 && new Set(sent.map((n) => n.id)).size === sent.length, 'the expanded text is the whole line, the repeats of one appointment share a group, and every id is distinct', JSON.stringify(dentist));
+  check(dentist && dentist.largeBody === dentist.body + '\nbring the insurance card' && sent.find((n) => n.title === 'Tomorrow').largeBody === sent.find((n) => n.title === 'Tomorrow').body && new Set(dentistAll.map((n) => n.group)).size === 1 && new Set(sent.map((n) => n.id)).size === sent.length, 'the expanded text is the time line and then the heading body (nothing added when there is none), the repeats of one appointment share a group, and every id is distinct', JSON.stringify(dentist));
   check(dentist && dentist.channelId === 'appt' && Number.isInteger(dentist.id) && dentist.extra && typeof dentist.extra.day === 'number', 'on its own channel, with the day to open', JSON.stringify(dentist));
   check(dentist && dentist.isExactNotification === false, 'without the exact-alarm switch the plugin is not asked for exact timing (it would open system settings on every scan)', String(dentist && dentist.isExactNotification));
   check((await calls(page, 'createChannel')).length === 1 && (await calls(page, 'cancelAll')).length >= 1, 'the channel is made once, and what was held is replaced rather than added to');

@@ -39,6 +39,24 @@ SCHEDULED: <2026-10-08 Thu>
   assert.equal(list[1].end, null);
 });
 
+test('scan: the heading body rides along as the detail, trimmed to 400 characters, without sexp lines or the timestamp line', () => {
+  const long = 'x'.repeat(500);
+  const list = upcomingAppointments(docs(`* meeting <2026-10-08 Thu 09:30>
+this is the description / body.
+%%(org-anniversary 2000 1 1)
+* Long <2026-10-08 Thu 10:00>
+${long}
+* Bare <2026-10-08 Thu 11:00>
+`), NOW);
+  assert.equal(list[0].detail, 'this is the description / body.');
+  assert.equal(list[1].detail.length, 400);
+  assert.ok(list[1].detail.endsWith('\u2026'));
+  assert.equal(list[2].detail, null);
+  const plan = plannedNotifications(list, NOW, 10, 3);
+  assert.equal(plan.find((p) => p.title === 'meeting').detail, 'this is the description / body.');
+  assert.equal(plan.find((p) => p.title === 'Bare').detail, null);
+});
+
 test('scan: a repeating appointment appears as its occurrence in the window', () => {
   const list = upcomingAppointments(docs(`* Standup
 SCHEDULED: <2026-09-01 Tue 09:30 +1d>

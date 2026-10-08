@@ -982,7 +982,7 @@ Mirror your agenda into a calendar on your own server, so its items appear, with
 
 It is one-way: the calendar follows the agenda, and edits made in a calendar app are overwritten, so give it a calendar of its own. The app only ever removes events it created, and an event is removed only when its own file was loaded, so opening a different file never removes another file's events.
 
-What goes in is what *View → Agenda* shows, from the open file and your [[#agenda-files][Agenda Files]]: SCHEDULED, DEADLINE, plain timestamps, diary entries, and birthdays and anniversaries (from your Contacts Files). Each event has its title, its start and end time, the heading's tags as categories, its ~:LOCATION:~ and the start of its body (256 characters), and a deadline's warning delay (~-3d~) becomes an alarm. A repeating item is one event with a repeat rule. A birthday or anniversary is one event for each year in the window, with that year's age. Completed items, and the agenda's overdue and warning-day entries, are not sent. Items are kept from a month back to six months ahead.
+What goes in is what *View → Agenda* shows, from the open file and your [[#agenda-files][Agenda Files]]: SCHEDULED, DEADLINE, plain timestamps, diary entries, and birthdays and anniversaries (from your Contacts Files). Each event has its title, its start and end time, the heading's tags as categories, its ~:LOCATION:~ and the start of its body (400 characters), and a deadline's warning delay (~-3d~) becomes an alarm. A repeating item is one event with a repeat rule. A birthday or anniversary is one event for each year in the window, with that year's age. Completed items, and the agenda's overdue and warning-day entries, are not sent. Items are kept from a month back to six months ahead.
 
 It syncs after a save, when you return to the app, and at launch. *Sync* in Settings does it now, and *Rebuild calendar* (or the palette's *Rebuild calendar from the agenda*) removes the app's events and sends them all again. After a wrong address or password, automatic syncing stops until you change the settings or sync by hand.
 
@@ -1004,7 +1004,7 @@ Get a reminder shortly before an appointment, as Emacs's ~appt~ does. Turn it on
 - *Countdown in the mode line* (~appt-display-mode-line~): shows ~Appt: 10m~ while an appointment is inside its warning time.
 - *Show reminders as* (~appt-display-format~): *window* is a system notification plus a banner in the app; *echo* is the status line only.
 
-An appointment is an item with a time of day, from the open file and your [[#agenda-files][Agenda Files]]: SCHEDULED, DEADLINE or a plain timestamp, repeating ones included. Done items and items with no time of day are ignored. A reminder is titled by the appointment, with the time left and its time below: ~Dentist~, ~in 10 min · 09:30–10:15~. The banner stays until you tap *Open day* or *Dismiss*, and the next reminder replaces it. A system notification stays until you swipe it away, and the repeats replace each other. Tapping a reminder opens that day in the Agenda.
+An appointment is an item with a time of day, from the open file and your [[#agenda-files][Agenda Files]]: SCHEDULED, DEADLINE or a plain timestamp, repeating ones included. Done items and items with no time of day are ignored. A reminder is titled by the appointment, with the time left and its time below: ~Dentist~, ~in 10 min · 09:30–10:15~. Under that comes the start of the heading's body (up to 400 characters), the same text the calendar sync sends; on Android it shows when the notification is expanded. The banner stays until you tap *Open day* or *Dismiss*, and the next reminder replaces it. A system notification stays until you swipe it away, and the repeats replace each other. Tapping a reminder opens that day in the Agenda.
 
 The first time, tap *Allow notifications*. If they are blocked, reminders still show in the app. In the browser, reminders appear while the app is open. In the [[#android-app][Android app]] they are scheduled with the system, so they arrive when the app is closed; allowing *Exact timing* keeps them on the minute.
 
@@ -1378,7 +1378,7 @@ Every dated item as an iCalendar file for any calendar app: SCHEDULED, DEADLINE,
 | A time range (~09:00-10:15~) | ~DTEND~ | |
 | A heading's tags | ~CATEGORIES~ | |
 | ~:LOCATION:~ | ~LOCATION~ | |
-| The start of the body | ~DESCRIPTION~ | At most 256 characters |
+| The start of the body | ~DESCRIPTION~ | At most 400 characters |
 | org-contacts-anniversaries | ~DTSTART~ with a yearly ~RRULE~, ~SUMMARY~ (~Birthday: Name~) | One yearly event cannot carry an age, so the date is in the description |
 
 *** Contacts (.vcf)

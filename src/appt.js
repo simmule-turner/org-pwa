@@ -9,7 +9,7 @@
  */
 
 import { buildAgendaItems, endOfDay, startOfDay } from './agenda.js';
-import { titleWithoutTimestamps } from './export-icalendar.js';
+import { eventDetails, titleWithoutTimestamps } from './export-icalendar.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 
 /** The settings, under the Emacs names. A record of these is what is stored (and what a settings backup carries). */
@@ -48,7 +48,7 @@ export const clock = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())
 /**
  * The appointments from `now` to `now` + `hours`, soonest first.
  * @param {{ documentId: string, doc: object }[]} docs the open document and the loaded agenda files
- * @returns {{ key: string, id: number, documentId: string, title: string, start: Date, end: Date|null }[]}
+ * @returns {{ key: string, id: number, documentId: string, title: string, start: Date, end: Date|null, detail: string|null }[]} `detail` is the start of the heading's body (up to 400 characters, as the calendar sync sends)
  */
 export function upcomingAppointments(docs, now, { hours = 6, birthdayProperty = 'BIRTHDAY', contactsDocs = null, includeArchived = false, includeCommented = false } = {}) {
   const horizon = new Date(now.getTime() + hours * 3600000);
@@ -81,7 +81,7 @@ export function upcomingAppointments(docs, now, { hours = 6, birthdayProperty = 
     const key = `${item.documentId}\u0000${title}\u0000${start.getTime()}`;
     if (seen.has(key)) continue; // the same heading and moment twice (say a SCHEDULED and a timestamp alike) is one appointment
     seen.add(key);
-    found.push({ key, id: appointmentId(key), documentId: item.documentId, title, start, end });
+    found.push({ key, id: appointmentId(key), documentId: item.documentId, title, start, end, detail: eventDetails(item.heading).body });
   }
   found.sort((a, b) => a.start - b.start || a.title.localeCompare(b.title));
   return found;
@@ -170,7 +170,7 @@ export function plannedNotifications(appointments, now, warningMinutes, interval
       const at = new Date(appt.start.getTime() - offset * 60000);
       if (at.getTime() <= now.getTime()) continue;
       const body = reminderBody(appt, offset);
-      planned.push({ id: appointmentId(reminderSlot(appt, offset)), slot: reminderSlot(appt, offset), at, title: appt.title, body, group: `appt-${appt.id}`, day: startOfDay(appt.start).getTime() });
+      planned.push({ id: appointmentId(reminderSlot(appt, offset)), slot: reminderSlot(appt, offset), at, title: appt.title, body, group: `appt-${appt.id}`, detail: appt.detail, day: startOfDay(appt.start).getTime() });
     }
   }
   planned.sort((a, b) => a.at - b.at);

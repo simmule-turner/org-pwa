@@ -153,11 +153,11 @@ function announce(appt, offset, minutes) {
     .then(async (permission) => {
       const allowed = permission === 'granted';
       if (allowed && !(n.scheduled && runtime.held.has(reminderSlot(appt, offset)))) {
-        await n.show({ id: appt.id, title: appt.title, body: reminderBody(appt, minutes), day }).catch(() => {});
+        await n.show({ id: appt.id, title: appt.title, body: reminderBody(appt, minutes), detail: appt.detail, day }).catch(() => {});
       }
-      if (visible || !allowed) showBanner(appt.title, reminderBody(appt, minutes), day);
+      if (visible || !allowed) showBanner(appt.title, reminderBody(appt, minutes), appt.detail, day);
     })
-    .catch(() => showBanner(appt.title, reminderBody(appt, minutes), day));
+    .catch(() => showBanner(appt.title, reminderBody(appt, minutes), appt.detail, day));
 }
 
 const dayOf = (appt) => new Date(appt.start.getFullYear(), appt.start.getMonth(), appt.start.getDate()).getTime();
@@ -185,7 +185,7 @@ function listenForTaps() {
 // ---- the in-app banner: a toast over the page, so nothing in the layout moves. It stays until it is answered (Open day, or Dismiss),
 // and the next reminder for the same appointment replaces it rather than stacking.
 
-function showBanner(title, body, dayMs) {
+function showBanner(title, body, detail, dayMs) {
   if (typeof document === 'undefined') return;
   let el = document.getElementById('apptBanner');
   if (!el) {
@@ -201,9 +201,12 @@ function showBanner(title, body, dayMs) {
   const heading = document.createElement('div');
   heading.textContent = title;
   heading.style.cssText = 'font-size:20px;font-weight:700;line-height:1.25;overflow-wrap:anywhere;';
-  const detail = document.createElement('div');
-  detail.textContent = body;
-  detail.style.cssText = 'font-size:17px;margin-top:4px;';
+  const when = document.createElement('div');
+  when.textContent = body;
+  when.style.cssText = 'font-size:17px;margin-top:4px;';
+  const text = document.createElement('div');
+  text.textContent = detail || '';
+  text.style.cssText = 'font-size:15px;margin-top:8px;opacity:.85;white-space:pre-wrap;overflow-wrap:anywhere;max-height:30vh;overflow:auto;';
   const buttons = document.createElement('div');
   buttons.style.cssText = 'display:flex;gap:10px;margin-top:12px;';
   const open = menuButton('Open day', () => {
@@ -214,7 +217,8 @@ function showBanner(title, body, dayMs) {
   buttons.appendChild(open);
   buttons.appendChild(dismiss);
   el.appendChild(heading);
-  el.appendChild(detail);
+  el.appendChild(when);
+  if (detail) el.appendChild(text);
   el.appendChild(buttons);
   el.style.display = 'block';
 }

@@ -159,10 +159,10 @@ export function buildVevent({ uid, summary, description, date, hasTime, rrule, a
   return lines.map(foldLine);
 }
 
-const BODY_LIMIT = 256;
+const BODY_LIMIT = 400;
 
 /** What a heading adds to its event beyond the title and the time: its :LOCATION: property, its tags (as categories), and the start
- *  of its body text (at most 256 characters, ended with an ellipsis if cut, and without diary-sexp lines, which are not text for
+ *  of its body text (at most 400 characters, ended with an ellipsis if cut, and without diary-sexp lines, which are not text for
  *  a person to read). */
 export function eventDetails(heading) {
   const locationKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === 'location');

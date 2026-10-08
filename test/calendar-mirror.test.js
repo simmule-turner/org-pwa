@@ -260,13 +260,13 @@ test('a time range has its end, and the details the agenda row shows are there: 
   assert.ok(lines(r).join('').includes('DESCRIPTION:Scheduled\\nBring the forms\\nand the insurance card.'), lines(r).join(' | '));
 });
 
-test('the body is cut at 256 characters with an ellipsis, and a heading with no body has none', () => {
+test('the body is cut at 400 characters with an ellipsis, and a heading with no body has none', () => {
   const long = 'word '.repeat(100);
   const r = only(build(`* Long\nSCHEDULED: <2026-10-09 Fri>\n${long}\n`));
   const unfolded = r.ics.replace(/\r\n /g, ''); // long lines are folded on the wire
   const description = unfolded.split('\r\n').find((l) => l.startsWith('DESCRIPTION:')).slice(12).replace(/\\n/g, '\n');
   const body = description.replace(/^Scheduled\n/, '');
-  assert.ok(body.length <= 256 && body.endsWith('\u2026'), `${body.length}: ${body.slice(-12)}`);
+  assert.ok(body.length <= 400 && body.endsWith('\u2026'), `${body.length}: ${body.slice(-12)}`);
   assert.ok(lines(only(build('* Short\nSCHEDULED: <2026-10-09 Fri>\n'))).includes('DESCRIPTION:Scheduled'));
 });
 

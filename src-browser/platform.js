@@ -31,7 +31,7 @@
 //
 //   notifications     system notifications, for agenda reminders (appt-flow.js). supported() -- whether there are any here;
 //                      permission() -- 'granted' | 'denied' | 'default' (not asked yet), as a promise; request() -- ask, resolving
-//                      the new permission; show({ id, title, body, day }) -- notify now, `day` being the start of the appointment's
+//                      the new permission; show({ id, title, body, detail, day }) -- notify now, `body` being the time line and `detail` the start of the heading's body (or null), `day` being the start of the appointment's
 //                      day in ms; scheduled -- true if the platform can hold notifications for later (a shell, which then
 //                      announces appointments even while the app is closed); schedule(list) -- replace everything held with
 //                      `list` ([{ id, at (Date), title, body, day }]); cancelAll() -- drop everything held; onTap(handler) --
@@ -84,8 +84,8 @@ export const platform = {
     permission: async () => (typeof Notification === 'undefined' ? 'denied' : Notification.permission),
     request: async () => (typeof Notification === 'undefined' ? 'denied' : Notification.requestPermission()),
     scheduled: false,
-    async show({ id, title, body, day }) {
-      const options = { body, tag: `appt-${id}`, data: { day }, requireInteraction: true, renotify: true }; // the tag makes a repeat replace the one before; requireInteraction keeps it until answered (where the browser honours that)
+    async show({ id, title, body, detail, day }) {
+      const options = { body: detail ? `${body}\n${detail}` : body, tag: `appt-${id}`, data: { day }, requireInteraction: true, renotify: true }; // the tag makes a repeat replace the one before; requireInteraction keeps it until answered (where the browser honours that)
       const registration = navigator.serviceWorker && (await navigator.serviceWorker.getRegistration());
       if (registration && registration.showNotification) await registration.showNotification(title, options);
       else new Notification(title, options);

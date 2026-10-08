@@ -109,7 +109,7 @@
         id: item.id,
         title: item.title,
         body: item.body,
-        largeBody: item.body, // the expanded notification shows the whole line
+        largeBody: item.detail ? item.body + '\n' + item.detail : item.body, // expanded: the time line, then the heading's body
         group: item.group || 'appt-' + item.id, // the repeats of one appointment fold together
         channelId: CHANNEL,
         autoCancel: true,
@@ -137,7 +137,7 @@
       show: function (item) {
         return ensureChannel().then(function () {
           return localNotifications.schedule({
-            notifications: [build({ id: item.id, title: item.title, body: item.body, group: 'appt-' + item.id, at: new Date(Date.now() + 1000), day: item.day }, false)],
+            notifications: [build({ id: item.id, title: item.title, body: item.body, detail: item.detail, group: 'appt-' + item.id, at: new Date(Date.now() + 1000), day: item.day }, false)],
           });
         });
       },

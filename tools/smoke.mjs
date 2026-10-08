@@ -4036,7 +4036,7 @@ check('agenda notifications: an appointment inside its warning time gets a syste
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const soon = new Date(Date.now() + 8 * 60000);
   const stamp = `<${soon.getFullYear()}-${pad(soon.getMonth() + 1)}-${pad(soon.getDate())} ${days[soon.getDay()]} ${pad(soon.getHours())}:${pad(soon.getMinutes())}>`;
-  await newDocument(page, `* Dentist ${stamp}\n* No time of day <${soon.getFullYear()}-${pad(soon.getMonth() + 1)}-${pad(soon.getDate())} ${days[soon.getDay()]}>\n`);
+  await newDocument(page, `* Dentist ${stamp}\nbring the insurance card\n* No time of day <${soon.getFullYear()}-${pad(soon.getMonth() + 1)}-${pad(soon.getDate())} ${days[soon.getDay()]}>\n`);
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
   await page.waitForFunction(() => document.body.innerText.includes('Show reminders as'), null, { timeout: 8000 });
@@ -4053,10 +4053,11 @@ check('agenda notifications: an appointment inside its warning time gets a syste
   expect(bannerTitle === 'Dentist', `the banner is titled by the appointment: ${bannerTitle}`);
   expect(/^in [78] min \u00b7 \d\d:\d\d$/.test(bannerDetail), `and says when: ${bannerDetail}`);
   expect(!(bannerTitle + bannerDetail).includes('<'), 'the timestamp is not in the text');
+  expect((await page.locator('#apptBanner div').nth(2).innerText()) === 'bring the insurance card', 'the heading body is under the time in the banner');
   const box = await page.locator('#apptBanner').boundingBox();
   expect(box.width > 300 && (await page.locator('#apptBanner div').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))) >= 18, `the banner is large: ${Math.round(box.width)}px wide`);
   const shown = await page.evaluate(() => window.__shown);
-  expect(shown.length === 1 && shown[0].title === 'Dentist' && shown[0].body === bannerDetail && shown[0].requireInteraction === true, `one system notification, titled and worded the same, kept until answered: ${JSON.stringify(shown)}`);
+  expect(shown.length === 1 && shown[0].title === 'Dentist' && shown[0].body === `${bannerDetail}\nbring the insurance card` && shown[0].requireInteraction === true, `one system notification, titled and worded the same, kept until answered: ${JSON.stringify(shown)}`);
   await page.evaluate(async () => { const flow = await import('/src-browser/appt-flow.js'); await flow.scanAppointments(); await flow.scanAppointments(); });
   expect((await page.evaluate(() => window.__shown.length)) === 1, 'a rescan does not announce it again');
   await page.waitForTimeout(2500);
