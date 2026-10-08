@@ -85,7 +85,7 @@ export const platform = {
     request: async () => (typeof Notification === 'undefined' ? 'denied' : Notification.requestPermission()),
     scheduled: false,
     async show({ id, title, body, day }) {
-      const options = { body, tag: `appt-${id}`, data: { day } };
+      const options = { body, tag: `appt-${id}`, data: { day }, requireInteraction: true, renotify: true }; // the tag makes a repeat replace the one before; requireInteraction keeps it until answered (where the browser honours that)
       const registration = navigator.serviceWorker && (await navigator.serviceWorker.getRegistration());
       if (registration && registration.showNotification) await registration.showNotification(title, options);
       else new Notification(title, options);

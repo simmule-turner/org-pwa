@@ -3,7 +3,7 @@
 // countdown; on a platform that can hold notifications for later (the Android shell) the scan also hands it the whole list, so
 // reminders arrive with the app closed. Everything is off until appt-activate is on.
 import { getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getContactsBirthdayProperty } from '../src/local-variables.js';
-import { dueReminders, minutesUntil, modeLineText, plannedNotifications, pruneFired, reminderText, upcomingAppointments } from '../src/appt.js';
+import { dueReminders, modeLineText, plannedNotifications, pruneFired, reminderBody, reminderSlot, reminderText, upcomingAppointments } from '../src/appt.js';
 import { aggregateAgendaDocs, ensureAgendaFilesLoadedAndWait, syncAgendaFilesConfig } from './agenda-files.js';
 import { S } from './app-state.js';
 import { renderModeline } from './chrome.js';
@@ -12,14 +12,14 @@ import { platform } from './platform.js';
 import { render } from './render.js';
 import { getApptSettings, setApptSettings } from './settings.js';
 import { kv } from './singletons.js';
+import { menuButton } from './ui-widgets.js';
 import { switchToView } from './views.js';
 
 const SCAN_HOURS = 6; // how far ahead the app watches by itself
-const SCHEDULE_HOURS = 48; // and how far a platform that can hold reminders is told about
-const BANNER_MS = 20000;
+const SCHEDULE_HOURS = 24; // and how far a platform that can hold reminders is told about
 
 // Runtime state, not a setting. `fired` is what has been announced, so a rescan does not announce it again.
-const runtime = { appointments: [], held: new Set(), listeningForTaps: false, fired: new Set(), lastScan: 0, scanning: false, bannerTimer: null };
+const runtime = { appointments: [], held: new Set(), listeningForTaps: false, fired: new Set(), lastScan: 0, scanning: false };
 
 /** The settings in force (loaded once at start, replaced by saveSettings). */
 export function apptSettings() {
@@ -103,9 +103,9 @@ async function holdPlatformNotifications(appointments, now) {
       await n.cancelAll();
       return;
     }
-    const planned = plannedNotifications(appointments, now, settings['appt-message-warning-time']);
+    const planned = plannedNotifications(appointments, now, settings['appt-message-warning-time'], settings['appt-display-interval']);
     await n.schedule(planned);
-    runtime.held = new Set(planned.map((p) => p.key));
+    runtime.held = new Set(planned.map((p) => p.slot));
   } catch {
     // a failure to schedule leaves the in-app reminders working; it is not worth interrupting anything for
   }
@@ -124,9 +124,9 @@ function tick(now) {
   const settings = S.apptSettings;
   if (!settings['appt-activate']) return;
   const warning = settings['appt-message-warning-time'];
-  for (const appt of dueReminders(runtime.appointments, now, warning, runtime.fired)) {
-    runtime.fired.add(appt.key);
-    announce(appt, minutesUntil(appt.start, now));
+  for (const { appt, offset, minutes } of dueReminders(runtime.appointments, now, warning, runtime.fired, settings['appt-display-interval'])) {
+    runtime.fired.add(reminderSlot(appt, offset));
+    announce(appt, offset, minutes);
   }
   S.apptModeLine = settings['appt-display-mode-line'] ? modeLineText(runtime.appointments, now, warning) : null;
   refreshModeLine();
@@ -139,7 +139,7 @@ function refreshModeLine() {
 /** One reminder, the way appt-display-format says. window: a system notification when permitted (a platform that holds them for later
  *  has already got this one), plus a banner in the app when it is visible or when notifications are blocked. echo: the status line
  *  only. */
-function announce(appt, minutes) {
+function announce(appt, offset, minutes) {
   const text = reminderText(appt, minutes);
   const settings = S.apptSettings;
   if (settings['appt-display-format'] === 'echo') {
@@ -148,13 +148,16 @@ function announce(appt, minutes) {
   }
   const n = platform.notifications;
   const visible = typeof document === 'undefined' || !document.hidden;
+  const day = dayOf(appt);
   Promise.resolve(n.supported() ? n.permission() : 'denied')
     .then(async (permission) => {
       const allowed = permission === 'granted';
-      if (allowed && !(n.scheduled && runtime.held.has(appt.key))) await n.show({ id: appt.id, title: 'Appointment', body: text, day: dayOf(appt) }).catch(() => {});
-      if (visible || !allowed) showBanner(text, dayOf(appt));
+      if (allowed && !(n.scheduled && runtime.held.has(reminderSlot(appt, offset)))) {
+        await n.show({ id: appt.id, title: appt.title, body: reminderBody(appt, minutes), day }).catch(() => {});
+      }
+      if (visible || !allowed) showBanner(appt.title, reminderBody(appt, minutes), day);
     })
-    .catch(() => showBanner(text, dayOf(appt)));
+    .catch(() => showBanner(appt.title, reminderBody(appt, minutes), day));
 }
 
 const dayOf = (appt) => new Date(appt.start.getFullYear(), appt.start.getMonth(), appt.start.getDate()).getTime();
@@ -179,9 +182,10 @@ function listenForTaps() {
   }
 }
 
-// ---- the in-app banner: a toast over the page, so nothing in the layout moves ---------------------------------------------
+// ---- the in-app banner: a toast over the page, so nothing in the layout moves. It stays until it is answered (Open day, or Dismiss),
+// and the next reminder for the same appointment replaces it rather than stacking.
 
-function showBanner(text, dayMs) {
+function showBanner(title, body, dayMs) {
   if (typeof document === 'undefined') return;
   let el = document.getElementById('apptBanner');
   if (!el) {
@@ -189,22 +193,33 @@ function showBanner(text, dayMs) {
     el.id = 'apptBanner';
     el.setAttribute('role', 'alert');
     el.style.cssText =
-      'position:fixed;left:50%;transform:translateX(-50%);top:12px;max-width:min(92vw,520px);z-index:10001;padding:10px 14px;border-radius:10px;' +
-      'background:var(--bg);color:var(--fg,inherit);border:1px solid var(--border-strong,#888);box-shadow:0 4px 18px rgba(0,0,0,.35);font-size:14px;cursor:pointer;';
+      'position:fixed;left:50%;transform:translateX(-50%);top:12px;width:min(94vw,560px);box-sizing:border-box;z-index:10001;padding:16px 18px;border-radius:12px;' +
+      'background:var(--bg);color:var(--fg,inherit);border:2px solid #d9822b;box-shadow:0 8px 28px rgba(0,0,0,.45);';
     document.body.appendChild(el);
   }
-  el.textContent = text;
-  el.style.display = 'block';
-  el.onclick = () => {
+  el.textContent = '';
+  const heading = document.createElement('div');
+  heading.textContent = title;
+  heading.style.cssText = 'font-size:20px;font-weight:700;line-height:1.25;overflow-wrap:anywhere;';
+  const detail = document.createElement('div');
+  detail.textContent = body;
+  detail.style.cssText = 'font-size:17px;margin-top:4px;';
+  const buttons = document.createElement('div');
+  buttons.style.cssText = 'display:flex;gap:10px;margin-top:12px;';
+  const open = menuButton('Open day', () => {
     hideBanner();
     openApptDay(dayMs);
-  };
-  clearTimeout(runtime.bannerTimer);
-  runtime.bannerTimer = setTimeout(hideBanner, BANNER_MS);
+  });
+  const dismiss = menuButton('Dismiss', hideBanner);
+  buttons.appendChild(open);
+  buttons.appendChild(dismiss);
+  el.appendChild(heading);
+  el.appendChild(detail);
+  el.appendChild(buttons);
+  el.style.display = 'block';
 }
 
 function hideBanner() {
-  clearTimeout(runtime.bannerTimer);
   const el = typeof document === 'undefined' ? null : document.getElementById('apptBanner');
   if (el) el.style.display = 'none';
 }

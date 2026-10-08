@@ -999,11 +999,12 @@ Get a reminder shortly before an appointment, as Emacs's ~appt~ does. Turn it on
 
 - *Agenda notifications* (~appt-activate~): on or off.
 - *Warn this many minutes before* (~appt-message-warning-time~): 10 by default.
+- *Remind again every* (~appt-display-interval~): 3 minutes by default. Once an appointment is within its warning time, it is announced again at this interval, as in Emacs: 10 minutes warned every 3 reads 10, 7, 4 and 1. A warning time that is a multiple of the interval also ends with a reminder at the start.
 - *Scan agenda files every* (~appt-agenda-scan-interval~): 5 minutes by default. The app also looks again at launch, when you return to it, and after a save.
 - *Countdown in the mode line* (~appt-display-mode-line~): shows ~Appt: 10m~ while an appointment is inside its warning time.
 - *Show reminders as* (~appt-display-format~): *window* is a system notification plus a banner in the app; *echo* is the status line only.
 
-An appointment is an item with a time of day, from the open file and your [[#agenda-files][Agenda Files]]: SCHEDULED, DEADLINE or a plain timestamp, repeating ones included. Done items and items with no time of day are ignored. Each is announced once, as ~Dentist · in 10 min · 09:30–10:15~. Tapping a reminder opens that day in the Agenda.
+An appointment is an item with a time of day, from the open file and your [[#agenda-files][Agenda Files]]: SCHEDULED, DEADLINE or a plain timestamp, repeating ones included. Done items and items with no time of day are ignored. A reminder is titled by the appointment, with the time left and its time below: ~Dentist~, ~in 10 min · 09:30–10:15~. The banner stays until you tap *Open day* or *Dismiss*, and the next reminder replaces it. A system notification stays until you swipe it away, and the repeats replace each other. Tapping a reminder opens that day in the Agenda.
 
 The first time, tap *Allow notifications*. If they are blocked, reminders still show in the app. In the browser, reminders appear while the app is open. In the [[#android-app][Android app]] they are scheduled with the system, so they arrive when the app is closed; allowing *Exact timing* keeps them on the minute.
 

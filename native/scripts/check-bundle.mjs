@@ -436,11 +436,14 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
     return before;
   });
   check(state.supported && state.scheduled && state.permission === 'granted' && state.label === 'allowed', 'the shell reports notifications as supported, schedulable and allowed', JSON.stringify(state));
-  const sent = (await calls(page, 'notify')).map((c) => c[1].notifications).flat();
-  const dentist = sent.find((n) => n.body.startsWith('Dentist'));
-  check(sent.length === 2 && dentist, 'the two timed appointments are handed over (the one without a time of day is not)', JSON.stringify(sent.map((n) => n.body)));
-  check(dentist && Math.abs(new Date(dentist.schedule.at).getTime() - (start.getTime() - 10 * 60000)) < 1000, 'each is due the warning time before it starts, as an exact instant', dentist && dentist.schedule.at);
-  check(dentist && dentist.body.includes('in 10 min') && dentist.channelId === 'appt' && Number.isInteger(dentist.id) && dentist.extra && typeof dentist.extra.day === 'number', 'worded for then, on its own channel, with a numeric id and the day to open', JSON.stringify(dentist));
+  const sent = (await calls(page, 'notify')).at(-1)[1].notifications;
+  const dentistAll = sent.filter((n) => n.title === 'Dentist');
+  const dentist = dentistAll.find((n) => n.body.startsWith('in 10 min'));
+  check(sent.every((n) => n.title === 'Dentist' || n.title === 'Tomorrow') && dentistAll.length === 4 && sent.length === 8, 'both timed appointments are handed over, each titled by itself and held for every reminder time (the one without a time of day is not)', JSON.stringify(sent.map((n) => n.title + ': ' + n.body)));
+  check(dentistAll.map((n) => n.body.split(' · ')[0]).join() === 'in 10 min,in 7 min,in 4 min,in 1 min', 'a reminder is held for the warning time and then every 3 minutes, as Emacs repeats them', dentistAll.map((n) => n.body).join(' | '));
+  check(dentist && Math.abs(new Date(dentist.schedule.at).getTime() - (start.getTime() - 10 * 60000)) < 1000 && Math.abs(new Date(dentistAll[1].schedule.at).getTime() - (start.getTime() - 7 * 60000)) < 1000, 'each is due at its own exact instant', dentist && dentist.schedule.at);
+  check(dentist && dentist.largeBody === dentist.body && new Set(dentistAll.map((n) => n.group)).size === 1 && new Set(sent.map((n) => n.id)).size === sent.length, 'the expanded text is the whole line, the repeats of one appointment share a group, and every id is distinct', JSON.stringify(dentist));
+  check(dentist && dentist.channelId === 'appt' && Number.isInteger(dentist.id) && dentist.extra && typeof dentist.extra.day === 'number', 'on its own channel, with the day to open', JSON.stringify(dentist));
   check(dentist && dentist.isExactNotification === false, 'without the exact-alarm switch the plugin is not asked for exact timing (it would open system settings on every scan)', String(dentist && dentist.isExactNotification));
   check((await calls(page, 'createChannel')).length === 1 && (await calls(page, 'cancelAll')).length >= 1, 'the channel is made once, and what was held is replaced rather than added to');
   // exact timing, once the person has switched it on

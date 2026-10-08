@@ -7,6 +7,13 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v449 — Reminders repeat and stay
+Agenda reminders now repeat as Emacs's appt does: when the warning time
+is reached, then every "Remind again every" minutes (3 by default). The
+appointment is the notification's title, the banner is large and waits for
+Open day or Dismiss, and on Android the whole line shows when the
+notification is expanded and the repeats group together.
+
 * v448 — Agenda notifications
 Appointments now remind you before they start, as Emacs's appt does.
 Settings → Agenda notifications has appt-activate,

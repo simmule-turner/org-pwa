@@ -3021,7 +3021,7 @@ check('settings page order: Calendar (CalDAV) / Contacts (CardDAV) comes right a
   const { context, page } = await freshPage();
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
-  await page.locator('.settings-section').last().waitFor({ state: 'visible' });
+  await page.waitForFunction(() => [...document.querySelectorAll('.settings-section .panel-section-title')].some((t) => t.textContent === 'Updates'), null, { timeout: 8000 }); // the sections are built one after another
   const sections = await page.evaluate(() => [...document.querySelectorAll('.settings-section')].map((sec) => (sec.querySelector('.panel-section-title') || {}).textContent || ''));
   expect(sections[sections.length - 1] === 'Backup', `Backup is the last section: ${JSON.stringify(sections)}`);
   const w = sections.indexOf('WebDAV');
@@ -4048,18 +4048,37 @@ check('agenda notifications: an appointment inside its warning time gets a syste
     await flow.saveApptSettings({ 'appt-activate': true, 'appt-message-warning-time': 10 });
   });
   await page.waitForFunction(() => document.getElementById('apptBanner') && getComputedStyle(document.getElementById('apptBanner')).display !== 'none', null, { timeout: 5000 });
-  const banner = await page.locator('#apptBanner').innerText();
-  expect(/^Dentist \u00b7 in [78] min \u00b7 \d\d:\d\d$/.test(banner), `the banner reads like the reminder: ${banner}`);
-  expect(!banner.includes('<'), 'and the timestamp is not in the title');
+  const bannerTitle = await page.locator('#apptBanner div').first().innerText();
+  const bannerDetail = await page.locator('#apptBanner div').nth(1).innerText();
+  expect(bannerTitle === 'Dentist', `the banner is titled by the appointment: ${bannerTitle}`);
+  expect(/^in [78] min \u00b7 \d\d:\d\d$/.test(bannerDetail), `and says when: ${bannerDetail}`);
+  expect(!(bannerTitle + bannerDetail).includes('<'), 'the timestamp is not in the text');
+  const box = await page.locator('#apptBanner').boundingBox();
+  expect(box.width > 300 && (await page.locator('#apptBanner div').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))) >= 18, `the banner is large: ${Math.round(box.width)}px wide`);
   const shown = await page.evaluate(() => window.__shown);
-  expect(shown.length === 1 && shown[0].body === banner, `one system notification, with the same text: ${JSON.stringify(shown)}`);
+  expect(shown.length === 1 && shown[0].title === 'Dentist' && shown[0].body === bannerDetail && shown[0].requireInteraction === true, `one system notification, titled and worded the same, kept until answered: ${JSON.stringify(shown)}`);
   await page.evaluate(async () => { const flow = await import('/src-browser/appt-flow.js'); await flow.scanAppointments(); await flow.scanAppointments(); });
   expect((await page.evaluate(() => window.__shown.length)) === 1, 'a rescan does not announce it again');
+  await page.waitForTimeout(2500);
+  expect(await page.locator('#apptBanner').isVisible(), 'the banner is still there: it waits to be answered');
+  await page.getByRole('button', { name: 'Dismiss' }).click();
+  expect(!(await page.locator('#apptBanner').isVisible()), 'Dismiss closes it');
   await page.evaluate(async () => { const { renderModeline } = await import('/src-browser/chrome.js'); renderModeline(); });
   expect(/Appt: [78]m/.test(await modeline(page)), `the mode line counts down: ${await modeline(page)}`);
-  await page.locator('#apptBanner').click();
+  // a repeat: with the clock moved on to the next reminder time, it is announced again, replacing (not stacking on) the banner
+  await page.evaluate(async () => {
+    const flow = await import('/src-browser/appt-flow.js');
+    const run = flow.apptRuntime();
+    const appt = run.appointments[0];
+    run.appointments = [{ ...appt, start: new Date(Date.now() + 6.5 * 60000) }]; // inside the 7 minute reminder, past the 10
+    flow.apptTick(new Date());
+  });
+  await page.waitForFunction(() => window.__shown.length === 2, null, { timeout: 5000 });
+  expect((await page.locator('#apptBanner').count()) === 1 && /^in 7 min/.test(await page.locator('#apptBanner div').nth(1).innerText()), 'the next reminder comes at the next interval, in the same banner');
+  expect((await page.evaluate(() => window.__shown[1].tag === window.__shown[0].tag)), 'and replaces the system notification for that appointment (the same tag)');
+  await page.getByRole('button', { name: 'Open day' }).click();
   await page.waitForTimeout(400);
-  expect((await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.currentView)) === 'agenda', 'tapping the banner opens that day in the agenda');
+  expect((await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.currentView)) === 'agenda', 'Open day goes to that day in the agenda');
   await page.evaluate(async () => {
     const flow = await import('/src-browser/appt-flow.js');
     await flow.saveApptSettings({ 'appt-display-format': 'echo' });

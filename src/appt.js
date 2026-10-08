@@ -16,12 +16,13 @@ import { resolveTodoSequence } from './todo-cycle.js';
 export const APPT_DEFAULTS = {
   'appt-activate': false,
   'appt-message-warning-time': 10,
+  'appt-display-interval': 3, // once an appointment is within its warning time, remind again every this many minutes
   'appt-agenda-scan-interval': 5,
   'appt-display-mode-line': true,
   'appt-display-format': 'window', // 'window' | 'echo'
 };
 
-export const APPT_LIMITS = { warning: [1, 1440], scan: [1, 60] };
+export const APPT_LIMITS = { warning: [1, 1440], interval: [1, 60], scan: [1, 60] };
 
 const clampInt = (value, [min, max], fallback) => {
   const n = Math.round(Number(value));
@@ -34,6 +35,7 @@ export function normalizeApptSettings(raw) {
   return {
     'appt-activate': r['appt-activate'] === true,
     'appt-message-warning-time': clampInt(r['appt-message-warning-time'], APPT_LIMITS.warning, APPT_DEFAULTS['appt-message-warning-time']),
+    'appt-display-interval': clampInt(r['appt-display-interval'], APPT_LIMITS.interval, APPT_DEFAULTS['appt-display-interval']),
     'appt-agenda-scan-interval': clampInt(r['appt-agenda-scan-interval'], APPT_LIMITS.scan, APPT_DEFAULTS['appt-agenda-scan-interval']),
     'appt-display-mode-line': r['appt-display-mode-line'] !== false,
     'appt-display-format': r['appt-display-format'] === 'echo' ? 'echo' : 'window',
@@ -97,23 +99,54 @@ export function minutesUntil(start, now) {
   return Math.max(0, Math.ceil((start.getTime() - now.getTime()) / 60000));
 }
 
-const span = (appt) => (appt.end ? `${clock(appt.start)}–${clock(appt.end)}` : clock(appt.start));
+const span = (appt) => (appt.end ? `${clock(appt.start)}\u2013${clock(appt.end)}` : clock(appt.start));
 
-/** "Dentist · in 10 min · 09:30–10:15". `minutes` is how long until it starts (0 reads "now"). */
-export function reminderText(appt, minutes) {
+/** "in 10 min · 09:30–10:15" (0 reads "now"): what a reminder says about the appointment, under its title. */
+export function reminderBody(appt, minutes) {
   const when = minutes <= 0 ? 'now' : `in ${minutes} min`;
-  return `${appt.title} · ${when} · ${span(appt)}`;
+  return `${when} \u00b7 ${span(appt)}`;
 }
 
-/** The appointments that have come within `warningMinutes` and not yet been announced, soonest first. `fired` is a Set of keys. */
-export function dueReminders(appointments, now, warningMinutes, fired) {
-  return appointments.filter((a) => !fired.has(a.key) && a.start.getTime() - now.getTime() <= warningMinutes * 60000 && a.start.getTime() >= now.getTime());
+/** "Dentist · in 10 min · 09:30–10:15": the whole reminder as one line (the status line, a banner). */
+export function reminderText(appt, minutes) {
+  return `${appt.title} \u00b7 ${reminderBody(appt, minutes)}`;
+}
+
+/** When, in minutes before the start, an appointment is announced: as it enters its warning time, then every `interval` minutes, as
+ *  Emacs's appt does (appt-display-interval). 10 minutes warned at 3-minute intervals reads 10, 7, 4, 1; the last one falls on the
+ *  start itself only if the warning time is a multiple of the interval, which is why Emacs recommends it. */
+export function reminderOffsets(warningMinutes, interval) {
+  const offsets = [];
+  for (let m = warningMinutes; m >= 0; m -= Math.max(1, interval)) offsets.push(m);
+  return offsets;
+}
+
+/** The slot an announcement is remembered under, so it is made once. */
+export const reminderSlot = (appt, offset) => `${appt.key}\u0001${offset}`;
+
+/**
+ * What to announce now: for each appointment, the latest of its reminder times that has come and not yet been made (reminders missed
+ * while the app was away are not made up, only the current one is), as `{ appt, offset, minutes }` with `minutes` the time left.
+ * `fired` is a Set of slots; the caller adds the slot of each one it announces.
+ */
+export function dueReminders(appointments, now, warningMinutes, fired, interval = 3) {
+  const offsets = reminderOffsets(warningMinutes, interval);
+  const due = [];
+  for (const appt of appointments) {
+    if (appt.start.getTime() < now.getTime()) continue;
+    const left = (appt.start.getTime() - now.getTime()) / 60000;
+    // the latest reminder time that has come is the smallest offset still >= the time left
+    const offset = offsets.filter((o) => o >= left).pop();
+    if (offset === undefined || fired.has(reminderSlot(appt, offset))) continue;
+    due.push({ appt, offset, minutes: minutesUntil(appt.start, now) });
+  }
+  return due;
 }
 
 /** `fired` without the appointments that have started: the memory only needs to cover what could still be announced. */
 export function pruneFired(fired, appointments, now) {
   const live = new Set(appointments.filter((a) => a.start.getTime() >= now.getTime()).map((a) => a.key));
-  return new Set([...fired].filter((key) => live.has(key)));
+  return new Set([...fired].filter((slot) => live.has(slot.slice(0, slot.indexOf('\u0001')))));
 }
 
 /** "Appt: 10m" for the nearest appointment inside the warning window, else null. Cleared once the start time is reached. */
@@ -124,17 +157,22 @@ export function modeLineText(appointments, now, warningMinutes) {
 }
 
 /**
- * What a platform that can schedule ahead (an Android shell) should hold: one notification per appointment, due `warningMinutes`
- * before it starts, worded as it will read then. An appointment already inside its warning window is not here (it is announced
- * straight away by the app), and at most `limit` are kept, because the system caps how many alarms an app may hold.
+ * What a platform that can schedule ahead (an Android shell) should hold: one notification for each reminder time of each
+ * appointment, worded as it will read then and titled by the appointment, the repeats of one appointment sharing a group. Times that
+ * have passed are not here (the app announces what is current itself), and at most `limit` are kept, nearest first, because the
+ * system caps how many alarms an app may hold.
  */
-export function plannedNotifications(appointments, now, warningMinutes, limit = 50) {
+export function plannedNotifications(appointments, now, warningMinutes, interval = 3, limit = 50) {
+  const offsets = reminderOffsets(warningMinutes, interval);
   const planned = [];
   for (const appt of appointments) {
-    const at = new Date(appt.start.getTime() - warningMinutes * 60000);
-    if (at.getTime() <= now.getTime()) continue;
-    planned.push({ id: appt.id, key: appt.key, at, title: 'Appointment', body: reminderText(appt, warningMinutes), day: startOfDay(appt.start).getTime() });
-    if (planned.length >= limit) break;
+    for (const offset of offsets) {
+      const at = new Date(appt.start.getTime() - offset * 60000);
+      if (at.getTime() <= now.getTime()) continue;
+      const body = reminderBody(appt, offset);
+      planned.push({ id: appointmentId(reminderSlot(appt, offset)), slot: reminderSlot(appt, offset), at, title: appt.title, body, group: `appt-${appt.id}`, day: startOfDay(appt.start).getTime() });
+    }
   }
-  return planned;
+  planned.sort((a, b) => a.at - b.at);
+  return planned.slice(0, limit);
 }

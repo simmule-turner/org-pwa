@@ -1258,6 +1258,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   };
   apptSection.appendChild(apptCheckbox('Agenda notifications', 'appt-activate', 'appt-activate'));
   apptSection.appendChild(apptStepper('Warn this many minutes before', 'appt-message-warning-time', 'appt-message-warning-time', APPT_LIMITS.warning, 5, 'min'));
+  apptSection.appendChild(apptStepper('Remind again every', 'appt-display-interval', 'appt-display-interval', APPT_LIMITS.interval, 1, 'min'));
   apptSection.appendChild(apptStepper('Scan agenda files every', 'appt-agenda-scan-interval', 'appt-agenda-scan-interval', APPT_LIMITS.scan, 1, 'min'));
   apptSection.appendChild(apptCheckbox('Countdown in the mode line', 'appt-display-mode-line', 'appt-display-mode-line'));
   const formatRow = document.createElement('div');
