@@ -8,6 +8,7 @@ export const kv = createIndexedDbAdapter();
 export const agendaFilesCache = new Map();
 
 export const contactsFilesCache = new Map();
+export const searchExtraFilesCache = new Map(); // org-agenda-text-search-extra-files: key (scheme:path) -> { doc, documentId } | { error } | { loading, promise }
 
 export const plotSvgCache = new Map();
 

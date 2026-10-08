@@ -2951,6 +2951,72 @@ check('Export > Calendar (.ics) > Agenda (as displayed) writes the agenda\u2019s
   await context.close();
 });
 
+check('Search extra files: text search also looks in org-agenda-text-search-extra-files and names a file it cannot load, the agenda does not use them, a result opens its file, a file in both lists is searched once, and the Quick Settings row sits right after Contacts files', async () => {
+  const extra = ['* TODO Extra heading', `SCHEDULED: <${calDay(1)}>`, 'a unicornword lives only here', ''].join('\n');
+  const notes = (vars) => ['* Notes', 'plain text', '# Local Variables:', ...vars, '# End:', ''].join('\n');
+  dav.reset({ 'notes.org': notes(['# org-agenda-text-search-extra-files: webdav:extra.org;webdav:missing.org']), 'extra.org': extra });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await page.setViewportSize({ width: 412, height: 900 });
+  await openDav(page, 'notes.org');
+  const search = async (query) => {
+    await page.evaluate(() => document.getElementById('searchBtn').click());
+    await page.fill('#search-query-input', query);
+  };
+  await search('unicornword');
+  await page.waitForFunction(() => document.getElementById('search-results').innerText.includes('extra.org'), null, { timeout: 12000 });
+  let found = await page.locator('#search-results').innerText();
+  expect(found.includes('Extra heading') && found.includes('extra.org'), `a match in an extra file: ${found.slice(0, 200)}`);
+  expect(found.includes('missing.org'), `and the file that cannot be loaded is named above the results: ${found.slice(0, 200)}`);
+
+  // search only: the agenda's documents do not include the extra file, the search's do
+  const ids = await page.evaluate(async () => {
+    const m = await import('/src-browser/agenda-files.js');
+    return { agenda: m.aggregateAgendaDocs().map((d) => d.documentId), search: m.aggregateSearchDocs().map((d) => d.documentId) };
+  });
+  expect(!ids.agenda.includes('extra.org') && ids.search.includes('extra.org') && ids.search.includes('notes.org'), `search only: ${JSON.stringify(ids)}`);
+  await viewMenu(page, 'Agenda');
+  await page.waitForTimeout(500);
+  expect(!(await page.locator('body').innerText()).includes('Extra heading'), 'the agenda does not show the extra file\u2019s scheduled item');
+  await viewMenu(page, 'Org');
+  await page.waitForTimeout(300);
+
+  // tapping a result opens that file
+  await search('unicornword');
+  await page.waitForFunction(() => document.getElementById('search-results').innerText.includes('extra.org'), null, { timeout: 12000 });
+  await page.locator('#search-results').getByText('Extra heading', { exact: false }).first().click();
+  let openId = null;
+  for (let n = 0; n < 48 && openId !== 'extra.org'; n++) {
+    await page.waitForTimeout(250);
+    openId = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.state.documentId);
+  }
+  expect(openId === 'extra.org', `the result really opened extra.org (the open document is ${openId}; the status line says: ${await page.locator('#minibuffer').innerText()})`);
+
+  // the Quick Settings row: right after Contacts files, labelled Search extra files
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await page.waitForFunction(() => document.body.textContent.includes('Search extra files'), null, { timeout: 8000 });
+  const order = await page.evaluate(() => {
+    const wanted = ['Agenda files', 'Contacts files', 'Search extra files', 'Extras menu (\u2630)'];
+    const leaves = [...document.querySelectorAll('*')].filter((e) => e.children.length === 0 && wanted.includes(e.textContent.trim()));
+    return leaves.map((e) => e.textContent.trim());
+  });
+  expect(JSON.stringify(order) === JSON.stringify(['Agenda files', 'Contacts files', 'Search extra files', 'Extras menu (\u2630)']), `the row order in Quick Settings: ${JSON.stringify(order)}`);
+  await context.close();
+
+  // a file listed as an agenda file AND as an extra file is searched once
+  dav.reset({ 'notes.org': notes(['# org-agenda-files: webdav:extra.org', '# org-agenda-text-search-extra-files: webdav:extra.org']), 'extra.org': extra });
+  const second = await freshPage(main, { withDav: true });
+  await openDav(second.page, 'notes.org');
+  await second.page.evaluate(() => document.getElementById('searchBtn').click());
+  await second.page.fill('#search-query-input', 'unicornword');
+  await second.page.waitForFunction(() => document.getElementById('search-results').innerText.includes('extra.org'), null, { timeout: 12000 });
+  await second.page.waitForTimeout(800);
+  const both = await second.page.locator('#search-results').innerText();
+  expect(both.split('extra.org').length - 1 === 1, `searched once, listed twice: ${both.slice(0, 200)}`);
+  expect(errors.length === 0 && second.errors.length === 0, `page errors: ${errors.concat(second.errors).join(' | ')}`);
+  await second.context.close();
+});
+
 check('settings page order: Calendar (CalDAV) / Contacts (CardDAV) comes right after WebDAV so Backup is last, and Paragraph Spacing comes right after Font Size; its buttons follow which addresses are set', async () => {
   const { context, page } = await freshPage();
   await page.click('#moreBtn');

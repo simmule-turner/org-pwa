@@ -390,6 +390,19 @@ Example: ~^\(Buy\|Fix\)~ finds headings whose title starts with "Buy" or "Fix".
 
 Example: ~work+urgent|blocked~ finds headings tagged both ~work~ and ~urgent~, or tagged ~blocked~.
 
+*** Search extra files
+:PROPERTIES:
+:CUSTOM_ID: search-extra-files
+:END:
+
+~org-agenda-text-search-extra-files~ lists more files to search, in addition to the file you have open and your [[#agenda-files][Agenda Files]]. It is the same ~scheme:path~ syntax (~github:~, ~webdav:~, ~local:~), semicolon-separated:
+
+#+BEGIN_EXAMPLE
+org-agenda-text-search-extra-files: github:notes/reference.org;webdav:archive/2024.org
+#+END_EXAMPLE
+
+Set it in *Settings → Quick Settings → Search extra files*, or per document in Local Variables. The files are searched, and nothing else: they don't appear in the Agenda, TODO or tag views, which makes this the place for notes that should be findable but not scheduled. A file listed here and as an agenda file is searched once. Tapping a result opens its file. A file that is still loading, or can't be loaded, is named above the results, so it never just quietly finds nothing. *Replace* works on the open file and your agenda files only.
+
 *** Search and replace
 
 The options button (~⋯~) also shows *Replace*, which starts an Emacs-style ~query-replace~ (or ~query-replace-regexp~, following the Regex toggle) with the search text as the pattern. It walks every [[#agenda-files][Agenda Files]] file that has a match, starting with the open one, and a file it enters opens as its own tab. It asks for the replacement text, then offers each match:
@@ -556,6 +569,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-closed-keep-when-no-todo~ | ~nil~ | ~t~ keeps a CLOSED timestamp when a DONE heading is cycled back to no keyword. Cycling to another keyword always removes it (see [[#progress-logging][Progress logging]]) |
 | ~org-contacts-birthday-property~ | ~BIRTHDAY~ | The property ~org-contacts-anniversaries~ reads, as a plain string (~# org-contacts-birthday-property: EVENT~) |
 | ~org-contacts-files~ | unset (current file only) | More files for [[#export][Contacts (.vcf)]] export (see [[#contacts-files][Contacts Files]]) |
+| ~org-agenda-text-search-extra-files~ | unset | More files for text search only, in the same syntax as ~org-agenda-files~ (see [[#search-extra-files][Search extra files]]) |
 | ~org-cycle-open-archived-trees~ | ~nil~ | ~nil~: an archived heading starts folded whatever ~#+STARTUP:~ says, and the swipe gesture refuses to open it (the chevron still does, as org's force-open commands do). ~t~ makes archived headings behave like any other |
 | ~org-deadline-warning-days~ | ~14~ | How many days before its date a DEADLINE with no warning suffix starts showing in the agenda |
 | ~org-global-properties~ | unset | Properties that apply everywhere. Only ~Effort_ALL~ is used, as in ~Effort_ALL: 0:15 0:30 1:00 2:00~ (see [[#effort-all][Effort_ALL]]) |

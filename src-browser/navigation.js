@@ -11,7 +11,7 @@ import { navBackBtn, outlineEl, sidePanelEl } from './dom.js';
 import { setStatus } from './editing.js';
 import { render } from './render.js';
 import { renderSettingsView } from './settings-view.js';
-import { agendaFilesCache } from './singletons.js';
+import { agendaFilesCache, searchExtraFilesCache } from './singletons.js';
 import { isWideLayout } from './ui-widgets.js';
 import { openOrSwitchToHelp, switchToView } from './views.js';
 
@@ -91,7 +91,7 @@ export function navigateToHeading(heading, { revealOwnBody = false, targetNode =
  *  same key-parsing ensureAgendaFilesLoaded itself already does. */
 export function storageKindForDocumentId(documentId) {
   if (documentId === S.state.documentId) return S.state.storageKind;
-  for (const key of agendaFilesCache.keys()) {
+  for (const key of [...agendaFilesCache.keys(), ...searchExtraFilesCache.keys()]) {
     const colonIndex = key.indexOf(':');
     const scheme = colonIndex === -1 ? key : key.slice(0, colonIndex);
     const path = colonIndex === -1 ? '' : key.slice(colonIndex + 1);
@@ -115,7 +115,7 @@ export function outlinePathForHeadingInDocument(documentId, heading) {
   const doc =
     documentId === S.state.documentId
       ? S.state.doc
-      : Array.from(agendaFilesCache.values()).find((e) => e.documentId === documentId)?.doc;
+      : [...Array.from(agendaFilesCache.values()), ...Array.from(searchExtraFilesCache.values())].find((e) => e.documentId === documentId)?.doc;
   if (!doc) return null;
   return [...(findAncestorPath(doc, heading) || []).map((h) => h.title), heading.title];
 }

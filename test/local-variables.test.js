@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseLocalVariables,
+  getSearchExtraFilesVar,
   parseLispBoolean,
   parseLispNumber,
   getAgendaStartOnWeekday,
@@ -567,3 +568,12 @@ test('the same entry written twice is not a conflict, and an empty list has none
   assert.equal(findDuplicateAgendaFiles(['github:a.org', 'github:a.org']).size, 0);
   assert.equal(findDuplicateAgendaFiles([]).size, 0);
 });
+
+test('org-agenda-text-search-extra-files is read like the other file lists, and parses with the same scheme:path syntax', () => {
+  assert.equal(getSearchExtraFilesVar({}), '');
+  assert.equal(getSearchExtraFilesVar(undefined), '');
+  const raw = getSearchExtraFilesVar({ 'org-agenda-text-search-extra-files': 'github:notes/ref.org;webdav:archive/2024.org;local:scratch.org' });
+  assert.deepEqual(parseAgendaFilesVar(raw), ['github:notes/ref.org', 'webdav:archive/2024.org', 'local:scratch.org']);
+  assert.equal(getAgendaFilesVar({ 'org-agenda-text-search-extra-files': 'github:a.org' }), '', 'it is a variable of its own: it does not add to the agenda files');
+});
+

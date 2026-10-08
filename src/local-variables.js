@@ -295,6 +295,13 @@ export function getContactsFilesVar(vars) {
   return (vars || {})['org-contacts-files'] || '';
 }
 
+/** org-agenda-text-search-extra-files: more files for TEXT SEARCH only, in the same scheme:path syntax as org-agenda-files (parse it
+ *  with parseAgendaFilesVar). As in Emacs, they are searched in addition to the agenda files and are not part of the agenda, TODO
+ *  or tag views, which is what makes them useful for notes that should be findable but not scheduled. */
+export function getSearchExtraFilesVar(vars) {
+  return (vars || {})['org-agenda-text-search-extra-files'] || '';
+}
+
 /** Parses org-agenda-files' own raw string value (semicolon-separated
  *  "scheme:path" entries) into a validated array of just the entries
  *  that actually look like a real, recognized backend reference --

@@ -7,6 +7,15 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v446 — Search extra files
+Text search can now look in extra files:
+org-agenda-text-search-extra-files lists them, in the same
+github:/webdav:/local: syntax as org-agenda-files, and Settings → Quick
+Settings has a "Search extra files" row right after "Contacts files".
+They are searched only, so they stay out of the Agenda, TODO and tag
+views. A file listed twice is searched once, a result opens its file,
+and a file that can't be loaded is named above the results.
+
 * v445 — Calendar and contacts follow the agenda
 Birthdays and anniversaries now follow Emacs's org-contacts:
 %%(org-contacts-anniversaries "ANNIVERSARY") and a FORMAT work, several

@@ -4,7 +4,7 @@ import { getUsePropertyInheritance, getUseTagInheritance } from '../src/local-va
 import { countBlockOnlyMatches, createQueryReplace, createTextQueryReplace } from '../src/query-replace.js';
 import { searchDocuments, searchDocumentsByMatchQuery } from '../src/search.js';
 import { githubAdapter, webdavAdapter } from './adapters.js';
-import { aggregateAgendaDocs, ensureAgendaFilesLoaded } from './agenda-files.js';
+import { aggregateAgendaDocs, aggregateSearchDocs, ensureAgendaFilesLoaded, ensureSearchExtraFilesLoaded, searchExtraFilesProblems } from './agenda-files.js';
 import { S } from './app-state.js';
 import { renderMinibuffer } from './chrome.js';
 import { SEARCH_TYPE_ICON } from './constants.js';
@@ -542,15 +542,27 @@ export function renderSearchResults() {
   searchPanel.style.display = 'block';
 
   ensureAgendaFilesLoaded();
+  ensureSearchExtraFilesLoaded();
+
+  // an extra file that is still loading, or failed, would otherwise just find nothing: say so
+  const extra = searchExtraFilesProblems();
+  if (extra.loading.length > 0 || extra.failed.length > 0) {
+    const status = document.createElement('div');
+    status.style.fontSize = '11px';
+    status.style.padding = '2px 2px 6px';
+    if (extra.failed.length > 0) status.style.color = '#c0392b';
+    status.textContent = [extra.loading.length ? `Loading ${extra.loading.length} extra search file${extra.loading.length === 1 ? '' : 's'}\u2026` : '', ...extra.failed.map((f) => `"${f.key}": ${f.error}`)].filter(Boolean).join(' ');
+    resultsEl.appendChild(status);
+  }
 
   let results;
   try {
     results = S.searchUseMatch
-      ? searchDocumentsByMatchQuery(aggregateAgendaDocs(), S.searchQuery, {
+      ? searchDocumentsByMatchQuery(aggregateSearchDocs(), S.searchQuery, {
           useTagInheritance: getUseTagInheritance(S.state.localVariables),
           usePropertyInheritance: getUsePropertyInheritance(S.state.localVariables),
         })
-      : searchDocuments(aggregateAgendaDocs(), S.searchQuery, {
+      : searchDocuments(aggregateSearchDocs(), S.searchQuery, {
           useRegex: S.searchUseRegex,
           useTagInheritance: getUseTagInheritance(S.state.localVariables),
           usePropertyInheritance: getUsePropertyInheritance(S.state.localVariables),

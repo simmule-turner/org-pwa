@@ -1,6 +1,6 @@
 // Extracted from app.js: agenda files.
 import { collectContactsTriggers } from '../src/agenda.js';
-import { findDuplicateAgendaFiles, getAgendaFilesVar, getContactsFilesVar, parseAgendaFilesVar } from '../src/local-variables.js';
+import { findDuplicateAgendaFiles, getAgendaFilesVar, getContactsFilesVar, getSearchExtraFilesVar, parseAgendaFilesVar } from '../src/local-variables.js';
 import { parseOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { scheduleCalendarSync } from './calendar-sync.js';
@@ -9,7 +9,7 @@ import { platform } from './platform.js';
 import { render } from './render.js';
 import { renderSearchPanel } from './search-ui.js';
 import { renderSettingsView } from './settings-view.js';
-import { agendaFilesCache, contactsFilesCache } from './singletons.js';
+import { agendaFilesCache, contactsFilesCache, searchExtraFilesCache } from './singletons.js';
 
 /** Recomputes agendaFilesConfig from whichever variable set is
  *  actually authoritative right now: state.localVariables (already
@@ -299,6 +299,78 @@ export function ensureContactsFilesLoaded() {
       });
     contactsFilesCache.set(key, { loading: true, promise });
   }
+}
+
+// ---- org-agenda-text-search-extra-files: more files for TEXT SEARCH only ------------------------------------------------
+
+/** Recomputes searchExtraFilesConfig from whichever variable set is authoritative right now (the open file's own, else the
+ *  global ones), like syncContactsFilesConfig. */
+export function syncSearchExtraFilesConfig() {
+  S.searchExtraFilesConfig = parseAgendaFilesVar(getSearchExtraFilesVar(S.state.doc ? S.state.localVariables : S.globalVariables));
+}
+
+/** Kicks off a fetch for every configured extra file not already cached (or loading), fire-and-forget like
+ *  ensureAgendaFilesLoaded, re-rendering the search panel as each one resolves. GitHub and WebDAV files are fetched; a `local:` file
+ *  is read by name (a file opened on this device earlier, or in the org-pwa folder) and, as for agenda files, never asks for
+ *  permission here. They are searched, never written to. */
+export function ensureSearchExtraFilesLoaded() {
+  syncSearchExtraFilesConfig();
+  const configKey = JSON.stringify(S.searchExtraFilesConfig);
+  if (S.searchExtraFilesCacheLoadedFor !== configKey) {
+    searchExtraFilesCache.clear();
+    S.searchExtraFilesCacheLoadedFor = configKey;
+  }
+  const settle = (key, entry) => {
+    searchExtraFilesCache.set(key, entry);
+    if (S.searchOpen) renderSearchPanel();
+  };
+  for (const key of S.searchExtraFilesConfig) {
+    if (searchExtraFilesCache.has(key)) continue;
+    const colonIndex = key.indexOf(':');
+    const scheme = colonIndex === -1 ? key : key.slice(0, colonIndex);
+    const path = colonIndex === -1 ? '' : key.slice(colonIndex + 1);
+    if (scheme === 'local') {
+      searchExtraFilesCache.set(key, { loading: true, promise: readLocalEntry(path, false).then((entry) => settle(key, entry)) });
+      continue;
+    }
+    const adapter = scheme === 'github' ? githubAdapter : scheme === 'webdav' ? webdavAdapter : null;
+    if (!adapter) {
+      searchExtraFilesCache.set(key, { error: `Unsupported scheme "${scheme}" \u2014 only github, webdav and local are supported.` });
+      continue;
+    }
+    const promise = adapter
+      .read(path)
+      .then((result) => settle(key, result ? { doc: parseOrg(result.content), documentId: path } : { error: `"${path}" not found.` }))
+      .catch((err) => settle(key, { error: err.message }));
+    searchExtraFilesCache.set(key, { loading: true, promise });
+  }
+}
+
+/** The documents text search looks in: the agenda's own (the open file and the agenda files) and then the extra files, each once
+ *  (a file in both lists is searched once, and the open file stands in for its own extra-file entry, unsaved edits included). The
+ *  agenda, TODO and tag views do NOT use this: extra files are for search only. */
+export function aggregateSearchDocs() {
+  const docs = aggregateAgendaDocs();
+  const seen = new Set(docs.map((d) => d.documentId));
+  for (const entry of searchExtraFilesCache.values()) {
+    if (!entry.doc || seen.has(entry.documentId)) continue;
+    seen.add(entry.documentId);
+    docs.push({ documentId: entry.documentId, doc: entry.doc });
+  }
+  return docs;
+}
+
+/** The extra files that are still loading or failed, for the search panel to say so (a file that cannot be searched should not
+ *  just silently find nothing). */
+export function searchExtraFilesProblems() {
+  const loading = [];
+  const failed = [];
+  for (const key of S.searchExtraFilesConfig) {
+    const entry = searchExtraFilesCache.get(key);
+    if (!entry || entry.loading) loading.push(key);
+    else if (entry.error) failed.push({ key, error: entry.error });
+  }
+  return { loading, failed };
 }
 
 /** The contacts files that have loaded (org-contacts-files), as documents. The open document stands in for its own file when it

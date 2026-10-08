@@ -399,6 +399,8 @@ S.agendaFilesCacheLoadedFor = null; // JSON of the config this cache reflects, s
 // shape throughout), not folded into it, since a person may well want
 // a different set of files for contacts than for agenda aggregation.
 S.contactsFilesConfig = [];
+S.searchExtraFilesConfig = []; // org-agenda-text-search-extra-files, parsed: more files for text search only
+S.searchExtraFilesCacheLoadedFor = null;
 
  // "scheme:path" -> { doc, documentId } | { error } | { loading: true }
 S.contactsFilesCacheLoadedFor = null;
