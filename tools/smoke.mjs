@@ -2615,13 +2615,13 @@ check('calendar mirror: the agenda reaches a CalDAV calendar through the palette
   }, `${main.base}/dav/cal/`);
   dav.requests.length = 0;
   await runCommand('sync agenda to calendar');
-  await until(() => ours().length === 3, 'three events on the server');
-  expect(JSON.stringify(summaries()) === JSON.stringify(['Call dentist', 'Pay rent', 'Standup']), `the agenda items arrived: ${JSON.stringify(summaries())}`);
+  await until(() => ours().length === 2, 'two events on the server');
+  expect(JSON.stringify(summaries()) === JSON.stringify(['Pay rent', 'Standup']), `the agenda items arrived, and the completed one (not on the agenda) did not: ${JSON.stringify(summaries())}`);
   const all = ours().map(([, t]) => t).join('\n');
-  expect(all.includes('DESCRIPTION:Scheduled (DONE)'), 'a completed item is kept, with its state');
+  expect(!all.includes('Call dentist'), 'a completed item is not in the calendar, as it is not on the agenda');
   expect(all.includes('RRULE:FREQ=DAILY'), 'a repeating item is one event with a recurrence rule');
   expect(all.includes('BEGIN:VALARM') && all.includes('TRIGGER:-P2D'), 'a deadline\u2019s warning delay became an alarm');
-  expect((await page.locator('#minibuffer').innerText()).includes('Calendar synced: 3 sent'), 'and the status line says what happened');
+  expect((await page.locator('#minibuffer').innerText()).includes('Calendar synced: 2 sent'), 'and the status line says what happened');
 
   // an event somebody else put in this calendar
   dav.set('cal/personal.ics', 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:mine\r\nDTSTART;VALUE=DATE:20300101\r\nSUMMARY:My own event\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n');
@@ -2630,7 +2630,7 @@ check('calendar mirror: the agenda reaches a CalDAV calendar through the palette
   await setDocumentText(page, notes.replace('* Standup', '* Brand new item').replace(`SCHEDULED: <${calDay(1)} 09:30 +1d>`, `SCHEDULED: <${calDay(2)}>`));
   await fileMenu(page, 'Save');
   await waitForStatus(page, 'Saved');
-  await until(() => JSON.stringify(summaries()) === JSON.stringify(['Brand new item', 'Call dentist', 'Pay rent']), 'the calendar to follow the save');
+  await until(() => JSON.stringify(summaries()) === JSON.stringify(['Brand new item', 'Pay rent']), 'the calendar to follow the save');
   expect(dav.files.has('cal/personal.ics'), 'the event the app did not create is untouched');
 
   // a second sync with nothing changed sends nothing
@@ -2643,7 +2643,7 @@ check('calendar mirror: the agenda reaches a CalDAV calendar through the palette
   await openDav(page, 'other.org');
   await runCommand('sync agenda to calendar');
   await until(() => summaries().includes('Other file task'), 'the other file\u2019s event');
-  expect(JSON.stringify(summaries()) === JSON.stringify(['Brand new item', 'Call dentist', 'Other file task', 'Pay rent']), `both files\u2019 events are there: ${JSON.stringify(summaries())}`);
+  expect(JSON.stringify(summaries()) === JSON.stringify(['Brand new item', 'Other file task', 'Pay rent']), `both files\u2019 events are there: ${JSON.stringify(summaries())}`);
 
   // Rebuild: leftovers of the app's own go, anything else stays
   dav.set('cal/orgpwa-stale-left-over-00000000.ics', 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:stale\r\nDTSTART;VALUE=DATE:20300101\r\nSUMMARY:Stale\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n');
@@ -2878,6 +2878,75 @@ check('Settings > Sync syncs the calendar and the contacts and says how each wen
   await waitForStatus(page, 'Contacts synced');
   said = await page.locator('#minibuffer').innerText();
   expect(said.includes('Calendar sync: Calendar not found') && said.includes('Contacts synced'), `the calendar\u2019s failure is not hidden by the contacts\u2019 success: ${said}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('contacts in the agenda and the calendar: a birthday line and an "ANNIVERSARY" line, in two files, show both from org-contacts-files (which need not be agenda files), with Emacs\u2019s titles, and the calendar gets the same entries', async () => {
+  const md = (n) => calDay(n).slice(5, 10); // MM-DD of a day soon
+  const notes = ['* Birthdays', '%%(org-contacts-anniversaries)', '* Not a contacts file person', ':PROPERTIES:', `:BIRTHDAY: 1980-${md(1)}`, ':END:', '# Local Variables:', '# org-contacts-files: webdav:contacts.org', '# org-agenda-files: webdav:anniv.org', '# End:', ''].join('\n');
+  const anniv = ['* Anniversaries', '%%(org-contacts-anniversaries "ANNIVERSARY")', ''].join('\n');
+  const contacts = ['* Jane Doe', ':PROPERTIES:', `:BIRTHDAY: 1990-${md(1)}`, `:ANNIVERSARY: 1998-${md(2)}`, ':SPOUSE: John Doe', ':END:', ''].join('\n');
+  dav.reset({ 'notes.org': notes, 'anniv.org': anniv, 'contacts.org': contacts });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await page.setViewportSize({ width: 412, height: 900 });
+  await openDav(page, 'notes.org');
+  const year = new Date().getFullYear();
+  const ordinal = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'}`;
+  const birthday = `Birthday: Jane Doe (${ordinal(year - 1990)})`;
+  const anniversary = `Anniversary: Jane Doe & John Doe (${ordinal(year - 1998)})`;
+  await viewMenu(page, 'Agenda');
+  await page.waitForFunction((want) => want.every((t) => document.body.innerText.includes(t)), [birthday, anniversary], { timeout: 15000 });
+  const text = await page.locator('body').innerText();
+  expect(!text.includes('Not a contacts file person'), 'a heading with a birthday in a file that is not one of org-contacts-files is not a contact');
+
+  // the calendar gets the same entries (the sync loads the contacts files itself)
+  await page.evaluate(async (url) => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.caldavConfig = { url, contactsUrl: '', username: '', password: '' };
+  }, `${main.base}/dav/cal/`);
+  await openPalette(page);
+  await page.keyboard.type('sync agenda to calendar');
+  await page.keyboard.press('Enter');
+  const onServer = () => [...dav.files.entries()].filter(([n]) => n.startsWith('cal/orgpwa-')).map(([, t]) => (t.match(/^SUMMARY:(.*)$/m) || [])[1]).sort();
+  for (let n = 0; n < 70 && onServer().length < 2; n++) await page.waitForTimeout(250);
+  expect(JSON.stringify(onServer()) === JSON.stringify([anniversary, birthday].sort()), `the calendar holds what the agenda shows: ${JSON.stringify(onServer())}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Export > Calendar (.ics) > Agenda (as displayed) writes the agenda\u2019s events for the sync window, beside the file and heading scopes, which write every dated item', async () => {
+  const notes = ['* TODO Pay rent', `DEADLINE: <${calDay(3)}>`, '* Far away', 'SCHEDULED: <2031-05-01 Thu>', '* DONE Finished', `SCHEDULED: <${calDay(1)}>`, ''].join('\n');
+  dav.reset({ 'notes.org': notes });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    window.__saved = [];
+    installPlatform({ saveFile: async (name, content) => { window.__saved.push({ name, content: String(content) }); return { where: 'test' }; } });
+  });
+  await openDav(page, 'notes.org');
+  const panelText = async () => (await page.locator('#morePanel').innerText()).replace(/\s+/g, ' ');
+  const openScopes = async () => {
+    await page.click('#moreBtn');
+    await pick(page, '#morePanel', 'Export');
+    await pick(page, '#morePanel', 'Calendar (.ics)');
+  };
+  const savedIcs = async () => (await page.evaluate(() => window.__saved.slice())).find((x) => x.name.endsWith('.ics'));
+  await openScopes();
+  const rows = await panelText();
+  expect(rows.includes('This file') && rows.includes('Choose a heading') && rows.includes('Agenda (as displayed)'), `the scopes: ${rows}`);
+  expect(rows.indexOf('Agenda (as displayed)') > rows.indexOf('This file'), 'the new row comes after the existing ones, so nothing moved');
+  await pick(page, '#morePanel', 'Agenda (as displayed)');
+  for (let n = 0; n < 40 && !(await savedIcs()); n++) await page.waitForTimeout(250);
+  const agendaIcs = await savedIcs();
+  expect(agendaIcs && agendaIcs.content.includes('SUMMARY:Pay rent') && !agendaIcs.content.includes('Far away') && !agendaIcs.content.includes('Finished'), `the agenda scope: the window, and no completed item: ${agendaIcs && agendaIcs.content.slice(0, 300)}`);
+
+  await page.evaluate(() => { window.__saved = []; });
+  await openScopes(); // the export closed the menu
+  await pick(page, '#morePanel', 'This file');
+  for (let n = 0; n < 40 && !(await savedIcs()); n++) await page.waitForTimeout(250);
+  const fileIcs = await savedIcs();
+  expect(fileIcs && fileIcs.content.includes('SUMMARY:Far away') && fileIcs.content.includes('SUMMARY:Pay rent'), 'the file scope still writes every dated item, whatever the window');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

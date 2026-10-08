@@ -29,7 +29,7 @@
  * more confusing than useful.
  */
 
-import { walkHeadings, parseRepeater, isContactsAnniversariesTrigger, parseContactEvent, delayToDays } from './agenda.js';
+import { walkHeadings, parseRepeater, parseContactsAnniversariesTrigger, contactEventFor, contactSpouse, formatContactEventTitle, defaultEventDescription, delayToDays } from './agenda.js';
 import { parseOrgTimestamp, findTimestamps, parseDelay } from './org-timestamp.js';
 import { isArchived, getProperty } from './archive-model.js';
 import { isCommentedHeading } from './comment-model.js';
@@ -46,7 +46,7 @@ const UNIT_TO_FREQ = { h: 'HOURLY', d: 'DAILY', w: 'WEEKLY', m: 'MONTHLY', y: 'Y
  *  has no notion of "when this was last actually marked done" to drive
  *  the marks' differing real catch-up semantics, the same reasoning
  *  the live agenda view itself already applies. */
-function repeaterToRRule(repeaterRaw) {
+export function repeaterToRRule(repeaterRaw) {
   const r = parseRepeater(repeaterRaw);
   if (!r) return null;
   const freq = UNIT_TO_FREQ[r.unit];
@@ -128,15 +128,18 @@ export function generateUid(documentId, heading, kind, index, date) {
 
 // ---- VEVENT building -----------------------------------------------------
 
-export function buildVevent({ uid, summary, description, date, hasTime, rrule, alarmDaysBefore, stamp }) {
+export function buildVevent({ uid, summary, description, date, hasTime, rrule, alarmDaysBefore, stamp, endDate = null, categories = null, location = null }) {
   const lines = [
     'BEGIN:VEVENT',
     `UID:${uid}`,
     `DTSTAMP:${formatIcsDateTimeUtc(stamp)}`,
     hasTime ? `DTSTART:${formatIcsDateTime(date)}` : `DTSTART;VALUE=DATE:${formatIcsDate(date)}`,
-    `SUMMARY:${escapeIcsText(summary)}`,
   ];
+  if (endDate && hasTime && endDate > date) lines.push(`DTEND:${formatIcsDateTime(endDate)}`); // a time range (09:00-10:00) ends when it says
+  lines.push(`SUMMARY:${escapeIcsText(summary)}`);
   if (description) lines.push(`DESCRIPTION:${escapeIcsText(description)}`);
+  if (location) lines.push(`LOCATION:${escapeIcsText(location)}`);
+  if (categories && categories.length) lines.push(`CATEGORIES:${categories.map(escapeIcsText).join(',')}`);
   if (rrule) lines.push(`RRULE:${rrule}`);
   if (alarmDaysBefore) {
     // A DEADLINE's own delay/warning-period suffix (real org syntax,
@@ -154,6 +157,28 @@ export function buildVevent({ uid, summary, description, date, hasTime, rrule, a
   }
   lines.push('END:VEVENT');
   return lines.map(foldLine);
+}
+
+const BODY_LIMIT = 256;
+
+/** What a heading adds to its event beyond the title and the time: its :LOCATION: property, its tags (as categories), and the start
+ *  of its body text (at most 256 characters, ended with an ellipsis if cut, and without diary-sexp lines, which are not text for
+ *  a person to read). */
+export function eventDetails(heading) {
+  const locationKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === 'location');
+  const location = locationKey ? String(heading.properties[locationKey] || '').trim() : '';
+  let body = (heading.bodyLines || []).filter((line) => !line.trim().startsWith('%%(')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  if (body.length > BODY_LIMIT) body = body.slice(0, BODY_LIMIT - 1).trimEnd() + '\u2026';
+  return { location: location || null, categories: (heading.tags || []).filter(Boolean), body: body || null };
+}
+
+/** `heading.title` without the active timestamps written in it ("Dentist <2026-10-20 Tue 09:00>" -> "Dentist"): the event's own
+ *  start already says when. Falls back to the whole title if nothing else is left. */
+export function titleWithoutTimestamps(title) {
+  let text = title;
+  for (const ts of findTimestamps(title)) text = text.replace(ts.raw, '');
+  text = text.replace(/\s+/g, ' ').trim();
+  return text || title;
 }
 
 /**
@@ -175,7 +200,7 @@ export function exportToIcalendar(docs, opts = {}) {
  * `documentId` is the file it came from). The .ics export
  * above joins them into one file; the CalDAV mirror (calendar-mirror.js) needs them one by one, because a calendar
  * server stores one object per event. Options beyond the export's own:
- *   includeDone -- keep completed items (the export leaves them out, as the agenda does; the mirror keeps them)
+ *   includeDone -- keep completed items (the export leaves them out, as the agenda does)
  *   window      -- `{ start, end }`: a one-off item is kept only if its date falls inside it. A repeating item has no
  *                  end, so it is kept whenever it has started by `window.end`. Birthdays are always kept.
  * A heading with an :ID: property would give its SCHEDULED and its DEADLINE the same UID, one overwriting the other
@@ -183,7 +208,7 @@ export function exportToIcalendar(docs, opts = {}) {
  * suffix.
  */
 export function collectCalendarEvents(docs, opts = {}) {
-  const { today = new Date(), birthdayProperty = 'BIRTHDAY', scope = null, includeDone = false, window = null } = opts;
+  const { today = new Date(), birthdayProperty = 'BIRTHDAY', scope = null, includeDone = false, window = null, contactsDocs = null } = opts;
   const events = [];
   const usedUids = new Set();
   const uniqueUid = (documentId, heading, kind, index, date) => {
@@ -205,20 +230,60 @@ export function collectCalendarEvents(docs, opts = {}) {
   // as-is rather than a separate, parallel traversal implementation.
   const walkScope = (doc, visit) => walkHeadings(scope ? { children: [scope] } : doc, visit);
 
-  // org-contacts-anniversaries is active for this export if the trigger
-  // line is present ANYWHERE across all docs -- checked upfront, once,
-  // matching buildAgendaItems' own identical upfront scan exactly.
-  let contactsAnniversariesActive = false;
+  // The org-contacts-anniversaries lines found across the docs (within the scope, when there is one): one scan for each distinct
+  // line, so a birthday line and an "ANNIVERSARY" line give both, and the same line twice gives it once.
+  const contactsTriggers = [];
+  const seenTriggers = new Set();
   for (const { doc } of docs) {
     walkScope(doc, (heading) => {
-      if (contactsAnniversariesActive) return;
       for (const line of heading.bodyLines || []) {
-        if (isContactsAnniversariesTrigger(line)) {
-          contactsAnniversariesActive = true;
-          break;
+        const trigger = parseContactsAnniversariesTrigger(line);
+        if (!trigger) continue;
+        const key = `${trigger.field || ''}\u0000${trigger.format || ''}`;
+        if (!seenTriggers.has(key)) {
+          seenTriggers.add(key);
+          contactsTriggers.push(trigger);
         }
       }
     });
+  }
+
+  // One contact's yearly events. Each repeats every year as ONE event, which cannot carry an age, so the title leaves it out
+  // ("Birthday: Jane Doe") and the date goes in the description.
+  const pushAnniversaries = (documentId, heading) => {
+    for (const trigger of contactsTriggers) {
+      const field = trigger.field || birthdayProperty;
+      const event = contactEventFor(heading, field, birthdayProperty);
+      if (!event) continue;
+      const anchorYear = event.year != null ? event.year : today.getFullYear(); // only month and day matter going forward
+      const anchorDate = new Date(anchorYear, event.month - 1, event.day);
+      const uid = uniqueUid(documentId, heading, `anniversary-${field.toLowerCase()}`, 0, anchorDate);
+      const summary = formatContactEventTitle({ format: trigger.format, field, birthdayProperty, description: event.description, name: heading.title, spouse: contactSpouse(heading), omitAge: true });
+      const label = event.description || defaultEventDescription(field);
+      events.push({
+        uid,
+        documentId,
+        lines: buildVevent({
+          uid,
+          summary,
+          description: event.year != null ? `${label}: ${event.year}-${pad2(event.month)}-${pad2(event.day)}` : null,
+          date: anchorDate,
+          hasTime: false,
+          rrule: 'FREQ=YEARLY',
+          alarmDaysBefore: 0,
+          stamp: today,
+        }),
+      });
+    }
+  };
+  // Contacts are the headings of `contactsDocs` (org-contacts-files) when the caller has them, else of the docs themselves.
+  if (contactsTriggers.length && contactsDocs) {
+    for (const { documentId, doc } of contactsDocs) {
+      walkHeadings(doc, (heading) => {
+        if (isArchived(heading) || isCommentedHeading(heading)) return;
+        pushAnniversaries(documentId, heading);
+      });
+    }
   }
 
   for (const { documentId, doc } of docs) {
@@ -240,17 +305,21 @@ export function collectCalendarEvents(docs, opts = {}) {
         if (!keep(parsed)) continue;
         const delay = kind === 'deadline' && parsed.delay ? parseDelay(parsed.delay) : null;
         const uid = uniqueUid(documentId, heading, kind, 0, parsed.date);
+        const details = eventDetails(heading);
         events.push({
           uid,
           documentId,
           lines: buildVevent({
             uid,
             summary: heading.title,
-            description: (kind === 'deadline' ? 'Deadline' : 'Scheduled') + doneNote,
+            description: [(kind === 'deadline' ? 'Deadline' : 'Scheduled') + doneNote, details.body].filter(Boolean).join('\n'),
             date: parsed.date,
+            endDate: parsed.endDate,
             hasTime: parsed.hasTime,
             rrule: parsed.repeater ? repeaterToRRule(parsed.repeater) : null,
             alarmDaysBefore: delay ? delayToDays(delay) : 0,
+            categories: details.categories,
+            location: details.location,
             stamp: today,
           }),
         });
@@ -266,51 +335,28 @@ export function collectCalendarEvents(docs, opts = {}) {
           if (!parsed.active) return;
           if (!keep(parsed)) return;
           const uid = uniqueUid(documentId, heading, 'timestamp', index, parsed.date);
+          const details = eventDetails(heading);
           events.push({
             uid,
             documentId,
             lines: buildVevent({
               uid,
-              summary: heading.title,
-              description: doneNote ? doneNote.trim() : null,
+              summary: titleWithoutTimestamps(heading.title),
+              description: [doneNote ? doneNote.trim() : null, details.body].filter(Boolean).join('\n') || null,
               date: parsed.date,
+              endDate: parsed.endDate,
               hasTime: parsed.hasTime,
               rrule: parsed.repeater ? repeaterToRRule(parsed.repeater) : null,
               alarmDaysBefore: 0,
+              categories: details.categories,
+              location: details.location,
               stamp: today,
             }),
           });
         });
       }
 
-      if (contactsAnniversariesActive) {
-        const foundKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === birthdayProperty.toLowerCase());
-        const rawEvent = foundKey ? heading.properties[foundKey] : undefined;
-        const event = rawEvent ? parseContactEvent(rawEvent) : null;
-        if (event) {
-          // A real, recurring RRULE needs some starting DTSTART year --
-          // the known birth/event year if there is one, else the
-          // current year, since only the month/day actually matter for
-          // a yearly-recurring anniversary going forward from here.
-          const anchorYear = event.year != null ? event.year : today.getFullYear();
-          const anchorDate = new Date(anchorYear, event.month - 1, event.day);
-          const uid = uniqueUid(documentId, heading, 'anniversary', 0, anchorDate);
-          events.push({
-            uid,
-            documentId,
-            lines: buildVevent({
-              uid,
-              summary: `${heading.title}: ${event.description}`,
-              description: null,
-              date: anchorDate,
-              hasTime: false,
-              rrule: 'FREQ=YEARLY',
-              alarmDaysBefore: 0,
-              stamp: today,
-            }),
-          });
-        }
-      }
+      if (contactsTriggers.length && !contactsDocs) pushAnniversaries(documentId, heading);
     });
   }
 

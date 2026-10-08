@@ -6,7 +6,7 @@ import { DEFAULT_EFFORT_FILTER_VALUES, getAllowedEffortValues } from '../src/eff
 import { getAgendaShowAllDates, getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getAgendaStartOnWeekday, getCalendarLatitude, getCalendarLongitude, getContactsBirthdayProperty, getDeadlineWarningDays, getGlobalProperties, getOrgWeatherFormat, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getScheduledDelayDays, getSolarAmpm, getSolarHideLabel } from '../src/local-variables.js';
 import { parseOrgDuration } from '../src/org-duration.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
-import { aggregateAgendaDocs, ensureAgendaFilesLoaded, refreshAgendaFiles } from './agenda-files.js';
+import { aggregateAgendaDocs, contactsDocsForAgenda, ensureAgendaFilesLoaded, refreshAgendaFiles } from './agenda-files.js';
 import { agendaItemKindLabel, agendaStepAnchor, buildDayHeaderRow, formatAgendaItemTimeText, formatAgendaRangeLabel } from './agenda-format.js';
 import { S } from './app-state.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
@@ -356,7 +356,9 @@ export function renderAgendaView() {
   // any repeating SCHEDULED/DEADLINE timestamp expands into every
   // occurrence that actually falls within what's being displayed.
   const todoSequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
-  const items = buildAgendaItems(aggregateAgendaDocs(), {
+  const agendaDocs = aggregateAgendaDocs();
+  const items = buildAgendaItems(agendaDocs, {
+    contactsDocs: contactsDocsForAgenda(agendaDocs), // org-contacts-files, as in Emacs (null: scan the agenda's own documents)
     includeLogbook: S.agendaLogMode,
     todoFilter: (todo) => !todoSequence.doneKeywords.includes(todo),
     // Real org's default is to skip both commented headings (title

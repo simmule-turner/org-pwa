@@ -222,14 +222,39 @@ function carryForwardOccurrences(itemDate, today, rangeStart, rangeEnd, earlyWar
 // count as a "valid contact" — that wasn't part of what was asked for,
 // and adding it back would silently exclude anyone whose birthday is
 // tracked without an email on file.
-const CONTACTS_TRIGGER_RE = /^%%\(org-contacts-anniversaries\)\s*$/;
+const CONTACTS_TRIGGER_RE = /^%%\(org-contacts-anniversaries((?:\s+(?:nil|"(?:[^"\\]|\\.)*"))*)\s*\)\s*$/;
 const EVENT_PROPERTY_RE = /^(\d{4}|nil)-(\d{2})-(\d{2})(?:\s+(.+))?$/;
 
-/** True if `line` is the %%(org-contacts-anniversaries) trigger,
- *  activating the whole scan below. The line's own content beyond this
- *  is not itself read as an event — it's a switch, not a contact. */
+/** The trigger as { field, format }, or null if `line` is not one. Real org-contacts takes two optional arguments,
+ *  %%(org-contacts-anniversaries FIELD FORMAT): the property to read (default the birthday property) and how each entry reads
+ *  (default "Birthday: %l (%Y)"). Each is a double-quoted string, or nil for "the default"; the line may carry none, one or both.
+ *  Each distinct trigger is its own scan, so one line for birthdays and another with "ANNIVERSARY" give both. */
+function parseContactsAnniversariesTrigger(line) {
+  const m = CONTACTS_TRIGGER_RE.exec(line.trim());
+  if (!m) return null;
+  const args = [...m[1].matchAll(/\s+(nil|"((?:[^"\\]|\\.)*)")/g)].map((a) => (a[1] === 'nil' ? null : a[2].replace(/\\(.)/g, '$1')));
+  if (args.length > 2) return null;
+  return { field: args[0] || null, format: args[1] || null };
+}
+
+/** True if `line` is a %%(org-contacts-anniversaries ...) trigger, activating a scan. The line's own content is
+ *  not itself read as an event — it's a switch, not a contact. */
 function isContactsAnniversariesTrigger(line) {
-  return CONTACTS_TRIGGER_RE.test(line.trim());
+  return parseContactsAnniversariesTrigger(line) !== null;
+}
+
+/** Every distinct trigger across `docs` (the same line twice is one scan, so nothing shows twice). */
+function collectContactsTriggers(docs) {
+  const found = new Map();
+  for (const { doc } of docs) {
+    walkHeadings(doc, (heading) => {
+      for (const line of heading.bodyLines || []) {
+        const trigger = parseContactsAnniversariesTrigger(line);
+        if (trigger) found.set(`${trigger.field || ''}\u0000${trigger.format || ''}`, trigger);
+      }
+    });
+  }
+  return [...found.values()];
 }
 
 /** Parses a birthday/anniversary property value: "YYYY-MM-DD
@@ -407,34 +432,91 @@ function applyAgendaEffortView(items, { sort = null, filter = null, maxMinutes =
   return filterItemsByEffort(result, filter, noEffortIsHigh);
 }
 
-/** Searches `heading`'s own descendants, at any depth (a tree-style
- *  vCard contact's own fields can sit directly under the contact or
- *  grouped under an intermediate heading first -- see export-vcard.js's
- *  own buildVcardFromTreeContact for the same reasoning, and
- *  import-vcard.js's own buildTreeOrgFromContact for what actually
- *  produces this shape), for one whose own :FIELDTYPE: is "birthday" --
- *  returning its own title (the date, as tree style writes it) or null
- *  if none is found anywhere in the subtree. */
-function findTreeStyleBirthdayDate(heading) {
+/** Searches `heading`'s own descendants, at any depth (a tree-style vCard contact's own fields can sit directly under the contact
+ *  or grouped under an intermediate heading first -- see export-vcard.js's buildVcardFromTreeContact for the same reasoning, and
+ *  import-vcard.js's buildTreeOrgFromContact for what actually produces this shape), for one whose own :FIELDTYPE: is `fieldType`
+ *  ("birthday", "anniversary", "spouse") -- returning its own title (the value, as tree style writes it) or null. */
+function findTreeStyleFieldValue(heading, fieldType) {
   for (const child of heading.children || []) {
     if (child.type !== 'heading') continue;
-    const fieldType = getPropertyCaseInsensitive(child, 'FIELDTYPE');
-    if (String(fieldType || '').toLowerCase() === 'birthday') return child.title;
-    const nested = findTreeStyleBirthdayDate(child);
+    const type = getPropertyCaseInsensitive(child, 'FIELDTYPE');
+    if (String(type || '').toLowerCase() === fieldType) return child.title;
+    const nested = findTreeStyleFieldValue(child, fieldType);
     if (nested) return nested;
   }
   return null;
 }
 
-/** "Name: Description (36)", or "Name: Description (??)" when the age
- *  is unknown — the fixed display format this feature produces, not
- *  something the file author writes text for (unlike the deprecated
- *  org-anniversary sexp's own arbitrary-text-with-%d approach). */
-function formatContactEventLine(headingTitle, description, age) {
-  return `${headingTitle}: ${description} (${age === null ? '??' : age})`;
+/** The { year, month, day, description } `field` holds for this contact, or null: a property, or for a tree-style contact
+ *  (:KIND: individual, the marker export-vcard.js requires) a descendant heading of that field type. Only a heading that is itself
+ *  a tree-style contact is searched -- without that gate an intermediate grouping heading above a birthday descendant produced a
+ *  spurious item of its own. */
+function contactEventFor(heading, field, birthdayProperty) {
+  const raw = getPropertyCaseInsensitive(heading, field);
+  let event = raw ? parseContactEvent(raw) : null;
+  if (!event && String(getPropertyCaseInsensitive(heading, 'KIND') || '').toLowerCase() === 'individual') {
+    const fieldType = field.toLowerCase() === birthdayProperty.toLowerCase() ? 'birthday' : field.toLowerCase();
+    const treeValue = findTreeStyleFieldValue(heading, fieldType);
+    if (treeValue) event = parseContactEvent(treeValue);
+  }
+  return event;
 }
 
-/** Matches formatContactEventLine's own style: a short, readable
+/** The spouse's name for a contact (a :SPOUSE: property, or a tree-style spouse field), or null. */
+function contactSpouse(heading) {
+  const prop = getPropertyCaseInsensitive(heading, 'SPOUSE');
+  if (typeof prop === 'string' && prop.trim()) return prop.trim();
+  if (String(getPropertyCaseInsensitive(heading, 'KIND') || '').toLowerCase() === 'individual') {
+    const tree = findTreeStyleFieldValue(heading, 'spouse');
+    if (tree && tree.trim()) return tree.trim();
+  }
+  return null;
+}
+
+/** 1 -> "1st", 12 -> "12th", 22 -> "22nd": Emacs's diary-ordinal-suffix, for %Y. */
+function ordinalYears(n) {
+  const tens = Math.abs(n) % 100;
+  if (tens >= 11 && tens <= 13) return `${n}th`;
+  return `${n}${{ 1: 'st', 2: 'nd', 3: 'rd' }[Math.abs(n) % 10] || 'th'}`;
+}
+
+/** The text of one contact entry, the way org-contacts-anniversaries' FORMAT reads: %h heading name, %l the heading (a link in
+ *  Emacs, its name here), %y years, %Y years as an ordinal ("36th"), %% a percent sign. Two more for the spouse, which Emacs has
+ *  no spec for: %s the spouse's name (empty if none) and %n the name, with " & spouse" when there is one. Years unknown reads "??".
+ *  With no FORMAT: "<Label>: %l (%Y)" for the birthday property (Emacs's own default, "Birthday: Jane Doe (36th)"), and
+ *  "<Label>: %n (%Y)" for any other field ("Anniversary: Jane Doe & John Doe (27th)"). The label is the field name capitalized, or
+ *  the text after the date in the property if there is some (":BIRTHDAY: 1990-01-08 Nameday"). */
+function formatContactEventTitle({ format = null, field = null, birthdayProperty = 'BIRTHDAY', description = null, name, spouse = null, age = null, omitAge = false }) {
+  const fieldName = field || birthdayProperty;
+  const label = description || defaultEventDescription(fieldName);
+  const chosen = format || (fieldName.toLowerCase() === birthdayProperty.toLowerCase() ? `${label}: %l (%Y)` : `${label}: %n (%Y)`);
+  const template = omitAge ? stripAgeFromFormat(chosen) : chosen; // omitAge: ONE event that repeats every year has no age to show
+  return template.replace(/%([hlnsyY%])/g, (match, spec) => {
+    switch (spec) {
+      case 'h':
+      case 'l':
+        return name;
+      case 'n':
+        return spouse ? `${name} & ${spouse}` : name;
+      case 's':
+        return spouse || '';
+      case 'y':
+        return age === null ? '??' : String(age);
+      case 'Y':
+        return age === null ? '??' : ordinalYears(age);
+      default:
+        return '%';
+    }
+  });
+}
+
+/** `format` with its age removed -- for an entry that repeats every year as ONE event (a calendar export of a file), which cannot
+ *  carry an age: "Birthday: %l (%Y)" -> "Birthday: %l". */
+function stripAgeFromFormat(format) {
+  return format.replace(/\s*\(\s*%[yY]\s*\)/g, '').replace(/%[yY]/g, '').replace(/\s+$/, '');
+}
+
+/** A short, readable
  *  one-line summary of a single LOGBOOK entry for agenda display. A
  *  state-change entry shows the transition itself ("from X" only when
  *  there was a previous state, matching how the LOGBOOK line itself
@@ -589,6 +671,7 @@ function buildAgendaItems(docs, opts = {}) {
     isDone = null,
     today = new Date(),
     birthdayProperty = 'BIRTHDAY',
+    contactsDocs = null,
     deadlineWarningDays = 14,
     scheduledDelayDays = 0,
     calendarLatitude = 35.994,
@@ -676,17 +759,46 @@ function buildAgendaItems(docs, opts = {}) {
   // line is present ANYWHERE across all docs, not scoped to any one
   // heading or file — checked upfront, once, rather than re-scanning
   // per heading in the main loop below.
-  let contactsAnniversariesActive = false;
-  for (const { doc } of docs) {
-    walkHeadings(doc, (heading) => {
-      if (contactsAnniversariesActive) return;
-      for (const line of heading.bodyLines || []) {
-        if (isContactsAnniversariesTrigger(line)) {
-          contactsAnniversariesActive = true;
-          break;
-        }
+  const contactsTriggers = collectContactsTriggers(docs);
+
+  // One contact's entries, for each trigger. The contacts are the headings of `contactsDocs` (the files of org-contacts-files, as
+  // in Emacs) when the caller has them, and otherwise of the same documents the triggers were found in.
+  function pushContactItems(documentId, heading) {
+    for (const trigger of contactsTriggers) {
+      const field = trigger.field || birthdayProperty;
+      const event = contactEventFor(heading, field, birthdayProperty);
+      if (!event) continue;
+      const spouse = contactSpouse(heading);
+      for (const occurrenceDate of expandContactEventOccurrences(event.month, event.day, rangeStart, rangeEnd, today)) {
+        const age = contactEventAge(event.year, occurrenceDate);
+        items.push({
+          documentId,
+          heading,
+          kind: 'anniversary',
+          hasTime: false,
+          repeater: null,
+          todo: heading.todo,
+          priority: heading.priority,
+          tags: heading.tags,
+          title: formatContactEventTitle({ format: trigger.format, field, birthdayProperty, description: event.description, name: heading.title, spouse, age }),
+          age,
+          field,
+          spouse,
+          date: occurrenceDate,
+          daysOverdue: 0,
+        });
       }
-    });
+    }
+  }
+  if (contactsTriggers.length && contactsDocs) {
+    for (const { documentId, doc } of contactsDocs) {
+      walkHeadings(doc, (heading) => {
+        if (!includeArchived && isArchived(heading)) return;
+        if (!includeCommented && isCommentedHeading(heading)) return;
+        if (tagFilter && !tagFilter(heading.tags)) return;
+        pushContactItems(documentId, heading);
+      });
+    }
   }
 
   for (const { documentId, doc } of docs) {
@@ -810,57 +922,7 @@ function buildAgendaItems(docs, opts = {}) {
       // nothing on its own otherwise, since the property might simply
       // be there for other purposes (vCard export, contact lookup) with
       // no intention of it appearing in the agenda.
-      if (contactsAnniversariesActive) {
-        const foundKey = (heading.propertyOrder || []).find(
-          (k) => k.toLowerCase() === birthdayProperty.toLowerCase()
-        );
-        const rawEvent = foundKey ? heading.properties[foundKey] : undefined;
-        let event = rawEvent ? parseContactEvent(rawEvent) : null;
-        if (!event) {
-          // Tree-style vCard import: this heading itself carries no
-          // birthdayProperty property at all -- the date instead lives
-          // on a descendant heading whose own :FIELDTYPE: is "birthday"
-          // and whose own title is the date (see import-vcard.js's own
-          // buildTreeOrgFromContact). Only tried for a heading that is
-          // ITSELF a tree-style contact (:KIND: individual, the same
-          // marker export-vcard.js's own buildVcardFromTreeContact
-          // requires) -- confirmed directly that without this gate, an
-          // intermediate grouping heading with no birthday of its own,
-          // but a birthday descendant several levels beneath it,
-          // incorrectly produced a spurious agenda item for itself too.
-          const isTreeStyleContact = String(getPropertyCaseInsensitive(heading, 'KIND') || '').toLowerCase() === 'individual';
-          if (isTreeStyleContact) {
-            const treeDate = findTreeStyleBirthdayDate(heading);
-            if (treeDate) event = parseContactEvent(treeDate);
-          }
-        }
-        if (event) {
-          // A bare date (event.description null -- see parseContactEvent's
-          // own doc comment) gets a sensible default derived from the
-          // configured property name itself, rather than every
-          // vCard-imported contact needing hand-editing before its
-          // birthday means anything displayable here.
-          const description = event.description || defaultEventDescription(birthdayProperty);
-          const occurrences = expandContactEventOccurrences(event.month, event.day, rangeStart, rangeEnd, today);
-          for (const occurrenceDate of occurrences) {
-            const age = contactEventAge(event.year, occurrenceDate);
-            items.push({
-              documentId,
-              heading,
-              kind: 'anniversary',
-              hasTime: false,
-              repeater: null,
-              todo: heading.todo,
-              priority: heading.priority,
-              tags: heading.tags,
-              title: formatContactEventLine(heading.title, description, age),
-              age,
-              date: occurrenceDate,
-              daysOverdue: 0,
-            });
-          }
-        }
-      }
+      if (contactsTriggers.length && !contactsDocs) pushContactItems(documentId, heading);
 
       // The fourteen diary-sexp forms below (org-anniversary, org-cyclic,
       // org-block, diary-float, diary-sunrise, diary-sunset,
@@ -1338,8 +1400,15 @@ export {
   endOfDay,
   startOfWeek,
   isContactsAnniversariesTrigger,
+  parseContactsAnniversariesTrigger,
+  collectContactsTriggers,
+  contactEventFor,
+  contactSpouse,
+  formatContactEventTitle,
+  defaultEventDescription,
+  stripAgeFromFormat,
+  ordinalYears,
   parseContactEvent,
   contactEventAge,
-  formatContactEventLine,
   expandContactEventOccurrences,
 };

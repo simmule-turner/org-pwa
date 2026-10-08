@@ -16,14 +16,11 @@
  * another device's. Unsaved scratch documents are not mirrored: they have no stable identity to own events by.
  */
 
-import { UNSAVED_DOCUMENT_ID, startOfDay, endOfDay, buildAgendaItems } from './agenda.js';
-import { collectCalendarEvents, buildVevent, generateUid } from './export-icalendar.js';
+import { UNSAVED_DOCUMENT_ID } from './agenda.js';
+import { DEFAULT_DAYS_AFTER, DEFAULT_DAYS_BEFORE, agendaWindow, collectAgendaCalendarEvents } from './calendar-from-agenda.js';
 import { contentHash } from './sync-engine.js';
 
-const DEFAULT_DAYS_BEFORE = 30;
-const DEFAULT_DAYS_AFTER = 180;
 const RESOURCE_PREFIX = 'orgpwa-';
-const SEXP_KINDS = new Set(['sexp-timestamp', 'diary-sexp']);
 const CALENDAR_HEAD = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//org-pwa//org-pwa//EN', 'CALSCALE:GREGORIAN'];
 
 /** The file name an event is stored under on the server: readable, safe in a URL, and unique to the event id (the
@@ -57,25 +54,11 @@ function buildCalendarResources(allDocs, opts = {}) {
   const today = opts.today || new Date();
   const daysBefore = opts.daysBefore ?? DEFAULT_DAYS_BEFORE;
   const daysAfter = opts.daysAfter ?? DEFAULT_DAYS_AFTER;
-  const start = startOfDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() - daysBefore));
-  const end = endOfDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysAfter));
+  const window = agendaWindow(today, daysBefore, daysAfter);
   const birthdayProperty = opts.birthdayProperty || 'BIRTHDAY';
 
-  const events = collectCalendarEvents(docs, { today, includeDone: true, window: { start, end }, birthdayProperty });
-
-  // Diary-style (sexp) entries have no recurrence rule to hand to a calendar: they are worked out per day, so they
-  // come from the agenda itself and go out one event per day.
-  const items = buildAgendaItems(docs, { rangeStart: start, rangeEnd: end, today, birthdayProperty, ...(opts.agendaOptions || {}) });
-  const seen = new Map();
-  for (const item of items) {
-    if (!SEXP_KINDS.has(item.kind)) continue;
-    const slot = `${item.documentId}\u0000${item.heading.title}\u0000${item.kind}\u0000${item.date.toDateString()}`;
-    const index = seen.get(slot) || 0;
-    seen.set(slot, index + 1);
-    // a stand-in heading without an :ID:, so the id includes the day and the occurrence, never just the heading's own
-    const uid = generateUid(item.documentId, { title: item.heading.title }, item.kind, index, item.date);
-    events.push({ uid, documentId: item.documentId, lines: buildVevent({ uid, summary: item.title, description: 'Diary', date: item.date, hasTime: false, rrule: null, alarmDaysBefore: 0, stamp: today }) });
-  }
+  // What View > Agenda shows, folded into calendar events (see calendar-from-agenda.js): completed items are not in it, so not here.
+  const events = collectAgendaCalendarEvents(docs, { today, window, birthdayProperty, contactsDocs: opts.contactsDocs || null });
 
   const resources = new Map();
   for (const { uid, documentId, lines } of events) {

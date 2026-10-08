@@ -4,7 +4,7 @@ import { MONTH_NAMES, buildDayMarkers, buildMonthGrid, stepMonth, stepYear } fro
 import { getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees } from '../src/local-variables.js';
 import { dateKey } from '../src/org-timestamp.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
-import { aggregateAgendaDocs } from './agenda-files.js';
+import { aggregateAgendaDocs, contactsDocsForAgenda } from './agenda-files.js';
 import { S } from './app-state.js';
 import { closeAllOverlayPanels } from './chrome.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
@@ -66,7 +66,9 @@ export function renderCalendarPanel() {
   const monthRangeStart = new Date(S.calendarViewYear, S.calendarViewMonth, 1);
   const monthRangeEnd = new Date(S.calendarViewYear, S.calendarViewMonth + 1, 0);
   const monthTodoSequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
-  const monthItems = buildAgendaItems(aggregateAgendaDocs(), {
+  const monthAgendaDocs = aggregateAgendaDocs();
+  const monthItems = buildAgendaItems(monthAgendaDocs, {
+    contactsDocs: contactsDocsForAgenda(monthAgendaDocs),
     todoFilter: (todo) => !monthTodoSequence.doneKeywords.includes(todo),
     includeCommented: !getAgendaSkipCommentTrees(S.state.localVariables),
     includeArchived: !getAgendaSkipArchivedTrees(S.state.localVariables),

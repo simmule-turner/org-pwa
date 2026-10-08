@@ -13,7 +13,8 @@ import { getAsciiTextWidth, getContactsBirthdayProperty, getMenuAliases } from '
 import { parseMenuAliases } from '../src/menu-alias.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
-import { aggregateAgendaDocs, aggregateContactsDocs, ensureContactsFilesLoadedAndWait, waitForAgendaFilesLoaded } from './agenda-files.js';
+import { aggregateAgendaDocs, aggregateContactsDocs, ensureContactsFilesLoadedAndWait, loadContactsDocsForSync, waitForAgendaFilesLoaded } from './agenda-files.js';
+import { exportAgendaToIcalendar } from '../src/calendar-from-agenda.js';
 import { S } from './app-state.js';
 import { allHeadingsInOrder, headingsInSubtree, icalendarBodyHeadingsIn, vcardBodyHeadingsIn } from './doc-helpers.js';
 import { createNewUnsavedDocument, suggestedSaveAsName } from './documents-io.js';
@@ -102,9 +103,18 @@ export async function performExport(format, scope) {
     }
     saveOut(baseName + '.vcf', vcf, 'text/vcard');
   } else {
-    const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: S.state.documentId, doc: S.state.doc }];
-    const icsScope = scope && typeof scope === 'object' ? scope : null;
-    saveOut(baseName + '.ics', exportToIcalendar(docs, { scope: icsScope }), 'text/calendar');
+    const birthdayProperty = getContactsBirthdayProperty(S.state.localVariables);
+    if (scope === 'agenda') {
+      // what View > Agenda shows, in the window the CalDAV mirror uses (see calendar-from-agenda.js)
+      const agendaDocs = aggregateAgendaDocs().filter((d) => d.doc);
+      saveOut(baseName + '.ics', exportAgendaToIcalendar(agendaDocs, { birthdayProperty, contactsDocs: await loadContactsDocsForSync(agendaDocs) }), 'text/calendar');
+    } else {
+      const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: S.state.documentId, doc: S.state.doc }];
+      const icsScope = scope && typeof scope === 'object' ? scope : null;
+      // for the agenda files, the contacts are those of org-contacts-files, as in the agenda
+      const contactsDocs = scope === 'agenda-files' ? await loadContactsDocsForSync(docs.filter((d) => d.doc)) : null;
+      saveOut(baseName + '.ics', exportToIcalendar(docs, { scope: icsScope, birthdayProperty, contactsDocs }), 'text/calendar');
+    }
   }
   S.moreOpen = false;
   S.moreMenuStep = null;
@@ -304,6 +314,16 @@ export function renderExportFlow() {
             await waitForAgendaFilesLoaded();
           }
           await performExport(S.exportFormat, isVcard ? 'contacts-files' : 'agenda-files');
+        })
+      );
+    }
+    if (!isVcard) {
+      // what View > Agenda shows, as events (the rows above write every dated item of a file or heading, with no window)
+      morePanel.appendChild(
+        menuDivItem('Agenda (as displayed)', async () => {
+          setStatus('Loading agenda files\u2026');
+          await waitForAgendaFilesLoaded();
+          await performExport(S.exportFormat, 'agenda');
         })
       );
     }

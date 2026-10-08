@@ -842,23 +842,32 @@ Five kinds of entry show up. They differ in whether they carry forward, as in re
 - ~DEADLINE:~ carries forward the same way. A warning suffix (~DEADLINE: <2026-01-10 Sat -3d>~) shows it early, counting down ("due in 3 days") and then up once overdue. With no suffix it starts showing ~org-deadline-warning-days~ before its date (default 14; see [[#local-variables][Local Variables]]). An explicit suffix overrides that.
 - A *plain active timestamp in a heading's title*, such as ~**** Jane Doe <2000-01-01 Sat +1y>~, never carries forward. It counts only when the heading has no SCHEDULED or DEADLINE. Inactive ~[...]~ timestamps and body text are ignored.
 - A *general sexp timestamp* ~<%%(sexp)>~ in the title follows the same rules; see [[#agenda-sexp-timestamps][General sexp timestamps]].
-- ~org-contacts-anniversaries~ reads yearly events (birthdays, anniversaries) from a contact heading's property: ~BIRTHDAY~ by default (configurable in Local Variables), written ~YYYY-MM-DD Description~.
+- ~org-contacts-anniversaries~ reads yearly events (birthdays, anniversaries) from contact headings, as Emacs's org-contacts does. The contacts are the headings of your [[#contacts-files][Contacts Files]] (~org-contacts-files~); with none set, the headings of the files you are looking at. A contact's date is a property, written ~YYYY-MM-DD~, with an optional description after it.
 
 #+BEGIN_SRC org
   * John Doe
   :PROPERTIES:
-  :BIRTHDAY: 2000-01-01 Birthday
+  :BIRTHDAY: 2000-01-01
   :END:
 
-  * Mary & John Doe
+  * Mary Doe
   :PROPERTIES:
-  :BIRTHDAY: 2000-06-15 Wedding Anniversary
+  :ANNIVERSARY: 2015-06-15
+  :SPOUSE: John Doe
   :END:
 #+END_SRC
 
-  Put the trigger line ~%%(org-contacts-anniversaries)~ anywhere in the file; it is a switch, not an event, and usually sits under its own heading. Every heading with the property then shows a 🎂 line like ~John Doe: Birthday (26)~, with the age worked out for each year shown. ~YYYY~ may be ~nil~ when the year is unknown, shown as ~(??)~. A bare ~YYYY-MM-DD~ takes the property name as its description ("Birthday"). A value that can't be parsed is skipped. No ~:EMAIL:~ is required.
+  A line ~%%(org-contacts-anniversaries FIELD FORMAT)~ in any agenda file is a switch, not an event. ~FIELD~ is the property to read, as a quoted string (~BIRTHDAY~ by default, or ~org-contacts-birthday-property~), and ~FORMAT~ says how each entry reads; either may be left out or written ~nil~. Each distinct line is its own scan, so a plain one and one with ~"ANNIVERSARY"~ give both, in one file or two, and the same line twice is one:
 
-  This works with [[#import][vCard import]]. In Flat style the property is a bare date. In Tree style the birthday is a descendant heading (~:FIELDTYPE: birthday~), found anywhere in the contact's subtree unless the contact has its own property.
+#+BEGIN_SRC org
+  %%(org-contacts-anniversaries)
+  %%(org-contacts-anniversaries "ANNIVERSARY")
+  %%(org-contacts-anniversaries "ANNIVERSARY" "Anniversary: %h & %s (%Y)")
+#+END_SRC
+
+  Entries read ~Birthday: John Doe (26th)~, or ~Anniversary: Mary Doe & John Doe (11th)~ for a contact with a ~:SPOUSE:~, with the age worked out for each year shown. In a ~FORMAT~, ~%h~ and ~%l~ are the name, ~%y~ the age, ~%Y~ the age as an ordinal (~26th~), ~%s~ the spouse, ~%n~ the name with the spouse, and ~%%~ a percent sign (~%s~ and ~%n~ are this app's). ~YYYY~ may be ~nil~ when the year is unknown, shown as ~(??)~. Text after the date in the property replaces the label (~:BIRTHDAY: 2000-06-15 Wedding Anniversary~ reads ~Wedding Anniversary: Mary & John Doe (26th)~). A value that can't be parsed is skipped. No ~:EMAIL:~ is required.
+
+  This works with [[#import][vCard import]]. In Flat style the properties are bare dates. In Tree style they are descendant headings (~:FIELDTYPE: birthday~, ~anniversary~ and ~spouse~), found anywhere in the contact's subtree unless the contact has its own property.
 
 *** Diary-sexp forms
 :PROPERTIES:
@@ -959,7 +968,7 @@ Mirror your agenda into a calendar on your own server, so its items appear, with
 
 It is one-way: the calendar follows the agenda, and edits made in a calendar app are overwritten, so give it a calendar of its own. The app only ever removes events it created, and an event is removed only when its own file was loaded, so opening a different file never removes another file's events.
 
-What goes in: SCHEDULED, DEADLINE and plain timestamps, birthdays and diary entries, from the open file and your [[#agenda-files][Agenda Files]], completed items included (their state is in the description). A repeating item is one event with a recurrence rule, and a deadline's warning delay (~-3d~) becomes an alarm. One-off items are kept from a month back to six months ahead.
+What goes in is what *View → Agenda* shows, from the open file and your [[#agenda-files][Agenda Files]]: SCHEDULED, DEADLINE, plain timestamps, diary entries, and birthdays and anniversaries (from your Contacts Files). Each event has its title, its start and end time, the heading's tags as categories, its ~:LOCATION:~ and the start of its body (256 characters), and a deadline's warning delay (~-3d~) becomes an alarm. A repeating item is one event with a repeat rule. A birthday or anniversary is one event for each year in the window, with that year's age. Completed items, and the agenda's overdue and warning-day entries, are not sent. Items are kept from a month back to six months ahead.
 
 It syncs after a save, when you return to the app, and at launch. *Sync* in Settings does it now, and *Rebuild calendar* (or the palette's *Rebuild calendar from the agenda*) removes the app's events and sends them all again. After a wrong address or password, automatic syncing stops until you change the settings or sync by hand.
 
@@ -1326,19 +1335,25 @@ Not implemented: running source blocks, and macros whose text starts with ~(eval
 
 Every dated item as an iCalendar file for any calendar app: SCHEDULED, DEADLINE, plain active title timestamps and [[#agenda][org-contacts-anniversaries]]. It follows the Agenda's exclusions (archived, commented and completed headings). Re-exporting gives the same event IDs, so a calendar app updates events instead of duplicating them.
 
+*Scope*: *This file*, *Choose a heading…* and *This file + Agenda Files* write every dated item, with no window. *Agenda (as displayed)*, the last row, writes what [[#calendar-sync][the calendar sync]] sends: what View → Agenda shows, from a month back to six months ahead.
+
 | Org source | vCalendar field | Notes |
 |---+---+---|
 | SCHEDULED | ~DTSTART~, ~SUMMARY~ (~DESCRIPTION~ "Scheduled") | |
 | DEADLINE | ~DTSTART~, ~SUMMARY~ (~DESCRIPTION~ "Deadline") | A warning suffix (~-3d~) also becomes a ~VALARM~ reminder |
 | Plain active title timestamp | ~DTSTART~, ~SUMMARY~ | Only when the heading has no SCHEDULED or DEADLINE |
 | A repeater (~+1w~, ~++3d~, ~.+1m~) on any of these | ~RRULE~ | The calendar app expands the recurrence |
-| org-contacts-anniversaries | ~DTSTART~ with a yearly ~RRULE~, ~SUMMARY~ ("Title: Description") | |
+| A time range (~09:00-10:15~) | ~DTEND~ | |
+| A heading's tags | ~CATEGORIES~ | |
+| ~:LOCATION:~ | ~LOCATION~ | |
+| The start of the body | ~DESCRIPTION~ | At most 256 characters |
+| org-contacts-anniversaries | ~DTSTART~ with a yearly ~RRULE~, ~SUMMARY~ (~Birthday: Name~) | One yearly event cannot carry an age, so the date is in the description |
 
 *** Contacts (.vcf)
 
 vCard 3.0 for any contacts app, modeled on [[https://github.com/pinoaffe/org-vcard][org-vcard]] (compatible with org-contacts.el). [[https://www.rfc-editor.org/rfc/rfc6350][RFC 6350]] requires only ~FN~, so no email address is needed. There are two styles, and *Tree* is the default:
 
-- *Flat*: every heading with at least one recognized contact property (~:EMAIL:~, ~:PHONE:~, ~:CELL:~, ~:WORK_PHONE:~, ~:ADDRESS:~, ~:ADR:~, ~:NICKNAME:~, ~:NOTE:~ or the birthday property). ~:IGNORE: t~ excludes one. A heading with none is skipped.
+- *Flat*: every heading with at least one recognized contact property (~:EMAIL:~, ~:PHONE:~, ~:CELL:~, ~:WORK_PHONE:~, ~:ADDRESS:~, ~:ADR:~, ~:NICKNAME:~, ~:NOTE:~, ~:ANNIVERSARY:~ or the birthday property). ~:IGNORE: t~ excludes one. A heading with none is skipped.
 - *Tree*: a contact heading (~:KIND: individual~, ~:FIELDTYPE: name~) with each field as a descendant heading carrying its own ~:FIELDTYPE:~, at any depth. A contact with no fields still exports a minimal vCard (~FN~, ~N~).
 
 The *To: new buffer* checkbox sends the vCard text to a new unsaved document (a ~vCard(s)~ heading, titled ~*scratch*~) instead of downloading a file; Import reads that shape back.
@@ -1367,6 +1382,8 @@ There are no name, tag or property filters. *This file* respects an active narro
 | A heading's tags | ~CATEGORIES~ | ~:CATEGORIES_RAW:~ is preferred when present |
 | ~:CATEGORIES_RAW:~ | ~CATEGORIES~ | The original comma-separated text; tags can't hold spaces, so "Other Account" would otherwise become ~Other_Account~ |
 | ~org-contacts-birthday-property~ (default ~BIRTHDAY~) | ~BDAY~ | Accepts a bare ~YYYY-MM-DD~ with no description |
+| ~:ANNIVERSARY:~ | ~ANNIVERSARY~ (~YYYYMMDD~) | A vCard 4.0 property, written in the 3.0 card as a phone's own export does |
+| ~:SPOUSE:~ | ~RELATED;TYPE=spouse;VALUE=text~ | Likewise |
 
 | Tree style ~:FIELDTYPE:~ | vCard field | Notes |
 |---+---+---|
@@ -1384,6 +1401,8 @@ There are no name, tag or property filters. *This file* respects an active narro
 | ~photo~ | ~PHOTO~ | A URL is the heading's title. An embedded photo is titled "Photo", with its ~data:~ URI in a ~:DATA:~ property |
 | ~note~ | ~NOTE~ | Read from a ~#+BEGIN_VERSE~ or ~#+BEGIN_QUOTE~ block in the body, not the title |
 | ~birthday~ | ~BDAY~ | A bare ~YYYY-MM-DD~ is accepted |
+| ~anniversary~ | ~ANNIVERSARY~ | |
+| ~spouse~ | ~RELATED;TYPE=spouse~ | |
 | A contact's tags | ~CATEGORIES~ | ~:CATEGORIES_RAW:~ on the contact heading is preferred |
 
 Both styles cover the same set of fields, which is smaller than org-vcard's full mapping. ~:PREFERRED:~ is accepted but doesn't yet affect field order or add a ~PREF~ parameter.
@@ -1429,7 +1448,7 @@ Property drawers and ~ARCHIVE_*~ properties (see [[#archiving][Archiving]]) are 
 
 *Warnings*: properties the parser doesn't know are collected, listed once by name in the status message after the import ("Imported 3 contacts from vCard. 2 unrecognized properties were skipped: X-SOCIALPROFILE, X-YAHOO."). ~VERSION~, ~PRODID~, ~REV~, ~UID~ and ~X-ABADR~ are known and deliberately unmapped, so they aren't reported. A base64 ~PHOTO~ gets its own count in the same message, since it is kept as a ~data:~ URI (see Export's ~:PHOTO:~ row).
 
-A ~.vcf~ file with no valid (~FN~) contacts gives a clear status message. A malformed line inside an otherwise valid contact is skipped without aborting the import.
+~ANNIVERSARY~ and a ~RELATED;TYPE=spouse~ name become ~:ANNIVERSARY:~ and ~:SPOUSE:~; other relations are reported as skipped. A ~.vcf~ file with no valid (~FN~) contacts gives a clear status message. A malformed line inside an otherwise valid contact is skipped without aborting the import.
 
 *iCalendar (.ics)* is the reverse of [[#export][Calendar (.ics) export]], and reads a calendar exported from Google, Apple, Outlook or Nextcloud. Each event becomes a new heading appended to the end of the open document, and each task a TODO heading. Nothing already in the file is touched. The sources are the same as for Contacts: *Choose iCalendar file…*, *Choose a heading…* and *This file* (which look for bodies starting with ~BEGIN:VCALENDAR~), and the *To: new buffer* checkbox, which has its own setting. There is no style or clean-up option.
 

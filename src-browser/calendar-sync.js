@@ -3,8 +3,9 @@
 // are src/caldav-client.js; this is the part that knows about settings, the agenda files, state and the status line.
 import { buildCalendarResources, isOurResource, nextSyncState, planCalendarSync } from '../src/calendar-mirror.js';
 import { createCaldavClient, runLimited } from '../src/caldav-client.js';
+import { getContactsBirthdayProperty } from '../src/local-variables.js';
 import { S } from './app-state.js';
-import { aggregateAgendaDocs, unloadedAgendaFiles, waitForAgendaFilesLoaded } from './agenda-files.js';
+import { aggregateAgendaDocs, loadContactsDocsForSync, unloadedAgendaFiles, waitForAgendaFilesLoaded } from './agenda-files.js';
 import { setStatus } from './editing.js';
 import { getCaldavSyncState, setCaldavSyncState } from './settings.js';
 import { kv } from './singletons.js';
@@ -63,8 +64,11 @@ export async function syncAgendaToCalendar({ manual = false, rebuild = false, re
       if (manual) report('Nothing to sync: no document is open and no agenda files are loaded.');
       return;
     }
-    const wanted = buildCalendarResources(docs, { today: new Date() });
-    const loadedDocs = new Set(docs.map((d) => d.documentId));
+    // The contacts are those of org-contacts-files, as in the agenda. An event made from a contacts file is only ever removed when
+    // that file loaded in this run, so a contacts file that failed to load keeps its birthdays on the server.
+    const contactsDocs = await loadContactsDocsForSync(docs);
+    const wanted = buildCalendarResources(docs, { today: new Date(), contactsDocs, birthdayProperty: S.state.doc ? getContactsBirthdayProperty(S.state.localVariables) : undefined });
+    const loadedDocs = new Set([...docs, ...(contactsDocs || [])].map((d) => d.documentId));
 
     const stored = await getCaldavSyncState(kv);
     let previous = stored.url === config.url ? stored.resources || {} : {}; // a different calendar: nothing was sent to it

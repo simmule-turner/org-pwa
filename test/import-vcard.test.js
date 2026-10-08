@@ -797,3 +797,49 @@ test('a real URL-based photo keeps the existing, simpler Tree-style behavior -- 
   const orgText = importVcardsAsOrgText(original, { style: 'tree' });
   assert.match(orgText, /\*\* https:\/\/example\.com\/alice\.jpg/);
 });
+
+// ---- ANNIVERSARY and a spouse (RELATED;TYPE=spouse) --------------------------------------------------
+
+const cardWith = (...lines) => ['BEGIN:VCARD', 'VERSION:4.0', 'FN:Jane Doe', 'N:Doe;Jane;;;', 'EMAIL:jane@example.com', ...lines, 'END:VCARD', ''].join('\r\n');
+const importWith = (vcf, style = 'flat') => {
+  const skipped = [];
+  return { org: importVcardsAsOrgText(vcf, { style, onUnmappedProperty: (n) => skipped.push(n) }), skipped };
+};
+
+test('ANNIVERSARY:YYYYMMDD and RELATED;TYPE=spouse;VALUE=text:Name become :ANNIVERSARY: and :SPOUSE:, and nothing is reported as skipped', () => {
+  const { org, skipped } = importWith(cardWith('ANNIVERSARY:19980614', 'RELATED;TYPE=spouse;VALUE=text:John Doe'));
+  assert.ok(org.includes(':ANNIVERSARY: 1998-06-14\n:SPOUSE: John Doe\n'), org);
+  assert.deepEqual(skipped, []);
+});
+
+test('in Tree style they are fields of their own: an anniversary and a spouse', () => {
+  const { org } = importWith(cardWith('ANNIVERSARY:1998-06-14', 'RELATED;TYPE=spouse;VALUE=text:John Doe'), 'tree');
+  assert.ok(org.includes('** 1998-06-14\n:PROPERTIES:\n:FIELDTYPE: anniversary\n:END:'), org);
+  assert.ok(org.includes('** John Doe\n:PROPERTIES:\n:FIELDTYPE: spouse\n:END:'), org);
+});
+
+test('a spouse is found whatever the case or the other types listed, and without a VALUE (a name is the default)', () => {
+  assert.ok(importWith(cardWith('RELATED;type=SPOUSE:Pat Lee')).org.includes(':SPOUSE: Pat Lee'));
+  assert.ok(importWith(cardWith('RELATED;TYPE=spouse,kin;VALUE=text:Pat Lee')).org.includes(':SPOUSE: Pat Lee'));
+});
+
+test('a relation that is not a spouse, a uri (which names no one) and a second spouse are reported as skipped, not carried over', () => {
+  for (const line of ['RELATED;TYPE=child;VALUE=text:Kid Doe', 'RELATED;TYPE=spouse;VALUE=uri:urn:uuid:03a0e51f-d1aa-4385-8a53-e29025acd8af', 'RELATED:Nobody In Particular']) {
+    const { org, skipped } = importWith(cardWith(line));
+    assert.equal(org.includes(':SPOUSE:'), false, line);
+    assert.deepEqual(skipped, ['RELATED'], line);
+  }
+  const twice = importWith(cardWith('RELATED;TYPE=spouse;VALUE=text:First One', 'RELATED;TYPE=spouse;VALUE=text:Second One'));
+  assert.ok(twice.org.includes(':SPOUSE: First One') && !twice.org.includes('Second One'));
+  assert.deepEqual(twice.skipped, ['RELATED']);
+});
+
+test('an anniversary that is not date-shaped is left out rather than guessed, like a birthday', () => {
+  assert.equal(importWith(cardWith('ANNIVERSARY:sometime in June')).org.includes(':ANNIVERSARY:'), false);
+  assert.ok(importWith(cardWith('ANNIVERSARY:1998-06-14')).org.includes(':ANNIVERSARY: 1998-06-14'), 'the dashed form is read as well as YYYYMMDD');
+});
+
+test('a spouse\u2019s name keeps its commas and semicolons through an import', () => {
+  assert.ok(importWith(cardWith('RELATED;TYPE=spouse;VALUE=text:Doe\\, John\\; Jr.')).org.includes(':SPOUSE: Doe, John; Jr.'));
+});
+

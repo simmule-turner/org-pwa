@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v444';
+const CACHE_NAME = 'org-pwa-shell-v445';
 
 const SHELL_FILES = [
   './',
@@ -23,6 +23,7 @@ const SHELL_FILES = [
   './src/sexp-eval.js',
   './src/repeater-shift.js',
   './src/caldav-client.js',
+  './src/calendar-from-agenda.js',
   './src/calendar-mirror.js',
   './src/contacts-mirror.js',
   './src/capture-shared.js',

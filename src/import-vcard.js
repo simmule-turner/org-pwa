@@ -266,6 +266,8 @@ export function parseVcards(text, opts = {}) {
         nickname: null,
         note: null,
         bday: null,
+        anniversary: null,
+        spouse: null,
         org: null,
         jobTitle: null,
         photo: null,
@@ -366,6 +368,19 @@ export function parseVcards(text, opts = {}) {
       case 'BDAY':
         current.bday = parsed.value;
         break;
+      case 'ANNIVERSARY':
+        current.anniversary = parsed.value;
+        break;
+      case 'RELATED': {
+        // Only a spouse is carried over, and only when it is a NAME (VALUE=text, the usual form for one): a uri (a urn:uuid or a
+        // link to another card) names no one. Any other relation (child, parent, friend ...) and a second spouse are reported
+        // as skipped, like any property not carried over.
+        const types = String(parsed.params.TYPE || '').toLowerCase().split(',').map((t) => t.trim());
+        const isUri = /^uri$/i.test(String(parsed.params.VALUE || ''));
+        if (types.includes('spouse') && !isUri && parsed.value && !current.spouse) current.spouse = parsed.value;
+        else warnUnmapped('RELATED');
+        break;
+      }
       case 'ORG':
         // Real ORG can carry several ";"-separated components (Company;
         // Department;Unit), the same organizational-hierarchy idea ADR's
@@ -585,6 +600,11 @@ function buildFlatOrgFromContact(contact) {
     const normalized = normalizeBday(contact.bday);
     if (normalized) propertyLines.push(`:BIRTHDAY: ${normalized}`);
   }
+  if (contact.anniversary) {
+    const normalized = normalizeBday(contact.anniversary); // the same date forms as BDAY
+    if (normalized) propertyLines.push(`:ANNIVERSARY: ${normalized}`);
+  }
+  if (contact.spouse) propertyLines.push(`:SPOUSE: ${forPropertyValue(contact.spouse)}`);
 
   if (propertyLines.length) {
     lines.push(':PROPERTIES:', ...propertyLines, ':END:');
@@ -644,6 +664,8 @@ const FIELDTYPE_LABELS = {
   photo: 'Photo',
   note: 'Note',
   birthday: 'Birthday',
+  anniversary: 'Anniversary',
+  spouse: 'Spouse',
 };
 
 function buildTreeOrgFromContact(contact) {
@@ -693,6 +715,11 @@ function buildTreeOrgFromContact(contact) {
     const normalized = normalizeBday(contact.bday);
     if (normalized) field(normalized, 'birthday');
   }
+  if (contact.anniversary) {
+    const normalized = normalizeBday(contact.anniversary);
+    if (normalized) field(normalized, 'anniversary');
+  }
+  if (contact.spouse) field(forHeadingTitle(contact.spouse), 'spouse');
 
   return lines.join('\n');
 }

@@ -7,6 +7,16 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v445 — Calendar and contacts follow the agenda
+Birthdays and anniversaries now follow Emacs's org-contacts:
+%%(org-contacts-anniversaries "ANNIVERSARY") and a FORMAT work, several
+lines load together, contacts come from org-contacts-files, titles read
+"Birthday: Jane Doe (36th)", and a spouse appears in an anniversary. The
+CalDAV sync now sends what View → Agenda shows, with end time, tags,
+location and the start of the body, one repeating event per repeater,
+and no completed items. Export → Calendar gains "Agenda (as displayed)",
+and vCard import and export carry ANNIVERSARY and the spouse.
+
 * v444 — Contacts address under the Calendar address
 In Settings → Calendar (CalDAV) / Contacts (CardDAV), the Contacts
 address now sits directly under the Calendar address, with the username

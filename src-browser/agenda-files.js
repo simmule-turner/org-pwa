@@ -1,4 +1,5 @@
 // Extracted from app.js: agenda files.
+import { collectContactsTriggers } from '../src/agenda.js';
 import { findDuplicateAgendaFiles, getAgendaFilesVar, getContactsFilesVar, parseAgendaFilesVar } from '../src/local-variables.js';
 import { parseOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
@@ -271,6 +272,7 @@ export function ensureContactsFilesLoaded() {
       const promise = readLocalEntry(path, false).then((entry) => {
         contactsFilesCache.set(key, entry);
         if (S.settingsOpen) renderSettingsView();
+        if (S.currentView === 'agenda' || S.currentView === 'tasklist') render(); // its contacts' birthdays may now be showable
       });
       contactsFilesCache.set(key, { loading: true, promise });
       continue;
@@ -289,6 +291,7 @@ export function ensureContactsFilesLoaded() {
           result ? { doc: parseOrg(result.content), documentId: path } : { error: `"${path}" not found.` }
         );
         if (S.settingsOpen) renderSettingsView();
+        if (S.currentView === 'agenda' || S.currentView === 'tasklist') render();
       })
       .catch((err) => {
         contactsFilesCache.set(key, { error: err.message });
@@ -296,6 +299,42 @@ export function ensureContactsFilesLoaded() {
       });
     contactsFilesCache.set(key, { loading: true, promise });
   }
+}
+
+/** The contacts files that have loaded (org-contacts-files), as documents. The open document stands in for its own file when it
+ *  is one of them, so the live version (unsaved edits included) is what is used. The open document is NOT included otherwise:
+ *  contacts are what org-contacts-files names, not whatever file happens to be open. Used by the agenda's contact entries and by
+ *  the address book mirror (contacts-sync.js). */
+export function contactsFileDocs() {
+  const docs = [];
+  const seen = new Set();
+  for (const entry of contactsFilesCache.values()) {
+    if (!entry.doc || seen.has(entry.documentId)) continue;
+    seen.add(entry.documentId);
+    docs.push({ documentId: entry.documentId, doc: entry.documentId === S.state.documentId && S.state.doc ? S.state.doc : entry.doc });
+  }
+  return docs;
+}
+
+/** What the agenda passes as `contactsDocs` (see buildAgendaItems): null when it should scan its own documents, as Emacs falls back
+ *  to org-agenda-files when org-contacts-files is empty (no contacts files are set, or no org-contacts-anniversaries line exists, so
+ *  nothing would be fetched for nothing), else the contacts files loaded so far, an empty list while they are still loading. */
+export function contactsDocsForAgenda(agendaDocs) {
+  if (!collectContactsTriggers(agendaDocs).length) return null;
+  syncContactsFilesConfig();
+  if (S.contactsFilesConfig.length === 0) return null;
+  ensureContactsFilesLoaded();
+  return contactsFileDocs();
+}
+
+/** The calendar mirror's version of contactsDocsForAgenda: the same answer, but it WAITS for the contacts files to load first, so a
+ *  sync never builds the calendar from a half-loaded list. */
+export async function loadContactsDocsForSync(agendaDocs) {
+  if (!collectContactsTriggers(agendaDocs).length) return null;
+  syncContactsFilesConfig();
+  if (S.contactsFilesConfig.length === 0) return null;
+  await ensureContactsFilesLoadedAndWait();
+  return contactsFileDocs();
 }
 
 /** Like ensureContactsFilesLoaded, but actually waits for every fetch

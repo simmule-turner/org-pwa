@@ -478,3 +478,51 @@ test('collectContactCards: the cards are the ones the export writes, so what is 
   assert.equal(collectContactCards(docs).map((c) => c.lines.join('\r\n')).join('\r\n') + '\r\n', exportToVcard(docs, { style: 'flat' }));
 });
 
+// ---- ANNIVERSARY and a spouse ---------------------------------------------------------------------------
+
+const annivDocs = (text) => [{ documentId: 'c.org', doc: parseOrg(text) }];
+
+test('a contact\u2019s :ANNIVERSARY: and :SPOUSE: are written as ANNIVERSARY and RELATED;TYPE=spouse, in a card that still says 3.0', () => {
+  const out = exportToVcard(annivDocs('* Jane Doe\n:PROPERTIES:\n:EMAIL: jane@example.com\n:ANNIVERSARY: 1998-06-14\n:SPOUSE: John Doe\n:END:\n'), { style: 'flat' });
+  const lines = out.split('\r\n');
+  assert.ok(lines.includes('VERSION:3.0'));
+  assert.ok(lines.includes('ANNIVERSARY:19980614'), out);
+  assert.ok(lines.includes('RELATED;TYPE=spouse;VALUE=text:John Doe'), out);
+});
+
+test('the same in Tree style', () => {
+  const tree = '* Jane Doe\n:PROPERTIES:\n:KIND: individual\n:FIELDTYPE: name\n:END:\n** 1998-06-14\n:PROPERTIES:\n:FIELDTYPE: anniversary\n:END:\n** John Doe\n:PROPERTIES:\n:FIELDTYPE: spouse\n:END:\n';
+  const lines = exportToVcard(annivDocs(tree), { style: 'tree' }).split('\r\n');
+  assert.ok(lines.includes('ANNIVERSARY:19980614') && lines.includes('RELATED;TYPE=spouse;VALUE=text:John Doe'));
+});
+
+test('a spouse\u2019s commas and semicolons are escaped, and an anniversary that is not a date is not written', () => {
+  const lines = exportToVcard(annivDocs('* Jane\n:PROPERTIES:\n:EMAIL: j@example.com\n:ANNIVERSARY: sometime\n:SPOUSE: Doe, John; Jr.\n:END:\n'), { style: 'flat' }).split('\r\n');
+  assert.ok(lines.includes('RELATED;TYPE=spouse;VALUE=text:Doe\\, John\\; Jr.'));
+  assert.equal(lines.some((l) => l.startsWith('ANNIVERSARY')), false);
+});
+
+test('an anniversary with an impossible month is not written, as for a birthday', () => {
+  const lines = exportToVcard(annivDocs('* Jane\n:PROPERTIES:\n:EMAIL: j@example.com\n:ANNIVERSARY: 1998-13-40\n:END:\n'), { style: 'flat' }).split('\r\n');
+  assert.equal(lines.some((l) => l.startsWith('ANNIVERSARY')), false);
+});
+
+test('a heading with an anniversary and nothing else that identifies a contact is still a contact', () => {
+  const lines = exportToVcard(annivDocs('* Jane Doe\n:PROPERTIES:\n:ANNIVERSARY: 1998-06-14\n:END:\n'), { style: 'flat' }).split('\r\n');
+  assert.ok(lines.includes('FN:Jane Doe') && lines.includes('ANNIVERSARY:19980614'));
+});
+
+test('round trip: a card with an anniversary and a spouse imports and exports as the same two lines, in both styles', async () => {
+  const { importVcardsAsOrgText } = await import('../src/import-vcard.js');
+  const card = ['BEGIN:VCARD', 'VERSION:3.0', 'FN:Jane Doe', 'N:Doe;Jane;;;', 'EMAIL:jane@example.com', 'ANNIVERSARY:19980614', 'RELATED;TYPE=spouse;VALUE=text:John Doe', 'END:VCARD', ''].join('\r\n');
+  for (const style of ['flat', 'tree']) {
+    const back = exportToVcard(annivDocs(importVcardsAsOrgText(card, { style })), { style }).split('\r\n');
+    assert.ok(back.includes('ANNIVERSARY:19980614') && back.includes('RELATED;TYPE=spouse;VALUE=text:John Doe'), style);
+  }
+});
+
+test('collectContactCards (the CardDAV mirror\u2019s source) carries them too', () => {
+  const cards = collectContactCards(annivDocs('* Jane Doe\n:PROPERTIES:\n:EMAIL: jane@example.com\n:ANNIVERSARY: 1998-06-14\n:SPOUSE: John Doe\n:END:\n'));
+  assert.ok(cards[0].lines.includes('ANNIVERSARY:19980614') && cards[0].lines.includes('RELATED;TYPE=spouse;VALUE=text:John Doe'));
+});
+

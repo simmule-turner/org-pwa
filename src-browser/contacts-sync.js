@@ -5,7 +5,7 @@
 import { createCarddavClient, runLimited } from '../src/caldav-client.js';
 import { buildContactResources, isOurContactResource, nextContactsSyncState, planContactsSync } from '../src/contacts-mirror.js';
 import { getContactsBirthdayProperty } from '../src/local-variables.js';
-import { ensureContactsFilesLoadedAndWait, syncContactsFilesConfig } from './agenda-files.js';
+import { contactsFileDocs, ensureContactsFilesLoadedAndWait, syncContactsFilesConfig } from './agenda-files.js';
 import { S } from './app-state.js';
 import { effectiveCaldavCredentials } from './calendar-sync.js';
 import { setStatus } from './editing.js';
@@ -24,20 +24,6 @@ export function effectiveContactsConfig() {
 
 function plural(n, word) {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
-}
-
-/** The contacts files that have loaded, as documents. The open document stands in for its own file when it is one of them,
- *  so the live version (unsaved edits included) is what is sent. The open document is NOT included otherwise: the address
- *  book holds what org-contacts-files names, not whatever file happens to be open. */
-function contactsFileDocs() {
-  const docs = [];
-  const seen = new Set();
-  for (const entry of contactsFilesCache.values()) {
-    if (!entry.doc || seen.has(entry.documentId)) continue;
-    seen.add(entry.documentId);
-    docs.push({ documentId: entry.documentId, doc: entry.documentId === S.state.documentId && S.state.doc ? S.state.doc : entry.doc });
-  }
-  return docs;
 }
 
 /** The configured contacts files that have not loaded (still loading, or failed). */

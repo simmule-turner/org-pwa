@@ -22,7 +22,10 @@ import {
   isContactsAnniversariesTrigger,
   parseContactEvent,
   contactEventAge,
-  formatContactEventLine,
+  formatContactEventTitle,
+  parseContactsAnniversariesTrigger,
+  stripAgeFromFormat,
+  ordinalYears,
   expandContactEventOccurrences,
 } from '../src/agenda.js';
 import { importVcardsAsOrgText } from '../src/import-vcard.js';
@@ -821,13 +824,13 @@ test('contactEventAge returns null for a null (nil) year', () => {
   assert.equal(contactEventAge(null, new Date(2026, 4, 15)), null);
 });
 
-test('formatContactEventLine builds the correct display string', () => {
-  assert.equal(formatContactEventLine('John Doe', 'Birthday', 36), 'John Doe: Birthday (36)');
-  assert.equal(formatContactEventLine('Mary & Jim', 'Wedding Anniversary', 11), 'Mary & Jim: Wedding Anniversary (11)');
+test('formatContactEventTitle: Emacs\u2019s default, "Birthday: %l (%Y)", with the age as an ordinal', () => {
+  assert.equal(formatContactEventTitle({ name: 'John Doe', age: 36 }), 'Birthday: John Doe (36th)');
+  assert.equal(formatContactEventTitle({ name: 'John Doe', age: 1 }), 'Birthday: John Doe (1st)');
 });
 
-test('formatContactEventLine shows "(??)" for a null (unknown) age', () => {
-  assert.equal(formatContactEventLine('Someone', 'Birthday', null), 'Someone: Birthday (??)');
+test('formatContactEventTitle shows "??" for an unknown age', () => {
+  assert.equal(formatContactEventTitle({ name: 'Someone', age: null }), 'Birthday: Someone (??)');
 });
 
 test('expandContactEventOccurrences produces one occurrence per year across a multi-year range', () => {
@@ -873,7 +876,7 @@ test('the trigger activates a scan producing the correctly formatted agenda line
   });
   const anniv = items.find((i) => i.kind === 'anniversary');
   assert.ok(anniv);
-  assert.equal(anniv.title, 'John Doe: Birthday (36)');
+  assert.equal(anniv.title, 'Birthday: John Doe (36th)');
   assert.equal(anniv.age, 36);
   assert.equal(anniv.hasTime, false);
 });
@@ -895,7 +898,7 @@ test('a nil-year event shows "(??)" in the agenda line', () => {
   });
   const anniv = items.find((i) => i.kind === 'anniversary');
   assert.ok(anniv);
-  assert.equal(anniv.title, 'Mary & Jim: Wedding Anniversary (??)');
+  assert.equal(anniv.title, 'Wedding Anniversary: Mary & Jim (??)');
   assert.equal(anniv.age, null);
 });
 
@@ -935,7 +938,7 @@ test('a custom birthdayProperty option is respected, case-insensitively', () => 
   });
   const anniv = items.find((i) => i.kind === 'anniversary');
   assert.ok(anniv, 'should match :event: against birthdayProperty "EVENT" case-insensitively');
-  assert.equal(anniv.title, 'John Doe: Birthday (36)');
+  assert.equal(anniv.title, 'Birthday: John Doe (36th)');
 });
 
 test('a heading with the property in an unparseable format is silently skipped, not an error', () => {
@@ -1667,7 +1670,7 @@ test('THE FIX: a flat-style vCard-imported :BIRTHDAY: (a bare date, no descripti
   });
   const aliceItems = items.filter((i) => i.kind === 'anniversary');
   assert.equal(aliceItems.length, 1);
-  assert.equal(aliceItems[0].title, 'Alice: Birthday (36)');
+  assert.equal(aliceItems[0].title, 'Birthday: Alice (36th)');
 });
 
 test('THE FIX: a tree-style vCard-imported birthday (a descendant heading, :FIELDTYPE: birthday, its own title the date) is also now found -- the birthday isn\u2019t a property on the contact heading itself at all in this style, so this needed its own separate fix from the flat-style one above', () => {
@@ -1680,7 +1683,7 @@ test('THE FIX: a tree-style vCard-imported birthday (a descendant heading, :FIEL
   });
   const aliceItems = items.filter((i) => i.kind === 'anniversary');
   assert.equal(aliceItems.length, 1);
-  assert.equal(aliceItems[0].title, 'Alice: Birthday (36)');
+  assert.equal(aliceItems[0].title, 'Birthday: Alice (36th)');
 });
 
 test('the default description for a bare date is derived from the configured org-contacts-birthday-property itself, not hardcoded to "Birthday" -- confirmed with a differently-named property', () => {
@@ -1692,7 +1695,7 @@ test('the default description for a bare date is derived from the configured org
   });
   const bobItems = items.filter((i) => i.kind === 'anniversary');
   assert.equal(bobItems.length, 1);
-  assert.equal(bobItems[0].title, 'Bob: Anniversary (16)');
+  assert.equal(bobItems[0].title, 'Anniversary: Bob (16th)');
 });
 
 test('a direct property on the contact heading itself still takes priority over a tree-style descendant, when a heading somehow has both -- no double-counting', () => {
@@ -1716,7 +1719,7 @@ test('a direct property on the contact heading itself still takes priority over 
   });
   const aliceItems = items.filter((i) => i.kind === 'anniversary');
   assert.equal(aliceItems.length, 1); // not 2 -- the direct property wins, the descendant is not also counted
-  assert.equal(aliceItems[0].title, 'Alice: Birthday (36)');
+  assert.equal(aliceItems[0].title, 'Birthday: Alice (36th)');
 });
 
 test('a tree-style birthday nested under a grouping heading (not directly under the contact) is still found -- fields can sit at any depth', () => {
@@ -1742,5 +1745,87 @@ test('a tree-style birthday nested under a grouping heading (not directly under 
   });
   const aliceItems = items.filter((i) => i.kind === 'anniversary');
   assert.equal(aliceItems.length, 1);
-  assert.equal(aliceItems[0].title, 'Alice: Birthday (36)');
+  assert.equal(aliceItems[0].title, 'Birthday: Alice (36th)');
+});
+
+// ---- org-contacts-anniversaries FIELD FORMAT, spouse, and org-contacts-files ----------------------------------
+
+const cdoc = (documentId, text) => ({ documentId, doc: parseOrg(text) });
+const cwin = { today: new Date(2026, 9, 7, 12), rangeStart: new Date(2026, 9, 1), rangeEnd: new Date(2026, 9, 31), birthdayProperty: 'BIRTHDAY' };
+const contactTitles = (items) => items.filter((i) => i.kind === 'anniversary').map((i) => i.title).sort();
+const janeAndJohn = '* Jane Doe\n:PROPERTIES:\n:BIRTHDAY: 1990-10-08\n:ANNIVERSARY: 1998-10-14\n:SPOUSE: John Doe\n:END:\n* Sam Solo\n:PROPERTIES:\n:ANNIVERSARY: 2000-10-20\n:END:\n';
+
+test('parseContactsAnniversariesTrigger: no arguments, a FIELD, a FIELD and a FORMAT, nil for the default, and nothing else', () => {
+  assert.deepEqual(parseContactsAnniversariesTrigger('%%(org-contacts-anniversaries)'), { field: null, format: null });
+  assert.deepEqual(parseContactsAnniversariesTrigger('%%(org-contacts-anniversaries "ANNIVERSARY")'), { field: 'ANNIVERSARY', format: null });
+  assert.deepEqual(parseContactsAnniversariesTrigger('  %%(org-contacts-anniversaries "ANNIVERSARY" "Wed: %h (%Y)")  '), { field: 'ANNIVERSARY', format: 'Wed: %h (%Y)' });
+  assert.deepEqual(parseContactsAnniversariesTrigger('%%(org-contacts-anniversaries nil "Bday %h")'), { field: null, format: 'Bday %h' });
+  assert.deepEqual(parseContactsAnniversariesTrigger('%%(org-contacts-anniversaries "A \\"quoted\\" one")'), { field: 'A "quoted" one', format: null });
+  for (const bad of ['%%(org-contacts-anniversaries 1 2)', '%%(org-contacts-anniversaries "a" "b" "c")', '%%(org-anniversary 1990 1 1)', 'org-contacts-anniversaries', '%%(org-contacts-anniversaries "unterminated)']) {
+    assert.equal(parseContactsAnniversariesTrigger(bad), null, bad);
+  }
+});
+
+test('a birthday line in one file and an "ANNIVERSARY" line in another load BOTH, for the same contacts', () => {
+  const docs = [cdoc('birthdays.org', '* Birthdays\n%%(org-contacts-anniversaries)\n'), cdoc('anniversaries.org', '* Anniversaries\n%%(org-contacts-anniversaries "ANNIVERSARY")\n'), cdoc('contacts.org', janeAndJohn)];
+  assert.deepEqual(contactTitles(buildAgendaItems(docs, cwin)), ['Anniversary: Jane Doe & John Doe (28th)', 'Anniversary: Sam Solo (26th)', 'Birthday: Jane Doe (36th)']);
+});
+
+test('the same trigger written twice is one scan: nothing shows twice', () => {
+  const docs = [cdoc('a.org', '* A\n%%(org-contacts-anniversaries)\n'), cdoc('b.org', '* B\n%%(org-contacts-anniversaries)\n'), cdoc('contacts.org', janeAndJohn)];
+  assert.deepEqual(contactTitles(buildAgendaItems(docs, cwin)), ['Birthday: Jane Doe (36th)']);
+});
+
+test('the spouse is in an anniversary\u2019s title, and a contact without one has just the name', () => {
+  const titles = contactTitles(buildAgendaItems([cdoc('a.org', '* A\n%%(org-contacts-anniversaries "ANNIVERSARY")\n' + janeAndJohn)], cwin));
+  assert.ok(titles.includes('Anniversary: Jane Doe & John Doe (28th)') && titles.includes('Anniversary: Sam Solo (26th)'), JSON.stringify(titles));
+});
+
+test('a FORMAT is applied with Emacs\u2019s specs, %h %l %y %Y and %%, and the spouse ones %s and %n', () => {
+  const doc = '* T\n%%(org-contacts-anniversaries "ANNIVERSARY" "%h|%l|%y|%Y|%s|%n|100%%")\n' + janeAndJohn;
+  assert.ok(contactTitles(buildAgendaItems([cdoc('a.org', doc)], cwin)).includes('Jane Doe|Jane Doe|28|28th|John Doe|Jane Doe & John Doe|100%'));
+});
+
+test('a tree-style contact\u2019s anniversary and spouse fields are found, as its birthday already was', () => {
+  const tree = '* T\n%%(org-contacts-anniversaries "ANNIVERSARY")\n* Tree Tom\n:PROPERTIES:\n:KIND: individual\n:FIELDTYPE: name\n:END:\n** 1999-10-12\n:PROPERTIES:\n:FIELDTYPE: anniversary\n:END:\n** Tess Tree\n:PROPERTIES:\n:FIELDTYPE: spouse\n:END:\n';
+  assert.deepEqual(contactTitles(buildAgendaItems([cdoc('a.org', tree)], cwin)), ['Anniversary: Tree Tom & Tess Tree (27th)']);
+});
+
+test('with org-contacts-files (contactsDocs) the contacts are those files\u2019 headings, wherever the trigger line is', () => {
+  const agenda = [cdoc('agenda.org', '* Birthdays\n%%(org-contacts-anniversaries)\n* Not in a contacts file\n:PROPERTIES:\n:BIRTHDAY: 1980-10-09\n:END:\n')];
+  const contactsDocs = [cdoc('contacts.org', janeAndJohn)];
+  assert.deepEqual(contactTitles(buildAgendaItems(agenda, { ...cwin, contactsDocs })), ['Birthday: Jane Doe (36th)'], 'only the contacts file\u2019s contacts, as in Emacs');
+  assert.deepEqual(contactTitles(buildAgendaItems(agenda, cwin)), ['Birthday: Not in a contacts file (46th)'], 'with none configured, the agenda\u2019s own documents are scanned, as before');
+});
+
+test('org-contacts-files configured but not loaded yet (an empty list) shows no contacts, instead of guessing from the agenda files', () => {
+  const agenda = [cdoc('agenda.org', '* B\n%%(org-contacts-anniversaries)\n* Somebody\n:PROPERTIES:\n:BIRTHDAY: 1980-10-09\n:END:\n')];
+  assert.deepEqual(contactTitles(buildAgendaItems(agenda, { ...cwin, contactsDocs: [] })), []);
+});
+
+test('a contacts file that is also an agenda file is read once: no contact appears twice', () => {
+  const docs = [cdoc('contacts.org', '* B\n%%(org-contacts-anniversaries)\n' + janeAndJohn)];
+  assert.deepEqual(contactTitles(buildAgendaItems(docs, { ...cwin, contactsDocs: [docs[0]] })), ['Birthday: Jane Doe (36th)']);
+});
+
+test('archived and commented contacts are left out of the contacts-files pass as well', () => {
+  const contacts = '* Kept\n:PROPERTIES:\n:BIRTHDAY: 1990-10-08\n:END:\n* Archived :ARCHIVE:\n:PROPERTIES:\n:BIRTHDAY: 1990-10-09\n:END:\n* # Commented\n:PROPERTIES:\n:BIRTHDAY: 1990-10-10\n:END:\n';
+  const items = buildAgendaItems([cdoc('a.org', '* T\n%%(org-contacts-anniversaries)\n')], { ...cwin, contactsDocs: [cdoc('contacts.org', contacts)] });
+  assert.deepEqual(contactTitles(items), ['Birthday: Kept (36th)']);
+});
+
+test('without a trigger line nothing about contacts is shown, however many contacts there are', () => {
+  assert.deepEqual(contactTitles(buildAgendaItems([cdoc('a.org', janeAndJohn)], cwin)), []);
+  assert.deepEqual(contactTitles(buildAgendaItems([cdoc('a.org', '* Plain\n')], { ...cwin, contactsDocs: [cdoc('c.org', janeAndJohn)] })), []);
+});
+
+test('a bare-date property keeps the label text the file author wrote after the date', () => {
+  const doc = '* T\n%%(org-contacts-anniversaries)\n* Pat\n:PROPERTIES:\n:BIRTHDAY: 1990-10-08 Name day\n:END:\n';
+  assert.deepEqual(contactTitles(buildAgendaItems([cdoc('a.org', doc)], cwin)), ['Name day: Pat (36th)']);
+});
+
+test('stripAgeFromFormat drops the age for an entry that repeats as one event, and ordinalYears follows Emacs', () => {
+  assert.equal(stripAgeFromFormat('Birthday: %l (%Y)'), 'Birthday: %l');
+  assert.equal(stripAgeFromFormat('%h is %y'), '%h is');
+  assert.deepEqual([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101, 111, 112].map(ordinalYears), ['1st', '2nd', '3rd', '4th', '11th', '12th', '13th', '21st', '22nd', '23rd', '101st', '111th', '112th']);
 });

@@ -145,7 +145,7 @@ test('org-contacts-anniversaries produces a yearly-recurring VEVENT when the tri
     docs('* Jane Doe\n:PROPERTIES:\n:BIRTHDAY: 1989-11-02 Birthday\n:END:\n* Trigger\n%%(org-contacts-anniversaries)\n'),
     { today: TODAY }
   );
-  assert.match(ics, /SUMMARY:Jane Doe: Birthday/);
+  assert.match(ics, /SUMMARY:Birthday: Jane Doe/);
   assert.match(ics, /DTSTART;VALUE=DATE:19891102/);
   assert.match(ics, /RRULE:FREQ=YEARLY/);
 });
@@ -168,7 +168,7 @@ test('a custom org-contacts-birthday-property key is respected, matching agenda.
     docs('* Jane Doe\n:PROPERTIES:\n:ANNIVERSARY: 1989-11-02 Wedding\n:END:\n* Trigger\n%%(org-contacts-anniversaries)\n'),
     { today: TODAY, birthdayProperty: 'ANNIVERSARY' }
   );
-  assert.match(ics, /SUMMARY:Jane Doe: Wedding/);
+  assert.match(ics, /SUMMARY:Wedding: Jane Doe/);
 });
 
 // ---- exclusions (matching the agenda view's own defaults) ---------------
@@ -293,7 +293,7 @@ test('scope: org-contacts-anniversaries still activates correctly when scoped, i
   );
   const scopeHeading = doc.children[0];
   const ics = exportToIcalendar([{ documentId: 't.org', doc }], { today: TODAY, scope: scopeHeading });
-  assert.match(ics, /SUMMARY:Jane Doe: Birthday/);
+  assert.match(ics, /SUMMARY:Birthday: Jane Doe/);
 });
 
 // ---- collectCalendarEvents: what the CalDAV mirror builds on ---------------------------------------------
@@ -336,4 +336,64 @@ test('two events from one heading with an :ID: no longer share a UID; the first 
 
 test('a heading with an :ID: and only one dated item keeps exactly the UID it always had', () => {
   assert.deepEqual(collectFor('* Only\nDEADLINE: <2026-10-09 Fri>\n:PROPERTIES:\n:ID: solo\n:END:\n').map((e) => e.uid), ['solo@org-pwa']);
+});
+
+// ---- the bugs a contact's birthday used to have, and the details every event now carries ---------------------------
+
+const T = new Date(2026, 9, 2, 12, 0);
+const ics = (text, opts = {}) => exportToIcalendar([{ documentId: 'a.org', doc: parseOrg(text) }], { today: T, ...opts });
+const unfolded = (s) => s.replace(/\r\n /g, '');
+
+test('a vCard-imported birthday (a bare date) has a title: "Birthday: Jane Doe", never "…: null"', () => {
+  const out = ics('* Cal\n%%(org-contacts-anniversaries)\n* Jane Doe\n:PROPERTIES:\n:BIRTHDAY: 1990-01-08\n:END:\n');
+  assert.ok(out.includes('SUMMARY:Birthday: Jane Doe\r\n'), out);
+  assert.equal(out.includes('null'), false);
+  assert.ok(out.includes('RRULE:FREQ=YEARLY') && out.includes('DESCRIPTION:Birthday: 1990-01-08'), 'one yearly event cannot carry an age, so the date is in the description');
+});
+
+test('a tree-style contact\u2019s birthday is exported (it was skipped)', () => {
+  const out = ics('* Cal\n%%(org-contacts-anniversaries)\n* Tree Tom\n:PROPERTIES:\n:KIND: individual\n:FIELDTYPE: name\n:END:\n** 1991-10-12\n:PROPERTIES:\n:FIELDTYPE: birthday\n:END:\n');
+  assert.ok(out.includes('SUMMARY:Birthday: Tree Tom\r\n'), out);
+});
+
+test('a birthday line and an "ANNIVERSARY" line give both, and the anniversary carries the spouse', () => {
+  const out = ics('* Cal\n%%(org-contacts-anniversaries)\n%%(org-contacts-anniversaries "ANNIVERSARY")\n* Jane Doe\n:PROPERTIES:\n:BIRTHDAY: 1990-01-08\n:ANNIVERSARY: 1998-06-14\n:SPOUSE: John Doe\n:END:\n');
+  assert.ok(out.includes('SUMMARY:Birthday: Jane Doe\r\n') && out.includes('SUMMARY:Anniversary: Jane Doe & John Doe\r\n'), out);
+});
+
+test('a FORMAT on the line is used, with its age left out (one yearly event has none)', () => {
+  const out = ics('* Cal\n%%(org-contacts-anniversaries "ANNIVERSARY" "Wed: %h and %s (%Y)")\n* Jane Doe\n:PROPERTIES:\n:ANNIVERSARY: 1998-06-14\n:SPOUSE: John Doe\n:END:\n');
+  assert.ok(out.includes('SUMMARY:Wed: Jane Doe and John Doe\r\n'), out);
+});
+
+test('contactsDocs (org-contacts-files) are the contacts, wherever the trigger line is', () => {
+  const agenda = [{ documentId: 'agenda.org', doc: parseOrg('* Cal\n%%(org-contacts-anniversaries)\n* Not a contact here\n:PROPERTIES:\n:BIRTHDAY: 1980-03-03\n:END:\n') }];
+  const contactsDocs = [{ documentId: 'contacts.org', doc: parseOrg('* Jane Doe\n:PROPERTIES:\n:BIRTHDAY: 1990-01-08\n:END:\n') }];
+  const out = exportToIcalendar(agenda, { today: T, contactsDocs });
+  assert.ok(out.includes('SUMMARY:Birthday: Jane Doe') && !out.includes('Not a contact here'));
+});
+
+test('every event has the details of its heading: the end of a time range, tags, the location, the start of the body', () => {
+  const out = unfolded(ics('* TODO Dentist :health:\nSCHEDULED: <2026-10-09 Fri 09:30-10:15>\n:PROPERTIES:\n:LOCATION: Main St\n:END:\nBring the forms\n'));
+  assert.ok(out.includes('DTEND:20261009T101500') && out.includes('CATEGORIES:health') && out.includes('LOCATION:Main St') && out.includes('DESCRIPTION:Scheduled\\nBring the forms'), out);
+});
+
+test('the file and heading scopes write EVERY dated item, with no window; the agenda scope keeps to the window', async () => {
+  const { exportAgendaToIcalendar } = await import('../src/calendar-from-agenda.js');
+  const text = '* Far away\nSCHEDULED: <2030-05-01 Wed>\n* Soon\nSCHEDULED: <2026-10-09 Fri>\n';
+  const docs = [{ documentId: 'a.org', doc: parseOrg(text) }];
+  const file = exportToIcalendar(docs, { today: T });
+  const agenda = exportAgendaToIcalendar(docs, { today: T });
+  assert.ok(file.includes('SUMMARY:Far away') && file.includes('SUMMARY:Soon'));
+  assert.ok(!agenda.includes('SUMMARY:Far away') && agenda.includes('SUMMARY:Soon'));
+  assert.ok(agenda.startsWith('BEGIN:VCALENDAR\r\nVERSION:2.0\r\n') && agenda.endsWith('END:VCALENDAR\r\n'));
+});
+
+test('the agenda export is the CalDAV mirror\u2019s events: the same ones, in one file', async () => {
+  const { exportAgendaToIcalendar } = await import('../src/calendar-from-agenda.js');
+  const { buildCalendarResources } = await import('../src/calendar-mirror.js');
+  const text = '* TODO Pay\nDEADLINE: <2026-10-31 Sat -3d>\n* Meet <2026-10-07 Wed 14:00-15:00>\n* TODO Habit\nSCHEDULED: <2026-09-01 Tue 07:00 +1d>\n* DONE Old\nSCHEDULED: <2026-10-05 Mon>\n';
+  const docs = [{ documentId: 'a.org', doc: parseOrg(text) }];
+  const uidsOf = (s) => [...s.matchAll(/^UID:(.*)$/gm)].map((m) => m[1]).sort();
+  assert.deepEqual(uidsOf(exportAgendaToIcalendar(docs, { today: T })), [...buildCalendarResources(docs, { today: T }).values()].map((r) => r.uid).sort());
 });

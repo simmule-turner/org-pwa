@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { buildAgendaItems } from '../src/agenda.js';
+import { generateUid } from '../src/export-icalendar.js';
 import { parseOrg } from '../src/org-parser.js';
 import { DEFAULT_DAYS_AFTER, DEFAULT_DAYS_BEFORE, buildCalendarResources, eventHash, isOurResource, nextSyncState, planCalendarSync, resourceNameForUid } from '../src/calendar-mirror.js';
 
@@ -20,16 +22,15 @@ test('each event is its own calendar object: a complete VCALENDAR holding exactl
 
 test('scheduled, deadline and a timestamp in the title all become events, with a warning delay as an alarm', () => {
   const m = build('* Sched\nSCHEDULED: <2026-10-06 Tue>\n* Due\nDEADLINE: <2026-10-09 Fri -3d>\n* Meet <2026-10-07 Wed 14:00>\n');
-  assert.deepEqual(summaries(m), ['Due', 'Meet <2026-10-07 Wed 14:00>', 'Sched']);
+  assert.deepEqual(summaries(m), ['Due', 'Meet', 'Sched'], 'the time is the event\u2019s start, so it is not repeated in the title');
   const due = [...m.values()].find((r) => lines(r).includes('SUMMARY:Due'));
   assert.ok(lines(due).includes('BEGIN:VALARM') && lines(due).includes('TRIGGER:-P3D'));
 });
 
-test('completed items are kept, with their state in the description', () => {
-  const r = only(build('* DONE Call dentist\nSCHEDULED: <2026-10-01 Thu>\n'));
-  assert.ok(lines(r).includes('DESCRIPTION:Scheduled (DONE)'));
-  const t = only(build('* DONE Review <2026-10-01 Thu>\n'));
-  assert.ok(lines(t).includes('DESCRIPTION:DONE'.replace('DONE', '(DONE)')) || lines(t).some((x) => x.includes('(DONE)')));
+test('completed items are not in the calendar, because they are not on the agenda', () => {
+  assert.equal(build('* DONE Call dentist\nSCHEDULED: <2026-10-01 Thu>\n').size, 0);
+  assert.equal(build('* DONE Review <2026-10-01 Thu>\n').size, 0);
+  assert.deepEqual(summaries(build('* TODO Open\nSCHEDULED: <2026-10-06 Tue>\n* DONE Closed\nSCHEDULED: <2026-10-06 Tue>\n')), ['Open']);
 });
 
 test('a recurring item is ONE event with a recurrence rule, not a copy per day', () => {
@@ -60,12 +61,12 @@ test('archived and commented headings stay out, as in the agenda', () => {
   assert.deepEqual(summaries(m), ['Kept']);
 });
 
-test('birthdays recur yearly when org-contacts-anniversaries is on', () => {
+test('a birthday is one event for each year in the window, with that year\u2019s age, as the agenda shows it', () => {
   const m = build('* Contacts\n%%(org-contacts-anniversaries)\n** Alex\n:PROPERTIES:\n:BIRTHDAY: 1990-10-08\n:END:\n');
-  const rules = [...m.values()].flatMap((r) => lines(r).filter((l) => l.startsWith('RRULE:')));
-  assert.deepEqual(rules, ['RRULE:FREQ=YEARLY']);
-  assert.equal(m.size, 1, 'one yearly event, not a copy per occurrence');
-  assert.ok(summaries(m)[0].startsWith('Alex'));
+  const r = only(m);
+  assert.ok(lines(r).includes('SUMMARY:Birthday: Alex (36th)'), lines(r).join(' | '));
+  assert.ok(lines(r).includes('DTSTART;VALUE=DATE:20261008'));
+  assert.equal(lines(r).some((l) => l.startsWith('RRULE:')), false, 'no repeat rule: next year\u2019s event is made when its day is in the window, with its own age');
 });
 
 test('diary-style (sexp) entries are worked out per day, with the agenda\u2019s own text', () => {
@@ -209,4 +210,108 @@ test('after a clean run the remembered state matches the wanted set, so the next
   const next = nextSyncState(prevOf({ b: ['h0'], old: ['h9'] }), wanted, ok(['a', 'b'], ['old']));
   const plan = planCalendarSync(wanted, next);
   assert.deepEqual([plan.puts, plan.deletes], [[], []]);
+});
+
+// ---- the calendar is what View > Agenda shows -------------------------------------------------------------------
+
+const field = (resource, name) => lines(resource).find((l) => l.startsWith(name + ':') || l.startsWith(name + ';'));
+const WINDOW = { start: new Date(2026, 8, 2), end: new Date(2027, 2, 31, 23, 59, 59) };
+const ymd = (d) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+
+test('PARITY: every dated, non-repeating item the agenda shows in the window is a calendar event with the same day and title, and nothing else is', () => {
+  const text = ['* TODO Pay rent', 'DEADLINE: <2026-10-31 Sat>', '* Dentist <2026-10-20 Tue 09:00-10:00>', '* TODO Call', 'SCHEDULED: <2026-10-09 Fri 16:00>', '* Plain note', 'no dates here',
+    '* Cal', "%%(org-anniversary 1990 10 14) Mom's birthday (%d)", '%%(org-contacts-anniversaries)', '%%(org-contacts-anniversaries "ANNIVERSARY")',
+    '* Jane Doe', ':PROPERTIES:', ':BIRTHDAY: 1990-10-08', ':ANNIVERSARY: 1998-10-14', ':SPOUSE: John Doe', ':END:', '* DONE Finished', 'SCHEDULED: <2026-10-05 Mon>', ''].join('\n');
+  const docs = [{ documentId: 'a.org', doc: parseOrg(text) }];
+  const done = ['DONE'];
+  const items = buildAgendaItems(docs, { today: TODAY, rangeStart: WINDOW.start, rangeEnd: WINDOW.end, deadlineWarningDays: 0, todoFilter: (t) => !done.includes(t), isDone: (t) => done.includes(t) })
+    .filter((i) => ['scheduled', 'deadline', 'timestamp', 'diary-sexp', 'sexp-timestamp', 'anniversary'].includes(i.kind) && !i.daysOverdue);
+  const shown = items.map((i) => `${ymd(i.date)} ${i.kind === 'timestamp' ? i.heading.title.replace(/\s*<[^>]*>/, '') : i.title}`).sort();
+  const sent = [...build(text).values()].map((r) => `${field(r, 'DTSTART').split(':')[1].slice(0, 8)} ${field(r, 'SUMMARY').slice(8)}`).sort();
+  assert.deepEqual(sent, shown);
+  assert.ok(shown.length >= 6, 'the sample is rich enough to mean something: ' + shown.length);
+});
+
+test('an overdue item is ONE event on its own date, not one for every day since (those are the agenda\u2019s carry-forward, not data)', () => {
+  const r = only(build('* TODO Overdue\nSCHEDULED: <2026-09-20 Sun>\n'));
+  assert.ok(lines(r).includes('DTSTART;VALUE=DATE:20260920'));
+});
+
+test('a deadline with a warning period is ONE event on the deadline, with the warning as an alarm, not an event for each warning day', () => {
+  const r = only(build('* TODO Pay rent\nDEADLINE: <2026-10-31 Sat -5d>\n'));
+  assert.ok(lines(r).includes('DTSTART;VALUE=DATE:20261031') && lines(r).includes('TRIGGER:-P5D'));
+});
+
+test('a daily repeating habit is ONE event with a repeat rule starting at its own timestamp, however many days of it the agenda shows', () => {
+  const r = only(build('* TODO Habit\nSCHEDULED: <2026-09-01 Tue 07:00 +1d>\n'));
+  assert.ok(lines(r).includes('RRULE:FREQ=DAILY;INTERVAL=1'));
+  assert.ok(lines(r).includes('DTSTART:20260901T070000'), 'it starts where the timestamp says, so the id and the start do not move as the window does');
+});
+
+test('only dated things are events: sunrise and weather lines in the agenda are not', () => {
+  assert.equal(build('* Sun\n%%(diary-sunrise)\n').size, 0);
+});
+
+test('a time range has its end, and the details the agenda row shows are there: tags as categories, the location, the start of the body', () => {
+  const r = only(build('* TODO Dentist :health:dental:\nSCHEDULED: <2026-10-09 Fri 09:30-10:15>\n:PROPERTIES:\n:LOCATION: Main St, Suite 2\n:END:\nBring the forms\nand the insurance card.\n'));
+  assert.ok(lines(r).includes('DTSTART:20261009T093000') && lines(r).includes('DTEND:20261009T101500'));
+  assert.ok(lines(r).includes('CATEGORIES:health,dental'));
+  assert.ok(lines(r).includes('LOCATION:Main St\\, Suite 2'));
+  assert.ok(lines(r).join('').includes('DESCRIPTION:Scheduled\\nBring the forms\\nand the insurance card.'), lines(r).join(' | '));
+});
+
+test('the body is cut at 256 characters with an ellipsis, and a heading with no body has none', () => {
+  const long = 'word '.repeat(100);
+  const r = only(build(`* Long\nSCHEDULED: <2026-10-09 Fri>\n${long}\n`));
+  const unfolded = r.ics.replace(/\r\n /g, ''); // long lines are folded on the wire
+  const description = unfolded.split('\r\n').find((l) => l.startsWith('DESCRIPTION:')).slice(12).replace(/\\n/g, '\n');
+  const body = description.replace(/^Scheduled\n/, '');
+  assert.ok(body.length <= 256 && body.endsWith('\u2026'), `${body.length}: ${body.slice(-12)}`);
+  assert.ok(lines(only(build('* Short\nSCHEDULED: <2026-10-09 Fri>\n'))).includes('DESCRIPTION:Scheduled'));
+});
+
+test('a diary-sexp line in a heading\u2019s body is not part of its description', () => {
+  const r = only(build('* Cal\nSCHEDULED: <2026-10-09 Fri>\nreal text\n%%(diary-sunrise)\n'));
+  const joined = r.ics.replace(/\r\n /g, '');
+  assert.ok(joined.includes('real text') && !joined.includes('diary-sunrise'));
+});
+
+test('the title of an event written as a timestamp in the heading has no timestamp text in it', () => {
+  assert.deepEqual(summaries(build('* Dentist <2026-10-20 Tue 09:00-10:00>\n')), ['Dentist']);
+  assert.deepEqual(summaries(build('* <2026-10-20 Tue>\n')), ['<2026-10-20 Tue>'], 'a title that is only a timestamp keeps it, rather than being empty');
+});
+
+test('ids are the exporter\u2019s, so an event a server already holds is updated in place, not replaced', () => {
+  const text = '* TODO Ship\nSCHEDULED: <2026-10-06 Tue>\n* Meet <2026-10-07 Wed 14:00>\n';
+  const [ship, meet] = parseOrg(text).children;
+  const uids = [...build(text).values()].map((r) => r.uid).sort();
+  assert.deepEqual(uids, [generateUid('a.org', ship, 'scheduled', 0, new Date(2026, 9, 6)), generateUid('a.org', meet, 'timestamp', 0, new Date(2026, 9, 7, 14, 0))].sort());
+});
+
+test('contacts: a birthday line and an "ANNIVERSARY" line give both, the spouse is in the anniversary, and the contacts are those of org-contacts-files', () => {
+  const agenda = [{ documentId: 'agenda.org', doc: parseOrg('* B\n%%(org-contacts-anniversaries)\n%%(org-contacts-anniversaries "ANNIVERSARY")\n') }];
+  const contacts = [{ documentId: 'contacts.org', doc: parseOrg('* Jane Doe\n:PROPERTIES:\n:BIRTHDAY: 1990-10-08\n:ANNIVERSARY: 1998-10-14\n:SPOUSE: John Doe\n:END:\n') }];
+  const m = buildCalendarResources(agenda, { today: TODAY, contactsDocs: contacts });
+  assert.deepEqual(summaries(m), ['Anniversary: Jane Doe & John Doe (28th)', 'Birthday: Jane Doe (36th)']);
+});
+
+test('a contact that is also in the agenda files is sent once', () => {
+  const both = [{ documentId: 'contacts.org', doc: parseOrg('* B\n%%(org-contacts-anniversaries)\n* Jane Doe\n:PROPERTIES:\n:BIRTHDAY: 1990-10-08\n:END:\n') }];
+  assert.deepEqual(summaries(buildCalendarResources(both, { today: TODAY, contactsDocs: both })), ['Birthday: Jane Doe (36th)']);
+});
+
+test('what was sent for the same item before has the same name on the server, so a later sync updates it in place', () => {
+  const first = build('* TODO Ship\nSCHEDULED: <2026-10-06 Tue 09:00>\n');
+  const later = build('* TODO Ship\nSCHEDULED: <2026-10-06 Tue 09:00-10:00>\n:PROPERTIES:\n:LOCATION: Office\n:END:\n');
+  assert.deepEqual([...later.keys()], [...first.keys()]);
+  assert.notEqual([...later.values()][0].hash, [...first.values()][0].hash, 'it changed, so it is sent again');
+});
+
+test('a birthday and an anniversary on the SAME day are two events with two different ids (the field is part of the id)', () => {
+  const agenda = [{ documentId: 'agenda.org', doc: parseOrg('* B\n%%(org-contacts-anniversaries)\n%%(org-contacts-anniversaries "ANNIVERSARY")\n') }];
+  const contacts = [{ documentId: 'contacts.org', doc: parseOrg('* Jane Doe\n:PROPERTIES:\n:BIRTHDAY: 1990-10-08\n:ANNIVERSARY: 2010-10-08\n:SPOUSE: John Doe\n:END:\n') }];
+  const m = buildCalendarResources(agenda, { today: TODAY, contactsDocs: contacts });
+  assert.equal(m.size, 2);
+  assert.equal(new Set([...m.values()].map((r) => r.uid)).size, 2, 'distinct ids, so a server keeps both');
+  assert.deepEqual(summaries(m), ['Anniversary: Jane Doe & John Doe (16th)', 'Birthday: Jane Doe (36th)']);
 });

@@ -162,6 +162,8 @@ function buildVcard(heading, birthdayProperty) {
   const note = getProperty(heading, 'NOTE');
   const preservedN = getProperty(heading, 'N');
   const birthdayRaw = getProperty(heading, birthdayProperty);
+  const anniversaryRaw = getProperty(heading, 'ANNIVERSARY');
+  const spouse = getProperty(heading, 'SPOUSE');
   // Real RFC 6350 only mandates FN -- every one of the properties above
   // is genuinely optional there. But FN alone (a heading's own title,
   // which every heading trivially has) isn't enough on its own to treat
@@ -170,7 +172,7 @@ function buildVcard(heading, birthdayProperty) {
   // the source: EMAIL<>""|PHONE<>""|ADDRESS<>""|BIRTHDAY<>""|...) is the
   // model here: at least ONE recognized contact property present, not
   // specifically email.
-  if (!email && !phone && !workPhone && !address && !nickname && !org && !jobTitle && !url && !photo && !note && !birthdayRaw) return null;
+  if (!email && !phone && !workPhone && !address && !nickname && !org && !jobTitle && !url && !photo && !note && !birthdayRaw && !anniversaryRaw) return null;
 
   const fullName = heading.title || '(untitled)';
   // A real, preserved N (see import-vcard.js's own N case) is used
@@ -217,6 +219,14 @@ function buildVcard(heading, birthdayProperty) {
     const bday = parseBirthdayDate(birthdayRaw);
     if (bday) lines.push(`BDAY:${bday.year}-${pad2(bday.month)}-${pad2(bday.day)}`);
   }
+  // ANNIVERSARY and RELATED are properties of vCard 4.0, and the cards here say VERSION:3.0. They are written as they are in a
+  // 4.0 card all the same (ANNIVERSARY:YYYYMMDD, RELATED;TYPE=spouse;VALUE=text:Name): that is the form a phone's own contacts
+  // export uses, and a reader that does not know them ignores them rather than failing.
+  if (anniversaryRaw) {
+    const anniversary = parseBirthdayDate(anniversaryRaw);
+    if (anniversary) lines.push(`ANNIVERSARY:${anniversary.year}${pad2(anniversary.month)}${pad2(anniversary.day)}`);
+  }
+  if (spouse) lines.push(`RELATED;TYPE=spouse;VALUE=text:${escapeVcardText(spouse)}`);
 
   lines.push('END:VCARD');
   return lines.map(foldLine);
@@ -249,6 +259,11 @@ const TREE_FIELDTYPE_TO_VCARD_LINE = {
     const bday = parseBirthdayDate(value);
     return bday ? `BDAY:${bday.year}-${pad2(bday.month)}-${pad2(bday.day)}` : null;
   },
+  anniversary: (value) => {
+    const anniversary = parseBirthdayDate(value);
+    return anniversary ? `ANNIVERSARY:${anniversary.year}${pad2(anniversary.month)}${pad2(anniversary.day)}` : null;
+  },
+  spouse: (value) => (value ? `RELATED;TYPE=spouse;VALUE=text:${escapeVcardText(value)}` : null),
 };
 
 /** Builds one contact's own VCARD block for the tree style, or null
