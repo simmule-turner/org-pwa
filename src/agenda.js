@@ -246,12 +246,14 @@ function isContactsAnniversariesTrigger(line) {
 /** Every distinct trigger across `docs` (the same line twice is one scan, so nothing shows twice). */
 function collectContactsTriggers(docs) {
   const found = new Map();
+  const note = (line) => {
+    const trigger = parseContactsAnniversariesTrigger(line);
+    if (trigger) found.set(`${trigger.field || ''}\u0000${trigger.format || ''}`, trigger);
+  };
   for (const { doc } of docs) {
+    for (const line of doc.bodyLines || []) note(line); // a trigger above the first heading belongs to the document itself
     walkHeadings(doc, (heading) => {
-      for (const line of heading.bodyLines || []) {
-        const trigger = parseContactsAnniversariesTrigger(line);
-        if (trigger) found.set(`${trigger.field || ''}\u0000${trigger.format || ''}`, trigger);
-      }
+      for (const line of heading.bodyLines || []) note(line);
     });
   }
   return [...found.values()];
