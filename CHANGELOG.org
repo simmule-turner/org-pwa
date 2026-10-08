@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v452 — Reminder banner stays below the status bar
+The in-app reminder banner is now placed below the Android status bar
+instead of partly under it.
+
 * v451 — Warn time defaults to 12
 The agenda-notification warning time now defaults to 12 minutes, as in
 Emacs, and changes in 1-minute steps. A value already saved on a device

@@ -12,7 +12,7 @@ import { platform } from './platform.js';
 import { render } from './render.js';
 import { getApptSettings, setApptSettings } from './settings.js';
 import { kv } from './singletons.js';
-import { menuButton } from './ui-widgets.js';
+import { menuButton, safeAreaTop } from './ui-widgets.js';
 import { switchToView } from './views.js';
 
 const SCAN_HOURS = 6; // how far ahead the app watches by itself
@@ -197,6 +197,7 @@ function showBanner(title, body, detail, dayMs) {
       'background:var(--bg);color:var(--fg,inherit);border:2px solid #d9822b;box-shadow:0 8px 28px rgba(0,0,0,.45);';
     document.body.appendChild(el);
   }
+  el.style.top = `${safeAreaTop() + 12}px`; // below the status bar, not under it
   el.textContent = '';
   const heading = document.createElement('div');
   heading.textContent = title;
