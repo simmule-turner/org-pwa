@@ -140,3 +140,7 @@ test('planned: one native notification per reminder time, titled by the appointm
   assert.ok(plan.every((p) => Number.isInteger(p.id) && p.id > 0 && p.id < 2147483647));
   assert.equal(appointmentId('x'), appointmentId('x'));
 });
+
+test('the warning time defaults to 12 minutes, as in Emacs', () => {
+  assert.equal(normalizeApptSettings({})['appt-message-warning-time'], 12);
+});

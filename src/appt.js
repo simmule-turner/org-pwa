@@ -15,7 +15,7 @@ import { resolveTodoSequence } from './todo-cycle.js';
 /** The settings, under the Emacs names. A record of these is what is stored (and what a settings backup carries). */
 export const APPT_DEFAULTS = {
   'appt-activate': false,
-  'appt-message-warning-time': 10,
+  'appt-message-warning-time': 12, // as in Emacs
   'appt-display-interval': 3, // once an appointment is within its warning time, remind again every this many minutes
   'appt-agenda-scan-interval': 5,
   'appt-display-mode-line': true,

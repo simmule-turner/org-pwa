@@ -998,7 +998,7 @@ Examples: ~https://dav.example.com/radicale/me/calendar/~ and ~https://dav.examp
 Get a reminder shortly before an appointment, as Emacs's ~appt~ does. Turn it on in *Settings → Agenda notifications*; the settings use Emacs's names and belong to this device.
 
 - *Agenda notifications* (~appt-activate~): on or off.
-- *Warn this many minutes before* (~appt-message-warning-time~): 10 by default.
+- *Warn this many minutes before* (~appt-message-warning-time~): 12 by default, as in Emacs, adjustable in 1-minute steps.
 - *Remind again every* (~appt-display-interval~): 3 minutes by default. Once an appointment is within its warning time, it is announced again at this interval, as in Emacs: 10 minutes warned every 3 reads 10, 7, 4 and 1. A warning time that is a multiple of the interval also ends with a reminder at the start.
 - *Scan agenda files every* (~appt-agenda-scan-interval~): 5 minutes by default. The app also looks again at launch, when you return to it, and after a save.
 - *Countdown in the mode line* (~appt-display-mode-line~): shows ~Appt: 10m~ while an appointment is inside its warning time.
