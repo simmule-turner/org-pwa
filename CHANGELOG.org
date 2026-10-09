@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v456 — Attach menu keys work on a phone keyboard
+Opened from god-mode (c a), the attach menu now reads keys typed on an Android keyboard, which delivers letters as text input rather than key presses, so a, p, o, D and the rest run their buttons. Save a copy is now Export copy (e), and the buttons are regrouped with Sync last.
+
 * v455 — Attach: Photo and Video
 Two new buttons in the attach menu open the camera straight away, for a photo or a video, and attach the result under a dated name. Files over 25MB ask first; over 95MB is refused on GitHub, which caps files at 100MB. The Android app opens its camera app directly.
 

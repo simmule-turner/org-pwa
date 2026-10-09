@@ -3645,7 +3645,7 @@ check('attach dispatcher: the list comes from the folder (not from links), the A
     return { columns: el ? getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/).length : 0, text: document.body.innerText };
   });
   expect(grid.columns === 2, `two columns: ${grid.columns}`);
-  for (const label of ['Attach file', 'Open', 'Preview in app', 'Save a copy', 'Delete one', 'Delete all', 'Photo', 'Video', 'Attach open document', 'New text file', 'Folder', 'Sync', 'Set DIR', 'Unset DIR']) expect(grid.text.includes(label), `button "${label}" is there`);
+  for (const label of ['Attach file', 'Open', 'Preview in app', 'Export copy', 'Delete one', 'Delete all', 'Photo', 'Video', 'Attach open document', 'New text file', 'Folder', 'Sync', 'Set DIR', 'Unset DIR']) expect(grid.text.includes(label), `button "${label}" is there`);
 
   // Preview shows text inside the app
   await page.keyboard.press('Escape');
@@ -3759,6 +3759,23 @@ check('attach capture: Photo and Video open the browser\u2019s camera input (rea
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.waitForTimeout(400);
   expect(![...dav.files.keys()].some((n) => n.endsWith('big.mp4')), 'declining attaches nothing');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('attach dispatcher: opened from the keyboard it reads typed text the way an Android keyboard delivers it (an input event, no keydown letter)', async () => {
+  dav.reset({ 'notes.org': '* Report\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { openAttachChoicePrompt } = await import('/src-browser/attachments-flow.js');
+    openAttachChoicePrompt(S.state.doc.children[0], { viaKeys: true });
+  });
+  expect(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('aria-label') === 'Press a key'), 'the hidden field has the focus, so the phone keyboard types into it');
+  await page.keyboard.insertText('o'); // what Gboard does: beforeinput/input insertText, no keydown with the letter
+  await page.waitForFunction(() => document.getElementById('minibuffer').innerText.includes('No attachments on this heading yet'), null, { timeout: 5000 });
+  expect(!(await page.evaluate(() => document.body.innerText.includes('Preview in app'))), 'and the dispatcher closed after the key ran its button');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

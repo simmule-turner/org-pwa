@@ -607,6 +607,41 @@ export function openGridChoiceModal({ label, buttons, showKeys = false }) {
   }
   document.addEventListener('keydown', onKeyDown, true);
 
+  // A phone's keyboard does not send keydown with the letter (it reports "Unidentified" and delivers the text as an input event), so
+  // when this was opened from the keyboard a hidden field takes the focus and reads the typed text from beforeinput/input.
+  let typing = null;
+  if (showKeys) {
+    typing = document.createElement('input');
+    typing.type = 'text';
+    typing.setAttribute('aria-label', 'Press a key');
+    typing.setAttribute('autocapitalize', 'off');
+    typing.setAttribute('autocomplete', 'off');
+    typing.setAttribute('autocorrect', 'off');
+    typing.spellcheck = false;
+    typing.style.cssText = 'position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;border:0;padding:0;';
+    const feed = (text) => {
+      for (const ch of text) {
+        const button = buttons.find((b) => b.key === ch && !b.disabled);
+        if (button) {
+          choose(button);
+          return;
+        }
+      }
+    };
+    typing.addEventListener('beforeinput', (e) => {
+      if (e.inputType === 'insertText' && e.data) {
+        e.preventDefault();
+        feed(e.data);
+      }
+    });
+    typing.addEventListener('input', () => {
+      const text = typing.value;
+      typing.value = '';
+      if (text) feed(text);
+    });
+    modal.appendChild(typing);
+  }
+
   const grid = document.createElement('div');
   grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px;';
   for (const button of buttons) {
@@ -637,6 +672,7 @@ export function openGridChoiceModal({ label, buttons, showKeys = false }) {
   modal.appendChild(closeRow);
 
   document.body.appendChild(overlay);
+  if (typing) typing.focus();
   return overlay;
 }
 

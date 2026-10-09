@@ -588,12 +588,12 @@ export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
       { key: 'o', text: '\ud83d\udcc2 Open', onClick: () => startAttachmentPickFlow(heading, 'open') },
       { key: 'O', text: '\ud83d\udc41\ufe0f Preview in app', onClick: () => startAttachmentPickFlow(heading, 'preview') },
       { key: 'f', text: '\ud83d\uddc2\ufe0f Folder', onClick: () => revealAttachmentFolder(heading) },
-      { text: '\ud83d\udcbe Save a copy', onClick: () => startAttachmentPickFlow(heading, 'save') },
+      { key: 'e', text: '\ud83d\udcbe Export copy', onClick: () => startAttachmentPickFlow(heading, 'save') },
       { key: 'd', text: '\ud83d\uddd1\ufe0f Delete one', onClick: () => startAttachmentPickFlow(heading, 'delete') },
       { key: 'D', text: '\ud83d\uddd1\ufe0f Delete all', onClick: () => deleteAllAttachments(heading) },
-      { key: 'z', text: '\ud83d\udd04 Sync', onClick: () => syncAttachments(heading) },
       { key: 's', text: '\ud83d\udccd Set DIR', onClick: () => setAttachmentDirectory(heading) },
       { key: 'S', text: '\u274c Unset DIR', onClick: () => unsetAttachmentDirectory(heading) },
+      { key: 'z', text: '\ud83d\udd04 Sync', onClick: () => syncAttachments(heading) },
     ],
   });
 }
@@ -633,7 +633,7 @@ export function renderAttachFileListPanel() {
   const label = document.createElement('div');
   label.style.fontSize = '13px';
   label.style.marginBottom = '8px';
-  label.textContent = `${action === 'delete' ? 'Delete' : action === 'save' ? 'Save' : action === 'preview' ? 'Preview' : 'Open'} which attachment?`;
+  label.textContent = `${action === 'delete' ? 'Delete' : action === 'save' ? 'Export' : action === 'preview' ? 'Preview' : 'Open'} which attachment?`;
   refilePanelBox.appendChild(label);
 
   const row = document.createElement('div');

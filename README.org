@@ -713,7 +713,7 @@ Files kept with a heading, as in Org's ~org-attach~. Press ~C-c C-a~ on a headin
 - *Open* (~o~): view it in the browser's own viewer; a file with no viewer is downloaded.
 - *Preview in app* (~O~): show a picture, recording, video or text file inside the app.
 - *Folder* (~f~, ~org-attach-reveal~): the folder as a list, each file with Open, Preview, Save and Delete.
-- *Save a copy*: download it.
+- *Export copy* (~e~): download it.
 - *Delete one* (~d~) and *Delete all* (~D~): remove files after a confirmation.
 - *Sync* (~z~, ~org-attach-sync~): set the ~:ATTACH:~ tag to match what is in the folder, for files added or removed by other means.
 - *Set DIR* (~s~) and *Unset DIR* (~S~): keep a heading's files in a folder of your choosing instead. Unset DIR asks whether to move the files to the ID folder, delete them, or leave them.
