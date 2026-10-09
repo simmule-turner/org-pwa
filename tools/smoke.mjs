@@ -1908,7 +1908,7 @@ check('god-mode: the new chords for refile/attach/clocking/export reach their re
 
   await godSeq('c', 'a'); // C-c C-a: attach
   const attachText = await page.locator('body').innerText();
-  expect(attachText.includes('Attach \u2014') && attachText.includes('Attach file') && attachText.includes('Delete all'), 'C-c C-a should open the attachment dispatcher');
+  expect(attachText.includes('Attach \u2014') && attachText.includes('Export copy') && attachText.includes('Delete all'), 'C-c C-a should open the attachment dispatcher');
   await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
 
@@ -3614,7 +3614,7 @@ check('attachments on a LOCAL document: refused with a pointer before a folder i
   await context.close();
 });
 
-check('attach dispatcher: the list comes from the folder (not from links), the ATTACH tag follows the files, a two-column grid opens with org keys, Preview shows text in the app, and Delete all clears files, links and tag', async () => {
+check('attach dispatcher: the list comes from the folder (not from links), the ATTACH tag follows the files, a two-column grid opens with org keys, Open shows text in the app, and Delete all clears files, links and tag', async () => {
   dav.reset({ 'notes.org': '* Report\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await openDav(page, 'notes.org');
@@ -3645,14 +3645,14 @@ check('attach dispatcher: the list comes from the folder (not from links), the A
     return { columns: el ? getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/).length : 0, text: document.body.innerText };
   });
   expect(grid.columns === 2, `two columns: ${grid.columns}`);
-  for (const label of ['Attach file', 'Open', 'Preview in app', 'Export copy', 'Delete one', 'Delete all', 'Photo', 'Video', 'Attach open document', 'New text file', 'Folder', 'Sync', 'Set DIR', 'Unset DIR']) expect(grid.text.includes(label), `button "${label}" is there`);
+  for (const label of ['Attach', 'Open', 'Export copy', 'Delete one', 'Delete all', 'Attach open document', 'New text file', 'Folder', 'Sync', 'Set DIR', 'Unset DIR']) expect(grid.text.includes(label), `button "${label}" is there`);
 
-  // Preview shows text inside the app
+  // Open shows text inside the app (no new tab)
   await page.keyboard.press('Escape');
   await page.evaluate(async () => {
     const { S } = await import('/src-browser/app-state.js');
-    const { previewAttachment } = await import('/src-browser/attachments-flow.js');
-    await previewAttachment(S.state.doc.children[0], 'n.txt');
+    const { openAttachmentLink } = await import('/src-browser/attachments-flow.js');
+    await openAttachmentLink('attachment:n.txt', S.state.doc.children[0]);
   });
   expect(await page.evaluate(() => [...document.querySelectorAll('pre')].some((p) => p.textContent === 'hi')), 'the text file is shown in the app');
   await page.keyboard.press('Escape');
@@ -3698,7 +3698,7 @@ check('attach phase 2: DIR names the folder, Sync follows the files, the folder 
   await page.evaluate(`(async () => { const { revealAttachmentFolder } = await import('/src-browser/attachments-flow.js'); await revealAttachmentFolder(${h}); })()`);
   await page.waitForFunction(() => document.body.innerText.includes('b.txt'), null, { timeout: 5000 });
   const panelText = await page.evaluate(() => document.body.innerText);
-  expect(panelText.includes('Folder \u2014 files/report') && panelText.includes('a.pdf') && panelText.includes('Preview'), 'the folder panel lists the files with their actions');
+  expect(panelText.includes('Folder \u2014 files/report') && panelText.includes('a.pdf') && panelText.includes('Open') && panelText.includes('Delete'), 'the folder panel lists the files with their actions');
   await page.keyboard.press('Escape');
 
   // a new text file, made from a name and its contents
@@ -3729,22 +3729,10 @@ check('attach phase 2: DIR names the folder, Sync follows the files, the folder 
   await context.close();
 });
 
-check('attach capture: Photo and Video open the browser\u2019s camera input (rear camera, images or video only) and a large video is confirmed or refused', async () => {
+check('attach size guard: a large video asks before it is attached, and declining attaches nothing', async () => {
   dav.reset({ 'notes.org': '* Report\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await openDav(page, 'notes.org');
-  const inputs = [];
-  for (const kind of ['photo', 'video']) {
-    await page.evaluate(async (k) => {
-      const { S } = await import('/src-browser/app-state.js');
-      const { captureMediaToHeading } = await import('/src-browser/attachments-flow.js');
-      captureMediaToHeading(S.state.doc.children[0], k); // waits on the file input, never awaited
-      await new Promise((resolve) => setTimeout(resolve, 400));
-    }, kind);
-    inputs.push(await page.evaluate(() => { const el = [...document.querySelectorAll('input[type=file]')].pop(); const out = el ? { accept: el.accept, capture: el.getAttribute('capture') } : null; if (el) el.remove(); return out; }));
-  }
-  expect(inputs[0] && inputs[0].accept === 'image/*' && inputs[0].capture === 'environment', `photo input: ${JSON.stringify(inputs[0])}`);
-  expect(inputs[1] && inputs[1].accept === 'video/*' && inputs[1].capture === 'environment', `video input: ${JSON.stringify(inputs[1])}`);
   // a file over 95MB on GitHub is refused outright; here (WebDAV) only the confirmation applies, and declining attaches nothing
   const declined = await page.evaluate(async () => {
     const { S } = await import('/src-browser/app-state.js');
@@ -3775,7 +3763,7 @@ check('attach dispatcher: opened from the keyboard it reads typed text the way a
   expect(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('aria-label') === 'Press a key'), 'the hidden field has the focus, so the phone keyboard types into it');
   await page.keyboard.insertText('o'); // what Gboard does: beforeinput/input insertText, no keydown with the letter
   await page.waitForFunction(() => document.getElementById('minibuffer').innerText.includes('No attachments on this heading yet'), null, { timeout: 5000 });
-  expect(!(await page.evaluate(() => document.body.innerText.includes('Preview in app'))), 'and the dispatcher closed after the key ran its button');
+  expect(!(await page.evaluate(() => document.body.innerText.includes('Attach open document'))), 'and the dispatcher closed after the key ran its button');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

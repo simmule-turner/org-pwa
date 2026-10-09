@@ -1,5 +1,5 @@
 // org-attach-reveal for this app: the heading's attachment folder as a list, the Dired of a browser. Each file has its own Open,
-// Preview, Save and Delete; the list is read again after each action. `load()` resolves the names (or null if it could not say),
+// Save and Delete; the list is read again after each action. `load()` resolves the names (or null if it could not say),
 // and `act(action, name)` runs one action and resolves when it is done.
 import { S } from './app-state.js';
 import { lockBackgroundScroll } from './dialogs.js';
@@ -58,7 +58,7 @@ export function showAttachmentFolder({ title, load, act }) {
       row.appendChild(label);
       const buttons = document.createElement('div');
       buttons.className = 'panel-row';
-      for (const [text, action] of [['Open', 'open'], ['Preview', 'preview'], ['Save', 'save'], ['Delete', 'delete']]) {
+      for (const [text, action] of [['Open', 'open'], ['Save', 'save'], ['Delete', 'delete']]) {
         buttons.appendChild(
           menuButton(text, async () => {
             await act(action, name);

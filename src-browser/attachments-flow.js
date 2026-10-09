@@ -1,6 +1,6 @@
 // Extracted from app.js: attachments flow.
 import { deleteProperty, getProperty, setProperty } from '../src/archive-model.js';
-import { addAttachTag, attachmentSizeCheck, attachmentDir, generateCaptureFilename, attachmentDirFromProperty, ownAttachmentDirectory, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
+import { addAttachTag, attachmentSizeCheck, attachmentDir, attachmentDirFromProperty, ownAttachmentDirectory, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
 import { parseBody } from '../src/body-parser.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { guessImageMimeType, guessViewableMimeType, resolveAttachmentDirectory, resolveAttachmentTarget } from '../src/link-resolve.js';
@@ -75,20 +75,6 @@ export async function attachFileToHeading(heading) {
   }
 
   await uploadAttachmentToHeading(heading, picked);
-}
-
-/** Photo and Video: opens the camera straight away (the browser's camera input; the Android app's camera app) and attaches what is
- *  taken, named `photo-<date>-<time>.jpg` or `video-<date>-<time>.mp4`. Where there is no camera the picker offers files of that
- *  kind instead. */
-export async function captureMediaToHeading(heading, kind) {
-  if (!(await requireAttachmentStorage())) return;
-  let picked;
-  try {
-    picked = await (platform.pickFile ? platform.pickFile(kind) : pickBinaryFile('environment', kind === 'video' ? 'video/*' : 'image/*'));
-  } catch {
-    return; // backed out
-  }
-  await uploadAttachmentToHeading(heading, { ...picked, name: generateCaptureFilename(kind, picked.name, picked.type) });
 }
 
 /** The file names in an attachment folder (sorted), or null if the backend could not say. A folder that does not exist yet is an
@@ -261,7 +247,14 @@ export async function openAttachmentLink(target, heading) {
   const attachment = await resolveAndReadAttachment(target, heading);
   if (!attachment) return;
   const { filename, resolvedPath, result } = attachment;
-  const viewableMimeType = viewableMimeFor(resolvedPath, base64ToArrayBuffer(result.base64));
+  const bytes = base64ToArrayBuffer(result.base64);
+  const viewableMimeType = viewableMimeFor(resolvedPath, bytes);
+  // a picture, recording, video or text file is shown inside the app (org-attach-open-in-emacs); anything else goes to the viewer
+  if (showAttachmentPreview(filename, viewableMimeType || guessImageMimeType(resolvedPath), bytes)) {
+    setStatus(`Opened "${filename}".`);
+    render();
+    return;
+  }
   if (!viewableMimeType) {
     saveOut(filename, base64ToArrayBuffer(result.base64), guessAnyAttachmentMimeType(resolvedPath));
     setStatus(`No viewer available for "${filename}" \u2014 downloaded instead.`);
@@ -351,25 +344,6 @@ export async function deleteAllAttachments(heading) {
   if (deleted === names.length) removeAttachTag(heading);
   setStatus(failure ? `Deleted ${deleted} of ${names.length}; then: ${failure.message}` : `Deleted ${deleted} attachment${deleted === 1 ? '' : 's'}.`);
   commitAndRender(`Deleted ${deleted} attachment${deleted === 1 ? '' : 's'}`);
-}
-
-/** org-attach-open-in-emacs: shows the attachment inside the app (a picture, recording, video or text); anything else is
- *  pointed to Open. */
-export async function previewAttachment(heading, filename) {
-  setStatus('Opening attachment\u2026');
-  render();
-  const attachment = await resolveAndReadAttachment(`attachment:${filename}`, heading);
-  if (!attachment) return;
-  const { resolvedPath, result } = attachment;
-  const bytes = base64ToArrayBuffer(result.base64);
-  const mime = viewableMimeFor(resolvedPath, bytes) || guessImageMimeType(resolvedPath);
-  if (!showAttachmentPreview(filename, mime, bytes)) {
-    setStatus(`"${filename}" can't be shown inside the app \u2014 use Open.`);
-    render();
-    return;
-  }
-  setStatus(`Showing "${filename}".`);
-  render();
 }
 
 /** The type a viewer should be told: guessViewableMimeType's answer, with a .webm settled by its content (audio or video). */
@@ -516,7 +490,7 @@ export async function unsetAttachmentDirectory(heading) {
   });
 }
 
-/** org-attach-reveal: the folder as a list, each file with Open, Preview, Save and Delete. */
+/** org-attach-reveal: the folder as a list, each file with Open, Save and Delete. */
 export async function revealAttachmentFolder(heading) {
   if (!attachmentsAvailable()) {
     setStatus(unavailable('show the attachment folder'));
@@ -579,26 +553,23 @@ export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
     label: `Attach \u2014 ${heading.title || '(untitled)'}`,
     showKeys: viaKeys,
     buttons: [
-      { key: 'a', text: '\ud83d\udcce Attach file', onClick: () => attachFileToHeading(heading) },
-      { key: 'p', text: '\ud83d\udcf7 Photo', onClick: () => captureMediaToHeading(heading, 'photo') },
-      { key: 'v', text: '\ud83c\udfa5 Video', onClick: () => captureMediaToHeading(heading, 'video') },
+      { key: 'a', text: '\ud83d\udcce Attach', onClick: () => attachFileToHeading(heading) },
       { key: 'r', text: '\ud83c\udfa4 Record audio', onClick: () => openAudioRecordingPanel(heading) },
       { key: 'b', text: '\ud83d\udcc4 Attach open document', onClick: () => attachOpenDocument(heading) },
       { key: 'n', text: '\ud83d\udcdd New text file', onClick: () => attachNewTextFile(heading) },
       { key: 'o', text: '\ud83d\udcc2 Open', onClick: () => startAttachmentPickFlow(heading, 'open') },
-      { key: 'O', text: '\ud83d\udc41\ufe0f Preview in app', onClick: () => startAttachmentPickFlow(heading, 'preview') },
       { key: 'f', text: '\ud83d\uddc2\ufe0f Folder', onClick: () => revealAttachmentFolder(heading) },
-      { key: 'e', text: '\ud83d\udcbe Export copy', onClick: () => startAttachmentPickFlow(heading, 'save') },
       { key: 'd', text: '\ud83d\uddd1\ufe0f Delete one', onClick: () => startAttachmentPickFlow(heading, 'delete') },
       { key: 'D', text: '\ud83d\uddd1\ufe0f Delete all', onClick: () => deleteAllAttachments(heading) },
       { key: 's', text: '\ud83d\udccd Set DIR', onClick: () => setAttachmentDirectory(heading) },
       { key: 'S', text: '\u274c Unset DIR', onClick: () => unsetAttachmentDirectory(heading) },
+      { key: 'e', text: '\ud83d\udcbe Export copy', onClick: () => startAttachmentPickFlow(heading, 'save') },
       { key: 'z', text: '\ud83d\udd04 Sync', onClick: () => syncAttachments(heading) },
     ],
   });
 }
 
-/** Shared entry point for Open, Preview, Save and Delete: reads `heading`'s attachment folder and either acts directly (exactly
+/** Shared entry point for Open, Export and Delete: reads `heading`'s attachment folder and either acts directly (exactly
  *  one file) or opens the file-list picker (several), as org-attach does ("if there is more than one, prompt for a file name
  *  first"). */
 export async function startAttachmentPickFlow(heading, action) {
@@ -633,7 +604,7 @@ export function renderAttachFileListPanel() {
   const label = document.createElement('div');
   label.style.fontSize = '13px';
   label.style.marginBottom = '8px';
-  label.textContent = `${action === 'delete' ? 'Delete' : action === 'save' ? 'Export' : action === 'preview' ? 'Preview' : 'Open'} which attachment?`;
+  label.textContent = `${action === 'delete' ? 'Delete' : action === 'save' ? 'Export' : 'Open'} which attachment?`;
   refilePanelBox.appendChild(label);
 
   const row = document.createElement('div');
@@ -667,8 +638,6 @@ export async function performAttachmentAction(heading, filename, action) {
   if (action === 'delete') {
     if (!(await confirmDialog(`Delete attachment "${filename}"? This removes the actual file, not just the link to it.`))) return;
     deleteAttachment(heading, filename);
-  } else if (action === 'preview') {
-    previewAttachment(heading, filename);
   } else if (action === 'save') {
     saveAttachmentLink(`attachment:${filename}`, heading);
   } else {

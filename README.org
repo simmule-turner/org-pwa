@@ -705,18 +705,16 @@ An entry the app can't understand is skipped and listed with the reason at the t
 
 Files kept with a heading, as in Org's ~org-attach~. Press ~C-c C-a~ on a heading, or tap *Attach* in 📋 Edit details, for a grid of buttons:
 
-- *Attach file* (~a~): pick a file, a photo or a recording; it is copied into the heading's folder.
-- *Photo* (~p~) and *Video* (~v~): open the camera at once and attach what you take, named ~photo-2026-10-08-221503.jpg~ or ~video-...mp4~. Where there is no camera, the file picker opens for that kind of file.
+- *Attach* (~a~): on a phone or tablet, opens the system chooser, where you pick a file or a photo, or take a photo or a video with the camera; the file is copied into the heading's folder.
 - *Record audio* (~r~): record from the microphone, play it back, then save.
 - *Attach open document* (~b~, ~org-attach-buffer~): save one of your open documents, as text, in the folder.
 - *New text file* (~n~, ~org-attach-new~): give a name and type its contents.
-- *Open* (~o~): view it in the browser's own viewer; a file with no viewer is downloaded.
-- *Preview in app* (~O~): show a picture, recording, video or text file inside the app.
-- *Folder* (~f~, ~org-attach-reveal~): the folder as a list, each file with Open, Preview, Save and Delete.
-- *Export copy* (~e~): download it.
+- *Open* (~o~): show a picture, recording, video or text file inside the app; anything else opens in the browser's viewer, or downloads when there is none.
+- *Folder* (~f~, ~org-attach-reveal~): the folder as a list, each file with Open, Export and Delete.
 - *Delete one* (~d~) and *Delete all* (~D~): remove files after a confirmation.
-- *Sync* (~z~, ~org-attach-sync~): set the ~:ATTACH:~ tag to match what is in the folder, for files added or removed by other means.
 - *Set DIR* (~s~) and *Unset DIR* (~S~): keep a heading's files in a folder of your choosing instead. Unset DIR asks whether to move the files to the ID folder, delete them, or leave them.
+- *Export copy* (~e~): download it.
+- *Sync* (~z~, ~org-attach-sync~): set the ~:ATTACH:~ tag to match what is in the folder, for files added or removed by other means.
 
 Each heading's files live in ~data/<first 2 characters of its ID>/<rest of the ID>/~ beside the document, and the heading gets an ~ID~ property and an ~:ATTACH:~ tag the first time. A ~DIR~ property names another folder, relative to the document (a leading ~/~ starts at the root of the storage); it wins over the ID. The attachments of a heading are what is in that folder, so a file added there by other means shows up too. With several files, Open, Preview, Save and Delete ask which one.
 
@@ -1776,7 +1774,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Refile* (see [[#refile][Refile]]): you can't create a new destination heading by typing a name that doesn't exist yet.
 
-*Attachments* (see [[#attachments][Attachments]]): follows ~org-attach~'s folder model (~ID~ or ~DIR~ folder, ~:ATTACH:~ tag, and the dispatcher's ~a~ ~p~ ~v~ ~r~ ~b~ ~n~ ~o~ ~O~ ~f~ ~d~ ~D~ ~z~ ~s~ ~S~). Not built: ~c~/~m~/~l~ and ~org-attach-dired~ bulk operations. It requires GitHub, WebDAV or, in the Android app, the org-pwa folder.
+*Attachments* (see [[#attachments][Attachments]]): follows ~org-attach~'s folder model (~ID~ or ~DIR~ folder, ~:ATTACH:~ tag, and the dispatcher's ~a~ ~r~ ~b~ ~n~ ~o~ ~f~ ~d~ ~D~ ~s~ ~S~ ~e~ ~z~). Not built: ~c~/~m~/~l~ and ~org-attach-dired~ bulk operations. It requires GitHub, WebDAV or, in the Android app, the org-pwa folder.
 
 *Conflict resolution* (see [[#offline-behavior-and-sync][Offline behavior and sync]]): a line-based three-way merge with a region-by-region resolver. It merges lines, not org structure, so a subtree moved on one side and edited on the other is an ordinary clash, and a region has no side-by-side or word-level diff.
 
