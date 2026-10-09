@@ -312,9 +312,9 @@ test('THE EXACT REQUEST: a valid formula and a failing one in the SAME #+TBLFM: 
   assert.equal(result[0].cells[1], '#ERROR', 'the failing one (out-of-range @99$1) is isolated to its own cell');
 });
 
-test('THE FIX: a range used as a plain value (not inside an aggregate function) is a runtime error, isolated to that one cell as "#ERROR" -- a range is a list, not a single number, but this no longer aborts the whole recalculation', () => {
+test('a range used as a plain value (not inside an aggregate function) is a vector of its cells, as in org', () => {
   const result = recalculateTable(mkTable('@1$1=@1$1..@2$1', [['1'], ['2']]));
-  assert.equal(result[0].cells[0], '#ERROR');
+  assert.equal(result[0].cells[0], '[1, 2]');
   assert.equal(result[1].cells[0], '2', 'the OTHER row\u2019s own cell, untouched by this formula, is unaffected');
 });
 
@@ -329,9 +329,9 @@ test('sqrt() computes a square root', () => {
   assert.equal(result[0].cells[1], '4');
 });
 
-test('sqrt() of a negative number produces #ERROR -- real Calc would return a complex number, which this app has no representation for at all', () => {
+test('sqrt() of a negative number is a complex number, as in Calc', () => {
   const result = recalculateTable(mkTable('@1$2=sqrt($1)', [['-4', '']]));
-  assert.equal(result[0].cells[1], '#ERROR');
+  assert.equal(result[0].cells[1], '(0, 2)');
 });
 
 test('floor()/ceil()/round()/trunc() with no second argument, matching real Calc\u2019s own documented single-argument behavior', () => {
@@ -1100,9 +1100,9 @@ test('arcsin/arccos/arctan under R return radians instead', () => {
   assert.ok(Math.abs(Number(result[0].cells[0]) - Math.PI / 4) < 1e-6);
 });
 
-test('arcsin/arccos outside their own [-1, 1] domain produce #ERROR, matching sqrt\u2019s own updated "no complex-number support" convention', () => {
-  assert.equal(recalculateTable(mkTable('$1 = arcsin(2)', [['']]))[0].cells[0], '#ERROR');
-  assert.equal(recalculateTable(mkTable('$1 = arccos(-2)', [['']]))[0].cells[0], '#ERROR');
+test('arcsin/arccos outside their own [-1, 1] domain are complex, as in Calc', () => {
+  assert.equal(recalculateTable(mkTable('$1 = arcsin(2)', [['']]))[0].cells[0], '(90., -75.456129)');
+  assert.equal(recalculateTable(mkTable('$1 = arccos(-2)', [['']]))[0].cells[0], '(180., -75.456129)');
 });
 
 test('arctan has no domain restriction -- works for any real input', () => {
@@ -1140,16 +1140,16 @@ test('log(x) with a single argument defaults to natural log', () => {
   assert.equal(withBase[0].cells[0], withoutBase[0].cells[0]);
 });
 
-test('ln/log10/log of a non-positive number produce #ERROR, matching the same updated "no complex-number support" convention', () => {
+test('ln/log10/log of zero is #ERROR; of a negative number they are complex, as in Calc', () => {
   assert.equal(recalculateTable(mkTable('$1 = ln(0)', [['']]))[0].cells[0], '#ERROR');
-  assert.equal(recalculateTable(mkTable('$1 = ln(-5)', [['']]))[0].cells[0], '#ERROR');
-  assert.equal(recalculateTable(mkTable('$1 = log10(-1)', [['']]))[0].cells[0], '#ERROR');
-  assert.equal(recalculateTable(mkTable('$1 = log(-5, 2)', [['']]))[0].cells[0], '#ERROR');
+  assert.equal(recalculateTable(mkTable('$1 = ln(-5)', [['']]))[0].cells[0], '(1.6094379, 3.1415927)');
+  assert.equal(recalculateTable(mkTable('$1 = log10(-1)', [['']]))[0].cells[0], '(0., 1.3643764)');
+  assert.equal(recalculateTable(mkTable('$1 = log(-5, 2)', [['']]))[0].cells[0], '(2.3219281, 4.5323601)');
 });
 
-test('log() with an invalid base (<=0 or exactly 1) produces #ERROR rather than Infinity/NaN', () => {
+test('log() with base 1 is #ERROR rather than Infinity/NaN; a negative base is complex, as in Calc', () => {
   assert.equal(recalculateTable(mkTable('$1 = log(10, 1)', [['']]))[0].cells[0], '#ERROR');
-  assert.equal(recalculateTable(mkTable('$1 = log(10, -2)', [['']]))[0].cells[0], '#ERROR');
+  assert.equal(recalculateTable(mkTable('$1 = log(10, -2)', [['']]))[0].cells[0], '(0.15420498, -0.69891249)');
 });
 
 // ---- THE FEATURE: uconv(value, "from", "to") -- unit conversion -----------
@@ -1220,9 +1220,9 @@ test('pN\u2019s own degree-to-radian conversion factor is double precision, a kn
   assert.equal(radiansResult, '0');
 });
 
-test('a domain violation (sqrt of a negative number) still throws under pN/F, matching the plain-number path exactly -- deliberately no complex-number support under any mode', () => {
-  assert.equal(recalculateTable(mkTable('$1=sqrt(-1);p20', [['']]))[0].cells[0], '#ERROR');
-  assert.equal(recalculateTable(mkTable('$1=sqrt(-1);F', [['']]))[0].cells[0], '#ERROR');
+test('sqrt of a negative number is complex under pN and F too', () => {
+  assert.equal(recalculateTable(mkTable('$1=sqrt(-1);p20', [['']]))[0].cells[0], '(0, 1)');
+  assert.equal(recalculateTable(mkTable('$1=sqrt(-1);F', [['']]))[0].cells[0], '(0, 1)');
 });
 
 test('round/floor/ceil/trunc with a digit count still work correctly under pN', () => {

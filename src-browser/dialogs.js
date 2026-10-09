@@ -562,7 +562,7 @@ export function openButtonChoiceModal({ label, buttons }) {
 
 /** A modal of buttons in a two-column grid, styled like the Capture template picker: a small dim heading, left-aligned buttons at
  *  least 44px tall, and a Close row. `buttons` is [{ key, text, onClick, disabled }]. A button with a `key` runs when that key is
- *  pressed (case matters: `o` and `O` are different buttons), and shows the key as a badge when `showKeys` is set. */
+ *  pressed (case matters: `o` and `O` are different buttons), and always shows the key as a badge. `showKeys` is for a phone keyboard: it focuses a hidden field so typed letters arrive. */
 export function openGridChoiceModal({ label, buttons, showKeys = false }) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;overflow:hidden;';
@@ -608,7 +608,7 @@ export function openGridChoiceModal({ label, buttons, showKeys = false }) {
   document.addEventListener('keydown', onKeyDown, true);
 
   // A phone's keyboard does not send keydown with the letter (it reports "Unidentified" and delivers the text as an input event), so
-  // when this was opened from the keyboard a hidden field takes the focus and reads the typed text from beforeinput/input.
+  // when this was opened from the keyboard (showKeys) a hidden field takes the focus and reads the typed text from beforeinput/input.
   let typing = null;
   if (showKeys) {
     typing = document.createElement('input');
@@ -651,7 +651,7 @@ export function openGridChoiceModal({ label, buttons, showKeys = false }) {
       el.disabled = true;
       el.style.opacity = '0.5';
     }
-    if (showKeys && button.key) {
+    if (button.key) {
       const badge = document.createElement('span');
       badge.textContent = button.key;
       badge.style.cssText = 'font-size:11px;font-family:monospace;border:1px solid var(--border-strong);border-radius:4px;padding:1px 5px;opacity:0.7;flex-shrink:0;';

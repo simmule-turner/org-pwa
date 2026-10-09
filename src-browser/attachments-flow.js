@@ -73,9 +73,9 @@ export async function attachFileToHeading(heading) {
     openButtonChoiceModal({
       label: `Attach to "${heading.title || '(untitled)'}"`,
       buttons: [
-        { text: '\ud83d\udcce Choose a file', onClick: () => pickAndUpload(heading) },
-        { text: '\ud83d\udcf7 Take a photo', onClick: () => openCameraPanel('photo', (picked) => uploadAttachmentToHeading(heading, picked)) },
-        { text: '\ud83c\udfa5 Record a video', onClick: () => openCameraPanel('video', (picked) => uploadAttachmentToHeading(heading, picked)) },
+        { text: 'Choose a file', onClick: () => pickAndUpload(heading) },
+        { text: 'Take a photo', onClick: () => openCameraPanel('photo', (picked) => uploadAttachmentToHeading(heading, picked)) },
+        { text: 'Record a video', onClick: () => openCameraPanel('video', (picked) => uploadAttachmentToHeading(heading, picked)) },
         { text: 'Cancel', onClick: () => {} },
       ],
     });
@@ -564,24 +564,24 @@ export async function attachNewTextFile(heading) {
 }
 
 /** org-attach's dispatcher (C-c C-a), as a grid of buttons laid out like the Capture template picker. The keys are org's own, and
- *  work when pressed; `viaKeys` shows them on the buttons, as Capture does when opened from the keyboard. */
+ *  work when pressed; each button shows its key as a badge, as Capture's does. `viaKeys` (opened from god-mode) also lets a phone keyboard's letters reach the menu. */
 export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
   openGridChoiceModal({
     label: `Attach \u2014 ${heading.title || '(untitled)'}`,
     showKeys: viaKeys,
     buttons: [
-      { key: 'a', text: '\ud83d\udcce Attach', onClick: () => attachFileToHeading(heading) },
-      { key: 'r', text: '\ud83c\udfa4 Record audio', onClick: () => openAudioRecordingPanel(heading) },
-      { key: 'b', text: '\ud83d\udcc4 Attach open document', onClick: () => attachOpenDocument(heading) },
-      { key: 'n', text: '\ud83d\udcdd New text file', onClick: () => attachNewTextFile(heading) },
-      { key: 'o', text: '\ud83d\udcc2 Open', onClick: () => startAttachmentPickFlow(heading, 'open') },
-      { key: 'f', text: '\ud83d\uddc2\ufe0f Folder', onClick: () => revealAttachmentFolder(heading) },
-      { key: 'd', text: '\ud83d\uddd1\ufe0f Delete one', onClick: () => startAttachmentPickFlow(heading, 'delete') },
-      { key: 'D', text: '\ud83d\uddd1\ufe0f Delete all', onClick: () => deleteAllAttachments(heading) },
-      { key: 's', text: '\ud83d\udccd Set DIR', onClick: () => setAttachmentDirectory(heading) },
-      { key: 'S', text: '\u274c Unset DIR', onClick: () => unsetAttachmentDirectory(heading) },
-      { key: 'e', text: '\ud83d\udcbe Export copy', onClick: () => startAttachmentPickFlow(heading, 'save') },
-      { key: 'z', text: '\ud83d\udd04 Sync', onClick: () => syncAttachments(heading) },
+      { key: 'a', text: 'Attach', onClick: () => attachFileToHeading(heading) },
+      { key: 'r', text: 'Record audio', onClick: () => openAudioRecordingPanel(heading) },
+      { key: 'b', text: 'Attach open document', onClick: () => attachOpenDocument(heading) },
+      { key: 'n', text: 'New text file', onClick: () => attachNewTextFile(heading) },
+      { key: 'o', text: 'Open', onClick: () => startAttachmentPickFlow(heading, 'open') },
+      { key: 'f', text: 'Folder', onClick: () => revealAttachmentFolder(heading) },
+      { key: 'd', text: 'Delete one', onClick: () => startAttachmentPickFlow(heading, 'delete') },
+      { key: 'D', text: 'Delete all', onClick: () => deleteAllAttachments(heading) },
+      { key: 's', text: 'Set DIR', onClick: () => setAttachmentDirectory(heading) },
+      { key: 'S', text: 'Unset DIR', onClick: () => unsetAttachmentDirectory(heading) },
+      { key: 'e', text: 'Export copy', onClick: () => startAttachmentPickFlow(heading, 'save') },
+      { key: 'z', text: 'Sync', onClick: () => syncAttachments(heading) },
     ],
   });
 }

@@ -71,12 +71,12 @@ export function renderAudioRecordingPanel() {
     const row = document.createElement('div');
     row.className = 'panel-row';
     row.appendChild(
-      menuButton('\ud83d\udcbe Save', () => {
+      menuButton('Save', () => {
         saveAudioRecording(heading);
       })
     );
     row.appendChild(
-      menuButton('\ud83d\udd04 Re-record', () => {
+      menuButton('Re-record', () => {
         openAudioRecordingPanel(heading);
         startAudioRecording();
       })
@@ -101,13 +101,13 @@ export function renderAudioRecordingPanel() {
     timer.style.fontWeight = '700';
     timer.style.textAlign = 'center';
     timer.style.margin = '12px 0';
-    timer.textContent = `\ud83d\udd34 ${mm}:${ss}`;
+    timer.textContent = `${mm}:${ss}`;
     refilePanelBox.appendChild(timer);
 
     const row = document.createElement('div');
     row.className = 'panel-row';
     row.appendChild(
-      menuButton('\u23f9 Stop', () => {
+      menuButton('Stop', () => {
         stopAudioRecording();
       })
     );
@@ -124,7 +124,7 @@ export function renderAudioRecordingPanel() {
   const row = document.createElement('div');
   row.className = 'panel-row';
   row.appendChild(
-    menuButton('\u23fa Record', () => {
+    menuButton('Record', () => {
       startAudioRecording();
     })
   );

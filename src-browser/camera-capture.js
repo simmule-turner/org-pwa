@@ -176,14 +176,14 @@ export async function openCameraPanel(kind, onAttach) {
     row.replaceChildren();
     readout.textContent = '';
     if (phase === 'live') {
-      row.appendChild(menuButton(kind === 'video' ? '⏺ Record' : '📷 Take photo', kind === 'video' ? startRecording : takePhoto));
+      row.appendChild(menuButton(kind === 'video' ? 'Record' : 'Take photo', kind === 'video' ? startRecording : takePhoto));
     } else if (phase === 'recording') {
       const seconds = Math.floor((Date.now() - startedAt) / 1000);
-      readout.textContent = `🔴 ${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
-      row.appendChild(menuButton('⏹ Stop', () => recorder.stop()));
+      readout.textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+      row.appendChild(menuButton('Stop', () => recorder.stop()));
     } else {
-      row.appendChild(menuButton('📎 Attach', attach));
-      row.appendChild(menuButton('🔄 Retake', retake));
+      row.appendChild(menuButton('Attach', attach));
+      row.appendChild(menuButton('Retake', retake));
     }
     row.appendChild(menuButton('Cancel', close));
   }

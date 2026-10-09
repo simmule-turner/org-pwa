@@ -7,6 +7,15 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v461 — Complex numbers, vectors and matrices in table formulas
+Table formulas now take complex numbers (~(1, 2)~, ~(r; θ)~, ~i~), vectors and matrices, matching Emacs Calc's results and number display, including ~pN~ precision. ~sqrt(-4)~ is ~(0, 2)~ instead of an error, and a cell range used as a value is a vector. ~i~ is the number (0, 1), unlike Calc's symbol. Verified against real Emacs.
+
+* v460 — Attach keys always shown
+The attach menu shows its key badges however it is opened, as Capture's picker does, instead of only from god-mode. Tapping it no longer differs in look.
+
+* v459 — Attachment menus match Capture
+The attach menu, the Chromebook photo/video choice and the audio and camera panels no longer use emoji; the menu is key badges and plain labels, like Capture's template picker.
+
 * v458 — Attach takes photos and video on a Chromebook
 On ChromeOS and desktop, where Chrome's file chooser has no camera, Attach now asks Choose a file, Take a photo or Record a video; the last two use an in-app webcam panel with retake before attaching.
 

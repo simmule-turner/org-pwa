@@ -3762,6 +3762,24 @@ check('attach on a desktop or Chromebook: Attach offers a file, a photo or a vid
   await context.close();
 });
 
+check('attach menu opened by tapping shows the same key badges as from god-mode, without raising a phone keyboard', async () => {
+  dav.reset({ 'notes.org': '* Report\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const r = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { openAttachChoicePrompt } = await import('/src-browser/attachments-flow.js');
+    openAttachChoicePrompt(S.state.doc.children[0]);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const keys = [...document.querySelectorAll('span')].filter((el) => el.style.fontFamily === 'monospace').map((el) => el.textContent).join('');
+    return { keys, typing: !!document.querySelector('input[aria-label="Press a key"]') };
+  });
+  expect(r.keys === 'arbnofdDsSez'.split('').sort().join('') || [...'arbnofdDsSez'].every((k) => r.keys.includes(k)), `badges: ${r.keys}`);
+  expect(!r.typing, 'no hidden typing field when tapped');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('attach size guard: a large video asks before it is attached, and declining attaches nothing', async () => {
   dav.reset({ 'notes.org': '* Report\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });

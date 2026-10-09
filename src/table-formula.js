@@ -71,6 +71,14 @@ import {
   sinDependencies, cosDependencies, tanDependencies, asinDependencies, acosDependencies, atanDependencies,
   roundDependencies, floorDependencies, ceilDependencies, fixDependencies,
 } from './vendor/mathjs/mathjs-custom.min.js';
+import {
+  isComplex, isReal, bigDomain, fractionDomain, toReal, realToEngine, makeRect, parseComplexCell,
+  cNeg, cConj, cAdd, cSub, cMul, cDiv, cPow, cAbs, cArg, cRe, cIm, cToPolar, cToRect, cSqrt, cExp, cLn, cLog10, cLog,
+  cSin, cCos, cTan, cAsin, cAcos, cAtan, cEquals, cAggregate,
+} from './calc-complex.js';
+import {
+  isVector, makeVector, parseVectorCell, flattenVector, vNeg, vBinop, vEquals, vDet, vInv, vTrn, vTrace, vCross, vLength, vAbs, formatCalcValue,
+} from './calc-vector.js';
 
 // The full dependency set every instance below is built from, every
 // time, rather than a different narrower subset per instance purpose
@@ -317,7 +325,7 @@ function computeHlinePositions(workingRows) {
 // ---- expression tokenizing/parsing ------------------------------------
 
 const TOKEN_RE =
-  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:[<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+\.?\d*|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()+\-*/^,<>=!])\s*/y;
+  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:[<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+\.?\d*|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()\[\]+\-*/^,<>=!])\s*/y;
 
 /** date-to-time and format-time-string are real Emacs function names
  *  with literal hyphens in them -- TOKEN_RE's own generic identifier
@@ -383,6 +391,7 @@ const AGGREGATE_FUNCTIONS = {
   vsum: (vals) => vals.reduce((a, b) => a + b, 0),
   vmean: (vals) => (vals.length === 0 ? 0 : vals.reduce((a, b) => a + b, 0) / vals.length),
   vcount: (vals) => vals.length,
+  vprod: (vals) => vals.reduce((a, b) => a * b, 1),
   vmin: (vals) => (vals.length === 0 ? 0 : Math.min(...vals)),
   vmax: (vals) => (vals.length === 0 ? 0 : Math.max(...vals)),
   vmedian: (vals) => {
@@ -446,6 +455,21 @@ const SCALAR_FUNCTIONS = {
   round: (x, digits) => roundToDigits(x, digits, roundHalfAwayFromZero),
   trunc: (x, digits) => roundToDigits(x, digits, Math.trunc),
   deg: (x) => (isTaggedValue(x) ? x.days : x),
+  // Complex-aware names (see calc-complex.js); with a real argument these are Calc's plain real answers.
+  abs: (x) => Math.abs(x),
+  // matrix and vector functions (calc-vector.js); they need a vector or matrix, which vectorScalarCall handles
+  det: () => { throw new Error('det needs a square matrix'); },
+  inv: () => { throw new Error('inv needs a square matrix'); },
+  trn: () => { throw new Error('trn needs a matrix'); },
+  tr: () => { throw new Error('tr needs a square matrix'); },
+  cross: () => { throw new Error('cross needs two 3-element vectors'); },
+  vlen: () => { throw new Error('vlen needs a vector'); },
+  re: (x) => x,
+  im: () => 0,
+  conj: (x) => x,
+  arg: (x, isDegrees) => (x < 0 ? (isDegrees ? 180 : Math.PI) : 0),
+  polar: (x) => x,
+  rect: (x) => x,
   and: (a, b) => (isTruthyValue(a) && isTruthyValue(b) ? 1 : 0),
   or: (a, b) => (isTruthyValue(a) || isTruthyValue(b) ? 1 : 0),
   not: (a) => (isTruthyValue(a) ? 0 : 1),
@@ -793,8 +817,27 @@ function parseExpression(tokens) {
     if (tok === '(') {
       next();
       const node = parseExpr();
+      if (peek() === ',') {
+        next();
+        const imaginary = parseExpr();
+        expect(')');
+        return { type: 'complexLiteral', re: node, im: imaginary };
+      }
       expect(')');
       return node;
+    }
+    if (tok === '[') {
+      next();
+      const items = [];
+      if (peek() !== ']') {
+        items.push(parseExpr());
+        while (peek() === ',') {
+          next();
+          items.push(parseExpr());
+        }
+      }
+      expect(']');
+      return { type: 'vectorLiteral', items };
     }
     if (tok.startsWith('"')) {
       next();
@@ -807,6 +850,7 @@ function parseExpression(tokens) {
     if (/^[A-Za-z_]/.test(tok)) {
       const name = next().toLowerCase();
       if (name === 'pi') return { type: 'number', value: Math.PI };
+      if (name === 'i') return { type: 'complexLiteral', re: { type: 'number', value: 0 }, im: { type: 'number', value: 1 } };
       if (name === 'inf') return { type: 'number', value: Infinity };
       if (name === 'date' || name === 'now' || name === 'date-to-time') {
         expect('(');
@@ -988,6 +1032,14 @@ function readCellValue(dataRows, row, col, ctx) {
   }
   const tagged = parseCellTimestamp(text);
   if (tagged) return tagged;
+  if (!ctx.forceNumeric && text.trimStart().startsWith('[')) {
+    const vector = parseVectorCell(text, ctx.complexDomain, ctx.angleMode === 'degrees');
+    if (vector) return vector;
+  }
+  if (!ctx.forceNumeric && text.trimStart().startsWith('(')) {
+    const complex = parseComplexCell(text, ctx.complexDomain, ctx.angleMode === 'degrees');
+    if (complex) return complexResult(complex, ctx);
+  }
   return readCellNumber(dataRows, row, col, ctx.emptyMode, ctx.forceNumeric);
 }
 
@@ -1021,7 +1073,7 @@ function isMathjsValue(v) {
 /** True if `v` is a date/hms-tagged value (see this module's own
  *  top-level date-arithmetic docs) rather than a plain number. */
 function isTaggedValue(v) {
-  return v !== null && typeof v === 'object' && !isMathjsValue(v);
+  return v !== null && typeof v === 'object' && !isMathjsValue(v) && v.isComplex !== true && v.isVector !== true;
 }
 
 /** Calc's own boolean convention -- a non-zero number is true, zero
@@ -1030,6 +1082,7 @@ function isTaggedValue(v) {
  *  true, empty is false; a date/hms-tagged value is true unless its
  *  own underlying day count is exactly zero. */
 function isTruthyValue(v) {
+  if (isComplex(v) || isVector(v)) return true; // a complex value that survived normalising always has a non-zero part
   if (typeof v === 'string') return v !== '';
   if (isTaggedValue(v)) return v.days !== 0;
   if (isMathjsValue(v)) return (v.isFraction ? v.valueOf() : v.toNumber()) !== 0;
@@ -1048,6 +1101,18 @@ function isTruthyValue(v) {
 const COMPARISON_OPS = new Set(['==', '!=', '<', '>', '<=', '>=']);
 
 function compareValues(l, r, op, ctx) {
+  if (isVector(l) || isVector(r)) {
+    if (op !== '==' && op !== '!=') throw new Error('Vectors cannot be ordered');
+    const D = ctx.complexDomain;
+    const same = vEquals(vectorOperand(l, D), vectorOperand(r, D), D, ctx.angleMode === 'degrees');
+    return (op === '==') === same ? 1 : 0;
+  }
+  if (isComplex(l) || isComplex(r)) {
+    if (op !== '==' && op !== '!=') throw new Error('Complex numbers cannot be ordered');
+    const D = ctx.complexDomain;
+    const same = cEquals(complexOperand(l, D), complexOperand(r, D), D, ctx.angleMode === 'degrees');
+    return (op === '==') === same ? 1 : 0;
+  }
   if (isMathjsValue(l) || isMathjsValue(r)) {
     const m = ctx.numericMode.instance;
     let result;
@@ -1185,14 +1250,146 @@ function evaluateMathjsScalarCall(name, argValues, ctx) {
   }
 }
 
+// ---- complex support (see calc-complex.js) -----------------------------------------------------------------------
+
+function complexOperand(v, D) {
+  if (isComplex(v)) return v;
+  if (typeof v === 'string' || isTaggedValue(v)) throw new Error('A complex operation needs numbers');
+  return toReal(v, D);
+}
+
+/** A complex module result as the engine's own value: a real becomes a number (or the pN / F value), a complex stays. */
+function complexResult(result, ctx) {
+  return isReal(result) ? realToEngine(result, ctx.complexDomain, ctx.numericMode) : result;
+}
+
+function realNumberOf(v) {
+  if (typeof v === 'number') return v;
+  if (isMathjsValue(v)) return v.isFraction ? v.valueOf() : v.toNumber();
+  return null;
+}
+
+function complexBinop(op, l, r, ctx) {
+  const D = ctx.complexDomain;
+  const degrees = ctx.angleMode === 'degrees';
+  const a = complexOperand(l, D);
+  const b = complexOperand(r, D);
+  if (op === '+') return complexResult(cAdd(a, b, D, degrees), ctx);
+  if (op === '-') return complexResult(cSub(a, b, D, degrees), ctx);
+  if (op === '*') return complexResult(cMul(a, b, D, degrees), ctx);
+  if (op === '/') return complexResult(cDiv(a, b, D, degrees), ctx);
+  if (op === '^') return complexResult(cPow(a, b, D, degrees), ctx);
+  throw new Error(`Unknown operator "${op}"`);
+}
+
+function vectorOperand(v, D) {
+  if (isVector(v) || isComplex(v)) return v;
+  if (typeof v === 'string' || isTaggedValue(v)) throw new Error('A vector operation needs numbers');
+  return toReal(v, D);
+}
+
+/** A vector operation's result: a vector stays, a Real becomes the engine's number, a Complex stays. */
+function vectorResult(result, ctx) {
+  return isVector(result) ? result : complexResult(result, ctx);
+}
+
+function vectorBinop(op, l, r, ctx) {
+  const D = ctx.complexDomain;
+  return vectorResult(vBinop(op, vectorOperand(l, D), vectorOperand(r, D), D, ctx.angleMode === 'degrees'), ctx);
+}
+
+const VECTOR_FUNCTIONS = new Set(['det', 'inv', 'trn', 'tr', 'cross', 'vlen']);
+
+/** det/inv/trn/tr/cross/vlen, and abs of a vector. Returns undefined for anything else. */
+function vectorScalarCall(name, argValues, ctx) {
+  const anyVector = argValues.some(isVector);
+  if (!VECTOR_FUNCTIONS.has(name) && !anyVector) return undefined;
+  const D = ctx.complexDomain;
+  const degrees = ctx.angleMode === 'degrees';
+  const a = argValues[0];
+  switch (name) {
+    case 'det': return vectorResult(vDet(a, D, degrees), ctx);
+    case 'inv': return vectorResult(vInv(a, D, degrees), ctx);
+    case 'trn': return vectorResult(vTrn(a), ctx);
+    case 'tr': return vectorResult(vTrace(a, D, degrees), ctx);
+    case 'cross': return vectorResult(vCross(a, argValues[1], D, degrees), ctx);
+    case 'vlen': return vLength(a);
+    case 'abs': return vectorResult(vAbs(a, D, degrees), ctx);
+    default: throw new Error(`${name} does not take a vector`);
+  }
+}
+
+/** Expands vectors in a list of engine values into their elements, as engine values. */
+function flattenForAggregate(values, ctx) {
+  return values.flatMap((v) => (isVector(v) ? flattenVector(v).map((x) => complexResult(x, ctx)) : [v]));
+}
+
+const COMPLEX_ALWAYS = new Set(['re', 'im', 'conj', 'arg', 'polar', 'rect']);
+
+/** A scalar function call that needs the complex route: a complex argument, or a real one outside the real function's
+ *  domain (sqrt of a negative, ln of a negative, arcsin of 2). Returns undefined when the ordinary real code applies. */
+function complexScalarCall(name, argValues, ctx) {
+  const first = argValues[0];
+  const complexArg = isComplex(first);
+  let needed = complexArg || COMPLEX_ALWAYS.has(name);
+  if (!needed) {
+    const x = realNumberOf(first);
+    if (x === null) return undefined;
+    if (name === 'sqrt' && x < 0) needed = true;
+    else if ((name === 'ln' || name === 'log10') && x < 0) needed = true;
+    else if (name === 'log' && (x < 0 || (argValues[1] !== undefined && realNumberOf(argValues[1]) < 0))) needed = true;
+    else if ((name === 'arcsin' || name === 'arccos') && (x < -1 || x > 1)) needed = true;
+  }
+  if (!needed) return undefined;
+  const D = ctx.complexDomain;
+  const degrees = ctx.angleMode === 'degrees';
+  const z = complexOperand(first, D);
+  let result;
+  switch (name) {
+    case 'abs': result = cAbs(z, D, degrees); break;
+    case 're': result = cRe(z, D, degrees); break;
+    case 'im': result = cIm(z, D, degrees); break;
+    case 'conj': result = cConj(z, D, degrees); break;
+    case 'arg': result = cArg(z, D, degrees); break;
+    case 'polar': result = cToPolar(z, D, degrees); break;
+    case 'rect': result = cToRect(z, D, degrees); break;
+    case 'sqrt': result = cSqrt(z, D, degrees); break;
+    case 'exp': result = cExp(z, D, degrees); break;
+    case 'ln': result = cLn(z, D, degrees); break;
+    case 'log10': result = cLog10(z, D, degrees); break;
+    case 'log': result = argValues[1] === undefined ? cLn(z, D, degrees) : cLog(z, complexOperand(argValues[1], D), D, degrees); break;
+    case 'sin': result = cSin(z, D, degrees); break;
+    case 'cos': result = cCos(z, D, degrees); break;
+    case 'tan': result = cTan(z, D, degrees); break;
+    case 'arcsin': result = cAsin(z, D, degrees); break;
+    case 'arccos': result = cAcos(z, D, degrees); break;
+    case 'arctan': result = cAtan(z, D, degrees); break;
+    default: throw new Error(`${name} does not take a complex number`);
+  }
+  return complexResult(result, ctx);
+}
+
 function evaluateAst(node, ctx) {
   switch (node.type) {
     case 'number':
       return wrapNumericLiteral(node.value, ctx);
     case 'string':
       return node.value;
+    case 'vectorLiteral': {
+      const D = ctx.complexDomain;
+      return makeVector(node.items.map((item) => vectorOperand(evaluateAst(item, ctx), D)));
+    }
+    case 'complexLiteral': {
+      const D = ctx.complexDomain;
+      const re = evaluateAst(node.re, ctx);
+      const im = evaluateAst(node.im, ctx);
+      if (isComplex(re) || isComplex(im) || typeof re === 'string' || typeof im === 'string') throw new Error('A complex number\u2019s parts must be real numbers');
+      return complexResult(makeRect(toReal(re, D), toReal(im, D), D, ctx.angleMode === 'degrees'), ctx);
+    }
     case 'neg': {
       const operand = evaluateAst(node.operand, ctx);
+      if (isVector(operand)) return vNeg(operand, ctx.complexDomain, ctx.angleMode === 'degrees');
+      if (isComplex(operand)) return complexResult(cNeg(operand, ctx.complexDomain, ctx.angleMode === 'degrees'), ctx);
       return isMathjsValue(operand) ? ctx.numericMode.instance.unaryMinus(operand) : -operand;
     }
     case 'not':
@@ -1211,6 +1408,13 @@ function evaluateAst(node, ctx) {
       const l = evaluateAst(node.left, ctx);
       const r = evaluateAst(node.right, ctx);
       if (COMPARISON_OPS.has(node.op)) return compareValues(l, r, node.op, ctx);
+      if (isVector(l) || isVector(r)) return vectorBinop(node.op, l, r, ctx);
+      if (isComplex(l) || isComplex(r)) return complexBinop(node.op, l, r, ctx);
+      if (node.op === '^') {
+        const base = realNumberOf(l);
+        const exponent = realNumberOf(r);
+        if (base !== null && exponent !== null && base < 0 && !Number.isInteger(exponent)) return complexBinop('^', l, r, ctx);
+      }
       if ((node.op === '+' || node.op === '-') && (isTaggedValue(l) || isTaggedValue(r))) {
         return evaluateDateArithmetic(l, r, node.op);
       }
@@ -1248,16 +1452,24 @@ function evaluateAst(node, ctx) {
       return value;
     }
     case 'range': {
-      throw new Error('A range can only be used as an aggregate function\u2019s own argument, not as a plain value');
+      // a range is a flat vector of its non-blank cells, in reading order, as in org
+      const D = ctx.complexDomain;
+      return makeVector(collectRangeValues(node, ctx).map((v) => vectorOperand(v, D)));
     }
     case 'call': {
       const fn = AGGREGATE_FUNCTIONS[node.name];
-      const values = collectRangeValues(node.arg, ctx);
+      let values = collectRangeValues(node.arg, ctx);
+      if (values.some(isVector)) values = flattenForAggregate(values, ctx);
+      if (values.some(isComplex)) return complexResult(cAggregate(node.name, values, ctx.complexDomain, ctx.angleMode === 'degrees'), ctx);
       return fn(values);
     }
     case 'scalarCall': {
       const fn = SCALAR_FUNCTIONS[node.name];
       const argValues = node.args.map((a) => evaluateAst(a, ctx));
+      const vectorOutcome = vectorScalarCall(node.name, argValues, ctx);
+      if (vectorOutcome !== undefined) return vectorOutcome;
+      const complexOutcome = complexScalarCall(node.name, argValues, ctx);
+      if (complexOutcome !== undefined) return complexOutcome;
       if (ctx.numericMode && isMathjsValue(argValues[0]) && MATHJS_SCALAR_FUNCTION_NAMES.has(node.name)) {
         return evaluateMathjsScalarCall(node.name, argValues, ctx);
       }
@@ -1885,8 +2097,9 @@ function formatAsFraction(n, mixedNumber) {
  *  fixed/etc notation; otherwise an explicit format spec (fixed/
  *  integer/normal/scientific/engineering); otherwise formatResult's
  *  own default. */
-function formatFinalValue(value, mode, hourZeroPad) {
+function formatFinalValue(value, mode, hourZeroPad, complexDomain) {
   if (typeof value === 'string') return value;
+  if (isComplex(value) || isVector(value)) return formatCalcValue(value, complexDomain, { spec: mode.format, applySpec: applyFormatSpec });
   if (isTaggedValue(value)) return value.type === 'date' ? formatDateValue(value) : formatHmsValue(value);
   if (isMathjsValue(value) && value.isBigNumber) {
     if (!mode.duration && !mode.format) return value.toString(); // the common case -- full, exact configured precision, no other format spec to combine with
@@ -1968,7 +2181,9 @@ export function recalculateTable(table, options = {}) {
       : mode.precision !== null
       ? { kind: 'bignumber', instance: mathjsForPrecision(mode.precision) }
       : null;
-    const evalCtx = { dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode, constants: options.constants || {}, numericMode };
+    const digits = mode.precision !== null ? mode.precision : 12;
+    const complexDomain = mode.fraction ? fractionDomain(mathjsDefault, bigDomain(mathjsForPrecision(12), 12, mathjsForPrecision(18))) : bigDomain(mathjsForPrecision(digits), digits, mathjsForPrecision(digits + 6));
+    const evalCtx = { complexDomain, dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode, constants: options.constants || {}, numericMode };
     // Evaluates the expression for one specific (row, col) and writes
     // either its formatted result or, if evaluation itself throws,
     // the literal text "#ERROR" into that cell -- confirmed directly
@@ -1981,7 +2196,7 @@ export function recalculateTable(table, options = {}) {
     function evalCell(row, col) {
       try {
         const value = evaluateAst(expr, { ...evalCtx, currentRow: row, currentCol: col });
-        dataRows[row - 1].cells[col - 1] = formatFinalValue(value, mode, hourZeroPad);
+        dataRows[row - 1].cells[col - 1] = formatFinalValue(value, mode, hourZeroPad, complexDomain);
       } catch {
         dataRows[row - 1].cells[col - 1] = '#ERROR';
       }

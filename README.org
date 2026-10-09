@@ -163,11 +163,11 @@ Every delete asks for confirmation, and Undo/redo covers every edit (see [[#undo
 |---+---|
 | ~+ - * /~ | Arithmetic. Division by zero gives ~#ERROR~ |
 | ~^~ | Exponent, right-associative (~2^3^2~ is 512) |
-| ~sqrt(x)~ | Square root; a negative input gives ~#ERROR~ (no complex numbers) |
+| ~sqrt(x)~ | Square root; a negative input gives a complex number, ~sqrt(-4)~ is ~(0, 2)~ |
 | ~floor(x)~, ~ceil(x)~, ~round(x)~, ~trunc(x)~ | Round toward −∞, toward +∞, to nearest (an exact .5 goes away from zero), toward zero. An optional second argument keeps that many decimals: ~round($1, 2)~ |
 | ~sin(x)~, ~cos(x)~, ~tan(x)~ | Degrees by default (see the ~D~ and ~R~ flags) |
-| ~arcsin(x)~, ~arccos(x)~, ~arctan(x)~ | Inverse trig, under Calc's names (not ~asin~); out-of-domain input gives ~#ERROR~ |
-| ~ln(x)~, ~log10(x)~, ~log(x, base)~ | Logarithms; ~log(x)~ is natural. A non-positive ~x~, or a ~base~ of 0 or below or exactly 1, gives ~#ERROR~ |
+| ~arcsin(x)~, ~arccos(x)~, ~arctan(x)~ | Inverse trig, under Calc's names (not ~asin~); outside −1 to 1 the result is complex |
+| ~ln(x)~, ~log10(x)~, ~log(x, base)~ | Logarithms; ~log(x)~ is natural. ~x~ of 0, or a ~base~ of exactly 1, gives ~#ERROR~; a negative number gives a complex result |
 | ~exp(x)~, ~exp10(x)~ | e^x and 10^x |
 | ~pi~, ~inf~ | Constants, written bare; ~-inf~ works |
 | ~$name~ | A constant from a ~#+CONSTANTS:~ line |
@@ -249,7 +249,16 @@ An unrecognized flag is ignored. Examples:
 
 *Unit conversion*: ~uconv(value, "from", "to")~, such as ~uconv($1, "mi/hr", "m/s")~, uses the mathjs unit library (see Development). It handles compound units (~kg/m^3~) and converts temperature as an absolute reading (~0 degC~ is ~32 degF~, like Calc's ~u t~ command rather than the relative change of ~u c~). Unlike Calc's two-argument form, the source unit is explicit. An incompatible pair (~m~ to ~kg~) or an unknown unit gives ~#ERROR~. Common units: length (~m~, ~ft~, ~km~, ~mi~, ~in~, ~cm~), mass (~kg~, ~lb~, ~g~, ~oz~), temperature (~degC~, ~degF~, ~K~), volume (~L~, ~gal~, ~mL~), time (~s~, ~min~, ~hr~, ~day~), speed (~mi/hr~, ~m/s~), data (~MB~, ~GB~), pressure (~bar~, ~psi~, ~atm~), energy (~J~, ~kWh~) and area (~m^2~, ~acre~). Names mostly match Calc's; ~tsp~ and ~tbsp~ are aliases for mathjs's ~teaspoon~ and ~tablespoon~. The full list is at https://mathjs.org/docs/datatypes/units.html.
 
-Out of scope: Emacs Calc beyond the above (complex numbers, matrices, symbolic algebra), named-field references, and recalculation on every keystroke.
+*Complex numbers*: ~(re, im)~ or ~(r; θ)~ in a cell or formula, and ~i~ for (0, 1). ~+ - * / ^~, ~sqrt~, ~exp~, ~ln~, ~log10~, the trig functions and ~vsum~, ~vmean~, ~vprod~ accept them, along with ~re~, ~im~, ~conj~, ~abs~, ~arg~, ~polar~ and ~rect~. Whole numbers stay exact and other parts show as floats (~2.~), a zero imaginary part drops to a plain number, and ~pN~ sets the working digits. Unlike Calc, ~i~ is the number, so ~2+3*i~ is ~(2, 3)~, not ~3 i + 2~.
+
+#+begin_example
+| (1, 2) | (3, 4) | (-5, 10) |
+#+TBLFM: $3=$1*$2
+#+end_example
+
+*Vectors and matrices*: ~[1, 2, 3]~ and ~[[1, 2], [3, 4]]~ in a cell or formula; a cell range such as ~$1..$3~ is a vector of its non-blank cells. ~+ -~ and ~* /~ by a number work elementwise; ~*~ is a dot product for two vectors, a matrix product for matrices, and ~^~ takes a matrix to an integer power. Functions: ~det~, ~inv~, ~trn~, ~tr~, ~cross~, ~vlen~, ~abs~ (the length), and the ~v~ aggregates, which flatten.
+
+Out of scope: Emacs Calc beyond the above (symbolic algebra, the rest of Calc's vector and matrix library), named-field references, and recalculation on every keystroke.
 
 *** Plots
 :PROPERTIES:
@@ -1754,7 +1763,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Inheritance* (see [[#local-variables][Local Variables]]): a simple boolean for each kind, not org's list-of-tags or regexp values. It applies at search time only, and inherited tags aren't shown on a heading.
 
-*Tables* (see [[#table-formulas][Table formulas]]): ~#+TBLFM:~ covers arithmetic, conditionals, named constants, scalar and aggregate functions, date and time arithmetic and formatting, and unit conversion. Not reproduced: the rest of Emacs Calc (complex numbers, matrices, symbolic algebra), named-field references, and recalculation on every keystroke.
+*Tables* (see [[#table-formulas][Table formulas]]): ~#+TBLFM:~ covers arithmetic, conditionals, named constants, scalar and aggregate functions, date and time arithmetic and formatting, and unit conversion. Complex numbers and basic vectors and matrices are covered; not reproduced: the rest of Emacs Calc (symbolic algebra), named-field references, and recalculation on every keystroke.
 
 *Footnotes*: no ~org-footnote-new~ or ~org-footnote-normalize~ (no insert at point, renumbering, sorting or inline/separate-line conversion; edit the raw text), and no ~org-ref~ or ~org-cite~ integration.
 
