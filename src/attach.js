@@ -17,6 +17,7 @@
  * network I/O -- this module is pure path/link-text computation only.
  */
 
+import { getProperty } from './archive-model.js';
 import { IMAGE_EXT_RE } from './inline-markup.js';
 
 /** A fresh, random attachment ID -- a standard UUID v4, the same
@@ -64,6 +65,31 @@ function attachmentDir(id, documentId) {
   const lastSlash = documentId ? documentId.lastIndexOf('/') : -1;
   const dir = lastSlash === -1 ? '' : documentId.slice(0, lastSlash + 1);
   return `${dir}data/${prefix}/${rest}`;
+}
+
+/** A DIR property value as a folder path, or null if it cannot be one. Relative to the document's own folder; a leading "/" means
+ *  the root of the storage instead. Empty values, backslashes and ".." parts are refused, so a DIR can never point outside. */
+function attachmentDirFromProperty(value, documentId) {
+  let text = String(value || '').trim();
+  if (!text || text.includes('\\')) return null;
+  const fromRoot = text.startsWith('/');
+  text = text.replace(/^\/+/, '').replace(/^(\.\/)+/, '').replace(/\/+$/, '');
+  if (!text || text.split('/').some((part) => part === '' || part === '.' || part === '..')) return null;
+  if (fromRoot) return text;
+  const lastSlash = documentId ? documentId.lastIndexOf('/') : -1;
+  return `${lastSlash === -1 ? '' : documentId.slice(0, lastSlash + 1)}${text}`;
+}
+
+/** The folder a heading names itself: its DIR property, else the one its ID gives. Null if it has neither (it is not
+ *  inherited here; link-resolve.js walks up the ancestors). */
+function ownAttachmentDirectory(heading, documentId) {
+  const dirProperty = getProperty(heading, 'DIR');
+  if (dirProperty) {
+    const fromProperty = attachmentDirFromProperty(dirProperty, documentId);
+    if (fromProperty) return fromProperty;
+  }
+  const id = getProperty(heading, 'ID');
+  return id ? attachmentDir(id, documentId) : null;
 }
 
 /** The tag org-attach puts on a heading that has attachments (org-attach-auto-tag). */
@@ -282,6 +308,8 @@ function generateRecordingFilename(mimeType, now = new Date()) {
 }
 
 export {
+  attachmentDirFromProperty,
+  ownAttachmentDirectory,
   ATTACH_LINK_MODES,
   ATTACH_TAG,
   addAttachTag,

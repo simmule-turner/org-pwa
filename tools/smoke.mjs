@@ -3645,7 +3645,7 @@ check('attach dispatcher: the list comes from the folder (not from links), the A
     return { columns: el ? getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/).length : 0, text: document.body.innerText };
   });
   expect(grid.columns === 2, `two columns: ${grid.columns}`);
-  for (const label of ['Attach file', 'Open', 'Preview in app', 'Save a copy', 'Delete one', 'Delete all']) expect(grid.text.includes(label), `button "${label}" is there`);
+  for (const label of ['Attach file', 'Open', 'Preview in app', 'Save a copy', 'Delete one', 'Delete all', 'Attach open document', 'New text file', 'Folder', 'Sync', 'Set DIR', 'Unset DIR']) expect(grid.text.includes(label), `button "${label}" is there`);
 
   // Preview shows text inside the app
   await page.keyboard.press('Escape');
@@ -3670,6 +3670,61 @@ check('attach dispatcher: the list comes from the folder (not from links), the A
   expect(left.length === 0, `the files are gone from the server: ${left.join(',')}`);
   const tags = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.state.doc.children[0].tags.join(','));
   expect(!tags.includes('ATTACH'), `and the tag: ${tags}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('attach phase 2: DIR names the folder, Sync follows the files, the folder panel lists them, a new text file and an open document are attached, and Unset DIR moves the files to the ID folder', async () => {
+  dav.reset({ 'notes.org': '* Report\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const h = `(await import('/src-browser/app-state.js')).S.state.doc.children[0]`;
+
+  // Set DIR through the dialog: attachments then go to that folder, not to an ID folder
+  await page.evaluate(`(async () => { const { setAttachmentDirectory } = await import('/src-browser/attachments-flow.js'); setAttachmentDirectory(${h}); })()`);
+  await page.locator('input[type=text]').last().fill('files/report');
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await page.waitForTimeout(500);
+  await page.evaluate(`(async () => { const { uploadAttachmentToHeading } = await import('/src-browser/attachments-flow.js'); await uploadAttachmentToHeading(${h}, { name: 'a.pdf', type: 'application/pdf', base64: 'aGk=' }); })()`);
+  expect(dav.files.has('files/report/a.pdf'), `written under the DIR folder: ${[...dav.files.keys()].join(',')}`);
+  expect(![...dav.files.keys()].some((n) => n.startsWith('data/')), 'and no ID folder was made');
+
+  // a file added by other means is found, and Sync sets the tag
+  dav.set('files/report/b.txt', 'by hand');
+  const synced = await page.evaluate(`(async () => { const { syncAttachments, attachmentFiles } = await import('/src-browser/attachments-flow.js'); const h = ${h}; h.tags = []; await syncAttachments(h); return { tags: h.tags.join(','), names: await attachmentFiles(h) }; })()`);
+  expect(synced.tags === 'ATTACH' && synced.names.join(',') === 'a.pdf,b.txt', `sync: ${JSON.stringify(synced)}`);
+
+  // the folder panel lists both with their buttons
+  await page.evaluate(`(async () => { const { revealAttachmentFolder } = await import('/src-browser/attachments-flow.js'); await revealAttachmentFolder(${h}); })()`);
+  await page.waitForFunction(() => document.body.innerText.includes('b.txt'), null, { timeout: 5000 });
+  const panelText = await page.evaluate(() => document.body.innerText);
+  expect(panelText.includes('Folder \u2014 files/report') && panelText.includes('a.pdf') && panelText.includes('Preview'), 'the folder panel lists the files with their actions');
+  await page.keyboard.press('Escape');
+
+  // a new text file, made from a name and its contents
+  await page.evaluate(`(async () => { const { attachNewTextFile } = await import('/src-browser/attachments-flow.js'); attachNewTextFile(${h}); })()`);
+  await page.locator('input[type=text]').last().fill('todo.txt');
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await page.locator('textarea').last().fill('buy milk');
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await page.waitForFunction(() => document.getElementById('minibuffer').innerText.includes('todo.txt'), null, { timeout: 5000 });
+  expect(dav.get('files/report/todo.txt') === 'buy milk', `the new file has its text: ${dav.get('files/report/todo.txt')}`);
+
+  // an open document is attached as text (with one tab open, at once)
+  await page.evaluate(`(async () => { const { attachOpenDocument } = await import('/src-browser/attachments-flow.js'); await attachOpenDocument(${h}); })()`);
+  await page.waitForFunction(() => document.getElementById('minibuffer').innerText.includes('notes.org'), null, { timeout: 5000 });
+  expect((dav.get('files/report/notes.org') || '').includes('* Report'), 'the open document is in the folder as text');
+
+  // Unset DIR with files: choose to move them to the ID folder
+  await page.evaluate(`(async () => { const { unsetAttachmentDirectory } = await import('/src-browser/attachments-flow.js'); await unsetAttachmentDirectory(${h}); })()`);
+  await page.getByText('Move them to the ID folder', { exact: true }).click();
+  await page.waitForFunction(() => document.getElementById('minibuffer').innerText.includes('Moved'), null, { timeout: 8000 });
+  const keys = [...dav.files.keys()];
+  const moved = keys.filter((n) => /^data\/[^/]{2}\/[^/]+\//.test(n)).map((n) => n.split('/').pop()).sort().join(',');
+  expect(moved === 'a.pdf,b.txt,notes.org,todo.txt', `all four moved to the ID folder: ${keys.join(',')}`);
+  expect(!keys.some((n) => n.startsWith('files/report/')), 'and none left in the old folder');
+  const after = await page.evaluate(`(async () => { const h = ${h}; return { dir: h.properties.DIR === undefined, tags: h.tags.join(',') }; })()`);
+  expect(after.dir && after.tags.includes('ATTACH'), `DIR is gone and the heading is still tagged: ${JSON.stringify(after)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

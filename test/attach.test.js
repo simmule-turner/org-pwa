@@ -17,6 +17,8 @@ import {
   normalizeAttachLinkMode,
   removeAttachTag,
   shouldInsertAttachmentLink,
+  attachmentDirFromProperty,
+  ownAttachmentDirectory,
 } from '../src/attach.js';
 
 // ---- generateAttachmentId ---------------------------------------------------
@@ -306,4 +308,19 @@ test('shouldInsertAttachmentLink: media by default, everything when always, noth
   assert.equal(shouldInsertAttachmentLink('p.jpg', 'never'), false);
   assert.equal(normalizeAttachLinkMode('bogus'), 'media');
   assert.equal(normalizeAttachLinkMode('never'), 'never');
+});
+
+test('attachmentDirFromProperty: relative to the document folder, "/" for the storage root, and nothing that could escape', () => {
+  assert.equal(attachmentDirFromProperty('files/report', 'org-pwa/foo.org'), 'org-pwa/files/report');
+  assert.equal(attachmentDirFromProperty('./files/', 'foo.org'), 'files');
+  assert.equal(attachmentDirFromProperty('/shared/docs', 'org-pwa/foo.org'), 'shared/docs');
+  for (const bad of ['', '   ', '..', 'a/../b', 'a//b', 'a\\b', '/', '.']) assert.equal(attachmentDirFromProperty(bad, 'foo.org'), null, `refused: ${JSON.stringify(bad)}`);
+});
+
+test('ownAttachmentDirectory: DIR wins over ID, an unusable DIR falls back to the ID, neither gives null', () => {
+  const props = (object) => ({ properties: object, propertyOrder: Object.keys(object) });
+  assert.equal(ownAttachmentDirectory(props({ DIR: 'files', ID: 'abcdef-1' }), 'foo.org'), 'files');
+  assert.equal(ownAttachmentDirectory(props({ DIR: '../x', ID: 'abcdef-1' }), 'foo.org'), 'data/ab/cdef-1');
+  assert.equal(ownAttachmentDirectory(props({ ID: 'abcdef-1' }), 'org-pwa/foo.org'), 'org-pwa/data/ab/cdef-1');
+  assert.equal(ownAttachmentDirectory(props({}), 'foo.org'), null);
 });

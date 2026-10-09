@@ -53,9 +53,10 @@ export function showAttachmentPreview(filename, mime, bytes) {
 
   const stopTrackingViewport = keepOverlayInVisibleViewport(overlay);
   const unlockScroll = lockBackgroundScroll(overlay);
+  const wasOpen = S.buttonChoiceModalOpen; // a panel opened over another leaves that one's state as it found it
   S.buttonChoiceModalOpen = true;
   function close() {
-    S.buttonChoiceModalOpen = false;
+    S.buttonChoiceModalOpen = wasOpen;
     document.removeEventListener('keydown', onKeyDown, true);
     stopTrackingViewport();
     unlockScroll();
@@ -63,7 +64,7 @@ export function showAttachmentPreview(filename, mime, bytes) {
     if (overlay.parentNode) document.body.removeChild(overlay);
   }
   function onKeyDown(e) {
-    if (e.key !== 'Escape') return;
+    if (e.key !== 'Escape' || document.body.lastElementChild !== overlay) return; // only the topmost panel answers
     e.preventDefault();
     e.stopPropagation();
     close();

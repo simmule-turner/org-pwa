@@ -1,12 +1,15 @@
 // Extracted from app.js: attachments flow.
-import { getProperty, setProperty } from '../src/archive-model.js';
-import { addAttachTag, attachmentDir, attachmentPath, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
+import { deleteProperty, getProperty, setProperty } from '../src/archive-model.js';
+import { addAttachTag, attachmentDir, attachmentDirFromProperty, ownAttachmentDirectory, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
 import { parseBody } from '../src/body-parser.js';
+import { serializeOrg } from '../src/org-parser.js';
 import { guessImageMimeType, guessViewableMimeType, resolveAttachmentDirectory, resolveAttachmentTarget } from '../src/link-resolve.js';
 import { detectWebmHasVideoTrack } from '../src/webm-track-detect.js';
 import { S } from './app-state.js';
 import { openAudioRecordingPanel } from './audio-recording.js';
-import { confirmDialog, openGridChoiceModal, pickBinaryFile, showModalOverlay } from './dialogs.js';
+import { confirmDialog, openButtonChoiceModal, openGridChoiceModal, openMultiFieldPopup, openTextFieldPopup, pickBinaryFile, showModalOverlay } from './dialogs.js';
+import { showAttachmentFolder } from './attach-folder-panel.js';
+import { utf8ToBase64 } from './github-adapter.js';
 import { showAttachmentPreview } from './attach-preview.js';
 import { getAttachLinkMode } from './settings.js';
 import { refilePanel, refilePanelBox } from './dom.js';
@@ -20,6 +23,21 @@ import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { base64ToArrayBuffer } from './webdav-adapter.js';
 import { platform } from './platform.js';
 import { saveOut } from './save-out.js';
+
+/** Whether attachments can be written for the open document, asking for the org-pwa folder first when that is all that is missing.
+ *  Says why, and returns false, when they cannot. */
+async function requireAttachmentStorage() {
+  const storage = await ensureAttachmentsStorage(); // a local document asks for its attachments folder here, once
+  if (storage === 'cancelled') return false; // the person backed out of choosing it
+  if (storage !== 'ok') {
+    setStatus(
+      "Attachments need automatic file-write access \u2014 only available with GitHub or WebDAV connected (a local file needs a fresh picker gesture per file, which browser security doesn't allow this app to do on its own for a brand-new attachment file). Connect GitHub or WebDAV in Settings first."
+    );
+    render();
+    return false;
+  }
+  return true;
+}
 
 /** Attaches a picked file to `heading` -- this app's own extension,
  *  inspired by real org's own org-attach (see src/attach.js's own
@@ -47,15 +65,7 @@ import { saveOut } from './save-out.js';
  * needed here.
  */
 export async function attachFileToHeading(heading) {
-  const storage = await ensureAttachmentsStorage(); // a local document asks for its attachments folder here, once
-  if (storage === 'cancelled') return; // the person backed out of choosing it
-  if (storage !== 'ok') {
-    setStatus(
-      "Attachments need automatic file-write access \u2014 only available with GitHub or WebDAV connected (a local file needs a fresh picker gesture per file, which browser security doesn't allow this app to do on its own for a brand-new attachment file). Connect GitHub or WebDAV in Settings first."
-    );
-    render();
-    return;
-  }
+  if (!(await requireAttachmentStorage())) return;
 
   let picked;
   try {
@@ -112,15 +122,16 @@ export async function uploadAttachmentToHeading(heading, picked) {
   setStatus('Uploading attachment\u2026');
   render();
 
-  let id = getProperty(heading, 'ID');
-  if (!id) {
-    id = generateAttachmentId();
+  let dir = ownAttachmentDirectory(heading, S.state.documentId); // its DIR, else its ID's folder
+  if (!dir) {
+    const id = generateAttachmentId();
     setProperty(heading, 'ID', id);
+    dir = attachmentDir(id, S.state.documentId);
   }
 
-  const existingNames = (await listFolder(attachmentDir(id, S.state.documentId))) || [];
+  const existingNames = (await listFolder(dir)) || [];
   const filename = disambiguateAttachmentFilename(sanitizeAttachmentFilename(picked.name), existingNames);
-  const path = attachmentPath(id, filename, S.state.documentId);
+  const path = `${dir}/${filename}`;
 
   try {
     const adapter = activeDiskAdapter();
@@ -351,6 +362,195 @@ function viewableMimeFor(path, bytes) {
   return mime;
 }
 
+// ---- phase 2: DIR, sync, the folder list, and files made in the app -------------------------------------------------------
+
+/** Sets the ATTACH tag to match what is in the heading's folder (org-attach-sync): on if there are files, off if not. Returns the
+ *  number of files, or null if the folder could not be read or the heading has none. */
+async function syncAttachTag(heading) {
+  const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId);
+  if (!dir) {
+    removeAttachTag(heading);
+    return 0;
+  }
+  const names = await listFolder(dir);
+  if (!names) return null;
+  if (names.length > 0) addAttachTag(heading);
+  else removeAttachTag(heading);
+  return names.length;
+}
+
+/** org-attach-sync: for files added to the folder by other means, or removed from it. */
+export async function syncAttachments(heading) {
+  if (!attachmentsAvailable()) {
+    setStatus(unavailable('sync attachments'));
+    render();
+    return;
+  }
+  const count = await syncAttachTag(heading);
+  if (count === null) {
+    setStatus("Couldn't read the attachment folder.");
+    render();
+    return;
+  }
+  const message = count === 0 ? 'No attachments: the ATTACH tag is off.' : `${count} attachment${count === 1 ? '' : 's'}: the ATTACH tag is on.`;
+  setStatus(message);
+  commitAndRender(message);
+}
+
+/** org-attach-set-directory: names the folder by a DIR property instead of the ID. */
+export function setAttachmentDirectory(heading) {
+  openMultiFieldPopup({
+    label: 'Attachment folder (DIR)',
+    fields: [{ key: 'dir', label: 'Folder, relative to this file (start with / for the root)', type: 'text', value: getProperty(heading, 'DIR') || '', placeholder: 'e.g. files/report' }],
+    onSave: async (values) => {
+      const dir = attachmentDirFromProperty(values.dir, S.state.documentId);
+      if (!dir) {
+        setStatus('That is not a folder I can use (no empty names, "..", or backslashes).');
+        render();
+        return;
+      }
+      setProperty(heading, 'DIR', values.dir.trim());
+      await syncAttachTag(heading);
+      setStatus(`Attachments for this heading are now in ${dir}.`);
+      commitAndRender(`Set attachment folder ${dir}`);
+    },
+  });
+}
+
+/** Copies every file in `from` to `to` and removes the original, one at a time. Returns how many moved. */
+async function moveFolderFiles(from, to) {
+  const adapter = activeDiskAdapter();
+  const names = (await listFolder(from)) || [];
+  let moved = 0;
+  for (const name of names) {
+    const file = await adapter.readBinary(`${from}/${name}`);
+    if (!file) continue;
+    await adapter.writeBinary(`${to}/${name}`, file.base64);
+    await adapter.delete(`${from}/${name}`);
+    moved++;
+  }
+  return moved;
+}
+
+/** org-attach-unset-directory: removes DIR. With files in that folder, asks what to do with them, as org does: move them to the
+ *  ID's folder, delete them, or leave them where they are. */
+export async function unsetAttachmentDirectory(heading) {
+  if (!getProperty(heading, 'DIR')) {
+    setStatus('This heading has no DIR property.');
+    render();
+    return;
+  }
+  const dir = attachmentDirFromProperty(getProperty(heading, 'DIR'), S.state.documentId);
+  const names = dir && attachmentsAvailable() ? (await listFolder(dir)) || [] : [];
+  const finish = async (message) => {
+    deleteProperty(heading, 'DIR');
+    await syncAttachTag(heading);
+    setStatus(message);
+    commitAndRender(message);
+  };
+  if (names.length === 0) {
+    await finish('Removed the DIR property.');
+    return;
+  }
+  const count = `${names.length} file${names.length === 1 ? '' : 's'}`;
+  openButtonChoiceModal({
+    label: `Remove DIR: what about the ${count} in ${dir}?`,
+    buttons: [
+      {
+        text: 'Move them to the ID folder',
+        onClick: async () => {
+          let id = getProperty(heading, 'ID');
+          if (!id) {
+            id = generateAttachmentId();
+            setProperty(heading, 'ID', id);
+          }
+          try {
+            const moved = await moveFolderFiles(dir, attachmentDir(id, S.state.documentId));
+            await finish(`Moved ${moved} file${moved === 1 ? '' : 's'} to the ID folder and removed DIR.`);
+          } catch (err) {
+            setStatus(`Could not move the files: ${err.message}`);
+            render();
+          }
+        },
+      },
+      {
+        text: 'Delete them',
+        onClick: async () => {
+          if (!(await confirmDialog(`Delete ${count} in ${dir}? This removes the actual files.`))) return;
+          try {
+            const adapter = activeDiskAdapter();
+            for (const name of names) await adapter.delete(`${dir}/${name}`);
+            for (const name of names) removeAttachmentLink(heading, name);
+            heading.body = parseBody(heading.bodyLines);
+            await finish(`Deleted ${count} and removed DIR.`);
+          } catch (err) {
+            setStatus(`Could not delete the files: ${err.message}`);
+            render();
+          }
+        },
+      },
+      { text: 'Leave them in place', onClick: () => finish(`Removed DIR; the ${count} stay in ${dir}.`) },
+      { text: 'Cancel', onClick: () => {} },
+    ],
+  });
+}
+
+/** org-attach-reveal: the folder as a list, each file with Open, Preview, Save and Delete. */
+export async function revealAttachmentFolder(heading) {
+  if (!attachmentsAvailable()) {
+    setStatus(unavailable('show the attachment folder'));
+    render();
+    return;
+  }
+  const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId);
+  if (!dir) {
+    setStatus('No attachments on this heading yet.');
+    render();
+    return;
+  }
+  showAttachmentFolder({
+    title: `Folder \u2014 ${dir}`,
+    load: () => listFolder(dir),
+    act: (action, name) => performAttachmentAction(heading, name, action),
+  });
+}
+
+/** org-attach-buffer: saves one of the open documents, as text, into the heading's folder. */
+export async function attachOpenDocument(heading) {
+  if (!(await requireAttachmentStorage())) return;
+  const documents = S.documentSessions.map((session) => (session.tabId === S.activeTabId ? S.state : session.state));
+  if (documents.length === 0) documents.push(S.state);
+  const attach = (state) => {
+    const name = String(state.documentId || 'document.org').split('/').pop();
+    return uploadAttachmentToHeading(heading, { name, type: 'text/plain', base64: utf8ToBase64(serializeOrg(state.doc)) });
+  };
+  if (documents.length === 1) {
+    await attach(documents[0]);
+    return;
+  }
+  openButtonChoiceModal({
+    label: 'Attach which open document?',
+    buttons: [...documents.map((state) => ({ text: String(state.documentId || 'document').split('/').pop(), onClick: () => attach(state) })), { text: 'Cancel', onClick: () => {} }],
+  });
+}
+
+/** org-attach-new: makes a text file in the heading's folder from a name and what to put in it. */
+export async function attachNewTextFile(heading) {
+  if (!(await requireAttachmentStorage())) return;
+  openMultiFieldPopup({
+    label: 'New attachment',
+    fields: [{ key: 'name', label: 'File name', type: 'text', value: 'note.txt' }],
+    onSave: (values) => {
+      if (!values.name) return;
+      openTextFieldPopup({
+        label: `Contents of ${values.name}`,
+        value: '',
+        onSave: (text) => uploadAttachmentToHeading(heading, { name: values.name, type: 'text/plain', base64: utf8ToBase64(text) }),
+      });
+    },
+  });
+}
+
 /** org-attach's dispatcher (C-c C-a), as a grid of buttons laid out like the Capture template picker. The keys are org's own, and
  *  work when pressed; `viaKeys` shows them on the buttons, as Capture does when opened from the keyboard. */
 export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
@@ -360,11 +560,17 @@ export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
     buttons: [
       { key: 'a', text: '\ud83d\udcce Attach file', onClick: () => attachFileToHeading(heading) },
       { key: 'r', text: '\ud83c\udfa4 Record audio', onClick: () => openAudioRecordingPanel(heading) },
+      { key: 'b', text: '\ud83d\udcc4 Attach open document', onClick: () => attachOpenDocument(heading) },
+      { key: 'n', text: '\ud83d\udcdd New text file', onClick: () => attachNewTextFile(heading) },
       { key: 'o', text: '\ud83d\udcc2 Open', onClick: () => startAttachmentPickFlow(heading, 'open') },
       { key: 'O', text: '\ud83d\udc41\ufe0f Preview in app', onClick: () => startAttachmentPickFlow(heading, 'preview') },
+      { key: 'f', text: '\ud83d\uddc2\ufe0f Folder', onClick: () => revealAttachmentFolder(heading) },
       { text: '\ud83d\udcbe Save a copy', onClick: () => startAttachmentPickFlow(heading, 'save') },
       { key: 'd', text: '\ud83d\uddd1\ufe0f Delete one', onClick: () => startAttachmentPickFlow(heading, 'delete') },
       { key: 'D', text: '\ud83d\uddd1\ufe0f Delete all', onClick: () => deleteAllAttachments(heading) },
+      { key: 'z', text: '\ud83d\udd04 Sync', onClick: () => syncAttachments(heading) },
+      { key: 's', text: '\ud83d\udccd Set DIR', onClick: () => setAttachmentDirectory(heading) },
+      { key: 'S', text: '\u274c Unset DIR', onClick: () => unsetAttachmentDirectory(heading) },
     ],
   });
 }

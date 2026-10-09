@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v454 — Attach: DIR, Sync, Folder, New file
+The attach menu gains org-attach's remaining commands: Set/Unset DIR (keep a heading's files in a folder you choose), Sync (set the ATTACH tag from the folder), Folder (a list with per-file actions), Attach open document and New text file.
+
 * v453 — Attachments follow the folder, like org-attach
 A heading's attachments are now whatever is in its folder, and attaching tags it :ATTACH:. C-c C-a opens a grid of buttons laid out like the Capture picker, with Preview in app and Delete all added. Whether attaching also writes a body link is a setting (Settings → Attachments).
 

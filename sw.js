@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v453';
+const CACHE_NAME = 'org-pwa-shell-v454';
 
 const SHELL_FILES = [
   './',
@@ -123,6 +123,7 @@ const SHELL_FILES = [
   './src-browser/archive-flow.js',
   './src-browser/attachments-flow.js',
   './src-browser/attach-preview.js',
+  './src-browser/attach-folder-panel.js',
   './src-browser/attachments-store.js',
   './src-browser/audio-recording.js',
   './src-browser/calendar-panel.js',
