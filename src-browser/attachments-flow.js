@@ -7,7 +7,7 @@ import { guessImageMimeType, guessViewableMimeType, resolveAttachmentDirectory, 
 import { detectWebmHasVideoTrack } from '../src/webm-track-detect.js';
 import { S } from './app-state.js';
 import { openAudioRecordingPanel } from './audio-recording.js';
-import { confirmDialog, openButtonChoiceModal, openGridChoiceModal, openMultiFieldPopup, openTextFieldPopup, pickBinaryFile, showModalOverlay } from './dialogs.js';
+import { confirmDialog, openButtonChoiceModal, openGridChoiceModal, openMultiFieldPopup, openTextFieldPopup, pickBinaryFile, pickBinaryFiles, showModalOverlay } from './dialogs.js';
 import { showAttachmentFolder } from './attach-folder-panel.js';
 import { cameraAvailable, openCameraPanel } from './camera-capture.js';
 import { utf8ToBase64 } from './github-adapter.js';
@@ -87,11 +87,12 @@ export async function attachFileToHeading(heading) {
 async function pickAndUpload(heading) {
   let picked;
   try {
-    picked = await (platform.pickFile ? platform.pickFile() : pickBinaryFile()); // a shell may offer the camera beside the files
+    // a shell may offer the camera beside the files; the browser's chooser takes several at once
+    picked = await (platform.pickFile ? platform.pickFile() : pickBinaryFiles());
   } catch {
     return; // no file selected -- silently do nothing, matching every other cancel-a-picker path in this app
   }
-  await uploadAttachmentToHeading(heading, picked);
+  for (const file of Array.isArray(picked) ? picked : [picked]) await uploadAttachmentToHeading(heading, file);
 }
 
 /** The file names in an attachment folder (sorted), or null if the backend could not say. A folder that does not exist yet is an
@@ -524,6 +525,11 @@ export async function revealAttachmentFolder(heading) {
     title: `Folder \u2014 ${dir}`,
     load: () => listFolder(dir),
     act: (action, name) => performAttachmentAction(heading, name, action),
+    add: () => pickAndUpload(heading),
+    removeMany: async (names) => {
+      if (!(await confirmDialog(`Delete ${names.length} attachment${names.length === 1 ? '' : 's'}? This removes the actual files, not just the links.`))) return;
+      for (const name of names) await deleteAttachment(heading, name);
+    },
   });
 }
 

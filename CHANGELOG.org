@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v462 — Compact attachment folder, multi-file Attach
+The Folder panel is one row per file (checkbox, ~O~, ~S~, ~D~, name) with select-all, delete-selected and Add files. Attach takes several files at once in a browser. The Capture picker always shows key badges and labels, however it was opened.
+
 * v461 — Complex numbers, vectors and matrices in table formulas
 Table formulas now take complex numbers (~(1, 2)~, ~(r; θ)~, ~i~), vectors and matrices, matching Emacs Calc's results and number display, including ~pN~ precision. ~sqrt(-4)~ is ~(0, 2)~ instead of an error, and a cell range used as a value is a vector. ~i~ is the number (0, 1), unlike Calc's symbol. Verified against real Emacs.
 

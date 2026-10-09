@@ -87,7 +87,7 @@ export async function renderCapturePanel() {
   grid.style.gridTemplateColumns = '1fr 1fr';
   grid.style.gap = '6px';
 
-  const nonCollidingKeys = S.captureOpenedViaGodMode ? computeNonCollidingKeys(templates, (t) => t.key) : new Map();
+  const nonCollidingKeys = computeNonCollidingKeys(templates, (t) => t.key); // badges however the picker was opened
 
   for (const template of templates) {
     const btn = document.createElement('button');

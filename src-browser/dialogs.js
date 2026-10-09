@@ -770,31 +770,40 @@ export function openMultiFieldPopup({ label, fields, onSave }) {
  *  mobile browsers still offer the other options too even with this
  *  set, so it's additive, never a restriction. */
 export function pickBinaryFile(capture, accept) {
+  return pickBinaryFiles(capture, accept, false).then((files) => files[0]);
+}
+
+/** Like pickBinaryFile, but the chooser allows several files and the promise resolves with all of them (in order). */
+export function pickBinaryFiles(capture, accept, multiple = true) {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
+    if (multiple) input.multiple = true;
     if (capture) input.setAttribute('capture', capture);
     if (accept) input.accept = accept;
     input.style.display = 'none';
     input.addEventListener('change', () => {
-      const file = input.files && input.files[0];
+      const chosen = Array.from(input.files || []);
       if (input.parentNode) input.parentNode.removeChild(input);
-      if (!file) {
+      if (chosen.length === 0) {
         reject(new Error('No file selected'));
         return;
       }
       setStatus('Reading file\u2026');
       render();
-      const reader = new FileReader();
-      reader.onload = () => {
-        // reader.result is "data:<mime>;base64,<data>" -- everything after the first comma is the base64 payload itself.
-        const dataUrl = reader.result;
-        const commaIndex = dataUrl.indexOf(',');
-        const base64 = commaIndex === -1 ? '' : dataUrl.slice(commaIndex + 1);
-        resolve({ name: file.name, type: file.type, base64 });
-      };
-      reader.onerror = () => reject(reader.error || new Error('Could not read the picked file'));
-      reader.readAsDataURL(file);
+      const readOne = (file) =>
+        new Promise((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            // reader.result is "data:<mime>;base64,<data>" -- everything after the first comma is the base64 payload itself.
+            const dataUrl = reader.result;
+            const commaIndex = dataUrl.indexOf(',');
+            res({ name: file.name, type: file.type, base64: commaIndex === -1 ? '' : dataUrl.slice(commaIndex + 1) });
+          };
+          reader.onerror = () => rej(reader.error || new Error('Could not read the picked file'));
+          reader.readAsDataURL(file);
+        });
+      Promise.all(chosen.map(readOne)).then(resolve, reject);
     });
     document.body.appendChild(input);
     input.click();

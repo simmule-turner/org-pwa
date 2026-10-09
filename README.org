@@ -714,12 +714,12 @@ An entry the app can't understand is skipped and listed with the reason at the t
 
 Files kept with a heading, as in Org's ~org-attach~. Press ~C-c C-a~ on a heading, or tap *Attach* in 📋 Edit details, for a grid of buttons:
 
-- *Attach* (~a~): on a phone or tablet, opens the system chooser, where you pick a file or a photo, or take a photo or a video with the camera; the file is copied into the heading's folder. On ChromeOS and desktop, whose file chooser has no camera, it first asks *Choose a file*, *Take a photo* or *Record a video*; the last two open an in-app webcam panel (take or record, then Attach or Retake).
+- *Attach* (~a~): on a phone or tablet, opens the system chooser, where you pick a file or a photo, or take a photo or a video with the camera; the file is copied into the heading's folder (in a browser the chooser takes several files at once). On ChromeOS and desktop, whose file chooser has no camera, it first asks *Choose a file*, *Take a photo* or *Record a video*; the last two open an in-app webcam panel (take or record, then Attach or Retake).
 - *Record audio* (~r~): record from the microphone, play it back, then save.
 - *Attach open document* (~b~, ~org-attach-buffer~): save one of your open documents, as text, in the folder.
 - *New text file* (~n~, ~org-attach-new~): give a name and type its contents.
 - *Open* (~o~): show a picture, recording, video or text file inside the app; anything else opens in the browser's viewer, or downloads when there is none.
-- *Folder* (~f~, ~org-attach-reveal~): the folder as a list, each file with Open, Export and Delete.
+- *Folder* (~f~, ~org-attach-reveal~): the folder as a compact list, one row per file: a checkbox to select, then ~O~ (open), ~S~ (save) and ~D~ (delete), then the name. The strip above selects all, deletes the selection after one confirmation, and adds files.
 - *Delete one* (~d~) and *Delete all* (~D~): remove files after a confirmation.
 - *Set DIR* (~s~) and *Unset DIR* (~S~): keep a heading's files in a folder of your choosing instead. Unset DIR asks whether to move the files to the ID folder, delete them, or leave them.
 - *Export copy* (~e~): download it.
