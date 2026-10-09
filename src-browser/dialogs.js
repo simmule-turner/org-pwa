@@ -733,11 +733,12 @@ export function openMultiFieldPopup({ label, fields, onSave }) {
  *  file browser, the actual motivating case for this feature; most
  *  mobile browsers still offer the other options too even with this
  *  set, so it's additive, never a restriction. */
-export function pickBinaryFile(capture) {
+export function pickBinaryFile(capture, accept) {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
     if (capture) input.setAttribute('capture', capture);
+    if (accept) input.accept = accept;
     input.style.display = 'none';
     input.addEventListener('change', () => {
       const file = input.files && input.files[0];

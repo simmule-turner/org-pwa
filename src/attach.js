@@ -92,6 +92,34 @@ function ownAttachmentDirectory(heading, documentId) {
   return id ? attachmentDir(id, documentId) : null;
 }
 
+const CAPTURE_EXTENSIONS = {
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/heic': 'heic', 'image/heif': 'heif', 'image/webp': 'webp',
+  'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm', 'video/3gpp': '3gp',
+};
+
+/** A name for a photo or video just taken: `photo-2026-10-08-221500.jpg`, with the extension the camera's own file had, else the
+ *  one its type implies (jpg for a photo, mp4 for a video). */
+function generateCaptureFilename(kind, pickedName, pickedType, now = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const own = /\.([a-z0-9]{1,5})$/i.exec(String(pickedName || ''));
+  const ext = own ? own[1].toLowerCase() : CAPTURE_EXTENSIONS[String(pickedType || '').toLowerCase()] || (kind === 'video' ? 'mp4' : 'jpg');
+  return `${kind === 'video' ? 'video' : 'photo'}-${stamp}.${ext}`;
+}
+
+const MB = 1024 * 1024;
+
+/** Whether a file is too big to attach, or big enough to confirm first. `base64Length` is the encoded size; `backend` is the
+ *  storage kind. GitHub's contents API takes up to 100MB; anything over 25MB (a long video) is worth a confirmation anywhere,
+ *  since it is held in memory and uploaded in one go. Returns { refuse } or { warn } (each a sentence), or null. */
+function attachmentSizeCheck(base64Length, backend) {
+  const megabytes = (base64Length * 3) / 4 / MB;
+  const size = `${megabytes.toFixed(megabytes < 10 ? 1 : 0)}MB`;
+  if (backend === 'github' && megabytes > 95) return { refuse: `This file is ${size}; GitHub accepts up to 100MB per file. Use WebDAV for files this large, or a shorter clip.` };
+  if (megabytes > 25) return { warn: `This file is ${size}. It is held in memory and uploaded in one go, which can be slow and use mobile data. Attach it?` };
+  return null;
+}
+
 /** The tag org-attach puts on a heading that has attachments (org-attach-auto-tag). */
 const ATTACH_TAG = 'ATTACH';
 
@@ -308,6 +336,8 @@ function generateRecordingFilename(mimeType, now = new Date()) {
 }
 
 export {
+  attachmentSizeCheck,
+  generateCaptureFilename,
   attachmentDirFromProperty,
   ownAttachmentDirectory,
   ATTACH_LINK_MODES,

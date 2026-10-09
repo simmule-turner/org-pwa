@@ -19,6 +19,8 @@ import {
   shouldInsertAttachmentLink,
   attachmentDirFromProperty,
   ownAttachmentDirectory,
+  attachmentSizeCheck,
+  generateCaptureFilename,
 } from '../src/attach.js';
 
 // ---- generateAttachmentId ---------------------------------------------------
@@ -323,4 +325,21 @@ test('ownAttachmentDirectory: DIR wins over ID, an unusable DIR falls back to th
   assert.equal(ownAttachmentDirectory(props({ DIR: '../x', ID: 'abcdef-1' }), 'foo.org'), 'data/ab/cdef-1');
   assert.equal(ownAttachmentDirectory(props({ ID: 'abcdef-1' }), 'org-pwa/foo.org'), 'org-pwa/data/ab/cdef-1');
   assert.equal(ownAttachmentDirectory(props({}), 'foo.org'), null);
+});
+
+test('generateCaptureFilename: dated, with the camera file\u2019s own extension, else the type\u2019s, else photo jpg or video mp4', () => {
+  const at = new Date(2026, 9, 8, 22, 15, 3);
+  assert.equal(generateCaptureFilename('photo', 'IMG_0042.HEIC', 'image/heic', at), 'photo-2026-10-08-221503.heic');
+  assert.equal(generateCaptureFilename('video', 'image', 'video/quicktime', at), 'video-2026-10-08-221503.mov');
+  assert.equal(generateCaptureFilename('video', '', '', at), 'video-2026-10-08-221503.mp4');
+  assert.equal(generateCaptureFilename('photo', '', '', at), 'photo-2026-10-08-221503.jpg');
+});
+
+test('attachmentSizeCheck: fine when small, a confirmation over 25MB, a refusal over 95MB on GitHub only', () => {
+  const chars = (megabytes) => Math.ceil((megabytes * 1024 * 1024 * 4) / 3);
+  assert.equal(attachmentSizeCheck(chars(5), 'github'), null);
+  assert.match(attachmentSizeCheck(chars(30), 'webdav').warn, /30MB/);
+  assert.match(attachmentSizeCheck(chars(30), 'github').warn, /30MB/);
+  assert.match(attachmentSizeCheck(chars(96), 'github').refuse, /100MB/);
+  assert.match(attachmentSizeCheck(chars(96), 'webdav').warn, /96MB/);
 });

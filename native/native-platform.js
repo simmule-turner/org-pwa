@@ -351,8 +351,8 @@
     // Attaching: Android's chooser, with the camera apps beside the files (LocalFilesPlugin.pickAttachment). Whatever is chosen
     // waits in the app's cache and is read from there through the local web server, so a long video never crosses the bridge as
     // one huge string. Resolves { name, type, base64 }; backing out is an AbortError.
-    platform.pickFile = function () {
-      return localFiles.pickAttachment().then(
+    platform.pickFile = function (kind) {
+      return localFiles.pickAttachment({ mode: kind === 'photo' || kind === 'video' ? kind : '' }).then(
         function (picked) {
           return fetch(capacitor.convertFileSrc(picked.path))
             .then(function (response) {

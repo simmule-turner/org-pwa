@@ -1,6 +1,6 @@
 // Extracted from app.js: attachments flow.
 import { deleteProperty, getProperty, setProperty } from '../src/archive-model.js';
-import { addAttachTag, attachmentDir, attachmentDirFromProperty, ownAttachmentDirectory, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
+import { addAttachTag, attachmentSizeCheck, attachmentDir, generateCaptureFilename, attachmentDirFromProperty, ownAttachmentDirectory, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
 import { parseBody } from '../src/body-parser.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { guessImageMimeType, guessViewableMimeType, resolveAttachmentDirectory, resolveAttachmentTarget } from '../src/link-resolve.js';
@@ -77,6 +77,20 @@ export async function attachFileToHeading(heading) {
   await uploadAttachmentToHeading(heading, picked);
 }
 
+/** Photo and Video: opens the camera straight away (the browser's camera input; the Android app's camera app) and attaches what is
+ *  taken, named `photo-<date>-<time>.jpg` or `video-<date>-<time>.mp4`. Where there is no camera the picker offers files of that
+ *  kind instead. */
+export async function captureMediaToHeading(heading, kind) {
+  if (!(await requireAttachmentStorage())) return;
+  let picked;
+  try {
+    picked = await (platform.pickFile ? platform.pickFile(kind) : pickBinaryFile('environment', kind === 'video' ? 'video/*' : 'image/*'));
+  } catch {
+    return; // backed out
+  }
+  await uploadAttachmentToHeading(heading, { ...picked, name: generateCaptureFilename(kind, picked.name, picked.type) });
+}
+
 /** The file names in an attachment folder (sorted), or null if the backend could not say. A folder that does not exist yet is an
  *  empty one. This is where org-attach gets its list: the folder, not links in the text. */
 async function listFolder(dir) {
@@ -119,6 +133,13 @@ export async function attachmentFiles(heading) {
  *  already have): only ever called once GitHub/WebDAV is confirmed
  *  connected. */
 export async function uploadAttachmentToHeading(heading, picked) {
+  const tooBig = attachmentSizeCheck(String(picked.base64 || '').length, S.state.storageKind);
+  if (tooBig && tooBig.refuse) {
+    setStatus(tooBig.refuse);
+    render();
+    return;
+  }
+  if (tooBig && tooBig.warn && !(await confirmDialog(tooBig.warn, { confirmLabel: 'Attach', danger: false }))) return;
   setStatus('Uploading attachment\u2026');
   render();
 
@@ -559,6 +580,8 @@ export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
     showKeys: viaKeys,
     buttons: [
       { key: 'a', text: '\ud83d\udcce Attach file', onClick: () => attachFileToHeading(heading) },
+      { key: 'p', text: '\ud83d\udcf7 Photo', onClick: () => captureMediaToHeading(heading, 'photo') },
+      { key: 'v', text: '\ud83c\udfa5 Video', onClick: () => captureMediaToHeading(heading, 'video') },
       { key: 'r', text: '\ud83c\udfa4 Record audio', onClick: () => openAudioRecordingPanel(heading) },
       { key: 'b', text: '\ud83d\udcc4 Attach open document', onClick: () => attachOpenDocument(heading) },
       { key: 'n', text: '\ud83d\udcdd New text file', onClick: () => attachNewTextFile(heading) },

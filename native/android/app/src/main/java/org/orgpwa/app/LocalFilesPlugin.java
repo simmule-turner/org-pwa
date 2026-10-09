@@ -339,6 +339,19 @@ public class LocalFilesPlugin extends Plugin {
         photoTarget = new File(directory, "photo-" + stamp + ".jpg");
         videoTarget = new File(directory, "video-" + stamp + ".mp4");
 
+        String mode = call.getString("mode", "");
+        if (mode.equals("photo") || mode.equals("video")) {
+            // the camera straight away: no chooser
+            boolean photo = mode.equals("photo");
+            List<Intent> only = captureOptions(photo ? MediaStore.ACTION_IMAGE_CAPTURE : MediaStore.ACTION_VIDEO_CAPTURE, photo ? photoTarget : videoTarget, photo ? "Take a photo" : "Record a video");
+            if (only.isEmpty()) {
+                call.reject("No camera app can be used here");
+                return;
+            }
+            startActivityForResult(call, only.get(0), "pickedAttachment"); // the first camera app that can do it, as the phone lists them
+            return;
+        }
+
         Intent files = new Intent(Intent.ACTION_GET_CONTENT);
         files.addCategory(Intent.CATEGORY_OPENABLE);
         files.setType("*/*");

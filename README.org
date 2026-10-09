@@ -706,6 +706,7 @@ An entry the app can't understand is skipped and listed with the reason at the t
 Files kept with a heading, as in Org's ~org-attach~. Press ~C-c C-a~ on a heading, or tap *Attach* in 📋 Edit details, for a grid of buttons:
 
 - *Attach file* (~a~): pick a file, a photo or a recording; it is copied into the heading's folder.
+- *Photo* (~p~) and *Video* (~v~): open the camera at once and attach what you take, named ~photo-2026-10-08-221503.jpg~ or ~video-...mp4~. Where there is no camera, the file picker opens for that kind of file.
 - *Record audio* (~r~): record from the microphone, play it back, then save.
 - *Attach open document* (~b~, ~org-attach-buffer~): save one of your open documents, as text, in the folder.
 - *New text file* (~n~, ~org-attach-new~): give a name and type its contents.
@@ -724,6 +725,8 @@ Example: on a heading, ~C-c C-a~, then ~a~, pick ~receipt.pdf~. The heading now 
 *Links in the body*: Settings → Attachments chooses whether attaching also adds an ~[[attachment:name]]~ link: for pictures, audio and video (the default), always, or never, as in Org. A bare link to a picture shows it inline; audio gets a play button. Tapping an ~attachment:~ link does the same as *Open*. A link finds its folder from the ~ID~ of its heading, else the nearest ancestor's.
 
 *Requirements*: GitHub or WebDAV must be connected. The [[#android-app][Android app]] instead keeps a local file's attachments in the org-pwa folder you choose once.
+
+*Large files*: over 25MB asks before attaching, since the whole file is held in memory and uploaded in one go; GitHub refuses over 95MB (its limit is 100MB), so use WebDAV for long videos.
 
 *Filenames*: path-unsafe characters become ~_~; a name already in the folder gets ~-1~, ~-2~ and so on before the extension, so repeated camera captures named ~image.jpg~ all survive.
 
@@ -1773,7 +1776,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Refile* (see [[#refile][Refile]]): you can't create a new destination heading by typing a name that doesn't exist yet.
 
-*Attachments* (see [[#attachments][Attachments]]): follows ~org-attach~'s folder model (~ID~ or ~DIR~ folder, ~:ATTACH:~ tag, and the dispatcher's ~a~ ~b~ ~n~ ~o~ ~O~ ~f~ ~d~ ~D~ ~z~ ~s~ ~S~). Not built: ~c~/~m~/~l~ and ~org-attach-dired~ bulk operations. It requires GitHub, WebDAV or, in the Android app, the org-pwa folder.
+*Attachments* (see [[#attachments][Attachments]]): follows ~org-attach~'s folder model (~ID~ or ~DIR~ folder, ~:ATTACH:~ tag, and the dispatcher's ~a~ ~p~ ~v~ ~r~ ~b~ ~n~ ~o~ ~O~ ~f~ ~d~ ~D~ ~z~ ~s~ ~S~). Not built: ~c~/~m~/~l~ and ~org-attach-dired~ bulk operations. It requires GitHub, WebDAV or, in the Android app, the org-pwa folder.
 
 *Conflict resolution* (see [[#offline-behavior-and-sync][Offline behavior and sync]]): a line-based three-way merge with a region-by-region resolver. It merges lines, not org structure, so a subtree moved on one side and edited on the other is an ordinary clash, and a region has no side-by-side or word-level diff.
 

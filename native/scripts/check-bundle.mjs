@@ -93,7 +93,7 @@ function nativeSide() {
       list: async ({ path }) => ({ names: [...tree.files.keys()].filter((p) => p.startsWith(path + '/') && !p.slice(path.length + 1).includes('/')).map((p) => p.slice(path.length + 1)) }),
     },
     LocalFiles: {
-      pickAttachment: async () => { if (window.__cancelPick) { window.__cancelPick = false; throw new Error('cancelled'); } window.__calls.push(['pickAttachment']); return { path: '/data/user/0/org.orgpwa.app/cache/captures/photo-1.jpg', name: 'photo-1.jpg', type: 'image/jpeg' }; },
+      pickAttachment: async (a) => { if (window.__cancelPick) { window.__cancelPick = false; throw new Error('cancelled'); } window.__calls.push(['pickAttachment', a]); return { path: '/data/user/0/org.orgpwa.app/cache/captures/photo-1.jpg', name: 'photo-1.jpg', type: 'image/jpeg' }; },
       pickOpen: async () => { if (window.__cancelNext) { window.__cancelNext = false; throw new Error('cancelled'); } return { name: 'phone.org' }; },
       pickNew: async ({ name }) => { files.set(name, ''); return { name }; },
       read: async ({ name }) => (files.has(name) ? { found: true, content: files.get(name) } : { found: false }),
@@ -369,6 +369,18 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
   const attachedWrite = (await calls(page, 'attachWrite')).find((c) => c[1].endsWith('/photo-1.jpg'));
   check(viaChooser.direct.name === 'photo-1.jpg' && viaChooser.direct.type === 'image/jpeg' && Buffer.from(viaChooser.direct.base64, 'base64').toString() === expectBytes, 'the chooser\u2019s file is read from the cache through the web server, with its name and type', JSON.stringify({ ...viaChooser.direct, base64: viaChooser.direct.base64.slice(0, 12) + '\u2026' }));
   check(attachedWrite && Buffer.from(attachedWrite[2], 'base64').toString() === expectBytes && viaChooser.body.includes('attachment:photo-1.jpg'), 'Attach uses it: the bytes are written to the folder under data/ and the heading links to the photo', attachedWrite && attachedWrite[1]);
+  // Photo and Video go to the camera at once (the plugin is told which), and the file is named for when it was taken
+  const viaCamera = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { captureMediaToHeading } = await import('/src-browser/attachments-flow.js');
+    const heading = S.state.doc.children[0];
+    await captureMediaToHeading(heading, 'video');
+    return heading.tags.join(',');
+  });
+  const modes = (await calls(page, 'pickAttachment')).map((c) => (c[1] && c[1].mode) || '');
+  const cameraWrite = (await calls(page, 'attachWrite')).find((c) => /\/video-\d{4}-\d{2}-\d{2}-\d{6}\.jpg$/.test(c[1]));
+  check(modes.includes('video') && modes.includes(''), 'Video asks the plugin for the camera; Attach file still asks for the chooser', JSON.stringify(modes));
+  check(!!cameraWrite && viaCamera.includes('ATTACH'), 'and the capture is stored as video-<date>-<time> and tagged', cameraWrite && cameraWrite[1]);
   check(viaChooser.cancelled === 'AbortError', 'backing out of the chooser is an AbortError, which the attach flow ignores', viaChooser.cancelled);
 
   // local files by name, found in the same folder: read, written, listed as present or absent, with text that is not ASCII

@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v455 — Attach: Photo and Video
+Two new buttons in the attach menu open the camera straight away, for a photo or a video, and attach the result under a dated name. Files over 25MB ask first; over 95MB is refused on GitHub, which caps files at 100MB. The Android app opens its camera app directly.
+
 * v454 — Attach: DIR, Sync, Folder, New file
 The attach menu gains org-attach's remaining commands: Set/Unset DIR (keep a heading's files in a folder you choose), Sync (set the ATTACH tag from the folder), Folder (a list with per-file actions), Attach open document and New text file.
 

@@ -3645,7 +3645,7 @@ check('attach dispatcher: the list comes from the folder (not from links), the A
     return { columns: el ? getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/).length : 0, text: document.body.innerText };
   });
   expect(grid.columns === 2, `two columns: ${grid.columns}`);
-  for (const label of ['Attach file', 'Open', 'Preview in app', 'Save a copy', 'Delete one', 'Delete all', 'Attach open document', 'New text file', 'Folder', 'Sync', 'Set DIR', 'Unset DIR']) expect(grid.text.includes(label), `button "${label}" is there`);
+  for (const label of ['Attach file', 'Open', 'Preview in app', 'Save a copy', 'Delete one', 'Delete all', 'Photo', 'Video', 'Attach open document', 'New text file', 'Folder', 'Sync', 'Set DIR', 'Unset DIR']) expect(grid.text.includes(label), `button "${label}" is there`);
 
   // Preview shows text inside the app
   await page.keyboard.press('Escape');
@@ -3725,6 +3725,40 @@ check('attach phase 2: DIR names the folder, Sync follows the files, the folder 
   expect(!keys.some((n) => n.startsWith('files/report/')), 'and none left in the old folder');
   const after = await page.evaluate(`(async () => { const h = ${h}; return { dir: h.properties.DIR === undefined, tags: h.tags.join(',') }; })()`);
   expect(after.dir && after.tags.includes('ATTACH'), `DIR is gone and the heading is still tagged: ${JSON.stringify(after)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('attach capture: Photo and Video open the browser\u2019s camera input (rear camera, images or video only) and a large video is confirmed or refused', async () => {
+  dav.reset({ 'notes.org': '* Report\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const inputs = [];
+  for (const kind of ['photo', 'video']) {
+    await page.evaluate(async (k) => {
+      const { S } = await import('/src-browser/app-state.js');
+      const { captureMediaToHeading } = await import('/src-browser/attachments-flow.js');
+      captureMediaToHeading(S.state.doc.children[0], k); // waits on the file input, never awaited
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }, kind);
+    inputs.push(await page.evaluate(() => { const el = [...document.querySelectorAll('input[type=file]')].pop(); const out = el ? { accept: el.accept, capture: el.getAttribute('capture') } : null; if (el) el.remove(); return out; }));
+  }
+  expect(inputs[0] && inputs[0].accept === 'image/*' && inputs[0].capture === 'environment', `photo input: ${JSON.stringify(inputs[0])}`);
+  expect(inputs[1] && inputs[1].accept === 'video/*' && inputs[1].capture === 'environment', `video input: ${JSON.stringify(inputs[1])}`);
+  // a file over 95MB on GitHub is refused outright; here (WebDAV) only the confirmation applies, and declining attaches nothing
+  const declined = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { uploadAttachmentToHeading } = await import('/src-browser/attachments-flow.js');
+    const h = S.state.doc.children[0];
+    const pending = uploadAttachmentToHeading(h, { name: 'big.mp4', type: 'video/mp4', base64: 'A'.repeat(40 * 1024 * 1024) });
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    const asked = document.body.innerText.includes('Attach it?');
+    return { asked, pending: !!pending };
+  });
+  expect(declined.asked, 'a 30MB video asks before it is attached');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.waitForTimeout(400);
+  expect(![...dav.files.keys()].some((n) => n.endsWith('big.mp4')), 'declining attaches nothing');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
