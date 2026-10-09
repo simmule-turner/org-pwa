@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v463 — Folder panel saves several files; Export copy removed
+The Folder panel can save the selected files, so the separate Export copy entry in the Attach menu (not an org-attach key) is gone; the panel's ~S~ and Save selected do the same.
+
 * v462 — Compact attachment folder, multi-file Attach
 The Folder panel is one row per file (checkbox, ~O~, ~S~, ~D~, name) with select-all, delete-selected and Add files. Attach takes several files at once in a browser. The Capture picker always shows key badges and labels, however it was opened.
 

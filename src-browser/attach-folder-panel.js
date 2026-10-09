@@ -1,14 +1,14 @@
 // org-attach-reveal for this app: the heading's attachment folder as a list, the Dired of a browser. One compact row per file:
 // `[ ] [O] [S] [D] filename` -- the checkbox selects, O opens, S saves, D deletes. A strip above the list selects all, shows the
 // count, deletes the selection and adds files. `load()` resolves the names (or null if it could not say), `act(action, name)` runs
-// one action, `removeMany(names)` deletes the selection (asking once) and `add()` attaches more files; each resolves when done.
+// one action, `saveMany(names)` saves and `removeMany(names)` deletes the selection (asking once) and `add()` attaches more files; each resolves when done.
 import { S } from './app-state.js';
 import { lockBackgroundScroll } from './dialogs.js';
 import { keepOverlayInVisibleViewport, menuButton } from './ui-widgets.js';
 
 const SMALL_BUTTON = 'font:inherit;font-size:12px;font-weight:600;min-width:28px;height:28px;padding:0 4px;border:1px solid var(--border-strong);border-radius:6px;background:transparent;color:var(--fg);cursor:pointer;flex:none;';
 
-export function showAttachmentFolder({ title, load, act, removeMany, add }) {
+export function showAttachmentFolder({ title, load, act, removeMany, saveMany, add }) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;overflow:hidden;';
   const modal = document.createElement('div');
@@ -77,6 +77,14 @@ export function showAttachmentFolder({ title, load, act, removeMany, add }) {
     count.style.cssText = 'font-size:12px;opacity:0.7;flex:1;min-width:60px;';
     count.textContent = selected.size ? `${selected.size} selected` : `${names.length} file${names.length === 1 ? '' : 's'}`;
     strip.appendChild(count);
+    if (selected.size && saveMany) {
+      strip.appendChild(
+        smallButton('Save selected', 'Save selected', async () => {
+          await saveMany([...selected]);
+        })
+      );
+      strip.lastChild.style.padding = '0 8px';
+    }
     if (selected.size && removeMany) {
       strip.appendChild(
         smallButton('Delete selected', 'Delete selected', async () => {

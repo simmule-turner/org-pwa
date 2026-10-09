@@ -719,10 +719,9 @@ Files kept with a heading, as in Org's ~org-attach~. Press ~C-c C-a~ on a headin
 - *Attach open document* (~b~, ~org-attach-buffer~): save one of your open documents, as text, in the folder.
 - *New text file* (~n~, ~org-attach-new~): give a name and type its contents.
 - *Open* (~o~): show a picture, recording, video or text file inside the app; anything else opens in the browser's viewer, or downloads when there is none.
-- *Folder* (~f~, ~org-attach-reveal~): the folder as a compact list, one row per file: a checkbox to select, then ~O~ (open), ~S~ (save) and ~D~ (delete), then the name. The strip above selects all, deletes the selection after one confirmation, and adds files.
+- *Folder* (~f~, ~org-attach-reveal~): the folder as a compact list, one row per file: a checkbox to select, then ~O~ (open), ~S~ (save to disk) and ~D~ (delete), then the name. The strip above selects all, saves or deletes the selection (deleting asks once), and adds files.
 - *Delete one* (~d~) and *Delete all* (~D~): remove files after a confirmation.
 - *Set DIR* (~s~) and *Unset DIR* (~S~): keep a heading's files in a folder of your choosing instead. Unset DIR asks whether to move the files to the ID folder, delete them, or leave them.
-- *Export copy* (~e~): download it.
 - *Sync* (~z~, ~org-attach-sync~): set the ~:ATTACH:~ tag to match what is in the folder, for files added or removed by other means.
 
 Each heading's files live in ~data/<first 2 characters of its ID>/<rest of the ID>/~ beside the document, and the heading gets an ~ID~ property and an ~:ATTACH:~ tag the first time. A ~DIR~ property names another folder, relative to the document (a leading ~/~ starts at the root of the storage); it wins over the ID. The attachments of a heading are what is in that folder, so a file added there by other means shows up too. With several files, Open, Preview, Save and Delete ask which one.

@@ -526,6 +526,9 @@ export async function revealAttachmentFolder(heading) {
     load: () => listFolder(dir),
     act: (action, name) => performAttachmentAction(heading, name, action),
     add: () => pickAndUpload(heading),
+    saveMany: async (names) => {
+      for (const name of names) await performAttachmentAction(heading, name, 'save');
+    },
     removeMany: async (names) => {
       if (!(await confirmDialog(`Delete ${names.length} attachment${names.length === 1 ? '' : 's'}? This removes the actual files, not just the links.`))) return;
       for (const name of names) await deleteAttachment(heading, name);
@@ -586,7 +589,6 @@ export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
       { key: 'D', text: 'Delete all', onClick: () => deleteAllAttachments(heading) },
       { key: 's', text: 'Set DIR', onClick: () => setAttachmentDirectory(heading) },
       { key: 'S', text: 'Unset DIR', onClick: () => unsetAttachmentDirectory(heading) },
-      { key: 'e', text: 'Export copy', onClick: () => startAttachmentPickFlow(heading, 'save') },
       { key: 'z', text: 'Sync', onClick: () => syncAttachments(heading) },
     ],
   });
