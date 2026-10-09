@@ -21,6 +21,7 @@ import {
   ownAttachmentDirectory,
   attachmentSizeCheck,
   generateCaptureFilename,
+  prefersInAppCamera,
 } from '../src/attach.js';
 
 // ---- generateAttachmentId ---------------------------------------------------
@@ -342,4 +343,17 @@ test('attachmentSizeCheck: fine when small, a confirmation over 25MB, a refusal 
   assert.match(attachmentSizeCheck(chars(30), 'github').warn, /30MB/);
   assert.match(attachmentSizeCheck(chars(96), 'github').refuse, /100MB/);
   assert.match(attachmentSizeCheck(chars(96), 'webdav').warn, /96MB/);
+});
+
+test('prefersInAppCamera: ChromeOS and desktop yes; Android, iPhone, iPad (even as a Mac) no', () => {
+  assert.equal(prefersInAppCamera('Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) Chrome/120', 0), true);
+  assert.equal(prefersInAppCamera('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120', 0), true);
+  assert.equal(prefersInAppCamera('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605', 0), true);
+  assert.equal(prefersInAppCamera('Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/120 Mobile', 5), false);
+  assert.equal(prefersInAppCamera('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', 5), false);
+  assert.equal(prefersInAppCamera('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605', 5), false);
+});
+
+test('generateCaptureFilename: a type with parameters (a MediaRecorder\u2019s webm;codecs=vp9) still gives its extension', () => {
+  assert.equal(generateCaptureFilename('video', '', 'video/webm;codecs=vp9,opus', new Date(2026, 9, 9, 8, 5, 1)), 'video-2026-10-09-080501.webm');
 });

@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v458 — Attach takes photos and video on a Chromebook
+On ChromeOS and desktop, where Chrome's file chooser has no camera, Attach now asks Choose a file, Take a photo or Record a video; the last two use an in-app webcam panel with retake before attaching.
+
 * v457 — One Attach button
 Attach file, Photo and Video are now a single Attach button: on a phone or tablet the system chooser offers files and the camera for a photo or a video. Open shows pictures, audio, video and text inside the app, replacing Preview.
 

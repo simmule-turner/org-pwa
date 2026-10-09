@@ -1,6 +1,6 @@
 // Extracted from app.js: attachments flow.
 import { deleteProperty, getProperty, setProperty } from '../src/archive-model.js';
-import { addAttachTag, attachmentSizeCheck, attachmentDir, attachmentDirFromProperty, ownAttachmentDirectory, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
+import { addAttachTag, attachmentSizeCheck, attachmentDir, prefersInAppCamera, attachmentDirFromProperty, ownAttachmentDirectory, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
 import { parseBody } from '../src/body-parser.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { guessImageMimeType, guessViewableMimeType, resolveAttachmentDirectory, resolveAttachmentTarget } from '../src/link-resolve.js';
@@ -9,6 +9,7 @@ import { S } from './app-state.js';
 import { openAudioRecordingPanel } from './audio-recording.js';
 import { confirmDialog, openButtonChoiceModal, openGridChoiceModal, openMultiFieldPopup, openTextFieldPopup, pickBinaryFile, showModalOverlay } from './dialogs.js';
 import { showAttachmentFolder } from './attach-folder-panel.js';
+import { cameraAvailable, openCameraPanel } from './camera-capture.js';
 import { utf8ToBase64 } from './github-adapter.js';
 import { showAttachmentPreview } from './attach-preview.js';
 import { getAttachLinkMode } from './settings.js';
@@ -67,13 +68,29 @@ async function requireAttachmentStorage() {
 export async function attachFileToHeading(heading) {
   if (!(await requireAttachmentStorage())) return;
 
+  // A Chromebook or desktop browser has no camera in its file chooser, so Attach asks which first; a phone's own chooser has it.
+  if (!platform.pickFile && prefersInAppCamera(navigator.userAgent, navigator.maxTouchPoints) && (await cameraAvailable())) {
+    openButtonChoiceModal({
+      label: `Attach to "${heading.title || '(untitled)'}"`,
+      buttons: [
+        { text: '\ud83d\udcce Choose a file', onClick: () => pickAndUpload(heading) },
+        { text: '\ud83d\udcf7 Take a photo', onClick: () => openCameraPanel('photo', (picked) => uploadAttachmentToHeading(heading, picked)) },
+        { text: '\ud83c\udfa5 Record a video', onClick: () => openCameraPanel('video', (picked) => uploadAttachmentToHeading(heading, picked)) },
+        { text: 'Cancel', onClick: () => {} },
+      ],
+    });
+    return;
+  }
+  await pickAndUpload(heading);
+}
+
+async function pickAndUpload(heading) {
   let picked;
   try {
     picked = await (platform.pickFile ? platform.pickFile() : pickBinaryFile()); // a shell may offer the camera beside the files
   } catch {
     return; // no file selected -- silently do nothing, matching every other cancel-a-picker path in this app
   }
-
   await uploadAttachmentToHeading(heading, picked);
 }
 

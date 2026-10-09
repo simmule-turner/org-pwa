@@ -3729,6 +3729,39 @@ check('attach phase 2: DIR names the folder, Sync follows the files, the folder 
   await context.close();
 });
 
+check('attach on a desktop or Chromebook: Attach offers a file, a photo or a video; the in-app camera takes a photo and records a video, and each is attached under a dated name', async () => {
+  dav.reset({ 'notes.org': '* Report\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const h = `(await import('/src-browser/app-state.js')).S.state.doc.children[0]`;
+  const open = () => page.evaluate(`(async () => { const { attachFileToHeading } = await import('/src-browser/attachments-flow.js'); attachFileToHeading(${h}); })()`);
+  await open();
+  await page.waitForFunction(() => document.body.innerText.includes('Take a photo'), null, { timeout: 5000 });
+  const menu = await page.evaluate(() => document.body.innerText);
+  expect(menu.includes('Choose a file') && menu.includes('Take a photo') && menu.includes('Record a video'), 'Attach offers file, photo and video here');
+
+  // photo
+  await page.getByText('Take a photo', { exact: false }).first().click();
+  await page.getByRole('button', { name: /Take photo/ }).click();
+  await page.getByRole('button', { name: /Attach/ }).click();
+  await page.waitForFunction(() => document.getElementById('minibuffer').innerText.includes('Attached "photo-'), null, { timeout: 8000 });
+  // video
+  await open();
+  await page.waitForFunction(() => document.body.innerText.includes('Record a video'), null, { timeout: 5000 });
+  await page.getByText('Record a video', { exact: false }).first().click();
+  await page.getByRole('button', { name: /Record/ }).click();
+  await page.waitForTimeout(1500);
+  await page.getByRole('button', { name: /Stop/ }).click();
+  await page.getByRole('button', { name: /Attach/ }).click();
+  await page.waitForFunction(() => document.getElementById('minibuffer').innerText.includes('Attached "video-'), null, { timeout: 8000 });
+  const names = [...dav.files.keys()].filter((n) => n.startsWith('data/')).map((n) => n.split('/').pop()).sort();
+  expect(names.length === 2 && /^photo-\d{4}-\d{2}-\d{2}-\d{6}\.jpg$/.test(names[0]) && /^video-\d{4}-\d{2}-\d{2}-\d{6}\.webm$/.test(names[1]), `stored under dated names: ${names.join(',')}`);
+  expect(dav.get([...dav.files.keys()].find((n) => n.endsWith('.jpg'))).length > 100, 'and the photo has content');
+  expect(await page.evaluate(() => !document.querySelector('video')), 'the camera panel is gone and the camera released');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('attach size guard: a large video asks before it is attached, and declining attaches nothing', async () => {
   dav.reset({ 'notes.org': '* Report\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
@@ -3800,6 +3833,8 @@ check('attach: a platform that supplies its own picker (the camera beside the fi
   await page.evaluate(async () => {
     const { installPlatform } = await import('/src-browser/platform.js');
     installPlatform({ pickFile: null });
+    // a phone's own chooser has the camera, so only a desktop browser gets the in-app camera menu; look like a phone here
+    Object.defineProperty(navigator, 'userAgent', { get: () => 'Mozilla/5.0 (Linux; Android 14) Chrome/120 Mobile', configurable: true });
     const { S } = await import('/src-browser/app-state.js');
     const { attachFileToHeading } = await import('/src-browser/attachments-flow.js');
     attachFileToHeading(S.state.doc.children[0]);
@@ -4266,7 +4301,7 @@ if (selected.length === 0) {
 }
 
 const { chromium } = loadPlaywright();
-const launchOptions = process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {};
+const launchOptions = { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'], ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}) };
 browser = await chromium.launch(launchOptions);
 main = await startServer(dav);
 

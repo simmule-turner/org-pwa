@@ -103,8 +103,18 @@ function generateCaptureFilename(kind, pickedName, pickedType, now = new Date())
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
   const own = /\.([a-z0-9]{1,5})$/i.exec(String(pickedName || ''));
-  const ext = own ? own[1].toLowerCase() : CAPTURE_EXTENSIONS[String(pickedType || '').toLowerCase()] || (kind === 'video' ? 'mp4' : 'jpg');
+  const baseType = String(pickedType || '').split(';')[0].trim().toLowerCase(); // 'video/webm;codecs=vp9' is video/webm
+  const ext = own ? own[1].toLowerCase() : CAPTURE_EXTENSIONS[baseType] || (kind === 'video' ? 'mp4' : 'jpg');
   return `${kind === 'video' ? 'video' : 'photo'}-${stamp}.${ext}`;
+}
+
+/** Whether `a` should offer the in-app camera: on a desktop-class device (a Chromebook, a laptop), whose file chooser has no
+ *  camera in it. A phone or tablet has the camera in its own chooser. An iPad that calls itself a Mac is told by its touch. */
+function prefersInAppCamera(userAgent, maxTouchPoints) {
+  const ua = String(userAgent || '');
+  if (/Android|iPhone|iPad|iPod/i.test(ua)) return false;
+  if (/Macintosh/.test(ua) && maxTouchPoints > 1) return false;
+  return true;
 }
 
 const MB = 1024 * 1024;
@@ -336,6 +346,7 @@ function generateRecordingFilename(mimeType, now = new Date()) {
 }
 
 export {
+  prefersInAppCamera,
   attachmentSizeCheck,
   generateCaptureFilename,
   attachmentDirFromProperty,
