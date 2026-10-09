@@ -31,7 +31,7 @@
  */
 
 import { findAncestorPath, getProperty } from './archive-model.js';
-import { attachmentPath } from './attach.js';
+import { attachmentDir } from './attach.js';
 
 const EXTERNAL_URL_RE = /^[a-z][a-z0-9+.-]*:\/\//i;
 const MAILTO_RE = /^mailto:/i;
@@ -130,11 +130,18 @@ export function resolveImagePath(target, currentDocumentId) {
  */
 export function resolveAttachmentTarget(doc, heading, attachmentTarget, documentId) {
   const filename = attachmentTarget.replace(/^attachment:/i, '');
+  const dir = resolveAttachmentDirectory(doc, heading, documentId);
+  return dir ? `${dir}/${filename}` : null;
+}
+
+/** The attachment folder for `heading`: the one its own :ID: names, else the nearest ancestor's; null with no :ID: in that
+ *  chain. */
+export function resolveAttachmentDirectory(doc, heading, documentId) {
   const ancestors = findAncestorPath(doc, heading) || [];
   const chain = [heading, ...ancestors.slice().reverse()];
   for (const candidate of chain) {
     const id = getProperty(candidate, 'ID');
-    if (id) return attachmentPath(id, filename, documentId);
+    if (id) return attachmentDir(id, documentId);
   }
   return null;
 }

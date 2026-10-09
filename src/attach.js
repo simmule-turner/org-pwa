@@ -54,11 +54,41 @@ function splitAttachmentId(id) {
  *  how export's own baseName sanitization already works elsewhere in
  *  this app) -- not re-validated here. */
 function attachmentPath(id, filename, documentId) {
+  return `${attachmentDir(id, documentId)}/${filename}`;
+}
+
+/** The folder a heading's attachments live in: `data/<prefix>/<rest>` beside the document (no trailing slash). The folder is
+ *  what org-attach lists, so it is the one thing every attachment command starts from. */
+function attachmentDir(id, documentId) {
   const { prefix, rest } = splitAttachmentId(id);
   const lastSlash = documentId ? documentId.lastIndexOf('/') : -1;
   const dir = lastSlash === -1 ? '' : documentId.slice(0, lastSlash + 1);
-  return `${dir}data/${prefix}/${rest}/${filename}`;
+  return `${dir}data/${prefix}/${rest}`;
 }
+
+/** The tag org-attach puts on a heading that has attachments (org-attach-auto-tag). */
+const ATTACH_TAG = 'ATTACH';
+
+function addAttachTag(heading) {
+  if (!(heading.tags || []).includes(ATTACH_TAG)) heading.tags = [...(heading.tags || []), ATTACH_TAG];
+}
+
+function removeAttachTag(heading) {
+  heading.tags = (heading.tags || []).filter((tag) => tag !== ATTACH_TAG);
+}
+
+const VIDEO_EXT_RE = /\.(mp4|m4v|mov|webm|mkv|avi)$/i;
+
+/** Whether attaching `filename` also writes an [[attachment:...]] link into the heading's body, by the setting: 'media' (images,
+ *  audio and video, which the app shows inline), 'always', or 'never' (as org does). */
+function shouldInsertAttachmentLink(filename, mode) {
+  if (mode === 'always') return true;
+  if (mode === 'never') return false;
+  return IMAGE_EXT_RE.test(filename) || isAudioFilename(filename) || VIDEO_EXT_RE.test(filename);
+}
+
+const ATTACH_LINK_MODES = ['media', 'always', 'never'];
+const normalizeAttachLinkMode = (value) => (ATTACH_LINK_MODES.includes(value) ? value : 'media');
 
 /** A real org attachment: link referencing an attached file -- real
  *  org-attach's own actual link type, resolved (at render time, via
@@ -252,6 +282,13 @@ function generateRecordingFilename(mimeType, now = new Date()) {
 }
 
 export {
+  ATTACH_LINK_MODES,
+  ATTACH_TAG,
+  addAttachTag,
+  attachmentDir,
+  normalizeAttachLinkMode,
+  removeAttachTag,
+  shouldInsertAttachmentLink,
   generateAttachmentId,
   splitAttachmentId,
   attachmentPath,

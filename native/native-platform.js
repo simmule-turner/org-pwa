@@ -250,6 +250,14 @@
             return !!result.value;
           });
         },
+        // the files in a folder (an attachment folder), as GitHub's and WebDAV's list() give them
+        list: function (folder) {
+          return attachments.list({ path: folder }).then(function (result) {
+            return (result.names || []).map(function (name) {
+              return { name: name, path: folder + '/' + name, type: 'file' };
+            });
+          });
+        },
       },
     };
   }

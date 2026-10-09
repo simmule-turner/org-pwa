@@ -90,6 +90,7 @@ function nativeSide() {
       write: async ({ path, base64 }) => { tree.files.set(path, base64); window.__calls.push(['attachWrite', path, base64]); },
       remove: async ({ path }) => ({ deleted: tree.files.delete(path) }),
       exists: async ({ path }) => ({ value: tree.files.has(path) }),
+      list: async ({ path }) => ({ names: [...tree.files.keys()].filter((p) => p.startsWith(path + '/') && !p.slice(path.length + 1).includes('/')).map((p) => p.slice(path.length + 1)) }),
     },
     LocalFiles: {
       pickAttachment: async () => { if (window.__cancelPick) { window.__cancelPick = false; throw new Error('cancelled'); } window.__calls.push(['pickAttachment']); return { path: '/data/user/0/org.orgpwa.app/cache/captures/photo-1.jpg', name: 'photo-1.jpg', type: 'image/jpeg' }; },
@@ -333,19 +334,22 @@ const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => 
     const { platform } = await import('/src-browser/platform.js');
     const storage = await ensureAttachmentsStorage();
     const heading = S.state.doc.children[0];
+    const wroteDir = (h) => `data/${h.properties.ID.slice(0, 2)}/${h.properties.ID.slice(2)}`;
     await uploadAttachmentToHeading(heading, { name: 'doc.pdf', type: 'application/pdf', base64: 'JVBERi0xLjQ=' });
     const link = heading.bodyLines.join('|');
+    const listed = await platform.attachments.adapter.list(wroteDir(heading));
     await openAttachmentLink('attachment:doc.pdf', heading);
     await deleteAttachment(heading, 'doc.pdf');
-    return { storage, link, after: heading.bodyLines.join('|'), folder: await platform.attachments.folder() };
+    return { storage, link, listed, after: heading.bodyLines.join('|'), folder: await platform.attachments.folder() };
   });
   const wrote = (await calls(page, 'attachWrite'))[0];
   const viewedAttachment = (await calls(page, 'viewFile')).pop();
   check(outcome.storage === 'ok' && outcome.folder && outcome.folder.name === 'org-pwa', 'the first attach asks for the folder, which is then remembered', JSON.stringify(outcome.folder));
   check(wrote && /^data\/[^/]{2}\/[^/]+\/doc\.pdf$/.test(wrote[1]) && wrote[2] === 'JVBERi0xLjQ=', 'the attachment is written under data/xx/rest/ with its bytes intact', wrote && wrote[1]);
-  check(outcome.link.includes('attachment:doc.pdf'), 'and linked from the heading', outcome.link);
+  check(outcome.listed.length === 1 && outcome.listed[0].name === 'doc.pdf' && outcome.listed[0].type === 'file', 'the folder lists its files (what the Attach list is read from)', JSON.stringify(outcome.listed));
+  check(!outcome.link.includes('attachment:doc.pdf'), 'a pdf gets no link by default (only pictures, audio and video do)', outcome.link);
   check(viewedAttachment && viewedAttachment[1].name === 'doc.pdf' && Buffer.from(viewedAttachment[1].base64, 'base64').toString() === '%PDF-1.4', 'opening it reads the same bytes back from the folder and hands them to the viewer');
-  check(!outcome.after.includes('attachment:doc.pdf'), 'deleting removes the link', outcome.after);
+  check(!outcome.after.includes('attachment:doc.pdf'), 'deleting leaves no link', outcome.after);
 
   // attaching through the chooser that has the camera in it: the file is read from the cache through the web server, and the
   // whole attach flow runs on what the picker returns

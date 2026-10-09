@@ -522,3 +522,14 @@ test('local: is a file-link scheme of its own, and a local: link resolves like g
 test('resolveImagePath: a local: prefix is stripped like the other schemes', () => {
   assert.equal(resolveImagePath('local:photo.png', 'journal/notes.org'), 'journal/photo.png');
 });
+
+test('resolveAttachmentDirectory: the heading’s own :ID: folder, else the nearest ancestor’s, else null', async () => {
+  const { resolveAttachmentDirectory } = await import('../src/link-resolve.js');
+  const { parseOrg } = await import('../src/org-parser.js');
+  const doc = parseOrg('* Parent\n:PROPERTIES:\n:ID: abcdef-123\n:END:\n** Child\n* Other\n');
+  const [parent, other] = doc.children;
+  const child = parent.children[0];
+  assert.equal(resolveAttachmentDirectory(doc, parent, 'org-pwa/foo.org'), 'org-pwa/data/ab/cdef-123');
+  assert.equal(resolveAttachmentDirectory(doc, child, 'org-pwa/foo.org'), 'org-pwa/data/ab/cdef-123');
+  assert.equal(resolveAttachmentDirectory(doc, other, 'org-pwa/foo.org'), null);
+});

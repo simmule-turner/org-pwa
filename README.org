@@ -703,30 +703,26 @@ An entry the app can't understand is skipped and listed with the reason at the t
 :CUSTOM_ID: attachments
 :END:
 
-This app's own feature, inspired by org's ~org-attach~. The [[#editing-your-outline][general editor]] (📋 Edit details) has an *Attach* action that offers five choices:
+Files kept with a heading, as in Org's ~org-attach~. Press ~C-c C-a~ on a heading, or tap *Attach* in 📋 Edit details, for a grid of buttons:
 
-- *📎 Attach a file* (org's ~org-attach-attach~): pick any file, including gallery media or the camera (the browser's picker usually offers the camera too). The first attachment on a heading generates a random ~:ID:~ property, reused for later ones, and uploads the file to ~<document's directory>/data/<first 2 characters of the ID>/<rest of the ID>/<filename>~. A document at ~org-pwa/foo.org~ keeps its attachments under ~org-pwa/data/~, and one at the root under ~data/~. An ~attachment:~ link, org's own link type, is appended to the heading's body.
-- *🎤 Record audio* (this app's own): records from the microphone with a live timer, then plays the recording back so you can re-record before saving. Saving uploads it like any attachment. The format depends on the browser (~audio/webm~ in Chrome, Firefox and Edge, ~audio/mp4~ in Safari), and the file is named ~recording-YYYY-MM-DD-HHMMSS.<ext>~. It needs HTTPS and microphone permission.
-- *📂 Open*: views the heading's attachment in a new tab with the browser's native viewer (PDF, video, plain text, images, audio), and downloads it with a status message when there is no viewer. HTML and SVG are never opened this way, because navigating to them would run any script inside. A ~.webm~ file is checked by its content to tell audio from video, defaulting to audio, and ~.mp4~ is always video (recordings are named ~.m4a~). With no attachments a message says so; with one it opens directly; with several it asks which.
-- *💾 Save*: downloads the attachment, whatever its type (the same picker if there are several).
-- *🗑️ Delete* (org's ~org-attach-delete-one~): pick one if there are several, confirm, and both the file on GitHub or WebDAV and its ~[[attachment:...]]~ link are removed. The file goes first; if that fails, the link stays.
+- *Attach file* (~a~): pick a file, a photo or a recording; it is copied into the heading's folder.
+- *Record audio* (~r~): record from the microphone, play it back, then save.
+- *Open* (~o~): view it in the browser's own viewer; a file with no viewer is downloaded.
+- *Preview in app* (~O~): show a picture, recording, video or text file inside the app.
+- *Save a copy*: download it.
+- *Delete one* (~d~) and *Delete all* (~D~): remove files after a confirmation.
 
-Tapping an ~attachment:~ link in a body does the same as *Open*.
+Each heading's files live in ~data/<first 2 characters of its ID>/<rest of the ID>/~ beside the document, and the heading gets an ~ID~ property and an ~:ATTACH:~ tag the first time. The attachments of a heading are what is in that folder, so a file added there by other means shows up too. With several files, Open, Preview, Save and Delete ask which one.
 
-*Display*: a bare ~[[attachment:photo.jpg]]~ with no description shows as an inline image, as in org (a description turns any image link into a plain link); see [[#links-and-images][Links and images]]. Image extensions include ~.heic~ and ~.heif~ (iPhone photos) as well as ~.png~, ~.jpg~, ~.gif~, ~.svg~, ~.webp~ and ~.bmp~. HEIC renders only in browsers that support it: Safari and iOS do, desktop Chrome and Firefox generally don't. An audio file shows a compact "▶️ filename" button; tapping it fetches the audio and expands a native player with play, pause and a scrubber. Audio extensions include ~.webm~, ~.m4a~, ~.mp3~, ~.wav~ and ~.ogg~. Any other attachment keeps its filename as visible text, like ~[[attachment:notes.pdf][notes.pdf]]~, and opens as *Open* does.
+Example: on a heading, ~C-c C-a~, then ~a~, pick ~receipt.pdf~. The heading now carries ~:ATTACH:~ and ~receipt.pdf~ is in its folder.
 
-*Resolving links*: an ~attachment:~ link resolves against the ~:ID:~ of the heading it is written in, else the nearest ancestor's, as in org. With no ~:ID:~ in that chain it shows as an unresolved link.
+*Links in the body*: Settings → Attachments chooses whether attaching also adds an ~[[attachment:name]]~ link: for pictures, audio and video (the default), always, or never, as in Org. A bare link to a picture shows it inline; audio gets a play button. Tapping an ~attachment:~ link does the same as *Open*. A link finds its folder from the ~ID~ of its heading, else the nearest ancestor's.
 
-*Requirements*: GitHub or WebDAV must be connected, since writing, reading and deleting files needs a backend that can do that without a fresh file picker; a local or iOS-imported file can't. *Attach* is always visible, and explains the limitation if tapped without one. The [[#android-app][Android app]] is the exception: it keeps a local file's attachments in the org-pwa folder you choose once.
+*Requirements*: GitHub or WebDAV must be connected. The [[#android-app][Android app]] instead keeps a local file's attachments in the org-pwa folder you choose once.
 
-- *GitHub*: files over 1MB (an ordinary camera photo) are read back through GitHub's Blobs API, which allows 100MB.
-- *WebDAV*: every folder in the path is created first, as the server requires.
+*Filenames*: path-unsafe characters become ~_~; a name already in the folder gets ~-1~, ~-2~ and so on before the extension, so repeated camera captures named ~image.jpg~ all survive.
 
-A just-attached image is shown from the bytes already uploaded, not fetched again.
-
-*Filenames*: a picked name has path separators and other path-unsafe characters replaced with ~_~ and is otherwise kept, spaces included; a name that ends up empty becomes ~attachment~. A name that collides with an existing attachment on the same heading gets ~-1~, ~-2~ and so on before the extension. That matters because many camera apps return the same name (often ~image.jpg~) for every capture, and the storage path comes only from the ID and the name: two captures become ~[[attachment:image.jpg]]~ and ~[[attachment:image-1.jpg]]~, each with its own file.
-
-*Not built*: bulk operations like ~org-attach-dired~ (Delete handles one at a time), and a view of every attachment in the file. Only the *Open* and *Delete* pickers for the heading you are acting on list attachments.
+*Not built*: Org's copy/move/link variants (~c~, ~m~, ~l~), attaching a buffer, new file, sync, folder view and the ~DIR~ property.
 
 -----
 
@@ -1772,7 +1768,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Refile* (see [[#refile][Refile]]): you can't create a new destination heading by typing a name that doesn't exist yet.
 
-*Attachments* (see [[#attachments][Attachments]]): this app's own feature, not an ~org-attach~ port. There is no document-wide attachment browser (Open, Save and Delete work one heading at a time) and no ~org-attach-dired~ bulk operations, and it requires GitHub, WebDAV or, in the Android app, the org-pwa folder.
+*Attachments* (see [[#attachments][Attachments]]): follows ~org-attach~'s folder model (~ID~ folder, ~:ATTACH:~ tag, ~a~ ~o~ ~O~ ~d~ ~D~). Not built: ~c~/~m~/~l~, ~b~, ~n~, ~z~, ~f~/~F~, ~s~/~S~ (the ~DIR~ property), and ~org-attach-dired~ bulk operations. It requires GitHub, WebDAV or, in the Android app, the org-pwa folder.
 
 *Conflict resolution* (see [[#offline-behavior-and-sync][Offline behavior and sync]]): a line-based three-way merge with a region-by-region resolver. It merges lines, not org structure, so a subtree moved on one side and edited on the other is an ordinary clash, and a region has no side-by-side or word-level diff.
 

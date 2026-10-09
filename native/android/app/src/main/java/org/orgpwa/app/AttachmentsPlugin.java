@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.util.Base64;
 import androidx.activity.result.ActivityResult;
 import androidx.documentfile.provider.DocumentFile;
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -154,6 +155,22 @@ public class AttachmentsPlugin extends Plugin {
         DocumentFile file = locate(call.getString("path"), false);
         JSObject out = new JSObject();
         out.put("deleted", file != null && file.delete());
+        call.resolve(out);
+    }
+
+    /** The names of the files in a folder by its path inside the chosen folder. Resolves { names }, empty if there is no such folder. */
+    @PluginMethod
+    public void list(PluginCall call) {
+        DocumentFile folder = locate(call.getString("path"), false);
+        JSObject out = new JSObject();
+        JSArray names = new JSArray();
+        if (folder != null && folder.isDirectory()) {
+            for (DocumentFile child : folder.listFiles()) {
+                String name = child.getName();
+                if (child.isFile() && name != null) names.put(name);
+            }
+        }
+        out.put("names", names);
         call.resolve(out);
     }
 

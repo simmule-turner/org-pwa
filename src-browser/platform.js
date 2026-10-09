@@ -22,7 +22,7 @@
 //   attachments        the org-pwa folder, which a browser has none of: where a LOCAL document's attachments go, and where
 //                      `local:` files are found by name. supported(); folder() -- the folder chosen, { name }, or null;
 //                      pickFolder() -- ask the person, resolving { name } (an AbortError if they back out); adapter --
-//                      { readBinary(path) -> { base64 } or null, writeBinary(path, base64), delete(path), exists(path) }
+//                      { readBinary(path) -> { base64 } or null, writeBinary(path, base64), delete(path), exists(path), list(folder) -> [{ name, path, type }] }
 //                      on paths relative to that folder
 //   captureShortcuts   the launcher's own shortcuts for Capture: supported() -- whether there are any here; set(list) --
 //                      publish one per capture template, `list` being [{ key, label }]; canPin() / pin({ key, label }) --

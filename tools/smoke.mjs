@@ -1907,8 +1907,8 @@ check('god-mode: the new chords for refile/attach/clocking/export reach their re
   await page.waitForTimeout(200);
 
   await godSeq('c', 'a'); // C-c C-a: attach
-  const attachVisible = (await page.locator('body').innerText()).includes('Attachments for');
-  expect(attachVisible, 'C-c C-a should open the attachment choice prompt');
+  const attachText = await page.locator('body').innerText();
+  expect(attachText.includes('Attach \u2014') && attachText.includes('Attach file') && attachText.includes('Delete all'), 'C-c C-a should open the attachment dispatcher');
   await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
 
@@ -3559,6 +3559,7 @@ check('attachments on a LOCAL document: refused with a pointer before a folder i
           readBinary: async (path) => { window.__log.push('read ' + path); return tree.files.has(path) ? { base64: tree.files.get(path) } : null; },
           writeBinary: async (path, base64) => { window.__log.push('write ' + path); tree.files.set(path, base64); },
           delete: async (path) => { window.__log.push('delete ' + path); tree.files.delete(path); },
+          list: async (folder) => [...tree.files.keys()].filter((p) => p.startsWith(folder + '/') && !p.slice(folder.length + 1).includes('/')).map((p) => ({ name: p.slice(folder.length + 1), path: p, type: 'file' })),
         },
       },
       viewFile: async (blob, name) => { window.__viewed.push({ name, type: blob.type }); },
@@ -3589,14 +3590,15 @@ check('attachments on a LOCAL document: refused with a pointer before a folder i
     const second = await ensureAttachmentsStorage();
     const h = S.state.doc.children[0];
     await uploadAttachmentToHeading(h, { name: 'doc.pdf', type: 'application/pdf', base64: 'JVBERi0xLjQ=' });
-    return { first, second, folder: S.attachmentsFolder, body: h.bodyLines.join('|'), id: h.properties && h.properties.ID };
+    return { first, second, folder: S.attachmentsFolder, body: h.bodyLines.join('|'), tags: h.tags.join(','), id: h.properties && h.properties.ID };
   })()`);
   const log = await page.evaluate(() => window.__log);
   expect(result.first === 'ok' && result.second === 'ok' && result.folder === 'Notes', `the folder is chosen once: ${JSON.stringify(result)}`);
   expect(log.filter((l) => l === 'pickFolder').length === 2, 'the picker ran once more for the attach, and not again for the second use (two in all: the backed-out one and the real one)');
   const written = log.find((l) => l.startsWith('write '));
   expect(/^write data\/[^/]{2}\/[^/]+\/doc\.pdf$/.test(written || ''), `written under data/xx/rest/ in the folder: ${written}`);
-  expect(result.body.includes('[[attachment:doc.pdf]]') || result.body.includes('attachment:doc.pdf'), `and linked from the heading: ${result.body}`);
+  expect(result.tags.includes('ATTACH'), `the heading is tagged ATTACH: ${result.tags}`);
+  expect(!result.body.includes('attachment:doc.pdf'), `a pdf gets no body link by default (media only): ${result.body}`);
 
   // 4. opening it reads from the same place and hands the bytes to the platform
   await page.evaluate(`(async () => { const { openAttachmentLink } = await import('/src-browser/attachments-flow.js'); const { S } = await import('/src-browser/app-state.js'); await openAttachmentLink('attachment:doc.pdf', S.state.doc.children[0]); })()`);
@@ -3612,6 +3614,66 @@ check('attachments on a LOCAL document: refused with a pointer before a folder i
   await context.close();
 });
 
+check('attach dispatcher: the list comes from the folder (not from links), the ATTACH tag follows the files, a two-column grid opens with org keys, Preview shows text in the app, and Delete all clears files, links and tag', async () => {
+  dav.reset({ 'notes.org': '* Report\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const made = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { uploadAttachmentToHeading, attachmentFiles } = await import('/src-browser/attachments-flow.js');
+    const h = S.state.doc.children[0];
+    await uploadAttachmentToHeading(h, { name: 'a.pdf', type: 'application/pdf', base64: 'aGk=' });
+    await uploadAttachmentToHeading(h, { name: 'b.png', type: 'image/png', base64: 'aGk=' });
+    await uploadAttachmentToHeading(h, { name: 'n.txt', type: 'text/plain', base64: 'aGk=' });
+    const tagged = h.tags.join(',');
+    const body = h.bodyLines.join('|');
+    h.bodyLines = []; // the links are gone, the files are not
+    return { tagged, body, names: await attachmentFiles(h) };
+  });
+  expect(made.tagged.includes('ATTACH'), `tagged ATTACH: ${made.tagged}`);
+  expect(made.body.includes('attachment:b.png') && !made.body.includes('attachment:a.pdf') && !made.body.includes('attachment:n.txt'), `default links only the picture: ${made.body}`);
+  expect(JSON.stringify(made.names) === JSON.stringify(['a.pdf', 'b.png', 'n.txt']), `listed from the folder, not the body: ${JSON.stringify(made.names)}`);
+
+  // the dispatcher: a two-column grid, org's keys on the buttons when opened from the keyboard
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { openAttachChoicePrompt } = await import('/src-browser/attachments-flow.js');
+    openAttachChoicePrompt(S.state.doc.children[0], { viaKeys: true });
+  });
+  const grid = await page.evaluate(() => {
+    const el = [...document.querySelectorAll('div')].find((d) => d.style.gridTemplateColumns);
+    return { columns: el ? getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/).length : 0, text: document.body.innerText };
+  });
+  expect(grid.columns === 2, `two columns: ${grid.columns}`);
+  for (const label of ['Attach file', 'Open', 'Preview in app', 'Save a copy', 'Delete one', 'Delete all']) expect(grid.text.includes(label), `button "${label}" is there`);
+
+  // Preview shows text inside the app
+  await page.keyboard.press('Escape');
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { previewAttachment } = await import('/src-browser/attachments-flow.js');
+    await previewAttachment(S.state.doc.children[0], 'n.txt');
+  });
+  expect(await page.evaluate(() => [...document.querySelectorAll('pre')].some((p) => p.textContent === 'hi')), 'the text file is shown in the app');
+  await page.keyboard.press('Escape');
+
+  // Delete all, by its key, after confirming
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { openAttachChoicePrompt } = await import('/src-browser/attachments-flow.js');
+    openAttachChoicePrompt(S.state.doc.children[0], { viaKeys: true });
+  });
+  await page.keyboard.press('D');
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await page.waitForFunction(() => document.getElementById('minibuffer').innerText.includes('Deleted 3 attachments'), null, { timeout: 8000 });
+  const left = [...dav.files.keys()].filter((n) => n.startsWith('data/'));
+  expect(left.length === 0, `the files are gone from the server: ${left.join(',')}`);
+  const tags = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.state.doc.children[0].tags.join(','));
+  expect(!tags.includes('ATTACH'), `and the tag: ${tags}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('attach: a platform that supplies its own picker (the camera beside the files) is used instead of the browser\u2019s file input; without one the browser\u2019s input is used', async () => {
   const { context, page, errors } = await freshPage();
   await page.evaluate(async () => {
@@ -3620,7 +3682,7 @@ check('attach: a platform that supplies its own picker (the camera beside the fi
     window.__tree = tree;
     installPlatform({
       localFiles: { supported: () => true, pickOpen: async () => 'phone.org', pickNew: async (kv, n) => n, adapter: { async read() { return { content: '* Report\n', hash: 'h' }; }, async write() { return { hash: 'h' }; }, async exists() { return true; }, async access() { return 'granted'; } } },
-      attachments: { supported: () => true, folder: async () => ({ name: 'org-pwa' }), pickFolder: async () => ({ name: 'org-pwa' }), adapter: { readBinary: async () => null, writeBinary: async (path, base64) => { tree.set(path, base64); }, delete: async () => {}, exists: async () => false } },
+      attachments: { supported: () => true, folder: async () => ({ name: 'org-pwa' }), pickFolder: async () => ({ name: 'org-pwa' }), adapter: { readBinary: async () => null, writeBinary: async (path, base64) => { tree.set(path, base64); }, delete: async () => {}, exists: async () => false, list: async () => [] } },
       pickFile: async () => ({ name: 'shot.png', type: 'image/png', base64: 'iVBORw0KGgo=' }),
     });
     (await import('/src-browser/app-state.js')).S.attachmentsFolder = 'org-pwa';
@@ -3753,6 +3815,7 @@ check('local: resolves in the org-pwa folder wherever a scheme is accepted: org-
           writeBinary: async (path, base64) => { tree.set(path, dec(base64)); },
           delete: async (path) => { tree.delete(path); },
           exists: async (path) => tree.has(path),
+          list: async (folder) => [...tree.keys()].filter((p) => p.startsWith(folder + '/') && !p.slice(folder.length + 1).includes('/')).map((p) => ({ name: p.slice(folder.length + 1), path: p, type: 'file' })),
         },
       },
     });

@@ -12,12 +12,14 @@
  */
 
 import { normalizeApptSettings } from '../src/appt.js';
+import { normalizeAttachLinkMode } from '../src/attach.js';
 
 const KEYS = {
   github: 'settings:github',
   webdav: 'settings:webdav',
   caldav: 'settings:caldav',
   appt: 'settings:appt',
+  attachLink: 'settings:attachLink',
   theme: 'settings:theme',
   customThemeColors: 'settings:customThemeColors',
   fontFamily: 'settings:fontFamily',
@@ -196,6 +198,18 @@ export async function setCarddavSyncState(kvAdapter, state) {
  *  setting: each device has its own, and a settings backup carries them. */
 export async function getApptSettings(kvAdapter) {
   return normalizeApptSettings(await getJson(kvAdapter, KEYS.appt, {}));
+}
+
+/** Whether attaching a file also writes an [[attachment:...]] link into the heading's body: 'media' (default), 'always' or
+ *  'never'. A per-device setting, carried by a settings backup. */
+export async function getAttachLinkMode(kvAdapter) {
+  return normalizeAttachLinkMode(await getJson(kvAdapter, KEYS.attachLink, 'media'));
+}
+
+export async function setAttachLinkMode(kvAdapter, mode) {
+  const normalized = normalizeAttachLinkMode(mode);
+  await setJson(kvAdapter, KEYS.attachLink, normalized);
+  return normalized;
 }
 
 export async function setApptSettings(kvAdapter, settings) {

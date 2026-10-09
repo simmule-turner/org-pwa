@@ -12,6 +12,11 @@ import {
   isAudioFilename,
   extensionForRecordedMimeType,
   generateRecordingFilename,
+  addAttachTag,
+  attachmentDir,
+  normalizeAttachLinkMode,
+  removeAttachTag,
+  shouldInsertAttachmentLink,
 } from '../src/attach.js';
 
 // ---- generateAttachmentId ---------------------------------------------------
@@ -272,4 +277,33 @@ test('generateRecordingFilename produces a different name for two recordings a s
   const nameA = generateRecordingFilename('audio/webm', new Date(2026, 7, 13, 14, 30, 22));
   const nameB = generateRecordingFilename('audio/webm', new Date(2026, 7, 13, 14, 30, 23));
   assert.notEqual(nameA, nameB);
+});
+
+test('attachmentDir is the folder attachmentPath puts a file in, beside the document, with no trailing slash', () => {
+  assert.equal(attachmentDir('abcdef-123', 'org-pwa/foo.org'), 'org-pwa/data/ab/cdef-123');
+  assert.equal(attachmentDir('abcdef-123', 'foo.org'), 'data/ab/cdef-123');
+  assert.equal(attachmentPath('abcdef-123', 'x.pdf', 'org-pwa/foo.org'), `${attachmentDir('abcdef-123', 'org-pwa/foo.org')}/x.pdf`);
+});
+
+test('the ATTACH tag is added once and removed cleanly, leaving other tags alone', () => {
+  const heading = { tags: ['work'] };
+  addAttachTag(heading);
+  addAttachTag(heading);
+  assert.deepEqual(heading.tags, ['work', 'ATTACH']);
+  removeAttachTag(heading);
+  assert.deepEqual(heading.tags, ['work']);
+  const bare = {};
+  addAttachTag(bare);
+  assert.deepEqual(bare.tags, ['ATTACH']);
+});
+
+test('shouldInsertAttachmentLink: media by default, everything when always, nothing when never', () => {
+  assert.equal(shouldInsertAttachmentLink('p.jpg', 'media'), true);
+  assert.equal(shouldInsertAttachmentLink('r.m4a', 'media'), true);
+  assert.equal(shouldInsertAttachmentLink('clip.mp4', 'media'), true);
+  assert.equal(shouldInsertAttachmentLink('notes.pdf', 'media'), false);
+  assert.equal(shouldInsertAttachmentLink('notes.pdf', 'always'), true);
+  assert.equal(shouldInsertAttachmentLink('p.jpg', 'never'), false);
+  assert.equal(normalizeAttachLinkMode('bogus'), 'media');
+  assert.equal(normalizeAttachLinkMode('never'), 'never');
 });

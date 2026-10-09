@@ -1,19 +1,21 @@
 // Extracted from app.js: attachments flow.
 import { getProperty, setProperty } from '../src/archive-model.js';
-import { attachmentPath, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, listAttachments, removeAttachmentLink, sanitizeAttachmentFilename } from '../src/attach.js';
+import { addAttachTag, attachmentDir, attachmentPath, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
 import { parseBody } from '../src/body-parser.js';
-import { guessImageMimeType, guessViewableMimeType, resolveAttachmentTarget } from '../src/link-resolve.js';
+import { guessImageMimeType, guessViewableMimeType, resolveAttachmentDirectory, resolveAttachmentTarget } from '../src/link-resolve.js';
 import { detectWebmHasVideoTrack } from '../src/webm-track-detect.js';
 import { S } from './app-state.js';
 import { openAudioRecordingPanel } from './audio-recording.js';
-import { confirmDialog, openButtonChoiceModal, pickBinaryFile, showModalOverlay } from './dialogs.js';
+import { confirmDialog, openGridChoiceModal, pickBinaryFile, showModalOverlay } from './dialogs.js';
+import { showAttachmentPreview } from './attach-preview.js';
+import { getAttachLinkMode } from './settings.js';
 import { refilePanel, refilePanelBox } from './dom.js';
 import { attachmentsAvailable, attachmentsFolderMissingMessage, ensureAttachmentsStorage } from './attachments-store.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { activeDiskAdapter } from './external-sync.js';
 import { guessAnyAttachmentMimeType } from './render-helpers.js';
 import { render } from './render.js';
-import { imageDataUrlCache } from './singletons.js';
+import { imageDataUrlCache, kv } from './singletons.js';
 import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { base64ToArrayBuffer } from './webdav-adapter.js';
 import { platform } from './platform.js';
@@ -65,6 +67,38 @@ export async function attachFileToHeading(heading) {
   await uploadAttachmentToHeading(heading, picked);
 }
 
+/** The file names in an attachment folder (sorted), or null if the backend could not say. A folder that does not exist yet is an
+ *  empty one. This is where org-attach gets its list: the folder, not links in the text. */
+async function listFolder(dir) {
+  try {
+    const entries = await activeDiskAdapter().list(dir);
+    return entries.filter((entry) => entry.type === 'file').map((entry) => entry.name).sort((a, b) => a.localeCompare(b));
+  } catch {
+    return null;
+  }
+}
+
+const unavailable = (what) =>
+  attachmentsFolderMissingMessage() ||
+  `Can't ${what} \u2014 attachments are only available with GitHub or WebDAV connected, the same backends they are stored on.`;
+
+/** The attachments of `heading`, read from its folder. Returns the names, or null after saying why it could not. */
+export async function attachmentFiles(heading) {
+  if (!attachmentsAvailable()) {
+    setStatus(unavailable('list attachments'));
+    render();
+    return null;
+  }
+  const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId);
+  if (!dir) return []; // no :ID: anywhere above: nothing has been attached
+  const names = await listFolder(dir);
+  if (!names) {
+    setStatus("Couldn't read the attachment folder.");
+    render();
+  }
+  return names;
+}
+
 /** The actual upload/link-insertion core attachFileToHeading uses once
  *  it has a `{ name, type, base64 }` file in hand -- factored out so
  *  the audio-recording flow (which already has bytes ready, no file
@@ -84,7 +118,8 @@ export async function uploadAttachmentToHeading(heading, picked) {
     setProperty(heading, 'ID', id);
   }
 
-  const filename = disambiguateAttachmentFilename(sanitizeAttachmentFilename(picked.name), listAttachments(heading));
+  const existingNames = (await listFolder(attachmentDir(id, S.state.documentId))) || [];
+  const filename = disambiguateAttachmentFilename(sanitizeAttachmentFilename(picked.name), existingNames);
   const path = attachmentPath(id, filename, S.state.documentId);
 
   try {
@@ -103,8 +138,11 @@ export async function uploadAttachmentToHeading(heading, picked) {
   // content already sitting right here in memory.
   imageDataUrlCache.set(`${S.state.storageKind}:${path}`, `data:${guessImageMimeType(path)};base64,${picked.base64}`);
 
-  heading.bodyLines.push(formatAttachmentLink(filename));
-  heading.body = parseBody(heading.bodyLines);
+  addAttachTag(heading); // org-attach-auto-tag
+  if (shouldInsertAttachmentLink(filename, await getAttachLinkMode(kv))) {
+    heading.bodyLines.push(formatAttachmentLink(filename));
+    heading.body = parseBody(heading.bodyLines);
+  }
 
   setStatus(`Attached "${filename}".`);
   commitAndRender(`Attached "${filename}"`);
@@ -191,19 +229,7 @@ export async function openAttachmentLink(target, heading) {
   const attachment = await resolveAndReadAttachment(target, heading);
   if (!attachment) return;
   const { filename, resolvedPath, result } = attachment;
-  let viewableMimeType = guessViewableMimeType(resolvedPath);
-  if (/\.webm$/i.test(resolvedPath)) {
-    // .webm is genuinely ambiguous (a legitimate container for both
-    // audio-only and audio+video content) -- guessViewableMimeType's
-    // own default here is a heuristic (this app's own recording
-    // feature usually produces audio-only .webm), not a real answer.
-    // The file's own actual content has the real answer, so read it
-    // directly rather than continuing to guess.
-    const hasVideo = detectWebmHasVideoTrack(new Uint8Array(base64ToArrayBuffer(result.base64)));
-    if (hasVideo === true) viewableMimeType = 'video/webm';
-    else if (hasVideo === false) viewableMimeType = 'audio/webm';
-    // hasVideo === null (couldn't determine) -- keep the existing heuristic result rather than guessing differently
-  }
+  const viewableMimeType = viewableMimeFor(resolvedPath, base64ToArrayBuffer(result.base64));
   if (!viewableMimeType) {
     saveOut(filename, base64ToArrayBuffer(result.base64), guessAnyAttachmentMimeType(resolvedPath));
     setStatus(`No viewer available for "${filename}" \u2014 downloaded instead.`);
@@ -255,33 +281,100 @@ export async function deleteAttachment(heading, filename) {
   }
   removeAttachmentLink(heading, filename);
   heading.body = parseBody(heading.bodyLines);
+  const remaining = await listFolder(resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId));
+  if (remaining && remaining.length === 0) removeAttachTag(heading);
   setStatus(`Deleted "${filename}".`);
   commitAndRender(`Deleted "${filename}"`);
 }
 
-export function openAttachChoicePrompt(heading) {
-  openButtonChoiceModal({
-    label: `Attachments for "${heading.title || '(untitled)'}"`,
+/** org-attach-delete-all: every file in the heading's folder, after one confirmation, then the links to them and the ATTACH tag.
+ *  A backend with no folder delete (GitHub) removes them one at a time. */
+export async function deleteAllAttachments(heading) {
+  const names = await attachmentFiles(heading);
+  if (!names) return;
+  if (names.length === 0) {
+    setStatus('No attachments on this heading yet.');
+    render();
+    return;
+  }
+  const label = names.length === 1 ? `"${names[0]}"` : `all ${names.length} attachments`;
+  if (!(await confirmDialog(`Delete ${label}? This removes the actual files, not just the links to them.`))) return;
+  setStatus('Deleting attachments\u2026');
+  render();
+  const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId);
+  const adapter = activeDiskAdapter();
+  let deleted = 0;
+  let failure = null;
+  for (const name of names) {
+    try {
+      await adapter.delete(`${dir}/${name}`);
+      removeAttachmentLink(heading, name);
+      deleted++;
+    } catch (err) {
+      failure = err;
+      break;
+    }
+  }
+  heading.body = parseBody(heading.bodyLines);
+  if (deleted === names.length) removeAttachTag(heading);
+  setStatus(failure ? `Deleted ${deleted} of ${names.length}; then: ${failure.message}` : `Deleted ${deleted} attachment${deleted === 1 ? '' : 's'}.`);
+  commitAndRender(`Deleted ${deleted} attachment${deleted === 1 ? '' : 's'}`);
+}
+
+/** org-attach-open-in-emacs: shows the attachment inside the app (a picture, recording, video or text); anything else is
+ *  pointed to Open. */
+export async function previewAttachment(heading, filename) {
+  setStatus('Opening attachment\u2026');
+  render();
+  const attachment = await resolveAndReadAttachment(`attachment:${filename}`, heading);
+  if (!attachment) return;
+  const { resolvedPath, result } = attachment;
+  const bytes = base64ToArrayBuffer(result.base64);
+  const mime = viewableMimeFor(resolvedPath, bytes) || guessImageMimeType(resolvedPath);
+  if (!showAttachmentPreview(filename, mime, bytes)) {
+    setStatus(`"${filename}" can't be shown inside the app \u2014 use Open.`);
+    render();
+    return;
+  }
+  setStatus(`Showing "${filename}".`);
+  render();
+}
+
+/** The type a viewer should be told: guessViewableMimeType's answer, with a .webm settled by its content (audio or video). */
+function viewableMimeFor(path, bytes) {
+  let mime = guessViewableMimeType(path);
+  if (/\.webm$/i.test(path)) {
+    const hasVideo = detectWebmHasVideoTrack(new Uint8Array(bytes));
+    if (hasVideo === true) mime = 'video/webm';
+    else if (hasVideo === false) mime = 'audio/webm';
+  }
+  return mime;
+}
+
+/** org-attach's dispatcher (C-c C-a), as a grid of buttons laid out like the Capture template picker. The keys are org's own, and
+ *  work when pressed; `viaKeys` shows them on the buttons, as Capture does when opened from the keyboard. */
+export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
+  openGridChoiceModal({
+    label: `Attach \u2014 ${heading.title || '(untitled)'}`,
+    showKeys: viaKeys,
     buttons: [
-      { text: '\ud83d\udcce Attach a file', onClick: () => attachFileToHeading(heading) },
-      { text: '\ud83c\udfa4 Record audio', onClick: () => openAudioRecordingPanel(heading) },
-      { text: '\ud83d\udcc2 Open', onClick: () => startAttachmentPickFlow(heading, 'open') },
-      { text: '\ud83d\udcbe Save', onClick: () => startAttachmentPickFlow(heading, 'save') },
-      { text: '\ud83d\uddd1\ufe0f Delete', onClick: () => startAttachmentPickFlow(heading, 'delete') },
-      { text: 'Cancel', onClick: () => {} },
+      { key: 'a', text: '\ud83d\udcce Attach file', onClick: () => attachFileToHeading(heading) },
+      { key: 'r', text: '\ud83c\udfa4 Record audio', onClick: () => openAudioRecordingPanel(heading) },
+      { key: 'o', text: '\ud83d\udcc2 Open', onClick: () => startAttachmentPickFlow(heading, 'open') },
+      { key: 'O', text: '\ud83d\udc41\ufe0f Preview in app', onClick: () => startAttachmentPickFlow(heading, 'preview') },
+      { text: '\ud83d\udcbe Save a copy', onClick: () => startAttachmentPickFlow(heading, 'save') },
+      { key: 'd', text: '\ud83d\uddd1\ufe0f Delete one', onClick: () => startAttachmentPickFlow(heading, 'delete') },
+      { key: 'D', text: '\ud83d\uddd1\ufe0f Delete all', onClick: () => deleteAllAttachments(heading) },
     ],
   });
 }
 
-/** Shared entry point for Open and Delete: enumerates `heading`'s own
- *  attachments (listAttachments) and either acts directly (0 or
- *  exactly 1 attachment -- nothing to disambiguate) or opens the
- *  file-list picker (more than one), matching org-attach's own actual
- *  "if there's more than one, prompt for a file name first" behavior
- *  for org-attach-open, applied identically to delete too since the
- *  same ambiguity exists there. */
-export function startAttachmentPickFlow(heading, action) {
-  const filenames = listAttachments(heading);
+/** Shared entry point for Open, Preview, Save and Delete: reads `heading`'s attachment folder and either acts directly (exactly
+ *  one file) or opens the file-list picker (several), as org-attach does ("if there is more than one, prompt for a file name
+ *  first"). */
+export async function startAttachmentPickFlow(heading, action) {
+  const filenames = await attachmentFiles(heading);
+  if (!filenames) return;
   if (filenames.length === 0) {
     setStatus('No attachments on this heading yet.');
     render();
@@ -311,7 +404,7 @@ export function renderAttachFileListPanel() {
   const label = document.createElement('div');
   label.style.fontSize = '13px';
   label.style.marginBottom = '8px';
-  label.textContent = `${action === 'delete' ? 'Delete' : action === 'save' ? 'Save' : 'Open'} which attachment?`;
+  label.textContent = `${action === 'delete' ? 'Delete' : action === 'save' ? 'Save' : action === 'preview' ? 'Preview' : 'Open'} which attachment?`;
   refilePanelBox.appendChild(label);
 
   const row = document.createElement('div');
@@ -345,6 +438,8 @@ export async function performAttachmentAction(heading, filename, action) {
   if (action === 'delete') {
     if (!(await confirmDialog(`Delete attachment "${filename}"? This removes the actual file, not just the link to it.`))) return;
     deleteAttachment(heading, filename);
+  } else if (action === 'preview') {
+    previewAttachment(heading, filename);
   } else if (action === 'save') {
     saveAttachmentLink(`attachment:${filename}`, heading);
   } else {

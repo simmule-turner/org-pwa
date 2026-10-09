@@ -560,6 +560,86 @@ export function openButtonChoiceModal({ label, buttons }) {
   return overlay;
 }
 
+/** A modal of buttons in a two-column grid, styled like the Capture template picker: a small dim heading, left-aligned buttons at
+ *  least 44px tall, and a Close row. `buttons` is [{ key, text, onClick, disabled }]. A button with a `key` runs when that key is
+ *  pressed (case matters: `o` and `O` are different buttons), and shows the key as a badge when `showKeys` is set. */
+export function openGridChoiceModal({ label, buttons, showKeys = false }) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;overflow:hidden;';
+  const modal = document.createElement('div');
+  modal.className = 'panel';
+  modal.style.cssText = 'background:var(--modal-bg);color:var(--fg);border:1px solid var(--border-strong);border-radius:10px;padding:18px;width:100%;max-width:460px;max-height:100%;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;';
+  overlay.appendChild(modal);
+
+  const heading = document.createElement('div');
+  heading.style.cssText = 'font-size:12px;opacity:0.65;margin-bottom:8px;overflow-wrap:anywhere;';
+  heading.textContent = label;
+  modal.appendChild(heading);
+
+  const stopTrackingViewport = keepOverlayInVisibleViewport(overlay);
+  const unlockScroll = lockBackgroundScroll(overlay);
+  S.buttonChoiceModalOpen = true;
+
+  function close() {
+    S.buttonChoiceModalOpen = false;
+    document.removeEventListener('keydown', onKeyDown, true);
+    stopTrackingViewport();
+    unlockScroll();
+    if (overlay.parentNode) document.body.removeChild(overlay);
+  }
+  const choose = async (button) => {
+    close();
+    await button.onClick();
+  };
+  function onKeyDown(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const button = buttons.find((b) => b.key === e.key && !b.disabled);
+    if (!button) return;
+    e.preventDefault();
+    e.stopPropagation();
+    choose(button);
+  }
+  document.addEventListener('keydown', onKeyDown, true);
+
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px;';
+  for (const button of buttons) {
+    const el = document.createElement('button');
+    el.style.cssText = 'text-align:left;padding:10px 12px;border:1px solid var(--border-strong);border-radius:8px;background:var(--bg);color:var(--fg);font-size:14px;min-height:44px;display:flex;align-items:center;gap:8px;';
+    if (button.disabled) {
+      el.disabled = true;
+      el.style.opacity = '0.5';
+    }
+    if (showKeys && button.key) {
+      const badge = document.createElement('span');
+      badge.textContent = button.key;
+      badge.style.cssText = 'font-size:11px;font-family:monospace;border:1px solid var(--border-strong);border-radius:4px;padding:1px 5px;opacity:0.7;flex-shrink:0;';
+      el.appendChild(badge);
+    }
+    const text = document.createElement('span');
+    text.textContent = button.text;
+    el.appendChild(text);
+    el.onclick = () => choose(button);
+    grid.appendChild(el);
+  }
+  modal.appendChild(grid);
+
+  const closeRow = document.createElement('div');
+  closeRow.className = 'panel-row';
+  closeRow.style.marginTop = '6px';
+  closeRow.appendChild(menuButton('Close', close));
+  modal.appendChild(closeRow);
+
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
 export function openMultiFieldPopup({ label, fields, onSave }) {
   const overlay = document.createElement('div');
   overlay.style.position = 'fixed';

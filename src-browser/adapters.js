@@ -36,6 +36,7 @@ const localFileAdapter = {
   readBinary: (...args) => platform.attachments.adapter.readBinary(...args),
   writeBinary: (...args) => platform.attachments.adapter.writeBinary(...args),
   delete: (...args) => platform.attachments.adapter.delete(...args),
+  list: (...args) => platform.attachments.adapter.list(...args),
 };
 export const filesystemAdapter = withLineEndings(localFileAdapter, kv, { contentDerivedHash: true });
 

@@ -23,7 +23,7 @@ import { syncExtraMenuButtonVisibility } from './menus.js';
 import { getServiceWorkerVersion } from './render-helpers.js';
 import { render } from './render.js';
 import { QUICK_SETTINGS_FIELDS } from './settings-fields.js';
-import { DEFAULT_CAPTURE_TEMPLATES, DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getCaptureTemplates, getCustomThemeColors, getFontFamily, getFontSize, getGithubConfig, getGlobalVariables, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setCaptureTemplates, setCustomThemeColors, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig, getCaldavConfig, setCaldavConfig } from './settings.js';
+import { DEFAULT_CAPTURE_TEMPLATES, DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getCaptureTemplates, getCustomThemeColors, getFontFamily, getFontSize, getGithubConfig, getGlobalVariables, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setCaptureTemplates, setCustomThemeColors, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig, getCaldavConfig, setCaldavConfig, getAttachLinkMode, setAttachLinkMode } from './settings.js';
 import { APPT_LIMITS, normalizeApptSettings } from '../src/appt.js';
 import { notificationPermissionLabel, requestNotificationPermission, saveApptSettings, scanAppointments } from './appt-flow.js';
 import { kv } from './singletons.js';
@@ -1334,6 +1334,39 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     'Announces appointments (agenda items with a time of day, from the open file and your agenda files) once, the warning time before they start. ' +
     'window shows a system notification and a banner in the app; echo uses the status line only. In the Android app, reminders arrive even when the app is closed.';
   apptSection.appendChild(apptHint);
+
+  // ---- Attachments: whether attaching a file also writes a link into the heading's body ------------------------------------
+  const attachSection = document.createElement('div');
+  attachSection.className = 'settings-section';
+  container.appendChild(attachSection);
+  const attachTitle = document.createElement('div');
+  attachTitle.className = 'panel-section-title';
+  attachTitle.textContent = 'Attachments';
+  attachSection.appendChild(attachTitle);
+  const linkRow = document.createElement('div');
+  linkRow.className = 'panel-row';
+  linkRow.style.cssText = 'align-items:center;flex-wrap:wrap;gap:12px;';
+  const linkLabel = document.createElement('span');
+  linkLabel.textContent = 'Add a link to the body';
+  linkRow.appendChild(linkLabel);
+  const currentLinkMode = await getAttachLinkMode(kv);
+  for (const [value, label] of [['media', 'pictures, audio, video'], ['always', 'always'], ['never', 'never']]) {
+    const choice = document.createElement('label');
+    choice.style.cssText = 'display:flex;align-items:center;gap:4px;cursor:pointer;';
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'attachLinkMode';
+    radio.checked = currentLinkMode === value;
+    radio.onchange = () => setAttachLinkMode(kv, value);
+    choice.appendChild(radio);
+    choice.appendChild(document.createTextNode(label));
+    linkRow.appendChild(choice);
+  }
+  attachSection.appendChild(linkRow);
+  const linkHint = document.createElement('div');
+  linkHint.style.cssText = 'font-size:11px;opacity:.6;margin:2px 0 6px;';
+  linkHint.textContent = 'Org keeps attachments in a folder and writes no link. A link is what shows a picture or a recording inline under the heading; with never, attachments are found through the Attach menu only.';
+  attachSection.appendChild(linkHint);
 
   const githubSection = document.createElement('div');
   githubSection.className = 'settings-section';

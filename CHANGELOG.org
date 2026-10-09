@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v453 — Attachments follow the folder, like org-attach
+A heading's attachments are now whatever is in its folder, and attaching tags it :ATTACH:. C-c C-a opens a grid of buttons laid out like the Capture picker, with Preview in app and Delete all added. Whether attaching also writes a body link is a setting (Settings → Attachments).
+
 * v452 — Reminder banner stays below the status bar
 The in-app reminder banner is now placed below the Android status bar
 instead of partly under it.
