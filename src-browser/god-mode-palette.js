@@ -20,6 +20,7 @@ import { effectiveCalendarConfig, syncAgendaToCalendar } from './calendar-sync.j
 import { effectiveContactsConfig, syncContactsToAddressBook } from './contacts-sync.js';
 import { chooseAttachmentsFolder } from './attachments-store.js';
 import { addCaptureIconToHomeScreen } from './capture-shortcuts.js';
+import { executeFocusedBlock } from './babel-flow.js';
 import { showDisplayMeasurements } from './display-info.js';
 import { platform } from './platform.js';
 import { clockCancelHeading, clockContinue, clockGoto, clockGotoRecent, clockInHeading, clockOutHeading, findRunningClockAcrossSessions, recentlyClockedAcrossSessions } from './clock-flow.js';
@@ -190,7 +191,10 @@ export const GOD_MODE_ACTIONS = {
   // Section 2: Item & Headline Creation
   'M-RET': () => insertHeadingSmart({}),
   'M-S-RET': () => insertHeadingSmart({ todo: 'TODO' }),
-  'C-c C-c': () => godModeNotSupported('checkbox toggling and code execution both need a finer keyboard focus than headings -- tap the checkbox or block directly'),
+  'C-c C-c': () => {
+    if (S.keyboardFocusedBodyRow && S.keyboardFocusedBodyRow.rowType === 'block') return executeFocusedBlock();
+    return godModeNotSupported('checkbox toggling needs a finer keyboard focus than headings -- tap the checkbox directly; C-c C-c runs a source block when the cursor is on one');
+  },
 
   // Section 3: TODOs & Task Management
   'C-c C-t': () => S.keyboardFocusedHeading && openTodoOrPickWorkflow(S.keyboardFocusedHeading),
@@ -525,6 +529,7 @@ export function paletteCommandList() {
     { id: 'import-vcard', label: 'Import Contacts (.vcf)', orgName: 'org-vcard-import', group: 'Import', keywords: ['vcard', 'vcf', 'contacts', 'address book'], needs: ['doc'], run: () => openImport('vcard') },
     { id: 'import-icalendar', label: 'Import iCalendar (.ics)', orgName: 'icalendar-import-file', group: 'Import', keywords: ['ics', 'ical', 'calendar', 'events'], needs: ['doc'], run: () => openImport('icalendar') },
     { id: 'export-org', label: 'Export as an Org buffer', orgName: 'org-org-export-as-org', group: 'Export', needs: ['doc'], run: () => performOrgOrgExport() },
+    { id: 'babel-execute', label: 'Run source block', orgName: 'org-babel-execute-src-block', keys: 'C-c C-c', group: 'Document', keywords: ['babel', 'javascript', 'js', 'execute', 'code'], needs: ['doc', 'writable'], run: () => executeFocusedBlock() },
     { id: 'recalculate-tables', label: 'Recalculate all tables', orgName: 'org-table-recalculate-buffer-tables', group: 'Document', keywords: ['formula', 'TBLFM'], needs: ['doc', 'writable'], run: () => recalculateAllTables() },
 
     // -- App

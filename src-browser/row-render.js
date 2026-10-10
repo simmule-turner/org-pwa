@@ -5,6 +5,7 @@ import { deleteListItem, deleteParagraph, deleteTable, deleteTableColumn, delete
 import { updateCheckboxCookiesUpward } from '../src/checkbox-cookie.js';
 import { demoteHeading, insertChildHeading, moveHeadingDown, moveHeadingUp, promoteHeading } from '../src/heading-edit.js';
 import { extractLatexFragments, parseInline, stripLineBreakMarker } from '../src/inline-markup.js';
+import { isJsBlock } from '../src/babel.js';
 import { getDragHandle, parseLispBoolean } from '../src/local-variables.js';
 import { parseLogbookEntries } from '../src/logbook.js';
 import { cycleHeadingTodo, cycleItemCheckbox, toggleFold } from '../src/outline-view-model.js';
@@ -20,6 +21,7 @@ import { openGeneralEditor } from './general-editor.js';
 import { attachSlideLeftToFold, attachSlideRightToComplete, confirmListItemDelete, confirmParagraphDelete, confirmTableDelete, deleteHeadingWithConfirmation, narrowToHeading, widen } from './gestures-structure.js';
 import { cyclePriorityFor, openEffortEditor } from './heading-commands.js';
 import { currentInlineOpts, renderInlineNodes } from './inline-render.js';
+import { babelEnabled, executeSourceBlock } from './babel-flow.js';
 import { applyKeyboardFocusHighlight, resyncKeyboardFocusToBodyRow, rowMatchesKeyboardFocus, setKeyboardFocusToRow } from './keyboard-focus.js';
 import { toggleActionMenu } from './navigation.js';
 import { getOrRenderPlotSvg } from './render-helpers.js';
@@ -1125,7 +1127,19 @@ export function renderBlockRow(row) {
     row.heading.drawersHidden = true;
     render();
   };
-  wrap.appendChild(header);
+  if (isJsBlock(row.node) && babelEnabled()) {
+    // Only for js blocks and only when Settings turns JavaScript on, so nothing moves for anyone else.
+    const headRow = document.createElement('div');
+    headRow.style.display = 'flex';
+    headRow.style.alignItems = 'center';
+    headRow.style.gap = '8px';
+    header.style.flex = '1';
+    headRow.appendChild(header);
+    headRow.appendChild(smallButton('Run', 'Run source block', () => executeSourceBlock(row.heading, row.node)));
+    wrap.appendChild(headRow);
+  } else {
+    wrap.appendChild(header);
+  }
 
   renderBlockContent(row.node, wrap, null);
 

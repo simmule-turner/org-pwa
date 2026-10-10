@@ -23,10 +23,10 @@ Scripts run with less authority than the app itself, and nothing runs because a 
 
 - *Header arguments.* =:results= (=value= the default, =output=, =silent=), =:var name=value= (a cell, a table by =#+NAME:=, or a literal), =:timeout= (seconds, capped), =:wrap=, and =:cache= (not in the first version). Names follow Org's.
 - *Value versus output.* With =:results value= the block is the body of a function and its =return= is the result. With =:results output=, =console.log= lines are collected.
-- *Result formats.* A string is written as text; an array of arrays becomes an Org table; a number, boolean or null is written as text; an error is written as an =: error= block with the message and line.
+- *Result formats.* A string is written as text; an array of arrays becomes an Org table; a number, boolean or null is written as text; an error is written as =: Error: message (line N)=.
 - *Tables in, tables out.* =:var data=sales= hands the named table to the script as an array of rows, so a block can compute columns that =#+TBLFM:= cannot.
 - *Confirmation.* The first run in a document asks once, as Emacs's =org-confirm-babel-evaluate= does, and remembers the answer for that document on this device only.
-- *Limits.* The worker has no =document=, =window= or =localStorage=, and no network unless =:net yes= is set and the user approved it in Settings.
+- *Limits.* The worker has no =document=, =window= or =localStorage=, and no network. =:net= and =org.fetch= are a later addition, with a per-script host approval.
 - *Not included.* Other languages, session mode, tangling and noweb. These are listed under Known limitations, with Babel for JavaScript marked as built.
 
 * Phase 2: init script and hooks
@@ -58,6 +58,17 @@ Hooks receive plain data (a heading's title, properties and path), never live ob
 
 *Open questions.* Should =org.fetch= exist in the first release, or wait until the approval flow is proven? Should Babel results be re-run automatically on open (Emacs does not)? Is a per-document approval enough, or should approval also be tied to a file's path?
 
+* Status: Phase 1 shipped in v471
+
+=js= source blocks run with =C-c C-c= or a Run button, behind the Settings switch =org-xx-babel-js= (read from Global Variables only). The decisions taken for the open questions:
+
+- *=org.fetch=*: not in the first release. The sandbox has no network at all (its Content-Security-Policy is =default-src 'none'=), which is also what makes the first release simple to reason about.
+- *Re-run on open*: no, as in Emacs.
+- *Approval*: one confirmation per saved document on this device, kept in local storage by document id. An unsaved document asks every time. Approval tied to a file path, and to a hash of the script, comes with the init script in Phase 2.
+- *Sandbox*: a hidden =sandbox="allow-scripts"= iframe (opaque origin, so no storage, cookies or access to the page) that holds a Web Worker. The worker runs the code; on timeout the iframe is removed, which stops the worker.
+- *API in the first release*: =org.apiVersion= and =org.vars.get(name)= (effective settings, with anything named like a credential left out), =console.log=, and =:var= values.
+- *Result format*: checked against Emacs's =ob-js=; an error is written as =: Error: message (line N)= under =#+RESULTS:=.
+
 * User-built features: calendar, weather, sunrise and sunset
 
 All three can be written by a user. Sunrise/sunset works with Phase 1 as designed. Weather needs two small additions. A calendar feed in the agenda needs the Phase 2 agenda hook. The code below is a sketch to show the shape of the API; none of it has been run.
@@ -83,30 +94,37 @@ In the PWA, =org.fetch= only reaches servers that send CORS headers; Open-Meteo 
 
 ** Example: sunrise and sunset
 
+This one runs with the first release (=org.vars= is in Phase 1). It reads =calendar-latitude= and =calendar-longitude= from your settings, and it is checked against the built-in =diary-sunrise= in =test/extension-examples.test.js=.
+
 #+begin_src org
-,#+BEGIN_SRC js :results table :var lat=(org-var "calendar-latitude") lon=(org-var "calendar-longitude")
+,#+BEGIN_SRC js :results table
+const lat = Number(org.vars.get('calendar-latitude'));
+const lon = Number(org.vars.get('calendar-longitude'));
 const rad = Math.PI / 180, J = d => d / 86400000 + 2440587.5;
 function sun(date, lat, lon) {
   const n = Math.ceil(J(date) - 2451545.0 + 0.0008);
-  const Js = n + lon / 360;
+  const Js = n + 0.0009 - lon / 360;                  // lon is east-positive
   const M = (357.5291 + 0.98560028 * Js) % 360;
   const C = 1.9148*Math.sin(M*rad) + 0.02*Math.sin(2*M*rad);
   const L = (M + C + 180 + 102.9372) % 360;
   const Jt = 2451545 + Js + 0.0053*Math.sin(M*rad) - 0.0069*Math.sin(2*L*rad);
   const dec = Math.asin(Math.sin(L*rad) * Math.sin(23.4397*rad));
-  const w = Math.acos((Math.sin(-0.833*rad) - Math.sin(lat*rad)*Math.sin(dec)) /
-                      (Math.cos(lat*rad)*Math.cos(dec))) / rad;
+  const cosW = (Math.sin(-0.833*rad) - Math.sin(lat*rad)*Math.sin(dec)) / (Math.cos(lat*rad)*Math.cos(dec));
+  if (cosW > 1 || cosW < -1) return null;            // polar night or midnight sun
+  const w = Math.acos(cosW) / rad;
   const t = j => new Date((j - 2440587.5) * 86400000);
   return { rise: t(Jt - w/360), set: t(Jt + w/360) };
 }
 const s = sun(new Date(), lat, lon);
-return [["Sunrise", org.fmt.time(s.rise)], ["Sunset", org.fmt.time(s.set)]];
+if (!s) return [["Sun", "does not rise or set today"]];
+const time = d => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+return [["Sunrise", time(s.rise)], ["Sunset", time(s.set)]];
 ,#+END_SRC
 #+end_src
 
-Replace the =:var= line with =org.location.get()= to use the phone's position. Polar day and night make =acos= return NaN and need handling. Check the results against the built-in =diary-sunrise= for several cities and dates; that comparison is the test for this example.
+For the phone's position, a later release adds =org.location.get()=; until then the two variables come from Quick Settings (which can fill them from the device's location).
 
-** Example: weather
+** Example: weather (needs =org.fetch= and =org.location=, a later release)
 
 #+begin_src org
 ,#+BEGIN_SRC js :results list :net api.open-meteo.com :timeout 8000
@@ -140,6 +158,39 @@ org.agenda.source(async ({ from, to }) => {
 - CalDAV read/write and the =.ics= export: they need credentials and sync state, which scripts must not hold. Scripts get read-only feed fetching.
 - The month-grid view: scripts return items, not layout, so a script can feed the grid but not replace it.
 - Background refresh: scripts run only while the app is open (iOS in particular will not run them in the background). Cache with an age limit covers this.
+
+* Example: a holidays file made only of standard forms
+
+This is a real user's file, lightly changed. Everything in it is a standard Emacs diary form, so it works in Emacs and in org-pwa with no script. The one change: the fixed-date holidays use =org-anniversary=, which repeats every year, in place of =org-block= with a fixed year, which stops after that year.
+
+#+begin_src org
+,* Calendar/Agenda Items
+
+,** US Holidays
+%%(org-anniversary 2026 1 1) New Year's Day
+%%(diary-float 1 1 3) Martin Luther King Jr. Day
+%%(diary-float 2 1 3) Washington's Birthday / Presidents' Day
+%%(diary-float 5 1 -1) Memorial Day
+%%(org-anniversary 2026 6 19) Juneteenth National Independence Day
+%%(org-anniversary 2026 7 4) Independence Day (4th of July)
+%%(diary-float 9 1 1) Labor Day
+%%(diary-float 10 1 2) Columbus Day / Indigenous Peoples' Day
+%%(org-anniversary 2026 11 11) Veterans Day
+%%(diary-float 11 4 4) Thanksgiving Day
+%%(org-anniversary 2026 12 25) Christmas Day
+
+,** Miscellaneous Dates
+%%(diary-float 3 0 2) Daylight Saving Time Begins (Spring Forward)
+%%(diary-float 5 0 2) Mother's Day
+%%(diary-float 6 0 3) Father's Day
+%%(diary-float 11 0 1) Daylight Saving Time Ends (Fall Back)
+
+,** Weather, Sunrise/Sunset
+,*** <%%(when (today-p) (org-weather))>
+,*** <%%(when (today-p) (format "Sun times: %s | %s | %s" (diary-sunrise) (diary-sunset) (diary-day-length)))>
+#+end_src
+
+Where a script would help is a holiday that follows a rule the standard forms do not cover, such as Easter, or the weekday a holiday is observed on when it falls on a weekend. That is a user-defined sexp (see the next section), not a replacement for the lines above. The last two headings also show why scripts need to compose the built-in forms: the sun-times line calls three of them inside =format=.
 
 * Diary sexps and scripts
 

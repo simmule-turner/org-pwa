@@ -445,6 +445,14 @@ export function getDragHandle(vars) {
   return DRAG_HANDLE_SIDES.has(trimmed) ? trimmed : 'right';
 }
 
+/** org-xx-babel-js: whether JavaScript source blocks may run ("on"/"off", default off). This app's own
+ *  variable. Callers pass the app's GLOBAL variables only -- never a file's own Local Variables -- so a
+ *  document cannot switch code execution on for itself. */
+export function getBabelJs(vars) {
+  const raw = (vars || {})['org-xx-babel-js'];
+  return /^(on|yes|t|true)$/i.test(raw ? String(raw).trim() : '');
+}
+
 /** org-contacts-birthday-property: which property key holds a
  *  heading's birthday/anniversary date+description (see agenda.js's
  *  org-contacts-anniversaries support). Default "BIRTHDAY", matching

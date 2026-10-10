@@ -67,6 +67,7 @@ function parseBlock(lines, i) {
   const name = startMatch[1].toUpperCase();
   const params = startMatch[2] ? startMatch[2].trim() : '';
   const content = [];
+  const startIndex = i;
   i++;
   while (i < lines.length) {
     const endMatch = BLOCK_END_RE.exec(lines[i]);
@@ -77,7 +78,7 @@ function parseBlock(lines, i) {
     content.push(lines[i]);
     i++;
   }
-  return [{ type: 'block', name, params, lines: content }, i];
+  return [{ type: 'block', name, params, lines: content, lineIndex: startIndex, lineCount: i - startIndex }, i];
 }
 
 // ---- tables ---------------------------------------------------------------

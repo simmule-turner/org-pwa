@@ -282,6 +282,18 @@ export const QUICK_SETTINGS_FIELDS = [
     ],
     helpAnchor: '#editing-your-outline',
   },
+  {
+    key: 'org-xx-babel-js',
+    label: 'Run JavaScript source blocks',
+    section: 'Editing',
+    type: 'select',
+    default: 'off',
+    options: [
+      { value: 'off', label: 'Off' },
+      { value: 'on', label: 'On' },
+    ],
+    helpAnchor: '#source-blocks',
+  },
   { key: 'org-refile-targets', label: 'Refile targets', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#refile' },
   { key: 'org-global-properties', label: 'Global properties', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#effort-all' },
   { key: 'org-agenda-files', label: 'Agenda files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda-files' },

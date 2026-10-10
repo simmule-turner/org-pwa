@@ -29,7 +29,6 @@ export const UNNAMED_CHORD_LABELS = {
   'C-c .': 'Edit details',
   'C-c !': 'Edit details',
   'C-c C-d': 'Edit details',
-  'C-c C-c': 'Toggle checkbox (not available yet)',
   'C-c |': 'Insert table (not available yet)',
   'C-c l': 'Store link (not available yet)',
   'C-c C-l': 'Insert link (not available yet)',

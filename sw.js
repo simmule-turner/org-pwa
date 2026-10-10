@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v470';
+const CACHE_NAME = 'org-pwa-shell-v471';
 
 const SHELL_FILES = [
   './',
@@ -7,6 +7,7 @@ const SHELL_FILES = [
   './manifest.json',
   './README.org',
   './src/archive-model.js',
+  './src/babel.js',
   './src/attach.js',
   './src/calendar-grid.js',
   './src/checkbox-cookie.js',
@@ -157,6 +158,8 @@ const SHELL_FILES = [
   './src-browser/navigation.js',
   './src-browser/refile-flow.js',
   './src-browser/render.js',
+  './src-browser/babel-flow.js',
+  './src-browser/babel-run.js',
   './src-browser/heading-drag.js',
   './src-browser/row-render.js',
   './src-browser/save-out.js',

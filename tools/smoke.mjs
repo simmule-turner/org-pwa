@@ -3935,6 +3935,80 @@ check('drag handle setting: right by default, left or off from the variable, and
   await context.close();
 });
 
+const babelDoc = (...blocks) => ['* Code', '#+NAME: sales', '| q | n |', '|---+---|', '| Q1 | 10 |', '| Q2 | 20 |', '', ...blocks, ''].join('\n');
+// Playwright's own service-worker blocking script reads navigator.serviceWorker in every frame, which a sandboxed frame refuses.
+const sandboxErrors = (errors) => errors.filter((e) => !/allow-same-origin/.test(e));
+async function enableJavaScript(page) {
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.globalVariables = { ...S.globalVariables, 'org-xx-babel-js': 'on' };
+    const { render } = await import('/src-browser/render.js');
+    render();
+  });
+}
+async function runBlock(page, n = 0) {
+  await page.getByRole('button', { name: 'Run source block' }).nth(n).click();
+  await page.getByRole('button', { name: 'Run', exact: true }).click(); // asked every time in an unsaved document
+}
+
+check('JavaScript blocks are off by default, and a file cannot switch them on for itself', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(page, ['* Code', '#+BEGIN_SRC js', 'return 1;', '#+END_SRC', '', '# Local Variables:', '# org-xx-babel-js: on', '# End:', ''].join('\n'));
+  expect((await page.getByRole('button', { name: 'Run source block' }).count()) === 0, 'no Run button, even with the variable in the file');
+  await enableJavaScript(page);
+  expect((await page.getByRole('button', { name: 'Run source block' }).count()) === 1, 'Run button once Settings turns it on');
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('JavaScript blocks: values, tables, :var from a named table, output, errors; a rerun replaces the result', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(
+    page,
+    babelDoc(
+      '#+BEGIN_SRC js', 'return 6 * 7;', '#+END_SRC', '',
+      '#+BEGIN_SRC js :var data=sales', 'return data.slice(1).map(([q, n]) => [q, n * 2]);', '#+END_SRC', '',
+      '#+BEGIN_SRC js :results output', 'console.log("one"); console.log("two");', '#+END_SRC', '',
+      '#+BEGIN_SRC js :results list', 'return ["a", "b"];', '#+END_SRC', '',
+      '#+BEGIN_SRC js', 'throw new Error("boom");', '#+END_SRC'
+    )
+  );
+  await enableJavaScript(page);
+  for (let n = 0; n < 5; n++) await runBlock(page, n);
+  await waitForStatus(page, 'Source block failed');
+  const text = await documentText(page);
+  for (const want of [': 42', '| Q1 | 20 |', '| Q2 | 40 |', ': one', ': two', '- a', '- b', ': Error: boom (line 1)']) {
+    expect(text.includes(want + '\n') || text.includes(want), `result ${want} in:\n${text}`);
+  }
+  expect((text.match(/#\+RESULTS:/g) || []).length === 5, `five RESULTS lines: ${text}`);
+  await runBlock(page, 0);
+  await waitForStatus(page, 'Ran in');
+  expect(((await documentText(page)).match(/#\+RESULTS:/g) || []).length === 5, 'a rerun replaces instead of adding');
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('JavaScript blocks: an endless loop is stopped, and the code cannot reach the network, the page or storage', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(
+    page,
+    babelDoc(
+      '#+BEGIN_SRC js :timeout 1', 'while (true) {}', '#+END_SRC', '',
+      '#+BEGIN_SRC js', 'let net = "reached"; try { await fetch("/index.html"); } catch (e) { net = "blocked"; }', 'let imp = "reached"; try { await import("/src-browser/babel-run.js"); } catch (e) { imp = "blocked"; }', 'return [net, imp, typeof document, typeof localStorage, typeof XMLHttpRequest, typeof parent];', '#+END_SRC'
+    )
+  );
+  await enableJavaScript(page);
+  await runBlock(page, 0);
+  await waitForStatus(page, 'Source block failed', 15000);
+  await runBlock(page, 1);
+  await waitForStatus(page, 'Ran in');
+  const text = await documentText(page);
+  expect(text.includes(': Error: Timed out after 1 s'), `timeout: ${text}`);
+  expect(text.includes('| blocked | blocked | undefined | undefined | undefined | undefined |'), `isolation: ${text}`);
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('drag grip: the handle is on every heading row of a phone-sized touch browser too', async () => {
   const { context, page, errors } = await freshPage(main, { initScript: null });
   await page.setViewportSize({ width: 412, height: 800 });

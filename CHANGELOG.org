@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v471 — JavaScript source blocks
+~js~ blocks in an Org file can now run, as in Org Babel, so a result such as a table, a sunrise time or a sum can be computed in place and kept under the block as ~#+RESULTS:~. Turn on *Run JavaScript source blocks* in Settings, then tap *Run* or press ~C-c C-c~. The code runs in a sandbox with no network and no access to your files or accounts, is stopped at its time limit, and a file cannot enable any of this for itself.
+
 * v470 — Extension design note
 The plan for running user JavaScript (Babel blocks first, then an init script) is now in the repository as =docs/extensions-design.org=: the trust model, the API, and worked sketches for sunrise/sunset, weather and a calendar feed. It also records why the standard diary sexps stay built in, so a file keeps working in Emacs, while scripts can add new ones. No behaviour changes.
 

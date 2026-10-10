@@ -110,7 +110,7 @@ The modeline (see [[#modeline][Modeline and minibuffer]]) shows the current file
 
   Everything else (~SRC~, ~EXAMPLE~, ~COMMENT~, custom names) is shown literally.
 
-  On export (see [[#export][Export]]), ~SRC~ becomes a fenced code block with its language kept (~#+BEGIN_SRC python~ gives ```python), ~QUOTE~ becomes a blockquote, and ~COMMENT~ is dropped. Every other name exports as a plain fenced block, without ~VERSE~'s line preserving or ~CENTER~'s centering. A ~SRC~ language is kept only as that export hint: there is no syntax highlighting and no Babel execution (see [[#known-limitations--not-built-yet][Known limitations]]).
+  On export (see [[#export][Export]]), ~SRC~ becomes a fenced code block with its language kept (~#+BEGIN_SRC python~ gives ```python), ~QUOTE~ becomes a blockquote, and ~COMMENT~ is dropped. Every other name exports as a plain fenced block, without ~VERSE~'s line preserving or ~CENTER~'s centering. A ~SRC~ language is kept only as that export hint: there is no syntax highlighting, and only ~js~ blocks can run (see [[#source-blocks][Source blocks]]).
 
 *** A heading's "text"
 :PROPERTIES:
@@ -596,6 +596,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-weather-speed-unit~ | ~mph~ | (own) ~km/h~, ~m/s~, ~mph~ or ~Knots~ |
 | ~org-weather-temperature-unit~ | ~°F~ | (own) ~°C~ or ~°F~ |
 | ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
+| ~org-xx-babel-js~ | ~off~ | (own) ~on~ lets ~js~ source blocks run (see [[#source-blocks][Source blocks]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
 | ~org-xx-drag-handle~ | ~right~ | (own) Where the drag grip sits on a heading row: ~right~, ~left~ or ~off~; also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-god-mode-button~ | ~t~ (shown) | (own) Whether the floating *[g]* god-mode button is shown (see [[#god-mode-mobile][God-mode without a hardware keyboard]]); also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-menu-aliases~ | unset (no relabeling) | (own) Relabel or hide buttons across the File, More, Export, Import and View menus (see [[#menu-customization][Menu customization]]) |
@@ -708,6 +709,40 @@ An entry the app can't understand is skipped and listed with the reason at the t
 
 -----
 
+
+** Source blocks
+:PROPERTIES:
+:CUSTOM_ID: source-blocks
+:END:
+
+~js~ blocks run in place, as in Org Babel. They are off until you set *Run JavaScript source blocks* to ~On~ in Settings → Quick Settings → *Editing*. The setting comes from your Global Variables, never from a file, so a document cannot turn it on for itself.
+
+Each ~js~ block then has a *Run* button; ~C-c C-c~ runs the block under the cursor, and *Run source block* is in the command palette. The result is written under the block as ~#+RESULTS:~ and replaced on the next run. One Undo removes it.
+
+#+BEGIN_SRC
+,#+NAME: sales
+| q  |  n |
+|----+----|
+| Q1 | 10 |
+| Q2 | 20 |
+
+,#+BEGIN_SRC js :var data=sales
+return data.slice(1).map(([q, n]) => [q, n * 2]);
+,#+END_SRC
+
+,#+RESULTS:
+| Q1 | 20 |
+| Q2 | 40 |
+#+END_SRC
+
+- ~:results~: ~value~ (the default: what the block ~return~s) or ~output~ (the ~console.log~ lines), with ~table~, ~list~, ~raw~ or ~silent~.
+- ~:var name=value~: a number, a quoted string, or the ~#+NAME:~ of a table, which arrives as an array of rows.
+- ~:timeout N~: seconds, 5 by default and 60 at most. A block still running then is stopped.
+- ~:wrap NAME~: wraps the result in a ~#+begin_NAME~ block.
+
+The code runs in a sandbox with no network and no access to the page, your files or your accounts. ~org.vars.get("calendar-latitude")~ reads a setting. The first run in a saved document asks for confirmation; an unsaved one asks every time. Not built: other languages, ~:session~, tangling and ~:noweb~.
+
+-----
 
 ** Attachments
 :PROPERTIES:
@@ -1772,7 +1807,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Agenda* (see [[#agenda][Agenda]]): effort sorting, filtering and the per-day limit are session settings in the ⏱ panel, not ~org-agenda-sorting-strategy~ or ~org-agenda-max-effort~. There is no negated (~-<~) filter, no effort column format (~%e~) and no effort sort in the TODO view. The sexp evaluator supports a closed, documented set of functions (including ~org-class~, ~org-date~ and ~and~, ~or~, ~not~), not a Lisp interpreter: no ~let~, ~date~ variable or ~calendar-*~ helpers, no ~diary-remind~, and no holiday-skipping in ~org-class~. ~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~ are left out on purpose, since their ~org-*~ twins take unambiguous year-month-day dates (see [[#agenda-sexp-timestamps][General sexp timestamps]]). A ~local:~ agenda file is read-only, and only a file already opened on this device can be named.
 
-*Babel*: not built.
+*Babel*: only ~js~ blocks run (see [[#source-blocks][Source blocks]]). Not built: other languages, ~:session~, tangling, ~:noweb~, ~:cache~, and results refreshed on open.
 
 *Links and structure*: no ~[[id:...]]~ links, ~<<targets>>~, habits (~:STYLE: habit~), ~#+SETUPFILE:~ or ~org-cite~ citations. They are kept exactly as written, and never altered by a save.
 
