@@ -2,7 +2,8 @@
 import { deleteProperty, setProperty } from '../src/archive-model.js';
 import { commitLines } from '../src/body-edit.js';
 import { applyEdits, snapshotDocument, snapshotStillMatches, validateEdits } from '../src/extension-edit.js';
-import { extensionsOn, hashScript, userSexpKey, userSexpResult, visibleVariableMap, usableSexpName } from '../src/extensions.js';
+import { onExtensionEvent } from './extension-events.js';
+import { EDIT_EVENTS, extensionsOn, hashScript, userSexpKey, userSexpResult, visibleVariableMap, usableSexpName } from '../src/extensions.js';
 import { getCalendarLatitude, getCalendarLongitude } from '../src/local-variables.js';
 import { setUserSexps } from '../src/sexp-eval.js';
 import { S } from './app-state.js';
@@ -18,11 +19,11 @@ const MAX_CACHED = 5000;
 const MAX_LOG = 40;
 
 /** What Settings shows. `state` is one of: off, empty, unapproved, running, failed. */
-const info = { state: 'off', message: '', sexps: [], commands: [], log: [], script: '', hash: '' };
+const info = { state: 'off', message: '', sexps: [], commands: [], events: [], log: [], script: '', hash: '' };
 
 const cache = new Map();
 /** The running script and its queue. Private to this module; the app-wide state stays on S. */
-const run = { pending: new Map(), flushTimer: null, handle: null, commandBusy: false };
+const run = { pending: new Map(), flushTimer: null, handle: null, commandBusy: false, applying: false, chain: Promise.resolve() };
 
 export function extensionInfo() {
   return { ...info, sexps: info.sexps.slice(), commands: info.commands.map((c) => ({ ...c })), log: info.log.slice() };
@@ -42,6 +43,7 @@ function stop() {
   run.handle = null;
   info.sexps = [];
   info.commands = [];
+  info.events = [];
   run.commandBusy = false;
   setUserSexps();
 }
@@ -131,6 +133,7 @@ export async function loadExtensions() {
   info.state = 'running';
   info.sexps = names;
   info.commands = started.commands || [];
+  info.events = started.events || [];
   setUserSexps(names, answer);
   render();
 }
@@ -197,35 +200,81 @@ export async function runExtensionCommand(id, target) {
   } finally {
     if (run.handle === active) run.commandBusy = false;
   }
+  finishReply(command.label, snapshot, reply, true);
+}
+
+/** Handles a script's answer to a command or an event: logs, then checks and applies its edits as one undo step. */
+function finishReply(label, snapshot, reply, allowEdits) {
   for (const line of reply.logs || []) note(line);
   if (reply.error) {
-    note(`${command.label}: ${reply.error}`);
-    setStatus(`${command.label} failed: ${reply.error}`);
+    note(`${label}: ${reply.error}`);
+    setStatus(`${label} failed: ${reply.error}`);
     return;
   }
   const edits = reply.edits || [];
-  if (edits.length) {
+  if (edits.length && !allowEdits) {
+    note(`${label}: its edits were ignored (this event cannot change the file)`);
+  } else if (edits.length) {
     const problem = validateEdits(edits, snapshot.headings.length);
     if (problem) {
-      setStatus(`${command.label}: ${problem}. Nothing was changed.`);
+      setStatus(`${label}: ${problem}. Nothing was changed.`);
       return;
     }
     if (S.isBufferReadOnly) {
-      setStatus(`${command.label}: the buffer is read-only, so nothing was changed.`);
+      setStatus(`${label}: the buffer is read-only, so nothing was changed.`);
       return;
     }
     if (!snapshotStillMatches(S.state.doc, snapshot)) {
-      setStatus(`${command.label}: the document changed while it ran, so nothing was changed.`);
+      setStatus(`${label}: the document changed while it ran, so nothing was changed.`);
       return;
     }
-    applyEdits(S.state.doc, edits, {
-      setTodo: (heading, todo) => applyTodoTransition(heading, () => { heading.todo = todo; }),
-      setProperty,
-      deleteProperty,
-      appendBody,
-    });
-    commitAndRender(`Script: ${command.label}`);
+    run.applying = true; // the changes a script makes do not set off its own hooks again
+    try {
+      applyEdits(S.state.doc, edits, {
+        setTodo: (heading, todo) => applyTodoTransition(heading, () => { heading.todo = todo; }),
+        setProperty,
+        deleteProperty,
+        appendBody,
+      });
+      commitAndRender(`Script: ${label}`);
+    } finally {
+      run.applying = false;
+    }
   }
-  const say = reply.message || (reply.notices || []).join(' \u00b7 ') || (edits.length ? `${command.label}: ${edits.length} ${edits.length === 1 ? 'change' : 'changes'}.` : `${command.label}: done.`);
-  setStatus(say);
+  const applied = edits.length && allowEdits ? edits.length : 0;
+  setStatus(reply.message || (reply.notices || []).join(' \u00b7 ') || (applied ? `${label}: ${applied} ${applied === 1 ? 'change' : 'changes'}.` : `${label}: done.`));
 }
+
+/** Delivers an event to the script's hooks, one at a time and after the app has finished handling it. */
+async function deliverEvent(name, payload, doc) {
+  const active = run.handle;
+  if (!active || S.state.doc !== doc) return;
+  await new Promise((resolve) => setTimeout(resolve, 30)); // let the change that caused the event finish drawing
+  if (run.handle !== active || S.state.doc !== doc) return;
+  const snapshot = snapshotDocument(doc, { name: String((S.state.documentId || '').split('/').pop() || ''), focusedHeading: payload.heading || null });
+  const plain = {};
+  for (const [k, v] of Object.entries(payload)) if (k !== 'heading' && (v === null || ['string', 'number', 'boolean'].includes(typeof v))) plain[k] = v;
+  let reply;
+  try {
+    reply = await active.runEvent(name, snapshot, plain);
+  } catch (err) {
+    if (run.handle === active) {
+      info.state = 'failed';
+      info.message = err.message;
+      note(err.message);
+      stop();
+      setStatus(err.message);
+      render();
+    }
+    return;
+  }
+  if (run.handle !== active || S.state.doc !== doc) return;
+  if (reply.error || (reply.edits || []).length || (reply.notices || []).length) finishReply(`Script hook ${name}`, snapshot, reply, EDIT_EVENTS.has(name));
+  else for (const line of reply.logs || []) note(line);
+}
+
+onExtensionEvent((name, payload) => {
+  if (!run.handle || run.applying || !info.events.includes(name)) return;
+  const doc = S.state.doc;
+  run.chain = run.chain.then(() => deliverEvent(name, payload, doc)).catch((err) => note(err.message));
+});

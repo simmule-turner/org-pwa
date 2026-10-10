@@ -1,6 +1,7 @@
 // Extracted from app.js: capture ui.
 import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandCaptureText, expandTemplate, getCaptureFileScheme, insertCapture, resolveCaptureFileId, resolveOlpTarget, scanPrompts, storageKindForScheme } from '../src/capture-template.js';
 import { parseOrg } from '../src/org-parser.js';
+import { emitExtensionEvent } from './extension-events.js';
 import { S } from './app-state.js';
 import { openTimestampPickerPopup, showModalOverlay } from './dialogs.js';
 import { getOlpPrepend } from './doc-helpers.js';
@@ -436,6 +437,7 @@ export async function runCaptureWithAnswers(template, answers) {
 
     setStatus(`Captured to ${targetFileId}.`);
     afterSuccessfulCapture();
+    emitExtensionEvent('capture', { description: template.description || '', file: targetFileId, sameFile: false });
     return;
   }
 
@@ -467,6 +469,7 @@ export async function runCaptureWithAnswers(template, answers) {
   navigateToHeading(target, { revealOwnBody: true });
   setStatus('Captured.');
   afterSuccessfulCapture();
+  emitExtensionEvent('capture', { description: template.description || '', file: targetFileId, sameFile: true, heading: target });
 }
 
 /** After a successful capture, the form always closes, returning to

@@ -9,6 +9,7 @@ function extensionMain() {
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
   const sexps = new Map();
   const commands = new Map();
+  const handlers = new Map(); // event name -> [fn]
   let current = null; // the command being run: { document, edits, notices }
   const logs = [];
   const show = (v) => {
@@ -57,6 +58,13 @@ function extensionMain() {
           }
           commands.set(id, { label: label.trim().slice(0, 80), fn });
         },
+        on(event, fn) {
+          if (!['open', 'save', 'todo-change', 'capture'].includes(event) || typeof fn !== 'function') {
+            throw new TypeError('org.on(event, function): the events are open, save, todo-change and capture');
+          }
+          if (!handlers.has(event)) handlers.set(event, []);
+          handlers.get(event).push(fn);
+        },
         notify(text) {
           if (current) {
             if (current.notices.length < 20) current.notices.push(String(text).slice(0, 500));
@@ -70,7 +78,7 @@ function extensionMain() {
       const consoleShim = Object.freeze({ log, info: log, warn: log, error: log, debug: log });
       try {
         await new AsyncFunction('org', 'console', m.code)(org, consoleShim);
-        self.postMessage({ type: 'init-done', ok: true, sexps: [...sexps.keys()], commands: [...commands].map(([id, c]) => ({ id, label: c.label })), logs });
+        self.postMessage({ type: 'init-done', ok: true, sexps: [...sexps.keys()], commands: [...commands].map(([id, c]) => ({ id, label: c.label })), events: [...handlers.keys()], logs });
       } catch (err) {
         self.postMessage({ type: 'init-done', ok: false, message: String((err && err.message) || err), logs });
       }
@@ -88,6 +96,18 @@ function extensionMain() {
         }
       }
       self.postMessage({ type: 'call-done', id: m.id, results, error, logs: logs.splice(0) });
+    } else if (m.type === 'event') {
+      current = { document: m.document, edits: [], notices: [] };
+      let error = null;
+      try {
+        const heading = m.document.focused === null ? null : m.document.headings[m.document.focused];
+        for (const fn of handlers.get(m.name) || []) await fn({ event: m.name, name: m.document.name, focused: m.document.focused, heading, ...m.payload });
+      } catch (err) {
+        error = String((err && err.message) || err);
+      }
+      const done = current;
+      current = null;
+      self.postMessage({ type: 'event-done', id: m.id, edits: error ? [] : done.edits, notices: done.notices, error, logs: logs.splice(0) });
     } else if (m.type === 'command') {
       const command = commands.get(m.name);
       current = { document: m.document, edits: [], notices: [] };
@@ -113,7 +133,7 @@ function extensionMain() {
  * or { ok: false, message, logs }. A call that takes longer than `callTimeoutMs` closes the sandbox and
  * rejects, so a script that hangs cannot stay running.
  */
-export async function startExtension({ code, variables = {}, initTimeoutMs = 3000, callTimeoutMs = 3000, commandTimeoutMs = 5000 }) {
+export async function startExtension({ code, variables = {}, initTimeoutMs = 3000, callTimeoutMs = 3000, commandTimeoutMs = 5000, eventTimeoutMs = 2000 }) {
   const box = await startSandbox(extensionMain);
   if (!box.ok) return { ok: false, message: box.message, logs: [] };
   let nextId = 1;
@@ -121,7 +141,7 @@ export async function startExtension({ code, variables = {}, initTimeoutMs = 300
   let initWaiter = null;
   box.onMessage((m) => {
     if (m.type === 'init-done' && initWaiter) initWaiter(m);
-    else if ((m.type === 'call-done' || m.type === 'command-done') && waiting.has(m.id)) waiting.get(m.id)(m);
+    else if ((m.type === 'call-done' || m.type === 'command-done' || m.type === 'event-done') && waiting.has(m.id)) waiting.get(m.id)(m);
   });
 
   const init = await new Promise((resolve) => {
@@ -158,9 +178,11 @@ export async function startExtension({ code, variables = {}, initTimeoutMs = 300
     ok: true,
     sexps: init.sexps,
     commands: init.commands || [],
+    events: init.events || [],
     logs: init.logs || [],
     close: box.close,
     call: (name, context, args, days) => request({ type: 'call', name, context, args, days }, name, callTimeoutMs),
     runCommand: (name, document) => request({ type: 'command', name, document }, name, commandTimeoutMs),
+    runEvent: (name, document, payload) => request({ type: 'event', name, document, payload }, `the ${name} hook`, eventTimeoutMs),
   };
 }

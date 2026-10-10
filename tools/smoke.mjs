@@ -4101,6 +4101,62 @@ check('extensions: a script command appears in the palette, reads the file, chan
   await context.close();
 });
 
+check('extensions: hooks run on open, save, a TODO change and capture; a hook can edit after a TODO change but not after a save; its own edits do not set it off again', async () => {
+  const { context, page, errors } = await freshPage(main);
+  const script = [
+    'org.on("open", () => { console.log("opened-log"); org.notify("hook: opened"); });',
+    'org.on("save", (ctx) => { org.notify("hook: saved"); org.edit.setTitle(0, "should be ignored"); });',
+    'org.on("todo-change", (ctx) => { org.edit.setProperty(ctx.heading.index, "LAST", ctx.from + ">" + ctx.to); org.edit.setTodo(ctx.heading.index, "NEXT"); org.notify("hook: " + ctx.from + " to " + ctx.to); });',
+    'org.on("capture", (ctx) => org.notify("hook: captured " + ctx.description));',
+  ].join('\n');
+  const flow = (fn, ...args) =>
+    page.evaluate(
+      async ([name, a]) => {
+        const f = await import('/src-browser/extension-flow.js');
+        return f[name](...a);
+      },
+      [fn, args]
+    );
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.globalVariables = { ...S.globalVariables, 'org-xx-extensions': 'on' };
+  });
+  await flow('saveExtensionScript', script);
+  await flow('approveExtensionScript');
+  expect((await flow('extensionInfo')).events.join(',') === 'open,save,todo-change,capture', `events: ${JSON.stringify((await flow('extensionInfo')).events)}`);
+
+  await newDocument(page, ['#+TODO: TODO NEXT | DONE', '* TODO One', '* Two', ''].join('\n'));
+  for (let i = 0; i < 40 && !(await flow('extensionInfo')).log.some((l) => l.includes('opened-log')); i++) await page.waitForTimeout(250);
+  expect((await flow('extensionInfo')).log.some((l) => l.includes('opened-log')), 'the open hook ran');
+
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { applyTodoTransition } = await import('/src-browser/todo-workflow.js');
+    const { commitAndRender } = await import('/src-browser/editing.js');
+    const h = S.state.doc.children[0];
+    applyTodoTransition(h, () => { h.todo = 'DONE'; });
+    commitAndRender('Test: set DONE');
+  });
+  await waitForStatus(page, 'hook: TODO to DONE');
+  await page.waitForTimeout(500);
+  const text = await documentText(page);
+  expect(/^\* NEXT One$/m.test(text) && text.includes(':LAST: TODO>DONE'), `the hook's edits were applied:\n${text}`);
+  expect((text.match(/:LAST:/g) || []).length === 1, 'the hook did not fire again for its own change');
+
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { emitExtensionEvent } = await import('/src-browser/extension-events.js');
+    emitExtensionEvent('save');
+    emitExtensionEvent('capture', { description: 'Inbox', file: 'x.org', sameFile: true });
+  });
+  await waitForStatus(page, 'hook: captured Inbox');
+  const info = await flow('extensionInfo');
+  expect(info.log.some((l) => l.includes('edits were ignored')), `a save hook cannot edit: ${JSON.stringify(info.log)}`);
+  expect(!(await documentText(page)).includes('should be ignored'), 'the ignored edit changed nothing');
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('drag grip: the handle is on every heading row of a phone-sized touch browser too', async () => {
   const { context, page, errors } = await freshPage(main, { initScript: null });
   await page.setViewportSize({ width: 412, height: 800 });

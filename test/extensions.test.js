@@ -1,7 +1,7 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { BUILTIN_SEXP_NAMES, extensionsOn, hashScript, sexpArgToValue, userSexpKey, userSexpResult, usableSexpName, visibleVariableMap } from '../src/extensions.js';
+import { BUILTIN_SEXP_NAMES, EDIT_EVENTS, EVENT_NAMES, extensionsOn, hashScript, sexpArgToValue, userSexpKey, userSexpResult, usableSexpName, visibleVariableMap } from '../src/extensions.js';
 import { evaluateSexpr, parseGeneralBodyLine, parseSexpr, setUserSexps } from '../src/sexp-eval.js';
 
 afterEach(() => setUserSexps());
@@ -77,4 +77,16 @@ test('keys, variables, approval hash and the switch', async () => {
   assert.equal(extensionsOn({}), false);
   assert.equal(extensionsOn({ 'org-xx-extensions': 'on' }), true);
   assert.equal(extensionsOn({ 'org-xx-extensions': 'off' }), false);
+});
+
+test('the events the worker accepts are the ones the app announces', () => {
+  const worker = readFileSync(new URL('../src-browser/extension-run.js', import.meta.url), 'utf8');
+  const listed = /\[('open'[^\]]*)\]\.includes\(event\)/.exec(worker);
+  assert.ok(listed, 'org.on lists its events');
+  assert.deepEqual(listed[1].split(',').map((s) => s.trim().replace(/'/g, '')), EVENT_NAMES);
+  for (const name of EVENT_NAMES) {
+    const announced = ['todo-workflow.js', 'documents-io.js', 'capture-ui.js'].some((f) => readFileSync(new URL('../src-browser/' + f, import.meta.url), 'utf8').includes(`emitExtensionEvent('${name}'`));
+    assert.ok(announced, `${name} is announced somewhere`);
+  }
+  assert.deepEqual([...EDIT_EVENTS].sort(), ['capture', 'todo-change']);
 });

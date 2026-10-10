@@ -15,6 +15,11 @@ export const BUILTIN_SEXP_NAMES = new Set([
   'format', 'diary-anniversary', 'diary-date', 'diary-cyclic', 'diary-block', 'diary-remind', 'diary-phases-of-moon',
 ]);
 
+/** The events a script can hook with org.on. Only `todo-change` and `capture` may answer with edits: changing the
+ *  file in reply to a save or an open would mark it modified the moment it was saved or opened. */
+export const EVENT_NAMES = ['open', 'save', 'todo-change', 'capture'];
+export const EDIT_EVENTS = new Set(['todo-change', 'capture']);
+
 const NAME_RE = /^[A-Za-z][A-Za-z0-9-]*$/;
 
 /** A name a script may register: letters, digits and dashes, not a built-in. */

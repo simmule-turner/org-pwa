@@ -741,7 +741,15 @@ org.command("tag-urgent", "Tag as urgent", (ctx) => {
 });
 #+END_SRC
 
-A name is letters, digits and dashes, and ~org.sexp~ cannot take a standard form such as ~diary-float~. The script runs in the same sandbox as ~js~ blocks (no network). A diary function that takes longer than 3 seconds, or a command longer than 5, stops the script. Emacs does not know your functions, so a file that uses one needs the same function defined in Emacs Lisp to work there. Not built: hooks and the rest of the planned API.
+~org.on(event, fn)~: runs ~fn(ctx)~ when something happens. The events are ~open~ (a file finished loading), ~save~ (a save succeeded), ~todo-change~ (a heading's TODO state changed; ~ctx.heading~, ~ctx.from~ and ~ctx.to~) and ~capture~ (a capture was filed; ~ctx.description~, ~ctx.file~). A hook can use ~org.notify~ in any event, and ~org.edit~ after ~todo-change~ and ~capture~; its edits are one separate undo step, and do not set hooks off again. Edits after ~save~ or ~open~ are ignored, since they would mark the file modified the moment it was saved or opened. A hook that fails is logged and never blocks saving or opening.
+
+#+BEGIN_SRC
+org.on("todo-change", (ctx) => {
+  if (ctx.to === "DONE") org.edit.setProperty(ctx.heading.index, "FINISHED", new Date().toISOString().slice(0, 10));
+});
+#+END_SRC
+
+A name is letters, digits and dashes, and ~org.sexp~ cannot take a standard form such as ~diary-float~. The script runs in the same sandbox as ~js~ blocks (no network). A diary function that takes longer than 3 seconds, a command longer than 5, or a hook longer than 2, stops the script. Emacs does not know your functions, so a file that uses one needs the same function defined in Emacs Lisp to work there. Not built: the rest of the planned API.
 
 -----
 

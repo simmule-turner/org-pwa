@@ -15,6 +15,7 @@ import { filesystemAdapter, githubAdapter, inputFileAdapter, webdavAdapter } fro
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
 import { requestApptScan } from './appt-flow.js';
 import { scheduleSync } from './mirror-sync.js';
+import { emitExtensionEvent } from './extension-events.js';
 import { S } from './app-state.js';
 import { scrollContainer } from './chrome.js';
 import { NAVIGATION_BACK_STACK_LIMIT } from './constants.js';
@@ -101,6 +102,7 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
   render();
   renderTabBar();
   persistOpenTabsInBackground();
+  emitExtensionEvent('open');
 }
 
 export async function createNewUnsavedDocument(rawText = '', statusMessage = null) {
@@ -425,6 +427,7 @@ export async function saveCurrent() {
     setStatus(result.resolution === 'merged' ? 'Saved \u2014 merged with the changes made elsewhere.' : 'Saved (' + result.status + ').');
     scheduleSync(); // the agenda, or the contacts, may have changed
     requestApptScan(); // and so may the appointments
+    emitExtensionEvent('save');
   } catch (err) {
     setStatus('Save failed: ' + err.message);
   }

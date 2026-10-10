@@ -1057,7 +1057,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   extensionHint.style.opacity = '0.6';
   extensionHint.style.margin = '2px 0 6px';
   extensionHint.textContent =
-    'A JavaScript init script that can add your own diary functions, org.sexp("my-name", (ctx, ...args) => ...), which make %%(my-name ...) work in agenda files, and palette commands, org.command("id", "Label", (ctx) => ...), which can read the file (org.document) and change it (org.edit). It runs in a sandbox with no network, only after you turn on org-xx-extensions in Quick Settings and approve this exact text. It stays on this device: it is not synced, exported or read from any file.';
+    'A JavaScript init script that can add your own diary functions, org.sexp("my-name", (ctx, ...args) => ...), which make %%(my-name ...) work in agenda files, and palette commands, org.command("id", "Label", (ctx) => ...), which can read the file (org.document) and change it (org.edit), and hooks, org.on("todo-change" | "capture" | "save" | "open", (ctx) => ...). It runs in a sandbox with no network, only after you turn on org-xx-extensions in Quick Settings and approve this exact text. It stays on this device: it is not synced, exported or read from any file.';
   extensionSection.appendChild(extensionHint);
 
   const extensionStatusLine = document.createElement('div');
@@ -1068,7 +1068,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
       off: 'Off. Set "Run extension scripts" to On in Quick Settings.',
       empty: 'On, but there is no script yet.',
       unapproved: 'Not running: this script has not been approved on this device.',
-      running: `Running. Diary functions: ${ext.sexps.length ? ext.sexps.join(', ') : 'none'}. Commands: ${ext.commands.length ? ext.commands.map((c) => c.label).join(', ') : 'none'}.`,
+      running: `Running. Diary functions: ${ext.sexps.length ? ext.sexps.join(', ') : 'none'}. Commands: ${ext.commands.length ? ext.commands.map((c) => c.label).join(', ') : 'none'}. Hooks: ${ext.events.length ? ext.events.join(', ') : 'none'}.`,
       failed: `Stopped: ${ext.message}`,
     }[ext.state] || '';
   extensionSection.appendChild(extensionStatusLine);

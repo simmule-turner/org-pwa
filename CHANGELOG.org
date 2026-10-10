@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v474 — Hooks
+The init script can react to what happens in the app with ~org.on~: a file opening, a save, a heading's TODO state changing, a capture being filed. A hook can show a message, and after a TODO change or a capture it can also edit the file (a separate undo step that does not set the hook off again). A hook that fails or hangs is logged and cannot block saving or opening.
+
 * v473 — Your own commands
 The init script can now add commands to the palette with ~org.command~, so a repeated chore (tagging, stamping a property, counting open TODOs) becomes one palette entry. A command reads the open file as plain data and answers with edits, which are checked and applied together as a single undo step; a bad edit, a read-only buffer, a file that changed meanwhile or a thrown error changes nothing. Same sandbox, no network.
 

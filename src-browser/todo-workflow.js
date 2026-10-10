@@ -10,6 +10,7 @@ import { decideLogbookEntry, decideProgressLogging, getEffectiveLogDoneSetting }
 import { applyRepeaterShiftOnDone } from '../src/repeater-shift.js';
 import { parseStartupConfig } from '../src/startup-config.js';
 import { resolveTodoSequence, resolveTodoSequences, setTodoState } from '../src/todo-cycle.js';
+import { emitExtensionEvent } from './extension-events.js';
 import { S } from './app-state.js';
 import { closeAllOverlayPanels } from './chrome.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
@@ -99,6 +100,7 @@ export function applyTodoTransition(heading, performChange) {
   // changed that count, the same reasoning a checkbox toggle already
   // has its own updateCheckboxCookiesUpward call for.
   updateCheckboxCookiesUpward(S.state.doc, heading, sequence.doneKeywords);
+  if (fromTodo !== heading.todo) emitExtensionEvent('todo-change', { heading, from: fromTodo || null, to: heading.todo || null });
 }
 
 /** Shows a small dedicated panel for taking (or skipping) the log note
