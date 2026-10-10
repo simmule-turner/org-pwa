@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v479 — Position that arrives
+Reading the phone's position (~org.location.get()~) now accepts a fix up to an hour old, waits longer, and falls back to the GPS before giving up, and its error says what to check. A phone with no recent fix used to time out after 10 seconds.
+
 * v478 — Literate programming
 Header arguments are inherited (~#+PROPERTY: header-args~, ~:header-args:~ on a heading, ~#+HEADER:~), ~:noweb~ expands ~<<name>>~ references when a ~js~ block runs, and the new *Tangle this file* command writes ~:tangle~ blocks to files (a zip when there are several), matching Emacs's output. Export now follows ~:exports~ and ~:noweb~: a source block shows its code and no longer its stored results unless ~:exports results~ or ~both~. The init script can be tangled from an Org file you name in Settings.
 

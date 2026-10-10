@@ -1,0 +1,78 @@
+#+TITLE: Calendar
+#+PROPERTY: header-args:js :noweb yes :results table :tangle no
+
+Run a block with its Run button (or C-c C-c). JavaScript blocks must be turned on in Settings → Quick Settings → Editing.
+
+* This month
+No network. Today is shown in brackets.
+
+#+begin_src js
+const now = new Date();
+const y = now.getFullYear(), m = now.getMonth();
+const first = new Date(y, m, 1);
+const days = new Date(y, m + 1, 0).getDate();
+let col = (first.getDay() + 6) % 7;                 // weeks start on Monday
+const rows = [['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']];
+let row = Array(col).fill('');
+for (let d = 1; d <= days; d++) {
+  row.push(d === now.getDate() ? '[' + d + ']' : String(d));
+  if (++col === 7) { rows.push(row); row = []; col = 0; }
+}
+if (row.length) rows.push(row.concat(Array(7 - row.length).fill('')));
+return rows;
+#+end_src
+
+* Events from a pasted calendar
+No network: the calendar text is in the block. Replace it with the contents of an =.ics= file. =org.ics.parse= gives each event's title, start, end, place and repeat (such as =+1w=).
+
+#+begin_src js
+const text = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+SUMMARY:Team lunch
+DTSTART:20261016T120000
+DTEND:20261016T130000
+LOCATION:Cafe
+END:VEVENT
+BEGIN:VEVENT
+SUMMARY:Water the plants
+DTSTART;VALUE=DATE:20261012
+RRULE:FREQ=WEEKLY
+END:VEVENT
+END:VCALENDAR`;
+const events = await org.ics.parse(text);
+return [['Start', 'Title', 'Place', 'Repeats']].concat(
+  events.filter((e) => !e.cancelled).sort((a, b) => a.start.localeCompare(b.start)).map((e) => [e.start, e.summary, e.location, e.repeat || '']));
+#+end_src
+
+* Events from a calendar feed
+Fetches an =.ics= address, keeps it for six hours, and lists what starts in the next =days= days (a repeating event is listed once, from its first date). You are asked once to allow the host. The feed's server must allow reading from a web page; many calendar hosts do not, and then the block says it could not read it.
+
+Replace =feed= and =:net= with your own calendar's address and host.
+
+#+begin_src js :net calendar.google.com :var feed="https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics" :var days=60
+let text = await org.cache.get('calendar-feed', 6 * 3600e3);
+if (text === null) {
+  const r = await org.fetch(feed);
+  if (!r.ok) return [['Could not read the feed', 'status ' + r.status]];
+  text = await org.cache.set('calendar-feed', await r.text());
+}
+const day = (t) => new Date(t.slice(0, 10) + 'T00:00:00');
+const from = new Date(); from.setHours(0, 0, 0, 0);
+const to = new Date(from.getTime() + days * 86400000);
+const events = (await org.ics.parse(text))
+  .filter((e) => !e.cancelled && day(e.start) >= from && day(e.start) < to)
+  .sort((a, b) => a.start.localeCompare(b.start));
+return [['Start', 'Title', 'Place']].concat(events.map((e) => [e.start, e.summary, e.location]));
+#+end_src
+
+* The same feed in the agenda (init script)
+Tangles to =init.js=. In Settings → Extensions choose *Use an Org file…* and name this file (=local:calendar.org=, =github:...=, =webdav:...=), then approve. The feed's events then appear in the agenda; the agenda asks again after ten minutes.
+
+#+begin_src js :tangle init.js :results none
+const feed = 'https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics';
+org.agenda.source('holidays', async () => {
+  let text = await org.cache.get('calendar-feed', 6 * 3600e3);
+  if (text === null) text = await org.cache.set('calendar-feed', await (await org.fetch(feed)).text());
+  return (await org.ics.parse(text)).filter((e) => !e.cancelled).map((e) => ({ title: e.summary, start: e.start, end: e.end, repeat: e.repeat }));
+});
+#+end_src

@@ -1,0 +1,90 @@
+#+TITLE: Sunrise and sunset
+#+PROPERTY: header-args:js :noweb yes :results table :tangle no
+
+Run a block with its Run button (or C-c C-c). JavaScript blocks must be turned on in Settings → Quick Settings → Editing.
+
+The calculation is written once, in the block named =sun=; the others pull it in with =<<sun>>=.
+
+* The calculation
+Not run by itself. It finds sunrise and sunset (as Date values) for a day and place, or nothing when the sun does not rise or set.
+
+#+NAME: sun
+#+begin_src js :results none
+const rad = Math.PI / 180;
+const julian = (d) => d / 86400000 + 2440587.5;
+function sun(date, lat, lon) {
+  const n = Math.ceil(julian(date) - 2451545.0 + 0.0008);
+  const Js = n + 0.0009 - lon / 360;              // lon is east-positive
+  const M = (357.5291 + 0.98560028 * Js) % 360;
+  const C = 1.9148 * Math.sin(M * rad) + 0.02 * Math.sin(2 * M * rad);
+  const L = (M + C + 180 + 102.9372) % 360;
+  const Jt = 2451545 + Js + 0.0053 * Math.sin(M * rad) - 0.0069 * Math.sin(2 * L * rad);
+  const dec = Math.asin(Math.sin(L * rad) * Math.sin(23.4397 * rad));
+  const cosW = (Math.sin(-0.833 * rad) - Math.sin(lat * rad) * Math.sin(dec)) / (Math.cos(lat * rad) * Math.cos(dec));
+  if (cosW > 1 || cosW < -1) return null;          // polar night or midnight sun
+  const w = Math.acos(cosW) / rad;
+  const at = (j) => new Date((j - 2440587.5) * 86400000);
+  return { rise: at(Jt - w / 360), set: at(Jt + w / 360) };
+}
+const hhmm = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const length = (s) => {
+  const m = Math.round((s.set - s.rise) / 60000);
+  return Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') + ' min';
+};
+#+end_src
+
+* Today, at the place set in Settings
+Uses =calendar-latitude= and =calendar-longitude= (Quick Settings can fill them in from the device).
+
+#+begin_src js
+<<sun>>
+const lat = Number(org.vars.get('calendar-latitude'));
+const lon = Number(org.vars.get('calendar-longitude'));
+if (!Number.isFinite(lat) || !Number.isFinite(lon)) return [['Set calendar-latitude and calendar-longitude first']];
+const s = sun(new Date(), lat, lon);
+if (!s) return [['Sun', 'does not rise or set today']];
+return [['Sunrise', hhmm(s.rise)], ['Sunset', hhmm(s.set)], ['Daylight', length(s)]];
+#+end_src
+
+* Today, where the phone is
+Asks once for permission to read the position (=:location yes=). Nothing is sent anywhere.
+
+#+begin_src js :location yes
+<<sun>>
+const { lat, lon } = await org.location.get();
+const s = sun(new Date(), lat, lon);
+if (!s) return [['Sun', 'does not rise or set today']];
+return [['Position', lat.toFixed(2) + ', ' + lon.toFixed(2)], ['Sunrise', hhmm(s.rise)], ['Sunset', hhmm(s.set)], ['Daylight', length(s)]];
+#+end_src
+
+* The next seven days
+Change =days= to look further ahead.
+
+#+begin_src js :var days=7
+<<sun>>
+const lat = Number(org.vars.get('calendar-latitude'));
+const lon = Number(org.vars.get('calendar-longitude'));
+if (!Number.isFinite(lat) || !Number.isFinite(lon)) return [['Set calendar-latitude and calendar-longitude first']];
+const rows = [['Day', 'Sunrise', 'Sunset', 'Daylight']];
+for (let i = 0; i < days; i++) {
+  const d = new Date(Date.now() + i * 86400000);
+  const s = sun(d, lat, lon);
+  const label = d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  rows.push(s ? [label, hhmm(s.rise), hhmm(s.set), length(s)] : [label, '-', '-', 'no sunrise or sunset']);
+}
+return rows;
+#+end_src
+
+* A line above the agenda (init script)
+These blocks tangle to =init.js=. In Settings → Extensions choose *Use an Org file…* and give this file as =local:sunrise-sunset.org= (or =github:...=, =webdav:...=), then approve it. The agenda then shows "Sunrise 07:12 · Sunset 18:05" above its list. The same calculation is reused through Noweb.
+
+#+begin_src js :tangle init.js :results none
+<<sun>>
+org.ui.line('sun', () => {
+  const lat = Number(org.vars.get('calendar-latitude'));
+  const lon = Number(org.vars.get('calendar-longitude'));
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return '';
+  const s = sun(new Date(), lat, lon);
+  return s ? 'Sunrise ' + hhmm(s.rise) + ' · Sunset ' + hhmm(s.set) : 'The sun does not rise or set today';
+});
+#+end_src

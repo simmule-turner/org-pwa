@@ -71,15 +71,28 @@ async function writeCache(owner, scope) {
   else await kv.set('ext-cache:' + owner, JSON.stringify(scope));
 }
 
-function readPosition() {
+/** One reading. Code 3 is the browser's "timeout"; 1 is "refused". */
+function askPosition(options) {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject(new Error('This device cannot give its position'));
-    navigator.geolocation.getCurrentPosition(
-      (p) => resolve(roundPosition(p.coords, Date.now())),
-      (err) => reject(new Error('Position unavailable: ' + (err && err.message ? err.message : 'refused'))),
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 },
-    );
+    navigator.geolocation.getCurrentPosition((p) => resolve(roundPosition(p.coords, Date.now())), reject, options);
   });
+}
+
+/** The position. A phone often has no recent fix and the network estimate can be slow, so the first try accepts a fix up to
+ *  an hour old and waits 15 s; if that times out, one more try asks for the GPS and waits 25 s (under the run's 60 s). */
+async function readPosition() {
+  if (!navigator.geolocation) throw new Error('This device cannot give its position');
+  try {
+    try {
+      return await askPosition({ enableHighAccuracy: false, timeout: 15000, maximumAge: 3600000 });
+    } catch (err) {
+      if (!err || err.code !== 3) throw err;
+      return await askPosition({ enableHighAccuracy: true, timeout: 25000, maximumAge: 3600000 });
+    }
+  } catch (err) {
+    const why = err && err.code === 1 ? 'refused: allow location for this app in the phone settings' : err && err.code === 3 ? 'no fix in time: check that Location is on, and try outdoors or near a window' : err && err.message ? err.message : 'refused';
+    throw new Error('Position unavailable: ' + why);
+  }
 }
 
 async function readBody(response) {
