@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v469 — Time zones in table formulas
+In a table formula, a date written without a zone (~01/15/2026~, or a date cell given to ~format-time-string~) was shifted by the device's offset from UTC, so a user in New York got 05:00 instead of 00:00 and the day before. It now keeps the time as written. A string that names its zone (~Z~, ~GMT~, ~+0100~) is still an exact instant.
+
 * v468 — Cancel a drag
 A drag can now be cancelled on a touch screen: moving the finger onto the top bar, or onto the mode line and minibuffer, turns that bar red with "Release to cancel", and lifting there leaves the heading where it was. The top and bottom of the outline are still drops. Escape works as before.
 

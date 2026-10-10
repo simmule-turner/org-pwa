@@ -653,7 +653,17 @@ function parseFlexibleDateString(rawText) {
   if (orgTimestamp) return { ...orgTimestamp, hasTime: true };
   const ms = Date.parse(trimmed);
   if (Number.isNaN(ms)) return null;
-  return { type: 'date', days: ms / 86400000, hasTime: true };
+  // A string that names its zone (Z, +0100, GMT, UTC) is an absolute instant. One that does not ("01/15/2026", "2026-01-15
+  // 10:30") is a wall-clock time, like every org timestamp here, so its fields are kept as written rather than shifted by the
+  // machine's zone. (JS reads a bare ISO date as UTC and every other zone-less form as local, hence the two readings.)
+  const named = /(?:Z|[+-]\d{2}:?\d{2}|\b(?:GMT|UTC|UT|[ECMP][SD]T))\s*$/i.test(trimmed);
+  if (named) return { type: 'date', days: ms / 86400000, hasTime: true, absolute: true };
+  const when = new Date(ms);
+  const dateOnlyIso = /^\d{4}-\d{2}-\d{2}$/.test(trimmed);
+  const [y, mo, d, h, mi] = dateOnlyIso
+    ? [when.getUTCFullYear(), when.getUTCMonth() + 1, when.getUTCDate(), 0, 0]
+    : [when.getFullYear(), when.getMonth() + 1, when.getDate(), when.getHours(), when.getMinutes()];
+  return { type: 'date', days: dateToDays(y, mo, d, h, mi), hasTime: true };
 }
 
 /** Parses `rawText` (a table cell's own raw text) for a recognizable
@@ -1520,8 +1530,13 @@ function evaluateAst(node, ctx) {
         instant = ctx.now || new Date();
       } else {
         const timeVal = evaluateAst(node.args[1], ctx);
-        if (isTaggedValue(timeVal)) {
-          instant = new Date(timeVal.days * 86400000);
+        if (isTaggedValue(timeVal) && timeVal.absolute) {
+          instant = new Date(timeVal.days * 86400000); // an instant that named its zone
+        } else if (isTaggedValue(timeVal)) {
+          // A wall-clock time (a cell timestamp, now(), a zone-less string): this machine's own zone applies to it, so the
+          // fields printed are the fields written, not shifted by the zone's offset.
+          const p = daysToDateParts(timeVal.days);
+          instant = new Date(p.year, p.month - 1, p.day, p.hour, p.minute);
         } else {
           // Real Emacs's own documented convention: a plain number here
           // is an integer count of seconds since the Unix epoch, not days.
