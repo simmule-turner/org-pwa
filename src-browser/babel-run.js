@@ -15,10 +15,8 @@
  * else of the app is reachable from there.
  */
 
-/** Runs inside the worker. Serialised with toString(), so it must not use anything from
- *  this module. */
-function workerMain() {
-  // Belt and braces: the CSP already blocks the network; remove the entry points too.
+/** Runs first inside every worker. Belt and braces: the CSP already blocks the network; remove the entry points too. */
+export function lockDown() {
   for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'importScripts', 'indexedDB', 'caches', 'BroadcastChannel', 'SharedWorker', 'Worker']) {
     try {
       Object.defineProperty(self, name, { value: undefined, configurable: false, writable: false });
@@ -26,6 +24,11 @@ function workerMain() {
       /* not removable here; the CSP still applies */
     }
   }
+}
+
+/** Runs inside the worker. Serialised with toString(), so it must not use anything from
+ *  this module. */
+function workerMain() {
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
   const show = (v) => {
     if (typeof v === 'string') return v;
@@ -96,8 +99,8 @@ function frameMain(workerSource) {
 
 const POLICY = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; worker-src blob:";
 
-function frameDocument() {
-  const worker = `(${workerMain.toString()})()`;
+function frameDocument(main = workerMain) {
+  const worker = `(${lockDown.toString()})();(${main.toString()})()`;
   const boot = `(${frameMain.toString()})(${JSON.stringify(worker).replace(/</g, '\\u003c')})`;
   return `<!doctype html><meta http-equiv="Content-Security-Policy" content="${POLICY}"><script>${boot.replace(/<\/script/gi, '<\\/script')}</script>`;
 }
@@ -144,6 +147,59 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
     addEventListener('message', onMessage);
     timer = setTimeout(() => finish({ ok: false, message: 'The sandbox did not start' }), startupMs);
     frame.srcdoc = frameDocument();
+    document.body.appendChild(frame);
+  });
+}
+
+/**
+ * Starts a sandbox that stays alive, for code that is called more than once (the init script).
+ * `main` is a function that runs inside the worker and talks through self.onmessage / self.postMessage;
+ * it is serialised, so it must not use anything from the page's modules. Resolves with
+ * { ok: true, send(message), onMessage(listener), close() }, or { ok: false, message }.
+ */
+export function startSandbox(main, { startupMs = 4000 } = {}) {
+  return new Promise((resolve) => {
+    const frame = document.createElement('iframe');
+    frame.setAttribute('sandbox', 'allow-scripts');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.tabIndex = -1;
+    frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;pointer-events:none';
+    const listeners = new Set();
+    let settled = false;
+    let closed = false;
+    let timer = null;
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      clearTimeout(timer);
+      removeEventListener('message', onMessage);
+      frame.remove();
+    };
+    const settle = (value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (!value.ok) close();
+      resolve(value);
+    };
+    const onMessage = (e) => {
+      if (e.source !== frame.contentWindow || !e.data) return;
+      if (e.data.type === 'ready') {
+        settle({
+          ok: true,
+          send: (message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'),
+          onMessage: (listener) => listeners.add(listener),
+          close,
+        });
+      } else if (e.data.type === 'fatal') {
+        settle({ ok: false, message: 'The sandbox could not start: ' + e.data.message });
+      } else {
+        for (const listener of listeners) listener(e.data);
+      }
+    };
+    addEventListener('message', onMessage);
+    timer = setTimeout(() => settle({ ok: false, message: 'The sandbox did not start' }), startupMs);
+    frame.srcdoc = frameDocument(main);
     document.body.appendChild(frame);
   });
 }

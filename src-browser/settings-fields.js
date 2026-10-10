@@ -283,6 +283,18 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#editing-your-outline',
   },
   {
+    key: 'org-xx-extensions',
+    label: 'Run extension scripts',
+    section: 'Editing',
+    type: 'select',
+    default: 'off',
+    options: [
+      { value: 'off', label: 'Off' },
+      { value: 'on', label: 'On' },
+    ],
+    helpAnchor: '#extensions',
+  },
+  {
     key: 'org-xx-babel-js',
     label: 'Run JavaScript source blocks',
     section: 'Editing',

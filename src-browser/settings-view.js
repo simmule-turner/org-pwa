@@ -16,6 +16,7 @@ import { syncContactsToAddressBook } from './contacts-sync.js';
 import { syncNow } from './mirror-sync.js';
 import { syncCaptureShortcuts } from './capture-shortcuts.js';
 import { confirmDialog, openMultiFieldPopup, openTextFieldPopup } from './dialogs.js';
+import { approveExtensionScript, extensionInfo, loadExtensions, saveExtensionScript } from './extension-flow.js';
 import { validateCaptureTemplates } from './doc-helpers.js';
 import { sidePanelEl } from './dom.js';
 import { setStatus } from './editing.js';
@@ -1038,6 +1039,113 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     });
   };
   globalVarsSection.appendChild(globalVarsTextarea);
+
+
+  // ---- Extensions: the init script (kept on this device only) ----
+  const extensionSection = document.createElement('div');
+  extensionSection.className = 'settings-section';
+  container.appendChild(extensionSection);
+
+  const extensionTitle = document.createElement('div');
+  extensionTitle.className = 'panel-section-title';
+  extensionTitle.textContent = 'Extensions';
+  extensionSection.appendChild(extensionTitle);
+
+  const ext = extensionInfo();
+  const extensionHint = document.createElement('div');
+  extensionHint.style.fontSize = '11px';
+  extensionHint.style.opacity = '0.6';
+  extensionHint.style.margin = '2px 0 6px';
+  extensionHint.textContent =
+    'A JavaScript init script that can add your own diary functions: org.sexp("my-name", (ctx, ...args) => ...) makes %%(my-name ...) work in agenda files. It runs in a sandbox with no network, only after you turn on org-xx-extensions in Quick Settings and approve this exact text. It stays on this device: it is not synced, exported or read from any file.';
+  extensionSection.appendChild(extensionHint);
+
+  const extensionStatusLine = document.createElement('div');
+  extensionStatusLine.style.fontSize = '12px';
+  extensionStatusLine.style.margin = '0 0 6px';
+  extensionStatusLine.textContent =
+    {
+      off: 'Off. Set "Run extension scripts" to On in Quick Settings.',
+      empty: 'On, but there is no script yet.',
+      unapproved: 'Not running: this script has not been approved on this device.',
+      running: `Running. Diary functions: ${ext.sexps.length ? ext.sexps.join(', ') : 'none registered'}.`,
+      failed: `Stopped: ${ext.message}`,
+    }[ext.state] || '';
+  extensionSection.appendChild(extensionStatusLine);
+
+  const extensionTextarea = document.createElement('textarea');
+  extensionTextarea.value = ext.script;
+  extensionTextarea.rows = 4;
+  extensionTextarea.style.fontFamily = 'monospace';
+  extensionTextarea.style.fontSize = '12px';
+  extensionTextarea.style.width = '100%';
+  extensionTextarea.style.maxWidth = '100%';
+  extensionTextarea.style.boxSizing = 'border-box';
+  extensionTextarea.style.resize = 'vertical';
+  extensionTextarea.readOnly = true;
+  extensionTextarea.setAttribute('aria-label', 'Extension script');
+  extensionTextarea.onfocus = () => {
+    extensionTextarea.blur();
+    openTextFieldPopup({
+      label: 'Extension script (JavaScript)',
+      value: ext.script,
+      defaultValue: '',
+      onSave: async (text) => {
+        try {
+          await saveExtensionScript(text);
+          setStatus('Script saved. Approve it to run it.');
+        } catch (err) {
+          setStatus(err.message);
+        }
+        renderSettingsView();
+        render();
+      },
+      onReset: ext.script
+        ? async () => {
+            await saveExtensionScript('');
+            setStatus('Script cleared.');
+            renderSettingsView();
+            render();
+          }
+        : null,
+    });
+  };
+  extensionSection.appendChild(extensionTextarea);
+
+  const extensionButtons = document.createElement('div');
+  extensionButtons.style.display = 'flex';
+  extensionButtons.style.gap = '8px';
+  extensionButtons.style.margin = '6px 0';
+  if (ext.state === 'unapproved') {
+    extensionButtons.appendChild(
+      menuButton('Approve and run', async () => {
+        await approveExtensionScript();
+        setStatus('Script approved on this device.');
+        renderSettingsView();
+        render();
+      })
+    );
+  }
+  if (ext.state === 'running' || ext.state === 'failed') {
+    extensionButtons.appendChild(
+      menuButton('Restart', async () => {
+        await loadExtensions();
+        renderSettingsView();
+        render();
+      })
+    );
+  }
+  extensionSection.appendChild(extensionButtons);
+
+  if (ext.log.length) {
+    const extensionLog = document.createElement('pre');
+    extensionLog.style.fontSize = '11px';
+    extensionLog.style.opacity = '0.8';
+    extensionLog.style.whiteSpace = 'pre-wrap';
+    extensionLog.style.margin = '4px 0 0';
+    extensionLog.textContent = ext.log.slice(-10).join('\n');
+    extensionSection.appendChild(extensionLog);
+  }
 
   const captureSection = document.createElement('div');
   captureSection.className = 'settings-section';

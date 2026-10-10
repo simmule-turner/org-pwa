@@ -32,6 +32,7 @@
  * list-of-(month day year) return shape at all.
  */
 
+import { sexpArgToValue, userSexpResult } from './extensions.js';
 import { startOfDay } from './agenda.js';
 import { formatWeatherLine, isOrgWeatherLine } from './org-weather.js';
 import {
@@ -143,6 +144,17 @@ function parseSexpr(text) {
 }
 
 // ---- evaluation -------------------------------------------------------------
+
+// User-defined functions (see extensions.js). The browser installs the names a script registered and a
+// handler that answers for one name, its plain arguments and a day. Without them nothing changes.
+let userSexpNames = new Set();
+let userSexpHandler = null;
+
+/** Installs (or, with no arguments, removes) the user-defined diary functions. */
+function setUserSexps(names = [], handler = null) {
+  userSexpNames = new Set(names);
+  userSexpHandler = handler;
+}
 
 /** True for anything real Lisp/elisp would treat as "non-nil" in a
  *  boolean context -- everything except `false` and the empty string
@@ -373,6 +385,9 @@ function evaluateSexpr(node, context) {
     }
 
     default:
+      if (userSexpHandler && userSexpNames.has(head.value)) {
+        return userSexpResult(userSexpHandler(head.value, args.map(sexpArgToValue), context.candidateDate));
+      }
       return false; // an unrecognized function name -- no match, not an error
   }
 }
@@ -516,7 +531,7 @@ function parseGeneralBodyLine(line) {
     return null;
   }
   const head = Array.isArray(expr) ? expr[0] : null;
-  if (!head || head.type !== 'symbol' || !GENERAL_BODY_LINE_HEADS.has(head.value)) return null;
+  if (!head || head.type !== 'symbol' || !(GENERAL_BODY_LINE_HEADS.has(head.value) || userSexpNames.has(head.value))) return null;
   return { expr, text: text.slice(end).trim() };
 }
 
@@ -530,4 +545,4 @@ function evaluateSexpTimestamp(expr, context) {
   return evaluateSexpr(expr, context);
 }
 
-export { parseSexpr, evaluateSexpr, findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy, documentUsesOrgWeather };
+export { setUserSexps, parseSexpr, evaluateSexpr, findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy, documentUsesOrgWeather };

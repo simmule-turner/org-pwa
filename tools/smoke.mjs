@@ -4009,6 +4009,46 @@ check('JavaScript blocks: an endless loop is stopped, and the code cannot reach 
   await context.close();
 });
 
+check('extensions: a script adds a diary function; it runs only once approved, a standard form cannot be replaced, and a function that hangs is stopped', async () => {
+  const { context, page, errors } = await freshPage(main);
+  const script = ['org.sexp("garden-day", () => true);', 'org.sexp("shout", (ctx, word) => "Say " + String(word).toUpperCase());', 'org.sexp("org-block", () => "hijacked");'].join('\n');
+  await newDocument(page, ['* Garden', '%%(garden-day) Water the plants', '%%(shout "hello") x', '%%(spin) Never shown', ''].join('\n'));
+  const flow = (fn, ...args) =>
+    page.evaluate(
+      async ([name, a]) => {
+        const f = await import('/src-browser/extension-flow.js');
+        return f[name](...a);
+      },
+      [fn, args]
+    );
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.globalVariables = { ...S.globalVariables, 'org-xx-extensions': 'on' };
+  });
+  await flow('saveExtensionScript', script);
+  expect((await flow('extensionInfo')).state === 'unapproved', 'a saved script waits for approval');
+  await viewMenu(page, 'Agenda');
+  await page.waitForTimeout(600);
+  expect(!(await page.locator('body').innerText()).includes('Water the plants'), 'nothing runs before approval');
+  await flow('approveExtensionScript');
+  const info = await flow('extensionInfo');
+  expect(info.state === 'running' && info.sexps.join(',') === 'garden-day,shout', `registered: ${JSON.stringify(info)}`);
+  expect(info.log.some((l) => l.includes('org-block')), 'the refusal to redefine a standard form is logged');
+  await page.waitForFunction(() => document.body.innerText.includes('Water the plants'), null, { timeout: 8000 });
+  await page.waitForFunction(() => document.body.innerText.includes('Say HELLO'), null, { timeout: 8000 });
+
+  await flow('saveExtensionScript', script + '\n// edited');
+  expect((await flow('extensionInfo')).state === 'unapproved', 'editing the script withdraws the approval');
+  await flow('saveExtensionScript', script + '\norg.sexp("spin", () => { while (true) {} });');
+  await flow('approveExtensionScript');
+  for (let i = 0; i < 60 && (await flow('extensionInfo')).state !== 'failed'; i++) await page.waitForTimeout(250);
+  const stopped = await flow('extensionInfo');
+  expect(/spin took longer/.test(stopped.message), `the hung function is named: ${JSON.stringify({ state: stopped.state, message: stopped.message, log: stopped.log })}`);
+  expect(!(await page.locator('body').innerText()).includes('Never shown'), 'a function that hangs shows nothing');
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('drag grip: the handle is on every heading row of a phone-sized touch browser too', async () => {
   const { context, page, errors } = await freshPage(main, { initScript: null });
   await page.setViewportSize({ width: 412, height: 800 });

@@ -397,6 +397,30 @@ export async function setGlobalVariables(kvAdapter, text) {
   await setJson(kvAdapter, KEYS.globalVariables, text);
 }
 
+// ---- extension script ------------------------------------------------------
+// Deliberately NOT in KEYS: the script and its approval stay on this device and are never part of an
+// export, an import or a sync (a script that arrived with a file would run code nobody approved here).
+
+const EXTENSION_SCRIPT_KEY = 'settings:extension-script';
+const EXTENSION_APPROVAL_KEY = 'settings:extension-approved-hash';
+
+export async function getExtensionScript(kvAdapter) {
+  return getJson(kvAdapter, EXTENSION_SCRIPT_KEY, '');
+}
+
+export async function setExtensionScript(kvAdapter, text) {
+  await setJson(kvAdapter, EXTENSION_SCRIPT_KEY, text);
+}
+
+/** The hash of the script text the user approved on this device, or ''. */
+export async function getExtensionApproval(kvAdapter) {
+  return getJson(kvAdapter, EXTENSION_APPROVAL_KEY, '');
+}
+
+export async function setExtensionApproval(kvAdapter, hash) {
+  await setJson(kvAdapter, EXTENSION_APPROVAL_KEY, hash);
+}
+
 // ---- export/import all settings ------------------------------------------
 
 /**

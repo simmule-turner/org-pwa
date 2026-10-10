@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v472 — Your own diary functions
+A small JavaScript init script can now add diary functions: ~org.sexp("every-other-friday", fn)~ makes ~%%(every-other-friday ...)~ work in an agenda file, for dates the standard forms cannot express. Paste the script under Settings → Extensions, switch on *Run extension scripts* and approve that exact text. It runs in the same no-network sandbox as ~js~ blocks, stays on this device, cannot replace a standard form, and is stopped if a function hangs.
+
 * v471 — JavaScript source blocks
 ~js~ blocks in an Org file can now run, as in Org Babel, so a result such as a table, a sunrise time or a sum can be computed in place and kept under the block as ~#+RESULTS:~. Turn on *Run JavaScript source blocks* in Settings, then tap *Run* or press ~C-c C-c~. The code runs in a sandbox with no network and no access to your files or accounts, is stopped at its time limit, and a file cannot enable any of this for itself.
 

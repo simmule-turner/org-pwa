@@ -69,6 +69,10 @@ Hooks receive plain data (a heading's title, properties and path), never live ob
 - *API in the first release*: =org.apiVersion= and =org.vars.get(name)= (effective settings, with anything named like a credential left out), =console.log=, and =:var= values.
 - *Result format*: checked against Emacs's =ob-js=; an error is written as =: Error: message (line N)= under =#+RESULTS:=.
 
+* Status: init script and =org.sexp= shipped in v472
+
+The first part of Phase 2 is in: one init script, kept on this device (not part of a settings export), run only when =org-xx-extensions= is on in Global Variables and the user has approved the script's exact text (approval is a SHA-256 of the text, withdrawn by any edit). It registers diary functions with =org.sexp(name, fn)=. The agenda asks for a function's results for the days it is drawing in one batch, the answers are cached, and the page is drawn again when they arrive, so the synchronous agenda code needed no change. A function that takes longer than 3 seconds stops the script. Still to come in Phase 2: =org.command=, =org.on= hooks, =tableFunction=, =linkType=, =exportBackend=, =org.document= and =org.edit=; and, after that, =org.location=, =org.cache= and =org.fetch=.
+
 * User-built features: calendar, weather, sunrise and sunset
 
 All three can be written by a user. Sunrise/sunset works with Phase 1 as designed. Weather needs two small additions. A calendar feed in the agenda needs the Phase 2 agenda hook. The code below is a sketch to show the shape of the API; none of it has been run.

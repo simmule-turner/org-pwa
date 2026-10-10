@@ -179,6 +179,7 @@ import { parsePlotOptions, renderPlotSvg } from './src/org-plot.js';
 import { isOrgWeatherLine, formatWeatherLine, buildWeatherApiUrl, DEFAULT_ORG_WEATHER_FORMAT } from './src/org-weather.js';
 import { initialState as godModeInitialState } from './src/god-mode.js';
 import { documentUsesOrgWeather } from './src/sexp-eval.js';
+import { loadExtensions } from './src-browser/extension-flow.js';
 import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
 import {
   createFileSystemAccessAdapter,
@@ -1368,6 +1369,7 @@ async function bootstrap() {
   S.globalVariables = parseGlobalVariables(S.globalVariablesText);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
+  loadExtensions().catch((err) => console.error('extensions:', err));
   renderFloatingKeyboard(); // a disabled [g] button should not flash on before the first full render
 
   S.customThemeColors = await getCustomThemeColors(kv);

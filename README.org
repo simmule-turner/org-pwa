@@ -597,6 +597,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-weather-temperature-unit~ | ~°F~ | (own) ~°C~ or ~°F~ |
 | ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
 | ~org-xx-babel-js~ | ~off~ | (own) ~on~ lets ~js~ source blocks run (see [[#source-blocks][Source blocks]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
+| ~org-xx-extensions~ | ~off~ | (own) ~on~ lets the approved init script run (see [[#extensions][Extensions]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
 | ~org-xx-drag-handle~ | ~right~ | (own) Where the drag grip sits on a heading row: ~right~, ~left~ or ~off~; also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-god-mode-button~ | ~t~ (shown) | (own) Whether the floating *[g]* god-mode button is shown (see [[#god-mode-mobile][God-mode without a hardware keyboard]]); also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-menu-aliases~ | unset (no relabeling) | (own) Relabel or hide buttons across the File, More, Export, Import and View menus (see [[#menu-customization][Menu customization]]) |
@@ -709,6 +710,31 @@ An entry the app can't understand is skipped and listed with the reason at the t
 
 -----
 
+
+** Extensions
+:PROPERTIES:
+:CUSTOM_ID: extensions
+:END:
+
+An init script can add your own diary functions. Set *Run extension scripts* to ~On~ in Quick Settings, paste the script under Settings → *Extensions*, and tap *Approve and run*. The script stays on this device (it is not synced, exported or read from any file), and editing it withdraws the approval.
+
+~org.sexp(name, fn)~: makes ~%%(name args)~ work in an agenda file. ~fn~ is called once per day with ~ctx~ (~date~, ~year~, ~month~, ~day~, ~weekday~ with 0 for Sunday, ~today~, ~calendarLatitude~, ~calendarLongitude~) and then your arguments as plain values. Return ~true~ for an entry with the line's own text, a string for an entry with that text, anything else for none.
+
+#+BEGIN_SRC
+org.sexp("every-other-friday", (ctx, start) => {
+  const days = (Date.parse(ctx.date) - Date.parse(start)) / 86400000;
+  return days >= 0 && days % 14 === 0;
+});
+#+END_SRC
+
+#+BEGIN_SRC
+,* Pay day
+%%(every-other-friday "2026-01-02") Pay day
+#+END_SRC
+
+A name is letters, digits and dashes, and cannot be a standard form such as ~diary-float~. The script runs in the same sandbox as ~js~ blocks (no network), and a function that takes longer than 3 seconds stops the script. Emacs does not know your function, so a file that uses it needs the same function defined in Emacs Lisp to work there. Not built: commands, hooks and the rest of the planned API.
+
+-----
 
 ** Source blocks
 :PROPERTIES:
