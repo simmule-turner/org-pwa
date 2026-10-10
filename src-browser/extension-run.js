@@ -2,7 +2,7 @@
  * The init script's sandbox: the same locked-down iframe and worker as source blocks (babel-run.js),
  * kept alive so the functions the script registers can be called again and again.
  */
-import { startSandbox } from './babel-run.js';
+import { MAX_RUN_WITH_REQUESTS_MS, startSandbox } from './babel-run.js';
 
 /** Runs inside the worker. Serialised with toString(), so it must not use anything from this module. */
 function extensionMain() {
@@ -12,6 +12,14 @@ function extensionMain() {
   const handlers = new Map(); // event name -> [fn]
   let current = null; // the command being run: { document, edits, notices }
   const logs = [];
+  const waiting = new Map();
+  let lastRid = 0;
+  const rpc = (method, args) =>
+    new Promise((resolve, reject) => {
+      const rid = ++lastRid;
+      waiting.set(rid, { resolve, reject });
+      self.postMessage({ type: 'rpc', rid, method, args });
+    });
   const show = (v) => {
     if (typeof v === 'string') return v;
     try {
@@ -31,7 +39,11 @@ function extensionMain() {
 
   self.onmessage = async (e) => {
     const m = e.data;
-    if (m.type === 'init') {
+    if (m.type === 'rpc-result') {
+      const w = waiting.get(m.rid);
+      waiting.delete(m.rid);
+      if (w) (m.ok ? w.resolve(m.value) : w.reject(new Error(m.message)));
+    } else if (m.type === 'init') {
       const pushEdit = (op) => {
         if (!current) throw new Error('org.edit can only be used while a command is running');
         if (current.edits.length >= 500) throw new Error('too many edits in one command (500 at most)');
@@ -71,6 +83,21 @@ function extensionMain() {
           } else log(String(text));
         },
         edit,
+        location: Object.freeze({ get: () => rpc('location.get', []) }),
+        cache: Object.freeze({
+          get: async (key, maxAgeMs) => {
+          const r = await rpc('cache.get', [key, maxAgeMs === undefined ? null : maxAgeMs]);
+          return r.found ? r.value : null;
+        },
+          set: async (key, value) => {
+            await rpc('cache.set', [key, value]);
+            return value;
+          },
+        }),
+        fetch: async (url, options) => {
+          const r = await rpc('fetch', [String(url), options === undefined ? null : JSON.parse(JSON.stringify(options))]);
+          return Object.freeze({ status: r.status, ok: r.ok, url: r.url, text: async () => r.body, json: async () => JSON.parse(r.body) });
+        },
         get document() {
           return current ? current.document : null;
         },
@@ -133,8 +160,8 @@ function extensionMain() {
  * or { ok: false, message, logs }. A call that takes longer than `callTimeoutMs` closes the sandbox and
  * rejects, so a script that hangs cannot stay running.
  */
-export async function startExtension({ code, variables = {}, initTimeoutMs = 3000, callTimeoutMs = 3000, commandTimeoutMs = 5000, eventTimeoutMs = 2000 }) {
-  const box = await startSandbox(extensionMain);
+export async function startExtension({ code, variables = {}, onRpc = null, initTimeoutMs = 3000, callTimeoutMs = 3000, commandTimeoutMs = 5000, eventTimeoutMs = 2000 }) {
+  const box = await startSandbox(extensionMain, { onRpc });
   if (!box.ok) return { ok: false, message: box.message, logs: [] };
   let nextId = 1;
   const waiting = new Map();
@@ -144,10 +171,27 @@ export async function startExtension({ code, variables = {}, initTimeoutMs = 300
     else if ((m.type === 'call-done' || m.type === 'command-done' || m.type === 'event-done') && waiting.has(m.id)) waiting.get(m.id)(m);
   });
 
+  /** A timer that does not run while the script waits for the page (network, position), up to a hard limit. */
+  const deadline = (timeoutMs, onTimeout) => {
+    const started = Date.now();
+    let timer = null;
+    const arm = (delay) => {
+      timer = setTimeout(() => {
+        const elapsed = Date.now() - started;
+        const active = elapsed - box.requestsPausedMs();
+        if (elapsed < MAX_RUN_WITH_REQUESTS_MS && box.requestsWaiting() > 0) arm(250);
+        else if (elapsed < MAX_RUN_WITH_REQUESTS_MS && active < timeoutMs - 5) arm(timeoutMs - active);
+        else onTimeout();
+      }, delay);
+    };
+    arm(timeoutMs);
+    return () => clearTimeout(timer);
+  };
+
   const init = await new Promise((resolve) => {
-    const timer = setTimeout(() => resolve({ ok: false, message: `The script took longer than ${initTimeoutMs / 1000} s to start`, logs: [] }), initTimeoutMs);
+    const stop = deadline(initTimeoutMs, () => resolve({ ok: false, message: `The script took longer than ${initTimeoutMs / 1000} s to start`, logs: [] }));
     initWaiter = (m) => {
-      clearTimeout(timer);
+      stop();
       resolve(m);
     };
     box.send({ type: 'init', code, variables });
@@ -161,13 +205,13 @@ export async function startExtension({ code, variables = {}, initTimeoutMs = 300
   const request = (message, label, timeoutMs) =>
     new Promise((resolve, reject) => {
       const id = nextId++;
-      const timer = setTimeout(() => {
+      const stop = deadline(timeoutMs, () => {
         waiting.delete(id);
         box.close();
         reject(new Error(`${label} took longer than ${timeoutMs / 1000} s, so the script was stopped`));
-      }, timeoutMs);
+      });
       waiting.set(id, (m) => {
-        clearTimeout(timer);
+        stop();
         waiting.delete(id);
         resolve(m);
       });

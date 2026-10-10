@@ -52,7 +52,40 @@ function workerMain() {
     return String(v);
   };
 
+  // Requests to the page (network, cache, position); the page decides.
+  const waiting = new Map();
+  let lastRid = 0;
+  const rpc = (method, args) =>
+    new Promise((resolve, reject) => {
+      const rid = ++lastRid;
+      waiting.set(rid, { resolve, reject });
+      self.postMessage({ type: 'rpc', rid, method, args });
+    });
+  const services = {
+    location: Object.freeze({ get: () => rpc('location.get', []) }),
+    cache: Object.freeze({
+      get: async (key, maxAgeMs) => {
+          const r = await rpc('cache.get', [key, maxAgeMs === undefined ? null : maxAgeMs]);
+          return r.found ? r.value : null;
+        },
+      set: async (key, value) => {
+        await rpc('cache.set', [key, value]);
+        return value;
+      },
+    }),
+    fetch: async (url, options) => {
+      const r = await rpc('fetch', [String(url), options === undefined ? null : JSON.parse(JSON.stringify(options))]);
+      return Object.freeze({ status: r.status, ok: r.ok, url: r.url, text: async () => r.body, json: async () => JSON.parse(r.body) });
+    },
+  };
+
   self.onmessage = async (e) => {
+    if (e.data.type === 'rpc-result') {
+      const w = waiting.get(e.data.rid);
+      waiting.delete(e.data.rid);
+      if (w) (e.data.ok ? w.resolve(e.data.value) : w.reject(new Error(e.data.message)));
+      return;
+    }
     const { id, code, vars, variables, maxBytes } = e.data;
     const lines = [];
     const log = (...a) => lines.push(a.map(show).join(' '));
@@ -60,6 +93,7 @@ function workerMain() {
     const org = Object.freeze({
       apiVersion: 1,
       vars: Object.freeze({ get: (name) => (Object.prototype.hasOwnProperty.call(variables, name) ? variables[name] : null) }),
+      ...services,
     });
     try {
       const names = Object.keys(vars);
@@ -106,6 +140,40 @@ function frameDocument(main = workerMain) {
 }
 
 export const DEFAULT_MAX_BYTES = 64 * 1024;
+export const MAX_REQUESTS_PER_RUN = 30;
+export const MAX_RUN_WITH_REQUESTS_MS = 60000;
+
+/**
+ * Answers the worker's requests (`{type:'rpc', rid, method, args}`) with `onRpc(method, args)`.
+ * waiting() is how many are unanswered; the run's timer is not counted down meanwhile
+ * (pausedMs() is the time spent waiting), up to MAX_RUN_WITH_REQUESTS_MS in all.
+ */
+export function createRpcHost(onRpc, post) {
+  let count = 0;
+  let pending = 0;
+  let paused = 0;
+  return {
+    waiting: () => pending,
+    pausedMs: () => paused,
+    handle(m) {
+      const reply = (r) => post({ type: 'rpc-result', rid: m.rid, ...r });
+      if (!onRpc) return reply({ ok: false, message: 'Not available here' });
+      if (++count > MAX_REQUESTS_PER_RUN) return reply({ ok: false, message: `Too many requests (${MAX_REQUESTS_PER_RUN} at most per run)` });
+      pending++;
+      const t0 = Date.now();
+      Promise.resolve()
+        .then(() => onRpc(m.method, m.args))
+        .then(
+          (value) => reply({ ok: true, value: value === undefined ? null : value }),
+          (err) => reply({ ok: false, message: String((err && err.message) || err) }),
+        )
+        .finally(() => {
+          pending--;
+          paused += Date.now() - t0;
+        });
+    },
+  };
+}
 
 /**
  * Runs `code` and resolves with one of:
@@ -113,7 +181,7 @@ export const DEFAULT_MAX_BYTES = 64 * 1024;
  *  { ok: false, message, line?, output?, timedOut? }
  * Never rejects.
  */
-export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 5000, maxBytes = DEFAULT_MAX_BYTES, startupMs = 4000 }) {
+export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 5000, maxBytes = DEFAULT_MAX_BYTES, startupMs = 4000, onRpc = null }) {
   return new Promise((resolve) => {
     const frame = document.createElement('iframe');
     frame.setAttribute('sandbox', 'allow-scripts');
@@ -123,6 +191,18 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
     const id = Math.random().toString(36).slice(2);
     let timer = null;
     let done = false;
+    const rpcs = createRpcHost(onRpc, (message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'));
+    const arm = (delay) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const elapsed = Date.now() - startedAt;
+        const active = elapsed - rpcs.pausedMs();
+        if (elapsed < MAX_RUN_WITH_REQUESTS_MS && rpcs.waiting() > 0) arm(250);
+        else if (elapsed < MAX_RUN_WITH_REQUESTS_MS && active < timeoutMs - 5) arm(timeoutMs - active);
+        else finish({ ok: false, timedOut: true, message: `Timed out after ${Math.round(timeoutMs / 100) / 10} s` });
+      }, delay);
+    };
+    let startedAt = 0;
     const finish = (outcome) => {
       if (done) return;
       done = true;
@@ -135,9 +215,11 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
       if (e.source !== frame.contentWindow || !e.data) return;
       const m = e.data;
       if (m.type === 'ready') {
-        clearTimeout(timer);
-        timer = setTimeout(() => finish({ ok: false, timedOut: true, message: `Timed out after ${Math.round(timeoutMs / 100) / 10} s` }), timeoutMs);
+        startedAt = Date.now();
+        arm(timeoutMs);
         frame.contentWindow.postMessage({ id, code, vars, variables, maxBytes }, '*');
+      } else if (m.type === 'rpc') {
+        rpcs.handle(m);
       } else if (m.type === 'fatal') {
         finish({ ok: false, message: 'The sandbox could not start: ' + m.message });
       } else if (m.type === 'result' && m.id === id) {
@@ -157,7 +239,7 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
  * it is serialised, so it must not use anything from the page's modules. Resolves with
  * { ok: true, send(message), onMessage(listener), close() }, or { ok: false, message }.
  */
-export function startSandbox(main, { startupMs = 4000 } = {}) {
+export function startSandbox(main, { startupMs = 4000, onRpc = null } = {}) {
   return new Promise((resolve) => {
     const frame = document.createElement('iframe');
     frame.setAttribute('sandbox', 'allow-scripts');
@@ -165,6 +247,7 @@ export function startSandbox(main, { startupMs = 4000 } = {}) {
     frame.tabIndex = -1;
     frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;pointer-events:none';
     const listeners = new Set();
+    const rpcs = createRpcHost(onRpc, (message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'));
     let settled = false;
     let closed = false;
     let timer = null;
@@ -190,7 +273,11 @@ export function startSandbox(main, { startupMs = 4000 } = {}) {
           send: (message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'),
           onMessage: (listener) => listeners.add(listener),
           close,
+          requestsWaiting: rpcs.waiting,
+          requestsPausedMs: rpcs.pausedMs,
         });
+      } else if (e.data.type === 'rpc') {
+        rpcs.handle(e.data);
       } else if (e.data.type === 'fatal') {
         settle({ ok: false, message: 'The sandbox could not start: ' + e.data.message });
       } else {

@@ -7,6 +7,7 @@ import { EDIT_EVENTS, extensionsOn, hashScript, userSexpKey, userSexpResult, vis
 import { getCalendarLatitude, getCalendarLongitude } from '../src/local-variables.js';
 import { setUserSexps } from '../src/sexp-eval.js';
 import { S } from './app-state.js';
+import { createServices, scriptOwner } from './extension-services.js';
 import { startExtension } from './extension-run.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { render } from './render.js';
@@ -119,7 +120,7 @@ export async function loadExtensions() {
     info.state = 'unapproved';
     return;
   }
-  const started = await startExtension({ code: info.script, variables: visibleVariableMap(S.globalVariables, S.state && S.state.localVariables) });
+  const started = await startExtension({ code: info.script, onRpc: createServices({ owner: scriptOwner(info.hash) }), variables: visibleVariableMap(S.globalVariables, S.state && S.state.localVariables) });
   for (const line of started.logs || []) note(line);
   if (!started.ok) {
     info.state = 'failed';

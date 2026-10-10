@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v474';
+const CACHE_NAME = 'org-pwa-shell-v475';
 
 const SHELL_FILES = [
   './',
@@ -9,6 +9,7 @@ const SHELL_FILES = [
   './src/archive-model.js',
   './src/babel.js',
   './src/extension-edit.js',
+  './src/extension-net.js',
   './src/extensions.js',
   './src/attach.js',
   './src/calendar-grid.js',
@@ -163,6 +164,7 @@ const SHELL_FILES = [
   './src-browser/babel-flow.js',
   './src-browser/extension-events.js',
   './src-browser/extension-flow.js',
+  './src-browser/extension-services.js',
   './src-browser/extension-run.js',
   './src-browser/babel-run.js',
   './src-browser/heading-drag.js',

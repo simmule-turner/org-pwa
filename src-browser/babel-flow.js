@@ -1,6 +1,7 @@
 // Running JavaScript source blocks (Org Babel's C-c C-c) -- the commands around the sandbox.
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { commitLines } from '../src/body-edit.js';
+import { parseLocationHeader, parseNetHeader } from '../src/extension-net.js';
 import { findNamedTable, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
 import { getBabelJs } from '../src/local-variables.js';
 import { S } from './app-state.js';
@@ -8,6 +9,7 @@ import { runJavaScript } from './babel-run.js';
 import { confirmDialog } from './dialogs.js';
 import { allHeadingsInOrder, stripCommaEscapeApp } from './doc-helpers.js';
 import { commitAndRender, setStatus } from './editing.js';
+import { authorizeBlock, createServices, documentOwner } from './extension-services.js';
 
 const TRUSTED_DOCUMENTS_KEY = 'org-pwa-babel-documents';
 const MAX_TRUSTED_DOCUMENTS = 200;
@@ -35,7 +37,7 @@ async function confirmDocumentTrust() {
   const savedId = id && !id.startsWith(UNSAVED_DOCUMENT_ID) ? id : '';
   if (savedId && trustedDocuments().includes(savedId)) return true;
   const ok = await confirmDialog(
-    'Run JavaScript from this document? It runs in a sandbox with no network and no access to your files or accounts, but run only code you trust.',
+    'Run JavaScript from this document? It runs in a sandbox with no access to your files or accounts, and reaches the network or your position only if its header asks and you allow it. Run only code you trust.',
     { confirmLabel: 'Run', danger: false },
   );
   if (ok && savedId) {
@@ -104,6 +106,19 @@ export async function executeSourceBlock(heading, block) {
     return;
   }
 
+  let declared;
+  try {
+    declared = { hosts: parseNetHeader(args.net), location: parseLocationHeader(args.location) };
+  } catch (err) {
+    writeResults(heading, block, formatError(err.message), 'Source block failed');
+    return;
+  }
+  const owner = documentOwner(S.state.documentId);
+  if ((declared.hosts.length || declared.location) && !(await authorizeBlock(owner, declared))) {
+    setStatus('Not allowed; the block was not run.');
+    return;
+  }
+
   setStatus('Running…');
   const started = Date.now();
   const outcome = await runJavaScript({
@@ -111,6 +126,7 @@ export async function executeSourceBlock(heading, block) {
     vars,
     variables: visibleVariables(),
     timeoutMs: timeoutMs(args),
+    onRpc: createServices({ owner, declared }),
   });
 
   // The block is found again by its position and first line: the document may have changed while it ran.

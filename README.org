@@ -749,7 +749,14 @@ org.on("todo-change", (ctx) => {
 });
 #+END_SRC
 
-A name is letters, digits and dashes, and ~org.sexp~ cannot take a standard form such as ~diary-float~. The script runs in the same sandbox as ~js~ blocks (no network). A diary function that takes longer than 3 seconds, a command longer than 5, or a hook longer than 2, stops the script. Emacs does not know your functions, so a file that uses one needs the same function defined in Emacs Lisp to work there. Not built: the rest of the planned API.
+A name is letters, digits and dashes, and ~org.sexp~ cannot take a standard form such as ~diary-float~. The script runs in the same sandbox as ~js~ blocks. A diary function that takes longer than 3 seconds, a command longer than 5, or a hook longer than 2, stops the script. Emacs does not know your functions, so a file that uses one needs the same function defined in Emacs Lisp to work there. Not built: the rest of the planned API.
+
+*** Network, position and cache
+The sandbox has no network, but a script or a ~js~ block can ask the page:
+- ~await org.fetch(url, { method, headers, body })~ returns ~{ status, ok, url, text(), json() }~. Only https (or http to this device), GET or POST, the headers Accept, Content-Type, Authorization and X-Api-Key, a body up to 100 KB, no cookies, 8 seconds, up to 1 MB back, 30 requests per run. A redirect to a host you did not allow is refused.
+- ~await org.location.get()~ returns ~{ lat, lon, accuracy, time }~, rounded to about 10 m.
+- ~await org.cache.get(key, maxAgeMs)~ returns a stored value or ~null~; ~await org.cache.set(key, value)~ stores one (200 KB each, 1 MB and 100 keys per script or document) and returns it.
+You are asked before the first use. A block lists what it needs: ~#+BEGIN_SRC js :net api.open-meteo.com :location yes~ (several hosts separated by spaces; ~*.example.org~ covers subdomains) and you are asked once per document. The init script is asked per host and for the position when it first uses them. A refusal is remembered for 15 seconds. The question says that the code can send anything it can read, including the open file, to the site, so allow only code you trust. Grants for an unsaved document last until the page closes.
 
 -----
 
@@ -783,7 +790,7 @@ return data.slice(1).map(([q, n]) => [q, n * 2]);
 - ~:timeout N~: seconds, 5 by default and 60 at most. A block still running then is stopped.
 - ~:wrap NAME~: wraps the result in a ~#+begin_NAME~ block.
 
-The code runs in a sandbox with no network and no access to the page, your files or your accounts. ~org.vars.get("calendar-latitude")~ reads a setting. The first run in a saved document asks for confirmation; an unsaved one asks every time. Not built: other languages, ~:session~, tangling and ~:noweb~.
+The code runs in a sandbox with no access to the page, your files or your accounts, and with no network unless the header asks for it and you allow it (see Network, position and cache). ~org.vars.get("calendar-latitude")~ reads a setting. The first run in a saved document asks for confirmation; an unsaved one asks every time. Not built: other languages, ~:session~, tangling and ~:noweb~.
 
 -----
 

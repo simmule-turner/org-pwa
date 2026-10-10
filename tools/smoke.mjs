@@ -4009,6 +4009,43 @@ check('JavaScript blocks: an endless loop is stopped, and the code cannot reach 
   await context.close();
 });
 
+check('JavaScript blocks: fetch, position and cache need the header and the person\'s yes', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 40.712776, longitude: -74.005974 });
+  const url = `${main.base}/sw.js`;
+  await newDocument(
+    page,
+    babelDoc(
+      '#+BEGIN_SRC js', `const r = await org.fetch("${url}"); return r.status;`, '#+END_SRC', '',
+      '#+BEGIN_SRC js :net localhost :location yes',
+      `const r = await org.fetch("${url}");`,
+      'const t = await r.text();',
+      'const p = await org.location.get();',
+      'await org.cache.set("k", { n: 7 });',
+      'const c = await org.cache.get("k", 60000);',
+      'const miss = await org.cache.get("nope");',
+      'return [r.status, t.includes("CACHE_NAME"), p.lat, p.lon, c.n, miss];',
+      '#+END_SRC', '',
+      '#+BEGIN_SRC js :net example.org', 'return 1;', '#+END_SRC'
+    )
+  );
+  await enableJavaScript(page);
+  await runBlock(page, 0);
+  await waitForStatus(page, 'Source block failed');
+  expect((await documentText(page)).includes('did not ask for localhost'), `no header: ${await documentText(page)}`);
+  await runBlock(page, 1);
+  await page.getByRole('button', { name: 'Allow', exact: true }).click();
+  await waitForStatus(page, 'Ran in');
+  const text = await documentText(page);
+  expect(text.includes('| 200 | true | 40.7128 | -74.006 | 7 |  |'), `fetch, position, cache: ${text}`);
+  await runBlock(page, 2);
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await waitForStatus(page, 'Not allowed');
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('extensions: a script adds a diary function; it runs only once approved, a standard form cannot be replaced, and a function that hangs is stopped', async () => {
   const { context, page, errors } = await freshPage(main);
   const script = ['org.sexp("garden-day", () => true);', 'org.sexp("shout", (ctx, word) => "Say " + String(word).toUpperCase());', 'org.sexp("org-block", () => "hijacked");'].join('\n');
@@ -4045,6 +4082,43 @@ check('extensions: a script adds a diary function; it runs only once approved, a
   const stopped = await flow('extensionInfo');
   expect(/spin took longer/.test(stopped.message), `the hung function is named: ${JSON.stringify({ state: stopped.state, message: stopped.message, log: stopped.log })}`);
   expect(!(await page.locator('body').innerText()).includes('Never shown'), 'a function that hangs shows nothing');
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('extensions: a script asks before it uses the network, and keeps the answer', async () => {
+  const { context, page, errors } = await freshPage(main);
+  const url = `${main.base}/sw.js`;
+  const script = [`org.command("peek", "Peek at server", async () => { const r = await org.fetch("${url}"); const t = await r.text(); await org.cache.set("last", t.length > 0); return "status " + r.status + " cached " + (await org.cache.get("last")); });`].join('\n');
+  await newDocument(page, ['* TODO One', ''].join('\n'));
+  const flow = (fn, ...args) =>
+    page.evaluate(
+      async ([name, a]) => {
+        const f = await import('/src-browser/extension-flow.js');
+        return f[name](...a);
+      },
+      [fn, args]
+    );
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.globalVariables = { ...S.globalVariables, 'org-xx-extensions': 'on' };
+  });
+  await flow('saveExtensionScript', script);
+  await flow('approveExtensionScript');
+  const peek = async () => {
+    await openPalette(page);
+    await page.keyboard.type('Peek at server');
+    await page.keyboard.press('Enter');
+  };
+  await peek();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await waitForStatus(page, 'was not allowed');
+  await page.waitForTimeout(15500); // a refusal is remembered briefly
+  await peek();
+  await page.getByRole('button', { name: 'Allow', exact: true }).click();
+  await waitForStatus(page, 'status 200 cached true');
+  await peek(); // already allowed: no question this time
+  await waitForStatus(page, 'status 200 cached true');
   expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

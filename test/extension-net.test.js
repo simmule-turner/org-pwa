@@ -1,0 +1,65 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { cacheGet, cacheSet, checkCacheKey, checkFetchUrl, encodeCacheValue, hostAllowed, normalizeFetchOptions, parseLocationHeader, parseNetHeader, roundPosition } from '../src/extension-net.js';
+
+test('fetch addresses: https, or http to this device only', () => {
+  assert.equal(checkFetchUrl('https://api.open-meteo.com/v1/forecast?x=1').host, 'api.open-meteo.com');
+  assert.equal(checkFetchUrl('http://127.0.0.1:8080/a').host, '127.0.0.1');
+  assert.throws(() => checkFetchUrl('http://example.org/'), /https/);
+  assert.throws(() => checkFetchUrl('ftp://example.org/'), /https/);
+  assert.throws(() => checkFetchUrl('https://user:pw@example.org/'), /user name/);
+  assert.throws(() => checkFetchUrl('nonsense'), /usable address/);
+  assert.throws(() => checkFetchUrl('https://example.org/' + 'a'.repeat(3000)), /too long/);
+});
+
+test(':net and :location headers', () => {
+  assert.deepEqual(parseNetHeader('api.open-meteo.com *.Example.org, 127.0.0.1'), ['api.open-meteo.com', '*.example.org', '127.0.0.1']);
+  assert.deepEqual(parseNetHeader('no'), []);
+  assert.throws(() => parseNetHeader('bad_host!'), /not a host name/);
+  assert.equal(parseLocationHeader('yes'), true);
+  assert.equal(parseLocationHeader('no'), false);
+  assert.equal(parseLocationHeader(''), false);
+});
+
+test('host matching', () => {
+  assert.equal(hostAllowed('a.example.org', ['*.example.org']), true);
+  assert.equal(hostAllowed('example.org', ['*.example.org']), false);
+  assert.equal(hostAllowed('evilexample.org', ['*.example.org']), false);
+  assert.equal(hostAllowed('example.org', ['example.org']), true);
+  assert.equal(hostAllowed('x.example.org', ['example.org']), false);
+});
+
+test('fetch options are reduced to a safe set', () => {
+  assert.deepEqual(normalizeFetchOptions(undefined), { method: 'GET', headers: {}, body: undefined });
+  const o = normalizeFetchOptions({ method: 'post', headers: { accept: 'application/json', 'x-api-key': 'k' }, body: { a: 1 } });
+  assert.equal(o.method, 'POST');
+  assert.deepEqual(o.headers, { Accept: 'application/json', 'X-Api-Key': 'k' });
+  assert.equal(o.body, '{"a":1}');
+  assert.throws(() => normalizeFetchOptions({ method: 'DELETE' }), /GET and POST/);
+  assert.throws(() => normalizeFetchOptions({ headers: { Cookie: 'x' } }), /not allowed/);
+  assert.throws(() => normalizeFetchOptions({ body: 'x' }), /no body/);
+  assert.throws(() => normalizeFetchOptions({ method: 'POST', body: 'x'.repeat(200000) }), /100 KB/);
+});
+
+test('cache keys, values and limits', () => {
+  assert.equal(checkCacheKey('weather:nyc'), 'weather:nyc');
+  assert.throws(() => checkCacheKey('has space'), /cache key/);
+  assert.throws(() => encodeCacheValue('x'.repeat(300000)), /200 KB/);
+  let scope = {};
+  scope = cacheSet(scope, 'a', encodeCacheValue({ n: 1 }), 1000);
+  assert.deepEqual(cacheGet(scope, 'a', 500, 1400), { value: { n: 1 } });
+  assert.equal(cacheGet(scope, 'a', 500, 1600), null);
+  assert.deepEqual(cacheGet(scope, 'a', undefined, 99999), { value: { n: 1 } });
+  assert.equal(cacheGet(scope, 'zz', 500, 1000), null);
+  for (let i = 0; i < 150; i++) scope = cacheSet(scope, 'k' + i, '1', 2000 + i);
+  assert.equal(Object.keys(scope).length, 100);
+  assert.ok(scope.k149 && !scope.k0);
+  let big = {};
+  for (let i = 0; i < 8; i++) big = cacheSet(big, 'b' + i, JSON.stringify('y'.repeat(190000)), i);
+  assert.ok(Object.values(big).reduce((n, e) => n + e.v.length, 0) <= 1024 * 1024);
+  assert.ok(big.b7);
+});
+
+test('positions are rounded', () => {
+  assert.deepEqual(roundPosition({ latitude: 40.712776, longitude: -74.005974, accuracy: 12.7 }, 5), { lat: 40.7128, lon: -74.006, accuracy: 13, time: 5 });
+});
