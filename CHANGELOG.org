@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v467 — Drag levels work from the right-hand grip
+With the grip on the right, a drag always read "into" and needed a long sweep left to reach the other levels. The level range now starts under the finger on the grip's side, one step per level, so "same level" and "top level" are one or two short moves. The tag sits on the open side, clear of the finger.
+
 * v466 — Drag handle on the right
 The drag grip now sits at the right edge of each heading row, so it stays in one column at every depth and the left side of the outline is as it was. A Quick Settings choice moves it to the left or turns it off.
 

@@ -53,11 +53,11 @@ export function attachHeadingGrip(rowEl, row, side = 'right') {
   grip.style.cssText =
     'flex:none;width:20px;align-self:stretch;min-height:24px;padding:0;border:0;background:transparent;color:var(--fg);opacity:0.4;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;';
   if (side === 'right') grip.style.margin = '0 2px 0 4px'; // clear of the screen edge, where a system back gesture starts
-  grip.addEventListener('pointerdown', (e) => beginDrag(e, grip, rowEl, row.node));
+  grip.addEventListener('pointerdown', (e) => beginDrag(e, grip, rowEl, row.node, side));
   return grip;
 }
 
-function beginDrag(e, grip, rowEl, node) {
+function beginDrag(e, grip, rowEl, node, side) {
   if (e.button !== undefined && e.button !== 0) return;
   e.preventDefault();
   e.stopPropagation();
@@ -108,7 +108,8 @@ function beginDrag(e, grip, rowEl, node) {
 
   function update() {
     if (!started) return;
-    ghost.style.left = last.x + 12 + 'px';
+    // keep the floating label clear of the finger, on the open side of the screen
+    ghost.style.left = (side === 'right' ? Math.max(4, last.x - ghost.offsetWidth - 16) : last.x + 16) + 'px';
     ghost.style.top = last.y - 18 + 'px';
     clearIndicator();
     drop = null;
@@ -141,9 +142,14 @@ function beginDrag(e, grip, rowEl, node) {
     }
     if (options.length === 0) return;
     const anchor = (prev || next).rect.left + 8;
-    const xOf = (o) => anchor + o.depth * STEP_PX;
+    // The level follows how far the finger has moved sideways from where it lifted, one step per level, and moving right is
+    // always deeper, as the outline is drawn. The grip's own side is where the range starts: from a right-hand grip the
+    // finger begins at the deepest level here and moves left to come out; from a left-hand grip it begins at the outermost
+    // and moves right to go in. Either way the range is under the finger from the first step, however far it travelled.
+    const start = side === 'right' ? options[options.length - 1].level : options[0].level;
+    const wanted = start + Math.round((last.x - startX) / STEP_PX);
     let best = options[0];
-    for (const o of options) if (Math.abs(last.x - xOf(o)) < Math.abs(last.x - xOf(best))) best = o;
+    for (const o of options) if (Math.abs(o.level - wanted) < Math.abs(best.level - wanted)) best = o;
     drop = best;
 
     const lineLeft = anchor + best.depth * INDENT_PX;
@@ -161,8 +167,14 @@ function beginDrag(e, grip, rowEl, node) {
     const t = tag();
     t.textContent = says;
     t.style.display = 'block';
-    t.style.left = lineLeft + 'px';
     t.style.top = lineTop - 22 + 'px';
+    if (side === 'right') {
+      t.style.right = '';
+      t.style.left = Math.min(lineLeft, innerWidth - t.offsetWidth - 12) + 'px'; // over the line's start, away from the grip at the right
+    } else {
+      t.style.left = '';
+      t.style.right = '12px'; // right-aligned, clear of the finger at the left
+    }
   }
 
   function scrollTick() {
