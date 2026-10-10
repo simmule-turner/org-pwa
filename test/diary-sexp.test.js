@@ -101,13 +101,16 @@ test('parseOrgAnniversaryLine returns null for malformed input', () => {
 
 // ---- org-cyclic ---------------------------------------------------------
 
+// These dates are local midnights, so they are read back with local fields; toISOString() would shift them by the zone.
+const localYmd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 test('parses and computes every-N-days-from-baseline occurrences', () => {
   const parsed = parseOrgCyclicLine('%%(org-cyclic 14 2026 1 1) Water the succulent');
   assert.deepEqual(parsed, { n: 14, year: 2026, month: 1, day: 1, title: 'Water the succulent' });
   const baseline = new Date(2026, 0, 1);
   const occs = expandOrgCyclicOccurrences(14, baseline, new Date(2026, 0, 1), new Date(2026, 1, 15));
   assert.deepEqual(
-    occs.map((d) => d.toISOString().slice(0, 10)),
+    occs.map((d) => localYmd(d)),
     ['2026-01-01', '2026-01-15', '2026-01-29', '2026-02-12']
   );
 });
@@ -123,7 +126,7 @@ test('org-cyclic correctly resumes mid-range, not just from the very first range
   const occs = expandOrgCyclicOccurrences(10, baseline, new Date(2026, 0, 15), new Date(2026, 0, 31));
   // baseline + 10 = Jan 11 (before range), +20 = Jan 21, +30 = Jan 31
   assert.deepEqual(
-    occs.map((d) => d.toISOString().slice(0, 10)),
+    occs.map((d) => localYmd(d)),
     ['2026-01-21', '2026-01-31']
   );
 });

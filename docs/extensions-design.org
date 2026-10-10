@@ -1,0 +1,172 @@
+#+TITLE: org-pwa extensions: design note
+#+STARTUP: overview
+
+* Goal and scope
+Users should be able to add behavior to org-pwa without waiting for a new build: run JavaScript source blocks like Org Babel, and extend commands, table functions and hooks with a small init script. Everything below is opt-in and off until the user turns it on.
+
+Not in scope: an Emacs Lisp interpreter (fidelity expectations are too high to meet), running any code that arrives inside a document, and unrestricted access to the app's tokens, storage or DOM.
+
+Two phases, in this order: (1) =#+BEGIN_SRC js= blocks run with =C-c C-c=, because that is the best-known Org feature, runs only on an explicit action, and forces the sandbox to exist first; (2) an init script with hooks and a versioned API.
+
+* Principles and trust model
+Scripts run with less authority than the app itself, and nothing runs because a document or a synced file says so.
+
+- *Explicit action or explicit approval.* A source block runs only when the user presses =C-c C-c= on it. An init script runs only after the user turns extensions on and approves that exact script.
+- *Never from document content.* =# Local Variables:= stays data. A script in a synced file does not run until it is approved on this device, and its approval is tied to a hash of the text: if the text changes, it asks again.
+- *A sandbox, not the page.* Code runs in a Web Worker (no DOM, no direct access to storage, tokens or the network except what the API grants). Network access is off unless the user grants it per script.
+- *A small, versioned API.* Scripts see only an object named =org=, with an =apiVersion=. Additions are backward compatible; a script declares the version it needs and is refused if the app is older.
+- *Time and size limits.* A run is stopped after a timeout (default 5 s, raised by a header argument up to a cap) and its output is truncated at a size limit. The worker is terminated, not asked to stop.
+- *Visible.* Settings lists what is installed, what it has been granted, and a log of its errors. Turning extensions off stops everything at once.
+
+* Phase 1: JavaScript Babel blocks
+=#+BEGIN_SRC js= and =#+BEGIN_SRC javascript= blocks run on =C-c C-c= (and from the block's action menu on a phone). The result is written under the block as =#+RESULTS:=, the way Org does it.
+
+- *Header arguments.* =:results= (=value= the default, =output=, =silent=), =:var name=value= (a cell, a table by =#+NAME:=, or a literal), =:timeout= (seconds, capped), =:wrap=, and =:cache= (not in the first version). Names follow Org's.
+- *Value versus output.* With =:results value= the block is the body of a function and its =return= is the result. With =:results output=, =console.log= lines are collected.
+- *Result formats.* A string is written as text; an array of arrays becomes an Org table; a number, boolean or null is written as text; an error is written as an =: error= block with the message and line.
+- *Tables in, tables out.* =:var data=sales= hands the named table to the script as an array of rows, so a block can compute columns that =#+TBLFM:= cannot.
+- *Confirmation.* The first run in a document asks once, as Emacs's =org-confirm-babel-evaluate= does, and remembers the answer for that document on this device only.
+- *Limits.* The worker has no =document=, =window= or =localStorage=, and no network unless =:net yes= is set and the user approved it in Settings.
+- *Not included.* Other languages, session mode, tangling and noweb. These are listed under Known limitations, with Babel for JavaScript marked as built.
+
+* Phase 2: init script and hooks
+One script, kept in this device's local settings (not in a synced file), run in the same worker sandbox at startup. It registers things with the =org= object; it cannot reach the page. The first version of the API is deliberately small:
+
+| Call                                   | What it does                                                                  |
+|----------------------------------------+-------------------------------------------------------------------------------|
+| =org.apiVersion=                       | Number; a script can refuse to run on an older app                            |
+| =org.command(id, label, fn)=           | Adds a command to the palette, with an optional key                           |
+| =org.on(event, fn)=                    | Hook: =save=, =todo-change=, =capture=, =heading-open=, =agenda-build=        |
+| =org.tableFunction(name, fn)=          | A function usable in =#+TBLFM:= formulas                                      |
+| =org.linkType(prefix, {open, export})= | A custom link type such as =jira:ABC-12=                                      |
+| =org.exportBackend(name, fn)=          | An export target that receives the parsed document                            |
+| =org.document=                         | Read-only snapshot: headings, properties, text of the open file               |
+| =org.edit(fn)=                         | Applies a change through the normal edit path, so undo and save work as usual |
+| =org.fetch(url, options)=              | Network, only for hosts the user approved for this script                     |
+| =org.notify(text)=                     | Shows a message in the minibuffer                                             |
+
+Hooks receive plain data (a heading's title, properties and path), never live objects. A hook that returns a change goes through =org.edit=, so it can be undone with one step. A script that throws is disabled for the session and logged; it can never block saving or opening a file.
+
+* Testing, store policy, risks and rollout
+- *Tests.* Run the sandbox in a real browser test: a block that returns a value, one that loops forever (must be killed at the timeout), one that tries =document.cookie= and =fetch= (must fail), one that returns a table. Add an Emacs comparison for result formatting where Org has a defined output.
+- *Store policy.* JavaScript executed inside a WebView is generally permitted on iOS and Android as long as it does not change the app's declared purpose or download native code; I would recheck the current guidelines before shipping to either store.
+- *Risk: API drift.* Every call is versioned and a breaking change needs a new =apiVersion= and a migration note.
+- *Risk: support load.* A bad script can look like an app bug. Settings shows which scripts are active and a one-tap /Turn all extensions off/.
+- *Risk: syncing.* Scripts that sync between devices are a real attack surface if the repository is shared. The first version keeps scripts local and does not sync them.
+
+*Rollout.* (1) Worker sandbox with limits and the test harness. (2) =js= Babel blocks with =:results=, =:var=, =:timeout=. (3) Settings page for extensions and approvals. (4) Init script with =command= and =on=. (5) =tableFunction=, =linkType=, =exportBackend=. (6) Decide on syncing scripts, with signing, only if there is demand.
+
+*Open questions.* Should =org.fetch= exist in the first release, or wait until the approval flow is proven? Should Babel results be re-run automatically on open (Emacs does not)? Is a per-document approval enough, or should approval also be tied to a file's path?
+
+* User-built features: calendar, weather, sunrise and sunset
+
+All three can be written by a user. Sunrise/sunset works with Phase 1 as designed. Weather needs two small additions. A calendar feed in the agenda needs the Phase 2 agenda hook. The code below is a sketch to show the shape of the API; none of it has been run.
+
+** What each one needs
+
+| Feature | Network | Phone position | Org data in | Output |
+|---------+---------+----------------+-------------+--------|
+| Sunrise/sunset | none | optional | =calendar-latitude=, =calendar-longitude=, or a property | result block, or an agenda line |
+| Weather | one approved host (e.g. =api.open-meteo.com=, no key) | optional | units, location | result block, or a modeline/agenda header |
+| Calendar feed | one approved host (an ICS URL) | none | which tags to show | agenda items (Phase 2 hook) |
+
+** API additions
+
+- =org.location.get()= asks permission on first use, per script. A Web Worker has no geolocation, so the page brokers it and passes back ={lat, lon, accuracy, time}=. On Android the Capacitor geolocation plugin is used.
+- =org.vars.get(name)= is a read-only view of the effective variables (Local Variables, then Quick Settings, then defaults), so a script reads =calendar-latitude= exactly as the built-in diary sexps do. Properties come from the =org.document= snapshot.
+- =org.cache.get(key, maxAgeMs)= / =org.cache.set(key, value)= is per-script storage with an age limit, so weather refetches only when stale and shows the last result offline.
+- =org.agenda.source(fn)= (Phase 2) is given a date range and returns =[{date, time, title, tag, link}]=, which merge into the agenda like any file's entries.
+- =org.ui.line(text)= and =org.ui.table(rows)= (Phase 2) are declarative output for a modeline or agenda header slot. Scripts never touch the DOM.
+- =org.ics.parse(text)= is a shipped helper, because a correct parser (recurrence, time zones) is not a good exercise for users. The app already has one.
+
+In the PWA, =org.fetch= only reaches servers that send CORS headers; Open-Meteo and most public ICS hosts do. In the Android app it can go through the native HTTP plugin, which has no CORS limit.
+
+** Example: sunrise and sunset
+
+#+begin_src org
+,#+BEGIN_SRC js :results table :var lat=(org-var "calendar-latitude") lon=(org-var "calendar-longitude")
+const rad = Math.PI / 180, J = d => d / 86400000 + 2440587.5;
+function sun(date, lat, lon) {
+  const n = Math.ceil(J(date) - 2451545.0 + 0.0008);
+  const Js = n + lon / 360;
+  const M = (357.5291 + 0.98560028 * Js) % 360;
+  const C = 1.9148*Math.sin(M*rad) + 0.02*Math.sin(2*M*rad);
+  const L = (M + C + 180 + 102.9372) % 360;
+  const Jt = 2451545 + Js + 0.0053*Math.sin(M*rad) - 0.0069*Math.sin(2*L*rad);
+  const dec = Math.asin(Math.sin(L*rad) * Math.sin(23.4397*rad));
+  const w = Math.acos((Math.sin(-0.833*rad) - Math.sin(lat*rad)*Math.sin(dec)) /
+                      (Math.cos(lat*rad)*Math.cos(dec))) / rad;
+  const t = j => new Date((j - 2440587.5) * 86400000);
+  return { rise: t(Jt - w/360), set: t(Jt + w/360) };
+}
+const s = sun(new Date(), lat, lon);
+return [["Sunrise", org.fmt.time(s.rise)], ["Sunset", org.fmt.time(s.set)]];
+,#+END_SRC
+#+end_src
+
+Replace the =:var= line with =org.location.get()= to use the phone's position. Polar day and night make =acos= return NaN and need handling. Check the results against the built-in =diary-sunrise= for several cities and dates; that comparison is the test for this example.
+
+** Example: weather
+
+#+begin_src org
+,#+BEGIN_SRC js :results list :net api.open-meteo.com :timeout 8000
+const pos = await org.cache.get('pos', 3600e3) ?? await org.cache.set('pos', await org.location.get());
+const imperial = org.vars.get('org-weather-units') === 'imperial';
+const r = await org.fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.lat}&longitude=${pos.lon}` +
+  `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto` +
+  (imperial ? '&temperature_unit=fahrenheit' : ''));
+const d = (await r.json()).daily;
+return d.time.slice(0, 5).map((t, i) =>
+  `${t}: ${d.temperature_2m_min[i]}–${d.temperature_2m_max[i]}°, ${d.precipitation_probability_max[i]}% rain`);
+,#+END_SRC
+#+end_src
+
+The first run asks twice: once for location, once for the host. Approval is pinned to the script hash, so editing the script or adding a host asks again.
+
+** Example: calendar feed in the agenda (Phase 2)
+
+#+begin_src js
+// init script
+org.agenda.source(async ({ from, to }) => {
+  const r = await org.fetch(org.secret('holidays-ics-url'));
+  return org.ics.parse(await r.text())
+    .filter(e => e.start >= from && e.start < to)
+    .map(e => ({ date: e.start, time: e.allDay ? null : e.start, title: e.summary, tag: 'holidays' }));
+});
+#+end_src
+
+** What stays built in
+
+- CalDAV read/write and the =.ics= export: they need credentials and sync state, which scripts must not hold. Scripts get read-only feed fetching.
+- The month-grid view: scripts return items, not layout, so a script can feed the grid but not replace it.
+- Background refresh: scripts run only while the app is open (iOS in particular will not run them in the background). Cache with an age limit covers this.
+
+* Diary sexps and scripts
+
+Question: could scripts replace most or all of the diary sexp forms (=%%(...)= in the agenda)?
+
+** What exists today
+
+The agenda evaluates =%%(...)= and =<%%(...)>= with a small fixed-form evaluator (=src/sexp-eval.js=), once per candidate day, synchronously: =and=, =or=, =not=, =when=, =today-p=, =org-date=, =org-block=, =org-class=, =org-cyclic=, =org-anniversary=, =diary-float=, the =diary-sunrise= / =sunset= / civil, nautical and astronomical dawn and dusk family, =diary-day-length=, =org-weather= and =format=. This is not a Lisp interpreter, and the forms are checked against Emacs.
+
+** Capability: mostly yes
+
+Every pure date predicate (anniversary, cyclic, block, float, class, date) and the solar family are computation over a date plus two variables, so a script can express all of them. Weather additionally needs =org.fetch= and the cache. With a helper library (=org.date=, =org.diary.float=, =org.diary.anniversary=) the scripts would be short.
+
+** Three obstacles to "seamless"
+
+1. Synchronous versus asynchronous. The agenda calls the evaluator per day in a loop. A sandboxed script is a Worker message, which is asynchronous. The workable shape is a batch call: the agenda collects the days in range, sends the expression and the whole list once, and gets back one result per day, cached by (script hash, expression, range). A per-day round trip would make a month view visibly slow. This is real work in the agenda build, which is not async today.
+2. Emacs compatibility. The built-in forms are the same forms Emacs evaluates, so a file works in both. If a script replaced =diary-anniversary=, the file would depend on a script that Emacs does not have. Replacing standard forms with scripts therefore costs the main value of the standard forms.
+3. Trust and portability. Scripts are local to a device and approved by hash (see above). A document that relies on a script shows nothing on a device without it, or on a new device until it is approved. Standard forms have no such dependency, and they work on first run offline.
+
+** Recommendation: add, do not replace
+
+- Keep every standard form built in, and keep checking them against Emacs.
+- Let scripts define new sexp functions, named like the Emacs function a user would write for the same job: =org.sexp('my-moon-phase', (ctx, ...args) => ...)=, used as =%%(my-moon-phase)=. If the user also defines =my-moon-phase= in Emacs Lisp, the file works in both; if not, the PWA shows the entry and Emacs reports an unknown function, which is how Emacs treats any missing function.
+- The context passed to a sexp function is plain data: ={date, today, calendarLatitude, calendarLongitude}=, the same fields the evaluator already receives. The return value follows the diary convention: false (no entry), true (entry with the heading text) or a string (entry with that text).
+- Expose the built-in predicates to scripts (=org.diary.anniversary(...)= and so on), so a user function can compose them instead of rewriting them.
+- Treat "standard forms as bundled scripts" as an experiment, not a goal: it would prove the API is complete, but it should not be the shipping path while the batch evaluation, Emacs parity and offline first-run points above stand.
+
+** Rollout position
+
+User-defined sexps belong with Phase 2, after the batch evaluation exists, since that is also what the agenda source hook needs. Phase 1 (Babel blocks) is enough for the sunrise and weather examples above.

@@ -577,3 +577,12 @@ test('org-agenda-text-search-extra-files is read like the other file lists, and 
   assert.equal(getAgendaFilesVar({ 'org-agenda-text-search-extra-files': 'github:a.org' }), '', 'it is a variable of its own: it does not add to the agenda files');
 });
 
+
+test('getDragHandle: right by default, left or off when set, anything else is the default', async () => {
+  const { getDragHandle } = await import('../src/local-variables.js');
+  assert.equal(getDragHandle({}), 'right');
+  assert.equal(getDragHandle({ 'org-xx-drag-handle': 'left' }), 'left');
+  assert.equal(getDragHandle({ 'org-xx-drag-handle': 'Off' }), 'off');
+  assert.equal(getDragHandle({ 'org-xx-drag-handle': 'nil' }), 'off');
+  assert.equal(getDragHandle({ 'org-xx-drag-handle': 'sideways' }), 'right');
+});

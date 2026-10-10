@@ -804,7 +804,7 @@ test('THE FEATURE: format-time-string() accepts a bare cell reference directly (
 });
 
 test('THE FEATURE: format-time-string()\u2019s own TIME argument accepts a plain number too, read as real Emacs\u2019s own documented "integer seconds since the Unix epoch" convention', () => {
-  const result = recalculateTable(mkTable('$1 = format-time-string("%Y-%m-%d", 1768476600)', [['']])); // 2026-01-15T10:30:00Z
+  const result = recalculateTable(mkTable('$1 = format-time-string("%Y-%m-%d", 1768476600, 1)', [['']])); // 2026-01-15T10:30:00Z, shown in UTC so the day does not depend on the machine's zone
   assert.equal(result[0].cells[0], '2026-01-15');
 });
 
@@ -1469,4 +1469,15 @@ test('an unbalanced parenthesis in a \'(...) call is reported with a clear error
 test('an unsupported function name in a \'(...) call is reported with a clear error naming what this app actually supports this way', () => {
   const table = mkTable("$2='(some-unsupported-fn $1 0.0 20 12)", [['5', '']]);
   assert.throws(() => recalculateTable(table), /orgtbl-ascii-draw/);
+});
+
+// ---- time zones: a wall-clock time keeps its fields whatever the machine's zone is ----
+
+test('format-time-string() prints a wall-clock time as written, and a zone-less string is not shifted by the machine zone', () => {
+  const written = recalculateTable(mkTable('$2 = format-time-string("%Y-%m-%d %H:%M", $1)', [['<2026-01-15 10:30>', '']]));
+  assert.equal(written[0].cells[1], '2026-01-15 10:30');
+  const parsed = recalculateTable(mkTable('$2 = format-time-string("%H:%M %A", date-to-time($1))', [['01/15/2026 10:30', '']]));
+  assert.equal(parsed[0].cells[1], '10:30 Thursday');
+  const iso = recalculateTable(mkTable('$2 = date-to-time($1)', [['2026-01-15', '']]));
+  assert.equal(iso[0].cells[1], '<2026-01-15 00:00>');
 });

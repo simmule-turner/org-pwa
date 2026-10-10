@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v470 — Extension design note
+The plan for running user JavaScript (Babel blocks first, then an init script) is now in the repository as =docs/extensions-design.org=: the trust model, the API, and worked sketches for sunrise/sunset, weather and a calendar feed. It also records why the standard diary sexps stay built in, so a file keeps working in Emacs, while scripts can add new ones. No behaviour changes.
+
 * v469 — Time zones in table formulas
 In a table formula, a date written without a zone (~01/15/2026~, or a date cell given to ~format-time-string~) was shifted by the device's offset from UTC, so a user in New York got 05:00 instead of 00:00 and the day before. It now keeps the time as written. A string that names its zone (~Z~, ~GMT~, ~+0100~) is still an exact instant.
 

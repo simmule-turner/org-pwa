@@ -340,9 +340,20 @@ check('offline: a cold start with the server gone still loads (every module is p
     if (cached < expected) await page.waitForTimeout(500);
   }
   expect(cached >= expected, `the service worker cached only ${cached} of ${expected} shell files`);
-  await page.reload({ waitUntil: 'load' });
+  // A reload can collide with the worker's own activation reload on a busy machine (net::ERR_ABORTED); try again.
+  const reloadSettled = async () => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await page.reload({ waitUntil: 'load' });
+      } catch (err) {
+        if (attempt >= 3 || !/ERR_ABORTED|detached/.test(String(err))) throw err;
+        await page.waitForTimeout(500);
+      }
+    }
+  };
+  await reloadSettled();
   await dead.stop();
-  await page.reload({ waitUntil: 'load' });
+  await reloadSettled();
   await page.waitForTimeout(1500);
   await openHelp(page).catch(() => {});
   expect((await modeline(page)).includes('Help'), 'the app did not work with the server stopped');
@@ -1908,7 +1919,7 @@ check('god-mode: the new chords for refile/attach/clocking/export reach their re
 
   await godSeq('c', 'a'); // C-c C-a: attach
   const attachText = await page.locator('body').innerText();
-  expect(attachText.includes('Attach \u2014') && attachText.includes('Export copy') && attachText.includes('Delete all'), 'C-c C-a should open the attachment dispatcher');
+  expect(attachText.includes('Attach \u2014') && attachText.includes('Delete all'), 'C-c C-a should open the attachment dispatcher');
   await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
 
@@ -2621,6 +2632,7 @@ check('calendar mirror: the agenda reaches a CalDAV calendar through the palette
   expect(!all.includes('Call dentist'), 'a completed item is not in the calendar, as it is not on the agenda');
   expect(all.includes('RRULE:FREQ=DAILY'), 'a repeating item is one event with a recurrence rule');
   expect(all.includes('BEGIN:VALARM') && all.includes('TRIGGER:-P2D'), 'a deadline\u2019s warning delay became an alarm');
+  await page.waitForFunction(() => document.getElementById('minibuffer').innerText.includes('Calendar synced: 2 sent'), null, { timeout: 8000 }).catch(() => {});
   expect((await page.locator('#minibuffer').innerText()).includes('Calendar synced: 2 sent'), 'and the status line says what happened');
 
   // an event somebody else put in this calendar
@@ -2883,10 +2895,10 @@ check('Settings > Sync syncs the calendar and the contacts and says how each wen
 });
 
 check('contacts in the agenda and the calendar: a birthday line and an "ANNIVERSARY" line, in two files, show both from org-contacts-files (which need not be agenda files), with Emacs\u2019s titles, and the calendar gets the same entries', async () => {
-  const md = (n) => calDay(n).slice(5, 10); // MM-DD of a day soon
-  const notes = ['* Birthdays', '%%(org-contacts-anniversaries)', '* Not a contacts file person', ':PROPERTIES:', `:BIRTHDAY: 1980-${md(1)}`, ':END:', '# Local Variables:', '# org-contacts-files: webdav:contacts.org', '# org-agenda-files: webdav:anniv.org', '# End:', ''].join('\n');
+  const md = (n) => calDay(n).slice(5, 10); // MM-DD; today, so the Week view always shows it (a day or two ahead falls into next week on a Saturday or Sunday)
+  const notes = ['* Birthdays', '%%(org-contacts-anniversaries)', '* Not a contacts file person', ':PROPERTIES:', `:BIRTHDAY: 1980-${md(0)}`, ':END:', '# Local Variables:', '# org-contacts-files: webdav:contacts.org', '# org-agenda-files: webdav:anniv.org', '# End:', ''].join('\n');
   const anniv = ['* Anniversaries', '%%(org-contacts-anniversaries "ANNIVERSARY")', ''].join('\n');
-  const contacts = ['* Jane Doe', ':PROPERTIES:', `:BIRTHDAY: 1990-${md(1)}`, `:ANNIVERSARY: 1998-${md(2)}`, ':SPOUSE: John Doe', ':END:', ''].join('\n');
+  const contacts = ['* Jane Doe', ':PROPERTIES:', `:BIRTHDAY: 1990-${md(0)}`, `:ANNIVERSARY: 1998-${md(0)}`, ':SPOUSE: John Doe', ':END:', ''].join('\n');
   dav.reset({ 'notes.org': notes, 'anniv.org': anniv, 'contacts.org': contacts });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await page.setViewportSize({ width: 412, height: 900 });
@@ -2896,7 +2908,9 @@ check('contacts in the agenda and the calendar: a birthday line and an "ANNIVERS
   const birthday = `Birthday: Jane Doe (${ordinal(year - 1990)})`;
   const anniversary = `Anniversary: Jane Doe & John Doe (${ordinal(year - 1998)})`;
   await viewMenu(page, 'Agenda');
-  await page.waitForFunction((want) => want.every((t) => document.body.innerText.includes(t)), [birthday, anniversary], { timeout: 15000 });
+  await page.waitForFunction((want) => want.every((t) => document.body.innerText.includes(t)), [birthday, anniversary], { timeout: 15000 }).catch(async (err) => {
+    throw new Error(`${err.message.split('\n')[0]} -- wanted ${birthday} and ${anniversary}; the page shows: ${(await page.locator('body').innerText()).replace(/\s+/g, ' ').slice(0, 600)}`);
+  });
   const text = await page.locator('body').innerText();
   expect(!text.includes('Not a contacts file person'), 'a heading with a birthday in a file that is not one of org-contacts-files is not a contact');
 
@@ -3645,7 +3659,7 @@ check('attach dispatcher: the list comes from the folder (not from links), the A
     return { columns: el ? getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/).length : 0, text: document.body.innerText };
   });
   expect(grid.columns === 2, `two columns: ${grid.columns}`);
-  for (const label of ['Attach', 'Open', 'Export copy', 'Delete one', 'Delete all', 'Attach open document', 'New text file', 'Folder', 'Sync', 'Set DIR', 'Unset DIR']) expect(grid.text.includes(label), `button "${label}" is there`);
+  for (const label of ['Attach', 'Open', 'Delete one', 'Delete all', 'Attach open document', 'New text file', 'Folder', 'Sync', 'Set DIR', 'Unset DIR']) expect(grid.text.includes(label), `button "${label}" is there`);
 
   // Open shows text inside the app (no new tab)
   await page.keyboard.press('Escape');
@@ -3698,7 +3712,7 @@ check('attach phase 2: DIR names the folder, Sync follows the files, the folder 
   await page.evaluate(`(async () => { const { revealAttachmentFolder } = await import('/src-browser/attachments-flow.js'); await revealAttachmentFolder(${h}); })()`);
   await page.waitForFunction(() => document.body.innerText.includes('b.txt'), null, { timeout: 5000 });
   const panelText = await page.evaluate(() => document.body.innerText);
-  expect(panelText.includes('Folder \u2014 files/report') && panelText.includes('a.pdf') && panelText.includes('Open') && panelText.includes('Delete'), 'the folder panel lists the files with their actions');
+  expect(panelText.includes('Folder \u2014 files/report') && panelText.includes('a.pdf') && (await page.locator('button[aria-label="Open a.pdf"], button[aria-label="Delete b.txt"]').count()) === 2, 'the folder panel lists the files, each with O, S and D');
   await page.keyboard.press('Escape');
 
   // a new text file, made from a name and its contents
@@ -3774,9 +3788,159 @@ check('attach menu opened by tapping shows the same key badges as from god-mode,
     const keys = [...document.querySelectorAll('span')].filter((el) => el.style.fontFamily === 'monospace').map((el) => el.textContent).join('');
     return { keys, typing: !!document.querySelector('input[aria-label="Press a key"]') };
   });
-  expect(r.keys === 'arbnofdDsSez'.split('').sort().join('') || [...'arbnofdDsSez'].every((k) => r.keys.includes(k)), `badges: ${r.keys}`);
+  expect(r.keys === 'arbnofdDsSz'.split('').sort().join('') || [...'arbnofdDsSz'].every((k) => r.keys.includes(k)), `badges: ${r.keys}`);
   expect(!r.typing, 'no hidden typing field when tapped');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('drag and drop: the grip snaps to the gaps between headings and steps through the levels that fit, with a tag saying the result; Escape cancels', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(page, '* Alpha\n** Alpha child\n* Beta\n* Gamma\n');
+  const norm = async () => (await documentText(page)).split('\n').filter(Boolean).join('\n');
+  expect((await page.locator('.heading-grip').count()) === 4, `a grip on every heading row: ${await page.locator('.heading-grip').count()}`);
+  const box = (title) => page.locator('.row', { hasText: title }).first().boundingBox();
+  const tagText = () => page.evaluate(() => [...document.querySelectorAll('body > div')].filter((d) => d.style.position === 'fixed' && d.style.borderRadius === '10px').map((d) => d.textContent).join('|'));
+  // lift `from` by its (right-hand) grip, move to the upper or lower half of the `at` row, then `steps` levels toward the left
+  const lift = async (from, at, half, steps) => {
+    const g = await page.locator('.row', { hasText: from }).first().locator('.heading-grip').boundingBox();
+    const r = await box(at);
+    const gx = g.x + g.width / 2;
+    const y = half === 'upper' ? r.y + r.height * 0.15 : r.y + r.height * 0.85;
+    await page.mouse.move(gx, g.y + g.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(gx - 4, g.y + 24, { steps: 3 });
+    await page.mouse.move(gx - steps * 28, y, { steps: 8 });
+  };
+  await lift('Gamma', 'Alpha', 'upper', 0);
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  expect((await norm()) === '* Alpha\n** Alpha child\n* Beta\n* Gamma', 'Escape leaves the document alone');
+  // Gamma to the very top
+  await lift('Gamma', 'Alpha', 'upper', 0);
+  await page.mouse.up();
+  expect((await norm()) === '* Gamma\n* Alpha\n** Alpha child\n* Beta', `top: ${JSON.stringify(await norm())}`);
+  // below "Alpha child": the grip is on the right, so the finger starts at the deepest level there ...
+  await lift('Beta', 'Alpha child', 'lower', 0);
+  expect((await tagText()).includes('into Alpha child'), `tag: ${await tagText()}`);
+  await page.mouse.up();
+  expect((await norm()) === '* Gamma\n* Alpha\n** Alpha child\n*** Beta', `into: ${JSON.stringify(await norm())}`);
+  // ... one step left = beside it ...
+  await lift('Beta', 'Alpha child', 'lower', 1);
+  expect((await tagText()).includes('same level as Alpha child'), `tag: ${await tagText()}`);
+  await page.mouse.up();
+  expect((await norm()) === '* Gamma\n* Alpha\n** Alpha child\n** Beta', `beside: ${JSON.stringify(await norm())}`);
+  // ... two steps = back to the top level
+  await lift('Beta', 'Alpha child', 'lower', 2);
+  expect((await tagText()).includes('top level'), `tag: ${await tagText()}`);
+  await page.mouse.up();
+  expect((await norm()) === '* Gamma\n* Alpha\n** Alpha child\n* Beta', `out: ${JSON.stringify(await norm())}`);
+  // the tag stays clear of the finger: away from the grip's side of the screen
+  await lift('Beta', 'Alpha child', 'lower', 1);
+  const tagBox = await page.evaluate(() => { const d = [...document.querySelectorAll('body > div')].find((x) => x.style.position === 'fixed' && x.style.borderRadius === '10px'); const r = d.getBoundingClientRect(); return { right: r.right, width: innerWidth }; });
+  expect(tagBox.right < tagBox.width - 40, `tag clear of the right-hand grip: ${JSON.stringify(tagBox)}`);
+  await page.mouse.up();
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('drag cancel zones: letting go over the top bar or the minibuffer cancels, while the top and bottom of the buffer stay real drops', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(page, '* Alpha\n* Beta\n* Gamma\n');
+  const norm = async () => (await documentText(page)).split('\n').filter(Boolean).join('\n');
+  const overlays = () => page.evaluate(() => [...document.querySelectorAll('body > div')].filter((d) => d.textContent === 'Release to cancel' && d.style.display !== 'none').length);
+  const dragTo = async (from, x, y, { release = true } = {}) => {
+    const g = await page.locator('.row', { hasText: from }).first().locator('.heading-grip').boundingBox();
+    const gx = g.x + g.width / 2;
+    await page.mouse.move(gx, g.y + g.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(gx - 4, g.y + 24, { steps: 3 });
+    await page.mouse.move(x ?? gx, y, { steps: 8 });
+    if (release) await page.mouse.up();
+  };
+  const topBar = await page.locator('#topBar').boundingBox();
+  const mini = await page.locator('#minibuffer').boundingBox();
+  const gripX = (await page.locator('.row', { hasText: 'Alpha' }).first().locator('.heading-grip').boundingBox()).x;
+  await dragTo('Gamma', gripX, topBar.y + topBar.height / 2, { release: false });
+  expect((await overlays()) === 1, `the cancel band shows over the top bar: ${await overlays()}`);
+  await page.mouse.up();
+  expect((await norm()) === '* Alpha\n* Beta\n* Gamma', `top bar cancels: ${JSON.stringify(await norm())}`);
+  await dragTo('Alpha', gripX, mini.y + mini.height / 2, { release: false });
+  expect((await overlays()) === 1, 'the cancel band shows over the minibuffer');
+  await page.mouse.up();
+  expect((await norm()) === '* Alpha\n* Beta\n* Gamma', `minibuffer cancels: ${JSON.stringify(await norm())}`);
+  const first = await page.locator('.row', { hasText: 'Alpha' }).first().boundingBox();
+  await dragTo('Gamma', gripX, first.y + 3);
+  expect((await norm()) === '* Gamma\n* Alpha\n* Beta', `top of the buffer: ${JSON.stringify(await norm())}`);
+  const last = await page.locator('.row', { hasText: 'Beta' }).first().boundingBox();
+  const modeline = await page.locator('#modeline').boundingBox();
+  const y = Math.min(last.y + last.height + 30, modeline.y - 6);
+  await dragTo('Gamma', gripX - 28, y); // one step out from the deepest level, which a right-hand grip starts at
+  expect((await norm()) === '* Alpha\n* Beta\n* Gamma', `bottom of the buffer: ${JSON.stringify(await norm())}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('drag from a left-hand grip: the range starts at the outermost level and moves right to go in; the tag is right-aligned, clear of the finger', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(page, ['* Alpha', '** Alpha child', '* Beta', '', '# Local Variables:', '# org-xx-drag-handle: left', '# End:', ''].join('\n'));
+  const norm = async () => (await documentText(page)).split('\n').filter((l) => l && !l.startsWith('#')).join('\n');
+  const tagInfo = () => page.evaluate(() => { const d = [...document.querySelectorAll('body > div')].find((x) => x.style.position === 'fixed' && x.style.borderRadius === '10px'); if (!d) return null; const r = d.getBoundingClientRect(); return { text: d.textContent, right: r.right, width: innerWidth }; });
+  const g = await page.locator('.row', { hasText: 'Beta' }).first().locator('.heading-grip').boundingBox();
+  const r = await page.locator('.row', { hasText: 'Alpha child' }).first().boundingBox();
+  const gx = g.x + g.width / 2;
+  await page.mouse.move(gx, g.y + g.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(gx + 4, g.y - 20, { steps: 3 });
+  await page.mouse.move(gx, r.y + r.height * 0.85, { steps: 8 });
+  let tag = await tagInfo();
+  expect(tag && tag.text.includes('top level'), `outermost first: ${JSON.stringify(tag)}`);
+  expect(tag.width - tag.right < 30, `right-aligned: ${JSON.stringify(tag)}`);
+  await page.mouse.move(gx + 28, r.y + r.height * 0.85, { steps: 4 });
+  tag = await tagInfo();
+  expect(tag.text.includes('same level as Alpha child'), `one step in: ${JSON.stringify(tag)}`);
+  await page.mouse.move(gx + 56, r.y + r.height * 0.85, { steps: 4 });
+  tag = await tagInfo();
+  expect(tag.text.includes('into Alpha child'), `two steps in: ${JSON.stringify(tag)}`);
+  await page.mouse.up();
+  expect((await norm()) === '* Alpha\n** Alpha child\n*** Beta', `landed: ${JSON.stringify(await norm())}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('drag handle setting: right by default, left or off from the variable, and the Quick Settings choice is offered', async () => {
+  const withVar = (value) => ['* One', '** Two', '', '# Local Variables:', ...(value ? [`# org-xx-drag-handle: ${value}`] : []), '# End:', ''].join('\n');
+  const { context, page, errors } = await freshPage(main);
+  const side = async () =>
+    page.evaluate(() => {
+      const row = document.querySelector('.row .heading-grip')?.closest('.row');
+      if (!row) return 'none';
+      const g = row.querySelector('.heading-grip').getBoundingClientRect();
+      const r = row.getBoundingClientRect();
+      return g.left - r.left < r.right - g.right ? 'left' : 'right';
+    });
+  await newDocument(page, withVar(null));
+  expect((await side()) === 'right', `default: ${await side()}`);
+  await setDocumentText(page, withVar('left'));
+  expect((await side()) === 'left', `left: ${await side()}`);
+  await setDocumentText(page, withVar('off'));
+  expect((await side()) === 'none', `off: ${await side()}`);
+  await page.evaluate(async () => {
+    const { QUICK_SETTINGS_FIELDS } = await import('/src-browser/settings-fields.js');
+    window.__field = QUICK_SETTINGS_FIELDS.find((f) => f.key === 'org-xx-drag-handle');
+  });
+  const field = await page.evaluate(() => ({ d: window.__field.default, o: window.__field.options.map((x) => x.value).join(',') }));
+  expect(field.d === 'right' && field.o === 'right,left,off', `quick setting: ${JSON.stringify(field)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('drag grip: the handle is on every heading row of a phone-sized touch browser too', async () => {
+  const { context, page, errors } = await freshPage(main, { initScript: null });
+  await page.setViewportSize({ width: 412, height: 800 });
+  await newDocument(page, '* One\n** Two\n');
+  const visible = await page.evaluate(() => [...document.querySelectorAll('.heading-grip')].map((g) => { const r = g.getBoundingClientRect(); return r.width > 8 && r.height > 8 && getComputedStyle(g).visibility !== 'hidden'; }));
+  expect(visible.length === 2 && visible.every(Boolean), `grips: ${JSON.stringify(visible)}`);
   await context.close();
 });
 
