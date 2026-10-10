@@ -1,0 +1,41 @@
+#+TITLE: C
+#+begin_src js :tangle out2/c.js :comments link
+pre();
+#+end_src
+
+* TODO [#A] Heading with [[link][label]] and *bold* :tag1:tag2:
+#+begin_src js :tangle out2/c.js :comments link
+h1();
+#+end_src
+#+NAME: nm
+#+begin_src js :tangle out2/c.js :comments link
+h2();
+#+end_src
+* Heading [1/2] with "quotes" and [brackets]
+:PROPERTIES:
+:CUSTOM_ID: my-id
+:END:
+#+begin_src js :tangle out2/c.js :comments link
+h3();
+#+end_src
+* COMMENT Skipped heading
+#+begin_src js :tangle out2/c.js
+skipped();
+#+end_src
+** Child of comment
+#+begin_src js :tangle out2/c.js
+skipped2();
+#+end_src
+* Archived :ARCHIVE:
+#+begin_src js :tangle out2/c.js
+skipped3();
+#+end_src
+* Indented
+  #+begin_src js :tangle out2/c.js
+    indented();
+      more();
+  #+end_src
+#+begin_src js :tangle out2/c.js
+,#+star escaped
+,* star line
+#+end_src

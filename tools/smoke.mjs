@@ -4132,6 +4132,25 @@ check('extensions: a script adds a table function, a link type and an export', a
   await context.close();
 });
 
+check('literate: noweb runs, header arguments are inherited, and Tangle delivers the files', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(
+    page,
+    ['#+PROPERTY: header-args:js :tangle out/all.js :noweb yes', '* Code', ':PROPERTIES:', ':header-args: :results output', ':END:', '#+NAME: part', '#+begin_src js :tangle no', 'const n = 20;', '#+end_src', '', '#+begin_src js', '<<part>>', 'console.log(n + 22);', '#+end_src', '', '#+begin_src js :tangle top.js :shebang "#!/usr/bin/env node"', 'run();', '#+end_src', ''].join('\n')
+  );
+  await enableJavaScript(page);
+  await runBlock(page, 1);
+  await waitForStatus(page, 'Ran in');
+  const text = await documentText(page);
+  expect(text.includes(': 42'), `noweb expanded and :results output inherited: ${text}`);
+  await openPalette(page);
+  await page.keyboard.type('Tangle this file');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.keyboard.press('Enter')]);
+  expect(/-tangled\.zip$/.test(download.suggestedFilename()), `tangle file: ${download.suggestedFilename()}`);
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('extensions: a script feeds the agenda from a calendar and adds a header line', async () => {
   const { context, page, errors } = await freshPage(main);
   const now = new Date();

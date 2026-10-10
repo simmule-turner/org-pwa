@@ -3,6 +3,8 @@ import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { commitLines } from '../src/body-edit.js';
 import { parseLocationHeader, parseNetHeader } from '../src/extension-net.js';
 import { findNamedTable, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
+import { collectDocumentBlocks } from '../src/babel-blocks.js';
+import { expandNoweb, nowebAllows } from '../src/noweb.js';
 import { getBabelJs } from '../src/local-variables.js';
 import { S } from './app-state.js';
 import { runJavaScript } from './babel-run.js';
@@ -89,7 +91,10 @@ export async function executeSourceBlock(heading, block) {
     setStatus('Buffer is read-only — result not written.');
     return;
   }
-  const args = parseHeaderArgs(block.params);
+  // Header arguments as Org inherits them (file and heading properties, #+HEADER:); the block's own text alone if it cannot be found.
+  const all = collectDocumentBlocks(S.state.doc);
+  const info = all.find((b) => b.heading === heading && b.beginIndex === block.lineIndex) || null;
+  const args = info ? info.args : parseHeaderArgs(block.params);
   const spec = parseResultsSpec(args.results);
   if (spec.unsupported) {
     setStatus(`Unsupported :results option "${spec.unsupported}".`);
@@ -119,10 +124,20 @@ export async function executeSourceBlock(heading, block) {
     return;
   }
 
+  let code = block.lines.map(stripCommaEscapeApp).join('\n');
+  if (info && nowebAllows(args, 'eval')) {
+    try {
+      code = expandNoweb(S.state.doc, all, info);
+    } catch (err) {
+      writeResults(heading, block, formatError(err.message), 'Source block failed');
+      return;
+    }
+  }
+
   setStatus('Running…');
   const started = Date.now();
   const outcome = await runJavaScript({
-    code: block.lines.map(stripCommaEscapeApp).join('\n'),
+    code,
     vars,
     variables: visibleVariables(),
     timeoutMs: timeoutMs(args),

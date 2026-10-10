@@ -187,10 +187,10 @@ export function formatError(message, line = null) {
   return fixedWidth('Error: ' + message + (line ? ` (line ${line})` : ''));
 }
 
-const RESULTS_LINE_RE = /^\s*#\+RESULTS(\[[^\]]*\])?:/i;
+export const RESULTS_LINE_RE = /^\s*#\+RESULTS(\[[^\]]*\])?:/i;
 
 /** Where the existing results body ends (exclusive), for a `#+RESULTS:` line at `at`. */
-function resultsEnd(lines, at) {
+export function resultsEnd(lines, at) {
   let k = at + 1;
   const first = lines[k];
   if (first === undefined || first.trim() === '') return k;

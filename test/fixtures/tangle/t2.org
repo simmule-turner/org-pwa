@@ -1,0 +1,62 @@
+* A
+Text before one.
+
+#+begin_src js :tangle out/pad.js
+one();
+#+end_src
+
+Text before two.
+Second line of text.
+
+#+begin_src js :tangle out/pad.js :comments org
+two();
+#+end_src
+
+#+begin_src js :tangle out/pad.js :comments both
+three();
+#+end_src
+
+* B
+#+begin_src js :noweb-ref r :tangle no :noweb-sep "--"
+p();
+#+end_src
+#+begin_src js :noweb-ref r :tangle no
+q();
+#+end_src
+#+begin_src js :tangle out/sep1.js :noweb yes :noweb-sep "--"
+<<r>>
+#+end_src
+#+begin_src js :tangle out/sep2.js :noweb yes
+<<r>>
+#+end_src
+#+begin_src js :tangle out/no.js :noweb no
+<<r>>
+#+end_src
+#+begin_src js :tangle out/tg.js :noweb tangle
+<<r>>
+#+end_src
+#+begin_src js :tangle out/ne.js :noweb no-export
+<<r>>
+#+end_src
+#+NAME: named
+#+begin_src js :tangle no
+N();
+#+end_src
+#+begin_src js :tangle out/nested.js :noweb yes
+before(); // <<named>>
+<<named>> <<named>>
+#+end_src
+#+begin_src js :tangle out/mode.js :tangle-mode (identity #o700)
+m();
+#+end_src
+#+begin_src js :tangle out/vars.js :var x=3
+v();
+#+end_src
+#+begin_src js :tangle out/empty.js
+#+end_src
+#+begin_src python :tangle yes
+print(1)
+#+end_src
+#+begin_src sh :tangle out/s.sh :shebang "#!/bin/sh" :comments link
+echo hi
+#+end_src

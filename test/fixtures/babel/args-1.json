@@ -1,0 +1,83 @@
+[
+ {
+  "lang": "js",
+  "name": null,
+  "params": {
+   "results": "table replace",
+   "exports": "code",
+   "noweb": "yes",
+   "tangle": "yes",
+   "cache": "no",
+   "hlines": "no",
+   "session": "none",
+   "var": [
+    "base=1",
+    "more=2"
+   ]
+  }
+ },
+ {
+  "lang": "js",
+  "name": null,
+  "params": {
+   "results": "list replace",
+   "exports": "none",
+   "noweb": "yes",
+   "tangle": "yes",
+   "cache": "no",
+   "hlines": "no",
+   "session": "none",
+   "var": [
+    "base=1",
+    "more=2",
+    "own=3"
+   ]
+  }
+ },
+ {
+  "lang": "python",
+  "name": null,
+  "params": {
+   "results": "table replace",
+   "exports": "none",
+   "noweb": "yes",
+   "tangle": "no",
+   "cache": "no",
+   "hlines": "no",
+   "session": "s"
+  }
+ },
+ {
+  "lang": "js",
+  "name": null,
+  "params": {
+   "results": "replace",
+   "exports": "code",
+   "noweb": "no",
+   "tangle": "yes",
+   "cache": "no",
+   "hlines": "no",
+   "session": "none",
+   "var": [
+    "base=1",
+    "more=2"
+   ]
+  }
+ },
+ {
+  "lang": "js",
+  "name": null,
+  "params": {
+   "results": "replace output",
+   "exports": "both",
+   "noweb": "no",
+   "tangle": "yes",
+   "cache": "yes",
+   "hlines": "no",
+   "session": "none",
+   "var": [
+    "base=1"
+   ]
+  }
+ }
+]

@@ -1,0 +1,33 @@
+#+PROPERTY: header-args :results output :exports both
+#+PROPERTY: header-args+ :cache yes
+#+PROPERTY: header-args:js :tangle yes :var base=1
+* A
+:PROPERTIES:
+:header-args: :noweb yes :results table
+:header-args:js+: :var more=2
+:END:
+#+begin_src js
+a
+#+end_src
+** B
+:PROPERTIES:
+:header-args+: :exports none
+:END:
+#+begin_src js :results list :var own=3
+b
+#+end_src
+#+HEADER: :tangle no
+#+begin_src python :session s
+c
+#+end_src
+*** C
+:PROPERTIES:
+:header-args: :tangle out.js
+:END:
+#+begin_src js
+d
+#+end_src
+* D
+#+begin_src js :results replace
+e
+#+end_src

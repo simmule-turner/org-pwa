@@ -1,0 +1,33 @@
+#+PROPERTY: header-args :var x=1 y=2 :tangle fileprop
+* A
+:PROPERTIES:
+:header-args: :var x=10
+:header-args+: :var z=3
+:END:
+#+HEADER: :tangle viaheader
+#+begin_src js :tangle inline
+1
+#+end_src
+#+HEADER: :tangle viaheader :results list
+#+begin_src js
+2
+#+end_src
+#+begin_src js :results output :var x=99
+3
+#+end_src
+#+begin_src js :results value raw
+4
+#+end_src
+#+begin_src js :results silent :exports results
+5
+#+end_src
+* B
+:PROPERTIES:
+:header-args+: :results file
+:END:
+#+begin_src js :results append
+6
+#+end_src
+#+begin_src js :results drawer prepend html
+7
+#+end_src

@@ -1,0 +1,41 @@
+[
+ {
+  "lang": "js",
+  "name": null,
+  "params": {
+   "results": "replace",
+   "exports": "code",
+   "noweb": "yes",
+   "tangle": "f2",
+   "cache": "yes",
+   "hlines": "yes",
+   "session": "none"
+  }
+ },
+ {
+  "lang": "js",
+  "name": null,
+  "params": {
+   "results": "replace",
+   "exports": "none",
+   "noweb": "no",
+   "tangle": "t3",
+   "cache": "yes",
+   "hlines": "yes",
+   "session": "none"
+  }
+ },
+ {
+  "lang": "javascript",
+  "name": null,
+  "params": {
+   "results": "replace",
+   "exports": "none",
+   "noweb": "no",
+   "tangle": "t3",
+   "cache": "no",
+   "hlines": "no",
+   "session": "none"
+  }
+ }
+]

@@ -412,6 +412,17 @@ export async function setExtensionScript(kvAdapter, text) {
   await setJson(kvAdapter, EXTENSION_SCRIPT_KEY, text);
 }
 
+const EXTENSION_FILE_KEY = 'settings:extension-file';
+
+/** Where the init script comes from when it is tangled from a saved document: 'KEY' or 'KEY::target', or '' for the text typed in Settings. */
+export async function getExtensionFile(kvAdapter) {
+  return getJson(kvAdapter, EXTENSION_FILE_KEY, '');
+}
+
+export async function setExtensionFile(kvAdapter, text) {
+  await setJson(kvAdapter, EXTENSION_FILE_KEY, text);
+}
+
 /** The hash of the script text the user approved on this device, or ''. */
 export async function getExtensionApproval(kvAdapter) {
   return getJson(kvAdapter, EXTENSION_APPROVAL_KEY, '');

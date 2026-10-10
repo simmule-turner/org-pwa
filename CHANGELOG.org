@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v478 — Literate programming
+Header arguments are inherited (~#+PROPERTY: header-args~, ~:header-args:~ on a heading, ~#+HEADER:~), ~:noweb~ expands ~<<name>>~ references when a ~js~ block runs, and the new *Tangle this file* command writes ~:tangle~ blocks to files (a zip when there are several), matching Emacs's output. Export now follows ~:exports~ and ~:noweb~: a source block shows its code and no longer its stored results unless ~:exports results~ or ~both~. The init script can be tangled from an Org file you name in Settings.
+
 * v477 — Calendar feeds and header lines
 Scripts can add items to the agenda (~org.agenda.source~), read a calendar feed (~org.ics.parse~) and show a line of text above the agenda (~org.ui.line~). With the network and position calls from v475, a script can now bring in a holiday calendar or today's weather without the app knowing about either.
 

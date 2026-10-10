@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v477';
+const CACHE_NAME = 'org-pwa-shell-v478';
 
 const SHELL_FILES = [
   './',
@@ -8,6 +8,11 @@ const SHELL_FILES = [
   './README.org',
   './src/archive-model.js',
   './src/babel.js',
+  './src/babel-args.js',
+  './src/babel-blocks.js',
+  './src/babel-export.js',
+  './src/noweb.js',
+  './src/tangle.js',
   './src/extension-edit.js',
   './src/extension-net.js',
   './src/extensions.js',
@@ -164,7 +169,9 @@ const SHELL_FILES = [
   './src-browser/babel-flow.js',
   './src-browser/extension-events.js',
   './src-browser/extension-flow.js',
+  './src-browser/extension-file.js',
   './src-browser/extension-links.js',
+  './src-browser/tangle-flow.js',
   './src-browser/extension-services.js',
   './src-browser/extension-run.js',
   './src-browser/babel-run.js',

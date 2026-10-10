@@ -87,7 +87,7 @@ class ByteWriter {
 
 /**
  * Builds a ZIP archive (as a Uint8Array) from `entries`, an array of
- * `{ name, content }` -- `name` the path within the archive (e.g.
+ * `{ name, content, mode? }` -- `name` the path within the archive (e.g.
  * "content.xml" or "META-INF/manifest.xml"), `content` either a string
  * (UTF-8 encoded automatically) or an already-encoded Uint8Array.
  *
@@ -122,13 +122,13 @@ function createZip(entries) {
     w.bytes(nameBytes);
     w.bytes(dataBytes);
 
-    centralRecords.push({ nameBytes, crc, size: dataBytes.length, localOffset });
+    centralRecords.push({ nameBytes, crc, size: dataBytes.length, localOffset, mode: entry.mode });
   }
 
   const centralDirStart = w.length;
   for (const rec of centralRecords) {
     w.u32(0x02014b50);
-    w.u16(20); // version made by
+    w.u16(rec.mode ? 0x0314 : 20); // version made by (3 = Unix, so the file mode below is read)
     w.u16(20); // version needed to extract
     w.u16(0); // general purpose flag
     w.u16(0); // compression method
@@ -142,7 +142,7 @@ function createZip(entries) {
     w.u16(0); // comment length
     w.u16(0); // disk number start
     w.u16(0); // internal file attributes
-    w.u32(0); // external file attributes
+    w.u32(rec.mode ? ((0o100000 | rec.mode) << 16) >>> 0 : 0); // external file attributes: the Unix mode in the high half
     w.u32(rec.localOffset);
     w.bytes(rec.nameBytes);
   }

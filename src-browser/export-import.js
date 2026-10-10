@@ -2,6 +2,7 @@
 import { exportToAscii } from '../src/export-ascii.js';
 import { exportToHtml } from '../src/export-html.js';
 import { exportToIcalendar } from '../src/export-icalendar.js';
+import { prepareBabelExport } from '../src/babel-export.js';
 import { expandIncludes } from '../src/export-include.js';
 import { exportToMarkdown } from '../src/export-markdown.js';
 import { exportToOdt } from '../src/export-odt.js';
@@ -56,7 +57,7 @@ export async function performExport(format, scope) {
   const rawName = scope && typeof scope === 'object' ? scope.title : suggestedSaveAsName('export').replace(/\.[a-zA-Z0-9]+$/, '');
   const baseName = rawName.replace(/[\\/:*?"<>|]/g, '_').trim() || 'export';
   if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt') {
-    const doc = await expandIncludes(S.state.doc, resolveIncludePath, parseOrg);
+    const doc = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg));
     if (format === 'ascii') {
       saveOut(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables)), 'text/plain');
     } else if (format === 'markdown') {
@@ -148,7 +149,7 @@ export async function performOrgOrgExport() {
   setStatus('Exporting\u2026');
   let result;
   try {
-    result = await exportAsOrg(S.state.doc, resolveIncludePath, parseOrg, { minlevel: 1 });
+    result = await exportAsOrg(prepareBabelExport(S.state.doc), resolveIncludePath, parseOrg, { minlevel: 1 });
   } catch (err) {
     setStatus(`Couldn't export: ${err.message}`);
     render();

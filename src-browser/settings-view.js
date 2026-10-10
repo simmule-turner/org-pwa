@@ -16,7 +16,7 @@ import { syncContactsToAddressBook } from './contacts-sync.js';
 import { syncNow } from './mirror-sync.js';
 import { syncCaptureShortcuts } from './capture-shortcuts.js';
 import { confirmDialog, openMultiFieldPopup, openTextFieldPopup } from './dialogs.js';
-import { approveExtensionScript, extensionInfo, loadExtensions, saveExtensionScript } from './extension-flow.js';
+import { approveExtensionScript, extensionInfo, loadExtensions, saveExtensionFile, saveExtensionScript } from './extension-flow.js';
 import { validateCaptureTemplates } from './doc-helpers.js';
 import { sidePanelEl } from './dom.js';
 import { setStatus } from './editing.js';
@@ -1086,6 +1086,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   extensionTextarea.setAttribute('aria-label', 'Extension script');
   extensionTextarea.onfocus = () => {
     extensionTextarea.blur();
+    if (ext.file) return; // the text comes from the file
     openTextFieldPopup({
       label: 'Extension script (JavaScript)',
       value: ext.script,
@@ -1112,6 +1113,14 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   };
   extensionSection.appendChild(extensionTextarea);
 
+  const fileNote = document.createElement('div');
+  fileNote.style.fontSize = '11px';
+  fileNote.style.opacity = '0.7';
+  fileNote.textContent = ext.file
+    ? `Tangled from ${ext.file}${ext.file.includes('::') ? '' : ' (target init.js)'}. It is read again when the app starts and when you press Restart; if the file changes you approve it again.`
+    : 'Or keep the script in an Org file: its source blocks with :tangle init.js are assembled into the script (Noweb works). Only the file you name here is read.';
+  extensionSection.appendChild(fileNote);
+
   const extensionButtons = document.createElement('div');
   extensionButtons.style.display = 'flex';
   extensionButtons.style.gap = '8px';
@@ -1126,7 +1135,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
       })
     );
   }
-  if (ext.state === 'running' || ext.state === 'failed') {
+  if (ext.state === 'running' || ext.state === 'failed' || ext.state === 'unapproved') {
     extensionButtons.appendChild(
       menuButton('Restart', async () => {
         await loadExtensions();
@@ -1135,6 +1144,29 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
       })
     );
   }
+  extensionButtons.appendChild(
+    menuButton(ext.file ? 'Change file\u2026' : 'Use an Org file\u2026', () => {
+      openTextFieldPopup({
+        label: 'Script file: github:path, webdav:path or local:name, then ::target (default ::init.js)',
+        value: ext.file,
+        defaultValue: '',
+        onSave: async (text) => {
+          await saveExtensionFile(text);
+          setStatus(text.trim() ? 'File set. Approve the script to run it.' : 'Using the text typed here.');
+          renderSettingsView();
+          render();
+        },
+        onReset: ext.file
+          ? async () => {
+              await saveExtensionFile('');
+              setStatus('Using the text typed here.');
+              renderSettingsView();
+              render();
+            }
+          : null,
+      });
+    })
+  );
   extensionSection.appendChild(extensionButtons);
 
   if (ext.log.length) {

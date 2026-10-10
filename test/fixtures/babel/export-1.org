@@ -1,0 +1,50 @@
+#+PROPERTY: header-args :eval no
+#+OPTIONS: toc:nil
+* H
+#+NAME: ref
+#+begin_src js :exports none
+R();
+#+end_src
+
+#+begin_src js :noweb yes
+a(); <<ref>>
+#+end_src
+
+#+RESULTS:
+: 1
+
+#+begin_src js :noweb no-export :exports both
+b(); <<ref>>
+#+end_src
+
+#+RESULTS:
+: 2
+
+#+begin_src js :noweb strip-export :exports results
+c(); <<ref>>
+#+end_src
+
+#+RESULTS:
+: 3
+
+#+begin_src js :noweb yes :exports none
+d();
+#+end_src
+
+#+RESULTS:
+: 4
+
+#+begin_src js :noweb strip-tangle
+e(); <<ref>>
+#+end_src
+
+#+begin_src js :noweb tangle
+f(); <<ref>>
+#+end_src
+
+#+begin_src js :exports results
+g();
+#+end_src
+
+#+RESULTS: named
+| 1 | 2 |

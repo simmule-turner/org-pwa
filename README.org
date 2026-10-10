@@ -816,6 +816,22 @@ return data.slice(1).map(([q, n]) => [q, n * 2]);
 
 The code runs in a sandbox with no access to the page, your files or your accounts, and with no network unless the header asks for it and you allow it (see Network, position and cache). ~org.vars.get("calendar-latitude")~ reads a setting. The first run in a saved document asks for confirmation; an unsaved one asks every time. Not built: other languages, ~:session~, tangling and ~:noweb~.
 
+
+*** Literate programming: header arguments, Noweb and Tangle
+:PROPERTIES:
+:CUSTOM_ID: literate-programming
+:END:
+
+Header arguments are inherited as in Org: a ~#+PROPERTY: header-args :results output~ line applies to the whole file, ~header-args:js~ to ~js~ blocks only, and a ~:header-args:~ property on a heading applies to its subtree (~header-args+~ adds to what is inherited instead of replacing it). A block's own arguments, and its ~#+HEADER:~ lines, win. This applies to every argument, including ~:results~, ~:var~, ~:net~, ~:timeout~ and ~:wrap~.
+
+*Noweb*: with ~:noweb yes~, ~<<name>>~ in a block is replaced by the block ~#+NAME: name~, by all blocks with ~:noweb-ref name~ (joined with ~:noweb-sep~, a newline by default), or by the text of the heading whose ~CUSTOM_ID~ is ~name~. Text before the reference on its line is put before every line of the expansion, so ~// <<name>>~ comments out all of it. ~:noweb~ also takes ~tangle~, ~no-export~ (expand to run and tangle, show the references on export), ~strip-export~ (references removed on export) and ~strip-tangle~. ~yes~ expands when running, tangling and exporting. A reference that matches nothing, or that goes round in a circle, is an error rather than empty text.
+
+*Tangle*: the palette command *Tangle this file* (~org-babel-tangle~) writes the blocks with ~:tangle~ to files: ~:tangle yes~ names the file after the document, ~:tangle path/file.js~ names it, ~no~ skips it. Blocks for the same file are joined in order, separated by a blank line (~:padline no~ removes it). Also supported: ~:shebang~ (and the file mode that goes with it), ~:tangle-mode~, ~:comments link~, ~org~ and ~both~ (not ~noweb~), ~:prologue~, ~:epilogue~, ~:no-expand~, and ~:var~ for ~js~ blocks (written as ~var x=3;~). ~COMMENT~ and ~:ARCHIVE:~ subtrees are skipped. One file is saved as it is; several, or one in a folder, come as a zip with the file modes set. Paths may not be absolute or climb out with ~..~. The output was checked against Emacs's own.
+
+*Export* shows what ~:exports~ asks: ~code~ (the default; stored results are not shown), ~results~, ~both~ or ~none`. Nothing is run on export; ~results~ shows what ~#+RESULTS:~ already holds. This applies to ASCII, HTML, Markdown, ODT and Org export.
+
+*The init script from an Org file*: in Settings → Extensions, *Use an Org file…* takes ~github:path~, ~webdav:path~ or ~local:name~, then ~::target~ (default ~::init.js~). The blocks of that file that tangle to the target become the init script, Noweb included. Only the file you name is read; the approval covers the assembled text, so a change to the file asks again.
+
 -----
 
 ** Attachments
@@ -1881,7 +1897,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Agenda* (see [[#agenda][Agenda]]): effort sorting, filtering and the per-day limit are session settings in the ⏱ panel, not ~org-agenda-sorting-strategy~ or ~org-agenda-max-effort~. There is no negated (~-<~) filter, no effort column format (~%e~) and no effort sort in the TODO view. The sexp evaluator supports a closed, documented set of functions (including ~org-class~, ~org-date~ and ~and~, ~or~, ~not~), not a Lisp interpreter: no ~let~, ~date~ variable or ~calendar-*~ helpers, no ~diary-remind~, and no holiday-skipping in ~org-class~. ~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~ are left out on purpose, since their ~org-*~ twins take unambiguous year-month-day dates (see [[#agenda-sexp-timestamps][General sexp timestamps]]). A ~local:~ agenda file is read-only, and only a file already opened on this device can be named.
 
-*Babel*: only ~js~ blocks run (see [[#source-blocks][Source blocks]]). Not built: other languages, ~:session~, tangling, ~:noweb~, ~:cache~, and results refreshed on open.
+*Babel*: only ~js~ blocks run (see [[#source-blocks][Source blocks]]). Not built: other languages, ~:session~, ~:cache~, running a block from a ~<<name()>>~ reference, ~:comments noweb~, and results refreshed on open. Noweb and Tangle are described under [[#literate-programming][Literate programming]].
 
 *Links and structure*: no ~[[id:...]]~ links, ~<<targets>>~, habits (~:STYLE: habit~), ~#+SETUPFILE:~ or ~org-cite~ citations. They are kept exactly as written, and never altered by a save.
 

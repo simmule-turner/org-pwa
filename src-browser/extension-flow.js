@@ -19,14 +19,15 @@ import { commitAndRender, setStatus } from './editing.js';
 import { render } from './render.js';
 import { kv } from './singletons.js';
 import { applyTodoTransition } from './todo-workflow.js';
-import { getExtensionApproval, getExtensionScript, setExtensionApproval, setExtensionScript } from './settings.js';
+import { getExtensionApproval, getExtensionFile, getExtensionScript, setExtensionApproval, setExtensionFile, setExtensionScript } from './settings.js';
+import { readScriptFromFile } from './extension-file.js';
 
 const MAX_SCRIPT_CHARS = 64 * 1024;
 const MAX_CACHED = 5000;
 const MAX_LOG = 40;
 
 /** What Settings shows. `state` is one of: off, empty, unapproved, running, failed. */
-const info = { state: 'off', message: '', sexps: [], commands: [], events: [], tableFunctions: [], linkTypes: [], exporters: [], agendaSources: [], uiLines: [], log: [], script: '', hash: '' };
+const info = { state: 'off', message: '', sexps: [], commands: [], events: [], tableFunctions: [], linkTypes: [], exporters: [], agendaSources: [], uiLines: [], log: [], script: '', hash: '', file: '', fileError: '' };
 
 const cache = new Map();
 const agendaCache = new Map(); // `${source}|${from}|${to}` -> { items, at }
@@ -131,11 +132,27 @@ async function flush() {
 /** Starts the script if extensions are on and this exact text was approved here. Safe to call again. */
 export async function loadExtensions() {
   stop();
+  info.file = await getExtensionFile(kv);
+  info.fileError = '';
   info.script = await getExtensionScript(kv);
+  if (info.file && extensionsOn(S.globalVariables)) {
+    // The script is the tangled text of a document the person named; nothing else is ever read.
+    try {
+      info.script = await readScriptFromFile(info.file);
+    } catch (err) {
+      info.script = '';
+      info.fileError = err.message;
+    }
+  }
   info.hash = info.script ? await hashScript(info.script) : '';
   info.message = '';
   if (!extensionsOn(S.globalVariables)) {
     info.state = 'off';
+    return;
+  }
+  if (info.fileError) {
+    info.state = 'failed';
+    info.message = info.fileError;
     return;
   }
   if (!info.script.trim()) {
@@ -300,9 +317,17 @@ export async function saveExtensionScript(text) {
   await loadExtensions();
 }
 
+/** Names the saved document the script is tangled from ('' goes back to the text typed in Settings). It must be approved again. */
+export async function saveExtensionFile(text) {
+  await setExtensionFile(kv, String(text || '').trim());
+  await setExtensionApproval(kv, '');
+  await loadExtensions();
+}
+
 /** The user approves the script exactly as it is now, and it starts. */
 export async function approveExtensionScript() {
-  const script = await getExtensionScript(kv);
+  // What the person saw in Settings is what is approved; if the file changed since, the next load asks again.
+  const script = info.file ? info.script : await getExtensionScript(kv);
   await setExtensionApproval(kv, await hashScript(script));
   await loadExtensions();
 }

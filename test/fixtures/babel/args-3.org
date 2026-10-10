@@ -1,0 +1,28 @@
+#+PROPERTY: header-args :exports both :tangle f1
+#+PROPERTY: header-args :tangle f2
+#+PROPERTY: header-args+ :noweb yes
+#+PROPERTY: header-args:js :hlines yes
+#+PROPERTY: header-args:js+ :cache yes
+* A
+#+begin_src js
+a
+#+end_src
+* B
+:PROPERTIES:
+:header-args+: :results table
+:END:
+** B1
+:PROPERTIES:
+:header-args: :tangle t3
+:header-args+: :exports none
+:END:
+*** B11
+:PROPERTIES:
+:HEADER-ARGS+: :cache yes
+:END:
+#+begin_src js
+b
+#+end_src
+#+begin_src javascript :cache no
+c
+#+end_src

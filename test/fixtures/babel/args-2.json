@@ -1,0 +1,121 @@
+[
+ {
+  "lang": "js",
+  "name": null,
+  "params": {
+   "results": "replace",
+   "exports": "code",
+   "noweb": "no",
+   "tangle": "viaheader",
+   "cache": "no",
+   "hlines": "no",
+   "session": "none",
+   "var": [
+    "x=10",
+    "z=3"
+   ]
+  }
+ },
+ {
+  "lang": "js",
+  "name": null,
+  "params": {
+   "results": "list replace",
+   "exports": "code",
+   "noweb": "no",
+   "tangle": "viaheader",
+   "cache": "no",
+   "hlines": "no",
+   "session": "none",
+   "var": [
+    "x=10",
+    "z=3"
+   ]
+  }
+ },
+ {
+  "lang": "js",
+  "name": null,
+  "params": {
+   "results": "output replace",
+   "exports": "code",
+   "noweb": "no",
+   "tangle": "no",
+   "cache": "no",
+   "hlines": "no",
+   "session": "none",
+   "var": [
+    "z=3",
+    "x=99"
+   ]
+  }
+ },
+ {
+  "lang": "js",
+  "name": null,
+  "params": {
+   "results": "raw value replace",
+   "exports": "code",
+   "noweb": "no",
+   "tangle": "no",
+   "cache": "no",
+   "hlines": "no",
+   "session": "none",
+   "var": [
+    "x=10",
+    "z=3"
+   ]
+  }
+ },
+ {
+  "lang": "js",
+  "name": null,
+  "params": {
+   "results": "silent",
+   "exports": "results",
+   "noweb": "no",
+   "tangle": "no",
+   "cache": "no",
+   "hlines": "no",
+   "session": "none",
+   "var": [
+    "x=10",
+    "z=3"
+   ]
+  }
+ },
+ {
+  "lang": "js",
+  "name": null,
+  "params": {
+   "results": "append file",
+   "exports": "code",
+   "noweb": "no",
+   "tangle": "fileprop",
+   "cache": "no",
+   "hlines": "no",
+   "session": "none",
+   "var": [
+    "x=1",
+    "y=2"
+   ]
+  }
+ },
+ {
+  "lang": "js",
+  "name": null,
+  "params": {
+   "results": "html prepend file",
+   "exports": "code",
+   "noweb": "no",
+   "tangle": "fileprop",
+   "cache": "no",
+   "hlines": "no",
+   "session": "none",
+   "var": [
+    "x=1",
+    "y=2"
+   ]
+  }
+ }
+]

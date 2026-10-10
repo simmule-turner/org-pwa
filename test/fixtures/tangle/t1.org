@@ -1,0 +1,51 @@
+#+TITLE: T
+#+PROPERTY: header-args:js :tangle out/all.js
+
+* Top
+:PROPERTIES:
+:header-args: :noweb yes
+:END:
+
+#+NAME: helper
+#+begin_src js :tangle no
+function h() { return 1; }
+#+end_src
+
+First chunk
+#+begin_src js
+<<helper>>
+  <<helper>>
+run();
+#+end_src
+
+** Sub
+#+begin_src js :tangle out/main.js :shebang "#!/usr/bin/env node" :comments link
+console.log("main");
+#+end_src
+
+#+begin_src js :tangle out/main.js :padline no
+second();
+#+end_src
+
+#+begin_src js :noweb-ref parts :tangle no
+a();
+#+end_src
+#+begin_src js :noweb-ref parts :tangle no
+b();
+#+end_src
+#+begin_src js :tangle out/parts.js :noweb-sep ";"
+<<parts>>
+#+end_src
+
+#+begin_src js :tangle out/org.js :comments org
+x();
+#+end_src
+#+begin_src js :tangle out/both.js :comments both :mkdirp yes
+y();
+#+end_src
+#+begin_src js :tangle no
+skipped();
+#+end_src
+#+begin_src js :tangle yes
+derived();
+#+end_src

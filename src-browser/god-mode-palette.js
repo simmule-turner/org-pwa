@@ -21,6 +21,7 @@ import { effectiveContactsConfig, syncContactsToAddressBook } from './contacts-s
 import { chooseAttachmentsFolder } from './attachments-store.js';
 import { addCaptureIconToHomeScreen } from './capture-shortcuts.js';
 import { executeFocusedBlock } from './babel-flow.js';
+import { tangleCurrentDocument } from './tangle-flow.js';
 import { extensionPaletteEntries } from './extension-flow.js';
 import { showDisplayMeasurements } from './display-info.js';
 import { platform } from './platform.js';
@@ -530,6 +531,7 @@ export function paletteCommandList() {
     { id: 'import-vcard', label: 'Import Contacts (.vcf)', orgName: 'org-vcard-import', group: 'Import', keywords: ['vcard', 'vcf', 'contacts', 'address book'], needs: ['doc'], run: () => openImport('vcard') },
     { id: 'import-icalendar', label: 'Import iCalendar (.ics)', orgName: 'icalendar-import-file', group: 'Import', keywords: ['ics', 'ical', 'calendar', 'events'], needs: ['doc'], run: () => openImport('icalendar') },
     { id: 'export-org', label: 'Export as an Org buffer', orgName: 'org-org-export-as-org', group: 'Export', needs: ['doc'], run: () => performOrgOrgExport() },
+    { id: 'tangle', label: 'Tangle this file', orgName: 'org-babel-tangle', group: 'Document', keywords: ['babel', 'noweb', 'literate', 'source', 'code', 'extract'], needs: ['doc'], run: () => tangleCurrentDocument() },
     { id: 'babel-execute', label: 'Run source block', orgName: 'org-babel-execute-src-block', keys: 'C-c C-c', group: 'Document', keywords: ['babel', 'javascript', 'js', 'execute', 'code'], needs: ['doc', 'writable'], run: () => executeFocusedBlock() },
     { id: 'recalculate-tables', label: 'Recalculate all tables', orgName: 'org-table-recalculate-buffer-tables', group: 'Document', keywords: ['formula', 'TBLFM'], needs: ['doc', 'writable'], run: () => recalculateAllTables() },
 
