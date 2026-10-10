@@ -2,6 +2,8 @@
 // a GAP between two visible headings (the line snaps to the gap nearest the finger, never between them), and sideways movement
 // steps through the levels that fit there, one indent per step: the line's left edge jumps with each, and a tag says what the
 // result is ("into Alpha", "after Alpha", "top level"). The result is the same as the move keys: a sibling or a child.
+// Letting go over the top bar, or over the mode line and minibuffer, cancels (they turn red and say so), as does Escape; the gaps
+// above the first heading and below the last are inside the outline, so they stay ordinary drops.
 import { findAncestorPath } from '../src/archive-model.js';
 import { dropClimbLimit, moveHeadingTo } from '../src/heading-edit.js';
 import { S } from './app-state.js';
@@ -57,6 +59,16 @@ export function attachHeadingGrip(rowEl, row, side = 'right') {
   return grip;
 }
 
+/** The vertical band the outline occupies on screen: from under the top bar to above the mode line and minibuffer. A finger
+ *  above or below it is in a cancel zone; inside it, the gaps above the first row and below the last stay real drop spots. */
+function outlineBand() {
+  const top = document.getElementById('topBar');
+  const bottom = document.getElementById('modeline') || document.getElementById('minibuffer');
+  const topEdge = top ? Math.max(0, top.getBoundingClientRect().bottom) : 0;
+  const bottomRect = bottom && bottom.offsetHeight ? bottom.getBoundingClientRect() : null;
+  return { top: topEdge, bottom: bottomRect ? Math.min(innerHeight, bottomRect.top) : innerHeight };
+}
+
 function beginDrag(e, grip, rowEl, node, side) {
   if (e.button !== undefined && e.button !== 0) return;
   e.preventDefault();
@@ -68,6 +80,8 @@ function beginDrag(e, grip, rowEl, node, side) {
   let ghost = null;
   let line = null;
   let tagEl = null;
+  let zoneEls = { top: null, bottom: null };
+  let cancelling = false;
   let drop = null; // { target, position, climb }
   let last = { x: startX, y: startY };
   let scrollTimer = 0;
@@ -94,6 +108,13 @@ function beginDrag(e, grip, rowEl, node, side) {
     document.body.appendChild(ghost);
     document.body.appendChild(line);
     rowEl.style.opacity = '0.35';
+    for (const which of ['top', 'bottom']) {
+      const z = document.createElement('div');
+      z.textContent = 'Release to cancel';
+      z.style.cssText = 'position:fixed;left:0;right:0;z-index:10000;pointer-events:none;display:none;align-items:center;justify-content:center;background:rgba(179,58,58,0.94);color:#fff;font-size:14px;font-weight:700;';
+      document.body.appendChild(z);
+      zoneEls[which] = z;
+    }
     scrollTimer = requestAnimationFrame(scrollTick);
   }
 
@@ -113,6 +134,15 @@ function beginDrag(e, grip, rowEl, node, side) {
     ghost.style.top = last.y - 18 + 'px';
     clearIndicator();
     drop = null;
+    const band = outlineBand();
+    const zone = last.y < band.top ? 'top' : last.y > band.bottom ? 'bottom' : null;
+    cancelling = zone !== null;
+    ghost.style.opacity = cancelling ? '0.55' : '';
+    ghost.style.borderColor = cancelling ? '#8a94a0' : LINE_COLOR;
+    for (const which of ['top', 'bottom']) zoneEls[which].style.display = which === zone ? 'flex' : 'none';
+    if (zone === 'top') Object.assign(zoneEls.top.style, { top: '0px', height: band.top + 'px', bottom: '' });
+    if (zone === 'bottom') Object.assign(zoneEls.bottom.style, { top: band.bottom + 'px', bottom: '0px', height: '' });
+    if (cancelling) return;
     // The visible heading rows, in order, without the dragged subtree.
     const rows = Array.from(document.querySelectorAll('.row'))
       .filter((el) => rowInfo.has(el) && !inSubtree(node, rowInfo.get(el).node))
@@ -178,7 +208,9 @@ function beginDrag(e, grip, rowEl, node, side) {
   }
 
   function scrollTick() {
-    const area = scroller === document.scrollingElement || scroller === document.documentElement ? { top: 0, bottom: innerHeight } : scroller.getBoundingClientRect();
+    const band = outlineBand();
+    const rect = scroller === document.scrollingElement || scroller === document.documentElement ? { top: 0, bottom: innerHeight } : scroller.getBoundingClientRect();
+    const area = { top: Math.max(rect.top, band.top), bottom: Math.min(rect.bottom, band.bottom) }; // the bars are not scroll edges
     let speed = 0;
     if (last.y < area.top + EDGE_PX) speed = -Math.ceil((area.top + EDGE_PX - last.y) / 4);
     else if (last.y > area.bottom - EDGE_PX) speed = Math.ceil((last.y - (area.bottom - EDGE_PX)) / 4);
@@ -195,6 +227,7 @@ function beginDrag(e, grip, rowEl, node, side) {
     if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
     if (line && line.parentNode) line.parentNode.removeChild(line);
     if (tagEl && tagEl.parentNode) tagEl.parentNode.removeChild(tagEl);
+    for (const z of Object.values(zoneEls)) if (z && z.parentNode) z.parentNode.removeChild(z);
     rowEl.style.opacity = '';
     grip.removeEventListener('pointermove', onMove);
     grip.removeEventListener('pointerup', onUp);
@@ -215,7 +248,7 @@ function beginDrag(e, grip, rowEl, node, side) {
   function onUp(ev) {
     last = { x: ev.clientX, y: ev.clientY };
     update();
-    const chosen = started ? drop : null;
+    const chosen = started && !cancelling ? drop : null;
     cleanup();
     if (chosen && moveHeadingTo(S.state.doc, node, chosen.target, chosen.position, chosen.climb)) commitAndRender('Moved heading');
   }

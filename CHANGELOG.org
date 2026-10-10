@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v468 — Cancel a drag
+A drag can now be cancelled on a touch screen: moving the finger onto the top bar, or onto the mode line and minibuffer, turns that bar red with "Release to cancel", and lifting there leaves the heading where it was. The top and bottom of the outline are still drops. Escape works as before.
+
 * v467 — Drag levels work from the right-hand grip
 With the grip on the right, a drag always read "into" and needed a long sweep left to reach the other levels. The level range now starts under the finger on the grip's side, one step per level, so "same level" and "top level" are one or two short moves. The tag sits on the open side, clear of the finger.
 
