@@ -387,6 +387,15 @@ function tokenize(expr) {
 // real Calc names and have been removed, so this function set is now
 // a genuine, verified subset of real org's own table-formula
 // language, not an approximation of it.
+/** Functions a script registered with org.tableFunction (names only; the answers come through options.userCall). */
+let userTableFunctionNames = new Set();
+export function setUserTableFunctions(names = []) {
+  userTableFunctionNames = new Set(names);
+}
+export function isBuiltinFormulaName(name) {
+  return name in AGGREGATE_FUNCTIONS || name in SCALAR_FUNCTIONS || name === 'string' || name === 'if';
+}
+
 const AGGREGATE_FUNCTIONS = {
   vsum: (vals) => vals.reduce((a, b) => a + b, 0),
   vmean: (vals) => (vals.length === 0 ? 0 : vals.reduce((a, b) => a + b, 0) / vals.length),
@@ -908,6 +917,20 @@ function parseExpression(tokens) {
         const falseExpr = parseExpr();
         expect(')');
         return { type: 'ifCall', condition, trueExpr, falseExpr };
+      }
+      if (userTableFunctionNames.has(name) && !isBuiltinFormulaName(name)) {
+        expect('(');
+        const userArgs = [];
+        if (peek() !== ')') {
+          userArgs.push(parseExpr());
+          while (peek() === ',') {
+            next();
+            userArgs.push(parseExpr());
+          }
+        }
+        expect(')');
+        if (userArgs.length > 8) throw new Error(`"${name}" takes at most 8 arguments`);
+        return { type: 'userCall', name, args: userArgs };
       }
       const isAggregate = name in AGGREGATE_FUNCTIONS;
       const isScalar = name in SCALAR_FUNCTIONS;
@@ -1472,6 +1495,11 @@ function evaluateAst(node, ctx) {
       if (values.some(isVector)) values = flattenForAggregate(values, ctx);
       if (values.some(isComplex)) return complexResult(cAggregate(node.name, values, ctx.complexDomain, ctx.angleMode === 'degrees'), ctx);
       return fn(values);
+    }
+    case 'userCall': {
+      if (!ctx.userCall) throw new Error(`"${node.name}" is a script function and is not available here`);
+      const plainArg = (v) => (isVector(v) ? Array.from(v.items || v).map(plainArg) : typeof v === 'string' || typeof v === 'number' ? v : Number(v));
+      return ctx.userCall(node.name, node.args.map((a) => plainArg(evaluateAst(a, ctx))));
     }
     case 'scalarCall': {
       const fn = SCALAR_FUNCTIONS[node.name];
@@ -2198,7 +2226,7 @@ export function recalculateTable(table, options = {}) {
       : null;
     const digits = mode.precision !== null ? mode.precision : 12;
     const complexDomain = mode.fraction ? fractionDomain(mathjsDefault, bigDomain(mathjsForPrecision(12), 12, mathjsForPrecision(18))) : bigDomain(mathjsForPrecision(digits), digits, mathjsForPrecision(digits + 6));
-    const evalCtx = { complexDomain, dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode, constants: options.constants || {}, numericMode };
+    const evalCtx = { complexDomain, dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode, constants: options.constants || {}, numericMode, userCall: options.userCall };
     // Evaluates the expression for one specific (row, col) and writes
     // either its formatted result or, if evaluation itself throws,
     // the literal text "#ERROR" into that cell -- confirmed directly

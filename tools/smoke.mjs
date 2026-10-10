@@ -4086,6 +4086,52 @@ check('extensions: a script adds a diary function; it runs only once approved, a
   await context.close();
 });
 
+check('extensions: a script adds a table function, a link type and an export', async () => {
+  const { context, page, errors } = await freshPage(main);
+  const script = [
+    'org.tableFunction("twice", (a) => a * 2);',
+    'org.tableFunction("hang", () => { while (true) {} });',
+    'org.linkType("shout", (path) => "https://example.org/" + encodeURIComponent(path));',
+    'org.linkType("file", () => "https://example.org/evil");',
+    'org.exportBackend("upper", "Upper case", (ctx) => ({ text: ctx.document.headings.map((h) => h.title.toUpperCase()).join("\\n"), filename: "up.txt" }));',
+  ].join('\n');
+  await newDocument(page, ['* Numbers', '| 2 | |', '| 5 | |', '#+TBLFM: $2=twice($1)', '', '[[shout:hi there][Say hi]]', ''].join('\n'));
+  const flow = (fn, ...args) =>
+    page.evaluate(
+      async ([name, a]) => {
+        const f = await import('/src-browser/extension-flow.js');
+        return f[name](...a);
+      },
+      [fn, args]
+    );
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.globalVariables = { ...S.globalVariables, 'org-xx-extensions': 'on' };
+  });
+  await flow('saveExtensionScript', script);
+  await flow('approveExtensionScript');
+  const info = await flow('extensionInfo');
+  expect(info.tableFunctions.join() === 'twice,hang' && info.linkTypes.join() === 'shout' && info.exporters.length === 1, `registered: ${JSON.stringify(info)}`);
+  await page.getByText('Recalculate this table').or(page.getByText('Calc')).first().click();
+  await waitForStatus(page, 'Recalculated table');
+  const text = await documentText(page);
+  expect(text.includes('| 2 | 4 |') && text.includes('| 5 | 10 |'), `table: ${text}`);
+  await page.evaluate(() => {
+    window.__opened = [];
+    window.open = (url) => window.__opened.push(url);
+  });
+  await page.getByText('Say hi').click();
+  await page.waitForFunction(() => window.__opened.length > 0);
+  const opened = await page.evaluate(() => window.__opened);
+  expect(opened.join() === 'https://example.org/hi%20there', `link: ${opened}`);
+  await openPalette(page);
+  await page.keyboard.type('Export: Upper');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.keyboard.press('Enter')]);
+  expect(download.suggestedFilename() === 'up.txt', `export file: ${download.suggestedFilename()}`);
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('extensions: a script asks before it uses the network, and keeps the answer', async () => {
   const { context, page, errors } = await freshPage(main);
   const url = `${main.base}/sw.js`;

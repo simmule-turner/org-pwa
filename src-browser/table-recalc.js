@@ -5,6 +5,7 @@ import { parseTableConstants, recalculateTable } from '../src/table-formula.js';
 import { S } from './app-state.js';
 import { allHeadingsInOrder } from './doc-helpers.js';
 import { commitAndRender, setStatus } from './editing.js';
+import { tableFunctionsActive, tableUserCall, warmTableFunctions } from './extension-flow.js';
 import { render } from './render.js';
 
 /** Recalculates a single table's own #+TBLFM: formulas (if any) and
@@ -27,6 +28,7 @@ export function recalculateOneTable(heading, table) {
     const newRows = recalculateTable(table, {
       hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables),
       constants: parseTableConstants(S.state.doc),
+      userCall: tableUserCall,
     });
     if (!newRows || JSON.stringify(newRows) === JSON.stringify(table.rows)) {
       return { result: 'unchanged' };
@@ -72,8 +74,15 @@ export function recalculateOneTable(heading, table) {
  *  out a whole document's worth of otherwise-working formulas. Every
  *  actually-changed table is committed together as a single undo
  *  step, not one per table or per cell. */
-export function recalculateAllTables() {
+export async function recalculateAllTables() {
   if (!S.state.doc) return;
+  if (tableFunctionsActive()) {
+    const tables = [];
+    for (const { heading } of allHeadingsInOrder(S.state.doc)) tables.push(...allTablesInBody(heading));
+    setStatus('Asking the script\u2026');
+    await warmTableFunctions(tables);
+    if (!S.state.doc) return;
+  }
   let anyChanged = false;
   const failedHeadingTitles = [];
   const erroredHeadingTitles = [];

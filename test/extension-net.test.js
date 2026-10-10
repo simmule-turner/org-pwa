@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { checkLinkOpenUrl, normalizeExport, usableLinkPrefix } from '../src/extension-net.js';
+import { setUserTableFunctions, recalculateTable } from '../src/table-formula.js';
 import { cacheGet, cacheSet, checkCacheKey, checkFetchUrl, encodeCacheValue, hostAllowed, normalizeFetchOptions, parseLocationHeader, parseNetHeader, roundPosition } from '../src/extension-net.js';
 
 test('fetch addresses: https, or http to this device only', () => {
@@ -62,4 +64,40 @@ test('cache keys, values and limits', () => {
 
 test('positions are rounded', () => {
   assert.deepEqual(roundPosition({ latitude: 40.712776, longitude: -74.005974, accuracy: 12.7 }, 5), { lat: 40.7128, lon: -74.006, accuracy: 13, time: 5 });
+});
+
+test('link prefixes and where a link may lead', () => {
+  assert.equal(usableLinkPrefix('weather'), true);
+  assert.equal(usableLinkPrefix('file'), false);
+  assert.equal(usableLinkPrefix('javascript'), false);
+  assert.equal(usableLinkPrefix('W'), false);
+  assert.equal(checkLinkOpenUrl('https://example.org/a'), 'https://example.org/a');
+  assert.ok(checkLinkOpenUrl('geo:40.7,-74.0').startsWith('geo:'));
+  assert.throws(() => checkLinkOpenUrl('javascript:alert(1)'), /https, mailto/);
+  assert.throws(() => checkLinkOpenUrl('http://example.org'), /https, mailto/);
+  assert.throws(() => checkLinkOpenUrl('nonsense'), /usable link/);
+});
+
+test('export results', () => {
+  assert.deepEqual(normalizeExport('hi', 'a.txt'), { text: 'hi', filename: 'a.txt', mime: 'text/plain' });
+  assert.deepEqual(normalizeExport({ text: 'x', filename: '../evil/n?.csv', mime: 'text/csv' }), { text: 'x', filename: '.._evil_n_.csv'.replace(/^\.+/, ''), mime: 'text/csv' });
+  assert.equal(normalizeExport({ text: 'x', mime: 'bad' }, 'f.txt').mime, 'text/plain');
+  assert.throws(() => normalizeExport({ nope: 1 }), /returns text/);
+  assert.throws(() => normalizeExport('x'.repeat(3 * 1024 * 1024)), /2 MB/);
+});
+
+test('table formulas can call a registered script function', () => {
+  const table = { tblfm: '$3=double($1, $2)', rows: [{ type: 'row', cells: ['1', '2', ''] }, { type: 'row', cells: ['3', '4', ''] }] };
+  assert.throws(() => recalculateTable(table, {}).length, /./, 'unknown without registration -> error');
+  setUserTableFunctions(['double']);
+  try {
+    const seen = [];
+    const rows = recalculateTable(table, { userCall: (name, args) => (seen.push([name, args]), args[0] * 2 + args[1]) });
+    assert.deepEqual(rows.map((r) => r.cells[2]), ['4', '10']);
+    assert.deepEqual(seen[0], ['double', [1, 2]]);
+    const none = recalculateTable(table, {});
+    assert.deepEqual(none.map((r) => r.cells[2]), ['#ERROR', '#ERROR']);
+  } finally {
+    setUserTableFunctions();
+  }
 });

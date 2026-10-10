@@ -1,6 +1,11 @@
 // The init script: load it, answer its diary functions, report how it is doing.
 import { deleteProperty, setProperty } from '../src/archive-model.js';
 import { commitLines } from '../src/body-edit.js';
+import { checkLinkOpenUrl, normalizeExport, usableLinkPrefix } from '../src/extension-net.js';
+import { recalculateTable, setUserTableFunctions, isBuiltinFormulaName, parseTableConstants } from '../src/table-formula.js';
+import { getOrgTableDurationHourZeroPadding } from '../src/local-variables.js';
+import { links } from './extension-links.js';
+import { saveOut } from './save-out.js';
 import { applyEdits, snapshotDocument, snapshotStillMatches, validateEdits } from '../src/extension-edit.js';
 import { onExtensionEvent } from './extension-events.js';
 import { EDIT_EVENTS, extensionsOn, hashScript, userSexpKey, userSexpResult, visibleVariableMap, usableSexpName } from '../src/extensions.js';
@@ -20,9 +25,10 @@ const MAX_CACHED = 5000;
 const MAX_LOG = 40;
 
 /** What Settings shows. `state` is one of: off, empty, unapproved, running, failed. */
-const info = { state: 'off', message: '', sexps: [], commands: [], events: [], log: [], script: '', hash: '' };
+const info = { state: 'off', message: '', sexps: [], commands: [], events: [], tableFunctions: [], linkTypes: [], exporters: [], log: [], script: '', hash: '' };
 
 const cache = new Map();
+const tableCache = new Map(); // JSON [name, args] -> { v } for the table functions answered during one recalculation
 /** The running script and its queue. Private to this module; the app-wide state stays on S. */
 const run = { pending: new Map(), flushTimer: null, handle: null, commandBusy: false, applying: false, chain: Promise.resolve() };
 
@@ -45,6 +51,13 @@ function stop() {
   info.sexps = [];
   info.commands = [];
   info.events = [];
+  info.tableFunctions = [];
+  info.linkTypes = [];
+  info.exporters = [];
+  tableCache.clear();
+  links.prefixes = new Set();
+  links.open = null;
+  setUserTableFunctions();
   run.commandBusy = false;
   setUserSexps();
 }
@@ -136,7 +149,132 @@ export async function loadExtensions() {
   info.commands = started.commands || [];
   info.events = started.events || [];
   setUserSexps(names, answer);
+  info.tableFunctions = (started.tableFunctions || []).filter((n) => usableSexpName(n) && !isBuiltinFormulaName(n));
+  for (const refused of (started.tableFunctions || []).filter((n) => !info.tableFunctions.includes(n))) note(`org.tableFunction("${refused}") ignored: use letters, digits and dashes, and not the name of a standard function`);
+  setUserTableFunctions(info.tableFunctions);
+  info.linkTypes = (started.linkTypes || []).filter(usableLinkPrefix);
+  for (const refused of (started.linkTypes || []).filter((n) => !info.linkTypes.includes(n))) note(`org.linkType("${refused}") ignored: use 2 to 20 lowercase letters, digits and dashes, and not a standard link type`);
+  links.prefixes = new Set(info.linkTypes);
+  links.open = openCustomLink;
+  info.exporters = started.exporters || [];
   render();
+}
+
+/** A click on [[prefix:path]]: the script's link function answers with an address, which is checked and opened. */
+async function openCustomLink(prefix, path, target, description) {
+  const active = run.handle;
+  if (!active) return;
+  try {
+    const reply = await active.resolveLink(prefix, path, target, description);
+    for (const line of reply.logs || []) note(line);
+    if (reply.error) throw new Error(reply.error);
+    if (!reply.url) {
+      setStatus(`${prefix}: the script gave no address for ${path}.`);
+      return;
+    }
+    window.open(checkLinkOpenUrl(reply.url), '_blank', 'noopener,noreferrer');
+  } catch (err) {
+    note(`${prefix}: ${err.message}`);
+    setStatus(`Link failed: ${err.message}`);
+    if (run.handle === active && /took longer/.test(err.message)) {
+      info.state = 'failed';
+      info.message = err.message;
+      stop();
+      render();
+    }
+  }
+}
+
+export const tableFunctionsActive = () => !!run.handle && info.tableFunctions.length > 0;
+
+/** The answer to a table function during a recalculation: what the script already gave, or an error. */
+export function tableUserCall(name, args) {
+  const hit = tableCache.get(JSON.stringify([name, args]));
+  if (!hit || hit.v === null) throw new Error(`${name} gave no answer`);
+  return hit.v;
+}
+
+/** Before tables are recalculated: finds the script-function calls their formulas make and gets the answers
+ *  from the script, so the (synchronous) recalculation can use them. Nested calls take another round. */
+export async function warmTableFunctions(tables) {
+  const active = run.handle;
+  if (!active || !info.tableFunctions.length) return;
+  tableCache.clear();
+  const mine = tables.filter((t) => t.tblfm && info.tableFunctions.some((n) => t.tblfm.includes(n + '(')));
+  const options = { hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables), constants: parseTableConstants(S.state.doc) };
+  let total = 0;
+  for (let pass = 0; pass < 3 && mine.length; pass++) {
+    const misses = new Map();
+    const userCall = (name, args) => {
+      const key = JSON.stringify([name, args]);
+      if (tableCache.has(key)) return tableCache.get(key).v ?? Number.NaN;
+      misses.set(key, { name, args });
+      return 0;
+    };
+    for (const table of mine) {
+      try {
+        recalculateTable(table, { ...options, userCall });
+      } catch (e) {
+        /* reported when the real recalculation runs */
+      }
+    }
+    if (!misses.size) break;
+    const byName = new Map();
+    for (const [key, item] of misses) {
+      if (!byName.has(item.name)) byName.set(item.name, []);
+      byName.get(item.name).push({ key, args: item.args });
+    }
+    for (const [name, items] of byName) {
+      total += items.length;
+      if (total > 500) throw new Error('A table calls script functions more than 500 times');
+      try {
+        const reply = await active.callTable(name, items.map((i) => i.args));
+        if (run.handle !== active) return;
+        items.forEach((item, i) => tableCache.set(item.key, { v: reply.results[i] ?? null }));
+        if (reply.error) note(`${name}: ${reply.error}`);
+        for (const line of reply.logs || []) note(line);
+      } catch (err) {
+        note(err.message);
+        if (run.handle === active) {
+          info.state = 'failed';
+          info.message = err.message;
+          stop();
+          render();
+        }
+        return;
+      }
+    }
+  }
+}
+
+/** Runs one of the script's export backends on the open file and saves what it returns. */
+export async function runExtensionExport(id, target) {
+  const backend = info.exporters.find((x) => x.id === id);
+  const active = run.handle;
+  if (!backend || !active || !S.state.doc) {
+    setStatus('That export is not available.');
+    return;
+  }
+  const documentName = String((S.state.documentId || '').split('/').pop() || '');
+  const snapshot = snapshotDocument(S.state.doc, { name: documentName, focusedHeading: target || S.keyboardFocusedHeading || null });
+  setStatus(`Exporting with ${backend.label}\u2026`);
+  try {
+    const reply = await active.runExport(id, snapshot);
+    for (const line of reply.logs || []) note(line);
+    if (reply.error) throw new Error(reply.error);
+    const out = normalizeExport(reply.output, (documentName.replace(/\.[^.]*$/, '') || 'export') + '.txt');
+    saveOut(out.filename, out.text, out.mime);
+    setStatus(`Exported ${out.filename}.`);
+  } catch (err) {
+    note(`${backend.label}: ${err.message}`);
+    setStatus(`Export failed: ${err.message}`);
+    if (run.handle === active && /took longer/.test(err.message)) {
+      info.state = 'failed';
+      info.message = err.message;
+      stop();
+      render();
+    }
+  }
 }
 
 /** Saves the script text. It must be approved again before it runs. */
@@ -156,14 +294,22 @@ export async function approveExtensionScript() {
 
 /** The script's commands as palette entries. */
 export function extensionPaletteEntries() {
-  return info.commands.map((c) => ({
+  const exports = info.exporters.map((x) => ({
+    id: 'ext-export-' + x.id,
+    label: 'Export: ' + x.label,
+    group: 'Extensions',
+    keywords: ['script', 'extension', 'export'],
+    needs: ['doc'],
+    run: (target) => runExtensionExport(x.id, target),
+  }));
+  return exports.concat(info.commands.map((c) => ({
     id: 'ext-' + c.id,
     label: c.label,
     group: 'Extensions',
     keywords: ['script', 'extension'],
     needs: ['doc'],
     run: (target) => runExtensionCommand(c.id, target),
-  }));
+  })));
 }
 
 const appendBody = (heading, lines) => commitLines(heading, (heading.bodyLines || []).length, 0, lines);

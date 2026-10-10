@@ -10,6 +10,9 @@ function extensionMain() {
   const sexps = new Map();
   const commands = new Map();
   const handlers = new Map(); // event name -> [fn]
+  const tableFns = new Map();
+  const linkTypes = new Map();
+  const exporters = new Map();
   let current = null; // the command being run: { document, edits, notices }
   const logs = [];
   const waiting = new Map();
@@ -77,6 +80,20 @@ function extensionMain() {
           if (!handlers.has(event)) handlers.set(event, []);
           handlers.get(event).push(fn);
         },
+        tableFunction(name, fn) {
+          if (typeof name !== 'string' || typeof fn !== 'function') throw new TypeError('org.tableFunction(name, function) expects a name and a function');
+          tableFns.set(name, fn);
+        },
+        linkType(prefix, fn) {
+          if (typeof prefix !== 'string' || typeof fn !== 'function') throw new TypeError('org.linkType(prefix, function) expects a prefix and a function');
+          linkTypes.set(prefix, fn);
+        },
+        exportBackend(id, label, fn) {
+          if (typeof id !== 'string' || !/^[A-Za-z][A-Za-z0-9-]*$/.test(id) || typeof label !== 'string' || !label.trim() || typeof fn !== 'function') {
+            throw new TypeError('org.exportBackend(id, label, function): the id is letters, digits and dashes');
+          }
+          exporters.set(id, { label: label.trim().slice(0, 80), fn });
+        },
         notify(text) {
           if (current) {
             if (current.notices.length < 20) current.notices.push(String(text).slice(0, 500));
@@ -105,7 +122,7 @@ function extensionMain() {
       const consoleShim = Object.freeze({ log, info: log, warn: log, error: log, debug: log });
       try {
         await new AsyncFunction('org', 'console', m.code)(org, consoleShim);
-        self.postMessage({ type: 'init-done', ok: true, sexps: [...sexps.keys()], commands: [...commands].map(([id, c]) => ({ id, label: c.label })), events: [...handlers.keys()], logs });
+        self.postMessage({ type: 'init-done', ok: true, sexps: [...sexps.keys()], commands: [...commands].map(([id, c]) => ({ id, label: c.label })), events: [...handlers.keys()], tableFunctions: [...tableFns.keys()], linkTypes: [...linkTypes.keys()], exporters: [...exporters].map(([id, x]) => ({ id, label: x.label })), logs });
       } catch (err) {
         self.postMessage({ type: 'init-done', ok: false, message: String((err && err.message) || err), logs });
       }
@@ -123,6 +140,47 @@ function extensionMain() {
         }
       }
       self.postMessage({ type: 'call-done', id: m.id, results, error, logs: logs.splice(0) });
+    } else if (m.type === 'table') {
+      const fn = tableFns.get(m.name);
+      const results = [];
+      let error = null;
+      for (const args of m.calls) {
+        try {
+          if (!fn) throw new Error('no function named ' + m.name);
+          const v = await fn(...args);
+          results.push(typeof v === 'string' || (typeof v === 'number' && Number.isFinite(v)) ? v : null);
+        } catch (err) {
+          results.push(null);
+          error = error || String((err && err.message) || err);
+        }
+      }
+      self.postMessage({ type: 'table-done', id: m.id, results, error, logs: logs.splice(0) });
+    } else if (m.type === 'link') {
+      const fn = linkTypes.get(m.prefix);
+      let url = null;
+      let error = null;
+      try {
+        if (!fn) throw new Error('no link type named ' + m.prefix);
+        const v = await fn(m.path, { target: m.target, description: m.description });
+        url = typeof v === 'string' ? v : null;
+      } catch (err) {
+        error = String((err && err.message) || err);
+      }
+      self.postMessage({ type: 'link-done', id: m.id, url, error, logs: logs.splice(0) });
+    } else if (m.type === 'export') {
+      const ex = exporters.get(m.name);
+      current = { document: m.document, edits: [], notices: [] };
+      let output = null;
+      let error = null;
+      try {
+        if (!ex) throw new Error('no export backend named ' + m.name);
+        const v = await ex.fn({ name: m.document.name, document: m.document });
+        output = typeof v === 'string' ? { text: v } : v && typeof v === 'object' ? { text: v.text, filename: v.filename, mime: v.mime } : null;
+      } catch (err) {
+        error = String((err && err.message) || err);
+      }
+      current = null;
+      self.postMessage({ type: 'export-done', id: m.id, output, error, logs: logs.splice(0) });
     } else if (m.type === 'event') {
       current = { document: m.document, edits: [], notices: [] };
       let error = null;
@@ -168,7 +226,7 @@ export async function startExtension({ code, variables = {}, onRpc = null, initT
   let initWaiter = null;
   box.onMessage((m) => {
     if (m.type === 'init-done' && initWaiter) initWaiter(m);
-    else if ((m.type === 'call-done' || m.type === 'command-done' || m.type === 'event-done') && waiting.has(m.id)) waiting.get(m.id)(m);
+    else if (['call-done', 'command-done', 'event-done', 'table-done', 'link-done', 'export-done'].includes(m.type) && waiting.has(m.id)) waiting.get(m.id)(m);
   });
 
   /** A timer that does not run while the script waits for the page (network, position), up to a hard limit. */
@@ -223,10 +281,16 @@ export async function startExtension({ code, variables = {}, onRpc = null, initT
     sexps: init.sexps,
     commands: init.commands || [],
     events: init.events || [],
+    tableFunctions: init.tableFunctions || [],
+    linkTypes: init.linkTypes || [],
+    exporters: init.exporters || [],
     logs: init.logs || [],
     close: box.close,
     call: (name, context, args, days) => request({ type: 'call', name, context, args, days }, name, callTimeoutMs),
     runCommand: (name, document) => request({ type: 'command', name, document }, name, commandTimeoutMs),
+    callTable: (name, calls) => request({ type: 'table', name, calls }, name, callTimeoutMs),
+    resolveLink: (prefix, path, target, description) => request({ type: 'link', prefix, path, target, description }, `the ${prefix} link`, callTimeoutMs),
+    runExport: (name, document) => request({ type: 'export', name, document }, `the ${name} export`, commandTimeoutMs),
     runEvent: (name, document, payload) => request({ type: 'event', name, document, payload }, `the ${name} hook`, eventTimeoutMs),
   };
 }

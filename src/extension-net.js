@@ -125,3 +125,39 @@ export function roundPosition(coords, time) {
   const r = (n) => Math.round(Number(n) * 1e4) / 1e4;
   return { lat: r(coords.latitude), lon: r(coords.longitude), accuracy: Math.round(Number(coords.accuracy) || 0), time };
 }
+
+// ---- link types and export files -------------------------------------------
+
+const RESERVED_LINK_PREFIXES = new Set(['http', 'https', 'file', 'mailto', 'tel', 'geo', 'doi', 'id', 'fn', 'github', 'webdav', 'local', 'attachment', 'ftp', 'javascript', 'data', 'blob', 'about', 'news', 'shell', 'elisp', 'info', 'help', 'docview', 'irc', 'mhe', 'rmail', 'gnus', 'bbdb', 'calc']);
+
+/** A prefix a script may claim for its own links (`weather` in [[weather:nyc]]). */
+export function usableLinkPrefix(prefix) {
+  return typeof prefix === 'string' && /^[a-z][a-z0-9-]{1,19}$/.test(prefix) && !RESERVED_LINK_PREFIXES.has(prefix);
+}
+
+/** Where a custom link may lead: https, mail, phone or a map position. Anything else is refused. */
+export function checkLinkOpenUrl(text) {
+  const raw = String(text || '').trim();
+  if (raw.length > MAX_URL_LENGTH) throw new Error('The link address is too long');
+  let url;
+  try {
+    url = new URL(raw);
+  } catch (e) {
+    throw new Error('Not a usable link address: ' + raw.slice(0, 80));
+  }
+  if (!['https:', 'mailto:', 'tel:', 'geo:'].includes(url.protocol)) throw new Error('A link can lead to https, mailto, tel or geo addresses only');
+  if (url.username || url.password) throw new Error('Addresses with a user name or password are not allowed');
+  return url.href;
+}
+
+export const MAX_EXPORT_CHARS = 2 * 1024 * 1024;
+
+/** What an export backend returns -> { text, filename, mime }. A string is the text; an object may name the file. */
+export function normalizeExport(result, fallbackName) {
+  const o = typeof result === 'string' ? { text: result } : result && typeof result === 'object' ? result : null;
+  if (!o || typeof o.text !== 'string') throw new Error('An export backend returns text, or { text, filename, mime }');
+  if (o.text.length > MAX_EXPORT_CHARS) throw new Error('The export is larger than 2 MB');
+  const base = String(o.filename || fallbackName || 'export.txt').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').replace(/^\.+/, '').slice(0, 100) || 'export.txt';
+  const mime = /^[a-z]+\/[\w.+-]+$/i.test(String(o.mime || '')) ? String(o.mime) : 'text/plain';
+  return { text: o.text, filename: base, mime };
+}

@@ -29,6 +29,7 @@ import { render } from './render.js';
 import { applySidePanelWidth, renderSettingsView } from './settings-view.js';
 import { setSidePanelWidth } from './settings.js';
 import { kv } from './singletons.js';
+import { tableFunctionsActive, warmTableFunctions } from './extension-flow.js';
 import { recalculateOneTable } from './table-recalc.js';
 import { applyTodoTransition, openTodoOrPickWorkflow } from './todo-workflow.js';
 import { autoGrowTextarea, isWideLayout, smallButton, withActionMenu } from './ui-widgets.js';
@@ -744,18 +745,22 @@ export function renderTableRow(row) {
   if (row.node.tblfm && row.node.tblfm.trim()) {
     controls.appendChild(
       smallButton('\ud83d\udd22 Calc', 'Recalculate this table', () => {
-        const { result, message, hasError } = recalculateOneTable(row.heading, row.node);
-        if (result === 'error') {
-          setStatus(`Couldn't recalculate: ${message}`);
-          render();
-        } else if (result === 'unchanged') {
-          setStatus('Table is already up to date.');
-          render();
-        } else if (result === 'changed') {
-          setStatus(hasError ? 'Recalculated table -- one or more cells has #ERROR.' : 'Recalculated table.');
-          commitAndRender('Recalculated table');
-        }
-        // 'no-formula' can't actually happen here -- the button itself is only shown when row.node.tblfm is set.
+        const recalc = () => {
+          const { result, message, hasError } = recalculateOneTable(row.heading, row.node);
+          if (result === 'error') {
+            setStatus(`Couldn't recalculate: ${message}`);
+            render();
+          } else if (result === 'unchanged') {
+            setStatus('Table is already up to date.');
+            render();
+          } else if (result === 'changed') {
+            setStatus(hasError ? 'Recalculated table -- one or more cells has #ERROR.' : 'Recalculated table.');
+            commitAndRender('Recalculated table');
+          }
+          // 'no-formula' can't actually happen here -- the button itself is only shown when row.node.tblfm is set.
+        };
+        if (tableFunctionsActive()) warmTableFunctions([row.node]).then(recalc);
+        else recalc();
       })
     );
   }

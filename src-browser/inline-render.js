@@ -1,5 +1,6 @@
 // Extracted from app.js: inline render.
 import { isAudioFilename } from '../src/attach.js';
+import { customLink, links as customLinks } from './extension-links.js';
 import { findFootnoteDefinition, guessAudioMimeType, guessImageMimeType, isExternalUrl, resolveAttachmentTarget, resolveImagePath, resolveLinkTarget } from '../src/link-resolve.js';
 import { getUseSubSuperscripts } from '../src/local-variables.js';
 import { S } from './app-state.js';
@@ -101,6 +102,20 @@ export function renderImageNode(node, heading = null) {
 export function renderLinkNode(node, linkContext = null, heading = null) {
   const label = node.description || node.target;
   const targetDoc = linkContext ? linkContext.doc : S.state.doc;
+  const custom = linkContext ? null : customLink(node.target);
+  if (custom && customLinks.open) {
+    const a = document.createElement('a');
+    a.href = '#';
+    a.textContent = label;
+    a.style.color = 'var(--accent)';
+    a.setAttribute(INLINE_LINK_ATTR, '1');
+    a.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      customLinks.open(custom.prefix, custom.path, node.target, label);
+    };
+    return a;
+  }
   const resolution = resolveLinkTarget(targetDoc, node.target);
 
   if (resolution.type === 'external') {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v475';
+const CACHE_NAME = 'org-pwa-shell-v476';
 
 const SHELL_FILES = [
   './',
@@ -164,6 +164,7 @@ const SHELL_FILES = [
   './src-browser/babel-flow.js',
   './src-browser/extension-events.js',
   './src-browser/extension-flow.js',
+  './src-browser/extension-links.js',
   './src-browser/extension-services.js',
   './src-browser/extension-run.js',
   './src-browser/babel-run.js',

@@ -7,8 +7,11 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v476 — Table functions, link types, exports
+Scripts can add their own table-formula functions (~org.tableFunction~), link prefixes such as ~[[weather:nyc]]~ (~org.linkType~), and export formats that appear in the palette (~org.exportBackend~). This lets a script extend the three places where Org is usually extended with Lisp, without giving the script any more reach than before. Link addresses are limited to https, mail, phone and map links.
+
 * v475 — Network, position and cache for scripts
-Scripts and ~js~ blocks can now ask the page for three things the sandbox does not have itself: ~org.fetch(url, options)~, ~org.location.get()~ and ~org.cache.get/set~. The sandbox still has no network of its own; each request goes to the page, which checks it and asks the person first. A block lists what it needs in its header (~:net api.open-meteo.com~, ~:location yes~) and is asked once per document; the init script is asked as it goes, once per host. Only https (or http to this device), GET and POST, a short list of headers, no cookies, 8 seconds, 1 MB back, 30 requests per run. The position is rounded to about 10 m. Waiting for the network does not count against a script's time limit (up to a minute in all).
+Scripts and ~js~ blocks can ask for the network (~org.fetch~), the phone's position (~org.location.get~) and a small cache (~org.cache~). A block lists what it needs in its header (~:net host~, ~:location yes~) and you are asked before the first use; the init script is asked as it goes. This is what makes weather and calendar feeds possible as user scripts, while the sandbox itself stays offline.
 
 * v474 — Hooks
 The init script can react to what happens in the app with ~org.on~: a file opening, a save, a heading's TODO state changing, a capture being filed. A hook can show a message, and after a TODO change or a capture it can also edit the file (a separate undo step that does not set the hook off again). A hook that fails or hangs is logged and cannot block saving or opening.
