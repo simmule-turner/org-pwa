@@ -335,4 +335,51 @@ function importIcalendarAsOrgText(icsText, options = {}) {
   return { orgText: blocks.length ? blocks.join('\n') + '\n' : '', eventCount, todoCount };
 }
 
-export { importIcalendarAsOrgText, parseProperty, unfold, repeaterFor, parseDuration };
+const stampText = (wall, allDay) => {
+  const w = wallParts(wall);
+  return `${w.y}-${pad(w.m)}-${pad(w.d)}` + (allDay ? '' : ` ${pad(w.h)}:${pad(w.mi)}`);
+};
+
+/**
+ * The events (not tasks) of `icsText` as plain data, for scripts: { uid, summary, location, description, allDay,
+ * start, end, repeat, rrule, cancelled }. `start` and `end` are "YYYY-MM-DD" or "YYYY-MM-DD HH:MM" in `zone`
+ * (the device's own zone if omitted). `repeat` is an Org repeater such as "+1w" when the recurrence is a simple
+ * one, else null with the raw rule in `rrule`. Recurrences are not expanded.
+ */
+function parseIcalendarEvents(icsText, { zone = null, max = 2000 } = {}) {
+  const events = [];
+  for (const component of collectComponents(icsText)) {
+    if (component.type !== 'VEVENT') continue;
+    const props = component.props;
+    const dateOf = (name) => {
+      const prop = props.find((p) => p.name === name);
+      return prop ? parseDateValue(prop, zone, null) : null;
+    };
+    const start = dateOf('DTSTART');
+    if (!start) continue;
+    let end = dateOf('DTEND');
+    const duration = props.find((p) => p.name === 'DURATION');
+    if (!end && duration) {
+      const ms = parseDuration(duration.value);
+      if (ms !== null) end = { wall: start.wall + ms, allDay: start.allDay };
+    }
+    const rrule = props.find((p) => p.name === 'RRULE');
+    const repeat = rrule ? repeaterFor(rrule.value, start.wall) : null;
+    events.push({
+      uid: textOf(props, 'UID'),
+      summary: textOf(props, 'SUMMARY').replace(/\s*\n\s*/g, ' ') || '(no title)',
+      location: textOf(props, 'LOCATION').replace(/\s*\n\s*/g, ', '),
+      description: textOf(props, 'DESCRIPTION'),
+      allDay: start.allDay,
+      start: stampText(start.wall, start.allDay),
+      end: end ? stampText(end.wall, end.allDay) : null,
+      repeat: repeat || null,
+      rrule: rrule && !repeat ? rrule.value : null,
+      cancelled: /^CANCELLED$/i.test(textOf(props, 'STATUS')),
+    });
+    if (events.length >= max) break;
+  }
+  return events;
+}
+
+export { parseIcalendarEvents, importIcalendarAsOrgText, parseProperty, unfold, repeaterFor, parseDuration };

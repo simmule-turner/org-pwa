@@ -762,6 +762,19 @@ org.linkType("weather", (place) => "https://wttr.in/" + encodeURIComponent(place
 org.exportBackend("titles", "Titles only", (ctx) => ctx.document.headings.map((h) => h.title).join("\n"));
 #+end_src
 
+*** Agenda sources and header lines
+- ~org.agenda.source(name, fn)~: ~fn({ from, to })~ returns items for the agenda, each ~{ title, start, end, repeat }~ with ~start~ as ~"2026-12-25"~ or ~"2026-12-25 09:30"~ and ~repeat~ such as ~"+1w"~. Asked again after ten minutes.
+- ~await org.ics.parse(text)~: the events of a calendar feed as ~{ summary, start, end, allDay, location, repeat, cancelled }~. Complex recurrences are not expanded.
+- ~org.ui.line(id, fn)~: ~fn()~ returns one line of text shown above the agenda.
+
+#+begin_src js
+org.agenda.source("holidays", async () => {
+  const r = await org.fetch("https://example.org/us-holidays.ics");
+  return org.ics.parse(await r.text());
+});
+org.ui.line("mood", () => "Have a good day");
+#+end_src
+
 *** Network, position and cache
 The sandbox has no network, but a script or a ~js~ block can ask the page:
 - ~await org.fetch(url, { method, headers, body })~ returns ~{ status, ok, url, text(), json() }~. Only https (or http to this device), GET or POST, the headers Accept, Content-Type, Authorization and X-Api-Key, a body up to 100 KB, no cookies, 8 seconds, up to 1 MB back, 30 requests per run. A redirect to a host you did not allow is refused.

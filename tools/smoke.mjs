@@ -4132,6 +4132,40 @@ check('extensions: a script adds a table function, a link type and an export', a
   await context.close();
 });
 
+check('extensions: a script feeds the agenda from a calendar and adds a header line', async () => {
+  const { context, page, errors } = await freshPage(main);
+  const now = new Date();
+  const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  const ics = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'SUMMARY:Team lunch', `DTSTART:${ymd}T120000`, `DTEND:${ymd}T130000`, 'END:VEVENT', 'BEGIN:VEVENT', 'SUMMARY:Cancelled thing', `DTSTART;VALUE=DATE:${ymd}`, 'STATUS:CANCELLED', 'END:VEVENT', 'END:VCALENDAR'].join('\n');
+  const script = [
+    `const ICS = ${JSON.stringify(ics)};`,
+    'org.agenda.source("work-calendar", async () => (await org.ics.parse(ICS)));',
+    'org.ui.line("mood", () => "Sunny 72 today");',
+  ].join('\n');
+  await newDocument(page, ['* Plain', ''].join('\n'));
+  const flow = (fn, ...args) =>
+    page.evaluate(
+      async ([name, a]) => {
+        const f = await import('/src-browser/extension-flow.js');
+        return f[name](...a);
+      },
+      [fn, args]
+    );
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.globalVariables = { ...S.globalVariables, 'org-xx-extensions': 'on' };
+  });
+  await flow('saveExtensionScript', script);
+  await flow('approveExtensionScript');
+  await viewMenu(page, 'Agenda');
+  await page.getByText('Sunny 72 today').waitFor({ timeout: 10000 });
+  await page.getByText('Team lunch').waitFor({ timeout: 10000 });
+  const body = await page.locator('body').innerText();
+  expect(body.includes('12:00-13:00') && !body.includes('Cancelled thing'), `agenda: ${body.slice(0, 600)}`);
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('extensions: a script asks before it uses the network, and keeps the answer', async () => {
   const { context, page, errors } = await freshPage(main);
   const url = `${main.base}/sw.js`;

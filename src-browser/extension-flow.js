@@ -1,6 +1,7 @@
 // The init script: load it, answer its diary functions, report how it is doing.
 import { deleteProperty, setProperty } from '../src/archive-model.js';
 import { commitLines } from '../src/body-edit.js';
+import { agendaOccurrences, normalizeAgendaItems, normalizeLine } from '../src/extensions.js';
 import { checkLinkOpenUrl, normalizeExport, usableLinkPrefix } from '../src/extension-net.js';
 import { recalculateTable, setUserTableFunctions, isBuiltinFormulaName, parseTableConstants } from '../src/table-formula.js';
 import { getOrgTableDurationHourZeroPadding } from '../src/local-variables.js';
@@ -25,9 +26,15 @@ const MAX_CACHED = 5000;
 const MAX_LOG = 40;
 
 /** What Settings shows. `state` is one of: off, empty, unapproved, running, failed. */
-const info = { state: 'off', message: '', sexps: [], commands: [], events: [], tableFunctions: [], linkTypes: [], exporters: [], log: [], script: '', hash: '' };
+const info = { state: 'off', message: '', sexps: [], commands: [], events: [], tableFunctions: [], linkTypes: [], exporters: [], agendaSources: [], uiLines: [], log: [], script: '', hash: '' };
 
 const cache = new Map();
+const agendaCache = new Map(); // `${source}|${from}|${to}` -> { items, at }
+const agendaPending = new Set();
+const lineCache = new Map(); // id -> { text, at }
+const linePending = new Set();
+const SOURCE_TTL_MS = 10 * 60 * 1000;
+const LINE_TTL_MS = 5 * 60 * 1000;
 const tableCache = new Map(); // JSON [name, args] -> { v } for the table functions answered during one recalculation
 /** The running script and its queue. Private to this module; the app-wide state stays on S. */
 const run = { pending: new Map(), flushTimer: null, handle: null, commandBusy: false, applying: false, chain: Promise.resolve() };
@@ -54,6 +61,12 @@ function stop() {
   info.tableFunctions = [];
   info.linkTypes = [];
   info.exporters = [];
+  info.agendaSources = [];
+  info.uiLines = [];
+  agendaCache.clear();
+  agendaPending.clear();
+  lineCache.clear();
+  linePending.clear();
   tableCache.clear();
   links.prefixes = new Set();
   links.open = null;
@@ -157,6 +170,8 @@ export async function loadExtensions() {
   links.prefixes = new Set(info.linkTypes);
   links.open = openCustomLink;
   info.exporters = started.exporters || [];
+  info.agendaSources = started.agendaSources || [];
+  info.uiLines = started.uiLines || [];
   render();
 }
 
@@ -425,3 +440,110 @@ onExtensionEvent((name, payload) => {
   const doc = S.state.doc;
   run.chain = run.chain.then(() => deliverEvent(name, payload, doc)).catch((err) => note(err.message));
 });
+
+// ---- agenda sources and header lines ----------------------------------------------------------------------
+
+async function refreshAgendaSource(name, from, to, key) {
+  const active = run.handle;
+  agendaPending.add(key);
+  const before = agendaCache.get(key);
+  let items = before ? before.items : [];
+  try {
+    const reply = await active.fetchAgenda(name, from, to);
+    if (run.handle !== active) return;
+    for (const line of reply.logs || []) note(line);
+    if (reply.error) note(`${name}: ${reply.error}`);
+    else items = normalizeAgendaItems(reply.items);
+  } catch (err) {
+    note(err.message);
+    if (run.handle === active) {
+      info.state = 'failed';
+      info.message = err.message;
+      stop();
+      render();
+    }
+    return;
+  }
+  agendaPending.delete(key);
+  agendaCache.set(key, { items, at: Date.now() });
+  if (!before || JSON.stringify(before.items) !== JSON.stringify(items)) render();
+}
+
+const AGENDA_HEADING = { title: '', level: 1, todo: null, priority: null, tags: [], bodyLines: [], children: [] };
+
+/** Agenda items from the script's sources for the days being shown. What is already known is returned at once; a source
+ *  that is missing or older than ten minutes is asked again, and the agenda is drawn again if its answer differs. */
+export function extensionAgendaItems(rangeStart, rangeEnd) {
+  if (!run.handle || !info.agendaSources.length) return [];
+  const from = dayKey(rangeStart);
+  const to = dayKey(rangeEnd);
+  const out = [];
+  for (const name of info.agendaSources) {
+    const key = `${name}|${from}|${to}`;
+    const entry = agendaCache.get(key);
+    if ((!entry || Date.now() - entry.at > SOURCE_TTL_MS) && !agendaPending.has(key)) refreshAgendaSource(name, from, to, key);
+    if (!entry) continue;
+    for (const item of entry.items) {
+      for (const day of agendaOccurrences(item, from, to)) {
+        const [y, m, d] = day.split('-').map(Number);
+        const [h, mi] = item.time ? item.time.split(':').map(Number) : [0, 0];
+        const endParts = item.endTime ? item.endTime.split(':').map(Number) : null;
+        out.push({
+          documentId: '',
+          heading: { ...AGENDA_HEADING, title: item.title },
+          kind: 'timestamp',
+          hasTime: !!item.time,
+          repeater: null,
+          todo: null,
+          priority: null,
+          tags: [],
+          title: item.title,
+          date: new Date(y, m - 1, d, h, mi),
+          endDate: endParts ? new Date(y, m - 1, d, endParts[0], endParts[1]) : undefined,
+          daysOverdue: 0,
+          category: name,
+          external: true,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+async function refreshLine(id) {
+  const active = run.handle;
+  linePending.add(id);
+  const before = lineCache.get(id);
+  let text = before ? before.text : null;
+  try {
+    const reply = await active.fetchLine(id);
+    if (run.handle !== active) return;
+    for (const line of reply.logs || []) note(line);
+    if (reply.error) note(`${id}: ${reply.error}`);
+    else text = normalizeLine(reply.text);
+  } catch (err) {
+    note(err.message);
+    if (run.handle === active) {
+      info.state = 'failed';
+      info.message = err.message;
+      stop();
+      render();
+    }
+    return;
+  }
+  linePending.delete(id);
+  lineCache.set(id, { text, at: Date.now() });
+  if (!before || before.text !== text) render();
+}
+
+/** The script's header lines for the agenda (plain text), asked again when older than five minutes. */
+export function extensionAgendaLines() {
+  if (!run.handle || !info.uiLines.length) return [];
+  const out = [];
+  for (const id of info.uiLines) {
+    const entry = lineCache.get(id);
+    if ((!entry || Date.now() - entry.at > LINE_TTL_MS) && !linePending.has(id)) refreshLine(id);
+    if (entry && entry.text) out.push(entry.text);
+  }
+  return out;
+}

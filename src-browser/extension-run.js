@@ -11,6 +11,8 @@ function extensionMain() {
   const commands = new Map();
   const handlers = new Map(); // event name -> [fn]
   const tableFns = new Map();
+  const agendaSources = new Map();
+  const uiLines = new Map();
   const linkTypes = new Map();
   const exporters = new Map();
   let current = null; // the command being run: { document, edits, notices }
@@ -100,6 +102,19 @@ function extensionMain() {
           } else log(String(text));
         },
         edit,
+        ics: Object.freeze({ parse: async (text) => rpc('ics.parse', [text]) }),
+        agenda: Object.freeze({
+          source(name, fn) {
+            if (typeof name !== 'string' || !/^[A-Za-z][A-Za-z0-9-]*$/.test(name) || typeof fn !== 'function') throw new TypeError('org.agenda.source(name, function): the name is letters, digits and dashes');
+            agendaSources.set(name, fn);
+          },
+        }),
+        ui: Object.freeze({
+          line(id, fn) {
+            if (typeof id !== 'string' || !/^[A-Za-z][A-Za-z0-9-]*$/.test(id) || typeof fn !== 'function') throw new TypeError('org.ui.line(id, function): the id is letters, digits and dashes');
+            uiLines.set(id, fn);
+          },
+        }),
         location: Object.freeze({ get: () => rpc('location.get', []) }),
         cache: Object.freeze({
           get: async (key, maxAgeMs) => {
@@ -122,7 +137,7 @@ function extensionMain() {
       const consoleShim = Object.freeze({ log, info: log, warn: log, error: log, debug: log });
       try {
         await new AsyncFunction('org', 'console', m.code)(org, consoleShim);
-        self.postMessage({ type: 'init-done', ok: true, sexps: [...sexps.keys()], commands: [...commands].map(([id, c]) => ({ id, label: c.label })), events: [...handlers.keys()], tableFunctions: [...tableFns.keys()], linkTypes: [...linkTypes.keys()], exporters: [...exporters].map(([id, x]) => ({ id, label: x.label })), logs });
+        self.postMessage({ type: 'init-done', ok: true, sexps: [...sexps.keys()], commands: [...commands].map(([id, c]) => ({ id, label: c.label })), events: [...handlers.keys()], tableFunctions: [...tableFns.keys()], linkTypes: [...linkTypes.keys()], exporters: [...exporters].map(([id, x]) => ({ id, label: x.label })), agendaSources: [...agendaSources.keys()], uiLines: [...uiLines.keys()], logs });
       } catch (err) {
         self.postMessage({ type: 'init-done', ok: false, message: String((err && err.message) || err), logs });
       }
@@ -155,6 +170,30 @@ function extensionMain() {
         }
       }
       self.postMessage({ type: 'table-done', id: m.id, results, error, logs: logs.splice(0) });
+    } else if (m.type === 'agenda') {
+      const fn = agendaSources.get(m.name);
+      let items = null;
+      let error = null;
+      try {
+        if (!fn) throw new Error('no agenda source named ' + m.name);
+        const v = await fn({ from: m.from, to: m.to });
+        items = Array.isArray(v) ? JSON.parse(JSON.stringify(v.slice(0, 2000))) : [];
+      } catch (err) {
+        error = String((err && err.message) || err);
+      }
+      self.postMessage({ type: 'agenda-done', id: m.id, items, error, logs: logs.splice(0) });
+    } else if (m.type === 'line') {
+      const fn = uiLines.get(m.name);
+      let text = null;
+      let error = null;
+      try {
+        if (!fn) throw new Error('no line named ' + m.name);
+        const v = await fn();
+        text = typeof v === 'string' || typeof v === 'number' ? String(v) : null;
+      } catch (err) {
+        error = String((err && err.message) || err);
+      }
+      self.postMessage({ type: 'line-done', id: m.id, text, error, logs: logs.splice(0) });
     } else if (m.type === 'link') {
       const fn = linkTypes.get(m.prefix);
       let url = null;
@@ -226,7 +265,7 @@ export async function startExtension({ code, variables = {}, onRpc = null, initT
   let initWaiter = null;
   box.onMessage((m) => {
     if (m.type === 'init-done' && initWaiter) initWaiter(m);
-    else if (['call-done', 'command-done', 'event-done', 'table-done', 'link-done', 'export-done'].includes(m.type) && waiting.has(m.id)) waiting.get(m.id)(m);
+    else if (['call-done', 'command-done', 'event-done', 'table-done', 'link-done', 'export-done', 'agenda-done', 'line-done'].includes(m.type) && waiting.has(m.id)) waiting.get(m.id)(m);
   });
 
   /** A timer that does not run while the script waits for the page (network, position), up to a hard limit. */
@@ -282,12 +321,16 @@ export async function startExtension({ code, variables = {}, onRpc = null, initT
     commands: init.commands || [],
     events: init.events || [],
     tableFunctions: init.tableFunctions || [],
+    agendaSources: init.agendaSources || [],
+    uiLines: init.uiLines || [],
     linkTypes: init.linkTypes || [],
     exporters: init.exporters || [],
     logs: init.logs || [],
     close: box.close,
     call: (name, context, args, days) => request({ type: 'call', name, context, args, days }, name, callTimeoutMs),
     runCommand: (name, document) => request({ type: 'command', name, document }, name, commandTimeoutMs),
+    fetchAgenda: (name, from, to) => request({ type: 'agenda', name, from, to }, `the ${name} agenda source`, 8000),
+    fetchLine: (name) => request({ type: 'line', name }, `the ${name} line`, 8000),
     callTable: (name, calls) => request({ type: 'table', name, calls }, name, callTimeoutMs),
     resolveLink: (prefix, path, target, description) => request({ type: 'link', prefix, path, target, description }, `the ${prefix} link`, callTimeoutMs),
     runExport: (name, document) => request({ type: 'export', name, document }, `the ${name} export`, commandTimeoutMs),

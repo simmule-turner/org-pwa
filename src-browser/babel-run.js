@@ -62,6 +62,7 @@ function workerMain() {
       self.postMessage({ type: 'rpc', rid, method, args });
     });
   const services = {
+    ics: Object.freeze({ parse: async (text) => rpc('ics.parse', [text]) }),
     location: Object.freeze({ get: () => rpc('location.get', []) }),
     cache: Object.freeze({
       get: async (key, maxAgeMs) => {

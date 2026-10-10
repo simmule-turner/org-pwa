@@ -2,6 +2,7 @@
 // each request arrives here, is checked against src/extension-net.js, and is allowed only after the person said yes.
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { FETCH_TIMEOUT_MS, MAX_RESPONSE_BYTES, cacheGet, cacheSet, checkCacheKey, checkFetchUrl, encodeCacheValue, hostAllowed, normalizeFetchOptions, roundPosition } from '../src/extension-net.js';
+import { parseIcalendarEvents } from '../src/import-icalendar.js';
 import { confirmDialog } from './dialogs.js';
 import { kv } from './singletons.js';
 
@@ -152,6 +153,11 @@ export function createServices({ owner, declared = null }) {
     writeGrant(owner, { ...readGrant(owner), location: true });
   };
   return async (method, args) => {
+    if (method === 'ics.parse') {
+      const text = String(args[0] === undefined || args[0] === null ? '' : args[0]);
+      if (text.length > MAX_RESPONSE_BYTES) throw new Error('The calendar text is larger than 1 MB');
+      return parseIcalendarEvents(text);
+    }
     if (method === 'fetch') return doFetch(args[0], args[1], isHostOk);
     if (method === 'location.get') {
       await locationOk();

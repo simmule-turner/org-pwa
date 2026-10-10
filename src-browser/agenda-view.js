@@ -7,6 +7,7 @@ import { getAgendaShowAllDates, getAgendaSkipArchivedTrees, getAgendaSkipComment
 import { parseOrgDuration } from '../src/org-duration.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { aggregateAgendaDocs, contactsDocsForAgenda, ensureAgendaFilesLoaded, refreshAgendaFiles } from './agenda-files.js';
+import { extensionAgendaItems, extensionAgendaLines } from './extension-flow.js';
 import { agendaItemKindLabel, agendaStepAnchor, buildDayHeaderRow, formatAgendaItemTimeText, formatAgendaRangeLabel } from './agenda-format.js';
 import { S } from './app-state.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
@@ -328,6 +329,14 @@ export function renderAgendaView() {
   rangeRow.appendChild(logToggle);
 
   container.appendChild(rangeRow);
+  for (const text of extensionAgendaLines()) {
+    const line = document.createElement('div');
+    line.style.fontSize = '12px';
+    line.style.opacity = '0.85';
+    line.style.marginBottom = '6px';
+    line.textContent = text;
+    container.appendChild(line);
+  }
   if (S.agendaEffortPanelOpen) container.appendChild(buildAgendaEffortPanel());
 
   if (S.agendaFilesConfig.length > 0) {
@@ -390,6 +399,8 @@ export function renderAgendaView() {
     orgWeatherTemperatureUnit: getOrgWeatherTemperatureUnit(S.state.localVariables),
     orgWeatherSpeedUnit: getOrgWeatherSpeedUnit(S.state.localVariables),
   });
+  items.push(...extensionAgendaItems(start, end));
+  items.sort((a, b) => a.date - b.date);
 
   const groupedByDay =
     S.agendaViewType === 'day'

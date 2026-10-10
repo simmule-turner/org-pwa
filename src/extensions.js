@@ -74,3 +74,66 @@ export function extensionsOn(globalVars) {
   const raw = (globalVars || {})['org-xx-extensions'];
   return /^(on|yes|t|true)$/i.test(raw ? String(raw).trim() : '');
 }
+
+// ---- agenda sources and header lines ---------------------------------------------------------------------
+
+const DAY_RE = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?$/;
+
+/** What a script's agenda source returned -> [{ title, date, time, endTime, repeat }] with plain, checked fields.
+ *  An item is { title, start } (or { summary, start }, as org.ics.parse gives), start being "YYYY-MM-DD" or
+ *  "YYYY-MM-DD HH:MM"; optional end (same shape, only its time is used) and repeat ("+1d", "+2w", "+1m", "+1y"). */
+export function normalizeAgendaItems(list, max = 500) {
+  const out = [];
+  if (!Array.isArray(list)) return out;
+  for (const raw of list) {
+    if (out.length >= max) break;
+    if (!raw || typeof raw !== 'object' || raw.cancelled === true) continue;
+    const start = DAY_RE.exec(String(raw.start || raw.date || '').trim());
+    const title = String(raw.title || raw.summary || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+    if (!start || !title) continue;
+    const month = Number(start[2]);
+    const day = Number(start[3]);
+    if (month < 1 || month > 12 || day < 1 || day > 31) continue;
+    const end = DAY_RE.exec(String(raw.end || '').trim());
+    const repeat = /^\+(\d{1,3})([dwmy])$/.exec(String(raw.repeat || ''));
+    out.push({
+      title,
+      date: `${start[1]}-${start[2]}-${start[3]}`,
+      time: start[4] ? `${start[4]}:${start[5]}` : null,
+      endTime: start[4] && end && end[4] ? `${end[4]}:${end[5]}` : null,
+      repeat: repeat ? { n: Number(repeat[1]), unit: repeat[2] } : null,
+    });
+  }
+  return out;
+}
+
+const keyOf = (d) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+
+/** The days ("YYYY-MM-DD") from `fromKey` to `toKey` on which a normalized item falls (a repeat is expanded). */
+export function agendaOccurrences(item, fromKey, toKey) {
+  const [y, m, d] = item.date.split('-').map(Number);
+  if (!item.repeat) return item.date >= fromKey && item.date <= toKey ? [item.date] : [];
+  const days = [];
+  for (let i = 0; i < 2000; i++) {
+    const { n, unit } = item.repeat;
+    let at;
+    if (unit === 'd' || unit === 'w') at = new Date(Date.UTC(y, m - 1, d + i * n * (unit === 'w' ? 7 : 1)));
+    else {
+      const months = i * n * (unit === 'y' ? 12 : 1);
+      const first = new Date(Date.UTC(y, m - 1 + months, 1));
+      const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+      at = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), Math.min(d, last)));
+    }
+    const key = keyOf(at);
+    if (key > toKey) break;
+    if (key >= fromKey) days.push(key);
+  }
+  return days;
+}
+
+/** A header line from a script: one line of plain text, or null. */
+export function normalizeLine(value) {
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+  const text = String(value).replace(/\s+/g, ' ').trim().slice(0, 200);
+  return text || null;
+}

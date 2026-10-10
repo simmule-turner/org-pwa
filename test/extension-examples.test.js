@@ -59,3 +59,39 @@ test('the sunrise example says so when the sun does not rise', async () => {
   }
   assert.deepEqual(await new AsyncFunction('org', 'Date', code)(org, WinterDate), [['Sun', 'does not rise or set today']]);
 });
+
+test('the weather example builds its list from a forecast', async () => {
+  const code = exampleCode('Example: weather');
+  const store = new Map();
+  const org = {
+    vars: { get: () => 'imperial' },
+    cache: { get: async (k) => (store.has(k) ? store.get(k) : null), set: async (k, v) => (store.set(k, v), v) },
+    location: { get: async () => ({ lat: 40.7, lon: -74 }) },
+    fetch: async (url) => {
+      assert.match(url, /^https:\/\/api\.open-meteo\.com\/v1\/forecast\?latitude=40\.7&longitude=-74/);
+      assert.match(url, /temperature_unit=fahrenheit/);
+      return { json: async () => ({ daily: { time: ['2026-10-10', '2026-10-11'], temperature_2m_min: [50, 52], temperature_2m_max: [68, 70], precipitation_probability_max: [10, 40] } }) };
+    },
+  };
+  const out = await new AsyncFunction('org', code)(org);
+  assert.deepEqual(out, ['2026-10-10: 50–68°, 10% rain', '2026-10-11: 52–70°, 40% rain']);
+  assert.deepEqual(store.get('pos'), { lat: 40.7, lon: -74 });
+});
+
+test('the calendar feed example registers an agenda source that parses the fetched feed', async () => {
+  const code = exampleCode('Example: calendar feed');
+  const sources = new Map();
+  const lines = new Map();
+  const store = new Map();
+  const org = {
+    agenda: { source: (n, f) => sources.set(n, f) },
+    ui: { line: (n, f) => lines.set(n, f) },
+    cache: { get: async (k) => (store.has(k) ? store.get(k) : null), set: async (k, v) => (store.set(k, v), v) },
+    fetch: async () => ({ text: async () => 'FEED' }),
+    ics: { parse: async (t) => [{ summary: t, start: '2026-12-25' }] },
+  };
+  await new AsyncFunction('org', code)(org);
+  assert.deepEqual(await sources.get('holidays')({ from: '2026-12-01', to: '2026-12-31' }), [{ summary: 'FEED', start: '2026-12-25' }]);
+  assert.equal(store.get('holidays-ics'), 'FEED');
+  assert.equal(typeof lines.get('mood')(), 'string');
+});

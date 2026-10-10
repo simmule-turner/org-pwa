@@ -90,3 +90,23 @@ test('the events the worker accepts are the ones the app announces', () => {
   }
   assert.deepEqual([...EDIT_EVENTS].sort(), ['capture', 'todo-change']);
 });
+
+test('agenda source items are checked and repeats expanded', async () => {
+  const { normalizeAgendaItems, agendaOccurrences, normalizeLine } = await import('../src/extensions.js');
+  const items = normalizeAgendaItems([
+    { title: 'A', start: '2026-10-12 09:30', end: '2026-10-12 10:15', repeat: '+1w' },
+    { summary: 'B', start: '2026-10-13' },
+    { title: 'bad date', start: '2026-13-40' },
+    { title: '', start: '2026-10-01' },
+    { title: 'gone', start: '2026-10-01', cancelled: true },
+    'junk',
+  ]);
+  assert.deepEqual(items.map((i) => [i.title, i.date, i.time, i.endTime]), [['A', '2026-10-12', '09:30', '10:15'], ['B', '2026-10-13', null, null]]);
+  assert.deepEqual(agendaOccurrences(items[0], '2026-10-01', '2026-11-02'), ['2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02']);
+  assert.deepEqual(agendaOccurrences(items[1], '2026-10-01', '2026-10-12'), []);
+  const monthly = normalizeAgendaItems([{ title: 'M', start: '2026-01-31', repeat: '+1m' }])[0];
+  assert.deepEqual(agendaOccurrences(monthly, '2026-01-01', '2026-03-31'), ['2026-01-31', '2026-02-28', '2026-03-31']);
+  assert.equal(normalizeLine('  72°F \n sunny '), '72°F sunny');
+  assert.equal(normalizeLine(null), null);
+  assert.equal(normalizeLine(''), null);
+});

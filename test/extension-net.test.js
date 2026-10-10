@@ -101,3 +101,16 @@ test('table formulas can call a registered script function', () => {
     setUserTableFunctions();
   }
 });
+
+test('calendar feeds parse into plain events', async () => {
+  const { parseIcalendarEvents } = await import('../src/import-icalendar.js');
+  const ics = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'UID:1', 'SUMMARY:Dentist\\, Dr. Lee', 'DTSTART:20261012T133000', 'DTEND:20261012T141500', 'LOCATION:Main St', 'END:VEVENT',
+    'BEGIN:VEVENT', 'SUMMARY:Trash', 'DTSTART;VALUE=DATE:20261014', 'RRULE:FREQ=WEEKLY;INTERVAL=1', 'END:VEVENT',
+    'BEGIN:VEVENT', 'SUMMARY:Odd', 'DTSTART;VALUE=DATE:20261015', 'RRULE:FREQ=DAILY;COUNT=3', 'STATUS:CANCELLED', 'END:VEVENT',
+    'BEGIN:VTODO', 'SUMMARY:A task', 'END:VTODO', 'END:VCALENDAR'].join('\r\n');
+  const ev = parseIcalendarEvents(ics);
+  assert.equal(ev.length, 3);
+  assert.deepEqual([ev[0].summary, ev[0].start, ev[0].end, ev[0].allDay, ev[0].location, ev[0].repeat], ['Dentist, Dr. Lee', '2026-10-12 13:30', '2026-10-12 14:15', false, 'Main St', null]);
+  assert.deepEqual([ev[1].start, ev[1].allDay, ev[1].repeat], ['2026-10-14', true, '+1w']);
+  assert.deepEqual([ev[2].repeat, ev[2].rrule, ev[2].cancelled], [null, 'FREQ=DAILY;COUNT=3', true]);
+});

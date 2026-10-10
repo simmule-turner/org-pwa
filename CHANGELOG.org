@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v477 — Calendar feeds and header lines
+Scripts can add items to the agenda (~org.agenda.source~), read a calendar feed (~org.ics.parse~) and show a line of text above the agenda (~org.ui.line~). With the network and position calls from v475, a script can now bring in a holiday calendar or today's weather without the app knowing about either.
+
 * v476 — Table functions, link types, exports
 Scripts can add their own table-formula functions (~org.tableFunction~), link prefixes such as ~[[weather:nyc]]~ (~org.linkType~), and export formats that appear in the palette (~org.exportBackend~). This lets a script extend the three places where Org is usually extended with Lisp, without giving the script any more reach than before. Link addresses are limited to https, mail, phone and map links.
 
