@@ -21,6 +21,7 @@ import { effectiveContactsConfig, syncContactsToAddressBook } from './contacts-s
 import { chooseAttachmentsFolder } from './attachments-store.js';
 import { addCaptureIconToHomeScreen } from './capture-shortcuts.js';
 import { executeFocusedBlock } from './babel-flow.js';
+import { extensionPaletteEntries } from './extension-flow.js';
 import { showDisplayMeasurements } from './display-info.js';
 import { platform } from './platform.js';
 import { clockCancelHeading, clockContinue, clockGoto, clockGotoRecent, clockInHeading, clockOutHeading, findRunningClockAcrossSessions, recentlyClockedAcrossSessions } from './clock-flow.js';
@@ -538,7 +539,7 @@ export function paletteCommandList() {
     { id: 'display-info', label: 'Show display measurements', group: 'App', keywords: ['status bar', 'inset', 'viewport', 'keyboard', 'screen', 'notch', 'debug'], run: () => showDisplayMeasurements() },
     { id: 'capture-icon', label: 'Add a capture icon to the home screen', group: 'App', keywords: ['shortcut', 'launcher', 'pin', 'capture template'], needs: ['captureShortcuts'], run: () => addCaptureIconToHomeScreen() },
     { id: 'org-pwa-folder', label: 'Choose the org-pwa folder', group: 'App', keywords: ['folder', 'local', 'attachments', 'attach', 'documents', 'data'], needs: ['orgPwaFolder'], run: () => chooseAttachmentsFolder() },
-  ];
+  ].concat(extensionPaletteEntries());
 }
 
 /** Opens the palette. Resolves once it closes. */

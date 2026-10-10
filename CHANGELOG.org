@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v473 — Your own commands
+The init script can now add commands to the palette with ~org.command~, so a repeated chore (tagging, stamping a property, counting open TODOs) becomes one palette entry. A command reads the open file as plain data and answers with edits, which are checked and applied together as a single undo step; a bad edit, a read-only buffer, a file that changed meanwhile or a thrown error changes nothing. Same sandbox, no network.
+
 * v472 — Your own diary functions
 A small JavaScript init script can now add diary functions: ~org.sexp("every-other-friday", fn)~ makes ~%%(every-other-friday ...)~ work in an agenda file, for dates the standard forms cannot express. Paste the script under Settings → Extensions, switch on *Run extension scripts* and approve that exact text. It runs in the same no-network sandbox as ~js~ blocks, stays on this device, cannot replace a standard form, and is stopped if a function hangs.
 

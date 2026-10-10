@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v472';
+const CACHE_NAME = 'org-pwa-shell-v473';
 
 const SHELL_FILES = [
   './',
@@ -8,6 +8,7 @@ const SHELL_FILES = [
   './README.org',
   './src/archive-model.js',
   './src/babel.js',
+  './src/extension-edit.js',
   './src/extensions.js',
   './src/attach.js',
   './src/calendar-grid.js',

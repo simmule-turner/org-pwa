@@ -4049,6 +4049,58 @@ check('extensions: a script adds a diary function; it runs only once approved, a
   await context.close();
 });
 
+check('extensions: a script command appears in the palette, reads the file, changes it as one undo step, and a bad edit or a thrown error changes nothing', async () => {
+  const { context, page, errors } = await freshPage(main);
+  const script = [
+    'org.command("tag-urgent", "Tag as urgent", (ctx) => { if (!ctx.heading) return "Put the cursor on a heading first"; org.edit.setTags(ctx.heading.index, [...ctx.heading.tags, "urgent"]); org.edit.appendBody(ctx.heading.index, "Marked urgent."); });',
+    'org.command("count-todos", "Count TODOs", () => org.document.headings.filter((h) => h.todo === "TODO").length + " open");',
+    'org.command("bad-edit", "Bad edit", () => { org.edit.setTodo(0, "todo"); });',
+    'org.command("boom", "Boom", () => { throw new Error("kaput"); });',
+  ].join('\n');
+  await newDocument(page, ['* TODO One', '* TODO Two', ''].join('\n'));
+  const flow = (fn, ...args) =>
+    page.evaluate(
+      async ([name, a]) => {
+        const f = await import('/src-browser/extension-flow.js');
+        return f[name](...a);
+      },
+      [fn, args]
+    );
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.globalVariables = { ...S.globalVariables, 'org-xx-extensions': 'on' };
+  });
+  await flow('saveExtensionScript', script);
+  await flow('approveExtensionScript');
+  expect((await flow('extensionInfo')).commands.length === 4, 'four commands registered');
+  const runFromPalette = async (label) => {
+    await openPalette(page);
+    await page.keyboard.type(label);
+    await page.keyboard.press('Enter');
+  };
+  await runFromPalette('Count TODOs');
+  await waitForStatus(page, '2 open');
+  await runFromPalette('Tag as urgent');
+  await waitForStatus(page, 'Put the cursor on a heading first');
+  const before = await documentText(page);
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const f = await import('/src-browser/extension-flow.js');
+    await f.runExtensionCommand('tag-urgent', S.state.doc.children[0]);
+  });
+  const after = await documentText(page);
+  expect(/^\* TODO One\s+:urgent:$/m.test(after) && after.includes('Marked urgent.'), `edit applied:\n${after}`);
+  await page.evaluate(async () => (await import('/src-browser/editing.js')).performUndo());
+  expect((await documentText(page)) === before, 'one undo restores everything the command changed');
+  await runFromPalette('Bad edit');
+  await waitForStatus(page, 'not a TODO keyword');
+  await runFromPalette('Boom');
+  await waitForStatus(page, 'kaput');
+  expect((await documentText(page)) === before, 'a bad edit and a thrown error change nothing');
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('drag grip: the handle is on every heading row of a phone-sized touch browser too', async () => {
   const { context, page, errors } = await freshPage(main, { initScript: null });
   await page.setViewportSize({ width: 412, height: 800 });

@@ -1,11 +1,16 @@
 // The init script: load it, answer its diary functions, report how it is doing.
+import { deleteProperty, setProperty } from '../src/archive-model.js';
+import { commitLines } from '../src/body-edit.js';
+import { applyEdits, snapshotDocument, snapshotStillMatches, validateEdits } from '../src/extension-edit.js';
 import { extensionsOn, hashScript, userSexpKey, userSexpResult, visibleVariableMap, usableSexpName } from '../src/extensions.js';
 import { getCalendarLatitude, getCalendarLongitude } from '../src/local-variables.js';
 import { setUserSexps } from '../src/sexp-eval.js';
 import { S } from './app-state.js';
 import { startExtension } from './extension-run.js';
+import { commitAndRender, setStatus } from './editing.js';
 import { render } from './render.js';
 import { kv } from './singletons.js';
+import { applyTodoTransition } from './todo-workflow.js';
 import { getExtensionApproval, getExtensionScript, setExtensionApproval, setExtensionScript } from './settings.js';
 
 const MAX_SCRIPT_CHARS = 64 * 1024;
@@ -13,14 +18,14 @@ const MAX_CACHED = 5000;
 const MAX_LOG = 40;
 
 /** What Settings shows. `state` is one of: off, empty, unapproved, running, failed. */
-const info = { state: 'off', message: '', sexps: [], log: [], script: '', hash: '' };
+const info = { state: 'off', message: '', sexps: [], commands: [], log: [], script: '', hash: '' };
 
 const cache = new Map();
 /** The running script and its queue. Private to this module; the app-wide state stays on S. */
-const run = { pending: new Map(), flushTimer: null, handle: null };
+const run = { pending: new Map(), flushTimer: null, handle: null, commandBusy: false };
 
 export function extensionInfo() {
-  return { ...info, sexps: info.sexps.slice(), log: info.log.slice() };
+  return { ...info, sexps: info.sexps.slice(), commands: info.commands.map((c) => ({ ...c })), log: info.log.slice() };
 }
 
 function note(line) {
@@ -36,6 +41,8 @@ function stop() {
   if (run.handle) run.handle.close();
   run.handle = null;
   info.sexps = [];
+  info.commands = [];
+  run.commandBusy = false;
   setUserSexps();
 }
 
@@ -123,6 +130,7 @@ export async function loadExtensions() {
   run.handle = started;
   info.state = 'running';
   info.sexps = names;
+  info.commands = started.commands || [];
   setUserSexps(names, answer);
   render();
 }
@@ -140,4 +148,84 @@ export async function approveExtensionScript() {
   const script = await getExtensionScript(kv);
   await setExtensionApproval(kv, await hashScript(script));
   await loadExtensions();
+}
+
+/** The script's commands as palette entries. */
+export function extensionPaletteEntries() {
+  return info.commands.map((c) => ({
+    id: 'ext-' + c.id,
+    label: c.label,
+    group: 'Extensions',
+    keywords: ['script', 'extension'],
+    needs: ['doc'],
+    run: (target) => runExtensionCommand(c.id, target),
+  }));
+}
+
+const appendBody = (heading, lines) => commitLines(heading, (heading.bodyLines || []).length, 0, lines);
+
+/** Runs one of the script's commands on the open file. The command sees a read-only snapshot and answers with
+ *  edits; they are checked, then applied together as a single undo step. */
+export async function runExtensionCommand(id, target) {
+  const command = info.commands.find((c) => c.id === id);
+  const active = run.handle;
+  if (!command || !active || !S.state.doc) {
+    setStatus('That script command is not available.');
+    return;
+  }
+  if (run.commandBusy) {
+    setStatus('Another script command is still running.');
+    return;
+  }
+  const documentName = String((S.state.documentId || '').split('/').pop() || '');
+  const snapshot = snapshotDocument(S.state.doc, { name: documentName, focusedHeading: target || S.keyboardFocusedHeading || null });
+  run.commandBusy = true;
+  setStatus(`Running ${command.label}\u2026`);
+  let reply;
+  try {
+    reply = await active.runCommand(id, snapshot);
+  } catch (err) {
+    if (run.handle === active) {
+      info.state = 'failed';
+      info.message = err.message;
+      note(err.message);
+      stop();
+    }
+    setStatus(err.message);
+    render();
+    return;
+  } finally {
+    if (run.handle === active) run.commandBusy = false;
+  }
+  for (const line of reply.logs || []) note(line);
+  if (reply.error) {
+    note(`${command.label}: ${reply.error}`);
+    setStatus(`${command.label} failed: ${reply.error}`);
+    return;
+  }
+  const edits = reply.edits || [];
+  if (edits.length) {
+    const problem = validateEdits(edits, snapshot.headings.length);
+    if (problem) {
+      setStatus(`${command.label}: ${problem}. Nothing was changed.`);
+      return;
+    }
+    if (S.isBufferReadOnly) {
+      setStatus(`${command.label}: the buffer is read-only, so nothing was changed.`);
+      return;
+    }
+    if (!snapshotStillMatches(S.state.doc, snapshot)) {
+      setStatus(`${command.label}: the document changed while it ran, so nothing was changed.`);
+      return;
+    }
+    applyEdits(S.state.doc, edits, {
+      setTodo: (heading, todo) => applyTodoTransition(heading, () => { heading.todo = todo; }),
+      setProperty,
+      deleteProperty,
+      appendBody,
+    });
+    commitAndRender(`Script: ${command.label}`);
+  }
+  const say = reply.message || (reply.notices || []).join(' \u00b7 ') || (edits.length ? `${command.label}: ${edits.length} ${edits.length === 1 ? 'change' : 'changes'}.` : `${command.label}: done.`);
+  setStatus(say);
 }

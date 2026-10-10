@@ -732,7 +732,16 @@ org.sexp("every-other-friday", (ctx, start) => {
 %%(every-other-friday "2026-01-02") Pay day
 #+END_SRC
 
-A name is letters, digits and dashes, and cannot be a standard form such as ~diary-float~. The script runs in the same sandbox as ~js~ blocks (no network), and a function that takes longer than 3 seconds stops the script. Emacs does not know your function, so a file that uses it needs the same function defined in Emacs Lisp to work there. Not built: commands, hooks and the rest of the planned API.
+~org.command(id, label, fn)~: adds *label* to the command palette. ~fn(ctx)~ gets ~ctx.heading~, the heading the command was run on (or null), and can read the whole file through ~org.document~: its ~name~ and its ~headings~, each with ~index~, ~level~, ~title~, ~todo~, ~priority~, ~tags~, ~properties~, ~scheduled~, ~deadline~, ~closed~, ~body~ and ~path~. It changes the file with ~org.edit~: ~setTitle~, ~setTodo~, ~setTags~, ~setProperty~, ~deleteProperty~ and ~appendBody~, each taking a heading's ~index~. The edits are checked, then applied together as one undo step; none is applied if one is invalid, the buffer is read-only or the file changed while the command ran. ~org.notify(text)~, or a string returned from ~fn~, shows a message in the status line.
+
+#+BEGIN_SRC
+org.command("tag-urgent", "Tag as urgent", (ctx) => {
+  if (!ctx.heading) return "Put the cursor on a heading first";
+  org.edit.setTags(ctx.heading.index, [...ctx.heading.tags, "urgent"]);
+});
+#+END_SRC
+
+A name is letters, digits and dashes, and ~org.sexp~ cannot take a standard form such as ~diary-float~. The script runs in the same sandbox as ~js~ blocks (no network). A diary function that takes longer than 3 seconds, or a command longer than 5, stops the script. Emacs does not know your functions, so a file that uses one needs the same function defined in Emacs Lisp to work there. Not built: hooks and the rest of the planned API.
 
 -----
 
