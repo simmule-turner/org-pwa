@@ -15,6 +15,7 @@ import { confirmDialog, openHeadingTextEditor } from './dialogs.js';
 import { contactPhotoValueForHeading, stripCommaEscapeApp } from './doc-helpers.js';
 import { sidePanelDividerEl, sidePanelEl, splitRowEl } from './dom.js';
 import { commitAndRender, openListItemEditor, openParagraphEditor, renderHistoryPanel, setStatus, startEditingTitle } from './editing.js';
+import { attachHeadingGrip } from './heading-drag.js';
 import { openGeneralEditor } from './general-editor.js';
 import { attachSlideLeftToFold, attachSlideRightToComplete, confirmListItemDelete, confirmParagraphDelete, confirmTableDelete, deleteHeadingWithConfirmation, narrowToHeading, widen } from './gestures-structure.js';
 import { cyclePriorityFor, openEffortEditor } from './heading-commands.js';
@@ -81,6 +82,8 @@ export function renderRow(row, todoSequence) {
     applyKeyboardFocusHighlight(el, row);
     attachSlideLeftToFold(el, row.node);
     attachSlideRightToComplete(el, row.node);
+
+    el.appendChild(attachHeadingGrip(el, row));
 
     const fold = document.createElement('button');
     fold.className = 'fold-btn';

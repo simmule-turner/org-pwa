@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v464 — Drag and drop for headings
+Each heading row has a grip. Drag it to move the heading with its subtree: before or after another heading, or into it as a child, with a line showing where it lands and a sideways drag to climb a level. It is the pointer version of the move, promote and demote keys, which are unchanged. Escape cancels.
+
 * v463 — Folder panel saves several files; Export copy removed
 The Folder panel can save the selected files, so the separate Export copy entry in the Attach menu (not an org-attach key) is gone; the panel's ~S~ and Save selected do the same.
 

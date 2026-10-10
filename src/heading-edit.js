@@ -241,6 +241,66 @@ export function moveHeadingDown(doc, heading) {
   return true;
 }
 
+/** True if `node` is `heading` or lies anywhere inside its subtree. */
+function inSubtree(heading, node) {
+  if (heading === node) return true;
+  return (heading.children || []).some((child) => inSubtree(child, node));
+}
+
+/** How many ancestors of `target` a drop "after target" may climb past: one for each level at which target (then that
+ *  ancestor) is the last child, since landing after an ancestor is only the natural reading when nothing follows. */
+export function dropClimbLimit(doc, target) {
+  let climbs = 0;
+  let current = target;
+  for (;;) {
+    const located = findContainer(doc, current);
+    if (!located || located.index !== located.container.length - 1) break;
+    const path = findAncestorPath(doc, current);
+    if (!path || path.length === 0) break;
+    current = path[path.length - 1];
+    climbs += 1;
+  }
+  return climbs;
+}
+
+/**
+ * Drag and drop: moves `heading` (with its whole subtree) next to or into `target`. `position` is 'before' or 'after'
+ * (a sibling of target, at its level), 'firstChild' or 'lastChild' (inside it). For 'after', `climb` steps up that many
+ * ancestors first (see dropClimbLimit), landing after the ancestor instead. Returns false and changes nothing when the drop
+ * is into the heading's own subtree, names a heading not in the document, or would leave it exactly where it is.
+ */
+export function moveHeadingTo(doc, heading, target, position, climb = 0) {
+  if (!heading || !target || inSubtree(heading, target)) return false;
+  const origin = findContainer(doc, heading);
+  if (!origin || !findContainer(doc, target)) return false;
+  let anchor = target;
+  if (position === 'after') {
+    if (climb > dropClimbLimit(doc, target)) return false;
+    for (let i = 0; i < climb; i += 1) {
+      const path = findAncestorPath(doc, anchor);
+      anchor = path[path.length - 1];
+    }
+    if (inSubtree(heading, anchor)) return false;
+  }
+  const originParent = findAncestorPath(doc, heading).slice(-1)[0] || null;
+  const originIndex = origin.index;
+  origin.container.splice(origin.index, 1);
+  const place = findContainer(doc, anchor);
+  if (position === 'firstChild' || position === 'lastChild') {
+    if (position === 'firstChild') anchor.children.unshift(heading);
+    else anchor.children.push(heading);
+    anchor.collapsed = false; // otherwise the moved heading vanishes from view the instant it lands
+    shiftLevels(heading, anchor.level + 1);
+  } else {
+    place.container.splice(position === 'after' ? place.index + 1 : place.index, 0, heading);
+    shiftLevels(heading, anchor.level);
+  }
+  const now = findContainer(doc, heading);
+  const nowParent = findAncestorPath(doc, heading).slice(-1)[0] || null;
+  if (nowParent === originParent && now.index === originIndex) return false; // dropped where it already was
+  return true;
+}
+
 /**
  * Promotes heading (and its whole subtree) up one level: it becomes a
  * sibling of its current parent, inserted immediately after it. No-op
