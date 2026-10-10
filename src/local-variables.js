@@ -434,6 +434,17 @@ export function getGodModeButton(vars) {
   return parseLispBoolean((vars || {})['org-xx-god-mode-button'], true);
 }
 
+const DRAG_HANDLE_SIDES = new Set(['right', 'left', 'off']);
+
+/** org-xx-drag-handle: where the drag grip sits on a heading row -- "right" (the default), "left", or "off" for none. This
+ *  app's own variable (the org-xx- convention). Anything else, or nothing set, is the default. */
+export function getDragHandle(vars) {
+  const raw = (vars || {})['org-xx-drag-handle'];
+  const trimmed = raw ? String(raw).trim().toLowerCase() : '';
+  if (trimmed === 'nil') return 'off';
+  return DRAG_HANDLE_SIDES.has(trimmed) ? trimmed : 'right';
+}
+
 /** org-contacts-birthday-property: which property key holds a
  *  heading's birthday/anniversary date+description (see agenda.js's
  *  org-contacts-anniversaries support). Default "BIRTHDAY", matching

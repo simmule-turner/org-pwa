@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v466 — Drag handle on the right
+The drag grip now sits at the right edge of each heading row, so it stays in one column at every depth and the left side of the outline is as it was. A Quick Settings choice moves it to the left or turns it off.
+
 * v465 — Drag and drop snaps to levels
 Dragging a heading now jumps between the gaps between headings, and sideways movement steps through the levels that fit, one indent per step, with a tag naming the result. Moving a heading back out to the same level, which took fiddling before, is one step.
 

@@ -43,7 +43,7 @@ function scrollParent(el) {
 }
 
 /** Builds the grip for a heading row and registers the row as a drop target. */
-export function attachHeadingGrip(rowEl, row) {
+export function attachHeadingGrip(rowEl, row, side = 'right') {
   rowInfo.set(rowEl, { node: row.node, row });
   const grip = document.createElement('button');
   grip.type = 'button';
@@ -52,6 +52,7 @@ export function attachHeadingGrip(rowEl, row) {
   grip.innerHTML = GRIP_SVG;
   grip.style.cssText =
     'flex:none;width:20px;align-self:stretch;min-height:24px;padding:0;border:0;background:transparent;color:var(--fg);opacity:0.4;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;';
+  if (side === 'right') grip.style.margin = '0 2px 0 4px'; // clear of the screen edge, where a system back gesture starts
   grip.addEventListener('pointerdown', (e) => beginDrag(e, grip, rowEl, row.node));
   return grip;
 }

@@ -5,7 +5,7 @@ import { deleteListItem, deleteParagraph, deleteTable, deleteTableColumn, delete
 import { updateCheckboxCookiesUpward } from '../src/checkbox-cookie.js';
 import { demoteHeading, insertChildHeading, moveHeadingDown, moveHeadingUp, promoteHeading } from '../src/heading-edit.js';
 import { extractLatexFragments, parseInline, stripLineBreakMarker } from '../src/inline-markup.js';
-import { parseLispBoolean } from '../src/local-variables.js';
+import { getDragHandle, parseLispBoolean } from '../src/local-variables.js';
 import { parseLogbookEntries } from '../src/logbook.js';
 import { cycleHeadingTodo, cycleItemCheckbox, toggleFold } from '../src/outline-view-model.js';
 import { S } from './app-state.js';
@@ -83,7 +83,8 @@ export function renderRow(row, todoSequence) {
     attachSlideLeftToFold(el, row.node);
     attachSlideRightToComplete(el, row.node);
 
-    el.appendChild(attachHeadingGrip(el, row));
+    const dragHandle = getDragHandle(S.state.localVariables || S.globalVariables);
+    if (dragHandle === 'left') el.appendChild(attachHeadingGrip(el, row, 'left'));
 
     const fold = document.createElement('button');
     fold.className = 'fold-btn';
@@ -147,6 +148,7 @@ export function renderRow(row, todoSequence) {
         t.textContent = tag;
         el.appendChild(t);
       }
+      if (dragHandle === 'right') el.appendChild(attachHeadingGrip(el, row, 'right'));
 
       if (S.actionMenuFor === row.node) {
         menuEl = renderActionMenu(
