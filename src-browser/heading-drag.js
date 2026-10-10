@@ -1,12 +1,14 @@
-// Drag and drop for headings: a grip at the left of each heading row. Dragging it lifts the heading with its subtree; a blue
-// line (or a highlighted row) shows where it will land. The result is the same as the move keys: a sibling before or after the
-// target, or a child of it. Over the top quarter of a row = before it; bottom quarter = after it (or its first child when it
-// is open); middle = its last child. On an "after" line, dragging left climbs out a level where nothing follows.
+// Drag and drop for headings: a grip at the left of each heading row. Dragging it lifts the heading with its subtree. It lands in
+// a GAP between two visible headings (the line snaps to the gap nearest the finger, never between them), and sideways movement
+// steps through the levels that fit there, one indent per step: the line's left edge jumps with each, and a tag says what the
+// result is ("into Alpha", "after Alpha", "top level"). The result is the same as the move keys: a sibling or a child.
+import { findAncestorPath } from '../src/archive-model.js';
 import { dropClimbLimit, moveHeadingTo } from '../src/heading-edit.js';
 import { S } from './app-state.js';
 import { commitAndRender } from './editing.js';
 
-const INDENT_PX = 16;
+const INDENT_PX = 16; // the indent the app draws per level
+const STEP_PX = 28; // how far sideways the finger moves per level -- wider than the drawn indent, so a step is easy to hit
 const EDGE_PX = 56;
 const LINE_COLOR = '#1f6feb';
 const rowInfo = new WeakMap(); // heading row element -> { node, row }
@@ -22,20 +24,22 @@ function countDescendants(node) {
   return (node.children || []).reduce((n, child) => n + 1 + countDescendants(child), 0);
 }
 
+/** The heading `climb` levels above `node` (node itself for 0). */
+function ancestorAt(doc, node, climb) {
+  let current = node;
+  for (let i = 0; i < climb; i += 1) {
+    const path = findAncestorPath(doc, current);
+    current = path[path.length - 1];
+  }
+  return current;
+}
+
 function scrollParent(el) {
   for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
     const overflowY = getComputedStyle(p).overflowY;
     if ((overflowY === 'auto' || overflowY === 'scroll') && p.scrollHeight > p.clientHeight) return p;
   }
   return document.scrollingElement || document.documentElement;
-}
-
-/** The heading row under a point: a heading row itself, or the heading a body row belongs to (reached by walking back up the list). */
-function headingRowAt(x, y) {
-  let el = document.elementFromPoint(x, y);
-  el = el && el.closest('.row');
-  while (el && !rowInfo.has(el)) el = el.previousElementSibling;
-  return el;
 }
 
 /** Builds the grip for a heading row and registers the row as a drop target. */
@@ -62,7 +66,7 @@ function beginDrag(e, grip, rowEl, node) {
   let started = false;
   let ghost = null;
   let line = null;
-  let highlighted = null;
+  let tagEl = null;
   let drop = null; // { target, position, climb }
   let last = { x: startX, y: startY };
   let scrollTimer = 0;
@@ -75,12 +79,7 @@ function beginDrag(e, grip, rowEl, node) {
 
   function clearIndicator() {
     if (line) line.style.display = 'none';
-    if (highlighted) {
-      highlighted.style.outline = '';
-      highlighted.style.outlineOffset = '';
-      highlighted.style.background = '';
-      highlighted = null;
-    }
+    if (tagEl) tagEl.style.display = 'none';
   }
 
   function start() {
@@ -97,42 +96,72 @@ function beginDrag(e, grip, rowEl, node) {
     scrollTimer = requestAnimationFrame(scrollTick);
   }
 
+  function tag() {
+    if (!tagEl) {
+      tagEl = document.createElement('div');
+      tagEl.style.cssText = `position:fixed;z-index:10000;pointer-events:none;padding:2px 8px;border-radius:10px;background:${LINE_COLOR};color:#fff;font-size:12px;font-weight:600;max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
+      document.body.appendChild(tagEl);
+    }
+    return tagEl;
+  }
+
   function update() {
     if (!started) return;
     ghost.style.left = last.x + 12 + 'px';
     ghost.style.top = last.y - 18 + 'px';
     clearIndicator();
     drop = null;
-    const el = headingRowAt(last.x, last.y);
-    const info = el && rowInfo.get(el);
-    if (!info || inSubtree(node, info.node)) return; // not on a heading, or into itself: no landing here
-    const rect = el.getBoundingClientRect();
-    const rel = (last.y - rect.top) / Math.max(1, rect.height);
-    const openChildren = info.row.hasChildren && !info.node.collapsed;
-    const baseLeft = rect.left + 8 + info.row.depth * INDENT_PX;
-    let position;
-    let climb = 0;
-    if (!el.classList.contains('row') || rel < 0.25) position = 'before';
-    else if (rel > 0.75) position = openChildren ? 'firstChild' : 'after';
-    else position = 'lastChild';
-    if (position === 'after') {
-      const limit = dropClimbLimit(S.state.doc, info.node);
-      climb = Math.max(0, Math.min(limit, Math.round((baseLeft - last.x) / INDENT_PX)));
+    // The visible heading rows, in order, without the dragged subtree.
+    const rows = Array.from(document.querySelectorAll('.row'))
+      .filter((el) => rowInfo.has(el) && !inSubtree(node, rowInfo.get(el).node))
+      .map((el) => ({ el, info: rowInfo.get(el), rect: el.getBoundingClientRect() }));
+    if (rows.length === 0) return;
+    let gap = rows.findIndex((r) => last.y < r.rect.top + r.rect.height / 2); // the first row whose middle is below the finger
+    if (gap === -1) gap = rows.length;
+    const prev = gap > 0 ? rows[gap - 1] : null;
+    const next = gap < rows.length ? rows[gap] : null;
+
+    // The levels that fit in this gap, outermost first: from the next row's level out to one inside the previous row.
+    const options = [];
+    if (!prev) {
+      options.push({ level: next.info.node.level, depth: next.info.row.depth, position: 'before', target: next.info.node, climb: 0 });
+    } else {
+      const minLevel = next ? Math.min(next.info.node.level, prev.info.node.level + 1) : 1;
+      for (let level = minLevel; level <= prev.info.node.level + 1; level += 1) {
+        const depth = prev.info.row.depth + (level - prev.info.node.level);
+        if (level === prev.info.node.level + 1) {
+          const open = prev.info.row.hasChildren && !prev.info.node.collapsed;
+          options.push({ level, depth, position: open ? 'firstChild' : 'lastChild', target: prev.info.node, climb: 0 });
+        } else {
+          const climb = prev.info.node.level - level;
+          if (climb <= dropClimbLimit(S.state.doc, prev.info.node, node)) options.push({ level, depth, position: 'after', target: prev.info.node, climb });
+        }
+      }
     }
-    drop = { target: info.node, position, climb };
-    if (position === 'lastChild') {
-      el.style.outline = `2px solid ${LINE_COLOR}`;
-      el.style.outlineOffset = '-2px';
-      el.style.background = 'rgba(31,111,235,0.12)';
-      highlighted = el;
-      return;
-    }
-    const indent = position === 'firstChild' ? info.row.depth + 1 : info.row.depth - climb;
-    const left = rect.left + 8 + Math.max(0, indent) * INDENT_PX;
-    line.style.left = left + 'px';
-    line.style.width = Math.max(24, rect.right - left) + 'px';
-    line.style.top = (position === 'before' ? rect.top : rect.bottom) - 1 + 'px';
+    if (options.length === 0) return;
+    const anchor = (prev || next).rect.left + 8;
+    const xOf = (o) => anchor + o.depth * STEP_PX;
+    let best = options[0];
+    for (const o of options) if (Math.abs(last.x - xOf(o)) < Math.abs(last.x - xOf(best))) best = o;
+    drop = best;
+
+    const lineLeft = anchor + best.depth * INDENT_PX;
+    const lineTop = (next ? next.rect.top : prev.el.parentElement.lastElementChild.getBoundingClientRect().bottom) - 1;
+    line.style.left = lineLeft + 'px';
+    line.style.width = Math.max(40, (next || prev).rect.right - lineLeft - 8) + 'px';
+    line.style.top = lineTop + 'px';
     line.style.display = 'block';
+    const name = (n) => n.title || '(untitled)';
+    let says;
+    if (best.position === 'before') says = best.depth === 0 ? 'top level' : `before ${name(best.target)}`;
+    else if (best.position === 'after') {
+      says = best.level === 1 ? 'top level' : `same level as ${name(ancestorAt(S.state.doc, best.target, best.climb))}`;
+    } else says = `into ${name(best.target)}`;
+    const t = tag();
+    t.textContent = says;
+    t.style.display = 'block';
+    t.style.left = lineLeft + 'px';
+    t.style.top = lineTop - 22 + 'px';
   }
 
   function scrollTick() {
@@ -152,6 +181,7 @@ function beginDrag(e, grip, rowEl, node) {
     clearIndicator();
     if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
     if (line && line.parentNode) line.parentNode.removeChild(line);
+    if (tagEl && tagEl.parentNode) tagEl.parentNode.removeChild(tagEl);
     rowEl.style.opacity = '';
     grip.removeEventListener('pointermove', onMove);
     grip.removeEventListener('pointerup', onUp);

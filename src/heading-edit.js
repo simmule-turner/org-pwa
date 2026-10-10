@@ -249,12 +249,14 @@ function inSubtree(heading, node) {
 
 /** How many ancestors of `target` a drop "after target" may climb past: one for each level at which target (then that
  *  ancestor) is the last child, since landing after an ancestor is only the natural reading when nothing follows. */
-export function dropClimbLimit(doc, target) {
+export function dropClimbLimit(doc, target, ignore = null) {
   let climbs = 0;
   let current = target;
   for (;;) {
     const located = findContainer(doc, current);
-    if (!located || located.index !== located.container.length - 1) break;
+    if (!located) break;
+    const following = located.container.slice(located.index + 1).filter((node) => node !== ignore); // the heading being moved will not be there
+    if (following.length) break;
     const path = findAncestorPath(doc, current);
     if (!path || path.length === 0) break;
     current = path[path.length - 1];
@@ -275,7 +277,7 @@ export function moveHeadingTo(doc, heading, target, position, climb = 0) {
   if (!origin || !findContainer(doc, target)) return false;
   let anchor = target;
   if (position === 'after') {
-    if (climb > dropClimbLimit(doc, target)) return false;
+    if (climb > dropClimbLimit(doc, target, heading)) return false;
     for (let i = 0; i < climb; i += 1) {
       const path = findAncestorPath(doc, anchor);
       anchor = path[path.length - 1];

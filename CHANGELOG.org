@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v465 — Drag and drop snaps to levels
+Dragging a heading now jumps between the gaps between headings, and sideways movement steps through the levels that fit, one indent per step, with a tag naming the result. Moving a heading back out to the same level, which took fiddling before, is one step.
+
 * v464 — Drag and drop for headings
 Each heading row has a grip. Drag it to move the heading with its subtree: before or after another heading, or into it as a child, with a line showing where it lands and a sideways drag to climb a level. It is the pointer version of the move, promote and demote keys, which are unchanged. Escape cancels.
 
