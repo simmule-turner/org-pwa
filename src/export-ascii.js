@@ -35,8 +35,53 @@
  */
 
 import { parseInline, stripLineBreakMarker } from './inline-markup.js';
+import { parseOrg } from './org-parser.js';
+import { removeIndentation } from './babel-blocks.js';
+import { ENTITIES } from './entities.js';
 import { parseWidthCookieRow } from './table-cookies.js';
 import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
+
+// ---- character sets (org-ascii-charset) -----------------------------------
+
+/** What ox-ascii draws with, per `org-ascii-charset`: heading underlines, bullets, checkboxes, the frame around
+ *  example and source blocks, and the horizontal rule. Latin-1 differs from ASCII only in the entity column used. */
+const ASCII_LOOK = { underline: ['=', '~', '-'], bullet: '-', checkbox: { X: '[X] ', ' ': '[ ] ', '-': '[-] ' }, rule: '-', box: [',----', '| ', '`----'] };
+const CHARSETS = {
+  ascii: { column: 0, ...ASCII_LOOK },
+  latin1: { column: 1, ...ASCII_LOOK },
+  'utf-8': {
+    column: 2,
+    underline: ['\u2550', '\u2500', '\u254c'],
+    bullet: '\u2022',
+    checkbox: { X: '\u2611 ', ' ': '\u2610 ', '-': '\u2612 ' },
+    rule: '\u2015',
+    box: ['\u250c\u2500\u2500\u2500\u2500', '\u2502 ', '\u2514\u2500\u2500\u2500\u2500'],
+  },
+};
+let charsetAscii = CHARSETS.ascii;
+
+/** `ascii`, `latin1` or `utf-8` (also `utf8`, `iso-8859-1`; case and a leading quote ignored); anything else is ASCII. */
+export function normalizeAsciiCharset(value) {
+  const v = String(value == null ? '' : value).trim().replace(/^'/, '').toLowerCase();
+  if (v === 'utf-8' || v === 'utf8') return 'utf-8';
+  if (v === 'latin1' || v === 'latin-1' || v === 'iso-8859-1') return 'latin1';
+  return 'ascii';
+}
+
+const ENTITY_RE = /\\(there4|sup[123]|frac[13][24]|[a-zA-Z]+)(\{\}|(?![A-Za-z]))/g;
+
+/** Entities (`\alpha`, `\rarr{}`) become the character set's own spelling; in UTF-8 `---`, `--` and `...` become the
+ *  dash and ellipsis characters, as ox-ascii's special strings do. Code and verbatim text never reaches here. */
+function substituteCharacters(text) {
+  let t = text.replace(ENTITY_RE, (whole, name) => {
+    const entry = ENTITIES[name];
+    return entry ? entry[charsetAscii.column] : whole;
+  });
+  if (charsetAscii.column === 2) {
+    t = t.replace(/(^|[^-])---(?=[^-]|$)/g, '$1\u2014').replace(/(^|[^-])--(?=[^-]|$)/g, '$1\u2013').replace(/\.\.\./g, '\u2026');
+  }
+  return t;
+}
 
 const LINK_RE = /\[\[([^\]]+)\](?:\[([^\]]+)\])?\]/g;
 
@@ -56,7 +101,8 @@ function stripLinksForAscii(text) {
  *  wrapped lines; an empty/whitespace-only input returns an empty
  *  array, not a single blank-line entry. */
 function wrapText(text, width) {
-  const words = text.trim().split(/\s+/).filter(Boolean);
+  // Split on plain whitespace only: a no-break space (`\nbsp`) belongs to its word, as in Emacs's fill.
+  const words = text.split(/[ \t\r\n]+/).filter(Boolean);
   if (words.length === 0) return [];
   const lines = [];
   let current = '';
@@ -91,7 +137,7 @@ function renderInlineListAscii(nodes) {
 function renderInlineNodeAscii(node) {
   switch (node.type) {
     case 'text':
-      return node.value;
+      return substituteCharacters(node.value);
     case 'bold':
     case 'italic':
     case 'underline':
@@ -174,7 +220,7 @@ function renderHeadingLineAscii(heading, level) {
     // for the top level -- a row of "=" matching the title's own
     // width makes a level-1 heading genuinely stand out in a format
     // with no other way to indicate emphasis of structure itself.
-    return [line, '='.repeat(line.length)];
+    return [line, charsetAscii.underline[0].repeat(line.length)];
   }
   return [line];
 }
@@ -208,14 +254,13 @@ function renderListAscii(list, indent, width) {
   let counter = 0;
   for (const item of list.items) {
     let marker;
-    if (item.checkbox !== null) {
-      marker = item.checkbox === 'X' ? '[x] ' : item.checkbox === '-' ? '[-] ' : '[ ] ';
-    } else if (item.ordered) {
+    if (item.ordered) {
       counter = item.startValue != null ? item.startValue : counter + 1;
       marker = `${counter}. `;
     } else {
-      marker = '- ';
+      marker = charsetAscii.bullet + ' ';
     }
+    if (item.checkbox !== null) marker += charsetAscii.checkbox[item.checkbox === 'X' || item.checkbox === 'x' ? 'X' : item.checkbox === '-' ? '-' : ' '];
     const prefix = indent + marker;
     let text = renderTextAscii(item.text || '');
     if (item.tag) text = `${renderTextAscii(item.tag)}: ${text}`;
@@ -394,22 +439,109 @@ function stripCommaEscape(line) {
   return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
 }
 
-function renderBlockAscii(block, indent) {
-  if (block.name === 'EXPORT') {
-    if ((block.params || '').trim().toLowerCase() !== 'ascii') return [];
-    return block.lines.map((line) => indent + line);
+/** The frame ox-ascii draws around example blocks, source blocks and fixed-width lines. */
+function boxLines(lines, indent) {
+  const [top, side, bottom] = charsetAscii.box;
+  return [indent + top, ...lines.map((line) => indent + side + line), indent + bottom];
+}
+
+/** The nodes of a block's lines (comma escapes undone), for the block kinds whose content is Org text. */
+function parseBlockContent(lines) {
+  const doc = parseOrg('* x\n' + lines.map(stripCommaEscape).join('\n'));
+  return doc.children[0].body || [];
+}
+
+/** Nodes rendered one after another with a blank line between, as a section's body is. */
+function renderNodesAscii(nodes, indent, width) {
+  const out = [];
+  for (const node of nodes) {
+    const rendered = renderBodyNodeAscii(node, indent, width);
+    if (!rendered.length) continue;
+    if (out.length) out.push('');
+    out.push(...rendered);
   }
-  const out = [`${indent}[${block.name}]`];
-  for (const line of block.lines) out.push(indent + stripCommaEscape(line));
+  return out;
+}
+
+/** ox-ascii centres each line of a centre block on the text width (less the base margin), but never left of the
+ *  margin. Emacs pads with tabs; spaces are used here so the file reads the same everywhere. */
+function centerLines(lines, indent, width) {
+  return lines.map((line) => {
+    const text = line.slice(indent.length);
+    if (!text) return line;
+    const column = Math.max(indent.length, Math.floor((width - indent.length - text.length) / 2));
+    return ' '.repeat(column) + text;
+  });
+}
+
+const QUOTE_MARGIN = 6;
+
+function renderBlockAscii(block, indent, width) {
+  const name = (block.name || '').toUpperCase();
+  switch (name) {
+    case 'EXPORT':
+      if ((block.params || '').trim().toLowerCase() !== 'ascii') return [];
+      return block.lines.map((line) => indent + line);
+    case 'COMMENT':
+      return [];
+    case 'EXAMPLE':
+    case 'SRC':
+      return boxLines(removeIndentation(block.lines.map(stripCommaEscape)), indent);
+    case 'VERSE': {
+      // Line breaks and spacing are the poet's own: no filling, set in from the margin like a quotation.
+      const pad = indent + ' '.repeat(QUOTE_MARGIN);
+      return removeIndentation(block.lines.map(stripCommaEscape)).map((line) => (line.trim() ? pad + renderTextAscii(line) : ''));
+    }
+    case 'QUOTE':
+      return renderNodesAscii(parseBlockContent(block.lines), indent + ' '.repeat(QUOTE_MARGIN), width - QUOTE_MARGIN);
+    case 'CENTER': {
+      const out = [];
+      for (const node of parseBlockContent(block.lines)) {
+        const rendered = renderBodyNodeAscii(node, indent, width);
+        if (!rendered.length) continue;
+        if (out.length) out.push('');
+        out.push(...(node.type === 'paragraph' ? centerLines(rendered, indent, width) : rendered));
+      }
+      return out;
+    }
+    default:
+      // JUSTIFYLEFT, JUSTIFYRIGHT and any other special block: Emacs sets their content like ordinary text.
+      return renderNodesAscii(parseBlockContent(block.lines), indent, width);
+  }
+}
+
+/** A paragraph's lines in runs: affiliated keywords (`#+ATTR_ASCII:`, `#+NAME:`, ...) are consumed, `: ` lines are
+ *  fixed-width text drawn in a frame, the rest is prose. `:width` on `#+ATTR_ASCII` changes nothing in Emacs's
+ *  output for any element, so it is read and ignored. */
+function renderParagraphRuns(node, indent, width) {
+  const AFFILIATED = /^\s*#\+(NAME|CAPTION|HEADERS?|ATTR_[A-Za-z0-9_-]+)\s*:/i;
+  const FIXED = /^\s*:(?: |$)/;
+  const runs = [];
+  for (const line of node.lines) {
+    if (AFFILIATED.test(line)) continue;
+    const kind = FIXED.test(line) ? 'fixed' : 'prose';
+    const last = runs[runs.length - 1];
+    if (last && last.kind === kind) last.lines.push(line);
+    else runs.push({ kind, lines: [line] });
+  }
+  const out = [];
+  for (const run of runs) {
+    const rendered = run.kind === 'fixed'
+      ? boxLines(removeIndentation(run.lines.map((l) => l.replace(/^\s*: ?/, ''))), indent)
+      : renderParagraphAscii({ ...node, lines: run.lines }, indent, width);
+    if (!rendered.length) continue;
+    if (out.length) out.push('');
+    out.push(...rendered);
+  }
   return out;
 }
 
 function renderBodyNodeAscii(node, indent, width) {
-  if (node.type === 'paragraph') return renderParagraphAscii(node, indent, width);
+  if (node.type === 'paragraph') return renderParagraphRuns(node, indent, width);
   if (node.type === 'list') return renderListAscii(node, indent, width);
   if (node.type === 'table') return renderTableAscii(node, indent);
-  if (node.type === 'block') return renderBlockAscii(node, indent);
-  if (node.type === 'hr') return [indent + '-'.repeat(Math.max(1, width - indent.length))];
+  if (node.type === 'block') return renderBlockAscii(node, indent, width);
+  if (node.type === 'hr') return [indent + charsetAscii.rule.repeat(Math.max(1, width - indent.length))];
   return [];
 }
 
@@ -418,10 +550,8 @@ function renderHeadingAscii(heading, levelOffset, width, out) {
   out.push(...renderHeadingLineAscii(heading, level));
   const bodyIndent = '  '.repeat(Math.max(0, level));
   out.push(...renderPlanningAscii(heading.planning, bodyIndent));
-  for (const node of heading.body || []) {
-    const rendered = renderBodyNodeAscii(node, bodyIndent, width);
-    if (rendered.length) out.push('', ...rendered);
-  }
+  const body = renderNodesAscii(heading.body || [], bodyIndent, width);
+  if (body.length) out.push('', ...body);
   for (const child of heading.children || []) {
     out.push('');
     renderHeadingAscii(child, levelOffset, width, out);
@@ -459,7 +589,7 @@ function renderToc(headings, toc, numberingEnabled) {
   const visible = entries.filter((e) => e.level <= maxDepth);
   if (visible.length < 2) return []; // a single visible heading has nothing worth a table of contents for
   const title = 'Table of Contents';
-  const out = [title, '='.repeat(title.length), ''];
+  const out = [title, charsetAscii.underline[0].repeat(title.length), ''];
   for (const { heading, level, number } of visible) {
     const dots = level > 1 ? '.'.repeat((level - 1) * 3 - 1) + ' ' : '';
     const numberPart = numberingEnabled ? number + '. ' : '';
@@ -480,7 +610,8 @@ function renderToc(headings, toc, numberingEnabled) {
  * headings get section numbers and a Table of Contents is generated
  * at all -- real org's own #+OPTIONS: num:nil turns this off.
  */
-export function exportToAscii(doc, scope = null, textWidth = 72) {
+export function exportToAscii(doc, scope = null, textWidth = 72, { charset = 'ascii' } = {}) {
+  charsetAscii = CHARSETS[normalizeAsciiCharset(charset)];
   footnoteDefinitionsAscii = [];
   anonymousFootnoteCounterAscii = 0;
   sectionNumbersAscii = [];
@@ -494,7 +625,7 @@ export function exportToAscii(doc, scope = null, textWidth = 72) {
   if (!scope) {
     const title = getDocTitle(doc);
     if (title) {
-      out.push(title.toUpperCase(), '='.repeat(title.length));
+      out.push(title.toUpperCase(), charsetAscii.underline[0].repeat(title.length));
       const author = options.author ? getDocAuthor(doc) : null;
       if (author) out.push(author);
       const date = options.date ? getDocDate(doc) : null;
@@ -520,7 +651,7 @@ export function exportToAscii(doc, scope = null, textWidth = 72) {
 
   if (footnoteDefinitionsAscii.length > 0) {
     const seenLabels = new Set();
-    out.push('', 'Footnotes', '='.repeat('Footnotes'.length), '');
+    out.push('', 'Footnotes', charsetAscii.underline[0].repeat('Footnotes'.length), '');
     for (const { label, text } of footnoteDefinitionsAscii) {
       if (seenLabels.has(label)) continue; // the same real label can legitimately be referenced more than once, but only needs one definition line
       seenLabels.add(label);

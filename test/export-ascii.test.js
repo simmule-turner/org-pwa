@@ -176,12 +176,12 @@ test('an unordered list item wraps with continuation lines aligned under the mar
   assert.equal(continuationLine.length - continuationLine.trimStart().length, markerIndent + 2); // aligned under the text after "- "
 });
 
-test('a checkbox item shows [x]/[ ]/[-] instead of a plain bullet', () => {
+test('a checkbox item keeps its bullet and shows [X]/[ ]/[-], as ox-ascii does', () => {
   const doc = parseOrg('* H\n- [X] done\n- [ ] not done\n- [-] partial\n');
   const result = exportToAscii(doc);
-  assert.ok(result.includes('[x] done'));
-  assert.ok(result.includes('[ ] not done'));
-  assert.ok(result.includes('[-] partial'));
+  assert.ok(result.includes('- [X] done'));
+  assert.ok(result.includes('- [ ] not done'));
+  assert.ok(result.includes('- [-] partial'));
 });
 
 test('an ordered list uses numeric markers, respecting an explicit start value', () => {
@@ -305,11 +305,10 @@ test('THE FEATURE: a row that only PARTIALLY matches the "<N>" pattern (not ever
 
 // ---- exportToAscii: blocks ------------------------------------------------
 
-test('a block is shown with a name label and its literal content, indented', () => {
+test('a source block is framed with its literal content, as ox-ascii draws it', () => {
   const doc = parseOrg('* H\n#+BEGIN_SRC python\nprint("hi")\n#+END_SRC\n');
   const result = exportToAscii(doc);
-  assert.ok(result.includes('[SRC]'));
-  assert.ok(result.includes('print("hi")'));
+  assert.ok(result.includes(',----\n  | print("hi")\n  `----'));
 });
 
 // ---- exportToAscii: general -----------------------------------------------
@@ -483,5 +482,5 @@ test('the comma-escape strip also works when the escaped line is indented', () =
 test('THE FIX: a body node before the first heading (a block, in the document\u2019s own preamble) is correctly flattened into the output, not pushed as one nested array element -- found while testing the comma-escape fix above: Array.prototype.join stringifies a nested array element by comma-joining its own contents by default, which was producing a stray, unrelated comma that looked similar to the comma-escape bug but was a separate, genuine issue', () => {
   const doc = parseOrg('#+BEGIN_SRC org\n#+CATEGORY: Projects\n#+END_SRC\n');
   const ascii = exportToAscii(doc, null);
-  assert.equal(ascii, '[SRC]\n#+CATEGORY: Projects\n');
+  assert.equal(ascii, ',----\n| #+CATEGORY: Projects\n`----\n');
 });

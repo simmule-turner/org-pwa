@@ -239,6 +239,12 @@ export function getAsciiTextWidth(vars) {
   return n > 0 ? n : 72;
 }
 
+/** org-ascii-charset: `ascii` (default), `latin1` or `utf-8`, as in Emacs (a leading quote is fine). Anything else is ASCII. */
+export function getAsciiCharset(vars) {
+  const v = String((vars || {})['org-ascii-charset'] || '').trim().replace(/^'/, '').toLowerCase();
+  return v === 'utf-8' || v === 'utf8' ? 'utf-8' : v === 'latin1' || v === 'latin-1' || v === 'iso-8859-1' ? 'latin1' : 'ascii';
+}
+
 /** org-refile-targets: this app's own plain-text translation (see
  *  src/refile.js's own docs for the full syntax and precedence) --
  *  just the raw string here, since parsing/validation lives in that

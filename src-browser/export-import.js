@@ -10,7 +10,7 @@ import { exportAsOrg } from '../src/export-org.js';
 import { exportToVcard } from '../src/export-vcard.js';
 import { importIcalendarAsOrgText } from '../src/import-icalendar.js';
 import { importVcardsAsOrgText } from '../src/import-vcard.js';
-import { getAsciiTextWidth, getContactsBirthdayProperty, getMenuAliases } from '../src/local-variables.js';
+import { getAsciiTextWidth, getAsciiCharset, getContactsBirthdayProperty, getMenuAliases } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
@@ -59,7 +59,7 @@ export async function performExport(format, scope) {
   if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt') {
     const doc = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg));
     if (format === 'ascii') {
-      saveOut(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables)), 'text/plain');
+      saveOut(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables), { charset: getAsciiCharset(S.state.localVariables) }), 'text/plain');
     } else if (format === 'markdown') {
       saveOut(baseName + '.md', exportToMarkdown(doc, scope), 'text/markdown');
     } else if (format === 'html') {

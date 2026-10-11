@@ -1,0 +1,72 @@
+#+OPTIONS: toc:nil num:nil title:nil author:nil
+* Characters
+Alpha \alpha and \rarr arrow, \ndash, \copy, \nbsp x \sup2 \frac12{} -- dash --- em ... dots, \alphabet stays and =\alpha= too.
+
+* Blocks
+
+#+begin_center
+Centered text here
+second line
+#+end_center
+
+#+begin_center
+This is a long centered paragraph that goes on and on and on past the seventy two column limit for sure yes it does.
+
+B para two longer
+#+end_center
+
+#+begin_justifyleft
+Left justified paragraph that is fairly long so that it wraps around the line at some point maybe.
+#+end_justifyleft
+
+#+begin_justifyright
+Right justified.
+#+end_justifyright
+
+#+ATTR_ASCII: :width 30
+#+begin_quote
+Short quote with \beta.
+
+Second para of the quote that is long enough to need wrapping around the right margin of the text.
+
+- list in quote
+#+end_quote
+
+#+begin_verse
+Verse line one that is very long and goes on and on and on past the seventy two column limit for sure yes
+  indented two \gamma
+
+after a gap
+#+end_verse
+
+#+begin_example
+one
+
+  two
+#+end_example
+
+#+begin_src js
+const a = 1;
+  b();
+#+end_src
+
+: fixed width
+:   more
+
+#+begin_comment
+hidden
+#+end_comment
+
+#+begin_foo
+unknown block para text
+#+end_foo
+
+-----
+
+- [ ] todo
+- [-] part
+- [X] done
+- plain
+  - nested
+1. first
+2. [X] second

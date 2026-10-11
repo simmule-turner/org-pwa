@@ -66,9 +66,10 @@ return [['Start', 'Title', 'Place']].concat(events.map((e) => [e.start, e.summar
 #+end_src
 
 * The same feed in the agenda (init script)
-Tangles to =init.js=. In Settings → Extensions choose *Use an Org file…* and name this file (=local:calendar.org=, =github:...=, =webdav:...=), then approve. The feed's events then appear in the agenda; the agenda asks again after ten minutes.
+Tangles to =init.js= and is not meant to be run with its Run button (it says so if you do). In Settings → Extensions choose *Use an Org file…* and name this file (=local:calendar.org=, =github:...=, =webdav:...=), then approve. The feed's events then appear in the agenda; the agenda asks again after ten minutes.
 
-#+begin_src js :tangle init.js :results none
+#+begin_src js :tangle init.js
+if (!org.agenda) return 'Not run here: this block is the init script, which only works from Settings → Extensions → Use an Org file….';
 const feed = 'https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics';
 org.agenda.source('holidays', async () => {
   let text = await org.cache.get('calendar-feed', 6 * 3600e3);

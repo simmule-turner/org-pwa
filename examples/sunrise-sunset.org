@@ -76,10 +76,11 @@ return rows;
 #+end_src
 
 * A line above the agenda (init script)
-These blocks tangle to =init.js=. In Settings → Extensions choose *Use an Org file…* and give this file as =local:sunrise-sunset.org= (or =github:...=, =webdav:...=), then approve it. The agenda then shows "Sunrise 07:12 · Sunset 18:05" above its list. The same calculation is reused through Noweb.
+This block tangles to =init.js= and is not meant to be run with its Run button (it says so if you do). In Settings → Extensions choose *Use an Org file…* and give this file as =local:sunrise-sunset.org= (or =github:...=, =webdav:...=), then approve it. The agenda then shows "Sunrise 07:12 · Sunset 18:05" above its list. The same calculation is reused through Noweb.
 
-#+begin_src js :tangle init.js :results none
+#+begin_src js :tangle init.js
 <<sun>>
+if (!org.ui) return 'Not run here: this block is the init script, which only works from Settings → Extensions → Use an Org file….';
 org.ui.line('sun', () => {
   const lat = Number(org.vars.get('calendar-latitude'));
   const lon = Number(org.vars.get('calendar-longitude'));

@@ -262,6 +262,19 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#export',
   },
   {
+    key: 'org-ascii-charset',
+    label: 'ASCII export characters',
+    section: 'Export',
+    type: 'select',
+    default: 'ascii',
+    options: [
+      { value: 'ascii', label: 'ASCII' },
+      { value: 'latin1', label: 'Latin-1' },
+      { value: 'utf-8', label: 'UTF-8' },
+    ],
+    helpAnchor: '#export',
+  },
+  {
     key: 'org-xx-god-mode-button',
     label: 'Show the floating [g] god-mode button',
     section: 'Keyboard',

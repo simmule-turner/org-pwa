@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v482 — ASCII export, closer to ox-ascii
+ASCII export now draws example and source blocks, ~: ~ lines, quotes, verses and centre blocks the way Emacs does instead of printing ~[SRC]~-style labels. Entities like ~\alpha~ and ~\rarr~ become characters, and the new ~org-ascii-charset~ setting (~ascii~, ~latin1~, ~utf-8~) picks the set; UTF-8 also gives dashes, ellipses, box frames and ☑ ☐ ☒. Checkbox items keep their bullet. Output is tested against Emacs 29.3 for all three sets. ~#+ATTR_ASCII: :width~ is ignored, as in Emacs.
+
 * v481 — A steadier cursor
 God-mode now starts on the row at the top of the screen instead of the first heading, and running a block with ~C-c C-c~ (or any edit that rewrites a heading's body) keeps the cursor on its row instead of losing it. On the floating keyboard, Shift+↑/↓ jumps to the previous or next heading and Shift stays on after an arrow until tapped again; plain arrows now move through a table's rows and columns.
 

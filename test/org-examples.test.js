@@ -66,3 +66,13 @@ test('sunrise-sunset.org: New York sunrise on a fixed day is plausible', async (
   assert.equal(rows[0][0], 'Sunrise');
   assert.match(rows[0][1], /^1[0-2]:\d\d$/); // about 11:15 UTC in New York in October
 });
+
+test('running an init-script block with its Run button says so instead of failing', async () => {
+  for (const file of ['sunrise-sunset.org', 'calendar.org']) {
+    const f = load(file);
+    const block = f.blocks.find((b) => b.args.tangle === 'init.js');
+    const code = expandNoweb(f.doc, f.blocks, block);
+    const out = await new AsyncFunction('org', code)({ vars: fakeOrg().vars });
+    assert.match(out, /init script/, file);
+  }
+});

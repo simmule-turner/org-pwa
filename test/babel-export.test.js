@@ -15,8 +15,9 @@ const ascii = (text) => exportToAscii(prepareBabelExport(parseOrg(text)), null, 
 // "named" belongs to no block); the :exports none blocks and their results were gone.
 test('export honours :exports and :noweb the way Emacs does', () => {
   const out = ascii(fs.readFileSync(path.join(dir, 'export-1.org'), 'utf8'));
-  const shown = out.split('\n').map((l) => l.trim()).filter((l) => l && l !== '[SRC]' && !/^(1\. H|=+)$/.test(l));
-  assert.deepEqual(shown, ['a(); R();', 'b(); <<ref>>', ': 2', ': 3', 'e(); R();', 'f(); <<ref>>', '| 1 | 2 |']);
+  const shown = out.split('\n').map((l) => l.trim()).filter((l) => l && !/^(1\. H|=+|,----|`----)$/.test(l));
+  // code and results sit in frames ("| " lines); the table is the last line
+  assert.deepEqual(shown, ['| a(); R();', '| b(); <<ref>>', '| 2', '| 3', '| e(); R();', '| f(); <<ref>>', '| 1 | 2 |']);
 });
 
 test('export: default shows the code and hides the stored results', () => {

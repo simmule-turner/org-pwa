@@ -576,6 +576,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (a title starting ~#~ and a space, like ~** # draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
 | ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
 | ~org-ascii-text-width~ | ~72~ | Wrap width, in characters, for ASCII export |
+| ~org-ascii-charset~ | ~ascii~ | Characters used by ASCII export: ~ascii~, ~latin1~ or ~utf-8~ |
 | ~org-closed-keep-when-no-todo~ | ~nil~ | ~t~ keeps a CLOSED timestamp when a DONE heading is cycled back to no keyword. Cycling to another keyword always removes it (see [[#progress-logging][Progress logging]]) |
 | ~org-contacts-birthday-property~ | ~BIRTHDAY~ | The property ~org-contacts-anniversaries~ reads, as a plain string (~# org-contacts-birthday-property: EVENT~) |
 | ~org-contacts-files~ | unset (current file only) | More files for [[#export][Contacts (.vcf)]] export (see [[#contacts-files][Contacts Files]]) |
@@ -1469,7 +1470,11 @@ Use ~@bottom-right~ (with ~margin: 2cm~ for room) to put it at the right. For "P
 
 *** ASCII
 
-Plain text, org's ~ox-ascii~ for the core cases. Level-1 headings are underlined with ~=~ and deeper ones indented. Paragraphs wrap at ~org-ascii-text-width~ (default 72; see Local Variables), never mid-word. A link becomes ~description (target)~. Bold, italic, underline and strikethrough are stripped, and ~code~ and =verbatim= become ~`text'~. Footnote references become ~[1]~, with their definitions under "Footnotes". Headings are numbered (1, 1.1, 2) and, with more than one heading, a "Table of Contents" comes first; ~toc:~ and ~num:~ control both.
+Plain text, org's ~ox-ascii~ for the core cases. Level-1 headings are underlined with ~=~ and deeper ones indented. Paragraphs wrap at ~org-ascii-text-width~ (default 72; see Local Variables), never mid-word. A link becomes ~description (target)~. Bold, italic, underline and strikethrough are stripped, and ~code~ and =verbatim= become ~`text'~. Footnote references become ~[1]~, with their definitions under "Footnotes".
+
+*Characters*: entities such as ~\alpha~, ~\rarr~, ~\copy~ and ~\nbsp~ are replaced by the chosen character set, as in ox-ascii. Set ~org-ascii-charset~ in Local Variables to ~ascii~ (the default), ~latin1~ or ~utf-8~. UTF-8 also turns ~--~, ~---~ and ~...~ into dashes and an ellipsis, and draws underlines, bullets, checkboxes (☑ ☐ ☒), horizontal rules and block frames with box and symbol characters. Code and verbatim text are left alone.
+
+*Blocks*: example and source blocks and ~: ~ lines sit in a frame (~,----~ / ~| ~ / ~`----~, or box-drawing characters in UTF-8). QUOTE and VERSE blocks are set in from the margin (a quote's text is also narrower); a verse keeps its line breaks. CENTER blocks centre each line. Other special blocks, including justify-left and justify-right, are set as ordinary text, and COMMENT blocks are omitted. ~#+ATTR_ASCII:~ lines are read and ignored: ~:width~ changes nothing in Emacs 29.3's output either. Headings are numbered (1, 1.1, 2) and, with more than one heading, a "Table of Contents" comes first; ~toc:~ and ~num:~ control both.
 
 Tables are typeset: each column is padded to its widest cell, and mostly-numeric columns are right-aligned. A row of ~<N>~ cells, like ~| <30> | <10> | <24> |~ (usually above the header), fixes each column to N characters; wider content wraps within the row, breaking at hyphens when needed. That cookie row never appears in any format's output, and only ASCII uses the widths.
 
@@ -1911,7 +1916,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Search* (see [[#searching][Searching]]): Search and Replace both reach every file in ~org-agenda-files~, as org's ~org-search-view~ and ~tags-query-replace~ do. Both subtree narrowing (see [[#narrowing][Narrowing]]) and Search's Narrow survive a reload.
 
-*Export* (see [[#export][Export]]): no LaTeX export, and ASCII export lacks ~ox-ascii~'s fuller features (Latin-1 and UTF-8 substitutions, ~:width~ rules, justification blocks).
+*Export* (see [[#export][Export]]): no LaTeX export. ASCII export matches ~ox-ascii~ for characters, entities, blocks and lists, but lays out headings, tables and links its own way (numbered headings with indented bodies, tables with ~|~ borders, links as ~description (target)~, no ~Notes~ list of links). Justify-left and justify-right blocks are set as ordinary text, which is what Emacs 29.3 produces too.
 
 *Refile* (see [[#refile][Refile]]): you can't create a new destination heading by typing a name that doesn't exist yet.
 
