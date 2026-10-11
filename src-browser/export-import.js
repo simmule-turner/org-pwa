@@ -15,6 +15,7 @@ import { parseMenuAliases } from '../src/menu-alias.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { aggregateAgendaDocs, aggregateContactsDocs, ensureContactsFilesLoadedAndWait, loadContactsDocsForSync, waitForAgendaFilesLoaded } from './agenda-files.js';
+import { collectExportImages } from './export-images.js';
 import { exportAgendaToIcalendar } from '../src/calendar-from-agenda.js';
 import { S } from './app-state.js';
 import { allHeadingsInOrder, headingsInSubtree, icalendarBodyHeadingsIn, vcardBodyHeadingsIn } from './doc-helpers.js';
@@ -63,7 +64,7 @@ export async function performExport(format, scope) {
     } else if (format === 'markdown') {
       saveOut(baseName + '.md', exportToMarkdown(doc, scope), 'text/markdown');
     } else if (format === 'html') {
-      saveOut(baseName + '.html', exportToHtml(doc, scope), 'text/html');
+      saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null) }), 'text/html');
     } else {
       saveOut(baseName + '.odt', exportToOdt(doc, scope), 'application/vnd.oasis.opendocument.text');
     }

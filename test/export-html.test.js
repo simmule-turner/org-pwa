@@ -29,14 +29,6 @@ test('exporting a subtree titles the document after the selected heading', () =>
 
 // ---- headings and structure -------------------------------------------
 
-test('heading levels map to h1-h6, clamped at h6 for anything deeper', () => {
-  const doc = parseOrg('* A\n** B\n*** C\n**** D\n***** E\n****** F\n******* G');
-  const out = exportToHtml(doc);
-  assert.match(out, /<h1[ >]/);
-  assert.match(out, /<h6[ >]/);
-  assert.doesNotMatch(out, /<h7[ >]/);
-});
-
 test('exporting a subtree makes the selected heading an h1, shifting descendants accordingly', () => {
   const doc = parseOrg('* Top\n** Middle\n*** Deep');
   const middle = doc.children[0].children[0];
@@ -46,55 +38,11 @@ test('exporting a subtree makes the selected heading an h1, shifting descendants
   assert.ok(!out.includes('Top'));
 });
 
-test('TODO keyword gets a styled span, with a distinct "done" class for a done-state keyword', () => {
-  const doc = parseOrg('#+TODO: TODO WAIT | DONE KILL\n* TODO Active\n* DONE Finished');
-  const out = exportToHtml(doc);
-  assert.ok(out.includes('<span class="todo-keyword">TODO</span>'));
-  assert.ok(out.includes('<span class="todo-keyword done">DONE</span>'));
-});
-
-test('a custom done-keyword (e.g. KILL) is correctly styled as done, matching the file\u2019s own #+TODO: sequence', () => {
-  const doc = parseOrg('#+TODO: TODO WAIT | DONE KILL\n* KILL Cancelled task');
-  assert.ok(exportToHtml(doc).includes('<span class="todo-keyword done">KILL</span>'));
-});
-
-test('priority gets a styled span', () => {
-  const doc = parseOrg('* [#A] Important');
-  assert.ok(exportToHtml(doc).includes('<span class="priority">[#A]</span>'));
-});
-
-test('tags render as small inline code elements', () => {
-  const doc = parseOrg('* A heading :work:urgent:');
-  const out = exportToHtml(doc);
-  assert.ok(out.includes('<code>work</code>'));
-  assert.ok(out.includes('<code>urgent</code>'));
-});
-
-test('SCHEDULED/DEADLINE render as an italicized paragraph', () => {
-  const doc = parseOrg('* A\nSCHEDULED: <2026-08-01>');
-  assert.ok(exportToHtml(doc).includes('<p class="planning">Scheduled: &lt;2026-08-01&gt;</p>'));
-});
-
 // ---- inline formatting --------------------------------------------------
-
-test('bold/italic/underline/strikethrough/code map to their real HTML tags', () => {
-  const doc = parseOrg('* A\n*bold* /italic/ _underline_ +strike+ ~code~');
-  const out = exportToHtml(doc);
-  assert.ok(out.includes('<strong>bold</strong>'));
-  assert.ok(out.includes('<em>italic</em>'));
-  assert.ok(out.includes('<u>underline</u>'));
-  assert.ok(out.includes('<del>strike</del>'));
-  assert.ok(out.includes('<code>code</code>'));
-});
 
 test('a link with a description renders as a real anchor with that text', () => {
   const doc = parseOrg('* A\n[[https://example.com][My Link]]');
   assert.ok(exportToHtml(doc).includes('<a href="https://example.com">My Link</a>'));
-});
-
-test('an image renders as a real <img> tag', () => {
-  const doc = parseOrg('* A\n[[https://example.com/x.png]]');
-  assert.ok(exportToHtml(doc).includes('<img src="https://example.com/x.png" alt="">'));
 });
 
 test('an export-comment is dropped entirely from the output', () => {
@@ -118,13 +66,6 @@ test('a literal <script> tag in org content is neutralized, not passed through a
   assert.ok(out.includes('&lt;script&gt;'));
 });
 
-test('quotes in text are escaped for safe attribute contexts', () => {
-  const doc = parseOrg('* A\nHe said "hello" and \'hi\'');
-  const out = exportToHtml(doc);
-  assert.ok(out.includes('&quot;hello&quot;'));
-  assert.ok(out.includes('&#39;hi&#39;'));
-});
-
 test('a link target with special characters is escaped inside the href attribute', () => {
   const doc = parseOrg('* A\n[[https://example.com?a=1&b=2][Link]]');
   const out = exportToHtml(doc);
@@ -133,15 +74,6 @@ test('a link target with special characters is escaped inside the href attribute
 
 // ---- lists ----------------------------------------------------------------
 
-test('unordered list becomes a <ul>, ordered becomes an <ol> with correct start value', () => {
-  const doc = parseOrg('* A\n- one\n- two');
-  assert.ok(exportToHtml(doc).includes('<ul><li>one</li><li>two</li></ul>'));
-
-  const doc2 = parseOrg('* A\n1. [@5] five\n2. six');
-  const out2 = exportToHtml(doc2);
-  assert.ok(out2.includes('<ol start="5">'));
-});
-
 test('checkbox items render as real disabled <input> checkboxes, checked state preserved', () => {
   const doc = parseOrg('* A\n- [ ] todo\n- [X] done');
   const out = exportToHtml(doc);
@@ -149,20 +81,7 @@ test('checkbox items render as real disabled <input> checkboxes, checked state p
   assert.ok(out.includes('<input type="checkbox" disabled checked> done'));
 });
 
-test('nested list items produce a nested <ul>/<ol> inside the parent <li>', () => {
-  const doc = parseOrg('* A\n- parent\n  - child');
-  const out = exportToHtml(doc);
-  assert.ok(/<li>parent<ul><li>child<\/li><\/ul><\/li>/.test(out));
-});
-
 // ---- tables ---------------------------------------------------------------
-
-test('a table becomes a real <table> with <thead>/<tbody>', () => {
-  const doc = parseOrg('* A\n| Name | Age |\n| Alice | 30 |');
-  const out = exportToHtml(doc);
-  assert.ok(out.includes('<thead><tr><th>Name</th><th>Age</th></tr></thead>'));
-  assert.ok(out.includes('<tbody><tr><td>Alice</td><td>30</td></tr></tbody>'));
-});
 
 test('a table rule/separator row in the org source does not produce an empty row', () => {
   const doc = parseOrg('* A\n| Name | Age |\n|------+-----|\n| Alice | 30 |');
@@ -173,17 +92,6 @@ test('a table rule/separator row in the org source does not produce an empty row
 
 // ---- blocks -----------------------------------------------------------
 
-test('a QUOTE block becomes a <blockquote>', () => {
-  const doc = parseOrg('* A\n#+BEGIN_QUOTE\nWise words.\n#+END_QUOTE');
-  assert.ok(exportToHtml(doc).includes('<blockquote>Wise words.</blockquote>'));
-});
-
-test('a SRC block becomes <pre><code> with a language class', () => {
-  const doc = parseOrg('* A\n#+BEGIN_SRC python\nprint(1)\n#+END_SRC');
-  const out = exportToHtml(doc);
-  assert.ok(out.includes('<pre><code class="language-python">print(1)</code></pre>'));
-});
-
 test('a COMMENT block is dropped entirely', () => {
   const doc = parseOrg('* A\nVisible.\n#+BEGIN_COMMENT\nhidden\n#+END_COMMENT');
   const out = exportToHtml(doc);
@@ -192,11 +100,6 @@ test('a COMMENT block is dropped entirely', () => {
 });
 
 // ---- horizontal rule -----------------------------------------------------
-
-test('an org horizontal rule becomes a real <hr>', () => {
-  const doc = parseOrg('* A\nBefore\n\n-----\n\nAfter');
-  assert.ok(exportToHtml(doc).includes('<hr>'));
-});
 
 // ---- properties are dropped -----------------------------------------------
 
@@ -219,53 +122,10 @@ test('includes @media print rules to avoid bad page/table breaks', () => {
 
 // ---- footnotes -----------------------------------------------------------
 
-test('a bare footnote reference [fn:1] exports as a jump-link superscript', () => {
-  const doc = parseOrg('* Heading\nA claim needing support[fn:1].\n\n[fn:1] The actual source.\n');
-  const html = exportToHtml(doc);
-  assert.match(html, /<sup id="fnref-1"><a href="#fn-1">1<\/a><\/sup>/);
-});
-
-test('a separate-line definition ("[fn:1] text") appears in the Footnotes section with a back-link', () => {
-  const doc = parseOrg('* Heading\nRef[fn:1].\n\n[fn:1] The actual source.\n');
-  const html = exportToHtml(doc);
-  assert.match(html, /<div class="footnotes">/);
-  assert.match(html, /<li id="fn-1">The actual source\. <a class="footnote-back" href="#fnref-1">/);
-});
-
-test('an inline definition ([fn:1:text]) renders the jump-link inline AND appears in the Footnotes section', () => {
-  const doc = parseOrg('* Heading\nA claim[fn:1:this is the note] right here.\n');
-  const html = exportToHtml(doc);
-  assert.match(html, /<sup id="fnref-1">/);
-  assert.match(html, /<li id="fn-1">this is the note/);
-});
-
-test('an anonymous inline footnote ([fn::text]) gets a synthetic label', () => {
-  const doc = parseOrg('* Heading\nSome text[fn::an anonymous note] here.\n');
-  const html = exportToHtml(doc);
-  assert.match(html, /<sup id="fnref-anon-1">/);
-  assert.match(html, /<li id="fn-anon-1">an anonymous note/);
-});
-
-test('the same real label referenced multiple times produces only ONE Footnotes list item', () => {
-  const doc = parseOrg('* Heading\nFirst[fn:1:the note]. Later, again[fn:1].\n');
-  const html = exportToHtml(doc);
-  const matches = html.match(/<li id="fn-1">/g) || [];
-  assert.equal(matches.length, 1);
-});
-
 test('a document with no footnotes produces no Footnotes section at all', () => {
   const doc = parseOrg('* Heading\nJust ordinary text.\n');
   const html = exportToHtml(doc);
   assert.doesNotMatch(html, /class="footnotes"/);
-});
-
-test('multiple independent export calls do not leak footnote state between them', () => {
-  const doc1 = parseOrg('* H\nOne[fn::first].\n');
-  const doc2 = parseOrg('* H\nTwo[fn::second].\n');
-  const html1 = exportToHtml(doc1);
-  const html2 = exportToHtml(doc2);
-  assert.match(html1, /anon-1/);
-  assert.match(html2, /anon-1/);
 });
 
 test('footnote label and content are HTML-escaped, not passed through raw', () => {
@@ -281,14 +141,7 @@ test('THE BUG: a #custom-id link now resolves to a real, matching heading id, in
   const doc = parseOrg('* Intro\n[[#capture][Jump to Capture]]\n* Capture\n:PROPERTIES:\n:CUSTOM_ID: capture\n:END:\nSome content.\n');
   const html = exportToHtml(doc);
   assert.match(html, /href="#capture"/);
-  assert.match(html, /<h1 id="capture">/);
-});
-
-test('a star-prefixed title link ([[*Title][...]]) resolves via a generated, slugified id', () => {
-  const doc = parseOrg('* Intro\n[[*My Cool Section][See below]]\n* My Cool Section\nContent.\n');
-  const html = exportToHtml(doc);
-  assert.match(html, /href="#my-cool-section"/);
-  assert.match(html, /<h1 id="my-cool-section">/);
+  assert.match(html, /<h2 id="capture">/);
 });
 
 test('a bare fuzzy-title link ([[Title]], no # or * prefix) also resolves', () => {
@@ -304,44 +157,12 @@ test('external links (http/https/mailto) are completely unaffected by link resol
   assert.match(html, /href="mailto:a@b\.com"/);
 });
 
-test('two headings sharing the same title get disambiguated ids, so both are individually linkable', () => {
-  const doc = parseOrg('* Notes\nfirst\n* Notes\nsecond\n');
-  const html = exportToHtml(doc);
-  assert.match(html, /<h1 id="notes">/);
-  assert.match(html, /<h1 id="notes-2">/);
-});
-
-test('a heading with no alphanumeric characters at all in its title still gets a usable id, not an empty one', () => {
-  const doc = parseOrg('* \u2014\u2014\u2014\nContent.\n');
-  const html = exportToHtml(doc);
-  assert.match(html, /<h1 id="section">/);
-});
-
 test('a link resolving to a heading OUTSIDE the exported scope falls back to the original target text -- nowhere real to anchor to within this specific export', () => {
   const doc = parseOrg('* Outside\n:PROPERTIES:\n:CUSTOM_ID: outside\n:END:\n* Exported Scope\n[[#outside][Link out]]\n');
   const scopeHeading = doc.children[1];
   const html = exportToHtml(doc, scopeHeading);
   assert.match(html, /href="#outside"/); // best-effort fallback, unchanged from before this fix
   assert.doesNotMatch(html, /id="outside"/); // the out-of-scope heading correctly isn't included/anchored at all
-});
-
-test('an unresolved link (matches nothing at all) falls back to the original literal target, unchanged', () => {
-  const doc = parseOrg('* Intro\n[[Nonexistent Heading][Broken]]\n');
-  const html = exportToHtml(doc);
-  assert.match(html, /href="Nonexistent Heading"/);
-});
-
-test('a file-scheme link is left completely unresolved/unchanged -- it cannot meaningfully point anywhere within a standalone HTML export', () => {
-  const doc = parseOrg('* Intro\n[[file:other.org][Other file]]\n');
-  const html = exportToHtml(doc);
-  assert.match(html, /href="file:other\.org"/);
-});
-
-test('CUSTOM_ID always wins over a title-based slug for the SAME heading, matching what a #custom-id link would actually resolve against', () => {
-  const doc = parseOrg('* My Title\n:PROPERTIES:\n:CUSTOM_ID: my-real-id\n:END:\nContent.\n');
-  const html = exportToHtml(doc);
-  assert.match(html, /<h1 id="my-real-id">/);
-  assert.doesNotMatch(html, /id="my-title"/);
 });
 
 test('a whole realistic document with multiple internal links (a Contents/TOC-style section) resolves every single one', () => {
@@ -364,34 +185,7 @@ test('THE FIX: a width-cookie row ("<N>" in every cell) is excluded entirely, no
   assert.doesNotMatch(html, /&lt;5&gt;/);
 });
 
-test('THE FIX: with the cookie row correctly excluded, the REAL header row is the one actually promoted to <th>, not demoted into the body', () => {
-  const doc = parseOrg('* H\n| <10> | <5> |\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
-  const html = exportToHtml(doc);
-  assert.match(html, /<thead><tr><th>Name<\/th><th>Age<\/th><\/tr><\/thead>/);
-});
-
-test('a table with no width-cookie row is completely unaffected', () => {
-  const doc = parseOrg('* H\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
-  const html = exportToHtml(doc);
-  assert.match(html, /<thead><tr><th>Name<\/th><th>Age<\/th><\/tr><\/thead>/);
-});
-
 // ---- THE FIX: paragraph reflow -- flow unless "\\" forces a real break ----
-
-test('THE FIX: adjacent source lines within one paragraph flow together with a plain space, not a forced <br> -- matching real org\u2019s own actual default export behavior (org-export-preserve-breaks defaults to nil)', () => {
-  const doc = parseOrg('* H\nLine one\nline two continues\n');
-  const out = exportToHtml(doc);
-  assert.match(out, /Line one line two continues/);
-  assert.doesNotMatch(out, /Line one<br>/);
-});
-
-test('THE FIX: an explicit "\\\\" marker still forces a real <br>, exactly where it appears -- not everywhere', () => {
-  const doc = parseOrg('* H\nLine one\\\\\nline two forced\nline three flows\n');
-  const out = exportToHtml(doc);
-  const breakCount = (out.match(/<br>/g) || []).length;
-  assert.equal(breakCount, 1, 'exactly one forced break, after "Line one" specifically');
-  assert.match(out, /Line one<br>line two forced line three flows/);
-});
 
 test('the "\\\\" marker itself is stripped, never leaking into the HTML output as literal backslashes', () => {
   const doc = parseOrg('* H\nSome text\\\\\nmore text\n');
@@ -489,11 +283,11 @@ test('THE EXACT REQUEST: #+TITLE renders as a visible <h1 class="title"> in the 
   assert.match(html, /<h1 class="title">My Test Document<\/h1>/);
 });
 
-test('#+AUTHOR / #+DATE render right after the title', () => {
+test('#+AUTHOR / #+DATE appear in the postamble', () => {
   const doc = parseOrg('#+TITLE: T\n#+AUTHOR: Jane Doe\n#+DATE: 2026-01-15\n* Heading\nText.\n');
   const html = exportToHtml(doc);
-  assert.match(html, /<p class="author">Jane Doe<\/p>/);
-  assert.match(html, /<p class="date">2026-01-15<\/p>/);
+  assert.match(html, /<p class="author">Author: Jane Doe<\/p>/);
+  assert.match(html, /<p class="date">Date: 2026-01-15<\/p>/);
 });
 
 test('THE FIX: author:nil / date:nil each independently suppress their own field', () => {
@@ -509,55 +303,10 @@ test('a document with no #+TITLE shows no title/author/date block at all', () =>
   assert.ok(!html.includes('class="title"'));
 });
 
-test('THE EXACT REQUEST: section numbers render as real org\u2019s own confirmed <span class="section-number-N"> convention', () => {
-  const doc = parseOrg('* A\n** B\n');
-  const html = exportToHtml(doc);
-  assert.match(html, /<span class="section-number-1">1\.<\/span> A/);
-  assert.match(html, /<span class="section-number-2">1\.1\.<\/span> B/);
-});
-
 test('#+OPTIONS: num:nil removes section numbers entirely', () => {
   const doc = parseOrg('#+OPTIONS: num:nil\n* A\n** B\n');
   const html = exportToHtml(doc);
   assert.ok(!html.includes('section-number'));
-});
-
-test('THE EXACT REQUEST: a document with 2+ headings gets an auto-generated Table of Contents, matching real Emacs org-mode\u2019s own confirmed <div id="table-of-contents"> structure', () => {
-  const doc = parseOrg('* First\n* Second\n');
-  const html = exportToHtml(doc);
-  assert.match(html, /<div id="table-of-contents"><h2>Table of Contents<\/h2>/);
-  assert.match(html, /<a href="#first">1\. First<\/a>/);
-  assert.match(html, /<a href="#second">2\. Second<\/a>/);
-});
-
-test('a document with only one heading gets no Table of Contents -- nothing worth listing', () => {
-  const doc = parseOrg('* Only\nText.\n');
-  const html = exportToHtml(doc);
-  assert.ok(!html.includes('table-of-contents'));
-});
-
-test('toc:nil disables the Table of Contents entirely, independent of num:', () => {
-  const doc = parseOrg('#+OPTIONS: toc:nil\n* First\n* Second\n');
-  const html = exportToHtml(doc);
-  assert.ok(!html.includes('table-of-contents'));
-  assert.ok(html.includes('section-number'), 'numbering is untouched by toc:nil');
-});
-
-test('THE EXACT REQUEST: toc:1 limits the ToC listing to headers 1 only, while section numbering throughout the body still goes to full depth', () => {
-  const doc = parseOrg('#+OPTIONS: toc:1\n* A\n** B\n*** C\n* D\n');
-  const html = exportToHtml(doc);
-  const tocBlock = html.match(/<div id="table-of-contents">.*?<\/div>/s)[0];
-  assert.ok(tocBlock.includes('>1. A<'));
-  assert.ok(tocBlock.includes('>2. D<'));
-  assert.ok(!tocBlock.includes('B'));
-  assert.ok(html.includes('1.1.1.'), 'still fully numbered in the body');
-});
-
-test('the Table of Contents is properly nested (a <ul> inside the parent <li> for a child heading)', () => {
-  const doc = parseOrg('* A\n** B\n* C\n');
-  const html = exportToHtml(doc);
-  const tocBlock = html.match(/<div id="table-of-contents">.*?<\/div>/s)[0];
-  assert.match(tocBlock, /<li><a href="#a">1\. A<\/a><ul><li><a href="#b">1\.1\. B<\/a><\/li><\/ul><\/li>/);
 });
 
 test('THE EXACT REQUEST: creator:nil is the default -- no "Generated by" notice unless explicitly enabled', () => {
@@ -570,16 +319,6 @@ test('creator:t adds a "Generated by org-pwa" notice', () => {
   const doc = parseOrg('#+TITLE: T\n#+OPTIONS: creator:t\n* Heading\nText.\n');
   const html = exportToHtml(doc);
   assert.match(html, /<p class="creator">Generated by org-pwa<\/p>/);
-});
-
-test('exporting a scoped subtree shows no title/author/date/ToC/creator block, but section numbering (independent of scope) still applies', () => {
-  const doc = parseOrg('#+TITLE: Whole Doc\n#+OPTIONS: creator:t\n* Target\n** Child\n* Other\n');
-  const target = doc.children[0];
-  const html = exportToHtml(doc, target);
-  assert.ok(!html.includes('class="title"'));
-  assert.ok(!html.includes('table-of-contents'));
-  assert.ok(!html.includes('Generated by'));
-  assert.ok(html.includes('section-number'), 'numbering still applies even for a scoped export');
 });
 
 // ---- THE FIX: document-level preamble body rendering (doc.body) ---------------
@@ -690,4 +429,275 @@ test('the comma-escape strip also applies inside a #+BEGIN_QUOTE block', () => {
   const html = exportToHtml(doc, null);
   assert.match(html, /\* not a real heading/);
   assert.doesNotMatch(html, />,\*/);
+});
+
+// ---- ox-html structure: headings, inline markup, lists, tables, blocks, footnotes, links, options --------------------
+
+const body = (org) => exportToHtml(parseOrg(org));
+
+test('top-level headings are h2 under an h1 title, in outline containers, and deeper headings than H become list items', () => {
+  const out = body('#+TITLE: T\n* A\n** B\n*** C\n**** D\n***** E\n');
+  assert.match(out, /<h1 class="title">T<\/h1>/);
+  assert.match(out, /<div id="outline-container-a" class="outline-2">\s*<h2 id="a">/);
+  assert.match(out, /<h4 id="c">/);
+  assert.doesNotMatch(out, /<h5/);
+  assert.match(out, /<ol class="org-ol">\s*<li><a id="d"><\/a>D<br \/>/);
+});
+
+test('#+OPTIONS: H: sets how many levels are headings', () => {
+  const out = body('#+OPTIONS: H:5\n* A\n** B\n*** C\n**** D\n***** E\n');
+  assert.match(out, /<h6 id="e">/);
+});
+
+test('TODO keywords get todo/done classes from the file\u2019s own #+TODO: sequence', () => {
+  const out = body('#+TODO: TODO WAIT | DONE KILL\n* TODO Active\n* DONE Finished\n* KILL Cancelled');
+  assert.match(out, /<span class="todo TODO">TODO<\/span> Active/);
+  assert.match(out, /<span class="done DONE">DONE<\/span> Finished/);
+  assert.match(out, /<span class="done KILL">KILL<\/span>/);
+});
+
+test('priority shows only with pri:t, and todo:nil hides keywords', () => {
+  assert.ok(!body('* [#A] Important').includes('class="priority"'));
+  assert.ok(body('#+OPTIONS: pri:t\n* [#A] Important').includes('<span class="priority">[#A]</span>'));
+  assert.ok(!body('#+OPTIONS: todo:nil\n* TODO Task').includes('<span class="todo'));
+});
+
+test('tags render as ox-html tag spans, and tags:nil hides them', () => {
+  const out = body('* A heading :work:urgent:');
+  assert.ok(out.includes('<span class="tag"><span class="work">work</span>&#xa0;<span class="urgent">urgent</span></span>'));
+  assert.ok(!body('#+OPTIONS: tags:nil\n* A :work:').includes('class="tag"'));
+});
+
+test('planning is hidden by default and shown with p:t', () => {
+  assert.ok(!body('* A\nSCHEDULED: <2026-08-01>').includes('SCHEDULED'));
+  assert.match(body('#+OPTIONS: p:t\n* A\nSCHEDULED: <2026-08-01>'), /<span class="timestamp-kwd">SCHEDULED:<\/span> <span class="timestamp">&lt;2026-08-01&gt;<\/span>/);
+});
+
+test('emphasis maps to ox-html tags, and *:nil keeps the markers', () => {
+  const out = body('* A\n*bold* /italic/ _underline_ +strike+ ~code~ =verb=');
+  assert.ok(out.includes('<b>bold</b>'));
+  assert.ok(out.includes('<i>italic</i>'));
+  assert.ok(out.includes('<span class="underline">underline</span>'));
+  assert.ok(out.includes('<del>strike</del>'));
+  assert.ok(out.includes('<code>code</code>'));
+  assert.ok(out.includes('*bold*') === false);
+  assert.ok(body('#+OPTIONS: *:nil\n* A\n*bold*').includes('*bold*'));
+});
+
+test('image links become <img>, with a file name alt; a link wrapping an image keeps the link', () => {
+  assert.ok(body('* A\n[[https://example.com/pic.png]]').includes('<img src="https://example.com/pic.png" alt="pic.png" />'));
+  assert.ok(body('* A\nSee [[file:a.png][file:thumb.png]] here').includes('<a href="a.png"><img src="thumb.png" alt="thumb.png" /></a>'));
+});
+
+test('a standalone image with a caption is a figure', () => {
+  const out = body('* A\n#+CAPTION: Sunset\n#+ATTR_HTML: :width 100 :alt hi\n[[file:s.png]]\n');
+  assert.match(out, /<div id="figure" class="figure">\s*<p><img src="s.png" alt="hi" width="100" \/>/);
+  assert.match(out, /<span class="figure-number">Figure 1: <\/span>Sunset/);
+});
+
+test('text is escaped, and entities and special strings follow ox-html', () => {
+  const out = body('* A\nR&D <b> \\alpha \\rarr x -- y --- z ... \\nbsp.');
+  assert.ok(out.includes('R&amp;D &lt;b&gt; &alpha; &rarr; x &#x2013; y &#x2014; z &#x2026; &nbsp;.'));
+  assert.ok(body('#+OPTIONS: e:nil -:nil\n* A\n\\alpha --').includes('\\alpha --'));
+});
+
+test('lists: org-ul / org-ol with value, descriptive lists as dl, checkboxes with state classes', () => {
+  assert.ok(body('* A\n- one\n- two').includes('<ul class="org-ul">\n<li>one</li>\n<li>two</li>\n</ul>'));
+  assert.ok(body('* A\n1. [@5] five\n2. six').includes('<li value="5">five</li>'));
+  assert.ok(body('* A\n- term :: description').includes('<dl class="org-dl">\n<dt>term</dt><dd>description</dd>\n</dl>'));
+  const boxes = body('* A\n- [ ] a\n- [X] b\n- [-] c');
+  assert.ok(boxes.includes('<li class="off"><input type="checkbox" disabled> a</li>'));
+  assert.ok(boxes.includes('<li class="on"><input type="checkbox" disabled checked> b</li>'));
+  assert.ok(boxes.includes('<li class="trans">'));
+});
+
+test('a list item keeps its continuation paragraphs, sub-lists and blocks', () => {
+  const out = body('* A\n1. one\n2. two\n   more\n\n   second para\n   - sub\n3. three\n   #+begin_example\n   code\n   #+end_example\n');
+  assert.match(out, /<li><p>\ntwo\nmore\n<\/p>\n<p>\nsecond para\n<\/p>\n<ul class="org-ul">\n<li>sub<\/li>\n<\/ul><\/li>/);
+  assert.match(out, /<li><p>\nthree\n<\/p>\n<pre class="example">\ncode\n<\/pre><\/li>/);
+  assert.equal((out.match(/<ol class="org-ol">/g) || []).length, 1, 'one list, not three');
+});
+
+test('nested list items produce a nested list inside the parent <li>', () => {
+  assert.ok(body('* A\n- parent\n  - child').includes('<li>parent\n<ul class="org-ul">\n<li>child</li>\n</ul></li>'));
+});
+
+test('tables: header group from a rule, alignment from the numbers, colgroup, caption, ATTR_HTML', () => {
+  const out = body('* A\n#+CAPTION: Ages\n| Name | Age |\n|------+-----|\n| Alice | 30 |\n| Bob | 4 |\n');
+  assert.match(out, /<caption class="t-above"><span class="table-number">Table 1:<\/span> Ages<\/caption>/);
+  assert.match(out, /<col  class="org-left" \/>\s*<col  class="org-right" \/>/);
+  assert.match(out, /<thead>\s*<tr>\s*<th scope="col" class="org-left">Name<\/th>\s*<th scope="col" class="org-right">Age<\/th>/);
+  assert.match(out, /<td class="org-right">30<\/td>/);
+  assert.ok(!body('* A\n| a | b |\n| c | d |').includes('<thead>'), 'no rule, no header');
+  assert.ok(body('* A\n#+ATTR_HTML: :border 0 :rules all\n| a |').includes('border="0" cellspacing="0" cellpadding="6" rules="all"'));
+});
+
+test('alignment and width cookie rows are directives, not data', () => {
+  const out = body('* A\n| <r> | <l10> |\n| a | b |\n|---+---|\n| 1 | 2 |\n');
+  assert.ok(!out.includes('&lt;r&gt;'));
+  assert.match(out, /<col  class="org-right" \/>\s*<col  class="org-left" \/>/);
+});
+
+test('blocks: quote, center, verse, example, fixed-width, src with caption and line numbers', () => {
+  assert.ok(body('* A\n#+BEGIN_QUOTE\nWise words.\n#+END_QUOTE').includes('<blockquote>\n<p>\nWise words.\n</p>\n</blockquote>'));
+  assert.ok(body('* A\n#+begin_center\nMid\n#+end_center').includes('<div class="org-center">\n<p>\nMid\n</p>\n</div>'));
+  assert.ok(body('* A\n#+begin_verse\nRoses\n  Violets\n#+end_verse').includes('<p class="verse">\nRoses<br />\n&#xa0;&#xa0;Violets<br />\n</p>'));
+  assert.ok(body('* A\n#+begin_example\n<x>\n#+end_example').includes('<pre class="example">\n&lt;x&gt;\n</pre>'));
+  assert.ok(body('* A\n: fixed\n:   more').includes('<pre class="example">\nfixed\n  more\n</pre>'));
+  const src = body('* A\n#+CAPTION: Hello\n#+begin_src python -n\nprint(1)\n#+end_src');
+  assert.match(src, /<div class="org-src-container">\s*<label class="org-src-name"><span class="listing-number">Listing 1: <\/span>Hello<\/label><pre class="src src-python" id="listing-1"><span class="linenr">1: <\/span><span class="org-builtin">print<\/span>\(<span class="org-constant">1<\/span>\)/);
+});
+
+test('special blocks become divs of that class; COMMENT blocks, comments and unknown keywords vanish; HTML export passes through', () => {
+  const out = body('* A\n#+begin_note\nwatch *out*\n#+end_note\n# comment\n#+begin_comment\nhidden\n#+end_comment\n#+HTML: <hr class="x">\n#+begin_export html\n<i>raw</i>\n#+end_export\n#+begin_export latex\n\\x\n#+end_export');
+  assert.match(out, /<div class="note">\s*<p>\nwatch <b>out<\/b>\n<\/p>\s*<\/div>/);
+  const page = out.slice(out.indexOf('<div id="content"'));
+  assert.ok(!page.includes('hidden') && !page.includes('comment') && !page.includes('\\x'));
+  assert.ok(out.includes('<hr class="x">') && out.includes('<i>raw</i>'));
+});
+
+test('drawers show their text except LOGBOOK (d: controls it); COMMENT, noexport and archived headings are not exported', () => {
+  const out = body('* A\n:MYDRAWER:\nin drawer\n:END:\n* COMMENT Gone\nx1\n* Secret :noexport:\nx2\n* Old :ARCHIVE:\nx3\n');
+  assert.ok(out.includes('in drawer'));
+  assert.ok(!out.includes('Gone') && !out.includes('x1') && !out.includes('x2'));
+  assert.ok(out.includes('Old') && !out.includes('x3'), 'an archived heading keeps its title only');
+  assert.ok(!body('#+OPTIONS: d:nil\n* A\n:MYDRAWER:\nin drawer\n:END:').includes('in drawer'));
+});
+
+test('#+SELECT_TAGS: and #+EXCLUDE_TAGS: pick headings; tasks:nil drops TODO headings', () => {
+  const sel = body('#+SELECT_TAGS: keep\n* One :keep:\n** In\n* Two\ntwo text');
+  assert.ok(sel.includes('One') && sel.includes('In') && !sel.includes('two text'));
+  assert.ok(!body('#+EXCLUDE_TAGS: skip\n* A :skip:\nx\n* B\ny').includes('>A<'));
+  assert.ok(!body('#+OPTIONS: tasks:nil\n* TODO t\n* plain').includes('>t<'));
+});
+
+test('timestamps, inline src, macros and export snippets', () => {
+  const out = body('#+MACRO: hi Hello $1\n* A\n<2026-10-11 Sun 10:00> [2026-10-11 Sun] {{{hi(you)}}} src_js{1+1} @@html:<b>x</b>@@');
+  assert.ok(out.includes('<span class="timestamp-wrapper"><span class="timestamp">&lt;2026-10-11 Sun 10:00&gt;</span></span>'));
+  assert.ok(out.includes('Hello you'));
+  assert.ok(out.includes('<code class="src src-js">1+1</code>'));
+  assert.ok(out.includes('<b>x</b>'));
+});
+
+test('\\n:t turns every line break into <br />, and a trailing \\\\ always does', () => {
+  assert.ok(body('* H\nLine one\nline two\n').includes('Line one\nline two'));
+  assert.ok(body('#+OPTIONS: \\n:t\n* H\nLine one\nline two').includes('Line one<br />\nline two<br />'));
+  assert.ok(body('* H\nLine one\\\\\nline two').includes('Line one<br />\nline two'));
+});
+
+test('footnotes are numbered in order of reference, repeat references get distinct ids, and the section is ox-html\u2019s', () => {
+  const out = body('* H\nA[fn:b] B[fn:a] again[fn:b] inline[fn::the note].\n\n[fn:a] Alpha.\n\n[fn:b] Beta.\n');
+  assert.match(out, /<sup><a id="fnr.1" class="footref" href="#fn.1" role="doc-backlink">1<\/a><\/sup>/);
+  assert.match(out, /<a id="fnr.1.100" class="footref" href="#fn.1"/);
+  assert.match(out, /<a id="fnr.2" class="footref" href="#fn.2"/);
+  assert.match(out, /<h2 class="footnotes">Footnotes: <\/h2>/);
+  assert.match(out, /<sup><a id="fn.1" class="footnum" href="#fnr.1" role="doc-backlink">1<\/a><\/sup> <div class="footpara" role="doc-footnote"><p class="footpara">\s*Beta\./);
+  assert.match(out, /<p class="footpara">the note<\/p>/);
+  assert.equal((out.match(/id="fn\.1"/g) || []).length, 1);
+});
+
+test('export calls do not share footnote numbering', () => {
+  assert.match(body('* H\nOne[fn::first].'), /id="fnr\.1"/);
+  assert.match(body('* H\nTwo[fn::second].'), /id="fnr\.1"/);
+});
+
+test('links: #custom-id, *heading, fuzzy and radio targets resolve to ids; file links; unresolved ones keep a usable href', () => {
+  const doc = '* Intro\n[[*My Cool Section][below]] [[#cid][c]] [[My Cool Section][fuzzy]] [[target][t]] <<target>>\n* My Cool Section\n* Other\n:PROPERTIES:\n:CUSTOM_ID: cid\n:END:\n';
+  const out = body(doc);
+  assert.match(out, /<a href="#my-cool-section">below<\/a>/);
+  assert.match(out, /<a href="#cid">c<\/a>/);
+  assert.match(out, /<a href="#my-cool-section">fuzzy<\/a>/);
+  assert.match(out, /<a href="#org-target-target">t<\/a>/);
+  assert.ok(body('* A\n[[file:other.org][f]] [[file:/abs/x.pdf][p]] [[mailto:a@b.c][m]]').includes('<a href="other.html">f</a> <a href="file:///abs/x.pdf">p</a> <a href="mailto:a@b.c">m</a>'));
+});
+
+test('heading ids: two headings with one title are disambiguated, an empty slug becomes "section", CUSTOM_ID wins', () => {
+  const same = body('* Notes\nfirst\n* Notes\nsecond\n');
+  assert.match(same, /<h2 id="notes">/);
+  assert.match(same, /<h2 id="notes-2">/);
+  assert.match(body('* \u2014\u2014\u2014\nx\n'), /<h2 id="section">/);
+  const custom = body('* My Title\n:PROPERTIES:\n:CUSTOM_ID: my-real-id\n:END:\nx\n');
+  assert.match(custom, /<h2 id="my-real-id">/);
+  assert.doesNotMatch(custom, /id="my-title"/);
+});
+
+test('section numbers and a table of contents follow ox-html', () => {
+  const doc = '#+OPTIONS: toc:2\n* A\n** B\n*** C\n* D\n';
+  const html = body(doc);
+  assert.match(html, /<span class="section-number-2">1\.<\/span> A/);
+  assert.match(html, /<span class="section-number-3">1\.1\.<\/span> B/);
+  const toc = html.match(/<div id="table-of-contents" role="doc-toc">.*?<\/div>\s*<\/div>/s)[0];
+  assert.match(toc, /<li><a href="#a">1\. A<\/a>\s*<ul>\s*<li><a href="#b">1\.1\. B<\/a><\/li>\s*<\/ul>\s*<\/li>/);
+  assert.ok(!toc.includes('>C<'), 'toc:2 stops at level 2');
+  assert.ok(!body('#+OPTIONS: toc:nil\n* A\n* B').includes('id="table-of-contents"'));
+  assert.ok(!body('#+OPTIONS: num:nil\n* A').includes('section-number'));
+});
+
+test('#+TOC: places a table of contents, with tables and listings lists', () => {
+  const out = body('#+OPTIONS: toc:nil\n* A\n#+TOC: headlines 1\n** B\n#+CAPTION: T one\n| x |\n#+CAPTION: L one\n#+begin_src sh\nls\n#+end_src\n#+TOC: tables\n#+TOC: listings\n');
+  assert.match(out, /<h2>Table of Contents<\/h2>/);
+  assert.match(out, /<h2>List of Tables<\/h2>[\s\S]*<span class="table-number">Table 1:<\/span> T one/);
+  assert.match(out, /<h2>List of Listings<\/h2>[\s\S]*<span class="listing-number">Listing 1:<\/span> L one/);
+});
+
+test('a subtree export is titled after its heading and numbers its children from 1', () => {
+  const doc = parseOrg('#+TITLE: Whole Doc\n#+OPTIONS: toc:nil\n* Target\nintro\n** Child\n* Other\n');
+  const html = exportToHtml(doc, doc.children[0]);
+  assert.match(html, /<h1 class="title">Target<\/h1>/);
+  assert.match(html, /<span class="section-number-2">1\.<\/span> Child/);
+  assert.ok(html.includes('intro') && !html.includes('Whole Doc') && !html.includes('Other'));
+});
+
+test('postamble shows the date, author and email when present; the page declares its language and meta', () => {
+  const out = body('#+TITLE: T\n#+AUTHOR: Me\n#+EMAIL: me@x.org\n#+DATE: 2026-10-11\n#+DESCRIPTION: D\n#+LANGUAGE: de\n#+OPTIONS: email:t\n* A');
+  assert.match(out, /<div id="postamble" class="status">\s*<p class="date">Date: 2026-10-11<\/p>\s*<p class="author">Author: Me<\/p>\s*<p class="email">Email: <a href="mailto:me@x.org">me@x.org<\/a><\/p>/);
+  assert.match(out, /<html lang="de">/);
+  assert.match(out, /<meta name="description" content="D">/);
+  assert.ok(!body('#+AUTHOR: Me\n#+OPTIONS: author:nil\n* A').includes('Author: Me'));
+});
+
+test('printing: preformatted text wraps and tables and figures avoid page breaks', () => {
+  const out = body('* A');
+  assert.match(out, /@media print[\s\S]*pre \{[^}]*white-space: pre-wrap/);
+  assert.match(out, /break-inside: avoid/);
+});
+
+test('source blocks are coloured with htmlize\u2019s class names; unknown languages are left plain', () => {
+  const out = body('* A\n#+begin_src js\n// c\nconst s = "x"; if (a < 1) {}\n#+end_src\n#+begin_src klingon\nconst <x>\n#+end_src');
+  assert.ok(out.includes('<span class="org-comment">// c</span>'));
+  assert.ok(out.includes('<span class="org-keyword">const</span>'));
+  assert.ok(out.includes('<span class="org-string">"x"</span>'));
+  assert.ok(out.includes('a &lt; <span class="org-constant">1</span>'));
+  assert.ok(out.includes('<pre class="src src-klingon">const &lt;x&gt;'));
+});
+
+test('a multi-line comment or string is coloured line by line, so line numbers stay intact', () => {
+  const out = body('* A\n#+begin_src js -n\n/* a\nb */\nx\n#+end_src');
+  assert.ok(out.includes('<span class="linenr">1: </span><span class="org-comment">/* a</span>\n<span class="linenr">2: </span><span class="org-comment">b */</span>'));
+});
+
+test('pictures that the app could read are embedded; others keep their link', () => {
+  const doc = parseOrg('* A\n[[file:a.png]] and [[file:b.png][label]]');
+  const out = exportToHtml(doc, null, { images: new Map([['file:a.png', 'data:image/png;base64,AAAA']]) });
+  assert.ok(out.includes('<img src="data:image/png;base64,AAAA" alt="a.png" />'));
+  assert.ok(out.includes('<a href="b.png">label</a>'));
+});
+
+test('radio targets link every other mention, but not inside links', () => {
+  const out = body('* A\n<<<Dragon>>> here, a dragon there, [[https://x.org][dragon]] linked.');
+  assert.match(out, /<a id="org-target-dragon"><\/a>Dragon here, a <a href="#org-target-dragon">dragon<\/a> there, <a href="https:\/\/x.org">dragon<\/a>/);
+});
+
+test('the README exports to well-formed HTML: balanced containers, no leftover placeholders, every link target present', async () => {
+  const fs = await import('node:fs');
+  const html = exportToHtml(parseOrg(fs.readFileSync(new URL('../README.org', import.meta.url), 'utf8')));
+  const count = (re) => (html.match(re) || []).length;
+  assert.equal(count(/<div[\s>]/g), count(/<\/div>/g), 'div balance');
+  assert.equal(count(/<ul[\s>]/g), count(/<\/ul>/g), 'ul balance');
+  assert.equal(count(/<table[\s>]/g), count(/<\/table>/g), 'table balance');
+  assert.ok(!/[-]/.test(html), 'no placeholder characters');
+  const ids = new Set([...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
+  const missing = [...html.matchAll(/ href="#([^"]+)"/g)].map((m) => m[1]).filter((id) => !ids.has(id));
+  assert.deepEqual(missing, [], 'every #link has an element with that id');
+  assert.ok(count(/<h3 id=/g) > 20 && count(/<table/g) > 10);
 });

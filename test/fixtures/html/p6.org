@@ -1,0 +1,42 @@
+#+TITLE: Probe six
+#+OPTIONS: toc:t H:2 d:t
+* A
+:CUSTOM:
+custom drawer
+:END:
+Para one
+- list immediately after
+text after list needs blank?
+1. a
+2. b
+
+Para
+  indented para line
+#+NAME: tbl
+#+CAPTION: Table caption *bold*
+| <r> | <c> | <l> |
+| a | b | c |
+|---+---|
+| 1 | 2 | 3 |
+|---+---|
+| 4 | 5 | 6 |
+
+#+CAPTION: Src caption
+#+begin_src sh -n 10
+echo hi
+#+end_src
+
+#+TOC: headlines 1
+** B
+text with a footnote[fn:x] and [fn:y].
+[fn:x] first def.
+[fn:y] second
+with more lines
+
+\begin{align}
+x = 1
+\end{align}
+* C
+[[https://example.org/a.png]]
+
+[[file:/abs/path.pdf][abs]] [[file:rel/path.org][ref]] [[./local.txt]] [[A][to A]] [[*B][to B]]

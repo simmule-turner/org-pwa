@@ -1,0 +1,15 @@
+#+TITLE: Probe four
+#+AUTHOR: Me
+#+EMAIL: me@x.org
+#+DATE: 2026-10-11
+#+DESCRIPTION: Desc here
+#+KEYWORDS: k1, k2
+#+OPTIONS: p:t email:t toc:t
+* DONE Finished [2/3] :a:
+CLOSED: [2026-10-10 Sat 09:00] SCHEDULED: <2026-10-11 Sun> DEADLINE: <2026-10-20 Tue>
+text <2026-10-11 Sun>
+:DRAW:
+inside
+:END:
+** WAITING [#C] Sub *bold* title
+text

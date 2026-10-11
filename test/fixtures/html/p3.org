@@ -1,0 +1,26 @@
+#+TITLE: Probe three
+#+OPTIONS: toc:nil
+* Links
+:PROPERTIES:
+:CUSTOM_ID: links
+:END:
+See [[#links][self]], [[*Other][heading link]], [[Other][fuzzy]], [[file:img.png][file:thumb.png]] and
+#+CAPTION: A figure
+#+NAME: fig:one
+#+ATTR_HTML: :width 100 :alt hello
+[[file:img.png]]
+
+[[fig:one][ref]] [[elisp:(foo)][elisp]] <http://angle.org> tel:123 [[shell:ls][sh]]
+* Other
+#+begin_src emacs-lisp
+(message "hi <&>")
+#+end_src
+Inline src_python{1+1} and call. Verbatim =a=b= and ~c~d~. Math $x^2$ and \(y\) and \[z\].
+\begin{equation}
+a=b
+\end{equation}
+Text with a footnote[fn:a] twice[fn:a].
+[fn:a] Def with *bold*.
+-----
+5 \times 3 = 15 \pm 1, \le \ge \infty \Omega
+Done.

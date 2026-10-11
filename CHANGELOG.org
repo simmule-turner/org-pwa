@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v483 — HTML export, as ox-html does it
+HTML export is rebuilt on the structure Emacs's ~ox-html~ produces, since it is the route to PDF. List items keep their paragraphs, sub-lists and blocks; tables get headers, alignment and captions; description lists, figures, verse, center and special blocks, entities, timestamps, macros, ~#+TOC:~ and numbered footnotes work; most ~#+OPTIONS:~ keys and tag selection are honoured. Source blocks are coloured, readable pictures are embedded, and printing wraps code. The README exports to the same structure as Emacs's.
+
 * v482 — ASCII export, closer to ox-ascii
 ASCII export now draws example and source blocks, ~: ~ lines, quotes, verses and centre blocks the way Emacs does instead of printing ~[SRC]~-style labels. Entities like ~\alpha~ and ~\rarr~ become characters, and the new ~org-ascii-charset~ setting (~ascii~, ~latin1~, ~utf-8~) picks the set; UTF-8 also gives dashes, ellipses, box frames and ☑ ☐ ☒. Checkbox items keep their bullet. Output is tested against Emacs 29.3 for all three sets. ~#+ATTR_ASCII: :width~ is ignored, as in Emacs.
 

@@ -1,0 +1,100 @@
+#+TITLE: Probe *one*
+#+AUTHOR: Me
+#+OPTIONS: toc:nil
+* TODO [#A] Head one :tag1:tag2:
+SCHEDULED: <2026-10-11 Sun> DEADLINE: <2026-10-20 Tue>
+:PROPERTIES:
+:ID: abc
+:END:
+Entities \alpha \rarr \copy x -- y --- z ... ok. H_{2}O and x^2 and a_b.
+Timestamp <2026-10-11 Sun 10:00> and [2026-10-11 Sun] range <2026-10-11 Sun>--<2026-10-12 Mon>.
+Line one\\
+line two. "Quoted" and 'single'. Radio <<target>> and [[target][link to it]].
+Image [[file:pic.png]] and [[file:pic.png][desc]] and [[https://x.org][web]] and [[mailto:a@b.c][mail]] and https://bare.example.org and [[file:other.org][file link]].
+Footnote[fn:1] and inline[fn::inline def] ok.
+
+[fn:1] The definition.
+
+** Described
+- term :: description text
+- other :: more
+  with continuation
+
+** Lists
+1. one
+2. two
+   continuation para
+
+   second para in item
+3. [@5] five
+   - nested
+     1) deep
+- [ ] cb
+- [X] done [1/2]
+
+** Table
+#+CAPTION: A table
+| Name | Qty | Price |
+|------+-----+-------|
+| Apple | 3 | 1.50 |
+| Pear | 12 | 22 |
+| Sum | 15 | |
+
+| no | header |
+| a | b |
+
+#+ATTR_HTML: :border 2 :rules all
+| x | y |
+
+** Blocks
+#+begin_center
+Center me
+#+end_center
+#+begin_verse
+Roses are red
+  Violets blue
+#+end_verse
+#+begin_quote
+Quote para one.
+
+Quote para two with =code=.
+#+end_quote
+#+begin_example
+ex <b>amp</b>
+#+end_example
+#+CAPTION: Code cap
+#+NAME: blk
+#+begin_src python -n
+def f():
+    return 1
+#+end_src
+: fixed
+#+begin_export html
+<div class="raw">raw</div>
+#+end_export
+#+HTML: <p>html line</p>
+#+begin_foo :class bar
+special *bold*
+#+end_foo
+#+begin_details
+inner
+#+end_details
+# a comment
+#+begin_comment
+hidden
+#+end_comment
+
+* COMMENT Hidden heading
+x
+* Archived :ARCHIVE:
+arch
+* Excluded :noexport:
+nope
+* Deep
+** a
+*** b
+**** c
+***** d
+****** e
+******* seven
+text under seven

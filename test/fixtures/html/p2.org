@@ -1,0 +1,25 @@
+#+TITLE: Probe two
+#+OPTIONS: toc:2 num:nil H:2 tags:nil todo:nil pri:nil \n:t ^:nil -:nil *:nil e:nil f:nil stat:nil tasks:nil timestamp:nil author:nil date:nil
+#+EXCLUDE_TAGS: skipme
+#+DESCRIPTION: A description
+#+KEYWORDS: a, b
+#+LANGUAGE: en
+* TODO Head [1/2] :skipme:
+body
+* Next heading
+a_b^c *no* ~code~ -- dash \alpha.
+line1
+line2
+** Sub [#B]
+:LOGBOOK:
+CLOCK: [2026-10-11 Sun 10:00]--[2026-10-11 Sun 11:00] =>  1:00
+:END:
+text
+:MYDRAWER:
+drawer text
+:END:
+#+TOC: headlines 1
+#+TOC: tables
+*** Third
+**** Fourth
+- [ ] a [1/1]
