@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Line endings. Inside the app a document is always plain "\n" text; the file on disk, GitHub or WebDAV may use
  * Windows "\r\n" ones. Without care, the first Save of such a file rewrites every line (a whole-file diff in the

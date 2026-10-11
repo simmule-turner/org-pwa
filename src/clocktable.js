@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Computes and renders a clocktable -- real org's own
  * #+BEGIN: clocktable ... #+END: dynamic block, the report

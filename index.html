@@ -4,6 +4,10 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>org-pwa</title>
+<!-- Only the app's own scripts run (none inline, no eval); the app may talk to any server you configure (WebDAV, GitHub,
+     CalDAV, weather) and show images and audio from the web. The sandbox for JavaScript source blocks is its own page,
+     sandbox-frame.html, with a policy of its own. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; media-src 'self' data: blob: https: http:; font-src 'self' data:; connect-src 'self' https: http:; frame-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
 <link rel="manifest" href="manifest.json" />
 <style>
   :root {

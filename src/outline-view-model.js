@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * Outline view-model: turns a document AST + fold state into the flat row

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Vectors and matrices for #+TBLFM, following Emacs Calc.
  *

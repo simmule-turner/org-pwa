@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Converts an Emacs-style regular expression into an equivalent JavaScript
  * RegExp. Emacs regexes are "basic" in the POSIX sense with a handful of

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Parses org's #+STARTUP: directive into a structured config covering
  * heading visibility and inline-image visibility. None, some, or both

@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * Generic pretty-print / canonicalize helpers for any Global/Local

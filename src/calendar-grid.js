@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Pure logic for a single-month calendar grid: which cells belong to
  * the month, which are blank leading/trailing padding, and how to

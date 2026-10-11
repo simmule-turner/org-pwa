@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Org Babel for JavaScript blocks: the pure part. Header arguments, `:var`
  * values, turning a result into `#+RESULTS:` lines, and finding where those

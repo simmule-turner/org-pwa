@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Determines whether a WebM (Matroska-family) file actually has a video
  * track, by reading its own real container structure -- resolving the

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Line-based three-way merge, for resolving a sync conflict: `base` is
  * the text as of the last successful sync, `mine` the local edit, and

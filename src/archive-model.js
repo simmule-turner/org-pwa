@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * Archive data model & operations.

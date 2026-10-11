@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Exports every dated item across a set of documents (SCHEDULED,
  * DEADLINE, a plain active timestamp in a heading's title, and

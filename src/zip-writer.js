@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * A minimal ZIP archive writer, dependency-free -- no npm package, no
  * build step, just plain bytes assembled by hand. Uses the STORE

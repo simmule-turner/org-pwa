@@ -116,8 +116,10 @@ function expandRepeats(baseDate, repeater, rangeStart, rangeEnd) {
   let iterations = 0;
   while (current <= rangeEnd && iterations < MAX_ITERATIONS) {
     if (current >= rangeStart) occurrences.push(new Date(current.getTime()));
-    current = addInterval(current, amount, unit);
     iterations++;
+    // Months and years count from the original date, not from the previous occurrence, as the Emacs agenda does: a
+    // monthly repeat from the 31st keeps asking for a 31st (a month without one spills into the next).
+    current = unit === 'm' || unit === 'y' ? addInterval(baseDate, amount * iterations, unit) : addInterval(current, amount, unit);
   }
   return occurrences;
 }
@@ -846,7 +848,7 @@ function buildAgendaItems(docs, opts = {}) {
         const raw = heading.planning && heading.planning[kind];
         if (!raw) continue;
         const parsed = parseOrgTimestamp(raw);
-        if (!parsed) continue;
+        if (!parsed || !parsed.active) continue; // as in Emacs, only an active date is a reminder
         hasPlanning = true;
         addItem(documentId, heading, kind, parsed, headingIsDone);
       }
@@ -867,7 +869,19 @@ function buildAgendaItems(docs, opts = {}) {
       // Never carries forward, unlike SCHEDULED/DEADLINE above — a plain
       // timestamp is explicitly NOT an "intend to do this" marker.
       if (!hasPlanning) {
-        for (const parsed of findTimestamps(heading.title)) {
+        // <start>--<end> is every day from one to the other, as in Emacs.
+        let titleRest = heading.title;
+        for (const m of heading.title.matchAll(/(<[^>]+>)--(<[^>]+>)/g)) {
+          const from = parseOrgTimestamp(m[1]);
+          const to = parseOrgTimestamp(m[2]);
+          if (!from || !to || !from.active || !to.active || startOfDay(to.date) < startOfDay(from.date)) continue;
+          titleRest = titleRest.replace(m[0], ' ');
+          for (let day = startOfDay(from.date); day <= startOfDay(to.date); day = addDays(day, 1)) {
+            const date = new Date(day.getFullYear(), day.getMonth(), day.getDate(), from.date.getHours(), from.date.getMinutes());
+            addItem(documentId, heading, 'timestamp', { ...from, date, endDate: null }, true);
+          }
+        }
+        for (const parsed of findTimestamps(titleRest)) {
           if (!parsed.active) continue;
           addItem(documentId, heading, 'timestamp', parsed, true); // headingIsDone: true short-circuits carry-forward
         }

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Real org-mode's own explicit column-width cookie row: a table row
  * where EVERY cell is exactly "<N>" (e.g. "| <30> | <10> | <24> |"),

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * god-mode: a key-sequence translator letting a plain, unmodified
  * keystroke stand in for an Emacs-style Control/Meta chord, so a

@@ -1,3 +1,4 @@
+// @ts-check
 import { diffHunksOfLines } from './merge3.js';
 
 /**

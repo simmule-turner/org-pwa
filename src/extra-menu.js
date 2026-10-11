@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * org-xx-extra-menu: a floating (☰) button's own configurable quick-
  * action menu. Not a real org-mode variable -- this app's own

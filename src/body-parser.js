@@ -1,3 +1,4 @@
+// @ts-check
 
 import { parseInline, stripLineBreakMarker, extractLatexFragments, matchLatexFragmentAt } from './inline-markup.js';
 

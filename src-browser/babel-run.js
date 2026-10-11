@@ -3,9 +3,10 @@
  *
  * Each run gets a fresh hidden iframe and a Web Worker inside it:
  *
- *  - The iframe is `sandbox="allow-scripts"`, so it has an opaque origin: no access to
+ *  - The iframe loads sandbox-frame.html (a page of its own, so the app's strict Content-Security-Policy does not apply
+ *    to it) and is `sandbox="allow-scripts"`, so it has an opaque origin: no access to
  *    the app's DOM, storage, cookies or tokens.
- *  - The iframe's Content-Security-Policy is `default-src 'none'`, so the code has no
+ *  - The page's own Content-Security-Policy is `default-src 'none'`, so the code has no
  *    network at all (fetch, XHR, WebSocket, import() and importScripts are all refused),
  *    whatever it tries. The worker created from a blob URL inherits that policy.
  *  - The code runs in the worker, so a busy loop cannot freeze the page, and on timeout
@@ -115,29 +116,16 @@ function workerMain() {
   };
 }
 
-/** Runs inside the iframe: starts the worker and relays messages with the page. */
-function frameMain(workerSource) {
-  let worker;
-  try {
-    worker = new Worker(URL.createObjectURL(new Blob([workerSource], { type: 'text/javascript' })));
-  } catch (e) {
-    parent.postMessage({ type: 'fatal', message: String(e && e.message ? e.message : e) }, '*');
-    return;
-  }
-  worker.onmessage = (e) => parent.postMessage(e.data, '*');
-  worker.onerror = (e) => parent.postMessage({ type: 'fatal', message: e.message || 'worker error' }, '*');
-  addEventListener('message', (e) => {
-    if (e.source === parent) worker.postMessage(e.data);
-  });
-  parent.postMessage({ type: 'ready' }, '*');
+/** The code that runs inside the worker: the lock-down first, then `main`. */
+function workerSource(main) {
+  return `(${lockDown.toString()})();(${main.toString()})()`;
 }
 
-const POLICY = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; worker-src blob:";
-
-function frameDocument(main = workerMain) {
-  const worker = `(${lockDown.toString()})();(${main.toString()})()`;
-  const boot = `(${frameMain.toString()})(${JSON.stringify(worker).replace(/</g, '\\u003c')})`;
-  return `<!doctype html><meta http-equiv="Content-Security-Policy" content="${POLICY}"><script>${boot.replace(/<\/script/gi, '<\\/script')}</script>`;
+/** Points the frame at the static sandbox page, which asks for its code once it has loaded. */
+function loadFrame(frame, main) {
+  frame.src = 'sandbox-frame.html';
+  const source = workerSource(main);
+  return () => frame.contentWindow && frame.contentWindow.postMessage({ type: 'boot', source }, '*');
 }
 
 export const DEFAULT_MAX_BYTES = 64 * 1024;
@@ -204,6 +192,7 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
       }, delay);
     };
     let startedAt = 0;
+    let boot = null;
     const finish = (outcome) => {
       if (done) return;
       done = true;
@@ -215,7 +204,9 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
     const onMessage = (e) => {
       if (e.source !== frame.contentWindow || !e.data) return;
       const m = e.data;
-      if (m.type === 'ready') {
+      if (m.type === 'hello') {
+        boot();
+      } else if (m.type === 'ready') {
         startedAt = Date.now();
         arm(timeoutMs);
         frame.contentWindow.postMessage({ id, code, vars, variables, maxBytes }, '*');
@@ -229,7 +220,7 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
     };
     addEventListener('message', onMessage);
     timer = setTimeout(() => finish({ ok: false, message: 'The sandbox did not start' }), startupMs);
-    frame.srcdoc = frameDocument();
+    boot = loadFrame(frame, workerMain);
     document.body.appendChild(frame);
   });
 }
@@ -250,6 +241,7 @@ export function startSandbox(main, { startupMs = 4000, onRpc = null } = {}) {
     const listeners = new Set();
     const rpcs = createRpcHost(onRpc, (message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'));
     let settled = false;
+    let boot = null;
     let closed = false;
     let timer = null;
     const close = () => {
@@ -268,7 +260,9 @@ export function startSandbox(main, { startupMs = 4000, onRpc = null } = {}) {
     };
     const onMessage = (e) => {
       if (e.source !== frame.contentWindow || !e.data) return;
-      if (e.data.type === 'ready') {
+      if (e.data.type === 'hello') {
+        boot();
+      } else if (e.data.type === 'ready') {
         settle({
           ok: true,
           send: (message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'),
@@ -287,7 +281,7 @@ export function startSandbox(main, { startupMs = 4000, onRpc = null } = {}) {
     };
     addEventListener('message', onMessage);
     timer = setTimeout(() => settle({ ok: false, message: 'The sandbox did not start' }), startupMs);
-    frame.srcdoc = frameDocument(main);
+    boot = loadFrame(frame, main);
     document.body.appendChild(frame);
   });
 }

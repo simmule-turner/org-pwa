@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Finding the source blocks of a document, in document order, with what Noweb and Tangle need to know about each:
  * its language, header text, name, normalised body, the headings above it, and its position among its heading's blocks.

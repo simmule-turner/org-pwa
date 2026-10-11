@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * What an export shows of a source block, as Org's export does with `org-export-use-babel` on but never running
  * anything: `:exports code` (the default) shows the block only, `results` only the stored `#+RESULTS:`, `both` both and

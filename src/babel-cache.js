@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * `:cache yes`: a block whose code and inputs have not changed since its last run is not run again. The hash of those
  * is kept in its results line, `#+RESULTS[hash]:`, as in Org. (Org's own hash is made differently, so a block cached

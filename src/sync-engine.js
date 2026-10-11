@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * Sync engine: reconciles the local outbox (instant, offline-safe writes

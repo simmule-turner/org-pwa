@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Checkbox statistics cookies: `[3/8]` or `[40%]` in a heading's title,
  * kept in sync with the actual checkbox state in that heading's subtree —

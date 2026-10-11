@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * What scripts may ask of the network, the cache and the phone's position: the pure rules.
  * The sandbox itself has no network; a script's fetch is a request to the page, which checks

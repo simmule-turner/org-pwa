@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * A parser for what an exporter needs to see, closer to Org's own element model than the editing parser in
  * body-parser.js: list items own their continuation paragraphs, sub-lists and blocks; affiliated keywords

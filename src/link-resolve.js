@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Resolves what an org link target actually points to, given a document.
  * Pure and DOM-free — the UI layer decides what to *do* with a resolution

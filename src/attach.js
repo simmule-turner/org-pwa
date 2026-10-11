@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Attachments -- this app's own extension, inspired by real org-mode's
  * own org-attach (there's no exact equivalent to match against

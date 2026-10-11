@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Detects a "commented" heading: one whose title itself starts with a
  * comment marker. This mirrors real org-mode's own definition of a
@@ -17,7 +18,9 @@
  * decide whether to act on this at all.
  */
 
-const COMMENT_TITLE_RE = /^#(\s|$)/;
+// "# " is this app's own marker; COMMENT after the stars (and the TODO keyword) is Emacs's, and the same word first in the title
+// of a heading with no keyword is a comment too (org-element reads `* COMMENT TODO x` as a commented heading titled "TODO x").
+const COMMENT_TITLE_RE = /^(#|COMMENT)(\s|$)/;
 
 function isCommentedHeading(heading) {
   return COMMENT_TITLE_RE.test(heading.title || '');

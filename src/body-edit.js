@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Table and paragraph editing.
  *

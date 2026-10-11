@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * #+INCLUDE: "path" [block-type] [language-or-backend] [:lines "N-M"] [:minlevel N]
  *

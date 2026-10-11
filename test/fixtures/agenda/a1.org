@@ -1,0 +1,109 @@
+* TODO sched +1d
+SCHEDULED: <2026-10-05 Mon +1d>
+* TODO dead +1d
+DEADLINE: <2026-10-05 Mon +1d>
+* TODO sched +3d
+SCHEDULED: <2026-10-05 Mon +3d>
+* TODO dead +3d
+DEADLINE: <2026-10-05 Mon +3d>
+* TODO sched +1w
+SCHEDULED: <2026-10-05 Mon +1w>
+* TODO dead +1w
+DEADLINE: <2026-10-05 Mon +1w>
+* TODO sched +2w
+SCHEDULED: <2026-10-05 Mon +2w>
+* TODO dead +2w
+DEADLINE: <2026-10-05 Mon +2w>
+* TODO sched +1m
+SCHEDULED: <2026-10-05 Mon +1m>
+* TODO dead +1m
+DEADLINE: <2026-10-05 Mon +1m>
+* TODO sched +1y
+SCHEDULED: <2026-10-05 Mon +1y>
+* TODO dead +1y
+DEADLINE: <2026-10-05 Mon +1y>
+* TODO sched ++1d
+SCHEDULED: <2026-10-05 Mon ++1d>
+* TODO dead ++1d
+DEADLINE: <2026-10-05 Mon ++1d>
+* TODO sched ++3d
+SCHEDULED: <2026-10-05 Mon ++3d>
+* TODO dead ++3d
+DEADLINE: <2026-10-05 Mon ++3d>
+* TODO sched ++1w
+SCHEDULED: <2026-10-05 Mon ++1w>
+* TODO dead ++1w
+DEADLINE: <2026-10-05 Mon ++1w>
+* TODO sched ++1m
+SCHEDULED: <2026-10-05 Mon ++1m>
+* TODO dead ++1m
+DEADLINE: <2026-10-05 Mon ++1m>
+* TODO sched .+1d
+SCHEDULED: <2026-10-05 Mon .+1d>
+* TODO dead .+1d
+DEADLINE: <2026-10-05 Mon .+1d>
+* TODO sched .+1w
+SCHEDULED: <2026-10-05 Mon .+1w>
+* TODO dead .+1w
+DEADLINE: <2026-10-05 Mon .+1w>
+* TODO sched .+1m
+SCHEDULED: <2026-10-05 Mon .+1m>
+* TODO dead .+1m
+DEADLINE: <2026-10-05 Mon .+1m>
+* TODO sched time +1d
+SCHEDULED: <2026-10-05 Mon 09:30 +1d>
+* TODO sched time +1w
+SCHEDULED: <2026-10-05 Mon 09:30 +1w>
+* TODO sched time +1m
+SCHEDULED: <2026-10-05 Mon 09:30 +1m>
+* TODO sched time ++1w
+SCHEDULED: <2026-10-05 Mon 09:30 ++1w>
+* TODO sched time .+1w
+SCHEDULED: <2026-10-05 Mon 09:30 .+1w>
+* TODO sched plain future
+SCHEDULED: <2026-10-20 Tue>
+* TODO sched plain past
+SCHEDULED: <2026-10-02 Fri>
+* TODO dead plain future
+DEADLINE: <2026-10-25 Sun>
+* TODO sched delay
+SCHEDULED: <2026-10-20 Tue -3d>
+* TODO sched repeat delay
+SCHEDULED: <2026-10-20 Tue +1w -2d>
+* TODO dead warn
+DEADLINE: <2026-10-25 Sun -5d>
+* TODO dead repeat warn
+DEADLINE: <2026-10-25 Sun +1w -2d>
+* TODO both
+SCHEDULED: <2026-10-14 Wed> DEADLINE: <2026-10-30 Fri +1w>
+* TODO month end
+SCHEDULED: <2026-01-31 Sat +1m>
+* TODO leap day
+DEADLINE: <2024-02-29 Thu +1y>
+* TODO year end
+SCHEDULED: <2025-12-31 Wed +1m>
+* TODO hour repeat
+SCHEDULED: <2026-10-12 Mon 06:00 +6h>
+* DONE done sched
+SCHEDULED: <2026-10-15 Thu>
+* DONE done dead rep
+DEADLINE: <2026-10-15 Thu +1w>
+* no keyword sched
+SCHEDULED: <2026-10-16 Fri>
+* TODO archived	:ARCHIVE:
+SCHEDULED: <2026-10-16 Fri>
+* TODO COMMENT commented
+SCHEDULED: <2026-10-16 Fri>
+* TODO inactive sched
+SCHEDULED: [2026-10-16 Fri]
+* stamp plain <2026-10-17 Sat>
+* stamp time <2026-10-17 Sat 14:00>
+* stamp repeat <2026-10-05 Mon +1w>
+* stamp repeat month <2026-09-30 Wed +1m>
+* stamp catchup <2026-10-05 Mon ++3d>
+* stamp restart <2026-10-05 Mon .+3d>
+* stamp range <2026-10-18 Sun>--<2026-10-21 Wed>
+* stamp range time <2026-10-18 Sun 10:00>--<2026-10-18 Sun 11:30>
+* stamp inactive [2026-10-19 Mon]
+* stamp yearly <2020-11-03 Tue +1y>
+* stamp in body <2026-10-22 Thu>

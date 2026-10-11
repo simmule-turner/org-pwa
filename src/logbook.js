@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * :LOGBOOK: drawer parsing and entry formatting. A heading-level
  * drawer, same as :PROPERTIES:, but structurally different enough

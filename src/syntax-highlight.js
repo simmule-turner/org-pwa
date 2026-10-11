@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * A small syntax colouring for source blocks in HTML export, using the class names Org's `htmlize` output has
  * (`org-keyword`, `org-string`, `org-comment`, `org-constant`, `org-builtin`, `org-type`, `org-function-name`,

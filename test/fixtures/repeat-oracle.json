@@ -1,0 +1,3798 @@
+{
+ "emacs": "29.3",
+ "tz": "America/New_York",
+ "cases": [
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu +1d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-02 Fri +1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu +2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-03 Sat +2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu +3d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-10-04 Sun +3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu +1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-10-08 Thu +1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu +2w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-10-15 Thu +2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu +3w -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-22 Thu +3w -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu +1m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun +1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu +2m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-12-01 Tue +2m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu +3m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2027-01-01 Fri +3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu +1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2027-10-01 Fri +1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu +2y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2028-10-01 Sun +2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu +3y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2029-10-01 Mon +3y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu ++1d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-10-02 Fri ++1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu ++2d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-02 Mon ++2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu ++3d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-10-04 Sun ++3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu ++1w -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-15 Thu ++1w -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu ++2w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-15 Thu ++2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu ++3w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-10-22 Thu ++3w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu ++1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-12-01 Tue ++1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu ++2m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-12-01 Tue ++2m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu ++3m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2027-01-01 Fri ++3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu ++1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2027-10-01 Fri ++1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu ++2y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2028-10-01 Sun ++2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu ++3y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2029-10-01 Mon ++3y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu .+1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-03-01 Fri .+1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu .+2d -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-13 Tue .+2d -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu .+3d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-14 Wed .+3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu .+1w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-15 Sun .+1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu .+2w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-15 Sun .+2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu .+3w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-21 Thu .+3w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu .+1m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-11-11 Wed .+1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu .+2m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-12-11 Fri .+2m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu .+3m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-06-08 Mon .+3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu .+1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2027-11-01 Mon .+1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu .+2y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-03-01 Sun .+2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu .+3y -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2029-10-11 Thu .+3y -2d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 09:00 +1d -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-02 Fri 09:00 +1d -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 09:00 +1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-10-08 Thu 09:00 +1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 09:00 +1m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-11-01 Sun 09:00 +1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 09:00 +1y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2027-10-01 Fri 09:00 +1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 09:00 ++1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-01 Sun 09:00 ++1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 09:00 ++1w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-15 Thu 09:00 ++1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 09:00 ++1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-11-01 Sun 09:00 ++1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 09:00 ++1y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2027-10-01 Fri 09:00 ++1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 09:00 .+1d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-12 Mon 09:00 .+1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 09:00 .+1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-08 Sun 09:00 .+1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 09:00 .+1m -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-11-11 Wed 09:00 .+1m -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 09:00 .+1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2025-03-01 Sat 09:00 .+1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 09:00 +6h>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-10-01 Thu 15:00 +6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 09:00 +30h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-10-02 Fri 15:00 +30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 09:00 ++6h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-10-01 Thu 15:00 ++6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 09:00 ++30h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon 15:00 ++30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 09:00 .+6h -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-12 Mon 05:50 .+6h -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 09:00 .+30h>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-09 Mon 18:00 .+30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 23:30 +1d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-10-02 Fri 23:30 +1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 23:30 +1w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-08 Thu 23:30 +1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 23:30 +1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun 23:30 +1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 23:30 +1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2027-10-01 Fri 23:30 +1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 23:30 ++1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-10-02 Fri 23:30 ++1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 23:30 ++1w -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-10-08 Thu 23:30 ++1w -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 23:30 ++1m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun 23:30 ++1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 23:30 ++1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2027-10-01 Fri 23:30 ++1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 23:30 .+1d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon 23:30 .+1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 23:30 .+1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-07 Thu 23:30 .+1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 23:30 .+1m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-04-08 Wed 23:30 .+1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 23:30 .+1y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2027-10-11 Mon 23:30 .+1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 23:30 +6h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-10-02 Fri 05:30 +6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 23:30 +30h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-10-03 Sat 05:30 +30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 23:30 ++6h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-11 Sun 17:30 ++6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-01 Thu 23:30 ++30h>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-13 Tue 05:30 ++30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-01 Thu 23:30 .+6h>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-08 Sun 18:00 .+6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun +1d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-12 Mon +1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun +2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-10-13 Tue +2d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun +3d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-10-14 Wed +3d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun +1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-10-18 Sun +1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun +2w -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-25 Sun +2w -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun +3w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun +3w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun +1m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-11-11 Wed +1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun +2m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-12-11 Fri +2m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun +3m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2027-01-11 Mon +3m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun +1y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2027-10-11 Mon +1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun +2y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2028-10-11 Wed +2y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun +3y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2029-10-11 Thu +3y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun ++1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-02 Mon ++1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun ++2d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-10-13 Tue ++2d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun ++3d -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-14 Wed ++3d -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun ++1w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-18 Sun ++1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun ++2w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-10-25 Sun ++2w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun ++3w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-22 Sun ++3w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun ++1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-11-11 Wed ++1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun ++2m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-12-11 Fri ++2m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun ++3m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2027-01-11 Mon ++3m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun ++1y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2027-10-11 Mon ++1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun ++2y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2028-10-11 Wed ++2y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun ++3y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2029-10-11 Thu ++3y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun .+1d -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-12 Mon .+1d -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun .+2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-13 Tue .+2d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun .+3d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-11 Wed .+3d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun .+1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-08 Sun .+1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun .+2w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-14 Thu .+2w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun .+3w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun .+3w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun .+1m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-11-11 Wed .+1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun .+2m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-05-08 Fri .+2m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun .+3m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2027-02-01 Mon .+3m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun .+1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2025-03-01 Sat .+1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun .+2y -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2028-10-11 Wed .+2y -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun .+3y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2029-10-11 Thu .+3y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 09:00 +1d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon 09:00 +1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 09:00 +1w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-18 Sun 09:00 +1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 09:00 +1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-11 Wed 09:00 +1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 09:00 +1y -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2027-10-11 Mon 09:00 +1y -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 09:00 ++1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon 09:00 ++1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 09:00 ++1w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-10-18 Sun 09:00 ++1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 09:00 ++1m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-11-11 Wed 09:00 ++1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 09:00 ++1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2027-10-11 Mon 09:00 ++1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 09:00 .+1d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon 09:00 .+1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 09:00 .+1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-07 Thu 09:00 .+1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 09:00 .+1m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-04-08 Wed 09:00 .+1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 09:00 .+1y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2027-10-11 Mon 09:00 .+1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 09:00 +6h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-10-11 Sun 15:00 +6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 09:00 +30h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-10-12 Mon 15:00 +30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 09:00 ++6h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-11 Sun 21:00 ++6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 09:00 ++30h -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-12 Mon 15:00 ++30h -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 09:00 .+6h>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-08 Sun 18:00 .+6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 23:30 +1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-10-12 Mon 23:30 +1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 23:30 +1w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-18 Sun 23:30 +1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 23:30 +1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-11-11 Wed 23:30 +1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 23:30 +1y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2027-10-11 Mon 23:30 +1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 23:30 ++1d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-12 Mon 23:30 ++1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 23:30 ++1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun 23:30 ++1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 23:30 ++1m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-11-11 Wed 23:30 ++1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 23:30 ++1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2027-10-11 Mon 23:30 ++1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 23:30 .+1d -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-09 Mon 23:30 .+1d -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 23:30 .+1w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-18 Sun 23:30 .+1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 23:30 .+1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-12-01 Tue 23:30 .+1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 23:30 .+1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2027-10-11 Mon 23:30 .+1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 23:30 +6h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-10-12 Mon 05:30 +6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 23:30 +30h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-13 Tue 05:30 +30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-11 Sun 23:30 ++6h>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-12 Mon 05:30 ++6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-11 Sun 23:30 ++30h>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-10-13 Tue 05:30 ++30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue +1d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-10-21 Wed +1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue +2d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-10-22 Thu +2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue +3d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-10-23 Fri +3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue +1w -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-27 Tue +1w -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue +2w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-11-03 Tue +2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue +3w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-11-10 Tue +3w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue +1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-20 Fri +1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue +2m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-12-20 Sun +2m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue +3m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2027-01-20 Wed +3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue +1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2027-10-20 Wed +1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue +2y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2028-10-20 Fri +2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue +3y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2029-10-20 Sat +3y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue ++1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-10-21 Wed ++1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue ++2d -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-22 Thu ++2d -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue ++3d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-23 Fri ++3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue ++1w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-10-27 Tue ++1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue ++2w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-03 Tue ++2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue ++3w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-11-10 Tue ++3w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue ++1m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-11-20 Fri ++1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue ++2m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-12-20 Sun ++2m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue ++3m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2027-01-20 Wed ++3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue ++1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2027-10-20 Wed ++1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue ++2y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2028-10-20 Fri ++2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue ++3y -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2029-10-20 Sat ++3y -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue .+1d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon .+1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue .+2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-10 Tue .+2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue .+3d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-04 Wed .+3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue .+1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-07 Thu .+1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue .+2w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-25 Sun .+2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue .+3w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-11-01 Sun .+3w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue .+1m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-04-08 Wed .+1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue .+2m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2027-01-01 Fri .+2m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue .+3m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-05-29 Wed .+3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue .+1y -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2027-10-11 Mon .+1y -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue .+2y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2028-10-11 Wed .+2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue .+3y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2029-03-08 Thu .+3y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 09:00 +1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-10-21 Wed 09:00 +1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 09:00 +1w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-27 Tue 09:00 +1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 09:00 +1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-11-20 Fri 09:00 +1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 09:00 +1y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2027-10-20 Wed 09:00 +1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 09:00 ++1d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-21 Wed 09:00 ++1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 09:00 ++1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-03 Tue 09:00 ++1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 09:00 ++1m -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-11-20 Fri 09:00 ++1m -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 09:00 ++1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2027-10-20 Wed 09:00 ++1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 09:00 .+1d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-09 Mon 09:00 .+1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 09:00 .+1w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-18 Sun 09:00 .+1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 09:00 .+1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-12-01 Tue 09:00 .+1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 09:00 .+1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2027-10-11 Mon 09:00 .+1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 09:00 +6h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-10-20 Tue 15:00 +6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 09:00 +30h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-21 Wed 15:00 +30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 09:00 ++6h -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-20 Tue 15:00 ++6h -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 09:00 ++30h>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-10-21 Wed 15:00 ++30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 23:30 +1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-10-21 Wed 23:30 +1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 23:30 +1w -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-10-27 Tue 23:30 +1w -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 23:30 +1m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-11-20 Fri 23:30 +1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 23:30 +1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2027-10-20 Wed 23:30 +1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 23:30 ++1d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-21 Wed 23:30 ++1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 23:30 ++1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-10-27 Tue 23:30 ++1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 23:30 ++1m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-11-20 Fri 23:30 ++1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 23:30 ++1y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2027-10-20 Wed 23:30 ++1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 23:30 .+1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-02 Mon 23:30 .+1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 23:30 .+1w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-18 Sun 23:30 .+1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 23:30 .+1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-03-29 Fri 23:30 .+1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 23:30 .+1y -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2027-03-08 Mon 23:30 .+1y -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 23:30 +6h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-21 Wed 05:30 +6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 23:30 +30h>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-22 Thu 05:30 +30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-20 Tue 23:30 ++6h>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-10-21 Wed 05:30 ++6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 23:30 ++30h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-02 Mon 11:30 ++30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-20 Tue 23:30 .+30h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-12 Mon 22:30 .+30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat +1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-02-01 Sun +1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat +2d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-02-02 Mon +2d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat +3d -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-02-03 Tue +3d -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat +1w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-02-07 Sat +1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat +2w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-02-14 Sat +2w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat +3w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-02-21 Sat +3w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat +1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-03-03 Tue +1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat +2m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-03-31 Tue +2m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat +3m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-05-01 Fri +3m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat +1y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2027-01-31 Sun +1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat +2y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2028-01-31 Mon +2y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat +3y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2029-01-31 Wed +3y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat ++1d -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-12 Mon ++1d -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat ++2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon ++2d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat ++3d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-11 Wed ++3d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat ++1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-07 Sat ++1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat ++2w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-02-14 Sat ++2w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat ++3w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-31 Sat ++3w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat ++1m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-11-03 Tue ++1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat ++2m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-31 Tue ++2m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat ++3m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2027-02-01 Mon ++3m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat ++1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2027-01-31 Sun ++1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat ++2y -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2028-01-31 Mon ++2y -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat ++3y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2029-01-31 Wed ++3y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat .+1d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-09 Mon .+1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat .+2d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-03 Tue .+2d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat .+3d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-03 Sun .+3d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat .+1w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-18 Sun .+1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat .+2w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-25 Sun .+2w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat .+3w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-29 Sun .+3w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat .+1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-12-01 Tue .+1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat .+2m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-04-29 Mon .+2m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat .+3m -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2027-01-11 Mon .+3m -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat .+1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2027-10-11 Mon .+1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat .+2y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2028-03-08 Wed .+2y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat .+3y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2029-11-01 Thu .+3y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 09:00 +1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-02-01 Sun 09:00 +1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 09:00 +1w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-02-07 Sat 09:00 +1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 09:00 +1m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-03-03 Tue 09:00 +1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 09:00 +1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2027-01-31 Sun 09:00 +1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 09:00 ++1d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon 09:00 ++1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 09:00 ++1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-02-07 Sat 09:00 ++1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 09:00 ++1m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-04-03 Fri 09:00 ++1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 09:00 ++1y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2027-01-31 Sun 09:00 ++1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 09:00 .+1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-02 Mon 09:00 .+1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 09:00 .+1w -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-18 Sun 09:00 .+1w -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 09:00 .+1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-03-29 Fri 09:00 .+1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 09:00 .+1y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2027-03-08 Mon 09:00 .+1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 09:00 +6h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-01-31 Sat 15:00 +6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 09:00 +30h -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-02-01 Sun 15:00 +30h -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 09:00 ++6h>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-08 Sun 15:00 ++6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 09:00 ++30h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-02 Mon 09:00 ++30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 09:00 .+6h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-02-29 Thu 15:00 .+6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 23:30 +1d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-02-01 Sun 23:30 +1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 23:30 +1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-02-07 Sat 23:30 +1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 23:30 +1m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-03-03 Tue 23:30 +1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 23:30 +1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2027-01-31 Sun 23:30 +1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 23:30 ++1d -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-08 Sun 23:30 ++1d -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 23:30 ++1w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-17 Sat 23:30 ++1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 23:30 ++1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-03 Tue 23:30 ++1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 23:30 ++1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2027-01-31 Sun 23:30 ++1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 23:30 .+1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-01 Fri 23:30 .+1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 23:30 .+1w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-15 Sun 23:30 .+1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 23:30 .+1m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-11-11 Wed 23:30 .+1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 23:30 .+1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2027-11-01 Mon 23:30 .+1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 23:30 +6h>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-02-01 Sun 05:30 +6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 23:30 +30h>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-02-02 Mon 05:30 +30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-01-31 Sat 23:30 ++6h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-01 Sun 11:30 ++6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-01-31 Sat 23:30 ++30h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-02-02 Mon 05:30 ++30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue +1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-04-01 Wed +1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue +2d -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-04-02 Thu +2d -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue +3d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-04-03 Fri +3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue +1w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-04-07 Tue +1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue +2w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-04-14 Tue +2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue +3w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-04-21 Tue +3w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue +1m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-05-01 Fri +1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue +2m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-05-31 Sun +2m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue +3m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-07-01 Wed +3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue +1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2027-03-31 Wed +1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue +2y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2028-03-31 Fri +2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue +3y -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2029-03-31 Sat +3y -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue ++1d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon ++1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue ++2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-04-02 Thu ++2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue ++3d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-02 Mon ++3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue ++1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-04-07 Tue ++1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue ++2w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-13 Tue ++2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue ++3w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-27 Tue ++3w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue ++1m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-05-01 Fri ++1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue ++2m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-12-01 Tue ++2m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue ++3m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-07-01 Wed ++3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue ++1y -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2027-03-31 Wed ++1y -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue ++2y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2028-03-31 Fri ++2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue ++3y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2029-03-31 Sat ++3y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue .+1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-02 Mon .+1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue .+2d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-02 Sat .+2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue .+3d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-14 Wed .+3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue .+1w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-18 Sun .+1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue .+2w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-22 Sun .+2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue .+3w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-22 Sun .+3w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue .+1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-03-29 Fri .+1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue .+2m -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-12-11 Fri .+2m -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue .+3m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2027-01-11 Mon .+3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue .+1y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2027-03-08 Mon .+1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue .+2y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2028-11-01 Wed .+2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue .+3y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2027-03-01 Mon .+3y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 09:00 +1d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-04-01 Wed 09:00 +1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 09:00 +1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-04-07 Tue 09:00 +1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 09:00 +1m -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-05-01 Fri 09:00 +1m -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 09:00 +1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2027-03-31 Wed 09:00 +1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 09:00 ++1d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-04-01 Wed 09:00 ++1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 09:00 ++1w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-13 Tue 09:00 ++1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 09:00 ++1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-01 Sun 09:00 ++1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 09:00 ++1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2027-03-31 Wed 09:00 ++1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 09:00 .+1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-01 Fri 09:00 .+1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 09:00 .+1w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-15 Sun 09:00 .+1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 09:00 .+1m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-11-11 Wed 09:00 .+1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 09:00 .+1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2027-11-01 Mon 09:00 .+1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 09:00 +6h -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-03-31 Tue 15:00 +6h -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 09:00 +30h>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-04-01 Wed 15:00 +30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 09:00 ++6h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-01 Sun 09:00 ++6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 09:00 ++30h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-04-01 Wed 15:00 ++30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 09:00 .+6h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-11 Sun 22:30 .+6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 09:00 .+30h>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-13 Tue 05:50 .+30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 23:30 +1d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-04-01 Wed 23:30 +1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 23:30 +1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-04-07 Tue 23:30 +1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 23:30 +1m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-05-01 Fri 23:30 +1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 23:30 +1y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2027-03-31 Wed 23:30 +1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 23:30 ++1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun 23:30 ++1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 23:30 ++1w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-13 Tue 23:30 ++1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 23:30 ++1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-05-01 Fri 23:30 ++1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 23:30 ++1y -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2027-03-31 Wed 23:30 ++1y -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 23:30 .+1d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon 23:30 .+1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 23:30 .+1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-08 Sun 23:30 .+1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 23:30 .+1m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-11-11 Wed 23:30 .+1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 23:30 .+1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2025-03-01 Sat 23:30 .+1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 23:30 +6h>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-04-01 Wed 05:30 +6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 23:30 +30h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-04-02 Thu 05:30 +30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 23:30 ++6h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-04-01 Wed 05:30 ++6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 23:30 ++30h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-11 Sun 17:30 ++30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-31 Tue 23:30 .+6h>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon 05:50 .+6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-31 Tue 23:30 .+30h -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-09 Mon 18:00 .+30h -2d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu +1d -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2024-03-01 Fri +1d -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu +2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2024-03-02 Sat +2d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu +3d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2024-03-03 Sun +3d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu +1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2024-03-07 Thu +1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu +2w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-14 Thu +2w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu +3w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2024-03-21 Thu +3w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu +1m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2024-03-29 Fri +1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu +2m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2024-04-29 Mon +2m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu +3m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2024-05-29 Wed +3m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu +1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2025-03-01 Sat +1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu +2y -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-03-01 Sun +2y -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu +3y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2027-03-01 Mon +3y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu ++1d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-09 Mon ++1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu ++2d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-03 Tue ++2d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu ++3d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-03 Sun ++3d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu ++1w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-15 Thu ++1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu ++2w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-22 Thu ++2w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu ++3w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-26 Thu ++3w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu ++1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-12-01 Tue ++1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu ++2m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-04-29 Mon ++2m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu ++3m -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-12-01 Tue ++3m -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu ++1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2027-03-01 Mon ++1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu ++2y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2028-03-01 Wed ++2y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu ++3y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2027-03-01 Mon ++3y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu .+1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-01 Fri .+1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu .+2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-13 Tue .+2d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu .+3d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-14 Wed .+3d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu .+1w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-15 Sun .+1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu .+2w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-15 Sun .+2w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu .+3w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-03-21 Thu .+3w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu .+1m -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-11-11 Wed .+1m -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu .+2m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-12-11 Fri .+2m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu .+3m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-06-08 Mon .+3m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu .+1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2027-11-01 Mon .+1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu .+2y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-03-01 Sun .+2y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu .+3y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2029-10-11 Thu .+3y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 09:00 +1d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2024-03-01 Fri 09:00 +1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 09:00 +1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-07 Thu 09:00 +1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 09:00 +1m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2024-03-29 Fri 09:00 +1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 09:00 +1y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2025-03-01 Sat 09:00 +1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 09:00 ++1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun 09:00 ++1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 09:00 ++1w -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-15 Thu 09:00 ++1w -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 09:00 ++1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-03-29 Fri 09:00 ++1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 09:00 ++1y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2027-03-01 Mon 09:00 ++1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 09:00 .+1d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon 09:00 .+1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 09:00 .+1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-08 Sun 09:00 .+1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 09:00 .+1m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-11-11 Wed 09:00 .+1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 09:00 .+1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2025-03-01 Sat 09:00 .+1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 09:00 +6h>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2024-02-29 Thu 15:00 +6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 09:00 +30h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2024-03-01 Fri 15:00 +30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 09:00 ++6h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-02-29 Thu 15:00 ++6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 09:00 ++30h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-12 Mon 15:00 ++30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 23:30 +1d -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2024-03-01 Fri 23:30 +1d -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 23:30 +1w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2024-03-07 Thu 23:30 +1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 23:30 +1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2024-03-29 Fri 23:30 +1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 23:30 +1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2025-03-01 Sat 23:30 +1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 23:30 ++1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-01 Fri 23:30 ++1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 23:30 ++1w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-12 Thu 23:30 ++1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 23:30 ++1m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-11-01 Sun 23:30 ++1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 23:30 ++1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2027-03-01 Mon 23:30 ++1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 23:30 .+1d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-12 Mon 23:30 .+1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 23:30 .+1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-03-07 Thu 23:30 .+1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 23:30 .+1m -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-04-08 Wed 23:30 .+1m -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 23:30 .+1y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2027-10-11 Mon 23:30 .+1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 23:30 +6h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2024-03-01 Fri 05:30 +6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 23:30 +30h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-03-02 Sat 05:30 +30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2024-02-29 Thu 23:30 ++6h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-11 Sun 17:30 ++6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 23:30 ++30h>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-13 Tue 05:30 ++30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2024-02-29 Thu 23:30 .+30h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-02 Mon 14:15 .+30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed +1d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-01-01 Thu +1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed +2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-01-02 Fri +2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed +3d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-01-03 Sat +3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed +1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-01-07 Wed +1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed +2w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-01-14 Wed +2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed +3w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-01-21 Wed +3w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed +1m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-01-31 Sat +1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed +2m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-03-03 Tue +2m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed +3m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-03-31 Tue +3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed +1y -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-12-31 Thu +1y -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed +2y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2027-12-31 Fri +2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed +3y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2028-12-31 Sun +3y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed ++1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-02 Mon ++1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed ++2d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-01-02 Fri ++2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed ++3d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon ++3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed ++1w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-14 Wed ++1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed ++2w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-11 Wed ++2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed ++3w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-11 Wed ++3w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed ++1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-01-31 Sat ++1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed ++2m -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-11-03 Tue ++2m -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed ++3m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2027-01-01 Fri ++3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed ++1y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-12-31 Thu ++1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed ++2y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2027-12-31 Fri ++2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed ++3y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2028-12-31 Sun ++3y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed .+1d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon .+1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed .+2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-13 Tue .+2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed .+3d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-11 Wed .+3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed .+1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-08 Sun .+1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed .+2w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-03-14 Thu .+2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed .+3w -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-11-01 Sun .+3w -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed .+1m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-11-11 Wed .+1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed .+2m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-05-08 Fri .+2m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed .+3m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2027-02-01 Mon .+3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed .+1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2025-03-01 Sat .+1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed .+2y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2028-10-11 Wed .+2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed .+3y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2029-10-11 Thu .+3y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 09:00 +1d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-01-01 Thu 09:00 +1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 09:00 +1w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-01-07 Wed 09:00 +1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 09:00 +1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-01-31 Sat 09:00 +1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 09:00 +1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-12-31 Thu 09:00 +1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 09:00 ++1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-01-01 Thu 09:00 ++1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 09:00 ++1w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-11 Wed 09:00 ++1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 09:00 ++1m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-11-03 Tue 09:00 ++1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 09:00 ++1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-12-31 Thu 09:00 ++1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 09:00 .+1d -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-12 Mon 09:00 .+1d -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 09:00 .+1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-03-07 Thu 09:00 .+1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 09:00 .+1m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-04-08 Wed 09:00 .+1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 09:00 .+1y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2027-10-11 Mon 09:00 .+1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 09:00 +6h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2025-12-31 Wed 15:00 +6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 09:00 +30h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-01-01 Thu 15:00 +30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 09:00 ++6h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-11 Sun 21:00 ++6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 09:00 ++30h>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon 09:00 ++30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 09:00 .+30h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-02 Mon 14:15 .+30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 23:30 +1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-01-01 Thu 23:30 +1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 23:30 +1w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-01-07 Wed 23:30 +1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 23:30 +1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-01-31 Sat 23:30 +1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 23:30 +1y -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-12-31 Thu 23:30 +1y -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 23:30 ++1d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-11 Sun 23:30 ++1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 23:30 ++1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-04 Wed 23:30 ++1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 23:30 ++1m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-11-03 Tue 23:30 ++1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 23:30 ++1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-12-31 Thu 23:30 ++1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 23:30 .+1d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-09 Mon 23:30 .+1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 23:30 .+1w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-18 Sun 23:30 .+1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 23:30 .+1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-12-01 Tue 23:30 .+1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 23:30 .+1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2027-10-11 Mon 23:30 .+1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 23:30 +6h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-01-01 Thu 05:30 +6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 23:30 +30h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-01-02 Fri 05:30 +30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 23:30 ++6h>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon 05:30 ++6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 23:30 ++30h -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-09 Mon 11:30 ++30h -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2025-12-31 Wed 23:30 .+6h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun 14:15 .+6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2025-12-31 Wed 23:30 .+30h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-01 Fri 15:00 .+30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat +1d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-08 Sun +1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat +2d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-03-09 Mon +2d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat +3d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-03-10 Tue +3d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat +1w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-03-14 Sat +1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat +2w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-03-21 Sat +2w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat +3w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-28 Sat +3w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat +1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-04-07 Tue +1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat +2m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-05-07 Thu +2m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat +3m -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-06-07 Sun +3m -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat +1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2027-03-07 Sun +1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat +2y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2028-03-07 Tue +2y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat +3y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2029-03-07 Wed +3y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat ++1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-03-08 Sun ++1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat ++2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-13 Tue ++2d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat ++3d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-12 Mon ++3d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat ++1w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-14 Sat ++1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat ++2w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-14 Sat ++2w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat ++3w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-03-28 Sat ++3w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat ++1m -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-11-07 Sat ++1m -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat ++2m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-11-07 Sat ++2m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat ++3m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-06-07 Sun ++3m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat ++1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2027-03-07 Sun ++1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat ++2y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2028-03-07 Tue ++2y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat ++3y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2029-03-07 Wed ++3y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat .+1d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-12 Mon .+1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat .+2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-10 Tue .+2d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat .+3d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-04 Wed .+3d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat .+1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-03-07 Thu .+1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat .+2w -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-25 Sun .+2w -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat .+3w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun .+3w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat .+1m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-04-08 Wed .+1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat .+2m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2027-01-01 Fri .+2m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat .+3m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-05-29 Wed .+3m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat .+1y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2027-10-11 Mon .+1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat .+2y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2028-10-11 Wed .+2y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat .+3y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2029-03-08 Thu .+3y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 09:00 +1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-03-08 Sun 09:00 +1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 09:00 +1w -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-03-14 Sat 09:00 +1w -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 09:00 +1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-04-07 Tue 09:00 +1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 09:00 +1y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2027-03-07 Sun 09:00 +1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 09:00 ++1d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon 09:00 ++1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 09:00 ++1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-07 Sat 09:00 ++1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 09:00 ++1m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-11-07 Sat 09:00 ++1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 09:00 ++1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2027-03-07 Sun 09:00 ++1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 09:00 .+1d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-09 Mon 09:00 .+1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 09:00 .+1w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-18 Sun 09:00 .+1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 09:00 .+1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-12-01 Tue 09:00 .+1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 09:00 .+1y -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2027-10-11 Mon 09:00 .+1y -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 09:00 +6h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-03-07 Sat 15:00 +6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 09:00 +30h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-03-08 Sun 15:00 +30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 09:00 ++6h>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon 03:00 ++6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 09:00 ++30h>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-08 Sun 15:00 ++30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 09:00 .+6h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun 14:15 .+6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 09:00 .+30h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-01 Fri 15:00 .+30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 23:30 +1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-03-08 Sun 23:30 +1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 23:30 +1w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-14 Sat 23:30 +1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 23:30 +1m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-04-07 Tue 23:30 +1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 23:30 +1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2027-03-07 Sun 23:30 +1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 23:30 ++1d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-12 Mon 23:30 ++1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 23:30 ++1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-03-14 Sat 23:30 ++1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 23:30 ++1m -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-04-07 Tue 23:30 ++1m -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 23:30 ++1y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2027-03-07 Sun 23:30 ++1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 23:30 .+1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-02 Mon 23:30 .+1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 23:30 .+1w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-18 Sun 23:30 .+1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 23:30 .+1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-29 Fri 23:30 .+1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 23:30 .+1y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2027-03-08 Mon 23:30 .+1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 23:30 +6h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-03-08 Sun 05:30 +6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 23:30 +30h>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-03-09 Mon 05:30 +30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 23:30 ++6h -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-08 Sun 17:30 ++6h -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-03-07 Sat 23:30 ++30h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun 17:30 ++30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-03-07 Sat 23:30 .+6h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-02-29 Thu 15:00 .+6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat +1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun +1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat +2d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-11-02 Mon +2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat +3d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-11-03 Tue +3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat +1w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-11-07 Sat +1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat +2w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-11-14 Sat +2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat +3w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-21 Sat +3w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat +1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-12-01 Tue +1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat +2m -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-12-31 Thu +2m -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat +3m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2027-01-31 Sun +3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat +1y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2027-10-31 Sun +1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat +2y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2028-10-31 Tue +2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat +3y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2029-10-31 Wed +3y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat ++1d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun ++1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat ++2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-11-02 Mon ++2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat ++3d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-11-03 Tue ++3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat ++1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-07 Sat ++1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat ++2w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-11-14 Sat ++2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat ++3w -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-11-21 Sat ++3w -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat ++1m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-12-01 Tue ++1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat ++2m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-12-31 Thu ++2m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat ++3m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2027-01-31 Sun ++3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat ++1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2027-10-31 Sun ++1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat ++2y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2028-10-31 Tue ++2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat ++3y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2029-10-31 Wed ++3y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat .+1d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-03-09 Mon .+1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat .+2d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-03 Tue .+2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat .+3d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-03-03 Sun .+3d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat .+1w -2d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-18 Sun .+1w -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat .+2w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-25 Sun .+2w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat .+3w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-29 Sun .+3w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat .+1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-12-01 Tue .+1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat .+2m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-04-29 Mon .+2m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat .+3m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2027-01-11 Mon .+3m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat .+1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2027-10-11 Mon .+1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat .+2y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2028-03-08 Wed .+2y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat .+3y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2029-11-01 Thu .+3y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 09:00 +1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-11-01 Sun 09:00 +1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 09:00 +1w>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-11-07 Sat 09:00 +1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 09:00 +1m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-12-01 Tue 09:00 +1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 09:00 +1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2027-10-31 Sun 09:00 +1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 09:00 ++1d -2d>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-11-01 Sun 09:00 ++1d -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 09:00 ++1w>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2026-11-07 Sat 09:00 ++1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 09:00 ++1m>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-12-01 Tue 09:00 ++1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 09:00 ++1y>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2027-10-31 Sun 09:00 ++1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 09:00 .+1d>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-02 Mon 09:00 .+1d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 09:00 .+1w>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-10-18 Sun 09:00 .+1w>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 09:00 .+1m>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2024-03-29 Fri 09:00 .+1m>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 09:00 .+1y>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2027-03-08 Mon 09:00 .+1y>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 09:00 +6h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-10-31 Sat 15:00 +6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 09:00 +30h>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun 15:00 +30h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 09:00 ++6h>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-10-31 Sat 15:00 ++6h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 09:00 ++30h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun 15:00 ++30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 09:00 .+30h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-12 Mon 22:30 .+30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 23:30 +1d>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun 23:30 +1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 23:30 +1w>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2026-11-07 Sat 23:30 +1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 23:30 +1m>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-12-01 Tue 23:30 +1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 23:30 +1y>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2027-10-31 Sun 23:30 +1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 23:30 ++1d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun 23:30 ++1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 23:30 ++1w>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "DEADLINE: <2026-11-07 Sat 23:30 ++1w>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 23:30 ++1m>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-12-01 Tue 23:30 ++1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 23:30 ++1y>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2027-10-31 Sun 23:30 ++1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 23:30 .+1d>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "SCHEDULED: <2024-03-01 Fri 23:30 .+1d>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 23:30 .+1w -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-03-15 Sun 23:30 .+1w -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 23:30 .+1m>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-11-11 Wed 23:30 .+1m>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 23:30 .+1y>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "DEADLINE: <2027-11-01 Mon 23:30 .+1y>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 23:30 +6h>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun 05:30 +6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 23:30 +30h -2d>",
+   "now": "2026-03-08 12:00:00",
+   "expected": "DEADLINE: <2026-11-02 Mon 05:30 +30h -2d>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 23:30 ++6h>",
+   "now": "2026-11-01 08:15:00",
+   "expected": "SCHEDULED: <2026-11-01 Sun 11:30 ++6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 23:30 ++30h>",
+   "now": "2024-02-29 09:00:00",
+   "expected": "DEADLINE: <2026-11-02 Mon 05:30 ++30h>"
+  },
+  {
+   "kind": "SCHEDULED",
+   "ts": "<2026-10-31 Sat 23:30 .+6h>",
+   "now": "2026-10-11 16:30:00",
+   "expected": "SCHEDULED: <2026-10-11 Sun 22:30 .+6h>"
+  },
+  {
+   "kind": "DEADLINE",
+   "ts": "<2026-10-31 Sat 23:30 .+30h>",
+   "now": "2026-10-11 23:50:00",
+   "expected": "DEADLINE: <2026-10-13 Tue 05:50 .+30h>"
+  }
+ ]
+}

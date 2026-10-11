@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Whole-document search — walks the full tree regardless of current fold
  * state (a folded heading's content is still searchable, it just isn't

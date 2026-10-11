@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Affiliated keywords: the `#+NAME:`, `#+CAPTION:`, `#+ATTR_HTML:` (and other
  * `#+ATTR_*:`), `#+HEADER:` and `#+RESULTS:` lines that sit directly above a

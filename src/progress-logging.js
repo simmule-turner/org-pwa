@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Progress logging: decision logic for what should happen to a
  * heading's CLOSED planning line and :LOGBOOK: drawer when its TODO

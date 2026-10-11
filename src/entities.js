@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Org's entities (org-entities.el, Org shipped with Emacs 29.3): name -> [ASCII, Latin-1, UTF-8, HTML].
  * Generated from Emacs; the export backends use the column for their own character set.

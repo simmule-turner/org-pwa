@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Persists undo/redo history across reopens. Same adapter shape and
  * per-document key pattern as outbox.js ({ get(key), set(key, value),

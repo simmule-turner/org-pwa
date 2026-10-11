@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * findScrollingAncestor: finds the nearest ancestor of `el` (inclusive)
  * that is actually scrolling right now -- has more content than fits

@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * Fold/collapse state model.

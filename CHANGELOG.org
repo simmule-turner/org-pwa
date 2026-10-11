@@ -7,6 +7,11 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v484 — Checked against Emacs, and a stricter page
+Repeating tasks and the agenda are now tested against Emacs itself, which exposed four differences, all fixed: ~++~ and hour repeaters land after the current time, monthly repeats from the 31st follow Emacs's dates, a ~<a>--<b>~ range shows on every day, and ~COMMENT~ headings and inactive SCHEDULED dates stay out of the agenda. The app also gains a Content-Security-Policy that refuses injected scripts, with the JavaScript sandbox moved to its own page, and a short Security and privacy section says where your tokens are kept. Tests run on a frozen clock, and CI, a release script, lint and type-checking are in place.
+
+Verified: 632 repeater cases and 63 agenda days against Emacs 29.3.
+
 * v483 — HTML export, as ox-html does it
 HTML export is rebuilt on the structure Emacs's ~ox-html~ produces, since it is the route to PDF. List items keep their paragraphs, sub-lists and blocks; tables get headers, alignment and captions; description lists, figures, verse, center and special blocks, entities, timestamps, macros, ~#+TOC:~ and numbered footnotes work; most ~#+OPTIONS:~ keys and tag selection are honoured. Source blocks are coloured, readable pictures are embedded, and printing wraps code. The README exports to the same structure as Emacs's.
 

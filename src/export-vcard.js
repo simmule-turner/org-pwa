@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * Exports contacts -- Org headlines carrying a valid EMAIL property --

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Parses an Emacs "Local Variables" block:
  *

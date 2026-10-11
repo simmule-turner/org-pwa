@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Command palette search: given a list of commands and what the person
  * has typed, decides which commands match and in what order. Pure -- no

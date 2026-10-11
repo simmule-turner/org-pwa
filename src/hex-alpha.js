@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Splits and recombines hex colors with an alpha channel
  * (`#RRGGBBAA`, 8 digits) into the two pieces a plain `<input

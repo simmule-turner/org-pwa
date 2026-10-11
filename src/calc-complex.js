@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Complex numbers for #+TBLFM, following Emacs Calc.
  *

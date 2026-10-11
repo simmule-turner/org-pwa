@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * In-memory adapter matching the artifact platform's window.storage shape

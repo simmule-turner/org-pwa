@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Parses org-xx-menu-aliases -- this app's own extension (not a real
  * org-mode variable), using the same Global/Local Variables mechanism

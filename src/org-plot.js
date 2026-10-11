@@ -1,3 +1,4 @@
+// @ts-check
 /** Real org-mode's own Org Plot feature (org-plot.el): draws 2D and
  *  radar graphs of information stored in an org table, driven by a
  *  #+PLOT: line directly above it. Real org-plot shells out to an

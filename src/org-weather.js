@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * %%(org-weather) -- this app's own extension, not a real elisp/org
  * function, built against the Open-Meteo forecast API

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Pure undo/redo history management for a single document's editing
  * session. No DOM, no app.js state beyond what's explicitly passed in

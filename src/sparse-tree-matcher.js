@@ -1,3 +1,4 @@
+// @ts-check
 /** Real org-mode's tag/property match-query grammar (the language behind
  *  C-c / m, "Match Query", and org-make-tags-matcher generally) --
  *  confirmed directly against actual Emacs 29.3 + org-mode 9.6.15, not

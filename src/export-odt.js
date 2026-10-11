@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Converts an org document (or a single heading's subtree) to a real,
  * standalone .odt file -- a ZIP archive of OpenDocument XML, openable

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * KaTeX's own CSS, with every @font-face block stripped out -- used
  * ONLY for standalone HTML export (src/export-html.js), never for the

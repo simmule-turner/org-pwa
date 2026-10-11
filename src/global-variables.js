@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * "Global Variables" -- an app-wide, cross-file settings mechanism
  * (configured in Settings, not embedded in any particular .org file)

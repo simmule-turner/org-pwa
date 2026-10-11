@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * A minimal S-expression parser and evaluator for real org-mode's own
  * <%%(sexp)> diary timestamp syntax -- a more general mechanism than

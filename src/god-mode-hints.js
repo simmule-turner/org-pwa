@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * "Where can this prefix lead?": given the god-mode sequence typed so far, which
  * keys would continue it, and what each would do. Like Emacs's which-key.

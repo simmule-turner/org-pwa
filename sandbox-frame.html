@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- The page inside the hidden sandbox iframe for JavaScript source blocks and the init script (src-browser/babel-run.js).
+     The iframe is sandbox="allow-scripts" (an opaque origin) and this policy gives it no network at all. The code to run is
+     sent by the page in a message and starts in a Web Worker made from a blob, which inherits this policy. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; worker-src blob:">
+<script>
+  (function () {
+    function start(workerSource) {
+      var worker;
+      try {
+        worker = new Worker(URL.createObjectURL(new Blob([workerSource], { type: 'text/javascript' })));
+      } catch (e) {
+        parent.postMessage({ type: 'fatal', message: String(e && e.message ? e.message : e) }, '*');
+        return;
+      }
+      worker.onmessage = function (e) { parent.postMessage(e.data, '*'); };
+      worker.onerror = function (e) { parent.postMessage({ type: 'fatal', message: e.message || 'worker error' }, '*'); };
+      addEventListener('message', function (e) {
+        if (e.source === parent) worker.postMessage(e.data);
+      });
+      parent.postMessage({ type: 'ready' }, '*');
+    }
+    addEventListener('message', function boot(e) {
+      if (e.source !== parent || !e.data || e.data.type !== 'boot') return;
+      removeEventListener('message', boot);
+      start(String(e.data.source));
+    });
+    parent.postMessage({ type: 'hello' }, '*');
+  })();
+</script>

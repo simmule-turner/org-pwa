@@ -1,3 +1,4 @@
+// @ts-check
 import { editParagraphText, editListItemText, setTableCell } from './body-edit.js';
 import { renameHeading } from './heading-edit.js';
 

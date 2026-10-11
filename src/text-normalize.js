@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Normalizes "smart"/curly quote characters back to their plain ASCII
  * equivalents. Confirmed as a real, serious bug, not a theoretical

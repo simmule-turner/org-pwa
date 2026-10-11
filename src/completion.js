@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Completion for tags and property keys -- the suggestions the general editor
  * offers while you type, in the spirit of Org's own completion for

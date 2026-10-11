@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * What a script command sees and may change: the pure part. A command gets a read-only snapshot of the
  * open file as plain data, and answers with a list of declarative edits. Nothing here touches the page;

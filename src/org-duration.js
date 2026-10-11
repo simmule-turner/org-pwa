@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Org durations (Emacs's org-duration.el), as used by the EFFORT
  * property. Accepted forms, matching that library's own documented set:

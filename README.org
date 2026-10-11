@@ -43,6 +43,7 @@ This document describes what org-pwa actually does today, how to use it, and —
 - [[#settings][Settings]]
 - [[#offline-behavior-and-sync][Offline behavior and sync]]
 - [[#platform-support][Platform support]]
+- [[#security-and-privacy][Security and privacy]]
 - [[#keybindings][Keybindings]]
 - [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]]
 - [[#known-limitations--not-built-yet][Known limitations / not built yet]]
@@ -573,7 +574,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~calendar-longitude~ | ~-78.8986~ | Longitude for the same (Durham, NC) |
 | ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
 | ~org-agenda-skip-archived-trees~ | ~t~ | Exclude archived headings (tagged ~:ARCHIVE:~) from the agenda; ~nil~ includes them |
-| ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (a title starting ~#~ and a space, like ~** # draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
+| ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (~** COMMENT draft~, as in Emacs, or a title starting ~#~ and a space, like ~** # draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
 | ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
 | ~org-ascii-text-width~ | ~72~ | Wrap width, in characters, for ASCII export |
 | ~org-ascii-charset~ | ~ascii~ | Characters used by ASCII export: ~ascii~, ~latin1~ or ~utf-8~ |
@@ -1092,8 +1093,8 @@ The evaluator is small, not a Lisp interpreter:
 
 - *Completed items are excluded*, using the done keywords of the file's own ~#+TODO:~ sequence.
 - *Repeating timestamps expand* for SCHEDULED, DEADLINE and title timestamps: ~<2000-01-01 Sat +1y>~ shows every year within the range displayed. A repeating SCHEDULED or DEADLINE shows only on its repeat dates, with no carry-forward or early warning between them.
-- *Marking a repeating task done shifts it*, as in org: its date moves forward, ~LAST_REPEAT~ is stamped, and the TODO state returns to the first keyword. ~+N~ adds one interval to the previous date, even if that is still in the past. ~++N~ adds intervals until the date is in the future, keeping the weekday and time. ~.+N~ counts from today. The DONE transition is logged normally; the bounce-back is not, and the ~CLOSED~ timestamp is removed again.
-- *Archived and commented headings are excluded*. A commented heading starts with ~#~ and a space (~** # draft, not ready yet~). The settings are ~org-agenda-skip-archived-trees~ and ~org-agenda-skip-comment-trees~ in [[#local-variables][Local Variables]].
+- *Marking a repeating task done shifts it*, as in org: its date moves forward, ~LAST_REPEAT~ is stamped, and the TODO state returns to the first keyword. ~+N~ adds one interval to the previous date, even if that is still in the past. ~++N~ adds intervals until the date is later than now, keeping the weekday and time (a timed one can land later today). ~.+N~ counts from today, or from the current time for hours. The DONE transition is logged normally; the bounce-back is not, and the ~CLOSED~ timestamp is removed again.
+- *Archived and commented headings are excluded*. A commented heading starts with ~COMMENT~ (~** COMMENT draft~, as in Emacs) or with ~#~ and a space (~** # draft, not ready yet~). The settings are ~org-agenda-skip-archived-trees~ and ~org-agenda-skip-comment-trees~ in [[#local-variables][Local Variables]].
 
 A trailing tag needs a space before it (~<2000-01-01 Sat +1y> :BDAY:~), as in org. Without the space the tag stays as title text, but the timestamp still shows.
 
@@ -1769,6 +1770,17 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 *Commands*, like the other More entries, can be renamed, hidden or reordered with [[#menu-customization][menu customization]] (~org-xx-menu-aliases~). It is the ordinary ~more:~ label ~Commands~, which renders first by default.
 
 
+** Security and privacy
+:PROPERTIES:
+:CUSTOM_ID: security-and-privacy
+:END:
+
+There is no server of ours: the app talks only to the places you set up, and nothing is sent anywhere else.
+
+*Where things are kept.* Your files stay where they are (a file on the device, GitHub or WebDAV). The app keeps its settings in the browser's own storage on this device, including the GitHub token, the WebDAV, calendar and contacts passwords, and the init script. They are stored as plain text, as in any browser app, so use a token limited to one repository and an app-specific password, and sign out of a shared device by clearing its site data. Nothing but what you set up is synced, exported or read from a file.
+
+*What can run.* Only the app's own code runs in the page. The page's Content-Security-Policy refuses inline and injected scripts. Code from a document or the init script runs in a [[#extensions][sandbox]] with no access to the page, your files or your tokens. It reaches a server only if you allow it.
+
 ** Keybindings
 :PROPERTIES:
 :CUSTOM_ID: keybindings
@@ -1965,8 +1977,14 @@ The one exception is ~src/vendor/mathjs/mathjs-custom.min.js~, a tree-shaken cus
 *Tests*: the engine (~src/~) and the browser adapters (~src-browser/~) use Node's built-in test runner, with no external dependencies:
 
 #+BEGIN_SRC
-node --test
+npm test
 #+END_SRC
+
+The tests run with a frozen clock, so they give the same result on any day. ~npm run test:zones~ runs them in five time zones.
+
+Behaviour that Emacs defines is held to Emacs itself. ~tools/gen-repeat-oracle.mjs~ and ~tools/gen-agenda-oracle.mjs~ ask Emacs 29.3 (with ~faketime~) what completing a repeating task does and which days the agenda lists, and store the answers under ~test/fixtures/~; the tests compare the app with them.
+
+~npm run lint~ (ESLint) and ~npm run typecheck~ (~tsc~ on files that begin with ~// @ts-check~) need ~npm install --no-save eslint @eslint/js globals typescript~. ~node tools/release.mjs N~ checks, bumps the cache name and writes ~org-pwa-vN.zip~; ~.github/workflows/ci.yml~ runs the same checks and the smoke test on every push.
 
 ~node tools/roundtrip-corpus.mjs DIR~ checks that every ~.org~ file in a directory comes back byte for byte after an open and save with no edit.
 

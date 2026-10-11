@@ -4,8 +4,12 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "node --test test/*.test.js",
+    "test": "node --import ./test/support/fixed-clock.mjs --test test/*.test.js",
     "test:zones": "node tools/test-zones.mjs",
-    "smoke": "node tools/smoke.mjs"
+    "check:scope": "node tools/check-scope.mjs",
+    "smoke": "node tools/smoke.mjs",
+    "release": "node tools/release.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json"
   }
 }

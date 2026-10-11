@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Real org's own repeater-shift-on-DONE behavior: completing a heading
  * with a repeating SCHEDULED and/or DEADLINE timestamp doesn't actually
@@ -41,25 +42,23 @@ import { setProperty } from './archive-model.js';
  *  timestamp's own current `oldDate`, and `now` (the actual moment of
  *  completion). Pure -- no knowledge of which planning field this is
  *  for, or how the result gets serialized back. */
+/** @param {string} mark @param {number} amount @param {string} unit @param {Date} oldDate @param {Date} now @returns {Date} */
 function computeShiftedDate(mark, amount, unit, oldDate, now) {
   if (mark === '.+') {
-    // Restart: today's own date, keeping the timestamp's own original
-    // time-of-day (if it had one) rather than the moment-of-day
-    // completion happened to occur at, then add one interval.
+    // Restart. For hours the base is the moment of completion itself (an hour repeater counts from now, minutes
+    // included). For longer units it is today's own date, keeping the timestamp's original time-of-day (if it had one)
+    // rather than the moment-of-day completion happened to occur at, then one interval is added.
+    if (unit === 'h') return addInterval(new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes()), amount, unit);
     const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), oldDate.getHours(), oldDate.getMinutes());
     return addInterval(base, amount, unit);
   }
   if (mark === '++') {
-    // Catch-up: keep adding the interval to the OLD date (preserving
-    // its own day-of-week/time-of-day throughout) until the result's
-    // own calendar day is strictly after today's -- comparing whole
-    // days, not exact instants, so completing something at 11pm still
-    // correctly catches up to "tomorrow" rather than being thrown off
-    // by a same-day time-of-day comparison.
-    const todayDay = startOfDay(now);
+    // Catch-up: keep adding the interval to the OLD date (preserving its own day-of-week/time-of-day throughout) until
+    // the result is after the moment of completion, as Emacs does. A date without a time sits at midnight, so it has to
+    // land on a later day; a timed one may land later today.
     let next = addInterval(oldDate, amount, unit);
     let guard = 0; // a sane upper bound -- amount is always >= 1 by REPEATER_RE, so this always terminates well before this point in any real use
-    while (startOfDay(next) <= todayDay && guard < 10000) {
+    while (next.getTime() <= now.getTime() && guard < 100000) {
       next = addInterval(next, amount, unit);
       guard++;
     }
@@ -75,6 +74,7 @@ function computeShiftedDate(mark, amount, unit, oldDate, now) {
  *  itself, a delay/warning-period suffix) preserved exactly as it
  *  already was. Returns null if `raw` doesn't actually have a
  *  repeater at all (nothing for this module to do with it). */
+/** @param {string} raw @param {Date} now @returns {string | null} */
 function shiftTimestampString(raw, now) {
   const parsed = parseOrgTimestamp(raw);
   if (!parsed || !parsed.repeater) return null;

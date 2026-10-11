@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * Inline markup parser. Turns a single line of text into a sequence of

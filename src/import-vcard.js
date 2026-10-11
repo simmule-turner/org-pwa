@@ -1,3 +1,4 @@
+// @ts-check
 /** Parses vCard 3.0/4.0 text (one or more BEGIN:VCARD...END:VCARD
  *  blocks, as produced by this app's own exportToVcard or any real
  *  contacts app) into org headings -- the reverse of export-vcard.js's

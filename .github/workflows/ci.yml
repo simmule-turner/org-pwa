@@ -1,0 +1,41 @@
+# Runs on every push and pull request: the unit tests (fixed clock), the same tests in five time zones, the scope check,
+# and the browser smoke test in headless Chromium.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm install --no-save --no-package-lock eslint @eslint/js globals typescript
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:zones
+      - run: npm install --prefix /tmp/acorn acorn eslint-scope
+      - run: npm run check:scope
+
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node tools/smoke.mjs

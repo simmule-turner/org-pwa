@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * Parses org timestamp strings — the raw <...>/[...] strings the parser

@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * Per-document persistence for narrowedHeading, surviving an actual

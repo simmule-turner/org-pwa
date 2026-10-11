@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * TODO-cycle logic. Real org's own actual model for a file with multiple

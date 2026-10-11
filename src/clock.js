@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Clocking: real org-mode's org-clock-in / org-clock-out / the pure
  * computation org-clock-display needs. All three write into / read

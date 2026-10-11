@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * ASCII export -- real org-mode's ox-ascii backend, for the core,
  * commonly-used cases.

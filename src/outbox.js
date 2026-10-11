@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * Outbox: a per-document queue of pending writes, so edits apply instantly

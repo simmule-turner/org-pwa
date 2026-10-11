@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Converts an org document (or a single heading's subtree) to
  * Markdown (GFM-flavored) text. Pure and DOM-free — walks the same

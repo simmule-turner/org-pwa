@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * User-defined diary functions: the pure part. A user script registers a function with
  * `org.sexp('my-name', fn)`; an agenda line `%%(my-name arg ...)` then calls it once per day.

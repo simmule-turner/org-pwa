@@ -7,7 +7,7 @@ const ZONES = ['America/New_York', 'UTC', 'Asia/Tokyo', 'Asia/Kolkata', 'Pacific
 const files = fs.readdirSync('test').filter((f) => f.endsWith('.test.js')).map((f) => `test/${f}`);
 let failed = 0;
 for (const TZ of ZONES) {
-  const run = spawnSync(process.execPath, ['--test', ...files], { env: { ...process.env, TZ }, encoding: 'utf8' });
+  const run = spawnSync(process.execPath, ['--import', './test/support/fixed-clock.mjs', '--test', ...files], { env: { ...process.env, TZ }, encoding: 'utf8' });
   const line = (name) => new RegExp(`^# ${name} (\\d+)$`, 'm').exec(run.stdout)?.[1] ?? '?';
   console.log(`${TZ.padEnd(18)} pass ${line('pass')}  fail ${line('fail')}`);
   if (run.status !== 0) failed += 1;

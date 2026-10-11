@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * Document store: the multi-file layer the requirements decided on — the

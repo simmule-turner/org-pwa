@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * org-refile-targets, translated into this app's own plain-text
  * Global/Local Variables format (a single line can't hold real org's

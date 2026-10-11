@@ -191,10 +191,10 @@ const dav = createDav();
 let browser;
 let main;
 
-async function freshPage(server = main, { withDav = false, serviceWorkers = 'block', initScript = null } = {}) {
+async function freshPage(server = main, { withDav = false, serviceWorkers = 'block', initScript = null, bypassCSP = false } = {}) {
   // The service worker is blocked except where it is the thing under test:
   // its activation can reload the page mid-check and make the rest flaky.
-  const context = await browser.newContext({ viewport: { width: 420, height: 900 }, serviceWorkers });
+  const context = await browser.newContext({ viewport: { width: 420, height: 900 }, serviceWorkers, bypassCSP }); // bypassCSP only for a check that builds a function from a string in the page
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -3951,6 +3951,30 @@ async function runBlock(page, n = 0) {
   await page.getByRole('button', { name: 'Run', exact: true }).click(); // asked every time in an unsaved document
 }
 
+check('Content-Security-Policy: starting the app breaks no rule, and an injected inline script is refused', async () => {
+  const context = await browser.newContext({ viewport: { width: 420, height: 900 }, serviceWorkers: 'block' });
+  const page = await context.newPage();
+  const violations = [];
+  page.on('console', (m) => {
+    if (/Content Security Policy|Refused to/i.test(m.text())) violations.push(m.text());
+  });
+  await page.goto(`${main.base}/index.html`, { waitUntil: 'load' });
+  await page.waitForTimeout(600);
+  expect(violations.length === 0, `the app broke its own policy: ${violations.join(' | ')}`);
+  const result = await page.evaluate(() => {
+    const out = {};
+    const s = document.createElement('script');
+    s.textContent = 'window.__injected = 1';
+    document.head.appendChild(s);
+    out.injected = window.__injected === 1;
+    out.policy = document.querySelector('meta[http-equiv="Content-Security-Policy"]').content;
+    return out;
+  });
+  expect(!result.injected, 'an inline script ran');
+  expect(/script-src 'self';/.test(result.policy) && !/unsafe-eval/.test(result.policy), 'script-src allows only the app\'s own files');
+  await context.close();
+});
+
 check('JavaScript blocks are off by default, and a file cannot switch them on for itself', async () => {
   const { context, page, errors } = await freshPage(main);
   await newDocument(page, ['* Code', '#+BEGIN_SRC js', 'return 1;', '#+END_SRC', '', '# Local Variables:', '# org-xx-babel-js: on', '# End:', ''].join('\n'));
@@ -4500,7 +4524,7 @@ check('attachments on a local document where the platform has no folder support 
 });
 
 check('saving a file out: the status says where it went when the platform reports it, says why when it fails, stays quiet if the person backs out, and a browser (which reports nothing) stays quiet too', async () => {
-  const { context, page, errors } = await freshPage();
+  const { context, page, errors } = await freshPage(main, { bypassCSP: true });
   const exportSettings = async () => {
     await page.click('#moreBtn');
     await pick(page, '#morePanel', 'Settings');
