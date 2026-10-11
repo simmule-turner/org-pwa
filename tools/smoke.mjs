@@ -4151,6 +4151,45 @@ check('literate: noweb runs, header arguments are inherited, and Tangle delivers
   await context.close();
 });
 
+check('floating keyboard: Shift stays on for the arrows and they jump by heading, plain arrows walk a table, and a result keeps the cursor on its block', async () => {
+  const { context, page, errors } = await freshPage(main);
+  const filler = Array.from({ length: 40 }, (_, i) => `* Filler ${i}`).join('\n');
+  await newDocument(page, [filler, '* Target', '| a | b |', '| c | d |', '', '#+begin_src js', 'return 1;', '#+end_src', '', '* After', ''].join('\n'));
+  await enableJavaScript(page);
+  const fk = page.locator('#floatingKeyboard');
+  const focused = () => page.evaluate(() => (document.getElementById('keyboard-focused-row') || { innerText: '' }).innerText.trim().slice(0, 40));
+  await page.getByText('Target', { exact: true }).first().scrollIntoViewIfNeeded();
+  await page.click('#godModeBtn');
+  await fk.waitFor({ state: 'visible' });
+  expect(!/Filler 0\b/.test(await focused()), `god-mode starts near the screen, not at the first heading: ${await focused()}`);
+  const shift = fk.locator('[data-fk-shift]');
+  await shift.click();
+  await fk.locator('[data-fk-key=ArrowDown]').click();
+  await fk.locator('[data-fk-key=ArrowDown]').click();
+  expect((await shift.getAttribute('aria-pressed')) === 'true', 'Shift stays on after the arrows');
+  await shift.click();
+  expect((await shift.getAttribute('aria-pressed')) === 'false', 'and a tap turns it off');
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { setKeyboardFocusToHeading } = await import('/src-browser/keyboard-focus.js');
+    setKeyboardFocusToHeading(S.state.doc.children.find((h) => h.title === 'Target'));
+  });
+  await fk.locator('[data-fk-key=ArrowDown]').click(); // onto the table
+  await fk.locator('[data-fk-key=ArrowDown]').click(); // its second row, not past it
+  expect(/c\s*\|?\s*d|^c/.test(await focused()) || (await focused()).includes('c'), `plain Down walks the table rows: ${await focused()}`);
+  await fk.locator('[data-fk-key=ArrowDown]').click(); // leaves the table for the block
+  expect((await focused()).includes('return 1'), `Down leaves the table for the block: ${await focused()}`);
+  await page.keyboard.press('c');
+  await page.keyboard.press('c'); // C-c C-c
+  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await waitForStatus(page, 'Ran in');
+  expect((await focused()).includes('return 1'), `after the result is written the cursor is still on the block: ${await focused()}`);
+  await fk.locator('[data-fk-key=ArrowDown]').click();
+  expect(!/Filler 0\\b/.test(await focused()) && (await focused()).length > 0, `and Down continues from there: ${await focused()}`);
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check(':cache yes: an unchanged block is not run again', async () => {
   const { context, page, errors } = await freshPage(main);
   await newDocument(page, ['* Code', '#+begin_src js :cache yes', 'return Date.now();', '#+end_src', ''].join('\n'));

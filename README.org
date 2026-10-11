@@ -1781,6 +1781,8 @@ Cycling TODO state, moving a heading, promoting and demoting, and inserting a he
 
 An alternate input mode that reaches org's fuller keybinding set (~C-c C-t~, ~M-RET~ and the rest) without the browser ever seeing a held Ctrl or Alt. ~Escape~ turns it on (see the priority order above), or on a phone the *[g]* button does ([[#god-mode-mobile][below]]). While it is on, every key is part of a sequence instead of a plain shortcut, and the minibuffer (see [[#modeline][Modeline and minibuffer]]) echoes the sequence.
 
+God-mode starts on the heading you last used, or else on the row at the top of the screen. Running a block with ~C-c C-c~ keeps the cursor on it.
+
 When a sequence completes, the minibuffer names what ran, using the command palette's own label: ~God-mode · C-c C-x C-j → Go to clocked task~. A chord with no palette command (~Tab~, the arrows, ~C-f~) shows just the chord. The name stays until the next keystroke. Entering god-mode focuses the first visible heading if none is focused, since its actions need one.
 
 While a sequence is in progress, a card under the top bar lists the keys that would continue it and what each does, as Emacs's which-key does. Each entry is a button: tap it to send that key, so a whole chord can be completed by tapping, with no device keyboard. A key that leads on to more is marked ~…~. ~Escape~ cancels the sequence and the card goes away.
@@ -1797,8 +1799,10 @@ The translation rules follow real god-mode.el (github.com/emacsorphanage/god-mod
 
 | god-mode sequence | Emacs chord | Action |
 |---+---+---|
-| ~↓~, ~↑~ | ~<down>~, ~<up>~ | Move focus to the next or previous visible line, as the plain shortcut does |
-| ~S-↓~, ~S-↑~, ~S-←~, ~S-→~ | ~S-<down>~, ~S-<up>~, ~S-<left>~, ~S-<right>~ | Table cell navigation, as above |
+| ~↓~, ~↑~ | ~<down>~, ~<up>~ | Next or previous visible line; inside a table, the next or previous row |
+| ~←~, ~→~ | ~<left>~, ~<right>~ | Collapse or expand the heading; inside a table, the previous or next column |
+| ~S-↓~, ~S-↑~ | ~S-<down>~, ~S-<up>~ | Next or previous heading, from anywhere (from body text, ~S-↑~ goes first to its own heading) |
+| ~S-←~, ~S-→~ | ~S-<left>~, ~S-<right>~ | Table cell to the left or right |
 | ~i~ | (not a chord) | Edit the current line, cursor at the start (see ~a~ and ~e~) |
 | ~a~ | ~C-a~ | Before ~i~: put the cursor at the start of the line |
 | ~e~ | ~C-e~ | Before ~i~: put the cursor at the end of the line |
@@ -1865,7 +1869,7 @@ A phone has no ~Escape~ key, so a floating *[g]* button, the third floating butt
 
 The floating keyboard has the keys a phone keyboard can't type, in one row: *⌨*, ~Tab~, ~←~, ~→~, ~↑~, ~↓~, ~S~ and ~g~. Its thick accent-coloured border makes it easy to spot, and the keys are 34px wide and 44px tall so the row fits a 360px screen.
 
-- *S* is one-shot: tap it, and the next key is shifted (~Tab~ becomes ~S-Tab~, the arrows their table-navigation forms, ~g~ becomes ~G~, the Control+Meta prefix). It also shifts the next key typed on the phone keyboard, so ~gS-RET~ (~M-S-RET~, a TODO heading) is: tap ~g~, tap *S*, tap Return. A letter typed after *S* becomes its capital. Tapping *S* again disarms it.
+- *S* shifts the next key (~Tab~ becomes ~S-Tab~, ~g~ becomes ~G~, the Control+Meta prefix). After an arrow it stays on, so ~S~ then ~↓~ ~↓~ ~↓~ walks down the headings; tap *S* again to turn it off. It also shifts the next key typed on the phone keyboard, so ~gS-RET~ (~M-S-RET~, a TODO heading) is: tap ~g~, tap *S*, tap Return. A letter typed after *S* becomes its capital.
 - *⌨* hides or shows the device keyboard and changes nothing else. It is lit while the keyboard is up. After a popup closes, the keyboard doesn't return by itself; tap ⌨.
 - The move area (⠿) drags the panel, and its position is remembered. Tap it without dragging to minimize the panel to its handle, and tap the handle to restore it.
 

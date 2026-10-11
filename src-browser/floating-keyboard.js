@@ -380,7 +380,9 @@ export function renderFloatingKeyboard() {
         e.preventDefault();
         e.stopPropagation(); // else the document-level pointerdown clears the god-mode indicator this tap just set
         const { rawKey, shiftKey } = keystrokeFor(key, S.floatingKeyboardShiftArmed);
-        S.floatingKeyboardShiftArmed = false; // one-shot: consumed by this tap
+        // one-shot, consumed by this tap, except on the arrows: Shift+arrows move by heading, and walking through headings
+        // needs Shift to stay on until it is tapped again
+        if (!key.rawKey.startsWith('Arrow')) S.floatingKeyboardShiftArmed = false;
         dispatchGodModeKeystroke(rawKey, shiftKey);
       });
       if (key.rawKey === 'g') floatingKeyboard.appendChild(shiftBtn); // layout: T \u2190 \u2192 \u2191 \u2193 S g

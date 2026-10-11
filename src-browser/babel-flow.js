@@ -12,6 +12,8 @@ import { runJavaScript } from './babel-run.js';
 import { confirmDialog } from './dialogs.js';
 import { allHeadingsInOrder, stripCommaEscapeApp } from './doc-helpers.js';
 import { commitAndRender, setStatus } from './editing.js';
+import { withKeyboardFocusPreserved } from './keyboard-focus.js';
+import { scrollFocusedHeadingIntoView } from './render-helpers.js';
 import { authorizeBlock, createServices, documentOwner } from './extension-services.js';
 
 const TRUSTED_DOCUMENTS_KEY = 'org-pwa-babel-documents';
@@ -74,8 +76,10 @@ function lookupTable(name) {
 
 function writeResults(heading, block, lines, label, hash = null) {
   const { start, removeCount, insert } = placeResults(heading.bodyLines, block, lines, { hash });
-  commitLines(heading, start, removeCount, insert);
+  // the cursor stays on the block, whose body is re-parsed by the edit
+  withKeyboardFocusPreserved(heading, () => commitLines(heading, start, removeCount, insert));
   commitAndRender(label);
+  if (S.keyboardFocusedHeading === heading) scrollFocusedHeadingIntoView();
 }
 
 /** Runs a JavaScript block and writes its result under it as #+RESULTS:. */

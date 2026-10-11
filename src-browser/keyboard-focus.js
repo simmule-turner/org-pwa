@@ -5,6 +5,7 @@ import { S } from './app-state.js';
 import { findListItemByLineIndex, firstDataRowIndex, hasBodyContent } from './doc-helpers.js';
 import { outlineEl } from './dom.js';
 import { openListItemEditor, openParagraphEditor, setStatus, startEditingTitle } from './editing.js';
+import { scrollContainer } from './chrome.js';
 import { scrollFocusedHeadingIntoView } from './render-helpers.js';
 import { render } from './render.js';
 
@@ -102,6 +103,7 @@ export function moveLineFocus(delta) {
   }
   const rows = flattenVisibleRows(S.state.doc);
   if (rows.length === 0) return;
+  repairBodyFocus(rows);
   const currentIndex = rows.findIndex(rowMatchesKeyboardFocus);
   let nextIndex;
   if (currentIndex === -1) {
@@ -304,6 +306,7 @@ export function withKeyboardFocusPreserved(heading, mutate) {
  *  on any visible row (not just headings), and every one of this
  *  function's own callers needs the identical treatment. */
 export function applyKeyboardFocusHighlight(el, row) {
+  el.dataset.rowKey = row.key; // lets "where is the screen" be turned back into a row (see rowNearViewportTop)
   if (!rowMatchesKeyboardFocus(row)) return;
   el.id = 'keyboard-focused-row';
   el.style.outline = '2px solid var(--accent)';
@@ -340,4 +343,73 @@ export function clearStaleKeyboardFocusIfClickedElsewhere(e) {
     changed = true;
   }
   if (changed) render(); // avoid a pointless re-render on every ordinary click that has nothing to clear
+}
+
+const lineIndexOf = (row) => (row.rowType === 'list-item' ? row.item.lineIndex : row.node.lineIndex);
+
+/** After an edit that re-parsed a heading's body (writing a result, say), the focused body row is a new object, so
+ *  nothing matches it any more: the highlight vanishes and the next arrow starts from the top. This finds the same row
+ *  again by its heading, kind and line, or falls back to the heading. `rows` is flattenVisibleRows(doc). */
+export function repairBodyFocus(rows) {
+  const f = S.keyboardFocusedBodyRow;
+  if (!f || rows.some(rowMatchesKeyboardFocus)) return;
+  const at = lineIndexOf(f);
+  const same = rows.find((r) => r.rowType === f.rowType && r.heading === f.heading && r.rowType !== 'heading' && lineIndexOf(r) === at);
+  if (same) S.keyboardFocusedBodyRow = same;
+  else if (rows.some((r) => r.rowType === 'heading' && r.node === f.heading)) setKeyboardFocusToHeading(f.heading);
+}
+
+/** The row at the top of the screen, for starting keyboard focus near where the person is reading. */
+export function rowNearViewportTop() {
+  if (!S.state.doc) return null;
+  const rows = flattenVisibleRows(S.state.doc);
+  const top = scrollContainer().getBoundingClientRect().top;
+  for (const el of outlineEl.querySelectorAll('[data-row-key]')) {
+    if (el.getBoundingClientRect().bottom > top + 1) return rows.find((r) => r.key === el.dataset.rowKey) || null;
+  }
+  return null;
+}
+
+/** Shift+Up / Shift+Down: the previous or next visible heading. From a body row, Up goes to its own heading first. */
+export function moveHeadingFocus(delta) {
+  if (delta < 0 && S.keyboardFocusedBodyRow && S.keyboardFocusedHeading) {
+    setKeyboardFocusToHeading(S.keyboardFocusedHeading);
+    render();
+    scrollFocusedHeadingIntoView();
+    return;
+  }
+  moveKeyboardFocus(delta);
+}
+
+/** True when the focused row is a table and the cursor can still move that way inside it. */
+function tableCanMove(deltaRow, deltaCol) {
+  const f = S.keyboardFocusedBodyRow;
+  if (!f || f.rowType !== 'table' || !S.keyboardFocusedCellPos) return false;
+  const rows = f.node.rows;
+  const data = rows.map((r, i) => i).filter((i) => rows[i].type !== 'rule');
+  const colCount = Math.max(1, ...rows.filter((r) => r.type !== 'rule').map((r) => r.cells.length));
+  const { rowIndex, colIndex } = S.keyboardFocusedCellPos;
+  if (deltaRow) {
+    const at = data.indexOf(rowIndex) + deltaRow;
+    return at >= 0 && at < data.length;
+  }
+  const at = colIndex + deltaCol;
+  return at >= 0 && at < colCount;
+}
+
+/** Up and Down: inside a table they move between its rows; at its first or last row (or anywhere else) they move
+ *  to the adjacent line, as before. */
+export function moveArrowVertical(delta) {
+  if (tableCanMove(delta, 0)) moveTableCellFocus(delta, 0);
+  else moveLineFocus(delta);
+}
+
+/** Left and Right: inside a table they move between its columns; elsewhere the caller folds or unfolds. Returns false
+ *  when the focus is not on a table. */
+export function moveArrowHorizontalInTable(delta) {
+  const f = S.keyboardFocusedBodyRow;
+  if (!f || f.rowType !== 'table') return false;
+  if (tableCanMove(0, delta)) moveTableCellFocus(0, delta);
+  else setStatus(delta > 0 ? 'Already at the last column.' : 'Already at the first column.');
+  return true;
 }

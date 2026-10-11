@@ -36,7 +36,7 @@ import { renderFileMenu } from './file-menu.js';
 import { openGeneralEditor } from './general-editor.js';
 import { cutSubtree, extraMenuTargetHeading, narrowToHeading, pasteSubtree, widen } from './gestures-structure.js';
 import { cyclePriorityFor, openEffortEditor } from './heading-commands.js';
-import { moveKeyboardFocus, moveLineFocus, moveTableCellFocus, moveToParentHeading, moveToSameLevelHeading, setKeyboardFocusToHeading, enterInsertModeAtCurrentLine, visibleHeadingsInOrder } from './keyboard-focus.js';
+import { moveArrowHorizontalInTable, moveArrowVertical, moveHeadingFocus, moveKeyboardFocus, moveLineFocus, moveTableCellFocus, rowNearViewportTop, setKeyboardFocusToRow, moveToParentHeading, moveToSameLevelHeading, setKeyboardFocusToHeading, enterInsertModeAtCurrentLine, visibleHeadingsInOrder } from './keyboard-focus.js';
 import { renderMoreMenu, runExtraMenuEntry } from './menus.js';
 import { openRefilePicker } from './refile-flow.js';
 import { scrollFocusedHeadingIntoView } from './render-helpers.js';
@@ -138,11 +138,13 @@ export const GOD_MODE_ACTIONS = {
   // tree view uses. A genuinely new capability, not a rebinding of an
   // existing one -- see the README's own note on this.
   '<left>': () => {
+    if (moveArrowHorizontalInTable(-1)) return; // in a table: the previous column
     if (!S.keyboardFocusedHeading) return;
     collapseFully(S.keyboardFocusedHeading);
     render();
   },
   '<right>': () => {
+    if (moveArrowHorizontalInTable(1)) return; // in a table: the next column
     if (!S.keyboardFocusedHeading) return;
     expandOneLevel(S.keyboardFocusedHeading);
     render();
@@ -288,10 +290,10 @@ export const GOD_MODE_ACTIONS = {
     openCommandPalette();
   },
   'C-s': () => searchBtn.click(),
-  '<up>': () => moveLineFocus(-1),
-  '<down>': () => moveLineFocus(1),
-  'S-<up>': () => moveTableCellFocus(-1, 0),
-  'S-<down>': () => moveTableCellFocus(1, 0),
+  '<up>': () => moveArrowVertical(-1),
+  '<down>': () => moveArrowVertical(1),
+  'S-<up>': () => moveHeadingFocus(-1),
+  'S-<down>': () => moveHeadingFocus(1),
   'S-<left>': () => moveTableCellFocus(0, -1),
   'S-<right>': () => moveTableCellFocus(0, 1),
   'C-c C-x C-w': () => {
@@ -820,8 +822,13 @@ export function enterGodMode() {
     setKeyboardFocusToHeading(null);
   }
   if (!S.keyboardFocusedHeading) {
-    const headings = visibleHeadingsInOrder();
-    if (headings.length > 0) setKeyboardFocusToHeading(headings[0]);
+    // start where the person is reading: the row at the top of the screen, else the first heading
+    const near = rowNearViewportTop();
+    if (near) setKeyboardFocusToRow(near);
+    else {
+      const headings = visibleHeadingsInOrder();
+      if (headings.length > 0) setKeyboardFocusToHeading(headings[0]);
+    }
   }
 }
 

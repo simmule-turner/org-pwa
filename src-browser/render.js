@@ -2,6 +2,7 @@
 import { findContainer } from '../src/archive-model.js';
 import { findHeadingLineNumber, serializeHeadingSubtree, serializeOrg } from '../src/org-parser.js';
 import { flattenVisibleRows } from '../src/outline-view-model.js';
+import { repairBodyFocus } from './keyboard-focus.js';
 import { collectSubtreeHeadings } from '../src/refile.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { renderAgendaView, renderTaskListView } from './agenda-view.js';
@@ -184,6 +185,7 @@ export function render() {
   }
 
   const rows = flattenVisibleRows(S.state.doc);
+  repairBodyFocus(rows);
   if (rows.length === 0) {
     outlineEl.innerHTML = '';
     const empty = document.createElement('div');
