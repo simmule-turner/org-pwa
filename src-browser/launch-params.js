@@ -1,3 +1,4 @@
+// @ts-check
 // Capture from outside the app. A launch URL can carry what to capture: `index.html?capture=KEY` runs the template
 // with that key, a bare `?capture` shows the template list, and `&text=...&title=...&url=...` hand content to the
 // template's %i and %a. The manifest points Android's share sheet at the same URL (share_target) and offers

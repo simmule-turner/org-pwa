@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: editing.
 import { editListItemText, editParagraphText } from '../src/body-edit.js';
 import { saveDocument } from '../src/document-store.js';
@@ -417,7 +418,7 @@ export function commitTextModeIfActive() {
     return false;
   }
   const textarea = document.getElementById('document-text-edit-input');
-  const rawValue = textarea ? textarea.value : S.narrowedHeading ? serializeHeadingSubtree(S.narrowedHeading) : serializeOrg(S.state.doc);
+  const rawValue = textarea ? /** @type {any} */ (textarea).value : S.narrowedHeading ? serializeHeadingSubtree(S.narrowedHeading) : serializeOrg(S.state.doc);
 
   if (textarea && textModeLastCommittedValue.get(textarea) === rawValue) {
     // This exact textarea, with this exact content, was already

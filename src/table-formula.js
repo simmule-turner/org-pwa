@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * #+TBLFM: parsing and evaluation.
  *
@@ -141,7 +142,7 @@ function timeFormatPad(n, width = 2) {
 
 function timeFormatDayOfYear(date) {
   const start = new Date(date.getFullYear(), 0, 1);
-  return Math.floor((date - start) / 86400000) + 1;
+  return Math.floor((date.getTime() - start.getTime()) / 86400000) + 1;
 }
 
 /** format-time-string's own actual formatter -- a practical subset of
@@ -325,7 +326,7 @@ function computeHlinePositions(workingRows) {
 // ---- expression tokenizing/parsing ------------------------------------
 
 const TOKEN_RE =
-  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:[<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+\.?\d*|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()\[\]+\-*/^,<>=!])\s*/y;
+  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:[<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+\.?\d*|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()[\]+\-*/^,<>=!])\s*/y;
 
 /** date-to-time and format-time-string are real Emacs function names
  *  with literal hyphens in them -- TOKEN_RE's own generic identifier
@@ -952,7 +953,7 @@ function parseExpression(tokens) {
       }
       expect(')');
       const maxArgs = name === 'uconv' ? 3 : 2;
-      if (args.length > maxArgs) throw new Error(`"${name}" takes at most ${maxArgs} argument${maxArgs === 1 ? '' : 's'}, got ${args.length}`);
+      if (args.length > maxArgs) throw new Error(`"${name}" takes at most ${maxArgs} arguments, got ${args.length}`);
       return { type: 'scalarCall', name, args };
     }
     if (tok.startsWith('$')) {
@@ -2105,7 +2106,9 @@ const FRACTION_DISPLAY_MAX_DENOMINATOR = 1000000n; // matches toRationalApproxim
 
 function formatAsFraction(n, mixedNumber) {
   if (isMathjsValue(n) && n.isFraction && n.d <= FRACTION_DISPLAY_MAX_DENOMINATOR) {
+    /** @type {bigint} */
     const numerator = n.n; // BigInt, unsigned
+    /** @type {bigint} */
     const denominator = n.d; // BigInt, unsigned
     const sign = n.s; // BigInt, 1n or -1n
     if (denominator === 1n) return String(sign * numerator);

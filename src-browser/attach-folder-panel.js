@@ -1,3 +1,4 @@
+// @ts-check
 // org-attach-reveal for this app: the heading's attachment folder as a list, the Dired of a browser. One compact row per file:
 // `[ ] [O] [S] [D] filename` -- the checkbox selects, O opens, S saves, D deletes. A strip above the list selects all, shows the
 // count, deletes the selection and adds files. `load()` resolves the names (or null if it could not say), `act(action, name)` runs
@@ -83,7 +84,7 @@ export function showAttachmentFolder({ title, load, act, removeMany, saveMany, a
           await saveMany([...selected]);
         })
       );
-      strip.lastChild.style.padding = '0 8px';
+      /** @type {HTMLElement} */ (strip.lastChild).style.padding = '0 8px';
     }
     if (selected.size && removeMany) {
       strip.appendChild(
@@ -93,7 +94,7 @@ export function showAttachmentFolder({ title, load, act, removeMany, saveMany, a
           await refresh();
         })
       );
-      strip.lastChild.style.padding = '0 8px';
+      /** @type {HTMLElement} */ (strip.lastChild).style.padding = '0 8px';
     }
     if (add) {
       strip.appendChild(
@@ -102,7 +103,7 @@ export function showAttachmentFolder({ title, load, act, removeMany, saveMany, a
           await refresh();
         })
       );
-      strip.lastChild.style.padding = '0 8px';
+      /** @type {HTMLElement} */ (strip.lastChild).style.padding = '0 8px';
     }
   }
 

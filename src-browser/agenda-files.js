@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: agenda files.
 import { collectContactsTriggers } from '../src/agenda.js';
 import { findDuplicateAgendaFiles, getAgendaFilesVar, getContactsFilesVar, getSearchExtraFilesVar, parseAgendaFilesVar } from '../src/local-variables.js';
@@ -204,7 +205,7 @@ export function waitForAgendaFilesLoaded() {
         return entry && !entry.loading;
       });
       if (allSettled || Date.now() - startedAt > 8000) {
-        resolve();
+        resolve(undefined);
       } else {
         setTimeout(check, 50);
       }

@@ -10,11 +10,11 @@ export default [
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module' },
     rules: {
       // Real mistakes are errors; style is left to the code's own habits.
-      'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none', varsIgnorePattern: '^_' }],
+      'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none', varsIgnorePattern: '^_' }],
       'no-empty': ['warn', { allowEmptyCatch: true }],
       'no-prototype-builtins': 'warn',
-      'no-useless-escape': 'warn',
-      'no-useless-assignment': 'warn',
+      'no-useless-escape': 'error',
+      'no-useless-assignment': 'error',
       'preserve-caught-error': 'off', // rethrowing with a plainer message is the app's habit
       'no-regex-spaces': 'off',
       'no-control-regex': 'off', // the exporters and parsers match control characters on purpose

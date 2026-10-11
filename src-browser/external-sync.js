@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: external sync.
 import { openDocument } from '../src/document-store.js';
 import { applyStartupVisibility } from '../src/fold-state.js';

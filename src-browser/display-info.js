@@ -1,3 +1,4 @@
+// @ts-check
 // "Show display measurements": what this screen and this web view actually report, for working out why something sits
 // where it does (the app bar under or too far below a status bar, a keyboard that is not noticed, a notch). Read-only; it
 // shows the numbers in a text box, and OK copies them, so they can be pasted into a bug report.

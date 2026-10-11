@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: row render.
 import { captionText, imageOptions, splitAffiliated } from '../src/affiliated.js';
 import { getPropertiesText, getProperty, isArchivedInPlace } from '../src/archive-model.js';
@@ -139,7 +140,7 @@ export function renderRow(row, todoSequence) {
         title.style.opacity = '0.5';
       }
       title.addEventListener('mousedown', (e) => {
-        if (e.target.closest('[data-inline-link]')) return;
+        if (/** @type {Element} */ (e.target).closest('[data-inline-link]')) return;
         setKeyboardFocusToRow(row);
         toggleActionMenu(row.node);
       });
@@ -369,7 +370,7 @@ export function renderRow(row, todoSequence) {
     if (row.item.checkbox !== null) {
       el.classList.add('checkbox-row');
       el.onclick = (e) => {
-        if (e.target.closest('[data-inline-link]')) return;
+        if (/** @type {Element} */ (e.target).closest('[data-inline-link]')) return;
         cycleItemCheckbox(row.heading, row.item);
         updateCheckboxCookiesUpward(S.state.doc, row.heading, todoSequence.doneKeywords);
         commitAndRender('Toggled checkbox');
@@ -418,7 +419,7 @@ export function renderRow(row, todoSequence) {
       // row where tapping elsewhere toggles the checkbox; stopPropagation
       // is what keeps those two gestures from colliding.
       text.onclick = (e) => {
-        if (e.target.closest('[data-inline-link]')) return;
+        if (/** @type {Element} */ (e.target).closest('[data-inline-link]')) return;
         e.stopPropagation();
         toggleActionMenu(row.item);
       };
@@ -651,7 +652,7 @@ export function renderTableRow(row) {
             const prevInput = document.getElementById('cell-edit-input');
             const { heading, table, rowIndex: ri, colIndex: ci } = S.editingCell;
             S.editingCell = null;
-            if (prevInput) setTableCell(heading, table, ri, ci, prevInput.value.replace(/\n/g, ' '));
+            if (prevInput) setTableCell(heading, table, ri, ci, /** @type {any} */ (prevInput).value.replace(/\n/g, ' '));
           }
           setKeyboardFocusToRow(row);
           S.keyboardFocusedCellPos = { rowIndex, colIndex };
@@ -674,7 +675,7 @@ export function renderTableRow(row) {
   const tableScroll = document.createElement('div');
   tableScroll.style.overflowX = 'auto';
   tableScroll.style.maxWidth = '100%';
-  tableScroll.style.webkitOverflowScrolling = 'touch';
+  /** @type {any} */ (tableScroll.style).webkitOverflowScrolling = 'touch';
   tableScroll.appendChild(tableEl);
   wrap.appendChild(tableScroll);
 
@@ -946,7 +947,7 @@ export function renderParagraphRow(row) {
   // matching list items and headings, instead of jumping straight into
   // editing and showing a standalone always-visible delete button.
   p.onclick = (e) => {
-    if (e.target.closest('[data-inline-link]')) return;
+    if (/** @type {Element} */ (e.target).closest('[data-inline-link]')) return;
     toggleActionMenu(row.node);
   };
   wrap.appendChild(p);

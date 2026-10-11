@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * The app's shared mutable state, in one place.
  *

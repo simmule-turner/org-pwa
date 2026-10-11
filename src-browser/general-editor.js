@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: general editor.
 import { deleteTable, insertTable, lastTableInBody } from '../src/body-edit.js';
 import { getPlainTimestampInTitle, setHeadingTags, setPlainTimestampInTitle, setPriority } from '../src/heading-edit.js';

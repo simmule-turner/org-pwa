@@ -1,3 +1,4 @@
+// @ts-check
 // The floating keyboard: a small, draggable panel of the keys a phone's own
 // on-screen keyboard has no way to type (Tab, the arrows, Shift) plus `g`,
 // god-mode's most-used prefix, for using god-mode with no hardware Escape
@@ -416,7 +417,7 @@ export function renderFloatingKeyboard() {
 
 export function resetGodModeKeyboardInput() {
   S.godModeInputFedLength = 0;
-  if (godModeKeyboardInput) godModeKeyboardInput.value = '';
+  if (godModeKeyboardInput) /** @type {any} */ (godModeKeyboardInput).value = '';
 }
 
 /** Called by app.js's keydown handler when it delivered `key` from the hidden input. */
@@ -452,7 +453,7 @@ if (godModeKeyboardInput) {
   });
 
   godModeKeyboardInput.addEventListener('input', (e) => {
-    const value = godModeKeyboardInput.value;
+    const value = /** @type {any} */ (godModeKeyboardInput).value;
     if (S.godModeActive && value.length > S.godModeInputFedLength) feedText(value.slice(S.godModeInputFedLength));
     S.godModeInputFedLength = value.length;
     // clearing mid-composition can make some keyboards re-insert the text, so

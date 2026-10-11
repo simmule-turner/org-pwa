@@ -469,7 +469,7 @@ test('collectContactCards: Flat and Tree contacts are both found, in one file, w
 });
 
 test('collectContactCards: archived, commented and :IGNORE: contacts are left out, as in the export', () => {
-  const doc = '* Kept\n:PROPERTIES:\n:EMAIL: k@example.com\n:END:\n* Archived :ARCHIVE:\n:PROPERTIES:\n:EMAIL: a@example.com\n:END:\n* # Commented\n:PROPERTIES:\n:EMAIL: c@example.com\n:END:\n* Ignored\n:PROPERTIES:\n:EMAIL: i@example.com\n:IGNORE: t\n:END:\n';
+  const doc = '* Kept\n:PROPERTIES:\n:EMAIL: k@example.com\n:END:\n* Archived :ARCHIVE:\n:PROPERTIES:\n:EMAIL: a@example.com\n:END:\n* COMMENT Commented\n:PROPERTIES:\n:EMAIL: c@example.com\n:END:\n* Ignored\n:PROPERTIES:\n:EMAIL: i@example.com\n:IGNORE: t\n:END:\n';
   assert.deepEqual(collectContactCards(cardDocs(doc)).map((c) => c.heading.title), ['Kept']);
 });
 

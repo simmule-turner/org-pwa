@@ -14,7 +14,6 @@ import {
   monthSpecMatches,
   nthWeekdayOfMonth,
   expandDiaryFloatOccurrences,
-  computeSunriseSunsetUtc,
   formatSunTime,
   formatSunTime24,
   isDiarySunriseLine,

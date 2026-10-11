@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Tangle: the source blocks of a document, written out as files. Follows Org's org-babel-tangle (checked against
  * Emacs): a block goes to the file named by its `:tangle` header argument (`yes` = the document's own name with the
@@ -8,7 +9,7 @@
  * exist is simply created (the files are delivered together, usually as a zip).
  */
 import { collectDocumentBlocks, headingSearchText, removeIndentation } from './babel-blocks.js';
-import { parseHeaderArgs, resolveVars, findNamedTable } from './babel.js';
+import { resolveVars, findNamedTable } from './babel.js';
 import { expandNoweb, nowebAllows } from './noweb.js';
 import { serializeOrg } from './org-parser.js';
 
@@ -137,8 +138,8 @@ function linkFor(block, documentName, targetPath) {
 
 /**
  * Tangles `doc`.
- * @param {object} doc
- * @param {object} [options]  documentName: the Org file's name (default "untitled.org"); lookupTable(name): rows of a named table
+ * @param {any} doc
+ * @param {{ documentName?: string }} [options]  documentName: the Org file's name (default "untitled.org"); lookupTable(name): rows of a named table
  * @returns {{ files: Array<{path: string, text: string, mode: number|null, blockCount: number}>, blockCount: number, warnings: string[] }}
  */
 export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {

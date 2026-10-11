@@ -1,3 +1,4 @@
+// @ts-check
 // Wraps a storage adapter so the app only ever sees "\n" text, and the file keeps its own line endings (see
 // src/line-endings.js). One wrapper, applied where the adapters are created, instead of a change in every place a file
 // is read or written.

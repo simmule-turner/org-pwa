@@ -1,3 +1,4 @@
+// @ts-check
 // The in-app camera, for a device whose file chooser has no camera in it (a Chromebook or a desktop browser): a live preview from
 // the webcam, then either one still (Take photo) or a recording (Record, Stop), a review, and Attach or Retake. A phone's own
 // chooser offers the camera itself, so this is not used there. `onAttach({ name, type, base64 })` is given what to store.
@@ -114,7 +115,7 @@ export async function openCameraPanel(kind, onAttach) {
     capturedUrl = URL.createObjectURL(captured);
     const media = document.createElement(kind === 'video' ? 'video' : 'img');
     media.src = capturedUrl;
-    if (kind === 'video') media.controls = true;
+    if (kind === 'video') /** @type {HTMLVideoElement} */ (media).controls = true;
     media.style.cssText = 'display:block;width:100%;max-height:60vh;background:#000;border-radius:6px;';
     stage.replaceChildren(media);
     draw();

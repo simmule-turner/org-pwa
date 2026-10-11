@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * New diary-sexp forms for the agenda -- org-anniversary, org-cyclic,
  * org-block, diary-float, and the solar functions below. Each of
@@ -161,7 +162,7 @@ function expandOrgCyclicOccurrences(n, baselineDate, rangeStart, rangeEnd) {
   if (rangeEndDay < baselineDay) return [];
 
   const searchStart = rangeStartDay > baselineDay ? rangeStartDay : baselineDay;
-  const diffDays = Math.round((searchStart - baselineDay) / MS_PER_DAY);
+  const diffDays = Math.round((searchStart.getTime() - baselineDay.getTime()) / MS_PER_DAY);
   const firstK = Math.ceil(diffDays / n);
 
   const dates = [];

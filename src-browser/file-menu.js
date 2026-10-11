@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: file menu.
 import { getMenuAliases } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';

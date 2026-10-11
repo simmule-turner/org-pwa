@@ -1,3 +1,4 @@
+// @ts-check
 // Where an attachment can be kept for the open document. GitHub and WebDAV can always take one. A local document cannot in a
 // browser: access to one file is not access to the folder around it, and a new file needs a fresh picker gesture. A native
 // shell can do better. It asks the person for the org-pwa folder once and keeps permission to it (platform.attachments, see

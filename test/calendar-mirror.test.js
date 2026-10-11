@@ -57,7 +57,7 @@ test('the window can be changed', () => {
 });
 
 test('archived and commented headings stay out, as in the agenda', () => {
-  const m = build('* Kept\nSCHEDULED: <2026-10-06 Tue>\n* Archived :ARCHIVE:\nSCHEDULED: <2026-10-06 Tue>\n* # Commented\nSCHEDULED: <2026-10-06 Tue>\n');
+  const m = build('* Kept\nSCHEDULED: <2026-10-06 Tue>\n* Archived :ARCHIVE:\nSCHEDULED: <2026-10-06 Tue>\n* COMMENT Commented\nSCHEDULED: <2026-10-06 Tue>\n');
   assert.deepEqual(summaries(m), ['Kept']);
 });
 

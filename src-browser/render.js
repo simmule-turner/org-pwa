@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: render.
 import { findContainer } from '../src/archive-model.js';
 import { findHeadingLineNumber, serializeHeadingSubtree, serializeOrg } from '../src/org-parser.js';
@@ -62,7 +63,7 @@ export function render() {
       // silently discard whatever they've typed but not yet saved.
       // Only the read-only flag is synced: toggling read-only while
       // already in Text view otherwise never reached this textarea.
-      existingTextarea.readOnly = S.isBufferReadOnly;
+      /** @type {any} */ (existingTextarea).readOnly = S.isBufferReadOnly;
       return;
     }
     outlineEl.innerHTML = '';
@@ -314,6 +315,6 @@ export function render() {
  *  state.documentId/storageKind/isDirty to separately remember to update
  *  it) rather than being set ad hoc in half a dozen different places. */
 export function updateSaveButtonState() {
-  saveBtnEl.disabled = !S.state.doc || !S.state.storageKind || S.state.storageKind === 'help';
-  saveBtnEl.style.color = !saveBtnEl.disabled && S.isDirty ? '#c0392b' : '';
+  /** @type {any} */ (saveBtnEl).disabled = !S.state.doc || !S.state.storageKind || S.state.storageKind === 'help';
+  /** @type {any} */ (saveBtnEl).style.color = !/** @type {any} */ (saveBtnEl).disabled && S.isDirty ? '#c0392b' : '';
 }

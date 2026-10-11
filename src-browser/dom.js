@@ -1,3 +1,4 @@
+// @ts-check
 // The DOM elements the app wires up, looked up once.
 // Extracted from app.js so other modules can use them: a module script runs after
 // the document has been parsed, so these lookups behave exactly as they did there.

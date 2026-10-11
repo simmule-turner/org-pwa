@@ -619,7 +619,6 @@ test('hourZeroPad defaults to true when not specified, matching real org\u2019s 
 // ---- THE FIX: empty-field flags (E/N) ---------------------------------------
 
 test('THE FIX: without E, a blank cell in a range is still omitted from the vector entirely -- the app\u2019s own existing default, unchanged', () => {
-  const rows = [['1'], ['2'], ['']];
   const result = recalculateTable(mkTable('@1$2=vmean(@1$1..@3$1)', [['1', '999'], ['2', '999'], ['', '999']]));
   assert.equal(result[0].cells[1], '1.5', 'mean of [1,2] only, blank omitted');
 });

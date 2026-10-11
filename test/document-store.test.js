@@ -229,7 +229,6 @@ test('openAllDocuments opens every registered document', async () => {
 
 test('archive file is just another documentId — no special-casing needed to open/save it', async () => {
   const kv = createInMemoryAdapter();
-  const disk = createInMemoryDiskAdapter();
   await markDocumentOpen(kv, 'nrp.org');
   await markDocumentOpen(kv, 'nrp_archive.org');
   const ids = await listOpenDocuments(kv);

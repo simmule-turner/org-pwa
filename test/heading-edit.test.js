@@ -45,7 +45,7 @@ test('createHeading throws on an invalid level', () => {
 
 test('a freshly created heading round-trips through serialize/parse', () => {
   const doc = parseOrg('');
-  const h = insertTopLevelHeading(doc, { title: 'Buy milk', todo: 'TODO' });
+  insertTopLevelHeading(doc, { title: 'Buy milk', todo: 'TODO' });
   const text = serializeOrg(doc);
   assert.match(text, /^\* TODO Buy milk$/m);
   const doc2 = parseOrg(text);

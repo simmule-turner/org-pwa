@@ -1,259 +1,45 @@
-import { openDocument, saveDocument, saveAndSync, markDocumentOpen } from './src/document-store.js';
-import { setSyncMeta, getSyncMeta } from './src/sync-engine.js';
-import { hasPendingChange, getPendingChange, clearPendingChange } from './src/outbox.js';
-import { savePersistedHistory, loadPersistedHistory, clearPersistedHistory } from './src/history-store.js';
-import { parseOrg, serializeOrg, serializeHeadingSubtree, findHeadingLineNumber, findHeadingAtLine } from './src/org-parser.js';
-import { parseBody } from './src/body-parser.js';
-import { detectWebmHasVideoTrack } from './src/webm-track-detect.js';
-import { findScrollingAncestor } from './src/scroll-util.js';
-import {
-  generateAttachmentId,
-  attachmentPath,
-  formatAttachmentLink,
-  sanitizeAttachmentFilename,
-  listAttachments,
-  removeAttachmentLink,
-  disambiguateAttachmentFilename,
-  isAudioFilename,
-  generateRecordingFilename,
-} from './src/attach.js';
-import {
-  findAncestorPath,
-  findContainer,
-  getPropertiesText,
-  buildArchivedClone,
-  getArchiveLocation,
-  parseArchiveLocation,
-  resolveArchiveFileId,
-  insertAtArchiveLocation,
-  buildRestoredClone,
-  isArchivedInPlace,
-  shiftLevels,
-  setProperty,
-  getProperty,
-  deleteProperty,
-} from './src/archive-model.js';
-import {
-  resolveLinkTarget,
-  resolveImagePath,
-  resolveAttachmentTarget,
-  guessImageMimeType,
-  guessAudioMimeType,
-  guessViewableMimeType,
-  isExternalUrl,
-  findHeadingByTitle,
-  findFootnoteDefinition,
-} from './src/link-resolve.js';
-import { parseInline, stripLineBreakMarker, IMAGE_EXT_RE, extractLatexFragments } from './src/inline-markup.js';
-import { flattenVisibleRows, toggleFold, cycleHeadingTodo, toggleHeadingTodo, cycleItemCheckbox } from './src/outline-view-model.js';
-import { updateCheckboxCookiesUpward } from './src/checkbox-cookie.js';
-import { searchDocument, searchDocuments, searchDocumentsByMatchQuery } from './src/search.js';
-import { createQueryReplace, createTextQueryReplace, countBlockOnlyMatches } from './src/query-replace.js';
-import { emacsRegexToJs, EmacsRegexError } from './src/emacs-regex.js';
-import { applyStartupVisibility, cycleFoldLevel } from './src/fold-state.js';
-import { parseStartupConfig, resolveEffectiveStartupConfig, VISIBILITY_KEYWORDS } from './src/startup-config.js';
-import {
-  parseLocalVariables,
-  parseLispBoolean,
-  parseLispNumber,
-  getAgendaStartOnWeekday,
-  getAgendaShowAllDates,
-  getDeadlineWarningDays,
-  getScheduledDelayDays,
-  getCalendarLatitude,
-  getCalendarLongitude,
-  getSolarAmpm,
-  getSolarHideLabel,
-  getOrgWeatherFormat,
-  getOrgWeatherSpeedUnit,
-  getOrgWeatherTemperatureUnit,
-  getWeatherRefreshInterval,
-  getOrgTableDurationHourZeroPadding,
-  getCycleOpenArchivedTrees,
-  getAgendaSkipCommentTrees,
-  getAgendaSkipArchivedTrees,
-  getContactsBirthdayProperty,
-  getUseSubSuperscripts,
-  getUseTagInheritance,
-  getUsePropertyInheritance,
-  getBufferReadOnly,
-  getClosedKeepWhenNoTodo,
-  getRefileTargets,
-  getGlobalProperties,
-  getAsciiTextWidth,
-  getExtraMenu,
-  getMenuAliases,
-  getDisplayTimeMode,
-  getDisplayTimeFormat,
-  getAgendaFilesVar,
-  getContactsFilesVar,
-  parseAgendaFilesVar,
-} from './src/local-variables.js';
-import { parseRefileTargetsWithErrors, getRefileCandidates, resolveEntryFileIds, findHeadingByOutlinePath, collectSubtreeHeadings, pushRecentRefileTarget, recentRefileCandidates } from './src/refile.js';
-import { saveNarrowState, loadNarrowState } from './src/narrow-state.js';
-import { clockIn, clockInSwitchingTasks, clockOut, clockCancel, totalClockedMinutes, currentClockSessionMinutes, formatClockDuration, findHeadingWithRunningClock, findMostRecentlyClockedHeading } from './src/clock.js';
-import { parseOrgDuration } from './src/org-duration.js';
-import { computeClocktable, renderClocktable } from './src/clocktable.js';
-import { parseExtraMenu, tokenize as tokenizeExtraMenuValue } from './src/extra-menu.js';
-import { parseMenuAliases, resolveMenuOrder, tokenizeMenuAliasValue } from './src/menu-alias.js';
-import { multiEntryValueToDisplayText, multiEntryDisplayTextToValue } from './src/multi-entry-format.js';
-import { normalizeSmartQuotes } from './src/text-normalize.js';
-import { buildMonthGrid, stepMonth, stepYear, MONTH_NAMES, buildDayMarkers } from './src/calendar-grid.js';
-import { splitHexAlpha, combineHexAlpha } from './src/hex-alpha.js';
-import { resolveTodoSequence, resolveTodoSequences, setTodoState, isDoneKeyword } from './src/todo-cycle.js';
-import { renderMathHtml } from './src/math-render.js';
-import { applyRepeaterShiftOnDone } from './src/repeater-shift.js';
-import { decideProgressLogging, decideLogbookEntry, getEffectiveLogDoneSetting, parseLogDoneLispValue } from './src/progress-logging.js';
-import { parseGlobalVariables, serializeGlobalVariables, mergeGlobalAndLocalVariables } from './src/global-variables.js';
-import { formatStateLogLine, parseLogbookEntries } from './src/logbook.js';
-import {
-  UNSAVED_DOCUMENT_ID,
-  buildAgendaItems,
-  buildTaskList,
-  dayView,
-  weekView,
-  monthView,
-  startOfDay,
-  endOfDay,
-  startOfWeek,
-  parseRepeater,
-  itemsInRange,
-  itemEffortText,
-  summarizeDayEffort,
-  applyAgendaEffortView,
-} from './src/agenda.js';
-import { scanPrompts, expandTemplate, expandCaptureText, resolveOlpTarget, insertCapture, resolveCaptureFileId, getCaptureFileScheme, CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, formatTime } from './src/capture-template.js';
-import { exportToMarkdown } from './src/export-markdown.js';
-import { exportToOdt } from './src/export-odt.js';
-import { exportToAscii } from './src/export-ascii.js';
-import { expandIncludes } from './src/export-include.js';
-import { exportAsOrg } from './src/export-org.js';
-import { exportToHtml } from './src/export-html.js';
-import { exportToIcalendar } from './src/export-icalendar.js';
-import { exportToVcard } from './src/export-vcard.js';
-import { importVcardsAsOrgText } from './src/import-vcard.js';
-import { createHistory, pushSnapshot, canUndo, canRedo, undo, redo, jumpTo, currentEntry } from './src/undo-history.js';
-import { diffHunks } from './src/text-diff.js';
-import { planConflict, resolveSegments } from './src/merge3.js';
-import { getAllowedEffortValues, DEFAULT_EFFORT_FILTER_VALUES } from './src/effort-values.js';
-import { searchCommands, pushRecent } from './src/command-palette.js';
-import { parseOrgTimestamp, formatOrgTimestamp, parseDelay, dateKey } from './src/org-timestamp.js';
-import {
-  renameHeading,
-  setHeadingTags,
-  setPriority,
-  getPlainTimestampInTitle,
-  setPlainTimestampInTitle,
-  insertChildHeading,
-  insertHeadingAfter,
-  removeHeading,
-  moveHeadingUp,
-  moveHeadingDown,
-  promoteHeading,
-  demoteHeading,
-} from './src/heading-edit.js';
-import {
-  setTableCell,
-  isTableHeaderRow,
-  insertTableRow,
-  deleteTableRow,
-  insertTableColumn,
-  deleteTableColumn,
-  insertTable,
-  editParagraphText,
-  insertParagraphAfter,
-  deleteListItem,
-  deleteTable,
-  lastTableInBody,
-  allTablesInBody,
-  commitLines,
-  serializeTable,
-  deleteParagraph,
-  editListItemText,
-  insertListItem,
-  getHeadingText,
-  setHeadingText,
-} from './src/body-edit.js';
-import { recalculateTable, parseTableConstants } from './src/table-formula.js';
-import { parsePlotOptions, renderPlotSvg } from './src/org-plot.js';
-import { isOrgWeatherLine, formatWeatherLine, buildWeatherApiUrl, DEFAULT_ORG_WEATHER_FORMAT } from './src/org-weather.js';
+// @ts-check
+import { hasPendingChange } from './src/outbox.js';
+import { parseOrg } from './src/org-parser.js';
+import { cycleFoldLevel } from './src/fold-state.js';
+import { getCycleOpenArchivedTrees } from './src/local-variables.js';
+import { parseGlobalVariables } from './src/global-variables.js';
+import { createHistory } from './src/undo-history.js';
+import { setTableCell } from './src/body-edit.js';
 import { initialState as godModeInitialState } from './src/god-mode.js';
-import { documentUsesOrgWeather } from './src/sexp-eval.js';
 import { loadExtensions } from './src-browser/extension-flow.js';
-import { createIndexedDbAdapter } from './src-browser/indexeddb-adapter.js';
-import {
-  createFileSystemAccessAdapter,
-  pickAndRegisterFile,
-  pickAndRegisterNewFile,
-  isFileSystemAccessSupported,
-} from './src-browser/filesystem-adapter.js';
-import { createGithubAdapter, isGithubConfigured } from './src-browser/github-adapter.js';
-import { createWebdavAdapter, isWebdavConfigured, base64ToArrayBuffer } from './src-browser/webdav-adapter.js';
-import {
-  createInputFileAdapter,
-  pickAndImportFile,
-  isFileSystemAccessUnsupported,
-  downloadFile,
-} from './src-browser/input-file-adapter.js';
 import {
   getGithubConfig,
-  setGithubConfig,
   getCaldavConfig,
   getWebdavConfig,
-  setWebdavConfig,
   getTheme,
-  setTheme,
   getCustomThemeColors,
-  setCustomThemeColors,
   getFontFamily,
-  setFontFamily,
   getMenuSize,
-  setMenuSize,
   getParagraphSpacing,
   getFloatingKeyboardPos,
   getTablesSpacing,
   getFontSize,
-  setFontSize,
   getReadingWidth,
-  setReadingWidth,
   getSidePanelWidth,
-  setSidePanelWidth,
   getTablesFontSize,
-  setTablesFontSize,
-  exportAllSettings,
-  importAllSettings,
   getLastActiveDocument,
-  setLastActiveDocument,
   getOpenTabs,
-  setOpenTabs,
-  getRecentFiles,
-  recordRecentFile,
-  clearRecentFiles,
-  getCaptureTemplates,
-  setCaptureTemplates,
-  DEFAULT_CAPTURE_TEMPLATES,
   getGlobalVariables,
-  setGlobalVariables,
-  DEFAULT_GLOBAL_VARIABLES,
 } from './src-browser/settings.js';
-import { agendaItemKindLabel, agendaStepAnchor, buildDayHeaderRow, formatAgendaItemTimeText, formatAgendaRangeLabel } from './src-browser/agenda-format.js';
-import { THEME_CSS_VARS, THEME_DEFAULTS, THEME_VAR_LABELS, applyFontFamily, applyFontSize, applyMenuSize, applyParagraphSpacing, applyTablesSpacing, applyReadingWidth, applyTablesFontSize, resolvedThemeName } from './src-browser/appearance.js';
-import { CONFLICT_PREVIEW_LINES, GLOBAL_TODO_DEFAULT, HELP_DOCUMENT_ID, INLINE_LINK_ATTR, NAVIGATION_BACK_STACK_LIMIT, PALETTE_RECENT_KEY, RECENT_FILES_DISPLAY_LIMIT, SEARCH_TYPE_ICON, SIDE_PANEL_MIN_WIDTH, WEATHER_CACHE_KEY } from './src-browser/constants.js';
-import { allHeadingsInOrder, buildQueryReplacePattern, contactPhotoValueForHeading, expandScopeWithAncestors, findListItemByLineIndex, firstDataRowIndex, getOlpPrepend, hasBodyContent, headingsInSubtree, listItemDescendantCount, paragraphHasContent, stripCommaEscapeApp, tableHasContent, validateCaptureTemplates, vcardBodyHeadingsIn } from './src-browser/doc-helpers.js';
-import { buildPriorityFieldGroup, buildTimestampFieldGroup, dateInputValue } from './src-browser/field-groups.js';
-import { fetchWeatherData, getOrRenderPlotSvg, getServiceWorkerVersion, guessAnyAttachmentMimeType, imagePlaceholder, renderDiffView, renderLatexNode, scrollFocusedHeadingIntoView } from './src-browser/render-helpers.js';
-import { QUICK_SETTINGS_FIELDS } from './src-browser/settings-fields.js';
-import { agendaFilesCache, contactsFilesCache, imageDataUrlCache, kv, textModeLastCommittedValue } from './src-browser/singletons.js';
-import { ALWAYS_KEEP_MINE, documentDisplayLabel, formatPendingChangeTimestamp, loadPaletteRecent, loadRefileRecent, recordSyncedWrite, rememberRefileTarget, resolvePendingChangeChoice, storageKindLabel } from './src-browser/sync-helpers.js';
-import { SWIPE_THRESHOLD_PX, VH_UNIT, WIDE_LAYOUT_QUERY, aliasedMenuDivItem, appendMenuButtonsInOrder, appendSnippetWithHighlight, attachLongPress, autoGrowTextarea, entryFieldButtonStyle, fieldRow, hideModalOverlay, isWideLayout, keepOverlayInVisibleViewport, labeledInput, menuButton, menuDivItem, modalFieldRow, modalOverlayCleanups, pickTextFile, populateSelectOptions, positionPopupNearButton, requiredMenuDivItem, smallButton, tableActionButton, textInputStyle, withActionMenu, wizardButton } from './src-browser/ui-widgets.js';
+import { applyFontFamily, applyFontSize, applyMenuSize, applyParagraphSpacing, applyTablesSpacing, applyReadingWidth, applyTablesFontSize } from './src-browser/appearance.js';
+import { getServiceWorkerVersion, scrollFocusedHeadingIntoView } from './src-browser/render-helpers.js';
+import { kv } from './src-browser/singletons.js';
+import { loadPaletteRecent } from './src-browser/sync-helpers.js';
+import { WIDE_LAYOUT_QUERY, isWideLayout, positionPopupNearButton } from './src-browser/ui-widgets.js';
 import { S } from './src-browser/app-state.js';
-import { godModeBtn, godModeKeyboardInput, captureBtn, capturePanel, capturePanelBox, contentAreaEl, doneNotePanel, doneNotePanelBox, externalChangeBanner, externalChangeDismissBtn, externalChangeMergeBtn, externalChangeReloadBtn, externalChangeText, extraMenuBtn, extraMenuPanel, fileMenuBtn, fileMenuPanel, minibufferEl, minibufferSearchEl, modelineBarEl, modelineEl, moreBtn, morePanel, nativeCreateElement, navBackBtn, outlineEl, refilePanel, refilePanelBox, saveBtnEl, searchBtn, searchPanel, settingsBtn, sidePanelDividerEl, sidePanelEl, splitRowEl, statusEl, tabBarEl, topBarEl, viewMenuBtn, viewMenuPanel } from './src-browser/dom.js';
+import { godModeBtn, godModeKeyboardInput, captureBtn, externalChangeDismissBtn, externalChangeMergeBtn, externalChangeReloadBtn, extraMenuBtn, extraMenuPanel, fileMenuBtn, fileMenuPanel, moreBtn, morePanel, nativeCreateElement, navBackBtn, outlineEl, saveBtnEl, searchBtn, settingsBtn, statusEl, topBarEl, viewMenuBtn, viewMenuPanel } from './src-browser/dom.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './src-browser/agenda-files.js';
 import { renderCapturePanel } from './src-browser/capture-ui.js';
 import { anyOverlayPanelOpen, closeAllOverlayPanels, renderModeline, syncContentOffset } from './src-browser/chrome.js';
 import { confirmDialog } from './src-browser/dialogs.js';
 import { afterDocumentLoaded, saveCurrent } from './src-browser/documents-io.js';
-import { commitAndRender, setStatus, startEditingTitle } from './src-browser/editing.js';
+import { commitAndRender, setStatus } from './src-browser/editing.js';
 import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, reloadCurrentDocumentFromDisk } from './src-browser/external-sync.js';
 import { renderFileMenu, stopBrowsing } from './src-browser/file-menu.js';
 import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, withArmedShift } from './src-browser/floating-keyboard.js';
@@ -550,7 +336,7 @@ document.addEventListener('pointerdown', (e) => {
     { open: () => S.extraMenuOpen, panel: extraMenuPanel, btn: extraMenuBtn, close: () => { S.extraMenuOpen = false; renderExtraMenu(); } },
   ];
   for (const menu of popupMenus) {
-    if (menu.open() && !menu.panel.contains(e.target) && !menu.btn.contains(e.target)) {
+    if (menu.open() && !menu.panel.contains(/** @type {Node} */ (e.target)) && !menu.btn.contains(/** @type {Node} */ (e.target))) {
       menu.close();
     }
   }
@@ -1123,13 +909,13 @@ document.addEventListener(
   'mousedown',
   (e) => {
     if (!S.editingCell) return;
-    if (e.target.closest('#cell-edit-input')) return; // still inside the cell's own textarea -- this tap isn't leaving it, nothing to commit
-    if (e.target.closest('.cell-cancel-btn')) return; // the discard button itself -- its own handler decides, not this one
+    if (/** @type {Element} */ (e.target).closest('#cell-edit-input')) return; // still inside the cell's own textarea -- this tap isn't leaving it, nothing to commit
+    if (/** @type {Element} */ (e.target).closest('.cell-cancel-btn')) return; // the discard button itself -- its own handler decides, not this one
     e.preventDefault();
     const prevInput = document.getElementById('cell-edit-input');
     const { heading, table, rowIndex: ri, colIndex: ci } = S.editingCell;
     S.editingCell = null;
-    if (prevInput) setTableCell(heading, table, ri, ci, prevInput.value.replace(/\n/g, ' '));
+    if (prevInput) setTableCell(heading, table, ri, ci, /** @type {any} */ (prevInput).value.replace(/\n/g, ' '));
     resyncKeyboardFocusToBodyRow(heading, 'table', table.lineIndex);
     commitAndRender('Edited table cell');
   },
@@ -1238,7 +1024,7 @@ godModeBtn.addEventListener('click', () => {
   S.floatingKeyboardOpen = true;
   S.floatingKeyboardShiftArmed = false;
   S.floatingKeyboardMinimized = false;
-  godModeKeyboardInput.value = '';
+  /** @type {any} */ (godModeKeyboardInput).value = '';
   render();
   godModeKeyboardInput.focus({ preventScroll: true });
   scrollFocusedHeadingIntoView();

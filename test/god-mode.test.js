@@ -219,7 +219,7 @@ test('processKey returns an updated state that a caller can feed back in for the
   let chordString;
   ({ state, chordString } = processKey(state, 'c', false));
   assert.equal(chordString, 'C-c');
-  ({ state, chordString } = processKey(state, 't', false));
+  ({ chordString } = processKey(state, 't', false));
   assert.equal(chordString, 'C-c C-t');
 });
 

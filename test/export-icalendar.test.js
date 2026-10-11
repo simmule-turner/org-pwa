@@ -184,7 +184,7 @@ test('an archived heading is excluded', () => {
 });
 
 test('a commented heading (title starting with "# ") is excluded, matching real org\u2019s own comment-line convention', () => {
-  const ics = exportToIcalendar(docs('* # draft, not ready\nSCHEDULED: <2026-08-01 Sat>\n'), { today: TODAY });
+  const ics = exportToIcalendar(docs('* COMMENT draft, not ready\nSCHEDULED: <2026-08-01 Sat>\n'), { today: TODAY });
   assert.doesNotMatch(ics, /BEGIN:VEVENT/);
 });
 

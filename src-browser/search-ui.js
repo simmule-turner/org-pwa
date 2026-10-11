@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: search ui.
 import { EmacsRegexError } from '../src/emacs-regex.js';
 import { getUsePropertyInheritance, getUseTagInheritance } from '../src/local-variables.js';
@@ -211,7 +212,7 @@ export async function startQueryReplace() {
 
   if (inTextMode) {
     const textarea = document.getElementById('document-text-edit-input');
-    const controller = createTextQueryReplace(textarea ? textarea.value : '', pattern, replacementText);
+    const controller = createTextQueryReplace(textarea ? /** @type {any} */ (textarea).value : '', pattern, replacementText);
     S.activeQueryReplace = { controller, replacementText, findPattern: S.searchQuery, pattern, inTextMode };
     renderSearchPanel();
     return;
@@ -359,7 +360,7 @@ export function finishQueryReplace() {
     if (count > 0) {
       const textarea = document.getElementById('document-text-edit-input');
       if (textarea) {
-        textarea.value = controller.getText();
+        /** @type {any} */ (textarea).value = controller.getText();
         textarea.dispatchEvent(new Event('input', { bubbles: true })); // triggers the textarea's own existing auto-resize, wired to this event
       }
     }
@@ -506,7 +507,7 @@ export function renderTextModeSearchResults() {
   searchPanel.style.display = 'block';
 
   const textarea = document.getElementById('document-text-edit-input');
-  const text = textarea ? textarea.value : '';
+  const text = textarea ? /** @type {any} */ (textarea).value : '';
 
   const info = document.createElement('div');
   info.style.fontSize = '13px';

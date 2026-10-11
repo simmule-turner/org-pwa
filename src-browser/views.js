@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: views.
 import { resolveLinkTarget } from '../src/link-resolve.js';
 import { getMenuAliases } from '../src/local-variables.js';

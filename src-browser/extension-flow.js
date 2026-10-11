@@ -1,3 +1,4 @@
+// @ts-check
 // The init script: load it, answer its diary functions, report how it is doing.
 import { deleteProperty, setProperty } from '../src/archive-model.js';
 import { commitLines } from '../src/body-edit.js';

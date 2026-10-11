@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: attachments flow.
 import { deleteProperty, getProperty, setProperty } from '../src/archive-model.js';
 import { addAttachTag, attachmentSizeCheck, attachmentDir, prefersInAppCamera, attachmentDirFromProperty, ownAttachmentDirectory, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
@@ -7,7 +8,7 @@ import { guessImageMimeType, guessViewableMimeType, resolveAttachmentDirectory, 
 import { detectWebmHasVideoTrack } from '../src/webm-track-detect.js';
 import { S } from './app-state.js';
 import { openAudioRecordingPanel } from './audio-recording.js';
-import { confirmDialog, openButtonChoiceModal, openGridChoiceModal, openMultiFieldPopup, openTextFieldPopup, pickBinaryFile, pickBinaryFiles, showModalOverlay } from './dialogs.js';
+import { confirmDialog, openButtonChoiceModal, openGridChoiceModal, openMultiFieldPopup, openTextFieldPopup, pickBinaryFiles, showModalOverlay } from './dialogs.js';
 import { showAttachmentFolder } from './attach-folder-panel.js';
 import { cameraAvailable, openCameraPanel } from './camera-capture.js';
 import { utf8ToBase64 } from './github-adapter.js';

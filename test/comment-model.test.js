@@ -3,42 +3,32 @@ import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
 import { isCommentedHeading } from '../src/comment-model.js';
 
-test('THE EXACT REPORTED CASE: a DONE heading whose title starts with "# " is commented', () => {
-  const doc = parseOrg('** DONE # find a FOSS filemanager for Android');
-  assert.equal(isCommentedHeading(doc.children[0]), true);
+const commented = (line) => isCommentedHeading(parseOrg(line).children[0]);
+
+test('COMMENT after the stars, and after the TODO keyword, marks a commented heading, as in Emacs', () => {
+  assert.equal(commented('** COMMENT draft'), true);
+  assert.equal(commented('** TODO COMMENT draft'), true);
+  assert.equal(commented('** DONE COMMENT find a FOSS filemanager'), true);
+  assert.equal(commented('** COMMENT'), true);
 });
 
-test('THE OTHER REPORTED CASE: a plain heading whose title starts with "# " is commented', () => {
-  const doc = parseOrg('** # [06/20 23:17]- fix documentation for ignore #, archive.');
-  assert.equal(isCommentedHeading(doc.children[0]), true);
+test('COMMENT before a keyword also comments the heading (the keyword is then part of the title)', () => {
+  assert.equal(commented('** COMMENT TODO draft'), true);
 });
 
-test('a heading whose title does NOT start with "#" is not commented', () => {
-  const doc = parseOrg('** Just a normal heading');
-  assert.equal(isCommentedHeading(doc.children[0]), false);
+test('a title starting with "# " is an ordinary heading, as in Emacs (only body lines starting with "# " are comments)', () => {
+  assert.equal(commented('** # draft'), false);
+  assert.equal(commented('** TODO # something'), false);
+  assert.equal(commented('** #'), false);
 });
 
-test('a title starting with "#" but with NO following whitespace is not commented, per the precise org-manual rule', () => {
-  const doc = parseOrg('** #hashtag-like-thing not a comment');
-  assert.equal(isCommentedHeading(doc.children[0]), false);
-});
-
-test('a title that is exactly "#" alone is commented', () => {
-  const doc = parseOrg('** #');
-  assert.equal(isCommentedHeading(doc.children[0]), true);
-});
-
-test('a "#" appearing later in the title (not at the start) does not make it commented', () => {
-  const doc = parseOrg('** Fix the issue with # symbols');
-  assert.equal(isCommentedHeading(doc.children[0]), false);
-});
-
-test('the TODO keyword and priority are already stripped from the title by the parser, so detection works regardless of TODO state', () => {
-  const doc = parseOrg('** TODO # something to hide from the agenda');
-  assert.equal(isCommentedHeading(doc.children[0]), true);
+test('COMMENT must be a whole word at the start of the title', () => {
+  assert.equal(commented('** COMMENTARY on the draft'), false);
+  assert.equal(commented('** Not a COMMENT'), false);
+  assert.equal(commented('** comment lowercase'), false);
+  assert.equal(commented('** Just a normal heading'), false);
 });
 
 test('an empty title is not commented', () => {
-  const doc = parseOrg('** ');
-  assert.equal(isCommentedHeading(doc.children[0]), false);
+  assert.equal(commented('** '), false);
 });

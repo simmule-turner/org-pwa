@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * The init script's sandbox: the same locked-down iframe and worker as source blocks (babel-run.js),
  * kept alive so the functions the script registers can be called again and again.

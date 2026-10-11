@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Heading editing primitives: create, rename, insert. Kept separate from
  * org-parser.js (which owns text<->AST) and outline-view-model.js (which
@@ -21,7 +22,9 @@ import { parseOrgTimestamp, findTimestamps } from './org-timestamp.js';
 
 /** Builds a heading object with every field the AST shape requires — the
  *  single source of truth for "what does an empty heading look like",
- *  so callers never hand-construct one and risk a missing field. */
+ *  so callers never hand-construct one and risk a missing field.
+ * @param {{ level?: number, title?: string, todo?: string | null, priority?: string | null, tags?: string[] }} [fields]
+ */
 export function createHeading({ level, title = '', todo = null, priority = null, tags = [] } = {}) {
   if (!Number.isInteger(level) || level < 1) {
     throw new Error('createHeading: level must be a positive integer');

@@ -14,7 +14,6 @@ import {
   setPropertiesFromText,
   extractForArchive,
   buildArchivedClone,
-  appendToArchive,
   DEFAULT_ARCHIVE_LOCATION,
   parseArchiveLocation,
   resolveArchiveFileId,

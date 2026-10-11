@@ -1,3 +1,4 @@
+// @ts-check
 // Pictures for HTML export: a standalone page has nowhere to find `[[file:pic.png]]`, so every picture this app can
 // read (GitHub and WebDAV files, attachments) is embedded as a data URL. Anything else keeps its link.
 import { guessImageMimeType, isExternalUrl, resolveAttachmentTarget, resolveImagePath } from '../src/link-resolve.js';

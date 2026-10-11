@@ -299,7 +299,6 @@ function render2dSvg(data, options) {
     } else if (withStyle === 'points') {
       for (const p of points) if (p.y !== null) parts.push(`<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${color}"/>`);
     } else if (withStyle === 'boxes') {
-      const groupStart = margin.left + sIdx * barW - (seriesCount * barW) / 2;
       points.forEach((p, i) => {
         if (p.y === null) return;
         const x = xToPx(data.rows[i], i) - (seriesCount * barW) / 2 + sIdx * barW;

@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v485 — Agenda matches Emacs
+Overdue SCHEDULED and DEADLINE items and deadline warnings now appear on today only, labelled the way Emacs words them ("Sched. 2x:", "3 d. ago:", "In 2 d.:"), and checked against Emacs on 64 days. A heading is commented out only by ~COMMENT~; ~** # draft~ is an ordinary heading again. Behind the scenes, every source file is now type-checked, about 390 unused imports are gone, and lint is clean.
+
 * v484 — Checked against Emacs, and a stricter page
 Repeating tasks and the agenda are now tested against Emacs itself, which exposed four differences, all fixed: ~++~ and hour repeaters land after the current time, monthly repeats from the 31st follow Emacs's dates, a ~<a>--<b>~ range shows on every day, and ~COMMENT~ headings and inactive SCHEDULED dates stay out of the agenda. The app also gains a Content-Security-Policy that refuses injected scripts, with the JavaScript sandbox moved to its own page, and a short Security and privacy section says where your tokens are kept. Tests run on a frozen clock, and CI, a release script, lint and type-checking are in place.
 

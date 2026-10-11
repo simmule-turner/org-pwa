@@ -34,7 +34,7 @@
  */
 
 import { parseOrgTimestamp, formatOrgTimestamp } from './org-timestamp.js';
-import { parseRepeater, addInterval, startOfDay } from './agenda.js';
+import { parseRepeater, addInterval } from './agenda.js';
 import { setProperty } from './archive-model.js';
 
 /** The shifted Date for one repeater application, given `mark`

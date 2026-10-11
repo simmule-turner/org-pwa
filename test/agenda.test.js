@@ -14,7 +14,7 @@ import {
   monthView,
   parseRepeater,
   expandRepeats,
-  carryForwardOccurrences,
+  emacsAgendaOccurrences,
   delayToDays,
   startOfDay,
   endOfDay,
@@ -549,79 +549,84 @@ test('an overdue DEADLINE carries forward too, not just SCHEDULED', () => {
   assert.equal(items[0].daysOverdue, 21);
 });
 
-test('carry-forward respects a full week view: the overdue item appears on every day of the week through today, but not into the week\'s still-future days', () => {
+test('an overdue item is listed once, on today, in a week view: not on the days before or after it, as in Emacs', () => {
   const doc = parseOrg(['** Overdue task', 'SCHEDULED: <2026-07-01 Wed>'].join('\n'));
   const today = new Date(2026, 6, 22); // Wed, mid-week
-  const weekStart = new Date(2026, 6, 20); // Mon
-  const weekEnd = new Date(2026, 6, 26); // Sun
   const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
-    rangeStart: weekStart,
-    rangeEnd: weekEnd,
+    rangeStart: new Date(2026, 6, 20), // Mon
+    rangeEnd: new Date(2026, 6, 26), // Sun
     today,
     isDone: () => false,
   });
-  // Mon(20)/Tue(21)/Wed(22, today) show it as overdue; Thu-Sun (23-26)
-  // are still in the future relative to "today" and correctly don't,
-  // since nothing can be "overdue" on a day that hasn't happened yet.
-  assert.equal(items.length, 3);
+  assert.deepEqual(items.map((i) => [i.date.getDate(), i.daysOverdue]), [[22, 21]]);
 });
 
-test('a repeating SCHEDULED item does not ALSO get carry-forward — stays scoped to its own repeat expansion', () => {
+test('a repeating SCHEDULED is overdue on today from its first date, as one entry, as in Emacs', () => {
   const doc = parseOrg(['** Weekly task', 'SCHEDULED: <2026-01-05 Mon +1w>'].join('\n'));
-  const today = new Date(2026, 6, 22);
+  const today = new Date(2026, 6, 22); // a Wednesday: no repeat lands on it
   const items = buildAgendaItems([{ documentId: 'x.org', doc }], {
     rangeStart: today,
     rangeEnd: today,
     today,
     isDone: () => false,
   });
-  // Jan 5 + 1w repeats land on Mondays; July 22 2026 is a Wednesday, so no occurrence lands exactly today.
-  assert.deepEqual(items, []);
+  assert.deepEqual(items.map((i) => i.daysOverdue), [198]); // Jan 5 to Jul 22
+  const week = buildAgendaItems([{ documentId: 'x.org', doc }], {
+    rangeStart: new Date(2026, 6, 20),
+    rangeEnd: new Date(2026, 6, 27),
+    today,
+    isDone: () => false,
+  });
+  assert.deepEqual(week.map((i) => [i.date.getDate(), i.daysOverdue]), [[20, 0], [22, 198], [27, 0]]);
 });
 
-test('carryForwardOccurrences: a same-day item (not yet overdue) returns just that one day', () => {
+test('emacsAgendaOccurrences: an item dated today is just today, not overdue', () => {
   const today = new Date(2026, 6, 22);
-  const days = carryForwardOccurrences(today, today, today, today);
-  assert.equal(days.length, 1);
+  const days = emacsAgendaOccurrences('scheduled', today, today, today, today);
+  assert.deepEqual(days.map((d) => d.daysOverdue), [0]);
 });
 
-test('carryForwardOccurrences: intersects correctly with a narrower range than the full overdue window', () => {
+test('emacsAgendaOccurrences: an overdue item is on its own date and on today only, not on the days between', () => {
   const itemDate = new Date(2026, 0, 1);
   const today = new Date(2026, 6, 22);
-  const days = carryForwardOccurrences(itemDate, today, new Date(2026, 6, 20), new Date(2026, 6, 22));
-  assert.equal(days.length, 3); // just the 3 days of the requested range, not the full ~200-day overdue span
+  const days = emacsAgendaOccurrences('scheduled', itemDate, today, new Date(2026, 6, 20), new Date(2026, 6, 22));
+  assert.equal(days.length, 1); // the range holds today, so one overdue entry; its own date is outside the range
+  assert.equal(days[0].daysOverdue, 202);
+  assert.equal(days[0].date.getDate(), 22);
+  const both = emacsAgendaOccurrences('scheduled', itemDate, today, new Date(2025, 11, 1), new Date(2026, 6, 22));
+  assert.deepEqual(both.map((d) => d.daysOverdue), [0, 202]);
 });
 
-test('carryForwardOccurrences: a future item returns just its own day, nothing before it', () => {
+test('emacsAgendaOccurrences: a future SCHEDULED is just its own day', () => {
   const itemDate = new Date(2026, 7, 1);
   const today = new Date(2026, 6, 22);
-  const days = carryForwardOccurrences(itemDate, today, new Date(2026, 6, 1), new Date(2026, 7, 31));
+  const days = emacsAgendaOccurrences('scheduled', itemDate, today, new Date(2026, 6, 1), new Date(2026, 7, 31));
   assert.equal(days.length, 1);
-  assert.equal(days[0].getDate(), 1);
-  assert.equal(days[0].getMonth(), 7);
+  assert.equal(days[0].date.getDate(), 1);
+  assert.equal(days[0].date.getMonth(), 7);
 });
 
-test('THE BUG THIS FIXES: carryForwardOccurrences preserves the item\u2019s own time-of-day on every occurrence, not just midnight', () => {
+test('emacsAgendaOccurrences keeps the item\u2019s own time-of-day on each occurrence, not just midnight', () => {
   const itemDate = new Date(2026, 6, 20, 14, 30); // 2:30 PM
   const today = new Date(2026, 6, 22);
-  const days = carryForwardOccurrences(itemDate, today, new Date(2026, 6, 20), new Date(2026, 6, 22));
-  assert.equal(days.length, 3);
+  const days = emacsAgendaOccurrences('scheduled', itemDate, today, new Date(2026, 6, 20), new Date(2026, 6, 22));
+  assert.equal(days.length, 2); // its own date and today
   for (const day of days) {
-    assert.equal(day.getHours(), 14, `day ${day.toDateString()} lost its own time-of-day`);
-    assert.equal(day.getMinutes(), 30);
+    assert.equal(day.date.getHours(), 14, `day ${day.date.toDateString()} lost its own time-of-day`);
+    assert.equal(day.date.getMinutes(), 30);
   }
 });
 
 // ---- commented headings excluded from agenda by default -----------------
 
-test('THE EXACT REPORTED BUG: a heading whose title starts with "#" is excluded from the agenda by default', () => {
-  const doc = parseOrg(['** # fix documentation for ignore #, archive.', 'DEADLINE: <2025-06-21 Sat>'].join('\n'));
+test('THE EXACT REPORTED BUG: a heading whose title starts with COMMENT is excluded from the agenda by default', () => {
+  const doc = parseOrg(['** COMMENT fix documentation for ignore #, archive.', 'DEADLINE: <2025-06-21 Sat>'].join('\n'));
   const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
   assert.deepEqual(items, []);
 });
 
 test('a commented heading is included when includeCommented is explicitly true', () => {
-  const doc = parseOrg(['** # fix documentation for ignore #, archive.', 'DEADLINE: <2025-06-21 Sat>'].join('\n'));
+  const doc = parseOrg(['** COMMENT fix documentation for ignore #, archive.', 'DEADLINE: <2025-06-21 Sat>'].join('\n'));
   const items = buildAgendaItems([{ documentId: 'x.org', doc }], { includeCommented: true });
   assert.equal(items.length, 1);
 });
@@ -633,7 +638,7 @@ test('a normal (non-commented) heading is unaffected by the commented-heading fi
 });
 
 test('a commented heading with a plain title timestamp is also excluded (not just SCHEDULED/DEADLINE)', () => {
-  const doc = parseOrg('** # Someone <2026-01-05 Mon>');
+  const doc = parseOrg('** COMMENT Someone <2026-01-05 Mon>');
   const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
   assert.deepEqual(items, []);
 });
@@ -654,22 +659,21 @@ test('delayToDays approximates months/years and returns 0 for null', () => {
 
 // ---- carryForwardOccurrences with an early-warning window ---------------
 
-test('carryForwardOccurrences with earlyWarningDays starts the window before the literal date', () => {
+test('emacsAgendaOccurrences: a DEADLINE inside its warning period is on its own date and, once, on today with a negative daysOverdue', () => {
   const itemDate = new Date(2026, 0, 10); // Jan 10
-  const today = new Date(2026, 0, 5); // Jan 5 -- before the item is even due
-  const days = carryForwardOccurrences(itemDate, today, new Date(2026, 0, 1), new Date(2026, 0, 31), 3);
-  // Should start Jan 7 (10 - 3) and end Jan 10 (the literal date, since it's not yet overdue)
-  assert.equal(days[0].getDate(), 7);
-  assert.equal(days[days.length - 1].getDate(), 10);
-  assert.equal(days.length, 4); // Jan 7, 8, 9, 10
+  const today = new Date(2026, 0, 8);
+  const days = emacsAgendaOccurrences('deadline', itemDate, today, new Date(2026, 0, 1), new Date(2026, 0, 31), 3);
+  assert.deepEqual(days.map((d) => [d.date.getDate(), d.daysOverdue]), [[10, 0], [8, -2]]);
+  const early = emacsAgendaOccurrences('deadline', itemDate, new Date(2026, 0, 5), new Date(2026, 0, 1), new Date(2026, 0, 31), 3);
+  assert.deepEqual(early.map((d) => d.date.getDate()), [10]); // Jan 5 is 5 days out, before the 3-day warning
 });
 
-test('carryForwardOccurrences with earlyWarningDays: 0 (default) behaves exactly as before', () => {
+test('emacsAgendaOccurrences: a SCHEDULED delay hides its own date and shows it as overdue on today once the delay has passed', () => {
   const itemDate = new Date(2026, 0, 10);
-  const today = new Date(2026, 0, 5);
-  const days = carryForwardOccurrences(itemDate, today, new Date(2026, 0, 1), new Date(2026, 0, 31));
-  assert.equal(days.length, 1);
-  assert.equal(days[0].getDate(), 10);
+  const delayed = emacsAgendaOccurrences('scheduled', itemDate, new Date(2026, 0, 12), new Date(2026, 0, 1), new Date(2026, 0, 31), 0, 2);
+  assert.deepEqual(delayed.map((d) => [d.date.getDate(), d.daysOverdue]), [[12, 2]]);
+  const early = emacsAgendaOccurrences('scheduled', itemDate, new Date(2026, 0, 11), new Date(2026, 0, 1), new Date(2026, 0, 31), 0, 2);
+  assert.deepEqual(early, []);
 });
 
 // ---- buildAgendaItems: delay makes an upcoming deadline show up early ---
@@ -754,7 +758,7 @@ test('buildTaskList without isDone includes every todo-state heading, done or no
 
 test('buildTaskList excludes archived and commented headings by default, same as buildAgendaItems', () => {
   const doc = parseOrg(
-    ['** TODO Archived task :ARCHIVE:', '** TODO # Commented-out task'].join('\n')
+    ['** TODO Archived task :ARCHIVE:', '** TODO COMMENT Commented-out task'].join('\n')
   );
   const items = buildTaskList([{ documentId: 'x.org', doc }], { isDone: () => false });
   assert.deepEqual(items, []);
@@ -1809,7 +1813,7 @@ test('a contacts file that is also an agenda file is read once: no contact appea
 });
 
 test('archived and commented contacts are left out of the contacts-files pass as well', () => {
-  const contacts = '* Kept\n:PROPERTIES:\n:BIRTHDAY: 1990-10-08\n:END:\n* Archived :ARCHIVE:\n:PROPERTIES:\n:BIRTHDAY: 1990-10-09\n:END:\n* # Commented\n:PROPERTIES:\n:BIRTHDAY: 1990-10-10\n:END:\n';
+  const contacts = '* Kept\n:PROPERTIES:\n:BIRTHDAY: 1990-10-08\n:END:\n* Archived :ARCHIVE:\n:PROPERTIES:\n:BIRTHDAY: 1990-10-09\n:END:\n* COMMENT Commented\n:PROPERTIES:\n:BIRTHDAY: 1990-10-10\n:END:\n';
   const items = buildAgendaItems([cdoc('a.org', '* T\n%%(org-contacts-anniversaries)\n')], { ...cwin, contactsDocs: [cdoc('contacts.org', contacts)] });
   assert.deepEqual(contactTitles(items), ['Birthday: Kept (36th)']);
 });

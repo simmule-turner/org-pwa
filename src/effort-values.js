@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Effort_ALL: the list of allowed effort values Emacs offers when setting
  * an effort (org-set-effort completes against it) and when filtering the
@@ -56,6 +57,7 @@ function parseGlobalProperties(text) {
  * The allowed effort values that apply to `heading` (which may be null,
  * for the file-wide list). `globalProperties` is the raw
  * org-global-properties text.
+ * @param {{ doc?: any, heading?: any, globalProperties?: string }} [options]
  */
 function getAllowedEffortValues({ doc, heading = null, globalProperties = '' } = {}) {
   const candidates = [];

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * The events a calendar should hold, taken from what View > Agenda shows: the same items, the same titles, the same times, the same
  * contacts (org-contacts-anniversaries, with its FIELD and FORMAT, from org-contacts-files), the same exclusions (completed items,
@@ -58,7 +59,7 @@ function sourceOf(item) {
 
 /**
  * @param {{ documentId: string, doc: object }[]} docs the open document and the loaded agenda files
- * @param {object} opts
+ * @param {{ today?: Date, window?: any, birthdayProperty?: string, contactsDocs?: any }} [opts]
  *   window        { start, end } the days to cover (required)
  *   today         the date to measure ages and "today" against
  *   birthdayProperty, contactsDocs   as for buildAgendaItems

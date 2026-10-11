@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: documents io.
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { findAncestorPath } from '../src/archive-model.js';
@@ -87,10 +88,10 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
   await recordRecentFile(kv, documentId, storageKind);
   S.currentView = 'org';
   S.agendaAnchorDate = new Date();
-  viewMenuBtn.disabled = false;
-  searchBtn.disabled = false;
-  captureBtn.disabled = false;
-  moreBtn.disabled = false;
+  /** @type {any} */ (viewMenuBtn).disabled = false;
+  /** @type {any} */ (searchBtn).disabled = false;
+  /** @type {any} */ (captureBtn).disabled = false;
+  /** @type {any} */ (moreBtn).disabled = false;
   S.searchOpen = false;
   S.searchQuery = '';
   renderSearchPanel();

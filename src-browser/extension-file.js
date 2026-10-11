@@ -1,3 +1,4 @@
+// @ts-check
 // The init script kept in a literate Org document: the file is read, tangled, and the text of one tangle target is the script.
 import { parseOrg } from '../src/org-parser.js';
 import { tangleDocument } from '../src/tangle.js';
@@ -17,7 +18,7 @@ export function parseScriptFileSetting(text) {
 export async function readScriptFromFile(setting) {
   const { key, target } = parseScriptFileSetting(setting);
   if (!key) throw new Error('No file is named for the script.');
-  let found = null;
+  let found;
   try {
     found = await resolveIncludePath(key);
   } catch (err) {

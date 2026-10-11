@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Turns iCalendar text (.ics: the calendar export of Google, Apple, Outlook, Nextcloud, this app's own Export > Calendar) into
  * org headings. The reverse of export-icalendar.js, and modelled on import-vcard.js: pure, with the same kind of callbacks for
@@ -314,7 +315,7 @@ function headingFor(component, options) {
 
 /**
  * `icsText` as org text, one top-level heading per event or task.
- * @param {object} [options]
+ * @param {{ zone?: string | null, onUnmappedProperty?: (name: string) => void, onRecurrenceKept?: (summary: string) => void, onUnknownTimeZone?: (tzid: string) => void }} [options]
  *   zone                 an IANA zone name to convert times into (the device's own zone if omitted)
  *   onUnmappedProperty   (name) => void   a property that was not carried over
  *   onRecurrenceKept     (summary) => void   a recurrence that became an :RRULE: property instead of a repeater

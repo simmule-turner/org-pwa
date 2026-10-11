@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Settings persistence — GitHub credentials, theme, and font preferences,
  * all stored through the same kv adapter (IndexedDB in the browser) as

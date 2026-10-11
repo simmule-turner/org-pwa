@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Header arguments of a source block, with the inheritance Org has: the defaults, then the
  * `header-args` and `header-args:LANG` properties (set for the whole file with
@@ -159,8 +160,8 @@ export function inheritedProperty(doc, ancestors, name) {
 /** The header arguments in force for a source block.
  *  @param doc        the parsed document (for its #+PROPERTY: lines)
  *  @param ancestors  headings from the outermost down to the one holding the block ([] before the first heading)
- *  @param block      { lang, params, headers } with the block's own text after the language, and its #+HEADER: lines
- *  @returns { var: [...], results, exports, tangle, noweb, ... } with every value a string */
+ *  @param block      an object with lang, params and headers: the block's own text after the language, and its #+HEADER: lines
+ *  @returns {Record<string, any>} the arguments by name (`var` is a list; every other value is a string) */
 export function effectiveHeaderArgs(doc, ancestors, block) {
   const lang = String(block.lang || '').toLowerCase();
   const layers = [DEFAULT_HEADER_ARGS];

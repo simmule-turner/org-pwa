@@ -1,3 +1,4 @@
+// @ts-check
 // Agenda notifications (appt): runs the pure logic in src/appt.js. A scan lists the coming appointments (the open document plus the
 // agenda files); a once-a-minute-or-so tick announces the ones that have come within the warning time and keeps the mode-line
 // countdown; on a platform that can hold notifications for later (the Android shell) the scan also hands it the whole list, so

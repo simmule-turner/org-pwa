@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: inline render.
 import { isAudioFilename } from '../src/attach.js';
 import { customLink, links as customLinks } from './extension-links.js';

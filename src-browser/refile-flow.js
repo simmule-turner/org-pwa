@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: refile flow.
 import { shiftLevels } from '../src/archive-model.js';
 import { removeHeading } from '../src/heading-edit.js';

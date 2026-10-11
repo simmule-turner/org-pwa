@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * HTML export, following Org's own `ox-html`: the same document structure (outline containers, `h2` for top-level
  * headings under an `h1` title, `org-ul` / `org-ol` / `org-dl` lists, tables with a `colgroup` and a `thead`, figures,
@@ -25,6 +26,7 @@ import { highlightToHtml } from './syntax-highlight.js';
 
 /** What `#+OPTIONS:` can switch, with Org's defaults. */
 export function parseHtmlOptions(doc) {
+  /** @type {Record<string, any>} */
   const o = {
     toc: true,
     num: true,

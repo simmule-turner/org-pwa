@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Noweb references: `<<name>>` inside a source block is replaced by the body of the block named `name`
  * (`#+NAME:`), or by the bodies of all blocks whose `:noweb-ref` is `name`, or by the text of the heading whose
@@ -60,7 +61,7 @@ const findHeadingByCustomId = (blocks, doc, id) => {
  * @param {object} doc      the document
  * @param {Array} blocks    collectDocumentBlocks(doc)
  * @param {object} block    the block whose body is expanded (one of `blocks`)
- * @param {object} [options] context: 'tangle' (honours :noweb strip-tangle) or 'eval' (default); wrapChunk(referenced, text, host):
+ * @param {{ context?: string, wrapChunk?: ((referenced: any, text: string, host: any) => string) | null }} [options] context: 'tangle' (honours :noweb strip-tangle) or 'eval' (default); wrapChunk(referenced, text, host):
  *                      with `:comments noweb` on the block that holds the reference, returns the text of the referenced
  *                      block wrapped in its begin and end comments
  * @returns {string} the body with every reference replaced

@@ -1,3 +1,4 @@
+// @ts-check
 // The org-pwa folder as a place for local files BY NAME. On Android the person chooses one folder, once (it starts at
 // Documents/org-pwa), and the app keeps permission to it (platform.attachments, see platform.js). A local file the person has
 // opened through the file picker is found by its name, as before; any other name, in `local:contacts.org` in

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Writes test/fixtures/agenda/a1.expected.json: for each day after "today", which headings of a1.org real Emacs puts in the
- * agenda (org-agenda-get-day-entries) and as what (scheduled, deadline or a plain time stamp). test/agenda-oracle.test.js
+ * Writes test/fixtures/agenda/a1.expected.json: for each day from "today" on, which headings of a1.org real Emacs puts in the
+ * agenda (org-agenda-get-day-entries) and as what: scheduled, deadline or a plain time stamp, and how many days overdue
+ * (negative: due in N days; Emacs shows both only on today). test/agenda-oracle.test.js
  * holds buildAgendaItems to it. Today is 2026-10-11 16:30, New York time.
  *
  *   node tools/gen-agenda-oracle.mjs        (needs emacs and faketime (libfaketime) on the PATH)
@@ -13,12 +14,13 @@ import path from 'node:path';
 
 const TZ = 'America/New_York';
 const NOW = '2026-10-11 16:30:00';
-const FIRST = [10, 12, 2026]; // month day year, as Emacs calendar functions want
-const DAYS = 63;
+const FIRST = [10, 11, 2026]; // month day year, as Emacs calendar functions want
+const DAYS = 64;
 const org = path.resolve('test/fixtures/agenda/a1.org');
 const el = `
 (require 'org) (require 'org-agenda) (require 'json)
 (setq org-agenda-skip-scheduled-if-done t org-agenda-skip-deadline-if-done t)
+(org-agenda-get-day-entries ${JSON.stringify(org)} '(${FIRST[0]} ${FIRST[1]} ${FIRST[2]}) :deadline :scheduled :timestamp) ; the first call in a session skips deadlines, so make it a throwaway
 (let ((out '()) (abs (calendar-absolute-from-gregorian '(${FIRST[0]} ${FIRST[1]} ${FIRST[2]}))))
   (dotimes (i ${DAYS})
     (let* ((g (calendar-gregorian-from-absolute (+ abs i)))
@@ -45,7 +47,8 @@ for (const [date, rows] of JSON.parse(fs.readFileSync(outFile, 'utf8'))) {
   days[date] = rows.map(([txt, extra]) => {
     const e = extra.trim();
     const kind = /^(Deadline|In|\d+ d\. ago)/.test(e) ? 'deadline' : /^Sched/.test(e) ? 'scheduled' : 'timestamp';
-    return `${txt.replace(/\s*[<[][^>\]]*[>\]](--[<[][^>\]]*[>\]])?/g, '').trim()}|${kind}`;
+    const n = /Sched\.\s*(\d+)x/.exec(e)?.[1] ?? /(\d+) d\. ago/.exec(e)?.[1] ?? (/In\s+(\d+) d\./.exec(e) ? -/In\s+(\d+) d\./.exec(e)[1] : 0);
+    return `${txt.replace(/\s*[<[][^>\]]*[>\]](--[<[][^>\]]*[>\]])?/g, '').trim()}|${kind}|${Number(n)}`;
   }).sort();
 }
 fs.writeFileSync('test/fixtures/agenda/a1.expected.json', JSON.stringify({ emacs: '29.3', tz: TZ, now: NOW, days }, null, 1) + '\n');

@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: agenda view.
 import { applyAgendaEffortView, buildAgendaItems, buildTaskList, dayView, endOfDay, itemEffortText, monthView, startOfDay, startOfWeek, weekView } from '../src/agenda.js';
 import { formatClockDuration, totalClockedMinutes } from '../src/clock.js';

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Content that arrives from outside the app, for Capture: shared from another app (Android's share sheet, through
  * the manifest's share_target) or passed in a launch URL (`index.html?capture=KEY&text=...`). Everything here is
@@ -39,7 +40,9 @@ function parseLaunchParams(search) {
 
 /** `%a`: the shared page as an org link, `[[url][title]]` or `[[url]]`, or '' when there is no usable address.
  *  Only web and mail addresses become links (anything else, such as a javascript: URL, is dropped), and brackets
- *  and spaces that would break the link are replaced. */
+ *  and spaces that would break the link are replaced.
+ * @param {{ title?: string, url?: string }} [shared]
+ */
 function sharedAnnotation({ title, url } = {}) {
   if (!url || !LINKABLE_RE.test(url)) return '';
   const target = url.replace(/\s/g, '%20').replace(/\[/g, '%5B').replace(/\]/g, '%5D');

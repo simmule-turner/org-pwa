@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * The JavaScript sandbox for source blocks.
  *

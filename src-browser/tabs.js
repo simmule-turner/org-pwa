@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: tabs.
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
 import { S } from './app-state.js';

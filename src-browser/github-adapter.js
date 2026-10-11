@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * GitHub-backed storage adapter, using GitHub's REST Contents API directly
  * from the browser — no server component. This is exactly how GitHub's API

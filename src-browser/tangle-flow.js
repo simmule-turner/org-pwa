@@ -1,3 +1,4 @@
+// @ts-check
 // The Tangle command: the document's source blocks written out as files (see src/tangle.js), handed over as one file
 // or, when there are several or one needs a folder or a file mode, as a zip.
 import { createZip } from '../src/zip-writer.js';

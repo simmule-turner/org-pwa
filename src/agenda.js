@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * Agenda view: aggregates SCHEDULED/DEADLINE items across a set of open
@@ -150,56 +151,30 @@ function delayToDays(delay) {
 }
 
 /**
- * Every day in the item's "active display window", intersected with
- * [rangeStart, rangeEnd] — the window is [itemDate - earlyWarningDays,
- * max(itemDate, today)]:
- *   - the end covers "carry forward": real org keeps an incomplete
- *     SCHEDULED/DEADLINE on the agenda every day it's been overdue,
- *     right up through today (never past today, since we can't know
- *     whether it'll still be undone on a day that hasn't happened yet).
- *   - the start covers the delay/warning-period suffix (e.g. DEADLINE:
- *     <2026-01-10 Sat -3d>): real org starts showing it `earlyWarningDays`
- *     before the literal date, not just on the date itself. Defaults to
- *     0 (no early warning), so a plain SCHEDULED/DEADLINE with no delay
- *     behaves exactly as before.
- *
- * If `itemDate` is in the future relative to `today` and there's no
- * early-warning window reaching back to today yet, this just returns
- * that one day, same as a normal single occurrence.
- *
- * Intersecting with the caller's range (rather than generating the full
- * window and filtering afterward) is what keeps this cheap regardless of
- * how long something's been overdue: a task overdue for two years,
- * viewed in a single day's agenda, produces one date, not 730.
+ * Where a SCHEDULED or DEADLINE that does not repeat shows in the agenda, as the Emacs agenda does it:
+ *   - on its own date (a SCHEDULED with a delay does not show there: it is "still scheduled on that day but will
+ *     appear N days later"),
+ *   - and on today, once, when it is overdue (`daysOverdue` > 0: "3 days overdue"), when a delayed SCHEDULED's delay
+ *     has passed, or when a DEADLINE is inside its warning period (`daysOverdue` < 0: "due in 3 days").
+ * Never on the other days between: Emacs lists an overdue or upcoming item only on today. Each date is kept to
+ * [rangeStart, rangeEnd].
  */
-function carryForwardOccurrences(itemDate, today, rangeStart, rangeEnd, earlyWarningDays = 0) {
+function emacsAgendaOccurrences(kind, itemDate, today, rangeStart, rangeEnd, warningDays = 0, scheduledDelayDays = 0) {
   const itemDay = startOfDay(itemDate);
   const todayDay = startOfDay(today);
-  const carryEnd = itemDay <= todayDay ? todayDay : itemDay;
-  const earlyStart = new Date(itemDay.getFullYear(), itemDay.getMonth(), itemDay.getDate() - earlyWarningDays);
-
-  let windowStart = earlyStart;
-  let windowEnd = carryEnd;
-  if (rangeStart) {
-    const rangeStartDay = startOfDay(rangeStart);
-    if (rangeStartDay > windowStart) windowStart = rangeStartDay;
+  const first = startOfDay(rangeStart);
+  const last = startOfDay(rangeEnd);
+  const at = (day) => new Date(day.getFullYear(), day.getMonth(), day.getDate(), itemDate.getHours(), itemDate.getMinutes());
+  const dayDiff = (a, b) => Math.round((a - b) / MS_PER_DAY);
+  const out = [];
+  const ownDateShows = !(kind === 'scheduled' && scheduledDelayDays > 0);
+  if (ownDateShows && itemDay >= first && itemDay <= last) out.push({ date: at(itemDay), daysOverdue: 0 });
+  if (todayDay >= first && todayDay <= last && itemDay.getTime() !== todayDay.getTime()) {
+    const diff = dayDiff(todayDay, itemDay); // > 0: overdue
+    const carried = kind === 'scheduled' ? diff > 0 && diff >= scheduledDelayDays : diff > 0 || -diff <= warningDays;
+    if (carried) out.push({ date: at(todayDay), daysOverdue: diff });
   }
-  if (rangeEnd) {
-    const rangeEndDay = startOfDay(rangeEnd);
-    if (rangeEndDay < windowEnd) windowEnd = rangeEndDay;
-  }
-  if (windowStart > windowEnd) return [];
-
-  const days = [];
-  let current = new Date(windowStart);
-  const MAX_DAYS = 10000; // safety valve, matching expandRepeats' precedent
-  let count = 0;
-  while (current <= windowEnd && count < MAX_DAYS) {
-    days.push(new Date(current.getFullYear(), current.getMonth(), current.getDate(), itemDate.getHours(), itemDate.getMinutes()));
-    current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
-    count++;
-  }
-  return days;
+  return out;
 }
 
 // ---- org-contacts-anniversaries (property-based birthdays/anniversaries) ----
@@ -704,40 +679,35 @@ function buildAgendaItems(docs, opts = {}) {
     };
     const repeater = parsed.repeater ? parseRepeater(parsed.repeater) : null;
 
-    if (repeater && rangeStart && rangeEnd) {
-      for (const occurrenceDate of expandRepeats(parsed.date, repeater, rangeStart, rangeEnd)) {
-        items.push({ ...base, date: occurrenceDate, daysOverdue: 0 });
-      }
-      return;
-    }
-
-    const carryForwardEligible =
-      !repeater && isDone !== null && !headingIsDone && (kind === 'scheduled' || kind === 'deadline');
+    // As in the Emacs agenda: a SCHEDULED or DEADLINE is on its own date, and on today (only) when it is overdue or, for a
+    // DEADLINE, inside its warning period. A SCHEDULED "-Nd" is a delay (the task is still scheduled on its date but shows
+    // only N days later, as overdue on today); a DEADLINE's "-Nd" is its warning period. Each falls back to its file-wide
+    // default (deadlineWarningDays / scheduledDelayDays) when the heading has no cookie of its own. A repeating one is
+    // overdue from its first date, however many repeats have passed, and that one entry stands in for today's repeat.
+    const carryForwardEligible = isDone !== null && !headingIsDone && (kind === 'scheduled' || kind === 'deadline');
+    let carryOccurrences = null;
+    let scheduledDelay = 0;
     if (carryForwardEligible && rangeStart && rangeEnd) {
       const delay = parsed.delay ? parseDelay(parsed.delay) : null;
       const delayDays = delay ? delayToDays(delay) : 0;
-      // DEADLINE's own "-Nd" is an early warning (shows N days BEFORE
-      // its date); SCHEDULED's own "-Nd" is the opposite -- a delay
-      // (shows N days AFTER its date, not at all before then) --
-      // confirmed directly against the Org manual's own wording ("the
-      // task is still scheduled on the 25th but will appear two days
-      // later"). Implemented as two different inputs to the very same
-      // carry-forward window function: DEADLINE subtracts from the
-      // window's own start; SCHEDULED shifts the effective "item
-      // date" itself forward, with no separate early-warning offset
-      // on top of that. Each side falls back to its own file-wide
-      // default (deadlineWarningDays / scheduledDelayDays -- see
-      // local-variables.js's own getDeadlineWarningDays/
-      // getScheduledDelayDays) only when the heading itself has no
-      // explicit "-Nd" cookie of its own; an explicit per-heading
-      // cookie always wins over either default.
-      const earlyWarningDays = kind === 'deadline' ? (delay ? delayDays : deadlineWarningDays) : 0;
-      const effectiveScheduledDelayDays = kind === 'scheduled' ? (delay ? delayDays : scheduledDelayDays) : 0;
-      const effectiveDate = kind === 'scheduled' ? addDays(parsed.date, effectiveScheduledDelayDays) : parsed.date;
-      for (const occurrenceDate of carryForwardOccurrences(effectiveDate, today, rangeStart, rangeEnd, earlyWarningDays)) {
-        const daysOverdue = Math.round((startOfDay(occurrenceDate) - startOfDay(parsed.date)) / MS_PER_DAY);
-        items.push({ ...base, date: occurrenceDate, daysOverdue });
+      const warningDays = kind === 'deadline' ? (delay ? delayDays : deadlineWarningDays) : 0;
+      scheduledDelay = kind === 'scheduled' ? (delay ? delayDays : scheduledDelayDays) : 0;
+      carryOccurrences = emacsAgendaOccurrences(kind, parsed.date, today, rangeStart, rangeEnd, warningDays, scheduledDelay);
+    }
+
+    if (repeater && rangeStart && rangeEnd) {
+      const carriedToday = carryOccurrences ? carryOccurrences.find((o) => o.daysOverdue !== 0) : null;
+      for (const occurrenceDate of expandRepeats(parsed.date, repeater, rangeStart, rangeEnd)) {
+        if (carriedToday && isSameDay(occurrenceDate, carriedToday.date)) continue;
+        if (scheduledDelay > 0 && isSameDay(occurrenceDate, parsed.date)) continue; // the delayed first date, as in Emacs
+        items.push({ ...base, date: occurrenceDate, daysOverdue: 0 });
       }
+      if (carriedToday) items.push({ ...base, date: carriedToday.date, daysOverdue: carriedToday.daysOverdue });
+      return;
+    }
+
+    if (carryOccurrences) {
+      for (const { date, daysOverdue } of carryOccurrences) items.push({ ...base, date, daysOverdue });
       return;
     }
 
@@ -1410,7 +1380,7 @@ export {
   parseRepeater,
   addInterval,
   expandRepeats,
-  carryForwardOccurrences,
+  emacsAgendaOccurrences,
   delayToDays,
   startOfDay,
   endOfDay,

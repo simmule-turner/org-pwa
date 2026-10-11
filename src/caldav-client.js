@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * The few CalDAV requests the calendar mirror needs, over an injected `fetch` so they can be tested without a
  * network (and run against a real server in Node). CalDAV is WebDAV plus iCalendar: an event is one .ics file in a
@@ -77,11 +78,13 @@ function errorForResponse(response, what, { noun, Noun }) {
   return new CaldavError('server', `The ${noun} server answered ${status}${response.statusText ? ' ' + response.statusText : ''} (${what}).`, status);
 }
 
-function createCaldavClient({ url, username, password, kind = 'calendar', fetch: fetchImpl = (...args) => globalThis.fetch(...args), timeoutMs = 20000 }) {
+/** @param {{ url: string, username?: string, password?: string, kind?: string, fetch?: (url: string, init: any) => Promise<any>, timeoutMs?: number }} options */
+function createCaldavClient({ url, username, password, kind = 'calendar', fetch: fetchImpl = (target, init) => globalThis.fetch(target, init), timeoutMs = 20000 }) {
   const what = KINDS[kind] || KINDS.calendar;
   const base = url.endsWith('/') ? url : url + '/';
   const authorization = basicAuthHeader(username || '', password || '');
 
+  /** @param {string} method @param {string} name @param {{ headers?: Record<string, string>, body?: string }} [extra] */
   async function request(method, name, { headers = {}, body } = {}) {
     const target = name ? base + encodeURIComponent(name) : base;
     const controller = typeof AbortController === 'function' ? new AbortController() : null;
@@ -135,7 +138,7 @@ function createCarddavClient(options) {
  * Runs `worker(item)` over `items`, at most `limit` at a time. A failure is recorded and the rest carry on, except a
  * failure the whole run shares (the credentials, the address, the network): that stops it, since every remaining
  * request would fail the same way.
- * @returns {{ ok: any[], failed: { item: any, error: Error }[], stopped: Error | null }}
+ * @returns {Promise<{ ok: any[], failed: { item: any, error: Error }[], stopped: Error | null }>}
  */
 async function runLimited(items, limit, worker) {
   const ok = [];

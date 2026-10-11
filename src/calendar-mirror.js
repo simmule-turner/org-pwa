@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * The agenda as calendar events, and the plan for keeping a CalDAV calendar in step with it. All pure: what to
  * send, what to remove, and what to remember afterwards. The network is caldav-client.js and the wiring is
@@ -46,8 +47,9 @@ function wrapEvent(eventLines) {
 
 /**
  * Every event the calendar should hold, keyed by the name it is stored under.
- * @param {{ documentId: string, doc: object }[]} docs the open document and the loaded agenda files
+ * @param {{ documentId: string, doc: object }[]} allDocs the open document and the loaded agenda files
  * @returns {Map<string, { uid: string, documentId: string, ics: string, hash: string }>}
+ * @param {{ today?: Date, daysBefore?: number, daysAfter?: number, [key: string]: any }} [opts]
  */
 function buildCalendarResources(allDocs, opts = {}) {
   const docs = allDocs.filter(({ documentId, doc }) => doc && documentId && !documentId.startsWith(UNSAVED_DOCUMENT_ID));
@@ -90,7 +92,7 @@ function planCalendarSync(wanted, previous, { loadedDocs = null } = {}) {
 /**
  * What to remember after a run: for each event, its fingerprint and its file. A successful send or delete is
  * recorded; a failed one is left as it was, so the next run tries it again.
- * @param {object} outcome `{ putOk, deleteOk }`: sets of names
+ * @param {{ putOk: Set<string>, deleteOk: Set<string> }} outcome sets of names
  */
 function nextSyncState(previous, wanted, outcome) {
   const next = {};

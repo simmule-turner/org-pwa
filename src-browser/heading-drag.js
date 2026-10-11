@@ -1,3 +1,4 @@
+// @ts-check
 // Drag and drop for headings: a grip at the left of each heading row. Dragging it lifts the heading with its subtree. It lands in
 // a GAP between two visible headings (the line snaps to the gap nearest the finger, never between them), and sideways movement
 // steps through the levels that fit there, one indent per step: the line's left edge jumps with each, and a tag says what the

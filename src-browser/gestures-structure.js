@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: gestures structure.
 import { findContainer, isArchivedInPlace, shiftLevels } from '../src/archive-model.js';
 import { cycleFoldLevel } from '../src/fold-state.js';

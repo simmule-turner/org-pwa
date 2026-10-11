@@ -1,3 +1,4 @@
+// @ts-check
 // "Where can this prefix lead?" -- while a god-mode sequence is in progress, a card under the top bar lists the
 // keys that would continue it and what each does, like Emacs's which-key. Each entry is a button that sends that
 // key, so on a phone a whole chord can be completed by tapping, with no device keyboard. The list itself comes

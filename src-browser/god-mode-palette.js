@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: god mode palette.
 import { findAncestorPath, isArchivedInPlace } from '../src/archive-model.js';
 import { computeNonCollidingKeys } from '../src/capture-template.js';
@@ -36,7 +37,7 @@ import { renderFileMenu } from './file-menu.js';
 import { openGeneralEditor } from './general-editor.js';
 import { cutSubtree, extraMenuTargetHeading, narrowToHeading, pasteSubtree, widen } from './gestures-structure.js';
 import { cyclePriorityFor, openEffortEditor } from './heading-commands.js';
-import { moveArrowHorizontalInTable, moveArrowVertical, moveHeadingFocus, moveKeyboardFocus, moveLineFocus, moveTableCellFocus, rowNearViewportTop, setKeyboardFocusToRow, moveToParentHeading, moveToSameLevelHeading, setKeyboardFocusToHeading, enterInsertModeAtCurrentLine, visibleHeadingsInOrder } from './keyboard-focus.js';
+import { moveArrowHorizontalInTable, moveArrowVertical, moveHeadingFocus, moveKeyboardFocus, moveTableCellFocus, rowNearViewportTop, setKeyboardFocusToRow, moveToParentHeading, moveToSameLevelHeading, setKeyboardFocusToHeading, enterInsertModeAtCurrentLine, visibleHeadingsInOrder } from './keyboard-focus.js';
 import { renderMoreMenu, runExtraMenuEntry } from './menus.js';
 import { openRefilePicker } from './refile-flow.js';
 import { scrollFocusedHeadingIntoView } from './render-helpers.js';

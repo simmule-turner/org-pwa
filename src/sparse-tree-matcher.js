@@ -75,8 +75,6 @@ function parseGroup(groupText) {
   return conditions;
 }
 
-const PSEUDO_PROPERTIES = new Set(['TODO', 'LEVEL', 'PRIORITY', 'CATEGORY']);
-
 /** Reads one condition's own comparison value out of `entry` -- a real
  *  property lookup for an ordinary property name, or the corresponding
  *  computed value for one of the recognized pseudo-properties. Returns

@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: chrome.
 import { getProperty } from '../src/archive-model.js';
 import { formatTime } from '../src/capture-template.js';
@@ -200,10 +201,10 @@ export function computeBufferPositionString() {
     if (lineNum >= 0) suffix += ` L${lineNum + 1}`;
   }
   const active = document.activeElement;
-  if (active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT') && typeof active.selectionStart === 'number') {
-    const value = active.value || '';
-    const beforeCursor = value.slice(0, active.selectionStart);
-    const col = active.selectionStart - beforeCursor.lastIndexOf('\n') - 1;
+  if (active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT') && typeof /** @type {any} */ (active).selectionStart === 'number') {
+    const value = /** @type {any} */ (active).value || '';
+    const beforeCursor = value.slice(0, /** @type {any} */ (active).selectionStart);
+    const col = /** @type {any} */ (active).selectionStart - beforeCursor.lastIndexOf('\n') - 1;
     suffix += ` C${col}`;
   }
   return depth + suffix;

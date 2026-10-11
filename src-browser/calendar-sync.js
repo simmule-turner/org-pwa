@@ -1,3 +1,4 @@
+// @ts-check
 // Mirrors the agenda to a CalDAV calendar (Radicale, Nextcloud, ...), one way, so the items View -> Agenda shows
 // also appear in the phone's own calendar app, with its alarms. What to send is src/calendar-mirror.js, the requests
 // are src/caldav-client.js; this is the part that knows about settings, the agenda files, state and the status line.

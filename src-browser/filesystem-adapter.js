@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Real File System Access API implementation of the "disk" adapter
  * interface — read(fileId)/write(fileId, content)/exists(fileId) — that

@@ -1,3 +1,4 @@
+// @ts-check
 // The one place the app asks "what can the platform I run on do, and how?". Everything here has a web default, which
 // is what the PWA uses. A native shell (a Capacitor app, say) supplies its own implementations of the same shapes, either
 // by setting `window.orgPwaPlatform` before the app loads or by calling installPlatform(); the rest of the app only ever
@@ -43,6 +44,7 @@ import { createFileSystemAccessAdapter, isFileSystemAccessSupported, pickAndRegi
 import { downloadFile } from './input-file-adapter.js';
 import { kv } from './singletons.js';
 
+/** @type {any} */
 export const platform = {
   name: 'web',
   localFiles: {

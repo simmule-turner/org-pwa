@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Agenda notifications, the way Emacs's appt does them: appointments are the agenda items that have a time of day, and each is
  * announced once, `appt-message-warning-time` minutes before it starts. Everything here is pure (no timers, no DOM, no platform), so
@@ -24,6 +25,7 @@ export const APPT_DEFAULTS = {
 
 export const APPT_LIMITS = { warning: [1, 1440], interval: [1, 60], scan: [1, 60] };
 
+/** @param {unknown} value @param {number[]} range @param {number} fallback */
 const clampInt = (value, [min, max], fallback) => {
   const n = Math.round(Number(value));
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;

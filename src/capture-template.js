@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Capture templates: org's own org-capture-templates system — a short
  * template string, expanded with runtime context (current time, a table
@@ -43,9 +44,10 @@ function pad(n, width = 2) {
   return String(n).padStart(width, '0');
 }
 
+/** @param {Date} date */
 function dayOfYear(date) {
   const start = new Date(date.getFullYear(), 0, 1);
-  return Math.floor((date - start) / 86400000) + 1;
+  return Math.floor((date.getTime() - start.getTime()) / 86400000) + 1;
 }
 
 /**
@@ -350,6 +352,7 @@ function expandCaptureText(preText, template, postText, context = {}) {
  * org-xx-extra-menu's own OLP navigation entries, which should never
  * silently create headings just from browsing a quick-access menu --
  * see runExtraMenuEntry in app.js.
+ * @param {any} doc @param {any} olpPath @param {{ now?: Date, prepend?: boolean, allowCreate?: boolean }} [options]
  */
 function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = true } = {}) {
   const at = now instanceof Date ? now : new Date();

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Fallback storage for browsers without File System Access API — in
  * practice, every browser on iOS, since Apple requires all of them to use

@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: archive flow.
 import { buildArchivedClone, buildRestoredClone, getArchiveLocation, getProperty, insertAtArchiveLocation, parseArchiveLocation, resolveArchiveFileId } from '../src/archive-model.js';
 import { resolveOlpTarget } from '../src/capture-template.js';

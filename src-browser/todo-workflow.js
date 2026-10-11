@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: todo workflow.
 import { computeNonCollidingKeys } from '../src/capture-template.js';
 import { updateCheckboxCookiesUpward } from '../src/checkbox-cookie.js';

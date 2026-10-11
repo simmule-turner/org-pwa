@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: export import.
 import { exportToAscii } from '../src/export-ascii.js';
 import { exportToHtml } from '../src/export-html.js';
@@ -27,7 +28,6 @@ import { renderMoreMenu } from './menus.js';
 import { render } from './render.js';
 import { agendaFilesCache, contactsFilesCache } from './singletons.js';
 import { aliasedMenuDivItem, appendMenuButtonsInOrder, menuButton, menuDivItem } from './ui-widgets.js';
-import { platform } from './platform.js';
 import { saveOut } from './save-out.js';
 
 /** Resolves a raw #+INCLUDE: path (see src/export-include.js's own

@@ -1,3 +1,4 @@
+// @ts-check
 // Mirrors the contacts files (org-contacts-files) to a CardDAV address book (Radicale, Nextcloud, ...), one way, so the
 // contacts also appear in the phone's own contacts app. The twin of calendar-sync.js: what to send is
 // src/contacts-mirror.js, the requests are src/caldav-client.js (createCarddavClient); this is the part that knows about

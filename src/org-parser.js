@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * Org-mode parser: text -> AST, plus a matching serializer: AST -> text.
@@ -58,7 +59,7 @@ const PROPERTY_LINE_RE = /^\s*:(\S+):[ \t]*(.*?)[ \t]*$/;
 const TAGS_RE = /\s+(:[A-Za-z0-9_@#%:]+:)\s*$/;
 const PRIORITY_RE = /^\[#([A-Za-z0-9])\]\s*/;
 
-const PLANNING_KEYWORD_RE = /(SCHEDULED|DEADLINE|CLOSED):\s*([<\[][^>\]]+[>\]])/g;
+const PLANNING_KEYWORD_RE = /(SCHEDULED|DEADLINE|CLOSED):\s*([<[][^>\]]+[>\]])/g;
 const BLOCK_START_RE = /^\s*#\+begin_(\w+)(?:\s+(.*))?$/i;
 const BLOCK_END_RE = /^\s*#\+end_(\w+)\s*$/i;
 
@@ -202,6 +203,7 @@ function parseOrg(text, opts = {}) {
   }
   const allTodoLike = [...todoKeywords, ...doneKeywords];
 
+  /** @type {{ node: any, level: number }[]} */
   const stack = [{ node: doc, level: 0 }];
   let i = 0;
   let inBlock = false; // true while between a #+BEGIN_.../#+END_... pair -- content in that range is literal, never re-parsed as a heading even if it starts with '*'

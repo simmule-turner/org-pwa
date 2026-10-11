@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * The contacts as vCards, and the plan for keeping a CardDAV address book in step with them. The twin of
  * calendar-mirror.js and shaped like it: all pure (what to send, what to remove, what to remember afterwards), with the
@@ -46,7 +47,7 @@ function vcardText(lines, uid) {
 
 /**
  * Every contact the address book should hold, keyed by the name it is stored under.
- * @param {{ documentId: string, doc: object }[]} docs the loaded contacts files
+ * @param {{ documentId: string, doc: object }[]} allDocs the loaded contacts files
  * @returns {Map<string, { uid: string, documentId: string, vcf: string, hash: string }>}
  */
 function buildContactResources(allDocs, opts = {}) {

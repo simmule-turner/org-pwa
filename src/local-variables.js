@@ -202,9 +202,8 @@ export function getAgendaShowAllDates(vars) {
 }
 
 /** org-agenda-skip-comment-trees: real org's default is t — a
- *  "commented" heading (one whose title starts with "# ", see
- *  comment-model.js — real org's own comment-line syntax applied to a
- *  heading title) is skipped in agenda views. Set to nil to include
+ *  "commented" heading (COMMENT first in its title, see comment-model.js)
+ *  is skipped in agenda views. Set to nil to include
  *  commented headings in the agenda after all. */
 export function getAgendaSkipCommentTrees(vars) {
   return parseLispBoolean((vars || {})['org-agenda-skip-comment-trees'], true);

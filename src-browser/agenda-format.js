@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: agenda format. These have no dependency on the app's shared mutable state,
 // so they moved verbatim (see tools/ notes in CHANGELOG v412).
 import { summarizeDayEffort } from '../src/agenda.js';
@@ -18,7 +19,7 @@ export function isoWeekNumber(date) {
   const dayNum = d.getUTCDay() || 7; // Sunday=0 -> 7, so Monday=1..Sunday=7
   d.setUTCDate(d.getUTCDate() + 4 - dayNum); // move to this week's own Thursday
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
 export function buildDayHeaderRow(dateKeyStr, showWeekNumber, dayItems = []) {

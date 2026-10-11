@@ -1,3 +1,4 @@
+// @ts-check
 
 /**
  * LaTeX math fragment rendering -- the engine adapter layer.

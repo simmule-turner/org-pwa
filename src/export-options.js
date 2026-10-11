@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * #+TITLE / #+AUTHOR / #+DATE / #+OPTIONS -- shared, pure parsing for
  * every export format (HTML/ASCII/Markdown/ODT) to build its own
@@ -19,6 +20,7 @@
  * fixes that.
  */
 
+/** @type {Record<string, any>} */
 const DEFAULT_OPTIONS = { toc: true, num: true, sup: 't', author: true, date: true, creator: false };
 
 /** Parses every #+OPTIONS: line in `doc.keywords` into a single,

@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: menus.
 import { resolveOlpTarget } from '../src/capture-template.js';
 import { parseExtraMenu } from '../src/extra-menu.js';

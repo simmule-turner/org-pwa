@@ -11,6 +11,6 @@
     "noImplicitAny": false,
     "skipLibCheck": true
   },
-  "include": ["app.js", "src/*.js", "src-browser/*.js"],
+  "include": ["app.js", "src/*.js", "src/*.d.ts", "src-browser/*.js"],
   "exclude": ["node_modules", "src/vendor", "native"]
 }

@@ -165,7 +165,7 @@ test('does not confuse a plain <2026-01-01> timestamp for a sexp one', () => {
 });
 
 test('a malformed sexp (unmatched paren) is skipped -- expr is null, not a thrown error', () => {
-  const found = findSexpTimestamps('<%%(when (today-p)>'); // missing the final closing paren for the outer expr
+  findSexpTimestamps('<%%(when (today-p)>'); // missing the final closing paren for the outer expr
   // Either no match at all (since the outer paren never actually balances to 0 before hitting '>'),
   // or a match with expr === null -- either way, this must not throw.
   assert.doesNotThrow(() => findSexpTimestamps('<%%(when (today-p)>'));

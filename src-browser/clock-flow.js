@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: clock flow.
 import { clockCancel, clockIn, clockInSwitchingTasks, clockOut, findHeadingWithRunningClock, findMostRecentlyClockedHeading, isClockRunning, listRecentlyClockedHeadings } from '../src/clock.js';
 import { findAncestorPath } from '../src/archive-model.js';

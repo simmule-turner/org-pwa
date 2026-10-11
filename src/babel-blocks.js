@@ -63,7 +63,7 @@ export function scanSourceBlocks(lines) {
 }
 
 const isArchived = (heading) => (heading.tags || []).some((t) => String(t).toUpperCase() === 'ARCHIVE');
-const isComment = (heading) => /^COMMENT(\s|$)/.test(heading.title || '') || isCommentedHeading(heading);
+const isComment = (heading) => isCommentedHeading(heading);
 
 /** The lines before the first heading with the `#+KEY: value` lines the parser pulled out put back where they were,
  *  so that a `#+NAME:` or `#+HEADER:` above the first block is seen. */

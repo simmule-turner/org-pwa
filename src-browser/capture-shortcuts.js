@@ -1,3 +1,4 @@
+// @ts-check
 // Capture templates as the launcher's own shortcuts (Android's long-press list on the app icon), and a way to put an icon
 // for one on the home screen. Only a platform that has launcher shortcuts does anything (platform.captureShortcuts, see
 // platform.js); in a browser every function here returns at once.
@@ -35,7 +36,7 @@ export async function addCaptureIconToHomeScreen() {
     setStatus('Capture icons are available in the Android app.');
     return;
   }
-  let canPin = false;
+  let canPin;
   try {
     canPin = await platform.captureShortcuts.canPin();
   } catch {
@@ -51,7 +52,7 @@ export async function addCaptureIconToHomeScreen() {
     buttons: choices.map((choice) => ({
       text: choice.label,
       onClick: async () => {
-        let requested = false;
+        let requested;
         try {
           requested = await platform.captureShortcuts.pin(choice);
         } catch {

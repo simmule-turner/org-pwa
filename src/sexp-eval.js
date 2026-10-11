@@ -460,7 +460,7 @@ function findSexpTimestamps(text) {
     }
     const sexprText = text.slice(openParenIndex, i); // "(...)" including its own parens
     const raw = text.slice(m.index, i + 1); // the full "<%%(...)>"
-    let expr = null;
+    let expr;
     try {
       expr = parseSexpr(sexprText);
     } catch {

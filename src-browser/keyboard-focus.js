@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: keyboard focus.
 import { findAncestorPath } from '../src/archive-model.js';
 import { flattenVisibleRows } from '../src/outline-view-model.js';
@@ -365,7 +366,7 @@ export function rowNearViewportTop() {
   const rows = flattenVisibleRows(S.state.doc);
   const top = scrollContainer().getBoundingClientRect().top;
   for (const el of outlineEl.querySelectorAll('[data-row-key]')) {
-    if (el.getBoundingClientRect().bottom > top + 1) return rows.find((r) => r.key === el.dataset.rowKey) || null;
+    if (el.getBoundingClientRect().bottom > top + 1) return rows.find((r) => r.key === /** @type {HTMLElement} */ (el).dataset.rowKey) || null;
   }
   return null;
 }

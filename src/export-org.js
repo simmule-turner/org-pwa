@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * org-org-export-as-org: a considered subset of real org-mode's own
  * (org-org-export-as-org) command -- produces a fully processed COPY
@@ -269,6 +270,7 @@ function scaleHeadingLevels(doc, minlevel) {
  * export from an unrelated concurrent edit -- see this session's own
  * "safe copy" step (a) -- but nothing in here itself touches the
  * object it's given.
+ * @param {any} doc @param {any} fetchPath @param {any} parseOrgFn @param {{ now?: Date, minlevel?: number }} [options]
  */
 async function exportAsOrg(doc, fetchPath, parseOrgFn, { now, minlevel } = {}) {
   const resolvedNow = now instanceof Date ? now : new Date();

@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: calendar panel.
 import { buildAgendaItems, itemsInRange } from '../src/agenda.js';
 import { MONTH_NAMES, buildDayMarkers, buildMonthGrid, stepMonth, stepYear } from '../src/calendar-grid.js';

@@ -1,3 +1,4 @@
+// @ts-check
 // org-attach-open-in-emacs for this app: shows an attachment inside the app (a picture, a recording, a video, or text) rather than
 // handing it to the browser's viewer in a new tab. `bytes` is an ArrayBuffer and `mime` its type; a type with no in-app preview
 // is the caller's to catch (previewKind returns null).

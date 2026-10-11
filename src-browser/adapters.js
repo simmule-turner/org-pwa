@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: adapters.
 import { S } from './app-state.js';
 import { createGithubAdapter } from './github-adapter.js';

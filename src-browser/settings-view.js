@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: settings view.
 import { mergeGlobalAndLocalVariables, parseGlobalVariables, serializeGlobalVariables } from '../src/global-variables.js';
 import { combineHexAlpha, splitHexAlpha } from '../src/hex-alpha.js';
@@ -1375,7 +1376,8 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     row.appendChild(wrap);
     return row;
   };
-  const apptStepper = (label, key, hint, [min, max], step, unit) => {
+  const apptStepper = (label, key, hint, /** @type {number[]} */ limits, step, unit) => {
+    const [min, max] = limits;
     const row = document.createElement('div');
     row.className = 'panel-row';
     row.style.alignItems = 'center';

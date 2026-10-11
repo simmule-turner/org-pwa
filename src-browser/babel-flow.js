@@ -1,3 +1,4 @@
+// @ts-check
 // Running JavaScript source blocks (Org Babel's C-c C-c) -- the commands around the sandbox.
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { commitLines } from '../src/body-edit.js';

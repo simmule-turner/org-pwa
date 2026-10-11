@@ -1,3 +1,4 @@
+// @ts-check
 // Hands a file to the person (an export, a backup, an attachment saved out) through the platform, and says where it went. A
 // browser downloads it and the person already sees that, so it says nothing; a native shell may put it straight into a folder
 // (Downloads, on Android) with no screen in between, so what it reports is the only way to know. A failure is reported rather

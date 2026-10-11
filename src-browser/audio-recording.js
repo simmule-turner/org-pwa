@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: audio recording.
 import { generateRecordingFilename } from '../src/attach.js';
 import { S } from './app-state.js';
@@ -212,7 +213,7 @@ export async function saveAudioRecording(heading) {
   const reader = new FileReader();
   const base64 = await new Promise((resolve, reject) => {
     reader.onload = () => {
-      const dataUrl = reader.result;
+      const dataUrl = /** @type {string} */ (reader.result);
       const commaIndex = dataUrl.indexOf(',');
       resolve(commaIndex === -1 ? '' : dataUrl.slice(commaIndex + 1));
     };

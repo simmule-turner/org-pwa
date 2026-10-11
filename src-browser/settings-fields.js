@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: settings fields. These have no dependency on the app's shared mutable state,
 // so they moved verbatim (see tools/ notes in CHANGELOG v412).
 import { tokenize as tokenizeExtraMenuValue } from '../src/extra-menu.js';

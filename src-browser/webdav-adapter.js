@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * WebDAV-backed storage adapter — the same { read(fileId), write(fileId,
  * content), exists(fileId) } shape as the GitHub and local File System

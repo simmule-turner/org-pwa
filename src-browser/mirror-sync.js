@@ -1,3 +1,4 @@
+// @ts-check
 // The calendar mirror (calendar-sync.js) and the contacts mirror (contacts-sync.js) are separate, and each is optional. This is
 // the one place that treats them as a pair: what the app calls when it wants "the servers brought up to date", and what the
 // Sync button in Settings runs.

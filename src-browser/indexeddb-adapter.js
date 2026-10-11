@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Real IndexedDB-backed implementation of the kv adapter interface used
  * everywhere else (get/set/delete/list) — a drop-in replacement for

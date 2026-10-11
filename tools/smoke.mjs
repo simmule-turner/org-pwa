@@ -1207,7 +1207,6 @@ check('local file: switching tabs and regaining focus never ask the browser for 
   });
   const perm = () => page.evaluate(() => ({ ...window.__perm }));
   const setPerm = (state) => page.evaluate((st) => { window.__perm = { query: 0, request: 0, state: st }; }, state);
-  const status = async () => (await page.locator('#status').innerText()).replace(/\s+/g, ' ');
   const tab = (n) => page.locator('#tabBar > div').nth(n);
 
   await fileMenu(page, 'Open', 'Local file');
@@ -1949,7 +1948,8 @@ check('god-mode: the new chords for refile/attach/clocking/export reach their re
 check('add heading: inserts as a sibling right after the selected heading (the common case); works on a genuinely empty document (M-RET and M-S-RET both insert at the top); appends at the bottom when nothing is selected', async () => {
   // 1. a truly empty document: M-RET (god-mode "g" then Enter) inserts a
   // single top-level heading at the top, cursor ready to type.
-  let { context, page, errors } = await freshPage();
+  let { context, page } = await freshPage();
+  let errors;
   await newDocument(page, '');
   await page.locator('body').click({ position: { x: 5, y: 5 } });
   await page.keyboard.press('Escape'); // enter god-mode
@@ -4396,7 +4396,6 @@ check('extensions: hooks run on open, save, a TODO change and capture; a hook ca
   expect((text.match(/:LAST:/g) || []).length === 1, 'the hook did not fire again for its own change');
 
   await page.evaluate(async () => {
-    const { S } = await import('/src-browser/app-state.js');
     const { emitExtensionEvent } = await import('/src-browser/extension-events.js');
     emitExtensionEvent('save');
     emitExtensionEvent('capture', { description: 'Inbox', file: 'x.org', sameFile: true });
@@ -4410,7 +4409,7 @@ check('extensions: hooks run on open, save, a TODO change and capture; a hook ca
 });
 
 check('drag grip: the handle is on every heading row of a phone-sized touch browser too', async () => {
-  const { context, page, errors } = await freshPage(main, { initScript: null });
+  const { context, page } = await freshPage(main, { initScript: null });
   await page.setViewportSize({ width: 412, height: 800 });
   await newDocument(page, '* One\n** Two\n');
   const visible = await page.evaluate(() => [...document.querySelectorAll('.heading-grip')].map((g) => { const r = g.getBoundingClientRect(); return r.width > 8 && r.height > 8 && getComputedStyle(g).visibility !== 'hidden'; }));

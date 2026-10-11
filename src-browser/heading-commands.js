@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: heading commands.
 import { deleteProperty, getProperty, setProperty } from '../src/archive-model.js';
 import { getAllowedEffortValues } from '../src/effort-values.js';

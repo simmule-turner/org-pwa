@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: table recalc.
 import { allTablesInBody, commitLines, serializeTable } from '../src/body-edit.js';
 import { getOrgTableDurationHourZeroPadding } from '../src/local-variables.js';

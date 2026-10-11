@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: capture ui.
 import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandCaptureText, expandTemplate, getCaptureFileScheme, insertCapture, resolveCaptureFileId, resolveOlpTarget, scanPrompts, storageKindForScheme } from '../src/capture-template.js';
 import { parseOrg } from '../src/org-parser.js';

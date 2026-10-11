@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: navigation.
 import { findAncestorPath } from '../src/archive-model.js';
 import { flattenVisibleRows } from '../src/outline-view-model.js';
@@ -72,11 +73,11 @@ export function navigateToHeading(heading, { revealOwnBody = false, targetNode =
     if (idx === -1 || !outlineEl.children[idx]) return;
     const el = outlineEl.children[idx];
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    const original = el.style.backgroundColor;
-    el.style.transition = 'background-color 1.2s';
-    el.style.backgroundColor = 'rgba(255,214,0,0.45)';
+    const original = /** @type {HTMLElement} */ (el).style.backgroundColor;
+    /** @type {HTMLElement} */ (el).style.transition = 'background-color 1.2s';
+    /** @type {HTMLElement} */ (el).style.backgroundColor = 'rgba(255,214,0,0.45)';
     setTimeout(() => {
-      el.style.backgroundColor = original;
+      /** @type {HTMLElement} */ (el).style.backgroundColor = original;
     }, 5000);
   });
 }

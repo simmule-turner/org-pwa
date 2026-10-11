@@ -67,7 +67,7 @@ SCHEDULED: <2026-09-01 Tue 09:30 +1d>
 test('scan: archived and commented headings are left out; one appointment is not listed twice', () => {
   const list = upcomingAppointments(docs(`* Archived thing :ARCHIVE:
 SCHEDULED: <2026-10-08 Thu 10:00>
-* # hidden
+* COMMENT hidden
 SCHEDULED: <2026-10-08 Thu 10:30>
 * Both
 SCHEDULED: <2026-10-08 Thu 11:00>

@@ -1,3 +1,4 @@
+// @ts-check
 // What scripts may ask of the page: network, cache and the phone's position. The sandbox has none of these itself;
 // each request arrives here, is checked against src/extension-net.js, and is allowed only after the person said yes.
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';

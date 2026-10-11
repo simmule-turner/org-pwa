@@ -1,3 +1,4 @@
+// @ts-check
 // Extracted from app.js: dialogs.
 import { getHeadingText, setHeadingText } from '../src/body-edit.js';
 import { formatOrgTimestamp } from '../src/org-timestamp.js';
@@ -327,6 +328,7 @@ export function openHeadingTextEditor(heading) {
   overlay.id = 'heading-text-edit-popup';
 }
 
+/** @param {{ label?: any, value?: any, defaultValue?: any, onSave?: any, onReset?: any, onCancel?: any, resetInPlace?: boolean, placeholder?: any, choices?: any }} options */
 export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset, onCancel, resetInPlace, placeholder, choices }) {
   const overlay = document.createElement('div');
   overlay.style.position = 'fixed';
@@ -737,7 +739,7 @@ export function openMultiFieldPopup({ label, fields, onSave }) {
   );
   btnRow.appendChild(
     menuButton('Reset', () => {
-      for (const { key, type, entry } of fieldEntries) {
+      for (const { key, entry } of fieldEntries) {
         const original = fields.find((f) => f.key === key).value;
         entry.input.value = original !== undefined && original !== null ? original : '';
       }
@@ -796,7 +798,7 @@ export function pickBinaryFiles(capture, accept, multiple = true) {
           const reader = new FileReader();
           reader.onload = () => {
             // reader.result is "data:<mime>;base64,<data>" -- everything after the first comma is the base64 payload itself.
-            const dataUrl = reader.result;
+            const dataUrl = /** @type {string} */ (reader.result);
             const commaIndex = dataUrl.indexOf(',');
             res({ name: file.name, type: file.type, base64: commaIndex === -1 ? '' : dataUrl.slice(commaIndex + 1) });
           };
