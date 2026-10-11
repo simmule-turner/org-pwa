@@ -10,7 +10,7 @@ const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 
 const tangle = (text, name = 'doc.org') => tangleDocument(parseOrg(text), { documentName: name });
 
 // Expected output files were written by Emacs 29.3 (org-babel-tangle) from the same .org files.
-for (const name of ['t1', 't2', 'c1']) {
+for (const name of ['t1', 't2', 'c1', 'n1']) {
   test(`tangle ${name}.org gives the files Emacs gives`, () => {
     const r = tangle(fs.readFileSync(path.join(dir, name + '.org'), 'utf8'), name + '.org');
     for (const f of r.files) {
@@ -48,4 +48,11 @@ test('noweb: unresolved and circular references are errors', () => {
 test('noweb: a CUSTOM_ID heading can be referenced', () => {
   const r = tangle('* Notes\n:PROPERTIES:\n:CUSTOM_ID: n\n:END:\ntext line\n* Code\n#+begin_src js :tangle a.js :noweb yes\n// <<n>>\n#+end_src\n');
   assert.equal(r.files[0].text, '// text line\n');
+});
+
+test(':comments noweb: a block referenced twice is wrapped both times, linked to itself', () => {
+  const r = tangle('* Top\n#+NAME: h\n#+begin_src js :tangle no\nh();\n#+end_src\n#+begin_src js :tangle a.js :noweb yes :comments noweb\n<<h>>\nx();\n<<h>>\n#+end_src\n', 'd.org');
+  const lines = r.files[0].text.split('\n');
+  assert.equal(lines.filter((l) => l === '// [[file:d.org::h][h]]').length, 2);
+  assert.equal(lines.filter((l) => l === '// h ends here').length, 2);
 });

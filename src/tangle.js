@@ -155,6 +155,15 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
     };
     return findNamedTable(doc.bodyLines || [], name) || walk(doc.children || []);
   };
+  // `:comments noweb`: a referenced block is wrapped in begin and end comments naming it
+  const wrapChunk = (ref, text, host) => {
+    let target;
+    if (ref.name) target = ref.name;
+    else if (ref.heading) target = '*' + headingSearchText(ref.heading.title).replace(/[[\]]/g, (c) => '\\' + c);
+    else target = ((ref.heading ? ref.heading.bodyLines : doc.bodyLines)[ref.beginIndex] || '').trim().replace(/^#/, '');
+    const name = ref.name || '';
+    return commentOut(`[[file:${documentName}::${target}][${name}]]`, host.lang) + '\n' + text + '\n' + commentOut(name ? `${name} ends here` : 'ends here', host.lang);
+  };
   const warnings = [];
   const byFile = new Map();
   for (const b of blocks) {
@@ -164,7 +173,7 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
       const ext = LANG_EXTENSIONS[b.lang] || b.lang;
       let path = b.args.tangle === 'yes' ? documentName.replace(/\.[^./]*$/, '') + '.' + ext : b.args.tangle;
       path = checkTargetPath(path);
-      let body = nowebAllows(b.args, 'tangle') ? expandNoweb(doc, blocks, b, { context: 'tangle' }) : b.body;
+      let body = nowebAllows(b.args, 'tangle') ? expandNoweb(doc, blocks, b, { context: 'tangle', wrapChunk }) : b.body;
       if (!('no-expand' in b.args)) {
         const parts = [];
         if (b.args.prologue) parts.push(b.args.prologue);

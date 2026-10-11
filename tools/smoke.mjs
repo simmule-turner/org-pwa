@@ -4151,6 +4151,22 @@ check('literate: noweb runs, header arguments are inherited, and Tangle delivers
   await context.close();
 });
 
+check(':cache yes: an unchanged block is not run again', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(page, ['* Code', '#+begin_src js :cache yes', 'return Date.now();', '#+end_src', ''].join('\n'));
+  await enableJavaScript(page);
+  await runBlock(page, 0);
+  await waitForStatus(page, 'Ran in');
+  const first = await documentText(page);
+  expect(/#\+RESULTS\[[0-9a-f]{40}\]:/.test(first), `hash in the results line: ${first}`);
+  await new Promise((r) => setTimeout(r, 20));
+  await runBlock(page, 0);
+  await waitForStatus(page, 'Cached');
+  expect((await documentText(page)) === first, 'the cached run left the result alone');
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('extensions: a script feeds the agenda from a calendar and adds a header line', async () => {
   const { context, page, errors } = await freshPage(main);
   const now = new Date();

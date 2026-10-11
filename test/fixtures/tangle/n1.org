@@ -1,0 +1,36 @@
+* Top
+#+NAME: helper
+#+begin_src js :tangle no
+function h() { return 1; }
+#+end_src
+
+#+NAME: wrapper
+#+begin_src js :tangle no :noweb yes
+before();
+  <<helper>>
+after();
+#+end_src
+
+#+begin_src js :tangle out/a.js :noweb yes :comments noweb
+start();
+<<helper>>
+  <<wrapper>>
+end();
+#+end_src
+
+#+begin_src js :tangle out/b.js :noweb yes :comments noweb
+plain();
+#+end_src
+
+#+begin_src js :noweb-ref group :tangle no
+g1();
+#+end_src
+#+begin_src js :noweb-ref group :tangle no
+g2();
+#+end_src
+#+begin_src js :tangle out/c.js :noweb yes :comments both
+<<group>>
+#+end_src
+#+begin_src js :tangle out/d.js :noweb yes :comments noweb
+<<group>>
+#+end_src

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v479';
+const CACHE_NAME = 'org-pwa-shell-v480';
 
 const SHELL_FILES = [
   './',
@@ -10,6 +10,7 @@ const SHELL_FILES = [
   './src/babel.js',
   './src/babel-args.js',
   './src/babel-blocks.js',
+  './src/babel-cache.js',
   './src/babel-export.js',
   './src/noweb.js',
   './src/tangle.js',

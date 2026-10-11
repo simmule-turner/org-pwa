@@ -814,7 +814,7 @@ return data.slice(1).map(([q, n]) => [q, n * 2]);
 - ~:timeout N~: seconds, 5 by default and 60 at most. A block still running then is stopped.
 - ~:wrap NAME~: wraps the result in a ~#+begin_NAME~ block.
 
-The code runs in a sandbox with no access to the page, your files or your accounts, and with no network unless the header asks for it and you allow it (see Network, position and cache). ~org.vars.get("calendar-latitude")~ reads a setting. The first run in a saved document asks for confirmation; an unsaved one asks every time. Not built: other languages, ~:session~, tangling and ~:noweb~.
+The code runs in a sandbox with no access to the page, your files or your accounts, and with no network unless the header asks for it and you allow it (see Network, position and cache). ~org.vars.get("calendar-latitude")~ reads a setting. The first run in a saved document asks for confirmation; an unsaved one asks every time.
 
 
 *** Literate programming: header arguments, Noweb and Tangle
@@ -826,7 +826,9 @@ Header arguments are inherited as in Org: a ~#+PROPERTY: header-args :results ou
 
 *Noweb*: with ~:noweb yes~, ~<<name>>~ in a block is replaced by the block ~#+NAME: name~, by all blocks with ~:noweb-ref name~ (joined with ~:noweb-sep~, a newline by default), or by the text of the heading whose ~CUSTOM_ID~ is ~name~. Text before the reference on its line is put before every line of the expansion, so ~// <<name>>~ comments out all of it. ~:noweb~ also takes ~tangle~, ~no-export~ (expand to run and tangle, show the references on export), ~strip-export~ (references removed on export) and ~strip-tangle~. ~yes~ expands when running, tangling and exporting. A reference that matches nothing, or that goes round in a circle, is an error rather than empty text.
 
-*Tangle*: the palette command *Tangle this file* (~org-babel-tangle~) writes the blocks with ~:tangle~ to files: ~:tangle yes~ names the file after the document, ~:tangle path/file.js~ names it, ~no~ skips it. Blocks for the same file are joined in order, separated by a blank line (~:padline no~ removes it). Also supported: ~:shebang~ (and the file mode that goes with it), ~:tangle-mode~, ~:comments link~, ~org~ and ~both~ (not ~noweb~), ~:prologue~, ~:epilogue~, ~:no-expand~, and ~:var~ for ~js~ blocks (written as ~var x=3;~). ~COMMENT~ and ~:ARCHIVE:~ subtrees are skipped. One file is saved as it is; several, or one in a folder, come as a zip with the file modes set. Paths may not be absolute or climb out with ~..~. The output was checked against Emacs's own.
+*Tangle*: the palette command *Tangle this file* (~org-babel-tangle~) writes the blocks with ~:tangle~ to files: ~:tangle yes~ names the file after the document, ~:tangle path/file.js~ names it, ~no~ skips it. Blocks for the same file are joined in order, separated by a blank line (~:padline no~ removes it). Also supported: ~:shebang~ (and the file mode that goes with it), ~:tangle-mode~, ~:comments link~, ~org~, ~both~ and ~noweb~ (which also wraps each ~<<name>>~ chunk in comments naming the block it came from), ~:prologue~, ~:epilogue~, ~:no-expand~, and ~:var~ for ~js~ blocks (written as ~var x=3;~). ~COMMENT~ and ~:ARCHIVE:~ subtrees are skipped. One file is saved as it is; several, or one in a folder, come as a zip with the file modes set. Paths may not be absolute or climb out with ~..~. The output was checked against Emacs's own.
+
+*Cache*: ~:cache yes~ skips a block whose code, variables and ~:results~ shape are unchanged since its last run; the hash is kept in its results line (~#+RESULTS[hash]:~). Delete the results to run it again. Do not cache a block that reads the time or a live feed.
 
 *Export* shows what ~:exports~ asks: ~code~ (the default; stored results are not shown), ~results~, ~both~ or ~none`. Nothing is run on export; ~results~ shows what ~#+RESULTS:~ already holds. This applies to ASCII, HTML, Markdown, ODT and Org export.
 
@@ -1881,7 +1883,7 @@ If a letter doesn't register on your keyboard app, the command palette reaches t
 
 Read this if you know org-mode well and want to know where org-pwa is a subset, a simplification or just different. It lists only the deltas: a topic not mentioned here matches org's behavior.
 
-*Interaction model* (see [[#keybindings][Keybindings]]): touch-first, not keyboard-driven. The [[#command-palette][command palette]] is ~M-x~ only in spirit: a fixed, curated list that you can't add to, not every Emacs command. god-mode's table doesn't cover table cells, per-list-item checkboxes or link insertion.
+*Interaction model* (see [[#keybindings][Keybindings]]): touch-first, not keyboard-driven. The [[#command-palette][command palette]] is ~M-x~ only in spirit: a fixed, curated list that you can't add to, not every Emacs command. god-mode's table doesn't cover table cells, per-list-item checkboxes or link insertion (see [[#god-mode][god-mode]]).
 
 *Folding* (see [[#editing-your-outline][Editing your outline]]): no equivalent of Emacs's richer visibility state machine, but three flags per heading, on top of which ~overview~, ~content~, ~showall~, ~showeverything~ and ~show2levels~ to ~show5levels~ are implemented.
 
@@ -1897,7 +1899,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Agenda* (see [[#agenda][Agenda]]): effort sorting, filtering and the per-day limit are session settings in the ⏱ panel, not ~org-agenda-sorting-strategy~ or ~org-agenda-max-effort~. There is no negated (~-<~) filter, no effort column format (~%e~) and no effort sort in the TODO view. The sexp evaluator supports a closed, documented set of functions (including ~org-class~, ~org-date~ and ~and~, ~or~, ~not~), not a Lisp interpreter: no ~let~, ~date~ variable or ~calendar-*~ helpers, no ~diary-remind~, and no holiday-skipping in ~org-class~. ~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~ are left out on purpose, since their ~org-*~ twins take unambiguous year-month-day dates (see [[#agenda-sexp-timestamps][General sexp timestamps]]). A ~local:~ agenda file is read-only, and only a file already opened on this device can be named.
 
-*Babel*: only ~js~ blocks run (see [[#source-blocks][Source blocks]]). Not built: other languages, ~:session~, ~:cache~, running a block from a ~<<name()>>~ reference, ~:comments noweb~, and results refreshed on open. Noweb and Tangle are described under [[#literate-programming][Literate programming]].
+*Babel*: ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). These do not exist: blocks in any other language, ~:session~, running one block from inside another (~<<name()>>~), and results that refresh when a file is opened.
 
 *Links and structure*: no ~[[id:...]]~ links, ~<<targets>>~, habits (~:STYLE: habit~), ~#+SETUPFILE:~ or ~org-cite~ citations. They are kept exactly as written, and never altered by a save.
 
@@ -1909,7 +1911,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Refile* (see [[#refile][Refile]]): you can't create a new destination heading by typing a name that doesn't exist yet.
 
-*Attachments* (see [[#attachments][Attachments]]): follows ~org-attach~'s folder model (~ID~ or ~DIR~ folder, ~:ATTACH:~ tag, and the dispatcher's ~a~ ~r~ ~b~ ~n~ ~o~ ~f~ ~d~ ~D~ ~s~ ~S~ ~z~). The Folder panel covers the useful part of ~org-attach-dired~: select files, then save or delete them. Not built: ~c~/~m~/~l~ (copy, move or link an existing file in) and attaching from a Dired buffer. It requires GitHub, WebDAV or, in the Android app, the org-pwa folder.
+*Attachments* (see [[#attachments][Attachments]]): the same folder model as ~org-attach~ (an ~ID~ or ~DIR~ folder and the ~:ATTACH:~ tag) and the dispatcher keys ~a~ ~b~ ~n~ ~o~ ~f~ ~d~ ~D~ ~s~ ~S~ ~z~, plus ~r~ to record audio. The Folder panel stands in for ~org-attach-dired~: select files, then open, save or delete them. Not built: copy, move and link (~c~, ~m~, ~l~), attaching from a Dired buffer, and ~DIR~ paths outside the storage. Needs GitHub, WebDAV, or the org-pwa folder in the Android app.
 
 *Conflict resolution* (see [[#offline-behavior-and-sync][Offline behavior and sync]]): a line-based three-way merge with a region-by-region resolver. It merges lines, not org structure, so a subtree moved on one side and edited on the other is an ordinary clash, and a region has no side-by-side or word-level diff.
 
@@ -1922,10 +1924,8 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 Gaps against org-mode itself are in [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]]. This section covers app-specific and platform limits:
 
-- No drag-to-reorder; buttons move, promote and demote instead (see [[#editing-your-outline][Editing your outline]]).
 - Local and relative images show a placeholder on local files (File System Access) and iOS imports, the same picker-permission limit as archiving and capture to a file. GitHub and WebDAV documents are unaffected.
 - No File System Access on iOS, a platform limit rather than a bug (see [[#platform-support][Platform support]]).
-- god-mode's table doesn't cover table cells, per-list-item checkboxes, code-block execution or link insertion (see [[#god-mode][god-mode]]).
 - A read-only buffer accepts no edit anywhere in the document, though Save and Save As still work, as in Emacs (see [[#keybindings][Keybindings]]).
 
 -----

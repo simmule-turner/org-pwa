@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v480 — Cache and chunk comments
+~:cache yes~ now skips a ~js~ block whose code and inputs have not changed since its last run, keeping the hash in the ~#+RESULTS[hash]:~ line as Org does, so slow blocks are not repeated. Tangle gains ~:comments noweb~, which wraps each ~<<name>>~ chunk in comments naming the block it came from. A run without ~:cache~ now drops an old hash from the results line.
+
 * v479 — Position that arrives
 Reading the phone's position (~org.location.get()~) now accepts a fix up to an hour old, waits longer, and falls back to the GPS before giving up, and its error says what to check. A phone with no recent fix used to time out after 10 seconds.
 

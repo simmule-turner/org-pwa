@@ -207,8 +207,8 @@ export function resultsEnd(lines, at) {
 /** The edit that puts `resultLines` under a block: `{ start, removeCount, insert }`
  *  for splicing into the heading's body lines. An existing `#+RESULTS:` after the
  *  block (blank lines allowed between) is replaced; otherwise a new one is added
- *  below the block, with a blank line either side as Org does. */
-export function placeResults(bodyLines, block, resultLines) {
+ *  below the block, with a blank line either side as Org does. `hash` goes into the results line (`#+RESULTS[hash]:`) for `:cache yes`. */
+export function placeResults(bodyLines, block, resultLines, { hash = null } = {}) {
   const indent = (/^(\s*)/.exec(bodyLines[block.lineIndex]) || ['', ''])[1];
   const pad = (l) => (l === '' ? l : indent + l);
   const blockEnd = block.lineIndex + block.lineCount;
@@ -216,9 +216,17 @@ export function placeResults(bodyLines, block, resultLines) {
   while (j < bodyLines.length && bodyLines[j].trim() === '') j++;
   if (j < bodyLines.length && RESULTS_LINE_RE.test(bodyLines[j])) {
     const end = resultsEnd(bodyLines, j);
-    return { start: j, removeCount: end - j, insert: [bodyLines[j], ...resultLines.map(pad)] };
+    return { start: j, removeCount: end - j, insert: [bodyLines[j].replace(/^(\s*#\+RESULTS)(?:\[[^\]]*\])?:/i, hash ? `$1[${hash}]:` : '$1:'), ...resultLines.map(pad)] };
   }
-  const insert = ['', pad('#+RESULTS:'), ...resultLines.map(pad)];
+  const insert = ['', pad(hash ? `#+RESULTS[${hash}]:` : '#+RESULTS:'), ...resultLines.map(pad)];
   if (blockEnd < bodyLines.length && bodyLines[blockEnd].trim() !== '') insert.push('');
   return { start: blockEnd, removeCount: 0, insert };
+}
+
+/** The hash in the `#+RESULTS[hash]:` line that follows the block, or null. */
+export function existingResultsHash(bodyLines, block) {
+  let j = block.lineIndex + block.lineCount;
+  while (j < bodyLines.length && bodyLines[j].trim() === '') j++;
+  const m = j < bodyLines.length ? /^\s*#\+RESULTS\[([^\]]*)\]:/i.exec(bodyLines[j]) : null;
+  return m ? m[1] : null;
 }

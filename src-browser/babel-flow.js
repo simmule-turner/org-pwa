@@ -2,7 +2,8 @@
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { commitLines } from '../src/body-edit.js';
 import { parseLocationHeader, parseNetHeader } from '../src/extension-net.js';
-import { findNamedTable, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
+import { cacheHash } from '../src/babel-cache.js';
+import { existingResultsHash, findNamedTable, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
 import { collectDocumentBlocks } from '../src/babel-blocks.js';
 import { expandNoweb, nowebAllows } from '../src/noweb.js';
 import { getBabelJs } from '../src/local-variables.js';
@@ -71,8 +72,8 @@ function lookupTable(name) {
   return null;
 }
 
-function writeResults(heading, block, lines, label) {
-  const { start, removeCount, insert } = placeResults(heading.bodyLines, block, lines);
+function writeResults(heading, block, lines, label, hash = null) {
+  const { start, removeCount, insert } = placeResults(heading.bodyLines, block, lines, { hash });
   commitLines(heading, start, removeCount, insert);
   commitAndRender(label);
 }
@@ -111,6 +112,26 @@ export async function executeSourceBlock(heading, block) {
     return;
   }
 
+  let code = block.lines.map(stripCommaEscapeApp).join('\n');
+  if (info && nowebAllows(args, 'eval')) {
+    try {
+      code = expandNoweb(S.state.doc, all, info);
+    } catch (err) {
+      writeResults(heading, block, formatError(err.message), 'Source block failed');
+      return;
+    }
+  }
+
+
+  let hash = null;
+  if (args.cache === 'yes') {
+    hash = await cacheHash({ lang: info ? info.lang : 'js', args, vars, code });
+    if (existingResultsHash(heading.bodyLines, block) === hash) {
+      setStatus('Cached: nothing has changed since the last run, so the block was not run. Delete its #+RESULTS: to run it again.');
+      return;
+    }
+  }
+
   let declared;
   try {
     declared = { hosts: parseNetHeader(args.net), location: parseLocationHeader(args.location) };
@@ -122,16 +143,6 @@ export async function executeSourceBlock(heading, block) {
   if ((declared.hosts.length || declared.location) && !(await authorizeBlock(owner, declared))) {
     setStatus('Not allowed; the block was not run.');
     return;
-  }
-
-  let code = block.lines.map(stripCommaEscapeApp).join('\n');
-  if (info && nowebAllows(args, 'eval')) {
-    try {
-      code = expandNoweb(S.state.doc, all, info);
-    } catch (err) {
-      writeResults(heading, block, formatError(err.message), 'Source block failed');
-      return;
-    }
   }
 
   setStatus('Running…');
@@ -154,7 +165,7 @@ export async function executeSourceBlock(heading, block) {
     setStatus(`Ran in ${Date.now() - started} ms (results: silent).`);
     return;
   }
-  writeResults(heading, block, lines, outcome.ok ? 'Executed source block' : 'Source block failed');
+  writeResults(heading, block, lines, outcome.ok ? 'Executed source block' : 'Source block failed', outcome.ok ? hash : null);
   setStatus(outcome.ok ? `Ran in ${Date.now() - started} ms.` : `Source block failed: ${outcome.message}`);
 }
 

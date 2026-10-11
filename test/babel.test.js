@@ -105,7 +105,7 @@ test('existing results are replaced, whatever their shape', () => {
   assert.deepEqual(apply([...head, '#+RESULTS:', ': old', ': older', '', 'keep'], [': 2']), [...head, '#+RESULTS:', ': 2', '', 'keep']);
   assert.deepEqual(apply([...head, '#+RESULTS:', '| a | b |', '| c | d |', 'keep'], ['- x']), [...head, '#+RESULTS:', '- x', 'keep']);
   assert.deepEqual(apply([...head, '#+RESULTS:', '#+begin_quote', 'q', '#+end_quote', 'keep'], [': 3']), [...head, '#+RESULTS:', ': 3', 'keep']);
-  assert.deepEqual(apply([...head, '#+RESULTS[abc123]:', ': old'], [': 4']), [...head, '#+RESULTS[abc123]:', ': 4']);
+  assert.deepEqual(apply([...head, '#+RESULTS[abc123]:', ': old'], [': 4']), [...head, '#+RESULTS:', ': 4']); // a run without :cache drops the old hash
 });
 
 test('results keep the block indentation', () => {
