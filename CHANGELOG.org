@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v494 — Open and Save As in one step
+File > Open and File > Save As now go straight to one screen with a GitHub / Local file / WebDAV picker that opens on the type you used last, so the extra "where from?" step is gone. GitHub and WebDAV show their folders at once, with an Enter path… field; Save As asks before replacing a file; a backend you haven't set up says so. Recently opened shows five, and a long press removes one entry.
+Verified: the new screen's check, plus local file, WebDAV, conflict, platform and palette checks.
+
 * v493 — The last popups join in
 The attachment folder, the camera and the attachment preview now use the same sheet-or-dialog look as the other popups, and the command palette shares their dimming and corners. Photos and video keep a darker backdrop so they are easier to see.
 

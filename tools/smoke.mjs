@@ -239,7 +239,16 @@ async function pick(page, panel, label) {
 }
 async function fileMenu(page, ...labels) {
   await page.click('#fileMenuBtn');
-  for (const label of labels) await pick(page, '#fileMenuPanel', label);
+  const [first, ...rest] = labels;
+  await pick(page, '#fileMenuPanel', first);
+  if (first !== 'Open' && first !== 'Save As') return;
+  // Open and Save As go to one screen: pick the type there ("Local file" also presses its button)
+  const types = { GitHub: 'github', 'Local file': 'local', WebDAV: 'webdav' };
+  await page.locator('#fileScreenBox').waitFor({ state: 'visible' });
+  for (const label of rest) {
+    await page.locator(`#fileScreenBox [data-type="${types[label]}"]`).click();
+    if (label === 'Local file') await page.locator('#fileScreenBox [data-act="local"]').click();
+  }
 }
 async function viewMenu(page, label) {
   await page.click('#viewMenuBtn');
@@ -2357,6 +2366,65 @@ check('webdav: a document opens from the server and Save writes it back', async 
   await fileMenu(page, 'Save');
   await waitForStatus(page, 'Saved');
   expect(dav.get('notes.org') === SAMPLE.replace('body 1', 'body 1 edited'), `server has: ${JSON.stringify(dav.get('notes.org'))}`);
+  await context.close();
+});
+
+check('Open / Save As screen: one screen with a GitHub / Local file / WebDAV picker that remembers the last type, Enter path opens, Save As asks before replacing, an unset backend says so, and a recent file can be removed', async () => {
+  dav.reset({ 'notes.org': SAMPLE });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await newDocument(page, '* One\n');
+  const box = page.locator('#fileScreenBox');
+  const checked = () => box.locator('[role=radio][aria-checked=true]').getAttribute('data-type');
+  await page.click('#fileMenuBtn');
+  await pick(page, '#fileMenuPanel', 'Open');
+  await box.waitFor({ state: 'visible' });
+  expect((await box.locator('[role=radio]').count()) === 3 && (await checked()) === 'local', 'three types, Local file first time');
+  expect(await box.locator('[data-act=cancel]').evaluate((b) => b === document.activeElement && b.classList.contains('ui-cancel')), 'Cancel is focused and emphasized');
+  expect(await box.evaluate((b) => !/rgba\(.*, 0(\.\d+)?\)$/.test(getComputedStyle(b).backgroundColor)), 'the screen is opaque');
+  await box.locator('[data-type=github]').click();
+  await box.locator('[data-act=settings]').waitFor();
+  expect((await box.innerText()).includes("GitHub isn't set up yet") && (await box.locator('[data-act=settings]').count()) === 1, 'an unset backend says so and links to settings');
+  await box.locator('[data-type=webdav]').click();
+  await box.locator('[data-entry="notes.org"]').waitFor();
+  expect((await box.locator('[data-field=path]').getAttribute('placeholder')).startsWith('Enter path'), 'Enter path field');
+  await box.locator('[data-field=path]').fill('notes.org');
+  await page.keyboard.press('Enter');
+  await waitForModeline(page, 'notes.org');
+  expect(!(await box.isVisible()), 'the screen closes once the file opens');
+  await page.click('#fileMenuBtn');
+  await pick(page, '#fileMenuPanel', 'Save As');
+  await box.waitFor({ state: 'visible' });
+  expect((await checked()) === 'webdav', 'Save As opens on the type last used');
+  await page.keyboard.press('Escape');
+  expect(!(await box.isVisible()), 'Escape closes the screen');
+  await page.click('#fileMenuBtn');
+  await pick(page, '#fileMenuPanel', 'Save As');
+  await box.locator('[data-entry="notes.org"]').waitFor();
+  expect((await box.locator('[data-field=name]').inputValue()).length > 0, 'the name starts filled in');
+  await box.locator('[data-field=name]').fill('notes.org');
+  await box.locator('[data-act=save]').click();
+  const ask = page.locator('.ui-overlay', { hasText: 'Replace "notes.org"?' });
+  await ask.waitFor();
+  await ask.getByText('Cancel', { exact: true }).click();
+  expect(await box.isVisible(), 'declining the replacement keeps the screen open');
+  await box.locator('[data-field=name]').fill('copy.org');
+  await box.locator('[data-act=save]').click();
+  await waitForStatus(page, 'Saved');
+  expect(dav.get('copy.org') !== undefined, 'the copy is on the server');
+  await page.click('#fileMenuBtn');
+  const item = page.locator('#fileMenuPanel').getByText('notes.org (WebDAV)');
+  await item.waitFor();
+  const box1 = await item.boundingBox();
+  await page.mouse.move(box1.x + 10, box1.y + 10);
+  await page.mouse.down();
+  await page.waitForTimeout(800);
+  await page.mouse.up();
+  const sure = page.locator('.ui-overlay', { hasText: 'from the recently opened list?' });
+  await sure.waitFor();
+  await sure.getByText('Remove', { exact: true }).click();
+  await page.waitForTimeout(300);
+  expect((await page.locator('#fileMenuPanel').innerText()).includes('notes.org (WebDAV)') === false, 'the removed entry is gone from the list');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
 

@@ -35,6 +35,7 @@ const KEYS = {
   lastActiveDocument: 'settings:lastActiveDocument',
   openTabs: 'settings:openTabs',
   recentFiles: 'settings:recentFiles',
+  fileScreenType: 'settings:fileScreenType',
   captureTemplates: 'settings:captureTemplates',
   globalVariables: 'settings:globalVariables',
 };
@@ -529,6 +530,22 @@ export async function recordRecentFile(kvAdapter, documentId, storageKind) {
   const deduped = existing.filter((f) => !(f.documentId === documentId && f.storageKind === storageKind));
   deduped.unshift({ documentId, storageKind, openedAt: Date.now() });
   await setJson(kvAdapter, KEYS.recentFiles, deduped.slice(0, RECENT_FILES_STORE_LIMIT));
+}
+
+/** Drops one entry from the recently opened list.
+ * @param {any} kvAdapter @param {string} documentId @param {string} storageKind */
+export async function removeRecentFile(kvAdapter, documentId, storageKind) {
+  const existing = await getRecentFiles(kvAdapter);
+  await setJson(kvAdapter, KEYS.recentFiles, existing.filter((f) => !(f.documentId === documentId && f.storageKind === storageKind)));
+}
+
+/** The storage type the Open / Save As screen last used ('github' | 'local' | 'webdav'), or null before the first use. */
+export async function getFileScreenType(kvAdapter) {
+  return getJson(kvAdapter, KEYS.fileScreenType, null);
+}
+
+export async function setFileScreenType(kvAdapter, type) {
+  await setJson(kvAdapter, KEYS.fileScreenType, type);
 }
 
 export async function clearRecentFiles(kvAdapter) {

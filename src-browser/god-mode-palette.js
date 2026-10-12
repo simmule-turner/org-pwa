@@ -29,10 +29,10 @@ import { clockCancelHeading, clockContinue, clockGoto, clockGotoRecent, clockInH
 import { GLOBAL_TODO_DEFAULT, PALETTE_RECENT_KEY } from './constants.js';
 import { lockBackgroundScroll } from './dialogs.js';
 import { createNewUnsavedDocument, saveCurrent } from './documents-io.js';
-import { fileMenuBtn, moreBtn, outlineEl, searchBtn, settingsBtn } from './dom.js';
+import { openFileScreen } from './file-screen.js';
+import { moreBtn, outlineEl, searchBtn, settingsBtn } from './dom.js';
 import { commitAndRender, commitTextModeIfActive, performRedo, performUndo, renderHistoryPanel, setStatus, startEditingTitle } from './editing.js';
 import { performExport, performOrgOrgExport } from './export-import.js';
-import { renderFileMenu } from './file-menu.js';
 import { openGeneralEditor } from './general-editor.js';
 import { cutSubtree, extraMenuTargetHeading, narrowToHeading, pasteSubtree, widen } from './gestures-structure.js';
 import { cyclePriorityFor, openEffortEditor } from './heading-commands.js';
@@ -76,9 +76,7 @@ export function godModeNotSupported(reason) {
  *  matching god-mode chords (C-x C-w / C-x C-f), so both routes run
  *  through exactly the same code. */
 function openFileMenuAt(step) {
-  fileMenuBtn.click();
-  S.fileMenuStep = step;
-  renderFileMenu();
+  openFileScreen(step);
 }
 
 /**

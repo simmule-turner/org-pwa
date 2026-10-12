@@ -90,6 +90,8 @@ export const refilePanel = document.getElementById('refilePanel');
 
 export const refilePanelBox = document.getElementById('refilePanelBox');
 
+export const fileScreen = document.getElementById('fileScreen');
+export const fileScreenBox = document.getElementById('fileScreenBox');
 export const archiveRefilePanel = document.getElementById('archiveRefilePanel');
 
 export const archiveRefilePanelBox = document.getElementById('archiveRefilePanelBox');

@@ -13,7 +13,8 @@ import { renderCapturePanel } from './capture-ui.js';
 import { findRunningClockAcrossSessions } from './clock-flow.js';
 import { contentAreaEl, extraMenuBtn, godModeBtn, minibufferSearchEl, modelineBarEl, modelineEl, navBackBtn, outlineEl, statusEl, topBarEl } from './dom.js';
 import { setStatus } from './editing.js';
-import { renderFileMenu, stopBrowsing } from './file-menu.js';
+import { renderFileMenu } from './file-menu.js';
+import { closeFileScreen } from './file-screen.js';
 import { FLOATING_BUTTON_GAP, FLOATING_BUTTON_SIZE, positionFloatingKeyboard } from './floating-keyboard.js';
 import { renderExtraMenu, renderMoreMenu } from './menus.js';
 import { renderArchiveRefilePanel } from './archive-refile-panel.js';
@@ -59,7 +60,8 @@ export function anyOverlayPanelOpen() {
     S.moreOpen ||
     S.historyOpen ||
     !!S.pendingTodoWorkflowChoice ||
-    !!S.pendingRefile
+    !!S.pendingRefile ||
+    !!S.fileScreen
   );
 }
 
@@ -70,8 +72,6 @@ export function anyOverlayPanelOpen() {
 export function closeAllOverlayPanels() {
   if (S.fileMenuOpen) {
     S.fileMenuOpen = false;
-    S.fileMenuStep = null;
-    stopBrowsing();
     renderFileMenu();
   }
   if (S.settingsOpen) {
@@ -116,6 +116,7 @@ export function closeAllOverlayPanels() {
     S.pendingTodoWorkflowChoice = null;
     renderTodoWorkflowPanel();
   }
+  if (S.fileScreen) closeFileScreen();
   if (S.pendingRefile) {
     S.pendingRefile = null;
     renderArchiveRefilePanel();

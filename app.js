@@ -41,7 +41,7 @@ import { confirmDialog } from './src-browser/dialogs.js';
 import { afterDocumentLoaded, saveCurrent } from './src-browser/documents-io.js';
 import { commitAndRender, setStatus } from './src-browser/editing.js';
 import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, reloadCurrentDocumentFromDisk } from './src-browser/external-sync.js';
-import { renderFileMenu, stopBrowsing } from './src-browser/file-menu.js';
+import { renderFileMenu } from './src-browser/file-menu.js';
 import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, withArmedShift } from './src-browser/floating-keyboard.js';
 import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
 import { apptTick, loadApptSettings, requestApptScan } from './src-browser/appt-flow.js';
@@ -520,13 +520,8 @@ S.activeTabId = null;
 S.nextTabId = 1;
 
 S.state = { documentId: null, doc: null, startupConfig: null, storageKind: null, localVariables: null };
-// File menu: whether the panel is open, and if so, which action's
-// backend-choice sub-step is showing (null = the main New/Open/Save/Save
-// As/Export list; otherwise 'open' | 'saveas' | 'export'). New no longer
-// has a sub-step at all -- it creates an in-memory-only document
-// directly, no backend/destination choice up front.
+// File menu: whether the panel is open (Open and Save As leave it for the screen in src-browser/file-screen.js).
 S.fileMenuOpen = false;
-S.fileMenuStep = null;
 S.moreMenuStep = null; // null | 'export' -- see renderMoreMenuContent
 // Export sub-flow: which format was picked (null | 'markdown' | 'html'),
 // tracked separately since the export flow has its own two steps
@@ -543,20 +538,8 @@ S.importVcardToNewBuffer = false; // Import's own "To: *new buffer*" checkbox --
 S.importPickingHeading = false; // true while Import's own "Choose a heading..." heading list is shown, mirroring exportPickingHeading
 S.importCleanMode = true; // Google's and Apple's own real, non-standard vCard export quirks (an 8th ADR component read as a human-readable label; "\:" unescaped to ":"; Apple's own X-ABLabel placeholder forms interpreted rather than shown verbatim) -- on by default, since most real-world vCard imports into this app are likely to come from one of these two sources
 
-// File-browser state: browseBackend non-null means the "open" step is
-// currently showing a navigable folder/file listing (see startBrowsing
-// below) instead of the plain New/Open/Save/Save As button row.
-// browsePath is '' at the configured root, or a path within it (e.g.
-// 'journal') when navigated into a subdirectory. browseEntries is null
-// while loading, an array once loaded (possibly empty), or unchanged
-// (stale, from before the error) if the load fails -- browseError is
-// what actually signals the failure state, checked separately so a
-// failed reload doesn't wipe out the previously-successful listing the
-// user might still want to navigate via Back.
-S.browseBackend = null;
-S.browsePath = '';
-S.browseEntries = null;
-S.browseError = null;
+// The Open / Save As screen (src-browser/file-screen.js); null while closed.
+S.fileScreen = null;
 S.settingsOpen = false;
 S.searchOpen = false;
 S.confirmDialogOpen = false; // true only while confirmDialog()'s own overlay is showing -- lets the global keydown handler cleanly step aside rather than racing this dialog's own key handling
@@ -952,8 +935,6 @@ fileMenuBtn.addEventListener('click', () => {
   const opening = !S.fileMenuOpen;
   closeAllOverlayPanels();
   S.fileMenuOpen = opening;
-  S.fileMenuStep = null;
-  stopBrowsing();
   render();
   renderFileMenu();
 });

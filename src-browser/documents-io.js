@@ -23,7 +23,7 @@ import { NAVIGATION_BACK_STACK_LIMIT } from './constants.js';
 import { captureBtn, moreBtn, searchBtn, viewMenuBtn } from './dom.js';
 import { commitTextModeIfActive, persistHistoryInBackground, setStatus } from './editing.js';
 import { activeDiskAdapter, hideExternalChangeBanner, reloadCurrentDocumentFromDisk, resolveSaveConflict } from './external-sync.js';
-import { closeFileMenu, renderFileMenu } from './file-menu.js';
+import { closeFileMenu } from './file-menu.js';
 import { isGithubConfigured } from './github-adapter.js';
 import { pickAndImportFile } from './input-file-adapter.js';
 import { navigateToHeading, syncNavBackButtonVisibility } from './navigation.js';
@@ -314,85 +314,6 @@ export async function openFileLink(resolution, containingHeading = null) {
   }
 }
 
-/** Sets up and shows the navigable file browser for `backend`
- *  ('github' | 'webdav') at the configured root, then kicks off the
- *  first listing load. This is what File \u2192 Open \u2192 GitHub/WebDAV
- *  actually does now -- see openGithubByPrompt/openWebdavByPrompt
- *  below for the manual-entry fallback this replaces as the default
- *  path, still reachable from within the browser UI itself. */
-export function startBrowsing(backend) {
-  S.browseBackend = backend;
-  S.browsePath = '';
-  S.browseEntries = null;
-  S.browseError = null;
-  renderFileMenu();
-  loadBrowseEntries();
-}
-
-/** Fetches the listing for the current browsePath from whichever
- *  adapter browseBackend points at, updating browseEntries/browseError
- *  and re-rendering when done. Split out from startBrowsing so
- *  navigating into a folder (which doesn't reset browsePath to root)
- *  can call just this part again. */
-export async function loadBrowseEntries() {
-  const adapter = S.browseBackend === 'github' ? githubAdapter : webdavAdapter;
-  const requestedPath = S.browsePath; // captured now -- if the user navigates again before this resolves, a stale response must not overwrite the newer one
-  S.browseEntries = null;
-  S.browseError = null;
-  renderFileMenu();
-  try {
-    const entries = await adapter.list(requestedPath);
-    if (requestedPath !== S.browsePath || !S.browseBackend) return; // superseded by a newer navigation, or the browser was closed while this was in flight
-    S.browseEntries = entries;
-  } catch (err) {
-    if (requestedPath !== S.browsePath || !S.browseBackend) return;
-    S.browseError = err.message;
-  }
-  renderFileMenu();
-}
-
-export async function openGithubByPrompt() {
-  if (commitTextModeIfActive()) render();
-  const config = await getGithubConfig(kv);
-  S.githubConfig = config;
-  const path = await promptText(`Path of the file in ${config.owner}/${config.repo} (e.g. notes.org):`);
-  if (!path) return;
-  await openRemotePath(path, 'github', githubAdapter, 'GitHub');
-}
-
-export async function openFromGithub() {
-  if (commitTextModeIfActive()) render();
-  const config = await getGithubConfig(kv);
-  S.githubConfig = config;
-  if (!isGithubConfigured(config)) {
-    setStatus('GitHub is not set up yet \u2014 open Settings first.');
-    closeFileMenu();
-    return;
-  }
-  startBrowsing('github');
-}
-
-export async function openWebdavByPrompt() {
-  if (commitTextModeIfActive()) render();
-  const config = await getWebdavConfig(kv);
-  S.webdavConfig = config;
-  const path = await promptText('Path of the file on the WebDAV server (e.g. notes.org):');
-  if (!path) return;
-  await openRemotePath(path, 'webdav', webdavAdapter, 'WebDAV');
-}
-
-export async function openFromWebdav() {
-  if (commitTextModeIfActive()) render();
-  const config = await getWebdavConfig(kv);
-  S.webdavConfig = config;
-  if (!isWebdavConfigured(config)) {
-    setStatus('WebDAV is not set up yet \u2014 open Settings first.');
-    closeFileMenu();
-    return;
-  }
-  startBrowsing('webdav');
-}
-
 export async function saveCurrent() {
   if (!S.state.storageKind) return;
   if (commitTextModeIfActive()) render();
@@ -468,7 +389,8 @@ export async function saveAsFilesystem() {
   }
 }
 
-export async function saveAsGithub() {
+/** @param {string} [chosenPath] the path from the Save As screen; asked for in a prompt when omitted */
+export async function saveAsGithub(chosenPath) {
   if (!S.state.doc) return;
   if (commitTextModeIfActive()) render();
   const config = await getGithubConfig(kv);
@@ -478,7 +400,7 @@ export async function saveAsGithub() {
     closeFileMenu();
     return;
   }
-  const path = await promptText(`Save to which path in ${config.owner}/${config.repo}?`, suggestedSaveAsName('notes.org'), { okLabel: 'Save' });
+  const path = chosenPath || (await promptText(`Save to which path in ${config.owner}/${config.repo}?`, suggestedSaveAsName('notes.org'), { okLabel: 'Save' }));
   if (!path) return;
   try {
     S.state.documentId = path;
@@ -504,7 +426,8 @@ export async function saveAsGithub() {
   }
 }
 
-export async function saveAsWebdav() {
+/** @param {string} [chosenPath] the path from the Save As screen; asked for in a prompt when omitted */
+export async function saveAsWebdav(chosenPath) {
   if (!S.state.doc) return;
   if (commitTextModeIfActive()) render();
   const config = await getWebdavConfig(kv);
@@ -514,7 +437,7 @@ export async function saveAsWebdav() {
     closeFileMenu();
     return;
   }
-  const path = await promptText('Save to which path on the WebDAV server?', suggestedSaveAsName('notes.org'), { okLabel: 'Save' });
+  const path = chosenPath || (await promptText('Save to which path on the WebDAV server?', suggestedSaveAsName('notes.org'), { okLabel: 'Save' }));
   if (!path) return;
   try {
     S.state.documentId = path;
@@ -540,10 +463,11 @@ export async function saveAsWebdav() {
   }
 }
 
-export async function saveAsImport() {
+/** @param {string} [chosenName] the name from the Save As screen; asked for in a prompt when omitted */
+export async function saveAsImport(chosenName) {
   if (!S.state.doc) return;
   if (commitTextModeIfActive()) render();
-  const name = await promptText('File name to save as:', suggestedSaveAsName('untitled.org'), { okLabel: 'Save' });
+  const name = chosenName || (await promptText('File name to save as:', suggestedSaveAsName('untitled.org'), { okLabel: 'Save' }));
   if (!name) return;
   S.state.documentId = name;
   S.state.storageKind = 'input';
