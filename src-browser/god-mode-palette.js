@@ -12,7 +12,6 @@ import { getBufferReadOnly, getCycleOpenArchivedTrees, getExtraMenu } from '../s
 import { resolveTodoSequences } from '../src/todo-cycle.js';
 import { canRedo, canUndo } from '../src/undo-history.js';
 import { S } from './app-state.js';
-import { openArchiveConfirmPrompt, unarchiveHeadingToOriginalLocation } from './archive-flow.js';
 import { openAttachChoicePrompt } from './attachments-flow.js';
 import { openCalendarPanel } from './calendar-panel.js';
 import { openCapturePrompt, renderCapturePanel } from './capture-ui.js';
@@ -39,7 +38,7 @@ import { cutSubtree, extraMenuTargetHeading, narrowToHeading, pasteSubtree, wide
 import { cyclePriorityFor, openEffortEditor } from './heading-commands.js';
 import { moveArrowHorizontalInTable, moveArrowVertical, moveHeadingFocus, moveKeyboardFocus, moveTableCellFocus, rowNearViewportTop, setKeyboardFocusToRow, moveToParentHeading, moveToSameLevelHeading, setKeyboardFocusToHeading, enterInsertModeAtCurrentLine, visibleHeadingsInOrder } from './keyboard-focus.js';
 import { renderMoreMenu, runExtraMenuEntry } from './menus.js';
-import { openRefilePicker } from './refile-flow.js';
+import { openArchiveRefilePanel } from './archive-refile-panel.js';
 import { scrollFocusedHeadingIntoView } from './render-helpers.js';
 import { render } from './render.js';
 import { getCaptureTemplates } from './settings.js';
@@ -205,7 +204,7 @@ export const GOD_MODE_ACTIONS = {
   'C-c C-t': () => S.keyboardFocusedHeading && openTodoOrPickWorkflow(S.keyboardFocusedHeading),
   'C-c ,': () => cyclePriorityFor(S.keyboardFocusedHeading),
   'C-c C-x e': () => openEffortEditor(S.keyboardFocusedHeading),
-  'C-c C-w': () => S.keyboardFocusedHeading && openRefilePicker(S.keyboardFocusedHeading),
+  'C-c C-w': () => S.keyboardFocusedHeading && openArchiveRefilePanel(S.keyboardFocusedHeading),
   'C-c C-a': () => S.keyboardFocusedHeading && openAttachChoicePrompt(S.keyboardFocusedHeading, { viaKeys: true }),
   'C-c C-x C-i': () => S.keyboardFocusedHeading && clockInHeading(S.keyboardFocusedHeading),
   'C-c C-x C-o': () => {
@@ -464,9 +463,9 @@ export function paletteCommandList() {
     { id: 'move-down', label: 'Move subtree down', orgName: 'org-move-subtree-down', keys: 'M-<down>', group: 'Heading', needs: HEAD, run: chord('M-<down>') },
     { id: 'cut', label: 'Cut subtree', orgName: 'org-cut-subtree', keys: 'C-c C-x C-w', group: 'Heading', needs: HEAD, run: chord('C-c C-x C-w') },
     { id: 'paste', label: 'Paste subtree', orgName: 'org-paste-subtree', keys: 'C-c C-x C-y', group: 'Heading', needs: HEAD, run: chord('C-c C-x C-y') },
-    { id: 'archive', label: 'Archive subtree', orgName: 'org-archive-subtree', group: 'Heading', needs: [...HEAD, 'notArchived'], run: onHeading(openArchiveConfirmPrompt) },
-    { id: 'unarchive', label: 'Unarchive (restore)', orgName: 'org-unarchive-subtree', group: 'Heading', needs: [...HEAD, 'archived'], run: onHeading(unarchiveHeadingToOriginalLocation) },
-    { id: 'refile', label: 'Refile', orgName: 'org-refile', keys: 'C-c C-w', group: 'Heading', needs: HEAD, run: onHeading(openRefilePicker) },
+    { id: 'archive', label: 'Archive subtree', orgName: 'org-archive-subtree', group: 'Heading', needs: [...HEAD, 'notArchived'], run: onHeading(openArchiveRefilePanel) },
+    { id: 'unarchive', label: 'Unarchive (restore)', orgName: 'org-unarchive-subtree', group: 'Heading', needs: [...HEAD, 'archived'], run: onHeading(openArchiveRefilePanel) },
+    { id: 'refile', label: 'Refile', orgName: 'org-refile', keys: 'C-c C-w', group: 'Heading', needs: HEAD, run: onHeading(openArchiveRefilePanel) },
     { id: 'attach', label: 'Attachments', orgName: 'org-attach', keys: 'C-c C-a', group: 'Heading', keywords: ['attach', 'file', 'audio', 'record'], needs: HEAD, run: onHeading(openAttachChoicePrompt) },
     { id: 'narrow', label: 'Narrow to subtree', orgName: 'org-narrow-to-subtree', keys: 'C-x n s', group: 'Heading', needs: ['doc', 'heading'], run: chord('C-x n s') },
     { id: 'widen', label: 'Widen', orgName: 'widen', keys: 'C-x n w', group: 'Heading', needs: ['doc', 'narrowed'], run: () => widen() },

@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v488 — One panel for Archive, Restore and Refile
+Archive, Restore and Refile now share one panel in two parts, each scrolling on its own: what the archive or restore will do, and a searchable list of refile targets with the details of the one you chose. Archive (or Restore), Refile and Cancel stay at the bottom at a fixed size, and Cancel has focus. It opens from the heading menu, the Agenda row actions, the palette and the swipe.
+
 * v487 — Cleaner Agenda titles
 A timestamp written in a heading's title no longer repeats in its Agenda row, since the day and time column already show it; each day of a range says which day it is, such as (day 2/3). The setting org-xx-agenda-hide-title-stamps turns it off.
 

@@ -1,13 +1,12 @@
 // @ts-check
 // Extracted from app.js: archive flow.
 import { buildArchivedClone, buildRestoredClone, getArchiveLocation, getProperty, insertAtArchiveLocation, parseArchiveLocation, resolveArchiveFileId } from '../src/archive-model.js';
+import { displayName, restoreDestination } from '../src/archive-refile-details.js';
 import { resolveOlpTarget } from '../src/capture-template.js';
 import { removeHeading } from '../src/heading-edit.js';
 import { S } from './app-state.js';
-import { openButtonChoiceModal } from './dialogs.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { writeToOtherFile } from './external-sync.js';
-import { openRefilePicker } from './refile-flow.js';
 
 export function getArchiveDestinationLabel(heading) {
   const location = getArchiveLocation(S.state.doc, heading);
@@ -18,26 +17,8 @@ export function getArchiveDestinationLabel(heading) {
       ? `this file, under "${headlinePart.trim().replace(/^\*+\s*/, '')}"`
       : 'this file (top level)'
     : headlinePart.trim()
-      ? `"${targetFileId}", under "${headlinePart.trim().replace(/^\*+\s*/, '')}"`
-      : `"${targetFileId}" (top level)`;
-}
-
-/** The action menu's own entry point for Archive on a non-archived
- *  heading -- always shows the Refile/Cancel/OK prompt (unconditional
- *  now that org-archive-confirm has been removed), offering Refile as
- *  a genuine alternative right there rather than a plain OK/Cancel,
- *  since often the actual intent behind reaching for Archive is "get
- *  this out of my active outline," which Refile serves just as well
- *  for a destination that isn't the archive file specifically. */
-export function openArchiveConfirmPrompt(heading) {
-  openButtonChoiceModal({
-    label: `Archive "${heading.title || '(untitled)'}" to ${getArchiveDestinationLabel(heading)}?`,
-    buttons: [
-      { text: 'Refile\u2026', onClick: () => openRefilePicker(heading) },
-      { text: 'Cancel', onClick: () => {} },
-      { text: 'OK', onClick: () => archiveHeadingToLocation(heading) },
-    ],
-  });
+      ? `"${displayName(targetFileId)}", under "${headlinePart.trim().replace(/^\*+\s*/, '')}"`
+      : `"${displayName(targetFileId)}" (top level)`;
 }
 
 export async function archiveHeadingToLocation(heading) {
@@ -95,21 +76,13 @@ export async function archiveHeadingToLocation(heading) {
  * the tag/properties in place, at the top level of the file it's
  * already in, rather than guessing.
  */
-export async function unarchiveHeadingToOriginalLocation(heading) {
+export async function unarchiveHeadingToOriginalLocation(heading, { confirm = true } = {}) {
   const archiveFile = getProperty(heading, 'ARCHIVE_FILE') || null;
   const archiveOlpath = getProperty(heading, 'ARCHIVE_OLPATH') || '';
   const olpSegments = archiveOlpath ? archiveOlpath.split('/') : [];
 
-  const destinationLabel = !archiveFile
-    ? 'this file (no original location recorded \u2014 the archive tag will just be removed)'
-    : archiveFile === S.state.documentId
-      ? olpSegments.length > 0
-        ? `this file, under "${olpSegments.join(' / ')}"`
-        : 'this file (top level)'
-      : olpSegments.length > 0
-        ? `"${archiveFile}", under "${olpSegments.join(' / ')}"`
-        : `"${archiveFile}" (top level)`;
-  if (!window.confirm(`Restore "${heading.title}" to ${destinationLabel}?`)) {
+  const destinationLabel = restoreDestination(heading, S.state.documentId).label;
+  if (confirm && !window.confirm(`Restore "${heading.title}" to ${destinationLabel}?`)) {
     return;
   }
 

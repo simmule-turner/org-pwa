@@ -1,6 +1,6 @@
 // @ts-check
 // Extracted from app.js: gestures structure.
-import { findContainer, isArchivedInPlace, shiftLevels } from '../src/archive-model.js';
+import { findContainer, shiftLevels } from '../src/archive-model.js';
 import { cycleFoldLevel } from '../src/fold-state.js';
 import { removeHeading } from '../src/heading-edit.js';
 import { getCycleOpenArchivedTrees } from '../src/local-variables.js';
@@ -10,7 +10,7 @@ import { findHeadingByOutlinePath } from '../src/refile.js';
 import { isDoneKeyword, resolveTodoSequence, setTodoState } from '../src/todo-cycle.js';
 import { agendaStepAnchor } from './agenda-format.js';
 import { S } from './app-state.js';
-import { openArchiveConfirmPrompt, unarchiveHeadingToOriginalLocation } from './archive-flow.js';
+import { openArchiveRefilePanel } from './archive-refile-panel.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { confirmDialog } from './dialogs.js';
 import { expandScopeWithAncestors, listItemDescendantCount, paragraphHasContent, tableHasContent } from './doc-helpers.js';
@@ -85,10 +85,8 @@ export function attachSlideRightToComplete(el, heading, opts = {}) {
     if (hasActiveTodo) {
       applyTodoTransition(heading, () => setTodoState(heading, sequence.doneKeywords[0], sequence));
       onDone();
-    } else if (isArchivedInPlace(heading)) {
-      unarchiveHeadingToOriginalLocation(heading);
     } else {
-      openArchiveConfirmPrompt(heading);
+      openArchiveRefilePanel(heading);
     }
   };
 

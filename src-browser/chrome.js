@@ -16,7 +16,7 @@ import { setStatus } from './editing.js';
 import { renderFileMenu, stopBrowsing } from './file-menu.js';
 import { FLOATING_BUTTON_GAP, FLOATING_BUTTON_SIZE, positionFloatingKeyboard } from './floating-keyboard.js';
 import { renderExtraMenu, renderMoreMenu } from './menus.js';
-import { renderRefilePanel } from './refile-flow.js';
+import { renderArchiveRefilePanel } from './archive-refile-panel.js';
 import { renderMinibufferSearch, renderSearchPanel } from './search-ui.js';
 import { documentDisplayLabel, storageKindLabel } from './sync-helpers.js';
 import { renderTodoWorkflowPanel } from './todo-workflow.js';
@@ -118,7 +118,7 @@ export function closeAllOverlayPanels() {
   }
   if (S.pendingRefile) {
     S.pendingRefile = null;
-    renderRefilePanel();
+    renderArchiveRefilePanel();
   }
 }
 

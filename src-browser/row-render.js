@@ -11,7 +11,7 @@ import { getDragHandle, parseLispBoolean } from '../src/local-variables.js';
 import { parseLogbookEntries } from '../src/logbook.js';
 import { cycleHeadingTodo, cycleItemCheckbox, toggleFold } from '../src/outline-view-model.js';
 import { S } from './app-state.js';
-import { openArchiveConfirmPrompt, unarchiveHeadingToOriginalLocation } from './archive-flow.js';
+import { openArchiveRefilePanel } from './archive-refile-panel.js';
 import { GLOBAL_TODO_DEFAULT, SIDE_PANEL_MIN_WIDTH } from './constants.js';
 import { confirmDialog, openHeadingTextEditor } from './dialogs.js';
 import { contactPhotoValueForHeading, stripCommaEscapeApp } from './doc-helpers.js';
@@ -231,11 +231,7 @@ export function renderRow(row, todoSequence) {
               onClick: async () => {
                 S.actionMenuFor = null;
                 render();
-                if (isArchivedInPlace(row.node)) {
-                  await unarchiveHeadingToOriginalLocation(row.node);
-                } else {
-                  openArchiveConfirmPrompt(row.node);
-                }
+                openArchiveRefilePanel(row.node);
               },
             },
             {

@@ -92,7 +92,7 @@ The modeline (see [[#modeline][Modeline and minibuffer]]) shows the current file
 - *Fold and unfold*: tap the chevron to toggle a heading's subtree, or swipe left on a heading to cycle collapsed → children only → fully expanded.
 - *Move*: drag the grip at the right of a heading (Settings → Quick Settings → *Drag handle on headings* puts it on the left or turns it off) to move it with its subtree. The blue line snaps to the gap between two headings, and moving sideways steps through the levels that fit there, one step per level, moving right being deeper. From a right-hand grip you start at the deepest level and move left to come out; from a left-hand grip you start at the outermost and move right to go in. A tag names the result (*into* a heading, *same level as* one, or *top level*). Letting go over the top bar, or over the mode line and minibuffer (they turn red and say *Release to cancel*), or pressing Escape, cancels; the very top and bottom of the outline are still drops. The Up, Down, Promote and Demote buttons in the action menu do the same in single steps.
 - *Complete or archive*: swipe right. With an active TODO keyword it jumps straight to the sequence's first DONE-type keyword. Without one, including an already-DONE heading, it opens the Archive, Refile or Cancel prompt. An already-archived heading unarchives directly.
-- *Archive* (*Unarchive* for an archived heading) moves the subtree to its ~org-archive-location~, or back to where it came from, after confirming the destination (see [[#archiving][Archiving]]). The ~:ARCHIVE:~ tag and ~ARCHIVE_*~ properties are ordinary once the move lands and can be edited or removed in the general editor.
+- *Archive* (*Unarchive* for an archived heading) moves the subtree to its ~org-archive-location~, or back to where it came from, from a panel that shows the destination first (see [[#archiving][Archiving]]). The ~:ARCHIVE:~ tag and ~ARCHIVE_*~ properties are ordinary once the move lands and can be edited or removed in the general editor.
 - *Moving headings* (↑ ↓ ← →): ↑ and ↓ reorder a heading among its siblings, taking its subtree with it. ← promotes it one level, as a sibling right after its former parent. → demotes it one level, as the last child of the heading before it. At a boundary (first or last, top level, nothing to demote under) a brief status message says so.
 - *The general editor* (📋 *Edit details*) is a popup form with four sections:
   - *SCHEDULED, DEADLINE and a plain timestamp*: date and time pickers, a repeat selector (every N hours, days, weeks, months or years) and an optional warning delay (~-3d~ shows a deadline three days early). The three are independent, each with its own *Clear*. See [[#agenda][Agenda]] for how a plain timestamp differs (it doesn't carry forward, and lives in the title).
@@ -669,7 +669,7 @@ The Agenda's date-range line has a *Log* checkbox, off by default, like org's ~o
 :CUSTOM_ID: archiving
 :END:
 
-Tap a heading's title, then *Archive*, to move its subtree to the archive location (real org's ~org-archive-subtree~, ~C-c C-x C-s~ or ~C-c $~). A prompt names the destination and offers *OK*, *Cancel* or *Refile…* (see [[#refile][Refile]]).
+Tap a heading's title, then *Archive*, to move its subtree to the archive location (real org's ~org-archive-subtree~, ~C-c C-x C-s~ or ~C-c $~). A panel opens in two parts, each scrolling on its own: *Archive & details* names the destination and what will be added, and *Refile & details* lists places to move it instead (see [[#refile][Refile]]). *Archive*, *Refile* and *Cancel* stay at the bottom; *Cancel* has focus, so a stray tap does nothing.
 
 The moved heading gets an ~:ARCHIVE:~ tag and properties recording where it came from: ~ARCHIVE_TIME~, ~ARCHIVE_FILE~, ~ARCHIVE_OLPATH~, ~ARCHIVE_CATEGORY~, ~ARCHIVE_TODO~ and ~ARCHIVE_ITAGS~, as in org's ~org-archive-save-context-info~. The original is removed only after the copy is safely written, so a failure leaves it where it was.
 
@@ -689,7 +689,7 @@ Archiving to a different file works on GitHub and WebDAV only; a local or iOS-im
 :CUSTOM_ID: restoring-unarchive
 :END:
 
-Open the archive file (*File → Open* lists ~_archive~ files), tap the archived heading, then *Unarchive*. After a confirmation naming the destination, the heading moves back to its original file and place, loses ~:ARCHIVE:~ and the ~ARCHIVE_*~ properties, and gets its TODO state back from ~ARCHIVE_TODO~. As with archiving, it leaves the archive only after the write succeeds.
+Open the archive file (*File → Open* lists ~_archive~ files), tap the archived heading, then *Unarchive*. The same panel opens with *Restore* in place of *Archive*, naming the destination; the heading then moves back to its original file and place, loses ~:ARCHIVE:~ and the ~ARCHIVE_*~ properties, and gets its TODO state back from ~ARCHIVE_TODO~. As with archiving, it leaves the archive only after the write succeeds.
 
 A heading tagged ~:ARCHIVE:~ by hand, with no recorded ~ARCHIVE_FILE~, just has the tag and properties stripped in place. In the command palette it is *Unarchive (restore)* (~org-unarchive-subtree~). There is no separate list for browsing the archive.
 
@@ -698,7 +698,7 @@ A heading tagged ~:ARCHIVE:~ by hand, with no recorded ~ARCHIVE_FILE~, just has 
 :CUSTOM_ID: refile
 :END:
 
-Tap a heading's title, then *Archive*, then *Refile…* on the prompt, to move the subtree elsewhere in the outline or into another file (real org's ~org-refile~, also in the command palette). The picker lists each target by its full outline path, with your last five destinations under *RECENT* and the rest under *ALL TARGETS*. The subtree becomes the target's last child, with its levels adjusted. A subtree is never offered as its own destination.
+Tap a heading's title, then *Archive*, pick a target in the lower part of the panel and tap *Refile*, to move the subtree elsewhere in the outline or into another file (real org's ~org-refile~, also in the command palette). The list shows each target by its full outline path, with a search box above it (every word you type must match), with your last five destinations under *RECENT* and the rest under *ALL TARGETS*. The subtree becomes the target's last child, with its levels adjusted. A subtree is never offered as its own destination.
 
 Targets come from ~org-refile-targets~ (see [[#local-variables][Local Variables]] and [[#configuration][Configuration]]). The default is the current file, top-level headings only. Entries are separated by ~;~, each a file followed by criteria:
 

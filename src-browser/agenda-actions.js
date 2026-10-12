@@ -14,7 +14,7 @@ import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { openTimestampPickerPopup } from './dialogs.js';
 import { commitAndRender, performUndo, setStatus } from './editing.js';
 import { navigateToHeadingByPath, outlinePathForHeadingInDocument } from './navigation.js';
-import { openRefilePicker } from './refile-flow.js';
+import { openArchiveRefilePanel } from './archive-refile-panel.js';
 import { render } from './render.js';
 import { applyTodoTransition, renderTodoWorkflowPanel } from './todo-workflow.js';
 import { attachLongPress } from './ui-widgets.js';
@@ -192,7 +192,7 @@ export function openRowActions(/** @type {any} */ item) {
         onClick: () => rescheduleItem(item),
       },
       { label: 'Priority…', disabled: !changeable, onClick: () => choosePriority(item) },
-      { label: 'Refile…', disabled: !changeable, onClick: () => openRefilePicker(heading) },
+      { label: 'Refile…', disabled: !changeable, onClick: () => openArchiveRefilePanel(heading) },
       { label: 'Open heading', onClick: () => openItemHeading(item) },
     ],
   });

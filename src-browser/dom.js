@@ -90,6 +90,10 @@ export const refilePanel = document.getElementById('refilePanel');
 
 export const refilePanelBox = document.getElementById('refilePanelBox');
 
+export const archiveRefilePanel = document.getElementById('archiveRefilePanel');
+
+export const archiveRefilePanelBox = document.getElementById('archiveRefilePanelBox');
+
 export const externalChangeBanner = document.getElementById('externalChangeBanner');
 
 export const externalChangeText = document.getElementById('externalChangeText');

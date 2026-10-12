@@ -413,10 +413,8 @@ check('refile: criteria combine, and entries that cannot be understood are liste
   );
   await page.locator('.heading-title', { hasText: 'Inbox item' }).first().click();
   await page.locator('[aria-label="Archive"]').first().click();
-  await page.locator('button', { hasText: 'Refile' }).first().click();
   await page.waitForTimeout(900);
-  const body = await page.locator('body').innerText();
-  const panel = body.slice(body.indexOf('Refile "Inbox item"'));
+  const panel = await page.locator('#archiveRefilePanelBox').innerText();
   expect(panel.includes('Skipped target entry "current bogus=1"'), 'unknown criterion was not reported');
   expect(panel.includes('Skipped target entry "current regexp=\\("'), 'bad regexp was not reported');
   const offered = ['Projects', 'Projects / Alpha', 'Projects / Beta', 'Home / Garden'];
@@ -1220,8 +1218,9 @@ check('Extras menu: a quoted function is the palette command with that real Emac
   await pick('Unarch');
   expect((await status()).includes('Unarchive (restore)') && (await status()).includes('archived'), `an unarchived heading explains itself: ${await status()}`);
   await page.locator('.heading-title', { hasText: 'Old thing' }).first().click();
-  page.once('dialog', (d) => d.accept()); // it confirms first, naming where the heading is going back to
-  await pick('Unarch');
+  await pick('Unarch'); // opens the Restore & Refile panel, which names where the heading is going back to
+  await page.locator('#archiveRefilePanelBox [data-act="archive"]').click();
+  await page.waitForTimeout(300);
   expect(!(await text()).includes(':ARCHIVE:') && (await text()).includes('Old thing'), "org-unarchive-subtree restores an archived heading: the tag is gone and the heading is kept");
   await viewMenu(page, 'Org');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
@@ -2123,18 +2122,77 @@ check('add heading: inserts as a sibling right after the selected heading (the c
   await context.close();
 });
 
+check('Archive & Refile panel: two parts that scroll alone, three one-line buttons, Cancel focused, search and details for a target, Archive moves it, an archived heading gets Restore', async () => {
+  const { context, page, errors } = await freshPage();
+  const lots = Array.from({ length: 40 }, (_, i) => `* Target ${i + 1}`);
+  await newDocument(page, ['* Move me', ...lots, ''].join('\n'));
+  await page.locator('.heading-title', { hasText: 'Move me' }).first().click();
+  await page.locator('[aria-label="Archive"]').first().click();
+  await page.waitForSelector('#archiveRefilePanelBox [data-part="refile"] [data-target]');
+  const box = page.locator('#archiveRefilePanelBox');
+  const head = await box.innerText();
+  expect(head.toLowerCase().includes('1 \u00b7 archive & details') && head.toLowerCase().includes('2 \u00b7 refile & details') && head.includes('ARCHIVE_TIME'), `both parts: ${JSON.stringify(head.slice(0, 300))}`);
+  const labels = await box.locator('[data-act]').allInnerTexts();
+  expect(labels.join('|') === 'Archive|Refile|Cancel', `buttons: ${labels}`);
+  const heights = await box.locator('[data-act]').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+  expect(heights.every((h) => h === heights[0] && h >= 44), `buttons are one fixed height: ${heights}`);
+  expect(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-act')) === 'cancel', 'Cancel has focus');
+  expect(await box.locator('[data-act="refile"]').isDisabled(), 'Refile waits for a target');
+  const scrolls = await page.evaluate(() => {
+    const p2 = document.querySelector('#archiveRefilePanelBox [data-part="refile"] > div:nth-child(2)');
+    const before = document.querySelector('#archiveRefilePanelBox [data-part="archive"] > div:nth-child(2)').scrollTop;
+    p2.scrollTop = 200;
+    return { p2: p2.scrollTop, p1: document.querySelector('#archiveRefilePanelBox [data-part="archive"] > div:nth-child(2)').scrollTop, before, tall: p2.scrollHeight > p2.clientHeight };
+  });
+  expect(scrolls.tall && scrolls.p2 > 0 && scrolls.p1 === scrolls.before, `part 2 scrolls by itself: ${JSON.stringify(scrolls)}`);
+  await box.locator('input[type=search]').fill('target 31');
+  const shown = await box.locator('[data-part="refile"] [data-target]').allInnerTexts();
+  expect(shown.length > 0 && shown.every((t) => /target/i.test(t) && /1/.test(t)) && shown.length < 40, `search narrows: ${JSON.stringify(shown)}`);
+  await box.locator('[data-target]', { hasText: /^Target 31$/ }).first().click();
+  expect(!(await box.locator('[data-act="refile"]').isDisabled()) && (await box.innerText()).includes('Goes to'), 'a chosen target shows its details and enables Refile');
+  const same = await box.locator('[data-act]').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+  expect(same.join() === heights.join(), `buttons did not change size: ${same}`);
+  await box.locator('[data-act="cancel"]').click();
+  expect(!(await page.locator('#archiveRefilePanel').isVisible()), 'Cancel closes it');
+  expect((await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.state.doc.children[0].title)) === 'Move me', 'and nothing moved');
+
+  // Archive within the file: the heading gets the tag and goes under the archive location
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.state.doc.children[0].properties.ARCHIVE = '::* Archived';
+  });
+  await page.locator('.heading-title', { hasText: 'Move me' }).first().click();
+  await page.locator('[aria-label="Archive"]').first().click();
+  await page.waitForSelector('#archiveRefilePanelBox [data-act="archive"]');
+  await page.locator('#archiveRefilePanelBox [data-act="archive"]').click();
+  await page.waitForTimeout(500);
+  const text = await page.evaluate(async () => (await import('/src/org-parser.js')).serializeOrg((await import('/src-browser/app-state.js')).S.state.doc));
+  expect(/\* Archived\n\*\* Move me.*:ARCHIVE:/s.test(text) || text.includes(':ARCHIVE:'), `archived: ${text.slice(-300)}`);
+
+  // an archived heading offers Restore in the same place
+  await page.locator('.heading-title', { hasText: 'Move me' }).first().click();
+  await page.locator('[aria-label="Unarchive (restore)"]').first().click();
+  await page.waitForSelector('#archiveRefilePanelBox [data-act="archive"]');
+  expect((await page.locator('#archiveRefilePanelBox [data-act="archive"]').innerText()) === 'Restore', 'an archived heading gets Restore');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  expect(!(await page.locator('#archiveRefilePanel').isVisible()), 'Escape closes it');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('refile: the destination used last is offered first, under RECENT', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Home\n* Work\n* Task one\n* Task two\n');
   const openPicker = async (title) => {
     await page.locator('.heading-title', { hasText: title }).first().click();
     await page.locator('[aria-label="Archive"]').first().click();
-    await page.locator('button', { hasText: 'Refile' }).first().click();
     await page.waitForTimeout(700);
   };
   await openPicker('Task one');
   expect((await page.locator('[data-recent-target]').count()) === 0, 'nothing is recent before the first refile');
-  await page.locator('.menu-list-item', { hasText: 'Home' }).first().click();
+  await page.locator('#archiveRefilePanelBox .menu-list-item', { hasText: 'Home' }).first().click();
+  await page.locator('#archiveRefilePanelBox [data-act="refile"]').click();
   await page.waitForTimeout(600);
 
   await openPicker('Task two');
