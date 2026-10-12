@@ -22,15 +22,17 @@
  * single-timestamp parser should decide on its own.
  */
 
-const TIMESTAMP_RE =
-  /^([<[])(\d{4})-(\d{2})-(\d{2})\s+\S+(?:\s+(\d{2}):(\d{2})(?:-(\d{2}):(\d{2}))?)?(?:\s+([.+]{1,2}\d+[hdwmy]))?(?:\s+(-\d+[hdwmy]))?([>\]])$/;
+// A whole timestamp: the date, then whatever sits between it and the closing bracket, split into words below. The weekday is
+// optional, as in Emacs, and a repeater and a warning may come in either order after the time.
+const TIMESTAMP_RE = /^([<[])(\d{4})-(\d{2})-(\d{2})((?:[ \t]+[^\s>\]]+)*)[ \t]*([>\]])$/;
+const WEEKDAY_WORD = /^[^\]+0-9>\s-]+$/; // Emacs: anything but a digit, "+", "-", a bracket or a space
+const TIME_WORD = /^(\d{1,2}):(\d{2})(?:-(\d{1,2}):(\d{2}))?$/;
+const REPEATER_WORD = /^(?:\+\+|\.\+|\+)\d+[hdwmy]$/;
+const WARNING_WORD = /^--?\d+[hdwmy]$/;
 
-// Same shape as TIMESTAMP_RE but NOT anchored to the whole string and
-// marked global, for finding a timestamp embedded anywhere within a
-// larger string (a heading title, a line of body text) rather than
-// requiring the entire string to be exactly one timestamp.
-const TIMESTAMP_SCAN_RE =
-  /([<[])(\d{4})-(\d{2})-(\d{2})\s+\S+(?:\s+(\d{2}):(\d{2})(?:-(\d{2}):(\d{2}))?)?(?:\s+([.+]{1,2}\d+[hdwmy]))?(?:\s+(-\d+[hdwmy]))?([>\]])/g;
+// The same opening and closing, not anchored to the whole string and marked global, for finding timestamps embedded anywhere in a
+// larger string (a heading title, a line of body text); each hit is then read by parseOrgTimestamp, which decides if it is one.
+const TIMESTAMP_SCAN_RE = /[<[]\d{4}-\d{2}-\d{2}[^<>[\]\n]*[>\]]/g;
 
 /** @returns parsed timestamp object, or null if `raw` isn't a recognizable org timestamp. */
 function parseOrgTimestamp(raw) {
@@ -38,9 +40,27 @@ function parseOrgTimestamp(raw) {
   const m = TIMESTAMP_RE.exec(raw.trim());
   if (!m) return null;
 
-  const [, open, y, mo, d, h, min, endH, endMin, repeater, delay, close] = m;
+  const [, open, y, mo, d, rest, close] = m;
   if (open === '<' && close !== '>') return null;
   if (open === '[' && close !== ']') return null;
+
+  const words = rest.split(/[ \t]+/).filter(Boolean);
+  if (words.length > 0 && WEEKDAY_WORD.test(words[0])) words.shift();
+  let h;
+  let min;
+  let endH;
+  let endMin;
+  let repeater = null;
+  let delay = null;
+  for (const word of words) {
+    // Emacs takes the time only ahead of the repeater and the warning (a later one is read but ignored)
+    const time = TIME_WORD.exec(word);
+    if (time) {
+      if (h === undefined && repeater === null && delay === null) [, h, min, endH, endMin] = time;
+    } else if (REPEATER_WORD.test(word) && repeater === null) repeater = word;
+    else if (WARNING_WORD.test(word) && delay === null) delay = word;
+    else return null;
+  }
 
   const hasTime = h !== undefined;
   const date = new Date(Number(y), Number(mo) - 1, Number(d), hasTime ? Number(h) : 0, hasTime ? Number(min) : 0);
@@ -55,8 +75,8 @@ function parseOrgTimestamp(raw) {
     date,
     hasTime,
     endDate,
-    repeater: repeater || null,
-    delay: delay || null,
+    repeater,
+    delay,
     raw,
   };
 }

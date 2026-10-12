@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v497 — Timestamps read the way Emacs reads them
+A timestamp without a weekday (=<2026-10-11>=), with a one-digit hour (=9:05=), or with the warning before the repeater (=-3d +1w=) is now understood, and a =--2d= warning is kept; before, a missing weekday made the repeater or warning vanish. A new test compares about 1,700 timestamp spellings and 26 weekdays with what Emacs itself reports.
+Verified: the timestamp oracle, plus the timestamp, repeat and agenda checks.
+
 * v496 — Long press works over the whole row
 A long press on a Recently opened entry removes it wherever you press. Over a bracket or other text it used to start the phone's text selection instead; menu rows no longer select text.
 Verified: the Recently opened removal check.
