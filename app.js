@@ -336,7 +336,7 @@ document.addEventListener('pointerdown', (e) => {
     { open: () => S.extraMenuOpen, panel: extraMenuPanel, btn: extraMenuBtn, close: () => { S.extraMenuOpen = false; renderExtraMenu(); } },
   ];
   for (const menu of popupMenus) {
-    if (menu.open() && !menu.panel.contains(/** @type {Node} */ (e.target)) && !menu.btn.contains(/** @type {Node} */ (e.target))) {
+    if (menu.open() && !(/** @type {Element} */ (e.target).closest?.('.ui-overlay')) && !menu.panel.contains(/** @type {Node} */ (e.target)) && !menu.btn.contains(/** @type {Node} */ (e.target))) {
       menu.close();
     }
   }

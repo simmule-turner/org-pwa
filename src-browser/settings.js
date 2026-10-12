@@ -518,7 +518,7 @@ export async function setOpenTabs(kvAdapter, tabs, activeIndex) {
 
 // ---- recently opened files ------------------------------------------------
 
-const RECENT_FILES_STORE_LIMIT = 30;
+const RECENT_FILES_STORE_LIMIT = 6; // the five shown plus the open file, which is never listed; a removed entry must not be replaced by an older one
 
 export async function getRecentFiles(kvAdapter) {
   return getJson(kvAdapter, KEYS.recentFiles, []);

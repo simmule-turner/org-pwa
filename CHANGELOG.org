@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v495 — Removing a recent file behaves
+Long-pressing a Recently opened entry now removes just that entry: the File menu stays open, the file is not opened by the release that follows, and answering the question no longer closes the menu. The list also keeps only the five shown (plus the open file), so a removed entry is not replaced by an older hidden one.
+Verified: removing all five entries one by one, bottom first.
+
 * v494 — Open and Save As in one step
 File > Open and File > Save As now go straight to one screen with a GitHub / Local file / WebDAV picker that opens on the type you used last, so the extra "where from?" step is gone. GitHub and WebDAV show their folders at once, with an Enter path… field; Save As asks before replacing a file; a backend you haven't set up says so. Recently opened shows five, and a long press removes one entry.
 Verified: the new screen's check, plus local file, WebDAV, conflict, platform and palette checks.

@@ -51,7 +51,17 @@ export async function renderRecentFilesSection(container) {
       closeFileMenu();
       openRecentFile(entry.documentId, entry.storageKind);
     });
+    // a long press removes the entry; the release that follows it must not also open the file, and the menu stays where it is
+    const openIt = item.onclick;
+    item.addEventListener('pointerdown', () => delete item.dataset.longPressFired);
     attachLongPress(item, () => confirmRemoveRecentFile(entry.documentId, entry.storageKind));
+    item.onclick = (e) => {
+      if (item.dataset.longPressFired) {
+        delete item.dataset.longPressFired;
+        return;
+      }
+      openIt?.call(item, e);
+    };
     container.appendChild(item);
   }
 }

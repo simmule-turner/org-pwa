@@ -2428,6 +2428,36 @@ check('Open / Save As screen: one screen with a GitHub / Local file / WebDAV pic
   await context.close();
 });
 
+check('Recently opened: a long press removes that entry (the last one too) without opening it or closing the File menu, and the list empties', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* One\n');
+  await page.evaluate(async () => {
+    const { recordRecentFile } = await import('/src-browser/settings.js');
+    const { kv } = await import('/src-browser/singletons.js');
+    for (const n of ['a', 'b', 'c', 'd', 'e']) await recordRecentFile(kv, `${n}.org`, 'github');
+  });
+  await page.click('#fileMenuBtn');
+  const items = page.locator('#fileMenuPanel [role=menuitem]', { hasText: '(GitHub)' });
+  await items.first().waitFor();
+  expect((await items.count()) === 5, `five shown, got ${await items.count()}`);
+  for (let left = 5; left > 0; left--) {
+    const item = items.nth(left - 1); // always the bottom entry
+    const b = await item.boundingBox();
+    await page.mouse.move(b.x + 10, b.y + b.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(800);
+    await page.mouse.up();
+    const sure = page.locator('.ui-overlay', { hasText: 'from the recently opened list?' });
+    await sure.waitFor();
+    await sure.getByText('Remove', { exact: true }).click();
+    await page.waitForTimeout(250);
+    expect(await page.locator('#fileMenuPanel').isVisible(), 'the File menu stays open');
+    expect((await items.count()) === left - 1, `${left - 1} left, got ${await items.count()}`);
+  }
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('conflict: edits in different places merge automatically, keeping both', async () => {
   dav.reset({ 'notes.org': SAMPLE });
   const { context, page } = await freshPage(main, { withDav: true });
