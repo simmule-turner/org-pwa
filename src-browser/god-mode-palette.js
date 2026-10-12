@@ -117,6 +117,21 @@ function insertHeadingSmart(opts) {
   }
 }
 
+/** Shift+arrow, from the keyboard or the floating S then an arrow: in a table it moves between cells; on a focused heading
+ *  it does what the heading's action buttons do (up and down move it, left promotes, right demotes); with nothing
+ *  focused, up and down move focus to the previous or next heading.
+ * @param {'up'|'down'|'left'|'right'} direction */
+export function shiftArrow(direction) {
+  if (S.keyboardFocusedBodyRow && S.keyboardFocusedBodyRow.rowType === 'table') {
+    const [dr, dc] = { up: [-1, 0], down: [1, 0], left: [0, -1], right: [0, 1] }[direction];
+    moveTableCellFocus(dr, dc);
+  } else if (S.keyboardFocusedHeading) {
+    /** @type {any} */ (GOD_MODE_ACTIONS)['M-<' + direction + '>']();
+  } else if (direction === 'up' || direction === 'down') {
+    moveHeadingFocus(direction === 'up' ? -1 : 1);
+  }
+}
+
 /** god-mode's own action table -- maps a normalized chord string (see
  *  src/god-mode.js) to a callback, one entry per row in the reference
  *  document this feature was built from. Every action here operates
@@ -293,10 +308,10 @@ export const GOD_MODE_ACTIONS = {
   'C-s': () => searchBtn.click(),
   '<up>': () => moveArrowVertical(-1),
   '<down>': () => moveArrowVertical(1),
-  'S-<up>': () => moveHeadingFocus(-1),
-  'S-<down>': () => moveHeadingFocus(1),
-  'S-<left>': () => moveTableCellFocus(0, -1),
-  'S-<right>': () => moveTableCellFocus(0, 1),
+  'S-<up>': () => shiftArrow('up'),
+  'S-<down>': () => shiftArrow('down'),
+  'S-<left>': () => shiftArrow('left'),
+  'S-<right>': () => shiftArrow('right'),
   'C-c C-x C-w': () => {
     if (S.keyboardFocusedHeading) cutSubtree(S.keyboardFocusedHeading);
   },

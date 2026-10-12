@@ -2297,6 +2297,29 @@ check('Save As and Query Replace ask in the app, not in the browser: Enter accep
   await context.close();
 });
 
+check('floating keyboard: S then an arrow acts on the focused heading like Shift+arrow on a laptop (up, down, promote, demote)', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* One\n* Two\n* Three\n');
+  const fk = page.locator('#floatingKeyboard');
+  const titles = () => page.locator('.heading-title').allTextContents().then((t) => t.map((x) => x.trim()).join(','));
+  const top = () => page.evaluate(async () => { const { S } = await import('/src-browser/app-state.js'); return S.state.doc.children.length; });
+  await page.click('#godModeBtn');
+  await fk.waitFor({ state: 'visible' });
+  await fk.locator('[data-fk-key=ArrowDown]').click(); // focus Two
+  await fk.locator('[data-fk-shift]').click();
+  await fk.locator('[data-fk-key=ArrowRight]').click();
+  await page.waitForTimeout(150);
+  expect((await top()) === 2, `S then Right demoted it under One: ${await top()} top-level headings`);
+  await fk.locator('[data-fk-key=ArrowLeft]').click(); // S stays on after an arrow
+  await page.waitForTimeout(150);
+  expect((await top()) === 3, `S then Left promoted it again: ${await top()} top-level headings`);
+  await fk.locator('[data-fk-key=ArrowUp]').click();
+  await page.waitForTimeout(150);
+  expect((await titles()).startsWith('Two,One'), `S then Up moved the heading up: ${await titles()}`);
+  expect(errors.length === 0, `no errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('heading keys: Shift+arrow and Alt+arrow on a focused heading move it (up, down), promote it (left) and demote it (right)', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* One\n* Two\n* Three\n');

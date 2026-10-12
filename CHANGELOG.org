@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v505 — Floating keyboard matches the laptop
+The floating keyboard's S then an arrow now does what Shift+arrow does on a laptop: on a focused heading, up and down move it among its siblings, left promotes and right demotes; in a table they still move between cells. Both keyboards now share one action, so they cannot drift apart. To walk headings, use the plain arrows or the =c= keys.
+Verified: tests, lint, type check, and the floating keyboard, heading keys, heading actions, god-mode, table and keyboard smoke checks.
+
 * v504 — Heading arrows on the keyboard
 On a laptop, Shift+arrow or Alt+arrow on a focused heading now moves it up or down, promotes it (left) or demotes it (right), as the heading's action buttons do; before, Alt+arrow did nothing and Shift+arrow only worked in tables. In the wide action row, ↑ ↓ now sit after Delete and before ← →.
 Verified: tests, lint, type check, and the heading keys, heading actions, god-mode, table and keyboard smoke checks.

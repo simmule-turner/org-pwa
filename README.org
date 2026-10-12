@@ -1841,7 +1841,7 @@ The translation rules follow real god-mode.el (github.com/emacsorphanage/god-mod
 |---+---+---|
 | ~↓~, ~↑~ | ~<down>~, ~<up>~ | Next or previous visible line; inside a table, the next or previous row |
 | ~←~, ~→~ | ~<left>~, ~<right>~ | Collapse or expand the heading; inside a table, the previous or next column |
-| ~S-↓~, ~S-↑~ | ~S-<down>~, ~S-<up>~ | Next or previous heading, from anywhere (from body text, ~S-↑~ goes first to its own heading) |
+| ~S-↓~, ~S-↑~, ~S-←~, ~S-→~ (the floating *S* then an arrow, or Shift+arrow) | ~S-<down>~, ~S-<up>~, ~S-<left>~, ~S-<right>~ | On a focused heading: move it down or up among its siblings, promote it (left) or demote it (right), like the heading's action buttons. In a table they move between cells. With nothing focused, ~S-↓~ and ~S-↑~ go to the next or previous heading. On a laptop, ~Alt~+arrow moves, promotes and demotes the heading from anywhere, even in a table |
 | ~S-←~, ~S-→~ | ~S-<left>~, ~S-<right>~ | Table cell to the left or right |
 | ~i~ | (not a chord) | Edit the current line, cursor at the start (see ~a~ and ~e~) |
 | ~a~ | ~C-a~ | Before ~i~: put the cursor at the start of the line |
@@ -1849,7 +1849,6 @@ The translation rules follow real god-mode.el (github.com/emacsorphanage/god-mod
 | ~Tab~ | ~Tab~ | Cycle the focused heading's fold state |
 | ~S-Tab~ | ~S-Tab~ | Cycle the whole document (overview, fully shown) |
 | ~←~, ~→~ | ~<left>~, ~<right>~ | Collapse the focused heading fully, or expand it one level |
-| ~Shift+↑~, ~Shift+↓~, ~Shift+←~, ~Shift+→~ (or ~Alt~) | ~M-↑~, ~M-↓~, ~M-←~, ~M-→~ | On a laptop with a heading focused: move it up or down, promote it, demote it, like the heading's action buttons. Within a table, Shift+arrow still moves between cells |
 | ~g↑~, ~g↓~ | ~M-↑~, ~M-↓~ | Move the focused heading up or down among its siblings |
 | ~g←~, ~g→~ | ~M-←~, ~M-→~ | Promote or demote the focused heading with its subtree |
 | ~gS-←~, ~gS-→~ | ~M-S-←~, ~M-S-→~ | The same (there is no separate whole-subtree action) |
@@ -1910,7 +1909,7 @@ A phone has no ~Escape~ key, so a floating *[g]* button, the third floating butt
 
 The floating keyboard has the keys a phone keyboard can't type, in one row: *⌨*, ~Tab~, ~←~, ~→~, ~↑~, ~↓~, ~S~ and ~g~. Its thick accent-coloured border makes it easy to spot, and the keys are 34px wide and 44px tall so the row fits a 360px screen.
 
-- *S* shifts the next key (~Tab~ becomes ~S-Tab~, ~g~ becomes ~G~, the Control+Meta prefix). After an arrow it stays on, so ~S~ then ~↓~ ~↓~ ~↓~ walks down the headings; tap *S* again to turn it off. It also shifts the next key typed on the phone keyboard, so ~gS-RET~ (~M-S-RET~, a TODO heading) is: tap ~g~, tap *S*, tap Return. A letter typed after *S* becomes its capital.
+- *S* shifts the next key (~Tab~ becomes ~S-Tab~, ~g~ becomes ~G~, the Control+Meta prefix). After an arrow it stays on, so ~S~ then ~↑~ ~↑~ ~↑~ moves the focused heading up three places; tap *S* again to turn it off. It also shifts the next key typed on the phone keyboard, so ~gS-RET~ (~M-S-RET~, a TODO heading) is: tap ~g~, tap *S*, tap Return. A letter typed after *S* becomes its capital.
 - *⌨* hides or shows the device keyboard and changes nothing else. It is lit while the keyboard is up. After a popup closes, the keyboard doesn't return by itself; tap ⌨.
 - The move area (⠿) drags the panel, and its position is remembered. Tap it without dragging to minimize the panel to its handle, and tap the handle to restore it.
 

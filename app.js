@@ -43,14 +43,14 @@ import { commitAndRender, setStatus } from './src-browser/editing.js';
 import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, reloadCurrentDocumentFromDisk } from './src-browser/external-sync.js';
 import { renderFileMenu } from './src-browser/file-menu.js';
 import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, withArmedShift } from './src-browser/floating-keyboard.js';
-import { GOD_MODE_ACTIONS, dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
+import { GOD_MODE_ACTIONS, dispatchGodModeKeystroke, enterGodMode, shiftArrow, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
 import { apptTick, loadApptSettings, requestApptScan } from './src-browser/appt-flow.js';
 import { scheduleSync } from './src-browser/mirror-sync.js';
 import { loadAttachmentsFolder } from './src-browser/attachments-store.js';
 import { syncCaptureShortcuts } from './src-browser/capture-shortcuts.js';
 import { platform } from './src-browser/platform.js';
 import { acceptNativeLaunches, handleLaunchParams } from './src-browser/launch-params.js';
-import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, moveTableCellFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading } from './src-browser/keyboard-focus.js';
+import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading } from './src-browser/keyboard-focus.js';
 import { renderExtraMenu, renderMoreMenu } from './src-browser/menus.js';
 import { navigateBack, toggleActionMenu } from './src-browser/navigation.js';
 import { render, updateSaveButtonState } from './src-browser/render.js';
@@ -416,16 +416,15 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Alt+arrow and Shift+arrow on a focused heading do what the action buttons do: up and down move it among its siblings,
-  // left promotes, right demotes. In a table, Shift+arrow keeps moving between cells.
-  const headingArrow = /** @type {Record<string, string>} */ ({ ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' })[e.key];
-  if (headingArrow && (e.altKey || e.shiftKey) && S.currentView === 'org' && S.state.doc && S.keyboardFocusedHeading) {
-    const inTable = S.keyboardFocusedBodyRow && S.keyboardFocusedBodyRow.rowType === 'table';
-    if (e.altKey || !inTable) {
-      e.preventDefault();
-      /** @type {any} */ (GOD_MODE_ACTIONS)['M-<' + headingArrow + '>']();
-      return;
-    }
+  // Alt+arrow and Shift+arrow do what the heading's action buttons do (up and down move it among its siblings, left promotes,
+  // right demotes); in a table Shift+arrow moves between cells. The floating keyboard's S then an arrow is the same action.
+  const headingArrow = /** @type {Record<string, 'up'|'down'|'left'|'right'>} */ ({ ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' })[e.key];
+  const inTable = S.keyboardFocusedBodyRow && S.keyboardFocusedBodyRow.rowType === 'table';
+  if (headingArrow && (e.altKey || e.shiftKey) && S.currentView === 'org' && S.state.doc && (S.keyboardFocusedHeading || inTable)) {
+    e.preventDefault();
+    if (e.altKey) /** @type {any} */ (GOD_MODE_ACTIONS)['M-<' + headingArrow + '>']();
+    else shiftArrow(headingArrow);
+    return;
   }
 
   if (S.godModeActive) {
@@ -479,14 +478,6 @@ document.addEventListener('keydown', (e) => {
   if (!e.altKey && !e.shiftKey && e.key === 'ArrowUp') {
     e.preventDefault();
     moveLineFocus(-1);
-    return;
-  }
-  if (!e.altKey && e.shiftKey && S.keyboardFocusedBodyRow && S.keyboardFocusedBodyRow.rowType === 'table' && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-    e.preventDefault();
-    if (e.key === 'ArrowUp') moveTableCellFocus(-1, 0);
-    else if (e.key === 'ArrowDown') moveTableCellFocus(1, 0);
-    else if (e.key === 'ArrowLeft') moveTableCellFocus(0, -1);
-    else moveTableCellFocus(0, 1);
     return;
   }
   if (!S.keyboardFocusedHeading) return; // everything remaining needs a specific heading to act on
