@@ -21,13 +21,19 @@ const localFileAdapter = {
     if (picked || !folderAvailable()) return picked;
     return readFolderText(args[0]);
   },
+  /**
+   * @param {any} [id]
+   * @param {any} [content]
+   */
   async write(id, content, ...rest) {
     if (folderAvailable() && (await platform.localFiles.adapter.access(id)) === 'none') return writeFolderText(id, content);
     return platform.localFiles.adapter.write(id, content, ...rest);
   },
+  /** @param {any} [id] */
   async exists(id) {
     return (await platform.localFiles.adapter.exists(id)) || (folderAvailable() && (await folderFileExists(id)));
   },
+  /** @param {any} [id] */
   async access(id) {
     const picked = await platform.localFiles.adapter.access(id);
     if (picked !== 'none' || !folderAvailable()) return picked;

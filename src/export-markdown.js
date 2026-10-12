@@ -71,6 +71,7 @@ let headingSlugMapMd = new Map();
  *  GitHub's own algorithm strips it outright, and matching that
  *  exactly matters here specifically because the whole point is
  *  producing a link that resolves correctly once actually rendered
+ * @param {any} [title]
  *  somewhere real. */
 export function gfmSlugify(title) {
   return String(title || '')
@@ -86,6 +87,8 @@ export function gfmSlugify(title) {
  *  export-html.js's own assignHeadingIdsHtml uses for its own,
  *  unrelated id-attribute scheme; matching GFM's own specific
  *  numbering is what makes the generated link actually correct once
+ * @param {any} [headings]
+ * @param {any} [usedSlugs]
  *  rendered by a real GFM-compliant tool. */
 function assignHeadingSlugsMd(headings, usedSlugs) {
   for (const heading of headings) {
@@ -105,6 +108,7 @@ function assignHeadingSlugsMd(headings, usedSlugs) {
 /** GFM requires an explicit label on every footnote, unlike org's own
  *  anonymous [fn::...] form -- assigns a synthetic one for that case,
  *  distinguishable from any real user-chosen label so it can never
+ * @param {any} [label]
  *  collide with one. */
 function footnoteLabelMd(label) {
   if (label !== null) return label;
@@ -120,6 +124,7 @@ function footnoteLabelMd(label) {
  *  the exported file. Applied only to plain-text segments — text
  *  already inside a code/verbatim span is safe as-is (the backticks
  *  themselves already protect it, and escaping inside a code span
+ * @param {any} [text]
  *  would corrupt the literal content it's meant to preserve). */
 function escapeMarkdownText(text) {
   return text.replace(/([\\`*_[\]<|])/g, '\\$1');
@@ -131,6 +136,7 @@ function escapeMarkdownText(text) {
  *  for anything else (external URLs, file links, or a heading that
  *  resolves but lives outside this specific export's scope). Mirrors
  *  export-html.js's own resolveLinkHref exactly, adapted to GFM's
+ * @param {any} [target]
  *  implicit slug-based anchors instead of an explicit id attribute. */
 function resolveLinkHrefMd(target) {
   if (!docForLinkResolutionMd) return target;
@@ -141,10 +147,12 @@ function resolveLinkHrefMd(target) {
   return target;
 }
 
+/** @param {any} [nodes] */
 function renderInlineListMd(nodes) {
   return nodes.map(renderInlineNodeMd).join('');
 }
 
+/** @param {any} [node] */
 function renderInlineNodeMd(node) {
   switch (node.type) {
     case 'text':
@@ -195,12 +203,14 @@ function renderInlineNodeMd(node) {
   }
 }
 
+/** @param {any} [text] */
 function renderTextMd(text) {
   return renderInlineListMd(parseInline(text));
 }
 
 // ---- body content -----------------------------------------------------
 
+/** @param {any} [node] */
 function renderParagraphMd(node) {
   if (node.footnoteLabel !== null) {
     const strippedFirstLine = node.lines[0].replace(
@@ -219,7 +229,7 @@ function renderParagraphMd(node) {
   // plain space otherwise, not one that only breaks by accident of
   // the reader's own line width.
   return node.lines
-    .map((line, i) => {
+    .map((/** @type {string} */ line, /** @type {number} */ i) => {
       const forcedBreak = stripLineBreakMarker(line) !== line;
       const rendered = renderTextMd(stripLineBreakMarker(line));
       if (i === node.lines.length - 1) return rendered;
@@ -228,6 +238,10 @@ function renderParagraphMd(node) {
     .join('');
 }
 
+/**
+ * @param {any} [list]
+ * @param {any} [indent]
+ */
 function renderListMd(list, indent) {
   const lines = [];
   let counter = 0;
@@ -255,26 +269,31 @@ function renderListMd(list, indent) {
   return lines.join('\n');
 }
 
+/**
+ * @param {any} [cells]
+ * @param {any} [count]
+ */
 function padCells(cells, count) {
   const out = cells.slice();
   while (out.length < count) out.push('');
   return out;
 }
 
+/** @param {any} [table] */
 function renderTableMd(table) {
-  const dataRows = table.rows.filter((r) => r.type === 'row' && !isWidthCookieRow(r));
+  const dataRows = table.rows.filter((/** @type {any} */ r) => r.type === 'row' && !isWidthCookieRow(r));
   if (dataRows.length === 0) return '';
-  const colCount = Math.max(...dataRows.map((r) => r.cells.length));
+  const colCount = Math.max(...dataRows.map((/** @type {any} */ r) => r.cells.length));
   const lines = [];
   const headerCells = padCells(
-    dataRows[0].cellsInline.map((c) => renderInlineListMd(c)),
+    dataRows[0].cellsInline.map((/** @type {any} */ c) => renderInlineListMd(c)),
     colCount
   );
   lines.push('| ' + headerCells.join(' | ') + ' |');
   lines.push('| ' + Array(colCount).fill('---').join(' | ') + ' |');
   for (const row of dataRows.slice(1)) {
     const cells = padCells(
-      row.cellsInline.map((c) => renderInlineListMd(c)),
+      row.cellsInline.map((/** @type {any} */ c) => renderInlineListMd(c)),
       colCount
     );
     lines.push('| ' + cells.join(' | ') + ' |');
@@ -284,11 +303,13 @@ function renderTableMd(table) {
 
 /** Strips org's own comma-escape convention from one block content
  *  line for display -- see export-html.js's own stripCommaEscape for
+ * @param {any} [line]
  *  the full reasoning; the same fix, applied here too. */
 function stripCommaEscape(line) {
   return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
 }
 
+/** @param {any} [block] */
 function renderBlockMd(block) {
   const name = block.name;
   if (name === 'COMMENT') return ''; // matches real org's own export behavior -- comment blocks are excluded from every export backend
@@ -297,7 +318,7 @@ function renderBlockMd(block) {
     return backend === 'md' || backend === 'markdown' ? block.lines.join('\n') : '';
   }
   if (name === 'QUOTE') {
-    return block.lines.map(stripCommaEscape).map((l) => (l.trim() === '' ? '>' : '> ' + renderTextMd(l))).join('\n');
+    return block.lines.map(stripCommaEscape).map((/** @type {any} */ l) => (l.trim() === '' ? '>' : '> ' + renderTextMd(l))).join('\n');
   }
   if (name === 'SRC') {
     const lang = block.params.split(/\s+/)[0] || '';
@@ -309,6 +330,7 @@ function renderBlockMd(block) {
   return '```\n' + block.lines.map(stripCommaEscape).join('\n') + '\n```';
 }
 
+/** @param {any} [node] */
 function renderBodyNodeMd(node) {
   if (node.type === 'list') return renderListMd(node, 0);
   if (node.type === 'paragraph') return renderParagraphMd(node);
@@ -320,6 +342,7 @@ function renderBodyNodeMd(node) {
 
 // ---- headings -----------------------------------------------------------
 
+/** @param {any} [planning] */
 function renderPlanningMd(planning) {
   if (!planning) return '';
   const parts = [];
@@ -329,6 +352,10 @@ function renderPlanningMd(planning) {
   return `*${parts.join(' \u2014 ')}*`;
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [level]
+ */
 function renderHeadingLineMd(heading, level) {
   const parts = ['#'.repeat(Math.max(1, level))];
   if (heading.todo) parts.push(heading.todo);
@@ -341,6 +368,11 @@ function renderHeadingLineMd(heading, level) {
   return line;
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [levelOffset]
+ * @param {any} [out]
+ */
 function renderHeadingMd(heading, levelOffset, out) {
   out.push(renderHeadingLineMd(heading, heading.level - levelOffset));
 
@@ -367,13 +399,17 @@ function renderHeadingMd(heading, levelOffset, out) {
 /** Builds one level of the ToC's own nested list -- always recurses
  *  with level+1, the actual list-building logic (see buildTocMd below
  *  for the one-time wrapper that decides whether to call this at
+ * @param {any} [headings]
+ * @param {any} [level]
+ * @param {any} [maxDepth]
+ * @param {any} [numberingEnabled]
  *  all). */
 function buildTocListMd(headings, level, maxDepth, numberingEnabled) {
   if (level > maxDepth || headings.length === 0) return '';
   const indent = '  '.repeat(level - 1);
-  const marker = numberingEnabled ? (i) => `${i + 1}.` : () => '-';
+  const marker = numberingEnabled ? (/** @type {number} */ i) => `${i + 1}.` : () => '-';
   const lines = [];
-  headings.forEach((heading, i) => {
+  headings.forEach((/** @type {any} */ heading, /** @type {number} */ i) => {
     const slug = headingSlugMapMd.get(heading);
     const label = renderTextMd(heading.title) || '(untitled)';
     lines.push(`${indent}${marker(i)} [${label}](#${slug || ''})`);
@@ -393,6 +429,9 @@ function buildTocListMd(headings, level, maxDepth, numberingEnabled) {
  *  whether the ToC's own list is ordered ("1.", "2.", ...) or
  *  unordered ("-"), not whether headings are numbered at all (they
  *  never are). Returns '' when `toc` is false, or fewer than two
+ * @param {any} [headings]
+ * @param {any} [toc]
+ * @param {any} [numberingEnabled]
  *  headings are visible at `toc`'s own depth limit. */
 function buildTocMd(headings, toc, numberingEnabled) {
   if (!toc) return '';
@@ -410,6 +449,7 @@ function buildTocMd(headings, toc, numberingEnabled) {
   return '# Table of Contents\n\n' + body;
 }
 
+/** @param {any} [doc] */
 export function exportToMarkdown(doc, scope = /** @type {any} */ (null)) {
   footnoteDefinitionsMd = [];
   anonymousFootnoteCounterMd = 0;

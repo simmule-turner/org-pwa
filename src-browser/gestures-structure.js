@@ -24,6 +24,10 @@ import { applyTodoTransition } from './todo-workflow.js';
 import { SWIPE_THRESHOLD_PX } from './ui-widgets.js';
 import { platform } from './platform.js';
 
+/**
+ * @param {any} [el]
+ * @param {any} [heading]
+ */
 export function attachSlideLeftToFold(el, heading, opts = {}) {
   const onFolded = opts.onFolded || render;
   const archiveVisibility =
@@ -34,7 +38,7 @@ export function attachSlideLeftToFold(el, heading, opts = {}) {
   let startY = null;
   let active = false;
 
-  el.addEventListener('pointerdown', (e) => {
+  el.addEventListener('pointerdown', (/** @type {any} */ e) => {
     // Don't hijack taps meant for an actual control (fold button, TODO
     // badge, title, add/delete buttons, links) — only bare row space and
     // plain text starts a swipe candidate.
@@ -44,6 +48,7 @@ export function attachSlideLeftToFold(el, heading, opts = {}) {
     active = true;
   });
 
+  /** @param {any} [e] */
   const finish = (e) => {
     if (!active) return;
     active = false;
@@ -61,6 +66,10 @@ export function attachSlideLeftToFold(el, heading, opts = {}) {
   });
 }
 
+/**
+ * @param {any} [el]
+ * @param {any} [heading]
+ */
 export function attachSlideRightToComplete(el, heading, opts = {}) {
   const onDone = opts.onDone || (() => commitAndRender('Completed via swipe'));
   /** @type {any} */
@@ -69,13 +78,14 @@ export function attachSlideRightToComplete(el, heading, opts = {}) {
   let startY = null;
   let active = false;
 
-  el.addEventListener('pointerdown', (e) => {
+  el.addEventListener('pointerdown', (/** @type {any} */ e) => {
     if (e.target.closest('button, a, input, textarea, [data-inline-link]')) return;
     startX = e.clientX;
     startY = e.clientY;
     active = true;
   });
 
+  /** @param {any} [e] */
   const finish = (e) => {
     if (!active) return;
     active = false;
@@ -100,6 +110,7 @@ export function attachSlideRightToComplete(el, heading, opts = {}) {
   });
 }
 
+/** @param {any} [el] */
 export function attachAgendaSwipeNav(el) {
   /** @type {any} */
   let startX = null;
@@ -108,7 +119,7 @@ export function attachAgendaSwipeNav(el) {
   let active = false;
   let startedOnSwipeRow = false;
 
-  el.addEventListener('pointerdown', (e) => {
+  el.addEventListener('pointerdown', (/** @type {any} */ e) => {
     if (e.target.closest('button, a, input, textarea, [data-inline-link]')) return;
     startX = e.clientX;
     startY = e.clientY;
@@ -116,6 +127,7 @@ export function attachAgendaSwipeNav(el) {
     startedOnSwipeRow = !!e.target.closest('[data-swipe-row]'); // on a row that can be marked done, a swipe to the right does that (agenda-actions.js)
   });
 
+  /** @param {any} [e] */
   const finish = (e) => {
     if (!active) return;
     active = false;
@@ -133,6 +145,7 @@ export function attachAgendaSwipeNav(el) {
   });
 }
 
+/** @param {any} [heading] */
 export async function confirmHeadingDelete(heading) {
   const parts = [];
   if (heading.children.length) {
@@ -150,6 +163,7 @@ export async function confirmHeadingDelete(heading) {
   return confirmDialog(`Delete "${title}"?${detail}`);
 }
 
+/** @param {any} [heading] */
 export async function cutSubtree(heading) {
   const text = serializeHeadingSubtree(heading);
   try {
@@ -174,6 +188,7 @@ export async function cutSubtree(heading) {
   commitAndRender('Cut subtree to clipboard');
 }
 
+/** @param {any} [heading] */
 export async function pasteSubtree(heading) {
   if (!S.state.doc) return;
   let text;
@@ -210,6 +225,7 @@ export function extraMenuTargetHeading() {
  *  any existing narrowing outright rather than stacking (matching
  *  real Emacs's own actual C-x n s: narrowing again while already
  *  narrowed just moves the restriction, there's no nested "un-narrow
+ * @param {any} [heading]
  *  one level at a time" concept at all). */
 export function narrowToHeading(heading) {
   S.narrowedHeading = heading;
@@ -231,6 +247,7 @@ export function widen() {
  *  additional row filter alongside narrowedHeading; see
  *  sparseNarrowScope's own doc comment above for how the two compose.
  *  Saved per document (as outline paths, like narrowedHeading), so it
+ * @param {any} [matchedHeadings]
  *  survives a reload. */
 export function narrowToSparseMatches(matchedHeadings) {
   S.sparseNarrowScope = { matched: matchedHeadings, visible: expandScopeWithAncestors(S.state.doc, matchedHeadings) };
@@ -313,6 +330,7 @@ export function maybeRestoreNarrowState() {
     .catch(() => {});
 }
 
+/** @param {any} [heading] */
 export async function deleteHeadingWithConfirmation(heading) {
   if (!(await confirmHeadingDelete(heading))) return;
   S.actionMenuFor = null;
@@ -331,16 +349,19 @@ export async function deleteHeadingWithConfirmation(heading) {
   commitAndRender('Deleted heading');
 }
 
+/** @param {any} [table] */
 export async function confirmTableDelete(table) {
   if (!tableHasContent(table)) return true;
   return confirmDialog('Delete this table and all its data?');
 }
 
+/** @param {any} [paragraph] */
 export async function confirmParagraphDelete(paragraph) {
   if (!paragraphHasContent(paragraph)) return true;
   return confirmDialog('Delete this note?');
 }
 
+/** @param {any} [item] */
 export async function confirmListItemDelete(item) {
   const count = listItemDescendantCount(item);
   const hasOwnContent = (item.text && item.text.trim() !== '') || (item.tag && item.tag.trim() !== '');

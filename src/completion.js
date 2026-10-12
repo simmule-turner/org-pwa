@@ -20,7 +20,10 @@
 
 const TAG_CHARS = /^[\p{L}\p{N}_@#%]+$/u;
 
-/** Every heading in `doc`, depth first. */
+/**
+ * Every heading in `doc`, depth first.
+ * @param {any} [doc]
+ */
 function* headingsOf(doc) {
   const stack = [...(doc && doc.children ? doc.children : [])].reverse();
   while (stack.length) {
@@ -30,7 +33,10 @@ function* headingsOf(doc) {
   }
 }
 
-/** The tags in a `:a:b:` list (a #+FILETAGS: value). */
+/**
+ * The tags in a `:a:b:` list (a #+FILETAGS: value).
+ * @param {any} [text]
+ */
 function tagsInColonList(text) {
   return String(text == null ? '' : text)
     .split(':')
@@ -43,6 +49,7 @@ function tagsInColonList(text) {
  * (`home(h)`), groups (`{ Ctx : @a @b }`, `[ GTD : x y ]`) -- the group name
  * and its members are all tags -- and skips the syntax words (`:startgroup`,
  * `:newline`, `:`).
+ * @param {any} [doc]
  */
 function declaredTagsOf(doc) {
   const names = [];
@@ -57,9 +64,13 @@ function declaredTagsOf(doc) {
   return names;
 }
 
-/** Tag -> how many headings carry it (a #+FILETAGS: tag counts once). */
+/**
+ * Tag -> how many headings carry it (a #+FILETAGS: tag counts once).
+ * @param {any} [docs]
+ */
 function collectTagUsage(docs) {
   const usage = new Map();
+  /** @param {any} [tag] */
   const bump = (tag) => usage.set(tag, (usage.get(tag) || 0) + 1);
   for (const doc of docs) {
     if (!doc) continue;

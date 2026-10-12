@@ -15,6 +15,10 @@
  */
 
 class CaldavError extends Error {
+  /**
+   * @param {any} [kind]
+   * @param {any} [message]
+   */
   constructor(kind, message, status = null) {
     super(message);
     this.name = 'CaldavError';
@@ -23,7 +27,11 @@ class CaldavError extends Error {
   }
 }
 
-/** Basic credentials, encoded as UTF-8 so a non-ASCII username or password works. */
+/**
+ * Basic credentials, encoded as UTF-8 so a non-ASCII username or password works.
+ * @param {any} [username]
+ * @param {any} [password]
+ */
 function basicAuthHeader(username, password) {
   const bytes = new TextEncoder().encode(`${username}:${password}`);
   let binary = '';
@@ -31,7 +39,10 @@ function basicAuthHeader(username, password) {
   return 'Basic ' + btoa(binary);
 }
 
-/** The hrefs in a PROPFIND multistatus body, whatever namespace prefix the server used (D:, d:, or none). */
+/**
+ * The hrefs in a PROPFIND multistatus body, whatever namespace prefix the server used (D:, d:, or none).
+ * @param {any} [xml]
+ */
 function parseHrefs(xml) {
   const hrefs = [];
   const re = /<(?:[A-Za-z][\w.-]*:)?href\b[^>]*>([^<]*)<\/(?:[A-Za-z][\w.-]*:)?href>/gi;
@@ -47,6 +58,7 @@ const KINDS = {
 };
 
 /** The file names with `extension` among `hrefs` (each a path or a full URL, possibly percent-encoded). The folder itself and
+ * @param {any} [hrefs]
  *  anything with another extension are skipped. */
 function icsNamesFromHrefs(hrefs, extension = '.ics') {
   const names = [];
@@ -70,6 +82,10 @@ function icsNamesFromHrefs(hrefs, extension = '.ics') {
   return names;
 }
 
+/**
+ * @param {any} response
+ * @param {any} what
+ */
 function errorForResponse(response, what, { noun, Noun }) {
   const status = response.status;
   if (status === 401) return new CaldavError('auth', `The ${noun} server rejected the username or password.`, status);
@@ -99,12 +115,19 @@ function createCaldavClient({ url, username, password, kind = 'calendar', fetch:
   }
 
   return {
-    /** Writes (creates or replaces) one event file (or contact file). */
+    /**
+     * Writes (creates or replaces) one event file (or contact file).
+     * @param {any} [name]
+     * @param {any} [ics]
+     */
     async put(name, ics) {
       const response = await request('PUT', name, { headers: { 'Content-Type': what.contentType }, body: ics });
       if (!response.ok) throw errorForResponse(response, `writing ${name}`, what);
     },
-    /** Removes one event file. Already gone counts as removed. */
+    /**
+     * Removes one event file. Already gone counts as removed.
+     * @param {any} [name]
+     */
     async remove(name) {
       const response = await request('DELETE', name);
       if (!response.ok && response.status !== 404) throw errorForResponse(response, `removing ${name}`, what);
@@ -129,7 +152,10 @@ function createCaldavClient({ url, username, password, kind = 'calendar', fetch:
   };
 }
 
-/** The same client for an address book (CardDAV): .vcf files, sent as text/vcard, with the wording to match. */
+/**
+ * The same client for an address book (CardDAV): .vcf files, sent as text/vcard, with the wording to match.
+ * @param {any} [options]
+ */
 function createCarddavClient(options) {
   return createCaldavClient({ ...options, kind: 'contacts' });
 }
@@ -139,6 +165,9 @@ function createCarddavClient(options) {
  * failure the whole run shares (the credentials, the address, the network): that stops it, since every remaining
  * request would fail the same way.
  * @returns {Promise<{ ok: any[], failed: { item: any, error: Error }[], stopped: Error | null }>}
+ * @param {any} [items]
+ * @param {any} [limit]
+ * @param {any} [worker]
  */
 async function runLimited(items, limit, worker) {
   const ok = [];

@@ -40,6 +40,7 @@ import { saveOut } from './save-out.js';
  *  app's own storage model has to real org's own "relative to the
  *  current file" behavior. Returns null (not a throw) for anything
  *  unresolvable -- expandIncludes itself already treats that as "skip
+ * @param {any} [path]
  *  this one include," not a reason to fail the whole export. */
 export async function resolveIncludePath(path) {
   const colonIndex = path.indexOf(':');
@@ -53,6 +54,8 @@ export async function resolveIncludePath(path) {
 /** Generates the export text for `format`/`scope` and triggers a
  *  download -- the actual terminal step of the export flow, closing
  *  the file menu and resetting its state back to the top level once
+ * @param {any} [format]
+ * @param {any} [scope]
  *  done. */
 export async function performExport(format, scope) {
   const rawName = scope && typeof scope === 'object' ? scope.title : suggestedSaveAsName('export').replace(/\.[a-zA-Z0-9]+$/, '');
@@ -484,16 +487,16 @@ const IMPORT_FORMATS = {
     accept: '.vcf,text/vcard',
     chooseLabel: 'Choose vCard file\u2026',
     newBufferField: 'importVcardToNewBuffer',
-    importText: (text) => importVcardFile(text),
-    importHeadings: (headings, sourceLabel) => importVcardFromHeadings(headings, sourceLabel),
+    importText: (/** @type {string} */ text) => importVcardFile(text),
+    importHeadings: (/** @type {any} */ headings, /** @type {any} */ sourceLabel) => importVcardFromHeadings(headings, sourceLabel),
   },
   icalendar: {
     heading: 'Import iCalendar (.ics) from:',
     accept: '.ics,text/calendar',
     chooseLabel: 'Choose iCalendar file\u2026',
     newBufferField: 'importIcalendarToNewBuffer',
-    importText: (text) => importIcalendarFile(text),
-    importHeadings: (headings, sourceLabel) => importIcalendarFromHeadings(headings, sourceLabel),
+    importText: (/** @type {string} */ text) => importIcalendarFile(text),
+    importHeadings: (/** @type {any} */ headings, /** @type {any} */ sourceLabel) => importIcalendarFromHeadings(headings, sourceLabel),
   },
 };
 
@@ -659,6 +662,8 @@ export function renderImportFlow() {
  *  doesn't require a specific heading to already be focused and never
  *  risks overwriting anything already in the file. A file with no
  *  valid (FN-bearing) contacts produces a clear status message rather
+ * @param {any} [headings]
+ * @param {any} [sourceLabel]
  *  than silently doing nothing. */
 export async function importVcardFromHeadings(headings, sourceLabel) {
   const bodies = vcardBodyHeadingsIn(headings);
@@ -669,13 +674,14 @@ export async function importVcardFromHeadings(headings, sourceLabel) {
   await importVcardFile(bodies.join('\n'));
 }
 
+/** @param {any} [vcardText] */
 export async function importVcardFile(vcardText) {
   const unmappedProperties = [];
   let embeddedPhotoCount = 0;
   const orgText = importVcardsAsOrgText(vcardText, {
     style: S.importStyle,
     cleanMode: S.importCleanMode,
-    onUnmappedProperty: (name) => unmappedProperties.push(name),
+    onUnmappedProperty: (/** @type {string} */ name) => unmappedProperties.push(name),
     onEmbeddedPhotoImported: () => embeddedPhotoCount++,
   });
   if (!orgText) {
@@ -705,6 +711,8 @@ export async function importVcardFile(vcardText) {
 }
 
 /** The iCalendar twin of importVcardFromHeadings: reads the iCalendar text found in the bodies of `headings` (a heading whose own
+ * @param {any} [headings]
+ * @param {any} [sourceLabel]
  *  body starts with "BEGIN:VCALENDAR", as Export > Calendar (.ics) > To: *new buffer* leaves it). */
 export async function importIcalendarFromHeadings(headings, sourceLabel) {
   const bodies = icalendarBodyHeadingsIn(headings);
@@ -717,6 +725,7 @@ export async function importIcalendarFromHeadings(headings, sourceLabel) {
 
 /** Parses `icsText` via importIcalendarAsOrgText, then places the headings exactly as importVcardFile does: appended as new
  *  top-level headings at the end of the open document (nothing already there is touched), or, with "To: *new buffer*", in a new
+ * @param {any} [icsText]
  *  unsaved one. Times are shown in this device's own time zone. Says what was not carried over, as the vCard import does. */
 export async function importIcalendarFile(icsText) {
   const unmappedProperties = [];

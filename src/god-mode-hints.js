@@ -30,7 +30,10 @@ const CANDIDATES = [
   ...NAMED_KEYS.map(([k, d]) => [k, true, 'S-' + d]),
 ];
 
-/** Indexes a set of bound chord strings (like "C-c C-t") for the lookups below. */
+/**
+ * Indexes a set of bound chord strings (like "C-c C-t") for the lookups below.
+ * @param {any} [chords]
+ */
 function makeChordIndex(chords) {
   const complete = new Set(chords);
   const under = new Map(); // a prefix -> how many bound chords start with it
@@ -44,7 +47,10 @@ function makeChordIndex(chords) {
   return { complete, under };
 }
 
-/** Whether a sequence has been started and not finished: something typed, a g/G prefix pending, or literal mode on. */
+/**
+ * Whether a sequence has been started and not finished: something typed, a g/G prefix pending, or literal mode on.
+ * @param {any} [state]
+ */
 function isSequenceInProgress(state) {
   return !!state && (state.chordString !== '' || state.pendingModifier !== null || state.literalActive);
 }
@@ -54,6 +60,8 @@ function isSequenceInProgress(state) {
  * @returns {{ key: string, rawKey: string, shift: boolean, chord: string|null, complete: boolean, count: number, children?: object[] }[]}
  *   `complete`: the key finishes a bound chord (`chord`). `count`: how many bound chords lie beyond it (0 for a plain leaf).
  *   Keys that only change mode (g, SPC) carry `children`, the keys that would follow them.
+ * @param {any} [state]
+ * @param {any} [index]
  */
 function godModeContinuations(state, index, depth = 0) {
   const out = [];

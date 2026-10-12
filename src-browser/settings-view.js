@@ -207,7 +207,16 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   spacingRow.className = 'panel-row';
   spacingRow.style.alignItems = 'center'; // same reason as the Font Size row: a number between two taller buttons
   spacingRow.style.flexWrap = 'wrap'; // lets the Tables group drop to its own line on a narrow phone rather than clipping
+  /**
+   * @param {any} [valueId]
+   * @param {any} [current]
+   * @param {any} [lessLabel]
+   * @param {any} [moreLabel]
+   * @param {any} [save]
+   * @param {any} [apply]
+   */
   const addSpacingStepper = (valueId, current, lessLabel, moreLabel, save, apply) => {
+    /** @param {any} [delta] */
     const step = async (delta) => {
       const next = Math.min(MAX_SPACING, Math.max(MIN_SPACING, current + delta));
       await save(kv, next);
@@ -361,6 +370,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     'The same kind of variable a file\u2019s own "# Local Variables:" block or #+STARTUP: line can set, but as the app-wide baseline default across every file \u2014 one per line, same "name: value" format. A file-specific #+STARTUP:/Local Variables setting still overrides this; see Configuration in the README for the full precedence order. Example: org-log-done: \'time';
   globalVarsSection.appendChild(globalVarsHint);
 
+  /** @param {any} [newText] */
   async function saveGlobalVariablesText(newText) {
     const normalizedText = normalizeSmartQuotes(newText);
     await setGlobalVariables(kv, normalizedText);
@@ -458,7 +468,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
       label: 'Extension script (JavaScript)',
       value: ext.script,
       defaultValue: '',
-      onSave: async (text) => {
+      onSave: async (/** @type {string} */ text) => {
         try {
           await saveExtensionScript(text);
           setStatus('Script saved. Approve it to run it.');
@@ -517,7 +527,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
         label: 'Script file: github:path, webdav:path or local:name, then ::target (default ::init.js)',
         value: ext.file,
         defaultValue: '',
-        onSave: async (text) => {
+        onSave: async (/** @type {string} */ text) => {
           await saveExtensionFile(text);
           setStatus(text.trim() ? 'File set. Approve the script to run it.' : 'Using the text typed here.');
           renderSettingsView();
@@ -590,7 +600,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
       label: 'Capture Templates',
       value: currentTemplatesText,
       defaultValue: defaultTemplatesText,
-      onSave: async (newValue) => {
+      onSave: async (/** @type {any} */ newValue) => {
         let parsed;
         try {
           parsed = JSON.parse(normalizeSmartQuotes(newValue));
@@ -718,10 +728,16 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   apptSection.appendChild(apptTitle);
 
   const appt = S.apptSettings || normalizeApptSettings(null);
+  /** @param {any} [change] */
   const saveAppt = async (change) => {
     await saveApptSettings(change);
     renderSettingsView();
   };
+  /**
+   * @param {any} [label]
+   * @param {any} [key]
+   * @param {any} [hint]
+   */
   const apptCheckbox = (label, key, hint) => {
     const row = document.createElement('div');
     row.className = 'panel-row';
@@ -742,6 +758,13 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     row.appendChild(wrap);
     return row;
   };
+  /**
+   * @param {any} label
+   * @param {any} key
+   * @param {any} hint
+   * @param {any} step
+   * @param {any} unit
+   */
   const apptStepper = (label, key, hint, /** @type {number[]} */ limits, step, unit) => {
     const [min, max] = limits;
     const row = document.createElement('div');
@@ -830,7 +853,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     exactButton.style.display = 'none';
     exactRow.appendChild(exactButton);
     apptSection.appendChild(exactRow);
-    exactTiming.status().then((status) => {
+    exactTiming.status().then((/** @type {any} */ status) => {
       exactText.textContent = status === 'granted' ? 'Exact timing: allowed' : 'Exact timing: not allowed (reminders may be a few minutes late)';
       exactButton.style.display = status === 'granted' ? 'none' : '';
     });
@@ -894,7 +917,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
         { key: 'repo', label: 'Repo', type: 'text', value: S.githubConfig.repo, placeholder: 'e.g. my-notes' },
         { key: 'branch', label: 'Branch', type: 'text', value: S.githubConfig.branch, placeholder: 'main' },
       ],
-      onSave: async (values) => {
+      onSave: async (/** @type {any} */ values) => {
         S.githubConfig = await setGithubConfig(kv, { token: values.token, owner: values.owner, repo: values.repo, branch: values.branch || 'main' });
         setStatus('GitHub settings saved.');
         renderSettingsView();
@@ -945,7 +968,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
         { key: 'username', label: 'Username', type: 'text', value: S.webdavConfig.username },
         { key: 'password', label: 'Password', type: 'password', value: S.webdavConfig.password },
       ],
-      onSave: async (values) => {
+      onSave: async (/** @type {any} */ values) => {
         S.webdavConfig = await setWebdavConfig(kv, { baseUrl: values.baseUrl, username: values.username, password: values.password });
         setStatus('WebDAV settings saved.');
         renderSettingsView();
@@ -1000,7 +1023,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
         { key: 'username', label: 'Username (blank = the WebDAV one)', type: 'text', value: calendarConfigStored.username },
         { key: 'password', label: 'Password (blank = the WebDAV one)', type: 'password', value: calendarConfigStored.password },
       ],
-      onSave: async (values) => {
+      onSave: async (/** @type {any} */ values) => {
         S.caldavConfig = await setCaldavConfig(kv, { url: values.url, contactsUrl: values.contactsUrl, username: values.username, password: values.password });
         S.calendarSyncPaused = false;
         S.calendarSyncLastError = null;
@@ -1174,7 +1197,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     versionDisplay.textContent = 'Version: checking\u2026';
     if (S.appVersionCheckState === 'pending') {
       S.appVersionCheckState = 'checking';
-      (platform.usesServiceWorker ? getServiceWorkerVersion() : platform.versionInfo()).then((version) => {
+      (platform.usesServiceWorker ? getServiceWorkerVersion() : platform.versionInfo()).then((/** @type {any} */ version) => {
         S.currentAppVersion = version;
         S.appVersionCheckState = 'done';
         if (S.settingsOpen) renderSettingsView();

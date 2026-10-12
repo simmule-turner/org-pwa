@@ -10,22 +10,28 @@ import { renameHeading } from './heading-edit.js';
  *  snapshotted once, since an earlier replacement within the SAME node
  *  (a paragraph can contain more than one match) changes what the next
  *  getText() call sees. `label` is a short, human-readable description
+ * @param {any} [doc]
  *  of where this text lives, for the replace prompt's own display. */
 function collectReplaceTargets(doc) {
   const targets = [];
 
+  /** @param {any} [heading] */
   function addHeading(heading) {
     targets.push({
       heading,
       type: 'heading',
       label: 'heading',
       getText: () => heading.title,
-      setText: (t) => renameHeading(heading, t),
+      setText: (/** @type {any} */ t) => renameHeading(heading, t),
     });
     walkBody(heading, heading.body);
     for (const child of heading.children || []) addHeading(child);
   }
 
+  /**
+   * @param {any} [heading]
+   * @param {any} [items]
+   */
   function walkList(heading, items) {
     for (const item of items) {
       targets.push({
@@ -33,12 +39,16 @@ function collectReplaceTargets(doc) {
         type: 'list-item',
         label: 'list item',
         getText: () => item.text,
-        setText: (t) => editListItemText(heading, item, t),
+        setText: (/** @type {any} */ t) => editListItemText(heading, item, t),
       });
       for (const nested of item.children || []) walkList(heading, nested.items);
     }
   }
 
+  /**
+   * @param {any} [heading]
+   * @param {any} [bodyNodes]
+   */
   function walkBody(heading, bodyNodes) {
     for (const node of bodyNodes || []) {
       if (node.type === 'paragraph') {
@@ -47,20 +57,20 @@ function collectReplaceTargets(doc) {
           type: 'paragraph',
           label: 'paragraph',
           getText: () => node.lines.join(' '),
-          setText: (t) => editParagraphText(heading, node, t),
+          setText: (/** @type {any} */ t) => editParagraphText(heading, node, t),
         });
       } else if (node.type === 'list') {
         walkList(heading, node.items);
       } else if (node.type === 'table') {
-        node.rows.forEach((row, rowIndex) => {
+        node.rows.forEach((/** @type {any} */ row, /** @type {any} */ rowIndex) => {
           if (row.type !== 'row') return;
-          row.cells.forEach((cellText, colIndex) => {
+          row.cells.forEach((/** @type {any} */ cellText, /** @type {any} */ colIndex) => {
             targets.push({
               heading,
               type: 'table',
               label: 'table cell',
               getText: () => node.rows[rowIndex].cells[colIndex],
-              setText: (t) => setTableCell(heading, node, rowIndex, colIndex, t),
+              setText: (/** @type {any} */ t) => setTableCell(heading, node, rowIndex, colIndex, t),
             });
           });
         });
@@ -83,10 +93,13 @@ function collectReplaceTargets(doc) {
  *  or touch these matches at all. Used to tell a genuine zero-match
  *  search apart from one where real matches exist but are entirely
  *  out of reach, so the person doing the replace gets a clear,
+ * @param {any} [doc]
+ * @param {any} [re]
  *  specific reason rather than a generic "nothing changed" either way. */
 function countBlockOnlyMatches(doc, re) {
   let count = 0;
   const pattern = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
+  /** @param {any} [heading] */
   function walk(heading) {
     for (const node of heading.body || []) {
       if (node.type === 'block') {
@@ -116,6 +129,9 @@ function countBlockOnlyMatches(doc, re) {
  * so edits made through this walk are immediately visible to
  * subsequent matches within the same node, and safely isolated from
  * matches in every other node (each has its own, independent text).
+ * @param {any} [doc]
+ * @param {any} [re]
+ * @param {any} [replacement]
  */
 function createQueryReplace(doc, re, replacement) {
   let targetCount = collectReplaceTargets(doc).length;
@@ -156,9 +172,13 @@ function createQueryReplace(doc, re, replacement) {
     return pendingMatch || findNext();
   }
 
+  /**
+   * @param {any} [target]
+   * @param {any} [match]
+   */
   function applyReplacement(target, match) {
     const text = target.getText();
-    const replaced = replacement.replace(/\$(\d)/g, (_, n) => match[n] ?? '');
+    const replaced = replacement.replace(/\$(\d)/g, (/** @type {any} */ _, /** @type {any} */ n) => match[n] ?? '');
     const newText = text.slice(0, match.index) + replaced + text.slice(match.index + match[0].length);
     target.setText(newText);
     replacedCount++;
@@ -219,6 +239,9 @@ function createQueryReplace(doc, re, replacement) {
  * string at any point -- the caller is responsible for writing it
  * back into wherever it came from once the session ends, since this
  * function has no document (or textarea) of its own to write into.
+ * @param {any} [text]
+ * @param {any} [re]
+ * @param {any} [replacement]
  */
 function createTextQueryReplace(text, re, replacement) {
   let currentText = text;
@@ -249,8 +272,9 @@ function createTextQueryReplace(text, re, replacement) {
     return pendingMatch || findNext();
   }
 
+  /** @param {any} [match] */
   function applyReplacement(match) {
-    const replaced = replacement.replace(/\$(\d)/g, (_, n) => match[n] ?? '');
+    const replaced = replacement.replace(/\$(\d)/g, (/** @type {any} */ _, /** @type {any} */ n) => match[n] ?? '');
     currentText = currentText.slice(0, match.index) + replaced + currentText.slice(match.index + match[0].length);
     replacedCount++;
     searchFrom = match.index + replaced.length;

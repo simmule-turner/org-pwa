@@ -39,7 +39,7 @@ export function buildViewFilterRow(items, onChange, extraChips = []) {
     open.onclick = () => {
       // keep a chosen value on offer even when the items in view no longer carry it, so it can still be unchecked
       const known = new Set(offered.map(([v]) => v));
-      const all = [...offered, .../** @type {[string, number][]} */ (filter[field].filter((v) => !known.has(v)).map((v) => [v, 0]))];
+      const all = [...offered, .../** @type {[string, number][]} */ (filter[field].filter((/** @type {any} */ v) => !known.has(v)).map((/** @type {any} */ v) => [v, 0]))];
       openChoiceSheet({
         title,
         choices: all,

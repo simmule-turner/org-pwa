@@ -71,6 +71,7 @@ const POSIX_CLASSES = {
  *  syntax mostly matches JS already (a leading `]` or `^]` is a literal
  *  `]`, ranges use `-`, `^` right after `[` negates) -- the one thing
  *  genuinely different is POSIX classes like `[:digit:]`, which can
+ * @param {any} [inner]
  *  appear anywhere inside the brackets, not just as the sole content. */
 function convertCharClass(inner) {
   let out = '';
@@ -110,7 +111,10 @@ function convertCharClass(inner) {
   return out;
 }
 
-/** The core translation. Walks the pattern once, left to right. */
+/**
+ * The core translation. Walks the pattern once, left to right.
+ * @param {any} [pattern]
+ */
 function translate(pattern) {
   let out = '';
   let i = 0;
@@ -298,6 +302,7 @@ function translate(pattern) {
  *  context; callers here should pass 'i' explicitly when they want it).
  *  Throws EmacsRegexError with a specific, human-readable reason for
  *  anything unsupported or malformed, rather than silently miscompiling
+ * @param {any} [emacsPattern]
  *  a pattern into something that matches the wrong thing. */
 function emacsRegexToJs(emacsPattern, flags = '') {
   const translated = translate(emacsPattern);

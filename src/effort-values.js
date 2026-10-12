@@ -29,7 +29,10 @@ const PROPERTY_NAME = 'Effort_ALL';
 /** org-agenda-filter-by-effort's own fallback when Effort_ALL isn't set. */
 const DEFAULT_EFFORT_FILTER_VALUES = ['0', '0:10', '0:30', '1:00', '2:00', '3:00', '4:00', '5:00', '6:00', '7:00'];
 
-/** The valid, de-duplicated values in `text`, in order. */
+/**
+ * The valid, de-duplicated values in `text`, in order.
+ * @param {any} [text]
+ */
 function parseEffortValues(text) {
   const seen = new Set();
   const values = [];
@@ -41,7 +44,10 @@ function parseEffortValues(text) {
   return values;
 }
 
-/** `org-global-properties` text -> { lowercased name: value string }. */
+/**
+ * `org-global-properties` text -> { lowercased name: value string }.
+ * @param {any} [text]
+ */
 function parseGlobalProperties(text) {
   const result = {};
   for (const entry of String(text == null ? '' : text).split(';')) {

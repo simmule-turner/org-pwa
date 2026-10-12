@@ -5,6 +5,9 @@ import { summarizeDayEffort } from '../src/agenda.js';
 import { formatClockDuration } from '../src/clock.js';
 
 /** Moves `anchorDate` by one unit of `viewType` in `direction` (-1 or 1)
+ * @param {any} [viewType]
+ * @param {any} [anchorDate]
+ * @param {any} [direction]
  *  — this is "scrolling by the view amount": a day, a week, or a month. */
 export function agendaStepAnchor(viewType, anchorDate, direction) {
   const next = new Date(anchorDate);
@@ -14,6 +17,7 @@ export function agendaStepAnchor(viewType, anchorDate, direction) {
   return next;
 }
 
+/** @param {any} [date] */
 export function isoWeekNumber(date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7; // Sunday=0 -> 7, so Monday=1..Sunday=7
@@ -22,6 +26,11 @@ export function isoWeekNumber(date) {
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
+/**
+ * @param {any} [dateKeyStr]
+ * @param {any} [showWeekNumber]
+ * @param {any} [dayItems]
+ */
 export function buildDayHeaderRow(dateKeyStr, showWeekNumber, dayItems = []) {
   const [y, m, d] = dateKeyStr.split('-').map(Number);
   const date = new Date(y, m - 1, d);
@@ -89,6 +98,7 @@ export function buildDayHeaderRow(dateKeyStr, showWeekNumber, dayItems = []) {
   return row;
 }
 
+/** @param {any} [item] */
 export function formatAgendaItemTimeText(item) {
   if (!item.hasTime) return '';
   const start = item.date.toTimeString().slice(0, 5);
@@ -96,6 +106,7 @@ export function formatAgendaItemTimeText(item) {
   return start + ' \u2026\u2026';
 }
 
+/** @param {any} [item] */
 export function agendaItemKindLabel(item) {
   if (item.hasTime) return null;
   if (item.kind === 'scheduled') return 'Scheduled:';
@@ -103,7 +114,13 @@ export function agendaItemKindLabel(item) {
   return null;
 }
 
+/**
+ * @param {any} [viewType]
+ * @param {any} [start]
+ * @param {any} [end]
+ */
 export function formatAgendaRangeLabel(viewType, start, end) {
+  /** @param {any} [d] */
   const fmt = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   if (viewType === 'day') return fmt(start) + ` (W${isoWeekNumber(start)})`;
   if (viewType === 'month') {

@@ -34,7 +34,10 @@ const WARNING_WORD = /^--?\d+[hdwmy]$/;
 // larger string (a heading title, a line of body text); each hit is then read by parseOrgTimestamp, which decides if it is one.
 const TIMESTAMP_SCAN_RE = /[<[]\d{4}-\d{2}-\d{2}[^<>[\]\n]*[>\]]/g;
 
-/** @returns parsed timestamp object, or null if `raw` isn't a recognizable org timestamp. */
+/**
+ * @returns parsed timestamp object, or null if `raw` isn't a recognizable org timestamp.
+ * @param {any} [raw]
+ */
 function parseOrgTimestamp(raw) {
   if (!raw) return null;
   const m = TIMESTAMP_RE.exec(raw.trim());
@@ -94,6 +97,7 @@ function parseOrgTimestamp(raw) {
  * timestamp objects (same shape as parseOrgTimestamp's) in the order
  * found, reusing that same parser/validator for each match rather than
  * duplicating its bracket-matching logic.
+ * @param {any} [text]
  */
 function findTimestamps(text) {
   if (!text) return [];
@@ -108,6 +112,7 @@ function findTimestamps(text) {
 }
 
 /** YYYY-MM-DD, using local calendar fields (not UTC) — an agenda day
+ * @param {any} [date]
  *  boundary should match the user's own calendar, not the server's. */
 function dateKey(date) {
   const y = date.getFullYear();
@@ -116,6 +121,10 @@ function dateKey(date) {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * @param {any} [a]
+ * @param {any} [b]
+ */
 function isSameDay(a, b) {
   return dateKey(a) === dateKey(b);
 }
@@ -170,6 +179,7 @@ const DELAY_RE = /^-(\d+)([hdwmy])$/;
  *  lives here rather than there since a delay is purely a single-
  *  timestamp-parsing concern (unlike a repeater, it has no expansion
  *  behavior for agenda.js to own) — used by the structured timestamp
+ * @param {any} [raw]
  *  editor to pre-fill its delay field from an existing timestamp. */
 function parseDelay(raw) {
   if (!raw) return null;

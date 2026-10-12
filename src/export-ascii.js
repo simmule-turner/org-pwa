@@ -61,7 +61,10 @@ const CHARSETS = {
 };
 let charsetAscii = CHARSETS.ascii;
 
-/** `ascii`, `latin1` or `utf-8` (also `utf8`, `iso-8859-1`; case and a leading quote ignored); anything else is ASCII. */
+/**
+ * `ascii`, `latin1` or `utf-8` (also `utf8`, `iso-8859-1`; case and a leading quote ignored); anything else is ASCII.
+ * @param {any} [value]
+ */
 export function normalizeAsciiCharset(value) {
   const v = String(value == null ? '' : value).trim().replace(/^'/, '').toLowerCase();
   if (v === 'utf-8' || v === 'utf8') return 'utf-8';
@@ -72,9 +75,10 @@ export function normalizeAsciiCharset(value) {
 const ENTITY_RE = /\\(there4|sup[123]|frac[13][24]|[a-zA-Z]+)(\{\}|(?![A-Za-z]))/g;
 
 /** Entities (`\alpha`, `\rarr{}`) become the character set's own spelling; in UTF-8 `---`, `--` and `...` become the
+ * @param {any} [text]
  *  dash and ellipsis characters, as ox-ascii's special strings do. Code and verbatim text never reaches here. */
 function substituteCharacters(text) {
-  let t = text.replace(ENTITY_RE, (whole, name) => {
+  let t = text.replace(ENTITY_RE, (/** @type {any} */ whole, /** @type {string} */ name) => {
     const entry = ENTITIES[name];
     return entry ? entry[charsetAscii.column] : whole;
   });
@@ -88,9 +92,10 @@ const LINK_RE = /\[\[([^\]]+)\](?:\[([^\]]+)\])?\]/g;
 
 /** Strips org's own link bracket syntax down to readable plain text --
  *  used for content NOT run through parseInline (kept exported for
+ * @param {any} [text]
  *  backwards compatibility / direct testing). */
 function stripLinksForAscii(text) {
-  return text.replace(LINK_RE, (_, target, description) => (description ? `${description} (${target})` : target));
+  return text.replace(LINK_RE, (/** @type {any} */ _, /** @type {any} */ target, /** @type {any} */ description) => (description ? `${description} (${target})` : target));
 }
 
 /** Wraps `text` to `width` characters, breaking only at whitespace --
@@ -100,6 +105,8 @@ function stripLinksForAscii(text) {
  *  is meant for a paragraph's already-joined prose, not for content
  *  that depends on preserving original spacing). Returns an array of
  *  wrapped lines; an empty/whitespace-only input returns an empty
+ * @param {any} [text]
+ * @param {any} [width]
  *  array, not a single blank-line entry. */
 function wrapText(text, width) {
   // Split on plain whitespace only: a no-break space (`\nbsp`) belongs to its word, as in Emacs's fill.
@@ -125,16 +132,19 @@ function wrapText(text, width) {
 let footnoteDefinitionsAscii = [];
 let anonymousFootnoteCounterAscii = 0;
 
+/** @param {any} [label] */
 function footnoteLabelAscii(label) {
   if (label !== null) return label;
   anonymousFootnoteCounterAscii++;
   return 'fn' + anonymousFootnoteCounterAscii;
 }
 
+/** @param {any} [nodes] */
 function renderInlineListAscii(nodes) {
   return nodes.map(renderInlineNodeAscii).join('');
 }
 
+/** @param {any} [node] */
 function renderInlineNodeAscii(node) {
   switch (node.type) {
     case 'text':
@@ -183,6 +193,7 @@ function renderInlineNodeAscii(node) {
   }
 }
 
+/** @param {any} [text] */
 function renderTextAscii(text) {
   return renderInlineListAscii(parseInline(text));
 }
@@ -197,6 +208,7 @@ function renderTextAscii(text) {
 let sectionNumbersAscii = [];
 let numberingEnabledAscii = true;
 
+/** @param {any} [level] */
 function nextSectionNumber(level) {
   const newNumbers = sectionNumbersAscii.slice(0, level);
   for (let i = 0; i < level - 1; i++) {
@@ -207,6 +219,10 @@ function nextSectionNumber(level) {
   return sectionNumbersAscii.join('.');
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [level]
+ */
 function renderHeadingLineAscii(heading, level) {
   const parts = [];
   if (numberingEnabledAscii) parts.push(nextSectionNumber(level) + '.');
@@ -226,6 +242,10 @@ function renderHeadingLineAscii(heading, level) {
   return [line];
 }
 
+/**
+ * @param {any} [planning]
+ * @param {any} [indent]
+ */
 function renderPlanningAscii(planning, indent) {
   const parts = [];
   if (planning && planning.scheduled) parts.push(`Scheduled: ${planning.scheduled}`);
@@ -234,6 +254,11 @@ function renderPlanningAscii(planning, indent) {
   return [indent + parts.join('  ')];
 }
 
+/**
+ * @param {any} [node]
+ * @param {any} [indent]
+ * @param {any} [width]
+ */
 function renderParagraphAscii(node, indent, width) {
   const available = Math.max(10, width - indent.length); // a pathologically narrow width still leaves SOME room, rather than producing zero-or-negative-width wrapping
   const segments = /** @type {string[][]} */ ([[]]);
@@ -250,6 +275,11 @@ function renderParagraphAscii(node, indent, width) {
   return out;
 }
 
+/**
+ * @param {any} [list]
+ * @param {any} [indent]
+ * @param {any} [width]
+ */
 function renderListAscii(list, indent, width) {
   const out = [];
   let counter = 0;
@@ -288,6 +318,7 @@ function renderListAscii(list, indent, width) {
  *  Matches an optional sign, digits, and an optional decimal part --
  *  deliberately simple rather than a full numeric-literal grammar,
  *  since this only has to be good enough to bias a column's own
+ * @param {any} [text]
  *  alignment one way or the other, not validate the value itself. */
 function looksNumeric(text) {
   return /^[+-]?\d+(\.\d+)?$/.test(text.trim());
@@ -297,6 +328,9 @@ function looksNumeric(text) {
  *  matching real org's own org-ascii--justify-string. A value already
  *  at or beyond `width` (a cell content computed the width FROM in
  *  the first place, so this is normally exact, never truncated) is
+ * @param {any} [text]
+ * @param {any} [width]
+ * @param {any} [alignRight]
  *  returned unchanged rather than clipped. */
 function justify(text, width, alignRight) {
   const padding = ' '.repeat(Math.max(0, width - text.length));
@@ -312,6 +346,8 @@ function justify(text, width, alignRight) {
  *  "trees"), matching how hyphenated words are conventionally broken
  *  in running text. Regular paragraph/list wrapping (wrapText itself)
  *  doesn't need this -- it's specific to the tighter, fixed-width
+ * @param {any} [text]
+ * @param {any} [width]
  *  constraint an explicit table column width actually creates. */
 function wrapTableCellAscii(text, width) {
   const words = text.trim().split(/\s+/).filter(Boolean);
@@ -356,6 +392,10 @@ function wrapTableCellAscii(text, width) {
   return lines;
 }
 
+/**
+ * @param {any} [table]
+ * @param {any} [indent]
+ */
 function renderTableAscii(table, indent) {
   // Real org's own table editor keeps every column a single, fixed
   // width (the widest cell in it) and auto-aligns each column left or
@@ -390,7 +430,7 @@ function renderTableAscii(table, indent) {
   const dataRows = contentRows.filter((r) => r.type === 'row');
   if (dataRows.length === 0) return [];
 
-  const renderedRows = dataRows.map((row) => row.cells.map((cell) => renderTextAscii(cell)));
+  const renderedRows = dataRows.map((row) => row.cells.map((/** @type {any} */ cell) => renderTextAscii(cell)));
   const columnCount = Math.max(...renderedRows.map((cells) => cells.length));
 
   const columnWidths = [];
@@ -435,24 +475,37 @@ function renderTableAscii(table, indent) {
 
 /** Strips org's own comma-escape convention from one block content
  *  line for display -- see export-html.js's own stripCommaEscape for
+ * @param {any} [line]
  *  the full reasoning; the same fix, applied here too. */
 function stripCommaEscape(line) {
   return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
 }
 
-/** The frame ox-ascii draws around example blocks, source blocks and fixed-width lines. */
+/**
+ * The frame ox-ascii draws around example blocks, source blocks and fixed-width lines.
+ * @param {any} [lines]
+ * @param {any} [indent]
+ */
 function boxLines(lines, indent) {
   const [top, side, bottom] = charsetAscii.box;
-  return [indent + top, ...lines.map((line) => indent + side + line), indent + bottom];
+  return [indent + top, ...lines.map((/** @type {string} */ line) => indent + side + line), indent + bottom];
 }
 
-/** The nodes of a block's lines (comma escapes undone), for the block kinds whose content is Org text. */
+/**
+ * The nodes of a block's lines (comma escapes undone), for the block kinds whose content is Org text.
+ * @param {any} [lines]
+ */
 function parseBlockContent(lines) {
   const doc = parseOrg('* x\n' + lines.map(stripCommaEscape).join('\n'));
   return doc.children[0].body || [];
 }
 
-/** Nodes rendered one after another with a blank line between, as a section's body is. */
+/**
+ * Nodes rendered one after another with a blank line between, as a section's body is.
+ * @param {any} [nodes]
+ * @param {any} [indent]
+ * @param {any} [width]
+ */
 function renderNodesAscii(nodes, indent, width) {
   const out = [];
   for (const node of nodes) {
@@ -465,9 +518,12 @@ function renderNodesAscii(nodes, indent, width) {
 }
 
 /** ox-ascii centres each line of a centre block on the text width (less the base margin), but never left of the
+ * @param {any} [lines]
+ * @param {any} [indent]
+ * @param {any} [width]
  *  margin. Emacs pads with tabs; spaces are used here so the file reads the same everywhere. */
 function centerLines(lines, indent, width) {
-  return lines.map((line) => {
+  return lines.map((/** @type {string} */ line) => {
     const text = line.slice(indent.length);
     if (!text) return line;
     const column = Math.max(indent.length, Math.floor((width - indent.length - text.length) / 2));
@@ -477,12 +533,17 @@ function centerLines(lines, indent, width) {
 
 const QUOTE_MARGIN = 6;
 
+/**
+ * @param {any} [block]
+ * @param {any} [indent]
+ * @param {any} [width]
+ */
 function renderBlockAscii(block, indent, width) {
   const name = (block.name || '').toUpperCase();
   switch (name) {
     case 'EXPORT':
       if ((block.params || '').trim().toLowerCase() !== 'ascii') return [];
-      return block.lines.map((line) => indent + line);
+      return block.lines.map((/** @type {string} */ line) => indent + line);
     case 'COMMENT':
       return [];
     case 'EXAMPLE':
@@ -491,7 +552,7 @@ function renderBlockAscii(block, indent, width) {
     case 'VERSE': {
       // Line breaks and spacing are the poet's own: no filling, set in from the margin like a quotation.
       const pad = indent + ' '.repeat(QUOTE_MARGIN);
-      return removeIndentation(block.lines.map(stripCommaEscape)).map((line) => (line.trim() ? pad + renderTextAscii(line) : ''));
+      return removeIndentation(block.lines.map(stripCommaEscape)).map((/** @type {string} */ line) => (line.trim() ? pad + renderTextAscii(line) : ''));
     }
     case 'QUOTE':
       return renderNodesAscii(parseBlockContent(block.lines), indent + ' '.repeat(QUOTE_MARGIN), width - QUOTE_MARGIN);
@@ -513,6 +574,9 @@ function renderBlockAscii(block, indent, width) {
 
 /** A paragraph's lines in runs: affiliated keywords (`#+ATTR_ASCII:`, `#+NAME:`, ...) are consumed, `: ` lines are
  *  fixed-width text drawn in a frame, the rest is prose. `:width` on `#+ATTR_ASCII` changes nothing in Emacs's
+ * @param {any} [node]
+ * @param {any} [indent]
+ * @param {any} [width]
  *  output for any element, so it is read and ignored. */
 function renderParagraphRuns(node, indent, width) {
   const AFFILIATED = /^\s*#\+(NAME|CAPTION|HEADERS?|ATTR_[A-Za-z0-9_-]+)\s*:/i;
@@ -537,6 +601,11 @@ function renderParagraphRuns(node, indent, width) {
   return out;
 }
 
+/**
+ * @param {any} [node]
+ * @param {any} [indent]
+ * @param {any} [width]
+ */
 function renderBodyNodeAscii(node, indent, width) {
   if (node.type === 'paragraph') return renderParagraphRuns(node, indent, width);
   if (node.type === 'list') return renderListAscii(node, indent, width);
@@ -546,6 +615,12 @@ function renderBodyNodeAscii(node, indent, width) {
   return [];
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [levelOffset]
+ * @param {any} [width]
+ * @param {any} [out]
+ */
 function renderHeadingAscii(heading, levelOffset, width, out) {
   const level = heading.level - levelOffset;
   out.push(...renderHeadingLineAscii(heading, level));
@@ -566,6 +641,10 @@ function renderHeadingAscii(heading, levelOffset, width, out) {
  *  renderHeadingLineAscii's own nextSectionNumber does, but run
  *  ahead of time, before the real render pass, specifically so the
  *  TOC -- which has to appear BEFORE the headings themselves in the
+ * @param {any} [headings]
+ * @param {any} [level]
+ * @param {any} [numbers]
+ * @param {any} [out]
  *  output -- can reference numbers that end up matching exactly). */
 function collectHeadingsForToc(headings, level, numbers, out) {
   for (const heading of headings) {
@@ -581,6 +660,9 @@ function collectHeadingsForToc(headings, level, numbers, out) {
  *  followed by one line per heading -- dot-leader indentation
  *  matching depth (real org's own "make-string (1- indent) '.'"
  *  convention, here approximated as literal repeated dots), each
+ * @param {any} [headings]
+ * @param {any} [toc]
+ * @param {any} [numberingEnabled]
  *  prefixed with its own section number when numbering is on. */
 function renderToc(headings, toc, numberingEnabled) {
   if (!toc) return []; // toc:nil -- no Table of Contents at all, independent of num:
@@ -610,6 +692,7 @@ function renderToc(headings, toc, numberingEnabled) {
  * `numbered` (default true, matching real org's own default): whether
  * headings get section numbers and a Table of Contents is generated
  * at all -- real org's own #+OPTIONS: num:nil turns this off.
+ * @param {any} [doc]
  */
 export function exportToAscii(doc, scope = /** @type {any} */ (null), textWidth = 72, { charset = 'ascii' } = {}) {
   charsetAscii = CHARSETS[normalizeAsciiCharset(charset)];

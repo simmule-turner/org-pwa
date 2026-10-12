@@ -52,6 +52,7 @@ const CRITERION_KEYS = ['level', 'maxlevel', 'tag', 'todo', 'regexp'];
 
 /** Splits on ";" separators, treating a backslash as escaping the next
  *  character (so "\;" stays inside its entry, and "\\;" is an escaped
+ * @param {any} [text]
  *  backslash followed by a real separator). Escapes are kept as written. */
 function splitEntries(text) {
   const entries = [];
@@ -72,7 +73,10 @@ function splitEntries(text) {
   return entries;
 }
 
-/** Parses one entry; returns { entry } or { error }. */
+/**
+ * Parses one entry; returns { entry } or { error }.
+ * @param {any} [entryText]
+ */
 function parseOneEntry(entryText) {
   const firstSpace = entryText.search(/\s/);
   const fileSpec = firstSpace === -1 ? entryText : entryText.slice(0, firstSpace);
@@ -129,6 +133,7 @@ function parseOneEntry(entryText) {
 
 /** Parses org-refile-targets text into `{ entries, errors }`. `errors`
  *  lists every entry that was skipped and why, so the caller can show
+ * @param {any} [text]
  *  it rather than have a target quietly disappear. */
 function parseRefileTargetsWithErrors(text) {
   if (!text || !text.trim()) {
@@ -146,13 +151,18 @@ function parseRefileTargetsWithErrors(text) {
   return { entries, errors };
 }
 
+/** @param {any} [text] */
 function parseRefileTargets(text) {
   return parseRefileTargetsWithErrors(text).entries;
 }
 
-/** Whether `heading` satisfies every criterion of one entry. */
+/**
+ * Whether `heading` satisfies every criterion of one entry.
+ * @param {any} [heading]
+ * @param {any} [criteria]
+ */
 function headingMatchesCriteria(heading, criteria) {
-  return criteria.every((c) => {
+  return criteria.every((/** @type {any} */ c) => {
     switch (c.kind) {
       case 'level':
         return heading.level === c.n;
@@ -175,12 +185,18 @@ function headingMatchesCriteria(heading, criteria) {
  *  docsById's own keys, aggregateAgendaDocs' own output) uses the bare
  *  path only, never the "scheme:" prefix; that prefix exists purely
  *  in agendaFilesConfig's own raw configuration strings, needed there
+ * @param {any} [key]
  *  specifically to pick which adapter (github vs webdav) fetches it. */
 function stripScheme(key) {
   const colonIndex = key.indexOf(':');
   return colonIndex === -1 ? key : key.slice(colonIndex + 1);
 }
 
+/**
+ * @param {any} [entry]
+ * @param {any} [currentFileId]
+ * @param {any} [agendaFilesConfig]
+ */
 function resolveEntryFileIds(entry, currentFileId, agendaFilesConfig) {
   if (entry.fileSpec === 'current') return [currentFileId];
   if (entry.fileSpec === 'agenda-files') return (agendaFilesConfig || []).map(stripScheme);
@@ -202,6 +218,10 @@ function resolveEntryFileIds(entry, currentFileId, agendaFilesConfig) {
  * this function does no I/O of its own. A file-spec resolving to a
  * document not present in `docsById` is silently skipped (e.g. an
  * Agenda File that failed to load) rather than throwing.
+ * @param {any} [targetsSpec]
+ * @param {any} [docsById]
+ * @param {any} [currentFileId]
+ * @param {any} [agendaFilesConfig]
  */
 function getRefileCandidates(targetsSpec, docsById, currentFileId, agendaFilesConfig, excludeHeading = null) {
   const excludeSet = excludeHeading ? collectSubtreeHeadings(excludeHeading) : null;
@@ -219,6 +239,15 @@ function getRefileCandidates(targetsSpec, docsById, currentFileId, agendaFilesCo
   return candidates;
 }
 
+/**
+ * @param {any} [headings]
+ * @param {any} [outlinePath]
+ * @param {any} [entry]
+ * @param {any} [documentId]
+ * @param {any} [excludeSet]
+ * @param {any} [candidates]
+ * @param {any} [seen]
+ */
 function walkForCandidates(headings, outlinePath, entry, documentId, excludeSet, candidates, seen) {
   for (const heading of headings) {
     const matches = headingMatchesCriteria(heading, entry.criteria);
@@ -244,9 +273,11 @@ function walkForCandidates(headings, outlinePath, entry, documentId, excludeSet,
 
 /** Every heading in `heading`'s own subtree, itself included -- used to
  *  exclude a refiled heading and all its descendants from its own
+ * @param {any} [heading]
  *  candidate list. */
 function collectSubtreeHeadings(heading) {
   const set = new Set([heading]);
+  /** @param {any} [h] */
   const walk = (h) => {
     for (const c of h.children || []) {
       set.add(c);
@@ -264,13 +295,15 @@ function collectSubtreeHeadings(heading) {
  *  happened to be built from, which could be stale by the time the
  *  user actually picks one (especially for a cross-file target, read
  *  once when the picker opened but possibly edited elsewhere since).
+ * @param {any} [doc]
+ * @param {any} [outlinePath]
  *  Returns null if the path no longer matches anything. */
 function findHeadingByOutlinePath(doc, outlinePath) {
   let level = doc.children;
   /** @type {any} */
   let found = null;
   for (const title of outlinePath) {
-    found = (level || []).find((h) => h.title === title);
+    found = (level || []).find((/** @type {any} */ h) => h.title === title);
     if (!found) return null;
     level = found.children;
   }
@@ -285,20 +318,25 @@ function findHeadingByOutlinePath(doc, outlinePath) {
 // (the file, the heading, org-refile-targets and the refiled subtree's own
 // exclusion are all re-checked), so a stale entry never shows.
 
+/** @param {any} [target] */
 const refileTargetKey = (target) => target.documentId + '\u0000' + target.outlinePath.join('\u0001');
 
 /** `recent` with `target` moved to the front, de-duplicated and capped.
+ * @param {any} [recent]
+ * @param {any} [target]
  *  Stores only what is needed to find the target again. */
 function pushRecentRefileTarget(recent, target, max = 8) {
   const entry = { documentId: target.documentId, outlinePath: [...target.outlinePath] };
   const key = refileTargetKey(entry);
-  return [entry, ...recent.filter((r) => refileTargetKey(r) !== key)].slice(0, max);
+  return [entry, ...recent.filter((/** @type {any} */ r) => refileTargetKey(r) !== key)].slice(0, max);
 }
 
 /** The current candidates that appear in `recent`, in recent-first order,
+ * @param {any} [candidates]
+ * @param {any} [recent]
  *  at most `limit` of them. */
 function recentRefileCandidates(candidates, recent, limit = 5) {
-  const byKey = new Map(candidates.map((c) => [refileTargetKey(c), c]));
+  const byKey = new Map(candidates.map((/** @type {any} */ c) => [refileTargetKey(c), c]));
   const result = [];
   for (const r of recent) {
     const candidate = byKey.get(refileTargetKey(r));

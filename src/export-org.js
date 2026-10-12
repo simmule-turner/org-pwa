@@ -56,6 +56,7 @@ const MACRO_USE_RE = /\{\{\{([a-zA-Z][-a-zA-Z0-9_]*)(\(([^)]*)\))?\}\}\}/g;
  *  comma without being split apart), rather than naively splitting on
  *  every comma regardless of escaping. Each argument is trimmed, the
  *  same as real org's own actual behavior. An empty (or undefined,
+ * @param {any} [argsStr]
  *  meaning "no parentheses at all") argument list returns []. */
 function splitMacroArgs(argsStr) {
   if (argsStr === undefined || argsStr === '') return [];
@@ -82,6 +83,7 @@ function splitMacroArgs(argsStr) {
  *  actually apply. A malformed definition (no name, or a name that
  *  isn't a real identifier) is silently skipped, the same
  *  tolerant-of-the-unexpected approach this app's own other
+ * @param {any} [doc]
  *  "recognized subset" parsers already take elsewhere. */
 function buildMacroTable(doc) {
   const macros = {};
@@ -100,11 +102,13 @@ function buildMacroTable(doc) {
  *  are real org's own documented shortcuts for keyword(TITLE)/
  *  keyword(AUTHOR)/keyword(EMAIL) respectively -- not separately
  *  implemented, just called through this same function with those
+ * @param {any} [doc]
+ * @param {any} [name]
  *  three names. */
 function keywordValues(doc, name) {
   return (doc.keywords || [])
-    .filter((k) => k.key.toUpperCase() === name.toUpperCase())
-    .map((k) => k.value)
+    .filter((/** @type {any} */ k) => k.key.toUpperCase() === name.toUpperCase())
+    .map((/** @type {any} */ k) => k.value)
     .join(' ');
 }
 
@@ -114,9 +118,13 @@ function keywordValues(doc, name) {
  *  macro name is left exactly as written, the same
  *  tolerant-of-the-unexpected approach every other "recognized
  *  subset" parser in this app already takes -- never an error, never
+ * @param {any} [text]
+ * @param {any} [macros]
+ * @param {any} [doc]
+ * @param {any} [now]
  *  silently dropped. */
 function expandMacrosInText(text, macros, doc, now) {
-  return text.replace(MACRO_USE_RE, (whole, name, _paren, argsStr) => {
+  return text.replace(MACRO_USE_RE, (/** @type {any} */ whole, /** @type {string} */ name, /** @type {any} */ _paren, /** @type {any} */ argsStr) => {
     const args = splitMacroArgs(argsStr);
     if (name === 'title') return keywordValues(doc, 'TITLE');
     if (name === 'author') return keywordValues(doc, 'AUTHOR');
@@ -141,7 +149,7 @@ function expandMacrosInText(text, macros, doc, now) {
     if (name in macros) {
       const template = macros[name];
       if (/^\(eval\b/.test(template.trim())) return whole; // real org's own escape into arbitrary Emacs Lisp -- can't safely execute this, same reason step (c) can't run a code block; left exactly as written
-      return template.replace(/\$(\d+)/g, (_, n) => args[Number(n) - 1] ?? '');
+      return template.replace(/\$(\d+)/g, (/** @type {any} */ _, /** @type {any} */ n) => args[Number(n) - 1] ?? '');
     }
     return whole;
   });
@@ -154,13 +162,18 @@ function expandMacrosInText(text, macros, doc, now) {
  *  lists; verse blocks are plain body lines here too) -- then
  *  reparses each changed body so the expanded text is reflected
  *  structurally, not just as raw strings nothing else sees. Returns a
+ * @param {any} [doc]
+ * @param {any} [now]
  *  new doc; the input is never mutated. */
 function expandMacros(doc, now) {
   const macros = buildMacroTable(doc);
+  /** @param {any} [line] */
   const newBodyLines = (doc.bodyLines || []).map((line) => expandMacrosInText(line, macros, doc, now));
 
+  /** @param {any} [heading] */
   function walk(heading) {
     const newTitle = expandMacrosInText(heading.title, macros, doc, now);
+    /** @param {any} [line] */
     const newLines = (heading.bodyLines || []).map((line) => expandMacrosInText(line, macros, doc, now));
     return {
       ...heading,
@@ -186,6 +199,7 @@ const RAW_COMMENT_LINE_RE = /^\s*#(?!\+)(\s|$)/; // a real org "# " comment line
  *  actual export behavior (the same behavior this app's own HTML/
  *  Markdown/ODT exporters already give #+BEGIN_COMMENT specifically,
  *  applied here to raw text since this module's own output is real
+ * @param {any} [lines]
  *  org text, not one of those rendered backends). */
 function stripCommentLines(lines) {
   const out = [];
@@ -211,8 +225,10 @@ function stripCommentLines(lines) {
  *  tag is excluded, not merely one whose parent happens to carry it),
  *  along with that heading's entire subtree, and strips comment
  *  lines/blocks (see stripCommentLines) from what's left. Returns a
+ * @param {any} [doc]
  *  new doc; the input is never mutated. */
 function filterNoexportAndComments(doc) {
+  /** @param {any} [heading] */
   function walk(heading) {
     if (heading.tags.includes('noexport')) return null;
     const newLines = stripCommentLines(heading.bodyLines || []);
@@ -238,12 +254,14 @@ function filterNoexportAndComments(doc) {
  *  `minlevel` -- reuses shiftLevels, the same primitive
  *  export-include.js's own :minlevel handling already uses for an
  *  included subtree. A no-op (returns `doc` as-is) when `minlevel` is
+ * @param {any} [doc]
+ * @param {any} [minlevel]
  *  falsy or the document already starts there. */
 function scaleHeadingLevels(doc, minlevel) {
   if (!minlevel || (doc.children || []).length === 0) return doc;
-  const currentMin = Math.min(...doc.children.map((h) => h.level));
+  const currentMin = Math.min(...doc.children.map((/** @type {any} */ h) => h.level));
   if (currentMin === minlevel) return doc;
-  const newChildren = doc.children.map((h) => {
+  const newChildren = doc.children.map((/** @type {any} */ h) => {
     const copy = structuredClone(h); // a shallow { ...h } would leave h.children pointing at the SAME nested objects as the original doc -- shiftLevels' own recursive walk mutates in place, so this needs to be a true, independent deep copy first
     shiftLevels(copy, minlevel + (h.level - currentMin));
     return copy;

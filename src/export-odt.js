@@ -35,6 +35,7 @@ import { getProperty } from './archive-model.js';
 
 const XML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' };
 
+/** @param {any} [text] */
 function escapeXml(text) {
   return String(text).replace(/[&<>"']/g, (c) => XML_ESCAPES[c]);
 }
@@ -47,6 +48,7 @@ let footnoteCounterOdt = 0;
 let sectionNumbersOdt = [];
 let numberingEnabledOdt = true;
 
+/** @param {any} [level] */
 function nextSectionNumberOdt(level) {
   const newNumbers = sectionNumbersOdt.slice(0, level);
   for (let i = 0; i < level - 1; i++) {
@@ -57,6 +59,7 @@ function nextSectionNumberOdt(level) {
   return sectionNumbersOdt.join('.');
 }
 
+/** @param {any} [title] */
 function slugifyOdt(title) {
   const slug = String(title || '')
     .toLowerCase()
@@ -70,6 +73,8 @@ function slugifyOdt(title) {
  *  with a numeric suffix if two headings would otherwise collide.
  *  ODF's own bookmark mechanism (used for internal links, see
  *  resolveLinkHrefOdt) needs the same kind of stable, unique name per
+ * @param {any} [headings]
+ * @param {any} [usedSlugs]
  *  heading that an HTML id attribute does. */
 function assignHeadingIdsOdt(headings, usedSlugs) {
   for (const heading of headings) {
@@ -97,6 +102,7 @@ function assignHeadingIdsOdt(headings, usedSlugs) {
  *  resolveLinkHrefHtml, adapted to ODF's own linking mechanism (a
  *  bookmark name, not a URL fragment). Returns null for "not an
  *  internal heading link" so the caller renders it as a normal
+ * @param {any} [target]
  *  xlink:href instead. */
 function resolveInternalLinkOdt(target) {
   if (!docForLinkResolutionOdt) return null;
@@ -109,10 +115,12 @@ function resolveInternalLinkOdt(target) {
 
 // ---- inline rendering -----------------------------------------------------
 
+/** @param {any} [nodes] */
 function renderInlineListOdt(nodes) {
   return nodes.map(renderInlineNodeOdt).join('');
 }
 
+/** @param {any} [node] */
 function renderInlineNodeOdt(node) {
   switch (node.type) {
     case 'text':
@@ -168,12 +176,14 @@ function renderInlineNodeOdt(node) {
   }
 }
 
+/** @param {any} [text] */
 function renderTextOdt(text) {
   return renderInlineListOdt(parseInline(text));
 }
 
 // ---- body content -----------------------------------------------------
 
+/** @param {any} [node] */
 function renderParagraphOdt(node) {
   // A footnote's own DEFINITION line (the "[fn:label] text" form,
   // as opposed to an inline footnote-def already rendered where it
@@ -183,7 +193,7 @@ function renderParagraphOdt(node) {
   // nothing further here, same as export-html.js's own treatment.
   if (node.footnoteLabel !== null) return '';
   const joined = node.lines
-    .map((line, i) => {
+    .map((/** @type {string} */ line, /** @type {number} */ i) => {
       const forcedBreak = stripLineBreakMarker(line) !== line;
       const rendered = renderTextOdt(stripLineBreakMarker(line));
       if (i === node.lines.length - 1) return rendered;
@@ -193,8 +203,12 @@ function renderParagraphOdt(node) {
   return '<text:p text:style-name="Standard">' + joined + '</text:p>';
 }
 
+/**
+ * @param {any} [items]
+ * @param {any} [listStyleName]
+ */
 function renderListItemsOdt(items, listStyleName) {
-  const rows = items.map((item) => {
+  const rows = items.map((/** @type {any} */ item) => {
     let inner = renderInlineListOdt(item.inline);
     if (item.checkbox !== null) {
       const box = item.checkbox === 'X' ? '\u2611' : '\u2610'; // real checkbox glyphs -- ODF has no native checkbox-list construct to match org's own
@@ -203,30 +217,33 @@ function renderListItemsOdt(items, listStyleName) {
     if (item.tag) {
       inner = `<text:span text:style-name="Bold">${renderTextOdt(item.tag)}:</text:span> ${inner}`;
     }
+    /** @param {any} [nestedList] */
     const nested = (item.children || []).map((nestedList) => renderListOdt(nestedList)).join('');
     return `<text:list-item><text:p text:style-name="Standard">${inner}</text:p>${nested}</text:list-item>`;
   });
   return `<text:list text:style-name="${listStyleName}">${rows.join('')}</text:list>`;
 }
 
+/** @param {any} [list] */
 function renderListOdt(list) {
-  const isCheckbox = list.items.some((it) => it.checkbox !== null);
+  const isCheckbox = list.items.some((/** @type {any} */ it) => it.checkbox !== null);
   const isOrdered = !isCheckbox && list.items.length > 0 && list.items[0].ordered;
   return renderListItemsOdt(list.items, isOrdered ? 'OrderedList' : 'UnorderedList');
 }
 
+/** @param {any} [table] */
 function renderTableOdt(table) {
-  const dataRows = table.rows.filter((r) => r.type === 'row' && !isWidthCookieRow(r));
+  const dataRows = table.rows.filter((/** @type {any} */ r) => r.type === 'row' && !isWidthCookieRow(r));
   if (dataRows.length === 0) return '';
-  const colCount = Math.max(...dataRows.map((r) => r.cellsInline.length));
+  const colCount = Math.max(...dataRows.map((/** @type {any} */ r) => r.cellsInline.length));
   const columns = Array(colCount).fill('<table:table-column/>').join('');
   const rowsXml = dataRows
     .map(
-      (row) =>
+      (/** @type {any} */ row) =>
         '<table:table-row>' +
         row.cellsInline
           .map(
-            (c) =>
+            (/** @type {any} */ c) =>
               `<table:table-cell office:value-type="string"><text:p text:style-name="Standard">${renderInlineListOdt(c)}</text:p></table:table-cell>`
           )
           .join('') +
@@ -238,11 +255,13 @@ function renderTableOdt(table) {
 
 /** Strips org's own comma-escape convention from one block content
  *  line for display -- see export-html.js's own stripCommaEscape for
+ * @param {any} [line]
  *  the full reasoning; the same fix, applied here too. */
 function stripCommaEscape(line) {
   return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
 }
 
+/** @param {any} [block] */
 function renderBlockOdt(block) {
   const name = block.name;
   if (name === 'COMMENT') return ''; // matches every other export backend
@@ -250,15 +269,16 @@ function renderBlockOdt(block) {
     return (block.params || '').trim().toLowerCase() === 'odt' ? block.lines.join('\n') : '';
   }
   if (name === 'QUOTE') {
-    return block.lines.map(stripCommaEscape).map((l) => `<text:p text:style-name="Quote">${renderTextOdt(l)}</text:p>`).join('');
+    return block.lines.map(stripCommaEscape).map((/** @type {any} */ l) => `<text:p text:style-name="Quote">${renderTextOdt(l)}</text:p>`).join('');
   }
   // SRC and every other/unrecognized block type: preserve verbatim in
   // a monospaced paragraph per line, same "don't try to reinterpret
   // content this app has no specific handling for" reasoning
   // export-markdown.js's own renderBlockMd already documents.
-  return block.lines.map(stripCommaEscape).map((l) => `<text:p text:style-name="Code">${escapeXml(l) || '<text:s/>'}</text:p>`).join('');
+  return block.lines.map(stripCommaEscape).map((/** @type {any} */ l) => `<text:p text:style-name="Code">${escapeXml(l) || '<text:s/>'}</text:p>`).join('');
 }
 
+/** @param {any} [node] */
 function renderBodyNodeOdt(node) {
   if (node.type === 'list') return renderListOdt(node);
   if (node.type === 'paragraph') return renderParagraphOdt(node);
@@ -270,6 +290,7 @@ function renderBodyNodeOdt(node) {
 
 // ---- headings -----------------------------------------------------------
 
+/** @param {any} [planning] */
 function renderPlanningOdt(planning) {
   if (!planning) return '';
   const parts = [];
@@ -283,11 +304,17 @@ function renderPlanningOdt(planning) {
  *  HTML's h1-h6 does, but this app's own Heading_20_N paragraph
  *  styles (defined in stylesXmlOdt below) only go up to 6 -- clamp
  *  the same way export-html.js does, for the same "don't reference a
+ * @param {any} [level]
  *  style that was never defined" reason. */
 function clampHeadingLevelOdt(level) {
   return Math.min(6, Math.max(1, level));
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [level]
+ * @param {any} [doneKeywords]
+ */
 function renderHeadingLineOdt(heading, level, doneKeywords) {
   const clamped = clampHeadingLevelOdt(level);
   const id = headingIdMapOdt.get(heading);
@@ -308,6 +335,12 @@ function renderHeadingLineOdt(heading, level, doneKeywords) {
   return `<text:h text:style-name="Heading_20_${clamped}" text:outline-level="${clamped}">${bookmark}${inner}${bookmarkEnd}</text:h>`;
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [levelOffset]
+ * @param {any} [doneKeywords]
+ * @param {any} [out]
+ */
 function renderHeadingOdt(heading, levelOffset, doneKeywords, out) {
   out.push(renderHeadingLineOdt(heading, heading.level - levelOffset, doneKeywords));
 
@@ -390,6 +423,11 @@ function stylesXml() {
   );
 }
 
+/**
+ * @param {any} [title]
+ * @param {any} [author]
+ * @param {any} [date]
+ */
 function metaXml(title, author, date) {
   return (
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -405,6 +443,7 @@ function metaXml(title, author, date) {
   );
 }
 
+/** @param {any} [bodyXml] */
 function contentXml(bodyXml) {
   return (
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -430,11 +469,16 @@ function contentXml(bodyXml) {
  */
 /** Builds one level of the ToC's own nested list -- a real ODF
  *  <text:list>, linking each entry to the same bookmark
+ * @param {any} [headings]
+ * @param {any} [level]
+ * @param {any} [maxDepth]
+ * @param {any} [numberingEnabled]
+ * @param {any} [numbers]
  *  renderHeadingLineOdt already creates for that heading. */
 function buildTocListOdt(headings, level, maxDepth, numberingEnabled, numbers) {
   if (level > maxDepth || headings.length === 0) return '';
   const items = headings
-    .map((heading) => {
+    .map((/** @type {any} */ heading) => {
       numbers.length = level;
       numbers[level - 1] = (numbers[level - 1] || 0) + 1;
       const number = numbers.slice(0, level).join('.');
@@ -450,6 +494,9 @@ function buildTocListOdt(headings, level, maxDepth, numberingEnabled, numbers) {
 
 /** Builds the full Table of Contents block, or '' when `toc` is
  *  false, or fewer than two headings are actually visible at `toc`'s
+ * @param {any} [roots]
+ * @param {any} [toc]
+ * @param {any} [numberingEnabled]
  *  own depth limit -- matches buildTocHtml's own conditions exactly. */
 function buildTocOdt(roots, toc, numberingEnabled) {
   if (!toc) return '';
@@ -467,6 +514,7 @@ function buildTocOdt(roots, toc, numberingEnabled) {
   return `<text:p text:style-name="Heading">Table of Contents</text:p>${list}`;
 }
 
+/** @param {any} [doc] */
 export function exportToOdt(doc, scope = /** @type {any} */ (null)) {
   docForLinkResolutionOdt = doc;
   headingIdMapOdt = new Map();
@@ -481,7 +529,7 @@ export function exportToOdt(doc, scope = /** @type {any} */ (null)) {
   const { doneKeywords } = resolveTodoSequence(doc);
   const out = [];
 
-  const titleSource = scope ? scope.title : (doc.keywords || []).find((k) => k.key.toUpperCase() === 'TITLE');
+  const titleSource = scope ? scope.title : (doc.keywords || []).find((/** @type {any} */ k) => k.key.toUpperCase() === 'TITLE');
   const title = scope ? scope.title : titleSource ? titleSource.value : 'Untitled';
   const author = !scope && options.author ? getDocAuthor(doc) : null;
   const date = !scope && options.date ? getDocDate(doc) : null;

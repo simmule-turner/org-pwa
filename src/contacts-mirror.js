@@ -20,6 +20,9 @@ import { collectContactCards } from './export-vcard.js';
 import { contentHash } from './sync-engine.js';
 
 /** What identifies a contact to the server, and stays the same from run to run: its :ID: if it has one (as org-contacts and
+ * @param {any} [documentId]
+ * @param {any} [heading]
+ * @param {any} [index]
  *  org-id use), else built from its file and name. Two contacts with the same name in one file get different ones. */
 function contactUid(documentId, heading, index) {
   const existingId = getProperty(heading, 'ID');
@@ -28,20 +31,24 @@ function contactUid(documentId, heading, index) {
 }
 
 /** The file name a contact is stored under on the server: readable, safe in a URL, and unique to its id. Every name this
+ * @param {any} [uid]
  *  app makes starts with `orgpwa-`, which is how it recognizes its own contacts and leaves any other alone. */
 function resourceNameForContactUid(uid) {
   const base = uid.replace(/@org-pwa$/, '').replace(/[^A-Za-z0-9._-]/g, '-').slice(0, 100);
   return `${RESOURCE_PREFIX}${base}-${contentHash(uid)}.vcf`;
 }
 
+/** @param {any} [name] */
 function isOurContactResource(name) {
   return name.startsWith(RESOURCE_PREFIX) && name.endsWith('.vcf');
 }
 
 /** One contact's vCard text, with the UID a CardDAV server needs to tell contacts apart (the export has none, since a
+ * @param {any} [lines]
+ * @param {any} [uid]
  *  single file of cards does not need one). It goes straight after VERSION, where vCard 3.0 allows it. */
 function vcardText(lines, uid) {
-  const withUid = lines.some((line) => /^UID[:;]/i.test(line)) ? lines : [lines[0], lines[1], `UID:${uid}`, ...lines.slice(2)];
+  const withUid = lines.some((/** @type {string} */ line) => /^UID[:;]/i.test(line)) ? lines : [lines[0], lines[1], `UID:${uid}`, ...lines.slice(2)];
   return withUid.join('\r\n') + '\r\n';
 }
 

@@ -16,6 +16,7 @@ import { agendaFilesCache, searchExtraFilesCache } from './singletons.js';
 import { isWideLayout } from './ui-widgets.js';
 import { openOrSwitchToHelp, switchToView } from './views.js';
 
+/** @param {any} [node] */
 export function toggleActionMenu(node) {
   const opening = S.actionMenuFor !== node;
   S.actionMenuFor = opening ? node : null;
@@ -38,6 +39,7 @@ export function syncNavBackButtonVisibility() {
   navBackBtn.style.display = S.navigationBackStack.length > 0 ? 'flex' : 'none';
 }
 
+/** @param {any} [heading] */
 export function navigateToHeading(heading, { revealOwnBody = false, targetNode = heading, pushToBackStack = true } = {}) {
   if (pushToBackStack) {
     S.navigationBackStack.push({
@@ -89,6 +91,7 @@ export function navigateToHeading(heading, { revealOwnBody = false, targetNode =
  *  directly; any other documentId can only be an agenda file (the
  *  only other source a heading reference can come from), found by
  *  matching against agendaFilesCache's own "scheme:path" keys -- the
+ * @param {any} [documentId]
  *  same key-parsing ensureAgendaFilesLoaded itself already does. */
 export function storageKindForDocumentId(documentId) {
   if (documentId === S.state.documentId) return S.state.storageKind;
@@ -111,6 +114,8 @@ export function storageKindForDocumentId(documentId) {
  *  doc. null if that document isn't actually available (shouldn't
  *  normally happen -- an agenda item/search result's own documentId
  *  only ever comes from a document that was, at some point, actually
+ * @param {any} [documentId]
+ * @param {any} [heading]
  *  loaded). */
 export function outlinePathForHeadingInDocument(documentId, heading) {
   const doc =
@@ -118,7 +123,7 @@ export function outlinePathForHeadingInDocument(documentId, heading) {
       ? S.state.doc
       : [...Array.from(agendaFilesCache.values()), ...Array.from(searchExtraFilesCache.values())].find((e) => e.documentId === documentId)?.doc;
   if (!doc) return null;
-  return [...(findAncestorPath(doc, heading) || []).map((h) => h.title), heading.title];
+  return [...(findAncestorPath(doc, heading) || []).map((/** @type {any} */ h) => h.title), heading.title];
 }
 
 /** Navigates to the heading identified by `outlinePath` within
@@ -133,6 +138,8 @@ export function outlinePathForHeadingInDocument(documentId, heading) {
  *  since any in-progress edit is already safely cached locally
  *  regardless of navigating away (see "Pending Local Changes" in
  *  Settings) -- there's nothing this would put at risk that isn't
+ * @param {any} [documentId]
+ * @param {any} [outlinePath]
  *  already handled the same way a plain internal link jump is. */
 export async function navigateToHeadingByPath(documentId, outlinePath, opts = {}) {
   if (documentId === S.state.documentId) {

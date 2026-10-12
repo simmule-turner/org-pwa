@@ -57,6 +57,7 @@ import {
  *  tokens, a double-quoted string as one token (quotes stripped), and
  *  any other whitespace-delimited run of characters as a bare atom
  *  (a symbol like `when` or `org-cyclic`, or a number like `2026` --
+ * @param {any} [text]
  *  parseSexpr below decides which, tokenizing doesn't need to). */
 function tokenize(text) {
   const tokens = [];
@@ -95,6 +96,7 @@ function tokenize(text) {
  *  list (a function call) is a plain JS array of nodes/nested arrays
  *  -- `array` alone is enough to distinguish "this is a call" from "
  *  this is a leaf" throughout evaluateSexpr below, no separate
+ * @param {any} [raw]
  *  `{ type: 'list', ... }` wrapper needed. */
 function atomNode(raw) {
   if (typeof raw === 'object') return raw; // already a { type: 'string', value } token
@@ -109,6 +111,7 @@ function atomNode(raw) {
  *  caller (parseSexpTimestamp) is expected to catch this and treat a
  *  malformed sexp the same tolerant way every other malformed
  *  Global/Local Variable or diary-sexp form in this app already is:
+ * @param {any} [text]
  *  skipped, not a hard error surfaced to the person. */
 function parseSexpr(text) {
   const tokens = tokenize(text);
@@ -152,7 +155,10 @@ let userSexpNames = new Set();
 /** @type {any} */
 let userSexpHandler = null;
 
-/** Installs (or, with no arguments, removes) the user-defined diary functions. */
+/**
+ * Installs (or, with no arguments, removes) the user-defined diary functions.
+ * @param {any} [names]
+ */
 function setUserSexps(names = [], handler = /** @type {any} */ (null)) {
   userSexpNames = new Set(names);
   userSexpHandler = handler;
@@ -162,6 +168,7 @@ function setUserSexps(names = [], handler = /** @type {any} */ (null)) {
  *  boolean context -- everything except `false` and the empty string
  *  (a diary function returning `""` is effectively "no match, nothing
  *  to show" the same way `false` is, not a genuine zero-length
+ * @param {any} [value]
  *  displayed entry). */
 function isTruthy(value) {
   return value !== false && value !== '';
@@ -173,6 +180,8 @@ function isTruthy(value) {
  *  back -- reuses the exact same matching logic expandOrgCyclicOccurrences
  *  etc. already have (and are already independently tested against),
  *  rather than a second, potentially-drifting copy of "does this
+ * @param {any} [expandFn]
+ * @param {any} [date]
  *  specific date match" for each one. */
 function occursOn(expandFn, date, ...args) {
   return expandFn(...args, date, date).length > 0;
@@ -180,12 +189,18 @@ function occursOn(expandFn, date, ...args) {
 
 // ---- helpers for the standard calendar functions ----------------------------
 
-/** A number node's integer value, else null. */
+/**
+ * A number node's integer value, else null.
+ * @param {any} [node]
+ */
 function intArg(node) {
   return node && !Array.isArray(node) && node.type === 'number' && Number.isInteger(node.value) ? node.value : null;
 }
 
 /** A real Date for year/month/day, or null when it isn't a real calendar
+ * @param {any} [year]
+ * @param {any} [month]
+ * @param {any} [day]
  *  date (month 13, February 30) rather than letting Date roll it over. */
 function realDate(year, month, day) {
   if (year === null || month === null || day === null) return null;
@@ -194,6 +209,8 @@ function realDate(year, month, day) {
 }
 
 /** org-date's field rule (the same as diary-date's): an integer, a list
+ * @param {any} [node]
+ * @param {any} [value]
  *  of integers, or `t` (every value). */
 function fieldMatches(node, value) {
   if (Array.isArray(node)) return node.some((n) => intArg(n) === value);
@@ -201,7 +218,10 @@ function fieldMatches(node, value) {
   return intArg(node) === value;
 }
 
-/** ISO 8601 week number (org-class's skip-weeks are ISO weeks). */
+/**
+ * ISO 8601 week number (org-class's skip-weeks are ISO weeks).
+ * @param {any} [date]
+ */
 function isoWeekNumber(date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
@@ -217,6 +237,8 @@ function isoWeekNumber(date) {
  *  match, AND that string is what should display instead of/
  *  alongside the heading's own title). An unrecognized function
  *  name, or any other malformed/unsupported construct, evaluates to
+ * @param {any} [node]
+ * @param {any} [context]
  *  `false` rather than throwing -- see parseSexpr's own docs for why. */
 function evaluateSexpr(node, context) {
   if (!Array.isArray(node)) {
@@ -374,10 +396,11 @@ function evaluateSexpr(node, context) {
       if (args.length < 1 || args[0].type !== 'string') return false;
       const fmt = args[0].value;
       const substitutionArgs = args.slice(1);
+      /** @param {any} [m] */
       const placeholderCount = (fmt.match(/%[s%]/g) || []).filter((m) => m === '%s').length;
       if (placeholderCount > substitutionArgs.length) return false; // not enough sub-expressions to fill every %s
       let argIndex = 0;
-      return fmt.replace(/%[s%]/g, (m) => {
+      return fmt.replace(/%[s%]/g, (/** @type {any} */ m) => {
         if (m === '%%') return '%';
         const subResult = evaluateSexpr(substitutionArgs[argIndex], context);
         argIndex++;
@@ -399,6 +422,7 @@ function evaluateSexpr(node, context) {
  *  symbol `t` (every month), or a parenthesized list of numbers
  *  (`(1 4 7 10)` for quarterly) -- except here it arrives as an
  *  already-parsed sexp node (a leaf or a nested array) rather than
+ * @param {any} [node]
  *  raw text needing its own regex extraction. */
 function parseMonthArg(node) {
   if (Array.isArray(node)) return node.map((n) => n.value);
@@ -423,6 +447,7 @@ const SEXP_TIMESTAMP_START_RE = /<%%\(/g;
  *  `[{ raw, expr }]` -- `raw` the full matched text including the
  *  surrounding `<%%(...)>`, `expr` the already-parsed expression tree
  *  (or `null` if the sexp itself failed to parse -- malformed input
+ * @param {any} [text]
  *  skipped rather than erroring, matching parseSexpr's own docs). */
 function findSexpTimestamps(text) {
   if (!text) return [];
@@ -483,9 +508,11 @@ function findSexpTimestamps(text) {
  *  findSexpTimestamps -- which is native to this file -- and this
  *  file already imports from org-weather.js (formatWeatherLine), so
  *  the reverse import direction would create a circular dependency
+ * @param {any} [doc]
  *  between the two modules. */
 function documentUsesOrgWeather(doc) {
   if (!doc) return false;
+  /** @param {any} [heading] */
   const usesIt = (heading) => {
     if (findSexpTimestamps(heading.title).some((ts) => /\borg-weather\b/.test(ts.raw))) return true;
     for (const line of heading.bodyLines || []) {
@@ -505,6 +532,7 @@ const GENERAL_BODY_LINE_HEADS = new Set(['and', 'or', 'not', 'when', 'org-class'
 /** Parses a `%%(expr) text` body line whose expression is one the general
  *  evaluator handles -- so `%%(and (org-block ...) (diary-float ...)) Term`
  *  works as a line exactly as it does inside a <%%(...)> timestamp. Returns
+ * @param {any} [line]
  *  `{ expr, text }`, or null for any other line. */
 function parseGeneralBodyLine(line) {
   const text = String(line).trim();
@@ -541,6 +569,8 @@ function parseGeneralBodyLine(line) {
  *  `context` -- a thin wrapper that also handles the "failed to
  *  parse at all" (`expr === null`) case, folding it into the same
  *  "no match" result every other unsupported construct already
+ * @param {any} [expr]
+ * @param {any} [context]
  *  produces, so callers don't need their own separate null-check. */
 function evaluateSexpTimestamp(expr, context) {
   if (expr === null) return false;

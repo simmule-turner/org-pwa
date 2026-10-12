@@ -54,12 +54,13 @@ export const platform = {
     adapter: createFileSystemAccessAdapter(kv),
   },
   saveFile: downloadFile,
+  /** @param {any} [blob] */
   viewFile(blob) {
     window.open(URL.createObjectURL(blob), '_blank');
   },
   clipboard: {
     readText: () => navigator.clipboard.readText(),
-    writeText: (text) => navigator.clipboard.writeText(text),
+    writeText: (/** @type {string} */ text) => navigator.clipboard.writeText(text),
   },
   usesServiceWorker: true,
   versionInfo: async () => null,
@@ -94,7 +95,7 @@ export const platform = {
     },
     schedule: async () => {},
     cancelAll: async () => {},
-    onTap: (handler) => {
+    onTap: (/** @type {Function} */ handler) => {
       // the service worker tells an open app which day was tapped (see sw.js, notificationclick)
       if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', (event) => event.data && event.data.type === 'appt-open' && handler(event.data.day));
     },
@@ -102,6 +103,7 @@ export const platform = {
 };
 
 /** Replaces any part of the platform. A group (localFiles, clipboard) is merged, so a shell can override just the
+ * @param {any} [overrides]
  *  pieces it needs; anything else is replaced as a whole. */
 export function installPlatform(overrides) {
   for (const [key, value] of Object.entries(overrides || {})) {

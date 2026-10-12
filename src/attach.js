@@ -39,6 +39,7 @@ function generateAttachmentId() {
  *  heading in the file. Throws for an `id` shorter than 3 characters
  *  -- not a realistic input in practice (a real UUID is 36 characters
  *  long), but guards against a caller passing something degenerate
+ * @param {any} [id]
  *  rather than silently producing a nonsensical empty `rest`. */
 function splitAttachmentId(id) {
   const trimmed = String(id || '').trim();
@@ -54,12 +55,17 @@ function splitAttachmentId(id) {
  *  no I/O" scope as splitAttachmentId above). `filename` is used
  *  as-is (already expected to be sanitized by the caller, matching
  *  how export's own baseName sanitization already works elsewhere in
+ * @param {any} [id]
+ * @param {any} [filename]
+ * @param {any} [documentId]
  *  this app) -- not re-validated here. */
 function attachmentPath(id, filename, documentId) {
   return `${attachmentDir(id, documentId)}/${filename}`;
 }
 
 /** The folder a heading's attachments live in: `data/<prefix>/<rest>` beside the document (no trailing slash). The folder is
+ * @param {any} [id]
+ * @param {any} [documentId]
  *  what org-attach lists, so it is the one thing every attachment command starts from. */
 function attachmentDir(id, documentId) {
   const { prefix, rest } = splitAttachmentId(id);
@@ -69,6 +75,8 @@ function attachmentDir(id, documentId) {
 }
 
 /** A DIR property value as a folder path, or null if it cannot be one. Relative to the document's own folder; a leading "/" means
+ * @param {any} [value]
+ * @param {any} [documentId]
  *  the root of the storage instead. Empty values, backslashes and ".." parts are refused, so a DIR can never point outside. */
 function attachmentDirFromProperty(value, documentId) {
   let text = String(value || '').trim();
@@ -82,6 +90,8 @@ function attachmentDirFromProperty(value, documentId) {
 }
 
 /** The folder a heading names itself: its DIR property, else the one its ID gives. Null if it has neither (it is not
+ * @param {any} [heading]
+ * @param {any} [documentId]
  *  inherited here; link-resolve.js walks up the ancestors). */
 function ownAttachmentDirectory(heading, documentId) {
   const dirProperty = getProperty(heading, 'DIR');
@@ -99,8 +109,12 @@ const CAPTURE_EXTENSIONS = {
 };
 
 /** A name for a photo or video just taken: `photo-2026-10-08-221500.jpg`, with the extension the camera's own file had, else the
+ * @param {any} [kind]
+ * @param {any} [pickedName]
+ * @param {any} [pickedType]
  *  one its type implies (jpg for a photo, mp4 for a video). */
 function generateCaptureFilename(kind, pickedName, pickedType, now = new Date()) {
+  /** @param {any} [n] */
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
   const own = /\.([a-z0-9]{1,5})$/i.exec(String(pickedName || ''));
@@ -110,6 +124,8 @@ function generateCaptureFilename(kind, pickedName, pickedType, now = new Date())
 }
 
 /** Whether `a` should offer the in-app camera: on a desktop-class device (a Chromebook, a laptop), whose file chooser has no
+ * @param {any} [userAgent]
+ * @param {any} [maxTouchPoints]
  *  camera in it. A phone or tablet has the camera in its own chooser. An iPad that calls itself a Mac is told by its touch. */
 function prefersInAppCamera(userAgent, maxTouchPoints) {
   const ua = String(userAgent || '');
@@ -122,6 +138,8 @@ const MB = 1024 * 1024;
 
 /** Whether a file is too big to attach, or big enough to confirm first. `base64Length` is the encoded size; `backend` is the
  *  storage kind. GitHub's contents API takes up to 100MB; anything over 25MB (a long video) is worth a confirmation anywhere,
+ * @param {any} [base64Length]
+ * @param {any} [backend]
  *  since it is held in memory and uploaded in one go. Returns { refuse } or { warn } (each a sentence), or null. */
 function attachmentSizeCheck(base64Length, backend) {
   const megabytes = (base64Length * 3) / 4 / MB;
@@ -134,17 +152,21 @@ function attachmentSizeCheck(base64Length, backend) {
 /** The tag org-attach puts on a heading that has attachments (org-attach-auto-tag). */
 const ATTACH_TAG = 'ATTACH';
 
+/** @param {any} [heading] */
 function addAttachTag(heading) {
   if (!(heading.tags || []).includes(ATTACH_TAG)) heading.tags = [...(heading.tags || []), ATTACH_TAG];
 }
 
+/** @param {any} [heading] */
 function removeAttachTag(heading) {
-  heading.tags = (heading.tags || []).filter((tag) => tag !== ATTACH_TAG);
+  heading.tags = (heading.tags || []).filter((/** @type {string} */ tag) => tag !== ATTACH_TAG);
 }
 
 const VIDEO_EXT_RE = /\.(mp4|m4v|mov|webm|mkv|avi)$/i;
 
 /** Whether attaching `filename` also writes an [[attachment:...]] link into the heading's body, by the setting: 'media' (images,
+ * @param {any} [filename]
+ * @param {any} [mode]
  *  audio and video, which the app shows inline), 'always', or 'never' (as org does). */
 function shouldInsertAttachmentLink(filename, mode) {
   if (mode === 'always') return true;
@@ -153,6 +175,7 @@ function shouldInsertAttachmentLink(filename, mode) {
 }
 
 const ATTACH_LINK_MODES = ['media', 'always', 'never'];
+/** @param {any} [value] */
 const normalizeAttachLinkMode = (value) => (ATTACH_LINK_MODES.includes(value) ? value : 'media');
 
 /** A real org attachment: link referencing an attached file -- real
@@ -167,6 +190,7 @@ const normalizeAttachLinkMode = (value) => (ATTACH_LINK_MODES.includes(value) ? 
  *  duplicate) -- so it correctly renders inline; with the filename
  *  itself as the description for anything else, so a non-image
  *  attachment still shows a readable name as a regular, tappable
+ * @param {any} [filename]
  *  link rather than its own raw target text. */
 function formatAttachmentLink(filename) {
   if (IMAGE_EXT_RE.test(filename)) {
@@ -181,6 +205,7 @@ function formatAttachmentLink(filename) {
  *  export's own baseName sanitization already takes for a downloaded
  *  file's own name. Falls back to "attachment" if nothing usable is
  *  left after stripping (an empty or entirely-symbolic original
+ * @param {any} [name]
  *  name), rather than producing an empty path segment. */
 function sanitizeAttachmentFilename(name) {
   const cleaned = String(name || '')
@@ -205,6 +230,7 @@ const ATTACHMENT_LINK_RE = /\[\[attachment:([^\]]+?)\](?:\[[^\]]*\])?\]/gi;
  *  before either doing something directly (exactly one attachment) or
  *  prompting which one (more than one). Returns `[]` for a heading
  *  with no attachment: links in its own body at all -- not an error,
+ * @param {any} [heading]
  *  just nothing to enumerate. */
 function listAttachments(heading) {
   const seen = new Set();
@@ -234,16 +260,18 @@ function listAttachments(heading) {
  *  excised. Mutates `heading.bodyLines` in place, matching how
  *  app.js's own attachFileToHeading already mutates it directly
  *  (re-deriving heading.body from it is the caller's own
+ * @param {any} [heading]
+ * @param {any} [filename]
  *  responsibility, same division as that function too). */
 function removeAttachmentLink(heading, filename) {
   const escaped = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const linkRe = new RegExp(`\\[\\[attachment:${escaped}\\](?:\\[[^\\]]*\\])?\\]`, 'i');
   heading.bodyLines = heading.bodyLines
-    .map((line, i) => {
+    .map((/** @type {string} */ line, /** @type {number} */ i) => {
       if (!linkRe.test(line)) return line;
       return line.replace(linkRe, '').replace(/  +/g, ' ').trim();
     })
-    .filter((line, i) => line !== '' || heading.bodyLines[i].trim() === '');
+    .filter((/** @type {string} */ line, /** @type {number} */ i) => line !== '' || heading.bodyLines[i].trim() === '');
 }
 
 /** Confirmed as a real, necessary fix, not a theoretical one: a
@@ -272,6 +300,8 @@ function removeAttachmentLink(heading, filename) {
  * once a collision is found -- an attachment always gets ITS OWN,
  * genuinely unique storage path, so two different captures can never
  * silently overwrite each other again regardless of what the camera
+ * @param {any} [filename]
+ * @param {any} [existingFilenames]
  * app itself decided to call them. */
 function disambiguateAttachmentFilename(filename, existingFilenames) {
   const existing = new Set(existingFilenames);
@@ -303,6 +333,7 @@ const AUDIO_EXT_RE = /\.(webm|m4a|mp4|mp3|wav|ogg|oga|weba|aac|flac)$/i;
  *  what renderLinkNode uses to decide whether an attachment gets the
  *  inline play-button/player treatment instead of a plain download
  *  link, the same way IMAGE_EXT_RE (in inline-markup.js) decides
+ * @param {any} [filename]
  *  which attachments get inline image display. */
 function isAudioFilename(filename) {
   return AUDIO_EXT_RE.test(filename);
@@ -320,6 +351,7 @@ function isAudioFilename(filename) {
  *  already uses for this same underlying format, rather than the
  *  more generic, video-implying ".mp4"). Falls back to "webm" for
  *  anything else unrecognized, rather than producing a filename with
+ * @param {any} [mimeType]
  *  no extension at all. */
 function extensionForRecordedMimeType(mimeType) {
   const base = String(mimeType || '').split(';')[0].trim().toLowerCase();
@@ -339,8 +371,10 @@ function extensionForRecordedMimeType(mimeType) {
  *  unlikely to collide with anything already attached -- and even if
  *  it does, disambiguateAttachmentFilename's own collision handling
  *  still applies on top of this regardless, the same safety net every
+ * @param {any} [mimeType]
  *  other attachment already has. */
 function generateRecordingFilename(mimeType, now = new Date()) {
+  /** @param {any} [n] */
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
   return `recording-${stamp}.${extensionForRecordedMimeType(mimeType)}`;

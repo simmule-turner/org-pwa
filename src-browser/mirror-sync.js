@@ -16,6 +16,7 @@ export function scheduleSync() {
  *  error in one is not hidden by the other's success). */
 export async function syncNow() {
   const messages = [];
+  /** @param {any} [message] */
   const report = (message) => messages.push(message);
   if (effectiveCalendarConfig()) await syncAgendaToCalendar({ manual: true, report });
   if (effectiveContactsConfig()) await syncContactsToAddressBook({ manual: true, report });

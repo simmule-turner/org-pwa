@@ -55,6 +55,7 @@ const CONTINUATION_INDENT_RE = /^\s+\S/; // a note-continuation line: indented, 
  * in the returned array -- it's still present in the drawer's own raw
  * lines (untouched, since this function never mutates its input), just
  * absent from this derived view.
+ * @param {any} [lines]
  */
 function parseLogbookEntries(lines) {
   const entries = [];
@@ -117,6 +118,7 @@ function parseLogbookEntries(lines) {
  *  own org-log-note-headings default format string ("State %-12s from
  *  %-12s %t") exactly -- not just a fixed, arbitrary gap -- so a file
  *  written by this app looks like genuine org output when later opened
+ * @param {any} [s]
  *  in real Emacs too. */
 function padTo12(s) {
   return s.length >= 12 ? s : s + ' '.repeat(12 - s.length);
@@ -131,6 +133,9 @@ function padTo12(s) {
  * backslash or continuation). Returns an array of lines, ready to
  * splice into a heading's logbookLines at the top (real org always
  * inserts new entries there, most-recent-first).
+ * @param {any} [newState]
+ * @param {any} [oldState]
+ * @param {any} [timestamp]
  */
 function formatStateLogLine(newState, oldState, timestamp, note = /** @type {string | null} */ (null)) {
   const newPart = padTo12(`"${newState}"`);

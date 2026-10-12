@@ -61,7 +61,7 @@ import { switchToTab } from './src-browser/tabs.js';
 import { renderViewMenu } from './src-browser/views.js';
 import { checkWeatherAutoRefresh, loadCachedWeatherData } from './src-browser/weather-flow.js';
 
-document.createElement = function (tagName, options) {
+document.createElement = function (/** @type {any} */ tagName, /** @type {any} */ options) {
   const el = nativeCreateElement(tagName, options);
   const tag = String(tagName).toLowerCase();
   if (tag === 'input' || tag === 'textarea') {
@@ -1066,6 +1066,7 @@ if ('serviceWorker' in navigator && platform.usesServiceWorker) {
   const updateReloadBtn = /** @type {HTMLElement} */ (document.getElementById('updateReloadBtn'));
   let reloadedForUpdate = false;
 
+  /** @param {any} [waitingWorker] */
   function showUpdateBanner(waitingWorker) {
     updateBanner.style.display = 'flex';
     syncContentOffset();
@@ -1175,7 +1176,7 @@ async function bootstrap() {
     if (anyOpened) {
       const activeTabData = openTabsData.tabs[openTabsData.activeIndex];
       if (activeTabData) {
-        const matchingSession = S.documentSessions.find((s) => s.state.documentId === activeTabData.documentId && s.state.storageKind === activeTabData.storageKind);
+        const matchingSession = S.documentSessions.find((/** @type {any} */ s) => s.state.documentId === activeTabData.documentId && s.state.storageKind === activeTabData.storageKind);
         if (matchingSession) switchToTab(matchingSession.tabId);
       }
       updateSaveButtonState();

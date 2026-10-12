@@ -16,6 +16,7 @@ import { imagePlaceholder, renderLatexNode } from './render-helpers.js';
 import { render } from './render.js';
 import { imageDataUrlCache } from './singletons.js';
 
+/** @param {any} [node] */
 export function renderImageNode(node, heading = null) {
   const inlineImagesOn = S.state.startupConfig && S.state.startupConfig.imageVisibility === 'inlineimages';
 
@@ -76,7 +77,7 @@ export function renderImageNode(node, heading = null) {
     const adapter = activeDiskAdapter();
     adapter
       .readBinary(resolvedPath)
-      .then((result) => {
+      .then((/** @type {any} */ result) => {
         if (!result) {
           img.replaceWith(imagePlaceholder(node.target, 'not found'));
           return;
@@ -87,7 +88,7 @@ export function renderImageNode(node, heading = null) {
         img.style.background = '';
         img.style.minHeight = '';
       })
-      .catch((err) => {
+      .catch((/** @type {any} */ err) => {
         img.replaceWith(imagePlaceholder(node.target, err.message));
       });
 
@@ -100,6 +101,7 @@ export function renderImageNode(node, heading = null) {
   return imagePlaceholder(node.target);
 }
 
+/** @param {any} [node] */
 export function renderLinkNode(node, linkContext = /** @type {any} */ (null), heading = null) {
   const label = node.description || node.target;
   const targetDoc = linkContext ? linkContext.doc : S.state.doc;
@@ -205,6 +207,9 @@ export function renderLinkNode(node, linkContext = /** @type {any} */ (null), he
  *  reason to pull it down before someone's actually asked to hear
  *  it) and replaces itself with a real, native
  *  `<audio controls autoplay>` element -- the browser's own actual
+ * @param {any} [target]
+ * @param {any} [filename]
+ * @param {any} [heading]
  *  play/pause/seek/scrub UI, rather than a hand-built equivalent. */
 export function renderAudioAttachmentLink(target, filename, heading) {
   const btn = document.createElement('a');
@@ -264,6 +269,7 @@ export function renderAudioAttachmentLink(target, filename, heading) {
  *  simpler fallback rather than building full paragraph-level jump
  *  precision for a case that isn't actually exercised there yet.
  *  Unresolved (no definition found anywhere) renders inert, matching
+ * @param {any} [node]
  *  renderLinkNode's own "no dead-end click target" convention. */
 export function renderFootnoteRefNode(node, linkContext = /** @type {any} */ (null)) {
   const targetDoc = linkContext ? linkContext.doc : S.state.doc;
@@ -295,6 +301,7 @@ export function renderFootnoteRefNode(node, linkContext = /** @type {any} */ (nu
  *  shows the actual definition text right there, styled distinctly
  *  (smaller, italic, a superscript label) rather than making it
  *  something to tap and jump to -- it already IS the definition, not a
+ * @param {any} [node]
  *  reference to one elsewhere. */
 export function renderFootnoteDefNode(node, linkContext = /** @type {any} */ (null), heading = null) {
   const wrap = document.createElement('span');
@@ -326,6 +333,8 @@ export function currentInlineOpts() {
  *  no heading-owned attachments of its own to resolve), is threaded
  *  through to renderImageNode so an attachment: link can resolve
  *  against the right heading's own :ID: (or an ancestor's, via
+ * @param {any} [nodes]
+ * @param {any} [container]
  *  resolveAttachmentTarget's own inheritance). */
 export function renderInlineNodes(nodes, container, linkContext = /** @type {any} */ (null), heading = null) {
   for (const node of nodes) {

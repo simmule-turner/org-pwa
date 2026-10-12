@@ -26,19 +26,21 @@
  *  "<N>" exactly, nothing else. A row with even one non-matching
  *  cell (blank, alignment-only like "<c>", or ordinary data) is NOT
  *  a cookie row -- there's no partial recognition, matching how real
+ * @param {any} [row]
  *  org itself treats this as an all-or-nothing directive line. */
 function isWidthCookieRow(row) {
   if (row.type !== 'row' || row.cells.length === 0) return false;
-  return row.cells.every((c) => /^<\d+>$/.test(c.trim()));
+  return row.cells.every((/** @type {any} */ c) => /^<\d+>$/.test(c.trim()));
 }
 
 /** The per-column widths a cookie row specifies, in order, or null if
  *  `row` isn't actually a cookie row (see isWidthCookieRow). Only the
  *  ASCII exporter currently calls this -- the others only need
+ * @param {any} [row]
  *  isWidthCookieRow itself, to know which row to skip. */
 function parseWidthCookieRow(row) {
   if (!isWidthCookieRow(row)) return null;
-  return row.cells.map((c) => Number((/^<(\d+)>$/.exec(c.trim()) || [])[1]));
+  return row.cells.map((/** @type {any} */ c) => Number((/^<(\d+)>$/.exec(c.trim()) || [])[1]));
 }
 
 export { isWidthCookieRow, parseWidthCookieRow };

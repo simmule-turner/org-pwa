@@ -12,6 +12,9 @@ import { parseBody } from './body-parser.js';
 import { expandNoweb, nowebAllows, stripReferences } from './noweb.js';
 
 /** Index of the `#+RESULTS:` line that belongs to the block ending at `endIndex`, or -1. An unnamed `#+RESULTS:`
+ * @param {any} [lines]
+ * @param {any} [endIndex]
+ * @param {any} [name]
  *  belongs to the block right before it (blank lines allowed between); `#+RESULTS: name` to the block named `name`. */
 function findResults(lines, endIndex, name) {
   if (name) {
@@ -27,9 +30,15 @@ function findResults(lines, endIndex, name) {
   return -1;
 }
 
+/**
+ * @param {any} [doc]
+ * @param {any} [blocks]
+ * @param {any} [heading]
+ * @param {any} [lines]
+ */
 function rewriteLines(doc, blocks, heading, lines) {
-  const mine = blocks.filter((b) => b.heading === heading);
-  if (!mine.length && !lines.some((l) => RESULTS_LINE_RE.test(l))) return null;
+  const mine = blocks.filter((/** @type {any} */ b) => b.heading === heading);
+  if (!mine.length && !lines.some((/** @type {any} */ l) => RESULTS_LINE_RE.test(l))) return null;
   const drop = new Set();
   const replace = new Map();
   for (const b of mine) {
@@ -57,17 +66,21 @@ function rewriteLines(doc, blocks, heading, lines) {
     }
   }
   const out = [];
-  lines.forEach((l, i) => {
+  lines.forEach((/** @type {any} */ l, /** @type {number} */ i) => {
     if (replace.has(i)) out.push(...replace.get(i));
     else if (!drop.has(i) && !RESULTS_LINE_RE.test(l)) out.push(l); // a #+RESULTS: line is never shown
   });
   return out;
 }
 
-/** The document as an exporter should see it. Returns `doc` itself when it has no source block. */
+/**
+ * The document as an exporter should see it. Returns `doc` itself when it has no source block.
+ * @param {any} [doc]
+ */
 export function prepareBabelExport(doc) {
   const blocks = collectDocumentBlocks(doc);
   if (!blocks.length) return doc;
+  /** @param {any} [h] */
   const walk = (h) => {
     const bodyLines = rewriteLines(doc, blocks, h, h.bodyLines || []) || h.bodyLines || [];
     return { ...h, bodyLines, body: parseBody(bodyLines), children: (h.children || []).map(walk) };
@@ -77,7 +90,7 @@ export function prepareBabelExport(doc) {
     // The parser takes #+NAME: and #+HEADER: lines out of the preamble; put them back for the rewrite and drop them from the keywords.
     const lines = preambleLines(doc);
     const bodyLines = rewriteLines(doc, blocks, null, lines) || lines;
-    result = { ...doc, bodyLines, body: parseBody(bodyLines), keywords: (doc.keywords || []).filter((k) => !/^(NAME|HEADERS?)$/i.test(k.key)) };
+    result = { ...doc, bodyLines, body: parseBody(bodyLines), keywords: (doc.keywords || []).filter((/** @type {any} */ k) => !/^(NAME|HEADERS?)$/i.test(k.key)) };
   }
   return { ...result, children: (doc.children || []).map(walk) };
 }

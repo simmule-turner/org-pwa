@@ -54,13 +54,20 @@ const CHECKBOX_CYCLE_WITH_CHILDREN = [' ', '-', 'X'];
  * numbering (null for unordered items) — computed per items-array (each
  * nested list numbers independently) and reset by a [@N] start-value
  * cookie, so callers don't need to re-derive numbering themselves.
+ * @param {any} [doc]
  */
 function flattenVisibleRows(doc) {
   const rows = [];
 
+  /**
+   * @param {any} [items]
+   * @param {any} [headingNode]
+   * @param {any} [depth]
+   * @param {any} [keyPrefix]
+   */
   function flattenListItems(items, headingNode, depth, keyPrefix) {
     let orderedCounter = 0;
-    items.forEach((item, i) => {
+    items.forEach((/** @type {any} */ item, /** @type {number} */ i) => {
       /** @type {number | null} */
       let displayNumber = null;
       if (item.ordered) {
@@ -75,8 +82,14 @@ function flattenVisibleRows(doc) {
     });
   }
 
+  /**
+   * @param {any} [bodyNodes]
+   * @param {any} [headingNode]
+   * @param {any} [depth]
+   * @param {any} [keyPrefix]
+   */
   function flattenBody(bodyNodes, headingNode, depth, keyPrefix) {
-    (bodyNodes || []).forEach((node, i) => {
+    (bodyNodes || []).forEach((/** @type {any} */ node, /** @type {number} */ i) => {
       if (node.type === 'list') {
         flattenListItems(node.items, headingNode, depth, `${keyPrefix}${i}.`);
       } else {
@@ -85,8 +98,13 @@ function flattenVisibleRows(doc) {
     });
   }
 
+  /**
+   * @param {any} [nodes]
+   * @param {any} [depth]
+   * @param {any} [keyPrefix]
+   */
   function walk(nodes, depth, keyPrefix) {
-    nodes.forEach((node, i) => {
+    nodes.forEach((/** @type {any} */ node, /** @type {number} */ i) => {
       if (node.type !== 'heading') return;
       const key = `${keyPrefix}${i}`;
       const hasChildren = (node.children && node.children.length > 0) || (node.body && node.body.length > 0);
@@ -138,6 +156,7 @@ function flattenVisibleRows(doc) {
  * cycling — so it stays unguarded here. Without it, archived content
  * would become permanently unreachable in a touch UI with no keyboard
  * modifiers to fall back on, which was an explicit requirement.
+ * @param {any} [heading]
  */
 function toggleFold(heading) {
   heading.collapsed = !heading.collapsed;
@@ -158,6 +177,10 @@ function toggleFold(heading) {
  *  file's entire set of parallel #+TODO: workflows (real org's own
  *  actual multi-workflow model; see todo-cycle.js's own header
  *  comment). A blank heading starts in the file's first-defined
+ * @param {any} [doc]
+ * @param {any} [heading]
+ * @param {any} [globalDefault]
+ * @param {any} [opts]
  *  sequence, matching real org's own actual default. */
 function cycleHeadingTodo(doc, heading, globalDefault, opts) {
   const sequences = resolveTodoSequences(doc, globalDefault);
@@ -174,6 +197,9 @@ function cycleHeadingTodo(doc, heading, globalDefault, opts) {
  * as calling cycleHeadingTodo repeatedly until it wraps back to null —
  * the "Mark as TODO" action button is meant to work as an on/off toggle,
  * not force stepping through every state in between.
+ * @param {any} [doc]
+ * @param {any} [heading]
+ * @param {any} [globalDefault]
  */
 function toggleHeadingTodo(doc, heading, globalDefault) {
   if (heading.todo === null) {
@@ -189,11 +215,14 @@ function toggleHeadingTodo(doc, heading, globalDefault) {
  * serialization — mutating `item.checkbox` alone would be invisible to
  * serializeOrg, which reads bodyLines, not the derived body tree. Requires
  * `item.lineIndex` (set by body-parser.js) to know which raw line to patch.
+ * @param {any} [heading]
+ * @param {any} [item]
  */
 function cycleItemCheckbox(heading, item) {
   if (item.checkbox === null) {
     throw new Error('cycleItemCheckbox: item has no checkbox to cycle');
   }
+  /** @param {any} [list] */
   const hasNestedItems = (item.children || []).some((list) => list.items.length > 0);
   const cycle = hasNestedItems ? CHECKBOX_CYCLE_WITH_CHILDREN : CHECKBOX_CYCLE_SIMPLE;
   const idx = cycle.indexOf(item.checkbox);

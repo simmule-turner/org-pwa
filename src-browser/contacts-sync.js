@@ -23,13 +23,17 @@ export function effectiveContactsConfig() {
   return { url: c.contactsUrl.trim(), ...effectiveCaldavCredentials() };
 }
 
+/**
+ * @param {any} [n]
+ * @param {any} [word]
+ */
 function plural(n, word) {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
 }
 
 /** The configured contacts files that have not loaded (still loading, or failed). */
 function unloadedContactsFiles() {
-  return S.contactsFilesConfig.filter((key) => {
+  return S.contactsFilesConfig.filter((/** @type {string} */ key) => {
     const entry = contactsFilesCache.get(key);
     return !(entry && entry.doc);
   });
@@ -76,7 +80,7 @@ export async function syncContactsToAddressBook({ manual = false, rebuild = fals
     let previous = stored.url === config.url ? stored.resources || {} : {}; // a different address book: nothing was sent to it
     if (rebuild) {
       const ours = (await client.list()).filter(isOurContactResource);
-      const removed = await runLimited(ours, CONCURRENCY, (name) => client.remove(name));
+      const removed = await runLimited(ours, CONCURRENCY, (/** @type {string} */ name) => client.remove(name));
       if (removed.stopped) throw removed.stopped;
       previous = {};
       await setCarddavSyncState(kv, { url: config.url, resources: {} });
@@ -89,11 +93,11 @@ export async function syncContactsToAddressBook({ manual = false, rebuild = fals
       done++;
       if (manual && total > 40 && done % 20 === 0) setStatus(`Syncing the contacts\u2026 ${done}/${total}`);
     };
-    const puts = await runLimited(plan.puts, CONCURRENCY, async (name) => {
+    const puts = await runLimited(plan.puts, CONCURRENCY, async (/** @type {string} */ name) => {
       await client.put(name, /** @type {any} */ (wanted.get(name)).vcf);
       tick();
     });
-    const dels = puts.stopped ? { ok: [], failed: [], stopped: null } : await runLimited(plan.deletes, CONCURRENCY, async (name) => {
+    const dels = puts.stopped ? { ok: [], failed: [], stopped: null } : await runLimited(plan.deletes, CONCURRENCY, async (/** @type {string} */ name) => {
       await client.remove(name);
       tick();
     });
@@ -126,7 +130,11 @@ export async function syncContactsToAddressBook({ manual = false, rebuild = fals
   }
 }
 
-/** An automatic run shows a given problem once, so a server that is down does not nag at every save. */
+/**
+ * An automatic run shows a given problem once, so a server that is down does not nag at every save.
+ * @param {any} [message]
+ * @param {any} [manual]
+ */
 function reportProblem(message, manual, report = setStatus) {
   if (!manual && S.contactsSyncLastError === message) return;
   S.contactsSyncLastError = message;

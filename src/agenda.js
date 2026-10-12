@@ -61,6 +61,7 @@ const REPEATER_RE = /^([.+]{1,2})(\d+)([hdwmy])$/;
 /** Parses a repeater string (e.g. "+1w", "++3d", ".+1m") into
  *  { mark, amount, unit }. `mark` is kept but not currently acted on —
  *  see expandRepeats' docs for why all three marks expand the same way
+ * @param {any} [raw]
  *  here. Returns null for anything that doesn't match. */
 function parseRepeater(raw) {
   if (!raw) return null;
@@ -69,6 +70,11 @@ function parseRepeater(raw) {
   return { mark: m[1], amount: Number(m[2]), unit: m[3] };
 }
 
+/**
+ * @param {any} [date]
+ * @param {any} [amount]
+ * @param {any} [unit]
+ */
 function addInterval(date, amount, unit) {
   const d = new Date(date.getTime());
   if (unit === 'h') d.setHours(d.getHours() + amount);
@@ -99,6 +105,10 @@ function addInterval(date, amount, unit) {
  * Month/year units iterate directly (bounded to a small, reasonable
  * count even over decades, since calendar month/year lengths vary and
  * aren't worth the extra complexity of an approximate skip-ahead).
+ * @param {any} [baseDate]
+ * @param {any} [repeater]
+ * @param {any} [rangeStart]
+ * @param {any} [rangeEnd]
  */
 function expandRepeats(baseDate, repeater, rangeStart, rangeEnd) {
   if (!repeater || !repeater.amount || repeater.amount <= 0) return [];
@@ -131,6 +141,7 @@ function expandRepeats(baseDate, repeater, rangeStart, rangeEnd) {
  *  is inherently a short-term "warn me ahead of time" concept in
  *  practice (a few days or weeks), not something that needs
  *  calendar-precise month lengths the way a repeater's actual occurrence
+ * @param {any} [delay]
  *  dates do. */
 function delayToDays(delay) {
   if (!delay) return 0;
@@ -158,13 +169,23 @@ function delayToDays(delay) {
  *     has passed, or when a DEADLINE is inside its warning period (`daysOverdue` < 0: "due in 3 days").
  * Never on the other days between: Emacs lists an overdue or upcoming item only on today. Each date is kept to
  * [rangeStart, rangeEnd].
+ * @param {any} [kind]
+ * @param {any} [itemDate]
+ * @param {any} [today]
+ * @param {any} [rangeStart]
+ * @param {any} [rangeEnd]
  */
 function emacsAgendaOccurrences(kind, itemDate, today, rangeStart, rangeEnd, warningDays = 0, scheduledDelayDays = 0) {
   const itemDay = startOfDay(itemDate);
   const todayDay = startOfDay(today);
   const first = startOfDay(rangeStart);
   const last = startOfDay(rangeEnd);
+  /** @param {any} [day] */
   const at = (day) => new Date(day.getFullYear(), day.getMonth(), day.getDate(), itemDate.getHours(), itemDate.getMinutes());
+  /**
+   * @param {any} [a]
+   * @param {any} [b]
+   */
   const dayDiff = (a, b) => Math.round((a - b) / MS_PER_DAY);
   const out = [];
   const ownDateShows = !(kind === 'scheduled' && scheduledDelayDays > 0);
@@ -205,6 +226,7 @@ const EVENT_PROPERTY_RE = /^(\d{4}|nil)-(\d{2})-(\d{2})(?:\s+(.+))?$/;
 /** The trigger as { field, format }, or null if `line` is not one. Real org-contacts takes two optional arguments,
  *  %%(org-contacts-anniversaries FIELD FORMAT): the property to read (default the birthday property) and how each entry reads
  *  (default "Birthday: %l (%Y)"). Each is a double-quoted string, or nil for "the default"; the line may carry none, one or both.
+ * @param {any} [line]
  *  Each distinct trigger is its own scan, so one line for birthdays and another with "ANNIVERSARY" give both. */
 function parseContactsAnniversariesTrigger(line) {
   const m = CONTACTS_TRIGGER_RE.exec(line.trim());
@@ -215,21 +237,26 @@ function parseContactsAnniversariesTrigger(line) {
 }
 
 /** True if `line` is a %%(org-contacts-anniversaries ...) trigger, activating a scan. The line's own content is
+ * @param {any} [line]
  *  not itself read as an event — it's a switch, not a contact. */
 function isContactsAnniversariesTrigger(line) {
   return parseContactsAnniversariesTrigger(line) !== null;
 }
 
-/** Every distinct trigger across `docs` (the same line twice is one scan, so nothing shows twice). */
+/**
+ * Every distinct trigger across `docs` (the same line twice is one scan, so nothing shows twice).
+ * @param {any} [docs]
+ */
 function collectContactsTriggers(docs) {
   const found = new Map();
+  /** @param {any} [line] */
   const note = (line) => {
     const trigger = parseContactsAnniversariesTrigger(line);
     if (trigger) found.set(`${trigger.field || ''}\u0000${trigger.format || ''}`, trigger);
   };
   for (const { doc } of docs) {
     for (const line of doc.bodyLines || []) note(line); // a trigger above the first heading belongs to the document itself
-    walkHeadings(doc, (heading) => {
+    walkHeadings(doc, (/** @type {any} */ heading) => {
       for (const line of heading.bodyLines || []) note(line);
     });
   }
@@ -249,6 +276,7 @@ function collectContactsTriggers(docs) {
  *  directly to mean a vCard-imported contact's own birthday matched
  *  zero agenda items no matter what range was searched. Returns
  *  { year, month, day, description } or null only for a genuinely
+ * @param {any} [value]
  *  malformed value now: an out-of-range month/day, or no date at all. */
 function parseContactEvent(value) {
   const m = EVENT_PROPERTY_RE.exec(String(value).trim());
@@ -264,6 +292,8 @@ function parseContactEvent(value) {
  *  is `year`. null when `year` is null (unknown) — formatted as "(??)"
  *  by formatContactEventLine below, per what was actually asked for,
  *  rather than a numeric sentinel a caller could accidentally display
+ * @param {any} [year]
+ * @param {any} [occurrenceDate]
  *  as a real age. */
 function contactEventAge(year, occurrenceDate) {
   if (year === null) return null;
@@ -276,6 +306,7 @@ function contactEventAge(year, occurrenceDate) {
  *  "Birthday", "ANNIVERSARY" -> "Anniversary") -- a reasonable label
  *  derived from whatever org-contacts-birthday-property is actually
  *  set to, rather than a single hardcoded word that would be wrong
+ * @param {any} [propertyName]
  *  for anyone using this for a different kind of event. */
 function defaultEventDescription(propertyName) {
   const lower = String(propertyName).toLowerCase();
@@ -284,14 +315,18 @@ function defaultEventDescription(propertyName) {
 
 /** Case-insensitive property lookup, matching how every other
  *  property read in this file already handles case (org property
+ * @param {any} [heading]
+ * @param {any} [key]
  *  keys are conventionally upper-case, but not enforced). */
 function getPropertyCaseInsensitive(heading, key) {
+  /** @param {any} [k] */
   const foundKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === key.toLowerCase());
   return foundKey ? heading.properties[foundKey] : undefined;
 }
 
 /** The EFFORT property of an agenda item's heading, trimmed, or null
  *  (also null for an item with no heading behind it -- a sunrise line,
+ * @param {any} [item]
  *  an anniversary). */
 function itemEffortText(item) {
   const raw = item && item.heading ? getPropertyCaseInsensitive(item.heading, 'EFFORT') : undefined;
@@ -299,6 +334,7 @@ function itemEffortText(item) {
 }
 
 /** That effort in minutes, or null when there is none or it isn't a
+ * @param {any} [item]
  *  valid org duration. */
 function itemEffortMinutes(item) {
   const text = itemEffortText(item);
@@ -322,6 +358,7 @@ const EFFORT_PLANNING_KINDS = new Set(['scheduled', 'deadline', 'timestamp']);
  * that's when the time is needed. `unestimated` counts only headings with
  * a TODO keyword and no usable estimate: an appointment without an effort
  * isn't a gap in the estimates, so it isn't counted as one.
+ * @param {any} [items]
  */
 function summarizeDayEffort(items) {
   const seen = new Set();
@@ -360,6 +397,7 @@ function summarizeDayEffort(items) {
 // they are never filtered or counted.
 
 /** Minutes for sorting/filtering/limiting an item: its effort, else the
+ * @param {any} [item]
  *  no-effort stand-in. */
 function effortSortValue(item, noEffortIsHigh = true) {
   const minutes = itemEffortMinutes(item);
@@ -367,25 +405,32 @@ function effortSortValue(item, noEffortIsHigh = true) {
   return noEffortIsHigh ? Infinity : -1;
 }
 
-/** A stably sorted copy: 'up' = least effort first, 'down' = most first. */
+/**
+ * A stably sorted copy: 'up' = least effort first, 'down' = most first.
+ * @param {any} [items]
+ */
 function sortItemsByEffort(items, direction = 'up', noEffortIsHigh = true) {
   const sign = direction === 'down' ? -1 : 1;
   return items
-    .map((item, index) => ({ item, index, value: effortSortValue(item, noEffortIsHigh) }))
-    .sort((a, b) => (a.value === b.value ? a.index - b.index : sign * (a.value < b.value ? -1 : 1)))
-    .map((entry) => entry.item);
+    .map((/** @type {any} */ item, /** @type {number} */ index) => ({ item, index, value: effortSortValue(item, noEffortIsHigh) }))
+    .sort((/** @type {any} */ a, /** @type {any} */ b) => (a.value === b.value ? a.index - b.index : sign * (a.value < b.value ? -1 : 1)))
+    .map((/** @type {any} */ entry) => entry.item);
 }
 
 /** Keeps items whose effort satisfies `{ op, minutes }` -- op '<' (at most),
+ * @param {any} [items]
+ * @param {any} [filter]
  *  '>' (at least) or '=' (exactly). Non-task items are always kept. */
 function filterItemsByEffort(items, filter, noEffortIsHigh = true) {
   if (!filter) return items;
-  const test = { '<': (v) => v <= filter.minutes, '>': (v) => v >= filter.minutes, '=': (v) => v === filter.minutes }[filter.op];
+  const test = { '<': (/** @type {any} */ v) => v <= filter.minutes, '>': (/** @type {any} */ v) => v >= filter.minutes, '=': (/** @type {any} */ v) => v === filter.minutes }[filter.op];
   if (!test) return items;
-  return items.filter((item) => !item.heading || test(effortSortValue(item, noEffortIsHigh)));
+  return items.filter((/** @type {any} */ item) => !item.heading || test(effortSortValue(item, noEffortIsHigh)));
 }
 
 /** org-agenda-max-effort for one day's (already sorted) items: keeps items
+ * @param {any} [items]
+ * @param {any} [maxMinutes]
  *  while the running total stays within `maxMinutes`. */
 function limitItemsByEffort(items, maxMinutes, noEffortIsHigh = true) {
   if (maxMinutes === null || maxMinutes === undefined) return items;
@@ -403,6 +448,7 @@ function limitItemsByEffort(items, maxMinutes, noEffortIsHigh = true) {
 }
 
 /** All three, in the order Emacs applies them: sort, then limit (both while
+ * @param {any} [items]
  *  the day's entries are assembled), then the filter (which only hides). */
 function applyAgendaEffortView(items, { sort = null, filter = null, maxMinutes = null, noEffortIsHigh = true } = {}) {
   let result = items;
@@ -414,6 +460,8 @@ function applyAgendaEffortView(items, { sort = null, filter = null, maxMinutes =
 /** Searches `heading`'s own descendants, at any depth (a tree-style vCard contact's own fields can sit directly under the contact
  *  or grouped under an intermediate heading first -- see export-vcard.js's buildVcardFromTreeContact for the same reasoning, and
  *  import-vcard.js's buildTreeOrgFromContact for what actually produces this shape), for one whose own :FIELDTYPE: is `fieldType`
+ * @param {any} [heading]
+ * @param {any} [fieldType]
  *  ("birthday", "anniversary", "spouse") -- returning its own title (the value, as tree style writes it) or null. */
 function findTreeStyleFieldValue(heading, fieldType) {
   for (const child of heading.children || []) {
@@ -429,6 +477,9 @@ function findTreeStyleFieldValue(heading, fieldType) {
 /** The { year, month, day, description } `field` holds for this contact, or null: a property, or for a tree-style contact
  *  (:KIND: individual, the marker export-vcard.js requires) a descendant heading of that field type. Only a heading that is itself
  *  a tree-style contact is searched -- without that gate an intermediate grouping heading above a birthday descendant produced a
+ * @param {any} [heading]
+ * @param {any} [field]
+ * @param {any} [birthdayProperty]
  *  spurious item of its own. */
 function contactEventFor(heading, field, birthdayProperty) {
   const raw = getPropertyCaseInsensitive(heading, field);
@@ -441,7 +492,10 @@ function contactEventFor(heading, field, birthdayProperty) {
   return event;
 }
 
-/** The spouse's name for a contact (a :SPOUSE: property, or a tree-style spouse field), or null. */
+/**
+ * The spouse's name for a contact (a :SPOUSE: property, or a tree-style spouse field), or null.
+ * @param {any} [heading]
+ */
 function contactSpouse(heading) {
   const prop = getPropertyCaseInsensitive(heading, 'SPOUSE');
   if (typeof prop === 'string' && prop.trim()) return prop.trim();
@@ -452,7 +506,10 @@ function contactSpouse(heading) {
   return null;
 }
 
-/** 1 -> "1st", 12 -> "12th", 22 -> "22nd": Emacs's diary-ordinal-suffix, for %Y. */
+/**
+ * 1 -> "1st", 12 -> "12th", 22 -> "22nd": Emacs's diary-ordinal-suffix, for %Y.
+ * @param {any} [n]
+ */
 function ordinalYears(n) {
   const tens = Math.abs(n) % 100;
   if (tens >= 11 && tens <= 13) return `${n}th`;
@@ -470,7 +527,7 @@ function formatContactEventTitle({ format = null, field = null, birthdayProperty
   const label = description || defaultEventDescription(fieldName);
   const chosen = format || (fieldName.toLowerCase() === birthdayProperty.toLowerCase() ? `${label}: %l (%Y)` : `${label}: %n (%Y)`);
   const template = omitAge ? stripAgeFromFormat(chosen) : chosen; // omitAge: ONE event that repeats every year has no age to show
-  return template.replace(/%([hlnsyY%])/g, (match, spec) => {
+  return template.replace(/%([hlnsyY%])/g, (/** @type {any} */ match, /** @type {string} */ spec) => {
     switch (spec) {
       case 'h':
       case 'l':
@@ -490,6 +547,7 @@ function formatContactEventTitle({ format = null, field = null, birthdayProperty
 }
 
 /** `format` with its age removed -- for an entry that repeats every year as ONE event (a calendar export of a file), which cannot
+ * @param {any} [format]
  *  carry an age: "Birthday: %l (%Y)" -> "Birthday: %l". */
 function stripAgeFromFormat(format) {
   return format.replace(/\s*\(\s*%[yY]\s*\)/g, '').replace(/%[yY]/g, '').replace(/\s+$/, '');
@@ -500,6 +558,8 @@ function stripAgeFromFormat(format) {
  *  state-change entry shows the transition itself ("from X" only when
  *  there was a previous state, matching how the LOGBOOK line itself
  *  omits it too); a bare note (not tied to any state change) is
+ * @param {any} [headingTitle]
+ * @param {any} [entry]
  *  labeled plainly, since there's no "->" transition to describe. */
 function formatLogbookEntryLine(headingTitle, entry) {
   if (entry.type === 'state') {
@@ -523,6 +583,11 @@ function formatLogbookEntryLine(headingTitle, entry) {
  * rather than being specially skipped; a known simplification, not a
  * faithful reproduction of Emacs calendar.el's own leap-year handling
  * for this edge case, stated rather than silently different.
+ * @param {any} [month]
+ * @param {any} [day]
+ * @param {any} [rangeStart]
+ * @param {any} [rangeEnd]
+ * @param {any} [today]
  */
 function expandContactEventOccurrences(month, day, rangeStart, rangeEnd, today) {
   if (!rangeStart || !rangeEnd) {
@@ -544,8 +609,14 @@ function expandContactEventOccurrences(month, day, rangeStart, rangeEnd, today) 
  * pattern of each module owning its own tree walk (see fold-state.js,
  * archive-model.js) rather than forcing a shared traversal abstraction
  * before one's actually needed.
+ * @param {any} [doc]
+ * @param {any} [visit]
  */
 function walkHeadings(doc, visit) {
+  /**
+   * @param {any} [node]
+   * @param {any} [ancestors]
+   */
   function walk(node, ancestors) {
     for (const child of node.children || []) {
       if (child.type !== 'heading') continue;
@@ -625,6 +696,7 @@ function walkHeadings(doc, visit) {
  *     org-contacts-birthday-property is set to via Local Variables.
  */
 /** A title as an Agenda row shows it with the timestamps taken out: every active <...> (a range's two ends and the dash
+ * @param {any} [title]
  *  between them too), and the spaces they leave. A title that is nothing but timestamps keeps its text. Inactive [...] stay. */
 export function stripTitleStamps(title) {
   const cleaned = title
@@ -673,8 +745,11 @@ function entryTimestampText(heading) {
  *  the file's own basename (no directory path, no .org extension),
  *  matching real org's own actual default behavior exactly. Keyword
  *  lookup is case-insensitive, matching how every other #+KEYWORD:
+ * @param {any} [doc]
+ * @param {any} [documentId]
  *  line here already treats case as not meaningful. */
 function getCategoryForDocument(doc, documentId) {
+  /** @param {any} [kw] */
   const categoryKw = (doc.keywords || []).find((kw) => kw.key.toUpperCase() === 'CATEGORY');
   if (categoryKw && categoryKw.value.trim()) return categoryKw.value.trim();
   if (!documentId || documentId.startsWith(UNSAVED_DOCUMENT_ID)) return 'Untitled'; // an unsaved, in-memory-only document has no filename to derive a category from
@@ -682,6 +757,7 @@ function getCategoryForDocument(doc, documentId) {
   return base || documentId;
 }
 
+/** @param {any} [docs] */
 function buildAgendaItems(docs, opts = {}) {
   const {
     includeArchived = false,
@@ -708,6 +784,13 @@ function buildAgendaItems(docs, opts = {}) {
   } = opts;
   const items = [];
 
+  /**
+   * @param {any} [documentId]
+   * @param {any} [heading]
+   * @param {any} [kind]
+   * @param {any} [parsed]
+   * @param {any} [headingIsDone]
+   */
   function addItem(documentId, heading, kind, parsed, headingIsDone) {
     const base = {
       documentId,
@@ -784,6 +867,10 @@ function buildAgendaItems(docs, opts = {}) {
 
   // One contact's entries, for each trigger. The contacts are the headings of `contactsDocs` (the files of org-contacts-files, as
   // in Emacs) when the caller has them, and otherwise of the same documents the triggers were found in.
+  /**
+   * @param {any} [documentId]
+   * @param {any} [heading]
+   */
   function pushContactItems(documentId, heading) {
     for (const trigger of contactsTriggers) {
       const field = trigger.field || birthdayProperty;
@@ -813,7 +900,7 @@ function buildAgendaItems(docs, opts = {}) {
   }
   if (contactsTriggers.length && contactsDocs) {
     for (const { documentId, doc } of contactsDocs) {
-      walkHeadings(doc, (heading) => {
+      walkHeadings(doc, (/** @type {any} */ heading) => {
         if (!includeArchived && isArchived(heading)) return;
         if (!includeCommented && isCommentedHeading(heading)) return;
         if (tagFilter && !tagFilter(heading.tags)) return;
@@ -823,7 +910,7 @@ function buildAgendaItems(docs, opts = {}) {
   }
 
   for (const { documentId, doc } of docs) {
-    walkHeadings(doc, (heading) => {
+    walkHeadings(doc, (/** @type {any} */ heading) => {
       if (!includeArchived && isArchived(heading)) return;
       if (!includeCommented && isCommentedHeading(heading)) return;
       if (tagFilter && !tagFilter(heading.tags)) return;
@@ -964,6 +1051,10 @@ function buildAgendaItems(docs, opts = {}) {
           const trimmed = unquoteDiaryFloatMonthList(line.trim());
           if (!trimmed.startsWith('%%(')) continue; // fast skip -- every one of these five forms starts this way
 
+          /**
+           * @param {any} [occurrenceDate]
+           * @param {any} [title]
+           */
           const pushDiarySexpItem = (occurrenceDate, title) => {
             items.push({
               documentId,
@@ -1238,22 +1329,31 @@ function buildAgendaItems(docs, opts = {}) {
   return items;
 }
 
-/** Items falling on the same calendar day as `date` (default: today). */
+/**
+ * Items falling on the same calendar day as `date` (default: today).
+ * @param {any} [items]
+ */
 function itemsForDate(items, date = new Date()) {
-  return items.filter((item) => isSameDay(item.date, date));
+  return items.filter((/** @type {any} */ item) => isSameDay(item.date, date));
 }
 
-/** Items within [start, end], inclusive of the days start/end fall on. */
+/**
+ * Items within [start, end], inclusive of the days start/end fall on.
+ * @param {any} [items]
+ * @param {any} [start]
+ * @param {any} [end]
+ */
 function itemsInRange(items, start, end) {
   const startKey = dateKey(start);
   const endKey = dateKey(end);
-  return items.filter((item) => {
+  return items.filter((/** @type {any} */ item) => {
     const k = dateKey(item.date);
     return k >= startKey && k <= endKey;
   });
 }
 
 /** Groups items by calendar day, returning entries sorted chronologically:
+ * @param {any} [items]
  *  [{ date: 'YYYY-MM-DD', items: [...] }, ...] */
 function groupByDay(items) {
   const map = new Map();
@@ -1270,6 +1370,7 @@ function groupByDay(items) {
 
 /** A single day's items, grouped the same shape as the other *View
  *  functions (a one-entry array) for a consistent return shape callers
+ * @param {any} [items]
  *  can treat uniformly regardless of which view is active. */
 function dayView(items, date = new Date()) {
   const grouped = groupByDay(itemsForDate(items, date));
@@ -1277,7 +1378,10 @@ function dayView(items, date = new Date()) {
   return [{ date: dateKey(date), items: [] }];
 }
 
-/** Midnight (00:00:00.000) of `date`'s calendar day. */
+/**
+ * Midnight (00:00:00.000) of `date`'s calendar day.
+ * @param {any} [date]
+ */
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
@@ -1285,12 +1389,17 @@ function startOfDay(date) {
 /** `date` shifted forward (or backward, for a negative `days`) by
  *  `days` whole calendar days -- month/year boundaries handled
  *  correctly by JS's own Date arithmetic (setting a day-of-month
+ * @param {any} [date]
+ * @param {any} [days]
  *  value past the end of its month rolls over into the next one). */
 function addDays(date, days) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days, date.getHours(), date.getMinutes());
 }
 
-/** The last instant (23:59:59.999) of `date`'s calendar day. */
+/**
+ * The last instant (23:59:59.999) of `date`'s calendar day.
+ * @param {any} [date]
+ */
 function endOfDay(date) {
   const d = startOfDay(date);
   d.setHours(23, 59, 59, 999);
@@ -1306,6 +1415,7 @@ function endOfDay(date) {
  * than treating whatever date it's handed as the literal first day (see
  * weekView below, which used to do exactly that — a real bug, not just
  * an unconfigurable default).
+ * @param {any} [date]
  */
 function startOfWeek(date, startOnWeekday = 1) {
   const d = startOfDay(date);
@@ -1323,6 +1433,7 @@ function startOfWeek(date, startOnWeekday = 1) {
  * which day you happened to open the agenda on, not on any consistent
  * notion of a week. Now it always resolves to the same 7-day window
  * (e.g. Monday-Sunday) no matter which day within that window you pass.
+ * @param {any} [items]
  */
 function weekView(items, anchorDate = new Date(), startOnWeekday = 1) {
   const start = startOfWeek(anchorDate, startOnWeekday);
@@ -1343,6 +1454,7 @@ function weekView(items, anchorDate = new Date(), startOnWeekday = 1) {
 /** A month view: every day in `date`'s calendar month, from the 1st
  *  through the actual last day of that month (28-31, handled correctly
  *  regardless of month length or leap years via the "day 0 of next
+ * @param {any} [items]
  *  month" trick). */
 function monthView(items, date = new Date()) {
   const start = new Date(date.getFullYear(), date.getMonth(), 1);
@@ -1375,13 +1487,14 @@ function monthView(items, date = new Date()) {
  *     deliberately not defaulted to some hardcoded "DONE" check, for the
  *     same reason buildAgendaItems isn't — the file's own #+TODO:
  *     sequence decides what counts as done, not this module.
+ * @param {any} [docs]
  */
 function buildTaskList(docs, opts = {}) {
   const { includeArchived = false, includeCommented = false, tagFilter = null, isDone = null } = opts;
   const items = [];
 
   for (const { documentId, doc } of docs) {
-    walkHeadings(doc, (heading) => {
+    walkHeadings(doc, (/** @type {any} */ heading) => {
       if (!includeArchived && isArchived(heading)) return;
       if (!includeCommented && isCommentedHeading(heading)) return;
       if (tagFilter && !tagFilter(heading.tags)) return;

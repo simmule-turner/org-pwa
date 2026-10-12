@@ -230,6 +230,7 @@ export function computeBufferPositionString() {
  *  this correctly matches real Emacs's own genuinely global org-
  *  clock-marker behavior: the clock shows in every buffer's modeline
  *  regardless of which one it's actually running in, exactly like
+ * @param {any} [vars]
  *  display-time already does. */
 export function buildGlobalModeStringParts(vars) {
   const parts = [];

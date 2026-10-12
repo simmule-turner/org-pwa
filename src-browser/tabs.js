@@ -55,6 +55,7 @@ export function snapshotCurrentSessionValues() {
 
 /** The inverse of snapshotCurrentSessionValues() -- writes each saved
  *  value back into its own same-named global, restoring exactly the
+ * @param {any} [snap]
  *  state a tab was in the last time it was active. */
 export function applySessionSnapshotValues(snap) {
   S.state = snap.state;
@@ -90,12 +91,13 @@ export function applySessionSnapshotValues(snap) {
 /** Writes the live globals' current values into documentSessions'
  *  entry for `tabId` (creating it first if this is a brand new tab).
  *  Called before switching away from a tab, and periodically while
+ * @param {any} [tabId]
  *  editing it, so a session object is never more than one edit stale. */
 export function saveSessionSnapshot(tabId) {
   if (tabId == null) return;
   const values = snapshotCurrentSessionValues();
   const scrollTop = scrollContainer().scrollTop;
-  const existing = S.documentSessions.find((s) => s.tabId === tabId);
+  const existing = S.documentSessions.find((/** @type {any} */ s) => s.tabId === tabId);
   if (existing) {
     Object.assign(existing, values);
     existing.scrollTop = scrollTop;
@@ -110,9 +112,10 @@ export function saveSessionSnapshot(tabId) {
  *  see the queueMicrotask below). Does nothing (silently) if `tabId`
  *  isn't a real, currently-open session -- callers that need to know
  *  whether the switch actually happened should check documentSessions
+ * @param {any} [tabId]
  *  themselves first. */
 export function loadSessionSnapshot(tabId) {
-  const session = S.documentSessions.find((s) => s.tabId === tabId);
+  const session = S.documentSessions.find((/** @type {any} */ s) => s.tabId === tabId);
   if (!session) return;
   applySessionSnapshotValues(session);
   S.activeTabId = tabId;
@@ -137,14 +140,15 @@ export function loadSessionSnapshot(tabId) {
  *  losing track of exactly which tabs were open is a real but much
  *  smaller loss than a failed document save. */
 export function persistOpenTabsInBackground() {
-  const tabs = S.documentSessions.map((s) => {
+  const tabs = S.documentSessions.map((/** @type {any} */ s) => {
     const docState = s.tabId === S.activeTabId ? S.state : s.state;
     return { documentId: docState.documentId, storageKind: docState.storageKind };
   });
-  const activeIndex = S.documentSessions.findIndex((s) => s.tabId === S.activeTabId);
+  const activeIndex = S.documentSessions.findIndex((/** @type {any} */ s) => s.tabId === S.activeTabId);
   setOpenTabs(kv, tabs, activeIndex).catch((err) => console.error('Failed to persist open tabs:', err));
 }
 
+/** @param {any} [tabId] */
 export function switchToTab(tabId) {
   if (tabId === S.activeTabId) return;
   // Committing (if there's anything to commit) brings state.doc fully
@@ -193,9 +197,10 @@ export function switchToTab(tabId) {
  *  next active tab (or the one after, if the first tab was closed),
  *  matching the common browser/editor convention; falls back to this
  *  app's own existing "nothing open" state if that was the last tab
+ * @param {any} [tabId]
  *  left. */
 export async function closeTab(tabId) {
-  const index = S.documentSessions.findIndex((s) => s.tabId === tabId);
+  const index = S.documentSessions.findIndex((/** @type {any} */ s) => s.tabId === tabId);
   if (index === -1) return;
   const session = S.documentSessions[index];
   const dirtyForThisTab = tabId === S.activeTabId ? S.isDirty : session.isDirty;

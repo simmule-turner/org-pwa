@@ -29,6 +29,7 @@ import { findAncestorPath, getProperty } from './archive-model.js';
 
 const COOKIE_RE = /\[(\d*)\/(\d*)\]|\[(\d*)%\]/;
 
+/** @param {any} [items] */
 function walkListForCheckboxes(items) {
   let total = 0;
   let checked = 0;
@@ -47,6 +48,7 @@ function walkListForCheckboxes(items) {
 }
 
 /** Counts every checkbox in `heading`'s own body content and recursively
+ * @param {any} [heading]
  *  through every descendant heading's body content. */
 export function countCheckboxes(heading) {
   let total = 0;
@@ -73,6 +75,9 @@ export function countCheckboxes(heading) {
  *  with none isn't part of either total) -- this is a TODO-ITEM
  *  count, not a generic child-heading count, matching real org's own
  *  actual behavior. "checked" means the child's own keyword is one of
+ * @param {any} [heading]
+ * @param {any} [doneKeywords]
+ * @param {any} [recursive]
  *  `doneKeywords`. */
 function countTodoChildren(heading, doneKeywords, recursive) {
   let total = 0;
@@ -97,6 +102,7 @@ function countTodoChildren(heading, doneKeywords, recursive) {
  *  e.g. "todo recursive"; see this file's own header comment for the
  *  full reasoning). Absent or empty (by far the common case): pure
  *  checkbox counting, unchanged from this app's own existing,
+ * @param {any} [value]
  *  already-shipped default -- nothing here alters that case at all. */
 function parseCookieData(value) {
   const words = String(value || '')
@@ -123,6 +129,8 @@ function parseCookieData(value) {
  * cookie to update, or the numbers were already correct). `doneKeywords`
  * is only actually consulted when :COOKIE_DATA: requests TODO counting;
  * omitting it is harmless for the far more common checkbox-only case.
+ * @param {any} [heading]
+ * @param {any} [doneKeywords]
  */
 export function updateHeadingCheckboxCookie(heading, doneKeywords = []) {
   const match = heading.title.match(COOKIE_RE);
@@ -162,6 +170,9 @@ export function updateHeadingCheckboxCookie(heading, doneKeywords = []) {
  * set :COOKIE_DATA: override -- so update order doesn't matter.
  * `doneKeywords` is passed straight through to updateHeadingCheckboxCookie
  * for each one. Returns true if anything actually changed.
+ * @param {any} [doc]
+ * @param {any} [owningHeading]
+ * @param {any} [doneKeywords]
  */
 export function updateCheckboxCookiesUpward(doc, owningHeading, doneKeywords = []) {
   const ancestors = findAncestorPath(doc, owningHeading) || [];

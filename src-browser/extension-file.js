@@ -7,7 +7,10 @@ import { resolveIncludePath } from './export-import.js';
 const MAX_SCRIPT_CHARS = 64 * 1024;
 export const DEFAULT_TARGET = 'init.js';
 
-/** 'github:me/notes/init.org::init.js' -> { key, target }. The target defaults to init.js. */
+/**
+ * 'github:me/notes/init.org::init.js' -> { key, target }. The target defaults to init.js.
+ * @param {any} [text]
+ */
 export function parseScriptFileSetting(text) {
   const at = String(text).lastIndexOf('::');
   const key = (at < 0 ? String(text) : String(text).slice(0, at)).trim();
@@ -15,6 +18,7 @@ export function parseScriptFileSetting(text) {
   return { key, target };
 }
 
+/** @param {any} [setting] */
 export async function readScriptFromFile(setting) {
   const { key, target } = parseScriptFileSetting(setting);
   if (!key) throw new Error('No file is named for the script.');

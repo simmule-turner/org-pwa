@@ -65,6 +65,7 @@ async function requireAttachmentStorage() {
  * on both iOS and Android already offers the camera as one of its own
  * options, so a separate, dedicated camera-only entry point isn't
  * needed here.
+ * @param {any} [heading]
  */
 export async function attachFileToHeading(heading) {
   if (!(await requireAttachmentStorage())) return;
@@ -75,8 +76,8 @@ export async function attachFileToHeading(heading) {
       label: `Attach to "${heading.title || '(untitled)'}"`,
       buttons: [
         { text: 'Choose a file', onClick: () => pickAndUpload(heading) },
-        { text: 'Take a photo', onClick: () => openCameraPanel('photo', (picked) => uploadAttachmentToHeading(heading, picked)) },
-        { text: 'Record a video', onClick: () => openCameraPanel('video', (picked) => uploadAttachmentToHeading(heading, picked)) },
+        { text: 'Take a photo', onClick: () => openCameraPanel('photo', (/** @type {any} */ picked) => uploadAttachmentToHeading(heading, picked)) },
+        { text: 'Record a video', onClick: () => openCameraPanel('video', (/** @type {any} */ picked) => uploadAttachmentToHeading(heading, picked)) },
         { text: 'Cancel', onClick: () => {} },
       ],
     });
@@ -85,6 +86,7 @@ export async function attachFileToHeading(heading) {
   await pickAndUpload(heading);
 }
 
+/** @param {any} [heading] */
 async function pickAndUpload(heading) {
   let picked;
   try {
@@ -97,21 +99,26 @@ async function pickAndUpload(heading) {
 }
 
 /** The file names in an attachment folder (sorted), or null if the backend could not say. A folder that does not exist yet is an
+ * @param {any} [dir]
  *  empty one. This is where org-attach gets its list: the folder, not links in the text. */
 async function listFolder(dir) {
   try {
     const entries = await activeDiskAdapter().list(dir);
-    return entries.filter((entry) => entry.type === 'file').map((entry) => entry.name).sort((a, b) => a.localeCompare(b));
+    return entries.filter((/** @type {any} */ entry) => entry.type === 'file').map((/** @type {any} */ entry) => entry.name).sort((/** @type {any} */ a, /** @type {any} */ b) => a.localeCompare(b));
   } catch {
     return null;
   }
 }
 
+/** @param {any} [what] */
 const unavailable = (what) =>
   attachmentsFolderMissingMessage() ||
   `Can't ${what} \u2014 attachments are only available with GitHub or WebDAV connected, the same backends they are stored on.`;
 
-/** The attachments of `heading`, read from its folder. Returns the names, or null after saying why it could not. */
+/**
+ * The attachments of `heading`, read from its folder. Returns the names, or null after saying why it could not.
+ * @param {any} [heading]
+ */
 export async function attachmentFiles(heading) {
   if (!attachmentsAvailable()) {
     setStatus(unavailable('list attachments'));
@@ -136,6 +143,8 @@ export async function attachmentFiles(heading) {
  *  availability assumption as attachFileToHeading's own caller-side
  *  check (this itself doesn't re-check, since both current callers
  *  already have): only ever called once GitHub/WebDAV is confirmed
+ * @param {any} [heading]
+ * @param {any} [picked]
  *  connected. */
 export async function uploadAttachmentToHeading(heading, picked) {
   const tooBig = attachmentSizeCheck(String(picked.base64 || '').length, S.state.storageKind);
@@ -204,6 +213,8 @@ export async function uploadAttachmentToHeading(heading, picked) {
  *  a clear explanation itself and returns null, so both callers can
  *  just check for that and return early rather than duplicating each
  *  of these three failure cases (and their own explanatory messages)
+ * @param {any} [target]
+ * @param {any} [heading]
  *  a second time. */
 export async function resolveAndReadAttachment(target, heading) {
   const filename = target.replace(/^attachment:/i, '');
@@ -240,6 +251,8 @@ export async function resolveAndReadAttachment(target, heading) {
 /** Downloads `target` to the device -- unconditionally, regardless of
  *  file type, the actual behavior "Open" used to have before this
  *  fix, moved here and given its own honest name now that Open itself
+ * @param {any} [target]
+ * @param {any} [heading]
  *  means something different. */
 export async function saveAttachmentLink(target, heading) {
   setStatus('Downloading attachment\u2026');
@@ -259,6 +272,8 @@ export async function saveAttachmentLink(target, heading) {
  *  which types, and why HTML/SVG are deliberately excluded) --
  *  falling back to the exact same download behavior saveAttachmentLink
  *  has only when no viewer is available for the file type at all,
+ * @param {any} [target]
+ * @param {any} [heading]
  *  since there's nothing else useful to do with it. */
 export async function openAttachmentLink(target, heading) {
   setStatus('Opening attachment\u2026');
@@ -297,6 +312,8 @@ export async function openAttachmentLink(target, heading) {
  *  delete happens first: if it fails, the in-document link is left
  *  alone too, rather than ending up in a state where the app thinks
  *  the attachment is gone but the actual file is still sitting on
+ * @param {any} [heading]
+ * @param {any} [filename]
  *  GitHub/WebDAV. */
 export async function deleteAttachment(heading, filename) {
   if (!attachmentsAvailable()) {
@@ -332,6 +349,7 @@ export async function deleteAttachment(heading, filename) {
 }
 
 /** org-attach-delete-all: every file in the heading's folder, after one confirmation, then the links to them and the ATTACH tag.
+ * @param {any} [heading]
  *  A backend with no folder delete (GitHub) removes them one at a time. */
 export async function deleteAllAttachments(heading) {
   const names = await attachmentFiles(heading);
@@ -366,7 +384,11 @@ export async function deleteAllAttachments(heading) {
   commitAndRender(`Deleted ${deleted} attachment${deleted === 1 ? '' : 's'}`);
 }
 
-/** The type a viewer should be told: guessViewableMimeType's answer, with a .webm settled by its content (audio or video). */
+/**
+ * The type a viewer should be told: guessViewableMimeType's answer, with a .webm settled by its content (audio or video).
+ * @param {any} [path]
+ * @param {any} [bytes]
+ */
 function viewableMimeFor(path, bytes) {
   let mime = guessViewableMimeType(path);
   if (/\.webm$/i.test(path)) {
@@ -380,6 +402,7 @@ function viewableMimeFor(path, bytes) {
 // ---- phase 2: DIR, sync, the folder list, and files made in the app -------------------------------------------------------
 
 /** Sets the ATTACH tag to match what is in the heading's folder (org-attach-sync): on if there are files, off if not. Returns the
+ * @param {any} [heading]
  *  number of files, or null if the folder could not be read or the heading has none. */
 async function syncAttachTag(heading) {
   const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId);
@@ -394,7 +417,10 @@ async function syncAttachTag(heading) {
   return names.length;
 }
 
-/** org-attach-sync: for files added to the folder by other means, or removed from it. */
+/**
+ * org-attach-sync: for files added to the folder by other means, or removed from it.
+ * @param {any} [heading]
+ */
 export async function syncAttachments(heading) {
   if (!attachmentsAvailable()) {
     setStatus(unavailable('sync attachments'));
@@ -412,12 +438,15 @@ export async function syncAttachments(heading) {
   commitAndRender(message);
 }
 
-/** org-attach-set-directory: names the folder by a DIR property instead of the ID. */
+/**
+ * org-attach-set-directory: names the folder by a DIR property instead of the ID.
+ * @param {any} [heading]
+ */
 export function setAttachmentDirectory(heading) {
   openMultiFieldPopup({
     label: 'Attachment folder (DIR)',
     fields: [{ key: 'dir', label: 'Folder, relative to this file (start with / for the root)', type: 'text', value: getProperty(heading, 'DIR') || '', placeholder: 'e.g. files/report' }],
-    onSave: async (values) => {
+    onSave: async (/** @type {any} */ values) => {
       const dir = attachmentDirFromProperty(values.dir, S.state.documentId);
       if (!dir) {
         setStatus('That is not a folder I can use (no empty names, "..", or backslashes).');
@@ -432,7 +461,11 @@ export function setAttachmentDirectory(heading) {
   });
 }
 
-/** Copies every file in `from` to `to` and removes the original, one at a time. Returns how many moved. */
+/**
+ * Copies every file in `from` to `to` and removes the original, one at a time. Returns how many moved.
+ * @param {any} [from]
+ * @param {any} [to]
+ */
 async function moveFolderFiles(from, to) {
   const adapter = activeDiskAdapter();
   const names = (await listFolder(from)) || [];
@@ -448,6 +481,7 @@ async function moveFolderFiles(from, to) {
 }
 
 /** org-attach-unset-directory: removes DIR. With files in that folder, asks what to do with them, as org does: move them to the
+ * @param {any} [heading]
  *  ID's folder, delete them, or leave them where they are. */
 export async function unsetAttachmentDirectory(heading) {
   if (!getProperty(heading, 'DIR')) {
@@ -457,6 +491,7 @@ export async function unsetAttachmentDirectory(heading) {
   }
   const dir = attachmentDirFromProperty(getProperty(heading, 'DIR'), S.state.documentId);
   const names = dir && attachmentsAvailable() ? (await listFolder(dir)) || [] : [];
+  /** @param {any} [message] */
   const finish = async (message) => {
     deleteProperty(heading, 'DIR');
     await syncAttachTag(heading);
@@ -510,7 +545,10 @@ export async function unsetAttachmentDirectory(heading) {
   });
 }
 
-/** org-attach-reveal: the folder as a list, each file with Open, Save and Delete. */
+/**
+ * org-attach-reveal: the folder as a list, each file with Open, Save and Delete.
+ * @param {any} [heading]
+ */
 export async function revealAttachmentFolder(heading) {
   if (!attachmentsAvailable()) {
     setStatus(unavailable('show the attachment folder'));
@@ -526,23 +564,27 @@ export async function revealAttachmentFolder(heading) {
   showAttachmentFolder({
     title: `Folder \u2014 ${dir}`,
     load: () => listFolder(dir),
-    act: (action, name) => performAttachmentAction(heading, name, action),
+    act: (/** @type {any} */ action, /** @type {string} */ name) => performAttachmentAction(heading, name, action),
     add: () => pickAndUpload(heading),
-    saveMany: async (names) => {
+    saveMany: async (/** @type {any} */ names) => {
       for (const name of names) await performAttachmentAction(heading, name, 'save');
     },
-    removeMany: async (names) => {
+    removeMany: async (/** @type {any} */ names) => {
       if (!(await confirmDialog(`Delete ${names.length} attachment${names.length === 1 ? '' : 's'}? This removes the actual files, not just the links.`))) return;
       for (const name of names) await deleteAttachment(heading, name);
     },
   });
 }
 
-/** org-attach-buffer: saves one of the open documents, as text, into the heading's folder. */
+/**
+ * org-attach-buffer: saves one of the open documents, as text, into the heading's folder.
+ * @param {any} [heading]
+ */
 export async function attachOpenDocument(heading) {
   if (!(await requireAttachmentStorage())) return;
-  const documents = S.documentSessions.map((session) => (session.tabId === S.activeTabId ? S.state : session.state));
+  const documents = S.documentSessions.map((/** @type {any} */ session) => (session.tabId === S.activeTabId ? S.state : session.state));
   if (documents.length === 0) documents.push(S.state);
+  /** @param {any} [state] */
   const attach = (state) => {
     const name = String(state.documentId || 'document.org').split('/').pop();
     return uploadAttachmentToHeading(heading, { name, type: 'text/plain', base64: utf8ToBase64(serializeOrg(state.doc)) });
@@ -553,28 +595,32 @@ export async function attachOpenDocument(heading) {
   }
   openButtonChoiceModal({
     label: 'Attach which open document?',
-    buttons: [...documents.map((state) => ({ text: String(state.documentId || 'document').split('/').pop(), onClick: () => attach(state) })), { text: 'Cancel', onClick: () => {} }],
+    buttons: [...documents.map((/** @type {any} */ state) => ({ text: String(state.documentId || 'document').split('/').pop(), onClick: () => attach(state) })), { text: 'Cancel', onClick: () => {} }],
   });
 }
 
-/** org-attach-new: makes a text file in the heading's folder from a name and what to put in it. */
+/**
+ * org-attach-new: makes a text file in the heading's folder from a name and what to put in it.
+ * @param {any} [heading]
+ */
 export async function attachNewTextFile(heading) {
   if (!(await requireAttachmentStorage())) return;
   openMultiFieldPopup({
     label: 'New attachment',
     fields: [{ key: 'name', label: 'File name', type: 'text', value: 'note.txt' }],
-    onSave: (values) => {
+    onSave: (/** @type {any} */ values) => {
       if (!values.name) return;
       openTextFieldPopup({
         label: `Contents of ${values.name}`,
         value: '',
-        onSave: (text) => uploadAttachmentToHeading(heading, { name: values.name, type: 'text/plain', base64: utf8ToBase64(text) }),
+        onSave: (/** @type {string} */ text) => uploadAttachmentToHeading(heading, { name: values.name, type: 'text/plain', base64: utf8ToBase64(text) }),
       });
     },
   });
 }
 
 /** org-attach's dispatcher (C-c C-a), as a grid of buttons laid out like the Capture template picker. The keys are org's own, and
+ * @param {any} [heading]
  *  work when pressed; each button shows its key as a badge, as Capture's does. `viaKeys` (opened from god-mode) also lets a phone keyboard's letters reach the menu. */
 export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
   openGridChoiceModal({
@@ -598,6 +644,8 @@ export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
 
 /** Shared entry point for Open, Export and Delete: reads `heading`'s attachment folder and either acts directly (exactly
  *  one file) or opens the file-list picker (several), as org-attach does ("if there is more than one, prompt for a file name
+ * @param {any} [heading]
+ * @param {any} [action]
  *  first"). */
 export async function startAttachmentPickFlow(heading, action) {
   const filenames = await attachmentFiles(heading);
@@ -660,6 +708,9 @@ export function renderAttachFileListPanel() {
  *  Delete always confirms first, matching every other destructive
  *  action in this app; Open never does, since downloading a file (or
  *  viewing it, if the browser handles that download itself) isn't
+ * @param {any} [heading]
+ * @param {any} [filename]
+ * @param {any} [action]
  *  destructive. */
 export async function performAttachmentAction(heading, filename, action) {
   if (action === 'delete') {

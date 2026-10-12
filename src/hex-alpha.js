@@ -19,6 +19,7 @@
  * back to `{ rgb: '#000000', alpha: 255 }` rather than throwing --
  * this is a UI-facing helper, and a person's mid-edit or momentarily
  * invalid input shouldn't crash the color picker.
+ * @param {any} [hex]
  */
 function splitHexAlpha(hex) {
   const trimmed = String(hex || '').trim();
@@ -42,6 +43,8 @@ function splitHexAlpha(hex) {
  * and it keeps a never-touched-the-opacity-slider color visually
  * identical to how it would have been typed by hand), 8-digit
  * otherwise.
+ * @param {any} [rgb]
+ * @param {any} [alpha]
  */
 function combineHexAlpha(rgb, alpha) {
   const rgbMatch = /^#([0-9a-fA-F]{6})$/.exec(String(rgb || '').trim());

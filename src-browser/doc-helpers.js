@@ -9,9 +9,10 @@ import { CAPTURE_TYPES } from './constants.js';
  *  actual data row in `table` -- the entry point keyboard table-cell
  *  navigation lands on when a table first gains keyboard focus.
  *  Returns 0 if `table` has no data rows at all (shouldn't normally
+ * @param {any} [table]
  *  happen, but a defined fallback beats an out-of-range index). */
 export function firstDataRowIndex(table) {
-  const idx = table.rows.findIndex((r) => r.type !== 'rule');
+  const idx = table.rows.findIndex((/** @type {any} */ r) => r.type !== 'rule');
   return idx === -1 ? 0 : idx;
 }
 
@@ -21,6 +22,7 @@ export function firstDataRowIndex(table) {
  *  array directly, not flattenVisibleRows' own output, since that
  *  respects the CURRENT fold state and would miss body content
  *  that's simply folded away right now (exactly the case
+ * @param {any} [heading]
  *  auto-reveal needs to detect). */
 export function hasBodyContent(heading) {
   return !!(heading.body && heading.body.length > 0);
@@ -38,6 +40,8 @@ export function hasBodyContent(heading) {
 /** Recursively finds the list item at `lineIndex`, possibly nested
  *  within a sub-list -- list items aren't direct heading.body
  *  children the way a paragraph/table/block is, so finding a fresh
+ * @param {any} [items]
+ * @param {any} [lineIndex]
  *  one after a re-parse needs to walk this nested structure. */
 export function findListItemByLineIndex(items, lineIndex) {
   for (const item of items) {
@@ -59,9 +63,15 @@ export function findListItemByLineIndex(items, lineIndex) {
  *  both already follow: a match stays visible in its own actual
  *  position in the outline, with enough of its own ancestor chain kept
  *  visible to make sense of where it sits, rather than being shown as a
+ * @param {any} [doc]
+ * @param {any} [matchedHeadings]
  *  flat, context-free list. */
 export function expandScopeWithAncestors(doc, matchedHeadings) {
   const visible = new Set();
+  /**
+   * @param {any} [nodes]
+   * @param {any} [ancestors]
+   */
   function walk(nodes, ancestors) {
     for (const node of nodes) {
       if (node.type !== 'heading') continue;
@@ -76,12 +86,14 @@ export function expandScopeWithAncestors(doc, matchedHeadings) {
   return visible;
 }
 
+/** @param {any} [table] */
 export function tableHasContent(table) {
-  return table.rows.some((r) => r.type === 'row' && r.cells.some((c) => c.trim() !== ''));
+  return table.rows.some((/** @type {any} */ r) => r.type === 'row' && r.cells.some((/** @type {any} */ c) => c.trim() !== ''));
 }
 
+/** @param {any} [paragraph] */
 export function paragraphHasContent(paragraph) {
-  return paragraph.lines.some((l) => l.trim() !== '');
+  return paragraph.lines.some((/** @type {any} */ l) => l.trim() !== '');
 }
 
 // Counts every item nested under `item`, at any depth — used by
@@ -95,6 +107,7 @@ export function paragraphHasContent(paragraph) {
 // checkbox task like "Buy milk" never got a confirmation at all, since
 // it has no children of its own. That was the actual bug, not a
 // deliberate friction/safety tradeoff.
+/** @param {any} [item] */
 export function listItemDescendantCount(item) {
   let count = 0;
   for (const nestedList of item.children || []) {
@@ -114,6 +127,7 @@ export function listItemDescendantCount(item) {
  *  URL, already short and readable as a title). Returns null when
  *  there's no real, renderable value either way -- a bare string
  *  that isn't a real URL or a real data:image/ URI is never treated
+ * @param {any} [heading]
  *  as a displayable photo. */
 export function contactPhotoValueForHeading(heading) {
   const fieldType = String((heading.properties || {}).FIELDTYPE || '').toLowerCase();
@@ -147,6 +161,7 @@ export function contactPhotoValueForHeading(heading) {
  */
 /** Strips org's own comma-escape convention from one block content
  *  line for display -- see export-html.js's own stripCommaEscape for
+ * @param {any} [line]
  *  the full reasoning; the same fix, applied here too. */
 export function stripCommaEscapeApp(line) {
   return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
@@ -160,6 +175,7 @@ export function stripCommaEscapeApp(line) {
 /** Collects every heading in `doc`, in document order, regardless of
  *  fold state -- a heading buried under several collapsed ancestors
  *  must still be pickable as an export scope, unlike keyboard
+ * @param {any} [headings]
  *  navigation (which only moves between currently-visible rows). */
 export function vcardBodyHeadingsIn(headings) {
   const found = [];
@@ -170,7 +186,10 @@ export function vcardBodyHeadingsIn(headings) {
   return found;
 }
 
-/** Like vcardBodyHeadingsIn, for iCalendar text: the body text of each heading whose own body starts with BEGIN:VCALENDAR. */
+/**
+ * Like vcardBodyHeadingsIn, for iCalendar text: the body text of each heading whose own body starts with BEGIN:VCALENDAR.
+ * @param {any} [headings]
+ */
 export function icalendarBodyHeadingsIn(headings) {
   const found = [];
   for (const { heading } of headings) {
@@ -184,9 +203,14 @@ export function icalendarBodyHeadingsIn(headings) {
  *  the same {heading, depth} shape allHeadingsInOrder returns for the
  *  whole document -- depth here is relative to `heading` itself (0),
  *  not the document root, since this is only ever used for scanning,
+ * @param {any} [heading]
  *  never for indentation display. */
 export function headingsInSubtree(heading) {
   const out = [];
+  /**
+   * @param {any} [node]
+   * @param {any} [depth]
+   */
   function walk(node, depth) {
     out.push({ heading: node, depth });
     for (const child of node.children || []) walk(child, depth + 1);
@@ -195,8 +219,13 @@ export function headingsInSubtree(heading) {
   return out;
 }
 
+/** @param {any} [doc] */
 export function allHeadingsInOrder(doc) {
   const out = [];
+  /**
+   * @param {any} [nodes]
+   * @param {any} [depth]
+   */
   function walk(nodes, depth) {
     for (const node of nodes) {
       if (node.type !== 'heading') continue;
@@ -208,6 +237,10 @@ export function allHeadingsInOrder(doc) {
   return out;
 }
 
+/**
+ * @param {any} [query]
+ * @param {any} [useRegex]
+ */
 export function buildQueryReplacePattern(query, useRegex) {
   if (useRegex) return emacsRegexToJs(query, 'gi');
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -218,6 +251,7 @@ export function buildQueryReplacePattern(query, useRegex) {
  *  a valid capture-templates array. Checked before saving from Settings
  *  so a malformed edit gets a clear message immediately, rather than
  *  either silently corrupting the stored config or failing confusingly
+ * @param {any} [parsed]
  *  later when a capture is actually run against it. */
 export function validateCaptureTemplates(parsed) {
   if (!Array.isArray(parsed)) return 'must be a JSON array';
@@ -228,7 +262,7 @@ export function validateCaptureTemplates(parsed) {
     if (typeof t.key !== 'string' || t.key.length === 0) return `${label}: "key" must be a non-empty string`;
     if (typeof t.description !== 'string') return `${label}: "description" must be a string`;
     if (!CAPTURE_TYPES.includes(t.type)) return `${label}: "type" must be one of ${CAPTURE_TYPES.join(', ')}`;
-    if (!Array.isArray(t.olp) || t.olp.length === 0 || !t.olp.every((s) => typeof s === 'string')) {
+    if (!Array.isArray(t.olp) || t.olp.length === 0 || !t.olp.every((/** @type {any} */ s) => typeof s === 'string')) {
       return `${label}: "olp" must be a non-empty array of strings`;
     }
     if (typeof t.template !== 'string') return `${label}: "template" must be a string`;
@@ -270,6 +304,7 @@ export function validateCaptureTemplates(parsed) {
  *  common, sensible combination); item/checkitem/plain reuse the same
  *  prepend value for both, since for those three "where does the
  *  container heading go" and "where does the content go" are the same
+ * @param {any} [template]
  *  decision applied at two tree levels, not two independent ones. */
 export function getOlpPrepend(template) {
   return template.type === 'table-line' ? !!template.prependHeading : !!template.prepend;

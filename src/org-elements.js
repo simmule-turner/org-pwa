@@ -33,10 +33,15 @@ const FOOTNOTE_DEF_RE = /^\[fn:([A-Za-z0-9_-]+)\][ \t]?(.*)$/;
 const ITEM_RE = /^([ \t]*)([-+*]|\d+[.)])(?:[ \t]+|$)/;
 const HEADLINE_LIKE_RE = /^\*+ /;
 
+/** @param {any} [line] */
 const indentOf = (line) => (/^[ \t]*/.exec(line) || [''])[0].replace(/\t/g, '        ').length;
+/** @param {any} [line] */
 const isBlank = (line) => line.trim() === '';
 
-/** Is this line the start of a list item? (A `*` bullet needs indentation, or it would be a headline.) */
+/**
+ * Is this line the start of a list item? (A `*` bullet needs indentation, or it would be a headline.)
+ * @param {any} [line]
+ */
 function itemMatch(line) {
   const m = ITEM_RE.exec(line);
   if (!m) return null;
@@ -49,6 +54,10 @@ function emptyAff() {
   return { caption: [], name: null, attr: {}, header: [], results: false };
 }
 
+/**
+ * @param {any} [aff]
+ * @param {any} [match]
+ */
 function addAffiliated(aff, match) {
   const key = match[1].toUpperCase();
   const value = match[3];
@@ -59,7 +68,10 @@ function addAffiliated(aff, match) {
   else if (key === 'RESULTS') aff.results = true;
 }
 
-/** `:key value :key2 "quoted value" :flag` -> { key: 'value', key2: 'quoted value', flag: '' }. */
+/**
+ * `:key value :key2 "quoted value" :flag` -> { key: 'value', key2: 'quoted value', flag: '' }.
+ * @param {any} [values]
+ */
 export function parseAttributes(values) {
   const out = {};
   for (const text of values || []) {
@@ -75,13 +87,18 @@ export function parseAttributes(values) {
   return out;
 }
 
+/** @param {any} [line] */
 function splitRow(line) {
   let body = line.trim();
   body = body.replace(/^\|/, '');
   if (body.endsWith('|')) body = body.slice(0, -1);
-  return body.split('|').map((c) => c.trim());
+  return body.split('|').map((/** @type {any} */ c) => c.trim());
 }
 
+/**
+ * @param {any} [lines]
+ * @param {any} [i]
+ */
 function parseTable(lines, i) {
   const rows = [];
   while (i < lines.length && TABLE_RE.test(lines[i])) {
@@ -94,7 +111,11 @@ function parseTable(lines, i) {
   return [{ type: 'table', rows }, i];
 }
 
-/** Removes up to `n` columns of leading whitespace. */
+/**
+ * Removes up to `n` columns of leading whitespace.
+ * @param {any} [line]
+ * @param {any} [n]
+ */
 function dedent(line, n) {
   let k = 0;
   let col = 0;
@@ -105,6 +126,10 @@ function dedent(line, n) {
   return line.slice(k);
 }
 
+/**
+ * @param {any} [lines]
+ * @param {any} [start]
+ */
 function parseList(lines, start) {
   const first = /** @type {RegExpExecArray} */ (itemMatch(lines[start]));
   const baseIndent = indentOf(lines[start]);
@@ -168,7 +193,11 @@ function parseList(lines, start) {
   return [{ type: 'list', listType, items }, i];
 }
 
-/** True when index `at` in `text` is inside a `=verbatim=` or `~code~` span, where `::` is not a tag separator. */
+/**
+ * True when index `at` in `text` is inside a `=verbatim=` or `~code~` span, where `::` is not a tag separator.
+ * @param {any} [text]
+ * @param {any} [at]
+ */
 function isInsideCode(text, at) {
   if (at < 0) return false;
   for (const delim of ['=', '~']) {
@@ -179,13 +208,21 @@ function isInsideCode(text, at) {
   return false;
 }
 
+/**
+ * @param {any} [lines]
+ * @param {any} [i]
+ * @param {any} [name]
+ */
 function findBlockEnd(lines, i, name) {
   const end = new RegExp('^[ \\t]*#\\+end_' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[ \\t]*$', 'i');
   for (let j = i + 1; j < lines.length; j++) if (end.test(lines[j])) return j;
   return -1;
 }
 
-/** Does this line start something that ends a paragraph? */
+/**
+ * Does this line start something that ends a paragraph?
+ * @param {any} [line]
+ */
 function interruptsParagraph(line) {
   return (
     isBlank(line) ||
@@ -202,10 +239,12 @@ function interruptsParagraph(line) {
   );
 }
 
+/** @param {any} [lines] */
 export function parseElements(lines) {
   const out = [];
   /** @type {any} */
   let aff = null;
+  /** @param {any} [el] */
   const push = (el) => {
     if (aff) el.aff = aff;
     else el.aff = null;

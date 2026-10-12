@@ -9,6 +9,7 @@ import { setStatus } from './editing.js';
 import { render } from './render.js';
 import { keepOverlayInVisibleViewport, menuButton } from './ui-widgets.js';
 
+/** @param {any} [blob] */
 const blobToBase64 = (blob) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -31,7 +32,11 @@ export async function cameraAvailable() {
   }
 }
 
-/** Opens the camera panel for a 'photo' or a 'video'. Asks for the camera (and the microphone, for a video) first. */
+/**
+ * Opens the camera panel for a 'photo' or a 'video'. Asks for the camera (and the microphone, for a video) first.
+ * @param {any} [kind]
+ * @param {any} [onAttach]
+ */
 export async function openCameraPanel(kind, onAttach) {
   if (kind === 'video' && typeof MediaRecorder === 'undefined') {
     setStatus("This browser can't record video.");
@@ -110,6 +115,7 @@ export async function openCameraPanel(kind, onAttach) {
     unlockScroll();
     if (overlay.parentNode) document.body.removeChild(overlay);
   }
+  /** @param {any} [e] */
   function onKeyDown(e) {
     if (e.key !== 'Escape' || document.body.lastElementChild !== overlay) return;
     e.preventDefault();
@@ -159,7 +165,7 @@ export async function openCameraPanel(kind, onAttach) {
   function startRecording() {
     chunks = [];
     recorder = new MediaRecorder(stream);
-    recorder.ondataavailable = (e) => {
+    recorder.ondataavailable = (/** @type {any} */ e) => {
       if (e.data && e.data.size > 0) chunks.push(e.data);
     };
     recorder.onstop = () => {

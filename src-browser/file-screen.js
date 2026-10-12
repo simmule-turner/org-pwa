@@ -127,6 +127,7 @@ async function saveHere() {
   else saveAsWebdav(path);
 }
 
+/** @param {any} [f] */
 function localBody(f) {
   const box = div('border:1px dashed var(--border-strong);border-radius:var(--radius-control);padding:16px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;');
   const live = platform.localFiles.supported();
@@ -146,6 +147,7 @@ function localBody(f) {
   return box;
 }
 
+/** @param {any} [f] */
 function unconfiguredBody(f) {
   const box = div('border:1px dashed var(--border-strong);border-radius:var(--radius-control);padding:16px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;');
   box.appendChild(div('font-weight:600;', `${LABEL[f.type]} isn't set up yet`));
@@ -159,6 +161,7 @@ function unconfiguredBody(f) {
   return box;
 }
 
+/** @param {any} [f] */
 function listBody(f) {
   const wrap = div('display:flex;flex-direction:column;gap:8px;min-height:0;flex:1 1 auto;');
   const crumb = div('display:flex;align-items:center;gap:8px;font-size:13px;');
@@ -210,7 +213,11 @@ function listBody(f) {
   return wrap;
 }
 
-/** The path or name field, built once per open so typing survives redraws. */
+/**
+ * The path or name field, built once per open so typing survives redraws.
+ * @param {any} [f]
+ * @param {any} [which]
+ */
 function field(f, which) {
   if (f[which]) return f[which];
   const input = document.createElement('input');

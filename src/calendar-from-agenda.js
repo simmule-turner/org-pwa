@@ -32,7 +32,10 @@ const PER_OCCURRENCE_KINDS = new Set(['sexp-timestamp', 'diary-sexp', 'anniversa
 export const DEFAULT_DAYS_BEFORE = 30;
 export const DEFAULT_DAYS_AFTER = 180;
 
-/** `{ start, end }` for the window around `today`. */
+/**
+ * `{ start, end }` for the window around `today`.
+ * @param {any} [today]
+ */
 export function agendaWindow(today, daysBefore = DEFAULT_DAYS_BEFORE, daysAfter = DEFAULT_DAYS_AFTER) {
   return {
     start: startOfDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() - daysBefore)),
@@ -40,9 +43,14 @@ export function agendaWindow(today, daysBefore = DEFAULT_DAYS_BEFORE, daysAfter 
   };
 }
 
+/**
+ * @param {any} [a]
+ * @param {any} [b]
+ */
 const sameMoment = (a, b) => a.getTime() === b.getTime();
 
 /** The timestamp in the heading (a planning line, or one written in the title) that an agenda item came from, with its index among
+ * @param {any} [item]
  *  the title's timestamps (the exporter's own id includes it). null if it cannot be found. */
 function sourceOf(item) {
   const { heading, kind } = item;
@@ -52,6 +60,7 @@ function sourceOf(item) {
     return parsed ? { parsed, index: 0 } : null;
   }
   const stamps = findTimestamps(heading.title);
+  /** @param {any} [t] */
   const wanted = (t) => t.active && (item.repeater ? t.repeater === item.repeater && t.hasTime === item.hasTime : sameMoment(t.date, item.date));
   const index = stamps.findIndex(wanted);
   return index >= 0 ? { parsed: stamps[index], index } : null;
@@ -77,14 +86,21 @@ export function collectAgendaCalendarEvents(docs, opts = {}) {
     birthdayProperty,
     contactsDocs,
     deadlineWarningDays: 0,
-    todoFilter: (todo) => !doneKeywords.has(todo), // completed items are not on the agenda, so not in the calendar
-    isDone: (todo) => doneKeywords.has(todo),
+    todoFilter: (/** @type {any} */ todo) => !doneKeywords.has(todo), // completed items are not on the agenda, so not in the calendar
+    isDone: (/** @type {any} */ todo) => doneKeywords.has(todo),
   });
   const real = items.filter((item) => CALENDAR_KINDS.has(item.kind) && !item.daysOverdue);
   real.sort((a, b) => a.date - b.date || String(a.title).localeCompare(String(b.title)));
 
   const events = [];
   const usedUids = new Set();
+  /**
+   * @param {any} [documentId]
+   * @param {any} [heading]
+   * @param {any} [kind]
+   * @param {any} [index]
+   * @param {any} [date]
+   */
   const uniqueUid = (documentId, heading, kind, index, date) => {
     let uid = generateUid(documentId, heading, kind, index, date);
     for (let n = 2; usedUids.has(uid); n++) uid = generateUid(documentId, heading, kind, index, date).replace(/@org-pwa$/, `-${n}@org-pwa`);
@@ -92,6 +108,7 @@ export function collectAgendaCalendarEvents(docs, opts = {}) {
     return uid;
   };
   const headingIds = new Map();
+  /** @param {any} [heading] */
   const idOf = (heading) => {
     if (!headingIds.has(heading)) headingIds.set(heading, headingIds.size);
     return headingIds.get(heading);
@@ -146,6 +163,7 @@ export function collectAgendaCalendarEvents(docs, opts = {}) {
 }
 
 /** The agenda as one .ics file, for Export > Calendar (.ics) > Agenda (as displayed): the same events the CalDAV mirror sends, in
+ * @param {any} [docs]
  *  the same window. (The file and heading scopes of that export are a different job: every dated item, with no window.) */
 export function exportAgendaToIcalendar(docs, opts = {}) {
   const today = opts.today || new Date();

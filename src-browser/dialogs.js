@@ -14,6 +14,7 @@ import { fieldRow, keepOverlayInVisibleViewport, menuButton, modalFieldRow, moda
  *  reach) but WITHOUT flex:1 -- for a button meant to sit alongside a
  *  sibling in the same row, sized to its own content, rather than
  *  stretching alone to fill the whole row the way a lone wizardButton
+ * @param {any} [message]
  *  is meant to. */
 export function confirmDialog(message, { confirmLabel = 'Delete', cancelLabel = 'Cancel', danger = true } = {}) {
   return new Promise((resolve) => {
@@ -45,6 +46,7 @@ export function confirmDialog(message, { confirmLabel = 'Delete', cancelLabel = 
     buttonRow.style.gap = '8px';
 
     let stopTrackingViewport = () => {};
+    /** @param {any} [result] */
     function finish(result) {
       S.confirmDialogOpen = false;
       document.removeEventListener('keydown', onKeyDown, true);
@@ -83,6 +85,7 @@ export function confirmDialog(message, { confirmLabel = 'Delete', cancelLabel = 
       if (e.target === overlay) finish(false);
     };
 
+    /** @param {any} [e] */
     function onKeyDown(e) {
       // Capture phase, ahead of the global god-mode handler's own guard
       // (which also checks confirmDialogOpen and steps aside) -- belt
@@ -190,6 +193,7 @@ export function promptText(message, initial = '', { okLabel = 'OK' } = {}) {
  *  here -- neither choice is dangerous, and picking a date is the
  *  whole point of opening this -- and OK starts disabled, only
  *  enabling once a real date is actually entered, so it can never
+ * @param {any} [kind]
  *  fire on an empty/invalid pick. */
 export function openTimestampPickerPopup(kind) {
   return new Promise((resolve) => {
@@ -239,6 +243,7 @@ export function openTimestampPickerPopup(kind) {
     buttonRow.style.gap = '8px';
 
     let stopTrackingViewport = () => {};
+    /** @param {any} [result] */
     function finish(result) {
       S.timestampPickerOpen = false;
       document.removeEventListener('keydown', onKeyDown, true);
@@ -273,6 +278,7 @@ export function openTimestampPickerPopup(kind) {
       if (e.target === overlay) finish(null);
     };
 
+    /** @param {any} [e] */
     function onKeyDown(e) {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -317,6 +323,7 @@ export function openTimestampPickerPopup(kind) {
  *  (2) a `touchmove` listener on the overlay's own backdrop
  *  specifically (never on the popup's own textarea/fields, which
  *  still need to scroll normally) that calls preventDefault() for any
+ * @param {any} [overlay]
  *  touch that didn't start on an element the popup itself owns. */
 export function lockBackgroundScroll(overlay) {
   const scrollEl = scrollContainer();
@@ -325,6 +332,7 @@ export function lockBackgroundScroll(overlay) {
   document.body.style.overflow = 'hidden';
   scrollEl.style.overflow = 'hidden';
 
+  /** @param {any} [e] */
   const preventBackdropTouchMove = (e) => {
     if (e.target === overlay) e.preventDefault();
   };
@@ -337,6 +345,7 @@ export function lockBackgroundScroll(overlay) {
   };
 }
 
+/** @param {any} [overlayEl] */
 export function showModalOverlay(overlayEl) {
   overlayEl.style.display = 'flex';
   if (!modalOverlayCleanups.has(overlayEl)) {
@@ -354,6 +363,7 @@ export function showModalOverlay(overlayEl) {
  *  heading's own body-content rows underneath) and cleared here on both
  *  Cancel and OK. Uses a fixed, unique overlay id so a render() pass
  *  while the popup is already open (from some unrelated trigger) can't
+ * @param {any} [heading]
  *  accidentally open a second, duplicate one. */
 export function openHeadingTextEditor(heading) {
   const originalText = getHeadingText(heading);
@@ -366,7 +376,7 @@ export function openHeadingTextEditor(heading) {
       S.editingHeadingText = null;
       render();
     },
-    onSave: (newText) => {
+    onSave: (/** @type {string} */ newText) => {
       S.editingHeadingText = null;
       setHeadingText(heading, newText);
       commitAndRender('Edited heading body text');
@@ -457,6 +467,7 @@ export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset
     document.body.removeChild(overlay);
   }
 
+  /** @param {any} [e] */
   function onKeyDown(e) {
     // Capture phase, ahead of the global god-mode handler's own guard
     // (which also checks textFieldPopupOpen and steps aside) -- same
@@ -553,6 +564,7 @@ export function openButtonChoiceModal({ label, buttons }) {
     document.body.removeChild(overlay);
   }
 
+  /** @param {any} [e] */
   function onKeyDown(e) {
     // Capture phase, ahead of the global god-mode handler's own guard
     // (which also checks buttonChoiceModalOpen and steps aside) -- same
@@ -614,10 +626,12 @@ export function openGridChoiceModal({ label, buttons, showKeys = false }) {
     unlockScroll();
     if (overlay.parentNode) document.body.removeChild(overlay);
   }
+  /** @param {any} [button] */
   const choose = async (button) => {
     close();
     await button.onClick();
   };
+  /** @param {any} [e] */
   function onKeyDown(e) {
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -626,7 +640,7 @@ export function openGridChoiceModal({ label, buttons, showKeys = false }) {
       return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    const button = buttons.find((b) => b.key === e.key && !b.disabled);
+    const button = buttons.find((/** @type {any} */ b) => b.key === e.key && !b.disabled);
     if (!button) return;
     e.preventDefault();
     e.stopPropagation();
@@ -647,9 +661,10 @@ export function openGridChoiceModal({ label, buttons, showKeys = false }) {
     typing.setAttribute('autocorrect', 'off');
     typing.spellcheck = false;
     typing.style.cssText = 'position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;border:0;padding:0;';
+    /** @param {any} [text] */
     const feed = (text) => {
       for (const ch of text) {
-        const button = buttons.find((b) => b.key === ch && !b.disabled);
+        const button = buttons.find((/** @type {any} */ b) => b.key === ch && !b.disabled);
         if (button) {
           choose(button);
           return;
@@ -727,7 +742,7 @@ export function openMultiFieldPopup({ label, fields, onSave }) {
   titleEl.style.marginBottom = '14px';
   modal.appendChild(titleEl);
 
-  const fieldEntries = fields.map((f) => ({ key: f.key, type: f.type, entry: modalFieldRow(f.label, f.type, f.value, f.placeholder) }));
+  const fieldEntries = fields.map((/** @type {any} */ f) => ({ key: f.key, type: f.type, entry: modalFieldRow(f.label, f.type, f.value, f.placeholder) }));
   for (const { entry } of fieldEntries) {
     modal.appendChild(entry.wrap);
   }
@@ -754,7 +769,7 @@ export function openMultiFieldPopup({ label, fields, onSave }) {
   btnRow.appendChild(
     menuButton('Reset', () => {
       for (const { key, entry } of fieldEntries) {
-        const original = fields.find((f) => f.key === key).value;
+        const original = fields.find((/** @type {any} */ f) => f.key === key).value;
         entry.input.value = original !== undefined && original !== null ? original : '';
       }
       fieldEntries[0]?.entry.input.focus();
@@ -784,12 +799,18 @@ export function openMultiFieldPopup({ label, fields, onSave }) {
  *  rear camera as a picker option alongside the usual photo library/
  *  file browser, the actual motivating case for this feature; most
  *  mobile browsers still offer the other options too even with this
+ * @param {any} [capture]
+ * @param {any} [accept]
  *  set, so it's additive, never a restriction. */
 export function pickBinaryFile(capture, accept) {
   return pickBinaryFiles(capture, accept, false).then((files) => files[0]);
 }
 
-/** Like pickBinaryFile, but the chooser allows several files and the promise resolves with all of them (in order). */
+/**
+ * Like pickBinaryFile, but the chooser allows several files and the promise resolves with all of them (in order).
+ * @param {any} [capture]
+ * @param {any} [accept]
+ */
 export function pickBinaryFiles(capture, accept, multiple = true) {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
@@ -807,6 +828,7 @@ export function pickBinaryFiles(capture, accept, multiple = true) {
       }
       setStatus('Reading file\u2026');
       render();
+      /** @param {any} [file] */
       const readOne = (file) =>
         new Promise((res, rej) => {
           const reader = new FileReader();

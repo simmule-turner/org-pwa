@@ -67,6 +67,7 @@ function visibleVariables() {
   return out;
 }
 
+/** @param {any} [name] */
 function lookupTable(name) {
   for (const { heading } of allHeadingsInOrder(S.state.doc)) {
     const rows = findNamedTable(heading.bodyLines || [], name);
@@ -75,6 +76,12 @@ function lookupTable(name) {
   return null;
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [block]
+ * @param {any} [lines]
+ * @param {any} [label]
+ */
 function writeResults(heading, block, lines, label, hash = /** @type {string | null} */ (null)) {
   const { start, removeCount, insert } = placeResults(heading.bodyLines, block, lines, { hash });
   // the cursor stays on the block, whose body is re-parsed by the edit
@@ -83,7 +90,11 @@ function writeResults(heading, block, lines, label, hash = /** @type {string | n
   if (S.keyboardFocusedHeading === heading) scrollFocusedHeadingIntoView();
 }
 
-/** Runs a JavaScript block and writes its result under it as #+RESULTS:. */
+/**
+ * Runs a JavaScript block and writes its result under it as #+RESULTS:.
+ * @param {any} [heading]
+ * @param {any} [block]
+ */
 export async function executeSourceBlock(heading, block) {
   if (!babelEnabled()) {
     setStatus('JavaScript blocks are off. Turn on "Run JavaScript source blocks" in Settings.');

@@ -18,11 +18,13 @@
  *  double-quoted entry per line, each ending in a trailing backslash
  *  except the last -- purely a DISPLAY transform, easier to read/edit
  *  than one long run-on line, matching the file-based Local Variables
+ * @param {any} [rawValue]
+ * @param {any} [tokenizeFn]
  *  line-continuation convention already documented for this syntax. */
 function multiEntryValueToDisplayText(rawValue, tokenizeFn) {
   if (!rawValue) return '';
   const tokens = tokenizeFn(rawValue);
-  return tokens.map((t) => `"${t}"`).join(' \\\n');
+  return tokens.map((/** @type {any} */ t) => `"${t}"`).join(' \\\n');
 }
 
 /** The inverse: re-tokenizes whatever's actually in the edit box --
@@ -32,10 +34,12 @@ function multiEntryValueToDisplayText(rawValue, tokenizeFn) {
  *  that's actually stored. Committing this CANONICAL string, rather
  *  than the raw edited text directly, is what keeps the value stable
  *  across a reload: storage never again contains an embedded newline
+ * @param {any} [displayText]
+ * @param {any} [tokenizeFn]
  *  for something else to collapse later. */
 function multiEntryDisplayTextToValue(displayText, tokenizeFn) {
   const tokens = tokenizeFn(displayText);
-  return tokens.map((t) => `"${t}"`).join(' ');
+  return tokens.map((/** @type {any} */ t) => `"${t}"`).join(' ');
 }
 
 export { multiEntryValueToDisplayText, multiEntryDisplayTextToValue };

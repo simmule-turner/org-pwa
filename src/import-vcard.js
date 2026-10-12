@@ -42,6 +42,7 @@
  *  previous line, with that one leading whitespace character removed
  *  and the rest appended directly -- the reverse of foldLine (already
  *  used by this module's own export side) folding a long line the
+ * @param {any} [text]
  *  same way. */
 function unfoldVcardLines(text) {
   const rawLines = text.split(/\r\n|\r|\n/);
@@ -58,6 +59,7 @@ function unfoldVcardLines(text) {
 
 /** Reverses escapeVcardText's own escaping (\\\\ -> \\, \\; -> ;, \\, -> ,,
  *  \\n -> a real newline) -- the exact inverse of that function, not a
+ * @param {any} [text]
  *  separately-invented unescaping scheme. */
 function unescapeVcardText(text) {
   return text.replace(/\\n/gi, '\n').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\');
@@ -72,6 +74,7 @@ function unescapeVcardText(text) {
  *  checkbox in the Import screen, default on): a literal "\:" from
  *  some other, non-Google vCard source could plausibly be
  *  intentional, however unlikely, and shouldn't be silently rewritten
+ * @param {any} [text]
  *  without it being clear Google-specific handling is what did it. */
 function unescapeGoogleColon(text) {
   return text.replace(/\\:/g, ':');
@@ -82,6 +85,8 @@ function unescapeGoogleColon(text) {
  *  value can be quoted specifically to contain characters (";", ":")
  *  that would otherwise be mistaken for structural delimiters, most
  *  relevantly a LABEL="..." parameter whose own text might contain
+ * @param {any} [text]
+ * @param {any} [delimiter]
  *  either. */
 function splitRespectingQuotes(text, delimiter) {
   const parts = [];
@@ -121,6 +126,8 @@ function splitRespectingQuotes(text, delimiter) {
  *  line with no ":" at all (malformed, or a blank/structural line),
  *  skipped rather than thrown on -- a real-world vCard file
  *  occasionally has stray blank lines, and one malformed line
+ * @param {any} [line]
+ * @param {any} [cleanMode]
  *  shouldn't abort parsing every other contact in the file. */
 function parseVcardLine(line, cleanMode) {
   const colonParts = splitRespectingQuotes(line, ':');
@@ -181,6 +188,7 @@ const AB_LABEL_PLACEHOLDER_RE = /^_\$!<(.*)>!\$_$/;
  *  (image/jpeg) directly; both are handled here. Falls back to
  *  image/jpeg (the most common real-world case for an embedded
  *  contact photo) when the type is missing or unrecognized, rather
+ * @param {any} [typeParam]
  *  than refusing to build a data: URI at all. */
 function vcardPhotoMimeType(typeParam) {
   const raw = String(typeParam || '').trim();
@@ -190,6 +198,7 @@ function vcardPhotoMimeType(typeParam) {
   return KNOWN[bareFormat] || 'image/jpeg';
 }
 
+/** @param {any} [rawValue] */
 function interpretABLabel(rawValue) {
   const trimmed = String(rawValue || '').trim();
   if (!trimmed || AB_LABEL_EMPTY_RE.test(trimmed)) return null;
@@ -237,6 +246,7 @@ function interpretABLabel(rawValue) {
  *  value isn't a URL (base64-embedded image data) IS passed to it
  *  (as "PHOTO (embedded image data)"), since real photo data does
  *  exist there, just not in a form this module can usefully store as
+ * @param {any} [text]
  *  text. */
 export function parseVcards(text, opts = {}) {
   const { cleanMode = true, onUnmappedProperty = null, onEmbeddedPhotoImported = null } = opts;
@@ -249,6 +259,7 @@ export function parseVcards(text, opts = {}) {
   const warnedProperties = new Set(); // de-duplicates onUnmappedProperty calls across the whole file
 
   const KNOWN_UNMAPPED = new Set(['VERSION', 'PRODID', 'REV', 'UID', 'X-ABADR']);
+  /** @param {any} [name] */
   function warnUnmapped(name) {
     if (!onUnmappedProperty || KNOWN_UNMAPPED.has(name) || warnedProperties.has(name)) return;
     warnedProperties.add(name);
@@ -339,7 +350,7 @@ export function parseVcards(text, opts = {}) {
         const rawParts = parsed.value.split(';');
         const structured = rawParts
           .slice(0, 7)
-          .map((part) => part.trim())
+          .map((/** @type {any} */ part) => part.trim())
           .filter(Boolean)
           .join(', ');
         const googleLabel = cleanMode && rawParts.length >= 8 ? rawParts[7].trim() : '';
@@ -392,7 +403,7 @@ export function parseVcards(text, opts = {}) {
         current.org =
           parsed.value
             .split(';')
-            .map((part) => part.trim())
+            .map((/** @type {any} */ part) => part.trim())
             .filter(Boolean)
             .join(', ') || null;
         break;
@@ -439,7 +450,7 @@ export function parseVcards(text, opts = {}) {
       case 'CATEGORIES':
         current.categories = parsed.value
           .split(',')
-          .map((s) => s.trim())
+          .map((/** @type {any} */ s) => s.trim())
           .filter(Boolean);
         current.categoriesRaw = parsed.value;
         break;
@@ -473,6 +484,7 @@ export function parseVcards(text, opts = {}) {
  *  per RFC 6350's own date value type). Returns null for anything
  *  else (a text-form birthday, or a malformed value) rather than
  *  guessing -- an org date property with the wrong value is worse
+ * @param {any} [raw]
  *  than one left out entirely. */
 function normalizeBday(raw) {
   const dashed = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
@@ -485,6 +497,7 @@ function normalizeBday(raw) {
 /** A heading title can't legally contain a literal newline (a heading
  *  is one line) -- collapses one to a space, the same lossy-but-safe
  *  handling any multi-line vCard value needs wherever it ends up as a
+ * @param {any} [text]
  *  heading's own title. */
 function forHeadingTitle(text) {
   return text.replace(/\r?\n/g, ' ').trim();
@@ -503,6 +516,7 @@ function forHeadingTitle(text) {
  *  " ; " (rather than forHeadingTitle's plain space) keeps each
  *  original line visually distinct once flattened, since a property
  *  value this dense (a multi-paragraph note, an address with several
+ * @param {any} [text]
  *  components) reads as an unbroken run-on otherwise. */
 function forPropertyValue(text) {
   return text.replace(/\r?\n/g, ' ; ').trim();
@@ -512,6 +526,7 @@ const TEL_TYPE_TO_TREE_FIELDTYPE = { WORK: 'phone-work', HOME: 'phone-home', CEL
 const EMAIL_TYPE_TO_TREE_FIELDTYPE = { WORK: 'email-work', HOME: 'email-home' };
 const ADR_TYPE_TO_TREE_FIELDTYPE = { WORK: 'address-work', HOME: 'address-home' };
 
+/** @param {any} [tel] */
 function telFieldType(tel) {
   const type = (tel.type || '').toUpperCase();
   for (const key of Object.keys(TEL_TYPE_TO_TREE_FIELDTYPE)) {
@@ -520,6 +535,7 @@ function telFieldType(tel) {
   return 'phone';
 }
 
+/** @param {any} [email] */
 function emailFieldType(email) {
   const type = (email.type || '').toUpperCase();
   for (const key of Object.keys(EMAIL_TYPE_TO_TREE_FIELDTYPE)) {
@@ -531,6 +547,7 @@ function emailFieldType(email) {
 /** THE FEATURE: mirrors email/tel's own TYPE-based mapping, now that
  *  adrs is a real list -- 'address-work'/'address-home', falling back
  *  to plain 'address' for an untyped ADR line or one with some other
+ * @param {any} [adr]
  *  TYPE value (OTHER, PREF, etc.) neither WORK nor HOME covers. */
 function adrFieldType(adr) {
   const type = (adr.type || '').toUpperCase();
@@ -565,10 +582,11 @@ function adrFieldType(adr) {
  *  THE FEATURE: a separate :ADDRESS_LABEL: property preserves an
  *  address's own label (see parseVcards' own ADR case above) when
  *  present, alongside :ADDRESS: -- never one discarded for the
+ * @param {any} [contact]
  *  other. */
 function buildFlatOrgFromContact(contact) {
   const title = forHeadingTitle(contact.fn);
-  const tagSuffix = contact.categories.length ? `  :${contact.categories.map((c) => c.replace(/[^A-Za-z0-9_@]/g, '_')).join(':')}:` : '';
+  const tagSuffix = contact.categories.length ? `  :${contact.categories.map((/** @type {any} */ c) => c.replace(/[^A-Za-z0-9_@]/g, '_')).join(':')}:` : '';
   const lines = [`* ${title}${tagSuffix}`];
 
   const propertyLines = [];
@@ -578,8 +596,8 @@ function buildFlatOrgFromContact(contact) {
     propertyLines.push(`:EMAIL: ${contact.emails[0].value}`);
     if (contact.emails[0].label) propertyLines.push(`:EMAIL_LABEL: ${forPropertyValue(contact.emails[0].label)}`);
   }
-  const nonWorkTel = contact.tels.find((t) => !(t.type || '').toUpperCase().includes('WORK'));
-  const workTel = contact.tels.find((t) => (t.type || '').toUpperCase().includes('WORK'));
+  const nonWorkTel = contact.tels.find((/** @type {any} */ t) => !(t.type || '').toUpperCase().includes('WORK'));
+  const workTel = contact.tels.find((/** @type {any} */ t) => (t.type || '').toUpperCase().includes('WORK'));
   if (nonWorkTel) {
     propertyLines.push(`:PHONE: ${nonWorkTel.value}`);
     if (nonWorkTel.label) propertyLines.push(`:PHONE_LABEL: ${forPropertyValue(nonWorkTel.label)}`);
@@ -671,13 +689,18 @@ const FIELDTYPE_LABELS = {
   spouse: 'Spouse',
 };
 
+/** @param {any} [contact] */
 function buildTreeOrgFromContact(contact) {
   const title = forHeadingTitle(contact.fn);
-  const tagSuffix = contact.categories.length ? `  :${contact.categories.map((c) => c.replace(/[^A-Za-z0-9_@]/g, '_')).join(':')}:` : '';
+  const tagSuffix = contact.categories.length ? `  :${contact.categories.map((/** @type {any} */ c) => c.replace(/[^A-Za-z0-9_@]/g, '_')).join(':')}:` : '';
   const contactProps = [':KIND: individual', ':FIELDTYPE: name'];
   if (contact.categoriesRaw) contactProps.push(`:CATEGORIES_RAW: ${forPropertyValue(contact.categoriesRaw)}`);
   const lines = [`* ${title}${tagSuffix}`, ':PROPERTIES:', ...contactProps, ':END:'];
 
+  /**
+   * @param {any} [value]
+   * @param {any} [fieldType]
+   */
   const field = (value, fieldType, forceBlock = false, extraBlockText = /** @type {string | null} */ (null), extraProperties = /** @type {Record<string, any> | null} */ (null)) => {
     const propLines = [`:FIELDTYPE: ${fieldType}`];
     if (extraProperties) {
@@ -743,6 +766,7 @@ function buildTreeOrgFromContact(contact) {
  *  headings are conventionally separated. Returns an empty string for
  *  a file with no valid (FN-bearing) contacts at all, the same
  *  "nothing to do, not an error" convention exportToVcard's own empty
+ * @param {any} [vcardText]
  *  case already uses. */
 export function importVcardsAsOrgText(vcardText, opts = {}) {
   const { style = 'tree', cleanMode = true, onUnmappedProperty = null, onEmbeddedPhotoImported = null } = opts;

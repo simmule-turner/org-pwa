@@ -32,6 +32,7 @@ export function visibleHeadingsInOrder() {
  *  at -- matched by the row's own underlying node/item identity, not
  *  the row-wrapper object itself, since flattenVisibleRows rebuilds a
  *  fresh wrapper on every single call even when the underlying AST
+ * @param {any} [row]
  *  hasn't changed at all. */
 export function rowMatchesKeyboardFocus(row) {
   if (row.rowType === 'heading') return !S.keyboardFocusedBodyRow && row.node === S.keyboardFocusedHeading;
@@ -48,6 +49,7 @@ export function rowMatchesKeyboardFocus(row) {
  *  regardless of where the line-cursor has actually drilled to.
  *  Landing on a table also initializes keyboardFocusedCellPos to its
  *  own first data row/first column -- the entry point Shift+arrow's
+ * @param {any} [row]
  *  cell-by-cell stepping (moveTableCellFocus) then moves from. */
 export function setKeyboardFocusToRow(row) {
   if (row.rowType === 'heading') {
@@ -78,6 +80,7 @@ export function setKeyboardFocusToRow(row) {
  *  being updated correctly. This is what made C-c C-n/C-c C-p (and
  *  friends) look like they weren't moving at all while focus was on
  *  body text. `heading` may be null (Escape's own "clear focus
+ * @param {any} [heading]
  *  entirely" case). */
 export function setKeyboardFocusToHeading(heading) {
   S.keyboardFocusedHeading = heading;
@@ -92,6 +95,7 @@ export function setKeyboardFocusToHeading(heading) {
  *  all visible lines in the buffer" feature: plain Up/Down (both
  *  outside and inside god-mode) move through EVERY visible row, not
  *  just headings the way j/k (unchanged, kept as a faster
+ * @param {any} [delta]
  *  heading-to-heading jump) already do. */
 export function moveLineFocus(delta) {
   if (!S.state.doc) return;
@@ -121,11 +125,15 @@ export function moveLineFocus(delta) {
   scrollFocusedHeadingIntoView();
 }
 
+/**
+ * @param {any} [deltaRow]
+ * @param {any} [deltaCol]
+ */
 export function moveTableCellFocus(deltaRow, deltaCol) {
   if (!S.keyboardFocusedBodyRow || S.keyboardFocusedBodyRow.rowType !== 'table' || !S.keyboardFocusedCellPos) return;
   const table = S.keyboardFocusedBodyRow.node;
-  const dataRowIndices = table.rows.map((r, i) => i).filter((i) => table.rows[i].type !== 'rule');
-  const colCount = Math.max(1, ...table.rows.filter((r) => r.type !== 'rule').map((r) => r.cells.length));
+  const dataRowIndices = table.rows.map((/** @type {any} */ r, /** @type {number} */ i) => i).filter((/** @type {number} */ i) => table.rows[i].type !== 'rule');
+  const colCount = Math.max(1, ...table.rows.filter((/** @type {any} */ r) => r.type !== 'rule').map((/** @type {any} */ r) => r.cells.length));
   let { rowIndex, colIndex } = S.keyboardFocusedCellPos;
 
   if (deltaRow !== 0) {
@@ -192,6 +200,7 @@ export function enterInsertModeAtCurrentLine() {
   // 'block'/'hr': no structured edit UI exists for either -- no-op.
 }
 
+/** @param {any} [delta] */
 export function moveKeyboardFocus(delta) {
   const headings = visibleHeadingsInOrder();
   if (headings.length === 0) return;
@@ -217,6 +226,7 @@ export function moveKeyboardFocus(delta) {
  *  (god-mode's own C-c C-f / C-c C-b). Stops without moving if a
  *  shallower-level heading is reached first, since that means we've
  *  left the current heading's own region entirely. No-op if nothing
+ * @param {any} [delta]
  *  is currently focused. */
 export function moveToSameLevelHeading(delta) {
   if (!S.keyboardFocusedHeading) return;
@@ -265,16 +275,20 @@ export function moveToParentHeading() {
  *  matched by lineIndex -- an in-place edit doesn't move where the
  *  content itself starts within the heading's own body. No-op if
  *  keyboard focus wasn't actually on `oldRowType`-at-`oldLineIndex`
+ * @param {any} [heading]
+ * @param {any} [oldRowType]
+ * @param {any} [oldLineIndex]
  *  to begin with. */
 export function resyncKeyboardFocusToBodyRow(heading, oldRowType, oldLineIndex) {
   if (!S.keyboardFocusedBodyRow || S.keyboardFocusedBodyRow.heading !== heading || S.keyboardFocusedBodyRow.rowType !== oldRowType) return;
   if (oldRowType === 'list-item') {
     if (S.keyboardFocusedBodyRow.item.lineIndex !== oldLineIndex) return;
-    const freshItem = findListItemByLineIndex((heading.body || []).filter((n) => n.type === 'list').flatMap((n) => n.items), oldLineIndex);
+    const freshItem = findListItemByLineIndex((heading.body || []).filter((/** @type {any} */ n) => n.type === 'list').flatMap((/** @type {any} */ n) => n.items), oldLineIndex);
     if (freshItem) S.keyboardFocusedBodyRow = { ...S.keyboardFocusedBodyRow, item: freshItem };
     return;
   }
   if (S.keyboardFocusedBodyRow.node.lineIndex !== oldLineIndex) return;
+  /** @param {any} [node] */
   const freshNode = (heading.body || []).find((node) => node.type === oldRowType && node.lineIndex === oldLineIndex);
   if (freshNode) S.keyboardFocusedBodyRow = { ...S.keyboardFocusedBodyRow, node: freshNode };
 }
@@ -287,6 +301,8 @@ export function resyncKeyboardFocusToBodyRow(heading, oldRowType, oldLineIndex) 
  *  (only if it actually belongs to `heading`) before running
  *  `mutate`, then re-syncs it afterward. Returns whatever `mutate`
  *  itself returns, so this can wrap a call whose own return value the
+ * @param {any} [heading]
+ * @param {any} [mutate]
  *  caller still needs (e.g. a newly-inserted node). */
 export function withKeyboardFocusPreserved(heading, mutate) {
   const prior =
@@ -305,6 +321,8 @@ export function withKeyboardFocusPreserved(heading, mutate) {
  *  the one currently focused -- the same outline styling every row
  *  type shares, factored out here since keyboard focus can now land
  *  on any visible row (not just headings), and every one of this
+ * @param {any} [el]
+ * @param {any} [row]
  *  function's own callers needs the identical treatment. */
 export function applyKeyboardFocusHighlight(el, row) {
   el.dataset.rowKey = row.key; // lets "where is the screen" be turned back into a row (see rowNearViewportTop)
@@ -315,6 +333,7 @@ export function applyKeyboardFocusHighlight(el, row) {
   el.style.borderRadius = '4px';
 }
 
+/** @param {any} [e] */
 export function clearStaleKeyboardFocusIfClickedElsewhere(e) {
   // A fresh edit session may have already started -- and already
   // rendered once, correctly -- as part of THIS SAME click, if it
@@ -346,18 +365,20 @@ export function clearStaleKeyboardFocusIfClickedElsewhere(e) {
   if (changed) render(); // avoid a pointless re-render on every ordinary click that has nothing to clear
 }
 
+/** @param {any} [row] */
 const lineIndexOf = (row) => (row.rowType === 'list-item' ? row.item.lineIndex : row.node.lineIndex);
 
 /** After an edit that re-parsed a heading's body (writing a result, say), the focused body row is a new object, so
  *  nothing matches it any more: the highlight vanishes and the next arrow starts from the top. This finds the same row
+ * @param {any} [rows]
  *  again by its heading, kind and line, or falls back to the heading. `rows` is flattenVisibleRows(doc). */
 export function repairBodyFocus(rows) {
   const f = S.keyboardFocusedBodyRow;
   if (!f || rows.some(rowMatchesKeyboardFocus)) return;
   const at = lineIndexOf(f);
-  const same = rows.find((r) => r.rowType === f.rowType && r.heading === f.heading && r.rowType !== 'heading' && lineIndexOf(r) === at);
+  const same = rows.find((/** @type {any} */ r) => r.rowType === f.rowType && r.heading === f.heading && r.rowType !== 'heading' && lineIndexOf(r) === at);
   if (same) S.keyboardFocusedBodyRow = same;
-  else if (rows.some((r) => r.rowType === 'heading' && r.node === f.heading)) setKeyboardFocusToHeading(f.heading);
+  else if (rows.some((/** @type {any} */ r) => r.rowType === 'heading' && r.node === f.heading)) setKeyboardFocusToHeading(f.heading);
 }
 
 /** The row at the top of the screen, for starting keyboard focus near where the person is reading. */
@@ -371,7 +392,10 @@ export function rowNearViewportTop() {
   return null;
 }
 
-/** Shift+Up / Shift+Down: the previous or next visible heading. From a body row, Up goes to its own heading first. */
+/**
+ * Shift+Up / Shift+Down: the previous or next visible heading. From a body row, Up goes to its own heading first.
+ * @param {any} [delta]
+ */
 export function moveHeadingFocus(delta) {
   if (delta < 0 && S.keyboardFocusedBodyRow && S.keyboardFocusedHeading) {
     setKeyboardFocusToHeading(S.keyboardFocusedHeading);
@@ -382,13 +406,17 @@ export function moveHeadingFocus(delta) {
   moveKeyboardFocus(delta);
 }
 
-/** True when the focused row is a table and the cursor can still move that way inside it. */
+/**
+ * True when the focused row is a table and the cursor can still move that way inside it.
+ * @param {any} [deltaRow]
+ * @param {any} [deltaCol]
+ */
 function tableCanMove(deltaRow, deltaCol) {
   const f = S.keyboardFocusedBodyRow;
   if (!f || f.rowType !== 'table' || !S.keyboardFocusedCellPos) return false;
   const rows = f.node.rows;
-  const data = rows.map((r, i) => i).filter((i) => rows[i].type !== 'rule');
-  const colCount = Math.max(1, ...rows.filter((r) => r.type !== 'rule').map((r) => r.cells.length));
+  const data = rows.map((/** @type {any} */ r, /** @type {number} */ i) => i).filter((/** @type {number} */ i) => rows[i].type !== 'rule');
+  const colCount = Math.max(1, ...rows.filter((/** @type {any} */ r) => r.type !== 'rule').map((/** @type {any} */ r) => r.cells.length));
   const { rowIndex, colIndex } = S.keyboardFocusedCellPos;
   if (deltaRow) {
     const at = data.indexOf(rowIndex) + deltaRow;
@@ -399,6 +427,7 @@ function tableCanMove(deltaRow, deltaCol) {
 }
 
 /** Up and Down: inside a table they move between its rows; at its first or last row (or anywhere else) they move
+ * @param {any} [delta]
  *  to the adjacent line, as before. */
 export function moveArrowVertical(delta) {
   if (tableCanMove(delta, 0)) moveTableCellFocus(delta, 0);
@@ -406,6 +435,7 @@ export function moveArrowVertical(delta) {
 }
 
 /** Left and Right: inside a table they move between its columns; elsewhere the caller folds or unfolds. Returns false
+ * @param {any} [delta]
  *  when the focus is not on a table. */
 export function moveArrowHorizontalInTable(delta) {
   const f = S.keyboardFocusedBodyRow;

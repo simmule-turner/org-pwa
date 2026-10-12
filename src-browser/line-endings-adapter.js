@@ -5,8 +5,13 @@
 import { detectLineEnding, fromLf, toLf } from '../src/line-endings.js';
 import { contentHash } from '../src/sync-engine.js';
 
+/** @param {any} [documentId] */
 const eolKey = (documentId) => 'lineEnding:' + documentId;
 
+/**
+ * @param {any} [kvAdapter]
+ * @param {any} [documentId]
+ */
 async function recall(kvAdapter, documentId) {
   try {
     const result = await kvAdapter.get(eolKey(documentId));
@@ -17,6 +22,11 @@ async function recall(kvAdapter, documentId) {
   }
 }
 
+/**
+ * @param {any} [kvAdapter]
+ * @param {any} [documentId]
+ * @param {any} [eol]
+ */
 async function remember(kvAdapter, documentId, eol) {
   try {
     if (eol === '\r\n') await kvAdapter.set(eolKey(documentId), '\r\n');
@@ -30,10 +40,13 @@ async function remember(kvAdapter, documentId, eol) {
  * `contentDerivedHash`: the adapter's `hash` is a hash of the content (a local file), not the server's own version
  * token (GitHub's blob sha, WebDAV's ETag). A content hash is recomputed on the "\n" text, so it agrees with every other
  * hash the app makes of that text; a server token is passed through untouched.
+ * @param {any} [adapter]
+ * @param {any} [kvAdapter]
  */
 export function withLineEndings(adapter, kvAdapter, { contentDerivedHash = false } = {}) {
   return {
     ...adapter,
+    /** @param {any} [documentId] */
     async read(documentId, ...rest) {
       const result = await adapter.read(documentId, ...rest);
       if (!result || typeof result.content !== 'string') return result;
@@ -41,6 +54,10 @@ export function withLineEndings(adapter, kvAdapter, { contentDerivedHash = false
       const content = toLf(result.content);
       return contentDerivedHash ? { ...result, content, hash: contentHash(content) } : { ...result, content };
     },
+    /**
+     * @param {any} [documentId]
+     * @param {any} [content]
+     */
     async write(documentId, content, ...rest) {
       const eol = await recall(kvAdapter, documentId);
       const written = await adapter.write(documentId, fromLf(content, eol), ...rest);

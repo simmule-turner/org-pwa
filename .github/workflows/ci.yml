@@ -28,6 +28,7 @@ jobs:
       - run: npm run test:zones
       - run: npm install --prefix /tmp/acorn acorn eslint-scope
       - run: npm run check:scope
+      - run: npm run check:implicit-any
 
   smoke:
     runs-on: ubuntu-latest

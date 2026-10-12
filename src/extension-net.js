@@ -23,6 +23,7 @@ const ALLOWED_HEADERS = new Map([
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]']);
 
 /** The host (with port when not the default) of a fetchable URL, or throws. https only; plain
+ * @param {any} [text]
  *  http only to this device (loopback), which is how the tests and local services work. */
 export function checkFetchUrl(text) {
   const raw = String(text || '');
@@ -39,7 +40,10 @@ export function checkFetchUrl(text) {
   return { url: url.href, host: url.hostname.toLowerCase(), hostPort: url.host.toLowerCase() };
 }
 
-/** `:net api.open-meteo.com *.example.org` -> ['api.open-meteo.com', '*.example.org']. */
+/**
+ * `:net api.open-meteo.com *.example.org` -> ['api.open-meteo.com', '*.example.org'].
+ * @param {any} [value]
+ */
 export function parseNetHeader(value) {
   const hosts = [];
   for (const word of String(value || '').trim().toLowerCase().split(/[\s,]+/).filter(Boolean)) {
@@ -50,18 +54,28 @@ export function parseNetHeader(value) {
   return hosts;
 }
 
-/** Whether `host` is covered by an allowed entry (`example.org`, or `*.example.org` for its subdomains). */
+/**
+ * Whether `host` is covered by an allowed entry (`example.org`, or `*.example.org` for its subdomains).
+ * @param {any} [host]
+ * @param {any} [allowed]
+ */
 export function hostAllowed(host, allowed) {
   const h = String(host || '').toLowerCase();
-  return (allowed || []).some((a) => (a.startsWith('*.') ? h.endsWith(a.slice(1)) && h.length > a.length - 1 : a === h));
+  return (allowed || []).some((/** @type {any} */ a) => (a.startsWith('*.') ? h.endsWith(a.slice(1)) && h.length > a.length - 1 : a === h));
 }
 
-/** `:location yes` -> true. */
+/**
+ * `:location yes` -> true.
+ * @param {any} [value]
+ */
 export function parseLocationHeader(value) {
   return /^(yes|t|true|on)$/i.test(String(value || '').trim());
 }
 
-/** The options a script passes to fetch, reduced to what is allowed. Throws on anything else. */
+/**
+ * The options a script passes to fetch, reduced to what is allowed. Throws on anything else.
+ * @param {any} [options]
+ */
 export function normalizeFetchOptions(options) {
   const o = options && typeof options === 'object' ? options : {};
   const method = String(o.method || 'GET').toUpperCase();
@@ -81,14 +95,20 @@ export function normalizeFetchOptions(options) {
   return { method, headers, body };
 }
 
-/** A cache key: short, plain text. */
+/**
+ * A cache key: short, plain text.
+ * @param {any} [key]
+ */
 export function checkCacheKey(key) {
   const k = String(key);
   if (!/^[\w.:/@+-]{1,100}$/.test(k)) throw new Error('A cache key is 1 to 100 letters, digits or . : / @ + - _');
   return k;
 }
 
-/** The text stored for a cache value (JSON), or throws when it is too big or not plain data. */
+/**
+ * The text stored for a cache value (JSON), or throws when it is too big or not plain data.
+ * @param {any} [value]
+ */
 export function encodeCacheValue(value) {
   const text = JSON.stringify(value === undefined ? null : value);
   if (text === undefined) throw new Error('That value cannot be cached');
@@ -96,7 +116,13 @@ export function encodeCacheValue(value) {
   return text;
 }
 
-/** Puts `key` into a scope ({ key: { t, v } }), dropping the oldest entries to stay within the limits. */
+/**
+ * Puts `key` into a scope ({ key: { t, v } }), dropping the oldest entries to stay within the limits.
+ * @param {any} [scope]
+ * @param {any} [key]
+ * @param {any} [text]
+ * @param {any} [now]
+ */
 export function cacheSet(scope, key, text, now) {
   const next = { ...scope, [key]: { t: now, v: text } };
   const size = () => Object.values(next).reduce((n, e) => n + e.v.length, 0);
@@ -109,7 +135,13 @@ export function cacheSet(scope, key, text, now) {
   return next;
 }
 
-/** The cached value (parsed) if present and not older than maxAgeMs, else null. */
+/**
+ * The cached value (parsed) if present and not older than maxAgeMs, else null.
+ * @param {any} [scope]
+ * @param {any} [key]
+ * @param {any} [maxAgeMs]
+ * @param {any} [now]
+ */
 export function cacheGet(scope, key, maxAgeMs, now) {
   const e = scope && scope[key];
   if (!e) return null;
@@ -121,8 +153,13 @@ export function cacheGet(scope, key, maxAgeMs, now) {
   }
 }
 
-/** The position handed to a script: rounded to about 10 m. */
+/**
+ * The position handed to a script: rounded to about 10 m.
+ * @param {any} [coords]
+ * @param {any} [time]
+ */
 export function roundPosition(coords, time) {
+  /** @param {any} [n] */
   const r = (n) => Math.round(Number(n) * 1e4) / 1e4;
   return { lat: r(coords.latitude), lon: r(coords.longitude), accuracy: Math.round(Number(coords.accuracy) || 0), time };
 }
@@ -131,12 +168,18 @@ export function roundPosition(coords, time) {
 
 const RESERVED_LINK_PREFIXES = new Set(['http', 'https', 'file', 'mailto', 'tel', 'geo', 'doi', 'id', 'fn', 'github', 'webdav', 'local', 'attachment', 'ftp', 'javascript', 'data', 'blob', 'about', 'news', 'shell', 'elisp', 'info', 'help', 'docview', 'irc', 'mhe', 'rmail', 'gnus', 'bbdb', 'calc']);
 
-/** A prefix a script may claim for its own links (`weather` in [[weather:nyc]]). */
+/**
+ * A prefix a script may claim for its own links (`weather` in [[weather:nyc]]).
+ * @param {any} [prefix]
+ */
 export function usableLinkPrefix(prefix) {
   return typeof prefix === 'string' && /^[a-z][a-z0-9-]{1,19}$/.test(prefix) && !RESERVED_LINK_PREFIXES.has(prefix);
 }
 
-/** Where a custom link may lead: https, mail, phone or a map position. Anything else is refused. */
+/**
+ * Where a custom link may lead: https, mail, phone or a map position. Anything else is refused.
+ * @param {any} [text]
+ */
 export function checkLinkOpenUrl(text) {
   const raw = String(text || '').trim();
   if (raw.length > MAX_URL_LENGTH) throw new Error('The link address is too long');
@@ -153,7 +196,11 @@ export function checkLinkOpenUrl(text) {
 
 export const MAX_EXPORT_CHARS = 2 * 1024 * 1024;
 
-/** What an export backend returns -> { text, filename, mime }. A string is the text; an object may name the file. */
+/**
+ * What an export backend returns -> { text, filename, mime }. A string is the text; an object may name the file.
+ * @param {any} [result]
+ * @param {any} [fallbackName]
+ */
 export function normalizeExport(result, fallbackName) {
   const o = typeof result === 'string' ? { text: result } : result && typeof result === 'object' ? result : null;
   if (!o || typeof o.text !== 'string') throw new Error('An export backend returns text, or { text, filename, mime }');

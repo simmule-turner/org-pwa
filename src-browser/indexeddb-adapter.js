@@ -28,6 +28,10 @@ function openDb() {
 export function createIndexedDbAdapter() {
   const dbPromise = openDb();
 
+  /**
+   * @param {any} [mode]
+   * @param {any} [fn]
+   */
   async function withStore(mode, fn) {
     const db = await dbPromise;
     return new Promise((resolve, reject) => {
@@ -40,17 +44,23 @@ export function createIndexedDbAdapter() {
   }
 
   return {
+    /** @param {any} [key] */
     async get(key) {
-      const value = await withStore('readonly', (store) => store.get(key));
+      const value = await withStore('readonly', (/** @type {any} */ store) => store.get(key));
       return value === undefined ? null : { key, value };
     },
+    /**
+     * @param {any} [key]
+     * @param {any} [value]
+     */
     async set(key, value) {
-      await withStore('readwrite', (store) => store.put(value, key));
+      await withStore('readwrite', (/** @type {any} */ store) => store.put(value, key));
       return { key, value };
     },
+    /** @param {any} [key] */
     async delete(key) {
       const existing = await this.get(key);
-      await withStore('readwrite', (store) => store.delete(key));
+      await withStore('readwrite', (/** @type {any} */ store) => store.delete(key));
       return existing ? { key, deleted: true } : null;
     },
     async list(prefix = '') {

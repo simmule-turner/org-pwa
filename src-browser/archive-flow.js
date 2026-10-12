@@ -8,6 +8,7 @@ import { S } from './app-state.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { writeToOtherFile } from './external-sync.js';
 
+/** @param {any} [heading] */
 export function getArchiveDestinationLabel(heading) {
   const location = getArchiveLocation(S.state.doc, heading);
   const { filePart, headlinePart } = parseArchiveLocation(location);
@@ -21,6 +22,7 @@ export function getArchiveDestinationLabel(heading) {
       : `"${displayName(targetFileId)}" (top level)`;
 }
 
+/** @param {any} [heading] */
 export async function archiveHeadingToLocation(heading) {
   const location = getArchiveLocation(S.state.doc, heading);
   const { filePart, headlinePart } = parseArchiveLocation(location);
@@ -43,7 +45,7 @@ export async function archiveHeadingToLocation(heading) {
   const { ok } = await writeToOtherFile(targetFileId, {
     label: 'archive',
     allowMissing: true,
-    mutate: (doc) => {
+    mutate: (/** @type {any} */ doc) => {
       insertAtArchiveLocation(doc, clone, headlinePart);
       return true;
     },
@@ -75,6 +77,7 @@ export async function archiveHeadingToLocation(heading) {
  * on record to be restored TO -- the honest behavior is to just strip
  * the tag/properties in place, at the top level of the file it's
  * already in, rather than guessing.
+ * @param {any} [heading]
  */
 export async function unarchiveHeadingToOriginalLocation(heading) {
   const archiveFile = getProperty(heading, 'ARCHIVE_FILE') || null;
@@ -104,7 +107,7 @@ export async function unarchiveHeadingToOriginalLocation(heading) {
   const { ok } = await writeToOtherFile(archiveFile, {
     label: 'restore',
     allowMissing: false,
-    mutate: (doc) => {
+    mutate: (/** @type {any} */ doc) => {
       if (olpSegments.length > 0) {
         const target = resolveOlpTarget(doc, olpSegments);
         target.children.push(clone);

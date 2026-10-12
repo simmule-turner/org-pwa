@@ -14,6 +14,7 @@
 const AFFILIATED_RE = /^\s*#\+(NAME|CAPTION|ATTR_[A-Za-z0-9_-]+|HEADERS?|RESULTS)(?:\[[^\]]*\])?:[ \t]?(.*)$/i;
 
 /** Splits the leading run of affiliated-keyword lines off `lines`.
+ * @param {any} [lines]
  *  @returns {{ affiliated: { key: string, value: string, line: string }[], rest: string[] }} */
 function splitAffiliated(lines) {
   const affiliated = [];
@@ -27,6 +28,7 @@ function splitAffiliated(lines) {
 }
 
 /** `:width 300 :alt A cat :align center` -> { width: '300', alt: 'A cat', align: 'center' }.
+ * @param {any} [value]
  *  An option's value runs up to the next `:option`. */
 function parseAttrOptions(value) {
   const options = {};
@@ -42,6 +44,7 @@ function parseAttrOptions(value) {
 }
 
 /** A width or height a browser can use, or null: a bare number is pixels, and only
+ * @param {any} [value]
  *  plain lengths are accepted (never an arbitrary string put into a style). */
 function cssLength(value) {
   if (value == null) return null;
@@ -50,17 +53,21 @@ function cssLength(value) {
 }
 
 /** The size and alignment for the image(s) in the paragraph below the keywords, from
+ * @param {any} [affiliated]
  *  `#+ATTR_HTML:` (preferred) or `#+ATTR_ORG:`. */
 function imageOptions(affiliated) {
-  const lines = affiliated.filter((a) => a.key === 'ATTR_HTML').concat(affiliated.filter((a) => a.key === 'ATTR_ORG'));
+  const lines = affiliated.filter((/** @type {any} */ a) => a.key === 'ATTR_HTML').concat(affiliated.filter((/** @type {any} */ a) => a.key === 'ATTR_ORG'));
   const merged = {};
   for (const a of lines.reverse()) Object.assign(merged, parseAttrOptions(a.value)); // ATTR_HTML wins over ATTR_ORG
   return { width: cssLength(merged.width), height: cssLength(merged.height), center: /^center$/i.test(merged.align || '') };
 }
 
-/** All `#+CAPTION:` lines joined, as org does. '' when there is none. */
+/**
+ * All `#+CAPTION:` lines joined, as org does. '' when there is none.
+ * @param {any} [affiliated]
+ */
 function captionText(affiliated) {
-  return affiliated.filter((a) => a.key === 'CAPTION').map((a) => a.value).filter(Boolean).join(' ');
+  return affiliated.filter((/** @type {any} */ a) => a.key === 'CAPTION').map((/** @type {any} */ a) => a.value).filter(Boolean).join(' ');
 }
 
 export { splitAffiliated, parseAttrOptions, cssLength, imageOptions, captionText };

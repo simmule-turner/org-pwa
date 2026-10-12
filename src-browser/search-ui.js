@@ -135,6 +135,12 @@ export function renderSearchOptionsMenu() {
   optionsRow.style.gap = '6px';
   optionsRow.style.flexWrap = 'wrap';
 
+  /**
+   * @param {any} [label]
+   * @param {any} [checked]
+   * @param {any} [disabled]
+   * @param {any} [onClick]
+   */
   function optionButton(label, checked, disabled, onClick) {
     const btn = document.createElement('button');
     btn.style.display = 'flex';
@@ -260,9 +266,10 @@ export async function startQueryReplace() {
  *  the existing-session branch above already handles). Returns true
  *  once state.doc genuinely is `documentId`, false if opening it
  *  failed (network error, etc.) -- callers should skip it and move on
+ * @param {any} [documentId]
  *  rather than lose the rest of the walk over one file's own failure. */
 export async function switchToAgendaDoc(documentId) {
-  const existingSession = S.documentSessions.find((s) => (s.tabId === S.activeTabId ? S.state.documentId : s.state.documentId) === documentId);
+  const existingSession = S.documentSessions.find((/** @type {any} */ s) => (s.tabId === S.activeTabId ? S.state.documentId : s.state.documentId) === documentId);
   if (existingSession) {
     if (existingSession.tabId !== S.activeTabId) switchToTab(existingSession.tabId);
     return S.state.documentId === documentId;

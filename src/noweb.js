@@ -22,18 +22,29 @@ const CONTEXT_VALUES = {
   export: ['yes', 'strip-tangle'],
 };
 
-/** Whether the block's `:noweb` value asks for expansion when it is tangled, run (`eval`) or exported. */
+/**
+ * Whether the block's `:noweb` value asks for expansion when it is tangled, run (`eval`) or exported.
+ * @param {any} [args]
+ * @param {any} [context]
+ */
 export function nowebAllows(args, context) {
   const values = String((args && args.noweb) || '').split(/\s+/).filter(Boolean);
   return values.some((v) => CONTEXT_VALUES[context].includes(v));
 }
 
-/** The text with every `<<reference>>` removed. */
+/**
+ * The text with every `<<reference>>` removed.
+ * @param {any} [text]
+ */
 export const stripReferences = (text) => text.replace(BARE_REF_RE, '');
 
+/** @param {any} [args] */
 const isStrip = (args) => String((args && args.noweb) || '').split(/\s+/).includes('strip-tangle');
 
-/** The text of a heading's subtree below its heading line, planning line and property drawer. */
+/**
+ * The text of a heading's subtree below its heading line, planning line and property drawer.
+ * @param {any} [heading]
+ */
 function headingText(heading) {
   const lines = serializeOrg({ type: 'document', keywords: [], bodyLines: [], children: [heading] }).replace(/\n+$/, '').split('\n');
   let i = 1;
@@ -45,7 +56,13 @@ function headingText(heading) {
   return lines.slice(i).join('\n');
 }
 
+/**
+ * @param {any} [blocks]
+ * @param {any} [doc]
+ * @param {any} [id]
+ */
 const findHeadingByCustomId = (blocks, doc, id) => {
+  /** @param {any} [list] */
   const walk = (list) => {
     for (const h of list) {
       for (const [k, v] of Object.entries(h.properties || {})) if (k.toUpperCase() === 'CUSTOM_ID' && String(v) === id) return h;
@@ -67,21 +84,35 @@ const findHeadingByCustomId = (blocks, doc, id) => {
  * @returns {string} the body with every reference replaced
  */
 export function expandNoweb(doc, blocks, block, { context = 'eval', wrapChunk = null } = {}) {
+  /**
+   * @param {any} [target]
+   * @param {any} [stack]
+   */
   const expandBlock = (target, stack) => {
     if (stack.includes(target)) throw new Error(`The references ${[...stack, target].map((b) => '<<' + (b.name || b.args['noweb-ref'] || 'this block') + '>>').join(' -> ')} go around in a circle`);
     if (stack.length >= MAX_DEPTH) throw new Error('References nest more than ' + MAX_DEPTH + ' levels deep');
     if (context === 'tangle' && stack.length === 0 && isStrip(target.args)) return target.body.replace(BARE_REF_RE, '');
     const usePrefix = !target.args['noweb-prefix'] || !/^(no|nil)$/i.test(target.args['noweb-prefix']);
-    return target.body.replace(REF_RE, (whole, prefix, ref, id) => {
+    return target.body.replace(REF_RE, (/** @type {any} */ whole, /** @type {string} */ prefix, /** @type {any} */ ref, /** @type {any} */ id) => {
       if (/\(.*\)/.test(id)) throw new Error(`<<${id}>>: running a block from a reference is not supported`);
-      const wrap = wrapChunk && context === 'tangle' && target.args.comments === 'noweb' ? (b, text) => wrapChunk(b, text, target) : null;
+      const wrap = wrapChunk && context === 'tangle' && target.args.comments === 'noweb' ? (/** @type {any} */ b, /** @type {string} */ text) => wrapChunk(b, text, target) : null;
       const expansion = resolve(id, [...stack, target], wrap);
       const text = usePrefix ? expansion.split(/[\n\r]/).join('\n' + prefix) : expansion;
       return prefix + text;
     });
   };
+  /**
+   * @param {any} [b]
+   * @param {any} [stack]
+   */
   const bodyOf = (b, stack) => (nowebAllows(b.args, 'eval') ? expandBlock(b, stack) : b.body);
+  /**
+   * @param {any} [id]
+   * @param {any} [stack]
+   * @param {any} [wrap]
+   */
   const resolve = (id, stack, wrap) => {
+    /** @param {any} [b] */
     const chunk = (b) => (wrap ? wrap(b, bodyOf(b, stack)) : bodyOf(b, stack));
     const heading = findHeadingByCustomId(blocks, doc, id);
     if (heading) return headingText(heading);

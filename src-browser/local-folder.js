@@ -13,6 +13,7 @@ export function folderAvailable() {
 }
 
 // The folder service moves bytes, as base64; an org file is UTF-8 text.
+/** @param {any} [text] */
 function textToBase64(text) {
   const bytes = new TextEncoder().encode(text);
   let binary = '';
@@ -20,6 +21,7 @@ function textToBase64(text) {
   return btoa(binary);
 }
 
+/** @param {any} [base64] */
 function base64ToText(base64) {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
@@ -28,18 +30,24 @@ function base64ToText(base64) {
 }
 
 /** `{ content, hash }` for the file at `path` in the folder, or null if it is not there. (The adapter wrapper in adapters.js
+ * @param {any} [path]
  *  derives the real hash and normalizes line endings, so the hash is left empty here.) */
 export async function readFolderText(path) {
   const result = await platform.attachments.adapter.readBinary(path);
   return result ? { content: base64ToText(result.base64), hash: '' } : null;
 }
 
-/** Writes `content` to `path` in the folder, creating it (and its folders) if needed. */
+/**
+ * Writes `content` to `path` in the folder, creating it (and its folders) if needed.
+ * @param {any} [path]
+ * @param {any} [content]
+ */
 export async function writeFolderText(path, content) {
   await platform.attachments.adapter.writeBinary(path, textToBase64(content));
   return { hash: '' };
 }
 
+/** @param {any} [path] */
 export async function folderFileExists(path) {
   const adapter = platform.attachments.adapter;
   return adapter.exists ? !!(await adapter.exists(path)) : !!(await adapter.readBinary(path));

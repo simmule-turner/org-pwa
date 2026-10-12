@@ -119,6 +119,7 @@ mathjsDefault.createUnit('tbsp', '1 tablespoon');
 // effectively free for the handful of distinct precisions any real
 // document would realistically use).
 const mathjsByPrecision = new Map();
+/** @param {any} [precision] */
 function mathjsForPrecision(precision) {
   let instance = mathjsByPrecision.get(precision);
   if (!instance) {
@@ -136,10 +137,12 @@ const TIME_FORMAT_MONTH_NAMES_FULL = [
 ];
 const TIME_FORMAT_MONTH_NAMES_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+/** @param {any} [n] */
 function timeFormatPad(n, width = 2) {
   return String(n).padStart(width, '0');
 }
 
+/** @param {any} [date] */
 function timeFormatDayOfYear(date) {
   const start = new Date(date.getFullYear(), 0, 1);
   return Math.floor((date.getTime() - start.getTime()) / 86400000) + 1;
@@ -153,6 +156,7 @@ function timeFormatDayOfYear(date) {
  *  LOCAL getters throughout -- callers wanting UTC output construct a
  *  "fake local" Date from the UTC components first (see the
  *  formatTimeCall evaluator below), rather than this function having
+ * @param {any} [date]
  *  two separate code paths for the same formatting logic. */
 function timeFormatTimezoneAbbreviation(date) {
   const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(date);
@@ -160,6 +164,7 @@ function timeFormatTimezoneAbbreviation(date) {
   return tz ? tz.value : '';
 }
 
+/** @param {any} [date] */
 function timeFormatTimezoneOffsetString(date) {
   const totalMinutes = -date.getTimezoneOffset(); // getTimezoneOffset() is UTC-minus-local, the opposite sign from ±HHMM
   const sign = totalMinutes < 0 ? '-' : '+';
@@ -180,9 +185,11 @@ function timeFormatTimezoneOffsetString(date) {
  *  local" Date's own real timezone getters would report whatever zone
  *  the machine itself is actually in, not UTC), so `isUTC` short-
  *  circuits straight to the fixed, correct "UTC"/"+0000" for those
+ * @param {any} [date]
+ * @param {any} [format]
  *  two codes only when set. */
 function formatTimeStringImpl(date, format, isUTC = false) {
-  return format.replace(/%(.)/g, (whole, spec) => {
+  return format.replace(/%(.)/g, (/** @type {any} */ whole, /** @type {string} */ spec) => {
     switch (spec) {
       case 'Y':
         return String(date.getFullYear());
@@ -239,6 +246,7 @@ function formatTimeStringImpl(date, format, isUTC = false) {
 /** Parses one row-reference token's text (after the leading "@", not
  *  including it) into { type: 'absolute', n } | { type: 'relative', delta }
  *  | { type: 'first' } | { type: 'last' }. Returns null if it doesn't
+ * @param {any} [text]
  *  match any recognized row-reference shape. */
 function parseRowRef(text) {
   if (text === '<') return { type: 'first' };
@@ -260,6 +268,7 @@ function parseRowRef(text) {
  *  formula reaching sideways to a fixed, always-present neighboring
  *  column is far more common than one reaching to a neighboring row,
  *  since columns are normally fixed data fields and rows are the
+ * @param {any} [text]
  *  repeating axis a formula is normally applied down). */
 function parseColRef(text) {
   if (text === '<') return { type: 'first' };
@@ -276,6 +285,11 @@ function parseColRef(text) {
  *  for @>/$> and for bounds-checking). Returns null for an
  *  out-of-range result (e.g. @-5 from row 2) rather than clamping --
  *  a formula reaching past the edge of the table is a real error to
+ * @param {any} [ref]
+ * @param {any} [currentRow]
+ * @param {any} [dataRowCount]
+ * @param {any} [hlinePositions]
+ * @param {any} [asRangeStart]
  *  surface, not something to silently reinterpret. */
 function resolveRowRef(ref, currentRow, dataRowCount, hlinePositions, asRangeStart) {
   let n;
@@ -290,6 +304,11 @@ function resolveRowRef(ref, currentRow, dataRowCount, hlinePositions, asRangeSta
   return n >= 1 && n <= dataRowCount ? n : null;
 }
 
+/**
+ * @param {any} [ref]
+ * @param {any} [colCount]
+ * @param {any} [currentCol]
+ */
 function resolveColRef(ref, colCount, currentCol) {
   if (ref === null) return currentCol; // no column specified in this ref at all -- real org's own actual convention for a bare row-only reference/range ("@2", "@2..@6"): defaults to the formula's own target column, the same way a bare row-less reference ("$2") already defaults to the current row
   const n = ref.type === 'absolute' ? ref.n : ref.type === 'first' ? 1 : colCount;
@@ -309,6 +328,7 @@ function resolveColRef(ref, colCount, currentCol) {
  *  hlines the table actually has still resolves rather than erroring
  *  -- also confirmed directly against real Emacs -- clamping to just
  *  past the table's own end (asStart) or the table's own actual last
+ * @param {any} [workingRows]
  *  row (asEnd). */
 function computeHlinePositions(workingRows) {
   const positions = [];
@@ -355,6 +375,7 @@ const HYPHENATED_FUNCTION_RE = /^(date-to-time|format-time-string|orgtbl-ascii-d
  *  names, and operators/punctuation. Throws on any character that
  *  doesn't match one of those shapes, rather than silently skipping
  *  it -- a malformed formula should surface as an error, not quietly
+ * @param {any} [expr]
  *  evaluate to something the person never actually wrote. */
 function tokenize(expr) {
   const tokens = [];
@@ -390,21 +411,23 @@ function tokenize(expr) {
 // language, not an approximation of it.
 /** Functions a script registered with org.tableFunction (names only; the answers come through options.userCall). */
 let userTableFunctionNames = new Set();
+/** @param {any} [names] */
 export function setUserTableFunctions(names = []) {
   userTableFunctionNames = new Set(names);
 }
+/** @param {any} [name] */
 export function isBuiltinFormulaName(name) {
   return name in AGGREGATE_FUNCTIONS || name in SCALAR_FUNCTIONS || name === 'string' || name === 'if';
 }
 
 const AGGREGATE_FUNCTIONS = {
-  vsum: (vals) => vals.reduce((a, b) => a + b, 0),
-  vmean: (vals) => (vals.length === 0 ? 0 : vals.reduce((a, b) => a + b, 0) / vals.length),
-  vcount: (vals) => vals.length,
-  vprod: (vals) => vals.reduce((a, b) => a * b, 1),
-  vmin: (vals) => (vals.length === 0 ? 0 : Math.min(...vals)),
-  vmax: (vals) => (vals.length === 0 ? 0 : Math.max(...vals)),
-  vmedian: (vals) => {
+  vsum: (/** @type {any} */ vals) => vals.reduce((/** @type {any} */ a, /** @type {any} */ b) => a + b, 0),
+  vmean: (/** @type {any} */ vals) => (vals.length === 0 ? 0 : vals.reduce((/** @type {any} */ a, /** @type {any} */ b) => a + b, 0) / vals.length),
+  vcount: (/** @type {any} */ vals) => vals.length,
+  vprod: (/** @type {any} */ vals) => vals.reduce((/** @type {any} */ a, /** @type {any} */ b) => a * b, 1),
+  vmin: (/** @type {any} */ vals) => (vals.length === 0 ? 0 : Math.min(...vals)),
+  vmax: (/** @type {any} */ vals) => (vals.length === 0 ? 0 : Math.max(...vals)),
+  vmedian: (/** @type {any} */ vals) => {
     if (vals.length === 0) return 0;
     const sorted = [...vals].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
@@ -417,22 +440,24 @@ const AGGREGATE_FUNCTIONS = {
   // "variance"/"stddev" name for either pair: which one someone means
   // by an unqualified name is exactly the kind of silent, wrong-answer
   // ambiguity this app would rather force an explicit choice on.
-  vvar: (vals) => sampleVariance(vals),
-  vpvar: (vals) => populationVariance(vals),
-  vsdev: (vals) => Math.sqrt(sampleVariance(vals)),
-  vpsdev: (vals) => Math.sqrt(populationVariance(vals)),
+  vvar: (/** @type {any} */ vals) => sampleVariance(vals),
+  vpvar: (/** @type {any} */ vals) => populationVariance(vals),
+  vsdev: (/** @type {any} */ vals) => Math.sqrt(sampleVariance(vals)),
+  vpsdev: (/** @type {any} */ vals) => Math.sqrt(populationVariance(vals)),
 };
 
+/** @param {any} [vals] */
 function populationVariance(vals) {
   if (vals.length === 0) return 0;
-  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-  return vals.reduce((acc, x) => acc + (x - mean) * (x - mean), 0) / vals.length;
+  const mean = vals.reduce((/** @type {any} */ a, /** @type {any} */ b) => a + b, 0) / vals.length;
+  return vals.reduce((/** @type {any} */ acc, /** @type {any} */ x) => acc + (x - mean) * (x - mean), 0) / vals.length;
 }
 
+/** @param {any} [vals] */
 function sampleVariance(vals) {
   if (vals.length < 2) return 0; // n-1 divisor is undefined for n=0 or n=1 -- 0 rather than a division-by-zero NaN, matching this module's own existing "can't compute a real result" convention
-  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-  return vals.reduce((acc, x) => acc + (x - mean) * (x - mean), 0) / (vals.length - 1);
+  const mean = vals.reduce((/** @type {any} */ a, /** @type {any} */ b) => a + b, 0) / vals.length;
+  return vals.reduce((/** @type {any} */ acc, /** @type {any} */ x) => acc + (x - mean) * (x - mean), 0) / (vals.length - 1);
 }
 
 // Single-value functions -- one number in, one number out, unlike
@@ -456,17 +481,17 @@ const TRIG_FUNCTION_NAMES = new Set(['sin', 'cos', 'tan', 'arcsin', 'arccos', 'a
 const DEG_TO_RAD = Math.PI / 180;
 
 const SCALAR_FUNCTIONS = {
-  sqrt: (x) => {
+  sqrt: (/** @type {any} */ x) => {
     if (x < 0) throw new Error('sqrt of a negative number has no real result');
     return Math.sqrt(x);
   },
-  floor: (x, digits) => roundToDigits(x, digits, Math.floor),
-  ceil: (x, digits) => roundToDigits(x, digits, Math.ceil),
-  round: (x, digits) => roundToDigits(x, digits, roundHalfAwayFromZero),
-  trunc: (x, digits) => roundToDigits(x, digits, Math.trunc),
-  deg: (x) => (isTaggedValue(x) ? x.days : x),
+  floor: (/** @type {any} */ x, /** @type {any} */ digits) => roundToDigits(x, digits, Math.floor),
+  ceil: (/** @type {any} */ x, /** @type {any} */ digits) => roundToDigits(x, digits, Math.ceil),
+  round: (/** @type {any} */ x, /** @type {any} */ digits) => roundToDigits(x, digits, roundHalfAwayFromZero),
+  trunc: (/** @type {any} */ x, /** @type {any} */ digits) => roundToDigits(x, digits, Math.trunc),
+  deg: (/** @type {any} */ x) => (isTaggedValue(x) ? x.days : x),
   // Complex-aware names (see calc-complex.js); with a real argument these are Calc's plain real answers.
-  abs: (x) => Math.abs(x),
+  abs: (/** @type {any} */ x) => Math.abs(x),
   // matrix and vector functions (calc-vector.js); they need a vector or matrix, which vectorScalarCall handles
   det: () => { throw new Error('det needs a square matrix'); },
   inv: () => { throw new Error('inv needs a square matrix'); },
@@ -474,35 +499,35 @@ const SCALAR_FUNCTIONS = {
   tr: () => { throw new Error('tr needs a square matrix'); },
   cross: () => { throw new Error('cross needs two 3-element vectors'); },
   vlen: () => { throw new Error('vlen needs a vector'); },
-  re: (x) => x,
+  re: (/** @type {any} */ x) => x,
   im: () => 0,
-  conj: (x) => x,
-  arg: (x, isDegrees) => (x < 0 ? (isDegrees ? 180 : Math.PI) : 0),
-  polar: (x) => x,
-  rect: (x) => x,
-  and: (a, b) => (isTruthyValue(a) && isTruthyValue(b) ? 1 : 0),
-  or: (a, b) => (isTruthyValue(a) || isTruthyValue(b) ? 1 : 0),
-  not: (a) => (isTruthyValue(a) ? 0 : 1),
+  conj: (/** @type {any} */ x) => x,
+  arg: (/** @type {any} */ x, /** @type {any} */ isDegrees) => (x < 0 ? (isDegrees ? 180 : Math.PI) : 0),
+  polar: (/** @type {any} */ x) => x,
+  rect: (/** @type {any} */ x) => x,
+  and: (/** @type {any} */ a, /** @type {any} */ b) => (isTruthyValue(a) && isTruthyValue(b) ? 1 : 0),
+  or: (/** @type {any} */ a, /** @type {any} */ b) => (isTruthyValue(a) || isTruthyValue(b) ? 1 : 0),
+  not: (/** @type {any} */ a) => (isTruthyValue(a) ? 0 : 1),
   // Real Calc's own algebraic names -- confirmed directly against the
   // manual: "the calc-arcsin command or arcsin algebraic function",
   // never "asin". `isDegrees` (this app's own D/R mode flag, degrees
   // being real org's own documented default) converts the input
   // before calling the underlying radians-only Math function, and
   // converts an inverse function's own radians-only result back.
-  sin: (x, isDegrees) => Math.sin(isDegrees ? x * DEG_TO_RAD : x),
-  cos: (x, isDegrees) => Math.cos(isDegrees ? x * DEG_TO_RAD : x),
-  tan: (x, isDegrees) => Math.tan(isDegrees ? x * DEG_TO_RAD : x),
-  arcsin: (x, isDegrees) => {
+  sin: (/** @type {any} */ x, /** @type {any} */ isDegrees) => Math.sin(isDegrees ? x * DEG_TO_RAD : x),
+  cos: (/** @type {any} */ x, /** @type {any} */ isDegrees) => Math.cos(isDegrees ? x * DEG_TO_RAD : x),
+  tan: (/** @type {any} */ x, /** @type {any} */ isDegrees) => Math.tan(isDegrees ? x * DEG_TO_RAD : x),
+  arcsin: (/** @type {any} */ x, /** @type {any} */ isDegrees) => {
     if (x < -1 || x > 1) throw new Error('arcsin input must be between -1 and 1');
     const radians = Math.asin(x);
     return isDegrees ? radians / DEG_TO_RAD : radians;
   },
-  arccos: (x, isDegrees) => {
+  arccos: (/** @type {any} */ x, /** @type {any} */ isDegrees) => {
     if (x < -1 || x > 1) throw new Error('arccos input must be between -1 and 1');
     const radians = Math.acos(x);
     return isDegrees ? radians / DEG_TO_RAD : radians;
   },
-  arctan: (x, isDegrees) => {
+  arctan: (/** @type {any} */ x, /** @type {any} */ isDegrees) => {
     const radians = Math.atan(x); // defined for every real x -- no domain restriction to handle
     return isDegrees ? radians / DEG_TO_RAD : radians;
   },
@@ -518,17 +543,17 @@ const SCALAR_FUNCTIONS = {
   // related, confirmed convention rather than being a pure guess;
   // ln() remains available as an explicit, unambiguous alternative
   // for anyone who wants to be certain which one they're getting.
-  ln: (x) => {
+  ln: (/** @type {any} */ x) => {
     if (x <= 0) throw new Error('ln of a non-positive number has no real result');
     return Math.log(x);
   },
-  log10: (x) => {
+  log10: (/** @type {any} */ x) => {
     if (x <= 0) throw new Error('log10 of a non-positive number has no real result');
     return Math.log10(x);
   },
-  exp: (x) => Math.exp(x),
-  exp10: (x) => Math.pow(10, x),
-  log: (x, base) => {
+  exp: (/** @type {any} */ x) => Math.exp(x),
+  exp10: (/** @type {any} */ x) => Math.pow(10, x),
+  log: (/** @type {any} */ x, /** @type {any} */ base) => {
     if (x <= 0) throw new Error('log of a non-positive number has no real result');
     if (base === undefined) return Math.log(x);
     if (base <= 0 || base === 1) throw new Error('log with an undefined base (must be positive and not 1)');
@@ -547,7 +572,7 @@ const SCALAR_FUNCTIONS = {
   // return something misleading) rather than reproducing real Calc's
   // own "leftover remainder units" behavior on a mismatch -- a
   // deliberate scope cut, not an oversight.
-  uconv: (value, fromUnit, toUnit) => {
+  uconv: (/** @type {any} */ value, /** @type {any} */ fromUnit, /** @type {any} */ toUnit) => {
     if (typeof fromUnit !== 'string' || typeof toUnit !== 'string') {
       throw new Error('uconv requires its unit arguments as quoted strings, e.g. uconv($1, "m", "ft")');
     }
@@ -559,6 +584,7 @@ const SCALAR_FUNCTIONS = {
   },
 };
 
+/** @param {any} [x] */
 function roundHalfAwayFromZero(x) {
   // Math.round rounds -0.5 UP to -0 (toward +Infinity); real Calc's
   // own documented convention is "away from zero" for an exact tie
@@ -567,6 +593,11 @@ function roundHalfAwayFromZero(x) {
   return x < 0 ? -Math.round(-x) : Math.round(x);
 }
 
+/**
+ * @param {any} [x]
+ * @param {any} [digits]
+ * @param {any} [roundFn]
+ */
 function roundToDigits(x, digits, roundFn) {
   const d = digits === undefined ? 0 : digits;
   const factor = Math.pow(10, d);
@@ -578,23 +609,34 @@ function roundToDigits(x, digits, roundFn) {
  *  Date.UTC to stay independent of the runtime's own local timezone. */
 /** Converts a raw string TOKEN (still including its own surrounding
  *  quotes, e.g. `"Both Pass"` or `"She said \"hi\""`) into the actual
+ * @param {any} [tok]
  *  JS string it represents. */
 function unescapeStringLiteral(tok) {
   const inner = tok.slice(1, -1);
-  return inner.replace(/\\(.)/g, (_, c) => (c === 'n' ? '\n' : c === 't' ? '\t' : c));
+  return inner.replace(/\\(.)/g, (/** @type {any} */ _, /** @type {any} */ c) => (c === 'n' ? '\n' : c === 't' ? '\t' : c));
 }
 
 const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
+/** @param {any} [year] */
 function isLeapYear(year) {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
 
+/**
+ * @param {any} [year]
+ * @param {any} [month]
+ */
 function daysInMonth(year, month) {
   if (month === 2 && isLeapYear(year)) return 29;
   return DAYS_IN_MONTH[month - 1];
 }
 
+/**
+ * @param {any} [year]
+ * @param {any} [month]
+ * @param {any} [day]
+ */
 function dateToDays(year, month, day, hour = 0, minute = 0) {
   if (month < 1 || month > 12) {
     throw new Error(`Invalid date: month ${month} is out of range (must be 1-12)`);
@@ -615,6 +657,7 @@ function dateToDays(year, month, day, hour = 0, minute = 0) {
 /** The inverse of dateToDays -- a date-tagged value's own "days since
  *  epoch" back into its own {year, month, day, hour, minute} fields,
  *  used when formatting a date-tagged result back into an org
+ * @param {any} [days]
  *  timestamp string for the cell. */
 function daysToDateParts(days) {
   const d = new Date(Math.round(days * 86400000));
@@ -655,6 +698,7 @@ const CELL_TIMESTAMP_RE = /^[<[]\s*(\d{4})-(\d{2})-(\d{2})(?:\s+[A-Za-z]+)?(?:\s
  *  or null if the string isn't parseable at all -- always hasTime:
  *  true regardless of which parser matched, even for a date-only
  *  input, since producing a full time value (not merely a date) is
+ * @param {any} [rawText]
  *  this function's whole documented purpose. */
 function parseFlexibleDateString(rawText) {
   const trimmed = rawText.trim();
@@ -680,6 +724,7 @@ function parseFlexibleDateString(rawText) {
  *  org timestamp, returning a date-tagged value ({ type: 'date',
  *  days, hasTime }) or null if `rawText` isn't one at all -- this
  *  module's own dedicated parser (see CELL_TIMESTAMP_RE's own docs
+ * @param {any} [rawText]
  *  for why a shared one wasn't reused). */
 function parseCellTimestamp(rawText) {
   const m = CELL_TIMESTAMP_RE.exec(rawText.trim());
@@ -696,6 +741,7 @@ function parseCellTimestamp(rawText) {
  *  bracket form -- there's no way for a formula's own numeric result
  *  to signal "make this inactive" the way the original cell text
  *  might have been, so this is this module's own necessary default,
+ * @param {any} [value]
  *  not an attempt to preserve the source cell's own bracket style. */
 function formatDateValue(value) {
   const { year, month, day, hour, minute } = daysToDateParts(value.days);
@@ -713,6 +759,7 @@ function formatDateValue(value) {
  *  value itself (deg() below exposes that raw, still-in-days number
  *  unconverted, which is why the worked timesheet example in this
  *  feature's own request still needs its own explicit "* 24" after
+ * @param {any} [value]
  *  deg() to reach decimal HOURS). */
 function formatHmsValue(value) {
   const totalHours = value.days * 24;
@@ -731,6 +778,7 @@ function formatHmsValue(value) {
  *  above) or null (col is null for a bare "@N" token -- not actually
  *  valid on its own as a real reference, but parseRef doesn't see
  *  that far ahead; row is null for a bare "$N" token, meaning "the
+ * @param {any} [token]
  *  current row", resolved later by the evaluator). */
 function parseRef(token) {
   const atMatch = /^@([<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$([<>]|\d+))?$/.exec(token);
@@ -756,6 +804,7 @@ function parseRef(token) {
  *  actual evaluation. Throws with a position-free but otherwise
  *  descriptive message on any malformed input -- good enough to
  *  surface as a status message, not meant to pinpoint an exact
+ * @param {any} [tokens]
  *  column the way a real compiler's own diagnostics would. */
 function parseExpression(tokens) {
   let pos = 0;
@@ -765,6 +814,7 @@ function parseExpression(tokens) {
   function next() {
     return tokens[pos++];
   }
+  /** @param {any} [tok] */
   function expect(tok) {
     if (next() !== tok) throw new Error(`Expected "${tok}" in formula`);
   }
@@ -1006,6 +1056,9 @@ function parseExpression(tokens) {
  *  distinction right matters beyond just matching the numbers real
  *  Emacs would produce: an org file recalculated in both this app and
  *  real Emacs needs to land on the same result either way, or sharing
+ * @param {any} [dataRows]
+ * @param {any} [row]
+ * @param {any} [col]
  *  a file between them silently produces different numbers. */
 function isCellBlank(dataRows, row, col) {
   const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
@@ -1032,6 +1085,9 @@ function isCellBlank(dataRows, row, col) {
  *  unevaluated symbolic expression instead, e.g. "text + 10", which
  *  this app's own narrower engine doesn't reproduce -- but NaN,
  *  unlike a confidently-wrong 0, still visibly propagates into the
+ * @param {any} [dataRows]
+ * @param {any} [row]
+ * @param {any} [col]
  *  result rather than silently misrepresenting the data). */
 function readCellNumber(dataRows, row, col, emptyMode = 'omit', forceNumeric = false) {
   const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
@@ -1054,6 +1110,10 @@ function readCellNumber(dataRows, row, col, emptyMode = 'omit', forceNumeric = f
  *  durationMode, "HH:MM" isn't recognized as a duration at all --
  *  confirmed directly against real Emacs that the same text is read
  *  as a Calc fraction instead there, a distinction this app's own
+ * @param {any} [dataRows]
+ * @param {any} [row]
+ * @param {any} [col]
+ * @param {any} [ctx]
  *  narrower engine doesn't reproduce either way. */
 function readCellValue(dataRows, row, col, ctx) {
   const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
@@ -1082,6 +1142,12 @@ function readCellValue(dataRows, row, col, ctx) {
  *  actual resolved (row, col) pair, given the row this evaluation is
  *  currently centered on. Throws if either half can't be resolved
  *  (out of range, or a column-only ref used somewhere a row is
+ * @param {any} [ref]
+ * @param {any} [currentRow]
+ * @param {any} [dataRowCount]
+ * @param {any} [colCount]
+ * @param {any} [currentCol]
+ * @param {any} [hlinePositions]
  *  required). */
 function resolveRef(ref, currentRow, dataRowCount, colCount, currentCol, hlinePositions, asRangeStart = false) {
   const row = ref.row === null ? currentRow : resolveRowRef(ref.row, currentRow, dataRowCount, hlinePositions, asRangeStart);
@@ -1099,12 +1165,14 @@ function resolveRef(ref, currentRow, dataRowCount, colCount, currentCol, hlinePo
  *  that would (wrongly) satisfy its own broader "any non-null
  *  object" test -- every one of isTaggedValue's own 12 call sites
  *  expects date/duration semantics (.days, .type) a mathjs value
+ * @param {any} [v]
  *  doesn't have. */
 function isMathjsValue(v) {
   return v !== null && typeof v === 'object' && (v.isFraction === true || v.isBigNumber === true);
 }
 
 /** True if `v` is a date/hms-tagged value (see this module's own
+ * @param {any} [v]
  *  top-level date-arithmetic docs) rather than a plain number. */
 function isTaggedValue(v) {
   return v !== null && typeof v === 'object' && !isMathjsValue(v) && v.isComplex !== true && v.isVector !== true;
@@ -1114,6 +1182,7 @@ function isTaggedValue(v) {
  *  is false -- extended here to the two other value types this
  *  module's own formulas can now produce: a non-empty string is
  *  true, empty is false; a date/hms-tagged value is true unless its
+ * @param {any} [v]
  *  own underlying day count is exactly zero. */
 function isTruthyValue(v) {
   if (isComplex(v) || isVector(v)) return true; // a complex value that survived normalising always has a non-zero part
@@ -1134,6 +1203,12 @@ function isTruthyValue(v) {
  *  boolean. */
 const COMPARISON_OPS = new Set(['==', '!=', '<', '>', '<=', '>=']);
 
+/**
+ * @param {any} [l]
+ * @param {any} [r]
+ * @param {any} [op]
+ * @param {any} [ctx]
+ */
 function compareValues(l, r, op, ctx) {
   if (isVector(l) || isVector(r)) {
     if (op !== '==' && op !== '!=') throw new Error('Vectors cannot be ordered');
@@ -1190,6 +1265,9 @@ function compareValues(l, r, op, ctx) {
  *  hms result -- there's no real Calc precedent for e.g. "hms + hms"
  *  specifically, so this is this module's own reasonable, consistent
  *  extrapolation of the same days-are-the-common-unit model
+ * @param {any} [l]
+ * @param {any} [r]
+ * @param {any} [op]
  *  everything else here uses. */
 function evaluateDateArithmetic(l, r, op) {
   const lTagged = isTaggedValue(l);
@@ -1209,6 +1287,10 @@ function evaluateDateArithmetic(l, r, op) {
   return tagged.type === 'date' ? { type: 'date', days, hasTime: tagged.hasTime } : { type: 'hms', days };
 }
 
+/**
+ * @param {any} [value]
+ * @param {any} [ctx]
+ */
 function wrapNumericLiteral(value, ctx) {
   if (!ctx.numericMode || typeof value !== 'number' || !Number.isFinite(value)) return value;
   return ctx.numericMode.kind === 'fraction' ? ctx.numericMode.instance.fraction(value) : ctx.numericMode.instance.bignumber(value);
@@ -1216,6 +1298,11 @@ function wrapNumericLiteral(value, ctx) {
 
 const MATHJS_SCALAR_FUNCTION_NAMES = new Set(['sqrt', 'floor', 'ceil', 'round', 'trunc', 'ln', 'log10', 'exp', 'exp10', 'log', 'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan']);
 
+/**
+ * @param {any} [name]
+ * @param {any} [argValues]
+ * @param {any} [ctx]
+ */
 function evaluateMathjsScalarCall(name, argValues, ctx) {
   const isFractionMode = ctx.numericMode.kind === 'fraction';
   const m = ctx.numericMode.instance;
@@ -1227,6 +1314,7 @@ function evaluateMathjsScalarCall(name, argValues, ctx) {
   // above for why this can't be truly exact for most results.
   const x = isFractionMode ? m.bignumber(argValues[0]) : argValues[0];
   const xNum = x.toNumber(); // quick, approximate read for domain/sign checks only
+  /** @param {any} [result] */
   const finish = (result) => (isFractionMode ? m.fraction(result) : result);
 
   switch (name) {
@@ -1286,23 +1374,38 @@ function evaluateMathjsScalarCall(name, argValues, ctx) {
 
 // ---- complex support (see calc-complex.js) -----------------------------------------------------------------------
 
+/**
+ * @param {any} [v]
+ * @param {any} [D]
+ */
 function complexOperand(v, D) {
   if (isComplex(v)) return v;
   if (typeof v === 'string' || isTaggedValue(v)) throw new Error('A complex operation needs numbers');
   return toReal(v, D);
 }
 
-/** A complex module result as the engine's own value: a real becomes a number (or the pN / F value), a complex stays. */
+/**
+ * A complex module result as the engine's own value: a real becomes a number (or the pN / F value), a complex stays.
+ * @param {any} [result]
+ * @param {any} [ctx]
+ */
 function complexResult(result, ctx) {
   return isReal(result) ? realToEngine(result, ctx.complexDomain, ctx.numericMode) : result;
 }
 
+/** @param {any} [v] */
 function realNumberOf(v) {
   if (typeof v === 'number') return v;
   if (isMathjsValue(v)) return v.isFraction ? v.valueOf() : v.toNumber();
   return null;
 }
 
+/**
+ * @param {any} [op]
+ * @param {any} [l]
+ * @param {any} [r]
+ * @param {any} [ctx]
+ */
 function complexBinop(op, l, r, ctx) {
   const D = ctx.complexDomain;
   const degrees = ctx.angleMode === 'degrees';
@@ -1316,17 +1419,31 @@ function complexBinop(op, l, r, ctx) {
   throw new Error(`Unknown operator "${op}"`);
 }
 
+/**
+ * @param {any} [v]
+ * @param {any} [D]
+ */
 function vectorOperand(v, D) {
   if (isVector(v) || isComplex(v)) return v;
   if (typeof v === 'string' || isTaggedValue(v)) throw new Error('A vector operation needs numbers');
   return toReal(v, D);
 }
 
-/** A vector operation's result: a vector stays, a Real becomes the engine's number, a Complex stays. */
+/**
+ * A vector operation's result: a vector stays, a Real becomes the engine's number, a Complex stays.
+ * @param {any} [result]
+ * @param {any} [ctx]
+ */
 function vectorResult(result, ctx) {
   return isVector(result) ? result : complexResult(result, ctx);
 }
 
+/**
+ * @param {any} [op]
+ * @param {any} [l]
+ * @param {any} [r]
+ * @param {any} [ctx]
+ */
 function vectorBinop(op, l, r, ctx) {
   const D = ctx.complexDomain;
   return vectorResult(vBinop(op, vectorOperand(l, D), vectorOperand(r, D), D, ctx.angleMode === 'degrees'), ctx);
@@ -1334,7 +1451,12 @@ function vectorBinop(op, l, r, ctx) {
 
 const VECTOR_FUNCTIONS = new Set(['det', 'inv', 'trn', 'tr', 'cross', 'vlen']);
 
-/** det/inv/trn/tr/cross/vlen, and abs of a vector. Returns undefined for anything else. */
+/**
+ * det/inv/trn/tr/cross/vlen, and abs of a vector. Returns undefined for anything else.
+ * @param {any} [name]
+ * @param {any} [argValues]
+ * @param {any} [ctx]
+ */
 function vectorScalarCall(name, argValues, ctx) {
   const anyVector = argValues.some(isVector);
   if (!VECTOR_FUNCTIONS.has(name) && !anyVector) return undefined;
@@ -1353,14 +1475,21 @@ function vectorScalarCall(name, argValues, ctx) {
   }
 }
 
-/** Expands vectors in a list of engine values into their elements, as engine values. */
+/**
+ * Expands vectors in a list of engine values into their elements, as engine values.
+ * @param {any} [values]
+ * @param {any} [ctx]
+ */
 function flattenForAggregate(values, ctx) {
-  return values.flatMap((v) => (isVector(v) ? flattenVector(v).map((x) => complexResult(x, ctx)) : [v]));
+  return values.flatMap((/** @type {any} */ v) => (isVector(v) ? flattenVector(v).map((/** @type {any} */ x) => complexResult(x, ctx)) : [v]));
 }
 
 const COMPLEX_ALWAYS = new Set(['re', 'im', 'conj', 'arg', 'polar', 'rect']);
 
 /** A scalar function call that needs the complex route: a complex argument, or a real one outside the real function's
+ * @param {any} [name]
+ * @param {any} [argValues]
+ * @param {any} [ctx]
  *  domain (sqrt of a negative, ln of a negative, arcsin of 2). Returns undefined when the ordinary real code applies. */
 function complexScalarCall(name, argValues, ctx) {
   const first = argValues[0];
@@ -1403,6 +1532,10 @@ function complexScalarCall(name, argValues, ctx) {
   return complexResult(result, ctx);
 }
 
+/**
+ * @param {any} [node]
+ * @param {any} [ctx]
+ */
 function evaluateAst(node, ctx) {
   switch (node.type) {
     case 'number':
@@ -1411,7 +1544,7 @@ function evaluateAst(node, ctx) {
       return node.value;
     case 'vectorLiteral': {
       const D = ctx.complexDomain;
-      return makeVector(node.items.map((item) => vectorOperand(evaluateAst(item, ctx), D)));
+      return makeVector(node.items.map((/** @type {any} */ item) => vectorOperand(evaluateAst(item, ctx), D)));
     }
     case 'complexLiteral': {
       const D = ctx.complexDomain;
@@ -1488,7 +1621,7 @@ function evaluateAst(node, ctx) {
     case 'range': {
       // a range is a flat vector of its non-blank cells, in reading order, as in org
       const D = ctx.complexDomain;
-      return makeVector(collectRangeValues(node, ctx).map((v) => vectorOperand(v, D)));
+      return makeVector(collectRangeValues(node, ctx).map((/** @type {any} */ v) => vectorOperand(v, D)));
     }
     case 'call': {
       const fn = AGGREGATE_FUNCTIONS[node.name];
@@ -1499,12 +1632,13 @@ function evaluateAst(node, ctx) {
     }
     case 'userCall': {
       if (!ctx.userCall) throw new Error(`"${node.name}" is a script function and is not available here`);
+      /** @param {any} [v] */
       const plainArg = (v) => (isVector(v) ? Array.from(v.items || v).map(plainArg) : typeof v === 'string' || typeof v === 'number' ? v : Number(v));
-      return ctx.userCall(node.name, node.args.map((a) => plainArg(evaluateAst(a, ctx))));
+      return ctx.userCall(node.name, node.args.map((/** @type {any} */ a) => plainArg(evaluateAst(a, ctx))));
     }
     case 'scalarCall': {
       const fn = SCALAR_FUNCTIONS[node.name];
-      const argValues = node.args.map((a) => evaluateAst(a, ctx));
+      const argValues = node.args.map((/** @type {any} */ a) => evaluateAst(a, ctx));
       const vectorOutcome = vectorScalarCall(node.name, argValues, ctx);
       if (vectorOutcome !== undefined) return vectorOutcome;
       const complexOutcome = complexScalarCall(node.name, argValues, ctx);
@@ -1517,7 +1651,7 @@ function evaluateAst(node, ctx) {
     }
     case 'lispCall': {
       const fn = LISP_CALL_FUNCTIONS[node.name];
-      const argValues = node.args.map((a) => evaluateAst(a, ctx));
+      const argValues = node.args.map((/** @type {any} */ a) => evaluateAst(a, ctx));
       return fn(...argValues);
     }
     case 'dateCall': {
@@ -1609,6 +1743,8 @@ function evaluateAst(node, ctx) {
  *  -- an aggregate function's own argument, evaluated as a list of
  *  numbers rather than a single one. Iterates in reading order (row
  *  by row, left to right within each row), matching how a person
+ * @param {any} [argNode]
+ * @param {any} [ctx]
  *  would naturally read the range they wrote. */
 function collectRangeValues(argNode, ctx) {
   if (argNode.type === 'ref') {
@@ -1718,6 +1854,7 @@ const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUENFSD
  *  Flags can appear concatenated with no separator (e.g. "EN"), in
  *  any order; an unrecognized remaining character stops parsing
  *  there, falling back to whatever was already parsed rather than
+ * @param {any} [suffix]
  *  discarding the whole mode string. */
 function parseModeString(suffix) {
   const mode = /** @type {any} */ ({ format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees', precision: null });
@@ -1751,6 +1888,7 @@ function parseModeString(suffix) {
  *  without one, the same text isn't treated as a duration at all
  *  (matching real org, where "H:MM" without a duration flag is read
  *  as a Calc fraction instead, a distinction this app doesn't
+ * @param {any} [text]
  *  reproduce -- see readCellValue's own docs). */
 function parseDurationSeconds(text) {
   const m = /^(-)?(\d+):([0-5]?\d)(?::([0-5]?\d))?$/.exec(text.trim());
@@ -1768,6 +1906,9 @@ function parseDurationSeconds(text) {
  *  three flags. `hourZeroPad` mirrors org-table-duration-hour-zero-
  *  padding: true (the default) pads the hours field to at least 2
  *  digits; false leaves it at its own natural width. Minutes and
+ * @param {any} [totalSeconds]
+ * @param {any} [flag]
+ * @param {any} [hourZeroPad]
  *  seconds are always 2-digit zero-padded regardless. */
 function formatDuration(totalSeconds, flag, hourZeroPad) {
   if (Number.isNaN(totalSeconds)) return 'nan';
@@ -1791,6 +1932,8 @@ function formatDuration(totalSeconds, flag, hourZeroPad) {
 /** Formats `n` to `digits` significant figures in "normal" notation
  *  (plain decimal, no exponent) -- real org's own "nN" mode letter.
  *  Falls back to formatResult's own default rounding/cleanup logic at
+ * @param {any} [n]
+ * @param {any} [digits]
  *  `digits` significant figures instead of the usual 8. */
 function formatNormal(n, digits) {
   if (n === 0) return '0';
@@ -1800,6 +1943,8 @@ function formatNormal(n, digits) {
 
 /** Formats `n` in scientific notation -- one digit before the decimal
  *  point, `digits` significant figures total, real org's own "sN"
+ * @param {any} [n]
+ * @param {any} [digits]
  *  mode letter. */
 function formatScientific(n, digits) {
   if (n === 0) return '0e0';
@@ -1808,6 +1953,8 @@ function formatScientific(n, digits) {
 
 /** Formats `n` in engineering notation -- like scientific, but the
  *  exponent is always a multiple of 3 (so the mantissa can have 1-3
+ * @param {any} [n]
+ * @param {any} [digits]
  *  digits before the decimal point), real org's own "eN" mode letter. */
 function formatEngineering(n, digits) {
   if (n === 0) return '0e0';
@@ -1823,6 +1970,7 @@ function formatEngineering(n, digits) {
 
 /** Shared trailing-zero/decimal-point cleanup for a toPrecision or
  *  toExponential string -- both a plain and an exponential result get
+ * @param {any} [precise]
  *  the same treatment, matching formatResult's own existing default. */
 function cleanupPrecision(precise) {
   const eIndex = precise.search(/e/i);
@@ -1838,6 +1986,8 @@ function cleanupPrecision(precise) {
  *  exact syntax) or "%d" (integer; the exact rounding rule isn't
  *  independently source-confirmed the way "%.Nf" is, so round-to-
  *  nearest is used as the most defensible choice, not a confirmed
+ * @param {any} [n]
+ * @param {any} [spec]
  *  match to real Calc's own exact behavior). */
 function applyFormatSpec(n, spec) {
   if (Number.isNaN(n)) return 'nan';
@@ -1862,6 +2012,7 @@ function applyFormatSpec(n, spec) {
   return String(Math.trunc(n));
 }
 
+/** @param {any} [n] */
 function formatResult(n) {
   if (Number.isNaN(n)) return 'nan';
   if (!Number.isFinite(n)) return n > 0 ? 'inf' : '-inf'; // real Calc's own actual display convention for the inf constant, matching the input syntax round-trip
@@ -1908,6 +2059,10 @@ function formatResult(n) {
  *  original org-table.el patch that introduced this function) and a
  *  real-world example table (Org Plot's own documented "Sede / Max
  *  cites" example, every one of its 6 rows hand-traced and confirmed
+ * @param {any} [value]
+ * @param {any} [min]
+ * @param {any} [max]
+ * @param {any} [width]
  *  to match exactly), not derived from the docstring alone. */
 function orgtblAsciiDraw(value, min, max, width) {
   const characters = ' .:;c!lhVHW';
@@ -1957,6 +2112,7 @@ const LISP_CALL_FUNCTIONS = {
  *  for arguments inside a '(...) call. Each argument's own token
  *  slice is handed to this module's own existing parseExpression
  *  unchanged, so a $N reference, arithmetic, or any other construct
+ * @param {any} [rhs]
  *  an ordinary formula already supports works identically here. */
 function parseLispCall(rhs) {
   const inner = rhs.slice(2, -1).trim();
@@ -1988,6 +2144,7 @@ function parseLispCall(rhs) {
   return { type: 'lispCall', name, args };
 }
 
+/** @param {any} [statement] */
 function parseFormulaStatement(statement) {
   const eq = statement.indexOf('=');
   if (eq === -1) throw new Error(`Malformed formula, no "=": "${statement}"`);
@@ -2030,11 +2187,12 @@ function parseFormulaStatement(statement) {
  *  separator) and parses each segment. Throws on the first malformed
  *  segment -- see recalculateTable's own docs for how a caller should
  *  handle that (the whole recalculation is abandoned, not partially
+ * @param {any} [tblfm]
  *  applied). */
 function parseTblfm(tblfm) {
   return tblfm
     .split('::')
-    .map((s) => s.trim())
+    .map((/** @type {any} */ s) => s.trim())
     .filter(Boolean)
     .map(parseFormulaStatement);
 }
@@ -2068,6 +2226,7 @@ function parseTblfm(tblfm) {
  *  mathematically reduces to a clean fraction (not merely one that
  *  happens to look clean after this app's own rounding), the
  *  reconstruction recovers the exact same fraction Calc's own native
+ * @param {any} [x]
  *  rational arithmetic would have produced directly. */
 function toRationalApproximation(x, tolerance = 1e-9, maxDenominator = 1000000) {
   const sign = x < 0 ? -1 : 1;
@@ -2104,6 +2263,10 @@ function toRationalApproximation(x, tolerance = 1e-9, maxDenominator = 1000000) 
  *  shown the same plain way either way. */
 const FRACTION_DISPLAY_MAX_DENOMINATOR = 1000000n; // matches toRationalApproximation's own default maxDenominator below -- beyond this, an exact mathjs Fraction is almost certainly the literal representation of a high-precision transcendental result, not a fraction anyone would want to read as-is
 
+/**
+ * @param {any} [n]
+ * @param {any} [mixedNumber]
+ */
 function formatAsFraction(n, mixedNumber) {
   if (isMathjsValue(n) && n.isFraction && n.d <= FRACTION_DISPLAY_MAX_DENOMINATOR) {
     /** @type {bigint} */
@@ -2142,6 +2305,10 @@ function formatAsFraction(n, mixedNumber) {
  *  present, since either one is never ALSO shown in scientific/
  *  fixed/etc notation; otherwise an explicit format spec (fixed/
  *  integer/normal/scientific/engineering); otherwise formatResult's
+ * @param {any} [value]
+ * @param {any} [mode]
+ * @param {any} [hourZeroPad]
+ * @param {any} [complexDomain]
  *  own default. */
 function formatFinalValue(value, mode, hourZeroPad, complexDomain) {
   if (typeof value === 'string') return value;
@@ -2169,6 +2336,7 @@ function formatFinalValue(value, mode, hourZeroPad, complexDomain) {
  *  is silently skipped rather than blocking the rest of the line or
  *  throwing -- matching this app's own established "a malformed entry
  *  doesn't block the rest of the list" convention for other
+ * @param {any} [doc]
  *  multi-entry configuration (org-agenda-files and similar). */
 export function parseTableConstants(doc) {
   const constants = {};
@@ -2186,6 +2354,7 @@ export function parseTableConstants(doc) {
   return constants;
 }
 
+/** @param {any} [table] */
 export function recalculateTable(table, options = {}) {
   if (!table.tblfm || !table.tblfm.trim()) return null;
   const hourZeroPad = options.hourZeroPad !== undefined ? options.hourZeroPad : true;
@@ -2194,7 +2363,7 @@ export function recalculateTable(table, options = {}) {
   // A working copy: same row objects' own shape, but with a fresh
   // `cells` array per row so evaluating one formula can't accidentally
   // mutate a row a caller might still be holding a reference to.
-  const workingRows = table.rows.map((row) => (row.type === 'row' ? { ...row, cells: [...row.cells] } : row));
+  const workingRows = table.rows.map((/** @type {any} */ row) => (row.type === 'row' ? { ...row, cells: [...row.cells] } : row));
   // @N numbering counts EVERY data row, including any row before the
   // table's own first hline -- confirmed directly against real Emacs
   // org-mode itself, not just inferred from the Manual's own prose
@@ -2205,9 +2374,9 @@ export function recalculateTable(table, options = {}) {
   // "@7$2=vsum(@2..@6)" through real Emacs's own org-table-recalculate
   // in batch mode and confirming it computes correctly, not by reading
   // the manual's own words about it and stopping there.
-  const dataRows = workingRows.filter((r) => r.type === 'row');
+  const dataRows = workingRows.filter((/** @type {any} */ r) => r.type === 'row');
   const dataRowCount = dataRows.length;
-  const colCount = dataRows.reduce((max, r) => Math.max(max, r.cells.length), 0);
+  const colCount = dataRows.reduce((/** @type {any} */ max, /** @type {any} */ r) => Math.max(max, r.cells.length), 0);
   // The header-row exclusion real org DOES have is narrower and
   // different from @N numbering: specifically, the column-formula
   // SHORTHAND ($N=, applied to every row at once) skips any row
@@ -2217,8 +2386,8 @@ export function recalculateTable(table, options = {}) {
   // targeted cell formula like @1$2=999 still freely modifies the
   // header when asked to. No hline anywhere at all means nothing is
   // excluded from column formulas either -- every row counts as data.
-  const firstRuleIndex = workingRows.findIndex((r) => r.type === 'rule');
-  const headerRowCount = firstRuleIndex === -1 ? 0 : workingRows.slice(0, firstRuleIndex).filter((r) => r.type === 'row').length;
+  const firstRuleIndex = workingRows.findIndex((/** @type {any} */ r) => r.type === 'rule');
+  const headerRowCount = firstRuleIndex === -1 ? 0 : workingRows.slice(0, firstRuleIndex).filter((/** @type {any} */ r) => r.type === 'row').length;
   const { positions: hlinePositions } = computeHlinePositions(workingRows);
 
   for (const { target, expr, mode } of statements) {
@@ -2239,6 +2408,10 @@ export function recalculateTable(table, options = {}) {
     // evaluates normally. Isolated per cell, not per statement, so a
     // range/column-formula target with one bad cell doesn't lose the
     // rest of its own siblings either.
+    /**
+     * @param {any} [row]
+     * @param {any} [col]
+     */
     function evalCell(row, col) {
       try {
         const value = evaluateAst(expr, { ...evalCtx, currentRow: row, currentCol: col });

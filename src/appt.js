@@ -31,7 +31,10 @@ const clampInt = (value, [min, max], fallback) => {
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 };
 
-/** Any stored value (missing, partial, hand-edited) as a complete, valid settings record. */
+/**
+ * Any stored value (missing, partial, hand-edited) as a complete, valid settings record.
+ * @param {any} [raw]
+ */
 export function normalizeApptSettings(raw) {
   const r = raw && typeof raw === 'object' ? raw : {};
   return {
@@ -44,13 +47,16 @@ export function normalizeApptSettings(raw) {
   };
 }
 
+/** @param {any} [n] */
 const pad = (n) => String(n).padStart(2, '0');
+/** @param {any} [date] */
 export const clock = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 
 /**
  * The appointments from `now` to `now` + `hours`, soonest first.
  * @param {{ documentId: string, doc: object }[]} docs the open document and the loaded agenda files
  * @returns {{ key: string, id: number, documentId: string, title: string, start: Date, end: Date|null, detail: string|null }[]} `detail` is the start of the heading's body (up to 400 characters, as the calendar sync sends)
+ * @param {any} [now]
  */
 export function upcomingAppointments(docs, now, { hours = 6, birthdayProperty = 'BIRTHDAY', contactsDocs = null, includeArchived = false, includeCommented = false } = {}) {
   const horizon = new Date(now.getTime() + hours * 3600000);
@@ -65,7 +71,7 @@ export function upcomingAppointments(docs, now, { hours = 6, birthdayProperty = 
     includeArchived,
     includeCommented,
     deadlineWarningDays: 0,
-    todoFilter: (todo) => !done.has(todo), // no isDone: nothing is carried forward, an appointment is on its own day
+    todoFilter: (/** @type {any} */ todo) => !done.has(todo), // no isDone: nothing is carried forward, an appointment is on its own day
   });
   const found = [];
   const seen = new Set();
@@ -90,33 +96,51 @@ export function upcomingAppointments(docs, now, { hours = 6, birthdayProperty = 
   return found;
 }
 
-/** A stable positive 31-bit number for an appointment, which is what a native notification is cancelled and replaced by. */
+/**
+ * A stable positive 31-bit number for an appointment, which is what a native notification is cancelled and replaced by.
+ * @param {any} [key]
+ */
 export function appointmentId(key) {
   let h = 5381;
   for (let i = 0; i < key.length; i++) h = ((h * 33) ^ key.charCodeAt(i)) >>> 0;
   return (h % 2147483646) + 1;
 }
 
-/** Minutes from `now` until `start`, rounded up (a start 30 seconds away is "in 1 min"), never below 0. */
+/**
+ * Minutes from `now` until `start`, rounded up (a start 30 seconds away is "in 1 min"), never below 0.
+ * @param {any} [start]
+ * @param {any} [now]
+ */
 export function minutesUntil(start, now) {
   return Math.max(0, Math.ceil((start.getTime() - now.getTime()) / 60000));
 }
 
+/** @param {any} [appt] */
 const span = (appt) => (appt.end ? `${clock(appt.start)}\u2013${clock(appt.end)}` : clock(appt.start));
 
-/** "in 10 min · 09:30–10:15" (0 reads "now"): what a reminder says about the appointment, under its title. */
+/**
+ * "in 10 min · 09:30–10:15" (0 reads "now"): what a reminder says about the appointment, under its title.
+ * @param {any} [appt]
+ * @param {any} [minutes]
+ */
 export function reminderBody(appt, minutes) {
   const when = minutes <= 0 ? 'now' : `in ${minutes} min`;
   return `${when} \u00b7 ${span(appt)}`;
 }
 
-/** "Dentist · in 10 min · 09:30–10:15": the whole reminder as one line (the status line, a banner). */
+/**
+ * "Dentist · in 10 min · 09:30–10:15": the whole reminder as one line (the status line, a banner).
+ * @param {any} [appt]
+ * @param {any} [minutes]
+ */
 export function reminderText(appt, minutes) {
   return `${appt.title} \u00b7 ${reminderBody(appt, minutes)}`;
 }
 
 /** When, in minutes before the start, an appointment is announced: as it enters its warning time, then every `interval` minutes, as
  *  Emacs's appt does (appt-display-interval). 10 minutes warned at 3-minute intervals reads 10, 7, 4, 1; the last one falls on the
+ * @param {any} [warningMinutes]
+ * @param {any} [interval]
  *  start itself only if the warning time is a multiple of the interval, which is why Emacs recommends it. */
 export function reminderOffsets(warningMinutes, interval) {
   const offsets = [];
@@ -124,13 +148,21 @@ export function reminderOffsets(warningMinutes, interval) {
   return offsets;
 }
 
-/** The slot an announcement is remembered under, so it is made once. */
+/**
+ * The slot an announcement is remembered under, so it is made once.
+ * @param {any} [appt]
+ * @param {any} [offset]
+ */
 export const reminderSlot = (appt, offset) => `${appt.key}\u0001${offset}`;
 
 /**
  * What to announce now: for each appointment, the latest of its reminder times that has come and not yet been made (reminders missed
  * while the app was away are not made up, only the current one is), as `{ appt, offset, minutes }` with `minutes` the time left.
  * `fired` is a Set of slots; the caller adds the slot of each one it announces.
+ * @param {any} [appointments]
+ * @param {any} [now]
+ * @param {any} [warningMinutes]
+ * @param {any} [fired]
  */
 export function dueReminders(appointments, now, warningMinutes, fired, interval = 3) {
   const offsets = reminderOffsets(warningMinutes, interval);
@@ -146,15 +178,25 @@ export function dueReminders(appointments, now, warningMinutes, fired, interval 
   return due;
 }
 
-/** `fired` without the appointments that have started: the memory only needs to cover what could still be announced. */
+/**
+ * `fired` without the appointments that have started: the memory only needs to cover what could still be announced.
+ * @param {any} [fired]
+ * @param {any} [appointments]
+ * @param {any} [now]
+ */
 export function pruneFired(fired, appointments, now) {
-  const live = new Set(appointments.filter((a) => a.start.getTime() >= now.getTime()).map((a) => a.key));
+  const live = new Set(appointments.filter((/** @type {any} */ a) => a.start.getTime() >= now.getTime()).map((/** @type {any} */ a) => a.key));
   return new Set([...fired].filter((slot) => live.has(slot.slice(0, slot.indexOf('\u0001')))));
 }
 
-/** "Appt: 10m" for the nearest appointment inside the warning window, else null. Cleared once the start time is reached. */
+/**
+ * "Appt: 10m" for the nearest appointment inside the warning window, else null. Cleared once the start time is reached.
+ * @param {any} [appointments]
+ * @param {any} [now]
+ * @param {any} [warningMinutes]
+ */
 export function modeLineText(appointments, now, warningMinutes) {
-  const next = appointments.find((a) => a.start.getTime() > now.getTime());
+  const next = appointments.find((/** @type {any} */ a) => a.start.getTime() > now.getTime());
   if (!next || next.start.getTime() - now.getTime() > warningMinutes * 60000) return null;
   return `Appt: ${minutesUntil(next.start, now)}m`;
 }
@@ -164,6 +206,9 @@ export function modeLineText(appointments, now, warningMinutes) {
  * appointment, worded as it will read then and titled by the appointment, the repeats of one appointment sharing a group. Times that
  * have passed are not here (the app announces what is current itself), and at most `limit` are kept, nearest first, because the
  * system caps how many alarms an app may hold.
+ * @param {any} [appointments]
+ * @param {any} [now]
+ * @param {any} [warningMinutes]
  */
 export function plannedNotifications(appointments, now, warningMinutes, interval = 3, limit = 50) {
   const offsets = reminderOffsets(warningMinutes, interval);

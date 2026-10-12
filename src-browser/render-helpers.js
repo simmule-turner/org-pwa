@@ -15,6 +15,7 @@ import { plotSvgCache } from './singletons.js';
  *  lookup (guessImageMimeType/guessAudioMimeType); this tries each in
  *  turn and falls back to a generic binary type -- for
  *  saveAttachmentLink's own download, which needs SOME MIME type
+ * @param {any} [filename]
  *  regardless of what kind of file it turns out to be. */
 export function guessAnyAttachmentMimeType(filename) {
   if (IMAGE_EXT_RE.test(filename)) return guessImageMimeType(filename);
@@ -32,6 +33,8 @@ export function guessAnyAttachmentMimeType(filename) {
  *  keeps a stalled connection from hanging the whole refresh
  *  indefinitely; a non-2xx response or malformed JSON both throw a
  *  clear, specific error rather than silently returning incomplete
+ * @param {any} [latitude]
+ * @param {any} [longitude]
  *  data. */
 export async function fetchWeatherData(latitude, longitude) {
   const controller = new AbortController();
@@ -77,8 +80,9 @@ export function scrollFocusedHeadingIntoView() {
   });
 }
 
+/** @param {any} [table] */
 export function plotCacheKey(table) {
-  return JSON.stringify({ plot: table.plot, rows: table.rows.filter((r) => r.type === 'row').map((r) => r.cells) });
+  return JSON.stringify({ plot: table.plot, rows: table.rows.filter((/** @type {any} */ r) => r.type === 'row').map((/** @type {any} */ r) => r.cells) });
 }
 
 /** Returns the rendered SVG for `table`'s own current #+PLOT: line and
@@ -87,6 +91,7 @@ export function plotCacheKey(table) {
  *  thrown error (unsupported plot type, an out-of-range column, not
  *  enough data -- see org-plot.js) propagate to the caller rather than
  *  caching a failure, so a fixed #+PLOT: line gets a fresh, real
+ * @param {any} [table]
  *  attempt next time rather than a stale cached error. */
 export function getOrRenderPlotSvg(table) {
   const key = plotCacheKey(table);
@@ -114,6 +119,7 @@ export function getServiceWorkerVersion() {
   if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return Promise.resolve(null);
   return new Promise((resolve) => {
     let settled = false;
+    /** @param {any} [value] */
     const settle = (value) => {
       if (settled) return;
       settled = true;
@@ -130,6 +136,8 @@ export function getServiceWorkerVersion() {
  *  with a visual gap between non-adjacent hunks -- the actual "show
  *  what changed" view for a single history entry, diffed against the
  *  entry immediately before it (what that one edit actually did, not
+ * @param {any} [oldText]
+ * @param {any} [newText]
  *  a diff against the file's current live state). */
 export function renderDiffView(oldText, newText) {
   const wrap = document.createElement('div');
@@ -176,6 +184,10 @@ export function renderDiffView(oldText, newText) {
   return wrap;
 }
 
+/**
+ * @param {any} [target]
+ * @param {any} [reason]
+ */
 export function imagePlaceholder(target, reason) {
   const span = document.createElement('span');
   span.textContent = reason ? `[image: ${target} \u2014 ${reason}]` : `[image: ${target}]`;
@@ -194,6 +206,7 @@ export function imagePlaceholder(target, reason) {
  *  available at all, or rejected this specific LaTeX as invalid) shows
  *  the raw source text with a distinct, dashed-border treatment rather
  *  than silently showing nothing or breaking the rest of the
+ * @param {any} [node]
  *  paragraph's own render. */
 export function renderLatexNode(node) {
   const { html, ok } = renderMathHtml(node.source, node.displayMode);

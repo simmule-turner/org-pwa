@@ -89,7 +89,7 @@ export async function renderCapturePanel() {
   grid.style.gridTemplateColumns = '1fr 1fr';
   grid.style.gap = '6px';
 
-  const nonCollidingKeys = computeNonCollidingKeys(templates, (t) => t.key); // badges however the picker was opened
+  const nonCollidingKeys = computeNonCollidingKeys(templates, (/** @type {any} */ t) => t.key); // badges however the picker was opened
 
   for (const template of templates) {
     const btn = document.createElement('button');
@@ -158,6 +158,7 @@ export async function renderCapturePanel() {
  *  allowCreate: false, which leaves the document completely untouched
  *  on a missing path rather than creating anything speculatively --
  *  this is purely a peek, not a real capture, so nothing should be
+ * @param {any} [template]
  *  left behind even if the person then cancels. */
 export async function peekTableAlreadyExists(template) {
   const targetFileId = resolveCaptureFileId(template.file, S.state.documentId);
@@ -192,6 +193,7 @@ export async function peekTableAlreadyExists(template) {
  *  exists at the target, so a form-only-used-once prompt isn't asked
  *  on every subsequent capture when that can be determined cheaply;
  *  the decision is captured once, in capturePromptSkipPrePost, and
+ * @param {any} [template]
  *  reused unchanged through to the actual commit. */
 export async function openCapturePrompt(template) {
   await readClipboardIfUsed(template); // first, while the tap that chose the template still counts as a gesture
@@ -210,13 +212,17 @@ export async function openCapturePrompt(template) {
   renderCapturePanel();
 }
 
-/** Whether `text` uses %x (the clipboard), not counting an escaped %%x. */
+/**
+ * Whether `text` uses %x (the clipboard), not counting an escaped %%x.
+ * @param {any} [text]
+ */
 function usesClipboardToken(text) {
   return /(?:^|[^%])(?:%%)*%x/.test(text);
 }
 
 /** Reads the clipboard into S.captureClipboard, but only for a template that has %x, so a template that does not
  *  never touches it (the browser may ask permission, and iOS shows a Paste confirmation). A refusal or failure
+ * @param {any} [template]
  *  leaves %x empty and says so, so the capture still goes ahead. */
 async function readClipboardIfUsed(template) {
   S.captureClipboard = '';
@@ -364,6 +370,10 @@ export function renderCapturePromptForm() {
   capturePanelBox.appendChild(row);
 }
 
+/**
+ * @param {any} [template]
+ * @param {any} [answers]
+ */
 export async function runCaptureWithAnswers(template, answers) {
   if (S.currentView === 'text') {
     // Same reasoning as search's own text-mode guard above: leaving text
@@ -414,12 +424,12 @@ export async function runCaptureWithAnswers(template, answers) {
     const { ok } = await writeToOtherFile(targetFileId, {
       label: 'capture',
       allowMissing: true,
-      mutate: (doc) => {
+      mutate: (/** @type {any} */ doc) => {
         const target = resolveOlpTarget(doc, template.olp, { now, prepend: getOlpPrepend(template) });
         let tableRowNumber = null;
         if (template.type === 'table-line') {
           const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
-          const dataRowCount = existingTable ? existingTable.rows.filter((r) => r.type === 'row').length : 0;
+          const dataRowCount = existingTable ? existingTable.rows.filter((/** @type {any} */ r) => r.type === 'row').length : 0;
           // @# reflects the row's ACTUAL final position -- 1 (the new first
           // data row) when prepending to an existing table, dataRowCount + 1
           // (the next row after every existing one) when appending, the
@@ -447,7 +457,7 @@ export async function runCaptureWithAnswers(template, answers) {
   let tableRowNumber = null;
   if (template.type === 'table-line') {
     const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
-    const dataRowCount = existingTable ? existingTable.rows.filter((r) => r.type === 'row').length : 0;
+    const dataRowCount = existingTable ? existingTable.rows.filter((/** @type {any} */ r) => r.type === 'row').length : 0;
     // @# reflects the row's ACTUAL final position -- 1 (the new first
     // data row) when prepending to an existing table, dataRowCount + 1
     // (the next row after every existing one) when appending, the

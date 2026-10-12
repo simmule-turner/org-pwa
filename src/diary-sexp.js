@@ -19,6 +19,7 @@ import { startOfDay, endOfDay } from './agenda.js';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MAX_DAYS = 10000; // safety valve, matching agenda.js's own precedent throughout
 
+/** @param {any} [year] */
 function isLeapYear(year) {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
@@ -27,6 +28,7 @@ function isLeapYear(year) {
  *  placeholder, confirmed directly against its docstring: 11th/12th/
  *  13th (and their multiples of 100, e.g. 111th) are always "th"
  *  despite ending in 1/2/3, matching the standard English ordinal
+ * @param {any} [n]
  *  exception. */
 function ordinalSuffix(n) {
   const abs = Math.abs(n);
@@ -47,6 +49,8 @@ function ordinalSuffix(n) {
 /** Every day in [rangeStart, rangeEnd] (inclusive, day-granularity) --
  *  a small, local day-enumeration helper for the sexp types below that
  *  need "every day in this window" rather than a computed set of
+ * @param {any} [rangeStart]
+ * @param {any} [rangeEnd]
  *  specific occurrence dates. */
 function enumerateDays(rangeStart, rangeEnd) {
   const days = [];
@@ -71,6 +75,7 @@ const ORG_ANNIVERSARY_RE = /^%%\(org-anniversary\s+(-?\d+)\s+(\d{1,2})\s+(\d{1,2
  *  description, with %d/%s as placeholders (see
  *  formatOrgAnniversaryTitle below) -- matching real org's actual
  *  convention rather than a fixed, generated string the way
+ * @param {any} [line]
  *  org-contacts-anniversaries produces. */
 function parseOrgAnniversaryLine(line) {
   const m = ORG_ANNIVERSARY_RE.exec(line.trim());
@@ -93,6 +98,10 @@ function parseOrgAnniversaryLine(line) {
  *  real diary-anniversary (the Emacs manual: "applies to October 31 in
  *  any year after 1948"), it applies only to years AFTER that one -- so
  *  no "-8th birthday" before the person was born, and no "0th" in the
+ * @param {any} [month]
+ * @param {any} [day]
+ * @param {any} [rangeStart]
+ * @param {any} [rangeEnd]
  *  year itself. */
 function expandOrgAnniversaryOccurrences(month, day, rangeStart, rangeEnd, afterYear = /** @type {number | null} */ (null)) {
   const rangeStartDay = startOfDay(rangeStart);
@@ -114,6 +123,8 @@ function expandOrgAnniversaryOccurrences(month, day, rangeStart, rangeEnd, after
 
 /** Substitutes `%d` (elapsed years) and `%s` (that number's own
  *  ordinal suffix) into `template` -- real diary-anniversary's own
+ * @param {any} [template]
+ * @param {any} [age]
  *  confirmed two placeholders, nothing else recognized. */
 function formatOrgAnniversaryTitle(template, age) {
   return template.replace(/%d/g, String(age)).replace(/%s/g, ordinalSuffix(age));
@@ -127,6 +138,7 @@ function formatOrgAnniversaryTitle(template, age) {
  *  diary-cyclic / diary-block / diary-date are NOT translated into their
  *  org-* twins. Their argument order depends on calendar-date-style (month
  *  day year by default), so the same line would mean different dates under
+ * @param {any} [line]
  *  different settings; the org-* versions always read year month day. */
 function unquoteDiaryFloatMonthList(line) {
   return line.replace(/^(%%\(diary-float\s+)'(?=\()/, '$1');
@@ -139,6 +151,7 @@ const ORG_CYCLIC_RE = /^%%\(org-cyclic\s+(\d+)\s+(\d{4})\s+(\d{1,2})\s+(\d{1,2})
 /** Parses an org-cyclic line into { n, year, month, day, title },
  *  or null if it doesn't match -- N (the day interval), the 4-digit
  *  baseline year, and a 1-12 month / 1-31 day with no leading zeros,
+ * @param {any} [line]
  *  exactly the syntax specified. */
 function parseOrgCyclicLine(line) {
   const m = ORG_CYCLIC_RE.exec(line.trim());
@@ -154,6 +167,10 @@ function parseOrgCyclicLine(line) {
 /** Every date within [rangeStart, rangeEnd] that's exactly N days
  *  after the baseline date, or a whole multiple of N days after it --
  *  flags the agenda every N days starting from the baseline, never
+ * @param {any} [n]
+ * @param {any} [baselineDate]
+ * @param {any} [rangeStart]
+ * @param {any} [rangeEnd]
  *  before it. */
 function expandOrgCyclicOccurrences(n, baselineDate, rangeStart, rangeEnd) {
   const baselineDay = startOfDay(baselineDate);
@@ -184,6 +201,7 @@ const ORG_BLOCK_RE =
 /** Parses an org-block line into { dateA, dateB, title }, or null if
  *  it doesn't match. `dateA`/`dateB` are returned in the order given
  *  in the source -- expandOrgBlockOccurrences below sorts them itself,
+ * @param {any} [line]
  *  so a block written "backwards" (end date first) still works. */
 function parseOrgBlockLine(line) {
   const m = ORG_BLOCK_RE.exec(line.trim());
@@ -194,6 +212,10 @@ function parseOrgBlockLine(line) {
 }
 
 /** Every day between `dateA` and `dateB` (inclusive, order-
+ * @param {any} [dateA]
+ * @param {any} [dateB]
+ * @param {any} [rangeStart]
+ * @param {any} [rangeEnd]
  *  independent), intersected with [rangeStart, rangeEnd]. */
 function expandOrgBlockOccurrences(dateA, dateB, rangeStart, rangeEnd) {
   const lo = dateA <= dateB ? dateA : dateB;
@@ -226,6 +248,7 @@ const DIARY_FLOAT_RE = /^%%\(diary-float\s+(\([^()]*\)|t|\d{1,2})\s+(\d)\s+(-?\d
  *  the second YEAR (real elisp's own positional calling convention,
  *  (diary-float MONTH DAYNAME N &optional DAY YEAR)); with exactly
  *  one, it's treated as YEAR when greater than 31 (impossible as a
+ * @param {any} [line]
  *  day-of-month) and DAY otherwise. */
 function parseDiaryFloatLine(line) {
   const m = DIARY_FLOAT_RE.exec(line.trim());
@@ -270,6 +293,8 @@ function parseDiaryFloatLine(line) {
 }
 
 /** Whether `month` (1-12) matches `monthSpec` -- 't' matches every
+ * @param {any} [monthSpec]
+ * @param {any} [month]
  *  month, an array checks membership, a bare number checks equality. */
 function monthSpecMatches(monthSpec, month) {
   if (monthSpec === 't') return true;
@@ -283,6 +308,11 @@ function monthSpecMatches(monthSpec, month) {
  *  `dayOverride` (default the month's own last day). Returns null if
  *  that occurrence doesn't actually exist within the month (an N too
  *  large for how many times that weekday appears), rather than
+ * @param {any} [year]
+ * @param {any} [month]
+ * @param {any} [dayname]
+ * @param {any} [n]
+ * @param {any} [dayOverride]
  *  spilling into an adjacent month. */
 function nthWeekdayOfMonth(year, month, dayname, n, dayOverride) {
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -305,6 +335,13 @@ function nthWeekdayOfMonth(year, month, dayname, n, dayOverride) {
 /** Every diary-float occurrence within [rangeStart, rangeEnd] --
  *  iterates every (year, month) pair the range spans, computing the
  *  nth-weekday occurrence for each month `monthSpec` matches (and,
+ * @param {any} [monthSpec]
+ * @param {any} [dayname]
+ * @param {any} [n]
+ * @param {any} [dayOverride]
+ * @param {any} [yearFilter]
+ * @param {any} [rangeStart]
+ * @param {any} [rangeEnd]
  *  when `yearFilter` is given, only for that one specific year). */
 function expandDiaryFloatOccurrences(monthSpec, dayname, n, dayOverride, yearFilter, rangeStart, rangeEnd) {
   const rangeStartDay = startOfDay(rangeStart);
@@ -346,6 +383,7 @@ const RAD = Math.PI / 180;
 
 /** Julian day number for `date` at noon UTC -- the standard
  *  astronomical day-counting system every solar-position formula
+ * @param {any} [date]
  *  below is built on. */
 function toJulianDay(date) {
   const y = date.getFullYear();
@@ -376,6 +414,8 @@ function toJulianDay(date) {
  *  Declination genuinely does have a (very small) longitude
  *  dependence in this specific NOAA-style formula -- longitude feeds
  *  into meanSolarNoon before the mean anomaly is computed -- so this
+ * @param {any} [date]
+ * @param {any} [longitude]
  *  takes longitude too, not just date, to stay exactly consistent. */
 function computeSolarPosition(date, longitude) {
   const jd = toJulianDay(date);
@@ -391,6 +431,11 @@ function computeSolarPosition(date, longitude) {
   return { declination, solarTransit };
 }
 
+/**
+ * @param {any} [date]
+ * @param {any} [latitude]
+ * @param {any} [longitude]
+ */
 function computeSunriseSunsetUtc(date, latitude, longitude, angleDegrees = -0.83) {
   const { declination, solarTransit } = computeSolarPosition(date, longitude);
   const latRad = latitude * RAD;
@@ -402,6 +447,7 @@ function computeSunriseSunsetUtc(date, latitude, longitude, angleDegrees = -0.83
   const julianSunset = solarTransit + hourAngle / 360;
   const julianSunrise = solarTransit - hourAngle / 360;
 
+  /** @param {any} [jdValue] */
   const julianToUtcHours = (jdValue) => {
     const fractionalDay = jdValue - Math.floor(jdValue) - 0.5;
     return ((fractionalDay * 24) % 24 + 24) % 24;
@@ -423,6 +469,9 @@ function computeSunriseSunsetUtc(date, latitude, longitude, angleDegrees = -0.83
  *  at all that day; otherwise, since computeSunriseSunsetUtc already
  *  confirmed there's no crossing, it never sets. Reuses
  *  computeSolarPosition directly rather than a second, independently
+ * @param {any} [date]
+ * @param {any} [latitude]
+ * @param {any} [longitude]
  *  re-derived copy of the same declination formula. */
 function computeDaylightHours(date, latitude, longitude) {
   const result = computeSunriseSunsetUtc(date, latitude, longitude);
@@ -438,6 +487,8 @@ function computeDaylightHours(date, latitude, longitude) {
 
 /** "H:MMam"/"H:MMpm", `offsetMinutes` (this app's own equivalent of
  *  real Emacs's calendar-time-zone -- minutes east of UTC, e.g. -240
+ * @param {any} [utcHours]
+ * @param {any} [offsetMinutes]
  *  for EDT) applied to the UTC fractional-hour value first. */
 function formatSunTime(utcHours, offsetMinutes) {
   let totalMinutes = Math.round(utcHours * 60 + offsetMinutes);
@@ -464,6 +515,8 @@ const ASTRONOMICAL_TWILIGHT_ANGLE = -18;
 
 /** One resolved sun-crossing time as "H:MMam"/"H:MMpm", or a clear
  *  placeholder for the polar day/night case (computeSunriseSunsetUtc
+ * @param {any} [utcHours]
+ * @param {any} [offsetMinutes]
  *  returned null). */
 function formatSunTimeOrPlaceholder(utcHours, offsetMinutes) {
   return utcHours === null ? 'n/a' : formatSunTime(utcHours, offsetMinutes);
@@ -473,6 +526,8 @@ function formatSunTimeOrPlaceholder(utcHours, offsetMinutes) {
  *  null (the sun doesn't cross this particular angle at all that
  *  day -- polar day/night, or "white nights" for the civil-twilight
  *  angle specifically). Used by the four single-value functions
+ * @param {any} [utcHours]
+ * @param {any} [offsetMinutes]
  *  below. */
 function formatSunTime24(utcHours, offsetMinutes) {
   if (utcHours === null) return 'n/a';
@@ -496,6 +551,9 @@ function formatSunTime24(utcHours, offsetMinutes) {
  *  local-variables.js) adjust the output: solar-ampm (default nil)
  *  switches from 24-hour to 12-hour am/pm (formatSunTimeOrPlaceholder
  *  above) when non-nil; solar-hide-label (default nil) omits the
+ * @param {any} [date]
+ * @param {any} [latitude]
+ * @param {any} [longitude]
  *  trailing label entirely when non-nil, leaving just the bare time. */
 function formatSunriseLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
   const result = computeSunriseSunsetUtc(date, latitude, longitude);
@@ -504,6 +562,11 @@ function formatSunriseLine(date, latitude, longitude, offsetMinutes = -date.getT
   return hideLabel ? time : `${time} Sunrise`;
 }
 
+/**
+ * @param {any} [date]
+ * @param {any} [latitude]
+ * @param {any} [longitude]
+ */
 function formatSunsetLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
   const result = computeSunriseSunsetUtc(date, latitude, longitude);
   const utcHours = result ? result.sunset : null;
@@ -511,6 +574,11 @@ function formatSunsetLine(date, latitude, longitude, offsetMinutes = -date.getTi
   return hideLabel ? time : `${time} Sunset`;
 }
 
+/**
+ * @param {any} [date]
+ * @param {any} [latitude]
+ * @param {any} [longitude]
+ */
 function formatCivilDawnLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
   const result = computeSunriseSunsetUtc(date, latitude, longitude, CIVIL_TWILIGHT_ANGLE);
   const utcHours = result ? result.sunrise : null;
@@ -518,6 +586,11 @@ function formatCivilDawnLine(date, latitude, longitude, offsetMinutes = -date.ge
   return hideLabel ? time : `${time} Dawn`;
 }
 
+/**
+ * @param {any} [date]
+ * @param {any} [latitude]
+ * @param {any} [longitude]
+ */
 function formatCivilDuskLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
   const result = computeSunriseSunsetUtc(date, latitude, longitude, CIVIL_TWILIGHT_ANGLE);
   const utcHours = result ? result.sunset : null;
@@ -525,6 +598,11 @@ function formatCivilDuskLine(date, latitude, longitude, offsetMinutes = -date.ge
   return hideLabel ? time : `${time} Dusk`;
 }
 
+/**
+ * @param {any} [date]
+ * @param {any} [latitude]
+ * @param {any} [longitude]
+ */
 function formatNauticalDawnLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
   const result = computeSunriseSunsetUtc(date, latitude, longitude, NAUTICAL_TWILIGHT_ANGLE);
   const utcHours = result ? result.sunrise : null;
@@ -532,6 +610,11 @@ function formatNauticalDawnLine(date, latitude, longitude, offsetMinutes = -date
   return hideLabel ? time : `${time} Dawn`;
 }
 
+/**
+ * @param {any} [date]
+ * @param {any} [latitude]
+ * @param {any} [longitude]
+ */
 function formatNauticalDuskLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
   const result = computeSunriseSunsetUtc(date, latitude, longitude, NAUTICAL_TWILIGHT_ANGLE);
   const utcHours = result ? result.sunset : null;
@@ -539,6 +622,11 @@ function formatNauticalDuskLine(date, latitude, longitude, offsetMinutes = -date
   return hideLabel ? time : `${time} Dusk`;
 }
 
+/**
+ * @param {any} [date]
+ * @param {any} [latitude]
+ * @param {any} [longitude]
+ */
 function formatAstronomicalDawnLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
   const result = computeSunriseSunsetUtc(date, latitude, longitude, ASTRONOMICAL_TWILIGHT_ANGLE);
   const utcHours = result ? result.sunrise : null;
@@ -546,6 +634,11 @@ function formatAstronomicalDawnLine(date, latitude, longitude, offsetMinutes = -
   return hideLabel ? time : `${time} Dawn`;
 }
 
+/**
+ * @param {any} [date]
+ * @param {any} [latitude]
+ * @param {any} [longitude]
+ */
 function formatAstronomicalDuskLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
   const result = computeSunriseSunsetUtc(date, latitude, longitude, ASTRONOMICAL_TWILIGHT_ANGLE);
   const utcHours = result ? result.sunset : null;
@@ -559,6 +652,9 @@ function formatAstronomicalDuskLine(date, latitude, longitude, offsetMinutes = -
  *  am/pm distinction to switch to, so solar-ampm has no effect here
  *  at all, only solar-hide-label does, per the explicit
  *  clarification that a duration still has a label to hide even
+ * @param {any} [date]
+ * @param {any} [latitude]
+ * @param {any} [longitude]
  *  though it has no time format to switch between). */
 function formatDayLengthLine(date, latitude, longitude, hideLabel = false) {
   const hours = computeDaylightHours(date, latitude, longitude);
@@ -578,28 +674,38 @@ const DIARY_NAUTICAL_DUSK_RE = /^%%\(diary-nautical-dusk\)\s*$/;
 const DIARY_ASTRONOMICAL_DAWN_RE = /^%%\(diary-astronomical-dawn\)\s*$/;
 const DIARY_ASTRONOMICAL_DUSK_RE = /^%%\(diary-astronomical-dusk\)\s*$/;
 
-/** True if `line` is exactly one of the four single-value triggers. */
+/**
+ * True if `line` is exactly one of the four single-value triggers.
+ * @param {any} [line]
+ */
 function isDiarySunriseLine(line) {
   return DIARY_SUNRISE_RE.test(line.trim());
 }
+/** @param {any} [line] */
 function isDiarySunsetLine(line) {
   return DIARY_SUNSET_RE.test(line.trim());
 }
+/** @param {any} [line] */
 function isDiaryCivilDawnLine(line) {
   return DIARY_CIVIL_DAWN_RE.test(line.trim());
 }
+/** @param {any} [line] */
 function isDiaryCivilDuskLine(line) {
   return DIARY_CIVIL_DUSK_RE.test(line.trim());
 }
+/** @param {any} [line] */
 function isDiaryNauticalDawnLine(line) {
   return DIARY_NAUTICAL_DAWN_RE.test(line.trim());
 }
+/** @param {any} [line] */
 function isDiaryNauticalDuskLine(line) {
   return DIARY_NAUTICAL_DUSK_RE.test(line.trim());
 }
+/** @param {any} [line] */
 function isDiaryAstronomicalDawnLine(line) {
   return DIARY_ASTRONOMICAL_DAWN_RE.test(line.trim());
 }
+/** @param {any} [line] */
 function isDiaryAstronomicalDuskLine(line) {
   return DIARY_ASTRONOMICAL_DUSK_RE.test(line.trim());
 }
@@ -607,6 +713,7 @@ function isDiaryAstronomicalDuskLine(line) {
 const DIARY_DAY_LENGTH_RE = /^%%\(diary-day-length\)\s*$/;
 
 /** True if `line` is exactly the diary-day-length trigger -- same
+ * @param {any} [line]
  *  self-contained-line convention as the others above. */
 function isDiaryDayLengthLine(line) {
   return DIARY_DAY_LENGTH_RE.test(line.trim());

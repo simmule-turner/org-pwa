@@ -45,7 +45,10 @@ import { autoGrowTextarea, isWideLayout, smallButton, withActionMenu } from './u
 const PARAGRAPH_MARGIN = 'var(--paragraph-gap, 10px) 0';
 const TABLES_MARGIN = 'var(--paragraph-gap-tables, 10px) 0';
 
-/** Which place in the heading's action grid a button has, from its label (see .action-grid in index.html). */
+/**
+ * Which place in the heading's action grid a button has, from its label (see .action-grid in index.html).
+ * @param {any} [label]
+ */
 function actionSlot(label) {
   const l = label.toLowerCase();
   if (l.startsWith('move up')) return 'up';
@@ -131,6 +134,7 @@ function renderActionGrid(actions) {
   return wrap;
 }
 
+/** @param {any} [actions] */
 export function renderActionMenu(actions, columns = 5) {
   if (columns === 0) return renderActionGrid(actions);
   const menu = document.createElement('div');
@@ -163,6 +167,10 @@ export function renderActionMenu(actions, columns = 5) {
   return menu;
 }
 
+/**
+ * @param {any} [row]
+ * @param {any} [todoSequence]
+ */
 export function renderRow(row, todoSequence) {
   if (row.rowType === 'heading') {
     const el = document.createElement('div');
@@ -518,7 +526,7 @@ export function renderRow(row, todoSequence) {
           {
             icon: '\u270f\ufe0f',
             label: 'Edit text',
-            onClick: (e) => {
+            onClick: (/** @type {any} */ e) => {
               e.stopPropagation();
               S.actionMenuFor = null;
               S.editingListItem = { heading: row.heading, item: row.item };
@@ -529,7 +537,7 @@ export function renderRow(row, todoSequence) {
           {
             icon: '+',
             label: 'Add item below',
-            onClick: (e) => {
+            onClick: (/** @type {any} */ e) => {
               e.stopPropagation();
               S.actionMenuFor = null;
               const oldLineIndex = row.item.lineIndex;
@@ -544,7 +552,7 @@ export function renderRow(row, todoSequence) {
           {
             icon: '\u2715',
             label: 'Delete item',
-            onClick: async (e) => {
+            onClick: async (/** @type {any} */ e) => {
               e.stopPropagation();
               if (!(await confirmListItemDelete(row.item))) return;
               S.actionMenuFor = null;
@@ -580,6 +588,7 @@ export function renderRow(row, todoSequence) {
   return el;
 }
 
+/** @param {any} [row] */
 export function renderTableRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
@@ -631,10 +640,10 @@ export function renderTableRow(row) {
   tableEl.style.borderCollapse = 'collapse';
   tableEl.style.fontSize = 'var(--app-font-size-tables)';
 
-  row.node.rows.forEach((tr, rowIndex) => {
+  row.node.rows.forEach((/** @type {any} */ tr, /** @type {any} */ rowIndex) => {
     if (tr.type === 'rule') return; // shown implicitly via the header row's styling, not as its own grid row
     const trEl = document.createElement('tr');
-    tr.cells.forEach((cellText, colIndex) => {
+    tr.cells.forEach((/** @type {any} */ cellText, /** @type {any} */ colIndex) => {
       const tdEl = document.createElement('td');
       tdEl.style.border = '1px solid #8886';
       tdEl.style.padding = '3px 6px';
@@ -751,6 +760,7 @@ export function renderTableRow(row) {
           // heading. Re-finding it fresh by lineIndex, rather than
           // trusting the closure-captured row.node directly, is what
           // makes this correct either way.
+          /** @param {any} [n] */
           const freshTable = (row.heading.body || []).find((n) => n.type === 'table' && n.lineIndex === row.node.lineIndex) || row.node;
           S.editingCell = { heading: row.heading, table: freshTable, rowIndex, colIndex };
           commitAndRender('Edited table cell');
@@ -772,21 +782,21 @@ export function renderTableRow(row) {
   controls.style.gap = '4px';
   controls.style.marginTop = '4px';
 
-  const dataRowCount = () => row.node.rows.filter((r) => r.type === 'row').length;
+  const dataRowCount = () => row.node.rows.filter((/** @type {any} */ r) => r.type === 'row').length;
   const colCount = () => {
-    const dr = row.node.rows.find((r) => r.type === 'row');
+    const dr = row.node.rows.find((/** @type {any} */ r) => r.type === 'row');
     return dr ? dr.cells.length : 1;
   };
 
   function lastDataRowHasContent() {
-    const dataRows = row.node.rows.filter((r) => r.type === 'row');
+    const dataRows = row.node.rows.filter((/** @type {any} */ r) => r.type === 'row');
     const last = dataRows[dataRows.length - 1];
-    return last ? last.cells.some((c) => c.trim() !== '') : false;
+    return last ? last.cells.some((/** @type {any} */ c) => c.trim() !== '') : false;
   }
   function lastColumnHasContent() {
-    const dataRows = row.node.rows.filter((r) => r.type === 'row');
+    const dataRows = row.node.rows.filter((/** @type {any} */ r) => r.type === 'row');
     const lastColIndex = colCount() - 1;
-    return dataRows.some((r) => (r.cells[lastColIndex] || '').trim() !== '');
+    return dataRows.some((/** @type {any} */ r) => (r.cells[lastColIndex] || '').trim() !== '');
   }
 
   controls.appendChild(
@@ -938,6 +948,7 @@ export function renderTableRow(row) {
 /** A horizontal rule (5+ dashes on their own line) -- purely visual, no
  *  action menu, since there's nothing meaningful to edit on it beyond
  *  what the plain-text editor or the heading's own "Edit text" action
+ * @param {any} [row]
  *  already cover for arbitrary raw content. */
 export function renderHrRow(row) {
   const wrap = document.createElement('div');
@@ -954,18 +965,23 @@ export function renderHrRow(row) {
 }
 
 /** The `#+NAME:`, `#+ATTR_*:`, `#+HEADER:` and `#+RESULTS:` lines above a paragraph, as small muted text
+ * @param {any} [affiliated]
  *  (shown, not hidden, since they are part of the document). `#+CAPTION:` is not here; see renderCaption. */
 function renderAffiliatedPrefix(affiliated) {
-  const lines = affiliated.filter((a) => a.key !== 'CAPTION');
+  const lines = affiliated.filter((/** @type {any} */ a) => a.key !== 'CAPTION');
   if (!lines.length) return null;
   const box = document.createElement('div');
   box.setAttribute('data-affiliated', 'meta');
   box.style.cssText = 'font-size:11px;opacity:0.6;font-family:monospace;white-space:pre-wrap;overflow-wrap:anywhere;';
-  box.textContent = lines.map((a) => a.line.trim()).join('\n');
+  box.textContent = lines.map((/** @type {any} */ a) => a.line.trim()).join('\n');
   return box;
 }
 
-/** A `#+CAPTION:` as an italic caption, with its inline markup rendered. */
+/**
+ * A `#+CAPTION:` as an italic caption, with its inline markup rendered.
+ * @param {any} [text]
+ * @param {any} [heading]
+ */
 function renderCaption(text, heading) {
   const el = document.createElement('div');
   el.setAttribute('data-affiliated', 'caption');
@@ -974,6 +990,7 @@ function renderCaption(text, heading) {
   return el;
 }
 
+/** @param {any} [row] */
 export function renderParagraphRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
@@ -1089,6 +1106,11 @@ export function renderParagraphRow(row) {
   return withActionMenu(wrap, menuEl);
 }
 
+/**
+ * @param {any} [block]
+ * @param {any} [container]
+ * @param {any} [linkContext]
+ */
 export function renderBlockContent(block, container, linkContext) {
   const name = block.name;
 
@@ -1189,6 +1211,7 @@ export function renderBlockContent(block, container, linkContext) {
   container.appendChild(pre);
 }
 
+/** @param {any} [row] */
 export function renderBlockRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';

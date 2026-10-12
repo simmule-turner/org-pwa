@@ -28,10 +28,15 @@
 
 import { getPendingChange, clearPendingChange } from './outbox.js';
 
+/** @param {any} [documentId] */
 function syncMetaKey(documentId) {
   return 'syncmeta:' + documentId;
 }
 
+/**
+ * @param {any} [kvAdapter]
+ * @param {any} [documentId]
+ */
 async function getSyncMeta(kvAdapter, documentId) {
   try {
     const result = await kvAdapter.get(syncMetaKey(documentId));
@@ -43,6 +48,11 @@ async function getSyncMeta(kvAdapter, documentId) {
   }
 }
 
+/**
+ * @param {any} [kvAdapter]
+ * @param {any} [documentId]
+ * @param {any} [meta]
+ */
 async function setSyncMeta(kvAdapter, documentId, meta) {
   await kvAdapter.set(syncMetaKey(documentId), JSON.stringify(meta));
 }
@@ -51,6 +61,7 @@ async function setSyncMeta(kvAdapter, documentId, meta) {
  * A minimal, dependency-free hash for conflict detection — this only needs
  * to detect "did the content change since we last synced", not resist
  * tampering, so a fast non-cryptographic hash is the right tool.
+ * @param {any} [content]
  */
 function contentHash(content) {
   let h = 0x811c9dc5;
@@ -144,17 +155,27 @@ async function syncDocument({ documentId, kvAdapter, diskAdapter, resolveConflic
 function createInMemoryDiskAdapter() {
   const files = new Map();
   return {
+    /** @param {any} [fileId] */
     async read(fileId) {
       return files.has(fileId) ? { ...files.get(fileId) } : null;
     },
+    /**
+     * @param {any} [fileId]
+     * @param {any} [content]
+     */
     async write(fileId, content) {
       const hash = contentHash(content);
       files.set(fileId, { content, hash });
       return { hash };
     },
+    /** @param {any} [fileId] */
     async exists(fileId) {
       return files.has(fileId);
     },
+    /**
+     * @param {any} [fileId]
+     * @param {any} [content]
+     */
     _simulateExternalEdit(fileId, content) {
       files.set(fileId, { content, hash: contentHash(content) });
     },

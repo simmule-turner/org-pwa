@@ -36,6 +36,7 @@ import { renderSettingsView } from './settings-view.js';
  *  alternate "default value" a future release could ever change out
  *  from under it (empty always means the same thing: nothing
  *  configured), so there's nothing to protect against and nothing
+ * @param {any} [field]
  *  meaningful to bake in. */
 export function resolveQuickSettingValue(field) {
   const rawValue = S.globalVariables[field.key];
@@ -88,6 +89,8 @@ export function buildFullyResolvedGlobalVariablesText() {
  *  existing raw textarea reads and writes, kept persisted and
  *  re-merged into the currently open document immediately, the same
  *  "applies right away, no reload needed" convention every other
+ * @param {any} [key]
+ * @param {any} [rawValue]
  *  Settings control here already follows. */
 export async function commitGlobalVariableChange(key, rawValue) {
   const normalizedValue = typeof rawValue === 'string' ? normalizeSmartQuotes(rawValue) : rawValue;
@@ -107,7 +110,10 @@ export async function commitGlobalVariableChange(key, rawValue) {
   syncContactsFilesConfig();
 }
 
-/** Builds one Quick Settings field's own label + control row. */
+/**
+ * Builds one Quick Settings field's own label + control row.
+ * @param {any} [field]
+ */
 export function renderQuickSettingField(field) {
   const row = document.createElement('div');
   row.style.marginBottom = '10px';
@@ -193,7 +199,7 @@ export function renderQuickSettingField(field) {
         label: field.label,
         value: rawValue !== undefined ? rawValue : field.default,
         defaultValue: field.default,
-        onSave: async (newValue) => {
+        onSave: async (/** @type {any} */ newValue) => {
           const trimmed = normalizeSmartQuotes(newValue).trim();
           await commitGlobalVariableChange(field.key, trimmed === field.default || trimmed === '' ? null : trimmed);
           setStatus(`${field.label} updated.`);
@@ -225,6 +231,7 @@ export function renderQuickSettingField(field) {
     };
     label.appendChild(select);
   } else if (field.type === 'longtext') {
+    /** @param {any} [raw] */
     const displayValue = (raw) => {
       if (raw === undefined) return '';
       return field.entryTokenizer ? multiEntryValueToDisplayText(raw, field.entryTokenizer) : raw;
@@ -245,7 +252,7 @@ export function renderQuickSettingField(field) {
         label: field.label,
         value: displayValue(rawValue),
         defaultValue: '',
-        onSave: async (newValue) => {
+        onSave: async (/** @type {any} */ newValue) => {
           const normalized = normalizeSmartQuotes(newValue).trim();
           const canonical = field.entryTokenizer ? multiEntryDisplayTextToValue(normalized, field.entryTokenizer) : normalized;
           await commitGlobalVariableChange(field.key, canonical === '' ? null : canonical);

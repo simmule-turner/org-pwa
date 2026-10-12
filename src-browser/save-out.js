@@ -6,6 +6,11 @@
 import { setStatus } from './editing.js';
 import { platform } from './platform.js';
 
+/**
+ * @param {any} [name]
+ * @param {any} [content]
+ * @param {any} [mimeType]
+ */
 export async function saveOut(name, content, mimeType) {
   try {
     const result = await platform.saveFile(name, content, mimeType);

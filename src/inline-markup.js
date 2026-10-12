@@ -84,6 +84,8 @@ const DOLLAR_VALID_FOLLOW_RE = /[\s.,;:!?([{)\]}'"]/;
  *      classifies '-' as "symbol" syntax, which falls outside every
  *      class the regex actually checks -- this app excludes it
  *      explicitly instead, to get the same observable behavior
+ * @param {any} [text]
+ * @param {any} [pos]
  *      without needing Emacs's own syntax table to fall back on */
 function matchLatexFragmentAt(text, pos) {
   const remaining = text.slice(pos);
@@ -128,6 +130,7 @@ const LATEX_PLACEHOLDER_START = '\uE000';
 const LATEX_PLACEHOLDER_END = '\uE001';
 const LATEX_PLACEHOLDER_RE = /^\uE000(\d+)\uE001/;
 
+/** @param {any} [index] */
 function makeLatexPlaceholder(index) {
   return LATEX_PLACEHOLDER_START + index + LATEX_PLACEHOLDER_END;
 }
@@ -167,6 +170,7 @@ function makeLatexPlaceholder(index) {
  *  placeholder-substituted text, re-split on '\n'); `fragments` is
  *  the ordered list of { source, displayMode } that parseInline's own
  *  placeholder recognition looks up by index when rendering each
+ * @param {any} [lines]
  *  line (pass it through via opts.latexFragments). */
 function extractLatexFragments(lines) {
   const fullText = lines.join('\n');
@@ -221,6 +225,10 @@ function extractLatexFragments(lines) {
 // nested link instead of actually closing the footnote.
 const FOOTNOTE_START_RE = /^\[fn:([A-Za-z0-9_-]*)/;
 
+/**
+ * @param {any} [text]
+ * @param {any} [pos]
+ */
 function matchFootnoteAt(text, pos) {
   const m = FOOTNOTE_START_RE.exec(text.slice(pos));
   if (!m) return null;
@@ -301,6 +309,9 @@ const BARE_SCRIPT_RE = /^[+-]?[A-Za-z0-9]+/;
  * very start of a line, or after whitespace, is always literal, in
  * every mode, matching how `a_b` needs the `a` immediately before it.
  * Returns { kind, content, length } or null.
+ * @param {any} [text]
+ * @param {any} [pos]
+ * @param {any} [mode]
  */
 function matchScriptAt(text, pos, mode) {
   if (mode === 'nil') return null;
@@ -323,6 +334,7 @@ function matchScriptAt(text, pos, mode) {
   return { kind, content: bareMatch[0], length: 1 + bareMatch[0].length };
 }
 
+/** @param {any} [ch] */
 function isEmphasisMarker(ch) {
   return Object.prototype.hasOwnProperty.call(EMPHASIS_KIND, ch);
 }
@@ -330,6 +342,8 @@ function isEmphasisMarker(ch) {
 /**
  * Attempts to match a complete emphasis span (open marker ... close marker)
  * starting exactly at `pos`. Returns { marker, content, length } or null.
+ * @param {any} [text]
+ * @param {any} [pos]
  */
 function matchEmphasisAt(text, pos) {
   const marker = text[pos];
@@ -374,6 +388,7 @@ function matchEmphasisAt(text, pos) {
  * first below as the tiebreak for the rare remaining overlap (a
  * hyphen/paren/quote sitting immediately before the underscore, which
  * satisfies both rules at once).
+ * @param {any} [text]
  */
 function parseInline(text, opts = {}) {
   const subSuperscriptMode = opts.subSuperscriptMode || 't';
@@ -520,6 +535,7 @@ function parseInline(text, opts = {}) {
  *  heading title, list item, or table cell. */
 const LINE_BREAK_MARKER_RE = /\\\\\s*$/;
 
+/** @param {any} [line] */
 function stripLineBreakMarker(line) {
   return line.replace(LINE_BREAK_MARKER_RE, '');
 }

@@ -52,6 +52,7 @@ const SEPARATOR_TOKEN = '-----';
  *  so an embedded double-quote inside an OLP array (each header
  *  string is itself quoted) doesn't prematurely end the outer token.
  *  A stray, unquoted character between tokens (extra whitespace, a
+ * @param {any} [raw]
  *  typo) is simply skipped rather than erroring. */
 function tokenize(raw) {
   const tokens = [];
@@ -96,6 +97,7 @@ function tokenize(raw) {
  *  (there generally isn't one, but this stays correct either way)
  *  doesn't count as the separator. Returns null if there's no
  *  top-level semicolon at all (a malformed entry, missing its own
+ * @param {any} [token]
  *  label). */
 function splitSpecAndLabel(token) {
   let depth = 0;
@@ -111,6 +113,7 @@ function splitSpecAndLabel(token) {
 }
 
 /** Parses a SPEC string into its typed form, or null if it doesn't
+ * @param {any} [spec]
  *  match any recognized shape. */
 function parseSpec(spec) {
   if (spec.startsWith('[')) {
@@ -139,6 +142,7 @@ function parseSpec(spec) {
  * function name) is silently skipped rather than aborting the whole
  * menu -- one bad entry shouldn't take out every other one. An
  * unset/empty value returns an empty array, not an error.
+ * @param {any} [text]
  */
 function parseExtraMenu(text) {
   if (!text || !text.trim()) return [];

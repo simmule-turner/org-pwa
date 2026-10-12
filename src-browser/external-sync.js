@@ -101,6 +101,7 @@ export async function reloadCurrentDocumentFromDisk() {
  * already calling setStatus with a clear, label-specific error --
  * callers just check `.ok` and bail out if false, no separate error
  * text of their own to construct for any of these shared failure modes.
+ * @param {any} fileId
  */
 export async function writeToOtherFile(fileId, { label, allowMissing, mutate }) {
   // Same trap capture's own version of this check already described:
@@ -194,6 +195,7 @@ export async function checkForExternalChange() {
   }
 }
 
+/** @param {any} [hash] */
 export function showExternalChangeBanner(hash) {
   S.externalChangeShownForHash = hash;
   externalChangeText.textContent = `"${S.state.documentId}" changed elsewhere since you opened it here.`;
@@ -224,7 +226,7 @@ export function activeDiskAdapter() {
 export function openConflictResolver({ documentId, plan }) {
   return new Promise((resolve) => {
     S.confirmDialogOpen = true;
-    const conflicts = plan.segments.filter((seg) => seg.type === 'conflict');
+    const conflicts = plan.segments.filter((/** @type {any} */ seg) => seg.type === 'conflict');
     const choices = new Array(conflicts.length).fill(null);
 
     const overlay = document.createElement('div');
@@ -279,6 +281,11 @@ export function openConflictResolver({ documentId, plan }) {
     list.style.gap = '12px';
     modal.appendChild(list);
 
+    /**
+     * @param {any} [label]
+     * @param {any} [lines]
+     * @param {any} [tint]
+     */
     const linesBlock = (label, lines, tint) => {
       const wrap = document.createElement('div');
       wrap.style.borderLeft = `4px solid ${tint}`;
@@ -335,7 +342,7 @@ export function openConflictResolver({ documentId, plan }) {
       heading.style.fontWeight = '700';
       card.appendChild(heading);
 
-      const context = lastStable.slice(-2).filter((line) => line.trim() !== '');
+      const context = lastStable.slice(-2).filter((/** @type {string} */ line) => line.trim() !== '');
       if (context.length) {
         const ctx = document.createElement('pre');
         ctx.textContent = context.join('\n');
@@ -353,6 +360,10 @@ export function openConflictResolver({ documentId, plan }) {
       const row = document.createElement('div');
       row.className = 'panel-row';
       row.style.gap = '6px';
+      /**
+       * @param {any} [label]
+       * @param {any} [value]
+       */
       const mk = (label, value) => {
         const btn = tableActionButton(label, () => {
           choices[k] = value;
@@ -392,6 +403,7 @@ export function openConflictResolver({ documentId, plan }) {
 
     const stopTrackingViewport = keepOverlayInVisibleViewport(overlay);
     const unlockScroll = lockBackgroundScroll(overlay);
+    /** @param {any} [result] */
     function finish(result) {
       S.confirmDialogOpen = false;
       document.removeEventListener('keydown', onKeyDown, true);
@@ -400,6 +412,7 @@ export function openConflictResolver({ documentId, plan }) {
       overlay.remove();
       resolve(result);
     }
+    /** @param {any} [e] */
     function onKeyDown(e) {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -436,6 +449,10 @@ export function openConflictResolver({ documentId, plan }) {
       applyBtn.disabled = decided !== n;
       applyBtn.style.opacity = decided === n ? '1' : '0.45';
       choices.forEach((choice, k) => {
+        /**
+         * @param {any} [btn]
+         * @param {any} [on]
+         */
         const set = (btn, on) => {
           btn.style.background = on ? 'var(--accent)' : 'transparent';
           btn.style.color = on ? '#fff' : 'var(--fg)';

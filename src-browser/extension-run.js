@@ -21,12 +21,17 @@ function extensionMain() {
   const logs = [];
   const waiting = new Map();
   let lastRid = 0;
+  /**
+   * @param {any} [method]
+   * @param {any} [args]
+   */
   const rpc = (method, args) =>
     new Promise((resolve, reject) => {
       const rid = ++lastRid;
       waiting.set(rid, { resolve, reject });
       self.postMessage({ type: 'rpc', rid, method, args });
     });
+  /** @param {any} [v] */
   const show = (v) => {
     if (typeof v === 'string') return v;
     try {
@@ -38,7 +43,9 @@ function extensionMain() {
   const log = (...a) => {
     if (logs.length < 50) logs.push(a.map(show).join(' ').slice(0, 500));
   };
+  /** @param {any} [v] */
   const plain = (v) => (v === true || typeof v === 'string' || (typeof v === 'number' && Number.isFinite(v)) ? v : null);
+  /** @param {any} [key] */
   const dayParts = (key) => {
     const [y, m, d] = key.split('-').map(Number);
     return { date: key, year: y, month: m, day: d, weekday: new Date(Date.UTC(y, m - 1, d)).getUTCDay() };
@@ -51,32 +58,46 @@ function extensionMain() {
       waiting.delete(m.rid);
       if (w) (m.ok ? w.resolve(m.value) : w.reject(new Error(m.message)));
     } else if (m.type === 'init') {
+      /** @param {any} [op] */
       const pushEdit = (op) => {
         if (!current) throw new Error('org.edit can only be used while a command is running');
         if (current.edits.length >= 500) throw new Error('too many edits in one command (500 at most)');
         current.edits.push(JSON.parse(JSON.stringify(op)));
       };
-      const edit = Object.assign((op) => pushEdit(op), {
-        setTitle: (heading, title) => pushEdit({ op: 'set-title', heading, title }),
-        setTodo: (heading, todo) => pushEdit({ op: 'set-todo', heading, todo }),
-        setTags: (heading, tags) => pushEdit({ op: 'set-tags', heading, tags }),
-        setProperty: (heading, name, value) => pushEdit({ op: 'set-property', heading, name, value }),
-        deleteProperty: (heading, name) => pushEdit({ op: 'delete-property', heading, name }),
-        appendBody: (heading, text) => pushEdit({ op: 'append-body', heading, text }),
+      const edit = Object.assign((/** @type {any} */ op) => pushEdit(op), {
+        setTitle: (/** @type {any} */ heading, /** @type {string} */ title) => pushEdit({ op: 'set-title', heading, title }),
+        setTodo: (/** @type {any} */ heading, /** @type {any} */ todo) => pushEdit({ op: 'set-todo', heading, todo }),
+        setTags: (/** @type {any} */ heading, /** @type {any} */ tags) => pushEdit({ op: 'set-tags', heading, tags }),
+        setProperty: (/** @type {any} */ heading, /** @type {string} */ name, /** @type {any} */ value) => pushEdit({ op: 'set-property', heading, name, value }),
+        deleteProperty: (/** @type {any} */ heading, /** @type {string} */ name) => pushEdit({ op: 'delete-property', heading, name }),
+        appendBody: (/** @type {any} */ heading, /** @type {string} */ text) => pushEdit({ op: 'append-body', heading, text }),
       });
       const org = Object.freeze({
         apiVersion: 1,
-        vars: Object.freeze({ get: (name) => (Object.prototype.hasOwnProperty.call(m.variables, name) ? m.variables[name] : null) }),
+        vars: Object.freeze({ get: (/** @type {string} */ name) => (Object.prototype.hasOwnProperty.call(m.variables, name) ? m.variables[name] : null) }),
+        /**
+         * @param {any} [name]
+         * @param {any} [fn]
+         */
         sexp(name, fn) {
           if (typeof name !== 'string' || typeof fn !== 'function') throw new TypeError('org.sexp(name, function) expects a name and a function');
           sexps.set(name, fn);
         },
+        /**
+         * @param {any} [id]
+         * @param {any} [label]
+         * @param {any} [fn]
+         */
         command(id, label, fn) {
           if (typeof id !== 'string' || !/^[A-Za-z][A-Za-z0-9-]*$/.test(id) || typeof label !== 'string' || !label.trim() || typeof fn !== 'function') {
             throw new TypeError('org.command(id, label, function): the id is letters, digits and dashes');
           }
           commands.set(id, { label: label.trim().slice(0, 80), fn });
         },
+        /**
+         * @param {any} [event]
+         * @param {any} [fn]
+         */
         on(event, fn) {
           if (!['open', 'save', 'todo-change', 'capture'].includes(event) || typeof fn !== 'function') {
             throw new TypeError('org.on(event, function): the events are open, save, todo-change and capture');
@@ -84,34 +105,56 @@ function extensionMain() {
           if (!handlers.has(event)) handlers.set(event, []);
           handlers.get(event).push(fn);
         },
+        /**
+         * @param {any} [name]
+         * @param {any} [fn]
+         */
         tableFunction(name, fn) {
           if (typeof name !== 'string' || typeof fn !== 'function') throw new TypeError('org.tableFunction(name, function) expects a name and a function');
           tableFns.set(name, fn);
         },
+        /**
+         * @param {any} [prefix]
+         * @param {any} [fn]
+         */
         linkType(prefix, fn) {
           if (typeof prefix !== 'string' || typeof fn !== 'function') throw new TypeError('org.linkType(prefix, function) expects a prefix and a function');
           linkTypes.set(prefix, fn);
         },
+        /**
+         * @param {any} [id]
+         * @param {any} [label]
+         * @param {any} [fn]
+         */
         exportBackend(id, label, fn) {
           if (typeof id !== 'string' || !/^[A-Za-z][A-Za-z0-9-]*$/.test(id) || typeof label !== 'string' || !label.trim() || typeof fn !== 'function') {
             throw new TypeError('org.exportBackend(id, label, function): the id is letters, digits and dashes');
           }
           exporters.set(id, { label: label.trim().slice(0, 80), fn });
         },
+        /** @param {any} [text] */
         notify(text) {
           if (current) {
             if (current.notices.length < 20) current.notices.push(String(text).slice(0, 500));
           } else log(String(text));
         },
         edit,
-        ics: Object.freeze({ parse: async (text) => rpc('ics.parse', [text]) }),
+        ics: Object.freeze({ parse: async (/** @type {string} */ text) => rpc('ics.parse', [text]) }),
         agenda: Object.freeze({
+          /**
+           * @param {any} [name]
+           * @param {any} [fn]
+           */
           source(name, fn) {
             if (typeof name !== 'string' || !/^[A-Za-z][A-Za-z0-9-]*$/.test(name) || typeof fn !== 'function') throw new TypeError('org.agenda.source(name, function): the name is letters, digits and dashes');
             agendaSources.set(name, fn);
           },
         }),
         ui: Object.freeze({
+          /**
+           * @param {any} [id]
+           * @param {any} [fn]
+           */
           line(id, fn) {
             if (typeof id !== 'string' || !/^[A-Za-z][A-Za-z0-9-]*$/.test(id) || typeof fn !== 'function') throw new TypeError('org.ui.line(id, function): the id is letters, digits and dashes');
             uiLines.set(id, fn);
@@ -119,16 +162,16 @@ function extensionMain() {
         }),
         location: Object.freeze({ get: () => rpc('location.get', []) }),
         cache: Object.freeze({
-          get: async (key, maxAgeMs) => {
+          get: async (/** @type {string} */ key, /** @type {any} */ maxAgeMs) => {
           const r = await rpc('cache.get', [key, maxAgeMs === undefined ? null : maxAgeMs]);
           return r.found ? r.value : null;
         },
-          set: async (key, value) => {
+          set: async (/** @type {string} */ key, /** @type {any} */ value) => {
             await rpc('cache.set', [key, value]);
             return value;
           },
         }),
-        fetch: async (url, options) => {
+        fetch: async (/** @type {string} */ url, /** @type {any} */ options) => {
           const r = await rpc('fetch', [String(url), options === undefined ? null : JSON.parse(JSON.stringify(options))]);
           return Object.freeze({ status: r.status, ok: r.ok, url: r.url, text: async () => r.body, json: async () => JSON.parse(r.body) });
         },
@@ -279,16 +322,21 @@ export async function startExtension({ code, variables = {}, onRpc = /** @type {
   /** @type {(m: any) => void | null} */
   /** @type {((m: any) => void) | null} */
   let initWaiter = null;
-  box.onMessage((m) => {
+  box.onMessage((/** @type {any} */ m) => {
     if (m.type === 'init-done' && initWaiter) initWaiter(m);
     else if (['call-done', 'command-done', 'event-done', 'table-done', 'link-done', 'export-done', 'agenda-done', 'line-done'].includes(m.type) && waiting.has(m.id)) waiting.get(m.id)(m);
   });
 
-  /** A timer that does not run while the script waits for the page (network, position), up to a hard limit. */
+  /**
+   * A timer that does not run while the script waits for the page (network, position), up to a hard limit.
+   * @param {any} [timeoutMs]
+   * @param {any} [onTimeout]
+   */
   const deadline = (timeoutMs, onTimeout) => {
     const started = Date.now();
     /** @type {number | null} */
     let timer = null;
+    /** @param {any} [delay] */
     const arm = (delay) => {
       timer = setTimeout(() => {
         const elapsed = Date.now() - started;
@@ -315,7 +363,12 @@ export async function startExtension({ code, variables = {}, onRpc = /** @type {
     return { ok: false, message: init.message, logs: init.logs || [] };
   }
 
-  /** One request to the worker, answered by its id. Past the timeout the sandbox is closed, so a script that hangs cannot stay running. */
+  /**
+   * One request to the worker, answered by its id. Past the timeout the sandbox is closed, so a script that hangs cannot stay running.
+   * @param {any} [message]
+   * @param {any} [label]
+   * @param {any} [timeoutMs]
+   */
   const request = (message, label, timeoutMs) =>
     new Promise((resolve, reject) => {
       const id = nextId++;
@@ -324,7 +377,7 @@ export async function startExtension({ code, variables = {}, onRpc = /** @type {
         box.close();
         reject(new Error(`${label} took longer than ${timeoutMs / 1000} s, so the script was stopped`));
       });
-      waiting.set(id, (m) => {
+      waiting.set(id, (/** @type {any} */ m) => {
         stop();
         waiting.delete(id);
         resolve(m);
@@ -344,13 +397,13 @@ export async function startExtension({ code, variables = {}, onRpc = /** @type {
     exporters: init.exporters || [],
     logs: init.logs || [],
     close: box.close,
-    call: (name, context, args, days) => request({ type: 'call', name, context, args, days }, name, callTimeoutMs),
-    runCommand: (name, document) => request({ type: 'command', name, document }, name, commandTimeoutMs),
-    fetchAgenda: (name, from, to) => request({ type: 'agenda', name, from, to }, `the ${name} agenda source`, 8000),
-    fetchLine: (name) => request({ type: 'line', name }, `the ${name} line`, 8000),
-    callTable: (name, calls) => request({ type: 'table', name, calls }, name, callTimeoutMs),
-    resolveLink: (prefix, path, target, description) => request({ type: 'link', prefix, path, target, description }, `the ${prefix} link`, callTimeoutMs),
-    runExport: (name, document) => request({ type: 'export', name, document }, `the ${name} export`, commandTimeoutMs),
-    runEvent: (name, document, payload) => request({ type: 'event', name, document, payload }, `the ${name} hook`, eventTimeoutMs),
+    call: (/** @type {string} */ name, /** @type {any} */ context, /** @type {any} */ args, /** @type {any} */ days) => request({ type: 'call', name, context, args, days }, name, callTimeoutMs),
+    runCommand: (/** @type {string} */ name, /** @type {any} */ document) => request({ type: 'command', name, document }, name, commandTimeoutMs),
+    fetchAgenda: (/** @type {string} */ name, /** @type {any} */ from, /** @type {any} */ to) => request({ type: 'agenda', name, from, to }, `the ${name} agenda source`, 8000),
+    fetchLine: (/** @type {string} */ name) => request({ type: 'line', name }, `the ${name} line`, 8000),
+    callTable: (/** @type {string} */ name, /** @type {any} */ calls) => request({ type: 'table', name, calls }, name, callTimeoutMs),
+    resolveLink: (/** @type {string} */ prefix, /** @type {string} */ path, /** @type {any} */ target, /** @type {any} */ description) => request({ type: 'link', prefix, path, target, description }, `the ${prefix} link`, callTimeoutMs),
+    runExport: (/** @type {string} */ name, /** @type {any} */ document) => request({ type: 'export', name, document }, `the ${name} export`, commandTimeoutMs),
+    runEvent: (/** @type {string} */ name, /** @type {any} */ document, /** @type {any} */ payload) => request({ type: 'event', name, document, payload }, `the ${name} hook`, eventTimeoutMs),
   };
 }

@@ -10,13 +10,19 @@
 function createInMemoryAdapter() {
   const map = new Map();
   return {
+    /** @param {any} [key] */
     async get(key) {
       return map.has(key) ? { key, value: map.get(key) } : null;
     },
+    /**
+     * @param {any} [key]
+     * @param {any} [value]
+     */
     async set(key, value) {
       map.set(key, value);
       return { key, value };
     },
+    /** @param {any} [key] */
     async delete(key) {
       const existed = map.has(key);
       map.delete(key);

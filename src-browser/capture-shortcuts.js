@@ -9,9 +9,12 @@ import { platform } from './platform.js';
 import { getCaptureTemplates } from './settings.js';
 import { kv } from './singletons.js';
 
-/** A template as a shortcut: its key, and the description it is listed under. Templates without both are not offered. */
+/**
+ * A template as a shortcut: its key, and the description it is listed under. Templates without both are not offered.
+ * @param {any} [templates]
+ */
 function shortcutsFor(templates) {
-  return (templates || []).filter((t) => t && t.key && t.description).map((t) => ({ key: String(t.key), label: String(t.description) }));
+  return (templates || []).filter((/** @type {any} */ t) => t && t.key && t.description).map((/** @type {any} */ t) => ({ key: String(t.key), label: String(t.description) }));
 }
 
 /** Publishes one shortcut per capture template, in the order the templates are listed. Called at startup and whenever the

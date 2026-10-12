@@ -45,6 +45,8 @@ const DEFAULT_SEQUENCE = { todoKeywords: ['TODO'], doneKeywords: ['DONE'], keySp
  * model (see this module's own header comment above). Falls back to a
  * single-element array holding `globalDefault` (or the built-in TODO/DONE
  * pair) when the file has no #+TODO: line at all.
+ * @param {any} [doc]
+ * @param {any} [globalDefault]
  */
 function resolveTodoSequences(doc, globalDefault) {
   const fallback = globalDefault || DEFAULT_SEQUENCE;
@@ -74,10 +76,12 @@ function resolveTodoSequences(doc, globalDefault) {
  * after the file's own #+TODO: lines changed) also falls back to the
  * first sequence -- the same "cycling should never dead-end" principle
  * cycleTodoState itself already has, just applied one level up.
+ * @param {any} [sequences]
+ * @param {any} [heading]
  */
 function findSequenceForHeading(sequences, heading) {
   if (heading.todo !== null) {
-    const match = sequences.find((seq) => seq.todoKeywords.includes(heading.todo) || seq.doneKeywords.includes(heading.todo));
+    const match = sequences.find((/** @type {any} */ seq) => seq.todoKeywords.includes(heading.todo) || seq.doneKeywords.includes(heading.todo));
     if (match) return match;
   }
   return sequences[0];
@@ -95,6 +99,8 @@ function findSequenceForHeading(sequences, heading) {
  * filtering, checkbox-cookie counting, the TODO badge's own color) get
  * a correct answer regardless of which specific sequence X belongs to,
  * without needing to know or care.
+ * @param {any} [doc]
+ * @param {any} [globalDefault]
  */
 function resolveTodoSequence(doc, globalDefault) {
   const sequences = resolveTodoSequences(doc, globalDefault);
@@ -108,6 +114,7 @@ function resolveTodoSequence(doc, globalDefault) {
 
 /** The full cycle order: no keyword -> each TODO-type keyword -> each
  *  DONE-type keyword -> back to no keyword. Matches Emacs's default
+ * @param {any} [sequence]
  *  org-todo cycling (C-c C-t with no argument). */
 function fullCycle(sequence) {
   return [null, ...sequence.todoKeywords, ...sequence.doneKeywords];
@@ -119,6 +126,8 @@ function fullCycle(sequence) {
  * value. A heading whose current state isn't part of the resolved sequence
  * (e.g. after switching sequences) is treated as if it were at the start
  * of the cycle rather than throwing — cycling should never dead-end.
+ * @param {any} [heading]
+ * @param {any} [sequence]
  */
 function cycleTodoState(heading, sequence, opts = {}) {
   const direction = opts.direction === 'backward' ? -1 : 1;
@@ -135,6 +144,9 @@ function cycleTodoState(heading, sequence, opts = {}) {
  * cycling one step at a time). Throws on a keyword outside the resolved
  * sequence — this one *should* be loud, since silently accepting an
  * unrecognized keyword would corrupt the file's TODO semantics.
+ * @param {any} [heading]
+ * @param {any} [keyword]
+ * @param {any} [sequence]
  */
 function setTodoState(heading, keyword, sequence) {
   const cycle = fullCycle(sequence);
@@ -145,6 +157,10 @@ function setTodoState(heading, keyword, sequence) {
   return heading.todo;
 }
 
+/**
+ * @param {any} [keyword]
+ * @param {any} [sequence]
+ */
 function isDoneKeyword(keyword, sequence) {
   return sequence.doneKeywords.includes(keyword);
 }

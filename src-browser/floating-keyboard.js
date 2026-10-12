@@ -59,7 +59,11 @@ const KEYS = [
   { label: 'g', shiftedLabel: 'G', rawKey: 'g', shiftedRawKey: 'G', aria: 'g' },
 ];
 
-/** What a tap on `key` sends to god-mode, given whether Shift is armed. */
+/**
+ * What a tap on `key` sends to god-mode, given whether Shift is armed.
+ * @param {any} [key]
+ * @param {any} [shiftArmed]
+ */
 export function keystrokeFor(key, shiftArmed) {
   return { rawKey: shiftArmed && key.shiftedRawKey ? key.shiftedRawKey : key.rawKey, shiftKey: shiftArmed };
 }
@@ -71,6 +75,8 @@ export function keystrokeFor(key, shiftArmed) {
  *  and, like the floating buttons, consumes it -- one-shot, whichever keyboard
  *  the next key comes from. A letter becomes its capital (the shift a printable
  *  key carries in the character itself, see KEYS); a named key such as Enter
+ * @param {any} [rawKey]
+ * @param {any} [shiftKey]
  *  gets the shiftKey flag. */
 export function withArmedShift(rawKey, shiftKey) {
   if (!S.floatingKeyboardShiftArmed) return { rawKey, shiftKey };
@@ -80,6 +86,11 @@ export function withArmedShift(rawKey, shiftKey) {
   return { rawKey: upper, shiftKey: true };
 }
 
+/**
+ * @param {any} [n]
+ * @param {any} [lo]
+ * @param {any} [hi]
+ */
 const clamp = (n, lo, hi) => Math.min(Math.max(n, lo), Math.max(lo, hi));
 
 /** The room the panel must leave above the mode line so it never covers the
@@ -172,6 +183,7 @@ export function closeFloatingKeyboard() {
   if (document.activeElement === godModeKeyboardInput) godModeKeyboardInput.blur();
 }
 
+/** @param {any} [btn] */
 function styleButton(btn, { armed = false } = {}) {
   btn.type = 'button';
   btn.tabIndex = -1;
@@ -191,9 +203,10 @@ function styleButton(btn, { armed = false } = {}) {
 
 /** The move area. Dragging it moves the panel; a plain tap (a press that
  *  never travels past TAP_SLOP_PX) minimizes the panel to just this handle so
+ * @param {any} [handle]
  *  what's behind it can be seen, and a tap on the minimized handle restores it. */
 function wireHandle(handle) {
-  handle.addEventListener('pointerdown', (e) => {
+  handle.addEventListener('pointerdown', (/** @type {any} */ e) => {
     e.preventDefault();
     e.stopPropagation(); // the app's document-level pointerdown clears the status line
     const startX = e.clientX;
@@ -202,6 +215,7 @@ function wireHandle(handle) {
     const bottom0 = effectiveBottom();
     let dragging = false;
     handle.setPointerCapture(e.pointerId);
+    /** @param {any} [ev] */
     const move = (ev) => {
       const dx = ev.clientX - startX;
       const dy = ev.clientY - startY;
@@ -214,6 +228,7 @@ function wireHandle(handle) {
       };
       positionFloatingKeyboard();
     };
+    /** @param {any} [isTap] */
     const finish = (isTap) => {
       handle.removeEventListener('pointermove', move);
       handle.removeEventListener('pointerup', up);
@@ -420,11 +435,15 @@ export function resetGodModeKeyboardInput() {
   if (godModeKeyboardInput) /** @type {any} */ (godModeKeyboardInput).value = '';
 }
 
-/** Called by app.js's keydown handler when it delivered `key` from the hidden input. */
+/**
+ * Called by app.js's keydown handler when it delivered `key` from the hidden input.
+ * @param {any} [key]
+ */
 export function noteKeydownDelivered(key) {
   S.godModeRecentKeydown = { key, at: Date.now() };
 }
 
+/** @param {any} [text] */
 function feedText(text) {
   for (const ch of text) {
     if (!S.godModeActive) return;

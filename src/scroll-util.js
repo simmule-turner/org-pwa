@@ -26,6 +26,7 @@
  * (#contentArea) and desktop (the target element itself) layouts
  * without branching on screen width directly, and stays correct if the
  * CSS breakpoints ever change later.
+ * @param {any} [el]
  */
 export function findScrollingAncestor(el, doc = document, win = window) {
   let node = el;

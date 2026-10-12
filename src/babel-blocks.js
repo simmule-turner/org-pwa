@@ -10,10 +10,16 @@ const BEGIN_SRC_RE = /^(\s*)#\+begin_src(?:\s+(\S+))?(?:[ \t]+(.*))?$/i;
 const BEGIN_OTHER_RE = /^\s*#\+begin_(\w+)/i;
 const AFFILIATED_RE = /^\s*#\+(NAME|HEADERS?|CAPTION|ATTR_\w+|PLOT)\s*:\s*(.*)$/i;
 
-/** `,*` and `,#+` at the start of a line are Org's escapes for a line that would otherwise look like markup. */
+/**
+ * `,*` and `,#+` at the start of a line are Org's escapes for a line that would otherwise look like markup.
+ * @param {any} [line]
+ */
 const unescapeLine = (line) => line.replace(/^(\s*),(?=\*|#\+)/, '$1');
 
-/** Removes the indentation all non-blank lines share, as Org does for a block's body. */
+/**
+ * Removes the indentation all non-blank lines share, as Org does for a block's body.
+ * @param {any} [lines]
+ */
 export function removeIndentation(lines) {
   let min = Infinity;
   for (const l of lines) {
@@ -21,15 +27,19 @@ export function removeIndentation(lines) {
     min = Math.min(min, (/^[ \t]*/.exec(l) || [''])[0].length);
   }
   if (!Number.isFinite(min) || min === 0) return lines.slice();
-  return lines.map((l) => (l.trim() ? l.slice(min) : ''));
+  return lines.map((/** @type {any} */ l) => (l.trim() ? l.slice(min) : ''));
 }
 
-/** A block's body as Org uses it: comma escapes undone, shared indentation removed, trailing whitespace trimmed. */
+/**
+ * A block's body as Org uses it: comma escapes undone, shared indentation removed, trailing whitespace trimmed.
+ * @param {any} [rawLines]
+ */
 export function normalizedBody(rawLines) {
   return removeIndentation(rawLines.map(unescapeLine)).join('\n').replace(/\s+$/, '');
 }
 
 /** The source blocks in `lines` (a heading's body, or the lines before the first heading):
+ * @param {any} [lines]
  *  [{ beginIndex, endIndex, lang, params, name, headers, rawLines, indent }]. Blocks inside other blocks are skipped. */
 export function scanSourceBlocks(lines) {
   const found = [];
@@ -63,13 +73,16 @@ export function scanSourceBlocks(lines) {
   return found;
 }
 
-const isArchived = (heading) => (heading.tags || []).some((t) => String(t).toUpperCase() === 'ARCHIVE');
+const isArchived = (/** @type {any} */ heading) => (heading.tags || []).some((/** @type {any} */ t) => String(t).toUpperCase() === 'ARCHIVE');
+/** @param {any} [heading] */
 const isComment = (heading) => isCommentedHeading(heading);
 
 /** The lines before the first heading with the `#+KEY: value` lines the parser pulled out put back where they were,
+ * @param {any} [doc]
  *  so that a `#+NAME:` or `#+HEADER:` above the first block is seen. */
 export function preambleLines(doc) {
   const lines = (doc.bodyLines || []).slice();
+  /** @param {any} [k] */
   const keywords = (doc.keywords || []).filter((k) => /^(NAME|HEADERS?)$/i.test(k.key));
   for (const k of keywords.slice().reverse()) lines.splice(Math.min(k.bodyLineIndex || 0, lines.length), 0, `#+${k.key}: ${k.value}`);
   return lines;
@@ -80,9 +93,17 @@ export function preambleLines(doc) {
  * Each entry: { heading (null before the first heading), ancestors (outermost first, ending with `heading`),
  * counter (1-based among that heading's blocks), commented, archived, lang, params, name, headers, body, indent,
  * beginIndex, endIndex, args (the effective header arguments) }.
+ * @param {any} [doc]
  */
 export function collectDocumentBlocks(doc) {
   const blocks = [];
+  /**
+   * @param {any} [heading]
+   * @param {any} [ancestors]
+   * @param {any} [lines]
+   * @param {any} [commented]
+   * @param {any} [archived]
+   */
   const add = (heading, ancestors, lines, commented, archived) => {
     scanSourceBlocks(lines).forEach((b, n) => {
       blocks.push({
@@ -98,6 +119,12 @@ export function collectDocumentBlocks(doc) {
     });
   };
   add(null, [], preambleLines(doc), false, false);
+  /**
+   * @param {any} [heading]
+   * @param {any} [parents]
+   * @param {any} [commented]
+   * @param {any} [archived]
+   */
   const walk = (heading, parents, commented, archived) => {
     const here = [...parents, heading];
     const c = commented || isComment(heading);
@@ -109,7 +136,10 @@ export function collectDocumentBlocks(doc) {
   return blocks;
 }
 
-/** The heading's text as Org puts it in a search link: statistics cookies removed, spaces collapsed. */
+/**
+ * The heading's text as Org puts it in a search link: statistics cookies removed, spaces collapsed.
+ * @param {any} [title]
+ */
 export function headingSearchText(title) {
   return String(title || '')
     .replace(/\[\d*\/\d*\]|\[\d*%\]/g, '')

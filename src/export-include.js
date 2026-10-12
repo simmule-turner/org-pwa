@@ -35,6 +35,7 @@ import { parseBody } from './body-parser.js';
  *  #+INCLUDE: "path" export html is valid syntax, exactly parallel to
  *  #+INCLUDE: "path" src python); `lines` is the raw "N-M"/"−M"/"N-"
  *  string (see applyLineRange below for how it's actually
+ * @param {any} [value]
  *  interpreted), or null; `minlevel` is a positive integer, or null. */
 function parseIncludeDirective(value) {
   const pathMatch = /^"([^"]*)"/.exec(value.trim());
@@ -87,6 +88,8 @@ function parseIncludeDirective(value) {
  *  the very start up to (exclusive) line M; "N-" means from line N to
  *  the file's own actual end (inclusive, since there's no upper bound
  *  to exclude there). `spec` of null/'' returns every line
+ * @param {any} [lines]
+ * @param {any} [spec]
  *  unchanged. */
 function applyLineRange(lines, spec) {
   if (!spec) return lines;
@@ -110,6 +113,10 @@ const INCLUDE_LINE_RE = /^\s*#\+INCLUDE:\s?(.*)$/i;
  *  one include," not a reason to fail the whole export). Shared by
  *  both the document-level and heading-level expansion below, so the
  *  two can never quietly drift apart on what a directive actually
+ * @param {any} [directive]
+ * @param {any} [fetchPath]
+ * @param {any} [parseOrgFn]
+ * @param {any} [defaultMinlevel]
  *  does. */
 async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlevel) {
   let result;
@@ -151,6 +158,9 @@ async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlev
  *  real org's own further quirk of merging trailing body text into
  *  whatever the last included element happened to be, a well-defined,
  *  predictable placement being preferable to replicating an
+ * @param {any} [heading]
+ * @param {any} [fetchPath]
+ * @param {any} [parseOrgFn]
  *  incidental artifact of real org's own internal merging. */
 async function expandHeadingIncludes(heading, fetchPath, parseOrgFn) {
   const newBodyLines = [];
@@ -219,21 +229,28 @@ async function expandHeadingIncludes(heading, fetchPath, parseOrgFn) {
  *  root's own keywords, or any heading's own body text, at any depth.
  *  expandIncludes' own cheap-no-op fast path for the overwhelmingly
  *  common case (a document with no includes at all shouldn't pay for
+ * @param {any} [doc]
  *  rebuilding every single heading object just to find that out). */
 function hasAnyInclude(doc) {
-  if ((doc.keywords || []).some((k) => k.key.toUpperCase() === 'INCLUDE')) return true;
+  if ((doc.keywords || []).some((/** @type {any} */ k) => k.key.toUpperCase() === 'INCLUDE')) return true;
   return (function walk(headings) {
     for (const heading of headings || []) {
-      if ((heading.bodyLines || []).some((line) => INCLUDE_LINE_RE.test(line))) return true;
+      if ((heading.bodyLines || []).some((/** @type {string} */ line) => INCLUDE_LINE_RE.test(line))) return true;
       if (walk(heading.children)) return true;
     }
     return false;
   })(doc.children);
 }
 
+/**
+ * @param {any} [doc]
+ * @param {any} [fetchPath]
+ * @param {any} [parseOrgFn]
+ */
 async function expandIncludes(doc, fetchPath, parseOrgFn) {
   if (!hasAnyInclude(doc)) return doc;
 
+  /** @param {any} [k] */
   const includeKeywords = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'INCLUDE');
 
   const prependedHeadings = [];

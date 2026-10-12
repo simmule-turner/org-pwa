@@ -18,6 +18,7 @@ import { parseOrg, serializeOrg } from './org-parser.js';
 import { enqueueChange } from './outbox.js';
 import { syncDocument, setSyncMeta } from './sync-engine.js';
 
+/** @param {any} [result] */
 function unwrap(result) {
   return result && typeof result === 'object' && 'value' in result ? result.value : result;
 }
@@ -110,6 +111,7 @@ function openKey() {
   return 'open-documents';
 }
 
+/** @param {any} [kvAdapter] */
 async function listOpenDocuments(kvAdapter) {
   const result = await kvAdapter.get(openKey());
   if (!result) return [];
@@ -118,6 +120,10 @@ async function listOpenDocuments(kvAdapter) {
   return Array.isArray(parsed) ? parsed : [];
 }
 
+/**
+ * @param {any} [kvAdapter]
+ * @param {any} [documentId]
+ */
 async function markDocumentOpen(kvAdapter, documentId) {
   const current = await listOpenDocuments(kvAdapter);
   if (!current.includes(documentId)) {
@@ -127,6 +133,10 @@ async function markDocumentOpen(kvAdapter, documentId) {
   return current;
 }
 
+/**
+ * @param {any} [kvAdapter]
+ * @param {any} [documentId]
+ */
 async function markDocumentClosed(kvAdapter, documentId) {
   const current = await listOpenDocuments(kvAdapter);
   const next = current.filter((id) => id !== documentId);

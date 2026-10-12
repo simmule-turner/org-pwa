@@ -5,12 +5,18 @@
 /** @type {{ listener: ((name: string, payload?: any) => void) | null }} */
 const slot = { listener: null };
 
-/** The extension code registers here once. */
+/**
+ * The extension code registers here once.
+ * @param {any} [fn]
+ */
 export function onExtensionEvent(fn) {
   slot.listener = fn;
 }
 
-/** Announces an event. Does nothing when no script is listening, and never throws into the caller. */
+/**
+ * Announces an event. Does nothing when no script is listening, and never throws into the caller.
+ * @param {any} [name]
+ */
 export function emitExtensionEvent(name, payload = {}) {
   if (!slot.listener) return;
   try {

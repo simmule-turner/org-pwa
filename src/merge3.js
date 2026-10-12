@@ -28,6 +28,7 @@
 
 const MAX_EDIT_DISTANCE = 2500;
 
+/** @param {any} [text] */
 function splitLines(text) {
   return String(text).split('\n');
 }
@@ -35,6 +36,8 @@ function splitLines(text) {
 /** Myers diff over two line arrays. Returns hunks
  *  `{ aStart, aEnd, bStart, bEnd }` (half-open ranges: a[aStart..aEnd)
  *  became b[bStart..bEnd)), in order, or null if the inputs differ by
+ * @param {any} [a]
+ * @param {any} [b]
  *  more than MAX_EDIT_DISTANCE lines. */
 function diffHunksOfLines(a, b) {
   const n = a.length;
@@ -57,6 +60,10 @@ function diffHunksOfLines(a, b) {
   const hunks = [];
   let ai = 0;
   let bi = 0;
+  /**
+   * @param {any} [aEnd]
+   * @param {any} [bEnd]
+   */
   const emit = (aEnd, bEnd) => {
     if (aEnd > ai || bEnd > bi) {
       hunks.push({ aStart: prefix + ai, aEnd: prefix + aEnd, bStart: prefix + bi, bEnd: prefix + bEnd });
@@ -72,6 +79,8 @@ function diffHunksOfLines(a, b) {
 }
 
 /** Matched (a-index, b-index) pairs of a shortest edit script, in
+ * @param {any} [a]
+ * @param {any} [b]
  *  ascending order, or null past MAX_EDIT_DISTANCE. */
 function myersMatches(a, b) {
   const n = a.length;
@@ -80,8 +89,9 @@ function myersMatches(a, b) {
 
   // Compare small integers instead of strings.
   const ids = new Map();
+  /** @param {any} [arr] */
   const toIds = (arr) =>
-    arr.map((line) => {
+    arr.map((/** @type {string} */ line) => {
       let id = ids.get(line);
       if (id === undefined) {
         id = ids.size;
@@ -129,6 +139,7 @@ function myersMatches(a, b) {
   let y = m;
   for (let d = foundD; d >= 0; d--) {
     const slice = trace[d];
+    /** @param {any} [k] */
     const at = (k) => slice[k + d + 1];
     const k = x - y;
     let prevK;
@@ -149,6 +160,10 @@ function myersMatches(a, b) {
 
 /** `base` lines [start, end) with the given hunks applied. Each hunk's
  *  `lines` are its replacement text; hunks must be in order and lie
+ * @param {any} [base]
+ * @param {any} [hunks]
+ * @param {any} [start]
+ * @param {any} [end]
  *  within [start, end] (an insertion sitting exactly at `end` counts). */
 function applyHunks(base, hunks, start, end) {
   const out = [];
@@ -162,14 +177,22 @@ function applyHunks(base, hunks, start, end) {
   return out;
 }
 
+/**
+ * @param {any} [x]
+ * @param {any} [y]
+ */
 function sameLines(x, y) {
   if (x.length !== y.length) return false;
   for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return false;
   return true;
 }
 
+/**
+ * @param {any} [hunks]
+ * @param {any} [sideLines]
+ */
 function withLines(hunks, sideLines) {
-  return hunks.map((h) => ({ ...h, lines: sideLines.slice(h.bStart, h.bEnd) }));
+  return hunks.map((/** @type {any} */ h) => ({ ...h, lines: sideLines.slice(h.bStart, h.bEnd) }));
 }
 
 /**
@@ -186,6 +209,9 @@ function withLines(hunks, sideLines) {
  *
  * `stats` counts change groups: made only by mine, only by theirs, by
  * both identically, or by both differently (the conflicts).
+ * @param {any} [baseText]
+ * @param {any} [mineText]
+ * @param {any} [theirsText]
  */
 function merge3(baseText, mineText, theirsText) {
   const base = splitLines(baseText);
@@ -276,6 +302,8 @@ function merge3(baseText, mineText, theirsText) {
  * between `mineText` and `theirsText` becomes a conflict with no `base`.
  * Falls back to one whole-file conflict if the two differ too much to
  * diff.
+ * @param {any} [mineText]
+ * @param {any} [theirsText]
  */
 function diff2Segments(mineText, theirsText) {
   const mine = splitLines(mineText);
@@ -300,6 +328,8 @@ function diff2Segments(mineText, theirsText) {
  * k-th conflict: 'mine', 'theirs', or 'both' (mine's lines, then
  * theirs'). Throws if a conflict has no valid choice, so a half-resolved
  * merge can never be written by accident.
+ * @param {any} [segments]
+ * @param {any} [choices]
  */
 function resolveSegments(segments, choices) {
   const out = [];
@@ -332,6 +362,9 @@ function resolveSegments(segments, choices) {
  *       some region needs a person's decision. `hasBase` is false when no
  *       common ancestor was available, in which case every difference is
  *       shown (see diff2Segments).
+ * @param {any} [mine]
+ * @param {any} [theirs]
+ * @param {any} [base]
  */
 function planConflict(mine, theirs, base) {
   if (mine === theirs) return { kind: 'same' };

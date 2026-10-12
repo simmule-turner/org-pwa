@@ -7,7 +7,10 @@
 
 const IGNORED_RESULT_WORDS = new Set(['replace', 'silent', 'none', 'discard', 'append', 'prepend']);
 
-/** SHA-1 of `text` as 40 hex digits. */
+/**
+ * SHA-1 of `text` as 40 hex digits.
+ * @param {any} [text]
+ */
 export async function sha1Hex(text) {
   const digest = await globalThis.crypto.subtle.digest('SHA-1', new TextEncoder().encode(text));
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');

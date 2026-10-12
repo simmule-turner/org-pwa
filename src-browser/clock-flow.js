@@ -49,6 +49,7 @@ export function findRunningClockAcrossSessions() {
   return null;
 }
 
+/** @param {any} [heading] */
 export function clockInHeading(heading) {
   const now = new Date();
   const timestamp = formatOrgTimestamp({ date: now, time: now.toTimeString().slice(0, 5), active: false });
@@ -65,7 +66,7 @@ export function clockInHeading(heading) {
   if (running && !running.isActive) {
     if (clockOut(running.heading, timestamp, now)) {
       crossTabSwitchedFrom = running.heading;
-      const session = S.documentSessions.find((s) => s.tabId === running.tabId);
+      const session = S.documentSessions.find((/** @type {any} */ s) => s.tabId === running.tabId);
       if (session) {
         session.isDirty = true;
         saveDocument({ documentId: session.state.documentId, doc: session.state.doc, kvAdapter: kv }).catch((err) => setStatus('Save failed: ' + err.message));
@@ -136,6 +137,7 @@ export function clockGoto() {
 /** org-clock-out: stops whatever clock is currently running on
  *  `heading`. A no-op (with a status message) if nothing is running --
  *  matches clockInHeading's own "surface it, don't silently do
+ * @param {any} [heading]
  *  nothing" treatment of the equivalent already-in-that-state case. */
 export function clockOutHeading(heading) {
   const end = new Date();
@@ -152,6 +154,7 @@ export function clockOutHeading(heading) {
  *  `heading` and discards its accumulated time entirely -- no
  *  duration ever gets recorded, unlike clockOutHeading. A no-op (with
  *  a status message) if nothing is running, matching clockOutHeading's
+ * @param {any} [heading]
  *  own treatment of the equivalent already-in-that-state case. */
 export function clockCancelHeading(heading) {
   if (!clockCancel(heading)) {
@@ -188,6 +191,7 @@ export function clockGotoRecent() {
     return;
   }
   const severalDocuments = new Set(recent.map((r) => r.tabId)).size > 1;
+  /** @param {any} [date] */
   const when = (date) => date.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   openButtonChoiceModal({
     label: 'Go to which recently clocked task?',
@@ -198,13 +202,14 @@ export function clockGotoRecent() {
   });
 }
 
+/** @param {any} [entry] */
 function goToClockedEntry(entry) {
   if (entry.tabId === S.activeTabId) {
     navigateToHeading(entry.heading);
     return;
   }
   // another tab: switching restores that tab's own state, so find the heading again there, by its outline path
-  const path = [...(findAncestorPath(entry.doc, entry.heading) || []).map((h) => h.title), entry.heading.title];
+  const path = [...(findAncestorPath(entry.doc, entry.heading) || []).map((/** @type {any} */ h) => h.title), entry.heading.title];
   switchToTab(entry.tabId);
   const heading = S.state.doc ? findHeadingByOutlinePath(S.state.doc, path) : null;
   if (heading) navigateToHeading(heading);

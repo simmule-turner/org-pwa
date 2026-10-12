@@ -45,6 +45,7 @@ export function extensionInfo() {
   return { ...info, sexps: info.sexps.slice(), commands: info.commands.map((c) => ({ ...c })), log: info.log.slice() };
 }
 
+/** @param {any} [line] */
 function note(line) {
   info.log.push(String(line).slice(0, 300));
   if (info.log.length > MAX_LOG) info.log.splice(0, info.log.length - MAX_LOG);
@@ -77,6 +78,7 @@ function stop() {
   setUserSexps();
 }
 
+/** @param {any} [date] */
 const dayKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 function context() {
@@ -87,6 +89,9 @@ function context() {
 }
 
 /** Answers the agenda for one function and day from the cache. A miss is "no entry" for now: it is queued,
+ * @param {any} [name]
+ * @param {any} [args]
+ * @param {any} [date]
  *  fetched in one batch, and the page is drawn again when the answers arrive. */
 function answer(name, args, date) {
   const key = userSexpKey(name, args, dayKey(date));
@@ -113,13 +118,13 @@ async function flush() {
       const reply = await active.call(group.name, context(), group.args, group.days);
       if (run.handle !== active) return; // stopped or reloaded while waiting
       if (cache.size > MAX_CACHED) cache.clear();
-      group.days.forEach((day, i) => cache.set(userSexpKey(group.name, group.args, day), userSexpResult(reply.results[i])));
+      group.days.forEach((/** @type {number} */ day, /** @type {number} */ i) => cache.set(userSexpKey(group.name, group.args, day), userSexpResult(reply.results[i])));
       if (reply.error) note(`${group.name}: ${reply.error}`);
       for (const line of reply.logs || []) note(line);
       render(); // each function's days appear as soon as they are known
     } catch (err) {
       if (run.handle !== active) return; // another batch already stopped the script; its message is the one that names the cause
-      group.days.forEach((day) => cache.set(userSexpKey(group.name, group.args, day), false));
+      group.days.forEach((/** @type {number} */ day) => cache.set(userSexpKey(group.name, group.args, day), false));
       note(err.message);
       info.state = 'failed';
       info.message = err.message;
@@ -173,18 +178,18 @@ export async function loadExtensions() {
     return;
   }
   const names = started.sexps.filter(usableSexpName);
-  for (const refused of started.sexps.filter((n) => !usableSexpName(n))) note(`org.sexp("${refused}") ignored: use letters, digits and dashes, and not the name of a standard form`);
+  for (const refused of started.sexps.filter((/** @type {any} */ n) => !usableSexpName(n))) note(`org.sexp("${refused}") ignored: use letters, digits and dashes, and not the name of a standard form`);
   run.handle = started;
   info.state = 'running';
   info.sexps = names;
   info.commands = started.commands || [];
   info.events = started.events || [];
   setUserSexps(names, answer);
-  info.tableFunctions = (started.tableFunctions || []).filter((n) => usableSexpName(n) && !isBuiltinFormulaName(n));
-  for (const refused of (started.tableFunctions || []).filter((n) => !info.tableFunctions.includes(n))) note(`org.tableFunction("${refused}") ignored: use letters, digits and dashes, and not the name of a standard function`);
+  info.tableFunctions = (started.tableFunctions || []).filter((/** @type {any} */ n) => usableSexpName(n) && !isBuiltinFormulaName(n));
+  for (const refused of (started.tableFunctions || []).filter((/** @type {any} */ n) => !info.tableFunctions.includes(n))) note(`org.tableFunction("${refused}") ignored: use letters, digits and dashes, and not the name of a standard function`);
   setUserTableFunctions(info.tableFunctions);
   info.linkTypes = (started.linkTypes || []).filter(usableLinkPrefix);
-  for (const refused of (started.linkTypes || []).filter((n) => !info.linkTypes.includes(n))) note(`org.linkType("${refused}") ignored: use 2 to 20 lowercase letters, digits and dashes, and not a standard link type`);
+  for (const refused of (started.linkTypes || []).filter((/** @type {any} */ n) => !info.linkTypes.includes(n))) note(`org.linkType("${refused}") ignored: use 2 to 20 lowercase letters, digits and dashes, and not a standard link type`);
   links.prefixes = new Set(info.linkTypes);
   links.open = openCustomLink;
   info.exporters = started.exporters || [];
@@ -193,7 +198,13 @@ export async function loadExtensions() {
   render();
 }
 
-/** A click on [[prefix:path]]: the script's link function answers with an address, which is checked and opened. */
+/**
+ * A click on [[prefix:path]]: the script's link function answers with an address, which is checked and opened.
+ * @param {any} [prefix]
+ * @param {any} [path]
+ * @param {any} [target]
+ * @param {any} [description]
+ */
 async function openCustomLink(prefix, path, target, description) {
   const active = run.handle;
   if (!active) return;
@@ -220,7 +231,11 @@ async function openCustomLink(prefix, path, target, description) {
 
 export const tableFunctionsActive = () => !!run.handle && info.tableFunctions.length > 0;
 
-/** The answer to a table function during a recalculation: what the script already gave, or an error. */
+/**
+ * The answer to a table function during a recalculation: what the script already gave, or an error.
+ * @param {any} [name]
+ * @param {any} [args]
+ */
 export function tableUserCall(name, args) {
   const hit = tableCache.get(JSON.stringify([name, args]));
   if (!hit || hit.v === null) throw new Error(`${name} gave no answer`);
@@ -228,16 +243,21 @@ export function tableUserCall(name, args) {
 }
 
 /** Before tables are recalculated: finds the script-function calls their formulas make and gets the answers
+ * @param {any} [tables]
  *  from the script, so the (synchronous) recalculation can use them. Nested calls take another round. */
 export async function warmTableFunctions(tables) {
   const active = run.handle;
   if (!active || !info.tableFunctions.length) return;
   tableCache.clear();
-  const mine = tables.filter((t) => t.tblfm && info.tableFunctions.some((n) => t.tblfm.includes(n + '(')));
+  const mine = tables.filter((/** @type {any} */ t) => t.tblfm && info.tableFunctions.some((n) => t.tblfm.includes(n + '(')));
   const options = { hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables), constants: parseTableConstants(S.state.doc) };
   let total = 0;
   for (let pass = 0; pass < 3 && mine.length; pass++) {
     const misses = new Map();
+    /**
+     * @param {any} [name]
+     * @param {any} [args]
+     */
     const userCall = (name, args) => {
       const key = JSON.stringify([name, args]);
       if (tableCache.has(key)) return tableCache.get(key).v ?? Number.NaN;
@@ -261,9 +281,9 @@ export async function warmTableFunctions(tables) {
       total += items.length;
       if (total > 500) throw new Error('A table calls script functions more than 500 times');
       try {
-        const reply = await active.callTable(name, items.map((i) => i.args));
+        const reply = await active.callTable(name, items.map((/** @type {any} */ i) => i.args));
         if (run.handle !== active) return;
-        items.forEach((item, i) => tableCache.set(item.key, { v: reply.results[i] ?? null }));
+        items.forEach((/** @type {any} */ item, /** @type {number} */ i) => tableCache.set(item.key, { v: reply.results[i] ?? null }));
         if (reply.error) note(`${name}: ${reply.error}`);
         for (const line of reply.logs || []) note(line);
       } catch (err) {
@@ -280,7 +300,11 @@ export async function warmTableFunctions(tables) {
   }
 }
 
-/** Runs one of the script's export backends on the open file and saves what it returns. */
+/**
+ * Runs one of the script's export backends on the open file and saves what it returns.
+ * @param {any} [id]
+ * @param {any} [target]
+ */
 export async function runExtensionExport(id, target) {
   const backend = info.exporters.find((x) => x.id === id);
   const active = run.handle;
@@ -310,7 +334,10 @@ export async function runExtensionExport(id, target) {
   }
 }
 
-/** Saves the script text. It must be approved again before it runs. */
+/**
+ * Saves the script text. It must be approved again before it runs.
+ * @param {any} [text]
+ */
 export async function saveExtensionScript(text) {
   if (text.length > MAX_SCRIPT_CHARS) throw new Error(`The script is longer than ${MAX_SCRIPT_CHARS / 1024} KB`);
   await setExtensionScript(kv, text);
@@ -318,7 +345,10 @@ export async function saveExtensionScript(text) {
   await loadExtensions();
 }
 
-/** Names the saved document the script is tangled from ('' goes back to the text typed in Settings). It must be approved again. */
+/**
+ * Names the saved document the script is tangled from ('' goes back to the text typed in Settings). It must be approved again.
+ * @param {any} [text]
+ */
 export async function saveExtensionFile(text) {
   await setExtensionFile(kv, String(text || '').trim());
   await setExtensionApproval(kv, '');
@@ -341,7 +371,7 @@ export function extensionPaletteEntries() {
     group: 'Extensions',
     keywords: ['script', 'extension', 'export'],
     needs: ['doc'],
-    run: (target) => runExtensionExport(x.id, target),
+    run: (/** @type {any} */ target) => runExtensionExport(x.id, target),
   }));
   return exports.concat(info.commands.map((c) => ({
     id: 'ext-' + c.id,
@@ -353,9 +383,15 @@ export function extensionPaletteEntries() {
   })));
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [lines]
+ */
 const appendBody = (heading, lines) => commitLines(heading, (heading.bodyLines || []).length, 0, lines);
 
 /** Runs one of the script's commands on the open file. The command sees a read-only snapshot and answers with
+ * @param {any} [id]
+ * @param {any} [target]
  *  edits; they are checked, then applied together as a single undo step. */
 export async function runExtensionCommand(id, target) {
   const command = info.commands.find((c) => c.id === id);
@@ -391,7 +427,13 @@ export async function runExtensionCommand(id, target) {
   finishReply(command.label, snapshot, reply, true);
 }
 
-/** Handles a script's answer to a command or an event: logs, then checks and applies its edits as one undo step. */
+/**
+ * Handles a script's answer to a command or an event: logs, then checks and applies its edits as one undo step.
+ * @param {any} [label]
+ * @param {any} [snapshot]
+ * @param {any} [reply]
+ * @param {any} [allowEdits]
+ */
 function finishReply(label, snapshot, reply, allowEdits) {
   for (const line of reply.logs || []) note(line);
   if (reply.error) {
@@ -419,7 +461,7 @@ function finishReply(label, snapshot, reply, allowEdits) {
     run.applying = true; // the changes a script makes do not set off its own hooks again
     try {
       applyEdits(S.state.doc, edits, {
-        setTodo: (heading, todo) => applyTodoTransition(heading, () => { heading.todo = todo; }),
+        setTodo: (/** @type {any} */ heading, /** @type {any} */ todo) => applyTodoTransition(heading, () => { heading.todo = todo; }),
         setProperty,
         deleteProperty,
         appendBody,
@@ -433,7 +475,12 @@ function finishReply(label, snapshot, reply, allowEdits) {
   setStatus(reply.message || (reply.notices || []).join(' \u00b7 ') || (applied ? `${label}: ${applied} ${applied === 1 ? 'change' : 'changes'}.` : `${label}: done.`));
 }
 
-/** Delivers an event to the script's hooks, one at a time and after the app has finished handling it. */
+/**
+ * Delivers an event to the script's hooks, one at a time and after the app has finished handling it.
+ * @param {any} [name]
+ * @param {any} [payload]
+ * @param {any} [doc]
+ */
 async function deliverEvent(name, payload, doc) {
   const active = run.handle;
   if (!active || S.state.doc !== doc) return;
@@ -461,7 +508,7 @@ async function deliverEvent(name, payload, doc) {
   else for (const line of reply.logs || []) note(line);
 }
 
-onExtensionEvent((name, payload) => {
+onExtensionEvent((/** @type {string} */ name, /** @type {any} */ payload) => {
   if (!run.handle || run.applying || !info.events.includes(name)) return;
   const doc = S.state.doc;
   run.chain = run.chain.then(() => deliverEvent(name, payload, doc)).catch((err) => note(err.message));
@@ -469,6 +516,12 @@ onExtensionEvent((name, payload) => {
 
 // ---- agenda sources and header lines ----------------------------------------------------------------------
 
+/**
+ * @param {any} [name]
+ * @param {any} [from]
+ * @param {any} [to]
+ * @param {any} [key]
+ */
 async function refreshAgendaSource(name, from, to, key) {
   const active = run.handle;
   agendaPending.add(key);
@@ -498,6 +551,8 @@ async function refreshAgendaSource(name, from, to, key) {
 const AGENDA_HEADING = { title: '', level: 1, todo: null, priority: null, tags: [], bodyLines: [], children: [] };
 
 /** Agenda items from the script's sources for the days being shown. What is already known is returned at once; a source
+ * @param {any} [rangeStart]
+ * @param {any} [rangeEnd]
  *  that is missing or older than ten minutes is asked again, and the agenda is drawn again if its answer differs. */
 export function extensionAgendaItems(rangeStart, rangeEnd) {
   if (!run.handle || !info.agendaSources.length) return [];
@@ -536,6 +591,7 @@ export function extensionAgendaItems(rangeStart, rangeEnd) {
   return out;
 }
 
+/** @param {any} [id] */
 async function refreshLine(id) {
   const active = run.handle;
   linePending.add(id);

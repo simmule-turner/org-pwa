@@ -23,6 +23,7 @@ const COMPLETED_CLOCK_RE = /^CLOCK:\s+(\[[^\]]+\]|<[^>]+>)--(\[[^\]]+\]|<[^>]+>)
  *  its logbookLines, or -1 if none is running. Only ever at most one
  *  clock can be running per heading at a time -- clocking in again
  *  while one is already running is a no-op (see clockIn below),
+ * @param {any} [heading]
  *  matching real org's own refusal to double-start the same clock. */
 function findRunningClockLineIndex(heading) {
   for (let i = 0; i < (heading.logbookLines || []).length; i++) {
@@ -31,7 +32,10 @@ function findRunningClockLineIndex(heading) {
   return -1;
 }
 
-/** Whether `heading` currently has a running clock. */
+/**
+ * Whether `heading` currently has a running clock.
+ * @param {any} [heading]
+ */
 function isClockRunning(heading) {
   return findRunningClockLineIndex(heading) !== -1;
 }
@@ -45,6 +49,8 @@ function isClockRunning(heading) {
  *  clock-timestamp convention exactly). Returns false without
  *  changing anything if a clock is already running on this heading --
  *  real org itself doesn't let you double-start the same clock, it
+ * @param {any} [heading]
+ * @param {any} [timestamp]
  *  just continues the existing session. */
 function clockIn(heading, timestamp) {
   if (isClockRunning(heading)) return false;
@@ -64,6 +70,9 @@ function clockIn(heading, timestamp) {
  *  Returns false without changing anything if nothing is currently
  *  running, or if the running line's own start timestamp turns out to
  *  be unparseable (a hand-edited or corrupted CLOCK line) rather than
+ * @param {any} [heading]
+ * @param {any} [endTimestamp]
+ * @param {any} [endDate]
  *  computing a nonsensical duration from a null start time. */
 function clockOut(heading, endTimestamp, endDate) {
   const idx = findRunningClockLineIndex(heading);
@@ -84,6 +93,7 @@ function clockOut(heading, endTimestamp, endDate) {
  *  had never been started at all. Used when a clock was started by
  *  mistake, or the person switched to a completely different task
  *  without wanting the elapsed time logged. Returns false without
+ * @param {any} [heading]
  *  changing anything if nothing is currently running. */
 function clockCancel(heading) {
   const idx = findRunningClockLineIndex(heading);
@@ -94,6 +104,7 @@ function clockCancel(heading) {
 
 /** Formats a whole number of minutes as real org's own "H:MM" clock
  *  duration string -- hours unpadded, minutes always two digits, e.g.
+ * @param {any} [totalMinutes]
  *  90 minutes -> "1:30", 5 minutes -> "0:05". */
 function formatClockDuration(totalMinutes) {
   const h = Math.floor(totalMinutes / 60);
@@ -105,6 +116,7 @@ function formatClockDuration(totalMinutes) {
  *  digits for the hours part) back into a whole number of minutes.
  *  Returns 0 for anything unparseable rather than throwing, so a
  *  malformed or hand-edited CLOCK line doesn't break the running total
+ * @param {any} [raw]
  *  for an entire subtree over one bad entry. */
 function parseClockDuration(raw) {
   const m = /^(-?\d+):(\d+)$/.exec(String(raw || '').trim());
@@ -117,6 +129,7 @@ function parseClockDuration(raw) {
  *  the whole-subtree sum org-clock-display actually wants), in
  *  minutes. A line this app's own COMPLETED_CLOCK_RE doesn't recognize
  *  (including a still-running one, deliberately excluded here) simply
+ * @param {any} [heading]
  *  doesn't contribute, rather than the whole computation failing. */
 function ownClockedMinutes(heading) {
   let total = 0;
@@ -137,6 +150,7 @@ function ownClockedMinutes(heading) {
  * as the reference point -- matching real org's own live-updating
  * total while a clock is actively running, not just the completed
  * sessions.
+ * @param {any} [heading]
  */
 function totalClockedMinutes(heading, now = new Date()) {
   let total = ownClockedMinutes(heading);
@@ -155,6 +169,7 @@ function totalClockedMinutes(heading, now = new Date()) {
 /** Just the elapsed minutes since `heading`'s own currently-running
  *  clock started -- 0 if it doesn't have one running at all (checking
  *  isClockRunning first is still worth doing for callers who need to
+ * @param {any} [heading]
  *  distinguish "not running" from "just started"). */
 function currentClockSessionMinutes(heading, now = new Date()) {
   const runningIdx = findRunningClockLineIndex(heading);
@@ -171,6 +186,7 @@ function currentClockSessionMinutes(heading, now = new Date()) {
  *  module's own repeater/delay handling isn't relevant to a clock
  *  line's own timestamp at all, and pulling in that whole surface
  *  would be more coupling than this narrow need justifies. Returns
+ * @param {any} [raw]
  *  null for anything unparseable. */
 function parseClockTimestampToDate(raw) {
   const m = /(\d{4})-(\d{2})-(\d{2})(?:[^0-9]+(\d{2}):(\d{2}))?/.exec(raw);
@@ -183,8 +199,10 @@ function parseClockTimestampToDate(raw) {
  *  running clock -- depth-first, so if more than one somehow ended up
  *  running (e.g. a hand-edited file), the first one encountered wins
  *  rather than this throwing or picking arbitrarily. Returns null if
+ * @param {any} [doc]
  *  nothing is running anywhere in the document. */
 function findHeadingWithRunningClock(doc) {
+  /** @param {any} [headings] */
   const walk = (headings) => {
     for (const heading of headings) {
       if (isClockRunning(heading)) return heading;
@@ -221,6 +239,10 @@ function findHeadingWithRunningClock(doc) {
  * boolean (whether the new clock actually started), `switchedFrom` is
  * the heading that got auto-clocked-out to make room for it, or null
  * if nothing needed switching.
+ * @param {any} [doc]
+ * @param {any} [heading]
+ * @param {any} [timestamp]
+ * @param {any} [now]
  */
 function clockInSwitchingTasks(doc, heading, timestamp, now) {
   const previouslyRunning = findHeadingWithRunningClock(doc);
@@ -250,9 +272,11 @@ function clockInSwitchingTasks(doc, heading, timestamp, now) {
  *  "a list of recently clocked tasks". Ordered by when each heading's latest clock STARTED, the same
  *  measure findMostRecentlyClockedHeading uses. Unlike Emacs's clock history, which only holds what was
  *  clocked in the current session, this reads the document's own CLOCK lines, so it is complete and
+ * @param {any} [doc]
  *  survives a reload. @returns {{ heading: object, start: Date }[]} */
 function listRecentlyClockedHeadings(doc, limit = 15) {
   const found = [];
+  /** @param {any} [heading] */
   const consider = (heading) => {
     /** @type {Date | null} */
     let latest = null;
@@ -266,6 +290,7 @@ function listRecentlyClockedHeadings(doc, limit = 15) {
     }
     if (latest) found.push({ heading, start: latest });
   };
+  /** @param {any} [headings] */
   const walk = (headings) => {
     for (const heading of headings) {
       consider(heading);
@@ -277,11 +302,13 @@ function listRecentlyClockedHeadings(doc, limit = 15) {
   return found.slice(0, limit);
 }
 
+/** @param {any} [doc] */
 function findMostRecentlyClockedHeading(doc) {
   /** @type {any} */
   let best = null;
   /** @type {Date | null} */
   let bestStart = null;
+  /** @param {any} [heading] */
   const consider = (heading) => {
     for (const line of heading.logbookLines || []) {
       const running = RUNNING_CLOCK_RE.exec(line);
@@ -296,6 +323,7 @@ function findMostRecentlyClockedHeading(doc) {
       }
     }
   };
+  /** @param {any} [headings] */
   const walk = (headings) => {
     for (const heading of headings) {
       consider(heading);

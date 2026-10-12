@@ -52,6 +52,7 @@
  * view: {...}, clocking: {...} }` -- each of the six always present
  * (possibly empty `{}`), for direct `result[menu][label]` lookup by any
  * call site. An unset/empty value returns all six as `{}`.
+ * @param {any} [rawValue]
  */
 function parseMenuAliases(rawValue) {
   const result = { file: {}, more: {}, export: {}, import: {}, view: {}, clocking: {} };
@@ -78,6 +79,7 @@ function parseMenuAliases(rawValue) {
 /** Splits the raw, already-line-joined value into its individual
  *  double-quoted tokens -- simpler than org-xx-extra-menu's own
  *  tokenizer, since a "Label;alias" entry never needs to nest
+ * @param {any} [raw]
  *  brackets the way an OLP array entry does. */
 function tokenizeMenuAliasValue(raw) {
   const tokens = [];
@@ -138,9 +140,11 @@ export { parseMenuAliases, tokenizeMenuAliasValue };
  * stale reference to a label that no longer exists) is silently
  * dropped from the result, the same tolerant-of-the-unexpected
  * approach parseMenuAliases itself already takes.
+ * @param {any} [aliasMap]
+ * @param {any} [labels]
  */
 function resolveMenuOrder(aliasMap, labels) {
-  const allMentioned = labels.every((label) => label in aliasMap);
+  const allMentioned = labels.every((/** @type {string} */ label) => label in aliasMap);
   if (!allMentioned) return labels;
   return Object.keys(aliasMap).filter((orderedLabel) => labels.includes(orderedLabel));
 }

@@ -27,9 +27,11 @@ function normalizeShared({ title, text, url }) {
  * Reads a launch URL's query string. Returns null when it carries nothing for Capture, otherwise
  * `{ capture, shared }`: `capture` is the template key asked for ('' when the parameter is present but empty, meaning
  * "show the template list"; null when absent) and `shared` is `{ title, text, url }` or null when nothing was shared.
+ * @param {any} [search]
  */
 function parseLaunchParams(search) {
   const params = new URLSearchParams(search || '');
+  /** @param {any} [name] */
   const field = (name) => (params.get(name) || '').slice(0, MAX_FIELD).trim();
   const shared = normalizeShared({ title: field('title'), text: field('text'), url: field('url') });
   const hasShared = !!(shared.title || shared.text || shared.url);
@@ -56,10 +58,13 @@ function sharedAnnotation({ title, url } = {}) {
  * is untrusted, a line that would become a heading (stars at the start of a line) or a `#+` keyword or block line
  * gets a leading comma, the same escape org uses inside blocks, so shared text can never change the document's
  * structure: a shared bullet list written with `* ` would otherwise turn into headings.
+ * @param {any} [value]
+ * @param {any} [prefix]
  */
 function placeInsertedText(value, prefix) {
   const lines = String(value || '').replace(/\r\n?/g, '\n').split('\n');
   const lead = prefix.trim() === '' ? prefix : null; // null: the template's own text precedes it, so it cannot start a line
+  /** @param {any} [line] */
   const guard = (line) => {
     if (lead === null) return line;
     const startsHeading = lead === '' && /^\*+\s/.test(line);
@@ -73,9 +78,11 @@ function placeInsertedText(value, prefix) {
  * What a native shell hands the app when something is shared to it: `{ title, text, url, capture? }`, any of them possibly
  * missing, as `{ capture, shared }` in the form runLaunch takes. With no `capture` key the template list opens, as it does
  * for the web share target. The same limits and the same "address inside the text" handling as a share URL.
+ * @param {any} [payload]
  */
 function launchFromShare(payload) {
   const p = payload && typeof payload === 'object' ? payload : {};
+  /** @param {any} [value] */
   const field = (value) => (typeof value === 'string' ? value : '').slice(0, MAX_FIELD).trim();
   const shared = normalizeShared({ title: field(p.title), text: field(p.text), url: field(p.url) });
   const any = !!(shared.title || shared.text || shared.url);

@@ -38,15 +38,17 @@
  * on servers that don't support ETags, not a silent one.
  */
 
+/** @param {any} [config] */
 function authHeader(config) {
   const encoded = btoa(`${config.username}:${config.password}`);
   return { Authorization: `Basic ${encoded}` };
 }
 
+/** @param {any} [path] */
 function encodePath(path) {
   return path
     .split('/')
-    .map((segment) => encodeURIComponent(segment))
+    .map((/** @type {any} */ segment) => encodeURIComponent(segment))
     .join('/');
 }
 
@@ -55,6 +57,7 @@ function encodePath(path) {
  *  code is one byte, the standard technique for this conversion in a
  *  browser context; works identically under Node's own global btoa,
  *  which matches the same web standard, so this is testable directly
+ * @param {any} [buffer]
  *  under node:test too). */
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
@@ -65,6 +68,7 @@ function arrayBufferToBase64(buffer) {
 
 /** The inverse of arrayBufferToBase64 above -- atob (the standard,
  *  browser/Node-both-support-it decode) back to a binary string, then
+ * @param {any} [base64]
  *  one byte per character into a real Uint8Array. */
 function base64ToArrayBuffer(base64) {
   const binary = atob(base64);
@@ -73,12 +77,17 @@ function base64ToArrayBuffer(base64) {
   return bytes;
 }
 
+/**
+ * @param {any} [config]
+ * @param {any} [path]
+ */
 function fileUrl(config, path) {
   const base = config.baseUrl.replace(/\/+$/, '');
   const cleanPath = encodePath(path.replace(/^\/+/, ''));
   return `${base}/${cleanPath}`;
 }
 
+/** @param {any} [getConfig] */
 function requireConfig(getConfig) {
   const config = getConfig();
   if (!config || !config.baseUrl || !config.username) {
@@ -89,6 +98,8 @@ function requireConfig(getConfig) {
 
 /** Wraps fetch so a CORS-blocked or otherwise unreachable request
  *  surfaces as an explanatory error instead of a bare "Failed to fetch"
+ * @param {any} [url]
+ * @param {any} [opts]
  *  that gives no hint about what's actually wrong. */
 async function fetchWithHint(url, opts) {
   try {
@@ -104,6 +115,7 @@ async function fetchWithHint(url, opts) {
   }
 }
 
+/** @param {any} [res] */
 function webdavErrorMessage(res) {
   if (res.status === 401) return 'WebDAV server rejected the credentials \u2014 check them in Settings.';
   if (res.status === 403) return 'WebDAV access forbidden \u2014 check the account/app-password permissions.';
@@ -137,6 +149,8 @@ function webdavErrorMessage(res) {
  *  narrowly checking for just one. Only a genuine, unexpected failure
  *  (401/403/500/...) actually throws. `path` itself (the file, not a
  *  directory) is never MKCOL'd -- only the directory components
+ * @param {any} [config]
+ * @param {any} [path]
  *  before its own final segment. */
 async function ensureIntermediateDirectories(config, path) {
   const segments = path.split('/');
@@ -168,6 +182,7 @@ async function ensureIntermediateDirectories(config, path) {
  * prefix-agnostic tag matching, since the WebDAV spec itself doesn't
  * mandate a specific prefix, only that these element LOCAL names exist
  * in the DAV: namespace.
+ * @param {any} [xml]
  */
 function parsePropfindResponse(xml) {
   const responseBlocks = xml.match(/<[\w-]*:?response[^>]*>[\s\S]*?<\/[\w-]*:?response>/gi) || [];
@@ -185,13 +200,16 @@ function parsePropfindResponse(xml) {
 /** The path portion of `config.baseUrl`, with a trailing slash, so an
  *  href from the server (also always trailing-slash-normalized for a
  *  directory) can be compared/stripped consistently regardless of
+ * @param {any} [config]
  *  whether either one happened to include a trailing slash already. */
 function baseUrlPath(config) {
   const url = new URL(config.baseUrl);
   return url.pathname.replace(/\/+$/, '') + '/';
 }
 
+/** @param {any} [getConfig] */
 export function createWebdavAdapter(getConfig) {
+  /** @param {any} [fileId] */
   async function readImpl(fileId) {
     const config = requireConfig(getConfig);
     const res = await fetchWithHint(fileUrl(config, fileId), {
@@ -209,6 +227,7 @@ export function createWebdavAdapter(getConfig) {
   /** Reads `fileId` as binary content (base64-encoded), for an image or
    *  any other non-text file -- separate from readImpl's own text
    *  decoding, which would corrupt binary data. Returns null for a 404,
+   * @param {any} [fileId]
    *  matching readImpl's own "not found" convention. */
   async function readBinaryImpl(fileId) {
     const config = requireConfig(getConfig);
@@ -223,6 +242,10 @@ export function createWebdavAdapter(getConfig) {
     return { base64: arrayBufferToBase64(buffer), hash: res.headers.get('ETag') || null };
   }
 
+  /**
+   * @param {any} [fileId]
+   * @param {any} [content]
+   */
   async function writeImpl(fileId, content) {
     const config = requireConfig(getConfig);
     const existing = await readImpl(fileId);
@@ -258,6 +281,8 @@ export function createWebdavAdapter(getConfig) {
    *  otherwise identical to writeImpl's own precondition logic, just
    *  decoding back to real binary bytes first (via
    *  base64ToArrayBuffer) rather than sending the base64 text itself
+   * @param {any} [fileId]
+   * @param {any} [base64Content]
    *  as the PUT body, which would corrupt the stored file. */
   async function writeBinaryImpl(fileId, base64Content) {
     const config = requireConfig(getConfig);
@@ -292,6 +317,7 @@ export function createWebdavAdapter(getConfig) {
    *  gone) is treated as success, not an error -- the end state (file
    *  gone) is already true, matching the GitHub adapter's own
    *  deleteImpl and how a delete action in this app generally behaves
+   * @param {any} [fileId]
    *  when there's nothing there to remove. */
   async function deleteImpl(fileId) {
     const config = requireConfig(getConfig);
@@ -354,6 +380,7 @@ export function createWebdavAdapter(getConfig) {
     delete: deleteImpl,
     list: listImpl,
     readBinary: readBinaryImpl,
+    /** @param {any} [fileId] */
     async exists(fileId) {
       const config = requireConfig(getConfig);
       const res = await fetchWithHint(fileUrl(config, fileId), {
@@ -365,6 +392,7 @@ export function createWebdavAdapter(getConfig) {
   };
 }
 
+/** @param {any} [config] */
 export function isWebdavConfigured(config) {
   return !!(config && config.baseUrl && config.username);
 }

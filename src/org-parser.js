@@ -39,6 +39,7 @@ const DEFAULT_TODO_KEYWORDS = ['TODO'];
 
 /** Whether a `#+KEY:` line defines a TODO sequence. `#+SEQ_TODO:` and `#+TYP_TODO:` are
  *  org's standard aliases of `#+TODO:` (a file using one would otherwise show its custom
+ * @param {any} [key]
  *  keywords as plain title text). */
 function isTodoSequenceKey(key) {
   return /^(TODO|SEQ_TODO|TYP_TODO)$/i.test(key);
@@ -63,6 +64,7 @@ const PLANNING_KEYWORD_RE = /(SCHEDULED|DEADLINE|CLOSED):\s*([<[][^>\]]+[>\]])/g
 const BLOCK_START_RE = /^\s*#\+begin_(\w+)(?:\s+(.*))?$/i;
 const BLOCK_END_RE = /^\s*#\+end_(\w+)\s*$/i;
 
+/** @param {any} [line] */
 function parsePlanningLine(line) {
   const planning = { scheduled: null, deadline: null, closed: null };
   let match;
@@ -78,10 +80,12 @@ function parsePlanningLine(line) {
   return found ? planning : null;
 }
 
+/** @param {any} [line] */
 function isPlanningLine(line) {
   return /^\s*(SCHEDULED|DEADLINE|CLOSED):/.test(line);
 }
 
+/** @param {any} [rest] */
 function parseTags(rest) {
   const m = TAGS_RE.exec(rest);
   if (!m) return { rest, tags: [] };
@@ -89,12 +93,17 @@ function parseTags(rest) {
   return { rest: rest.slice(0, m.index), tags };
 }
 
+/** @param {any} [rest] */
 function parsePriority(rest) {
   const m = PRIORITY_RE.exec(rest);
   if (!m) return { rest, priority: null };
   return { rest: rest.slice(m[0].length), priority: m[1] };
 }
 
+/**
+ * @param {any} [rest]
+ * @param {any} [todoKeywords]
+ */
 function parseTodoKeyword(rest, todoKeywords) {
   const spaceIdx = rest.indexOf(' ');
   const firstWord = spaceIdx === -1 ? rest : rest.slice(0, spaceIdx);
@@ -113,6 +122,7 @@ function parseTodoKeyword(rest, todoKeywords) {
  *  character (since @/!/ are reserved for the logging spec itself and
  *  can never themselves be a fast-key), so splitting on "the first
  *  character that isn't one of those" cleanly separates the two parts
+ * @param {any} [token]
  *  regardless of which are actually present. */
 function parseTodoKeywordToken(token) {
   const m = /^([^\s(]+)(?:\(([^)]*)\))?$/.exec(token);
@@ -131,10 +141,11 @@ function parseTodoKeywordToken(token) {
  *  metadata, keyed by the bare keyword. `keySpecs`/`logSpecs` only ever
  *  contain entries for keywords that actually specified one -- a
  *  keyword with neither present at all, not present as null, so a
+ * @param {any} [value]
  *  caller can use straightforward `in`/property-access checks. */
 function parseTodoSpecValue(value) {
   const hasBar = value.includes('|');
-  const [todoPart, donePart = ''] = value.split('|').map((s) => s.trim());
+  const [todoPart, donePart = ''] = value.split('|').map((/** @type {any} */ s) => s.trim());
   let todoTokens = todoPart.split(/\s+/).filter(Boolean).map(parseTodoKeywordToken);
   let doneTokens = donePart.split(/\s+/).filter(Boolean).map(parseTodoKeywordToken);
   if (!hasBar && todoTokens.length > 0) {
@@ -149,8 +160,8 @@ function parseTodoSpecValue(value) {
     if (t.logSpec) logSpecs[t.keyword] = t.logSpec;
   }
   return {
-    todoKeywords: todoTokens.map((t) => t.keyword),
-    doneKeywords: doneTokens.map((t) => t.keyword),
+    todoKeywords: todoTokens.map((/** @type {any} */ t) => t.keyword),
+    doneKeywords: doneTokens.map((/** @type {any} */ t) => t.keyword),
     keySpecs,
     logSpecs,
   };
@@ -344,6 +355,7 @@ function parseOrg(text, opts = {}) {
  * `node.bodyLines` (raw text) for the document node and every heading.
  * Additive only — bodyLines remains the serialization source of truth, so
  * this can't introduce a round-trip regression.
+ * @param {any} [node]
  */
 function attachBody(node) {
   node.body = parseBody(node.bodyLines || []);
@@ -352,6 +364,7 @@ function attachBody(node) {
 
 // ---- serialize -------------------------------------------------------
 
+/** @param {any} [node] */
 function serializeHeadingLine(node) {
   const stars = '*'.repeat(node.level);
   const parts = [stars];
@@ -365,6 +378,7 @@ function serializeHeadingLine(node) {
   return line;
 }
 
+/** @param {any} [planning] */
 function serializePlanningLine(planning) {
   if (!planning) return null;
   const parts = [];
@@ -374,28 +388,37 @@ function serializePlanningLine(planning) {
   return parts.length ? parts.join(' ') : null;
 }
 
-/** A fingerprint of the property fields, to tell whether they still match what was read from the file. */
+/**
+ * A fingerprint of the property fields, to tell whether they still match what was read from the file.
+ * @param {any} [node]
+ */
 function propertiesSignature(node) {
   const order = node.propertyOrder || [];
   const props = node.properties || {};
-  return JSON.stringify(order.map((key) => [key, props[key]]));
+  return JSON.stringify(order.map((/** @type {string} */ key) => [key, props[key]]));
 }
 
-/** A property written from scratch: `:KEY: value`, or just `:KEY:` when the value is empty (as org writes it). */
+/**
+ * A property written from scratch: `:KEY: value`, or just `:KEY:` when the value is empty (as org writes it).
+ * @param {any} [key]
+ * @param {any} [value]
+ */
 function canonicalPropertyLine(key, value, indent = '') {
   return value === '' || value == null ? `${indent}:${key}:` : `${indent}:${key}: ${value}`;
 }
 
+/** @param {any} [line] */
 const leadingSpace = (line) => (/^\s*/.exec(line) || [''])[0];
 
 /** The properties drawer as lines. A property that was not touched keeps the
  *  line it was read from, spacing and all; one that is new or changed is
+ * @param {any} [node]
  *  written fresh, in the drawer's own indentation. */
 function propertiesDrawerLines(node) {
   const order = node.propertyOrder || [];
   if (!order.length) return [];
   const raw = node.raw;
-  const first = raw && raw.drawers.find((d) => d.type === 'properties');
+  const first = raw && raw.drawers.find((/** @type {any} */ d) => d.type === 'properties');
   const indent = first ? leadingSpace(first.lines[0]) : '';
   const lines = [`${indent}:PROPERTIES:`];
   for (const key of order) {
@@ -406,10 +429,11 @@ function propertiesDrawerLines(node) {
   return lines;
 }
 
+/** @param {any} [node] */
 function logbookDrawerLines(node) {
   const log = node.logbookLines || [];
   if (!log.length) return [];
-  const first = node.raw && node.raw.drawers.find((d) => d.type === 'logbook');
+  const first = node.raw && node.raw.drawers.find((/** @type {any} */ d) => d.type === 'logbook');
   const indent = first ? leadingSpace(first.lines[0]) : '';
   return [`${indent}:LOGBOOK:`, ...log, `${indent}:END:`];
 }
@@ -419,6 +443,7 @@ function logbookDrawerLines(node) {
  *  part is the original text when its fields are unchanged since the file was
  *  read, and regenerated only when they were edited. The one place that
  *  decides this, so the serializer and the line-number lookups below cannot
+ * @param {any} [node]
  *  disagree about how many lines a heading takes. */
 function headingPreambleLines(node) {
   const raw = node.raw;
@@ -436,13 +461,17 @@ function headingPreambleLines(node) {
   if (propsUnchanged && logUnchanged) {
     for (const drawer of raw.drawers) lines.push(...drawer.lines); // exactly as read: order, indentation, repeats, empty drawers
   } else {
-    const keep = (type) => raw.drawers.filter((d) => d.type === type).flatMap((d) => d.lines);
+    const keep = (/** @type {any} */ type) => raw.drawers.filter((/** @type {any} */ d) => d.type === type).flatMap((/** @type {any} */ d) => d.lines);
     lines.push(...(propsUnchanged ? keep('properties') : propertiesDrawerLines(node)));
     lines.push(...(logUnchanged ? keep('logbook') : logbookDrawerLines(node)));
   }
   return lines;
 }
 
+/**
+ * @param {any} [node]
+ * @param {any} [out]
+ */
 function serializeNode(node, out) {
   if (node.type === 'heading') {
     out.push(...headingPreambleLines(node));
@@ -454,12 +483,13 @@ function serializeNode(node, out) {
   throw new Error(`serializeNode: unsupported node type ${node.type}`);
 }
 
+/** @param {any} [doc] */
 function serializeOrg(doc) {
   const out = [];
   const bodyLines = doc.bodyLines || [];
   const orderedKeywords = doc.keywords
-    .map((kw, originalIndex) => ({ kw, originalIndex }))
-    .sort((a, b) => {
+    .map((/** @type {any} */ kw, /** @type {any} */ originalIndex) => ({ kw, originalIndex }))
+    .sort((/** @type {any} */ a, /** @type {any} */ b) => {
       const ai = a.kw.bodyLineIndex ?? 0;
       const bi = b.kw.bodyLineIndex ?? 0;
       return ai !== bi ? ai - bi : a.originalIndex - b.originalIndex;
@@ -482,6 +512,7 @@ function serializeOrg(doc) {
  *  all the way down) back to org text -- unlike serializeOrg, which
  *  always serializes a WHOLE document. Needed for org-cut-subtree
  *  (C-c C-x C-w): the cut content copied to the clipboard is this
+ * @param {any} [heading]
  *  heading's own text alone, not the surrounding document around it. */
 function serializeHeadingSubtree(heading) {
   const out = [];
@@ -500,10 +531,13 @@ function serializeHeadingSubtree(heading) {
  * could silently drift out of sync with what serializeOrg actually
  * produces. Returns -1 if targetHeading isn't reachable from doc at
  * all (e.g. a stale reference to a heading that's since been deleted).
+ * @param {any} [doc]
+ * @param {any} [targetHeading]
  */
 function findHeadingLineNumber(doc, targetHeading) {
   let count = doc.keywords.length + (doc.bodyLines ? doc.bodyLines.length : 0);
 
+  /** @param {any} [node] */
   function walk(node) {
     if (node === targetHeading) return true;
     count += headingPreambleLines(node).length; // heading line, planning line and drawers, exactly as serialized
@@ -529,10 +563,13 @@ function findHeadingLineNumber(doc, targetHeading) {
  * (findHeadingByOutlinePath) would incorrectly treat renaming or
  * re-leveling the narrowed heading itself as "it's gone" -- this
  * finds it by its own known position instead, which survives both.
+ * @param {any} [doc]
+ * @param {any} [targetLine]
  */
 function findHeadingAtLine(doc, targetLine) {
   let count = doc.keywords.length + (doc.bodyLines ? doc.bodyLines.length : 0);
 
+  /** @param {any} [node] */
   function walk(node) {
     if (count === targetLine) return node;
     count += headingPreambleLines(node).length; // heading line, planning line and drawers, exactly as serialized

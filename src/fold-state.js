@@ -79,6 +79,8 @@ import { showLevelsDepth } from './startup-config.js';
  * 'showeverything' — true for 'overview'/'content'/'showall' alike (the
  * first two don't even show the body those drawers/blocks live under, so
  * this mostly matters once 'showall' is in play).
+ * @param {any} [doc]
+ * @param {any} [startupConfig]
  */
 function applyStartupVisibility(doc, startupConfig, archiveVisibility = 'archived') {
   const collapsedDefault = startupConfig.visibility === 'overview';
@@ -86,6 +88,10 @@ function applyStartupVisibility(doc, startupConfig, archiveVisibility = 'archive
   const drawersHiddenDefault = startupConfig.visibility !== 'showeverything';
   const showLevels = showLevelsDepth(startupConfig.visibility);
 
+  /**
+   * @param {any} [nodes]
+   * @param {any} [depth]
+   */
   function walk(nodes, depth) {
     for (const node of nodes) {
       if (node.type !== 'heading') continue;
@@ -124,6 +130,7 @@ function applyStartupVisibility(doc, startupConfig, archiveVisibility = 'archive
  * shouldn't prevent its parent from counting as "fully expanded", since
  * visibility cycling deliberately leaves archived items alone (see
  * expandFully below).
+ * @param {any} [heading]
  */
 function isFullyExpanded(heading, opts = {}) {
   const { archiveVisibility = 'archived' } = opts;
@@ -149,6 +156,7 @@ function isFullyExpanded(heading, opts = {}) {
  *  the fix for a real bug: without it, properties revealed once via a
  *  full expand stayed visible forever afterward, through every
  *  subsequent collapse/one-level/re-expand, with no way to ever hide
+ * @param {any} [heading]
  *  them again for the rest of the session. */
 function expandOneLevel(heading) {
   heading.collapsed = false;
@@ -181,6 +189,7 @@ function expandOneLevel(heading) {
  * a single heading to "fully expanded" reveal everything about it — even
  * in a file whose #+STARTUP: line says 'showall' (properties/blocks
  * folded by default there) rather than 'showeverything'.
+ * @param {any} [heading]
  */
 function expandFully(heading, opts = {}) {
   const { archiveVisibility = 'archived' } = opts;
@@ -221,6 +230,7 @@ function expandFully(heading, opts = {}) {
  *  were rendered inline on the heading's own row precisely so they'd
  *  be visible without opening the action menu, which is exactly what
  *  made the stale flag a real, visible bug rather than a harmless
+ * @param {any} [heading]
  *  internal inconsistency nobody would ever notice. */
 function collapseFully(heading) {
   heading.collapsed = true;
@@ -261,6 +271,7 @@ function collapseFully(heading) {
  * variable rather than a rare modifier-key combination.)
  *
  * Returns which state the heading ended up in: 'children' | 'full' | 'collapsed'.
+ * @param {any} [heading]
  */
 function cycleFoldLevel(heading, opts = {}) {
   const { archiveVisibility = 'archived' } = opts;

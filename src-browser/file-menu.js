@@ -20,16 +20,21 @@ export function closeFileMenu() {
   renderFileMenu();
 }
 
+/**
+ * @param {any} [documentId]
+ * @param {any} [storageKind]
+ */
 export function isCurrentDocument(documentId, storageKind) {
   return !!S.state.doc && S.state.documentId === documentId && S.state.storageKind === storageKind;
 }
 
+/** @param {any} [container] */
 export async function renderRecentFilesSection(container) {
   const stored = await getRecentFiles(kv);
   const displayed = stored
-    .filter((f) => !isCurrentDocument(f.documentId, f.storageKind))
+    .filter((/** @type {any} */ f) => !isCurrentDocument(f.documentId, f.storageKind))
     .slice(0, RECENT_FILES_DISPLAY_LIMIT)
-    .sort((a, b) => a.documentId.localeCompare(b.documentId));
+    .sort((/** @type {any} */ a, /** @type {any} */ b) => a.documentId.localeCompare(b.documentId));
   if (displayed.length === 0) return;
 
   const sep = document.createElement('div');
@@ -67,7 +72,11 @@ export async function renderRecentFilesSection(container) {
   }
 }
 
-/** Long-press on one entry: asks, then drops just that entry from the list. */
+/**
+ * Long-press on one entry: asks, then drops just that entry from the list.
+ * @param {any} [documentId]
+ * @param {any} [storageKind]
+ */
 export async function confirmRemoveRecentFile(documentId, storageKind) {
   if (!(await confirmDialog(`Remove "${documentId}" from the recently opened list?`, { confirmLabel: 'Remove' }))) return;
   await removeRecentFile(kv, documentId, storageKind);
@@ -94,6 +103,8 @@ export async function confirmClearRecentFiles() {
  *  File System Access API isn't available at all, e.g. iOS Safari) has
  *  no such handle to reuse and genuinely can't be reopened without the
  *  person re-selecting it themselves -- explained rather than silently
+ * @param {any} [documentId]
+ * @param {any} [storageKind]
  *  failing or pretending it opened. */
 export async function openRecentFile(documentId, storageKind) {
   if (storageKind === 'github') {

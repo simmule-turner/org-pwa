@@ -46,6 +46,8 @@ const ARCHIVE_TAG = 'ARCHIVE';
  *  way), or null if none exists. Every property read/write in this
  *  app goes through this (or getProperty below) rather than a direct
  *  `properties[key]` lookup, so a differently-cased existing property
+ * @param {any} [properties]
+ * @param {any} [key]
  *  is never silently missed or duplicated. */
 function findPropertyKey(properties, key) {
   if (key in properties) return key; // fast path: exact match, the overwhelmingly common case
@@ -60,6 +62,8 @@ function findPropertyKey(properties, key) {
  *  and `heading.properties.custom_id` are the same property as far as
  *  real org is concerned; this returns undefined if neither is set,
  *  matching a direct property-object lookup's own undefined-for-
+ * @param {any} [heading]
+ * @param {any} [key]
  *  missing convention. */
 function getProperty(heading, key) {
   if (!heading.properties) return undefined;
@@ -67,6 +71,11 @@ function getProperty(heading, key) {
   return foundKey === null ? undefined : heading.properties[foundKey];
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [key]
+ * @param {any} [value]
+ */
 function setProperty(heading, key, value) {
   const existingKey = findPropertyKey(heading.properties, key);
   if (existingKey === null) {
@@ -84,23 +93,28 @@ function setProperty(heading, key, value) {
   // real org's own confirmed org-entry-put behavior exactly.
   delete heading.properties[existingKey];
   heading.properties[key] = value;
-  heading.propertyOrder = heading.propertyOrder.map((k) => (k === existingKey ? key : k));
+  heading.propertyOrder = heading.propertyOrder.map((/** @type {any} */ k) => (k === existingKey ? key : k));
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [key]
+ */
 function deleteProperty(heading, key) {
   const existingKey = findPropertyKey(heading.properties, key);
   if (existingKey !== null) {
     delete heading.properties[existingKey];
-    heading.propertyOrder = heading.propertyOrder.filter((k) => k !== existingKey);
+    heading.propertyOrder = heading.propertyOrder.filter((/** @type {any} */ k) => k !== existingKey);
   }
 }
 
 /** All of `heading`'s properties as `key: value` lines, one per property,
  *  in their original drawer order — for showing in a single editable text
  *  block (the same pattern already used for a heading's combined body
+ * @param {any} [heading]
  *  text), rather than a bespoke per-row add/edit/delete property UI. */
 function getPropertiesText(heading) {
-  return heading.propertyOrder.map((key) => `${key}: ${heading.properties[key]}`).join('\n');
+  return heading.propertyOrder.map((/** @type {string} */ key) => `${key}: ${heading.properties[key]}`).join('\n');
 }
 
 /**
@@ -112,6 +126,8 @@ function getPropertiesText(heading) {
  * half-finished edit (still typing a new property's key) shouldn't crash
  * the save. A key containing whitespace has the whitespace collapsed to
  * underscores, since org property-drawer keys can't contain spaces.
+ * @param {any} [heading]
+ * @param {any} [text]
  */
 function setPropertiesFromText(heading, text) {
   const properties = {};
@@ -131,6 +147,7 @@ function setPropertiesFromText(heading, text) {
   heading.propertyOrder = propertyOrder;
 }
 
+/** @param {any} [heading] */
 function cloneHeading(heading) {
   // structuredClone is fine here: the AST is plain data, no functions/cycles.
   return structuredClone(heading);
@@ -140,6 +157,9 @@ function cloneHeading(heading) {
  * Depth-first search for `target` (by reference) inside `doc`/`root`.
  * Returns the path of ancestor headings from outermost to innermost,
  * NOT including `target` itself. Returns null if not found.
+ * @param {any} [root]
+ * @param {any} [target]
+ * @param {any} [path]
  */
 function findAncestorPath(root, target, path = []) {
   const children = root.children || [];
@@ -154,6 +174,8 @@ function findAncestorPath(root, target, path = []) {
 /**
  * Finds the array that directly contains `target` and its index within it,
  * so callers can splice it out or replace it in place.
+ * @param {any} [root]
+ * @param {any} [target]
  */
 function findContainer(root, target) {
   const children = root.children || [];
@@ -166,9 +188,14 @@ function findContainer(root, target) {
   return null;
 }
 
-/** Shifts a subtree's level (and all descendants') by newLevel - node.level. */
+/**
+ * Shifts a subtree's level (and all descendants') by newLevel - node.level.
+ * @param {any} [node]
+ * @param {any} [newLevel]
+ */
 function shiftLevels(node, newLevel) {
   const delta = newLevel - node.level;
+  /** @param {any} [n] */
   const walk = (n) => {
     n.level += delta;
     for (const c of n.children || []) walk(c);
@@ -188,6 +215,7 @@ function shiftLevels(node, newLevel) {
  *  result is genuinely neither an active nor an inactive org
  *  timestamp, just plain text that happens to look like one. */
 function formatOrgTimestamp(date = new Date()) {
+  /** @param {any} [n] */
   const pad = (n) => String(n).padStart(2, '0');
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const y = date.getFullYear();
@@ -201,11 +229,13 @@ function formatOrgTimestamp(date = new Date()) {
 
 // ---- archive operations -----------------------------------------------
 
+/** @param {any} [heading] */
 function isArchivedInPlace(heading) {
   return heading.tags.includes(ARCHIVE_TAG);
 }
 
 /** True for anything that's been archived, either in-place or by having
+ * @param {any} [heading]
  *  landed in an archive file (identified by ARCHIVE_* properties). */
 function isArchived(heading) {
   return isArchivedInPlace(heading) || 'ARCHIVE_TIME' in heading.properties;
@@ -215,6 +245,7 @@ function isArchived(heading) {
  * Archive-in-place: tag the heading :ARCHIVE: and stamp ARCHIVE_TIME.
  * The subtree stays where it is; view layer is responsible for hiding
  * archived subtrees from agenda/TODO views by default (see requirements §7/§10).
+ * @param {any} [heading]
  */
 function archiveInPlace(heading, { now = new Date() } = {}) {
   if (!isArchivedInPlace(heading)) {
@@ -226,9 +257,10 @@ function archiveInPlace(heading, { now = new Date() } = {}) {
 
 /** Reverses archiveInPlace. Leaves ARCHIVE_TIME in place as a history
  *  breadcrumb rather than deleting it — deleting it silently would erase
+ * @param {any} [heading]
  *  the fact that this was ever archived. */
 function unarchiveInPlace(heading) {
-  heading.tags = heading.tags.filter((t) => t !== ARCHIVE_TAG);
+  heading.tags = heading.tags.filter((/** @type {any} */ t) => t !== ARCHIVE_TAG);
   return heading;
 }
 
@@ -241,6 +273,9 @@ function unarchiveInPlace(heading) {
  * and only remove the original afterward, once the write has actually
  * succeeded -- a network failure or permission problem can then never
  * silently lose the heading.
+ * @param {any} [sourceDoc]
+ * @param {any} [heading]
+ * @param {any} [sourceFilePath]
  */
 function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = {}) {
   const { now = new Date(), markDone = false, doneKeyword = 'DONE' } = opts;
@@ -249,7 +284,7 @@ function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = {}) {
   if (ancestors === null) {
     throw new Error('buildArchivedClone: heading not found in sourceDoc');
   }
-  const olpath = ancestors.map((h) => h.title).join('/');
+  const olpath = ancestors.map((/** @type {any} */ h) => h.title).join('/');
   const category = ancestors.length > 0 ? ancestors[0].title : heading.title || null;
 
   const clone = cloneHeading(heading);
@@ -284,7 +319,7 @@ function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = {}) {
   // org's own tag-storage convention everywhere else (":tag1:tag2:").
   // Omitted entirely when there's nothing to record, rather than
   // stamping an empty, meaningless value.
-  const inheritedTags = [...new Set(ancestors.flatMap((h) => h.tags || []))];
+  const inheritedTags = [...new Set(ancestors.flatMap((/** @type {any} */ h) => h.tags || []))];
   if (inheritedTags.length > 0) {
     setProperty(clone, 'ARCHIVE_ITAGS', ':' + inheritedTags.join(':') + ':');
   }
@@ -306,6 +341,9 @@ function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = {}) {
  * removal -- kept as this one combined convenience function for
  * existing callers that don't need buildArchivedClone's own
  * non-mutating write-before-remove safety separately.
+ * @param {any} [sourceDoc]
+ * @param {any} [heading]
+ * @param {any} [sourceFilePath]
  */
 function extractForArchive(sourceDoc, heading, sourceFilePath, opts = {}) {
   const clone = buildArchivedClone(sourceDoc, heading, sourceFilePath, opts);
@@ -324,6 +362,8 @@ function extractForArchive(sourceDoc, heading, sourceFilePath, opts = {}) {
  * entry, shifting its level (and its descendants') to level 1 so nesting
  * inside the original document doesn't leak into the archive file's own
  * heading depth.
+ * @param {any} [archiveDoc]
+ * @param {any} [extractedHeading]
  */
 function appendToArchive(archiveDoc, extractedHeading) {
   shiftLevels(extractedHeading, 1);
@@ -334,6 +374,10 @@ function appendToArchive(archiveDoc, extractedHeading) {
 /**
  * Convenience wrapper: archive `heading` out of `sourceDoc` and into
  * `archiveDoc` in one call.
+ * @param {any} [sourceDoc]
+ * @param {any} [archiveDoc]
+ * @param {any} [heading]
+ * @param {any} [sourceFilePath]
  */
 function archiveToSiblingFile(sourceDoc, archiveDoc, heading, sourceFilePath, opts = {}) {
   const extracted = extractForArchive(sourceDoc, heading, sourceFilePath, opts);
@@ -363,6 +407,7 @@ function archiveToSiblingFile(sourceDoc, archiveDoc, heading, sourceFilePath, op
  * every ARCHIVE_* property this app ever stamps, and removes the
  * ARCHIVE tag -- a restored heading must not stay tagged archived once
  * it's back in a live document.
+ * @param {any} [heading]
  */
 function buildRestoredClone(heading) {
   const clone = cloneHeading(heading);
@@ -380,6 +425,8 @@ function buildRestoredClone(heading) {
 /** Removes `heading` from `archiveDoc` and returns its restored clone
  *  (built via buildRestoredClone) -- the combined convenience wrapper,
  *  same relationship buildArchivedClone/extractForArchive already
+ * @param {any} [archiveDoc]
+ * @param {any} [heading]
  *  have to each other. */
 function restoreFromArchive(archiveDoc, heading) {
   const clone = buildRestoredClone(heading);
@@ -406,6 +453,7 @@ const DEFAULT_ARCHIVE_LOCATION = '%s_archive::';
  * "archive at that file's top level." A location with no "::" at all
  * is treated as filePart-only with an empty headlinePart, rather than
  * throwing on malformed input.
+ * @param {any} [location]
  */
 function parseArchiveLocation(location) {
   const idx = String(location).indexOf('::');
@@ -431,6 +479,8 @@ function parseArchiveLocation(location) {
  * directory to expand, so a location like "~/org/archive.org" is
  * passed through as-is and needs to already be a valid id/path for
  * whichever storage backend (local/GitHub/WebDAV) is actually active.
+ * @param {any} [filePart]
+ * @param {any} [currentFileId]
  */
 function resolveArchiveFileId(filePart, currentFileId) {
   if (!filePart) return null;
@@ -452,10 +502,13 @@ function resolveArchiveFileId(filePart, currentFileId) {
  * the file keyword to a global Emacs variable of the same name -- not
  * meaningful here, since this app has no persistent Emacs-style global
  * configuration that would exist outside any particular file.
+ * @param {any} [doc]
+ * @param {any} [heading]
  */
 function getArchiveLocation(doc, heading) {
   const ownArchive = getProperty(heading, 'ARCHIVE');
   if (ownArchive) return ownArchive;
+  /** @param {any} [k] */
   const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'ARCHIVE');
   if (kw) return kw.value;
   return DEFAULT_ARCHIVE_LOCATION;
@@ -466,6 +519,8 @@ function getArchiveLocation(doc, heading) {
  *  heading-edit.js's own createHeading, since heading-edit.js already
  *  imports FROM this file (findContainer/findAncestorPath/shiftLevels),
  *  and importing back would create a circular dependency between the
+ * @param {any} [title]
+ * @param {any} [level]
  *  two modules. */
 function blankArchiveTargetHeading(title, level) {
   return {
@@ -511,6 +566,9 @@ function blankArchiveTargetHeading(title, level) {
  * is the special, unrelated "datetree/" prefix, a wholly different
  * date-tree mechanism); this only ever targets a single named
  * heading, at whatever single level its own asterisks specify.
+ * @param {any} [targetDoc]
+ * @param {any} [extractedHeading]
+ * @param {any} [headlinePart]
  */
 function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart) {
   const trimmedPath = String(headlinePart || '').trim();
@@ -535,8 +593,12 @@ function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart) {
  *  own top level) for the first heading at exactly `level` with
  *  exactly `title` -- insertAtArchiveLocation's own helper, since a
  *  level-2+ archive target could itself be nested anywhere, not
+ * @param {any} [doc]
+ * @param {any} [level]
+ * @param {any} [title]
  *  necessarily at the document's own top level. */
 function findHeadingAtLevel(doc, level, title) {
+  /** @param {any} [nodes] */
   function walk(nodes) {
     for (const node of nodes) {
       if (node.level === level && node.title === title) return node;

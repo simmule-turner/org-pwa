@@ -56,11 +56,13 @@ const SNIPPET_RADIUS = 40;
  *  RegExp. Throws a plain Error with a clear message on an invalid
  *  regex pattern, rather than silently matching nothing — an unparsable
  *  pattern and "no results" are different situations a caller should be
+ * @param {any} [query]
+ * @param {any} [useRegex]
  *  able to tell apart and surface differently. */
 function buildMatcher(query, useRegex) {
   if (!useRegex) {
     const q = query.toLowerCase();
-    return (text) => text.toLowerCase().includes(q);
+    return (/** @type {string} */ text) => text.toLowerCase().includes(q);
   }
   let re;
   try {
@@ -68,7 +70,7 @@ function buildMatcher(query, useRegex) {
   } catch (err) {
     throw new Error('Invalid regex: ' + err.message);
   }
-  return (text) => re.test(text);
+  return (/** @type {string} */ text) => re.test(text);
 }
 
 /** Same idea as buildMatcher, but returns the position of the match (for
@@ -86,6 +88,9 @@ function buildMatcher(query, useRegex) {
  *  correct in regex mode. {index: -1, length: 0} when there's no
  *  match, matching String.indexOf's own -1 convention for the index
  *  half.
+ * @param {any} [text]
+ * @param {any} [query]
+ * @param {any} [useRegex]
  */
 function findMatchIndex(text, query, useRegex) {
   if (!useRegex) {
@@ -114,6 +119,9 @@ function findMatchIndex(text, query, useRegex) {
  *  left over to highlight) -- callers should treat that as "render
  *  plain, no highlight" rather than trying to highlight a zero-length
  *  span at position -1.
+ * @param {any} [text]
+ * @param {any} [query]
+ * @param {any} [useRegex]
  */
 function makeSnippet(text, query, useRegex) {
   if (!query) return { text: text.length > 80 ? text.slice(0, 80) + '\u2026' : text, highlightStart: -1, highlightLength: 0 };
@@ -195,6 +203,7 @@ const KV_TOKEN_RE = /^([+-]?)([A-Za-z_][\w-]*):(.+)$/; // optional leading sign 
  * "tag" (an unusual choice; org itself expresses tags via a heading's
  * own `:tag1:tag2:` suffix, never a drawer property) isn't reachable
  * via `tag:value`, the one non-additive edge of this design.
+ * @param {any} [query]
  */
 function parseFilterQuery(query) {
   const tokens = query.split(/\s+/).filter(Boolean);
@@ -262,6 +271,9 @@ function parseFilterQuery(query) {
  *  `useInheritance`) every ancestor's own tags too, matching real
  *  org's own tag-inheritance model exactly: "if a heading has a
  *  certain tag, all subheadings inherit the tag as well." Without
+ * @param {any} [heading]
+ * @param {any} [ancestors]
+ * @param {any} [useInheritance]
  *  inheritance, this is just `heading.tags` itself. */
 function effectiveTags(heading, ancestors, useInheritance) {
   if (!useInheritance) return heading.tags || [];
@@ -278,33 +290,47 @@ function effectiveTags(heading, ancestors, useInheritance) {
  *  heading doesn't define the property itself at all. Returns null if
  *  nothing in the chain defines it. Key lookup is case-insensitive,
  *  matching how property filters elsewhere in this app already work.
+ * @param {any} [heading]
+ * @param {any} [ancestors]
+ * @param {any} [key]
+ * @param {any} [useInheritance]
  */
 function effectivePropertyValue(heading, ancestors, key, useInheritance) {
+  /** @param {any} [k] */
   const ownKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === key.toLowerCase());
   if (ownKey) return heading.properties[ownKey];
   if (!useInheritance) return null;
   for (let i = ancestors.length - 1; i >= 0; i--) {
     // nearest ancestor first
     const ancestor = ancestors[i];
+    /** @param {any} [k] */
     const ancestorKey = (ancestor.propertyOrder || []).find((k) => k.toLowerCase() === key.toLowerCase());
     if (ancestorKey) return ancestor.properties[ancestorKey];
   }
   return null;
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [filters]
+ * @param {any} [ancestors]
+ * @param {any} [useTagInheritance]
+ * @param {any} [usePropertyInheritance]
+ * @param {any} [keywordMatchers]
+ */
 function headingPassesFilters(heading, filters, ancestors, useTagInheritance, usePropertyInheritance, keywordMatchers) {
   for (const filter of filters) {
     let matched;
     if (filter.type === 'tag') {
       const tags = effectiveTags(heading, ancestors, useTagInheritance);
-      matched = filter.values.some((v) => tags.some((t) => t.toLowerCase() === v.toLowerCase()));
+      matched = filter.values.some((/** @type {any} */ v) => tags.some((/** @type {any} */ t) => t.toLowerCase() === v.toLowerCase()));
     } else if (filter.type === 'todo') {
-      matched = !!heading.todo && filter.values.some((v) => heading.todo.toLowerCase() === v.toLowerCase());
+      matched = !!heading.todo && filter.values.some((/** @type {any} */ v) => heading.todo.toLowerCase() === v.toLowerCase());
     } else if (filter.type === 'priority') {
-      matched = !!heading.priority && filter.values.some((v) => heading.priority.toLowerCase() === v.toLowerCase());
+      matched = !!heading.priority && filter.values.some((/** @type {any} */ v) => heading.priority.toLowerCase() === v.toLowerCase());
     } else if (filter.type === 'property') {
       const propValue = effectivePropertyValue(heading, ancestors, filter.key, usePropertyInheritance);
-      matched = propValue !== null && filter.values.some((v) => propValue.toLowerCase().includes(v.toLowerCase()));
+      matched = propValue !== null && filter.values.some((/** @type {any} */ v) => propValue.toLowerCase().includes(v.toLowerCase()));
     } else if (filter.type === 'keyword') {
       matched = headingContainsKeyword(heading, keywordMatchers.get(filter.value));
     } else {
@@ -316,6 +342,10 @@ function headingPassesFilters(heading, filters, ancestors, useTagInheritance, us
   return true;
 }
 
+/**
+ * @param {any} [items]
+ * @param {any} [matches]
+ */
 function listContainsKeyword(items, matches) {
   for (const item of items) {
     if (matches(item.text)) return true;
@@ -326,6 +356,10 @@ function listContainsKeyword(items, matches) {
   return false;
 }
 
+/**
+ * @param {any} [bodyNodes]
+ * @param {any} [matches]
+ */
 function bodyContainsKeyword(bodyNodes, matches) {
   for (const node of bodyNodes || []) {
     if (node.type === 'paragraph') {
@@ -355,10 +389,12 @@ function bodyContainsKeyword(bodyNodes, matches) {
  *  gate, so building full result objects with snippets just to check
  *  .length>0 would be pure waste. The real cost of the duplication:
  *  if what counts as "searchable" content ever changes, both this and
+ * @param {any} [heading]
+ * @param {any} [matches]
  *  searchTextWithinHeading's own walk need updating together. */
 function headingContainsKeyword(heading, matches) {
   if (matches(heading.title)) return true;
-  if ((heading.tags || []).some((t) => matches(t))) return true;
+  if ((heading.tags || []).some((/** @type {any} */ t) => matches(t))) return true;
   if (heading.todo && matches(heading.todo)) return true;
   if (heading.priority && matches(heading.priority)) return true;
   for (const key of heading.propertyOrder || []) {
@@ -371,6 +407,14 @@ function headingContainsKeyword(heading, matches) {
   return bodyContainsKeyword(heading.body, matches);
 }
 
+/**
+ * @param {any} [results]
+ * @param {any} [heading]
+ * @param {any} [items]
+ * @param {any} [query]
+ * @param {any} [matches]
+ * @param {any} [useRegex]
+ */
 function walkListForMatches(results, heading, items, query, matches, useRegex) {
   for (const item of items) {
     if (matches(item.text)) {
@@ -382,6 +426,14 @@ function walkListForMatches(results, heading, items, query, matches, useRegex) {
   }
 }
 
+/**
+ * @param {any} [results]
+ * @param {any} [heading]
+ * @param {any} [bodyNodes]
+ * @param {any} [query]
+ * @param {any} [matches]
+ * @param {any} [useRegex]
+ */
 function walkBodyForMatches(results, heading, bodyNodes, query, matches, useRegex) {
   for (const node of bodyNodes || []) {
     if (node.type === 'paragraph') {
@@ -416,9 +468,15 @@ function walkBodyForMatches(results, heading, bodyNodes, query, matches, useRege
  *  per include-type keyword filter (see searchOneDocument below), so a
  *  heading matching several required keywords in different fields
  *  correctly produces one separately-highlighted row per match rather
+ * @param {any} [results]
+ * @param {any} [node]
+ * @param {any} [q]
+ * @param {any} [matches]
+ * @param {any} [useRegex]
  *  than a single row that can only highlight one of them. */
 function searchTextWithinHeading(results, node, q, matches, useRegex) {
   const titleMatch = matches(node.title);
+  /** @param {any} [t] */
   const tagMatch = (node.tags || []).some((t) => matches(t));
   const todoMatch = !!node.todo && matches(node.todo);
   const priorityMatch = !!node.priority && matches(node.priority);
@@ -460,11 +518,21 @@ function searchTextWithinHeading(results, node, q, matches, useRegex) {
  *  keywordMatchers is a value -> matcher Map built ONCE by the caller
  *  (not once per heading), so a query with many keyword terms doesn't
  *  recompile a regex (or rebuild a closure) on every single heading in
+ * @param {any} [doc]
+ * @param {any} [filters]
+ * @param {any} [keywordMatchers]
+ * @param {any} [useRegex]
+ * @param {any} [useTagInheritance]
+ * @param {any} [usePropertyInheritance]
  *  the document. */
 function searchOneDocument(doc, filters, keywordMatchers, useRegex, useTagInheritance, usePropertyInheritance) {
   const results = [];
-  const includeKeywords = filters.filter((f) => f.type === 'keyword' && f.mode === 'include');
+  const includeKeywords = filters.filter((/** @type {any} */ f) => f.type === 'keyword' && f.mode === 'include');
 
+  /**
+   * @param {any} [nodes]
+   * @param {any} [ancestors]
+   */
   function walk(nodes, ancestors) {
     for (const node of nodes) {
       if (node.type !== 'heading') continue;
@@ -500,6 +568,8 @@ function searchOneDocument(doc, filters, keywordMatchers, useRegex, useTagInheri
  *  pattern per heading. Building every matcher here, before any
  *  results are computed, is also what makes an invalid regex throw
  *  once with a clear error rather than failing deep inside the walk on
+ * @param {any} [filters]
+ * @param {any} [useRegex]
  *  whichever heading happens to trigger it first. */
 function buildKeywordMatchers(filters, useRegex) {
   const map = new Map();
@@ -509,6 +579,10 @@ function buildKeywordMatchers(filters, useRegex) {
   return map;
 }
 
+/**
+ * @param {any} [doc]
+ * @param {any} [query]
+ */
 export function searchDocument(doc, query, opts = {}) {
   const { useRegex = false, useTagInheritance = true, usePropertyInheritance = false } = opts;
   const trimmed = String(query).trim();
@@ -520,6 +594,10 @@ export function searchDocument(doc, query, opts = {}) {
   return searchOneDocument(doc, filters, keywordMatchers, useRegex, useTagInheritance, usePropertyInheritance);
 }
 
+/**
+ * @param {any} [docs]
+ * @param {any} [query]
+ */
 export function searchDocuments(docs, query, opts = {}) {
   const { useRegex = false, useTagInheritance = true, usePropertyInheritance = false } = opts;
   const trimmed = String(query).trim();
@@ -540,6 +618,7 @@ export function searchDocuments(docs, query, opts = {}) {
 /** Collects every distinct property name a parsed match query references,
  *  so buildMatchEntry below only has to resolve inheritance for the
  *  properties actually in play, not every property that exists anywhere
+ * @param {any} [parsedGroups]
  *  in the document. */
 function collectPropertyNames(parsedGroups) {
   const names = new Set();
@@ -558,6 +637,11 @@ const PSEUDO_PROPERTY_NAMES = new Set(['TODO', 'LEVEL', 'PRIORITY', 'CATEGORY'])
  *  named in `propertyNames` through the SAME inheritance logic
  *  (effectiveTags/effectivePropertyValue) the existing tag:/key: filter
  *  syntax above already uses -- not a second, separate implementation of
+ * @param {any} [heading]
+ * @param {any} [ancestors]
+ * @param {any} [propertyNames]
+ * @param {any} [useTagInheritance]
+ * @param {any} [usePropertyInheritance]
  *  the same idea. */
 function buildMatchEntry(heading, ancestors, propertyNames, useTagInheritance, usePropertyInheritance) {
   const properties = {};
@@ -585,6 +669,8 @@ function buildMatchEntry(heading, ancestors, propertyNames, useTagInheritance, u
  *  Every matching heading is purely a structured-filter result --
  *  there's no free-text keyword concept in this mode, so every result's
  *  own snippet is the heading title with nothing to highlight, matching
+ * @param {any} [docs]
+ * @param {any} [query]
  *  the existing "passed via structured filters" shape above exactly. */
 export function searchDocumentsByMatchQuery(docs, query, opts = {}) {
   const { useTagInheritance = true, usePropertyInheritance = false } = opts;
@@ -596,6 +682,10 @@ export function searchDocumentsByMatchQuery(docs, query, opts = {}) {
 
   const results = [];
   for (const { documentId, doc } of docs) {
+    /**
+     * @param {any} [nodes]
+     * @param {any} [ancestors]
+     */
     function walk(nodes, ancestors) {
       for (const node of nodes) {
         if (node.type !== 'heading') continue;

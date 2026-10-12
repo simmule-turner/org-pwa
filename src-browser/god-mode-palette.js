@@ -65,6 +65,7 @@ export function globalCycleFold() {
  *  (for code execution) a capability this app deliberately doesn't
  *  implement at all (see the README's own Known limitations). Told
  *  honestly rather than silently doing nothing or approximating
+ * @param {any} [reason]
  *  something misleading. */
 export function godModeNotSupported(reason) {
   setStatus(`God-mode: ${reason}`);
@@ -74,6 +75,7 @@ export function godModeNotSupported(reason) {
 /** Opens the File menu already on a specific step (Save As, Open) --
  *  shared by the palette's own Save as / Open commands and their
  *  matching god-mode chords (C-x C-w / C-x C-f), so both routes run
+ * @param {any} [step]
  *  through exactly the same code. */
 function openFileMenuAt(step) {
   openFileScreen(step);
@@ -97,6 +99,7 @@ function openFileMenuAt(step) {
  *
  * `opts` is passed straight through to createHeading (e.g. `{ todo:
  * 'TODO' }` for M-S-RET). No-op if there's no open document.
+ * @param {any} [opts]
  */
 function insertHeadingSmart(opts) {
   if (!S.state.doc) return;
@@ -339,6 +342,8 @@ export const GOD_MODE_ACTIONS = {
  *  read-only from the file's own buffer-read-only local variable ONLY
  *  if that variable itself changed -- otherwise a runtime C-x C-q
  *  toggle would be silently reverted, unlike real Emacs, where the
+ * @param {any} [previousVars]
+ * @param {any} [newVars]
  *  local variable only applies when the file is loaded. */
 export function reconcileReadOnlyAfterReparse(previousVars, newVars) {
   const before = getBufferReadOnly(previousVars);
@@ -361,7 +366,7 @@ export function toggleBufferReadOnly() {
 /** Why a command can't run right now, or null if it can. */
 export const PALETTE_NEEDS = {
   doc: () => (S.state.doc ? null : 'open a document first'),
-  heading: (target) => (target ? null : 'tap a heading first, or focus one with Escape'),
+  heading: (/** @type {any} */ target) => (target ? null : 'tap a heading first, or focus one with Escape'),
   writable: () => (S.isBufferReadOnly ? 'the buffer is read-only \u2014 run Toggle read-only (C-x C-q)' : null),
   storage: () => (S.state.storageKind ? null : 'this document has no file yet \u2014 use Save as'),
   narrowed: () => (S.narrowedHeading ? null : 'nothing is narrowed'),
@@ -375,10 +380,14 @@ export const PALETTE_NEEDS = {
   contacts: () => (effectiveContactsConfig() ? null : 'no contacts address is set (Settings \u2192 Contacts)'),
   captureShortcuts: () => (platform.captureShortcuts.supported() ? null : 'only in the Android app'),
   orgPwaFolder: () => (platform.attachments.supported() ? null : 'only in the Android app'),
-  archived: (target) => (target && isArchivedInPlace(target) ? null : 'this heading isn\u2019t archived'),
-  notArchived: (target) => (target && isArchivedInPlace(target) ? 'it is already archived \u2014 use Unarchive' : null),
+  archived: (/** @type {any} */ target) => (target && isArchivedInPlace(target) ? null : 'this heading isn\u2019t archived'),
+  notArchived: (/** @type {any} */ target) => (target && isArchivedInPlace(target) ? 'it is already archived \u2014 use Unarchive' : null),
 };
 
+/**
+ * @param {any} [command]
+ * @param {any} [target]
+ */
 export function paletteUnavailableReason(command, target) {
   for (const need of command.needs || []) {
     const reason = PALETTE_NEEDS[need](target);
@@ -389,6 +398,7 @@ export function paletteUnavailableReason(command, target) {
 
 /** The palette command whose real Emacs/Org function name is `name`, or null.
  *  This is what a quoted function in an Extras-menu entry (`'org-clock-out`)
+ * @param {any} [name]
  *  resolves to, so the two vocabularies are one. */
 export function findPaletteCommandByOrgName(name) {
   return paletteCommandList().find((command) => command.orgName === name) || null;
@@ -396,6 +406,8 @@ export function findPaletteCommandByOrgName(name) {
 
 /** Runs `command` against `target` exactly as the palette does: a command that
  *  is unavailable right now says why instead of doing nothing, and one that
+ * @param {any} [command]
+ * @param {any} [target]
  *  throws says so. Shared by the palette itself and the Extras menu. */
 export function runPaletteCommand(command, target) {
   const reason = paletteUnavailableReason(command, target);
@@ -416,20 +428,22 @@ export function runPaletteCommand(command, target) {
  *  table really binds that chord, and those commands run through the
  *  same table entry, so the palette and the keyboard can't drift apart. */
 export function paletteCommandList() {
-  const chord = (c) => (target) => {
+  const chord = (/** @type {any} */ c) => (/** @type {any} */ target) => {
     S.actionMenuFor = null;
     if (target) setKeyboardFocusToHeading(target);
     GOD_MODE_ACTIONS[c]();
   };
-  const onHeading = (fn) => (target) => {
+  const onHeading = (/** @type {Function} */ fn) => (/** @type {any} */ target) => {
     S.actionMenuFor = null;
     fn(target);
   };
   const HEAD = ['doc', 'heading', 'writable'];
   const runningClock = () => findHeadingWithRunningClock(S.state.doc);
+  /** @param {any} [format] */
   const exportAs = (format) => () => performExport(format, null);
   // More > Import opened on one format's panel, the way the C-c C-e chord opens More > Export (moreBtn toggles the menu, and the
   // palette has closed it by the time a command runs)
+  /** @param {any} [format] */
   const openImport = (format) => {
     moreBtn.click();
     S.moreMenuStep = 'import';
@@ -541,7 +555,7 @@ export function paletteCommandList() {
     { id: 'display-info', label: 'Show display measurements', group: 'App', keywords: ['status bar', 'inset', 'viewport', 'keyboard', 'screen', 'notch', 'debug'], run: () => showDisplayMeasurements() },
     { id: 'capture-icon', label: 'Add a capture icon to the home screen', group: 'App', keywords: ['shortcut', 'launcher', 'pin', 'capture template'], needs: ['captureShortcuts'], run: () => addCaptureIconToHomeScreen() },
     { id: 'org-pwa-folder', label: 'Choose the org-pwa folder', group: 'App', keywords: ['folder', 'local', 'attachments', 'attach', 'documents', 'data'], needs: ['orgPwaFolder'], run: () => chooseAttachmentsFolder() },
-  ].concat(extensionPaletteEntries());
+  ].concat(/** @type {any} */ (extensionPaletteEntries()));
 }
 
 /** Opens the palette. Resolves once it closes. */
@@ -622,6 +636,7 @@ export async function openCommandPalette() {
     overlay.remove();
   }
 
+  /** @param {any} [entry] */
   function run(entry) {
     const { command } = entry;
     const available = !paletteUnavailableReason(command, target);
@@ -703,6 +718,7 @@ export async function openCommandPalette() {
     renderList();
   }
 
+  /** @param {any} [e] */
   function onKeyDown(e) {
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -774,6 +790,7 @@ async function paletteDynamicCommands() {
  *  in-progress sequence should keep waiting for more input or be
  *  treated as a dead end. An empty chordString (nothing committed
  *  yet, e.g. mid-"c c" or right after "m"/"g") always counts as a
+ * @param {any} [chordString]
  *  valid prefix -- there's always more possible input at that point. */
 export function isValidGodModePrefix(chordString) {
   if (chordString === '') return true;
@@ -786,6 +803,7 @@ export function isValidGodModePrefix(chordString) {
 const CHORD_LABELS = new Map();
 
 /** The palette label for the command a completed chord runs, or null when the
+ * @param {any} [chordString]
  *  chord has no palette command (Tab, the arrows, C-f, ...). */
 export function labelForChord(chordString) {
   if (CHORD_LABELS.size === 0) {
@@ -847,6 +865,8 @@ export function enterGodMode() {
  * Does NOT check for a bare modifier keypress (Shift/Control/Alt/Meta
  * alone) either -- callers filter that out first, since it's specific
  * to real keydown events and never arises from a button tap.
+ * @param {any} [rawKey]
+ * @param {any} [shiftKey]
  */
 export function dispatchGodModeKeystroke(rawKey, shiftKey) {
   S.godModeLastCommand = null; // any new keystroke starts over: the minibuffer shows the sequence being built, not the last result
@@ -924,10 +944,11 @@ export function dispatchGodModeKeystroke(rawKey, shiftKey) {
  *  SAME non-colliding key set the panel is currently showing, not a
  *  looser "any known key" match -- a colliding key was never shown as
  *  a hotkey in the first place and isn't accepted here either, click/
+ * @param {any} [key]
  *  tap only, matching the explicit design decision for this feature. */
 export function tryDispatchPanelHotkey(key) {
   if (S.captureOpen && S.captureOpenedViaGodMode && !S.capturePromptTemplate) {
-    const nonCollidingKeys = computeNonCollidingKeys(S.currentCaptureTemplates, (t) => t.key);
+    const nonCollidingKeys = computeNonCollidingKeys(S.currentCaptureTemplates, (/** @type {any} */ t) => t.key);
     for (const [template, hotkey] of nonCollidingKeys) {
       if (hotkey === key) {
         openCapturePrompt(template);
@@ -938,7 +959,7 @@ export function tryDispatchPanelHotkey(key) {
   if (S.pendingTodoWorkflowChoice && S.pendingTodoWorkflowChoice.viaGodMode) {
     const sequences = resolveTodoSequences(S.state.doc, GLOBAL_TODO_DEFAULT);
     const allEntries = sequences.flatMap((seq) => [...seq.todoKeywords, ...seq.doneKeywords].map((keyword) => ({ seq, keyword })));
-    const nonCollidingKeys = computeNonCollidingKeys(allEntries, (entry) => entry.seq.keySpecs[entry.keyword]);
+    const nonCollidingKeys = computeNonCollidingKeys(allEntries, (/** @type {any} */ entry) => entry.seq.keySpecs[entry.keyword]);
     for (const [entry, hotkey] of nonCollidingKeys) {
       if (hotkey === key) {
         chooseTodoWorkflowState(S.pendingTodoWorkflowChoice.heading, entry.keyword, entry.seq);

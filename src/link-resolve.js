@@ -39,10 +39,12 @@ const MAILTO_RE = /^mailto:/i;
 const DOI_RE = /^doi:/i;
 const FILE_LIKE_RE = /^(file:|github:|webdav:|local:|\.{1,2}\/|~\/|\/)/i;
 
+/** @param {any} [target] */
 export function isExternalUrl(target) {
   return EXTERNAL_URL_RE.test(target) || MAILTO_RE.test(target);
 }
 
+/** @param {any} [target] */
 export function isDoi(target) {
   return DOI_RE.test(target);
 }
@@ -51,11 +53,13 @@ export function isDoi(target) {
  *  https://doi.org/10.1145/1327452.1327492 for "doi:10.1145/1327452.1327492"
  *  — the actual, fetchable/openable form a DOI needs to become to work
  *  as a real link, since "doi:..." on its own isn't a URL scheme any
+ * @param {any} [target]
  *  browser knows how to open directly. */
 export function doiToUrl(target) {
   return 'https://doi.org/' + target.replace(DOI_RE, '');
 }
 
+/** @param {any} [target] */
 export function isFileLink(target) {
   return FILE_LIKE_RE.test(target);
 }
@@ -67,6 +71,7 @@ export function isFileLink(target) {
  *  are their own distinct schemes, since those specifically mean "a
  *  path within whichever GitHub repo / WebDAV server is configured" or
  *  "a file on this device (in the org-pwa folder, or opened earlier)",
+ * @param {any} [target]
  *  not a path relative to the current document). */
 export function fileLinkScheme(target) {
   if (/^github:/i.test(target)) return 'github';
@@ -91,6 +96,8 @@ export function fileLinkScheme(target) {
  * sibling file) — the same convention resolveCaptureFileId and
  * archive-model.js's resolveArchiveFileId both already use for exactly
  * this "no explicit directory given" case.
+ * @param {any} [target]
+ * @param {any} [currentDocumentId]
  */
 export function resolveImagePath(target, currentDocumentId) {
   let path = target.replace(/^(file:|github:|webdav:|local:)/i, '');
@@ -128,6 +135,10 @@ export function resolveImagePath(target, currentDocumentId) {
  * the "attachment:" prefix (e.g. "attachment:photo.jpg") -- stripped
  * here, not by the caller, matching resolveImagePath's own convention
  * of taking the raw target text as-is.
+ * @param {any} [doc]
+ * @param {any} [heading]
+ * @param {any} [attachmentTarget]
+ * @param {any} [documentId]
  */
 export function resolveAttachmentTarget(doc, heading, attachmentTarget, documentId) {
   const filename = attachmentTarget.replace(/^attachment:/i, '');
@@ -136,6 +147,9 @@ export function resolveAttachmentTarget(doc, heading, attachmentTarget, document
 }
 
 /** The attachment folder for `heading`: the one its own DIR or :ID: names, else the nearest ancestor's; null with neither in that
+ * @param {any} [doc]
+ * @param {any} [heading]
+ * @param {any} [documentId]
  *  chain. */
 export function resolveAttachmentDirectory(doc, heading, documentId) {
   const ancestors = findAncestorPath(doc, heading) || [];
@@ -163,6 +177,7 @@ const IMAGE_MIME_TYPES = {
  *  data: URL — falls back to a generic binary type for an unrecognized
  *  extension, which most browsers still render correctly for the image
  *  formats this app actually recognizes (see IMAGE_EXT_RE in
+ * @param {any} [path]
  *  inline-markup.js, the same extension list this mirrors). */
 export function guessImageMimeType(path) {
   const match = /\.([a-z0-9]+)$/i.exec(path);
@@ -190,6 +205,7 @@ const AUDIO_MIME_TYPES = {
  *  <audio> element will simply fail to play an unplayable file either
  *  way; this isn't attempting format detection beyond the extension
  *  itself, the same honest limitation guessImageMimeType already
+ * @param {any} [path]
  *  has). */
 export function guessAudioMimeType(path) {
   const match = /\.([a-z0-9]+)$/i.exec(path);
@@ -263,6 +279,7 @@ const VIEWABLE_MIME_TYPES = {
  *  guessImageMimeType/guessAudioMimeType) -- callers need to
  *  distinguish "no viewer, fall back to downloading it instead" from
  *  "here's what to view it as", not get handed a generic
+ * @param {any} [path]
  *  application/octet-stream that would look viewable when it isn't. */
 export function guessViewableMimeType(path) {
   const match = /\.([a-z0-9]+)$/i.exec(path);
@@ -270,7 +287,12 @@ export function guessViewableMimeType(path) {
   return VIEWABLE_MIME_TYPES[ext] || null;
 }
 
+/**
+ * @param {any} [doc]
+ * @param {any} [visit]
+ */
 function walkHeadings(doc, visit) {
+  /** @param {any} [nodes] */
   function walk(nodes) {
     for (const node of nodes) {
       if (node.type !== 'heading') continue;
@@ -281,19 +303,27 @@ function walkHeadings(doc, visit) {
   walk(doc.children);
 }
 
-/** First heading (in document order) whose title exactly matches `title`, or null. */
+/**
+ * First heading (in document order) whose title exactly matches `title`, or null.
+ * @param {any} [doc]
+ * @param {any} [title]
+ */
 export function findHeadingByTitle(doc, title) {
   let found = null;
-  walkHeadings(doc, (node) => {
+  walkHeadings(doc, (/** @type {any} */ node) => {
     if (!found && node.title === title) found = node;
   });
   return found;
 }
 
-/** First heading (in document order) whose :CUSTOM_ID: property exactly matches, or null. */
+/**
+ * First heading (in document order) whose :CUSTOM_ID: property exactly matches, or null.
+ * @param {any} [doc]
+ * @param {any} [customId]
+ */
 export function findHeadingByCustomId(doc, customId) {
   let found = null;
-  walkHeadings(doc, (node) => {
+  walkHeadings(doc, (/** @type {any} */ node) => {
     if (!found && getProperty(node, 'CUSTOM_ID') === customId) found = node;
   });
   return found;
@@ -301,6 +331,8 @@ export function findHeadingByCustomId(doc, customId) {
 
 /** Does `nodes` (a parsed inline-node array) contain a footnote-def node
  *  with this exact label, anywhere (including nested inside emphasis
+ * @param {any} [nodes]
+ * @param {any} [label]
  *  spans, since footnote-def content is itself recursively parsed)? */
 function inlineContainsFootnoteDef(nodes, label) {
   for (const node of nodes) {
@@ -323,11 +355,17 @@ function inlineContainsFootnoteDef(nodes, label) {
  * 'inline-definition', for a caller that wants to highlight differently
  * depending on which), or null if no definition exists anywhere in the
  * document for this label.
+ * @param {any} [doc]
+ * @param {any} [label]
  */
 export function findFootnoteDefinition(doc, label) {
   /** @type {{ heading: any; kind: string; node: any; } | null} */
   let found = null;
 
+  /**
+   * @param {any} [node]
+   * @param {any} [heading]
+   */
   function checkParagraph(node, heading) {
     if (found) return;
     if (node.footnoteLabel === label) {
@@ -342,6 +380,10 @@ export function findFootnoteDefinition(doc, label) {
     }
   }
 
+  /**
+   * @param {any} [items]
+   * @param {any} [heading]
+   */
   function checkListItems(items, heading) {
     for (const item of items) {
       if (found) return;
@@ -356,7 +398,7 @@ export function findFootnoteDefinition(doc, label) {
     }
   }
 
-  walkHeadings(doc, (heading) => {
+  walkHeadings(doc, (/** @type {any} */ heading) => {
     if (found) return;
     for (const node of heading.body) {
       if (found) return;
@@ -391,6 +433,7 @@ export function findFootnoteDefinition(doc, label) {
  * stripped); anything else after "::" is a plain text search. Returns
  * { path, inFileTarget } where inFileTarget is null if there's no
  * "::" at all.
+ * @param {any} [pathAndTarget]
  */
 export function splitFileLinkTarget(pathAndTarget) {
   const idx = pathAndTarget.indexOf('::');
@@ -404,6 +447,8 @@ export function splitFileLinkTarget(pathAndTarget) {
  *   { type: 'heading', heading }
  *   { type: 'file', scheme, path, inFileTarget }
  *   { type: 'unresolved', target }
+ * @param {any} [doc]
+ * @param {any} [rawTarget]
  */
 export function resolveLinkTarget(doc, rawTarget) {
   const target = String(rawTarget).trim();

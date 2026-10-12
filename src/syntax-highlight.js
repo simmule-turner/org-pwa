@@ -8,6 +8,7 @@
  * highlightToHtml(code, lang) -> HTML, one line per "\n" (a token that spans lines is closed and reopened on each).
  */
 
+/** @param {any} [s] */
 const words = (s) => new Set(s.split(/\s+/).filter(Boolean));
 
 const C_LIKE = {
@@ -124,14 +125,19 @@ const ALIASES = {
   html: 'xml', htm: 'xml', svg: 'xml', xhtml: 'xml',
 };
 
+/** @param {any} [t] */
 const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-/** Wraps `text` in a span of the given face, one span per line. */
+/**
+ * Wraps `text` in a span of the given face, one span per line.
+ * @param {any} [face]
+ * @param {any} [text]
+ */
 function span(face, text) {
   if (!face) return esc(text);
   return text
     .split('\n')
-    .map((part) => (part === '' ? '' : `<span class="org-${face}">${esc(part)}</span>`))
+    .map((/** @type {any} */ part) => (part === '' ? '' : `<span class="org-${face}">${esc(part)}</span>`))
     .join('\n');
 }
 
@@ -139,6 +145,7 @@ const NUMBER_RE = /^(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|\d[\d_]*\.?\d*(?:[eE][-+]?
 const IDENT_RE = /^[A-Za-z_$][\w$]*(?:-[A-Za-z0-9_*!?<>=/+]+)*/;
 const IDENT_PLAIN_RE = /^[A-Za-z_$][\w$]*[?!]?/;
 
+/** @param {any} [code] */
 function highlightXml(code) {
   let out = '';
   let i = 0;
@@ -182,6 +189,10 @@ function highlightXml(code) {
   return out;
 }
 
+/**
+ * @param {any} [code]
+ * @param {any} [lang]
+ */
 export function highlightToHtml(code, lang) {
   const key = ALIASES[String(lang || '').toLowerCase()] || String(lang || '').toLowerCase();
   const cfg = LANGS[key];
@@ -202,6 +213,7 @@ export function highlightToHtml(code, lang) {
       continue;
     }
     // comments
+    /** @param {any} [c] */
     const line = (cfg.line || []).find((c) => code.startsWith(c, i));
     if (line && !(line === '#' && cfg.preprocessor)) {
       const end = code.indexOf('\n', i);
@@ -226,6 +238,7 @@ export function highlightToHtml(code, lang) {
       continue;
     }
     // strings
+    /** @param {any} [q] */
     const quote = (cfg.strings || []).find((q) => code.startsWith(q, i));
     if (quote) {
       let j = i + quote.length;

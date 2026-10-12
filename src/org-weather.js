@@ -50,6 +50,7 @@ const WEATHER_CODE_MAP = {
 /** Looks up a WMO weather code -- returns a clear, distinct fallback
  *  for a code outside the table given (rather than silently showing
  *  nothing, or guessing), so an unrecognized code is still visibly
+ * @param {any} [code]
  *  informative rather than a blank spot in the formatted output. */
 function lookupWeatherCode(code) {
   return WEATHER_CODE_MAP[code] || { text: 'Unknown weather', icon: '\u2753' };
@@ -81,6 +82,8 @@ const FETCH_SPEED_UNIT = 'mph';
  *  happens for the common case at all). Rounded to 1 decimal place,
  *  matching the Open-Meteo API's own typical precision for these
  *  values -- converting without rounding would otherwise produce
+ * @param {any} [fahrenheit]
+ * @param {any} [targetUnit]
  *  long, uninformative floating-point tails. */
 function convertTemperature(fahrenheit, targetUnit) {
   const value = targetUnit === '\u00b0C' ? ((fahrenheit - 32) * 5) / 9 : fahrenheit;
@@ -93,6 +96,8 @@ function convertTemperature(fahrenheit, targetUnit) {
  *  combination. 1 mph = 0.44704 m/s and 1 knot = 0.514444 m/s
  *  exactly (the international definition: 1 nautical mile = 1852m,
  *  1 knot = 1852m / 3600s), not approximations. Rounded to 1 decimal
+ * @param {any} [mph]
+ * @param {any} [targetUnit]
  *  place, same reasoning as convertTemperature above. */
 function convertSpeed(mph, targetUnit) {
   if (targetUnit === 'mph') return Math.round(mph * 10) / 10;
@@ -124,6 +129,8 @@ function convertSpeed(mph, targetUnit) {
  *  stated bounds (round(59.6)=60, outside "0-59"). Clamped to a
  *  minimum of 0 for a `dataTime` that's at or after `now` (clock
  *  skew, or a data timestamp that isn't strictly in the past) rather
+ * @param {any} [dataTime]
+ * @param {any} [now]
  *  than showing a nonsensical negative age. */
 function formatWeatherAge(dataTime, now) {
   const ageMinutesTotal = Math.max(0, Math.floor((now.getTime() - new Date(dataTime).getTime()) / 60000));
@@ -133,6 +140,12 @@ function formatWeatherAge(dataTime, now) {
   return { value: Math.floor(ageHoursTotal / 24), unit: 'd' };
 }
 
+/**
+ * @param {any} [template]
+ * @param {any} [data]
+ * @param {any} [temperatureUnit]
+ * @param {any} [speedUnit]
+ */
 function formatWeatherLine(template, data, temperatureUnit, speedUnit, now = new Date()) {
   const { text: desc, icon } = lookupWeatherCode(data.weatherCode);
   const age = formatWeatherAge(data.currentTime, now);
@@ -159,13 +172,14 @@ function formatWeatherLine(template, data, temperatureUnit, speedUnit, now = new
   // ever partially collide with them.
   const placeholders = Object.keys(values).sort((a, b) => b.length - a.length);
   const pattern = new RegExp(placeholders.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
-  return template.replace(pattern, (match) => values[match]);
+  return template.replace(pattern, (/** @type {any} */ match) => values[match]);
 }
 
 const ORG_WEATHER_RE = /^%%\(org-weather\)\s*$/;
 
 /** True if `line` is exactly the %%(org-weather) standalone-line
  *  trigger -- same self-contained-line convention as
+ * @param {any} [line]
  *  diary-sexp.js's own isDiaryXxxLine detectors. */
 function isOrgWeatherLine(line) {
   return ORG_WEATHER_RE.test(line.trim());
@@ -178,6 +192,8 @@ function isOrgWeatherLine(line) {
  *  pair of units convertTemperature/convertSpeed above expect to
  *  convert FROM (FETCH_TEMPERATURE_UNIT / FETCH_SPEED_UNIT below),
  *  never needing to compare against the API's own differently-
+ * @param {any} [latitude]
+ * @param {any} [longitude]
  *  formatted unit-label strings at all. */
 function buildWeatherApiUrl(latitude, longitude) {
   const params = new URLSearchParams({

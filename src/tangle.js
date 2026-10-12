@@ -21,7 +21,10 @@ const SEMI = ['emacs-lisp', 'elisp', 'lisp', 'scheme', 'clojure', 'clj', 'racket
 const DASH = ['sql', 'lua', 'haskell', 'hs', 'ada', 'elm'];
 const PERCENT = ['latex', 'tex', 'erlang', 'matlab', 'octave', 'prolog'];
 
-/** [prefix, suffix] that comments out one line in `lang`, or null. */
+/**
+ * [prefix, suffix] that comments out one line in `lang`, or null.
+ * @param {any} [lang]
+ */
 function commentSyntax(lang) {
   const l = String(lang).toLowerCase();
   if (HASH.includes(l)) return ['# ', ''];
@@ -35,19 +38,27 @@ function commentSyntax(lang) {
   return null;
 }
 
-/** Comments out each non-blank line of `text`, as Emacs's comment-region does. */
+/**
+ * Comments out each non-blank line of `text`, as Emacs's comment-region does.
+ * @param {any} [text]
+ * @param {any} [lang]
+ */
 function commentOut(text, lang) {
   const syntax = commentSyntax(lang);
   if (!syntax) throw new Error(`:comments is not supported for ${lang} blocks (no comment syntax known)`);
   return text
     .split('\n')
-    .map((l) => (l.trim() === '' ? l : syntax[0] + l + syntax[1]))
+    .map((/** @type {any} */ l) => (l.trim() === '' ? l : syntax[0] + l + syntax[1]))
     .join('\n');
 }
 
+/** @param {any} [s] */
 const orgTrim = (s) => s.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, '');
 
-/** Org's `%S` for a value, as ob-js writes it into `var name=value;`. */
+/**
+ * Org's `%S` for a value, as ob-js writes it into `var name=value;`.
+ * @param {any} [v]
+ */
 function jsValue(v) {
   if (Array.isArray(v)) return '[' + v.map(jsValue).join(', ') + ']';
   if (v === null || v === undefined) return 'nil';
@@ -57,6 +68,7 @@ function jsValue(v) {
 }
 
 /** The file mode a `:tangle-mode` value stands for, or null. Accepts `(identity #o755)`, `#o755`, `o755`, `rwxr-xr-x`
+ * @param {any} [value]
  *  and chmod forms such as `u+x` or `a=rw,u+x` (starting from 644). */
 export function interpretFileMode(value) {
   const v = String(value || '').trim();
@@ -90,6 +102,7 @@ export function interpretFileMode(value) {
   return null;
 }
 
+/** @param {any} [path] */
 function checkTargetPath(path) {
   if (!path || path.startsWith('/') || /^[A-Za-z]:/.test(path) || path.startsWith('~') || path.split('/').includes('..') || path.includes('\\')) {
     throw new Error(`Cannot tangle to "${path}": a path must be relative and stay inside the folder (no /, ~ or ..)`);
@@ -97,7 +110,12 @@ function checkTargetPath(path) {
   return path.replace(/\/{2,}/g, '/').replace(/^\.\//, '');
 }
 
-/** The text between the previous source block (or the heading) and a block, for `:comments org`. */
+/**
+ * The text between the previous source block (or the heading) and a block, for `:comments org`.
+ * @param {any} [doc]
+ * @param {any} [block]
+ * @param {any} [blocks]
+ */
 function precedingText(doc, block, blocks) {
   const own = block.heading;
   let lines;
@@ -114,7 +132,7 @@ function precedingText(doc, block, blocks) {
     beginLine = block.beginIndex;
     skipLines = 0;
   }
-  const prior = blocks.filter((b) => b.heading === own && b.beginIndex < block.beginIndex).pop();
+  const prior = blocks.filter((/** @type {any} */ b) => b.heading === own && b.beginIndex < block.beginIndex).pop();
   let from = { line: 0, col: start };
   if (prior) {
     const endLine = skipLines + prior.endIndex;
@@ -126,6 +144,11 @@ function precedingText(doc, block, blocks) {
   return picked.join('\n') + '\n';
 }
 
+/**
+ * @param {any} [block]
+ * @param {any} [documentName]
+ * @param {any} [targetPath]
+ */
 function linkFor(block, documentName, targetPath) {
   const depth = targetPath.split('/').length - 1;
   const rel = '../'.repeat(depth) + documentName;
@@ -144,7 +167,9 @@ function linkFor(block, documentName, targetPath) {
  */
 export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
   const blocks = collectDocumentBlocks(doc);
+  /** @param {any} [name] */
   const lookupTable = (name) => {
+    /** @param {any} [list] */
     const walk = (list) => {
       for (const h of list) {
         const rows = findNamedTable(h.bodyLines || [], name);
@@ -157,6 +182,11 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
     return findNamedTable(doc.bodyLines || [], name) || walk(doc.children || []);
   };
   // `:comments noweb`: a referenced block is wrapped in begin and end comments naming it
+  /**
+   * @param {any} [ref]
+   * @param {any} [text]
+   * @param {any} [host]
+   */
   const wrapChunk = (ref, text, host) => {
     let target;
     if (ref.name) target = ref.name;
@@ -216,6 +246,7 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
       }
       const comments = args.comments;
       const link = ['both', 'link', 'yes', 'noweb'].includes(comments);
+      /** @param {any} [t] */
       const insert = (t) => {
         if (comments && comments !== 'no' && t.trim() !== '') text += commentOut(t, b.lang) + '\n';
       };

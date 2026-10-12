@@ -28,6 +28,7 @@ export async function handleLaunchParams() {
 
 /** Runs a launch: `{ capture, shared }` as parseLaunchParams makes it. This is what a launch URL ends up calling, and
  *  what a native shell calls directly when something is shared to the app (there is no URL to parse then). `capture` is
+ * @param {any} [params]
  *  a template key ('' to show the list, null for none), and `shared` is `{ title, text, url }` or null. */
 export async function runLaunch(params) {
   S.captureShared = params.shared;
@@ -36,7 +37,7 @@ export async function runLaunch(params) {
   S.currentCaptureTemplates = templates;
 
   if (params.capture) {
-    const template = templates.find((t) => t.key === params.capture);
+    const template = templates.find((/** @type {any} */ t) => t.key === params.capture);
     if (template) {
       S.captureOpenedFromExtraMenu = true; // as for an Extras entry that names a template: the panel closes once it is captured
       await openCapturePrompt(template);
@@ -55,6 +56,6 @@ export async function runLaunch(params) {
  */
 export function acceptNativeLaunches() {
   const queued = Array.isArray(globalThis.orgPwaLaunchQueue) ? globalThis.orgPwaLaunchQueue.splice(0) : [];
-  globalThis.orgPwaLaunch = (payload) => runLaunch(launchFromShare(payload)).catch(() => {});
+  globalThis.orgPwaLaunch = (/** @type {any} */ payload) => runLaunch(launchFromShare(payload)).catch(() => {});
   for (const payload of queued) globalThis.orgPwaLaunch(payload);
 }

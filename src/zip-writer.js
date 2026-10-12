@@ -33,7 +33,10 @@ function buildCrcTable() {
   return table;
 }
 
-/** Standard ZIP CRC-32 over a byte array. */
+/**
+ * Standard ZIP CRC-32 over a byte array.
+ * @param {any} [bytes]
+ */
 function crc32(bytes) {
   if (!crcTable) crcTable = buildCrcTable();
   let crc = 0xffffffff;
@@ -45,6 +48,7 @@ function crc32(bytes) {
 
 // ---- byte-writing helpers -----------------------------------------------
 
+/** @param {any} [str] */
 function utf8Bytes(str) {
   return new TextEncoder().encode(str);
 }
@@ -64,13 +68,16 @@ class ByteWriter {
     this.chunks = [];
     this.length = 0;
   }
+  /** @param {any} [arr] */
   bytes(arr) {
     this.chunks.push(arr);
     this.length += arr.length;
   }
+  /** @param {any} [n] */
   u16(n) {
     this.bytes(new Uint8Array([n & 0xff, (n >>> 8) & 0xff]));
   }
+  /** @param {any} [n] */
   u32(n) {
     this.bytes(new Uint8Array([n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff]));
   }
@@ -97,6 +104,7 @@ class ByteWriter {
  * with its own local file header, followed by one central directory
  * record per entry and a single end-of-central-directory record --
  * the standard three-part ZIP structure every reader expects.
+ * @param {any} [entries]
  */
 function createZip(entries) {
   const w = new ByteWriter();

@@ -36,6 +36,8 @@ import { COMPLETED_CLOCK_RE, parseClockTimestampToDate, formatClockDuration } fr
  * exactly at midnight. Either can be null/empty for an unbounded side
  * of the range (an empty start date picker means "everything up to
  * tend", not "nothing").
+ * @param {any} [tstartStr]
+ * @param {any} [tendStr]
  */
 function parseClocktableRange(tstartStr, tendStr) {
   const tstart = tstartStr ? new Date(tstartStr + 'T00:00:00') : null;
@@ -50,6 +52,9 @@ function parseClocktableRange(tstartStr, tendStr) {
  *  behavior only counts completed sessions unless explicitly told
  *  otherwise, and an in-progress duration would keep changing every
  *  time this report is viewed, which isn't what "a report for this
+ * @param {any} [heading]
+ * @param {any} [tstart]
+ * @param {any} [tend]
  *  date range" should mean. */
 function ownMinutesInRange(heading, tstart, tend) {
   let total = 0;
@@ -67,6 +72,10 @@ function ownMinutesInRange(heading, tstart, tend) {
 
 /** Bottom-up: every heading's own-plus-descendants total, in minutes,
  *  within the given range -- a Map so this never mutates the actual
+ * @param {any} [headings]
+ * @param {any} [tstart]
+ * @param {any} [tend]
+ * @param {any} [totals]
  *  document/heading objects just to produce a report from them. */
 function computeSubtreeTotals(headings, tstart, tend, totals) {
   for (const heading of headings) {
@@ -84,6 +93,11 @@ function computeSubtreeTotals(headings, tstart, tend, totals) {
  *  with any relevant clocked time (its own or rolled up from
  *  descendants) gets a row and its children are considered too (up to
  *  maxlevel); deeper headings contribute upward but never get a row
+ * @param {any} [headings]
+ * @param {any} [level]
+ * @param {any} [maxlevel]
+ * @param {any} [totals]
+ * @param {any} [rows]
  *  of their own. */
 function buildClocktableRows(headings, level, maxlevel, totals, rows) {
   for (const heading of headings) {
@@ -102,6 +116,9 @@ function buildClocktableRows(headings, level, maxlevel, totals, rows) {
  * `{ heading, level, minutes }` in document order, `totalMinutes` the
  * grand total (the sum of every top-level row's own total, which
  * already includes every descendant).
+ * @param {any} [doc]
+ * @param {any} [tstartStr]
+ * @param {any} [tendStr]
  */
 function computeClocktable(doc, tstartStr, tendStr, maxlevel = 2) {
   const { tstart, tend } = parseClocktableRange(tstartStr, tendStr);
@@ -114,6 +131,7 @@ function computeClocktable(doc, tstartStr, tendStr, maxlevel = 2) {
 
 /** "H:MM" -- real org's own clocktable duration format, matching
  *  clock.js's own formatClockDuration exactly (reused directly rather
+ * @param {any} [minutes]
  *  than reimplemented, so the two can never drift apart). */
 function formatClocktableDuration(minutes) {
   return formatClockDuration(minutes);
@@ -127,6 +145,8 @@ function formatClocktableDuration(minutes) {
  * source. `now` (a Date) drives the `#+CAPTION:` timestamp -- "Clock
  * summary at [...]", real org's own exact wording and inactive-
  * timestamp-with-day-name-and-HH:MM format (no seconds).
+ * @param {any} tstartStr
+ * @param {any} tendStr
  */
 function renderClocktable({ rows, totalMinutes }, tstartStr, tendStr, now = new Date(), maxlevel = 2) {
   const lines = [];
@@ -150,6 +170,7 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** "2026-08-07 Fri 12:11" -- real org's own inactive-timestamp
  *  format with a day-name abbreviation and HH:MM (no seconds), the
+ * @param {any} [date]
  *  exact form a clocktable's own #+CAPTION: line uses. */
 function formatCaptionTimestamp(date) {
   const y = date.getFullYear();

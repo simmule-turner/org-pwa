@@ -13,6 +13,7 @@ import { render } from './render.js';
 /** Cycles a heading's own priority through None -> A -> B -> C -> None
  *  -- god-mode's own "C-c ," (real org's own priority prompt,
  *  simplified to a fixed cycle matching this app's own existing
+ * @param {any} [heading]
  *  general-editor priority row, which only offers A/B/C/None too). */
 export function cyclePriorityFor(heading) {
   if (!heading) return;
@@ -27,6 +28,7 @@ export function cyclePriorityFor(heading) {
  *  org's own org-set-effort prompt; blank clears it. Any org-duration
  *  form is accepted (see src/org-duration.js) and stored exactly as
  *  typed, as Emacs does. Anything else is refused with a status message
+ * @param {any} [heading]
  *  and the existing value is left untouched. */
 export function openEffortEditor(heading) {
   if (!heading) return;
@@ -41,7 +43,7 @@ export function openEffortEditor(heading) {
     resetInPlace: true,
     // Effort_ALL, when one is defined for this heading (see src/effort-values.js)
     choices: getAllowedEffortValues({ doc: S.state.doc, heading, globalProperties: getGlobalProperties(S.state.localVariables) }),
-    onSave: (raw) => {
+    onSave: (/** @type {string} */ raw) => {
       const value = String(raw).trim();
       if (value === '') {
         deleteProperty(heading, 'EFFORT');

@@ -9,9 +9,14 @@ import { imageDataUrlCache } from './singletons.js';
 
 const IMAGE_LINK_RE = /\[\[((?:file:|attachment:)?[^\]\n]+?\.(?:png|jpe?g|gif|svg|webp|bmp|avif))(?:::[^\]]*)?\]/gi;
 
-/** The headings of the export, depth first: the whole document or the subtree under `scope`. */
+/**
+ * The headings of the export, depth first: the whole document or the subtree under `scope`.
+ * @param {any} [doc]
+ * @param {any} [scope]
+ */
 function headingsToScan(doc, scope) {
   const out = [];
+  /** @param {any} [h] */
   const walk = (h) => {
     out.push(h);
     for (const c of h.children || []) walk(c);
@@ -21,7 +26,10 @@ function headingsToScan(doc, scope) {
   return out;
 }
 
-/** Map of image link target -> data URL for every picture in the export that can be read. */
+/**
+ * Map of image link target -> data URL for every picture in the export that can be read.
+ * @param {any} [doc]
+ */
 export async function collectExportImages(doc, scope = /** @type {any} */ (null)) {
   const images = new Map();
   const readable = S.state.storageKind === 'github' || S.state.storageKind === 'webdav';

@@ -23,6 +23,7 @@
 
 const HISTORY_STORE_LIMIT = 200;
 
+/** @param {any} [documentId] */
 function historyKey(documentId) {
   return 'history:' + documentId;
 }
@@ -30,6 +31,7 @@ function historyKey(documentId) {
 /** Unwraps an adapter.get() result -- some adapters (this app's own kv
  *  wrapper included) return { key, value, shared } rather than the
  *  raw stored string directly; this accepts either shape, matching
+ * @param {any} [result]
  *  outbox.js's own identical unwrapping. */
 function unwrapAdapterValue(result) {
   return result && typeof result === 'object' && 'value' in result ? result.value : result;
@@ -42,6 +44,9 @@ function unwrapAdapterValue(result) {
  * most valuable, most recently relevant undo steps; `index` is
  * shifted by the same amount trimmed so it still points at the same
  * logical entry afterward.
+ * @param {any} [adapter]
+ * @param {any} [documentId]
+ * @param {any} [history]
  */
 async function savePersistedHistory(adapter, documentId, history) {
   const overflow = history.entries.length - HISTORY_STORE_LIMIT;
@@ -59,6 +64,8 @@ async function savePersistedHistory(adapter, documentId, history) {
  * Timestamps round-trip through JSON as strings, not Date objects --
  * restored here so the returned shape exactly matches what
  * createHistory/pushSnapshot themselves produce.
+ * @param {any} [adapter]
+ * @param {any} [documentId]
  */
 async function loadPersistedHistory(adapter, documentId) {
   try {
@@ -68,7 +75,7 @@ async function loadPersistedHistory(adapter, documentId) {
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
     if (!parsed || !Array.isArray(parsed.entries) || parsed.entries.length === 0) return null;
     if (typeof parsed.index !== 'number' || parsed.index < 0 || parsed.index >= parsed.entries.length) return null;
-    const entries = parsed.entries.map((e) => ({ ...e, timestamp: new Date(e.timestamp) }));
+    const entries = parsed.entries.map((/** @type {any} */ e) => ({ ...e, timestamp: new Date(e.timestamp) }));
     return { entries, index: parsed.index };
   } catch {
     return null;
@@ -79,6 +86,8 @@ async function loadPersistedHistory(adapter, documentId) {
  *  freshly opened document's text doesn't match what the persisted
  *  history's own latest entry says it should be (edited elsewhere
  *  since last saved here, most likely), so a stale, no-longer-
+ * @param {any} [adapter]
+ * @param {any} [documentId]
  *  applicable history doesn't linger forever unused. */
 async function clearPersistedHistory(adapter, documentId) {
   await adapter.delete(historyKey(documentId));

@@ -39,6 +39,7 @@ export function showAttachmentFolder({ title, load, act, removeMany, saveMany, a
     unlockScroll();
     if (overlay.parentNode) document.body.removeChild(overlay);
   }
+  /** @param {any} [e] */
   function onKeyDown(e) {
     if (e.key !== 'Escape' || document.body.lastElementChild !== overlay) return; // only the topmost panel answers
     e.preventDefault();
@@ -50,6 +51,11 @@ export function showAttachmentFolder({ title, load, act, removeMany, saveMany, a
   const selected = new Set();
   let names = [];
 
+  /**
+   * @param {any} [text]
+   * @param {any} [label]
+   * @param {any} [onClick]
+   */
   function smallButton(text, label, onClick) {
     const b = document.createElement('button');
     b.type = 'button';

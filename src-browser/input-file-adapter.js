@@ -24,10 +24,12 @@
 
 import { contentHash } from '../src/sync-engine.js';
 
+/** @param {any} [fileId] */
 function importedFileKey(fileId) {
   return 'ios-import:' + fileId;
 }
 
+/** @param {any} [result] */
 function unwrap(result) {
   return result && typeof result === 'object' && 'value' in result ? result.value : result;
 }
@@ -38,6 +40,7 @@ function unwrap(result) {
  * read() in the same (or a future) session can return it again without
  * re-picking. Must be called from a user gesture (a click handler) — the
  * picker won't open otherwise.
+ * @param {any} [kvAdapter]
  */
 export function pickAndImportFile(kvAdapter, accept = '.org') {
   return new Promise((resolve, reject) => {
@@ -69,6 +72,8 @@ export function pickAndImportFile(kvAdapter, accept = '.org') {
 }
 
 /** Triggers a browser download of `content` as a file named `fileId` —
+ * @param {any} [fileId]
+ * @param {any} [content]
  *  the "write" half, since there's no handle to write back to in place. */
 export function downloadFile(fileId, content, mimeType = 'text/plain') {
   const blob = new Blob([content], { type: mimeType });
@@ -83,8 +88,10 @@ export function downloadFile(fileId, content, mimeType = 'text/plain') {
   URL.revokeObjectURL(url);
 }
 
+/** @param {any} [kvAdapter] */
 export function createInputFileAdapter(kvAdapter, downloadFn = downloadFile) {
   return {
+    /** @param {any} [fileId] */
     async read(fileId) {
       try {
         const result = await kvAdapter.get(importedFileKey(fileId));
@@ -96,12 +103,17 @@ export function createInputFileAdapter(kvAdapter, downloadFn = downloadFile) {
       }
     },
 
+    /**
+     * @param {any} [fileId]
+     * @param {any} [content]
+     */
     async write(fileId, content) {
       await kvAdapter.set(importedFileKey(fileId), content);
       downloadFn(fileId, content);
       return { hash: contentHash(content) };
     },
 
+    /** @param {any} [fileId] */
     async exists(fileId) {
       try {
         const result = await kvAdapter.get(importedFileKey(fileId));

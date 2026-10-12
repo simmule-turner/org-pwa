@@ -22,6 +22,8 @@ import { render } from './render.js';
  *  recalculation is abandoned, never partially applied). Callers
  *  decide for themselves how to report each of these -- a single
  *  table's own Calc button and a whole-document sweep reasonably want
+ * @param {any} [heading]
+ * @param {any} [table]
  *  different status wording for the same underlying result. */
 export function recalculateOneTable(heading, table) {
   if (!table.tblfm || !table.tblfm.trim()) return { result: 'no-formula' };
@@ -36,7 +38,7 @@ export function recalculateOneTable(heading, table) {
     }
     table.rows = newRows;
     commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
-    const hasError = newRows.some((row) => (row.cells || []).includes('#ERROR'));
+    const hasError = newRows.some((/** @type {any} */ row) => (row.cells || []).includes('#ERROR'));
     return { result: 'changed', hasError };
   } catch (err) {
     return { result: 'error', message: err.message };

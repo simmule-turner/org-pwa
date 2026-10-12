@@ -8,6 +8,7 @@ import { suggestedSaveAsName } from './documents-io.js';
 import { setStatus } from './editing.js';
 import { saveOut } from './save-out.js';
 
+/** @param {any} [path] */
 const baseOf = (path) => String(path).split('/').pop() || '';
 
 export function tangleCurrentDocument() {

@@ -38,6 +38,7 @@ const VISIBILITY_KEYWORDS = [
  *  for every other visibility keyword. Kept as its own small helper
  *  since two different modules need this same number extracted --
  *  applyStartupVisibility (fold-state.js) to know how deep to expand,
+ * @param {any} [visibility]
  *  and nowhere else needs it duplicated. */
 function showLevelsDepth(visibility) {
   const m = /^show(\d)levels$/.exec(visibility || '');
@@ -62,6 +63,7 @@ const DEFAULT_STARTUP_CONFIG = {
  *  file has no #+STARTUP: visibility keyword at all, so
  *  parseStartupConfig's own default just happens to equal
  *  showeverything" -- the middle layer of their own 3-layer precedence
+ * @param {any} [doc]
  *  must only win in the first case. */
 function parseStartupConfigRaw(doc) {
   const raw = { visibility: null, imageVisibility: null, logDone: null };
@@ -85,6 +87,7 @@ function parseStartupConfigRaw(doc) {
   return raw;
 }
 
+/** @param {any} [doc] */
 export function parseStartupConfig(doc) {
   const raw = parseStartupConfigRaw(doc);
   return {
@@ -106,6 +109,9 @@ export function parseStartupConfig(doc) {
  *  (showeverything) equally, matching org-log-done's own tolerance for
  *  the same leading-quote convention. An invalid value at any layer is
  *  treated the same as that layer not having set anything at all,
+ * @param {any} [doc]
+ * @param {any} [localVarsOnly]
+ * @param {any} [globalVarsOnly]
  *  rather than short-circuiting the whole resolution with a bad value. */
 export function getEffectiveVisibility(doc, localVarsOnly, globalVarsOnly) {
   const local = parseVisibilityLispValue((localVarsOnly || {})['org-startup-folded']);
@@ -117,6 +123,7 @@ export function getEffectiveVisibility(doc, localVarsOnly, globalVarsOnly) {
   return DEFAULT_STARTUP_CONFIG.visibility;
 }
 
+/** @param {any} [raw] */
 function parseVisibilityLispValue(raw) {
   if (raw === undefined || raw === null) return null;
   const v = String(raw).trim().replace(/^'/, '');
@@ -128,6 +135,9 @@ function parseVisibilityLispValue(raw) {
  *  `t` / `nil` (Lisp booleans, matching every other boolean variable
  *  in this app), converted to/from this module's own internal
  *  inlineimages/noinlineimages keyword pair for consistency with
+ * @param {any} [doc]
+ * @param {any} [localVarsOnly]
+ * @param {any} [globalVarsOnly]
  *  parseStartupConfig's own imageVisibility field. */
 export function getEffectiveImageVisibility(doc, localVarsOnly, globalVarsOnly) {
   const local = parseLispBooleanOrNull((localVarsOnly || {})['org-startup-with-inline-images']);
@@ -143,6 +153,7 @@ export function getEffectiveImageVisibility(doc, localVarsOnly, globalVarsOnly) 
  *  (rather than a fallback boolean) when unset/unrecognized -- needed
  *  here specifically so getEffectiveImageVisibility can tell "this
  *  layer said nil" apart from "this layer never set anything at all,"
+ * @param {any} [raw]
  *  which a single fallback-collapsing boolean can't distinguish. */
 function parseLispBooleanOrNull(raw) {
   if (raw === undefined || raw === null) return null;
@@ -161,6 +172,9 @@ function parseLispBooleanOrNull(raw) {
  *  -- org-log-done's own full 3-layer resolution already has its own
  *  dedicated function (progress-logging.js's getEffectiveLogDoneSetting)
  *  used directly wherever it's actually needed, not read from this
+ * @param {any} [doc]
+ * @param {any} [localVarsOnly]
+ * @param {any} [globalVarsOnly]
  *  config object anywhere in this codebase. */
 export function resolveEffectiveStartupConfig(doc, localVarsOnly, globalVarsOnly) {
   return {

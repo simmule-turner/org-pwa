@@ -24,12 +24,17 @@ function storedGrants() {
   }
 }
 
+/** @param {any} [owner] */
 function readGrant(owner) {
   if (owner.startsWith('session:')) return sessionGrants.get(owner) || { hosts: [], location: false };
   const g = storedGrants()[owner];
   return { hosts: Array.isArray(g && g.hosts) ? g.hosts : [], location: !!(g && g.location) };
 }
 
+/**
+ * @param {any} [owner]
+ * @param {any} [grant]
+ */
 function writeGrant(owner, grant) {
   if (owner.startsWith('session:')) {
     sessionGrants.set(owner, grant);
@@ -47,14 +52,19 @@ function writeGrant(owner, grant) {
   }
 }
 
-/** The grant owner for a document: saved documents keep their grants, unsaved ones do not outlive the page. */
+/**
+ * The grant owner for a document: saved documents keep their grants, unsaved ones do not outlive the page.
+ * @param {any} [documentId]
+ */
 export function documentOwner(documentId) {
   const id = documentId || '';
   return id && !id.startsWith(UNSAVED_DOCUMENT_ID) ? 'doc:' + id : 'session:' + (id || 'unsaved');
 }
 
+/** @param {any} [hash] */
 export const scriptOwner = (hash) => 'script:' + hash;
 
+/** @param {any} [owner] */
 async function readCache(owner) {
   if (owner.startsWith('session:')) return sessionCaches.get(owner) || {};
   try {
@@ -67,12 +77,19 @@ async function readCache(owner) {
   }
 }
 
+/**
+ * @param {any} [owner]
+ * @param {any} [scope]
+ */
 async function writeCache(owner, scope) {
   if (owner.startsWith('session:')) sessionCaches.set(owner, scope);
   else await kv.set('ext-cache:' + owner, JSON.stringify(scope));
 }
 
-/** One reading. Code 3 is the browser's "timeout"; 1 is "refused". */
+/**
+ * One reading. Code 3 is the browser's "timeout"; 1 is "refused".
+ * @param {any} [options]
+ */
 function askPosition(options) {
   return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition((p) => resolve(roundPosition(p.coords, Date.now())), reject, options);
@@ -96,6 +113,7 @@ async function readPosition() {
   }
 }
 
+/** @param {any} [response] */
 async function readBody(response) {
   if (!response.body || !response.body.getReader) {
     const text = await response.text();
@@ -119,6 +137,11 @@ async function readBody(response) {
   return text + decoder.decode();
 }
 
+/**
+ * @param {any} [url]
+ * @param {any} [options]
+ * @param {any} [isHostOk]
+ */
 async function doFetch(url, options, isHostOk) {
   const target = checkFetchUrl(url);
   const o = normalizeFetchOptions(options);
@@ -145,10 +168,14 @@ async function doFetch(url, options, isHostOk) {
  */
 export function createServices({ owner, declared = /** @type {any} */ (null) }) {
   const refused = new Map(); // host -> when it was refused: not asked again for a while, so a script in a loop cannot flood the person with questions
+  /**
+   * @param {any} [host]
+   * @param {any} [mayAsk]
+   */
   const isHostOk = async (host, mayAsk) => {
     const grant = readGrant(owner);
     if (declared && !hostAllowed(host, declared.hosts)) throw new Error(`This block did not ask for ${host}; add it to :net`);
-    if (grant.hosts.includes(host) || (declared && declared.hosts.some((h) => hostAllowed(host, [h]) && grant.hosts.includes(h)))) return true;
+    if (grant.hosts.includes(host) || (declared && declared.hosts.some((/** @type {any} */ h) => hostAllowed(host, [h]) && grant.hosts.includes(h)))) return true;
     if (!mayAsk || Date.now() - (refused.get(host) || 0) < REFUSAL_MEMORY_MS) throw new Error(`Network access to ${host} was not allowed`);
     const ok = await confirmDialog(`Allow this code to contact ${host}? It can send anything it can read, including the text of the open file, to that site.`, { confirmLabel: 'Allow', danger: false });
     if (!ok) {
@@ -166,7 +193,7 @@ export function createServices({ owner, declared = /** @type {any} */ (null) }) 
     if (!ok) throw new Error('Reading the position was not allowed');
     writeGrant(owner, { ...readGrant(owner), location: true });
   };
-  return async (method, args) => {
+  return async (/** @type {any} */ method, /** @type {any} */ args) => {
     if (method === 'ics.parse') {
       const text = String(args[0] === undefined || args[0] === null ? '' : args[0]);
       if (text.length > MAX_RESPONSE_BYTES) throw new Error('The calendar text is larger than 1 MB');
@@ -191,10 +218,14 @@ export function createServices({ owner, declared = /** @type {any} */ (null) }) 
   };
 }
 
-/** Before a block runs: asks for the hosts and the position its header lists, unless granted already. */
+/**
+ * Before a block runs: asks for the hosts and the position its header lists, unless granted already.
+ * @param {any} [owner]
+ * @param {any} [declared]
+ */
 export async function authorizeBlock(owner, declared) {
   const grant = readGrant(owner);
-  const hosts = declared.hosts.filter((h) => !grant.hosts.includes(h));
+  const hosts = declared.hosts.filter((/** @type {any} */ h) => !grant.hosts.includes(h));
   const needLocation = declared.location && !grant.location;
   if (!hosts.length && !needLocation) return true;
   const parts = [];

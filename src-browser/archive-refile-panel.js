@@ -75,7 +75,7 @@ function archivePart(heading) {
   /** @type {{ label: string, value: string, warn?: boolean }[]} */
   const rows = [
     { label: 'Moves', value: describeSubtree(heading) },
-    { label: 'From', value: [displayName(S.state.documentId), ...from.map((h) => h.title), heading.title || '(untitled)'].join(' › ') },
+    { label: 'From', value: [displayName(S.state.documentId), ...from.map((/** @type {any} */ h) => h.title), heading.title || '(untitled)'].join(' › ') },
     { label: 'Adds', value: `the :ARCHIVE: tag and ${archiveStamps(heading).join(', ')}` },
     { label: 'Setting', value: "the heading's own ARCHIVE property, else the file's #+ARCHIVE:, else the default" },
   ];

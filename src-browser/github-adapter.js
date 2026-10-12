@@ -31,6 +31,7 @@
 
 const API_BASE = 'https://api.github.com';
 
+/** @param {any} [str] */
 function utf8ToBase64(str) {
   const bytes = new TextEncoder().encode(str);
   let binary = '';
@@ -38,6 +39,7 @@ function utf8ToBase64(str) {
   return btoa(binary);
 }
 
+/** @param {any} [base64] */
 function base64ToUtf8(base64) {
   const binary = atob(base64.replace(/\n/g, ''));
   const bytes = new Uint8Array(binary.length);
@@ -53,18 +55,24 @@ function base64ToUtf8(base64) {
  *  browser's own URL parser rather than sent as literal path
  *  characters, silently truncating or corrupting the actual request
  *  GitHub's API receives. Matches the WebDAV adapter's own
+ * @param {any} [path]
  *  encodePath exactly. */
 function encodeGithubPath(path) {
   return path
     .split('/')
-    .map((segment) => encodeURIComponent(segment))
+    .map((/** @type {any} */ segment) => encodeURIComponent(segment))
     .join('/');
 }
 
+/**
+ * @param {any} [config]
+ * @param {any} [path]
+ */
 function contentsUrl(config, path) {
   return `${API_BASE}/repos/${config.owner}/${config.repo}/contents/${encodeGithubPath(path)}`;
 }
 
+/** @param {any} [config] */
 function authHeaders(config) {
   return {
     Authorization: `Bearer ${config.token}`,
@@ -73,6 +81,7 @@ function authHeaders(config) {
   };
 }
 
+/** @param {any} [getConfig] */
 function requireConfig(getConfig) {
   const config = getConfig();
   if (!config || !config.token || !config.owner || !config.repo) {
@@ -81,6 +90,7 @@ function requireConfig(getConfig) {
   return config;
 }
 
+/** @param {any} [res] */
 async function githubErrorMessage(res) {
   let detail = '';
   try {
@@ -117,6 +127,8 @@ async function githubErrorMessage(res) {
  *  the Contents API's own inline-content threshold. Returns the same
  *  base64 string shape the Contents API's own inline `content` field
  *  would have had, so callers don't need to know or care which path
+ * @param {any} [config]
+ * @param {any} [sha]
  *  was actually taken. */
 async function fetchBlobContent(config, sha) {
   const url = `${API_BASE}/repos/${config.owner}/${config.repo}/git/blobs/${sha}`;
@@ -131,8 +143,10 @@ async function fetchBlobContent(config, sha) {
  * operation, so changing GitHub settings mid-session (e.g. after a user
  * fixes a typo'd token) takes effect on the next call without needing to
  * reconstruct the adapter.
+ * @param {any} [getConfig]
  */
 export function createGithubAdapter(getConfig) {
+  /** @param {any} [fileId] */
   async function readImpl(fileId) {
     const config = requireConfig(getConfig);
     const url = contentsUrl(config, fileId) + '?ref=' + encodeURIComponent(config.branch || 'main');
@@ -155,6 +169,7 @@ export function createGithubAdapter(getConfig) {
    *  fetchBlobContent's own docs for why "either way" matters: the
    *  Contents API only inlines it directly for a file under 1MB; an
    *  ordinary camera photo easily exceeds that, not an edge case).
+   * @param {any} [fileId]
    *  Returns null for a 404, matching readImpl's convention. */
   async function readBinaryImpl(fileId) {
     const config = requireConfig(getConfig);
@@ -170,6 +185,10 @@ export function createGithubAdapter(getConfig) {
     return { base64: content.replace(/\n/g, ''), hash: body.sha };
   }
 
+  /**
+   * @param {any} [fileId]
+   * @param {any} [content]
+   */
   async function writeImpl(fileId, content) {
     const config = requireConfig(getConfig);
     // GitHub requires the current sha to update an existing file (so it
@@ -198,6 +217,8 @@ export function createGithubAdapter(getConfig) {
    *  otherwise identical to writeImpl's own sha-based update-vs-create
    *  logic, just skipping the utf8ToBase64 encoding step that would
    *  otherwise corrupt binary data (the same reasoning readBinaryImpl
+   * @param {any} [fileId]
+   * @param {any} [base64Content]
    *  skips readImpl's own utf8 decoding). */
   async function writeBinaryImpl(fileId, base64Content) {
     const config = requireConfig(getConfig);
@@ -225,6 +246,7 @@ export function createGithubAdapter(getConfig) {
    *  first via readImpl. A no-op (not an error) if the file doesn't
    *  exist at all -- the end state (file gone) is already true,
    *  matching how a delete action in this app generally behaves when
+   * @param {any} [fileId]
    *  there's nothing there to remove. */
   async function deleteImpl(fileId) {
     const config = requireConfig(getConfig);
@@ -280,12 +302,14 @@ export function createGithubAdapter(getConfig) {
     delete: deleteImpl,
     list: listImpl,
     readBinary: readBinaryImpl,
+    /** @param {any} [fileId] */
     async exists(fileId) {
       return (await readImpl(fileId)) !== null;
     },
   };
 }
 
+/** @param {any} [config] */
 export function isGithubConfigured(config) {
   return !!(config && config.token && config.owner && config.repo);
 }

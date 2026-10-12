@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v502 — Implicit-any checking begun
+Function parameters across the app now carry type notes: 6,623 "implicitly any" findings are down to 681 in 113 files. A new ratchet check (=npm run check:implicit-any=, also in release and CI) lets the count only fall; at zero the strict setting turns on. No change in behaviour.
+Verified: tests, lint, type check, and the Open / Save As, agenda and Recently opened smoke checks.
+
 * v501 — Null checking finished
 The type checker's check for values that might be missing now passes in every file, and is part of the normal type check, so nothing can slip back. The last 13 files were typed (state that starts out empty now says what it holds) with a few guards where a missing match used to be assumed. No change in behaviour.
 Verified: tests, lint, type check, and the babel, extension, camera, move, grip, import, table and tangle checks.

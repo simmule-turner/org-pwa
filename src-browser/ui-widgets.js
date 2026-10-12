@@ -46,6 +46,11 @@ export const VH_UNIT = typeof CSS !== 'undefined' && CSS.supports && CSS.support
 // not blocking the browser's own gesture handling.
 export const SWIPE_THRESHOLD_PX = 40;
 
+/**
+ * @param {any} [label]
+ * @param {any} [ariaLabel]
+ * @param {any} [onClick]
+ */
 export function smallButton(label, ariaLabel, onClick) {
   const btn = document.createElement('button');
   btn.textContent = label;
@@ -68,6 +73,8 @@ export function smallButton(label, ariaLabel, onClick) {
  *  so a caller's own click handler (which still fires on release,
  *  same as any other tap) can check it and skip its own normal action
  *  -- the long-press's own callback already ran, a regular tap
+ * @param {any} [el]
+ * @param {any} [callback]
  *  shouldn't also do something on top of that. */
 export function attachLongPress(el, callback, duration = 600) {
   /** @type {number | null} */
@@ -83,7 +90,7 @@ export function attachLongPress(el, callback, duration = 600) {
     }
   };
 
-  el.addEventListener('pointerdown', (e) => {
+  el.addEventListener('pointerdown', (/** @type {any} */ e) => {
     if (e.button !== undefined && e.button !== 0) return; // only the primary button/touch -- not right-click etc.
     startX = e.clientX;
     startY = e.clientY;
@@ -93,7 +100,7 @@ export function attachLongPress(el, callback, duration = 600) {
       callback(e);
     }, duration);
   });
-  el.addEventListener('pointermove', (e) => {
+  el.addEventListener('pointermove', (/** @type {any} */ e) => {
     if (!timer) return;
     if (Math.abs(e.clientX - startX) > MOVE_THRESHOLD || Math.abs(e.clientY - startY) > MOVE_THRESHOLD) cancel();
   });
@@ -102,6 +109,10 @@ export function attachLongPress(el, callback, duration = 600) {
   el.addEventListener('pointerleave', cancel);
 }
 
+/**
+ * @param {any} [el]
+ * @param {any} [compact]
+ */
 export function textInputStyle(el, compact) {
   if (!compact) {
     el.style.width = '100%';
@@ -146,6 +157,9 @@ export function textInputStyle(el, compact) {
  *  drifted apart in a followup fix before this consolidation).
  *  Clears any existing <option> children first, so it's also safe to
  *  call again on an already-populated select (e.g. after a value
+ * @param {any} [selectEl]
+ * @param {any} [options]
+ * @param {any} [currentValue]
  *  change re-renders the same dropdown). */
 export function populateSelectOptions(selectEl, options, currentValue) {
   selectEl.innerHTML = '';
@@ -166,6 +180,7 @@ export function populateSelectOptions(selectEl, options, currentValue) {
  *  44px minimum for touch targets -- but visibly mismatched here,
  *  which is exactly the bug this fixes). Also applies the same iOS
  *  appearance:none fix textInputStyle needs, for the same underlying
+ * @param {any} [btn]
  *  reason: native button chrome not fully respecting box-sizing. */
 export function entryFieldButtonStyle(btn) {
   btn.style.minHeight = '40px';
@@ -175,6 +190,10 @@ export function entryFieldButtonStyle(btn) {
   btn.style.appearance = 'none';
 }
 
+/**
+ * @param {any} [labelText]
+ * @param {any} [inputEl]
+ */
 export function fieldRow(labelText, inputEl) {
   const row = document.createElement('div');
   row.style.marginBottom = '8px';
@@ -197,6 +216,7 @@ export function fieldRow(labelText, inputEl) {
 // plain block container — this is what lets a single renderRow() call
 // produce "several stacked pieces" without changing render()'s
 // one-element-per-row assumption.
+/** @param {any} [rowEl] */
 export function withActionMenu(rowEl, ...extras) {
   const present = extras.filter(Boolean);
   if (present.length === 0) return rowEl;
@@ -216,6 +236,7 @@ export function withActionMenu(rowEl, ...extras) {
  * bounded with its own internal scroll — that one really can hold an
  * entire file's worth of text, where growing the whole page to fit it
  * would defeat the fixed-app-shell layout instead of serving it.
+ * @param {any} [textarea]
  */
 export function autoGrowTextarea(textarea) {
   textarea.style.resize = 'none';
@@ -243,6 +264,11 @@ export function autoGrowTextarea(textarea) {
 // icon-style glyph gets the larger, separately-sized treatment below.
 export const LEADING_ICON_RE = /^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)(\s*)/u;
 
+/**
+ * @param {any} [label]
+ * @param {any} [onClick]
+ * @param {any} [disabled]
+ */
 export function menuButton(label, onClick, disabled) {
   const btn = document.createElement('button');
   const match = LEADING_ICON_RE.exec(label);
@@ -277,6 +303,9 @@ export function menuButton(label, onClick, disabled) {
  *  labeledButtons at all (typo, or a stale reference to a button
  *  that no longer exists) is silently dropped from the reordering,
  *  the same tolerant-of-the-unexpected approach every other
+ * @param {any} [container]
+ * @param {any} [aliasMap]
+ * @param {any} [labeledButtons]
  *  recognized-subset parser in this codebase already takes. */
 export function appendMenuButtonsInOrder(container, aliasMap, labeledButtons) {
   const order = resolveMenuOrder(
@@ -284,7 +313,7 @@ export function appendMenuButtonsInOrder(container, aliasMap, labeledButtons) {
     labeledButtons.map(({ label }) => label)
   );
   for (const label of order) {
-    const entry = labeledButtons.find((lb) => lb.label === label);
+    const entry = labeledButtons.find((/** @type {any} */ lb) => lb.label === label);
     if (entry && entry.btn) container.appendChild(entry.btn);
   }
 }
@@ -296,6 +325,8 @@ export function appendMenuButtonsInOrder(container, aliasMap, labeledButtons) {
  *  with its own content rendered) as a floating popup anchored near
  *  `buttonEl`'s own current position -- see this function's own
  *  top-level docs above for why this can't just be a fixed CSS
+ * @param {any} [panelEl]
+ * @param {any} [buttonEl]
  *  offset the way extraMenuPanel's own corner-anchored popup is. */
 export function positionPopupNearButton(panelEl, buttonEl) {
   const btnRect = buttonEl.getBoundingClientRect();
@@ -334,6 +365,9 @@ export function positionPopupNearButton(panelEl, buttonEl) {
  *  (LEADING_ICON_RE) matches menuButton's own exactly. A <div> has no
  *  native disabled attribute -- .menu-list-item-disabled (CSS) plus
  *  aria-disabled stand in for it, with the click handler simply never
+ * @param {any} [label]
+ * @param {any} [onClick]
+ * @param {any} [disabled]
  *  attached at all rather than attached-but-blocked. */
 export function menuDivItem(label, onClick, disabled) {
   const el = document.createElement('div');
@@ -363,6 +397,10 @@ export function menuDivItem(label, onClick, disabled) {
 /** The div-item counterpart to aliasedMenuButton -- same org-xx-menu-
  *  aliases lookup/omission semantics exactly (see aliasedMenuButton's
  *  own docs for the full "menu:Label;alias" rules), just producing a
+ * @param {any} [aliasMap]
+ * @param {any} [label]
+ * @param {any} [onClick]
+ * @param {any} [disabled]
  *  menuDivItem instead of a menuButton. */
 export function aliasedMenuDivItem(aliasMap, label, onClick, disabled) {
   const alias = aliasMap ? aliasMap[label] : undefined;
@@ -373,6 +411,10 @@ export function aliasedMenuDivItem(aliasMap, label, onClick, disabled) {
 }
 
 /** The div-item counterpart to requiredMenuButton -- never omitted,
+ * @param {any} [aliasMap]
+ * @param {any} [label]
+ * @param {any} [onClick]
+ * @param {any} [disabled]
  *  same as requiredMenuButton's own semantics. */
 export function requiredMenuDivItem(aliasMap, label, onClick, disabled) {
   const alias = aliasMap ? aliasMap[label] : undefined;
@@ -385,6 +427,8 @@ export function requiredMenuDivItem(aliasMap, label, onClick, disabled) {
  *  (matching the .panel button convention) for use outside a
  *  .panel-classed container — e.g. the timestamp wizard's Save/Cancel,
  *  which otherwise fell back to bare, unstyled, visually cramped
+ * @param {any} [label]
+ * @param {any} [onClick]
  *  buttons since nothing in their ancestor chain provided sizing. */
 export function wizardButton(label, onClick) {
   const btn = menuButton(label, onClick);
@@ -395,6 +439,11 @@ export function wizardButton(label, onClick) {
   return btn;
 }
 
+/**
+ * @param {any} [label]
+ * @param {any} [onClick]
+ * @param {any} [disabled]
+ */
 export function tableActionButton(label, onClick, disabled) {
   const btn = menuButton(label, onClick, disabled);
   btn.style.fontSize = '15px';
@@ -427,6 +476,7 @@ export function safeAreaTop() {
  *  drift or "scroll" out of the visible area as the keyboard opens
  *  and closes. Returns a cleanup function removing every listener
  *  this attaches -- unlike #topBar's own deliberately permanent ones,
+ * @param {any} [overlay]
  *  a modal's own listeners must not outlive the modal itself. */
 export function keepOverlayInVisibleViewport(overlay) {
   const vv = window.visualViewport;
@@ -441,6 +491,11 @@ export function keepOverlayInVisibleViewport(overlay) {
   }
   reposition();
   const cleanups = [];
+  /**
+   * @param {any} [target]
+   * @param {any} [evt]
+   * @param {any} [handler]
+   */
   function on(target, evt, handler) {
     target.addEventListener(evt, handler);
     cleanups.push(() => target.removeEventListener(evt, handler));
@@ -471,6 +526,7 @@ export function keepOverlayInVisibleViewport(overlay) {
 // those render functions actually do the showing.
 export const modalOverlayCleanups = new Map();
 
+/** @param {any} [overlayEl] */
 export function hideModalOverlay(overlayEl) {
   overlayEl.style.display = 'none';
   const cleanup = modalOverlayCleanups.get(overlayEl);
@@ -485,6 +541,10 @@ export function hideModalOverlay(overlayEl) {
  *  built for a flex-wrap multi-field-per-row layout this modal
  *  deliberately doesn't use) with a consistent, deliberate vertical
  *  rhythm between fields, for a tighter, more custom form feel than
+ * @param {any} [labelText]
+ * @param {any} [type]
+ * @param {any} [value]
+ * @param {any} [placeholder]
  *  reusing the general-purpose labeledInput as-is produced. */
 export function modalFieldRow(labelText, type, value, placeholder) {
   const wrap = document.createElement('div');
@@ -518,6 +578,12 @@ export function modalFieldRow(labelText, type, value, placeholder) {
   return { wrap, input };
 }
 
+/**
+ * @param {any} [labelText]
+ * @param {any} [type]
+ * @param {any} [value]
+ * @param {any} [placeholder]
+ */
 export function labeledInput(labelText, type, value, placeholder) {
   const wrap = document.createElement('div');
   wrap.className = 'panel-field';
@@ -557,6 +623,7 @@ export function labeledInput(labelText, type, value, placeholder) {
  *  deliberately not reusing pickAndImportFile, which is built for .org
  *  document import specifically and also caches the picked content
  *  into kv under an unrelated key for later re-reading; a one-off
+ * @param {any} [accept]
  *  settings JSON file has no business being cached there. */
 export function pickTextFile(accept) {
   return new Promise((resolve, reject) => {
@@ -582,6 +649,10 @@ export function pickTextFile(accept) {
   });
 }
 
+/**
+ * @param {any} [container]
+ * @param {any} [snippet]
+ */
 export function appendSnippetWithHighlight(container, snippet) {
   if (!snippet) return;
   const { text, highlightStart, highlightLength } = snippet;

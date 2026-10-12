@@ -70,6 +70,8 @@ const LETTER_RE = /^[a-zA-Z]$/;
  *  human-readable form the caller wants in the final chord string
  *  (e.g. "<up>" for the ArrowUp key, matching real Emacs's own
  *  bracketed special-key notation) -- this function doesn't interpret
+ * @param {any} [modifier]
+ * @param {any} [key]
  *  key names itself, that's normalizeKeyName's own job below. */
 function formatChord(modifier, key) {
   if (modifier === 'C') return `C-${key}`;
@@ -86,6 +88,8 @@ function formatChord(modifier, key) {
  *  into the form used inside a chord string: a single printable
  *  character stays as-is; a named special key (arrows, Return, Tab,
  *  ...) becomes Emacs's own bracketed form, with an "S-" prefix
+ * @param {any} [rawKey]
+ * @param {any} [shiftKey]
  *  first if Shift was held. */
 function normalizeKeyName(rawKey, shiftKey) {
   const BRACKETED_KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
@@ -114,6 +118,9 @@ const NAMED_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', '
  *  dead end -- see app.js's own dispatch logic). `rawKey` is a
  *  KeyboardEvent's own `.key` value; `shiftKey` is whether Shift was
  *  actually held (see normalizeKeyName's own docs for why Shift is
+ * @param {any} [state]
+ * @param {any} [rawKey]
+ * @param {any} [shiftKey]
  *  treated differently from Ctrl/Alt here). */
 function processKey(state, rawKey, shiftKey) {
   // SPC is real god-mode's own literal/escape key -- sticky, toggles

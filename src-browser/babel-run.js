@@ -32,6 +32,7 @@ export function lockDown() {
  *  this module. */
 function workerMain() {
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+  /** @param {any} [v] */
   const show = (v) => {
     if (typeof v === 'string') return v;
     try {
@@ -40,6 +41,7 @@ function workerMain() {
       return String(v);
     }
   };
+  /** @param {any} [v] */
   const plain = (v) => {
     if (v === undefined || v === null || ['string', 'number', 'boolean'].includes(typeof v)) return v;
     if (typeof v === 'bigint') return String(v);
@@ -57,6 +59,10 @@ function workerMain() {
   // Requests to the page (network, cache, position); the page decides.
   const waiting = new Map();
   let lastRid = 0;
+  /**
+   * @param {any} [method]
+   * @param {any} [args]
+   */
   const rpc = (method, args) =>
     new Promise((resolve, reject) => {
       const rid = ++lastRid;
@@ -64,19 +70,19 @@ function workerMain() {
       self.postMessage({ type: 'rpc', rid, method, args });
     });
   const services = {
-    ics: Object.freeze({ parse: async (text) => rpc('ics.parse', [text]) }),
+    ics: Object.freeze({ parse: async (/** @type {string} */ text) => rpc('ics.parse', [text]) }),
     location: Object.freeze({ get: () => rpc('location.get', []) }),
     cache: Object.freeze({
-      get: async (key, maxAgeMs) => {
+      get: async (/** @type {string} */ key, /** @type {any} */ maxAgeMs) => {
           const r = await rpc('cache.get', [key, maxAgeMs === undefined ? null : maxAgeMs]);
           return r.found ? r.value : null;
         },
-      set: async (key, value) => {
+      set: async (/** @type {string} */ key, /** @type {any} */ value) => {
         await rpc('cache.set', [key, value]);
         return value;
       },
     }),
-    fetch: async (url, options) => {
+    fetch: async (/** @type {string} */ url, /** @type {any} */ options) => {
       const r = await rpc('fetch', [String(url), options === undefined ? null : JSON.parse(JSON.stringify(options))]);
       return Object.freeze({ status: r.status, ok: r.ok, url: r.url, text: async () => r.body, json: async () => JSON.parse(r.body) });
     },
@@ -95,7 +101,7 @@ function workerMain() {
     const consoleShim = Object.freeze({ log, info: log, warn: log, error: log, debug: log });
     const org = Object.freeze({
       apiVersion: 1,
-      vars: Object.freeze({ get: (name) => (Object.prototype.hasOwnProperty.call(variables, name) ? variables[name] : null) }),
+      vars: Object.freeze({ get: (/** @type {string} */ name) => (Object.prototype.hasOwnProperty.call(variables, name) ? variables[name] : null) }),
       ...services,
     });
     try {
@@ -117,12 +123,19 @@ function workerMain() {
   };
 }
 
-/** The code that runs inside the worker: the lock-down first, then `main`. */
+/**
+ * The code that runs inside the worker: the lock-down first, then `main`.
+ * @param {any} [main]
+ */
 function workerSource(main) {
   return `(${lockDown.toString()})();(${main.toString()})()`;
 }
 
-/** Points the frame at the static sandbox page, which asks for its code once it has loaded. */
+/**
+ * Points the frame at the static sandbox page, which asks for its code once it has loaded.
+ * @param {any} [frame]
+ * @param {any} [main]
+ */
 function loadFrame(frame, main) {
   frame.src = 'sandbox-frame.html';
   const source = workerSource(main);
@@ -137,6 +150,8 @@ export const MAX_RUN_WITH_REQUESTS_MS = 60000;
  * Answers the worker's requests (`{type:'rpc', rid, method, args}`) with `onRpc(method, args)`.
  * waiting() is how many are unanswered; the run's timer is not counted down meanwhile
  * (pausedMs() is the time spent waiting), up to MAX_RUN_WITH_REQUESTS_MS in all.
+ * @param {any} [onRpc]
+ * @param {any} [post]
  */
 export function createRpcHost(onRpc, post) {
   let count = 0;
@@ -145,7 +160,9 @@ export function createRpcHost(onRpc, post) {
   return {
     waiting: () => pending,
     pausedMs: () => paused,
+    /** @param {any} [m] */
     handle(m) {
+      /** @param {any} [r] */
       const reply = (r) => post({ type: 'rpc-result', rid: m.rid, ...r });
       if (!onRpc) return reply({ ok: false, message: 'Not available here' });
       if (++count > MAX_REQUESTS_PER_RUN) return reply({ ok: false, message: `Too many requests (${MAX_REQUESTS_PER_RUN} at most per run)` });
@@ -183,7 +200,8 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
     /** @type {any} */
     let timer = null;
     let done = false;
-    const rpcs = createRpcHost(onRpc, (message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'));
+    const rpcs = createRpcHost(onRpc, (/** @type {string} */ message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'));
+    /** @param {any} [delay] */
     const arm = (delay) => {
       clearTimeout(timer);
       timer = setTimeout(() => {
@@ -197,6 +215,7 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
     let startedAt = 0;
     /** @type {(() => any) | null} */
     let boot = null;
+    /** @param {any} [outcome] */
     const finish = (outcome) => {
       if (done) return;
       done = true;
@@ -205,6 +224,7 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
       frame.remove();
       resolve(outcome);
     };
+    /** @param {any} [e] */
     const onMessage = (e) => {
       if (e.source !== frame.contentWindow || !e.data) return;
       const m = e.data;
@@ -234,6 +254,7 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
  * `main` is a function that runs inside the worker and talks through self.onmessage / self.postMessage;
  * it is serialised, so it must not use anything from the page's modules. Resolves with
  * { ok: true, send(message), onMessage(listener), close() }, or { ok: false, message }.
+ * @param {any} [main]
  */
 export function startSandbox(main, { startupMs = 4000, onRpc = /** @type {((method: any, args: any) => any) | null} */ (null) } = {}) {
   return new Promise((resolve) => {
@@ -243,7 +264,7 @@ export function startSandbox(main, { startupMs = 4000, onRpc = /** @type {((meth
     frame.tabIndex = -1;
     frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;pointer-events:none';
     const listeners = new Set();
-    const rpcs = createRpcHost(onRpc, (message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'));
+    const rpcs = createRpcHost(onRpc, (/** @type {string} */ message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'));
     let settled = false;
     /** @type {(() => any) | null} */
     let boot = null;
@@ -258,6 +279,7 @@ export function startSandbox(main, { startupMs = 4000, onRpc = /** @type {((meth
       removeEventListener('message', onMessage);
       frame.remove();
     };
+    /** @param {any} [value] */
     const settle = (value) => {
       if (settled) return;
       settled = true;
@@ -265,6 +287,7 @@ export function startSandbox(main, { startupMs = 4000, onRpc = /** @type {((meth
       if (!value.ok) close();
       resolve(value);
     };
+    /** @param {any} [e] */
     const onMessage = (e) => {
       if (e.source !== frame.contentWindow || !e.data) return;
       if (e.data.type === 'hello') {
@@ -272,8 +295,8 @@ export function startSandbox(main, { startupMs = 4000, onRpc = /** @type {((meth
       } else if (e.data.type === 'ready') {
         settle({
           ok: true,
-          send: (message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'),
-          onMessage: (listener) => listeners.add(listener),
+          send: (/** @type {string} */ message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'),
+          onMessage: (/** @type {any} */ listener) => listeners.add(listener),
           close,
           requestsWaiting: rpcs.waiting,
           requestsPausedMs: rpcs.pausedMs,

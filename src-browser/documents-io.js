@@ -39,15 +39,19 @@ import { folderAvailable } from './local-folder.js';
 import { platform } from './platform.js';
 import { promptText } from './dialogs.js';
 
+/** @param {any} [fallback] */
 export function suggestedSaveAsName(fallback) {
   return S.state.documentId && S.state.documentId.startsWith(UNSAVED_DOCUMENT_ID) ? fallback : S.state.documentId || fallback;
 }
 
 /** Common finish-up after any successful open/create, regardless of which
+ * @param {any} [documentId]
+ * @param {any} [doc]
+ * @param {any} [storageKind]
  *  backend it came from. */
 export async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCache = false, { replaceCurrentTab = false } = {}) {
   if (!replaceCurrentTab) {
-    const alreadyOpenTab = documentId && !documentId.startsWith(UNSAVED_DOCUMENT_ID) ? S.documentSessions.find((s) => s.state && s.state.documentId === documentId && s.state.storageKind === storageKind) : null;
+    const alreadyOpenTab = documentId && !documentId.startsWith(UNSAVED_DOCUMENT_ID) ? S.documentSessions.find((/** @type {any} */ s) => s.state && s.state.documentId === documentId && s.state.storageKind === storageKind) : null;
     if (alreadyOpenTab && alreadyOpenTab.tabId !== S.activeTabId) {
       switchToTab(alreadyOpenTab.tabId);
       return;
@@ -173,6 +177,10 @@ export async function openFromImport() {
  *  chosen. `kind` is 'github' | 'webdav' (passed through to
  *  afterDocumentLoaded, same as before this existed as a shared
  *  function), `label` is the human-readable name used in status
+ * @param {any} [path]
+ * @param {any} [kind]
+ * @param {any} [diskAdapter]
+ * @param {any} [label]
  *  messages ("GitHub" / "WebDAV"). */
 export async function openRemotePath(path, kind, diskAdapter, label) {
   try {
@@ -216,6 +224,7 @@ export async function openRemotePath(path, kind, diskAdapter, label) {
  * archiving/capture-to-file/images — can't open an arbitrary path
  * without a fresh picker gesture the browser requires per file, so
  * this shows a clear message rather than silently failing.
+ * @param {any} [resolution]
  */
 export async function openFileLink(resolution, containingHeading = /** @type {any} */ (null)) {
   let adapter, kind, label;
@@ -263,7 +272,7 @@ export async function openFileLink(resolution, containingHeading = /** @type {an
   // since applyStartupVisibility always re-applies the DEFAULT fold
   // state on every fresh open, not whatever the user had left it as.
   const originHeadingPath = containingHeading
-    ? [...(findAncestorPath(S.state.doc, containingHeading) || []).map((h) => h.title), containingHeading.title]
+    ? [...(findAncestorPath(S.state.doc, containingHeading) || []).map((/** @type {any} */ h) => h.title), containingHeading.title]
     : null;
   const originEntry = {
     view: S.currentView,

@@ -8,9 +8,13 @@ import { openTextFieldPopup } from './dialogs.js';
 import { setStatus } from './editing.js';
 import { platform } from './platform.js';
 
+/** @param {any} [n] */
 const px = (n) => `${Math.round(n * 10) / 10}px`;
 
-/** The padding a CSS value resolves to, which is how env() values are read back. */
+/**
+ * The padding a CSS value resolves to, which is how env() values are read back.
+ * @param {any} [cssValue]
+ */
 function resolveLength(cssValue) {
   const probe = document.createElement('div');
   probe.style.cssText = `position:absolute;visibility:hidden;padding-top:${cssValue}`;
@@ -30,6 +34,7 @@ export function collectDisplayMeasurements(launcher = /** @type {string | null} 
   const header = document.querySelector('#topBar header');
   const tabBar = document.getElementById('tabBar');
   const base = S.viewportBaseline;
+  /** @param {any} [el] */
   const rect = (el) => (el ? el.getBoundingClientRect() : null);
   const first = rect(firstButton);
   const rows = [
@@ -73,7 +78,7 @@ export async function showDisplayMeasurements() {
     label: 'Display measurements (OK copies them)',
     value: text,
     defaultValue: text,
-    onSave: async (edited) => {
+    onSave: async (/** @type {any} */ edited) => {
       try {
         await platform.clipboard.writeText(edited);
         setStatus('Display measurements copied.');

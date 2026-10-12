@@ -45,6 +45,7 @@ const COOKIE_ENTRY_RE = /^\s*([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*?)\s*$/;
  *  as an ordinary, ignored (unrecognized) variable like anything else
  *  neither side of this app knows about. Returns the same open-ended
  *  { name: rawStringValue } shape parseLocalVariables does; an
+ * @param {any} [text]
  *  absent/malformed cookie returns {}. */
 function parseFirstLineCookie(text) {
   const vars = {};
@@ -59,6 +60,7 @@ function parseFirstLineCookie(text) {
   return vars;
 }
 
+/** @param {any} [text] */
 export function parseLocalVariables(text) {
   const vars = parseFirstLineCookie(text);
   if (!text) return vars;
@@ -86,6 +88,7 @@ export function parseLocalVariables(text) {
  *  self-contained. The backslash itself is stripped, and the joined
  *  content is separated by a single space. A trailing backslash on the
  *  very last line (nothing left to continue onto) is left as a
+ * @param {any} [text]
  *  literal trailing character rather than silently swallowed. */
 function joinContinuedLines(text) {
   const rawLines = text.split('\n');
@@ -119,6 +122,7 @@ function joinContinuedLines(text) {
 /** Emacs Lisp boolean convention: the symbol `t` is true, `nil` is
  *  false (and is also Lisp's empty list / "nothing", which is why nil
  *  reads as false) — not JavaScript truthiness, so this doesn't just
+ * @param {any} [raw]
  *  coerce the raw string. Anything else falls back to `fallback`. */
 export function parseLispBoolean(raw, fallback = false) {
   if (raw === undefined || raw === null) return fallback;
@@ -128,6 +132,10 @@ export function parseLispBoolean(raw, fallback = false) {
   return fallback;
 }
 
+/**
+ * @param {any} [raw]
+ * @param {any} [fallback]
+ */
 export function parseLispNumber(raw, fallback) {
   if (raw === undefined || raw === null) return fallback;
   const n = Number(String(raw).trim());
@@ -136,6 +144,7 @@ export function parseLispNumber(raw, fallback) {
 
 /** org-agenda-start-on-weekday: 0=Sunday, 1=Monday (real org's own
  *  default), 2=Tuesday, ... 6=Saturday. Values outside 0-6 fall back to
+ * @param {any} [vars]
  *  the default rather than producing a nonsensical week. */
 export function getAgendaStartOnWeekday(vars) {
   const n = parseLispNumber((vars || {})['org-agenda-start-on-weekday'], 1);
@@ -151,6 +160,7 @@ export function getAgendaStartOnWeekday(vars) {
  *  two-week heads-up automatically, the same as real org's own daily
  *  workflow, rather than only ever showing up on its exact due date
  *  with zero advance notice. A negative value falls back to the
+ * @param {any} [vars]
  *  default too, rather than producing a nonsensical negative window. */
 export function getDeadlineWarningDays(vars) {
   const n = parseLispNumber((vars || {})['org-deadline-warning-days'], 14);
@@ -178,6 +188,7 @@ export function getDeadlineWarningDays(vars) {
  *  number of days by default, contradicting the manual's own example
  *  and actively working against SCHEDULED's whole purpose. A negative
  *  value falls back to 0 too, rather than producing a nonsensical
+ * @param {any} [vars]
  *  negative delay. */
 export function getScheduledDelayDays(vars) {
   const n = parseLispNumber((vars || {})['org-scheduled-delay-days'], 0);
@@ -185,6 +196,7 @@ export function getScheduledDelayDays(vars) {
 }
 
 /** org-cycle-open-archived-trees: real org's default is nil (false) —
+ * @param {any} [vars]
  *  cycling/folding does NOT expand into archived trees. */
 export function getCycleOpenArchivedTrees(vars) {
   return parseLispBoolean((vars || {})['org-cycle-open-archived-trees'], false);
@@ -197,6 +209,7 @@ export function getCycleOpenArchivedTrees(vars) {
  *  something on them). Also toggleable on the fly in the Agenda view
  *  itself (the `g` button), matching real org's own `g` keybinding --
  *  this is just the file's own persistent default for that toggle's
+ * @param {any} [vars]
  *  own starting state each time Agenda is opened fresh. */
 export function getAgendaShowAllDates(vars) {
   return parseLispBoolean((vars || {})['org-agenda-show-all-dates'], true);
@@ -205,6 +218,7 @@ export function getAgendaShowAllDates(vars) {
 /** org-agenda-skip-comment-trees: real org's default is t — a
  *  "commented" heading (COMMENT first in its title, see comment-model.js)
  *  is skipped in agenda views. Set to nil to include
+ * @param {any} [vars]
  *  commented headings in the agenda after all. */
 export function getAgendaSkipCommentTrees(vars) {
   return parseLispBoolean((vars || {})['org-agenda-skip-comment-trees'], true);
@@ -213,6 +227,7 @@ export function getAgendaSkipCommentTrees(vars) {
 /** org-agenda-skip-archived-trees: real org's default is t — an
  *  archived heading (tagged :ARCHIVE:, see archive-model.js) is skipped
  *  in agenda views. Set to nil to include archived headings in the
+ * @param {any} [vars]
  *  agenda after all. */
 export function getAgendaSkipArchivedTrees(vars) {
   return parseLispBoolean((vars || {})['org-agenda-skip-archived-trees'], true);
@@ -225,6 +240,7 @@ export function getAgendaSkipArchivedTrees(vars) {
  *  the CLOSED timestamp specifically for this "cleared to no keyword"
  *  case (it's still always removed when cycling to a different TODO
  *  keyword, regardless of this setting -- that part of the behavior
+ * @param {any} [vars]
  *  isn't controlled by any variable in real org either). */
 export function getClosedKeepWhenNoTodo(vars) {
   return parseLispBoolean((vars || {})['org-closed-keep-when-no-todo'], false);
@@ -234,13 +250,17 @@ export function getClosedKeepWhenNoTodo(vars) {
  *  wrapping paragraph text during ASCII export. Real org's own default
  *  is 72, matched here exactly. A non-positive or unparseable value
  *  falls back to that default rather than producing zero-or-negative-
+ * @param {any} [vars]
  *  width wrapping. */
 export function getAsciiTextWidth(vars) {
   const n = parseLispNumber((vars || {})['org-ascii-text-width'], 72);
   return n > 0 ? n : 72;
 }
 
-/** org-ascii-charset: `ascii` (default), `latin1` or `utf-8`, as in Emacs (a leading quote is fine). Anything else is ASCII. */
+/**
+ * org-ascii-charset: `ascii` (default), `latin1` or `utf-8`, as in Emacs (a leading quote is fine). Anything else is ASCII.
+ * @param {any} [vars]
+ */
 export function getAsciiCharset(vars) {
   const v = String((vars || {})['org-ascii-charset'] || '').trim().replace(/^'/, '').toLowerCase();
   return v === 'utf-8' || v === 'utf8' ? 'utf-8' : v === 'latin1' || v === 'latin-1' || v === 'iso-8859-1' ? 'latin1' : 'ascii';
@@ -249,6 +269,7 @@ export function getAsciiCharset(vars) {
 /** org-refile-targets: this app's own plain-text translation (see
  *  src/refile.js's own docs for the full syntax and precedence) --
  *  just the raw string here, since parsing/validation lives in that
+ * @param {any} [vars]
  *  module's own parseRefileTargets, not duplicated here. */
 export function getRefileTargets(vars) {
   return (vars || {})['org-refile-targets'] || '';
@@ -257,6 +278,7 @@ export function getRefileTargets(vars) {
 /** org-global-properties: real org's own variable name -- properties that
  *  apply everywhere unless a file or heading says otherwise. Here a plain
  *  line of semicolon-separated `NAME: value` entries (real org's is a Lisp
+ * @param {any} [vars]
  *  alist); only Effort_ALL is used, and src/effort-values.js owns parsing. */
 export function getGlobalProperties(vars) {
   return (vars || {})['org-global-properties'] || '';
@@ -284,6 +306,7 @@ export function getGlobalProperties(vars) {
  *  command runs from within that specific buffer, the closest real-
  *  org analogy to this app's own always-current-document Agenda
  *  view -- before treating the missing override as a bug worth
+ * @param {any} [vars]
  *  fixing rather than a deliberate design choice. */
 export function getAgendaFilesVar(vars) {
   return (vars || {})['org-agenda-files'] || '';
@@ -297,6 +320,7 @@ export function getAgendaFilesVar(vars) {
  *  parseAgendaFilesVar directly rather than a second, near-identical
  *  parser, since the shape is genuinely identical even though the two
  *  variables serve different purposes (contacts vs agenda scanning)
+ * @param {any} [vars]
  *  and are deliberately configured independently. */
 export function getContactsFilesVar(vars) {
   return (vars || {})['org-contacts-files'] || '';
@@ -304,6 +328,7 @@ export function getContactsFilesVar(vars) {
 
 /** org-agenda-text-search-extra-files: more files for TEXT SEARCH only, in the same scheme:path syntax as org-agenda-files (parse it
  *  with parseAgendaFilesVar). As in Emacs, they are searched in addition to the agenda files and are not part of the agenda, TODO
+ * @param {any} [vars]
  *  or tag views, which is what makes them useful for notes that should be findable but not scheduled. */
 export function getSearchExtraFilesVar(vars) {
   return (vars || {})['org-agenda-text-search-extra-files'] || '';
@@ -322,8 +347,10 @@ export function getSearchExtraFilesVar(vars) {
  *  whichever it came from), so two entries with the same path would be the same file to everything that looks
  *  one up, and one would silently vanish. This finds them: returns a Map from each LATER entry that repeats an
  *  earlier entry's path (under a different scheme) to the entry that was first, which is the one that is used.
+ * @param {any} [keys]
  *  The same entry written twice is not a conflict. */
 export function findDuplicateAgendaFiles(keys) {
+  /** @param {any} [key] */
   const pathOf = (key) => key.slice(key.indexOf(':') + 1);
   const first = new Map();
   const duplicates = new Map();
@@ -335,12 +362,13 @@ export function findDuplicateAgendaFiles(keys) {
   return duplicates;
 }
 
+/** @param {any} [text] */
 export function parseAgendaFilesVar(text) {
   const entries = (text || '')
     .split(';')
-    .map((entry) => entry.trim())
+    .map((/** @type {any} */ entry) => entry.trim())
     .filter(Boolean);
-  return entries.filter((entry) => {
+  return entries.filter((/** @type {any} */ entry) => {
     const colonIndex = entry.indexOf(':');
     if (colonIndex === -1) return false;
     const scheme = entry.slice(0, colonIndex);
@@ -353,6 +381,7 @@ export function parseAgendaFilesVar(text) {
  *  variable), a floating (☰) button's configurable quick-action menu
  *  -- see src/extra-menu.js's own docs for the full syntax. Just the
  *  raw string here, since parsing/validation lives in that module's
+ * @param {any} [vars]
  *  own parseExtraMenu. */
 export function getExtraMenu(vars) {
   return (vars || {})['org-xx-extra-menu'] || '';
@@ -372,6 +401,7 @@ export function getExtraMenu(vars) {
  *  own default is actually disabled, but a modeline clock is
  *  something most people expect to just be there, so this app starts
  *  it on) -- any value other than exactly "0" counts as enabled,
+ * @param {any} [vars]
  *  including simply never setting it at all. */
 export function getDisplayTimeMode(vars) {
   const raw = (vars || {})['display-time-mode'];
@@ -383,12 +413,14 @@ export function getDisplayTimeMode(vars) {
  *  the modeline clock's own format-time-string pattern -- reuses the
  *  exact same %<FORMAT> subset capture templates already support (see
  *  capture-template.js's own formatTime), not a separate
+ * @param {any} [vars]
  *  implementation. "%H:%M" is real Emacs's own actual default. */
 export function getDisplayTimeFormat(vars) {
   const raw = (vars || {})['display-time-format'];
   return raw !== undefined && raw !== null && String(raw).trim() !== '' ? String(raw) : '%H:%M';
 }
 
+/** @param {any} [vars] */
 export function getMenuAliases(vars) {
   return (vars || {})['org-xx-menu-aliases'] || '';
 }
@@ -402,6 +434,7 @@ export function getMenuAliases(vars) {
  *  way property inheritance below is. A simple boolean here, not real
  *  org's fuller list-of-tags/regexp value space (org-use-tag-inheritance
  *  can also be set to a specific tag list or a regexp) — a stated
+ * @param {any} [vars]
  *  simplification, covering the common on/off case. */
 export function getUseTagInheritance(vars) {
   return parseLispBoolean((vars || {})['org-use-tag-inheritance'], true);
@@ -415,6 +448,7 @@ export function getUseTagInheritance(vars) {
  *  it can slow down property searches and is often not needed
  *  (confirmed directly against org's own manual). A simple boolean
  *  here, not real org's fuller t/list/regexp value space — the same
+ * @param {any} [vars]
  *  stated simplification as getUseTagInheritance above. */
 export function getUsePropertyInheritance(vars) {
   return parseLispBoolean((vars || {})['org-use-property-inheritance'], false);
@@ -427,12 +461,14 @@ export function getUsePropertyInheritance(vars) {
  *  Variables:" block), and toggled at runtime the same way real
  *  Emacs's own C-x C-q does (see the god-mode dispatch table). false
  *  is real Emacs's own actual default -- a buffer is read-write
+ * @param {any} [vars]
  *  unless explicitly marked otherwise. */
 export function getBufferReadOnly(vars) {
   return parseLispBoolean((vars || {})['buffer-read-only'], false);
 }
 
 /** org-xx-agenda-hide-title-stamps: whether an Agenda row leaves the active timestamps out of the title (the day and the
+ * @param {any} [vars]
  *  time column already say it). Not a real org-mode variable, same org-xx- convention. Default t. */
 export function getAgendaHideTitleStamps(vars) {
   return parseLispBoolean((vars || {})['org-xx-agenda-hide-title-stamps'], true);
@@ -442,6 +478,7 @@ export function getAgendaHideTitleStamps(vars) {
  *  without an Escape key -- see the README's "God-mode without a hardware
  *  keyboard") is shown. Not a real org-mode variable, same org-xx-
  *  convention as org-xx-extra-menu. Default t: the button is there unless
+ * @param {any} [vars]
  *  someone turns it off, e.g. on a desktop with a real Escape key. */
 export function getGodModeButton(vars) {
   return parseLispBoolean((vars || {})['org-xx-god-mode-button'], true);
@@ -450,6 +487,7 @@ export function getGodModeButton(vars) {
 const DRAG_HANDLE_SIDES = new Set(['right', 'left', 'off']);
 
 /** org-xx-drag-handle: where the drag grip sits on a heading row -- "right" (the default), "left", or "off" for none. This
+ * @param {any} [vars]
  *  app's own variable (the org-xx- convention). Anything else, or nothing set, is the default. */
 export function getDragHandle(vars) {
   const raw = (vars || {})['org-xx-drag-handle'];
@@ -460,6 +498,7 @@ export function getDragHandle(vars) {
 
 /** org-xx-babel-js: whether JavaScript source blocks may run ("on"/"off", default off). This app's own
  *  variable. Callers pass the app's GLOBAL variables only -- never a file's own Local Variables -- so a
+ * @param {any} [vars]
  *  document cannot switch code execution on for itself. */
 export function getBabelJs(vars) {
   const raw = (vars || {})['org-xx-babel-js'];
@@ -472,6 +511,7 @@ export function getBabelJs(vars) {
  *  real org-contacts.el's own default exactly (confirmed directly
  *  against the org-contacts.el source: "Default FIELD value is
  *  BIRTHDAY"). A plain string value, not a Lisp boolean/number, so no
+ * @param {any} [vars]
  *  special parsing beyond trimming. */
 export function getContactsBirthdayProperty(vars) {
   const raw = (vars || {})['org-contacts-birthday-property'];
@@ -482,6 +522,7 @@ export function getContactsBirthdayProperty(vars) {
 /** calendar-latitude: real Emacs's own exact variable name and
  *  purpose -- the latitude the solar diary-sexp functions compute
  *  from. A non-numeric or out-of-range (-90 to 90) value falls back
+ * @param {any} [vars]
  *  to the default rather than producing a nonsensical calculation. */
 export function getCalendarLatitude(vars) {
   const n = parseLispNumber((vars || {})['calendar-latitude'], 35.994);
@@ -490,6 +531,7 @@ export function getCalendarLatitude(vars) {
 
 /** calendar-longitude: real Emacs's own exact variable name. A
  *  non-numeric or out-of-range (-180 to 180) value falls back to the
+ * @param {any} [vars]
  *  default. */
 export function getCalendarLongitude(vars) {
   const n = parseLispNumber((vars || {})['calendar-longitude'], -78.8986);
@@ -503,6 +545,7 @@ export function getCalendarLongitude(vars) {
  *  diary-astronomical-dawn/diary-astronomical-dusk). Default nil
  *  (24-hour, zero-filled); t switches to 12-hour with am/pm. Doesn't
  *  affect diary-day-length, which is a duration, not a time-of-day --
+ * @param {any} [vars]
  *  there's no "am/pm" for a duration. */
 export function getSolarAmpm(vars) {
   return parseLispBoolean((vars || {})['solar-ampm'], false);
@@ -516,6 +559,7 @@ export function getSolarAmpm(vars) {
  *  just the bare time or duration. Unlike solar-ampm, this one DOES
  *  apply to diary-day-length as well as the eight solar functions --
  *  a duration still has a label to hide ("daylight"), even though it
+ * @param {any} [vars]
  *  has no time-of-day format to switch between 12-/24-hour. */
 export function getSolarHideLabel(vars) {
   return parseLispBoolean((vars || {})['solar-hide-label'], false);
@@ -526,6 +570,7 @@ export function getSolarHideLabel(vars) {
  *  Emacs org-mode: with no setting change, a duration formula's own
  *  T/U-flag output pads the hours field to at least 2 digits
  *  ("00:08:00"), not "0:08:00". Minutes and seconds are always
+ * @param {any} [vars]
  *  2-digit padded regardless of this setting. */
 export function getOrgTableDurationHourZeroPadding(vars) {
   return parseLispBoolean((vars || {})['org-table-duration-hour-zero-padding'], true);
@@ -534,6 +579,7 @@ export function getOrgTableDurationHourZeroPadding(vars) {
 /** org-weather-format: this app's own extension, not a real
  *  elisp/org variable -- the template %%(org-weather) substitutes
  *  its own placeholders into (see src/org-weather.js's own
+ * @param {any} [vars]
  *  formatWeatherLine and DEFAULT_ORG_WEATHER_FORMAT). */
 export function getOrgWeatherFormat(vars) {
   const raw = (vars || {})['org-weather-format'];
@@ -548,6 +594,7 @@ const WEATHER_SPEED_UNITS = new Set(['km/h', 'm/s', 'mph', 'Knots']);
  *  src/org-weather.js's own FETCH_SPEED_UNIT) -- an unrecognized
  *  value (a typo, an unsupported unit) falls back to that same
  *  default rather than passing a malformed unit label straight
+ * @param {any} [vars]
  *  through to the formatted output. */
 export function getOrgWeatherSpeedUnit(vars) {
   const raw = (vars || {})['org-weather-speed-unit'];
@@ -561,6 +608,7 @@ const WEATHER_TEMPERATURE_UNITS = new Set(['\u00b0C', '\u00b0F']);
  *  "\u00b0F", matching what this app always fetches in (see
  *  src/org-weather.js's own FETCH_TEMPERATURE_UNIT) -- same
  *  unrecognized-value fallback behavior as getOrgWeatherSpeedUnit
+ * @param {any} [vars]
  *  above. */
 export function getOrgWeatherTemperatureUnit(vars) {
   const raw = (vars || {})['org-weather-temperature-unit'];
@@ -576,6 +624,7 @@ const WEATHER_REFRESH_INTERVALS = new Set(['never', '1', '2', '4', '6', '12', '2
  *  manual "Refresh weather now" button/Agenda-view action ever
  *  refreshes it, no unprompted background network activity at all
  *  unless deliberately opted into. Same unrecognized-value fallback
+ * @param {any} [vars]
  *  behavior as the other org-weather-* getters above. */
 export function getWeatherRefreshInterval(vars) {
   const raw = (vars || {})['org-weather-refresh-interval'];
@@ -589,6 +638,7 @@ export function getWeatherRefreshInterval(vars) {
  *  valid values, not two -- returns exactly 't', 'nil', or '{}' (never
  *  a JS boolean), matching parseInline's own subSuperscriptMode option
  *  directly. An unrecognized value falls back to 't', real org's own
+ * @param {any} [vars]
  *  default, rather than silently disabling the feature. */
 export function getUseSubSuperscripts(vars) {
   const raw = (vars || {})['org-use-sub-superscripts'];

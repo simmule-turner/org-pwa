@@ -108,6 +108,8 @@ function shiftTimestampString(raw, now) {
  * LOGBOOK logging should treat this as an immediate, follow-up
  * DONE-to-TODO transition too (the heading isn't actually staying
  * done, so a CLOSED timestamp shouldn't remain on it).
+ * @param {any} [heading]
+ * @param {any} [sequence]
  */
 function applyRepeaterShiftOnDone(heading, sequence, now = new Date()) {
   let shifted = false;

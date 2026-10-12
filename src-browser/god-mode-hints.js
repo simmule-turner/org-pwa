@@ -54,7 +54,10 @@ function hintsElement() {
   return el;
 }
 
-/** What has been typed so far, as the card's heading: "C-c", "M-", "C-c C-x", with "SPC" while literal mode is on. */
+/**
+ * What has been typed so far, as the card's heading: "C-c", "M-", "C-c C-x", with "SPC" while literal mode is on.
+ * @param {any} [state]
+ */
 function sequenceSoFar(state) {
   const parts = [];
   if (state.chordString) parts.push(state.chordString);
@@ -64,6 +67,7 @@ function sequenceSoFar(state) {
   return parts.join(' ') || 'God-mode';
 }
 
+/** @param {any} [entry] */
 function describe(entry) {
   if (entry.chord === null) return entry.rawKey === ' ' ? `literal keys \u2026 ${entry.count}` : `Meta \u2026 ${entry.count}`;
   const label = entry.complete ? labelForChord(entry.chord) || UNNAMED_CHORD_LABELS[entry.chord] || entry.chord : '';
@@ -71,6 +75,7 @@ function describe(entry) {
   return label;
 }
 
+/** @param {any} [entry] */
 function hintButton(entry) {
   const button = document.createElement('button');
   button.type = 'button';

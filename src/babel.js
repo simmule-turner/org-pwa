@@ -14,18 +14,25 @@
 
 const JS_LANGUAGES = new Set(['js', 'javascript']);
 
-/** The language word of a block's parameters (`js :results table` -> `js`). */
+/**
+ * The language word of a block's parameters (`js :results table` -> `js`).
+ * @param {any} [params]
+ */
 export function blockLanguage(params) {
   const m = /^\s*(\S+)/.exec(params || '');
   return m ? m[1].toLowerCase() : '';
 }
 
-/** True for a `#+BEGIN_SRC js` / `javascript` block. */
+/**
+ * True for a `#+BEGIN_SRC js` / `javascript` block.
+ * @param {any} [block]
+ */
 export function isJsBlock(block) {
   return !!block && block.name === 'SRC' && JS_LANGUAGES.has(blockLanguage(block.params));
 }
 
 /** `:name value` pairs after the language. A later pair replaces an earlier
+ * @param {any} [params]
  *  one, except `:var`, which accumulates. Values stay strings. */
 export function parseHeaderArgs(params) {
   const text = (params || '').replace(/^\s*\S+/, '');
@@ -45,7 +52,10 @@ export function parseHeaderArgs(params) {
 
 const RESULTS_WORDS = new Set(['value', 'output', 'table', 'vector', 'list', 'scalar', 'verbatim', 'raw', 'silent', 'none', 'replace']);
 
-/** `:results` words -> { collect, format, silent, unsupported }. */
+/**
+ * `:results` words -> { collect, format, silent, unsupported }.
+ * @param {any} [value]
+ */
 export function parseResultsSpec(value) {
   const spec = { collect: 'value', format: /** @type {string | null} */ (null), silent: false, unsupported: /** @type {string | null} */ (null) };
   for (const word of String(value || '').trim().toLowerCase().split(/\s+/).filter(Boolean)) {
@@ -68,7 +78,10 @@ export function parseResultsSpec(value) {
   return spec;
 }
 
-/** `:timeout` seconds -> milliseconds, default 5 s, never above 60 s. */
+/**
+ * `:timeout` seconds -> milliseconds, default 5 s, never above 60 s.
+ * @param {any} [args]
+ */
 export function timeoutMs(args) {
   const seconds = Number.parseFloat(args && args.timeout);
   if (!Number.isFinite(seconds) || seconds <= 0) return 5000;
@@ -79,13 +92,18 @@ export function timeoutMs(args) {
 
 const VAR_ASSIGN_RE = /([A-Za-z_$][\w$]*)=("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^\s,]+)/g;
 
-/** A table cell as a value: numbers become numbers, everything else stays text. */
+/**
+ * A table cell as a value: numbers become numbers, everything else stays text.
+ * @param {any} [text]
+ */
 function cellValue(text) {
   const t = text.trim();
   return t !== '' && /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(t) ? Number(t) : t;
 }
 
 /** The rows of the table named by a `#+NAME:` line in `lines`, or null. Rule
+ * @param {any} [lines]
+ * @param {any} [name]
  *  rows are left out. */
 export function findNamedTable(lines, name) {
   const nameRe = new RegExp('^\\s*#\\+NAME:\\s*' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$', 'i');
@@ -106,6 +124,8 @@ export function findNamedTable(lines, name) {
 /** `:var` header values -> { name: value }. A value is a number, a quoted string,
  *  true / false / nil, or the name of a table. `lookupTable(name)` returns a table's
  *  rows or null. Throws on an unknown value, so a typo is an error and not a
+ * @param {any} [varSpecs]
+ * @param {any} [lookupTable]
  *  silent undefined. */
 export function resolveVars(varSpecs, lookupTable) {
   const vars = {};
@@ -136,17 +156,21 @@ export function resolveVars(varSpecs, lookupTable) {
 
 // ---- results ----------------------------------------------------------------
 
+/** @param {any} [v] */
 function cellText(v) {
   if (v === null || v === undefined) return '';
   const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
   return s.replace(/\r?\n/g, ' ').replace(/\|/g, '\\vert{}');
 }
 
+/** @param {any} [cells] */
 const tableLine = (cells) => '| ' + cells.map(cellText).join(' | ') + ' |';
+/** @param {any} [text] */
 const fixedWidth = (text) => String(text).split(/\r?\n/).map((l) => (l === '' ? ':' : ': ' + l));
 
 /** The lines to put under `#+RESULTS:` for a value (or for collected console
  *  output when `spec.collect` is `output`). `wrap` is a `:wrap` value such as `quote`
+ * @param {any} [value]
  *  or `SRC json`. */
 export function formatResult(value, spec = parseResultsSpec(''), { wrap = '' } = {}) {
   const format = spec.format;
@@ -183,14 +207,21 @@ export function formatResult(value, spec = parseResultsSpec(''), { wrap = '' } =
   return lines;
 }
 
-/** An error as `#+RESULTS:` lines. */
+/**
+ * An error as `#+RESULTS:` lines.
+ * @param {any} [message]
+ */
 export function formatError(message, line = null) {
   return fixedWidth('Error: ' + message + (line ? ` (line ${line})` : ''));
 }
 
 export const RESULTS_LINE_RE = /^\s*#\+RESULTS(\[[^\]]*\])?:/i;
 
-/** Where the existing results body ends (exclusive), for a `#+RESULTS:` line at `at`. */
+/**
+ * Where the existing results body ends (exclusive), for a `#+RESULTS:` line at `at`.
+ * @param {any} [lines]
+ * @param {any} [at]
+ */
 export function resultsEnd(lines, at) {
   let k = at + 1;
   const first = lines[k];
@@ -208,9 +239,13 @@ export function resultsEnd(lines, at) {
 /** The edit that puts `resultLines` under a block: `{ start, removeCount, insert }`
  *  for splicing into the heading's body lines. An existing `#+RESULTS:` after the
  *  block (blank lines allowed between) is replaced; otherwise a new one is added
+ * @param {any} [bodyLines]
+ * @param {any} [block]
+ * @param {any} [resultLines]
  *  below the block, with a blank line either side as Org does. `hash` goes into the results line (`#+RESULTS[hash]:`) for `:cache yes`. */
 export function placeResults(bodyLines, block, resultLines, { hash = /** @type {string | null} */ (null) } = {}) {
   const indent = (/^(\s*)/.exec(bodyLines[block.lineIndex]) || ['', ''])[1];
+  /** @param {any} [l] */
   const pad = (l) => (l === '' ? l : indent + l);
   const blockEnd = block.lineIndex + block.lineCount;
   let j = blockEnd;
@@ -224,7 +259,11 @@ export function placeResults(bodyLines, block, resultLines, { hash = /** @type {
   return { start: blockEnd, removeCount: 0, insert };
 }
 
-/** The hash in the `#+RESULTS[hash]:` line that follows the block, or null. */
+/**
+ * The hash in the `#+RESULTS[hash]:` line that follows the block, or null.
+ * @param {any} [bodyLines]
+ * @param {any} [block]
+ */
 export function existingResultsHash(bodyLines, block) {
   let j = block.lineIndex + block.lineCount;
   while (j < bodyLines.length && bodyLines[j].trim() === '') j++;

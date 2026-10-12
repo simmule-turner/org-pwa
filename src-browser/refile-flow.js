@@ -43,6 +43,7 @@ import { rememberRefileTarget } from './sync-helpers.js';
  *  active disk adapter. A file that fails to load is silently omitted
  *  (getRefileCandidates already treats a missing docsById entry as
  *  "no candidates from this entry", not an error) rather than blocking
+ * @param {any} [targetsSpec]
  *  the whole picker on one bad/inaccessible target. */
 export async function loadRefileTargetDocs(targetsSpec) {
   const docsById = {};
@@ -76,6 +77,9 @@ export async function loadRefileTargetDocs(targetsSpec) {
  * and uses the same write-target-before-remove-from-source transaction
  * safety archiveHeadingToLocation already established -- a failed
  * write to the target file leaves the source completely untouched.
+ * @param {any} [heading]
+ * @param {any} [targetDocumentId]
+ * @param {any} [targetOutlinePath]
  */
 export async function performRefile(heading, targetDocumentId, targetOutlinePath) {
   if (targetDocumentId === S.state.documentId) {
@@ -98,7 +102,7 @@ export async function performRefile(heading, targetDocumentId, targetOutlinePath
   const { ok, result: targetTitle } = await writeToOtherFile(targetDocumentId, {
     label: 'refile',
     allowMissing: false,
-    mutate: (doc) => {
+    mutate: (/** @type {any} */ doc) => {
       const target = findHeadingByOutlinePath(doc, targetOutlinePath);
       if (!target) {
         setStatus(

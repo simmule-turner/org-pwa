@@ -26,21 +26,27 @@ const CALENDAR_HEAD = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//org-pwa//org
 
 /** The file name an event is stored under on the server: readable, safe in a URL, and unique to the event id (the
  *  hash covers ids that sanitize or truncate to the same text). Every name this app makes starts with
+ * @param {any} [uid]
  *  `orgpwa-`, which is how it recognizes its own events and leaves anything else in the calendar alone. */
 function resourceNameForUid(uid) {
   const base = uid.replace(/@org-pwa$/, '').replace(/[^A-Za-z0-9._-]/g, '-').slice(0, 100);
   return `${RESOURCE_PREFIX}${base}-${contentHash(uid)}.ics`;
 }
 
+/** @param {any} [name] */
 function isOurResource(name) {
   return name.startsWith(RESOURCE_PREFIX) && name.endsWith('.ics');
 }
 
-/** A change fingerprint that ignores DTSTAMP, which changes on every run and would make every event look edited. */
+/**
+ * A change fingerprint that ignores DTSTAMP, which changes on every run and would make every event look edited.
+ * @param {any} [ics]
+ */
 function eventHash(ics) {
   return contentHash(ics.replace(/^DTSTAMP:.*\r\n/m, ''));
 }
 
+/** @param {any} [eventLines] */
 function wrapEvent(eventLines) {
   return [...CALENDAR_HEAD, ...eventLines, 'END:VCALENDAR'].join('\r\n') + '\r\n';
 }
@@ -77,6 +83,8 @@ function buildCalendarResources(allDocs, opts = {}) {
  * An event is deleted only if this device sent it AND its file (`doc`) is among `loadedDocs`, the files actually
  * loaded in this run: an event for a file that did not load would otherwise look like one that was removed.
  * `loadedDocs` null means every file counts as loaded.
+ * @param {any} [wanted]
+ * @param {any} [previous]
  */
 function planCalendarSync(wanted, previous, { loadedDocs = /** @type {Set<any> | null} */ (null) } = {}) {
   const puts = [];
@@ -93,6 +101,8 @@ function planCalendarSync(wanted, previous, { loadedDocs = /** @type {Set<any> |
  * What to remember after a run: for each event, its fingerprint and its file. A successful send or delete is
  * recorded; a failed one is left as it was, so the next run tries it again.
  * @param {{ putOk: Set<string>, deleteOk: Set<string> }} outcome sets of names
+ * @param {any} previous
+ * @param {any} wanted
  */
 function nextSyncState(previous, wanted, outcome) {
   const next = {};

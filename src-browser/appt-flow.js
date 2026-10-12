@@ -35,6 +35,7 @@ export async function loadApptSettings() {
 }
 
 /** Stores new settings and applies them: turning it off cancels what is pending and clears the countdown; turning it on (or changing
+ * @param {any} [next]
  *  the warning time) scans again at once. */
 export async function saveApptSettings(next) {
   const was = S.apptSettings;
@@ -93,6 +94,8 @@ export async function scanAppointments(now = new Date()) {
 }
 
 /** On a platform that holds notifications for later, replace what it holds with the whole coming list. Only for window mode with
+ * @param {any} [appointments]
+ * @param {any} [now]
  *  permission: echo mode is the status line only, with no system notification. */
 async function holdPlatformNotifications(appointments, now) {
   const n = platform.notifications;
@@ -121,6 +124,7 @@ export function apptTick(now = new Date()) {
   tick(now);
 }
 
+/** @param {any} [now] */
 function tick(now) {
   const settings = S.apptSettings;
   if (!settings['appt-activate']) return;
@@ -139,6 +143,9 @@ function refreshModeLine() {
 
 /** One reminder, the way appt-display-format says. window: a system notification when permitted (a platform that holds them for later
  *  has already got this one), plus a banner in the app when it is visible or when notifications are blocked. echo: the status line
+ * @param {any} [appt]
+ * @param {any} [offset]
+ * @param {any} [minutes]
  *  only. */
 function announce(appt, offset, minutes) {
   const text = reminderText(appt, minutes);
@@ -161,9 +168,13 @@ function announce(appt, offset, minutes) {
     .catch(() => showBanner(appt.title, reminderBody(appt, minutes), appt.detail, day));
 }
 
+/** @param {any} [appt] */
 const dayOf = (appt) => new Date(appt.start.getFullYear(), appt.start.getMonth(), appt.start.getDate()).getTime();
 
-/** Opens that day in the Agenda (what tapping a reminder does). */
+/**
+ * Opens that day in the Agenda (what tapping a reminder does).
+ * @param {any} [dayMs]
+ */
 export function openApptDay(dayMs) {
   const date = new Date(Number(dayMs));
   if (Number.isNaN(date.getTime())) return;
@@ -177,7 +188,7 @@ function listenForTaps() {
   if (runtime.listeningForTaps) return;
   runtime.listeningForTaps = true;
   try {
-    platform.notifications.onTap((day) => openApptDay(day));
+    platform.notifications.onTap((/** @type {number} */ day) => openApptDay(day));
   } catch {
     // no way to hear taps here; the reminders still arrive
   }
@@ -186,6 +197,12 @@ function listenForTaps() {
 // ---- the in-app banner: a toast over the page, so nothing in the layout moves. It stays until it is answered (Open day, or Dismiss),
 // and the next reminder for the same appointment replaces it rather than stacking.
 
+/**
+ * @param {any} [title]
+ * @param {any} [body]
+ * @param {any} [detail]
+ * @param {any} [dayMs]
+ */
 function showBanner(title, body, detail, dayMs) {
   if (typeof document === 'undefined') return;
   let el = document.getElementById('apptBanner');

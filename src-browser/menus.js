@@ -84,6 +84,7 @@ export function renderExtraMenuContent() {
  *  - function: runs the command palette command with that real
  *    Emacs/Org function name (findPaletteCommandByOrgName), or says the
  *    name is not a recognized function.
+ * @param {any} [entry]
  */
 export async function runExtraMenuEntry(entry) {
   S.extraMenuOpen = false;
@@ -91,7 +92,7 @@ export async function runExtraMenuEntry(entry) {
 
   if (entry.type === 'capture') {
     const templates = await getCaptureTemplates(kv);
-    const template = templates.find((t) => t.key === entry.key);
+    const template = templates.find((/** @type {any} */ t) => t.key === entry.key);
     if (!template) {
       setStatus(`No capture template with key "${entry.key}" found.`);
       render();

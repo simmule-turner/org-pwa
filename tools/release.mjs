@@ -62,7 +62,7 @@ if (hash === last && !smoke) {
   run('node', ['tools/check-scope.mjs']);
   // lint and type-check when they are installed (npm install --no-save eslint @eslint/js globals typescript)
   if (fs.existsSync('node_modules/.bin/eslint')) run('npx', ['eslint', '.']);
-  if (fs.existsSync('node_modules/.bin/tsc')) run('npx', ['tsc', '-p', 'tsconfig.json']);
+  if (fs.existsSync('node_modules/.bin/tsc')) { run('npx', ['tsc', '-p', 'tsconfig.json']); run('node', ['tools/check-implicit-any.mjs']); }
   if (smoke) run('node', ['tools/smoke.mjs']);
   fs.writeFileSync('.green-hash', hash + '\n');
 }

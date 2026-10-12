@@ -37,6 +37,8 @@ export const REPEATER_MARK_OPTIONS = [
  * the group's checkbox is unchecked or its date is empty (meaning "clear
  * this timestamp"), otherwise a valid org timestamp string built via
  * formatOrgTimestamp from whatever the fields currently hold.
+ * @param {any} [label]
+ * @param {any} [currentRaw]
  */
 export function buildTimestampFieldGroup(label, currentRaw) {
   const parsed = currentRaw ? parseOrgTimestamp(currentRaw) : null;
@@ -229,6 +231,7 @@ export function buildTimestampFieldGroup(label, currentRaw) {
  *  picker for a rarely-used case. */
 export const PRIORITY_LEVELS = ['A', 'B', 'C'];
 
+/** @param {any} [heading] */
 export function buildPriorityFieldGroup(heading) {
   const wrap = document.createElement('div');
   wrap.style.border = '0.5px solid var(--border-strong)';
@@ -275,6 +278,7 @@ export function buildPriorityFieldGroup(heading) {
 /** "YYYY-MM-DD" for a date-picker's own value attribute, local time
  *  (not UTC -- toISOString would shift the date near a timezone
  *  boundary, exactly the kind of off-by-one a date range picker can't
+ * @param {any} [date]
  *  afford). */
 export function dateInputValue(date) {
   const y = date.getFullYear();

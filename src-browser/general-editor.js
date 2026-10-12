@@ -26,6 +26,7 @@ function completionDocs() {
  *  group (not committed to `heading` until the general editor's own
  *  Save button reads getTags()) -- same uncommitted-until-Save pattern
  *  buildTimestampFieldGroup already uses, so Cancel genuinely discards
+ * @param {any} [heading]
  *  everything, tags included, not just the timestamp fields. */
 export function buildTagsFieldGroup(heading) {
   const wrap = document.createElement('div');
@@ -60,6 +61,7 @@ export function buildTagsFieldGroup(heading) {
   addInput.type = 'text';
   textInputStyle(addInput);
   addInput.placeholder = 'New tag';
+  /** @param {any} [raw] */
   const addTag = (raw) => {
     const val = String(raw).trim().replace(/:/g, '');
     if (val && !currentTags.includes(val)) {
@@ -148,6 +150,7 @@ export function buildTagsFieldGroup(heading) {
  *  wins (matching a plain object's own last-write-wins semantics),
  *  since this UI doesn't have anywhere to show a "duplicate key"
  *  warning inline the way the raw-text editor's onChange validation
+ * @param {any} [heading]
  *  could -- a stated simplification versus that discarded approach. */
 export function buildPropertiesFieldGroup(heading) {
   const wrap = document.createElement('div');
@@ -166,7 +169,7 @@ export function buildPropertiesFieldGroup(heading) {
   header.style.marginBottom = '10px';
   wrap.appendChild(header);
 
-  const currentProps = heading.propertyOrder.map((key) => ({ key, value: heading.properties[key] ?? '' }));
+  const currentProps = heading.propertyOrder.map((/** @type {string} */ key) => ({ key, value: heading.properties[key] ?? '' }));
 
   const rowsContainer = document.createElement('div');
   wrap.appendChild(rowsContainer);
@@ -180,7 +183,7 @@ export function buildPropertiesFieldGroup(heading) {
   const docsForCompletion = completionDocs();
   function refreshKeyList() {
     keyList.innerHTML = '';
-    const current = currentProps.map((p) => p.key).filter(Boolean);
+    const current = currentProps.map((/** @type {any} */ p) => p.key).filter(Boolean);
     for (const key of suggestPropertyKeys({ docs: docsForCompletion, applied: current })) {
       const option = document.createElement('option');
       option.value = key;
@@ -191,7 +194,7 @@ export function buildPropertiesFieldGroup(heading) {
   function renderRows() {
     refreshKeyList();
     rowsContainer.innerHTML = '';
-    currentProps.forEach((prop, idx) => {
+    currentProps.forEach((/** @type {any} */ prop, /** @type {number} */ idx) => {
       const row = document.createElement('div');
       row.style.display = 'flex';
       row.style.gap = '6px';
@@ -270,6 +273,7 @@ export function buildPropertiesFieldGroup(heading) {
  *  builders again against the same, still-untouched heading and swaps
  *  the fields container's contents, genuinely restoring the on-entry
  *  values without needing a dedicated reset method built into any of
+ * @param {any} [heading]
  *  these four separate, already-complex widgets. */
 export function openGeneralEditor(heading) {
   const overlay = document.createElement('div');
@@ -385,6 +389,7 @@ export function openGeneralEditor(heading) {
   // This checks first: if nothing's pending, `action` just runs
   // directly; if something is, a genuine 3-way choice is offered
   // rather than forcing either outcome on the person's behalf.
+  /** @param {any} [action] */
   async function proceedWithAction(action) {
     if (!hasPendingChanges()) {
       close();

@@ -8,7 +8,10 @@ import { keepOverlayInVisibleViewport, menuButton } from './ui-widgets.js';
 
 const TEXT_LIMIT = 200000; // characters shown; more would only slow the page
 
-/** 'image' | 'audio' | 'video' | 'text', or null when the app cannot show it itself. */
+/**
+ * 'image' | 'audio' | 'video' | 'text', or null when the app cannot show it itself.
+ * @param {any} [mime]
+ */
 export function previewKind(mime) {
   if (/^image\//.test(mime || '')) return 'image';
   if (/^audio\//.test(mime || '')) return 'audio';
@@ -17,6 +20,11 @@ export function previewKind(mime) {
   return null;
 }
 
+/**
+ * @param {any} [filename]
+ * @param {any} [mime]
+ * @param {any} [bytes]
+ */
 export function showAttachmentPreview(filename, mime, bytes) {
   const kind = previewKind(mime);
   if (!kind) return false;
@@ -66,6 +74,7 @@ export function showAttachmentPreview(filename, mime, bytes) {
     if (url) URL.revokeObjectURL(url);
     if (overlay.parentNode) document.body.removeChild(overlay);
   }
+  /** @param {any} [e] */
   function onKeyDown(e) {
     if (e.key !== 'Escape' || document.body.lastElementChild !== overlay) return; // only the topmost panel answers
     e.preventDefault();

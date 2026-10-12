@@ -19,6 +19,7 @@
  * window.storage: { get(key), set(key, value), delete(key) }.
  */
 
+/** @param {any} [documentId] */
 function outboxKey(documentId) {
   return 'outbox:' + documentId;
 }
@@ -26,6 +27,9 @@ function outboxKey(documentId) {
 /**
  * Replaces the pending write for `documentId` with `content` (the
  * serialized .org text) and a timestamp. Called on every local edit.
+ * @param {any} [adapter]
+ * @param {any} [documentId]
+ * @param {any} [content]
  */
 async function enqueueChange(adapter, documentId, content, opts = {}) {
   const entry = {
@@ -37,6 +41,8 @@ async function enqueueChange(adapter, documentId, content, opts = {}) {
 }
 
 /** Returns the pending write for `documentId`, or null if the outbox is
+ * @param {any} [adapter]
+ * @param {any} [documentId]
  *  empty (nothing unsynced) for that document. */
 async function getPendingChange(adapter, documentId) {
   try {
@@ -52,11 +58,17 @@ async function getPendingChange(adapter, documentId) {
 }
 
 /** Clears the pending write for `documentId` — called once it's been
+ * @param {any} [adapter]
+ * @param {any} [documentId]
  *  successfully flushed to disk. */
 async function clearPendingChange(adapter, documentId) {
   await adapter.delete(outboxKey(documentId));
 }
 
+/**
+ * @param {any} [adapter]
+ * @param {any} [documentId]
+ */
 async function hasPendingChange(adapter, documentId) {
   return (await getPendingChange(adapter, documentId)) !== null;
 }

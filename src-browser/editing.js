@@ -24,6 +24,7 @@ import { kv, textModeLastCommittedValue } from './singletons.js';
 import { renderLogNotePrompt } from './todo-workflow.js';
 import { menuButton } from './ui-widgets.js';
 
+/** @param {any} [text] */
 export function setStatus(text) {
   statusEl.innerHTML = '';
   const isBusy = /\u2026$/.test(text);
@@ -61,6 +62,7 @@ export function setStatus(text) {
  *  it. Called after openTextFieldPopup already focused the textarea,
  *  same "the field is already focused, only the cursor's own position
  *  within it changes" ordering the old inline editors' own version of
+ * @param {any} [textarea]
  *  this used. */
 export function applyPendingCursorPosition(textarea) {
   if (typeof textarea.setSelectionRange === 'function') {
@@ -70,6 +72,10 @@ export function applyPendingCursorPosition(textarea) {
   S.pendingCursorPosition = null;
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [paragraph]
+ */
 export function openParagraphEditor(heading, paragraph) {
   const originalText = paragraph.lines.join('\n');
   const overlay = openTextFieldPopup({
@@ -80,7 +86,7 @@ export function openParagraphEditor(heading, paragraph) {
       S.editingParagraph = null;
       render();
     },
-    onSave: (newText) => {
+    onSave: (/** @type {string} */ newText) => {
       S.editingParagraph = null;
       editParagraphText(heading, paragraph, newText);
       resyncKeyboardFocusToBodyRow(heading, 'paragraph', paragraph.lineIndex);
@@ -91,6 +97,10 @@ export function openParagraphEditor(heading, paragraph) {
   applyPendingCursorPosition(overlay.querySelector('textarea'));
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [item]
+ */
 export function openListItemEditor(heading, item) {
   const originalText = item.text;
   const overlay = openTextFieldPopup({
@@ -101,7 +111,7 @@ export function openListItemEditor(heading, item) {
       S.editingListItem = null;
       render();
     },
-    onSave: (newText) => {
+    onSave: (/** @type {string} */ newText) => {
       S.editingListItem = null;
       editListItemText(heading, item, newText.replace(/\n/g, ' '));
       resyncKeyboardFocusToBodyRow(heading, 'list-item', item.lineIndex);
@@ -112,6 +122,7 @@ export function openListItemEditor(heading, item) {
   applyPendingCursorPosition(overlay.querySelector('textarea'));
 }
 
+/** @param {any} [heading] */
 export function openHeadingTitleEditor(heading) {
   const originalTitle = heading.title;
   const overlay = openTextFieldPopup({
@@ -119,12 +130,16 @@ export function openHeadingTitleEditor(heading) {
     value: originalTitle,
     resetInPlace: true,
     onCancel: () => cancelTitleEdit(),
-    onSave: (newTitle) => commitTitleEdit(newTitle),
+    onSave: (/** @type {any} */ newTitle) => commitTitleEdit(newTitle),
   });
   overlay.id = 'heading-title-edit-popup';
   applyPendingCursorPosition(overlay.querySelector('textarea'));
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [isNew]
+ */
 export function startEditingTitle(heading, isNew) {
   if (S.isBufferReadOnly) {
     setStatus('Buffer is read-only.');
@@ -136,6 +151,7 @@ export function startEditingTitle(heading, isNew) {
   openHeadingTitleEditor(heading);
 }
 
+/** @param {any} [rawValue] */
 export function commitTitleEdit(rawValue) {
   const heading = S.editingHeading;
   if (!heading) return; // re-entrant call -- already committed (see this function's own doc note on why that can happen)
@@ -348,7 +364,7 @@ export function renderHistoryPanel(target = S.historyRenderTarget) {
 
   const list = document.createElement('div');
 
-  S.history.entries.forEach((entry, idx) => {
+  S.history.entries.forEach((/** @type {any} */ entry, /** @type {number} */ idx) => {
     const row = document.createElement('div');
     row.className = 'menu-list-item';
     row.style.cursor = 'pointer';

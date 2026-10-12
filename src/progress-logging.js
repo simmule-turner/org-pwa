@@ -34,6 +34,12 @@
 
 // ---- CLOSED planning-line logic (org-log-done's 'time value only) -------
 
+/**
+ * @param {any} [fromTodo]
+ * @param {any} [toTodo]
+ * @param {any} [sequence]
+ * @param {any} [logDoneSetting]
+ */
 function shouldInsertClosedOnEnteringDone(fromTodo, toTodo, sequence, logDoneSetting) {
   if (logDoneSetting !== 'time') return false;
   const wasDone = sequence.doneKeywords.includes(fromTodo);
@@ -53,6 +59,10 @@ function shouldInsertClosedOnEnteringDone(fromTodo, toTodo, sequence, logDoneSet
  * specifically. Cycling to a *different*, non-done TODO keyword always
  * removes CLOSED regardless of that setting -- real org has no
  * variable governing that case at all, it's simply how CLOSED works.
+ * @param {any} [fromTodo]
+ * @param {any} [toTodo]
+ * @param {any} [sequence]
+ * @param {any} [keepWhenNoTodo]
  */
 function shouldRemoveClosed(fromTodo, toTodo, sequence, keepWhenNoTodo) {
   const wasDone = sequence.doneKeywords.includes(fromTodo);
@@ -65,6 +75,11 @@ function shouldRemoveClosed(fromTodo, toTodo, sequence, keepWhenNoTodo) {
 /**
  * Decides what should happen to the CLOSED planning line for this
  * transition. Returns `{ insertClosed, removeClosed }`.
+ * @param {any} [fromTodo]
+ * @param {any} [toTodo]
+ * @param {any} [sequence]
+ * @param {any} [logDoneSetting]
+ * @param {any} [keepWhenNoTodo]
  */
 function decideProgressLogging(fromTodo, toTodo, sequence, logDoneSetting, keepWhenNoTodo) {
   return {
@@ -82,6 +97,7 @@ function decideProgressLogging(fromTodo, toTodo, sequence, logDoneSetting, keepW
  * concrete forms -- "@", "!", "@/!", "/!" -- notably never a leaving
  * *note* (only a leaving timestamp is possible); an unrecognized raw
  * spec is treated as no logging at all rather than guessing at intent.
+ * @param {any} [rawSpec]
  */
 function parseLogSpec(rawSpec) {
   if (rawSpec === '@') return { enterNote: true, enterTimestamp: false, leaveTimestamp: false };
@@ -101,6 +117,9 @@ function parseLogSpec(rawSpec) {
  * it individually. A non-done keyword with no explicit spec of its own
  * has no effective spec at all -- org-log-done only ever affects
  * done-type keywords.
+ * @param {any} [keyword]
+ * @param {any} [sequence]
+ * @param {any} [logDoneSetting]
  */
 function effectiveLogSpec(keyword, sequence, logDoneSetting) {
   if (keyword === null) return null;
@@ -129,6 +148,10 @@ function effectiveLogSpec(keyword, sequence, logDoneSetting) {
  * new state itself is never blocked on this, only the LOGBOOK entry is
  * -- and if the note prompt is skipped, no entry gets written at all,
  * not even a timestamp-only fallback).
+ * @param {any} [fromTodo]
+ * @param {any} [toTodo]
+ * @param {any} [sequence]
+ * @param {any} [logDoneSetting]
  */
 function decideLogbookEntry(fromTodo, toTodo, sequence, logDoneSetting) {
   if (fromTodo === toTodo) return { shouldLog: false, needsNote: false }; // not a real transition
@@ -151,6 +174,7 @@ function decideLogbookEntry(fromTodo, toTodo, sequence, logDoneSetting) {
  *  value like `'time` or `'note` (the leading `'` is how Lisp writes a
  *  quoted symbol) resolves to the bare symbol name; anything else
  *  (including an unset or unrecognized value) resolves to null rather
+ * @param {any} [raw]
  *  than guessing. */
 function parseLogDoneLispValue(raw) {
   if (raw === undefined || raw === null) return null;
@@ -169,6 +193,9 @@ function parseLogDoneLispValue(raw) {
  * merged with Global Variables -- a pre-merged map can't tell "this
  * file set it explicitly" apart from "only the global default
  * applies", and only the former should outrank #+STARTUP.
+ * @param {any} [localVarsOnly]
+ * @param {any} [startupConfig]
+ * @param {any} [globalVarsOnly]
  */
 function getEffectiveLogDoneSetting(localVarsOnly, startupConfig, globalVarsOnly) {
   const local = parseLogDoneLispValue((localVarsOnly || {})['org-log-done']);

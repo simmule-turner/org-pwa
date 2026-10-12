@@ -25,6 +25,10 @@ import { buildViewFilterRow, filterItemsForView } from './view-filter-ui.js';
 import { menuButton, textInputStyle } from './ui-widgets.js';
 import { platform } from './platform.js';
 
+/**
+ * @param {any} [viewType]
+ * @param {any} [anchorDate]
+ */
 export function agendaRangeFor(viewType, anchorDate) {
   if (viewType === 'day') {
     return { start: startOfDay(anchorDate), end: endOfDay(anchorDate) };
@@ -66,6 +70,7 @@ export function buildAgendaEffortPanel() {
   panel.style.gap = '8px';
   panel.style.fontSize = '13px';
 
+  /** @param {any} [el] */
   const styleControl = (el) => {
     el.style.font = 'inherit';
     el.style.fontSize = '14px';
@@ -75,6 +80,7 @@ export function buildAgendaEffortPanel() {
     el.style.background = 'var(--bg)';
     el.style.color = 'var(--fg)';
   };
+  /** @param {any} [labelText] */
   const row = (labelText, ...controls) => {
     const r = document.createElement('div');
     r.style.display = 'flex';
@@ -89,6 +95,11 @@ export function buildAgendaEffortPanel() {
     for (const c of controls) r.appendChild(c);
     panel.appendChild(r);
   };
+  /**
+   * @param {any} [options]
+   * @param {any} [current]
+   * @param {any} [onChange]
+   */
   const select = (options, current, onChange) => {
     const el = document.createElement('select');
     for (const [value, text] of options) {
@@ -106,7 +117,7 @@ export function buildAgendaEffortPanel() {
   const sortSelect = select(
     [['', 'Off'], ['up', 'Least effort first'], ['down', 'Most effort first']],
     S.agendaEffortSort || '',
-    (v) => {
+    (/** @type {any} */ v) => {
       S.agendaEffortSort = v || null;
       render();
     }
@@ -116,6 +127,10 @@ export function buildAgendaEffortPanel() {
 
   const allowed = getAllowedEffortValues({ doc: S.state.doc, globalProperties: getGlobalProperties(S.state.localVariables) });
   const values = allowed.length > 0 ? allowed : DEFAULT_EFFORT_FILTER_VALUES;
+  /**
+   * @param {any} [op]
+   * @param {any} [text]
+   */
   const applyFilter = (op, text) => {
     S.agendaEffortFilter = op && text ? { op, minutes: parseOrgDuration(text), text } : null;
     render();
@@ -123,13 +138,13 @@ export function buildAgendaEffortPanel() {
   const filterOp = select(
     [['', 'Off'], ['<', 'At most'], ['>', 'At least'], ['=', 'Exactly']],
     S.agendaEffortFilter ? S.agendaEffortFilter.op : '',
-    (op) => applyFilter(op, valueSelect.value)
+    (/** @type {any} */ op) => applyFilter(op, valueSelect.value)
   );
   filterOp.setAttribute('data-effort-filter-op', '');
   const valueSelect = select(
     values.map((v) => [v, v]),
     S.agendaEffortFilter && values.includes(S.agendaEffortFilter.text) ? S.agendaEffortFilter.text : values[0],
-    (text) => applyFilter(filterOp.value, text)
+    (/** @type {string} */ text) => applyFilter(filterOp.value, text)
   );
   valueSelect.setAttribute('data-effort-filter-value', '');
   row('Filter', filterOp, valueSelect);
@@ -205,6 +220,12 @@ export function renderAgendaView() {
   controls.style.marginBottom = '10px';
   controls.style.flexWrap = 'wrap';
 
+  /**
+   * @param {any} [label]
+   * @param {any} [onClick]
+   * @param {any} [isActive]
+   * @param {any} [ariaLabel]
+   */
   function agendaControlBtn(label, onClick, isActive, ariaLabel) {
     const btn = document.createElement('button');
     btn.textContent = label;
@@ -346,10 +367,10 @@ export function renderAgendaView() {
   if (S.agendaEffortPanelOpen) container.appendChild(buildAgendaEffortPanel());
 
   if (S.agendaFilesConfig.length > 0) {
-    const entries = S.agendaFilesConfig.map((f) => agendaFilesCache.get(f));
-    const loadingCount = entries.filter((e) => e && e.loading).length;
+    const entries = S.agendaFilesConfig.map((/** @type {any} */ f) => agendaFilesCache.get(f));
+    const loadingCount = entries.filter((/** @type {any} */ e) => e && e.loading).length;
     const errored = S.agendaFilesConfig
-      .map((f, i) => ({ f, entry: entries[i] }))
+      .map((/** @type {any} */ f, /** @type {number} */ i) => ({ f, entry: entries[i] }))
       .filter(({ entry }) => entry && entry.error);
     if (loadingCount > 0 || errored.length > 0) {
       const agendaFilesStatus = document.createElement('div');
@@ -375,7 +396,7 @@ export function renderAgendaView() {
   const items = buildAgendaItems(agendaDocs, {
     contactsDocs: contactsDocsForAgenda(agendaDocs), // org-contacts-files, as in Emacs (null: scan the agenda's own documents)
     includeLogbook: S.agendaLogMode,
-    todoFilter: (todo) => !todoSequence.doneKeywords.includes(todo),
+    todoFilter: (/** @type {any} */ todo) => !todoSequence.doneKeywords.includes(todo),
     // Real org's default is to skip both commented headings (title
     // starts with COMMENT) and archived ones (:ARCHIVE: tag) in agenda
     // views — org-agenda-skip-comment-trees / org-agenda-skip-archived-
@@ -391,7 +412,7 @@ export function renderAgendaView() {
     // design — see agenda.js). `today` is the real current date, not
     // agendaAnchorDate, which is just whatever date the user is
     // currently navigating to look at.
-    isDone: (todo) => todoSequence.doneKeywords.includes(todo),
+    isDone: (/** @type {any} */ todo) => todoSequence.doneKeywords.includes(todo),
     today: new Date(),
     birthdayProperty: getContactsBirthdayProperty(S.state.localVariables),
     deadlineWarningDays: getDeadlineWarningDays(S.state.localVariables),
@@ -431,6 +452,7 @@ export function renderAgendaView() {
     container.appendChild(empty);
   }
 
+  /** @param {any} [item] */
   function buildAgendaItemRow(item) {
     const row = document.createElement('div');
     row.className = 'menu-list-item';
@@ -552,6 +574,7 @@ export function renderAgendaView() {
 
   const AGENDA_GRID_HOURS = [8, 10, 12, 14, 16, 18, 20]; // real org's own documented org-agenda-time-grid default
 
+  /** @param {any} [hour] */
   function buildAgendaGridLineRow(hour) {
     const row = document.createElement('div');
     row.style.display = 'flex';
@@ -575,9 +598,10 @@ export function renderAgendaView() {
     return row;
   }
 
+  /** @param {any} [dayItems] */
   function renderDayViewTimeline(dayItems) {
-    const untimed = dayItems.filter((i) => !i.hasTime);
-    const timed = dayItems.filter((i) => i.hasTime).sort((a, b) => a.date - b.date);
+    const untimed = dayItems.filter((/** @type {any} */ i) => !i.hasTime);
+    const timed = dayItems.filter((/** @type {any} */ i) => i.hasTime).sort((/** @type {any} */ a, /** @type {any} */ b) => a.date - b.date);
 
     for (const item of untimed) {
       container.appendChild(buildAgendaItemRow(item));
@@ -820,7 +844,7 @@ export function renderTaskListView() {
   // "done" or "should this show up at all".
   const todoSequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
   const items = buildTaskList(aggregateAgendaDocs(), {
-    isDone: (todo) => todoSequence.doneKeywords.includes(todo),
+    isDone: (/** @type {any} */ todo) => todoSequence.doneKeywords.includes(todo),
     includeCommented: !getAgendaSkipCommentTrees(S.state.localVariables),
     includeArchived: !getAgendaSkipArchivedTrees(S.state.localVariables),
   });

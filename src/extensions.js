@@ -23,12 +23,16 @@ export const EDIT_EVENTS = new Set(['todo-change', 'capture']);
 
 const NAME_RE = /^[A-Za-z][A-Za-z0-9-]*$/;
 
-/** A name a script may register: letters, digits and dashes, not a built-in. */
+/**
+ * A name a script may register: letters, digits and dashes, not a built-in.
+ * @param {any} [name]
+ */
 export function usableSexpName(name) {
   return typeof name === 'string' && NAME_RE.test(name) && !BUILTIN_SEXP_NAMES.has(name);
 }
 
 /** One parsed sexp argument as a plain value: numbers and strings as they are, `t` as true, `nil` as
+ * @param {any} [node]
  *  null, any other symbol as its name, a list as an array. Arguments are not evaluated. */
 export function sexpArgToValue(node) {
   if (Array.isArray(node)) return node.map(sexpArgToValue);
@@ -39,6 +43,7 @@ export function sexpArgToValue(node) {
 }
 
 /** A script's answer as a diary result: nothing (false), an entry with the line's own text (true),
+ * @param {any} [value]
  *  or an entry with this text (a string). Anything else is no entry. */
 export function userSexpResult(value) {
   if (value === true) return true;
@@ -47,7 +52,12 @@ export function userSexpResult(value) {
   return false;
 }
 
-/** The cache key for one function, argument list and day. */
+/**
+ * The cache key for one function, argument list and day.
+ * @param {any} [name]
+ * @param {any} [args]
+ * @param {any} [dayKey]
+ */
 export function userSexpKey(name, args, dayKey) {
   return JSON.stringify([name, args, dayKey]);
 }
@@ -63,14 +73,20 @@ export function visibleVariableMap(...sources) {
   return out;
 }
 
-/** SHA-256 of a script's text, in hex. An approval holds only while this matches. */
+/**
+ * SHA-256 of a script's text, in hex. An approval holds only while this matches.
+ * @param {any} [text]
+ */
 export async function hashScript(text) {
   const bytes = new TextEncoder().encode(String(text));
   const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** Whether extension scripts may run: the Global Variables switch `org-xx-extensions`, never a file's own. */
+/**
+ * Whether extension scripts may run: the Global Variables switch `org-xx-extensions`, never a file's own.
+ * @param {any} [globalVars]
+ */
 export function extensionsOn(globalVars) {
   const raw = (globalVars || {})['org-xx-extensions'];
   return /^(on|yes|t|true)$/i.test(raw ? String(raw).trim() : '');
@@ -82,6 +98,7 @@ const DAY_RE = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?$/;
 
 /** What a script's agenda source returned -> [{ title, date, time, endTime, repeat }] with plain, checked fields.
  *  An item is { title, start } (or { summary, start }, as org.ics.parse gives), start being "YYYY-MM-DD" or
+ * @param {any} [list]
  *  "YYYY-MM-DD HH:MM"; optional end (same shape, only its time is used) and repeat ("+1d", "+2w", "+1m", "+1y"). */
 export function normalizeAgendaItems(list, max = 500) {
   const out = [];
@@ -108,9 +125,15 @@ export function normalizeAgendaItems(list, max = 500) {
   return out;
 }
 
+/** @param {any} [d] */
 const keyOf = (d) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 
-/** The days ("YYYY-MM-DD") from `fromKey` to `toKey` on which a normalized item falls (a repeat is expanded). */
+/**
+ * The days ("YYYY-MM-DD") from `fromKey` to `toKey` on which a normalized item falls (a repeat is expanded).
+ * @param {any} [item]
+ * @param {any} [fromKey]
+ * @param {any} [toKey]
+ */
 export function agendaOccurrences(item, fromKey, toKey) {
   const [y, m, d] = item.date.split('-').map(Number);
   if (!item.repeat) return item.date >= fromKey && item.date <= toKey ? [item.date] : [];
@@ -132,7 +155,10 @@ export function agendaOccurrences(item, fromKey, toKey) {
   return days;
 }
 
-/** A header line from a script: one line of plain text, or null. */
+/**
+ * A header line from a script: one line of plain text, or null.
+ * @param {any} [value]
+ */
 export function normalizeLine(value) {
   if (typeof value !== 'string' && typeof value !== 'number') return null;
   const text = String(value).replace(/\s+/g, ' ').trim().slice(0, 200);

@@ -92,7 +92,7 @@ export function ensureAgendaFilesLoaded({ prompt = false } = {}) {
 
     const promise = adapter
       .read(path)
-      .then((result) => {
+      .then((/** @type {any} */ result) => {
         agendaFilesCache.set(
           key,
           result ? { doc: parseOrg(result.content), documentId: path } : { error: `"${path}" not found.` }
@@ -101,7 +101,7 @@ export function ensureAgendaFilesLoaded({ prompt = false } = {}) {
         if (S.settingsOpen) renderSettingsView();
         if (S.searchOpen) renderSearchPanel();
       })
-      .catch((err) => {
+      .catch((/** @type {any} */ err) => {
         agendaFilesCache.set(key, { error: err.message });
         if (S.currentView === 'agenda' || S.currentView === 'tasklist') render();
         if (S.searchOpen) renderSearchPanel();
@@ -116,6 +116,7 @@ export function ensureAgendaFilesLoaded({ prompt = false } = {}) {
 }
 
 /** What to tell the person when a `local:` file is not found: it is looked up among the files opened through the picker, and
+ * @param {any} [path]
  *  then in the org-pwa folder (local-folder.js), so say which of those is missing. */
 function localNotFoundMessage(path) {
   if (!platform.attachments.supported()) return `"${path}" hasn't been opened on this device yet. Open it once with File \u2192 Open \u2192 Local file.`;
@@ -129,6 +130,8 @@ function localNotFoundMessage(path) {
  *  and asking for it shows a prompt, so this NEVER asks unless `prompt` is true, which only a person's own tap on the refresh
  *  button passes. Without access the entry is an error that says what to do (shown above the list, like any file that fails to
  *  load). Always marked readOnly: nothing may be written into one of these (Refile, Capture and Replace use only writable
+ * @param {any} [path]
+ * @param {any} [prompt]
  *  entries), since writing it back needs the adapter of the open document, which may be on another backend. */
 async function readLocalEntry(path, prompt) {
   const marks = { local: true, readOnly: true };
@@ -143,7 +146,11 @@ async function readLocalEntry(path, prompt) {
   }
 }
 
-/** Loads the `local:` agenda files, one at a time (concurrent permission prompts are not reliable). */
+/**
+ * Loads the `local:` agenda files, one at a time (concurrent permission prompts are not reliable).
+ * @param {any} [entries]
+ * @param {any} [prompt]
+ */
 async function loadLocalAgendaFiles(entries, prompt) {
   for (const { key, path } of entries) {
     agendaFilesCache.set(key, await readLocalEntry(path, prompt));
@@ -200,7 +207,7 @@ export function waitForAgendaFilesLoaded() {
   return new Promise((resolve) => {
     const startedAt = Date.now();
     const check = () => {
-      const allSettled = S.agendaFilesConfig.every((key) => {
+      const allSettled = S.agendaFilesConfig.every((/** @type {string} */ key) => {
         const entry = agendaFilesCache.get(key);
         return entry && !entry.loading;
       });
@@ -217,7 +224,7 @@ export function waitForAgendaFilesLoaded() {
 /** The configured agenda files that have not loaded (still loading, or failed), for anything that has to say what it
  *  could not take into account. */
 export function unloadedAgendaFiles() {
-  return S.agendaFilesConfig.filter((key) => {
+  return S.agendaFilesConfig.filter((/** @type {string} */ key) => {
     const entry = agendaFilesCache.get(key);
     return !(entry && entry.doc);
   });
@@ -286,7 +293,7 @@ export function ensureContactsFilesLoaded() {
 
     const promise = adapter
       .read(path)
-      .then((result) => {
+      .then((/** @type {any} */ result) => {
         contactsFilesCache.set(
           key,
           result ? { doc: parseOrg(result.content), documentId: path } : { error: `"${path}" not found.` }
@@ -294,7 +301,7 @@ export function ensureContactsFilesLoaded() {
         if (S.settingsOpen) renderSettingsView();
         if (S.currentView === 'agenda' || S.currentView === 'tasklist') render();
       })
-      .catch((err) => {
+      .catch((/** @type {any} */ err) => {
         contactsFilesCache.set(key, { error: err.message });
         if (S.settingsOpen) renderSettingsView();
       });
@@ -321,6 +328,10 @@ export function ensureSearchExtraFilesLoaded() {
     searchExtraFilesCache.clear();
     S.searchExtraFilesCacheLoadedFor = configKey;
   }
+  /**
+   * @param {any} [key]
+   * @param {any} [entry]
+   */
   const settle = (key, entry) => {
     searchExtraFilesCache.set(key, entry);
     if (S.searchOpen) renderSearchPanel();
@@ -341,8 +352,8 @@ export function ensureSearchExtraFilesLoaded() {
     }
     const promise = adapter
       .read(path)
-      .then((result) => settle(key, result ? { doc: parseOrg(result.content), documentId: path } : { error: `"${path}" not found.` }))
-      .catch((err) => settle(key, { error: err.message }));
+      .then((/** @type {any} */ result) => settle(key, result ? { doc: parseOrg(result.content), documentId: path } : { error: `"${path}" not found.` }))
+      .catch((/** @type {any} */ err) => settle(key, { error: err.message }));
     searchExtraFilesCache.set(key, { loading: true, promise });
   }
 }
@@ -391,6 +402,7 @@ export function contactsFileDocs() {
 
 /** What the agenda passes as `contactsDocs` (see buildAgendaItems): null when it should scan its own documents, as Emacs falls back
  *  to org-agenda-files when org-contacts-files is empty (no contacts files are set, or no org-contacts-anniversaries line exists, so
+ * @param {any} [agendaDocs]
  *  nothing would be fetched for nothing), else the contacts files loaded so far, an empty list while they are still loading. */
 export function contactsDocsForAgenda(agendaDocs) {
   if (!collectContactsTriggers(agendaDocs).length) return null;
@@ -401,6 +413,7 @@ export function contactsDocsForAgenda(agendaDocs) {
 }
 
 /** The calendar mirror's version of contactsDocsForAgenda: the same answer, but it WAITS for the contacts files to load first, so a
+ * @param {any} [agendaDocs]
  *  sync never builds the calendar from a half-loaded list. */
 export async function loadContactsDocsForSync(agendaDocs) {
   if (!collectContactsTriggers(agendaDocs).length) return null;

@@ -40,6 +40,7 @@ const MONTH_NAMES_FULL = [
 ];
 const MONTH_NAMES_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+/** @param {any} [n] */
 function pad(n, width = 2) {
   return String(n).padStart(width, '0');
 }
@@ -58,6 +59,7 @@ function dayOfYear(date) {
  * stays as literal "%Z" in the output) rather than silently dropped,
  * since silently eating unknown input is a worse failure mode than
  * leaving a visible, debuggable trace of what wasn't understood.
+ * @param {any} [date]
  */
 function timezoneAbbreviation(date) {
   const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(date);
@@ -65,6 +67,7 @@ function timezoneAbbreviation(date) {
   return tz ? tz.value : '';
 }
 
+/** @param {any} [date] */
 function timezoneOffsetString(date) {
   const totalMinutes = -date.getTimezoneOffset(); // getTimezoneOffset() is UTC-minus-local, the opposite sign from ±HHMM
   const sign = totalMinutes < 0 ? '-' : '+';
@@ -72,8 +75,12 @@ function timezoneOffsetString(date) {
   return sign + pad(Math.floor(abs / 60)) + pad(abs % 60);
 }
 
+/**
+ * @param {any} [date]
+ * @param {any} [format]
+ */
 function formatTime(date, format) {
-  return format.replace(/%(.)/g, (whole, spec) => {
+  return format.replace(/%(.)/g, (/** @type {any} */ whole, /** @type {string} */ spec) => {
     switch (spec) {
       case 'Y':
         return String(date.getFullYear());
@@ -155,6 +162,7 @@ const TIMESTAMP_PROMPT_KINDS = {
   U: { active: false, hasTime: true, label: 'Date & time' },
 };
 
+/** @param {any} [template] */
 function scanPrompts(template) {
   const prompts = [];
   const re = /%\^\{([^}]*)\}|%\^([tTuU])|%\?/g;
@@ -201,6 +209,7 @@ function scanPrompts(template) {
  * Returns { text } — a bare %? is just another prompt answer
  * substituted directly into the text now (see scanPrompts' own docs for
  * why), so there's no separate cursor position left to report.
+ * @param {any} [template]
  */
 function expandTemplate(template, context = {}) {
   const now = context.now instanceof Date ? context.now : new Date();
@@ -305,6 +314,9 @@ function expandTemplate(template, context = {}) {
  *  expandTemplate's own return shape for the main template piece,
  *  so an existing caller only passing a bare template (preText/
  *  postText both '') still gets the exact same result out of `text`
+ * @param {any} [preText]
+ * @param {any} [template]
+ * @param {any} [postText]
  *  as calling expandTemplate directly would. */
 function expandCaptureText(preText, template, postText, context = {}) {
   const SENTINEL = '\x01\x02CAPTURE_SPLIT\x02\x01';
@@ -364,7 +376,7 @@ function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = tr
   for (const rawSegment of olpPath) {
     const wrapped = /^%<(.*)>$/.exec(rawSegment);
     const title = wrapped ? formatTime(at, wrapped[1]) : rawSegment;
-    found = siblings.find((h) => h.title === title);
+    found = siblings.find((/** @type {any} */ h) => h.title === title);
     if (!found) {
       if (!allowCreate) return null;
       found = parent ? insertChildHeading(parent, { title }, prepend) : insertTopLevelHeading(doc, { title }, prepend);
@@ -388,10 +400,13 @@ function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = tr
  * standalone document); otherwise (a fragment with no headings at all
  * -- just paragraphs/lists/tables) its body content is appended (or
  * prepended) to target's own body directly.
+ * @param {any} [target]
+ * @param {any} [fragment]
  */
 function mergeFragmentInto(target, fragment, prepend = false) {
   if (fragment.children.length > 0) {
     const offset = target.level;
+    /** @param {any} [headings] */
     const applyOffset = (headings) => {
       for (const h of headings) {
         h.level += offset;
@@ -439,10 +454,11 @@ function mergeFragmentInto(target, fragment, prepend = false) {
 /** Splits a table row line ("| a | b | c |") into trimmed cells, the same
  *  way body-parser.js's own (module-private) parseTableRow does — not
  *  imported from there since it isn't exported, but simple enough to
+ * @param {any} [line]
  *  not need its own module either. */
 function splitTableRowLine(line) {
   const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
-  return trimmed.split('|').map((c) => c.trim());
+  return trimmed.split('|').map((/** @type {any} */ c) => c.trim());
 }
 
 /** Finds the last (most recently added) table in a heading's body, or
@@ -452,6 +468,7 @@ function splitTableRowLine(line) {
  *  held from before that call is immediately stale afterward (this is
  *  documented in body-edit.js itself: "table must be a fresh reference
  *  from the current render"), so it can't be reused across a sequence
+ * @param {any} [heading]
  *  of mutations the way a naive loop might assume. */
 function lastTableIn(heading) {
   for (let i = heading.body.length - 1; i >= 0; i--) {
@@ -463,6 +480,7 @@ function lastTableIn(heading) {
 /** The first table in a heading's body -- lastTableIn's own mirror,
  *  needed because a :prepend capture puts new content at the START of
  *  target.body, so the just-inserted (or just-extended) table is now
+ * @param {any} [heading]
  *  the first one there, not the last. */
 function firstTableIn(heading) {
   for (const node of heading.body) {
@@ -475,6 +493,7 @@ function firstTableIn(heading) {
  *  list-item equivalent of lastTableIn, for the same reason: after
  *  mergeFragmentInto (which goes through no commitLines call, so no
  *  staleness risk there, but heading.body is still freshest read fresh
+ * @param {any} [heading]
  *  right after the merge rather than trusting an intermediate reference). */
 function lastListItemIn(heading) {
   for (let i = heading.body.length - 1; i >= 0; i--) {
@@ -488,6 +507,7 @@ function lastListItemIn(heading) {
  *  lastListItemIn's own mirror, for the same :prepend reason
  *  firstTableIn exists: prepending puts the new item at the very
  *  start, so it's now the first item of the first list, not the last
+ * @param {any} [heading]
  *  item of the last one. */
 function firstListItemIn(heading) {
   for (const node of heading.body) {
@@ -573,15 +593,16 @@ const EMPTY_TRAILING_TAG_RE = /\s+:{2,}$/;
  *  this module's own template-expansion half is deliberately
  *  self-contained and dependency-free), heading.bodyLines/body (the
  *  same two structures every other body edit in this app keeps in
+ * @param {any} [heading]
  *  sync with each other), and heading.title. */
 function stripEmptyProperties(heading) {
   for (const key of [...heading.propertyOrder]) {
     if (!String(heading.properties[key] ?? '').trim()) {
       delete heading.properties[key];
-      heading.propertyOrder = heading.propertyOrder.filter((k) => k !== key);
+      heading.propertyOrder = heading.propertyOrder.filter((/** @type {any} */ k) => k !== key);
     }
   }
-  const keptLines = heading.bodyLines.filter((line) => !EMPTY_BODY_LINE_RE.test(line));
+  const keptLines = heading.bodyLines.filter((/** @type {string} */ line) => !EMPTY_BODY_LINE_RE.test(line));
   if (keptLines.length !== heading.bodyLines.length) {
     heading.bodyLines = keptLines;
     heading.body = parseBody(heading.bodyLines);
@@ -590,6 +611,11 @@ function stripEmptyProperties(heading) {
   for (const child of heading.children || []) stripEmptyProperties(child);
 }
 
+/**
+ * @param {any} [target]
+ * @param {any} [type]
+ * @param {any} [expandedText]
+ */
 function insertCapture(target, type, expandedText, prepend = false, omitEmptyEntries = false, expandedPreText = '', expandedPostText = '') {
   if (type === 'item') {
     const fragment = parseOrg('- ' + expandedPreText + expandedText + expandedPostText);
@@ -693,6 +719,8 @@ function insertCapture(target, type, expandedText, prepend = false, omitEmptyEnt
  * itself, matching a template with no file target at all (real org's
  * `(file+olp ...)` with no file argument capturing into the buffer
  * you're currently in).
+ * @param {any} [file]
+ * @param {any} [currentFileId]
  */
 function resolveCaptureFileId(file, currentFileId) {
   const trimmed = String(file || '').trim();
@@ -708,6 +736,7 @@ function resolveCaptureFileId(file, currentFileId) {
 const CAPTURE_FILE_SCHEMES = new Set(['github', 'webdav', 'local']);
 
 /** The storage kind (S.state.storageKind) a scheme names. They differ for exactly one: `local:` is the device's own storage,
+ * @param {any} [scheme]
  *  which the app calls 'filesystem'. The caller compares this with the open document's kind (see getCaptureFileScheme). */
 function storageKindForScheme(scheme) {
   return scheme === 'local' ? 'filesystem' : scheme;
@@ -736,6 +765,7 @@ function storageKindForScheme(scheme) {
  * (e.g. "github:foo" while a WebDAV file is open) would attempt to
  * write to the wrong backend for the currently-open document, an even
  * more confusing failure mode than the original bug this exists to fix.
+ * @param {any} [file]
  */
 function getCaptureFileScheme(file) {
   const match = /^([A-Za-z][A-Za-z0-9+.-]*):(.*)$/.exec(file);
@@ -754,6 +784,8 @@ function getCaptureFileScheme(file) {
  * TODO-workflow picker, both of which need this same "only show/
  * accept a hotkey when it's genuinely unambiguous" rule for their own
  * god-mode-triggered fast-key selection.
+ * @param {any} [items]
+ * @param {any} [keyFn]
  */
 function computeNonCollidingKeys(items, keyFn) {
   const counts = new Map();

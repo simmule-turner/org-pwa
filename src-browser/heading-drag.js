@@ -19,15 +19,25 @@ const rowInfo = new WeakMap(); // heading row element -> { node, row }
 const GRIP_SVG =
   '<svg aria-hidden="true" width="12" height="16" viewBox="0 0 14 18" fill="currentColor"><circle cx="4" cy="3" r="1.6"/><circle cx="10" cy="3" r="1.6"/><circle cx="4" cy="9" r="1.6"/><circle cx="10" cy="9" r="1.6"/><circle cx="4" cy="15" r="1.6"/><circle cx="10" cy="15" r="1.6"/></svg>';
 
+/**
+ * @param {any} [heading]
+ * @param {any} [node]
+ */
 function inSubtree(heading, node) {
-  return heading === node || (heading.children || []).some((child) => inSubtree(child, node));
+  return heading === node || (heading.children || []).some((/** @type {any} */ child) => inSubtree(child, node));
 }
 
+/** @param {any} [node] */
 function countDescendants(node) {
-  return (node.children || []).reduce((n, child) => n + 1 + countDescendants(child), 0);
+  return (node.children || []).reduce((/** @type {any} */ n, /** @type {any} */ child) => n + 1 + countDescendants(child), 0);
 }
 
-/** The heading `climb` levels above `node` (node itself for 0). */
+/**
+ * The heading `climb` levels above `node` (node itself for 0).
+ * @param {any} [doc]
+ * @param {any} [node]
+ * @param {any} [climb]
+ */
 function ancestorAt(doc, node, climb) {
   let current = node;
   for (let i = 0; i < climb; i += 1) {
@@ -37,6 +47,7 @@ function ancestorAt(doc, node, climb) {
   return current;
 }
 
+/** @param {any} [el] */
 function scrollParent(el) {
   for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
     const overflowY = getComputedStyle(p).overflowY;
@@ -45,7 +56,11 @@ function scrollParent(el) {
   return document.scrollingElement || document.documentElement;
 }
 
-/** Builds the grip for a heading row and registers the row as a drop target. */
+/**
+ * Builds the grip for a heading row and registers the row as a drop target.
+ * @param {any} [rowEl]
+ * @param {any} [row]
+ */
 export function attachHeadingGrip(rowEl, row, side = 'right') {
   rowInfo.set(rowEl, { node: row.node, row });
   const grip = document.createElement('button');
@@ -70,6 +85,13 @@ function outlineBand() {
   return { top: topEdge, bottom: bottomRect ? Math.min(innerHeight, bottomRect.top) : innerHeight };
 }
 
+/**
+ * @param {any} [e]
+ * @param {any} [grip]
+ * @param {any} [rowEl]
+ * @param {any} [node]
+ * @param {any} [side]
+ */
 function beginDrag(e, grip, rowEl, node, side) {
   if (e.button !== undefined && e.button !== 0) return;
   e.preventDefault();
@@ -196,6 +218,7 @@ function beginDrag(e, grip, rowEl, node, side) {
     line.style.width = Math.max(40, (next || prev).rect.right - lineLeft - 8) + 'px';
     line.style.top = lineTop + 'px';
     line.style.display = 'block';
+    /** @param {any} [n] */
     const name = (n) => n.title || '(untitled)';
     let says;
     if (best.position === 'before') says = best.depth === 0 ? 'top level' : `before ${name(best.target)}`;
@@ -248,11 +271,13 @@ function beginDrag(e, grip, rowEl, node, side) {
     }
   }
 
+  /** @param {any} [ev] */
   function onMove(ev) {
     last = { x: ev.clientX, y: ev.clientY };
     if (!started && Math.hypot(last.x - startX, last.y - startY) > 5) start();
     update();
   }
+  /** @param {any} [ev] */
   function onUp(ev) {
     last = { x: ev.clientX, y: ev.clientY };
     update();
@@ -263,6 +288,7 @@ function beginDrag(e, grip, rowEl, node, side) {
   function onCancel() {
     cleanup();
   }
+  /** @param {any} [ev] */
   function onKey(ev) {
     if (ev.key !== 'Escape') return;
     ev.preventDefault();

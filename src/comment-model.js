@@ -11,6 +11,7 @@
 
 const COMMENT_TITLE_RE = /^COMMENT(\s|$)/;
 
+/** @param {any} [heading] */
 function isCommentedHeading(heading) {
   return COMMENT_TITLE_RE.test(heading.title || '');
 }

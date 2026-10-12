@@ -45,13 +45,15 @@ const CONDITION_TOKEN_RE = /([+-]?)([A-Za-z_][A-Za-z0-9_]*)(?:(<>|<=|>=|=|<|>)"(
  *  clear error on a condition this parser doesn't recognize, rather than
  *  silently treating malformed input as "matches nothing" or "matches
  *  everything" -- either of those would be a worse failure mode for a
+ * @param {any} [query]
  *  filter someone is actively relying on to scope an export. */
 function parseMatchQuery(query) {
   const trimmed = query.trim();
   if (!trimmed) throw new Error('Match query cannot be empty');
-  return trimmed.split('|').map((groupText) => parseGroup(groupText.trim()));
+  return trimmed.split('|').map((/** @type {any} */ groupText) => parseGroup(groupText.trim()));
 }
 
+/** @param {any} [groupText] */
 function parseGroup(groupText) {
   if (!groupText) throw new Error('Empty group in match query (found next to a "|" with nothing on one side)');
   const conditions = [];
@@ -81,6 +83,8 @@ function parseGroup(groupText) {
  *  undefined when the entry has no value at all for this name (an
  *  ordinary, expected case -- a `-` condition should still correctly
  *  exclude in that case, and a plain `=` condition should correctly not
+ * @param {any} [entry]
+ * @param {any} [name]
  *  match). */
 function readEntryValue(entry, name) {
   if (name === 'TODO') return entry.todo || undefined;
@@ -90,6 +94,11 @@ function readEntryValue(entry, name) {
   return entry.properties ? entry.properties[name] : undefined;
 }
 
+/**
+ * @param {any} [actual]
+ * @param {any} [op]
+ * @param {any} [expected]
+ */
 function compareValues(actual, op, expected) {
   if (actual === undefined) return false;
   if (op === '=') return actual === expected;
@@ -105,6 +114,10 @@ function compareValues(actual, op, expected) {
   throw new Error(`Unknown comparison operator "${op}"`);
 }
 
+/**
+ * @param {any} [condition]
+ * @param {any} [entry]
+ */
 function evaluateCondition(condition, entry) {
   let holds;
   if (condition.kind === 'tag') {
@@ -117,9 +130,11 @@ function evaluateCondition(condition, entry) {
 
 /** Evaluates a pre-parsed match query (from parseMatchQuery) against one
  *  entry: { tags: string[], todo, priority, category, level, properties }.
+ * @param {any} [parsedGroups]
+ * @param {any} [entry]
  *  True if ANY OR'd group has EVERY one of its own AND'd conditions hold. */
 function evaluateMatchQuery(parsedGroups, entry) {
-  return parsedGroups.some((group) => group.every((condition) => evaluateCondition(condition, entry)));
+  return parsedGroups.some((/** @type {any} */ group) => group.every((/** @type {any} */ condition) => evaluateCondition(condition, entry)));
 }
 
 export { parseMatchQuery, evaluateMatchQuery };

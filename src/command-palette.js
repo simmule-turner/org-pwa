@@ -30,6 +30,7 @@
  * their listed order.
  */
 
+/** @param {any} [text] */
 function normalize(text) {
   return String(text == null ? '' : text)
     .toLowerCase()
@@ -38,13 +39,22 @@ function normalize(text) {
     .trim();
 }
 
+/**
+ * @param {any} [haystack]
+ * @param {any} [token]
+ */
 function startsAWord(haystack, token) {
   return haystack.startsWith(token) || haystack.includes(' ' + token);
 }
 
-/** Lower is better; null when `token` matches nothing in the command. */
+/**
+ * Lower is better; null when `token` matches nothing in the command.
+ * @param {any} [token]
+ * @param {any} [fields]
+ */
 function scoreToken(token, fields) {
   let best = null;
+  /** @param {any} [score] */
   const consider = (score) => {
     if (best === null || score < best) best = score;
   };
@@ -67,6 +77,7 @@ function scoreToken(token, fields) {
   return best;
 }
 
+/** @param {any} [command] */
 function fieldsOf(command) {
   return {
     label: normalize(command.label),
@@ -80,6 +91,8 @@ function fieldsOf(command) {
  * Returns the commands matching `query`, best first, as
  * `{ command, recent }` (`recent` is true for a command in `recentIds`).
  * `recentIds` is most-recent-first.
+ * @param {any} [commands]
+ * @param {any} [query]
  */
 function searchCommands(commands, query, { recentIds = [] } = {}) {
   const tokens = String(query == null ? '' : query)
@@ -87,16 +100,17 @@ function searchCommands(commands, query, { recentIds = [] } = {}) {
     .map(normalize)
     .filter(Boolean);
   const recentRank = new Map(recentIds.map((id, i) => [id, i]));
+  /** @param {any} [command] */
   const rankOf = (command) => (recentRank.get(command.id) ?? Infinity);
 
   if (tokens.length === 0) {
-    const recent = commands.filter((c) => recentRank.has(c.id)).sort((a, b) => rankOf(a) - rankOf(b));
-    const rest = commands.filter((c) => !recentRank.has(c.id));
-    return [...recent.map((command) => ({ command, recent: true })), ...rest.map((command) => ({ command, recent: false }))];
+    const recent = commands.filter((/** @type {any} */ c) => recentRank.has(c.id)).sort((/** @type {any} */ a, /** @type {any} */ b) => rankOf(a) - rankOf(b));
+    const rest = commands.filter((/** @type {any} */ c) => !recentRank.has(c.id));
+    return [...recent.map((/** @type {any} */ command) => ({ command, recent: true })), ...rest.map((/** @type {any} */ command) => ({ command, recent: false }))];
   }
 
   const scored = [];
-  commands.forEach((command, index) => {
+  commands.forEach((/** @type {any} */ command, /** @type {number} */ index) => {
     const fields = fieldsOf(command);
     let total = 0;
     for (const token of tokens) {
@@ -110,9 +124,13 @@ function searchCommands(commands, query, { recentIds = [] } = {}) {
   return scored.map(({ command, recent }) => ({ command, recent }));
 }
 
-/** `recentIds` with `id` moved to the front, deduplicated and capped. */
+/**
+ * `recentIds` with `id` moved to the front, deduplicated and capped.
+ * @param {any} [recentIds]
+ * @param {any} [id]
+ */
 function pushRecent(recentIds, id, max = 8) {
-  return [id, ...recentIds.filter((existing) => existing !== id)].slice(0, max);
+  return [id, ...recentIds.filter((/** @type {any} */ existing) => existing !== id)].slice(0, max);
 }
 
 /**
@@ -131,6 +149,7 @@ function pushRecent(recentIds, id, max = 8) {
 function dynamicCommandSpecs({ templates = /** @type {any[]} */ ([]), extraEntries = /** @type {any[]} */ ([]) } = {}) {
   const specs = [];
   const taken = new Set();
+  /** @param {any} [base] */
   const unique = (base) => {
     let id = base;
     for (let n = 2; taken.has(id); n++) id = `${base}#${n}`;

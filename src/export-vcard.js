@@ -53,6 +53,7 @@ import { isArchived, getProperty } from './archive-model.js';
 import { isCommentedHeading } from './comment-model.js';
 import { foldLine } from './export-icalendar.js';
 
+/** @param {any} [text] */
 function escapeVcardText(text) {
   return String(text)
     .replace(/\\/g, '\\\\')
@@ -65,11 +66,13 @@ function escapeVcardText(text) {
  *  (LABEL="..."). A real vCard quoted-string parameter value cannot
  *  contain a literal double-quote at all (there's no standard escape
  *  for one within the quotes), so any is stripped -- an extremely
+ * @param {any} [text]
  *  rare edge case for a real address label. */
 function escapeVcardLabelParam(text) {
   return escapeVcardText(text).replace(/"/g, '');
 }
 
+/** @param {any} [n] */
 function pad2(n) {
   return String(n).padStart(2, '0');
 }
@@ -82,6 +85,7 @@ const BIRTHDAY_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})/;
  *  optional here, not required. Returns null for an out-of-range
  *  month/day or a value that doesn't start with a recognizable date
  *  at all, silently skipping BDAY for that contact rather than
+ * @param {any} [raw]
  *  emitting a malformed field. */
 function parseBirthdayDate(raw) {
   const m = BIRTHDAY_DATE_RE.exec(String(raw).trim());
@@ -110,12 +114,15 @@ function parseBirthdayDate(raw) {
  *  a real vCard's own structural separation between street, city,
  *  region, postal code, and country, even when the original had them
  *  as genuinely distinct, populated fields (City/Region/PostalCode/
+ * @param {any} [address]
+ * @param {any} [raw]
  *  Country all becoming empty on export). */
 function buildAdrValue(address, raw) {
   if (raw) return raw.split(';').map(escapeVcardText).join(';');
   return `;;${escapeVcardText(address)};;;;`;
 }
 
+/** @param {any} [fullName] */
 function splitNameForN(fullName) {
   const trimmed = fullName.trim();
   const lastSpace = trimmed.lastIndexOf(' ');
@@ -134,6 +141,7 @@ function splitNameForN(fullName) {
  *  the latter loses real information irreversibly: org tags cannot
  *  contain spaces at all, so "Other Account" becomes "Other_Account"
  *  once stored as a tag, with no way back from the tag alone. Returns
+ * @param {any} [heading]
  *  null when there's nothing to write either way. */
 function buildCategoriesLine(heading) {
   const raw = getProperty(heading, 'CATEGORIES_RAW');
@@ -142,6 +150,10 @@ function buildCategoriesLine(heading) {
   return null;
 }
 
+/**
+ * @param {any} [heading]
+ * @param {any} [birthdayProperty]
+ */
 function buildVcard(heading, birthdayProperty) {
   const ignore = getProperty(heading, 'IGNORE');
   if (ignore && String(ignore).trim().toLowerCase() === 't') return null;
@@ -240,31 +252,31 @@ function buildVcard(heading, birthdayProperty) {
 // the two styles have matching capability rather than tree covering a
 // different, larger or smaller set of information than flat does.
 const TREE_FIELDTYPE_TO_VCARD_LINE = {
-  cell: (value, label) => `TEL;TYPE=CELL${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
-  phone: (value, label) => `TEL${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
-  'phone-work': (value, label) => `TEL;TYPE=WORK${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
-  'phone-home': (value, label) => `TEL;TYPE=HOME${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
-  email: (value, label) => `EMAIL${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
-  'email-work': (value, label) => `EMAIL;TYPE=WORK${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
-  'email-home': (value, label) => `EMAIL;TYPE=HOME${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
-  address: (value, label, raw) => `ADR${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${buildAdrValue(value, raw)}`,
-  'address-work': (value, label, raw) => `ADR;TYPE=WORK${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${buildAdrValue(value, raw)}`,
-  'address-home': (value, label, raw) => `ADR;TYPE=HOME${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${buildAdrValue(value, raw)}`,
-  nickname: (value) => `NICKNAME:${escapeVcardText(value)}`,
-  org: (value) => `ORG:${escapeVcardText(value)}`,
-  'job-title': (value) => `TITLE:${escapeVcardText(value)}`,
-  url: (value, label) => `URL${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
-  photo: (value) => `PHOTO:${escapeVcardText(value)}`,
-  note: (value) => `NOTE:${escapeVcardText(value)}`,
-  birthday: (value) => {
+  cell: (/** @type {any} */ value, /** @type {string} */ label) => `TEL;TYPE=CELL${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
+  phone: (/** @type {any} */ value, /** @type {string} */ label) => `TEL${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
+  'phone-work': (/** @type {any} */ value, /** @type {string} */ label) => `TEL;TYPE=WORK${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
+  'phone-home': (/** @type {any} */ value, /** @type {string} */ label) => `TEL;TYPE=HOME${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
+  email: (/** @type {any} */ value, /** @type {string} */ label) => `EMAIL${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
+  'email-work': (/** @type {any} */ value, /** @type {string} */ label) => `EMAIL;TYPE=WORK${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
+  'email-home': (/** @type {any} */ value, /** @type {string} */ label) => `EMAIL;TYPE=HOME${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
+  address: (/** @type {any} */ value, /** @type {string} */ label, /** @type {string} */ raw) => `ADR${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${buildAdrValue(value, raw)}`,
+  'address-work': (/** @type {any} */ value, /** @type {string} */ label, /** @type {string} */ raw) => `ADR;TYPE=WORK${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${buildAdrValue(value, raw)}`,
+  'address-home': (/** @type {any} */ value, /** @type {string} */ label, /** @type {string} */ raw) => `ADR;TYPE=HOME${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${buildAdrValue(value, raw)}`,
+  nickname: (/** @type {any} */ value) => `NICKNAME:${escapeVcardText(value)}`,
+  org: (/** @type {any} */ value) => `ORG:${escapeVcardText(value)}`,
+  'job-title': (/** @type {any} */ value) => `TITLE:${escapeVcardText(value)}`,
+  url: (/** @type {any} */ value, /** @type {string} */ label) => `URL${label ? `;LABEL="${escapeVcardLabelParam(label)}"` : ''}:${escapeVcardText(value)}`,
+  photo: (/** @type {any} */ value) => `PHOTO:${escapeVcardText(value)}`,
+  note: (/** @type {any} */ value) => `NOTE:${escapeVcardText(value)}`,
+  birthday: (/** @type {any} */ value) => {
     const bday = parseBirthdayDate(value);
     return bday ? `BDAY:${bday.year}-${pad2(bday.month)}-${pad2(bday.day)}` : null;
   },
-  anniversary: (value) => {
+  anniversary: (/** @type {any} */ value) => {
     const anniversary = parseBirthdayDate(value);
     return anniversary ? `ANNIVERSARY:${anniversary.year}${pad2(anniversary.month)}${pad2(anniversary.day)}` : null;
   },
-  spouse: (value) => (value ? `RELATED;TYPE=spouse;VALUE=text:${escapeVcardText(value)}` : null),
+  spouse: (/** @type {any} */ value) => (value ? `RELATED;TYPE=spouse;VALUE=text:${escapeVcardText(value)}` : null),
 };
 
 /** Builds one contact's own VCARD block for the tree style, or null
@@ -285,8 +297,10 @@ const TREE_FIELDTYPE_TO_VCARD_LINE = {
  *  accepted, since a person might reasonably prefer QUOTE's own
  *  reflow-friendly convention over VERSE's exact line-break
  *  preservation when writing one by hand. Returns null when no such
+ * @param {any} [heading]
  *  block exists at all. */
 function blockText(heading) {
+  /** @param {any} [b] */
   const block = (heading.body || []).find((b) => b.type === 'block' && (b.name === 'VERSE' || b.name === 'QUOTE'));
   return block ? block.lines.join('\n') : null;
 }
@@ -295,6 +309,7 @@ function blockText(heading) {
  *  falling back to the heading's own title when no block is present
  *  at all, so a note heading written before this existed (or typed by
  *  hand without a block) still exports correctly -- never a hard
+ * @param {any} [heading]
  *  requirement. */
 function noteBlockText(heading) {
   return blockText(heading) ?? (heading.title || '');
@@ -306,6 +321,8 @@ function noteBlockText(heading) {
  *  fieldtype heading (a contact's own preserved N, see import-vcard.js's
  *  own N case) before the main walk below, since it needs to be
  *  written immediately after FN, not wherever the walk happens to
+ * @param {any} [heading]
+ * @param {any} [fieldType]
  *  encounter it. */
 function findFieldValue(heading, fieldType) {
   for (const child of heading.children || []) {
@@ -316,6 +333,7 @@ function findFieldValue(heading, fieldType) {
   return null;
 }
 
+/** @param {any} [heading] */
 function buildVcardFromTreeContact(heading) {
   if (String(getProperty(heading, 'KIND') || '').toLowerCase() !== 'individual') return null;
   if (String(getProperty(heading, 'FIELDTYPE') || '').toLowerCase() !== 'name') return null;
@@ -334,6 +352,7 @@ function buildVcardFromTreeContact(heading) {
       })();
   const lines = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${escapeVcardText(fullName)}`, nLine];
 
+  /** @param {any} [node] */
   function walk(node) {
     for (const child of node.children || []) {
       const fieldType = String(getProperty(child, 'FIELDTYPE') || '').toLowerCase();
@@ -391,6 +410,7 @@ function buildVcardFromTreeContact(heading) {
  * narrowing the outline first (Search's own Narrow button, or subtree
  * narrowing), then exporting "This file," not through any filter
  * option on the export itself.
+ * @param {any} [docs]
  */
 export function exportToVcard(docs, opts = {}) {
   const { scope = null, birthdayProperty = 'BIRTHDAY', style = 'flat' } = opts;
@@ -398,6 +418,7 @@ export function exportToVcard(docs, opts = {}) {
 
   const cards = [];
   const seen = new Set();
+  /** @param {any} [heading] */
   const visit = (heading) => {
     if (seen.has(heading)) return;
     seen.add(heading);
@@ -423,13 +444,14 @@ export function exportToVcard(docs, opts = {}) {
  * It needs no style. A heading is a Tree contact if it says so (KIND individual and FIELDTYPE name) and a Flat contact if
  * it has a contact property of its own, and a heading that is neither is not a contact, so each heading is tried as Tree
  * and then as Flat, and a file may mix the two. Archived and commented headings are skipped, as in the export.
+ * @param {any} [docs]
  */
 export function collectContactCards(docs, opts = {}) {
   const { birthdayProperty = 'BIRTHDAY' } = opts;
   const cards = [];
   const seen = new Set();
   for (const { documentId, doc } of docs) {
-    walkHeadings(doc, (heading) => {
+    walkHeadings(doc, (/** @type {any} */ heading) => {
       if (seen.has(heading)) return;
       seen.add(heading);
       if (isArchived(heading) || isCommentedHeading(heading)) return;

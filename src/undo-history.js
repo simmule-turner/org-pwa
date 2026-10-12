@@ -31,6 +31,7 @@
  */
 
 /** Starts a fresh history with a single snapshot representing the
+ * @param {any} [initialText]
  *  document as it was just opened. */
 export function createHistory(initialText, initialLabel = 'Opened', now = new Date()) {
   return { entries: [{ text: initialText, label: initialLabel, timestamp: now }], index: 0 };
@@ -46,6 +47,9 @@ export function createHistory(initialText, initialLabel = 'Opened', now = new Da
  * pushing a no-op entry -- an edit that turns out not to have actually
  * changed anything (toggling something and toggling it back, e.g.)
  * shouldn't clutter the history list.
+ * @param {any} [history]
+ * @param {any} [text]
+ * @param {any} [label]
  */
 export function pushSnapshot(history, text, label, now = new Date()) {
   const current = history.entries[history.index];
@@ -57,15 +61,18 @@ export function pushSnapshot(history, text, label, now = new Date()) {
   return { entries, index: entries.length - 1 };
 }
 
+/** @param {any} [history] */
 export function canUndo(history) {
   return history.index > 0;
 }
 
+/** @param {any} [history] */
 export function canRedo(history) {
   return history.index < history.entries.length - 1;
 }
 
 /** Returns a NEW history with the index moved back one step, or the
+ * @param {any} [history]
  *  SAME history unchanged if there's nothing to undo. */
 export function undo(history) {
   if (!canUndo(history)) return history;
@@ -73,6 +80,7 @@ export function undo(history) {
 }
 
 /** Returns a NEW history with the index moved forward one step, or the
+ * @param {any} [history]
  *  SAME history unchanged if there's nothing to redo. */
 export function redo(history) {
   if (!canRedo(history)) return history;
@@ -85,6 +93,8 @@ export function redo(history) {
  * navigation, not a new edit, so unlike pushSnapshot this never
  * discards anything either side of it. Returns the SAME history
  * unchanged if targetIndex is out of range.
+ * @param {any} [history]
+ * @param {any} [targetIndex]
  */
 export function jumpTo(history, targetIndex) {
   if (targetIndex < 0 || targetIndex >= history.entries.length) return history;
@@ -92,6 +102,7 @@ export function jumpTo(history, targetIndex) {
 }
 
 /** The entry the history's index currently points at -- the one whose
+ * @param {any} [history]
  *  text should match the document's current live state. */
 export function currentEntry(history) {
   return history.entries[history.index];

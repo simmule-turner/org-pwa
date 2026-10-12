@@ -10,9 +10,13 @@ const MAX_BODY_CHARS = 20000;
 const MAX_TOTAL_CHARS = 2_000_000;
 export const MAX_EDITS = 500;
 
-/** The headings of `doc` in outline order. */
+/**
+ * The headings of `doc` in outline order.
+ * @param {any} [doc]
+ */
 export function headingsInOrder(doc) {
   const out = [];
+  /** @param {any} [nodes] */
   const walk = (nodes) => {
     for (const node of nodes || []) {
       if (node.type !== 'heading') continue;
@@ -25,6 +29,7 @@ export function headingsInOrder(doc) {
 }
 
 /** A read-only copy of the file for a script: `{ name, headings, focused, truncated }`. `focused` is the index of
+ * @param {any} [doc]
  *  the heading the command was run on, or null. */
 export function snapshotDocument(doc, { name = '', focusedHeading = null } = {}) {
   const all = headingsInOrder(doc);
@@ -68,6 +73,8 @@ const TAG_RE = /^[\w@#%]+$/;
 const PROP_RE = /^[A-Za-z0-9_-]+$/;
 
 /** Checks a list of edits against the snapshot's heading count. Returns an error message, or null when every
+ * @param {any} [edits]
+ * @param {any} [headingCount]
  *  edit is well formed. The kinds are: set-title, set-todo, set-tags, set-property, delete-property, append-body. */
 export function validateEdits(edits, headingCount) {
   if (!Array.isArray(edits)) return 'edits must be a list';
@@ -83,7 +90,7 @@ export function validateEdits(edits, headingCount) {
         if (e.todo !== null && !(typeof e.todo === 'string' && TODO_RE.test(e.todo))) return `"${e.todo}" is not a TODO keyword`;
         break;
       case 'set-tags':
-        if (!Array.isArray(e.tags) || !e.tags.every((t) => typeof t === 'string' && TAG_RE.test(t))) return 'tags must be words of letters, digits, _ @ # %';
+        if (!Array.isArray(e.tags) || !e.tags.every((/** @type {any} */ t) => typeof t === 'string' && TAG_RE.test(t))) return 'tags must be words of letters, digits, _ @ # %';
         break;
       case 'set-property':
         if (typeof e.name !== 'string' || !PROP_RE.test(e.name) || typeof e.value !== 'string' || /[\r\n]/.test(e.value)) return 'a property needs a simple name and a one-line value';
@@ -102,13 +109,18 @@ export function validateEdits(edits, headingCount) {
 }
 
 /** Whether the first `headings.length` headings of `doc` still have the titles and levels the snapshot recorded, so
+ * @param {any} [doc]
+ * @param {any} [snapshot]
  *  edits made against the snapshot would land on the same headings. */
 export function snapshotStillMatches(doc, snapshot) {
   const all = headingsInOrder(doc);
-  return snapshot.headings.every((s, i) => all[i] && all[i].level === s.level && (all[i].title || '') === s.title);
+  return snapshot.headings.every((/** @type {any} */ s, /** @type {number} */ i) => all[i] && all[i].level === s.level && (all[i].title || '') === s.title);
 }
 
 /** Applies validated edits to the live headings. `deps` supplies what depends on the app: `setTodo(heading, todo)`,
+ * @param {any} [doc]
+ * @param {any} [edits]
+ * @param {any} [deps]
  *  `setProperty(heading, name, value)`, `deleteProperty(heading, name)` and `appendBody(heading, lines)`. */
 export function applyEdits(doc, edits, deps) {
   const all = headingsInOrder(doc);

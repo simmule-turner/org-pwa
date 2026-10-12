@@ -9,6 +9,11 @@ import { HELP_DOCUMENT_ID, PALETTE_RECENT_KEY, REFILE_RECENT_KEY } from './const
 import { kv } from './singletons.js';
 import { confirmDialog } from './dialogs.js';
 
+/**
+ * @param {any} [fileId]
+ * @param {any} [hash]
+ * @param {any} [content]
+ */
 export function recordSyncedWrite(fileId, hash, content) {
   // `content` is kept as the new common ancestor for a later three-way
   // merge (see merge3.js); omitted only by callers that don't have it.
@@ -29,7 +34,11 @@ export async function loadRefileRecent() {
   }
 }
 
-/** Remembers a successful refile's destination for the picker's Recent list. */
+/**
+ * Remembers a successful refile's destination for the picker's Recent list.
+ * @param {any} [documentId]
+ * @param {any} [outlinePath]
+ */
 export async function rememberRefileTarget(documentId, outlinePath) {
   try {
     const recent = pushRecentRefileTarget(await loadRefileRecent(), { documentId, outlinePath });
@@ -52,6 +61,8 @@ export async function rememberRefileTarget(documentId, outlinePath) {
  *  its own internal ID is a randomly-suffixed sentinel never meant to
  *  be user-visible, so it falls back to the first heading's own title
  *  once one exists, and finally to '*scratch*' -- matching real
+ * @param {any} [docId]
+ * @param {any} [doc]
  *  Emacs's own convention for a fresh, as-yet-unnamed buffer. */
 export function documentDisplayLabel(docId, doc) {
   if (docId === HELP_DOCUMENT_ID) return 'Help';
@@ -72,6 +83,7 @@ export async function loadPaletteRecent() {
   }
 }
 
+/** @param {any} [kind] */
 export function storageKindLabel(kind) {
   if (kind === 'github') return 'GitHub';
   if (kind === 'webdav') return 'WebDAV';
@@ -89,6 +101,7 @@ export function storageKindLabel(kind) {
  * ("unsaved local changes were kept") and no way back to them: the edit
  * sat untouched in IndexedDB, but there was no UI path to ever see it
  * again. "Kept" should mean "shown", not "kept invisible somewhere".
+ * @param {any} [documentId]
  */
 export async function resolvePendingChangeChoice(documentId) {
   const pending = await getPendingChange(kv, documentId);
@@ -109,6 +122,7 @@ export async function resolvePendingChangeChoice(documentId) {
  *  vague to judge whether a pending edit was worth resuming or safely
  *  ignorable; showing exactly when it happened lets the person decide
  *  for themselves. Falls back to the generic wording if the timestamp
+ * @param {any} [iso]
  *  is missing or unparseable, rather than showing "Invalid Date". */
 export function formatPendingChangeTimestamp(iso) {
   const d = iso ? new Date(iso) : null;

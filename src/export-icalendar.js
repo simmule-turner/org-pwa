@@ -46,6 +46,7 @@ const UNIT_TO_FREQ = { h: 'HOURLY', d: 'DAILY', w: 'WEEKLY', m: 'MONTHLY', y: 'Y
  *  module's own expandRepeats docs for why: a static, one-time export
  *  has no notion of "when this was last actually marked done" to drive
  *  the marks' differing real catch-up semantics, the same reasoning
+ * @param {any} [repeaterRaw]
  *  the live agenda view itself already applies. */
 export function repeaterToRRule(repeaterRaw) {
   const r = parseRepeater(repeaterRaw);
@@ -57,10 +58,12 @@ export function repeaterToRRule(repeaterRaw) {
 
 // ---- date/time formatting ---------------------------------------------
 
+/** @param {any} [n] */
 function pad2(n) {
   return String(n).padStart(2, '0');
 }
 
+/** @param {any} [date] */
 function formatIcsDate(date) {
   return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}`;
 }
@@ -69,6 +72,7 @@ function formatIcsDate(date) {
  *  timestamps themselves carry no explicit timezone, they're wall-clock
  *  times in whatever zone the file's author was in, so floating time is
  *  the most faithful mapping available rather than guessing at a zone
+ * @param {any} [date]
  *  that was never actually recorded. */
 function formatIcsDateTime(date) {
   return `${formatIcsDate(date)}T${pad2(date.getHours())}${pad2(date.getMinutes())}00`;
@@ -77,6 +81,7 @@ function formatIcsDateTime(date) {
 /** DTSTAMP specifically must always be real UTC per RFC 5545 -- unlike
  *  DTSTART's floating-time treatment above, this field has no "local"
  *  form; it records when the file was actually generated, not a wall-clock
+ * @param {any} [date]
  *  appointment time. */
 function formatIcsDateTimeUtc(date) {
   return (
@@ -87,6 +92,7 @@ function formatIcsDateTimeUtc(date) {
 
 // ---- text escaping (RFC 5545 3.3.11) -----------------------------------
 
+/** @param {any} [text] */
 function escapeIcsText(text) {
   return String(text)
     .replace(/\\/g, '\\\\')
@@ -98,6 +104,7 @@ function escapeIcsText(text) {
 /** RFC 5545 3.1 requires content lines folded at 75 octets, each
  *  continuation line starting with a single space -- an unfolded long
  *  line is technically non-conformant, and some real calendar clients
+ * @param {any} [line]
  *  (Outlook among them) are known to reject or mis-parse one. */
 export function foldLine(line) {
   if (line.length <= 75) return line;
@@ -119,6 +126,11 @@ export function foldLine(line) {
  *  real org's own ox-icalendar.el preference), else a stable string
  *  built from the document, heading title, and item kind/index --
  *  sanitized to a safe character set, since a UID must not contain
+ * @param {any} [documentId]
+ * @param {any} [heading]
+ * @param {any} [kind]
+ * @param {any} [index]
+ * @param {any} [date]
  *  control characters, semicolons, or line breaks. */
 export function generateUid(documentId, heading, kind, index, date) {
   const existingId = getProperty(heading, 'ID');
@@ -164,16 +176,20 @@ const BODY_LIMIT = 400;
 
 /** What a heading adds to its event beyond the title and the time: its :LOCATION: property, its tags (as categories), and the start
  *  of its body text (at most 400 characters, ended with an ellipsis if cut, and without diary-sexp lines, which are not text for
+ * @param {any} [heading]
  *  a person to read). */
 export function eventDetails(heading) {
+  /** @param {any} [k] */
   const locationKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === 'location');
   const location = locationKey ? String(heading.properties[locationKey] || '').trim() : '';
+  /** @param {any} [line] */
   let body = (heading.bodyLines || []).filter((line) => !line.trim().startsWith('%%(')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
   if (body.length > BODY_LIMIT) body = body.slice(0, BODY_LIMIT - 1).trimEnd() + '\u2026';
   return { location: location || null, categories: (heading.tags || []).filter(Boolean), body: body || null };
 }
 
 /** `heading.title` without the active timestamps written in it ("Dentist <2026-10-20 Tue 09:00>" -> "Dentist"): the event's own
+ * @param {any} [title]
  *  start already says when. Falls back to the whole title if nothing else is left. */
 export function titleWithoutTimestamps(title) {
   let text = title;
@@ -189,6 +205,7 @@ export function titleWithoutTimestamps(title) {
  * "generated at" timestamp (defaults to now) -- exposed for
  * deterministic testing, the same convention buildAgendaItems itself
  * already uses for its own `today` option.
+ * @param {any} [docs]
  */
 export function exportToIcalendar(docs, opts = {}) {
   const events = collectCalendarEvents(docs, opts);
@@ -207,18 +224,28 @@ export function exportToIcalendar(docs, opts = {}) {
  * A heading with an :ID: property would give its SCHEDULED and its DEADLINE the same UID, one overwriting the other
  * in any store that keys by UID; the first keeps the plain id (so earlier exports still match) and later ones get a
  * suffix.
+ * @param {any} [docs]
  */
 export function collectCalendarEvents(docs, opts = {}) {
   const { today = new Date(), birthdayProperty = 'BIRTHDAY', scope = null, includeDone = false, window = null, contactsDocs = null } = opts;
   const events = [];
   const usedUids = new Set();
+  /**
+   * @param {any} [documentId]
+   * @param {any} [heading]
+   * @param {any} [kind]
+   * @param {any} [index]
+   * @param {any} [date]
+   */
   const uniqueUid = (documentId, heading, kind, index, date) => {
     let uid = generateUid(documentId, heading, kind, index, date);
     if (usedUids.has(uid)) uid = uid.replace(/@org-pwa$/, `-${kind}${index}@org-pwa`);
     usedUids.add(uid);
     return uid;
   };
+  /** @param {any} [d] */
   const dayNumber = (d) => Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 86400000);
+  /** @param {any} [parsed] */
   const keep = (parsed) => {
     if (!window) return true;
     if (parsed.repeater) return dayNumber(parsed.date) <= dayNumber(window.end);
@@ -229,6 +256,10 @@ export function collectCalendarEvents(docs, opts = {}) {
   // subtree (itself and its descendants) -- a lightweight, doc-shaped
   // wrapper around just the scope heading, reusing walkHeadings exactly
   // as-is rather than a separate, parallel traversal implementation.
+  /**
+   * @param {any} [doc]
+   * @param {any} [visit]
+   */
   const walkScope = (doc, visit) => walkHeadings(scope ? { children: [scope] } : doc, visit);
 
   // The org-contacts-anniversaries lines found across the docs (within the scope, when there is one): one scan for each distinct
@@ -236,7 +267,7 @@ export function collectCalendarEvents(docs, opts = {}) {
   const contactsTriggers = [];
   const seenTriggers = new Set();
   for (const { doc } of docs) {
-    walkScope(doc, (heading) => {
+    walkScope(doc, (/** @type {any} */ heading) => {
       for (const line of heading.bodyLines || []) {
         const trigger = parseContactsAnniversariesTrigger(line);
         if (!trigger) continue;
@@ -251,6 +282,10 @@ export function collectCalendarEvents(docs, opts = {}) {
 
   // One contact's yearly events. Each repeats every year as ONE event, which cannot carry an age, so the title leaves it out
   // ("Birthday: Jane Doe") and the date goes in the description.
+  /**
+   * @param {any} [documentId]
+   * @param {any} [heading]
+   */
   const pushAnniversaries = (documentId, heading) => {
     for (const trigger of contactsTriggers) {
       const field = trigger.field || birthdayProperty;
@@ -280,7 +315,7 @@ export function collectCalendarEvents(docs, opts = {}) {
   // Contacts are the headings of `contactsDocs` (org-contacts-files) when the caller has them, else of the docs themselves.
   if (contactsTriggers.length && contactsDocs) {
     for (const { documentId, doc } of contactsDocs) {
-      walkHeadings(doc, (heading) => {
+      walkHeadings(doc, (/** @type {any} */ heading) => {
         if (isArchived(heading) || isCommentedHeading(heading)) return;
         pushAnniversaries(documentId, heading);
       });
@@ -289,7 +324,7 @@ export function collectCalendarEvents(docs, opts = {}) {
 
   for (const { documentId, doc } of docs) {
     const { doneKeywords } = resolveTodoSequence(doc);
-    walkScope(doc, (heading) => {
+    walkScope(doc, (/** @type {any} */ heading) => {
       if (isArchived(heading)) return;
       if (isCommentedHeading(heading)) return;
       const isDone = doneKeywords.includes(heading.todo);

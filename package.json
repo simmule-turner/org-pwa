@@ -7,6 +7,7 @@
     "test": "node --import ./test/support/fixed-clock.mjs --test test/*.test.js",
     "test:zones": "node tools/test-zones.mjs",
     "check:scope": "node tools/check-scope.mjs",
+    "check:implicit-any": "node tools/check-implicit-any.mjs",
     "smoke": "node tools/smoke.mjs",
     "release": "node tools/release.mjs",
     "lint": "eslint .",

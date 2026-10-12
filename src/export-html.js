@@ -24,7 +24,10 @@ import { highlightToHtml } from './syntax-highlight.js';
 
 // ---- options ------------------------------------------------------------------
 
-/** What `#+OPTIONS:` can switch, with Org's defaults. */
+/**
+ * What `#+OPTIONS:` can switch, with Org's defaults.
+ * @param {any} [doc]
+ */
 export function parseHtmlOptions(doc) {
   /** @type {Record<string, any>} */
   const o = {
@@ -73,6 +76,7 @@ export function parseHtmlOptions(doc) {
       i = j;
     }
   }
+  /** @param {any} [v] */
   const isNil = (v) => v === 'nil';
   for (const token of tokens) {
     const m = /^(\\n|[^:\s]+):(.*)$/.exec(token);
@@ -114,31 +118,47 @@ export function parseHtmlOptions(doc) {
   return o;
 }
 
+/**
+ * @param {any} [doc]
+ * @param {any} [key]
+ */
 const keywordValue = (doc, key) => {
+  /** @param {any} [k] */
   const kw = (doc.keywords || []).filter((k) => k.key.toUpperCase() === key).pop();
   return kw ? kw.value.trim() : null;
 };
-const keywordValues = (doc, key) => (doc.keywords || []).filter((k) => k.key.toUpperCase() === key).map((k) => k.value);
+const keywordValues = (/** @type {any} */ doc, /** @type {string} */ key) => (doc.keywords || []).filter((/** @type {any} */ k) => k.key.toUpperCase() === key).map((/** @type {any} */ k) => k.value);
 
 // ---- escaping and small helpers ------------------------------------------------
 
+/** @param {any} [text] */
 const escapeHtml = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+/** @param {any} [text] */
 const escapeAttr = (text) => escapeHtml(text).replace(/"/g, '&quot;');
 const NBSP = '&#xa0;';
 
-/** `,*` and `,#+` at the start of a line are Org's escape for a line that would otherwise look like markup. */
+/**
+ * `,*` and `,#+` at the start of a line are Org's escape for a line that would otherwise look like markup.
+ * @param {any} [line]
+ */
 const unescapeLine = (line) => line.replace(/^(\s*),(?=\*|#\+)/, '$1');
 
+/** @param {any} [lines] */
 function removeIndentation(lines) {
   let min = Infinity;
   for (const l of lines) if (l.trim()) min = Math.min(min, (/^[ \t]*/.exec(l) || [''])[0].length);
   if (!Number.isFinite(min) || min === 0) return lines.slice();
-  return lines.map((l) => (l.trim() ? l.slice(min) : ''));
+  return lines.map((/** @type {any} */ l) => (l.trim() ? l.slice(min) : ''));
 }
 
+/** @param {any} [title] */
 const slugify = (title) => String(title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'section';
 
-/** Attributes from `#+ATTR_HTML:`, as an HTML attribute string (`:width 100 :class big` -> ` width="100" class="big"`). */
+/**
+ * Attributes from `#+ATTR_HTML:`, as an HTML attribute string (`:width 100 :class big` -> ` width="100" class="big"`).
+ * @param {any} [aff]
+ * @param {any} [skip]
+ */
 function htmlAttributes(aff, skip = []) {
   const attrs = parseAttributes(aff && aff.attr.html);
   let out = '';
@@ -151,6 +171,10 @@ function htmlAttributes(aff, skip = []) {
 
 // ---- state --------------------------------------------------------------------
 
+/**
+ * @param {any} [doc]
+ * @param {any} [scope]
+ */
 function createState(doc, scope) {
   const options = parseHtmlOptions(doc);
   const state = {
@@ -187,6 +211,10 @@ const TOKEN_START = '';
 const TOKEN_END = '';
 const TOKEN_RE = /(\d+)/g;
 
+/**
+ * @param {any} [state]
+ * @param {any} [html]
+ */
 function addToken(state, html, source = '') {
   state.tokens.push(html);
   state.tokenSources.push(source);
@@ -195,6 +223,10 @@ function addToken(state, html, source = '') {
 
 const TIMESTAMP_RE = /<(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?(?: \d{1,2}:\d{2}(?:-\d{1,2}:\d{2})?)?(?: [+.]?[+-]\d+[hdwmy])*)>(?:--<(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?(?: \d{1,2}:\d{2})?(?: [+.]?[+-]\d+[hdwmy])*)>)?|\[(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?(?: \d{1,2}:\d{2}(?:-\d{1,2}:\d{2})?)?(?: [+.]?[+-]\d+[hdwmy])*)\](?:--\[(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?(?: \d{1,2}:\d{2})?(?: [+.]?[+-]\d+[hdwmy])*)\])?/g;
 
+/**
+ * @param {any} [state]
+ * @param {any} [match]
+ */
 function timestampHtml(state, match) {
   const [whole] = match;
   if (!state.options.stamps) return '';
@@ -202,20 +234,29 @@ function timestampHtml(state, match) {
   return addToken(state, `<span class="timestamp-wrapper"><span class="timestamp">${text}</span></span>`, whole);
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [text]
+ */
 function expandMacros(state, text) {
   if (!text.includes('{{{')) return text;
   // verbatim and code spans show their text as written
   return text
     .split(/((?<![\w])[~=][^~=\n]+[~=](?![\w]))/)
-    .map((part, i) => (i % 2 ? part : expandMacrosIn(state, part)))
+    .map((/** @type {any} */ part, /** @type {number} */ i) => (i % 2 ? part : expandMacrosIn(state, part)))
     .join('');
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [text]
+ */
 function expandMacrosIn(state, text) {
-  return text.replace(/\{\{\{(\w[\w-]*)(?:\(([\s\S]*?)\))?\}\}\}/g, (whole, name, argText) => {
-    const args = argText === undefined ? [] : argText.split(/(?<!\\),/).map((a) => a.replace(/\\,/g, ',').trim());
+  return text.replace(/\{\{\{(\w[\w-]*)(?:\(([\s\S]*?)\))?\}\}\}/g, (/** @type {any} */ whole, /** @type {string} */ name, /** @type {any} */ argText) => {
+    const args = argText === undefined ? [] : argText.split(/(?<!\\),/).map((/** @type {any} */ a) => a.replace(/\\,/g, ',').trim());
     const key = name.toLowerCase();
-    if (state.macros.has(name)) return state.macros.get(name).replace(/\$(\d)/g, (w, n) => args[Number(n) - 1] ?? '');
+    if (state.macros.has(name)) return state.macros.get(name).replace(/\$(\d)/g, (/** @type {any} */ w, /** @type {any} */ n) => args[Number(n) - 1] ?? '');
+    /** @param {any} [k] */
     const kw = (k) => keywordValue(state.doc, k) || '';
     if (key === 'title') return kw('TITLE');
     if (key === 'author') return kw('AUTHOR');
@@ -226,18 +267,22 @@ function expandMacrosIn(state, text) {
   });
 }
 
-/** Org text -> HTML for inline content. `text` may span several lines (joined by "\n"). */
+/**
+ * Org text -> HTML for inline content. `text` may span several lines (joined by "\n").
+ * @param {any} [state]
+ * @param {any} [rawText]
+ */
 function renderInline(state, rawText) {
   let text = expandMacros(state, rawText);
   // forced line breaks: a line ending in two backslashes
-  text = text.replace(/\\\\[ \t]*(?:\n|$)/g, (m) => addToken(state, '<br />', '\\\\') + (m.endsWith('\n') ? '\n' : ''));
+  text = text.replace(/\\\\[ \t]*(?:\n|$)/g, (/** @type {any} */ m) => addToken(state, '<br />', '\\\\') + (m.endsWith('\n') ? '\n' : ''));
   // export snippets
-  text = text.replace(/@@([A-Za-z0-9-]+):([\s\S]*?)@@/g, (whole, backend, value) => (backend.toLowerCase() === 'html' ? addToken(state, value, whole) : backend.toLowerCase() === 'comment' ? '' : ''));
+  text = text.replace(/@@([A-Za-z0-9-]+):([\s\S]*?)@@/g, (/** @type {any} */ whole, /** @type {any} */ backend, /** @type {any} */ value) => (backend.toLowerCase() === 'html' ? addToken(state, value, whole) : backend.toLowerCase() === 'comment' ? '' : ''));
   // inline source code
-  text = text.replace(/\bsrc_([A-Za-z0-9_-]+)(?:\[[^\]\n]*\])?\{([^}\n]*)\}/g, (whole, lang, code) => addToken(state, `<code class="src src-${escapeAttr(lang)}">${escapeHtml(code)}</code>`, whole));
+  text = text.replace(/\bsrc_([A-Za-z0-9_-]+)(?:\[[^\]\n]*\])?\{([^}\n]*)\}/g, (/** @type {any} */ whole, /** @type {any} */ lang, /** @type {any} */ code) => addToken(state, `<code class="src src-${escapeAttr(lang)}">${escapeHtml(code)}</code>`, whole));
   // radio targets and targets
-  text = text.replace(/<<<([^<>\n]+)>>>/g, (whole, name) => addToken(state, `<a id="${targetId(state, name)}"></a>${escapeHtml(name)}`, whole));
-  text = text.replace(/<<([^<>\n]+)>>/g, (whole, name) => addToken(state, `<a id="${targetId(state, name)}"></a>`, whole));
+  text = text.replace(/<<<([^<>\n]+)>>>/g, (/** @type {any} */ whole, /** @type {string} */ name) => addToken(state, `<a id="${targetId(state, name)}"></a>${escapeHtml(name)}`, whole));
+  text = text.replace(/<<([^<>\n]+)>>/g, (/** @type {any} */ whole, /** @type {string} */ name) => addToken(state, `<a id="${targetId(state, name)}"></a>`, whole));
   // timestamps
   text = text.replace(TIMESTAMP_RE, (...m) => timestampHtml(state, m));
 
@@ -246,12 +291,20 @@ function renderInline(state, rawText) {
   return renderNodes(state, nodes);
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [name]
+ */
 function targetId(state, name) {
   const key = name.trim().replace(/\s+/g, ' ').toLowerCase();
   if (!state.targets.has(key)) state.targets.set(key, uniqueId(state, 'org-target-' + slugify(name)));
   return state.targets.get(key);
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [base]
+ */
 function uniqueId(state, base) {
   let id = base;
   for (let n = 2; state.usedIds.has(id); n++) id = base + '-' + n;
@@ -262,11 +315,16 @@ function uniqueId(state, base) {
 const ENTITY_RE = /\\(_ +|(?:there4|sup[123]|frac[13][24]|[a-zA-Z]+)(?:\{\}|(?![A-Za-z])))/g;
 const COOKIE_RE = /\[(\d*\/\d*|\d*%)\]/g;
 
-/** Plain text -> HTML: escaping, entities, special strings, statistics cookies, and the placeholders set aside earlier. */
+/**
+ * Plain text -> HTML: escaping, entities, special strings, statistics cookies, and the placeholders set aside earlier.
+ * @param {any} [state]
+ * @param {any} [value]
+ */
 function renderText(state, value) {
   const { options } = state;
   let out = '';
   let last = 0;
+  /** @param {any} [segment] */
   const plain = (segment) => {
     let h = escapeHtml(segment);
     if (options.special) {
@@ -292,13 +350,17 @@ function renderText(state, value) {
 
 const IMAGE_RE = /\.(png|jpe?g|gif|svg|webp|bmp|tiff?|xbm|xpm|pbm|pgm|ppm|avif)$/i;
 
-/** Is this link target one Org shows as an inline picture? */
+/**
+ * Is this link target one Org shows as an inline picture?
+ * @param {any} [target]
+ */
 function isImageTarget(target) {
   const t = target.trim();
   if (/^(file:|attachment:)?[^:]*$/.test(t) || /^(file|attachment):/i.test(t) || /^https?:\/\//i.test(t)) return IMAGE_RE.test(t.replace(/::.*$/, ''));
   return false;
 }
 
+/** @param {any} [path] */
 function fileHref(path) {
   let p = path.replace(/^file:/i, '');
   let search = '';
@@ -317,11 +379,16 @@ function fileHref(path) {
 
 let activeImages = new Map();
 
+/** @param {any} [target] */
 function imageSrc(target) {
   if (activeImages.has(target)) return activeImages.get(target);
   return target.replace(/^(file|attachment):/i, '').replace(/::.*$/, '').replace(/^\/\//, '').replace(/^(\/)/, 'file://$1');
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [target]
+ */
 function linkHref(state, target) {
   const t = target.trim();
   if (/^(https?|ftp|mailto|news|irc|doi):/i.test(t)) return /^doi:/i.test(t) ? 'https://doi.org/' + t.replace(/^doi:/i, '') : t;
@@ -341,6 +408,11 @@ function linkHref(state, target) {
   return t.startsWith('#') ? t : '#' + slugify(t);
 }
 
+/**
+ * @param {any} [headings]
+ * @param {any} [name]
+ * @param {any} [value]
+ */
 function findByProperty(headings, name, value) {
   for (const h of headings) {
     if (String(getProperty(h, name) || '').trim() === value) return h;
@@ -350,21 +422,40 @@ function findByProperty(headings, name, value) {
   return null;
 }
 
-/** Verbatim text with the source of any construct that was set aside as a placeholder put back. */
+/**
+ * Verbatim text with the source of any construct that was set aside as a placeholder put back.
+ * @param {any} [state]
+ * @param {any} [value]
+ */
 function literal(state, value) {
-  return escapeHtml(value.replace(TOKEN_RE, (m, n) => state.tokenSources[Number(n)]));
+  return escapeHtml(value.replace(TOKEN_RE, (/** @type {any} */ m, /** @type {any} */ n) => state.tokenSources[Number(n)]));
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [nodes]
+ */
 function renderNodes(state, nodes) {
-  return nodes.map((n) => renderNode(state, n)).join('');
+  return nodes.map((/** @type {any} */ n) => renderNode(state, n)).join('');
 }
 
-/** Emphasis as a tag, or with its markers kept as plain text when `#+OPTIONS: *:nil`. */
+/**
+ * Emphasis as a tag, or with its markers kept as plain text when `#+OPTIONS: *:nil`.
+ * @param {any} [state]
+ * @param {any} [node]
+ * @param {any} [marker]
+ * @param {any} [open]
+ */
 function emphasis(state, node, marker, open, close = open) {
   const inner = renderNodes(state, node.children);
   return state.options.emph ? `<${open}>${inner}</${close}>` : marker + inner + marker;
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [label]
+ * @param {any} [inlineHtml]
+ */
 function footnoteRef(state, label, inlineHtml) {
   let n = state.fnNumbers.get(label);
   if (n === undefined) {
@@ -379,6 +470,10 @@ function footnoteRef(state, label, inlineHtml) {
   return `<sup><a id="${id}" class="footref" href="#fn.${n}" role="doc-backlink">${n}</a></sup>`;
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [node]
+ */
 function renderNode(state, node) {
   switch (node.type) {
     case 'text':
@@ -417,6 +512,10 @@ function renderNode(state, node) {
   }
 }
 
+/**
+ * @param {any} [target]
+ * @param {any} [alt]
+ */
 function imageHtml(target, alt, attrs = '') {
   const src = imageSrc(target);
   const plain = target.replace(/^(file|attachment):/i, '').replace(/::.*$/, '');
@@ -424,6 +523,10 @@ function imageHtml(target, alt, attrs = '') {
   return `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt ?? name)}"${attrs} />`;
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [node]
+ */
 function linkHtml(state, node) {
   const target = node.target;
   const desc = node.description;
@@ -441,6 +544,11 @@ function linkHtml(state, node) {
   return `<a href="${escapeAttr(linkHref(state, target))}">${label}</a>`;
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [source]
+ * @param {any} [displayMode]
+ */
 function mathHtml(state, source, displayMode) {
   const { html, ok } = renderMathHtml(source, displayMode);
   if (ok) {
@@ -452,11 +560,20 @@ function mathHtml(state, source, displayMode) {
 
 // ---- elements -----------------------------------------------------------------
 
+/**
+ * @param {any} [state]
+ * @param {any} [aff]
+ */
 function captionHtml(state, aff) {
   const c = aff && aff.caption.length ? aff.caption[aff.caption.length - 1] : null;
   return c ? renderInline(state, c.text) : null;
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [el]
+ * @param {any} [ctx]
+ */
 function paragraphHtml(state, el, ctx) {
   const text = el.lines.join('\n');
   const image = standaloneImage(el);
@@ -467,6 +584,7 @@ function paragraphHtml(state, el, ctx) {
   return `<p${cls}>\n${body}\n</p>`;
 }
 
+/** @param {any} [el] */
 function standaloneImage(el) {
   const text = el.lines.join(' ').trim();
   const m = /^\[\[([^\]]+)\](?:\[([^\]]*)\])?\]$/.exec(text);
@@ -475,6 +593,11 @@ function standaloneImage(el) {
   return isImageTarget(m[1]) ? { target: m[1], link: m[2] ? m[1] : null, thumb: m[2] || null } : null;
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [el]
+ * @param {any} [image]
+ */
 function figureHtml(state, el, image) {
   const aff = el.aff;
   const attrs = parseAttributes(aff && aff.attr.html);
@@ -490,19 +613,29 @@ function figureHtml(state, el, image) {
   return out + '\n</div>';
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [el]
+ * @param {any} [ctx]
+ */
 function listHtml(state, el, ctx) {
   const tag = el.listType === 'ordered' ? 'ol' : el.listType === 'descriptive' ? 'dl' : 'ul';
   const attrs = htmlAttributes(el.aff);
-  const rows = el.items.map((item) => itemHtml(state, item, el.listType));
+  const rows = el.items.map((/** @type {any} */ item) => itemHtml(state, item, el.listType));
   return `<${tag} class="org-${tag}"${attrs}>\n${rows.join('\n')}\n</${tag}>`;
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [item]
+ * @param {any} [listType]
+ */
 function itemHtml(state, item, listType) {
   const children = item.children;
   const first = children[0];
   const lead = first && first.type === 'paragraph' && (children.length === 1 || (children.length === 2 && children[1].type === 'list'));
-  const parts = children.map((c, i) => elementHtml(state, c, { parent: 'item', bare: i === 0 && lead, first: i === 0 }));
-  let inner = parts.filter((p) => p !== '').join('\n');
+  const parts = children.map((/** @type {any} */ c, /** @type {number} */ i) => elementHtml(state, c, { parent: 'item', bare: i === 0 && lead, first: i === 0 }));
+  let inner = parts.filter((/** @type {any} */ p) => p !== '').join('\n');
   if (item.checkbox && listType !== 'descriptive') {
     const box = `<input type="checkbox" disabled${item.checkbox === 'on' ? ' checked' : ''}>`;
     inner = `${box} ${inner}`.replace(/\s+$/, '');
@@ -520,15 +653,19 @@ function itemHtml(state, item, listType) {
 
 const NUMBER_RE = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$|^[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?$/;
 
+/**
+ * @param {any} [state]
+ * @param {any} [el]
+ */
 function tableHtml(state, el) {
   const aff = el.aff;
   // alignment/width cookie rows (`<l>`, `<r10>`, `<c>`, `<12>`) and the `/` marker column are table directives
   let rows = el.rows;
   const cookieAlign = [];
-  rows = rows.filter((row) => {
+  rows = rows.filter((/** @type {any} */ row) => {
     if (row.rule) return true;
-    if (row.cells.length && row.cells.every((c) => c === '' || /^<[lrc]?\d*>$/.test(c)) && row.cells.some((c) => c)) {
-      row.cells.forEach((c, i) => {
+    if (row.cells.length && row.cells.every((/** @type {any} */ c) => c === '' || /^<[lrc]?\d*>$/.test(c)) && row.cells.some((/** @type {any} */ c) => c)) {
+      row.cells.forEach((/** @type {any} */ c, /** @type {number} */ i) => {
         const m = /^<([lrc])?\d*>$/.exec(c);
         if (m && m[1]) cookieAlign[i] = m[1];
       });
@@ -536,17 +673,17 @@ function tableHtml(state, el) {
     }
     return true;
   });
-  const data = rows.filter((r) => !r.rule);
+  const data = rows.filter((/** @type {any} */ r) => !r.rule);
   if (!data.length) return '';
-  const columns = Math.max(...data.map((r) => r.cells.length));
+  const columns = Math.max(...data.map((/** @type {any} */ r) => r.cells.length));
   const align = [];
   for (let c = 0; c < columns; c++) {
     if (cookieAlign[c]) {
       align.push(cookieAlign[c] === 'r' ? 'right' : cookieAlign[c] === 'c' ? 'center' : 'left');
       continue;
     }
-    const cells = data.map((r) => (r.cells[c] || '').trim()).filter(Boolean);
-    const numbers = cells.filter((x) => NUMBER_RE.test(x)).length;
+    const cells = data.map((/** @type {any} */ r) => (r.cells[c] || '').trim()).filter(Boolean);
+    const numbers = cells.filter((/** @type {any} */ x) => NUMBER_RE.test(x)).length;
     align.push(cells.length && numbers / cells.length >= 0.5 ? 'right' : 'left');
   }
   // groups of rows separated by rules; the first group is a header when a rule follows it and more rows come after
@@ -557,7 +694,7 @@ function tableHtml(state, el) {
     } else groups[groups.length - 1].push(row);
   }
   if (!groups[groups.length - 1].length) groups.pop();
-  const hasHeader = groups.length > 1 && rows.some((r) => r.rule) && !rows[0].rule;
+  const hasHeader = groups.length > 1 && rows.some((/** @type {any} */ r) => r.rule) && !rows[0].rule;
   const attrs = parseAttributes(aff && aff.attr.html);
   const base = { border: '2', cellspacing: '0', cellpadding: '6', rules: 'groups', frame: 'hsides' };
   let tableAttrs = '';
@@ -567,7 +704,16 @@ function tableHtml(state, el) {
   let out = `<table${idAttr}${tableAttrs}>\n`;
   if (caption !== null) out += `<caption class="t-above"><span class="table-number">Table ${++state.counters.table}:</span> ${caption}</caption>\n`;
   out += '\n<colgroup>\n' + align.map((a) => `<col  class="org-${a}" />`).join('\n\n') + '\n</colgroup>\n';
+  /**
+   * @param {any} [c]
+   * @param {any} [tag]
+   * @param {any} [a]
+   */
   const cell = (c, tag, a) => `<${tag}${tag === 'th' ? ' scope="col"' : ''} class="org-${a}">${renderInline(state, c.trim()) || NBSP}</${tag}>`;
+  /**
+   * @param {any} [row]
+   * @param {any} [tag]
+   */
   const rowHtml = (row, tag) => '<tr>\n' + Array.from({ length: columns }, (_, c) => cell(row.cells[c] || '', tag, align[c])).join('\n') + '\n</tr>';
   groups.forEach((group, gi) => {
     const head = hasHeader && gi === 0;
@@ -578,6 +724,10 @@ function tableHtml(state, el) {
   return out + '</table>';
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [el]
+ */
 function srcBlockHtml(state, el) {
   const params = el.params.trim();
   const lang = params.split(/\s+/)[0] || '';
@@ -585,7 +735,7 @@ function srcBlockHtml(state, el) {
   const numbered = /(^|\s)[-+]n(\s|$)/.test(params);
   const start = numbered && /[-+]n\s+(\d+)/.exec(params) ? Number((/[-+]n\s+(\d+)/.exec(params) || [])[1]) : 1;
   const colored = highlightToHtml(lines.join('\n'), lang).split('\n');
-  const code = colored.map((l, i) => (numbered ? `<span class="linenr">${start + i}: </span>` : '') + l).join('\n');
+  const code = colored.map((/** @type {any} */ l, /** @type {number} */ i) => (numbered ? `<span class="linenr">${start + i}: </span>` : '') + l).join('\n');
   const caption = captionHtml(state, el.aff);
   const cls = lang ? `src src-${escapeAttr(lang)}` : 'src';
   const label = caption !== null ? `<label class="org-src-name"><span class="listing-number">Listing ${++state.counters.listing}: </span>${caption}</label>` : '';
@@ -593,8 +743,17 @@ function srcBlockHtml(state, el) {
   return `<div class="org-src-container">\n${label}<pre class="${cls}"${id}>${code}\n</pre>\n</div>`;
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [el]
+ * @param {any} [ctx]
+ */
 function blockHtml(state, el, ctx) {
   const { name } = el;
+  /**
+   * @param {any} [lines]
+   * @param {any} [sub]
+   */
   const inner = (lines, sub) => elementsHtml(state, parseElements(lines.map(unescapeLine)), { ...ctx, ...sub, first: undefined, bare: false });
   switch (name) {
     case 'comment':
@@ -615,7 +774,7 @@ function blockHtml(state, el, ctx) {
     case 'verse': {
       const lines = removeIndentation(el.lines.map(unescapeLine));
       const html = lines
-        .map((l) => {
+        .map((/** @type {any} */ l) => {
           const lead = (/^ */.exec(l) || [''])[0].length;
           return (NBSP.repeat(lead) + renderInline(state, l.slice(lead))).replace(/^$/, '') + '<br />';
         })
@@ -629,14 +788,23 @@ function blockHtml(state, el, ctx) {
   }
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [el]
+ * @param {any} [ctx]
+ */
 function drawerHtml(state, el, ctx) {
   const d = state.options.drawers;
   const name = el.name.toUpperCase();
-  const allowed = d.all || (d.include ? d.include.some((x) => x.toUpperCase() === name) : !(d.exclude || []).some((x) => x.toUpperCase() === name));
+  const allowed = d.all || (d.include ? d.include.some((/** @type {any} */ x) => x.toUpperCase() === name) : !(d.exclude || []).some((/** @type {any} */ x) => x.toUpperCase() === name));
   if (!allowed || name === 'PROPERTIES') return '';
   return elementsHtml(state, parseElements(el.lines), ctx);
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [el]
+ */
 function elementHtml(state, el, ctx = {}) {
   switch (el.type) {
     case 'paragraph':
@@ -673,9 +841,13 @@ function elementHtml(state, el, ctx = {}) {
   }
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [elements]
+ */
 function elementsHtml(state, elements, ctx = {}) {
   const parts = [];
-  elements.forEach((el, i) => {
+  elements.forEach((/** @type {HTMLElement} */ el, /** @type {number} */ i) => {
     const html = elementHtml(state, el, { ...ctx, first: i === 0 });
     if (html !== '') parts.push(html);
   });
@@ -684,31 +856,41 @@ function elementsHtml(state, elements, ctx = {}) {
 
 // ---- headings -----------------------------------------------------------------
 
+/** @param {any} [h] */
 function isCommented(h) {
   return /^COMMENT(\s|$)/.test(h.title || '');
 }
-const hasTag = (h, tag) => (h.tags || []).some((t) => String(t).toLowerCase() === tag.toLowerCase());
+const hasTag = (/** @type {any} */ h, /** @type {string} */ tag) => (h.tags || []).some((/** @type {any} */ t) => String(t).toLowerCase() === tag.toLowerCase());
 
+/** @param {any} [h] */
 function titleOf(h) {
   return h.title.replace(/^COMMENT\s+/, '');
 }
 
-/** Which headings are exported: not COMMENT, not excluded by tag, only selected ones when `#+SELECT_TAGS:` is used. */
+/**
+ * Which headings are exported: not COMMENT, not excluded by tag, only selected ones when `#+SELECT_TAGS:` is used.
+ * @param {any} [state]
+ */
 function buildFilter(state) {
   const { doc, options } = state;
-  const exclude = new Set((keywordValues(doc, 'EXCLUDE_TAGS').join(' ') || 'noexport').split(/\s+/).filter(Boolean).map((t) => t.toLowerCase()));
+  const exclude = new Set((keywordValues(doc, 'EXCLUDE_TAGS').join(' ') || 'noexport').split(/\s+/).filter(Boolean).map((/** @type {any} */ t) => t.toLowerCase()));
   if (!keywordValues(doc, 'EXCLUDE_TAGS').length) exclude.add('noexport');
-  const select = new Set(keywordValues(doc, 'SELECT_TAGS').join(' ').split(/\s+/).filter(Boolean).map((t) => t.toLowerCase()));
+  const select = new Set(keywordValues(doc, 'SELECT_TAGS').join(' ').split(/\s+/).filter(Boolean).map((/** @type {any} */ t) => t.toLowerCase()));
   const selected = new Set();
+  /**
+   * @param {any} [headings]
+   * @param {any} [inherited]
+   */
   const mark = (headings, inherited) => {
     for (const h of headings) {
-      const own = select.size && (h.tags || []).some((t) => select.has(String(t).toLowerCase()));
+      const own = select.size && (h.tags || []).some((/** @type {any} */ t) => select.has(String(t).toLowerCase()));
       if (own || inherited) selected.add(h);
       mark(h.children || [], own || inherited);
     }
   };
   if (select.size) mark(doc.children || [], false);
   const keepAncestor = new Set();
+  /** @param {any} [headings] */
   const markAncestors = (headings) => {
     let any = false;
     for (const h of headings) {
@@ -722,9 +904,9 @@ function buildFilter(state) {
   };
   if (select.size) markAncestors(doc.children || []);
   const done = new Set(state.doneKeywords);
-  return (h) => {
+  return (/** @type {any} */ h) => {
     if (!options.comments && isCommented(h)) return false;
-    if ((h.tags || []).some((t) => exclude.has(String(t).toLowerCase()))) return false;
+    if ((h.tags || []).some((/** @type {any} */ t) => exclude.has(String(t).toLowerCase()))) return false;
     if (select.size && !keepAncestor.has(h)) return false;
     if (options.tasks !== true && h.todo) {
       if (options.tasks === false) return false;
@@ -735,11 +917,19 @@ function buildFilter(state) {
   };
 }
 
+/** @param {any} [h] */
 function isArchived(h) {
   return hasTag(h, 'ARCHIVE');
 }
 
-/** The exported headings as a tree of { heading, children, number: [..] , level (relative) }. */
+/**
+ * The exported headings as a tree of { heading, children, number: [..] , level (relative) }.
+ * @param {any} [state]
+ * @param {any} [headings]
+ * @param {any} [levelOffset]
+ * @param {any} [filter]
+ * @param {any} [numbers]
+ */
 function buildOutline(state, headings, levelOffset, filter, numbers) {
   const out = [];
   let n = 0;
@@ -759,6 +949,10 @@ function buildOutline(state, headings, levelOffset, filter, numbers) {
   return out;
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [node]
+ */
 function headingTitleHtml(state, node, { inToc = false } = {}) {
   const { heading } = node;
   const { options } = state;
@@ -771,11 +965,15 @@ function headingTitleHtml(state, node, { inToc = false } = {}) {
   parts.push(renderInline(state, titleOf(heading)) || '(untitled)');
   let html = parts.join(' ');
   if (options.tags && !(inToc && options.tags === 'not-in-toc') && heading.tags && heading.tags.length) {
-    html += `${NBSP}${NBSP}${NBSP}<span class="tag">${heading.tags.map((t) => `<span class="${escapeAttr(String(t).replace(/[@#%]/g, '_'))}">${escapeHtml(t)}</span>`).join(NBSP)}</span>`;
+    html += `${NBSP}${NBSP}${NBSP}<span class="tag">${heading.tags.map((/** @type {any} */ t) => `<span class="${escapeAttr(String(t).replace(/[@#%]/g, '_'))}">${escapeHtml(t)}</span>`).join(NBSP)}</span>`;
   }
   return html;
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [node]
+ */
 function numberLabel(state, node) {
   const { num } = state.options;
   if (!num) return '';
@@ -783,20 +981,37 @@ function numberLabel(state, node) {
   return `<span class="section-number-${node.level + 1}">${node.number.join('.')}.</span> `;
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [heading]
+ */
 function planningHtml(state, heading) {
   if (!state.options.planning || !heading.planning) return '';
   const { closed, deadline, scheduled } = heading.planning;
+  /**
+   * @param {any} [kw]
+   * @param {any} [v]
+   */
   const stamp = (kw, v) => (v ? `<span class="timestamp-kwd">${kw}:</span> <span class="timestamp">${escapeHtml(v).replace(/^&lt;/, '&lt;')}</span>` : '');
   const parts = [stamp('CLOSED', closed), stamp('DEADLINE', deadline), stamp('SCHEDULED', scheduled)].filter(Boolean);
   return parts.length ? `<p><span class="timestamp-wrapper">${parts.join(' ')}</span></p>` : '';
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [heading]
+ */
 function bodyHtml(state, heading, node = null) {
   const elements = state.parsed.get(heading) || parseElements((heading.bodyLines || []).slice());
   state.currentNode = node;
   return elementsHtml(state, elements);
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [node]
+ * @param {any} [ids]
+ */
 function sectionHtml(state, node, ids) {
   const { heading } = node;
   const limit = state.options.H;
@@ -809,22 +1024,26 @@ function sectionHtml(state, node, ids) {
   out += `<h${hl} id="${escapeAttr(id)}">${numberLabel(state, node)}${headingTitleHtml(state, node)}</h${hl}>\n`;
   const planning = planningHtml(state, heading);
   const body = node.archived ? '' : bodyHtml(state, heading, node);
-  const deepChildren = node.children.filter((c) => c.level > limit);
+  const deepChildren = node.children.filter((/** @type {any} */ c) => c.level > limit);
   const content = [planning, body].filter(Boolean).join('\n');
   if (content) out += `<div class="outline-text-${node.level + 1}" id="text-${escapeAttr(textPath)}">\n${content}\n</div>\n`;
   const deep = deepChildren.length ? deepListHtml(state, deepChildren) : '';
-  const structural = node.children.filter((c) => c.level <= limit);
+  const structural = node.children.filter((/** @type {any} */ c) => c.level <= limit);
   for (const child of structural) out += sectionHtml(state, child) + '\n';
   if (deep) out += deep + '\n';
   return out.replace(/\n+$/, '\n') + '</div>';
 }
 
-/** Headings deeper than `#+OPTIONS: H:` become list items. */
+/**
+ * Headings deeper than `#+OPTIONS: H:` become list items.
+ * @param {any} [state]
+ * @param {any} [nodes]
+ */
 function deepListHtml(state, nodes) {
   const num = state.options.num;
   const ordered = !!num && (num === true || nodes[0].level <= num);
   const tag = ordered ? 'ol' : 'ul';
-  const items = nodes.map((node) => {
+  const items = nodes.map((/** @type {any} */ node) => {
     const id = state.headingIds.get(node.heading);
     let li = `<li><a id="${escapeAttr(id)}"></a>${headingTitleHtml(state, node)}<br />\n`;
     const body = node.archived ? '' : bodyHtml(state, node.heading, node);
@@ -837,10 +1056,15 @@ function deepListHtml(state, nodes) {
 
 // ---- table of contents -----------------------------------------------------------
 
+/**
+ * @param {any} [state]
+ * @param {any} [nodes]
+ * @param {any} [maxDepth]
+ */
 function tocListHtml(state, nodes, maxDepth, depth = 1) {
-  const visible = nodes.filter((n) => n.level <= Math.min(state.options.H, maxDepth));
+  const visible = nodes.filter((/** @type {any} */ n) => n.level <= Math.min(state.options.H, maxDepth));
   if (!visible.length) return '';
-  const items = visible.map((node) => {
+  const items = visible.map((/** @type {any} */ node) => {
     const id = state.headingIds.get(node.heading);
     const label = (state.options.num && !(typeof state.options.num === 'number' && node.level > state.options.num) ? node.number.join('.') + '. ' : '') + headingTitleHtml(state, node, { inToc: true }).replace(/<a [^>]*>([\s\S]*?)<\/a>/g, '$1');
     const sub = tocListHtml(state, node.children, maxDepth, depth + 1);
@@ -849,12 +1073,20 @@ function tocListHtml(state, nodes, maxDepth, depth = 1) {
   return `<ul>\n${items.join('\n')}\n</ul>`;
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [depth]
+ */
 function tocHtml(state, depth, nodes = state.outline) {
   const list = tocListHtml(state, nodes, depth === true ? Infinity : depth);
   if (!list) return '';
   return `<div id="table-of-contents" role="doc-toc">\n<h2>Table of Contents</h2>\n<div id="text-table-of-contents" role="doc-toc">\n${list}\n</div>\n</div>`;
 }
 
+/**
+ * @param {any} [state]
+ * @param {any} [el]
+ */
 function tocKeywordHtml(state, el) {
   const v = el.value.trim();
   const m = /^(headlines|tables|listings)(?:\s+(\d+))?(\s+local)?/i.exec(v);
@@ -866,18 +1098,19 @@ function tocKeywordHtml(state, el) {
     return tocHtml(state, depth);
   }
   const wanted = kind === 'tables' ? 'table' : 'listing';
-  const entries = state.captioned.filter((c) => c.kind === wanted);
+  const entries = state.captioned.filter((/** @type {any} */ c) => c.kind === wanted);
   if (!entries.length) return '';
   const title = wanted === 'table' ? 'List of Tables' : 'List of Listings';
   const label = wanted === 'table' ? 'table-number' : 'listing-number';
   const word = wanted === 'table' ? 'Table' : 'Listing';
   const slug = wanted === 'table' ? 'list-of-tables' : 'list-of-listings';
-  const items = entries.map((c) => `<li><a href="#${escapeAttr(c.id)}"><span class="${label}">${word} ${c.n}:</span> ${c.html}</a></li>`);
+  const items = entries.map((/** @type {any} */ c) => `<li><a href="#${escapeAttr(c.id)}"><span class="${label}">${word} ${c.n}:</span> ${c.html}</a></li>`);
   return `<div id="${slug}">\n<h2>${title}</h2>\n<div id="text-${slug}">\n<ul>\n${items.join('\n')}\n</ul>\n</div>\n</div>`;
 }
 
 // ---- footnotes -------------------------------------------------------------------
 
+/** @param {any} [state] */
 function footnotesHtml(state) {
   if (!state.options.footnotes || !state.fnOrder.length) return '';
   const defs = [];
@@ -970,12 +1203,13 @@ const PAGE_CSS = `
 /**
  * Exports `doc` (or the subtree at `scope`) to a complete standalone HTML document.
  * A subtree export is titled after its heading; the heading's own text comes first, then its children as sections.
+ * @param {any} [doc]
  */
 export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = /** @type {any} */ (null) } = {}) {
   activeImages = images instanceof Map ? images : new Map();
   const state = createState(doc, scope);
   state.namedElements = new Map();
-  state.fnDefsCollect = (elements) => {
+  state.fnDefsCollect = (/** @type {any} */ elements) => {
     for (const el of elements) if (el.type === 'footnote-def') state.fnDefs.set(el.label, el.children);
   };
   const { options } = state;
@@ -986,6 +1220,7 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
   state.outline = buildOutline(state, roots, levelOffset, filter, []);
 
   // ids: CUSTOM_ID, else a slug of the title
+  /** @param {any} [nodes] */
   const assign = (nodes) => {
     for (const node of nodes) {
       const custom = getProperty(node.heading, 'CUSTOM_ID');
@@ -1007,6 +1242,7 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
   state.captioned = [];
   let tableN = 0;
   let listingN = 0;
+  /** @param {any} [elements] */
   const scan = (elements) => {
     for (const el of elements) {
       const cap = el.aff && el.aff.caption.length ? el.aff.caption[el.aff.caption.length - 1].text : null;
@@ -1022,6 +1258,7 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
     }
   };
   scan(preElements);
+  /** @param {any} [nodes] */
   const collect = (nodes) => {
     for (const node of nodes) {
       const els = parseElements(node.heading.bodyLines || []);
@@ -1038,10 +1275,12 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
   for (const line of preamble) for (const m of line.matchAll(/<<<?([^<>\n]+?)>>>?/g)) targetId(state, m[1]);
 
   const radio = new Set();
+  /** @param {any} [lines] */
   const scanRadio = (lines) => {
     for (const line of lines) for (const m of line.matchAll(/<<<([^<>\n]+)>>>/g)) radio.add(m[1].trim());
   };
   scanRadio(preamble);
+  /** @param {any} [nodes] */
   const radioWalk = (nodes) => {
     for (const node of nodes) {
       scanRadio(node.heading.bodyLines || []);
@@ -1066,7 +1305,7 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
   for (const node of state.outline) {
     if (node.level <= options.H) out.push(sectionHtml(state, node));
   }
-  const deepTop = state.outline.filter((n) => n.level > options.H);
+  const deepTop = state.outline.filter((/** @type {any} */ n) => n.level > options.H);
   if (deepTop.length) out.push(deepListHtml(state, deepTop));
   const footnotes = footnotesHtml(state);
   if (footnotes) out.push(footnotes);
@@ -1116,13 +1355,16 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
   );
 }
 
+/** @param {any} [text] */
 const stripMarkup = (text) => text.replace(/[*/_+=~]([^*/_+=~\s][^*/_+=~]*)[*/_+=~]/g, '$1');
 
 /** The lines before the first heading, with the `#+KEY:` lines the parser pulled out put back where they were
+ * @param {any} [doc]
  *  (all of them but the file-level settings), so `#+CAPTION:`, `#+HTML:` and `#+TOC:` there still count. */
 function preambleBody(doc) {
   const lines = (doc.bodyLines || []).slice();
   const FILE_LEVEL = /^(TITLE|AUTHOR|DATE|EMAIL|OPTIONS|LANGUAGE|DESCRIPTION|KEYWORDS|EXCLUDE_TAGS|SELECT_TAGS|TODO|SEQ_TODO|TYP_TODO|TAGS|STARTUP|PROPERTY|ARCHIVE|CATEGORY|COLUMNS|PRIORITIES|MACRO|HTML_HEAD|HTML_HEAD_EXTRA|SETUPFILE|LATEX_\w*|ODT_\w*|HTML_\w*|FILETAGS|CONSTANTS|LINK|SUBTITLE|CREATOR)$/i;
+  /** @param {any} [k] */
   const keywords = (doc.keywords || []).filter((k) => !FILE_LEVEL.test(k.key));
   for (const k of keywords.slice().reverse()) lines.splice(Math.min(k.bodyLineIndex || 0, lines.length), 0, `#+${k.key}: ${k.value}`);
   return lines;

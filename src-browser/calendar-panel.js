@@ -70,12 +70,12 @@ export function renderCalendarPanel() {
   const monthAgendaDocs = aggregateAgendaDocs();
   const monthItems = buildAgendaItems(monthAgendaDocs, {
     contactsDocs: contactsDocsForAgenda(monthAgendaDocs),
-    todoFilter: (todo) => !monthTodoSequence.doneKeywords.includes(todo),
+    todoFilter: (/** @type {any} */ todo) => !monthTodoSequence.doneKeywords.includes(todo),
     includeCommented: !getAgendaSkipCommentTrees(S.state.localVariables),
     includeArchived: !getAgendaSkipArchivedTrees(S.state.localVariables),
     rangeStart: monthRangeStart,
     rangeEnd: monthRangeEnd,
-    isDone: (todo) => monthTodoSequence.doneKeywords.includes(todo),
+    isDone: (/** @type {any} */ todo) => monthTodoSequence.doneKeywords.includes(todo),
   });
   const dayMarkers = buildDayMarkers(itemsInRange(monthItems, monthRangeStart, monthRangeEnd));
 

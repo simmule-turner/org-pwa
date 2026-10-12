@@ -35,12 +35,18 @@ const DAY_CODES = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
 
 // ---- reading the text -------------------------------------------------------------------------------
 
-/** The lines of `text` with folded continuation lines (CRLF or LF, then a space or tab) joined back on. */
+/**
+ * The lines of `text` with folded continuation lines (CRLF or LF, then a space or tab) joined back on.
+ * @param {any} [text]
+ */
 function unfold(text) {
   return String(text || '').replace(/\r\n|\r/g, '\n').replace(/\n[ \t]/g, '').split('\n');
 }
 
-/** `NAME;PARAM=a;PARAM="b:c":value` as { name, params, value }, or null if the line has no colon. Quotes may hold ':' and ';'. */
+/**
+ * `NAME;PARAM=a;PARAM="b:c":value` as { name, params, value }, or null if the line has no colon. Quotes may hold ':' and ';'.
+ * @param {any} [line]
+ */
 function parseProperty(line) {
   let inQuote = false;
   let colon = -1;
@@ -73,12 +79,18 @@ function parseProperty(line) {
   return { name: parts[0].trim().toUpperCase(), params, value };
 }
 
-/** iCalendar text escapes: \n and \N newline, \, \; \\ . */
+/**
+ * iCalendar text escapes: \n and \N newline, \, \; \\ .
+ * @param {any} [value]
+ */
 function unescapeText(value) {
   return String(value).replace(/\\([nN,;\\])/g, (match, ch) => (ch === 'n' || ch === 'N' ? '\n' : ch));
 }
 
-/** The VEVENT and VTODO components, each as { type, props: [{ name, params, value }] }. VALARM and other nested blocks are skipped. */
+/**
+ * The VEVENT and VTODO components, each as { type, props: [{ name, params, value }] }. VALARM and other nested blocks are skipped.
+ * @param {any} [text]
+ */
 function collectComponents(text) {
   const found = [];
   const stack = [];
@@ -109,14 +121,20 @@ function collectComponents(text) {
 // Every date or time is carried as `wall`: milliseconds as if its wall-clock fields were UTC. That makes adding a duration,
 // comparing and formatting plain arithmetic, and a daylight-saving change never lands inside it.
 
+/** @param {any} [n] */
 const pad = (n) => String(n).padStart(2, '0');
 
+/** @param {any} [wall] */
 function wallParts(wall) {
   const d = new Date(wall);
   return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes() };
 }
 
-/** The wall-clock fields `instantMs` shows in `zone` (an IANA name), or in the device's own zone when `zone` is null. */
+/**
+ * The wall-clock fields `instantMs` shows in `zone` (an IANA name), or in the device's own zone when `zone` is null.
+ * @param {any} [instantMs]
+ * @param {any} [zone]
+ */
 function instantToWall(instantMs, zone) {
   if (!zone) {
     const d = new Date(instantMs);
@@ -126,13 +144,21 @@ function instantToWall(instantMs, zone) {
   return Date.UTC(parts.y, parts.m - 1, parts.d, parts.h, parts.mi, parts.s);
 }
 
+/**
+ * @param {any} [instantMs]
+ * @param {any} [zone]
+ */
 function zoneFields(instantMs, zone) {
   const out = {};
   for (const part of new Intl.DateTimeFormat('en-US', { timeZone: zone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date(instantMs))) out[part.type] = Number(part.value);
   return { y: out.year, m: out.month, d: out.day, h: out.hour === 24 ? 0 : out.hour, mi: out.minute, s: out.second };
 }
 
-/** The instant a wall-clock time is, in the IANA zone `zone` (two passes settle the offset around a daylight-saving change). */
+/**
+ * The instant a wall-clock time is, in the IANA zone `zone` (two passes settle the offset around a daylight-saving change).
+ * @param {any} [wall]
+ * @param {any} [zone]
+ */
 function zonedWallToInstant(wall, zone) {
   let instant = wall;
   for (let i = 0; i < 2; i++) {
@@ -143,7 +169,12 @@ function zonedWallToInstant(wall, zone) {
   return instant;
 }
 
-/** One DTSTART / DTEND / DUE / COMPLETED value as { wall, allDay }, or null if it is not a date. */
+/**
+ * One DTSTART / DTEND / DUE / COMPLETED value as { wall, allDay }, or null if it is not a date.
+ * @param {any} [prop]
+ * @param {any} [zone]
+ * @param {any} [onUnknownTimeZone]
+ */
 function parseDateValue(prop, zone, onUnknownTimeZone) {
   const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?)?(Z)?$/i.exec(prop.value.trim());
   if (!m) return null;
@@ -162,7 +193,10 @@ function parseDateValue(prop, zone, onUnknownTimeZone) {
   return { wall: asWritten, allDay: false }; // floating, or a zone this runtime does not know: as written
 }
 
-/** An iCalendar DURATION (P1DT2H30M, PT45M, P2W, -PT15M) in milliseconds, or null. */
+/**
+ * An iCalendar DURATION (P1DT2H30M, PT45M, P2W, -PT15M) in milliseconds, or null.
+ * @param {any} [value]
+ */
 function parseDuration(value) {
   const m = /^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/i.exec(value.trim());
   if (!m) return null;
@@ -172,7 +206,11 @@ function parseDuration(value) {
 
 // ---- recurrence --------------------------------------------------------------------------------------
 
-/** The repeater ('+1w') an RRULE says, or null if no repeater says the same thing (see the header). */
+/**
+ * The repeater ('+1w') an RRULE says, or null if no repeater says the same thing (see the header).
+ * @param {any} [rruleText]
+ * @param {any} [startWall]
+ */
 function repeaterFor(rruleText, startWall) {
   const rule = {};
   for (const piece of rruleText.split(';')) {
@@ -197,14 +235,19 @@ function repeaterFor(rruleText, startWall) {
 
 // ---- building headings -------------------------------------------------------------------------------
 
+/**
+ * @param {any} [props]
+ * @param {any} [name]
+ */
 const textOf = (props, name) => {
-  const prop = props.find((p) => p.name === name);
+  const prop = props.find((/** @type {any} */ p) => p.name === name);
   return prop ? unescapeText(prop.value).trim() : '';
 };
 
+/** @param {any} [props] */
 function tagsFrom(props) {
   const tags = [];
-  for (const prop of props.filter((p) => p.name === 'CATEGORIES')) {
+  for (const prop of props.filter((/** @type {any} */ p) => p.name === 'CATEGORIES')) {
     for (const raw of prop.value.split(/(?<!\\),/)) {
       const tag = unescapeText(raw).trim().replace(/[^A-Za-z0-9_@#%]+/g, '_').replace(/^_+|_+$/g, '');
       if (tag && !tags.includes(tag)) tags.push(tag);
@@ -213,12 +256,21 @@ function tagsFrom(props) {
   return tags;
 }
 
+/**
+ * @param {any} [wall]
+ * @param {any} [allDay]
+ */
 const stamp = (wall, allDay, extra = {}) => {
   const p = wallParts(wall);
   return formatOrgTimestamp({ date: new Date(p.y, p.m - 1, p.d), time: allDay ? null : `${pad(p.h)}:${pad(p.mi)}`, ...extra });
 };
 
-/** The org timestamp text for an event's time: a range in the day, a day, several days, or a day with a repeater. */
+/**
+ * The org timestamp text for an event's time: a range in the day, a day, several days, or a day with a repeater.
+ * @param {any} [start]
+ * @param {any} [end]
+ * @param {any} [repeater]
+ */
 function eventTimestamp(start, end, repeater) {
   const repeat = repeater ? { repeaterMark: '+', repeaterValue: repeater.slice(1) } : {};
   const first = wallParts(start.wall);
@@ -237,13 +289,18 @@ function eventTimestamp(start, end, repeater) {
   return `${stamp(start.wall, false, repeat)}--${stamp(end.wall, false)}`;
 }
 
+/**
+ * @param {any} [component]
+ * @param {any} [options]
+ */
 function headingFor(component, options) {
   const { zone, onUnmappedProperty, onRecurrenceKept, onUnknownTimeZone } = options;
   const props = component.props;
   const isTodo = component.type === 'VTODO';
   const summary = textOf(props, 'SUMMARY').replace(/\s*\n\s*/g, ' ') || '(no title)';
+  /** @param {any} [name] */
   const dateOf = (name) => {
-    const prop = props.find((p) => p.name === name);
+    const prop = props.find((/** @type {any} */ p) => p.name === name);
     return prop ? parseDateValue(prop, zone, onUnknownTimeZone) : null;
   };
   const start = dateOf('DTSTART');
@@ -251,13 +308,13 @@ function headingFor(component, options) {
   if (!isTodo && !start) return null; // an event with no start has no place in a calendar
 
   let end = isTodo ? null : dateOf('DTEND');
-  const duration = props.find((p) => p.name === 'DURATION');
+  const duration = props.find((/** @type {any} */ p) => p.name === 'DURATION');
   if (!isTodo && !end && duration && start) {
     const ms = parseDuration(duration.value);
     if (ms !== null) end = { wall: start.wall + ms, allDay: start.allDay };
   }
 
-  const rrule = props.find((p) => p.name === 'RRULE');
+  const rrule = props.find((/** @type {any} */ p) => p.name === 'RRULE');
   const anchor = isTodo ? due || start : start;
   /** @type {any} */
   let repeater = null;
@@ -296,7 +353,7 @@ function headingFor(component, options) {
 
   const lines = [];
   if (isTodo) {
-    const done = /^COMPLETED$/i.test(textOf(props, 'STATUS')) || props.some((p) => p.name === 'COMPLETED');
+    const done = /^COMPLETED$/i.test(textOf(props, 'STATUS')) || props.some((/** @type {any} */ p) => p.name === 'COMPLETED');
     const priority = Number(textOf(props, 'PRIORITY'));
     const mark = priority >= 1 && priority <= 4 ? '[#A] ' : priority === 5 ? '[#B] ' : priority >= 6 && priority <= 9 ? '[#C] ' : '';
     lines.push(`* ${done ? 'DONE' : 'TODO'} ${mark}${summary}${tagText}`);
@@ -322,6 +379,7 @@ function headingFor(component, options) {
  *   onRecurrenceKept     (summary) => void   a recurrence that became an :RRULE: property instead of a repeater
  *   onUnknownTimeZone    (tzid) => void   a time zone name this runtime does not know
  * @returns {{ orgText: string, eventCount: number, todoCount: number }} orgText is '' when there is nothing to import
+ * @param {any} [icsText]
  */
 function importIcalendarAsOrgText(icsText, options = {}) {
   const blocks = [];
@@ -337,6 +395,10 @@ function importIcalendarAsOrgText(icsText, options = {}) {
   return { orgText: blocks.length ? blocks.join('\n') + '\n' : '', eventCount, todoCount };
 }
 
+/**
+ * @param {any} [wall]
+ * @param {any} [allDay]
+ */
 const stampText = (wall, allDay) => {
   const w = wallParts(wall);
   return `${w.y}-${pad(w.m)}-${pad(w.d)}` + (allDay ? '' : ` ${pad(w.h)}:${pad(w.mi)}`);
@@ -347,12 +409,14 @@ const stampText = (wall, allDay) => {
  * start, end, repeat, rrule, cancelled }. `start` and `end` are "YYYY-MM-DD" or "YYYY-MM-DD HH:MM" in `zone`
  * (the device's own zone if omitted). `repeat` is an Org repeater such as "+1w" when the recurrence is a simple
  * one, else null with the raw rule in `rrule`. Recurrences are not expanded.
+ * @param {any} [icsText]
  */
 function parseIcalendarEvents(icsText, { zone = null, max = 2000 } = {}) {
   const events = [];
   for (const component of collectComponents(icsText)) {
     if (component.type !== 'VEVENT') continue;
     const props = component.props;
+    /** @param {any} [name] */
     const dateOf = (name) => {
       const prop = props.find((p) => p.name === name);
       return prop ? parseDateValue(prop, zone, null) : null;
