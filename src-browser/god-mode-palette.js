@@ -558,7 +558,7 @@ export async function openCommandPalette() {
   overlay.id = 'command-palette';
   overlay.style.position = 'fixed';
   overlay.style.inset = '0';
-  overlay.style.background = 'rgba(0,0,0,0.6)';
+  overlay.style.background = 'var(--scrim)';
   overlay.style.zIndex = '10000';
   overlay.style.display = 'flex';
   overlay.style.alignItems = 'flex-start';
@@ -572,7 +572,7 @@ export async function openCommandPalette() {
   modal.style.background = 'var(--modal-bg)';
   modal.style.color = 'var(--fg)';
   modal.style.border = '1px solid var(--border-strong)';
-  modal.style.borderRadius = '10px';
+  modal.style.borderRadius = 'var(--radius-container)';
   modal.style.padding = '10px';
   modal.style.width = '100%';
   modal.style.maxWidth = '560px';

@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v493 — The last popups join in
+The attachment folder, the camera and the attachment preview now use the same sheet-or-dialog look as the other popups, and the command palette shares their dimming and corners. Photos and video keep a darker backdrop so they are easier to see.
+
 * v492 — Heading actions that fit
 The row of heading action buttons now arranges itself by the width it has: four across in three rows on a narrow phone (with the arrows last, as left, right, up, down), six across in two rows, or one row of twelve on a laptop. Buttons keep the shared tap size, Delete is red, hovering names a button, and the arrow keys and Esc work from the keyboard.
 

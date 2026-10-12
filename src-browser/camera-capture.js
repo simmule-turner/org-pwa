@@ -56,10 +56,12 @@ export async function openCameraPanel(kind, onAttach) {
   let startedAt = 0;
 
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;overflow:hidden;';
+  overlay.className = 'ui-overlay';
+  overlay.style.background = 'rgba(0,0,0,0.75)'; // a photo or video is looked at, so the page behind is dimmed more
+  overlay.style.overflow = 'hidden';
   const modal = document.createElement('div');
-  modal.className = 'panel';
-  modal.style.cssText = 'background:var(--modal-bg);color:var(--fg);border:1px solid var(--border-strong);border-radius:10px;padding:14px;width:100%;max-width:640px;max-height:100%;overflow-y:auto;box-sizing:border-box;';
+  modal.className = 'panel ui-container';
+  modal.style.cssText = 'padding:14px;width:100%;max-width:640px;overflow-y:auto;';
   overlay.appendChild(modal);
   const title = document.createElement('div');
   title.style.cssText = 'font-size:13px;opacity:0.75;margin-bottom:8px;';

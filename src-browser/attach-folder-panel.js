@@ -11,10 +11,11 @@ const SMALL_BUTTON = 'font:inherit;font-size:12px;font-weight:600;min-width:28px
 
 export function showAttachmentFolder({ title, load, act, removeMany, saveMany, add }) {
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;overflow:hidden;';
+  overlay.className = 'ui-overlay';
+  overlay.style.overflow = 'hidden';
   const modal = document.createElement('div');
-  modal.className = 'panel';
-  modal.style.cssText = 'background:var(--modal-bg);color:var(--fg);border:1px solid var(--border-strong);border-radius:10px;padding:14px;width:100%;max-width:520px;max-height:100%;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;';
+  modal.className = 'panel ui-container';
+  modal.style.cssText = 'padding:14px;width:100%;max-width:520px;overflow-y:auto;overscroll-behavior:contain;';
   overlay.appendChild(modal);
 
   const heading = document.createElement('div');
