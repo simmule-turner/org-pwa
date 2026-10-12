@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v487 — Cleaner Agenda titles
+A timestamp written in a heading's title no longer repeats in its Agenda row, since the day and time column already show it; each day of a range says which day it is, such as (day 2/3). The setting org-xx-agenda-hide-title-stamps turns it off.
+
 * v486 — Act on the Agenda and TODO rows
 Press and hold a row in the Agenda or TODO view for Mark done, Set state, Reschedule, Priority and Refile, or swipe it right to mark it done, with an Undo. Chips filter by tag, state and category, and TODO rows show their category and date, with a date sort. The Agenda now lists a timestamp anywhere in a heading, as Emacs does, including one beside its SCHEDULED, so a repeating task is easier to keep in sync with Emacs.
 

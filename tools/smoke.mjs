@@ -544,6 +544,23 @@ check('agenda: sort, per-day limit and filter by effort, on real rows and day to
   await context.close();
 });
 
+check('agenda: a timestamp in a title is left out of the row (with the day of a range marked), and the setting org-xx-agenda-hide-title-stamps: nil brings it back', async () => {
+  const { context, page, errors } = await freshPage();
+  const d = (n) => { const x = new Date(); x.setDate(x.getDate() + n); return `<${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')} ${x.toLocaleDateString('en-US', { weekday: 'short' })}>`; };
+  await newDocument(page, [`* Do task ${d(0).replace('>', ' ++14d>')}`, `* Trip ${d(-1)}--${d(1)} north`, ''].join('\n'));
+  await viewMenu(page, 'Agenda');
+  await page.waitForTimeout(400);
+  const t = await page.locator('#outline').innerText();
+  expect(t.includes('Do task') && !t.includes('++14d') && t.includes('Trip north (day 2/3)') && !t.includes('--<'), `stamps left out of the rows: ${t}`);
+  await viewMenu(page, 'Org');
+  await newDocument(page, [`* Do task ${d(0)}`, '', '# Local Variables:', '# org-xx-agenda-hide-title-stamps: nil', '# End:', ''].join('\n'));
+  await viewMenu(page, 'Agenda');
+  await page.waitForTimeout(400);
+  expect((await page.locator('#outline').innerText()).includes('Do task <'), 'with the setting nil the title keeps its stamp');
+  await context.close();
+  expect(errors.length === 0, `page errors: ${errors}`);
+});
+
 check('agenda and TODO rows: filter chips, long-press action sheet, swipe right to mark done with Undo (a repeating one moves on), and the TODO rows show category and date', async () => {
   const { context, page, errors } = await freshPage();
   const today = orgToday();
@@ -4850,7 +4867,8 @@ check('More > Import > iCalendar (.ics): a file adds its events and tasks to the
   expect(said.includes('Imported 2 events and 1 task from iCalendar.') && said.includes('1 unrecognized property was skipped: ATTENDEE.') && said.includes('1 recurring event could not become a repeater'), `the status says what came and what did not: ${said}`);
   expect(!(await page.locator('#morePanel').isVisible()), 'the menu closes after an import');
 
-  // the imported events are on the agenda, where the timestamp in the title puts them
+  // the imported events are on the agenda, where the timestamp in the title puts them (looked at on their own day, so the check does not depend on today's date)
+  await page.evaluate(async () => { (await import('/src-browser/app-state.js')).S.agendaAnchorDate = new Date(2026, 9, 5); });
   await viewMenu(page, 'Agenda');
   await page.waitForTimeout(500);
   expect((await page.locator('body').innerText()).includes('Dentist'), 'and the agenda shows an imported event');

@@ -1,11 +1,11 @@
 // @ts-check
 // Extracted from app.js: agenda view.
 import { describeTaskDate, sortTasksByDate, taskDateInfo, viewFilterActive } from '../src/agenda-filter.js';
-import { applyAgendaEffortView, buildAgendaItems, buildTaskList, dayView, endOfDay, itemEffortText, monthView, startOfDay, startOfWeek, weekView } from '../src/agenda.js';
+import { applyAgendaEffortView, buildAgendaItems, buildTaskList, dayView, endOfDay, itemEffortText, monthView, startOfDay, startOfWeek, stripTitleStamps, weekView } from '../src/agenda.js';
 import { formatClockDuration, totalClockedMinutes } from '../src/clock.js';
 import { computeClocktable, renderClocktable } from '../src/clocktable.js';
 import { DEFAULT_EFFORT_FILTER_VALUES, getAllowedEffortValues } from '../src/effort-values.js';
-import { getAgendaShowAllDates, getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getAgendaStartOnWeekday, getCalendarLatitude, getCalendarLongitude, getContactsBirthdayProperty, getDeadlineWarningDays, getGlobalProperties, getOrgWeatherFormat, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getScheduledDelayDays, getSolarAmpm, getSolarHideLabel } from '../src/local-variables.js';
+import { getAgendaHideTitleStamps, getAgendaShowAllDates, getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getAgendaStartOnWeekday, getCalendarLatitude, getCalendarLongitude, getContactsBirthdayProperty, getDeadlineWarningDays, getGlobalProperties, getOrgWeatherFormat, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getScheduledDelayDays, getSolarAmpm, getSolarHideLabel } from '../src/local-variables.js';
 import { parseOrgDuration } from '../src/org-duration.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { aggregateAgendaDocs, contactsDocsForAgenda, ensureAgendaFilesLoaded, refreshAgendaFiles } from './agenda-files.js';
@@ -484,7 +484,12 @@ export function renderAgendaView() {
       badge.style.fontSize = '12px';
       text.appendChild(badge);
     }
-    text.appendChild(document.createTextNode(item.title));
+    let rowTitle = item.title;
+    if (getAgendaHideTitleStamps(S.state.localVariables) && item.heading) {
+      rowTitle = stripTitleStamps(rowTitle);
+      if (item.rangeDays > 1) rowTitle += ` (day ${item.rangeDay}/${item.rangeDays})`;
+    }
+    text.appendChild(document.createTextNode(rowTitle));
     if (item.logNote) {
       const noteLine = document.createElement('div');
       noteLine.style.fontSize = '12px';

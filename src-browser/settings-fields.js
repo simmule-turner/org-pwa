@@ -115,6 +115,14 @@ export const QUICK_SETTINGS_FIELDS = [
     default: true,
     helpAnchor: '#agenda-behavior',
   },
+  {
+    key: 'org-xx-agenda-hide-title-stamps',
+    label: 'Hide timestamps in Agenda titles',
+    section: 'Agenda',
+    type: 'boolean',
+    default: true,
+    helpAnchor: '#agenda-behavior',
+  },
   { key: 'org-agenda-start-on-weekday', label: 'Week starts on', section: 'Agenda', type: 'weekday', default: 1, helpAnchor: '#agenda-behavior' },
   {
     key: 'org-deadline-warning-days',

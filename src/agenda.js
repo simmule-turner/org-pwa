@@ -624,6 +624,16 @@ function walkHeadings(doc, visit) {
  *     birthday/anniversary date+description, matching whatever
  *     org-contacts-birthday-property is set to via Local Variables.
  */
+/** A title as an Agenda row shows it with the timestamps taken out: every active <...> (a range's two ends and the dash
+ *  between them too), and the spaces they leave. A title that is nothing but timestamps keeps its text. Inactive [...] stay. */
+export function stripTitleStamps(title) {
+  const cleaned = title
+    .replace(/<\d{4}-\d{2}-\d{2}[^>\n]*>(?:--<\d{4}-\d{2}-\d{2}[^>\n]*>)?/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return cleaned || title;
+}
+
 const RANGE_RE = /(<\d{4}-\d{2}-\d{2}[^>\n]*>)--(<\d{4}-\d{2}-\d{2}[^>\n]*>)/g;
 const NO_STAMP_BLOCKS = new Set(['SRC', 'EXAMPLE', 'EXPORT', 'COMMENT']);
 
@@ -705,6 +715,8 @@ function buildAgendaItems(docs, opts = {}) {
       kind,
       hasTime: parsed.hasTime,
       endDate: parsed.endDate || null,
+      rangeDay: parsed.rangeDay || null,
+      rangeDays: parsed.rangeDays || null,
       repeater: parsed.repeater,
       todo: heading.todo,
       priority: heading.priority,
@@ -873,9 +885,11 @@ function buildAgendaItems(docs, opts = {}) {
           const to = parseOrgTimestamp(m[2]);
           if (!from || !to || !from.active || !to.active || startOfDay(to.date) < startOfDay(from.date)) continue;
           rest = rest.replace(m[0], ' ');
+          const rangeDays = Math.round((startOfDay(to.date).getTime() - startOfDay(from.date).getTime()) / 86400000) + 1;
+          let rangeDay = 0;
           for (let day = startOfDay(from.date); day <= startOfDay(to.date); day = addDays(day, 1)) {
             const date = new Date(day.getFullYear(), day.getMonth(), day.getDate(), from.date.getHours(), from.date.getMinutes());
-            addItem(documentId, heading, 'timestamp', { ...from, date, endDate: null }, true);
+            addItem(documentId, heading, 'timestamp', { ...from, date, endDate: null, rangeDay: ++rangeDay, rangeDays }, true);
           }
         }
         for (const parsed of findTimestamps(rest)) {

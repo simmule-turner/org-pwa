@@ -431,6 +431,12 @@ export function getBufferReadOnly(vars) {
   return parseLispBoolean((vars || {})['buffer-read-only'], false);
 }
 
+/** org-xx-agenda-hide-title-stamps: whether an Agenda row leaves the active timestamps out of the title (the day and the
+ *  time column already say it). Not a real org-mode variable, same org-xx- convention. Default t. */
+export function getAgendaHideTitleStamps(vars) {
+  return parseLispBoolean((vars || {})['org-xx-agenda-hide-title-stamps'], true);
+}
+
 /** org-xx-god-mode-button: whether the floating [g] button (god-mode
  *  without an Escape key -- see the README's "God-mode without a hardware
  *  keyboard") is shown. Not a real org-mode variable, same org-xx-

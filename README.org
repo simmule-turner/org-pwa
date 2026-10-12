@@ -575,6 +575,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
 | ~org-agenda-skip-archived-trees~ | ~t~ | Exclude archived headings (tagged ~:ARCHIVE:~) from the agenda; ~nil~ includes them |
 | ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (~** COMMENT draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
+| ~org-xx-agenda-hide-title-stamps~ | ~t~ | Leave active timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written |
 | ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
 | ~org-ascii-text-width~ | ~72~ | Wrap width, in characters, for ASCII export |
 | ~org-ascii-charset~ | ~ascii~ | Characters used by ASCII export: ~ascii~, ~latin1~ or ~utf-8~ |
@@ -957,6 +958,8 @@ Tap *View → Agenda* for everything with a date, in Day, Week or Month view. On
 *Row actions*: press and hold an item for *Mark done*, *Set state*, *Reschedule*, *Priority*, *Refile* and *Open heading*. Swipe an item to the right to mark it done; *Undo* stays for a few seconds, and a repeating item moves to its next date. They change the open file only: an item from another agenda file offers *Open heading* alone.
 
 *Filter chips*: *Tag*, *State* and *Category* under the controls keep the items that match; a chip shows its choice and an ✕ clears it. They match a heading's own tags, and last for the session.
+
+*Titles*: a timestamp written in a heading's title is left out of its row, since the day and the time column already say it. Set ~org-xx-agenda-hide-title-stamps~ to ~nil~ to show titles as written.
 
 *Empty days*: every day shows by default, even when nothing is on it. The *g* button toggles ~org-agenda-show-all-dates~ for the session; it is bold while empty days are hidden. The starting value comes from ~org-agenda-show-all-dates~ in [[#local-variables][Local Variables]] or the *Show empty days in Agenda* Quick Setting.
 
@@ -1936,7 +1939,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Clocking* (see [[#clocking][Clocking]]): no custom ~org-duration-units~, no ~Effort_ALL+~, and no clock-in reminder beyond the modeline's over-estimate marker.
 
-*Agenda* (see [[#agenda][Agenda]]): effort sorting, filtering and the per-day limit are session settings in the ⏱ panel, not ~org-agenda-sorting-strategy~ or ~org-agenda-max-effort~. The tag, state and category chips are not Emacs's ~/~, ~<~ and ~=~ filters: they match a heading's own tags only. There is no negated (~-<~) filter, no effort column format (~%e~) and no effort sort in the TODO view. The sexp evaluator supports a closed, documented set of functions (including ~org-class~, ~org-date~ and ~and~, ~or~, ~not~), not a Lisp interpreter: no ~let~, ~date~ variable or ~calendar-*~ helpers, no ~diary-remind~, and no holiday-skipping in ~org-class~. ~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~ are left out on purpose, since their ~org-*~ twins take unambiguous year-month-day dates (see [[#agenda-sexp-timestamps][General sexp timestamps]]). A ~local:~ agenda file is read-only, and only a file already opened on this device can be named.
+*Agenda* (see [[#agenda][Agenda]]): effort sorting, filtering and the per-day limit are session settings in the ⏱ panel, not ~org-agenda-sorting-strategy~ or ~org-agenda-max-effort~. Timestamps in titles are hidden unless ~org-xx-agenda-hide-title-stamps~ is ~nil~ (Emacs shows the title as written). The tag, state and category chips are not Emacs's ~/~, ~<~ and ~=~ filters: they match a heading's own tags only. There is no negated (~-<~) filter, no effort column format (~%e~) and no effort sort in the TODO view. The sexp evaluator supports a closed, documented set of functions (including ~org-class~, ~org-date~ and ~and~, ~or~, ~not~), not a Lisp interpreter: no ~let~, ~date~ variable or ~calendar-*~ helpers, no ~diary-remind~, and no holiday-skipping in ~org-class~. ~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~ are left out on purpose, since their ~org-*~ twins take unambiguous year-month-day dates (see [[#agenda-sexp-timestamps][General sexp timestamps]]). A ~local:~ agenda file is read-only, and only a file already opened on this device can be named.
 
 *Babel*: ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). These do not exist: blocks in any other language, ~:session~, running one block from inside another (~<<name()>>~), and results that refresh when a file is opened.
 
