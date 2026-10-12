@@ -49,7 +49,7 @@ const LIST_ITEM_RE = /^(\s*)([-+]|\*|\d+[.)]|[A-Za-z][.)])\s+(?:\[([ xX-])\]\s+)
 const HR_LINE_RE = /^\s*-{5,}\s*$/;
 
 function leadingWhitespace(line) {
-  const m = /^(\s*)/.exec(line);
+  const m = /** @type {RegExpExecArray} */ (/^(\s*)/.exec(line));
   return m[1];
 }
 
@@ -64,7 +64,7 @@ function indentOf(line) {
 // ---- blocks -------------------------------------------------------------
 
 function parseBlock(lines, i) {
-  const startMatch = BLOCK_START_RE.exec(lines[i]);
+  const startMatch = /** @type {RegExpExecArray} */ (BLOCK_START_RE.exec(lines[i]));
   const name = startMatch[1].toUpperCase();
   const params = startMatch[2] ? startMatch[2].trim() : '';
   const content = [];
@@ -137,7 +137,7 @@ function isInsideLiteralSpan(text, pos) {
 }
 
 function parseListItemLine(line) {
-  const m = LIST_ITEM_RE.exec(line);
+  const m = /** @type {RegExpExecArray} */ (LIST_ITEM_RE.exec(line));
   const [, indent, marker, checkbox, rest] = m;
   let text = rest;
 
@@ -149,6 +149,7 @@ function parseListItemLine(line) {
     text = text.slice(startValueMatch[0].length);
   }
 
+  /** @type {string | null} */
   let tag = null;
   const TAG_SEP_RE = /\s+::\s+/g;
   let tagMatch;
@@ -168,7 +169,7 @@ function parseListItemLine(line) {
     tag,
     text,
     inline: parseInline(text),
-    children: [],
+    children: /** @type {any[]} */ ([]),
   };
 }
 
@@ -325,7 +326,7 @@ function parseBody(lines) {
       let j = i;
       const plotLines = [];
       while (j < lines.length && PLOT_RE.test(lines[j])) {
-        plotLines.push(PLOT_RE.exec(lines[j])[1]);
+        plotLines.push((PLOT_RE.exec(lines[j]) || [])[1]);
         j++;
       }
       if (j < lines.length && TABLE_LINE_RE.test(lines[j])) {

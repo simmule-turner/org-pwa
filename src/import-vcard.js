@@ -678,7 +678,7 @@ function buildTreeOrgFromContact(contact) {
   if (contact.categoriesRaw) contactProps.push(`:CATEGORIES_RAW: ${forPropertyValue(contact.categoriesRaw)}`);
   const lines = [`* ${title}${tagSuffix}`, ':PROPERTIES:', ...contactProps, ':END:'];
 
-  const field = (value, fieldType, forceBlock = false, extraBlockText = null, extraProperties = null) => {
+  const field = (value, fieldType, forceBlock = false, extraBlockText = /** @type {string | null} */ (null), extraProperties = /** @type {Record<string, any> | null} */ (null)) => {
     const propLines = [`:FIELDTYPE: ${fieldType}`];
     if (extraProperties) {
       for (const [key, val] of Object.entries(extraProperties)) {

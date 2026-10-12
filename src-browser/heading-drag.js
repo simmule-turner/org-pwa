@@ -79,13 +79,17 @@ function beginDrag(e, grip, rowEl, node, side) {
   const pointerId = e.pointerId;
   let started = false;
   /** @type {HTMLDivElement | null} */
+  /** @type {any} */
   let ghost = null;
   /** @type {HTMLDivElement | null} */
+  /** @type {any} */
   let line = null;
   /** @type {HTMLDivElement | null} */
+  /** @type {any} */
   let tagEl = null;
-  let zoneEls = { top: null, bottom: null };
+  let zoneEls = /** @type {Record<string, any>} */ ({ top: null, bottom: null });
   let cancelling = false;
+  /** @type {any} */
   let drop = null; // { target, position, climb }
   let last = { x: startX, y: startY };
   let scrollTimer = 0;
@@ -154,8 +158,8 @@ function beginDrag(e, grip, rowEl, node, side) {
     if (rows.length === 0) return;
     let gap = rows.findIndex((r) => last.y < r.rect.top + r.rect.height / 2); // the first row whose middle is below the finger
     if (gap === -1) gap = rows.length;
-    const prev = gap > 0 ? rows[gap - 1] : null;
-    const next = gap < rows.length ? rows[gap] : null;
+    const prev = /** @type {any} */ (gap > 0 ? rows[gap - 1] : null);
+    const next = /** @type {any} */ (gap < rows.length ? rows[gap] : null);
 
     // The levels that fit in this gap, outermost first: from the next row's level out to one inside the previous row.
     const options = [];

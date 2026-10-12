@@ -24,7 +24,6 @@ jobs:
       - run: npm install --no-save --no-package-lock eslint @eslint/js globals typescript
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm run check:strict
       - run: npm test
       - run: npm run test:zones
       - run: npm install --prefix /tmp/acorn acorn eslint-scope

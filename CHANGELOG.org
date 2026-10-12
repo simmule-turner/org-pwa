@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v501 — Null checking finished
+The type checker's check for values that might be missing now passes in every file, and is part of the normal type check, so nothing can slip back. The last 13 files were typed (state that starts out empty now says what it holds) with a few guards where a missing match used to be assumed. No change in behaviour.
+Verified: tests, lint, type check, and the babel, extension, camera, move, grip, import, table and tangle checks.
+
 * v500 — Null checking: 34 of 47 files clean
 The check for values that might be missing now passes in 34 more files, leaving 13 files and 119 findings (from 47 and 226). The work was types only, plus a few harmless guards (an empty match no longer breaks a line it cannot read). No change in behaviour.
 Verified: tests, lint, type check and the clock, tangle, babel, extension, capture, popup and export checks.

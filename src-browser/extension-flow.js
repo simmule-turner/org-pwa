@@ -28,7 +28,7 @@ const MAX_CACHED = 5000;
 const MAX_LOG = 40;
 
 /** What Settings shows. `state` is one of: off, empty, unapproved, running, failed. */
-const info = { state: 'off', message: '', sexps: /** @type {string[]} */ ([]), commands: /** @type {any[]} */ ([]), events: [], tableFunctions: [], linkTypes: [], exporters: /** @type {any[]} */ ([]), agendaSources: [], uiLines: [], log: /** @type {string[]} */ ([]), script: '', hash: '', file: '', fileError: '' };
+const info = { state: 'off', message: '', sexps: /** @type {string[]} */ ([]), commands: /** @type {any[]} */ ([]), events: /** @type {any[]} */ ([]), tableFunctions: /** @type {any[]} */ ([]), linkTypes: /** @type {string[]} */ ([]), exporters: /** @type {any[]} */ ([]), agendaSources: /** @type {any[]} */ ([]), uiLines: /** @type {any[]} */ ([]), log: /** @type {string[]} */ ([]), script: '', hash: '', file: '', fileError: '' };
 
 const cache = new Map();
 const agendaCache = new Map(); // `${source}|${from}|${to}` -> { items, at }
@@ -39,7 +39,7 @@ const SOURCE_TTL_MS = 10 * 60 * 1000;
 const LINE_TTL_MS = 5 * 60 * 1000;
 const tableCache = new Map(); // JSON [name, args] -> { v } for the table functions answered during one recalculation
 /** The running script and its queue. Private to this module; the app-wide state stays on S. */
-const run = { pending: new Map(), flushTimer: null, handle: null, commandBusy: false, applying: false, chain: Promise.resolve() };
+const run = { pending: new Map(), flushTimer: /** @type {any} */ (null), handle: /** @type {any} */ (null), commandBusy: false, applying: false, chain: Promise.resolve() };
 
 export function extensionInfo() {
   return { ...info, sexps: info.sexps.slice(), commands: info.commands.map((c) => ({ ...c })), log: info.log.slice() };

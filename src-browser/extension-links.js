@@ -1,7 +1,7 @@
 // @ts-check
 // Link prefixes a script registered with org.linkType, shared between the script runner and the link renderer.
 // Kept apart from extension-flow.js so drawing a link does not pull in the whole script machinery.
-export const links = { prefixes: new Set(), open: null };
+export const links = { prefixes: new Set(), open: /** @type {((prefix: any, path: any, target: any, description: any) => any) | null} */ (null) };
 
 /** { prefix, path } when `target` starts with a prefix a script claimed, else null. */
 export function customLink(target) {

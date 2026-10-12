@@ -49,6 +49,7 @@ export async function openCameraPanel(kind, onAttach) {
 
   let phase = 'live'; // live | recording | review
   /** @type {MediaRecorder | null} */
+  /** @type {any} */
   let recorder = null;
   let chunks = [];
   /** @type {Blob | null} */
@@ -56,6 +57,7 @@ export async function openCameraPanel(kind, onAttach) {
   /** @type {string | null} */
   let capturedUrl = null;
   /** @type {number | null} */
+  /** @type {any} */
   let clock = null;
   let startedAt = 0;
 
@@ -118,7 +120,7 @@ export async function openCameraPanel(kind, onAttach) {
 
   function showReview() {
     phase = 'review';
-    capturedUrl = URL.createObjectURL(captured);
+    capturedUrl = URL.createObjectURL(/** @type {Blob} */ (captured));
     const media = document.createElement(kind === 'video' ? 'video' : 'img');
     media.src = capturedUrl;
     if (kind === 'video') /** @type {HTMLVideoElement} */ (media).controls = true;
@@ -140,7 +142,7 @@ export async function openCameraPanel(kind, onAttach) {
     const canvas = document.createElement('canvas');
     canvas.width = live.videoWidth || 640;
     canvas.height = live.videoHeight || 480;
-    canvas.getContext('2d').drawImage(live, 0, 0, canvas.width, canvas.height);
+    /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d')).drawImage(live, 0, 0, canvas.width, canvas.height);
     canvas.toBlob(
       (blob) => {
         if (!blob) {
@@ -172,7 +174,7 @@ export async function openCameraPanel(kind, onAttach) {
     draw();
   }
   async function attach() {
-    const blob = captured;
+    const blob = /** @type {Blob} */ (captured);
     const type = blob.type || (kind === 'video' ? 'video/webm' : 'image/jpeg');
     const base64 = await blobToBase64(blob);
     close();

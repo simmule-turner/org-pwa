@@ -100,7 +100,7 @@ export function renderImageNode(node, heading = null) {
   return imagePlaceholder(node.target);
 }
 
-export function renderLinkNode(node, linkContext = null, heading = null) {
+export function renderLinkNode(node, linkContext = /** @type {any} */ (null), heading = null) {
   const label = node.description || node.target;
   const targetDoc = linkContext ? linkContext.doc : S.state.doc;
   const custom = linkContext ? null : customLink(node.target);
@@ -113,7 +113,7 @@ export function renderLinkNode(node, linkContext = null, heading = null) {
     a.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      customLinks.open(custom.prefix, custom.path, node.target, label);
+      customLinks.open?.(custom.prefix, custom.path, node.target, label);
     };
     return a;
   }
@@ -121,7 +121,7 @@ export function renderLinkNode(node, linkContext = null, heading = null) {
 
   if (resolution.type === 'external') {
     const a = document.createElement('a');
-    a.href = resolution.url;
+    a.href = /** @type {string} */ (resolution.url);
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
     a.textContent = label;
@@ -149,7 +149,7 @@ export function renderLinkNode(node, linkContext = null, heading = null) {
   }
 
   if (resolution.type === 'attachment' && !linkContext) {
-    const filename = resolution.target.replace(/^attachment:/i, '');
+    const filename = (resolution.target || '').replace(/^attachment:/i, '');
     if (isAudioFilename(filename)) {
       return renderAudioAttachmentLink(resolution.target, filename, heading);
     }
@@ -265,9 +265,9 @@ export function renderAudioAttachmentLink(target, filename, heading) {
  *  precision for a case that isn't actually exercised there yet.
  *  Unresolved (no definition found anywhere) renders inert, matching
  *  renderLinkNode's own "no dead-end click target" convention. */
-export function renderFootnoteRefNode(node, linkContext = null) {
+export function renderFootnoteRefNode(node, linkContext = /** @type {any} */ (null)) {
   const targetDoc = linkContext ? linkContext.doc : S.state.doc;
-  const result = findFootnoteDefinition(targetDoc, node.label);
+  const result = /** @type {any} */ (findFootnoteDefinition(targetDoc, node.label));
   const sup = document.createElement('sup');
   sup.textContent = '[' + node.label + ']';
   sup.setAttribute(INLINE_LINK_ATTR, '1');
@@ -296,7 +296,7 @@ export function renderFootnoteRefNode(node, linkContext = null) {
  *  (smaller, italic, a superscript label) rather than making it
  *  something to tap and jump to -- it already IS the definition, not a
  *  reference to one elsewhere. */
-export function renderFootnoteDefNode(node, linkContext = null, heading = null) {
+export function renderFootnoteDefNode(node, linkContext = /** @type {any} */ (null), heading = null) {
   const wrap = document.createElement('span');
   const labelEl = document.createElement('sup');
   labelEl.textContent = node.label ? '[' + node.label + ']' : '[*]';
@@ -327,7 +327,7 @@ export function currentInlineOpts() {
  *  through to renderImageNode so an attachment: link can resolve
  *  against the right heading's own :ID: (or an ancestor's, via
  *  resolveAttachmentTarget's own inheritance). */
-export function renderInlineNodes(nodes, container, linkContext = null, heading = null) {
+export function renderInlineNodes(nodes, container, linkContext = /** @type {any} */ (null), heading = null) {
   for (const node of nodes) {
     switch (node.type) {
       case 'text':

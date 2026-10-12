@@ -361,7 +361,7 @@ function tokenize(expr) {
   let pos = 0;
   TOKEN_RE.lastIndex = 0;
   while (pos < expr.length) {
-    const leadingWs = /^\s*/.exec(expr.slice(pos))[0];
+    const leadingWs = (/^\s*/.exec(expr.slice(pos)) || [''])[0];
     const afterWs = pos + leadingWs.length;
     const hyphenated = HYPHENATED_FUNCTION_RE.exec(expr.slice(afterWs));
     if (hyphenated) {
@@ -1720,7 +1720,7 @@ const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUENFSD
  *  there, falling back to whatever was already parsed rather than
  *  discarding the whole mode string. */
 function parseModeString(suffix) {
-  const mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees', precision: null };
+  const mode = /** @type {any} */ ({ format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees', precision: null });
   MODE_TOKEN_RE.lastIndex = 0;
   let m;
   while ((m = MODE_TOKEN_RE.exec(suffix))) {
@@ -1994,7 +1994,7 @@ function parseFormulaStatement(statement) {
   const lhs = statement.slice(0, eq).trim();
   let rhs = statement.slice(eq + 1).trim();
   const formatSuffix = /;[^;]*$/.exec(rhs);
-  let mode = { format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees', precision: null };
+  let mode = /** @type {any} */ ({ format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees', precision: null });
   if (formatSuffix) {
     rhs = rhs.slice(0, formatSuffix.index).trim();
     mode = parseModeString(formatSuffix[0].slice(1)); // slice(1): drop the leading ";" itself

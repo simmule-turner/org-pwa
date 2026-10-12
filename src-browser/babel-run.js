@@ -180,6 +180,7 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
     frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;pointer-events:none';
     const id = Math.random().toString(36).slice(2);
     /** @type {number | null} */
+    /** @type {any} */
     let timer = null;
     let done = false;
     const rpcs = createRpcHost(onRpc, (message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'));
@@ -194,7 +195,7 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
       }, delay);
     };
     let startedAt = 0;
-    /** @type {() => any | null} */
+    /** @type {(() => any) | null} */
     let boot = null;
     const finish = (outcome) => {
       if (done) return;
@@ -208,11 +209,11 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
       if (e.source !== frame.contentWindow || !e.data) return;
       const m = e.data;
       if (m.type === 'hello') {
-        boot();
+        boot?.();
       } else if (m.type === 'ready') {
         startedAt = Date.now();
         arm(timeoutMs);
-        frame.contentWindow.postMessage({ id, code, vars, variables, maxBytes }, '*');
+        /** @type {Window} */ (frame.contentWindow).postMessage({ id, code, vars, variables, maxBytes }, '*');
       } else if (m.type === 'rpc') {
         rpcs.handle(m);
       } else if (m.type === 'fatal') {
@@ -244,10 +245,11 @@ export function startSandbox(main, { startupMs = 4000, onRpc = /** @type {((meth
     const listeners = new Set();
     const rpcs = createRpcHost(onRpc, (message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'));
     let settled = false;
-    /** @type {() => any | null} */
+    /** @type {(() => any) | null} */
     let boot = null;
     let closed = false;
     /** @type {number | null} */
+    /** @type {any} */
     let timer = null;
     const close = () => {
       if (closed) return;
@@ -266,7 +268,7 @@ export function startSandbox(main, { startupMs = 4000, onRpc = /** @type {((meth
     const onMessage = (e) => {
       if (e.source !== frame.contentWindow || !e.data) return;
       if (e.data.type === 'hello') {
-        boot();
+        boot?.();
       } else if (e.data.type === 'ready') {
         settle({
           ok: true,

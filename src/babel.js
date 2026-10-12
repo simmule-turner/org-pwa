@@ -29,7 +29,7 @@ export function isJsBlock(block) {
  *  one, except `:var`, which accumulates. Values stay strings. */
 export function parseHeaderArgs(params) {
   const text = (params || '').replace(/^\s*\S+/, '');
-  const args = { var: [] };
+  const args = { var: /** @type {any[]} */ ([]) };
   const re = /(?:^|\s):([A-Za-z][\w-]*)(?=\s|$)/g;
   const marks = [];
   let m;
@@ -47,7 +47,7 @@ const RESULTS_WORDS = new Set(['value', 'output', 'table', 'vector', 'list', 'sc
 
 /** `:results` words -> { collect, format, silent, unsupported }. */
 export function parseResultsSpec(value) {
-  const spec = { collect: 'value', format: null, silent: false, unsupported: null };
+  const spec = { collect: 'value', format: /** @type {string | null} */ (null), silent: false, unsupported: /** @type {string | null} */ (null) };
   for (const word of String(value || '').trim().toLowerCase().split(/\s+/).filter(Boolean)) {
     if (!RESULTS_WORDS.has(word)) {
       spec.unsupported = spec.unsupported || word;

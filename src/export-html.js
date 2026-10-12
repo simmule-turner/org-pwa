@@ -131,7 +131,7 @@ const unescapeLine = (line) => line.replace(/^(\s*),(?=\*|#\+)/, '$1');
 
 function removeIndentation(lines) {
   let min = Infinity;
-  for (const l of lines) if (l.trim()) min = Math.min(min, /^[ \t]*/.exec(l)[0].length);
+  for (const l of lines) if (l.trim()) min = Math.min(min, (/^[ \t]*/.exec(l) || [''])[0].length);
   if (!Number.isFinite(min) || min === 0) return lines.slice();
   return lines.map((l) => (l.trim() ? l.slice(min) : ''));
 }
@@ -550,7 +550,7 @@ function tableHtml(state, el) {
     align.push(cells.length && numbers / cells.length >= 0.5 ? 'right' : 'left');
   }
   // groups of rows separated by rules; the first group is a header when a rule follows it and more rows come after
-  const groups = [[]];
+  const groups = /** @type {any[][]} */ ([[]]);
   for (const row of rows) {
     if (row.rule) {
       if (groups[groups.length - 1].length) groups.push([]);
@@ -583,7 +583,7 @@ function srcBlockHtml(state, el) {
   const lang = params.split(/\s+/)[0] || '';
   const lines = removeIndentation(el.lines.map(unescapeLine));
   const numbered = /(^|\s)[-+]n(\s|$)/.test(params);
-  const start = numbered && /[-+]n\s+(\d+)/.exec(params) ? Number(/[-+]n\s+(\d+)/.exec(params)[1]) : 1;
+  const start = numbered && /[-+]n\s+(\d+)/.exec(params) ? Number((/[-+]n\s+(\d+)/.exec(params) || [])[1]) : 1;
   const colored = highlightToHtml(lines.join('\n'), lang).split('\n');
   const code = colored.map((l, i) => (numbered ? `<span class="linenr">${start + i}: </span>` : '') + l).join('\n');
   const caption = captionHtml(state, el.aff);
@@ -616,7 +616,7 @@ function blockHtml(state, el, ctx) {
       const lines = removeIndentation(el.lines.map(unescapeLine));
       const html = lines
         .map((l) => {
-          const lead = /^ */.exec(l)[0].length;
+          const lead = (/^ */.exec(l) || [''])[0].length;
           return (NBSP.repeat(lead) + renderInline(state, l.slice(lead))).replace(/^$/, '') + '<br />';
         })
         .join('\n');
@@ -752,7 +752,7 @@ function buildOutline(state, headings, levelOffset, filter, numbers) {
       n--;
       continue;
     }
-    const node = { heading, level: heading.level - levelOffset, number, archived, children: [] };
+    const node = { heading, level: heading.level - levelOffset, number, archived, children: /** @type {any[]} */ ([]) };
     node.children = archived ? [] : buildOutline(state, heading.children || [], levelOffset, filter, number);
     out.push(node);
   }
@@ -971,7 +971,7 @@ const PAGE_CSS = `
  * Exports `doc` (or the subtree at `scope`) to a complete standalone HTML document.
  * A subtree export is titled after its heading; the heading's own text comes first, then its children as sections.
  */
-export function exportToHtml(doc, scope = null, { images = null } = {}) {
+export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = /** @type {any} */ (null) } = {}) {
   activeImages = images instanceof Map ? images : new Map();
   const state = createState(doc, scope);
   state.namedElements = new Map();

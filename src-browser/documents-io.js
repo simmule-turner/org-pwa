@@ -107,7 +107,7 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
   emitExtensionEvent('open');
 }
 
-export async function createNewUnsavedDocument(rawText = '', statusMessage = null) {
+export async function createNewUnsavedDocument(rawText = '', statusMessage = /** @type {string | null} */ (null)) {
   if (commitTextModeIfActive()) render();
   await afterDocumentLoaded(UNSAVED_DOCUMENT_ID + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), parseOrg(rawText), null);
   setStatus(statusMessage || 'New unsaved document \u2014 edits are cached locally, same as any other document; Save As to keep it for good.');

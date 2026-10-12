@@ -8,6 +8,7 @@
     "checkJs": false,
     "noEmit": true,
     "strict": false,
+    "strictNullChecks": true,
     "noImplicitAny": false,
     "skipLibCheck": true
   },

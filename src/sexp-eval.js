@@ -153,7 +153,7 @@ let userSexpNames = new Set();
 let userSexpHandler = null;
 
 /** Installs (or, with no arguments, removes) the user-defined diary functions. */
-function setUserSexps(names = [], handler = null) {
+function setUserSexps(names = [], handler = /** @type {any} */ (null)) {
   userSexpNames = new Set(names);
   userSexpHandler = handler;
 }

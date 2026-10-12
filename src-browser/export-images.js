@@ -22,7 +22,7 @@ function headingsToScan(doc, scope) {
 }
 
 /** Map of image link target -> data URL for every picture in the export that can be read. */
-export async function collectExportImages(doc, scope) {
+export async function collectExportImages(doc, scope = /** @type {any} */ (null)) {
   const images = new Map();
   const readable = S.state.storageKind === 'github' || S.state.storageKind === 'webdav';
   const sources = [{ heading: null, lines: scope ? scope.bodyLines || [] : doc.bodyLines || [] }, ...headingsToScan(doc, scope).map((h) => ({ heading: h, lines: h.bodyLines || [] }))];

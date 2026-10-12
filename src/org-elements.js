@@ -33,7 +33,7 @@ const FOOTNOTE_DEF_RE = /^\[fn:([A-Za-z0-9_-]+)\][ \t]?(.*)$/;
 const ITEM_RE = /^([ \t]*)([-+*]|\d+[.)])(?:[ \t]+|$)/;
 const HEADLINE_LIKE_RE = /^\*+ /;
 
-const indentOf = (line) => /^[ \t]*/.exec(line)[0].replace(/\t/g, '        ').length;
+const indentOf = (line) => (/^[ \t]*/.exec(line) || [''])[0].replace(/\t/g, '        ').length;
 const isBlank = (line) => line.trim() === '';
 
 /** Is this line the start of a list item? (A `*` bullet needs indentation, or it would be a headline.) */
@@ -106,7 +106,7 @@ function dedent(line, n) {
 }
 
 function parseList(lines, start) {
-  const first = itemMatch(lines[start]);
+  const first = /** @type {RegExpExecArray} */ (itemMatch(lines[start]));
   const baseIndent = indentOf(lines[start]);
   const items = [];
   let i = start;
@@ -136,7 +136,7 @@ function parseList(lines, start) {
       bodyLines.push(line);
       j++;
     }
-    const item = { bullet: m[2], checkbox: null, counter: null, tag: null };
+    const item = { bullet: m[2], checkbox: /** @type {string | null} */ (null), counter: /** @type {number | null} */ (null), tag: /** @type {string | null} */ (null) };
     const cookie = /^\[@(\d+)\][ \t]*/.exec(rest);
     if (cookie) {
       item.counter = Number(cookie[1]);

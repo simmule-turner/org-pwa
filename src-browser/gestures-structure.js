@@ -28,7 +28,9 @@ export function attachSlideLeftToFold(el, heading, opts = {}) {
   const onFolded = opts.onFolded || render;
   const archiveVisibility =
     opts.archiveVisibility || (getCycleOpenArchivedTrees(S.state.localVariables) ? 'noarchived' : 'archived');
+  /** @type {any} */
   let startX = null;
+  /** @type {any} */
   let startY = null;
   let active = false;
 
@@ -61,7 +63,9 @@ export function attachSlideLeftToFold(el, heading, opts = {}) {
 
 export function attachSlideRightToComplete(el, heading, opts = {}) {
   const onDone = opts.onDone || (() => commitAndRender('Completed via swipe'));
+  /** @type {any} */
   let startX = null;
+  /** @type {any} */
   let startY = null;
   let active = false;
 
@@ -97,7 +101,9 @@ export function attachSlideRightToComplete(el, heading, opts = {}) {
 }
 
 export function attachAgendaSwipeNav(el) {
+  /** @type {any} */
   let startX = null;
+  /** @type {any} */
   let startY = null;
   let active = false;
   let startedOnSwipeRow = false;
