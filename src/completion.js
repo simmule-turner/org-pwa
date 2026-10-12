@@ -77,7 +77,7 @@ function collectTagUsage(docs) {
  * STARTS with the query, then one that merely contains it; within each, the
  * most used first, then alphabetical. Empty query: the most used tags.
  */
-function suggestTags({ docs, applied = [], query = '', limit = 10 }) {
+function suggestTags({ docs, applied = /** @type {string[]} */ ([]), query = '', limit = 10 }) {
   const usage = collectTagUsage(docs);
   const candidates = new Set(usage.keys());
   for (const doc of docs) for (const tag of declaredTagsOf(doc)) candidates.add(tag);

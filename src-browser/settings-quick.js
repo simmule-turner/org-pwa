@@ -146,7 +146,7 @@ export function renderQuickSettingField(field) {
       renderSettingsView();
       render();
     };
-    label.replaceChild(checkbox, label.firstChild);
+    label.replaceChild(checkbox, /** @type {ChildNode} */ (label.firstChild));
     label.appendChild(labelText);
   } else if (field.type === 'onezero') {
     const checkbox = document.createElement('input');
@@ -158,7 +158,7 @@ export function renderQuickSettingField(field) {
       renderSettingsView();
       render();
     };
-    label.replaceChild(checkbox, label.firstChild);
+    label.replaceChild(checkbox, /** @type {ChildNode} */ (label.firstChild));
     label.appendChild(labelText);
   } else if (field.type === 'number') {
     const input = document.createElement('input');

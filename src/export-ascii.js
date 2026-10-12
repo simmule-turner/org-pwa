@@ -236,7 +236,7 @@ function renderPlanningAscii(planning, indent) {
 
 function renderParagraphAscii(node, indent, width) {
   const available = Math.max(10, width - indent.length); // a pathologically narrow width still leaves SOME room, rather than producing zero-or-negative-width wrapping
-  const segments = [[]];
+  const segments = /** @type {string[][]} */ ([[]]);
   for (const line of node.lines) {
     segments[segments.length - 1].push(stripLineBreakMarker(line));
     if (stripLineBreakMarker(line) !== line) segments.push([]); // an explicit "\\" starts a genuinely new, separately-wrapped segment
@@ -611,7 +611,7 @@ function renderToc(headings, toc, numberingEnabled) {
  * headings get section numbers and a Table of Contents is generated
  * at all -- real org's own #+OPTIONS: num:nil turns this off.
  */
-export function exportToAscii(doc, scope = null, textWidth = 72, { charset = 'ascii' } = {}) {
+export function exportToAscii(doc, scope = /** @type {any} */ (null), textWidth = 72, { charset = 'ascii' } = {}) {
   charsetAscii = CHARSETS[normalizeAsciiCharset(charset)];
   footnoteDefinitionsAscii = [];
   anonymousFootnoteCounterAscii = 0;

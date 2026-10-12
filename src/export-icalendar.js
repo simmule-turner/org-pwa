@@ -129,7 +129,7 @@ export function generateUid(documentId, heading, kind, index, date) {
 
 // ---- VEVENT building -----------------------------------------------------
 
-export function buildVevent({ uid, summary, description, date, hasTime, rrule, alarmDaysBefore, stamp, endDate = null, categories = null, location = null }) {
+export function buildVevent({ uid, summary, description, date, hasTime, rrule, alarmDaysBefore, stamp, endDate = /** @type {Date | null} */ (null), categories = /** @type {string[] | null} */ (null), location = /** @type {string | null} */ (null) }) {
   const lines = [
     'BEGIN:VEVENT',
     `UID:${uid}`,

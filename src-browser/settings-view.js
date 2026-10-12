@@ -435,7 +435,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
       off: 'Off. Set "Run extension scripts" to On in Quick Settings.',
       empty: 'On, but there is no script yet.',
       unapproved: 'Not running: this script has not been approved on this device.',
-      running: `Running. Diary functions: ${ext.sexps.length ? ext.sexps.join(', ') : 'none'}. Commands: ${ext.commands.length ? ext.commands.map((c) => c.label).join(', ') : 'none'}. Hooks: ${ext.events.length ? ext.events.join(', ') : 'none'}. Other: ${[...ext.tableFunctions.map((n) => n + '()'), ...ext.linkTypes.map((n) => n + ':'), ...ext.exporters.map((x) => 'Export: ' + x.label), ...ext.agendaSources.map((n) => 'agenda ' + n), ...ext.uiLines.map((n) => 'line ' + n)].join(', ') || 'none'}.`,
+      running: `Running. Diary functions: ${ext.sexps.length ? ext.sexps.join(', ') : 'none'}. Commands: ${ext.commands.length ? /** @type {any[]} */ (ext.commands).map((c) => c.label).join(', ') : 'none'}. Hooks: ${ext.events.length ? ext.events.join(', ') : 'none'}. Other: ${[...ext.tableFunctions.map((n) => n + '()'), ...ext.linkTypes.map((n) => n + ':'), ...ext.exporters.map((x) => 'Export: ' + x.label), ...ext.agendaSources.map((n) => 'agenda ' + n), ...ext.uiLines.map((n) => 'line ' + n)].join(', ') || 'none'}.`,
       failed: `Stopped: ${ext.message}`,
     }[ext.state] || '';
   extensionSection.appendChild(extensionStatusLine);

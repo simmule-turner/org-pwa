@@ -223,7 +223,6 @@ const VIEWABLE_MIME_TYPES = {
   mp4: 'video/mp4',
   m4v: 'video/mp4',
   mov: 'video/quicktime',
-  webm: 'video/webm', // deliberately overridden below -- see the comment on VIEWABLE_AUDIO_MIME_TYPES's own spread
   ogv: 'video/ogg',
   txt: 'text/plain',
   md: 'text/plain',

@@ -259,7 +259,7 @@ export function highlightToHtml(code, lang) {
       }
     }
     if (cfg.lispColon && ch === ':' && /[A-Za-z]/.test(code[i + 1] || '')) {
-      const m = /^:[^\s()"']+/.exec(rest);
+      const m = /^:[^\s()"']+/.exec(rest) || [''];
       out += span('constant', m[0]);
       i += m[0].length;
       continue;

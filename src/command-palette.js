@@ -87,7 +87,7 @@ function searchCommands(commands, query, { recentIds = [] } = {}) {
     .map(normalize)
     .filter(Boolean);
   const recentRank = new Map(recentIds.map((id, i) => [id, i]));
-  const rankOf = (command) => (recentRank.has(command.id) ? recentRank.get(command.id) : Infinity);
+  const rankOf = (command) => (recentRank.get(command.id) ?? Infinity);
 
   if (tokens.length === 0) {
     const recent = commands.filter((c) => recentRank.has(c.id)).sort((a, b) => rankOf(a) - rankOf(b));
@@ -128,7 +128,7 @@ function pushRecent(recentIds, id, max = 8) {
  * gets a numeric suffix so two entries never share an id. Separators, and
  * entries with no label, are skipped.
  */
-function dynamicCommandSpecs({ templates = [], extraEntries = [] } = {}) {
+function dynamicCommandSpecs({ templates = /** @type {any[]} */ ([]), extraEntries = /** @type {any[]} */ ([]) } = {}) {
   const specs = [];
   const taken = new Set();
   const unique = (base) => {

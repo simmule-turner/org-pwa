@@ -84,7 +84,7 @@ function createCaldavClient({ url, username, password, kind = 'calendar', fetch:
   const base = url.endsWith('/') ? url : url + '/';
   const authorization = basicAuthHeader(username || '', password || '');
 
-  /** @param {string} method @param {string} name @param {{ headers?: Record<string, string>, body?: string }} [extra] */
+  /** @param {string} method @param {string | null} name @param {{ headers?: Record<string, string>, body?: string }} [extra] */
   async function request(method, name, { headers = {}, body } = {}) {
     const target = name ? base + encodeURIComponent(name) : base;
     const controller = typeof AbortController === 'function' ? new AbortController() : null;

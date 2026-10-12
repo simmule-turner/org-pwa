@@ -75,7 +75,7 @@ function lookupTable(name) {
   return null;
 }
 
-function writeResults(heading, block, lines, label, hash = null) {
+function writeResults(heading, block, lines, label, hash = /** @type {string | null} */ (null)) {
   const { start, removeCount, insert } = placeResults(heading.bodyLines, block, lines, { hash });
   // the cursor stays on the block, whose body is re-parsed by the edit
   withKeyboardFocusPreserved(heading, () => commitLines(heading, start, removeCount, insert));

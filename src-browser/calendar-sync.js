@@ -89,7 +89,7 @@ export async function syncAgendaToCalendar({ manual = false, rebuild = false, re
       if (manual && total > 40 && done % 20 === 0) setStatus(`Syncing the calendar\u2026 ${done}/${total}`);
     };
     const puts = await runLimited(plan.puts, CONCURRENCY, async (name) => {
-      await client.put(name, wanted.get(name).ics);
+      await client.put(name, /** @type {any} */ (wanted.get(name)).ics);
       tick();
     });
     const dels = puts.stopped ? { ok: [], failed: [], stopped: null } : await runLimited(plan.deletes, CONCURRENCY, async (name) => {

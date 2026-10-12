@@ -1062,8 +1062,8 @@ moreBtn.addEventListener('click', () => {
 });
 
 if ('serviceWorker' in navigator && platform.usesServiceWorker) {
-  const updateBanner = document.getElementById('updateBanner');
-  const updateReloadBtn = document.getElementById('updateReloadBtn');
+  const updateBanner = /** @type {HTMLElement} */ (document.getElementById('updateBanner'));
+  const updateReloadBtn = /** @type {HTMLElement} */ (document.getElementById('updateReloadBtn'));
   let reloadedForUpdate = false;
 
   function showUpdateBanner(waitingWorker) {

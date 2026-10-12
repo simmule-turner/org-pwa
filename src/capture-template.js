@@ -698,7 +698,7 @@ function resolveCaptureFileId(file, currentFileId) {
   const trimmed = String(file || '').trim();
   if (!trimmed) return currentFileId;
   const { scheme, path } = getCaptureFileScheme(trimmed);
-  const resolved = CAPTURE_FILE_SCHEMES.has(scheme) ? path : trimmed;
+  const resolved = CAPTURE_FILE_SCHEMES.has(/** @type {string} */ (scheme)) ? /** @type {string} */ (path) : trimmed;
   if (resolved.includes('/') || !currentFileId) return resolved;
   const lastSlash = currentFileId.lastIndexOf('/');
   const dir = lastSlash === -1 ? '' : currentFileId.slice(0, lastSlash + 1);

@@ -465,7 +465,7 @@ function ordinalYears(n) {
  *  With no FORMAT: "<Label>: %l (%Y)" for the birthday property (Emacs's own default, "Birthday: Jane Doe (36th)"), and
  *  "<Label>: %n (%Y)" for any other field ("Anniversary: Jane Doe & John Doe (27th)"). The label is the field name capitalized, or
  *  the text after the date in the property if there is some (":BIRTHDAY: 1990-01-08 Nameday"). */
-function formatContactEventTitle({ format = null, field = null, birthdayProperty = 'BIRTHDAY', description = null, name, spouse = null, age = null, omitAge = false }) {
+function formatContactEventTitle({ format = null, field = null, birthdayProperty = 'BIRTHDAY', description = /** @type {string | null} */ (null), name, spouse = null, age = /** @type {number | null} */ (null), omitAge = false }) {
   const fieldName = field || birthdayProperty;
   const label = description || defaultEventDescription(fieldName);
   const chosen = format || (fieldName.toLowerCase() === birthdayProperty.toLowerCase() ? `${label}: %l (%Y)` : `${label}: %n (%Y)`);
@@ -678,7 +678,7 @@ function getCategoryForDocument(doc, documentId) {
   const categoryKw = (doc.keywords || []).find((kw) => kw.key.toUpperCase() === 'CATEGORY');
   if (categoryKw && categoryKw.value.trim()) return categoryKw.value.trim();
   if (!documentId || documentId.startsWith(UNSAVED_DOCUMENT_ID)) return 'Untitled'; // an unsaved, in-memory-only document has no filename to derive a category from
-  const base = String(documentId).split('/').pop().replace(/\.org$/i, '');
+  const base = (String(documentId).split('/').pop() || '').replace(/\.org$/i, '');
   return base || documentId;
 }
 

@@ -59,6 +59,7 @@ export function clockInHeading(heading) {
   // in a DIFFERENT, currently-inactive tab, clock it out there directly
   // before starting the new one -- clockInSwitchingTasks below already
   // correctly handles the same-document case on its own.
+  /** @type {any} */
   let crossTabSwitchedFrom = null;
   const running = findRunningClockAcrossSessions();
   if (running && !running.isActive) {

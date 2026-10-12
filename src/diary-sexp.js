@@ -94,7 +94,7 @@ function parseOrgAnniversaryLine(line) {
  *  any year after 1948"), it applies only to years AFTER that one -- so
  *  no "-8th birthday" before the person was born, and no "0th" in the
  *  year itself. */
-function expandOrgAnniversaryOccurrences(month, day, rangeStart, rangeEnd, afterYear = null) {
+function expandOrgAnniversaryOccurrences(month, day, rangeStart, rangeEnd, afterYear = /** @type {number | null} */ (null)) {
   const rangeStartDay = startOfDay(rangeStart);
   const rangeEndDay = endOfDay(rangeEnd);
   const dates = [];

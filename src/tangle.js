@@ -71,10 +71,10 @@ export function interpretFileMode(value) {
     let mode = 0o644;
     const bits = { r: 4, w: 2, x: 1, X: 1 };
     for (const clause of v.split(',')) {
-      m = /^([ugoa]*)((?:[+\-=][rwxXstugo]*)+)$/.exec(clause);
+      m = /** @type {RegExpExecArray} */ (/^([ugoa]*)((?:[+\-=][rwxXstugo]*)+)$/.exec(clause));
       const who = m[1] || 'a';
       const targets = who.includes('a') ? 'ugo' : who;
-      for (const op of m[2].match(/[+\-=][rwxXstugo]*/g)) {
+      for (const op of m[2].match(/[+\-=][rwxXstugo]*/g) || []) {
         let perm = 0;
         for (const c of op.slice(1)) perm |= bits[c] || 0;
         for (const t of targets) {
@@ -106,7 +106,7 @@ function precedingText(doc, block, blocks) {
     const meta = serializeOrg({ type: 'document', keywords: [], bodyLines: [], children: [{ ...own, children: [], bodyLines: [] }] }).replace(/\n+$/, '').split('\n');
     lines = [...meta, ...(own.bodyLines || [])];
     const first = meta[0];
-    start = Math.max(0, first.search(/\S/) >= 0 ? /^\*+ /.exec(first)[0].length : 0);
+    start = Math.max(0, first.search(/\S/) >= 0 ? (/^\*+ /.exec(first) || [''])[0].length : 0);
     var beginLine = meta.length + block.beginIndex;
     var skipLines = meta.length;
   } else {

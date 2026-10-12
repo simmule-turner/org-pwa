@@ -90,6 +90,7 @@ export function parseLocalVariables(text) {
 function joinContinuedLines(text) {
   const rawLines = text.split('\n');
   const joined = [];
+  /** @type {any} */
   let current = null;
   for (let i = 0; i < rawLines.length; i++) {
     if (current === null) {

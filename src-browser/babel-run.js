@@ -171,7 +171,7 @@ export function createRpcHost(onRpc, post) {
  *  { ok: false, message, line?, output?, timedOut? }
  * Never rejects.
  */
-export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 5000, maxBytes = DEFAULT_MAX_BYTES, startupMs = 4000, onRpc = null }) {
+export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 5000, maxBytes = DEFAULT_MAX_BYTES, startupMs = 4000, onRpc = /** @type {((method: any, args: any) => any) | null} */ (null) }) {
   return new Promise((resolve) => {
     const frame = document.createElement('iframe');
     frame.setAttribute('sandbox', 'allow-scripts');
@@ -234,7 +234,7 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
  * it is serialised, so it must not use anything from the page's modules. Resolves with
  * { ok: true, send(message), onMessage(listener), close() }, or { ok: false, message }.
  */
-export function startSandbox(main, { startupMs = 4000, onRpc = null } = {}) {
+export function startSandbox(main, { startupMs = 4000, onRpc = /** @type {((method: any, args: any) => any) | null} */ (null) } = {}) {
   return new Promise((resolve) => {
     const frame = document.createElement('iframe');
     frame.setAttribute('sandbox', 'allow-scripts');

@@ -169,7 +169,7 @@ async function expandHeadingIncludes(heading, fetchPath, parseOrgFn) {
     const resolved = await resolveOneInclude(directive, fetchPath, parseOrgFn, heading.level + 1);
     if (!resolved) continue; // unreachable/failed -- the #+INCLUDE line itself is still dropped, matching the document-level case's own "skip silently" behavior
     if (resolved.headings) prependedChildren.push(...resolved.headings);
-    else newBodyLines.push(...resolved.bodyLines);
+    else newBodyLines.push(...(resolved.bodyLines || []));
   }
 
   const expandedChildren = [];
@@ -245,7 +245,7 @@ async function expandIncludes(doc, fetchPath, parseOrgFn) {
     const resolved = await resolveOneInclude(directive, fetchPath, parseOrgFn, null);
     if (!resolved) continue;
     if (resolved.headings) prependedHeadings.push(...resolved.headings);
-    else appendedBodyLines.push(...resolved.bodyLines);
+    else appendedBodyLines.push(...(resolved.bodyLines || []));
   }
 
   const expandedChildren = [];

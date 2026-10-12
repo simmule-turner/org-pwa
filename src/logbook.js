@@ -132,7 +132,7 @@ function padTo12(s) {
  * splice into a heading's logbookLines at the top (real org always
  * inserts new entries there, most-recent-first).
  */
-function formatStateLogLine(newState, oldState, timestamp, note = null) {
+function formatStateLogLine(newState, oldState, timestamp, note = /** @type {string | null} */ (null)) {
   const newPart = padTo12(`"${newState}"`);
   const fromClause = oldState ? `from ${padTo12(`"${oldState}"`)}` : '';
   const head = fromClause ? `- State ${newPart} ${fromClause} ${timestamp}` : `- State ${newPart} ${timestamp}`;

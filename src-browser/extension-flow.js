@@ -28,7 +28,7 @@ const MAX_CACHED = 5000;
 const MAX_LOG = 40;
 
 /** What Settings shows. `state` is one of: off, empty, unapproved, running, failed. */
-const info = { state: 'off', message: '', sexps: [], commands: [], events: [], tableFunctions: [], linkTypes: [], exporters: [], agendaSources: [], uiLines: [], log: [], script: '', hash: '', file: '', fileError: '' };
+const info = { state: 'off', message: '', sexps: /** @type {string[]} */ ([]), commands: /** @type {any[]} */ ([]), events: [], tableFunctions: [], linkTypes: [], exporters: /** @type {any[]} */ ([]), agendaSources: [], uiLines: [], log: /** @type {string[]} */ ([]), script: '', hash: '', file: '', fileError: '' };
 
 const cache = new Map();
 const agendaCache = new Map(); // `${source}|${from}|${to}` -> { items, at }

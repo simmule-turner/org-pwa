@@ -271,12 +271,13 @@ function extensionMain() {
  * or { ok: false, message, logs }. A call that takes longer than `callTimeoutMs` closes the sandbox and
  * rejects, so a script that hangs cannot stay running.
  */
-export async function startExtension({ code, variables = {}, onRpc = null, initTimeoutMs = 3000, callTimeoutMs = 3000, commandTimeoutMs = 5000, eventTimeoutMs = 2000 }) {
+export async function startExtension({ code, variables = {}, onRpc = /** @type {((method: any, args: any) => any) | null} */ (null), initTimeoutMs = 3000, callTimeoutMs = 3000, commandTimeoutMs = 5000, eventTimeoutMs = 2000 }) {
   const box = await startSandbox(extensionMain, { onRpc });
   if (!box.ok) return { ok: false, message: box.message, logs: [] };
   let nextId = 1;
   const waiting = new Map();
   /** @type {(m: any) => void | null} */
+  /** @type {((m: any) => void) | null} */
   let initWaiter = null;
   box.onMessage((m) => {
     if (m.type === 'init-done' && initWaiter) initWaiter(m);
@@ -298,7 +299,7 @@ export async function startExtension({ code, variables = {}, onRpc = null, initT
       }, delay);
     };
     arm(timeoutMs);
-    return () => clearTimeout(timer);
+    return () => clearTimeout(/** @type {number} */ (timer));
   };
 
   const init = await new Promise((resolve) => {

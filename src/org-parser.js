@@ -164,7 +164,7 @@ function parseTodoSpecValue(value) {
  */
 function parseOrg(text, opts = {}) {
   const lines = text.split(/\r?\n/);
-  const doc = { type: 'document', keywords: [], children: [], bodyLines: [] };
+  const doc = { type: 'document', keywords: /** @type {any[]} */ ([]), children: /** @type {any[]} */ ([]), bodyLines: /** @type {string[]} */ ([]) };
 
   let todoKeywords = opts.todoKeywords ? [...opts.todoKeywords] : [...DEFAULT_TODO_KEYWORDS];
   let doneKeywords = opts.doneKeywords ? [...opts.doneKeywords] : [...DEFAULT_DONE_KEYWORDS];
@@ -243,8 +243,8 @@ function parseOrg(text, opts = {}) {
         tags: tagsParsed.tags,
         planning: { scheduled: null, deadline: null, closed: null },
         properties: {},
-        propertyOrder: [],
-        logbookLines: [],
+        propertyOrder: /** @type {string[]} */ ([]),
+        logbookLines: /** @type {string[]} */ ([]),
         bodyLines: [],
         collapsed: false,
         bodyHidden: false,
@@ -386,7 +386,7 @@ function canonicalPropertyLine(key, value, indent = '') {
   return value === '' || value == null ? `${indent}:${key}:` : `${indent}:${key}: ${value}`;
 }
 
-const leadingSpace = (line) => /^\s*/.exec(line)[0];
+const leadingSpace = (line) => (/^\s*/.exec(line) || [''])[0];
 
 /** The properties drawer as lines. A property that was not touched keeps the
  *  line it was read from, spacing and all; one that is new or changed is

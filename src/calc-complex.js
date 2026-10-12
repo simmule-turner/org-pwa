@@ -636,7 +636,7 @@ function floatText(x, D, { spec, applySpec }) {
   if (x.isZero()) return '0.';
   const exact = x.toSignificantDigits(shown).equals(x);
   const exp = exact ? x.toExponential() : x.toExponential(shown - 1);
-  const m = /^(-?)(\d)(?:\.(\d+))?e([+-]\d+)$/.exec(exp);
+  const m = /** @type {RegExpExecArray} */ (/^(-?)(\d)(?:\.(\d+))?e([+-]\d+)$/.exec(exp));
   const sign = m[1];
   const lead = m[2];
   const frac = m[3] || '';

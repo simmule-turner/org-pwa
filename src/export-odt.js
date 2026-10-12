@@ -467,7 +467,7 @@ function buildTocOdt(roots, toc, numberingEnabled) {
   return `<text:p text:style-name="Heading">Table of Contents</text:p>${list}`;
 }
 
-export function exportToOdt(doc, scope = null) {
+export function exportToOdt(doc, scope = /** @type {any} */ (null)) {
   docForLinkResolutionOdt = doc;
   headingIdMapOdt = new Map();
   footnoteCounterOdt = 0;

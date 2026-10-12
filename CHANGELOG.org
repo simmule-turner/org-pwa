@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v500 — Null checking: 34 of 47 files clean
+The check for values that might be missing now passes in 34 more files, leaving 13 files and 119 findings (from 47 and 226). The work was types only, plus a few harmless guards (an empty match no longer breaks a line it cannot read). No change in behaviour.
+Verified: tests, lint, type check and the clock, tangle, babel, extension, capture, popup and export checks.
+
 * v499 — Settings code in three files
 The Settings view's code is split along its existing seams (theme colours and side panel width, the Quick Settings section, and the main view), so each part is easier to find and change. Nothing moves or behaves differently.
 Verified: tests, lint, type check and the Settings and quick-setting checks.

@@ -252,7 +252,7 @@ export function openTimestampPickerPopup(kind) {
       if (!dateInput.value) return; // shouldn't be reachable while disabled, but never substitute an empty/invalid pick regardless
       const [y, m, d] = dateInput.value.split('-').map(Number);
       const date = new Date(y, m - 1, d);
-      const time = kind.hasTime && timeInput.value ? timeInput.value : null;
+      const time = kind.hasTime && timeInput?.value ? timeInput.value : null;
       finish(formatOrgTimestamp({ date, time, active: kind.active }));
     });
     okBtn.disabled = true;
@@ -663,8 +663,8 @@ export function openGridChoiceModal({ label, buttons, showKeys = false }) {
       }
     });
     typing.addEventListener('input', () => {
-      const text = typing.value;
-      typing.value = '';
+      const text = /** @type {HTMLInputElement} */ (typing).value;
+      /** @type {HTMLInputElement} */ (typing).value = '';
       if (text) feed(text);
     });
     modal.appendChild(typing);

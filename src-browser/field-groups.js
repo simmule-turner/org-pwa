@@ -41,7 +41,7 @@ export const REPEATER_MARK_OPTIONS = [
 export function buildTimestampFieldGroup(label, currentRaw) {
   const parsed = currentRaw ? parseOrgTimestamp(currentRaw) : null;
   const repeaterParsed = parsed && parsed.repeater ? parseRepeater(parsed.repeater) : null;
-  const repeaterMarkParsed = parsed && parsed.repeater ? parsed.repeater.match(/^[.+]+/)[0] : '';
+  const repeaterMarkParsed = parsed && parsed.repeater ? (parsed.repeater.match(/^[.+]+/) || [''])[0] : '';
   const delayParsed = parsed && parsed.delay ? parseDelay(parsed.delay) : null;
 
   const wrap = document.createElement('div');

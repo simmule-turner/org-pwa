@@ -90,7 +90,7 @@ export async function syncContactsToAddressBook({ manual = false, rebuild = fals
       if (manual && total > 40 && done % 20 === 0) setStatus(`Syncing the contacts\u2026 ${done}/${total}`);
     };
     const puts = await runLimited(plan.puts, CONCURRENCY, async (name) => {
-      await client.put(name, wanted.get(name).vcf);
+      await client.put(name, /** @type {any} */ (wanted.get(name)).vcf);
       tick();
     });
     const dels = puts.stopped ? { ok: [], failed: [], stopped: null } : await runLimited(plan.deletes, CONCURRENCY, async (name) => {

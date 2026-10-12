@@ -209,7 +209,7 @@ export function resultsEnd(lines, at) {
  *  for splicing into the heading's body lines. An existing `#+RESULTS:` after the
  *  block (blank lines allowed between) is replaced; otherwise a new one is added
  *  below the block, with a blank line either side as Org does. `hash` goes into the results line (`#+RESULTS[hash]:`) for `:cache yes`. */
-export function placeResults(bodyLines, block, resultLines, { hash = null } = {}) {
+export function placeResults(bodyLines, block, resultLines, { hash = /** @type {string | null} */ (null) } = {}) {
   const indent = (/^(\s*)/.exec(bodyLines[block.lineIndex]) || ['', ''])[1];
   const pad = (l) => (l === '' ? l : indent + l);
   const blockEnd = block.lineIndex + block.lineCount;

@@ -68,7 +68,7 @@ function clockIn(heading, timestamp) {
 function clockOut(heading, endTimestamp, endDate) {
   const idx = findRunningClockLineIndex(heading);
   if (idx === -1) return false;
-  const m = RUNNING_CLOCK_RE.exec(heading.logbookLines[idx]);
+  const m = /** @type {RegExpExecArray} */ (RUNNING_CLOCK_RE.exec(heading.logbookLines[idx]));
   const startRaw = m[1];
   const startDate = parseClockTimestampToDate(startRaw);
   if (!startDate) return false;
@@ -142,7 +142,7 @@ function totalClockedMinutes(heading, now = new Date()) {
   let total = ownClockedMinutes(heading);
   const runningIdx = findRunningClockLineIndex(heading);
   if (runningIdx !== -1) {
-    const m = RUNNING_CLOCK_RE.exec(heading.logbookLines[runningIdx]);
+    const m = /** @type {RegExpExecArray} */ (RUNNING_CLOCK_RE.exec(heading.logbookLines[runningIdx]));
     const startDate = parseClockTimestampToDate(m[1]);
     if (startDate) total += Math.max(0, Math.round((now.getTime() - startDate.getTime()) / 60000));
   }
@@ -159,7 +159,7 @@ function totalClockedMinutes(heading, now = new Date()) {
 function currentClockSessionMinutes(heading, now = new Date()) {
   const runningIdx = findRunningClockLineIndex(heading);
   if (runningIdx === -1) return 0;
-  const m = RUNNING_CLOCK_RE.exec(heading.logbookLines[runningIdx]);
+  const m = /** @type {RegExpExecArray} */ (RUNNING_CLOCK_RE.exec(heading.logbookLines[runningIdx]));
   const startDate = parseClockTimestampToDate(m[1]);
   if (!startDate) return 0;
   return Math.max(0, Math.round((now.getTime() - startDate.getTime()) / 60000));
@@ -278,6 +278,7 @@ function listRecentlyClockedHeadings(doc, limit = 15) {
 }
 
 function findMostRecentlyClockedHeading(doc) {
+  /** @type {any} */
   let best = null;
   /** @type {Date | null} */
   let bestStart = null;

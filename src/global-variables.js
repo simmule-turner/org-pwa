@@ -43,6 +43,7 @@ const GLOBAL_VAR_LINE_RE = /^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/;
 function joinContinuedLines(text) {
   const rawLines = text.split('\n');
   const joined = [];
+  /** @type {any} */
   let current = null;
   for (let i = 0; i < rawLines.length; i++) {
     current = current === null ? rawLines[i] : current + ' ' + rawLines[i];
