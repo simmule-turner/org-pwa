@@ -43,7 +43,7 @@ import { commitAndRender, setStatus } from './src-browser/editing.js';
 import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, reloadCurrentDocumentFromDisk } from './src-browser/external-sync.js';
 import { renderFileMenu } from './src-browser/file-menu.js';
 import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, withArmedShift } from './src-browser/floating-keyboard.js';
-import { dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
+import { GOD_MODE_ACTIONS, dispatchGodModeKeystroke, enterGodMode, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
 import { apptTick, loadApptSettings, requestApptScan } from './src-browser/appt-flow.js';
 import { scheduleSync } from './src-browser/mirror-sync.js';
 import { loadAttachmentsFolder } from './src-browser/attachments-store.js';
@@ -414,6 +414,18 @@ document.addEventListener('keydown', (e) => {
       scrollFocusedHeadingIntoView();
     }
     return;
+  }
+
+  // Alt+arrow and Shift+arrow on a focused heading do what the action buttons do: up and down move it among its siblings,
+  // left promotes, right demotes. In a table, Shift+arrow keeps moving between cells.
+  const headingArrow = /** @type {Record<string, string>} */ ({ ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' })[e.key];
+  if (headingArrow && (e.altKey || e.shiftKey) && S.currentView === 'org' && S.state.doc && S.keyboardFocusedHeading) {
+    const inTable = S.keyboardFocusedBodyRow && S.keyboardFocusedBodyRow.rowType === 'table';
+    if (e.altKey || !inTable) {
+      e.preventDefault();
+      /** @type {any} */ (GOD_MODE_ACTIONS)['M-<' + headingArrow + '>']();
+      return;
+    }
   }
 
   if (S.godModeActive) {

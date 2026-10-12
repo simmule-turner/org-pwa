@@ -2297,6 +2297,31 @@ check('Save As and Query Replace ask in the app, not in the browser: Enter accep
   await context.close();
 });
 
+check('heading keys: Shift+arrow and Alt+arrow on a focused heading move it (up, down), promote it (left) and demote it (right)', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* One\n* Two\n* Three\n');
+  const titles = () => page.locator('.heading-title').allTextContents().then((t) => t.map((x) => x.trim()).join(','));
+  await page.keyboard.press('j');
+  await page.keyboard.press('j');
+  await page.keyboard.press('Shift+ArrowUp');
+  await page.waitForTimeout(150);
+  expect((await titles()).startsWith('Two,One'), `Shift+Up moved the focused heading up: ${await titles()}`);
+  await page.keyboard.press('Alt+ArrowDown');
+  await page.waitForTimeout(150);
+  expect((await titles()).startsWith('One,Two'), `Alt+Down moved it back down: ${await titles()}`);
+  await page.keyboard.press('Shift+ArrowRight');
+  await page.waitForTimeout(150);
+  const demoted = await page.evaluate(() => document.body.innerText.includes('Two'));
+  const text = await page.evaluate(async () => { const { S } = await import('/src-browser/app-state.js'); return S.state.doc.children.length; });
+  expect(demoted && text === 2, `Shift+Right demoted it under its sibling: ${text} top-level headings`);
+  await page.keyboard.press('Alt+ArrowLeft');
+  await page.waitForTimeout(150);
+  const back = await page.evaluate(async () => { const { S } = await import('/src-browser/app-state.js'); return S.state.doc.children.length; });
+  expect(back === 3, `Alt+Left promoted it again: ${back} top-level headings`);
+  expect(errors.length === 0, `no errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('heading actions: 4 across in three rows when narrow (arrows last: left, right, up, down), 6 across when there is room, one row of 12 when wide; Delete is red; arrow keys move; Esc closes', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Alpha\n** Beta\n');
@@ -2321,6 +2346,7 @@ check('heading actions: 4 across in three rows when narrow (arrows last: left, r
   await page.waitForTimeout(250);
   rows = await layout();
   expect(rows.length === 1 && rows[0].length === 12, `wide: one row of twelve: ${JSON.stringify(rows.map((r) => r.length))}`);
+  expect(rows[0].slice(8).join('|') === 'Move up|Move down|Promote (outdent)|Demote (indent)' && rows[0][7] === 'Delete heading', `wide: Delete, then up, down, left, right: ${JSON.stringify(rows[0].slice(7))}`);
   const danger = await page.locator('.action-grid [aria-label="Delete heading"]').evaluate((e) => getComputedStyle(e).color);
   const normal = await page.locator('.action-grid [aria-label="Edit title"]').evaluate((e) => getComputedStyle(e).color);
   expect(danger !== normal, 'Delete has its own color');

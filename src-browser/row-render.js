@@ -290,30 +290,6 @@ export function renderRow(row, todoSequence) {
               },
             },
             {
-              icon: '\u2191',
-              label: 'Move up',
-              onClick: () => {
-                if (moveHeadingUp(S.state.doc, row.node)) {
-                  commitAndRender('Moved heading up');
-                } else {
-                  setStatus('Already first among its siblings.');
-                  render();
-                }
-              },
-            },
-            {
-              icon: '\u2193',
-              label: 'Move down',
-              onClick: () => {
-                if (moveHeadingDown(S.state.doc, row.node)) {
-                  commitAndRender('Moved heading down');
-                } else {
-                  setStatus('Already last among its siblings.');
-                  render();
-                }
-              },
-            },
-            {
               icon: '\u2611\ufe0f',
               label: 'TODO',
               onClick: () => {
@@ -349,6 +325,30 @@ export function renderRow(row, todoSequence) {
               onClick: () => {
                 S.actionMenuFor = null;
                 deleteHeadingWithConfirmation(row.node);
+              },
+            },
+            {
+              icon: '\u2191',
+              label: 'Move up',
+              onClick: () => {
+                if (moveHeadingUp(S.state.doc, row.node)) {
+                  commitAndRender('Moved heading up');
+                } else {
+                  setStatus('Already first among its siblings.');
+                  render();
+                }
+              },
+            },
+            {
+              icon: '\u2193',
+              label: 'Move down',
+              onClick: () => {
+                if (moveHeadingDown(S.state.doc, row.node)) {
+                  commitAndRender('Moved heading down');
+                } else {
+                  setStatus('Already last among its siblings.');
+                  render();
+                }
               },
             },
             {

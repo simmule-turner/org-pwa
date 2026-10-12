@@ -1849,6 +1849,7 @@ The translation rules follow real god-mode.el (github.com/emacsorphanage/god-mod
 | ~Tab~ | ~Tab~ | Cycle the focused heading's fold state |
 | ~S-Tab~ | ~S-Tab~ | Cycle the whole document (overview, fully shown) |
 | ~←~, ~→~ | ~<left>~, ~<right>~ | Collapse the focused heading fully, or expand it one level |
+| ~Shift+↑~, ~Shift+↓~, ~Shift+←~, ~Shift+→~ (or ~Alt~) | ~M-↑~, ~M-↓~, ~M-←~, ~M-→~ | On a laptop with a heading focused: move it up or down, promote it, demote it, like the heading's action buttons. Within a table, Shift+arrow still moves between cells |
 | ~g↑~, ~g↓~ | ~M-↑~, ~M-↓~ | Move the focused heading up or down among its siblings |
 | ~g←~, ~g→~ | ~M-←~, ~M-→~ | Promote or demote the focused heading with its subtree |
 | ~gS-←~, ~gS-→~ | ~M-S-←~, ~M-S-→~ | The same (there is no separate whole-subtree action) |
