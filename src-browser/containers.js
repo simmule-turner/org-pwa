@@ -44,3 +44,34 @@ export function containTab(overlay) {
     }
   });
 }
+
+/** Arrow-key use of a popup menu: Up/Down/Home/End move between its rows, Enter or Space runs the one in focus. Focus goes to the
+ *  first row when the menu opens or is redrawn, unless it is already inside. Safe to call again for the same menu.
+ * @param {HTMLElement} menu */
+export function enhanceMenu(menu) {
+  if (!menu.dataset.menuKeys) {
+    menu.dataset.menuKeys = '1';
+    menu.addEventListener('keydown', (e) => {
+      const rows = /** @type {HTMLElement[]} */ ([...menu.querySelectorAll('[role="menuitem"][tabindex="0"]')]);
+      if (rows.length === 0) return;
+      const at = rows.indexOf(/** @type {HTMLElement} */ (document.activeElement));
+      let next = -1;
+      if (e.key === 'ArrowDown') next = at < 0 ? 0 : Math.min(rows.length - 1, at + 1);
+      else if (e.key === 'ArrowUp') next = at < 0 ? rows.length - 1 : Math.max(0, at - 1);
+      else if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = rows.length - 1;
+      else if ((e.key === 'Enter' || e.key === ' ') && at >= 0) {
+        e.preventDefault();
+        rows[at].click();
+        return;
+      }
+      if (next >= 0) {
+        e.preventDefault();
+        rows[next].focus();
+      }
+    });
+  }
+  if (menu.contains(document.activeElement)) return;
+  const first = /** @type {HTMLElement | null} */ (menu.querySelector('[role="menuitem"][tabindex="0"]'));
+  if (first) first.focus({ preventScroll: true });
+}

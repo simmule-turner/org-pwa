@@ -2214,6 +2214,42 @@ check('popups: a bottom sheet under 600px wide and a centered dialog from 600px,
   await context.close();
 });
 
+check('menus: a bottom sheet on a phone or tablet, a dropdown under its button on a wide screen with a mouse, and the arrow keys and Enter work in the dropdown', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* One\n* Two\n');
+  const box = () => page.locator('#viewMenuPanel').evaluate((e) => { const r = e.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, vh: window.innerHeight, w: r.width, vw: window.innerWidth, bg: getComputedStyle(e).backgroundColor }; });
+  await page.click('#viewMenuBtn');
+  await page.waitForTimeout(200);
+  let g = await box();
+  expect(Math.abs(g.bottom - g.vh) < 2 && g.w >= g.vw - 2 && !/rgba\(|\//.test(g.bg), `phone width: a full-width, solid sheet on the bottom edge: ${JSON.stringify(g)}`);
+  const rowH = await page.locator('#viewMenuPanel .menu-list-item').first().evaluate((e) => e.getBoundingClientRect().height);
+  expect(rowH >= 36, `rows keep the tap size: ${rowH}`);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+
+  await page.setViewportSize({ width: 1100, height: 800 });
+  await page.waitForTimeout(200);
+  await page.click('#viewMenuBtn');
+  await page.waitForTimeout(250);
+  g = await box();
+  expect(g.top < 120 && g.w < 440, `wide screen: a dropdown under the button: ${JSON.stringify(g)}`);
+  expect(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('role')) === 'menuitem', 'the first row has focus');
+  const label = () => page.evaluate(() => document.activeElement && document.activeElement.textContent);
+  const first = await label();
+  await page.keyboard.press('ArrowDown');
+  const second = await label();
+  expect(second && second !== first, `ArrowDown moves to the next row: ${first} -> ${second}`);
+  await page.keyboard.press('ArrowUp');
+  expect((await label()) === first, 'ArrowUp moves back');
+  await page.keyboard.press('ArrowDown');
+  const target = await label();
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(400);
+  expect(!(await page.locator('#viewMenuPanel').isVisible()), `Enter runs the row (${target}) and closes the menu`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('refile: the destination used last is offered first, under RECENT', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Home\n* Work\n* Task one\n* Task two\n');

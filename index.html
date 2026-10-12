@@ -290,11 +290,19 @@
      still used for every non-menu button row (toolbars, form fields,
      Save/Cancel pairs) elsewhere in this app. */
   .menu-list-item {
-    display: block; width: 100%; text-align: left; font: inherit; font-size: 15px; padding: 12px 14px; min-height: 44px;
+    display: block; width: 100%; text-align: left; font: inherit; font-size: 15px; padding: 12px 14px; min-height: var(--target);
     box-sizing: border-box; background: var(--bg); color: var(--fg); border: none; border-radius: 0; border-bottom: 1px solid var(--border);
     cursor: pointer;
   }
   .menu-list-item:last-child { border-bottom: none; }
+  .menu-list-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  /* menus: a dropdown under its button on a wide screen with a mouse; a bottom sheet on a phone or tablet */
+  @media not all and (min-width: 600px) and (pointer: fine) and (hover: hover) {
+    .popup-menu { position: fixed; left: 0 !important; right: 0 !important; top: auto !important; bottom: 0 !important; width: 100%; max-width: 560px !important; margin: 0 auto;
+      max-height: 80vh; border-radius: var(--radius-container) var(--radius-container) 0 0; border-bottom: 0;
+      padding: var(--space-2) var(--space-3) calc(var(--space-3) + env(safe-area-inset-bottom, 0px)); box-shadow: 0 0 0 100vmax var(--scrim); z-index: 9990; }
+    .popup-menu::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 0 auto var(--space-2); }
+  }
   /* Hover only on devices that genuinely support it (a mouse) -- on a
      touch device, :hover fires on tap with no reliable way to clear
      it again until something else is tapped, which would leave a

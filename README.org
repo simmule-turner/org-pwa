@@ -78,6 +78,8 @@ If you're looking for org-mode-in-the-browser with full parity — babel, LaTeX 
 3. Edit. Every edit is applied instantly to an in-memory copy and cached locally in the background — nothing is lost if you close the tab, even before you hit Save.
 4. Tap *Save* when you want it written back to wherever it came from. *Save As* lets you choose a different destination or backend.
 
+*Menus and popups*: the File, View, More and Extras menus and every popup open as a bottom sheet on a phone or tablet. On a wide screen with a mouse the menus drop down under their button, and *↑*, *↓*, *Home*, *End* and *Enter* move through them. Popups become centered dialogs from 600 px wide, and *Esc* closes either.
+
 The modeline (see [[#modeline][Modeline and minibuffer]]) shows the current filename, which backend it came from, and whether there are unsaved edits — the same information the tab bar (see [[#tabs][Tabs]]) also carries once a second tab is open, via a solid dot on any tab with unsaved changes.
 
 -----

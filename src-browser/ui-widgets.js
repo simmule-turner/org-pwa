@@ -1,6 +1,7 @@
 // @ts-check
 // Extracted from app.js: ui widgets. These have no dependency on the app's shared mutable state,
 // so they moved verbatim (see tools/ notes in CHANGELOG v412).
+import { enhanceMenu } from './containers.js';
 import { resolveMenuOrder } from '../src/menu-alias.js';
 
 // Matches index.html's own @media (min-width: 900px) breakpoint exactly
@@ -320,6 +321,7 @@ export function positionPopupNearButton(panelEl, buttonEl) {
 
   panelEl.style.left = left + 'px';
   panelEl.style.top = top + 'px';
+  enhanceMenu(panelEl);
 }
 
 /** Builds one <div>-based popup-menu item -- the div/onclick-based
@@ -352,6 +354,7 @@ export function menuDivItem(label, onClick, disabled) {
     el.setAttribute('aria-disabled', 'true');
   } else {
     el.onclick = onClick;
+    el.tabIndex = 0; // reachable with the arrow keys, see enhanceMenu
   }
   return el;
 }
