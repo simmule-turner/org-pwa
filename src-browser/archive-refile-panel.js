@@ -161,7 +161,7 @@ export function renderArchiveRefilePanel() {
   };
   const archiveBtn = button(restore ? 'Restore' : 'Archive', () => {
     closeArchiveRefilePanel();
-    if (restore) unarchiveHeadingToOriginalLocation(heading, { confirm: false });
+    if (restore) unarchiveHeadingToOriginalLocation(heading);
     else archiveHeadingToLocation(heading);
   });
   const refileBtn = button('Refile', () => {

@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v491 — No more browser pop-ups
+Questions the browser used to ask in its own pop-up (the file path when opening from GitHub or WebDAV, Save As, Query Replace, and whether to resume unsaved changes) now appear in the app's own dialog, with Enter to accept and Esc to cancel. The safe choice is the default when resuming unsaved changes. Closing a menu returns focus to its button.
+
 * v490 — One look for every popup and menu
 Capture, the state picker, the calendar, attachments, audio and the small prompts now share that sheet-or-dialog look, always on a solid background (the Archive & Refile panel had a see-through section). The File, View, More and Extras menus are bottom sheets on phones and tablets and dropdowns with arrow-key control on a laptop with a mouse. Every Cancel is the emphasized button.
 

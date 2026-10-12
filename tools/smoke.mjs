@@ -2246,7 +2246,45 @@ check('menus: a bottom sheet on a phone or tablet, a dropdown under its button o
   await page.keyboard.press('Enter');
   await page.waitForTimeout(400);
   expect(!(await page.locator('#viewMenuPanel').isVisible()), `Enter runs the row (${target}) and closes the menu`);
+  // closing with Escape gives focus back to the button that opened the menu
+  await page.click('#viewMenuBtn');
+  await page.waitForTimeout(250);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  expect(await page.evaluate(() => document.activeElement && document.activeElement.id) === 'viewMenuBtn', 'Escape closes the menu and focus returns to its button');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Save As and Query Replace ask in the app, not in the browser: Enter accepts and Escape cancels', async () => {
+  const { context, page, errors } = await freshPage();
+  let nativeDialogs = 0;
+  page.on('dialog', (d) => { nativeDialogs++; d.dismiss(); });
+  await newDocument(page, '* One\n');
+  const asked = await page.evaluate(async () => {
+    const { promptText } = await import('/src-browser/dialogs.js');
+    window.__answer = 'unset';
+    promptText('File name to save as:', 'notes.org', { okLabel: 'Save' }).then((v) => { window.__answer = v; });
+    return true;
+  });
+  await page.waitForSelector('.ui-overlay input[type=text]');
+  const ov = page.locator('.ui-overlay').last();
+  expect((await ov.innerText()).includes('File name to save as:') && (await ov.locator('input').inputValue()) === 'notes.org', 'the question and its starting text show');
+  const sel = await ov.locator('input').evaluate((e) => e.selectionStart === 0 && e.selectionEnd === e.value.length);
+  expect(sel, 'the starting text is selected');
+  await page.keyboard.type('plan.org');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(150);
+  expect((await page.evaluate(() => window.__answer)) === 'plan.org', 'Enter accepts what was typed');
+  await page.evaluate(async () => {
+    const { promptText } = await import('/src-browser/dialogs.js');
+    promptText('Again:', 'x').then((v) => { window.__answer = v; });
+  });
+  await page.waitForSelector('.ui-overlay input[type=text]');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(150);
+  expect((await page.evaluate(() => window.__answer)) === null, 'Escape answers null');
+  expect(asked && nativeDialogs === 0 && errors.length === 0, `no browser dialog was shown (${nativeDialogs}); errors: ${errors.join(' | ')}`);
   await context.close();
 });
 

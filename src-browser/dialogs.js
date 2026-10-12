@@ -5,6 +5,7 @@ import { formatOrgTimestamp } from '../src/org-timestamp.js';
 import { S } from './app-state.js';
 import { scrollContainer } from './chrome.js';
 import { commitAndRender, setStatus } from './editing.js';
+import { containTab, rememberOpener, restoreOpener } from './containers.js';
 import { render } from './render.js';
 import { fieldRow, keepOverlayInVisibleViewport, menuButton, modalFieldRow, modalOverlayCleanups, tableActionButton, textInputStyle } from './ui-widgets.js';
 
@@ -101,6 +102,71 @@ export function confirmDialog(message, { confirmLabel = 'Delete', cancelLabel = 
     document.body.appendChild(overlay);
     stopTrackingViewport = keepOverlayInVisibleViewport(overlay); // starts below the status bar, and follows the keyboard
     cancelBtn.focus();
+  });
+}
+
+/** The app's own replacement for the browser's prompt(): a one-line text question. Resolves the text typed (even empty) on OK or
+ *  Enter, or null on Cancel, Escape or a tap on the dimmed area. The text starts selected.
+ * @param {string} message @param {string} [initial] @param {{ okLabel?: string }} [options]
+ * @returns {Promise<string | null>} */
+export function promptText(message, initial = '', { okLabel = 'OK' } = {}) {
+  return new Promise((resolve) => {
+    S.confirmDialogOpen = true;
+    const overlay = document.createElement('div');
+    overlay.className = 'ui-overlay';
+    const modal = document.createElement('div');
+    modal.className = 'panel ui-container';
+    modal.style.cssText = 'overflow-y:auto;padding:16px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:12px;';
+    const messageEl = document.createElement('div');
+    messageEl.textContent = message;
+    messageEl.style.cssText = 'font-size:15px;line-height:1.4;overflow-wrap:anywhere;';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = initial;
+    input.setAttribute('aria-label', message);
+    input.autocapitalize = 'off';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    textInputStyle(input);
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    row.style.cssText = 'justify-content:flex-end;gap:8px;margin:0;';
+    let stopTrackingViewport = () => {};
+    /** @param {string | null} result */
+    function finish(result) {
+      S.confirmDialogOpen = false;
+      document.removeEventListener('keydown', onKeyDown, true);
+      stopTrackingViewport();
+      overlay.remove();
+      restoreOpener(overlay);
+      resolve(result);
+    }
+    const cancelBtn = tableActionButton('Cancel', () => finish(null));
+    const okBtn = tableActionButton(okLabel, () => finish(input.value));
+    row.append(cancelBtn, okBtn);
+    modal.append(messageEl, input, row);
+    overlay.appendChild(modal);
+    overlay.onclick = (e) => {
+      if (e.target === overlay) finish(null);
+    };
+    /** @param {KeyboardEvent} e */
+    function onKeyDown(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        finish(null);
+      } else if (e.key === 'Enter' && document.activeElement === input) {
+        e.preventDefault();
+        finish(input.value);
+      }
+    }
+    document.addEventListener('keydown', onKeyDown, true);
+    rememberOpener(overlay);
+    containTab(overlay);
+    document.body.appendChild(overlay);
+    stopTrackingViewport = keepOverlayInVisibleViewport(overlay);
+    input.focus();
+    input.select();
   });
 }
 

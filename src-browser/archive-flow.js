@@ -1,7 +1,7 @@
 // @ts-check
 // Extracted from app.js: archive flow.
 import { buildArchivedClone, buildRestoredClone, getArchiveLocation, getProperty, insertAtArchiveLocation, parseArchiveLocation, resolveArchiveFileId } from '../src/archive-model.js';
-import { displayName, restoreDestination } from '../src/archive-refile-details.js';
+import { displayName } from '../src/archive-refile-details.js';
 import { resolveOlpTarget } from '../src/capture-template.js';
 import { removeHeading } from '../src/heading-edit.js';
 import { S } from './app-state.js';
@@ -76,15 +76,10 @@ export async function archiveHeadingToLocation(heading) {
  * the tag/properties in place, at the top level of the file it's
  * already in, rather than guessing.
  */
-export async function unarchiveHeadingToOriginalLocation(heading, { confirm = true } = {}) {
+export async function unarchiveHeadingToOriginalLocation(heading) {
   const archiveFile = getProperty(heading, 'ARCHIVE_FILE') || null;
   const archiveOlpath = getProperty(heading, 'ARCHIVE_OLPATH') || '';
   const olpSegments = archiveOlpath ? archiveOlpath.split('/') : [];
-
-  const destinationLabel = restoreDestination(heading, S.state.documentId).label;
-  if (confirm && !window.confirm(`Restore "${heading.title}" to ${destinationLabel}?`)) {
-    return;
-  }
 
   if (!archiveFile || archiveFile === S.state.documentId) {
     // No recorded location, or the recorded location IS the currently

@@ -37,6 +37,7 @@ import { renderViewMenu } from './views.js';
 import { isWebdavConfigured } from './webdav-adapter.js';
 import { folderAvailable } from './local-folder.js';
 import { platform } from './platform.js';
+import { promptText } from './dialogs.js';
 
 export function suggestedSaveAsName(fallback) {
   return S.state.documentId && S.state.documentId.startsWith(UNSAVED_DOCUMENT_ID) ? fallback : S.state.documentId || fallback;
@@ -354,7 +355,7 @@ export async function openGithubByPrompt() {
   if (commitTextModeIfActive()) render();
   const config = await getGithubConfig(kv);
   S.githubConfig = config;
-  const path = window.prompt(`Path of the file in ${config.owner}/${config.repo} (e.g. notes.org):`);
+  const path = await promptText(`Path of the file in ${config.owner}/${config.repo} (e.g. notes.org):`);
   if (!path) return;
   await openRemotePath(path, 'github', githubAdapter, 'GitHub');
 }
@@ -375,7 +376,7 @@ export async function openWebdavByPrompt() {
   if (commitTextModeIfActive()) render();
   const config = await getWebdavConfig(kv);
   S.webdavConfig = config;
-  const path = window.prompt('Path of the file on the WebDAV server (e.g. notes.org):');
+  const path = await promptText('Path of the file on the WebDAV server (e.g. notes.org):');
   if (!path) return;
   await openRemotePath(path, 'webdav', webdavAdapter, 'WebDAV');
 }
@@ -477,10 +478,7 @@ export async function saveAsGithub() {
     closeFileMenu();
     return;
   }
-  const path = window.prompt(
-    `Save to which path in ${config.owner}/${config.repo}?`,
-    suggestedSaveAsName('notes.org')
-  );
+  const path = await promptText(`Save to which path in ${config.owner}/${config.repo}?`, suggestedSaveAsName('notes.org'), { okLabel: 'Save' });
   if (!path) return;
   try {
     S.state.documentId = path;
@@ -516,7 +514,7 @@ export async function saveAsWebdav() {
     closeFileMenu();
     return;
   }
-  const path = window.prompt('Save to which path on the WebDAV server?', suggestedSaveAsName('notes.org'));
+  const path = await promptText('Save to which path on the WebDAV server?', suggestedSaveAsName('notes.org'), { okLabel: 'Save' });
   if (!path) return;
   try {
     S.state.documentId = path;
@@ -545,7 +543,7 @@ export async function saveAsWebdav() {
 export async function saveAsImport() {
   if (!S.state.doc) return;
   if (commitTextModeIfActive()) render();
-  const name = window.prompt('File name to save as:', suggestedSaveAsName('untitled.org'));
+  const name = await promptText('File name to save as:', suggestedSaveAsName('untitled.org'), { okLabel: 'Save' });
   if (!name) return;
   S.state.documentId = name;
   S.state.storageKind = 'input';

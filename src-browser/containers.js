@@ -20,6 +20,12 @@ export function restoreOpener(overlay) {
   if (el instanceof HTMLElement && el.isConnected) el.focus();
 }
 
+/** Forgets the remembered opener without moving focus.
+ * @param {HTMLElement} overlay */
+export function forgetOpener(overlay) {
+  openers.delete(overlay);
+}
+
 /** Makes Tab and Shift+Tab cycle through the popup's own controls instead of leaving it. Safe to call again for the same overlay.
  * @param {HTMLElement} overlay */
 export function containTab(overlay) {
@@ -71,7 +77,18 @@ export function enhanceMenu(menu) {
       }
     });
   }
+  if (!menu.dataset.menuClose) {
+    menu.dataset.menuClose = '1';
+    // when the menu closes, focus goes back to its button, unless the person has already moved on to something else
+    new MutationObserver(() => {
+      if (menu.style.display !== 'none') return;
+      const active = document.activeElement;
+      if (!active || active === document.body || menu.contains(active)) restoreOpener(menu);
+      else forgetOpener(menu);
+    }).observe(menu, { attributes: true, attributeFilter: ['style'] });
+  }
   if (menu.contains(document.activeElement)) return;
+  rememberOpener(menu);
   const first = /** @type {HTMLElement | null} */ (menu.querySelector('[role="menuitem"][tabindex="0"]'));
   if (first) first.focus({ preventScroll: true });
 }

@@ -7,6 +7,7 @@ import { pushRecentRefileTarget } from '../src/refile.js';
 import { setSyncMeta } from '../src/sync-engine.js';
 import { HELP_DOCUMENT_ID, PALETTE_RECENT_KEY, REFILE_RECENT_KEY } from './constants.js';
 import { kv } from './singletons.js';
+import { confirmDialog } from './dialogs.js';
 
 export function recordSyncedWrite(fileId, hash, content) {
   // `content` is kept as the new common ancestor for a later three-way
@@ -93,11 +94,12 @@ export async function resolvePendingChangeChoice(documentId) {
   const pending = await getPendingChange(kv, documentId);
   if (!pending) return { preferCache: false };
   const when = formatPendingChangeTimestamp(pending.queuedAt);
-  const resumeLocal = window.confirm(
-    `"${documentId}" has local changes from ${when} that were never saved.\n\n` +
-      'OK = resume those unsaved changes\n' +
-      'Cancel = discard them and load the current version'
-  );
+  // the safe choice (keep the unsaved changes) is the default one: Cancel, Escape and a tap outside all resume them
+  const discard = await confirmDialog(`"${documentId}" has local changes from ${when} that were never saved.`, {
+    confirmLabel: 'Discard them and load the current version',
+    cancelLabel: 'Resume my unsaved changes',
+  });
+  const resumeLocal = !discard;
   if (!resumeLocal) await clearPendingChange(kv, documentId);
   return { preferCache: resumeLocal };
 }

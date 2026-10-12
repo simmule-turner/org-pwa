@@ -19,6 +19,7 @@ import { render } from './render.js';
 import { agendaFilesCache } from './singletons.js';
 import { switchToTab } from './tabs.js';
 import { VH_UNIT, appendSnippetWithHighlight, tableActionButton } from './ui-widgets.js';
+import { promptText } from './dialogs.js';
 
 export function renderMinibufferSearch() {
   minibufferSearchEl.innerHTML = '';
@@ -207,7 +208,7 @@ export async function startQueryReplace() {
     setStatus('Invalid regex: ' + message);
     return;
   }
-  const replacementText = window.prompt(`Query replace "${S.searchQuery}" with:`, '');
+  const replacementText = await promptText(`Query replace "${S.searchQuery}" with:`, '', { okLabel: 'Replace' });
   if (replacementText === null) return; // cancelled
 
   if (inTextMode) {
