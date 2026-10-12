@@ -58,7 +58,7 @@ export function bigDomain(m, digits, mGuard) {
   };
   // Calc works a few digits beyond the working precision inside a transcendental function and rounds at the end
   // (so (-8)^(1/3) is exactly (1., 1.7320508), not (0.99999999999, ...)); `guard` is that wider domain.
-  if (mGuard) D.guard = bigDomain(mGuard, digits + 6);
+  if (mGuard) /** @type {any} */ (D).guard = bigDomain(mGuard, digits + 6);
   return D;
 }
 
@@ -204,10 +204,10 @@ function radToAngle(x, D, degrees) {
  * @param {any} [D]
  * @param {any} [degrees]
  */
-function sinCosAngle(t, tf, D, degrees) {
+/** @returns {any} */ function sinCosAngle(/** @type {any} */ t, /** @type {any} */ tf, /** @type {any} */ D, /** @type {any} */ degrees) {
   if (D.guard) {
     const G = D.guard;
-    const out = sinCosAngle(G.m.bignumber(t.toString()), tf, G, degrees);
+    /** @type {any} */ const out = sinCosAngle(G.m.bignumber(t.toString()), tf, G, degrees);
     /** @param {any} [x] */
     const low = (x) => D.m.bignumber(x.toString()).toSignificantDigits(D.digits);
     return { s: low(out.s), c: low(out.c), f: out.f };
@@ -982,7 +982,7 @@ function digitsOf(x) {
  * @param {any} x
  * @param {any} D
  *  very large and very small, a trailing "." on a whole float, and trailing zeros only where rounding left them. */
-function floatText(x, D, { spec, applySpec }) {
+function floatText(x, D, /** @type {any} */ { spec, applySpec }) {
   if (spec && applySpec) {
     const text = applySpec(D.toNumber(x), spec);
     return /^-?\d+$/.test(text) ? `${text}.` : text;

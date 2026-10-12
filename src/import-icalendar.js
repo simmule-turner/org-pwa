@@ -74,7 +74,7 @@ function parseProperty(line) {
   const params = {};
   for (const part of parts.slice(1)) {
     const eq = part.indexOf('=');
-    if (eq > 0) params[part.slice(0, eq).toUpperCase()] = part.slice(eq + 1).replace(/^"|"$/g, '');
+    if (eq > 0) /** @type {any} */ (params)[part.slice(0, eq).toUpperCase()] = part.slice(eq + 1).replace(/^"|"$/g, '');
   }
   return { name: parts[0].trim().toUpperCase(), params, value };
 }
@@ -98,7 +98,7 @@ function collectComponents(text) {
     if (!line.trim()) continue;
     const begin = /^BEGIN:(.+)$/i.exec(line.trim());
     if (begin) {
-      stack.push({ type: begin[1].trim().toUpperCase(), props: [] });
+      stack.push({ type: begin[1].trim().toUpperCase(), props: /** @type {any[]} */ ([]) });
       continue;
     }
     const end = /^END:(.+)$/i.exec(line.trim());
@@ -150,8 +150,8 @@ function instantToWall(instantMs, zone) {
  */
 function zoneFields(instantMs, zone) {
   const out = {};
-  for (const part of new Intl.DateTimeFormat('en-US', { timeZone: zone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date(instantMs))) out[part.type] = Number(part.value);
-  return { y: out.year, m: out.month, d: out.day, h: out.hour === 24 ? 0 : out.hour, mi: out.minute, s: out.second };
+  for (const part of new Intl.DateTimeFormat('en-US', { timeZone: zone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date(instantMs))) /** @type {any} */ (out)[part.type] = Number(part.value);
+  return { y: /** @type {any} */ (out).year, m: /** @type {any} */ (out).month, d: /** @type {any} */ (out).day, h: /** @type {any} */ (out).hour === 24 ? 0 : /** @type {any} */ (out).hour, mi: /** @type {any} */ (out).minute, s: /** @type {any} */ (out).second };
 }
 
 /**
@@ -215,19 +215,19 @@ function repeaterFor(rruleText, startWall) {
   const rule = {};
   for (const piece of rruleText.split(';')) {
     const eq = piece.indexOf('=');
-    if (eq > 0) rule[piece.slice(0, eq).toUpperCase()] = piece.slice(eq + 1).toUpperCase();
+    if (eq > 0) /** @type {any} */ (rule)[piece.slice(0, eq).toUpperCase()] = piece.slice(eq + 1).toUpperCase();
   }
-  const unit = { DAILY: 'd', WEEKLY: 'w', MONTHLY: 'm', YEARLY: 'y' }[rule.FREQ];
+  const unit = /** @type {any} */ ({ DAILY: 'd', WEEKLY: 'w', MONTHLY: 'm', YEARLY: 'y' })[/** @type {any} */ (rule).FREQ];
   if (!unit) return null;
-  const interval = rule.INTERVAL === undefined ? 1 : Number(rule.INTERVAL);
+  const interval = /** @type {any} */ (rule).INTERVAL === undefined ? 1 : Number(/** @type {any} */ (rule).INTERVAL);
   if (!Number.isInteger(interval) || interval < 1) return null;
   const start = wallParts(startWall);
   const weekday = DAY_CODES[new Date(startWall).getUTCDay()];
   for (const key of Object.keys(rule)) {
     if (key === 'FREQ' || key === 'INTERVAL' || key === 'WKST') continue;
-    if (key === 'BYDAY' && unit === 'w' && rule.BYDAY === weekday) continue;
-    if (key === 'BYMONTHDAY' && (unit === 'm' || unit === 'y') && Number(rule.BYMONTHDAY) === start.d) continue;
-    if (key === 'BYMONTH' && unit === 'y' && Number(rule.BYMONTH) === start.m) continue;
+    if (key === 'BYDAY' && unit === 'w' && /** @type {any} */ (rule).BYDAY === weekday) continue;
+    if (key === 'BYMONTHDAY' && (unit === 'm' || unit === 'y') && Number(/** @type {any} */ (rule).BYMONTHDAY) === start.d) continue;
+    if (key === 'BYMONTH' && unit === 'y' && Number(/** @type {any} */ (rule).BYMONTH) === start.m) continue;
     return null; // COUNT, UNTIL, several weekdays, ordinals, BYSETPOS, ...
   }
   return `+${interval}${unit}`;
@@ -246,7 +246,7 @@ const textOf = (props, name) => {
 
 /** @param {any} [props] */
 function tagsFrom(props) {
-  const tags = [];
+  /** @type {any[]} */ const tags = [];
   for (const prop of props.filter((/** @type {any} */ p) => p.name === 'CATEGORIES')) {
     for (const raw of prop.value.split(/(?<!\\),/)) {
       const tag = unescapeText(raw).trim().replace(/[^A-Za-z0-9_@#%]+/g, '_').replace(/^_+|_+$/g, '');

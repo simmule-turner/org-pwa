@@ -289,7 +289,7 @@ export function resyncKeyboardFocusToBodyRow(heading, oldRowType, oldLineIndex) 
   }
   if (S.keyboardFocusedBodyRow.node.lineIndex !== oldLineIndex) return;
   /** @param {any} [node] */
-  const freshNode = (heading.body || []).find((node) => node.type === oldRowType && node.lineIndex === oldLineIndex);
+  const freshNode = (heading.body || []).find((/** @type {any} */ node) => node.type === oldRowType && node.lineIndex === oldLineIndex);
   if (freshNode) S.keyboardFocusedBodyRow = { ...S.keyboardFocusedBodyRow, node: freshNode };
 }
 

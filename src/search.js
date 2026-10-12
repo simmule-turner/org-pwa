@@ -297,14 +297,14 @@ function effectiveTags(heading, ancestors, useInheritance) {
  */
 function effectivePropertyValue(heading, ancestors, key, useInheritance) {
   /** @param {any} [k] */
-  const ownKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === key.toLowerCase());
+  const ownKey = (heading.propertyOrder || []).find((/** @type {any} */ k) => k.toLowerCase() === key.toLowerCase());
   if (ownKey) return heading.properties[ownKey];
   if (!useInheritance) return null;
   for (let i = ancestors.length - 1; i >= 0; i--) {
     // nearest ancestor first
     const ancestor = ancestors[i];
     /** @param {any} [k] */
-    const ancestorKey = (ancestor.propertyOrder || []).find((k) => k.toLowerCase() === key.toLowerCase());
+    const ancestorKey = (ancestor.propertyOrder || []).find((/** @type {any} */ k) => k.toLowerCase() === key.toLowerCase());
     if (ancestorKey) return ancestor.properties[ancestorKey];
   }
   return null;
@@ -477,7 +477,7 @@ function walkBodyForMatches(results, heading, bodyNodes, query, matches, useRege
 function searchTextWithinHeading(results, node, q, matches, useRegex) {
   const titleMatch = matches(node.title);
   /** @param {any} [t] */
-  const tagMatch = (node.tags || []).some((t) => matches(t));
+  const tagMatch = (node.tags || []).some((/** @type {any} */ t) => matches(t));
   const todoMatch = !!node.todo && matches(node.todo);
   const priorityMatch = !!node.priority && matches(node.priority);
   if (titleMatch || tagMatch || todoMatch || priorityMatch) {
@@ -526,7 +526,7 @@ function searchTextWithinHeading(results, node, q, matches, useRegex) {
  * @param {any} [usePropertyInheritance]
  *  the document. */
 function searchOneDocument(doc, filters, keywordMatchers, useRegex, useTagInheritance, usePropertyInheritance) {
-  const results = [];
+  /** @type {any[]} */ const results = [];
   const includeKeywords = filters.filter((/** @type {any} */ f) => f.type === 'keyword' && f.mode === 'include');
 
   /**
@@ -583,7 +583,7 @@ function buildKeywordMatchers(filters, useRegex) {
  * @param {any} [doc]
  * @param {any} [query]
  */
-export function searchDocument(doc, query, opts = {}) {
+export function searchDocument(doc, query, opts = /** @type {any} */ ({})) {
   const { useRegex = false, useTagInheritance = true, usePropertyInheritance = false } = opts;
   const trimmed = String(query).trim();
   if (!trimmed) return [];
@@ -598,7 +598,7 @@ export function searchDocument(doc, query, opts = {}) {
  * @param {any} [docs]
  * @param {any} [query]
  */
-export function searchDocuments(docs, query, opts = {}) {
+export function searchDocuments(docs, query, opts = /** @type {any} */ ({})) {
   const { useRegex = false, useTagInheritance = true, usePropertyInheritance = false } = opts;
   const trimmed = String(query).trim();
   if (!trimmed) return [];
@@ -647,7 +647,7 @@ function buildMatchEntry(heading, ancestors, propertyNames, useTagInheritance, u
   const properties = {};
   for (const name of propertyNames) {
     const value = effectivePropertyValue(heading, ancestors, name, usePropertyInheritance);
-    if (value !== null) properties[name] = value;
+    if (value !== null) /** @type {any} */ (properties)[name] = value;
   }
   return {
     tags: effectiveTags(heading, ancestors, useTagInheritance),
@@ -672,7 +672,7 @@ function buildMatchEntry(heading, ancestors, propertyNames, useTagInheritance, u
  * @param {any} [docs]
  * @param {any} [query]
  *  the existing "passed via structured filters" shape above exactly. */
-export function searchDocumentsByMatchQuery(docs, query, opts = {}) {
+export function searchDocumentsByMatchQuery(docs, query, opts = /** @type {any} */ ({})) {
   const { useTagInheritance = true, usePropertyInheritance = false } = opts;
   const trimmed = String(query).trim();
   if (!trimmed) return [];
@@ -680,7 +680,7 @@ export function searchDocumentsByMatchQuery(docs, query, opts = {}) {
   const parsedGroups = parseMatchQuery(trimmed); // throws its own clear error on malformed input
   const propertyNames = collectPropertyNames(parsedGroups);
 
-  const results = [];
+  /** @type {any[]} */ const results = [];
   for (const { documentId, doc } of docs) {
     /**
      * @param {any} [nodes]

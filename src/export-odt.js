@@ -37,15 +37,15 @@ const XML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'"
 
 /** @param {any} [text] */
 function escapeXml(text) {
-  return String(text).replace(/[&<>"']/g, (c) => XML_ESCAPES[c]);
+  return String(text).replace(/[&<>"']/g, (c) => /** @type {any} */ (XML_ESCAPES)[c]);
 }
 
 // ---- per-export state (reset at the start of every exportToOdt() call) ----
 
-let docForLinkResolutionOdt = null;
+/** @type {any} */ let docForLinkResolutionOdt = null;
 let headingIdMapOdt = new Map();
 let footnoteCounterOdt = 0;
-let sectionNumbersOdt = [];
+/** @type {any[]} */ let sectionNumbersOdt = [];
 let numberingEnabledOdt = true;
 
 /** @param {any} [level] */
@@ -218,7 +218,7 @@ function renderListItemsOdt(items, listStyleName) {
       inner = `<text:span text:style-name="Bold">${renderTextOdt(item.tag)}:</text:span> ${inner}`;
     }
     /** @param {any} [nestedList] */
-    const nested = (item.children || []).map((nestedList) => renderListOdt(nestedList)).join('');
+    const nested = (item.children || []).map((/** @type {any} */ nestedList) => renderListOdt(nestedList)).join('');
     return `<text:list-item><text:p text:style-name="Standard">${inner}</text:p>${nested}</text:list-item>`;
   });
   return `<text:list text:style-name="${listStyleName}">${rows.join('')}</text:list>`;

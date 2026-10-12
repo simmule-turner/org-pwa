@@ -535,7 +535,7 @@ function renderImportList() {
 }
 
 export function renderImportFlow() {
-  const format = IMPORT_FORMATS[S.importFormat];
+  const format = /** @type {any} */ (IMPORT_FORMATS)[S.importFormat];
   if (!format) {
     renderImportList();
     return;
@@ -676,7 +676,7 @@ export async function importVcardFromHeadings(headings, sourceLabel) {
 
 /** @param {any} [vcardText] */
 export async function importVcardFile(vcardText) {
-  const unmappedProperties = [];
+  /** @type {any[]} */ const unmappedProperties = [];
   let embeddedPhotoCount = 0;
   const orgText = importVcardsAsOrgText(vcardText, {
     style: S.importStyle,
@@ -728,9 +728,9 @@ export async function importIcalendarFromHeadings(headings, sourceLabel) {
  * @param {any} [icsText]
  *  unsaved one. Times are shown in this device's own time zone. Says what was not carried over, as the vCard import does. */
 export async function importIcalendarFile(icsText) {
-  const unmappedProperties = [];
+  /** @type {any[]} */ const unmappedProperties = [];
   const keptRecurrences = [];
-  const unknownZones = [];
+  /** @type {any[]} */ const unknownZones = [];
   const { orgText, eventCount, todoCount } = importIcalendarAsOrgText(icsText, {
     onUnmappedProperty: (name) => {
       if (!unmappedProperties.includes(name)) unmappedProperties.push(name);

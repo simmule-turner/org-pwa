@@ -200,7 +200,7 @@ export function createGithubAdapter(getConfig) {
       content: utf8ToBase64(content),
       branch: config.branch || 'main',
     };
-    if (existing) requestBody.sha = existing.hash;
+    if (existing) /** @type {any} */ (requestBody).sha = existing.hash;
 
     const res = await fetch(contentsUrl(config, fileId), {
       method: 'PUT',
@@ -228,7 +228,7 @@ export function createGithubAdapter(getConfig) {
       content: base64Content,
       branch: config.branch || 'main',
     };
-    if (existing) requestBody.sha = existing.hash;
+    if (existing) /** @type {any} */ (requestBody).sha = existing.hash;
 
     const res = await fetch(contentsUrl(config, fileId), {
       method: 'PUT',

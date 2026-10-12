@@ -1087,8 +1087,8 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   backupRow.appendChild(
     menuButton('Export Settings', async () => {
       const bundle = await exportAllSettings(kv);
-      bundle.settings.globalVariables = buildFullyResolvedGlobalVariablesText();
-      const hasCredentials = !!(bundle.settings.github && bundle.settings.github.token) || !!(bundle.settings.webdav && bundle.settings.webdav.password) || !!(bundle.settings.caldav && bundle.settings.caldav.password);
+      /** @type {any} */ (bundle.settings).globalVariables = buildFullyResolvedGlobalVariablesText();
+      const hasCredentials = !!(/** @type {any} */ (bundle.settings).github && /** @type {any} */ (bundle.settings).github.token) || !!(/** @type {any} */ (bundle.settings).webdav && /** @type {any} */ (bundle.settings).webdav.password) || !!(/** @type {any} */ (bundle.settings).caldav && /** @type {any} */ (bundle.settings).caldav.password);
       if (
         hasCredentials &&
         !(await confirmDialog(

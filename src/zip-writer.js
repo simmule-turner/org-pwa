@@ -65,7 +65,7 @@ function dosDateTime() {
 
 class ByteWriter {
   constructor() {
-    this.chunks = [];
+    this.chunks = /** @type {any[]} */ ([]);
     this.length = 0;
   }
   /** @param {any} [arr] */

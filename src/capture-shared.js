@@ -12,7 +12,7 @@ const LINKABLE_RE = /^(?:https?|ftp|mailto):/i;
 
 /** Android apps differ in how they share a page: some put the address in `url`, some put "Title\nhttps://..." or
  *  just the address in `text`. When there is no `url` but `text` ends with an http(s) address, move it to `url`. */
-function normalizeShared({ title, text, url }) {
+function normalizeShared(/** @type {any} */ { title, text, url }) {
   if (!url && text) {
     const m = URL_AT_END_RE.exec(text);
     if (m) {

@@ -488,7 +488,7 @@ async function deliverEvent(name, payload, doc) {
   if (run.handle !== active || S.state.doc !== doc) return;
   const snapshot = snapshotDocument(doc, { name: String((S.state.documentId || '').split('/').pop() || ''), focusedHeading: payload.heading || null });
   const plain = {};
-  for (const [k, v] of Object.entries(payload)) if (k !== 'heading' && (v === null || ['string', 'number', 'boolean'].includes(typeof v))) plain[k] = v;
+  for (const [k, v] of Object.entries(payload)) if (k !== 'heading' && (v === null || ['string', 'number', 'boolean'].includes(typeof v))) /** @type {any} */ (plain)[k] = v;
   let reply;
   try {
     reply = await active.runEvent(name, snapshot, plain);

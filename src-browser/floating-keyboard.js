@@ -477,7 +477,7 @@ if (godModeKeyboardInput) {
     S.godModeInputFedLength = value.length;
     // clearing mid-composition can make some keyboards re-insert the text, so
     // only start over once the composition has ended
-    if (!e.isComposing && value.length > 0) resetGodModeKeyboardInput();
+    if (!/** @type {any} */ (e).isComposing && value.length > 0) resetGodModeKeyboardInput();
   });
 
   godModeKeyboardInput.addEventListener('compositionend', () => resetGodModeKeyboardInput());

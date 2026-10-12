@@ -29,7 +29,7 @@ const CONTEXT_VALUES = {
  */
 export function nowebAllows(args, context) {
   const values = String((args && args.noweb) || '').split(/\s+/).filter(Boolean);
-  return values.some((v) => CONTEXT_VALUES[context].includes(v));
+  return values.some((v) => /** @type {any} */ (CONTEXT_VALUES)[context].includes(v));
 }
 
 /**
@@ -63,10 +63,10 @@ function headingText(heading) {
  */
 const findHeadingByCustomId = (blocks, doc, id) => {
   /** @param {any} [list] */
-  const walk = (list) => {
+  /** @returns {any} */ const walk = (/** @type {any} */ list) => {
     for (const h of list) {
       for (const [k, v] of Object.entries(h.properties || {})) if (k.toUpperCase() === 'CUSTOM_ID' && String(v) === id) return h;
-      const inner = walk(h.children || []);
+      /** @type {any} */ const inner = walk(h.children || []);
       if (inner) return inner;
     }
     return null;
@@ -76,7 +76,7 @@ const findHeadingByCustomId = (blocks, doc, id) => {
 
 /**
  * @param {object} doc      the document
- * @param {Array} blocks    collectDocumentBlocks(doc)
+ * @param {Array<any>} blocks    collectDocumentBlocks(doc)
  * @param {object} block    the block whose body is expanded (one of `blocks`)
  * @param {{ context?: string, wrapChunk?: ((referenced: any, text: string, host: any) => string) | null }} [options] context: 'tangle' (honours :noweb strip-tangle) or 'eval' (default); wrapChunk(referenced, text, host):
  *                      with `:comments noweb` on the block that holds the reference, returns the text of the referenced

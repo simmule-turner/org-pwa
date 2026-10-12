@@ -45,7 +45,7 @@ export function checkFetchUrl(text) {
  * @param {any} [value]
  */
 export function parseNetHeader(value) {
-  const hosts = [];
+  /** @type {any[]} */ const hosts = [];
   for (const word of String(value || '').trim().toLowerCase().split(/[\s,]+/).filter(Boolean)) {
     if (word === 'no' || word === 'none' || word === 'nil') continue;
     if (!/^(\*\.)?[a-z0-9]([a-z0-9.-]*[a-z0-9])?$|^\[::1\]$/.test(word)) throw new Error(`:net ${word}: not a host name`);
@@ -84,7 +84,7 @@ export function normalizeFetchOptions(options) {
   for (const [name, value] of Object.entries(o.headers && typeof o.headers === 'object' ? o.headers : {})) {
     const canonical = ALLOWED_HEADERS.get(String(name).toLowerCase());
     if (!canonical) throw new Error(`The header ${name} is not allowed`);
-    headers[canonical] = String(value).replace(/[\r\n]/g, ' ').slice(0, 2000);
+    /** @type {any} */ (headers)[canonical] = String(value).replace(/[\r\n]/g, ' ').slice(0, 2000);
   }
   let body;
   if (o.body !== undefined && o.body !== null) {

@@ -90,7 +90,7 @@ function buildMacroTable(doc) {
   for (const kw of doc.keywords || []) {
     if (kw.key.toUpperCase() !== 'MACRO') continue;
     const m = /^\s*([a-zA-Z][-a-zA-Z0-9_]*)\s+([\s\S]*)$/.exec(kw.value);
-    if (m) macros[m[1]] = m[2];
+    if (m) /** @type {any} */ (macros)[m[1]] = m[2];
   }
   return macros;
 }
@@ -168,13 +168,13 @@ function expandMacrosInText(text, macros, doc, now) {
 function expandMacros(doc, now) {
   const macros = buildMacroTable(doc);
   /** @param {any} [line] */
-  const newBodyLines = (doc.bodyLines || []).map((line) => expandMacrosInText(line, macros, doc, now));
+  const newBodyLines = (doc.bodyLines || []).map((/** @type {any} */ line) => expandMacrosInText(line, macros, doc, now));
 
   /** @param {any} [heading] */
   function walk(heading) {
     const newTitle = expandMacrosInText(heading.title, macros, doc, now);
     /** @param {any} [line] */
-    const newLines = (heading.bodyLines || []).map((line) => expandMacrosInText(line, macros, doc, now));
+    const newLines = (heading.bodyLines || []).map((/** @type {any} */ line) => expandMacrosInText(line, macros, doc, now));
     return {
       ...heading,
       title: newTitle,

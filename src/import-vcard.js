@@ -156,10 +156,10 @@ function parseVcardLine(line, cleanMode) {
     } else {
       val = val.toUpperCase();
     }
-    if (params[key] !== undefined) {
-      params[key] += ',' + val; // repeated parameter -- accumulate, don't overwrite (real vCard 3.0 allows TYPE=INTERNET;TYPE=HOME to mean both apply)
+    if (/** @type {any} */ (params)[key] !== undefined) {
+      /** @type {any} */ (params)[key] += ',' + val; // repeated parameter -- accumulate, don't overwrite (real vCard 3.0 allows TYPE=INTERNET;TYPE=HOME to mean both apply)
     } else {
-      params[key] = val;
+      /** @type {any} */ (params)[key] = val;
     }
   }
   let value = unescapeVcardText(rawValue);
@@ -195,7 +195,7 @@ function vcardPhotoMimeType(typeParam) {
   if (raw.includes('/')) return raw.toLowerCase();
   const bareFormat = raw.toUpperCase();
   const KNOWN = { JPEG: 'image/jpeg', JPG: 'image/jpeg', PNG: 'image/png', GIF: 'image/gif', BMP: 'image/bmp', TIFF: 'image/tiff', WEBP: 'image/webp' };
-  return KNOWN[bareFormat] || 'image/jpeg';
+  return /** @type {any} */ (KNOWN)[bareFormat] || 'image/jpeg';
 }
 
 /** @param {any} [rawValue] */
@@ -248,7 +248,7 @@ function interpretABLabel(rawValue) {
  *  exist there, just not in a form this module can usefully store as
  * @param {any} [text]
  *  text. */
-export function parseVcards(text, opts = {}) {
+export function parseVcards(text, opts = /** @type {any} */ ({})) {
   const { cleanMode = true, onUnmappedProperty = null, onEmbeddedPhotoImported = null } = opts;
   const lines = unfoldVcardLines(text);
   const contacts = [];
@@ -319,13 +319,13 @@ export function parseVcards(text, opts = {}) {
         current.n = parsed.value || null;
         break;
       case 'EMAIL': {
-        const entry = { value: parsed.value, type: parsed.params.TYPE || null, label: null };
+        const entry = { value: parsed.value, type: /** @type {any} */ (parsed.params).TYPE || null, label: null };
         current.emails.push(entry);
         if (parsed.group) groupRefs[parsed.group] = entry;
         break;
       }
       case 'TEL': {
-        const entry = { value: parsed.value, type: parsed.params.TYPE || null, label: null };
+        const entry = { value: parsed.value, type: /** @type {any} */ (parsed.params).TYPE || null, label: null };
         current.tels.push(entry);
         if (parsed.group) groupRefs[parsed.group] = entry;
         break;
@@ -354,7 +354,7 @@ export function parseVcards(text, opts = {}) {
           .filter(Boolean)
           .join(', ');
         const googleLabel = cleanMode && rawParts.length >= 8 ? rawParts[7].trim() : '';
-        const label = parsed.params.LABEL || googleLabel || null;
+        const label = /** @type {any} */ (parsed.params).LABEL || googleLabel || null;
         const value = structured || label || '';
         const finalLabel = structured ? label : null; // no structured value at all -- value already equals the label, so it's not stored a second time
         // THE FIX: the real 7 components, kept in their own original,
@@ -367,7 +367,7 @@ export function parseVcards(text, opts = {}) {
         while (raw7.length < 7) raw7.push('');
         const finalRaw = structured ? raw7.join(';') : null;
         if (value) {
-          const entry = { value, label: finalLabel, raw: finalRaw, type: parsed.params.TYPE || null };
+          const entry = { value, label: finalLabel, raw: finalRaw, type: /** @type {any} */ (parsed.params).TYPE || null };
           current.adrs.push(entry);
           if (parsed.group) groupRefs[parsed.group] = entry;
         }
@@ -389,8 +389,8 @@ export function parseVcards(text, opts = {}) {
         // Only a spouse is carried over, and only when it is a NAME (VALUE=text, the usual form for one): a uri (a urn:uuid or a
         // link to another card) names no one. Any other relation (child, parent, friend ...) and a second spouse are reported
         // as skipped, like any property not carried over.
-        const types = String(parsed.params.TYPE || '').toLowerCase().split(',').map((t) => t.trim());
-        const isUri = /^uri$/i.test(String(parsed.params.VALUE || ''));
+        const types = String(/** @type {any} */ (parsed.params).TYPE || '').toLowerCase().split(',').map((t) => t.trim());
+        const isUri = /^uri$/i.test(String(/** @type {any} */ (parsed.params).VALUE || ''));
         if (types.includes('spouse') && !isUri && parsed.value && !current.spouse) current.spouse = parsed.value;
         else warnUnmapped('RELATED');
         break;
@@ -443,7 +443,7 @@ export function parseVcards(text, opts = {}) {
           // prefix would double it.
           current.photo = parsed.value;
         } else if (parsed.value) {
-          current.photo = `data:${vcardPhotoMimeType(parsed.params.TYPE)};base64,${parsed.value.replace(/\s+/g, '')}`;
+          current.photo = `data:${vcardPhotoMimeType(/** @type {any} */ (parsed.params).TYPE)};base64,${parsed.value.replace(/\s+/g, '')}`;
           if (onEmbeddedPhotoImported) onEmbeddedPhotoImported();
         }
         break;
@@ -530,7 +530,7 @@ const ADR_TYPE_TO_TREE_FIELDTYPE = { WORK: 'address-work', HOME: 'address-home' 
 function telFieldType(tel) {
   const type = (tel.type || '').toUpperCase();
   for (const key of Object.keys(TEL_TYPE_TO_TREE_FIELDTYPE)) {
-    if (type.includes(key)) return TEL_TYPE_TO_TREE_FIELDTYPE[key];
+    if (type.includes(key)) return /** @type {any} */ (TEL_TYPE_TO_TREE_FIELDTYPE)[key];
   }
   return 'phone';
 }
@@ -539,7 +539,7 @@ function telFieldType(tel) {
 function emailFieldType(email) {
   const type = (email.type || '').toUpperCase();
   for (const key of Object.keys(EMAIL_TYPE_TO_TREE_FIELDTYPE)) {
-    if (type.includes(key)) return EMAIL_TYPE_TO_TREE_FIELDTYPE[key];
+    if (type.includes(key)) return /** @type {any} */ (EMAIL_TYPE_TO_TREE_FIELDTYPE)[key];
   }
   return 'email';
 }
@@ -552,7 +552,7 @@ function emailFieldType(email) {
 function adrFieldType(adr) {
   const type = (adr.type || '').toUpperCase();
   for (const key of Object.keys(ADR_TYPE_TO_TREE_FIELDTYPE)) {
-    if (type.includes(key)) return ADR_TYPE_TO_TREE_FIELDTYPE[key];
+    if (type.includes(key)) return /** @type {any} */ (ADR_TYPE_TO_TREE_FIELDTYPE)[key];
   }
   return 'address';
 }
@@ -709,7 +709,7 @@ function buildTreeOrgFromContact(contact) {
       }
     }
     if (forceBlock || value.includes('\n')) {
-      const label = FIELDTYPE_LABELS[fieldType] || fieldType;
+      const label = /** @type {any} */ (FIELDTYPE_LABELS)[fieldType] || fieldType;
       lines.push(`** ${label}`, ':PROPERTIES:', ...propLines, ':END:', '#+BEGIN_VERSE', ...value.split('\n'), '#+END_VERSE');
     } else if (extraBlockText) {
       // Both a real, single-line title AND a separate body block --
@@ -768,7 +768,7 @@ function buildTreeOrgFromContact(contact) {
  *  "nothing to do, not an error" convention exportToVcard's own empty
  * @param {any} [vcardText]
  *  case already uses. */
-export function importVcardsAsOrgText(vcardText, opts = {}) {
+export function importVcardsAsOrgText(vcardText, opts = /** @type {any} */ ({})) {
   const { style = 'tree', cleanMode = true, onUnmappedProperty = null, onEmbeddedPhotoImported = null } = opts;
   const contacts = parseVcards(vcardText, { cleanMode, onUnmappedProperty, onEmbeddedPhotoImported });
   const builder = style === 'tree' ? buildTreeOrgFromContact : buildFlatOrgFromContact;

@@ -132,7 +132,7 @@ function applyStartupVisibility(doc, startupConfig, archiveVisibility = 'archive
  * expandFully below).
  * @param {any} [heading]
  */
-function isFullyExpanded(heading, opts = {}) {
+function isFullyExpanded(heading, opts = /** @type {any} */ ({})) {
   const { archiveVisibility = 'archived' } = opts;
   if (heading.collapsed || heading.bodyHidden || heading.drawersHidden) return false;
   for (const child of heading.children || []) {
@@ -191,7 +191,7 @@ function expandOneLevel(heading) {
  * folded by default there) rather than 'showeverything'.
  * @param {any} [heading]
  */
-function expandFully(heading, opts = {}) {
+function expandFully(heading, opts = /** @type {any} */ ({})) {
   const { archiveVisibility = 'archived' } = opts;
   if (archiveVisibility === 'archived' && isArchived(heading)) return; // refused, matching real org-mode exactly
   heading.collapsed = false;
@@ -273,7 +273,7 @@ function collapseFully(heading) {
  * Returns which state the heading ended up in: 'children' | 'full' | 'collapsed'.
  * @param {any} [heading]
  */
-function cycleFoldLevel(heading, opts = {}) {
+function cycleFoldLevel(heading, opts = /** @type {any} */ ({})) {
   const { archiveVisibility = 'archived' } = opts;
   if (archiveVisibility === 'archived' && isArchived(heading)) {
     return heading.collapsed ? 'collapsed' : 'full'; // refused -- no state change, matching real org-mode exactly

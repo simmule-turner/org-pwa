@@ -124,7 +124,7 @@ export function parseHtmlOptions(doc) {
  */
 const keywordValue = (doc, key) => {
   /** @param {any} [k] */
-  const kw = (doc.keywords || []).filter((k) => k.key.toUpperCase() === key).pop();
+  const kw = (doc.keywords || []).filter((/** @type {any} */ k) => k.key.toUpperCase() === key).pop();
   return kw ? kw.value.trim() : null;
 };
 const keywordValues = (/** @type {any} */ doc, /** @type {string} */ key) => (doc.keywords || []).filter((/** @type {any} */ k) => k.key.toUpperCase() === key).map((/** @type {any} */ k) => k.value);
@@ -284,7 +284,7 @@ function renderInline(state, rawText) {
   text = text.replace(/<<<([^<>\n]+)>>>/g, (/** @type {any} */ whole, /** @type {string} */ name) => addToken(state, `<a id="${targetId(state, name)}"></a>${escapeHtml(name)}`, whole));
   text = text.replace(/<<([^<>\n]+)>>/g, (/** @type {any} */ whole, /** @type {string} */ name) => addToken(state, `<a id="${targetId(state, name)}"></a>`, whole));
   // timestamps
-  text = text.replace(TIMESTAMP_RE, (...m) => timestampHtml(state, m));
+  text = text.replace(TIMESTAMP_RE, (/** @type {any[]} */ ...m) => timestampHtml(state, m));
 
   const { lines, fragments } = extractLatexFragments(text.split('\n'));
   const nodes = parseInline(lines.join('\n'), { latexFragments: fragments, subSuperscriptMode: state.options.sup });
@@ -339,7 +339,7 @@ function renderText(state, value) {
     let m;
     ENTITY_RE.lastIndex = 0;
     while ((m = ENTITY_RE.exec(value))) {
-      const entry = m[1][0] === '_' ? ['', '', '', '&ensp;'.repeat(m[1].length - 1)] : ENTITIES[m[1].replace(/\{\}$/, '')];
+      const entry = m[1][0] === '_' ? ['', '', '', '&ensp;'.repeat(m[1].length - 1)] : /** @type {any} */ (ENTITIES)[m[1].replace(/\{\}$/, '')];
       if (!entry) continue;
       out += plain(value.slice(last, m.index)) + entry[3];
       last = m.index + m[0].length;
@@ -413,10 +413,10 @@ function linkHref(state, target) {
  * @param {any} [name]
  * @param {any} [value]
  */
-function findByProperty(headings, name, value) {
+/** @returns {any} */ function findByProperty(/** @type {any} */ headings, /** @type {any} */ name, /** @type {any} */ value) {
   for (const h of headings) {
     if (String(getProperty(h, name) || '').trim() === value) return h;
-    const r = findByProperty(h.children || [], name, value);
+    /** @type {any} */ const r = findByProperty(h.children || [], name, value);
     if (r) return r;
   }
   return null;
@@ -601,7 +601,7 @@ function standaloneImage(el) {
 function figureHtml(state, el, image) {
   const aff = el.aff;
   const attrs = parseAttributes(aff && aff.attr.html);
-  const alt = attrs.alt !== undefined ? attrs.alt : undefined;
+  const alt = /** @type {any} */ (attrs).alt !== undefined ? /** @type {any} */ (attrs).alt : undefined;
   const rest = htmlAttributes(aff, ['alt']);
   let img = imageHtml(image.thumb || image.target, alt, rest);
   if (image.link) img = `<a href="${escapeAttr(imageSrc(image.link))}">${img}</a>`;
@@ -661,7 +661,7 @@ function tableHtml(state, el) {
   const aff = el.aff;
   // alignment/width cookie rows (`<l>`, `<r10>`, `<c>`, `<12>`) and the `/` marker column are table directives
   let rows = el.rows;
-  const cookieAlign = [];
+  /** @type {any[]} */ const cookieAlign = [];
   rows = rows.filter((/** @type {any} */ row) => {
     if (row.rule) return true;
     if (row.cells.length && row.cells.every((/** @type {any} */ c) => c === '' || /^<[lrc]?\d*>$/.test(c)) && row.cells.some((/** @type {any} */ c) => c)) {
@@ -676,7 +676,7 @@ function tableHtml(state, el) {
   const data = rows.filter((/** @type {any} */ r) => !r.rule);
   if (!data.length) return '';
   const columns = Math.max(...data.map((/** @type {any} */ r) => r.cells.length));
-  const align = [];
+  /** @type {any[]} */ const align = [];
   for (let c = 0; c < columns; c++) {
     if (cookieAlign[c]) {
       align.push(cookieAlign[c] === 'r' ? 'right' : cookieAlign[c] === 'c' ? 'center' : 'left');
@@ -846,7 +846,7 @@ function elementHtml(state, el, ctx = {}) {
  * @param {any} [elements]
  */
 function elementsHtml(state, elements, ctx = {}) {
-  const parts = [];
+  /** @type {any[]} */ const parts = [];
   elements.forEach((/** @type {HTMLElement} */ el, /** @type {number} */ i) => {
     const html = elementHtml(state, el, { ...ctx, first: i === 0 });
     if (html !== '') parts.push(html);
@@ -1208,8 +1208,8 @@ const PAGE_CSS = `
 export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = /** @type {any} */ (null) } = {}) {
   activeImages = images instanceof Map ? images : new Map();
   const state = createState(doc, scope);
-  state.namedElements = new Map();
-  state.fnDefsCollect = (/** @type {any} */ elements) => {
+  /** @type {any} */ (state).namedElements = new Map();
+  /** @type {any} */ (state).fnDefsCollect = (/** @type {any} */ elements) => {
     for (const el of elements) if (el.type === 'footnote-def') state.fnDefs.set(el.label, el.children);
   };
   const { options } = state;
@@ -1217,7 +1217,7 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
 
   const roots = scope ? scope.children || [] : doc.children || [];
   const levelOffset = scope ? scope.level : 0;
-  state.outline = buildOutline(state, roots, levelOffset, filter, []);
+  /** @type {any} */ (state).outline = buildOutline(state, roots, levelOffset, filter, []);
 
   // ids: CUSTOM_ID, else a slug of the title
   /** @param {any} [nodes] */
@@ -1232,14 +1232,14 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
       assign(node.children);
     }
   };
-  assign(state.outline);
+  assign(/** @type {any} */ (state).outline);
 
   // footnote definitions and radio/inline targets are found before anything is rendered
   const preamble = scope ? scope.bodyLines || [] : preambleBody(doc);
   const preElements = parseElements(preamble);
-  state.fnDefsCollect(preElements);
-  state.parsed = new Map();
-  state.captioned = [];
+  /** @type {any} */ (state).fnDefsCollect(preElements);
+  /** @type {any} */ (state).parsed = new Map();
+  /** @type {any} */ (state).captioned = [];
   let tableN = 0;
   let listingN = 0;
   /** @param {any} [elements] */
@@ -1248,10 +1248,10 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
       const cap = el.aff && el.aff.caption.length ? el.aff.caption[el.aff.caption.length - 1].text : null;
       if (el.type === 'table' && (cap !== null || (el.aff && el.aff.name))) {
         el.__id = (el.aff && el.aff.name) || uniqueId(state, 'table-' + (tableN + 1));
-        if (cap !== null) state.captioned.push({ kind: 'table', n: ++tableN, id: el.__id, html: renderInline(state, cap) });
+        if (cap !== null) /** @type {any} */ (state).captioned.push({ kind: 'table', n: ++tableN, id: el.__id, html: renderInline(state, cap) });
       } else if (el.type === 'block' && el.name === 'src' && (cap !== null || (el.aff && el.aff.name))) {
         el.__id = (el.aff && el.aff.name) || uniqueId(state, 'listing-' + (listingN + 1));
-        if (cap !== null) state.captioned.push({ kind: 'listing', n: ++listingN, id: el.__id, html: renderInline(state, cap) });
+        if (cap !== null) /** @type {any} */ (state).captioned.push({ kind: 'listing', n: ++listingN, id: el.__id, html: renderInline(state, cap) });
       } else if (el.type === 'list') for (const item of el.items) scan(item.children);
       else if (el.type === 'drawer') scan(parseElements(el.lines));
       else if (el.type === 'block' && ['quote', 'center'].includes(el.name)) scan(parseElements(el.lines));
@@ -1262,16 +1262,16 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
   const collect = (nodes) => {
     for (const node of nodes) {
       const els = parseElements(node.heading.bodyLines || []);
-      state.parsed.set(node.heading, els);
+      /** @type {any} */ (state).parsed.set(node.heading, els);
       scan(els);
-      state.fnDefsCollect(els);
+      /** @type {any} */ (state).fnDefsCollect(els);
       for (const line of node.heading.bodyLines || []) {
         for (const m of line.matchAll(/<<<?([^<>\n]+?)>>>?/g)) targetId(state, m[1]);
       }
       collect(node.children);
     }
   };
-  collect(state.outline);
+  collect(/** @type {any} */ (state).outline);
   for (const line of preamble) for (const m of line.matchAll(/<<<?([^<>\n]+?)>>>?/g)) targetId(state, m[1]);
 
   const radio = new Set();
@@ -1287,10 +1287,10 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
       radioWalk(node.children);
     }
   };
-  radioWalk(state.outline);
+  radioWalk(/** @type {any} */ (state).outline);
   if (radio.size) {
     const names = [...radio].sort((a, b) => b.length - a.length).map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'));
-    state.radioRe = new RegExp('(?<![\\w])(?:' + names.join('|') + ')(?![\\w])', 'gi');
+    /** @type {any} */ (state).radioRe = new RegExp('(?<![\\w])(?:' + names.join('|') + ')(?![\\w])', 'gi');
   }
 
   const out = [];
@@ -1302,10 +1302,10 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
   if (toc) out.push(toc);
   const lead = [scope ? planningHtml(state, scope) : '', elementsHtml(state, preElements)].filter(Boolean).join('\n');
   if (lead) out.push(lead);
-  for (const node of state.outline) {
+  for (const node of /** @type {any} */ (state).outline) {
     if (node.level <= options.H) out.push(sectionHtml(state, node));
   }
-  const deepTop = state.outline.filter((/** @type {any} */ n) => n.level > options.H);
+  const deepTop = /** @type {any} */ (state).outline.filter((/** @type {any} */ n) => n.level > options.H);
   if (deepTop.length) out.push(deepListHtml(state, deepTop));
   const footnotes = footnotesHtml(state);
   if (footnotes) out.push(footnotes);
@@ -1365,7 +1365,7 @@ function preambleBody(doc) {
   const lines = (doc.bodyLines || []).slice();
   const FILE_LEVEL = /^(TITLE|AUTHOR|DATE|EMAIL|OPTIONS|LANGUAGE|DESCRIPTION|KEYWORDS|EXCLUDE_TAGS|SELECT_TAGS|TODO|SEQ_TODO|TYP_TODO|TAGS|STARTUP|PROPERTY|ARCHIVE|CATEGORY|COLUMNS|PRIORITIES|MACRO|HTML_HEAD|HTML_HEAD_EXTRA|SETUPFILE|LATEX_\w*|ODT_\w*|HTML_\w*|FILETAGS|CONSTANTS|LINK|SUBTITLE|CREATOR)$/i;
   /** @param {any} [k] */
-  const keywords = (doc.keywords || []).filter((k) => !FILE_LEVEL.test(k.key));
+  const keywords = (doc.keywords || []).filter((/** @type {any} */ k) => !FILE_LEVEL.test(k.key));
   for (const k of keywords.slice().reverse()) lines.splice(Math.min(k.bodyLineIndex || 0, lines.length), 0, `#+${k.key}: ${k.value}`);
   return lines;
 }

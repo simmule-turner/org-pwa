@@ -162,7 +162,7 @@ async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlev
  * @param {any} [fetchPath]
  * @param {any} [parseOrgFn]
  *  incidental artifact of real org's own internal merging. */
-async function expandHeadingIncludes(heading, fetchPath, parseOrgFn) {
+/** @returns {Promise<any>} */ async function expandHeadingIncludes(/** @type {any} */ heading, /** @type {any} */ fetchPath, /** @type {any} */ parseOrgFn) {
   const newBodyLines = [];
   const prependedChildren = [];
   for (const line of heading.bodyLines || []) {
@@ -251,7 +251,7 @@ async function expandIncludes(doc, fetchPath, parseOrgFn) {
   if (!hasAnyInclude(doc)) return doc;
 
   /** @param {any} [k] */
-  const includeKeywords = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'INCLUDE');
+  const includeKeywords = (doc.keywords || []).filter((/** @type {any} */ k) => k.key.toUpperCase() === 'INCLUDE');
 
   const prependedHeadings = [];
   const appendedBodyLines = [];

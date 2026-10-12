@@ -47,7 +47,7 @@ export function withLineEndings(adapter, kvAdapter, { contentDerivedHash = false
   return {
     ...adapter,
     /** @param {any} [documentId] */
-    async read(documentId, ...rest) {
+    async read(documentId, /** @type {any[]} */ ...rest) {
       const result = await adapter.read(documentId, ...rest);
       if (!result || typeof result.content !== 'string') return result;
       await remember(kvAdapter, documentId, detectLineEnding(result.content));
@@ -58,7 +58,7 @@ export function withLineEndings(adapter, kvAdapter, { contentDerivedHash = false
      * @param {any} [documentId]
      * @param {any} [content]
      */
-    async write(documentId, content, ...rest) {
+    async write(documentId, content, /** @type {any[]} */ ...rest) {
       const eol = await recall(kvAdapter, documentId);
       const written = await adapter.write(documentId, fromLf(content, eol), ...rest);
       return contentDerivedHash && written ? { ...written, hash: contentHash(content) } : written;

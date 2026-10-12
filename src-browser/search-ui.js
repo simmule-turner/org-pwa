@@ -641,7 +641,7 @@ export function renderSearchResults() {
     row.style.cursor = 'pointer';
 
     const icon = document.createElement('span');
-    icon.textContent = SEARCH_TYPE_ICON[result.type] || '\u2022';
+    icon.textContent = /** @type {any} */ (SEARCH_TYPE_ICON)[result.type] || '\u2022';
     icon.style.flexShrink = '0';
     icon.style.opacity = '0.6';
     icon.style.fontSize = '1.3em';

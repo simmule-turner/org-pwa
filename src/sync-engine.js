@@ -98,7 +98,7 @@ const SYNC_RESULT = {
  * is what makes the resolution an actual user choice in the UI rather
  * than a decision baked into this module.
  */
-async function syncDocument({ documentId, kvAdapter, diskAdapter, resolveConflict }) {
+async function syncDocument(/** @type {any} */ { documentId, kvAdapter, diskAdapter, resolveConflict }) {
   const pending = await getPendingChange(kvAdapter, documentId);
   const diskEntry = await diskAdapter.read(documentId);
   const meta = await getSyncMeta(kvAdapter, documentId);

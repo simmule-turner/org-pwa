@@ -81,21 +81,21 @@ function parseExportOptions(doc) {
  *  used), trimmed, or null if the document has none at all. */
 function getDocTitle(doc) {
   /** @param {any} [k] */
-  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'TITLE');
+  const kw = (doc.keywords || []).find((/** @type {any} */ k) => k.key.toUpperCase() === 'TITLE');
   return kw ? kw.value.trim() : null;
 }
 
 /** @param {any} [doc] */
 function getDocAuthor(doc) {
   /** @param {any} [k] */
-  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'AUTHOR');
+  const kw = (doc.keywords || []).find((/** @type {any} */ k) => k.key.toUpperCase() === 'AUTHOR');
   return kw ? kw.value.trim() : null;
 }
 
 /** @param {any} [doc] */
 function getDocDate(doc) {
   /** @param {any} [k] */
-  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'DATE');
+  const kw = (doc.keywords || []).find((/** @type {any} */ k) => k.key.toUpperCase() === 'DATE');
   return kw ? kw.value.trim() : null;
 }
 

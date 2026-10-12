@@ -53,7 +53,7 @@ function parseOrgDuration(text) {
     UNIT_PART_RE.lastIndex = pos;
     const m = UNIT_PART_RE.exec(rest);
     if (!m) return null;
-    total += Number(m[1]) * UNIT_MINUTES[m[2]];
+    total += Number(m[1]) * /** @type {any} */ (UNIT_MINUTES)[m[2]];
     pos = UNIT_PART_RE.lastIndex;
   }
   return total;

@@ -166,7 +166,7 @@ export function collectAgendaCalendarEvents(docs, opts = {}) {
  * @param {any} [docs]
  *  the same window. (The file and heading scopes of that export are a different job: every dated item, with no window.) */
 export function exportAgendaToIcalendar(docs, opts = {}) {
-  const today = opts.today || new Date();
-  const events = collectAgendaCalendarEvents(docs, { ...opts, today, window: opts.window || agendaWindow(today) });
+  const today = /** @type {any} */ (opts).today || new Date();
+  const events = collectAgendaCalendarEvents(docs, { ...opts, today, window: /** @type {any} */ (opts).window || agendaWindow(today) });
   return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//org-pwa//org-pwa//EN', 'CALSCALE:GREGORIAN', ...events.flatMap((e) => e.lines), 'END:VCALENDAR'].join('\r\n') + '\r\n';
 }

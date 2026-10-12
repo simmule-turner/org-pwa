@@ -34,7 +34,8 @@ export function usableSexpName(name) {
 /** One parsed sexp argument as a plain value: numbers and strings as they are, `t` as true, `nil` as
  * @param {any} [node]
  *  null, any other symbol as its name, a list as an array. Arguments are not evaluated. */
-export function sexpArgToValue(node) {
+/** @returns {any} */
+export function sexpArgToValue(/** @type {any} */ node) {
   if (Array.isArray(node)) return node.map(sexpArgToValue);
   if (!node) return null;
   if (node.type === 'number' || node.type === 'string') return node.value;
@@ -63,11 +64,11 @@ export function userSexpKey(name, args, dayKey) {
 }
 
 /** The effective settings as strings, leaving out anything named like a credential. */
-export function visibleVariableMap(...sources) {
+export function visibleVariableMap(/** @type {any[]} */ ...sources) {
   const out = {};
   for (const source of sources) {
     for (const [name, value] of Object.entries(source || {})) {
-      if (typeof value === 'string' && !/token|password|secret|credential|auth|key/i.test(name)) out[name] = value;
+      if (typeof value === 'string' && !/token|password|secret|credential|auth|key/i.test(name)) /** @type {any} */ (out)[name] = value;
     }
   }
   return out;
@@ -101,7 +102,7 @@ const DAY_RE = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?$/;
  * @param {any} [list]
  *  "YYYY-MM-DD HH:MM"; optional end (same shape, only its time is used) and repeat ("+1d", "+2w", "+1m", "+1y"). */
 export function normalizeAgendaItems(list, max = 500) {
-  const out = [];
+  /** @type {any[]} */ const out = [];
   if (!Array.isArray(list)) return out;
   for (const raw of list) {
     if (out.length >= max) break;

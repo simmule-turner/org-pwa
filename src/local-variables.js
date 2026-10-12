@@ -55,7 +55,7 @@ function parseFirstLineCookie(text) {
   if (!m) return vars;
   for (const entry of m[1].split(';')) {
     const kv = COOKIE_ENTRY_RE.exec(entry);
-    if (kv && kv[1]) vars[kv[1]] = kv[2];
+    if (kv && kv[1]) /** @type {any} */ (vars)[kv[1]] = kv[2];
   }
   return vars;
 }
@@ -73,7 +73,7 @@ export function parseLocalVariables(text) {
 
   for (let i = startIdx + 1; i < endIdx; i++) {
     const m = LOCAL_VAR_LINE_RE.exec(lines[i].trim());
-    if (m) vars[m[1]] = m[2].trim();
+    if (m) /** @type {any} */ (vars)[m[1]] = m[2].trim();
   }
   return vars;
 }

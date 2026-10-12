@@ -82,7 +82,7 @@ function convertCharClass(inner) {
       if (end !== -1) {
         const name = inner.slice(i + 2, end);
         if (Object.prototype.hasOwnProperty.call(POSIX_CLASSES, name)) {
-          out += POSIX_CLASSES[name];
+          out += /** @type {any} */ (POSIX_CLASSES)[name];
           i = end + 2;
           continue;
         }

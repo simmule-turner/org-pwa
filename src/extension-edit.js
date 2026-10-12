@@ -15,7 +15,7 @@ export const MAX_EDITS = 500;
  * @param {any} [doc]
  */
 export function headingsInOrder(doc) {
-  const out = [];
+  /** @type {any[]} */ const out = [];
   /** @param {any} [nodes] */
   const walk = (nodes) => {
     for (const node of nodes || []) {

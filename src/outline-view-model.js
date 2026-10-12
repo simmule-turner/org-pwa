@@ -57,7 +57,7 @@ const CHECKBOX_CYCLE_WITH_CHILDREN = [' ', '-', 'X'];
  * @param {any} [doc]
  */
 function flattenVisibleRows(doc) {
-  const rows = [];
+  /** @type {any[]} */ const rows = [];
 
   /**
    * @param {any} [items]
@@ -223,7 +223,7 @@ function cycleItemCheckbox(heading, item) {
     throw new Error('cycleItemCheckbox: item has no checkbox to cycle');
   }
   /** @param {any} [list] */
-  const hasNestedItems = (item.children || []).some((list) => list.items.length > 0);
+  const hasNestedItems = (item.children || []).some((/** @type {any} */ list) => list.items.length > 0);
   const cycle = hasNestedItems ? CHECKBOX_CYCLE_WITH_CHILDREN : CHECKBOX_CYCLE_SIMPLE;
   const idx = cycle.indexOf(item.checkbox);
   const next = cycle[((idx === -1 ? 0 : idx) + 1) % cycle.length];

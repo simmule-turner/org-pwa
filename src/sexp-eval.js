@@ -117,7 +117,7 @@ function parseSexpr(text) {
   const tokens = tokenize(text);
   let pos = 0;
 
-  function parseOne() {
+  /** @returns {any} */ function parseOne() {
     const tok = tokens[pos];
     if (tok === undefined) throw new Error('Unexpected end of expression');
     if (tok === '(') {
@@ -183,7 +183,7 @@ function isTruthy(value) {
  * @param {any} [expandFn]
  * @param {any} [date]
  *  specific date match" for each one. */
-function occursOn(expandFn, date, ...args) {
+function occursOn(expandFn, date, /** @type {any[]} */ ...args) {
   return expandFn(...args, date, date).length > 0;
 }
 
@@ -240,7 +240,7 @@ function isoWeekNumber(date) {
  * @param {any} [node]
  * @param {any} [context]
  *  `false` rather than throwing -- see parseSexpr's own docs for why. */
-function evaluateSexpr(node, context) {
+/** @returns {any} */ function evaluateSexpr(/** @type {any} */ node, /** @type {any} */ context) {
   if (!Array.isArray(node)) {
     // A bare leaf outside any function call at all -- not a
     // meaningful top-level sexp timestamp on its own (real org
@@ -278,7 +278,7 @@ function evaluateSexpr(node, context) {
     }
     case 'or': {
       for (const arg of args) {
-        const value = evaluateSexpr(arg, context);
+        /** @type {any} */ const value = evaluateSexpr(arg, context);
         if (isTruthy(value)) return value;
       }
       return false;
@@ -397,7 +397,7 @@ function evaluateSexpr(node, context) {
       const fmt = args[0].value;
       const substitutionArgs = args.slice(1);
       /** @param {any} [m] */
-      const placeholderCount = (fmt.match(/%[s%]/g) || []).filter((m) => m === '%s').length;
+      const placeholderCount = (fmt.match(/%[s%]/g) || []).filter((/** @type {any} */ m) => m === '%s').length;
       if (placeholderCount > substitutionArgs.length) return false; // not enough sub-expressions to fill every %s
       let argIndex = 0;
       return fmt.replace(/%[s%]/g, (/** @type {any} */ m) => {

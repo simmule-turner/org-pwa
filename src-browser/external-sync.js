@@ -103,7 +103,7 @@ export async function reloadCurrentDocumentFromDisk() {
  * text of their own to construct for any of these shared failure modes.
  * @param {any} fileId
  */
-export async function writeToOtherFile(fileId, { label, allowMissing, mutate }) {
+export async function writeToOtherFile(fileId, /** @type {any} */ { label, allowMissing, mutate }) {
   // Same trap capture's own version of this check already described:
   // writing straight to the backing store while an unrelated pending
   // (unsynced) local edit for this SAME file is still sitting in the
@@ -223,7 +223,7 @@ export function activeDiskAdapter() {
  * 'cancel' (Cancel, Escape, or a tap on the backdrop), in which case
  * nothing has been changed anywhere.
  */
-export function openConflictResolver({ documentId, plan }) {
+export function openConflictResolver(/** @type {any} */ { documentId, plan }) {
   return new Promise((resolve) => {
     S.confirmDialogOpen = true;
     const conflicts = plan.segments.filter((/** @type {any} */ seg) => seg.type === 'conflict');
@@ -319,7 +319,7 @@ export function openConflictResolver({ documentId, plan }) {
       return wrap;
     };
 
-    const choiceButtons = []; // per conflict: { yours, other, both }
+    /** @type {any[]} */ const choiceButtons = []; // per conflict: { yours, other, both }
     let conflictIndex = 0;
     let lastStable = [];
     for (const seg of plan.segments) {
@@ -473,7 +473,7 @@ export function openConflictResolver({ documentId, plan }) {
  *  identical or metadata-only changes resolve silently, changes that
  *  fit together are merged automatically, and only genuinely
  *  overlapping edits reach the person (see planConflict). */
-export async function resolveSaveConflict({ mine, disk, base }) {
+export async function resolveSaveConflict(/** @type {any} */ { mine, disk, base }) {
   const plan = planConflict(mine, disk, base);
   if (plan.kind === 'same' || (plan.kind === 'auto' && plan.keepsMineOnly)) return 'mine';
   if (plan.kind === 'auto') return { merged: plan.mergedText };

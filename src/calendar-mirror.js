@@ -108,11 +108,11 @@ function nextSyncState(previous, wanted, outcome) {
   const next = {};
   for (const [name, entry] of Object.entries(previous)) {
     if (outcome.deleteOk.has(name)) continue;
-    if (!outcome.putOk.has(name)) next[name] = entry; // unchanged, failed, or not touched this run
+    if (!outcome.putOk.has(name)) /** @type {any} */ (next)[name] = entry; // unchanged, failed, or not touched this run
   }
-  for (const name of outcome.putOk) next[name] = { hash: wanted.get(name).hash, doc: wanted.get(name).documentId };
+  for (const name of outcome.putOk) /** @type {any} */ (next)[name] = { hash: wanted.get(name).hash, doc: wanted.get(name).documentId };
   for (const [name, resource] of wanted) {
-    if (previous[name] && previous[name].hash === resource.hash) next[name] = { hash: resource.hash, doc: resource.documentId };
+    if (previous[name] && previous[name].hash === resource.hash) /** @type {any} */ (next)[name] = { hash: resource.hash, doc: resource.documentId };
   }
   return next;
 }

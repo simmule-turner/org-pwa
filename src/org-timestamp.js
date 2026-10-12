@@ -154,7 +154,7 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
  * has already validated, not raw user text (that's setPlanningFromText's
  * job, which validates by round-tripping through parseOrgTimestamp).
  */
-function formatOrgTimestamp({ date, time = /** @type {string | null} */ (null), repeaterMark = /** @type {string | null} */ (null), repeaterValue = /** @type {string | null} */ (null), delayValue = /** @type {string | null} */ (null), active = true }) {
+function formatOrgTimestamp(/** @type {any} */ { date, time = /** @type {string | null} */ (null), repeaterMark = /** @type {string | null} */ (null), repeaterValue = /** @type {string | null} */ (null), delayValue = /** @type {string | null} */ (null), active = true }) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
     throw new Error('formatOrgTimestamp requires a valid Date');
   }

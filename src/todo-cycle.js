@@ -130,7 +130,7 @@ function fullCycle(sequence) {
  * @param {any} [sequence]
  */
 function cycleTodoState(heading, sequence, opts = {}) {
-  const direction = opts.direction === 'backward' ? -1 : 1;
+  const direction = /** @type {any} */ (opts).direction === 'backward' ? -1 : 1;
   const cycle = fullCycle(sequence);
   const currentIndex = cycle.indexOf(heading.todo);
   const idx = currentIndex === -1 ? 0 : currentIndex;

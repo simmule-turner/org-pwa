@@ -79,7 +79,7 @@ const ENTITY_RE = /\\(there4|sup[123]|frac[13][24]|[a-zA-Z]+)(\{\}|(?![A-Za-z]))
  *  dash and ellipsis characters, as ox-ascii's special strings do. Code and verbatim text never reaches here. */
 function substituteCharacters(text) {
   let t = text.replace(ENTITY_RE, (/** @type {any} */ whole, /** @type {string} */ name) => {
-    const entry = ENTITIES[name];
+    const entry = /** @type {any} */ (ENTITIES)[name];
     return entry ? entry[charsetAscii.column] : whole;
   });
   if (charsetAscii.column === 2) {
@@ -129,7 +129,7 @@ function wrapText(text, width) {
 
 // ---- inline markup ---------------------------------------------------
 
-let footnoteDefinitionsAscii = [];
+/** @type {any[]} */ let footnoteDefinitionsAscii = [];
 let anonymousFootnoteCounterAscii = 0;
 
 /** @param {any} [label] */
@@ -205,7 +205,7 @@ function renderTextAscii(text) {
  *  child so far". Reset at the start of every exportToAscii() call.
  *  Real org's own default numbering behavior -- headings are numbered
  *  "1", "1.1", "2", ... unless explicitly turned off. */
-let sectionNumbersAscii = [];
+/** @type {any[]} */ let sectionNumbersAscii = [];
 let numberingEnabledAscii = true;
 
 /** @param {any} [level] */
@@ -280,7 +280,7 @@ function renderParagraphAscii(node, indent, width) {
  * @param {any} [indent]
  * @param {any} [width]
  */
-function renderListAscii(list, indent, width) {
+/** @returns {any} */ function renderListAscii(/** @type {any} */ list, /** @type {any} */ indent, /** @type {any} */ width) {
   const out = [];
   let counter = 0;
   for (const item of list.items) {
@@ -434,7 +434,7 @@ function renderTableAscii(table, indent) {
   const columnCount = Math.max(...renderedRows.map((cells) => cells.length));
 
   const columnWidths = [];
-  const columnAlignRight = [];
+  /** @type {any[]} */ const columnAlignRight = [];
   for (let col = 0; col < columnCount; col++) {
     const columnCells = renderedRows.map((cells) => cells[col] || '');
     const explicit = explicitWidths && explicitWidths[col];
@@ -506,10 +506,10 @@ function parseBlockContent(lines) {
  * @param {any} [indent]
  * @param {any} [width]
  */
-function renderNodesAscii(nodes, indent, width) {
+/** @returns {any} */ function renderNodesAscii(/** @type {any} */ nodes, /** @type {any} */ indent, /** @type {any} */ width) {
   const out = [];
   for (const node of nodes) {
-    const rendered = renderBodyNodeAscii(node, indent, width);
+    /** @type {any} */ const rendered = renderBodyNodeAscii(node, indent, width);
     if (!rendered.length) continue;
     if (out.length) out.push('');
     out.push(...rendered);
@@ -538,7 +538,7 @@ const QUOTE_MARGIN = 6;
  * @param {any} [indent]
  * @param {any} [width]
  */
-function renderBlockAscii(block, indent, width) {
+/** @returns {any} */ function renderBlockAscii(/** @type {any} */ block, /** @type {any} */ indent, /** @type {any} */ width) {
   const name = (block.name || '').toUpperCase();
   switch (name) {
     case 'EXPORT':
@@ -559,7 +559,7 @@ function renderBlockAscii(block, indent, width) {
     case 'CENTER': {
       const out = [];
       for (const node of parseBlockContent(block.lines)) {
-        const rendered = renderBodyNodeAscii(node, indent, width);
+        /** @type {any} */ const rendered = renderBodyNodeAscii(node, indent, width);
         if (!rendered.length) continue;
         if (out.length) out.push('');
         out.push(...(node.type === 'paragraph' ? centerLines(rendered, indent, width) : rendered));
@@ -585,7 +585,7 @@ function renderParagraphRuns(node, indent, width) {
   for (const line of node.lines) {
     if (AFFILIATED.test(line)) continue;
     const kind = FIXED.test(line) ? 'fixed' : 'prose';
-    const last = runs[runs.length - 1];
+    /** @type {any} */ const last = runs[runs.length - 1];
     if (last && last.kind === kind) last.lines.push(line);
     else runs.push({ kind, lines: [line] });
   }
@@ -606,7 +606,7 @@ function renderParagraphRuns(node, indent, width) {
  * @param {any} [indent]
  * @param {any} [width]
  */
-function renderBodyNodeAscii(node, indent, width) {
+/** @returns {any} */ function renderBodyNodeAscii(/** @type {any} */ node, /** @type {any} */ indent, /** @type {any} */ width) {
   if (node.type === 'paragraph') return renderParagraphRuns(node, indent, width);
   if (node.type === 'list') return renderListAscii(node, indent, width);
   if (node.type === 'table') return renderTableAscii(node, indent);
@@ -667,7 +667,7 @@ function collectHeadingsForToc(headings, level, numbers, out) {
 function renderToc(headings, toc, numberingEnabled) {
   if (!toc) return []; // toc:nil -- no Table of Contents at all, independent of num:
   const maxDepth = typeof toc === 'number' ? toc : Infinity;
-  const entries = [];
+  /** @type {any[]} */ const entries = [];
   collectHeadingsForToc(headings, 1, [], entries);
   const visible = entries.filter((e) => e.level <= maxDepth);
   if (visible.length < 2) return []; // a single visible heading has nothing worth a table of contents for

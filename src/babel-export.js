@@ -65,7 +65,7 @@ function rewriteLines(doc, blocks, heading, lines) {
       for (let k = b.beginIndex + 1; k < b.endIndex; k++) drop.add(k);
     }
   }
-  const out = [];
+  /** @type {any[]} */ const out = [];
   lines.forEach((/** @type {any} */ l, /** @type {number} */ i) => {
     if (replace.has(i)) out.push(...replace.get(i));
     else if (!drop.has(i) && !RESULTS_LINE_RE.test(l)) out.push(l); // a #+RESULTS: line is never shown

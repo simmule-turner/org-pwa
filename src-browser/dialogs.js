@@ -526,7 +526,7 @@ export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset
  *  for every field, already trimmed for 'text' fields (a password
  *  field's own leading/trailing whitespace is preserved, since it
  *  might genuinely be part of the password). */
-export function openButtonChoiceModal({ label, buttons }) {
+export function openButtonChoiceModal(/** @type {any} */ { label, buttons }) {
   const overlay = document.createElement('div');
   overlay.className = 'ui-overlay';
   overlay.style.overflow = 'hidden';
@@ -601,7 +601,7 @@ export function openButtonChoiceModal({ label, buttons }) {
 /** A modal of buttons in a two-column grid, styled like the Capture template picker: a small dim heading, left-aligned buttons at
  *  least 44px tall, and a Close row. `buttons` is [{ key, text, onClick, disabled }]. A button with a `key` runs when that key is
  *  pressed (case matters: `o` and `O` are different buttons), and always shows the key as a badge. `showKeys` is for a phone keyboard: it focuses a hidden field so typed letters arrive. */
-export function openGridChoiceModal({ label, buttons, showKeys = false }) {
+export function openGridChoiceModal(/** @type {any} */ { label, buttons, showKeys = false }) {
   const overlay = document.createElement('div');
   overlay.className = 'ui-overlay';
   overlay.style.overflow = 'hidden';
@@ -719,7 +719,7 @@ export function openGridChoiceModal({ label, buttons, showKeys = false }) {
   return overlay;
 }
 
-export function openMultiFieldPopup({ label, fields, onSave }) {
+export function openMultiFieldPopup(/** @type {any} */ { label, fields, onSave }) {
   const overlay = document.createElement('div');
   overlay.className = 'ui-overlay';
   overlay.style.overflow = 'hidden';
@@ -779,7 +779,7 @@ export function openMultiFieldPopup({ label, fields, onSave }) {
     menuButton('OK', async () => {
       const values = {};
       for (const { key, type, entry } of fieldEntries) {
-        values[key] = type === 'password' ? entry.input.value : entry.input.value.trim();
+        /** @type {any} */ (values)[key] = type === 'password' ? entry.input.value : entry.input.value.trim();
       }
       await onSave(values);
       close();

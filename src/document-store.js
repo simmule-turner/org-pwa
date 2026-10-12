@@ -51,7 +51,7 @@ function unwrap(result) {
  * changes" rather than a dead end that leaves them sitting inaccessible
  * in IndexedDB with no path back to them.
  */
-async function openDocument({ documentId, kvAdapter, diskAdapter, preferCache = false }) {
+async function openDocument(/** @type {any} */ { documentId, kvAdapter, diskAdapter, preferCache = false }) {
   const cacheKey = 'doc:' + documentId;
 
   if (preferCache) {
@@ -84,7 +84,7 @@ async function openDocument({ documentId, kvAdapter, diskAdapter, preferCache = 
  * the same content in the outbox for a later sync to disk. Does not sync
  * to disk itself — that's a separate, explicit step (see saveAndSync).
  */
-async function saveDocument({ documentId, doc, kvAdapter }) {
+async function saveDocument(/** @type {any} */ { documentId, doc, kvAdapter }) {
   const content = serializeOrg(doc);
   await kvAdapter.set('doc:' + documentId, content);
   await enqueueChange(kvAdapter, documentId, content);
@@ -97,7 +97,7 @@ async function saveDocument({ documentId, doc, kvAdapter }) {
  * call saveDocument repeatedly and defer sync until connectivity/user
  * action, which is why the two are kept separate rather than fused.
  */
-async function saveAndSync({ documentId, doc, kvAdapter, diskAdapter, resolveConflict }) {
+async function saveAndSync(/** @type {any} */ { documentId, doc, kvAdapter, diskAdapter, resolveConflict }) {
   await saveDocument({ documentId, doc, kvAdapter });
   return syncDocument({ documentId, kvAdapter, diskAdapter, resolveConflict });
 }
@@ -146,7 +146,7 @@ async function markDocumentClosed(kvAdapter, documentId) {
 
 /** Opens every currently-registered document, e.g. on app launch or to
  *  build the agenda view (§10) across the open file set. */
-async function openAllDocuments({ kvAdapter, diskAdapter }) {
+async function openAllDocuments(/** @type {any} */ { kvAdapter, diskAdapter }) {
   const ids = await listOpenDocuments(kvAdapter);
   const results = [];
   for (const documentId of ids) {

@@ -43,7 +43,7 @@ export async function openCameraPanel(kind, onAttach) {
     render();
     return;
   }
-  let stream;
+  /** @type {any} */ let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: kind === 'video' });
   } catch (err) {
@@ -56,7 +56,7 @@ export async function openCameraPanel(kind, onAttach) {
   /** @type {MediaRecorder | null} */
   /** @type {any} */
   let recorder = null;
-  let chunks = [];
+  /** @type {any[]} */ let chunks = [];
   /** @type {Blob | null} */
   let captured = null; // the Blob in review
   /** @type {string | null} */
@@ -95,7 +95,7 @@ export async function openCameraPanel(kind, onAttach) {
   live.srcObject = stream;
   live.style.cssText = 'display:block;width:100%;max-height:60vh;background:#000;border-radius:6px;';
 
-  const stopStream = () => stream.getTracks().forEach((track) => track.stop());
+  const stopStream = () => stream.getTracks().forEach((/** @type {any} */ track) => track.stop());
   const wasOpen = S.buttonChoiceModalOpen;
   S.buttonChoiceModalOpen = true;
   const stopTrackingViewport = keepOverlayInVisibleViewport(overlay);

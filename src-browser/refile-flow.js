@@ -48,16 +48,16 @@ import { rememberRefileTarget } from './sync-helpers.js';
 export async function loadRefileTargetDocs(targetsSpec) {
   const docsById = {};
   for (const { documentId, doc } of aggregateAgendaDocs({ writable: true })) { // a local agenda file is read-only, so never a destination
-    docsById[documentId] = doc;
+    /** @type {any} */ (docsById)[documentId] = doc;
   }
   const adapter = activeDiskAdapter();
   for (const entry of targetsSpec) {
     if (entry.fileSpec === 'current' || entry.fileSpec === 'agenda-files') continue;
     for (const documentId of resolveEntryFileIds(entry, S.state.documentId, S.agendaFilesConfig)) {
-      if (docsById[documentId]) continue;
+      if (/** @type {any} */ (docsById)[documentId]) continue;
       try {
         const existing = await adapter.read(documentId);
-        if (existing) docsById[documentId] = parseOrg(existing.content);
+        if (existing) /** @type {any} */ (docsById)[documentId] = parseOrg(existing.content);
       } catch {
         // Omitted, not an error -- see doc comment above.
       }

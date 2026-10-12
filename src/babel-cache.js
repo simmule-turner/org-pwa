@@ -18,7 +18,7 @@ export async function sha1Hex(text) {
 
 /** The hash of what decides a block's result: its language, the code after Noweb, the variables as they arrive, and
  *  the header arguments that change the shape of the result. */
-export function cacheHash({ lang, args, vars, code }) {
+export function cacheHash(/** @type {any} */ { lang, args, vars, code }) {
   const results = String((args && args.results) || '')
     .split(/\s+/)
     .filter((w) => w && !IGNORED_RESULT_WORDS.has(w))

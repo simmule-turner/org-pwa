@@ -96,7 +96,7 @@ export const FONT_FAMILY_STACKS = {
 export function applyFontFamily(fontFamily) {
   document.documentElement.style.setProperty(
     '--app-font-family',
-    FONT_FAMILY_STACKS[fontFamily] || FONT_FAMILY_STACKS.system
+    /** @type {any} */ (FONT_FAMILY_STACKS)[fontFamily] || FONT_FAMILY_STACKS.system
   );
 }
 

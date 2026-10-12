@@ -64,7 +64,7 @@ function isSequenceInProgress(state) {
  * @param {any} [index]
  */
 function godModeContinuations(state, index, depth = 0) {
-  const out = [];
+  /** @type {any[]} */ const out = [];
   for (const [rawKey, shift, display] of CANDIDATES) {
     const next = processKey(state, rawKey, shift);
     if (next.state.pendingModifier !== state.pendingModifier && next.chordString === state.chordString) {
@@ -87,7 +87,7 @@ function godModeContinuations(state, index, depth = 0) {
     if (children.length) out.push({ key: 'SPC', rawKey: ' ', shift: false, chord: null, complete: false, count: children.reduce((n, c) => n + Math.max(1, c.count), 0), children });
   }
   // finished chords first, then keys that lead on to more
-  return out.sort((a, b) => (a.count > 0 ? 1 : 0) - (b.count > 0 ? 1 : 0) || (a.key.length - b.key.length) || (a.key < b.key ? -1 : 1));
+  return out.sort((a, b) => (a.count > 0 ? 1 : 0) - (b.count > 0 ? 1 : 0) || (/** @type {any} */ (a.key).length - /** @type {any} */ (b.key).length) || (a.key < b.key ? -1 : 1));
 }
 
 export { makeChordIndex, godModeContinuations, isSequenceInProgress };

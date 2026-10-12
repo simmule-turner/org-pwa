@@ -150,9 +150,9 @@ function localBody(f) {
 /** @param {any} [f] */
 function unconfiguredBody(f) {
   const box = div('border:1px dashed var(--border-strong);border-radius:var(--radius-control);padding:16px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;');
-  box.appendChild(div('font-weight:600;', `${LABEL[f.type]} isn't set up yet`));
+  box.appendChild(div('font-weight:600;', `${/** @type {any} */ (LABEL)[f.type]} isn't set up yet`));
   box.appendChild(div('font-size:13px;opacity:.7;', f.type === 'github' ? 'Add a repository and access token to browse it here.' : 'Add a server address and login to browse it here.'));
-  const btn = menuButton(`Open ${LABEL[f.type]} settings`, () => {
+  const btn = menuButton(`Open ${/** @type {any} */ (LABEL)[f.type]} settings`, () => {
     closeFileScreen();
     settingsBtn.click();
   });
@@ -173,7 +173,7 @@ function listBody(f) {
     up.dataset.act = 'up';
     crumb.appendChild(up);
   }
-  const where = div('opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', `${LABEL[f.type]}: /${f.folder}`);
+  const where = div('opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', `${/** @type {any} */ (LABEL)[f.type]}: /${f.folder}`);
   crumb.appendChild(where);
   wrap.appendChild(crumb);
   const list = div('border:1px solid var(--border-strong);border-radius:var(--radius-control);overflow-y:auto;overscroll-behavior:contain;min-height:80px;flex:1 1 auto;');

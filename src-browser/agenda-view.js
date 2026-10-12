@@ -81,7 +81,7 @@ export function buildAgendaEffortPanel() {
     el.style.color = 'var(--fg)';
   };
   /** @param {any} [labelText] */
-  const row = (labelText, ...controls) => {
+  const row = (labelText, /** @type {any[]} */ ...controls) => {
     const r = document.createElement('div');
     r.style.display = 'flex';
     r.style.flexWrap = 'wrap';
@@ -240,14 +240,14 @@ export function renderAgendaView() {
 
   const AGENDA_VIEW_CYCLE = ['day', 'week', 'month'];
   const AGENDA_VIEW_LABELS = { day: 'Day', week: 'Week', month: 'Month' };
-  const viewToggleBtn = agendaControlBtn(AGENDA_VIEW_LABELS[S.agendaViewType], () => {
+  const viewToggleBtn = agendaControlBtn(/** @type {any} */ (AGENDA_VIEW_LABELS)[S.agendaViewType], () => {
     const nextIndex = (AGENDA_VIEW_CYCLE.indexOf(S.agendaViewType) + 1) % AGENDA_VIEW_CYCLE.length;
     S.agendaViewType = AGENDA_VIEW_CYCLE[nextIndex];
     render();
   });
   viewToggleBtn.style.width = '64px'; // fixed -- fits "Month", the longest label, without the button's own size shifting as the label cycles
   viewToggleBtn.style.textAlign = 'center';
-  viewToggleBtn.setAttribute('aria-label', 'Switch agenda view (currently ' + AGENDA_VIEW_LABELS[S.agendaViewType] + ')');
+  viewToggleBtn.setAttribute('aria-label', 'Switch agenda view (currently ' + /** @type {any} */ (AGENDA_VIEW_LABELS)[S.agendaViewType] + ')');
   controls.appendChild(viewToggleBtn);
 
   controls.appendChild(
@@ -371,7 +371,7 @@ export function renderAgendaView() {
     const loadingCount = entries.filter((/** @type {any} */ e) => e && e.loading).length;
     const errored = S.agendaFilesConfig
       .map((/** @type {any} */ f, /** @type {number} */ i) => ({ f, entry: entries[i] }))
-      .filter(({ entry }) => entry && entry.error);
+      .filter((/** @type {any} */ { entry }) => entry && entry.error);
     if (loadingCount > 0 || errored.length > 0) {
       const agendaFilesStatus = document.createElement('div');
       agendaFilesStatus.style.fontSize = '11px';
@@ -380,7 +380,7 @@ export function renderAgendaView() {
       if (loadingCount > 0) parts.push(`Loading ${loadingCount} agenda file${loadingCount === 1 ? '' : 's'}\u2026`);
       if (errored.length > 0) {
         agendaFilesStatus.style.color = '#c0392b';
-        parts.push(errored.map(({ f, entry }) => `"${f}": ${entry.error}`).join('; '));
+        parts.push(errored.map((/** @type {any} */ { f, entry }) => `"${f}": ${entry.error}`).join('; '));
       }
       agendaFilesStatus.textContent = parts.join(' ');
       container.appendChild(agendaFilesStatus);

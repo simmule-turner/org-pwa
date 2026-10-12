@@ -33,12 +33,12 @@ function splitAffiliated(lines) {
 function parseAttrOptions(value) {
   const options = {};
   const re = /(?:^|\s):([A-Za-z][\w-]*)(?=\s|$)/g;
-  const marks = [];
+  /** @type {any[]} */ const marks = [];
   let m;
   while ((m = re.exec(value)) !== null) marks.push({ name: m[1].toLowerCase(), end: re.lastIndex, start: m.index });
   marks.forEach((mark, n) => {
     const stop = n + 1 < marks.length ? marks[n + 1].start : value.length;
-    options[mark.name] = value.slice(mark.end, stop).trim();
+    /** @type {any} */ (options)[mark.name] = value.slice(mark.end, stop).trim();
   });
   return options;
 }
@@ -59,7 +59,7 @@ function imageOptions(affiliated) {
   const lines = affiliated.filter((/** @type {any} */ a) => a.key === 'ATTR_HTML').concat(affiliated.filter((/** @type {any} */ a) => a.key === 'ATTR_ORG'));
   const merged = {};
   for (const a of lines.reverse()) Object.assign(merged, parseAttrOptions(a.value)); // ATTR_HTML wins over ATTR_ORG
-  return { width: cssLength(merged.width), height: cssLength(merged.height), center: /^center$/i.test(merged.align || '') };
+  return { width: cssLength(/** @type {any} */ (merged).width), height: cssLength(/** @type {any} */ (merged).height), center: /^center$/i.test(/** @type {any} */ (merged).align || '') };
 }
 
 /**

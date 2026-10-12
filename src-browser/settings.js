@@ -587,8 +587,8 @@ export async function setExtensionApproval(kvAdapter, hash) {
 export async function exportAllSettings(kvAdapter) {
   const settings = {};
   for (const name of Object.keys(KEYS)) {
-    const value = await getJson(kvAdapter, KEYS[name], undefined);
-    if (value !== undefined) settings[name] = value;
+    const value = await getJson(kvAdapter, /** @type {any} */ (KEYS)[name], undefined);
+    if (value !== undefined) /** @type {any} */ (settings)[name] = value;
   }
   return { format: 'org-pwa-settings', version: 1, exportedAt: new Date().toISOString(), settings };
 }
@@ -613,7 +613,7 @@ export async function importAllSettings(kvAdapter, bundle) {
   const settings = (bundle && typeof bundle === 'object' && bundle.settings) || {};
   const imported = [];
   for (const [name, value] of Object.entries(settings)) {
-    const key = KEYS[name];
+    const key = /** @type {any} */ (KEYS)[name];
     if (!key) continue;
     await setJson(kvAdapter, key, value);
     imported.push(name);

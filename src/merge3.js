@@ -57,7 +57,7 @@ function diffHunksOfLines(a, b) {
 
   // Turn the matched pairs (a-index, b-index, both relative to the
   // trimmed middle) into hunks over the whole arrays.
-  const hunks = [];
+  /** @type {any[]} */ const hunks = [];
   let ai = 0;
   let bi = 0;
   /**
@@ -226,7 +226,7 @@ function merge3(baseText, mineText, theirsText) {
 
   const segments = [];
   const stats = { mineOnly: 0, theirsOnly: 0, identical: 0, conflicts: 0 };
-  let stable = [];
+  /** @type {any[]} */ let stable = [];
   const flushStable = () => {
     if (stable.length) {
       segments.push({ type: 'stable', lines: stable });
@@ -292,7 +292,7 @@ function merge3(baseText, mineText, theirsText) {
   flushStable();
 
   const result = { segments, conflictCount: stats.conflicts, stats };
-  if (stats.conflicts === 0) result.mergedText = segments.flatMap((s) => s.lines).join('\n');
+  if (stats.conflicts === 0) /** @type {any} */ (result).mergedText = segments.flatMap((s) => /** @type {any} */ (s).lines).join('\n');
   return result;
 }
 
@@ -372,7 +372,7 @@ function planConflict(mine, theirs, base) {
     const r = merge3(base, mine, theirs);
     if (r) {
       if (r.conflictCount === 0) {
-        return { kind: 'auto', mergedText: r.mergedText, stats: r.stats, keepsMineOnly: r.mergedText === mine };
+        return { kind: 'auto', mergedText: /** @type {any} */ (r).mergedText, stats: r.stats, keepsMineOnly: /** @type {any} */ (r).mergedText === mine };
       }
       return { kind: 'review', segments: r.segments, conflictCount: r.conflictCount, hasBase: true, stats: r.stats };
     }

@@ -251,9 +251,9 @@ export function createWebdavAdapter(getConfig) {
     const existing = await readImpl(fileId);
     const headers = { ...authHeader(config), 'Content-Type': 'text/plain; charset=utf-8' };
     if (existing && existing.hash) {
-      headers['If-Match'] = existing.hash;
+      /** @type {any} */ (headers)['If-Match'] = existing.hash;
     } else if (!existing) {
-      headers['If-None-Match'] = '*';
+      /** @type {any} */ (headers)['If-None-Match'] = '*';
     }
     let res = await fetchWithHint(fileUrl(config, fileId), {
       method: 'PUT',
@@ -289,9 +289,9 @@ export function createWebdavAdapter(getConfig) {
     const existing = await readBinaryImpl(fileId);
     const headers = { ...authHeader(config), 'Content-Type': 'application/octet-stream' };
     if (existing && existing.hash) {
-      headers['If-Match'] = existing.hash;
+      /** @type {any} */ (headers)['If-Match'] = existing.hash;
     } else if (!existing) {
-      headers['If-None-Match'] = '*';
+      /** @type {any} */ (headers)['If-None-Match'] = '*';
     }
     let res = await fetchWithHint(fileUrl(config, fileId), {
       method: 'PUT',
@@ -367,7 +367,7 @@ export function createWebdavAdapter(getConfig) {
       const name = relative.split('/').pop();
       results.push({ name, path: relative, type: entry.isCollection ? 'dir' : 'file' });
     }
-    return results.sort((a, b) => {
+    return results.sort((/** @type {any} */ a, /** @type {any} */ b) => {
       if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
       return a.name.localeCompare(b.name);
     });

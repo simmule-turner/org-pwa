@@ -62,7 +62,7 @@ function visibleVariables() {
   const merged = { ...(S.globalVariables || {}), ...((S.state && S.state.localVariables) || {}) };
   const out = {};
   for (const [name, value] of Object.entries(merged)) {
-    if (typeof value === 'string' && !SECRET_NAME_RE.test(name)) out[name] = value;
+    if (typeof value === 'string' && !SECRET_NAME_RE.test(name)) /** @type {any} */ (out)[name] = value;
   }
   return out;
 }

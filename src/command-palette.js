@@ -53,7 +53,7 @@ function startsAWord(haystack, token) {
  * @param {any} [fields]
  */
 function scoreToken(token, fields) {
-  let best = null;
+  /** @type {any} */ let best = null;
   /** @param {any} [score] */
   const consider = (score) => {
     if (best === null || score < best) best = score;
@@ -94,12 +94,12 @@ function fieldsOf(command) {
  * @param {any} [commands]
  * @param {any} [query]
  */
-function searchCommands(commands, query, { recentIds = [] } = {}) {
+function searchCommands(commands, query, /** @type {any} */ { recentIds = [] } = {}) {
   const tokens = String(query == null ? '' : query)
     .split(/\s+/)
     .map(normalize)
     .filter(Boolean);
-  const recentRank = new Map(recentIds.map((id, i) => [id, i]));
+  const recentRank = new Map(recentIds.map((/** @type {any} */ id, /** @type {any} */ i) => [id, i]));
   /** @param {any} [command] */
   const rankOf = (command) => (recentRank.get(command.id) ?? Infinity);
 
@@ -109,7 +109,7 @@ function searchCommands(commands, query, { recentIds = [] } = {}) {
     return [...recent.map((/** @type {any} */ command) => ({ command, recent: true })), ...rest.map((/** @type {any} */ command) => ({ command, recent: false }))];
   }
 
-  const scored = [];
+  /** @type {any[]} */ const scored = [];
   commands.forEach((/** @type {any} */ command, /** @type {number} */ index) => {
     const fields = fieldsOf(command);
     let total = 0;
@@ -147,7 +147,7 @@ function pushRecent(recentIds, id, max = 8) {
  * entries with no label, are skipped.
  */
 function dynamicCommandSpecs({ templates = /** @type {any[]} */ ([]), extraEntries = /** @type {any[]} */ ([]) } = {}) {
-  const specs = [];
+  /** @type {any[]} */ const specs = [];
   const taken = new Set();
   /** @param {any} [base] */
   const unique = (base) => {

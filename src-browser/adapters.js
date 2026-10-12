@@ -16,7 +16,7 @@ import { createWebdavAdapter } from './webdav-adapter.js';
 const localFileAdapter = {
   // A file the person opened through the picker is found by its name and used where it was picked. Any other name is looked up
   // in the org-pwa folder, if one is chosen (local-folder.js), so `local:contacts.org` and the like resolve without a picker.
-  async read(...args) {
+  async read(/** @type {any[]} */ ...args) {
     const picked = await platform.localFiles.adapter.read(...args);
     if (picked || !folderAvailable()) return picked;
     return readFolderText(args[0]);
@@ -25,7 +25,7 @@ const localFileAdapter = {
    * @param {any} [id]
    * @param {any} [content]
    */
-  async write(id, content, ...rest) {
+  async write(id, content, /** @type {any[]} */ ...rest) {
     if (folderAvailable() && (await platform.localFiles.adapter.access(id)) === 'none') return writeFolderText(id, content);
     return platform.localFiles.adapter.write(id, content, ...rest);
   },
@@ -40,10 +40,10 @@ const localFileAdapter = {
     return (await folderFileExists(id)) ? 'granted' : 'none';
   },
   // attachments live in the same folder (see attachments-store.js), not beside the document
-  readBinary: (...args) => platform.attachments.adapter.readBinary(...args),
-  writeBinary: (...args) => platform.attachments.adapter.writeBinary(...args),
-  delete: (...args) => platform.attachments.adapter.delete(...args),
-  list: (...args) => platform.attachments.adapter.list(...args),
+  readBinary: (/** @type {any[]} */ ...args) => platform.attachments.adapter.readBinary(...args),
+  writeBinary: (/** @type {any[]} */ ...args) => platform.attachments.adapter.writeBinary(...args),
+  delete: (/** @type {any[]} */ ...args) => platform.attachments.adapter.delete(...args),
+  list: (/** @type {any[]} */ ...args) => platform.attachments.adapter.list(...args),
 };
 export const filesystemAdapter = withLineEndings(localFileAdapter, kv, { contentDerivedHash: true });
 

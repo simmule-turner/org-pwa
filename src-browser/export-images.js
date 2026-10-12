@@ -15,7 +15,7 @@ const IMAGE_LINK_RE = /\[\[((?:file:|attachment:)?[^\]\n]+?\.(?:png|jpe?g|gif|sv
  * @param {any} [scope]
  */
 function headingsToScan(doc, scope) {
-  const out = [];
+  /** @type {any[]} */ const out = [];
   /** @param {any} [h] */
   const walk = (h) => {
     out.push(h);

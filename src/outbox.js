@@ -34,7 +34,7 @@ function outboxKey(documentId) {
 async function enqueueChange(adapter, documentId, content, opts = {}) {
   const entry = {
     content,
-    queuedAt: opts.now ? opts.now.toISOString() : new Date().toISOString(),
+    queuedAt: /** @type {any} */ (opts).now ? /** @type {any} */ (opts).now.toISOString() : new Date().toISOString(),
   };
   await adapter.set(outboxKey(documentId), JSON.stringify(entry));
   return entry;

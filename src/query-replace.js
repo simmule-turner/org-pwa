@@ -13,7 +13,7 @@ import { renameHeading } from './heading-edit.js';
  * @param {any} [doc]
  *  of where this text lives, for the replace prompt's own display. */
 function collectReplaceTargets(doc) {
-  const targets = [];
+  /** @type {any[]} */ const targets = [];
 
   /** @param {any} [heading] */
   function addHeading(heading) {

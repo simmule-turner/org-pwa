@@ -18,7 +18,7 @@ function extensionMain() {
   const exporters = new Map();
   /** @type {any} */
   let current = null; // the command being run: { document, edits, notices }
-  const logs = [];
+  /** @type {any[]} */ const logs = [];
   const waiting = new Map();
   let lastRid = 0;
   /**
@@ -40,7 +40,7 @@ function extensionMain() {
       return String(v);
     }
   };
-  const log = (...a) => {
+  const log = (/** @type {any[]} */ ...a) => {
     if (logs.length < 50) logs.push(a.map(show).join(' ').slice(0, 500));
   };
   /** @param {any} [v] */
@@ -314,7 +314,7 @@ function extensionMain() {
  * or { ok: false, message, logs }. A call that takes longer than `callTimeoutMs` closes the sandbox and
  * rejects, so a script that hangs cannot stay running.
  */
-export async function startExtension({ code, variables = {}, onRpc = /** @type {((method: any, args: any) => any) | null} */ (null), initTimeoutMs = 3000, callTimeoutMs = 3000, commandTimeoutMs = 5000, eventTimeoutMs = 2000 }) {
+export async function startExtension(/** @type {any} */ { code, variables = {}, onRpc = /** @type {((method: any, args: any) => any) | null} */ (null), initTimeoutMs = 3000, callTimeoutMs = 3000, commandTimeoutMs = 5000, eventTimeoutMs = 2000 }) {
   const box = await startSandbox(extensionMain, { onRpc });
   if (!box.ok) return { ok: false, message: box.message, logs: [] };
   let nextId = 1;

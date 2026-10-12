@@ -83,7 +83,7 @@ const MULTI_VALUE_KEYS = new Set(['set', 'line']);
 /** Mirrors real elisp's own (read-from-string ...) for exactly the
  * @param {any} [text]
  *  three value shapes parsePlotOptions's own regex can ever capture. */
-function readPlotValue(text) {
+/** @returns {any} */ function readPlotValue(/** @type {any} */ text) {
   if (text.startsWith('"') && text.endsWith('"')) return text.slice(1, -1);
   if (text.startsWith('(') && text.endsWith(')')) {
     const inner = text.slice(1, -1).trim();
@@ -116,10 +116,10 @@ export function parsePlotOptions(text) {
       const all = [];
       let m;
       while ((m = re.exec(text))) all.push(readPlotValue(m[1]));
-      if (all.length) options[key] = all;
+      if (all.length) /** @type {any} */ (options)[key] = all;
     } else {
       const m = new RegExp(pattern).exec(text);
-      if (m) options[key] = readPlotValue(m[1]);
+      if (m) /** @type {any} */ (options)[key] = readPlotValue(m[1]);
     }
   }
   return options;
@@ -207,7 +207,7 @@ const SERIES_COLORS = ['#4C78A8', '#F58518', '#54A24B', '#E45756', '#72B7B2', '#
 
 /** @param {any} [s] */
 function escapeXml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
+  return String(s).replace(/[&<>"']/g, (c) => /** @type {any} */ ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]);
 }
 
 /** Renders a 2D plot (`type:2d`, real org-plot's own default) as a

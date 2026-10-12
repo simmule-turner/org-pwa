@@ -29,9 +29,9 @@ import { platform } from './platform.js';
  * @param {any} [heading]
  */
 export function attachSlideLeftToFold(el, heading, opts = {}) {
-  const onFolded = opts.onFolded || render;
+  const onFolded = /** @type {any} */ (opts).onFolded || render;
   const archiveVisibility =
-    opts.archiveVisibility || (getCycleOpenArchivedTrees(S.state.localVariables) ? 'noarchived' : 'archived');
+    /** @type {any} */ (opts).archiveVisibility || (getCycleOpenArchivedTrees(S.state.localVariables) ? 'noarchived' : 'archived');
   /** @type {any} */
   let startX = null;
   /** @type {any} */
@@ -71,7 +71,7 @@ export function attachSlideLeftToFold(el, heading, opts = {}) {
  * @param {any} [heading]
  */
 export function attachSlideRightToComplete(el, heading, opts = {}) {
-  const onDone = opts.onDone || (() => commitAndRender('Completed via swipe'));
+  const onDone = /** @type {any} */ (opts).onDone || (() => commitAndRender('Completed via swipe'));
   /** @type {any} */
   let startX = null;
   /** @type {any} */

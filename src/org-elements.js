@@ -81,7 +81,7 @@ export function parseAttributes(values) {
       const key = m[1].slice(1);
       let value = m[2] === undefined ? '' : m[2].trim();
       if (/^".*"$/.test(value)) value = value.slice(1, -1).replace(/\\(["\\])/g, '$1');
-      out[key] = value;
+      /** @type {any} */ (out)[key] = value;
     }
   }
   return out;
@@ -181,7 +181,7 @@ function parseList(lines, start) {
     if (rest.trim() !== '') contentLines.push(rest);
     const strip = Math.min(...bodyLines.filter((l) => !isBlank(l)).map(indentOf), contentIndent);
     for (const l of bodyLines) contentLines.push(isBlank(l) ? '' : dedent(l, strip));
-    item.children = parseElements(contentLines);
+    /** @type {any} */ (item).children = parseElements(contentLines);
     items.push(item);
     i = j;
     // a blank line (or two) between items is fine; the next item continues the list
@@ -241,7 +241,7 @@ function interruptsParagraph(line) {
 
 /** @param {any} [lines] */
 export function parseElements(lines) {
-  const out = [];
+  /** @type {any[]} */ const out = [];
   /** @type {any} */
   let aff = null;
   /** @param {any} [el] */

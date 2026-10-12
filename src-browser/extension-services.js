@@ -166,7 +166,7 @@ async function doFetch(url, options, isHostOk) {
  * The request handler for one script or block. `declared` is { hosts, location } when the code's header
  * lists what it needs (source blocks); null for the init script, which is asked as it goes.
  */
-export function createServices({ owner, declared = /** @type {any} */ (null) }) {
+export function createServices(/** @type {any} */ { owner, declared = /** @type {any} */ (null) }) {
   const refused = new Map(); // host -> when it was refused: not asked again for a while, so a script in a loop cannot flood the person with questions
   /**
    * @param {any} [host]

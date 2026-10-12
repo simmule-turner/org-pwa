@@ -123,7 +123,7 @@ function buildClocktableRows(headings, level, maxlevel, totals, rows) {
 function computeClocktable(doc, tstartStr, tendStr, maxlevel = 2) {
   const { tstart, tend } = parseClocktableRange(tstartStr, tendStr);
   const totals = computeSubtreeTotals(doc.children || [], tstart, tend, new Map());
-  const rows = [];
+  /** @type {any[]} */ const rows = [];
   buildClocktableRows(doc.children || [], 1, maxlevel, totals, rows);
   const totalMinutes = rows.filter((r) => r.level === 1).reduce((sum, r) => sum + r.minutes, 0);
   return { rows, totalMinutes };
@@ -148,7 +148,7 @@ function formatClocktableDuration(minutes) {
  * @param {any} tstartStr
  * @param {any} tendStr
  */
-function renderClocktable({ rows, totalMinutes }, tstartStr, tendStr, now = new Date(), maxlevel = 2) {
+function renderClocktable({ rows, totalMinutes }, /** @type {any} */ tstartStr, tendStr, now = new Date(), maxlevel = 2) {
   const lines = [];
   const tstartPart = tstartStr ? ` :tstart "${tstartStr}"` : '';
   const tendPart = tendStr ? ` :tend "${tendStr}"` : '';

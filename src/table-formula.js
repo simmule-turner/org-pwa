@@ -819,58 +819,58 @@ function parseExpression(tokens) {
     if (next() !== tok) throw new Error(`Expected "${tok}" in formula`);
   }
 
-  function parseExpr() {
+  /** @returns {any} */ function parseExpr() {
     return parseOr();
   }
-  function parseOr() {
-    let node = parseAnd();
+  /** @returns {any} */ function parseOr() {
+    /** @type {any} */ let node = parseAnd();
     while (peek() === '||') {
       next();
       node = { type: 'binop', op: '||', left: node, right: parseAnd() };
     }
     return node;
   }
-  function parseAnd() {
-    let node = parseComparison();
+  /** @returns {any} */ function parseAnd() {
+    /** @type {any} */ let node = parseComparison();
     while (peek() === '&&') {
       next();
       node = { type: 'binop', op: '&&', left: node, right: parseComparison() };
     }
     return node;
   }
-  function parseComparison() {
-    let node = parseAdditive();
+  /** @returns {any} */ function parseComparison() {
+    /** @type {any} */ let node = parseAdditive();
     while (peek() === '==' || peek() === '=' || peek() === '!=' || peek() === '<' || peek() === '>' || peek() === '<=' || peek() === '>=') {
       const op = next();
       node = { type: 'binop', op: op === '=' ? '==' : op, left: node, right: parseAdditive() };
     }
     return node;
   }
-  function parseAdditive() {
-    let node = parseTerm();
+  /** @returns {any} */ function parseAdditive() {
+    /** @type {any} */ let node = parseTerm();
     while (peek() === '+' || peek() === '-') {
       const op = next();
       node = { type: 'binop', op, left: node, right: parseTerm() };
     }
     return node;
   }
-  function parseTerm() {
-    let node = parsePower();
+  /** @returns {any} */ function parseTerm() {
+    /** @type {any} */ let node = parsePower();
     while (peek() === '*' || peek() === '/') {
       const op = next();
       node = { type: 'binop', op, left: node, right: parsePower() };
     }
     return node;
   }
-  function parsePower() {
-    const node = parseUnary();
+  /** @returns {any} */ function parsePower() {
+    /** @type {any} */ const node = parseUnary();
     if (peek() === '^') {
       next();
       return { type: 'binop', op: '^', left: node, right: parsePower() }; // right-associative: 2^3^2 = 2^(3^2)
     }
     return node;
   }
-  function parseUnary() {
+  /** @returns {any} */ function parseUnary() {
     if (peek() === '-') {
       next();
       return { type: 'neg', operand: parseUnary() };
@@ -881,15 +881,15 @@ function parseExpression(tokens) {
     }
     return parseAtom();
   }
-  function parseAtom() {
+  /** @returns {any} */ function parseAtom() {
     const tok = peek();
     if (tok === undefined) throw new Error('Unexpected end of formula');
     if (tok === '(') {
       next();
-      const node = parseExpr();
+      /** @type {any} */ const node = parseExpr();
       if (peek() === ',') {
         next();
-        const imaginary = parseExpr();
+        /** @type {any} */ const imaginary = parseExpr();
         expect(')');
         return { type: 'complexLiteral', re: node, im: imaginary };
       }
@@ -942,7 +942,7 @@ function parseExpression(tokens) {
       }
       if (name === 'format-time-string') {
         expect('(');
-        const args = [parseExpr()];
+        /** @type {any} */ const args = [parseExpr()];
         while (peek() === ',') {
           next();
           args.push(parseExpr());
@@ -955,17 +955,17 @@ function parseExpression(tokens) {
       }
       if (name === 'string') {
         expect('(');
-        const arg = parseExpr();
+        /** @type {any} */ const arg = parseExpr();
         expect(')');
         return { type: 'stringCall', arg };
       }
       if (name === 'if') {
         expect('(');
-        const condition = parseExpr();
+        /** @type {any} */ const condition = parseExpr();
         expect(',');
-        const trueExpr = parseExpr();
+        /** @type {any} */ const trueExpr = parseExpr();
         expect(',');
-        const falseExpr = parseExpr();
+        /** @type {any} */ const falseExpr = parseExpr();
         expect(')');
         return { type: 'ifCall', condition, trueExpr, falseExpr };
       }
@@ -988,7 +988,7 @@ function parseExpression(tokens) {
       if (!isAggregate && !isScalar) throw new Error(`Unknown function "${name}" in formula`);
       expect('(');
       if (isAggregate) {
-        const arg = parseExpr();
+        /** @type {any} */ const arg = parseExpr();
         expect(')');
         return { type: 'call', name, arg };
       }
@@ -996,7 +996,7 @@ function parseExpression(tokens) {
       // arguments (value, optional decimal-places/base); uconv is the
       // one exception, needing a third (the source unit, since a cell
       // doesn't carry an embedded unit the way a Calc stack value does).
-      const args = [parseExpr()];
+      /** @type {any} */ const args = [parseExpr()];
       while (peek() === ',') {
         next();
         args.push(parseExpr());
@@ -1536,7 +1536,7 @@ function complexScalarCall(name, argValues, ctx) {
  * @param {any} [node]
  * @param {any} [ctx]
  */
-function evaluateAst(node, ctx) {
+/** @returns {any} */ function evaluateAst(/** @type {any} */ node, /** @type {any} */ ctx) {
   switch (node.type) {
     case 'number':
       return wrapNumericLiteral(node.value, ctx);
@@ -1548,13 +1548,13 @@ function evaluateAst(node, ctx) {
     }
     case 'complexLiteral': {
       const D = ctx.complexDomain;
-      const re = evaluateAst(node.re, ctx);
-      const im = evaluateAst(node.im, ctx);
+      /** @type {any} */ const re = evaluateAst(node.re, ctx);
+      /** @type {any} */ const im = evaluateAst(node.im, ctx);
       if (isComplex(re) || isComplex(im) || typeof re === 'string' || typeof im === 'string') throw new Error('A complex number\u2019s parts must be real numbers');
       return complexResult(makeRect(toReal(re, D), toReal(im, D), D, ctx.angleMode === 'degrees'), ctx);
     }
     case 'neg': {
-      const operand = evaluateAst(node.operand, ctx);
+      /** @type {any} */ const operand = evaluateAst(node.operand, ctx);
       if (isVector(operand)) return vNeg(operand, ctx.complexDomain, ctx.angleMode === 'degrees');
       if (isComplex(operand)) return complexResult(cNeg(operand, ctx.complexDomain, ctx.angleMode === 'degrees'), ctx);
       return isMathjsValue(operand) ? ctx.numericMode.instance.unaryMinus(operand) : -operand;
@@ -1572,8 +1572,8 @@ function evaluateAst(node, ctx) {
         if (isTruthyValue(l)) return 1;
         return isTruthyValue(evaluateAst(node.right, ctx)) ? 1 : 0;
       }
-      const l = evaluateAst(node.left, ctx);
-      const r = evaluateAst(node.right, ctx);
+      /** @type {any} */ const l = evaluateAst(node.left, ctx);
+      /** @type {any} */ const r = evaluateAst(node.right, ctx);
       if (COMPARISON_OPS.has(node.op)) return compareValues(l, r, node.op, ctx);
       if (isVector(l) || isVector(r)) return vectorBinop(node.op, l, r, ctx);
       if (isComplex(l) || isComplex(r)) return complexBinop(node.op, l, r, ctx);
@@ -1624,8 +1624,8 @@ function evaluateAst(node, ctx) {
       return makeVector(collectRangeValues(node, ctx).map((/** @type {any} */ v) => vectorOperand(v, D)));
     }
     case 'call': {
-      const fn = AGGREGATE_FUNCTIONS[node.name];
-      let values = collectRangeValues(node.arg, ctx);
+      const fn = /** @type {any} */ (AGGREGATE_FUNCTIONS)[node.name];
+      /** @type {any} */ let values = collectRangeValues(node.arg, ctx);
       if (values.some(isVector)) values = flattenForAggregate(values, ctx);
       if (values.some(isComplex)) return complexResult(cAggregate(node.name, values, ctx.complexDomain, ctx.angleMode === 'degrees'), ctx);
       return fn(values);
@@ -1633,11 +1633,11 @@ function evaluateAst(node, ctx) {
     case 'userCall': {
       if (!ctx.userCall) throw new Error(`"${node.name}" is a script function and is not available here`);
       /** @param {any} [v] */
-      const plainArg = (v) => (isVector(v) ? Array.from(v.items || v).map(plainArg) : typeof v === 'string' || typeof v === 'number' ? v : Number(v));
+      /** @returns {any} */ const plainArg = (/** @type {any} */ v) => (isVector(v) ? Array.from(v.items || v).map(plainArg) : typeof v === 'string' || typeof v === 'number' ? v : Number(v));
       return ctx.userCall(node.name, node.args.map((/** @type {any} */ a) => plainArg(evaluateAst(a, ctx))));
     }
     case 'scalarCall': {
-      const fn = SCALAR_FUNCTIONS[node.name];
+      const fn = /** @type {any} */ (SCALAR_FUNCTIONS)[node.name];
       const argValues = node.args.map((/** @type {any} */ a) => evaluateAst(a, ctx));
       const vectorOutcome = vectorScalarCall(node.name, argValues, ctx);
       if (vectorOutcome !== undefined) return vectorOutcome;
@@ -1650,7 +1650,7 @@ function evaluateAst(node, ctx) {
       return fn(...argValues);
     }
     case 'lispCall': {
-      const fn = LISP_CALL_FUNCTIONS[node.name];
+      const fn = /** @type {any} */ (LISP_CALL_FUNCTIONS)[node.name];
       const argValues = node.args.map((/** @type {any} */ a) => evaluateAst(a, ctx));
       return fn(...argValues);
     }
@@ -1660,9 +1660,9 @@ function evaluateAst(node, ctx) {
         return { type: 'date', days: dateToDays(now.getFullYear(), now.getMonth() + 1, now.getDate(), now.getHours(), now.getMinutes()), hasTime: true };
       }
       if (node.args.length === 3) {
-        const year = evaluateAst(node.args[0], ctx);
-        const month = evaluateAst(node.args[1], ctx);
-        const day = evaluateAst(node.args[2], ctx);
+        /** @type {any} */ const year = evaluateAst(node.args[0], ctx);
+        /** @type {any} */ const month = evaluateAst(node.args[1], ctx);
+        /** @type {any} */ const day = evaluateAst(node.args[2], ctx);
         return { type: 'date', days: dateToDays(year, month, day), hasTime: false };
       }
       const argNode = node.args[0];
@@ -1671,7 +1671,7 @@ function evaluateAst(node, ctx) {
         const { row, col } = resolveRef(argNode.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
         rawText = (ctx.dataRows[row - 1] && ctx.dataRows[row - 1].cells[col - 1]) || '';
       } else {
-        const val = evaluateAst(argNode, ctx);
+        /** @type {any} */ const val = evaluateAst(argNode, ctx);
         if (isTaggedValue(val) && val.type === 'date') return val; // date(date(...)) or date(now()) -- already a date value, pass through rather than re-parsing its own formatted text
         rawText = String(val);
       }
@@ -1685,14 +1685,14 @@ function evaluateAst(node, ctx) {
       return parsed;
     }
     case 'formatTimeCall': {
-      const formatVal = evaluateAst(node.args[0], ctx);
-      const formatStr = typeof formatVal === 'string' ? formatVal : String(formatVal);
+      /** @type {any} */ const formatVal = evaluateAst(node.args[0], ctx);
+      /** @type {any} */ const formatStr = typeof formatVal === 'string' ? formatVal : String(formatVal);
 
       let instant;
       if (node.args.length < 2) {
         instant = ctx.now || new Date();
       } else {
-        const timeVal = evaluateAst(node.args[1], ctx);
+        /** @type {any} */ const timeVal = evaluateAst(node.args[1], ctx);
         if (isTaggedValue(timeVal) && timeVal.absolute) {
           instant = new Date(timeVal.days * 86400000); // an instant that named its zone
         } else if (isTaggedValue(timeVal)) {
@@ -1707,8 +1707,8 @@ function evaluateAst(node, ctx) {
         }
       }
 
-      const universal = node.args.length >= 3 && isTruthyValue(evaluateAst(node.args[2], ctx));
-      const dateForFormatting = universal
+      /** @type {any} */ const universal = node.args.length >= 3 && isTruthyValue(evaluateAst(node.args[2], ctx));
+      /** @type {any} */ const dateForFormatting = universal
         ? new Date(
             instant.getUTCFullYear(),
             instant.getUTCMonth(),
@@ -1727,7 +1727,7 @@ function evaluateAst(node, ctx) {
         const rawText = (ctx.dataRows[row - 1] && ctx.dataRows[row - 1].cells[col - 1]) || '';
         return rawText.trim();
       }
-      const val = evaluateAst(node.arg, ctx);
+      /** @type {any} */ const val = evaluateAst(node.arg, ctx);
       if (typeof val === 'string') return val;
       if (isTaggedValue(val)) return val.type === 'date' ? formatDateValue(val) : formatHmsValue(val);
       return String(val);
@@ -1746,7 +1746,7 @@ function evaluateAst(node, ctx) {
  * @param {any} [argNode]
  * @param {any} [ctx]
  *  would naturally read the range they wrote. */
-function collectRangeValues(argNode, ctx) {
+/** @returns {any} */ function collectRangeValues(/** @type {any} */ argNode, /** @type {any} */ ctx) {
   if (argNode.type === 'ref') {
     const { row, col } = resolveRef(argNode.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
     if (isCellBlank(ctx.dataRows, row, col) && ctx.emptyMode === 'omit') return [];
@@ -2348,7 +2348,7 @@ export function parseTableConstants(doc) {
       const name = pair.slice(0, eq);
       const value = Number(pair.slice(eq + 1));
       if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) || Number.isNaN(value)) continue;
-      constants[name] = value;
+      /** @type {any} */ (constants)[name] = value;
     }
   }
   return constants;
@@ -2357,7 +2357,7 @@ export function parseTableConstants(doc) {
 /** @param {any} [table] */
 export function recalculateTable(table, options = {}) {
   if (!table.tblfm || !table.tblfm.trim()) return null;
-  const hourZeroPad = options.hourZeroPad !== undefined ? options.hourZeroPad : true;
+  const hourZeroPad = /** @type {any} */ (options).hourZeroPad !== undefined ? /** @type {any} */ (options).hourZeroPad : true;
   const statements = parseTblfm(table.tblfm);
 
   // A working copy: same row objects' own shape, but with a fresh
@@ -2398,7 +2398,7 @@ export function recalculateTable(table, options = {}) {
       : null;
     const digits = mode.precision !== null ? mode.precision : 12;
     const complexDomain = mode.fraction ? fractionDomain(mathjsDefault, bigDomain(mathjsForPrecision(12), 12, mathjsForPrecision(18))) : bigDomain(mathjsForPrecision(digits), digits, mathjsForPrecision(digits + 6));
-    const evalCtx = { complexDomain, dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode, constants: options.constants || {}, numericMode, userCall: options.userCall };
+    const evalCtx = { complexDomain, dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode, constants: /** @type {any} */ (options).constants || {}, numericMode, userCall: /** @type {any} */ (options).userCall };
     // Evaluates the expression for one specific (row, col) and writes
     // either its formatted result or, if evaluation itself throws,
     // the literal text "#ERROR" into that cell -- confirmed directly

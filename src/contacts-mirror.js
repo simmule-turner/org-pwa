@@ -59,7 +59,7 @@ function vcardText(lines, uid) {
  */
 function buildContactResources(allDocs, opts = {}) {
   const docs = allDocs.filter(({ documentId, doc }) => doc && documentId && !documentId.startsWith(UNSAVED_DOCUMENT_ID));
-  const cards = collectContactCards(docs, { birthdayProperty: opts.birthdayProperty || 'BIRTHDAY' });
+  const cards = collectContactCards(docs, { birthdayProperty: /** @type {any} */ (opts).birthdayProperty || 'BIRTHDAY' });
   const resources = new Map();
   const usedUids = new Set();
   const seen = new Map();

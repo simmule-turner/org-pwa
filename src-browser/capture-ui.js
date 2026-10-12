@@ -282,7 +282,7 @@ export function renderCapturePromptForm() {
   }
   updatePreview();
 
-  const promptInputs = [];
+  /** @type {any[]} */ const promptInputs = [];
   prompts.forEach((p, i) => {
     const field = document.createElement('div');
     field.style.marginBottom = '10px';

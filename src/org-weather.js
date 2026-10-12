@@ -53,7 +53,7 @@ const WEATHER_CODE_MAP = {
  * @param {any} [code]
  *  informative rather than a blank spot in the formatted output. */
 function lookupWeatherCode(code) {
-  return WEATHER_CODE_MAP[code] || { text: 'Unknown weather', icon: '\u2753' };
+  return /** @type {any} */ (WEATHER_CODE_MAP)[code] || { text: 'Unknown weather', icon: '\u2753' };
 }
 
 /** This app always fetches in a fixed, known pair of units --
@@ -172,7 +172,7 @@ function formatWeatherLine(template, data, temperatureUnit, speedUnit, now = new
   // ever partially collide with them.
   const placeholders = Object.keys(values).sort((a, b) => b.length - a.length);
   const pattern = new RegExp(placeholders.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
-  return template.replace(pattern, (/** @type {any} */ match) => values[match]);
+  return template.replace(pattern, (/** @type {any} */ match) => /** @type {any} */ (values)[match]);
 }
 
 const ORG_WEATHER_RE = /^%%\(org-weather\)\s*$/;

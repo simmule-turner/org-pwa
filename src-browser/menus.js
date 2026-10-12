@@ -68,7 +68,7 @@ export function renderExtraMenuContent() {
     }
     const row = document.createElement('div');
     row.className = 'menu-list-item';
-    row.textContent = entry.label;
+    row.textContent = /** @type {any} */ (entry).label;
     row.onclick = () => runExtraMenuEntry(entry);
     extraMenuPanel.appendChild(row);
   }

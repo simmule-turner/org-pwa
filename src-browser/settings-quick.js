@@ -78,7 +78,7 @@ export function buildFullyResolvedGlobalVariablesText() {
   const resolved = { ...parseGlobalVariables(S.globalVariablesText) };
   for (const field of QUICK_SETTINGS_FIELDS) {
     const value = resolveQuickSettingValue(field);
-    if (value !== null) resolved[field.key] = value;
+    if (value !== null) /** @type {any} */ (resolved)[field.key] = value;
   }
   return serializeGlobalVariables(resolved);
 }
@@ -96,9 +96,9 @@ export async function commitGlobalVariableChange(key, rawValue) {
   const normalizedValue = typeof rawValue === 'string' ? normalizeSmartQuotes(rawValue) : rawValue;
   const vars = parseGlobalVariables(S.globalVariablesText);
   if (normalizedValue === null) {
-    delete vars[key];
+    delete /** @type {any} */ (vars)[key];
   } else {
-    vars[key] = normalizedValue;
+    /** @type {any} */ (vars)[key] = normalizedValue;
   }
   S.globalVariablesText = serializeGlobalVariables(vars);
   S.globalVariables = vars;
@@ -397,7 +397,7 @@ export function renderQuickSettingsSection() {
 
   const sections = [];
   for (const field of QUICK_SETTINGS_FIELDS) {
-    let group = sections.find((s) => s.name === field.section);
+    /** @type {any} */ let group = sections.find((s) => s.name === field.section);
     if (!group) {
       group = { name: field.section, fields: [] };
       sections.push(group);

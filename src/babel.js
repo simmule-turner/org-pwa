@@ -38,14 +38,14 @@ export function parseHeaderArgs(params) {
   const text = (params || '').replace(/^\s*\S+/, '');
   const args = { var: /** @type {any[]} */ ([]) };
   const re = /(?:^|\s):([A-Za-z][\w-]*)(?=\s|$)/g;
-  const marks = [];
+  /** @type {any[]} */ const marks = [];
   let m;
   while ((m = re.exec(text)) !== null) marks.push({ name: m[1].toLowerCase(), end: re.lastIndex, start: m.index });
   marks.forEach((mark, n) => {
     const stop = n + 1 < marks.length ? marks[n + 1].start : text.length;
     const value = text.slice(mark.end, stop).trim();
     if (mark.name === 'var') args.var.push(value);
-    else args[mark.name] = value;
+    else /** @type {any} */ (args)[mark.name] = value;
   });
   return args;
 }
@@ -137,16 +137,16 @@ export function resolveVars(varSpecs, lookupTable) {
     while ((m = VAR_ASSIGN_RE.exec(text)) !== null) {
       matched++;
       const [, name, raw] = m;
-      if (/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(raw)) vars[name] = Number(raw);
-      else if (/^"[\s\S]*"$/.test(raw)) vars[name] = JSON.parse(raw);
-      else if (/^'[\s\S]*'$/.test(raw)) vars[name] = raw.slice(1, -1);
-      else if (raw === 'true' || raw === 't') vars[name] = true;
-      else if (raw === 'false') vars[name] = false;
-      else if (raw === 'nil' || raw === 'null') vars[name] = null;
+      if (/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(raw)) /** @type {any} */ (vars)[name] = Number(raw);
+      else if (/^"[\s\S]*"$/.test(raw)) /** @type {any} */ (vars)[name] = JSON.parse(raw);
+      else if (/^'[\s\S]*'$/.test(raw)) /** @type {any} */ (vars)[name] = raw.slice(1, -1);
+      else if (raw === 'true' || raw === 't') /** @type {any} */ (vars)[name] = true;
+      else if (raw === 'false') /** @type {any} */ (vars)[name] = false;
+      else if (raw === 'nil' || raw === 'null') /** @type {any} */ (vars)[name] = null;
       else {
         const rows = lookupTable ? lookupTable(raw) : null;
         if (!rows) throw new Error(`:var ${name}=${raw}: no table named "${raw}"`);
-        vars[name] = rows;
+        /** @type {any} */ (vars)[name] = rows;
       }
     }
     if (!matched && text.trim()) throw new Error(`:var ${text.trim()}: expected name=value`);

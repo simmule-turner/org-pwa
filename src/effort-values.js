@@ -54,7 +54,7 @@ function parseGlobalProperties(text) {
     const colon = entry.indexOf(':');
     if (colon === -1) continue;
     const name = entry.slice(0, colon).trim().toLowerCase();
-    if (name && !(name in result)) result[name] = entry.slice(colon + 1).trim();
+    if (name && !(name in result)) /** @type {any} */ (result)[name] = entry.slice(colon + 1).trim();
   }
   return result;
 }
@@ -78,7 +78,7 @@ function getAllowedEffortValues({ doc, heading = null, globalProperties = '' } =
       if (m && m[1].toLowerCase() === PROPERTY_NAME.toLowerCase()) candidates.push(m[2]);
     }
   }
-  candidates.push(parseGlobalProperties(globalProperties)[PROPERTY_NAME.toLowerCase()]);
+  candidates.push(/** @type {any} */ (parseGlobalProperties(globalProperties))[PROPERTY_NAME.toLowerCase()]);
 
   for (const raw of candidates) {
     const values = parseEffortValues(raw);

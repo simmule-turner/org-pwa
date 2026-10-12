@@ -182,7 +182,7 @@ const IMAGE_MIME_TYPES = {
 export function guessImageMimeType(path) {
   const match = /\.([a-z0-9]+)$/i.exec(path);
   const ext = match ? match[1].toLowerCase() : '';
-  return IMAGE_MIME_TYPES[ext] || 'application/octet-stream';
+  return /** @type {any} */ (IMAGE_MIME_TYPES)[ext] || 'application/octet-stream';
 }
 
 const AUDIO_MIME_TYPES = {
@@ -210,7 +210,7 @@ const AUDIO_MIME_TYPES = {
 export function guessAudioMimeType(path) {
   const match = /\.([a-z0-9]+)$/i.exec(path);
   const ext = match ? match[1].toLowerCase() : '';
-  return AUDIO_MIME_TYPES[ext] || 'application/octet-stream';
+  return /** @type {any} */ (AUDIO_MIME_TYPES)[ext] || 'application/octet-stream';
 }
 
 // Every recognized image format EXCEPT svg -- svg is deliberately left
@@ -284,7 +284,7 @@ const VIEWABLE_MIME_TYPES = {
 export function guessViewableMimeType(path) {
   const match = /\.([a-z0-9]+)$/i.exec(path);
   const ext = match ? match[1].toLowerCase() : '';
-  return VIEWABLE_MIME_TYPES[ext] || null;
+  return /** @type {any} */ (VIEWABLE_MIME_TYPES)[ext] || null;
 }
 
 /**
@@ -309,7 +309,7 @@ function walkHeadings(doc, visit) {
  * @param {any} [title]
  */
 export function findHeadingByTitle(doc, title) {
-  let found = null;
+  /** @type {any} */ let found = null;
   walkHeadings(doc, (/** @type {any} */ node) => {
     if (!found && node.title === title) found = node;
   });
@@ -322,7 +322,7 @@ export function findHeadingByTitle(doc, title) {
  * @param {any} [customId]
  */
 export function findHeadingByCustomId(doc, customId) {
-  let found = null;
+  /** @type {any} */ let found = null;
   walkHeadings(doc, (/** @type {any} */ node) => {
     if (!found && getProperty(node, 'CUSTOM_ID') === customId) found = node;
   });

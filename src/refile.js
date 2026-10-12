@@ -225,7 +225,7 @@ function resolveEntryFileIds(entry, currentFileId, agendaFilesConfig) {
  */
 function getRefileCandidates(targetsSpec, docsById, currentFileId, agendaFilesConfig, excludeHeading = null) {
   const excludeSet = excludeHeading ? collectSubtreeHeadings(excludeHeading) : null;
-  const candidates = [];
+  /** @type {any[]} */ const candidates = [];
   const seen = new Set(); // documentId + heading identity, since the same file can appear via more than one entry
 
   for (const entry of targetsSpec) {

@@ -70,7 +70,7 @@ function sequenceSoFar(state) {
 /** @param {any} [entry] */
 function describe(entry) {
   if (entry.chord === null) return entry.rawKey === ' ' ? `literal keys \u2026 ${entry.count}` : `Meta \u2026 ${entry.count}`;
-  const label = entry.complete ? labelForChord(entry.chord) || UNNAMED_CHORD_LABELS[entry.chord] || entry.chord : '';
+  const label = entry.complete ? labelForChord(entry.chord) || /** @type {any} */ (UNNAMED_CHORD_LABELS)[entry.chord] || entry.chord : '';
   if (entry.count > 0) return label ? `${label} \u2026` : `${entry.count} more \u2026`;
   return label;
 }

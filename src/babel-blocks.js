@@ -83,7 +83,7 @@ const isComment = (heading) => isCommentedHeading(heading);
 export function preambleLines(doc) {
   const lines = (doc.bodyLines || []).slice();
   /** @param {any} [k] */
-  const keywords = (doc.keywords || []).filter((k) => /^(NAME|HEADERS?)$/i.test(k.key));
+  const keywords = (doc.keywords || []).filter((/** @type {any} */ k) => /^(NAME|HEADERS?)$/i.test(k.key));
   for (const k of keywords.slice().reverse()) lines.splice(Math.min(k.bodyLineIndex || 0, lines.length), 0, `#+${k.key}: ${k.value}`);
   return lines;
 }
@@ -96,7 +96,7 @@ export function preambleLines(doc) {
  * @param {any} [doc]
  */
 export function collectDocumentBlocks(doc) {
-  const blocks = [];
+  /** @type {any[]} */ const blocks = [];
   /**
    * @param {any} [heading]
    * @param {any} [ancestors]

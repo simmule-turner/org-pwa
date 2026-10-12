@@ -303,11 +303,11 @@ export function insertListItem(heading, afterItem, text = '') {
   commitLines(heading, insertAt, 0, [line]);
 
   /** @param {any} [items] */
-  function findByLineIndex(items) {
+  /** @returns {any} */ function findByLineIndex(/** @type {any} */ items) {
     for (const item of items) {
       if (item.lineIndex === insertAt) return item;
       for (const nestedList of item.children || []) {
-        const found = findByLineIndex(nestedList.items);
+        /** @type {any} */ const found = findByLineIndex(nestedList.items);
         if (found) return found;
       }
     }

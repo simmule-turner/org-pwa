@@ -177,7 +177,7 @@ export function recentlyClockedAcrossSessions(limit = 12) {
   for (const source of sources) {
     for (const item of listRecentlyClockedHeadings(source.doc, limit)) all.push({ ...source, ...item });
   }
-  all.sort((a, b) => b.start - a.start);
+  all.sort((/** @type {any} */ a, /** @type {any} */ b) => b.start - a.start);
   return all.slice(0, limit);
 }
 
@@ -196,7 +196,7 @@ export function clockGotoRecent() {
   openButtonChoiceModal({
     label: 'Go to which recently clocked task?',
     buttons: recent.map((entry) => ({
-      text: `${isClockRunning(entry.heading) ? '\u25b6 ' : ''}${entry.heading.title || '(untitled)'} \u00b7 ${when(entry.start)}${severalDocuments ? ` \u00b7 ${documentDisplayLabel(entry.documentId, entry.doc)}` : ''}`,
+      text: `${isClockRunning(entry.heading) ? '\u25b6 ' : ''}${/** @type {any} */ (entry.heading).title || '(untitled)'} \u00b7 ${when(entry.start)}${severalDocuments ? ` \u00b7 ${documentDisplayLabel(entry.documentId, entry.doc)}` : ''}`,
       onClick: () => goToClockedEntry(entry),
     })),
   });

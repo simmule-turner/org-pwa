@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v503 — Implicit-any checking finished
+Every function parameter and variable in the app now has a declared type, or says plainly that it is open, so the type checker no longer guesses anywhere. The last 681 findings were cleared and the strict setting is on in the normal type check, so none can slip back. No change in behaviour.
+Verified: tests, lint, type check, and the Open / Save As, agenda, editor, launch and WebDAV smoke checks.
+
 * v502 — Implicit-any checking begun
 Function parameters across the app now carry type notes: 6,623 "implicitly any" findings are down to 681 in 113 files. A new ratchet check (=npm run check:implicit-any=, also in release and CI) lets the count only fall; at zero the strict setting turns on. No change in behaviour.
 Verified: tests, lint, type check, and the Open / Save As, agenda and Recently opened smoke checks.

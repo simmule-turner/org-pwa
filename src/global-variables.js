@@ -68,7 +68,7 @@ export function parseGlobalVariables(text) {
     const line = rawLine.trim();
     if (!line) continue;
     const m = GLOBAL_VAR_LINE_RE.exec(line);
-    if (m) vars[m[1]] = m[2].trim();
+    if (m) /** @type {any} */ (vars)[m[1]] = m[2].trim();
   }
   return vars;
 }

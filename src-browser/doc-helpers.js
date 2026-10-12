@@ -43,12 +43,13 @@ export function hasBodyContent(heading) {
  * @param {any} [items]
  * @param {any} [lineIndex]
  *  one after a re-parse needs to walk this nested structure. */
-export function findListItemByLineIndex(items, lineIndex) {
+/** @returns {any} */
+export function findListItemByLineIndex(/** @type {any} */ items, /** @type {any} */ lineIndex) {
   for (const item of items) {
     if (item.lineIndex === lineIndex) return item;
     for (const child of item.children) {
       if (child.type === 'list') {
-        const found = findListItemByLineIndex(child.items, lineIndex);
+        /** @type {any} */ const found = findListItemByLineIndex(child.items, lineIndex);
         if (found) return found;
       }
     }
@@ -206,7 +207,7 @@ export function icalendarBodyHeadingsIn(headings) {
  * @param {any} [heading]
  *  never for indentation display. */
 export function headingsInSubtree(heading) {
-  const out = [];
+  /** @type {any[]} */ const out = [];
   /**
    * @param {any} [node]
    * @param {any} [depth]
@@ -221,7 +222,7 @@ export function headingsInSubtree(heading) {
 
 /** @param {any} [doc] */
 export function allHeadingsInOrder(doc) {
-  const out = [];
+  /** @type {any[]} */ const out = [];
   /**
    * @param {any} [nodes]
    * @param {any} [depth]

@@ -46,7 +46,7 @@ import { parseExportOptions } from './export-options.js';
 // convention) becomes a "[^label]: text" line collected here and
 // emitted together at the very end of the export, GFM's own convention
 // for where footnote definitions live.
-let footnoteDefinitionsMd = [];
+/** @type {any[]} */ let footnoteDefinitionsMd = [];
 let anonymousFootnoteCounterMd = 0;
 
 // The document currently being exported, and a Map<heading, slug> for
@@ -56,7 +56,7 @@ let anonymousFootnoteCounterMd = 0;
 // implicit (no explicit id attribute) heading-anchor convention: the
 // slug is never written into the heading line itself, only used when
 // resolving a link that points TO that heading.
-let docForLinkResolutionMd = null;
+/** @type {any} */ let docForLinkResolutionMd = null;
 let headingSlugMapMd = new Map();
 
 /** GitHub's own heading-slug algorithm (github-slugger, the library
@@ -242,7 +242,7 @@ function renderParagraphMd(node) {
  * @param {any} [list]
  * @param {any} [indent]
  */
-function renderListMd(list, indent) {
+/** @returns {any} */ function renderListMd(/** @type {any} */ list, /** @type {any} */ indent) {
   const lines = [];
   let counter = 0;
   for (const item of list.items) {
@@ -408,7 +408,7 @@ function buildTocListMd(headings, level, maxDepth, numberingEnabled) {
   if (level > maxDepth || headings.length === 0) return '';
   const indent = '  '.repeat(level - 1);
   const marker = numberingEnabled ? (/** @type {number} */ i) => `${i + 1}.` : () => '-';
-  const lines = [];
+  /** @type {any[]} */ const lines = [];
   headings.forEach((/** @type {any} */ heading, /** @type {number} */ i) => {
     const slug = headingSlugMapMd.get(heading);
     const label = renderTextMd(heading.title) || '(untitled)';

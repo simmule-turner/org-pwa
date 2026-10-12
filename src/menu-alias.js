@@ -71,7 +71,7 @@ function parseMenuAliases(rawValue) {
     const label = rest.slice(0, semicolonIndex).trim();
     const alias = rest.slice(semicolonIndex + 1).trim();
     if (!label) continue; // "menu:;alias" with nothing before the ";" -- nothing to attach this to
-    result[menu][label] = alias;
+    /** @type {any} */ (result)[menu][label] = alias;
   }
   return result;
 }

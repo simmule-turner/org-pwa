@@ -119,7 +119,7 @@ function generateCaptureFilename(kind, pickedName, pickedType, now = new Date())
   const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
   const own = /\.([a-z0-9]{1,5})$/i.exec(String(pickedName || ''));
   const baseType = String(pickedType || '').split(';')[0].trim().toLowerCase(); // 'video/webm;codecs=vp9' is video/webm
-  const ext = own ? own[1].toLowerCase() : CAPTURE_EXTENSIONS[baseType] || (kind === 'video' ? 'mp4' : 'jpg');
+  const ext = own ? own[1].toLowerCase() : /** @type {any} */ (CAPTURE_EXTENSIONS)[baseType] || (kind === 'video' ? 'mp4' : 'jpg');
   return `${kind === 'video' ? 'video' : 'photo'}-${stamp}.${ext}`;
 }
 

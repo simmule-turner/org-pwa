@@ -50,7 +50,8 @@ function splitTopLevel(body) {
  * @param {any} [D]
  * @param {any} [degrees]
  */
-export function parseVectorCell(text, D, degrees) {
+/** @returns {any} */
+export function parseVectorCell(/** @type {any} */ text, /** @type {any} */ D, /** @type {any} */ degrees) {
   const t = String(text).trim();
   if (!t.startsWith('[') || !t.endsWith(']')) return null;
   const body = t.slice(1, -1).trim();
@@ -59,7 +60,7 @@ export function parseVectorCell(text, D, degrees) {
   if (!parts) return null;
   const items = [];
   for (const part of parts) {
-    const element = part.trim().startsWith('[') ? parseVectorCell(part, D, degrees) : parseScalarText(part, D, degrees);
+    /** @type {any} */ const element = part.trim().startsWith('[') ? parseVectorCell(part, D, degrees) : parseScalarText(part, D, degrees);
     if (!element) return null;
     items.push(element);
   }

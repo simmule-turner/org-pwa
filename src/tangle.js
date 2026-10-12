@@ -59,7 +59,7 @@ const orgTrim = (s) => s.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, '');
  * Org's `%S` for a value, as ob-js writes it into `var name=value;`.
  * @param {any} [v]
  */
-function jsValue(v) {
+/** @returns {any} */ function jsValue(/** @type {any} */ v) {
   if (Array.isArray(v)) return '[' + v.map(jsValue).join(', ') + ']';
   if (v === null || v === undefined) return 'nil';
   if (v === true) return 't';
@@ -88,7 +88,7 @@ export function interpretFileMode(value) {
       const targets = who.includes('a') ? 'ugo' : who;
       for (const op of m[2].match(/[+\-=][rwxXstugo]*/g) || []) {
         let perm = 0;
-        for (const c of op.slice(1)) perm |= bits[c] || 0;
+        for (const c of op.slice(1)) perm |= /** @type {any} */ (bits)[c] || 0;
         for (const t of targets) {
           const shift = t === 'u' ? 6 : t === 'g' ? 3 : 0;
           if (op[0] === '+') mode |= perm << shift;
@@ -170,11 +170,11 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
   /** @param {any} [name] */
   const lookupTable = (name) => {
     /** @param {any} [list] */
-    const walk = (list) => {
+    /** @returns {any} */ const walk = (/** @type {any} */ list) => {
       for (const h of list) {
         const rows = findNamedTable(h.bodyLines || [], name);
         if (rows) return rows;
-        const inner = walk(h.children || []);
+        /** @type {any} */ const inner = walk(h.children || []);
         if (inner) return inner;
       }
       return null;
@@ -201,7 +201,7 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
     if (b.commented || b.archived || b.args.tangle === 'no') continue;
     const where = b.heading ? `"${b.heading.title}" block ${b.counter}` : `block ${b.counter} before the first heading`;
     try {
-      const ext = LANG_EXTENSIONS[b.lang] || b.lang;
+      const ext = /** @type {any} */ (LANG_EXTENSIONS)[b.lang] || b.lang;
       let path = b.args.tangle === 'yes' ? documentName.replace(/\.[^./]*$/, '') + '.' + ext : b.args.tangle;
       path = checkTargetPath(path);
       let body = nowebAllows(b.args, 'tangle') ? expandNoweb(doc, blocks, b, { context: 'tangle', wrapChunk }) : b.body;
@@ -231,7 +231,7 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
   for (const [path, specs] of byFile) {
     let text = '';
     let shebanged = false;
-    const modes = [];
+    /** @type {any[]} */ const modes = [];
     for (const { block: b, body, where } of specs) {
       const args = b.args;
       const shebang = args.shebang ? args.shebang : '';

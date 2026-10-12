@@ -217,7 +217,7 @@ export function fieldRow(labelText, inputEl) {
 // produce "several stacked pieces" without changing render()'s
 // one-element-per-row assumption.
 /** @param {any} [rowEl] */
-export function withActionMenu(rowEl, ...extras) {
+export function withActionMenu(rowEl, /** @type {any[]} */ ...extras) {
   const present = extras.filter(Boolean);
   if (present.length === 0) return rowEl;
   const wrap = document.createElement('div');
@@ -310,7 +310,7 @@ export function menuButton(label, onClick, disabled) {
 export function appendMenuButtonsInOrder(container, aliasMap, labeledButtons) {
   const order = resolveMenuOrder(
     aliasMap,
-    labeledButtons.map(({ label }) => label)
+    labeledButtons.map((/** @type {any} */ { label }) => label)
   );
   for (const label of order) {
     const entry = labeledButtons.find((/** @type {any} */ lb) => lb.label === label);
@@ -490,7 +490,7 @@ export function keepOverlayInVisibleViewport(overlay) {
     overlay.style.height = Math.max(0, vv.height - inset) + 'px';
   }
   reposition();
-  const cleanups = [];
+  /** @type {any[]} */ const cleanups = [];
   /**
    * @param {any} [target]
    * @param {any} [evt]

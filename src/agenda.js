@@ -320,7 +320,7 @@ function defaultEventDescription(propertyName) {
  *  keys are conventionally upper-case, but not enforced). */
 function getPropertyCaseInsensitive(heading, key) {
   /** @param {any} [k] */
-  const foundKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === key.toLowerCase());
+  const foundKey = (heading.propertyOrder || []).find((/** @type {any} */ k) => k.toLowerCase() === key.toLowerCase());
   return foundKey ? heading.properties[foundKey] : undefined;
 }
 
@@ -423,7 +423,7 @@ function sortItemsByEffort(items, direction = 'up', noEffortIsHigh = true) {
  *  '>' (at least) or '=' (exactly). Non-task items are always kept. */
 function filterItemsByEffort(items, filter, noEffortIsHigh = true) {
   if (!filter) return items;
-  const test = { '<': (/** @type {any} */ v) => v <= filter.minutes, '>': (/** @type {any} */ v) => v >= filter.minutes, '=': (/** @type {any} */ v) => v === filter.minutes }[filter.op];
+  const test = /** @type {any} */ ({ '<': (/** @type {any} */ v) => v <= filter.minutes, '>': (/** @type {any} */ v) => v >= filter.minutes, '=': (/** @type {any} */ v) => v === filter.minutes })[filter.op];
   if (!test) return items;
   return items.filter((/** @type {any} */ item) => !item.heading || test(effortSortValue(item, noEffortIsHigh)));
 }
@@ -463,12 +463,12 @@ function applyAgendaEffortView(items, { sort = null, filter = null, maxMinutes =
  * @param {any} [heading]
  * @param {any} [fieldType]
  *  ("birthday", "anniversary", "spouse") -- returning its own title (the value, as tree style writes it) or null. */
-function findTreeStyleFieldValue(heading, fieldType) {
+/** @returns {any} */ function findTreeStyleFieldValue(/** @type {any} */ heading, /** @type {any} */ fieldType) {
   for (const child of heading.children || []) {
     if (child.type !== 'heading') continue;
     const type = getPropertyCaseInsensitive(child, 'FIELDTYPE');
     if (String(type || '').toLowerCase() === fieldType) return child.title;
-    const nested = findTreeStyleFieldValue(child, fieldType);
+    /** @type {any} */ const nested = findTreeStyleFieldValue(child, fieldType);
     if (nested) return nested;
   }
   return null;
@@ -522,7 +522,7 @@ function ordinalYears(n) {
  *  With no FORMAT: "<Label>: %l (%Y)" for the birthday property (Emacs's own default, "Birthday: Jane Doe (36th)"), and
  *  "<Label>: %n (%Y)" for any other field ("Anniversary: Jane Doe & John Doe (27th)"). The label is the field name capitalized, or
  *  the text after the date in the property if there is some (":BIRTHDAY: 1990-01-08 Nameday"). */
-function formatContactEventTitle({ format = null, field = null, birthdayProperty = 'BIRTHDAY', description = /** @type {string | null} */ (null), name, spouse = null, age = /** @type {number | null} */ (null), omitAge = false }) {
+function formatContactEventTitle(/** @type {any} */ { format = null, field = null, birthdayProperty = 'BIRTHDAY', description = /** @type {string | null} */ (null), name, spouse = null, age = /** @type {number | null} */ (null), omitAge = false }) {
   const fieldName = field || birthdayProperty;
   const label = description || defaultEventDescription(fieldName);
   const chosen = format || (fieldName.toLowerCase() === birthdayProperty.toLowerCase() ? `${label}: %l (%Y)` : `${label}: %n (%Y)`);
@@ -750,7 +750,7 @@ function entryTimestampText(heading) {
  *  line here already treats case as not meaningful. */
 function getCategoryForDocument(doc, documentId) {
   /** @param {any} [kw] */
-  const categoryKw = (doc.keywords || []).find((kw) => kw.key.toUpperCase() === 'CATEGORY');
+  const categoryKw = (doc.keywords || []).find((/** @type {any} */ kw) => kw.key.toUpperCase() === 'CATEGORY');
   if (categoryKw && categoryKw.value.trim()) return categoryKw.value.trim();
   if (!documentId || documentId.startsWith(UNSAVED_DOCUMENT_ID)) return 'Untitled'; // an unsaved, in-memory-only document has no filename to derive a category from
   const base = (String(documentId).split('/').pop() || '').replace(/\.org$/i, '');
@@ -758,7 +758,7 @@ function getCategoryForDocument(doc, documentId) {
 }
 
 /** @param {any} [docs] */
-function buildAgendaItems(docs, opts = {}) {
+function buildAgendaItems(docs, opts = /** @type {any} */ ({})) {
   const {
     includeArchived = false,
     includeCommented = false,
@@ -782,7 +782,7 @@ function buildAgendaItems(docs, opts = {}) {
     orgWeatherTemperatureUnit = '\u00b0F',
     orgWeatherSpeedUnit = 'mph',
   } = opts;
-  const items = [];
+  /** @type {any[]} */ const items = [];
 
   /**
    * @param {any} [documentId]
@@ -1489,9 +1489,9 @@ function monthView(items, date = new Date()) {
  *     sequence decides what counts as done, not this module.
  * @param {any} [docs]
  */
-function buildTaskList(docs, opts = {}) {
+function buildTaskList(docs, opts = /** @type {any} */ ({})) {
   const { includeArchived = false, includeCommented = false, tagFilter = null, isDone = null } = opts;
-  const items = [];
+  /** @type {any[]} */ const items = [];
 
   for (const { documentId, doc } of docs) {
     walkHeadings(doc, (/** @type {any} */ heading) => {

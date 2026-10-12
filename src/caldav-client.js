@@ -86,7 +86,7 @@ function icsNamesFromHrefs(hrefs, extension = '.ics') {
  * @param {any} response
  * @param {any} what
  */
-function errorForResponse(response, what, { noun, Noun }) {
+function errorForResponse(response, what, /** @type {any} */ { noun, Noun }) {
   const status = response.status;
   if (status === 401) return new CaldavError('auth', `The ${noun} server rejected the username or password.`, status);
   if (status === 403) return new CaldavError('auth', `The ${noun} server does not allow this account to change that ${noun}.`, status);
@@ -96,7 +96,7 @@ function errorForResponse(response, what, { noun, Noun }) {
 
 /** @param {{ url: string, username?: string, password?: string, kind?: string, fetch?: (url: string, init: any) => Promise<any>, timeoutMs?: number }} options */
 function createCaldavClient({ url, username, password, kind = 'calendar', fetch: fetchImpl = (target, init) => globalThis.fetch(target, init), timeoutMs = 20000 }) {
-  const what = KINDS[kind] || KINDS.calendar;
+  const what = /** @type {any} */ (KINDS)[kind] || KINDS.calendar;
   const base = url.endsWith('/') ? url : url + '/';
   const authorization = basicAuthHeader(username || '', password || '');
 
@@ -170,9 +170,9 @@ function createCarddavClient(options) {
  * @param {any} [worker]
  */
 async function runLimited(items, limit, worker) {
-  const ok = [];
-  const failed = [];
-  let stopped = null;
+  /** @type {any[]} */ const ok = [];
+  /** @type {any[]} */ const failed = [];
+  /** @type {any} */ let stopped = null;
   let next = 0;
   const lane = async () => {
     while (!stopped && next < items.length) {

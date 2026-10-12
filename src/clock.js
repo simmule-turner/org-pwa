@@ -203,10 +203,10 @@ function parseClockTimestampToDate(raw) {
  *  nothing is running anywhere in the document. */
 function findHeadingWithRunningClock(doc) {
   /** @param {any} [headings] */
-  const walk = (headings) => {
+  /** @returns {any} */ const walk = (/** @type {any} */ headings) => {
     for (const heading of headings) {
       if (isClockRunning(heading)) return heading;
-      const found = walk(heading.children || []);
+      /** @type {any} */ const found = walk(heading.children || []);
       if (found) return found;
     }
     return null;
@@ -275,7 +275,7 @@ function clockInSwitchingTasks(doc, heading, timestamp, now) {
  * @param {any} [doc]
  *  survives a reload. @returns {{ heading: object, start: Date }[]} */
 function listRecentlyClockedHeadings(doc, limit = 15) {
-  const found = [];
+  /** @type {any[]} */ const found = [];
   /** @param {any} [heading] */
   const consider = (heading) => {
     /** @type {Date | null} */

@@ -95,11 +95,11 @@ function normalizeKeyName(rawKey, shiftKey) {
   const BRACKETED_KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
   const BARE_NAMED_KEYS = { Enter: 'RET', Tab: 'TAB', ' ': 'SPC' };
   if (rawKey in BRACKETED_KEYS) {
-    const bracketed = `<${BRACKETED_KEYS[rawKey]}>`;
+    const bracketed = `<${/** @type {any} */ (BRACKETED_KEYS)[rawKey]}>`;
     return shiftKey ? `S-${bracketed}` : bracketed;
   }
   if (rawKey in BARE_NAMED_KEYS) {
-    const bare = BARE_NAMED_KEYS[rawKey];
+    const bare = /** @type {any} */ (BARE_NAMED_KEYS)[rawKey];
     return shiftKey ? `S-${bare}` : bare;
   }
   if (rawKey.length === 1) return rawKey; // a printable character -- already carries its own shifted form (",", "!", "A" vs "a", ...) from the event itself

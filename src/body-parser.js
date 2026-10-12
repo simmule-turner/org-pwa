@@ -222,7 +222,7 @@ function parseList(lines, i, baseIndent) {
     if (indent > baseIndent) break; // handled via recursion below, not here
 
     const item = parseListItemLine(line);
-    item.lineIndex = i;
+    /** @type {any} */ (item).lineIndex = i;
     i++;
 
     // Look ahead for a more-indented nested sub-list, skipping over any

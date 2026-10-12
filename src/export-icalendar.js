@@ -51,7 +51,7 @@ const UNIT_TO_FREQ = { h: 'HOURLY', d: 'DAILY', w: 'WEEKLY', m: 'MONTHLY', y: 'Y
 export function repeaterToRRule(repeaterRaw) {
   const r = parseRepeater(repeaterRaw);
   if (!r) return null;
-  const freq = UNIT_TO_FREQ[r.unit];
+  const freq = /** @type {any} */ (UNIT_TO_FREQ)[r.unit];
   if (!freq) return null; // shouldn't happen given parseRepeater's own validation, but never emit a malformed RRULE
   return `FREQ=${freq};INTERVAL=${r.amount}`;
 }
@@ -141,7 +141,7 @@ export function generateUid(documentId, heading, kind, index, date) {
 
 // ---- VEVENT building -----------------------------------------------------
 
-export function buildVevent({ uid, summary, description, date, hasTime, rrule, alarmDaysBefore, stamp, endDate = /** @type {Date | null} */ (null), categories = /** @type {string[] | null} */ (null), location = /** @type {string | null} */ (null) }) {
+export function buildVevent(/** @type {any} */ { uid, summary, description, date, hasTime, rrule, alarmDaysBefore, stamp, endDate = /** @type {Date | null} */ (null), categories = /** @type {string[] | null} */ (null), location = /** @type {string | null} */ (null) }) {
   const lines = [
     'BEGIN:VEVENT',
     `UID:${uid}`,
@@ -180,10 +180,10 @@ const BODY_LIMIT = 400;
  *  a person to read). */
 export function eventDetails(heading) {
   /** @param {any} [k] */
-  const locationKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === 'location');
+  const locationKey = (heading.propertyOrder || []).find((/** @type {any} */ k) => k.toLowerCase() === 'location');
   const location = locationKey ? String(heading.properties[locationKey] || '').trim() : '';
   /** @param {any} [line] */
-  let body = (heading.bodyLines || []).filter((line) => !line.trim().startsWith('%%(')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  let body = (heading.bodyLines || []).filter((/** @type {any} */ line) => !line.trim().startsWith('%%(')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
   if (body.length > BODY_LIMIT) body = body.slice(0, BODY_LIMIT - 1).trimEnd() + '\u2026';
   return { location: location || null, categories: (heading.tags || []).filter(Boolean), body: body || null };
 }
@@ -207,7 +207,7 @@ export function titleWithoutTimestamps(title) {
  * already uses for its own `today` option.
  * @param {any} [docs]
  */
-export function exportToIcalendar(docs, opts = {}) {
+export function exportToIcalendar(docs, opts = /** @type {any} */ ({})) {
   const events = collectCalendarEvents(docs, opts);
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//org-pwa//org-pwa//EN', 'CALSCALE:GREGORIAN', ...events.flatMap((e) => e.lines), 'END:VCALENDAR'];
   return lines.join('\r\n') + '\r\n';
@@ -226,9 +226,9 @@ export function exportToIcalendar(docs, opts = {}) {
  * suffix.
  * @param {any} [docs]
  */
-export function collectCalendarEvents(docs, opts = {}) {
+export function collectCalendarEvents(docs, opts = /** @type {any} */ ({})) {
   const { today = new Date(), birthdayProperty = 'BIRTHDAY', scope = null, includeDone = false, window = null, contactsDocs = null } = opts;
-  const events = [];
+  /** @type {any[]} */ const events = [];
   const usedUids = new Set();
   /**
    * @param {any} [documentId]
@@ -264,7 +264,7 @@ export function collectCalendarEvents(docs, opts = {}) {
 
   // The org-contacts-anniversaries lines found across the docs (within the scope, when there is one): one scan for each distinct
   // line, so a birthday line and an "ANNIVERSARY" line give both, and the same line twice gives it once.
-  const contactsTriggers = [];
+  /** @type {any[]} */ const contactsTriggers = [];
   const seenTriggers = new Set();
   for (const { doc } of docs) {
     walkScope(doc, (/** @type {any} */ heading) => {

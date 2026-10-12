@@ -9,7 +9,7 @@ import { keepOverlayInVisibleViewport, menuButton } from './ui-widgets.js';
 
 const SMALL_BUTTON = 'font:inherit;font-size:12px;font-weight:600;min-width:28px;height:28px;padding:0 4px;border:1px solid var(--border-strong);border-radius:6px;background:transparent;color:var(--fg);cursor:pointer;flex:none;';
 
-export function showAttachmentFolder({ title, load, act, removeMany, saveMany, add }) {
+export function showAttachmentFolder(/** @type {any} */ { title, load, act, removeMany, saveMany, add }) {
   const overlay = document.createElement('div');
   overlay.className = 'ui-overlay';
   overlay.style.overflow = 'hidden';
@@ -49,7 +49,7 @@ export function showAttachmentFolder({ title, load, act, removeMany, saveMany, a
   document.addEventListener('keydown', onKeyDown, true);
 
   const selected = new Set();
-  let names = [];
+  /** @type {any[]} */ let names = [];
 
   /**
    * @param {any} [text]

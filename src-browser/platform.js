@@ -87,7 +87,7 @@ export const platform = {
     permission: async () => (typeof Notification === 'undefined' ? 'denied' : Notification.permission),
     request: async () => (typeof Notification === 'undefined' ? 'denied' : Notification.requestPermission()),
     scheduled: false,
-    async show({ id, title, body, detail, day }) {
+    async show(/** @type {any} */ { id, title, body, detail, day }) {
       const options = { body: detail ? `${body}\n${detail}` : body, tag: `appt-${id}`, data: { day }, requireInteraction: true, renotify: true }; // the tag makes a repeat replace the one before; requireInteraction keeps it until answered (where the browser honours that)
       const registration = navigator.serviceWorker && (await navigator.serviceWorker.getRegistration());
       if (registration && registration.showNotification) await registration.showNotification(title, options);
@@ -114,4 +114,4 @@ export function installPlatform(overrides) {
 }
 
 // A shell injects its platform before the app starts, so it is in place from the first line that uses it.
-if (typeof globalThis !== 'undefined' && globalThis.orgPwaPlatform) installPlatform(globalThis.orgPwaPlatform);
+if (typeof globalThis !== 'undefined' && /** @type {any} */ (globalThis).orgPwaPlatform) installPlatform(/** @type {any} */ (globalThis).orgPwaPlatform);

@@ -141,7 +141,7 @@ function setPropertiesFromText(heading, text) {
     const value = line.slice(colonIndex + 1).trim();
     if (!key) continue;
     if (!(key in properties)) propertyOrder.push(key);
-    properties[key] = value;
+    /** @type {any} */ (properties)[key] = value;
   }
   heading.properties = properties;
   heading.propertyOrder = propertyOrder;
@@ -161,11 +161,11 @@ function cloneHeading(heading) {
  * @param {any} [target]
  * @param {any} [path]
  */
-function findAncestorPath(root, target, path = []) {
+/** @returns {any} */ function findAncestorPath(/** @type {any} */ root, /** @type {any} */ target, /** @type {any} */ path = []) {
   const children = root.children || [];
   for (const child of children) {
     if (child === target) return path;
-    const found = findAncestorPath(child, target, [...path, child]);
+    /** @type {any} */ const found = findAncestorPath(child, target, [...path, child]);
     if (found) return found;
   }
   return null;
@@ -177,12 +177,12 @@ function findAncestorPath(root, target, path = []) {
  * @param {any} [root]
  * @param {any} [target]
  */
-function findContainer(root, target) {
+/** @returns {any} */ function findContainer(/** @type {any} */ root, /** @type {any} */ target) {
   const children = root.children || [];
   const idx = children.indexOf(target);
   if (idx !== -1) return { container: children, index: idx };
   for (const child of children) {
-    const found = findContainer(child, target);
+    /** @type {any} */ const found = findContainer(child, target);
     if (found) return found;
   }
   return null;
@@ -277,7 +277,7 @@ function unarchiveInPlace(heading) {
  * @param {any} [heading]
  * @param {any} [sourceFilePath]
  */
-function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = {}) {
+function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = /** @type {any} */ ({})) {
   const { now = new Date(), markDone = false, doneKeyword = 'DONE' } = opts;
 
   const ancestors = findAncestorPath(sourceDoc, heading);
@@ -345,7 +345,7 @@ function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = {}) {
  * @param {any} [heading]
  * @param {any} [sourceFilePath]
  */
-function extractForArchive(sourceDoc, heading, sourceFilePath, opts = {}) {
+function extractForArchive(sourceDoc, heading, sourceFilePath, opts = /** @type {any} */ ({})) {
   const clone = buildArchivedClone(sourceDoc, heading, sourceFilePath, opts);
 
   const located = findContainer(sourceDoc, heading);
@@ -379,7 +379,7 @@ function appendToArchive(archiveDoc, extractedHeading) {
  * @param {any} [heading]
  * @param {any} [sourceFilePath]
  */
-function archiveToSiblingFile(sourceDoc, archiveDoc, heading, sourceFilePath, opts = {}) {
+function archiveToSiblingFile(sourceDoc, archiveDoc, heading, sourceFilePath, opts = /** @type {any} */ ({})) {
   const extracted = extractForArchive(sourceDoc, heading, sourceFilePath, opts);
   appendToArchive(archiveDoc, extracted);
   return extracted;
@@ -509,7 +509,7 @@ function getArchiveLocation(doc, heading) {
   const ownArchive = getProperty(heading, 'ARCHIVE');
   if (ownArchive) return ownArchive;
   /** @param {any} [k] */
-  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'ARCHIVE');
+  const kw = (doc.keywords || []).find((/** @type {any} */ k) => k.key.toUpperCase() === 'ARCHIVE');
   if (kw) return kw.value;
   return DEFAULT_ARCHIVE_LOCATION;
 }
@@ -599,10 +599,10 @@ function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart) {
  *  necessarily at the document's own top level. */
 function findHeadingAtLevel(doc, level, title) {
   /** @param {any} [nodes] */
-  function walk(nodes) {
+  /** @returns {any} */ function walk(/** @type {any} */ nodes) {
     for (const node of nodes) {
       if (node.level === level && node.title === title) return node;
-      const found = walk(node.children || []);
+      /** @type {any} */ const found = walk(node.children || []);
       if (found) return found;
     }
     return null;

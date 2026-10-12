@@ -67,8 +67,8 @@ function currentVars() {
 /** Looks at the agenda again: on launch, on resume, after a save, and every scan interval. Calls close together become one run. */
 export function requestApptScan() {
   if (!S.apptSettings || !S.apptSettings['appt-activate']) return;
-  clearTimeout(runtime.scanTimer);
-  runtime.scanTimer = setTimeout(() => scanAppointments().catch(() => {}), 1500);
+  clearTimeout(/** @type {any} */ (runtime).scanTimer);
+  /** @type {any} */ (runtime).scanTimer = setTimeout(() => scanAppointments().catch(() => {}), 1500);
 }
 
 export async function scanAppointments(now = new Date()) {

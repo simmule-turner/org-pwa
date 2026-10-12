@@ -31,7 +31,7 @@ const EXPORTS_GROUPS = [['code', 'results', 'both', 'none']];
  *  inside quotes or brackets, as Org does. Names are lower-case; values are trimmed, and still quoted. */
 export function splitHeaderArgs(text) {
   const s = String(text || '');
-  const cuts = [];
+  /** @type {any[]} */ const cuts = [];
   let quote = false;
   let depth = 0;
   for (let i = 0; i < s.length; i++) {
@@ -46,7 +46,7 @@ export function splitHeaderArgs(text) {
     else if (c === ':' && !quote && depth === 0 && i > 0 && /[ \t]/.test(s[i - 1])) cuts.push(i);
     else if (c === ':' && i === 0) cuts.push(0);
   }
-  const pairs = [];
+  /** @type {any[]} */ const pairs = [];
   cuts.forEach((at, n) => {
     const piece = s.slice(at + 1, n + 1 < cuts.length ? cuts[n + 1] : s.length).trim();
     const m = /^(\S+)(?:\s+([\s\S]*))?$/.exec(piece);
@@ -118,7 +118,7 @@ function mergeWords(current, incoming, groups) {
  *  (a later one replaces the earlier and moves to the end), anything else is replaced. */
 export function mergeHeaderArgs(layers) {
   const out = {};
-  let vars = [];
+  /** @type {any[]} */ let vars = [];
   let results = [];
   let exports = [];
   for (const layer of layers) {
@@ -131,7 +131,7 @@ export function mergeHeaderArgs(layers) {
         }
       } else if (name === 'results') results = mergeWords(results, value.split(/\s+/).filter(Boolean), RESULTS_GROUPS);
       else if (name === 'exports') exports = mergeWords(exports, value.split(/\s+/).filter(Boolean), EXPORTS_GROUPS);
-      else out[name] = readHeaderValue(value);
+      else /** @type {any} */ (out)[name] = readHeaderValue(value);
     }
   }
   out.var = vars;
@@ -189,7 +189,7 @@ export function inheritedProperty(doc, ancestors, name) {
  *  @param ancestors  headings from the outermost down to the one holding the block ([] before the first heading)
  *  @param block      an object with lang, params and headers: the block's own text after the language, and its #+HEADER: lines
  *  @returns {Record<string, any>} the arguments by name (`var` is a list; every other value is a string) */
-export function effectiveHeaderArgs(doc, ancestors, block) {
+export function effectiveHeaderArgs(/** @type {any} */ doc, /** @type {any} */ ancestors, /** @type {any} */ block) {
   const lang = String(block.lang || '').toLowerCase();
   const layers = [DEFAULT_HEADER_ARGS];
   const general = inheritedProperty(doc, ancestors, 'header-args');

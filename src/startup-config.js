@@ -76,7 +76,7 @@ function parseStartupConfigRaw(doc) {
       } else if (IMAGE_VISIBILITY_KEYWORDS.includes(token)) {
         raw.imageVisibility = token;
       } else if (token in LOG_DONE_KEYWORDS) {
-        raw.logDone = LOG_DONE_KEYWORDS[token];
+        raw.logDone = /** @type {any} */ (LOG_DONE_KEYWORDS)[token];
       }
       // Unrecognized tokens (org has many more #+STARTUP keywords than
       // these three categories -- hidestars, etc.) are silently ignored

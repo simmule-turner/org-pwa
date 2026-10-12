@@ -88,7 +88,7 @@ function collectTagUsage(docs) {
  * STARTS with the query, then one that merely contains it; within each, the
  * most used first, then alphabetical. Empty query: the most used tags.
  */
-function suggestTags({ docs, applied = /** @type {string[]} */ ([]), query = '', limit = 10 }) {
+function suggestTags(/** @type {any} */ { docs, applied = /** @type {string[]} */ ([]), query = '', limit = 10 }) {
   const usage = collectTagUsage(docs);
   const candidates = new Set(usage.keys());
   for (const doc of docs) for (const tag of declaredTagsOf(doc)) candidates.add(tag);
@@ -113,13 +113,13 @@ function suggestTags({ docs, applied = /** @type {string[]} */ ([]), query = '',
 const KNOWN_PROPERTY_KEYS = ['CUSTOM_ID', 'EFFORT', 'Effort_ALL', 'ID', 'ARCHIVE_TIME', 'ARCHIVE_FILE', 'ARCHIVE_CATEGORY', 'ARCHIVE_TODO', 'ARCHIVE_ITAGS', 'ARCHIVE_OLPATH'];
 
 /** Property keys to offer: those on any heading (most used first), then the known ones. */
-function suggestPropertyKeys({ docs, applied = [] }) {
+function suggestPropertyKeys(/** @type {any} */ { docs, applied = [] }) {
   const usage = new Map();
   for (const doc of docs) {
     if (!doc) continue;
     for (const heading of headingsOf(doc)) for (const key of heading.propertyOrder || []) usage.set(key, (usage.get(key) || 0) + 1);
   }
-  const appliedLower = new Set(applied.map((k) => String(k).toLowerCase()));
+  const appliedLower = new Set(applied.map((/** @type {any} */ k) => String(k).toLowerCase()));
   const used = [...usage].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k]) => k);
   const result = [];
   const seen = new Set();

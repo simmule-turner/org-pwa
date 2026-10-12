@@ -68,7 +68,7 @@ export function createIndexedDbAdapter() {
       return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readonly');
         const store = tx.objectStore(STORE_NAME);
-        const keys = [];
+        /** @type {any[]} */ const keys = [];
         const req = store.openCursor();
         req.onsuccess = () => {
           const cursor = req.result;

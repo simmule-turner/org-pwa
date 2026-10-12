@@ -194,8 +194,8 @@ function highlightXml(code) {
  * @param {any} [lang]
  */
 export function highlightToHtml(code, lang) {
-  const key = ALIASES[String(lang || '').toLowerCase()] || String(lang || '').toLowerCase();
-  const cfg = LANGS[key];
+  const key = /** @type {any} */ (ALIASES)[String(lang || '').toLowerCase()] || String(lang || '').toLowerCase();
+  const cfg = /** @type {any} */ (LANGS)[key];
   if (!cfg) return esc(code);
   if (cfg.xml) return highlightXml(code);
   let out = '';
@@ -214,7 +214,7 @@ export function highlightToHtml(code, lang) {
     }
     // comments
     /** @param {any} [c] */
-    const line = (cfg.line || []).find((c) => code.startsWith(c, i));
+    const line = (cfg.line || []).find((/** @type {any} */ c) => code.startsWith(c, i));
     if (line && !(line === '#' && cfg.preprocessor)) {
       const end = code.indexOf('\n', i);
       const stop = end < 0 ? n : end;
@@ -222,7 +222,7 @@ export function highlightToHtml(code, lang) {
       i = stop;
       continue;
     }
-    const block = (cfg.block || []).find(([open]) => code.startsWith(open, i));
+    const block = (cfg.block || []).find((/** @type {any} */ [open]) => code.startsWith(open, i));
     if (block) {
       const end = code.indexOf(block[1], i + block[0].length);
       const stop = end < 0 ? n : end + block[1].length;
@@ -239,7 +239,7 @@ export function highlightToHtml(code, lang) {
     }
     // strings
     /** @param {any} [q] */
-    const quote = (cfg.strings || []).find((q) => code.startsWith(q, i));
+    const quote = (cfg.strings || []).find((/** @type {any} */ q) => code.startsWith(q, i));
     if (quote) {
       let j = i + quote.length;
       while (j < n && !code.startsWith(quote, j)) {

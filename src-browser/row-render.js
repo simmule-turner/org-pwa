@@ -761,7 +761,7 @@ export function renderTableRow(row) {
           // trusting the closure-captured row.node directly, is what
           // makes this correct either way.
           /** @param {any} [n] */
-          const freshTable = (row.heading.body || []).find((n) => n.type === 'table' && n.lineIndex === row.node.lineIndex) || row.node;
+          const freshTable = (row.heading.body || []).find((/** @type {any} */ n) => n.type === 'table' && n.lineIndex === row.node.lineIndex) || row.node;
           S.editingCell = { heading: row.heading, table: freshTable, rowIndex, colIndex };
           commitAndRender('Edited table cell');
         });
@@ -1164,7 +1164,7 @@ export function renderBlockContent(block, container, linkContext) {
     // instead of just joining into the next line with a space. This
     // is the one place in this app where the marker does something a
     // plain per-line join wouldn't already do on its own.
-    let currentParagraphLines = [];
+    /** @type {any[]} */ let currentParagraphLines = [];
     const flushParagraph = () => {
       if (currentParagraphLines.length === 0) return;
       const p = document.createElement('p');

@@ -390,7 +390,7 @@ export const PALETTE_NEEDS = {
  */
 export function paletteUnavailableReason(command, target) {
   for (const need of command.needs || []) {
-    const reason = PALETTE_NEEDS[need](target);
+    const reason = /** @type {any} */ (PALETTE_NEEDS)[need](target);
     if (reason) return reason;
   }
   return null;
@@ -431,7 +431,7 @@ export function paletteCommandList() {
   const chord = (/** @type {any} */ c) => (/** @type {any} */ target) => {
     S.actionMenuFor = null;
     if (target) setKeyboardFocusToHeading(target);
-    GOD_MODE_ACTIONS[c]();
+    /** @type {any} */ (GOD_MODE_ACTIONS)[c]();
   };
   const onHeading = (/** @type {Function} */ fn) => (/** @type {any} */ target) => {
     S.actionMenuFor = null;
@@ -623,7 +623,7 @@ export async function openCommandPalette() {
   list.style.maxHeight = 'min(62vh, 460px)';
   modal.appendChild(list);
 
-  let results = [];
+  /** @type {any[]} */ let results = [];
   let selected = 0;
 
   const stopTrackingViewport = keepOverlayInVisibleViewport(overlay);
@@ -902,7 +902,7 @@ export function dispatchGodModeKeystroke(rawKey, shiftKey) {
     if (chordString !== 'C-f' && chordString !== 'C-/') S.godModeRedoArmed = false;
     // named in the minibuffer once it has run, so it is clear what was executed
     S.godModeLastCommand = { chord: chordString, label: labelForChord(chordString) };
-    GOD_MODE_ACTIONS[chordString]();
+    /** @type {any} */ (GOD_MODE_ACTIONS)[chordString]();
     S.godModeState = godModeInitialState();
   } else if (!stillWaiting && !isValidGodModePrefix(chordString)) {
     setStatus(`God-mode: "${chordString}" isn\u2019t a recognized sequence.`);

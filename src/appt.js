@@ -221,6 +221,6 @@ export function plannedNotifications(appointments, now, warningMinutes, interval
       planned.push({ id: appointmentId(reminderSlot(appt, offset)), slot: reminderSlot(appt, offset), at, title: appt.title, body, group: `appt-${appt.id}`, detail: appt.detail, day: startOfDay(appt.start).getTime() });
     }
   }
-  planned.sort((a, b) => a.at - b.at);
+  planned.sort((/** @type {any} */ a, /** @type {any} */ b) => a.at - b.at);
   return planned.slice(0, limit);
 }

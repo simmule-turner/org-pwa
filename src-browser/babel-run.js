@@ -42,7 +42,7 @@ function workerMain() {
     }
   };
   /** @param {any} [v] */
-  const plain = (v) => {
+  /** @returns {any} */ const plain = (/** @type {any} */ v) => {
     if (v === undefined || v === null || ['string', 'number', 'boolean'].includes(typeof v)) return v;
     if (typeof v === 'bigint') return String(v);
     if (v instanceof Date) return v.toISOString();
@@ -50,7 +50,7 @@ function workerMain() {
     if (Array.isArray(v)) return v.map(plain);
     if (typeof v === 'object') {
       const out = {};
-      for (const k of Object.keys(v)) out[k] = plain(v[k]);
+      for (const k of Object.keys(v)) /** @type {any} */ (out)[k] = plain(v[k]);
       return out;
     }
     return String(v);
@@ -96,8 +96,8 @@ function workerMain() {
       return;
     }
     const { id, code, vars, variables, maxBytes } = e.data;
-    const lines = [];
-    const log = (...a) => lines.push(a.map(show).join(' '));
+    /** @type {any[]} */ const lines = [];
+    const log = (/** @type {any[]} */ ...a) => lines.push(a.map(show).join(' '));
     const consoleShim = Object.freeze({ log, info: log, warn: log, error: log, debug: log });
     const org = Object.freeze({
       apiVersion: 1,
@@ -188,7 +188,7 @@ export function createRpcHost(onRpc, post) {
  *  { ok: false, message, line?, output?, timedOut? }
  * Never rejects.
  */
-export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 5000, maxBytes = DEFAULT_MAX_BYTES, startupMs = 4000, onRpc = /** @type {((method: any, args: any) => any) | null} */ (null) }) {
+export function runJavaScript(/** @type {any} */ { code, vars = {}, variables = {}, timeoutMs = 5000, maxBytes = DEFAULT_MAX_BYTES, startupMs = 4000, onRpc = /** @type {((method: any, args: any) => any) | null} */ (null) }) {
   return new Promise((resolve) => {
     const frame = document.createElement('iframe');
     frame.setAttribute('sandbox', 'allow-scripts');

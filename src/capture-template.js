@@ -171,7 +171,7 @@ function scanPrompts(template) {
     if (match[0] === '%?') {
       prompts.push({ prompt: 'Text', default: '', completions: [] });
     } else if (match[2]) {
-      const kind = TIMESTAMP_PROMPT_KINDS[match[2]];
+      const kind = /** @type {any} */ (TIMESTAMP_PROMPT_KINDS)[match[2]];
       prompts.push({ prompt: kind.label, default: '', completions: [], timestamp: { active: kind.active, hasTime: kind.hasTime } });
     } else {
       const parts = match[1].split('|');
@@ -212,11 +212,11 @@ function scanPrompts(template) {
  * @param {any} [template]
  */
 function expandTemplate(template, context = {}) {
-  const now = context.now instanceof Date ? context.now : new Date();
-  const promptAnswers = context.promptAnswers || [];
-  const tableRowNumber = context.tableRowNumber;
-  const shared = context.shared || null; // content shared in from another app, for %i and %a (see capture-shared.js)
-  const clipboard = typeof context.clipboard === 'string' ? context.clipboard : ''; // for %x
+  const now = /** @type {any} */ (context).now instanceof Date ? /** @type {any} */ (context).now : new Date();
+  const promptAnswers = /** @type {any} */ (context).promptAnswers || [];
+  const tableRowNumber = /** @type {any} */ (context).tableRowNumber;
+  const shared = /** @type {any} */ (context).shared || null; // content shared in from another app, for %i and %a (see capture-shared.js)
+  const clipboard = typeof /** @type {any} */ (context).clipboard === 'string' ? /** @type {any} */ (context).clipboard : ''; // for %x
 
   const hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
   const TOKEN_RE = /%%|%<([^>]*)>|%\^\{([^}]*)\}|%\\(\d+)|%[tTuU?iax]|@#(?:\s*([+-])\s*(\d+))?|%\^([tTuU])/g;

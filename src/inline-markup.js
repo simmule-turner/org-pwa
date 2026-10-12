@@ -390,8 +390,8 @@ function matchEmphasisAt(text, pos) {
  * satisfies both rules at once).
  * @param {any} [text]
  */
-function parseInline(text, opts = {}) {
-  const subSuperscriptMode = opts.subSuperscriptMode || 't';
+/** @returns {any} */ function parseInline(/** @type {any} */ text, opts = {}) {
+  const subSuperscriptMode = /** @type {any} */ (opts).subSuperscriptMode || 't';
   const nodes = [];
   let buffer = '';
   let pos = 0;
@@ -470,7 +470,7 @@ function parseInline(text, opts = {}) {
 
     if (text[pos] === LATEX_PLACEHOLDER_START) {
       const ph = LATEX_PLACEHOLDER_RE.exec(text.slice(pos));
-      const frag = ph && opts.latexFragments && opts.latexFragments[Number(ph[1])];
+      const frag = ph && /** @type {any} */ (opts).latexFragments && /** @type {any} */ (opts).latexFragments[Number(ph[1])];
       if (frag) {
         flush();
         nodes.push({ type: 'latex', source: frag.source, displayMode: frag.displayMode });
@@ -493,7 +493,7 @@ function parseInline(text, opts = {}) {
       const m = matchEmphasisAt(text, pos);
       if (m) {
         flush();
-        const kind = EMPHASIS_KIND[m.marker];
+        const kind = /** @type {any} */ (EMPHASIS_KIND)[m.marker];
         if (LITERAL_KINDS.has(kind)) {
           nodes.push({ type: kind, value: m.content });
         } else {

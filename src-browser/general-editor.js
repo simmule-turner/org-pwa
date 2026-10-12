@@ -257,7 +257,7 @@ export function buildPropertiesFieldGroup(heading) {
         const trimmedKey = key.trim();
         if (!trimmedKey) continue; // an incomplete "Add property" row the user never filled in -- dropped silently, not an error
         if (!(trimmedKey in properties)) propertyOrder.push(trimmedKey);
-        properties[trimmedKey] = value;
+        /** @type {any} */ (properties)[trimmedKey] = value;
       }
       return { properties, propertyOrder };
     },
@@ -301,7 +301,12 @@ export function openGeneralEditor(heading) {
   const fieldsContainer = document.createElement('div');
   modal.appendChild(fieldsContainer);
 
-  let scheduledGroup, deadlineGroup, plainGroup, tagsGroup, priorityGroup, propsGroup;
+  /** @type {any} */ let scheduledGroup;
+  /** @type {any} */ let deadlineGroup;
+  /** @type {any} */ let plainGroup;
+  /** @type {any} */ let tagsGroup;
+  /** @type {any} */ let priorityGroup;
+  /** @type {any} */ let propsGroup;
   /** @type {string | null} */
   let initialSnapshotJSON = null;
 

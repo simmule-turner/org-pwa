@@ -15,7 +15,7 @@ export function scheduleSync() {
 /** Syncs the calendar and the contacts, whichever are set up, one after the other, and says how each went in one line (so an
  *  error in one is not hidden by the other's success). */
 export async function syncNow() {
-  const messages = [];
+  /** @type {any[]} */ const messages = [];
   /** @param {any} [message] */
   const report = (message) => messages.push(message);
   if (effectiveCalendarConfig()) await syncAgendaToCalendar({ manual: true, report });

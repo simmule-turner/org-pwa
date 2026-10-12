@@ -73,7 +73,7 @@ function sparseNarrowKey(documentId) {
  * @param {any} [heading]
  *  parents that share one, and then every title path points at the first. null if `heading` is not in `doc`. */
 function outlineKeyForHeading(doc, heading) {
-  const trail = [];
+  /** @type {any[]} */ const trail = [];
   /** @param {any} [children] */
   const walk = (children) => {
     for (let i = 0; i < children.length; i++) {
@@ -152,7 +152,7 @@ async function loadSparseNarrowState(adapter, documentId) {
     for (const entry of Array.isArray(parsed.headings) ? parsed.headings : []) {
       if (!entry || !titles(entry.path)) continue;
       const key = { path: entry.path };
-      if (Array.isArray(entry.idx) && entry.idx.every(Number.isInteger)) key.idx = entry.idx;
+      if (Array.isArray(entry.idx) && entry.idx.every(Number.isInteger)) /** @type {any} */ (key).idx = entry.idx;
       keys.push(key);
     }
     for (const path of Array.isArray(parsed.outlinePaths) ? parsed.outlinePaths : []) {

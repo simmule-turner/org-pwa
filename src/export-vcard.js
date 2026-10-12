@@ -301,7 +301,7 @@ const TREE_FIELDTYPE_TO_VCARD_LINE = {
  *  block exists at all. */
 function blockText(heading) {
   /** @param {any} [b] */
-  const block = (heading.body || []).find((b) => b.type === 'block' && (b.name === 'VERSE' || b.name === 'QUOTE'));
+  const block = (heading.body || []).find((/** @type {any} */ b) => b.type === 'block' && (b.name === 'VERSE' || b.name === 'QUOTE'));
   return block ? block.lines.join('\n') : null;
 }
 
@@ -324,10 +324,10 @@ function noteBlockText(heading) {
  * @param {any} [heading]
  * @param {any} [fieldType]
  *  encounter it. */
-function findFieldValue(heading, fieldType) {
+/** @returns {any} */ function findFieldValue(/** @type {any} */ heading, /** @type {any} */ fieldType) {
   for (const child of heading.children || []) {
     if (String(getProperty(child, 'FIELDTYPE') || '').toLowerCase() === fieldType) return child.title;
-    const nested = findFieldValue(child, fieldType);
+    /** @type {any} */ const nested = findFieldValue(child, fieldType);
     if (nested) return nested;
   }
   return null;
@@ -357,7 +357,7 @@ function buildVcardFromTreeContact(heading) {
     for (const child of node.children || []) {
       const fieldType = String(getProperty(child, 'FIELDTYPE') || '').toLowerCase();
       if (fieldType === 'n') continue; // already written above, immediately after FN
-      const builder = TREE_FIELDTYPE_TO_VCARD_LINE[fieldType];
+      const builder = /** @type {any} */ (TREE_FIELDTYPE_TO_VCARD_LINE)[fieldType];
       if (builder) {
         const isAddressField = fieldType === 'address' || fieldType === 'address-work' || fieldType === 'address-home';
         const value = fieldType === 'note' ? noteBlockText(child) : fieldType === 'photo' ? getProperty(child, 'DATA') || child.title || '' : child.title || '';
@@ -412,11 +412,11 @@ function buildVcardFromTreeContact(heading) {
  * option on the export itself.
  * @param {any} [docs]
  */
-export function exportToVcard(docs, opts = {}) {
+export function exportToVcard(docs, opts = /** @type {any} */ ({})) {
   const { scope = null, birthdayProperty = 'BIRTHDAY', style = 'flat' } = opts;
   const scopeHeadings = scope === null ? null : Array.isArray(scope) ? scope : [scope];
 
-  const cards = [];
+  /** @type {any[]} */ const cards = [];
   const seen = new Set();
   /** @param {any} [heading] */
   const visit = (heading) => {
@@ -446,9 +446,9 @@ export function exportToVcard(docs, opts = {}) {
  * and then as Flat, and a file may mix the two. Archived and commented headings are skipped, as in the export.
  * @param {any} [docs]
  */
-export function collectContactCards(docs, opts = {}) {
+export function collectContactCards(docs, opts = /** @type {any} */ ({})) {
   const { birthdayProperty = 'BIRTHDAY' } = opts;
-  const cards = [];
+  /** @type {any[]} */ const cards = [];
   const seen = new Set();
   for (const { documentId, doc } of docs) {
     walkHeadings(doc, (/** @type {any} */ heading) => {

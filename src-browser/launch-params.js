@@ -55,7 +55,7 @@ export async function runLaunch(params) {
  * A payload is `{ title, text, url, capture? }`; see launchFromShare.
  */
 export function acceptNativeLaunches() {
-  const queued = Array.isArray(globalThis.orgPwaLaunchQueue) ? globalThis.orgPwaLaunchQueue.splice(0) : [];
-  globalThis.orgPwaLaunch = (/** @type {any} */ payload) => runLaunch(launchFromShare(payload)).catch(() => {});
-  for (const payload of queued) globalThis.orgPwaLaunch(payload);
+  const queued = Array.isArray(/** @type {any} */ (globalThis).orgPwaLaunchQueue) ? /** @type {any} */ (globalThis).orgPwaLaunchQueue.splice(0) : [];
+  /** @type {any} */ (globalThis).orgPwaLaunch = (/** @type {any} */ payload) => runLaunch(launchFromShare(payload)).catch(() => {});
+  for (const payload of queued) /** @type {any} */ (globalThis).orgPwaLaunch(payload);
 }

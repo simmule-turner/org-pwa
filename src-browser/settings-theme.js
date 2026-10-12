@@ -96,7 +96,7 @@ export function buildThemeColorCustomizationSection(themeName) {
   const themeOverrides = S.customThemeColors[themeName] || {};
 
   for (const varName of THEME_CSS_VARS) {
-    const currentValue = themeOverrides[varName] || THEME_DEFAULTS[themeName][varName];
+    const currentValue = themeOverrides[varName] || /** @type {any} */ (THEME_DEFAULTS)[themeName][varName];
     const { rgb, alpha } = splitHexAlpha(currentValue);
     const isCustomized = varName in themeOverrides;
 
@@ -108,7 +108,7 @@ export function buildThemeColorCustomizationSection(themeName) {
     row.style.borderBottom = '1px solid var(--border)';
 
     const label = document.createElement('div');
-    label.textContent = THEME_VAR_LABELS[varName];
+    label.textContent = /** @type {any} */ (THEME_VAR_LABELS)[varName];
     label.style.flex = '1';
     label.style.fontSize = '13px';
     label.style.fontWeight = isCustomized ? '600' : '400';
@@ -130,7 +130,7 @@ export function buildThemeColorCustomizationSection(themeName) {
     opacityInput.max = '255';
     opacityInput.value = String(alpha);
     opacityInput.style.width = '70px';
-    opacityInput.setAttribute('aria-label', THEME_VAR_LABELS[varName] + ' opacity');
+    opacityInput.setAttribute('aria-label', /** @type {any} */ (THEME_VAR_LABELS)[varName] + ' opacity');
     row.appendChild(opacityInput);
 
     const applyChange = async () => {
