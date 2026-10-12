@@ -305,6 +305,7 @@
      still used for every non-menu button row (toolbars, form fields,
      Save/Cancel pairs) elsewhere in this app. */
   .menu-list-item {
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; /* a long press on a menu row is a gesture, not the start of a text selection */
     display: block; width: 100%; text-align: left; font: inherit; font-size: 15px; padding: 12px 14px; min-height: var(--target);
     box-sizing: border-box; background: var(--bg); color: var(--fg); border: none; border-radius: 0; border-bottom: 1px solid var(--border);
     cursor: pointer;

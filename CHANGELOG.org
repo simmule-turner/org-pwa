@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v496 — Long press works over the whole row
+A long press on a Recently opened entry removes it wherever you press. Over a bracket or other text it used to start the phone's text selection instead; menu rows no longer select text.
+Verified: the Recently opened removal check.
+
 * v495 — Removing a recent file behaves
 Long-pressing a Recently opened entry now removes just that entry: the File menu stays open, the file is not opened by the release that follows, and answering the question no longer closes the menu. The list also keeps only the five shown (plus the open file), so a removed entry is not replaced by an older hidden one.
 Verified: removing all five entries one by one, bottom first.

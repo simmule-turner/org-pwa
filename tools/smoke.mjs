@@ -2428,7 +2428,7 @@ check('Open / Save As screen: one screen with a GitHub / Local file / WebDAV pic
   await context.close();
 });
 
-check('Recently opened: a long press removes that entry (the last one too) without opening it or closing the File menu, and the list empties', async () => {
+check('Recently opened: menu rows cannot be text-selected, so a long press over "(" or ")" is not taken by copy mode; a long press removes that entry (the last one too) without opening it or closing the File menu, and the list empties', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* One\n');
   await page.evaluate(async () => {
@@ -2440,6 +2440,7 @@ check('Recently opened: a long press removes that entry (the last one too) witho
   const items = page.locator('#fileMenuPanel [role=menuitem]', { hasText: '(GitHub)' });
   await items.first().waitFor();
   expect((await items.count()) === 5, `five shown, got ${await items.count()}`);
+  expect(await items.first().evaluate((el) => getComputedStyle(el).userSelect === 'none'), 'menu rows are not text-selectable');
   for (let left = 5; left > 0; left--) {
     const item = items.nth(left - 1); // always the bottom entry
     const b = await item.boundingBox();
