@@ -10,6 +10,28 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; media-src 'self' data: blob: https: http:; font-src 'self' data:; connect-src 'self' https: http:; frame-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
 <link rel="manifest" href="manifest.json" />
 <style>
+  /* shared sizes for popups and panels: see "ui-" classes below */
+  :root {
+    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px;
+    --radius-control: 8px; --radius-container: 16px;
+    --text-meta: 12px; --text-secondary: 14px; --text-body: 16px; --text-title: 18px;
+    --scrim: rgba(0,0,0,0.5);
+    --target: 48px;
+  }
+  @media (pointer: fine) and (hover: hover) { :root { --target: 36px; } }
+  /* a popup is a bottom sheet under 600px wide and a centered dialog from 600px up */
+  .ui-overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 10000; display: flex; align-items: flex-end; justify-content: center; box-sizing: border-box; }
+  .ui-container { background: var(--modal-bg); color: var(--fg); border: 1px solid var(--border-strong); border-bottom: 0; border-radius: var(--radius-container) var(--radius-container) 0 0; width: 100%; max-width: 560px; max-height: 92%; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
+  .ui-container.ui-tall { height: 92%; }
+  .ui-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 8px auto; flex: 0 0 auto; }
+  .ui-container button:focus-visible, .ui-container input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .ui-cancel { border-color: var(--accent) !important; }
+  @media (min-width: 600px) {
+    .ui-overlay { align-items: center; padding: var(--space-4); }
+    .ui-container { border-bottom: 1px solid var(--border-strong); border-radius: var(--radius-container); max-height: 80%; }
+    .ui-container.ui-tall { height: 80%; }
+    .ui-grip { display: none; }
+  }
   :root {
     color-scheme: light dark;
     --bg: Canvas;
@@ -387,8 +409,8 @@
   <div id="refilePanel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
     <div id="refilePanelBox" class="panel" style="background: var(--modal-bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 10px; padding: 18px; width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box;"></div>
   </div>
-  <div id="archiveRefilePanel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 10000; align-items: flex-end; justify-content: center; box-sizing: border-box;">
-    <div id="archiveRefilePanelBox" class="panel" style="background: var(--modal-bg); color: var(--fg); border: 1px solid var(--border-strong); border-bottom: 0; border-radius: 16px 16px 0 0; padding: 0; width: 100%; max-width: 560px; height: 92%; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;"></div>
+  <div id="archiveRefilePanel" class="ui-overlay" style="display: none;">
+    <div id="archiveRefilePanelBox" class="panel ui-container ui-tall" style="padding: 0;"></div>
   </div>
   <div
     id="fileMenuPanel"

@@ -1,6 +1,7 @@
 // @ts-check
 // A sheet that slides up from the bottom of the screen: a list of actions, or a list of choices with check boxes. Thumb-height
-// rows (48px), a Cancel at the bottom, a tap outside or Escape closes it. Nothing in the page moves while it is open.
+// rows (the shared tap size), a Cancel at the bottom, a tap outside or Escape closes it. Nothing in the page moves while it is open.
+import { containTab, rememberOpener, restoreOpener } from './containers.js';
 import { lockBackgroundScroll } from './dialogs.js';
 
 /**
@@ -14,19 +15,19 @@ import { lockBackgroundScroll } from './dialogs.js';
 function buildSheet(title, subtitle) {
   const overlay = document.createElement('div');
   overlay.setAttribute('data-bottom-sheet', '');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.5);touch-action:none;';
+  overlay.className = 'ui-overlay';
+  overlay.style.touchAction = 'none';
   const panel = document.createElement('div');
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-label', title);
-  panel.style.cssText =
-    'width:100%;max-width:560px;max-height:82vh;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;box-sizing:border-box;background:var(--modal-bg);color:var(--fg);' +
-    'border:1px solid var(--border-strong);border-bottom:0;border-radius:16px 16px 0 0;padding:10px 16px calc(14px + env(safe-area-inset-bottom, 0px));';
+  panel.className = 'ui-container';
+  panel.style.cssText = 'overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;padding:var(--space-2) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom, 0px));';
   const grip = document.createElement('div');
-  grip.style.cssText = 'width:40px;height:4px;border-radius:2px;background:var(--border-strong);margin:0 auto 10px;';
+  grip.className = 'ui-grip';
   panel.appendChild(grip);
   const heading = document.createElement('div');
   heading.textContent = title;
-  heading.style.cssText = 'font-size:16px;font-weight:700;overflow-wrap:anywhere;';
+  heading.style.cssText = 'font-size:var(--text-body);font-weight:700;overflow-wrap:anywhere;';
   panel.appendChild(heading);
   if (subtitle) {
     const sub = document.createElement('div');
@@ -48,11 +49,14 @@ function buildSheet(title, subtitle) {
     document.removeEventListener('keydown', onKeyDown, true);
     unlock();
     overlay.remove();
+    restoreOpener(overlay);
   }
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) close();
   });
   document.addEventListener('keydown', onKeyDown, true);
+  rememberOpener(overlay);
+  containTab(overlay);
   document.body.appendChild(overlay);
   unlock = lockBackgroundScroll(overlay);
   return { overlay, panel, close };
@@ -62,7 +66,8 @@ function buildSheet(title, subtitle) {
 function cancelButton(label, onClick) {
   const btn = document.createElement('button');
   btn.textContent = label;
-  btn.style.cssText = 'display:block;width:100%;min-height:48px;margin-top:10px;font-size:16px;';
+  btn.style.cssText = 'display:block;width:100%;min-height:var(--target);margin-top:var(--space-3);font-size:var(--text-body);';
+  btn.className = 'ui-cancel';
   btn.onclick = onClick;
   return btn;
 }
@@ -77,7 +82,7 @@ export function openActionSheet({ title, subtitle, actions }) {
   for (const action of actions) {
     const btn = document.createElement('button');
     btn.style.cssText =
-      'display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;width:100%;min-height:48px;padding:6px 4px;border:0;border-radius:0;background:none;text-align:left;font-size:16px;' +
+      'display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;width:100%;min-height:var(--target);padding:6px 4px;border:0;border-radius:0;background:none;text-align:left;font-size:var(--text-body);' +
       (action.danger ? 'color:#c0392b;' : '');
     btn.disabled = !!action.disabled;
     const main = document.createElement('span');
@@ -95,7 +100,9 @@ export function openActionSheet({ title, subtitle, actions }) {
     };
     panel.appendChild(btn);
   }
-  panel.appendChild(cancelButton('Cancel', close));
+  const cancel = cancelButton('Cancel', close);
+  panel.appendChild(cancel);
+  cancel.focus();
   return close;
 }
 
@@ -109,7 +116,7 @@ export function openChoiceSheet({ title, choices, selected, onApply }) {
   /** @type {Map<string, HTMLInputElement>} */ const boxes = new Map();
   for (const [value, count] of choices) {
     const row = document.createElement('label');
-    row.style.cssText = 'display:flex;align-items:center;gap:12px;min-height:48px;font-size:16px;cursor:pointer;';
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;min-height:var(--target);font-size:var(--text-body);cursor:pointer;';
     const box = document.createElement('input');
     box.type = 'checkbox';
     box.checked = selected.includes(value);
@@ -128,20 +135,22 @@ export function openChoiceSheet({ title, choices, selected, onApply }) {
   buttons.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
   const apply = document.createElement('button');
   apply.textContent = 'Apply';
-  apply.style.cssText = 'flex:1 1 0;min-height:48px;font-size:16px;font-weight:700;background:var(--accent);color:#fff;border-color:var(--accent);';
+  apply.style.cssText = 'flex:1 1 0;min-height:var(--target);font-size:var(--text-body);font-weight:700;background:var(--accent);color:#fff;border-color:var(--accent);';
   apply.onclick = () => {
     close();
     onApply([...boxes].filter(([, b]) => b.checked).map(([v]) => v));
   };
   const clear = document.createElement('button');
   clear.textContent = 'Clear';
-  clear.style.cssText = 'flex:1 1 0;min-height:48px;font-size:16px;';
+  clear.style.cssText = 'flex:1 1 0;min-height:var(--target);font-size:var(--text-body);';
   clear.onclick = () => {
     close();
     onApply([]);
   };
   buttons.append(clear, apply);
   panel.appendChild(buttons);
-  panel.appendChild(cancelButton('Cancel', close));
+  const cancel = cancelButton('Cancel', close);
+  panel.appendChild(cancel);
+  cancel.focus();
   return close;
 }

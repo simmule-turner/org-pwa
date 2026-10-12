@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v489 — Sheets on phones, dialogs on wider screens
+The row action and filter sheets and the Archive & Refile panel now share one look: a bottom sheet on a phone, a centered dialog from 600 px wide up, with 48 px targets on touch and 36 px with a mouse. Esc closes, Tab stays inside, focus returns to where you were, and Cancel is the emphasized button. This lays the groundwork for bringing the other popups and menus into line.
+
 * v488 — One panel for Archive, Restore and Refile
 Archive, Restore and Refile now share one panel in two parts, each scrolling on its own: what the archive or restore will do, and a searchable list of refile targets with the details of the one you chose. Archive (or Restore), Refile and Cancel stay at the bottom at a fixed size, and Cancel has focus. It opens from the heading menu, the Agenda row actions, the palette and the swipe.
 

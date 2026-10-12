@@ -669,7 +669,7 @@ The Agenda's date-range line has a *Log* checkbox, off by default, like org's ~o
 :CUSTOM_ID: archiving
 :END:
 
-Tap a heading's title, then *Archive*, to move its subtree to the archive location (real org's ~org-archive-subtree~, ~C-c C-x C-s~ or ~C-c $~). A panel opens in two parts, each scrolling on its own: *Archive & details* names the destination and what will be added, and *Refile & details* lists places to move it instead (see [[#refile][Refile]]). *Archive*, *Refile* and *Cancel* stay at the bottom; *Cancel* has focus, so a stray tap does nothing.
+Tap a heading's title, then *Archive*, to move its subtree to the archive location (real org's ~org-archive-subtree~, ~C-c C-x C-s~ or ~C-c $~). A panel opens in two parts, each scrolling on its own: *Archive & details* names the destination and what will be added, and *Refile & details* lists places to move it instead (see [[#refile][Refile]]). *Archive*, *Refile* and *Cancel* stay at the bottom; *Cancel* has focus, so a stray tap does nothing. On a screen 600 px wide or more the panel is a centered dialog instead of a bottom sheet; *Esc* closes it, *Tab* stays inside it, and focus returns to where you were.
 
 The moved heading gets an ~:ARCHIVE:~ tag and properties recording where it came from: ~ARCHIVE_TIME~, ~ARCHIVE_FILE~, ~ARCHIVE_OLPATH~, ~ARCHIVE_CATEGORY~, ~ARCHIVE_TODO~ and ~ARCHIVE_ITAGS~, as in org's ~org-archive-save-context-info~. The original is removed only after the copy is safely written, so a failure leaves it where it was.
 

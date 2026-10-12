@@ -10,6 +10,7 @@ import { getRefileCandidates, parseRefileTargetsWithErrors, recentRefileCandidat
 import { ensureAgendaFilesLoadedAndWait } from './agenda-files.js';
 import { archiveHeadingToLocation, getArchiveDestinationLabel, unarchiveHeadingToOriginalLocation } from './archive-flow.js';
 import { S } from './app-state.js';
+import { containTab, rememberOpener, restoreOpener } from './containers.js';
 import { showModalOverlay } from './dialogs.js';
 import { archiveRefilePanel, archiveRefilePanelBox } from './dom.js';
 import { loadRefileTargetDocs, performRefile } from './refile-flow.js';
@@ -106,8 +107,11 @@ export function renderArchiveRefilePanel() {
   archiveRefilePanelBox.innerHTML = '';
   if (!p) {
     hideModalOverlay(archiveRefilePanel);
+    restoreOpener(archiveRefilePanel);
     return;
   }
+  rememberOpener(archiveRefilePanel);
+  containTab(archiveRefilePanel);
   showModalOverlay(archiveRefilePanel);
   const heading = p.heading;
   const restore = p.mode === 'restore';
@@ -115,8 +119,10 @@ export function renderArchiveRefilePanel() {
   archiveRefilePanelBox.setAttribute('aria-label', restore ? 'Restore or refile' : 'Archive or refile');
 
   // header: what is being moved
-  const head = div('padding:10px 14px 8px;border-bottom:1px solid var(--border-strong);flex:0 0 auto;');
-  head.appendChild(div('width:38px;height:4px;border-radius:2px;background:var(--border-strong);margin:0 auto 8px;'));
+  const head = div('padding:0 14px 8px;border-bottom:1px solid var(--border-strong);flex:0 0 auto;');
+  const grip = div('');
+  grip.className = 'ui-grip';
+  head.appendChild(grip);
   head.appendChild(div('font-weight:700;overflow-wrap:anywhere;', `${heading.todo ? heading.todo + ' ' : ''}${heading.title || '(untitled)'}`));
   head.appendChild(div('font-size:12px;opacity:0.65;', `Subtree: ${describeSubtree(heading)}`));
   archiveRefilePanelBox.appendChild(head);
@@ -149,7 +155,7 @@ export function renderArchiveRefilePanel() {
   const button = (label, onClick) => {
     const b = document.createElement('button');
     b.textContent = label;
-    b.style.cssText = 'flex:1 1 0;min-height:48px;font-size:16px;font-weight:600;white-space:nowrap;';
+    b.style.cssText = 'flex:1 1 0;min-height:var(--target);font-size:var(--text-body);font-weight:600;white-space:nowrap;';
     b.onclick = onClick;
     return b;
   };
@@ -168,6 +174,7 @@ export function renderArchiveRefilePanel() {
   archiveBtn.setAttribute('data-act', 'archive');
   refileBtn.setAttribute('data-act', 'refile');
   cancelBtn.setAttribute('data-act', 'cancel');
+  cancelBtn.classList.add('ui-cancel');
   actions.append(archiveBtn, refileBtn, cancelBtn);
   archiveRefilePanelBox.appendChild(actions);
 

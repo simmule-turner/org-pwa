@@ -2135,7 +2135,7 @@ check('Archive & Refile panel: two parts that scroll alone, three one-line butto
   const labels = await box.locator('[data-act]').allInnerTexts();
   expect(labels.join('|') === 'Archive|Refile|Cancel', `buttons: ${labels}`);
   const heights = await box.locator('[data-act]').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
-  expect(heights.every((h) => h === heights[0] && h >= 44), `buttons are one fixed height: ${heights}`);
+  expect(heights.every((h) => h === heights[0] && h >= 36), `buttons are one fixed height: ${heights}`);
   expect(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-act')) === 'cancel', 'Cancel has focus');
   expect(await box.locator('[data-act="refile"]').isDisabled(), 'Refile waits for a target');
   const scrolls = await page.evaluate(() => {
@@ -2177,6 +2177,35 @@ check('Archive & Refile panel: two parts that scroll alone, three one-line butto
   await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
   expect(!(await page.locator('#archiveRefilePanel').isVisible()), 'Escape closes it');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('popups: a bottom sheet under 600px wide and a centered dialog from 600px, Tab stays inside, and focus goes back to the button that opened it', async () => {
+  const { context, page, errors } = await freshPage();
+  const today = orgToday();
+  await newDocument(page, ['#+TODO: TODO | DONE', `* TODO Pay rent :home:\nSCHEDULED: ${today}`, `* TODO Call dentist :work:\nSCHEDULED: ${today}`, ''].join('\n'));
+  await viewMenu(page, 'Agenda');
+  await page.waitForSelector('[data-view-filter]');
+  const chip = page.locator('[aria-label="Filter by Tags"]');
+  await chip.click();
+  const box = page.locator('[data-bottom-sheet] > [role="dialog"]');
+  const geometry = () => box.evaluate((e) => { const r = e.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, vh: window.innerHeight, w: r.width, vw: window.innerWidth }; });
+  let g = await geometry();
+  expect(Math.abs(g.bottom - g.vh) < 2 && g.w >= g.vw - 2, `under 600px: a full-width sheet on the bottom edge: ${JSON.stringify(g)}`);
+  // Tab never leaves the popup
+  for (let i = 0; i < 8; i++) await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => !!document.activeElement && !!document.activeElement.closest('[data-bottom-sheet]')), 'Tab stays inside the sheet');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('aria-label')) === 'Filter by Tags', 'focus goes back to the chip that opened it');
+
+  await page.setViewportSize({ width: 900, height: 800 });
+  await page.waitForTimeout(200);
+  await page.locator('[aria-label="Filter by Tags"]').click();
+  g = await geometry();
+  expect(g.bottom < g.vh - 20 && g.top > 20 && g.w <= 561, `from 600px: a centered dialog, not on the edge: ${JSON.stringify(g)}`);
+  await page.keyboard.press('Escape');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

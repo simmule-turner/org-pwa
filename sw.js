@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v488';
+const CACHE_NAME = 'org-pwa-shell-v489';
 
 const SHELL_FILES = [
   './',
@@ -37,6 +37,7 @@ const SHELL_FILES = [
   './src/reschedule.js',
   './src/archive-refile-details.js',
   './src-browser/archive-refile-panel.js',
+  './src-browser/containers.js',
   './src/agenda-filter.js',
   './src/caldav-client.js',
   './src/calendar-from-agenda.js',
