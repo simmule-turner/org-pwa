@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v499 — Settings code in three files
+The Settings view's code is split along its existing seams (theme colours and side panel width, the Quick Settings section, and the main view), so each part is easier to find and change. Nothing moves or behaves differently.
+Verified: tests, lint, type check and the Settings and quick-setting checks.
+
 * v498 — Stricter checking, one file at a time
 The type checker now also looks for values that might be missing (null) and a ratchet keeps it from slipping back: a file may only get better, in the release script and in CI. The page's elements are typed once instead of file by file, and 69 variables got real types, taking the open findings from 743 in 92 files to 226 in 46. No change in behaviour.
 Verified: tests, lint, type check, and the calendar, contacts, notification, narrow, tangle, refile and table checks.
