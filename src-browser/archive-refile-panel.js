@@ -17,7 +17,7 @@ import { loadRefileTargetDocs, performRefile } from './refile-flow.js';
 import { loadRefileRecent } from './sync-helpers.js';
 import { hideModalOverlay } from './ui-widgets.js';
 
-const PART_TITLE = 'display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:7px 14px 5px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:var(--bg-subtle, rgba(127,127,127,0.12));';
+const PART_TITLE = 'display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:7px 14px 5px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:var(--surface-solid);';
 const SCROLL = 'overflow-y:auto;overscroll-behavior:contain;padding:8px 14px 10px;min-height:0;flex:1 1 auto;';
 
 /** @param {string} css @param {string} [text] */

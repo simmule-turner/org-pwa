@@ -256,6 +256,7 @@ export function menuButton(label, onClick, disabled) {
   }
   btn.disabled = !!disabled;
   btn.onclick = onClick;
+  if (/^[^A-Za-z]*Cancel$/.test(label)) btn.classList.add('ui-cancel'); // the safe choice is the emphasized one
   return btn;
 }
 
@@ -386,7 +387,7 @@ export function wizardButton(label, onClick) {
   btn.style.flex = '1';
   btn.style.fontSize = '15px';
   btn.style.padding = '10px 14px';
-  btn.style.minHeight = '44px';
+  btn.style.minHeight = 'var(--target)';
   return btn;
 }
 

@@ -273,28 +273,16 @@ export function buildPropertiesFieldGroup(heading) {
  *  these four separate, already-complex widgets. */
 export function openGeneralEditor(heading) {
   const overlay = document.createElement('div');
-  overlay.style.position = 'fixed';
-  overlay.style.inset = '0';
-  overlay.style.background = 'rgba(0,0,0,0.6)';
-  overlay.style.zIndex = '10000';
-  overlay.style.display = 'flex';
-  overlay.style.alignItems = 'center';
-  overlay.style.justifyContent = 'center';
-  overlay.style.padding = '16px';
-  overlay.style.boxSizing = 'border-box';
+  overlay.className = 'ui-overlay';
   overlay.style.overflow = 'hidden';
 
   const modal = document.createElement('div');
   modal.className = 'panel';
-  modal.style.background = 'var(--modal-bg)';
-  modal.style.color = 'var(--fg)';
-  modal.style.border = '1px solid var(--border-strong)';
-  modal.style.borderRadius = '10px';
+  modal.classList.add('ui-container');
+  modal.style.overflowY = 'auto';
   modal.style.padding = '18px';
   modal.style.width = '100%';
   modal.style.maxWidth = '420px';
-  modal.style.maxHeight = '100%';
-  modal.style.overflowY = 'auto';
   modal.style.overscrollBehavior = 'contain';
   modal.style.boxSizing = 'border-box';
   overlay.appendChild(modal);

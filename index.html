@@ -20,17 +20,18 @@
   }
   @media (pointer: fine) and (hover: hover) { :root { --target: 36px; } }
   /* a popup is a bottom sheet under 600px wide and a centered dialog from 600px up */
-  .ui-overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 10000; display: flex; align-items: flex-end; justify-content: center; box-sizing: border-box; }
-  .ui-container { background: var(--modal-bg); color: var(--fg); border: 1px solid var(--border-strong); border-bottom: 0; border-radius: var(--radius-container) var(--radius-container) 0 0; width: 100%; max-width: 560px; max-height: 92%; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
-  .ui-container.ui-tall { height: 92%; }
+  .ui-overlay { --surface-solid: color-mix(in srgb, var(--fg) 8%, var(--modal-bg)); position: fixed; inset: 0; background: var(--scrim); z-index: 10000; display: flex; align-items: flex-end; justify-content: center; box-sizing: border-box; }
+  .ui-overlay .ui-container { background: var(--modal-bg); color: var(--fg); border: 1px solid var(--border-strong); border-bottom: 0; border-radius: var(--radius-container) var(--radius-container) 0 0; width: 100%; max-width: 560px; max-height: 92%; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
+  .ui-overlay .ui-container.ui-tall { height: 92%; }
   .ui-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 8px auto; flex: 0 0 auto; }
-  .ui-container button:focus-visible, .ui-container input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .ui-pgrip::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: -6px auto 12px; flex: 0 0 auto; }
+  .ui-overlay .ui-container button:focus-visible, .ui-overlay .ui-container input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .ui-cancel { border-color: var(--accent) !important; }
   @media (min-width: 600px) {
     .ui-overlay { align-items: center; padding: var(--space-4); }
-    .ui-container { border-bottom: 1px solid var(--border-strong); border-radius: var(--radius-container); max-height: 80%; }
-    .ui-container.ui-tall { height: 80%; }
-    .ui-grip { display: none; }
+    .ui-overlay .ui-container { border-bottom: 1px solid var(--border-strong); border-radius: var(--radius-container); max-height: 80%; }
+    .ui-overlay .ui-container.ui-tall { height: 80%; }
+    .ui-grip, .ui-pgrip::before { display: none; }
   }
   :root {
     color-scheme: light dark;
@@ -280,7 +281,7 @@
   }
   /* Item 1.5: panel buttons (File/View menu options, Settings controls)
      larger and more touch-friendly than the previous compact text row. */
-  .panel button { font-size: 15px; padding: 10px 14px; min-height: 44px; font-family: inherit; }
+  .panel button { font-size: 15px; padding: 10px 14px; min-height: var(--target); font-family: inherit; }
   .panel-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; margin: 8px 0; }
   /* Vertical dropdown menus (File/View/More, Export/backend-picker) --
      a bordered list of full-width, left-aligned rows, each its own
@@ -400,14 +401,14 @@
     <button id="settingsBtn" aria-label="Settings" style="display: none;">&#9881;</button>
     <button id="searchBtn" disabled aria-label="Search" style="display: none;">&#128269;</button>
   </div>
-  <div id="capturePanel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
-    <div id="capturePanelBox" class="panel" style="background: var(--modal-bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 10px; padding: 18px; width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box;"></div>
+  <div id="capturePanel" class="ui-overlay" style="display: none;">
+    <div id="capturePanelBox" class="panel ui-container ui-pgrip" style="padding: 18px; max-width: 420px; overflow-y: auto; overscroll-behavior: contain;"></div>
   </div>
-  <div id="doneNotePanel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
-    <div id="doneNotePanelBox" class="panel" style="background: var(--modal-bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 10px; padding: 18px; width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box;"></div>
+  <div id="doneNotePanel" class="ui-overlay" style="display: none;">
+    <div id="doneNotePanelBox" class="panel ui-container ui-pgrip" style="padding: 18px; max-width: 420px; overflow-y: auto; overscroll-behavior: contain;"></div>
   </div>
-  <div id="refilePanel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
-    <div id="refilePanelBox" class="panel" style="background: var(--modal-bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 10px; padding: 18px; width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box;"></div>
+  <div id="refilePanel" class="ui-overlay" style="display: none;">
+    <div id="refilePanelBox" class="panel ui-container ui-pgrip" style="padding: 18px; max-width: 420px; overflow-y: auto; overscroll-behavior: contain;"></div>
   </div>
   <div id="archiveRefilePanel" class="ui-overlay" style="display: none;">
     <div id="archiveRefilePanelBox" class="panel ui-container ui-tall" style="padding: 0;"></div>

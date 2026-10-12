@@ -2130,6 +2130,8 @@ check('Archive & Refile panel: two parts that scroll alone, three one-line butto
   await page.locator('[aria-label="Archive"]').first().click();
   await page.waitForSelector('#archiveRefilePanelBox [data-part="refile"] [data-target]');
   const box = page.locator('#archiveRefilePanelBox');
+  const bgs = await box.evaluate((e) => [e, ...e.querySelectorAll('[data-part] > div:first-child')].map((x) => getComputedStyle(x).backgroundColor));
+  expect(bgs.every((c) => !/rgba\(|\//.test(c) && c !== 'transparent'), `every background in the panel is opaque: ${bgs}`);
   const head = await box.innerText();
   expect(head.toLowerCase().includes('1 \u00b7 archive & details') && head.toLowerCase().includes('2 \u00b7 refile & details') && head.includes('ARCHIVE_TIME'), `both parts: ${JSON.stringify(head.slice(0, 300))}`);
   const labels = await box.locator('[data-act]').allInnerTexts();
@@ -2191,6 +2193,8 @@ check('popups: a bottom sheet under 600px wide and a centered dialog from 600px,
   await chip.click();
   const box = page.locator('[data-bottom-sheet] > [role="dialog"]');
   const geometry = () => box.evaluate((e) => { const r = e.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, vh: window.innerHeight, w: r.width, vw: window.innerWidth }; });
+  const opaque = (css) => !/rgba\(|\//.test(css) && css !== 'transparent';
+  expect(opaque(await box.evaluate((e) => getComputedStyle(e).backgroundColor)), 'the sheet background is opaque');
   let g = await geometry();
   expect(Math.abs(g.bottom - g.vh) < 2 && g.w >= g.vw - 2, `under 600px: a full-width sheet on the bottom edge: ${JSON.stringify(g)}`);
   // Tab never leaves the popup
@@ -3631,7 +3635,7 @@ check('capture shortcuts: a launcher platform gets one shortcut per capture temp
   await section.locator('textarea').first().focus();
   const popup = page.locator('textarea').last();
   await popup.fill(JSON.stringify(two));
-  await popup.locator("xpath=ancestor::div[@class='panel'][1]").getByRole('button', { name: 'OK', exact: true }).click();
+  await popup.locator("xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' panel ')][1]").getByRole('button', { name: 'OK', exact: true }).click();
   await page.waitForFunction(() => window.__sets.length >= 2, null, { timeout: 5000 });
   const after = await page.evaluate(() => window.__sets[window.__sets.length - 1]);
   expect(JSON.stringify(after) === JSON.stringify([{ key: 'x', label: 'Alpha' }, { key: 'y', label: 'Beta' }]), `after the edit: ${JSON.stringify(after)}`);

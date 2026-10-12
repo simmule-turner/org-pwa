@@ -18,22 +18,12 @@ export function confirmDialog(message, { confirmLabel = 'Delete', cancelLabel = 
   return new Promise((resolve) => {
     S.confirmDialogOpen = true;
     const overlay = document.createElement('div');
-    overlay.style.position = 'fixed';
-    overlay.style.inset = '0';
-    overlay.style.background = 'rgba(0,0,0,0.6)';
-    overlay.style.zIndex = '10000';
-    overlay.style.display = 'flex';
-    overlay.style.alignItems = 'center';
-    overlay.style.justifyContent = 'center';
-    overlay.style.padding = '16px';
-    overlay.style.boxSizing = 'border-box';
+    overlay.className = 'ui-overlay';
 
     const modal = document.createElement('div');
     modal.className = 'panel';
-    modal.style.background = 'var(--modal-bg)';
-    modal.style.color = 'var(--fg)';
-    modal.style.border = '1px solid var(--border-strong)';
-    modal.style.borderRadius = '10px';
+    modal.classList.add('ui-container');
+    modal.style.overflowY = 'auto';
     modal.style.padding = '16px';
     modal.style.width = '100%';
     modal.style.maxWidth = '420px';
@@ -139,22 +129,12 @@ export function openTimestampPickerPopup(kind) {
   return new Promise((resolve) => {
     S.timestampPickerOpen = true;
     const overlay = document.createElement('div');
-    overlay.style.position = 'fixed';
-    overlay.style.inset = '0';
-    overlay.style.background = 'rgba(0,0,0,0.6)';
-    overlay.style.zIndex = '10000';
-    overlay.style.display = 'flex';
-    overlay.style.alignItems = 'center';
-    overlay.style.justifyContent = 'center';
-    overlay.style.padding = '16px';
-    overlay.style.boxSizing = 'border-box';
+    overlay.className = 'ui-overlay';
 
     const modal = document.createElement('div');
     modal.className = 'panel';
-    modal.style.background = 'var(--modal-bg)';
-    modal.style.color = 'var(--fg)';
-    modal.style.border = '1px solid var(--border-strong)';
-    modal.style.borderRadius = '10px';
+    modal.classList.add('ui-container');
+    modal.style.overflowY = 'auto';
     modal.style.padding = '16px';
     modal.style.width = '100%';
     modal.style.maxWidth = '420px';
@@ -331,27 +311,16 @@ export function openHeadingTextEditor(heading) {
 /** @param {{ label?: any, value?: any, defaultValue?: any, onSave?: any, onReset?: any, onCancel?: any, resetInPlace?: boolean, placeholder?: any, choices?: any }} options */
 export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset, onCancel, resetInPlace, placeholder, choices }) {
   const overlay = document.createElement('div');
-  overlay.style.position = 'fixed';
-  overlay.style.inset = '0'; // fallback for a browser without visualViewport; keepOverlayInVisibleViewport overrides top/left/width/height directly when it's available
-  overlay.style.background = 'rgba(0,0,0,0.6)';
-  overlay.style.zIndex = '10000';
-  overlay.style.display = 'flex';
-  overlay.style.alignItems = 'center';
-  overlay.style.justifyContent = 'center';
-  overlay.style.padding = '16px';
-  overlay.style.boxSizing = 'border-box';
+  overlay.className = 'ui-overlay';
   overlay.style.overflow = 'hidden'; // the modal itself scrolls (see textarea below); the backdrop never should
 
   const modal = document.createElement('div');
   modal.className = 'panel'; // normal, touch-friendly button/input sizing (44px targets), matching the rest of this app
-  modal.style.background = 'var(--modal-bg)'; // opaque -- var(--surface) is a barely-visible tint meant for layering over --bg, not a standalone solid background
-  modal.style.color = 'var(--fg)';
-  modal.style.border = '1px solid var(--border-strong)';
-  modal.style.borderRadius = '10px';
+  modal.classList.add('ui-container');
+  modal.style.overflowY = 'auto';
   modal.style.padding = '16px';
   modal.style.width = '100%';
   modal.style.maxWidth = '760px';
-  modal.style.maxHeight = '100%';
   modal.style.display = 'flex';
   modal.style.flexDirection = 'column';
   modal.style.gap = '10px';
@@ -481,28 +450,16 @@ export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset
  *  might genuinely be part of the password). */
 export function openButtonChoiceModal({ label, buttons }) {
   const overlay = document.createElement('div');
-  overlay.style.position = 'fixed';
-  overlay.style.inset = '0';
-  overlay.style.background = 'rgba(0,0,0,0.6)';
-  overlay.style.zIndex = '10000';
-  overlay.style.display = 'flex';
-  overlay.style.alignItems = 'center';
-  overlay.style.justifyContent = 'center';
-  overlay.style.padding = '16px';
-  overlay.style.boxSizing = 'border-box';
+  overlay.className = 'ui-overlay';
   overlay.style.overflow = 'hidden';
 
   const modal = document.createElement('div');
   modal.className = 'panel';
-  modal.style.background = 'var(--modal-bg)';
-  modal.style.color = 'var(--fg)';
-  modal.style.border = '1px solid var(--border-strong)';
-  modal.style.borderRadius = '10px';
+  modal.classList.add('ui-container');
+  modal.style.overflowY = 'auto';
   modal.style.padding = '18px';
   modal.style.width = '100%';
   modal.style.maxWidth = '420px';
-  modal.style.maxHeight = '100%';
-  modal.style.overflowY = 'auto';
   modal.style.overscrollBehavior = 'contain';
   modal.style.boxSizing = 'border-box';
   overlay.appendChild(modal);
@@ -567,10 +524,11 @@ export function openButtonChoiceModal({ label, buttons }) {
  *  pressed (case matters: `o` and `O` are different buttons), and always shows the key as a badge. `showKeys` is for a phone keyboard: it focuses a hidden field so typed letters arrive. */
 export function openGridChoiceModal({ label, buttons, showKeys = false }) {
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;overflow:hidden;';
+  overlay.className = 'ui-overlay';
+  overlay.style.overflow = 'hidden';
   const modal = document.createElement('div');
-  modal.className = 'panel';
-  modal.style.cssText = 'background:var(--modal-bg);color:var(--fg);border:1px solid var(--border-strong);border-radius:10px;padding:18px;width:100%;max-width:460px;max-height:100%;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;';
+  modal.className = 'panel ui-container';
+  modal.style.cssText = 'padding:18px;width:100%;max-width:460px;overflow-y:auto;overscroll-behavior:contain;';
   overlay.appendChild(modal);
 
   const heading = document.createElement('div');
@@ -680,28 +638,16 @@ export function openGridChoiceModal({ label, buttons, showKeys = false }) {
 
 export function openMultiFieldPopup({ label, fields, onSave }) {
   const overlay = document.createElement('div');
-  overlay.style.position = 'fixed';
-  overlay.style.inset = '0'; // fallback for a browser without visualViewport; keepOverlayInVisibleViewport overrides top/left/width/height directly when it's available
-  overlay.style.background = 'rgba(0,0,0,0.6)';
-  overlay.style.zIndex = '10000';
-  overlay.style.display = 'flex';
-  overlay.style.alignItems = 'center';
-  overlay.style.justifyContent = 'center';
-  overlay.style.padding = '16px';
-  overlay.style.boxSizing = 'border-box';
+  overlay.className = 'ui-overlay';
   overlay.style.overflow = 'hidden';
 
   const modal = document.createElement('div');
   modal.className = 'panel'; // normal, touch-friendly button sizing (44px targets), matching the rest of this app
-  modal.style.background = 'var(--modal-bg)'; // opaque -- var(--surface) is a barely-visible tint meant for layering over --bg, not a standalone solid background
-  modal.style.color = 'var(--fg)';
-  modal.style.border = '1px solid var(--border-strong)';
-  modal.style.borderRadius = '10px';
+  modal.classList.add('ui-container');
+  modal.style.overflowY = 'auto';
   modal.style.padding = '18px';
   modal.style.width = '100%';
   modal.style.maxWidth = '420px';
-  modal.style.maxHeight = '100%';
-  modal.style.overflowY = 'auto';
   modal.style.overscrollBehavior = 'contain';
   modal.style.boxSizing = 'border-box';
   overlay.appendChild(modal);
