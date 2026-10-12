@@ -45,7 +45,94 @@ import { autoGrowTextarea, isWideLayout, smallButton, withActionMenu } from './u
 const PARAGRAPH_MARGIN = 'var(--paragraph-gap, 10px) 0';
 const TABLES_MARGIN = 'var(--paragraph-gap-tables, 10px) 0';
 
+/** Which place in the heading's action grid a button has, from its label (see .action-grid in index.html). */
+function actionSlot(label) {
+  const l = label.toLowerCase();
+  if (l.startsWith('move up')) return 'up';
+  if (l.startsWith('move down')) return 'down';
+  if (l.startsWith('promote')) return 'promote';
+  if (l.startsWith('demote')) return 'demote';
+  if (l === 'todo') return 'todo';
+  if (l.includes('archive')) return 'archive';
+  if (l === 'narrow' || l === 'widen') return 'narrow';
+  if (l.startsWith('delete')) return 'delete';
+  return '';
+}
+
+/** The heading's action grid: the buttons lay themselves out by the row's own width (4, 6 or 12 across), keep the shared tap
+ *  size, show their names on hover, and move with the arrow keys; Esc closes the row.
+ * @param {{ icon: string, label: string, onClick: () => void }[]} actions */
+function renderActionGrid(actions) {
+  const wrap = document.createElement('div');
+  wrap.className = 'action-wrap';
+  const grid = document.createElement('div');
+  grid.className = 'action-grid';
+  grid.setAttribute('role', 'toolbar');
+  grid.setAttribute('aria-label', 'Heading actions');
+  for (const action of actions) {
+    const btn = document.createElement('button');
+    btn.textContent = action.icon;
+    btn.setAttribute('aria-label', action.label);
+    btn.title = action.label;
+    btn.className = 'icon-btn';
+    const slot = actionSlot(action.label);
+    if (slot) btn.classList.add('act-' + slot);
+    if (slot === 'delete') btn.classList.add('act-danger');
+    btn.style.fontSize = '22px';
+    btn.onclick = action.onClick;
+    grid.appendChild(btn);
+  }
+  grid.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      S.actionMenuFor = null;
+      render();
+      return;
+    }
+    // move in the order the buttons are drawn, which differs from the document order in the narrow layout
+    const keys = ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'];
+    if (!keys.includes(e.key)) return;
+    const buttons = /** @type {HTMLElement[]} */ ([...grid.querySelectorAll('button')]);
+    const drawn = buttons
+      .map((b) => ({ b, r: b.getBoundingClientRect() }))
+      .sort((a, c) => Math.round(a.r.top) - Math.round(c.r.top) || a.r.left - c.r.left)
+      .map((x) => x.b);
+    const at = drawn.indexOf(/** @type {HTMLElement} */ (document.activeElement));
+    if (at < 0) return;
+    let next;
+    if (e.key === 'ArrowRight') next = Math.min(drawn.length - 1, at + 1);
+    else if (e.key === 'ArrowLeft') next = Math.max(0, at - 1);
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = drawn.length - 1;
+    else {
+      // up or down: the nearest button in the next row, in the same column
+      const from = drawn[at].getBoundingClientRect();
+      const below = e.key === 'ArrowDown';
+      const candidates = drawn.filter((b) => {
+        const r = b.getBoundingClientRect();
+        return below ? r.top > from.top + 4 : r.top < from.top - 4;
+      });
+      if (candidates.length === 0) return;
+      const rowTop = below ? Math.min(...candidates.map((b) => b.getBoundingClientRect().top)) : Math.max(...candidates.map((b) => b.getBoundingClientRect().top));
+      const inRow = candidates.filter((b) => Math.abs(b.getBoundingClientRect().top - rowTop) < 4);
+      inRow.sort((a, c) => Math.abs(a.getBoundingClientRect().left - from.left) - Math.abs(c.getBoundingClientRect().left - from.left));
+      next = drawn.indexOf(inRow[0]);
+    }
+    e.preventDefault();
+    drawn[next].focus();
+  });
+  grid.onclick = (e) => {
+    if (e.target === grid) {
+      S.actionMenuFor = null;
+      render();
+    }
+  };
+  wrap.appendChild(grid);
+  return wrap;
+}
+
 export function renderActionMenu(actions, columns = 5) {
+  if (columns === 0) return renderActionGrid(actions);
   const menu = document.createElement('div');
   menu.style.display = 'grid';
   menu.style.gridTemplateColumns = `repeat(${columns}, 44px)`; // fixed count per row, regardless of container width -- flex-wrap would vary the count by available space instead
@@ -280,7 +367,7 @@ export function renderRow(row, todoSequence) {
               },
             },
           ],
-          6
+          0 // lays itself out by the row's width, see renderActionGrid
         );
       }
     }

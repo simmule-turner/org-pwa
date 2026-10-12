@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v492 — Heading actions that fit
+The row of heading action buttons now arranges itself by the width it has: four across in three rows on a narrow phone (with the arrows last, as left, right, up, down), six across in two rows, or one row of twelve on a laptop. Buttons keep the shared tap size, Delete is red, hovering names a button, and the arrow keys and Esc work from the keyboard.
+
 * v491 — No more browser pop-ups
 Questions the browser used to ask in its own pop-up (the file path when opening from GitHub or WebDAV, Save As, Query Replace, and whether to resume unsaved changes) now appear in the app's own dialog, with Enter to accept and Esc to cancel. The safe choice is the default when resuming unsaved changes. Closing a menu returns focus to its button.
 

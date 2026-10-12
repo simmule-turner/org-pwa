@@ -2288,6 +2288,44 @@ check('Save As and Query Replace ask in the app, not in the browser: Enter accep
   await context.close();
 });
 
+check('heading actions: 4 across in three rows when narrow (arrows last: left, right, up, down), 6 across when there is room, one row of 12 when wide; Delete is red; arrow keys move; Esc closes', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Alpha\n** Beta\n');
+  await page.locator('.heading-title', { hasText: 'Alpha' }).first().click();
+  const grid = page.locator('.action-grid');
+  await grid.waitFor();
+  const layout = () => grid.evaluate((g) => {
+    const rows = {};
+    for (const b of g.querySelectorAll('button')) { const t = Math.round(b.getBoundingClientRect().top); (rows[t] = rows[t] || []).push({ l: b.getBoundingClientRect().left, name: b.getAttribute('aria-label'), h: b.getBoundingClientRect().height }); }
+    return Object.keys(rows).map(Number).sort((a, b) => a - b).map((t) => rows[t].sort((a, b) => a.l - b.l).map((x) => x.name));
+  });
+  await page.setViewportSize({ width: 250, height: 800 }); // with a mouse the targets are 36px, so six fit down to about 270px
+  await page.waitForTimeout(250);
+  let rows = await layout();
+  expect(rows.length === 3 && rows.every((r) => r.length === 4), `narrow: three rows of four: ${JSON.stringify(rows.map((r) => r.length))}`);
+  expect(rows[2].map((n) => n.split(' ')[0]).join(',') === 'Promote,Demote,Move,Move' && rows[2][2] === 'Move up' && rows[2][3] === 'Move down', `the last row is left, right, up, down: ${JSON.stringify(rows[2])}`);
+  await page.setViewportSize({ width: 420, height: 800 });
+  await page.waitForTimeout(250);
+  rows = await layout();
+  expect(rows.length === 2 && rows.every((r) => r.length === 6), `room for six: two rows of six: ${JSON.stringify(rows.map((r) => r.length))}`);
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.waitForTimeout(250);
+  rows = await layout();
+  expect(rows.length === 1 && rows[0].length === 12, `wide: one row of twelve: ${JSON.stringify(rows.map((r) => r.length))}`);
+  const danger = await page.locator('.action-grid [aria-label="Delete heading"]').evaluate((e) => getComputedStyle(e).color);
+  const normal = await page.locator('.action-grid [aria-label="Edit title"]').evaluate((e) => getComputedStyle(e).color);
+  expect(danger !== normal, 'Delete has its own color');
+  expect(await page.locator('.action-grid [aria-label="Edit title"]').getAttribute('title') === 'Edit title', 'a name shows on hover');
+  await page.locator('.action-grid [aria-label="Edit title"]').focus();
+  await page.keyboard.press('ArrowRight');
+  expect(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('aria-label')) === 'Edit text', 'ArrowRight moves to the next button');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  expect((await page.locator('.action-grid').count()) === 0, 'Esc closes the row');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('refile: the destination used last is offered first, under RECENT', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Home\n* Work\n* Task one\n* Task two\n');
