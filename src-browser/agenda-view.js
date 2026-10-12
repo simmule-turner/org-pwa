@@ -1,5 +1,6 @@
 // @ts-check
 // Extracted from app.js: agenda view.
+import { describeTaskDate, sortTasksByDate, taskDateInfo, viewFilterActive } from '../src/agenda-filter.js';
 import { applyAgendaEffortView, buildAgendaItems, buildTaskList, dayView, endOfDay, itemEffortText, monthView, startOfDay, startOfWeek, weekView } from '../src/agenda.js';
 import { formatClockDuration, totalClockedMinutes } from '../src/clock.js';
 import { computeClocktable, renderClocktable } from '../src/clocktable.js';
@@ -9,6 +10,7 @@ import { parseOrgDuration } from '../src/org-duration.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { aggregateAgendaDocs, contactsDocsForAgenda, ensureAgendaFilesLoaded, refreshAgendaFiles } from './agenda-files.js';
 import { extensionAgendaItems, extensionAgendaLines } from './extension-flow.js';
+import { clickIsGestureEnd, withRowActions } from './agenda-actions.js';
 import { agendaItemKindLabel, agendaStepAnchor, buildDayHeaderRow, formatAgendaItemTimeText, formatAgendaRangeLabel } from './agenda-format.js';
 import { S } from './app-state.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
@@ -19,6 +21,7 @@ import { attachAgendaSwipeNav } from './gestures-structure.js';
 import { navigateToHeadingByPath, outlinePathForHeadingInDocument } from './navigation.js';
 import { render } from './render.js';
 import { agendaFilesCache } from './singletons.js';
+import { buildViewFilterRow, filterItemsForView } from './view-filter-ui.js';
 import { menuButton, textInputStyle } from './ui-widgets.js';
 import { platform } from './platform.js';
 
@@ -338,6 +341,8 @@ export function renderAgendaView() {
     line.textContent = text;
     container.appendChild(line);
   }
+  const filterSlot = document.createElement('div'); // the filter chips, filled once the items are known
+  container.appendChild(filterSlot);
   if (S.agendaEffortPanelOpen) container.appendChild(buildAgendaEffortPanel());
 
   if (S.agendaFilesConfig.length > 0) {
@@ -372,7 +377,7 @@ export function renderAgendaView() {
     includeLogbook: S.agendaLogMode,
     todoFilter: (todo) => !todoSequence.doneKeywords.includes(todo),
     // Real org's default is to skip both commented headings (title
-    // starts with "# ") and archived ones (:ARCHIVE: tag) in agenda
+    // starts with COMMENT) and archived ones (:ARCHIVE: tag) in agenda
     // views — org-agenda-skip-comment-trees / org-agenda-skip-archived-
     // trees, both t by default. Overridable per-file via a Local
     // Variables block (set either to nil to include them after all).
@@ -402,13 +407,15 @@ export function renderAgendaView() {
   });
   items.push(...extensionAgendaItems(start, end));
   items.sort((a, b) => a.date - b.date);
+  filterSlot.appendChild(buildViewFilterRow(items, render));
+  const shownItems = filterItemsForView(items);
 
   const groupedByDay =
     S.agendaViewType === 'day'
-      ? dayView(items, S.agendaAnchorDate)
+      ? dayView(shownItems, S.agendaAnchorDate)
       : S.agendaViewType === 'week'
-        ? weekView(items, S.agendaAnchorDate, getAgendaStartOnWeekday(S.state.localVariables))
-        : monthView(items, S.agendaAnchorDate);
+        ? weekView(shownItems, S.agendaAnchorDate, getAgendaStartOnWeekday(S.state.localVariables))
+        : monthView(shownItems, S.agendaAnchorDate);
   // The effort view is applied here, once, so the rows, the empty-day
   // hiding below and each day's total all describe the same items.
   const effortView = currentAgendaEffortView();
@@ -420,7 +427,7 @@ export function renderAgendaView() {
     empty.style.opacity = '0.6';
     empty.style.fontSize = '14px';
     empty.style.padding = '20px 0';
-    empty.textContent = 'Nothing scheduled in this range.';
+    empty.textContent = viewFilterActive(S.viewFilter) ? 'Nothing in this range matches the filter.' : 'Nothing scheduled in this range.';
     container.appendChild(empty);
   }
 
@@ -531,10 +538,11 @@ export function renderAgendaView() {
     }
 
     row.onclick = () => {
+      if (clickIsGestureEnd(row)) return; // the end of a long press or a swipe, not a tap
       const outlinePath = outlinePathForHeadingInDocument(item.documentId, item.heading);
       if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath);
     };
-    return row;
+    return withRowActions(row, item);
   }
 
   const AGENDA_GRID_HOURS = [8, 10, 12, 14, 16, 18, 20]; // real org's own documented org-agenda-time-grid default
@@ -822,7 +830,30 @@ export function renderTaskListView() {
     return;
   }
 
-  for (const item of items) {
+  // Sort chip: document order (org's own) or by SCHEDULED/DEADLINE date.
+  const sortChip = document.createElement('button');
+  sortChip.textContent = S.taskSort === 'date' ? 'Sort: Date' : 'Sort: Document';
+  sortChip.setAttribute('aria-label', 'Change the order of the list (currently ' + (S.taskSort === 'date' ? 'by date' : 'document order') + ')');
+  sortChip.style.cssText = 'min-height:44px;padding:0 14px;border-radius:22px;font-size:14px;white-space:nowrap;' + (S.taskSort === 'date' ? 'border-color:var(--accent);font-weight:700;' : '');
+  sortChip.onclick = () => {
+    S.taskSort = S.taskSort === 'date' ? 'document' : 'date';
+    render();
+  };
+  container.appendChild(buildViewFilterRow(items, render, [sortChip]));
+
+  const today = new Date();
+  const shownTasks = filterItemsForView(items);
+  const orderedTasks = S.taskSort === 'date' ? sortTasksByDate(shownTasks, today) : shownTasks;
+  if (orderedTasks.length === 0) {
+    const none = document.createElement('div');
+    none.style.opacity = '0.6';
+    none.style.fontSize = '14px';
+    none.style.padding = '20px 0';
+    none.textContent = 'No TODO matches the filter.';
+    container.appendChild(none);
+  }
+
+  for (const item of orderedTasks) {
     const row = document.createElement('div');
     row.className = 'menu-list-item';
     row.style.display = 'flex';
@@ -841,7 +872,7 @@ export function renderTaskListView() {
     text.style.flex = '1 1 auto';
     text.style.minWidth = '0';
     text.style.overflowWrap = 'anywhere';
-    text.textContent = item.title;
+    text.appendChild(document.createTextNode(item.title));
     const taskEffort = itemEffortText(item);
     if (taskEffort) {
       const effortBadge = document.createElement('span');
@@ -852,6 +883,16 @@ export function renderTaskListView() {
       effortBadge.style.whiteSpace = 'nowrap';
       text.appendChild(effortBadge);
     }
+    // The date line: the category, and the SCHEDULED/DEADLINE date in the Agenda's own words.
+    const dateInfo = taskDateInfo(item.heading, today);
+    const described = dateInfo ? describeTaskDate(dateInfo) : null;
+    const meta = document.createElement('div');
+    meta.setAttribute('data-task-meta', '');
+    meta.style.fontSize = '12px';
+    meta.style.opacity = '0.75';
+    meta.textContent = [item.category, described ? described.text : ''].filter(Boolean).join(' \u00b7 ');
+    if (described && described.overdue) meta.style.color = '#c0392b';
+    if (meta.textContent) text.appendChild(meta);
     row.appendChild(text);
 
     if (S.showClockDisplay) {
@@ -867,10 +908,11 @@ export function renderTaskListView() {
     }
 
     row.onclick = () => {
+      if (clickIsGestureEnd(row)) return; // the end of a long press or a swipe, not a tap
       const outlinePath = outlinePathForHeadingInDocument(item.documentId, item.heading);
       if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath);
     };
-    container.appendChild(row);
+    container.appendChild(withRowActions(row, item));
   }
 
   outlineEl.appendChild(container);

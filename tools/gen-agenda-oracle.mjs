@@ -5,7 +5,7 @@
  * (negative: due in N days; Emacs shows both only on today). test/agenda-oracle.test.js
  * holds buildAgendaItems to it. Today is 2026-10-11 16:30, New York time.
  *
- *   node tools/gen-agenda-oracle.mjs        (needs emacs and faketime (libfaketime) on the PATH)
+ *   node tools/gen-agenda-oracle.mjs [name]   (name: a1 or b1; needs emacs and faketime (libfaketime) on the PATH)
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -16,7 +16,8 @@ const TZ = 'America/New_York';
 const NOW = '2026-10-11 16:30:00';
 const FIRST = [10, 11, 2026]; // month day year, as Emacs calendar functions want
 const DAYS = 64;
-const org = path.resolve('test/fixtures/agenda/a1.org');
+const NAME = process.argv[2] || 'a1';
+const org = path.resolve(`test/fixtures/agenda/${NAME}.org`);
 const el = `
 (require 'org) (require 'org-agenda) (require 'json)
 (setq org-agenda-skip-scheduled-if-done t org-agenda-skip-deadline-if-done t)
@@ -51,5 +52,5 @@ for (const [date, rows] of JSON.parse(fs.readFileSync(outFile, 'utf8'))) {
     return `${txt.replace(/\s*[<[][^>\]]*[>\]](--[<[][^>\]]*[>\]])?/g, '').trim()}|${kind}|${Number(n)}`;
   }).sort();
 }
-fs.writeFileSync('test/fixtures/agenda/a1.expected.json', JSON.stringify({ emacs: '29.3', tz: TZ, now: NOW, days }, null, 1) + '\n');
+fs.writeFileSync(`test/fixtures/agenda/${NAME}.expected.json`, JSON.stringify({ emacs: '29.3', tz: TZ, now: NOW, days }, null, 1) + '\n');
 console.log(`${Object.keys(days).length} days, ${Object.values(days).reduce((n, d) => n + d.length, 0)} entries`);

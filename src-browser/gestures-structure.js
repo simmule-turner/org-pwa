@@ -102,12 +102,14 @@ export function attachAgendaSwipeNav(el) {
   let startX = null;
   let startY = null;
   let active = false;
+  let startedOnSwipeRow = false;
 
   el.addEventListener('pointerdown', (e) => {
     if (e.target.closest('button, a, input, textarea, [data-inline-link]')) return;
     startX = e.clientX;
     startY = e.clientY;
     active = true;
+    startedOnSwipeRow = !!e.target.closest('[data-swipe-row]'); // on a row that can be marked done, a swipe to the right does that (agenda-actions.js)
   });
 
   const finish = (e) => {
@@ -116,6 +118,7 @@ export function attachAgendaSwipeNav(el) {
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
     if (Math.abs(dx) <= SWIPE_THRESHOLD_PX || Math.abs(dx) <= Math.abs(dy) * 1.5) return;
+    if (startedOnSwipeRow && dx > 0) return;
     S.agendaAnchorDate = agendaStepAnchor(S.agendaViewType, S.agendaAnchorDate, dx < 0 ? 1 : -1);
     render();
   };

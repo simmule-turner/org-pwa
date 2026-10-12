@@ -615,6 +615,9 @@ S.agendaEffortPanelOpen = false;
 S.agendaEffortSort = null; // null | 'up' | 'down'
 S.agendaEffortFilter = null; // null | { op: '<' | '>' | '=', minutes, text }
 S.agendaEffortMax = null; // null | { minutes, text }
+S.viewFilter = { tags: [], todos: [], categories: [] }; // the chip row shared by Agenda and the TODO view (src/agenda-filter.js); session only
+S.undoToastTimer = 0; // the Undo toast's auto-hide timer (agenda-actions.js)
+S.taskSort = 'document'; // the TODO view's order: 'document' | 'date'
 S.agendaShowAllDatesOverride = null; // null = use the file's own org-agenda-show-all-dates default; true/false once the "g" button has been pressed this session
 S.showClockDisplay = false; // org-clock-display: whether each TODO-view item shows its own total clocked time (including its subtree) -- off by default, matching real org's own org-clock-display being an on-demand COMMAND (M-x org-clock-display), not something always shown
 S.showClocktable = false; // org-clock-report: whether the TODO view's own clocktable configuration section is expanded -- off by default, same reasoning as showClockDisplay above

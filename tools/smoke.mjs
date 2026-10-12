@@ -544,6 +544,89 @@ check('agenda: sort, per-day limit and filter by effort, on real rows and day to
   await context.close();
 });
 
+check('agenda and TODO rows: filter chips, long-press action sheet, swipe right to mark done with Undo (a repeating one moves on), and the TODO rows show category and date', async () => {
+  const { context, page, errors } = await freshPage();
+  const today = orgToday();
+  const repeating = today.replace('>', ' ++14d>');
+  await newDocument(page, ['#+TODO: TODO | DONE', '* Plan', `** TODO Pay rent :home:\nSCHEDULED: ${today}`, `** TODO Call dentist :work:\nSCHEDULED: ${today}`, `** TODO Water plants :home:\nSCHEDULED: ${repeating}`, '** TODO Someday garage', ''].join('\n'));
+  await viewMenu(page, 'Agenda');
+  await page.waitForSelector('[data-view-filter]');
+  const rowOf = (title) => page.locator('[data-swipe-row], .menu-list-item').filter({ hasText: title }).first();
+  const shown = async (title) => (await page.locator('#outline').innerText()).includes(title);
+  expect((await shown('Pay rent')) && (await shown('Call dentist')), 'both rows show to begin with');
+
+  // filter chips
+  await page.locator('[aria-label="Filter by Tags"]').click();
+  await page.waitForSelector('[data-bottom-sheet]');
+  await page.locator('[data-bottom-sheet] label', { hasText: 'home' }).locator('input').check();
+  await page.locator('[data-bottom-sheet] button', { hasText: 'Apply' }).click();
+  await page.waitForTimeout(250);
+  expect((await shown('Pay rent')) && !(await shown('Call dentist')), 'the tag filter keeps only :home:');
+  expect((await page.locator('[data-view-filter]').innerText()).includes('Tag: home'), 'the chip names the choice');
+  await page.locator('[aria-label="Clear the Tags filter"]').click();
+  await page.waitForTimeout(250);
+  expect(await shown('Call dentist'), 'clearing the chip brings everything back');
+
+  // long press opens the action sheet; Priority sets it
+  const box = await rowOf('Pay rent').boundingBox();
+  await page.mouse.move(box.x + 60, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(750);
+  await page.mouse.up();
+  await page.waitForSelector('[data-bottom-sheet]');
+  const sheet = await page.locator('[data-bottom-sheet]').innerText();
+  expect(['Mark done', 'Set state', 'Reschedule', 'Priority', 'Refile', 'Open heading'].every((w) => sheet.includes(w)), `the sheet lists the actions: ${sheet}`);
+  expect(await page.locator('[data-swipe-row], .menu-list-item').first().isVisible(), 'the page is still there');
+  await page.locator('[data-bottom-sheet] button', { hasText: 'Priority' }).click();
+  await page.locator('[data-bottom-sheet] button', { hasText: '[#A]' }).click();
+  await page.waitForTimeout(300);
+  expect((await documentText(page)).includes('** TODO [#A] Pay rent'), 'Priority A was written to the heading');
+  await viewMenu(page, 'Agenda');
+  await page.waitForSelector('[data-view-filter]');
+  expect((await page.locator('[aria-label^="Switch agenda view"]').count()) === 1, 'a long press did not also open the heading');
+
+  // swipe right marks done, with Undo
+  const swipe = async (title) => {
+    const b = await rowOf(title).boundingBox();
+    await page.mouse.move(b.x + 20, b.y + b.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(b.x + 80, b.y + b.height / 2, { steps: 4 });
+    await page.mouse.move(b.x + 220, b.y + b.height / 2, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForTimeout(400);
+  };
+  await swipe('Call dentist');
+  expect(await page.locator('#undoToast').isVisible(), 'a toast with Undo appears');
+  expect(!(await shown('Call dentist')), 'the done task left the agenda');
+  await page.locator('#undoToast button', { hasText: 'Undo' }).click();
+  await page.waitForTimeout(400);
+  expect(await shown('Call dentist'), 'Undo brought it back');
+
+  await swipe('Water plants');
+  const toast = await page.locator('#undoToast').innerText();
+  expect(toast.includes('Next:'), `a repeating task moves on and says to when: ${toast}`);
+  const doc = await documentText(page);
+  expect(doc.includes('** TODO Water plants') && !doc.includes('** DONE Water plants'), 'it is a TODO again, not DONE');
+  await viewMenu(page, 'Agenda');
+
+  // a plain tap still opens the heading
+  await rowOf('Pay rent').click();
+  await page.waitForTimeout(300);
+  expect((await page.locator('[aria-label^="Switch agenda view"]').count()) === 0, 'a tap leaves the agenda for the heading');
+
+  // TODO view: category and date on rows, sorting by date
+  await viewMenu(page, 'TODO');
+  await page.waitForSelector('[data-view-filter]');
+  const metas = await page.locator('[data-task-meta]').allInnerTexts();
+  expect(metas.some((m) => m.includes('Scheduled today')) && metas.length >= 3, `TODO rows show the date: ${JSON.stringify(metas)}`);
+  await page.locator('[aria-label^="Change the order of the list"]').click();
+  await page.waitForTimeout(250);
+  const text = await page.locator('#outline').innerText();
+  expect(text.indexOf('Someday garage') > text.indexOf('Call dentist'), 'sorted by date, the undated task comes last');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('tabs: two documents keep their own content, unsaved state and read-only flag when switching', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Alpha heading\nalpha body\n');

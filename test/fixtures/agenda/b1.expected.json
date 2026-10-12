@@ -1,0 +1,173 @@
+{
+ "emacs": "29.3",
+ "tz": "America/New_York",
+ "now": "2026-10-11 16:30:00",
+ "days": {
+  "2026-10-11": [],
+  "2026-10-12": [
+   "body repeater|timestamp|0"
+  ],
+  "2026-10-13": [
+   "TODO sched plus body stamp|scheduled|0"
+  ],
+  "2026-10-14": [
+   "body para|timestamp|0"
+  ],
+  "2026-10-15": [
+   "body own line|timestamp|0",
+   "body repeater|timestamp|0"
+  ],
+  "2026-10-16": [
+   "body list|timestamp|0"
+  ],
+  "2026-10-17": [
+   "body table|timestamp|0"
+  ],
+  "2026-10-18": [
+   "body repeater|timestamp|0",
+   "body timed|timestamp|0"
+  ],
+  "2026-10-19": [],
+  "2026-10-20": [
+   "body range|timestamp|0"
+  ],
+  "2026-10-21": [
+   "body range|timestamp|0",
+   "body repeater|timestamp|0",
+   "body two|timestamp|0"
+  ],
+  "2026-10-22": [
+   "body range|timestamp|0"
+  ],
+  "2026-10-23": [
+   "body two|timestamp|0"
+  ],
+  "2026-10-24": [
+   "body in property drawer|timestamp|0",
+   "body repeater|timestamp|0"
+  ],
+  "2026-10-25": [
+   "body in logbook|timestamp|0"
+  ],
+  "2026-10-26": [],
+  "2026-10-27": [
+   "body repeater|timestamp|0"
+  ],
+  "2026-10-28": [],
+  "2026-10-29": [],
+  "2026-10-30": [
+   "TODO body todo|timestamp|0",
+   "body repeater|timestamp|0"
+  ],
+  "2026-10-31": [
+   "DONE body done|timestamp|0"
+  ],
+  "2026-11-01": [],
+  "2026-11-02": [
+   "TODO sched plus body stamp|timestamp|0",
+   "body repeater|timestamp|0"
+  ],
+  "2026-11-03": [
+   "title and body stamp|timestamp|0"
+  ],
+  "2026-11-04": [
+   "title and body stamp|timestamp|0"
+  ],
+  "2026-11-05": [
+   "body repeater|timestamp|0",
+   "child with stamp|timestamp|0"
+  ],
+  "2026-11-06": [],
+  "2026-11-07": [
+   "body after sched in same line|timestamp|0"
+  ],
+  "2026-11-08": [
+   "body repeater|timestamp|0"
+  ],
+  "2026-11-09": [
+   "title stamp with planning|timestamp|0"
+  ],
+  "2026-11-10": [
+   "title stamp with planning|scheduled|0"
+  ],
+  "2026-11-11": [
+   "body repeater|timestamp|0"
+  ],
+  "2026-11-12": [
+   "body stamp with deadline|deadline|0"
+  ],
+  "2026-11-13": [
+   "body stamp with deadline|timestamp|0"
+  ],
+  "2026-11-14": [
+   "body custom drawer|timestamp|0",
+   "body repeater|timestamp|0"
+  ],
+  "2026-11-15": [
+   "body quote block|timestamp|0"
+  ],
+  "2026-11-16": [
+   "body checkbox|timestamp|0"
+  ],
+  "2026-11-17": [
+   "body repeater|timestamp|0"
+  ],
+  "2026-11-18": [
+   "body warning suffix|timestamp|0"
+  ],
+  "2026-11-19": [
+   "body stamp same date as sched|scheduled|0",
+   "body stamp same date as sched|timestamp|0"
+  ],
+  "2026-11-20": [
+   "body repeater|timestamp|0",
+   "body todo done sched|timestamp|0"
+  ],
+  "2026-11-21": [
+   "body deep text with hash #|timestamp|0"
+  ],
+  "2026-11-22": [
+   "body deep text with hash #|timestamp|0"
+  ],
+  "2026-11-23": [
+   "body repeater|timestamp|0"
+  ],
+  "2026-11-24": [],
+  "2026-11-25": [
+   "body verse block|timestamp|0"
+  ],
+  "2026-11-26": [
+   "body center block|timestamp|0",
+   "body repeater|timestamp|0"
+  ],
+  "2026-11-27": [],
+  "2026-11-28": [
+   "body hashtag line|timestamp|0"
+  ],
+  "2026-11-29": [
+   "body repeater|timestamp|0"
+  ],
+  "2026-11-30": [],
+  "2026-12-01": [],
+  "2026-12-02": [
+   "body repeater|timestamp|0"
+  ],
+  "2026-12-03": [],
+  "2026-12-04": [],
+  "2026-12-05": [
+   "body repeater|timestamp|0"
+  ],
+  "2026-12-06": [],
+  "2026-12-07": [],
+  "2026-12-08": [
+   "body repeater|timestamp|0"
+  ],
+  "2026-12-09": [],
+  "2026-12-10": [],
+  "2026-12-11": [
+   "body repeater|timestamp|0"
+  ],
+  "2026-12-12": [],
+  "2026-12-13": []
+ }
+}

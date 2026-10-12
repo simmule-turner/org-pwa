@@ -624,6 +624,40 @@ function walkHeadings(doc, visit) {
  *     birthday/anniversary date+description, matching whatever
  *     org-contacts-birthday-property is set to via Local Variables.
  */
+const RANGE_RE = /(<\d{4}-\d{2}-\d{2}[^>\n]*>)--(<\d{4}-\d{2}-\d{2}[^>\n]*>)/g;
+const NO_STAMP_BLOCKS = new Set(['SRC', 'EXAMPLE', 'EXPORT', 'COMMENT']);
+
+/**
+ * The text of one heading's entry that Emacs searches for timestamps: the
+ * title, the property values, the drawer lines and the body, less the lines
+ * and blocks Emacs passes over -- #+BEGIN_SRC/EXAMPLE/EXPORT/COMMENT blocks
+ * (one with no #+END is not a block), "# " comment lines and #+KEYWORD lines.
+ * The SCHEDULED/DEADLINE line is not part of it: the parser holds that apart.
+ * @param {any} heading
+ * @returns {string}
+ */
+function entryTimestampText(heading) {
+  const lines = [heading.title];
+  for (const value of Object.values(heading.properties || {})) lines.push(String(value));
+  lines.push(...(heading.logbookLines || []));
+  const body = heading.bodyLines || [];
+  for (let i = 0; i < body.length; i++) {
+    const begin = /^\s*#\+BEGIN_(\w+)/i.exec(body[i]);
+    if (begin && NO_STAMP_BLOCKS.has(begin[1].toUpperCase())) {
+      const end = new RegExp(`^\\s*#\\+END_${begin[1]}\\b`, 'i');
+      let j = i + 1;
+      while (j < body.length && !end.test(body[j])) j++;
+      if (j < body.length) {
+        i = j;
+        continue;
+      }
+    }
+    if (/^\s*#(\s|$|\+)/.test(body[i])) continue;
+    lines.push(body[i]);
+  }
+  return lines.join('\n');
+}
+
 /** The category label shown as a prefix before each agenda item --
  *  real org's own #+CATEGORY: keyword if the file sets one, otherwise
  *  the file's own basename (no directory path, no .org extension),
@@ -823,35 +857,28 @@ function buildAgendaItems(docs, opts = {}) {
         addItem(documentId, heading, kind, parsed, headingIsDone);
       }
 
-      // Plain timestamps written directly in the heading title — a
-      // separate, genuine org convention distinct from SCHEDULED/DEADLINE
-      // (the standard way to track something like a recurring birthday
-      // right on its own heading line: "Jennifer <1989-11-02 Thu +1y>").
-      // Scoped deliberately to the title only, not body text — scanning
-      // body text too would risk pulling in unrelated dates mentioned in
-      // ordinary prose elsewhere in a journal-heavy file, which titles
-      // don't really have the same risk of. Only *active* timestamps
-      // count, matching real org's own rule that an inactive [timestamp]
-      // is deliberately excluded from the agenda (a dated record, not a
-      // reminder). Skipped when the heading already has its own
-      // SCHEDULED/DEADLINE, so one heading doesn't produce a confusing
-      // double entry for what would usually be the same underlying date.
-      // Never carries forward, unlike SCHEDULED/DEADLINE above — a plain
-      // timestamp is explicitly NOT an "intend to do this" marker.
-      if (!hasPlanning) {
+      // Plain active timestamps anywhere in the heading's own entry: its
+      // title, its body, its property values and its drawers (not its
+      // children, which are entries of their own). This is what Emacs's
+      // agenda does, checked against Emacs 29.3 in test/fixtures/agenda/b1.org:
+      // a heading with SCHEDULED/DEADLINE still lists its other timestamps,
+      // and source, example, export and comment blocks, comment lines and
+      // keyword lines are skipped. Inactive [timestamps] never count. A plain
+      // timestamp never carries forward, unlike SCHEDULED/DEADLINE above.
+      {
         // <start>--<end> is every day from one to the other, as in Emacs.
-        let titleRest = heading.title;
-        for (const m of heading.title.matchAll(/(<[^>]+>)--(<[^>]+>)/g)) {
+        let rest = entryTimestampText(heading);
+        for (const m of rest.matchAll(RANGE_RE)) {
           const from = parseOrgTimestamp(m[1]);
           const to = parseOrgTimestamp(m[2]);
           if (!from || !to || !from.active || !to.active || startOfDay(to.date) < startOfDay(from.date)) continue;
-          titleRest = titleRest.replace(m[0], ' ');
+          rest = rest.replace(m[0], ' ');
           for (let day = startOfDay(from.date); day <= startOfDay(to.date); day = addDays(day, 1)) {
             const date = new Date(day.getFullYear(), day.getMonth(), day.getDate(), from.date.getHours(), from.date.getMinutes());
             addItem(documentId, heading, 'timestamp', { ...from, date, endDate: null }, true);
           }
         }
-        for (const parsed of findTimestamps(titleRest)) {
+        for (const parsed of findTimestamps(rest)) {
           if (!parsed.active) continue;
           addItem(documentId, heading, 'timestamp', parsed, true); // headingIsDone: true short-circuits carry-forward
         }
@@ -1352,6 +1379,7 @@ function buildTaskList(docs, opts = {}) {
         priority: heading.priority,
         tags: heading.tags,
         title: heading.title,
+        category: getCategoryForDocument(doc, documentId),
       });
     });
   }

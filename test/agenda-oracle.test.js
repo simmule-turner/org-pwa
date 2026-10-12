@@ -9,19 +9,21 @@ import { parseOrg } from '../src/org-parser.js';
 import { buildAgendaItems, itemsForDate } from '../src/agenda.js';
 
 const read = (name) => fs.readFileSync(new URL(`./fixtures/agenda/${name}`, import.meta.url), 'utf8');
-const oracle = JSON.parse(read('a1.expected.json'));
 const STAMPS = /\s*[<[][^>\]]*[>\]](--[<[][^>\]]*[>\]])?/g;
 
-test('every day lists the same headings, as scheduled, deadline or time stamp, and as overdue or upcoming on today, as Emacs does', () => {
+// a1: repeaters, overdue and warnings. b1: where in a heading's entry a time stamp counts (title, body, drawers, blocks).
+// The app leaves completed headings out of the agenda (its default), so Emacs's DONE entries are not compared.
+for (const name of ['a1', 'b1']) test(`${name}: every day lists the same headings, as scheduled, deadline or time stamp, and as overdue or upcoming on today, as Emacs does`, () => {
+  const oracle = JSON.parse(read(`${name}.expected.json`));
   const savedTz = process.env.TZ;
   process.env.TZ = oracle.tz;
   try {
-    const doc = parseOrg(read('a1.org'));
+    const doc = parseOrg(read(`${name}.org`));
     const today = new Date(oracle.now.replace(' ', 'T'));
     const dates = Object.keys(oracle.days);
     const first = new Date(`${dates[0]}T00:00:00`);
     const last = new Date(`${dates[dates.length - 1]}T23:59:59`);
-    const items = buildAgendaItems([{ documentId: 'a1.org', doc }], {
+    const items = buildAgendaItems([{ documentId: `${name}.org`, doc }], {
       today,
       rangeStart: first,
       rangeEnd: last,
@@ -34,7 +36,7 @@ test('every day lists the same headings, as scheduled, deadline or time stamp, a
       const got = [...new Set(itemsForDate(items, new Date(`${date}T12:00:00`)).map(
         (i) => `${i.todo ? i.todo + ' ' : ''}${i.title.replace(STAMPS, '').trim()}|${i.kind === 'scheduled' || i.kind === 'deadline' ? i.kind : 'timestamp'}|${i.daysOverdue}`
       ))].sort();
-      const want = [...new Set(oracle.days[date])].sort();
+      const want = [...new Set(oracle.days[date].filter((w) => !w.startsWith('DONE ')))].sort();
       if (JSON.stringify(got) !== JSON.stringify(want)) {
         differ.push(`${date}: only ours ${JSON.stringify(got.filter((g) => !want.includes(g)))}; only Emacs ${JSON.stringify(want.filter((w) => !got.includes(w)))}`);
       }

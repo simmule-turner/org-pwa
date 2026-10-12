@@ -422,11 +422,16 @@ test('an inactive timestamp in a title does NOT produce an agenda item, matching
   assert.equal(items.length, 0);
 });
 
-test('a heading with BOTH a title timestamp and its own SCHEDULED does not double-count — SCHEDULED wins', () => {
+test('a heading with BOTH a title timestamp and its own SCHEDULED lists both, as Emacs does', () => {
   const doc = parseOrg(['**** Something <2026-01-01 Thu>', 'SCHEDULED: <2026-02-01 Sun>'].join('\n'));
   const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
-  assert.equal(items.length, 1);
-  assert.equal(items[0].kind, 'scheduled');
+  assert.deepEqual(items.map((i) => i.kind).sort(), ['scheduled', 'timestamp']);
+});
+
+test('an active timestamp in the body counts; one in a source block, a comment line or an inactive [stamp] does not', () => {
+  const doc = parseOrg(['* Plan', 'Call on <2026-03-02 Mon>.', '# <2026-03-03 Tue>', '#+BEGIN_SRC text', '<2026-03-04 Wed>', '#+END_SRC', 'Seen [2026-03-05 Thu]', '** Child', 'x <2026-03-06 Fri>'].join('\n'));
+  const items = buildAgendaItems([{ documentId: 'x.org', doc }]);
+  assert.deepEqual(items.map((i) => `${i.title}:${i.date.getDate()}`).sort(), ['Child:6', 'Plan:2']);
 });
 
 test('a heading with no timestamp anywhere produces nothing, as before', () => {

@@ -1,0 +1,101 @@
+* body para
+Some text <2026-10-14 Wed> in a paragraph.
+* body own line
+<2026-10-15 Thu>
+* body list
+- item <2026-10-16 Fri>
+* body table
+| a | <2026-10-17 Sat> |
+* body repeater
+text <2026-10-12 Mon +3d>
+* body range
+<2026-10-20 Tue>--<2026-10-22 Thu>
+* body timed
+<2026-10-18 Sun 09:30-10:30>
+* body inactive
+[2026-10-19 Mon]
+* body two
+a <2026-10-21 Wed> and <2026-10-23 Fri>
+* body in property drawer
+:PROPERTIES:
+:WHEN: <2026-10-24 Sat>
+:END:
+* body in logbook
+:LOGBOOK:
+- Note taken on <2026-10-25 Sun> \\
+  hi
+:END:
+* body in src block
+#+BEGIN_SRC text
+<2026-10-26 Mon>
+#+END_SRC
+* body in example block
+#+BEGIN_EXAMPLE
+<2026-10-27 Tue>
+#+END_EXAMPLE
+* body in comment line
+# <2026-10-28 Wed>
+* body in keyword line
+#+FOO: <2026-10-29 Thu>
+* TODO body todo
+text <2026-10-30 Fri>
+* DONE body done
+text <2026-10-31 Sat>
+* COMMENT body commented
+text <2026-11-01 Sun>
+* TODO sched plus body stamp
+SCHEDULED: <2026-10-13 Tue>
+text <2026-11-02 Mon>
+* title and body stamp <2026-11-03 Tue>
+text <2026-11-04 Wed>
+* child parent
+** child with stamp
+text <2026-11-05 Thu>
+* body after sched in same line
+text SCHEDULED: <2026-11-07 Sat>
+* title stamp with planning <2026-11-09 Mon>
+SCHEDULED: <2026-11-10 Tue>
+* body stamp with deadline
+DEADLINE: <2026-11-12 Thu>
+text <2026-11-13 Fri>
+* body custom drawer
+:MYDRAWER:
+<2026-11-14 Sat>
+:END:
+* body quote block
+#+BEGIN_QUOTE
+<2026-11-15 Sun>
+#+END_QUOTE
+* body checkbox
+- [ ] item <2026-11-16 Mon>
+* body warning suffix
+text <2026-11-18 Wed -2d>
+* body stamp same date as sched
+SCHEDULED: <2026-11-19 Thu>
+text <2026-11-19 Thu>
+* body todo done sched
+text <2026-11-20 Fri>
+* body deep text with hash # <2026-11-21 Sat>
+text # <2026-11-22 Sun>
+* body leading spaces comment
+  # <2026-11-23 Mon>
+* body begin export
+#+BEGIN_EXPORT html
+<2026-11-24 Tue>
+#+END_EXPORT
+* body verse block
+#+BEGIN_VERSE
+<2026-11-25 Wed>
+#+END_VERSE
+* body center block
+#+BEGIN_CENTER
+<2026-11-26 Thu>
+#+END_CENTER
+* body comment block
+#+BEGIN_COMMENT
+<2026-11-27 Fri>
+#+END_COMMENT
+* body hashtag line
+#hashtag <2026-11-28 Sat>
+* body keyword with stamp
+#+CAPTION: <2026-11-29 Sun>
