@@ -242,7 +242,9 @@ export function parseVcards(text, opts = {}) {
   const { cleanMode = true, onUnmappedProperty = null, onEmbeddedPhotoImported = null } = opts;
   const lines = unfoldVcardLines(text);
   const contacts = [];
+  /** @type {any} */
   let current = null;
+  /** @type {any} */
   let groupRefs = null; // { [groupName]: entry } -- reset per contact, populated by EMAIL/TEL/URL/ADR, read by a same-group X-ABLabel
   const warnedProperties = new Set(); // de-duplicates onUnmappedProperty calls across the whole file
 

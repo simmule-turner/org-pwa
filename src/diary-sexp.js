@@ -254,7 +254,9 @@ function parseDiaryFloatLine(line) {
   if (n === 0) return null; // real elisp: N must be nonzero, no "0th occurrence" concept
 
   const trailing = m[4].trim().split(/\s+/).filter(Boolean).map(Number);
+  /** @type {number | null} */
   let day = null;
+  /** @type {number | null} */
   let year = null;
   if (trailing.length === 2) {
     [day, year] = trailing;

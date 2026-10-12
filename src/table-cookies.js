@@ -38,7 +38,7 @@ function isWidthCookieRow(row) {
  *  isWidthCookieRow itself, to know which row to skip. */
 function parseWidthCookieRow(row) {
   if (!isWidthCookieRow(row)) return null;
-  return row.cells.map((c) => Number(/^<(\d+)>$/.exec(c.trim())[1]));
+  return row.cells.map((c) => Number((/^<(\d+)>$/.exec(c.trim()) || [])[1]));
 }
 
 export { isWidthCookieRow, parseWidthCookieRow };

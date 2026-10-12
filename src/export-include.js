@@ -58,6 +58,7 @@ function parseIncludeDirective(value) {
   }
 
   let lines = null;
+  /** @type {number | null} */
   let minlevel = null;
   for (; i < tokens.length; i++) {
     if (tokens[i] === ':lines' && tokens[i + 1]) {

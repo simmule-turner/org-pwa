@@ -348,6 +348,7 @@ export async function deleteAllAttachments(heading) {
   const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId);
   const adapter = activeDiskAdapter();
   let deleted = 0;
+  /** @type {Error | null} */
   let failure = null;
   for (const name of names) {
     try {

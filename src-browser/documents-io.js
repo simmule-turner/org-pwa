@@ -217,7 +217,7 @@ export async function openRemotePath(path, kind, diskAdapter, label) {
  * without a fresh picker gesture the browser requires per file, so
  * this shows a clear message rather than silently failing.
  */
-export async function openFileLink(resolution, containingHeading = null) {
+export async function openFileLink(resolution, containingHeading = /** @type {any} */ (null)) {
   let adapter, kind, label;
   if (resolution.scheme === 'github') {
     adapter = githubAdapter;

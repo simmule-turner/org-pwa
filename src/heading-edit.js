@@ -26,7 +26,7 @@ import { parseOrgTimestamp, findTimestamps } from './org-timestamp.js';
  * @param {{ level?: number, title?: string, todo?: string | null, priority?: string | null, tags?: string[] }} [fields]
  */
 export function createHeading({ level, title = '', todo = null, priority = null, tags = [] } = {}) {
-  if (!Number.isInteger(level) || level < 1) {
+  if (level === undefined || !Number.isInteger(level) || level < 1) {
     throw new Error('createHeading: level must be a positive integer');
   }
   return {
@@ -122,7 +122,9 @@ export function getPlanningText(heading) {
  * engine couldn't parse back out.
  */
 export function setPlanningFromText(heading, text) {
+  /** @type {string | null} */
   let scheduled = null;
+  /** @type {string | null} */
   let deadline = null;
   const lineRe = /^(SCHEDULED|DEADLINE)\s*:\s*(.+)$/i;
   for (const rawLine of String(text).split('\n')) {

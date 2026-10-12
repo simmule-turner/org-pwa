@@ -259,6 +259,7 @@ function headingFor(component, options) {
 
   const rrule = props.find((p) => p.name === 'RRULE');
   const anchor = isTodo ? due || start : start;
+  /** @type {any} */
   let repeater = null;
   const kept = {};
   if (rrule && anchor) {

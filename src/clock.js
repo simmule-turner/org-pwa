@@ -254,6 +254,7 @@ function clockInSwitchingTasks(doc, heading, timestamp, now) {
 function listRecentlyClockedHeadings(doc, limit = 15) {
   const found = [];
   const consider = (heading) => {
+    /** @type {Date | null} */
     let latest = null;
     for (const line of heading.logbookLines || []) {
       const running = RUNNING_CLOCK_RE.exec(line);
@@ -278,6 +279,7 @@ function listRecentlyClockedHeadings(doc, limit = 15) {
 
 function findMostRecentlyClockedHeading(doc) {
   let best = null;
+  /** @type {Date | null} */
   let bestStart = null;
   const consider = (heading) => {
     for (const line of heading.logbookLines || []) {

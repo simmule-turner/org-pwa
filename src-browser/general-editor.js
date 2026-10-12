@@ -298,6 +298,7 @@ export function openGeneralEditor(heading) {
   modal.appendChild(fieldsContainer);
 
   let scheduledGroup, deadlineGroup, plainGroup, tagsGroup, priorityGroup, propsGroup;
+  /** @type {string | null} */
   let initialSnapshotJSON = null;
 
   function snapshotFields() {

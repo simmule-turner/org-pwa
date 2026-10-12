@@ -2,6 +2,7 @@
 // A one-way notice that something happened, for the init script's org.on hooks. Kept in its own module with
 // no imports so the places that announce an event (saving, TODO changes, capture, opening a file) need not
 // import the extension code, which imports them.
+/** @type {{ listener: ((name: string, payload?: any) => void) | null }} */
 const slot = { listener: null };
 
 /** The extension code registers here once. */

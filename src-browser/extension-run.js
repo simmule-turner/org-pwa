@@ -16,6 +16,7 @@ function extensionMain() {
   const uiLines = new Map();
   const linkTypes = new Map();
   const exporters = new Map();
+  /** @type {any} */
   let current = null; // the command being run: { document, edits, notices }
   const logs = [];
   const waiting = new Map();
@@ -145,6 +146,7 @@ function extensionMain() {
     } else if (m.type === 'call') {
       const fn = sexps.get(m.name);
       const results = [];
+      /** @type {string | null} */
       let error = null;
       for (const key of m.days) {
         try {
@@ -159,6 +161,7 @@ function extensionMain() {
     } else if (m.type === 'table') {
       const fn = tableFns.get(m.name);
       const results = [];
+      /** @type {string | null} */
       let error = null;
       for (const args of m.calls) {
         try {
@@ -174,6 +177,7 @@ function extensionMain() {
     } else if (m.type === 'agenda') {
       const fn = agendaSources.get(m.name);
       let items = null;
+      /** @type {string | null} */
       let error = null;
       try {
         if (!fn) throw new Error('no agenda source named ' + m.name);
@@ -185,7 +189,9 @@ function extensionMain() {
       self.postMessage({ type: 'agenda-done', id: m.id, items, error, logs: logs.splice(0) });
     } else if (m.type === 'line') {
       const fn = uiLines.get(m.name);
+      /** @type {any} */
       let text = null;
+      /** @type {string | null} */
       let error = null;
       try {
         if (!fn) throw new Error('no line named ' + m.name);
@@ -197,7 +203,9 @@ function extensionMain() {
       self.postMessage({ type: 'line-done', id: m.id, text, error, logs: logs.splice(0) });
     } else if (m.type === 'link') {
       const fn = linkTypes.get(m.prefix);
+      /** @type {any} */
       let url = null;
+      /** @type {string | null} */
       let error = null;
       try {
         if (!fn) throw new Error('no link type named ' + m.prefix);
@@ -210,7 +218,9 @@ function extensionMain() {
     } else if (m.type === 'export') {
       const ex = exporters.get(m.name);
       current = { document: m.document, edits: [], notices: [] };
+      /** @type {any} */
       let output = null;
+      /** @type {string | null} */
       let error = null;
       try {
         if (!ex) throw new Error('no export backend named ' + m.name);
@@ -223,6 +233,7 @@ function extensionMain() {
       self.postMessage({ type: 'export-done', id: m.id, output, error, logs: logs.splice(0) });
     } else if (m.type === 'event') {
       current = { document: m.document, edits: [], notices: [] };
+      /** @type {string | null} */
       let error = null;
       try {
         const heading = m.document.focused === null ? null : m.document.headings[m.document.focused];
@@ -236,7 +247,9 @@ function extensionMain() {
     } else if (m.type === 'command') {
       const command = commands.get(m.name);
       current = { document: m.document, edits: [], notices: [] };
+      /** @type {string | null} */
       let error = null;
+      /** @type {string | null} */
       let message = null;
       try {
         if (!command) throw new Error('no command named ' + m.name);
@@ -263,6 +276,7 @@ export async function startExtension({ code, variables = {}, onRpc = null, initT
   if (!box.ok) return { ok: false, message: box.message, logs: [] };
   let nextId = 1;
   const waiting = new Map();
+  /** @type {(m: any) => void | null} */
   let initWaiter = null;
   box.onMessage((m) => {
     if (m.type === 'init-done' && initWaiter) initWaiter(m);
@@ -272,6 +286,7 @@ export async function startExtension({ code, variables = {}, onRpc = null, initT
   /** A timer that does not run while the script waits for the page (network, position), up to a hard limit. */
   const deadline = (timeoutMs, onTimeout) => {
     const started = Date.now();
+    /** @type {number | null} */
     let timer = null;
     const arm = (delay) => {
       timer = setTimeout(() => {

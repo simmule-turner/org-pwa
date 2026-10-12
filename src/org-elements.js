@@ -204,6 +204,7 @@ function interruptsParagraph(line) {
 
 export function parseElements(lines) {
   const out = [];
+  /** @type {any} */
   let aff = null;
   const push = (el) => {
     if (aff) el.aff = aff;

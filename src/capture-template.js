@@ -358,6 +358,7 @@ function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = tr
   const at = now instanceof Date ? now : new Date();
   let siblings = doc.children;
   let parent = null;
+  /** @type {any} */
   let found = null;
 
   for (const rawSegment of olpPath) {

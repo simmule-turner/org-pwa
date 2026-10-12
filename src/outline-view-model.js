@@ -61,6 +61,7 @@ function flattenVisibleRows(doc) {
   function flattenListItems(items, headingNode, depth, keyPrefix) {
     let orderedCounter = 0;
     items.forEach((item, i) => {
+      /** @type {number | null} */
       let displayNumber = null;
       if (item.ordered) {
         orderedCounter = item.startValue != null ? item.startValue : orderedCounter + 1;

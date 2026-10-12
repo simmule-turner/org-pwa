@@ -48,10 +48,14 @@ export async function openCameraPanel(kind, onAttach) {
   }
 
   let phase = 'live'; // live | recording | review
+  /** @type {MediaRecorder | null} */
   let recorder = null;
   let chunks = [];
+  /** @type {Blob | null} */
   let captured = null; // the Blob in review
+  /** @type {string | null} */
   let capturedUrl = null;
+  /** @type {number | null} */
   let clock = null;
   let startedAt = 0;
 

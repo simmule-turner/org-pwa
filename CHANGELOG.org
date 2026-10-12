@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v498 — Stricter checking, one file at a time
+The type checker now also looks for values that might be missing (null) and a ratchet keeps it from slipping back: a file may only get better, in the release script and in CI. The page's elements are typed once instead of file by file, and 69 variables got real types, taking the open findings from 743 in 92 files to 226 in 46. No change in behaviour.
+Verified: tests, lint, type check, and the calendar, contacts, notification, narrow, tangle, refile and table checks.
+
 * v497 — Timestamps read the way Emacs reads them
 A timestamp without a weekday (=<2026-10-11>=), with a one-digit hour (=9:05=), or with the warning before the repeater (=-3d +1w=) is now understood, and a =--2d= warning is kept; before, a missing weekday made the repeater or warning vanish. A new test compares about 1,700 timestamp spellings and 26 weekdays with what Emacs itself reports.
 Verified: the timestamp oracle, plus the timestamp, repeat and agenda checks.

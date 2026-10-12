@@ -18,7 +18,7 @@ export function removeIndentation(lines) {
   let min = Infinity;
   for (const l of lines) {
     if (!l.trim()) continue;
-    min = Math.min(min, /^[ \t]*/.exec(l)[0].length);
+    min = Math.min(min, (/^[ \t]*/.exec(l) || [''])[0].length);
   }
   if (!Number.isFinite(min) || min === 0) return lines.slice();
   return lines.map((l) => (l.trim() ? l.slice(min) : ''));
@@ -47,6 +47,7 @@ export function scanSourceBlocks(lines) {
     let j = i + 1;
     while (j < lines.length && !/^\s*#\+end_src\s*$/i.test(lines[j])) j++;
     if (j >= lines.length) break; // never closed: not a block
+    /** @type {string | null} */
     let name = null;
     const headers = [];
     for (let k = i - 1; k >= 0; k--) {

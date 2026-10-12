@@ -50,7 +50,9 @@ function parseOrgTimestamp(raw) {
   let min;
   let endH;
   let endMin;
+  /** @type {string | null} */
   let repeater = null;
+  /** @type {string | null} */
   let delay = null;
   for (const word of words) {
     // Emacs takes the time only ahead of the repeater and the warning (a later one is read but ignored)

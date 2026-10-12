@@ -133,6 +133,7 @@ const keyEq = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
  *  heading from the top one down to the block's own. At each place `name` replaces what came before and `name+`
  *  appends to it. */
 export function inheritedProperty(doc, ancestors, name) {
+  /** @type {string | null} */
   let value = null;
   const apply = (plain, plus) => {
     if (plain !== null) value = plain;
@@ -146,7 +147,9 @@ export function inheritedProperty(doc, ancestors, name) {
     else if (keyEq(m[1], name + '+')) apply(null, m[2]);
   }
   for (const h of ancestors) {
+    /** @type {string | null} */
     let plain = null;
+    /** @type {string | null} */
     let plus = null;
     for (const [k, v] of Object.entries(h.properties || {})) {
       if (keyEq(k, name)) plain = String(v);

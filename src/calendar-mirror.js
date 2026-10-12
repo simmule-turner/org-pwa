@@ -78,7 +78,7 @@ function buildCalendarResources(allDocs, opts = {}) {
  * loaded in this run: an event for a file that did not load would otherwise look like one that was removed.
  * `loadedDocs` null means every file counts as loaded.
  */
-function planCalendarSync(wanted, previous, { loadedDocs = null } = {}) {
+function planCalendarSync(wanted, previous, { loadedDocs = /** @type {Set<any> | null} */ (null) } = {}) {
   const puts = [];
   let unchanged = 0;
   for (const [name, resource] of wanted) {

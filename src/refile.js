@@ -267,6 +267,7 @@ function collectSubtreeHeadings(heading) {
  *  Returns null if the path no longer matches anything. */
 function findHeadingByOutlinePath(doc, outlinePath) {
   let level = doc.children;
+  /** @type {any} */
   let found = null;
   for (const title of outlinePath) {
     found = (level || []).find((h) => h.title === title);

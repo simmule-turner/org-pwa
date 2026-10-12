@@ -10,6 +10,7 @@
     "smoke": "node tools/smoke.mjs",
     "release": "node tools/release.mjs",
     "lint": "eslint .",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "check:strict": "node tools/check-strict.mjs"
   }
 }

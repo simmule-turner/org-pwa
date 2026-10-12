@@ -100,6 +100,7 @@ function parseTable(lines, i) {
     rows.push(parseTableRow(lines[i]));
     i++;
   }
+  /** @type {string | null} */
   let tblfm = null;
   if (i < lines.length) {
     const m = TBLFM_RE.exec(lines[i]);
@@ -140,6 +141,7 @@ function parseListItemLine(line) {
   const [, indent, marker, checkbox, rest] = m;
   let text = rest;
 
+  /** @type {number | null} */
   let startValue = null;
   const startValueMatch = /^\[@(\d+)\]\s*/.exec(text);
   if (startValueMatch) {

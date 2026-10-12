@@ -74,6 +74,7 @@ export function upcomingAppointments(docs, now, { hours = 6, birthdayProperty = 
     if (item.kind !== 'scheduled' && item.kind !== 'deadline' && item.kind !== 'timestamp') continue;
     const start = item.date;
     if (!(start.getTime() > now.getTime() - 1) || start.getTime() > horizon.getTime()) continue; // already started, or too far off
+    /** @type {Date | null} */
     let end = null;
     if (item.endDate) {
       end = new Date(start.getFullYear(), start.getMonth(), start.getDate(), item.endDate.getHours(), item.endDate.getMinutes());

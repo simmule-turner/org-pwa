@@ -685,6 +685,7 @@ export function buildClocktableSection() {
   reportToggle.appendChild(document.createTextNode('Report'));
   checkboxRow.appendChild(reportToggle);
 
+  /** @type {string | null} */
   let rendered = null;
   if (S.showClocktable) {
     const result = computeClocktable(S.state.doc, S.clocktableStart, S.clocktableEnd, S.clocktableMaxlevel);

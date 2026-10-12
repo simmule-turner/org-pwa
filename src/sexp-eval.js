@@ -149,6 +149,7 @@ function parseSexpr(text) {
 // User-defined functions (see extensions.js). The browser installs the names a script registered and a
 // handler that answers for one name, its plain arguments and a day. Without them nothing changes.
 let userSexpNames = new Set();
+/** @type {any} */
 let userSexpHandler = null;
 
 /** Installs (or, with no arguments, removes) the user-defined diary functions. */

@@ -262,6 +262,7 @@ export function renderTabBar() {
     return aIsHelp === bIsHelp ? 0 : aIsHelp ? 1 : -1;
   });
 
+  /** @type {HTMLDivElement | null} */
   let activeTabEl = null;
   for (const session of sessionsInOrder) {
     const isActive = session.tabId === S.activeTabId;

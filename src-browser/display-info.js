@@ -21,7 +21,7 @@ function resolveLength(cssValue) {
 }
 
 /** The report, as `[label, value]` pairs. */
-export function collectDisplayMeasurements(launcher = null) {
+export function collectDisplayMeasurements(launcher = /** @type {string | null} */ (null)) {
   const sides = ['top', 'right', 'bottom', 'left'];
   const root = getComputedStyle(document.documentElement);
   const vv = window.visualViewport;

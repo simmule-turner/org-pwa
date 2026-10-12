@@ -22,90 +22,96 @@
 // individual call sites. A manual capital or period is still one tap
 // away on the keyboard's own keys -- this only removes the automatic,
 // unrequested kind, never the ability to type either deliberately.
+/** The element with this id. The page always has it, so it is typed as present (as before, a missing one is simply null).
+ * @param {string} id @returns {HTMLElement} */
+function byId(id) {
+  return /** @type {HTMLElement} */ (document.getElementById(id));
+}
+
 export const nativeCreateElement = document.createElement.bind(document);
 
-export const outlineEl = document.getElementById('outline');
+export const outlineEl = byId('outline');
 
-export const tabBarEl = document.getElementById('tabBar');
+export const tabBarEl = byId('tabBar');
 
-export const sidePanelEl = document.getElementById('sidePanel');
+export const sidePanelEl = byId('sidePanel');
 
-export const sidePanelDividerEl = document.getElementById('sidePanelDivider');
+export const sidePanelDividerEl = byId('sidePanelDivider');
 
-export const splitRowEl = document.getElementById('splitRow');
+export const splitRowEl = byId('splitRow');
 
-export const saveBtnEl = document.getElementById('saveBtn');
+export const saveBtnEl = byId('saveBtn');
 
-export const statusEl = document.getElementById('status');
+export const statusEl = byId('status');
 
-export const topBarEl = document.getElementById('topBar');
+export const topBarEl = byId('topBar');
 
-export const contentAreaEl = document.getElementById('contentArea');
+export const contentAreaEl = byId('contentArea');
 
-export const modelineBarEl = document.getElementById('modelineBar');
+export const modelineBarEl = byId('modelineBar');
 
-export const modelineEl = document.getElementById('modeline');
+export const modelineEl = byId('modeline');
 
-export const minibufferEl = document.getElementById('minibuffer');
+export const minibufferEl = byId('minibuffer');
 
-export const minibufferSearchEl = document.getElementById('minibufferSearch');
+export const minibufferSearchEl = byId('minibufferSearch');
 
-export const navBackBtn = document.getElementById('navBackBtn');
+export const navBackBtn = byId('navBackBtn');
 
-export const extraMenuBtn = document.getElementById('extraMenuBtn');
+export const extraMenuBtn = byId('extraMenuBtn');
 
-export const extraMenuPanel = document.getElementById('extraMenuPanel');
+export const extraMenuPanel = byId('extraMenuPanel');
 
-export const viewMenuBtn = document.getElementById('viewMenuBtn');
+export const viewMenuBtn = byId('viewMenuBtn');
 
-export const godModeBtn = document.getElementById('godModeBtn');
+export const godModeBtn = byId('godModeBtn');
 
-export const viewMenuPanel = document.getElementById('viewMenuPanel');
+export const viewMenuPanel = byId('viewMenuPanel');
 
-export const fileMenuBtn = document.getElementById('fileMenuBtn');
+export const fileMenuBtn = byId('fileMenuBtn');
 
-export const fileMenuPanel = document.getElementById('fileMenuPanel');
+export const fileMenuPanel = byId('fileMenuPanel');
 
-export const settingsBtn = document.getElementById('settingsBtn');
+export const settingsBtn = byId('settingsBtn');
 
-export const searchBtn = document.getElementById('searchBtn');
+export const searchBtn = byId('searchBtn');
 
-export const searchPanel = document.getElementById('searchPanel');
+export const searchPanel = byId('searchPanel');
 
-export const godModeKeyboardInput = document.getElementById('godModeKeyboardInput');
+export const godModeKeyboardInput = byId('godModeKeyboardInput');
 
-export const floatingKeyboard = document.getElementById('floatingKeyboard');
+export const floatingKeyboard = byId('floatingKeyboard');
 
-export const captureBtn = document.getElementById('captureBtn');
+export const captureBtn = byId('captureBtn');
 
-export const capturePanel = document.getElementById('capturePanel');
+export const capturePanel = byId('capturePanel');
 
-export const capturePanelBox = document.getElementById('capturePanelBox');
+export const capturePanelBox = byId('capturePanelBox');
 
-export const doneNotePanel = document.getElementById('doneNotePanel');
+export const doneNotePanel = byId('doneNotePanel');
 
-export const doneNotePanelBox = document.getElementById('doneNotePanelBox');
+export const doneNotePanelBox = byId('doneNotePanelBox');
 
-export const refilePanel = document.getElementById('refilePanel');
+export const refilePanel = byId('refilePanel');
 
-export const refilePanelBox = document.getElementById('refilePanelBox');
+export const refilePanelBox = byId('refilePanelBox');
 
-export const fileScreen = document.getElementById('fileScreen');
-export const fileScreenBox = document.getElementById('fileScreenBox');
-export const archiveRefilePanel = document.getElementById('archiveRefilePanel');
+export const fileScreen = byId('fileScreen');
+export const fileScreenBox = byId('fileScreenBox');
+export const archiveRefilePanel = byId('archiveRefilePanel');
 
-export const archiveRefilePanelBox = document.getElementById('archiveRefilePanelBox');
+export const archiveRefilePanelBox = byId('archiveRefilePanelBox');
 
-export const externalChangeBanner = document.getElementById('externalChangeBanner');
+export const externalChangeBanner = byId('externalChangeBanner');
 
-export const externalChangeText = document.getElementById('externalChangeText');
+export const externalChangeText = byId('externalChangeText');
 
-export const externalChangeMergeBtn = document.getElementById('externalChangeMergeBtn');
+export const externalChangeMergeBtn = byId('externalChangeMergeBtn');
 
-export const externalChangeReloadBtn = document.getElementById('externalChangeReloadBtn');
+export const externalChangeReloadBtn = byId('externalChangeReloadBtn');
 
-export const externalChangeDismissBtn = document.getElementById('externalChangeDismissBtn');
+export const externalChangeDismissBtn = byId('externalChangeDismissBtn');
 
-export const moreBtn = document.getElementById('moreBtn');
+export const moreBtn = byId('moreBtn');
 
-export const morePanel = document.getElementById('morePanel');
+export const morePanel = byId('morePanel');

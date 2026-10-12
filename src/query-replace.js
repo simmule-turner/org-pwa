@@ -123,6 +123,7 @@ function createQueryReplace(doc, re, replacement) {
   let searchFrom = 0; // position within the CURRENT target's own text to resume searching from
   let replacedCount = 0;
   let done = false;
+  /** @type {{ target: any; match: RegExpExecArray; text: any; } | null} */
   let pendingMatch = null; // { target, match } for the match currently awaiting a decision
 
   const globalRe = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
@@ -224,6 +225,7 @@ function createTextQueryReplace(text, re, replacement) {
   let searchFrom = 0;
   let replacedCount = 0;
   let done = false;
+  /** @type {{ match: RegExpExecArray; text: any; } | null} */
   let pendingMatch = null; // { match, text } for the match currently awaiting a decision
 
   const globalRe = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');

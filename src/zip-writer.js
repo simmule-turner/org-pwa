@@ -18,6 +18,7 @@
 
 // ---- CRC-32 -----------------------------------------------------------
 
+/** @type {Uint32Array<ArrayBuffer> | null} */
 let crcTable = null;
 
 function buildCrcTable() {

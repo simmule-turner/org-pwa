@@ -67,6 +67,7 @@ function parseLogbookEntries(lines) {
     if (stateMatch) {
       const [, newState, oldState, timestamp, continues] = stateMatch;
       i++;
+      /** @type {any} */
       let note = null;
       if (continues) {
         const collected = [];

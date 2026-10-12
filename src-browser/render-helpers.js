@@ -121,7 +121,7 @@ export function getServiceWorkerVersion() {
     };
     const channel = new MessageChannel();
     channel.port1.onmessage = (event) => settle((event.data && event.data.version) || null);
-    navigator.serviceWorker.controller.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+    navigator.serviceWorker.controller?.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
     setTimeout(() => settle(null), 2000);
   });
 }

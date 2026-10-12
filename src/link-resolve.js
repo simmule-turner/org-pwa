@@ -326,6 +326,7 @@ function inlineContainsFootnoteDef(nodes, label) {
  * document for this label.
  */
 export function findFootnoteDefinition(doc, label) {
+  /** @type {{ heading: any; kind: string; node: any; } | null} */
   let found = null;
 
   function checkParagraph(node, heading) {

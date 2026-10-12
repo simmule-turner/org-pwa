@@ -215,6 +215,7 @@ export function renderRow(row, todoSequence) {
       el.appendChild(effortBadge);
     }
 
+    /** @type {HTMLDivElement | null} */
     let menuEl = null;
 
     {
@@ -378,6 +379,7 @@ export function renderRow(row, todoSequence) {
 
     let generalEditorEl = null;
 
+    /** @type {HTMLDivElement | null} */
     let propertiesDisplayEl = null;
     if (!row.node.drawersHidden && row.node.propertyOrder.length > 0 && S.editingGeneral !== row.node) {
       propertiesDisplayEl = document.createElement('div');
@@ -406,6 +408,7 @@ export function renderRow(row, todoSequence) {
       }
     }
 
+    /** @type {HTMLDivElement | null} */
     let logbookDisplayEl = null;
     if (!row.node.drawersHidden && row.node.logbookLines.length > 0 && S.editingGeneral !== row.node) {
       logbookDisplayEl = document.createElement('div');
@@ -472,6 +475,7 @@ export function renderRow(row, todoSequence) {
       el.appendChild(marker);
     }
 
+    /** @type {HTMLDivElement | null} */
     let menuEl = null;
 
     {
@@ -599,6 +603,7 @@ export function renderTableRow(row) {
   };
   wrap.appendChild(label);
 
+  /** @type {HTMLDivElement | null} */
   let menuEl = null;
   if (S.actionMenuFor === row.node) {
     menuEl = renderActionMenu(
@@ -1035,6 +1040,7 @@ export function renderParagraphRow(row) {
   };
   wrap.appendChild(p);
 
+  /** @type {HTMLDivElement | null} */
   let menuEl = null;
   if (S.actionMenuFor === row.node) {
     menuEl = renderActionMenu(

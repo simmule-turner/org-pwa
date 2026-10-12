@@ -78,8 +78,11 @@ function beginDrag(e, grip, rowEl, node, side) {
   const startY = e.clientY;
   const pointerId = e.pointerId;
   let started = false;
+  /** @type {HTMLDivElement | null} */
   let ghost = null;
+  /** @type {HTMLDivElement | null} */
   let line = null;
+  /** @type {HTMLDivElement | null} */
   let tagEl = null;
   let zoneEls = { top: null, bottom: null };
   let cancelling = false;

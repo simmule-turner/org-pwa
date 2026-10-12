@@ -70,6 +70,7 @@ export function smallButton(label, ariaLabel, onClick) {
  *  -- the long-press's own callback already ran, a regular tap
  *  shouldn't also do something on top of that. */
 export function attachLongPress(el, callback, duration = 600) {
+  /** @type {number | null} */
   let timer = null;
   let startX = 0;
   let startY = 0;

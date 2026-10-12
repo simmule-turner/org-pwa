@@ -731,6 +731,7 @@ function buildAgendaItems(docs, opts = {}) {
     // default (deadlineWarningDays / scheduledDelayDays) when the heading has no cookie of its own. A repeating one is
     // overdue from its first date, however many repeats have passed, and that one entry stands in for today's repeat.
     const carryForwardEligible = isDone !== null && !headingIsDone && (kind === 'scheduled' || kind === 'deadline');
+    /** @type {any[] | null} */
     let carryOccurrences = null;
     let scheduledDelay = 0;
     if (carryForwardEligible && rangeStart && rangeEnd) {

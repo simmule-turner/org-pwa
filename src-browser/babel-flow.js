@@ -128,6 +128,7 @@ export async function executeSourceBlock(heading, block) {
   }
 
 
+  /** @type {string | null} */
   let hash = null;
   if (args.cache === 'yes') {
     hash = await cacheHash({ lang: info ? info.lang : 'js', args, vars, code });

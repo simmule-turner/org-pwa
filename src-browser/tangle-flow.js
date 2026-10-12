@@ -8,7 +8,7 @@ import { suggestedSaveAsName } from './documents-io.js';
 import { setStatus } from './editing.js';
 import { saveOut } from './save-out.js';
 
-const baseOf = (path) => String(path).split('/').pop();
+const baseOf = (path) => String(path).split('/').pop() || '';
 
 export function tangleCurrentDocument() {
   const documentName = baseOf(suggestedSaveAsName('untitled.org')).replace(/(\.org)?$/, '.org');

@@ -20,7 +20,7 @@ const SCAN_HOURS = 6; // how far ahead the app watches by itself
 const SCHEDULE_HOURS = 24; // and how far a platform that can hold reminders is told about
 
 // Runtime state, not a setting. `fired` is what has been announced, so a rescan does not announce it again.
-const runtime = { appointments: [], held: new Set(), listeningForTaps: false, fired: new Set(), lastScan: 0, scanning: false };
+const runtime = { appointments: /** @type {any[]} */ ([]), held: new Set(), listeningForTaps: false, fired: new Set(), lastScan: 0, scanning: false };
 
 /** The settings in force (loaded once at start, replaced by saveSettings). */
 export function apptSettings() {

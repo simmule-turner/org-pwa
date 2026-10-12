@@ -410,7 +410,7 @@ function buildTocMd(headings, toc, numberingEnabled) {
   return '# Table of Contents\n\n' + body;
 }
 
-export function exportToMarkdown(doc, scope = null) {
+export function exportToMarkdown(doc, scope = /** @type {any} */ (null)) {
   footnoteDefinitionsMd = [];
   anonymousFootnoteCounterMd = 0;
   docForLinkResolutionMd = doc;

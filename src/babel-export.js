@@ -45,6 +45,7 @@ function rewriteLines(doc, blocks, heading, lines) {
       continue;
     }
     const noweb = String(b.args.noweb || '').split(/\s+/);
+    /** @type {string | null} */
     let text = null;
     if (nowebAllows(b.args, 'export')) text = expandNoweb(doc, blocks, b);
     else if (noweb.includes('strip-export')) text = stripReferences(b.body);

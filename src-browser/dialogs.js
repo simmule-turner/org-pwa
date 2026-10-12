@@ -222,6 +222,7 @@ export function openTimestampPickerPopup(kind) {
     dateInput.style.appearance = 'none';
     modal.appendChild(fieldRow('Date', dateInput));
 
+    /** @type {HTMLInputElement | null} */
     let timeInput = null;
     if (kind.hasTime) {
       timeInput = document.createElement('input');
@@ -635,6 +636,7 @@ export function openGridChoiceModal({ label, buttons, showKeys = false }) {
 
   // A phone's keyboard does not send keydown with the letter (it reports "Unidentified" and delivers the text as an input event), so
   // when this was opened from the keyboard (showKeys) a hidden field takes the focus and reads the typed text from beforeinput/input.
+  /** @type {HTMLInputElement | null} */
   let typing = null;
   if (showKeys) {
     typing = document.createElement('input');

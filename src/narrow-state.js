@@ -99,6 +99,7 @@ function findHeadingByOutlineKey(doc, key) {
     if (exact) return found;
   }
   let level = doc.children || [];
+  /** @type {any} */
   let found = null;
   for (const title of key.path) {
     found = level.find((h) => h.title === title);

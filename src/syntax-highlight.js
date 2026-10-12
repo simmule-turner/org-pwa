@@ -280,6 +280,7 @@ export function highlightToHtml(code, lang) {
     if (w) {
       const word = w[0];
       const lookup = cfg.ignoreCase ? word.toLowerCase() : word;
+      /** @type {"builtin" | "constant" | "function-name" | "keyword" | "type" | "variable-name" | null} */
       let face = null;
       if (cfg.keywords && cfg.keywords.has(lookup)) face = 'keyword';
       else if (cfg.constants && cfg.constants.has(lookup)) face = 'constant';

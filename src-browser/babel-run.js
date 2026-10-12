@@ -179,6 +179,7 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
     frame.tabIndex = -1;
     frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;pointer-events:none';
     const id = Math.random().toString(36).slice(2);
+    /** @type {number | null} */
     let timer = null;
     let done = false;
     const rpcs = createRpcHost(onRpc, (message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'));
@@ -193,6 +194,7 @@ export function runJavaScript({ code, vars = {}, variables = {}, timeoutMs = 500
       }, delay);
     };
     let startedAt = 0;
+    /** @type {() => any | null} */
     let boot = null;
     const finish = (outcome) => {
       if (done) return;
@@ -242,8 +244,10 @@ export function startSandbox(main, { startupMs = 4000, onRpc = null } = {}) {
     const listeners = new Set();
     const rpcs = createRpcHost(onRpc, (message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'));
     let settled = false;
+    /** @type {() => any | null} */
     let boot = null;
     let closed = false;
+    /** @type {number | null} */
     let timer = null;
     const close = () => {
       if (closed) return;
