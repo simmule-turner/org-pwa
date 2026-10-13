@@ -696,6 +696,7 @@ check('tags: the editor suggests tags already used or declared on #+TAGS:, narro
   await page.keyboard.type('edit details');
   await page.keyboard.press('Enter');
   await page.waitForSelector('[data-tag-suggestions]', { state: 'attached' });
+  await page.locator('[data-details-tab="tags"]').click();
   const offered = () => page.locator('[data-tag-suggestion]').evaluateAll((els) => els.map((e) => e.getAttribute('data-tag-suggestion')));
   expect(JSON.stringify(await offered()) === '["work","home","errand"]', `all suggestions: ${JSON.stringify(await offered())} (most used first, then the declared-only tag)`);
 
@@ -713,6 +714,7 @@ check('tags: the editor suggests tags already used or declared on #+TAGS:, narro
   expect((await page.locator('[aria-label="Remove tag brandnew"]').count()) === 1, 'Enter should add the typed tag');
 
   // property keys are offered too: one already used, and ones the app knows
+  await page.locator('[data-details-tab="props"]').click();
   await page.getByText('+ Add property').click();
   const keys = await page.evaluate(() => [...document.querySelectorAll('datalist[id^="property-keys-"] option')].map((o) => o.value));
   expect(keys.includes('OWNER') && keys.includes('EFFORT') && keys.includes('CUSTOM_ID'), `property keys offered: ${JSON.stringify(keys)}`);
@@ -721,6 +723,48 @@ check('tags: the editor suggests tags already used or declared on #+TAGS:, narro
   await page.waitForTimeout(500);
   const text = await documentText(page);
   expect(/^\* Gamma\s+:home:brandnew:\s*$/m.test(text), `saved heading: ${JSON.stringify(text.split('\n').find((l) => l.includes('Gamma')))}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('details editor: five tabs, a dot on each tab that was edited, a footer note naming them, and Reset only when something changed', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, ['* Alpha :work:', ':PROPERTIES:', ':OWNER: me', ':END:', '* Beta', ''].join('\n'));
+  await page.locator('.heading-title', { hasText: 'Alpha' }).first().click();
+  await page.locator('[aria-label="Edit details (scheduled/deadline, tags, priority, properties)"]').first().click();
+  await page.waitForSelector('[data-details-tab="dates"]');
+  await page.setViewportSize({ width: 390, height: 640 });
+  await page.waitForTimeout(200);
+  const fits = await page.evaluate(() => { const ok = [...document.querySelectorAll('button')].filter((b) => b.textContent === 'OK').pop().getBoundingClientRect(); const m = document.querySelector('.ui-overlay .panel').getBoundingClientRect(); return { okBottom: ok.bottom, okRight: ok.right, top: m.top, bottom: m.bottom, w: innerWidth, h: innerHeight }; });
+  expect(fits.okBottom <= fits.h && fits.okRight <= fits.w && fits.top >= 0 && fits.bottom <= fits.h, `the panel and its OK button fit a phone screen: ${JSON.stringify(fits)}`);
+  const tabs = await page.locator('[role="tab"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-details-tab')));
+  expect(tabs.join(',') === 'dates,tags,props,files,more', `tabs: ${tabs}`);
+  const changed = () => page.locator('[role="tab"][data-changed="true"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-details-tab')).join(','));
+  const note = () => page.locator('[data-details-changed]').innerText();
+  expect((await changed()) === '' && (await note()) === '', 'nothing changed on entry');
+  expect(await page.getByText('Reset', { exact: true }).last().isDisabled(), 'Reset has nothing to do yet');
+  await page.locator('[data-details-tab="tags"]').click();
+  await page.locator('input[placeholder="New tag"]').fill('urgent');
+  await page.locator('input[placeholder="New tag"]').press('Enter');
+  await page.waitForTimeout(100);
+  expect((await changed()) === 'tags' && (await note()) === 'Changed: Tags', `after a tag: ${await changed()} / ${await note()}`);
+  await page.locator('[data-details-tab="props"]').click();
+  await page.locator('input[placeholder="Value"]').first().fill('someone else');
+  await page.waitForTimeout(100);
+  expect((await changed()) === 'tags,props' && (await note()) === 'Changed: Tags, Props', `after a property: ${await changed()} / ${await note()}`);
+  await page.locator('[data-details-tab="tags"]').click();
+  await page.locator('[aria-label="Remove tag urgent"]').click();
+  await page.waitForTimeout(100);
+  expect((await changed()) === 'props', `removing the added tag puts Tags back to unchanged: ${await changed()}`);
+  await page.locator('[data-details-tab="props"]').focus();
+  await page.keyboard.press('ArrowRight');
+  expect((await page.locator('[role="tab"][aria-selected="true"]').getAttribute('data-details-tab')) === 'files', 'arrow keys move between tabs');
+  await page.getByText('Reset', { exact: true }).last().click();
+  await page.waitForTimeout(100);
+  expect((await changed()) === '' && (await note()) === '', 'Reset clears the markers');
+  await page.locator('[data-details-tab="more"]').click();
+  expect((await page.getByText('Add table', { exact: true }).count()) === 1, 'Add table lives on More');
+  await page.getByText('Cancel', { exact: true }).last().click();
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

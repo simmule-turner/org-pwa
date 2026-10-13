@@ -5,7 +5,8 @@
 import { deleteTable, insertTable, lastTableInBody } from '../src/body-edit.js';
 import { getPlainTimestampInTitle, setHeadingTags, setPlainTimestampInTitle, setPriority } from '../src/heading-edit.js';
 import { S } from './app-state.js';
-import { openAttachChoicePrompt } from './attachments-flow.js';
+import { attachmentFiles, openAttachChoicePrompt, performAttachmentAction } from './attachments-flow.js';
+import { attachmentsAvailable } from './attachments-store.js';
 import { confirmDialog, lockBackgroundScroll, openButtonChoiceModal } from './dialogs.js';
 import { commitAndRender } from './editing.js';
 import { buildPriorityFieldGroup, buildTimestampFieldGroup } from './field-groups.js';
@@ -266,17 +267,11 @@ export function buildPropertiesFieldGroup(heading) {
   };
 }
 
-/** The combined SCHEDULED/DEADLINE/plain-timestamp, tags, priority, and
- *  properties editor -- a modal popup with Cancel/Reset/OK, matching
- *  every other multi-field editor in this app. None of the four
- *  buildXxxFieldGroup functions below mutate `heading` at all until
- *  their own getXxx() is explicitly read (see each one's own doc
- *  comment) -- Reset exploits this directly: it just re-runs all four
- *  builders again against the same, still-untouched heading and swaps
- *  the fields container's contents, genuinely restoring the on-entry
- *  values without needing a dedicated reset method built into any of
- * @param {Heading} heading
- *  these four separate, already-complex widgets. */
+/** The heading-details editor: a modal with five tabs (Dates, Tags, Props, Files, More), so nothing is a long scroll, and
+ *  Cancel/Reset/OK pinned underneath. Nothing touches `heading` until OK: each group keeps its own working copy, and Reset
+ *  just builds the groups again from the untouched heading. A tab with edits shows a dot, and the footer names the tabs that
+ *  changed. Files is the exception to "nothing until OK": an attachment opens or is deleted at once, as everywhere else.
+ * @param {Heading} heading */
 export function openGeneralEditor(heading) {
   const overlay = document.createElement('div');
   overlay.className = 'ui-overlay';
@@ -285,23 +280,127 @@ export function openGeneralEditor(heading) {
   const modal = document.createElement('div');
   modal.className = 'panel';
   modal.classList.add('ui-container');
-  modal.style.overflowY = 'auto';
-  modal.style.padding = '18px';
+  modal.style.display = 'flex';
+  modal.style.flexDirection = 'column';
+  modal.style.padding = '0';
   modal.style.width = '100%';
   modal.style.maxWidth = '420px';
+  modal.style.height = 'min(600px, 100%)';
   modal.style.overscrollBehavior = 'contain';
   modal.style.boxSizing = 'border-box';
   overlay.appendChild(modal);
 
+  const titleBox = document.createElement('div');
+  titleBox.style.padding = '16px 18px 10px';
   const titleEl = document.createElement('div');
   titleEl.textContent = 'Edit heading details';
   titleEl.style.fontWeight = '700';
   titleEl.style.fontSize = '15px';
-  titleEl.style.marginBottom = '14px';
-  modal.appendChild(titleEl);
+  const subtitleEl = document.createElement('div');
+  subtitleEl.textContent = heading.title || '(untitled)';
+  subtitleEl.style.fontSize = '13px';
+  subtitleEl.style.opacity = '0.7';
+  subtitleEl.style.marginTop = '2px';
+  subtitleEl.style.whiteSpace = 'nowrap';
+  subtitleEl.style.overflow = 'hidden';
+  subtitleEl.style.textOverflow = 'ellipsis';
+  titleBox.appendChild(titleEl);
+  titleBox.appendChild(subtitleEl);
+  modal.appendChild(titleBox);
+
+  const tabBar = document.createElement('div');
+  tabBar.setAttribute('role', 'tablist');
+  tabBar.setAttribute('aria-label', 'Heading details');
+  tabBar.style.display = 'flex';
+  tabBar.style.gap = '2px';
+  tabBar.style.padding = '0 12px';
+  tabBar.style.borderBottom = '1px solid var(--border-strong)';
+  modal.appendChild(tabBar);
 
   const fieldsContainer = document.createElement('div');
+  fieldsContainer.style.flex = '1 1 auto';
+  fieldsContainer.style.minHeight = '0';
+  fieldsContainer.style.overflowY = 'auto';
+  fieldsContainer.style.padding = '14px 18px';
+  fieldsContainer.style.overscrollBehavior = 'contain';
   modal.appendChild(fieldsContainer);
+
+  const TABS = [
+    { id: 'dates', label: 'Dates' },
+    { id: 'tags', label: 'Tags' },
+    { id: 'props', label: 'Props' },
+    { id: 'files', label: 'Files' },
+    { id: 'more', label: 'More' },
+  ];
+  /** @type {Record<string, HTMLElement>} */ const panes = {};
+  /** @type {Record<string, HTMLButtonElement>} */ const tabButtons = {};
+  /** @type {Record<string, HTMLSpanElement>} */ const badges = {};
+  /** @type {Record<string, HTMLSpanElement>} */ const dots = {};
+  let activeTab = 'dates';
+  /** @type {string[] | null} */ let attachmentNames = null;
+
+  for (const tab of TABS) {
+    const btn = document.createElement('button');
+    btn.setAttribute('role', 'tab');
+    btn.setAttribute('data-details-tab', tab.id);
+    btn.id = 'details-tab-' + tab.id;
+    btn.style.border = '0';
+    btn.style.background = 'transparent';
+    btn.style.color = 'var(--fg)';
+    btn.style.padding = '10px 8px';
+    btn.style.minHeight = '44px';
+    btn.style.fontSize = '13px';
+    btn.style.borderBottom = '3px solid transparent';
+    btn.style.borderRadius = '0';
+    const text = document.createElement('span');
+    text.textContent = tab.label;
+    const badge = document.createElement('span');
+    badge.style.fontSize = '11px';
+    badge.style.marginLeft = '4px';
+    badge.style.padding = '1px 6px';
+    badge.style.borderRadius = '9px';
+    badge.style.background = 'var(--surface)';
+    badge.style.border = '0.5px solid var(--border-strong)';
+    const dot = document.createElement('span');
+    dot.textContent = '●';
+    dot.setAttribute('aria-hidden', 'true');
+    dot.style.color = 'var(--accent)';
+    dot.style.fontSize = '10px';
+    dot.style.marginLeft = '3px';
+    dot.style.visibility = 'hidden';
+    btn.append(text, badge, dot);
+    btn.onclick = () => selectTab(tab.id);
+    btn.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const at = TABS.findIndex((t) => t.id === tab.id);
+      const next = TABS[(at + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length];
+      selectTab(next.id);
+      tabButtons[next.id].focus();
+    });
+    tabBar.appendChild(btn);
+    tabButtons[tab.id] = btn;
+    badges[tab.id] = badge;
+    dots[tab.id] = dot;
+    const pane = document.createElement('div');
+    pane.setAttribute('role', 'tabpanel');
+    pane.setAttribute('aria-labelledby', btn.id);
+    pane.setAttribute('data-details-pane', tab.id);
+    panes[tab.id] = pane;
+    fieldsContainer.appendChild(pane);
+  }
+
+  function selectTab(/** @type {string} */ id) {
+    activeTab = id;
+    for (const tab of TABS) {
+      const on = tab.id === id;
+      panes[tab.id].style.display = on ? 'block' : 'none';
+      tabButtons[tab.id].setAttribute('aria-selected', String(on));
+      tabButtons[tab.id].tabIndex = on ? 0 : -1;
+      tabButtons[tab.id].style.fontWeight = on ? '700' : '400';
+      tabButtons[tab.id].style.borderBottomColor = on ? 'var(--accent)' : 'transparent';
+    }
+  }
 
   /** @type {any} */ let scheduledGroup;
   /** @type {any} */ let deadlineGroup;
@@ -309,42 +408,27 @@ export function openGeneralEditor(heading) {
   /** @type {any} */ let tagsGroup;
   /** @type {any} */ let priorityGroup;
   /** @type {any} */ let propsGroup;
-  /** @type {string | null} */
-  let initialSnapshotJSON = null;
+  /** @type {Record<string, string> | null} */
+  let initialSections = null;
 
-  function snapshotFields() {
+  /** One comparable string per tab, so a tab is "changed" when its string differs from the one taken on entry. */
+  function sectionSnapshots() {
     return {
-      scheduled: scheduledGroup.getRawValue(),
-      deadline: deadlineGroup.getRawValue(),
-      plain: plainGroup.getRawValue(),
-      tags: tagsGroup.getTags(),
-      priority: priorityGroup.getPriority(),
-      properties: propsGroup.getProperties(),
+      dates: JSON.stringify([scheduledGroup.getRawValue(), deadlineGroup.getRawValue(), plainGroup.getRawValue()]),
+      tags: JSON.stringify(tagsGroup.getTags()),
+      props: JSON.stringify(propsGroup.getProperties()),
+      more: JSON.stringify(priorityGroup.getPriority()),
     };
   }
 
-  // Compares the fields' own CURRENT output against a snapshot taken
-  // right after buildFields() last ran -- both computed by the exact
-  // same getRawValue()/getTags()/getPriority()/getProperties()
-  // functions, so this compares like with like. Deliberately NOT
-  // compared against `heading`'s own raw stored value directly: a
-  // timestamp field group re-serializes through formatOrgTimestamp,
-  // whose output isn't guaranteed to be byte-identical to whatever's
-  // actually stored, which would risk a false "changed" on a field
-  // nobody touched.
-  //
-  // initialSnapshotJSON is deliberately a STRING, stringified the
-  // instant it's captured (see buildFields() below) -- NOT the raw
-  // object. getTags() returns the SAME mutable array on every call
-  // (the tag editor's own Add button does currentTags.push(), an
-  // in-place mutation); had this stored the object itself, that one
-  // array would still be shared between "initial" and "current" the
-  // whole time, so adding a tag would silently mutate both at once
-  // and this check could never see a difference. A string, captured
-  // immediately, is genuinely frozen at that instant regardless of
-  // what happens to the live objects afterward.
+  function changedTabs() {
+    if (!initialSections) return [];
+    const now = /** @type {Record<string, string>} */ (sectionSnapshots());
+    return TABS.filter((t) => initialSections && t.id in now && now[t.id] !== initialSections[t.id]);
+  }
+
   function hasPendingChanges() {
-    return JSON.stringify(snapshotFields()) !== initialSnapshotJSON;
+    return changedTabs().length > 0;
   }
 
   function applyFieldsToHeading() {
@@ -361,23 +445,184 @@ export function openGeneralEditor(heading) {
     heading.propertyOrder = propertyOrder;
   }
 
+  const changedNote = document.createElement('div');
+  changedNote.setAttribute('data-details-changed', '');
+  changedNote.setAttribute('aria-live', 'polite');
+  changedNote.style.flex = '1 1 auto';
+  changedNote.style.fontSize = '12px';
+  changedNote.style.alignSelf = 'center';
+  changedNote.style.minWidth = '0';
+  /** @type {HTMLButtonElement | null} */ let resetBtn = null;
+
+  /** The counts and the change markers: tabs, footer note, and whether Reset has anything to do. */
+  function updateIndicators() {
+    const count = (/** @type {string | null} */ v) => (v ? 1 : 0);
+    badges.dates.textContent = String(count(scheduledGroup.getRawValue()) + count(deadlineGroup.getRawValue()) + count(plainGroup.getRawValue()));
+    badges.tags.textContent = String(tagsGroup.getTags().length);
+    badges.props.textContent = String(Object.keys(propsGroup.getProperties().properties).length);
+    badges.files.textContent = attachmentNames ? String(attachmentNames.length) : '';
+    badges.files.style.display = attachmentNames ? '' : 'none';
+    badges.more.textContent = '';
+    badges.more.style.display = 'none';
+    const changed = changedTabs();
+    for (const tab of TABS) {
+      const on = changed.some((t) => t.id === tab.id);
+      dots[tab.id].style.visibility = on ? 'visible' : 'hidden';
+      tabButtons[tab.id].setAttribute('data-changed', String(on));
+      tabButtons[tab.id].setAttribute('aria-label', tab.label + (badges[tab.id].textContent && badges[tab.id].style.display !== 'none' ? ', ' + badges[tab.id].textContent : '') + (on ? ', changed' : ''));
+    }
+    changedNote.textContent = changed.length ? 'Changed: ' + changed.map((t) => t.label).join(', ') : '';
+    changedNote.style.color = 'var(--accent)';
+    if (resetBtn) resetBtn.disabled = changed.length === 0;
+  }
+
   function buildFields() {
-    fieldsContainer.innerHTML = '';
+    for (const tab of TABS) panes[tab.id].innerHTML = '';
     scheduledGroup = buildTimestampFieldGroup('SCHEDULED', heading.planning.scheduled);
     deadlineGroup = buildTimestampFieldGroup('DEADLINE', heading.planning.deadline);
     plainGroup = buildTimestampFieldGroup('Plain timestamp (not scheduled/deadline)', getPlainTimestampInTitle(heading));
     tagsGroup = buildTagsFieldGroup(heading);
     priorityGroup = buildPriorityFieldGroup(heading);
     propsGroup = buildPropertiesFieldGroup(heading);
-    fieldsContainer.appendChild(scheduledGroup.container);
-    fieldsContainer.appendChild(deadlineGroup.container);
-    fieldsContainer.appendChild(plainGroup.container);
-    fieldsContainer.appendChild(tagsGroup.container);
-    fieldsContainer.appendChild(priorityGroup.container);
-    fieldsContainer.appendChild(propsGroup.container);
-    initialSnapshotJSON = JSON.stringify(snapshotFields());
+    panes.dates.append(scheduledGroup.container, deadlineGroup.container, plainGroup.container);
+    panes.tags.appendChild(tagsGroup.container);
+    panes.props.appendChild(propsGroup.container);
+    panes.more.appendChild(priorityGroup.container);
+    panes.more.appendChild(buildTableActions());
+    panes.files.appendChild(buildFilesPane());
+    initialSections = sectionSnapshots();
+    selectTab(activeTab);
+    updateIndicators();
   }
-  buildFields();
+
+  /** The Files tab: the heading's attachments, read from the attachment folder. They are acted on at once, not at OK. */
+  function buildFilesPane() {
+    const box = document.createElement('div');
+    const header = document.createElement('div');
+    header.textContent = 'Attached to this heading';
+    header.style.fontWeight = '600';
+    header.style.fontSize = '14px';
+    header.style.marginBottom = '10px';
+    box.appendChild(header);
+    const list = document.createElement('div');
+    list.setAttribute('data-details-files', '');
+    box.appendChild(list);
+    const note = document.createElement('div');
+    note.style.fontSize = '12px';
+    note.style.opacity = '0.7';
+    note.style.margin = '8px 0';
+    note.textContent = 'Opening or deleting a file happens right away, not at OK.';
+    box.appendChild(note);
+    box.appendChild(
+      tableActionButton('+ Attach a file', () => {
+        proceedWithAction(() => openAttachChoicePrompt(heading));
+      })
+    );
+
+    async function refresh() {
+      list.innerHTML = '';
+      const say = (/** @type {string} */ text) => {
+        const line = document.createElement('div');
+        line.textContent = text;
+        line.style.fontSize = '13px';
+        line.style.opacity = '0.75';
+        list.appendChild(line);
+      };
+      if (!attachmentsAvailable()) {
+        attachmentNames = null;
+        say('Attachments need GitHub or WebDAV connected (or the org-pwa folder on a device that has one).');
+        updateIndicators();
+        return;
+      }
+      say('Loading…');
+      const names = await attachmentFiles(heading);
+      list.innerHTML = '';
+      attachmentNames = names;
+      if (!names) say("Couldn't read the attachment folder.");
+      else if (names.length === 0) say('No attachments yet.');
+      else {
+        for (const filename of names) {
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.alignItems = 'center';
+          row.style.gap = '8px';
+          row.style.padding = '8px 10px';
+          row.style.marginBottom = '6px';
+          row.style.border = '0.5px solid var(--border-strong)';
+          row.style.borderRadius = '8px';
+          const name = document.createElement('div');
+          name.textContent = filename;
+          name.style.flex = '1 1 auto';
+          name.style.minWidth = '0';
+          name.style.overflowWrap = 'anywhere';
+          name.style.fontSize = '14px';
+          const open = menuButton('Open', () => performAttachmentAction(heading, filename, 'open'));
+          open.style.minHeight = '40px';
+          const del = menuButton('✕', async () => {
+            await performAttachmentAction(heading, filename, 'delete');
+            refresh();
+          });
+          del.setAttribute('aria-label', 'Delete ' + filename);
+          del.style.minWidth = '40px';
+          del.style.minHeight = '40px';
+          row.append(name, open, del);
+          list.appendChild(row);
+        }
+      }
+      updateIndicators();
+    }
+    refresh();
+    return box;
+  }
+
+  /** Add table / Delete table: they act at once (on the heading's text), after the usual unsaved-changes prompt. */
+  function buildTableActions() {
+    const box = document.createElement('div');
+    box.style.marginTop = '14px';
+    const header = document.createElement('div');
+    header.textContent = "Table in this heading's text";
+    header.style.fontWeight = '600';
+    header.style.fontSize = '14px';
+    header.style.marginBottom = '8px';
+    box.appendChild(header);
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.flexWrap = 'wrap';
+    row.style.gap = '8px';
+    const existingTable = lastTableInBody(heading);
+    row.appendChild(
+      tableActionButton('Add table', () => {
+        proceedWithAction(() => {
+          withKeyboardFocusPreserved(heading, () => insertTable(heading, {}));
+          commitAndRender('Added table');
+        });
+      })
+    );
+    row.appendChild(
+      tableActionButton(
+        'Delete table',
+        async () => {
+          const table = lastTableInBody(heading);
+          if (!table) return; // shouldn't happen -- disabled when there's nothing to delete -- but never act on nothing
+          if (!(await confirmDialog("Delete this table? This can’t be undone."))) return;
+          proceedWithAction(() => {
+            if (S.keyboardFocusedBodyRow && S.keyboardFocusedBodyRow.rowType === 'table' && S.keyboardFocusedBodyRow.node === table) {
+              S.keyboardFocusedBodyRow = null;
+              S.keyboardFocusedCellPos = null;
+            }
+            deleteTable(heading, table);
+            commitAndRender('Deleted table');
+          });
+        },
+        !existingTable
+      )
+    );
+    box.appendChild(row);
+    return box;
+  }
+
+  // Any typing or tapping inside the tabs may have changed something: refresh the markers after the field has updated.
+  for (const type of ['input', 'change', 'click', 'keydown']) fieldsContainer.addEventListener(type, () => setTimeout(updateIndicators, 0));
 
   const stopTrackingViewport = keepOverlayInVisibleViewport(overlay);
   const unlockScroll = lockBackgroundScroll(overlay);
@@ -389,13 +634,6 @@ export function openGeneralEditor(heading) {
     S.editingGeneral = null;
   }
 
-  // Used by the three immediate-action buttons below (Add table,
-  // Delete table, Attach) -- each of those closes this editor and does
-  // something else entirely, which used to silently discard any
-  // pending field edits (heading was never actually touched until OK).
-  // This checks first: if nothing's pending, `action` just runs
-  // directly; if something is, a genuine 3-way choice is offered
-  // rather than forcing either outcome on the person's behalf.
   /** @param {any} [action] */
   async function proceedWithAction(action) {
     if (!hasPendingChanges()) {
@@ -427,62 +665,21 @@ export function openGeneralEditor(heading) {
     });
   }
 
-  const addTableRow = document.createElement('div');
-  addTableRow.style.display = 'flex';
-  addTableRow.style.flexWrap = 'wrap';
-  addTableRow.style.gap = '8px';
-  addTableRow.style.marginBottom = '10px';
-  const existingTable = lastTableInBody(heading);
-  addTableRow.appendChild(
-    tableActionButton('Add table', () => {
-      proceedWithAction(() => {
-        withKeyboardFocusPreserved(heading, () => insertTable(heading, {}));
-        commitAndRender('Added table');
-      });
-    })
-  );
-  addTableRow.appendChild(
-    tableActionButton(
-      'Delete table',
-      async () => {
-        const table = lastTableInBody(heading);
-        if (!table) return; // shouldn't happen -- disabled when there's nothing to delete -- but never act on nothing
-        if (!(await confirmDialog("Delete this table? This can\u2019t be undone."))) return;
-        proceedWithAction(() => {
-          if (S.keyboardFocusedBodyRow && S.keyboardFocusedBodyRow.rowType === 'table' && S.keyboardFocusedBodyRow.node === table) {
-            S.keyboardFocusedBodyRow = null;
-            S.keyboardFocusedCellPos = null;
-          }
-          deleteTable(heading, table);
-          commitAndRender('Deleted table');
-        });
-      },
-      !existingTable
-    )
-  );
-  addTableRow.appendChild(
-    tableActionButton('Attach', () => {
-      proceedWithAction(() => {
-        openAttachChoicePrompt(heading);
-      });
-    })
-  );
-  modal.appendChild(addTableRow);
+  const footer = document.createElement('div');
+  footer.style.display = 'flex';
+  footer.style.alignItems = 'center';
+  footer.style.gap = '8px';
+  footer.style.padding = '12px 18px';
+  footer.style.borderTop = '1px solid var(--border-strong)';
+  footer.appendChild(changedNote);
+  modal.appendChild(footer);
 
-  const btnRow = document.createElement('div');
-  btnRow.style.display = 'flex';
-  btnRow.style.justifyContent = 'flex-end';
-  btnRow.style.gap = '8px';
-  btnRow.style.marginTop = '4px';
-  modal.appendChild(btnRow);
-
-  btnRow.appendChild(menuButton('Cancel', () => close()));
-  btnRow.appendChild(
-    menuButton('Reset', () => {
-      buildFields();
-    })
-  );
-  btnRow.appendChild(
+  footer.appendChild(menuButton('Cancel', () => close()));
+  resetBtn = menuButton('Reset', () => {
+    buildFields();
+  });
+  footer.appendChild(resetBtn);
+  footer.appendChild(
     menuButton('OK', () => {
       close();
       applyFieldsToHeading();
@@ -490,6 +687,7 @@ export function openGeneralEditor(heading) {
     })
   );
 
+  buildFields();
   document.body.appendChild(overlay);
   return overlay;
 }

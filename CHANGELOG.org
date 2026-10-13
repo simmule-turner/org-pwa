@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v511 — Heading details in tabs
+Edit details is now a fixed-size panel with five tabs (Dates, Tags, Props, Files, More) instead of one long scrolling form, with Cancel, Reset and OK always in view. A tab you have edited shows a dot, a note names the changed tabs, and Reset is only available when something changed. Files lists the heading's attachments with Open and Delete.
+Verified: tags and details-editor smoke checks, lint, type check.
+
 * v510 — Action buttons: 2 x 6 and 3 x 4 layouts
 The heading's action buttons were rearranged for the wrong width. Now the single wide row is unchanged (delete, then up, down, left, right); in two rows of six, up and down end the first row and left and right end the second, after delete; in three rows of four the last row is up, down, left, right.
 Verified: heading-actions smoke check.
