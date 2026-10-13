@@ -237,6 +237,14 @@ const status = (page) => page.locator('#status').innerText();
 async function pick(page, panel, label) {
   await page.locator(panel).getByText(label, { exact: true }).first().click();
 }
+
+/** Settings opens on a list of categories (or a sidebar on a wide screen): go into one, e.g. 'sync', 'appearance', 'advanced'. */
+async function settingsCategory(page, id) {
+  const back = page.locator('[data-settings-back]'); // Settings reopens on the page it was left on
+  await page.locator('[data-settings-category], [data-settings-back]').first().waitFor({ state: 'visible', timeout: 10000 });
+  if (await back.first().isVisible()) await back.first().click();
+  await page.locator(`[data-settings-category="${id}"]`).first().click();
+}
 async function fileMenu(page, ...labels) {
   await page.click('#fileMenuBtn');
   const [first, ...rest] = labels;
@@ -1052,6 +1060,7 @@ check('quick setting: "Show the floating [g] god-mode button" hides and shows [g
   const openSettings = async () => {
     await page.click('#moreBtn');
     await pick(page, '#morePanel', 'Settings');
+    await settingsCategory(page, 'editing');
     await box().waitFor({ state: 'visible' });
   };
   expect(await g.isVisible(), '[g] is on by default');
@@ -1831,6 +1840,7 @@ check('paragraph spacing: two values like font size -- one for paragraphs, one f
   const openSettings = async () => {
     await page.click('#moreBtn');
     await pick(page, '#morePanel', 'Settings');
+    await settingsCategory(page, 'appearance');
     await page.locator('#paragraph-spacing-value').waitFor({ state: 'visible' });
   };
   const label = (id) => page.locator('#' + id).innerText();
@@ -3364,6 +3374,7 @@ check('Settings > Sync syncs the calendar and the contacts and says how each wen
   await configure(`${main.base}/dav/cal/`, `${main.base}/dav/card/`);
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
+  await settingsCategory(page, 'sync');
   // the page builds its sections one after another: wait for the one measured below, not just for some section
   await page.waitForFunction(() => [...document.querySelectorAll('.settings-section .panel-section-title')].some((t) => t.textContent === 'Calendar (CalDAV) / Contacts (CardDAV)'));
 
@@ -3506,6 +3517,7 @@ check('Search extra files: text search also looks in org-agenda-text-search-extr
   // the Quick Settings row: right after Contacts files, labelled Search extra files
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
+  await settingsCategory(page, 'advanced');
   await page.waitForFunction(() => document.body.textContent.includes('Search extra files'), null, { timeout: 8000 });
   const order = await page.evaluate(() => {
     const wanted = ['Agenda files', 'Contacts files', 'Search extra files', 'Extras menu (\u2630)'];
@@ -3529,21 +3541,74 @@ check('Search extra files: text search also looks in org-agenda-text-search-extr
   await second.context.close();
 });
 
-check('settings page order: Calendar (CalDAV) / Contacts (CardDAV) comes right after WebDAV so Backup is last, and Paragraph Spacing comes right after Font Size; its buttons follow which addresses are set', async () => {
+check('settings: search finds a setting across categories, and Order of settings moves a category and a card, survives a reload, and Reset puts the defaults back', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await page.locator('[data-settings-category]').first().waitFor({ state: 'visible', timeout: 8000 });
+  await page.locator('input[aria-label="Search settings"]').fill('webdav');
+  await page.waitForTimeout(150);
+  const found = await page.evaluate(() => [...document.querySelectorAll('.settings-section .panel-section-title')].map((t) => t.textContent));
+  expect(found.includes('WebDAV'), `search shows the WebDAV card: ${JSON.stringify(found)}`);
+  await page.locator('input[aria-label="Search settings"]').fill('');
+  await page.waitForTimeout(150);
+  const order = () => page.locator('[data-settings-category]').evaluateAll((els) => els.map((e) => e.getAttribute('data-settings-category')).join(','));
+  expect((await order()).startsWith('appearance,editing'), 'default order');
+  await settingsCategory(page, 'advanced');
+  await page.getByRole('button', { name: 'Move Export down' }).click();
+  await page.waitForTimeout(400);
+  await page.locator('[data-settings-back]').click();
+  expect((await order()) === 'appearance,editing,agenda,sync,advanced,export,about', `Export moved down one: ${await order()}`);
+  await settingsCategory(page, 'sync');
+  await page.locator('[data-settings-back]').click();
+  await page.reload({ waitUntil: 'load' });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await page.locator('[data-settings-category]').first().waitFor({ state: 'visible', timeout: 8000 });
+  expect((await order()) === 'appearance,editing,agenda,sync,advanced,export,about', `the order survives a reload: ${await order()}`);
+  await settingsCategory(page, 'advanced');
+  await page.getByRole('button', { name: 'Reset to default order' }).click();
+  await page.waitForTimeout(400);
+  await page.locator('[data-settings-back]').click();
+  expect((await order()) === 'appearance,editing,agenda,sync,export,advanced,about', `Reset restores the defaults: ${await order()}`);
+  // with room (a 780px window), the categories are a sidebar and the first page is already open beside it
+  await page.setViewportSize({ width: 780, height: 800 });
+  await page.reload({ waitUntil: 'load' });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await page.locator('[data-settings-shell="wide"]').waitFor({ state: 'visible', timeout: 8000 });
+  expect((await page.locator('[data-settings-category="appearance"][aria-current="true"]').count()) === 1 && (await page.locator('[data-settings-page="appearance"]').count()) === 1, 'wide: Appearance is open beside the list');
+  await page.locator('[data-settings-category="sync"]').click();
+  expect((await page.locator('[data-settings-page="sync"]').count()) === 1 && (await page.locator('[data-settings-category="appearance"]').count()) === 1, 'wide: choosing another category swaps the page and keeps the list');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('settings page order: seven categories in order; Sync and storage lists GitHub, WebDAV, Calendar / Contacts, then Backup last; Paragraph Spacing follows Font Size; its buttons follow which addresses are set', async () => {
   const { context, page } = await freshPage();
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
-  await page.waitForFunction(() => [...document.querySelectorAll('.settings-section .panel-section-title')].some((t) => t.textContent === 'Updates'), null, { timeout: 8000 }); // the sections are built one after another
-  const sections = await page.evaluate(() => [...document.querySelectorAll('.settings-section')].map((sec) => (sec.querySelector('.panel-section-title') || {}).textContent || ''));
-  expect(sections[sections.length - 1] === 'Backup', `Backup is the last section: ${JSON.stringify(sections)}`);
+  await page.locator('[data-settings-category]').first().waitFor({ state: 'visible', timeout: 8000 });
+  const ids = await page.locator('[data-settings-category]').evaluateAll((els) => els.map((e) => e.getAttribute('data-settings-category')));
+  expect(JSON.stringify(ids) === JSON.stringify(['appearance', 'editing', 'agenda', 'sync', 'export', 'advanced', 'about']), `categories: ${JSON.stringify(ids)}`);
+  const titlesOnPage = () => page.evaluate(() => [...document.querySelectorAll('[data-settings-page] .settings-section')].map((sec) => (sec.querySelector('.panel-section-title') || {}).textContent || ''));
+  await settingsCategory(page, 'sync');
+  const sections = await titlesOnPage();
+  expect(sections[sections.length - 1] === 'Backup', `Backup is the last card on Sync and storage: ${JSON.stringify(sections)}`);
   const w = sections.indexOf('WebDAV');
-  expect(w >= 0 && sections[w + 1] === 'Calendar (CalDAV) / Contacts (CardDAV)' && sections[w + 2] === 'Backup', `Calendar (CalDAV) / Contacts (CardDAV) directly follows WebDAV: ${JSON.stringify(sections)}`);
-  expect(sections.includes('GitHub') && sections.includes('Updates') && sections.includes('Capture Templates'), 'and the sections that were there are still there');
-  const appearance = await page.evaluate(() => {
-    const sec = [...document.querySelectorAll('.settings-section')].find((x) => (x.querySelector('.panel-section-title') || {}).textContent === 'Appearance');
-    return [...sec.querySelectorAll('.panel-section-title')].map((t) => t.textContent);
-  });
+  expect(sections[0] === 'GitHub' && w >= 0 && sections[w + 1] === 'Calendar (CalDAV) / Contacts (CardDAV)', `Calendar / Contacts directly follows WebDAV: ${JSON.stringify(sections)}`);
+  await page.locator('[data-settings-back]').click();
+  await settingsCategory(page, 'advanced');
+  expect((await titlesOnPage()).includes('Capture Templates'), 'Capture Templates is under Advanced');
+  await page.locator('[data-settings-back]').click();
+  await settingsCategory(page, 'about');
+  expect((await titlesOnPage())[0] === 'Updates', 'Updates is first on About');
+  await page.locator('[data-settings-back]').click();
+  await settingsCategory(page, 'appearance');
+  const appearance = await page.evaluate(() => [...document.querySelectorAll('[data-settings-page] .panel-section-title')].map((t) => t.textContent));
   expect(JSON.stringify(appearance) === JSON.stringify(['Appearance', 'Font', 'Font Size', 'Paragraph Spacing', 'Reading Width', 'Menu Size']), `Paragraph Spacing follows Font Size: ${JSON.stringify(appearance)}`);
+  await page.locator('[data-settings-back]').click();
+  await settingsCategory(page, 'sync');
   const disabled = await page.evaluate(() => {
     const sec = [...document.querySelectorAll('.settings-section')].find((x) => (x.querySelector('.panel-section-title') || {}).textContent === 'Calendar (CalDAV) / Contacts (CardDAV)');
     return [...sec.querySelectorAll('button')].map((b) => [b.textContent, b.disabled]);
@@ -3604,6 +3669,7 @@ check('platform seam: a platform injected before startup (as a native shell woul
   // a file handed out goes to the platform, not to the browser's download
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
+  await settingsCategory(page, 'sync');
   await page.getByRole('button', { name: 'Export Settings' }).click();
   await page.waitForFunction(() => window.__saved.length === 1, null, { timeout: 5000 });
   const saved = await page.evaluate(() => window.__saved[0]);
@@ -3936,6 +4002,7 @@ check('capture shortcuts: a launcher platform gets one shortcut per capture temp
   // edit the templates in Settings: the launcher's list follows
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
+  await settingsCategory(page, 'advanced');
   const section = page.locator('.settings-section', { has: page.locator('.panel-section-title', { hasText: 'Capture Templates' }) });
   const current = await section.locator('textarea').first().inputValue();
   const two = JSON.parse(current).slice(0, 2).map((t, n) => ({ ...t, key: ['x', 'y'][n], description: ['Alpha', 'Beta'][n] }));
@@ -4024,6 +4091,7 @@ check('settings: on a platform with no service worker, Updates shows the platfor
   });
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
+  await settingsCategory(page, 'about');
   const section = page.locator('.settings-section', { has: page.locator('.panel-section-title', { hasText: 'Updates' }) });
   await section.getByText('Version: v999 (app 9.9.9)').waitFor({ state: 'visible', timeout: 5000 });
   expect(await section.getByRole('button', { name: 'Check for updates' }).isDisabled(), 'the Check for updates button is there, but disabled (there is nothing for it to check)');
@@ -4039,6 +4107,7 @@ check('settings: with a service worker the Updates section is unchanged (the ver
   await page.waitForTimeout(1500);
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
+  await settingsCategory(page, 'about');
   const section = page.locator('.settings-section', { has: page.locator('.panel-section-title', { hasText: 'Updates' }) });
   await section.getByText(/^Version: org-pwa-shell-v\d+/).waitFor({ state: 'visible', timeout: 6000 });
   expect(!(await section.getByRole('button', { name: 'Check for updates' }).isDisabled()), 'the button is enabled');
@@ -5025,6 +5094,7 @@ check('saving a file out: the status says where it went when the platform report
   const exportSettings = async () => {
     await page.click('#moreBtn');
     await pick(page, '#morePanel', 'Settings');
+    await settingsCategory(page, 'sync');
     await page.getByRole('button', { name: 'Export Settings' }).click();
     await page.waitForTimeout(500);
   };
@@ -5385,6 +5455,7 @@ check('agenda notifications: an appointment inside its warning time gets a syste
   await newDocument(page, `* Dentist ${stamp}\nbring the insurance card\n* No time of day <${soon.getFullYear()}-${pad(soon.getMonth() + 1)}-${pad(soon.getDate())} ${days[soon.getDay()]}>\n`);
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
+  await settingsCategory(page, 'agenda');
   await page.waitForFunction(() => document.body.innerText.includes('Show reminders as'), null, { timeout: 8000 });
   const settingsText = await page.evaluate(() => document.body.innerText);
   expect(settingsText.toLowerCase().split('agenda notifications').length >= 3 && settingsText.includes('Warn this many minutes before') && settingsText.includes('Scan agenda files every') && settingsText.includes('Countdown in the mode line') && settingsText.includes('Show reminders as'), `Settings has the Agenda notifications section with its five lines: ${JSON.stringify(settingsText.slice(0, 300))}`);
@@ -5467,7 +5538,7 @@ for (const { name, fn } of selected) {
     console.log(`PASS  ${name}  (${Date.now() - started}ms)`);
   } catch (err) {
     failed++;
-    console.log(`FAIL  ${name}\n      ${String(err.message).split('\n')[0]}`);
+    console.log(`FAIL  ${name}\n      ${String(process.env.SMOKE_FULL ? err.message : String(err.message).split("\n")[0])}`);
   }
 }
 await browser.close();

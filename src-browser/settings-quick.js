@@ -378,23 +378,7 @@ export function renderQuickSettingField(field) {
  *  appearance order (not alphabetical -- "Progress logging" and
  *  "Agenda" first, "Advanced" last, matches how someone would
  *  actually want to scan this, not dictionary order). */
-export function renderQuickSettingsSection() {
-  const wrap = document.createElement('div');
-  wrap.className = 'settings-section';
-
-  const title = document.createElement('div');
-  title.className = 'panel-section-title';
-  title.textContent = 'Quick Settings';
-  wrap.appendChild(title);
-
-  const hint = document.createElement('div');
-  hint.style.fontSize = '11px';
-  hint.style.opacity = '0.6';
-  hint.style.margin = '2px 0 10px';
-  hint.textContent =
-    'Friendlier controls for the same app-wide Global Variables baseline the raw text box below also edits \u2014 changing one here updates that text too, and vice versa. Applies immediately, no reload needed.';
-  wrap.appendChild(hint);
-
+export function renderQuickSettingsGroups() {
   const sections = [];
   for (const field of QUICK_SETTINGS_FIELDS) {
     /** @type {any} */ let group = sections.find((s) => s.name === field.section);
@@ -405,14 +389,25 @@ export function renderQuickSettingsSection() {
     group.fields.push(field);
   }
 
+  /** @type {{ name: string, element: HTMLElement }[]} */
+  const cards = [];
   for (const group of sections) {
+    const wrap = document.createElement('div');
+    wrap.className = 'settings-section';
+    cards.push({ name: group.name, element: wrap });
     const groupTitle = document.createElement('div');
-    groupTitle.style.fontSize = '12px';
-    groupTitle.style.fontWeight = '600';
-    groupTitle.style.opacity = '0.7';
-    groupTitle.style.margin = '10px 0 6px';
+    groupTitle.className = 'panel-section-title';
     groupTitle.textContent = group.name;
     wrap.appendChild(groupTitle);
+    if (group.name === 'Advanced (raw syntax)') {
+      const hint = document.createElement('div');
+      hint.style.fontSize = '11px';
+      hint.style.opacity = '0.6';
+      hint.style.margin = '2px 0 10px';
+      hint.textContent =
+        'Friendlier controls for the same app-wide Global Variables baseline the raw text box also edits \u2014 changing one here updates that text too, and vice versa. Applies immediately, no reload needed.';
+      wrap.appendChild(hint);
+    }
 
     for (const field of group.fields) {
       wrap.appendChild(renderQuickSettingField(field));
@@ -486,6 +481,6 @@ export function renderQuickSettingsSection() {
     }
   }
 
-  return wrap;
+  return cards;
 }
 

@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v512 — Settings in seven categories
+Settings opens on a list of categories (Appearance, Editing and startup, Agenda and weather, Sync and storage, Export, Advanced, About and updates), each a page of small cards instead of one long scroll, with a search box and a sidebar when there is room. Advanced has Order of settings: move categories and cards up or down, saved on the device and included in Export Settings.
+Verified: tests, lint, type check, and the settings, search, order and paragraph-spacing smoke checks.
+
 * v511 — Heading details in tabs
 Edit details is now a fixed-size panel with five tabs (Dates, Tags, Props, Files, More) instead of one long scrolling form, with Cancel, Reset and OK always in view. A tab you have edited shows a dot, a note names the changed tabs, and Reset is only available when something changed. Files lists the heading's attachments with Open and Delete.
 Verified: tags and details-editor smoke checks, lint, type check.

@@ -20,7 +20,7 @@ import { setStatus } from './editing.js';
 import { syncExtraMenuButtonVisibility } from './menus.js';
 import { getServiceWorkerVersion } from './render-helpers.js';
 import { render } from './render.js';
-import { DEFAULT_CAPTURE_TEMPLATES, DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getCaptureTemplates, getCustomThemeColors, getFontFamily, getFontSize, getGithubConfig, getGlobalVariables, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setCaptureTemplates, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig, getCaldavConfig, setCaldavConfig, getAttachLinkMode, setAttachLinkMode } from './settings.js';
+import { DEFAULT_CAPTURE_TEMPLATES, DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getCaptureTemplates, getCustomThemeColors, getFontFamily, getFontSize, getGithubConfig, getGlobalVariables, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setCaptureTemplates, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig, getCaldavConfig, setCaldavConfig, getAttachLinkMode, setAttachLinkMode, getSettingsOrder } from './settings.js';
 import { APPT_LIMITS, normalizeApptSettings } from '../src/appt.js';
 import { notificationPermissionLabel, requestNotificationPermission, saveApptSettings, scanAppointments } from './appt-flow.js';
 import { kv } from './singletons.js';
@@ -30,9 +30,10 @@ import { openDocsAtHeading } from './views.js';
 import { platform } from './platform.js';
 import { saveOut } from './save-out.js';
 import { applyTheme, buildThemeColorCustomizationSection } from './settings-theme.js';
-import { buildFullyResolvedGlobalVariablesText, renderQuickSettingsSection } from './settings-quick.js';
+import { buildFullyResolvedGlobalVariablesText, renderQuickSettingsGroups } from './settings-quick.js';
+import { renderSettingsShell } from './settings-shell.js';
 export { applyTheme, persistAndReapplyThemeColors, buildThemeColorCustomizationSection, applySidePanelWidth } from './settings-theme.js';
-export { resolveQuickSettingValue, buildFullyResolvedGlobalVariablesText, commitGlobalVariableChange, renderQuickSettingField, renderQuickSettingsSection } from './settings-quick.js';
+export { resolveQuickSettingValue, buildFullyResolvedGlobalVariablesText, commitGlobalVariableChange, renderQuickSettingField, renderQuickSettingsGroups } from './settings-quick.js';
 
 
 /** Finds the nearest ancestor of `el` (inclusive) that is actually
@@ -72,9 +73,16 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   const tablesSpacing = await getTablesSpacing(kv);
   const readingWidth = await getReadingWidth(kv);
 
-  const appearanceSection = document.createElement('div');
-  appearanceSection.className = 'settings-section';
-  container.appendChild(appearanceSection);
+  /** Every card of the Settings screen by id; renderSettingsShell decides which page each one lands on. @type {Map<string, HTMLElement>} */
+  const cards = new Map();
+  const newCard = (/** @type {string} */ id) => {
+    const card = document.createElement('div');
+    card.className = 'settings-section';
+    cards.set(id, card);
+    return card;
+  };
+
+  let appearanceSection = newCard('appearance-theme');
 
   const themeTitle = document.createElement('div');
   themeTitle.className = 'panel-section-title';
@@ -99,6 +107,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     appearanceSection.appendChild(buildThemeColorCustomizationSection(themeName));
   }
 
+  appearanceSection = newCard('appearance-font');
   const fontTitle = document.createElement('div');
   fontTitle.className = 'panel-section-title';
   fontTitle.textContent = 'Font';
@@ -118,6 +127,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   }
   appearanceSection.appendChild(fontRow);
 
+  appearanceSection = newCard('appearance-size');
   const sizeTitle = document.createElement('div');
   sizeTitle.className = 'panel-section-title';
   sizeTitle.textContent = 'Font Size';
@@ -196,6 +206,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   otherFontHint.style.margin = '4px 0 8px';
   appearanceSection.appendChild(otherFontHint);
 
+  appearanceSection = newCard('appearance-spacing');
   const paragraphSpacingTitle = document.createElement('div');
   paragraphSpacingTitle.className = 'panel-section-title';
   paragraphSpacingTitle.textContent = 'Paragraph Spacing';
@@ -260,6 +271,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   paragraphSpacingHint.style.margin = '4px 0 8px';
   appearanceSection.appendChild(paragraphSpacingHint);
 
+  appearanceSection = newCard('appearance-width');
   const readingWidthTitle = document.createElement('div');
   readingWidthTitle.className = 'panel-section-title';
   readingWidthTitle.textContent = 'Reading Width';
@@ -325,6 +337,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   readingWidthHint.style.margin = '4px 0 8px';
   appearanceSection.appendChild(readingWidthHint);
 
+  appearanceSection = newCard('appearance-menu');
   const menuSizeTitle = document.createElement('div');
   menuSizeTitle.className = 'panel-section-title';
   menuSizeTitle.textContent = 'Menu Size';
@@ -351,11 +364,11 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   menuSizeHint.style.margin = '4px 0 8px';
   appearanceSection.appendChild(menuSizeHint);
 
-  container.appendChild(renderQuickSettingsSection());
+  for (const group of renderQuickSettingsGroups()) cards.set('quick:' + group.name, group.element);
 
   const globalVarsSection = document.createElement('div');
   globalVarsSection.className = 'settings-section';
-  container.appendChild(globalVarsSection);
+  cards.set('global-vars', globalVarsSection);
 
   const globalVarsTitle = document.createElement('div');
   globalVarsTitle.className = 'panel-section-title';
@@ -421,7 +434,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   // ---- Extensions: the init script (kept on this device only) ----
   const extensionSection = document.createElement('div');
   extensionSection.className = 'settings-section';
-  container.appendChild(extensionSection);
+  cards.set('extensions', extensionSection);
 
   const extensionTitle = document.createElement('div');
   extensionTitle.className = 'panel-section-title';
@@ -558,7 +571,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
 
   const captureSection = document.createElement('div');
   captureSection.className = 'settings-section';
-  container.appendChild(captureSection);
+  cards.set('capture', captureSection);
 
   const captureTitle = document.createElement('div');
   captureTitle.className = 'panel-section-title';
@@ -634,7 +647,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
 
   const pendingSection = document.createElement('div');
   pendingSection.className = 'settings-section';
-  container.appendChild(pendingSection);
+  cards.set('pending', pendingSection);
 
   const pendingTitle = document.createElement('div');
   pendingTitle.className = 'panel-section-title';
@@ -721,7 +734,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   // ---- Agenda notifications (appt): a device setting, stored under the Emacs names ------------------------------------------
   const apptSection = document.createElement('div');
   apptSection.className = 'settings-section';
-  container.appendChild(apptSection);
+  cards.set('appt', apptSection);
   const apptTitle = document.createElement('div');
   apptTitle.className = 'panel-section-title';
   apptTitle.textContent = 'Agenda notifications';
@@ -869,7 +882,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   // ---- Attachments: whether attaching a file also writes a link into the heading's body ------------------------------------
   const attachSection = document.createElement('div');
   attachSection.className = 'settings-section';
-  container.appendChild(attachSection);
+  cards.set('attach', attachSection);
   const attachTitle = document.createElement('div');
   attachTitle.className = 'panel-section-title';
   attachTitle.textContent = 'Attachments';
@@ -901,7 +914,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
 
   const githubSection = document.createElement('div');
   githubSection.className = 'settings-section';
-  container.appendChild(githubSection);
+  cards.set('github', githubSection);
 
   const ghTitle = document.createElement('div');
   ghTitle.className = 'panel-section-title';
@@ -953,7 +966,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
 
   const webdavSection = document.createElement('div');
   webdavSection.className = 'settings-section';
-  container.appendChild(webdavSection);
+  cards.set('webdav', webdavSection);
 
   const webdavTitle = document.createElement('div');
   webdavTitle.className = 'panel-section-title';
@@ -1008,7 +1021,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   const calendarConfigStored = await getCaldavConfig(kv);
   const calendarSection = document.createElement('div');
   calendarSection.className = 'settings-section';
-  container.appendChild(calendarSection);
+  cards.set('calendar', calendarSection);
   const calendarTitle = document.createElement('div');
   calendarTitle.className = 'panel-section-title';
   calendarTitle.textContent = 'Calendar (CalDAV) / Contacts (CardDAV)';
@@ -1075,7 +1088,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
 
   const backupSection = document.createElement('div');
   backupSection.className = 'settings-section';
-  container.appendChild(backupSection);
+  cards.set('backup', backupSection);
 
   const backupTitle = document.createElement('div');
   backupTitle.className = 'panel-section-title';
@@ -1165,21 +1178,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
 
   const updatesSection = document.createElement('div');
   updatesSection.className = 'settings-section';
-  // org-xx-updates-at-top (this app's own extension, not a real
-  // org-mode variable -- same "org-xx-" convention as
-  // org-xx-extra-menu/org-xx-menu-aliases): true (the
-  // default, matching real org's own t/nil convention for "unset"
-  // meaning "on") puts Updates at the very top of Settings, since for
-  // many people it's the single most-used entry on this whole page;
-  // explicitly nil keeps it at its own original position instead, for
-  // anyone who'd rather Settings stay in its previous, familiar order.
-  const updatesAtTop = parseLispBoolean((S.state.localVariables || {})['org-xx-updates-at-top'], true);
-  if (updatesAtTop) {
-    container.insertBefore(updatesSection, container.firstChild);
-  } else {
-    container.appendChild(updatesSection);
-  }
-
+  cards.set('updates', updatesSection);
   const updatesTitle = document.createElement('div');
   updatesTitle.className = 'panel-section-title';
   updatesTitle.textContent = 'Updates';
@@ -1259,6 +1258,14 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
             ? 'Couldn\u2019t check for updates right now.'
             : '';
   updatesSection.appendChild(updatesStatus);
+
+  // org-xx-updates-at-top (this app's own variable, same "org-xx-" convention as org-xx-extra-menu): true, the default, keeps the
+  // Updates card first on the About page; nil moves it after the other cards -- unless the person has arranged that page themselves.
+  const savedOrder = await getSettingsOrder(kv);
+  const updatesAtTop = parseLispBoolean((S.state.localVariables || {})['org-xx-updates-at-top'], true);
+  const aboutArranged = !!(savedOrder && savedOrder.cards && savedOrder.cards.about);
+  const effectiveOrder = !updatesAtTop && !aboutArranged ? { ...(savedOrder || {}), cards: { ...((savedOrder && savedOrder.cards) || {}), about: ['quick:Settings', 'updates'] } } : savedOrder;
+  renderSettingsShell(container, cards, effectiveOrder, () => renderSettingsView());
 
   scrollingEl.scrollTop = savedScrollTop;
 }

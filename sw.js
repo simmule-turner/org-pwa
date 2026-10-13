@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v511';
+const CACHE_NAME = 'org-pwa-shell-v512';
 
 const SHELL_FILES = [
   './',
@@ -136,6 +136,7 @@ const SHELL_FILES = [
   './src/scroll-util.js',
   './src/table-formula.js',
   './src/types.js',
+  './src/settings-layout.js',
   './src/calc-complex.js',
   './src/calc-vector.js',
   './src-browser/contacts-sync.js',
@@ -199,6 +200,7 @@ const SHELL_FILES = [
   './src-browser/save-out.js',
   './src-browser/search-ui.js',
   './src-browser/settings-view.js',
+  './src-browser/settings-shell.js',
   './src-browser/table-recalc.js',
   './src-browser/tabs.js',
   './src-browser/todo-workflow.js',

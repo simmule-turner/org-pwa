@@ -35,6 +35,7 @@ const KEYS = {
   tablesSpacing: 'settings:tablesSpacing',
   floatingKeyboardPos: 'settings:floatingKeyboardPos',
   readingWidth: 'settings:readingWidth',
+  settingsOrder: 'settings:order',
   sidePanelWidth: 'settings:sidePanelWidth',
   lastActiveDocument: 'settings:lastActiveDocument',
   openTabs: 'settings:openTabs',
@@ -623,6 +624,19 @@ export async function importAllSettings(kvAdapter, bundle) {
     imported.push(name);
   }
   return imported;
+}
+
+/** The person's own order for the Settings categories and the cards on each page: `{ categories?, cards? }`, or null for the defaults.
+ * @param {KvAdapter} kvAdapter */
+export async function getSettingsOrder(kvAdapter) {
+  return getJson(kvAdapter, KEYS.settingsOrder, null);
+}
+
+/**
+ * @param {KvAdapter} kvAdapter
+ * @param {import('../src/settings-layout.js').SettingsOrder | null} order */
+export async function setSettingsOrder(kvAdapter, order) {
+  await setJson(kvAdapter, KEYS.settingsOrder, order);
 }
 
 // ---- last active document (session resume) ------------------------------
