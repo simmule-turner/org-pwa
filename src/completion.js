@@ -72,7 +72,7 @@ function declaredTagsOf(doc) {
  */
 function collectTagUsage(docs) {
   const usage = new Map();
-  /** @param {any} [tag] */
+  /** @param {string} tag */
   const bump = (tag) => usage.set(tag, (usage.get(tag) || 0) + 1);
   for (const doc of docs) {
     if (!doc) continue;

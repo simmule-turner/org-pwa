@@ -34,7 +34,7 @@ function multiEntryValueToDisplayText(rawValue, tokenizeFn) {
  *  that's actually stored. Committing this CANONICAL string, rather
  *  than the raw edited text directly, is what keeps the value stable
  *  across a reload: storage never again contains an embedded newline
- * @param {any} [displayText]
+ * @param {string} displayText
  * @param {any} [tokenizeFn]
  *  for something else to collapse later. */
 function multiEntryDisplayTextToValue(displayText, tokenizeFn) {

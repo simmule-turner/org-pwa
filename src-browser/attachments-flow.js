@@ -101,7 +101,7 @@ async function pickAndUpload(heading) {
 }
 
 /** The file names in an attachment folder (sorted), or null if the backend could not say. A folder that does not exist yet is an
- * @param {any} [dir]
+ * @param {string | null} dir
  *  empty one. This is where org-attach gets its list: the folder, not links in the text. */
 async function listFolder(dir) {
   try {
@@ -112,7 +112,7 @@ async function listFolder(dir) {
   }
 }
 
-/** @param {any} [what] */
+/** @param {string} what */
 const unavailable = (what) =>
   attachmentsFolderMissingMessage() ||
   `Can't ${what} \u2014 attachments are only available with GitHub or WebDAV connected, the same backends they are stored on.`;
@@ -253,7 +253,7 @@ export async function resolveAndReadAttachment(target, heading) {
 /** Downloads `target` to the device -- unconditionally, regardless of
  *  file type, the actual behavior "Open" used to have before this
  *  fix, moved here and given its own honest name now that Open itself
- * @param {any} target
+ * @param {string} target
  * @param {Heading} heading
  *  means something different. */
 export async function saveAttachmentLink(target, heading) {
@@ -389,7 +389,7 @@ export async function deleteAllAttachments(heading) {
 /**
  * The type a viewer should be told: guessViewableMimeType's answer, with a .webm settled by its content (audio or video).
  * @param {string} path
- * @param {any} [bytes]
+ * @param {Uint8Array<ArrayBuffer>} bytes
  */
 function viewableMimeFor(path, bytes) {
   let mime = guessViewableMimeType(path);
@@ -465,8 +465,8 @@ export function setAttachmentDirectory(heading) {
 
 /**
  * Copies every file in `from` to `to` and removes the original, one at a time. Returns how many moved.
- * @param {any} [from]
- * @param {any} [to]
+ * @param {string | null} from
+ * @param {string} to
  */
 async function moveFolderFiles(from, to) {
   const adapter = activeDiskAdapter();
@@ -493,7 +493,7 @@ export async function unsetAttachmentDirectory(heading) {
   }
   const dir = attachmentDirFromProperty(getProperty(heading, 'DIR'), S.state.documentId);
   const names = dir && attachmentsAvailable() ? (await listFolder(dir)) || [] : [];
-  /** @param {any} [message] */
+  /** @param {string} message */
   const finish = async (message) => {
     deleteProperty(heading, 'DIR');
     await syncAttachTag(heading);
@@ -647,7 +647,7 @@ export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
 /** Shared entry point for Open, Export and Delete: reads `heading`'s attachment folder and either acts directly (exactly
  *  one file) or opens the file-list picker (several), as org-attach does ("if there is more than one, prompt for a file name
  * @param {Heading} heading
- * @param {any} [action]
+ * @param {string} action
  *  first"). */
 export async function startAttachmentPickFlow(heading, action) {
   const filenames = await attachmentFiles(heading);
@@ -712,7 +712,7 @@ export function renderAttachFileListPanel() {
  *  viewing it, if the browser handles that download itself) isn't
  * @param {Heading} heading
  * @param {string} filename
- * @param {any} [action]
+ * @param {string} action
  *  destructive. */
 export async function performAttachmentAction(heading, filename, action) {
   if (action === 'delete') {

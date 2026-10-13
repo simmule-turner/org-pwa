@@ -52,7 +52,7 @@ const SEPARATOR_TOKEN = '-----';
  *  so an embedded double-quote inside an OLP array (each header
  *  string is itself quoted) doesn't prematurely end the outer token.
  *  A stray, unquoted character between tokens (extra whitespace, a
- * @param {any} [raw]
+ * @param {string} raw
  *  typo) is simply skipped rather than erroring. */
 function tokenize(raw) {
   const tokens = [];
@@ -113,7 +113,7 @@ function splitSpecAndLabel(token) {
 }
 
 /** Parses a SPEC string into its typed form, or null if it doesn't
- * @param {any} [spec]
+ * @param {string} spec
  *  match any recognized shape. */
 function parseSpec(spec) {
   if (spec.startsWith('[')) {

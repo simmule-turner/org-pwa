@@ -41,7 +41,7 @@ const DEFAULT_TODO_KEYWORDS = ['TODO'];
 
 /** Whether a `#+KEY:` line defines a TODO sequence. `#+SEQ_TODO:` and `#+TYP_TODO:` are
  *  org's standard aliases of `#+TODO:` (a file using one would otherwise show its custom
- * @param {any} [key]
+ * @param {string} key
  *  keywords as plain title text). */
 function isTodoSequenceKey(key) {
   return /^(TODO|SEQ_TODO|TYP_TODO)$/i.test(key);
@@ -87,7 +87,7 @@ function isPlanningLine(line) {
   return /^\s*(SCHEDULED|DEADLINE|CLOSED):/.test(line);
 }
 
-/** @param {any} [rest] */
+/** @param {string} rest */
 function parseTags(rest) {
   const m = TAGS_RE.exec(rest);
   if (!m) return { rest, tags: [] };
@@ -95,7 +95,7 @@ function parseTags(rest) {
   return { rest: rest.slice(0, m.index), tags };
 }
 
-/** @param {any} [rest] */
+/** @param {string} rest */
 function parsePriority(rest) {
   const m = PRIORITY_RE.exec(rest);
   if (!m) return { rest, priority: null };
@@ -103,8 +103,8 @@ function parsePriority(rest) {
 }
 
 /**
- * @param {any} [rest]
- * @param {any} [todoKeywords]
+ * @param {string} rest
+ * @param {string[]} todoKeywords
  */
 function parseTodoKeyword(rest, todoKeywords) {
   const spaceIdx = rest.indexOf(' ');
@@ -143,7 +143,7 @@ function parseTodoKeywordToken(token) {
  *  metadata, keyed by the bare keyword. `keySpecs`/`logSpecs` only ever
  *  contain entries for keywords that actually specified one -- a
  *  keyword with neither present at all, not present as null, so a
- * @param {any} [value]
+ * @param {string} value
  *  caller can use straightforward `in`/property-access checks. */
 function parseTodoSpecValue(value) {
   const hasBar = value.includes('|');
@@ -402,8 +402,8 @@ function propertiesSignature(node) {
 
 /**
  * A property written from scratch: `:KEY: value`, or just `:KEY:` when the value is empty (as org writes it).
- * @param {any} [key]
- * @param {any} [value]
+ * @param {any} key
+ * @param {string | null} value
  */
 function canonicalPropertyLine(key, value, indent = '') {
   return value === '' || value == null ? `${indent}:${key}:` : `${indent}:${key}: ${value}`;
@@ -566,7 +566,7 @@ function findHeadingLineNumber(doc, targetHeading) {
  * re-leveling the narrowed heading itself as "it's gone" -- this
  * finds it by its own known position instead, which survives both.
  * @param {Doc} doc
- * @param {any} [targetLine]
+ * @param {number} targetLine
  */
 function findHeadingAtLine(doc, targetLine) {
   let count = doc.keywords.length + (doc.bodyLines ? doc.bodyLines.length : 0);

@@ -23,7 +23,7 @@ const MAX_DETERMINANT_SIZE = 7;
 
 /**
  * Splits "a, b, [c, d]" at the commas that are not inside brackets or parentheses.
- * @param {any} [body]
+ * @param {string} body
  */
 function splitTopLevel(body) {
   const parts = [];
@@ -165,7 +165,7 @@ function matrixProduct(a, b, D, degrees) {
 }
 
 /**
- * @param {any} op
+ * @param {string} op
  * @param {any} left
  * @param {any} right
  * @param {any} D
@@ -224,7 +224,7 @@ function identity(n, D) {
 
 /**
  * @param {any} m
- * @param {any} n
+ * @param {number} n
  * @param {any} D
  * @param {boolean} degrees
  */
@@ -268,9 +268,9 @@ function requireSquare(m) {
 }
 
 /**
- * @param {any} [rows]
- * @param {any} [skipRow]
- * @param {any} [skipCol]
+ * @param {any} rows
+ * @param {number} skipRow
+ * @param {number} skipCol
  */
 function minor(rows, skipRow, skipCol) {
   return rows.filter((/** @type {any} */ _, /** @type {number} */ i) => i !== skipRow).map((/** @type {any} */ r) => r.filter((/** @type {any} */ _, /** @type {any} */ j) => j !== skipCol));

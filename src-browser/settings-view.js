@@ -208,15 +208,15 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   spacingRow.style.alignItems = 'center'; // same reason as the Font Size row: a number between two taller buttons
   spacingRow.style.flexWrap = 'wrap'; // lets the Tables group drop to its own line on a narrow phone rather than clipping
   /**
-   * @param {any} [valueId]
-   * @param {any} [current]
-   * @param {any} [lessLabel]
-   * @param {any} [moreLabel]
-   * @param {any} [save]
-   * @param {any} [apply]
+   * @param {string} valueId
+   * @param {number} current
+   * @param {string} lessLabel
+   * @param {string} moreLabel
+   * @param {any} save
+   * @param {(px: number) => void} apply
    */
   const addSpacingStepper = (valueId, current, lessLabel, moreLabel, save, apply) => {
-    /** @param {any} [delta] */
+    /** @param {number} delta */
     const step = async (delta) => {
       const next = Math.min(MAX_SPACING, Math.max(MIN_SPACING, current + delta));
       await save(kv, next);
@@ -370,7 +370,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     'The same kind of variable a file\u2019s own "# Local Variables:" block or #+STARTUP: line can set, but as the app-wide baseline default across every file \u2014 one per line, same "name: value" format. A file-specific #+STARTUP:/Local Variables setting still overrides this; see Configuration in the README for the full precedence order. Example: org-log-done: \'time';
   globalVarsSection.appendChild(globalVarsHint);
 
-  /** @param {any} [newText] */
+  /** @param {string} newText */
   async function saveGlobalVariablesText(newText) {
     const normalizedText = normalizeSmartQuotes(newText);
     await setGlobalVariables(kv, normalizedText);
@@ -735,8 +735,8 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   };
   /**
    * @param {string} label
-   * @param {any} [key]
-   * @param {any} [hint]
+   * @param {string} key
+   * @param {string} hint
    */
   const apptCheckbox = (label, key, hint) => {
     const row = document.createElement('div');
@@ -760,10 +760,10 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   };
   /**
    * @param {string} label
-   * @param {any} key
-   * @param {any} hint
-   * @param {any} step
-   * @param {any} unit
+   * @param {string} key
+   * @param {string} hint
+   * @param {number} step
+   * @param {string} unit
    */
   const apptStepper = (label, key, hint, /** @type {number[]} */ limits, step, unit) => {
     const [min, max] = limits;

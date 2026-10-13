@@ -72,7 +72,7 @@
 const renderCache = new Map();
 
 /**
- * @param {any} [source]
+ * @param {string | number} source
  * @param {any} [displayMode]
  */
 function cacheKey(source, displayMode) {
@@ -100,8 +100,8 @@ function isMathEngineAvailable() {
  *  engine rejected this specific LaTeX as invalid" -- callers
  *  (renderLatexNode in app.js) are expected to show a graceful,
  *  visibly-distinct fallback in either case, never let a rendering
- * @param {any} [source]
- * @param {any} [displayMode]
+ * @param {any} source
+ * @param {boolean} displayMode
  *  failure break the surrounding paragraph's own render entirely. */
 function renderMathHtml(source, displayMode) {
   const key = cacheKey(source, displayMode);

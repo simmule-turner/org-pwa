@@ -284,7 +284,7 @@ export function openConflictResolver(/** @type {any} */ { documentId, plan }) {
     /**
      * @param {string} label
      * @param {string[]} lines
-     * @param {any} [tint]
+     * @param {string} tint
      */
     const linesBlock = (label, lines, tint) => {
       const wrap = document.createElement('div');
@@ -362,7 +362,7 @@ export function openConflictResolver(/** @type {any} */ { documentId, plan }) {
       row.style.gap = '6px';
       /**
        * @param {string} label
-       * @param {any} [value]
+       * @param {string} value
        */
       const mk = (label, value) => {
         const btn = tableActionButton(label, () => {
@@ -450,8 +450,8 @@ export function openConflictResolver(/** @type {any} */ { documentId, plan }) {
       applyBtn.style.opacity = decided === n ? '1' : '0.45';
       choices.forEach((choice, k) => {
         /**
-         * @param {any} [btn]
-         * @param {any} [on]
+         * @param {any} btn
+         * @param {boolean} on
          */
         const set = (btn, on) => {
           btn.style.background = on ? 'var(--accent)' : 'transparent';

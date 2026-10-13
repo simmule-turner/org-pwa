@@ -80,7 +80,7 @@ export async function loadRefileTargetDocs(targetsSpec) {
  * safety archiveHeadingToLocation already established -- a failed
  * write to the target file leaves the source completely untouched.
  * @param {Heading} heading
- * @param {any} [targetDocumentId]
+ * @param {string} targetDocumentId
  * @param {any} [targetOutlinePath]
  */
 export async function performRefile(heading, targetDocumentId, targetOutlinePath) {

@@ -29,8 +29,8 @@ class CaldavError extends Error {
 
 /**
  * Basic credentials, encoded as UTF-8 so a non-ASCII username or password works.
- * @param {any} [username]
- * @param {any} [password]
+ * @param {string} username
+ * @param {string} password
  */
 function basicAuthHeader(username, password) {
   const bytes = new TextEncoder().encode(`${username}:${password}`);
@@ -41,7 +41,7 @@ function basicAuthHeader(username, password) {
 
 /**
  * The hrefs in a PROPFIND multistatus body, whatever namespace prefix the server used (D:, d:, or none).
- * @param {any} [xml]
+ * @param {string} xml
  */
 function parseHrefs(xml) {
   const hrefs = [];
@@ -58,7 +58,7 @@ const KINDS = {
 };
 
 /** The file names with `extension` among `hrefs` (each a path or a full URL, possibly percent-encoded). The folder itself and
- * @param {any} [hrefs]
+ * @param {string[]} hrefs
  *  anything with another extension are skipped. */
 function icsNamesFromHrefs(hrefs, extension = '.ics') {
   const names = [];
@@ -84,7 +84,7 @@ function icsNamesFromHrefs(hrefs, extension = '.ics') {
 
 /**
  * @param {any} response
- * @param {any} what
+ * @param {string} what
  */
 function errorForResponse(response, what, /** @type {any} */ { noun, Noun }) {
   const status = response.status;
@@ -165,9 +165,9 @@ function createCarddavClient(options) {
  * failure the whole run shares (the credentials, the address, the network): that stops it, since every remaining
  * request would fail the same way.
  * @returns {Promise<{ ok: any[], failed: { item: any, error: Error }[], stopped: Error | null }>}
- * @param {any} [items]
- * @param {any} [limit]
- * @param {any} [worker]
+ * @param {any} items
+ * @param {number} limit
+ * @param {(name: string) => Promise<void>} worker
  */
 async function runLimited(items, limit, worker) {
   /** @type {any[]} */ const ok = [];

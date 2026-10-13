@@ -15,7 +15,7 @@ import { expandNoweb, nowebAllows, stripReferences } from './noweb.js';
 
 /** Index of the `#+RESULTS:` line that belongs to the block ending at `endIndex`, or -1. An unnamed `#+RESULTS:`
  * @param {string[]} lines
- * @param {any} endIndex
+ * @param {number} endIndex
  * @param {string} name
  *  belongs to the block right before it (blank lines allowed between); `#+RESULTS: name` to the block named `name`. */
 function findResults(lines, endIndex, name) {

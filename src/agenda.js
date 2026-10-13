@@ -63,7 +63,7 @@ const REPEATER_RE = /^([.+]{1,2})(\d+)([hdwmy])$/;
 /** Parses a repeater string (e.g. "+1w", "++3d", ".+1m") into
  *  { mark, amount, unit }. `mark` is kept but not currently acted on —
  *  see expandRepeats' docs for why all three marks expand the same way
- * @param {any} [raw]
+ * @param {string} raw
  *  here. Returns null for anything that doesn't match. */
 function parseRepeater(raw) {
   if (!raw) return null;
@@ -73,9 +73,9 @@ function parseRepeater(raw) {
 }
 
 /**
- * @param {any} [date]
- * @param {any} [amount]
- * @param {any} [unit]
+ * @param {Date} date
+ * @param {number} amount
+ * @param {string} unit
  */
 function addInterval(date, amount, unit) {
   const d = new Date(date.getTime());
@@ -171,7 +171,7 @@ function delayToDays(delay) {
  *     has passed, or when a DEADLINE is inside its warning period (`daysOverdue` < 0: "due in 3 days").
  * Never on the other days between: Emacs lists an overdue or upcoming item only on today. Each date is kept to
  * [rangeStart, rangeEnd].
- * @param {any} [kind]
+ * @param {string} kind
  * @param {any} [itemDate]
  * @param {any} [today]
  * @param {any} [rangeStart]
@@ -278,7 +278,7 @@ function collectContactsTriggers(docs) {
  *  directly to mean a vCard-imported contact's own birthday matched
  *  zero agenda items no matter what range was searched. Returns
  *  { year, month, day, description } or null only for a genuinely
- * @param {any} [value]
+ * @param {string} value
  *  malformed value now: an out-of-range month/day, or no date at all. */
 function parseContactEvent(value) {
   const m = EVENT_PROPERTY_RE.exec(String(value).trim());
@@ -294,8 +294,8 @@ function parseContactEvent(value) {
  *  is `year`. null when `year` is null (unknown) — formatted as "(??)"
  *  by formatContactEventLine below, per what was actually asked for,
  *  rather than a numeric sentinel a caller could accidentally display
- * @param {any} [year]
- * @param {any} [occurrenceDate]
+ * @param {number | null} year
+ * @param {Date} occurrenceDate
  *  as a real age. */
 function contactEventAge(year, occurrenceDate) {
   if (year === null) return null;
@@ -318,7 +318,7 @@ function defaultEventDescription(propertyName) {
 /** Case-insensitive property lookup, matching how every other
  *  property read in this file already handles case (org property
  * @param {Heading} heading
- * @param {any} [key]
+ * @param {string} key
  *  keys are conventionally upper-case, but not enforced). */
 function getPropertyCaseInsensitive(heading, key) {
   /** @param {any} [k] */
@@ -431,8 +431,8 @@ function filterItemsByEffort(items, filter, noEffortIsHigh = true) {
 }
 
 /** org-agenda-max-effort for one day's (already sorted) items: keeps items
- * @param {any} [items]
- * @param {any} [maxMinutes]
+ * @param {any} items
+ * @param {number | null | undefined} maxMinutes
  *  while the running total stays within `maxMinutes`. */
 function limitItemsByEffort(items, maxMinutes, noEffortIsHigh = true) {
   if (maxMinutes === null || maxMinutes === undefined) return items;
@@ -480,8 +480,8 @@ function applyAgendaEffortView(items, { sort = null, filter = null, maxMinutes =
  *  (:KIND: individual, the marker export-vcard.js requires) a descendant heading of that field type. Only a heading that is itself
  *  a tree-style contact is searched -- without that gate an intermediate grouping heading above a birthday descendant produced a
  * @param {Heading} heading
- * @param {any} [field]
- * @param {any} [birthdayProperty]
+ * @param {string} field
+ * @param {string} birthdayProperty
  *  spurious item of its own. */
 function contactEventFor(heading, field, birthdayProperty) {
   const raw = getPropertyCaseInsensitive(heading, field);
@@ -510,7 +510,7 @@ function contactSpouse(heading) {
 
 /**
  * 1 -> "1st", 12 -> "12th", 22 -> "22nd": Emacs's diary-ordinal-suffix, for %Y.
- * @param {any} [n]
+ * @param {number} n
  */
 function ordinalYears(n) {
   const tens = Math.abs(n) % 100;
@@ -549,7 +549,7 @@ function formatContactEventTitle(/** @type {any} */ { format = null, field = nul
 }
 
 /** `format` with its age removed -- for an entry that repeats every year as ONE event (a calendar export of a file), which cannot
- * @param {any} [format]
+ * @param {string} format
  *  carry an age: "Birthday: %l (%Y)" -> "Birthday: %l". */
 function stripAgeFromFormat(format) {
   return format.replace(/\s*\(\s*%[yY]\s*\)/g, '').replace(/%[yY]/g, '').replace(/\s+$/, '');
@@ -585,8 +585,8 @@ function formatLogbookEntryLine(headingTitle, entry) {
  * rather than being specially skipped; a known simplification, not a
  * faithful reproduction of Emacs calendar.el's own leap-year handling
  * for this edge case, stated rather than silently different.
- * @param {any} [month]
- * @param {any} [day]
+ * @param {number} month
+ * @param {number | undefined} day
  * @param {any} [rangeStart]
  * @param {any} [rangeEnd]
  * @param {any} [today]
@@ -789,9 +789,9 @@ function buildAgendaItems(docs, opts = /** @type {any} */ ({})) {
   /**
    * @param {string} documentId
    * @param {Heading} heading
-   * @param {any} [kind]
-   * @param {any} [parsed]
-   * @param {any} [headingIsDone]
+   * @param {string} kind
+   * @param {any} parsed
+   * @param {boolean} headingIsDone
    */
   function addItem(documentId, heading, kind, parsed, headingIsDone) {
     const base = {
@@ -1341,9 +1341,9 @@ function itemsForDate(items, date = new Date()) {
 
 /**
  * Items within [start, end], inclusive of the days start/end fall on.
- * @param {any} [items]
- * @param {any} [start]
- * @param {any} [end]
+ * @param {any} items
+ * @param {Date} start
+ * @param {Date} end
  */
 function itemsInRange(items, start, end) {
   const startKey = dateKey(start);
@@ -1391,8 +1391,8 @@ function startOfDay(date) {
 /** `date` shifted forward (or backward, for a negative `days`) by
  *  `days` whole calendar days -- month/year boundaries handled
  *  correctly by JS's own Date arithmetic (setting a day-of-month
- * @param {any} [date]
- * @param {any} [days]
+ * @param {Date} date
+ * @param {number} days
  *  value past the end of its month rolls over into the next one). */
 function addDays(date, days) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days, date.getHours(), date.getMinutes());
@@ -1400,7 +1400,7 @@ function addDays(date, days) {
 
 /**
  * The last instant (23:59:59.999) of `date`'s calendar day.
- * @param {any} [date]
+ * @param {Date} date
  */
 function endOfDay(date) {
   const d = startOfDay(date);
@@ -1417,7 +1417,7 @@ function endOfDay(date) {
  * than treating whatever date it's handed as the literal first day (see
  * weekView below, which used to do exactly that — a real bug, not just
  * an unconfigurable default).
- * @param {any} [date]
+ * @param {Date} date
  */
 function startOfWeek(date, startOnWeekday = 1) {
   const d = startOfDay(date);

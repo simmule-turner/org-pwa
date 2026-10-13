@@ -137,9 +137,9 @@ export function renderSearchOptionsMenu() {
 
   /**
    * @param {string} label
-   * @param {any} [checked]
-   * @param {any} [disabled]
-   * @param {any} [onClick]
+   * @param {boolean} checked
+   * @param {boolean} disabled
+   * @param {() => void} onClick
    */
   function optionButton(label, checked, disabled, onClick) {
     const btn = document.createElement('button');

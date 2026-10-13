@@ -62,10 +62,10 @@ function flattenVisibleRows(doc) {
   /** @type {any[]} */ const rows = [];
 
   /**
-   * @param {any} [items]
-   * @param {any} [headingNode]
-   * @param {any} [depth]
-   * @param {any} [keyPrefix]
+   * @param {any} items
+   * @param {any} headingNode
+   * @param {number} depth
+   * @param {string} keyPrefix
    */
   function flattenListItems(items, headingNode, depth, keyPrefix) {
     let orderedCounter = 0;
@@ -85,10 +85,10 @@ function flattenVisibleRows(doc) {
   }
 
   /**
-   * @param {any} [bodyNodes]
-   * @param {any} [headingNode]
-   * @param {any} [depth]
-   * @param {any} [keyPrefix]
+   * @param {any} bodyNodes
+   * @param {any} headingNode
+   * @param {any} depth
+   * @param {string} keyPrefix
    */
   function flattenBody(bodyNodes, headingNode, depth, keyPrefix) {
     (bodyNodes || []).forEach((/** @type {any} */ node, /** @type {number} */ i) => {
@@ -101,9 +101,9 @@ function flattenVisibleRows(doc) {
   }
 
   /**
-   * @param {any} [nodes]
-   * @param {any} [depth]
-   * @param {any} [keyPrefix]
+   * @param {any} nodes
+   * @param {number} depth
+   * @param {string} keyPrefix
    */
   function walk(nodes, depth, keyPrefix) {
     nodes.forEach((/** @type {any} */ node, /** @type {number} */ i) => {

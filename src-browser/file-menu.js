@@ -75,7 +75,7 @@ export async function renderRecentFilesSection(container) {
 /**
  * Long-press on one entry: asks, then drops just that entry from the list.
  * @param {string} documentId
- * @param {any} [storageKind]
+ * @param {string} storageKind
  */
 export async function confirmRemoveRecentFile(documentId, storageKind) {
   if (!(await confirmDialog(`Remove "${documentId}" from the recently opened list?`, { confirmLabel: 'Remove' }))) return;
@@ -104,7 +104,7 @@ export async function confirmClearRecentFiles() {
  *  no such handle to reuse and genuinely can't be reopened without the
  *  person re-selecting it themselves -- explained rather than silently
  * @param {string} documentId
- * @param {any} [storageKind]
+ * @param {string} storageKind
  *  failing or pretending it opened. */
 export async function openRecentFile(documentId, storageKind) {
   if (storageKind === 'github') {

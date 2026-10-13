@@ -13,8 +13,8 @@ import { confirmDialog } from './dialogs.js';
 
 /**
  * @param {string} fileId
- * @param {any} [hash]
- * @param {any} [content]
+ * @param {any} hash
+ * @param {string} content
  */
 export function recordSyncedWrite(fileId, hash, content) {
   // `content` is kept as the new common ancestor for a later three-way
@@ -63,7 +63,7 @@ export async function rememberRefileTarget(documentId, outlinePath) {
  *  its own internal ID is a randomly-suffixed sentinel never meant to
  *  be user-visible, so it falls back to the first heading's own title
  *  once one exists, and finally to '*scratch*' -- matching real
- * @param {any} docId
+ * @param {string} docId
  * @param {Doc} doc
  *  Emacs's own convention for a fresh, as-yet-unnamed buffer. */
 export function documentDisplayLabel(docId, doc) {
@@ -85,7 +85,7 @@ export async function loadPaletteRecent() {
   }
 }
 
-/** @param {any} [kind] */
+/** @param {string} kind */
 export function storageKindLabel(kind) {
   if (kind === 'github') return 'GitHub';
   if (kind === 'webdav') return 'WebDAV';
@@ -124,7 +124,7 @@ export async function resolvePendingChangeChoice(documentId) {
  *  vague to judge whether a pending edit was worth resuming or safely
  *  ignorable; showing exactly when it happened lets the person decide
  *  for themselves. Falls back to the generic wording if the timestamp
- * @param {any} [iso]
+ * @param {string | number | Date} iso
  *  is missing or unparseable, rather than showing "Invalid Date". */
 export function formatPendingChangeTimestamp(iso) {
   const d = iso ? new Date(iso) : null;

@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v508 — Fewer placeholder types
+About 290 more parameters now have real types, worked out from what the code actually passes in (strings, numbers, dates, headings, lists). About 1,400 placeholders remain; they are the names that genuinely mean different things in different places (callbacks, the calculator's number objects, loosely shaped option bags), so they are left alone on purpose. No change in behaviour.
+Verified: tests, lint, type check.
+
 * v507 — Specific types for the most-used names
 The most common placeholder types are now real ones: a heading is a Heading and a document a Doc (in a new =src/types.js=), and about 900 parameters named text, line, name, path, id, lines, tags and the like are now strings or lists, so the type checker catches a heading passed where a document is expected. About 2,070 placeholders remain, mostly names that mean different things in different places. No change in behaviour.
 Verified: tests, lint, type check, and the Open / Save As, agenda, heading actions, export and attachment smoke checks.

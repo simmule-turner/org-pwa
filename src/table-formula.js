@@ -287,11 +287,11 @@ function parseColRef(text) {
  *  for @>/$> and for bounds-checking). Returns null for an
  *  out-of-range result (e.g. @-5 from row 2) rather than clamping --
  *  a formula reaching past the edge of the table is a real error to
- * @param {any} [ref]
- * @param {any} [currentRow]
- * @param {any} [dataRowCount]
- * @param {any} [hlinePositions]
- * @param {any} [asRangeStart]
+ * @param {any} ref
+ * @param {any} currentRow
+ * @param {any} dataRowCount
+ * @param {any} hlinePositions
+ * @param {boolean} asRangeStart
  *  surface, not something to silently reinterpret. */
 function resolveRowRef(ref, currentRow, dataRowCount, hlinePositions, asRangeStart) {
   let n;
@@ -611,7 +611,7 @@ function roundToDigits(x, digits, roundFn) {
  *  Date.UTC to stay independent of the runtime's own local timezone. */
 /** Converts a raw string TOKEN (still including its own surrounding
  *  quotes, e.g. `"Both Pass"` or `"She said \"hi\""`) into the actual
- * @param {any} [tok]
+ * @param {string} tok
  *  JS string it represents. */
 function unescapeStringLiteral(tok) {
   const inner = tok.slice(1, -1);
@@ -806,7 +806,7 @@ function parseRef(token) {
  *  actual evaluation. Throws with a position-free but otherwise
  *  descriptive message on any malformed input -- good enough to
  *  surface as a status message, not meant to pinpoint an exact
- * @param {any} [tokens]
+ * @param {string[]} tokens
  *  column the way a real compiler's own diagnostics would. */
 function parseExpression(tokens) {
   let pos = 0;
@@ -816,7 +816,7 @@ function parseExpression(tokens) {
   function next() {
     return tokens[pos++];
   }
-  /** @param {any} [tok] */
+  /** @param {string} tok */
   function expect(tok) {
     if (next() !== tok) throw new Error(`Expected "${tok}" in formula`);
   }
@@ -1856,7 +1856,7 @@ const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUENFSD
  *  Flags can appear concatenated with no separator (e.g. "EN"), in
  *  any order; an unrecognized remaining character stops parsing
  *  there, falling back to whatever was already parsed rather than
- * @param {any} [suffix]
+ * @param {string} suffix
  *  discarding the whole mode string. */
 function parseModeString(suffix) {
   const mode = /** @type {any} */ ({ format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees', precision: null });

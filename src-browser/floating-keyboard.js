@@ -75,8 +75,8 @@ export function keystrokeFor(key, shiftArmed) {
  *  and, like the floating buttons, consumes it -- one-shot, whichever keyboard
  *  the next key comes from. A letter becomes its capital (the shift a printable
  *  key carries in the character itself, see KEYS); a named key such as Enter
- * @param {any} [rawKey]
- * @param {any} [shiftKey]
+ * @param {string} rawKey
+ * @param {boolean} shiftKey
  *  gets the shiftKey flag. */
 export function withArmedShift(rawKey, shiftKey) {
   if (!S.floatingKeyboardShiftArmed) return { rawKey, shiftKey };
@@ -87,9 +87,9 @@ export function withArmedShift(rawKey, shiftKey) {
 }
 
 /**
- * @param {any} [n]
- * @param {any} [lo]
- * @param {any} [hi]
+ * @param {any} n
+ * @param {number} lo
+ * @param {number} hi
  */
 const clamp = (n, lo, hi) => Math.min(Math.max(n, lo), Math.max(lo, hi));
 
@@ -203,7 +203,7 @@ function styleButton(btn, { armed = false } = {}) {
 
 /** The move area. Dragging it moves the panel; a plain tap (a press that
  *  never travels past TAP_SLOP_PX) minimizes the panel to just this handle so
- * @param {any} [handle]
+ * @param {HTMLDivElement} handle
  *  what's behind it can be seen, and a tap on the minimized handle restores it. */
 function wireHandle(handle) {
   handle.addEventListener('pointerdown', (/** @type {any} */ e) => {
@@ -228,7 +228,7 @@ function wireHandle(handle) {
       };
       positionFloatingKeyboard();
     };
-    /** @param {any} [isTap] */
+    /** @param {boolean} isTap */
     const finish = (isTap) => {
       handle.removeEventListener('pointermove', move);
       handle.removeEventListener('pointerup', up);
@@ -437,7 +437,7 @@ export function resetGodModeKeyboardInput() {
 
 /**
  * Called by app.js's keydown handler when it delivered `key` from the hidden input.
- * @param {any} [key]
+ * @param {string} key
  */
 export function noteKeydownDelivered(key) {
   S.godModeRecentKeydown = { key, at: Date.now() };

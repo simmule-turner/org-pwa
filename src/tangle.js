@@ -54,7 +54,7 @@ function commentOut(text, lang) {
     .join('\n');
 }
 
-/** @param {any} [s] */
+/** @param {string} s */
 const orgTrim = (s) => s.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, '');
 
 /**
@@ -147,8 +147,8 @@ function precedingText(doc, block, blocks) {
 }
 
 /**
- * @param {any} [block]
- * @param {any} [documentName]
+ * @param {any} block
+ * @param {string} documentName
  * @param {any} [targetPath]
  */
 function linkFor(block, documentName, targetPath) {
@@ -248,7 +248,7 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
       }
       const comments = args.comments;
       const link = ['both', 'link', 'yes', 'noweb'].includes(comments);
-      /** @param {any} [t] */
+      /** @param {string} t */
       const insert = (t) => {
         if (comments && comments !== 'no' && t.trim() !== '') text += commentOut(t, b.lang) + '\n';
       };

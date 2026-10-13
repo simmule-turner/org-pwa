@@ -123,7 +123,7 @@ function joinContinuedLines(text) {
 /** Emacs Lisp boolean convention: the symbol `t` is true, `nil` is
  *  false (and is also Lisp's empty list / "nothing", which is why nil
  *  reads as false) — not JavaScript truthiness, so this doesn't just
- * @param {any} [raw]
+ * @param {null | undefined} raw
  *  coerce the raw string. Anything else falls back to `fallback`. */
 export function parseLispBoolean(raw, fallback = false) {
   if (raw === undefined || raw === null) return fallback;
@@ -134,8 +134,8 @@ export function parseLispBoolean(raw, fallback = false) {
 }
 
 /**
- * @param {any} [raw]
- * @param {any} [fallback]
+ * @param {null | undefined} raw
+ * @param {number} fallback
  */
 export function parseLispNumber(raw, fallback) {
   if (raw === undefined || raw === null) return fallback;

@@ -42,7 +42,7 @@ const MONTH_NAMES_FULL = [
 ];
 const MONTH_NAMES_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-/** @param {any} [n] */
+/** @param {number} n */
 function pad(n, width = 2) {
   return String(n).padStart(width, '0');
 }
@@ -61,7 +61,7 @@ function dayOfYear(date) {
  * stays as literal "%Z" in the output) rather than silently dropped,
  * since silently eating unknown input is a worse failure mode than
  * leaving a visible, debuggable trace of what wasn't understood.
- * @param {any} [date]
+ * @param {number | Date | undefined} date
  */
 function timezoneAbbreviation(date) {
   const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(date);
@@ -78,8 +78,8 @@ function timezoneOffsetString(date) {
 }
 
 /**
- * @param {any} [date]
- * @param {any} [format]
+ * @param {Date} date
+ * @param {string} format
  */
 function formatTime(date, format) {
   return format.replace(/%(.)/g, (/** @type {any} */ whole, /** @type {string} */ spec) => {
@@ -164,7 +164,7 @@ const TIMESTAMP_PROMPT_KINDS = {
   U: { active: false, hasTime: true, label: 'Date & time' },
 };
 
-/** @param {any} [template] */
+/** @param {string} template */
 function scanPrompts(template) {
   const prompts = [];
   const re = /%\^\{([^}]*)\}|%\^([tTuU])|%\?/g;
@@ -211,7 +211,7 @@ function scanPrompts(template) {
  * Returns { text } — a bare %? is just another prompt answer
  * substituted directly into the text now (see scanPrompts' own docs for
  * why), so there's no separate cursor position left to report.
- * @param {any} [template]
+ * @param {string} template
  */
 function expandTemplate(template, context = {}) {
   const now = /** @type {any} */ (context).now instanceof Date ? /** @type {any} */ (context).now : new Date();
@@ -316,8 +316,8 @@ function expandTemplate(template, context = {}) {
  *  expandTemplate's own return shape for the main template piece,
  *  so an existing caller only passing a bare template (preText/
  *  postText both '') still gets the exact same result out of `text`
- * @param {any} [preText]
- * @param {any} [template]
+ * @param {any} preText
+ * @param {string} template
  * @param {any} [postText]
  *  as calling expandTemplate directly would. */
 function expandCaptureText(preText, template, postText, context = {}) {
@@ -616,7 +616,7 @@ function stripEmptyProperties(heading) {
 /**
  * @param {any} target
  * @param {string} type
- * @param {any} [expandedText]
+ * @param {string} expandedText
  */
 function insertCapture(target, type, expandedText, prepend = false, omitEmptyEntries = false, expandedPreText = '', expandedPostText = '') {
   if (type === 'item') {
@@ -721,8 +721,8 @@ function insertCapture(target, type, expandedText, prepend = false, omitEmptyEnt
  * itself, matching a template with no file target at all (real org's
  * `(file+olp ...)` with no file argument capturing into the buffer
  * you're currently in).
- * @param {any} [file]
- * @param {any} [currentFileId]
+ * @param {any} file
+ * @param {string} currentFileId
  */
 function resolveCaptureFileId(file, currentFileId) {
   const trimmed = String(file || '').trim();
@@ -738,7 +738,7 @@ function resolveCaptureFileId(file, currentFileId) {
 const CAPTURE_FILE_SCHEMES = new Set(['github', 'webdav', 'local']);
 
 /** The storage kind (S.state.storageKind) a scheme names. They differ for exactly one: `local:` is the device's own storage,
- * @param {any} [scheme]
+ * @param {string} scheme
  *  which the app calls 'filesystem'. The caller compares this with the open document's kind (see getCaptureFileScheme). */
 function storageKindForScheme(scheme) {
   return scheme === 'local' ? 'filesystem' : scheme;
@@ -767,7 +767,7 @@ function storageKindForScheme(scheme) {
  * (e.g. "github:foo" while a WebDAV file is open) would attempt to
  * write to the wrong backend for the currently-open document, an even
  * more confusing failure mode than the original bug this exists to fix.
- * @param {any} [file]
+ * @param {string} file
  */
 function getCaptureFileScheme(file) {
   const match = /^([A-Za-z][A-Za-z0-9+.-]*):(.*)$/.exec(file);

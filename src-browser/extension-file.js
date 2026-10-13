@@ -18,7 +18,7 @@ export function parseScriptFileSetting(text) {
   return { key, target };
 }
 
-/** @param {any} [setting] */
+/** @param {string} setting */
 export async function readScriptFromFile(setting) {
   const { key, target } = parseScriptFileSetting(setting);
   if (!key) throw new Error('No file is named for the script.');

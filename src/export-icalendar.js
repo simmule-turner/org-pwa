@@ -48,7 +48,7 @@ const UNIT_TO_FREQ = { h: 'HOURLY', d: 'DAILY', w: 'WEEKLY', m: 'MONTHLY', y: 'Y
  *  module's own expandRepeats docs for why: a static, one-time export
  *  has no notion of "when this was last actually marked done" to drive
  *  the marks' differing real catch-up semantics, the same reasoning
- * @param {any} [repeaterRaw]
+ * @param {string} repeaterRaw
  *  the live agenda view itself already applies. */
 export function repeaterToRRule(repeaterRaw) {
   const r = parseRepeater(repeaterRaw);
@@ -60,7 +60,7 @@ export function repeaterToRRule(repeaterRaw) {
 
 // ---- date/time formatting ---------------------------------------------
 
-/** @param {any} [n] */
+/** @param {number} n */
 function pad2(n) {
   return String(n).padStart(2, '0');
 }
@@ -130,9 +130,9 @@ export function foldLine(line) {
  *  sanitized to a safe character set, since a UID must not contain
  * @param {string} documentId
  * @param {Heading} heading
- * @param {any} [kind]
- * @param {any} [index]
- * @param {any} [date]
+ * @param {string} kind
+ * @param {number} index
+ * @param {Date} date
  *  control characters, semicolons, or line breaks. */
 export function generateUid(documentId, heading, kind, index, date) {
   const existingId = getProperty(heading, 'ID');
@@ -235,9 +235,9 @@ export function collectCalendarEvents(docs, opts = /** @type {any} */ ({})) {
   /**
    * @param {string} documentId
    * @param {Heading} heading
-   * @param {any} [kind]
-   * @param {any} [index]
-   * @param {any} [date]
+   * @param {string} kind
+   * @param {number} index
+   * @param {Date} date
    */
   const uniqueUid = (documentId, heading, kind, index, date) => {
     let uid = generateUid(documentId, heading, kind, index, date);

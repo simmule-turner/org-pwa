@@ -27,7 +27,7 @@ import { SWIPE_THRESHOLD_PX } from './ui-widgets.js';
 import { platform } from './platform.js';
 
 /**
- * @param {any} el
+ * @param {HTMLDivElement} el
  * @param {Heading} heading
  */
 export function attachSlideLeftToFold(el, heading, opts = {}) {
@@ -69,7 +69,7 @@ export function attachSlideLeftToFold(el, heading, opts = {}) {
 }
 
 /**
- * @param {any} el
+ * @param {HTMLDivElement} el
  * @param {Heading} heading
  */
 export function attachSlideRightToComplete(el, heading, opts = {}) {
@@ -112,7 +112,7 @@ export function attachSlideRightToComplete(el, heading, opts = {}) {
   });
 }
 
-/** @param {any} [el] */
+/** @param {HTMLDivElement} el */
 export function attachAgendaSwipeNav(el) {
   /** @type {any} */
   let startX = null;

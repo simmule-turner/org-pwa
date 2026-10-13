@@ -27,7 +27,7 @@ export const THEME_CSS_VARS = [
  *  -- unlike index.html's own static `@media (prefers-color-scheme:
  *  dark)` CSS rule -- don't automatically re-evaluate when the OS
  *  preference changes; something has to actually re-check and
- * @param {any} [theme]
+ * @param {string} theme
  *  re-apply (see the matchMedia listener below). */
 export function resolvedThemeName(theme) {
   if (theme === 'light' || theme === 'dark') return theme;
@@ -92,7 +92,7 @@ export const FONT_FAMILY_STACKS = {
   monospace: 'ui-monospace, "SF Mono", Menlo, monospace',
 };
 
-/** @param {any} [fontFamily] */
+/** @param {string} fontFamily */
 export function applyFontFamily(fontFamily) {
   document.documentElement.style.setProperty(
     '--app-font-family',
@@ -100,7 +100,7 @@ export function applyFontFamily(fontFamily) {
   );
 }
 
-/** @param {any} [menuSize] */
+/** @param {string} menuSize */
 export function applyMenuSize(menuSize) {
   if (menuSize === 'small') {
     document.documentElement.setAttribute('data-menu-size', 'small');
@@ -111,30 +111,30 @@ export function applyMenuSize(menuSize) {
 
 /** The vertical gap between paragraphs, as a CSS variable the row renderers'
  *  margins read -- so changing the setting restyles the page at once with no
- * @param {any} [px]
+ * @param {number} px
  *  re-render. */
 export function applyParagraphSpacing(px) {
   document.documentElement.style.setProperty('--paragraph-gap', px + 'px');
 }
 
 /** The same for tables and the other secondary blocks (the counterpart of
- * @param {any} [px]
+ * @param {number} px
  *  applyTablesFontSize). */
 export function applyTablesSpacing(px) {
   document.documentElement.style.setProperty('--paragraph-gap-tables', px + 'px');
 }
 
-/** @param {any} [size] */
+/** @param {string | number} size */
 export function applyFontSize(size) {
   document.documentElement.style.setProperty('--app-font-size', size + 'px');
 }
 
-/** @param {any} [size] */
+/** @param {string | number} size */
 export function applyTablesFontSize(size) {
   document.documentElement.style.setProperty('--app-font-size-tables', size + 'px');
 }
 
-/** @param {any} [readingWidth] */
+/** @param {string | number | null} readingWidth */
 export function applyReadingWidth(readingWidth) {
   document.documentElement.style.setProperty('--reading-max-width', readingWidth ? readingWidth + 'ch' : 'none');
 }

@@ -256,8 +256,8 @@ function render2dSvg(data, options) {
   const xMax = Number.isFinite(options.xmax) ? options.xmax : xMaxData;
   const xRange = xMax - xMin || 1;
   /**
-   * @param {any} [row]
-   * @param {any} [i]
+   * @param {any} row
+   * @param {number} i
    */
   const xToPx = (row, i) => margin.left + (indNumeric ? ((Number(row.ind) - xMin) / xRange) * plotW : (i + 0.5) * (plotW / data.rows.length));
 
@@ -378,10 +378,10 @@ function renderRadarSvg(data, options) {
   const range = max - min || 1;
 
   const n = data.rows.length;
-  /** @param {any} [i] */
+  /** @param {number} i */
   const angleFor = (i) => -Math.PI / 2 + (2 * Math.PI * i) / n;
   /**
-   * @param {any} [i]
+   * @param {number} i
    * @param {any} [value]
    */
   const pointFor = (i, value) => {

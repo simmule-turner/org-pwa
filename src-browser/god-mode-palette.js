@@ -65,7 +65,7 @@ export function globalCycleFold() {
  *  (for code execution) a capability this app deliberately doesn't
  *  implement at all (see the README's own Known limitations). Told
  *  honestly rather than silently doing nothing or approximating
- * @param {any} [reason]
+ * @param {string} reason
  *  something misleading. */
 export function godModeNotSupported(reason) {
   setStatus(`God-mode: ${reason}`);
@@ -454,11 +454,11 @@ export function paletteCommandList() {
   };
   const HEAD = ['doc', 'heading', 'writable'];
   const runningClock = () => findHeadingWithRunningClock(S.state.doc);
-  /** @param {any} [format] */
+  /** @param {string} format */
   const exportAs = (format) => () => performExport(format, null);
   // More > Import opened on one format's panel, the way the C-c C-e chord opens More > Export (moreBtn toggles the menu, and the
   // palette has closed it by the time a command runs)
-  /** @param {any} [format] */
+  /** @param {string} format */
   const openImport = (format) => {
     moreBtn.click();
     S.moreMenuStep = 'import';
@@ -805,7 +805,7 @@ async function paletteDynamicCommands() {
  *  in-progress sequence should keep waiting for more input or be
  *  treated as a dead end. An empty chordString (nothing committed
  *  yet, e.g. mid-"c c" or right after "m"/"g") always counts as a
- * @param {any} [chordString]
+ * @param {string} chordString
  *  valid prefix -- there's always more possible input at that point. */
 export function isValidGodModePrefix(chordString) {
   if (chordString === '') return true;
@@ -880,8 +880,8 @@ export function enterGodMode() {
  * Does NOT check for a bare modifier keypress (Shift/Control/Alt/Meta
  * alone) either -- callers filter that out first, since it's specific
  * to real keydown events and never arises from a button tap.
- * @param {any} [rawKey]
- * @param {any} [shiftKey]
+ * @param {string} rawKey
+ * @param {boolean} shiftKey
  */
 export function dispatchGodModeKeystroke(rawKey, shiftKey) {
   S.godModeLastCommand = null; // any new keystroke starts over: the minibuffer shows the sequence being built, not the last result
@@ -959,7 +959,7 @@ export function dispatchGodModeKeystroke(rawKey, shiftKey) {
  *  SAME non-colliding key set the panel is currently showing, not a
  *  looser "any known key" match -- a colliding key was never shown as
  *  a hotkey in the first place and isn't accepted here either, click/
- * @param {any} [key]
+ * @param {string} key
  *  tap only, matching the explicit design decision for this feature. */
 export function tryDispatchPanelHotkey(key) {
   if (S.captureOpen && S.captureOpenedViaGodMode && !S.capturePromptTemplate) {

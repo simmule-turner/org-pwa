@@ -27,7 +27,7 @@ function toLf(text) {
 /**
  * "\n" text in `eol`'s style.
  * @param {string} text
- * @param {any} [eol]
+ * @param {string} eol
  */
 function fromLf(text, eol) {
   return eol === '\r\n' ? text.replace(/\n/g, '\r\n') : text;

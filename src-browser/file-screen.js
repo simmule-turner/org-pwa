@@ -215,8 +215,8 @@ function listBody(f) {
 
 /**
  * The path or name field, built once per open so typing survives redraws.
- * @param {any} [f]
- * @param {any} [which]
+ * @param {any} f
+ * @param {string} which
  */
 function field(f, which) {
   if (f[which]) return f[which];

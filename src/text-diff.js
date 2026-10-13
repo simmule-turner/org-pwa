@@ -23,8 +23,8 @@ import { diffHunksOfLines } from './merge3.js';
  * 'removed' lines are only in oldText, 'added' lines are only in
  * newText, matching a standard unified-diff reading order (a change's
  * removed lines come before its added lines).
- * @param {any} [oldText]
- * @param {any} [newText]
+ * @param {string} oldText
+ * @param {string} newText
  */
 export function diffLines(oldText, newText) {
   const oldLines = oldText.split('\n');

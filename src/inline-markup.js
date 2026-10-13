@@ -85,7 +85,7 @@ const DOLLAR_VALID_FOLLOW_RE = /[\s.,;:!?([{)\]}'"]/;
  *      class the regex actually checks -- this app excludes it
  *      explicitly instead, to get the same observable behavior
  * @param {string} text
- * @param {any} [pos]
+ * @param {number} pos
  *      without needing Emacs's own syntax table to fall back on */
 function matchLatexFragmentAt(text, pos) {
   const remaining = text.slice(pos);
@@ -130,7 +130,7 @@ const LATEX_PLACEHOLDER_START = '\uE000';
 const LATEX_PLACEHOLDER_END = '\uE001';
 const LATEX_PLACEHOLDER_RE = /^\uE000(\d+)\uE001/;
 
-/** @param {any} [index] */
+/** @param {number} index */
 function makeLatexPlaceholder(index) {
   return LATEX_PLACEHOLDER_START + index + LATEX_PLACEHOLDER_END;
 }
@@ -227,7 +227,7 @@ const FOOTNOTE_START_RE = /^\[fn:([A-Za-z0-9_-]*)/;
 
 /**
  * @param {string} text
- * @param {any} [pos]
+ * @param {number} pos
  */
 function matchFootnoteAt(text, pos) {
   const m = FOOTNOTE_START_RE.exec(text.slice(pos));
@@ -310,8 +310,8 @@ const BARE_SCRIPT_RE = /^[+-]?[A-Za-z0-9]+/;
  * every mode, matching how `a_b` needs the `a` immediately before it.
  * Returns { kind, content, length } or null.
  * @param {string} text
- * @param {any} [pos]
- * @param {any} [mode]
+ * @param {number} pos
+ * @param {string} mode
  */
 function matchScriptAt(text, pos, mode) {
   if (mode === 'nil') return null;
@@ -334,7 +334,7 @@ function matchScriptAt(text, pos, mode) {
   return { kind, content: bareMatch[0], length: 1 + bareMatch[0].length };
 }
 
-/** @param {any} [ch] */
+/** @param {string} ch */
 function isEmphasisMarker(ch) {
   return Object.prototype.hasOwnProperty.call(EMPHASIS_KIND, ch);
 }
@@ -343,7 +343,7 @@ function isEmphasisMarker(ch) {
  * Attempts to match a complete emphasis span (open marker ... close marker)
  * starting exactly at `pos`. Returns { marker, content, length } or null.
  * @param {string} text
- * @param {any} [pos]
+ * @param {number} pos
  */
 function matchEmphasisAt(text, pos) {
   const marker = text[pos];

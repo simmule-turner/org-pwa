@@ -91,8 +91,8 @@ function applyStartupVisibility(doc, startupConfig, archiveVisibility = 'archive
   const showLevels = showLevelsDepth(startupConfig.visibility);
 
   /**
-   * @param {any} [nodes]
-   * @param {any} [depth]
+   * @param {any} nodes
+   * @param {number} depth
    */
   function walk(nodes, depth) {
     for (const node of nodes) {

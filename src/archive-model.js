@@ -48,8 +48,8 @@ const ARCHIVE_TAG = 'ARCHIVE';
  *  way), or null if none exists. Every property read/write in this
  *  app goes through this (or getProperty below) rather than a direct
  *  `properties[key]` lookup, so a differently-cased existing property
- * @param {any} [properties]
- * @param {any} [key]
+ * @param {Record<string, string>} properties
+ * @param {string} key
  *  is never silently missed or duplicated. */
 function findPropertyKey(properties, key) {
   if (key in properties) return key; // fast path: exact match, the overwhelmingly common case
@@ -65,7 +65,7 @@ function findPropertyKey(properties, key) {
  *  real org is concerned; this returns undefined if neither is set,
  *  matching a direct property-object lookup's own undefined-for-
  * @param {Heading} heading
- * @param {any} [key]
+ * @param {string} key
  *  missing convention. */
 function getProperty(heading, key) {
   if (!heading.properties) return undefined;
@@ -75,8 +75,8 @@ function getProperty(heading, key) {
 
 /**
  * @param {Heading} heading
- * @param {any} [key]
- * @param {any} [value]
+ * @param {string} key
+ * @param {string} value
  */
 function setProperty(heading, key, value) {
   const existingKey = findPropertyKey(heading.properties, key);
@@ -100,7 +100,7 @@ function setProperty(heading, key, value) {
 
 /**
  * @param {Heading} heading
- * @param {any} [key]
+ * @param {string} key
  */
 function deleteProperty(heading, key) {
   const existingKey = findPropertyKey(heading.properties, key);
@@ -192,8 +192,8 @@ function cloneHeading(heading) {
 
 /**
  * Shifts a subtree's level (and all descendants') by newLevel - node.level.
- * @param {any} [node]
- * @param {any} [newLevel]
+ * @param {any} node
+ * @param {number} newLevel
  */
 function shiftLevels(node, newLevel) {
   const delta = newLevel - node.level;
@@ -217,7 +217,7 @@ function shiftLevels(node, newLevel) {
  *  result is genuinely neither an active nor an inactive org
  *  timestamp, just plain text that happens to look like one. */
 function formatOrgTimestamp(date = new Date()) {
-  /** @param {any} [n] */
+  /** @param {number} n */
   const pad = (n) => String(n).padStart(2, '0');
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const y = date.getFullYear();
@@ -364,8 +364,8 @@ function extractForArchive(sourceDoc, heading, sourceFilePath, opts = /** @type 
  * entry, shifting its level (and its descendants') to level 1 so nesting
  * inside the original document doesn't leak into the archive file's own
  * heading depth.
- * @param {any} [archiveDoc]
- * @param {any} [extractedHeading]
+ * @param {any} archiveDoc
+ * @param {Heading} extractedHeading
  */
 function appendToArchive(archiveDoc, extractedHeading) {
   shiftLevels(extractedHeading, 1);
@@ -455,7 +455,7 @@ const DEFAULT_ARCHIVE_LOCATION = '%s_archive::';
  * "archive at that file's top level." A location with no "::" at all
  * is treated as filePart-only with an empty headlinePart, rather than
  * throwing on malformed input.
- * @param {any} [location]
+ * @param {string} location
  */
 function parseArchiveLocation(location) {
   const idx = String(location).indexOf('::');
@@ -481,7 +481,7 @@ function parseArchiveLocation(location) {
  * directory to expand, so a location like "~/org/archive.org" is
  * passed through as-is and needs to already be a valid id/path for
  * whichever storage backend (local/GitHub/WebDAV) is actually active.
- * @param {any} [filePart]
+ * @param {string} filePart
  * @param {any} [currentFileId]
  */
 function resolveArchiveFileId(filePart, currentFileId) {
@@ -522,7 +522,7 @@ function getArchiveLocation(doc, heading) {
  *  imports FROM this file (findContainer/findAncestorPath/shiftLevels),
  *  and importing back would create a circular dependency between the
  * @param {string} title
- * @param {any} [level]
+ * @param {number} level
  *  two modules. */
 function blankArchiveTargetHeading(title, level) {
   return {
@@ -568,9 +568,9 @@ function blankArchiveTargetHeading(title, level) {
  * is the special, unrelated "datetree/" prefix, a wholly different
  * date-tree mechanism); this only ever targets a single named
  * heading, at whatever single level its own asterisks specify.
- * @param {any} [targetDoc]
- * @param {any} [extractedHeading]
- * @param {any} [headlinePart]
+ * @param {any} targetDoc
+ * @param {Heading} extractedHeading
+ * @param {string} headlinePart
  */
 function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart) {
   const trimmedPath = String(headlinePart || '').trim();
@@ -596,7 +596,7 @@ function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart) {
  *  exactly `title` -- insertAtArchiveLocation's own helper, since a
  *  level-2+ archive target could itself be nested anywhere, not
  * @param {Doc} doc
- * @param {any} level
+ * @param {number} level
  * @param {string} title
  *  necessarily at the document's own top level. */
 function findHeadingAtLevel(doc, level, title) {

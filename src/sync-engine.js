@@ -62,7 +62,7 @@ async function setSyncMeta(kvAdapter, documentId, meta) {
  * A minimal, dependency-free hash for conflict detection — this only needs
  * to detect "did the content change since we last synced", not resist
  * tampering, so a fast non-cryptographic hash is the right tool.
- * @param {any} [content]
+ * @param {string} content
  */
 function contentHash(content) {
   let h = 0x811c9dc5;

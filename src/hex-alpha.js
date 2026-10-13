@@ -43,8 +43,8 @@ function splitHexAlpha(hex) {
  * and it keeps a never-touched-the-opacity-slider color visually
  * identical to how it would have been typed by hand), 8-digit
  * otherwise.
- * @param {any} [rgb]
- * @param {any} [alpha]
+ * @param {string} rgb
+ * @param {number} alpha
  */
 function combineHexAlpha(rgb, alpha) {
   const rgbMatch = /^#([0-9a-fA-F]{6})$/.exec(String(rgb || '').trim());

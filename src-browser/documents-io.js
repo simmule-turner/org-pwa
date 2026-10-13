@@ -41,7 +41,7 @@ import { folderAvailable } from './local-folder.js';
 import { platform } from './platform.js';
 import { promptText } from './dialogs.js';
 
-/** @param {any} [fallback] */
+/** @param {string} fallback */
 export function suggestedSaveAsName(fallback) {
   return S.state.documentId && S.state.documentId.startsWith(UNSAVED_DOCUMENT_ID) ? fallback : S.state.documentId || fallback;
 }
@@ -180,7 +180,7 @@ export async function openFromImport() {
  *  afterDocumentLoaded, same as before this existed as a shared
  *  function), `label` is the human-readable name used in status
  * @param {string} path
- * @param {any} kind
+ * @param {string} kind
  * @param {any} diskAdapter
  * @param {string} label
  *  messages ("GitHub" / "WebDAV"). */

@@ -50,7 +50,7 @@ let footnoteCounterOdt = 0;
 /** @type {any[]} */ let sectionNumbersOdt = [];
 let numberingEnabledOdt = true;
 
-/** @param {any} [level] */
+/** @param {number} level */
 function nextSectionNumberOdt(level) {
   const newNumbers = sectionNumbersOdt.slice(0, level);
   for (let i = 0; i < level - 1; i++) {
@@ -206,8 +206,8 @@ function renderParagraphOdt(node) {
 }
 
 /**
- * @param {any} [items]
- * @param {any} [listStyleName]
+ * @param {any} items
+ * @param {string} listStyleName
  */
 function renderListItemsOdt(items, listStyleName) {
   const rows = items.map((/** @type {any} */ item) => {
@@ -306,7 +306,7 @@ function renderPlanningOdt(planning) {
  *  HTML's h1-h6 does, but this app's own Heading_20_N paragraph
  *  styles (defined in stylesXmlOdt below) only go up to 6 -- clamp
  *  the same way export-html.js does, for the same "don't reference a
- * @param {any} [level]
+ * @param {number} level
  *  style that was never defined" reason. */
 function clampHeadingLevelOdt(level) {
   return Math.min(6, Math.max(1, level));
@@ -314,8 +314,8 @@ function clampHeadingLevelOdt(level) {
 
 /**
  * @param {Heading} heading
- * @param {any} [level]
- * @param {any} [doneKeywords]
+ * @param {number} level
+ * @param {string | string[]} doneKeywords
  */
 function renderHeadingLineOdt(heading, level, doneKeywords) {
   const clamped = clampHeadingLevelOdt(level);
@@ -339,7 +339,7 @@ function renderHeadingLineOdt(heading, level, doneKeywords) {
 
 /**
  * @param {Heading} heading
- * @param {any} [levelOffset]
+ * @param {number} levelOffset
  * @param {any} [doneKeywords]
  * @param {any} [out]
  */
@@ -427,8 +427,8 @@ function stylesXml() {
 
 /**
  * @param {string} title
- * @param {any} [author]
- * @param {any} [date]
+ * @param {string | null} author
+ * @param {string | null} date
  */
 function metaXml(title, author, date) {
   return (
@@ -445,7 +445,7 @@ function metaXml(title, author, date) {
   );
 }
 
-/** @param {any} [bodyXml] */
+/** @param {string} bodyXml */
 function contentXml(bodyXml) {
   return (
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -472,8 +472,8 @@ function contentXml(bodyXml) {
 /** Builds one level of the ToC's own nested list -- a real ODF
  *  <text:list>, linking each entry to the same bookmark
  * @param {Heading[]} headings
- * @param {any} [level]
- * @param {any} [maxDepth]
+ * @param {number} level
+ * @param {number} maxDepth
  * @param {any} [numberingEnabled]
  * @param {any} [numbers]
  *  renderHeadingLineOdt already creates for that heading.

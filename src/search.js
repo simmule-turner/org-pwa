@@ -58,7 +58,7 @@ const SNIPPET_RADIUS = 40;
  *  RegExp. Throws a plain Error with a clear message on an invalid
  *  regex pattern, rather than silently matching nothing — an unparsable
  *  pattern and "no results" are different situations a caller should be
- * @param {any} [query]
+ * @param {string} query
  * @param {any} [useRegex]
  *  able to tell apart and surface differently. */
 function buildMatcher(query, useRegex) {
@@ -91,7 +91,7 @@ function buildMatcher(query, useRegex) {
  *  match, matching String.indexOf's own -1 convention for the index
  *  half.
  * @param {string} text
- * @param {any} [query]
+ * @param {string} query
  * @param {any} [useRegex]
  */
 function findMatchIndex(text, query, useRegex) {
@@ -205,7 +205,7 @@ const KV_TOKEN_RE = /^([+-]?)([A-Za-z_][\w-]*):(.+)$/; // optional leading sign 
  * "tag" (an unusual choice; org itself expresses tags via a heading's
  * own `:tag1:tag2:` suffix, never a drawer property) isn't reachable
  * via `tag:value`, the one non-additive edge of this design.
- * @param {any} [query]
+ * @param {string} query
  */
 function parseFilterQuery(query) {
   const tokens = query.split(/\s+/).filter(Boolean);
@@ -293,8 +293,8 @@ function effectiveTags(heading, ancestors, useInheritance) {
  *  nothing in the chain defines it. Key lookup is case-insensitive,
  *  matching how property filters elsewhere in this app already work.
  * @param {Heading} heading
- * @param {any} [ancestors]
- * @param {any} [key]
+ * @param {any} ancestors
+ * @param {string} key
  * @param {any} [useInheritance]
  */
 function effectivePropertyValue(heading, ancestors, key, useInheritance) {

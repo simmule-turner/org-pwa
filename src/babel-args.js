@@ -59,7 +59,7 @@ export function splitHeaderArgs(text) {
 
 /**
  * The value as Org reads it: a double-quoted string loses its quotes.
- * @param {any} [raw]
+ * @param {string} raw
  */
 export function readHeaderValue(raw) {
   const v = String(raw || '').trim();
@@ -75,7 +75,7 @@ export function readHeaderValue(raw) {
 
 /**
  * One :var value ("a=1 b=2") as separate "name=value" strings.
- * @param {any} [value]
+ * @param {string} value
  */
 function splitVars(value) {
   const tokens = [];
@@ -101,9 +101,9 @@ function splitVars(value) {
 }
 
 /**
- * @param {any} [current]
- * @param {any} [incoming]
- * @param {any} [groups]
+ * @param {any} current
+ * @param {string[]} incoming
+ * @param {string[][]} groups
  */
 function mergeWords(current, incoming, groups) {
   let out = current.slice();
@@ -116,7 +116,7 @@ function mergeWords(current, incoming, groups) {
 
 /** Layers of [name, value] pairs (earlier layers lose) -> { name: value, var: [...] } with Org's merge rules:
  *  :results and :exports merge word by word within their exclusive groups, :var is kept per variable name
- * @param {any} [layers]
+ * @param {string[][][]} layers
  *  (a later one replaces the earlier and moves to the end), anything else is replaced. */
 export function mergeHeaderArgs(layers) {
   const out = {};
@@ -143,8 +143,8 @@ export function mergeHeaderArgs(layers) {
 }
 
 /**
- * @param {any} [a]
- * @param {any} [b]
+ * @param {string} a
+ * @param {string} b
  */
 const keyEq = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
@@ -158,8 +158,8 @@ export function inheritedProperty(doc, ancestors, name) {
   /** @type {string | null} */
   let value = null;
   /**
-   * @param {any} [plain]
-   * @param {any} [plus]
+   * @param {string | null} plain
+   * @param {string | null} plus
    */
   const apply = (plain, plus) => {
     if (plain !== null) value = plain;

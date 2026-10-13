@@ -9,7 +9,7 @@ import { platform } from './platform.js';
 /**
  * @param {string} name
  * @param {any} [content]
- * @param {any} [mimeType]
+ * @param {string | undefined} [mimeType]
  */
 export async function saveOut(name, content, mimeType) {
   try {

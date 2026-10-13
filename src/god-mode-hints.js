@@ -32,7 +32,7 @@ const CANDIDATES = [
 
 /**
  * Indexes a set of bound chord strings (like "C-c C-t") for the lookups below.
- * @param {any} [chords]
+ * @param {string[]} chords
  */
 function makeChordIndex(chords) {
   const complete = new Set(chords);

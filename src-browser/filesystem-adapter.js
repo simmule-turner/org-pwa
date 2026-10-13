@@ -27,8 +27,8 @@ function handleKey(fileId) {
  *  this site to view and copy ..." prompt on screen, so it is skipped when
  *  `prompt` is false: a background check must not interrupt the person with a
  *  prompt they didn't ask for (tapping a tab counts as a user gesture, so the
- * @param {any} [handle]
- * @param {any} [mode]
+ * @param {any} handle
+ * @param {string} mode
  *  browser would show it every time). */
 async function verifyPermission(handle, mode, { prompt = true } = {}) {
   const opts = { mode };

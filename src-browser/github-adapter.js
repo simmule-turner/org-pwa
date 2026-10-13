@@ -39,7 +39,7 @@ function utf8ToBase64(str) {
   return btoa(binary);
 }
 
-/** @param {any} [base64] */
+/** @param {string} base64 */
 function base64ToUtf8(base64) {
   const binary = atob(base64.replace(/\n/g, ''));
   const bytes = new Uint8Array(binary.length);
@@ -90,7 +90,7 @@ function requireConfig(getConfig) {
   return config;
 }
 
-/** @param {any} [res] */
+/** @param {Response} res */
 async function githubErrorMessage(res) {
   let detail = '';
   try {
@@ -187,7 +187,7 @@ export function createGithubAdapter(getConfig) {
 
   /**
    * @param {string} fileId
-   * @param {any} [content]
+   * @param {string} content
    */
   async function writeImpl(fileId, content) {
     const config = requireConfig(getConfig);

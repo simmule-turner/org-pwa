@@ -22,8 +22,8 @@ export function previewKind(mime) {
 
 /**
  * @param {string} filename
- * @param {any} [mime]
- * @param {any} [bytes]
+ * @param {any} mime
+ * @param {Uint8Array<ArrayBuffer>} bytes
  */
 export function showAttachmentPreview(filename, mime, bytes) {
   const kind = previewKind(mime);

@@ -22,7 +22,7 @@ function extensionMain() {
   const waiting = new Map();
   let lastRid = 0;
   /**
-   * @param {any} [method]
+   * @param {string} method
    * @param {any} [args]
    */
   const rpc = (method, args) =>
@@ -95,7 +95,7 @@ function extensionMain() {
           commands.set(id, { label: label.trim().slice(0, 80), fn });
         },
         /**
-         * @param {any} [event]
+         * @param {string} event
          * @param {any} [fn]
          */
         on(event, fn) {
@@ -329,8 +329,8 @@ export async function startExtension(/** @type {any} */ { code, variables = {}, 
 
   /**
    * A timer that does not run while the script waits for the page (network, position), up to a hard limit.
-   * @param {any} [timeoutMs]
-   * @param {any} [onTimeout]
+   * @param {any} timeoutMs
+   * @param {() => void} onTimeout
    */
   const deadline = (timeoutMs, onTimeout) => {
     const started = Date.now();

@@ -132,8 +132,8 @@ function countBlockOnlyMatches(doc, re) {
  * subsequent matches within the same node, and safely isolated from
  * matches in every other node (each has its own, independent text).
  * @param {Doc} doc
- * @param {any} [re]
- * @param {any} [replacement]
+ * @param {RegExp} re
+ * @param {string} replacement
  */
 function createQueryReplace(doc, re, replacement) {
   let targetCount = collectReplaceTargets(doc).length;
@@ -175,8 +175,8 @@ function createQueryReplace(doc, re, replacement) {
   }
 
   /**
-   * @param {any} [target]
-   * @param {any} [match]
+   * @param {any} target
+   * @param {RegExpExecArray} match
    */
   function applyReplacement(target, match) {
     const text = target.getText();
@@ -242,8 +242,8 @@ function createQueryReplace(doc, re, replacement) {
  * back into wherever it came from once the session ends, since this
  * function has no document (or textarea) of its own to write into.
  * @param {string} text
- * @param {any} [re]
- * @param {any} [replacement]
+ * @param {RegExp} re
+ * @param {string} replacement
  */
 function createTextQueryReplace(text, re, replacement) {
   let currentText = text;
@@ -274,7 +274,7 @@ function createTextQueryReplace(text, re, replacement) {
     return pendingMatch || findNext();
   }
 
-  /** @param {any} [match] */
+  /** @param {RegExpExecArray} match */
   function applyReplacement(match) {
     const replaced = replacement.replace(/\$(\d)/g, (/** @type {any} */ _, /** @type {any} */ n) => match[n] ?? '');
     currentText = currentText.slice(0, match.index) + replaced + currentText.slice(match.index + match[0].length);

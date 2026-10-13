@@ -57,7 +57,7 @@ function encodePath(path) {
  *  code is one byte, the standard technique for this conversion in a
  *  browser context; works identically under Node's own global btoa,
  *  which matches the same web standard, so this is testable directly
- * @param {any} [buffer]
+ * @param {ArrayBuffer} buffer
  *  under node:test too). */
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
@@ -68,7 +68,7 @@ function arrayBufferToBase64(buffer) {
 
 /** The inverse of arrayBufferToBase64 above -- atob (the standard,
  *  browser/Node-both-support-it decode) back to a binary string, then
- * @param {any} [base64]
+ * @param {string} base64
  *  one byte per character into a real Uint8Array. */
 function base64ToArrayBuffer(base64) {
   const binary = atob(base64);
@@ -115,7 +115,7 @@ async function fetchWithHint(url, opts) {
   }
 }
 
-/** @param {any} [res] */
+/** @param {Response} res */
 function webdavErrorMessage(res) {
   if (res.status === 401) return 'WebDAV server rejected the credentials \u2014 check them in Settings.';
   if (res.status === 403) return 'WebDAV access forbidden \u2014 check the account/app-password permissions.';
@@ -182,7 +182,7 @@ async function ensureIntermediateDirectories(config, path) {
  * prefix-agnostic tag matching, since the WebDAV spec itself doesn't
  * mandate a specific prefix, only that these element LOCAL names exist
  * in the DAV: namespace.
- * @param {any} [xml]
+ * @param {string} xml
  */
 function parsePropfindResponse(xml) {
   const responseBlocks = xml.match(/<[\w-]*:?response[^>]*>[\s\S]*?<\/[\w-]*:?response>/gi) || [];

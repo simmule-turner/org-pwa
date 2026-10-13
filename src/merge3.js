@@ -139,7 +139,7 @@ function myersMatches(a, b) {
   let y = m;
   for (let d = foundD; d >= 0; d--) {
     const slice = trace[d];
-    /** @param {any} [k] */
+    /** @param {number} k */
     const at = (k) => slice[k + d + 1];
     const k = x - y;
     let prevK;
@@ -160,10 +160,10 @@ function myersMatches(a, b) {
 
 /** `base` lines [start, end) with the given hunks applied. Each hunk's
  *  `lines` are its replacement text; hunks must be in order and lie
- * @param {any} [base]
- * @param {any} [hunks]
- * @param {any} [start]
- * @param {any} [end]
+ * @param {string[]} base
+ * @param {any} hunks
+ * @param {any} start
+ * @param {number} end
  *  within [start, end] (an insertion sitting exactly at `end` counts). */
 function applyHunks(base, hunks, start, end) {
   const out = [];
@@ -188,8 +188,8 @@ function sameLines(x, y) {
 }
 
 /**
- * @param {any} [hunks]
- * @param {any} [sideLines]
+ * @param {any} hunks
+ * @param {string[]} sideLines
  */
 function withLines(hunks, sideLines) {
   return hunks.map((/** @type {any} */ h) => ({ ...h, lines: sideLines.slice(h.bStart, h.bEnd) }));
@@ -209,9 +209,9 @@ function withLines(hunks, sideLines) {
  *
  * `stats` counts change groups: made only by mine, only by theirs, by
  * both identically, or by both differently (the conflicts).
- * @param {any} [baseText]
- * @param {any} [mineText]
- * @param {any} [theirsText]
+ * @param {string} baseText
+ * @param {string} mineText
+ * @param {string} theirsText
  */
 function merge3(baseText, mineText, theirsText) {
   const base = splitLines(baseText);
@@ -302,8 +302,8 @@ function merge3(baseText, mineText, theirsText) {
  * between `mineText` and `theirsText` becomes a conflict with no `base`.
  * Falls back to one whole-file conflict if the two differ too much to
  * diff.
- * @param {any} [mineText]
- * @param {any} [theirsText]
+ * @param {string} mineText
+ * @param {string} theirsText
  */
 function diff2Segments(mineText, theirsText) {
   const mine = splitLines(mineText);
@@ -362,9 +362,9 @@ function resolveSegments(segments, choices) {
  *       some region needs a person's decision. `hasBase` is false when no
  *       common ancestor was available, in which case every difference is
  *       shown (see diff2Segments).
- * @param {any} [mine]
- * @param {any} [theirs]
- * @param {any} [base]
+ * @param {string} mine
+ * @param {any} theirs
+ * @param {string} base
  */
 function planConflict(mine, theirs, base) {
   if (mine === theirs) return { kind: 'same' };

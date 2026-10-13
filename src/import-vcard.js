@@ -86,7 +86,7 @@ function unescapeGoogleColon(text) {
  *  that would otherwise be mistaken for structural delimiters, most
  *  relevantly a LABEL="..." parameter whose own text might contain
  * @param {string} text
- * @param {any} [delimiter]
+ * @param {string} delimiter
  *  either. */
 function splitRespectingQuotes(text, delimiter) {
   const parts = [];
@@ -198,7 +198,7 @@ function vcardPhotoMimeType(typeParam) {
   return /** @type {any} */ (KNOWN)[bareFormat] || 'image/jpeg';
 }
 
-/** @param {any} [rawValue] */
+/** @param {string} rawValue */
 function interpretABLabel(rawValue) {
   const trimmed = String(rawValue || '').trim();
   if (!trimmed || AB_LABEL_EMPTY_RE.test(trimmed)) return null;
@@ -484,7 +484,7 @@ export function parseVcards(text, opts = /** @type {any} */ ({})) {
  *  per RFC 6350's own date value type). Returns null for anything
  *  else (a text-form birthday, or a malformed value) rather than
  *  guessing -- an org date property with the wrong value is worse
- * @param {any} [raw]
+ * @param {string} raw
  *  than one left out entirely. */
 function normalizeBday(raw) {
   const dashed = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
@@ -766,7 +766,7 @@ function buildTreeOrgFromContact(contact) {
  *  headings are conventionally separated. Returns an empty string for
  *  a file with no valid (FN-bearing) contacts at all, the same
  *  "nothing to do, not an error" convention exportToVcard's own empty
- * @param {any} [vcardText]
+ * @param {string} vcardText
  *  case already uses. */
 export function importVcardsAsOrgText(vcardText, opts = /** @type {any} */ ({})) {
   const { style = 'tree', cleanMode = true, onUnmappedProperty = null, onEmbeddedPhotoImported = null } = opts;

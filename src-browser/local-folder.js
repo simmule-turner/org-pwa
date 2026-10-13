@@ -21,7 +21,7 @@ function textToBase64(text) {
   return btoa(binary);
 }
 
-/** @param {any} [base64] */
+/** @param {string} base64 */
 function base64ToText(base64) {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
@@ -40,7 +40,7 @@ export async function readFolderText(path) {
 /**
  * Writes `content` to `path` in the folder, creating it (and its folders) if needed.
  * @param {string} path
- * @param {any} [content]
+ * @param {string} content
  */
 export async function writeFolderText(path, content) {
   await platform.attachments.adapter.writeBinary(path, textToBase64(content));

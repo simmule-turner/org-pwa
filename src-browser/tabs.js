@@ -91,7 +91,7 @@ export function applySessionSnapshotValues(snap) {
 /** Writes the live globals' current values into documentSessions'
  *  entry for `tabId` (creating it first if this is a brand new tab).
  *  Called before switching away from a tab, and periodically while
- * @param {any} [tabId]
+ * @param {null} tabId
  *  editing it, so a session object is never more than one edit stale. */
 export function saveSessionSnapshot(tabId) {
   if (tabId == null) return;

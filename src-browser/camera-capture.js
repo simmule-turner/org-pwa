@@ -9,7 +9,7 @@ import { setStatus } from './editing.js';
 import { render } from './render.js';
 import { keepOverlayInVisibleViewport, menuButton } from './ui-widgets.js';
 
-/** @param {any} [blob] */
+/** @param {Blob} blob */
 const blobToBase64 = (blob) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -34,7 +34,7 @@ export async function cameraAvailable() {
 
 /**
  * Opens the camera panel for a 'photo' or a 'video'. Asks for the camera (and the microphone, for a video) first.
- * @param {any} [kind]
+ * @param {string} kind
  * @param {any} [onAttach]
  */
 export async function openCameraPanel(kind, onAttach) {

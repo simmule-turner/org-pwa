@@ -28,7 +28,7 @@ function splitAffiliated(lines) {
 }
 
 /** `:width 300 :alt A cat :align center` -> { width: '300', alt: 'A cat', align: 'center' }.
- * @param {any} [value]
+ * @param {string} value
  *  An option's value runs up to the next `:option`. */
 function parseAttrOptions(value) {
   const options = {};
@@ -44,7 +44,7 @@ function parseAttrOptions(value) {
 }
 
 /** A width or height a browser can use, or null: a bare number is pixels, and only
- * @param {any} [value]
+ * @param {null} value
  *  plain lengths are accepted (never an arbitrary string put into a style). */
 function cssLength(value) {
   if (value == null) return null;

@@ -54,7 +54,7 @@ const RESULTS_WORDS = new Set(['value', 'output', 'table', 'vector', 'list', 'sc
 
 /**
  * `:results` words -> { collect, format, silent, unsupported }.
- * @param {any} [value]
+ * @param {string} value
  */
 export function parseResultsSpec(value) {
   const spec = { collect: 'value', format: /** @type {string | null} */ (null), silent: false, unsupported: /** @type {string | null} */ (null) };
@@ -209,7 +209,7 @@ export function formatResult(value, spec = parseResultsSpec(''), { wrap = '' } =
 
 /**
  * An error as `#+RESULTS:` lines.
- * @param {any} [message]
+ * @param {string} message
  */
 export function formatError(message, line = null) {
   return fixedWidth('Error: ' + message + (line ? ` (line ${line})` : ''));
@@ -220,7 +220,7 @@ export const RESULTS_LINE_RE = /^\s*#\+RESULTS(\[[^\]]*\])?:/i;
 /**
  * Where the existing results body ends (exclusive), for a `#+RESULTS:` line at `at`.
  * @param {string[]} lines
- * @param {any} [at]
+ * @param {number} at
  */
 export function resultsEnd(lines, at) {
   let k = at + 1;
@@ -239,13 +239,13 @@ export function resultsEnd(lines, at) {
 /** The edit that puts `resultLines` under a block: `{ start, removeCount, insert }`
  *  for splicing into the heading's body lines. An existing `#+RESULTS:` after the
  *  block (blank lines allowed between) is replaced; otherwise a new one is added
- * @param {any} [bodyLines]
- * @param {any} [block]
- * @param {any} [resultLines]
+ * @param {string[]} bodyLines
+ * @param {any} block
+ * @param {string[]} resultLines
  *  below the block, with a blank line either side as Org does. `hash` goes into the results line (`#+RESULTS[hash]:`) for `:cache yes`. */
 export function placeResults(bodyLines, block, resultLines, { hash = /** @type {string | null} */ (null) } = {}) {
   const indent = (/^(\s*)/.exec(bodyLines[block.lineIndex]) || ['', ''])[1];
-  /** @param {any} [l] */
+  /** @param {string} l */
   const pad = (l) => (l === '' ? l : indent + l);
   const blockEnd = block.lineIndex + block.lineCount;
   let j = blockEnd;
@@ -261,7 +261,7 @@ export function placeResults(bodyLines, block, resultLines, { hash = /** @type {
 
 /**
  * The hash in the `#+RESULTS[hash]:` line that follows the block, or null.
- * @param {any} [bodyLines]
+ * @param {string[]} bodyLines
  * @param {any} [block]
  */
 export function existingResultsHash(bodyLines, block) {

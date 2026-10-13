@@ -77,7 +77,7 @@ function attachmentDir(id, documentId) {
 }
 
 /** A DIR property value as a folder path, or null if it cannot be one. Relative to the document's own folder; a leading "/" means
- * @param {any} value
+ * @param {string | undefined} value
  * @param {string} documentId
  *  the root of the storage instead. Empty values, backslashes and ".." parts are refused, so a DIR can never point outside. */
 function attachmentDirFromProperty(value, documentId) {
@@ -111,12 +111,12 @@ const CAPTURE_EXTENSIONS = {
 };
 
 /** A name for a photo or video just taken: `photo-2026-10-08-221500.jpg`, with the extension the camera's own file had, else the
- * @param {any} [kind]
- * @param {any} [pickedName]
- * @param {any} [pickedType]
+ * @param {string} kind
+ * @param {string} pickedName
+ * @param {string} pickedType
  *  one its type implies (jpg for a photo, mp4 for a video). */
 function generateCaptureFilename(kind, pickedName, pickedType, now = new Date()) {
-  /** @param {any} [n] */
+  /** @param {number} n */
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
   const own = /\.([a-z0-9]{1,5})$/i.exec(String(pickedName || ''));
@@ -126,8 +126,8 @@ function generateCaptureFilename(kind, pickedName, pickedType, now = new Date())
 }
 
 /** Whether `a` should offer the in-app camera: on a desktop-class device (a Chromebook, a laptop), whose file chooser has no
- * @param {any} [userAgent]
- * @param {any} [maxTouchPoints]
+ * @param {string} userAgent
+ * @param {number} maxTouchPoints
  *  camera in it. A phone or tablet has the camera in its own chooser. An iPad that calls itself a Mac is told by its touch. */
 function prefersInAppCamera(userAgent, maxTouchPoints) {
   const ua = String(userAgent || '');
@@ -140,8 +140,8 @@ const MB = 1024 * 1024;
 
 /** Whether a file is too big to attach, or big enough to confirm first. `base64Length` is the encoded size; `backend` is the
  *  storage kind. GitHub's contents API takes up to 100MB; anything over 25MB (a long video) is worth a confirmation anywhere,
- * @param {any} [base64Length]
- * @param {any} [backend]
+ * @param {number} base64Length
+ * @param {string} backend
  *  since it is held in memory and uploaded in one go. Returns { refuse } or { warn } (each a sentence), or null. */
 function attachmentSizeCheck(base64Length, backend) {
   const megabytes = (base64Length * 3) / 4 / MB;
@@ -168,7 +168,7 @@ const VIDEO_EXT_RE = /\.(mp4|m4v|mov|webm|mkv|avi)$/i;
 
 /** Whether attaching `filename` also writes an [[attachment:...]] link into the heading's body, by the setting: 'media' (images,
  * @param {string} filename
- * @param {any} [mode]
+ * @param {string} mode
  *  audio and video, which the app shows inline), 'always', or 'never' (as org does). */
 function shouldInsertAttachmentLink(filename, mode) {
   if (mode === 'always') return true;
@@ -376,7 +376,7 @@ function extensionForRecordedMimeType(mimeType) {
  * @param {any} [mimeType]
  *  other attachment already has. */
 function generateRecordingFilename(mimeType, now = new Date()) {
-  /** @param {any} [n] */
+  /** @param {number} n */
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
   return `recording-${stamp}.${extensionForRecordedMimeType(mimeType)}`;

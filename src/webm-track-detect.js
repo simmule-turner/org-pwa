@@ -54,9 +54,9 @@ const TRACK_TYPE_VIDEO = 1;
  *  value) or discarded (element sizes strip it -- only the remaining
  *  bits are the actual size). Returns null on truncated input or a
  *  reserved/invalid first byte (0x00), rather than producing a
- * @param {any} [bytes]
- * @param {any} [pos]
- * @param {any} [stripMarker]
+ * @param {Uint8Array<ArrayBuffer>} bytes
+ * @param {number} pos
+ * @param {boolean} stripMarker
  *  garbage value silently. */
 function readVint(bytes, pos, stripMarker) {
   if (pos >= bytes.length) return null;
@@ -81,8 +81,8 @@ function readVint(bytes, pos, stripMarker) {
  *  { id, dataStart, dataSize }, where dataStart/dataStart+dataSize is
  *  exactly the byte range a caller would need to either read (if this
  *  element is relevant) or skip entirely (if it isn't) to reach the
- * @param {any} [bytes]
- * @param {any} [pos]
+ * @param {Uint8Array<ArrayBuffer>} bytes
+ * @param {number} pos
  *  next sibling element. Returns null on truncated/malformed input. */
 function readElementHeader(bytes, pos) {
   const idInfo = readVint(bytes, pos, false);
@@ -102,11 +102,11 @@ function readElementHeader(bytes, pos) {
  *  needs real recursion. `stopIds`, if given, ends the scan early
  *  (returning null) the moment one of those element ids is
  *  encountered, without descending into it -- specifically for
- * @param {any} [bytes]
- * @param {any} [rangeStart]
- * @param {any} [rangeEnd]
- * @param {any} [wantedIds]
- * @param {any} [stopIds]
+ * @param {Uint8Array<ArrayBuffer>} bytes
+ * @param {any} rangeStart
+ * @param {number} rangeEnd
+ * @param {number[]} wantedIds
+ * @param {number[]} [stopIds]
  *  Cluster, see this file's own header comment for why. */
 function findFirstChild(bytes, rangeStart, rangeEnd, wantedIds, stopIds = []) {
   let pos = rangeStart;
@@ -131,7 +131,7 @@ function findFirstChild(bytes, rangeStart, rangeEnd, wantedIds, stopIds = []) {
  *  the scan reaching a Cluster element before ever finding Tracks.
  *  A null result is deliberately NOT the same as false -- callers
  *  should fall back to their own existing default/heuristic in that
- * @param {any} [bytes]
+ * @param {Uint8Array<ArrayBuffer>} bytes
  *  case, not silently treat "couldn't tell" as "definitely audio." */
 export function detectWebmHasVideoTrack(bytes) {
   const header = readElementHeader(bytes, 0);

@@ -117,7 +117,7 @@ function unwrap(result) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [key]
+ * @param {string} key
  * @param {any} [fallback]
  */
 async function getJson(kvAdapter, key, fallback) {
@@ -134,7 +134,7 @@ async function getJson(kvAdapter, key, fallback) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [key]
+ * @param {string} key
  * @param {any} [value]
  */
 async function setJson(kvAdapter, key, value) {
@@ -251,7 +251,7 @@ export async function getAttachLinkMode(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [mode]
+ * @param {string} mode
  */
 export async function setAttachLinkMode(kvAdapter, mode) {
   const normalized = normalizeAttachLinkMode(mode);
@@ -278,7 +278,7 @@ export async function getTheme(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [theme]
+ * @param {string} theme
  */
 export async function setTheme(kvAdapter, theme) {
   await setJson(kvAdapter, KEYS.theme, theme);
@@ -314,7 +314,7 @@ export async function getFontFamily(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [fontFamily]
+ * @param {string} fontFamily
  */
 export async function setFontFamily(kvAdapter, fontFamily) {
   await setJson(kvAdapter, KEYS.fontFamily, fontFamily);
@@ -337,7 +337,7 @@ export async function getMenuSize(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [menuSize]
+ * @param {string} menuSize
  */
 export async function setMenuSize(kvAdapter, menuSize) {
   await setJson(kvAdapter, KEYS.menuSize, menuSize);
@@ -435,7 +435,7 @@ export async function getReadingWidth(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [readingWidth]
+ * @param {number | null} readingWidth
  */
 export async function setReadingWidth(kvAdapter, readingWidth) {
   await setJson(kvAdapter, KEYS.readingWidth, readingWidth);
@@ -452,7 +452,7 @@ export async function getSidePanelWidth(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [sidePanelWidth]
+ * @param {number} sidePanelWidth
  */
 export async function setSidePanelWidth(kvAdapter, sidePanelWidth) {
   await setJson(kvAdapter, KEYS.sidePanelWidth, sidePanelWidth);
@@ -465,7 +465,7 @@ export async function getFontSize(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [fontSize]
+ * @param {number} fontSize
  */
 export async function setFontSize(kvAdapter, fontSize) {
   await setJson(kvAdapter, KEYS.fontSize, fontSize);
@@ -483,7 +483,7 @@ export async function getTablesFontSize(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [fontSize]
+ * @param {number} fontSize
  */
 export async function setTablesFontSize(kvAdapter, fontSize) {
   await setJson(kvAdapter, KEYS.tablesFontSize, fontSize);
@@ -560,7 +560,7 @@ export async function getExtensionApproval(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [hash]
+ * @param {string} hash
  */
 export async function setExtensionApproval(kvAdapter, hash) {
   await setJson(kvAdapter, EXTENSION_APPROVAL_KEY, hash);

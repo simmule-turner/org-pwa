@@ -97,7 +97,7 @@ export function setKeyboardFocusToHeading(heading) {
  *  all visible lines in the buffer" feature: plain Up/Down (both
  *  outside and inside god-mode) move through EVERY visible row, not
  *  just headings the way j/k (unchanged, kept as a faster
- * @param {any} [delta]
+ * @param {number} delta
  *  heading-to-heading jump) already do. */
 export function moveLineFocus(delta) {
   if (!S.state.doc) return;
@@ -128,8 +128,8 @@ export function moveLineFocus(delta) {
 }
 
 /**
- * @param {any} [deltaRow]
- * @param {any} [deltaCol]
+ * @param {number} deltaRow
+ * @param {number} deltaCol
  */
 export function moveTableCellFocus(deltaRow, deltaCol) {
   if (!S.keyboardFocusedBodyRow || S.keyboardFocusedBodyRow.rowType !== 'table' || !S.keyboardFocusedCellPos) return;
@@ -202,7 +202,7 @@ export function enterInsertModeAtCurrentLine() {
   // 'block'/'hr': no structured edit UI exists for either -- no-op.
 }
 
-/** @param {any} [delta] */
+/** @param {number} delta */
 export function moveKeyboardFocus(delta) {
   const headings = visibleHeadingsInOrder();
   if (headings.length === 0) return;
@@ -228,7 +228,7 @@ export function moveKeyboardFocus(delta) {
  *  (god-mode's own C-c C-f / C-c C-b). Stops without moving if a
  *  shallower-level heading is reached first, since that means we've
  *  left the current heading's own region entirely. No-op if nothing
- * @param {any} [delta]
+ * @param {number} delta
  *  is currently focused. */
 export function moveToSameLevelHeading(delta) {
   if (!S.keyboardFocusedHeading) return;
@@ -278,7 +278,7 @@ export function moveToParentHeading() {
  *  content itself starts within the heading's own body. No-op if
  *  keyboard focus wasn't actually on `oldRowType`-at-`oldLineIndex`
  * @param {Heading} heading
- * @param {any} [oldRowType]
+ * @param {string} oldRowType
  * @param {any} [oldLineIndex]
  *  to begin with. */
 export function resyncKeyboardFocusToBodyRow(heading, oldRowType, oldLineIndex) {
@@ -323,7 +323,7 @@ export function withKeyboardFocusPreserved(heading, mutate) {
  *  the one currently focused -- the same outline styling every row
  *  type shares, factored out here since keyboard focus can now land
  *  on any visible row (not just headings), and every one of this
- * @param {any} [el]
+ * @param {HTMLDivElement} el
  * @param {any} [row]
  *  function's own callers needs the identical treatment. */
 export function applyKeyboardFocusHighlight(el, row) {
@@ -396,7 +396,7 @@ export function rowNearViewportTop() {
 
 /**
  * Shift+Up / Shift+Down: the previous or next visible heading. From a body row, Up goes to its own heading first.
- * @param {any} [delta]
+ * @param {number} delta
  */
 export function moveHeadingFocus(delta) {
   if (delta < 0 && S.keyboardFocusedBodyRow && S.keyboardFocusedHeading) {
@@ -410,8 +410,8 @@ export function moveHeadingFocus(delta) {
 
 /**
  * True when the focused row is a table and the cursor can still move that way inside it.
- * @param {any} [deltaRow]
- * @param {any} [deltaCol]
+ * @param {number} deltaRow
+ * @param {number} deltaCol
  */
 function tableCanMove(deltaRow, deltaCol) {
   const f = S.keyboardFocusedBodyRow;
@@ -429,7 +429,7 @@ function tableCanMove(deltaRow, deltaCol) {
 }
 
 /** Up and Down: inside a table they move between its rows; at its first or last row (or anywhere else) they move
- * @param {any} [delta]
+ * @param {number} delta
  *  to the adjacent line, as before. */
 export function moveArrowVertical(delta) {
   if (tableCanMove(delta, 0)) moveTableCellFocus(delta, 0);
@@ -437,7 +437,7 @@ export function moveArrowVertical(delta) {
 }
 
 /** Left and Right: inside a table they move between its columns; elsewhere the caller folds or unfolds. Returns false
- * @param {any} [delta]
+ * @param {number} delta
  *  when the focus is not on a table. */
 export function moveArrowHorizontalInTable(delta) {
   const f = S.keyboardFocusedBodyRow;

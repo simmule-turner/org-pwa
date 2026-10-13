@@ -82,7 +82,7 @@ export function parseHtmlOptions(doc) {
       i = j;
     }
   }
-  /** @param {any} [v] */
+  /** @param {string} v */
   const isNil = (v) => v === 'nil';
   for (const token of tokens) {
     const m = /^(\\n|[^:\s]+):(.*)$/.exec(token);
@@ -130,7 +130,7 @@ export function parseHtmlOptions(doc) {
 
 /**
  * @param {Doc} doc
- * @param {any} [key]
+ * @param {string} key
  */
 const keywordValue = (doc, key) => {
   /** @param {any} [k] */
@@ -167,7 +167,7 @@ const slugify = (title) => String(title || '').toLowerCase().replace(/[^a-z0-9]+
 /**
  * Attributes from `#+ATTR_HTML:`, as an HTML attribute string (`:width 100 :class big` -> ` width="100" class="big"`).
  * @param {any} [aff]
- * @param {any} [skip]
+ * @param {string[]} [skip]
  */
 function htmlAttributes(aff, skip = []) {
   const attrs = parseAttributes(aff && aff.attr.html);
@@ -266,7 +266,7 @@ function expandMacrosIn(state, text) {
     const args = argText === undefined ? [] : argText.split(/(?<!\\),/).map((/** @type {any} */ a) => a.replace(/\\,/g, ',').trim());
     const key = name.toLowerCase();
     if (state.macros.has(name)) return state.macros.get(name).replace(/\$(\d)/g, (/** @type {any} */ w, /** @type {any} */ n) => args[Number(n) - 1] ?? '');
-    /** @param {any} [k] */
+    /** @param {string} k */
     const kw = (k) => keywordValue(state.doc, k) || '';
     if (key === 'title') return kw('TITLE');
     if (key === 'author') return kw('AUTHOR');
@@ -279,8 +279,8 @@ function expandMacrosIn(state, text) {
 
 /**
  * Org text -> HTML for inline content. `text` may span several lines (joined by "\n").
- * @param {any} [state]
- * @param {any} [rawText]
+ * @param {any} state
+ * @param {string} rawText
  */
 function renderInline(state, rawText) {
   let text = expandMacros(state, rawText);
@@ -312,8 +312,8 @@ function targetId(state, name) {
 }
 
 /**
- * @param {any} [state]
- * @param {any} [base]
+ * @param {any} state
+ * @param {string} base
  */
 function uniqueId(state, base) {
   let id = base;
@@ -362,7 +362,7 @@ const IMAGE_RE = /\.(png|jpe?g|gif|svg|webp|bmp|tiff?|xbm|xpm|pbm|pgm|ppm|avif)$
 
 /**
  * Is this link target one Org shows as an inline picture?
- * @param {any} [target]
+ * @param {string} target
  */
 function isImageTarget(target) {
   const t = target.trim();
@@ -389,7 +389,7 @@ function fileHref(path) {
 
 let activeImages = new Map();
 
-/** @param {any} [target] */
+/** @param {string} target */
 function imageSrc(target) {
   if (activeImages.has(target)) return activeImages.get(target);
   return target.replace(/^(file|attachment):/i, '').replace(/::.*$/, '').replace(/^\/\//, '').replace(/^(\/)/, 'file://$1');
@@ -434,8 +434,8 @@ function linkHref(state, target) {
 
 /**
  * Verbatim text with the source of any construct that was set aside as a placeholder put back.
- * @param {any} [state]
- * @param {any} [value]
+ * @param {any} state
+ * @param {string} value
  */
 function literal(state, value) {
   return escapeHtml(value.replace(TOKEN_RE, (/** @type {any} */ m, /** @type {any} */ n) => state.tokenSources[Number(n)]));
@@ -451,10 +451,10 @@ function renderNodes(state, nodes) {
 
 /**
  * Emphasis as a tag, or with its markers kept as plain text when `#+OPTIONS: *:nil`.
- * @param {any} [state]
- * @param {any} [node]
- * @param {any} [marker]
- * @param {any} [open]
+ * @param {any} state
+ * @param {any} node
+ * @param {string} marker
+ * @param {string} open
  */
 function emphasis(state, node, marker, open, close = open) {
   const inner = renderNodes(state, node.children);
@@ -464,7 +464,7 @@ function emphasis(state, node, marker, open, close = open) {
 /**
  * @param {any} state
  * @param {string} label
- * @param {any} [inlineHtml]
+ * @param {string} [inlineHtml]
  */
 function footnoteRef(state, label, inlineHtml) {
   let n = state.fnNumbers.get(label);
@@ -523,8 +523,8 @@ function renderNode(state, node) {
 }
 
 /**
- * @param {any} [target]
- * @param {any} [alt]
+ * @param {string} target
+ * @param {undefined} [alt]
  */
 function imageHtml(target, alt, attrs = '') {
   const src = imageSrc(target);
@@ -636,9 +636,9 @@ function listHtml(state, el, ctx) {
 }
 
 /**
- * @param {any} [state]
- * @param {any} [item]
- * @param {any} [listType]
+ * @param {any} state
+ * @param {any} item
+ * @param {string} listType
  */
 function itemHtml(state, item, listType) {
   const children = item.children;
@@ -715,14 +715,14 @@ function tableHtml(state, el) {
   if (caption !== null) out += `<caption class="t-above"><span class="table-number">Table ${++state.counters.table}:</span> ${caption}</caption>\n`;
   out += '\n<colgroup>\n' + align.map((a) => `<col  class="org-${a}" />`).join('\n\n') + '\n</colgroup>\n';
   /**
-   * @param {any} [c]
-   * @param {any} [tag]
+   * @param {any} c
+   * @param {string} tag
    * @param {any} [a]
    */
   const cell = (c, tag, a) => `<${tag}${tag === 'th' ? ' scope="col"' : ''} class="org-${a}">${renderInline(state, c.trim()) || NBSP}</${tag}>`;
   /**
-   * @param {any} [row]
-   * @param {any} [tag]
+   * @param {any} row
+   * @param {string} tag
    */
   const rowHtml = (row, tag) => '<tr>\n' + Array.from({ length: columns }, (_, c) => cell(row.cells[c] || '', tag, align[c])).join('\n') + '\n</tr>';
   groups.forEach((group, gi) => {
@@ -927,7 +927,7 @@ function buildFilter(state) {
   };
 }
 
-/** @param {any} [h] */
+/** @param {Heading} h */
 function isArchived(h) {
   return hasTag(h, 'ARCHIVE');
 }
@@ -936,7 +936,7 @@ function isArchived(h) {
  * The exported headings as a tree of { heading, children, number: [..] , level (relative) }.
  * @param {any} state
  * @param {Heading[]} headings
- * @param {any} [levelOffset]
+ * @param {number} levelOffset
  * @param {any} [filter]
  * @param {any} [numbers]
  */
@@ -999,8 +999,8 @@ function planningHtml(state, heading) {
   if (!state.options.planning || !heading.planning) return '';
   const { closed, deadline, scheduled } = heading.planning;
   /**
-   * @param {any} [kw]
-   * @param {any} [v]
+   * @param {string} kw
+   * @param {string | null} v
    */
   const stamp = (kw, v) => (v ? `<span class="timestamp-kwd">${kw}:</span> <span class="timestamp">${escapeHtml(v).replace(/^&lt;/, '&lt;')}</span>` : '');
   const parts = [stamp('CLOSED', closed), stamp('DEADLINE', deadline), stamp('SCHEDULED', scheduled)].filter(Boolean);

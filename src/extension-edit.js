@@ -75,8 +75,8 @@ const TAG_RE = /^[\w@#%]+$/;
 const PROP_RE = /^[A-Za-z0-9_-]+$/;
 
 /** Checks a list of edits against the snapshot's heading count. Returns an error message, or null when every
- * @param {any} [edits]
- * @param {any} [headingCount]
+ * @param {any} edits
+ * @param {number} headingCount
  *  edit is well formed. The kinds are: set-title, set-todo, set-tags, set-property, delete-property, append-body. */
 export function validateEdits(edits, headingCount) {
   if (!Array.isArray(edits)) return 'edits must be a list';

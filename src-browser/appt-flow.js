@@ -94,8 +94,8 @@ export async function scanAppointments(now = new Date()) {
 }
 
 /** On a platform that holds notifications for later, replace what it holds with the whole coming list. Only for window mode with
- * @param {any} [appointments]
- * @param {any} [now]
+ * @param {any} appointments
+ * @param {Date} now
  *  permission: echo mode is the status line only, with no system notification. */
 async function holdPlatformNotifications(appointments, now) {
   const n = platform.notifications;
@@ -124,7 +124,7 @@ export function apptTick(now = new Date()) {
   tick(now);
 }
 
-/** @param {any} [now] */
+/** @param {Date} now */
 function tick(now) {
   const settings = S.apptSettings;
   if (!settings['appt-activate']) return;
@@ -143,9 +143,9 @@ function refreshModeLine() {
 
 /** One reminder, the way appt-display-format says. window: a system notification when permitted (a platform that holds them for later
  *  has already got this one), plus a banner in the app when it is visible or when notifications are blocked. echo: the status line
- * @param {any} [appt]
- * @param {any} [offset]
- * @param {any} [minutes]
+ * @param {any} appt
+ * @param {any} offset
+ * @param {number} minutes
  *  only. */
 function announce(appt, offset, minutes) {
   const text = reminderText(appt, minutes);
@@ -173,7 +173,7 @@ const dayOf = (appt) => new Date(appt.start.getFullYear(), appt.start.getMonth()
 
 /**
  * Opens that day in the Agenda (what tapping a reminder does).
- * @param {any} [dayMs]
+ * @param {number | string} dayMs
  */
 export function openApptDay(dayMs) {
   const date = new Date(Number(dayMs));
@@ -199,9 +199,9 @@ function listenForTaps() {
 
 /**
  * @param {string} title
- * @param {any} [body]
- * @param {any} [detail]
- * @param {any} [dayMs]
+ * @param {string} body
+ * @param {string} detail
+ * @param {number} dayMs
  */
 function showBanner(title, body, detail, dayMs) {
   if (typeof document === 'undefined') return;

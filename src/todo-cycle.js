@@ -147,7 +147,7 @@ function cycleTodoState(heading, sequence, opts = {}) {
  * sequence — this one *should* be loud, since silently accepting an
  * unrecognized keyword would corrupt the file's TODO semantics.
  * @param {Heading} heading
- * @param {any} [keyword]
+ * @param {string | null} keyword
  * @param {any} [sequence]
  */
 function setTodoState(heading, keyword, sequence) {
@@ -160,7 +160,7 @@ function setTodoState(heading, keyword, sequence) {
 }
 
 /**
- * @param {any} [keyword]
+ * @param {string} keyword
  * @param {any} [sequence]
  */
 function isDoneKeyword(keyword, sequence) {

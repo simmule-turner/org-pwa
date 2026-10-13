@@ -1111,7 +1111,7 @@ export function renderParagraphRow(row) {
 /**
  * @param {any} block
  * @param {HTMLElement} container
- * @param {any} [linkContext]
+ * @param {null} linkContext
  */
 export function renderBlockContent(block, container, linkContext) {
   const name = block.name;

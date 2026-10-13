@@ -131,7 +131,7 @@ function localNotFoundMessage(path) {
  *  button passes. Without access the entry is an error that says what to do (shown above the list, like any file that fails to
  *  load). Always marked readOnly: nothing may be written into one of these (Refile, Capture and Replace use only writable
  * @param {string} path
- * @param {any} [prompt]
+ * @param {boolean} prompt
  *  entries), since writing it back needs the adapter of the open document, which may be on another backend. */
 async function readLocalEntry(path, prompt) {
   const marks = { local: true, readOnly: true };
@@ -148,8 +148,8 @@ async function readLocalEntry(path, prompt) {
 
 /**
  * Loads the `local:` agenda files, one at a time (concurrent permission prompts are not reliable).
- * @param {any} [entries]
- * @param {any} [prompt]
+ * @param {any} entries
+ * @param {boolean} prompt
  */
 async function loadLocalAgendaFiles(entries, prompt) {
   for (const { key, path } of entries) {

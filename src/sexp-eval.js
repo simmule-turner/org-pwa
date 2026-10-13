@@ -170,7 +170,7 @@ function setUserSexps(names = [], handler = /** @type {any} */ (null)) {
  *  boolean context -- everything except `false` and the empty string
  *  (a diary function returning `""` is effectively "no match, nothing
  *  to show" the same way `false` is, not a genuine zero-length
- * @param {any} [value]
+ * @param {string | boolean} value
  *  displayed entry). */
 function isTruthy(value) {
   return value !== false && value !== '';
@@ -200,9 +200,9 @@ function intArg(node) {
 }
 
 /** A real Date for year/month/day, or null when it isn't a real calendar
- * @param {any} [year]
- * @param {any} [month]
- * @param {any} [day]
+ * @param {number | null} year
+ * @param {number | null} month
+ * @param {number | null | undefined} day
  *  date (month 13, February 30) rather than letting Date roll it over. */
 function realDate(year, month, day) {
   if (year === null || month === null || day === null) return null;
@@ -222,7 +222,7 @@ function fieldMatches(node, value) {
 
 /**
  * ISO 8601 week number (org-class's skip-weeks are ISO weeks).
- * @param {any} [date]
+ * @param {Date} date
  */
 function isoWeekNumber(date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -571,7 +571,7 @@ function parseGeneralBodyLine(line) {
  *  `context` -- a thin wrapper that also handles the "failed to
  *  parse at all" (`expr === null`) case, folding it into the same
  *  "no match" result every other unsupported construct already
- * @param {any} [expr]
+ * @param {null} expr
  * @param {any} [context]
  *  produces, so callers don't need their own separate null-check. */
 function evaluateSexpTimestamp(expr, context) {

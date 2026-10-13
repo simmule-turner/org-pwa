@@ -48,7 +48,7 @@ export const SWIPE_THRESHOLD_PX = 40;
 
 /**
  * @param {string} label
- * @param {any} [ariaLabel]
+ * @param {string} ariaLabel
  * @param {any} [onClick]
  */
 export function smallButton(label, ariaLabel, onClick) {
@@ -73,7 +73,7 @@ export function smallButton(label, ariaLabel, onClick) {
  *  so a caller's own click handler (which still fires on release,
  *  same as any other tap) can check it and skip its own normal action
  *  -- the long-press's own callback already ran, a regular tap
- * @param {any} [el]
+ * @param {HTMLElement} el
  * @param {any} [callback]
  *  shouldn't also do something on top of that. */
 export function attachLongPress(el, callback, duration = 600) {
@@ -111,7 +111,7 @@ export function attachLongPress(el, callback, duration = 600) {
 
 /**
  * @param {any} [el]
- * @param {any} [compact]
+ * @param {boolean | undefined} [compact]
  */
 export function textInputStyle(el, compact) {
   if (!compact) {
@@ -157,9 +157,9 @@ export function textInputStyle(el, compact) {
  *  drifted apart in a followup fix before this consolidation).
  *  Clears any existing <option> children first, so it's also safe to
  *  call again on an already-populated select (e.g. after a value
- * @param {any} [selectEl]
- * @param {any} [options]
- * @param {any} [currentValue]
+ * @param {any} selectEl
+ * @param {any} options
+ * @param {string} currentValue
  *  change re-renders the same dropdown). */
 export function populateSelectOptions(selectEl, options, currentValue) {
   selectEl.innerHTML = '';
@@ -191,7 +191,7 @@ export function entryFieldButtonStyle(btn) {
 }
 
 /**
- * @param {any} [labelText]
+ * @param {string | null} labelText
  * @param {any} [inputEl]
  */
 export function fieldRow(labelText, inputEl) {
@@ -267,7 +267,7 @@ export const LEADING_ICON_RE = /^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Ex
 /**
  * @param {string} label
  * @param {any} [onClick]
- * @param {any} [disabled]
+ * @param {boolean | undefined} [disabled]
  */
 export function menuButton(label, onClick, disabled) {
   const btn = document.createElement('button');
@@ -325,8 +325,8 @@ export function appendMenuButtonsInOrder(container, aliasMap, labeledButtons) {
  *  with its own content rendered) as a floating popup anchored near
  *  `buttonEl`'s own current position -- see this function's own
  *  top-level docs above for why this can't just be a fixed CSS
- * @param {any} [panelEl]
- * @param {any} [buttonEl]
+ * @param {HTMLElement} panelEl
+ * @param {HTMLElement} buttonEl
  *  offset the way extraMenuPanel's own corner-anchored popup is. */
 export function positionPopupNearButton(panelEl, buttonEl) {
   const btnRect = buttonEl.getBoundingClientRect();
@@ -414,7 +414,7 @@ export function aliasedMenuDivItem(aliasMap, label, onClick, disabled) {
  * @param {any} aliasMap
  * @param {string} label
  * @param {any} [onClick]
- * @param {any} [disabled]
+ * @param {undefined} [disabled]
  *  same as requiredMenuButton's own semantics. */
 export function requiredMenuDivItem(aliasMap, label, onClick, disabled) {
   const alias = aliasMap ? aliasMap[label] : undefined;
@@ -476,7 +476,7 @@ export function safeAreaTop() {
  *  drift or "scroll" out of the visible area as the keyboard opens
  *  and closes. Returns a cleanup function removing every listener
  *  this attaches -- unlike #topBar's own deliberately permanent ones,
- * @param {any} [overlay]
+ * @param {HTMLElement} overlay
  *  a modal's own listeners must not outlive the modal itself. */
 export function keepOverlayInVisibleViewport(overlay) {
   const vv = window.visualViewport;
@@ -492,8 +492,8 @@ export function keepOverlayInVisibleViewport(overlay) {
   reposition();
   /** @type {any[]} */ const cleanups = [];
   /**
-   * @param {any} [target]
-   * @param {any} [evt]
+   * @param {any} target
+   * @param {string} evt
    * @param {any} [handler]
    */
   function on(target, evt, handler) {
@@ -526,7 +526,7 @@ export function keepOverlayInVisibleViewport(overlay) {
 // those render functions actually do the showing.
 export const modalOverlayCleanups = new Map();
 
-/** @param {any} [overlayEl] */
+/** @param {HTMLElement} overlayEl */
 export function hideModalOverlay(overlayEl) {
   overlayEl.style.display = 'none';
   const cleanup = modalOverlayCleanups.get(overlayEl);
@@ -541,10 +541,10 @@ export function hideModalOverlay(overlayEl) {
  *  built for a flex-wrap multi-field-per-row layout this modal
  *  deliberately doesn't use) with a consistent, deliberate vertical
  *  rhythm between fields, for a tighter, more custom form feel than
- * @param {any} labelText
+ * @param {string | null} labelText
  * @param {string} type
- * @param {any} [value]
- * @param {any} [placeholder]
+ * @param {string} value
+ * @param {string} placeholder
  *  reusing the general-purpose labeledInput as-is produced. */
 export function modalFieldRow(labelText, type, value, placeholder) {
   const wrap = document.createElement('div');
@@ -579,10 +579,10 @@ export function modalFieldRow(labelText, type, value, placeholder) {
 }
 
 /**
- * @param {any} labelText
+ * @param {string | null} labelText
  * @param {string} type
- * @param {any} [value]
- * @param {any} [placeholder]
+ * @param {string} value
+ * @param {string | undefined} [placeholder]
  */
 export function labeledInput(labelText, type, value, placeholder) {
   const wrap = document.createElement('div');
@@ -623,7 +623,7 @@ export function labeledInput(labelText, type, value, placeholder) {
  *  deliberately not reusing pickAndImportFile, which is built for .org
  *  document import specifically and also caches the picked content
  *  into kv under an unrelated key for later re-reading; a one-off
- * @param {any} [accept]
+ * @param {string} accept
  *  settings JSON file has no business being cached there. */
 export function pickTextFile(accept) {
   return new Promise((resolve, reject) => {

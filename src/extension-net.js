@@ -107,7 +107,7 @@ export function checkCacheKey(key) {
 
 /**
  * The text stored for a cache value (JSON), or throws when it is too big or not plain data.
- * @param {any} [value]
+ * @param {undefined} value
  */
 export function encodeCacheValue(value) {
   const text = JSON.stringify(value === undefined ? null : value);
@@ -119,9 +119,9 @@ export function encodeCacheValue(value) {
 /**
  * Puts `key` into a scope ({ key: { t, v } }), dropping the oldest entries to stay within the limits.
  * @param {any} scope
- * @param {any} key
+ * @param {string} key
  * @param {string} text
- * @param {any} [now]
+ * @param {number} now
  */
 export function cacheSet(scope, key, text, now) {
   const next = { ...scope, [key]: { t: now, v: text } };
@@ -137,10 +137,10 @@ export function cacheSet(scope, key, text, now) {
 
 /**
  * The cached value (parsed) if present and not older than maxAgeMs, else null.
- * @param {any} [scope]
- * @param {any} [key]
- * @param {any} [maxAgeMs]
- * @param {any} [now]
+ * @param {any} scope
+ * @param {string} key
+ * @param {any} maxAgeMs
+ * @param {number} now
  */
 export function cacheGet(scope, key, maxAgeMs, now) {
   const e = scope && scope[key];
@@ -155,11 +155,11 @@ export function cacheGet(scope, key, maxAgeMs, now) {
 
 /**
  * The position handed to a script: rounded to about 10 m.
- * @param {any} [coords]
- * @param {any} [time]
+ * @param {GeolocationCoordinates} coords
+ * @param {number} time
  */
 export function roundPosition(coords, time) {
-  /** @param {any} [n] */
+  /** @param {number} n */
   const r = (n) => Math.round(Number(n) * 1e4) / 1e4;
   return { lat: r(coords.latitude), lon: r(coords.longitude), accuracy: Math.round(Number(coords.accuracy) || 0), time };
 }
@@ -198,8 +198,8 @@ export const MAX_EXPORT_CHARS = 2 * 1024 * 1024;
 
 /**
  * What an export backend returns -> { text, filename, mime }. A string is the text; an object may name the file.
- * @param {any} [result]
- * @param {any} [fallbackName]
+ * @param {any} result
+ * @param {string} fallbackName
  */
 export function normalizeExport(result, fallbackName) {
   const o = typeof result === 'string' ? { text: result } : result && typeof result === 'object' ? result : null;

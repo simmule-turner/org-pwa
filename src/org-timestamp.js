@@ -36,7 +36,7 @@ const TIMESTAMP_SCAN_RE = /[<[]\d{4}-\d{2}-\d{2}[^<>[\]\n]*[>\]]/g;
 
 /**
  * @returns parsed timestamp object, or null if `raw` isn't a recognizable org timestamp.
- * @param {any} [raw]
+ * @param {string | undefined} raw
  */
 function parseOrgTimestamp(raw) {
   if (!raw) return null;
@@ -112,7 +112,7 @@ function findTimestamps(text) {
 }
 
 /** YYYY-MM-DD, using local calendar fields (not UTC) — an agenda day
- * @param {any} [date]
+ * @param {Date} date
  *  boundary should match the user's own calendar, not the server's. */
 function dateKey(date) {
   const y = date.getFullYear();
@@ -122,8 +122,8 @@ function dateKey(date) {
 }
 
 /**
- * @param {any} [a]
- * @param {any} [b]
+ * @param {Date} a
+ * @param {Date} b
  */
 function isSameDay(a, b) {
   return dateKey(a) === dateKey(b);
@@ -179,7 +179,7 @@ const DELAY_RE = /^-(\d+)([hdwmy])$/;
  *  lives here rather than there since a delay is purely a single-
  *  timestamp-parsing concern (unlike a repeater, it has no expansion
  *  behavior for agenda.js to own) — used by the structured timestamp
- * @param {any} [raw]
+ * @param {string} raw
  *  editor to pre-fill its delay field from an existing timestamp. */
 function parseDelay(raw) {
   if (!raw) return null;

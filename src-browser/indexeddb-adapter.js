@@ -29,7 +29,7 @@ export function createIndexedDbAdapter() {
   const dbPromise = openDb();
 
   /**
-   * @param {any} [mode]
+   * @param {string} mode
    * @param {any} [fn]
    */
   async function withStore(mode, fn) {
@@ -44,14 +44,14 @@ export function createIndexedDbAdapter() {
   }
 
   return {
-    /** @param {any} [key] */
+    /** @param {string} key */
     async get(key) {
       const value = await withStore('readonly', (/** @type {any} */ store) => store.get(key));
       return value === undefined ? null : { key, value };
     },
     /**
-     * @param {any} [key]
-     * @param {any} [value]
+     * @param {string} key
+     * @param {string} value
      */
     async set(key, value) {
       await withStore('readwrite', (/** @type {any} */ store) => store.put(value, key));

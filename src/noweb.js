@@ -26,8 +26,8 @@ const CONTEXT_VALUES = {
 
 /**
  * Whether the block's `:noweb` value asks for expansion when it is tangled, run (`eval`) or exported.
- * @param {any} [args]
- * @param {any} [context]
+ * @param {any} args
+ * @param {string} context
  */
 export function nowebAllows(args, context) {
   const values = String((args && args.noweb) || '').split(/\s+/).filter(Boolean);

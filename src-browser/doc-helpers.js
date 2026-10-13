@@ -211,8 +211,8 @@ export function icalendarBodyHeadingsIn(headings) {
 export function headingsInSubtree(heading) {
   /** @type {any[]} */ const out = [];
   /**
-   * @param {any} [node]
-   * @param {any} [depth]
+   * @param {any} node
+   * @param {number} depth
    */
   function walk(node, depth) {
     out.push({ heading: node, depth });
@@ -226,8 +226,8 @@ export function headingsInSubtree(heading) {
 export function allHeadingsInOrder(doc) {
   /** @type {any[]} */ const out = [];
   /**
-   * @param {any} [nodes]
-   * @param {any} [depth]
+   * @param {any} nodes
+   * @param {number} depth
    */
   function walk(nodes, depth) {
     for (const node of nodes) {
@@ -241,7 +241,7 @@ export function allHeadingsInOrder(doc) {
 }
 
 /**
- * @param {any} [query]
+ * @param {string} query
  * @param {any} [useRegex]
  */
 export function buildQueryReplacePattern(query, useRegex) {

@@ -34,7 +34,7 @@ export function removeIndentation(lines) {
 
 /**
  * A block's body as Org uses it: comma escapes undone, shared indentation removed, trailing whitespace trimmed.
- * @param {any} [rawLines]
+ * @param {string[]} rawLines
  */
 export function normalizedBody(rawLines) {
   return removeIndentation(rawLines.map(unescapeLine)).join('\n').replace(/\s+$/, '');

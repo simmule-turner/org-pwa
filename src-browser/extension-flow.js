@@ -432,9 +432,9 @@ export async function runExtensionCommand(id, target) {
 /**
  * Handles a script's answer to a command or an event: logs, then checks and applies its edits as one undo step.
  * @param {string} label
- * @param {any} [snapshot]
- * @param {any} [reply]
- * @param {any} [allowEdits]
+ * @param {any} snapshot
+ * @param {any} reply
+ * @param {boolean} allowEdits
  */
 function finishReply(label, snapshot, reply, allowEdits) {
   for (const line of reply.logs || []) note(line);
@@ -520,9 +520,9 @@ onExtensionEvent((/** @type {string} */ name, /** @type {any} */ payload) => {
 
 /**
  * @param {string} name
- * @param {any} [from]
- * @param {any} [to]
- * @param {any} [key]
+ * @param {string} from
+ * @param {string} to
+ * @param {string} key
  */
 async function refreshAgendaSource(name, from, to, key) {
   const active = run.handle;
@@ -553,8 +553,8 @@ async function refreshAgendaSource(name, from, to, key) {
 const AGENDA_HEADING = { title: '', level: 1, todo: null, priority: null, tags: [], bodyLines: [], children: [] };
 
 /** Agenda items from the script's sources for the days being shown. What is already known is returned at once; a source
- * @param {any} [rangeStart]
- * @param {any} [rangeEnd]
+ * @param {Date} rangeStart
+ * @param {Date} rangeEnd
  *  that is missing or older than ten minutes is asked again, and the agenda is drawn again if its answer differs. */
 export function extensionAgendaItems(rangeStart, rangeEnd) {
   if (!run.handle || !info.agendaSources.length) return [];

@@ -77,7 +77,7 @@ function splitEntries(text) {
 
 /**
  * Parses one entry; returns { entry } or { error }.
- * @param {any} [entryText]
+ * @param {string} entryText
  */
 function parseOneEntry(entryText) {
   const firstSpace = entryText.search(/\s/);
@@ -187,7 +187,7 @@ function headingMatchesCriteria(heading, criteria) {
  *  docsById's own keys, aggregateAgendaDocs' own output) uses the bare
  *  path only, never the "scheme:" prefix; that prefix exists purely
  *  in agendaFilesConfig's own raw configuration strings, needed there
- * @param {any} [key]
+ * @param {string | string[]} key
  *  specifically to pick which adapter (github vs webdav) fetches it. */
 function stripScheme(key) {
   const colonIndex = key.indexOf(':');

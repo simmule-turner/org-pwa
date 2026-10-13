@@ -29,7 +29,7 @@ function outboxKey(documentId) {
  * serialized .org text) and a timestamp. Called on every local edit.
  * @param {any} adapter
  * @param {string} documentId
- * @param {any} [content]
+ * @param {string} content
  */
 async function enqueueChange(adapter, documentId, content, opts = {}) {
   const entry = {

@@ -123,7 +123,7 @@ function keywordValues(doc, name) {
  * @param {string} text
  * @param {any} macros
  * @param {Doc} doc
- * @param {any} [now]
+ * @param {Date} now
  *  silently dropped. */
 function expandMacrosInText(text, macros, doc, now) {
   return text.replace(MACRO_USE_RE, (/** @type {any} */ whole, /** @type {string} */ name, /** @type {any} */ _paren, /** @type {any} */ argsStr) => {
@@ -165,7 +165,7 @@ function expandMacrosInText(text, macros, doc, now) {
  *  reparses each changed body so the expanded text is reflected
  *  structurally, not just as raw strings nothing else sees. Returns a
  * @param {Doc} doc
- * @param {any} [now]
+ * @param {Date} now
  *  new doc; the input is never mutated. */
 function expandMacros(doc, now) {
   const macros = buildMacroTable(doc);
@@ -259,7 +259,7 @@ function filterNoexportAndComments(doc) {
  *  export-include.js's own :minlevel handling already uses for an
  *  included subtree. A no-op (returns `doc` as-is) when `minlevel` is
  * @param {Doc} doc
- * @param {any} [minlevel]
+ * @param {number | undefined} minlevel
  *  falsy or the document already starts there. */
 function scaleHeadingLevels(doc, minlevel) {
   if (!minlevel || (doc.children || []).length === 0) return doc;

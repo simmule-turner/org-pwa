@@ -302,7 +302,7 @@ function translate(pattern) {
  *  context; callers here should pass 'i' explicitly when they want it).
  *  Throws EmacsRegexError with a specific, human-readable reason for
  *  anything unsupported or malformed, rather than silently miscompiling
- * @param {any} [emacsPattern]
+ * @param {string} emacsPattern
  *  a pattern into something that matches the wrong thing. */
 function emacsRegexToJs(emacsPattern, flags = '') {
   const translated = translate(emacsPattern);

@@ -8,12 +8,12 @@ import { openTextFieldPopup } from './dialogs.js';
 import { setStatus } from './editing.js';
 import { platform } from './platform.js';
 
-/** @param {any} [n] */
+/** @param {number} n */
 const px = (n) => `${Math.round(n * 10) / 10}px`;
 
 /**
  * The padding a CSS value resolves to, which is how env() values are read back.
- * @param {any} [cssValue]
+ * @param {string} cssValue
  */
 function resolveLength(cssValue) {
   const probe = document.createElement('div');
@@ -34,7 +34,7 @@ export function collectDisplayMeasurements(launcher = /** @type {string | null} 
   const header = document.querySelector('#topBar header');
   const tabBar = document.getElementById('tabBar');
   const base = S.viewportBaseline;
-  /** @param {any} [el] */
+  /** @param {Element | null} el */
   const rect = (el) => (el ? el.getBoundingClientRect() : null);
   const first = rect(firstButton);
   const rows = [

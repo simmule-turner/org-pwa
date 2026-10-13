@@ -65,7 +65,7 @@ let charsetAscii = CHARSETS.ascii;
 
 /**
  * `ascii`, `latin1` or `utf-8` (also `utf8`, `iso-8859-1`; case and a leading quote ignored); anything else is ASCII.
- * @param {any} [value]
+ * @param {string} value
  */
 export function normalizeAsciiCharset(value) {
   const v = String(value == null ? '' : value).trim().replace(/^'/, '').toLowerCase();
@@ -108,7 +108,7 @@ function stripLinksForAscii(text) {
  *  that depends on preserving original spacing). Returns an array of
  *  wrapped lines; an empty/whitespace-only input returns an empty
  * @param {string} text
- * @param {any} [width]
+ * @param {number} width
  *  array, not a single blank-line entry. */
 function wrapText(text, width) {
   // Split on plain whitespace only: a no-break space (`\nbsp`) belongs to its word, as in Emacs's fill.
@@ -210,7 +210,7 @@ function renderTextAscii(text) {
 /** @type {any[]} */ let sectionNumbersAscii = [];
 let numberingEnabledAscii = true;
 
-/** @param {any} [level] */
+/** @param {number} level */
 function nextSectionNumber(level) {
   const newNumbers = sectionNumbersAscii.slice(0, level);
   for (let i = 0; i < level - 1; i++) {
@@ -223,7 +223,7 @@ function nextSectionNumber(level) {
 
 /**
  * @param {Heading} heading
- * @param {any} [level]
+ * @param {number} level
  */
 function renderHeadingLineAscii(heading, level) {
   const parts = [];
@@ -245,8 +245,8 @@ function renderHeadingLineAscii(heading, level) {
 }
 
 /**
- * @param {any} [planning]
- * @param {any} [indent]
+ * @param {any} planning
+ * @param {string} indent
  */
 function renderPlanningAscii(planning, indent) {
   const parts = [];
@@ -257,9 +257,9 @@ function renderPlanningAscii(planning, indent) {
 }
 
 /**
- * @param {any} [node]
- * @param {any} [indent]
- * @param {any} [width]
+ * @param {any} node
+ * @param {any} indent
+ * @param {number} width
  */
 function renderParagraphAscii(node, indent, width) {
   const available = Math.max(10, width - indent.length); // a pathologically narrow width still leaves SOME room, rather than producing zero-or-negative-width wrapping
@@ -331,7 +331,7 @@ function looksNumeric(text) {
  *  at or beyond `width` (a cell content computed the width FROM in
  *  the first place, so this is normally exact, never truncated) is
  * @param {string} text
- * @param {any} [width]
+ * @param {number} width
  * @param {any} [alignRight]
  *  returned unchanged rather than clipped. */
 function justify(text, width, alignRight) {
@@ -395,8 +395,8 @@ function wrapTableCellAscii(text, width) {
 }
 
 /**
- * @param {any} [table]
- * @param {any} [indent]
+ * @param {any} table
+ * @param {string} indent
  */
 function renderTableAscii(table, indent) {
   // Real org's own table editor keeps every column a single, fixed
@@ -486,7 +486,7 @@ function stripCommaEscape(line) {
 /**
  * The frame ox-ascii draws around example blocks, source blocks and fixed-width lines.
  * @param {string[]} lines
- * @param {any} [indent]
+ * @param {string} indent
  */
 function boxLines(lines, indent) {
   const [top, side, bottom] = charsetAscii.box;
@@ -521,8 +521,8 @@ function parseBlockContent(lines) {
 
 /** ox-ascii centres each line of a centre block on the text width (less the base margin), but never left of the
  * @param {string[]} lines
- * @param {any} [indent]
- * @param {any} [width]
+ * @param {any} indent
+ * @param {number} width
  *  margin. Emacs pads with tabs; spaces are used here so the file reads the same everywhere. */
 function centerLines(lines, indent, width) {
   return lines.map((/** @type {string} */ line) => {
@@ -619,8 +619,8 @@ function renderParagraphRuns(node, indent, width) {
 
 /**
  * @param {Heading} heading
- * @param {any} [levelOffset]
- * @param {any} [width]
+ * @param {number} levelOffset
+ * @param {number} width
  * @param {any} [out]
  */
 function renderHeadingAscii(heading, levelOffset, width, out) {
@@ -644,7 +644,7 @@ function renderHeadingAscii(heading, levelOffset, width, out) {
  *  ahead of time, before the real render pass, specifically so the
  *  TOC -- which has to appear BEFORE the headings themselves in the
  * @param {Heading[]} headings
- * @param {any} [level]
+ * @param {number} level
  * @param {any} [numbers]
  * @param {any} [out]
  *  output -- can reference numbers that end up matching exactly). */

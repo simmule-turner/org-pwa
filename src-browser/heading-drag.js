@@ -38,8 +38,8 @@ function countDescendants(node) {
 /**
  * The heading `climb` levels above `node` (node itself for 0).
  * @param {Doc} doc
- * @param {any} [node]
- * @param {any} [climb]
+ * @param {any} node
+ * @param {number} climb
  */
 function ancestorAt(doc, node, climb) {
   let current = node;
@@ -50,7 +50,7 @@ function ancestorAt(doc, node, climb) {
   return current;
 }
 
-/** @param {any} [el] */
+/** @param {HTMLDivElement} el */
 function scrollParent(el) {
   for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
     const overflowY = getComputedStyle(p).overflowY;
@@ -61,7 +61,7 @@ function scrollParent(el) {
 
 /**
  * Builds the grip for a heading row and registers the row as a drop target.
- * @param {any} [rowEl]
+ * @param {HTMLDivElement} rowEl
  * @param {any} [row]
  */
 export function attachHeadingGrip(rowEl, row, side = 'right') {
@@ -89,11 +89,11 @@ function outlineBand() {
 }
 
 /**
- * @param {any} [e]
- * @param {any} [grip]
- * @param {any} [rowEl]
- * @param {any} [node]
- * @param {any} [side]
+ * @param {PointerEvent} e
+ * @param {HTMLButtonElement} grip
+ * @param {HTMLDivElement} rowEl
+ * @param {any} node
+ * @param {string} side
  */
 function beginDrag(e, grip, rowEl, node, side) {
   if (e.button !== undefined && e.button !== 0) return;

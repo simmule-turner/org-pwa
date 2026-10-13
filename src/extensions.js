@@ -56,8 +56,8 @@ export function userSexpResult(value) {
 /**
  * The cache key for one function, argument list and day.
  * @param {string} name
- * @param {any} [args]
- * @param {any} [dayKey]
+ * @param {any} args
+ * @param {number | string} dayKey
  */
 export function userSexpKey(name, args, dayKey) {
   return JSON.stringify([name, args, dayKey]);
@@ -126,14 +126,14 @@ export function normalizeAgendaItems(list, max = 500) {
   return out;
 }
 
-/** @param {any} [d] */
+/** @param {Date} d */
 const keyOf = (d) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 
 /**
  * The days ("YYYY-MM-DD") from `fromKey` to `toKey` on which a normalized item falls (a repeat is expanded).
- * @param {any} [item]
- * @param {any} [fromKey]
- * @param {any} [toKey]
+ * @param {any} item
+ * @param {string} fromKey
+ * @param {string} toKey
  */
 export function agendaOccurrences(item, fromKey, toKey) {
   const [y, m, d] = item.date.split('-').map(Number);

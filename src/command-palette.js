@@ -40,7 +40,7 @@ function normalize(text) {
 }
 
 /**
- * @param {any} haystack
+ * @param {string} haystack
  * @param {string} token
  */
 function startsAWord(haystack, token) {
@@ -54,7 +54,7 @@ function startsAWord(haystack, token) {
  */
 function scoreToken(token, fields) {
   /** @type {any} */ let best = null;
-  /** @param {any} [score] */
+  /** @param {number} score */
   const consider = (score) => {
     if (best === null || score < best) best = score;
   };
@@ -91,8 +91,8 @@ function fieldsOf(command) {
  * Returns the commands matching `query`, best first, as
  * `{ command, recent }` (`recent` is true for a command in `recentIds`).
  * `recentIds` is most-recent-first.
- * @param {any} [commands]
- * @param {any} [query]
+ * @param {any} commands
+ * @param {string} query
  */
 function searchCommands(commands, query, /** @type {any} */ { recentIds = [] } = {}) {
   const tokens = String(query == null ? '' : query)
@@ -149,7 +149,7 @@ function pushRecent(recentIds, id, max = 8) {
 function dynamicCommandSpecs({ templates = /** @type {any[]} */ ([]), extraEntries = /** @type {any[]} */ ([]) } = {}) {
   /** @type {any[]} */ const specs = [];
   const taken = new Set();
-  /** @param {any} [base] */
+  /** @param {string} base */
   const unique = (base) => {
     let id = base;
     for (let n = 2; taken.has(id); n++) id = `${base}#${n}`;

@@ -78,8 +78,8 @@ export function countCheckboxes(heading) {
  *  count, not a generic child-heading count, matching real org's own
  *  actual behavior. "checked" means the child's own keyword is one of
  * @param {Heading} heading
- * @param {any} [doneKeywords]
- * @param {any} [recursive]
+ * @param {any} doneKeywords
+ * @param {boolean} recursive
  *  `doneKeywords`. */
 function countTodoChildren(heading, doneKeywords, recursive) {
   let total = 0;
@@ -104,7 +104,7 @@ function countTodoChildren(heading, doneKeywords, recursive) {
  *  e.g. "todo recursive"; see this file's own header comment for the
  *  full reasoning). Absent or empty (by far the common case): pure
  *  checkbox counting, unchanged from this app's own existing,
- * @param {any} [value]
+ * @param {string | undefined} value
  *  already-shipped default -- nothing here alters that case at all. */
 function parseCookieData(value) {
   const words = String(value || '')

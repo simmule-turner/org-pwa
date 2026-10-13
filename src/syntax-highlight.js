@@ -8,7 +8,7 @@
  * highlightToHtml(code, lang) -> HTML, one line per "\n" (a token that spans lines is closed and reopened on each).
  */
 
-/** @param {any} [s] */
+/** @param {string} s */
 const words = (s) => new Set(s.split(/\s+/).filter(Boolean));
 
 const C_LIKE = {
@@ -130,7 +130,7 @@ const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, 
 
 /**
  * Wraps `text` in a span of the given face, one span per line.
- * @param {any} face
+ * @param {string | null} face
  * @param {string} text
  */
 function span(face, text) {
@@ -145,7 +145,7 @@ const NUMBER_RE = /^(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|\d[\d_]*\.?\d*(?:[eE][-+]?
 const IDENT_RE = /^[A-Za-z_$][\w$]*(?:-[A-Za-z0-9_*!?<>=/+]+)*/;
 const IDENT_PLAIN_RE = /^[A-Za-z_$][\w$]*[?!]?/;
 
-/** @param {any} [code] */
+/** @param {string} code */
 function highlightXml(code) {
   let out = '';
   let i = 0;
@@ -190,7 +190,7 @@ function highlightXml(code) {
 }
 
 /**
- * @param {any} [code]
+ * @param {string} code
  * @param {any} [lang]
  */
 export function highlightToHtml(code, lang) {

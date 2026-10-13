@@ -36,7 +36,7 @@ export const DEFAULT_DAYS_AFTER = 180;
 
 /**
  * `{ start, end }` for the window around `today`.
- * @param {any} [today]
+ * @param {Date} today
  */
 export function agendaWindow(today, daysBefore = DEFAULT_DAYS_BEFORE, daysAfter = DEFAULT_DAYS_AFTER) {
   return {
@@ -99,8 +99,8 @@ export function collectAgendaCalendarEvents(docs, opts = {}) {
   /**
    * @param {string} documentId
    * @param {Heading} heading
-   * @param {any} [kind]
-   * @param {any} [index]
+   * @param {any} kind
+   * @param {number} index
    * @param {any} [date]
    */
   const uniqueUid = (documentId, heading, kind, index, date) => {

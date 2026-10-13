@@ -125,7 +125,7 @@ export function getEffectiveVisibility(doc, localVarsOnly, globalVarsOnly) {
   return DEFAULT_STARTUP_CONFIG.visibility;
 }
 
-/** @param {any} [raw] */
+/** @param {null | undefined} raw */
 function parseVisibilityLispValue(raw) {
   if (raw === undefined || raw === null) return null;
   const v = String(raw).trim().replace(/^'/, '');
@@ -155,7 +155,7 @@ export function getEffectiveImageVisibility(doc, localVarsOnly, globalVarsOnly) 
  *  (rather than a fallback boolean) when unset/unrecognized -- needed
  *  here specifically so getEffectiveImageVisibility can tell "this
  *  layer said nil" apart from "this layer never set anything at all,"
- * @param {any} [raw]
+ * @param {null | undefined} raw
  *  which a single fallback-collapsing boolean can't distinguish. */
 function parseLispBooleanOrNull(raw) {
   if (raw === undefined || raw === null) return null;

@@ -38,8 +38,8 @@ const MONTH_NAMES = [
  *  week-start elsewhere (see agenda.js's own getAgendaStartOnWeekday)
  *  but a single-month calendar overview is conventionally always
  *  Sunday-first regardless of that separate weekly-agenda setting,
- * @param {any} [year]
- * @param {any} [month]
+ * @param {number} year
+ * @param {number} month
  *  matching real Emacs's own actual calendar-mode display. */
 function buildMonthGrid(year, month, today = new Date()) {
   const firstWeekday = new Date(year, month, 1).getDay();
@@ -64,9 +64,9 @@ function buildMonthGrid(year, month, today = new Date()) {
  *  example's own prevM_Date/nextM_Date already relied on JS Date's
  *  own automatic month-overflow arithmetic for this, just made
  *  explicit and directly testable here rather than only exercised
- * @param {any} [year]
- * @param {any} [month]
- * @param {any} [delta]
+ * @param {number} year
+ * @param {number} month
+ * @param {number} delta
  *  incidentally through UI navigation). */
 function stepMonth(year, month, delta) {
   const d = new Date(year, month + delta, 1);
@@ -80,9 +80,9 @@ function stepMonth(year, month, delta) {
  *  legitimately can, by design), even though the arithmetic would
  *  happen to produce the same result for a whole-year delta either
  *  way -- being explicit about the actual intent here matters more
- * @param {any} [year]
- * @param {any} [month]
- * @param {any} [delta]
+ * @param {number} year
+ * @param {any} month
+ * @param {number} delta
  *  than the shorter implementation. */
 function stepYear(year, month, delta) {
   return { year: year + delta, month };

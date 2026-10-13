@@ -676,7 +676,7 @@ export async function importVcardFromHeadings(headings, sourceLabel) {
   await importVcardFile(bodies.join('\n'));
 }
 
-/** @param {any} [vcardText] */
+/** @param {string} vcardText */
 export async function importVcardFile(vcardText) {
   /** @type {any[]} */ const unmappedProperties = [];
   let embeddedPhotoCount = 0;
@@ -727,7 +727,7 @@ export async function importIcalendarFromHeadings(headings, sourceLabel) {
 
 /** Parses `icsText` via importIcalendarAsOrgText, then places the headings exactly as importVcardFile does: appended as new
  *  top-level headings at the end of the open document (nothing already there is touched), or, with "To: *new buffer*", in a new
- * @param {any} [icsText]
+ * @param {string} icsText
  *  unsaved one. Times are shown in this device's own time zone. Says what was not carried over, as the vCard import does. */
 export async function importIcalendarFile(icsText) {
   /** @type {any[]} */ const unmappedProperties = [];

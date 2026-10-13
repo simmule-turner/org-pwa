@@ -33,7 +33,7 @@ function contactUid(documentId, heading, index) {
 }
 
 /** The file name a contact is stored under on the server: readable, safe in a URL, and unique to its id. Every name this
- * @param {any} [uid]
+ * @param {string} uid
  *  app makes starts with `orgpwa-`, which is how it recognizes its own contacts and leaves any other alone. */
 function resourceNameForContactUid(uid) {
   const base = uid.replace(/@org-pwa$/, '').replace(/[^A-Za-z0-9._-]/g, '-').slice(0, 100);
@@ -47,7 +47,7 @@ function isOurContactResource(name) {
 
 /** One contact's vCard text, with the UID a CardDAV server needs to tell contacts apart (the export has none, since a
  * @param {string[]} lines
- * @param {any} [uid]
+ * @param {string} uid
  *  single file of cards does not need one). It goes straight after VERSION, where vCard 3.0 allows it. */
 function vcardText(lines, uid) {
   const withUid = lines.some((/** @type {string} */ line) => /^UID[:;]/i.test(line)) ? lines : [lines[0], lines[1], `UID:${uid}`, ...lines.slice(2)];

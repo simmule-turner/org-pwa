@@ -26,7 +26,7 @@ async function recall(kvAdapter, documentId) {
 /**
  * @param {KvAdapter} kvAdapter
  * @param {string} documentId
- * @param {any} [eol]
+ * @param {string} eol
  */
 async function remember(kvAdapter, documentId, eol) {
   try {
@@ -57,7 +57,7 @@ export function withLineEndings(adapter, kvAdapter, { contentDerivedHash = false
     },
     /**
      * @param {string} documentId
-     * @param {any} [content]
+     * @param {string} content
      */
     async write(documentId, content, /** @type {any[]} */ ...rest) {
       const eol = await recall(kvAdapter, documentId);

@@ -40,7 +40,7 @@ export const REPEATER_MARK_OPTIONS = [
  * this timestamp"), otherwise a valid org timestamp string built via
  * formatOrgTimestamp from whatever the fields currently hold.
  * @param {string} label
- * @param {any} [currentRaw]
+ * @param {string | null} currentRaw
  */
 export function buildTimestampFieldGroup(label, currentRaw) {
   const parsed = currentRaw ? parseOrgTimestamp(currentRaw) : null;
@@ -280,7 +280,7 @@ export function buildPriorityFieldGroup(heading) {
 /** "YYYY-MM-DD" for a date-picker's own value attribute, local time
  *  (not UTC -- toISOString would shift the date near a timezone
  *  boundary, exactly the kind of off-by-one a date range picker can't
- * @param {any} [date]
+ * @param {Date} date
  *  afford). */
 export function dateInputValue(date) {
   const y = date.getFullYear();

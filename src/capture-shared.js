@@ -27,7 +27,7 @@ function normalizeShared(/** @type {any} */ { title, text, url }) {
  * Reads a launch URL's query string. Returns null when it carries nothing for Capture, otherwise
  * `{ capture, shared }`: `capture` is the template key asked for ('' when the parameter is present but empty, meaning
  * "show the template list"; null when absent) and `shared` is `{ title, text, url }` or null when nothing was shared.
- * @param {any} [search]
+ * @param {string} search
  */
 function parseLaunchParams(search) {
   const params = new URLSearchParams(search || '');

@@ -44,7 +44,7 @@ export function serializeTableRow(cells) {
   return '| ' + cells.join(' | ') + ' |';
 }
 
-/** @param {any} [columnCount] */
+/** @param {number} columnCount */
 export function serializeTableRule(columnCount) {
   return '|' + Array(Math.max(1, columnCount)).fill('---').join('+') + '|';
 }
@@ -78,8 +78,8 @@ export function serializeTable(table) {
  * rows before the FIRST one are ever headers; a later rule is just a
  * group separator within the data, and doesn't retroactively make the
  * row before it look like a header too.
- * @param {any} [table]
- * @param {any} [rowIndex]
+ * @param {any} table
+ * @param {number} rowIndex
  */
 export function isTableHeaderRow(table, rowIndex) {
   const row = table.rows[rowIndex];
@@ -127,9 +127,9 @@ export function allTablesInBody(heading) {
  *  bodyLines. This is the one place that keeps the derived tree and the
  *  serialization source in sync — every edit function below ends by
  * @param {Heading} heading
- * @param {any} [lineIndex]
- * @param {any} [lineCount]
- * @param {any} [newLines]
+ * @param {number} lineIndex
+ * @param {number} lineCount
+ * @param {string[]} newLines
  *  calling this rather than mutating heading.body directly. */
 export function commitLines(heading, lineIndex, lineCount, newLines) {
   heading.bodyLines.splice(lineIndex, lineCount, ...newLines);
@@ -139,8 +139,8 @@ export function commitLines(heading, lineIndex, lineCount, newLines) {
 // ---- table edits ----------------------------------------------------------
 
 /**
- * @param {any} [table]
- * @param {any} [rowIndex]
+ * @param {any} table
+ * @param {string | number} rowIndex
  */
 function requireDataRow(table, rowIndex) {
   const row = table.rows[rowIndex];
@@ -153,10 +153,10 @@ function requireDataRow(table, rowIndex) {
 /** Sets one cell's text and commits the whole table's new text back to
  *  bodyLines. `table` must be a fresh reference from the current render
  * @param {Heading} heading
- * @param {any} [table]
- * @param {any} [rowIndex]
- * @param {any} [colIndex]
- * @param {any} [value]
+ * @param {any} table
+ * @param {number} rowIndex
+ * @param {number} colIndex
+ * @param {string} value
  *  (see module docstring). */
 export function setTableCell(heading, table, rowIndex, colIndex, value) {
   const row = requireDataRow(table, rowIndex);
@@ -166,8 +166,8 @@ export function setTableCell(heading, table, rowIndex, colIndex, value) {
 
 /** Inserts a new blank data row after `afterRowIndex` (-1 to insert at the
  * @param {Heading} heading
- * @param {any} [table]
- * @param {any} [afterRowIndex]
+ * @param {any} table
+ * @param {number} afterRowIndex
  *  very start), with the same column count as the table's existing rows. */
 export function insertTableRow(heading, table, afterRowIndex) {
   const dataRow = table.rows.find((/** @type {any} */ r) => r.type === 'row');
@@ -179,8 +179,8 @@ export function insertTableRow(heading, table, afterRowIndex) {
 
 /**
  * @param {Heading} heading
- * @param {any} [table]
- * @param {any} [rowIndex]
+ * @param {any} table
+ * @param {number} rowIndex
  */
 export function deleteTableRow(heading, table, rowIndex) {
   if (table.rows.length <= 1) {
@@ -193,8 +193,8 @@ export function deleteTableRow(heading, table, rowIndex) {
 /** Inserts a new blank column after `afterColIndex` (-1 for the start) in
  *  every data row. Rule rows need no per-row change — serializeTable
  * @param {Heading} heading
- * @param {any} [table]
- * @param {any} [afterColIndex]
+ * @param {any} table
+ * @param {number} afterColIndex
  *  derives the rule's width from the (now-updated) data row column count. */
 export function insertTableColumn(heading, table, afterColIndex) {
   for (const row of table.rows) {
@@ -205,8 +205,8 @@ export function insertTableColumn(heading, table, afterColIndex) {
 
 /**
  * @param {Heading} heading
- * @param {any} [table]
- * @param {any} [colIndex]
+ * @param {any} table
+ * @param {number} colIndex
  */
 export function deleteTableColumn(heading, table, colIndex) {
   const dataRow = table.rows.find((/** @type {any} */ r) => r.type === 'row');
@@ -262,8 +262,8 @@ export function insertTable(heading, { rows = 2, cols = 2, headerRule = true } =
  * Newlines in `newText` are stripped (a list item is one line, same rule
  * as heading-edit.js's renameHeading for heading titles).
  * @param {Heading} heading
- * @param {any} [item]
- * @param {any} [newText]
+ * @param {any} item
+ * @param {string} newText
  */
 export function editListItemText(heading, item, newText) {
   const sanitized = String(newText).replace(/[\r\n]+/g, ' ').trim();
@@ -351,8 +351,8 @@ export function deleteListItem(heading, item) {
  * genuinely become one. That's correct org semantics reapplied, not a bug:
  * the editor is literal-syntax, the same way a plain-text org file is.
  * @param {Heading} heading
- * @param {any} [paragraph]
- * @param {any} [newText]
+ * @param {any} paragraph
+ * @param {string} newText
  */
 export function editParagraphText(heading, paragraph, newText) {
   const newLines = String(newText).split('\n');
@@ -451,7 +451,7 @@ export function getHeadingText(heading) {
  * function in this file uses, just applied to the whole body instead of
  * one node's line span.
  * @param {Heading} heading
- * @param {any} [newText]
+ * @param {string} newText
  */
 export function setHeadingText(heading, newText) {
   const isEmpty = String(newText).trim() === '';

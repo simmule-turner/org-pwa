@@ -33,8 +33,8 @@ export function guessAnyAttachmentMimeType(filename) {
  *  keeps a stalled connection from hanging the whole refresh
  *  indefinitely; a non-2xx response or malformed JSON both throw a
  *  clear, specific error rather than silently returning incomplete
- * @param {any} [latitude]
- * @param {any} [longitude]
+ * @param {number} [latitude]
+ * @param {number} [longitude]
  *  data. */
 export async function fetchWeatherData(latitude, longitude) {
   const controller = new AbortController();
@@ -186,7 +186,7 @@ export function renderDiffView(oldText, newText) {
 
 /**
  * @param {any} [target]
- * @param {any} [reason]
+ * @param {string | undefined} [reason]
  */
 export function imagePlaceholder(target, reason) {
   const span = document.createElement('span');

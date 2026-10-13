@@ -41,12 +41,12 @@ const MAILTO_RE = /^mailto:/i;
 const DOI_RE = /^doi:/i;
 const FILE_LIKE_RE = /^(file:|github:|webdav:|local:|\.{1,2}\/|~\/|\/)/i;
 
-/** @param {any} [target] */
+/** @param {string} target */
 export function isExternalUrl(target) {
   return EXTERNAL_URL_RE.test(target) || MAILTO_RE.test(target);
 }
 
-/** @param {any} [target] */
+/** @param {string} target */
 export function isDoi(target) {
   return DOI_RE.test(target);
 }
@@ -55,13 +55,13 @@ export function isDoi(target) {
  *  https://doi.org/10.1145/1327452.1327492 for "doi:10.1145/1327452.1327492"
  *  — the actual, fetchable/openable form a DOI needs to become to work
  *  as a real link, since "doi:..." on its own isn't a URL scheme any
- * @param {any} [target]
+ * @param {string} target
  *  browser knows how to open directly. */
 export function doiToUrl(target) {
   return 'https://doi.org/' + target.replace(DOI_RE, '');
 }
 
-/** @param {any} [target] */
+/** @param {string} target */
 export function isFileLink(target) {
   return FILE_LIKE_RE.test(target);
 }
@@ -73,7 +73,7 @@ export function isFileLink(target) {
  *  are their own distinct schemes, since those specifically mean "a
  *  path within whichever GitHub repo / WebDAV server is configured" or
  *  "a file on this device (in the org-pwa folder, or opened earlier)",
- * @param {any} [target]
+ * @param {string} target
  *  not a path relative to the current document). */
 export function fileLinkScheme(target) {
   if (/^github:/i.test(target)) return 'github';
@@ -98,8 +98,8 @@ export function fileLinkScheme(target) {
  * sibling file) — the same convention resolveCaptureFileId and
  * archive-model.js's resolveArchiveFileId both already use for exactly
  * this "no explicit directory given" case.
- * @param {any} [target]
- * @param {any} [currentDocumentId]
+ * @param {string} target
+ * @param {string | string[]} currentDocumentId
  */
 export function resolveImagePath(target, currentDocumentId) {
   let path = target.replace(/^(file:|github:|webdav:|local:)/i, '');
@@ -321,7 +321,7 @@ export function findHeadingByTitle(doc, title) {
 /**
  * First heading (in document order) whose :CUSTOM_ID: property exactly matches, or null.
  * @param {Doc} doc
- * @param {any} [customId]
+ * @param {string} customId
  */
 export function findHeadingByCustomId(doc, customId) {
   /** @type {any} */ let found = null;
@@ -435,7 +435,7 @@ export function findFootnoteDefinition(doc, label) {
  * stripped); anything else after "::" is a plain text search. Returns
  * { path, inFileTarget } where inFileTarget is null if there's no
  * "::" at all.
- * @param {any} [pathAndTarget]
+ * @param {string} pathAndTarget
  */
 export function splitFileLinkTarget(pathAndTarget) {
   const idx = pathAndTarget.indexOf('::');

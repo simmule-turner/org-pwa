@@ -45,7 +45,7 @@ const CONDITION_TOKEN_RE = /([+-]?)([A-Za-z_][A-Za-z0-9_]*)(?:(<>|<=|>=|=|<|>)"(
  *  clear error on a condition this parser doesn't recognize, rather than
  *  silently treating malformed input as "matches nothing" or "matches
  *  everything" -- either of those would be a worse failure mode for a
- * @param {any} [query]
+ * @param {string} query
  *  filter someone is actively relying on to scope an export. */
 function parseMatchQuery(query) {
   const trimmed = query.trim();
@@ -95,9 +95,9 @@ function readEntryValue(entry, name) {
 }
 
 /**
- * @param {any} [actual]
- * @param {any} [op]
- * @param {any} [expected]
+ * @param {number | undefined} actual
+ * @param {string} op
+ * @param {number} expected
  */
 function compareValues(actual, op, expected) {
   if (actual === undefined) return false;

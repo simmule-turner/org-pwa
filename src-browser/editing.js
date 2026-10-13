@@ -140,7 +140,7 @@ export function openHeadingTitleEditor(heading) {
 
 /**
  * @param {Heading} heading
- * @param {any} [isNew]
+ * @param {boolean} isNew
  */
 export function startEditingTitle(heading, isNew) {
   if (S.isBufferReadOnly) {

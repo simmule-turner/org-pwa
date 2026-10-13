@@ -54,7 +54,7 @@ export function showAttachmentFolder(/** @type {any} */ { title, load, act, remo
   /**
    * @param {string} text
    * @param {string} label
-   * @param {any} [onClick]
+   * @param {() => Promise<void>} onClick
    */
   function smallButton(text, label, onClick) {
     const b = document.createElement('button');

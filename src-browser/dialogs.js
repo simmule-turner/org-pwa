@@ -325,7 +325,7 @@ export function openTimestampPickerPopup(kind) {
  *  (2) a `touchmove` listener on the overlay's own backdrop
  *  specifically (never on the popup's own textarea/fields, which
  *  still need to scroll normally) that calls preventDefault() for any
- * @param {any} [overlay]
+ * @param {HTMLDivElement | HTMLElement} overlay
  *  touch that didn't start on an element the popup itself owns. */
 export function lockBackgroundScroll(overlay) {
   const scrollEl = scrollContainer();
@@ -347,7 +347,7 @@ export function lockBackgroundScroll(overlay) {
   };
 }
 
-/** @param {any} [overlayEl] */
+/** @param {HTMLElement} overlayEl */
 export function showModalOverlay(overlayEl) {
   overlayEl.style.display = 'flex';
   if (!modalOverlayCleanups.has(overlayEl)) {
@@ -810,8 +810,8 @@ export function pickBinaryFile(capture, accept) {
 
 /**
  * Like pickBinaryFile, but the chooser allows several files and the promise resolves with all of them (in order).
- * @param {any} [capture]
- * @param {any} [accept]
+ * @param {string | undefined} [capture]
+ * @param {string | undefined} [accept]
  */
 export function pickBinaryFiles(capture, accept, multiple = true) {
   return new Promise((resolve, reject) => {

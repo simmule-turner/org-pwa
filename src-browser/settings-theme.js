@@ -9,7 +9,7 @@ import { kv } from './singletons.js';
 import { menuButton } from './ui-widgets.js';
 import { renderSettingsView } from './settings-view.js';
 
-/** @param {any} [theme] */
+/** @param {string} theme */
 export function applyTheme(theme) {
   if (theme === 'light' || theme === 'dark') {
     document.documentElement.setAttribute('data-theme', theme);
@@ -66,7 +66,7 @@ export async function persistAndReapplyThemeColors() {
  *  a color swatch, an opacity slider (needed since several of these
  *  variables use an alpha channel a plain color input can't represent
  *  on its own), and a per-variable Reset -- plus a Reset all for the
- * @param {any} [themeName]
+ * @param {string} themeName
  *  whole theme. */
 export function buildThemeColorCustomizationSection(themeName) {
   const wrap = document.createElement('div');
@@ -177,7 +177,7 @@ export function buildThemeColorCustomizationSection(themeName) {
   return wrap;
 }
 
-/** @param {any} [width] */
+/** @param {number} width */
 export function applySidePanelWidth(width) {
   sidePanelEl.style.flex = `0 0 ${width}px`;
 }

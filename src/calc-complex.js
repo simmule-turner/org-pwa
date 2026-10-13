@@ -21,9 +21,9 @@ export const isReal = (v) => v !== null && typeof v === 'object' && v.isReal ===
 
 /**
  * Decimal arithmetic at `digits` significant digits (mathjs BigNumber). `m` must be created with that precision.
- * @param {any} [m]
- * @param {any} [digits]
- * @param {any} [mGuard]
+ * @param {any} m
+ * @param {number} digits
+ * @param {undefined} [mGuard]
  */
 export function bigDomain(m, digits, mGuard) {
   const D = {
@@ -524,8 +524,8 @@ export function cPow(a, b, D, degrees) {
 }
 
 /**
- * @param {any} [x]
- * @param {any} [n]
+ * @param {any} x
+ * @param {number} n
  * @param {any} [D]
  */
 function powReal(x, n, D) {

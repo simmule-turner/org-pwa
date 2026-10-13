@@ -89,8 +89,8 @@ export function buildFullyResolvedGlobalVariablesText() {
  *  existing raw textarea reads and writes, kept persisted and
  *  re-merged into the currently open document immediately, the same
  *  "applies right away, no reload needed" convention every other
- * @param {any} [key]
- * @param {any} [rawValue]
+ * @param {string} key
+ * @param {string | null} rawValue
  *  Settings control here already follows. */
 export async function commitGlobalVariableChange(key, rawValue) {
   const normalizedValue = typeof rawValue === 'string' ? normalizeSmartQuotes(rawValue) : rawValue;

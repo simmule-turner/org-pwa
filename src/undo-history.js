@@ -31,7 +31,7 @@
  */
 
 /** Starts a fresh history with a single snapshot representing the
- * @param {any} [initialText]
+ * @param {string} initialText
  *  document as it was just opened. */
 export function createHistory(initialText, initialLabel = 'Opened', now = new Date()) {
   return { entries: [{ text: initialText, label: initialLabel, timestamp: now }], index: 0 };
@@ -93,8 +93,8 @@ export function redo(history) {
  * navigation, not a new edit, so unlike pushSnapshot this never
  * discards anything either side of it. Returns the SAME history
  * unchanged if targetIndex is out of range.
- * @param {any} [history]
- * @param {any} [targetIndex]
+ * @param {any} history
+ * @param {number} targetIndex
  */
 export function jumpTo(history, targetIndex) {
   if (targetIndex < 0 || targetIndex >= history.entries.length) return history;

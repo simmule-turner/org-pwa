@@ -60,7 +60,7 @@ function workerMain() {
   const waiting = new Map();
   let lastRid = 0;
   /**
-   * @param {any} [method]
+   * @param {string} method
    * @param {any} [args]
    */
   const rpc = (method, args) =>
@@ -125,7 +125,7 @@ function workerMain() {
 
 /**
  * The code that runs inside the worker: the lock-down first, then `main`.
- * @param {any} [main]
+ * @param {() => void} main
  */
 function workerSource(main) {
   return `(${lockDown.toString()})();(${main.toString()})()`;
@@ -133,8 +133,8 @@ function workerSource(main) {
 
 /**
  * Points the frame at the static sandbox page, which asks for its code once it has loaded.
- * @param {any} [frame]
- * @param {any} [main]
+ * @param {HTMLIFrameElement} frame
+ * @param {() => void} main
  */
 function loadFrame(frame, main) {
   frame.src = 'sandbox-frame.html';
@@ -150,8 +150,8 @@ export const MAX_RUN_WITH_REQUESTS_MS = 60000;
  * Answers the worker's requests (`{type:'rpc', rid, method, args}`) with `onRpc(method, args)`.
  * waiting() is how many are unanswered; the run's timer is not counted down meanwhile
  * (pausedMs() is the time spent waiting), up to MAX_RUN_WITH_REQUESTS_MS in all.
- * @param {any} [onRpc]
- * @param {any} [post]
+ * @param {any} onRpc
+ * @param {(message: string) => void | null} post
  */
 export function createRpcHost(onRpc, post) {
   let count = 0;
@@ -254,7 +254,7 @@ export function runJavaScript(/** @type {any} */ { code, vars = {}, variables = 
  * `main` is a function that runs inside the worker and talks through self.onmessage / self.postMessage;
  * it is serialised, so it must not use anything from the page's modules. Resolves with
  * { ok: true, send(message), onMessage(listener), close() }, or { ok: false, message }.
- * @param {any} [main]
+ * @param {() => void} main
  */
 export function startSandbox(main, { startupMs = 4000, onRpc = /** @type {((method: any, args: any) => any) | null} */ (null) } = {}) {
   return new Promise((resolve) => {

@@ -37,7 +37,7 @@ import { parseBody } from './body-parser.js';
  *  #+INCLUDE: "path" export html is valid syntax, exactly parallel to
  *  #+INCLUDE: "path" src python); `lines` is the raw "N-M"/"−M"/"N-"
  *  string (see applyLineRange below for how it's actually
- * @param {any} [value]
+ * @param {string} value
  *  interpreted), or null; `minlevel` is a positive integer, or null. */
 function parseIncludeDirective(value) {
   const pathMatch = /^"([^"]*)"/.exec(value.trim());
@@ -91,7 +91,7 @@ function parseIncludeDirective(value) {
  *  the file's own actual end (inclusive, since there's no upper bound
  *  to exclude there). `spec` of null/'' returns every line
  * @param {string[]} lines
- * @param {any} [spec]
+ * @param {string} spec
  *  unchanged. */
 function applyLineRange(lines, spec) {
   if (!spec) return lines;
@@ -115,10 +115,10 @@ const INCLUDE_LINE_RE = /^\s*#\+INCLUDE:\s?(.*)$/i;
  *  one include," not a reason to fail the whole export). Shared by
  *  both the document-level and heading-level expansion below, so the
  *  two can never quietly drift apart on what a directive actually
- * @param {any} [directive]
- * @param {any} [fetchPath]
- * @param {any} [parseOrgFn]
- * @param {any} [defaultMinlevel]
+ * @param {any} directive
+ * @param {any} fetchPath
+ * @param {any} parseOrgFn
+ * @param {null} defaultMinlevel
  *  does. */
 async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlevel) {
   let result;

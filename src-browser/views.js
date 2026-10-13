@@ -19,7 +19,7 @@ import { aliasedMenuDivItem, appendMenuButtonsInOrder, positionPopupNearButton }
  *  enter/exit bookkeeping each transition needs: leaving 'text' commits
  *  its content into state.doc first (the fix from a previous bug — never
  *  read a stale doc); leaving 'org' clears outline edit state, since
- * @param {any} [view]
+ * @param {string} view
  *  nothing should be mid-edit while the outline isn't even shown. */
 export function switchToView(view) {
   if (S.settingsOpen) {
@@ -134,7 +134,7 @@ export async function openOrSwitchToHelp() {
  *  links, and the same navigateToHeading every other internal-link
  *  jump in this app already uses. Used by Settings' own hotlinks to
  *  the corresponding help section, so a streamlined settings hint can
- * @param {any} [anchorId]
+ * @param {string} anchorId
  *  point at the full documentation instead of duplicating it inline. */
 export async function openDocsAtHeading(anchorId) {
   S.navigationBackStack.push({

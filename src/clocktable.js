@@ -38,8 +38,8 @@ import { COMPLETED_CLOCK_RE, parseClockTimestampToDate, formatClockDuration } fr
  * exactly at midnight. Either can be null/empty for an unbounded side
  * of the range (an empty start date picker means "everything up to
  * tend", not "nothing").
- * @param {any} [tstartStr]
- * @param {any} [tendStr]
+ * @param {string} tstartStr
+ * @param {string} tendStr
  */
 function parseClocktableRange(tstartStr, tendStr) {
   const tstart = tstartStr ? new Date(tstartStr + 'T00:00:00') : null;
@@ -96,8 +96,8 @@ function computeSubtreeTotals(headings, tstart, tend, totals) {
  *  descendants) gets a row and its children are considered too (up to
  *  maxlevel); deeper headings contribute upward but never get a row
  * @param {Heading[]} headings
- * @param {any} [level]
- * @param {any} [maxlevel]
+ * @param {number} level
+ * @param {number} maxlevel
  * @param {any} [totals]
  * @param {any} [rows]
  *  of their own. */
@@ -172,7 +172,7 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** "2026-08-07 Fri 12:11" -- real org's own inactive-timestamp
  *  format with a day-name abbreviation and HH:MM (no seconds), the
- * @param {any} [date]
+ * @param {Date} date
  *  exact form a clocktable's own #+CAPTION: line uses. */
 function formatCaptionTimestamp(date) {
   const y = date.getFullYear();

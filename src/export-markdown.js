@@ -272,8 +272,8 @@ function renderParagraphMd(node) {
 }
 
 /**
- * @param {any} [cells]
- * @param {any} [count]
+ * @param {any} cells
+ * @param {number} count
  */
 function padCells(cells, count) {
   const out = cells.slice();
@@ -356,7 +356,7 @@ function renderPlanningMd(planning) {
 
 /**
  * @param {Heading} heading
- * @param {any} [level]
+ * @param {number} level
  */
 function renderHeadingLineMd(heading, level) {
   const parts = ['#'.repeat(Math.max(1, level))];
@@ -372,7 +372,7 @@ function renderHeadingLineMd(heading, level) {
 
 /**
  * @param {Heading} heading
- * @param {any} [levelOffset]
+ * @param {number} levelOffset
  * @param {any} [out]
  */
 function renderHeadingMd(heading, levelOffset, out) {
@@ -402,8 +402,8 @@ function renderHeadingMd(heading, levelOffset, out) {
  *  with level+1, the actual list-building logic (see buildTocMd below
  *  for the one-time wrapper that decides whether to call this at
  * @param {Heading[]} headings
- * @param {any} [level]
- * @param {any} [maxDepth]
+ * @param {number} level
+ * @param {number} maxDepth
  * @param {any} [numberingEnabled]
  *  all). */
 function buildTocListMd(headings, level, maxDepth, numberingEnabled) {

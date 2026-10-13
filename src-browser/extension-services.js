@@ -24,7 +24,7 @@ function storedGrants() {
   }
 }
 
-/** @param {any} [owner] */
+/** @param {string} owner */
 function readGrant(owner) {
   if (owner.startsWith('session:')) return sessionGrants.get(owner) || { hosts: [], location: false };
   const g = storedGrants()[owner];
@@ -32,7 +32,7 @@ function readGrant(owner) {
 }
 
 /**
- * @param {any} [owner]
+ * @param {string} owner
  * @param {any} [grant]
  */
 function writeGrant(owner, grant) {
@@ -61,10 +61,10 @@ export function documentOwner(documentId) {
   return id && !id.startsWith(UNSAVED_DOCUMENT_ID) ? 'doc:' + id : 'session:' + (id || 'unsaved');
 }
 
-/** @param {any} [hash] */
+/** @param {string} hash */
 export const scriptOwner = (hash) => 'script:' + hash;
 
-/** @param {any} [owner] */
+/** @param {string} owner */
 async function readCache(owner) {
   if (owner.startsWith('session:')) return sessionCaches.get(owner) || {};
   try {
@@ -78,7 +78,7 @@ async function readCache(owner) {
 }
 
 /**
- * @param {any} [owner]
+ * @param {string} owner
  * @param {any} [scope]
  */
 async function writeCache(owner, scope) {
@@ -113,7 +113,7 @@ async function readPosition() {
   }
 }
 
-/** @param {any} [response] */
+/** @param {Response} response */
 async function readBody(response) {
   if (!response.body || !response.body.getReader) {
     const text = await response.text();
@@ -220,7 +220,7 @@ export function createServices(/** @type {any} */ { owner, declared = /** @type 
 
 /**
  * Before a block runs: asks for the hosts and the position its header lists, unless granted already.
- * @param {any} [owner]
+ * @param {string} owner
  * @param {any} [declared]
  */
 export async function authorizeBlock(owner, declared) {

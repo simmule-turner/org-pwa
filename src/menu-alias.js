@@ -52,7 +52,7 @@
  * view: {...}, clocking: {...} }` -- each of the six always present
  * (possibly empty `{}`), for direct `result[menu][label]` lookup by any
  * call site. An unset/empty value returns all six as `{}`.
- * @param {any} [rawValue]
+ * @param {string} rawValue
  */
 function parseMenuAliases(rawValue) {
   const result = { file: {}, more: {}, export: {}, import: {}, view: {}, clocking: {} };
@@ -140,8 +140,8 @@ export { parseMenuAliases, tokenizeMenuAliasValue };
  * stale reference to a label that no longer exists) is silently
  * dropped from the result, the same tolerant-of-the-unexpected
  * approach parseMenuAliases itself already takes.
- * @param {any} [aliasMap]
- * @param {any} [labels]
+ * @param {any} aliasMap
+ * @param {string[]} labels
  */
 function resolveMenuOrder(aliasMap, labels) {
   const allMentioned = labels.every((/** @type {string} */ label) => label in aliasMap);

@@ -32,8 +32,8 @@ export function effectiveCalendarConfig() {
 }
 
 /**
- * @param {any} [n]
- * @param {any} [word]
+ * @param {number} n
+ * @param {string} word
  */
 function plural(n, word) {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -131,8 +131,8 @@ export async function syncAgendaToCalendar({ manual = false, rebuild = false, re
 
 /**
  * An automatic run shows a given problem once, so a server that is down does not nag at every save.
- * @param {any} [message]
- * @param {any} [manual]
+ * @param {string} message
+ * @param {boolean} manual
  */
 function reportProblem(message, manual, report = setStatus) {
   if (!manual && S.calendarSyncLastError === message) return;

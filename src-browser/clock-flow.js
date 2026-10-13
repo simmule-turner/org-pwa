@@ -193,7 +193,7 @@ export function clockGotoRecent() {
     return;
   }
   const severalDocuments = new Set(recent.map((r) => r.tabId)).size > 1;
-  /** @param {any} [date] */
+  /** @param {Date} date */
   const when = (date) => date.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   openButtonChoiceModal({
     label: 'Go to which recently clocked task?',

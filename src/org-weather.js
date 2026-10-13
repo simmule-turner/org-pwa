@@ -50,7 +50,7 @@ const WEATHER_CODE_MAP = {
 /** Looks up a WMO weather code -- returns a clear, distinct fallback
  *  for a code outside the table given (rather than silently showing
  *  nothing, or guessing), so an unrecognized code is still visibly
- * @param {any} [code]
+ * @param {string | number} code
  *  informative rather than a blank spot in the formatted output. */
 function lookupWeatherCode(code) {
   return /** @type {any} */ (WEATHER_CODE_MAP)[code] || { text: 'Unknown weather', icon: '\u2753' };
@@ -82,8 +82,8 @@ const FETCH_SPEED_UNIT = 'mph';
  *  happens for the common case at all). Rounded to 1 decimal place,
  *  matching the Open-Meteo API's own typical precision for these
  *  values -- converting without rounding would otherwise produce
- * @param {any} [fahrenheit]
- * @param {any} [targetUnit]
+ * @param {number} fahrenheit
+ * @param {string} targetUnit
  *  long, uninformative floating-point tails. */
 function convertTemperature(fahrenheit, targetUnit) {
   const value = targetUnit === '\u00b0C' ? ((fahrenheit - 32) * 5) / 9 : fahrenheit;
@@ -96,8 +96,8 @@ function convertTemperature(fahrenheit, targetUnit) {
  *  combination. 1 mph = 0.44704 m/s and 1 knot = 0.514444 m/s
  *  exactly (the international definition: 1 nautical mile = 1852m,
  *  1 knot = 1852m / 3600s), not approximations. Rounded to 1 decimal
- * @param {any} [mph]
- * @param {any} [targetUnit]
+ * @param {number} mph
+ * @param {string} targetUnit
  *  place, same reasoning as convertTemperature above. */
 function convertSpeed(mph, targetUnit) {
   if (targetUnit === 'mph') return Math.round(mph * 10) / 10;
@@ -129,8 +129,8 @@ function convertSpeed(mph, targetUnit) {
  *  stated bounds (round(59.6)=60, outside "0-59"). Clamped to a
  *  minimum of 0 for a `dataTime` that's at or after `now` (clock
  *  skew, or a data timestamp that isn't strictly in the past) rather
- * @param {any} [dataTime]
- * @param {any} [now]
+ * @param {string | number | Date} dataTime
+ * @param {Date} now
  *  than showing a nonsensical negative age. */
 function formatWeatherAge(dataTime, now) {
   const ageMinutesTotal = Math.max(0, Math.floor((now.getTime() - new Date(dataTime).getTime()) / 60000));
@@ -141,7 +141,7 @@ function formatWeatherAge(dataTime, now) {
 }
 
 /**
- * @param {any} [template]
+ * @param {string} template
  * @param {any} [data]
  * @param {any} [temperatureUnit]
  * @param {any} [speedUnit]

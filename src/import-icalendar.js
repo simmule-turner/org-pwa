@@ -121,10 +121,10 @@ function collectComponents(text) {
 // Every date or time is carried as `wall`: milliseconds as if its wall-clock fields were UTC. That makes adding a duration,
 // comparing and formatting plain arithmetic, and a daylight-saving change never lands inside it.
 
-/** @param {any} [n] */
+/** @param {number} n */
 const pad = (n) => String(n).padStart(2, '0');
 
-/** @param {any} [wall] */
+/** @param {string | number | Date} wall */
 function wallParts(wall) {
   const d = new Date(wall);
   return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes() };
@@ -132,7 +132,7 @@ function wallParts(wall) {
 
 /**
  * The wall-clock fields `instantMs` shows in `zone` (an IANA name), or in the device's own zone when `zone` is null.
- * @param {any} [instantMs]
+ * @param {number} instantMs
  * @param {any} [zone]
  */
 function instantToWall(instantMs, zone) {
@@ -145,7 +145,7 @@ function instantToWall(instantMs, zone) {
 }
 
 /**
- * @param {any} [instantMs]
+ * @param {number} instantMs
  * @param {any} [zone]
  */
 function zoneFields(instantMs, zone) {
@@ -156,7 +156,7 @@ function zoneFields(instantMs, zone) {
 
 /**
  * The instant a wall-clock time is, in the IANA zone `zone` (two passes settle the offset around a daylight-saving change).
- * @param {any} [wall]
+ * @param {number} wall
  * @param {any} [zone]
  */
 function zonedWallToInstant(wall, zone) {
@@ -171,8 +171,8 @@ function zonedWallToInstant(wall, zone) {
 
 /**
  * One DTSTART / DTEND / DUE / COMPLETED value as { wall, allDay }, or null if it is not a date.
- * @param {any} [prop]
- * @param {any} [zone]
+ * @param {any} prop
+ * @param {null} zone
  * @param {any} [onUnknownTimeZone]
  */
 function parseDateValue(prop, zone, onUnknownTimeZone) {
@@ -195,7 +195,7 @@ function parseDateValue(prop, zone, onUnknownTimeZone) {
 
 /**
  * An iCalendar DURATION (P1DT2H30M, PT45M, P2W, -PT15M) in milliseconds, or null.
- * @param {any} [value]
+ * @param {string} value
  */
 function parseDuration(value) {
   const m = /^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/i.exec(value.trim());
@@ -208,8 +208,8 @@ function parseDuration(value) {
 
 /**
  * The repeater ('+1w') an RRULE says, or null if no repeater says the same thing (see the header).
- * @param {any} [rruleText]
- * @param {any} [startWall]
+ * @param {string} rruleText
+ * @param {number} startWall
  */
 function repeaterFor(rruleText, startWall) {
   const rule = {};
@@ -379,7 +379,7 @@ function headingFor(component, options) {
  *   onRecurrenceKept     (summary) => void   a recurrence that became an :RRULE: property instead of a repeater
  *   onUnknownTimeZone    (tzid) => void   a time zone name this runtime does not know
  * @returns {{ orgText: string, eventCount: number, todoCount: number }} orgText is '' when there is nothing to import
- * @param {any} [icsText]
+ * @param {string} icsText
  */
 function importIcalendarAsOrgText(icsText, options = {}) {
   const blocks = [];
@@ -396,8 +396,8 @@ function importIcalendarAsOrgText(icsText, options = {}) {
 }
 
 /**
- * @param {any} [wall]
- * @param {any} [allDay]
+ * @param {number} wall
+ * @param {boolean} allDay
  */
 const stampText = (wall, allDay) => {
   const w = wallParts(wall);
@@ -409,7 +409,7 @@ const stampText = (wall, allDay) => {
  * start, end, repeat, rrule, cancelled }. `start` and `end` are "YYYY-MM-DD" or "YYYY-MM-DD HH:MM" in `zone`
  * (the device's own zone if omitted). `repeat` is an Org repeater such as "+1w" when the recurrence is a simple
  * one, else null with the raw rule in `rrule`. Recurrences are not expanded.
- * @param {any} [icsText]
+ * @param {string} icsText
  */
 function parseIcalendarEvents(icsText, { zone = null, max = 2000 } = {}) {
   const events = [];

@@ -26,7 +26,7 @@ import { menuButton, textInputStyle } from './ui-widgets.js';
 import { platform } from './platform.js';
 
 /**
- * @param {any} [viewType]
+ * @param {string} viewType
  * @param {any} [anchorDate]
  */
 export function agendaRangeFor(viewType, anchorDate) {
@@ -70,7 +70,7 @@ export function buildAgendaEffortPanel() {
   panel.style.gap = '8px';
   panel.style.fontSize = '13px';
 
-  /** @param {any} [el] */
+  /** @param {HTMLInputElement | HTMLSelectElement} el */
   const styleControl = (el) => {
     el.style.font = 'inherit';
     el.style.fontSize = '14px';
@@ -80,7 +80,7 @@ export function buildAgendaEffortPanel() {
     el.style.background = 'var(--bg)';
     el.style.color = 'var(--fg)';
   };
-  /** @param {any} [labelText] */
+  /** @param {string} labelText */
   const row = (labelText, /** @type {any[]} */ ...controls) => {
     const r = document.createElement('div');
     r.style.display = 'flex';
@@ -96,7 +96,7 @@ export function buildAgendaEffortPanel() {
     panel.appendChild(r);
   };
   /**
-   * @param {any} [options]
+   * @param {string[][]} options
    * @param {any} [current]
    * @param {any} [onChange]
    */
@@ -222,9 +222,9 @@ export function renderAgendaView() {
 
   /**
    * @param {string} label
-   * @param {any} [onClick]
-   * @param {any} [isActive]
-   * @param {any} [ariaLabel]
+   * @param {() => void} onClick
+   * @param {boolean | undefined} [isActive]
+   * @param {string} [ariaLabel]
    */
   function agendaControlBtn(label, onClick, isActive, ariaLabel) {
     const btn = document.createElement('button');
@@ -574,7 +574,7 @@ export function renderAgendaView() {
 
   const AGENDA_GRID_HOURS = [8, 10, 12, 14, 16, 18, 20]; // real org's own documented org-agenda-time-grid default
 
-  /** @param {any} [hour] */
+  /** @param {number} hour */
   function buildAgendaGridLineRow(hour) {
     const row = document.createElement('div');
     row.style.display = 'flex';

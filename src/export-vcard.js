@@ -74,7 +74,7 @@ function escapeVcardLabelParam(text) {
   return escapeVcardText(text).replace(/"/g, '');
 }
 
-/** @param {any} [n] */
+/** @param {number} n */
 function pad2(n) {
   return String(n).padStart(2, '0');
 }
@@ -87,7 +87,7 @@ const BIRTHDAY_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})/;
  *  optional here, not required. Returns null for an out-of-range
  *  month/day or a value that doesn't start with a recognizable date
  *  at all, silently skipping BDAY for that contact rather than
- * @param {any} [raw]
+ * @param {string} raw
  *  emitting a malformed field. */
 function parseBirthdayDate(raw) {
   const m = BIRTHDAY_DATE_RE.exec(String(raw).trim());
@@ -116,15 +116,15 @@ function parseBirthdayDate(raw) {
  *  a real vCard's own structural separation between street, city,
  *  region, postal code, and country, even when the original had them
  *  as genuinely distinct, populated fields (City/Region/PostalCode/
- * @param {any} [address]
- * @param {any} [raw]
+ * @param {string} address
+ * @param {string | undefined} raw
  *  Country all becoming empty on export). */
 function buildAdrValue(address, raw) {
   if (raw) return raw.split(';').map(escapeVcardText).join(';');
   return `;;${escapeVcardText(address)};;;;`;
 }
 
-/** @param {any} [fullName] */
+/** @param {string} fullName */
 function splitNameForN(fullName) {
   const trimmed = fullName.trim();
   const lastSpace = trimmed.lastIndexOf(' ');

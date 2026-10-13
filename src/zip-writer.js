@@ -73,11 +73,11 @@ class ByteWriter {
     this.chunks.push(arr);
     this.length += arr.length;
   }
-  /** @param {any} [n] */
+  /** @param {number} n */
   u16(n) {
     this.bytes(new Uint8Array([n & 0xff, (n >>> 8) & 0xff]));
   }
-  /** @param {any} [n] */
+  /** @param {number} n */
   u32(n) {
     this.bytes(new Uint8Array([n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff]));
   }

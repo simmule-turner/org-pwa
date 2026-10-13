@@ -19,7 +19,7 @@ import { startOfDay, endOfDay } from './agenda.js';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MAX_DAYS = 10000; // safety valve, matching agenda.js's own precedent throughout
 
-/** @param {any} [year] */
+/** @param {number} year */
 function isLeapYear(year) {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
@@ -28,7 +28,7 @@ function isLeapYear(year) {
  *  placeholder, confirmed directly against its docstring: 11th/12th/
  *  13th (and their multiples of 100, e.g. 111th) are always "th"
  *  despite ending in 1/2/3, matching the standard English ordinal
- * @param {any} [n]
+ * @param {number} n
  *  exception. */
 function ordinalSuffix(n) {
   const abs = Math.abs(n);
@@ -98,8 +98,8 @@ function parseOrgAnniversaryLine(line) {
  *  real diary-anniversary (the Emacs manual: "applies to October 31 in
  *  any year after 1948"), it applies only to years AFTER that one -- so
  *  no "-8th birthday" before the person was born, and no "0th" in the
- * @param {any} [month]
- * @param {any} [day]
+ * @param {number} month
+ * @param {number} day
  * @param {any} [rangeStart]
  * @param {any} [rangeEnd]
  *  year itself. */
@@ -123,8 +123,8 @@ function expandOrgAnniversaryOccurrences(month, day, rangeStart, rangeEnd, after
 
 /** Substitutes `%d` (elapsed years) and `%s` (that number's own
  *  ordinal suffix) into `template` -- real diary-anniversary's own
- * @param {any} [template]
- * @param {any} [age]
+ * @param {string} template
+ * @param {number} age
  *  confirmed two placeholders, nothing else recognized. */
 function formatOrgAnniversaryTitle(template, age) {
   return template.replace(/%d/g, String(age)).replace(/%s/g, ordinalSuffix(age));
@@ -167,8 +167,8 @@ function parseOrgCyclicLine(line) {
 /** Every date within [rangeStart, rangeEnd] that's exactly N days
  *  after the baseline date, or a whole multiple of N days after it --
  *  flags the agenda every N days starting from the baseline, never
- * @param {any} [n]
- * @param {any} [baselineDate]
+ * @param {number} n
+ * @param {Date} baselineDate
  * @param {any} [rangeStart]
  * @param {any} [rangeEnd]
  *  before it. */
@@ -212,8 +212,8 @@ function parseOrgBlockLine(line) {
 }
 
 /** Every day between `dateA` and `dateB` (inclusive, order-
- * @param {any} [dateA]
- * @param {any} [dateB]
+ * @param {Date} dateA
+ * @param {Date} dateB
  * @param {any} [rangeStart]
  * @param {any} [rangeEnd]
  *  independent), intersected with [rangeStart, rangeEnd]. */
@@ -293,8 +293,8 @@ function parseDiaryFloatLine(line) {
 }
 
 /** Whether `month` (1-12) matches `monthSpec` -- 't' matches every
- * @param {any} [monthSpec]
- * @param {any} [month]
+ * @param {number | number[] | string} monthSpec
+ * @param {number} month
  *  month, an array checks membership, a bare number checks equality. */
 function monthSpecMatches(monthSpec, month) {
   if (monthSpec === 't') return true;
@@ -308,11 +308,11 @@ function monthSpecMatches(monthSpec, month) {
  *  `dayOverride` (default the month's own last day). Returns null if
  *  that occurrence doesn't actually exist within the month (an N too
  *  large for how many times that weekday appears), rather than
- * @param {any} [year]
- * @param {any} [month]
- * @param {any} [dayname]
- * @param {any} [n]
- * @param {any} [dayOverride]
+ * @param {number} year
+ * @param {number} month
+ * @param {number} dayname
+ * @param {number} n
+ * @param {number | null} dayOverride
  *  spilling into an adjacent month. */
 function nthWeekdayOfMonth(year, month, dayname, n, dayOverride) {
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -335,11 +335,11 @@ function nthWeekdayOfMonth(year, month, dayname, n, dayOverride) {
 /** Every diary-float occurrence within [rangeStart, rangeEnd] --
  *  iterates every (year, month) pair the range spans, computing the
  *  nth-weekday occurrence for each month `monthSpec` matches (and,
- * @param {any} [monthSpec]
- * @param {any} [dayname]
- * @param {any} [n]
- * @param {any} [dayOverride]
- * @param {any} [yearFilter]
+ * @param {number | number[] | string} monthSpec
+ * @param {number} dayname
+ * @param {number} n
+ * @param {number | null} dayOverride
+ * @param {number | null} yearFilter
  * @param {any} [rangeStart]
  * @param {any} [rangeEnd]
  *  when `yearFilter` is given, only for that one specific year). */
@@ -414,8 +414,8 @@ function toJulianDay(date) {
  *  Declination genuinely does have a (very small) longitude
  *  dependence in this specific NOAA-style formula -- longitude feeds
  *  into meanSolarNoon before the mean anomaly is computed -- so this
- * @param {any} [date]
- * @param {any} [longitude]
+ * @param {any} date
+ * @param {number} longitude
  *  takes longitude too, not just date, to stay exactly consistent. */
 function computeSolarPosition(date, longitude) {
   const jd = toJulianDay(date);
@@ -432,8 +432,8 @@ function computeSolarPosition(date, longitude) {
 }
 
 /**
- * @param {any} [date]
- * @param {any} [latitude]
+ * @param {any} date
+ * @param {number} latitude
  * @param {any} [longitude]
  */
 function computeSunriseSunsetUtc(date, latitude, longitude, angleDegrees = -0.83) {
@@ -447,7 +447,7 @@ function computeSunriseSunsetUtc(date, latitude, longitude, angleDegrees = -0.83
   const julianSunset = solarTransit + hourAngle / 360;
   const julianSunrise = solarTransit - hourAngle / 360;
 
-  /** @param {any} [jdValue] */
+  /** @param {number} jdValue */
   const julianToUtcHours = (jdValue) => {
     const fractionalDay = jdValue - Math.floor(jdValue) - 0.5;
     return ((fractionalDay * 24) % 24 + 24) % 24;
@@ -469,8 +469,8 @@ function computeSunriseSunsetUtc(date, latitude, longitude, angleDegrees = -0.83
  *  at all that day; otherwise, since computeSunriseSunsetUtc already
  *  confirmed there's no crossing, it never sets. Reuses
  *  computeSolarPosition directly rather than a second, independently
- * @param {any} [date]
- * @param {any} [latitude]
+ * @param {any} date
+ * @param {number} latitude
  * @param {any} [longitude]
  *  re-derived copy of the same declination formula. */
 function computeDaylightHours(date, latitude, longitude) {
@@ -487,8 +487,8 @@ function computeDaylightHours(date, latitude, longitude) {
 
 /** "H:MMam"/"H:MMpm", `offsetMinutes` (this app's own equivalent of
  *  real Emacs's calendar-time-zone -- minutes east of UTC, e.g. -240
- * @param {any} [utcHours]
- * @param {any} [offsetMinutes]
+ * @param {number} utcHours
+ * @param {number} offsetMinutes
  *  for EDT) applied to the UTC fractional-hour value first. */
 function formatSunTime(utcHours, offsetMinutes) {
   let totalMinutes = Math.round(utcHours * 60 + offsetMinutes);
@@ -515,8 +515,8 @@ const ASTRONOMICAL_TWILIGHT_ANGLE = -18;
 
 /** One resolved sun-crossing time as "H:MMam"/"H:MMpm", or a clear
  *  placeholder for the polar day/night case (computeSunriseSunsetUtc
- * @param {any} [utcHours]
- * @param {any} [offsetMinutes]
+ * @param {number | null} utcHours
+ * @param {number} offsetMinutes
  *  returned null). */
 function formatSunTimeOrPlaceholder(utcHours, offsetMinutes) {
   return utcHours === null ? 'n/a' : formatSunTime(utcHours, offsetMinutes);
@@ -526,8 +526,8 @@ function formatSunTimeOrPlaceholder(utcHours, offsetMinutes) {
  *  null (the sun doesn't cross this particular angle at all that
  *  day -- polar day/night, or "white nights" for the civil-twilight
  *  angle specifically). Used by the four single-value functions
- * @param {any} [utcHours]
- * @param {any} [offsetMinutes]
+ * @param {number | null} utcHours
+ * @param {number} offsetMinutes
  *  below. */
 function formatSunTime24(utcHours, offsetMinutes) {
   if (utcHours === null) return 'n/a';
@@ -551,7 +551,7 @@ function formatSunTime24(utcHours, offsetMinutes) {
  *  local-variables.js) adjust the output: solar-ampm (default nil)
  *  switches from 24-hour to 12-hour am/pm (formatSunTimeOrPlaceholder
  *  above) when non-nil; solar-hide-label (default nil) omits the
- * @param {any} [date]
+ * @param {Date} date
  * @param {any} [latitude]
  * @param {any} [longitude]
  *  trailing label entirely when non-nil, leaving just the bare time. */
@@ -563,7 +563,7 @@ function formatSunriseLine(date, latitude, longitude, offsetMinutes = -date.getT
 }
 
 /**
- * @param {any} [date]
+ * @param {Date} date
  * @param {any} [latitude]
  * @param {any} [longitude]
  */
@@ -575,7 +575,7 @@ function formatSunsetLine(date, latitude, longitude, offsetMinutes = -date.getTi
 }
 
 /**
- * @param {any} [date]
+ * @param {Date} date
  * @param {any} [latitude]
  * @param {any} [longitude]
  */
@@ -587,7 +587,7 @@ function formatCivilDawnLine(date, latitude, longitude, offsetMinutes = -date.ge
 }
 
 /**
- * @param {any} [date]
+ * @param {Date} date
  * @param {any} [latitude]
  * @param {any} [longitude]
  */
@@ -599,7 +599,7 @@ function formatCivilDuskLine(date, latitude, longitude, offsetMinutes = -date.ge
 }
 
 /**
- * @param {any} [date]
+ * @param {Date} date
  * @param {any} [latitude]
  * @param {any} [longitude]
  */
@@ -611,7 +611,7 @@ function formatNauticalDawnLine(date, latitude, longitude, offsetMinutes = -date
 }
 
 /**
- * @param {any} [date]
+ * @param {Date} date
  * @param {any} [latitude]
  * @param {any} [longitude]
  */
@@ -623,7 +623,7 @@ function formatNauticalDuskLine(date, latitude, longitude, offsetMinutes = -date
 }
 
 /**
- * @param {any} [date]
+ * @param {Date} date
  * @param {any} [latitude]
  * @param {any} [longitude]
  */
@@ -635,7 +635,7 @@ function formatAstronomicalDawnLine(date, latitude, longitude, offsetMinutes = -
 }
 
 /**
- * @param {any} [date]
+ * @param {Date} date
  * @param {any} [latitude]
  * @param {any} [longitude]
  */
@@ -652,7 +652,7 @@ function formatAstronomicalDuskLine(date, latitude, longitude, offsetMinutes = -
  *  am/pm distinction to switch to, so solar-ampm has no effect here
  *  at all, only solar-hide-label does, per the explicit
  *  clarification that a duration still has a label to hide even
- * @param {any} [date]
+ * @param {Date} date
  * @param {any} [latitude]
  * @param {any} [longitude]
  *  though it has no time format to switch between). */

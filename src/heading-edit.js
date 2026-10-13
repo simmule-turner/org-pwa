@@ -53,7 +53,7 @@ export function createHeading({ level, title = '', todo = null, priority = null,
 
 /** Sets a heading's title, stripping newlines (a heading is one line) and
  * @param {Heading} heading
- * @param {any} [newTitle]
+ * @param {string} newTitle
  *  surrounding whitespace. Returns the sanitized value actually stored. */
 export function renameHeading(heading, newTitle) {
   const sanitized = String(newTitle).replace(/[\r\n]+/g, ' ').trim();
@@ -93,7 +93,7 @@ export function setHeadingTags(heading, tags) {
  *  heading unchanged) rather than silently storing something the
  *  parser/serializer wouldn't round-trip correctly; real org's own
  * @param {Heading} heading
- * @param {any} [priority]
+ * @param {string | null} priority
  *  priority cookie is always exactly one character. */
 export function setPriority(heading, priority) {
   if (!priority) {
@@ -176,7 +176,7 @@ export function getPlainTimestampInTitle(heading) {
  * null removes the first active timestamp found, if any, leaving the
  * rest of the title untouched.
  * @param {Heading} heading
- * @param {any} [raw]
+ * @param {string} raw
  */
 export function setPlainTimestampInTitle(heading, raw) {
   const existing = findTimestamps(heading.title).find((t) => t.active);
@@ -314,8 +314,8 @@ export function dropClimbLimit(doc, target, ignore = null) {
  * is into the heading's own subtree, names a heading not in the document, or would leave it exactly where it is.
  * @param {Doc} doc
  * @param {Heading} heading
- * @param {any} [target]
- * @param {any} [position]
+ * @param {any} target
+ * @param {string} position
  */
 export function moveHeadingTo(doc, heading, target, position, climb = 0) {
   if (!heading || !target || inSubtree(heading, target)) return false;

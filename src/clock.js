@@ -52,7 +52,7 @@ function isClockRunning(heading) {
  *  changing anything if a clock is already running on this heading --
  *  real org itself doesn't let you double-start the same clock, it
  * @param {Heading} heading
- * @param {any} [timestamp]
+ * @param {string} timestamp
  *  just continues the existing session. */
 function clockIn(heading, timestamp) {
   if (isClockRunning(heading)) return false;
@@ -73,8 +73,8 @@ function clockIn(heading, timestamp) {
  *  running, or if the running line's own start timestamp turns out to
  *  be unparseable (a hand-edited or corrupted CLOCK line) rather than
  * @param {Heading} heading
- * @param {any} [endTimestamp]
- * @param {any} [endDate]
+ * @param {string} endTimestamp
+ * @param {Date} endDate
  *  computing a nonsensical duration from a null start time. */
 function clockOut(heading, endTimestamp, endDate) {
   const idx = findRunningClockLineIndex(heading);
@@ -106,7 +106,7 @@ function clockCancel(heading) {
 
 /** Formats a whole number of minutes as real org's own "H:MM" clock
  *  duration string -- hours unpadded, minutes always two digits, e.g.
- * @param {any} [totalMinutes]
+ * @param {number} totalMinutes
  *  90 minutes -> "1:30", 5 minutes -> "0:05". */
 function formatClockDuration(totalMinutes) {
   const h = Math.floor(totalMinutes / 60);
@@ -118,7 +118,7 @@ function formatClockDuration(totalMinutes) {
  *  digits for the hours part) back into a whole number of minutes.
  *  Returns 0 for anything unparseable rather than throwing, so a
  *  malformed or hand-edited CLOCK line doesn't break the running total
- * @param {any} [raw]
+ * @param {string} raw
  *  for an entire subtree over one bad entry. */
 function parseClockDuration(raw) {
   const m = /^(-?\d+):(\d+)$/.exec(String(raw || '').trim());
@@ -188,7 +188,7 @@ function currentClockSessionMinutes(heading, now = new Date()) {
  *  module's own repeater/delay handling isn't relevant to a clock
  *  line's own timestamp at all, and pulling in that whole surface
  *  would be more coupling than this narrow need justifies. Returns
- * @param {any} [raw]
+ * @param {string} raw
  *  null for anything unparseable. */
 function parseClockTimestampToDate(raw) {
   const m = /(\d{4})-(\d{2})-(\d{2})(?:[^0-9]+(\d{2}):(\d{2}))?/.exec(raw);
@@ -243,8 +243,8 @@ function findHeadingWithRunningClock(doc) {
  * if nothing needed switching.
  * @param {Doc} doc
  * @param {Heading} heading
- * @param {any} [timestamp]
- * @param {any} [now]
+ * @param {string} timestamp
+ * @param {Date} now
  */
 function clockInSwitchingTasks(doc, heading, timestamp, now) {
   const previouslyRunning = findHeadingWithRunningClock(doc);

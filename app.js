@@ -1069,7 +1069,7 @@ if ('serviceWorker' in navigator && platform.usesServiceWorker) {
   const updateReloadBtn = /** @type {HTMLElement} */ (document.getElementById('updateReloadBtn'));
   let reloadedForUpdate = false;
 
-  /** @param {any} [waitingWorker] */
+  /** @param {ServiceWorker} waitingWorker */
   function showUpdateBanner(waitingWorker) {
     updateBanner.style.display = 'flex';
     syncContentOffset();

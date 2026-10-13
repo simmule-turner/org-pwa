@@ -5,9 +5,9 @@ import { summarizeDayEffort } from '../src/agenda.js';
 import { formatClockDuration } from '../src/clock.js';
 
 /** Moves `anchorDate` by one unit of `viewType` in `direction` (-1 or 1)
- * @param {any} [viewType]
- * @param {any} [anchorDate]
- * @param {any} [direction]
+ * @param {string} viewType
+ * @param {string | number | Date} anchorDate
+ * @param {number} direction
  *  — this is "scrolling by the view amount": a day, a week, or a month. */
 export function agendaStepAnchor(viewType, anchorDate, direction) {
   const next = new Date(anchorDate);
@@ -17,7 +17,7 @@ export function agendaStepAnchor(viewType, anchorDate, direction) {
   return next;
 }
 
-/** @param {any} [date] */
+/** @param {Date} date */
 export function isoWeekNumber(date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7; // Sunday=0 -> 7, so Monday=1..Sunday=7
@@ -27,8 +27,8 @@ export function isoWeekNumber(date) {
 }
 
 /**
- * @param {any} [dateKeyStr]
- * @param {any} [showWeekNumber]
+ * @param {any} dateKeyStr
+ * @param {boolean} showWeekNumber
  * @param {any} [dayItems]
  */
 export function buildDayHeaderRow(dateKeyStr, showWeekNumber, dayItems = []) {
@@ -115,12 +115,12 @@ export function agendaItemKindLabel(item) {
 }
 
 /**
- * @param {any} [viewType]
- * @param {any} [start]
- * @param {any} [end]
+ * @param {string} viewType
+ * @param {Date} start
+ * @param {Date} end
  */
 export function formatAgendaRangeLabel(viewType, start, end) {
-  /** @param {any} [d] */
+  /** @param {Date} d */
   const fmt = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   if (viewType === 'day') return fmt(start) + ` (W${isoWeekNumber(start)})`;
   if (viewType === 'month') {
