@@ -2345,7 +2345,7 @@ check('heading keys: Shift+arrow and Alt+arrow on a focused heading move it (up,
   await context.close();
 });
 
-check('heading actions: 4 across in three rows when narrow (arrows last: left, right, up, down), 6 across when there is room, one row of 12 when wide; Delete is red; arrow keys move; Esc closes', async () => {
+check('heading actions: 4 across in three rows when narrow (arrows last: up, down, left, right), 6 across when there is room, one row of 12 when wide; Delete is red; arrow keys move; Esc closes', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Alpha\n** Beta\n');
   await page.locator('.heading-title', { hasText: 'Alpha' }).first().click();
@@ -2360,11 +2360,14 @@ check('heading actions: 4 across in three rows when narrow (arrows last: left, r
   await page.waitForTimeout(250);
   let rows = await layout();
   expect(rows.length === 3 && rows.every((r) => r.length === 4), `narrow: three rows of four: ${JSON.stringify(rows.map((r) => r.length))}`);
-  expect(rows[2].map((n) => n.split(' ')[0]).join(',') === 'Promote,Demote,Move,Move' && rows[2][2] === 'Move up' && rows[2][3] === 'Move down', `the last row is left, right, up, down: ${JSON.stringify(rows[2])}`);
+  expect(rows[2].join('|') === 'Move up|Move down|Promote (outdent)|Demote (indent)', `the last row is up, down, left, right: ${JSON.stringify(rows[2])}`);
+  expect(rows[1].slice(2).join('|') === 'Narrow|Delete heading' && rows[1][0] === 'TODO', `narrow: second row ends with Narrow, Delete: ${JSON.stringify(rows[1])}`);
   await page.setViewportSize({ width: 420, height: 800 });
   await page.waitForTimeout(250);
   rows = await layout();
   expect(rows.length === 2 && rows.every((r) => r.length === 6), `room for six: two rows of six: ${JSON.stringify(rows.map((r) => r.length))}`);
+  expect(rows[0].slice(4).join('|') === 'Move up|Move down' && rows[0][3] === 'Add sub-heading', `six across: the first row ends with Add sub-heading, up, down: ${JSON.stringify(rows[0])}`);
+  expect(rows[1][0] === 'TODO' && rows[1][3] === 'Delete heading' && rows[1].slice(4).join('|') === 'Promote (outdent)|Demote (indent)', `six across: the second row is state, delete, left, right: ${JSON.stringify(rows[1])}`);
   await page.setViewportSize({ width: 1200, height: 800 });
   await page.waitForTimeout(250);
   rows = await layout();

@@ -154,20 +154,20 @@
     display: flex; align-items: center; justify-content: center; padding: 0;
     border-radius: 10px;
   }
-  /* the heading's action grid: 4 across (3 rows) when the row is narrow, 6 across (2 rows) when there is room, one row of 12 when it is wide */
+  /* the heading's action grid: 4 across (3 rows) when the row is narrow, 6 across (2 rows) when there is room, one row of 12 when it is wide.
+     Document order is the wide order: edits, state, delete, then the arrows up, down, left, right. */
   .action-wrap { container-type: inline-size; border-bottom: 0.5px solid #8882; }
   .action-grid { display: grid; grid-template-columns: repeat(4, var(--target)); justify-content: center; gap: 8px; padding: 8px 8px 10px 8px; }
   .action-grid .icon-btn { width: var(--target); height: var(--target); }
   .action-grid .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .action-grid .act-danger { color: var(--danger, #c0392b); border-color: var(--danger, #c0392b); }
-  /* narrow order: edits, then state, then the arrows last as left, right, up, down */
-  .action-grid .act-todo { order: 5; } .action-grid .act-archive { order: 6; } .action-grid .act-narrow { order: 7; } .action-grid .act-delete { order: 8; }
-  .action-grid .act-promote { order: 9; } .action-grid .act-demote { order: 10; } .action-grid .act-up { order: 11; } .action-grid .act-down { order: 12; }
-  @container (min-width: 344px) { .action-grid { grid-template-columns: repeat(6, var(--target)); } .action-grid .icon-btn { order: 0 !important; } }
-  @container (min-width: 680px) { .action-grid { grid-template-columns: repeat(12, var(--target)); } }
+  /* 3 x 4 is the document order as it stands: the arrows fill the last row as up, down, left, right */
+  /* 2 x 6: edits and the up/down arrows on the first row; state, delete and left/right on the second */
+  @container (min-width: 344px) { .action-grid { grid-template-columns: repeat(6, var(--target)); } .action-grid .act-up { order: 5; } .action-grid .act-down { order: 6; } .action-grid .act-todo { order: 7; } .action-grid .act-archive { order: 8; } .action-grid .act-narrow { order: 9; } .action-grid .act-delete { order: 10; } .action-grid .act-promote { order: 11; } .action-grid .act-demote { order: 12; } }
+  @container (min-width: 680px) { .action-grid { grid-template-columns: repeat(12, var(--target)); } .action-grid .icon-btn { order: 0 !important; } }
   @media (pointer: fine) and (hover: hover) {
-    @container (max-width: 343px) and (min-width: 272px) { .action-grid { grid-template-columns: repeat(6, var(--target)); } .action-grid .icon-btn { order: 0 !important; } }
-    @container (min-width: 536px) { .action-grid { grid-template-columns: repeat(12, var(--target)); } }
+    @container (max-width: 343px) and (min-width: 272px) { .action-grid { grid-template-columns: repeat(6, var(--target)); } .action-grid .act-up { order: 5; } .action-grid .act-down { order: 6; } .action-grid .act-todo { order: 7; } .action-grid .act-archive { order: 8; } .action-grid .act-narrow { order: 9; } .action-grid .act-delete { order: 10; } .action-grid .act-promote { order: 11; } .action-grid .act-demote { order: 12; } }
+    @container (min-width: 536px) { .action-grid { grid-template-columns: repeat(12, var(--target)); } .action-grid .icon-btn { order: 0 !important; } }
   }
   #contentArea { width: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 
