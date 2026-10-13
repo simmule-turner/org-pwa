@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('../src/types.js').KvAdapter} KvAdapter */
 /**
  * Fallback storage for browsers without File System Access API — in
  * practice, every browser on iOS, since Apple requires all of them to use
@@ -24,7 +25,7 @@
 
 import { contentHash } from '../src/sync-engine.js';
 
-/** @param {any} [fileId] */
+/** @param {string} fileId */
 function importedFileKey(fileId) {
   return 'ios-import:' + fileId;
 }
@@ -40,7 +41,7 @@ function unwrap(result) {
  * read() in the same (or a future) session can return it again without
  * re-picking. Must be called from a user gesture (a click handler) — the
  * picker won't open otherwise.
- * @param {any} [kvAdapter]
+ * @param {KvAdapter} kvAdapter
  */
 export function pickAndImportFile(kvAdapter, accept = '.org') {
   return new Promise((resolve, reject) => {
@@ -72,7 +73,7 @@ export function pickAndImportFile(kvAdapter, accept = '.org') {
 }
 
 /** Triggers a browser download of `content` as a file named `fileId` —
- * @param {any} [fileId]
+ * @param {string} fileId
  * @param {any} [content]
  *  the "write" half, since there's no handle to write back to in place. */
 export function downloadFile(fileId, content, mimeType = 'text/plain') {
@@ -88,10 +89,10 @@ export function downloadFile(fileId, content, mimeType = 'text/plain') {
   URL.revokeObjectURL(url);
 }
 
-/** @param {any} [kvAdapter] */
+/** @param {KvAdapter} kvAdapter */
 export function createInputFileAdapter(kvAdapter, downloadFn = downloadFile) {
   return {
-    /** @param {any} [fileId] */
+    /** @param {string} fileId */
     async read(fileId) {
       try {
         const result = await kvAdapter.get(importedFileKey(fileId));
@@ -104,7 +105,7 @@ export function createInputFileAdapter(kvAdapter, downloadFn = downloadFile) {
     },
 
     /**
-     * @param {any} [fileId]
+     * @param {string} fileId
      * @param {any} [content]
      */
     async write(fileId, content) {
@@ -113,7 +114,7 @@ export function createInputFileAdapter(kvAdapter, downloadFn = downloadFile) {
       return { hash: contentHash(content) };
     },
 
-    /** @param {any} [fileId] */
+    /** @param {string} fileId */
     async exists(fileId) {
       try {
         const result = await kvAdapter.get(importedFileKey(fileId));

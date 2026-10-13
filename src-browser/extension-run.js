@@ -76,7 +76,7 @@ function extensionMain() {
         apiVersion: 1,
         vars: Object.freeze({ get: (/** @type {string} */ name) => (Object.prototype.hasOwnProperty.call(m.variables, name) ? m.variables[name] : null) }),
         /**
-         * @param {any} [name]
+         * @param {string} name
          * @param {any} [fn]
          */
         sexp(name, fn) {
@@ -84,8 +84,8 @@ function extensionMain() {
           sexps.set(name, fn);
         },
         /**
-         * @param {any} [id]
-         * @param {any} [label]
+         * @param {string} id
+         * @param {string} label
          * @param {any} [fn]
          */
         command(id, label, fn) {
@@ -106,7 +106,7 @@ function extensionMain() {
           handlers.get(event).push(fn);
         },
         /**
-         * @param {any} [name]
+         * @param {string} name
          * @param {any} [fn]
          */
         tableFunction(name, fn) {
@@ -114,7 +114,7 @@ function extensionMain() {
           tableFns.set(name, fn);
         },
         /**
-         * @param {any} [prefix]
+         * @param {string} prefix
          * @param {any} [fn]
          */
         linkType(prefix, fn) {
@@ -122,8 +122,8 @@ function extensionMain() {
           linkTypes.set(prefix, fn);
         },
         /**
-         * @param {any} [id]
-         * @param {any} [label]
+         * @param {string} id
+         * @param {string} label
          * @param {any} [fn]
          */
         exportBackend(id, label, fn) {
@@ -132,7 +132,7 @@ function extensionMain() {
           }
           exporters.set(id, { label: label.trim().slice(0, 80), fn });
         },
-        /** @param {any} [text] */
+        /** @param {string} text */
         notify(text) {
           if (current) {
             if (current.notices.length < 20) current.notices.push(String(text).slice(0, 500));
@@ -142,7 +142,7 @@ function extensionMain() {
         ics: Object.freeze({ parse: async (/** @type {string} */ text) => rpc('ics.parse', [text]) }),
         agenda: Object.freeze({
           /**
-           * @param {any} [name]
+           * @param {string} name
            * @param {any} [fn]
            */
           source(name, fn) {
@@ -152,7 +152,7 @@ function extensionMain() {
         }),
         ui: Object.freeze({
           /**
-           * @param {any} [id]
+           * @param {string} id
            * @param {any} [fn]
            */
           line(id, fn) {
@@ -365,8 +365,8 @@ export async function startExtension(/** @type {any} */ { code, variables = {}, 
 
   /**
    * One request to the worker, answered by its id. Past the timeout the sandbox is closed, so a script that hangs cannot stay running.
-   * @param {any} [message]
-   * @param {any} [label]
+   * @param {any} message
+   * @param {string} label
    * @param {any} [timeoutMs]
    */
   const request = (message, label, timeoutMs) =>

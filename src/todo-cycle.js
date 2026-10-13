@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 
 /**
  * TODO-cycle logic. Real org's own actual model for a file with multiple
@@ -45,7 +47,7 @@ const DEFAULT_SEQUENCE = { todoKeywords: ['TODO'], doneKeywords: ['DONE'], keySp
  * model (see this module's own header comment above). Falls back to a
  * single-element array holding `globalDefault` (or the built-in TODO/DONE
  * pair) when the file has no #+TODO: line at all.
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [globalDefault]
  */
 function resolveTodoSequences(doc, globalDefault) {
@@ -76,8 +78,8 @@ function resolveTodoSequences(doc, globalDefault) {
  * after the file's own #+TODO: lines changed) also falls back to the
  * first sequence -- the same "cycling should never dead-end" principle
  * cycleTodoState itself already has, just applied one level up.
- * @param {any} [sequences]
- * @param {any} [heading]
+ * @param {any} sequences
+ * @param {Heading} heading
  */
 function findSequenceForHeading(sequences, heading) {
   if (heading.todo !== null) {
@@ -99,7 +101,7 @@ function findSequenceForHeading(sequences, heading) {
  * filtering, checkbox-cookie counting, the TODO badge's own color) get
  * a correct answer regardless of which specific sequence X belongs to,
  * without needing to know or care.
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [globalDefault]
  */
 function resolveTodoSequence(doc, globalDefault) {
@@ -126,7 +128,7 @@ function fullCycle(sequence) {
  * value. A heading whose current state isn't part of the resolved sequence
  * (e.g. after switching sequences) is treated as if it were at the start
  * of the cycle rather than throwing — cycling should never dead-end.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [sequence]
  */
 function cycleTodoState(heading, sequence, opts = {}) {
@@ -144,7 +146,7 @@ function cycleTodoState(heading, sequence, opts = {}) {
  * cycling one step at a time). Throws on a keyword outside the resolved
  * sequence — this one *should* be loud, since silently accepting an
  * unrecognized keyword would corrupt the file's TODO semantics.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [keyword]
  * @param {any} [sequence]
  */

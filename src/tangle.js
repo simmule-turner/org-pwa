@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Tangle: the source blocks of a document, written out as files. Follows Org's org-babel-tangle (checked against
  * Emacs): a block goes to the file named by its `:tangle` header argument (`yes` = the document's own name with the
@@ -40,7 +42,7 @@ function commentSyntax(lang) {
 
 /**
  * Comments out each non-blank line of `text`, as Emacs's comment-region does.
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [lang]
  */
 function commentOut(text, lang) {
@@ -102,7 +104,7 @@ export function interpretFileMode(value) {
   return null;
 }
 
-/** @param {any} [path] */
+/** @param {string} path */
 function checkTargetPath(path) {
   if (!path || path.startsWith('/') || /^[A-Za-z]:/.test(path) || path.startsWith('~') || path.split('/').includes('..') || path.includes('\\')) {
     throw new Error(`Cannot tangle to "${path}": a path must be relative and stay inside the folder (no /, ~ or ..)`);
@@ -112,9 +114,9 @@ function checkTargetPath(path) {
 
 /**
  * The text between the previous source block (or the heading) and a block, for `:comments org`.
- * @param {any} [doc]
- * @param {any} [block]
- * @param {any} [blocks]
+ * @param {Doc} doc
+ * @param {any} block
+ * @param {any[]} blocks
  */
 function precedingText(doc, block, blocks) {
   const own = block.heading;
@@ -161,13 +163,13 @@ function linkFor(block, documentName, targetPath) {
 
 /**
  * Tangles `doc`.
- * @param {any} doc
+ * @param {Doc} doc
  * @param {{ documentName?: string }} [options]  documentName: the Org file's name (default "untitled.org"); lookupTable(name): rows of a named table
  * @returns {{ files: Array<{path: string, text: string, mode: number|null, blockCount: number}>, blockCount: number, warnings: string[] }}
  */
 export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
   const blocks = collectDocumentBlocks(doc);
-  /** @param {any} [name] */
+  /** @param {string} name */
   const lookupTable = (name) => {
     /** @param {any} [list] */
     /** @returns {any} */ const walk = (/** @type {any} */ list) => {
@@ -183,8 +185,8 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
   };
   // `:comments noweb`: a referenced block is wrapped in begin and end comments naming it
   /**
-   * @param {any} [ref]
-   * @param {any} [text]
+   * @param {any} ref
+   * @param {string} text
    * @param {any} [host]
    */
   const wrapChunk = (ref, text, host) => {

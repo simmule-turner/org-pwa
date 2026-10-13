@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 // The filter row shared by the Agenda and the TODO view (tag, TODO state, category), and the date the TODO view shows on a
 // row. Pure functions: the views in src-browser/ draw them.
 import { startOfDay } from './agenda.js';
@@ -60,7 +62,7 @@ export function viewFilterChoices(items) {
 /**
  * The date a TODO row shows: the earlier of its SCHEDULED and DEADLINE (an inactive one is no reminder, as in the Agenda), and
  * how many days it is past (positive), or ahead (negative). A repeating one counts from the date written, as the Agenda does.
- * @param {any} heading
+ * @param {Heading} heading
  * @param {Date} today
  * @returns {TaskDateInfo | null}
  */

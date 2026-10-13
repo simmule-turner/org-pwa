@@ -413,7 +413,7 @@ export function paletteUnavailableReason(command, target) {
 
 /** The palette command whose real Emacs/Org function name is `name`, or null.
  *  This is what a quoted function in an Extras-menu entry (`'org-clock-out`)
- * @param {any} [name]
+ * @param {string} name
  *  resolves to, so the two vocabularies are one. */
 export function findPaletteCommandByOrgName(name) {
   return paletteCommandList().find((command) => command.orgName === name) || null;

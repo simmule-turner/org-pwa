@@ -214,7 +214,7 @@ export async function openCapturePrompt(template) {
 
 /**
  * Whether `text` uses %x (the clipboard), not counting an escaped %%x.
- * @param {any} [text]
+ * @param {string} text
  */
 function usesClipboardToken(text) {
   return /(?:^|[^%])(?:%%)*%x/.test(text);

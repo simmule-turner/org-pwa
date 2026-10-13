@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Detects a commented heading the way Emacs does: COMMENT as the first word of the title, after the stars, the TODO
  * keyword and the priority (`** TODO COMMENT draft`), or first in a heading with no keyword (org-element reads
@@ -11,7 +13,7 @@
 
 const COMMENT_TITLE_RE = /^COMMENT(\s|$)/;
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 function isCommentedHeading(heading) {
   return COMMENT_TITLE_RE.test(heading.title || '');
 }

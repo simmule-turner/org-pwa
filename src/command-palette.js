@@ -30,7 +30,7 @@
  * their listed order.
  */
 
-/** @param {any} [text] */
+/** @param {string} text */
 function normalize(text) {
   return String(text == null ? '' : text)
     .toLowerCase()
@@ -40,8 +40,8 @@ function normalize(text) {
 }
 
 /**
- * @param {any} [haystack]
- * @param {any} [token]
+ * @param {any} haystack
+ * @param {string} token
  */
 function startsAWord(haystack, token) {
   return haystack.startsWith(token) || haystack.includes(' ' + token);
@@ -49,7 +49,7 @@ function startsAWord(haystack, token) {
 
 /**
  * Lower is better; null when `token` matches nothing in the command.
- * @param {any} [token]
+ * @param {string} token
  * @param {any} [fields]
  */
 function scoreToken(token, fields) {
@@ -126,8 +126,8 @@ function searchCommands(commands, query, /** @type {any} */ { recentIds = [] } =
 
 /**
  * `recentIds` with `id` moved to the front, deduplicated and capped.
- * @param {any} [recentIds]
- * @param {any} [id]
+ * @param {any} recentIds
+ * @param {string} id
  */
 function pushRecent(recentIds, id, max = 8) {
   return [id, ...recentIds.filter((/** @type {any} */ existing) => existing !== id)].slice(0, max);

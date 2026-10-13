@@ -21,14 +21,14 @@ export function closeFileMenu() {
 }
 
 /**
- * @param {any} [documentId]
+ * @param {string} documentId
  * @param {any} [storageKind]
  */
 export function isCurrentDocument(documentId, storageKind) {
   return !!S.state.doc && S.state.documentId === documentId && S.state.storageKind === storageKind;
 }
 
-/** @param {any} [container] */
+/** @param {HTMLElement} container */
 export async function renderRecentFilesSection(container) {
   const stored = await getRecentFiles(kv);
   const displayed = stored
@@ -74,7 +74,7 @@ export async function renderRecentFilesSection(container) {
 
 /**
  * Long-press on one entry: asks, then drops just that entry from the list.
- * @param {any} [documentId]
+ * @param {string} documentId
  * @param {any} [storageKind]
  */
 export async function confirmRemoveRecentFile(documentId, storageKind) {
@@ -103,7 +103,7 @@ export async function confirmClearRecentFiles() {
  *  File System Access API isn't available at all, e.g. iOS Safari) has
  *  no such handle to reuse and genuinely can't be reopened without the
  *  person re-selecting it themselves -- explained rather than silently
- * @param {any} [documentId]
+ * @param {string} documentId
  * @param {any} [storageKind]
  *  failing or pretending it opened. */
 export async function openRecentFile(documentId, storageKind) {

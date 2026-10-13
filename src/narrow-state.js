@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 
 /**
  * Per-document persistence for narrowedHeading, surviving an actual
@@ -18,7 +20,7 @@
  * delete(key) }.
  */
 
-/** @param {any} [documentId] */
+/** @param {string} documentId */
 function narrowStateKey(documentId) {
   return 'narrowState:' + documentId;
 }
@@ -28,8 +30,8 @@ function narrowStateKey(documentId) {
  *  `outlinePath` is null (widened), deletes the key entirely rather
  *  than storing an empty/null value, so a document that's never been
  *  narrowed (or was narrowed and widened again) leaves nothing behind
- * @param {any} [adapter]
- * @param {any} [documentId]
+ * @param {any} adapter
+ * @param {string} documentId
  * @param {any} [outlinePath]
  *  in storage at all. */
 async function saveNarrowState(adapter, documentId, outlinePath) {
@@ -46,8 +48,8 @@ async function saveNarrowState(adapter, documentId, outlinePath) {
  *  caller's own job (via findHeadingByOutlinePath against the
  *  freshly-parsed doc), since this module has no notion of a
  *  document's own current parsed state at all, only what was last
- * @param {any} [adapter]
- * @param {any} [documentId]
+ * @param {any} adapter
+ * @param {string} documentId
  *  saved. */
 async function loadNarrowState(adapter, documentId) {
   try {
@@ -62,15 +64,15 @@ async function loadNarrowState(adapter, documentId) {
   }
 }
 
-/** @param {any} [documentId] */
+/** @param {string} documentId */
 function sparseNarrowKey(documentId) {
   return 'sparseNarrow:' + documentId;
 }
 
 /** An identifier for a heading that survives a reload: the titles down to it (`path`) and the position taken at each
  *  level (`idx`). Titles alone are not enough: two headings can share a title under the same parent, or sit under
- * @param {any} [doc]
- * @param {any} [heading]
+ * @param {Doc} doc
+ * @param {Heading} heading
  *  parents that share one, and then every title path points at the first. null if `heading` is not in `doc`. */
 function outlineKeyForHeading(doc, heading) {
   /** @type {any[]} */ const trail = [];
@@ -90,7 +92,7 @@ function outlineKeyForHeading(doc, heading) {
 /** The heading `key` (from outlineKeyForHeading) names in `doc`, or null. The recorded positions are tried first and
  *  only trusted if the title at every level still matches, so a document edited since can never land on the wrong
  *  heading by position alone; otherwise the titles are followed from the top, taking the first match at each
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [key]
  *  level, which is all a key saved without positions (an older save) can do. */
 function findHeadingByOutlineKey(doc, key) {
@@ -122,8 +124,8 @@ function findHeadingByOutlineKey(doc, key) {
 }
 
 /** Saves the headings Search's Narrow is restricted to, as outline keys (see outlineKeyForHeading). null or an empty
- * @param {any} [adapter]
- * @param {any} [documentId]
+ * @param {any} adapter
+ * @param {string} documentId
  * @param {any} [keys]
  *  list (widened) deletes the key, so a document that is not narrowed leaves nothing behind. */
 async function saveSparseNarrowState(adapter, documentId, keys) {
@@ -136,8 +138,8 @@ async function saveSparseNarrowState(adapter, documentId, keys) {
 
 /** `documentId`'s saved Search-Narrow keys, or null if there are none (or the value is unusable). Understands both
  *  the current format and the earlier one, which held bare title paths. The caller resolves them against the freshly
- * @param {any} [adapter]
- * @param {any} [documentId]
+ * @param {any} adapter
+ * @param {string} documentId
  *  parsed document with findHeadingByOutlineKey. */
 async function loadSparseNarrowState(adapter, documentId) {
   try {

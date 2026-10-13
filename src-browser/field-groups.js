@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: field groups. These have no dependency on the app's shared mutable state,
 // so they moved verbatim (see tools/ notes in CHANGELOG v412).
 import { parseRepeater } from '../src/agenda.js';
@@ -37,7 +39,7 @@ export const REPEATER_MARK_OPTIONS = [
  * the group's checkbox is unchecked or its date is empty (meaning "clear
  * this timestamp"), otherwise a valid org timestamp string built via
  * formatOrgTimestamp from whatever the fields currently hold.
- * @param {any} [label]
+ * @param {string} label
  * @param {any} [currentRaw]
  */
 export function buildTimestampFieldGroup(label, currentRaw) {
@@ -231,7 +233,7 @@ export function buildTimestampFieldGroup(label, currentRaw) {
  *  picker for a rarely-used case. */
 export const PRIORITY_LEVELS = ['A', 'B', 'C'];
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 export function buildPriorityFieldGroup(heading) {
   const wrap = document.createElement('div');
   wrap.style.border = '0.5px solid var(--border-strong)';

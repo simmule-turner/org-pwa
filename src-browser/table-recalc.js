@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: table recalc.
 import { allTablesInBody, commitLines, serializeTable } from '../src/body-edit.js';
 import { getOrgTableDurationHourZeroPadding } from '../src/local-variables.js';
@@ -22,7 +24,7 @@ import { render } from './render.js';
  *  recalculation is abandoned, never partially applied). Callers
  *  decide for themselves how to report each of these -- a single
  *  table's own Calc button and a whole-document sweep reasonably want
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [table]
  *  different status wording for the same underlying result. */
 export function recalculateOneTable(heading, table) {

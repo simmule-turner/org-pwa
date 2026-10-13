@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Running JavaScript source blocks (Org Babel's C-c C-c) -- the commands around the sandbox.
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { commitLines } from '../src/body-edit.js';
@@ -67,7 +69,7 @@ function visibleVariables() {
   return out;
 }
 
-/** @param {any} [name] */
+/** @param {string} name */
 function lookupTable(name) {
   for (const { heading } of allHeadingsInOrder(S.state.doc)) {
     const rows = findNamedTable(heading.bodyLines || [], name);
@@ -77,10 +79,10 @@ function lookupTable(name) {
 }
 
 /**
- * @param {any} [heading]
- * @param {any} [block]
- * @param {any} [lines]
- * @param {any} [label]
+ * @param {Heading} heading
+ * @param {any} block
+ * @param {string[]} lines
+ * @param {string} label
  */
 function writeResults(heading, block, lines, label, hash = /** @type {string | null} */ (null)) {
   const { start, removeCount, insert } = placeResults(heading.bodyLines, block, lines, { hash });
@@ -92,7 +94,7 @@ function writeResults(heading, block, lines, label, hash = /** @type {string | n
 
 /**
  * Runs a JavaScript block and writes its result under it as #+RESULTS:.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [block]
  */
 export async function executeSourceBlock(heading, block) {

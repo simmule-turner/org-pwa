@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: doc helpers. These have no dependency on the app's shared mutable state,
 // so they moved verbatim (see tools/ notes in CHANGELOG v412).
 import { emacsRegexToJs } from '../src/emacs-regex.js';
@@ -22,7 +24,7 @@ export function firstDataRowIndex(table) {
  *  array directly, not flattenVisibleRows' own output, since that
  *  respects the CURRENT fold state and would miss body content
  *  that's simply folded away right now (exactly the case
- * @param {any} [heading]
+ * @param {Heading} heading
  *  auto-reveal needs to detect). */
 export function hasBodyContent(heading) {
   return !!(heading.body && heading.body.length > 0);
@@ -64,7 +66,7 @@ export function findListItemByLineIndex(/** @type {any} */ items, /** @type {any
  *  both already follow: a match stays visible in its own actual
  *  position in the outline, with enough of its own ancestor chain kept
  *  visible to make sense of where it sits, rather than being shown as a
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [matchedHeadings]
  *  flat, context-free list. */
 export function expandScopeWithAncestors(doc, matchedHeadings) {
@@ -128,7 +130,7 @@ export function listItemDescendantCount(item) {
  *  URL, already short and readable as a title). Returns null when
  *  there's no real, renderable value either way -- a bare string
  *  that isn't a real URL or a real data:image/ URI is never treated
- * @param {any} [heading]
+ * @param {Heading} heading
  *  as a displayable photo. */
 export function contactPhotoValueForHeading(heading) {
   const fieldType = String((heading.properties || {}).FIELDTYPE || '').toLowerCase();
@@ -162,7 +164,7 @@ export function contactPhotoValueForHeading(heading) {
  */
 /** Strips org's own comma-escape convention from one block content
  *  line for display -- see export-html.js's own stripCommaEscape for
- * @param {any} [line]
+ * @param {string} line
  *  the full reasoning; the same fix, applied here too. */
 export function stripCommaEscapeApp(line) {
   return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
@@ -176,7 +178,7 @@ export function stripCommaEscapeApp(line) {
 /** Collects every heading in `doc`, in document order, regardless of
  *  fold state -- a heading buried under several collapsed ancestors
  *  must still be pickable as an export scope, unlike keyboard
- * @param {any} [headings]
+ * @param {Heading[]} headings
  *  navigation (which only moves between currently-visible rows). */
 export function vcardBodyHeadingsIn(headings) {
   const found = [];
@@ -189,7 +191,7 @@ export function vcardBodyHeadingsIn(headings) {
 
 /**
  * Like vcardBodyHeadingsIn, for iCalendar text: the body text of each heading whose own body starts with BEGIN:VCALENDAR.
- * @param {any} [headings]
+ * @param {Heading[]} headings
  */
 export function icalendarBodyHeadingsIn(headings) {
   const found = [];
@@ -204,7 +206,7 @@ export function icalendarBodyHeadingsIn(headings) {
  *  the same {heading, depth} shape allHeadingsInOrder returns for the
  *  whole document -- depth here is relative to `heading` itself (0),
  *  not the document root, since this is only ever used for scanning,
- * @param {any} [heading]
+ * @param {Heading} heading
  *  never for indentation display. */
 export function headingsInSubtree(heading) {
   /** @type {any[]} */ const out = [];
@@ -220,7 +222,7 @@ export function headingsInSubtree(heading) {
   return out;
 }
 
-/** @param {any} [doc] */
+/** @param {Doc} doc */
 export function allHeadingsInOrder(doc) {
   /** @type {any[]} */ const out = [];
   /**

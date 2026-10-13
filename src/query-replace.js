@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 import { editParagraphText, editListItemText, setTableCell } from './body-edit.js';
 import { renameHeading } from './heading-edit.js';
 
@@ -10,12 +12,12 @@ import { renameHeading } from './heading-edit.js';
  *  snapshotted once, since an earlier replacement within the SAME node
  *  (a paragraph can contain more than one match) changes what the next
  *  getText() call sees. `label` is a short, human-readable description
- * @param {any} [doc]
+ * @param {Doc} doc
  *  of where this text lives, for the replace prompt's own display. */
 function collectReplaceTargets(doc) {
   /** @type {any[]} */ const targets = [];
 
-  /** @param {any} [heading] */
+  /** @param {Heading} heading */
   function addHeading(heading) {
     targets.push({
       heading,
@@ -29,7 +31,7 @@ function collectReplaceTargets(doc) {
   }
 
   /**
-   * @param {any} [heading]
+   * @param {Heading} heading
    * @param {any} [items]
    */
   function walkList(heading, items) {
@@ -46,7 +48,7 @@ function collectReplaceTargets(doc) {
   }
 
   /**
-   * @param {any} [heading]
+   * @param {Heading} heading
    * @param {any} [bodyNodes]
    */
   function walkBody(heading, bodyNodes) {
@@ -93,13 +95,13 @@ function collectReplaceTargets(doc) {
  *  or touch these matches at all. Used to tell a genuine zero-match
  *  search apart from one where real matches exist but are entirely
  *  out of reach, so the person doing the replace gets a clear,
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [re]
  *  specific reason rather than a generic "nothing changed" either way. */
 function countBlockOnlyMatches(doc, re) {
   let count = 0;
   const pattern = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
-  /** @param {any} [heading] */
+  /** @param {Heading} heading */
   function walk(heading) {
     for (const node of heading.body || []) {
       if (node.type === 'block') {
@@ -129,7 +131,7 @@ function countBlockOnlyMatches(doc, re) {
  * so edits made through this walk are immediately visible to
  * subsequent matches within the same node, and safely isolated from
  * matches in every other node (each has its own, independent text).
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [re]
  * @param {any} [replacement]
  */
@@ -239,7 +241,7 @@ function createQueryReplace(doc, re, replacement) {
  * string at any point -- the caller is responsible for writing it
  * back into wherever it came from once the session ends, since this
  * function has no document (or textarea) of its own to write into.
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [re]
  * @param {any} [replacement]
  */

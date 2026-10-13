@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * org-refile-targets, translated into this app's own plain-text
  * Global/Local Variables format (a single line can't hold real org's
@@ -52,7 +54,7 @@ const CRITERION_KEYS = ['level', 'maxlevel', 'tag', 'todo', 'regexp'];
 
 /** Splits on ";" separators, treating a backslash as escaping the next
  *  character (so "\;" stays inside its entry, and "\\;" is an escaped
- * @param {any} [text]
+ * @param {string} text
  *  backslash followed by a real separator). Escapes are kept as written. */
 function splitEntries(text) {
   const entries = [];
@@ -133,7 +135,7 @@ function parseOneEntry(entryText) {
 
 /** Parses org-refile-targets text into `{ entries, errors }`. `errors`
  *  lists every entry that was skipped and why, so the caller can show
- * @param {any} [text]
+ * @param {string} text
  *  it rather than have a target quietly disappear. */
 function parseRefileTargetsWithErrors(text) {
   if (!text || !text.trim()) {
@@ -151,14 +153,14 @@ function parseRefileTargetsWithErrors(text) {
   return { entries, errors };
 }
 
-/** @param {any} [text] */
+/** @param {string} text */
 function parseRefileTargets(text) {
   return parseRefileTargetsWithErrors(text).entries;
 }
 
 /**
  * Whether `heading` satisfies every criterion of one entry.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [criteria]
  */
 function headingMatchesCriteria(heading, criteria) {
@@ -222,6 +224,7 @@ function resolveEntryFileIds(entry, currentFileId, agendaFilesConfig) {
  * @param {any} [docsById]
  * @param {any} [currentFileId]
  * @param {any} [agendaFilesConfig]
+ * @param {Heading | null} [excludeHeading]
  */
 function getRefileCandidates(targetsSpec, docsById, currentFileId, agendaFilesConfig, excludeHeading = null) {
   const excludeSet = excludeHeading ? collectSubtreeHeadings(excludeHeading) : null;
@@ -240,10 +243,10 @@ function getRefileCandidates(targetsSpec, docsById, currentFileId, agendaFilesCo
 }
 
 /**
- * @param {any} [headings]
- * @param {any} [outlinePath]
- * @param {any} [entry]
- * @param {any} [documentId]
+ * @param {Heading[]} headings
+ * @param {any} outlinePath
+ * @param {any} entry
+ * @param {string} documentId
  * @param {any} [excludeSet]
  * @param {any} [candidates]
  * @param {any} [seen]
@@ -273,7 +276,7 @@ function walkForCandidates(headings, outlinePath, entry, documentId, excludeSet,
 
 /** Every heading in `heading`'s own subtree, itself included -- used to
  *  exclude a refiled heading and all its descendants from its own
- * @param {any} [heading]
+ * @param {Heading} heading
  *  candidate list. */
 function collectSubtreeHeadings(heading) {
   const set = new Set([heading]);
@@ -295,7 +298,7 @@ function collectSubtreeHeadings(heading) {
  *  happened to be built from, which could be stale by the time the
  *  user actually picks one (especially for a cross-file target, read
  *  once when the picker opened but possibly edited elsewhere since).
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [outlinePath]
  *  Returns null if the path no longer matches anything. */
 function findHeadingByOutlinePath(doc, outlinePath) {

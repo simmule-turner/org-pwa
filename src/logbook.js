@@ -55,7 +55,7 @@ const CONTINUATION_INDENT_RE = /^\s+\S/; // a note-continuation line: indented, 
  * in the returned array -- it's still present in the drawer's own raw
  * lines (untouched, since this function never mutates its input), just
  * absent from this derived view.
- * @param {any} [lines]
+ * @param {string[]} lines
  */
 function parseLogbookEntries(lines) {
   const entries = [];

@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Converts an org document (or a single heading's subtree) to a real,
  * standalone .odt file -- a ZIP archive of OpenDocument XML, openable
@@ -35,7 +37,7 @@ import { getProperty } from './archive-model.js';
 
 const XML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' };
 
-/** @param {any} [text] */
+/** @param {string} text */
 function escapeXml(text) {
   return String(text).replace(/[&<>"']/g, (c) => /** @type {any} */ (XML_ESCAPES)[c]);
 }
@@ -59,7 +61,7 @@ function nextSectionNumberOdt(level) {
   return sectionNumbersOdt.join('.');
 }
 
-/** @param {any} [title] */
+/** @param {string} title */
 function slugifyOdt(title) {
   const slug = String(title || '')
     .toLowerCase()
@@ -73,7 +75,7 @@ function slugifyOdt(title) {
  *  with a numeric suffix if two headings would otherwise collide.
  *  ODF's own bookmark mechanism (used for internal links, see
  *  resolveLinkHrefOdt) needs the same kind of stable, unique name per
- * @param {any} [headings]
+ * @param {Heading[]} headings
  * @param {any} [usedSlugs]
  *  heading that an HTML id attribute does. */
 function assignHeadingIdsOdt(headings, usedSlugs) {
@@ -176,7 +178,7 @@ function renderInlineNodeOdt(node) {
   }
 }
 
-/** @param {any} [text] */
+/** @param {string} text */
 function renderTextOdt(text) {
   return renderInlineListOdt(parseInline(text));
 }
@@ -255,7 +257,7 @@ function renderTableOdt(table) {
 
 /** Strips org's own comma-escape convention from one block content
  *  line for display -- see export-html.js's own stripCommaEscape for
- * @param {any} [line]
+ * @param {string} line
  *  the full reasoning; the same fix, applied here too. */
 function stripCommaEscape(line) {
   return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
@@ -311,7 +313,7 @@ function clampHeadingLevelOdt(level) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [level]
  * @param {any} [doneKeywords]
  */
@@ -336,7 +338,7 @@ function renderHeadingLineOdt(heading, level, doneKeywords) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [levelOffset]
  * @param {any} [doneKeywords]
  * @param {any} [out]
@@ -424,7 +426,7 @@ function stylesXml() {
 }
 
 /**
- * @param {any} [title]
+ * @param {string} title
  * @param {any} [author]
  * @param {any} [date]
  */
@@ -469,12 +471,13 @@ function contentXml(bodyXml) {
  */
 /** Builds one level of the ToC's own nested list -- a real ODF
  *  <text:list>, linking each entry to the same bookmark
- * @param {any} [headings]
+ * @param {Heading[]} headings
  * @param {any} [level]
  * @param {any} [maxDepth]
  * @param {any} [numberingEnabled]
  * @param {any} [numbers]
- *  renderHeadingLineOdt already creates for that heading. */
+ *  renderHeadingLineOdt already creates for that heading.
+ * @returns {string} */
 function buildTocListOdt(headings, level, maxDepth, numberingEnabled, numbers) {
   if (level > maxDepth || headings.length === 0) return '';
   const items = headings
@@ -514,7 +517,7 @@ function buildTocOdt(roots, toc, numberingEnabled) {
   return `<text:p text:style-name="Heading">Table of Contents</text:p>${list}`;
 }
 
-/** @param {any} [doc] */
+/** @param {Doc} doc */
 export function exportToOdt(doc, scope = /** @type {any} */ (null)) {
   docForLinkResolutionOdt = doc;
   headingIdMapOdt = new Map();
@@ -535,7 +538,7 @@ export function exportToOdt(doc, scope = /** @type {any} */ (null)) {
   const date = !scope && options.date ? getDocDate(doc) : null;
 
   if (!scope && getDocTitle(doc)) {
-    out.push(`<text:p text:style-name="Title">${escapeXml(getDocTitle(doc))}</text:p>`);
+    out.push(`<text:p text:style-name="Title">${escapeXml(/** @type {string} */ (getDocTitle(doc)))}</text:p>`);
     if (author) out.push(`<text:p text:style-name="Subtitle">${escapeXml(author)}</text:p>`);
     if (date) out.push(`<text:p text:style-name="Subtitle">${escapeXml(date)}</text:p>`);
   }

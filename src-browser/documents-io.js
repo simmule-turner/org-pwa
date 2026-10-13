@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: documents io.
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { findAncestorPath } from '../src/archive-model.js';
@@ -45,8 +47,8 @@ export function suggestedSaveAsName(fallback) {
 }
 
 /** Common finish-up after any successful open/create, regardless of which
- * @param {any} [documentId]
- * @param {any} [doc]
+ * @param {string} documentId
+ * @param {Doc} doc
  * @param {any} [storageKind]
  *  backend it came from. */
 export async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCache = false, { replaceCurrentTab = false } = {}) {
@@ -177,10 +179,10 @@ export async function openFromImport() {
  *  chosen. `kind` is 'github' | 'webdav' (passed through to
  *  afterDocumentLoaded, same as before this existed as a shared
  *  function), `label` is the human-readable name used in status
- * @param {any} [path]
- * @param {any} [kind]
- * @param {any} [diskAdapter]
- * @param {any} [label]
+ * @param {string} path
+ * @param {any} kind
+ * @param {any} diskAdapter
+ * @param {string} label
  *  messages ("GitHub" / "WebDAV"). */
 export async function openRemotePath(path, kind, diskAdapter, label) {
   try {

@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Computes and renders a clocktable -- real org's own
  * #+BEGIN: clocktable ... #+END: dynamic block, the report
@@ -52,7 +54,7 @@ function parseClocktableRange(tstartStr, tendStr) {
  *  behavior only counts completed sessions unless explicitly told
  *  otherwise, and an in-progress duration would keep changing every
  *  time this report is viewed, which isn't what "a report for this
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [tstart]
  * @param {any} [tend]
  *  date range" should mean. */
@@ -72,7 +74,7 @@ function ownMinutesInRange(heading, tstart, tend) {
 
 /** Bottom-up: every heading's own-plus-descendants total, in minutes,
  *  within the given range -- a Map so this never mutates the actual
- * @param {any} [headings]
+ * @param {Heading[]} headings
  * @param {any} [tstart]
  * @param {any} [tend]
  * @param {any} [totals]
@@ -93,7 +95,7 @@ function computeSubtreeTotals(headings, tstart, tend, totals) {
  *  with any relevant clocked time (its own or rolled up from
  *  descendants) gets a row and its children are considered too (up to
  *  maxlevel); deeper headings contribute upward but never get a row
- * @param {any} [headings]
+ * @param {Heading[]} headings
  * @param {any} [level]
  * @param {any} [maxlevel]
  * @param {any} [totals]
@@ -116,7 +118,7 @@ function buildClocktableRows(headings, level, maxlevel, totals, rows) {
  * `{ heading, level, minutes }` in document order, `totalMinutes` the
  * grand total (the sum of every top-level row's own total, which
  * already includes every descendant).
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [tstartStr]
  * @param {any} [tendStr]
  */

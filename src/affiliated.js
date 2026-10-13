@@ -14,7 +14,7 @@
 const AFFILIATED_RE = /^\s*#\+(NAME|CAPTION|ATTR_[A-Za-z0-9_-]+|HEADERS?|RESULTS)(?:\[[^\]]*\])?:[ \t]?(.*)$/i;
 
 /** Splits the leading run of affiliated-keyword lines off `lines`.
- * @param {any} [lines]
+ * @param {string[]} lines
  *  @returns {{ affiliated: { key: string, value: string, line: string }[], rest: string[] }} */
 function splitAffiliated(lines) {
   const affiliated = [];

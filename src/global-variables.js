@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('./types.js').LocalVars} LocalVars */
 /**
  * "Global Variables" -- an app-wide, cross-file settings mechanism
  * (configured in Settings, not embedded in any particular .org file)
@@ -39,7 +40,7 @@ const GLOBAL_VAR_LINE_RE = /^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/;
  *  separated by a single space, matching a natural word-wrap rather
  *  than concatenating with no separator at all. A trailing backslash
  *  on the very last line (nothing left to continue onto) is left as a
- * @param {any} [text]
+ * @param {string} text
  *  literal trailing character rather than silently swallowed. */
 function joinContinuedLines(text) {
   const rawLines = text.split('\n');
@@ -60,7 +61,7 @@ function joinContinuedLines(text) {
   return joined;
 }
 
-/** @param {any} [text] */
+/** @param {string} text */
 export function parseGlobalVariables(text) {
   const vars = {};
   if (!text) return vars;
@@ -78,7 +79,7 @@ export function parseGlobalVariables(text) {
  *  regardless of insertion order. A key whose value is null/undefined
  *  is omitted entirely (removed), rather than written as an empty
  *  line -- matching how a Settings UI control resetting a field to
- * @param {any} [vars]
+ * @param {LocalVars} vars
  *  "unset" should behave. */
 export function serializeGlobalVariables(vars) {
   return Object.keys(vars)

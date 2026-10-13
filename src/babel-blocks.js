@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Finding the source blocks of a document, in document order, with what Noweb and Tangle need to know about each:
  * its language, header text, name, normalised body, the headings above it, and its position among its heading's blocks.
@@ -12,13 +14,13 @@ const AFFILIATED_RE = /^\s*#\+(NAME|HEADERS?|CAPTION|ATTR_\w+|PLOT)\s*:\s*(.*)$/
 
 /**
  * `,*` and `,#+` at the start of a line are Org's escapes for a line that would otherwise look like markup.
- * @param {any} [line]
+ * @param {string} line
  */
 const unescapeLine = (line) => line.replace(/^(\s*),(?=\*|#\+)/, '$1');
 
 /**
  * Removes the indentation all non-blank lines share, as Org does for a block's body.
- * @param {any} [lines]
+ * @param {string[]} lines
  */
 export function removeIndentation(lines) {
   let min = Infinity;
@@ -39,7 +41,7 @@ export function normalizedBody(rawLines) {
 }
 
 /** The source blocks in `lines` (a heading's body, or the lines before the first heading):
- * @param {any} [lines]
+ * @param {string[]} lines
  *  [{ beginIndex, endIndex, lang, params, name, headers, rawLines, indent }]. Blocks inside other blocks are skipped. */
 export function scanSourceBlocks(lines) {
   const found = [];
@@ -74,11 +76,11 @@ export function scanSourceBlocks(lines) {
 }
 
 const isArchived = (/** @type {any} */ heading) => (heading.tags || []).some((/** @type {any} */ t) => String(t).toUpperCase() === 'ARCHIVE');
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 const isComment = (heading) => isCommentedHeading(heading);
 
 /** The lines before the first heading with the `#+KEY: value` lines the parser pulled out put back where they were,
- * @param {any} [doc]
+ * @param {Doc} doc
  *  so that a `#+NAME:` or `#+HEADER:` above the first block is seen. */
 export function preambleLines(doc) {
   const lines = (doc.bodyLines || []).slice();
@@ -93,14 +95,14 @@ export function preambleLines(doc) {
  * Each entry: { heading (null before the first heading), ancestors (outermost first, ending with `heading`),
  * counter (1-based among that heading's blocks), commented, archived, lang, params, name, headers, body, indent,
  * beginIndex, endIndex, args (the effective header arguments) }.
- * @param {any} [doc]
+ * @param {Doc} doc
  */
 export function collectDocumentBlocks(doc) {
   /** @type {any[]} */ const blocks = [];
   /**
-   * @param {any} [heading]
-   * @param {any} [ancestors]
-   * @param {any} [lines]
+   * @param {Heading | null} heading
+   * @param {any} ancestors
+   * @param {string[]} lines
    * @param {any} [commented]
    * @param {any} [archived]
    */
@@ -120,7 +122,7 @@ export function collectDocumentBlocks(doc) {
   };
   add(null, [], preambleLines(doc), false, false);
   /**
-   * @param {any} [heading]
+   * @param {Heading} heading
    * @param {any} [parents]
    * @param {any} [commented]
    * @param {any} [archived]
@@ -138,7 +140,7 @@ export function collectDocumentBlocks(doc) {
 
 /**
  * The heading's text as Org puts it in a search link: statistics cookies removed, spaces collapsed.
- * @param {any} [title]
+ * @param {string} title
  */
 export function headingSearchText(title) {
   return String(title || '')

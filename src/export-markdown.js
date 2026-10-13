@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Converts an org document (or a single heading's subtree) to
  * Markdown (GFM-flavored) text. Pure and DOM-free — walks the same
@@ -71,7 +73,7 @@ let headingSlugMapMd = new Map();
  *  GitHub's own algorithm strips it outright, and matching that
  *  exactly matters here specifically because the whole point is
  *  producing a link that resolves correctly once actually rendered
- * @param {any} [title]
+ * @param {string} title
  *  somewhere real. */
 export function gfmSlugify(title) {
   return String(title || '')
@@ -87,7 +89,7 @@ export function gfmSlugify(title) {
  *  export-html.js's own assignHeadingIdsHtml uses for its own,
  *  unrelated id-attribute scheme; matching GFM's own specific
  *  numbering is what makes the generated link actually correct once
- * @param {any} [headings]
+ * @param {Heading[]} headings
  * @param {any} [usedSlugs]
  *  rendered by a real GFM-compliant tool. */
 function assignHeadingSlugsMd(headings, usedSlugs) {
@@ -108,7 +110,7 @@ function assignHeadingSlugsMd(headings, usedSlugs) {
 /** GFM requires an explicit label on every footnote, unlike org's own
  *  anonymous [fn::...] form -- assigns a synthetic one for that case,
  *  distinguishable from any real user-chosen label so it can never
- * @param {any} [label]
+ * @param {string} label
  *  collide with one. */
 function footnoteLabelMd(label) {
   if (label !== null) return label;
@@ -124,7 +126,7 @@ function footnoteLabelMd(label) {
  *  the exported file. Applied only to plain-text segments — text
  *  already inside a code/verbatim span is safe as-is (the backticks
  *  themselves already protect it, and escaping inside a code span
- * @param {any} [text]
+ * @param {string} text
  *  would corrupt the literal content it's meant to preserve). */
 function escapeMarkdownText(text) {
   return text.replace(/([\\`*_[\]<|])/g, '\\$1');
@@ -203,7 +205,7 @@ function renderInlineNodeMd(node) {
   }
 }
 
-/** @param {any} [text] */
+/** @param {string} text */
 function renderTextMd(text) {
   return renderInlineListMd(parseInline(text));
 }
@@ -303,7 +305,7 @@ function renderTableMd(table) {
 
 /** Strips org's own comma-escape convention from one block content
  *  line for display -- see export-html.js's own stripCommaEscape for
- * @param {any} [line]
+ * @param {string} line
  *  the full reasoning; the same fix, applied here too. */
 function stripCommaEscape(line) {
   return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
@@ -353,7 +355,7 @@ function renderPlanningMd(planning) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [level]
  */
 function renderHeadingLineMd(heading, level) {
@@ -369,7 +371,7 @@ function renderHeadingLineMd(heading, level) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [levelOffset]
  * @param {any} [out]
  */
@@ -399,7 +401,7 @@ function renderHeadingMd(heading, levelOffset, out) {
 /** Builds one level of the ToC's own nested list -- always recurses
  *  with level+1, the actual list-building logic (see buildTocMd below
  *  for the one-time wrapper that decides whether to call this at
- * @param {any} [headings]
+ * @param {Heading[]} headings
  * @param {any} [level]
  * @param {any} [maxDepth]
  * @param {any} [numberingEnabled]
@@ -429,7 +431,7 @@ function buildTocListMd(headings, level, maxDepth, numberingEnabled) {
  *  whether the ToC's own list is ordered ("1.", "2.", ...) or
  *  unordered ("-"), not whether headings are numbered at all (they
  *  never are). Returns '' when `toc` is false, or fewer than two
- * @param {any} [headings]
+ * @param {Heading[]} headings
  * @param {any} [toc]
  * @param {any} [numberingEnabled]
  *  headings are visible at `toc`'s own depth limit. */
@@ -449,7 +451,7 @@ function buildTocMd(headings, toc, numberingEnabled) {
   return '# Table of Contents\n\n' + body;
 }
 
-/** @param {any} [doc] */
+/** @param {Doc} doc */
 export function exportToMarkdown(doc, scope = /** @type {any} */ (null)) {
   footnoteDefinitionsMd = [];
   anonymousFootnoteCounterMd = 0;

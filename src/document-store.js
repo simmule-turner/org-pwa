@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('./types.js').KvAdapter} KvAdapter */
 
 /**
  * Document store: the multi-file layer the requirements decided on — the
@@ -111,7 +112,7 @@ function openKey() {
   return 'open-documents';
 }
 
-/** @param {any} [kvAdapter] */
+/** @param {KvAdapter} kvAdapter */
 async function listOpenDocuments(kvAdapter) {
   const result = await kvAdapter.get(openKey());
   if (!result) return [];
@@ -121,8 +122,8 @@ async function listOpenDocuments(kvAdapter) {
 }
 
 /**
- * @param {any} [kvAdapter]
- * @param {any} [documentId]
+ * @param {KvAdapter} kvAdapter
+ * @param {string} documentId
  */
 async function markDocumentOpen(kvAdapter, documentId) {
   const current = await listOpenDocuments(kvAdapter);
@@ -134,8 +135,8 @@ async function markDocumentOpen(kvAdapter, documentId) {
 }
 
 /**
- * @param {any} [kvAdapter]
- * @param {any} [documentId]
+ * @param {KvAdapter} kvAdapter
+ * @param {string} documentId
  */
 async function markDocumentClosed(kvAdapter, documentId) {
   const current = await listOpenDocuments(kvAdapter);

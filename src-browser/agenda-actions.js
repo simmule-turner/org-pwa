@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Acting on a row of the Agenda or the TODO view without leaving it: press and hold a row for the action sheet (Done, Set state,
 // Reschedule, Priority, Refile, Open heading), or swipe it to the right to mark it done, with an Undo that stays for a few
 // seconds. These change only a heading in the open file, as Refile does: a row from another agenda file offers Open heading alone.
@@ -28,7 +30,7 @@ export function canChangeItem(/** @type {any} */ item) {
   return !!item.heading && ACTIONABLE_KINDS.has(item.kind) && item.documentId === S.state.documentId && !S.isBufferReadOnly;
 }
 
-/** @param {any} heading */
+/** @param {Heading} heading */
 function sequenceOf(heading) {
   return findSequenceForHeading(resolveTodoSequences(S.state.doc, GLOBAL_TODO_DEFAULT), heading);
 }
@@ -39,7 +41,7 @@ export function canMarkDone(/** @type {any} */ item) {
   return canChangeItem(item) && !!heading.todo && !sequenceOf(heading).doneKeywords.includes(heading.todo);
 }
 
-/** @param {any} heading */
+/** @param {Heading} heading */
 function plainTitle(heading) {
   return heading.title || '(untitled)';
 }

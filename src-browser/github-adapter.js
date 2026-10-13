@@ -31,7 +31,7 @@
 
 const API_BASE = 'https://api.github.com';
 
-/** @param {any} [str] */
+/** @param {string} str */
 function utf8ToBase64(str) {
   const bytes = new TextEncoder().encode(str);
   let binary = '';
@@ -55,7 +55,7 @@ function base64ToUtf8(base64) {
  *  browser's own URL parser rather than sent as literal path
  *  characters, silently truncating or corrupting the actual request
  *  GitHub's API receives. Matches the WebDAV adapter's own
- * @param {any} [path]
+ * @param {string} path
  *  encodePath exactly. */
 function encodeGithubPath(path) {
   return path
@@ -65,8 +65,8 @@ function encodeGithubPath(path) {
 }
 
 /**
- * @param {any} [config]
- * @param {any} [path]
+ * @param {any} config
+ * @param {string} path
  */
 function contentsUrl(config, path) {
   return `${API_BASE}/repos/${config.owner}/${config.repo}/contents/${encodeGithubPath(path)}`;
@@ -146,7 +146,7 @@ async function fetchBlobContent(config, sha) {
  * @param {any} [getConfig]
  */
 export function createGithubAdapter(getConfig) {
-  /** @param {any} [fileId] */
+  /** @param {string} fileId */
   async function readImpl(fileId) {
     const config = requireConfig(getConfig);
     const url = contentsUrl(config, fileId) + '?ref=' + encodeURIComponent(config.branch || 'main');
@@ -169,7 +169,7 @@ export function createGithubAdapter(getConfig) {
    *  fetchBlobContent's own docs for why "either way" matters: the
    *  Contents API only inlines it directly for a file under 1MB; an
    *  ordinary camera photo easily exceeds that, not an edge case).
-   * @param {any} [fileId]
+   * @param {string} fileId
    *  Returns null for a 404, matching readImpl's convention. */
   async function readBinaryImpl(fileId) {
     const config = requireConfig(getConfig);
@@ -186,7 +186,7 @@ export function createGithubAdapter(getConfig) {
   }
 
   /**
-   * @param {any} [fileId]
+   * @param {string} fileId
    * @param {any} [content]
    */
   async function writeImpl(fileId, content) {
@@ -217,7 +217,7 @@ export function createGithubAdapter(getConfig) {
    *  otherwise identical to writeImpl's own sha-based update-vs-create
    *  logic, just skipping the utf8ToBase64 encoding step that would
    *  otherwise corrupt binary data (the same reasoning readBinaryImpl
-   * @param {any} [fileId]
+   * @param {string} fileId
    * @param {any} [base64Content]
    *  skips readImpl's own utf8 decoding). */
   async function writeBinaryImpl(fileId, base64Content) {
@@ -246,7 +246,7 @@ export function createGithubAdapter(getConfig) {
    *  first via readImpl. A no-op (not an error) if the file doesn't
    *  exist at all -- the end state (file gone) is already true,
    *  matching how a delete action in this app generally behaves when
-   * @param {any} [fileId]
+   * @param {string} fileId
    *  there's nothing there to remove. */
   async function deleteImpl(fileId) {
     const config = requireConfig(getConfig);
@@ -302,7 +302,7 @@ export function createGithubAdapter(getConfig) {
     delete: deleteImpl,
     list: listImpl,
     readBinary: readBinaryImpl,
-    /** @param {any} [fileId] */
+    /** @param {string} fileId */
     async exists(fileId) {
       return (await readImpl(fileId)) !== null;
     },

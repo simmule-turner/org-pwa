@@ -15,7 +15,7 @@ import { plotSvgCache } from './singletons.js';
  *  lookup (guessImageMimeType/guessAudioMimeType); this tries each in
  *  turn and falls back to a generic binary type -- for
  *  saveAttachmentLink's own download, which needs SOME MIME type
- * @param {any} [filename]
+ * @param {string} filename
  *  regardless of what kind of file it turns out to be. */
 export function guessAnyAttachmentMimeType(filename) {
   if (IMAGE_EXT_RE.test(filename)) return guessImageMimeType(filename);

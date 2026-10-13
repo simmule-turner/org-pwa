@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: sync helpers. These have no dependency on the app's shared mutable state,
 // so they moved verbatim (see tools/ notes in CHANGELOG v412).
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
@@ -10,7 +12,7 @@ import { kv } from './singletons.js';
 import { confirmDialog } from './dialogs.js';
 
 /**
- * @param {any} [fileId]
+ * @param {string} fileId
  * @param {any} [hash]
  * @param {any} [content]
  */
@@ -36,7 +38,7 @@ export async function loadRefileRecent() {
 
 /**
  * Remembers a successful refile's destination for the picker's Recent list.
- * @param {any} [documentId]
+ * @param {string} documentId
  * @param {any} [outlinePath]
  */
 export async function rememberRefileTarget(documentId, outlinePath) {
@@ -61,8 +63,8 @@ export async function rememberRefileTarget(documentId, outlinePath) {
  *  its own internal ID is a randomly-suffixed sentinel never meant to
  *  be user-visible, so it falls back to the first heading's own title
  *  once one exists, and finally to '*scratch*' -- matching real
- * @param {any} [docId]
- * @param {any} [doc]
+ * @param {any} docId
+ * @param {Doc} doc
  *  Emacs's own convention for a fresh, as-yet-unnamed buffer. */
 export function documentDisplayLabel(docId, doc) {
   if (docId === HELP_DOCUMENT_ID) return 'Help';
@@ -101,7 +103,7 @@ export function storageKindLabel(kind) {
  * ("unsaved local changes were kept") and no way back to them: the edit
  * sat untouched in IndexedDB, but there was no UI path to ever see it
  * again. "Kept" should mean "shown", not "kept invisible somewhere".
- * @param {any} [documentId]
+ * @param {string} documentId
  */
 export async function resolvePendingChangeChoice(documentId) {
   const pending = await getPendingChange(kv, documentId);

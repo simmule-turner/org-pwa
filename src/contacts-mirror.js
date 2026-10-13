@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * The contacts as vCards, and the plan for keeping a CardDAV address book in step with them. The twin of
  * calendar-mirror.js and shaped like it: all pure (what to send, what to remove, what to remember afterwards), with the
@@ -20,8 +22,8 @@ import { collectContactCards } from './export-vcard.js';
 import { contentHash } from './sync-engine.js';
 
 /** What identifies a contact to the server, and stays the same from run to run: its :ID: if it has one (as org-contacts and
- * @param {any} [documentId]
- * @param {any} [heading]
+ * @param {string} documentId
+ * @param {Heading} heading
  * @param {any} [index]
  *  org-id use), else built from its file and name. Two contacts with the same name in one file get different ones. */
 function contactUid(documentId, heading, index) {
@@ -38,13 +40,13 @@ function resourceNameForContactUid(uid) {
   return `${RESOURCE_PREFIX}${base}-${contentHash(uid)}.vcf`;
 }
 
-/** @param {any} [name] */
+/** @param {string} name */
 function isOurContactResource(name) {
   return name.startsWith(RESOURCE_PREFIX) && name.endsWith('.vcf');
 }
 
 /** One contact's vCard text, with the UID a CardDAV server needs to tell contacts apart (the export has none, since a
- * @param {any} [lines]
+ * @param {string[]} lines
  * @param {any} [uid]
  *  single file of cards does not need one). It goes straight after VERSION, where vCard 3.0 allows it. */
 function vcardText(lines, uid) {

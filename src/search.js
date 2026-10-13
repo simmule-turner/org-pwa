@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Whole-document search — walks the full tree regardless of current fold
  * state (a folded heading's content is still searchable, it just isn't
@@ -88,7 +90,7 @@ function buildMatcher(query, useRegex) {
  *  correct in regex mode. {index: -1, length: 0} when there's no
  *  match, matching String.indexOf's own -1 convention for the index
  *  half.
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [query]
  * @param {any} [useRegex]
  */
@@ -119,7 +121,7 @@ function findMatchIndex(text, query, useRegex) {
  *  left over to highlight) -- callers should treat that as "render
  *  plain, no highlight" rather than trying to highlight a zero-length
  *  span at position -1.
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [query]
  * @param {any} [useRegex]
  */
@@ -271,7 +273,7 @@ function parseFilterQuery(query) {
  *  `useInheritance`) every ancestor's own tags too, matching real
  *  org's own tag-inheritance model exactly: "if a heading has a
  *  certain tag, all subheadings inherit the tag as well." Without
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [ancestors]
  * @param {any} [useInheritance]
  *  inheritance, this is just `heading.tags` itself. */
@@ -290,7 +292,7 @@ function effectiveTags(heading, ancestors, useInheritance) {
  *  heading doesn't define the property itself at all. Returns null if
  *  nothing in the chain defines it. Key lookup is case-insensitive,
  *  matching how property filters elsewhere in this app already work.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [ancestors]
  * @param {any} [key]
  * @param {any} [useInheritance]
@@ -311,7 +313,7 @@ function effectivePropertyValue(heading, ancestors, key, useInheritance) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [filters]
  * @param {any} [ancestors]
  * @param {any} [useTagInheritance]
@@ -325,9 +327,9 @@ function headingPassesFilters(heading, filters, ancestors, useTagInheritance, us
       const tags = effectiveTags(heading, ancestors, useTagInheritance);
       matched = filter.values.some((/** @type {any} */ v) => tags.some((/** @type {any} */ t) => t.toLowerCase() === v.toLowerCase()));
     } else if (filter.type === 'todo') {
-      matched = !!heading.todo && filter.values.some((/** @type {any} */ v) => heading.todo.toLowerCase() === v.toLowerCase());
+      matched = !!heading.todo && filter.values.some((/** @type {any} */ v) => /** @type {string} */ (heading.todo).toLowerCase() === v.toLowerCase());
     } else if (filter.type === 'priority') {
-      matched = !!heading.priority && filter.values.some((/** @type {any} */ v) => heading.priority.toLowerCase() === v.toLowerCase());
+      matched = !!heading.priority && filter.values.some((/** @type {any} */ v) => /** @type {string} */ (heading.priority).toLowerCase() === v.toLowerCase());
     } else if (filter.type === 'property') {
       const propValue = effectivePropertyValue(heading, ancestors, filter.key, usePropertyInheritance);
       matched = propValue !== null && filter.values.some((/** @type {any} */ v) => propValue.toLowerCase().includes(v.toLowerCase()));
@@ -389,7 +391,7 @@ function bodyContainsKeyword(bodyNodes, matches) {
  *  gate, so building full result objects with snippets just to check
  *  .length>0 would be pure waste. The real cost of the duplication:
  *  if what counts as "searchable" content ever changes, both this and
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [matches]
  *  searchTextWithinHeading's own walk need updating together. */
 function headingContainsKeyword(heading, matches) {
@@ -408,8 +410,8 @@ function headingContainsKeyword(heading, matches) {
 }
 
 /**
- * @param {any} [results]
- * @param {any} [heading]
+ * @param {any} results
+ * @param {Heading} heading
  * @param {any} [items]
  * @param {any} [query]
  * @param {any} [matches]
@@ -427,8 +429,8 @@ function walkListForMatches(results, heading, items, query, matches, useRegex) {
 }
 
 /**
- * @param {any} [results]
- * @param {any} [heading]
+ * @param {any} results
+ * @param {Heading} heading
  * @param {any} [bodyNodes]
  * @param {any} [query]
  * @param {any} [matches]
@@ -518,7 +520,7 @@ function searchTextWithinHeading(results, node, q, matches, useRegex) {
  *  keywordMatchers is a value -> matcher Map built ONCE by the caller
  *  (not once per heading), so a query with many keyword terms doesn't
  *  recompile a regex (or rebuild a closure) on every single heading in
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [filters]
  * @param {any} [keywordMatchers]
  * @param {any} [useRegex]
@@ -580,7 +582,7 @@ function buildKeywordMatchers(filters, useRegex) {
 }
 
 /**
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [query]
  */
 export function searchDocument(doc, query, opts = /** @type {any} */ ({})) {
@@ -637,7 +639,7 @@ const PSEUDO_PROPERTY_NAMES = new Set(['TODO', 'LEVEL', 'PRIORITY', 'CATEGORY'])
  *  named in `propertyNames` through the SAME inheritance logic
  *  (effectiveTags/effectivePropertyValue) the existing tag:/key: filter
  *  syntax above already uses -- not a second, separate implementation of
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [ancestors]
  * @param {any} [propertyNames]
  * @param {any} [useTagInheritance]

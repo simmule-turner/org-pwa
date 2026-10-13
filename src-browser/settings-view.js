@@ -734,7 +734,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     renderSettingsView();
   };
   /**
-   * @param {any} [label]
+   * @param {string} label
    * @param {any} [key]
    * @param {any} [hint]
    */
@@ -759,7 +759,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     return row;
   };
   /**
-   * @param {any} label
+   * @param {string} label
    * @param {any} key
    * @param {any} hint
    * @param {any} step

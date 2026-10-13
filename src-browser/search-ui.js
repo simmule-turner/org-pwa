@@ -136,7 +136,7 @@ export function renderSearchOptionsMenu() {
   optionsRow.style.flexWrap = 'wrap';
 
   /**
-   * @param {any} [label]
+   * @param {string} label
    * @param {any} [checked]
    * @param {any} [disabled]
    * @param {any} [onClick]
@@ -266,7 +266,7 @@ export async function startQueryReplace() {
  *  the existing-session branch above already handles). Returns true
  *  once state.doc genuinely is `documentId`, false if opening it
  *  failed (network error, etc.) -- callers should skip it and move on
- * @param {any} [documentId]
+ * @param {string} documentId
  *  rather than lose the rest of the walk over one file's own failure. */
 export async function switchToAgendaDoc(documentId) {
   const existingSession = S.documentSessions.find((/** @type {any} */ s) => (s.tabId === S.activeTabId ? S.state.documentId : s.state.documentId) === documentId);

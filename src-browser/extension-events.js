@@ -15,7 +15,7 @@ export function onExtensionEvent(fn) {
 
 /**
  * Announces an event. Does nothing when no script is listening, and never throws into the caller.
- * @param {any} [name]
+ * @param {string} name
  */
 export function emitExtensionEvent(name, payload = {}) {
   if (!slot.listener) return;

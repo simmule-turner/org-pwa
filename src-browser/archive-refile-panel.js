@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // The Archive & Refile panel: one sheet for a heading, in two parts that scroll on their own. Part 1 says what Archive (or, for an
 // archived heading, Restore) will do; Part 2 lists the places Refile can put it, with a search and the details of the chosen one.
 // Archive/Restore, Refile and Cancel stay at the bottom, one line each, never resized by the text above them. The state lives in
@@ -40,7 +42,7 @@ function detailGrid(rows) {
 }
 
 /** Opens the panel for `heading`: Archive for a live heading, Restore for one already archived. The refile targets load behind it.
- * @param {any} heading */
+ * @param {Heading} heading */
 export async function openArchiveRefilePanel(heading) {
   const { entries: targetsSpec, errors } = parseRefileTargetsWithErrors(getRefileTargets(S.state.localVariables));
   const mode = isArchivedInPlace(heading) ? 'restore' : 'archive';
@@ -63,7 +65,7 @@ export function closeArchiveRefilePanel() {
 }
 
 /** Part 1's content for a heading that will be archived.
- * @param {any} heading */
+ * @param {Heading} heading */
 function archivePart(heading) {
   const frag = document.createDocumentFragment();
   const location = getArchiveLocation(S.state.doc, heading);
@@ -86,7 +88,7 @@ function archivePart(heading) {
 }
 
 /** Part 1's content for a heading that is already archived.
- * @param {any} heading */
+ * @param {Heading} heading */
 function restorePart(heading) {
   const frag = document.createDocumentFragment();
   const dest = restoreDestination(heading, S.state.documentId);

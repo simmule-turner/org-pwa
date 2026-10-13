@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Attachments -- this app's own extension, inspired by real org-mode's
  * own org-attach (there's no exact equivalent to match against
@@ -39,7 +41,7 @@ function generateAttachmentId() {
  *  heading in the file. Throws for an `id` shorter than 3 characters
  *  -- not a realistic input in practice (a real UUID is 36 characters
  *  long), but guards against a caller passing something degenerate
- * @param {any} [id]
+ * @param {string} id
  *  rather than silently producing a nonsensical empty `rest`. */
 function splitAttachmentId(id) {
   const trimmed = String(id || '').trim();
@@ -55,17 +57,17 @@ function splitAttachmentId(id) {
  *  no I/O" scope as splitAttachmentId above). `filename` is used
  *  as-is (already expected to be sanitized by the caller, matching
  *  how export's own baseName sanitization already works elsewhere in
- * @param {any} [id]
- * @param {any} [filename]
- * @param {any} [documentId]
+ * @param {string} id
+ * @param {string} filename
+ * @param {string} documentId
  *  this app) -- not re-validated here. */
 function attachmentPath(id, filename, documentId) {
   return `${attachmentDir(id, documentId)}/${filename}`;
 }
 
 /** The folder a heading's attachments live in: `data/<prefix>/<rest>` beside the document (no trailing slash). The folder is
- * @param {any} [id]
- * @param {any} [documentId]
+ * @param {string} id
+ * @param {string} documentId
  *  what org-attach lists, so it is the one thing every attachment command starts from. */
 function attachmentDir(id, documentId) {
   const { prefix, rest } = splitAttachmentId(id);
@@ -75,8 +77,8 @@ function attachmentDir(id, documentId) {
 }
 
 /** A DIR property value as a folder path, or null if it cannot be one. Relative to the document's own folder; a leading "/" means
- * @param {any} [value]
- * @param {any} [documentId]
+ * @param {any} value
+ * @param {string} documentId
  *  the root of the storage instead. Empty values, backslashes and ".." parts are refused, so a DIR can never point outside. */
 function attachmentDirFromProperty(value, documentId) {
   let text = String(value || '').trim();
@@ -90,8 +92,8 @@ function attachmentDirFromProperty(value, documentId) {
 }
 
 /** The folder a heading names itself: its DIR property, else the one its ID gives. Null if it has neither (it is not
- * @param {any} [heading]
- * @param {any} [documentId]
+ * @param {Heading} heading
+ * @param {string} documentId
  *  inherited here; link-resolve.js walks up the ancestors). */
 function ownAttachmentDirectory(heading, documentId) {
   const dirProperty = getProperty(heading, 'DIR');
@@ -152,12 +154,12 @@ function attachmentSizeCheck(base64Length, backend) {
 /** The tag org-attach puts on a heading that has attachments (org-attach-auto-tag). */
 const ATTACH_TAG = 'ATTACH';
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 function addAttachTag(heading) {
   if (!(heading.tags || []).includes(ATTACH_TAG)) heading.tags = [...(heading.tags || []), ATTACH_TAG];
 }
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 function removeAttachTag(heading) {
   heading.tags = (heading.tags || []).filter((/** @type {string} */ tag) => tag !== ATTACH_TAG);
 }
@@ -165,7 +167,7 @@ function removeAttachTag(heading) {
 const VIDEO_EXT_RE = /\.(mp4|m4v|mov|webm|mkv|avi)$/i;
 
 /** Whether attaching `filename` also writes an [[attachment:...]] link into the heading's body, by the setting: 'media' (images,
- * @param {any} [filename]
+ * @param {string} filename
  * @param {any} [mode]
  *  audio and video, which the app shows inline), 'always', or 'never' (as org does). */
 function shouldInsertAttachmentLink(filename, mode) {
@@ -190,7 +192,7 @@ const normalizeAttachLinkMode = (value) => (ATTACH_LINK_MODES.includes(value) ? 
  *  duplicate) -- so it correctly renders inline; with the filename
  *  itself as the description for anything else, so a non-image
  *  attachment still shows a readable name as a regular, tappable
- * @param {any} [filename]
+ * @param {string} filename
  *  link rather than its own raw target text. */
 function formatAttachmentLink(filename) {
   if (IMAGE_EXT_RE.test(filename)) {
@@ -205,7 +207,7 @@ function formatAttachmentLink(filename) {
  *  export's own baseName sanitization already takes for a downloaded
  *  file's own name. Falls back to "attachment" if nothing usable is
  *  left after stripping (an empty or entirely-symbolic original
- * @param {any} [name]
+ * @param {string} name
  *  name), rather than producing an empty path segment. */
 function sanitizeAttachmentFilename(name) {
   const cleaned = String(name || '')
@@ -230,7 +232,7 @@ const ATTACHMENT_LINK_RE = /\[\[attachment:([^\]]+?)\](?:\[[^\]]*\])?\]/gi;
  *  before either doing something directly (exactly one attachment) or
  *  prompting which one (more than one). Returns `[]` for a heading
  *  with no attachment: links in its own body at all -- not an error,
- * @param {any} [heading]
+ * @param {Heading} heading
  *  just nothing to enumerate. */
 function listAttachments(heading) {
   const seen = new Set();
@@ -260,8 +262,8 @@ function listAttachments(heading) {
  *  excised. Mutates `heading.bodyLines` in place, matching how
  *  app.js's own attachFileToHeading already mutates it directly
  *  (re-deriving heading.body from it is the caller's own
- * @param {any} [heading]
- * @param {any} [filename]
+ * @param {Heading} heading
+ * @param {string} filename
  *  responsibility, same division as that function too). */
 function removeAttachmentLink(heading, filename) {
   const escaped = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -300,7 +302,7 @@ function removeAttachmentLink(heading, filename) {
  * once a collision is found -- an attachment always gets ITS OWN,
  * genuinely unique storage path, so two different captures can never
  * silently overwrite each other again regardless of what the camera
- * @param {any} [filename]
+ * @param {string} filename
  * @param {any} [existingFilenames]
  * app itself decided to call them. */
 function disambiguateAttachmentFilename(filename, existingFilenames) {
@@ -333,7 +335,7 @@ const AUDIO_EXT_RE = /\.(webm|m4a|mp4|mp3|wav|ogg|oga|weba|aac|flac)$/i;
  *  what renderLinkNode uses to decide whether an attachment gets the
  *  inline play-button/player treatment instead of a plain download
  *  link, the same way IMAGE_EXT_RE (in inline-markup.js) decides
- * @param {any} [filename]
+ * @param {string} filename
  *  which attachments get inline image display. */
 function isAudioFilename(filename) {
   return AUDIO_EXT_RE.test(filename);

@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: export import.
 import { exportToAscii } from '../src/export-ascii.js';
 import { exportToHtml } from '../src/export-html.js';
@@ -40,7 +42,7 @@ import { saveOut } from './save-out.js';
  *  app's own storage model has to real org's own "relative to the
  *  current file" behavior. Returns null (not a throw) for anything
  *  unresolvable -- expandIncludes itself already treats that as "skip
- * @param {any} [path]
+ * @param {string} path
  *  this one include," not a reason to fail the whole export. */
 export async function resolveIncludePath(path) {
   const colonIndex = path.indexOf(':');
@@ -662,7 +664,7 @@ export function renderImportFlow() {
  *  doesn't require a specific heading to already be focused and never
  *  risks overwriting anything already in the file. A file with no
  *  valid (FN-bearing) contacts produces a clear status message rather
- * @param {any} [headings]
+ * @param {Heading[]} headings
  * @param {any} [sourceLabel]
  *  than silently doing nothing. */
 export async function importVcardFromHeadings(headings, sourceLabel) {
@@ -711,7 +713,7 @@ export async function importVcardFile(vcardText) {
 }
 
 /** The iCalendar twin of importVcardFromHeadings: reads the iCalendar text found in the bodies of `headings` (a heading whose own
- * @param {any} [headings]
+ * @param {Heading[]} headings
  * @param {any} [sourceLabel]
  *  body starts with "BEGIN:VCALENDAR", as Export > Calendar (.ics) > To: *new buffer* leaves it). */
 export async function importIcalendarFromHeadings(headings, sourceLabel) {

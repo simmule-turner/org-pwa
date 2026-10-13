@@ -8,7 +8,7 @@
 
 /** The line ending a file mostly uses: "\r\n" when more of its line breaks are Windows-style than Unix-style, else
  *  "\n" (including for a file with no line breaks at all, so a new file is Unix-style). A file that mixes the two is
- * @param {any} [text]
+ * @param {string} text
  *  saved with whichever it has more of. */
 function detectLineEnding(text) {
   const crlf = (text.match(/\r\n/g) || []).length;
@@ -18,7 +18,7 @@ function detectLineEnding(text) {
 
 /**
  * The text with every "\r\n" as "\n". A lone "\r" is left alone: it is not a line break to org.
- * @param {any} [text]
+ * @param {string} text
  */
 function toLf(text) {
   return text.replace(/\r\n/g, '\n');
@@ -26,7 +26,7 @@ function toLf(text) {
 
 /**
  * "\n" text in `eol`'s style.
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [eol]
  */
 function fromLf(text, eol) {

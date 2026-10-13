@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: editing.
 import { editListItemText, editParagraphText } from '../src/body-edit.js';
 import { saveDocument } from '../src/document-store.js';
@@ -24,7 +26,7 @@ import { kv, textModeLastCommittedValue } from './singletons.js';
 import { renderLogNotePrompt } from './todo-workflow.js';
 import { menuButton } from './ui-widgets.js';
 
-/** @param {any} [text] */
+/** @param {string} text */
 export function setStatus(text) {
   statusEl.innerHTML = '';
   const isBusy = /\u2026$/.test(text);
@@ -73,7 +75,7 @@ export function applyPendingCursorPosition(textarea) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [paragraph]
  */
 export function openParagraphEditor(heading, paragraph) {
@@ -98,7 +100,7 @@ export function openParagraphEditor(heading, paragraph) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [item]
  */
 export function openListItemEditor(heading, item) {
@@ -122,7 +124,7 @@ export function openListItemEditor(heading, item) {
   applyPendingCursorPosition(overlay.querySelector('textarea'));
 }
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 export function openHeadingTitleEditor(heading) {
   const originalTitle = heading.title;
   const overlay = openTextFieldPopup({
@@ -137,7 +139,7 @@ export function openHeadingTitleEditor(heading) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [isNew]
  */
 export function startEditingTitle(heading, isNew) {

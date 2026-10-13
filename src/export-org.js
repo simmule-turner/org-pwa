@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * org-org-export-as-org: a considered subset of real org-mode's own
  * (org-org-export-as-org) command -- produces a fully processed COPY
@@ -83,7 +85,7 @@ function splitMacroArgs(argsStr) {
  *  actually apply. A malformed definition (no name, or a name that
  *  isn't a real identifier) is silently skipped, the same
  *  tolerant-of-the-unexpected approach this app's own other
- * @param {any} [doc]
+ * @param {Doc} doc
  *  "recognized subset" parsers already take elsewhere. */
 function buildMacroTable(doc) {
   const macros = {};
@@ -102,8 +104,8 @@ function buildMacroTable(doc) {
  *  are real org's own documented shortcuts for keyword(TITLE)/
  *  keyword(AUTHOR)/keyword(EMAIL) respectively -- not separately
  *  implemented, just called through this same function with those
- * @param {any} [doc]
- * @param {any} [name]
+ * @param {Doc} doc
+ * @param {string} name
  *  three names. */
 function keywordValues(doc, name) {
   return (doc.keywords || [])
@@ -118,9 +120,9 @@ function keywordValues(doc, name) {
  *  macro name is left exactly as written, the same
  *  tolerant-of-the-unexpected approach every other "recognized
  *  subset" parser in this app already takes -- never an error, never
- * @param {any} [text]
- * @param {any} [macros]
- * @param {any} [doc]
+ * @param {string} text
+ * @param {any} macros
+ * @param {Doc} doc
  * @param {any} [now]
  *  silently dropped. */
 function expandMacrosInText(text, macros, doc, now) {
@@ -162,18 +164,19 @@ function expandMacrosInText(text, macros, doc, now) {
  *  lists; verse blocks are plain body lines here too) -- then
  *  reparses each changed body so the expanded text is reflected
  *  structurally, not just as raw strings nothing else sees. Returns a
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [now]
  *  new doc; the input is never mutated. */
 function expandMacros(doc, now) {
   const macros = buildMacroTable(doc);
-  /** @param {any} [line] */
+  /** @param {string} line */
   const newBodyLines = (doc.bodyLines || []).map((/** @type {any} */ line) => expandMacrosInText(line, macros, doc, now));
 
-  /** @param {any} [heading] */
+  /** @param {Heading} heading
+   *  @returns {any} */
   function walk(heading) {
     const newTitle = expandMacrosInText(heading.title, macros, doc, now);
-    /** @param {any} [line] */
+    /** @param {string} line */
     const newLines = (heading.bodyLines || []).map((/** @type {any} */ line) => expandMacrosInText(line, macros, doc, now));
     return {
       ...heading,
@@ -199,7 +202,7 @@ const RAW_COMMENT_LINE_RE = /^\s*#(?!\+)(\s|$)/; // a real org "# " comment line
  *  actual export behavior (the same behavior this app's own HTML/
  *  Markdown/ODT exporters already give #+BEGIN_COMMENT specifically,
  *  applied here to raw text since this module's own output is real
- * @param {any} [lines]
+ * @param {string[]} lines
  *  org text, not one of those rendered backends). */
 function stripCommentLines(lines) {
   const out = [];
@@ -225,10 +228,11 @@ function stripCommentLines(lines) {
  *  tag is excluded, not merely one whose parent happens to carry it),
  *  along with that heading's entire subtree, and strips comment
  *  lines/blocks (see stripCommentLines) from what's left. Returns a
- * @param {any} [doc]
+ * @param {Doc} doc
  *  new doc; the input is never mutated. */
 function filterNoexportAndComments(doc) {
-  /** @param {any} [heading] */
+  /** @param {Heading} heading
+   *  @returns {any} */
   function walk(heading) {
     if (heading.tags.includes('noexport')) return null;
     const newLines = stripCommentLines(heading.bodyLines || []);
@@ -254,7 +258,7 @@ function filterNoexportAndComments(doc) {
  *  `minlevel` -- reuses shiftLevels, the same primitive
  *  export-include.js's own :minlevel handling already uses for an
  *  included subtree. A no-op (returns `doc` as-is) when `minlevel` is
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [minlevel]
  *  falsy or the document already starts there. */
 function scaleHeadingLevels(doc, minlevel) {
@@ -288,7 +292,7 @@ function scaleHeadingLevels(doc, minlevel) {
  * export from an unrelated concurrent edit -- see this session's own
  * "safe copy" step (a) -- but nothing in here itself touches the
  * object it's given.
- * @param {any} doc @param {any} fetchPath @param {any} parseOrgFn @param {{ now?: Date, minlevel?: number }} [options]
+ * @param {Doc} doc @param {any} fetchPath @param {any} parseOrgFn @param {{ now?: Date, minlevel?: number }} [options]
  */
 async function exportAsOrg(doc, fetchPath, parseOrgFn, { now, minlevel } = {}) {
   const resolvedNow = now instanceof Date ? now : new Date();

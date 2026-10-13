@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v506';
+const CACHE_NAME = 'org-pwa-shell-v507';
 
 const SHELL_FILES = [
   './',
@@ -135,6 +135,7 @@ const SHELL_FILES = [
   './src/webm-track-detect.js',
   './src/scroll-util.js',
   './src/table-formula.js',
+  './src/types.js',
   './src/calc-complex.js',
   './src/calc-vector.js',
   './src-browser/contacts-sync.js',

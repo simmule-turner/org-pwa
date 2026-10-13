@@ -31,7 +31,7 @@ const DEFAULT_EFFORT_FILTER_VALUES = ['0', '0:10', '0:30', '1:00', '2:00', '3:00
 
 /**
  * The valid, de-duplicated values in `text`, in order.
- * @param {any} [text]
+ * @param {string} text
  */
 function parseEffortValues(text) {
   const seen = new Set();
@@ -46,7 +46,7 @@ function parseEffortValues(text) {
 
 /**
  * `org-global-properties` text -> { lowercased name: value string }.
- * @param {any} [text]
+ * @param {string} text
  */
 function parseGlobalProperties(text) {
   const result = {};

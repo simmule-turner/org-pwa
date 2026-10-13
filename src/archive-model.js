@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 
 /**
  * Archive data model & operations.
@@ -62,7 +64,7 @@ function findPropertyKey(properties, key) {
  *  and `heading.properties.custom_id` are the same property as far as
  *  real org is concerned; this returns undefined if neither is set,
  *  matching a direct property-object lookup's own undefined-for-
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [key]
  *  missing convention. */
 function getProperty(heading, key) {
@@ -72,7 +74,7 @@ function getProperty(heading, key) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [key]
  * @param {any} [value]
  */
@@ -97,7 +99,7 @@ function setProperty(heading, key, value) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [key]
  */
 function deleteProperty(heading, key) {
@@ -111,7 +113,7 @@ function deleteProperty(heading, key) {
 /** All of `heading`'s properties as `key: value` lines, one per property,
  *  in their original drawer order — for showing in a single editable text
  *  block (the same pattern already used for a heading's combined body
- * @param {any} [heading]
+ * @param {Heading} heading
  *  text), rather than a bespoke per-row add/edit/delete property UI. */
 function getPropertiesText(heading) {
   return heading.propertyOrder.map((/** @type {string} */ key) => `${key}: ${heading.properties[key]}`).join('\n');
@@ -126,8 +128,8 @@ function getPropertiesText(heading) {
  * half-finished edit (still typing a new property's key) shouldn't crash
  * the save. A key containing whitespace has the whitespace collapsed to
  * underscores, since org property-drawer keys can't contain spaces.
- * @param {any} [heading]
- * @param {any} [text]
+ * @param {Heading} heading
+ * @param {string} text
  */
 function setPropertiesFromText(heading, text) {
   const properties = {};
@@ -147,7 +149,7 @@ function setPropertiesFromText(heading, text) {
   heading.propertyOrder = propertyOrder;
 }
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 function cloneHeading(heading) {
   // structuredClone is fine here: the AST is plain data, no functions/cycles.
   return structuredClone(heading);
@@ -157,9 +159,9 @@ function cloneHeading(heading) {
  * Depth-first search for `target` (by reference) inside `doc`/`root`.
  * Returns the path of ancestor headings from outermost to innermost,
  * NOT including `target` itself. Returns null if not found.
- * @param {any} [root]
- * @param {any} [target]
- * @param {any} [path]
+ * @param {any} root
+ * @param {any} target
+ * @param {string} path
  */
 /** @returns {any} */ function findAncestorPath(/** @type {any} */ root, /** @type {any} */ target, /** @type {any} */ path = []) {
   const children = root.children || [];
@@ -229,13 +231,13 @@ function formatOrgTimestamp(date = new Date()) {
 
 // ---- archive operations -----------------------------------------------
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 function isArchivedInPlace(heading) {
   return heading.tags.includes(ARCHIVE_TAG);
 }
 
 /** True for anything that's been archived, either in-place or by having
- * @param {any} [heading]
+ * @param {Heading} heading
  *  landed in an archive file (identified by ARCHIVE_* properties). */
 function isArchived(heading) {
   return isArchivedInPlace(heading) || 'ARCHIVE_TIME' in heading.properties;
@@ -245,7 +247,7 @@ function isArchived(heading) {
  * Archive-in-place: tag the heading :ARCHIVE: and stamp ARCHIVE_TIME.
  * The subtree stays where it is; view layer is responsible for hiding
  * archived subtrees from agenda/TODO views by default (see requirements §7/§10).
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 function archiveInPlace(heading, { now = new Date() } = {}) {
   if (!isArchivedInPlace(heading)) {
@@ -257,7 +259,7 @@ function archiveInPlace(heading, { now = new Date() } = {}) {
 
 /** Reverses archiveInPlace. Leaves ARCHIVE_TIME in place as a history
  *  breadcrumb rather than deleting it — deleting it silently would erase
- * @param {any} [heading]
+ * @param {Heading} heading
  *  the fact that this was ever archived. */
 function unarchiveInPlace(heading) {
   heading.tags = heading.tags.filter((/** @type {any} */ t) => t !== ARCHIVE_TAG);
@@ -273,8 +275,8 @@ function unarchiveInPlace(heading) {
  * and only remove the original afterward, once the write has actually
  * succeeded -- a network failure or permission problem can then never
  * silently lose the heading.
- * @param {any} [sourceDoc]
- * @param {any} [heading]
+ * @param {any} sourceDoc
+ * @param {Heading} heading
  * @param {any} [sourceFilePath]
  */
 function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = /** @type {any} */ ({})) {
@@ -341,8 +343,8 @@ function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = /** @type
  * removal -- kept as this one combined convenience function for
  * existing callers that don't need buildArchivedClone's own
  * non-mutating write-before-remove safety separately.
- * @param {any} [sourceDoc]
- * @param {any} [heading]
+ * @param {any} sourceDoc
+ * @param {Heading} heading
  * @param {any} [sourceFilePath]
  */
 function extractForArchive(sourceDoc, heading, sourceFilePath, opts = /** @type {any} */ ({})) {
@@ -374,9 +376,9 @@ function appendToArchive(archiveDoc, extractedHeading) {
 /**
  * Convenience wrapper: archive `heading` out of `sourceDoc` and into
  * `archiveDoc` in one call.
- * @param {any} [sourceDoc]
- * @param {any} [archiveDoc]
- * @param {any} [heading]
+ * @param {any} sourceDoc
+ * @param {any} archiveDoc
+ * @param {Heading} heading
  * @param {any} [sourceFilePath]
  */
 function archiveToSiblingFile(sourceDoc, archiveDoc, heading, sourceFilePath, opts = /** @type {any} */ ({})) {
@@ -407,7 +409,7 @@ function archiveToSiblingFile(sourceDoc, archiveDoc, heading, sourceFilePath, op
  * every ARCHIVE_* property this app ever stamps, and removes the
  * ARCHIVE tag -- a restored heading must not stay tagged archived once
  * it's back in a live document.
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 function buildRestoredClone(heading) {
   const clone = cloneHeading(heading);
@@ -425,8 +427,8 @@ function buildRestoredClone(heading) {
 /** Removes `heading` from `archiveDoc` and returns its restored clone
  *  (built via buildRestoredClone) -- the combined convenience wrapper,
  *  same relationship buildArchivedClone/extractForArchive already
- * @param {any} [archiveDoc]
- * @param {any} [heading]
+ * @param {any} archiveDoc
+ * @param {Heading} heading
  *  have to each other. */
 function restoreFromArchive(archiveDoc, heading) {
   const clone = buildRestoredClone(heading);
@@ -502,8 +504,8 @@ function resolveArchiveFileId(filePart, currentFileId) {
  * the file keyword to a global Emacs variable of the same name -- not
  * meaningful here, since this app has no persistent Emacs-style global
  * configuration that would exist outside any particular file.
- * @param {any} [doc]
- * @param {any} [heading]
+ * @param {Doc} doc
+ * @param {Heading} heading
  */
 function getArchiveLocation(doc, heading) {
   const ownArchive = getProperty(heading, 'ARCHIVE');
@@ -519,7 +521,7 @@ function getArchiveLocation(doc, heading) {
  *  heading-edit.js's own createHeading, since heading-edit.js already
  *  imports FROM this file (findContainer/findAncestorPath/shiftLevels),
  *  and importing back would create a circular dependency between the
- * @param {any} [title]
+ * @param {string} title
  * @param {any} [level]
  *  two modules. */
 function blankArchiveTargetHeading(title, level) {
@@ -593,9 +595,9 @@ function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart) {
  *  own top level) for the first heading at exactly `level` with
  *  exactly `title` -- insertAtArchiveLocation's own helper, since a
  *  level-2+ archive target could itself be nested anywhere, not
- * @param {any} [doc]
- * @param {any} [level]
- * @param {any} [title]
+ * @param {Doc} doc
+ * @param {any} level
+ * @param {string} title
  *  necessarily at the document's own top level. */
 function findHeadingAtLevel(doc, level, title) {
   /** @param {any} [nodes] */

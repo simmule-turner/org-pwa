@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Checkbox statistics cookies: `[3/8]` or `[40%]` in a heading's title,
  * kept in sync with the actual checkbox state in that heading's subtree —
@@ -48,7 +50,7 @@ function walkListForCheckboxes(items) {
 }
 
 /** Counts every checkbox in `heading`'s own body content and recursively
- * @param {any} [heading]
+ * @param {Heading} heading
  *  through every descendant heading's body content. */
 export function countCheckboxes(heading) {
   let total = 0;
@@ -75,7 +77,7 @@ export function countCheckboxes(heading) {
  *  with none isn't part of either total) -- this is a TODO-ITEM
  *  count, not a generic child-heading count, matching real org's own
  *  actual behavior. "checked" means the child's own keyword is one of
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [doneKeywords]
  * @param {any} [recursive]
  *  `doneKeywords`. */
@@ -129,7 +131,7 @@ function parseCookieData(value) {
  * cookie to update, or the numbers were already correct). `doneKeywords`
  * is only actually consulted when :COOKIE_DATA: requests TODO counting;
  * omitting it is harmless for the far more common checkbox-only case.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [doneKeywords]
  */
 export function updateHeadingCheckboxCookie(heading, doneKeywords = []) {
@@ -156,7 +158,7 @@ export function updateHeadingCheckboxCookie(heading, doneKeywords = []) {
     : `[${checked}/${total}]`;
 
   if (newCookie === match[0]) return false;
-  heading.title = heading.title.slice(0, match.index) + newCookie + heading.title.slice(match.index + match[0].length);
+  heading.title = heading.title.slice(0, /** @type {number} */ (match.index)) + newCookie + heading.title.slice(/** @type {number} */ (match.index) + match[0].length);
   return true;
 }
 
@@ -170,7 +172,7 @@ export function updateHeadingCheckboxCookie(heading, doneKeywords = []) {
  * set :COOKIE_DATA: override -- so update order doesn't matter.
  * `doneKeywords` is passed straight through to updateHeadingCheckboxCookie
  * for each one. Returns true if anything actually changed.
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [owningHeading]
  * @param {any} [doneKeywords]
  */

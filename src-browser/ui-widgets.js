@@ -47,7 +47,7 @@ export const VH_UNIT = typeof CSS !== 'undefined' && CSS.supports && CSS.support
 export const SWIPE_THRESHOLD_PX = 40;
 
 /**
- * @param {any} [label]
+ * @param {string} label
  * @param {any} [ariaLabel]
  * @param {any} [onClick]
  */
@@ -265,7 +265,7 @@ export function autoGrowTextarea(textarea) {
 export const LEADING_ICON_RE = /^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)(\s*)/u;
 
 /**
- * @param {any} [label]
+ * @param {string} label
  * @param {any} [onClick]
  * @param {any} [disabled]
  */
@@ -303,7 +303,7 @@ export function menuButton(label, onClick, disabled) {
  *  labeledButtons at all (typo, or a stale reference to a button
  *  that no longer exists) is silently dropped from the reordering,
  *  the same tolerant-of-the-unexpected approach every other
- * @param {any} [container]
+ * @param {HTMLElement} container
  * @param {any} [aliasMap]
  * @param {any} [labeledButtons]
  *  recognized-subset parser in this codebase already takes. */
@@ -365,7 +365,7 @@ export function positionPopupNearButton(panelEl, buttonEl) {
  *  (LEADING_ICON_RE) matches menuButton's own exactly. A <div> has no
  *  native disabled attribute -- .menu-list-item-disabled (CSS) plus
  *  aria-disabled stand in for it, with the click handler simply never
- * @param {any} [label]
+ * @param {string} label
  * @param {any} [onClick]
  * @param {any} [disabled]
  *  attached at all rather than attached-but-blocked. */
@@ -397,8 +397,8 @@ export function menuDivItem(label, onClick, disabled) {
 /** The div-item counterpart to aliasedMenuButton -- same org-xx-menu-
  *  aliases lookup/omission semantics exactly (see aliasedMenuButton's
  *  own docs for the full "menu:Label;alias" rules), just producing a
- * @param {any} [aliasMap]
- * @param {any} [label]
+ * @param {any} aliasMap
+ * @param {string} label
  * @param {any} [onClick]
  * @param {any} [disabled]
  *  menuDivItem instead of a menuButton. */
@@ -411,8 +411,8 @@ export function aliasedMenuDivItem(aliasMap, label, onClick, disabled) {
 }
 
 /** The div-item counterpart to requiredMenuButton -- never omitted,
- * @param {any} [aliasMap]
- * @param {any} [label]
+ * @param {any} aliasMap
+ * @param {string} label
  * @param {any} [onClick]
  * @param {any} [disabled]
  *  same as requiredMenuButton's own semantics. */
@@ -427,7 +427,7 @@ export function requiredMenuDivItem(aliasMap, label, onClick, disabled) {
  *  (matching the .panel button convention) for use outside a
  *  .panel-classed container — e.g. the timestamp wizard's Save/Cancel,
  *  which otherwise fell back to bare, unstyled, visually cramped
- * @param {any} [label]
+ * @param {string} label
  * @param {any} [onClick]
  *  buttons since nothing in their ancestor chain provided sizing. */
 export function wizardButton(label, onClick) {
@@ -440,7 +440,7 @@ export function wizardButton(label, onClick) {
 }
 
 /**
- * @param {any} [label]
+ * @param {string} label
  * @param {any} [onClick]
  * @param {any} [disabled]
  */
@@ -541,8 +541,8 @@ export function hideModalOverlay(overlayEl) {
  *  built for a flex-wrap multi-field-per-row layout this modal
  *  deliberately doesn't use) with a consistent, deliberate vertical
  *  rhythm between fields, for a tighter, more custom form feel than
- * @param {any} [labelText]
- * @param {any} [type]
+ * @param {any} labelText
+ * @param {string} type
  * @param {any} [value]
  * @param {any} [placeholder]
  *  reusing the general-purpose labeledInput as-is produced. */
@@ -579,8 +579,8 @@ export function modalFieldRow(labelText, type, value, placeholder) {
 }
 
 /**
- * @param {any} [labelText]
- * @param {any} [type]
+ * @param {any} labelText
+ * @param {string} type
  * @param {any} [value]
  * @param {any} [placeholder]
  */
@@ -650,7 +650,7 @@ export function pickTextFile(accept) {
 }
 
 /**
- * @param {any} [container]
+ * @param {HTMLElement} container
  * @param {any} [snippet]
  */
 export function appendSnippetWithHighlight(container, snippet) {

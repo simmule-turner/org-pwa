@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Drag and drop for headings: a grip at the left of each heading row. Dragging it lifts the heading with its subtree. It lands in
 // a GAP between two visible headings (the line snaps to the gap nearest the finger, never between them), and sideways movement
 // steps through the levels that fit there, one indent per step: the line's left edge jumps with each, and a tag says what the
@@ -20,8 +22,9 @@ const GRIP_SVG =
   '<svg aria-hidden="true" width="12" height="16" viewBox="0 0 14 18" fill="currentColor"><circle cx="4" cy="3" r="1.6"/><circle cx="10" cy="3" r="1.6"/><circle cx="4" cy="9" r="1.6"/><circle cx="10" cy="9" r="1.6"/><circle cx="4" cy="15" r="1.6"/><circle cx="10" cy="15" r="1.6"/></svg>';
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [node]
+ * @returns {boolean}
  */
 function inSubtree(heading, node) {
   return heading === node || (heading.children || []).some((/** @type {any} */ child) => inSubtree(child, node));
@@ -34,7 +37,7 @@ function countDescendants(node) {
 
 /**
  * The heading `climb` levels above `node` (node itself for 0).
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [node]
  * @param {any} [climb]
  */

@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Resolves what an org link target actually points to, given a document.
  * Pure and DOM-free — the UI layer decides what to *do* with a resolution
@@ -135,10 +137,10 @@ export function resolveImagePath(target, currentDocumentId) {
  * the "attachment:" prefix (e.g. "attachment:photo.jpg") -- stripped
  * here, not by the caller, matching resolveImagePath's own convention
  * of taking the raw target text as-is.
- * @param {any} [doc]
- * @param {any} [heading]
- * @param {any} [attachmentTarget]
- * @param {any} [documentId]
+ * @param {Doc} doc
+ * @param {Heading | null} heading
+ * @param {any} attachmentTarget
+ * @param {string} documentId
  */
 export function resolveAttachmentTarget(doc, heading, attachmentTarget, documentId) {
   const filename = attachmentTarget.replace(/^attachment:/i, '');
@@ -147,9 +149,9 @@ export function resolveAttachmentTarget(doc, heading, attachmentTarget, document
 }
 
 /** The attachment folder for `heading`: the one its own DIR or :ID: names, else the nearest ancestor's; null with neither in that
- * @param {any} [doc]
- * @param {any} [heading]
- * @param {any} [documentId]
+ * @param {Doc} doc
+ * @param {Heading | null} heading
+ * @param {string} documentId
  *  chain. */
 export function resolveAttachmentDirectory(doc, heading, documentId) {
   const ancestors = findAncestorPath(doc, heading) || [];
@@ -177,7 +179,7 @@ const IMAGE_MIME_TYPES = {
  *  data: URL — falls back to a generic binary type for an unrecognized
  *  extension, which most browsers still render correctly for the image
  *  formats this app actually recognizes (see IMAGE_EXT_RE in
- * @param {any} [path]
+ * @param {string} path
  *  inline-markup.js, the same extension list this mirrors). */
 export function guessImageMimeType(path) {
   const match = /\.([a-z0-9]+)$/i.exec(path);
@@ -205,7 +207,7 @@ const AUDIO_MIME_TYPES = {
  *  <audio> element will simply fail to play an unplayable file either
  *  way; this isn't attempting format detection beyond the extension
  *  itself, the same honest limitation guessImageMimeType already
- * @param {any} [path]
+ * @param {string} path
  *  has). */
 export function guessAudioMimeType(path) {
   const match = /\.([a-z0-9]+)$/i.exec(path);
@@ -279,7 +281,7 @@ const VIEWABLE_MIME_TYPES = {
  *  guessImageMimeType/guessAudioMimeType) -- callers need to
  *  distinguish "no viewer, fall back to downloading it instead" from
  *  "here's what to view it as", not get handed a generic
- * @param {any} [path]
+ * @param {string} path
  *  application/octet-stream that would look viewable when it isn't. */
 export function guessViewableMimeType(path) {
   const match = /\.([a-z0-9]+)$/i.exec(path);
@@ -288,7 +290,7 @@ export function guessViewableMimeType(path) {
 }
 
 /**
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [visit]
  */
 function walkHeadings(doc, visit) {
@@ -305,8 +307,8 @@ function walkHeadings(doc, visit) {
 
 /**
  * First heading (in document order) whose title exactly matches `title`, or null.
- * @param {any} [doc]
- * @param {any} [title]
+ * @param {Doc} doc
+ * @param {string} title
  */
 export function findHeadingByTitle(doc, title) {
   /** @type {any} */ let found = null;
@@ -318,7 +320,7 @@ export function findHeadingByTitle(doc, title) {
 
 /**
  * First heading (in document order) whose :CUSTOM_ID: property exactly matches, or null.
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [customId]
  */
 export function findHeadingByCustomId(doc, customId) {
@@ -331,8 +333,8 @@ export function findHeadingByCustomId(doc, customId) {
 
 /** Does `nodes` (a parsed inline-node array) contain a footnote-def node
  *  with this exact label, anywhere (including nested inside emphasis
- * @param {any} [nodes]
- * @param {any} [label]
+ * @param {any} nodes
+ * @param {string} label
  *  spans, since footnote-def content is itself recursively parsed)? */
 function inlineContainsFootnoteDef(nodes, label) {
   for (const node of nodes) {
@@ -355,16 +357,16 @@ function inlineContainsFootnoteDef(nodes, label) {
  * 'inline-definition', for a caller that wants to highlight differently
  * depending on which), or null if no definition exists anywhere in the
  * document for this label.
- * @param {any} [doc]
- * @param {any} [label]
+ * @param {Doc} doc
+ * @param {string} label
  */
 export function findFootnoteDefinition(doc, label) {
   /** @type {{ heading: any; kind: string; node: any; } | null} */
   let found = null;
 
   /**
-   * @param {any} [node]
-   * @param {any} [heading]
+   * @param {any} node
+   * @param {Heading} heading
    */
   function checkParagraph(node, heading) {
     if (found) return;
@@ -381,8 +383,8 @@ export function findFootnoteDefinition(doc, label) {
   }
 
   /**
-   * @param {any} [items]
-   * @param {any} [heading]
+   * @param {any} items
+   * @param {Heading} heading
    */
   function checkListItems(items, heading) {
     for (const item of items) {
@@ -447,7 +449,7 @@ export function splitFileLinkTarget(pathAndTarget) {
  *   { type: 'heading', heading }
  *   { type: 'file', scheme, path, inFileTarget }
  *   { type: 'unresolved', target }
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [rawTarget]
  */
 export function resolveLinkTarget(doc, rawTarget) {

@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 
 /**
  * Org-mode parser: text -> AST, plus a matching serializer: AST -> text.
@@ -64,7 +66,7 @@ const PLANNING_KEYWORD_RE = /(SCHEDULED|DEADLINE|CLOSED):\s*([<[][^>\]]+[>\]])/g
 const BLOCK_START_RE = /^\s*#\+begin_(\w+)(?:\s+(.*))?$/i;
 const BLOCK_END_RE = /^\s*#\+end_(\w+)\s*$/i;
 
-/** @param {any} [line] */
+/** @param {string} line */
 function parsePlanningLine(line) {
   const planning = /** @type {{scheduled: string|null, deadline: string|null, closed: string|null}} */ ({ scheduled: null, deadline: null, closed: null });
   let match;
@@ -80,7 +82,7 @@ function parsePlanningLine(line) {
   return found ? planning : null;
 }
 
-/** @param {any} [line] */
+/** @param {string} line */
 function isPlanningLine(line) {
   return /^\s*(SCHEDULED|DEADLINE|CLOSED):/.test(line);
 }
@@ -122,7 +124,7 @@ function parseTodoKeyword(rest, todoKeywords) {
  *  character (since @/!/ are reserved for the logging spec itself and
  *  can never themselves be a fast-key), so splitting on "the first
  *  character that isn't one of those" cleanly separates the two parts
- * @param {any} [token]
+ * @param {string} token
  *  regardless of which are actually present. */
 function parseTodoKeywordToken(token) {
   const m = /^([^\s(]+)(?:\(([^)]*)\))?$/.exec(token);
@@ -407,7 +409,7 @@ function canonicalPropertyLine(key, value, indent = '') {
   return value === '' || value == null ? `${indent}:${key}:` : `${indent}:${key}: ${value}`;
 }
 
-/** @param {any} [line] */
+/** @param {string} line */
 const leadingSpace = (line) => (/^\s*/.exec(line) || [''])[0];
 
 /** The properties drawer as lines. A property that was not touched keeps the
@@ -483,7 +485,7 @@ function serializeNode(node, out) {
   throw new Error(`serializeNode: unsupported node type ${node.type}`);
 }
 
-/** @param {any} [doc] */
+/** @param {Doc} doc */
 function serializeOrg(doc) {
   const out = [];
   const bodyLines = doc.bodyLines || [];
@@ -512,7 +514,7 @@ function serializeOrg(doc) {
  *  all the way down) back to org text -- unlike serializeOrg, which
  *  always serializes a WHOLE document. Needed for org-cut-subtree
  *  (C-c C-x C-w): the cut content copied to the clipboard is this
- * @param {any} [heading]
+ * @param {Heading} heading
  *  heading's own text alone, not the surrounding document around it. */
 function serializeHeadingSubtree(heading) {
   /** @type {any[]} */ const out = [];
@@ -531,7 +533,7 @@ function serializeHeadingSubtree(heading) {
  * could silently drift out of sync with what serializeOrg actually
  * produces. Returns -1 if targetHeading isn't reachable from doc at
  * all (e.g. a stale reference to a heading that's since been deleted).
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [targetHeading]
  */
 function findHeadingLineNumber(doc, targetHeading) {
@@ -563,7 +565,7 @@ function findHeadingLineNumber(doc, targetHeading) {
  * (findHeadingByOutlinePath) would incorrectly treat renaming or
  * re-leveling the narrowed heading itself as "it's gone" -- this
  * finds it by its own known position instead, which survives both.
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [targetLine]
  */
 function findHeadingAtLine(doc, targetLine) {

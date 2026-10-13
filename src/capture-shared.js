@@ -31,7 +31,7 @@ function normalizeShared(/** @type {any} */ { title, text, url }) {
  */
 function parseLaunchParams(search) {
   const params = new URLSearchParams(search || '');
-  /** @param {any} [name] */
+  /** @param {string} name */
   const field = (name) => (params.get(name) || '').slice(0, MAX_FIELD).trim();
   const shared = normalizeShared({ title: field('title'), text: field('text'), url: field('url') });
   const hasShared = !!(shared.title || shared.text || shared.url);
@@ -58,13 +58,13 @@ function sharedAnnotation({ title, url } = {}) {
  * is untrusted, a line that would become a heading (stars at the start of a line) or a `#+` keyword or block line
  * gets a leading comma, the same escape org uses inside blocks, so shared text can never change the document's
  * structure: a shared bullet list written with `* ` would otherwise turn into headings.
- * @param {any} [value]
- * @param {any} [prefix]
+ * @param {any} value
+ * @param {string} prefix
  */
 function placeInsertedText(value, prefix) {
   const lines = String(value || '').replace(/\r\n?/g, '\n').split('\n');
   const lead = prefix.trim() === '' ? prefix : null; // null: the template's own text precedes it, so it cannot start a line
-  /** @param {any} [line] */
+  /** @param {string} line */
   const guard = (line) => {
     if (lead === null) return line;
     const startsHeading = lead === '' && /^\*+\s/.test(line);

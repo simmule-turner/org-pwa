@@ -9,7 +9,7 @@ export const DEFAULT_TARGET = 'init.js';
 
 /**
  * 'github:me/notes/init.org::init.js' -> { key, target }. The target defaults to init.js.
- * @param {any} [text]
+ * @param {string} text
  */
 export function parseScriptFileSetting(text) {
   const at = String(text).lastIndexOf('::');

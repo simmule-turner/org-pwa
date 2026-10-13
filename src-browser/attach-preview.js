@@ -21,7 +21,7 @@ export function previewKind(mime) {
 }
 
 /**
- * @param {any} [filename]
+ * @param {string} filename
  * @param {any} [mime]
  * @param {any} [bytes]
  */

@@ -116,7 +116,7 @@ export function ensureAgendaFilesLoaded({ prompt = false } = {}) {
 }
 
 /** What to tell the person when a `local:` file is not found: it is looked up among the files opened through the picker, and
- * @param {any} [path]
+ * @param {string} path
  *  then in the org-pwa folder (local-folder.js), so say which of those is missing. */
 function localNotFoundMessage(path) {
   if (!platform.attachments.supported()) return `"${path}" hasn't been opened on this device yet. Open it once with File \u2192 Open \u2192 Local file.`;
@@ -130,7 +130,7 @@ function localNotFoundMessage(path) {
  *  and asking for it shows a prompt, so this NEVER asks unless `prompt` is true, which only a person's own tap on the refresh
  *  button passes. Without access the entry is an error that says what to do (shown above the list, like any file that fails to
  *  load). Always marked readOnly: nothing may be written into one of these (Refile, Capture and Replace use only writable
- * @param {any} [path]
+ * @param {string} path
  * @param {any} [prompt]
  *  entries), since writing it back needs the adapter of the open document, which may be on another backend. */
 async function readLocalEntry(path, prompt) {

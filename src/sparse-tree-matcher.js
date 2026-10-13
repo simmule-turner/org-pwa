@@ -83,8 +83,8 @@ function parseGroup(groupText) {
  *  undefined when the entry has no value at all for this name (an
  *  ordinary, expected case -- a `-` condition should still correctly
  *  exclude in that case, and a plain `=` condition should correctly not
- * @param {any} [entry]
- * @param {any} [name]
+ * @param {any} entry
+ * @param {string} name
  *  match). */
 function readEntryValue(entry, name) {
   if (name === 'TODO') return entry.todo || undefined;

@@ -52,8 +52,8 @@ export function showAttachmentFolder(/** @type {any} */ { title, load, act, remo
   /** @type {any[]} */ let names = [];
 
   /**
-   * @param {any} [text]
-   * @param {any} [label]
+   * @param {string} text
+   * @param {string} label
    * @param {any} [onClick]
    */
   function smallButton(text, label, onClick) {

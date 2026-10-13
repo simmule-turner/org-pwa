@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * HTML export, following Org's own `ox-html`: the same document structure (outline containers, `h2` for top-level
  * headings under an `h1` title, `org-ul` / `org-ol` / `org-dl` lists, tables with a `colgroup` and a `thead`, figures,
@@ -26,7 +28,7 @@ import { highlightToHtml } from './syntax-highlight.js';
 
 /**
  * What `#+OPTIONS:` can switch, with Org's defaults.
- * @param {any} [doc]
+ * @param {Doc} doc
  */
 export function parseHtmlOptions(doc) {
   /** @type {Record<string, any>} */
@@ -127,7 +129,7 @@ export function parseHtmlOptions(doc) {
 }
 
 /**
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [key]
  */
 const keywordValue = (doc, key) => {
@@ -139,19 +141,19 @@ const keywordValues = (/** @type {any} */ doc, /** @type {string} */ key) => (do
 
 // ---- escaping and small helpers ------------------------------------------------
 
-/** @param {any} [text] */
+/** @param {string} text */
 const escapeHtml = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-/** @param {any} [text] */
+/** @param {string} text */
 const escapeAttr = (text) => escapeHtml(text).replace(/"/g, '&quot;');
 const NBSP = '&#xa0;';
 
 /**
  * `,*` and `,#+` at the start of a line are Org's escape for a line that would otherwise look like markup.
- * @param {any} [line]
+ * @param {string} line
  */
 const unescapeLine = (line) => line.replace(/^(\s*),(?=\*|#\+)/, '$1');
 
-/** @param {any} [lines] */
+/** @param {string[]} lines */
 function removeIndentation(lines) {
   let min = Infinity;
   for (const l of lines) if (l.trim()) min = Math.min(min, (/^[ \t]*/.exec(l) || [''])[0].length);
@@ -159,7 +161,7 @@ function removeIndentation(lines) {
   return lines.map((/** @type {any} */ l) => (l.trim() ? l.slice(min) : ''));
 }
 
-/** @param {any} [title] */
+/** @param {string} title */
 const slugify = (title) => String(title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'section';
 
 /**
@@ -180,7 +182,7 @@ function htmlAttributes(aff, skip = []) {
 // ---- state --------------------------------------------------------------------
 
 /**
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [scope]
  */
 function createState(doc, scope) {
@@ -220,8 +222,8 @@ const TOKEN_END = '';
 const TOKEN_RE = /(\d+)/g;
 
 /**
- * @param {any} [state]
- * @param {any} [html]
+ * @param {any} state
+ * @param {string} html
  */
 function addToken(state, html, source = '') {
   state.tokens.push(html);
@@ -243,8 +245,8 @@ function timestampHtml(state, match) {
 }
 
 /**
- * @param {any} [state]
- * @param {any} [text]
+ * @param {any} state
+ * @param {string} text
  */
 function expandMacros(state, text) {
   if (!text.includes('{{{')) return text;
@@ -256,8 +258,8 @@ function expandMacros(state, text) {
 }
 
 /**
- * @param {any} [state]
- * @param {any} [text]
+ * @param {any} state
+ * @param {string} text
  */
 function expandMacrosIn(state, text) {
   return text.replace(/\{\{\{(\w[\w-]*)(?:\(([\s\S]*?)\))?\}\}\}/g, (/** @type {any} */ whole, /** @type {string} */ name, /** @type {any} */ argText) => {
@@ -300,8 +302,8 @@ function renderInline(state, rawText) {
 }
 
 /**
- * @param {any} [state]
- * @param {any} [name]
+ * @param {any} state
+ * @param {string} name
  */
 function targetId(state, name) {
   const key = name.trim().replace(/\s+/g, ' ').toLowerCase();
@@ -368,7 +370,7 @@ function isImageTarget(target) {
   return false;
 }
 
-/** @param {any} [path] */
+/** @param {string} path */
 function fileHref(path) {
   let p = path.replace(/^file:/i, '');
   let search = '';
@@ -417,8 +419,8 @@ function linkHref(state, target) {
 }
 
 /**
- * @param {any} [headings]
- * @param {any} [name]
+ * @param {Heading[]} headings
+ * @param {string} name
  * @param {any} [value]
  */
 /** @returns {any} */ function findByProperty(/** @type {any} */ headings, /** @type {any} */ name, /** @type {any} */ value) {
@@ -460,8 +462,8 @@ function emphasis(state, node, marker, open, close = open) {
 }
 
 /**
- * @param {any} [state]
- * @param {any} [label]
+ * @param {any} state
+ * @param {string} label
  * @param {any} [inlineHtml]
  */
 function footnoteRef(state, label, inlineHtml) {
@@ -759,7 +761,7 @@ function srcBlockHtml(state, el) {
 function blockHtml(state, el, ctx) {
   const { name } = el;
   /**
-   * @param {any} [lines]
+   * @param {string[]} lines
    * @param {any} [sub]
    */
   const inner = (lines, sub) => elementsHtml(state, parseElements(lines.map(unescapeLine)), { ...ctx, ...sub, first: undefined, bare: false });
@@ -886,7 +888,7 @@ function buildFilter(state) {
   const select = new Set(keywordValues(doc, 'SELECT_TAGS').join(' ').split(/\s+/).filter(Boolean).map((/** @type {any} */ t) => t.toLowerCase()));
   const selected = new Set();
   /**
-   * @param {any} [headings]
+   * @param {Heading[]} headings
    * @param {any} [inherited]
    */
   const mark = (headings, inherited) => {
@@ -898,7 +900,7 @@ function buildFilter(state) {
   };
   if (select.size) mark(doc.children || [], false);
   const keepAncestor = new Set();
-  /** @param {any} [headings] */
+  /** @param {Heading[]} headings */
   const markAncestors = (headings) => {
     let any = false;
     for (const h of headings) {
@@ -932,8 +934,8 @@ function isArchived(h) {
 
 /**
  * The exported headings as a tree of { heading, children, number: [..] , level (relative) }.
- * @param {any} [state]
- * @param {any} [headings]
+ * @param {any} state
+ * @param {Heading[]} headings
  * @param {any} [levelOffset]
  * @param {any} [filter]
  * @param {any} [numbers]
@@ -990,8 +992,8 @@ function numberLabel(state, node) {
 }
 
 /**
- * @param {any} [state]
- * @param {any} [heading]
+ * @param {any} state
+ * @param {Heading} heading
  */
 function planningHtml(state, heading) {
   if (!state.options.planning || !heading.planning) return '';
@@ -1006,8 +1008,8 @@ function planningHtml(state, heading) {
 }
 
 /**
- * @param {any} [state]
- * @param {any} [heading]
+ * @param {any} state
+ * @param {Heading} heading
  */
 function bodyHtml(state, heading, node = null) {
   const elements = state.parsed.get(heading) || parseElements((heading.bodyLines || []).slice());
@@ -1211,7 +1213,7 @@ const PAGE_CSS = `
 /**
  * Exports `doc` (or the subtree at `scope`) to a complete standalone HTML document.
  * A subtree export is titled after its heading; the heading's own text comes first, then its children as sections.
- * @param {any} [doc]
+ * @param {Doc} doc
  */
 export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = /** @type {any} */ (null) } = {}) {
   activeImages = images instanceof Map ? images : new Map();
@@ -1283,7 +1285,7 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
   for (const line of preamble) for (const m of line.matchAll(/<<<?([^<>\n]+?)>>>?/g)) targetId(state, m[1]);
 
   const radio = new Set();
-  /** @param {any} [lines] */
+  /** @param {string[]} lines */
   const scanRadio = (lines) => {
     for (const line of lines) for (const m of line.matchAll(/<<<([^<>\n]+)>>>/g)) radio.add(m[1].trim());
   };
@@ -1429,11 +1431,11 @@ function pageBoxesCss(template, edge, values) {
   }).join(' ');
 }
 
-/** @param {any} [text] */
+/** @param {string} text */
 const stripMarkup = (text) => text.replace(/[*/_+=~]([^*/_+=~\s][^*/_+=~]*)[*/_+=~]/g, '$1');
 
 /** The lines before the first heading, with the `#+KEY:` lines the parser pulled out put back where they were
- * @param {any} [doc]
+ * @param {Doc} doc
  *  (all of them but the file-level settings), so `#+CAPTION:`, `#+HTML:` and `#+TOC:` there still count. */
 function preambleBody(doc) {
   const lines = (doc.bodyLines || []).slice();

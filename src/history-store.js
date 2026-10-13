@@ -23,7 +23,7 @@
 
 const HISTORY_STORE_LIMIT = 200;
 
-/** @param {any} [documentId] */
+/** @param {string} documentId */
 function historyKey(documentId) {
   return 'history:' + documentId;
 }
@@ -44,8 +44,8 @@ function unwrapAdapterValue(result) {
  * most valuable, most recently relevant undo steps; `index` is
  * shifted by the same amount trimmed so it still points at the same
  * logical entry afterward.
- * @param {any} [adapter]
- * @param {any} [documentId]
+ * @param {any} adapter
+ * @param {string} documentId
  * @param {any} [history]
  */
 async function savePersistedHistory(adapter, documentId, history) {
@@ -64,8 +64,8 @@ async function savePersistedHistory(adapter, documentId, history) {
  * Timestamps round-trip through JSON as strings, not Date objects --
  * restored here so the returned shape exactly matches what
  * createHistory/pushSnapshot themselves produce.
- * @param {any} [adapter]
- * @param {any} [documentId]
+ * @param {any} adapter
+ * @param {string} documentId
  */
 async function loadPersistedHistory(adapter, documentId) {
   try {
@@ -86,8 +86,8 @@ async function loadPersistedHistory(adapter, documentId) {
  *  freshly opened document's text doesn't match what the persisted
  *  history's own latest entry says it should be (edited elsewhere
  *  since last saved here, most likely), so a stale, no-longer-
- * @param {any} [adapter]
- * @param {any} [documentId]
+ * @param {any} adapter
+ * @param {string} documentId
  *  applicable history doesn't linger forever unused. */
 async function clearPersistedHistory(adapter, documentId) {
   await adapter.delete(historyKey(documentId));

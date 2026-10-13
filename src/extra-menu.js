@@ -97,7 +97,7 @@ function tokenize(raw) {
  *  (there generally isn't one, but this stays correct either way)
  *  doesn't count as the separator. Returns null if there's no
  *  top-level semicolon at all (a malformed entry, missing its own
- * @param {any} [token]
+ * @param {string} token
  *  label). */
 function splitSpecAndLabel(token) {
   let depth = 0;
@@ -142,7 +142,7 @@ function parseSpec(spec) {
  * function name) is silently skipped rather than aborting the whole
  * menu -- one bad entry shouldn't take out every other one. An
  * unset/empty value returns an empty array, not an error.
- * @param {any} [text]
+ * @param {string} text
  */
 function parseExtraMenu(text) {
   if (!text || !text.trim()) return [];

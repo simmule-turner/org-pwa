@@ -75,7 +75,7 @@ const ORG_ANNIVERSARY_RE = /^%%\(org-anniversary\s+(-?\d+)\s+(\d{1,2})\s+(\d{1,2
  *  description, with %d/%s as placeholders (see
  *  formatOrgAnniversaryTitle below) -- matching real org's actual
  *  convention rather than a fixed, generated string the way
- * @param {any} [line]
+ * @param {string} line
  *  org-contacts-anniversaries produces. */
 function parseOrgAnniversaryLine(line) {
   const m = ORG_ANNIVERSARY_RE.exec(line.trim());
@@ -138,7 +138,7 @@ function formatOrgAnniversaryTitle(template, age) {
  *  diary-cyclic / diary-block / diary-date are NOT translated into their
  *  org-* twins. Their argument order depends on calendar-date-style (month
  *  day year by default), so the same line would mean different dates under
- * @param {any} [line]
+ * @param {string} line
  *  different settings; the org-* versions always read year month day. */
 function unquoteDiaryFloatMonthList(line) {
   return line.replace(/^(%%\(diary-float\s+)'(?=\()/, '$1');
@@ -151,7 +151,7 @@ const ORG_CYCLIC_RE = /^%%\(org-cyclic\s+(\d+)\s+(\d{4})\s+(\d{1,2})\s+(\d{1,2})
 /** Parses an org-cyclic line into { n, year, month, day, title },
  *  or null if it doesn't match -- N (the day interval), the 4-digit
  *  baseline year, and a 1-12 month / 1-31 day with no leading zeros,
- * @param {any} [line]
+ * @param {string} line
  *  exactly the syntax specified. */
 function parseOrgCyclicLine(line) {
   const m = ORG_CYCLIC_RE.exec(line.trim());
@@ -201,7 +201,7 @@ const ORG_BLOCK_RE =
 /** Parses an org-block line into { dateA, dateB, title }, or null if
  *  it doesn't match. `dateA`/`dateB` are returned in the order given
  *  in the source -- expandOrgBlockOccurrences below sorts them itself,
- * @param {any} [line]
+ * @param {string} line
  *  so a block written "backwards" (end date first) still works. */
 function parseOrgBlockLine(line) {
   const m = ORG_BLOCK_RE.exec(line.trim());
@@ -248,7 +248,7 @@ const DIARY_FLOAT_RE = /^%%\(diary-float\s+(\([^()]*\)|t|\d{1,2})\s+(\d)\s+(-?\d
  *  the second YEAR (real elisp's own positional calling convention,
  *  (diary-float MONTH DAYNAME N &optional DAY YEAR)); with exactly
  *  one, it's treated as YEAR when greater than 31 (impossible as a
- * @param {any} [line]
+ * @param {string} line
  *  day-of-month) and DAY otherwise. */
 function parseDiaryFloatLine(line) {
   const m = DIARY_FLOAT_RE.exec(line.trim());
@@ -676,36 +676,36 @@ const DIARY_ASTRONOMICAL_DUSK_RE = /^%%\(diary-astronomical-dusk\)\s*$/;
 
 /**
  * True if `line` is exactly one of the four single-value triggers.
- * @param {any} [line]
+ * @param {string} line
  */
 function isDiarySunriseLine(line) {
   return DIARY_SUNRISE_RE.test(line.trim());
 }
-/** @param {any} [line] */
+/** @param {string} line */
 function isDiarySunsetLine(line) {
   return DIARY_SUNSET_RE.test(line.trim());
 }
-/** @param {any} [line] */
+/** @param {string} line */
 function isDiaryCivilDawnLine(line) {
   return DIARY_CIVIL_DAWN_RE.test(line.trim());
 }
-/** @param {any} [line] */
+/** @param {string} line */
 function isDiaryCivilDuskLine(line) {
   return DIARY_CIVIL_DUSK_RE.test(line.trim());
 }
-/** @param {any} [line] */
+/** @param {string} line */
 function isDiaryNauticalDawnLine(line) {
   return DIARY_NAUTICAL_DAWN_RE.test(line.trim());
 }
-/** @param {any} [line] */
+/** @param {string} line */
 function isDiaryNauticalDuskLine(line) {
   return DIARY_NAUTICAL_DUSK_RE.test(line.trim());
 }
-/** @param {any} [line] */
+/** @param {string} line */
 function isDiaryAstronomicalDawnLine(line) {
   return DIARY_ASTRONOMICAL_DAWN_RE.test(line.trim());
 }
-/** @param {any} [line] */
+/** @param {string} line */
 function isDiaryAstronomicalDuskLine(line) {
   return DIARY_ASTRONOMICAL_DUSK_RE.test(line.trim());
 }
@@ -713,7 +713,7 @@ function isDiaryAstronomicalDuskLine(line) {
 const DIARY_DAY_LENGTH_RE = /^%%\(diary-day-length\)\s*$/;
 
 /** True if `line` is exactly the diary-day-length trigger -- same
- * @param {any} [line]
+ * @param {string} line
  *  self-contained-line convention as the others above. */
 function isDiaryDayLengthLine(line) {
   return DIARY_DAY_LENGTH_RE.test(line.trim());

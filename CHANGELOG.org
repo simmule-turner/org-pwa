@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v507 — Specific types for the most-used names
+The most common placeholder types are now real ones: a heading is a Heading and a document a Doc (in a new =src/types.js=), and about 900 parameters named text, line, name, path, id, lines, tags and the like are now strings or lists, so the type checker catches a heading passed where a document is expected. About 2,070 placeholders remain, mostly names that mean different things in different places. No change in behaviour.
+Verified: tests, lint, type check, and the Open / Save As, agenda, heading actions, export and attachment smoke checks.
+
 * v506 — Headers and footers on export
 =#+OPTIONS: html-preamble:= and =html-postamble:= now take quoted text with Emacs's =%a= (author), =%t= (title), =%d= (date) and similar codes, matching Emacs 29.3. New =page-header:= and =page-footer:= put text on every printed page, so =page-footer:"%a | | Page %p of %P"= gives a name and a page number when you Print → Save as PDF in Chrome.
 Verified: tests (a new Emacs comparison of 40 cases), lint, type check, a PDF printed from Chromium, and the export, heading actions and keyboard smoke checks.

@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 
 /**
  * Agenda view: aggregates SCHEDULED/DEADLINE items across a set of open
@@ -226,7 +228,7 @@ const EVENT_PROPERTY_RE = /^(\d{4}|nil)-(\d{2})-(\d{2})(?:\s+(.+))?$/;
 /** The trigger as { field, format }, or null if `line` is not one. Real org-contacts takes two optional arguments,
  *  %%(org-contacts-anniversaries FIELD FORMAT): the property to read (default the birthday property) and how each entry reads
  *  (default "Birthday: %l (%Y)"). Each is a double-quoted string, or nil for "the default"; the line may carry none, one or both.
- * @param {any} [line]
+ * @param {string} line
  *  Each distinct trigger is its own scan, so one line for birthdays and another with "ANNIVERSARY" give both. */
 function parseContactsAnniversariesTrigger(line) {
   const m = CONTACTS_TRIGGER_RE.exec(line.trim());
@@ -237,7 +239,7 @@ function parseContactsAnniversariesTrigger(line) {
 }
 
 /** True if `line` is a %%(org-contacts-anniversaries ...) trigger, activating a scan. The line's own content is
- * @param {any} [line]
+ * @param {string} line
  *  not itself read as an event — it's a switch, not a contact. */
 function isContactsAnniversariesTrigger(line) {
   return parseContactsAnniversariesTrigger(line) !== null;
@@ -249,7 +251,7 @@ function isContactsAnniversariesTrigger(line) {
  */
 function collectContactsTriggers(docs) {
   const found = new Map();
-  /** @param {any} [line] */
+  /** @param {string} line */
   const note = (line) => {
     const trigger = parseContactsAnniversariesTrigger(line);
     if (trigger) found.set(`${trigger.field || ''}\u0000${trigger.format || ''}`, trigger);
@@ -315,7 +317,7 @@ function defaultEventDescription(propertyName) {
 
 /** Case-insensitive property lookup, matching how every other
  *  property read in this file already handles case (org property
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [key]
  *  keys are conventionally upper-case, but not enforced). */
 function getPropertyCaseInsensitive(heading, key) {
@@ -460,7 +462,7 @@ function applyAgendaEffortView(items, { sort = null, filter = null, maxMinutes =
 /** Searches `heading`'s own descendants, at any depth (a tree-style vCard contact's own fields can sit directly under the contact
  *  or grouped under an intermediate heading first -- see export-vcard.js's buildVcardFromTreeContact for the same reasoning, and
  *  import-vcard.js's buildTreeOrgFromContact for what actually produces this shape), for one whose own :FIELDTYPE: is `fieldType`
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [fieldType]
  *  ("birthday", "anniversary", "spouse") -- returning its own title (the value, as tree style writes it) or null. */
 /** @returns {any} */ function findTreeStyleFieldValue(/** @type {any} */ heading, /** @type {any} */ fieldType) {
@@ -477,7 +479,7 @@ function applyAgendaEffortView(items, { sort = null, filter = null, maxMinutes =
 /** The { year, month, day, description } `field` holds for this contact, or null: a property, or for a tree-style contact
  *  (:KIND: individual, the marker export-vcard.js requires) a descendant heading of that field type. Only a heading that is itself
  *  a tree-style contact is searched -- without that gate an intermediate grouping heading above a birthday descendant produced a
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [field]
  * @param {any} [birthdayProperty]
  *  spurious item of its own. */
@@ -494,7 +496,7 @@ function contactEventFor(heading, field, birthdayProperty) {
 
 /**
  * The spouse's name for a contact (a :SPOUSE: property, or a tree-style spouse field), or null.
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 function contactSpouse(heading) {
   const prop = getPropertyCaseInsensitive(heading, 'SPOUSE');
@@ -609,7 +611,7 @@ function expandContactEventOccurrences(month, day, rangeStart, rangeEnd, today) 
  * pattern of each module owning its own tree walk (see fold-state.js,
  * archive-model.js) rather than forcing a shared traversal abstraction
  * before one's actually needed.
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [visit]
  */
 function walkHeadings(doc, visit) {
@@ -696,7 +698,7 @@ function walkHeadings(doc, visit) {
  *     org-contacts-birthday-property is set to via Local Variables.
  */
 /** A title as an Agenda row shows it with the timestamps taken out: every active <...> (a range's two ends and the dash
- * @param {any} [title]
+ * @param {string} title
  *  between them too), and the spaces they leave. A title that is nothing but timestamps keeps its text. Inactive [...] stay. */
 export function stripTitleStamps(title) {
   const cleaned = title
@@ -715,7 +717,7 @@ const NO_STAMP_BLOCKS = new Set(['SRC', 'EXAMPLE', 'EXPORT', 'COMMENT']);
  * and blocks Emacs passes over -- #+BEGIN_SRC/EXAMPLE/EXPORT/COMMENT blocks
  * (one with no #+END is not a block), "# " comment lines and #+KEYWORD lines.
  * The SCHEDULED/DEADLINE line is not part of it: the parser holds that apart.
- * @param {any} heading
+ * @param {Heading} heading
  * @returns {string}
  */
 function entryTimestampText(heading) {
@@ -745,8 +747,8 @@ function entryTimestampText(heading) {
  *  the file's own basename (no directory path, no .org extension),
  *  matching real org's own actual default behavior exactly. Keyword
  *  lookup is case-insensitive, matching how every other #+KEYWORD:
- * @param {any} [doc]
- * @param {any} [documentId]
+ * @param {Doc} doc
+ * @param {string} documentId
  *  line here already treats case as not meaningful. */
 function getCategoryForDocument(doc, documentId) {
   /** @param {any} [kw] */
@@ -785,8 +787,8 @@ function buildAgendaItems(docs, opts = /** @type {any} */ ({})) {
   /** @type {any[]} */ const items = [];
 
   /**
-   * @param {any} [documentId]
-   * @param {any} [heading]
+   * @param {string} documentId
+   * @param {Heading} heading
    * @param {any} [kind]
    * @param {any} [parsed]
    * @param {any} [headingIsDone]
@@ -868,8 +870,8 @@ function buildAgendaItems(docs, opts = /** @type {any} */ ({})) {
   // One contact's entries, for each trigger. The contacts are the headings of `contactsDocs` (the files of org-contacts-files, as
   // in Emacs) when the caller has them, and otherwise of the same documents the triggers were found in.
   /**
-   * @param {any} [documentId]
-   * @param {any} [heading]
+   * @param {string} documentId
+   * @param {Heading} heading
    */
   function pushContactItems(documentId, heading) {
     for (const trigger of contactsTriggers) {
@@ -1052,8 +1054,8 @@ function buildAgendaItems(docs, opts = /** @type {any} */ ({})) {
           if (!trimmed.startsWith('%%(')) continue; // fast skip -- every one of these five forms starts this way
 
           /**
-           * @param {any} [occurrenceDate]
-           * @param {any} [title]
+           * @param {any} occurrenceDate
+           * @param {string} title
            */
           const pushDiarySexpItem = (occurrenceDate, title) => {
             items.push({

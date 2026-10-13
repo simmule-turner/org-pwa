@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: gestures structure.
 import { findContainer, shiftLevels } from '../src/archive-model.js';
 import { cycleFoldLevel } from '../src/fold-state.js';
@@ -25,8 +27,8 @@ import { SWIPE_THRESHOLD_PX } from './ui-widgets.js';
 import { platform } from './platform.js';
 
 /**
- * @param {any} [el]
- * @param {any} [heading]
+ * @param {any} el
+ * @param {Heading} heading
  */
 export function attachSlideLeftToFold(el, heading, opts = {}) {
   const onFolded = /** @type {any} */ (opts).onFolded || render;
@@ -67,8 +69,8 @@ export function attachSlideLeftToFold(el, heading, opts = {}) {
 }
 
 /**
- * @param {any} [el]
- * @param {any} [heading]
+ * @param {any} el
+ * @param {Heading} heading
  */
 export function attachSlideRightToComplete(el, heading, opts = {}) {
   const onDone = /** @type {any} */ (opts).onDone || (() => commitAndRender('Completed via swipe'));
@@ -145,7 +147,7 @@ export function attachAgendaSwipeNav(el) {
   });
 }
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 export async function confirmHeadingDelete(heading) {
   const parts = [];
   if (heading.children.length) {
@@ -163,7 +165,7 @@ export async function confirmHeadingDelete(heading) {
   return confirmDialog(`Delete "${title}"?${detail}`);
 }
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 export async function cutSubtree(heading) {
   const text = serializeHeadingSubtree(heading);
   try {
@@ -188,7 +190,7 @@ export async function cutSubtree(heading) {
   commitAndRender('Cut subtree to clipboard');
 }
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 export async function pasteSubtree(heading) {
   if (!S.state.doc) return;
   let text;
@@ -225,7 +227,7 @@ export function extraMenuTargetHeading() {
  *  any existing narrowing outright rather than stacking (matching
  *  real Emacs's own actual C-x n s: narrowing again while already
  *  narrowed just moves the restriction, there's no nested "un-narrow
- * @param {any} [heading]
+ * @param {Heading} heading
  *  one level at a time" concept at all). */
 export function narrowToHeading(heading) {
   S.narrowedHeading = heading;
@@ -330,7 +332,7 @@ export function maybeRestoreNarrowState() {
     .catch(() => {});
 }
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 export async function deleteHeadingWithConfirmation(heading) {
   if (!(await confirmHeadingDelete(heading))) return;
   S.actionMenuFor = null;

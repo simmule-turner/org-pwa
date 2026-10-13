@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // The init script: load it, answer its diary functions, report how it is doing.
 import { deleteProperty, setProperty } from '../src/archive-model.js';
 import { commitLines } from '../src/body-edit.js';
@@ -45,7 +47,7 @@ export function extensionInfo() {
   return { ...info, sexps: info.sexps.slice(), commands: info.commands.map((c) => ({ ...c })), log: info.log.slice() };
 }
 
-/** @param {any} [line] */
+/** @param {string} line */
 function note(line) {
   info.log.push(String(line).slice(0, 300));
   if (info.log.length > MAX_LOG) info.log.splice(0, info.log.length - MAX_LOG);
@@ -89,7 +91,7 @@ function context() {
 }
 
 /** Answers the agenda for one function and day from the cache. A miss is "no entry" for now: it is queued,
- * @param {any} [name]
+ * @param {string} name
  * @param {any} [args]
  * @param {any} [date]
  *  fetched in one batch, and the page is drawn again when the answers arrive. */
@@ -200,8 +202,8 @@ export async function loadExtensions() {
 
 /**
  * A click on [[prefix:path]]: the script's link function answers with an address, which is checked and opened.
- * @param {any} [prefix]
- * @param {any} [path]
+ * @param {string} prefix
+ * @param {string} path
  * @param {any} [target]
  * @param {any} [description]
  */
@@ -233,7 +235,7 @@ export const tableFunctionsActive = () => !!run.handle && info.tableFunctions.le
 
 /**
  * The answer to a table function during a recalculation: what the script already gave, or an error.
- * @param {any} [name]
+ * @param {string} name
  * @param {any} [args]
  */
 export function tableUserCall(name, args) {
@@ -255,7 +257,7 @@ export async function warmTableFunctions(tables) {
   for (let pass = 0; pass < 3 && mine.length; pass++) {
     const misses = new Map();
     /**
-     * @param {any} [name]
+     * @param {string} name
      * @param {any} [args]
      */
     const userCall = (name, args) => {
@@ -302,7 +304,7 @@ export async function warmTableFunctions(tables) {
 
 /**
  * Runs one of the script's export backends on the open file and saves what it returns.
- * @param {any} [id]
+ * @param {string} id
  * @param {any} [target]
  */
 export async function runExtensionExport(id, target) {
@@ -336,7 +338,7 @@ export async function runExtensionExport(id, target) {
 
 /**
  * Saves the script text. It must be approved again before it runs.
- * @param {any} [text]
+ * @param {string} text
  */
 export async function saveExtensionScript(text) {
   if (text.length > MAX_SCRIPT_CHARS) throw new Error(`The script is longer than ${MAX_SCRIPT_CHARS / 1024} KB`);
@@ -347,7 +349,7 @@ export async function saveExtensionScript(text) {
 
 /**
  * Names the saved document the script is tangled from ('' goes back to the text typed in Settings). It must be approved again.
- * @param {any} [text]
+ * @param {string} text
  */
 export async function saveExtensionFile(text) {
   await setExtensionFile(kv, String(text || '').trim());
@@ -384,13 +386,13 @@ export function extensionPaletteEntries() {
 }
 
 /**
- * @param {any} [heading]
- * @param {any} [lines]
+ * @param {Heading} heading
+ * @param {string[]} lines
  */
 const appendBody = (heading, lines) => commitLines(heading, (heading.bodyLines || []).length, 0, lines);
 
 /** Runs one of the script's commands on the open file. The command sees a read-only snapshot and answers with
- * @param {any} [id]
+ * @param {string} id
  * @param {any} [target]
  *  edits; they are checked, then applied together as a single undo step. */
 export async function runExtensionCommand(id, target) {
@@ -429,7 +431,7 @@ export async function runExtensionCommand(id, target) {
 
 /**
  * Handles a script's answer to a command or an event: logs, then checks and applies its edits as one undo step.
- * @param {any} [label]
+ * @param {string} label
  * @param {any} [snapshot]
  * @param {any} [reply]
  * @param {any} [allowEdits]
@@ -477,9 +479,9 @@ function finishReply(label, snapshot, reply, allowEdits) {
 
 /**
  * Delivers an event to the script's hooks, one at a time and after the app has finished handling it.
- * @param {any} [name]
- * @param {any} [payload]
- * @param {any} [doc]
+ * @param {string} name
+ * @param {any} payload
+ * @param {Doc} doc
  */
 async function deliverEvent(name, payload, doc) {
   const active = run.handle;
@@ -517,7 +519,7 @@ onExtensionEvent((/** @type {string} */ name, /** @type {any} */ payload) => {
 // ---- agenda sources and header lines ----------------------------------------------------------------------
 
 /**
- * @param {any} [name]
+ * @param {string} name
  * @param {any} [from]
  * @param {any} [to]
  * @param {any} [key]
@@ -591,7 +593,7 @@ export function extensionAgendaItems(rangeStart, rangeEnd) {
   return out;
 }
 
-/** @param {any} [id] */
+/** @param {string} id */
 async function refreshLine(id) {
   const active = run.handle;
   linePending.add(id);

@@ -22,18 +22,18 @@ const localFileAdapter = {
     return readFolderText(args[0]);
   },
   /**
-   * @param {any} [id]
+   * @param {string} id
    * @param {any} [content]
    */
   async write(id, content, /** @type {any[]} */ ...rest) {
     if (folderAvailable() && (await platform.localFiles.adapter.access(id)) === 'none') return writeFolderText(id, content);
     return platform.localFiles.adapter.write(id, content, ...rest);
   },
-  /** @param {any} [id] */
+  /** @param {string} id */
   async exists(id) {
     return (await platform.localFiles.adapter.exists(id)) || (folderAvailable() && (await folderFileExists(id)));
   },
-  /** @param {any} [id] */
+  /** @param {string} id */
   async access(id) {
     const picked = await platform.localFiles.adapter.access(id);
     if (picked !== 'none' || !folderAvailable()) return picked;

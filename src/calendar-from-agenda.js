@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * The events a calendar should hold, taken from what View > Agenda shows: the same items, the same titles, the same times, the same
  * contacts (org-contacts-anniversaries, with its FIELD and FORMAT, from org-contacts-files), the same exclusions (completed items,
@@ -77,7 +79,7 @@ function sourceOf(item) {
 export function collectAgendaCalendarEvents(docs, opts = {}) {
   const { today = new Date(), window, birthdayProperty = 'BIRTHDAY', contactsDocs = null } = opts;
   const doneKeywords = new Set();
-  for (const { doc } of docs) for (const keyword of resolveTodoSequence(doc).doneKeywords) doneKeywords.add(keyword);
+  for (const { doc } of docs) for (const keyword of resolveTodoSequence(/** @type {Doc} */ (doc)).doneKeywords) doneKeywords.add(keyword);
 
   const items = buildAgendaItems(docs, {
     today,
@@ -95,8 +97,8 @@ export function collectAgendaCalendarEvents(docs, opts = {}) {
   const events = [];
   const usedUids = new Set();
   /**
-   * @param {any} [documentId]
-   * @param {any} [heading]
+   * @param {string} documentId
+   * @param {Heading} heading
    * @param {any} [kind]
    * @param {any} [index]
    * @param {any} [date]
@@ -108,7 +110,7 @@ export function collectAgendaCalendarEvents(docs, opts = {}) {
     return uid;
   };
   const headingIds = new Map();
-  /** @param {any} [heading] */
+  /** @param {Heading} heading */
   const idOf = (heading) => {
     if (!headingIds.has(heading)) headingIds.set(heading, headingIds.size);
     return headingIds.get(heading);
@@ -124,7 +126,7 @@ export function collectAgendaCalendarEvents(docs, opts = {}) {
       const index = perOccurrenceSeen.get(slot) || 0;
       perOccurrenceSeen.set(slot, index + 1);
       // the stand-in heading keeps an :ID: out of it, so the id includes the day and the occurrence, never only the heading
-      const uid = generateUid(documentId, { title: heading.title }, kind === 'anniversary' ? `anniversary-${String(item.field).toLowerCase()}` : kind, index, item.date);
+      const uid = generateUid(documentId, /** @type {any} */ ({ title: heading.title }), kind === 'anniversary' ? `anniversary-${String(item.field).toLowerCase()}` : kind, index, item.date);
       events.push({ uid, documentId, lines: buildVevent({ uid, summary: item.title, description: kind === 'anniversary' ? null : 'Diary', date: item.date, hasTime: false, rrule: null, alarmDaysBefore: 0, stamp: today }) });
       continue;
     }

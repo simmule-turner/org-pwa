@@ -28,7 +28,7 @@
 
 const MAX_EDIT_DISTANCE = 2500;
 
-/** @param {any} [text] */
+/** @param {string} text */
 function splitLines(text) {
   return String(text).split('\n');
 }

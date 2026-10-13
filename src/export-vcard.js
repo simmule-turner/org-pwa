@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 
 /**
  * Exports contacts -- Org headlines carrying a valid EMAIL property --
@@ -53,7 +55,7 @@ import { isArchived, getProperty } from './archive-model.js';
 import { isCommentedHeading } from './comment-model.js';
 import { foldLine } from './export-icalendar.js';
 
-/** @param {any} [text] */
+/** @param {string} text */
 function escapeVcardText(text) {
   return String(text)
     .replace(/\\/g, '\\\\')
@@ -66,7 +68,7 @@ function escapeVcardText(text) {
  *  (LABEL="..."). A real vCard quoted-string parameter value cannot
  *  contain a literal double-quote at all (there's no standard escape
  *  for one within the quotes), so any is stripped -- an extremely
- * @param {any} [text]
+ * @param {string} text
  *  rare edge case for a real address label. */
 function escapeVcardLabelParam(text) {
   return escapeVcardText(text).replace(/"/g, '');
@@ -141,7 +143,7 @@ function splitNameForN(fullName) {
  *  the latter loses real information irreversibly: org tags cannot
  *  contain spaces at all, so "Other Account" becomes "Other_Account"
  *  once stored as a tag, with no way back from the tag alone. Returns
- * @param {any} [heading]
+ * @param {Heading} heading
  *  null when there's nothing to write either way. */
 function buildCategoriesLine(heading) {
   const raw = getProperty(heading, 'CATEGORIES_RAW');
@@ -151,7 +153,7 @@ function buildCategoriesLine(heading) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [birthdayProperty]
  */
 function buildVcard(heading, birthdayProperty) {
@@ -297,7 +299,7 @@ const TREE_FIELDTYPE_TO_VCARD_LINE = {
  *  accepted, since a person might reasonably prefer QUOTE's own
  *  reflow-friendly convention over VERSE's exact line-break
  *  preservation when writing one by hand. Returns null when no such
- * @param {any} [heading]
+ * @param {Heading} heading
  *  block exists at all. */
 function blockText(heading) {
   /** @param {any} [b] */
@@ -309,7 +311,7 @@ function blockText(heading) {
  *  falling back to the heading's own title when no block is present
  *  at all, so a note heading written before this existed (or typed by
  *  hand without a block) still exports correctly -- never a hard
- * @param {any} [heading]
+ * @param {Heading} heading
  *  requirement. */
 function noteBlockText(heading) {
   return blockText(heading) ?? (heading.title || '');
@@ -321,7 +323,7 @@ function noteBlockText(heading) {
  *  fieldtype heading (a contact's own preserved N, see import-vcard.js's
  *  own N case) before the main walk below, since it needs to be
  *  written immediately after FN, not wherever the walk happens to
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [fieldType]
  *  encounter it. */
 /** @returns {any} */ function findFieldValue(/** @type {any} */ heading, /** @type {any} */ fieldType) {
@@ -333,7 +335,7 @@ function noteBlockText(heading) {
   return null;
 }
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 function buildVcardFromTreeContact(heading) {
   if (String(getProperty(heading, 'KIND') || '').toLowerCase() !== 'individual') return null;
   if (String(getProperty(heading, 'FIELDTYPE') || '').toLowerCase() !== 'name') return null;
@@ -418,7 +420,7 @@ export function exportToVcard(docs, opts = /** @type {any} */ ({})) {
 
   /** @type {any[]} */ const cards = [];
   const seen = new Set();
-  /** @param {any} [heading] */
+  /** @param {Heading} heading */
   const visit = (heading) => {
     if (seen.has(heading)) return;
     seen.add(heading);
@@ -431,7 +433,7 @@ export function exportToVcard(docs, opts = /** @type {any} */ ({})) {
   if (scopeHeadings === null) {
     for (const { doc } of docs) walkHeadings(doc, visit);
   } else {
-    for (const heading of scopeHeadings) walkHeadings({ children: [heading] }, visit);
+    for (const heading of scopeHeadings) walkHeadings(/** @type {any} */ ({ children: [heading] }), visit);
   }
 
   return cards.flat().join('\r\n') + (cards.length ? '\r\n' : '');

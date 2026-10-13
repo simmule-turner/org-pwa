@@ -47,9 +47,9 @@ export function createHistory(initialText, initialLabel = 'Opened', now = new Da
  * pushing a no-op entry -- an edit that turns out not to have actually
  * changed anything (toggling something and toggling it back, e.g.)
  * shouldn't clutter the history list.
- * @param {any} [history]
- * @param {any} [text]
- * @param {any} [label]
+ * @param {any} history
+ * @param {string} text
+ * @param {string} label
  */
 export function pushSnapshot(history, text, label, now = new Date()) {
   const current = history.entries[history.index];

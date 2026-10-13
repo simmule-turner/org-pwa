@@ -46,9 +46,9 @@ function splitTopLevel(body) {
 
 /**
  * A cell such as "[1, 2, 3]" or "[[1, 2], [3, 4]]" as a vector, or null if it is not one.
- * @param {any} [text]
- * @param {any} [D]
- * @param {any} [degrees]
+ * @param {string} text
+ * @param {any} D
+ * @param {boolean} degrees
  */
 /** @returns {any} */
 export function parseVectorCell(/** @type {any} */ text, /** @type {any} */ D, /** @type {any} */ degrees) {
@@ -73,9 +73,9 @@ export function parseVectorCell(/** @type {any} */ text, /** @type {any} */ D, /
 const ZERO = (D) => toReal(0, D);
 
 /**
- * @param {any} [list]
- * @param {any} [D]
- * @param {any} [degrees]
+ * @param {any} list
+ * @param {any} D
+ * @param {boolean} degrees
  */
 function sum(list, D, degrees) {
   let total = ZERO(D);
@@ -132,19 +132,19 @@ export function flattenVector(v) {
 // ---- arithmetic ------------------------------------------------------------------------------------------------
 
 /**
- * @param {any} [v]
- * @param {any} [D]
- * @param {any} [degrees]
+ * @param {any} v
+ * @param {any} D
+ * @param {boolean} degrees
  */
 export function vNeg(v, D, degrees) {
   return mapElements(v, (/** @type {any} */ x) => cNeg(x, D, degrees));
 }
 
 /**
- * @param {any} [a]
- * @param {any} [b]
- * @param {any} [D]
- * @param {any} [degrees]
+ * @param {any} a
+ * @param {any} b
+ * @param {any} D
+ * @param {boolean} degrees
  */
 function matrixProduct(a, b, D, degrees) {
   const rows = a.items.length;
@@ -165,11 +165,11 @@ function matrixProduct(a, b, D, degrees) {
 }
 
 /**
- * @param {any} [op]
- * @param {any} [left]
- * @param {any} [right]
- * @param {any} [D]
- * @param {any} [degrees]
+ * @param {any} op
+ * @param {any} left
+ * @param {any} right
+ * @param {any} D
+ * @param {boolean} degrees
  */
 export function vBinop(op, left, right, D, degrees) {
   const a = operand(left, D);
@@ -223,10 +223,10 @@ function identity(n, D) {
 }
 
 /**
- * @param {any} [m]
- * @param {any} [n]
- * @param {any} [D]
- * @param {any} [degrees]
+ * @param {any} m
+ * @param {any} n
+ * @param {any} D
+ * @param {boolean} degrees
  */
 function matrixPower(m, n, D, degrees) {
   const size = m.items.length;
@@ -239,10 +239,10 @@ function matrixPower(m, n, D, degrees) {
 }
 
 /**
- * @param {any} [a]
- * @param {any} [b]
- * @param {any} [D]
- * @param {any} [degrees]
+ * @param {any} a
+ * @param {any} b
+ * @param {any} D
+ * @param {boolean} degrees
  */
 export function vEquals(a, b, D, degrees) {
   if (isVector(a) !== isVector(b)) return false;
@@ -277,9 +277,9 @@ function minor(rows, skipRow, skipCol) {
 }
 
 /**
- * @param {any} [rows]
- * @param {any} [D]
- * @param {any} [degrees]
+ * @param {any} rows
+ * @param {any} D
+ * @param {boolean} degrees
  */
 function determinant(rows, D, degrees) {
   const n = rows.length;
@@ -296,9 +296,9 @@ function determinant(rows, D, degrees) {
 const toRows = (/** @type {any} */ m) => m.items.map((/** @type {any} */ r) => r.items);
 
 /**
- * @param {any} [m]
- * @param {any} [D]
- * @param {any} [degrees]
+ * @param {any} m
+ * @param {any} D
+ * @param {boolean} degrees
  */
 export function vDet(m, D, degrees) {
   requireSquare(m);
@@ -307,9 +307,9 @@ export function vDet(m, D, degrees) {
 }
 
 /**
- * @param {any} [m]
- * @param {any} [D]
- * @param {any} [degrees]
+ * @param {any} m
+ * @param {any} D
+ * @param {boolean} degrees
  */
 export function vInv(m, D, degrees) {
   requireSquare(m);
@@ -344,9 +344,9 @@ export function vTrn(m) {
 }
 
 /**
- * @param {any} [m]
- * @param {any} [D]
- * @param {any} [degrees]
+ * @param {any} m
+ * @param {any} D
+ * @param {boolean} degrees
  */
 export function vTrace(m, D, degrees) {
   requireSquare(m);
@@ -354,10 +354,10 @@ export function vTrace(m, D, degrees) {
 }
 
 /**
- * @param {any} [a]
- * @param {any} [b]
- * @param {any} [D]
- * @param {any} [degrees]
+ * @param {any} a
+ * @param {any} b
+ * @param {any} D
+ * @param {boolean} degrees
  */
 export function vCross(a, b, D, degrees) {
   if (!isVector(a) || !isVector(b) || a.items.length !== 3 || b.items.length !== 3 || isMatrix(a) || isMatrix(b)) {
@@ -383,9 +383,9 @@ export function vLength(v) {
 
 /**
  * abs of a vector: its length.
- * @param {any} [v]
- * @param {any} [D]
- * @param {any} [degrees]
+ * @param {any} v
+ * @param {any} D
+ * @param {boolean} degrees
  */
 export function vAbs(v, D, degrees) {
   const squares = flattenVector(v).map((/** @type {any} */ x) => cMul(x, cConj(x, D, degrees), D, degrees));

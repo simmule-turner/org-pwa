@@ -33,14 +33,14 @@ const FOOTNOTE_DEF_RE = /^\[fn:([A-Za-z0-9_-]+)\][ \t]?(.*)$/;
 const ITEM_RE = /^([ \t]*)([-+*]|\d+[.)])(?:[ \t]+|$)/;
 const HEADLINE_LIKE_RE = /^\*+ /;
 
-/** @param {any} [line] */
+/** @param {string} line */
 const indentOf = (line) => (/^[ \t]*/.exec(line) || [''])[0].replace(/\t/g, '        ').length;
-/** @param {any} [line] */
+/** @param {string} line */
 const isBlank = (line) => line.trim() === '';
 
 /**
  * Is this line the start of a list item? (A `*` bullet needs indentation, or it would be a headline.)
- * @param {any} [line]
+ * @param {string} line
  */
 function itemMatch(line) {
   const m = ITEM_RE.exec(line);
@@ -87,7 +87,7 @@ export function parseAttributes(values) {
   return out;
 }
 
-/** @param {any} [line] */
+/** @param {string} line */
 function splitRow(line) {
   let body = line.trim();
   body = body.replace(/^\|/, '');
@@ -96,7 +96,7 @@ function splitRow(line) {
 }
 
 /**
- * @param {any} [lines]
+ * @param {string[]} lines
  * @param {any} [i]
  */
 function parseTable(lines, i) {
@@ -113,7 +113,7 @@ function parseTable(lines, i) {
 
 /**
  * Removes up to `n` columns of leading whitespace.
- * @param {any} [line]
+ * @param {string} line
  * @param {any} [n]
  */
 function dedent(line, n) {
@@ -127,7 +127,7 @@ function dedent(line, n) {
 }
 
 /**
- * @param {any} [lines]
+ * @param {string[]} lines
  * @param {any} [start]
  */
 function parseList(lines, start) {
@@ -195,7 +195,7 @@ function parseList(lines, start) {
 
 /**
  * True when index `at` in `text` is inside a `=verbatim=` or `~code~` span, where `::` is not a tag separator.
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [at]
  */
 function isInsideCode(text, at) {
@@ -209,9 +209,9 @@ function isInsideCode(text, at) {
 }
 
 /**
- * @param {any} [lines]
- * @param {any} [i]
- * @param {any} [name]
+ * @param {string[]} lines
+ * @param {any} i
+ * @param {string} name
  */
 function findBlockEnd(lines, i, name) {
   const end = new RegExp('^[ \\t]*#\\+end_' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[ \\t]*$', 'i');
@@ -221,7 +221,7 @@ function findBlockEnd(lines, i, name) {
 
 /**
  * Does this line start something that ends a paragraph?
- * @param {any} [line]
+ * @param {string} line
  */
 function interruptsParagraph(line) {
   return (
@@ -239,7 +239,7 @@ function interruptsParagraph(line) {
   );
 }
 
-/** @param {any} [lines] */
+/** @param {string[]} lines */
 export function parseElements(lines) {
   /** @type {any[]} */ const out = [];
   /** @type {any} */

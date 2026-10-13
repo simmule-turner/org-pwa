@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Table and paragraph editing.
  *
@@ -93,7 +95,7 @@ export function isTableHeaderRow(table, rowIndex) {
  *  table has an unambiguous, predictable target for anything (like
  *  the general editor's Delete table button) that needs to act on
  *  "the" table without the person first having tapped into a specific
- * @param {any} [heading]
+ * @param {Heading} heading
  *  one. */
 export function lastTableInBody(heading) {
   const body = heading.body || [];
@@ -112,7 +114,7 @@ export function lastTableInBody(heading) {
  *  heading.body entirely, see commitLines below), any table reference
  *  taken from the PREVIOUS call is stale, and a caller processing
  *  several tables in the same heading needs to call this again to get
- * @param {any} [heading]
+ * @param {Heading} heading
  *  a valid one. */
 export function allTablesInBody(heading) {
   return (heading.body || []).filter((/** @type {any} */ node) => node.type === 'table');
@@ -124,7 +126,7 @@ export function allTablesInBody(heading) {
  *  `newLines`, then fully reparses `heading.body` from the updated
  *  bodyLines. This is the one place that keeps the derived tree and the
  *  serialization source in sync — every edit function below ends by
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [lineIndex]
  * @param {any} [lineCount]
  * @param {any} [newLines]
@@ -150,7 +152,7 @@ function requireDataRow(table, rowIndex) {
 
 /** Sets one cell's text and commits the whole table's new text back to
  *  bodyLines. `table` must be a fresh reference from the current render
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [table]
  * @param {any} [rowIndex]
  * @param {any} [colIndex]
@@ -163,7 +165,7 @@ export function setTableCell(heading, table, rowIndex, colIndex, value) {
 }
 
 /** Inserts a new blank data row after `afterRowIndex` (-1 to insert at the
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [table]
  * @param {any} [afterRowIndex]
  *  very start), with the same column count as the table's existing rows. */
@@ -176,7 +178,7 @@ export function insertTableRow(heading, table, afterRowIndex) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [table]
  * @param {any} [rowIndex]
  */
@@ -190,7 +192,7 @@ export function deleteTableRow(heading, table, rowIndex) {
 
 /** Inserts a new blank column after `afterColIndex` (-1 for the start) in
  *  every data row. Rule rows need no per-row change — serializeTable
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [table]
  * @param {any} [afterColIndex]
  *  derives the rule's width from the (now-updated) data row column count. */
@@ -202,7 +204,7 @@ export function insertTableColumn(heading, table, afterColIndex) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [table]
  * @param {any} [colIndex]
  */
@@ -218,7 +220,7 @@ export function deleteTableColumn(heading, table, colIndex) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [table]
  */
 export function deleteTable(heading, table) {
@@ -229,7 +231,7 @@ export function deleteTable(heading, table) {
  *  rule unless headerRule is explicitly false) to the end of
  *  `heading`'s body content. Adds a blank-line separator first if the
  *  heading already has body content, so the new table doesn't
- * @param {any} [heading]
+ * @param {Heading} heading
  *  visually run into whatever precedes it. */
 export function insertTable(heading, { rows = 2, cols = 2, headerRule = true } = {}) {
   const headerCells = Array(cols).fill('');
@@ -259,7 +261,7 @@ export function insertTable(heading, { rows = 2, cols = 2, headerRule = true } =
  *
  * Newlines in `newText` are stripped (a list item is one line, same rule
  * as heading-edit.js's renameHeading for heading titles).
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [item]
  * @param {any} [newText]
  */
@@ -293,7 +295,7 @@ function listItemEndLine(item) {
  * `afterItem`'s tag, since a tag is a per-item descriptive term, not
  * something that makes sense to duplicate onto a sibling. Returns the
  * freshly parsed item so the caller can e.g. start editing it right away.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [afterItem]
  */
 export function insertListItem(heading, afterItem, text = '') {
@@ -330,7 +332,7 @@ export function insertListItem(heading, afterItem, text = '') {
  * confirm when there's content) since list items are smaller, more
  * frequent, easier-to-redo edits. Revisit if that turns out wrong in
  * practice.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [item]
  */
 export function deleteListItem(heading, item) {
@@ -348,7 +350,7 @@ export function deleteListItem(heading, item) {
  * org), and typing something that looks like a list item or table row will
  * genuinely become one. That's correct org semantics reapplied, not a bug:
  * the editor is literal-syntax, the same way a plain-text org file is.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [paragraph]
  * @param {any} [newText]
  */
@@ -358,7 +360,7 @@ export function editParagraphText(heading, paragraph, newText) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [paragraph]
  */
 export function deleteParagraph(heading, paragraph) {
@@ -366,7 +368,7 @@ export function deleteParagraph(heading, paragraph) {
 }
 
 /** Appends a brand-new paragraph to the end of `heading`'s body content,
- * @param {any} [heading]
+ * @param {Heading} heading
  *  with the same blank-line-separator logic as insertTable. */
 export function insertParagraph(heading, text = '') {
   const lines = String(text).split('\n');
@@ -386,7 +388,7 @@ export function insertParagraph(heading, text = '') {
  * line on both sides it needs one (none needed on a side that's already
  * blank or at the end of the body), so it reads as its own paragraph, not
  * a continuation of whatever it's inserted next to.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [afterParagraph]
  */
 export function insertParagraphAfter(heading, afterParagraph, text = '') {
@@ -436,7 +438,7 @@ export function insertParagraphAfter(heading, afterParagraph, text = '') {
  * small fix; this is the "edit everything about this heading's content
  * at once" path, useful for larger restructuring or when you just want to
  * see and edit it all together.
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 export function getHeadingText(heading) {
   return heading.bodyLines.join('\n');
@@ -448,7 +450,7 @@ export function getHeadingText(heading) {
  * "patch the source, then re-derive everything" pattern every other
  * function in this file uses, just applied to the whole body instead of
  * one node's line span.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [newText]
  */
 export function setHeadingText(heading, newText) {

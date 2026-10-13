@@ -97,7 +97,7 @@ function parseOrgTimestamp(raw) {
  * timestamp objects (same shape as parseOrgTimestamp's) in the order
  * found, reusing that same parser/validator for each match rather than
  * duplicating its bracket-matching logic.
- * @param {any} [text]
+ * @param {string} text
  */
 function findTimestamps(text) {
   if (!text) return [];

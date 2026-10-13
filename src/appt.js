@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Agenda notifications, the way Emacs's appt does them: appointments are the agenda items that have a time of day, and each is
  * announced once, `appt-message-warning-time` minutes before it starts. Everything here is pure (no timers, no DOM, no platform), so
@@ -61,7 +62,7 @@ export const clock = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())
 export function upcomingAppointments(docs, now, { hours = 6, birthdayProperty = 'BIRTHDAY', contactsDocs = null, includeArchived = false, includeCommented = false } = {}) {
   const horizon = new Date(now.getTime() + hours * 3600000);
   const done = new Set();
-  for (const { doc } of docs) for (const keyword of resolveTodoSequence(doc).doneKeywords) done.add(keyword);
+  for (const { doc } of docs) for (const keyword of resolveTodoSequence(/** @type {Doc} */ (doc)).doneKeywords) done.add(keyword);
   const items = buildAgendaItems(docs, {
     today: now,
     rangeStart: startOfDay(now),

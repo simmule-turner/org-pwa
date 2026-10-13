@@ -42,7 +42,7 @@
  *  previous line, with that one leading whitespace character removed
  *  and the rest appended directly -- the reverse of foldLine (already
  *  used by this module's own export side) folding a long line the
- * @param {any} [text]
+ * @param {string} text
  *  same way. */
 function unfoldVcardLines(text) {
   const rawLines = text.split(/\r\n|\r|\n/);
@@ -59,7 +59,7 @@ function unfoldVcardLines(text) {
 
 /** Reverses escapeVcardText's own escaping (\\\\ -> \\, \\; -> ;, \\, -> ,,
  *  \\n -> a real newline) -- the exact inverse of that function, not a
- * @param {any} [text]
+ * @param {string} text
  *  separately-invented unescaping scheme. */
 function unescapeVcardText(text) {
   return text.replace(/\\n/gi, '\n').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\');
@@ -74,7 +74,7 @@ function unescapeVcardText(text) {
  *  checkbox in the Import screen, default on): a literal "\:" from
  *  some other, non-Google vCard source could plausibly be
  *  intentional, however unlikely, and shouldn't be silently rewritten
- * @param {any} [text]
+ * @param {string} text
  *  without it being clear Google-specific handling is what did it. */
 function unescapeGoogleColon(text) {
   return text.replace(/\\:/g, ':');
@@ -85,7 +85,7 @@ function unescapeGoogleColon(text) {
  *  value can be quoted specifically to contain characters (";", ":")
  *  that would otherwise be mistaken for structural delimiters, most
  *  relevantly a LABEL="..." parameter whose own text might contain
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [delimiter]
  *  either. */
 function splitRespectingQuotes(text, delimiter) {
@@ -126,7 +126,7 @@ function splitRespectingQuotes(text, delimiter) {
  *  line with no ":" at all (malformed, or a blank/structural line),
  *  skipped rather than thrown on -- a real-world vCard file
  *  occasionally has stray blank lines, and one malformed line
- * @param {any} [line]
+ * @param {string} line
  * @param {any} [cleanMode]
  *  shouldn't abort parsing every other contact in the file. */
 function parseVcardLine(line, cleanMode) {
@@ -246,7 +246,7 @@ function interpretABLabel(rawValue) {
  *  value isn't a URL (base64-embedded image data) IS passed to it
  *  (as "PHOTO (embedded image data)"), since real photo data does
  *  exist there, just not in a form this module can usefully store as
- * @param {any} [text]
+ * @param {string} text
  *  text. */
 export function parseVcards(text, opts = /** @type {any} */ ({})) {
   const { cleanMode = true, onUnmappedProperty = null, onEmbeddedPhotoImported = null } = opts;
@@ -259,7 +259,7 @@ export function parseVcards(text, opts = /** @type {any} */ ({})) {
   const warnedProperties = new Set(); // de-duplicates onUnmappedProperty calls across the whole file
 
   const KNOWN_UNMAPPED = new Set(['VERSION', 'PRODID', 'REV', 'UID', 'X-ABADR']);
-  /** @param {any} [name] */
+  /** @param {string} name */
   function warnUnmapped(name) {
     if (!onUnmappedProperty || KNOWN_UNMAPPED.has(name) || warnedProperties.has(name)) return;
     warnedProperties.add(name);
@@ -497,7 +497,7 @@ function normalizeBday(raw) {
 /** A heading title can't legally contain a literal newline (a heading
  *  is one line) -- collapses one to a space, the same lossy-but-safe
  *  handling any multi-line vCard value needs wherever it ends up as a
- * @param {any} [text]
+ * @param {string} text
  *  heading's own title. */
 function forHeadingTitle(text) {
   return text.replace(/\r?\n/g, ' ').trim();
@@ -516,7 +516,7 @@ function forHeadingTitle(text) {
  *  " ; " (rather than forHeadingTitle's plain space) keeps each
  *  original line visually distinct once flattened, since a property
  *  value this dense (a multi-paragraph note, an address with several
- * @param {any} [text]
+ * @param {string} text
  *  components) reads as an unbroken run-on otherwise. */
 function forPropertyValue(text) {
   return text.replace(/\r?\n/g, ' ; ').trim();

@@ -48,7 +48,7 @@ function crc32(bytes) {
 
 // ---- byte-writing helpers -----------------------------------------------
 
-/** @param {any} [str] */
+/** @param {string} str */
 function utf8Bytes(str) {
   return new TextEncoder().encode(str);
 }

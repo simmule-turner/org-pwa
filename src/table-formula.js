@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * #+TBLFM: parsing and evaluation.
  *
@@ -246,7 +248,7 @@ function formatTimeStringImpl(date, format, isUTC = false) {
 /** Parses one row-reference token's text (after the leading "@", not
  *  including it) into { type: 'absolute', n } | { type: 'relative', delta }
  *  | { type: 'first' } | { type: 'last' }. Returns null if it doesn't
- * @param {any} [text]
+ * @param {string} text
  *  match any recognized row-reference shape. */
 function parseRowRef(text) {
   if (text === '<') return { type: 'first' };
@@ -268,7 +270,7 @@ function parseRowRef(text) {
  *  formula reaching sideways to a fixed, always-present neighboring
  *  column is far more common than one reaching to a neighboring row,
  *  since columns are normally fixed data fields and rows are the
- * @param {any} [text]
+ * @param {string} text
  *  repeating axis a formula is normally applied down). */
 function parseColRef(text) {
   if (text === '<') return { type: 'first' };
@@ -415,7 +417,7 @@ let userTableFunctionNames = new Set();
 export function setUserTableFunctions(names = []) {
   userTableFunctionNames = new Set(names);
 }
-/** @param {any} [name] */
+/** @param {string} name */
 export function isBuiltinFormulaName(name) {
   return name in AGGREGATE_FUNCTIONS || name in SCALAR_FUNCTIONS || name === 'string' || name === 'if';
 }
@@ -778,7 +780,7 @@ function formatHmsValue(value) {
  *  above) or null (col is null for a bare "@N" token -- not actually
  *  valid on its own as a real reference, but parseRef doesn't see
  *  that far ahead; row is null for a bare "$N" token, meaning "the
- * @param {any} [token]
+ * @param {string} token
  *  current row", resolved later by the evaluator). */
 function parseRef(token) {
   const atMatch = /^@([<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$([<>]|\d+))?$/.exec(token);
@@ -1299,7 +1301,7 @@ function wrapNumericLiteral(value, ctx) {
 const MATHJS_SCALAR_FUNCTION_NAMES = new Set(['sqrt', 'floor', 'ceil', 'round', 'trunc', 'ln', 'log10', 'exp', 'exp10', 'log', 'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan']);
 
 /**
- * @param {any} [name]
+ * @param {string} name
  * @param {any} [argValues]
  * @param {any} [ctx]
  */
@@ -1453,7 +1455,7 @@ const VECTOR_FUNCTIONS = new Set(['det', 'inv', 'trn', 'tr', 'cross', 'vlen']);
 
 /**
  * det/inv/trn/tr/cross/vlen, and abs of a vector. Returns undefined for anything else.
- * @param {any} [name]
+ * @param {string} name
  * @param {any} [argValues]
  * @param {any} [ctx]
  */
@@ -1487,7 +1489,7 @@ function flattenForAggregate(values, ctx) {
 const COMPLEX_ALWAYS = new Set(['re', 'im', 'conj', 'arg', 'polar', 'rect']);
 
 /** A scalar function call that needs the complex route: a complex argument, or a real one outside the real function's
- * @param {any} [name]
+ * @param {string} name
  * @param {any} [argValues]
  * @param {any} [ctx]
  *  domain (sqrt of a negative, ln of a negative, arcsin of 2). Returns undefined when the ordinary real code applies. */
@@ -1888,7 +1890,7 @@ function parseModeString(suffix) {
  *  without one, the same text isn't treated as a duration at all
  *  (matching real org, where "H:MM" without a duration flag is read
  *  as a Calc fraction instead, a distinction this app doesn't
- * @param {any} [text]
+ * @param {string} text
  *  reproduce -- see readCellValue's own docs). */
 function parseDurationSeconds(text) {
   const m = /^(-)?(\d+):([0-5]?\d)(?::([0-5]?\d))?$/.exec(text.trim());
@@ -2336,7 +2338,7 @@ function formatFinalValue(value, mode, hourZeroPad, complexDomain) {
  *  is silently skipped rather than blocking the rest of the line or
  *  throwing -- matching this app's own established "a malformed entry
  *  doesn't block the rest of the list" convention for other
- * @param {any} [doc]
+ * @param {Doc} doc
  *  multi-entry configuration (org-agenda-files and similar). */
 export function parseTableConstants(doc) {
   const constants = {};

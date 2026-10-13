@@ -443,7 +443,7 @@ export function noteKeydownDelivered(key) {
   S.godModeRecentKeydown = { key, at: Date.now() };
 }
 
-/** @param {any} [text] */
+/** @param {string} text */
 function feedText(text) {
   for (const ch of text) {
     if (!S.godModeActive) return;

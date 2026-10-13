@@ -198,7 +198,7 @@ function listenForTaps() {
 // and the next reminder for the same appointment replaces it rather than stacking.
 
 /**
- * @param {any} [title]
+ * @param {string} title
  * @param {any} [body]
  * @param {any} [detail]
  * @param {any} [dayMs]

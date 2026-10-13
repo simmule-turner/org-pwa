@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Exports every dated item across a set of documents (SCHEDULED,
  * DEADLINE, a plain active timestamp in a heading's title, and
@@ -92,7 +94,7 @@ function formatIcsDateTimeUtc(date) {
 
 // ---- text escaping (RFC 5545 3.3.11) -----------------------------------
 
-/** @param {any} [text] */
+/** @param {string} text */
 function escapeIcsText(text) {
   return String(text)
     .replace(/\\/g, '\\\\')
@@ -104,7 +106,7 @@ function escapeIcsText(text) {
 /** RFC 5545 3.1 requires content lines folded at 75 octets, each
  *  continuation line starting with a single space -- an unfolded long
  *  line is technically non-conformant, and some real calendar clients
- * @param {any} [line]
+ * @param {string} line
  *  (Outlook among them) are known to reject or mis-parse one. */
 export function foldLine(line) {
   if (line.length <= 75) return line;
@@ -126,8 +128,8 @@ export function foldLine(line) {
  *  real org's own ox-icalendar.el preference), else a stable string
  *  built from the document, heading title, and item kind/index --
  *  sanitized to a safe character set, since a UID must not contain
- * @param {any} [documentId]
- * @param {any} [heading]
+ * @param {string} documentId
+ * @param {Heading} heading
  * @param {any} [kind]
  * @param {any} [index]
  * @param {any} [date]
@@ -176,20 +178,20 @@ const BODY_LIMIT = 400;
 
 /** What a heading adds to its event beyond the title and the time: its :LOCATION: property, its tags (as categories), and the start
  *  of its body text (at most 400 characters, ended with an ellipsis if cut, and without diary-sexp lines, which are not text for
- * @param {any} [heading]
+ * @param {Heading} heading
  *  a person to read). */
 export function eventDetails(heading) {
   /** @param {any} [k] */
   const locationKey = (heading.propertyOrder || []).find((/** @type {any} */ k) => k.toLowerCase() === 'location');
   const location = locationKey ? String(heading.properties[locationKey] || '').trim() : '';
-  /** @param {any} [line] */
+  /** @param {string} line */
   let body = (heading.bodyLines || []).filter((/** @type {any} */ line) => !line.trim().startsWith('%%(')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
   if (body.length > BODY_LIMIT) body = body.slice(0, BODY_LIMIT - 1).trimEnd() + '\u2026';
   return { location: location || null, categories: (heading.tags || []).filter(Boolean), body: body || null };
 }
 
 /** `heading.title` without the active timestamps written in it ("Dentist <2026-10-20 Tue 09:00>" -> "Dentist"): the event's own
- * @param {any} [title]
+ * @param {string} title
  *  start already says when. Falls back to the whole title if nothing else is left. */
 export function titleWithoutTimestamps(title) {
   let text = title;
@@ -231,8 +233,8 @@ export function collectCalendarEvents(docs, opts = /** @type {any} */ ({})) {
   /** @type {any[]} */ const events = [];
   const usedUids = new Set();
   /**
-   * @param {any} [documentId]
-   * @param {any} [heading]
+   * @param {string} documentId
+   * @param {Heading} heading
    * @param {any} [kind]
    * @param {any} [index]
    * @param {any} [date]
@@ -257,10 +259,10 @@ export function collectCalendarEvents(docs, opts = /** @type {any} */ ({})) {
   // wrapper around just the scope heading, reusing walkHeadings exactly
   // as-is rather than a separate, parallel traversal implementation.
   /**
-   * @param {any} [doc]
+   * @param {Doc} doc
    * @param {any} [visit]
    */
-  const walkScope = (doc, visit) => walkHeadings(scope ? { children: [scope] } : doc, visit);
+  const walkScope = (doc, visit) => walkHeadings(/** @type {any} */ (scope ? { children: [scope] } : doc), visit);
 
   // The org-contacts-anniversaries lines found across the docs (within the scope, when there is one): one scan for each distinct
   // line, so a birthday line and an "ANNIVERSARY" line give both, and the same line twice gives it once.
@@ -283,8 +285,8 @@ export function collectCalendarEvents(docs, opts = /** @type {any} */ ({})) {
   // One contact's yearly events. Each repeats every year as ONE event, which cannot carry an age, so the title leaves it out
   // ("Birthday: Jane Doe") and the date goes in the description.
   /**
-   * @param {any} [documentId]
-   * @param {any} [heading]
+   * @param {string} documentId
+   * @param {Heading} heading
    */
   const pushAnniversaries = (documentId, heading) => {
     for (const trigger of contactsTriggers) {

@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: general editor.
 import { deleteTable, insertTable, lastTableInBody } from '../src/body-edit.js';
 import { getPlainTimestampInTitle, setHeadingTags, setPlainTimestampInTitle, setPriority } from '../src/heading-edit.js';
@@ -26,7 +28,7 @@ function completionDocs() {
  *  group (not committed to `heading` until the general editor's own
  *  Save button reads getTags()) -- same uncommitted-until-Save pattern
  *  buildTimestampFieldGroup already uses, so Cancel genuinely discards
- * @param {any} [heading]
+ * @param {Heading} heading
  *  everything, tags included, not just the timestamp fields. */
 export function buildTagsFieldGroup(heading) {
   const wrap = document.createElement('div');
@@ -150,7 +152,7 @@ export function buildTagsFieldGroup(heading) {
  *  wins (matching a plain object's own last-write-wins semantics),
  *  since this UI doesn't have anywhere to show a "duplicate key"
  *  warning inline the way the raw-text editor's onChange validation
- * @param {any} [heading]
+ * @param {Heading} heading
  *  could -- a stated simplification versus that discarded approach. */
 export function buildPropertiesFieldGroup(heading) {
   const wrap = document.createElement('div');
@@ -273,7 +275,7 @@ export function buildPropertiesFieldGroup(heading) {
  *  builders again against the same, still-untouched heading and swaps
  *  the fields container's contents, genuinely restoring the on-entry
  *  values without needing a dedicated reset method built into any of
- * @param {any} [heading]
+ * @param {Heading} heading
  *  these four separate, already-complex widgets. */
 export function openGeneralEditor(heading) {
   const overlay = document.createElement('div');

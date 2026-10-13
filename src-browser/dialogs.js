@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: dialogs.
 import { getHeadingText, setHeadingText } from '../src/body-edit.js';
 import { formatOrgTimestamp } from '../src/org-timestamp.js';
@@ -363,7 +365,7 @@ export function showModalOverlay(overlayEl) {
  *  heading's own body-content rows underneath) and cleared here on both
  *  Cancel and OK. Uses a fixed, unique overlay id so a render() pass
  *  while the popup is already open (from some unrelated trigger) can't
- * @param {any} [heading]
+ * @param {Heading} heading
  *  accidentally open a second, duplicate one. */
 export function openHeadingTextEditor(heading) {
   const originalText = getHeadingText(heading);
@@ -661,7 +663,7 @@ export function openGridChoiceModal(/** @type {any} */ { label, buttons, showKey
     typing.setAttribute('autocorrect', 'off');
     typing.spellcheck = false;
     typing.style.cssText = 'position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;border:0;padding:0;';
-    /** @param {any} [text] */
+    /** @param {string} text */
     const feed = (text) => {
       for (const ch of text) {
         const button = buttons.find((/** @type {any} */ b) => b.key === ch && !b.disabled);

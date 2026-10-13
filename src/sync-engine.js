@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('./types.js').KvAdapter} KvAdapter */
 
 /**
  * Sync engine: reconciles the local outbox (instant, offline-safe writes
@@ -28,14 +29,14 @@
 
 import { getPendingChange, clearPendingChange } from './outbox.js';
 
-/** @param {any} [documentId] */
+/** @param {string} documentId */
 function syncMetaKey(documentId) {
   return 'syncmeta:' + documentId;
 }
 
 /**
- * @param {any} [kvAdapter]
- * @param {any} [documentId]
+ * @param {KvAdapter} kvAdapter
+ * @param {string} documentId
  */
 async function getSyncMeta(kvAdapter, documentId) {
   try {
@@ -49,8 +50,8 @@ async function getSyncMeta(kvAdapter, documentId) {
 }
 
 /**
- * @param {any} [kvAdapter]
- * @param {any} [documentId]
+ * @param {KvAdapter} kvAdapter
+ * @param {string} documentId
  * @param {any} [meta]
  */
 async function setSyncMeta(kvAdapter, documentId, meta) {
@@ -155,12 +156,12 @@ async function syncDocument(/** @type {any} */ { documentId, kvAdapter, diskAdap
 function createInMemoryDiskAdapter() {
   const files = new Map();
   return {
-    /** @param {any} [fileId] */
+    /** @param {string} fileId */
     async read(fileId) {
       return files.has(fileId) ? { ...files.get(fileId) } : null;
     },
     /**
-     * @param {any} [fileId]
+     * @param {string} fileId
      * @param {any} [content]
      */
     async write(fileId, content) {
@@ -168,12 +169,12 @@ function createInMemoryDiskAdapter() {
       files.set(fileId, { content, hash });
       return { hash };
     },
-    /** @param {any} [fileId] */
+    /** @param {string} fileId */
     async exists(fileId) {
       return files.has(fileId);
     },
     /**
-     * @param {any} [fileId]
+     * @param {string} fileId
      * @param {any} [content]
      */
     _simulateExternalEdit(fileId, content) {

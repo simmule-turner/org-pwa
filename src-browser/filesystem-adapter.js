@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('../src/types.js').KvAdapter} KvAdapter */
 /**
  * Real File System Access API implementation of the "disk" adapter
  * interface — read(fileId)/write(fileId, content)/exists(fileId) — that
@@ -16,7 +17,7 @@
 
 import { contentHash } from '../src/sync-engine.js';
 
-/** @param {any} [fileId] */
+/** @param {string} fileId */
 function handleKey(fileId) {
   return 'filehandle:' + fileId;
 }
@@ -42,7 +43,7 @@ async function verifyPermission(handle, mode, { prompt = true } = {}) {
  * under its own filename as documentId. Must be called from a user
  * gesture (click handler) — the File System Access API requires that.
  * Returns the documentId to use with openDocument/saveAndSync.
- * @param {any} [kvAdapter]
+ * @param {KvAdapter} kvAdapter
  */
 export async function pickAndRegisterFile(kvAdapter) {
   // No `types` filter here, deliberately: an earlier attempt used
@@ -64,7 +65,7 @@ export async function pickAndRegisterFile(kvAdapter) {
 
 /**
  * Same idea, for creating a brand new file rather than opening an existing one.
- * @param {any} [kvAdapter]
+ * @param {KvAdapter} kvAdapter
  */
 export async function pickAndRegisterNewFile(kvAdapter, suggestedName = 'untitled.org') {
   const handle = await window.showSaveFilePicker({
@@ -82,9 +83,9 @@ export async function pickAndRegisterNewFile(kvAdapter, suggestedName = 'untitle
   return documentId;
 }
 
-/** @param {any} [kvAdapter] */
+/** @param {KvAdapter} kvAdapter */
 export function createFileSystemAccessAdapter(kvAdapter) {
-  /** @param {any} [documentId] */
+  /** @param {string} documentId */
   async function getHandle(documentId) {
     const result = await kvAdapter.get(handleKey(documentId));
     return result ? result.value : null;
@@ -93,7 +94,7 @@ export function createFileSystemAccessAdapter(kvAdapter) {
   return {
     /** What the browser currently allows for `documentId`, without ever showing a prompt:
      *  'none' (no file by that name has been opened on this device), 'granted', or 'prompt' (known,
-     * @param {any} [documentId]
+     * @param {string} documentId
      *  but access must be granted again, which only a person's own tap can do). */
     async access(documentId) {
       const handle = await getHandle(documentId);
@@ -104,7 +105,7 @@ export function createFileSystemAccessAdapter(kvAdapter) {
     /** `{ prompt: false }` is for background checks: read the file only if the
      *  browser has already granted access, and otherwise return null (nothing to
      *  compare) instead of asking. The default still asks, for anything the
-     * @param {any} [documentId]
+     * @param {string} documentId
      *  person started themselves. */
     async read(documentId, { prompt = true } = {}) {
       const handle = await getHandle(documentId);
@@ -120,7 +121,7 @@ export function createFileSystemAccessAdapter(kvAdapter) {
     },
 
     /**
-     * @param {any} [documentId]
+     * @param {string} documentId
      * @param {any} [content]
      */
     async write(documentId, content) {
@@ -138,7 +139,7 @@ export function createFileSystemAccessAdapter(kvAdapter) {
       return { hash: contentHash(content) };
     },
 
-    /** @param {any} [documentId] */
+    /** @param {string} documentId */
     async exists(documentId) {
       return (await getHandle(documentId)) !== null;
     },

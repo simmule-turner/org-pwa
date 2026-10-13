@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Completion for tags and property keys -- the suggestions the general editor
  * offers while you type, in the spirit of Org's own completion for
@@ -22,12 +24,12 @@ const TAG_CHARS = /^[\p{L}\p{N}_@#%]+$/u;
 
 /**
  * Every heading in `doc`, depth first.
- * @param {any} [doc]
+ * @param {Doc} doc
  */
 function* headingsOf(doc) {
   const stack = [...(doc && doc.children ? doc.children : [])].reverse();
   while (stack.length) {
-    const heading = stack.pop();
+    const heading = /** @type {Heading} */ (stack.pop());
     yield heading;
     for (let i = (heading.children || []).length - 1; i >= 0; i--) stack.push(heading.children[i]);
   }
@@ -35,7 +37,7 @@ function* headingsOf(doc) {
 
 /**
  * The tags in a `:a:b:` list (a #+FILETAGS: value).
- * @param {any} [text]
+ * @param {string} text
  */
 function tagsInColonList(text) {
   return String(text == null ? '' : text)
@@ -49,7 +51,7 @@ function tagsInColonList(text) {
  * (`home(h)`), groups (`{ Ctx : @a @b }`, `[ GTD : x y ]`) -- the group name
  * and its members are all tags -- and skips the syntax words (`:startgroup`,
  * `:newline`, `:`).
- * @param {any} [doc]
+ * @param {Doc} doc
  */
 function declaredTagsOf(doc) {
   const names = [];

@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: audio recording.
 import { generateRecordingFilename } from '../src/attach.js';
 import { S } from './app-state.js';
@@ -14,7 +16,7 @@ import { hideModalOverlay, menuButton } from './ui-widgets.js';
  *  recording panel for `heading`, resetting any state left over from
  *  a previous recording session (own defensive cleanup, in case a
  *  prior session was ever abandoned mid-flow without going through
- * @param {any} [heading]
+ * @param {Heading} heading
  *  discardAudioRecording's own explicit cleanup). */
 export async function openAudioRecordingPanel(heading) {
   const storage = await ensureAttachmentsStorage(); // a local document asks for its attachments folder here, once
@@ -204,7 +206,7 @@ export function stopAudioRecording() {
  *  core a regular picked-file attachment already goes through. The
  *  filename itself is generated fresh (generateRecordingFilename,
  *  see attach.js), since a recording -- unlike a picked file -- never
- * @param {any} [heading]
+ * @param {Heading} heading
  *  had a name of its own to begin with. */
 export async function saveAudioRecording(heading) {
   const blobUrl = S.recordedBlobUrl;

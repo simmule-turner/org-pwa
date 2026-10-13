@@ -117,7 +117,7 @@ function createCaldavClient({ url, username, password, kind = 'calendar', fetch:
   return {
     /**
      * Writes (creates or replaces) one event file (or contact file).
-     * @param {any} [name]
+     * @param {string} name
      * @param {any} [ics]
      */
     async put(name, ics) {
@@ -126,7 +126,7 @@ function createCaldavClient({ url, username, password, kind = 'calendar', fetch:
     },
     /**
      * Removes one event file. Already gone counts as removed.
-     * @param {any} [name]
+     * @param {string} name
      */
     async remove(name) {
       const response = await request('DELETE', name);

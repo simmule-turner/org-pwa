@@ -101,7 +101,7 @@ export async function reloadCurrentDocumentFromDisk() {
  * already calling setStatus with a clear, label-specific error --
  * callers just check `.ok` and bail out if false, no separate error
  * text of their own to construct for any of these shared failure modes.
- * @param {any} fileId
+ * @param {string} fileId
  */
 export async function writeToOtherFile(fileId, /** @type {any} */ { label, allowMissing, mutate }) {
   // Same trap capture's own version of this check already described:
@@ -282,8 +282,8 @@ export function openConflictResolver(/** @type {any} */ { documentId, plan }) {
     modal.appendChild(list);
 
     /**
-     * @param {any} [label]
-     * @param {any} [lines]
+     * @param {string} label
+     * @param {string[]} lines
      * @param {any} [tint]
      */
     const linesBlock = (label, lines, tint) => {
@@ -361,7 +361,7 @@ export function openConflictResolver(/** @type {any} */ { documentId, plan }) {
       row.className = 'panel-row';
       row.style.gap = '6px';
       /**
-       * @param {any} [label]
+       * @param {string} label
        * @param {any} [value]
        */
       const mk = (label, value) => {

@@ -84,7 +84,7 @@ const DOLLAR_VALID_FOLLOW_RE = /[\s.,;:!?([{)\]}'"]/;
  *      classifies '-' as "symbol" syntax, which falls outside every
  *      class the regex actually checks -- this app excludes it
  *      explicitly instead, to get the same observable behavior
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [pos]
  *      without needing Emacs's own syntax table to fall back on */
 function matchLatexFragmentAt(text, pos) {
@@ -170,7 +170,7 @@ function makeLatexPlaceholder(index) {
  *  placeholder-substituted text, re-split on '\n'); `fragments` is
  *  the ordered list of { source, displayMode } that parseInline's own
  *  placeholder recognition looks up by index when rendering each
- * @param {any} [lines]
+ * @param {string[]} lines
  *  line (pass it through via opts.latexFragments). */
 function extractLatexFragments(lines) {
   const fullText = lines.join('\n');
@@ -226,7 +226,7 @@ function extractLatexFragments(lines) {
 const FOOTNOTE_START_RE = /^\[fn:([A-Za-z0-9_-]*)/;
 
 /**
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [pos]
  */
 function matchFootnoteAt(text, pos) {
@@ -309,7 +309,7 @@ const BARE_SCRIPT_RE = /^[+-]?[A-Za-z0-9]+/;
  * very start of a line, or after whitespace, is always literal, in
  * every mode, matching how `a_b` needs the `a` immediately before it.
  * Returns { kind, content, length } or null.
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [pos]
  * @param {any} [mode]
  */
@@ -342,7 +342,7 @@ function isEmphasisMarker(ch) {
 /**
  * Attempts to match a complete emphasis span (open marker ... close marker)
  * starting exactly at `pos`. Returns { marker, content, length } or null.
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [pos]
  */
 function matchEmphasisAt(text, pos) {
@@ -388,7 +388,7 @@ function matchEmphasisAt(text, pos) {
  * first below as the tiebreak for the rare remaining overlap (a
  * hyphen/paren/quote sitting immediately before the underscore, which
  * satisfies both rules at once).
- * @param {any} [text]
+ * @param {string} text
  */
 /** @returns {any} */ function parseInline(/** @type {any} */ text, opts = {}) {
   const subSuperscriptMode = /** @type {any} */ (opts).subSuperscriptMode || 't';
@@ -535,7 +535,7 @@ function matchEmphasisAt(text, pos) {
  *  heading title, list item, or table cell. */
 const LINE_BREAK_MARKER_RE = /\\\\\s*$/;
 
-/** @param {any} [line] */
+/** @param {string} line */
 function stripLineBreakMarker(line) {
   return line.replace(LINE_BREAK_MARKER_RE, '');
 }

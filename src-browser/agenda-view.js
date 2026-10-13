@@ -128,8 +128,8 @@ export function buildAgendaEffortPanel() {
   const allowed = getAllowedEffortValues({ doc: S.state.doc, globalProperties: getGlobalProperties(S.state.localVariables) });
   const values = allowed.length > 0 ? allowed : DEFAULT_EFFORT_FILTER_VALUES;
   /**
-   * @param {any} [op]
-   * @param {any} [text]
+   * @param {any} op
+   * @param {string} text
    */
   const applyFilter = (op, text) => {
     S.agendaEffortFilter = op && text ? { op, minutes: parseOrgDuration(text), text } : null;
@@ -221,7 +221,7 @@ export function renderAgendaView() {
   controls.style.flexWrap = 'wrap';
 
   /**
-   * @param {any} [label]
+   * @param {string} label
    * @param {any} [onClick]
    * @param {any} [isActive]
    * @param {any} [ariaLabel]

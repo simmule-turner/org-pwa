@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: inline render.
 import { isAudioFilename } from '../src/attach.js';
 import { customLink, links as customLinks } from './extension-links.js';
@@ -16,7 +18,9 @@ import { imagePlaceholder, renderLatexNode } from './render-helpers.js';
 import { render } from './render.js';
 import { imageDataUrlCache } from './singletons.js';
 
-/** @param {any} [node] */
+/** @param {any} [node]
+ * @param {Heading | null} [heading]
+ */
 export function renderImageNode(node, heading = null) {
   const inlineImagesOn = S.state.startupConfig && S.state.startupConfig.imageVisibility === 'inlineimages';
 
@@ -101,7 +105,9 @@ export function renderImageNode(node, heading = null) {
   return imagePlaceholder(node.target);
 }
 
-/** @param {any} [node] */
+/** @param {any} [node]
+ * @param {Heading | null} [heading]
+ */
 export function renderLinkNode(node, linkContext = /** @type {any} */ (null), heading = null) {
   const label = node.description || node.target;
   const targetDoc = linkContext ? linkContext.doc : S.state.doc;
@@ -207,9 +213,9 @@ export function renderLinkNode(node, linkContext = /** @type {any} */ (null), he
  *  reason to pull it down before someone's actually asked to hear
  *  it) and replaces itself with a real, native
  *  `<audio controls autoplay>` element -- the browser's own actual
- * @param {any} [target]
- * @param {any} [filename]
- * @param {any} [heading]
+ * @param {any} target
+ * @param {string} filename
+ * @param {Heading | null} heading
  *  play/pause/seek/scrub UI, rather than a hand-built equivalent. */
 export function renderAudioAttachmentLink(target, filename, heading) {
   const btn = document.createElement('a');
@@ -302,7 +308,9 @@ export function renderFootnoteRefNode(node, linkContext = /** @type {any} */ (nu
  *  (smaller, italic, a superscript label) rather than making it
  *  something to tap and jump to -- it already IS the definition, not a
  * @param {any} [node]
- *  reference to one elsewhere. */
+ *  reference to one elsewhere.
+ * @param {Heading | null} [heading]
+ */
 export function renderFootnoteDefNode(node, linkContext = /** @type {any} */ (null), heading = null) {
   const wrap = document.createElement('span');
   const labelEl = document.createElement('sup');
@@ -333,9 +341,11 @@ export function currentInlineOpts() {
  *  no heading-owned attachments of its own to resolve), is threaded
  *  through to renderImageNode so an attachment: link can resolve
  *  against the right heading's own :ID: (or an ancestor's, via
- * @param {any} [nodes]
- * @param {any} [container]
- *  resolveAttachmentTarget's own inheritance). */
+ * @param {any} nodes
+ * @param {HTMLElement} container
+ *  resolveAttachmentTarget's own inheritance).
+ * @param {Heading | null} [heading]
+ */
 export function renderInlineNodes(nodes, container, linkContext = /** @type {any} */ (null), heading = null) {
   for (const node of nodes) {
     switch (node.type) {

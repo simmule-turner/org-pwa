@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * #+INCLUDE: "path" [block-type] [language-or-backend] [:lines "N-M"] [:minlevel N]
  *
@@ -88,7 +90,7 @@ function parseIncludeDirective(value) {
  *  the very start up to (exclusive) line M; "N-" means from line N to
  *  the file's own actual end (inclusive, since there's no upper bound
  *  to exclude there). `spec` of null/'' returns every line
- * @param {any} [lines]
+ * @param {string[]} lines
  * @param {any} [spec]
  *  unchanged. */
 function applyLineRange(lines, spec) {
@@ -158,7 +160,7 @@ async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlev
  *  real org's own further quirk of merging trailing body text into
  *  whatever the last included element happened to be, a well-defined,
  *  predictable placement being preferable to replicating an
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [fetchPath]
  * @param {any} [parseOrgFn]
  *  incidental artifact of real org's own internal merging. */
@@ -229,7 +231,7 @@ async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlev
  *  root's own keywords, or any heading's own body text, at any depth.
  *  expandIncludes' own cheap-no-op fast path for the overwhelmingly
  *  common case (a document with no includes at all shouldn't pay for
- * @param {any} [doc]
+ * @param {Doc} doc
  *  rebuilding every single heading object just to find that out). */
 function hasAnyInclude(doc) {
   if ((doc.keywords || []).some((/** @type {any} */ k) => k.key.toUpperCase() === 'INCLUDE')) return true;
@@ -243,7 +245,7 @@ function hasAnyInclude(doc) {
 }
 
 /**
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [fetchPath]
  * @param {any} [parseOrgFn]
  */

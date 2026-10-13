@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: keyboard focus.
 import { findAncestorPath } from '../src/archive-model.js';
 import { flattenVisibleRows } from '../src/outline-view-model.js';
@@ -80,7 +82,7 @@ export function setKeyboardFocusToRow(row) {
  *  being updated correctly. This is what made C-c C-n/C-c C-p (and
  *  friends) look like they weren't moving at all while focus was on
  *  body text. `heading` may be null (Escape's own "clear focus
- * @param {any} [heading]
+ * @param {Heading | null} heading
  *  entirely" case). */
 export function setKeyboardFocusToHeading(heading) {
   S.keyboardFocusedHeading = heading;
@@ -275,7 +277,7 @@ export function moveToParentHeading() {
  *  matched by lineIndex -- an in-place edit doesn't move where the
  *  content itself starts within the heading's own body. No-op if
  *  keyboard focus wasn't actually on `oldRowType`-at-`oldLineIndex`
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [oldRowType]
  * @param {any} [oldLineIndex]
  *  to begin with. */
@@ -301,7 +303,7 @@ export function resyncKeyboardFocusToBodyRow(heading, oldRowType, oldLineIndex) 
  *  (only if it actually belongs to `heading`) before running
  *  `mutate`, then re-syncs it afterward. Returns whatever `mutate`
  *  itself returns, so this can wrap a call whose own return value the
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [mutate]
  *  caller still needs (e.g. a newly-inserted node). */
 export function withKeyboardFocusPreserved(heading, mutate) {

@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Pictures for HTML export: a standalone page has nowhere to find `[[file:pic.png]]`, so every picture this app can
 // read (GitHub and WebDAV files, attachments) is embedded as a data URL. Anything else keeps its link.
 import { guessImageMimeType, isExternalUrl, resolveAttachmentTarget, resolveImagePath } from '../src/link-resolve.js';
@@ -11,7 +13,7 @@ const IMAGE_LINK_RE = /\[\[((?:file:|attachment:)?[^\]\n]+?\.(?:png|jpe?g|gif|sv
 
 /**
  * The headings of the export, depth first: the whole document or the subtree under `scope`.
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [scope]
  */
 function headingsToScan(doc, scope) {
@@ -28,7 +30,7 @@ function headingsToScan(doc, scope) {
 
 /**
  * Map of image link target -> data URL for every picture in the export that can be read.
- * @param {any} [doc]
+ * @param {Doc} doc
  */
 export async function collectExportImages(doc, scope = /** @type {any} */ (null)) {
   const images = new Map();

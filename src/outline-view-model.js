@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 
 /**
  * Outline view-model: turns a document AST + fold state into the flat row
@@ -54,7 +56,7 @@ const CHECKBOX_CYCLE_WITH_CHILDREN = [' ', '-', 'X'];
  * numbering (null for unordered items) — computed per items-array (each
  * nested list numbers independently) and reset by a [@N] start-value
  * cookie, so callers don't need to re-derive numbering themselves.
- * @param {any} [doc]
+ * @param {Doc} doc
  */
 function flattenVisibleRows(doc) {
   /** @type {any[]} */ const rows = [];
@@ -156,7 +158,7 @@ function flattenVisibleRows(doc) {
  * cycling — so it stays unguarded here. Without it, archived content
  * would become permanently unreachable in a touch UI with no keyboard
  * modifiers to fall back on, which was an explicit requirement.
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 function toggleFold(heading) {
   heading.collapsed = !heading.collapsed;
@@ -177,8 +179,8 @@ function toggleFold(heading) {
  *  file's entire set of parallel #+TODO: workflows (real org's own
  *  actual multi-workflow model; see todo-cycle.js's own header
  *  comment). A blank heading starts in the file's first-defined
- * @param {any} [doc]
- * @param {any} [heading]
+ * @param {Doc} doc
+ * @param {Heading} heading
  * @param {any} [globalDefault]
  * @param {any} [opts]
  *  sequence, matching real org's own actual default. */
@@ -197,8 +199,8 @@ function cycleHeadingTodo(doc, heading, globalDefault, opts) {
  * as calling cycleHeadingTodo repeatedly until it wraps back to null —
  * the "Mark as TODO" action button is meant to work as an on/off toggle,
  * not force stepping through every state in between.
- * @param {any} [doc]
- * @param {any} [heading]
+ * @param {Doc} doc
+ * @param {Heading} heading
  * @param {any} [globalDefault]
  */
 function toggleHeadingTodo(doc, heading, globalDefault) {
@@ -215,7 +217,7 @@ function toggleHeadingTodo(doc, heading, globalDefault) {
  * serialization — mutating `item.checkbox` alone would be invisible to
  * serializeOrg, which reads bodyLines, not the derived body tree. Requires
  * `item.lineIndex` (set by body-parser.js) to know which raw line to patch.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [item]
  */
 function cycleItemCheckbox(heading, item) {

@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * ASCII export -- real org-mode's ox-ascii backend, for the core,
  * commonly-used cases.
@@ -75,7 +77,7 @@ export function normalizeAsciiCharset(value) {
 const ENTITY_RE = /\\(there4|sup[123]|frac[13][24]|[a-zA-Z]+)(\{\}|(?![A-Za-z]))/g;
 
 /** Entities (`\alpha`, `\rarr{}`) become the character set's own spelling; in UTF-8 `---`, `--` and `...` become the
- * @param {any} [text]
+ * @param {string} text
  *  dash and ellipsis characters, as ox-ascii's special strings do. Code and verbatim text never reaches here. */
 function substituteCharacters(text) {
   let t = text.replace(ENTITY_RE, (/** @type {any} */ whole, /** @type {string} */ name) => {
@@ -92,7 +94,7 @@ const LINK_RE = /\[\[([^\]]+)\](?:\[([^\]]+)\])?\]/g;
 
 /** Strips org's own link bracket syntax down to readable plain text --
  *  used for content NOT run through parseInline (kept exported for
- * @param {any} [text]
+ * @param {string} text
  *  backwards compatibility / direct testing). */
 function stripLinksForAscii(text) {
   return text.replace(LINK_RE, (/** @type {any} */ _, /** @type {any} */ target, /** @type {any} */ description) => (description ? `${description} (${target})` : target));
@@ -105,7 +107,7 @@ function stripLinksForAscii(text) {
  *  is meant for a paragraph's already-joined prose, not for content
  *  that depends on preserving original spacing). Returns an array of
  *  wrapped lines; an empty/whitespace-only input returns an empty
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [width]
  *  array, not a single blank-line entry. */
 function wrapText(text, width) {
@@ -132,7 +134,7 @@ function wrapText(text, width) {
 /** @type {any[]} */ let footnoteDefinitionsAscii = [];
 let anonymousFootnoteCounterAscii = 0;
 
-/** @param {any} [label] */
+/** @param {string} label */
 function footnoteLabelAscii(label) {
   if (label !== null) return label;
   anonymousFootnoteCounterAscii++;
@@ -193,7 +195,7 @@ function renderInlineNodeAscii(node) {
   }
 }
 
-/** @param {any} [text] */
+/** @param {string} text */
 function renderTextAscii(text) {
   return renderInlineListAscii(parseInline(text));
 }
@@ -220,7 +222,7 @@ function nextSectionNumber(level) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [level]
  */
 function renderHeadingLineAscii(heading, level) {
@@ -318,7 +320,7 @@ function renderParagraphAscii(node, indent, width) {
  *  Matches an optional sign, digits, and an optional decimal part --
  *  deliberately simple rather than a full numeric-literal grammar,
  *  since this only has to be good enough to bias a column's own
- * @param {any} [text]
+ * @param {string} text
  *  alignment one way or the other, not validate the value itself. */
 function looksNumeric(text) {
   return /^[+-]?\d+(\.\d+)?$/.test(text.trim());
@@ -328,7 +330,7 @@ function looksNumeric(text) {
  *  matching real org's own org-ascii--justify-string. A value already
  *  at or beyond `width` (a cell content computed the width FROM in
  *  the first place, so this is normally exact, never truncated) is
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [width]
  * @param {any} [alignRight]
  *  returned unchanged rather than clipped. */
@@ -346,7 +348,7 @@ function justify(text, width, alignRight) {
  *  "trees"), matching how hyphenated words are conventionally broken
  *  in running text. Regular paragraph/list wrapping (wrapText itself)
  *  doesn't need this -- it's specific to the tighter, fixed-width
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [width]
  *  constraint an explicit table column width actually creates. */
 function wrapTableCellAscii(text, width) {
@@ -475,7 +477,7 @@ function renderTableAscii(table, indent) {
 
 /** Strips org's own comma-escape convention from one block content
  *  line for display -- see export-html.js's own stripCommaEscape for
- * @param {any} [line]
+ * @param {string} line
  *  the full reasoning; the same fix, applied here too. */
 function stripCommaEscape(line) {
   return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
@@ -483,7 +485,7 @@ function stripCommaEscape(line) {
 
 /**
  * The frame ox-ascii draws around example blocks, source blocks and fixed-width lines.
- * @param {any} [lines]
+ * @param {string[]} lines
  * @param {any} [indent]
  */
 function boxLines(lines, indent) {
@@ -493,7 +495,7 @@ function boxLines(lines, indent) {
 
 /**
  * The nodes of a block's lines (comma escapes undone), for the block kinds whose content is Org text.
- * @param {any} [lines]
+ * @param {string[]} lines
  */
 function parseBlockContent(lines) {
   const doc = parseOrg('* x\n' + lines.map(stripCommaEscape).join('\n'));
@@ -518,7 +520,7 @@ function parseBlockContent(lines) {
 }
 
 /** ox-ascii centres each line of a centre block on the text width (less the base margin), but never left of the
- * @param {any} [lines]
+ * @param {string[]} lines
  * @param {any} [indent]
  * @param {any} [width]
  *  margin. Emacs pads with tabs; spaces are used here so the file reads the same everywhere. */
@@ -616,7 +618,7 @@ function renderParagraphRuns(node, indent, width) {
 }
 
 /**
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [levelOffset]
  * @param {any} [width]
  * @param {any} [out]
@@ -641,7 +643,7 @@ function renderHeadingAscii(heading, levelOffset, width, out) {
  *  renderHeadingLineAscii's own nextSectionNumber does, but run
  *  ahead of time, before the real render pass, specifically so the
  *  TOC -- which has to appear BEFORE the headings themselves in the
- * @param {any} [headings]
+ * @param {Heading[]} headings
  * @param {any} [level]
  * @param {any} [numbers]
  * @param {any} [out]
@@ -660,7 +662,7 @@ function collectHeadingsForToc(headings, level, numbers, out) {
  *  followed by one line per heading -- dot-leader indentation
  *  matching depth (real org's own "make-string (1- indent) '.'"
  *  convention, here approximated as literal repeated dots), each
- * @param {any} [headings]
+ * @param {Heading[]} headings
  * @param {any} [toc]
  * @param {any} [numberingEnabled]
  *  prefixed with its own section number when numbering is on. */
@@ -692,7 +694,7 @@ function renderToc(headings, toc, numberingEnabled) {
  * `numbered` (default true, matching real org's own default): whether
  * headings get section numbers and a Table of Contents is generated
  * at all -- real org's own #+OPTIONS: num:nil turns this off.
- * @param {any} [doc]
+ * @param {Doc} doc
  */
 export function exportToAscii(doc, scope = /** @type {any} */ (null), textWidth = 72, { charset = 'ascii' } = {}) {
   charsetAscii = CHARSETS[normalizeAsciiCharset(charset)];

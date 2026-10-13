@@ -7,7 +7,7 @@ import { setStatus } from './editing.js';
 import { platform } from './platform.js';
 
 /**
- * @param {any} [name]
+ * @param {string} name
  * @param {any} [content]
  * @param {any} [mimeType]
  */

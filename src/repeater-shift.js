@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Real org's own repeater-shift-on-DONE behavior: completing a heading
  * with a repeating SCHEDULED and/or DEADLINE timestamp doesn't actually
@@ -108,7 +110,7 @@ function shiftTimestampString(raw, now) {
  * LOGBOOK logging should treat this as an immediate, follow-up
  * DONE-to-TODO transition too (the heading isn't actually staying
  * done, so a CLOSED timestamp shouldn't remain on it).
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [sequence]
  */
 function applyRepeaterShiftOnDone(heading, sequence, now = new Date()) {

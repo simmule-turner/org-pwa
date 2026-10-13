@@ -94,7 +94,7 @@ const VAR_ASSIGN_RE = /([A-Za-z_$][\w$]*)=("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[
 
 /**
  * A table cell as a value: numbers become numbers, everything else stays text.
- * @param {any} [text]
+ * @param {string} text
  */
 function cellValue(text) {
   const t = text.trim();
@@ -102,8 +102,8 @@ function cellValue(text) {
 }
 
 /** The rows of the table named by a `#+NAME:` line in `lines`, or null. Rule
- * @param {any} [lines]
- * @param {any} [name]
+ * @param {string[]} lines
+ * @param {string} name
  *  rows are left out. */
 export function findNamedTable(lines, name) {
   const nameRe = new RegExp('^\\s*#\\+NAME:\\s*' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$', 'i');
@@ -165,7 +165,7 @@ function cellText(v) {
 
 /** @param {any} [cells] */
 const tableLine = (cells) => '| ' + cells.map(cellText).join(' | ') + ' |';
-/** @param {any} [text] */
+/** @param {string} text */
 const fixedWidth = (text) => String(text).split(/\r?\n/).map((l) => (l === '' ? ':' : ': ' + l));
 
 /** The lines to put under `#+RESULTS:` for a value (or for collected console
@@ -219,7 +219,7 @@ export const RESULTS_LINE_RE = /^\s*#\+RESULTS(\[[^\]]*\])?:/i;
 
 /**
  * Where the existing results body ends (exclusive), for a `#+RESULTS:` line at `at`.
- * @param {any} [lines]
+ * @param {string[]} lines
  * @param {any} [at]
  */
 export function resultsEnd(lines, at) {

@@ -179,7 +179,7 @@ const ORG_WEATHER_RE = /^%%\(org-weather\)\s*$/;
 
 /** True if `line` is exactly the %%(org-weather) standalone-line
  *  trigger -- same self-contained-line convention as
- * @param {any} [line]
+ * @param {string} line
  *  diary-sexp.js's own isDiaryXxxLine detectors. */
 function isOrgWeatherLine(line) {
   return ORG_WEATHER_RE.test(line.trim());

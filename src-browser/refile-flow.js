@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: refile flow.
 import { shiftLevels } from '../src/archive-model.js';
 import { removeHeading } from '../src/heading-edit.js';
@@ -77,7 +79,7 @@ export async function loadRefileTargetDocs(targetsSpec) {
  * and uses the same write-target-before-remove-from-source transaction
  * safety archiveHeadingToLocation already established -- a failed
  * write to the target file leaves the source completely untouched.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [targetDocumentId]
  * @param {any} [targetOutlinePath]
  */

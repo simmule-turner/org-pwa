@@ -44,7 +44,7 @@ function authHeader(config) {
   return { Authorization: `Basic ${encoded}` };
 }
 
-/** @param {any} [path] */
+/** @param {string} path */
 function encodePath(path) {
   return path
     .split('/')
@@ -78,8 +78,8 @@ function base64ToArrayBuffer(base64) {
 }
 
 /**
- * @param {any} [config]
- * @param {any} [path]
+ * @param {any} config
+ * @param {string} path
  */
 function fileUrl(config, path) {
   const base = config.baseUrl.replace(/\/+$/, '');
@@ -98,7 +98,7 @@ function requireConfig(getConfig) {
 
 /** Wraps fetch so a CORS-blocked or otherwise unreachable request
  *  surfaces as an explanatory error instead of a bare "Failed to fetch"
- * @param {any} [url]
+ * @param {string} url
  * @param {any} [opts]
  *  that gives no hint about what's actually wrong. */
 async function fetchWithHint(url, opts) {
@@ -149,8 +149,8 @@ function webdavErrorMessage(res) {
  *  narrowly checking for just one. Only a genuine, unexpected failure
  *  (401/403/500/...) actually throws. `path` itself (the file, not a
  *  directory) is never MKCOL'd -- only the directory components
- * @param {any} [config]
- * @param {any} [path]
+ * @param {any} config
+ * @param {string} path
  *  before its own final segment. */
 async function ensureIntermediateDirectories(config, path) {
   const segments = path.split('/');
@@ -209,7 +209,7 @@ function baseUrlPath(config) {
 
 /** @param {any} [getConfig] */
 export function createWebdavAdapter(getConfig) {
-  /** @param {any} [fileId] */
+  /** @param {string} fileId */
   async function readImpl(fileId) {
     const config = requireConfig(getConfig);
     const res = await fetchWithHint(fileUrl(config, fileId), {
@@ -227,7 +227,7 @@ export function createWebdavAdapter(getConfig) {
   /** Reads `fileId` as binary content (base64-encoded), for an image or
    *  any other non-text file -- separate from readImpl's own text
    *  decoding, which would corrupt binary data. Returns null for a 404,
-   * @param {any} [fileId]
+   * @param {string} fileId
    *  matching readImpl's own "not found" convention. */
   async function readBinaryImpl(fileId) {
     const config = requireConfig(getConfig);
@@ -243,7 +243,7 @@ export function createWebdavAdapter(getConfig) {
   }
 
   /**
-   * @param {any} [fileId]
+   * @param {string} fileId
    * @param {any} [content]
    */
   async function writeImpl(fileId, content) {
@@ -281,7 +281,7 @@ export function createWebdavAdapter(getConfig) {
    *  otherwise identical to writeImpl's own precondition logic, just
    *  decoding back to real binary bytes first (via
    *  base64ToArrayBuffer) rather than sending the base64 text itself
-   * @param {any} [fileId]
+   * @param {string} fileId
    * @param {any} [base64Content]
    *  as the PUT body, which would corrupt the stored file. */
   async function writeBinaryImpl(fileId, base64Content) {
@@ -317,7 +317,7 @@ export function createWebdavAdapter(getConfig) {
    *  gone) is treated as success, not an error -- the end state (file
    *  gone) is already true, matching the GitHub adapter's own
    *  deleteImpl and how a delete action in this app generally behaves
-   * @param {any} [fileId]
+   * @param {string} fileId
    *  when there's nothing there to remove. */
   async function deleteImpl(fileId) {
     const config = requireConfig(getConfig);
@@ -380,7 +380,7 @@ export function createWebdavAdapter(getConfig) {
     delete: deleteImpl,
     list: listImpl,
     readBinary: readBinaryImpl,
-    /** @param {any} [fileId] */
+    /** @param {string} fileId */
     async exists(fileId) {
       const config = requireConfig(getConfig);
       const res = await fetchWithHint(fileUrl(config, fileId), {

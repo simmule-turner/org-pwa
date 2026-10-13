@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Header arguments of a source block, with the inheritance Org has: the defaults, then the
  * `header-args` and `header-args:LANG` properties (set for the whole file with
@@ -27,7 +29,7 @@ const RESULTS_GROUPS = [
 const EXPORTS_GROUPS = [['code', 'results', 'both', 'none']];
 
 /** `:name value :name value` -> [[name, value], ...]. Splits only at a colon that follows a space or tab and is not
- * @param {any} [text]
+ * @param {string} text
  *  inside quotes or brackets, as Org does. Names are lower-case; values are trimmed, and still quoted. */
 export function splitHeaderArgs(text) {
   const s = String(text || '');
@@ -148,9 +150,9 @@ const keyEq = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
 /** The value of property `name` for a place in the document: the file-level `#+PROPERTY:` lines first, then every
  *  heading from the top one down to the block's own. At each place `name` replaces what came before and `name+`
- * @param {any} [doc]
- * @param {any} [ancestors]
- * @param {any} [name]
+ * @param {Doc} doc
+ * @param {any} ancestors
+ * @param {string} name
  *  appends to it. */
 export function inheritedProperty(doc, ancestors, name) {
   /** @type {string | null} */

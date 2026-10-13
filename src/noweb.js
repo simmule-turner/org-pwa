@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Noweb references: `<<name>>` inside a source block is replaced by the body of the block named `name`
  * (`#+NAME:`), or by the bodies of all blocks whose `:noweb-ref` is `name`, or by the text of the heading whose
@@ -34,7 +36,7 @@ export function nowebAllows(args, context) {
 
 /**
  * The text with every `<<reference>>` removed.
- * @param {any} [text]
+ * @param {string} text
  */
 export const stripReferences = (text) => text.replace(BARE_REF_RE, '');
 
@@ -43,7 +45,7 @@ const isStrip = (args) => String((args && args.noweb) || '').split(/\s+/).includ
 
 /**
  * The text of a heading's subtree below its heading line, planning line and property drawer.
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 function headingText(heading) {
   const lines = serializeOrg({ type: 'document', keywords: [], bodyLines: [], children: [heading] }).replace(/\n+$/, '').split('\n');
@@ -57,9 +59,9 @@ function headingText(heading) {
 }
 
 /**
- * @param {any} [blocks]
- * @param {any} [doc]
- * @param {any} [id]
+ * @param {any[]} blocks
+ * @param {Doc} doc
+ * @param {string} id
  */
 const findHeadingByCustomId = (blocks, doc, id) => {
   /** @param {any} [list] */
@@ -107,14 +109,14 @@ export function expandNoweb(doc, blocks, block, { context = 'eval', wrapChunk = 
    */
   const bodyOf = (b, stack) => (nowebAllows(b.args, 'eval') ? expandBlock(b, stack) : b.body);
   /**
-   * @param {any} [id]
+   * @param {string} id
    * @param {any} [stack]
    * @param {any} [wrap]
    */
   const resolve = (id, stack, wrap) => {
     /** @param {any} [b] */
     const chunk = (b) => (wrap ? wrap(b, bodyOf(b, stack)) : bodyOf(b, stack));
-    const heading = findHeadingByCustomId(blocks, doc, id);
+    const heading = findHeadingByCustomId(blocks, /** @type {Doc} */ (doc), id);
     if (heading) return headingText(heading);
     const named = blocks.find((b) => b.name === id && !b.commented);
     if (named) return chunk(named);

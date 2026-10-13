@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: attachments flow.
 import { deleteProperty, getProperty, setProperty } from '../src/archive-model.js';
 import { addAttachTag, attachmentSizeCheck, attachmentDir, prefersInAppCamera, attachmentDirFromProperty, ownAttachmentDirectory, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
@@ -65,7 +67,7 @@ async function requireAttachmentStorage() {
  * on both iOS and Android already offers the camera as one of its own
  * options, so a separate, dedicated camera-only entry point isn't
  * needed here.
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 export async function attachFileToHeading(heading) {
   if (!(await requireAttachmentStorage())) return;
@@ -86,7 +88,7 @@ export async function attachFileToHeading(heading) {
   await pickAndUpload(heading);
 }
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 async function pickAndUpload(heading) {
   let picked;
   try {
@@ -117,7 +119,7 @@ const unavailable = (what) =>
 
 /**
  * The attachments of `heading`, read from its folder. Returns the names, or null after saying why it could not.
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 export async function attachmentFiles(heading) {
   if (!attachmentsAvailable()) {
@@ -143,7 +145,7 @@ export async function attachmentFiles(heading) {
  *  availability assumption as attachFileToHeading's own caller-side
  *  check (this itself doesn't re-check, since both current callers
  *  already have): only ever called once GitHub/WebDAV is confirmed
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [picked]
  *  connected. */
 export async function uploadAttachmentToHeading(heading, picked) {
@@ -213,8 +215,8 @@ export async function uploadAttachmentToHeading(heading, picked) {
  *  a clear explanation itself and returns null, so both callers can
  *  just check for that and return early rather than duplicating each
  *  of these three failure cases (and their own explanatory messages)
- * @param {any} [target]
- * @param {any} [heading]
+ * @param {any} target
+ * @param {Heading | null} heading
  *  a second time. */
 export async function resolveAndReadAttachment(target, heading) {
   const filename = target.replace(/^attachment:/i, '');
@@ -251,8 +253,8 @@ export async function resolveAndReadAttachment(target, heading) {
 /** Downloads `target` to the device -- unconditionally, regardless of
  *  file type, the actual behavior "Open" used to have before this
  *  fix, moved here and given its own honest name now that Open itself
- * @param {any} [target]
- * @param {any} [heading]
+ * @param {any} target
+ * @param {Heading} heading
  *  means something different. */
 export async function saveAttachmentLink(target, heading) {
   setStatus('Downloading attachment\u2026');
@@ -272,8 +274,8 @@ export async function saveAttachmentLink(target, heading) {
  *  which types, and why HTML/SVG are deliberately excluded) --
  *  falling back to the exact same download behavior saveAttachmentLink
  *  has only when no viewer is available for the file type at all,
- * @param {any} [target]
- * @param {any} [heading]
+ * @param {any} target
+ * @param {Heading | null} heading
  *  since there's nothing else useful to do with it. */
 export async function openAttachmentLink(target, heading) {
   setStatus('Opening attachment\u2026');
@@ -312,8 +314,8 @@ export async function openAttachmentLink(target, heading) {
  *  delete happens first: if it fails, the in-document link is left
  *  alone too, rather than ending up in a state where the app thinks
  *  the attachment is gone but the actual file is still sitting on
- * @param {any} [heading]
- * @param {any} [filename]
+ * @param {Heading} heading
+ * @param {string} filename
  *  GitHub/WebDAV. */
 export async function deleteAttachment(heading, filename) {
   if (!attachmentsAvailable()) {
@@ -349,7 +351,7 @@ export async function deleteAttachment(heading, filename) {
 }
 
 /** org-attach-delete-all: every file in the heading's folder, after one confirmation, then the links to them and the ATTACH tag.
- * @param {any} [heading]
+ * @param {Heading} heading
  *  A backend with no folder delete (GitHub) removes them one at a time. */
 export async function deleteAllAttachments(heading) {
   const names = await attachmentFiles(heading);
@@ -386,7 +388,7 @@ export async function deleteAllAttachments(heading) {
 
 /**
  * The type a viewer should be told: guessViewableMimeType's answer, with a .webm settled by its content (audio or video).
- * @param {any} [path]
+ * @param {string} path
  * @param {any} [bytes]
  */
 function viewableMimeFor(path, bytes) {
@@ -402,7 +404,7 @@ function viewableMimeFor(path, bytes) {
 // ---- phase 2: DIR, sync, the folder list, and files made in the app -------------------------------------------------------
 
 /** Sets the ATTACH tag to match what is in the heading's folder (org-attach-sync): on if there are files, off if not. Returns the
- * @param {any} [heading]
+ * @param {Heading} heading
  *  number of files, or null if the folder could not be read or the heading has none. */
 async function syncAttachTag(heading) {
   const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId);
@@ -419,7 +421,7 @@ async function syncAttachTag(heading) {
 
 /**
  * org-attach-sync: for files added to the folder by other means, or removed from it.
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 export async function syncAttachments(heading) {
   if (!attachmentsAvailable()) {
@@ -440,7 +442,7 @@ export async function syncAttachments(heading) {
 
 /**
  * org-attach-set-directory: names the folder by a DIR property instead of the ID.
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 export function setAttachmentDirectory(heading) {
   openMultiFieldPopup({
@@ -481,7 +483,7 @@ async function moveFolderFiles(from, to) {
 }
 
 /** org-attach-unset-directory: removes DIR. With files in that folder, asks what to do with them, as org does: move them to the
- * @param {any} [heading]
+ * @param {Heading} heading
  *  ID's folder, delete them, or leave them where they are. */
 export async function unsetAttachmentDirectory(heading) {
   if (!getProperty(heading, 'DIR')) {
@@ -547,7 +549,7 @@ export async function unsetAttachmentDirectory(heading) {
 
 /**
  * org-attach-reveal: the folder as a list, each file with Open, Save and Delete.
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 export async function revealAttachmentFolder(heading) {
   if (!attachmentsAvailable()) {
@@ -578,7 +580,7 @@ export async function revealAttachmentFolder(heading) {
 
 /**
  * org-attach-buffer: saves one of the open documents, as text, into the heading's folder.
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 export async function attachOpenDocument(heading) {
   if (!(await requireAttachmentStorage())) return;
@@ -601,7 +603,7 @@ export async function attachOpenDocument(heading) {
 
 /**
  * org-attach-new: makes a text file in the heading's folder from a name and what to put in it.
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 export async function attachNewTextFile(heading) {
   if (!(await requireAttachmentStorage())) return;
@@ -620,7 +622,7 @@ export async function attachNewTextFile(heading) {
 }
 
 /** org-attach's dispatcher (C-c C-a), as a grid of buttons laid out like the Capture template picker. The keys are org's own, and
- * @param {any} [heading]
+ * @param {Heading} heading
  *  work when pressed; each button shows its key as a badge, as Capture's does. `viaKeys` (opened from god-mode) also lets a phone keyboard's letters reach the menu. */
 export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
   openGridChoiceModal({
@@ -644,7 +646,7 @@ export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
 
 /** Shared entry point for Open, Export and Delete: reads `heading`'s attachment folder and either acts directly (exactly
  *  one file) or opens the file-list picker (several), as org-attach does ("if there is more than one, prompt for a file name
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [action]
  *  first"). */
 export async function startAttachmentPickFlow(heading, action) {
@@ -708,8 +710,8 @@ export function renderAttachFileListPanel() {
  *  Delete always confirms first, matching every other destructive
  *  action in this app; Open never does, since downloading a file (or
  *  viewing it, if the browser handles that download itself) isn't
- * @param {any} [heading]
- * @param {any} [filename]
+ * @param {Heading} heading
+ * @param {string} filename
  * @param {any} [action]
  *  destructive. */
 export async function performAttachmentAction(heading, filename, action) {

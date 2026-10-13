@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Capture templates: org's own org-capture-templates system — a short
  * template string, expanded with runtime context (current time, a table
@@ -364,7 +366,7 @@ function expandCaptureText(preText, template, postText, context = {}) {
  * org-xx-extra-menu's own OLP navigation entries, which should never
  * silently create headings just from browsing a quick-access menu --
  * see runExtraMenuEntry in app.js.
- * @param {any} doc @param {any} olpPath @param {{ now?: Date, prepend?: boolean, allowCreate?: boolean }} [options]
+ * @param {Doc} doc @param {any} olpPath @param {{ now?: Date, prepend?: boolean, allowCreate?: boolean }} [options]
  */
 function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = true } = {}) {
   const at = now instanceof Date ? now : new Date();
@@ -406,7 +408,7 @@ function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = tr
 function mergeFragmentInto(target, fragment, prepend = false) {
   if (fragment.children.length > 0) {
     const offset = target.level;
-    /** @param {any} [headings] */
+    /** @param {Heading[]} headings */
     const applyOffset = (headings) => {
       for (const h of headings) {
         h.level += offset;
@@ -454,7 +456,7 @@ function mergeFragmentInto(target, fragment, prepend = false) {
 /** Splits a table row line ("| a | b | c |") into trimmed cells, the same
  *  way body-parser.js's own (module-private) parseTableRow does — not
  *  imported from there since it isn't exported, but simple enough to
- * @param {any} [line]
+ * @param {string} line
  *  not need its own module either. */
 function splitTableRowLine(line) {
   const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
@@ -468,7 +470,7 @@ function splitTableRowLine(line) {
  *  held from before that call is immediately stale afterward (this is
  *  documented in body-edit.js itself: "table must be a fresh reference
  *  from the current render"), so it can't be reused across a sequence
- * @param {any} [heading]
+ * @param {Heading} heading
  *  of mutations the way a naive loop might assume. */
 function lastTableIn(heading) {
   for (let i = heading.body.length - 1; i >= 0; i--) {
@@ -480,7 +482,7 @@ function lastTableIn(heading) {
 /** The first table in a heading's body -- lastTableIn's own mirror,
  *  needed because a :prepend capture puts new content at the START of
  *  target.body, so the just-inserted (or just-extended) table is now
- * @param {any} [heading]
+ * @param {Heading} heading
  *  the first one there, not the last. */
 function firstTableIn(heading) {
   for (const node of heading.body) {
@@ -493,7 +495,7 @@ function firstTableIn(heading) {
  *  list-item equivalent of lastTableIn, for the same reason: after
  *  mergeFragmentInto (which goes through no commitLines call, so no
  *  staleness risk there, but heading.body is still freshest read fresh
- * @param {any} [heading]
+ * @param {Heading} heading
  *  right after the merge rather than trusting an intermediate reference). */
 function lastListItemIn(heading) {
   for (let i = heading.body.length - 1; i >= 0; i--) {
@@ -507,7 +509,7 @@ function lastListItemIn(heading) {
  *  lastListItemIn's own mirror, for the same :prepend reason
  *  firstTableIn exists: prepending puts the new item at the very
  *  start, so it's now the first item of the first list, not the last
- * @param {any} [heading]
+ * @param {Heading} heading
  *  item of the last one. */
 function firstListItemIn(heading) {
   for (const node of heading.body) {
@@ -593,7 +595,7 @@ const EMPTY_TRAILING_TAG_RE = /\s+:{2,}$/;
  *  this module's own template-expansion half is deliberately
  *  self-contained and dependency-free), heading.bodyLines/body (the
  *  same two structures every other body edit in this app keeps in
- * @param {any} [heading]
+ * @param {Heading} heading
  *  sync with each other), and heading.title. */
 function stripEmptyProperties(heading) {
   for (const key of [...heading.propertyOrder]) {
@@ -612,8 +614,8 @@ function stripEmptyProperties(heading) {
 }
 
 /**
- * @param {any} [target]
- * @param {any} [type]
+ * @param {any} target
+ * @param {string} type
  * @param {any} [expandedText]
  */
 function insertCapture(target, type, expandedText, prepend = false, omitEmptyEntries = false, expandedPreText = '', expandedPostText = '') {

@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('../src/types.js').LocalVars} LocalVars */
 // Extracted from app.js: chrome.
 import { getProperty } from '../src/archive-model.js';
 import { formatTime } from '../src/capture-template.js';
@@ -230,7 +231,7 @@ export function computeBufferPositionString() {
  *  this correctly matches real Emacs's own genuinely global org-
  *  clock-marker behavior: the clock shows in every buffer's modeline
  *  regardless of which one it's actually running in, exactly like
- * @param {any} [vars]
+ * @param {LocalVars} vars
  *  display-time already does. */
 export function buildGlobalModeStringParts(vars) {
   const parts = [];

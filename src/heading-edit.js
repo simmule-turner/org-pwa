@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Heading editing primitives: create, rename, insert. Kept separate from
  * org-parser.js (which owns text<->AST) and outline-view-model.js (which
@@ -50,7 +52,7 @@ export function createHeading({ level, title = '', todo = null, priority = null,
 }
 
 /** Sets a heading's title, stripping newlines (a heading is one line) and
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [newTitle]
  *  surrounding whitespace. Returns the sanitized value actually stored. */
 export function renameHeading(heading, newTitle) {
@@ -74,8 +76,8 @@ export function parseTagsInput(input) {
 }
 
 /** Replaces `heading`'s tags outright with `tags` (already-clean array —
- * @param {any} [heading]
- * @param {any} [tags]
+ * @param {Heading} heading
+ * @param {string[]} tags
  *  see parseTagsInput for turning free-form user input into one). */
 export function setHeadingTags(heading, tags) {
   const cleaned = tags.map((/** @type {any} */ t) => String(t).trim().replace(/:/g, '')).filter(Boolean);
@@ -90,7 +92,7 @@ export function setHeadingTags(heading, tags) {
  *  more than one character, a non-letter -- is rejected (returns false,
  *  heading unchanged) rather than silently storing something the
  *  parser/serializer wouldn't round-trip correctly; real org's own
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [priority]
  *  priority cookie is always exactly one character. */
 export function setPriority(heading, priority) {
@@ -109,7 +111,7 @@ export function setPriority(heading, priority) {
  *  something this simple editor exposes for hand-editing). A minimal
  *  timestamp editor, not the fuller SCHEDULED/DEADLINE CRUD (repeaters,
  *  a date picker, etc.) that's still to come — this covers "add/edit/
- * @param {any} [heading]
+ * @param {Heading} heading
  *  clear a plain SCHEDULED or DEADLINE value" only. */
 export function getPlanningText(heading) {
   const lines = [];
@@ -128,8 +130,8 @@ export function getPlanningText(heading) {
  * accepted; a malformed value (or an unrecognized line) is just skipped
  * rather than corrupting heading.planning with something the agenda
  * engine couldn't parse back out.
- * @param {any} [heading]
- * @param {any} [text]
+ * @param {Heading} heading
+ * @param {string} text
  */
 export function setPlanningFromText(heading, text) {
   /** @type {string | null} */
@@ -159,7 +161,7 @@ export function setPlanningFromText(heading, text) {
  * +1y>"), or null if the title has none. Used to pre-fill the plain-
  * timestamp field in the structured timestamp editor from whatever's
  * already there.
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 export function getPlainTimestampInTitle(heading) {
   const found = findTimestamps(heading.title).find((t) => t.active);
@@ -173,7 +175,7 @@ export function getPlainTimestampInTitle(heading) {
  * otherwise the new one is appended to the end of the title. Passing
  * null removes the first active timestamp found, if any, leaving the
  * rest of the title untouched.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [raw]
  */
 export function setPlainTimestampInTitle(heading, raw) {
@@ -187,7 +189,7 @@ export function setPlainTimestampInTitle(heading, raw) {
 
 /**
  * Appends a new top-level (level 1) heading at the end of the document.
- * @param {any} [doc]
+ * @param {Doc} doc
  */
 export function insertTopLevelHeading(doc, opts = {}, prepend = false) {
   const heading = createHeading({ level: 1, ...opts });
@@ -221,8 +223,8 @@ export function insertChildHeading(parent, opts = {}, prepend = false) {
  * inserts relative to point, not always at the document root the
  * way the "+" toolbar button's own insertTopLevelHeading does. No-op
  * (returns null) if `heading` can't be located in `doc` at all.
- * @param {any} [doc]
- * @param {any} [heading]
+ * @param {Doc} doc
+ * @param {Heading} heading
  */
 export function insertHeadingAfter(doc, heading, opts = {}) {
   const located = findContainer(doc, heading);
@@ -234,8 +236,8 @@ export function insertHeadingAfter(doc, heading, opts = {}) {
 
 /** Removes `heading` from wherever it lives in `doc`. Used by the UI to
  *  discard a just-created heading if the user backs out without typing a
- * @param {any} [doc]
- * @param {any} [heading]
+ * @param {Doc} doc
+ * @param {Heading} heading
  *  title, rather than leaving an empty, unnamed heading behind. */
 export function removeHeading(doc, heading) {
   const located = findContainer(doc, heading);
@@ -249,8 +251,8 @@ export function removeHeading(doc, heading) {
  *  siblings. Matches real org's M-up: reorders among siblings without
  *  touching level or parent — the subtree (all descendants) moves as
  *  one unit automatically, since they're already part of the same
- * @param {any} [doc]
- * @param {any} [heading]
+ * @param {Doc} doc
+ * @param {Heading} heading
  *  object. */
 export function moveHeadingUp(doc, heading) {
   const located = findContainer(doc, heading);
@@ -262,8 +264,8 @@ export function moveHeadingUp(doc, heading) {
 
 /**
  * Swaps heading with its next sibling. No-op if already last.
- * @param {any} [doc]
- * @param {any} [heading]
+ * @param {Doc} doc
+ * @param {Heading} heading
  */
 export function moveHeadingDown(doc, heading) {
   const located = findContainer(doc, heading);
@@ -275,8 +277,9 @@ export function moveHeadingDown(doc, heading) {
 
 /**
  * True if `node` is `heading` or lies anywhere inside its subtree.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [node]
+ * @returns {boolean}
  */
 function inSubtree(heading, node) {
   if (heading === node) return true;
@@ -284,8 +287,9 @@ function inSubtree(heading, node) {
 }
 
 /** How many ancestors of `target` a drop "after target" may climb past: one for each level at which target (then that
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [target]
+ * @param {Heading | null} [ignore]
  *  ancestor) is the last child, since landing after an ancestor is only the natural reading when nothing follows. */
 export function dropClimbLimit(doc, target, ignore = null) {
   let climbs = 0;
@@ -308,8 +312,8 @@ export function dropClimbLimit(doc, target, ignore = null) {
  * (a sibling of target, at its level), 'firstChild' or 'lastChild' (inside it). For 'after', `climb` steps up that many
  * ancestors first (see dropClimbLimit), landing after the ancestor instead. Returns false and changes nothing when the drop
  * is into the heading's own subtree, names a heading not in the document, or would leave it exactly where it is.
- * @param {any} [doc]
- * @param {any} [heading]
+ * @param {Doc} doc
+ * @param {Heading} heading
  * @param {any} [target]
  * @param {any} [position]
  */
@@ -355,8 +359,8 @@ export function moveHeadingTo(doc, heading, target, position, climb = 0) {
  * means "become a child of the grandparent" — every descendant's level
  * shifts by the same amount as part of the same move, since they're
  * still the same subtree, just relocated.
- * @param {any} [doc]
- * @param {any} [heading]
+ * @param {Doc} doc
+ * @param {Heading} heading
  */
 export function promoteHeading(doc, heading) {
   const path = findAncestorPath(doc, heading);
@@ -379,8 +383,8 @@ export function promoteHeading(doc, heading) {
  * heading has no preceding sibling — matches real org's own
  * limitation, since there'd be nothing to become a child of (you can't
  * demote the very first item under a given parent).
- * @param {any} [doc]
- * @param {any} [heading]
+ * @param {Doc} doc
+ * @param {Heading} heading
  */
 export function demoteHeading(doc, heading) {
   const located = findContainer(doc, heading);

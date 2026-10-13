@@ -58,7 +58,7 @@ const SMART_DOUBLE_QUOTES_RE = /[\u201C\u201D\u201F]/g;
  *  string, including `null`/`undefined` (returned as-is) or a value
  *  that happens to contain no quote characters at all (returned
  *  unchanged) -- callers don't need their own guard before calling
- * @param {any} [text]
+ * @param {string} text
  *  this. */
 function normalizeSmartQuotes(text) {
   if (typeof text !== 'string') return text;

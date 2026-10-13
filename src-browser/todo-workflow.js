@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: todo workflow.
 import { computeNonCollidingKeys } from '../src/capture-template.js';
 import { updateCheckboxCookiesUpward } from '../src/checkbox-cookie.js';
@@ -46,7 +48,7 @@ import { autoGrowTextarea, hideModalOverlay, menuButton } from './ui-widgets.js'
  * state could change (e.g. immediately after a plain-text-editor
  * round-trip), and this check is cheap enough that re-parsing beats
  * risking a stale read.
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [performChange]
  */
 export function applyTodoTransition(heading, performChange) {
@@ -184,7 +186,7 @@ export function renderLogNotePrompt() {
  *  deliberately untouched by any of this -- once a heading already has a
  *  keyword, which sequence it belongs to is already unambiguous, and a
  *  picker popping up on every single ordinary cycle tap would be a real,
- * @param {any} [heading]
+ * @param {Heading} heading
  *  noticeable regression for the common case. */
 export function openTodoOrPickWorkflow(heading) {
   const sequences = resolveTodoSequences(S.state.doc, GLOBAL_TODO_DEFAULT);
@@ -205,7 +207,7 @@ export function openTodoOrPickWorkflow(heading) {
 /** Commits a state picked from the TODO-workflow panel (see
  *  renderTodoWorkflowPanel below) -- shared by both the button click
  *  and the keyboard fast-key handler (the global keydown listener),
- * @param {any} [heading]
+ * @param {Heading} heading
  * @param {any} [keyword]
  * @param {any} [seq]
  *  so the two paths can never drift into different behavior. */

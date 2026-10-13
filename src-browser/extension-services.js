@@ -54,7 +54,7 @@ function writeGrant(owner, grant) {
 
 /**
  * The grant owner for a document: saved documents keep their grants, unsaved ones do not outlive the page.
- * @param {any} [documentId]
+ * @param {string} documentId
  */
 export function documentOwner(documentId) {
   const id = documentId || '';
@@ -138,7 +138,7 @@ async function readBody(response) {
 }
 
 /**
- * @param {any} [url]
+ * @param {string} url
  * @param {any} [options]
  * @param {any} [isHostOk]
  */

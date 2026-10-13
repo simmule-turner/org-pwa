@@ -130,8 +130,8 @@ const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, 
 
 /**
  * Wraps `text` in a span of the given face, one span per line.
- * @param {any} [face]
- * @param {any} [text]
+ * @param {any} face
+ * @param {string} text
  */
 function span(face, text) {
   if (!face) return esc(text);

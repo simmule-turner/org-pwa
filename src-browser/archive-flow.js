@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: archive flow.
 import { buildArchivedClone, buildRestoredClone, getArchiveLocation, getProperty, insertAtArchiveLocation, parseArchiveLocation, resolveArchiveFileId } from '../src/archive-model.js';
 import { displayName } from '../src/archive-refile-details.js';
@@ -8,7 +10,7 @@ import { S } from './app-state.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { writeToOtherFile } from './external-sync.js';
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 export function getArchiveDestinationLabel(heading) {
   const location = getArchiveLocation(S.state.doc, heading);
   const { filePart, headlinePart } = parseArchiveLocation(location);
@@ -22,7 +24,7 @@ export function getArchiveDestinationLabel(heading) {
       : `"${displayName(targetFileId)}" (top level)`;
 }
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 export async function archiveHeadingToLocation(heading) {
   const location = getArchiveLocation(S.state.doc, heading);
   const { filePart, headlinePart } = parseArchiveLocation(location);
@@ -77,7 +79,7 @@ export async function archiveHeadingToLocation(heading) {
  * on record to be restored TO -- the honest behavior is to just strip
  * the tag/properties in place, at the top level of the file it's
  * already in, rather than guessing.
- * @param {any} [heading]
+ * @param {Heading} heading
  */
 export async function unarchiveHeadingToOriginalLocation(heading) {
   const archiveFile = getProperty(heading, 'ARCHIVE_FILE') || null;

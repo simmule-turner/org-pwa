@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 // The words the Archive & Refile panel shows: what archiving will stamp, what restoring will undo, where a refile will land,
 // and the search over refile targets. Pure functions: src-browser/archive-refile-panel.js draws them.
 import { getProperty } from './archive-model.js';
@@ -14,7 +16,7 @@ export function displayName(documentId) {
 }
 
 /** How many headings a subtree holds, the heading itself included.
- * @param {any} heading */
+ * @param {Heading} heading */
 export function subtreeSize(heading) {
   let n = 1;
   for (const child of heading.children || []) n += subtreeSize(child);
@@ -22,7 +24,7 @@ export function subtreeSize(heading) {
 }
 
 /** "1 heading" / "3 headings (2 under it)".
- * @param {any} heading */
+ * @param {Heading} heading */
 export function describeSubtree(heading) {
   const n = subtreeSize(heading);
   return n === 1 ? '1 heading' : `${n} headings (${n - 1} under it)`;
@@ -40,7 +42,7 @@ export function filterTargets(candidates, query) {
 }
 
 /** What archiving adds to the heading, as the panel lists it.
- * @param {any} heading */
+ * @param {Heading} heading */
 export function archiveStamps(heading) {
   const names = ['ARCHIVE_TIME', 'ARCHIVE_FILE', 'ARCHIVE_OLPATH', 'ARCHIVE_CATEGORY'];
   if (heading.todo) names.push('ARCHIVE_TODO');
@@ -48,7 +50,7 @@ export function archiveStamps(heading) {
 }
 
 /** Where a restore sends an archived heading, from its own ARCHIVE_FILE and ARCHIVE_OLPATH.
- * @param {any} heading @param {string} currentDocumentId
+ * @param {Heading} heading @param {string} currentDocumentId
  * @returns {{ label: string, recorded: boolean }} */
 export function restoreDestination(heading, currentDocumentId) {
   const archiveFile = getProperty(heading, 'ARCHIVE_FILE') || null;
@@ -61,7 +63,7 @@ export function restoreDestination(heading, currentDocumentId) {
 }
 
 /** The rows under the refile list for the chosen target.
- * @param {any} heading @param {RefileCandidate} candidate @param {string} currentDocumentId
+ * @param {Heading} heading @param {RefileCandidate} candidate @param {string} currentDocumentId
  * @returns {DetailRow[]} */
 export function refileDetails(heading, candidate, currentDocumentId) {
   const sameFile = candidate.documentId === currentDocumentId;

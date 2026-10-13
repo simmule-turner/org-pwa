@@ -33,7 +33,7 @@ function resourceNameForUid(uid) {
   return `${RESOURCE_PREFIX}${base}-${contentHash(uid)}.ics`;
 }
 
-/** @param {any} [name] */
+/** @param {string} name */
 function isOurResource(name) {
   return name.startsWith(RESOURCE_PREFIX) && name.endsWith('.ics');
 }

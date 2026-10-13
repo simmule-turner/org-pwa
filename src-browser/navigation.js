@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: navigation.
 import { findAncestorPath } from '../src/archive-model.js';
 import { flattenVisibleRows } from '../src/outline-view-model.js';
@@ -39,7 +41,7 @@ export function syncNavBackButtonVisibility() {
   navBackBtn.style.display = S.navigationBackStack.length > 0 ? 'flex' : 'none';
 }
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 export function navigateToHeading(heading, { revealOwnBody = false, targetNode = heading, pushToBackStack = true } = {}) {
   if (pushToBackStack) {
     S.navigationBackStack.push({
@@ -91,7 +93,7 @@ export function navigateToHeading(heading, { revealOwnBody = false, targetNode =
  *  directly; any other documentId can only be an agenda file (the
  *  only other source a heading reference can come from), found by
  *  matching against agendaFilesCache's own "scheme:path" keys -- the
- * @param {any} [documentId]
+ * @param {string} documentId
  *  same key-parsing ensureAgendaFilesLoaded itself already does. */
 export function storageKindForDocumentId(documentId) {
   if (documentId === S.state.documentId) return S.state.storageKind;
@@ -114,8 +116,8 @@ export function storageKindForDocumentId(documentId) {
  *  doc. null if that document isn't actually available (shouldn't
  *  normally happen -- an agenda item/search result's own documentId
  *  only ever comes from a document that was, at some point, actually
- * @param {any} [documentId]
- * @param {any} [heading]
+ * @param {string} documentId
+ * @param {Heading} heading
  *  loaded). */
 export function outlinePathForHeadingInDocument(documentId, heading) {
   const doc =
@@ -138,7 +140,7 @@ export function outlinePathForHeadingInDocument(documentId, heading) {
  *  since any in-progress edit is already safely cached locally
  *  regardless of navigating away (see "Pending Local Changes" in
  *  Settings) -- there's nothing this would put at risk that isn't
- * @param {any} [documentId]
+ * @param {string} documentId
  * @param {any} [outlinePath]
  *  already handled the same way a plain internal link jump is. */
 export async function navigateToHeadingByPath(documentId, outlinePath, opts = {}) {
@@ -164,7 +166,7 @@ export async function navigateToHeadingByPath(documentId, outlinePath, opts = {}
   };
 
   // an agenda entry's "local" scheme is the app's own "filesystem" storage kind once the file is open
-  await openRemotePath(documentId, storageKind === 'local' ? 'filesystem' : storageKind, adapter, label);
+  await openRemotePath(documentId, storageKind === 'local' ? 'filesystem' : storageKind, adapter, /** @type {string} */ (label));
   if (!S.state.doc || S.state.documentId !== documentId) return;
 
   S.navigationBackStack.push(originEntry);

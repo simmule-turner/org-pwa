@@ -33,7 +33,7 @@ const BARE_NUMBER_RE = /^\d+(?:\.\d*)?$/;
 const TRAILING_HMS_RE = /(?:^|\s)(\d+):(\d{2})(?::(\d{2}))?$/;
 const UNIT_PART_RE = /\s*(\d+(?:\.\d*)?)\s*(min|h|d|w|m|y)/y;
 
-/** @param {any} [text] */
+/** @param {string} text */
 function parseOrgDuration(text) {
   const s = String(text == null ? '' : text).trim();
   if (s === '') return 0;

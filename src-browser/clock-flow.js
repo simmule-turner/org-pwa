@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: clock flow.
 import { clockCancel, clockIn, clockInSwitchingTasks, clockOut, findHeadingWithRunningClock, findMostRecentlyClockedHeading, isClockRunning, listRecentlyClockedHeadings } from '../src/clock.js';
 import { findAncestorPath } from '../src/archive-model.js';
@@ -49,7 +51,7 @@ export function findRunningClockAcrossSessions() {
   return null;
 }
 
-/** @param {any} [heading] */
+/** @param {Heading} heading */
 export function clockInHeading(heading) {
   const now = new Date();
   const timestamp = formatOrgTimestamp({ date: now, time: now.toTimeString().slice(0, 5), active: false });
@@ -137,7 +139,7 @@ export function clockGoto() {
 /** org-clock-out: stops whatever clock is currently running on
  *  `heading`. A no-op (with a status message) if nothing is running --
  *  matches clockInHeading's own "surface it, don't silently do
- * @param {any} [heading]
+ * @param {Heading} heading
  *  nothing" treatment of the equivalent already-in-that-state case. */
 export function clockOutHeading(heading) {
   const end = new Date();
@@ -154,7 +156,7 @@ export function clockOutHeading(heading) {
  *  `heading` and discards its accumulated time entirely -- no
  *  duration ever gets recorded, unlike clockOutHeading. A no-op (with
  *  a status message) if nothing is running, matching clockOutHeading's
- * @param {any} [heading]
+ * @param {Heading} heading
  *  own treatment of the equivalent already-in-that-state case. */
 export function clockCancelHeading(heading) {
   if (!clockCancel(heading)) {
@@ -196,7 +198,7 @@ export function clockGotoRecent() {
   openButtonChoiceModal({
     label: 'Go to which recently clocked task?',
     buttons: recent.map((entry) => ({
-      text: `${isClockRunning(entry.heading) ? '\u25b6 ' : ''}${/** @type {any} */ (entry.heading).title || '(untitled)'} \u00b7 ${when(entry.start)}${severalDocuments ? ` \u00b7 ${documentDisplayLabel(entry.documentId, entry.doc)}` : ''}`,
+      text: `${isClockRunning(/** @type {any} */ (entry.heading)) ? '\u25b6 ' : ''}${/** @type {any} */ (entry.heading).title || '(untitled)'} \u00b7 ${when(entry.start)}${severalDocuments ? ` \u00b7 ${documentDisplayLabel(entry.documentId, entry.doc)}` : ''}`,
       onClick: () => goToClockedEntry(entry),
     })),
   });

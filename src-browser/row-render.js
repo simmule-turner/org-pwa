@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: row render.
 import { captionText, imageOptions, splitAffiliated } from '../src/affiliated.js';
 import { getPropertiesText, getProperty, isArchivedInPlace } from '../src/archive-model.js';
@@ -47,7 +49,7 @@ const TABLES_MARGIN = 'var(--paragraph-gap-tables, 10px) 0';
 
 /**
  * Which place in the heading's action grid a button has, from its label (see .action-grid in index.html).
- * @param {any} [label]
+ * @param {string} label
  */
 function actionSlot(label) {
   const l = label.toLowerCase();
@@ -979,8 +981,8 @@ function renderAffiliatedPrefix(affiliated) {
 
 /**
  * A `#+CAPTION:` as an italic caption, with its inline markup rendered.
- * @param {any} [text]
- * @param {any} [heading]
+ * @param {string} text
+ * @param {Heading} heading
  */
 function renderCaption(text, heading) {
   const el = document.createElement('div');
@@ -1107,8 +1109,8 @@ export function renderParagraphRow(row) {
 }
 
 /**
- * @param {any} [block]
- * @param {any} [container]
+ * @param {any} block
+ * @param {HTMLElement} container
  * @param {any} [linkContext]
  */
 export function renderBlockContent(block, container, linkContext) {

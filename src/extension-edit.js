@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * What a script command sees and may change: the pure part. A command gets a read-only snapshot of the
  * open file as plain data, and answers with a list of declarative edits. Nothing here touches the page;
@@ -12,7 +14,7 @@ export const MAX_EDITS = 500;
 
 /**
  * The headings of `doc` in outline order.
- * @param {any} [doc]
+ * @param {Doc} doc
  */
 export function headingsInOrder(doc) {
   /** @type {any[]} */ const out = [];
@@ -29,7 +31,7 @@ export function headingsInOrder(doc) {
 }
 
 /** A read-only copy of the file for a script: `{ name, headings, focused, truncated }`. `focused` is the index of
- * @param {any} [doc]
+ * @param {Doc} doc
  *  the heading the command was run on, or null. */
 export function snapshotDocument(doc, { name = '', focusedHeading = null } = {}) {
   const all = headingsInOrder(doc);
@@ -109,7 +111,7 @@ export function validateEdits(edits, headingCount) {
 }
 
 /** Whether the first `headings.length` headings of `doc` still have the titles and levels the snapshot recorded, so
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [snapshot]
  *  edits made against the snapshot would land on the same headings. */
 export function snapshotStillMatches(doc, snapshot) {
@@ -118,7 +120,7 @@ export function snapshotStillMatches(doc, snapshot) {
 }
 
 /** Applies validated edits to the live headings. `deps` supplies what depends on the app: `setTodo(heading, todo)`,
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [edits]
  * @param {any} [deps]
  *  `setProperty(heading, name, value)`, `deleteProperty(heading, name)` and `appendBody(heading, lines)`. */

@@ -37,7 +37,7 @@ const DAY_CODES = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
 
 /**
  * The lines of `text` with folded continuation lines (CRLF or LF, then a space or tab) joined back on.
- * @param {any} [text]
+ * @param {string} text
  */
 function unfold(text) {
   return String(text || '').replace(/\r\n|\r/g, '\n').replace(/\n[ \t]/g, '').split('\n');
@@ -45,7 +45,7 @@ function unfold(text) {
 
 /**
  * `NAME;PARAM=a;PARAM="b:c":value` as { name, params, value }, or null if the line has no colon. Quotes may hold ':' and ';'.
- * @param {any} [line]
+ * @param {string} line
  */
 function parseProperty(line) {
   let inQuote = false;
@@ -89,7 +89,7 @@ function unescapeText(value) {
 
 /**
  * The VEVENT and VTODO components, each as { type, props: [{ name, params, value }] }. VALARM and other nested blocks are skipped.
- * @param {any} [text]
+ * @param {string} text
  */
 function collectComponents(text) {
   const found = [];
@@ -236,8 +236,8 @@ function repeaterFor(rruleText, startWall) {
 // ---- building headings -------------------------------------------------------------------------------
 
 /**
- * @param {any} [props]
- * @param {any} [name]
+ * @param {any} props
+ * @param {string} name
  */
 const textOf = (props, name) => {
   const prop = props.find((/** @type {any} */ p) => p.name === name);
@@ -298,7 +298,7 @@ function headingFor(component, options) {
   const props = component.props;
   const isTodo = component.type === 'VTODO';
   const summary = textOf(props, 'SUMMARY').replace(/\s*\n\s*/g, ' ') || '(no title)';
-  /** @param {any} [name] */
+  /** @param {string} name */
   const dateOf = (name) => {
     const prop = props.find((/** @type {any} */ p) => p.name === name);
     return prop ? parseDateValue(prop, zone, onUnknownTimeZone) : null;
@@ -416,7 +416,7 @@ function parseIcalendarEvents(icsText, { zone = null, max = 2000 } = {}) {
   for (const component of collectComponents(icsText)) {
     if (component.type !== 'VEVENT') continue;
     const props = component.props;
-    /** @param {any} [name] */
+    /** @param {string} name */
     const dateOf = (name) => {
       const prop = props.find((p) => p.name === name);
       return prop ? parseDateValue(prop, zone, null) : null;

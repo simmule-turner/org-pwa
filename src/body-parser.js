@@ -48,18 +48,18 @@ const LIST_ITEM_RE = /^(\s*)([-+]|\*|\d+[.)]|[A-Za-z][.)])\s+(?:\[([ xX-])\]\s+)
 // lenient about surrounding whitespace on this line.
 const HR_LINE_RE = /^\s*-{5,}\s*$/;
 
-/** @param {any} [line] */
+/** @param {string} line */
 function leadingWhitespace(line) {
   const m = /** @type {RegExpExecArray} */ (/^(\s*)/.exec(line));
   return m[1];
 }
 
-/** @param {any} [line] */
+/** @param {string} line */
 function isListItemLine(line) {
   return LIST_ITEM_RE.test(line);
 }
 
-/** @param {any} [line] */
+/** @param {string} line */
 function indentOf(line) {
   return leadingWhitespace(line).length;
 }
@@ -67,7 +67,7 @@ function indentOf(line) {
 // ---- blocks -------------------------------------------------------------
 
 /**
- * @param {any} [lines]
+ * @param {string[]} lines
  * @param {any} [i]
  */
 function parseBlock(lines, i) {
@@ -91,7 +91,7 @@ function parseBlock(lines, i) {
 
 // ---- tables ---------------------------------------------------------------
 
-/** @param {any} [line] */
+/** @param {string} line */
 function parseTableRow(line) {
   if (TABLE_RULE_RE.test(line)) {
     return { type: 'rule' };
@@ -102,7 +102,7 @@ function parseTableRow(line) {
 }
 
 /**
- * @param {any} [lines]
+ * @param {string[]} lines
  * @param {any} [i]
  */
 function parseTable(lines, i) {
@@ -137,7 +137,7 @@ function isOrderedMarker(marker) {
  *  right now. A lightweight approximation (not a full reimplementation
  *  of the inline parser's own border rules), but sufficient for this
  *  specific purpose: deciding whether a "::" match is real tag-separator
- * @param {any} [text]
+ * @param {string} text
  * @param {any} [pos]
  *  syntax or just literal text living inside a code/verbatim span. */
 function isInsideLiteralSpan(text, pos) {
@@ -151,7 +151,7 @@ function isInsideLiteralSpan(text, pos) {
   return false;
 }
 
-/** @param {any} [line] */
+/** @param {string} line */
 function parseListItemLine(line) {
   const m = /** @type {RegExpExecArray} */ (LIST_ITEM_RE.exec(line));
   const [, indent, marker, checkbox, rest] = m;
@@ -196,7 +196,7 @@ function parseListItemLine(line) {
  * was parsed from (a heading's `bodyLines`), so callers can write edits
  * (e.g. a checkbox toggle) back to the actual serialization source rather
  * than only mutating the derived `body` tree. Returns [listNode, nextIndex].
- * @param {any} [lines]
+ * @param {string[]} lines
  * @param {any} [i]
  * @param {any} [baseIndent]
  */
@@ -263,7 +263,7 @@ const FOOTNOTE_DEF_LINE_RE = /^\[fn:([A-Za-z0-9_-]+)\]\s?(.*)$/;
  *  fragment's own interior content. $...$ is deliberately excluded --
  *  its own real restriction caps it at 2 embedded newlines, which
  *  never reaches across an actual blank-line paragraph boundary the
- * @param {any} [lines]
+ * @param {string[]} lines
  *  way the other, genuinely unlimited-multi-line forms can. */
 function findLatexProtectedLineIndices(lines) {
   const fullText = lines.join('\n');
@@ -287,7 +287,7 @@ function findLatexProtectedLineIndices(lines) {
 }
 
 /**
- * @param {any} [lines]
+ * @param {string[]} lines
  * @param {any} [i]
  */
 function parseParagraph(lines, i, protectedIndices = new Set()) {
@@ -328,7 +328,7 @@ function parseParagraph(lines, i, protectedIndices = new Set()) {
 
 // ---- main -----------------------------------------------------------------
 
-/** @param {any} [lines] */
+/** @param {string[]} lines */
 function parseBody(lines) {
   const nodes = [];
   let i = 0;

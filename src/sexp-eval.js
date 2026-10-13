@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * A minimal S-expression parser and evaluator for real org-mode's own
  * <%%(sexp)> diary timestamp syntax -- a more general mechanism than
@@ -57,7 +59,7 @@ import {
  *  tokens, a double-quoted string as one token (quotes stripped), and
  *  any other whitespace-delimited run of characters as a bare atom
  *  (a symbol like `when` or `org-cyclic`, or a number like `2026` --
- * @param {any} [text]
+ * @param {string} text
  *  parseSexpr below decides which, tokenizing doesn't need to). */
 function tokenize(text) {
   const tokens = [];
@@ -111,7 +113,7 @@ function atomNode(raw) {
  *  caller (parseSexpTimestamp) is expected to catch this and treat a
  *  malformed sexp the same tolerant way every other malformed
  *  Global/Local Variable or diary-sexp form in this app already is:
- * @param {any} [text]
+ * @param {string} text
  *  skipped, not a hard error surfaced to the person. */
 function parseSexpr(text) {
   const tokens = tokenize(text);
@@ -447,7 +449,7 @@ const SEXP_TIMESTAMP_START_RE = /<%%\(/g;
  *  `[{ raw, expr }]` -- `raw` the full matched text including the
  *  surrounding `<%%(...)>`, `expr` the already-parsed expression tree
  *  (or `null` if the sexp itself failed to parse -- malformed input
- * @param {any} [text]
+ * @param {string} text
  *  skipped rather than erroring, matching parseSexpr's own docs). */
 function findSexpTimestamps(text) {
   if (!text) return [];
@@ -508,11 +510,11 @@ function findSexpTimestamps(text) {
  *  findSexpTimestamps -- which is native to this file -- and this
  *  file already imports from org-weather.js (formatWeatherLine), so
  *  the reverse import direction would create a circular dependency
- * @param {any} [doc]
+ * @param {Doc} doc
  *  between the two modules. */
 function documentUsesOrgWeather(doc) {
   if (!doc) return false;
-  /** @param {any} [heading] */
+  /** @param {Heading} heading */
   const usesIt = (heading) => {
     if (findSexpTimestamps(heading.title).some((ts) => /\borg-weather\b/.test(ts.raw))) return true;
     for (const line of heading.bodyLines || []) {
@@ -532,7 +534,7 @@ const GENERAL_BODY_LINE_HEADS = new Set(['and', 'or', 'not', 'when', 'org-class'
 /** Parses a `%%(expr) text` body line whose expression is one the general
  *  evaluator handles -- so `%%(and (org-block ...) (diary-float ...)) Term`
  *  works as a line exactly as it does inside a <%%(...)> timestamp. Returns
- * @param {any} [line]
+ * @param {string} line
  *  `{ expr, text }`, or null for any other line. */
 function parseGeneralBodyLine(line) {
   const text = String(line).trim();

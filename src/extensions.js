@@ -25,7 +25,7 @@ const NAME_RE = /^[A-Za-z][A-Za-z0-9-]*$/;
 
 /**
  * A name a script may register: letters, digits and dashes, not a built-in.
- * @param {any} [name]
+ * @param {string} name
  */
 export function usableSexpName(name) {
   return typeof name === 'string' && NAME_RE.test(name) && !BUILTIN_SEXP_NAMES.has(name);
@@ -55,7 +55,7 @@ export function userSexpResult(value) {
 
 /**
  * The cache key for one function, argument list and day.
- * @param {any} [name]
+ * @param {string} name
  * @param {any} [args]
  * @param {any} [dayKey]
  */
@@ -76,7 +76,7 @@ export function visibleVariableMap(/** @type {any[]} */ ...sources) {
 
 /**
  * SHA-256 of a script's text, in hex. An approval holds only while this matches.
- * @param {any} [text]
+ * @param {string} text
  */
 export async function hashScript(text) {
   const bytes = new TextEncoder().encode(String(text));

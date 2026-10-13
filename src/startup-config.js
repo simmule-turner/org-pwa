@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * Parses org's #+STARTUP: directive into a structured config covering
  * heading visibility and inline-image visibility. None, some, or both
@@ -63,10 +65,10 @@ const DEFAULT_STARTUP_CONFIG = {
  *  file has no #+STARTUP: visibility keyword at all, so
  *  parseStartupConfig's own default just happens to equal
  *  showeverything" -- the middle layer of their own 3-layer precedence
- * @param {any} [doc]
+ * @param {Doc} doc
  *  must only win in the first case. */
 function parseStartupConfigRaw(doc) {
-  const raw = { visibility: null, imageVisibility: null, logDone: null };
+  const raw = /** @type {{ visibility: string | null, imageVisibility: string | null, logDone: string | null }} */ ({ visibility: null, imageVisibility: null, logDone: null });
   for (const kw of doc.keywords || []) {
     if (kw.key.toUpperCase() !== 'STARTUP') continue;
     const tokens = kw.value.trim().split(/\s+/).filter(Boolean);
@@ -87,7 +89,7 @@ function parseStartupConfigRaw(doc) {
   return raw;
 }
 
-/** @param {any} [doc] */
+/** @param {Doc} doc */
 export function parseStartupConfig(doc) {
   const raw = parseStartupConfigRaw(doc);
   return {
@@ -109,7 +111,7 @@ export function parseStartupConfig(doc) {
  *  (showeverything) equally, matching org-log-done's own tolerance for
  *  the same leading-quote convention. An invalid value at any layer is
  *  treated the same as that layer not having set anything at all,
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [localVarsOnly]
  * @param {any} [globalVarsOnly]
  *  rather than short-circuiting the whole resolution with a bad value. */
@@ -135,7 +137,7 @@ function parseVisibilityLispValue(raw) {
  *  `t` / `nil` (Lisp booleans, matching every other boolean variable
  *  in this app), converted to/from this module's own internal
  *  inlineimages/noinlineimages keyword pair for consistency with
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [localVarsOnly]
  * @param {any} [globalVarsOnly]
  *  parseStartupConfig's own imageVisibility field. */
@@ -172,7 +174,7 @@ function parseLispBooleanOrNull(raw) {
  *  -- org-log-done's own full 3-layer resolution already has its own
  *  dedicated function (progress-logging.js's getEffectiveLogDoneSetting)
  *  used directly wherever it's actually needed, not read from this
- * @param {any} [doc]
+ * @param {Doc} doc
  * @param {any} [localVarsOnly]
  * @param {any} [globalVarsOnly]
  *  config object anywhere in this codebase. */

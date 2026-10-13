@@ -23,7 +23,7 @@ const ALLOWED_HEADERS = new Map([
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]']);
 
 /** The host (with port when not the default) of a fetchable URL, or throws. https only; plain
- * @param {any} [text]
+ * @param {string} text
  *  http only to this device (loopback), which is how the tests and local services work. */
 export function checkFetchUrl(text) {
   const raw = String(text || '');
@@ -118,9 +118,9 @@ export function encodeCacheValue(value) {
 
 /**
  * Puts `key` into a scope ({ key: { t, v } }), dropping the oldest entries to stay within the limits.
- * @param {any} [scope]
- * @param {any} [key]
- * @param {any} [text]
+ * @param {any} scope
+ * @param {any} key
+ * @param {string} text
  * @param {any} [now]
  */
 export function cacheSet(scope, key, text, now) {
@@ -170,7 +170,7 @@ const RESERVED_LINK_PREFIXES = new Set(['http', 'https', 'file', 'mailto', 'tel'
 
 /**
  * A prefix a script may claim for its own links (`weather` in [[weather:nyc]]).
- * @param {any} [prefix]
+ * @param {string} prefix
  */
 export function usableLinkPrefix(prefix) {
   return typeof prefix === 'string' && /^[a-z][a-z0-9-]{1,19}$/.test(prefix) && !RESERVED_LINK_PREFIXES.has(prefix);
@@ -178,7 +178,7 @@ export function usableLinkPrefix(prefix) {
 
 /**
  * Where a custom link may lead: https, mail, phone or a map position. Anything else is refused.
- * @param {any} [text]
+ * @param {string} text
  */
 export function checkLinkOpenUrl(text) {
   const raw = String(text || '').trim();

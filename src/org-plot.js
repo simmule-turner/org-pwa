@@ -81,7 +81,7 @@ const OPTION_KEYS = [
 const MULTI_VALUE_KEYS = new Set(['set', 'line']);
 
 /** Mirrors real elisp's own (read-from-string ...) for exactly the
- * @param {any} [text]
+ * @param {string} text
  *  three value shapes parsePlotOptions's own regex can ever capture. */
 /** @returns {any} */ function readPlotValue(/** @type {any} */ text) {
   if (text.startsWith('"') && text.endsWith('"')) return text.slice(1, -1);
@@ -105,7 +105,7 @@ const MULTI_VALUE_KEYS = new Set(['set', 'line']);
  *  are already unioned elsewhere in this app) into a plain options
  *  object. Unrecognized keys are silently ignored, matching real
  *  org-plot's own behavior of only ever looking for its own known
- * @param {any} [text]
+ * @param {string} text
  *  option names and leaving anything else in the line untouched. */
 export function parsePlotOptions(text) {
   const options = {};

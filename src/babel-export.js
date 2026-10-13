@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./types.js').Doc} Doc */
 /**
  * What an export shows of a source block, as Org's export does with `org-export-use-babel` on but never running
  * anything: `:exports code` (the default) shows the block only, `results` only the stored `#+RESULTS:`, `both` both and
@@ -12,9 +14,9 @@ import { parseBody } from './body-parser.js';
 import { expandNoweb, nowebAllows, stripReferences } from './noweb.js';
 
 /** Index of the `#+RESULTS:` line that belongs to the block ending at `endIndex`, or -1. An unnamed `#+RESULTS:`
- * @param {any} [lines]
- * @param {any} [endIndex]
- * @param {any} [name]
+ * @param {string[]} lines
+ * @param {any} endIndex
+ * @param {string} name
  *  belongs to the block right before it (blank lines allowed between); `#+RESULTS: name` to the block named `name`. */
 function findResults(lines, endIndex, name) {
   if (name) {
@@ -31,10 +33,10 @@ function findResults(lines, endIndex, name) {
 }
 
 /**
- * @param {any} [doc]
- * @param {any} [blocks]
- * @param {any} [heading]
- * @param {any} [lines]
+ * @param {Doc} doc
+ * @param {any[]} blocks
+ * @param {Heading | null} heading
+ * @param {string[]} lines
  */
 function rewriteLines(doc, blocks, heading, lines) {
   const mine = blocks.filter((/** @type {any} */ b) => b.heading === heading);
@@ -75,7 +77,7 @@ function rewriteLines(doc, blocks, heading, lines) {
 
 /**
  * The document as an exporter should see it. Returns `doc` itself when it has no source block.
- * @param {any} [doc]
+ * @param {Doc} doc
  */
 export function prepareBabelExport(doc) {
   const blocks = collectDocumentBlocks(doc);
