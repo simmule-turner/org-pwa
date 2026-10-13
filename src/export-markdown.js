@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('./types.js').Table} Table */
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
 /**
@@ -281,21 +282,21 @@ function padCells(cells, count) {
   return out;
 }
 
-/** @param {any} [table] */
+/** @param {Table} table */
 function renderTableMd(table) {
   const dataRows = table.rows.filter((/** @type {any} */ r) => r.type === 'row' && !isWidthCookieRow(r));
   if (dataRows.length === 0) return '';
   const colCount = Math.max(...dataRows.map((/** @type {any} */ r) => r.cells.length));
   const lines = [];
   const headerCells = padCells(
-    dataRows[0].cellsInline.map((/** @type {any} */ c) => renderInlineListMd(c)),
+    (dataRows[0].cellsInline || []).map((/** @type {any} */ c) => renderInlineListMd(c)),
     colCount
   );
   lines.push('| ' + headerCells.join(' | ') + ' |');
   lines.push('| ' + Array(colCount).fill('---').join(' | ') + ' |');
   for (const row of dataRows.slice(1)) {
     const cells = padCells(
-      row.cellsInline.map((/** @type {any} */ c) => renderInlineListMd(c)),
+      (row.cellsInline || []).map((/** @type {any} */ c) => renderInlineListMd(c)),
       colCount
     );
     lines.push('| ' + cells.join(' | ') + ' |');

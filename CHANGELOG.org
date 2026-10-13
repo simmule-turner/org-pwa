@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v509 — Real types for tables, export state and settings
+Tables, the HTML exporter's working state, the key-sequence state, the formula evaluator's context and the GitHub, WebDAV and CalDAV settings now have proper types, and the helper functions that return "anything" were reduced to the few that really are recursive. A new test fails if a name that has a known type slips back to a placeholder, or if the number of placeholders grows. No change in behaviour.
+Verified: tests, lint, type check; table, god-mode, HTML export and sync-settings smoke checks.
+
 * v508 — Fewer placeholder types
 About 290 more parameters now have real types, worked out from what the code actually passes in (strings, numbers, dates, headings, lists). About 1,400 placeholders remain; they are the names that genuinely mean different things in different places (callbacks, the calculator's number objects, loosely shaped option bags), so they are left alone on purpose. No change in behaviour.
 Verified: tests, lint, type check.

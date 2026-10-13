@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('../src/types.js').WebdavConfig} WebdavConfig */
 /**
  * WebDAV-backed storage adapter — the same { read(fileId), write(fileId,
  * content), exists(fileId) } shape as the GitHub and local File System
@@ -38,7 +39,7 @@
  * on servers that don't support ETags, not a silent one.
  */
 
-/** @param {any} [config] */
+/** @param {WebdavConfig} config */
 function authHeader(config) {
   const encoded = btoa(`${config.username}:${config.password}`);
   return { Authorization: `Basic ${encoded}` };
@@ -78,7 +79,7 @@ function base64ToArrayBuffer(base64) {
 }
 
 /**
- * @param {any} config
+ * @param {WebdavConfig} config
  * @param {string} path
  */
 function fileUrl(config, path) {
@@ -149,7 +150,7 @@ function webdavErrorMessage(res) {
  *  narrowly checking for just one. Only a genuine, unexpected failure
  *  (401/403/500/...) actually throws. `path` itself (the file, not a
  *  directory) is never MKCOL'd -- only the directory components
- * @param {any} config
+ * @param {WebdavConfig} config
  * @param {string} path
  *  before its own final segment. */
 async function ensureIntermediateDirectories(config, path) {
@@ -200,7 +201,7 @@ function parsePropfindResponse(xml) {
 /** The path portion of `config.baseUrl`, with a trailing slash, so an
  *  href from the server (also always trailing-slash-normalized for a
  *  directory) can be compared/stripped consistently regardless of
- * @param {any} [config]
+ * @param {WebdavConfig} config
  *  whether either one happened to include a trailing slash already. */
 function baseUrlPath(config) {
   const url = new URL(config.baseUrl);
@@ -392,7 +393,7 @@ export function createWebdavAdapter(getConfig) {
   };
 }
 
-/** @param {any} [config] */
+/** @param {WebdavConfig} config */
 export function isWebdavConfigured(config) {
   return !!(config && config.baseUrl && config.username);
 }

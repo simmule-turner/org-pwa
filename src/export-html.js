@@ -1,5 +1,17 @@
 // @ts-check
 /** @typedef {import('./types.js').Heading} Heading */
+/**
+ * The walk-wide bookkeeping of one HTML export.
+ * @typedef {{
+ *   doc: Doc, scope: any, options: Record<string, any>,
+ *   headingIds: Map<any, string>, usedIds: Set<string>, targets: Map<string, string>, macros: Map<string, string>,
+ *   fnNumbers: Map<string, number>, fnOrder: string[], fnRefCount: Map<string, number>, fnDefs: Map<string, any>, fnInline: Map<string, any>,
+ *   counters: { table: number, listing: number, figure: number }, math: boolean,
+ *   tokens: string[], tokenSources: string[], doneKeywords: string[], todoKeywords: string[] | null,
+ *   radioRe: RegExp | null, noRadio: boolean, namedElements: Map<string, string>, currentNode: any,
+ *   parsed: Map<any, any>, fnDefsCollect?: any, outline: any[], captioned: any[],
+ * }} ExportState
+ */
 /** @typedef {import('./types.js').Doc} Doc */
 /**
  * HTML export, following Org's own `ox-html`: the same document structure (outline containers, `h2` for top-level
@@ -187,6 +199,7 @@ function htmlAttributes(aff, skip = []) {
  */
 function createState(doc, scope) {
   const options = parseHtmlOptions(doc);
+  /** @type {ExportState} */
   const state = {
     doc,
     scope,
@@ -206,6 +219,13 @@ function createState(doc, scope) {
     tokenSources: [],
     doneKeywords: resolveTodoSequence(doc).doneKeywords,
     todoKeywords: null,
+    namedElements: new Map(),
+    parsed: new Map(),
+    radioRe: null,
+    noRadio: false,
+    currentNode: null,
+    outline: [],
+    captioned: [],
   };
   for (const kw of doc.keywords || []) {
     if (kw.key.toUpperCase() !== 'MACRO') continue;
@@ -222,7 +242,7 @@ const TOKEN_END = '';
 const TOKEN_RE = /(\d+)/g;
 
 /**
- * @param {any} state
+ * @param {ExportState} state
  * @param {string} html
  */
 function addToken(state, html, source = '') {
@@ -234,7 +254,7 @@ function addToken(state, html, source = '') {
 const TIMESTAMP_RE = /<(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?(?: \d{1,2}:\d{2}(?:-\d{1,2}:\d{2})?)?(?: [+.]?[+-]\d+[hdwmy])*)>(?:--<(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?(?: \d{1,2}:\d{2})?(?: [+.]?[+-]\d+[hdwmy])*)>)?|\[(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?(?: \d{1,2}:\d{2}(?:-\d{1,2}:\d{2})?)?(?: [+.]?[+-]\d+[hdwmy])*)\](?:--\[(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?(?: \d{1,2}:\d{2})?(?: [+.]?[+-]\d+[hdwmy])*)\])?/g;
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [match]
  */
 function timestampHtml(state, match) {
@@ -245,7 +265,7 @@ function timestampHtml(state, match) {
 }
 
 /**
- * @param {any} state
+ * @param {ExportState} state
  * @param {string} text
  */
 function expandMacros(state, text) {
@@ -258,14 +278,14 @@ function expandMacros(state, text) {
 }
 
 /**
- * @param {any} state
+ * @param {ExportState} state
  * @param {string} text
  */
 function expandMacrosIn(state, text) {
   return text.replace(/\{\{\{(\w[\w-]*)(?:\(([\s\S]*?)\))?\}\}\}/g, (/** @type {any} */ whole, /** @type {string} */ name, /** @type {any} */ argText) => {
     const args = argText === undefined ? [] : argText.split(/(?<!\\),/).map((/** @type {any} */ a) => a.replace(/\\,/g, ',').trim());
     const key = name.toLowerCase();
-    if (state.macros.has(name)) return state.macros.get(name).replace(/\$(\d)/g, (/** @type {any} */ w, /** @type {any} */ n) => args[Number(n) - 1] ?? '');
+    if (state.macros.has(name)) return (state.macros.get(name) || '').replace(/\$(\d)/g, (/** @type {any} */ w, /** @type {any} */ n) => args[Number(n) - 1] ?? '');
     /** @param {string} k */
     const kw = (k) => keywordValue(state.doc, k) || '';
     if (key === 'title') return kw('TITLE');
@@ -279,7 +299,7 @@ function expandMacrosIn(state, text) {
 
 /**
  * Org text -> HTML for inline content. `text` may span several lines (joined by "\n").
- * @param {any} state
+ * @param {ExportState} state
  * @param {string} rawText
  */
 function renderInline(state, rawText) {
@@ -302,7 +322,7 @@ function renderInline(state, rawText) {
 }
 
 /**
- * @param {any} state
+ * @param {ExportState} state
  * @param {string} name
  */
 function targetId(state, name) {
@@ -312,7 +332,7 @@ function targetId(state, name) {
 }
 
 /**
- * @param {any} state
+ * @param {ExportState} state
  * @param {string} base
  */
 function uniqueId(state, base) {
@@ -327,7 +347,7 @@ const COOKIE_RE = /\[(\d*\/\d*|\d*%)\]/g;
 
 /**
  * Plain text -> HTML: escaping, entities, special strings, statistics cookies, and the placeholders set aside earlier.
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [value]
  */
 function renderText(state, value) {
@@ -396,7 +416,7 @@ function imageSrc(target) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [target]
  */
 function linkHref(state, target) {
@@ -423,7 +443,7 @@ function linkHref(state, target) {
  * @param {string} name
  * @param {any} [value]
  */
-/** @returns {any} */ function findByProperty(/** @type {any} */ headings, /** @type {any} */ name, /** @type {any} */ value) {
+function findByProperty(/** @type {any} */ headings, /** @type {any} */ name, /** @type {any} */ value) {
   for (const h of headings) {
     if (String(getProperty(h, name) || '').trim() === value) return h;
     /** @type {any} */ const r = findByProperty(h.children || [], name, value);
@@ -434,7 +454,7 @@ function linkHref(state, target) {
 
 /**
  * Verbatim text with the source of any construct that was set aside as a placeholder put back.
- * @param {any} state
+ * @param {ExportState} state
  * @param {string} value
  */
 function literal(state, value) {
@@ -442,7 +462,7 @@ function literal(state, value) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [nodes]
  */
 function renderNodes(state, nodes) {
@@ -451,7 +471,7 @@ function renderNodes(state, nodes) {
 
 /**
  * Emphasis as a tag, or with its markers kept as plain text when `#+OPTIONS: *:nil`.
- * @param {any} state
+ * @param {ExportState} state
  * @param {any} node
  * @param {string} marker
  * @param {string} open
@@ -462,7 +482,7 @@ function emphasis(state, node, marker, open, close = open) {
 }
 
 /**
- * @param {any} state
+ * @param {ExportState} state
  * @param {string} label
  * @param {string} [inlineHtml]
  */
@@ -481,7 +501,7 @@ function footnoteRef(state, label, inlineHtml) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [node]
  */
 function renderNode(state, node) {
@@ -534,7 +554,7 @@ function imageHtml(target, alt, attrs = '') {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [node]
  */
 function linkHtml(state, node) {
@@ -555,7 +575,7 @@ function linkHtml(state, node) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [source]
  * @param {any} [displayMode]
  */
@@ -571,7 +591,7 @@ function mathHtml(state, source, displayMode) {
 // ---- elements -----------------------------------------------------------------
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [aff]
  */
 function captionHtml(state, aff) {
@@ -580,7 +600,7 @@ function captionHtml(state, aff) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [el]
  * @param {any} [ctx]
  */
@@ -604,7 +624,7 @@ function standaloneImage(el) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [el]
  * @param {any} [image]
  */
@@ -624,7 +644,7 @@ function figureHtml(state, el, image) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [el]
  * @param {any} [ctx]
  */
@@ -636,7 +656,7 @@ function listHtml(state, el, ctx) {
 }
 
 /**
- * @param {any} state
+ * @param {ExportState} state
  * @param {any} item
  * @param {string} listType
  */
@@ -664,7 +684,7 @@ function itemHtml(state, item, listType) {
 const NUMBER_RE = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$|^[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?$/;
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [el]
  */
 function tableHtml(state, el) {
@@ -735,7 +755,7 @@ function tableHtml(state, el) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [el]
  */
 function srcBlockHtml(state, el) {
@@ -754,7 +774,7 @@ function srcBlockHtml(state, el) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [el]
  * @param {any} [ctx]
  */
@@ -799,7 +819,7 @@ function blockHtml(state, el, ctx) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [el]
  * @param {any} [ctx]
  */
@@ -812,7 +832,7 @@ function drawerHtml(state, el, ctx) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [el]
  */
 function elementHtml(state, el, ctx = {}) {
@@ -852,7 +872,7 @@ function elementHtml(state, el, ctx = {}) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [elements]
  */
 function elementsHtml(state, elements, ctx = {}) {
@@ -879,7 +899,7 @@ function titleOf(h) {
 
 /**
  * Which headings are exported: not COMMENT, not excluded by tag, only selected ones when `#+SELECT_TAGS:` is used.
- * @param {any} [state]
+ * @param {ExportState} state
  */
 function buildFilter(state) {
   const { doc, options } = state;
@@ -934,7 +954,7 @@ function isArchived(h) {
 
 /**
  * The exported headings as a tree of { heading, children, number: [..] , level (relative) }.
- * @param {any} state
+ * @param {ExportState} state
  * @param {Heading[]} headings
  * @param {number} levelOffset
  * @param {any} [filter]
@@ -960,7 +980,7 @@ function buildOutline(state, headings, levelOffset, filter, numbers) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [node]
  */
 function headingTitleHtml(state, node, { inToc = false } = {}) {
@@ -981,7 +1001,7 @@ function headingTitleHtml(state, node, { inToc = false } = {}) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [node]
  */
 function numberLabel(state, node) {
@@ -992,7 +1012,7 @@ function numberLabel(state, node) {
 }
 
 /**
- * @param {any} state
+ * @param {ExportState} state
  * @param {Heading} heading
  */
 function planningHtml(state, heading) {
@@ -1008,7 +1028,7 @@ function planningHtml(state, heading) {
 }
 
 /**
- * @param {any} state
+ * @param {ExportState} state
  * @param {Heading} heading
  */
 function bodyHtml(state, heading, node = null) {
@@ -1018,7 +1038,7 @@ function bodyHtml(state, heading, node = null) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [node]
  * @param {any} [ids]
  */
@@ -1027,7 +1047,7 @@ function sectionHtml(state, node, ids) {
   const limit = state.options.H;
   const isStructural = node.level <= limit;
   const textPath = node.number.join('-');
-  const id = state.headingIds.get(heading);
+  const id = state.headingIds.get(heading) || '';
   if (!isStructural) return '';
   const hl = Math.min(6, node.level + 1);
   let out = `<div id="outline-container-${escapeAttr(id)}" class="outline-${node.level + 1}">\n`;
@@ -1046,7 +1066,7 @@ function sectionHtml(state, node, ids) {
 
 /**
  * Headings deeper than `#+OPTIONS: H:` become list items.
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [nodes]
  */
 function deepListHtml(state, nodes) {
@@ -1054,7 +1074,7 @@ function deepListHtml(state, nodes) {
   const ordered = !!num && (num === true || nodes[0].level <= num);
   const tag = ordered ? 'ol' : 'ul';
   const items = nodes.map((/** @type {any} */ node) => {
-    const id = state.headingIds.get(node.heading);
+    const id = state.headingIds.get(node.heading) || '';
     let li = `<li><a id="${escapeAttr(id)}"></a>${headingTitleHtml(state, node)}<br />\n`;
     const body = node.archived ? '' : bodyHtml(state, node.heading, node);
     if (body) li += `<div class="outline-text-${node.level + 1}" id="text-${escapeAttr(node.number.join('-'))}">\n${body}\n</div>\n`;
@@ -1067,7 +1087,7 @@ function deepListHtml(state, nodes) {
 // ---- table of contents -----------------------------------------------------------
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [nodes]
  * @param {any} [maxDepth]
  */
@@ -1075,7 +1095,7 @@ function tocListHtml(state, nodes, maxDepth, depth = 1) {
   const visible = nodes.filter((/** @type {any} */ n) => n.level <= Math.min(state.options.H, maxDepth));
   if (!visible.length) return '';
   const items = visible.map((/** @type {any} */ node) => {
-    const id = state.headingIds.get(node.heading);
+    const id = state.headingIds.get(node.heading) || '';
     const label = (state.options.num && !(typeof state.options.num === 'number' && node.level > state.options.num) ? node.number.join('.') + '. ' : '') + headingTitleHtml(state, node, { inToc: true }).replace(/<a [^>]*>([\s\S]*?)<\/a>/g, '$1');
     const sub = tocListHtml(state, node.children, maxDepth, depth + 1);
     return `<li><a href="#${escapeAttr(id)}">${label}</a>${sub ? '\n' + sub + '\n' : ''}</li>`;
@@ -1084,7 +1104,7 @@ function tocListHtml(state, nodes, maxDepth, depth = 1) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [depth]
  */
 function tocHtml(state, depth, nodes = state.outline) {
@@ -1094,7 +1114,7 @@ function tocHtml(state, depth, nodes = state.outline) {
 }
 
 /**
- * @param {any} [state]
+ * @param {ExportState} state
  * @param {any} [el]
  */
 function tocKeywordHtml(state, el) {
@@ -1120,7 +1140,7 @@ function tocKeywordHtml(state, el) {
 
 // ---- footnotes -------------------------------------------------------------------
 
-/** @param {any} [state] */
+/** @param {ExportState} state */
 function footnotesHtml(state) {
   if (!state.options.footnotes || !state.fnOrder.length) return '';
   const defs = [];
@@ -1218,8 +1238,8 @@ const PAGE_CSS = `
 export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = /** @type {any} */ (null) } = {}) {
   activeImages = images instanceof Map ? images : new Map();
   const state = createState(doc, scope);
-  /** @type {any} */ (state).namedElements = new Map();
-  /** @type {any} */ (state).fnDefsCollect = (/** @type {any} */ elements) => {
+  state.namedElements = new Map();
+  state.fnDefsCollect = (/** @type {any} */ elements) => {
     for (const el of elements) if (el.type === 'footnote-def') state.fnDefs.set(el.label, el.children);
   };
   const { options } = state;
@@ -1227,7 +1247,7 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
 
   const roots = scope ? scope.children || [] : doc.children || [];
   const levelOffset = scope ? scope.level : 0;
-  /** @type {any} */ (state).outline = buildOutline(state, roots, levelOffset, filter, []);
+  state.outline = buildOutline(state, roots, levelOffset, filter, []);
 
   // ids: CUSTOM_ID, else a slug of the title
   /** @param {any} [nodes] */
@@ -1242,14 +1262,14 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
       assign(node.children);
     }
   };
-  assign(/** @type {any} */ (state).outline);
+  assign(state.outline);
 
   // footnote definitions and radio/inline targets are found before anything is rendered
   const preamble = scope ? scope.bodyLines || [] : preambleBody(doc);
   const preElements = parseElements(preamble);
-  /** @type {any} */ (state).fnDefsCollect(preElements);
-  /** @type {any} */ (state).parsed = new Map();
-  /** @type {any} */ (state).captioned = [];
+  state.fnDefsCollect(preElements);
+  state.parsed = new Map();
+  state.captioned = [];
   let tableN = 0;
   let listingN = 0;
   /** @param {any} [elements] */
@@ -1258,10 +1278,10 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
       const cap = el.aff && el.aff.caption.length ? el.aff.caption[el.aff.caption.length - 1].text : null;
       if (el.type === 'table' && (cap !== null || (el.aff && el.aff.name))) {
         el.__id = (el.aff && el.aff.name) || uniqueId(state, 'table-' + (tableN + 1));
-        if (cap !== null) /** @type {any} */ (state).captioned.push({ kind: 'table', n: ++tableN, id: el.__id, html: renderInline(state, cap) });
+        if (cap !== null) state.captioned.push({ kind: 'table', n: ++tableN, id: el.__id, html: renderInline(state, cap) });
       } else if (el.type === 'block' && el.name === 'src' && (cap !== null || (el.aff && el.aff.name))) {
         el.__id = (el.aff && el.aff.name) || uniqueId(state, 'listing-' + (listingN + 1));
-        if (cap !== null) /** @type {any} */ (state).captioned.push({ kind: 'listing', n: ++listingN, id: el.__id, html: renderInline(state, cap) });
+        if (cap !== null) state.captioned.push({ kind: 'listing', n: ++listingN, id: el.__id, html: renderInline(state, cap) });
       } else if (el.type === 'list') for (const item of el.items) scan(item.children);
       else if (el.type === 'drawer') scan(parseElements(el.lines));
       else if (el.type === 'block' && ['quote', 'center'].includes(el.name)) scan(parseElements(el.lines));
@@ -1272,16 +1292,16 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
   const collect = (nodes) => {
     for (const node of nodes) {
       const els = parseElements(node.heading.bodyLines || []);
-      /** @type {any} */ (state).parsed.set(node.heading, els);
+      state.parsed.set(node.heading, els);
       scan(els);
-      /** @type {any} */ (state).fnDefsCollect(els);
+      state.fnDefsCollect(els);
       for (const line of node.heading.bodyLines || []) {
         for (const m of line.matchAll(/<<<?([^<>\n]+?)>>>?/g)) targetId(state, m[1]);
       }
       collect(node.children);
     }
   };
-  collect(/** @type {any} */ (state).outline);
+  collect(state.outline);
   for (const line of preamble) for (const m of line.matchAll(/<<<?([^<>\n]+?)>>>?/g)) targetId(state, m[1]);
 
   const radio = new Set();
@@ -1297,10 +1317,10 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
       radioWalk(node.children);
     }
   };
-  radioWalk(/** @type {any} */ (state).outline);
+  radioWalk(state.outline);
   if (radio.size) {
     const names = [...radio].sort((a, b) => b.length - a.length).map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'));
-    /** @type {any} */ (state).radioRe = new RegExp('(?<![\\w])(?:' + names.join('|') + ')(?![\\w])', 'gi');
+    state.radioRe = new RegExp('(?<![\\w])(?:' + names.join('|') + ')(?![\\w])', 'gi');
   }
 
   const out = [];
@@ -1312,10 +1332,10 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
   if (toc) out.push(toc);
   const lead = [scope ? planningHtml(state, scope) : '', elementsHtml(state, preElements)].filter(Boolean).join('\n');
   if (lead) out.push(lead);
-  for (const node of /** @type {any} */ (state).outline) {
+  for (const node of state.outline) {
     if (node.level <= options.H) out.push(sectionHtml(state, node));
   }
-  const deepTop = /** @type {any} */ (state).outline.filter((/** @type {any} */ n) => n.level > options.H);
+  const deepTop = state.outline.filter((/** @type {any} */ n) => n.level > options.H);
   if (deepTop.length) out.push(deepListHtml(state, deepTop));
   const footnotes = footnotesHtml(state);
   if (footnotes) out.push(footnotes);

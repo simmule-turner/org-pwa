@@ -205,7 +205,7 @@ function parseClockTimestampToDate(raw) {
  *  nothing is running anywhere in the document. */
 function findHeadingWithRunningClock(doc) {
   /** @param {Heading[]} headings */
-  /** @returns {any} */ const walk = (/** @type {any} */ headings) => {
+  const walk = (/** @type {any} */ headings) => {
     for (const heading of headings) {
       if (isClockRunning(heading)) return heading;
       /** @type {any} */ const found = walk(heading.children || []);

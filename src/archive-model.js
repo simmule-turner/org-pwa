@@ -163,7 +163,7 @@ function cloneHeading(heading) {
  * @param {any} target
  * @param {string} path
  */
-/** @returns {any} */ function findAncestorPath(/** @type {any} */ root, /** @type {any} */ target, /** @type {any} */ path = []) {
+function findAncestorPath(/** @type {any} */ root, /** @type {any} */ target, /** @type {any} */ path = []) {
   const children = root.children || [];
   for (const child of children) {
     if (child === target) return path;
@@ -179,7 +179,7 @@ function cloneHeading(heading) {
  * @param {any} [root]
  * @param {any} [target]
  */
-/** @returns {any} */ function findContainer(/** @type {any} */ root, /** @type {any} */ target) {
+function findContainer(/** @type {any} */ root, /** @type {any} */ target) {
   const children = root.children || [];
   const idx = children.indexOf(target);
   if (idx !== -1) return { container: children, index: idx };
@@ -601,7 +601,7 @@ function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart) {
  *  necessarily at the document's own top level. */
 function findHeadingAtLevel(doc, level, title) {
   /** @param {any} [nodes] */
-  /** @returns {any} */ function walk(/** @type {any} */ nodes) {
+  function walk(/** @type {any} */ nodes) {
     for (const node of nodes) {
       if (node.level === level && node.title === title) return node;
       /** @type {any} */ const found = walk(node.children || []);

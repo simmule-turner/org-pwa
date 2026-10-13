@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('../src/types.js').GithubConfig} GithubConfig */
 /**
  * GitHub-backed storage adapter, using GitHub's REST Contents API directly
  * from the browser — no server component. This is exactly how GitHub's API
@@ -65,14 +66,14 @@ function encodeGithubPath(path) {
 }
 
 /**
- * @param {any} config
+ * @param {GithubConfig} config
  * @param {string} path
  */
 function contentsUrl(config, path) {
   return `${API_BASE}/repos/${config.owner}/${config.repo}/contents/${encodeGithubPath(path)}`;
 }
 
-/** @param {any} [config] */
+/** @param {GithubConfig} config */
 function authHeaders(config) {
   return {
     Authorization: `Bearer ${config.token}`,
@@ -127,7 +128,7 @@ async function githubErrorMessage(res) {
  *  the Contents API's own inline-content threshold. Returns the same
  *  base64 string shape the Contents API's own inline `content` field
  *  would have had, so callers don't need to know or care which path
- * @param {any} [config]
+ * @param {GithubConfig} config
  * @param {any} [sha]
  *  was actually taken. */
 async function fetchBlobContent(config, sha) {
@@ -309,7 +310,7 @@ export function createGithubAdapter(getConfig) {
   };
 }
 
-/** @param {any} [config] */
+/** @param {GithubConfig} config */
 export function isGithubConfigured(config) {
   return !!(config && config.token && config.owner && config.repo);
 }

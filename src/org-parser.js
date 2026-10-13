@@ -572,7 +572,7 @@ function findHeadingAtLine(doc, targetLine) {
   let count = doc.keywords.length + (doc.bodyLines ? doc.bodyLines.length : 0);
 
   /** @param {any} [node] */
-  /** @returns {any} */ function walk(/** @type {any} */ node) {
+  function walk(/** @type {any} */ node) {
     if (count === targetLine) return node;
     count += headingPreambleLines(node).length; // heading line, planning line and drawers, exactly as serialized
     count += (node.bodyLines || []).length;

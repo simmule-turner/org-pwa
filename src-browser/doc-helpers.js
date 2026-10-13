@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Table} Table */
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: doc helpers. These have no dependency on the app's shared mutable state,
@@ -11,7 +12,7 @@ import { CAPTURE_TYPES } from './constants.js';
  *  actual data row in `table` -- the entry point keyboard table-cell
  *  navigation lands on when a table first gains keyboard focus.
  *  Returns 0 if `table` has no data rows at all (shouldn't normally
- * @param {any} [table]
+ * @param {Table} table
  *  happen, but a defined fallback beats an out-of-range index). */
 export function firstDataRowIndex(table) {
   const idx = table.rows.findIndex((/** @type {any} */ r) => r.type !== 'rule');
@@ -89,7 +90,7 @@ export function expandScopeWithAncestors(doc, matchedHeadings) {
   return visible;
 }
 
-/** @param {any} [table] */
+/** @param {Table} table */
 export function tableHasContent(table) {
   return table.rows.some((/** @type {any} */ r) => r.type === 'row' && r.cells.some((/** @type {any} */ c) => c.trim() !== ''));
 }

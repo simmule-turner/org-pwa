@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Table} Table */
 // Extracted from app.js: render helpers. These have no dependency on the app's shared mutable state,
 // so they moved verbatim (see tools/ notes in CHANGELOG v412).
 import { isAudioFilename } from '../src/attach.js';
@@ -80,7 +81,7 @@ export function scrollFocusedHeadingIntoView() {
   });
 }
 
-/** @param {any} [table] */
+/** @param {Table} table */
 export function plotCacheKey(table) {
   return JSON.stringify({ plot: table.plot, rows: table.rows.filter((/** @type {any} */ r) => r.type === 'row').map((/** @type {any} */ r) => r.cells) });
 }
@@ -91,7 +92,7 @@ export function plotCacheKey(table) {
  *  thrown error (unsupported plot type, an out-of-range column, not
  *  enough data -- see org-plot.js) propagate to the caller rather than
  *  caching a failure, so a fixed #+PLOT: line gets a fresh, real
- * @param {any} [table]
+ * @param {Table} table
  *  attempt next time rather than a stale cached error. */
 export function getOrRenderPlotSvg(table) {
   const key = plotCacheKey(table);

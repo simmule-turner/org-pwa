@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('./types.js').Table} Table */
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
 /**
@@ -395,7 +396,7 @@ function wrapTableCellAscii(text, width) {
 }
 
 /**
- * @param {any} table
+ * @param {Table} table
  * @param {string} indent
  */
 function renderTableAscii(table, indent) {
@@ -508,7 +509,7 @@ function parseBlockContent(lines) {
  * @param {any} [indent]
  * @param {any} [width]
  */
-/** @returns {any} */ function renderNodesAscii(/** @type {any} */ nodes, /** @type {any} */ indent, /** @type {any} */ width) {
+function renderNodesAscii(/** @type {any} */ nodes, /** @type {any} */ indent, /** @type {any} */ width) {
   const out = [];
   for (const node of nodes) {
     /** @type {any} */ const rendered = renderBodyNodeAscii(node, indent, width);
@@ -540,7 +541,7 @@ const QUOTE_MARGIN = 6;
  * @param {any} [indent]
  * @param {any} [width]
  */
-/** @returns {any} */ function renderBlockAscii(/** @type {any} */ block, /** @type {any} */ indent, /** @type {any} */ width) {
+function renderBlockAscii(/** @type {any} */ block, /** @type {any} */ indent, /** @type {any} */ width) {
   const name = (block.name || '').toUpperCase();
   switch (name) {
     case 'EXPORT':
@@ -608,7 +609,7 @@ function renderParagraphRuns(node, indent, width) {
  * @param {any} [indent]
  * @param {any} [width]
  */
-/** @returns {any} */ function renderBodyNodeAscii(/** @type {any} */ node, /** @type {any} */ indent, /** @type {any} */ width) {
+function renderBodyNodeAscii(/** @type {any} */ node, /** @type {any} */ indent, /** @type {any} */ width) {
   if (node.type === 'paragraph') return renderParagraphRuns(node, indent, width);
   if (node.type === 'list') return renderListAscii(node, indent, width);
   if (node.type === 'table') return renderTableAscii(node, indent);

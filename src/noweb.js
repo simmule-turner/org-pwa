@@ -65,7 +65,7 @@ function headingText(heading) {
  */
 const findHeadingByCustomId = (blocks, doc, id) => {
   /** @param {any} [list] */
-  /** @returns {any} */ const walk = (/** @type {any} */ list) => {
+  const walk = (/** @type {any} */ list) => {
     for (const h of list) {
       for (const [k, v] of Object.entries(h.properties || {})) if (k.toUpperCase() === 'CUSTOM_ID' && String(v) === id) return h;
       /** @type {any} */ const inner = walk(h.children || []);

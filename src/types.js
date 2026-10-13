@@ -37,4 +37,21 @@
 /** The file-local variables of a document (`# -*- ... -*-` and `Local Variables:`), by name. */
 /** @typedef {Record<string, any>} LocalVars */
 
+/**
+ * One line of a table: a data row, or a horizontal rule (`type: 'rule'`, which has no cells).
+ * @typedef {{ type: string, cells: string[], cellsInline?: any[], [key: string]: any }} TableRow
+ */
+
+/**
+ * A table as the body parser reads it. Other modules hang their own fields on it.
+ * @typedef {{ type: string, rows: TableRow[], tblfm: string | null, lineIndex: number, lineCount: number, [key: string]: any }} Table
+ */
+
+/** The key sequence being typed in god mode: the chord so far, a pending `g`/`G` prefix, and the sticky literal and C-c flags. */
+/** @typedef {{ chordString: string, pendingModifier: string | null, literalActive: boolean, inCcChain: boolean }} GodState */
+
+/** @typedef {{ token: string, owner: string, repo: string, branch: string }} GithubConfig */
+/** @typedef {{ baseUrl: string, username: string, password: string }} WebdavConfig */
+/** @typedef {{ url: string, contactsUrl: string, username: string, password: string }} CaldavConfig */
+
 export {};

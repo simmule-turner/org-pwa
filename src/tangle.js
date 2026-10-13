@@ -172,7 +172,7 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
   /** @param {string} name */
   const lookupTable = (name) => {
     /** @param {any} [list] */
-    /** @returns {any} */ const walk = (/** @type {any} */ list) => {
+    const walk = (/** @type {any} */ list) => {
       for (const h of list) {
         const rows = findNamedTable(h.bodyLines || [], name);
         if (rows) return rows;

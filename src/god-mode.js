@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('./types.js').GodState} GodState */
 /**
  * god-mode: a key-sequence translator letting a plain, unmodified
  * keystroke stand in for an Emacs-style Control/Meta chord, so a
@@ -118,7 +119,7 @@ const NAMED_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', '
  *  dead end -- see app.js's own dispatch logic). `rawKey` is a
  *  KeyboardEvent's own `.key` value; `shiftKey` is whether Shift was
  *  actually held (see normalizeKeyName's own docs for why Shift is
- * @param {any} state
+ * @param {GodState} state
  * @param {any} rawKey
  * @param {string | boolean} shiftKey
  *  treated differently from Ctrl/Alt here). */

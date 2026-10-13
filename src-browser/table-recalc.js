@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Table} Table */
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: table recalc.
@@ -25,7 +26,7 @@ import { render } from './render.js';
  *  decide for themselves how to report each of these -- a single
  *  table's own Calc button and a whole-document sweep reasonably want
  * @param {Heading} heading
- * @param {any} [table]
+ * @param {Table} table
  *  different status wording for the same underlying result. */
 export function recalculateOneTable(heading, table) {
   if (!table.tblfm || !table.tblfm.trim()) return { result: 'no-formula' };

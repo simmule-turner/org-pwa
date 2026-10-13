@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Table} Table */
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: gestures structure.
@@ -351,7 +352,7 @@ export async function deleteHeadingWithConfirmation(heading) {
   commitAndRender('Deleted heading');
 }
 
-/** @param {any} [table] */
+/** @param {Table} table */
 export async function confirmTableDelete(table) {
   if (!tableHasContent(table)) return true;
   return confirmDialog('Delete this table and all its data?');

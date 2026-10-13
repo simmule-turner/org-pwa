@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('./types.js').GodState} GodState */
 /**
  * "Where can this prefix lead?": given the god-mode sequence typed so far, which
  * keys would continue it, and what each would do. Like Emacs's which-key.
@@ -49,7 +50,7 @@ function makeChordIndex(chords) {
 
 /**
  * Whether a sequence has been started and not finished: something typed, a g/G prefix pending, or literal mode on.
- * @param {any} [state]
+ * @param {GodState | null} [state]
  */
 function isSequenceInProgress(state) {
   return !!state && (state.chordString !== '' || state.pendingModifier !== null || state.literalActive);
@@ -60,7 +61,7 @@ function isSequenceInProgress(state) {
  * @returns {{ key: string, rawKey: string, shift: boolean, chord: string|null, complete: boolean, count: number, children?: object[] }[]}
  *   `complete`: the key finishes a bound chord (`chord`). `count`: how many bound chords lie beyond it (0 for a plain leaf).
  *   Keys that only change mode (g, SPC) carry `children`, the keys that would follow them.
- * @param {any} [state]
+ * @param {GodState} state
  * @param {any} [index]
  */
 function godModeContinuations(state, index, depth = 0) {

@@ -1,4 +1,7 @@
 // @ts-check
+/** @typedef {import('../src/types.js').CaldavConfig} CaldavConfig */
+/** @typedef {import('../src/types.js').WebdavConfig} WebdavConfig */
+/** @typedef {import('../src/types.js').GithubConfig} GithubConfig */
 /** @typedef {import('../src/types.js').KvAdapter} KvAdapter */
 /**
  * Settings persistence — GitHub credentials, theme, and font preferences,
@@ -151,7 +154,7 @@ export async function getGithubConfig(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [config]
+ * @param {GithubConfig} [config]
  */
 export async function setGithubConfig(kvAdapter, config) {
   const merged = { ...DEFAULT_GITHUB_CONFIG, ...config };
@@ -169,7 +172,7 @@ export async function getWebdavConfig(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [config]
+ * @param {WebdavConfig} [config]
  */
 export async function setWebdavConfig(kvAdapter, config) {
   const merged = { ...DEFAULT_WEBDAV_CONFIG, ...config };
@@ -194,7 +197,7 @@ export async function getCaldavConfig(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [config]
+ * @param {CaldavConfig} [config]
  */
 export async function setCaldavConfig(kvAdapter, config) {
   const merged = { ...DEFAULT_CALDAV_CONFIG, ...config, url: String((config && config.url) || '').trim(), contactsUrl: String((config && config.contactsUrl) || '').trim() };

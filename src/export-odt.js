@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('./types.js').Table} Table */
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
 /**
@@ -233,7 +234,7 @@ function renderListOdt(list) {
   return renderListItemsOdt(list.items, isOrdered ? 'OrderedList' : 'UnorderedList');
 }
 
-/** @param {any} [table] */
+/** @param {Table} table */
 function renderTableOdt(table) {
   const dataRows = table.rows.filter((/** @type {any} */ r) => r.type === 'row' && !isWidthCookieRow(r));
   if (dataRows.length === 0) return '';

@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('./types.js').Table} Table */
 /** Real org-mode's own Org Plot feature (org-plot.el): draws 2D and
  *  radar graphs of information stored in an org table, driven by a
  *  #+PLOT: line directly above it. Real org-plot shells out to an
@@ -149,7 +150,7 @@ export function parsePlotOptions(text) {
  *  `values` slot rather than throwing, so one bad cell doesn't abort
  *  plotting the rest of a real, otherwise-good table. Throws only
  *  when there's genuinely nothing plottable at all (fewer than 2
- * @param {any} [table]
+ * @param {Table} table
  * @param {any} [options]
  *  columns, or no real data rows). */
 export function extractPlotData(table, options) {
@@ -447,7 +448,7 @@ const SUPPORTED_PLOT_TYPES = new Set(['2d', 'radar']);
  *  appropriate renderer. Throws a clear, direct error for `3d`/`grid`
  *  or any other unrecognized type -- deliberately not silently
  *  falling back to a 2D rendering of data that was never meant to be
- * @param {any} [table]
+ * @param {Table} table
  * @param {any} [options]
  *  shown that way. */
 export function renderPlotSvg(table, options) {

@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('./types.js').Table} Table */
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
 /**
@@ -49,7 +50,7 @@ export function serializeTableRule(columnCount) {
   return '|' + Array(Math.max(1, columnCount)).fill('---').join('+') + '|';
 }
 
-/** @param {any} [table] */
+/** @param {Table} table */
 export function serializeTable(table) {
   const dataRow = table.rows.find((/** @type {any} */ r) => r.type === 'row');
   const columnCount = dataRow ? dataRow.cells.length : 1;
@@ -78,7 +79,7 @@ export function serializeTable(table) {
  * rows before the FIRST one are ever headers; a later rule is just a
  * group separator within the data, and doesn't retroactively make the
  * row before it look like a header too.
- * @param {any} table
+ * @param {Table} table
  * @param {number} rowIndex
  */
 export function isTableHeaderRow(table, rowIndex) {
@@ -139,11 +140,11 @@ export function commitLines(heading, lineIndex, lineCount, newLines) {
 // ---- table edits ----------------------------------------------------------
 
 /**
- * @param {any} table
+ * @param {Table} table
  * @param {string | number} rowIndex
  */
 function requireDataRow(table, rowIndex) {
-  const row = table.rows[rowIndex];
+  const row = table.rows[Number(rowIndex)];
   if (!row || row.type !== 'row') {
     throw new Error(`setTableCell: row ${rowIndex} is not a data row (rule rows have no cells)`);
   }
@@ -153,7 +154,7 @@ function requireDataRow(table, rowIndex) {
 /** Sets one cell's text and commits the whole table's new text back to
  *  bodyLines. `table` must be a fresh reference from the current render
  * @param {Heading} heading
- * @param {any} table
+ * @param {Table} table
  * @param {number} rowIndex
  * @param {number} colIndex
  * @param {string} value
@@ -166,7 +167,7 @@ export function setTableCell(heading, table, rowIndex, colIndex, value) {
 
 /** Inserts a new blank data row after `afterRowIndex` (-1 to insert at the
  * @param {Heading} heading
- * @param {any} table
+ * @param {Table} table
  * @param {number} afterRowIndex
  *  very start), with the same column count as the table's existing rows. */
 export function insertTableRow(heading, table, afterRowIndex) {
@@ -179,7 +180,7 @@ export function insertTableRow(heading, table, afterRowIndex) {
 
 /**
  * @param {Heading} heading
- * @param {any} table
+ * @param {Table} table
  * @param {number} rowIndex
  */
 export function deleteTableRow(heading, table, rowIndex) {
@@ -193,7 +194,7 @@ export function deleteTableRow(heading, table, rowIndex) {
 /** Inserts a new blank column after `afterColIndex` (-1 for the start) in
  *  every data row. Rule rows need no per-row change — serializeTable
  * @param {Heading} heading
- * @param {any} table
+ * @param {Table} table
  * @param {number} afterColIndex
  *  derives the rule's width from the (now-updated) data row column count. */
 export function insertTableColumn(heading, table, afterColIndex) {
@@ -205,7 +206,7 @@ export function insertTableColumn(heading, table, afterColIndex) {
 
 /**
  * @param {Heading} heading
- * @param {any} table
+ * @param {Table} table
  * @param {number} colIndex
  */
 export function deleteTableColumn(heading, table, colIndex) {
@@ -221,7 +222,7 @@ export function deleteTableColumn(heading, table, colIndex) {
 
 /**
  * @param {Heading} heading
- * @param {any} [table]
+ * @param {Table} table
  */
 export function deleteTable(heading, table) {
   commitLines(heading, table.lineIndex, table.lineCount, []);
@@ -305,7 +306,7 @@ export function insertListItem(heading, afterItem, text = '') {
   commitLines(heading, insertAt, 0, [line]);
 
   /** @param {any} [items] */
-  /** @returns {any} */ function findByLineIndex(/** @type {any} */ items) {
+  function findByLineIndex(/** @type {any} */ items) {
     for (const item of items) {
       if (item.lineIndex === insertAt) return item;
       for (const nestedList of item.children || []) {

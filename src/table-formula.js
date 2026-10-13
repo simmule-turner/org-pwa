@@ -1,4 +1,14 @@
 // @ts-check
+/**
+ * What a formula is evaluated against: the table's cells and the active modes. `currentRow`/`currentCol` are filled in per cell.
+ * @typedef {{
+ *   dataRows: any[], dataRowCount: number, colCount: number, hlinePositions: number[],
+ *   complexDomain?: any, numericMode?: any, durationMode?: boolean, emptyMode?: string, forceNumeric?: boolean, angleMode?: string,
+ *   constants?: Record<string, any>, userCall?: ((name: string, args: any[]) => any) | undefined, now?: Date,
+ *   currentRow?: number, currentCol?: number,
+ * }} FormulaCtx
+ */
+/** @typedef {import('./types.js').Table} Table */
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
 /**
@@ -821,10 +831,10 @@ function parseExpression(tokens) {
     if (next() !== tok) throw new Error(`Expected "${tok}" in formula`);
   }
 
-  /** @returns {any} */ function parseExpr() {
+  function parseExpr() {
     return parseOr();
   }
-  /** @returns {any} */ function parseOr() {
+  function parseOr() {
     /** @type {any} */ let node = parseAnd();
     while (peek() === '||') {
       next();
@@ -832,7 +842,7 @@ function parseExpression(tokens) {
     }
     return node;
   }
-  /** @returns {any} */ function parseAnd() {
+  function parseAnd() {
     /** @type {any} */ let node = parseComparison();
     while (peek() === '&&') {
       next();
@@ -840,7 +850,7 @@ function parseExpression(tokens) {
     }
     return node;
   }
-  /** @returns {any} */ function parseComparison() {
+  function parseComparison() {
     /** @type {any} */ let node = parseAdditive();
     while (peek() === '==' || peek() === '=' || peek() === '!=' || peek() === '<' || peek() === '>' || peek() === '<=' || peek() === '>=') {
       const op = next();
@@ -848,7 +858,7 @@ function parseExpression(tokens) {
     }
     return node;
   }
-  /** @returns {any} */ function parseAdditive() {
+  function parseAdditive() {
     /** @type {any} */ let node = parseTerm();
     while (peek() === '+' || peek() === '-') {
       const op = next();
@@ -856,7 +866,7 @@ function parseExpression(tokens) {
     }
     return node;
   }
-  /** @returns {any} */ function parseTerm() {
+  function parseTerm() {
     /** @type {any} */ let node = parsePower();
     while (peek() === '*' || peek() === '/') {
       const op = next();
@@ -883,7 +893,7 @@ function parseExpression(tokens) {
     }
     return parseAtom();
   }
-  /** @returns {any} */ function parseAtom() {
+  function parseAtom() {
     const tok = peek();
     if (tok === undefined) throw new Error('Unexpected end of formula');
     if (tok === '(') {
@@ -1112,10 +1122,10 @@ function readCellNumber(dataRows, row, col, emptyMode = 'omit', forceNumeric = f
  *  durationMode, "HH:MM" isn't recognized as a duration at all --
  *  confirmed directly against real Emacs that the same text is read
  *  as a Calc fraction instead there, a distinction this app's own
- * @param {any} [dataRows]
- * @param {any} [row]
- * @param {any} [col]
- * @param {any} [ctx]
+ * @param {any} dataRows
+ * @param {any} row
+ * @param {any} col
+ * @param {FormulaCtx} ctx
  *  narrower engine doesn't reproduce either way. */
 function readCellValue(dataRows, row, col, ctx) {
   const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
@@ -1206,10 +1216,10 @@ function isTruthyValue(v) {
 const COMPARISON_OPS = new Set(['==', '!=', '<', '>', '<=', '>=']);
 
 /**
- * @param {any} [l]
- * @param {any} [r]
- * @param {any} [op]
- * @param {any} [ctx]
+ * @param {any} l
+ * @param {any} r
+ * @param {any} op
+ * @param {FormulaCtx} ctx
  */
 function compareValues(l, r, op, ctx) {
   if (isVector(l) || isVector(r)) {
@@ -1290,8 +1300,8 @@ function evaluateDateArithmetic(l, r, op) {
 }
 
 /**
- * @param {any} [value]
- * @param {any} [ctx]
+ * @param {any} value
+ * @param {FormulaCtx} ctx
  */
 function wrapNumericLiteral(value, ctx) {
   if (!ctx.numericMode || typeof value !== 'number' || !Number.isFinite(value)) return value;
@@ -1302,8 +1312,8 @@ const MATHJS_SCALAR_FUNCTION_NAMES = new Set(['sqrt', 'floor', 'ceil', 'round', 
 
 /**
  * @param {string} name
- * @param {any} [argValues]
- * @param {any} [ctx]
+ * @param {any} argValues
+ * @param {FormulaCtx} ctx
  */
 function evaluateMathjsScalarCall(name, argValues, ctx) {
   const isFractionMode = ctx.numericMode.kind === 'fraction';
@@ -1388,8 +1398,8 @@ function complexOperand(v, D) {
 
 /**
  * A complex module result as the engine's own value: a real becomes a number (or the pN / F value), a complex stays.
- * @param {any} [result]
- * @param {any} [ctx]
+ * @param {any} result
+ * @param {FormulaCtx} ctx
  */
 function complexResult(result, ctx) {
   return isReal(result) ? realToEngine(result, ctx.complexDomain, ctx.numericMode) : result;
@@ -1403,10 +1413,10 @@ function realNumberOf(v) {
 }
 
 /**
- * @param {any} [op]
- * @param {any} [l]
- * @param {any} [r]
- * @param {any} [ctx]
+ * @param {any} op
+ * @param {any} l
+ * @param {any} r
+ * @param {FormulaCtx} ctx
  */
 function complexBinop(op, l, r, ctx) {
   const D = ctx.complexDomain;
@@ -1433,18 +1443,18 @@ function vectorOperand(v, D) {
 
 /**
  * A vector operation's result: a vector stays, a Real becomes the engine's number, a Complex stays.
- * @param {any} [result]
- * @param {any} [ctx]
+ * @param {any} result
+ * @param {FormulaCtx} ctx
  */
 function vectorResult(result, ctx) {
   return isVector(result) ? result : complexResult(result, ctx);
 }
 
 /**
- * @param {any} [op]
- * @param {any} [l]
- * @param {any} [r]
- * @param {any} [ctx]
+ * @param {any} op
+ * @param {any} l
+ * @param {any} r
+ * @param {FormulaCtx} ctx
  */
 function vectorBinop(op, l, r, ctx) {
   const D = ctx.complexDomain;
@@ -1456,8 +1466,8 @@ const VECTOR_FUNCTIONS = new Set(['det', 'inv', 'trn', 'tr', 'cross', 'vlen']);
 /**
  * det/inv/trn/tr/cross/vlen, and abs of a vector. Returns undefined for anything else.
  * @param {string} name
- * @param {any} [argValues]
- * @param {any} [ctx]
+ * @param {any} argValues
+ * @param {FormulaCtx} ctx
  */
 function vectorScalarCall(name, argValues, ctx) {
   const anyVector = argValues.some(isVector);
@@ -1479,8 +1489,8 @@ function vectorScalarCall(name, argValues, ctx) {
 
 /**
  * Expands vectors in a list of engine values into their elements, as engine values.
- * @param {any} [values]
- * @param {any} [ctx]
+ * @param {any} values
+ * @param {FormulaCtx} ctx
  */
 function flattenForAggregate(values, ctx) {
   return values.flatMap((/** @type {any} */ v) => (isVector(v) ? flattenVector(v).map((/** @type {any} */ x) => complexResult(x, ctx)) : [v]));
@@ -1490,8 +1500,8 @@ const COMPLEX_ALWAYS = new Set(['re', 'im', 'conj', 'arg', 'polar', 'rect']);
 
 /** A scalar function call that needs the complex route: a complex argument, or a real one outside the real function's
  * @param {string} name
- * @param {any} [argValues]
- * @param {any} [ctx]
+ * @param {any} argValues
+ * @param {FormulaCtx} ctx
  *  domain (sqrt of a negative, ln of a negative, arcsin of 2). Returns undefined when the ordinary real code applies. */
 function complexScalarCall(name, argValues, ctx) {
   const first = argValues[0];
@@ -1535,8 +1545,8 @@ function complexScalarCall(name, argValues, ctx) {
 }
 
 /**
- * @param {any} [node]
- * @param {any} [ctx]
+ * @param {any} node
+ * @param {FormulaCtx} ctx
  */
 /** @returns {any} */ function evaluateAst(/** @type {any} */ node, /** @type {any} */ ctx) {
   switch (node.type) {
@@ -1745,8 +1755,8 @@ function complexScalarCall(name, argValues, ctx) {
  *  -- an aggregate function's own argument, evaluated as a list of
  *  numbers rather than a single one. Iterates in reading order (row
  *  by row, left to right within each row), matching how a person
- * @param {any} [argNode]
- * @param {any} [ctx]
+ * @param {any} argNode
+ * @param {FormulaCtx} ctx
  *  would naturally read the range they wrote. */
 /** @returns {any} */ function collectRangeValues(/** @type {any} */ argNode, /** @type {any} */ ctx) {
   if (argNode.type === 'ref') {
@@ -2356,7 +2366,7 @@ export function parseTableConstants(doc) {
   return constants;
 }
 
-/** @param {any} [table] */
+/** @param {Table} table */
 export function recalculateTable(table, options = {}) {
   if (!table.tblfm || !table.tblfm.trim()) return null;
   const hourZeroPad = /** @type {any} */ (options).hourZeroPad !== undefined ? /** @type {any} */ (options).hourZeroPad : true;

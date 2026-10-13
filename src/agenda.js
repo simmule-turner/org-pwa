@@ -465,7 +465,7 @@ function applyAgendaEffortView(items, { sort = null, filter = null, maxMinutes =
  * @param {Heading} heading
  * @param {any} [fieldType]
  *  ("birthday", "anniversary", "spouse") -- returning its own title (the value, as tree style writes it) or null. */
-/** @returns {any} */ function findTreeStyleFieldValue(/** @type {any} */ heading, /** @type {any} */ fieldType) {
+function findTreeStyleFieldValue(/** @type {any} */ heading, /** @type {any} */ fieldType) {
   for (const child of heading.children || []) {
     if (child.type !== 'heading') continue;
     const type = getPropertyCaseInsensitive(child, 'FIELDTYPE');

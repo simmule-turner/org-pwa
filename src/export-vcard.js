@@ -326,7 +326,7 @@ function noteBlockText(heading) {
  * @param {Heading} heading
  * @param {any} [fieldType]
  *  encounter it. */
-/** @returns {any} */ function findFieldValue(/** @type {any} */ heading, /** @type {any} */ fieldType) {
+function findFieldValue(/** @type {any} */ heading, /** @type {any} */ fieldType) {
   for (const child of heading.children || []) {
     if (String(getProperty(child, 'FIELDTYPE') || '').toLowerCase() === fieldType) return child.title;
     /** @type {any} */ const nested = findFieldValue(child, fieldType);
