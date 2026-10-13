@@ -1,0 +1,202 @@
+[
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:\"%a\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "Estes"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:\"By %a, %d\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "By Estes, 2026-01-02"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:\"%t - %s\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "Ttl - Sub"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:\"%e\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<a href=\"mailto:e@x.org\">e@x.org</a>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:\"100%% of %a\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "100% of Estes"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:\"line1\\nline2 %a\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "line1\nline2 Estes"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:\"say \\\"hi\\\" %a\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "say \"hi\" Estes"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:\"<b>%a</b>\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<b>Estes</b>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:\"Created %C / %T\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "Created 2026-03-04 Wed 05:06 / 2026-03-04 Wed 05:06"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:nil\n* H\nbody\n",
+  "preamble": null,
+  "postamble": null
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:\"x\" author:nil date:nil\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "x"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:\"%a %d\" email:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "Estes 2026-01-02"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-preamble:\"%a\"\n* H\nbody\n",
+  "preamble": "Estes",
+  "postamble": "<p class=\"date\">Date: 2026-01-02</p>\n<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-preamble:\"<b>%t</b> %s\"\n* H\nbody\n",
+  "preamble": "<b>Ttl</b> Sub",
+  "postamble": "<p class=\"date\">Date: 2026-01-02</p>\n<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-preamble:\"Pre %d\" html-postamble:\"Post %a\"\n* H\nbody\n",
+  "preamble": "Pre 2026-01-02",
+  "postamble": "Post Estes"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-preamble:nil\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"date\">Date: 2026-01-02</p>\n<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-preamble:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"date\">Date: 2026-01-02</p>\n<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-postamble:\"%a\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "A &amp; B"
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-postamble:\"By %a, %d\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "By A &amp; B, "
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-postamble:\"%t - %s\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "Plain - "
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-postamble:\"100%% of %a\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "100% of A &amp; B"
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-postamble:\"line1\\nline2 %a\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "line1\nline2 A &amp; B"
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-postamble:\"say \\\"hi\\\" %a\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "say \"hi\" A &amp; B"
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-postamble:\"<b>%a</b>\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<b>A &amp; B</b>"
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-postamble:\"Created %C / %T\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "Created 2026-03-04 Wed 05:06 / 2026-03-04 Wed 05:06"
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-postamble:nil\n* H\nbody\n",
+  "preamble": null,
+  "postamble": null
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-postamble:\"x\" author:nil date:nil\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "x"
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-postamble:\"%a %d\" email:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "A &amp; B "
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-preamble:\"%a\"\n* H\nbody\n",
+  "preamble": "A &amp; B",
+  "postamble": "<p class=\"author\">Author: A &amp; B</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-preamble:\"<b>%t</b> %s\"\n* H\nbody\n",
+  "preamble": "<b>Plain</b> ",
+  "postamble": "<p class=\"author\">Author: A &amp; B</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-preamble:\"Pre %d\" html-postamble:\"Post %a\"\n* H\nbody\n",
+  "preamble": "Pre ",
+  "postamble": "Post A &amp; B"
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-preamble:nil\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: A &amp; B</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Plain\n#+AUTHOR: A & B\n#+OPTIONS: html-preamble:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: A &amp; B</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Bare\n#+OPTIONS: html-postamble:\"%t - %s\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "Bare - "
+ },
+ {
+  "src": "#+TITLE: Bare\n#+OPTIONS: html-postamble:\"Created %C / %T\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "Created 2026-03-04 Wed 05:06 / 2026-03-04 Wed 05:06"
+ },
+ {
+  "src": "#+TITLE: Bare\n#+OPTIONS: html-postamble:nil\n* H\nbody\n",
+  "preamble": null,
+  "postamble": null
+ },
+ {
+  "src": "#+TITLE: Bare\n#+OPTIONS: html-postamble:\"x\" author:nil date:nil\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "x"
+ },
+ {
+  "src": "#+TITLE: Bare\n#+OPTIONS: html-preamble:\"<b>%t</b> %s\"\n* H\nbody\n",
+  "preamble": "<b>Bare</b> ",
+  "postamble": "<p class=\"author\">Author: root</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Bare\n#+OPTIONS: html-preamble:nil\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: root</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Bare\n#+OPTIONS: html-preamble:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: root</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ }
+]

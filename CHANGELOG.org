@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v506 — Headers and footers on export
+=#+OPTIONS: html-preamble:= and =html-postamble:= now take quoted text with Emacs's =%a= (author), =%t= (title), =%d= (date) and similar codes, matching Emacs 29.3. New =page-header:= and =page-footer:= put text on every printed page, so =page-footer:"%a | | Page %p of %P"= gives a name and a page number when you Print → Save as PDF in Chrome.
+Verified: tests (a new Emacs comparison of 40 cases), lint, type check, a PDF printed from Chromium, and the export, heading actions and keyboard smoke checks.
+
 * v505 — Floating keyboard matches the laptop
 The floating keyboard's S then an arrow now does what Shift+arrow does on a laptop: on a focused heading, up and down move it among its siblings, left promotes and right demotes; in a table they still move between cells. Both keyboards now share one action, so they cannot drift apart. To walk headings, use the plain arrows or the =c= keys.
 Verified: tests, lint, type check, and the floating keyboard, heading keys, heading actions, god-mode, table and keyboard smoke checks.

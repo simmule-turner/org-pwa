@@ -1484,13 +1484,19 @@ A file that can't be found is skipped silently.
 
 ~#+HTML_HEAD:~ inserts raw HTML before ~</head>~, in HTML export only and for subtree exports too; several lines are joined in order. ~#+BEGIN_EXPORT <backend>~ ... ~#+END_EXPORT~ passes its content through unescaped when the backend matches the current format (~html~, ~ascii~, ~md~ or ~markdown~, ~odt~, where the content must already be ODF XML) and is omitted otherwise.
 
-*Page numbers*: CSS ~@page~ takes effect only when printing or using *Print → Save as PDF*:
+*Header and footer*: ~html-preamble:~ and ~html-postamble:~ in ~#+OPTIONS:~ take a quoted text, as in Emacs, placed above and below the page (~nil~ drops the postamble). In it ~%t~ is the title, ~%s~ the subtitle, ~%a~ the author, ~%d~ the date, ~%e~ the email, ~%C~ or ~%T~ when it was exported, and ~%%~ a percent sign; ~\n~ starts a new line and HTML is allowed.
 
 #+BEGIN_SRC
-#+HTML_HEAD: <style>@page { @bottom-center { content: counter(page); } }</style>
+#+OPTIONS: html-postamble:"Prepared by %a, %d"
 #+END_SRC
 
-Use ~@bottom-right~ (with ~margin: 2cm~ for room) to put it at the right. For "Page 3 of 12", use ~content: counter(page) " of " counter(pages)~, which works in Chrome and less reliably elsewhere. For a fixed header or footer, pin ~header~ and ~footer~ with ~@media print~ rules in ~#+HTML_HEAD:~ and put their markup in a ~#+BEGIN_EXPORT html~ block.
+For text on every printed page, such as a name and a page number, use ~page-header:~ and ~page-footer:~. Parts are separated by ~|~: three are left, centre and right, two are left and right, one is the centre. ~%p~ is the page number, ~%P~ the number of pages, and the codes above work too.
+
+#+BEGIN_SRC
+#+OPTIONS: page-footer:"%a | | Page %p of %P"
+#+END_SRC
+
+They take effect when you print or use *Print → Save as PDF* in Chrome (also on a ChromeOS laptop); Firefox and Safari ignore them. Pages get a 2 cm margin to hold them. For your own CSS, such as ~@page { @bottom-center { content: counter(page); } }~, use ~#+HTML_HEAD:~.
 
 *** ASCII
 
