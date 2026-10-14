@@ -36,6 +36,7 @@ const KEYS = {
   floatingKeyboardPos: 'settings:floatingKeyboardPos',
   readingWidth: 'settings:readingWidth',
   settingsOrder: 'settings:order',
+  bufferNames: 'buffers:names',
   sidePanelWidth: 'settings:sidePanelWidth',
   lastActiveDocument: 'settings:lastActiveDocument',
   openTabs: 'settings:openTabs',
@@ -763,3 +764,18 @@ export {
   DEFAULT_SIDE_PANEL_WIDTH,
   DEFAULT_GLOBAL_VARIABLES,
 };
+
+/** Names the person gave buffers with rename-buffer, by document id: `{ [documentId]: name }`.
+ * @param {KvAdapter} kvAdapter
+ * @returns {Promise<Record<string, string>>} */
+export async function getBufferNames(kvAdapter) {
+  const v = await getJson(kvAdapter, KEYS.bufferNames, {});
+  return v && typeof v === 'object' ? v : {};
+}
+
+/**
+ * @param {KvAdapter} kvAdapter
+ * @param {Record<string, string>} names */
+export async function setBufferNames(kvAdapter, names) {
+  await setJson(kvAdapter, KEYS.bufferNames, names);
+}

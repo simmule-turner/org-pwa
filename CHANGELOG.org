@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v515 — Rename buffer
+New command *Rename buffer…* (palette, or =x SPC x r= in god-mode, Emacs's =C-x x r=) asks for a new name in the minibuffer and changes it in the tab and modeline, without saving anything. An empty name, or one another buffer already has, is refused; Escape cancels. The name is remembered across reloads.
+Verified: the rename-buffer, tabs and As-org smoke checks.
+
+* v514 — Buffers are named by you, not by their first heading
+An unsaved buffer is now called *scratch* (then *scratch*<2>, and so on) and keeps that name however you edit it, instead of taking the name of whichever heading comes first. As-org opens in a buffer named *Org ORG Export*. A saved file still shows its file name.
+Verified: the tabs, Extras menu, Import and As-org smoke checks.
+
 * v513 — Export defaults, counts on Sync, simpler About
 Export settings are now one card per export type: General (page header and footer), ASCII, and HTML (preamble, postamble, head). Each item has a tick box, all off until you tick them, and anything written in the file still wins. A Format codes list explains %t, %a, %d, %p, %P and the rest. Sync and storage now counts the services you have set up, About loses the updates-at-top checkbox, and the installed Android app no longer shows an update button.
 Verified: unit tests, and the export, About and Settings smoke checks.

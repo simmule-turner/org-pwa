@@ -44,6 +44,7 @@ import { render } from './render.js';
 import { getCaptureTemplates } from './settings.js';
 import { kv } from './singletons.js';
 import { loadPaletteRecent } from './sync-helpers.js';
+import { renameBuffer } from './buffer-rename.js';
 import { recalculateAllTables } from './table-recalc.js';
 import { chooseTodoWorkflowState, openTodoOrPickWorkflow } from './todo-workflow.js';
 import { isWideLayout, keepOverlayInVisibleViewport } from './ui-widgets.js';
@@ -323,6 +324,10 @@ export const GOD_MODE_ACTIONS = {
     S.godModeActive = false;
     openCommandPalette();
   },
+  'C-x x r': () => {
+    S.godModeActive = false; // the minibuffer is about to ask a question
+    renameBuffer();
+  },
   'C-x C-s': () => saveCurrent(),
   'C-x C-w': () => openFileMenuAt('saveas'),
   'C-x C-f': () => openFileMenuAt('open'),
@@ -509,6 +514,7 @@ export function paletteCommandList() {
     { id: 'save', label: 'Save', orgName: 'save-buffer', keys: 'C-x C-s', group: 'Document', needs: ['doc', 'storage'], run: () => saveCurrent() },
     { id: 'save-as', label: 'Save as\u2026', orgName: 'write-file', keys: 'C-x C-w', group: 'Document', needs: ['doc'], run: () => openFileMenuAt('saveas') },
     { id: 'open', label: 'Open file\u2026', orgName: 'find-file', keys: 'C-x C-f', group: 'Document', run: () => openFileMenuAt('open') },
+    { id: 'rename-buffer', label: 'Rename buffer\u2026', orgName: 'rename-buffer', keys: 'C-x x r', group: 'Document', needs: ['doc'], run: () => renameBuffer() },
     { id: 'new', label: 'New document', group: 'Document', run: () => createNewUnsavedDocument() },
     { id: 'undo', label: 'Undo', orgName: 'undo', keys: 'C-/', group: 'Document', needs: ['doc', 'undo'], run: () => performUndo() },
     { id: 'redo', label: 'Redo', orgName: 'undo-redo', group: 'Document', needs: ['doc', 'redo'], run: () => performRedo() },

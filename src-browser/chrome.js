@@ -20,6 +20,7 @@ import { FLOATING_BUTTON_GAP, FLOATING_BUTTON_SIZE, positionFloatingKeyboard } f
 import { renderExtraMenu, renderMoreMenu } from './menus.js';
 import { renderArchiveRefilePanel } from './archive-refile-panel.js';
 import { renderMinibufferSearch, renderSearchPanel } from './search-ui.js';
+import { MINIBUFFER_PROMPT_ID } from './minibuffer-prompt.js';
 import { documentDisplayLabel, storageKindLabel } from './sync-helpers.js';
 import { renderTodoWorkflowPanel } from './todo-workflow.js';
 import { isWideLayout } from './ui-widgets.js';
@@ -137,6 +138,7 @@ export function renderMinibuffer() {
     return;
   }
   minibufferSearchEl.style.display = 'none';
+  if (document.getElementById(MINIBUFFER_PROMPT_ID)) return; // a question is being asked in the minibuffer: leave the status line hidden
   statusEl.style.display = 'flex';
 
   if (S.godModeActive) {

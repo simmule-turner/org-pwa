@@ -1527,7 +1527,7 @@ A standalone ~.odt~ that opens in LibreOffice, Word (with the ODF filter) and Go
 
 *** As-org
 
-Org's ~org-org-export-as-org~: a fully processed copy of the document in a new unsaved buffer, ~*Org ORG Export*~, leaving the original untouched. Whole document only. It:
+Org's ~org-org-export-as-org~: a fully processed copy of the document in a new unsaved buffer named ~*Org ORG Export*~, leaving the original untouched. Whole document only. It:
 
 - resolves ~#+INCLUDE:~ lines;
 - expands ~{{{macro}}}~ references: ~#+MACRO: name text~ with ~$1~, ~$2~ arguments, written ~{{{name(arg1,arg2)}}}~ with ~\,~ for a literal comma, plus ~{{{title}}}~, ~{{{author}}}~, ~{{{email}}}~, ~{{{date}}}~ and ~{{{date(FORMAT)}}}~ (FORMAT applies only when ~#+DATE:~ is a single well-formed timestamp), ~{{{time(FORMAT)}}}~ and ~{{{keyword(NAME)}}}~;
@@ -1869,6 +1869,7 @@ The translation rules follow real god-mode.el (github.com/emacsorphanage/god-mod
 | ~c x y~ | ~C-c C-x C-y~ | Paste a subtree after the focused heading at its level, shifting the pasted levels to match (~org-paste-subtree~) |
 | ~x SPC n s~ | ~C-x n s~ | [[#narrowing][Narrow]] to the focused heading's subtree |
 | ~x SPC n w~ | ~C-x n w~ | [[#narrowing][Widen]]: remove any narrowing |
+| ~x SPC x r~ | ~C-x x r~ | *Rename buffer…* (~rename-buffer~): ask for a new name in the minibuffer. An empty name or one another buffer has is refused; the file is not touched |
 | ~gRET~ | ~M-RET~ | Insert a heading after the focused one, as its sibling. With nothing focused, an empty document gets a heading at the top and a document with headings gets one at the bottom |
 | ~gS-RET~ | ~M-S-RET~ | The same, with a TODO keyword |
 | ~c t~ | ~C-c C-t~ | Cycle the focused heading's TODO state; with no state and more than one ~#+TODO:~ workflow, open a state picker |

@@ -167,7 +167,7 @@ export async function performOrgOrgExport() {
     .filter((line) => !/^\s*#\+TITLE:/i.test(line))
     .join('\n');
   const rawText = '#+TITLE: *Org ORG Export*\n' + serialized;
-  await createNewUnsavedDocument(rawText, 'Exported to *Org ORG Export* in a new buffer \u2014 your original document is untouched.');
+  await createNewUnsavedDocument(rawText, 'Exported to *Org ORG Export* in a new buffer \u2014 your original document is untouched.', '*Org ORG Export*');
 }
 
 export function renderExportFlow() {

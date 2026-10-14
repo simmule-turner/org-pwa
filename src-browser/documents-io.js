@@ -113,9 +113,21 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
   emitExtensionEvent('open');
 }
 
-export async function createNewUnsavedDocument(rawText = '', statusMessage = /** @type {string | null} */ (null)) {
+/** A buffer name no open buffer already has: `*scratch*`, then `*scratch*<2>`, `*scratch*<3>`, as Emacs does.
+ * @param {string} base */
+function uniqueBufferName(base) {
+  const taken = new Set([S.state.documentId, ...S.documentSessions.map((/** @type {any} */ x) => x.state && x.state.documentId)].filter(Boolean).map((id) => (id.includes('|') ? id.slice(id.indexOf('|') + 1) : '')));
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base}<${n}>`)) n++;
+  return `${base}<${n}>`;
+}
+
+/** @param {string} rawText @param {string | null} statusMessage
+ * @param {string} bufferName  what the buffer is called until it is saved ('' for *scratch*). It goes after a '|' in the id, so it survives a reload. */
+export async function createNewUnsavedDocument(rawText = '', statusMessage = /** @type {string | null} */ (null), bufferName = '') {
   if (commitTextModeIfActive()) render();
-  await afterDocumentLoaded(UNSAVED_DOCUMENT_ID + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), parseOrg(rawText), null);
+  await afterDocumentLoaded(UNSAVED_DOCUMENT_ID + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + '|' + uniqueBufferName(bufferName || '*scratch*'), parseOrg(rawText), null);
   setStatus(statusMessage || 'New unsaved document \u2014 edits are cached locally, same as any other document; Save As to keep it for good.');
   render();
 }

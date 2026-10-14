@@ -50,6 +50,9 @@ export async function rememberRefileTarget(documentId, outlinePath) {
   }
 }
 
+/** Names the person gave buffers with rename-buffer, by document id. */
+export const bufferNames = /** @type {Map<string, string>} */ (new Map());
+
 /** Renders the Emacs-style modeline -- buffer state, name, position,
  *  date/time, and clocking info -- into #modeline. Called from
  *  render() itself, always kept in sync, never a separate call site
@@ -61,17 +64,19 @@ export async function rememberRefileTarget(documentId, outlinePath) {
  *  same document. A saved document's own docId (its filename) is
  *  already a sensible label. An unsaved one has no filename at all;
  *  its own internal ID is a randomly-suffixed sentinel never meant to
- *  be user-visible, so it falls back to the first heading's own title
- *  once one exists, and finally to '*scratch*' -- matching real
+ *  be user-visible, so it shows the name the buffer was created with, or '*scratch*' -- matching real
  * @param {string} docId
  * @param {Doc} doc
  *  Emacs's own convention for a fresh, as-yet-unnamed buffer. */
 export function documentDisplayLabel(docId, doc) {
   if (docId === HELP_DOCUMENT_ID) return 'Help';
+  const chosen = bufferNames.get(docId);
+  if (chosen) return chosen; // a name the person gave it with rename-buffer
   const isUnsaved = !docId || docId.startsWith(UNSAVED_DOCUMENT_ID);
   if (!isUnsaved) return docId;
-  const firstHeadingTitle = doc && doc.children && doc.children[0] ? doc.children[0].title : null;
-  return firstHeadingTitle || '*scratch*';
+  // an unsaved buffer keeps the name it was given ('*Org ORG Export*') and is otherwise '*scratch*', as in Emacs; what is typed into it never renames it
+  const given = docId.includes('|') ? docId.slice(docId.indexOf('|') + 1) : '';
+  return given || '*scratch*';
 }
 
 export async function loadPaletteRecent() {

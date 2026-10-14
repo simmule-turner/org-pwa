@@ -663,7 +663,8 @@ check('tabs: two documents keep their own content, unsaved state and read-only f
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Alpha heading\nalpha body\n');
   await newDocument(page, '* Beta heading\nbeta body\n');
-  // the outline pane only: the tab labels are named after each document's first heading
+  // a new unsaved buffer is named *scratch* (then *scratch*<2>) and typing a heading into it never renames it
+  expect(((await page.locator('#tabBar').innerText()).match(/\*scratch\*/g) || []).length === 2 && (await page.locator('#tabBar').innerText()).includes('*scratch*<2>') && !(await page.locator('#tabBar').innerText()).includes('heading'), `tabs: ${await page.locator('#tabBar').innerText()}`);
   const outline = () => page.locator('#outline').innerText();
   expect((await outline()).includes('Beta heading') && !(await outline()).includes('Alpha heading'), 'the second document should be showing');
 
@@ -674,7 +675,7 @@ check('tabs: two documents keep their own content, unsaved state and read-only f
   await page.waitForTimeout(300);
   expect((await modeline(page)).startsWith('%'), `Beta should now be read-only: ${await modeline(page)}`);
 
-  await page.locator('#tabBar > div', { hasText: 'Alpha heading' }).first().click();
+  await page.locator('#tabBar > div', { hasText: '*scratch*' }).first().click();
   await page.waitForTimeout(500);
   const alpha = await outline();
   expect(alpha.includes('Alpha heading') && !alpha.includes('Beta heading'), 'switching should show Alpha, not Beta');
@@ -683,13 +684,53 @@ check('tabs: two documents keep their own content, unsaved state and read-only f
   // an edit made in Alpha stays with Alpha
   await replaceInDocument(page, 'alpha body', 'alpha body EDITED');
   expect((await modeline(page)).startsWith('**'), `Alpha should be unsaved: ${await modeline(page)}`);
-  await page.locator('#tabBar > div', { hasText: 'Beta heading' }).first().click();
+  await page.locator('#tabBar > div', { hasText: '*scratch*<2>' }).first().click();
   await page.waitForTimeout(500);
   expect(!(await documentText(page)).includes('EDITED'), 'the edit leaked into Beta');
   expect((await modeline(page)).startsWith('%'), `Beta is still read-only: ${await modeline(page)}`);
-  await page.locator('#tabBar > div', { hasText: 'Alpha heading' }).first().click();
+  await page.locator('#tabBar > div', { hasText: '*scratch*' }).first().click();
   await page.waitForTimeout(500);
   expect((await documentText(page)).includes('alpha body EDITED'), 'Alpha lost its edit when switching away and back');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('rename-buffer: the palette asks in the minibuffer, Return renames the tab and the modeline, Escape cancels, an empty or taken name is refused, and the name survives a reload', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Alpha heading\n');
+  await newDocument(page, '* Beta heading\n');
+  const tabs = () => page.locator('#tabBar').innerText();
+  const status = () => page.locator('#status').innerText();
+  const ask = async (text, key = 'Enter') => {
+    await openPalette(page);
+    await page.keyboard.type('rename buffer');
+    await page.keyboard.press('Enter');
+    const input = page.locator('#minibufferPrompt input');
+    await input.waitFor({ state: 'visible', timeout: 4000 });
+    expect((await page.locator('#minibufferPrompt').innerText()).includes('Rename buffer (to new name):'), 'the prompt is Emacs\u2019s');
+    if (text !== null) await input.fill(text);
+    await page.keyboard.press(key);
+    await page.waitForTimeout(300);
+  };
+  await ask('Notes');
+  expect((await tabs()).includes('Notes') && !(await tabs()).includes('*scratch*<2>'), `renamed: ${await tabs()}`);
+  expect((await modeline(page)).includes('Notes'), `and the modeline follows: ${await modeline(page)}`);
+  await ask('Other', 'Escape');
+  expect(!(await tabs()).includes('Other') && (await tabs()).includes('Notes'), 'Escape leaves the name alone');
+  await ask('   ');
+  expect((await status()).includes('Empty string is invalid as a buffer name'), `empty is refused: ${await status()}`);
+  await ask('*scratch*');
+  expect((await status()).includes('is in use'), `a name another buffer has is refused: ${await status()}`);
+  // x SPC x r (C-x x r) in god-mode asks the same question
+  await page.locator('body').click({ position: { x: 200, y: 850 } });
+  await page.keyboard.press('Escape');
+  if (!(await page.locator('#minibuffer').innerText()).includes('God-mode')) await page.keyboard.press('Escape');
+  for (const k of ['x', ' ', 'x', 'r']) await page.keyboard.press(k);
+  await page.locator('#minibufferPrompt input').waitFor({ state: 'visible', timeout: 4000 });
+  await page.keyboard.press('Escape');
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  expect((await tabs()).includes('Notes'), `the name is still there after a reload: ${await tabs()}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -1262,6 +1303,7 @@ check('Extras menu: a quoted function is the palette command with that real Emac
   await page.waitForTimeout(600);
   expect((await status()).includes('Exported to *Org ORG Export* in a new buffer'), `export-as-org opens its own buffer: ${await status()}`);
   expect((await page.locator('#tabBar > div').count()) === 2, 'as a second tab, leaving the original document alone');
+  expect((await page.locator('#tabBar').innerText()).includes('*Org ORG Export*'), `and the new buffer is named *Org ORG Export*: ${await page.locator('#tabBar').innerText()}`);
 
   // back in the first tab: cut acts on the heading whose menu is open, like the palette
   await page.locator('#tabBar > div').first().click();

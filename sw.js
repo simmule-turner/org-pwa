@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v513';
+const CACHE_NAME = 'org-pwa-shell-v515';
 
 const SHELL_FILES = [
   './',
@@ -202,6 +202,8 @@ const SHELL_FILES = [
   './src-browser/search-ui.js',
   './src-browser/settings-view.js',
   './src-browser/settings-shell.js',
+  './src-browser/buffer-rename.js',
+  './src-browser/minibuffer-prompt.js',
   './src-browser/settings-export.js',
   './src-browser/table-recalc.js',
   './src-browser/tabs.js',

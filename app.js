@@ -24,13 +24,14 @@ import {
   getSidePanelWidth,
   getTablesFontSize,
   getLastActiveDocument,
+  getBufferNames,
   getOpenTabs,
   getGlobalVariables,
 } from './src-browser/settings.js';
 import { applyFontFamily, applyFontSize, applyMenuSize, applyParagraphSpacing, applyTablesSpacing, applyReadingWidth, applyTablesFontSize } from './src-browser/appearance.js';
 import { getServiceWorkerVersion, scrollFocusedHeadingIntoView } from './src-browser/render-helpers.js';
 import { kv } from './src-browser/singletons.js';
-import { loadPaletteRecent } from './src-browser/sync-helpers.js';
+import { bufferNames, loadPaletteRecent } from './src-browser/sync-helpers.js';
 import { WIDE_LAYOUT_QUERY, isWideLayout, positionPopupNearButton } from './src-browser/ui-widgets.js';
 import { S } from './src-browser/app-state.js';
 import { godModeBtn, godModeKeyboardInput, captureBtn, externalChangeDismissBtn, externalChangeMergeBtn, externalChangeReloadBtn, extraMenuBtn, extraMenuPanel, fileMenuBtn, fileMenuPanel, moreBtn, morePanel, nativeCreateElement, navBackBtn, outlineEl, saveBtnEl, searchBtn, settingsBtn, statusEl, topBarEl, viewMenuBtn, viewMenuPanel } from './src-browser/dom.js';
@@ -1159,6 +1160,7 @@ async function bootstrap() {
   applySidePanelWidth(await getSidePanelWidth(kv));
   syncContentOffset();
 
+  for (const [id, name] of Object.entries(await getBufferNames(kv))) bufferNames.set(id, name); // names chosen with rename-buffer
   const openTabsData = await getOpenTabs(kv);
   if (openTabsData && Array.isArray(openTabsData.tabs) && openTabsData.tabs.length > 0) {
     let anyOpened = false;
