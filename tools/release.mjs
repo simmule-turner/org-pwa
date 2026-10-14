@@ -27,7 +27,7 @@ if (!version && !checkOnly) {
 }
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'native']);
-const DOCS = new Set(['sw.js', 'README.org', 'CHANGELOG.org', 'test/testing.org', '.green-hash']);
+const DOCS = new Set(['sw.js', 'src-browser/version.js', 'README.org', 'CHANGELOG.org', 'test/testing.org', '.green-hash']);
 function files(dir = '.') {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const rel = path.join(dir, e.name).replace(/^\.\//, '');
@@ -75,6 +75,7 @@ if (bumped === sw && !sw.includes(`org-pwa-shell-v${version}'`)) {
   process.exit(1);
 }
 if (bumped !== sw) fs.writeFileSync('sw.js', bumped);
+fs.writeFileSync('src-browser/version.js', fs.readFileSync('src-browser/version.js', 'utf8').replace(/org-pwa-shell-v\d+/, `org-pwa-shell-v${version}`));
 
 const zip = path.resolve('..', `org-pwa-v${version}.zip`);
 if (fs.existsSync(zip)) {

@@ -30,6 +30,7 @@ import {
 } from './src-browser/settings.js';
 import { applyFontFamily, applyFontSize, applyMenuSize, applyParagraphSpacing, applyTablesSpacing, applyReadingWidth, applyTablesFontSize } from './src-browser/appearance.js';
 import { getServiceWorkerVersion, scrollFocusedHeadingIntoView } from './src-browser/render-helpers.js';
+import { APP_VERSION } from './src-browser/version.js';
 import { kv } from './src-browser/singletons.js';
 import { bufferNames, loadPaletteRecent } from './src-browser/sync-helpers.js';
 import { WIDE_LAYOUT_QUERY, isWideLayout, positionPopupNearButton } from './src-browser/ui-widgets.js';
@@ -1089,6 +1090,15 @@ if ('serviceWorker' in navigator && platform.usesServiceWorker) {
       getServiceWorkerVersion().then((version) => {
         S.currentAppVersion = version;
         S.appVersionCheckState = 'done';
+        // The worker in charge is a different version from the code this page loaded (the page was opened before an update
+        // took over): say so and offer the reload that brings the page up to date.
+        if (version && version !== APP_VERSION) {
+          const text = updateBanner.querySelector('span');
+          if (text) text.textContent = 'This page is running ' + APP_VERSION.replace('org-pwa-shell-', '') + '; ' + version.replace('org-pwa-shell-', '') + ' is installed.';
+          updateBanner.style.display = 'flex';
+          syncContentOffset();
+          updateReloadBtn.onclick = () => window.location.reload();
+        }
         if (S.settingsOpen) renderSettingsView();
       });
 

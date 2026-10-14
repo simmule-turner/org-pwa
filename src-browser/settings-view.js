@@ -19,6 +19,7 @@ import { validateCaptureTemplates } from './doc-helpers.js';
 import { setStatus } from './editing.js';
 import { syncExtraMenuButtonVisibility } from './menus.js';
 import { getServiceWorkerVersion } from './render-helpers.js';
+import { APP_VERSION } from './version.js';
 import { render } from './render.js';
 import { DEFAULT_CAPTURE_TEMPLATES, DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getCaptureTemplates, getCustomThemeColors, getFontFamily, getFontSize, getGithubConfig, getGlobalVariables, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setCaptureTemplates, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig, getCaldavConfig, setCaldavConfig, getAttachLinkMode, setAttachLinkMode, getSettingsOrder } from './settings.js';
 import { APPT_LIMITS, normalizeApptSettings } from '../src/appt.js';
@@ -1192,7 +1193,9 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   versionDisplay.style.fontSize = '12px';
   versionDisplay.style.opacity = '0.6';
   versionDisplay.style.marginBottom = '6px';
-  if (S.currentAppVersion) {
+  if (platform.usesServiceWorker) {
+    versionDisplay.textContent = 'Version: ' + APP_VERSION; // the code that is running, not what the service worker says is installed
+  } else if (S.currentAppVersion) {
     versionDisplay.textContent = 'Version: ' + S.currentAppVersion;
   } else if (S.appVersionCheckState === 'done') {
     versionDisplay.textContent = 'Version: unavailable';
@@ -1208,6 +1211,12 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     }
   }
   updatesSection.appendChild(versionDisplay);
+  if (platform.usesServiceWorker && S.currentAppVersion && S.currentAppVersion !== APP_VERSION) {
+    const stale = document.createElement('div');
+    stale.style.cssText = 'font-size: 12px; margin-bottom: 6px';
+    stale.textContent = `This page is out of date: ${S.currentAppVersion} is installed. Reload to use it.`;
+    updatesSection.appendChild(stale);
+  }
 
   const updatesRow = document.createElement('div');
   updatesRow.className = 'panel-row';

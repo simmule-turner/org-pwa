@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v518 — The version shown is the version running
+Settings now shows the version of the code actually running instead of asking the service worker, and a banner says so when a newer version is installed but the page is still on an older one. Installing an update no longer takes files from the browser's saved copies, and it is refused, leaving the old version in place, if the files it got are not that version. This fixes an update that reported the new version while still running old code. (v517 only undid the modeline colour.)
+Verified: unit tests for the install, lint and type check, and the Updates and service-worker smoke checks.
+
 * v516 — Exported buffers start modified
 A buffer made from an export or import (As-org, contacts, calendar) now starts marked modified, with the red dot and name in its tab, so it is clear it still has to be saved. Renaming keeps the mark. Closing it asks first.
 Verified: the As-org, rename-buffer, tabs and iCalendar import smoke checks.

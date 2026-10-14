@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v517';
+const CACHE_NAME = 'org-pwa-shell-v518';
 
 const SHELL_FILES = [
   './',
@@ -202,6 +202,7 @@ const SHELL_FILES = [
   './src-browser/search-ui.js',
   './src-browser/settings-view.js',
   './src-browser/settings-shell.js',
+  './src-browser/version.js',
   './src-browser/buffer-rename.js',
   './src-browser/minibuffer-prompt.js',
   './src-browser/settings-export.js',
@@ -242,12 +243,23 @@ self.addEventListener('install', (event) => {
       // logged (visible in the browser's own service worker console)
       // rather than silently swallowed, so a real deployment gap is
       // still discoverable -- just not fatal to everything else.
-      const results = await Promise.allSettled(SHELL_FILES.map((url) => cache.add(url)));
+      // cache: 'reload' skips the browser's own HTTP cache, so this version's cache holds this version's files and never
+      // copies an older response the browser still had saved for the same address.
+      const results = await Promise.allSettled(SHELL_FILES.map((url) => cache.add(new Request(url, { cache: 'reload' }))));
       results.forEach((result, i) => {
         if (result.status === 'rejected') {
           console.warn('[sw] failed to cache', SHELL_FILES[i], result.reason);
         }
       });
+      // The code carries its own version (src-browser/version.js). If the copy just cached names a different version, the files
+      // came from somewhere stale: fail this install so the previous version keeps running and the next check tries again,
+      // rather than label old code with this version.
+      const stamp = await cache.match('./src-browser/version.js');
+      const text = stamp ? await stamp.text() : '';
+      if (!text.includes("'" + CACHE_NAME + "'")) {
+        await caches.delete(CACHE_NAME);
+        throw new Error('[sw] ' + CACHE_NAME + ' was given files from another version; not installing');
+      }
     })
   );
   // Deliberately no self.skipWaiting() here. Calling it unconditionally
