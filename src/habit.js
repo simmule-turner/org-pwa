@@ -127,3 +127,59 @@ export function buildHabitGraph(heading, isDone, today, opts = {}) {
   const last = doneAll.length ? doneAll[doneAll.length - 1] : null;
   return { cells, minDays: spec.minDays, maxDays: spec.maxDays, scheduled: spec.scheduled, deadline: realDeadline, lastDone: last, todayIndex: preceding };
 }
+
+/**
+ * The longer view of one habit, from its whole log: the streak of completions in a row that were each no later than the
+ * last-chance day after the one before (so the repeater's range is what counts as on time), the best such run, the completions
+ * in the last `weeks` weeks, a week-by-week grid (Monday first, the last column holding today) and the latest completions.
+ * @param {Heading} heading @param {(keyword: string) => boolean} isDone @param {Date} today
+ * @param {number} [weeks]
+ */
+export function buildHabitHistory(heading, isDone, today, weeks = 12) {
+  const spec = habitSpec(heading);
+  if (!spec) return null;
+  const now = dayNumber(today);
+  const done = habitDoneDays(heading, isDone);
+  const onTime = (/** @type {number} */ i) => done[i] - done[i - 1] <= spec.maxDays; // does completion i follow i-1 in time?
+  let best = 0;
+  let run = 0;
+  for (let i = 0; i < done.length; i++) {
+    run = i > 0 && onTime(i) ? run + 1 : 1;
+    best = Math.max(best, run);
+  }
+  let streak = 0;
+  if (done.length && now - done[done.length - 1] <= spec.maxDays) {
+    streak = 1;
+    for (let i = done.length - 1; i > 0 && onTime(i); i--) streak++;
+  }
+  const mondayOffset = (new Date(today.getFullYear(), today.getMonth(), today.getDate()).getDay() + 6) % 7;
+  const firstMonday = now - mondayOffset - (weeks - 1) * 7;
+  const doneSet = new Set(done);
+  const grid = [];
+  for (let c = 0; c < weeks; c++) {
+    for (let r = 0; r < 7; r++) {
+      const day = firstMonday + c * 7 + r;
+      grid.push({ day, done: doneSet.has(day), today: day === now, future: day > now });
+    }
+  }
+  const recent = done
+    .slice(-5)
+    .reverse()
+    .map((day, i, list) => {
+      const idx = done.length - 1 - i;
+      return { day, gap: idx > 0 ? day - done[idx - 1] : null };
+    });
+  return {
+    streak,
+    best,
+    doneInWindow: done.filter((d) => d >= firstMonday && d <= now).length,
+    weeks,
+    grid,
+    recent,
+    minDays: spec.minDays,
+    maxDays: spec.maxDays,
+    lastDone: done.length ? done[done.length - 1] : null,
+    scheduled: spec.scheduled,
+    deadline: spec.scheduled + (spec.maxDays - spec.minDays),
+  };
+}

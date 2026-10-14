@@ -46,3 +46,9 @@ test('displayName hides the unsaved-document prefix', () => {
   assert.equal(displayName('\u0000unsaved-new-document:abc'), 'this new document');
   assert.equal(displayName('notes.org'), 'notes.org');
 });
+
+test('filterTargets matches the name shown for an unsaved document, not its random id', () => {
+  const unsaved = [{ documentId: '\u0000unsaved-new-document:abc31xyz|*scratch*', outlinePath: ['Target 5'] }];
+  assert.equal(filterTargets(unsaved, 'target 31').length, 0);
+  assert.equal(filterTargets(unsaved, 'target 5').length, 1);
+});

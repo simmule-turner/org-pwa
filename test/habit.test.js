@@ -63,3 +63,18 @@ test('agenda shows one habit entry on today, with its graph, and hides it when t
   const off = buildAgendaItems([{ documentId: 'a.org', doc: d }], { ...common, habits: { enabled: false } });
   assert.equal(off.filter((i) => i.title === 'Shave').length, 0);
 });
+
+test('history: streak counts completions each within the last-chance gap, best run, and a 12-week grid ending this week', async () => {
+  const { buildHabitHistory } = await import('../src/habit.js');
+  const log = ['2026-10-11', '2026-10-08', '2026-10-05', '2026-09-20', '2026-09-18'].map((d) => `- State "DONE"       from "TODO"       [${d} 10:00]`);
+  const text = `* TODO Shave\nSCHEDULED: <2026-10-13 Tue .+2d/4d>\n:PROPERTIES:\n:STYLE: habit\n:END:\n:LOGBOOK:\n${log.join('\n')}\n:END:\n`;
+  const h = buildHabitHistory(first(doc(text)), isDone, new Date(2026, 9, 13));
+  assert.equal(h.streak, 3); // Oct 5, 8, 11 each within 4 days; Sep 20 -> Oct 5 is too long
+  assert.equal(h.best, 3);
+  assert.equal(h.grid.length, 84);
+  assert.equal(h.grid.filter((c) => c.today).length, 1);
+  assert.equal(h.doneInWindow, 5);
+  assert.equal(h.recent[0].gap, 3);
+  const late = buildHabitHistory(first(doc(text)), isDone, new Date(2026, 9, 20));
+  assert.equal(late.streak, 0); // last done Oct 11, past the last-chance day
+});

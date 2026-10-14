@@ -154,3 +154,17 @@ export function openChoiceSheet({ title, choices, selected, onApply }) {
   cancel.focus();
   return close;
 }
+
+/**
+ * A sheet with content the caller builds, and a Close button.
+ * @param {{ title: string, subtitle?: string, build: (panel: HTMLElement) => void }} opts
+ * @returns {() => void} close
+ */
+export function openContentSheet({ title, subtitle, build }) {
+  const { panel, close } = buildSheet(title, subtitle);
+  build(panel);
+  const done = cancelButton('Close', close);
+  panel.appendChild(done);
+  done.focus();
+  return close;
+}

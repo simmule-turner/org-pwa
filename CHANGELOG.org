@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v520 — Habit history and the Habit switch
+Tapping a habit's strip in the agenda opens its history: the current and best run of on-time completions, how many it was done in the last 12 weeks, a week-by-week grid and the latest completions, all read from its log. Details > Props gets a Habit switch that sets ~STYLE: habit~, so a habit no longer needs the property typed by hand. Refile target search no longer matches the random id of an unsaved document, which sometimes made every target match.
+Verified: unit tests for the streaks and grid, lint and type check, and the habit and details-editor smoke checks.
+
 * v519 — Habits
 Org-mode habits: a TODO with ~:STYLE: habit~ and a repeater such as ~.+2d/4d~ now shows a blue/green/yellow/red strip of the last 21 days, today and the next 7 in the agenda, drawn from its DONE log lines as Emacs's org-habit does. The repeater range can be set under Details > Dates, habits can be hidden from the ⏱ panel, and the graph length and today-only behavior are settings.
 Verified: habit unit tests, lint and type check, and the agenda smoke checks.

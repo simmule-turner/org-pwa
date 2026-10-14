@@ -174,6 +174,31 @@ export function buildPropertiesFieldGroup(heading) {
 
   const currentProps = heading.propertyOrder.map((/** @type {string} */ key) => ({ key, value: heading.properties[key] ?? '' }));
 
+  // Habit (org-habit): the STYLE property set to habit. It also needs an open TODO state and a repeating SCHEDULED date.
+  const habitLabel = document.createElement('label');
+  habitLabel.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:14px;';
+  const habitBox = document.createElement('input');
+  habitBox.type = 'checkbox';
+  habitBox.setAttribute('data-habit-switch', '');
+  const isHabitRow = (/** @type {any} */ p) => p.key.trim().toLowerCase() === 'style';
+  habitBox.checked = currentProps.some((p) => isHabitRow(p) && String(p.value).trim() === 'habit');
+  habitBox.onchange = () => {
+    const at = currentProps.findIndex(isHabitRow);
+    if (habitBox.checked) {
+      if (at >= 0) currentProps[at].value = 'habit';
+      else currentProps.push({ key: 'STYLE', value: 'habit' });
+    } else if (at >= 0 && String(currentProps[at].value).trim() === 'habit') {
+      currentProps.splice(at, 1);
+    }
+    renderRows();
+  };
+  habitLabel.append(habitBox, document.createTextNode('Habit \u2014 track how consistently this gets done'));
+  wrap.appendChild(habitLabel);
+  const habitHint = document.createElement('div');
+  habitHint.textContent = 'Sets STYLE: habit. A habit also needs an open TODO state and a repeating SCHEDULED date, such as .+2d/4d (Dates tab).';
+  habitHint.style.cssText = 'font-size:12px;opacity:0.65;margin-bottom:10px;';
+  wrap.appendChild(habitHint);
+
   const rowsContainer = document.createElement('div');
   wrap.appendChild(rowsContainer);
 
@@ -196,6 +221,7 @@ export function buildPropertiesFieldGroup(heading) {
 
   function renderRows() {
     refreshKeyList();
+    habitBox.checked = currentProps.some((p) => isHabitRow(p) && String(p.value).trim() === 'habit');
     rowsContainer.innerHTML = '';
     currentProps.forEach((/** @type {any} */ prop, /** @type {number} */ idx) => {
       const row = document.createElement('div');

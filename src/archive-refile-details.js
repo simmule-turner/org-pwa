@@ -23,7 +23,7 @@ export function subtreeSize(heading) {
   return n;
 }
 
-/** "1 heading" / "3 headings (2 under it)".
+/** "1 heading' / '3 headings (2 under it)".
  * @param {Heading} heading */
 export function describeSubtree(heading) {
   const n = subtreeSize(heading);
@@ -36,7 +36,7 @@ export function filterTargets(candidates, query) {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return candidates;
   return candidates.filter((c) => {
-    const hay = `${c.outlinePath.join(' / ')} ${c.documentId}`.toLowerCase();
+    const hay = `${c.outlinePath.join(' / ')} ${displayName(c.documentId)}`.toLowerCase();
     return words.every((w) => hay.includes(w));
   });
 }

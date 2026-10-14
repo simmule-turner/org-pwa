@@ -486,6 +486,35 @@ check('agenda: a habit (STYLE habit, a repeater with /max) shows its 29-day stri
   await context.close();
 });
 
+check('habit: the Props tab has a Habit switch that writes STYLE: habit, and tapping the agenda strip opens the history with streaks and a 12-week grid', async () => {
+  const { context, page, errors } = await freshPage();
+  const today = orgToday();
+  const stamp = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} 10:00`; };
+  await newDocument(page, ['* TODO Shave', `SCHEDULED: ${today.replace('>', ' .+2d/4d>')}`, ':LOGBOOK:', `- State "DONE"       from "TODO"       [${stamp(2)}]`, `- State "DONE"       from "TODO"       [${stamp(5)}]`, ':END:', ''].join('\n'));
+  await page.locator('.heading-title', { hasText: 'Shave' }).first().click();
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Commands');
+  await page.waitForSelector('#command-palette');
+  await page.keyboard.type('edit details');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('[data-details-tab="props"]');
+  await page.locator('[data-details-tab="props"]').click();
+  await page.locator('[data-habit-switch]').check();
+  await page.getByText('OK', { exact: true }).last().click();
+  await page.waitForTimeout(500);
+  expect(/:STYLE:\s+habit/.test(await documentText(page)), 'the switch writes :STYLE: habit');
+  await viewMenu(page, 'Agenda');
+  await page.waitForSelector('[data-habit-strip]');
+  await page.locator('[data-habit-strip]').click();
+  await page.waitForSelector('[data-habit-history]');
+  const t = await page.locator('[data-habit-history]').innerText();
+  expect(t.includes('on time in a row') && t.includes('best run'), `history text: ${t.slice(0, 200)}`);
+  expect((await page.locator('[data-habit-grid] > div').count()) === 84, 'a 12-week grid');
+  expect((await page.locator('[data-habit-done]').count()) === 2, 'the two completions are marked');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('agenda: a day where nothing is estimated shows no effort at all', async () => {
   const { context, page } = await freshPage();
   await newDocument(page, `#+TODO: TODO NEXT | DONE\n* TODO Plain task\nSCHEDULED: ${orgToday()}\n`);

@@ -1123,6 +1123,8 @@ SCHEDULED: <2026-10-13 Tue .+2d/4d>
 
 ~.+2d/4d~ means every 2 days, no later than every 4. Set the second number under Details > Dates > "No later than". Marking the habit done records a ~State "DONE"~ line in its ~:LOGBOOK:~; the strip is drawn from those lines. A habit shows in today's agenda once it is due. Settings > Agenda has ~org-habit-preceding-days~, ~org-habit-following-days~, ~org-habit-show-habits-only-for-today~ and ~org-habit-show-all-today~. The ⏱ panel hides habits for the session.
 
+Tap a habit's strip for its history: how many times in a row it was done on time (each no later than the last-chance day after the one before), the best run, the last 12 weeks as a grid, and the latest completions. Details > Props has a *Habit* switch that sets ~STYLE: habit~.
+
 *** Agenda Files
 :PROPERTIES:
 :CUSTOM_ID: agenda-files

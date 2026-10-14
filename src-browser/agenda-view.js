@@ -24,6 +24,7 @@ import { agendaFilesCache } from './singletons.js';
 import { buildViewFilterRow, filterItemsForView } from './view-filter-ui.js';
 import { menuButton, textInputStyle } from './ui-widgets.js';
 import { platform } from './platform.js';
+import { openHabitHistory } from './habit-history.js';
 
 /**
  * @param {string} viewType
@@ -583,6 +584,11 @@ export function renderAgendaView() {
         c.textContent = cell.mark;
         strip.appendChild(c);
       }
+      strip.style.cursor = 'pointer';
+      strip.onclick = (e) => {
+        e.stopPropagation(); // the strip opens the habit's history; the rest of the row still opens the heading
+        openHabitHistory(item.heading, (/** @type {string} */ kw) => todoSequence.doneKeywords.includes(kw));
+      };
       text.appendChild(strip);
     }
     if (item.daysOverdue) {
