@@ -276,5 +276,11 @@ export function renderModeline() {
   parts.push(computeBufferPositionString());
   parts.push(...buildGlobalModeStringParts(vars));
 
-  modelineEl.textContent = parts.join('  ');
+  // a modified buffer's state mark and name are red, as in its tab, so it is clear it has not been saved
+  modelineEl.textContent = '';
+  const head = document.createElement('span');
+  head.textContent = parts.slice(0, 2).join('  ');
+  if (S.isDirty) head.style.color = '#c0392b';
+  modelineEl.appendChild(head);
+  modelineEl.appendChild(document.createTextNode('  ' + parts.slice(2).join('  ')));
 }

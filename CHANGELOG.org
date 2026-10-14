@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v516 — Exported buffers start modified
+A buffer made from an export or import (As-org, contacts, calendar) now starts marked modified, with the red dot and name in its tab and the same red state mark and name in the modeline, so it is clear it still has to be saved. Renaming keeps the mark. Closing it asks first.
+Verified: the As-org, rename-buffer, tabs and iCalendar import smoke checks.
+
 * v515 — Rename buffer
 New command *Rename buffer…* (palette, or =x SPC x r= in god-mode, Emacs's =C-x x r=) asks for a new name in the minibuffer and changes it in the tab and modeline, without saving anything. An empty name, or one another buffer already has, is refused; Escape cancels. The name is remembered across reloads.
 Verified: the rename-buffer, tabs and As-org smoke checks.

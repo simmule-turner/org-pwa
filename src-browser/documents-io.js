@@ -128,6 +128,12 @@ function uniqueBufferName(base) {
 export async function createNewUnsavedDocument(rawText = '', statusMessage = /** @type {string | null} */ (null), bufferName = '') {
   if (commitTextModeIfActive()) render();
   await afterDocumentLoaded(UNSAVED_DOCUMENT_ID + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + '|' + uniqueBufferName(bufferName || '*scratch*'), parseOrg(rawText), null);
+  // text made for the new buffer (an export, an import) exists nowhere else yet, so the buffer starts modified until it is saved
+  if (rawText.trim() !== '') {
+    S.isDirty = true;
+    S.lastSavedText = null;
+    renderTabBar();
+  }
   setStatus(statusMessage || 'New unsaved document \u2014 edits are cached locally, same as any other document; Save As to keep it for good.');
   render();
 }

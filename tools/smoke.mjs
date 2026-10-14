@@ -715,6 +715,8 @@ check('rename-buffer: the palette asks in the minibuffer, Return renames the tab
   await ask('Notes');
   expect((await tabs()).includes('Notes') && !(await tabs()).includes('*scratch*<2>'), `renamed: ${await tabs()}`);
   expect((await modeline(page)).includes('Notes'), `and the modeline follows: ${await modeline(page)}`);
+  const red = (await page.locator('#tabBar span', { hasText: 'Notes' }).first().evaluate((e) => getComputedStyle(e).color)) === 'rgb(192, 57, 43)' && (await page.locator('#modeline span').first().evaluate((e) => getComputedStyle(e).color)) === 'rgb(192, 57, 43)';
+  expect(red, 'a modified buffer keeps its red mark and name in the tab and the modeline after it is renamed');
   await ask('Other', 'Escape');
   expect(!(await tabs()).includes('Other') && (await tabs()).includes('Notes'), 'Escape leaves the name alone');
   await ask('   ');
@@ -1303,6 +1305,7 @@ check('Extras menu: a quoted function is the palette command with that real Emac
   await page.waitForTimeout(600);
   expect((await status()).includes('Exported to *Org ORG Export* in a new buffer'), `export-as-org opens its own buffer: ${await status()}`);
   expect((await page.locator('#tabBar > div').count()) === 2, 'as a second tab, leaving the original document alone');
+  expect((await page.locator('#tabBar').innerText()).includes('\u25cf *Org ORG Export*') && (await modeline(page)).startsWith('**'), `and it starts modified (a red dot and **), since it is not saved anywhere: ${await page.locator('#tabBar').innerText()} / ${await modeline(page)}`);
   expect((await page.locator('#tabBar').innerText()).includes('*Org ORG Export*'), `and the new buffer is named *Org ORG Export*: ${await page.locator('#tabBar').innerText()}`);
 
   // back in the first tab: cut acts on the heading whose menu is open, like the palette
