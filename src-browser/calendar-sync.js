@@ -4,7 +4,7 @@
 // are src/caldav-client.js; this is the part that knows about settings, the agenda files, state and the status line.
 import { buildCalendarResources, isOurResource, nextSyncState, planCalendarSync } from '../src/calendar-mirror.js';
 import { createCaldavClient, runLimited } from '../src/caldav-client.js';
-import { getContactsBirthdayProperty } from '../src/local-variables.js';
+import { getContactsBirthdayProperty, getIcalendarAlarmMinutes } from '../src/local-variables.js';
 import { S } from './app-state.js';
 import { agendaSexpOptions } from './agenda-settings.js';
 import { hasUserSexps, settleUserSexps } from './extension-flow.js';
@@ -74,7 +74,7 @@ export async function syncAgendaToCalendar({ manual = false, rebuild = false, re
     // The contacts are those of org-contacts-files, as in the agenda. An event made from a contacts file is only ever removed when
     // that file loaded in this run, so a contacts file that failed to load keeps its birthdays on the server.
     const contactsDocs = await loadContactsDocsForSync(docs);
-    const build = () => buildCalendarResources(docs, { today: new Date(), contactsDocs, agendaOptions: agendaSexpOptions(), birthdayProperty: S.state.doc ? getContactsBirthdayProperty(S.state.localVariables) : undefined });
+    const build = () => buildCalendarResources(docs, { today: new Date(), contactsDocs, agendaOptions: agendaSexpOptions(), alarmMinutes: getIcalendarAlarmMinutes(S.state.localVariables), birthdayProperty: S.state.doc ? getContactsBirthdayProperty(S.state.localVariables) : undefined });
     if (hasUserSexps()) {
       build(); // queues what the script has not yet been asked, so the build below has every answer
       await settleUserSexps();

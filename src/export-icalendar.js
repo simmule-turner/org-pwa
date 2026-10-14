@@ -143,7 +143,7 @@ export function generateUid(documentId, heading, kind, index, date) {
 
 // ---- VEVENT building -----------------------------------------------------
 
-export function buildVevent(/** @type {any} */ { uid, summary, description, date, hasTime, rrule, alarmDaysBefore, stamp, endDate = /** @type {Date | null} */ (null), categories = /** @type {string[] | null} */ (null), location = /** @type {string | null} */ (null) }) {
+export function buildVevent(/** @type {any} */ { uid, summary, description, date, hasTime, rrule, alarmDaysBefore, alarmMinutesBefore = 0, stamp, endDate = /** @type {Date | null} */ (null), categories = /** @type {string[] | null} */ (null), location = /** @type {string | null} */ (null) }) {
   const lines = [
     'BEGIN:VEVENT',
     `UID:${uid}`,
@@ -169,6 +169,10 @@ export function buildVevent(/** @type {any} */ { uid, summary, description, date
       `TRIGGER:-P${alarmDaysBefore}D`,
       'END:VALARM'
     );
+  }
+  if (alarmMinutesBefore > 0 && hasTime) {
+    // org-icalendar-alarm-time: a reminder shortly before a timed event. An all-day event has no time to count back from.
+    lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${escapeIcsText(summary)}`, `TRIGGER:-PT${Math.round(alarmMinutesBefore)}M`, 'END:VALARM');
   }
   lines.push('END:VEVENT');
   return lines.map(foldLine);
@@ -229,7 +233,7 @@ export function exportToIcalendar(docs, opts = /** @type {any} */ ({})) {
  * @param {any} [docs]
  */
 export function collectCalendarEvents(docs, opts = /** @type {any} */ ({})) {
-  const { today = new Date(), birthdayProperty = 'BIRTHDAY', scope = null, includeDone = false, window = null, contactsDocs = null } = opts;
+  const { today = new Date(), birthdayProperty = 'BIRTHDAY', scope = null, includeDone = false, window = null, contactsDocs = null, alarmMinutes = 0 } = opts;
   /** @type {any[]} */ const events = [];
   const usedUids = new Set();
   /**
@@ -356,6 +360,7 @@ export function collectCalendarEvents(docs, opts = /** @type {any} */ ({})) {
             hasTime: parsed.hasTime,
             rrule: parsed.repeater ? repeaterToRRule(parsed.repeater) : null,
             alarmDaysBefore: delay ? delayToDays(delay) : 0,
+            alarmMinutesBefore: alarmMinutes,
             categories: details.categories,
             location: details.location,
             stamp: today,
@@ -386,6 +391,7 @@ export function collectCalendarEvents(docs, opts = /** @type {any} */ ({})) {
               hasTime: parsed.hasTime,
               rrule: parsed.repeater ? repeaterToRRule(parsed.repeater) : null,
               alarmDaysBefore: 0,
+              alarmMinutesBefore: alarmMinutes,
               categories: details.categories,
               location: details.location,
               stamp: today,

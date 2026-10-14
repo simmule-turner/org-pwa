@@ -66,7 +66,7 @@ function buildCalendarResources(allDocs, opts = {}) {
   const birthdayProperty = opts.birthdayProperty || 'BIRTHDAY';
 
   // What View > Agenda shows, folded into calendar events (see calendar-from-agenda.js): completed items are not in it, so not here.
-  const events = collectAgendaCalendarEvents(docs, { today, window, birthdayProperty, contactsDocs: opts.contactsDocs || null, agendaOptions: opts.agendaOptions || {} });
+  const events = collectAgendaCalendarEvents(docs, { today, window, birthdayProperty, contactsDocs: opts.contactsDocs || null, agendaOptions: opts.agendaOptions || {}, alarmMinutes: opts.alarmMinutes || 0 });
 
   const resources = new Map();
   for (const { uid, documentId, lines } of events) {

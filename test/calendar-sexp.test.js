@@ -43,3 +43,23 @@ test('a script-defined %%(…) function in a <%%(…)> line is exported like a b
     setUserSexps();
   }
 });
+
+import { exportToIcalendar } from '../src/export-icalendar.js';
+
+test('org-icalendar-alarm-time: timed events get an alarm that many minutes before, all-day ones and a setting of 0 get none', () => {
+  const doc = parseOrg('* TODO Dentist\nSCHEDULED: <2026-10-15 Thu 09:30>\n* TODO Pay rent\nDEADLINE: <2026-10-16 Fri -3d>\n* Lunch <2026-10-17 Sat 12:00>\n');
+  const ics = (alarmMinutes) => exportToIcalendar([{ documentId: 'a.org', doc }], { today, alarmMinutes });
+  const none = ics(0);
+  assert.equal((none.match(/TRIGGER:-PT/g) || []).length, 0);
+  assert.equal((none.match(/TRIGGER:-P3D/g) || []).length, 1); // the deadline's warning, unchanged
+  const ten = ics(10);
+  assert.equal((ten.match(/TRIGGER:-PT10M/g) || []).length, 2); // the 09:30 scheduled and the 12:00 timestamp; the all-day deadline gets none
+  assert.equal((ten.match(/TRIGGER:-P3D/g) || []).length, 1);
+});
+
+test('the same alarm reaches the agenda-based export and sync', () => {
+  const doc = parseOrg('* TODO Dentist\nSCHEDULED: <2026-10-15 Thu 09:30>\n');
+  const events = collectAgendaCalendarEvents([{ documentId: 'a.org', doc }], { today, window: agendaWindow(today, 0, 5), alarmMinutes: 15 });
+  assert.equal(events.length, 1);
+  assert.ok(events[0].lines.some((l) => l.startsWith('TRIGGER:-PT15M')));
+});

@@ -78,17 +78,18 @@ function weatherDescription(data) {
 
 /**
  * @param {{ documentId: string, doc: object }[]} docs the open document and the loaded agenda files
- * @param {{ today?: Date, window?: any, birthdayProperty?: string, contactsDocs?: any, agendaOptions?: any }} [opts]
+ * @param {{ today?: Date, window?: any, birthdayProperty?: string, contactsDocs?: any, agendaOptions?: any, alarmMinutes?: number }} [opts]
  *   window        { start, end } the days to cover (required)
  *   today         the date to measure ages and "today" against
  *   birthdayProperty, contactsDocs   as for buildAgendaItems
+ *   alarmMinutes    org-icalendar-alarm-time: an alarm this many minutes before each event that has a time of day (0: none)
  *   agendaOptions   more buildAgendaItems options, the ones the agenda evaluates <%%(…)> lines with: coordinates, sun-time
  *                   display, and the weather last fetched. Without them a sun-time line is worked out for a default place
  *                   and %%(org-weather) is false.
  * @returns {{ uid: string, documentId: string, lines: string[] }[]}
  */
 export function collectAgendaCalendarEvents(docs, opts = {}) {
-  const { today = new Date(), window, birthdayProperty = 'BIRTHDAY', contactsDocs = null, agendaOptions = {} } = opts;
+  const { today = new Date(), window, birthdayProperty = 'BIRTHDAY', contactsDocs = null, agendaOptions = {}, alarmMinutes = 0 } = opts;
   const doneKeywords = new Set();
   for (const { doc } of docs) for (const keyword of resolveTodoSequence(/** @type {Doc} */ (doc)).doneKeywords) doneKeywords.add(keyword);
 
@@ -167,6 +168,7 @@ export function collectAgendaCalendarEvents(docs, opts = {}) {
         hasTime: parsed.hasTime,
         rrule: repeating ? repeaterToRRule(item.repeater) : null,
         alarmDaysBefore: delay ? delayToDays(delay) : 0,
+        alarmMinutesBefore: alarmMinutes,
         categories: details.categories,
         location: details.location,
         stamp: today,

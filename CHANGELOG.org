@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v522 — Alarms for timed calendar events
+New setting ~org-icalendar-alarm-time~ (Settings → Contacts & Calendar, default 0 = none, as in Emacs): the CalDAV sync and the .ics exports add an alarm that many minutes before every event with a time of day, whether it came from a SCHEDULED, a DEADLINE or a plain timestamp, so a phone's calendar app can alert for it. Until now only a deadline's warning delay (~-3d~) made an alarm. All-day events still get none.
+Verified: unit tests for the alarms, lint and type check.
+
 * v521 — Weather and script functions in the calendar
 A ~<%%(when (today-p) (org-weather))>~ line now reaches the exported and synced calendar as one event for today, saying when the forecast was fetched, and the sync updates it after each weather refresh. Calendar exports also use your own latitude, longitude and weather settings instead of the defaults, and wait for a script's own ~%%(…)~ functions before writing, so their events are no longer missed or removed from the calendar.
 Verified: new unit tests, lint and type check, and the calendar and extension smoke checks.

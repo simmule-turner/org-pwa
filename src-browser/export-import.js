@@ -14,7 +14,7 @@ import { exportAsOrg } from '../src/export-org.js';
 import { exportToVcard } from '../src/export-vcard.js';
 import { importIcalendarAsOrgText } from '../src/import-icalendar.js';
 import { importVcardsAsOrgText } from '../src/import-vcard.js';
-import { getAsciiTextWidth, getAsciiCharset, getContactsBirthdayProperty, getMenuAliases } from '../src/local-variables.js';
+import { getAsciiTextWidth, getAsciiCharset, getContactsBirthdayProperty, getIcalendarAlarmMinutes, getMenuAliases } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
@@ -118,7 +118,7 @@ export async function performExport(format, scope) {
       // what View > Agenda shows, in the window the CalDAV mirror uses (see calendar-from-agenda.js)
       const agendaDocs = aggregateAgendaDocs().filter((d) => d.doc);
       const contactsDocs = await loadContactsDocsForSync(agendaDocs);
-      const build = () => exportAgendaToIcalendar(agendaDocs, { birthdayProperty, agendaOptions: agendaSexpOptions(), contactsDocs });
+      const build = () => exportAgendaToIcalendar(agendaDocs, { birthdayProperty, agendaOptions: agendaSexpOptions(), alarmMinutes: getIcalendarAlarmMinutes(S.state.localVariables), contactsDocs });
       if (hasUserSexps()) {
         build(); // queues what a script's %%(…) functions have not yet been asked, then waits for the answers
         await settleUserSexps();
@@ -129,7 +129,7 @@ export async function performExport(format, scope) {
       const icsScope = scope && typeof scope === 'object' ? scope : null;
       // for the agenda files, the contacts are those of org-contacts-files, as in the agenda
       const contactsDocs = scope === 'agenda-files' ? await loadContactsDocsForSync(docs.filter((d) => d.doc)) : null;
-      saveOut(baseName + '.ics', exportToIcalendar(docs, { scope: icsScope, birthdayProperty, contactsDocs }), 'text/calendar');
+      saveOut(baseName + '.ics', exportToIcalendar(docs, { scope: icsScope, birthdayProperty, contactsDocs, alarmMinutes: getIcalendarAlarmMinutes(S.state.localVariables) }), 'text/calendar');
     }
   }
   S.moreOpen = false;

@@ -159,6 +159,17 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#agenda-diary-sexp',
   },
   {
+    key: 'org-icalendar-alarm-time',
+    label: 'Alarm before timed events (minutes, 0 for none)',
+    section: 'Contacts & Calendar',
+    type: 'number',
+    default: 0,
+    min: 0,
+    max: 1440,
+    step: 1,
+    helpAnchor: '#calendar-sync',
+  },
+  {
     key: 'calendar-latitude',
     label: 'Latitude',
     section: 'Contacts & Calendar',
