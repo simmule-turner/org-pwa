@@ -42,7 +42,7 @@ import { highlightToHtml } from './syntax-highlight.js';
  * What `#+OPTIONS:` can switch, with Org's defaults.
  * @param {Doc} doc
  */
-export function parseHtmlOptions(doc) {
+export function parseHtmlOptions(doc, defaults = /** @type {import('./export-defaults.js').HtmlExportDefaults} */ ({})) {
   /** @type {Record<string, any>} */
   const o = {
     toc: true,
@@ -65,10 +65,10 @@ export function parseHtmlOptions(doc) {
     email: false,
     creator: false,
     title: true,
-    preamble: null, // null (none) | false | a template string with Org's format codes
-    postamble: true, // true (the author, date and email lines) | false | a template string
-    pageHeader: null, // a template for the top of every printed page, or null
-    pageFooter: null,
+    preamble: defaults.preamble ?? null, // null (none) | false | a template string with Org's format codes
+    postamble: defaults.postamble ?? true, // true (the author, date and email lines) | false | a template string
+    pageHeader: defaults.pageHeader ?? null, // a template for the top of every printed page, or null
+    pageFooter: defaults.pageFooter ?? null,
     stamps: true,
     arch: 'headline',
     comments: false,
@@ -196,9 +196,10 @@ function htmlAttributes(aff, skip = []) {
 /**
  * @param {Doc} doc
  * @param {any} [scope]
+ * @param {import('./export-defaults.js').HtmlExportDefaults} [defaults]
  */
-function createState(doc, scope) {
-  const options = parseHtmlOptions(doc);
+function createState(doc, scope, defaults = {}) {
+  const options = parseHtmlOptions(doc, defaults);
   /** @type {ExportState} */
   const state = {
     doc,
@@ -1235,9 +1236,9 @@ const PAGE_CSS = `
  * A subtree export is titled after its heading; the heading's own text comes first, then its children as sections.
  * @param {Doc} doc
  */
-export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = /** @type {any} */ (null) } = {}) {
+export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = /** @type {any} */ (null), defaults = /** @type {import('./export-defaults.js').HtmlExportDefaults} */ ({}) } = {}) {
   activeImages = images instanceof Map ? images : new Map();
-  const state = createState(doc, scope);
+  const state = createState(doc, scope, defaults);
   state.namedElements = new Map();
   state.fnDefsCollect = (/** @type {any} */ elements) => {
     for (const el of elements) if (el.type === 'footnote-def') state.fnDefs.set(el.label, el.children);
@@ -1390,7 +1391,7 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
   if (description) meta.push(`<meta name="description" content="${escapeAttr(description)}">`);
   const keywords = keywordValue(doc, 'KEYWORDS');
   if (keywords) meta.push(`<meta name="keywords" content="${escapeAttr(keywords)}">`);
-  const head = [getHtmlHead(doc), ...keywordValues(doc, 'HTML_HEAD_EXTRA')].filter(Boolean).join('\n');
+  const head = [defaults.head, getHtmlHead(doc), ...keywordValues(doc, 'HTML_HEAD_EXTRA')].filter(Boolean).join('\n');
   return (
     '<!DOCTYPE html>\n' +
     `<html lang="${lang}">\n` +

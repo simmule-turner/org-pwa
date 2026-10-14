@@ -1,0 +1,157 @@
+// @ts-check
+// The Export page's General and HTML cards: text for the preamble, postamble, head, page header and page footer, each with a switch.
+// Nothing is applied until its box is ticked, and anything the file itself says wins (see src/export-defaults.js).
+import { EXPORT_DEFAULT_ITEMS, encodeExportText, exportItemState } from '../src/export-defaults.js';
+import { S } from './app-state.js';
+import { setStatus } from './editing.js';
+import { commitGlobalVariableChange } from './settings-quick.js';
+import { menuButton } from './ui-widgets.js';
+
+/** @typedef {typeof EXPORT_DEFAULT_ITEMS[number]} ExportItem */
+
+const CODES = [
+  ['%t', 'Title (#+TITLE)'],
+  ['%s', 'Subtitle (#+SUBTITLE)'],
+  ['%a', 'Author (#+AUTHOR)'],
+  ['%d', 'Date (#+DATE)'],
+  ['%e', 'Email address (#+EMAIL), as a link'],
+  ['%c', 'Creator line (#+CREATOR)'],
+  ['%C %T', 'When the file was exported'],
+  ['%%', 'A literal percent sign'],
+];
+const PAGE_CODES = [
+  ['%p', 'Page number (page header and footer only)'],
+  ['%P', 'Number of pages (page header and footer only)'],
+  ['|', 'Splits left | centre | right. Two parts are left and right; one part is the centre. Leave a part empty to skip it.'],
+];
+
+/** @param {string} text @param {string} css */
+function line(text, css) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  d.style.cssText = css;
+  return d;
+}
+
+/** The "Format codes" help, closed until opened.
+ * @param {boolean} withPage */
+function codesHelp(withPage) {
+  const box = document.createElement('details');
+  box.setAttribute('data-export-codes', '');
+  box.style.cssText = 'margin: 6px 0 4px';
+  const summary = document.createElement('summary');
+  summary.textContent = 'Format codes';
+  summary.style.cssText = 'cursor: pointer; font-size: 13px; min-height: 32px; display: flex; align-items: center';
+  box.appendChild(summary);
+  for (const [code, meaning] of withPage ? [...CODES, ...PAGE_CODES] : CODES) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display: flex; gap: 10px; font-size: 12px; padding: 4px 0; border-top: 0.5px solid var(--border)';
+    row.appendChild(line(code, 'flex: 0 0 52px; font-family: monospace'));
+    row.appendChild(line(meaning, 'flex: 1 1 auto; min-width: 0'));
+    box.appendChild(row);
+  }
+  box.appendChild(line('Example: "Prepared by %a, %d". A setting written in the file itself, such as #+OPTIONS: html-preamble:"...", takes the place of the one here.', 'font-size: 11px; opacity: 0.65; margin-top: 6px'));
+  return box;
+}
+
+/** One item: a tick box with its name, then the text.
+ * @param {ExportItem} item @param {string} name @param {string} variable @param {boolean} multiline */
+function itemRow(item, name, variable, multiline) {
+  const state = exportItemState(S.globalVariables, item);
+  const row = document.createElement('div');
+  row.setAttribute('data-export-item', item.id);
+  row.style.cssText = 'margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border)';
+
+  const head = document.createElement('label');
+  head.style.cssText = 'display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; cursor: pointer';
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = state.on;
+  box.style.cssText = 'width: 22px; height: 22px; margin: 0';
+  head.appendChild(box);
+  const label = document.createElement('span');
+  label.style.fontWeight = '700';
+  label.textContent = name;
+  head.appendChild(label);
+  head.appendChild(line(variable, 'font-size: 12px; opacity: 0.65'));
+  row.appendChild(head);
+
+  /** @type {HTMLInputElement | HTMLTextAreaElement} */
+  let field;
+  if (multiline) {
+    field = document.createElement('textarea');
+    field.rows = 4;
+    field.style.resize = 'vertical';
+  } else {
+    field = document.createElement('input');
+    field.type = 'text';
+    field.style.minHeight = '44px';
+  }
+  field.value = state.text;
+  field.setAttribute('aria-label', name + ' text');
+  field.style.cssText += '; width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--bg); color: var(--fg); font-family: monospace; font-size: 13px';
+  row.appendChild(field);
+
+  box.onchange = async () => {
+    await commitGlobalVariableChange(item.key + '-on', box.checked ? 't' : null);
+    setStatus(`${name}: ${box.checked ? 'applied to every export that does not set its own' : 'not applied'}.`);
+  };
+  field.onchange = async () => {
+    const same = field.value === item.text;
+    await commitGlobalVariableChange(item.key, same || field.value.trim() === '' ? null : encodeExportText(field.value));
+    if (field.value.trim() === '') field.value = item.text;
+    setStatus(`${name} text saved.`);
+  };
+  return row;
+}
+
+/** Puts every item in `ids` back to its text and switches it off.
+ * @param {string[]} ids */
+async function resetItems(ids) {
+  for (const item of EXPORT_DEFAULT_ITEMS) {
+    if (!ids.includes(item.id)) continue;
+    await commitGlobalVariableChange(item.key, null);
+    await commitGlobalVariableChange(item.key + '-on', null);
+  }
+}
+
+/** @param {string} title @param {string} sub @param {string} intro */
+function cardShell(title, sub, intro) {
+  const card = document.createElement('div');
+  card.className = 'settings-section';
+  const t = document.createElement('div');
+  t.className = 'panel-section-title';
+  t.textContent = title;
+  card.appendChild(t);
+  card.appendChild(line(sub, 'font-size: 12px; opacity: 0.65; margin-top: -4px'));
+  card.appendChild(line(intro, 'font-size: 12px; opacity: 0.75; margin-top: 6px'));
+  return card;
+}
+
+/**
+ * @param {() => void} rerender
+ * @returns {{ general: HTMLElement, html: HTMLElement }} */
+export function buildExportCards(rerender) {
+  const general = cardShell('General', 'Printed pages and PDF', 'Written as left | centre | right. A ticked item is used for every export that does not set its own.');
+  general.setAttribute('data-export-card', 'general');
+  general.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[3], 'Page header', 'page-header', false));
+  general.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[4], 'Page footer', 'page-footer', false));
+  general.appendChild(codesHelp(true));
+  const resetGeneral = document.createElement('div');
+  resetGeneral.className = 'panel-row';
+  resetGeneral.appendChild(menuButton('Reset General', async () => { await resetItems(['pageHeader', 'pageFooter']); rerender(); }));
+  general.appendChild(resetGeneral);
+
+  const html = cardShell('HTML', 'Web page export', 'A ticked item is added to every HTML export whose file does not set its own. Unticked keeps your text for later.');
+  html.setAttribute('data-export-card', 'html');
+  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[0], 'Preamble', 'html-preamble', false));
+  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[1], 'Postamble', 'html-postamble', false));
+  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[2], 'Head', 'HTML_HEAD', true));
+  html.appendChild(line('The head goes inside <head>. Lines the file gives with #+HTML_HEAD: come after it, so they can override it.', 'font-size: 11px; opacity: 0.65; margin-top: 4px'));
+  html.appendChild(codesHelp(false));
+  const resetHtml = document.createElement('div');
+  resetHtml.className = 'panel-row';
+  resetHtml.appendChild(menuButton('Reset HTML', async () => { await resetItems(['preamble', 'postamble', 'head']); rerender(); }));
+  html.appendChild(resetHtml);
+  return { general, html };
+}

@@ -2,6 +2,7 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: export import.
+import { htmlExportDefaults } from '../src/export-defaults.js';
 import { exportToAscii } from '../src/export-ascii.js';
 import { exportToHtml } from '../src/export-html.js';
 import { exportToIcalendar } from '../src/export-icalendar.js';
@@ -69,7 +70,7 @@ export async function performExport(format, scope) {
     } else if (format === 'markdown') {
       saveOut(baseName + '.md', exportToMarkdown(doc, scope), 'text/markdown');
     } else if (format === 'html') {
-      saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null) }), 'text/html');
+      saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), defaults: htmlExportDefaults(S.globalVariables) }), 'text/html');
     } else {
       saveOut(baseName + '.odt', exportToOdt(doc, scope), 'application/vnd.oasis.opendocument.text');
     }

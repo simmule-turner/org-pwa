@@ -3,6 +3,7 @@
 // a search box, and the "Order of settings" card that lets the person rearrange both. The cards themselves are built by
 // settings-view.js and handed in by id; this file only decides where they go.
 import { moveInList, orderToStore, resolveSettingsLayout } from '../src/settings-layout.js';
+import { countExportItemsOn } from '../src/export-defaults.js';
 import { S } from './app-state.js';
 import { QUICK_SETTINGS_FIELDS } from './settings-fields.js';
 import { setSettingsOrder } from './settings.js';
@@ -24,14 +25,19 @@ function cardTitle(id, el) {
   return (heading && heading.textContent && heading.textContent.trim()) || id.replace(/^quick:/, '');
 }
 
-/** How many Quick Settings in a category the person has set to something.
+/** How many things in a category the person has set: Quick Settings changed from their defaults, services connected, export items switched on.
  * @param {SettingsCategory} category */
 function customizedCount(category) {
   let n = 0;
   for (const id of category.cards) {
-    if (!id.startsWith('quick:')) continue;
-    const group = id.slice('quick:'.length);
-    for (const field of QUICK_SETTINGS_FIELDS) if (field.section === group && S.globalVariables[field.key] !== undefined) n++;
+    if (id.startsWith('quick:')) {
+      const group = id.slice('quick:'.length);
+      for (const field of QUICK_SETTINGS_FIELDS) if (field.section === group && S.globalVariables[field.key] !== undefined) n++;
+    } else if (id === 'github') n += S.githubConfig && S.githubConfig.token ? 1 : 0;
+    else if (id === 'webdav') n += S.webdavConfig && S.webdavConfig.baseUrl ? 1 : 0;
+    else if (id === 'calendar') n += S.caldavConfig && (S.caldavConfig.url || S.caldavConfig.contactsUrl) ? 1 : 0;
+    else if (id === 'export-general') n += countExportItemsOn(S.globalVariables, ['pageHeader', 'pageFooter']);
+    else if (id === 'export-html') n += countExportItemsOn(S.globalVariables, ['preamble', 'postamble', 'head']);
   }
   return n;
 }

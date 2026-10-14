@@ -4085,17 +4085,50 @@ check('attachments: opening one hands it to the platform, and the status says ho
   await context.close();
 });
 
-check('settings: on a platform with no service worker, Updates shows the platform\u2019s own version, offers nothing to check, and says how the app is updated', async () => {
+check('settings: on a platform with no service worker, About shows only the platform\u2019s own version, with no update button, and says how the app is updated', async () => {
   const { context, page, errors } = await freshPage(main, {
     initScript: () => { window.orgPwaPlatform = { name: 'fake-android', usesServiceWorker: false, versionInfo: async () => 'v999 (app 9.9.9)' }; },
   });
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
   await settingsCategory(page, 'about');
-  const section = page.locator('.settings-section', { has: page.locator('.panel-section-title', { hasText: 'Updates' }) });
+  const section = page.locator('.settings-section', { has: page.locator('.panel-section-title', { hasText: 'Version' }) });
   await section.getByText('Version: v999 (app 9.9.9)').waitFor({ state: 'visible', timeout: 5000 });
-  expect(await section.getByRole('button', { name: 'Check for updates' }).isDisabled(), 'the Check for updates button is there, but disabled (there is nothing for it to check)');
+  expect((await section.getByRole('button', { name: 'Check for updates' }).count()) === 0, 'there is no Check for updates button');
   expect((await section.innerText()).includes('This app is updated by installing a newer version of it.'), 'and the section says how the app is updated');
+  expect(!(await page.locator('[data-settings-shell]').innerText()).includes('Updates section'), 'and the old updates-at-top checkbox is gone');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('settings: Export has General, ASCII and HTML in that order, every box starts unticked, ticking one keeps its text and counts it, and the Sync count includes the services that are set up', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.githubConfig = { token: 't', owner: 'o', repo: 'r', branch: 'main' };
+    S.webdavConfig = { baseUrl: 'https://dav.example.com', username: 'u', password: 'p' };
+    S.caldavConfig = { url: 'https://cal.example.com', contactsUrl: '', username: 'u', password: 'p' };
+  });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await page.locator('[data-settings-category], [data-settings-back]').first().waitFor({ state: 'visible', timeout: 10000 });
+  const syncText = await page.locator('[data-settings-category="sync"]').first().innerText();
+  expect(/3 set/.test(syncText), `Sync counts GitHub, WebDAV and Calendar: ${syncText}`);
+  await settingsCategory(page, 'export');
+  const titles = await page.locator('.settings-section .panel-section-title').allInnerTexts();
+  const order = titles.map((t) => t.trim().toLowerCase()).filter((t) => ['general', 'ascii', 'html'].includes(t));
+  expect(order.join(',') === 'general,ascii,html', `card order: ${order.join(',')} of ${JSON.stringify(titles)}`);
+  const boxes = page.locator('[data-export-item] input[type=checkbox]');
+  expect((await boxes.count()) === 5, 'five items');
+  for (let i = 0; i < 5; i++) expect(!(await boxes.nth(i).isChecked()), `box ${i} starts unticked`);
+  const pre = page.locator('[data-export-item="preamble"]');
+  expect((await pre.locator('input[type=text]').inputValue()) === '%t : %s', 'the preamble offers %t : %s');
+  await pre.locator('input[type=text]').fill('Hello %a');
+  await pre.locator('input[type=text]').dispatchEvent('change');
+  await pre.locator('input[type=checkbox]').check();
+  await page.waitForTimeout(300);
+  const stored = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables);
+  expect(stored['org-xx-html-preamble'] === 'Hello %a' && stored['org-xx-html-preamble-on'] === 't', `stored: ${JSON.stringify(stored)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

@@ -607,7 +607,6 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-xx-god-mode-button~ | ~t~ (shown) | (own) Whether the floating *[g]* god-mode button is shown (see [[#god-mode-mobile][God-mode without a hardware keyboard]]); also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-menu-aliases~ | unset (no relabeling) | (own) Relabel or hide buttons across the File, More, Export, Import and View menus (see [[#menu-customization][Menu customization]]) |
 | ~org-xx-startup-with-show-photos~ | ~nil~ | (own) ~t~ shows a contact's photo as a thumbnail beside its field when a file opens: next to ~:PHOTO:~ in Flat style, in the "Photo" sub-heading's drawer in Tree style. It follows that field's visibility, so a collapsed contact or folded drawer shows no photo. It has no ~#+STARTUP:~ keyword (see [[#export][Contacts (.vcf) export]]) |
-| ~org-xx-updates-at-top~ | ~t~ | (own) Whether the Updates section is at the top of Settings or at the bottom |
 | ~solar-ampm~ | ~nil~ (24-hour) | (own) ~t~ uses 12-hour am/pm for the solar forms |
 | ~solar-hide-label~ | ~nil~ (label shown) | (own) ~t~ drops the trailing label ("Sunrise", "daylight") and shows the bare time or duration |
 
@@ -1681,7 +1680,7 @@ Open Help from the command palette's *Help* (or god-mode's ~h SPC m~, see [[#key
 :CUSTOM_ID: settings
 :END:
 
-Reached via *More (⋮) → Settings*, which replaces the outline until you navigate away, like switching views. Settings opens on a list of seven categories, each a page of small cards: *Appearance*, *Editing and startup*, *Agenda and weather*, *Sync and storage*, *Export*, *Advanced* and *About and updates*. Tap one to open it and *‹ Settings* to come back; a number on a category counts the Quick Settings you have set. *Search settings* finds a card from any category. In a window wide enough (about 720 px), the categories become a sidebar with the page beside it. Settings reopens on the page you left.
+Reached via *More (⋮) → Settings*, which replaces the outline until you navigate away, like switching views. Settings opens on a list of seven categories, each a page of small cards: *Appearance*, *Editing and startup*, *Agenda and weather*, *Sync and storage*, *Export*, *Advanced* and *About and updates*. Tap one to open it and *‹ Settings* to come back; a number on a category counts what you have set there: changed Quick Settings, connected services, ticked export items. *Search settings* finds a card from any category. In a window wide enough (about 720 px), the categories become a sidebar with the page beside it. Settings reopens on the page you left.
 
 *Order of settings* (Advanced) moves categories, and the cards inside each, up or down with ▲ ▼; *Reset to default order* puts them back. The order is kept on the device and travels with *Export Settings*.
 
@@ -1694,7 +1693,8 @@ The cards, by what they hold:
 - *Agenda notifications*: reminders before appointments, just before GitHub (see [[#agenda-notifications][Agenda notifications]]).
 - *Appearance*: theme (System, Light or Dark), fonts, independent font sizes for main text, tables and menus, reading width, custom colors for Light and Dark, and *Paragraph Spacing*. Paragraph Spacing is two independent values laid out like the font sizes: one for paragraphs and one, *Tables*, for tables and other secondary blocks (source and quote blocks, rules). Each is 0 to 32px with a 10px default. Where a paragraph meets a table or block the larger value applies, and headings and list items space themselves.
 - *Backup*: *Export Settings* bundles everything on this page into one downloadable JSON file, and *Import Settings* merges a previously exported file back in, leaving anything it doesn't mention untouched.
-- *Updates*: shows the running version and checks for a new one. ~org-xx-updates-at-top~ keeps it first on *About and updates*; ~nil~ moves it after the other card there.
+- *Updates*: shows the running version and checks for a new one. The installed Android app has no button, since a newer version is installed instead.
+- *Export* (General, ASCII, HTML): one card per export type. *General* sets a *Page header* and *Page footer* for printed pages (~Draft | | %d~ is left, centre, right). *HTML* sets a *Preamble*, *Postamble* and *Head*. Each has a tick box and is off until ticked; a ticked item is used for every export whose file does not set its own, and the file always wins. A *Format codes* list in each card explains ~%t~, ~%a~, ~%d~, ~%p~, ~%P~ and the rest.
 
 A file's own ~#+STARTUP:~ or Local Variables block still overrides an app-wide default set here.
 

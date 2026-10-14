@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v513 — Export defaults, counts on Sync, simpler About
+Export settings are now one card per export type: General (page header and footer), ASCII, and HTML (preamble, postamble, head). Each item has a tick box, all off until you tick them, and anything written in the file still wins. A Format codes list explains %t, %a, %d, %p, %P and the rest. Sync and storage now counts the services you have set up, About loses the updates-at-top checkbox, and the installed Android app no longer shows an update button.
+Verified: unit tests, and the export, About and Settings smoke checks.
+
 * v512 — Settings in seven categories
 Settings opens on a list of categories (Appearance, Editing and startup, Agenda and weather, Sync and storage, Export, Advanced, About and updates), each a page of small cards instead of one long scroll, with a search box and a sidebar when there is room. Advanced has Order of settings: move categories and cards up or down, saved on the device and included in Export Settings.
 Verified: tests, lint, type check, and the settings, search, order and paragraph-spacing smoke checks.

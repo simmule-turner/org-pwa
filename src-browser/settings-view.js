@@ -1,7 +1,7 @@
 // @ts-check
 // Extracted from app.js: settings view (the theme part is in settings-theme.js, Quick Settings in settings-quick.js).
 import { mergeGlobalAndLocalVariables, parseGlobalVariables } from '../src/global-variables.js';
-import { parseLispBoolean, parseLocalVariables } from '../src/local-variables.js';
+import { parseLocalVariables } from '../src/local-variables.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { clearPendingChange, getPendingChange } from '../src/outbox.js';
 import { findScrollingAncestor } from '../src/scroll-util.js';
@@ -30,6 +30,7 @@ import { openDocsAtHeading } from './views.js';
 import { platform } from './platform.js';
 import { saveOut } from './save-out.js';
 import { applyTheme, buildThemeColorCustomizationSection } from './settings-theme.js';
+import { buildExportCards } from './settings-export.js';
 import { buildFullyResolvedGlobalVariablesText, renderQuickSettingsGroups } from './settings-quick.js';
 import { renderSettingsShell } from './settings-shell.js';
 export { applyTheme, persistAndReapplyThemeColors, buildThemeColorCustomizationSection, applySidePanelWidth } from './settings-theme.js';
@@ -365,6 +366,9 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   appearanceSection.appendChild(menuSizeHint);
 
   for (const group of renderQuickSettingsGroups()) cards.set('quick:' + group.name, group.element);
+  const exportCards = buildExportCards(() => renderSettingsView());
+  cards.set('export-general', exportCards.general);
+  cards.set('export-html', exportCards.html);
 
   const globalVarsSection = document.createElement('div');
   globalVarsSection.className = 'settings-section';
@@ -1181,7 +1185,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   cards.set('updates', updatesSection);
   const updatesTitle = document.createElement('div');
   updatesTitle.className = 'panel-section-title';
-  updatesTitle.textContent = 'Updates';
+  updatesTitle.textContent = platform.usesServiceWorker ? 'Updates' : 'Version'; // an app that is installed has nothing to check, so it only shows its version
   updatesSection.appendChild(updatesTitle);
 
   const versionDisplay = document.createElement('div');
@@ -1241,7 +1245,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
       !('serviceWorker' in navigator) || !platform.usesServiceWorker // a platform without a service worker has nothing to check
     )
   );
-  updatesSection.appendChild(updatesRow);
+  if (platform.usesServiceWorker) updatesSection.appendChild(updatesRow); // no button where there is no service worker to ask
 
   const updatesStatus = document.createElement('div');
   updatesStatus.style.fontSize = '12px';
@@ -1259,13 +1263,8 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
             : '';
   updatesSection.appendChild(updatesStatus);
 
-  // org-xx-updates-at-top (this app's own variable, same "org-xx-" convention as org-xx-extra-menu): true, the default, keeps the
-  // Updates card first on the About page; nil moves it after the other cards -- unless the person has arranged that page themselves.
   const savedOrder = await getSettingsOrder(kv);
-  const updatesAtTop = parseLispBoolean((S.state.localVariables || {})['org-xx-updates-at-top'], true);
-  const aboutArranged = !!(savedOrder && savedOrder.cards && savedOrder.cards.about);
-  const effectiveOrder = !updatesAtTop && !aboutArranged ? { ...(savedOrder || {}), cards: { ...((savedOrder && savedOrder.cards) || {}), about: ['quick:Settings', 'updates'] } } : savedOrder;
-  renderSettingsShell(container, cards, effectiveOrder, () => renderSettingsView());
+  renderSettingsShell(container, cards, savedOrder, () => renderSettingsView());
 
   scrollingEl.scrollTop = savedScrollTop;
 }

@@ -34,14 +34,6 @@ import { VISIBILITY_KEYWORDS } from '../src/startup-config.js';
  */
 export const QUICK_SETTINGS_FIELDS = [
   {
-    key: 'org-xx-updates-at-top',
-    label: 'Updates section at top of Settings',
-    section: 'Settings',
-    type: 'boolean',
-    default: true,
-    helpAnchor: '#settings',
-  },
-  {
     key: 'org-startup-folded',
     label: 'Initial heading visibility',
     section: 'Startup',
@@ -261,8 +253,8 @@ export const QUICK_SETTINGS_FIELDS = [
   },
   {
     key: 'org-ascii-text-width',
-    label: 'ASCII export line width',
-    section: 'Export',
+    label: 'Line width',
+    section: 'ASCII',
     type: 'number',
     default: 72,
     min: 20,
@@ -272,8 +264,8 @@ export const QUICK_SETTINGS_FIELDS = [
   },
   {
     key: 'org-ascii-charset',
-    label: 'ASCII export characters',
-    section: 'Export',
+    label: 'Characters',
+    section: 'ASCII',
     type: 'select',
     default: 'ascii',
     options: [
