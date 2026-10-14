@@ -103,7 +103,34 @@ function answer(name, args, date) {
   return false;
 }
 
-async function flush() {
+/** Batches in flight, so a caller that needs the answers (the calendar export and sync) can wait for them. */
+const flights = new Set();
+
+/** Asks the script about everything the agenda has queued, now, and resolves when every answer is in the cache. */
+function flush() {
+  const flight = flushNow().finally(() => flights.delete(flight));
+  flights.add(flight);
+  return flight;
+}
+
+/** Whether a script has registered any %%(…) function, so a build that uses them has something to wait for. */
+export function hasUserSexps() {
+  return !!run.handle && info.sexps.length > 0;
+}
+
+/** Waits until the script has answered every function and day asked about so far. The agenda does not wait (it draws again as
+ *  answers arrive); a calendar export or sync cannot, because a day it has no answer for would be written as "no entry". Build
+ *  once to queue the questions, call this, then build again. */
+export async function settleUserSexps() {
+  if (run.flushTimer) {
+    clearTimeout(run.flushTimer);
+    run.flushTimer = null;
+    flush();
+  }
+  while (flights.size > 0) await Promise.all([...flights]);
+}
+
+async function flushNow() {
   run.flushTimer = null;
   const batch = run.pending;
   run.pending = new Map();

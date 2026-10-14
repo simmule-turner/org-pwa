@@ -68,20 +68,32 @@ function sourceOf(item) {
   return index >= 0 ? { parsed: stamps[index], index } : null;
 }
 
+/** How fresh the forecast behind a weather event is, from the data's own time ("Weather as of 2026-10-14 10:45").
+
+ * @param {{ currentTime?: string } | null | undefined} data */
+function weatherDescription(data) {
+  const at = data && data.currentTime ? String(data.currentTime).replace('T', ' ').slice(0, 16) : '';
+  return at ? `Weather as of ${at}` : 'Weather';
+}
+
 /**
  * @param {{ documentId: string, doc: object }[]} docs the open document and the loaded agenda files
- * @param {{ today?: Date, window?: any, birthdayProperty?: string, contactsDocs?: any }} [opts]
+ * @param {{ today?: Date, window?: any, birthdayProperty?: string, contactsDocs?: any, agendaOptions?: any }} [opts]
  *   window        { start, end } the days to cover (required)
  *   today         the date to measure ages and "today" against
  *   birthdayProperty, contactsDocs   as for buildAgendaItems
+ *   agendaOptions   more buildAgendaItems options, the ones the agenda evaluates <%%(…)> lines with: coordinates, sun-time
+ *                   display, and the weather last fetched. Without them a sun-time line is worked out for a default place
+ *                   and %%(org-weather) is false.
  * @returns {{ uid: string, documentId: string, lines: string[] }[]}
  */
 export function collectAgendaCalendarEvents(docs, opts = {}) {
-  const { today = new Date(), window, birthdayProperty = 'BIRTHDAY', contactsDocs = null } = opts;
+  const { today = new Date(), window, birthdayProperty = 'BIRTHDAY', contactsDocs = null, agendaOptions = {} } = opts;
   const doneKeywords = new Set();
   for (const { doc } of docs) for (const keyword of resolveTodoSequence(/** @type {Doc} */ (doc)).doneKeywords) doneKeywords.add(keyword);
 
   const items = buildAgendaItems(docs, {
+    ...agendaOptions,
     today,
     rangeStart: window.start,
     rangeEnd: window.end,
@@ -127,7 +139,7 @@ export function collectAgendaCalendarEvents(docs, opts = {}) {
       perOccurrenceSeen.set(slot, index + 1);
       // the stand-in heading keeps an :ID: out of it, so the id includes the day and the occurrence, never only the heading
       const uid = generateUid(documentId, /** @type {any} */ ({ title: heading.title }), kind === 'anniversary' ? `anniversary-${String(item.field).toLowerCase()}` : kind, index, item.date);
-      events.push({ uid, documentId, lines: buildVevent({ uid, summary: item.title, description: kind === 'anniversary' ? null : 'Diary', date: item.date, hasTime: false, rrule: null, alarmDaysBefore: 0, stamp: today }) });
+      events.push({ uid, documentId, lines: buildVevent({ uid, summary: item.title, description: kind === 'anniversary' ? null : item.weather ? weatherDescription(agendaOptions.weatherData) : 'Diary', date: item.date, hasTime: false, rrule: null, alarmDaysBefore: 0, stamp: today }) });
       continue;
     }
 

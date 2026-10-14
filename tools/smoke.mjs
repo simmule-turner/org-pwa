@@ -4803,6 +4803,32 @@ check('extensions: a script adds a diary function; it runs only once approved, a
   await context.close();
 });
 
+check('extensions: a script-defined function in a <%%(…)> line is in Export > Calendar > Agenda (as displayed) even when the agenda was never opened (the export waits for the script)', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(page, ['* <%%(when (today-p) (garden-note))>', ''].join('\n'));
+  const flow = (fn, ...args) => page.evaluate(async ([name, a]) => (await import('/src-browser/extension-flow.js'))[name](...a), [fn, args]);
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.globalVariables = { ...S.globalVariables, 'org-xx-extensions': 'on' };
+  });
+  await flow('saveExtensionScript', 'org.sexp("garden-note", () => "Water the plants");');
+  await flow('approveExtensionScript');
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    window.__saved = [];
+    installPlatform({ saveFile: async (name, content) => { window.__saved.push({ name, content: String(content) }); return { where: 'test' }; } });
+  });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Export');
+  await pick(page, '#morePanel', 'Calendar (.ics)');
+  await pick(page, '#morePanel', 'Agenda (as displayed)');
+  for (let n = 0; n < 40 && !(await page.evaluate(() => window.__saved.length)); n++) await page.waitForTimeout(250);
+  const ics = (await page.evaluate(() => window.__saved.slice())).find((x) => x.name.endsWith('.ics'));
+  expect(ics && ics.content.includes('SUMMARY:Water the plants'), `the exported calendar: ${ics && ics.content.slice(0, 300)}`);
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('extensions: a script adds a table function, a link type and an export', async () => {
   const { context, page, errors } = await freshPage(main);
   const script = [

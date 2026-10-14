@@ -5,7 +5,7 @@ import { applyAgendaEffortView, buildAgendaItems, buildTaskList, dayView, endOfD
 import { formatClockDuration, totalClockedMinutes } from '../src/clock.js';
 import { computeClocktable, renderClocktable } from '../src/clocktable.js';
 import { DEFAULT_EFFORT_FILTER_VALUES, getAllowedEffortValues } from '../src/effort-values.js';
-import { getAgendaHideTitleStamps, getAgendaShowAllDates, getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getAgendaStartOnWeekday, getCalendarLatitude, getCalendarLongitude, getContactsBirthdayProperty, getDeadlineWarningDays, getGlobalProperties, getHabitOptions, getOrgWeatherFormat, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getScheduledDelayDays, getSolarAmpm, getSolarHideLabel } from '../src/local-variables.js';
+import { getAgendaHideTitleStamps, getAgendaShowAllDates, getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getAgendaStartOnWeekday, getContactsBirthdayProperty, getDeadlineWarningDays, getGlobalProperties, getHabitOptions, getScheduledDelayDays } from '../src/local-variables.js';
 import { parseOrgDuration } from '../src/org-duration.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { aggregateAgendaDocs, contactsDocsForAgenda, ensureAgendaFilesLoaded, refreshAgendaFiles } from './agenda-files.js';
@@ -25,6 +25,7 @@ import { buildViewFilterRow, filterItemsForView } from './view-filter-ui.js';
 import { menuButton, textInputStyle } from './ui-widgets.js';
 import { platform } from './platform.js';
 import { openHabitHistory } from './habit-history.js';
+import { agendaSexpOptions } from './agenda-settings.js';
 
 /**
  * @param {string} viewType
@@ -434,14 +435,7 @@ export function renderAgendaView() {
     birthdayProperty: getContactsBirthdayProperty(S.state.localVariables),
     deadlineWarningDays: getDeadlineWarningDays(S.state.localVariables),
     scheduledDelayDays: getScheduledDelayDays(S.state.localVariables),
-    calendarLatitude: getCalendarLatitude(S.state.localVariables),
-    calendarLongitude: getCalendarLongitude(S.state.localVariables),
-    solarAmpm: getSolarAmpm(S.state.localVariables),
-    solarHideLabel: getSolarHideLabel(S.state.localVariables),
-    weatherData: S.weatherData,
-    orgWeatherFormat: getOrgWeatherFormat(S.state.localVariables),
-    orgWeatherTemperatureUnit: getOrgWeatherTemperatureUnit(S.state.localVariables),
-    orgWeatherSpeedUnit: getOrgWeatherSpeedUnit(S.state.localVariables),
+    ...agendaSexpOptions(),
     habits: { enabled: !S.agendaHabitsHidden, ...getHabitOptions(S.state.localVariables) },
   });
   items.push(...extensionAgendaItems(start, end));

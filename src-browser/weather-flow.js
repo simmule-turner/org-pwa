@@ -3,6 +3,7 @@
 import { getCalendarLatitude, getCalendarLongitude, getWeatherRefreshInterval } from '../src/local-variables.js';
 import { documentUsesOrgWeather } from '../src/sexp-eval.js';
 import { ensureAgendaFilesLoaded } from './agenda-files.js';
+import { scheduleCalendarSync } from './calendar-sync.js';
 import { S } from './app-state.js';
 import { WEATHER_CACHE_KEY } from './constants.js';
 import { setStatus } from './editing.js';
@@ -53,6 +54,7 @@ export async function refreshWeather() {
     S.weatherLastRefreshed = data.currentTime;
     await kv.set(WEATHER_CACHE_KEY, JSON.stringify({ data, fetchedAt: S.weatherLastRefreshed }));
     setStatus('Weather refreshed.');
+    scheduleCalendarSync(); // a calendar event made from <%%(org-weather)> carries the new forecast
   } catch (err) {
     setStatus(`Couldn't refresh weather: ${err.message}`);
   }

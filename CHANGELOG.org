@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v521 — Weather and script functions in the calendar
+A ~<%%(when (today-p) (org-weather))>~ line now reaches the exported and synced calendar as one event for today, saying when the forecast was fetched, and the sync updates it after each weather refresh. Calendar exports also use your own latitude, longitude and weather settings instead of the defaults, and wait for a script's own ~%%(…)~ functions before writing, so their events are no longer missed or removed from the calendar.
+Verified: new unit tests, lint and type check, and the calendar and extension smoke checks.
+
 * v520 — Habit history and the Habit switch
 Tapping a habit's strip in the agenda opens its history: the current and best run of on-time completions, how many it was done in the last 12 weeks, a week-by-week grid and the latest completions, all read from its log. Details > Props gets a Habit switch that sets ~STYLE: habit~, so a habit no longer needs the property typed by hand. Refile target search no longer matches the random id of an unsaved document, which sometimes made every target match.
 Verified: unit tests for the streaks and grid, lint and type check, and the habit and details-editor smoke checks.

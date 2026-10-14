@@ -21,6 +21,8 @@ import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { aggregateAgendaDocs, aggregateContactsDocs, ensureContactsFilesLoadedAndWait, loadContactsDocsForSync, waitForAgendaFilesLoaded } from './agenda-files.js';
 import { collectExportImages } from './export-images.js';
 import { exportAgendaToIcalendar } from '../src/calendar-from-agenda.js';
+import { agendaSexpOptions } from './agenda-settings.js';
+import { hasUserSexps, settleUserSexps } from './extension-flow.js';
 import { S } from './app-state.js';
 import { allHeadingsInOrder, headingsInSubtree, icalendarBodyHeadingsIn, vcardBodyHeadingsIn } from './doc-helpers.js';
 import { createNewUnsavedDocument, suggestedSaveAsName } from './documents-io.js';
@@ -115,7 +117,13 @@ export async function performExport(format, scope) {
     if (scope === 'agenda') {
       // what View > Agenda shows, in the window the CalDAV mirror uses (see calendar-from-agenda.js)
       const agendaDocs = aggregateAgendaDocs().filter((d) => d.doc);
-      saveOut(baseName + '.ics', exportAgendaToIcalendar(agendaDocs, { birthdayProperty, contactsDocs: await loadContactsDocsForSync(agendaDocs) }), 'text/calendar');
+      const contactsDocs = await loadContactsDocsForSync(agendaDocs);
+      const build = () => exportAgendaToIcalendar(agendaDocs, { birthdayProperty, agendaOptions: agendaSexpOptions(), contactsDocs });
+      if (hasUserSexps()) {
+        build(); // queues what a script's %%(…) functions have not yet been asked, then waits for the answers
+        await settleUserSexps();
+      }
+      saveOut(baseName + '.ics', build(), 'text/calendar');
     } else {
       const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: S.state.documentId, doc: S.state.doc }];
       const icsScope = scope && typeof scope === 'object' ? scope : null;

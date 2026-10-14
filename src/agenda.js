@@ -1039,6 +1039,7 @@ function buildAgendaItems(docs, opts = /** @type {any} */ ({})) {
               documentId,
               heading,
               kind: 'sexp-timestamp',
+              weather: /\borg-weather\b/.test(sexpTs.raw), // so a calendar can say how fresh the forecast is
               hasTime: false,
               repeater: null,
               todo: heading.todo,
