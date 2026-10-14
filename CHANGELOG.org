@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v519 — Habits
+Org-mode habits: a TODO with ~:STYLE: habit~ and a repeater such as ~.+2d/4d~ now shows a blue/green/yellow/red strip of the last 21 days, today and the next 7 in the agenda, drawn from its DONE log lines as Emacs's org-habit does. The repeater range can be set under Details > Dates, habits can be hidden from the ⏱ panel, and the graph length and today-only behavior are settings.
+Verified: habit unit tests, lint and type check, and the agenda smoke checks.
+
 * v518 — The version shown is the version running
 Settings now shows the version of the code actually running instead of asking the service worker, and a banner says so when a newer version is installed but the page is still on an older one. Installing an update no longer takes files from the browser's saved copies, and it is refused, leaving the old version in place, if the files it got are not that version. This fixes an update that reported the new version while still running old code. (v517 only undid the modeline colour.)
 Verified: unit tests for the install, lint and type check, and the Updates and service-worker smoke checks.

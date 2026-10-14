@@ -88,7 +88,7 @@ function shiftTimestampString(raw, now) {
     date: newDate,
     time: parsed.hasTime ? `${String(newDate.getHours()).padStart(2, '0')}:${String(newDate.getMinutes()).padStart(2, '0')}` : null,
     repeaterMark: rep.mark,
-    repeaterValue: `${rep.amount}${rep.unit}`,
+    repeaterValue: `${rep.amount}${rep.unit}` + (rep.range ? `/${rep.range.amount}${rep.range.unit}` : ''),
     delayValue: parsed.delay ? parsed.delay.slice(1) : null, // parsed.delay keeps its own leading "-"; formatOrgTimestamp re-adds it
     active: parsed.active,
   });

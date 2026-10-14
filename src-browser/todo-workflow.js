@@ -11,6 +11,7 @@ import { formatOrgTimestamp } from '../src/org-timestamp.js';
 import { cycleHeadingTodo } from '../src/outline-view-model.js';
 import { decideLogbookEntry, decideProgressLogging, getEffectiveLogDoneSetting } from '../src/progress-logging.js';
 import { applyRepeaterShiftOnDone } from '../src/repeater-shift.js';
+import { habitSpec } from '../src/habit.js';
 import { parseStartupConfig } from '../src/startup-config.js';
 import { resolveTodoSequence, resolveTodoSequences, setTodoState } from '../src/todo-cycle.js';
 import { emitExtensionEvent } from './extension-events.js';
@@ -87,6 +88,10 @@ export function applyTodoTransition(heading, performChange) {
   // another) -- matches real org's own "on marking DONE" trigger.
   if (sequence.doneKeywords.includes(toTodo) && !sequence.doneKeywords.includes(fromTodo)) {
     if (applyRepeaterShiftOnDone(heading, sequence, now)) {
+      // As Emacs does for a repeating task (org-log-repeat), a habit records each completion as a State line: that log is its history.
+      if (!logbookDecision.shouldLog && habitSpec(heading)) {
+        heading.logbookLines.splice(0, 0, ...formatStateLogLine(toTodo, fromTodo, timestamp));
+      }
       // The bounce-back is an automatic side effect of the repeater,
       // not a real user-initiated transition -- real org's own actual
       // behavior logs only the original DONE entry above, not a

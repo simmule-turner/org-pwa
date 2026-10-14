@@ -216,6 +216,21 @@ export function getAgendaShowAllDates(vars) {
   return parseLispBoolean((vars || {})['org-agenda-show-all-dates'], true);
 }
 
+/** org-habit's options, read from the file's Local Variables or the Global Variables: org-habit-preceding-days (21),
+ * org-habit-following-days (7), org-habit-show-habits-only-for-today (t), org-habit-show-all-today (nil).
+ * @param {LocalVars} vars */
+export function getHabitOptions(vars) {
+  const v = vars || {};
+  const preceding = parseLispNumber(v['org-habit-preceding-days'], 21);
+  const following = parseLispNumber(v['org-habit-following-days'], 7);
+  return {
+    precedingDays: preceding >= 0 ? Math.min(preceding, 400) : 21,
+    followingDays: following >= 0 ? Math.min(following, 400) : 7,
+    onlyForToday: parseLispBoolean(v['org-habit-show-habits-only-for-today'], true),
+    showAllToday: parseLispBoolean(v['org-habit-show-all-today'], false),
+  };
+}
+
 /** org-agenda-skip-comment-trees: real org's default is t — a
  *  "commented" heading (COMMENT first in its title, see comment-model.js)
  *  is skipped in agenda views. Set to nil to include

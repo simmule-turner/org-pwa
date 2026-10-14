@@ -467,6 +467,25 @@ check('agenda: rows show their effort, and each day totals what is planned (coun
   await context.close();
 });
 
+check('agenda: a habit (STYLE habit, a repeater with /max) shows its 29-day strip with today marked, and the panel can hide habits', async () => {
+  const { context, page, errors } = await freshPage();
+  const today = orgToday();
+  await newDocument(page, ['* TODO Shave', `SCHEDULED: ${today.replace('>', ' .+2d/4d>')}`, ':PROPERTIES:', ':STYLE: habit', ':END:', '* TODO Plain task', `SCHEDULED: ${today}`, ''].join('\n'));
+  await viewMenu(page, 'Agenda');
+  await page.waitForSelector('[data-habit-strip]');
+  expect((await page.locator('[data-habit-strip]').count()) === 1, 'only the habit carries a strip');
+  expect((await page.locator('[data-habit-cell]').count()) === 29, 'the strip has 21 days before, today and 7 after');
+  expect((await page.locator('[data-habit-cell$="!"]').count()) === 1, 'today is marked');
+  await page.locator('[aria-label="Sort, filter and limit the agenda by effort"]').click();
+  await page.waitForSelector('[data-show-habits]');
+  await page.locator('[data-show-habits]').uncheck();
+  await page.waitForTimeout(300);
+  expect((await page.locator('[data-habit-strip]').count()) === 0 && !(await page.locator('#outline').innerText()).includes('Shave'), 'hiding habits removes the whole entry');
+  expect((await page.locator('#outline').innerText()).includes('Plain task'), 'ordinary tasks stay');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('agenda: a day where nothing is estimated shows no effort at all', async () => {
   const { context, page } = await freshPage();
   await newDocument(page, `#+TODO: TODO NEXT | DONE\n* TODO Plain task\nSCHEDULED: ${orgToday()}\n`);

@@ -192,11 +192,11 @@ test('startOfWeek supports Sunday-start (0) and Tuesday-start (2) too', () => {
 // ---- parseRepeater / expandRepeats -----------------------------------
 
 test('parseRepeater handles all three marks and every unit', () => {
-  assert.deepEqual(parseRepeater('+1w'), { mark: '+', amount: 1, unit: 'w' });
-  assert.deepEqual(parseRepeater('++3d'), { mark: '++', amount: 3, unit: 'd' });
-  assert.deepEqual(parseRepeater('.+1m'), { mark: '.+', amount: 1, unit: 'm' });
-  assert.deepEqual(parseRepeater('+2y'), { mark: '+', amount: 2, unit: 'y' });
-  assert.deepEqual(parseRepeater('+8h'), { mark: '+', amount: 8, unit: 'h' });
+  assert.deepEqual(parseRepeater('+1w'), { mark: '+', amount: 1, unit: 'w', range: null });
+  assert.deepEqual(parseRepeater('++3d'), { mark: '++', amount: 3, unit: 'd', range: null });
+  assert.deepEqual(parseRepeater('.+1m'), { mark: '.+', amount: 1, unit: 'm', range: null });
+  assert.deepEqual(parseRepeater('+2y'), { mark: '+', amount: 2, unit: 'y', range: null });
+  assert.deepEqual(parseRepeater('+8h'), { mark: '+', amount: 8, unit: 'h', range: null });
 });
 
 test('parseRepeater returns null for garbage input', () => {

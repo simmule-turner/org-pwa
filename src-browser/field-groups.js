@@ -163,6 +163,31 @@ export function buildTimestampFieldGroup(label, currentRaw) {
   repeaterRow.appendChild(repeaterUnitSelect);
   fields.appendChild(fieldRow('Repeat', repeaterRow));
 
+  // org-habit's "no later than": the /4d of .+2d/4d. Optional; empty writes an ordinary repeater.
+  const rangeRow = document.createElement('div');
+  rangeRow.style.display = 'flex';
+  rangeRow.style.gap = '6px';
+  const rangeAmountInput = document.createElement('input');
+  rangeAmountInput.type = 'number';
+  rangeAmountInput.min = '1';
+  textInputStyle(rangeAmountInput);
+  rangeAmountInput.style.width = '60px';
+  rangeAmountInput.style.flex = '0 0 60px';
+  if (repeaterParsed && repeaterParsed.range) rangeAmountInput.value = String(repeaterParsed.range.amount);
+  const rangeUnitSelect = document.createElement('select');
+  textInputStyle(rangeUnitSelect);
+  rangeUnitSelect.style.flex = '1 1 auto';
+  for (const [val, text] of TIME_UNIT_OPTIONS) {
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = text;
+    rangeUnitSelect.appendChild(opt);
+  }
+  rangeUnitSelect.value = repeaterParsed && repeaterParsed.range ? repeaterParsed.range.unit : repeaterParsed ? repeaterParsed.unit : 'd';
+  rangeRow.appendChild(rangeAmountInput);
+  rangeRow.appendChild(rangeUnitSelect);
+  fields.appendChild(fieldRow('No later than (optional \u2014 for a habit, e.g. every 2 days, no later than 4)', rangeRow));
+
   const delayRow = document.createElement('div');
   delayRow.style.display = 'flex';
   delayRow.style.gap = '6px';
@@ -205,6 +230,8 @@ export function buildTimestampFieldGroup(label, currentRaw) {
     repeaterMarkSelect.value = '';
     repeaterAmountInput.value = '';
     repeaterUnitSelect.value = 'd';
+    rangeAmountInput.value = '';
+    rangeUnitSelect.value = 'd';
     delayAmountInput.value = '';
     delayUnitSelect.value = '';
   };
@@ -216,7 +243,9 @@ export function buildTimestampFieldGroup(label, currentRaw) {
     const time = timeInput.value || null;
     const repeaterMark = repeaterMarkSelect.value || null;
     const repeaterValue =
-      repeaterMark && repeaterAmountInput.value ? `${repeaterAmountInput.value}${repeaterUnitSelect.value}` : null;
+      repeaterMark && repeaterAmountInput.value
+        ? `${repeaterAmountInput.value}${repeaterUnitSelect.value}` + (rangeAmountInput.value ? `/${rangeAmountInput.value}${rangeUnitSelect.value}` : '')
+        : null;
     const delayValue = delayUnitSelect.value && delayAmountInput.value ? `${delayAmountInput.value}${delayUnitSelect.value}` : null;
     return formatOrgTimestamp({ date, time, repeaterMark, repeaterValue, delayValue });
   }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v518';
+const CACHE_NAME = 'org-pwa-shell-v519';
 
 const SHELL_FILES = [
   './',
@@ -138,6 +138,7 @@ const SHELL_FILES = [
   './src/types.js',
   './src/settings-layout.js',
   './src/export-defaults.js',
+  './src/habit.js',
   './src/calc-complex.js',
   './src/calc-vector.js',
   './src-browser/contacts-sync.js',

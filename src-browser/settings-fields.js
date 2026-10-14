@@ -91,6 +91,10 @@ export const QUICK_SETTINGS_FIELDS = [
     default: true,
     helpAnchor: '#agenda-behavior',
   },
+  { key: 'org-habit-preceding-days', label: 'Habit graph: days before today', section: 'Agenda', type: 'number', default: 21, min: 0, max: 400, step: 1, helpAnchor: '#habits' },
+  { key: 'org-habit-following-days', label: 'Habit graph: days after today', section: 'Agenda', type: 'number', default: 7, min: 0, max: 400, step: 1, helpAnchor: '#habits' },
+  { key: 'org-habit-show-habits-only-for-today', label: 'Show habits only in today\u2019s Agenda', section: 'Agenda', type: 'boolean', default: true, helpAnchor: '#habits' },
+  { key: 'org-habit-show-all-today', label: 'Show every habit today, even if not yet due', section: 'Agenda', type: 'boolean', default: false, helpAnchor: '#habits' },
   {
     key: 'org-agenda-skip-archived-trees',
     label: 'Skip archived headings in Agenda',

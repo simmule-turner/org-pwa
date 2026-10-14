@@ -22,6 +22,7 @@ import { parseOrgDuration } from './org-duration.js';
 import { isCommentedHeading } from './comment-model.js';
 import { parseOrgTimestamp, findTimestamps, parseDelay, dateKey, isSameDay } from './org-timestamp.js';
 import { parseLogbookEntries } from './logbook.js';
+import { habitSpec, buildHabitGraph, dayNumber } from './habit.js';
 import { findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy } from './sexp-eval.js';
 import {
   parseOrgAnniversaryLine,
@@ -58,10 +59,10 @@ import { isOrgWeatherLine, formatWeatherLine, DEFAULT_ORG_WEATHER_FORMAT } from 
 
 const UNSAVED_DOCUMENT_ID = '\u0000unsaved-new-document';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-const REPEATER_RE = /^([.+]{1,2})(\d+)([hdwmy])$/;
+const REPEATER_RE = /^([.+]{1,2})(\d+)([hdwmy])(?:\/(\d+)([hdwmy]))?$/;
 
-/** Parses a repeater string (e.g. "+1w", "++3d", ".+1m") into
- *  { mark, amount, unit }. `mark` is kept but not currently acted on —
+/** Parses a repeater string (e.g. "+1w", "++3d", ".+1m", or org-habit's ".+2d/4d") into
+ *  { mark, amount, unit, range }, where `range` is the "/4d" part ({ amount, unit }) or null. `mark` is kept but not currently acted on —
  *  see expandRepeats' docs for why all three marks expand the same way
  * @param {string} raw
  *  here. Returns null for anything that doesn't match. */
@@ -69,7 +70,7 @@ function parseRepeater(raw) {
   if (!raw) return null;
   const m = REPEATER_RE.exec(raw);
   if (!m) return null;
-  return { mark: m[1], amount: Number(m[2]), unit: m[3] };
+  return { mark: m[1], amount: Number(m[2]), unit: m[3], range: m[4] ? { amount: Number(m[4]), unit: m[5] } : null };
 }
 
 /**
@@ -783,6 +784,7 @@ function buildAgendaItems(docs, opts = /** @type {any} */ ({})) {
     orgWeatherFormat = DEFAULT_ORG_WEATHER_FORMAT,
     orgWeatherTemperatureUnit = '\u00b0F',
     orgWeatherSpeedUnit = 'mph',
+    habits = null, // { enabled, onlyForToday, showAllToday, precedingDays, followingDays }: org-habit's agenda behaviour; null leaves habits as ordinary repeating tasks
   } = opts;
   /** @type {any[]} */ const items = [];
 
@@ -809,6 +811,23 @@ function buildAgendaItems(docs, opts = /** @type {any} */ ({})) {
       title: heading.title,
     };
     const repeater = parsed.repeater ? parseRepeater(parsed.repeater) : null;
+
+    // org-habit: one entry for the habit, on today once it is due (a future one only if org-habit-show-all-today, or on its own
+    // date when org-habit-show-habits-only-for-today is off), carrying its consistency graph. Hidden when habits are toggled off.
+    if (habits && kind === 'scheduled' && !headingIsDone && isDone && rangeStart && rangeEnd) {
+      const spec = habitSpec(heading);
+      if (spec) {
+        if (!habits.enabled) return;
+        const todayN = dayNumber(today);
+        const onDate = spec.scheduled <= todayN || habits.showAllToday ? today : habits.onlyForToday ? null : parsed.date;
+        if (!onDate) return;
+        const date = new Date(onDate.getFullYear(), onDate.getMonth(), onDate.getDate(), parsed.date.getHours(), parsed.date.getMinutes());
+        if (date < startOfDay(rangeStart) || date > endOfDay(rangeEnd)) return;
+        const graph = buildHabitGraph(heading, isDone, today, habits);
+        items.push({ ...base, date, daysOverdue: 0, habit: graph });
+        return;
+      }
+    }
 
     // As in the Emacs agenda: a SCHEDULED or DEADLINE is on its own date, and on today (only) when it is overdue or, for a
     // DEADLINE, inside its warning period. A SCHEDULED "-Nd" is a delay (the task is still scheduled on its date but shows

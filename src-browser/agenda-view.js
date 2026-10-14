@@ -5,7 +5,7 @@ import { applyAgendaEffortView, buildAgendaItems, buildTaskList, dayView, endOfD
 import { formatClockDuration, totalClockedMinutes } from '../src/clock.js';
 import { computeClocktable, renderClocktable } from '../src/clocktable.js';
 import { DEFAULT_EFFORT_FILTER_VALUES, getAllowedEffortValues } from '../src/effort-values.js';
-import { getAgendaHideTitleStamps, getAgendaShowAllDates, getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getAgendaStartOnWeekday, getCalendarLatitude, getCalendarLongitude, getContactsBirthdayProperty, getDeadlineWarningDays, getGlobalProperties, getOrgWeatherFormat, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getScheduledDelayDays, getSolarAmpm, getSolarHideLabel } from '../src/local-variables.js';
+import { getAgendaHideTitleStamps, getAgendaShowAllDates, getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getAgendaStartOnWeekday, getCalendarLatitude, getCalendarLongitude, getContactsBirthdayProperty, getDeadlineWarningDays, getGlobalProperties, getHabitOptions, getOrgWeatherFormat, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getScheduledDelayDays, getSolarAmpm, getSolarHideLabel } from '../src/local-variables.js';
 import { parseOrgDuration } from '../src/org-duration.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { aggregateAgendaDocs, contactsDocsForAgenda, ensureAgendaFilesLoaded, refreshAgendaFiles } from './agenda-files.js';
@@ -174,6 +174,22 @@ export function buildAgendaEffortPanel() {
   perDay.textContent = 'per day';
   perDay.style.opacity = '0.6';
   row('Max', maxInput, perDay);
+
+  const habitsRow = document.createElement('label');
+  habitsRow.style.display = 'flex';
+  habitsRow.style.alignItems = 'center';
+  habitsRow.style.gap = '8px';
+  const habitsBox = document.createElement('input');
+  habitsBox.type = 'checkbox';
+  habitsBox.checked = !S.agendaHabitsHidden;
+  habitsBox.setAttribute('data-show-habits', '');
+  habitsBox.onchange = () => {
+    S.agendaHabitsHidden = !habitsBox.checked;
+    render();
+  };
+  habitsRow.appendChild(habitsBox);
+  habitsRow.appendChild(document.createTextNode('Show habits (this session)'));
+  panel.appendChild(habitsRow);
 
   const note = document.createElement('div');
   note.textContent = 'A task with no effort counts as high effort. The limit keeps tasks until the running total passes the maximum.';
@@ -425,6 +441,7 @@ export function renderAgendaView() {
     orgWeatherFormat: getOrgWeatherFormat(S.state.localVariables),
     orgWeatherTemperatureUnit: getOrgWeatherTemperatureUnit(S.state.localVariables),
     orgWeatherSpeedUnit: getOrgWeatherSpeedUnit(S.state.localVariables),
+    habits: { enabled: !S.agendaHabitsHidden, ...getHabitOptions(S.state.localVariables) },
   });
   items.push(...extensionAgendaItems(start, end));
   items.sort((a, b) => a.date - b.date);
@@ -536,6 +553,37 @@ export function renderAgendaView() {
       effortBadge.style.fontSize = '12px';
       effortBadge.style.whiteSpace = 'nowrap';
       text.appendChild(effortBadge);
+    }
+    if (item.habit) {
+      const strip = document.createElement('div');
+      strip.setAttribute('data-habit-strip', '');
+      strip.style.display = 'flex';
+      strip.style.gap = '1px';
+      strip.style.marginTop = '6px';
+      strip.style.maxWidth = '420px';
+      strip.title = `Every ${item.habit.minDays} day${item.habit.minDays === 1 ? '' : 's'}` + (item.habit.maxDays > item.habit.minDays ? ` to ${item.habit.maxDays}` : '') + ' \u2014 blue: not due, green: can do, yellow: last chance, red: overdue; * done, ! today';
+      const colours = /** @type {Record<string, string>} */ ({ b: '#8fb4ee', g: '#6fbf7b', y: '#ecc94b', r: '#e0675a' });
+      for (const cell of item.habit.cells) {
+        const c = document.createElement('div');
+        c.setAttribute('data-habit-cell', cell.face + cell.mark);
+        c.style.flex = '1 1 0';
+        c.style.minWidth = '0';
+        c.style.height = '16px';
+        c.style.background = colours[cell.face];
+        c.style.opacity = cell.future ? '0.55' : '1';
+        c.style.color = '#111';
+        c.style.fontSize = '11px';
+        c.style.lineHeight = '16px';
+        c.style.textAlign = 'center';
+        c.style.fontWeight = '700';
+        if (cell.mark === '!') {
+          c.style.outline = '2px solid #111';
+          c.style.outlineOffset = '-1px';
+        }
+        c.textContent = cell.mark;
+        strip.appendChild(c);
+      }
+      text.appendChild(strip);
     }
     if (item.daysOverdue) {
       const overdue = document.createElement('span');

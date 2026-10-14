@@ -27,7 +27,7 @@
 const TIMESTAMP_RE = /^([<[])(\d{4})-(\d{2})-(\d{2})((?:[ \t]+[^\s>\]]+)*)[ \t]*([>\]])$/;
 const WEEKDAY_WORD = /^[^\]+0-9>\s-]+$/; // Emacs: anything but a digit, "+", "-", a bracket or a space
 const TIME_WORD = /^(\d{1,2}):(\d{2})(?:-(\d{1,2}):(\d{2}))?$/;
-const REPEATER_WORD = /^(?:\+\+|\.\+|\+)\d+[hdwmy]$/;
+const REPEATER_WORD = /^(?:\+\+|\.\+|\+)\d+[hdwmy](?:\/\d+[hdwmy])?$/; // an optional /N<unit> is org-habit's \"no later than\" range, as in .+2d/4d
 const WARNING_WORD = /^--?\d+[hdwmy]$/;
 
 // The same opening and closing, not anchored to the whole string and marked global, for finding timestamps embedded anywhere in a

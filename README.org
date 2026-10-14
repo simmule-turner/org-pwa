@@ -1106,6 +1106,23 @@ The evaluator is small, not a Lisp interpreter:
 
 A trailing tag needs a space before it (~<2000-01-01 Sat +1y> :BDAY:~), as in org. Without the space the tag stays as title text, but the timestamp still shows.
 
+*** Habits
+:PROPERTIES:
+:CUSTOM_ID: habits
+:END:
+
+A habit is an open TODO with ~:STYLE: habit~ and a repeating SCHEDULED date, as in Emacs's ~org-habit~. The agenda row gets a strip of days: 21 before today, today (outlined, ~!~) and 7 after. Blue: not yet due. Green: can be done. Yellow: last chance. Red: overdue. A ~*~ is a day it was done.
+
+#+begin_example
+* TODO Shave
+SCHEDULED: <2026-10-13 Tue .+2d/4d>
+:PROPERTIES:
+:STYLE: habit
+:END:
+#+end_example
+
+~.+2d/4d~ means every 2 days, no later than every 4. Set the second number under Details > Dates > "No later than". Marking the habit done records a ~State "DONE"~ line in its ~:LOGBOOK:~; the strip is drawn from those lines. A habit shows in today's agenda once it is due. Settings > Agenda has ~org-habit-preceding-days~, ~org-habit-following-days~, ~org-habit-show-habits-only-for-today~ and ~org-habit-show-all-today~. The ⏱ panel hides habits for the session.
+
 *** Agenda Files
 :PROPERTIES:
 :CUSTOM_ID: agenda-files
