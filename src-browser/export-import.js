@@ -14,14 +14,14 @@ import { exportAsOrg } from '../src/export-org.js';
 import { exportToVcard } from '../src/export-vcard.js';
 import { importIcalendarAsOrgText } from '../src/import-icalendar.js';
 import { importVcardsAsOrgText } from '../src/import-vcard.js';
-import { getAsciiTextWidth, getAsciiCharset, getContactsBirthdayProperty, getIcalendarAlarmMinutes, getMenuAliases } from '../src/local-variables.js';
+import { getAsciiTextWidth, getAsciiCharset, getContactsBirthdayProperty, getMenuAliases } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { aggregateAgendaDocs, aggregateContactsDocs, ensureContactsFilesLoadedAndWait, loadContactsDocsForSync, waitForAgendaFilesLoaded } from './agenda-files.js';
 import { collectExportImages } from './export-images.js';
 import { exportAgendaToIcalendar } from '../src/calendar-from-agenda.js';
-import { agendaSexpOptions } from './agenda-settings.js';
+import { agendaSexpOptions, calendarAlarmMinutes } from './agenda-settings.js';
 import { hasUserSexps, settleUserSexps } from './extension-flow.js';
 import { S } from './app-state.js';
 import { allHeadingsInOrder, headingsInSubtree, icalendarBodyHeadingsIn, vcardBodyHeadingsIn } from './doc-helpers.js';
@@ -114,23 +114,37 @@ export async function performExport(format, scope) {
     saveOut(baseName + '.vcf', vcf, 'text/vcard');
   } else {
     const birthdayProperty = getContactsBirthdayProperty(S.state.localVariables);
+    /** @type {string} */
+    let ics;
     if (scope === 'agenda') {
       // what View > Agenda shows, in the window the CalDAV mirror uses (see calendar-from-agenda.js)
       const agendaDocs = aggregateAgendaDocs().filter((d) => d.doc);
       const contactsDocs = await loadContactsDocsForSync(agendaDocs);
-      const build = () => exportAgendaToIcalendar(agendaDocs, { birthdayProperty, agendaOptions: agendaSexpOptions(), alarmMinutes: getIcalendarAlarmMinutes(S.state.localVariables), contactsDocs });
+      const build = () => exportAgendaToIcalendar(agendaDocs, { birthdayProperty, agendaOptions: agendaSexpOptions(), alarmMinutes: calendarAlarmMinutes(), contactsDocs });
       if (hasUserSexps()) {
         build(); // queues what a script's %%(…) functions have not yet been asked, then waits for the answers
         await settleUserSexps();
       }
-      saveOut(baseName + '.ics', build(), 'text/calendar');
+      ics = build();
     } else {
       const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: S.state.documentId, doc: S.state.doc }];
       const icsScope = scope && typeof scope === 'object' ? scope : null;
       // for the agenda files, the contacts are those of org-contacts-files, as in the agenda
       const contactsDocs = scope === 'agenda-files' ? await loadContactsDocsForSync(docs.filter((d) => d.doc)) : null;
-      saveOut(baseName + '.ics', exportToIcalendar(docs, { scope: icsScope, birthdayProperty, contactsDocs, alarmMinutes: getIcalendarAlarmMinutes(S.state.localVariables) }), 'text/calendar');
+      ics = exportToIcalendar(docs, { scope: icsScope, birthdayProperty, contactsDocs, alarmMinutes: calendarAlarmMinutes() });
     }
+    if (S.exportIcsToNewBuffer) {
+      const count = (ics.match(/^BEGIN:VEVENT/gim) || []).length;
+      S.moreOpen = false;
+      S.moreMenuStep = null;
+      S.exportFormat = null;
+      S.exportPickingHeading = false;
+      await createNewUnsavedDocument(`#+TITLE: *scratch*\n* Calendar (.ics)\n${ics.replace(/\r\n/g, '\n')}`, `Exported ${count} event${count === 1 ? '' : 's'} to Calendar (.ics) in a new buffer.`);
+      renderMoreMenu();
+      return;
+    }
+    // Opening a .ics on iOS hands it to Calendar, which offers only to add its events; the share sheet also has Save to Files.
+    saveOut(baseName + '.ics', ics, 'text/calendar', { share: !!S.exportIcsAsFile });
   }
   S.moreOpen = false;
   S.moreMenuStep = null;
@@ -306,6 +320,28 @@ export function renderExportFlow() {
           ? `"This file" will export just "${S.narrowedHeading.title || '(untitled)'}" \u2014 the outline is currently narrowed to it.`
           : `"This file" will export just the ${S.sparseNarrowScope.matched.size} heading${S.sparseNarrowScope.matched.size === 1 ? '' : 's'} currently narrowed to via Search.`;
         morePanel.appendChild(narrowStatus);
+      }
+    } else {
+      for (const [key, text] of /** @type {const} */ ([
+        ['exportIcsToNewBuffer', 'To: *new buffer*'],
+        ['exportIcsAsFile', 'To: file (share sheet: Save to Files)'],
+      ])) {
+        const row = document.createElement('label');
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.gap = '6px';
+        row.style.fontSize = '13px';
+        row.style.marginBottom = '10px';
+        row.style.cursor = 'pointer';
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.checked = !!S[key];
+        box.onchange = () => {
+          S[key] = box.checked;
+        };
+        row.appendChild(box);
+        row.appendChild(document.createTextNode(text));
+        morePanel.appendChild(row);
       }
     }
 

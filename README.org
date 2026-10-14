@@ -572,7 +572,6 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | Variable | Default | What it does |
 |---+---+---|
 | ~buffer-read-only~ | ~nil~ | Whether the buffer is read-only (see [[#keybindings][Keybindings]]: ~C-x C-q~, or *Toggle read-only* in the command palette) |
-| ~org-icalendar-alarm-time~ | ~0~ | Minutes before an event with a time of day that a calendar alarm goes off, in the CalDAV sync and the .ics exports. ~0~ adds none |
 | ~calendar-latitude~ | ~35.994~ | Latitude for the solar forms and ~org-weather~ (Durham, NC) |
 | ~calendar-longitude~ | ~-78.8986~ | Longitude for the same (Durham, NC) |
 | ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
@@ -1151,7 +1150,7 @@ Mirror your agenda into a calendar on your own server, so its items appear, with
 
 It is one-way: the calendar follows the agenda, and edits made in a calendar app are overwritten, so give it a calendar of its own. The app only ever removes events it created, and an event is removed only when its own file was loaded, so opening a different file never removes another file's events.
 
-What goes in is what *View → Agenda* shows, from the open file and your [[#agenda-files][Agenda Files]]: SCHEDULED, DEADLINE, plain timestamps, diary entries, and birthdays and anniversaries (from your Contacts Files). Each event has its title, its start and end time, the heading's tags as categories, its ~:LOCATION:~ and the start of its body (400 characters), and a deadline's warning delay (~-3d~) becomes an alarm. With ~org-icalendar-alarm-time~ set (Settings → Contacts & Calendar; ~0~, none, by default, as in Emacs), every event with a time of day also gets an alarm that many minutes before it; all-day events don't. A repeating item is one event with a repeat rule. A birthday or anniversary is one event for each year in the window, with that year's age. Completed items, and the agenda's overdue and warning-day entries, are not sent. Items are kept from a month back to six months ahead.
+What goes in is what *View → Agenda* shows, from the open file and your [[#agenda-files][Agenda Files]]: SCHEDULED, DEADLINE, plain timestamps, diary entries, and birthdays and anniversaries (from your Contacts Files). Each event has its title, its start and end time, the heading's tags as categories, its ~:LOCATION:~ and the start of its body (400 characters), and a deadline's warning delay (~-3d~) becomes an alarm. Every event with a time of day also gets an alarm ~appt-message-warning-time~ minutes before it (Settings → Agenda notifications); all-day events don't. A repeating item is one event with a repeat rule. A birthday or anniversary is one event for each year in the window, with that year's age. Completed items, and the agenda's overdue and warning-day entries, are not sent. Items are kept from a month back to six months ahead.
 
 A ~<%%(…)>~ timestamp in a heading title becomes one all-day event for each day it matches, so ~<%%(when (today-p) (org-weather))>~ is a single event for today. It reads "Weather as of 10:45" in its description, from the last forecast fetched, and the calendar sync updates that one event whenever the weather refreshes (see ~org-weather-refresh-interval~). Yesterday's is removed. Your location, the weather settings and any script-defined functions (see [[#extensions][Extensions]]) are used just as in the Agenda; a script's functions are asked first and the export waits for the answers. Plain ~%%(diary-sunrise)~, ~%%(diary-sunset)~ and ~%%(org-weather)~ lines in a body are Agenda-only and are not exported.
 
@@ -1561,6 +1560,8 @@ Not implemented: running source blocks, and macros whose text starts with ~(eval
 *** Calendar (.ics)
 
 Every dated item as an iCalendar file for any calendar app: SCHEDULED, DEADLINE, plain active title timestamps and [[#agenda][org-contacts-anniversaries]]. It follows the Agenda's exclusions (archived, commented and completed headings). Re-exporting gives the same event IDs, so a calendar app updates events instead of duplicating them.
+
+*To*: the file is downloaded. *To: file* opens the share sheet instead, which on an iPhone has *Save to Files* (a downloaded .ics there goes straight to Calendar); *To: new buffer* leaves the text in a new buffer.
 
 *Scope*: *This file*, *Choose a heading…* and *This file + Agenda Files* write every dated item, with no window. *Agenda (as displayed)*, the last row, writes what [[#calendar-sync][the calendar sync]] sends: what View → Agenda shows, from a month back to six months ahead.
 

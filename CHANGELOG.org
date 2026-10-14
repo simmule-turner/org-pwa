@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v524 — Calendar alarms as plain reminders
+The alarm on a timed calendar event is a plain display reminder again, ~appt-message-warning-time~ minutes before, because that is the form every calendar app (iOS, Android, Outlook, Thunderbird) honours; the sound is the device's own notification setting. The audio alarm added in v523 is gone.
+Verified: unit tests for the .ics and the CalDAV payload.
+
+* v523 — Calendar alarms that sound, and .ics to a file
+Calendar events with a time of day now carry a sound alarm (the system sound Chord, the form Apple's Calendar writes) ~appt-message-warning-time~ minutes before they start, in the CalDAV sync and the .ics exports; the separate ~org-icalendar-alarm-time~ setting is gone. Export → Calendar (.ics) gains *To: *new buffer** and *To: file*, which opens the share sheet so an iPhone can Save to Files instead of handing the file to Calendar.
+Verified: unit tests, lint and type check.
+
 * v522 — Alarms for timed calendar events
 New setting ~org-icalendar-alarm-time~ (Settings → Contacts & Calendar, default 0 = none, as in Emacs): the CalDAV sync and the .ics exports add an alarm that many minutes before every event with a time of day, whether it came from a SCHEDULED, a DEADLINE or a plain timestamp, so a phone's calendar app can alert for it. Until now only a deadline's warning delay (~-3d~) made an alarm. All-day events still get none.
 Verified: unit tests for the alarms, lint and type check.

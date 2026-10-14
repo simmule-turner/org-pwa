@@ -216,13 +216,6 @@ export function getAgendaShowAllDates(vars) {
   return parseLispBoolean((vars || {})['org-agenda-show-all-dates'], true);
 }
 
-/** org-icalendar-alarm-time: minutes before a timed event that its calendar alarm goes off. 0 (the default, as in Emacs) adds none.
- * @param {LocalVars} vars */
-export function getIcalendarAlarmMinutes(vars) {
-  const n = parseLispNumber((vars || {})['org-icalendar-alarm-time'], 0);
-  return Number.isFinite(n) && n > 0 ? Math.min(Math.round(n), 40320) : 0;
-}
-
 /** org-habit's options, read from the file's Local Variables or the Global Variables: org-habit-preceding-days (21),
  * org-habit-following-days (7), org-habit-show-habits-only-for-today (t), org-habit-show-all-today (nil).
  * @param {LocalVars} vars */

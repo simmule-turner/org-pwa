@@ -46,7 +46,7 @@ test('a script-defined %%(…) function in a <%%(…)> line is exported like a b
 
 import { exportToIcalendar } from '../src/export-icalendar.js';
 
-test('org-icalendar-alarm-time: timed events get an alarm that many minutes before, all-day ones and a setting of 0 get none', () => {
+test('timed events get a display alarm that many minutes before, all-day ones and a setting of 0 get none', () => {
   const doc = parseOrg('* TODO Dentist\nSCHEDULED: <2026-10-15 Thu 09:30>\n* TODO Pay rent\nDEADLINE: <2026-10-16 Fri -3d>\n* Lunch <2026-10-17 Sat 12:00>\n');
   const ics = (alarmMinutes) => exportToIcalendar([{ documentId: 'a.org', doc }], { today, alarmMinutes });
   const none = ics(0);
@@ -55,6 +55,7 @@ test('org-icalendar-alarm-time: timed events get an alarm that many minutes befo
   const ten = ics(10);
   assert.equal((ten.match(/TRIGGER:-PT10M/g) || []).length, 2); // the 09:30 scheduled and the 12:00 timestamp; the all-day deadline gets none
   assert.equal((ten.match(/TRIGGER:-P3D/g) || []).length, 1);
+  assert.match(ten, /BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:Dentist\r\nTRIGGER:-PT10M\r\nEND:VALARM/);
 });
 
 test('the same alarm reaches the agenda-based export and sync', () => {
@@ -62,4 +63,12 @@ test('the same alarm reaches the agenda-based export and sync', () => {
   const events = collectAgendaCalendarEvents([{ documentId: 'a.org', doc }], { today, window: agendaWindow(today, 0, 5), alarmMinutes: 15 });
   assert.equal(events.length, 1);
   assert.ok(events[0].lines.some((l) => l.startsWith('TRIGGER:-PT15M')));
+});
+
+import { buildCalendarResources } from '../src/calendar-mirror.js';
+
+test('the CalDAV payload carries the VALARM', () => {
+  const doc = parseOrg('* TODO Dentist\nSCHEDULED: <2026-10-15 Thu 09:30>\n');
+  const out = [...buildCalendarResources([{ documentId: 'a.org', doc }], { today, alarmMinutes: 12 }).values()].map((r) => r.ics).join('');
+  assert.ok(out.includes('BEGIN:VALARM') && out.includes('ACTION:DISPLAY') && out.includes('TRIGGER:-PT12M'));
 });

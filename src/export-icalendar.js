@@ -171,7 +171,8 @@ export function buildVevent(/** @type {any} */ { uid, summary, description, date
     );
   }
   if (alarmMinutesBefore > 0 && hasTime) {
-    // org-icalendar-alarm-time: a reminder shortly before a timed event. An all-day event has no time to count back from.
+    // A reminder shortly before a timed event (appt-message-warning-time). An all-day event has no time to count back from. A
+    // display alarm is the form every calendar app understands; the sound is the device's own notification setting.
     lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${escapeIcsText(summary)}`, `TRIGGER:-PT${Math.round(alarmMinutesBefore)}M`, 'END:VALARM');
   }
   lines.push('END:VEVENT');
