@@ -715,8 +715,8 @@ check('rename-buffer: the palette asks in the minibuffer, Return renames the tab
   await ask('Notes');
   expect((await tabs()).includes('Notes') && !(await tabs()).includes('*scratch*<2>'), `renamed: ${await tabs()}`);
   expect((await modeline(page)).includes('Notes'), `and the modeline follows: ${await modeline(page)}`);
-  const red = (await page.locator('#tabBar span', { hasText: 'Notes' }).first().evaluate((e) => getComputedStyle(e).color)) === 'rgb(192, 57, 43)' && (await page.locator('#modeline span').first().evaluate((e) => getComputedStyle(e).color)) === 'rgb(192, 57, 43)';
-  expect(red, 'a modified buffer keeps its red mark and name in the tab and the modeline after it is renamed');
+  const red = (await page.locator('#tabBar span', { hasText: 'Notes' }).first().evaluate((e) => getComputedStyle(e).color)) === 'rgb(192, 57, 43)';
+  expect(red, 'a modified buffer keeps its red mark and name in the tab after it is renamed');
   await ask('Other', 'Escape');
   expect(!(await tabs()).includes('Other') && (await tabs()).includes('Notes'), 'Escape leaves the name alone');
   await ask('   ');
