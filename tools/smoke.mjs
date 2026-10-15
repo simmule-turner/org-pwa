@@ -5751,6 +5751,26 @@ check('timestamp picker: an end time defaults to 30 minutes after the start, can
   await context.close();
 });
 
+check('a write to a file that is open in another tab (a capture, a refile) is not hidden from that tab: switching to it says the file changed', async () => {
+  dav.reset({ 'a.org': '* A one\n', 'b.org': '* B one\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'b.org');
+  await openDav(page, 'a.org');
+  expect((await page.locator('#tabBar > div').count()) === 2, 'two tabs, a.org on screen');
+  const ok = await page.evaluate(async () => {
+    const { writeToOtherFile } = await import('/src-browser/external-sync.js');
+    const { parseOrg } = await import('/src/org-parser.js');
+    const r = await writeToOtherFile('b.org', { label: 'capture', mutate: (doc) => { const add = parseOrg('* Captured\n'); doc.children.push(...add.children); return true; } });
+    return r.ok;
+  });
+  expect(ok && dav.get('b.org').includes('* Captured'), `the capture reached b.org: ${JSON.stringify(dav.get('b.org'))}`);
+  await page.locator('#tabBar > div', { hasText: 'b.org' }).first().click();
+  await page.waitForFunction(() => getComputedStyle(document.getElementById('externalChangeBanner')).display !== 'none', null, { timeout: 8000 });
+  expect((await page.locator('#externalChangeBanner').innerText()).includes('b.org'), 'switching to b.org says it changed elsewhere');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 // ---- runner -------------------------------------------------------------------
 
 const filter = process.argv[2];

@@ -149,16 +149,29 @@ export async function writeToOtherFile(fileId, /** @type {any} */ { label, allow
   const result = mutate(doc);
   if (result === undefined || result === null) return { ok: false };
 
+  // A tab that already has this file open keeps the version it loaded as its baseline: moving the baseline on would hide this
+  // write from it (no "changed elsewhere" notice on switching to it, and a later save from it would overwrite this write with
+  // no conflict). With the baseline left alone, switching to that tab offers Reload or Merge, and its save sees the conflict.
+  const openInATab = isOpenInATab(fileId);
   try {
     const content = serializeOrg(doc);
     const written = await adapter.write(fileId, content);
-    await recordSyncedWrite(fileId, written.hash, content);
+    if (!openInATab) await recordSyncedWrite(fileId, written.hash, content);
   } catch (err) {
     setStatus(`Could not ${label}: writing "${fileId}" failed \u2014 ${err.message}. Nothing was changed.`);
     return { ok: false };
   }
 
+  if (openInATab && S.state.documentId === fileId) checkForExternalChange(); // it is the one on screen: say so now
   return { ok: true, result };
+}
+
+/** Whether `fileId` (on the backend of the current document) is open in any tab, the one on screen included.
+ * @param {string} fileId */
+function isOpenInATab(fileId) {
+  const kind = S.state.storageKind;
+  if (S.state.documentId === fileId) return true;
+  return S.documentSessions.some((/** @type {any} */ s) => s.state && s.state.documentId === fileId && s.state.storageKind === kind);
 }
 
 /** Best-effort, proactive check: does the currently open document's

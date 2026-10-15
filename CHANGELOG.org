@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v529 — A capture into a file open in another tab is no longer hidden
+A capture, refile or archive written to a file that is also open in another tab used to move that file's "last synced" mark forward, so switching to the tab showed no "changed elsewhere" notice and a later save from it could overwrite the capture. The mark is now left alone while the file is open in a tab, so the tab offers Reload or Merge and a save sees the conflict.
+Verified: a browser check with two tabs.
+
 * v528 — End time starts at 30 minutes
 In the date & time picker for ~%^T~ and ~%^U~ prompts, the End time now fills in 30 minutes after the start you choose, since appointments are short, and follows the start until you set it yourself. A new *No end* button leaves it out.
 Verified: the picker's browser check and a unit test.
