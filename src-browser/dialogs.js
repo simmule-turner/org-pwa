@@ -230,6 +230,10 @@ export function openTimestampPickerPopup(kind) {
 
     /** @type {HTMLInputElement | null} */
     let timeInput = null;
+    /** @type {HTMLInputElement | null} */
+    let endInput = null;
+    /** @type {HTMLElement | null} */
+    let endNote = null;
     if (kind.hasTime) {
       timeInput = document.createElement('input');
       timeInput.type = 'time';
@@ -237,6 +241,15 @@ export function openTimestampPickerPopup(kind) {
       timeInput.style.webkitAppearance = 'none';
       timeInput.style.appearance = 'none';
       modal.appendChild(fieldRow('Time (optional)', timeInput));
+      endInput = document.createElement('input');
+      endInput.type = 'time';
+      textInputStyle(endInput);
+      endInput.style.webkitAppearance = 'none';
+      endInput.style.appearance = 'none';
+      modal.appendChild(fieldRow('End time (optional)', endInput));
+      endNote = document.createElement('div');
+      endNote.style.cssText = 'font-size:12px;color:var(--danger,#c0392b);min-height:0;';
+      modal.appendChild(endNote);
     }
 
     const buttonRow = document.createElement('div');
@@ -260,16 +273,25 @@ export function openTimestampPickerPopup(kind) {
       const [y, m, d] = dateInput.value.split('-').map(Number);
       const date = new Date(y, m - 1, d);
       const time = kind.hasTime && timeInput?.value ? timeInput.value : null;
-      finish(formatOrgTimestamp({ date, time, active: kind.active }));
+      const endTime = time && endInput?.value ? endInput.value : null;
+      finish(formatOrgTimestamp({ date, time, endTime, active: kind.active }));
     });
     okBtn.disabled = true;
     okBtn.style.background = 'var(--accent)';
     okBtn.style.color = '#fff';
     okBtn.style.borderColor = 'var(--accent)';
     okBtn.style.fontWeight = '600';
-    dateInput.addEventListener('input', () => {
-      okBtn.disabled = !dateInput.value;
-    });
+    // OK needs a date; an end time needs a start time and has to be later than it (an org timestamp's range stays within the day)
+    const refreshOk = () => {
+      const end = endInput?.value || '';
+      const start = timeInput?.value || '';
+      const problem = !end ? '' : !start ? 'An end time needs a start time.' : end <= start ? 'The end time must be after the start time.' : '';
+      if (endNote) endNote.textContent = problem;
+      okBtn.disabled = !dateInput.value || !!problem;
+    };
+    dateInput.addEventListener('input', refreshOk);
+    if (timeInput) timeInput.addEventListener('input', refreshOk);
+    if (endInput) endInput.addEventListener('input', refreshOk);
 
     buttonRow.appendChild(cancelBtn);
     buttonRow.appendChild(okBtn);

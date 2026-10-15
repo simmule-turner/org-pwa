@@ -154,7 +154,7 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
  * has already validated, not raw user text (that's setPlanningFromText's
  * job, which validates by round-tripping through parseOrgTimestamp).
  */
-function formatOrgTimestamp(/** @type {any} */ { date, time = /** @type {string | null} */ (null), repeaterMark = /** @type {string | null} */ (null), repeaterValue = /** @type {string | null} */ (null), delayValue = /** @type {string | null} */ (null), active = true }) {
+function formatOrgTimestamp(/** @type {any} */ { date, time = /** @type {string | null} */ (null), endTime = /** @type {string | null} */ (null), repeaterMark = /** @type {string | null} */ (null), repeaterValue = /** @type {string | null} */ (null), delayValue = /** @type {string | null} */ (null), active = true }) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
     throw new Error('formatOrgTimestamp requires a valid Date');
   }
@@ -164,7 +164,7 @@ function formatOrgTimestamp(/** @type {any} */ { date, time = /** @type {string 
   const dayName = DAY_NAMES[date.getDay()];
 
   const parts = [`${y}-${mo}-${d} ${dayName}`];
-  if (time) parts.push(time);
+  if (time) parts.push(endTime ? `${time}-${endTime}` : time); // an end time only goes with a start: 09:00-10:00
   if (repeaterMark && repeaterValue) parts.push(`${repeaterMark}${repeaterValue}`);
   if (delayValue) parts.push(`-${delayValue}`);
 

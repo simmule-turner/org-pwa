@@ -181,6 +181,11 @@ test('formatOrgTimestamp builds an inactive timestamp when active: false', () =>
   assert.equal(s, '[2026-01-05 Mon]');
 });
 
+test('formatOrgTimestamp writes an end time after the start, and ignores one without a start', () => {
+  assert.equal(formatOrgTimestamp({ date: new Date(2026, 0, 5), time: '09:00', endTime: '10:30' }), '<2026-01-05 Mon 09:00-10:30>');
+  assert.equal(formatOrgTimestamp({ date: new Date(2026, 0, 5), endTime: '10:30' }), '<2026-01-05 Mon>');
+});
+
 test('formatOrgTimestamp includes a time when given', () => {
   const s = formatOrgTimestamp({ date: new Date(2026, 0, 5), time: '14:30' });
   assert.equal(s, '<2026-01-05 Mon 14:30>');
