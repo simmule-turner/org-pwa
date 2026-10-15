@@ -180,6 +180,12 @@ export function renderSettingsShell(container, cards, savedOrder, rerender) {
     parent.appendChild(b);
   }
 
+  /** The update check and version, at the foot of the home list (the sidebar when wide). @param {HTMLElement} parent */
+  function appendUpdates(parent) {
+    const updates = cards.get('updates');
+    if (updates) parent.appendChild(updates);
+  }
+
   function matches() {
     const q = place.query.trim().toLowerCase();
     /** @type {{ category: SettingsCategory, id: string }[]} */ const found = [];
@@ -198,6 +204,7 @@ export function renderSettingsShell(container, cards, savedOrder, rerender) {
       nav.style.cssText = 'flex: 0 0 240px';
       nav.appendChild(search);
       for (const category of layout) categoryButton(nav, category);
+      appendUpdates(nav);
       frame.replaceChildren(nav, page);
     } else if (searching || place.category === null) {
       page.appendChild(search);
@@ -218,6 +225,7 @@ export function renderSettingsShell(container, cards, savedOrder, rerender) {
     }
     if (place.category === null) {
       for (const category of layout) categoryButton(page, category);
+      appendUpdates(page);
       return;
     }
     const category = /** @type {SettingsCategory} */ (layout.find((c) => c.id === place.category));

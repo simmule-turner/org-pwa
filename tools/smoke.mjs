@@ -3667,19 +3667,19 @@ check('settings: search finds a setting across categories, and Order of settings
   await page.getByRole('button', { name: 'Move Export down' }).click();
   await page.waitForTimeout(400);
   await page.locator('[data-settings-back]').click();
-  expect((await order()) === 'appearance,editing,agenda,sync,advanced,export,about', `Export moved down one: ${await order()}`);
+  expect((await order()) === 'appearance,editing,agenda,sync,advanced,export', `Export moved down one: ${await order()}`);
   await settingsCategory(page, 'sync');
   await page.locator('[data-settings-back]').click();
   await page.reload({ waitUntil: 'load' });
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
   await page.locator('[data-settings-category]').first().waitFor({ state: 'visible', timeout: 8000 });
-  expect((await order()) === 'appearance,editing,agenda,sync,advanced,export,about', `the order survives a reload: ${await order()}`);
+  expect((await order()) === 'appearance,editing,agenda,sync,advanced,export', `the order survives a reload: ${await order()}`);
   await settingsCategory(page, 'advanced');
   await page.getByRole('button', { name: 'Reset to default order' }).click();
   await page.waitForTimeout(400);
   await page.locator('[data-settings-back]').click();
-  expect((await order()) === 'appearance,editing,agenda,sync,export,advanced,about', `Reset restores the defaults: ${await order()}`);
+  expect((await order()) === 'appearance,editing,agenda,sync,export,advanced', `Reset restores the defaults: ${await order()}`);
   // with room (a 780px window), the categories are a sidebar and the first page is already open beside it
   await page.setViewportSize({ width: 780, height: 800 });
   await page.reload({ waitUntil: 'load' });
@@ -3693,13 +3693,13 @@ check('settings: search finds a setting across categories, and Order of settings
   await context.close();
 });
 
-check('settings page order: seven categories in order; Sync and storage lists GitHub, WebDAV, Calendar / Contacts, then Backup last; Paragraph Spacing follows Font Size; its buttons follow which addresses are set', async () => {
+check('settings page order: six categories in order; Sync and storage lists GitHub, WebDAV, Calendar / Contacts, then Backup last; Paragraph Spacing follows Font Size; its buttons follow which addresses are set', async () => {
   const { context, page } = await freshPage();
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
   await page.locator('[data-settings-category]').first().waitFor({ state: 'visible', timeout: 8000 });
   const ids = await page.locator('[data-settings-category]').evaluateAll((els) => els.map((e) => e.getAttribute('data-settings-category')));
-  expect(JSON.stringify(ids) === JSON.stringify(['appearance', 'editing', 'agenda', 'sync', 'export', 'advanced', 'about']), `categories: ${JSON.stringify(ids)}`);
+  expect(JSON.stringify(ids) === JSON.stringify(['appearance', 'editing', 'agenda', 'sync', 'export', 'advanced']), `categories: ${JSON.stringify(ids)}`);
   const titlesOnPage = () => page.evaluate(() => [...document.querySelectorAll('[data-settings-page] .settings-section')].map((sec) => (sec.querySelector('.panel-section-title') || {}).textContent || ''));
   await settingsCategory(page, 'sync');
   const sections = await titlesOnPage();
@@ -3710,9 +3710,12 @@ check('settings page order: seven categories in order; Sync and storage lists Gi
   await settingsCategory(page, 'advanced');
   expect((await titlesOnPage()).includes('Capture Templates'), 'Capture Templates is under Advanced');
   await page.locator('[data-settings-back]').click();
-  await settingsCategory(page, 'about');
-  expect((await titlesOnPage())[0] === 'Updates', 'Updates is first on About');
-  await page.locator('[data-settings-back]').click();
+  const foot = await page.evaluate(() => {
+    const u = document.querySelector('[data-settings-updates]');
+    const cats = [...document.querySelectorAll('[data-settings-category]')];
+    return !!u && u.getBoundingClientRect().top >= cats[cats.length - 1].getBoundingClientRect().bottom - 1;
+  });
+  expect(foot, 'the update check sits at the foot of the Settings list, below the last category');
   await settingsCategory(page, 'appearance');
   const appearance = await page.evaluate(() => [...document.querySelectorAll('[data-settings-page] .panel-section-title')].map((t) => t.textContent));
   expect(JSON.stringify(appearance) === JSON.stringify(['Appearance', 'Font', 'Font Size', 'Paragraph Spacing', 'Reading Width', 'Menu Size']), `Paragraph Spacing follows Font Size: ${JSON.stringify(appearance)}`);
@@ -4194,14 +4197,14 @@ check('attachments: opening one hands it to the platform, and the status says ho
   await context.close();
 });
 
-check('settings: on a platform with no service worker, About shows only the platform\u2019s own version, with no update button, and says how the app is updated', async () => {
+check('settings: on a platform with no service worker, the update block shows only the platform\u2019s own version, with no update button, and says how the app is updated', async () => {
   const { context, page, errors } = await freshPage(main, {
     initScript: () => { window.orgPwaPlatform = { name: 'fake-android', usesServiceWorker: false, versionInfo: async () => 'v999 (app 9.9.9)' }; },
   });
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
-  await settingsCategory(page, 'about');
-  const section = page.locator('.settings-section', { has: page.locator('.panel-section-title', { hasText: 'Version' }) });
+  const section = page.locator('[data-settings-updates]');
+  await section.waitFor({ state: 'visible', timeout: 8000 });
   await section.getByText('Version: v999 (app 9.9.9)').waitFor({ state: 'visible', timeout: 5000 });
   expect((await section.getByRole('button', { name: 'Check for updates' }).count()) === 0, 'there is no Check for updates button');
   expect((await section.innerText()).includes('This app is updated by installing a newer version of it.'), 'and the section says how the app is updated');
@@ -4242,15 +4245,15 @@ check('settings: Export has General, ASCII and HTML in that order, every box sta
   await context.close();
 });
 
-check('settings: with a service worker the Updates section is unchanged (the version from the worker, the button enabled)', async () => {
+check('settings: with a service worker the update block shows the worker’s version, an enabled button, and a red bold status on the version line', async () => {
   const { context, page, errors } = await freshPage(main, { serviceWorkers: 'allow' });
   await page.waitForTimeout(2500);
   await page.reload({ waitUntil: 'load' }); // the worker controls the page from its second load
   await page.waitForTimeout(1500);
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
-  await settingsCategory(page, 'about');
-  const section = page.locator('.settings-section', { has: page.locator('.panel-section-title', { hasText: 'Updates' }) });
+  const section = page.locator('[data-settings-updates]');
+  await section.waitFor({ state: 'visible', timeout: 8000 });
   await section.getByText(/^Version: org-pwa-shell-v\d+/).waitFor({ state: 'visible', timeout: 6000 });
   expect(!(await section.getByRole('button', { name: 'Check for updates' }).isDisabled()), 'the button is enabled');
   expect(!(await section.innerText()).includes('installing a newer version'), 'and there is no APK message');
@@ -4258,8 +4261,9 @@ check('settings: with a service worker the Updates section is unchanged (the ver
   await btn.click();
   const status = section.locator('[data-about-status]');
   await status.waitFor({ state: 'visible', timeout: 6000 });
+  await page.waitForFunction(() => { const t = document.querySelector('[data-about-status]'); return t && t.textContent !== 'Checking\u2026'; }, null, { timeout: 8000 });
   const lay = await page.evaluate(() => {
-    const sec = [...document.querySelectorAll('.settings-section')].find((e) => e.querySelector('.panel-section-title')?.textContent === 'Updates');
+    const sec = document.querySelector('[data-settings-updates]');
     const b = [...sec.querySelectorAll('button')].find((x) => x.textContent.includes('Check for updates')).getBoundingClientRect();
     const v = sec.querySelector('[data-about-version]');
     const st = v.querySelector('[data-about-status]');
@@ -4269,7 +4273,7 @@ check('settings: with a service worker the Updates section is unchanged (the ver
   });
   expect(Math.abs(lay.bc - lay.sc) < 12, `button centred: ${JSON.stringify(lay)}`);
   expect(lay.bottom <= lay.vtop + 1 && lay.align === 'center', `version line below, centred: ${JSON.stringify(lay)}`);
-  expect(lay.color === 'rgb(192, 57, 43)' && Number(lay.weight) >= 700 && lay.text.startsWith('Version: '), `status red and bold on the version line: ${JSON.stringify(lay)}`);
+  expect(lay.color === 'rgb(192, 57, 43)' && Number(lay.weight) >= 700 && lay.text.startsWith('Version: ') && (lay.text.includes('Check failed') || lay.text.includes('Up to date')), `status red and bold on the version line: ${JSON.stringify(lay)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

@@ -13,7 +13,6 @@ export const DEFAULT_SETTINGS_CATEGORIES = /** @type {SettingsCategory[]} */ ([
   { id: 'sync', title: 'Sync and storage', blurb: 'GitHub, WebDAV, calendar, attachments, backup', cards: ['github', 'webdav', 'calendar', 'attach', 'pending', 'backup'] },
   { id: 'export', title: 'Export', blurb: 'Printed pages, ASCII, HTML', cards: ['export-general', 'quick:ASCII', 'export-html'] },
   { id: 'advanced', title: 'Advanced', blurb: 'Variables, capture templates, extensions, order of settings', cards: ['global-vars', 'capture', 'extensions', 'quick:Advanced (raw syntax)', 'order'] },
-  { id: 'about', title: 'About and updates', blurb: 'Version and update check', cards: ['updates'] },
 ]);
 
 /** Puts `saved` ids first, in the saved order, dropping any that no longer exist; ids the saved list never heard of (added by a newer version) follow in their default places.

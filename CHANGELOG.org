@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v532 — Update check on the Settings page
+*Check for updates* and the version now sit at the foot of the Settings list instead of on a separate About page: the button centred on its own line, the version centred beneath it, and the result of the check (Checking…, Up to date, Update found, Check failed, Out of date — reload) on that same line in bold red.
+Verified: browser checks for the Settings list, the update check and the no-service-worker (Android) case.
+
 * v531 — Settings → About: centred button, centred version
 *Check for updates* now sits centred on a line of its own, with the version centred beneath it; whatever the update check reports (Checking…, up to date, update found, couldn't check) or a "this page is out of date" notice appears on that same line in bold red.
 Verified: browser check for the About layout and the existing Updates/Version checks.

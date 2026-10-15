@@ -37,9 +37,9 @@ test('moveInList moves one item and stops at the ends', () => {
 
 test('the order to store is null for the defaults and only holds what differs', () => {
   assert.equal(orderToStore(resolveSettingsLayout(null)), null);
-  const moved = resolveSettingsLayout({ categories: ['about'], cards: { sync: ['backup'] } });
+  const moved = resolveSettingsLayout({ categories: ['export'], cards: { sync: ['backup'] } });
   const stored = orderToStore(moved);
-  assert.equal(stored.categories[0], 'about');
+  assert.equal(stored.categories[0], 'export');
   assert.deepEqual(Object.keys(stored.cards), ['sync']);
   assert.deepEqual(resolveSettingsLayout(stored).map((c) => c.id), moved.map((c) => c.id));
 });
