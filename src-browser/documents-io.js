@@ -343,10 +343,12 @@ export async function openFileLink(resolution, containingHeading = /** @type {an
   }
 }
 
+/** @returns {Promise<boolean>} whether the document was saved (false: nothing to save it to, cancelled at a conflict, or failed) */
 export async function saveCurrent() {
-  if (!S.state.storageKind) return;
+  if (!S.state.storageKind) return false;
   if (commitTextModeIfActive()) render();
   setStatus('Saving\u2026');
+  let saved = false;
   try {
     const result = await saveAndSync({
       documentId: S.state.documentId,
@@ -360,7 +362,7 @@ export async function saveCurrent() {
       setStatus('Save cancelled \u2014 the other version is untouched and your edits are still here.');
       render();
       closeFileMenu();
-      return;
+      return false;
     }
     if (result.status === 'conflict' && (result.resolution === 'disk' || result.resolution === 'merged')) {
       setStatus('Reloading\u2026');
@@ -380,10 +382,12 @@ export async function saveCurrent() {
     scheduleSync(); // the agenda, or the contacts, may have changed
     requestApptScan(); // and so may the appointments
     emitExtensionEvent('save');
+    saved = true;
   } catch (err) {
     setStatus('Save failed: ' + err.message);
   }
   closeFileMenu();
+  return saved;
 }
 
 export async function saveAsFilesystem() {

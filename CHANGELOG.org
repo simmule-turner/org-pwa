@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v531 — Settings → About: centred button, centred version
+*Check for updates* now sits centred on a line of its own, with the version centred beneath it; whatever the update check reports (Checking…, up to date, update found, couldn't check) or a "this page is out of date" notice appears on that same line in bold red.
+Verified: browser check for the About layout and the existing Updates/Version checks.
+
+* v530 — Capture, Refile and Archive edit buffers, as in Emacs
+An entry sent to another file now goes into that file's tab (opened in the background if it has none) and the tab shows as modified until you save it, so nothing changes a file behind your back, the text you had typed in that tab is kept, and the Agenda sees the entry at once. New: *File → Save Some Buffers* and the palette's *Save some buffers* (~C-x s~, ~x SPC s~) save every modified tab; *Revert buffer* reads the file again and drops a buffer's changes.
+Verified: browser checks for the buffer flow, Capture, Refile, Archive, menus and the palette.
+
 * v529 — A capture into a file open in another tab is no longer hidden
 A capture, refile or archive written to a file that is also open in another tab used to move that file's "last synced" mark forward, so switching to the tab showed no "changed elsewhere" notice and a later save from it could overwrite the capture. The mark is now left alone while the file is open in a tab, so the tab offers Reload or Merge and a save sees the conflict.
 Verified: a browser check with two tabs.

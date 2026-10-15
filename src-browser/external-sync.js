@@ -5,13 +5,11 @@ import { applyStartupVisibility } from '../src/fold-state.js';
 import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
 import { getBufferReadOnly, getCycleOpenArchivedTrees, parseLocalVariables } from '../src/local-variables.js';
 import { planConflict, resolveSegments } from '../src/merge3.js';
-import { parseOrg, serializeOrg } from '../src/org-parser.js';
-import { hasPendingChange } from '../src/outbox.js';
+import { serializeOrg } from '../src/org-parser.js';
 import { resolveEffectiveStartupConfig } from '../src/startup-config.js';
 import { getSyncMeta, setSyncMeta } from '../src/sync-engine.js';
 import { pushSnapshot } from '../src/undo-history.js';
 import { filesystemAdapter, githubAdapter, inputFileAdapter, webdavAdapter } from './adapters.js';
-import { folderAvailable } from './local-folder.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
 import { S } from './app-state.js';
 import { syncContentOffset } from './chrome.js';
@@ -21,7 +19,6 @@ import { externalChangeBanner, externalChangeText } from './dom.js';
 import { commitTextModeIfActive, restoreFromHistory, setStatus } from './editing.js';
 import { render } from './render.js';
 import { kv } from './singletons.js';
-import { recordSyncedWrite } from './sync-helpers.js';
 import { keepOverlayInVisibleViewport, tableActionButton } from './ui-widgets.js';
 
 /** Which adapter Save/Save-As-in-place should use — whatever storage kind
@@ -69,109 +66,6 @@ export async function reloadCurrentDocumentFromDisk() {
   S.lastSavedText = serializeOrg(S.state.doc);
   hideExternalChangeBanner();
   render();
-}
-
-/**
- * Shared "read another file safely, mutate it, write it back" sequence
- * for every cross-file operation (capture, archive, refile, restore).
- * Centralizing this here means the sync-baseline bookkeeping
- * (recordSyncedWrite) every one of these needs can never again be
- * silently forgotten by a future feature needing the same shape --
- * exactly the class of bug that caused a real data-loss issue before
- * this existed, when four separate hand-rolled copies of this
- * sequence meant remembering the same step four separate times.
- *
- * `label` -- used in every generated status/error message, lowercase,
- * describing the action a person would recognize ("archive", "refile",
- * "restore", "capture").
- * `allowMissing` -- if true, a target file that doesn't exist yet
- * starts from an empty document rather than being treated as an error
- * (capture/archive: a fresh target file is a completely normal thing
- * to create; refile/restore: the target is expected to already exist,
- * so its absence is a genuine error, not something to paper over).
- * `mutate(doc)` -- feature-specific mutation of the freshly-read
- * target document. Return `undefined`/`null` to abort (after calling
- * setStatus itself with a feature-specific message -- this helper
- * doesn't know enough about the specific failure to word that itself);
- * anything else is passed through as this function's own return value
- * on success.
- *
- * Returns `{ ok: true, result }` on success (after the write AND the
- * sync-baseline update have both succeeded), or `{ ok: false }` after
- * already calling setStatus with a clear, label-specific error --
- * callers just check `.ok` and bail out if false, no separate error
- * text of their own to construct for any of these shared failure modes.
- * @param {string} fileId
- */
-export async function writeToOtherFile(fileId, /** @type {any} */ { label, allowMissing, mutate }) {
-  // Same trap capture's own version of this check already described:
-  // writing straight to the backing store while an unrelated pending
-  // (unsynced) local edit for this SAME file is still sitting in the
-  // outbox would leave that edit's own "resume" flow completely
-  // unaware this write ever happened -- resuming it later and saving
-  // would silently overwrite whatever this write just did, since
-  // nothing would have told the outbox its assumption about "the last
-  // synced version" had changed out from under it. Refuse up front.
-  if (await hasPendingChange(kv, fileId)) {
-    setStatus(
-      `Can't ${label} to "${fileId}" right now \u2014 it has unsaved local changes from an earlier session that haven't been synced yet. Open "${fileId}" directly first and either save or discard those changes, then retry.`
-    );
-    return { ok: false };
-  }
-
-  const adapter = activeDiskAdapter();
-  // a local file must exist already (a picker makes it); but with an org-pwa folder a missing one is created there, as on GitHub
-  const creatable = allowMissing && S.state.storageKind === 'filesystem' && folderAvailable();
-  if ((S.state.storageKind === 'filesystem' || S.state.storageKind === 'input') && !creatable && !(await adapter.exists(fileId))) {
-    setStatus(
-      `Can't ${label} to "${fileId}" automatically \u2014 local files need that file picked/created once first (browser security requires a file picker per file, not something this can do on its own). Try File \u2192 Open or Save As on "${fileId}" first, or use GitHub/WebDAV for automatic cross-file ${label}ing.`
-    );
-    return { ok: false };
-  }
-
-  let doc;
-  try {
-    const existing = await adapter.read(fileId);
-    if (!existing) {
-      if (!allowMissing) {
-        setStatus(`Could not ${label}: "${fileId}" no longer exists.`);
-        return { ok: false };
-      }
-      doc = parseOrg('');
-    } else {
-      doc = parseOrg(existing.content);
-    }
-  } catch (err) {
-    setStatus(`Could not ${label}: reading "${fileId}" failed \u2014 ${err.message}`);
-    return { ok: false };
-  }
-
-  const result = mutate(doc);
-  if (result === undefined || result === null) return { ok: false };
-
-  // A tab that already has this file open keeps the version it loaded as its baseline: moving the baseline on would hide this
-  // write from it (no "changed elsewhere" notice on switching to it, and a later save from it would overwrite this write with
-  // no conflict). With the baseline left alone, switching to that tab offers Reload or Merge, and its save sees the conflict.
-  const openInATab = isOpenInATab(fileId);
-  try {
-    const content = serializeOrg(doc);
-    const written = await adapter.write(fileId, content);
-    if (!openInATab) await recordSyncedWrite(fileId, written.hash, content);
-  } catch (err) {
-    setStatus(`Could not ${label}: writing "${fileId}" failed \u2014 ${err.message}. Nothing was changed.`);
-    return { ok: false };
-  }
-
-  if (openInATab && S.state.documentId === fileId) checkForExternalChange(); // it is the one on screen: say so now
-  return { ok: true, result };
-}
-
-/** Whether `fileId` (on the backend of the current document) is open in any tab, the one on screen included.
- * @param {string} fileId */
-function isOpenInATab(fileId) {
-  const kind = S.state.storageKind;
-  if (S.state.documentId === fileId) return true;
-  return S.documentSessions.some((/** @type {any} */ s) => s.state && s.state.documentId === fileId && s.state.storageKind === kind);
 }
 
 /** Best-effort, proactive check: does the currently open document's

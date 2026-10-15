@@ -8,7 +8,7 @@ import { resolveOlpTarget } from '../src/capture-template.js';
 import { removeHeading } from '../src/heading-edit.js';
 import { S } from './app-state.js';
 import { commitAndRender, setStatus } from './editing.js';
-import { writeToOtherFile } from './external-sync.js';
+import { UNSAVED_NOTE, writeToOtherFile } from './buffers.js';
 
 /** @param {Heading} heading */
 export function getArchiveDestinationLabel(heading) {
@@ -46,6 +46,7 @@ export async function archiveHeadingToLocation(heading) {
   const clone = buildArchivedClone(S.state.doc, heading, S.state.documentId);
   const { ok } = await writeToOtherFile(targetFileId, {
     label: 'archive',
+    historyLabel: 'Archived heading (from another file)',
     allowMissing: true,
     mutate: (/** @type {any} */ doc) => {
       insertAtArchiveLocation(doc, clone, headlinePart);
@@ -57,7 +58,7 @@ export async function archiveHeadingToLocation(heading) {
   // The write succeeded -- now, and only now, remove the original.
   removeHeading(S.state.doc, heading);
   commitAndRender('Archived heading');
-  setStatus(`--- Archive complete. (${targetFileId})`);
+  setStatus(`--- Archive complete. (${targetFileId})${UNSAVED_NOTE}`);
 }
 
 /**
@@ -108,6 +109,7 @@ export async function unarchiveHeadingToOriginalLocation(heading) {
   const clone = buildRestoredClone(heading);
   const { ok } = await writeToOtherFile(archiveFile, {
     label: 'restore',
+    historyLabel: 'Restored (unarchived) heading (from another file)',
     allowMissing: false,
     mutate: (/** @type {any} */ doc) => {
       if (olpSegments.length > 0) {
@@ -126,5 +128,5 @@ export async function unarchiveHeadingToOriginalLocation(heading) {
   // heading from THIS (the currently open, archive) file.
   removeHeading(S.state.doc, heading);
   commitAndRender('Restored (unarchived) heading');
-  setStatus(`--- Restore complete. (${archiveFile})`);
+  setStatus(`--- Restore complete. (${archiveFile})${UNSAVED_NOTE}`);
 }

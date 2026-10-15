@@ -4,6 +4,7 @@ import { getMenuAliases } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { S } from './app-state.js';
+import { modifiedFileBuffers, saveSomeBuffers } from './buffers.js';
 import { RECENT_FILES_DISPLAY_LIMIT } from './constants.js';
 import { confirmDialog } from './dialogs.js';
 import { createNewUnsavedDocument, openRemotePath, saveCurrent } from './documents-io.js';
@@ -169,6 +170,18 @@ export async function renderFileMenuContent() {
       { label: 'Save', btn: saveBtn },
       { label: 'Save As', btn: saveAsBtn },
     ]);
+    // Always last, outside the reorderable four: a menu order a person already set lists exactly those four labels.
+    const saveSomeBtn = aliasedMenuDivItem(
+      fileMenuAliases,
+      'Save Some Buffers',
+      () => {
+        S.fileMenuOpen = false;
+        renderFileMenu();
+        saveSomeBuffers();
+      },
+      modifiedFileBuffers().length === 0
+    );
+    if (saveSomeBtn) fileMenuPanel.appendChild(saveSomeBtn);
     await renderRecentFilesSection(fileMenuPanel);
   }
 }

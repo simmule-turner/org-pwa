@@ -235,14 +235,21 @@ export function unloadedAgendaFiles() {
  *  deduplicated by documentId -- if the current file also happens to
  *  be in the configured list, the live in-memory version (with
  *  whatever unsaved edits exist right now) wins over a separately
- *  fetched, possibly-stale read of the same file. */
+ *  fetched, possibly-stale read of the same file. The same goes for a
+ *  file open in another tab: the agenda reads the buffer, as Emacs's
+ *  does, so what was captured or refiled into it shows before it is
+ *  saved. */
 export function aggregateAgendaDocs({ writable = false } = {}) {
   const docs = [{ documentId: S.state.documentId, doc: S.state.doc }];
   const seen = new Set([S.state.documentId]);
-  for (const entry of agendaFilesCache.values()) {
+  for (const [key, entry] of agendaFilesCache.entries()) {
     if (writable && entry.readOnly) continue; // `writable`: only for callers that write back (Refile, Replace); a local agenda file is read-only
     if (entry.doc && !seen.has(entry.documentId)) {
-      docs.push({ documentId: entry.documentId, doc: entry.doc });
+      const colon = key.indexOf(':');
+      const scheme = colon === -1 ? key : key.slice(0, colon);
+      const storageKind = scheme === 'local' ? 'filesystem' : scheme;
+      const openTab = S.documentSessions.find((/** @type {Record<string, any>} */ s) => s.tabId !== S.activeTabId && s.state && s.state.documentId === entry.documentId && s.state.storageKind === storageKind);
+      docs.push({ documentId: entry.documentId, doc: openTab ? openTab.state.doc : entry.doc });
       seen.add(entry.documentId);
     }
   }

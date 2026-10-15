@@ -6,21 +6,9 @@
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { clearPendingChange, getPendingChange } from '../src/outbox.js';
 import { pushRecentRefileTarget } from '../src/refile.js';
-import { setSyncMeta } from '../src/sync-engine.js';
 import { HELP_DOCUMENT_ID, PALETTE_RECENT_KEY, REFILE_RECENT_KEY } from './constants.js';
 import { kv } from './singletons.js';
 import { confirmDialog } from './dialogs.js';
-
-/**
- * @param {string} fileId
- * @param {any} hash
- * @param {string} content
- */
-export function recordSyncedWrite(fileId, hash, content) {
-  // `content` is kept as the new common ancestor for a later three-way
-  // merge (see merge3.js); omitted only by callers that don't have it.
-  return setSyncMeta(kv, fileId, typeof content === 'string' ? { lastSyncedHash: hash, baseContent: content } : { lastSyncedHash: hash });
-}
 
 /** The remembered refile destinations, newest first ([] if none or unreadable). */
 export async function loadRefileRecent() {

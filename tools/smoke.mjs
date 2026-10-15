@@ -287,6 +287,18 @@ async function documentText(page) {
   return text;
 }
 
+/** The text a file's buffer holds right now (the tab on screen or one behind it), or null if no tab has it open. A capture,
+ *  refile or archive into another file edits this, not the file. */
+async function bufferText(page, name) {
+  return page.evaluate(async (n) => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { serializeOrg } = await import('/src/org-parser.js');
+    const state = S.state.documentId === n ? S.state : (S.documentSessions.find((s) => s.state && s.state.documentId === n) || {}).state;
+    return state ? serializeOrg(state.doc) : null;
+  }, name);
+}
+const saveBuffers = (page) => page.evaluate(async () => (await import('/src-browser/buffers.js')).saveSomeBuffers());
+
 async function openDav(page, name) {
   await fileMenu(page, 'Open', 'WebDAV');
   await page.getByText(name, { exact: false }).first().click();
@@ -2780,8 +2792,8 @@ check('capture from outside: a share URL runs the named template with the shared
   // Capture to another file needs a document open on the same backend; the app restores the tab that was open when a launch URL starts it.
   await openDav(page, 'notes.org');
   const waitForFile = async (needle) => {
-    for (let n = 0; n < 40 && !dav.get('inbox.org').includes(needle); n++) await page.waitForTimeout(250);
-    return dav.get('inbox.org');
+    for (let n = 0; n < 40 && !((await bufferText(page, 'inbox.org')) || '').includes(needle); n++) await page.waitForTimeout(250);
+    return (await bufferText(page, 'inbox.org')) || '';
   };
 
   // 1. the share target's URL: key, title, text and url
@@ -2797,7 +2809,11 @@ check('capture from outside: a share URL runs the named template with the shared
   // 2. a reload does not capture a second time
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(1500);
-  expect((dav.get('inbox.org').match(/\*\* Note/g) || []).length === 1, `a reload must not repeat the capture: ${JSON.stringify(dav.get('inbox.org'))}`);
+  expect((((await bufferText(page, 'inbox.org')) || '').match(/\*\* Note/g) || []).length === 1, `a reload must not repeat the capture: ${JSON.stringify(await bufferText(page, 'inbox.org'))}`);
+  expect(dav.get('inbox.org') === '* Inbox\n', 'and the capture sits in inbox.org\'s buffer: the file is not written until it is saved');
+  await saveBuffers(page);
+  await page.waitForFunction(() => document.getElementById('status').innerText.includes('Saved'), null, { timeout: 8000 });
+  expect(dav.get('inbox.org').includes('** Note\n  First line'), `saving writes it: ${JSON.stringify(dav.get('inbox.org'))}`);
 
   // 3. a share with no key shows the template list, with the shared text kept for whichever is chosen
   await page.goto(`${main.base}/index.html?title=T&text=chosen%20later`, { waitUntil: 'load' });
@@ -3859,8 +3875,8 @@ check('platform seam: a native shell can hand the app a share directly (runLaunc
     const { runLaunch } = await import('/src-browser/launch-params.js');
     await runLaunch({ capture: 'n', shared: { title: 'Native page', text: 'handed over by a share extension', url: 'https://example.com/native' } });
   });
-  for (let n = 0; n < 40 && !dav.get('inbox.org').includes('handed over'); n++) await page.waitForTimeout(250);
-  const file = dav.get('inbox.org');
+  for (let n = 0; n < 40 && !((await bufferText(page, 'inbox.org')) || '').includes('handed over'); n++) await page.waitForTimeout(250);
+  const file = (await bufferText(page, 'inbox.org')) || '';
   expect(file.includes('** Note\n  handed over by a share extension\n  [[https://example.com/native][Native page]]'), `the template ran with the shared content: ${JSON.stringify(file)}`);
   expect(page.url() === urlBefore, 'and no URL was involved: the address is untouched');
 
@@ -3871,8 +3887,8 @@ check('platform seam: a native shell can hand the app a share directly (runLaunc
   });
   await page.waitForSelector('#capturePanel', { state: 'visible', timeout: 5000 });
   await page.locator('#capturePanel button', { hasText: 'Shared note' }).first().click();
-  for (let n = 0; n < 40 && !dav.get('inbox.org').includes('second share'); n++) await page.waitForTimeout(250);
-  expect(dav.get('inbox.org').includes('  second share'), 'a share with no key shows the list and the picked template gets the text');
+  for (let n = 0; n < 40 && !((await bufferText(page, 'inbox.org')) || '').includes('second share'); n++) await page.waitForTimeout(250);
+  expect(((await bufferText(page, 'inbox.org')) || '').includes('  second share'), 'a share with no key shows the list and the picked template gets the text');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -4238,6 +4254,22 @@ check('settings: with a service worker the Updates section is unchanged (the ver
   await section.getByText(/^Version: org-pwa-shell-v\d+/).waitFor({ state: 'visible', timeout: 6000 });
   expect(!(await section.getByRole('button', { name: 'Check for updates' }).isDisabled()), 'the button is enabled');
   expect(!(await section.innerText()).includes('installing a newer version'), 'and there is no APK message');
+  const btn = section.getByRole('button', { name: 'Check for updates' });
+  await btn.click();
+  const status = section.locator('[data-about-status]');
+  await status.waitFor({ state: 'visible', timeout: 6000 });
+  const lay = await page.evaluate(() => {
+    const sec = [...document.querySelectorAll('.settings-section')].find((e) => e.querySelector('.panel-section-title')?.textContent === 'Updates');
+    const b = [...sec.querySelectorAll('button')].find((x) => x.textContent.includes('Check for updates')).getBoundingClientRect();
+    const v = sec.querySelector('[data-about-version]');
+    const st = v.querySelector('[data-about-status]');
+    const cs = getComputedStyle(st);
+    const sr = sec.getBoundingClientRect();
+    return { bc: b.left + b.width / 2, sc: sr.left + sr.width / 2, bottom: b.bottom, vtop: v.getBoundingClientRect().top, align: getComputedStyle(v).textAlign, color: cs.color, weight: cs.fontWeight, text: v.textContent };
+  });
+  expect(Math.abs(lay.bc - lay.sc) < 12, `button centred: ${JSON.stringify(lay)}`);
+  expect(lay.bottom <= lay.vtop + 1 && lay.align === 'center', `version line below, centred: ${JSON.stringify(lay)}`);
+  expect(lay.color === 'rgb(192, 57, 43)' && Number(lay.weight) >= 700 && lay.text.startsWith('Version: '), `status red and bold on the version line: ${JSON.stringify(lay)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -5384,6 +5416,7 @@ check('local: resolves in the org-pwa folder wherever a scheme is accepted: org-
     const { runCaptureWithAnswers } = await import('/src-browser/capture-ui.js');
     await runCaptureWithAnswers({ key: 'z', description: 'Z', type: 'item', olp: ['Inbox'], template: 'Captured into the folder', file: 'local:inbox.org', emptyLines: 0 }, []);
     await runCaptureWithAnswers({ key: 'y', description: 'Y', type: 'item', olp: ['Fresh'], template: 'Into a new file', file: 'local:fresh.org', emptyLines: 0 }, []);
+    await (await import('/src-browser/buffers.js')).saveSomeBuffers(); // a capture edits the file's buffer; saving writes it
     return { inbox: window.__tree.get('inbox.org') || null, fresh: window.__tree.get('fresh.org') || null };
   });
   expect(captured.inbox && captured.inbox.includes('Captured into the folder'), `a capture template with file: local:inbox.org writes into the folder: ${JSON.stringify(captured.inbox)}`);
@@ -5751,22 +5784,75 @@ check('timestamp picker: an end time defaults to 30 minutes after the start, can
   await context.close();
 });
 
-check('a write to a file that is open in another tab (a capture, a refile) is not hidden from that tab: switching to it says the file changed', async () => {
-  dav.reset({ 'a.org': '* A one\n', 'b.org': '* B one\n' });
+check('buffers: Capture, Refile and Archive into another file edit its buffer -- a tab keeps its unsaved edits, a file with no tab gets one, and nothing is written until Save Some Buffers', async () => {
+  dav.reset({ 'a.org': '* A one\n', 'b.org': '* B one\n', 'c.org': '* C one\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await openDav(page, 'b.org');
+  await replaceInDocument(page, 'B one', 'B typed'); // an unsaved edit of the person's own, in the tab that will be behind
   await openDav(page, 'a.org');
-  expect((await page.locator('#tabBar > div').count()) === 2, 'two tabs, a.org on screen');
-  const ok = await page.evaluate(async () => {
-    const { writeToOtherFile } = await import('/src-browser/external-sync.js');
-    const { parseOrg } = await import('/src/org-parser.js');
-    const r = await writeToOtherFile('b.org', { label: 'capture', mutate: (doc) => { const add = parseOrg('* Captured\n'); doc.children.push(...add.children); return true; } });
-    return r.ok;
-  });
-  expect(ok && dav.get('b.org').includes('* Captured'), `the capture reached b.org: ${JSON.stringify(dav.get('b.org'))}`);
+  const here = () => page.evaluate(async () => (await import('/src-browser/app-state.js')).S.state.documentId);
+  const addTo = (file, title) =>
+    page.evaluate(
+      async ([f, t]) => {
+        const { writeToOtherFile } = await import('/src-browser/buffers.js');
+        const { parseOrg } = await import('/src/org-parser.js');
+        return (await writeToOtherFile(f, { label: 'capture', mutate: (doc) => { doc.children.push(...parseOrg('* ' + t + '\n').children); return true; } })).ok;
+      },
+      [file, title]
+    );
+  expect(await addTo('b.org', 'Into open tab'), 'a capture into a file with a tab');
+  expect(await addTo('c.org', 'Into new tab'), 'a capture into a file with no tab');
+  expect(dav.get('b.org') === '* B one\n' && dav.get('c.org') === '* C one\n', 'neither file was written');
+  expect((await here()) === 'a.org', 'the tab on screen did not change');
+  expect((await page.locator('#tabBar > div').count()) === 3, 'the file with no tab got one');
+  expect((await page.locator('#tabBar > div', { hasText: '●' }).count()) === 2, 'and both buffers that hold a change are marked modified');
   await page.locator('#tabBar > div', { hasText: 'b.org' }).first().click();
-  await page.waitForFunction(() => getComputedStyle(document.getElementById('externalChangeBanner')).display !== 'none', null, { timeout: 8000 });
-  expect((await page.locator('#externalChangeBanner').innerText()).includes('b.org'), 'switching to b.org says it changed elsewhere');
+  await page.waitForTimeout(600);
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('externalChangeBanner')).display === 'none'), 'the file did not change, so there is no "changed elsewhere" notice');
+  const b = await documentText(page);
+  expect(b.includes('B typed') && b.includes('Into open tab'), `the tab keeps the person's edit and gains the capture: ${JSON.stringify(b)}`);
+  await page.locator('#tabBar > div', { hasText: 'c.org' }).first().click();
+  const c = await documentText(page);
+  expect(c.includes('C one') && c.includes('Into new tab'), `the new tab holds the file with the capture: ${JSON.stringify(c)}`);
+  await openPalette(page);
+  await page.keyboard.type('save some buffers');
+  await page.keyboard.press('Enter');
+  await waitForStatus(page, 'Saved 2 files');
+  const [bFile, cFile] = [dav.get('b.org'), dav.get('c.org')];
+  expect(bFile.includes('* B typed') && bFile.includes('* Into open tab') && cFile.includes('* C one') && cFile.includes('* Into new tab'), `both files were written: ${JSON.stringify([bFile, cFile])}`);
+  expect(dav.get('a.org') === '* A one\n', 'and the clean one was not touched');
+  expect((await page.locator('#tabBar > div', { hasText: '●' }).count()) === 0, 'nothing is marked modified now');
+  expect((await here()) === 'c.org', 'the tab the command was run from is still the one on screen');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('buffers: Save Some Buffers is in the File menu (dimmed when nothing is modified) and the palette; Revert Buffer asks, discards the changes, and Undo brings them back', async () => {
+  dav.reset({ 'a.org': '* A one\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'a.org');
+  const item = () => page.locator('#fileMenuPanel .menu-list-item', { hasText: 'Save Some Buffers' });
+  await page.click('#fileMenuBtn');
+  expect((await item().count()) === 1 && (await item().evaluate((el) => el.classList.contains('menu-list-item-disabled'))), 'the File menu has Save Some Buffers, dimmed while no buffer is modified');
+  await page.click('#fileMenuBtn');
+  await replaceInDocument(page, 'A one', 'A typed');
+  await page.click('#fileMenuBtn');
+  expect(!(await item().evaluate((el) => el.classList.contains('menu-list-item-disabled'))), 'and live once one is');
+  await page.click('#fileMenuBtn');
+  await openPalette(page);
+  await page.keyboard.type('save-some-buffers');
+  expect((await paletteRows(page)).some((row) => row.includes('Save some buffers') && row.includes('C-x s')), 'the palette finds it by its Emacs name, with its key');
+  await page.keyboard.press('Escape');
+  await openPalette(page);
+  await page.keyboard.type('revert buffer');
+  await page.keyboard.press('Enter');
+  await page.locator('.ui-overlay').getByRole('button', { name: 'Revert' }).click();
+  await waitForStatus(page, 'Reverted');
+  expect((await documentText(page)) === '* A one\n', 'Revert Buffer read the file again');
+  expect(!(await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.isDirty)), 'and the buffer is no longer modified');
+  await page.evaluate(async () => (await import('/src-browser/editing.js')).performUndo());
+  expect((await documentText(page)).includes('A typed'), 'Undo brings the discarded change back');
+  expect(dav.get('a.org') === '* A one\n', 'and the file itself was never touched');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

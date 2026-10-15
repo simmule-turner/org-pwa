@@ -9,7 +9,8 @@ import { findHeadingByOutlinePath, resolveEntryFileIds } from '../src/refile.js'
 import { aggregateAgendaDocs } from './agenda-files.js';
 import { S } from './app-state.js';
 import { commitAndRender, setStatus } from './editing.js';
-import { activeDiskAdapter, writeToOtherFile } from './external-sync.js';
+import { UNSAVED_NOTE, writeToOtherFile } from './buffers.js';
+import { activeDiskAdapter } from './external-sync.js';
 import { rememberRefileTarget } from './sync-helpers.js';
 
 /**
@@ -103,6 +104,7 @@ export async function performRefile(heading, targetDocumentId, targetOutlinePath
   setStatus(`Refiling to ${targetDocumentId}\u2026`);
   const { ok, result: targetTitle } = await writeToOtherFile(targetDocumentId, {
     label: 'refile',
+    historyLabel: 'Refiled heading (from another file)',
     allowMissing: false,
     mutate: (/** @type {any} */ doc) => {
       const target = findHeadingByOutlinePath(doc, targetOutlinePath);
@@ -123,6 +125,6 @@ export async function performRefile(heading, targetDocumentId, targetOutlinePath
   // The write succeeded -- now, and only now, remove the original.
   removeHeading(S.state.doc, heading);
   commitAndRender('Refiled heading');
-  setStatus(`Refiled to "${targetTitle}" in "${targetDocumentId}".`);
+  setStatus(`Refiled to "${targetTitle}" in "${targetDocumentId}"${UNSAVED_NOTE}.`);
   rememberRefileTarget(targetDocumentId, targetOutlinePath);
 }

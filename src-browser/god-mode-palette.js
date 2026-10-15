@@ -13,6 +13,7 @@ import { resolveTodoSequences } from '../src/todo-cycle.js';
 import { canRedo, canUndo } from '../src/undo-history.js';
 import { S } from './app-state.js';
 import { openAttachChoicePrompt } from './attachments-flow.js';
+import { modifiedFileBuffers, revertBuffer, saveSomeBuffers } from './buffers.js';
 import { openCalendarPanel } from './calendar-panel.js';
 import { openCapturePrompt, renderCapturePanel } from './capture-ui.js';
 import { closeAllOverlayPanels } from './chrome.js';
@@ -329,6 +330,7 @@ export const GOD_MODE_ACTIONS = {
     renameBuffer();
   },
   'C-x C-s': () => saveCurrent(),
+  'C-x s': () => saveSomeBuffers(),
   'C-x C-w': () => openFileMenuAt('saveas'),
   'C-x C-f': () => openFileMenuAt('open'),
   'C-x C-q': () => {
@@ -389,6 +391,7 @@ export const PALETTE_NEEDS = {
   heading: (/** @type {any} */ target) => (target ? null : 'tap a heading first, or focus one with Escape'),
   writable: () => (S.isBufferReadOnly ? 'the buffer is read-only \u2014 run Toggle read-only (C-x C-q)' : null),
   storage: () => (S.state.storageKind ? null : 'this document has no file yet \u2014 use Save as'),
+  modifiedBuffers: () => (modifiedFileBuffers().length ? null : '(No files need saving)'),
   narrowed: () => (S.narrowedHeading ? null : 'nothing is narrowed'),
   undo: () => (canUndo(S.history) ? null : 'nothing to undo'),
   redo: () => (canRedo(S.history) ? null : 'nothing to redo'),
@@ -513,6 +516,8 @@ export function paletteCommandList() {
     // -- Document
     { id: 'save', label: 'Save', orgName: 'save-buffer', keys: 'C-x C-s', group: 'Document', needs: ['doc', 'storage'], run: () => saveCurrent() },
     { id: 'save-as', label: 'Save as\u2026', orgName: 'write-file', keys: 'C-x C-w', group: 'Document', needs: ['doc'], run: () => openFileMenuAt('saveas') },
+    { id: 'save-some-buffers', label: 'Save some buffers', orgName: 'save-some-buffers', keys: 'C-x s', group: 'Document', keywords: ['save all', 'all files', 'modified', 'unsaved'], needs: ['modifiedBuffers'], run: () => saveSomeBuffers() },
+    { id: 'revert-buffer', label: 'Revert buffer', orgName: 'revert-buffer', group: 'Document', keywords: ['reload', 'discard', 'undo changes', 'from file'], needs: ['doc', 'storage'], run: () => revertBuffer() },
     { id: 'open', label: 'Open file\u2026', orgName: 'find-file', keys: 'C-x C-f', group: 'Document', run: () => openFileMenuAt('open') },
     { id: 'rename-buffer', label: 'Rename buffer\u2026', orgName: 'rename-buffer', keys: 'C-x x r', group: 'Document', needs: ['doc'], run: () => renameBuffer() },
     { id: 'new', label: 'New document', group: 'Document', run: () => createNewUnsavedDocument() },

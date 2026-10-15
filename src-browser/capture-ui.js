@@ -8,7 +8,8 @@ import { openTimestampPickerPopup, showModalOverlay } from './dialogs.js';
 import { getOlpPrepend } from './doc-helpers.js';
 import { capturePanel, capturePanelBox } from './dom.js';
 import { commitAndRender, setStatus } from './editing.js';
-import { activeDiskAdapter, writeToOtherFile } from './external-sync.js';
+import { UNSAVED_NOTE, writeToOtherFile } from './buffers.js';
+import { activeDiskAdapter } from './external-sync.js';
 import { navigateToHeading } from './navigation.js';
 import { getCaptureTemplates } from './settings.js';
 import { agendaFilesCache, kv } from './singletons.js';
@@ -164,8 +165,12 @@ export async function peekTableAlreadyExists(template) {
   const targetFileId = resolveCaptureFileId(template.file, S.state.documentId);
 
   let doc;
+  // a file open in another tab is that tab's buffer, which may hold a table captured into it and not saved yet
+  const openTab = S.documentSessions.find((/** @type {Record<string, any>} */ s) => s.tabId !== S.activeTabId && s.state && s.state.documentId === targetFileId && s.state.storageKind === S.state.storageKind);
   if (targetFileId === S.state.documentId) {
     doc = S.state.doc;
+  } else if (openTab) {
+    doc = openTab.state.doc;
   } else if (S.state.storageKind === 'filesystem' || S.state.storageKind === 'input') {
     try {
       const existing = await activeDiskAdapter().read(targetFileId);
@@ -423,6 +428,7 @@ export async function runCaptureWithAnswers(template, answers) {
     setStatus(`Capturing to ${targetFileId}\u2026`);
     const { ok } = await writeToOtherFile(targetFileId, {
       label: 'capture',
+      historyLabel: `Captured: ${template.description}`,
       allowMissing: true,
       mutate: (/** @type {any} */ doc) => {
         const target = resolveOlpTarget(doc, template.olp, { now, prepend: getOlpPrepend(template) });
@@ -446,7 +452,7 @@ export async function runCaptureWithAnswers(template, answers) {
       return;
     }
 
-    setStatus(`Captured to ${targetFileId}.`);
+    setStatus(`Captured to ${targetFileId}${UNSAVED_NOTE}.`);
     afterSuccessfulCapture();
     emitExtensionEvent('capture', { description: template.description || '', file: targetFileId, sameFile: false });
     return;
