@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v528 — End time starts at 30 minutes
+In the date & time picker for ~%^T~ and ~%^U~ prompts, the End time now fills in 30 minutes after the start you choose, since appointments are short, and follows the start until you set it yourself. A new *No end* button leaves it out.
+Verified: the picker's browser check and a unit test.
+
 * v527 — End time in the date & time picker
 The picker behind ~%^T~ and ~%^U~ capture prompts has an optional *End time*, so an appointment can be captured with a start and an end (~<2026-10-20 Tue 09:00-10:30>~). It needs a start and must be later than it. The calendar export and the agenda notifications already read such a range.
 Verified: the picker's browser check and a unit test.

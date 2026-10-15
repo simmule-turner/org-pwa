@@ -1,7 +1,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseOrgTimestamp, findTimestamps, formatOrgTimestamp, parseDelay, dateKey, isSameDay } from '../src/org-timestamp.js';
+import { parseOrgTimestamp, findTimestamps, formatOrgTimestamp, addMinutesToTime, parseDelay, dateKey, isSameDay } from '../src/org-timestamp.js';
 
 test('parses a basic active date-only timestamp', () => {
   const ts = parseOrgTimestamp('<2026-07-21 Tue>');
@@ -179,6 +179,14 @@ test('formatOrgTimestamp builds a plain date-only active timestamp', () => {
 test('formatOrgTimestamp builds an inactive timestamp when active: false', () => {
   const s = formatOrgTimestamp({ date: new Date(2026, 0, 5), active: false });
   assert.equal(s, '[2026-01-05 Mon]');
+});
+
+test('addMinutesToTime adds minutes within the day and gives nothing past it', () => {
+  assert.equal(addMinutesToTime('09:00', 30), '09:30');
+  assert.equal(addMinutesToTime('09:45', 30), '10:15');
+  assert.equal(addMinutesToTime('23:29', 30), '23:59');
+  assert.equal(addMinutesToTime('23:30', 30), '');
+  assert.equal(addMinutesToTime('', 30), '');
 });
 
 test('formatOrgTimestamp writes an end time after the start, and ignores one without a start', () => {

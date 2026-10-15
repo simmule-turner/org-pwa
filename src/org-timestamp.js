@@ -172,6 +172,16 @@ function formatOrgTimestamp(/** @type {any} */ { date, time = /** @type {string 
   return active ? `<${inner}>` : `[${inner}]`;
 }
 
+/** "HH:MM" plus some minutes, as "HH:MM", or '' when that would pass the end of the day (an org time range stays within the day).
+ * @param {string} time @param {number} minutes */
+function addMinutesToTime(time, minutes) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(time || '');
+  if (!m) return '';
+  const total = Number(m[1]) * 60 + Number(m[2]) + minutes;
+  if (total > 23 * 60 + 59) return '';
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
 const DELAY_RE = /^-(\d+)([hdwmy])$/;
 
 /** Parses a delay string (e.g. "-3d") into { amount, unit }, or null if
@@ -192,6 +202,7 @@ export {
   parseOrgTimestamp,
   findTimestamps,
   formatOrgTimestamp,
+  addMinutesToTime,
   parseDelay,
   dateKey,
   isSameDay,

@@ -3,7 +3,7 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: dialogs.
 import { getHeadingText, setHeadingText } from '../src/body-edit.js';
-import { formatOrgTimestamp } from '../src/org-timestamp.js';
+import { addMinutesToTime, formatOrgTimestamp } from '../src/org-timestamp.js';
 import { S } from './app-state.js';
 import { scrollContainer } from './chrome.js';
 import { commitAndRender, setStatus } from './editing.js';
@@ -234,6 +234,9 @@ export function openTimestampPickerPopup(kind) {
     let endInput = null;
     /** @type {HTMLElement | null} */
     let endNote = null;
+    /** @type {HTMLButtonElement | null} */
+    let noEndBtn = null;
+    let endTouched = false; // once the person has set (or cleared) the end themselves, a new start time leaves it alone
     if (kind.hasTime) {
       timeInput = document.createElement('input');
       timeInput.type = 'time';
@@ -246,7 +249,13 @@ export function openTimestampPickerPopup(kind) {
       textInputStyle(endInput);
       endInput.style.webkitAppearance = 'none';
       endInput.style.appearance = 'none';
-      modal.appendChild(fieldRow('End time (optional)', endInput));
+      const endRow = fieldRow('End time (optional)', endInput);
+      noEndBtn = document.createElement('button');
+      noEndBtn.type = 'button';
+      noEndBtn.textContent = 'No end';
+      noEndBtn.style.cssText = 'align-self:flex-start;margin-top:4px;font-size:13px;padding:4px 10px;';
+      endRow.appendChild(noEndBtn);
+      modal.appendChild(endRow);
       endNote = document.createElement('div');
       endNote.style.cssText = 'font-size:12px;color:var(--danger,#c0392b);min-height:0;';
       modal.appendChild(endNote);
@@ -290,8 +299,26 @@ export function openTimestampPickerPopup(kind) {
       okBtn.disabled = !dateInput.value || !!problem;
     };
     dateInput.addEventListener('input', refreshOk);
-    if (timeInput) timeInput.addEventListener('input', refreshOk);
-    if (endInput) endInput.addEventListener('input', refreshOk);
+    if (timeInput) {
+      timeInput.addEventListener('input', () => {
+        // appointments are mostly short: until the end has been set by hand it follows the start by 30 minutes
+        if (endInput && !endTouched) endInput.value = addMinutesToTime(timeInput?.value || '', 30);
+        refreshOk();
+      });
+    }
+    if (endInput) {
+      endInput.addEventListener('input', () => {
+        endTouched = true;
+        refreshOk();
+      });
+    }
+    if (noEndBtn) {
+      noEndBtn.onclick = () => {
+        if (endInput) endInput.value = '';
+        endTouched = true;
+        refreshOk();
+      };
+    }
 
     buttonRow.appendChild(cancelBtn);
     buttonRow.appendChild(okBtn);

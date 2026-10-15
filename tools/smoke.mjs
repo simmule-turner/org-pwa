@@ -5709,7 +5709,7 @@ check('agenda notifications on a shell: a reminder swiped away in the shade (rep
   await context.close();
 });
 
-check('timestamp picker: an optional end time makes 09:00-10:30, needs a start and a later time, and a date-only picker has none', async () => {
+check('timestamp picker: an end time defaults to 30 minutes after the start, can be set or cleared, must be later than the start, and a date-only picker has none', async () => {
   const { context, page, errors } = await freshPage(main);
   const open = (kind) => page.evaluate(async (k) => { window.__picked = undefined; (await import('/src-browser/dialogs.js')).openTimestampPickerPopup(k).then((r) => { window.__picked = r; }); }, kind);
   const modal = () => page.locator('.ui-overlay .panel').last();
@@ -5717,20 +5717,33 @@ check('timestamp picker: an optional end time makes 09:00-10:30, needs a start a
   await modal().locator('input[type=date]').fill('2026-10-20');
   const times = modal().locator('input[type=time]');
   expect((await times.count()) === 2 && (await modal().innerText()).includes('End time (optional)'), 'a date & time picker has a start and an end time');
-  await times.nth(1).fill('10:30');
-  expect(await modal().getByRole('button', { name: 'OK' }).isDisabled(), 'an end time without a start leaves OK disabled');
-  await times.nth(0).fill('11:00');
-  expect((await modal().innerText()).includes('must be after') && (await modal().getByRole('button', { name: 'OK' }).isDisabled()), 'an end before the start is refused, with a reason');
   await times.nth(0).fill('09:00');
+  expect((await times.nth(1).inputValue()) === '09:30', 'choosing a start time fills the end 30 minutes later');
+  await times.nth(0).fill('09:45');
+  expect((await times.nth(1).inputValue()) === '10:15', 'and it follows the start while it has not been touched');
+  await modal().getByRole('button', { name: 'No end' }).click();
+  expect((await times.nth(1).inputValue()) === '', 'No end clears it');
+  await times.nth(0).fill('09:00');
+  expect((await times.nth(1).inputValue()) === '', 'and a cleared end stays cleared');
+  await times.nth(1).fill('08:00');
+  expect((await modal().innerText()).includes('must be after') && (await modal().getByRole('button', { name: 'OK' }).isDisabled()), 'an end before the start is refused, with a reason');
+  await times.nth(1).fill('10:30');
   await modal().getByRole('button', { name: 'OK' }).click();
   await page.waitForFunction(() => window.__picked !== undefined, null, { timeout: 3000 });
   expect((await page.evaluate(() => window.__picked)) === '<2026-10-20 Tue 09:00-10:30>', `the range is written: ${await page.evaluate(() => window.__picked)}`);
   await open({ active: false, hasTime: true });
   await modal().locator('input[type=date]').fill('2026-10-20');
   await modal().locator('input[type=time]').nth(0).fill('09:00');
+  await modal().getByRole('button', { name: 'No end' }).click();
   await modal().getByRole('button', { name: 'OK' }).click();
   await page.waitForFunction(() => window.__picked !== undefined, null, { timeout: 3000 });
-  expect((await page.evaluate(() => window.__picked)) === '[2026-10-20 Tue 09:00]', 'without an end time it is as before (inactive too)');
+  expect((await page.evaluate(() => window.__picked)) === '[2026-10-20 Tue 09:00]', 'with No end it is as before (inactive too)');
+  await open({ active: true, hasTime: true });
+  await modal().locator('input[type=date]').fill('2026-10-20');
+  await modal().locator('input[type=time]').nth(0).fill('14:00');
+  await modal().getByRole('button', { name: 'OK' }).click();
+  await page.waitForFunction(() => window.__picked !== undefined, null, { timeout: 3000 });
+  expect((await page.evaluate(() => window.__picked)) === '<2026-10-20 Tue 14:00-14:30>', 'a start alone gives a 30 minute appointment');
   await open({ active: true, hasTime: false });
   expect((await modal().locator('input[type=time]').count()) === 0, 'a date-only picker has no time fields');
   await modal().getByRole('button', { name: 'Cancel' }).click();
