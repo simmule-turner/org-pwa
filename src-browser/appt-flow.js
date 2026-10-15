@@ -20,7 +20,7 @@ const SCAN_HOURS = 6; // how far ahead the app watches by itself
 const SCHEDULE_HOURS = 24; // and how far a platform that can hold reminders is told about
 
 // Runtime state, not a setting. `fired` is what has been announced, so a rescan does not announce it again.
-const runtime = { appointments: /** @type {any[]} */ ([]), held: new Set(), listeningForTaps: false, fired: new Set(), lastScan: 0, scanning: false };
+const runtime = { appointments: /** @type {any[]} */ ([]), held: new Set(), silenced: new Set(), listeningForTaps: false, fired: new Set(), lastScan: 0, scanning: false };
 
 /** The settings in force (loaded once at start, replaced by saveSettings). */
 export function apptSettings() {
@@ -44,6 +44,7 @@ export async function saveApptSettings(next) {
     runtime.appointments = [];
     runtime.fired = new Set();
     runtime.held = new Set();
+    runtime.silenced = new Set();
     S.apptModeLine = null;
     hideBanner();
     try {
@@ -55,6 +56,7 @@ export async function saveApptSettings(next) {
     return S.apptSettings;
   }
   if (!S.apptSettings['appt-display-mode-line']) S.apptModeLine = null;
+  runtime.silenced = new Set();
   runtime.fired = new Set(); // a new warning time can put an appointment back inside its window
   await scanAppointments();
   return S.apptSettings;
@@ -84,6 +86,8 @@ export async function scanAppointments(now = new Date()) {
     const horizon = platform.notifications.scheduled ? SCHEDULE_HOURS : SCAN_HOURS;
     const all = upcomingAppointments(docs, now, { ...options, hours: horizon });
     runtime.appointments = all;
+    const live = new Set(all.map((/** @type {any} */ a) => a.key));
+    runtime.silenced = new Set([...runtime.silenced].filter((key) => live.has(key))); // the memory only needs to cover what could still be announced
     runtime.lastScan = now.getTime();
     runtime.fired = pruneFired(runtime.fired, all, now);
     await holdPlatformNotifications(all, now);
@@ -107,7 +111,7 @@ async function holdPlatformNotifications(appointments, now) {
       await n.cancelAll();
       return;
     }
-    const planned = plannedNotifications(appointments, now, settings['appt-message-warning-time'], settings['appt-display-interval']);
+    const planned = plannedNotifications(appointments.filter((/** @type {any} */ a) => !runtime.silenced.has(a.key)), now, settings['appt-message-warning-time'], settings['appt-display-interval']);
     await n.schedule(planned);
     runtime.held = new Set(planned.map((p) => p.slot));
   } catch {
@@ -129,7 +133,7 @@ function tick(now) {
   const settings = S.apptSettings;
   if (!settings['appt-activate']) return;
   const warning = settings['appt-message-warning-time'];
-  for (const { appt, offset, minutes } of dueReminders(runtime.appointments, now, warning, runtime.fired, settings['appt-display-interval'])) {
+  for (const { appt, offset, minutes } of dueReminders(runtime.appointments.filter((/** @type {any} */ a) => !runtime.silenced.has(a.key)), now, warning, runtime.fired, settings['appt-display-interval'])) {
     runtime.fired.add(reminderSlot(appt, offset));
     announce(appt, offset, minutes);
   }
@@ -163,9 +167,9 @@ function announce(appt, offset, minutes) {
       if (allowed && !(n.scheduled && runtime.held.has(reminderSlot(appt, offset)))) {
         await n.show({ id: appt.id, title: appt.title, body: reminderBody(appt, minutes), detail: appt.detail, day }).catch(() => {});
       }
-      if (visible || !allowed) showBanner(appt.title, reminderBody(appt, minutes), appt.detail, day);
+      if (visible || !allowed) showBanner(appt, reminderBody(appt, minutes), day);
     })
-    .catch(() => showBanner(appt.title, reminderBody(appt, minutes), appt.detail, day));
+    .catch(() => showBanner(appt, reminderBody(appt, minutes), day));
 }
 
 /** @param {any} [appt] */
@@ -198,12 +202,12 @@ function listenForTaps() {
 // and the next reminder for the same appointment replaces it rather than stacking.
 
 /**
- * @param {string} title
+ * @param {{ key: string, id: string | number, title: string, detail?: string }} appt
  * @param {string} body
- * @param {string} detail
  * @param {number} dayMs
  */
-function showBanner(title, body, detail, dayMs) {
+function showBanner(appt, body, dayMs) {
+  const { title, detail } = appt;
   if (typeof document === 'undefined') return;
   let el = document.getElementById('apptBanner');
   if (!el) {
@@ -230,9 +234,13 @@ function showBanner(title, body, detail, dayMs) {
   buttons.style.cssText = 'display:flex;gap:10px;margin-top:12px;';
   const open = menuButton('Open day', () => {
     hideBanner();
+    silenceAppointment(appt);
     openApptDay(dayMs);
   });
-  const dismiss = menuButton('Dismiss', hideBanner);
+  const dismiss = menuButton('Dismiss', () => {
+    hideBanner();
+    silenceAppointment(appt);
+  });
   buttons.appendChild(open);
   buttons.appendChild(dismiss);
   el.appendChild(heading);
@@ -240,6 +248,20 @@ function showBanner(title, body, detail, dayMs) {
   if (detail) el.appendChild(text);
   el.appendChild(buttons);
   el.style.display = 'block';
+}
+
+/** Answering a reminder (Dismiss, Open day) ends the reminders for that appointment: the repeats every appt-display-interval minutes,
+ * the ones a shell holds for later, and the notification already showing. Until it has started they would otherwise keep coming.
+ * @param {{ key: string, id: string | number, title: string, detail?: string }} appt */
+function silenceAppointment(appt) {
+  runtime.silenced.add(appt.key);
+  holdPlatformNotifications(runtime.appointments, new Date()).catch(() => {});
+  try {
+    const sw = typeof navigator !== 'undefined' && navigator.serviceWorker;
+    if (sw) sw.getRegistration().then((r) => r && r.getNotifications({ tag: `appt-${appt.id}` }).then((list) => list.forEach((n) => n.close()))).catch(() => {});
+  } catch {
+    // the notification stays in the tray; nothing new will replace it
+  }
 }
 
 function hideBanner() {

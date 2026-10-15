@@ -5635,7 +5635,7 @@ check('agenda notifications: an appointment inside its warning time gets a syste
   expect(!(await page.locator('#apptBanner').isVisible()), 'Dismiss closes it');
   await page.evaluate(async () => { const { renderModeline } = await import('/src-browser/chrome.js'); renderModeline(); });
   expect(/Appt: [78]m/.test(await modeline(page)), `the mode line counts down: ${await modeline(page)}`);
-  // a repeat: with the clock moved on to the next reminder time, it is announced again, replacing (not stacking on) the banner
+  // Dismiss ends the reminders for that appointment: with the clock moved on to the next reminder time, nothing is announced again
   await page.evaluate(async () => {
     const flow = await import('/src-browser/appt-flow.js');
     const run = flow.apptRuntime();
@@ -5643,9 +5643,13 @@ check('agenda notifications: an appointment inside its warning time gets a syste
     run.appointments = [{ ...appt, start: new Date(Date.now() + 6.5 * 60000) }]; // inside the 7 minute reminder, past the 10
     flow.apptTick(new Date());
   });
+  await page.waitForTimeout(600);
+  expect((await page.evaluate(() => window.__shown.length)) === 1 && !(await page.locator('#apptBanner').isVisible()), 'after Dismiss the next reminder time brings no notification and no banner');
+  // asking again (a new warning time) makes the reminders start over; this one is answered with Open day
+  await page.evaluate(async () => { await (await import('/src-browser/appt-flow.js')).saveApptSettings({ 'appt-message-warning-time': 10 }); });
   await page.waitForFunction(() => window.__shown.length === 2, null, { timeout: 5000 });
-  expect((await page.locator('#apptBanner').count()) === 1 && /^in 7 min/.test(await page.locator('#apptBanner div').nth(1).innerText()), 'the next reminder comes at the next interval, in the same banner');
-  expect((await page.evaluate(() => window.__shown[1].tag === window.__shown[0].tag)), 'and replaces the system notification for that appointment (the same tag)');
+  expect(await page.locator('#apptBanner').isVisible(), 'the reminders start over');
+  expect((await page.evaluate(() => window.__shown[1].tag === window.__shown[0].tag)), 'and replace the system notification for that appointment (the same tag)');
   await page.getByRole('button', { name: 'Open day' }).click();
   await page.waitForTimeout(400);
   expect((await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.currentView)) === 'agenda', 'Open day goes to that day in the agenda');

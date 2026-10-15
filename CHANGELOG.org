@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v525 — Dismissing a reminder stops it
+Pressing Dismiss (or Open day) on an agenda reminder now ends the reminders for that appointment. Before, it only hid the banner and the next repeat, every ~appt-display-interval~ minutes, brought it back; the reminders an Android shell holds for later and the notification in the tray are cleared as well.
+Verified: the agenda-notification browser check.
+
 * v524 — Calendar alarms as plain reminders
 The alarm on a timed calendar event is a plain display reminder again, ~appt-message-warning-time~ minutes before, because that is the form every calendar app (iOS, Android, Outlook, Thunderbird) honours; the sound is the device's own notification setting. The audio alarm added in v523 is gone.
 Verified: unit tests for the .ics and the CalDAV payload.
