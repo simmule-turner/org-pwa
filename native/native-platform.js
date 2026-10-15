@@ -76,6 +76,7 @@
   // day to open. Exact timing needs the system's "Alarms & reminders" switch; without it the plugin would open that screen on every
   // schedule, so exactness is only asked for once it is granted and reminders are otherwise inexact (a few minutes' slack).
   var localNotifications = plugin('LocalNotifications');
+  var apptDismissed = plugin('ApptDismissed');
   if (localNotifications) {
     var CHANNEL = 'appt';
     var channelReady = null;
@@ -115,7 +116,7 @@
         autoCancel: true,
         schedule: { at: item.at.toISOString(), allowWhileIdle: true },
         isExactNotification: exact,
-        extra: { day: item.day },
+        extra: { day: item.day, group: item.group || 'appt-' + item.id },
       };
     };
     platform.notifications = {
@@ -155,8 +156,25 @@
       onTap: function (handler) {
         listen(localNotifications, 'localNotificationActionPerformed', function (event) {
           var extra = event && event.notification && event.notification.extra;
-          if (extra && extra.day !== undefined) handler(extra.day);
+          if (extra && extra.day !== undefined) handler(extra.day, extra.group);
         });
+      },
+      // Reminders swiped away in the shade, even with the app closed: the patched dismiss receiver (scripts/patch-local-
+      // notifications.mjs) cancels the rest of that appointment's reminders and notes its group; the app reads the notes here.
+      dismissed: function () {
+        return apptDismissed
+          ? Promise.resolve(apptDismissed.list()).then(
+              function (result) {
+                return (result && result.groups) || [];
+              },
+              function () {
+                return [];
+              }
+            )
+          : Promise.resolve([]);
+      },
+      forgetDismissed: function (groups) {
+        return apptDismissed ? Promise.resolve(apptDismissed.forget({ groups: groups })).then(function () {}, function () {}) : Promise.resolve();
       },
       // Whether reminders can be exact: status() is 'granted' or not; request() opens the system switch and resolves the new status.
       exact: {

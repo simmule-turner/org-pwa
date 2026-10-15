@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { patchLocalNotifications } from './patch-local-notifications.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const nativeDir = path.resolve(here, '..');
@@ -42,3 +43,4 @@ const version = (/CACHE_NAME\s*=\s*'([^']+)'/.exec(swText) || [])[1] || 'unknown
 const shell = JSON.parse(fs.readFileSync(path.join(nativeDir, 'package.json'), 'utf8')).version;
 fs.writeFileSync(path.join(www, 'native-shell.json'), JSON.stringify({ shell, web: version }, null, 2) + '\n');
 console.log(`bundled ${files.length} files (${(bytes / 1024).toFixed(0)} KB) from ${root} into ${www}\nweb ${version}, shell ${shell}`);
+console.log(`local-notifications dismiss receiver: ${patchLocalNotifications()}`);
