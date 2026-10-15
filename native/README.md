@@ -71,6 +71,10 @@ You do this once, on any computer with a JDK (Android Studio includes one):
   `* Test <2026-10-08 Thu 14:35>`). A system notification should arrive 10 minutes before it, **with the app closed**;
   tapping it opens that day in the Agenda. Without **Exact timing** (the button under it) Android may be a few minutes
   late. `npm run sync` (the workflow does this) picks the plugin up; nothing else changes in the Android project.
+- **Swiping a reminder away (0.7.7):** with a reminder showing, swipe it out of the shade. The appointment's later reminders
+  should not arrive (even with the app closed), and tapping one does the same. `npm run sync` patches the plugin's dismiss
+  receiver to do this (`scripts/patch-local-notifications.mjs`); the build stops there if the plugin is upgraded, so the patch
+  is looked at again.
 - **Attaching a photo or video:** *Attach* opens Android's chooser. Besides your file sources it lists the camera apps as
   **Take a photo (…)** and **Record a video (…)**. Take one: it should come back attached. Try a video of a minute or
   two as well, and tell me if it is slow or fails.
@@ -90,6 +94,14 @@ You do this once, on any computer with a JDK (Android Studio includes one):
   cached documents are its own. Enter GitHub / WebDAV / calendar settings again.
 - **WebDAV, CalDAV and CardDAV servers must allow the origin `https://localhost`** for CORS, as they do for the PWA's own address.
   GitHub needs nothing.
+
+## Permissions
+
+`AndroidManifest.xml` declares what the web view is allowed to ask the phone for: `INTERNET`; `ACCESS_COARSE_LOCATION` and
+`ACCESS_FINE_LOCATION` (a script's `org.location.get()` and the Settings button that fills in latitude and longitude);
+`RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS` (Attach > Record audio); and, from the local-notifications plugin, notifications and
+exact alarms. Photos and videos go to the phone's camera app, which needs no permission of its own, so `CAMERA` is left out
+on purpose. Without a declaration Android never shows its dialog and the request is refused.
 
 ## Layout and versions
 

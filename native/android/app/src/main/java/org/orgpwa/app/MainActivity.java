@@ -12,6 +12,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(CaptureShortcutsPlugin.class);
         registerPlugin(LocalFilesPlugin.class);
         registerPlugin(AttachmentsPlugin.class);
+        registerPlugin(ApptDismissedPlugin.class);
         super.onCreate(savedInstanceState);
         // A WebView scales its text by the phone's font-size setting; the Chrome PWA does not. Pin it to 100% so the app
         // looks the same as the PWA (Settings > Appearance still sets the font size, in both).
