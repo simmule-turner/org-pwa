@@ -36,7 +36,9 @@
 //                      day in ms; scheduled -- true if the platform can hold notifications for later (a shell, which then
 //                      announces appointments even while the app is closed); schedule(list) -- replace everything held with
 //                      `list` ([{ id, at (Date), title, body, day }]); cancelAll() -- drop everything held; onTap(handler) --
-//                      call handler(day) when the person taps a notification
+//                      call handler(day, group) when the person taps a notification, `group` being the one the schedule gave it;
+//                      optional: dismissed() -- the groups of reminders swiped away while the app was closed, as a promise of an
+//                      array of strings; forgetDismissed(groups) -- drop some from that list
 //
 // Share-in is not here: a shell hands the app a share through `window.orgPwaLaunch({ title, text, url })`, queueing on
 // `window.orgPwaLaunchQueue` until the app has started (see acceptNativeLaunches in launch-params.js).

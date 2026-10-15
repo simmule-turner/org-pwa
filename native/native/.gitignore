@@ -1,0 +1,14 @@
+# Installed by `npm ci`
+node_modules/
+
+# The PWA bundled for the shell: rebuilt from the parent folder by `npm run sync`, never edited by hand
+www/
+
+# Gradle and Android Studio output
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/capacitor-cordova-android-plugins/build/
+*.apk
+*.aab

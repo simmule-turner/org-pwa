@@ -86,6 +86,7 @@ export async function scanAppointments(now = new Date()) {
     const horizon = platform.notifications.scheduled ? SCHEDULE_HOURS : SCAN_HOURS;
     const all = upcomingAppointments(docs, now, { ...options, hours: horizon });
     runtime.appointments = all;
+    await absorbDismissals(all);
     const live = new Set(all.map((/** @type {any} */ a) => a.key));
     runtime.silenced = new Set([...runtime.silenced].filter((key) => live.has(key))); // the memory only needs to cover what could still be announced
     runtime.lastScan = now.getTime();
@@ -188,11 +189,34 @@ export function openApptDay(dayMs) {
   render();
 }
 
+/** Reminders swiped away in the system's notification shade, on a shell that can tell (it keeps them while the app is closed): the
+ * appointments they were for stop reminding, as if Dismiss had been pressed, and what is kept about appointments that have started
+ * is dropped.
+ * @param {{ key: string, id: number }[]} upcoming */
+async function absorbDismissals(upcoming) {
+  const n = platform.notifications;
+  if (!n.dismissed) return;
+  try {
+    const groups = await n.dismissed();
+    if (!groups || !groups.length) return;
+    const live = new Map(upcoming.map((a) => [`appt-${a.id}`, a.key]));
+    for (const group of groups) if (live.has(group)) runtime.silenced.add(/** @type {string} */ (live.get(group)));
+    const gone = groups.filter((/** @type {string} */ g) => !live.has(g));
+    if (gone.length && n.forgetDismissed) await n.forgetDismissed(gone);
+  } catch {
+    // no way to ask; the reminders simply carry on
+  }
+}
+
 function listenForTaps() {
   if (runtime.listeningForTaps) return;
   runtime.listeningForTaps = true;
   try {
-    platform.notifications.onTap((/** @type {number} */ day) => openApptDay(day));
+    platform.notifications.onTap((/** @type {number} */ day, /** @type {string | undefined} */ group) => {
+      const appt = group ? runtime.appointments.find((a) => `appt-${a.id}` === group) : null;
+      if (appt) silenceAppointment(appt); // a tapped reminder is answered, like Open day
+      openApptDay(day);
+    });
   } catch {
     // no way to hear taps here; the reminders still arrive
   }

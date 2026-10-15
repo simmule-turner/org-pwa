@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v526 — Swiping a reminder away on Android
+On the Android app, swiping an agenda reminder out of the notification shade now ends that appointment's remaining reminders, as Dismiss does in the app, even if the app is closed; tapping a reminder does the same. The app learns of the swipe the next time it looks at the agenda, so it does not schedule the repeats again. Needs app 0.7.7.
+Verified: the agenda-notification browser checks (the Android side builds in CI).
+
 * v525 — Dismissing a reminder stops it
 Pressing Dismiss (or Open day) on an agenda reminder now ends the reminders for that appointment. Before, it only hid the banner and the next repeat, every ~appt-display-interval~ minutes, brought it back; the reminders an Android shell holds for later and the notification in the tray are cleared as well.
 Verified: the agenda-notification browser check.

@@ -5668,6 +5668,47 @@ check('agenda notifications: an appointment inside its warning time gets a syste
   await context.close();
 });
 
+check('agenda notifications on a shell: a reminder swiped away in the shade (reported by the shell) stops the appointment’s reminders from being scheduled again, and what is kept about started appointments is dropped', async () => {
+  const { context, page, errors } = await freshPage(main);
+  const pad = (n) => String(n).padStart(2, '0');
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const soon = new Date(Date.now() + 60 * 60000);
+  const stamp = `<${soon.getFullYear()}-${pad(soon.getMonth() + 1)}-${pad(soon.getDate())} ${days[soon.getDay()]} ${pad(soon.getHours())}:${pad(soon.getMinutes())}>`;
+  await newDocument(page, `* Dentist ${stamp}\n* Lunch ${stamp}\n`);
+  await page.evaluate(async () => {
+    window.__held = [];
+    window.__swiped = [];
+    window.__forgotten = [];
+    const { installPlatform } = await import('/src-browser/platform.js');
+    installPlatform({
+      notifications: {
+        supported: () => true,
+        permission: async () => 'granted',
+        request: async () => 'granted',
+        scheduled: true,
+        show: async () => {},
+        schedule: async (list) => { window.__held = list; },
+        cancelAll: async () => { window.__held = []; },
+        onTap: () => {},
+        dismissed: async () => window.__swiped,
+        forgetDismissed: async (groups) => { window.__forgotten = groups; },
+      },
+    });
+    const flow = await import('/src-browser/appt-flow.js');
+    await flow.saveApptSettings({ 'appt-activate': true, 'appt-message-warning-time': 10 });
+    await flow.scanAppointments();
+  });
+  const groupsBefore = await page.evaluate(() => [...new Set(window.__held.map((n) => n.group))]);
+  expect(groupsBefore.length === 2 && (await page.evaluate(() => new Set(window.__held.map((n) => n.title)).size)) === 2, `both appointments are scheduled: ${groupsBefore}`);
+  await page.evaluate((group) => { window.__swiped = [group, 'appt-1']; }, groupsBefore[0]);
+  await page.evaluate(async () => { await (await import('/src-browser/appt-flow.js')).scanAppointments(); });
+  const groupsAfter = await page.evaluate(() => [...new Set(window.__held.map((n) => n.group))]);
+  expect(groupsAfter.length === 1 && groupsAfter[0] === groupsBefore[1], `the swiped appointment is no longer scheduled: ${groupsAfter}`);
+  expect((await page.evaluate(() => window.__forgotten)).join() === 'appt-1', 'and a swipe recorded for an appointment that is not coming up is dropped');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 // ---- runner -------------------------------------------------------------------
 
 const filter = process.argv[2];
