@@ -685,7 +685,19 @@ test('pictures that the app could read are embedded; others keep their link', ()
 
 test('radio targets link every other mention, but not inside links', () => {
   const out = body('* A\n<<<Dragon>>> here, a dragon there, [[https://x.org][dragon]] linked.');
-  assert.match(out, /<a id="org-target-dragon"><\/a>Dragon here, a <a href="#org-target-dragon">dragon<\/a> there, <a href="https:\/\/x.org">dragon<\/a>/);
+  assert.match(out, /<a id="org-target-dragon">Dragon<\/a> here, a <a href="#org-target-dragon">dragon<\/a> there, <a href="https:\/\/x.org">dragon<\/a>/);
+});
+
+test('targets written inside =verbatim=, ~code~ or a source block are not targets, so nothing links to them', () => {
+  const out = body('* A\nSay =<<<pear>>>= and ~<<spot>>~ and a pear, then [[spot]].\n#+BEGIN_SRC org\n<<<apple>>>\n#+END_SRC\nAn apple.');
+  assert.ok(!/org-target-pear|org-target-apple|org-target-spot/.test(out), out);
+  assert.match(out, /<code>&lt;&lt;&lt;pear&gt;&gt;&gt;<\/code>/);
+});
+
+test('a link with no description shows what ox-html shows: the section number, "No description for this link" for a target when sections are not numbered, the table number', () => {
+  const doc = '* One\n** Sub\nText <<spot>>.\n#+CAPTION: Data\n#+NAME: data\n| a |\n* Two\nSee [[*Sub]] and [[spot]] and [[data]].';
+  assert.match(body(doc), /See <a href="#[^"]+">1\.1<\/a> and <a href="#[^"]+">1\.1<\/a> and <a href="#[^"]+">1<\/a>\./);
+  assert.match(body('#+OPTIONS: num:nil\n' + doc), /See <a href="#[^"]+">Sub<\/a> and <a href="#[^"]+">No description for this link<\/a> and/);
 });
 
 test('the README exports to well-formed HTML: balanced containers, no leftover placeholders, every link target present', async () => {

@@ -36,6 +36,7 @@
  */
 
 import { parseBody } from './body-parser.js';
+import { setupKeywords } from './setupfile.js';
 
 const DEFAULT_TODO_KEYWORDS = ['TODO'];
 
@@ -201,7 +202,8 @@ function parseOrg(text, opts = {}) {
   let todoKeywordsUnion = [];
   let doneKeywordsUnion = [];
   let sawAnyTodoLine = false;
-  for (const line of lines) {
+  const setupKeywordList = setupKeywords(lines);
+  for (const line of [...lines, ...setupKeywordList.map((k) => `#+${k.key}: ${k.value}`)]) {
     const m = KEYWORD_RE.exec(line);
     if (m && isTodoSequenceKey(m[1])) {
       sawAnyTodoLine = true;
@@ -348,6 +350,8 @@ function parseOrg(text, opts = {}) {
     i++;
   }
 
+  // keywords from #+SETUPFILE: files go last and are marked virtual: readers see them, serializeOrg and the line counts don't
+  for (const k of setupKeywordList) doc.keywords.push({ key: k.key, value: k.value, bodyLineIndex: 0, virtual: true });
   attachBody(doc);
   return doc;
 }
@@ -490,6 +494,7 @@ function serializeOrg(doc) {
   const out = [];
   const bodyLines = doc.bodyLines || [];
   const orderedKeywords = doc.keywords
+    .filter((/** @type {any} */ kw) => !kw.virtual)
     .map((/** @type {any} */ kw, /** @type {any} */ originalIndex) => ({ kw, originalIndex }))
     .sort((/** @type {any} */ a, /** @type {any} */ b) => {
       const ai = a.kw.bodyLineIndex ?? 0;
@@ -537,7 +542,7 @@ function serializeHeadingSubtree(heading) {
  * @param {any} [targetHeading]
  */
 function findHeadingLineNumber(doc, targetHeading) {
-  let count = doc.keywords.length + (doc.bodyLines ? doc.bodyLines.length : 0);
+  let count = doc.keywords.filter((/** @type {any} */ kw) => !kw.virtual).length + (doc.bodyLines ? doc.bodyLines.length : 0);
 
   /** @param {any} [node] */
   function walk(node) {
@@ -569,7 +574,7 @@ function findHeadingLineNumber(doc, targetHeading) {
  * @param {number} targetLine
  */
 function findHeadingAtLine(doc, targetLine) {
-  let count = doc.keywords.length + (doc.bodyLines ? doc.bodyLines.length : 0);
+  let count = doc.keywords.filter((/** @type {any} */ kw) => !kw.virtual).length + (doc.bodyLines ? doc.bodyLines.length : 0);
 
   /** @param {any} [node] */
   function walk(/** @type {any} */ node) {

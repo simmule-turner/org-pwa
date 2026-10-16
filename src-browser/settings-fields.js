@@ -247,6 +247,22 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#searching',
   },
   {
+    key: 'org-agenda-show-inherited-tags',
+    label: 'Agenda and TODO lines show inherited tags',
+    section: 'Search & tags',
+    type: 'boolean',
+    default: true,
+    helpAnchor: '#searching',
+  },
+  {
+    key: 'org-xx-show-inherited-tags',
+    label: 'Outline headings show inherited tags',
+    section: 'Search & tags',
+    type: 'boolean',
+    default: true,
+    helpAnchor: '#searching',
+  },
+  {
     key: 'org-use-property-inheritance',
     label: 'Property search matches inherited values',
     section: 'Search & tags',

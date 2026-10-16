@@ -48,3 +48,16 @@ test('tag inheritance: the exclude list can be typed as plain words, as in a set
   const { child, parent } = tree();
   assert.deepEqual(effectiveTagsOf(child, [parent], parseTagInheritance('t', 'home, proj_x')), ['own', 'work']);
 });
+
+import { buildAncestorIndex, inheritedOnly } from '../src/tag-inheritance.js';
+
+test('tag inheritance: a heading shows only the ancestors\u2019 tags it does not already carry, each once, as the policy allows', () => {
+  const d = parseOrg('* P :a:b:\n** C :b:c:\n*** G\n');
+  const index = buildAncestorIndex([d]);
+  const g = d.children[0].children[0].children[0];
+  const c = d.children[0].children[0];
+  assert.deepEqual(inheritedOnly(c, index.get(c), true), ['a']);
+  assert.deepEqual(inheritedOnly(g, index.get(g), true), ['a', 'b', 'c']);
+  assert.deepEqual(inheritedOnly(g, index.get(g), false), []);
+  assert.deepEqual(inheritedOnly(g, index.get(g), parseTagInheritance('("c")', undefined)), ['c']);
+});

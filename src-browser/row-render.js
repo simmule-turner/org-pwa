@@ -24,6 +24,7 @@ import { openGeneralEditor } from './general-editor.js';
 import { attachSlideLeftToFold, attachSlideRightToComplete, confirmListItemDelete, confirmParagraphDelete, confirmTableDelete, deleteHeadingWithConfirmation, narrowToHeading, widen } from './gestures-structure.js';
 import { cyclePriorityFor, openEffortEditor } from './heading-commands.js';
 import { currentInlineOpts, renderInlineNodes } from './inline-render.js';
+import { appendTagChips } from './tag-display.js';
 import { babelEnabled, executeSourceBlock } from './babel-flow.js';
 import { applyKeyboardFocusHighlight, resyncKeyboardFocusToBodyRow, rowMatchesKeyboardFocus, setKeyboardFocusToRow } from './keyboard-focus.js';
 import { toggleActionMenu } from './navigation.js';
@@ -250,6 +251,7 @@ export function renderRow(row, todoSequence) {
         t.textContent = tag;
         el.appendChild(t);
       }
+      appendTagChips(el, row.node, 'outline'); // the inherited ones, dimmed
       if (dragHandle === 'right') el.appendChild(attachHeadingGrip(el, row, 'right'));
 
       if (S.actionMenuFor === row.node) {

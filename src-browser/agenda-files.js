@@ -5,6 +5,7 @@ import { findDuplicateAgendaFiles, getAgendaFilesVar, getContactsFilesVar, getSe
 import { parseOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { rememberIds } from './id-locations.js';
+import { prefetchSetupFiles } from './setupfile.js';
 import { scheduleCalendarSync } from './calendar-sync.js';
 import { S } from './app-state.js';
 import { platform } from './platform.js';
@@ -94,9 +95,14 @@ export function ensureAgendaFilesLoaded({ prompt = false } = {}) {
     const promise = adapter
       .read(path)
       .then((/** @type {any} */ result) => {
-        const loadedDoc = result ? parseOrg(result.content) : null;
+        const parsed = result ? parseOrg(result.content) : null;
+        return parsed ? prefetchSetupFiles(parsed, path, scheme === 'local' ? 'filesystem' : scheme) : null;
+      })
+      .then((/** @type {any} */ loadedDoc) => {
         agendaFilesCache.set(key, loadedDoc ? { doc: loadedDoc, documentId: path } : { error: `"${path}" not found.` });
-        if (loadedDoc) void rememberIds(loadedDoc, scheme, path);
+        if (loadedDoc) {
+          void rememberIds(loadedDoc, scheme, path);
+        }
         if (S.currentView === 'agenda' || S.currentView === 'tasklist') render();
         if (S.settingsOpen) renderSettingsView();
         if (S.searchOpen) renderSearchPanel();

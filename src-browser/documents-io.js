@@ -20,6 +20,7 @@ import { createHistory, pushSnapshot } from '../src/undo-history.js';
 import { filesystemAdapter, githubAdapter, inputFileAdapter, webdavAdapter } from './adapters.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
 import { rememberIds } from './id-locations.js';
+import { prefetchSetupFiles } from './setupfile.js';
 import { requestApptScan } from './appt-flow.js';
 import { scheduleSync } from './mirror-sync.js';
 import { emitExtensionEvent } from './extension-events.js';
@@ -67,6 +68,7 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
   }
   S.externalChangeDismissedHash = null;
   hideExternalChangeBanner();
+  doc = await prefetchSetupFiles(doc, documentId, storageKind ?? null); // #+SETUPFILE: keywords, before anything reads them
   const rawLocalVars = parseLocalVariables(serializeOrg(doc));
   const startupConfig = resolveEffectiveStartupConfig(doc, rawLocalVars, S.globalVariables);
   const localVariables = mergeGlobalAndLocalVariables(S.globalVariables, rawLocalVars);

@@ -123,6 +123,7 @@ S.pendingTodoWorkflowChoice = null;
 // matching agendaAnchorDate's own same in-memory-only behavior),
 // so navigating away and reopening the calendar doesn't lose your
 // place.
+S.ancestorIndexCache = null; // each heading's ancestors, for inherited tags; rebuilt after each render()
 S.radioTargetsCache = null; // the document's radio-target pattern, rebuilt on the first inline render after each render()
 S.calendarOpen = false;
 S.calendarViewYear = new Date().getFullYear();

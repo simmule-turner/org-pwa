@@ -10,6 +10,7 @@
  *   tokens: string[], tokenSources: string[], doneKeywords: string[], todoKeywords: string[] | null,
  *   radioRe: RegExp | null, noRadio: boolean, namedElements: Map<string, string>, currentNode: any,
  *   parsed: Map<any, any>, fnDefsCollect?: any, outline: any[], captioned: any[],
+ *   headingNodes: Map<any, any>, targetHeadings: Map<string, any>,
  * }} ExportState
  */
 /** @typedef {import('./types.js').Doc} Doc */
@@ -227,6 +228,8 @@ function createState(doc, scope, defaults = {}) {
     currentNode: null,
     outline: [],
     captioned: [],
+    headingNodes: new Map(), // heading -> its outline node (number, level), for a link with no description
+    targetHeadings: new Map(), // target key -> the outline node it is under
   };
   for (const kw of doc.keywords || []) {
     if (kw.key.toUpperCase() !== 'MACRO') continue;
@@ -298,6 +301,49 @@ function expandMacrosIn(state, text) {
   });
 }
 
+// =verbatim= and ~code~ spans, with Org's border rules: the marker follows a space or opening punctuation and ends before a space or closing one
+const VERBATIM_SPAN_RE = /(^|[\s({'"])([=~])(?=\S)([^\n]*?\S)\2(?=$|[\s\-.,;:!?)}'"\\])/g;
+
+/** Runs `fn` on the parts of `text` that are not verbatim or code spans, and leaves the spans as they are.
+ * @param {string} text
+ * @param {(piece: string) => string} fn */
+function outsideVerbatim(text, fn) {
+  let out = '';
+  let last = 0;
+  for (const m of text.matchAll(VERBATIM_SPAN_RE)) {
+    const start = (m.index ?? 0) + m[1].length;
+    out += fn(text.slice(last, start)) + text.slice(start, (m.index ?? 0) + m[0].length);
+    last = (m.index ?? 0) + m[0].length;
+  }
+  return out + fn(text.slice(last));
+}
+
+/** The `<<target>>` and `<<<radio>>>` names written in these lines of text, leaving out source, example, export and comment
+ * blocks, comment lines, and verbatim or code spans.
+ * @param {string[]} lines
+ * @returns {{ name: string, radio: boolean }[]} */
+function targetsInLines(lines) {
+  /** @type {{ name: string, radio: boolean }[]} */ const found = [];
+  let skipUntil = '';
+  for (const line of lines) {
+    if (skipUntil) {
+      if (line.trim().toLowerCase().startsWith(skipUntil)) skipUntil = '';
+      continue;
+    }
+    const begin = /^\s*#\+begin_(src|example|export|comment)\b/i.exec(line);
+    if (begin) {
+      skipUntil = '#+end_' + begin[1].toLowerCase();
+      continue;
+    }
+    if (/^\s*#(\s|$)/.test(line)) continue;
+    outsideVerbatim(line, (piece) => {
+      for (const m of piece.matchAll(/<<(<?)([^<>\n]+?)>>>?/g)) found.push({ name: m[2], radio: m[1] === '<' });
+      return piece;
+    });
+  }
+  return found;
+}
+
 /**
  * Org text -> HTML for inline content. `text` may span several lines (joined by "\n").
  * @param {ExportState} state
@@ -311,9 +357,12 @@ function renderInline(state, rawText) {
   text = text.replace(/@@([A-Za-z0-9-]+):([\s\S]*?)@@/g, (/** @type {any} */ whole, /** @type {any} */ backend, /** @type {any} */ value) => (backend.toLowerCase() === 'html' ? addToken(state, value, whole) : backend.toLowerCase() === 'comment' ? '' : ''));
   // inline source code
   text = text.replace(/\bsrc_([A-Za-z0-9_-]+)(?:\[[^\]\n]*\])?\{([^}\n]*)\}/g, (/** @type {any} */ whole, /** @type {any} */ lang, /** @type {any} */ code) => addToken(state, `<code class="src src-${escapeAttr(lang)}">${escapeHtml(code)}</code>`, whole));
-  // radio targets and targets
-  text = text.replace(/<<<([^<>\n]+)>>>/g, (/** @type {any} */ whole, /** @type {string} */ name) => addToken(state, `<a id="${targetId(state, name)}"></a>${escapeHtml(name)}`, whole));
-  text = text.replace(/<<([^<>\n]+)>>/g, (/** @type {any} */ whole, /** @type {string} */ name) => addToken(state, `<a id="${targetId(state, name)}"></a>`, whole));
+  // radio targets and targets (not inside =verbatim= or ~code~, where they are just characters)
+  text = outsideVerbatim(text, (/** @type {string} */ piece) =>
+    piece
+      .replace(/<<<([^<>\n]+)>>>/g, (/** @type {any} */ whole, /** @type {string} */ name) => addToken(state, `<a id="${targetId(state, name)}">${escapeHtml(name)}</a>`, whole))
+      .replace(/<<([^<>\n]+)>>/g, (/** @type {any} */ whole, /** @type {string} */ name) => addToken(state, `<a id="${targetId(state, name)}"></a>`, whole))
+  );
   // timestamps
   text = text.replace(TIMESTAMP_RE, (/** @type {any[]} */ ...m) => timestampHtml(state, m));
 
@@ -559,6 +608,38 @@ function imageHtml(target, alt, attrs = '') {
 }
 
 /**
+ * What Org shows for an internal link with no description: a heading's section number (its title when sections are not
+ * numbered); for a `<<target>>`, the number of the section it is in ("No description for this link" when sections are not
+ * numbered); a captioned table or listing's number. Null when the link is not one of those.
+ * @param {ExportState} state
+ * @param {string} rawTarget
+ * @returns {string | null}
+ */
+function internalLinkLabel(state, rawTarget) {
+  const t = rawTarget.trim();
+  if (/^[a-z][a-z0-9+.-]*:/i.test(t) && !/^id:/i.test(t)) return null; // a URL or file link
+  /** @param {any} node */
+  const numbered = (node) => !!node && !!state.options.num && !(typeof state.options.num === 'number' && node.level > state.options.num);
+  const key = t.replace(/^#/, '').trim().replace(/\s+/g, ' ').toLowerCase();
+  if (!t.startsWith('*') && !t.startsWith('#') && state.targets.has(key)) {
+    const node = state.targetHeadings.get(key);
+    return numbered(node) ? node.number.join('.') : 'No description for this link';
+  }
+  const res = resolveLinkTarget(state.doc, t);
+  if (res.type === 'heading') {
+    const node = state.headingNodes.get(res.heading);
+    if (!node) return null;
+    return numbered(node) ? node.number.join('.') : renderInline(state, titleOf(res.heading));
+  }
+  const id = state.namedElements.get(t);
+  if (id) {
+    const cap = state.captioned.find((/** @type {any} */ c) => c.id === id);
+    if (cap) return String(cap.n);
+  }
+  return null;
+}
+
+/**
  * @param {ExportState} state
  * @param {any} [node]
  */
@@ -567,6 +648,8 @@ function linkHtml(state, node) {
   const desc = node.description;
   if (desc === null || desc === undefined || desc === '') {
     if (isImageTarget(target)) return imageHtml(target);
+    const internal = internalLinkLabel(state, target);
+    if (internal !== null) return `<a href="${escapeAttr(linkHref(state, target))}">${internal}</a>`;
     const label = escapeHtml(/^(file:)/i.test(target) ? target.replace(/^file:/i, '') : target);
     const display = /^(https?|ftp|mailto):/i.test(target) || /^file:/i.test(target) ? label : escapeHtml(target);
     return `<a href="${escapeAttr(linkHref(state, target))}">${display}</a>`;
@@ -1264,6 +1347,7 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
       for (let n = 2; state.usedIds.has(id); n++) id = base + '-' + n;
       state.usedIds.add(id);
       state.headingIds.set(node.heading, id);
+      state.headingNodes.set(node.heading, node);
       assign(node.children);
     }
   };
@@ -1283,9 +1367,11 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
       const cap = el.aff && el.aff.caption.length ? el.aff.caption[el.aff.caption.length - 1].text : null;
       if (el.type === 'table' && (cap !== null || (el.aff && el.aff.name))) {
         el.__id = (el.aff && el.aff.name) || uniqueId(state, 'table-' + (tableN + 1));
+        if (el.aff && el.aff.name) state.namedElements.set(el.aff.name, el.__id);
         if (cap !== null) state.captioned.push({ kind: 'table', n: ++tableN, id: el.__id, html: renderInline(state, cap) });
       } else if (el.type === 'block' && el.name === 'src' && (cap !== null || (el.aff && el.aff.name))) {
         el.__id = (el.aff && el.aff.name) || uniqueId(state, 'listing-' + (listingN + 1));
+        if (el.aff && el.aff.name) state.namedElements.set(el.aff.name, el.__id);
         if (cap !== null) state.captioned.push({ kind: 'listing', n: ++listingN, id: el.__id, html: renderInline(state, cap) });
       } else if (el.type === 'list') for (const item of el.items) scan(item.children);
       else if (el.type === 'drawer') scan(parseElements(el.lines));
@@ -1300,19 +1386,21 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
       state.parsed.set(node.heading, els);
       scan(els);
       state.fnDefsCollect(els);
-      for (const line of node.heading.bodyLines || []) {
-        for (const m of line.matchAll(/<<<?([^<>\n]+?)>>>?/g)) targetId(state, m[1]);
+      for (const t of targetsInLines(node.heading.bodyLines || [])) {
+        targetId(state, t.name);
+        const key = t.name.trim().replace(/\s+/g, ' ').toLowerCase();
+        if (!state.targetHeadings.has(key)) state.targetHeadings.set(key, node);
       }
       collect(node.children);
     }
   };
   collect(state.outline);
-  for (const line of preamble) for (const m of line.matchAll(/<<<?([^<>\n]+?)>>>?/g)) targetId(state, m[1]);
+  for (const t of targetsInLines(preamble)) targetId(state, t.name);
 
   const radio = new Set();
   /** @param {string[]} lines */
   const scanRadio = (lines) => {
-    for (const line of lines) for (const m of line.matchAll(/<<<([^<>\n]+)>>>/g)) radio.add(m[1].trim());
+    for (const t of targetsInLines(lines)) if (t.radio) radio.add(t.name.trim());
   };
   scanRadio(preamble);
   /** @param {any} [nodes] */

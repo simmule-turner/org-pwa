@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v538 — Exporter fixes, inherited tags and setup files
+Targets in code and verbatim text are no longer read as targets in the HTML export; radio targets and description-less links now read as in ~ox-html~ (section numbers, table numbers). Markdown, ASCII and ODT exports link targets and radio targets too. Local files are remembered for ID links. Inherited tags are shown dimmed in the outline and Agenda and count in the tag filters (~org-agenda-show-inherited-tags~, ~org-xx-show-inherited-tags~). ~#+SETUPFILE:~ brings in another file's keywords.
+Verified: unit tests for each; compared with Emacs 29.3 on sample files; browser checks for exports, ID links, inherited tags and setup files.
+
 * v537 — Typed app state, more ID links, tag inheritance and targets
 ~org-use-tag-inheritance~ takes a list or regexp and ~org-tags-exclude-from-inheritance~ is new. ~<<targets>>~ and ~<<<radio targets>>>~ work in the outline: ~[[name]]~ jumps to one and plain uses of a radio target link to it. ID links also find files opened here before; *Add ID to heading* and *Find links to this heading* are new. Under the hood the app's shared state now has a real type, so tsc catches misspelt or mistyped uses.
 Verified: unit tests for each; browser checks for ID links, targets, links, search, settings, save and tabs.

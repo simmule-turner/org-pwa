@@ -3,6 +3,7 @@
 // (the TODO view adds its Sort). A chip with a choice made shows it and an x to clear it. The choices live in S.viewFilter and
 // last for the session, like the effort view. A change redraws the view through `onChange`.
 import { applyViewFilter, emptyViewFilter, viewFilterActive, viewFilterChoices } from '../src/agenda-filter.js';
+import { addFilterTags } from './tag-display.js';
 import { S } from './app-state.js';
 import { openChoiceSheet } from './bottom-sheet.js';
 
@@ -24,6 +25,7 @@ export function buildViewFilterRow(items, onChange, extraChips = []) {
   const row = document.createElement('div');
   row.setAttribute('data-view-filter', '');
   row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;';
+  addFilterTags(items);
   const choices = viewFilterChoices(items);
   const filter = S.viewFilter || (S.viewFilter = emptyViewFilter());
 
@@ -74,6 +76,7 @@ export function buildViewFilterRow(items, onChange, extraChips = []) {
 
 /** The items that pass the chosen filter. */
 export function filterItemsForView(/** @type {any[]} */ items) {
+  addFilterTags(items);
   return applyViewFilter(items, S.viewFilter);
 }
 

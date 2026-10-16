@@ -33,6 +33,7 @@ import { createZip } from './zip-writer.js';
 import { isWidthCookieRow } from './table-cookies.js';
 import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
 import { getProperty } from './archive-model.js';
+import { anchorFor, buildLinkContext, internalLink } from './export-links.js';
 
 // ---- escaping -------------------------------------------------------------
 
@@ -46,6 +47,7 @@ function escapeXml(text) {
 // ---- per-export state (reset at the start of every exportToOdt() call) ----
 
 /** @type {any} */ let docForLinkResolutionOdt = null;
+/** @type {import('./export-links.js').LinkContext | null} */ let linkCtxOdt = null; // section numbers, targets and radio-target pattern for this export
 let headingIdMapOdt = new Map();
 let footnoteCounterOdt = 0;
 /** @type {any[]} */ let sectionNumbersOdt = [];
@@ -144,7 +146,12 @@ function renderInlineNodeOdt(node) {
     case 'superscript':
       return `<text:span text:style-name="Superscript">${escapeXml(node.value)}</text:span>`;
     case 'link': {
-      const label = node.description ? renderTextOdt(node.description) : escapeXml(node.target);
+      const info = linkCtxOdt ? internalLink(linkCtxOdt, node.target) : null;
+      if (info && info.anchor) {
+        const text = node.description ? renderTextOdt(node.description, false) : info.label !== null ? escapeXml(info.label) : escapeXml(node.target);
+        return `<text:a xlink:type="simple" xlink:href="#${escapeXml(info.anchor)}">${text}</text:a>`;
+      }
+      const label = node.description ? renderTextOdt(node.description, false) : info && info.label !== null ? escapeXml(info.label) : escapeXml(node.target);
       const bookmarkName = resolveInternalLinkOdt(node.target);
       if (bookmarkName) {
         return `<text:bookmark-ref text:reference-format="text" text:ref-name="${escapeXml(bookmarkName)}">${label}</text:bookmark-ref>`;
@@ -173,9 +180,9 @@ function renderInlineNodeOdt(node) {
       );
     }
     case 'radio-target':
-      return escapeXml(node.name);
+      return linkCtxOdt ? `<text:bookmark-start text:name="${escapeXml(anchorFor(linkCtxOdt, node.name))}"/>${escapeXml(node.name)}<text:bookmark-end text:name="${escapeXml(anchorFor(linkCtxOdt, node.name))}"/>` : escapeXml(node.name);
     case 'target':
-      return '';
+      return linkCtxOdt ? `<text:bookmark text:name="${escapeXml(anchorFor(linkCtxOdt, node.name))}"/>` : '';
     case 'comment':
       return ''; // matches every other export backend -- comments never appear in exported output
     default:
@@ -183,9 +190,10 @@ function renderInlineNodeOdt(node) {
   }
 }
 
-/** @param {string} text */
-function renderTextOdt(text) {
-  return renderInlineListOdt(parseInline(text));
+/** @param {string} text
+ * @param {boolean} [radio]  whether a radio target's plain mentions become links (not inside a link's own text) */
+function renderTextOdt(text, radio = true) {
+  return renderInlineListOdt(parseInline(text, radio && linkCtxOdt && linkCtxOdt.radioRe ? { radioTargets: linkCtxOdt.radioRe } : {}));
 }
 
 // ---- body content -----------------------------------------------------
@@ -533,6 +541,7 @@ export function exportToOdt(doc, scope = /** @type {any} */ (null)) {
 
   const roots = scope ? [scope] : doc.children || [];
   assignHeadingIdsOdt(roots, new Set());
+  linkCtxOdt = buildLinkContext(doc, roots, options.num);
   const levelOffset = scope ? scope.level - 1 : 0;
   const { doneKeywords } = resolveTodoSequence(doc);
   const out = [];

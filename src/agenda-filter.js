@@ -32,7 +32,7 @@ export function applyViewFilter(items, filter) {
   const f = /** @type {ViewFilter} */ (filter);
   return items.filter((item) => {
     if (!item.heading) return true;
-    if (f.tags.length > 0 && !(item.tags || []).some((/** @type {string} */ t) => f.tags.includes(t))) return false;
+    if (f.tags.length > 0 && !(item.filterTags || item.tags || []).some((/** @type {string} */ t) => f.tags.includes(t))) return false;
     if (f.todos.length > 0 && !f.todos.includes(item.todo || '')) return false;
     if (f.categories.length > 0 && !f.categories.includes(item.category || '')) return false;
     return true;
@@ -51,7 +51,7 @@ export function viewFilterChoices(items) {
   const bump = (/** @type {Map<string, number>} */ map, /** @type {string} */ key) => map.set(key, (map.get(key) || 0) + 1);
   for (const item of items) {
     if (!item.heading) continue;
-    for (const t of item.tags || []) bump(tags, t);
+    for (const t of item.filterTags || item.tags || []) bump(tags, t);
     if (item.todo) bump(todos, item.todo);
     if (item.category) bump(categories, item.category);
   }

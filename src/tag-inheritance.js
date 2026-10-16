@@ -69,3 +69,35 @@ export function effectiveTagsOf(heading, ancestors, policy) {
   }
   return all;
 }
+
+/** Every heading in these documents, with its ancestors (root first), for working out inherited tags.
+ * @param {{ children: any[] }[]} docs
+ * @returns {WeakMap<Heading, Heading[]>} */
+export function buildAncestorIndex(docs) {
+  /** @type {WeakMap<Heading, Heading[]>} */ const index = new WeakMap();
+  /** @param {any[]} nodes @param {Heading[]} chain */
+  const walk = (nodes, chain) => {
+    for (const node of nodes || []) {
+      if (node.type !== 'heading') continue;
+      index.set(node, chain);
+      walk(node.children, [...chain, node]);
+    }
+  };
+  for (const doc of docs) if (doc) walk(doc.children, []);
+  return index;
+}
+
+/** The tags a heading gets from its ancestors, not counting ones it carries itself, each once.
+ * @param {Heading} heading
+ * @param {Heading[]} ancestors
+ * @param {TagInheritance} policy
+ * @returns {string[]} */
+export function inheritedOnly(heading, ancestors, policy) {
+  if (policy === false) return [];
+  const own = new Set(heading.tags || []);
+  /** @type {string[]} */ const out = [];
+  for (const ancestor of ancestors) {
+    for (const tag of ancestor.tags || []) if (tagInherits(policy, tag) && !own.has(tag) && !out.includes(tag)) out.push(tag);
+  }
+  return out;
+}

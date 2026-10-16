@@ -45,3 +45,29 @@ test('targets: plain occurrences of a radio target become links to it, but not p
   assert.equal(nodes.map((n) => (n.type === 'text' ? n.value : n.description)).join(''), 'Eat a Big   Apple or an apples-and-pears mix, big apples too, BIG APPLE.');
   assert.equal(radioTargetRegExp(parseOrg('* Nothing here\n')), null);
 });
+
+import { exportToMarkdown } from '../src/export-markdown.js';
+import { exportToAscii } from '../src/export-ascii.js';
+import { exportToOdt } from '../src/export-odt.js';
+
+const linked = '* One\n** Sub\nText <<spot>> and <<<big apple>>> and =<<<pear>>>=.\n* Two\nSee [[*Sub]] and [[spot]] and [[spot][described]], a Big Apple and a pear.\n';
+
+test('targets: Markdown export anchors them, numbers description-less links as Org does, and links a radio target’s mentions', () => {
+  const md = exportToMarkdown(parseOrg(linked));
+  assert.match(md, /Text <a id="org-target-spot"><\/a> and <a id="org-target-big-apple">big apple<\/a>/);
+  assert.match(md, /See \[1\.1\]\(#sub\) and \[1\.1\]\(#org-target-spot\) and \[described\]\(#org-target-spot\), a <a href="#org-target-big-apple">Big Apple<\/a> and a pear\./);
+});
+
+test('targets: ASCII export reads those links as their section numbers or descriptions, with no link markup', () => {
+  const out = exportToAscii(parseOrg(linked));
+  assert.match(out, /See 1\.1 and 1\.1 and described, a Big Apple and a pear\./);
+  assert.ok(!out.includes('<<spot>>') && !out.includes('<<<big'), out);
+});
+
+test('targets: ODT export puts bookmarks at them and links to those bookmarks', () => {
+  const xml = exportToOdt(parseOrg(linked));
+  const text = typeof xml === 'string' ? xml : Buffer.from(xml).toString('latin1');
+  assert.match(text, /<text:bookmark text:name="org-target-spot"\/>/);
+  assert.match(text, /<text:bookmark-start text:name="org-target-big-apple"\/>big apple<text:bookmark-end text:name="org-target-big-apple"\/>/);
+  assert.match(text, /xlink:href="#org-target-spot">1\.1<\/text:a>/);
+});

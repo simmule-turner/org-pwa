@@ -6018,6 +6018,66 @@ check('id: links: a file opened before is remembered, so a link finds it after i
   await context.close();
 });
 
+check('setupfile: #+SETUPFILE: brings in the keywords of another file (a TODO sequence here), the file is not changed by saving, and the keywords are still there after reopening', async () => {
+  dav.reset({
+    'a.org': '#+SETUPFILE: theme.setup\n* WAIT Pending thing\n',
+    'theme.setup': '#+TODO: WAIT | GONE\n#+TITLE: From the setup file\n',
+  });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'a.org');
+  await page.waitForFunction(() => /WAIT/.test(document.getElementById('outline').innerText), null, { timeout: 8000 });
+  const info = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { serializeOrg } = await import('/src/org-parser.js');
+    return { todo: S.state.doc.children[0].todo, virtual: S.state.doc.keywords.filter((k) => k.virtual).map((k) => k.key), saved: serializeOrg(S.state.doc) };
+  });
+  expect(info.todo === 'WAIT' && info.virtual.includes('TODO') && info.virtual.includes('TITLE'), `setup keywords applied: ${JSON.stringify(info)}`);
+  expect(info.saved === '#+SETUPFILE: theme.setup\n* WAIT Pending thing\n', `the saved text has only the file's own lines: ${JSON.stringify(info.saved)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('id: links: a local file opened before is found again by its ID after its tab is closed', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 412, height: 900 });
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    const picked = new Map([['notes.org', '* Remembered\n:PROPERTIES:\n:ID: loc-001\n:END:\n'], ['other.org', '* Other\n']]);
+    let next = 'notes.org';
+    window.__pickNext = (n) => { next = n; };
+    installPlatform({
+      localFiles: {
+        supported: () => true,
+        pickOpen: async () => next,
+        pickNew: async (kv, name) => name,
+        adapter: {
+          async read(id) { return picked.has(id) ? { content: picked.get(id), hash: 'h' } : null; },
+          async write(id, content) { picked.set(id, content); return { hash: 'h' }; },
+          async exists(id) { return picked.has(id); },
+          async access(id) { return picked.has(id) ? 'granted' : 'none'; },
+        },
+      },
+    });
+  });
+  await fileMenu(page, 'Open', 'Local file');
+  await page.waitForFunction(() => document.getElementById('modelineBar').innerText.includes('notes.org'), null, { timeout: 8000 });
+  await page.evaluate(() => window.__pickNext('other.org'));
+  await fileMenu(page, 'Open', 'Local file');
+  await page.waitForFunction(() => document.getElementById('modelineBar').innerText.includes('other.org'), null, { timeout: 8000 });
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { closeTab } = await import('/src-browser/tabs.js');
+    await closeTab(S.documentSessions.find((x) => x.state.documentId === 'notes.org').tabId);
+  });
+  await page.evaluate(async () => {
+    const { openIdLink } = await import('/src-browser/id-links.js');
+    await openIdLink('loc-001');
+  });
+  await page.waitForFunction(() => document.getElementById('modelineBar').innerText.includes('notes.org'), null, { timeout: 8000 });
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('targets: <<name>> and <<<radio>>> show dimmed, [[name]] and every plain use of a radio target link to the heading holding it, and a noweb reference in a code block is left alone', async () => {
   dav.reset({
     'a.org': ['* Intro', 'A <<<big apple>>> and an <<orchard>> here.', '#+BEGIN_SRC org', '<<noweb-ref>>', '#+END_SRC', '* Elsewhere', 'Eat a Big Apple or see the [[orchard]]. Big apples are not one.', ''].join('\n'),
@@ -6035,6 +6095,43 @@ check('targets: <<name>> and <<<radio>>> show dimmed, [[name]] and every plain u
     return S.currentContextHeading ? S.currentContextHeading.title : (S.keyboardFocusedHeading ? S.keyboardFocusedHeading.title : null);
   });
   expect(where === 'Intro', `the radio link went to the heading holding the target: ${where}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('inherited tags: shown dimmed after a heading\u2019s own in the outline, the Agenda and the TODO list, counted by the tag filter, and governed by org-use-tag-inheritance and the two show settings', async () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `<${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]}>`;
+  const text = ['* Project :work:', '** TODO Child task :own:', `SCHEDULED: ${stamp}`, '* Other', ''].join('\n');
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(page, text);
+  const chips = (scope) => page.locator(`${scope} .tag`).evaluateAll((els) => els.map((e) => e.textContent + (e.classList.contains('tag-inherited') ? '*' : '')));
+  let tags = await chips('#outline');
+  expect(JSON.stringify(tags) === JSON.stringify(['work', 'own', 'work*']), `outline chips (own, then inherited marked *): ${JSON.stringify(tags)}`);
+  await viewMenu(page, 'Agenda');
+  await page.waitForFunction(() => document.body.innerText.includes('Child task'), null, { timeout: 8000 });
+  tags = await chips('#outline');
+  expect(tags.includes('own') && tags.includes('work*'), `agenda chips: ${JSON.stringify(tags)}`);
+  // the tag filter counts the inherited tag
+  const offered = await page.evaluate(async () => {
+    const { viewFilterChoices } = await import('/src/agenda-filter.js');
+    const { addFilterTags } = await import('/src-browser/tag-display.js');
+    const { aggregateAgendaDocs } = await import('/src-browser/agenda-files.js');
+    const heading = aggregateAgendaDocs()[0].doc.children[0].children[0];
+    const items = [{ heading, tags: heading.tags, todo: 'TODO' }];
+    addFilterTags(items);
+    return viewFilterChoices(items).tags.map(([t]) => t);
+  });
+  expect(offered.includes('work') && offered.includes('own'), `the filter offers the inherited tag: ${offered}`);
+  // org-use-tag-inheritance: nil removes them everywhere
+  await newDocument(page, ['* Project :work:', '** Child :own:', '# Local Variables:', '# org-use-tag-inheritance: nil', '# End:', ''].join('\n'));
+  tags = await chips('#outline');
+  expect(!tags.some((t) => t.endsWith('*')), `no inherited chips with inheritance off: ${JSON.stringify(tags)}`);
+  // the outline setting hides them while search inheritance stays on
+  await newDocument(page, ['* Project :work:', '** Child :own:', '# Local Variables:', '# org-xx-show-inherited-tags: nil', '# End:', ''].join('\n'));
+  tags = await chips('#outline');
+  expect(JSON.stringify(tags) === JSON.stringify(['work', 'own']), `outline chips with the outline setting off: ${JSON.stringify(tags)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

@@ -452,6 +452,19 @@ export function getUseTagInheritance(vars) {
   return parseTagInheritance(v['org-use-tag-inheritance'], v['org-tags-exclude-from-inheritance']);
 }
 
+/** org-agenda-show-inherited-tags: whether Agenda and TODO lines show the tags a heading inherits (t, the default; any other
+ *  non-nil value is read as t).
+ * @param {LocalVars} vars */
+export function getShowInheritedTagsAgenda(vars) {
+  return parseLispBoolean((vars || {})['org-agenda-show-inherited-tags'], true);
+}
+
+/** org-xx-show-inherited-tags (this app's own): whether outline headings show the tags they inherit, dimmed.
+ * @param {LocalVars} vars */
+export function getShowInheritedTagsOutline(vars) {
+  return parseLispBoolean((vars || {})['org-xx-show-inherited-tags'], true);
+}
+
 /** org-use-property-inheritance: whether a heading's "effective"
  *  property values (for search/filtering purposes) fall back to an
  *  ancestor's value when the heading doesn't have that property

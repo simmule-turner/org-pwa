@@ -39,6 +39,7 @@
 
 import { parseInline, stripLineBreakMarker } from './inline-markup.js';
 import { resolveLinkTarget } from './link-resolve.js';
+import { anchorFor, buildLinkContext, internalLink } from './export-links.js';
 import { isWidthCookieRow } from './table-cookies.js';
 import { parseExportOptions } from './export-options.js';
 
@@ -60,6 +61,7 @@ let anonymousFootnoteCounterMd = 0;
 // slug is never written into the heading line itself, only used when
 // resolving a link that points TO that heading.
 /** @type {any} */ let docForLinkResolutionMd = null;
+/** @type {import('./export-links.js').LinkContext | null} */ let linkCtxMd = null; // section numbers, targets and radio-target pattern for this export
 let headingSlugMapMd = new Map();
 
 /** GitHub's own heading-slug algorithm (github-slugger, the library
@@ -184,6 +186,16 @@ function renderInlineNodeMd(node) {
     case 'superscript':
       return `<sup>${node.value}</sup>`;
     case 'link': {
+      const info = linkCtxMd ? internalLink(linkCtxMd, node.target) : null;
+      if (node.radio && info && info.anchor) return `<a href="#${info.anchor}">${escapeHtmlMd(node.description)}</a>`; // a plain mention of a radio target
+      if (info && info.anchor) {
+        const text = node.description ? escapeMarkdownText(node.description) : info.label !== null ? info.label : node.target;
+        return `[${text}](#${info.anchor})`;
+      }
+      if (info && !node.description) {
+        const text = info.label !== null ? info.label : renderTextMd(info.heading ? info.heading.title : node.target);
+        return `[${text}](${resolveLinkHrefMd(node.target)})`;
+      }
       const label = node.description ? escapeMarkdownText(node.description) : node.target;
       return `[${label}](${resolveLinkHrefMd(node.target)})`;
     }
@@ -197,9 +209,9 @@ function renderInlineNodeMd(node) {
       return `[^${label}]`;
     }
     case 'radio-target':
-      return escapeMarkdownText(node.name); // a radio target shows its text; a dedicated target is invisible
+      return linkCtxMd ? `<a id="${anchorFor(linkCtxMd, node.name)}">${escapeHtmlMd(node.name)}</a>` : escapeMarkdownText(node.name);
     case 'target':
-      return '';
+      return linkCtxMd ? `<a id="${anchorFor(linkCtxMd, node.name)}"></a>` : '';
     case 'comment':
       // org's own @@comment:...@@ export-comment marker -- never
       // appears in exported output, matching real org's own behavior
@@ -211,8 +223,13 @@ function renderInlineNodeMd(node) {
 }
 
 /** @param {string} text */
+function escapeHtmlMd(text) {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** @param {string} text */
 function renderTextMd(text) {
-  return renderInlineListMd(parseInline(text));
+  return renderInlineListMd(parseInline(text, linkCtxMd && linkCtxMd.radioRe ? { radioTargets: linkCtxMd.radioRe } : {}));
 }
 
 // ---- body content -----------------------------------------------------
@@ -465,6 +482,7 @@ export function exportToMarkdown(doc, scope = /** @type {any} */ (null)) {
 
   const roots = scope ? [scope] : doc.children || [];
   assignHeadingSlugsMd(roots, new Set());
+  linkCtxMd = buildLinkContext(doc, roots, parseExportOptions(doc).num);
   const levelOffset = scope ? scope.level - 1 : 0;
   const out = [];
 

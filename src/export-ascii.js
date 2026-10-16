@@ -44,6 +44,7 @@ import { removeIndentation } from './babel-blocks.js';
 import { ENTITIES } from './entities.js';
 import { parseWidthCookieRow } from './table-cookies.js';
 import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
+import { buildLinkContext, internalLink } from './export-links.js';
 
 // ---- character sets (org-ascii-charset) -----------------------------------
 
@@ -175,7 +176,13 @@ function renderInlineNodeAscii(node) {
       // text stands on its own.
       return node.value;
     case 'link': {
-      const label = node.description ? renderTextAscii(node.description) : node.target;
+      const info = linkCtxAscii ? internalLink(linkCtxAscii, node.target) : null;
+      if (info) {
+        // a link inside the document reads as its description, or as Org numbers it (a section number)
+        if (node.description) return renderTextAscii(node.description, false); // no radio links inside a link's text
+        return info.label !== null ? info.label : renderTextAscii(info.heading ? info.heading.title : node.target);
+      }
+      const label = node.description ? renderTextAscii(node.description, false) : node.target;
       return label === node.target ? node.target : `${label} (${node.target})`;
     }
     case 'image':
@@ -200,9 +207,12 @@ function renderInlineNodeAscii(node) {
   }
 }
 
-/** @param {string} text */
-function renderTextAscii(text) {
-  return renderInlineListAscii(parseInline(text));
+/** @type {import('./export-links.js').LinkContext | null} */ let linkCtxAscii = null; // section numbers, targets and radio-target pattern for this export
+
+/** @param {string} text
+ * @param {boolean} [radio]  whether a radio target's plain mentions become links (not inside a link's own text) */
+function renderTextAscii(text, radio = true) {
+  return renderInlineListAscii(parseInline(text, radio && linkCtxAscii && linkCtxAscii.radioRe ? { radioTargets: linkCtxAscii.radioRe } : {}));
 }
 
 // ---- headings and body content -----------------------------------------
@@ -710,6 +720,7 @@ export function exportToAscii(doc, scope = /** @type {any} */ (null), textWidth 
   numberingEnabledAscii = options.num;
 
   const roots = scope ? [scope] : doc.children || [];
+  linkCtxAscii = buildLinkContext(doc, roots, options.num);
   const levelOffset = scope ? scope.level - 1 : 0;
   const out = [];
 

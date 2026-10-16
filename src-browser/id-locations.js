@@ -1,6 +1,6 @@
 // @ts-check
-// The remembered ID -> file table (src/id-locations.js), kept in the key-value store. Only GitHub and WebDAV files are recorded:
-// a link can reopen those by path, where a local file needs the file picker.
+// The remembered ID -> file table (src/id-locations.js), kept in the key-value store. GitHub and WebDAV files are recorded by
+// path and local files by name (`local:`), which the app reopens from the picker's remembered files or the org-pwa folder.
 import { recordIds } from '../src/id-locations.js';
 import { kv } from './singletons.js';
 
@@ -25,7 +25,8 @@ async function table() {
 
 /** @param {string | null | undefined} kind */
 function linkScheme(kind) {
-  return kind === 'github' || kind === 'webdav' ? kind : null;
+  if (kind === 'github' || kind === 'webdav') return kind;
+  return kind === 'filesystem' ? 'local' : null; // 'input' (a one-off upload) can't be reopened
 }
 
 /** Notes where a file's IDs are. Safe to call often; it writes only when something changed.

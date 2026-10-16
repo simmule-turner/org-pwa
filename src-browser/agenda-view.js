@@ -22,6 +22,7 @@ import { navigateToHeadingByPath, outlinePathForHeadingInDocument } from './navi
 import { render } from './render.js';
 import { agendaFilesCache } from './singletons.js';
 import { buildViewFilterRow, filterItemsForView } from './view-filter-ui.js';
+import { appendTagChips } from './tag-display.js';
 import { menuButton, textInputStyle } from './ui-widgets.js';
 import { platform } from './platform.js';
 import { openHabitHistory } from './habit-history.js';
@@ -524,6 +525,7 @@ export function renderAgendaView() {
       if (item.rangeDays > 1) rowTitle += ` (day ${item.rangeDay}/${item.rangeDays})`;
     }
     text.appendChild(document.createTextNode(rowTitle));
+    if (item.heading && item.kind !== 'logbook') appendTagChips(text, item.heading, 'agenda');
     if (item.logNote) {
       const noteLine = document.createElement('div');
       noteLine.style.fontSize = '12px';
@@ -951,6 +953,7 @@ export function renderTaskListView() {
     text.style.minWidth = '0';
     text.style.overflowWrap = 'anywhere';
     text.appendChild(document.createTextNode(item.title));
+    if (item.heading) appendTagChips(text, item.heading, 'agenda');
     const taskEffort = itemEffortText(item);
     if (taskEffort) {
       const effortBadge = document.createElement('span');

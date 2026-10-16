@@ -127,6 +127,6 @@ export {};
  *   clocktableStart: string, clocktableEnd: string, clocktableMaxlevel: number,
  *   weatherData: any, weatherLastRefreshed: string | null,
  *   expandedThemeColorSection: string | null, customThemeColors: Record<string, Record<string, string>>,
- *   radioTargetsCache: { doc: Doc, re: RegExp | null } | null,
+ *   radioTargetsCache: { doc: Doc, re: RegExp | null } | null, ancestorIndexCache: WeakMap<Heading, Heading[]> | null,
  *   swRegistration: ServiceWorkerRegistration | null, updateCheckStatus: string | null, currentAppVersion: string | null, appVersionCheckState: string
  * }} AppState */

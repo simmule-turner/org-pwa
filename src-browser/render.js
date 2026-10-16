@@ -23,6 +23,7 @@ import { platform } from './platform.js';
 
 export function render() {
   S.radioTargetsCache = null;
+  S.ancestorIndexCache = null;
   updateSaveButtonState();
   renderTabBar();
   syncSidePanel();
