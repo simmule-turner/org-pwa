@@ -1,0 +1,5 @@
+#+BIBLIOGRAPHY: refs.json
+#+BIBLIOGRAPHY: "refs.bib"
+* S
+[cite:@j1;@j2;@knuth84] [cite/t:@j2]
+#+PRINT_BIBLIOGRAPHY:

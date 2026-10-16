@@ -1,0 +1,234 @@
+[
+ {
+  "kind": "normalize",
+  "name": "c1",
+  "input": "* A\nOne[fn:q] and unknown[fn:nodef] and [fn::anon [fn:z] nested\ncontinues here].\n\n[fn:q] Q one.\n\n[fn:q] duplicate Q.\n\n[fn:z] Zed.\n\n** Sub\nSub text.[fn:z]\n\n| a | b[fn:t] |\n\n[fn:t] table note\n\n\nAfter two blanks.\n\n* footnotes\n[fn:x] stray\n",
+  "section": "Footnotes",
+  "expected": "* A\nOne[fn:1] and unknown[fn:2] and [fn:3].\n\n[fn:q] duplicate Q.\n\n** Sub\nSub text.[fn:4]\n\n| a | b[fn:5] |\n\n\nAfter two blanks.\n\n* Footnotes\n\n[fn:1] Q one.\n\n[fn:2] DEFINITION NOT FOUND.\n\n[fn:3] anon [fn:z] nested\ncontinues here\n\n[fn:4] Zed.\n\n[fn:5] table note\n\n[fn:6] stray\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "c1 (no section)",
+  "input": "* A\nOne[fn:q] and unknown[fn:nodef] and [fn::anon [fn:z] nested\ncontinues here].\n\n[fn:q] Q one.\n\n[fn:q] duplicate Q.\n\n[fn:z] Zed.\n\n** Sub\nSub text.[fn:z]\n\n| a | b[fn:t] |\n\n[fn:t] table note\n\n\nAfter two blanks.\n\n* footnotes\n[fn:x] stray\n",
+  "section": null,
+  "expected": "* A\nOne[fn:1] and unknown[fn:2] and [fn:3].\n\n[fn:q] duplicate Q.\n\n[fn:1] Q one.\n\n[fn:2] DEFINITION NOT FOUND.\n\n[fn:3] anon [fn:z] nested\ncontinues here\n\n[fn:4] Zed.\n\n** Sub\nSub text.[fn:4]\n\n| a | b[fn:5] |\n\n\nAfter two blanks.\n\n[fn:5] table note\n\n[fn:6] stray\n\n* footnotes\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "c2",
+  "input": "* A\nOnly text, no notes.\n",
+  "section": "Footnotes",
+  "expected": "* A\nOnly text, no notes.\n\n* Footnotes\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "c2 (no section)",
+  "input": "* A\nOnly text, no notes.\n",
+  "section": null,
+  "expected": "* A\nOnly text, no notes.\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "c4",
+  "input": "* A\ntext[fn:1] =code[fn:2]= and ~verb[fn:3]~ and [[http://x.org/a[fn:4]][label]] end\n#+begin_src sh\necho [fn:5]\n#+end_src\n# comment [fn:6]\n: fixed [fn:7]\n#+begin_quote\nquoted[fn:8]\n#+end_quote\n\n[fn:1] one\n[fn:8] eight\n",
+  "section": "Footnotes",
+  "expected": "* A\ntext[fn:1] =code[fn:2]= and ~verb[fn:3]~ and [[http://x.org/a[fn:2]][label]] end\n#+begin_src sh\necho [fn:5]\n#+end_src\n# comment [fn:6]\n: fixed [fn:7]\n#+begin_quote\nquoted[fn:3]\n#+end_quote\n\n* Footnotes\n\n[fn:1] one\n\n[fn:2] DEFINITION NOT FOUND.\n\n[fn:3] eight\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "c4 (no section)",
+  "input": "* A\ntext[fn:1] =code[fn:2]= and ~verb[fn:3]~ and [[http://x.org/a[fn:4]][label]] end\n#+begin_src sh\necho [fn:5]\n#+end_src\n# comment [fn:6]\n: fixed [fn:7]\n#+begin_quote\nquoted[fn:8]\n#+end_quote\n\n[fn:1] one\n[fn:8] eight\n",
+  "section": null,
+  "expected": "* A\ntext[fn:1] =code[fn:2]= and ~verb[fn:3]~ and [[http://x.org/a[fn:2]][label]] end\n#+begin_src sh\necho [fn:5]\n#+end_src\n# comment [fn:6]\n: fixed [fn:7]\n#+begin_quote\nquoted[fn:3]\n#+end_quote\n\n[fn:1] one\n\n[fn:2] DEFINITION NOT FOUND.\n\n[fn:3] eight\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "c5",
+  "input": "* A\nx[fn:a] y[fn:b]\n[fn:a] A def\n* B\nz[fn:c]\n\n[fn:b] B def\n[fn:c] C def",
+  "section": "Footnotes",
+  "expected": "* A\nx[fn:1] y[fn:2]\n* B\nz[fn:3]\n\n* Footnotes\n\n[fn:1] A def\n\n[fn:2] B def\n\n[fn:3] C def\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "c5 (no section)",
+  "input": "* A\nx[fn:a] y[fn:b]\n[fn:a] A def\n* B\nz[fn:c]\n\n[fn:b] B def\n[fn:c] C def",
+  "section": null,
+  "expected": "* A\nx[fn:1] y[fn:2]\n\n[fn:1] A def\n\n[fn:2] B def\n* B\nz[fn:3]\n\n[fn:3] C def\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "c6",
+  "input": "* A :t:\nx[fn:a]\n\n** Footnotes\n:PROPERTIES:\n:ID: 1\n:END:\n[fn:a] old\n\n* Next\nstuff\n",
+  "section": "Footnotes",
+  "expected": "* A :t:\nx[fn:1]\n\n* Next\nstuff\n\n* Footnotes\n\n[fn:1] old\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "c6 (no section)",
+  "input": "* A :t:\nx[fn:a]\n\n** Footnotes\n:PROPERTIES:\n:ID: 1\n:END:\n[fn:a] old\n\n* Next\nstuff\n",
+  "section": null,
+  "expected": "* A :t:\nx[fn:1]\n\n[fn:1] old\n\n** Footnotes\n:PROPERTIES:\n:ID: 1\n:END:\n\n* Next\nstuff\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "fn1",
+  "input": "#+TITLE: T\n* One\nText with ref[fn:b] and another[fn:a] and inline[fn::anon inline] and named[fn:nm:named inline] and again[fn:b].\n\n* Two\nMore[fn:c].\n\n[fn:a] Alpha def.\n\n[fn:c] Gamma def\nsecond paragraph line.\n\n* Footnotes\n[fn:b] Beta def.\n",
+  "section": "Footnotes",
+  "expected": "#+TITLE: T\n* One\nText with ref[fn:1] and another[fn:2] and inline[fn:3] and named[fn:4] and again[fn:1].\n\n* Two\nMore[fn:5].\n\n* Footnotes\n\n[fn:1] Beta def.\n\n[fn:2] Alpha def.\n\n[fn:3] anon inline\n\n[fn:4] named inline\n\n[fn:5] Gamma def\nsecond paragraph line.\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "fn1 (no section)",
+  "input": "#+TITLE: T\n* One\nText with ref[fn:b] and another[fn:a] and inline[fn::anon inline] and named[fn:nm:named inline] and again[fn:b].\n\n* Two\nMore[fn:c].\n\n[fn:a] Alpha def.\n\n[fn:c] Gamma def\nsecond paragraph line.\n\n* Footnotes\n[fn:b] Beta def.\n",
+  "section": null,
+  "expected": "#+TITLE: T\n* One\nText with ref[fn:1] and another[fn:2] and inline[fn:3] and named[fn:4] and again[fn:1].\n\n[fn:1] Beta def.\n\n[fn:2] Alpha def.\n\n[fn:3] anon inline\n\n[fn:4] named inline\n\n* Two\nMore[fn:5].\n\n[fn:5] Gamma def\nsecond paragraph line.\n\n* Footnotes\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "fn3",
+  "input": "* A\nRef[fn:x] and nested.\n\n[fn:x] Def with nested[fn:y] ref.\n\n[fn:y] Why.\n\n[fn:orphan] Nobody refers here.\n\n#+begin_src text\ncode[fn:zz]\n#+end_src\n\n* Footnotes :noexport:\nSome intro text.\n\n[fn:late] Late def.\nUse late[fn:late] up top? no.\n",
+  "section": "Footnotes",
+  "expected": "* A\nRef[fn:1] and nested.\n\n* Footnotes :noexport:\nSome intro text.\n\n* Footnotes\n\n[fn:1] Def with nested[fn:2] ref.\n\n[fn:2] Why.\n\n[fn:3] Late def.\nUse late[fn:late] up top? no.\n\n[fn:4] Nobody refers here.\n\n#+begin_src text\ncode[fn:zz]\n#+end_src\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "fn3 (no section)",
+  "input": "* A\nRef[fn:x] and nested.\n\n[fn:x] Def with nested[fn:y] ref.\n\n[fn:y] Why.\n\n[fn:orphan] Nobody refers here.\n\n#+begin_src text\ncode[fn:zz]\n#+end_src\n\n* Footnotes :noexport:\nSome intro text.\n\n[fn:late] Late def.\nUse late[fn:late] up top? no.\n",
+  "section": null,
+  "expected": "* A\nRef[fn:1] and nested.\n\n[fn:1] Def with nested[fn:2] ref.\n\n[fn:2] Why.\n\n[fn:3] Late def.\nUse late[fn:late] up top? no.\n\n[fn:4] Nobody refers here.\n\n#+begin_src text\ncode[fn:zz]\n#+end_src\n\n* Footnotes :noexport:\nSome intro text.\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "fn5",
+  "input": "* A\nOne[fn:1] two[fn:3] three[fn:9].\n\n[fn:1] a\n[fn:3] c\n[fn:9] i",
+  "section": "Footnotes",
+  "expected": "* A\nOne[fn:1] two[fn:2] three[fn:3].\n\n* Footnotes\n\n[fn:1] a\n\n[fn:2] c\n\n[fn:3] i\n"
+ },
+ {
+  "kind": "normalize",
+  "name": "fn5 (no section)",
+  "input": "* A\nOne[fn:1] two[fn:3] three[fn:9].\n\n[fn:1] a\n[fn:3] c\n[fn:9] i",
+  "section": null,
+  "expected": "* A\nOne[fn:1] two[fn:2] three[fn:3].\n\n[fn:1] a\n\n[fn:2] c\n\n[fn:3] i\n"
+ },
+ {
+  "kind": "new",
+  "name": "n1 at 15 label 1",
+  "input": "* One\nSome text here and more.\n\n* Two\nAnother para.\n",
+  "pos": 15,
+  "label": "1",
+  "expected": "* One\nSome text[fn:1] here and more.\n\n* Two\nAnother para.\n\n* Footnotes\n\n[fn:1] \n"
+ },
+ {
+  "kind": "new",
+  "name": "n1 at 15 label null",
+  "input": "* One\nSome text here and more.\n\n* Two\nAnother para.\n",
+  "pos": 15,
+  "label": null,
+  "expected": "* One\nSome text[fn::] here and more.\n\n* Two\nAnother para.\n"
+ },
+ {
+  "kind": "new",
+  "name": "n1 at 15 label x",
+  "input": "* One\nSome text here and more.\n\n* Two\nAnother para.\n",
+  "pos": 15,
+  "label": "x",
+  "expected": "* One\nSome text[fn:x] here and more.\n\n* Two\nAnother para.\n\n* Footnotes\n\n[fn:x] \n"
+ },
+ {
+  "kind": "new",
+  "name": "n1 at 6 label 1",
+  "input": "* One\nSome text here and more.\n\n* Two\nAnother para.\n",
+  "pos": 6,
+  "label": "1",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "n1 at 0 label 1",
+  "input": "* One\nSome text here and more.\n\n* Two\nAnother para.\n",
+  "pos": 0,
+  "label": "1",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "n2 at 18 label 1",
+  "input": "* One\nSome text[fn:1] here.\n\n[fn:1] first\n\n* Footnotes\n\n[fn:2] second\n\n* Tail\nx\n",
+  "pos": 18,
+  "label": "1",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "n2 at 18 label 3",
+  "input": "* One\nSome text[fn:1] here.\n\n[fn:1] first\n\n* Footnotes\n\n[fn:2] second\n\n* Tail\nx\n",
+  "pos": 18,
+  "label": "3",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "n2 at 30 label 3",
+  "input": "* One\nSome text[fn:1] here.\n\n[fn:1] first\n\n* Footnotes\n\n[fn:2] second\n\n* Tail\nx\n",
+  "pos": 30,
+  "label": "3",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "n3 at 12 label 1",
+  "input": "* One\nSome text here.\n* Footnotes :tag:\n:PROPERTIES:\n:A: b\n:END:\n[fn:2] second\n",
+  "pos": 12,
+  "label": "1",
+  "expected": "* One\nSome t[fn:1]ext here.\n* Footnotes :tag:\n:PROPERTIES:\n:A: b\n:END:\n[fn:2] second\n\n* Footnotes\n\n[fn:1] \n"
+ },
+ {
+  "kind": "new",
+  "name": "n4 at 8 label 1",
+  "input": "* TODO One :tag:\ntext\n#+begin_src sh\necho hi\n#+end_src\nlast line",
+  "pos": 8,
+  "label": "1",
+  "expected": "* TODO O[fn:1]ne :tag:\ntext\n#+begin_src sh\necho hi\n#+end_src\nlast line\n\n* Footnotes\n\n[fn:1] \n"
+ },
+ {
+  "kind": "new",
+  "name": "n4 at 40 label 1",
+  "input": "* TODO One :tag:\ntext\n#+begin_src sh\necho hi\n#+end_src\nlast line",
+  "pos": 40,
+  "label": "1",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "n5 at 100 label 7",
+  "input": "* H\nbody text\n:LOGBOOK:\n- note\n:END:\n\n#+begin_verse\nverse line\n#+end_verse\n\n| a | b |\n- item one\n- item two\n\nLast[fn:1] para.\n\n* Footnotes\nSCHEDULED: <2026-01-01 Thu>\n:LOGBOOK:\n:END:\n\n\n[fn:1] one\n",
+  "pos": 100,
+  "label": "7",
+  "expected": "* H\nbody text\n:LOGBOOK:\n- note\n:END:\n\n#+begin_verse\nverse line\n#+end_verse\n\n| a | b |\n- item one\n- i[fn:7]tem two\n\nLast[fn:1] para.\n\n* Footnotes\nSCHEDULED: <2026-01-01 Thu>\n:LOGBOOK:\n:END:\n[fn:7] \n\n\n[fn:1] one\n"
+ },
+ {
+  "kind": "new",
+  "name": "n5 at 85 label 7",
+  "input": "* H\nbody text\n:LOGBOOK:\n- note\n:END:\n\n#+begin_verse\nverse line\n#+end_verse\n\n| a | b |\n- item one\n- item two\n\nLast[fn:1] para.\n\n* Footnotes\nSCHEDULED: <2026-01-01 Thu>\n:LOGBOOK:\n:END:\n\n\n[fn:1] one\n",
+  "pos": 85,
+  "label": "7",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "n6 at 8 label 1",
+  "input": "* T\n| a | bb |\n|---+----|\n| c | d |\n",
+  "pos": 8,
+  "label": "1",
+  "expected": "* T\n| a [fn:1]| bb |\n|---+----|\n| c | d |\n\n* Footnotes\n\n[fn:1] \n"
+ },
+ {
+  "kind": "new",
+  "name": "n6 at 14 label 1",
+  "input": "* T\n| a | bb |\n|---+----|\n| c | d |\n",
+  "pos": 14,
+  "label": "1",
+  "expected": null
+ }
+]

@@ -1,0 +1,21 @@
+#+TITLE: Edge cases
+#+BIBLIOGRAPHY: refs.bib
+
+Before the first heading [cite:@knuth84].
+
+* Heading with cite [cite/t:@lamport94]
+Global prefix [cite:see;@knuth84 p. 3;@lamport94;and so on] and *bold [cite:@three]* and =[cite:@verb]=.
+Caps [cite/t/c:@lamport94] bare [cite/a/c:@three] bare-year [cite/na/b:@knuth84] nobare [cite/na:@knuth84].
+- item [cite:@knuth84; @three]
+- other [cite/t:  ;@knuth84]
+
+| a | [cite:@three] |
+|---+---|
+
+Trailing space [cite:@knuth84]  two spaces. And silent [cite/n:@three] gone.
+Close [cite:@knuth84], punctuation [cite/t:@three]. Quote "[cite:@knuth84]"
+** Sub
+Text with ,[cite:@x] not.
+#+BEGIN_SRC python
+x = "[cite:@knuth84]"
+#+END_SRC

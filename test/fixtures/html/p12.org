@@ -1,0 +1,8 @@
+#+TITLE: More
+#+BIBLIOGRAPHY: refs2.bib
+#+CITE_EXPORT: basic nil text
+* Part
+All [cite:@a1] [cite:@a2] [cite:@a3] [cite/t:@a2] [cite:@e1; @t1] [cite/na:@a3]
+[cite:@p1] [cite/a/c:@e1] [cite/t/bc:@nopub].
+Numeric [cite/nb:@a1;@a2;@a3;@e1] and [cite/nb:see @t1 pp. 3-4].
+#+PRINT_BIBLIOGRAPHY:

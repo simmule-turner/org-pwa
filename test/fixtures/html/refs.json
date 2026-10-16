@@ -1,0 +1,2 @@
+[{"id":"j1","type":"book","title":"JSON Book","author":[{"family":"Fam","given":"Giv"},{"family":"Two","given":"Per"}],"issued":{"date-parts":[[2012,3]]},"publisher":"Pub"},
+ {"id":"j2","type":"article","title":"Raw date","editor":[{"family":"Ed","given":"It"}],"issued":{"raw":"Spring 2005-06"},"container-title":"X"}]
