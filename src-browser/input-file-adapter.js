@@ -23,7 +23,7 @@
  * need zero changes to work with it.
  */
 
-import { contentHash } from '../src/sync-engine.js';
+import { contentHash, matchesExpected, writeConflict } from '../src/sync-engine.js';
 
 /** @param {string} fileId */
 function importedFileKey(fileId) {
@@ -108,7 +108,11 @@ export function createInputFileAdapter(kvAdapter, downloadFn = downloadFile) {
      * @param {string} fileId
      * @param {any} [content]
      */
-    async write(fileId, content) {
+    async write(fileId, content, /** @type {{ expect?: { exists: boolean, hash: string | null } }} */ options = {}) {
+      // the imported copy is all this app can compare with: a second window may have saved it since this save was prepared
+      if (options.expect && !matchesExpected(options.expect, await this.read(fileId))) {
+        throw writeConflict(`"${fileId}" was changed in another window while it was being saved`);
+      }
       await kvAdapter.set(importedFileKey(fileId), content);
       downloadFn(fileId, content);
       return { hash: contentHash(content) };

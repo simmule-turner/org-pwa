@@ -38,10 +38,12 @@
  */
 
 import { parseInline, stripLineBreakMarker } from './inline-markup.js';
+import { citeExportFor, dropSilentCitations, replaceCitationsInText, segmentsText, splitBibliography } from './cite.js';
 import { resolveLinkTarget } from './link-resolve.js';
 import { anchorFor, buildLinkContext, internalLink } from './export-links.js';
 import { isWidthCookieRow } from './table-cookies.js';
 import { parseExportOptions } from './export-options.js';
+import { expandMacrosForExport } from './export-org.js';
 
 // Footnote definitions accumulated during a single exportToMarkdown()
 // call (module-level, reset at the start of each call): GFM has no
@@ -63,6 +65,7 @@ let anonymousFootnoteCounterMd = 0;
 /** @type {any} */ let docForLinkResolutionMd = null;
 /** @type {import('./export-links.js').LinkContext | null} */ let linkCtxMd = null; // section numbers, targets and radio-target pattern for this export
 let headingSlugMapMd = new Map();
+/** @type {any} */ let citeMd = null; // the citation text maker for this export (cite.js)
 
 /** GitHub's own heading-slug algorithm (github-slugger, the library
  *  GitHub itself uses to generate `#heading-anchor`-style links for
@@ -97,7 +100,8 @@ export function gfmSlugify(title) {
  *  rendered by a real GFM-compliant tool. */
 function assignHeadingSlugsMd(headings, usedSlugs) {
   for (const heading of headings) {
-    const base = gfmSlugify(heading.title);
+    // what GitHub slugs is the rendered heading, so a citation counts as the text it becomes
+    const base = gfmSlugify(citeMd ? replaceCitationsInText(heading.title, (c) => { const t = citeMd.formatCitation(c); return t ? segmentsText(t) : ''; }) : heading.title);
     let slug = base;
     let n = 1;
     while (usedSlugs.has(slug)) {
@@ -154,6 +158,7 @@ function resolveLinkHrefMd(target) {
 
 /** @param {any} [nodes] */
 function renderInlineListMd(nodes) {
+  if (citeMd) nodes = dropSilentCitations(nodes, (/** @type {any} */ c) => citeMd.formatCitation(c) === null);
   return nodes.map(renderInlineNodeMd).join('');
 }
 
@@ -201,12 +206,19 @@ function renderInlineNodeMd(node) {
     }
     case 'image':
       return `![](${node.target})`;
+    case 'latex':
+      // the fragment as typed: a Markdown renderer with maths support reads $...$ and $$...$$
+      return node.raw !== undefined ? node.raw : node.displayMode ? `$$${node.source}$$` : `$${node.source}$`;
     case 'footnote-ref':
       return `[^${node.label}]`;
     case 'footnote-def': {
       const label = footnoteLabelMd(node.label);
       footnoteDefinitionsMd.push({ label, text: renderInlineListMd(node.children) });
       return `[^${label}]`;
+    }
+    case 'citation': {
+      const segments = citeMd ? citeMd.formatCitation(node) : null;
+      return (segments ? citeSegmentsMd(segments).trim() : '') + ' '.repeat(node.blanks);
     }
     case 'radio-target':
       return linkCtxMd ? `<a id="${anchorFor(linkCtxMd, node.name)}">${escapeHtmlMd(node.name)}</a>` : escapeMarkdownText(node.name);
@@ -222,6 +234,18 @@ function renderInlineNodeMd(node) {
   }
 }
 
+/** A citation processor's output as Markdown: text escaped, affixes as Org text, emphasis as *...*.
+ * @param {import('./cite.js').Segment[]} segments
+ * @returns {string} */
+function citeSegmentsMd(segments) {
+  return segments.map((s) => (typeof s === 'string' ? escapeMarkdownText(s) : 'org' in s ? renderTextMd(s.org) : `*${citeSegmentsMd(s.italic)}*`)).join('');
+}
+
+/** The bibliography as paragraphs. @returns {string} */
+function bibliographyMd() {
+  return citeMd ? citeMd.bibliography().map((/** @type {any} */ e) => citeSegmentsMd(e)).join('\n\n') : '';
+}
+
 /** @param {string} text */
 function escapeHtmlMd(text) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -234,7 +258,7 @@ function renderTextMd(text) {
 
 // ---- body content -----------------------------------------------------
 
-/** @param {any} [node] */
+/** @param {any} [node] @returns {string} */
 function renderParagraphMd(node) {
   if (node.footnoteLabel !== null) {
     const strippedFirstLine = node.lines[0].replace(
@@ -244,6 +268,10 @@ function renderParagraphMd(node) {
     const text = [strippedFirstLine, ...node.lines.slice(1)].map(renderTextMd).join(' ');
     footnoteDefinitionsMd.push({ label: node.footnoteLabel, text });
     return ''; // emitted at the end instead, alongside every other footnote definition
+  }
+  const pieces = splitBibliography(node.lines);
+  if (pieces.some((p) => 'bibliography' in p)) {
+    return pieces.map((p) => ('bibliography' in p ? bibliographyMd() : renderParagraphMd({ ...node, lines: p.lines }))).filter(Boolean).join('\n\n');
   }
   // Markdown's own "two trailing spaces + newline" is its actual hard
   // line break convention -- used only where the source line itself
@@ -475,12 +503,14 @@ function buildTocMd(headings, toc, numberingEnabled) {
 
 /** @param {Doc} doc */
 export function exportToMarkdown(doc, scope = /** @type {any} */ (null)) {
+  ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
   footnoteDefinitionsMd = [];
   anonymousFootnoteCounterMd = 0;
   docForLinkResolutionMd = doc;
   headingSlugMapMd = new Map();
 
   const roots = scope ? [scope] : doc.children || [];
+  citeMd = citeExportFor(doc, roots, parseInline, !scope);
   assignHeadingSlugsMd(roots, new Set());
   linkCtxMd = buildLinkContext(doc, roots, parseExportOptions(doc).num);
   const levelOffset = scope ? scope.level - 1 : 0;

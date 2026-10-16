@@ -536,3 +536,8 @@ test('the comma-escape strip also works when the escaped line is indented', () =
   assert.match(md, /#\+CATEGORY: Projects/);
   assert.doesNotMatch(md, /,#\+CATEGORY/);
 });
+
+test('markdown export: macros expand and inline math is kept', () => {
+  const out = exportToMarkdown(parseOrg('#+MACRO: who World\nHello {{{who}}} $a^2$\n'));
+  assert.match(out, /Hello World \$a\^2\$/);
+});

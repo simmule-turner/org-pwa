@@ -27,6 +27,7 @@
  */
 
 import { parseInline, stripLineBreakMarker } from './inline-markup.js';
+import { citeExportFor, dropSilentCitations, splitBibliography } from './cite.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 import { resolveLinkTarget } from './link-resolve.js';
 import { createZip } from './zip-writer.js';
@@ -34,6 +35,7 @@ import { isWidthCookieRow } from './table-cookies.js';
 import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
 import { getProperty } from './archive-model.js';
 import { anchorFor, buildLinkContext, internalLink } from './export-links.js';
+import { expandMacrosForExport } from './export-org.js';
 
 // ---- escaping -------------------------------------------------------------
 
@@ -122,6 +124,7 @@ function resolveInternalLinkOdt(target) {
 
 /** @param {any} [nodes] */
 function renderInlineListOdt(nodes) {
+  if (citeOdt) nodes = dropSilentCitations(nodes, (/** @type {any} */ c) => citeOdt.formatCitation(c) === null);
   return nodes.map(renderInlineNodeOdt).join('');
 }
 
@@ -158,6 +161,9 @@ function renderInlineNodeOdt(node) {
       }
       return `<text:a xlink:type="simple" xlink:href="${escapeXml(node.target)}">${label}</text:a>`;
     }
+    case 'latex':
+      // not typeset: the fragment as typed, in the code style, so no formula is lost
+      return `<text:span text:style-name="Code">${escapeXml(node.raw !== undefined ? node.raw : node.source)}</text:span>`;
     case 'image':
       // Not embedded -- see this file's own header comment for why.
       return `<text:span text:style-name="Code">[image: ${escapeXml(node.target)}]</text:span>`;
@@ -179,6 +185,10 @@ function renderInlineNodeOdt(node) {
         `</text:note>`
       );
     }
+    case 'citation': {
+      const segments = citeOdt ? citeOdt.formatCitation(node) : null;
+      return (segments ? citeSegmentsOdt(segments).trim() : '') + ' '.repeat(node.blanks);
+    }
     case 'radio-target':
       return linkCtxOdt ? `<text:bookmark-start text:name="${escapeXml(anchorFor(linkCtxOdt, node.name))}"/>${escapeXml(node.name)}<text:bookmark-end text:name="${escapeXml(anchorFor(linkCtxOdt, node.name))}"/>` : escapeXml(node.name);
     case 'target':
@@ -190,6 +200,15 @@ function renderInlineNodeOdt(node) {
   }
 }
 
+/** @type {any} */ let citeOdt = null; // the citation text maker for this export (cite.js)
+
+/** A citation processor's output as ODF text: affixes as Org text, emphasis as the Italic span.
+ * @param {import('./cite.js').Segment[]} segments
+ * @returns {string} */
+function citeSegmentsOdt(segments) {
+  return segments.map((s) => (typeof s === 'string' ? escapeXml(s) : 'org' in s ? renderTextOdt(s.org) : `<text:span text:style-name="Italic">${citeSegmentsOdt(s.italic)}</text:span>`)).join('');
+}
+
 /** @param {string} text
  * @param {boolean} [radio]  whether a radio target's plain mentions become links (not inside a link's own text) */
 function renderTextOdt(text, radio = true) {
@@ -198,7 +217,7 @@ function renderTextOdt(text, radio = true) {
 
 // ---- body content -----------------------------------------------------
 
-/** @param {any} [node] */
+/** @param {any} [node] @returns {string} */
 function renderParagraphOdt(node) {
   // A footnote's own DEFINITION line (the "[fn:label] text" form,
   // as opposed to an inline footnote-def already rendered where it
@@ -207,6 +226,12 @@ function renderParagraphOdt(node) {
   // encountered -- the definition-line paragraph itself contributes
   // nothing further here, same as export-html.js's own treatment.
   if (node.footnoteLabel !== null) return '';
+  const pieces = splitBibliography(node.lines);
+  if (pieces.some((p) => 'bibliography' in p)) {
+    return pieces
+      .map((p) => ('bibliography' in p ? (citeOdt ? citeOdt.bibliography() : []).map((/** @type {any} */ e) => `<text:p text:style-name="Standard">${citeSegmentsOdt(e)}</text:p>`).join('') : renderParagraphOdt({ ...node, lines: p.lines })))
+      .join('');
+  }
   const joined = node.lines
     .map((/** @type {string} */ line, /** @type {number} */ i) => {
       const forcedBreak = stripLineBreakMarker(line) !== line;
@@ -532,6 +557,7 @@ function buildTocOdt(roots, toc, numberingEnabled) {
 
 /** @param {Doc} doc */
 export function exportToOdt(doc, scope = /** @type {any} */ (null)) {
+  ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
   docForLinkResolutionOdt = doc;
   headingIdMapOdt = new Map();
   footnoteCounterOdt = 0;
@@ -541,6 +567,7 @@ export function exportToOdt(doc, scope = /** @type {any} */ (null)) {
 
   const roots = scope ? [scope] : doc.children || [];
   assignHeadingIdsOdt(roots, new Set());
+  citeOdt = citeExportFor(doc, roots, parseInline, !scope);
   linkCtxOdt = buildLinkContext(doc, roots, options.num);
   const levelOffset = scope ? scope.level - 1 : 0;
   const { doneKeywords } = resolveTodoSequence(doc);

@@ -9,6 +9,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { parseOrg } from '../src/org-parser.js';
 import { exportToHtml } from '../src/export-html.js';
+import { cacheBibliography } from '../src/cite.js';
 
 const file = process.argv[2];
 if (!file) {
@@ -32,7 +33,13 @@ function skeleton(h) {
 
 const abs = path.resolve(file);
 const emacs = execFileSync('emacs', ['-Q', '--batch', '--eval', `(progn (require 'ox-html) (setq org-export-use-babel nil) (find-file ${JSON.stringify(abs)}) (princ (org-export-as 'html)))`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 1 << 28 });
-const ours = exportToHtml(parseOrg(fs.readFileSync(abs, 'utf8')));
+const source = fs.readFileSync(abs, 'utf8');
+// bibliography files named by #+BIBLIOGRAPHY: sit beside the Org file, as Emacs finds them
+for (const m of source.matchAll(/^#\+BIBLIOGRAPHY:\s*"?([^"\n]+?)"?\s*$/gim)) {
+  const f = path.resolve(path.dirname(abs), m[1]);
+  if (fs.existsSync(f)) cacheBibliography(m[1], fs.readFileSync(f, 'utf8'));
+}
+const ours = exportToHtml(parseOrg(source));
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cmp-html-'));
 fs.writeFileSync(path.join(dir, 'emacs.txt'), skeleton(emacs) + '\n');
 fs.writeFileSync(path.join(dir, 'ours.txt'), skeleton(ours) + '\n');

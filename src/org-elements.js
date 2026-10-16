@@ -18,6 +18,7 @@
  *   html-line        { value }     (`#+HTML:`)
  *   toc              { value }     (`#+TOC:`)
  *   include          { value }     (`#+INCLUDE:`)
+ *   print-bibliography { value }   (`#+PRINT_BIBLIOGRAPHY:`)
  */
 
 const AFFILIATED_RE = /^[ \t]*#\+(CAPTION|NAME|HEADERS?|RESULTS|PLOT|TBLNAME|ATTR_[A-Za-z0-9_-]+)(?:\[([^\]]*)\])?:[ \t]*(.*?)[ \t]*$/i;
@@ -228,7 +229,7 @@ function interruptsParagraph(line) {
     isBlank(line) ||
     BLOCK_BEGIN_RE.test(line) ||
     AFFILIATED_RE.test(line) ||
-    /^[ \t]*#\+(HTML|TOC|INCLUDE):/i.test(line) ||
+    /^[ \t]*#\+(HTML|TOC|INCLUDE|PRINT_BIBLIOGRAPHY):/i.test(line) ||
     TABLE_RE.test(line) ||
     HR_RE.test(line) ||
     FIXED_RE.test(line) ||
@@ -281,6 +282,7 @@ export function parseElements(lines) {
       if (key === 'HTML') push({ type: 'html-line', value: kw[2] });
       else if (key === 'TOC') push({ type: 'toc', value: kw[2] });
       else if (key === 'INCLUDE') push({ type: 'include', value: kw[2] });
+      else if (key === 'PRINT_BIBLIOGRAPHY') push({ type: 'print-bibliography', value: kw[2] });
       // other keywords (TITLE, OPTIONS, MACRO ...) are not content
       i++;
       continue;

@@ -4,6 +4,7 @@
 // Extracted from app.js: export import.
 import { htmlExportDefaults } from '../src/export-defaults.js';
 import { exportToAscii } from '../src/export-ascii.js';
+import { prefetchBibliography } from './bibliography.js';
 import { exportToHtml } from '../src/export-html.js';
 import { exportToIcalendar } from '../src/export-icalendar.js';
 import { prepareBabelExport } from '../src/babel-export.js';
@@ -66,6 +67,7 @@ export async function performExport(format, scope) {
   const rawName = scope && typeof scope === 'object' ? scope.title : suggestedSaveAsName('export').replace(/\.[a-zA-Z0-9]+$/, '');
   const baseName = rawName.replace(/[\\/:*?"<>|]/g, '_').trim() || 'export';
   if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt') {
+    await prefetchBibliography(S.state.doc, S.state.documentId, S.state.storageKind, { again: true }); // #+BIBLIOGRAPHY: files, for citations
     const doc = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg));
     if (format === 'ascii') {
       saveOut(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables), { charset: getAsciiCharset(S.state.localVariables) }), 'text/plain');

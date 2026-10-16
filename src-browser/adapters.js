@@ -5,6 +5,7 @@ import { createGithubAdapter } from './github-adapter.js';
 import { createInputFileAdapter } from './input-file-adapter.js';
 import { folderAvailable, folderFileExists, readFolderText, writeFolderText } from './local-folder.js';
 import { platform } from './platform.js';
+import { matchesExpected, writeConflict } from '../src/sync-engine.js';
 import { withLineEndings } from './line-endings-adapter.js';
 import { kv } from './singletons.js';
 import { createWebdavAdapter } from './webdav-adapter.js';
@@ -26,6 +27,12 @@ const localFileAdapter = {
    * @param {any} [content]
    */
   async write(id, content, /** @type {any[]} */ ...rest) {
+    const options = rest[0];
+    // `expect`: the version this save was compared against. A local file has no server to refuse a stale write, so the file is
+    // read again just before writing, and if someone else changed it meanwhile the save says so instead of replacing it.
+    if (options && options.expect && !matchesExpected(options.expect, await this.read(id))) {
+      throw writeConflict(`"${id}" was changed by something else while it was being saved`);
+    }
     if (folderAvailable() && (await platform.localFiles.adapter.access(id)) === 'none') return writeFolderText(id, content);
     return platform.localFiles.adapter.write(id, content, ...rest);
   },

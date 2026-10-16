@@ -578,6 +578,9 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~calendar-longitude~ | ~-78.8986~ | Longitude for the same (Durham, NC) |
 | ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
 | ~org-agenda-skip-archived-trees~ | ~t~ | Exclude archived headings (tagged ~:ARCHIVE:~) from the agenda; ~nil~ includes them |
+| ~org-cite-global-bibliography~ | unset | Bibliography files used by every document, as a Lisp list of paths (see [[#citations][Citations]]) |
+| ~org-cite-basic-sorting-field~ | ~author~ | Field the reference list is sorted by |
+| ~org-cite-basic-author-year-separator~ | ~, ~ | Text between author and year in a citation |
 | ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (~** COMMENT draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
 | ~org-xx-agenda-hide-title-stamps~ | ~t~ | Leave active timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written |
 | ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
@@ -1465,6 +1468,19 @@ The full set of open tabs persists across closing and reopening the app, each re
 
 -----
 
+** Citations
+:PROPERTIES:
+:CUSTOM_ID: citations
+:END:
+
+*Org-cite citations* work as in Emacs's default (~basic~) processor. Write ~[cite:@knuth84]~, ~[cite/t:@knuth84 p. 5]~ or ~[cite:see @a; @b, ch. 2]~ and point at your references with ~#+BIBLIOGRAPHY: refs.bib~ (BibTeX or CSL-JSON, read from the same place as the document, one line per file). In the outline a citation stays as typed, dimmed, and tapping a key shows its entry; a key with no entry is dotted underlined.
+
+- Styles: default (author, year), ~/t~ (text), ~/a~ (author), ~/na~ (no author), ~/n~ (nothing printed), ~/b~ (numeric), with ~/c~ and ~/b~ variants for capitals and bare form.
+- ~#+PRINT_BIBLIOGRAPHY:~ marks where the reference list goes in HTML, Markdown, ASCII and ODT exports. ~#+CITE_EXPORT: basic plain~ (or ~numeric~) picks the list style.
+- Settings (see [[#local-variables][Local Variables]]): ~org-cite-global-bibliography~ (files used by every document), ~org-cite-basic-sorting-field~ and ~org-cite-basic-author-year-separator~.
+
+-----
+
 ** Export
 :PROPERTIES:
 :CUSTOM_ID: export
@@ -1983,7 +1999,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Tables* (see [[#table-formulas][Table formulas]]): ~#+TBLFM:~ covers arithmetic, conditionals, named constants, scalar and aggregate functions, date and time arithmetic and formatting, and unit conversion. Complex numbers and basic vectors and matrices are covered; not reproduced: the rest of Emacs Calc (symbolic algebra), named-field references, and recalculation on every keystroke.
 
-*Footnotes*: no ~org-footnote-new~ or ~org-footnote-normalize~ (no insert at point, renumbering, sorting or inline/separate-line conversion; edit the raw text), and no ~org-ref~ or ~org-cite~ integration.
+*Footnotes*: no ~org-footnote-new~ or ~org-footnote-normalize~ (no insert at point, renumbering, sorting or inline/separate-line conversion; edit the raw text), and no ~org-ref~ integration.
 
 *Clocking* (see [[#clocking][Clocking]]): no custom ~org-duration-units~, no ~Effort_ALL+~, and no clock-in reminder beyond the modeline's over-estimate marker.
 
@@ -1991,7 +2007,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Babel*: ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). These do not exist: blocks in any other language, ~:session~, running one block from inside another (~<<name()>>~), and results that refresh when a file is opened.
 
-*Links and structure*: ~[[id:...]]~ links are followed through the open tabs and Agenda Files, then the files opened here before, from a table kept in this browser rather than ~org-id-locations~. ~<<targets>>~ and radio targets work in the outline and in every export. ~#+SETUPFILE:~ is read from the same place as the document, or from an http(s) URL, and kept for offline use. No ~org-cite~ citations. They are kept exactly as written, and never altered by a save.
+*Links and structure*: ~[[id:...]]~ links are followed through the open tabs and Agenda Files, then the files opened here before, from a table kept in this browser rather than ~org-id-locations~. ~<<targets>>~ and radio targets work in the outline and in every export. ~#+SETUPFILE:~ is read from the same place as the document, or from an http(s) URL, and kept for offline use. *Citations* (see [[#citations][Citations]]): only the ~basic~ processor. ~#+CITE_EXPORT:~ naming ~csl~, ~biblatex~ or ~natbib~ is exported as ~basic~, ~note~ styles print as ~text~, and ~org-cite-export-processors~ is not a setting (use ~#+CITE_EXPORT:~).
 
 *Undo/redo* (see [[#undoredo-and-history][Undo/redo and History]]): no undo tree, and fold state isn't preserved across an undo or redo jump (the file's ~#+STARTUP~ visibility is reapplied). There is no per-keystroke granularity; the browser's field-level undo covers that, much as Emacs batches consecutive typing.
 

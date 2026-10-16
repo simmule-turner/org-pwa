@@ -7,6 +7,8 @@ import { customLink, links as customLinks } from './extension-links.js';
 import { findFootnoteDefinition, guessAudioMimeType, guessImageMimeType, isExternalUrl, resolveAttachmentTarget, resolveImagePath, resolveLinkTarget } from '../src/link-resolve.js';
 import { getUseSubSuperscripts } from '../src/local-variables.js';
 import { radioTargetRegExp } from '../src/targets.js';
+import { citeDefaults, splitCitationKeys, citeEntry, bibliographyFiles } from '../src/cite.js';
+import { describeCiteKey } from './bibliography.js';
 import { S } from './app-state.js';
 import { openAttachmentLink } from './attachments-flow.js';
 import { attachmentsAvailable, attachmentsFolderMissingMessage } from './attachments-store.js';
@@ -344,6 +346,33 @@ export function renderFootnoteDefNode(node, linkContext = /** @type {any} */ (nu
 }
 
 /** The pattern for the open document's radio targets (null when it has none), worked out once per render. */
+/** A citation as written, dimmed, with each @key tappable: it says what the key stands for (org-cite-follow).
+ * @param {any} node */
+function renderCitationNode(node) {
+  const span = document.createElement('span');
+  span.className = 'cite';
+  span.style.opacity = '0.75';
+  const files = S.state && S.state.doc ? bibliographyFiles(S.state.doc, citeDefaults.globalFiles) : citeDefaults.globalFiles;
+  for (const part of splitCitationKeys(node.raw)) {
+    if ('text' in part) {
+      span.appendChild(document.createTextNode(part.text));
+      continue;
+    }
+    const key = document.createElement('span');
+    key.className = 'cite-key';
+    key.textContent = '@' + part.key;
+    key.style.textDecoration = citeEntry(files, part.key) ? 'underline' : 'underline dotted';
+    key.style.cursor = 'pointer';
+    key.addEventListener('click', (event) => {
+      event.stopPropagation();
+      setStatus(describeCiteKey(part.key));
+    });
+    span.appendChild(key);
+  }
+  if (node.blanks) span.appendChild(document.createTextNode(' '.repeat(node.blanks)));
+  return span;
+}
+
 function currentRadioTargets() {
   const doc = S.state.doc;
   if (!doc) return null;
@@ -447,6 +476,10 @@ export function renderInlineNodes(nodes, container, linkContext = /** @type {any
         span.style.opacity = '0.6';
         span.title = node.type === 'radio-target' ? 'Radio target: every plain "' + node.name + '" in this file links here' : 'Link target';
         container.appendChild(span);
+        break;
+      }
+      case 'citation': {
+        container.appendChild(renderCitationNode(node));
         break;
       }
       case 'comment':

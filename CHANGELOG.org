@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v540 — Org-cite citations
+Citations like =[cite/t:@knuth84]= are understood: the outline shows them dimmed with tappable keys, and HTML, Markdown, ASCII and ODT exports format them and the =#+PRINT_BIBLIOGRAPHY:= list exactly as Emacs's basic processor does, reading =#+BIBLIOGRAPHY:= files (BibTeX or CSL-JSON). Markdown, ASCII and ODT exports now also expand macros and keep inline math, and ASCII keeps emphasis markers and =<url>= links as Emacs does. Saving a local file or an import no longer overwrites a newer version.
+Verified: HTML output matches Emacs on twelve fixtures; browser checks for citations, export, save and local files.
 * v539 — Save As no longer overwrites a newer save
 Save As over an existing file replaces only the version you were shown. If someone else saved the file after you agreed (another device, say), you are asked again, and declining leaves their version and your tab untouched. This covers GitHub, WebDAV and local files.
 Verified: browser checks for Save As, save, conflicts and the file screen.

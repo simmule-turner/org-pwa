@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v539';
+const CACHE_NAME = 'org-pwa-shell-v540';
 
 const SHELL_FILES = [
   './',
@@ -119,6 +119,8 @@ const SHELL_FILES = [
   './src/tag-inheritance.js',
   './src/targets.js',
   './src/setupfile.js',
+  './src/cite.js',
+  './src-browser/bibliography.js',
   './src-browser/setupfile.js',
   './src/export-links.js',
   './src/export-markdown.js',

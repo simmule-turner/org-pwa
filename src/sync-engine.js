@@ -28,6 +28,7 @@
  */
 
 import { getPendingChange, clearPendingChange } from './outbox.js';
+import { toLf } from './line-endings.js';
 
 /** @param {string} documentId */
 function syncMetaKey(documentId) {
@@ -210,7 +211,20 @@ function createInMemoryDiskAdapter() {
   };
 }
 
+/** Whether the file as it is now is the version a write expects to replace (the `expect` write option). For adapters that have no
+ * server-side precondition (a local file, an imported one): they read the file again just before writing. A hash made of the
+ * text with its line endings read as "\n" counts too, since that is how the app hashes what it read.
+ * @param {{ exists: boolean, hash: string | null } | undefined} expect
+ * @param {{ content: string, hash: string | null } | null} current */
+function matchesExpected(expect, current) {
+  if (!expect) return true;
+  if (!expect.exists) return current === null;
+  if (current === null) return false;
+  return current.hash === expect.hash || contentHash(toLf(current.content)) === expect.hash;
+}
+
 export {
+  matchesExpected,
   SYNC_RESULT,
   contentHash,
   syncDocument,

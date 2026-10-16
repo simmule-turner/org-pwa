@@ -10,7 +10,7 @@
  *   tokens: string[], tokenSources: string[], doneKeywords: string[], todoKeywords: string[] | null,
  *   radioRe: RegExp | null, noRadio: boolean, namedElements: Map<string, string>, currentNode: any,
  *   parsed: Map<any, any>, fnDefsCollect?: any, outline: any[], captioned: any[],
- *   headingNodes: Map<any, any>, targetHeadings: Map<string, any>,
+ *   headingNodes: Map<any, any>, targetHeadings: Map<string, any>, cite: any,
  * }} ExportState
  */
 /** @typedef {import('./types.js').Doc} Doc */
@@ -28,6 +28,7 @@
 
 import { parseInline, extractLatexFragments } from './inline-markup.js';
 import { parseElements, parseAttributes } from './org-elements.js';
+import { citeExportFor, dropSilentCitations } from './cite.js';
 import { ENTITIES } from './entities.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 import { resolveLinkTarget } from './link-resolve.js';
@@ -224,6 +225,7 @@ function createState(doc, scope, defaults = {}) {
     namedElements: new Map(),
     parsed: new Map(),
     radioRe: null,
+    cite: null,
     noRadio: false,
     currentNode: null,
     outline: [],
@@ -516,6 +518,7 @@ function literal(state, value) {
  * @param {any} [nodes]
  */
 function renderNodes(state, nodes) {
+  if (state.cite) nodes = dropSilentCitations(nodes, (/** @type {any} */ c) => state.cite.formatCitation(c) === null);
   return nodes.map((/** @type {any} */ n) => renderNode(state, n)).join('');
 }
 
@@ -585,6 +588,10 @@ function renderNode(state, node) {
       const label = node.label === null || node.label === '' ? 'anon-' + (state.fnOrder.length + 1) : node.label;
       return footnoteRef(state, label, `<p class="footpara">${renderNodes(state, node.children)}</p>`);
     }
+    case 'citation': {
+      const segments = state.cite ? state.cite.formatCitation(node) : null;
+      return (segments ? citeSegmentsHtml(state, segments).trim() : '') + ' '.repeat(node.blanks);
+    }
     case 'radio-target':
       return escapeHtml(node.name);
     case 'target':
@@ -594,6 +601,15 @@ function renderNode(state, node) {
     default:
       return '';
   }
+}
+
+/** A citation processor's output as HTML: plain text escaped, affixes as Org text, emphasis as <i>.
+ * @param {ExportState} state @param {import('./cite.js').Segment[]} segments
+ * @returns {string} */
+function citeSegmentsHtml(state, segments) {
+  return segments
+    .map((s) => (typeof s === 'string' ? escapeHtml(s) : 'org' in s ? renderInline(state, s.org) : `<i>${citeSegmentsHtml(state, s.italic)}</i>`))
+    .join('');
 }
 
 /**
@@ -952,6 +968,8 @@ function elementHtml(state, el, ctx = {}) {
       return el.value;
     case 'toc':
       return tocKeywordHtml(state, el);
+    case 'print-bibliography':
+      return state.cite ? state.cite.bibliography().map((/** @type {any} */ e) => `<p>\n${citeSegmentsHtml(state, e)}</p>`).join('\n\n') : '';
     case 'footnote-def':
       return '';
     default:
@@ -1352,6 +1370,11 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
     }
   };
   assign(state.outline);
+
+  // citations: the exported headings (not the commented or excluded ones) decide which keys are cited, and in what order
+  /** @param {any[]} nodes @returns {any[]} */
+  const exported = (nodes) => nodes.map((n) => ({ ...n.heading, children: exported(n.children) }));
+  state.cite = citeExportFor(doc, exported(state.outline), parseInline, !scope);
 
   // footnote definitions and radio/inline targets are found before anything is rendered
   const preamble = scope ? scope.bodyLines || [] : preambleBody(doc);

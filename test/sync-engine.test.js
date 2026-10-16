@@ -293,3 +293,18 @@ test('the write is told which version it may replace, and a changed file sends t
   assert.equal((await disk.read('a.org')).content, '* saved by another device meanwhile');
   assert.equal(await hasPendingChange(kv, 'a.org'), true);
 });
+
+import { matchesExpected, contentHash as hashOf } from '../src/sync-engine.js';
+import { test as expectTest } from 'node:test';
+import expectAssert from 'node:assert/strict';
+
+expectTest('matchesExpected: the version a write expects, by hash, with line endings read as LF', () => {
+  const current = { content: 'a\r\nb\r\n', hash: hashOf('a\r\nb\r\n') };
+  expectAssert.equal(matchesExpected(undefined, current), true);
+  expectAssert.equal(matchesExpected({ exists: true, hash: current.hash }, current), true);
+  expectAssert.equal(matchesExpected({ exists: true, hash: hashOf('a\nb\n') }, current), true);
+  expectAssert.equal(matchesExpected({ exists: true, hash: hashOf('other') }, current), false);
+  expectAssert.equal(matchesExpected({ exists: true, hash: 'x' }, null), false);
+  expectAssert.equal(matchesExpected({ exists: false, hash: null }, null), true);
+  expectAssert.equal(matchesExpected({ exists: false, hash: null }, current), false);
+});

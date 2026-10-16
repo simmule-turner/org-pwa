@@ -10,9 +10,10 @@ import { parseOrg, serializeOrg } from '../src/org-parser.js';
 
 const kvKey = (/** @type {string} */ path) => 'setupfile:' + path;
 
-/** @param {string} path @param {string} documentId @param {string | null} storageKind
+/** The text of a file the document refers to: from where the document lives, or a URL; the copy kept last time when that fails.
+ * @param {string} path @param {string} documentId @param {string | null} storageKind @param {(path: string) => string} [keptAs]
  * @returns {Promise<string | null>} */
-async function fetchOne(path, documentId, storageKind) {
+export async function fetchOne(path, documentId, storageKind, keptAs = kvKey) {
   try {
     if (/^https?:\/\//i.test(path)) {
       const res = await fetch(path);
@@ -25,7 +26,7 @@ async function fetchOne(path, documentId, storageKind) {
     // unreachable right now: fall back to the copy kept from last time
   }
   try {
-    const saved = await kv.get(kvKey(path));
+    const saved = await kv.get(keptAs(path));
     return saved && typeof saved.value === 'string' ? saved.value : null;
   } catch {
     return null;

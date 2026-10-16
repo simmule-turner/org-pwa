@@ -20,8 +20,10 @@ import { renderRow, syncSidePanel } from './row-render.js';
 import { renderTabBar } from './tabs.js';
 import { VH_UNIT, isWideLayout, menuButton, tableActionButton } from './ui-widgets.js';
 import { platform } from './platform.js';
+import { scheduleBibliography } from './bibliography.js';
 
 export function render() {
+  scheduleBibliography();
   S.radioTargetsCache = null;
   S.ancestorIndexCache = null;
   updateSaveButtonState();

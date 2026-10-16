@@ -39,12 +39,14 @@
  */
 
 import { parseInline, stripLineBreakMarker } from './inline-markup.js';
+import { citeExportFor, dropSilentCitations, isPrintBibliography } from './cite.js';
 import { parseOrg } from './org-parser.js';
 import { removeIndentation } from './babel-blocks.js';
 import { ENTITIES } from './entities.js';
 import { parseWidthCookieRow } from './table-cookies.js';
 import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
 import { buildLinkContext, internalLink } from './export-links.js';
+import { expandMacrosForExport } from './export-org.js';
 
 // ---- character sets (org-ascii-charset) -----------------------------------
 
@@ -145,6 +147,7 @@ function footnoteLabelAscii(label) {
 
 /** @param {any} [nodes] */
 function renderInlineListAscii(nodes) {
+  if (citeAscii) nodes = dropSilentCitations(nodes, (/** @type {any} */ c) => citeAscii.formatCitation(c) === null);
   return nodes.map(renderInlineNodeAscii).join('');
 }
 
@@ -153,15 +156,15 @@ function renderInlineNodeAscii(node) {
   switch (node.type) {
     case 'text':
       return substituteCharacters(node.value);
+    // ox-ascii keeps the markers: ASCII has nothing else to show emphasis with
     case 'bold':
+      return '*' + renderInlineListAscii(node.children) + '*';
     case 'italic':
+      return '/' + renderInlineListAscii(node.children) + '/';
     case 'underline':
+      return '_' + renderInlineListAscii(node.children) + '_';
     case 'strikethrough':
-      // Real org's own ox-ascii: these markers are simply not
-      // re-added -- ASCII has no way to represent any of them
-      // visually, and the parser has already separated the markup
-      // from its own content by this point.
-      return renderInlineListAscii(node.children);
+      return '+' + renderInlineListAscii(node.children) + '+';
     case 'code':
     case 'verbatim':
       // Real org's own org-ascii-verbatim-format ("`%s'") -- confirmed
@@ -171,10 +174,8 @@ function renderInlineNodeAscii(node) {
       return '`' + node.value + "'";
     case 'subscript':
     case 'superscript':
-      // Same reasoning as bold/italic/underline: no ASCII-plain way
-      // to represent either, so the marker is dropped and the plain
-      // text stands on its own.
-      return node.value;
+      // ox-ascii writes a script as it was typed: x_2, a_{bc}
+      return node.raw !== undefined ? node.raw : (node.type === 'subscript' ? '_' : '^') + node.value;
     case 'link': {
       const info = linkCtxAscii ? internalLink(linkCtxAscii, node.target) : null;
       if (info) {
@@ -183,8 +184,11 @@ function renderInlineNodeAscii(node) {
         return info.label !== null ? info.label : renderTextAscii(info.heading ? info.heading.title : node.target);
       }
       const label = node.description ? renderTextAscii(node.description, false) : node.target;
-      return label === node.target ? node.target : `${label} (${node.target})`;
+      return label === node.target ? `<${node.target}>` : `${label} (${node.target})`; // no description: <url>, as ox-ascii writes it
     }
+    case 'latex':
+      // ox-ascii writes the fragment as typed
+      return node.raw !== undefined ? node.raw : node.displayMode ? `\\[${node.source}\\]` : `\\(${node.source}\\)`;
     case 'image':
       return `[image: ${node.target}]`;
     case 'footnote-ref':
@@ -196,6 +200,10 @@ function renderInlineNodeAscii(node) {
       }
       return `[${label}]`;
     }
+    case 'citation': {
+      const segments = citeAscii ? citeAscii.formatCitation(node) : null;
+      return (segments ? citeSegmentsAscii(segments).trim() : '') + ' '.repeat(node.blanks);
+    }
     case 'radio-target':
       return renderTextAscii(node.name);
     case 'target':
@@ -205,6 +213,15 @@ function renderInlineNodeAscii(node) {
     default:
       return '';
   }
+}
+
+/** @type {any} */ let citeAscii = null; // the citation text maker for this export (cite.js)
+
+/** A citation processor's output as plain text: affixes as Org text, emphasis as /.../ like ox-ascii.
+ * @param {import('./cite.js').Segment[]} segments
+ * @returns {string} */
+function citeSegmentsAscii(segments) {
+  return segments.map((s) => (typeof s === 'string' ? substituteCharacters(s) : 'org' in s ? renderTextAscii(s.org) : '/' + citeSegmentsAscii(s.italic) + '/')).join('');
 }
 
 /** @type {import('./export-links.js').LinkContext | null} */ let linkCtxAscii = null; // section numbers, targets and radio-target pattern for this export
@@ -601,13 +618,22 @@ function renderParagraphRuns(node, indent, width) {
   const runs = [];
   for (const line of node.lines) {
     if (AFFILIATED.test(line)) continue;
-    const kind = FIXED.test(line) ? 'fixed' : 'prose';
+    const kind = isPrintBibliography(line) ? 'bibliography' : FIXED.test(line) ? 'fixed' : 'prose';
     /** @type {any} */ const last = runs[runs.length - 1];
     if (last && last.kind === kind) last.lines.push(line);
     else runs.push({ kind, lines: [line] });
   }
   const out = [];
   for (const run of runs) {
+    if (run.kind === 'bibliography') {
+      // one paragraph for each entry
+      const available = Math.max(10, width - indent.length);
+      for (const entry of citeAscii ? citeAscii.bibliography() : []) {
+        if (out.length) out.push('');
+        out.push(...wrapText(citeSegmentsAscii(entry), available).map((/** @type {string} */ l) => indent + l));
+      }
+      continue;
+    }
     const rendered = run.kind === 'fixed'
       ? boxLines(removeIndentation(run.lines.map((l) => l.replace(/^\s*: ?/, ''))), indent)
       : renderParagraphAscii({ ...node, lines: run.lines }, indent, width);
@@ -712,6 +738,7 @@ function renderToc(headings, toc, numberingEnabled) {
  * @param {Doc} doc
  */
 export function exportToAscii(doc, scope = /** @type {any} */ (null), textWidth = 72, { charset = 'ascii' } = {}) {
+  ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
   charsetAscii = CHARSETS[normalizeAsciiCharset(charset)];
   footnoteDefinitionsAscii = [];
   anonymousFootnoteCounterAscii = 0;
@@ -720,6 +747,7 @@ export function exportToAscii(doc, scope = /** @type {any} */ (null), textWidth 
   numberingEnabledAscii = options.num;
 
   const roots = scope ? [scope] : doc.children || [];
+  citeAscii = citeExportFor(doc, roots, parseInline, !scope);
   linkCtxAscii = buildLinkContext(doc, roots, options.num);
   const levelOffset = scope ? scope.level - 1 : 0;
   const out = [];

@@ -2655,6 +2655,52 @@ check('Open / Save As screen: one screen with a GitHub / Local file / WebDAV pic
   await context.close();
 });
 
+check('local files and imports honour the expect write option: a stale save is refused with a write conflict, a current one is written', async () => {
+  const { context, page, errors } = await freshPage();
+  const result = await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    const { filesystemAdapter } = await import('/src-browser/adapters.js');
+    const store = new Map([['f.org', '* One\n']]);
+    installPlatform({
+      localFiles: {
+        supported: () => true,
+        pickOpen: async () => 'f.org',
+        pickNew: async (kv, name) => name,
+        adapter: {
+          async read(id) { return store.has(id) ? { content: store.get(id), hash: 'raw:' + store.get(id) } : null; },
+          async write(id, content) { store.set(id, content); return { hash: 'raw:' + content }; },
+          async exists(id) { return store.has(id); },
+          async access(id) { return store.has(id) ? 'granted' : 'none'; },
+        },
+      },
+    });
+    const out = {};
+    const seen = await filesystemAdapter.read('f.org');
+    store.set('f.org', '* Changed elsewhere\n');
+    try { await filesystemAdapter.write('f.org', '* Mine\n', { expect: { exists: true, hash: seen.hash } }); out.staleFs = 'written'; } catch (e) { out.staleFs = e.code; }
+    out.afterStale = store.get('f.org');
+    const now = await filesystemAdapter.read('f.org');
+    await filesystemAdapter.write('f.org', '* Mine\n', { expect: { exists: true, hash: now.hash } });
+    out.currentFs = store.get('f.org');
+    return out;
+  });
+  expect(result.staleFs === 'WRITE_CONFLICT' && result.afterStale === '* Changed elsewhere\n', `stale local write refused: ${JSON.stringify(result)}`);
+  expect(result.currentFs === '* Mine\n', `current local write done: ${JSON.stringify(result)}`);
+  const imp = await page.evaluate(async () => {
+    const { inputFileAdapter } = await import('/src-browser/adapters.js');
+    const { kv } = await import('/src-browser/singletons.js');
+    await kv.set('ios-import:i.org', '* Imported\n');
+    const seen = await inputFileAdapter.read('i.org');
+    await kv.set('ios-import:i.org', '* Another window\n');
+    let code = null;
+    try { await inputFileAdapter.write('i.org', '* Mine\n', { expect: { exists: true, hash: seen.hash } }); } catch (e) { code = e.code; }
+    return code;
+  });
+  expect(imp === 'WRITE_CONFLICT', `stale import write refused: ${imp}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('Save As over a file replaces only the version that was shown: one saved by someone else in between is asked about, and declining leaves it and the tab as they were', async () => {
   dav.reset({ 'shared.org': '* Shown version\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
@@ -6059,6 +6105,30 @@ check('setupfile: #+SETUPFILE: brings in the keywords of another file (a TODO se
   });
   expect(info.todo === 'WAIT' && info.virtual.includes('TODO') && info.virtual.includes('TITLE'), `setup keywords applied: ${JSON.stringify(info)}`);
   expect(info.saved === '#+SETUPFILE: theme.setup\n* WAIT Pending thing\n', `the saved text has only the file's own lines: ${JSON.stringify(info.saved)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('cite: a citation shows as written with tappable keys, a tap shows the entry, and the HTML export has the bibliography from the .bib file beside the document', async () => {
+  dav.reset({
+    'a.org': '#+BIBLIOGRAPHY: refs.bib\n#+CITE_EXPORT: basic\n* Notes\nSee [cite:@knuth84] and [cite:@nobody].\n\n#+PRINT_BIBLIOGRAPHY:\n',
+    'refs.bib': '@book{knuth84,\n  author = {Donald E. Knuth},\n  title = {The TeXbook},\n  year = {1984},\n  publisher = {Addison-Wesley},\n}\n',
+  });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'a.org');
+  await page.waitForSelector('#outline .cite-key', { timeout: 8000 });
+  const shown = await page.evaluate(() => [...document.querySelectorAll('#outline .cite-key')].map((e) => e.textContent));
+  expect(shown.join(',') === '@knuth84,@nobody', `keys shown as written: ${shown}`);
+  await page.click('#outline .cite-key');
+  await page.waitForFunction(() => /Knuth/.test(document.getElementById('status').innerText), null, { timeout: 8000 });
+  const html = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { prefetchBibliography } = await import('/src-browser/bibliography.js');
+    const { exportToHtml } = await import('/src/export-html.js');
+    await prefetchBibliography(S.state.doc, S.state.documentId, S.state.storageKind, { again: true });
+    return exportToHtml(S.state.doc, null, {});
+  });
+  expect(/Knuth,? 1984/.test(html) && /The TeXbook/.test(html), `export has the citation and the bibliography entry: ${html.slice(0, 600)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

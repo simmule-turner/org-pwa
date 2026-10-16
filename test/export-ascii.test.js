@@ -123,14 +123,10 @@ test('org-ascii-text-width defaults to 72 when not otherwise specified', () => {
 
 // ---- exportToAscii: inline markup (THE ACTUAL BEHAVIOR CHANGE) -------------
 
-test('THE FIX: bold/italic/underline/strikethrough markers are stripped entirely, matching real org\u2019s own confirmed ox-ascii behavior -- ASCII cannot represent any of them visually', () => {
-  const doc = parseOrg('* H\nThis has *bold* and /italic/ and _underline_ and +strike+ text.\n');
+test('bold/italic/underline/strikethrough keep their markers and sub/superscripts are written as typed, as ox-ascii does (checked against Emacs 29.3)', () => {
+  const doc = parseOrg('* H\nThis has *bold* and /italic/ and _underline_ and +strike+ text, x_2 y^3 a_{bc} z^{de}.\n');
   const result = exportToAscii(doc, null, 200);
-  assert.ok(result.includes('This has bold and italic and underline and strike text.'));
-  assert.ok(!result.includes('*bold*'));
-  assert.ok(!result.includes('/italic/'));
-  assert.ok(!result.includes('_underline_'));
-  assert.ok(!result.includes('+strike+'));
+  assert.ok(result.includes('This has *bold* and /italic/ and _underline_ and +strike+ text, x_2 y^3 a_{bc} z^{de}.'));
 });
 
 test('THE FIX: code/verbatim become real org\u2019s own backtick-quote format ("`text\'"), confirmed directly from ox-ascii.el\u2019s org-ascii-verbatim-format -- not the literal ~/= source markers', () => {
@@ -251,12 +247,11 @@ test('THE FIX: a text-majority column is left-aligned', () => {
   assert.match(result, /\| A {6}\|/); // "A" padded with trailing spaces to match "Longer"'s width
 });
 
-test('THE FIX: cell content is parsed for inline markup, consistent with the rest of this exporter -- code/verbatim becomes the backtick-quote convention, bold/italic markers are stripped', () => {
+test('THE FIX: cell content is parsed for inline markup, consistent with the rest of this exporter -- code/verbatim becomes the backtick-quote convention and bold keeps its markers', () => {
   const doc = parseOrg('* H\n| Item | Status |\n|---+---|\n| ~code~ | *done* |\n');
   const result = exportToAscii(doc, null, 200);
   assert.ok(result.includes("`code'"));
-  assert.ok(result.includes('done'));
-  assert.ok(!result.includes('*done*'));
+  assert.ok(result.includes('*done*'));
 });
 
 test('an empty table (no data rows) produces no output rather than throwing', () => {
@@ -483,4 +478,10 @@ test('THE FIX: a body node before the first heading (a block, in the document\u2
   const doc = parseOrg('#+BEGIN_SRC org\n#+CATEGORY: Projects\n#+END_SRC\n');
   const ascii = exportToAscii(doc, null);
   assert.equal(ascii, ',----\n| #+CATEGORY: Projects\n`----\n');
+});
+
+test('ascii export: macros expand, math and sub/superscripts stay as typed, bare links use <url>', () => {
+  const doc = parseOrg('#+MACRO: who World\nHello {{{who}}} $a^2$ x_1 [[https://e.org]] *b*\n');
+  const out = exportToAscii(doc);
+  assert.match(out, /Hello World \$a\^2\$ x_1 <https:\/\/e\.org> \*b\*/);
 });

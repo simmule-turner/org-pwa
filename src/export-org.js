@@ -195,6 +195,30 @@ function expandMacros(doc, now) {
   };
 }
 
+/**
+ * The document with its {{{macros}}} expanded, for the exporters that read parsed text (Markdown, ASCII, ODT), and the heading
+ * to export in that copy. A document that uses no macro is returned as it is.
+ * @param {Doc} doc @param {any} scope  the heading being exported, or null for the whole document @param {Date} now
+ * @returns {{ doc: Doc, scope: any }}
+ */
+function expandMacrosForExport(doc, scope, now) {
+  /** @param {Heading[]} headings @returns {boolean} */
+  const uses = (headings) => headings.some((h) => h.title.includes('{{{') || (h.bodyLines || []).some((l) => l.includes('{{{')) || uses(h.children || []));
+  if (!(doc.bodyLines || []).some((l) => l.includes('{{{')) && !uses(doc.children || [])) return { doc, scope };
+  const expanded = expandMacros(doc, now);
+  if (!scope) return { doc: expanded, scope };
+  /** @param {any[]} from @param {any[]} to @returns {any} the heading in `to` at the place `scope` has in `from` */
+  const counterpart = (from, to) => {
+    for (let i = 0; i < from.length; i++) {
+      if (from[i] === scope) return to[i];
+      const inner = counterpart(from[i].children || [], to[i].children || []);
+      if (inner) return inner;
+    }
+    return null;
+  };
+  return { doc: expanded, scope: counterpart(doc.children || [], expanded.children || []) || scope };
+}
+
 const RAW_COMMENT_LINE_RE = /^\s*#(?!\+)(\s|$)/; // a real org "# " comment line -- NOT a "#+KEYWORD:" line, which starts "#+" instead
 
 /** Strips #+BEGIN_COMMENT/#+END_COMMENT blocks and raw "# " comment
@@ -303,4 +327,4 @@ async function exportAsOrg(doc, fetchPath, parseOrgFn, { now, minlevel } = {}) {
   return result;
 }
 
-export { exportAsOrg, expandMacros, filterNoexportAndComments, scaleHeadingLevels, buildMacroTable, splitMacroArgs };
+export { exportAsOrg, expandMacros, expandMacrosForExport, filterNoexportAndComments, scaleHeadingLevels, buildMacroTable, splitMacroArgs };

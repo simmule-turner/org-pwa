@@ -1,5 +1,7 @@
 // @ts-check
 
+import { parseCitationAt } from './cite.js';
+
 /**
  * Inline markup parser. Turns a single line of text into a sequence of
  * inline nodes: text runs, emphasis spans (bold/italic/underline/
@@ -138,6 +140,15 @@ function makeLatexPlaceholder(index) {
   return LATEX_PLACEHOLDER_START + index + LATEX_PLACEHOLDER_END;
 }
 
+/** A LaTeX fragment node. `raw` is the fragment as typed, delimiters included (a text export writes it out as it is); it is not
+ * an enumerable field.
+ * @param {string} source @param {boolean} displayMode @param {string | undefined} raw */
+function latexNode(source, displayMode, raw) {
+  const node = { type: 'latex', source, displayMode };
+  Object.defineProperty(node, 'raw', { value: raw });
+  return node;
+}
+
 /** Paragraph-level pre-pass: extracts every LaTeX fragment from the
  *  FULL, joined, multi-line text of a paragraph's own lines -- before
  *  the existing per-line rendering pipeline (renderParagraphRow,
@@ -202,7 +213,7 @@ function extractLatexFragments(lines) {
     if (ch === '$' || ch === '\\') {
       const m = matchLatexFragmentAt(fullText, pos);
       if (m) {
-        fragments.push({ source: m.content, displayMode: m.displayMode });
+        fragments.push({ source: m.content, displayMode: m.displayMode, raw: fullText.slice(pos, pos + m.length) });
         result += makeLatexPlaceholder(fragments.length - 1);
         pos += m.length;
         continue;
@@ -479,6 +490,16 @@ function matchEmphasisAt(text, pos) {
       continue;
     }
 
+    if (text[pos] === '[' && text[pos + 1] === 'c' && text.startsWith('[cite', pos)) {
+      const cite = parseCitationAt(text, pos);
+      if (cite) {
+        flush();
+        nodes.push(cite.node);
+        pos += cite.length;
+        continue;
+      }
+    }
+
     if (text[pos] === '[' && text[pos + 1] === 'f' && text[pos + 2] === 'n' && text[pos + 3] === ':') {
       const fn = matchFootnoteAt(text, pos);
       if (fn) {
@@ -498,7 +519,7 @@ function matchEmphasisAt(text, pos) {
       const frag = ph && /** @type {any} */ (opts).latexFragments && /** @type {any} */ (opts).latexFragments[Number(ph[1])];
       if (frag) {
         flush();
-        nodes.push({ type: 'latex', source: frag.source, displayMode: frag.displayMode });
+        nodes.push(latexNode(frag.source, frag.displayMode, frag.raw));
         pos += ph[0].length;
         continue;
       }
@@ -508,7 +529,7 @@ function matchEmphasisAt(text, pos) {
       const latex = matchLatexFragmentAt(text, pos);
       if (latex) {
         flush();
-        nodes.push({ type: 'latex', source: latex.content, displayMode: latex.displayMode });
+        nodes.push(latexNode(latex.content, latex.displayMode, text.slice(pos, pos + latex.length)));
         pos += latex.length;
         continue;
       }
@@ -533,7 +554,9 @@ function matchEmphasisAt(text, pos) {
       const s = matchScriptAt(text, pos, subSuperscriptMode);
       if (s) {
         flush();
-        nodes.push({ type: s.kind, value: s.content });
+        const script = { type: s.kind, value: s.content };
+        Object.defineProperty(script, 'raw', { value: text.slice(pos, pos + s.length) }); // as typed (a_{bc}); not an enumerable field
+        nodes.push(script);
         pos += s.length;
         continue;
       }

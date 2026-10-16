@@ -25,7 +25,7 @@
  */
 
 import { DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
-import { parseTagInheritance } from './tag-inheritance.js';
+import { parseLispTagList, parseTagInheritance } from './tag-inheritance.js';
 
 const LOCAL_VARS_START_RE = /^#\s*Local Variables:\s*$/i;
 const LOCAL_VARS_END_RE = /^#\s*End:\s*$/i;
@@ -457,6 +457,34 @@ export function getUseTagInheritance(vars) {
  * @param {LocalVars} vars */
 export function getShowInheritedTagsAgenda(vars) {
   return parseLispBoolean((vars || {})['org-agenda-show-inherited-tags'], true);
+}
+
+/** org-cite-global-bibliography: bibliography files every document uses, as a Lisp list of names or just names with spaces or
+ *  commas between.
+ * @param {LocalVars} vars
+ * @returns {string[]} */
+export function getCiteGlobalBibliography(vars) {
+  const text = String((vars || {})['org-cite-global-bibliography'] ?? '').trim();
+  if (!text || text.toLowerCase() === 'nil') return [];
+  return parseLispTagList(text) || text.split(/[\s,]+/).filter(Boolean);
+}
+
+/** org-cite-basic-sorting-field: the field the basic citation processor sorts by (author), nil for the order cited.
+ * @param {LocalVars} vars
+ * @returns {string | null} */
+export function getCiteSortingField(vars) {
+  const v = String((vars || {})['org-cite-basic-sorting-field'] ?? '').trim().replace(/^'/, '');
+  if (!v) return 'author';
+  return v.toLowerCase() === 'nil' ? null : v;
+}
+
+/** org-cite-basic-author-year-separator: what goes between the references of one citation (", ").
+ * @param {LocalVars} vars */
+export function getCiteSeparator(vars) {
+  const raw = (vars || {})['org-cite-basic-author-year-separator'];
+  if (raw === undefined || raw === null || String(raw) === '') return ', ';
+  const m = /^"(.*)"$/s.exec(String(raw));
+  return m ? m[1].replace(/\\(.)/g, '$1') : String(raw);
 }
 
 /** org-xx-show-inherited-tags (this app's own): whether outline headings show the tags they inherit, dimmed.
