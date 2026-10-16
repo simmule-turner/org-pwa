@@ -1,5 +1,6 @@
 // @ts-check
 /** @typedef {import('../src/types.js').GithubConfig} GithubConfig */
+import { writeConflict } from '../src/sync-engine.js';
 /**
  * GitHub-backed storage adapter, using GitHub's REST Contents API directly
  * from the browser — no server component. This is exactly how GitHub's API
@@ -189,13 +190,16 @@ export function createGithubAdapter(getConfig) {
   /**
    * @param {string} fileId
    * @param {string} content
+   * @param {{ expect?: { exists: boolean, hash: string | null } }} [options]  the version the caller compared against: the write
+   *  uses its sha, so a commit made since then is refused (a WriteConflictError) instead of silently replaced
    */
-  async function writeImpl(fileId, content) {
+  async function writeImpl(fileId, content, options = {}) {
     const config = requireConfig(getConfig);
     // GitHub requires the current sha to update an existing file (so it
     // can refuse to silently clobber a newer commit); a brand new file
     // omits it entirely.
-    const existing = await readImpl(fileId);
+    const expect = options && options.expect;
+    const existing = expect ? (expect.exists ? { hash: expect.hash } : null) : await readImpl(fileId);
     const requestBody = {
       message: existing ? `Update ${fileId} via org-pwa` : `Create ${fileId} via org-pwa`,
       content: utf8ToBase64(content),
@@ -208,6 +212,7 @@ export function createGithubAdapter(getConfig) {
       headers: { ...authHeaders(config), 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
     });
+    if (expect && (res.status === 409 || (res.status === 422 && !existing))) throw writeConflict(await githubErrorMessage(res)); // someone committed since the read
     if (!res.ok) throw new Error(await githubErrorMessage(res));
     const result = await res.json();
     return { hash: result.content.sha };

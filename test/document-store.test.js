@@ -242,3 +242,24 @@ test('openDocument records the text it read from disk as the common ancestor for
   await openDocument({ documentId: 'a.org', kvAdapter: kv, diskAdapter: disk });
   assert.equal((await getSyncMeta(kv, 'a.org')).baseContent, '* From disk\n');
 });
+
+test('opening many files at once keeps every one in the open list', async () => {
+  const inner = createInMemoryAdapter();
+  const kv = {
+    ...inner,
+    async get(k) {
+      const v = await inner.get(k);
+      await new Promise((r) => setTimeout(r, 2)); // a slow store: where an unguarded read-modify-write loses entries
+      return v;
+    },
+  };
+  const ids = Array.from({ length: 12 }, (_, i) => `f${i}.org`);
+  await Promise.all(ids.map((id) => markDocumentOpen(kv, id)));
+  assert.deepEqual([...(await listOpenDocuments(kv))].sort(), [...ids].sort());
+});
+
+test('an unreadable open list reads as empty instead of throwing', async () => {
+  const kv = createInMemoryAdapter();
+  await kv.set('open-documents', '{not json');
+  assert.deepEqual(await listOpenDocuments(kv), []);
+});

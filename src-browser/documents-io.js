@@ -4,7 +4,7 @@
 // Extracted from app.js: documents io.
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { findAncestorPath } from '../src/archive-model.js';
-import { markDocumentOpen, openDocument, saveAndSync } from '../src/document-store.js';
+import { markDocumentClosed, markDocumentOpen, openDocument, saveAndSync } from '../src/document-store.js';
 import { applyStartupVisibility } from '../src/fold-state.js';
 import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
 import { clearPersistedHistory, loadPersistedHistory } from '../src/history-store.js';
@@ -39,7 +39,7 @@ import { renderViewMenu } from './views.js';
 import { isWebdavConfigured } from './webdav-adapter.js';
 import { folderAvailable } from './local-folder.js';
 import { platform } from './platform.js';
-import { promptText } from './dialogs.js';
+import { confirmDialog, promptText } from './dialogs.js';
 
 /** @param {string} fallback */
 export function suggestedSaveAsName(fallback) {
@@ -343,29 +343,62 @@ export async function openFileLink(resolution, containingHeading = /** @type {an
   }
 }
 
+/** The tabs with a save under way. A second Save on the same tab waits for the answer to the first instead of racing it. */
+const savesInFlight = new Set();
+
+/** Records that `text` is now what the file holds, in whichever tab it was saved from -- that tab may no longer be the one on
+ *  screen, and the person may have kept typing while the save ran: then it stays modified, against the text that was written.
+ * @param {number} tabId @param {string} text */
+function markTabSaved(tabId, text) {
+  if (S.activeTabId === tabId) {
+    S.lastSavedText = text;
+    S.isDirty = serializeOrg(S.state.doc) !== text;
+    render();
+    return;
+  }
+  const session = S.documentSessions.find((/** @type {any} */ x) => x.tabId === tabId);
+  if (!session) return; // closed while it saved
+  session.lastSavedText = text;
+  session.isDirty = !session.state || !session.state.doc || serializeOrg(session.state.doc) !== text;
+  renderTabBar();
+}
+
 /** @returns {Promise<boolean>} whether the document was saved (false: nothing to save it to, cancelled at a conflict, or failed) */
 export async function saveCurrent() {
   if (!S.state.storageKind) return false;
   if (commitTextModeIfActive()) render();
+  const tabId = S.activeTabId;
+  if (savesInFlight.has(tabId)) {
+    setStatus('Already saving this buffer\u2026');
+    return false;
+  }
+  savesInFlight.add(tabId);
+  // Everything below follows this tab, not "the tab on screen": a slow save leaves the person free to switch tabs or keep typing.
+  const documentId = S.state.documentId;
+  const doc = S.state.doc;
+  const diskAdapter = activeDiskAdapter();
   setStatus('Saving\u2026');
   let saved = false;
   try {
+    const writtenText = serializeOrg(doc);
     const result = await saveAndSync({
-      documentId: S.state.documentId,
-      doc: S.state.doc,
+      documentId,
+      doc,
       kvAdapter: kv,
-      diskAdapter: activeDiskAdapter(),
+      diskAdapter,
       resolveConflict: resolveSaveConflict,
     });
+    const stillOpen = () => S.activeTabId === tabId || S.documentSessions.some((/** @type {any} */ x) => x.tabId === tabId);
     if (result.status === 'conflict' && result.resolution === 'cancelled') {
       // Nothing was written anywhere and the local edit is still pending.
       setStatus('Save cancelled \u2014 the other version is untouched and your edits are still here.');
-      render();
-      closeFileMenu();
+      if (S.activeTabId === tabId) render();
       return false;
     }
-    if (result.status === 'conflict' && (result.resolution === 'disk' || result.resolution === 'merged')) {
+    let savedText = writtenText;
+    if (result.status === 'conflict' && (result.resolution === 'disk' || result.resolution === 'merged') && stillOpen()) {
       setStatus('Reloading\u2026');
+      if (S.activeTabId !== tabId) switchToTab(tabId); // the reload works on the tab on screen
       render();
       await reloadCurrentDocumentFromDisk();
       if (result.resolution === 'merged') {
@@ -374,10 +407,9 @@ export async function saveCurrent() {
         S.history = pushSnapshot(S.history, serializeOrg(S.state.doc), 'Merged with changes from elsewhere');
         persistHistoryInBackground();
       }
+      savedText = serializeOrg(S.state.doc);
     }
-    S.isDirty = false;
-    S.lastSavedText = serializeOrg(S.state.doc);
-    render();
+    markTabSaved(tabId, savedText);
     setStatus(result.resolution === 'merged' ? 'Saved \u2014 merged with the changes made elsewhere.' : 'Saved (' + result.status + ').');
     scheduleSync(); // the agenda, or the contacts, may have changed
     requestApptScan(); // and so may the appointments
@@ -385,8 +417,10 @@ export async function saveCurrent() {
     saved = true;
   } catch (err) {
     setStatus('Save failed: ' + err.message);
+  } finally {
+    savesInFlight.delete(tabId);
+    closeFileMenu();
   }
-  closeFileMenu();
   return saved;
 }
 
@@ -422,6 +456,29 @@ export async function saveAsFilesystem() {
   }
 }
 
+/** Save As to a typed path that already holds a file: Emacs asks before replacing it, so this does too (the Save As screen asks for itself). A failure to look is not a
+ *  reason to refuse -- the save itself then reports what is wrong.
+ * @param {{ read: (id: string) => Promise<any> }} adapter @param {string} kind @param {string} path @param {string} where */
+async function confirmReplaceOnServer(adapter, kind, path, where) {
+  if (S.state.storageKind === kind && S.state.documentId === path) return true; // saving over itself is just Save
+  /** @type {any} */ let existing;
+  try {
+    existing = await adapter.read(path);
+  } catch {
+    return true;
+  }
+  if (!existing) return true;
+  return confirmDialog(`"${path}" already exists ${where}. Replace it with this document?`, { confirmLabel: 'Replace', cancelLabel: 'Cancel', danger: true });
+}
+
+/** A Save As that failed leaves the buffer as it was, not renamed to a file that was never written.
+ * @param {{ documentId: any, storageKind: any }} previous @param {string} path */
+function undoSaveAsRename(previous, path) {
+  S.state.documentId = previous.documentId;
+  S.state.storageKind = previous.storageKind;
+  if (path !== previous.documentId) markDocumentClosed(kv, path).catch(() => {});
+}
+
 /** @param {string} [chosenPath] the path from the Save As screen; asked for in a prompt when omitted */
 export async function saveAsGithub(chosenPath) {
   if (!S.state.doc) return;
@@ -435,7 +492,10 @@ export async function saveAsGithub(chosenPath) {
   }
   const path = chosenPath || (await promptText(`Save to which path in ${config.owner}/${config.repo}?`, suggestedSaveAsName('notes.org'), { okLabel: 'Save' }));
   if (!path) return;
+  const previous = { documentId: S.state.documentId, storageKind: S.state.storageKind };
+  let written = false;
   try {
+    if (!chosenPath && !(await confirmReplaceOnServer(githubAdapter, 'github', path, `in ${config.owner}/${config.repo}`))) return; // the Save As screen has already asked
     S.state.documentId = path;
     S.state.storageKind = 'github';
     await markDocumentOpen(kv, path);
@@ -448,6 +508,7 @@ export async function saveAsGithub(chosenPath) {
       diskAdapter: githubAdapter,
       resolveConflict: ALWAYS_KEEP_MINE,
     });
+    written = true;
     S.isDirty = false;
     S.lastSavedText = serializeOrg(S.state.doc);
     await recordRecentFile(kv, path, 'github');
@@ -455,6 +516,7 @@ export async function saveAsGithub(chosenPath) {
     closeFileMenu();
     render();
   } catch (err) {
+    if (!written) undoSaveAsRename(previous, path);
     setStatus('Save As failed: ' + err.message);
   }
 }
@@ -472,7 +534,10 @@ export async function saveAsWebdav(chosenPath) {
   }
   const path = chosenPath || (await promptText('Save to which path on the WebDAV server?', suggestedSaveAsName('notes.org'), { okLabel: 'Save' }));
   if (!path) return;
+  const previous = { documentId: S.state.documentId, storageKind: S.state.storageKind };
+  let written = false;
   try {
+    if (!chosenPath && !(await confirmReplaceOnServer(webdavAdapter, 'webdav', path, 'on the WebDAV server'))) return; // the Save As screen has already asked
     S.state.documentId = path;
     S.state.storageKind = 'webdav';
     await markDocumentOpen(kv, path);
@@ -485,6 +550,7 @@ export async function saveAsWebdav(chosenPath) {
       diskAdapter: webdavAdapter,
       resolveConflict: ALWAYS_KEEP_MINE,
     });
+    written = true;
     S.isDirty = false;
     S.lastSavedText = serializeOrg(S.state.doc);
     await recordRecentFile(kv, path, 'webdav');
@@ -492,6 +558,7 @@ export async function saveAsWebdav(chosenPath) {
     closeFileMenu();
     render();
   } catch (err) {
+    if (!written) undoSaveAsRename(previous, path);
     setStatus('Save As failed: ' + err.message);
   }
 }

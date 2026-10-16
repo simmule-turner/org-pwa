@@ -282,6 +282,23 @@ function showBufferDiff() {
  * @param {boolean} [saveSilently] */
 export async function saveSomeBuffers(saveSilently = false) {
   closeFileMenu();
+  if (saveSomeRun.active) {
+    setStatus('Save Some Buffers is already running.');
+    return;
+  }
+  saveSomeRun.active = true;
+  try {
+    await saveSomeBuffersRun(saveSilently);
+  } finally {
+    saveSomeRun.active = false;
+  }
+}
+
+/** One Save Some Buffers at a time: a second would ask about the same tabs again and save them twice. */
+const saveSomeRun = { active: false };
+
+/** @param {boolean} saveSilently */
+async function saveSomeBuffersRun(saveSilently) {
   if (commitTextModeIfActive()) render();
   const home = S.activeTabId;
   const ids = modifiedFileBuffers();

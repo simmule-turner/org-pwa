@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v535 — Safer saves
+A slow save no longer marks the wrong tab as saved if you switch tabs, or hides text you typed while it ran; a second Save on the same tab waits for the first. GitHub and WebDAV now refuse to replace a file that another device saved after this app checked it, and ask you instead. A newer edit is no longer dropped from the queue when an older one finishes writing. Opening several files at once keeps them all in the open list, a replaced minibuffer question is cancelled instead of waiting for ever, and a failed Save As leaves the buffer as it was.
+Verified: unit tests for the queue, the retry and the open list; browser checks for a slow save, a racing save, and replaced questions.
+
 * v534 — Save Some Buffers: the diff shows above the keyboard
 Pressing ~d~ at the Save Some Buffers question showed its diff behind the phone's keyboard, so nothing seemed to happen. The panel now sits on top of the minibuffer bar wherever the keyboard lifts it, and ~d~ keeps the same question (and the keyboard) open instead of asking again.
 Verified: browser check with the bar lifted as the keyboard does.

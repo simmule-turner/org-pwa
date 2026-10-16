@@ -1,5 +1,6 @@
 // @ts-check
 /** @typedef {import('../src/types.js').WebdavConfig} WebdavConfig */
+import { writeConflict } from '../src/sync-engine.js';
 /**
  * WebDAV-backed storage adapter — the same { read(fileId), write(fileId,
  * content), exists(fileId) } shape as the GitHub and local File System
@@ -246,10 +247,13 @@ export function createWebdavAdapter(getConfig) {
   /**
    * @param {string} fileId
    * @param {any} [content]
+   * @param {{ expect?: { exists: boolean, hash: string | null } }} [options]  the version the caller compared against: If-Match / If-None-Match
+   *  use it, so a save made since then is refused (a WriteConflictError) instead of silently replaced
    */
-  async function writeImpl(fileId, content) {
+  async function writeImpl(fileId, content, options = {}) {
     const config = requireConfig(getConfig);
-    const existing = await readImpl(fileId);
+    const expect = options && options.expect;
+    const existing = expect ? (expect.exists ? { hash: expect.hash } : null) : await readImpl(fileId);
     const headers = { ...authHeader(config), 'Content-Type': 'text/plain; charset=utf-8' };
     if (existing && existing.hash) {
       /** @type {any} */ (headers)['If-Match'] = existing.hash;
@@ -273,6 +277,7 @@ export function createWebdavAdapter(getConfig) {
       await ensureIntermediateDirectories(config, fileId);
       res = await fetchWithHint(fileUrl(config, fileId), { method: 'PUT', headers, body: content });
     }
+    if (expect && res.status === 412) throw writeConflict(webdavErrorMessage(res)); // saved by someone else since the read
     if (!res.ok) throw new Error(webdavErrorMessage(res));
     return { hash: res.headers.get('ETag') || null };
   }

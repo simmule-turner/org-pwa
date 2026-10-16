@@ -53,3 +53,12 @@ test('getPendingChange fails safe (returns null) on corrupt stored data', async 
   const badAdapter = { get: async () => ({ key: 'x', value: '{not valid json' }) };
   assert.equal(await getPendingChange(badAdapter, 'whatever.org'), null);
 });
+
+test('clearPendingChange with the written text leaves a newer pending write alone', async () => {
+  const kv = createInMemoryAdapter();
+  await enqueueChange(kv, 'a.org', '* newer');
+  assert.equal(await clearPendingChange(kv, 'a.org', '* older'), false);
+  assert.equal(await hasPendingChange(kv, 'a.org'), true);
+  assert.equal(await clearPendingChange(kv, 'a.org', '* newer'), true);
+  assert.equal(await hasPendingChange(kv, 'a.org'), false);
+});

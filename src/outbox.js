@@ -57,12 +57,21 @@ async function getPendingChange(adapter, documentId) {
   }
 }
 
-/** Clears the pending write for `documentId` — called once it's been
+/** Clears the pending write for `documentId` -- called once it's been
+ *  successfully flushed to disk. With `writtenContent`, only if the
+ *  pending write is still that text: an edit made while the write was in
+ *  flight queued a newer one, and that must stay pending.
  * @param {any} adapter
  * @param {string} documentId
- *  successfully flushed to disk. */
-async function clearPendingChange(adapter, documentId) {
+ * @param {string} [writtenContent]
+ * @returns {Promise<boolean>} whether the entry was cleared */
+async function clearPendingChange(adapter, documentId, writtenContent) {
+  if (typeof writtenContent === 'string') {
+    const pending = await getPendingChange(adapter, documentId);
+    if (pending && pending.content !== writtenContent) return false;
+  }
   await adapter.delete(outboxKey(documentId));
+  return true;
 }
 
 /**

@@ -5,12 +5,17 @@ import { statusEl } from './dom.js';
 
 export const MINIBUFFER_PROMPT_ID = 'minibufferPrompt';
 
+/** The question now showing, if any. Only one fits in the minibuffer, so a new one cancels it -- answering the old one with
+ *  its cancel value instead of leaving the code that asked it waiting for ever. */
+const openPrompt = { cancel: /** @type {(() => void) | null} */ (null) };
+
 /**
  * @param {string} prompt  e.g. 'Rename buffer (to new name): '
  * @param {string} [initial]
  * @returns {Promise<string | null>} */
 export function readFromMinibuffer(prompt, initial = '') {
   return new Promise((resolve) => {
+    if (openPrompt.cancel) openPrompt.cancel();
     const old = document.getElementById(MINIBUFFER_PROMPT_ID);
     if (old) old.remove();
     const row = document.createElement('div');
@@ -33,10 +38,13 @@ export function readFromMinibuffer(prompt, initial = '') {
     const finish = (value) => {
       if (done) return;
       done = true;
+      if (openPrompt.cancel === cancel) openPrompt.cancel = null;
       row.remove();
       statusEl.style.display = 'flex';
       resolve(value);
     };
+    const cancel = () => finish(null);
+    openPrompt.cancel = cancel;
     input.onkeydown = (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -64,6 +72,7 @@ export function readFromMinibuffer(prompt, initial = '') {
  * @returns {Promise<string>} one of `keys` */
 export function readKeyFromMinibuffer(prompt, keys, options = {}) {
   return new Promise((resolve) => {
+    if (openPrompt.cancel) openPrompt.cancel();
     const old = document.getElementById(MINIBUFFER_PROMPT_ID);
     if (old) old.remove();
     const SENTINEL = '​';
@@ -92,10 +101,13 @@ export function readKeyFromMinibuffer(prompt, keys, options = {}) {
         return;
       }
       done = true;
+      if (openPrompt.cancel === cancel) openPrompt.cancel = null;
       row.remove();
       statusEl.style.display = 'flex';
       resolve(key);
     };
+    const cancel = () => answer('q'); // replaced by another question: the same as quitting this one
+    openPrompt.cancel = cancel;
     /** Maps what was typed to an answer, or null for a key that isn't one.
      * @param {string} typed */
     const choose = (typed) => {

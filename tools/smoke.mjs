@@ -75,8 +75,11 @@ function createDav() {
   const requests = []; // every request the server saw, as "METHOD name", so a check can prove something stopped asking
   const auths = []; // and the Authorization header each carried, as { request, authorization }
   const etag = (text) => '"' + crypto.createHash('md5').update(text).digest('hex') + '"';
+  // For checks of a slow or racing save: putDelay holds back each PUT's answer; beforePut runs once, just before the next PUT is judged.
+  const hooks = { putDelay: 0, beforePut: /** @type {null | ((name: string) => void)} */ (null) };
   return {
     files,
+    hooks,
     requests,
     auths,
     setCollections: (names) => { collections = names ? new Set(names) : null; },
@@ -84,6 +87,8 @@ function createDav() {
     get: (name) => files.get(name),
     reset(initial = {}) {
       collections = null;
+      hooks.putDelay = 0;
+      hooks.beforePut = null;
       requests.length = 0;
       auths.length = 0;
       files.clear();
@@ -137,15 +142,26 @@ function createDav() {
         return res.end(req.method === 'GET' ? text : undefined);
       }
       if (req.method === 'PUT') {
+        if (hooks.beforePut) {
+          const hook = hooks.beforePut;
+          hooks.beforePut = null;
+          hook(name);
+        }
+        const exists = files.has(name);
         const ifMatch = req.headers['if-match'];
         const ifNoneMatch = req.headers['if-none-match'];
-        if ((ifMatch && (!has || ifMatch !== etag(files.get(name)))) || (ifNoneMatch === '*' && has)) {
-          res.writeHead(412);
-          return res.end();
+        const answer = (fn) => (hooks.putDelay ? setTimeout(fn, hooks.putDelay) : fn());
+        if ((ifMatch && (!exists || ifMatch !== etag(files.get(name)))) || (ifNoneMatch === '*' && exists)) {
+          return answer(() => {
+            res.writeHead(412);
+            res.end();
+          });
         }
         files.set(name, body);
-        res.writeHead(has ? 204 : 201, { ETag: etag(body) });
-        return res.end();
+        return answer(() => {
+          res.writeHead(exists ? 204 : 201, { ETag: etag(body) });
+          res.end();
+        });
       }
       res.writeHead(405);
       res.end();
@@ -2667,6 +2683,52 @@ check('Recently opened: menu rows cannot be text-selected, so a long press over 
     expect((await items.count()) === left - 1, `${left - 1} left, got ${await items.count()}`);
   }
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('save: a slow save follows its own tab -- switching tabs mid-save, or typing during it, leaves the right tabs modified', async () => {
+  dav.reset({ 'a.org': '* A one\n', 'b.org': '* B one\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'b.org');
+  await replaceInDocument(page, 'B one', 'B typed');
+  await openDav(page, 'a.org');
+  await replaceInDocument(page, 'A one', 'A typed');
+  const marks = () => page.evaluate(() => [...document.querySelectorAll('#tabBar > div')].map((t) => (t.textContent.includes('\u25cf') ? 'M' : '-') + t.textContent.replace('\u25cf', '').trim().slice(0, 5)));
+  dav.hooks.putDelay = 1500; // the answer to the PUT is slow, so the person has time to move
+  await page.evaluate(() => { window.__saving = import('/src-browser/documents-io.js').then((m) => m.saveCurrent()); });
+  await page.locator('#tabBar > div', { hasText: 'b.org' }).first().click(); // to the other tab while a.org is still saving
+  expect(await page.evaluate(() => window.__saving), 'the save finished');
+  await page.waitForTimeout(300);
+  const after = await marks();
+  expect(after.some((m) => m.startsWith('M') && m.includes('b.org')) && after.some((m) => m.startsWith('-') && m.includes('a.org')), `b.org is still modified and a.org is not: ${JSON.stringify(after)}`);
+  expect(dav.get('a.org').includes('A typed') && dav.get('b.org') === '* B one\n', 'only a.org was written');
+  // typing during a save: the newer text stays modified and queued
+  await page.locator('#tabBar > div', { hasText: 'a.org' }).first().click();
+  dav.hooks.putDelay = 1500;
+  await replaceInDocument(page, 'A typed', 'A typed once');
+  await page.evaluate(() => { window.__saving = import('/src-browser/documents-io.js').then((m) => m.saveCurrent()); });
+  await replaceInDocument(page, 'A typed once', 'A typed twice'); // while the first save is still in flight
+  await page.evaluate(() => window.__saving);
+  await page.waitForTimeout(300);
+  expect(dav.get('a.org').includes('A typed once') && !dav.get('a.org').includes('twice'), `the file holds what was saved: ${JSON.stringify(dav.get('a.org'))}`);
+  expect((await marks()).some((m) => m.startsWith('M') && m.includes('a.org')), `a.org still shows the newer text as unsaved: ${JSON.stringify(await marks())}`);
+  dav.hooks.putDelay = 0;
+  await fileMenu(page, 'Save');
+  await waitForStatus(page, 'Saved');
+  expect(dav.get('a.org').includes('A typed twice'), `the next Save writes the newer text: ${JSON.stringify(dav.get('a.org'))}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('conflict: a file saved by someone else between this app\u2019s check and its write is not replaced -- the conflict question comes up', async () => {
+  dav.reset({ 'notes.org': SAMPLE });
+  const { context, page } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  await replaceInDocument(page, 'body 1', 'body 1 mine');
+  dav.hooks.beforePut = (name) => dav.files.set(name, SAMPLE.replace('body 1', 'body 1 theirs')); // another device saves, on the same line, in the gap
+  await fileMenu(page, 'Save');
+  await page.waitForSelector('#conflict-resolver', { timeout: 8000 });
+  expect(dav.get('notes.org').includes('theirs') && !dav.get('notes.org').includes('mine'), 'their save was not overwritten');
   await context.close();
 });
 
@@ -5868,6 +5930,34 @@ check('buffers: Save Some Buffers asks per buffer in the minibuffer (y/Space, n/
   await pick(page, '#fileMenuPanel', 'Save Some Buffers');
   await waitForStatus(page, 'Saved 2 files');
   expect(dav.get('b.org').includes('B typed') && dav.get('d.org').includes('D typed'), 'the File menu item saved the rest without asking');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('minibuffer: a question replaced by another is answered (cancelled), not left waiting for ever, and Save Some Buffers will not start twice', async () => {
+  dav.reset({ 'b.org': '* B one\n', 'c.org': '* C one\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  for (const [f, from, to] of [['b.org', 'B one', 'B typed'], ['c.org', 'C one', 'C typed']]) {
+    await openDav(page, f);
+    await replaceInDocument(page, from, to);
+  }
+  const outcome = await page.evaluate(async () => {
+    const { readFromMinibuffer, readKeyFromMinibuffer } = await import('/src-browser/minibuffer-prompt.js');
+    const first = readKeyFromMinibuffer('Save file x? (y, n): ', 'yn');
+    const second = readFromMinibuffer('Rename buffer: ', 'x');
+    const firstAnswer = await Promise.race([first, new Promise((r) => setTimeout(() => r('still waiting'), 1500))]);
+    document.querySelector('#minibufferPrompt input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    return { firstAnswer, secondAnswer: await second };
+  });
+  expect(outcome.firstAnswer === 'q' && outcome.secondAnswer === null, `the first question was cancelled when the second came up: ${JSON.stringify(outcome)}`);
+  await openPalette(page);
+  await page.keyboard.type('save some buffers');
+  await page.keyboard.press('Enter');
+  await page.locator('#minibufferPrompt').waitFor({ state: 'visible', timeout: 5000 });
+  await page.evaluate(() => import('/src-browser/buffers.js').then((m) => m.saveSomeBuffers())); // a second run while the first is asking
+  await waitForStatus(page, 'already running');
+  await page.keyboard.press('q');
+  await waitForStatus(page, 'skipped');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

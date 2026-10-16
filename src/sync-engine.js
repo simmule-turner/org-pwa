@@ -100,6 +100,30 @@ const SYNC_RESULT = {
  * than a decision baked into this module.
  */
 async function syncDocument(/** @type {any} */ { documentId, kvAdapter, diskAdapter, resolveConflict }) {
+  // A write that finds the file changed since the read below (another device saved in between) says so with a
+  // WriteConflictError; the whole comparison then runs again against what is there now, so the person is asked
+  // about it instead of the other save being overwritten.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await syncOnce({ documentId, kvAdapter, diskAdapter, resolveConflict });
+    } catch (err) {
+      if (!isWriteConflict(err) || attempt >= 2) throw err;
+    }
+  }
+}
+
+/** The error an adapter throws when the file changed between this app's read and its write.
+ * @param {string} message */
+function writeConflict(message) {
+  return Object.assign(new Error(message), { code: 'WRITE_CONFLICT' });
+}
+
+/** @param {any} err */
+function isWriteConflict(err) {
+  return !!err && err.code === 'WRITE_CONFLICT';
+}
+
+async function syncOnce(/** @type {any} */ { documentId, kvAdapter, diskAdapter, resolveConflict }) {
   const pending = await getPendingChange(kvAdapter, documentId);
   const diskEntry = await diskAdapter.read(documentId);
   const meta = await getSyncMeta(kvAdapter, documentId);
@@ -107,6 +131,9 @@ async function syncDocument(/** @type {any} */ { documentId, kvAdapter, diskAdap
   if (!pending) {
     return { status: SYNC_RESULT.UP_TO_DATE };
   }
+
+  // what the write may overwrite: the version this comparison was made against (adapters that can, refuse otherwise)
+  const expect = { exists: diskEntry !== null, hash: diskEntry ? diskEntry.hash : null };
 
   const diskChangedSinceSync =
     diskEntry !== null && (!meta || meta.lastSyncedHash !== diskEntry.hash);
@@ -123,21 +150,21 @@ async function syncDocument(/** @type {any} */ { documentId, kvAdapter, diskAdap
       return { status: SYNC_RESULT.CONFLICT, resolution: 'cancelled' };
     }
     if (choice === 'disk') {
-      await clearPendingChange(kvAdapter, documentId);
+      await clearPendingChange(kvAdapter, documentId, pending.content);
       await setSyncMeta(kvAdapter, documentId, { lastSyncedHash: diskEntry.hash, baseContent: diskEntry.content });
       return { status: SYNC_RESULT.CONFLICT, resolution: 'disk', content: diskEntry.content };
     }
     if (choice && typeof choice === 'object' && typeof choice.merged === 'string') {
-      const mergedWrite = await diskAdapter.write(documentId, choice.merged);
-      await clearPendingChange(kvAdapter, documentId);
+      const mergedWrite = await diskAdapter.write(documentId, choice.merged, { expect });
+      await clearPendingChange(kvAdapter, documentId, pending.content);
       await setSyncMeta(kvAdapter, documentId, { lastSyncedHash: mergedWrite.hash, baseContent: choice.merged });
       return { status: SYNC_RESULT.CONFLICT, resolution: 'merged', content: choice.merged };
     }
     // choice === 'mine': fall through and overwrite disk with the local version.
   }
 
-  const written = await diskAdapter.write(documentId, pending.content);
-  await clearPendingChange(kvAdapter, documentId);
+  const written = await diskAdapter.write(documentId, pending.content, { expect });
+  await clearPendingChange(kvAdapter, documentId, pending.content); // an edit made during the write stays pending
   await setSyncMeta(kvAdapter, documentId, { lastSyncedHash: written.hash, baseContent: pending.content });
 
   return {
@@ -187,6 +214,8 @@ export {
   SYNC_RESULT,
   contentHash,
   syncDocument,
+  writeConflict,
+  isWriteConflict,
   getSyncMeta,
   setSyncMeta,
   createInMemoryDiskAdapter,

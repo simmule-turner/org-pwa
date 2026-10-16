@@ -1985,7 +1985,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Babel*: ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). These do not exist: blocks in any other language, ~:session~, running one block from inside another (~<<name()>>~), and results that refresh when a file is opened.
 
-*Links and structure*: no ~[[id:...]]~ links, ~<<targets>>~, habits (~:STYLE: habit~), ~#+SETUPFILE:~ or ~org-cite~ citations. They are kept exactly as written, and never altered by a save.
+*Links and structure*: no ~[[id:...]]~ links, ~<<targets>>~, ~#+SETUPFILE:~ or ~org-cite~ citations. They are kept exactly as written, and never altered by a save.
 
 *Undo/redo* (see [[#undoredo-and-history][Undo/redo and History]]): no undo tree, and fold state isn't preserved across an undo or redo jump (the file's ~#+STARTUP~ visibility is reapplied). There is no per-keystroke granularity; the browser's field-level undo covers that, much as Emacs batches consecutive typing.
 

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createInMemoryAdapter } from '../src/kv-adapter.js';
 import { enqueueChange, hasPendingChange } from '../src/outbox.js';
-import { SYNC_RESULT, syncDocument, createInMemoryDiskAdapter, getSyncMeta, setSyncMeta } from '../src/sync-engine.js';
+import { SYNC_RESULT, syncDocument, createInMemoryDiskAdapter, getSyncMeta, setSyncMeta, writeConflict } from '../src/sync-engine.js';
 
 test('up-to-date: nothing pending means nothing to sync', async () => {
   const kv = createInMemoryAdapter();
@@ -238,4 +238,58 @@ test('the three resolutions compose with the real merge: a clean merge of two di
   });
   assert.equal(result.resolution, 'merged');
   assert.equal((await disk.read('a.org')).content, base.replace('a body', 'a body (edited here)').replace('c body', 'c body (edited elsewhere)'));
+});
+
+test('an edit made while the write was in flight stays pending', async () => {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  await enqueueChange(kv, 'a.org', '* v1');
+  const slow = {
+    ...disk,
+    async write(id, content, options) {
+      await enqueueChange(kv, 'a.org', '* v1 and more typed during the write'); // the person kept typing
+      return disk.write(id, content, options);
+    },
+  };
+  await syncDocument({ documentId: 'a.org', kvAdapter: kv, diskAdapter: slow });
+  assert.equal((await disk.read('a.org')).content, '* v1');
+  assert.equal(await hasPendingChange(kv, 'a.org'), true, 'the newer text is still queued');
+});
+
+test('the write is told which version it may replace, and a changed file sends the sync back to the conflict question', async () => {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  await enqueueChange(kv, 'a.org', '* v1');
+  await syncDocument({ documentId: 'a.org', kvAdapter: kv, diskAdapter: disk });
+  await enqueueChange(kv, 'a.org', '* mine');
+  const seen = [];
+  let raced = false;
+  const racing = {
+    ...disk,
+    async write(id, content, options) {
+      seen.push(options && options.expect);
+      if (!raced) {
+        raced = true;
+        disk._simulateExternalEdit(id, '* saved by another device meanwhile'); // between this app's read and its write
+        throw writeConflict('changed since the read');
+      }
+      return disk.write(id, content, options);
+    },
+  };
+  const questions = [];
+  const result = await syncDocument({
+    documentId: 'a.org',
+    kvAdapter: kv,
+    diskAdapter: racing,
+    resolveConflict: async (ctx) => {
+      questions.push(ctx.disk);
+      return 'cancel';
+    },
+  });
+  assert.equal(seen[0].exists, true);
+  assert.equal(typeof seen[0].hash, 'string');
+  assert.equal(result.resolution, 'cancelled', 'the person was asked, not overwritten');
+  assert.deepEqual(questions, ['* saved by another device meanwhile']);
+  assert.equal((await disk.read('a.org')).content, '* saved by another device meanwhile');
+  assert.equal(await hasPendingChange(kv, 'a.org'), true);
 });

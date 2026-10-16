@@ -116,33 +116,53 @@ function openKey() {
 async function listOpenDocuments(kvAdapter) {
   const result = await kvAdapter.get(openKey());
   if (!result) return [];
-  const raw = unwrap(result);
-  const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-  return Array.isArray(parsed) ? parsed : [];
-}
-
-/**
- * @param {KvAdapter} kvAdapter
- * @param {string} documentId
- */
-async function markDocumentOpen(kvAdapter, documentId) {
-  const current = await listOpenDocuments(kvAdapter);
-  if (!current.includes(documentId)) {
-    current.push(documentId);
-    await kvAdapter.set(openKey(), JSON.stringify(current));
+  try {
+    const raw = unwrap(result);
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return []; // an unreadable list must not stop every file from opening
   }
-  return current;
+}
+
+/** Changes to the list are read-modify-write, so two at once (a capture opening a background tab while the person opens
+ *  a file) would drop one. They run one at a time here, and across windows through the Web Locks API where there is one. */
+const openListQueue = { tail: /** @type {Promise<unknown>} */ (Promise.resolve()) };
+
+/** @template T @param {() => Promise<T>} change @returns {Promise<T>} */
+function changeOpenList(change) {
+  const locks = typeof navigator !== 'undefined' && /** @type {any} */ (navigator).locks;
+  const run = openListQueue.tail.then(() => (locks ? locks.request('org-pwa-open-documents', change) : change()));
+  openListQueue.tail = run.catch(() => {});
+  return run;
 }
 
 /**
  * @param {KvAdapter} kvAdapter
  * @param {string} documentId
  */
-async function markDocumentClosed(kvAdapter, documentId) {
-  const current = await listOpenDocuments(kvAdapter);
-  const next = current.filter((id) => id !== documentId);
-  await kvAdapter.set(openKey(), JSON.stringify(next));
-  return next;
+function markDocumentOpen(kvAdapter, documentId) {
+  return changeOpenList(async () => {
+    const current = await listOpenDocuments(kvAdapter);
+    if (!current.includes(documentId)) {
+      current.push(documentId);
+      await kvAdapter.set(openKey(), JSON.stringify(current));
+    }
+    return current;
+  });
+}
+
+/**
+ * @param {KvAdapter} kvAdapter
+ * @param {string} documentId
+ */
+function markDocumentClosed(kvAdapter, documentId) {
+  return changeOpenList(async () => {
+    const current = await listOpenDocuments(kvAdapter);
+    const next = current.filter((id) => id !== documentId);
+    await kvAdapter.set(openKey(), JSON.stringify(next));
+    return next;
+  });
 }
 
 /** Opens every currently-registered document, e.g. on app launch or to
