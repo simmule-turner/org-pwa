@@ -24,7 +24,7 @@ const localFileAdapter = {
   },
   /**
    * @param {string} id
-   * @param {any} [content]
+   * @param {string} content
    */
   async write(id, content, /** @type {any[]} */ ...rest) {
     const options = rest[0];

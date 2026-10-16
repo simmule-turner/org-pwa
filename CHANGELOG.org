@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v541 — Footnote commands
+Insert footnote (=C-c C-x f=) and Normalize footnotes work as in Emacs: a new reference at the cursor in Text view with its definition started under =* Footnotes=, and one command to number every footnote in reading order and gather the definitions. A rewritten file with the same text no longer counts as a conflict, a failed Save As to a local file leaves the buffer as it was, and the save and sync code is now typed.
+Verified: results match Emacs 29.3 on 31 cases; browser checks for footnotes, Save As and local files.
 * v540 — Org-cite citations
 Citations like =[cite/t:@knuth84]= are understood: the outline shows them dimmed with tappable keys, and HTML, Markdown, ASCII and ODT exports format them and the =#+PRINT_BIBLIOGRAPHY:= list exactly as Emacs's basic processor does, reading =#+BIBLIOGRAPHY:= files (BibTeX or CSL-JSON). Markdown, ASCII and ODT exports now also expand macros and keep inline math, and ASCII keeps emphasis markers and =<url>= links as Emacs does. Saving a local file or an import no longer overwrites a newer version.
 Verified: HTML output matches Emacs on twelve fixtures; browser checks for citations, export, save and local files.

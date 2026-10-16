@@ -53,11 +53,16 @@ async function getSyncMeta(kvAdapter, documentId) {
 /**
  * @param {KvAdapter} kvAdapter
  * @param {string} documentId
- * @param {any} [meta]
+ * @param {SyncMeta} meta
  */
 async function setSyncMeta(kvAdapter, documentId, meta) {
   await kvAdapter.set(syncMetaKey(documentId), JSON.stringify(meta));
 }
+
+/** @typedef {import('./types.js').DiskAdapter} DiskAdapter */
+/** @typedef {{ lastSyncedHash: string | null, baseContent?: string }} SyncMeta */
+/** @typedef {(sides: { mine: string, disk: string, base: string | null }) => Promise<string | { merged: string }>} ConflictResolver */
+/** @typedef {{ documentId: string, kvAdapter: KvAdapter, diskAdapter: DiskAdapter, resolveConflict?: ConflictResolver | Function }} SyncArgs */
 
 /**
  * A minimal, dependency-free hash for conflict detection — this only needs
@@ -100,7 +105,8 @@ const SYNC_RESULT = {
  * is what makes the resolution an actual user choice in the UI rather
  * than a decision baked into this module.
  */
-async function syncDocument(/** @type {any} */ { documentId, kvAdapter, diskAdapter, resolveConflict }) {
+/** @param {SyncArgs} args */
+async function syncDocument({ documentId, kvAdapter, diskAdapter, resolveConflict }) {
   // A write that finds the file changed since the read below (another device saved in between) says so with a
   // WriteConflictError; the whole comparison then runs again against what is there now, so the person is asked
   // about it instead of the other save being overwritten.
@@ -119,12 +125,13 @@ function writeConflict(message) {
   return Object.assign(new Error(message), { code: 'WRITE_CONFLICT' });
 }
 
-/** @param {any} err */
+/** @param {unknown} err */
 function isWriteConflict(err) {
-  return !!err && err.code === 'WRITE_CONFLICT';
+  return !!err && /** @type {{ code?: string }} */ (err).code === 'WRITE_CONFLICT';
 }
 
-async function syncOnce(/** @type {any} */ { documentId, kvAdapter, diskAdapter, resolveConflict }) {
+/** @param {SyncArgs} args */
+async function syncOnce({ documentId, kvAdapter, diskAdapter, resolveConflict }) {
   const pending = await getPendingChange(kvAdapter, documentId);
   const diskEntry = await diskAdapter.read(documentId);
   const meta = await getSyncMeta(kvAdapter, documentId);
@@ -136,8 +143,10 @@ async function syncOnce(/** @type {any} */ { documentId, kvAdapter, diskAdapter,
   // what the write may overwrite: the version this comparison was made against (adapters that can, refuse otherwise)
   const expect = { exists: diskEntry !== null, hash: diskEntry ? diskEntry.hash : null };
 
+  // the text last synced, when kept, decides exactly; otherwise the hash does
+  const lastSyncedText = meta && typeof meta.baseContent === 'string' ? meta.baseContent : null;
   const diskChangedSinceSync =
-    diskEntry !== null && (!meta || meta.lastSyncedHash !== diskEntry.hash);
+    diskEntry !== null && (lastSyncedText !== null ? diskEntry.content !== lastSyncedText : !meta || meta.lastSyncedHash !== diskEntry.hash);
 
   if (diskChangedSinceSync) {
     if (!resolveConflict) {
@@ -190,7 +199,7 @@ function createInMemoryDiskAdapter() {
     },
     /**
      * @param {string} fileId
-     * @param {any} [content]
+     * @param {string} content
      */
     async write(fileId, content) {
       const hash = contentHash(content);
@@ -203,7 +212,7 @@ function createInMemoryDiskAdapter() {
     },
     /**
      * @param {string} fileId
-     * @param {any} [content]
+     * @param {string} content
      */
     _simulateExternalEdit(fileId, content) {
       files.set(fileId, { content, hash: contentHash(content) });

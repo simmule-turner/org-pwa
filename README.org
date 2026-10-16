@@ -326,6 +326,17 @@ A marker opens where it follows the start of a line, whitespace or one of ~-({'"
 
 Table cells render inline markup too. Tap a cell to see and edit its raw text, and tap away or tap another cell to commit (see [[#editing-your-outline][Editing your outline]]).
 
+*** Footnote commands
+:PROPERTIES:
+:CUSTOM_ID: footnotes
+:END:
+
+*Insert footnote* (~org-footnote-new~, ~C-c C-x f~, palette) puts a reference at the cursor in Text view and starts its definition under a ~* Footnotes~ heading at the end of the file, with the cursor ready to write it. The label is the next unused number; typing the label of an existing footnote adds another reference to it, and an empty label makes an anonymous ~[fn::]~. It is refused where Org refuses a footnote (start of a line, source blocks, comments, links, inside another reference).
+
+*Normalize footnotes* (~org-footnote-normalize~, palette) turns every footnote into a numbered one in reading order: inline and anonymous notes become definitions, and all definitions move under ~* Footnotes~, with ~DEFINITION NOT FOUND.~ for a reference nobody defined. It works from any view and Undo reverses it.
+
+Settings: ~org-footnote-section~ (the heading; ~nil~ keeps each definition at the end of its own section), ~org-footnote-auto-label~ (~t~, ~confirm~, ~nil~ or ~random~) and ~org-footnote-define-inline~.
+
 *** LaTeX math fragments
 :PROPERTIES:
 :CUSTOM_ID: latex-fragments
@@ -581,6 +592,9 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-cite-global-bibliography~ | unset | Bibliography files used by every document, as a Lisp list of paths (see [[#citations][Citations]]) |
 | ~org-cite-basic-sorting-field~ | ~author~ | Field the reference list is sorted by |
 | ~org-cite-basic-author-year-separator~ | ~, ~ | Text between author and year in a citation |
+| ~org-footnote-section~ | ~Footnotes~ | Heading that holds footnote definitions; ~nil~ puts each at the end of its own section (see [[#footnotes][Footnote commands]]) |
+| ~org-footnote-auto-label~ | ~t~ | Label for a new footnote: ~t~ next number, ~confirm~ next number you can edit, ~nil~ ask, ~random~ |
+| ~org-footnote-define-inline~ | ~nil~ | Write new footnotes as ~[fn:label:text]~ at the reference |
 | ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (~** COMMENT draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
 | ~org-xx-agenda-hide-title-stamps~ | ~t~ | Leave active timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written |
 | ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
@@ -1999,7 +2013,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Tables* (see [[#table-formulas][Table formulas]]): ~#+TBLFM:~ covers arithmetic, conditionals, named constants, scalar and aggregate functions, date and time arithmetic and formatting, and unit conversion. Complex numbers and basic vectors and matrices are covered; not reproduced: the rest of Emacs Calc (symbolic algebra), named-field references, and recalculation on every keystroke.
 
-*Footnotes*: no ~org-footnote-new~ or ~org-footnote-normalize~ (no insert at point, renumbering, sorting or inline/separate-line conversion; edit the raw text), and no ~org-ref~ integration.
+*Footnotes* (see [[#footnotes][Footnote commands]]): no ~org-footnote-sort~, ~org-footnote-delete~ or ~org-footnote-auto-adjust~, Insert footnote needs Text view, and there is no ~org-ref~ integration.
 
 *Clocking* (see [[#clocking][Clocking]]): no custom ~org-duration-units~, no ~Effort_ALL+~, and no clock-in reminder beyond the modeline's over-estimate marker.
 

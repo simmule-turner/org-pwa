@@ -308,3 +308,17 @@ expectTest('matchesExpected: the version a write expects, by hash, with line end
   expectAssert.equal(matchesExpected({ exists: false, hash: null }, null), true);
   expectAssert.equal(matchesExpected({ exists: false, hash: null }, current), false);
 });
+
+test('no conflict when the file was rewritten with the same text (its hash changed, its content did not)', async () => {
+  const kv = createInMemoryAdapter();
+  const disk = createInMemoryDiskAdapter();
+  await enqueueChange(kv, 'a.org', '* v1');
+  await syncDocument({ documentId: 'a.org', kvAdapter: kv, diskAdapter: disk });
+  disk._simulateExternalEdit('a.org', '* v1'); // same text
+  const meta = await getSyncMeta(kv, 'a.org');
+  await setSyncMeta(kv, 'a.org', { ...meta, lastSyncedHash: 'different' }); // as a changed ETag would look
+  await enqueueChange(kv, 'a.org', '* v2');
+  const result = await syncDocument({ documentId: 'a.org', kvAdapter: kv, diskAdapter: disk });
+  assert.equal(result.status, SYNC_RESULT.SYNCED);
+  assert.equal((await disk.read('a.org')).content, '* v2');
+});

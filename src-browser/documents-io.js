@@ -458,9 +458,11 @@ export async function saveAsFilesystem() {
     setStatus('This browser lacks File System Access support.');
     return;
   }
+  const previous = { documentId: S.state.documentId, storageKind: S.state.storageKind };
+  let renamedTo = null;
   try {
     const documentId = await platform.localFiles.pickNew(kv, suggestedSaveAsName('untitled.org'));
-    const previous = { documentId: S.state.documentId, storageKind: S.state.storageKind };
+    renamedTo = documentId;
     S.state.documentId = documentId;
     S.state.storageKind = 'filesystem';
     const seen = await readSeen(filesystemAdapter, documentId); // the picker has asked about replacing this file
@@ -486,7 +488,9 @@ export async function saveAsFilesystem() {
     closeFileMenu();
     render();
   } catch (err) {
+    if (renamedTo !== null && S.state.documentId === renamedTo) undoSaveAsRename(previous, renamedTo); // a write that threw leaves the buffer as it was
     if (err.name !== 'AbortError') setStatus('Save As failed: ' + err.message);
+    render();
   }
 }
 

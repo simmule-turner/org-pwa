@@ -6133,6 +6133,40 @@ check('cite: a citation shows as written with tappable keys, a tap shows the ent
   await context.close();
 });
 
+check('footnotes: Insert footnote writes a reference at the cursor in Text view and starts its definition under Footnotes; Normalize footnotes numbers them all', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* One\nSome text here.\n');
+  const run = async (name) => {
+    await openPalette(page);
+    await page.keyboard.type(name);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+  };
+  await run('text view');
+  const area = page.locator('#document-text-edit-input');
+  await area.waitFor({ timeout: 5000 });
+  await area.evaluate((el) => { el.focus(); el.setSelectionRange(15, 15); });
+  await run('insert footnote');
+  const text = await area.inputValue();
+  expect(text === '* One\nSome text[fn:1] here.\n\n* Footnotes\n\n[fn:1] \n', `reference and definition: ${JSON.stringify(text)}`);
+  const caret = await area.evaluate((el) => el.selectionStart);
+  expect(caret === text.length - 1, `the cursor is in the definition: ${caret}`);
+  await area.evaluate((el) => { el.value = el.value.replace('[fn:1] \n', '[fn:1] Note one.\n') + '\nAnother[fn::inline note] too.\n'; });
+  await run('normalize footnotes');
+  const norm = await area.inputValue();
+  expect(/Another\[fn:2\] too\./.test(norm) && /\[fn:2\] inline note/.test(norm) && /\[fn:1\] Note one\./.test(norm), `normalized in Text view: ${JSON.stringify(norm)}`);
+  await newDocument(page, '* A\nText[fn:b] more[fn::anon].\n\n[fn:b] Bee.\n');
+  await run('normalize footnotes');
+  const outline = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { serializeOrg } = await import('/src/org-parser.js');
+    return { text: serializeOrg(S.state.doc), dirty: S.isDirty };
+  });
+  expect(outline.text === '* A\nText[fn:1] more[fn:2].\n\n* Footnotes\n\n[fn:1] Bee.\n\n[fn:2] anon\n' && outline.dirty, `normalized from the outline: ${JSON.stringify(outline)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('id: links: a local file opened before is found again by its ID after its tab is closed', async () => {
   const { context, page, errors } = await freshPage();
   await page.setViewportSize({ width: 412, height: 900 });

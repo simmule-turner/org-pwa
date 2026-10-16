@@ -27,21 +27,21 @@ function outboxKey(documentId) {
 /**
  * Replaces the pending write for `documentId` with `content` (the
  * serialized .org text) and a timestamp. Called on every local edit.
- * @param {any} adapter
+ * @param {import('./types.js').KvAdapter} adapter
  * @param {string} documentId
  * @param {string} content
  */
-async function enqueueChange(adapter, documentId, content, opts = {}) {
+async function enqueueChange(adapter, documentId, content, opts = /** @type {{ now?: Date }} */ ({})) {
   const entry = {
     content,
-    queuedAt: /** @type {any} */ (opts).now ? /** @type {any} */ (opts).now.toISOString() : new Date().toISOString(),
+    queuedAt: (opts.now || new Date()).toISOString(),
   };
   await adapter.set(outboxKey(documentId), JSON.stringify(entry));
   return entry;
 }
 
 /** Returns the pending write for `documentId`, or null if the outbox is
- * @param {any} adapter
+ * @param {import('./types.js').KvAdapter} adapter
  * @param {string} documentId
  *  empty (nothing unsynced) for that document. */
 async function getPendingChange(adapter, documentId) {
@@ -61,7 +61,7 @@ async function getPendingChange(adapter, documentId) {
  *  successfully flushed to disk. With `writtenContent`, only if the
  *  pending write is still that text: an edit made while the write was in
  *  flight queued a newer one, and that must stay pending.
- * @param {any} adapter
+ * @param {import('./types.js').KvAdapter} adapter
  * @param {string} documentId
  * @param {string} [writtenContent]
  * @returns {Promise<boolean>} whether the entry was cleared */
@@ -75,7 +75,7 @@ async function clearPendingChange(adapter, documentId, writtenContent) {
 }
 
 /**
- * @param {any} adapter
+ * @param {import('./types.js').KvAdapter} adapter
  * @param {string} documentId
  */
 async function hasPendingChange(adapter, documentId) {

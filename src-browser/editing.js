@@ -428,6 +428,30 @@ export function renderHistoryPanel(target = S.historyRenderTarget) {
   container.appendChild(list);
 }
 
+/** Replaces the whole document with `newText` as one undoable edit (a command that rewrites text across the file).
+ * @param {string} newText @param {string} label */
+export function replaceDocumentText(newText, label) {
+  const newDoc = parseOrg(newText);
+  const rawLocalVars = parseLocalVariables(newText);
+  const startupConfig = resolveEffectiveStartupConfig(newDoc, rawLocalVars, S.globalVariables);
+  const localVariables = mergeGlobalAndLocalVariables(S.globalVariables, rawLocalVars);
+  applyStartupVisibility(newDoc, startupConfig, getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived');
+  S.state.doc = newDoc;
+  S.state.startupConfig = startupConfig;
+  reconcileReadOnlyAfterReparse(S.state.localVariables, localVariables);
+  S.state.localVariables = localVariables;
+  syncAgendaFilesConfig();
+  syncContactsFilesConfig();
+  S.currentContextHeading = null;
+  const previousHistory = S.history;
+  S.history = pushSnapshot(S.history, newText, label);
+  if (S.history !== previousHistory) {
+    S.isDirty = true;
+    persistInBackground();
+    persistHistoryInBackground();
+  }
+}
+
 // textarea element -> the raw value it was last successfully committed with
 export function commitTextModeIfActive() {
   if (S.currentView !== 'text') return false;

@@ -487,6 +487,32 @@ export function getCiteSeparator(vars) {
   return m ? m[1].replace(/\\(.)/g, '$1') : String(raw);
 }
 
+/** org-footnote-section: the heading footnote definitions are collected under ("Footnotes"); nil defines them at the end of the
+ * section holding the reference instead.
+ * @param {LocalVars} vars @returns {string | null} */
+export function getFootnoteSection(vars) {
+  const raw = (vars || {})['org-footnote-section'];
+  if (raw === undefined || raw === null) return 'Footnotes';
+  const text = String(raw).trim();
+  if (text.toLowerCase() === 'nil') return null;
+  const m = /^"(.*)"$/s.exec(text);
+  const name = (m ? m[1].replace(/\\(.)/g, '$1') : text).trim();
+  return name === '' ? 'Footnotes' : name;
+}
+
+/** org-footnote-define-inline: write new footnotes as [fn:label:text] at the reference.
+ * @param {LocalVars} vars */
+export function getFootnoteDefineInline(vars) {
+  return parseLispBoolean((vars || {})['org-footnote-define-inline'], false);
+}
+
+/** org-footnote-auto-label: t (next number), nil (ask), confirm (next number, editable) or random.
+ * @param {LocalVars} vars @returns {'t' | 'nil' | 'confirm' | 'random'} */
+export function getFootnoteAutoLabel(vars) {
+  const v = String((vars || {})['org-footnote-auto-label'] ?? 't').trim().replace(/^'/, '').toLowerCase();
+  return v === 'nil' || v === 'confirm' || v === 'random' ? v : 't';
+}
+
 /** org-xx-show-inherited-tags (this app's own): whether outline headings show the tags they inherit, dimmed.
  * @param {LocalVars} vars */
 export function getShowInheritedTagsOutline(vars) {

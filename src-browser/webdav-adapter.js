@@ -254,11 +254,12 @@ export function createWebdavAdapter(getConfig) {
     const config = requireConfig(getConfig);
     const expect = options && options.expect;
     const existing = expect ? (expect.exists ? { hash: expect.hash } : null) : await readImpl(fileId);
+    /** @type {Record<string, string>} */
     const headers = { ...authHeader(config), 'Content-Type': 'text/plain; charset=utf-8' };
     if (existing && existing.hash) {
-      /** @type {any} */ (headers)['If-Match'] = existing.hash;
+      headers['If-Match'] = existing.hash;
     } else if (!existing) {
-      /** @type {any} */ (headers)['If-None-Match'] = '*';
+      headers['If-None-Match'] = '*';
     }
     let res = await fetchWithHint(fileUrl(config, fileId), {
       method: 'PUT',

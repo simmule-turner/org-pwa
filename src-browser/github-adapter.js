@@ -200,12 +200,13 @@ export function createGithubAdapter(getConfig) {
     // omits it entirely.
     const expect = options && options.expect;
     const existing = expect ? (expect.exists ? { hash: expect.hash } : null) : await readImpl(fileId);
+    /** @type {{ message: string, content: string, branch: string, sha?: string | null }} */
     const requestBody = {
       message: existing ? `Update ${fileId} via org-pwa` : `Create ${fileId} via org-pwa`,
       content: utf8ToBase64(content),
       branch: config.branch || 'main',
     };
-    if (existing) /** @type {any} */ (requestBody).sha = existing.hash;
+    if (existing) requestBody.sha = existing.hash;
 
     const res = await fetch(contentsUrl(config, fileId), {
       method: 'PUT',
@@ -229,12 +230,13 @@ export function createGithubAdapter(getConfig) {
   async function writeBinaryImpl(fileId, base64Content) {
     const config = requireConfig(getConfig);
     const existing = await readImpl(fileId);
+    /** @type {{ message: string, content: string, branch: string, sha?: string | null }} */
     const requestBody = {
       message: existing ? `Update ${fileId} via org-pwa` : `Create ${fileId} via org-pwa`,
       content: base64Content,
       branch: config.branch || 'main',
     };
-    if (existing) /** @type {any} */ (requestBody).sha = existing.hash;
+    if (existing) requestBody.sha = existing.hash;
 
     const res = await fetch(contentsUrl(config, fileId), {
       method: 'PUT',

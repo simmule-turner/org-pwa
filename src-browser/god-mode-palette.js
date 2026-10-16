@@ -34,6 +34,7 @@ import { createNewUnsavedDocument, saveCurrent } from './documents-io.js';
 import { openFileScreen } from './file-screen.js';
 import { moreBtn, outlineEl, searchBtn, settingsBtn } from './dom.js';
 import { commitAndRender, commitTextModeIfActive, performRedo, performUndo, renderHistoryPanel, setStatus, startEditingTitle } from './editing.js';
+import { insertFootnoteCommand, normalizeFootnotesCommand } from './footnotes-ui.js';
 import { performExport, performOrgOrgExport } from './export-import.js';
 import { openGeneralEditor } from './general-editor.js';
 import { cutSubtree, extraMenuTargetHeading, narrowToHeading, pasteSubtree, widen } from './gestures-structure.js';
@@ -237,6 +238,7 @@ export const GOD_MODE_ACTIONS = {
     else setStatus('No clock is currently running.');
   },
   'C-c C-x C-x': () => clockContinue(),
+  'C-c C-x f': () => insertFootnoteCommand(),
   'C-c C-x C-j': () => clockGoto(),
   'C-u C-c C-x C-j': () => clockGotoRecent(),
   'C-c C-v': () => {
@@ -500,6 +502,8 @@ export function paletteCommandList() {
     { id: 'demote', label: 'Demote subtree', orgName: 'org-demote-subtree', keys: 'M-<right>', group: 'Heading', needs: HEAD, run: chord('M-<right>') },
     { id: 'move-up', label: 'Move subtree up', orgName: 'org-move-subtree-up', keys: 'M-<up>', group: 'Heading', needs: HEAD, run: chord('M-<up>') },
     { id: 'move-down', label: 'Move subtree down', orgName: 'org-move-subtree-down', keys: 'M-<down>', group: 'Heading', needs: HEAD, run: chord('M-<down>') },
+    { id: 'footnote-new', label: 'Insert footnote', orgName: 'org-footnote-new', keys: 'C-c C-x f', group: 'Document', keywords: ['footnote', 'reference', 'note', 'fn'], needs: ['doc', 'writable'], run: () => insertFootnoteCommand() },
+    { id: 'footnote-normalize', label: 'Normalize footnotes', orgName: 'org-footnote-normalize', group: 'Document', keywords: ['footnote', 'renumber', 'number', 'move', 'fn'], needs: ['doc', 'writable'], run: () => normalizeFootnotesCommand() },
     { id: 'store-link', label: 'Copy link to heading', orgName: 'org-store-link', keys: 'C-c l', group: 'Heading', keywords: ['id', 'org-id-get-create', 'link', 'store link'], needs: ['doc', 'heading'], run: onHeading(copyHeadingLink) },
     { id: 'add-id', label: 'Add ID to heading', orgName: 'org-id-get-create', group: 'Heading', keywords: ['id', 'uuid', 'property'], needs: ['doc', 'heading'], run: onHeading(addHeadingId) },
     { id: 'find-id-links', label: 'Find links to this heading', group: 'Heading', keywords: ['id', 'backlinks', 'linked from', 'references'], needs: ['doc', 'heading'], run: onHeading(findLinksToHeading) },
