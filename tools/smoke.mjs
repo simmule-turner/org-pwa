@@ -2655,6 +2655,32 @@ check('Open / Save As screen: one screen with a GitHub / Local file / WebDAV pic
   await context.close();
 });
 
+check('Save As over a file replaces only the version that was shown: one saved by someone else in between is asked about, and declining leaves it and the tab as they were', async () => {
+  dav.reset({ 'shared.org': '* Shown version\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await newDocument(page, '* Mine\n');
+  dav.set('shared.org', '* Saved by someone else\n'); // after the person was shown "* Shown version"
+  await page.evaluate(async () => {
+    const { saveAsWebdav } = await import('/src-browser/documents-io.js');
+    window.__saveAs = saveAsWebdav('shared.org', '* Shown version\n');
+  });
+  const ask = page.locator('.ui-overlay', { hasText: 'changed by someone else after you chose to replace it' });
+  await ask.waitFor();
+  await ask.getByText('Cancel', { exact: true }).click();
+  await page.evaluate(() => window.__saveAs);
+  expect(dav.get('shared.org') === '* Saved by someone else\n', `the newer version is untouched: ${JSON.stringify(dav.get('shared.org'))}`);
+  const id = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.state.documentId);
+  expect(id !== 'shared.org', `the tab was not renamed to a file it never wrote: ${id}`);
+  await page.evaluate(async () => {
+    const { saveAsWebdav } = await import('/src-browser/documents-io.js');
+    await saveAsWebdav('shared.org', '* Saved by someone else\n'); // shown the current version: no question
+  });
+  await waitForStatus(page, 'Saved to WebDAV as shared.org');
+  expect(dav.get('shared.org') === '* Mine\n', 'replacing the version that was shown just works');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('Recently opened: menu rows cannot be text-selected, so a long press over "(" or ")" is not taken by copy mode; a long press removes that entry (the last one too) without opening it or closing the File menu, and the list empties', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* One\n');

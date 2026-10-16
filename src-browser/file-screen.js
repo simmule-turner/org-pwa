@@ -120,11 +120,20 @@ async function saveHere() {
     return;
   }
   const path = joinPath(f.folder, name);
-  if (listedAsFile(f.entries, path) && !(await confirmDialog(`Replace "${path}"?`, { confirmLabel: 'Replace' }))) return;
+  /** @type {string | null | undefined} */ let seen; // the text being replaced, so a save by someone else meanwhile is asked about
+  if (listedAsFile(f.entries, path)) {
+    try {
+      const existing = await (type === 'github' ? githubAdapter : webdavAdapter).read(path);
+      seen = existing ? existing.content : null;
+    } catch {
+      seen = undefined; // not readable now; the save reads it again
+    }
+    if (!(await confirmDialog(`Replace "${path}"?`, { confirmLabel: 'Replace' }))) return;
+  }
   if (S.fileScreen !== f) return;
   closeFileScreen();
-  if (type === 'github') saveAsGithub(path);
-  else saveAsWebdav(path);
+  if (type === 'github') saveAsGithub(path, seen);
+  else saveAsWebdav(path, seen);
 }
 
 /** @param {any} [f] */

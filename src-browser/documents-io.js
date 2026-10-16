@@ -38,7 +38,7 @@ import { render } from './render.js';
 import { renderSearchPanel } from './search-ui.js';
 import { getGithubConfig, getWebdavConfig, recordRecentFile, setLastActiveDocument } from './settings.js';
 import { kv } from './singletons.js';
-import { ALWAYS_KEEP_MINE, resolvePendingChangeChoice } from './sync-helpers.js';
+import { ALWAYS_KEEP_MINE, replaceOnlyWhatWasSeen, resolvePendingChangeChoice } from './sync-helpers.js';
 import { persistOpenTabsInBackground, renderTabBar, saveSessionSnapshot, switchToTab } from './tabs.js';
 import { renderViewMenu } from './views.js';
 import { isWebdavConfigured } from './webdav-adapter.js';
@@ -460,18 +460,26 @@ export async function saveAsFilesystem() {
   }
   try {
     const documentId = await platform.localFiles.pickNew(kv, suggestedSaveAsName('untitled.org'));
+    const previous = { documentId: S.state.documentId, storageKind: S.state.storageKind };
     S.state.documentId = documentId;
     S.state.storageKind = 'filesystem';
+    const seen = await readSeen(filesystemAdapter, documentId); // the picker has asked about replacing this file
     await markDocumentOpen(kv, documentId);
     setStatus('Saving\u2026');
     render();
-    await saveAndSync({
+    const result = await saveAndSync({
       documentId,
       doc: S.state.doc,
       kvAdapter: kv,
       diskAdapter: filesystemAdapter,
-      resolveConflict: ALWAYS_KEEP_MINE,
+      resolveConflict: replaceOnlyWhatWasSeen(seen),
     });
+    if (result.status === 'conflict' && result.resolution === 'cancelled') {
+      undoSaveAsRename(previous, documentId);
+      setStatus('Save As cancelled \u2014 the file there is untouched.');
+      render();
+      return;
+    }
     markTabSaved(saveAsTab, saveAsText); // the tab that was saved, which a slow save may have left
     await recordRecentFile(kv, documentId, 'filesystem');
     setStatus('Saved as ' + documentId + '.');
@@ -484,17 +492,26 @@ export async function saveAsFilesystem() {
 
 /** Save As to a typed path that already holds a file: Emacs asks before replacing it, so this does too (the Save As screen asks for itself). A failure to look is not a
  *  reason to refuse -- the save itself then reports what is wrong.
- * @param {{ read: (id: string) => Promise<any> }} adapter @param {string} kind @param {string} path @param {string} where */
+ * @param {{ read: (id: string) => Promise<any> }} adapter @param {string} kind @param {string} path @param {string} where
+ * @returns {Promise<{ ok: boolean, seen: string | null }>} */
 async function confirmReplaceOnServer(adapter, kind, path, where) {
-  if (S.state.storageKind === kind && S.state.documentId === path) return true; // saving over itself is just Save
-  /** @type {{ content: string } | null | undefined} */ let existing;
+  if (S.state.storageKind === kind && S.state.documentId === path) return { ok: true, seen: await readSeen(adapter, path) }; // saving over itself is just Save
+  const seen = await readSeen(adapter, path);
+  if (seen === null) return { ok: true, seen };
+  const ok = await confirmDialog(`"${path}" already exists ${where}. Replace it with this document?`, { confirmLabel: 'Replace', cancelLabel: 'Cancel', danger: true });
+  return { ok, seen };
+}
+
+/** The text a Save As is about to replace, or null if nothing is there or it can't be read (the save itself then reports what is wrong).
+ * @param {{ read: (id: string) => Promise<any> }} adapter @param {string} path
+ * @returns {Promise<string | null>} */
+async function readSeen(adapter, path) {
   try {
-    existing = await adapter.read(path);
+    const existing = await adapter.read(path);
+    return existing && typeof existing.content === 'string' ? existing.content : null;
   } catch {
-    return true;
+    return null;
   }
-  if (!existing) return true;
-  return confirmDialog(`"${path}" already exists ${where}. Replace it with this document?`, { confirmLabel: 'Replace', cancelLabel: 'Cancel', danger: true });
 }
 
 /** A Save As that failed leaves the buffer as it was, not renamed to a file that was never written.
@@ -505,8 +522,9 @@ function undoSaveAsRename(previous, path) {
   if (path !== previous.documentId) markDocumentClosed(kv, path).catch(() => {});
 }
 
-/** @param {string} [chosenPath] the path from the Save As screen; asked for in a prompt when omitted */
-export async function saveAsGithub(chosenPath) {
+/** @param {string} [chosenPath] the path from the Save As screen; asked for in a prompt when omitted
+ * @param {string | null} [seenFromScreen] the text of the file that screen asked to replace (null: none) */
+export async function saveAsGithub(chosenPath, seenFromScreen) {
   if (!S.state.doc) return;
   if (commitTextModeIfActive()) render();
   const saveAsTab = /** @type {number} */ (S.activeTabId);
@@ -523,19 +541,31 @@ export async function saveAsGithub(chosenPath) {
   const previous = { documentId: S.state.documentId, storageKind: S.state.storageKind };
   let written = false;
   try {
-    if (!chosenPath && !(await confirmReplaceOnServer(githubAdapter, 'github', path, `in ${config.owner}/${config.repo}`))) return; // the Save As screen has already asked
+    // typed here: ask now. From the Save As screen: it has asked and passes the text it showed, or this reads the file now
+    let seen = seenFromScreen;
+    if (!chosenPath) {
+      const confirmed = await confirmReplaceOnServer(githubAdapter, 'github', path, `in ${config.owner}/${config.repo}`);
+      if (!confirmed.ok) return;
+      seen = confirmed.seen;
+    } else if (seen === undefined) seen = await readSeen(githubAdapter, path);
     S.state.documentId = path;
     S.state.storageKind = 'github';
     await markDocumentOpen(kv, path);
     setStatus('Saving\u2026');
     render();
-    await saveAndSync({
+    const result = await saveAndSync({
       documentId: path,
       doc: S.state.doc,
       kvAdapter: kv,
       diskAdapter: githubAdapter,
-      resolveConflict: ALWAYS_KEEP_MINE,
+      resolveConflict: replaceOnlyWhatWasSeen(seen ?? null),
     });
+    if (result.status === 'conflict' && result.resolution === 'cancelled') {
+      undoSaveAsRename(previous, path);
+      setStatus('Save As cancelled \u2014 the file there is untouched.');
+      render();
+      return;
+    }
     written = true;
     markTabSaved(saveAsTab, saveAsText); // the tab that was saved, which a slow save may have left
     await recordRecentFile(kv, path, 'github');
@@ -548,8 +578,9 @@ export async function saveAsGithub(chosenPath) {
   }
 }
 
-/** @param {string} [chosenPath] the path from the Save As screen; asked for in a prompt when omitted */
-export async function saveAsWebdav(chosenPath) {
+/** @param {string} [chosenPath] the path from the Save As screen; asked for in a prompt when omitted
+ * @param {string | null} [seenFromScreen] the text of the file that screen asked to replace (null: none) */
+export async function saveAsWebdav(chosenPath, seenFromScreen) {
   if (!S.state.doc) return;
   if (commitTextModeIfActive()) render();
   const saveAsTab = /** @type {number} */ (S.activeTabId);
@@ -566,19 +597,31 @@ export async function saveAsWebdav(chosenPath) {
   const previous = { documentId: S.state.documentId, storageKind: S.state.storageKind };
   let written = false;
   try {
-    if (!chosenPath && !(await confirmReplaceOnServer(webdavAdapter, 'webdav', path, 'on the WebDAV server'))) return; // the Save As screen has already asked
+    // typed here: ask now. From the Save As screen: it has asked and passes the text it showed, or this reads the file now
+    let seen = seenFromScreen;
+    if (!chosenPath) {
+      const confirmed = await confirmReplaceOnServer(webdavAdapter, 'webdav', path, 'on the WebDAV server');
+      if (!confirmed.ok) return;
+      seen = confirmed.seen;
+    } else if (seen === undefined) seen = await readSeen(webdavAdapter, path);
     S.state.documentId = path;
     S.state.storageKind = 'webdav';
     await markDocumentOpen(kv, path);
     setStatus('Saving\u2026');
     render();
-    await saveAndSync({
+    const result = await saveAndSync({
       documentId: path,
       doc: S.state.doc,
       kvAdapter: kv,
       diskAdapter: webdavAdapter,
-      resolveConflict: ALWAYS_KEEP_MINE,
+      resolveConflict: replaceOnlyWhatWasSeen(seen ?? null),
     });
+    if (result.status === 'conflict' && result.resolution === 'cancelled') {
+      undoSaveAsRename(previous, path);
+      setStatus('Save As cancelled \u2014 the file there is untouched.');
+      render();
+      return;
+    }
     written = true;
     markTabSaved(saveAsTab, saveAsText); // the tab that was saved, which a slow save may have left
     await recordRecentFile(kv, path, 'webdav');

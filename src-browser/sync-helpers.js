@@ -138,3 +138,15 @@ export function formatPendingChangeTimestamp(iso) {
 // fix for that, and it always resolves in favor of the content actually
 // on screen, which is what both actions mean.
 export const ALWAYS_KEEP_MINE = async () => 'mine';
+
+/** For a Save As over a file the person agreed to replace: the agreement covers the version they were shown (`seen`, its text,
+ * or null for "nothing there"). If someone saved the file since, the new version is not silently replaced; it is asked about.
+ * @param {string | null} seen */
+export function replaceOnlyWhatWasSeen(seen) {
+  return async (/** @type {{ disk: string }} */ { disk }) => {
+    if (seen !== null && disk === seen) return 'mine';
+    if (seen === null && disk === '') return 'mine'; // the empty file a save picker creates
+    const ok = await confirmDialog('This file was changed by someone else after you chose to replace it. Replace the newer version too?', { confirmLabel: 'Replace', cancelLabel: 'Cancel', danger: true });
+    return ok ? 'mine' : 'cancel';
+  };
+}
