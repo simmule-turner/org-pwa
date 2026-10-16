@@ -5847,8 +5847,11 @@ check('buffers: Save Some Buffers asks per buffer in the minibuffer (y/Space, n/
   await page.keyboard.press('Enter');
   await prompt.waitFor({ state: 'visible', timeout: 5000 });
   expect((await prompt.innerText()).includes('b.org') && (await prompt.innerText()).includes('(y, n, !, ., q, d)'), `asks about b.org with the keys: ${await prompt.innerText()}`);
+  await page.evaluate(() => { document.getElementById('modelineBar').style.bottom = '300px'; }); // as when the phone's keyboard lifts the bar
   await page.keyboard.press('d');
   await page.locator('#saveBuffersDiff').waitFor({ state: 'visible', timeout: 5000 });
+  const rect = await page.evaluate(() => ({ panel: document.getElementById('saveBuffersDiff').getBoundingClientRect().bottom, bar: document.getElementById('modelineBar').getBoundingClientRect().top, h: window.innerHeight }));
+  expect(Math.abs(rect.panel - rect.bar) < 3 && rect.panel < rect.h - 250, `the diff sits on top of the lifted bar, clear of the keyboard: ${JSON.stringify(rect)}`);
   const diff = await page.locator('#saveBuffersDiff').innerText();
   expect(diff.includes('B typed') && diff.includes('B one'), `d shows what changed: ${diff}`);
   expect(await prompt.isVisible(), 'and the question is still open');

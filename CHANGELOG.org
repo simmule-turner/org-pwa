@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v534 — Save Some Buffers: the diff shows above the keyboard
+Pressing ~d~ at the Save Some Buffers question showed its diff behind the phone's keyboard, so nothing seemed to happen. The panel now sits on top of the minibuffer bar wherever the keyboard lifts it, and ~d~ keeps the same question (and the keyboard) open instead of asking again.
+Verified: browser check with the bar lifted as the keyboard does.
+
 * v533 — Save Some Buffers asks, as in Emacs
 ~C-x s~ and the palette's *Save some buffers* now go through each modified tab and ask in the minibuffer: ~y~/Space saves, ~n~/Backspace skips, ~!~ saves the rest, ~.~ saves this one and stops, ~q~ stops, ~d~ shows what changed since the last save. *File → Save Some Buffers* stays silent and saves them all, like ~(save-some-buffers t)~.
 Verified: browser checks for the prompt keys, the diff and the silent File menu item.

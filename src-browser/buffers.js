@@ -23,7 +23,7 @@ import { closeFileMenu } from './file-menu.js';
 import { folderAvailable } from './local-folder.js';
 import { render } from './render.js';
 import { renderDiffView } from './render-helpers.js';
-import { statusEl } from './dom.js';
+import { modelineBarEl } from './dom.js';
 import { readKeyFromMinibuffer } from './minibuffer-prompt.js';
 import { kv } from './singletons.js';
 import { documentDisplayLabel } from './sync-helpers.js';
@@ -229,8 +229,12 @@ export function modifiedFileBuffers() {
 
 /** The panel that shows `d`'s diff above the minibuffer. */
 const DIFF_PANEL_ID = 'saveBuffersDiff';
+/** @type {{ stop: (() => void) | null }} */
+const diffPanelState = { stop: null };
 
 function closeDiffPanel() {
+  if (diffPanelState.stop) diffPanelState.stop();
+  diffPanelState.stop = null;
   const old = document.getElementById(DIFF_PANEL_ID);
   if (old) old.remove();
 }
@@ -240,9 +244,12 @@ function showBufferDiff() {
   closeDiffPanel();
   const panel = document.createElement('div');
   panel.id = DIFF_PANEL_ID;
-  const bar = statusEl.parentElement;
-  const bottom = bar ? Math.ceil(bar.getBoundingClientRect().height) : 0;
-  panel.style.cssText = `position: fixed; left: 0; right: 0; bottom: ${bottom}px; max-height: 45vh; overflow: auto; box-sizing: border-box; padding: 6px 10px; background: var(--bg); color: var(--fg); border-top: 1px solid var(--border-strong); z-index: 50`;
+  panel.style.cssText = 'position: fixed; left: 0; right: 0; max-height: 40vh; overflow: auto; box-sizing: border-box; padding: 6px 10px; background: var(--bg); color: var(--fg); border-top: 1px solid var(--border-strong); z-index: 51';
+  // The bar sits above the on-screen keyboard (chrome.js lifts it by the keyboard's height), so the panel rides on top of the bar.
+  const place = () => {
+    panel.style.bottom = (parseFloat(modelineBarEl.style.bottom) || 0) + modelineBarEl.offsetHeight + 'px';
+  };
+  place();
   const title = document.createElement('div');
   title.style.cssText = 'font-size: 12px; font-weight: 600; margin-bottom: 2px';
   title.textContent = `Changes in ${documentDisplayLabel(S.state.documentId, S.state.doc)} since it was last saved`;
@@ -256,6 +263,15 @@ function showBufferDiff() {
     panel.appendChild(renderDiffView(S.lastSavedText, serializeOrg(S.state.doc)));
   }
   document.body.appendChild(panel);
+  const vv = window.visualViewport;
+  const later = [setTimeout(place, 350), setTimeout(place, 800)]; // the keyboard may still be moving the bar
+  if (vv) vv.addEventListener('resize', place);
+  window.addEventListener('resize', place);
+  diffPanelState.stop = () => {
+    later.forEach(clearTimeout);
+    if (vv) vv.removeEventListener('resize', place);
+    window.removeEventListener('resize', place);
+  };
 }
 
 /** save-some-buffers (C-x s): offers to save each modified buffer that has a file, one key at a time in the minibuffer --
@@ -284,12 +300,8 @@ export async function saveSomeBuffers(saveSilently = false) {
     let stop = false;
     if (!silent) {
       const label = documentDisplayLabel(S.state.documentId, S.state.doc);
-      let key = 'd';
-      while (key === 'd') {
-        key = await readKeyFromMinibuffer(`Save file ${label}? (y, n, !, ., q, d): `, 'yn!.qd');
-        if (key === 'd') showBufferDiff();
-        else closeDiffPanel();
-      }
+      const key = await readKeyFromMinibuffer(`Save file ${label}? (y, n, !, ., q, d): `, 'yn!.qd', { stay: 'd', onStay: showBufferDiff }); // d shows the changes and asks again
+      closeDiffPanel();
       if (key === 'n') {
         skipped++;
         continue;

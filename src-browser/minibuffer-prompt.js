@@ -60,8 +60,9 @@ export function readFromMinibuffer(prompt, initial = '') {
  *  the typed character rather than the key code, which a phone keyboard often reports as "Unidentified".
  * @param {string} prompt  e.g. 'Save file notes.org? (y, n, !, ., q, d): '
  * @param {string} keys  the characters that answer, e.g. 'yn!.qd'
+ * @param {{ stay?: string, onStay?: (key: string) => void }} [options]  keys in `stay` call `onStay` and leave the question (and the keyboard) open
  * @returns {Promise<string>} one of `keys` */
-export function readKeyFromMinibuffer(prompt, keys) {
+export function readKeyFromMinibuffer(prompt, keys, options = {}) {
   return new Promise((resolve) => {
     const old = document.getElementById(MINIBUFFER_PROMPT_ID);
     if (old) old.remove();
@@ -86,6 +87,10 @@ export function readKeyFromMinibuffer(prompt, keys) {
     /** @param {string} key */
     const answer = (key) => {
       if (done) return;
+      if (options.stay && options.stay.includes(key)) {
+        if (options.onStay) options.onStay(key);
+        return;
+      }
       done = true;
       row.remove();
       statusEl.style.display = 'flex';
