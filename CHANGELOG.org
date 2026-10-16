@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v533 — Save Some Buffers asks, as in Emacs
+~C-x s~ and the palette's *Save some buffers* now go through each modified tab and ask in the minibuffer: ~y~/Space saves, ~n~/Backspace skips, ~!~ saves the rest, ~.~ saves this one and stops, ~q~ stops, ~d~ shows what changed since the last save. *File → Save Some Buffers* stays silent and saves them all, like ~(save-some-buffers t)~.
+Verified: browser checks for the prompt keys, the diff and the silent File menu item.
+
 * v532 — Update check on the Settings page
 *Check for updates* and the version now sit at the foot of the Settings list instead of on a separate About page: the button centred on its own line, the version centred beneath it, and the result of the check (Checking…, Up to date, Update found, Check failed, Out of date — reload) on that same line in bold red.
 Verified: browser checks for the Settings list, the update check and the no-service-worker (Android) case.

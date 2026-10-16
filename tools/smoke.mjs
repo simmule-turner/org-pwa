@@ -297,7 +297,7 @@ async function bufferText(page, name) {
     return state ? serializeOrg(state.doc) : null;
   }, name);
 }
-const saveBuffers = (page) => page.evaluate(async () => (await import('/src-browser/buffers.js')).saveSomeBuffers());
+const saveBuffers = (page) => page.evaluate(async () => (await import('/src-browser/buffers.js')).saveSomeBuffers(true));
 
 async function openDav(page, name) {
   await fileMenu(page, 'Open', 'WebDAV');
@@ -5420,7 +5420,7 @@ check('local: resolves in the org-pwa folder wherever a scheme is accepted: org-
     const { runCaptureWithAnswers } = await import('/src-browser/capture-ui.js');
     await runCaptureWithAnswers({ key: 'z', description: 'Z', type: 'item', olp: ['Inbox'], template: 'Captured into the folder', file: 'local:inbox.org', emptyLines: 0 }, []);
     await runCaptureWithAnswers({ key: 'y', description: 'Y', type: 'item', olp: ['Fresh'], template: 'Into a new file', file: 'local:fresh.org', emptyLines: 0 }, []);
-    await (await import('/src-browser/buffers.js')).saveSomeBuffers(); // a capture edits the file's buffer; saving writes it
+    await (await import('/src-browser/buffers.js')).saveSomeBuffers(true); // a capture edits the file's buffer; saving writes it
     return { inbox: window.__tree.get('inbox.org') || null, fresh: window.__tree.get('fresh.org') || null };
   });
   expect(captured.inbox && captured.inbox.includes('Captured into the folder'), `a capture template with file: local:inbox.org writes into the folder: ${JSON.stringify(captured.inbox)}`);
@@ -5821,12 +5821,50 @@ check('buffers: Capture, Refile and Archive into another file edit its buffer --
   await openPalette(page);
   await page.keyboard.type('save some buffers');
   await page.keyboard.press('Enter');
+  await page.locator('#minibufferPrompt').waitFor({ state: 'visible', timeout: 5000 });
+  expect((await page.locator('#minibufferPrompt').innerText()).includes('b.org'), 'the palette command asks about the first modified buffer');
+  await page.keyboard.press('!'); // save it and the rest without asking
   await waitForStatus(page, 'Saved 2 files');
   const [bFile, cFile] = [dav.get('b.org'), dav.get('c.org')];
   expect(bFile.includes('* B typed') && bFile.includes('* Into open tab') && cFile.includes('* C one') && cFile.includes('* Into new tab'), `both files were written: ${JSON.stringify([bFile, cFile])}`);
   expect(dav.get('a.org') === '* A one\n', 'and the clean one was not touched');
   expect((await page.locator('#tabBar > div', { hasText: '●' }).count()) === 0, 'nothing is marked modified now');
   expect((await here()) === 'c.org', 'the tab the command was run from is still the one on screen');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('buffers: Save Some Buffers asks per buffer in the minibuffer (y/Space, n/Backspace, d shows the changes, q stops) and the File menu item saves silently', async () => {
+  dav.reset({ 'b.org': '* B one\n', 'c.org': '* C one\n', 'd.org': '* D one\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  for (const [f, from, to] of [['b.org', 'B one', 'B typed'], ['c.org', 'C one', 'C typed'], ['d.org', 'D one', 'D typed']]) {
+    await openDav(page, f);
+    await replaceInDocument(page, from, to);
+  }
+  const prompt = page.locator('#minibufferPrompt');
+  await openPalette(page);
+  await page.keyboard.type('save some buffers');
+  await page.keyboard.press('Enter');
+  await prompt.waitFor({ state: 'visible', timeout: 5000 });
+  expect((await prompt.innerText()).includes('b.org') && (await prompt.innerText()).includes('(y, n, !, ., q, d)'), `asks about b.org with the keys: ${await prompt.innerText()}`);
+  await page.keyboard.press('d');
+  await page.locator('#saveBuffersDiff').waitFor({ state: 'visible', timeout: 5000 });
+  const diff = await page.locator('#saveBuffersDiff').innerText();
+  expect(diff.includes('B typed') && diff.includes('B one'), `d shows what changed: ${diff}`);
+  expect(await prompt.isVisible(), 'and the question is still open');
+  await page.keyboard.press('Backspace'); // n
+  await page.waitForFunction(() => !document.getElementById('saveBuffersDiff'), null, { timeout: 5000 });
+  await page.waitForFunction(() => document.getElementById('minibufferPrompt') && document.getElementById('minibufferPrompt').textContent.includes('c.org'), null, { timeout: 5000 });
+  await page.keyboard.press('Space'); // y
+  await page.waitForFunction(() => document.getElementById('minibufferPrompt') && document.getElementById('minibufferPrompt').textContent.includes('d.org'), null, { timeout: 5000 });
+  await page.keyboard.press('q');
+  await waitForStatus(page, 'Saved 1 file');
+  expect(dav.get('c.org').includes('C typed') && dav.get('b.org') === '* B one\n' && dav.get('d.org') === '* D one\n', 'only c.org was written');
+  expect((await page.locator('#tabBar > div', { hasText: '●' }).count()) === 2, 'b.org and d.org are still modified');
+  await page.click('#fileMenuBtn');
+  await pick(page, '#fileMenuPanel', 'Save Some Buffers');
+  await waitForStatus(page, 'Saved 2 files');
+  expect(dav.get('b.org').includes('B typed') && dav.get('d.org').includes('D typed'), 'the File menu item saved the rest without asking');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

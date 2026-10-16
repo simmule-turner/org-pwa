@@ -2,7 +2,7 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Buffers, the Emacs way: Capture, Refile and Archive into another file edit that file's buffer (its tab), never the file
 // behind the person's back. A file with no tab yet is loaded into a background tab first, as find-file-noselect does. The
-// tab shows the modified mark until it is saved, and Save Some Buffers (C-x s) saves every modified one. Revert Buffer
+// tab shows the modified mark until it is saved, and Save Some Buffers (C-x s) offers to save each modified one. Revert Buffer
 // throws a buffer's changes away and reads the file again.
 import { markDocumentOpen, saveDocument } from '../src/document-store.js';
 import { applyStartupVisibility } from '../src/fold-state.js';
@@ -22,6 +22,9 @@ import { activeDiskAdapter, reloadCurrentDocumentFromDisk } from './external-syn
 import { closeFileMenu } from './file-menu.js';
 import { folderAvailable } from './local-folder.js';
 import { render } from './render.js';
+import { renderDiffView } from './render-helpers.js';
+import { statusEl } from './dom.js';
+import { readKeyFromMinibuffer } from './minibuffer-prompt.js';
 import { kv } from './singletons.js';
 import { documentDisplayLabel } from './sync-helpers.js';
 import { persistOpenTabsInBackground, renderTabBar, switchToTab } from './tabs.js';
@@ -224,9 +227,44 @@ export function modifiedFileBuffers() {
   return ids;
 }
 
-/** save-some-buffers (C-x s): saves every modified buffer that has a file, each through the same Save as the File menu's, so
- *  an outside change to one is a conflict to settle, not an overwrite. Leaves the person on the tab they started on. */
-export async function saveSomeBuffers() {
+/** The panel that shows `d`'s diff above the minibuffer. */
+const DIFF_PANEL_ID = 'saveBuffersDiff';
+
+function closeDiffPanel() {
+  const old = document.getElementById(DIFF_PANEL_ID);
+  if (old) old.remove();
+}
+
+/** `d` in save-some-buffers: what the active buffer has that its file, as last saved or read, does not. */
+function showBufferDiff() {
+  closeDiffPanel();
+  const panel = document.createElement('div');
+  panel.id = DIFF_PANEL_ID;
+  const bar = statusEl.parentElement;
+  const bottom = bar ? Math.ceil(bar.getBoundingClientRect().height) : 0;
+  panel.style.cssText = `position: fixed; left: 0; right: 0; bottom: ${bottom}px; max-height: 45vh; overflow: auto; box-sizing: border-box; padding: 6px 10px; background: var(--bg); color: var(--fg); border-top: 1px solid var(--border-strong); z-index: 50`;
+  const title = document.createElement('div');
+  title.style.cssText = 'font-size: 12px; font-weight: 600; margin-bottom: 2px';
+  title.textContent = `Changes in ${documentDisplayLabel(S.state.documentId, S.state.doc)} since it was last saved`;
+  panel.appendChild(title);
+  if (S.lastSavedText === null) {
+    const none = document.createElement('div');
+    none.style.cssText = 'font-size: 12px; opacity: 0.7';
+    none.textContent = 'No saved copy to compare with.';
+    panel.appendChild(none);
+  } else {
+    panel.appendChild(renderDiffView(S.lastSavedText, serializeOrg(S.state.doc)));
+  }
+  document.body.appendChild(panel);
+}
+
+/** save-some-buffers (C-x s): offers to save each modified buffer that has a file, one key at a time in the minibuffer --
+ *  y or Space saves it, n or Backspace skips it, ! saves it and the rest without asking, . saves it and stops, q stops, d
+ *  shows its changes. With `saveSilently` (the File menu's) nothing is asked and every one is saved. Each is saved through the
+ *  same Save as the File menu's, so an outside change to one is a conflict to settle, not an overwrite. Leaves the person on
+ *  the tab they started on.
+ * @param {boolean} [saveSilently] */
+export async function saveSomeBuffers(saveSilently = false) {
   closeFileMenu();
   if (commitTextModeIfActive()) render();
   const home = S.activeTabId;
@@ -235,14 +273,48 @@ export async function saveSomeBuffers() {
     setStatus('(No files need saving)');
     return;
   }
+  let silent = saveSilently;
   let saved = 0;
-  for (const tabId of ids) {
+  let attempted = 0;
+  let skipped = 0;
+  for (let i = 0; i < ids.length; i++) {
+    const tabId = ids[i];
+    if (!S.documentSessions.some((/** @type {Record<string, any>} */ s) => s.tabId === tabId)) continue; // closed while we asked
     if (tabId !== S.activeTabId) switchToTab(tabId);
+    let stop = false;
+    if (!silent) {
+      const label = documentDisplayLabel(S.state.documentId, S.state.doc);
+      let key = 'd';
+      while (key === 'd') {
+        key = await readKeyFromMinibuffer(`Save file ${label}? (y, n, !, ., q, d): `, 'yn!.qd');
+        if (key === 'd') showBufferDiff();
+        else closeDiffPanel();
+      }
+      if (key === 'n') {
+        skipped++;
+        continue;
+      }
+      if (key === 'q') {
+        skipped += ids.length - i;
+        break;
+      }
+      if (key === '!') silent = true;
+      if (key === '.') stop = true;
+      if (S.activeTabId !== tabId) {
+        if (!S.documentSessions.some((/** @type {Record<string, any>} */ s) => s.tabId === tabId)) continue;
+        switchToTab(tabId); // the person moved to another tab while the question was open
+      }
+    }
+    attempted++;
     if (await saveCurrent()) saved++;
+    if (stop) {
+      skipped += ids.length - i - 1;
+      break;
+    }
   }
   if (S.activeTabId !== home && S.documentSessions.some((/** @type {Record<string, any>} */ s) => s.tabId === home)) switchToTab(home);
-  const left = ids.length - saved;
-  setStatus(`Saved ${saved} ${saved === 1 ? 'file' : 'files'}${left ? `; ${left} not saved — still marked ●` : ''}.`);
+  const failed = attempted - saved;
+  setStatus(`Saved ${saved} ${saved === 1 ? 'file' : 'files'}${failed ? `; ${failed} not saved — still marked ●` : ''}${skipped ? `; ${skipped} skipped` : ''}.`);
 }
 
 /** revert-buffer: throws the open buffer's changes away and reads its file again. Asks first when there are changes; Undo

@@ -177,7 +177,7 @@ export async function renderFileMenuContent() {
       () => {
         S.fileMenuOpen = false;
         renderFileMenu();
-        saveSomeBuffers();
+        saveSomeBuffers(true); // silently, as (save-some-buffers t)
       },
       modifiedFileBuffers().length === 0
     );
