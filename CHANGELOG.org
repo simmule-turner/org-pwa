@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v537 — Typed app state, more ID links, tag inheritance and targets
+~org-use-tag-inheritance~ takes a list or regexp and ~org-tags-exclude-from-inheritance~ is new. ~<<targets>>~ and ~<<<radio targets>>>~ work in the outline: ~[[name]]~ jumps to one and plain uses of a radio target link to it. ID links also find files opened here before; *Add ID to heading* and *Find links to this heading* are new. Under the hood the app's shared state now has a real type, so tsc catches misspelt or mistyped uses.
+Verified: unit tests for each; browser checks for ID links, targets, links, search, settings, save and tabs.
+
 * v536 — ID links, and saving a tab without visiting it
 ~[[id:…]]~ links now work in the app: tapping one finds the heading with that ~:ID:~ in the open file, your other tabs or your Agenda Files, opens the file if needed, and ⏎ comes back. *Copy link to heading* (~org-store-link~, ~C-c l~) gives a heading an ~:ID:~ and copies its link. Underneath, a save now takes a tab instead of assuming the one on screen, so File → Save Some Buffers saves every modified tab without switching to each, and Save As follows its tab as Save does.
 Verified: unit tests for ID lookup; browser checks for following an ID link, Copy link to heading, Save Some Buffers and Save.

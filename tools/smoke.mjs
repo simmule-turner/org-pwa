@@ -5972,6 +5972,73 @@ check('id: links: a link to a heading with that :ID: goes to it in another open 
   await context.close();
 });
 
+check('id: links: a file opened before is remembered, so a link finds it after its tab is closed; Add ID to heading and Find links to this heading work', async () => {
+  dav.reset({
+    'a.org': '* Source\n[[id:rem-001][remembered]] and [[id:gone-002][moved away]]\n* Plain\n',
+    'd.org': '* Remote target\n:PROPERTIES:\n:ID: rem-001\n:END:\n* Note\nSee [[id:rem-001]]\n',
+  });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'd.org'); // opening it is what records its IDs
+  await openDav(page, 'a.org');
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { closeTab } = await import('/src-browser/tabs.js');
+    const d = S.documentSessions.find((x) => x.state.documentId === 'd.org');
+    await closeTab(d.tabId);
+  });
+  await page.waitForFunction(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    return S.state.documentId === 'a.org' && !S.documentSessions.some((x) => x.state.documentId === 'd.org');
+  }, null, { timeout: 5000 });
+  await page.locator('#outline a', { hasText: 'remembered' }).first().click(); // d.org is not a tab or an Agenda File now
+  await page.waitForFunction(() => /d\.org/.test(document.getElementById('modeline').textContent), null, { timeout: 8000 });
+  // Add ID to heading: gives "Note" an ID, and a second try says it already has one
+  const add = () => page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { addHeadingId } = await import('/src-browser/id-links.js');
+    addHeadingId(S.state.doc.children[1]);
+    return document.getElementById('status').textContent;
+  });
+  expect(/Added :ID: [0-9a-f-]{36}/.test(await add()), 'Add ID to heading says it added one');
+  expect(/already has the ID/.test(await add()), 'and a second time says it already has it');
+  // an ID that is nowhere: forgotten files are not an error
+  await page.evaluate(async () => {
+    const { openIdLink } = await import('/src-browser/id-links.js');
+    await openIdLink('gone-002');
+  });
+  await waitForStatus(page, 'No heading with ID gone-002');
+  // Find links to this heading: the search panel opens on the link text and finds the heading that holds the link
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { findLinksToHeading } = await import('/src-browser/id-links.js');
+    findLinksToHeading(S.state.doc.children[0]);
+  });
+  await page.waitForFunction(() => /Note/.test(document.getElementById('search-results')?.textContent || ''), null, { timeout: 5000 });
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('targets: <<name>> and <<<radio>>> show dimmed, [[name]] and every plain use of a radio target link to the heading holding it, and a noweb reference in a code block is left alone', async () => {
+  dav.reset({
+    'a.org': ['* Intro', 'A <<<big apple>>> and an <<orchard>> here.', '#+BEGIN_SRC org', '<<noweb-ref>>', '#+END_SRC', '* Elsewhere', 'Eat a Big Apple or see the [[orchard]]. Big apples are not one.', ''].join('\n'),
+  });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'a.org');
+  const body = await page.locator('#outline').innerText();
+  expect(body.includes('<<<big apple>>>') && body.includes('<<orchard>>'), 'the targets are shown as written');
+  expect(body.includes('<<noweb-ref>>'), 'a noweb reference in a code block stays text');
+  const links = await page.locator('#outline a').allInnerTexts();
+  expect(links.includes('Big Apple') && links.includes('orchard') && !links.some((t) => /apples/i.test(t)), `links: ${JSON.stringify(links)}`);
+  await page.locator('#outline a', { hasText: 'Big Apple' }).first().click();
+  const where = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    return S.currentContextHeading ? S.currentContextHeading.title : (S.keyboardFocusedHeading ? S.keyboardFocusedHeading.title : null);
+  });
+  expect(where === 'Intro', `the radio link went to the heading holding the target: ${where}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('minibuffer: a question replaced by another is answered (cancelled), not left waiting for ever, and Save Some Buffers will not start twice', async () => {
   dav.reset({ 'b.org': '* B one\n', 'c.org': '* C one\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });

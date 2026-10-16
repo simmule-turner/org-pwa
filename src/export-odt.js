@@ -172,6 +172,10 @@ function renderInlineNodeOdt(node) {
         `</text:note>`
       );
     }
+    case 'radio-target':
+      return escapeXml(node.name);
+    case 'target':
+      return '';
     case 'comment':
       return ''; // matches every other export backend -- comments never appear in exported output
     default:

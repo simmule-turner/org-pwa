@@ -178,7 +178,7 @@ export function cancelTitleEdit() {
   const isNew = S.editingIsNew;
   S.editingHeading = null;
   S.editingIsNew = false;
-  if (isNew) {
+  if (isNew && heading) {
     removeHeading(S.state.doc, heading);
     commitAndRender('Discarded empty new heading');
   } else {
@@ -477,12 +477,12 @@ export function commitTextModeIfActive() {
   S.state.localVariables = localVariables;
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
-  if (wasNarrowedTextMode) {
+  if (wasNarrowedTextMode && S.narrowedTextModeRange) {
     S.narrowedHeading = findHeadingAtLine(newDoc, S.narrowedTextModeRange.startLine);
     const outlinePath = S.narrowedHeading ? outlinePathForHeadingInDocument(S.state.documentId, S.narrowedHeading) : null;
     saveNarrowState(kv, S.state.documentId, outlinePath).catch(() => {});
   }
-  if (wasNarrowedTextMode) {
+  if (wasNarrowedTextMode && S.narrowedTextModeRange) {
     S.narrowedTextModeRange = { startLine: S.narrowedTextModeRange.startLine, lineCount: rawValue.split('\n').length };
   }
   // currentContextHeading DOES hold an actual heading object reference,

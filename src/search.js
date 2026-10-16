@@ -1,6 +1,7 @@
 // @ts-check
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
+import { effectiveTagsOf } from './tag-inheritance.js';
 /**
  * Whole-document search — walks the full tree regardless of current fold
  * state (a folded heading's content is still searchable, it just isn't
@@ -278,10 +279,7 @@ function parseFilterQuery(query) {
  * @param {any} [useInheritance]
  *  inheritance, this is just `heading.tags` itself. */
 function effectiveTags(heading, ancestors, useInheritance) {
-  if (!useInheritance) return heading.tags || [];
-  const all = [...(heading.tags || [])];
-  for (const ancestor of ancestors) all.push(...(ancestor.tags || []));
-  return all;
+  return effectiveTagsOf(heading, ancestors, useInheritance || false);
 }
 
 /** Computes the effective value of property `key` for `heading`, given

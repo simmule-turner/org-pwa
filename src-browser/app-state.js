@@ -14,4 +14,5 @@
  * The properties are defined where the old `let` declarations were, in
  * app.js, so initialisation order is exactly what it was.
  */
-export const S = /** @type {Record<string, any>} */ ({});
+/** @typedef {import('../src/types.js').AppState} AppState */
+export const S = /** @type {AppState} */ (/** @type {unknown} */ ({}));

@@ -91,8 +91,8 @@ export function applySessionSnapshotValues(snap) {
 /** Writes the live globals' current values into documentSessions'
  *  entry for `tabId` (creating it first if this is a brand new tab).
  *  Called before switching away from a tab, and periodically while
- * @param {null} tabId
- *  editing it, so a session object is never more than one edit stale. */
+ *  editing it, so a session object is never more than one edit stale.
+ * @param {number | null} tabId */
 export function saveSessionSnapshot(tabId) {
   if (tabId == null) return;
   const values = snapshotCurrentSessionValues();
@@ -112,13 +112,13 @@ export function saveSessionSnapshot(tabId) {
  *  see the queueMicrotask below). Does nothing (silently) if `tabId`
  *  isn't a real, currently-open session -- callers that need to know
  *  whether the switch actually happened should check documentSessions
- * @param {any} [tabId]
- *  themselves first. */
+ *  themselves first.
+ * @param {number} [tabId] */
 export function loadSessionSnapshot(tabId) {
   const session = S.documentSessions.find((/** @type {any} */ s) => s.tabId === tabId);
   if (!session) return;
   applySessionSnapshotValues(session);
-  S.activeTabId = tabId;
+  S.activeTabId = session.tabId;
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
   queueMicrotask(() => {
@@ -148,7 +148,7 @@ export function persistOpenTabsInBackground() {
   setOpenTabs(kv, tabs, activeIndex).catch((err) => console.error('Failed to persist open tabs:', err));
 }
 
-/** @param {any} [tabId] */
+/** @param {number} [tabId] */
 export function switchToTab(tabId) {
   if (tabId === S.activeTabId) return;
   // Committing (if there's anything to commit) brings state.doc fully

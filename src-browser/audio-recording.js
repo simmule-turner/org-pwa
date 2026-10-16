@@ -96,7 +96,7 @@ export function renderAudioRecordingPanel() {
 
   if (S.mediaRecorder && S.mediaRecorder.state === 'recording') {
     // Recording state -- a live elapsed-time readout.
-    const elapsedMs = Date.now() - S.recordingStartedAt;
+    const elapsedMs = Date.now() - (S.recordingStartedAt ?? Date.now());
     const totalSeconds = Math.floor(elapsedMs / 1000);
     const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
     const ss = String(totalSeconds % 60).padStart(2, '0');
@@ -210,6 +210,7 @@ export function stopAudioRecording() {
  *  had a name of its own to begin with. */
 export async function saveAudioRecording(heading) {
   const blobUrl = S.recordedBlobUrl;
+  if (!blobUrl || !S.mediaRecorder) return;
   const mimeType = S.mediaRecorder.mimeType;
   const res = await fetch(blobUrl);
   const blob = await res.blob();

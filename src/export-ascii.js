@@ -189,6 +189,10 @@ function renderInlineNodeAscii(node) {
       }
       return `[${label}]`;
     }
+    case 'radio-target':
+      return renderTextAscii(node.name);
+    case 'target':
+      return '';
     case 'comment':
       return ''; // matches every other export backend -- comments never appear in exported output
     default:

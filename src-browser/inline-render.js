@@ -6,6 +6,7 @@ import { isAudioFilename } from '../src/attach.js';
 import { customLink, links as customLinks } from './extension-links.js';
 import { findFootnoteDefinition, guessAudioMimeType, guessImageMimeType, isExternalUrl, resolveAttachmentTarget, resolveImagePath, resolveLinkTarget } from '../src/link-resolve.js';
 import { getUseSubSuperscripts } from '../src/local-variables.js';
+import { radioTargetRegExp } from '../src/targets.js';
 import { S } from './app-state.js';
 import { openAttachmentLink } from './attachments-flow.js';
 import { attachmentsAvailable, attachmentsFolderMissingMessage } from './attachments-store.js';
@@ -342,12 +343,20 @@ export function renderFootnoteDefNode(node, linkContext = /** @type {any} */ (nu
   return wrap;
 }
 
+/** The pattern for the open document's radio targets (null when it has none), worked out once per render. */
+function currentRadioTargets() {
+  const doc = S.state.doc;
+  if (!doc) return null;
+  if (!S.radioTargetsCache || S.radioTargetsCache.doc !== doc) S.radioTargetsCache = { doc, re: radioTargetRegExp(doc) };
+  return S.radioTargetsCache.re;
+}
+
 /** Inline-parsing options reflecting the current document's Local
  *  Variables -- currently just subSuperscriptMode, but centralized here
  *  so a future option doesn't need updating at every parseInline call
  *  site individually. */
 export function currentInlineOpts() {
-  return { subSuperscriptMode: getUseSubSuperscripts(S.state.localVariables) };
+  return { subSuperscriptMode: getUseSubSuperscripts(S.state.localVariables), radioTargets: currentRadioTargets() };
 }
 
 /** Renders a parseInline() node array into `container`. Recurses into
@@ -430,6 +439,16 @@ export function renderInlineNodes(nodes, container, linkContext = /** @type {any
       case 'footnote-def':
         container.appendChild(renderFootnoteDefNode(node, linkContext, heading));
         break;
+      case 'target':
+      case 'radio-target': {
+        // shown as written, dimmed: the spot a [[name]] link (or, for a radio target, the plain word) goes to
+        const span = document.createElement('span');
+        span.textContent = node.value;
+        span.style.opacity = '0.6';
+        span.title = node.type === 'radio-target' ? 'Radio target: every plain "' + node.name + '" in this file links here' : 'Link target';
+        container.appendChild(span);
+        break;
+      }
       case 'comment':
         // Org excludes comments from rendered/exported output; skipped here too.
         break;

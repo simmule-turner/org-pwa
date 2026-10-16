@@ -536,6 +536,10 @@ function renderNode(state, node) {
       const label = node.label === null || node.label === '' ? 'anon-' + (state.fnOrder.length + 1) : node.label;
       return footnoteRef(state, label, `<p class="footpara">${renderNodes(state, node.children)}</p>`);
     }
+    case 'radio-target':
+      return escapeHtml(node.name);
+    case 'target':
+      return '';
     case 'comment':
       return '';
     default:

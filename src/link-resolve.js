@@ -38,6 +38,7 @@
 
 import { findAncestorPath, getProperty } from './archive-model.js';
 import { ownAttachmentDirectory } from './attach.js';
+import { findTargetHeading } from './targets.js';
 
 const EXTERNAL_URL_RE = /^[a-z][a-z0-9+.-]*:\/\//i;
 const MAILTO_RE = /^mailto:/i;
@@ -527,6 +528,7 @@ export function resolveLinkTarget(doc, rawTarget) {
     return { type: 'file', scheme, path, inFileTarget };
   }
 
-  const heading = findHeadingByTitle(doc, target);
+  // [[name]]: a heading with that title, else the heading that holds a <<name>> or <<<name>>>
+  const heading = findHeadingByTitle(doc, target) || findTargetHeading(doc, target);
   return heading ? { type: 'heading', heading } : { type: 'unresolved', target };
 }

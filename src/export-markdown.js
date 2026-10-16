@@ -196,6 +196,10 @@ function renderInlineNodeMd(node) {
       footnoteDefinitionsMd.push({ label, text: renderInlineListMd(node.children) });
       return `[^${label}]`;
     }
+    case 'radio-target':
+      return escapeMarkdownText(node.name); // a radio target shows its text; a dedicated target is invisible
+    case 'target':
+      return '';
     case 'comment':
       // org's own @@comment:...@@ export-comment marker -- never
       // appears in exported output, matching real org's own behavior

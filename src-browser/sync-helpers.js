@@ -78,7 +78,7 @@ export async function loadPaletteRecent() {
   }
 }
 
-/** @param {string} kind */
+/** @param {string | null} kind */
 export function storageKindLabel(kind) {
   if (kind === 'github') return 'GitHub';
   if (kind === 'webdav') return 'WebDAV';

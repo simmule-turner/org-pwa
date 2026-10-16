@@ -451,8 +451,9 @@ function limitItemsByEffort(items, maxMinutes, noEffortIsHigh = true) {
 }
 
 /** All three, in the order Emacs applies them: sort, then limit (both while
- * @param {any} [items]
- *  the day's entries are assembled), then the filter (which only hides). */
+ *  the day's entries are assembled), then the filter (which only hides).
+ * @param {any[]} items
+ * @param {{ sort?: string | null, filter?: any, maxMinutes?: number | null, noEffortIsHigh?: boolean }} [view] */
 function applyAgendaEffortView(items, { sort = null, filter = null, maxMinutes = null, noEffortIsHigh = true } = {}) {
   let result = items;
   if (sort) result = sortItemsByEffort(result, sort, noEffortIsHigh);

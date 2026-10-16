@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v536';
+const CACHE_NAME = 'org-pwa-shell-v537';
 
 const SHELL_FILES = [
   './',
@@ -115,6 +115,9 @@ const SHELL_FILES = [
   './src/heading-edit.js',
   './src/body-edit.js',
   './src/link-resolve.js',
+  './src/id-locations.js',
+  './src/tag-inheritance.js',
+  './src/targets.js',
   './src/export-markdown.js',
   './src/export-odt.js',
   './src/zip-writer.js',
@@ -209,6 +212,7 @@ const SHELL_FILES = [
   './src-browser/buffer-rename.js',
   './src-browser/buffers.js',
   './src-browser/id-links.js',
+  './src-browser/id-locations.js',
   './src-browser/minibuffer-prompt.js',
   './src-browser/settings-export.js',
   './src-browser/table-recalc.js',

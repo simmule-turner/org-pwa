@@ -338,7 +338,7 @@ async function saveSomeBuffersRun(saveSilently) {
       break;
     }
   }
-  if (S.activeTabId !== home && S.documentSessions.some((/** @type {TabSession} */ s) => s.tabId === home)) switchToTab(home);
+  if (home !== null && S.activeTabId !== home && S.documentSessions.some((/** @type {TabSession} */ s) => s.tabId === home)) switchToTab(home);
   const failed = attempted - saved;
   setStatus(`Saved ${saved} ${saved === 1 ? 'file' : 'files'}${failed ? `; ${failed} not saved — still marked ●` : ''}${skipped ? `; ${skipped} skipped` : ''}.`);
 }
@@ -363,7 +363,7 @@ export async function revertBuffer() {
     }
     await reloadCurrentDocumentFromDisk();
     await clearPendingChange(kv, documentId);
-    S.history = pushSnapshot(S.history, S.lastSavedText, 'Reverted from file');
+    S.history = pushSnapshot(S.history, S.lastSavedText ?? '', 'Reverted from file');
     persistHistoryInBackground();
     renderTabBar();
     setStatus(`Reverted "${label}" from its file.`);

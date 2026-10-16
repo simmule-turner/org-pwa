@@ -124,7 +124,7 @@ export function clockGoto() {
     render();
     return;
   }
-  if (!running.isActive) {
+  if (!running.isActive && running.tabId != null) {
     switchToTab(running.tabId);
     // the switch restores that tab's own session state, so find the clock
     // again in it rather than trust a heading from before the switch

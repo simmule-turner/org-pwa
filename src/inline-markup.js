@@ -34,6 +34,9 @@ const LITERAL_KINDS = new Set(['code', 'verbatim']);
 
 const LINK_RE = /^\[\[([^\]]+?)\](?:\[([^\]]+?)\])?\]/;
 const COMMENT_RE = /^@@comment:(.*?)@@/;
+// <<<radio target>>> and <<dedicated target>>: no space just inside the brackets, and no angle bracket or line break within
+const RADIO_TARGET_RE = /^<<<(?=\S)([^<>\n]*[^<>\s])>>>/;
+const TARGET_RE = /^<<(?=[^\s<])([^<>\n]*[^<>\s])>>(?!>)/;
 const IMAGE_EXT_RE = /\.(png|jpe?g|gif|svg|webp|bmp|heic|heif)$/i;
 
 // LaTeX math fragment delimiters -- confirmed directly against the Org
@@ -396,11 +399,21 @@ function matchEmphasisAt(text, pos) {
   let buffer = '';
   let pos = 0;
 
+  const radioRe = /** @type {any} */ (opts).radioTargets || null; // plain occurrences of a radio target become links to it
   const flush = () => {
-    if (buffer) {
+    if (!buffer) return;
+    if (radioRe) {
+      let last = 0;
+      for (const m of buffer.matchAll(radioRe)) {
+        if (m.index > last) nodes.push({ type: 'text', value: buffer.slice(last, m.index) });
+        nodes.push({ type: 'link', target: m[0].trim().replace(/\s+/g, ' '), description: m[0], radio: true });
+        last = m.index + m[0].length;
+      }
+      if (last < buffer.length) nodes.push({ type: 'text', value: buffer.slice(last) });
+    } else {
       nodes.push({ type: 'text', value: buffer });
-      buffer = '';
     }
+    buffer = '';
   };
 
   while (pos < text.length) {
@@ -418,6 +431,18 @@ function matchEmphasisAt(text, pos) {
       }
       pos += linkMatch[0].length;
       continue;
+    }
+
+    if (text[pos] === '<' && text[pos + 1] === '<') {
+      const radio = RADIO_TARGET_RE.exec(remaining);
+      const dedicated = radio ? null : TARGET_RE.exec(remaining);
+      const hit = radio || dedicated;
+      if (hit) {
+        flush();
+        nodes.push({ type: radio ? 'radio-target' : 'target', name: hit[1], value: hit[0] });
+        pos += hit[0].length;
+        continue;
+      }
     }
 
     const angleMatch = ANGLE_URL_RE.exec(remaining);

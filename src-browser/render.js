@@ -22,6 +22,7 @@ import { VH_UNIT, isWideLayout, menuButton, tableActionButton } from './ui-widge
 import { platform } from './platform.js';
 
 export function render() {
+  S.radioTargetsCache = null;
   updateSaveButtonState();
   renderTabBar();
   syncSidePanel();
@@ -229,8 +230,9 @@ export function render() {
   // narrowedHeading itself: if every one of the scope's own headings has
   // since been deleted, this auto-widens instead of rendering an empty
   // outline with no way back.
-  const sparseFilteredRows = S.sparseNarrowScope
-    ? narrowedVisibleRows.filter((r) => S.sparseNarrowScope.visible.has(r.rowType === 'heading' ? r.node : r.heading))
+  const sparseScope = S.sparseNarrowScope;
+  const sparseFilteredRows = sparseScope
+    ? narrowedVisibleRows.filter((r) => sparseScope.visible.has(r.rowType === 'heading' ? r.node : r.heading))
     : narrowedVisibleRows;
   if (S.sparseNarrowScope && sparseFilteredRows.length === 0) {
     forgetSparseNarrow();

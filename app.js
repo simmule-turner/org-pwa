@@ -123,9 +123,10 @@ S.pendingTodoWorkflowChoice = null;
 // matching agendaAnchorDate's own same in-memory-only behavior),
 // so navigating away and reopening the calendar doesn't lose your
 // place.
+S.radioTargetsCache = null; // the document's radio-target pattern, rebuilt on the first inline render after each render()
 S.calendarOpen = false;
-S.calendarViewYear = null;
-S.calendarViewMonth = null;
+S.calendarViewYear = new Date().getFullYear();
+S.calendarViewMonth = new Date().getMonth();
 // Set to { heading } when "Record audio" is tapped -- reuses
 // refilePanel's own DOM element, same pattern as every other pendingXxx
 // flow above. mediaRecorder/recordedChunks/recordingStartedAt track the
@@ -524,7 +525,8 @@ S.documentSessions = []; // [{ tabId, scrollTop, ...snapshotCurrentSessionValues
 S.activeTabId = null;
 S.nextTabId = 1;
 
-S.state = { documentId: null, doc: null, startupConfig: null, storageKind: null, localVariables: null };
+// No document yet: documentId and doc are null until the first one opens (the cast is because DocState promises both).
+S.state = /** @type {import('./src/types.js').DocState} */ (/** @type {unknown} */ ({ documentId: null, doc: null, startupConfig: null, storageKind: null, localVariables: null }));
 // File menu: whether the panel is open (Open and Save As leave it for the screen in src-browser/file-screen.js).
 S.fileMenuOpen = false;
 S.moreMenuStep = null; // null | 'export' -- see renderMoreMenuContent

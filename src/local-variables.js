@@ -25,6 +25,7 @@
  */
 
 import { DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
+import { parseTagInheritance } from './tag-inheritance.js';
 
 const LOCAL_VARS_START_RE = /^#\s*Local Variables:\s*$/i;
 const LOCAL_VARS_END_RE = /^#\s*End:\s*$/i;
@@ -441,19 +442,14 @@ export function getMenuAliases(vars) {
   return (vars || {})['org-xx-menu-aliases'] || '';
 }
 
-/** org-use-tag-inheritance: whether a heading's "effective" tags (for
- *  search/filtering purposes) include its ancestors' own tags, not
- *  just its own. `t` is real org's own actual default — tags inherit
- *  down the outline structurally by default, confirmed directly
- *  against org's own manual ("if a heading has a certain tag, all
- *  subheadings inherit the tag as well") — not an opt-in feature the
- *  way property inheritance below is. A simple boolean here, not real
- *  org's fuller list-of-tags/regexp value space (org-use-tag-inheritance
- *  can also be set to a specific tag list or a regexp) — a stated
- * @param {LocalVars} vars
- *  simplification, covering the common on/off case. */
+/** org-use-tag-inheritance and org-tags-exclude-from-inheritance: which of its ancestors' tags a heading's "effective" tags
+ *  (for search and filtering) include. `t` is org's default: all of them. `nil` is none, a list of tags is just those, and a
+ *  quoted regexp is the tags it matches; the exclude list is tags that never inherit. Returns true or false for plain t / nil
+ *  with nothing excluded, otherwise a policy (src/tag-inheritance.js).
+ * @param {LocalVars} vars */
 export function getUseTagInheritance(vars) {
-  return parseLispBoolean((vars || {})['org-use-tag-inheritance'], true);
+  const v = vars || {};
+  return parseTagInheritance(v['org-use-tag-inheritance'], v['org-tags-exclude-from-inheritance']);
 }
 
 /** org-use-property-inheritance: whether a heading's "effective"

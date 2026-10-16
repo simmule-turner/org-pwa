@@ -14,7 +14,7 @@ import { canRedo, canUndo } from '../src/undo-history.js';
 import { S } from './app-state.js';
 import { openAttachChoicePrompt } from './attachments-flow.js';
 import { modifiedFileBuffers, revertBuffer, saveSomeBuffers } from './buffers.js';
-import { copyHeadingLink } from './id-links.js';
+import { addHeadingId, copyHeadingLink, findLinksToHeading } from './id-links.js';
 import { openCalendarPanel } from './calendar-panel.js';
 import { openCapturePrompt, renderCapturePanel } from './capture-ui.js';
 import { closeAllOverlayPanels } from './chrome.js';
@@ -221,8 +221,8 @@ export const GOD_MODE_ACTIONS = {
 
   // Section 3: TODOs & Task Management
   'C-c C-t': () => S.keyboardFocusedHeading && openTodoOrPickWorkflow(S.keyboardFocusedHeading),
-  'C-c ,': () => cyclePriorityFor(S.keyboardFocusedHeading),
-  'C-c C-x e': () => openEffortEditor(S.keyboardFocusedHeading),
+  'C-c ,': () => S.keyboardFocusedHeading && cyclePriorityFor(S.keyboardFocusedHeading),
+  'C-c C-x e': () => S.keyboardFocusedHeading && openEffortEditor(S.keyboardFocusedHeading),
   'C-c C-w': () => S.keyboardFocusedHeading && openArchiveRefilePanel(S.keyboardFocusedHeading),
   'C-c C-a': () => S.keyboardFocusedHeading && openAttachChoicePrompt(S.keyboardFocusedHeading, { viaKeys: true }),
   'C-c C-x C-i': () => S.keyboardFocusedHeading && clockInHeading(S.keyboardFocusedHeading),
@@ -501,6 +501,8 @@ export function paletteCommandList() {
     { id: 'move-up', label: 'Move subtree up', orgName: 'org-move-subtree-up', keys: 'M-<up>', group: 'Heading', needs: HEAD, run: chord('M-<up>') },
     { id: 'move-down', label: 'Move subtree down', orgName: 'org-move-subtree-down', keys: 'M-<down>', group: 'Heading', needs: HEAD, run: chord('M-<down>') },
     { id: 'store-link', label: 'Copy link to heading', orgName: 'org-store-link', keys: 'C-c l', group: 'Heading', keywords: ['id', 'org-id-get-create', 'link', 'store link'], needs: ['doc', 'heading'], run: onHeading(copyHeadingLink) },
+    { id: 'add-id', label: 'Add ID to heading', orgName: 'org-id-get-create', group: 'Heading', keywords: ['id', 'uuid', 'property'], needs: ['doc', 'heading'], run: onHeading(addHeadingId) },
+    { id: 'find-id-links', label: 'Find links to this heading', group: 'Heading', keywords: ['id', 'backlinks', 'linked from', 'references'], needs: ['doc', 'heading'], run: onHeading(findLinksToHeading) },
     { id: 'cut', label: 'Cut subtree', orgName: 'org-cut-subtree', keys: 'C-c C-x C-w', group: 'Heading', needs: HEAD, run: chord('C-c C-x C-w') },
     { id: 'paste', label: 'Paste subtree', orgName: 'org-paste-subtree', keys: 'C-c C-x C-y', group: 'Heading', needs: HEAD, run: chord('C-c C-x C-y') },
     { id: 'archive', label: 'Archive subtree', orgName: 'org-archive-subtree', group: 'Heading', needs: [...HEAD, 'notArchived'], run: onHeading(openArchiveRefilePanel) },

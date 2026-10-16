@@ -19,6 +19,7 @@ import { resolveEffectiveStartupConfig } from '../src/startup-config.js';
 import { createHistory, pushSnapshot } from '../src/undo-history.js';
 import { filesystemAdapter, githubAdapter, inputFileAdapter, webdavAdapter } from './adapters.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
+import { rememberIds } from './id-locations.js';
 import { requestApptScan } from './appt-flow.js';
 import { scheduleSync } from './mirror-sync.js';
 import { emitExtensionEvent } from './extension-events.js';
@@ -71,8 +72,9 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
   const localVariables = mergeGlobalAndLocalVariables(S.globalVariables, rawLocalVars);
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(doc, startupConfig, archiveVisibility);
-  S.state = { documentId, doc, startupConfig, storageKind, localVariables };
+  S.state = { documentId, doc, startupConfig, storageKind: storageKind ?? null, localVariables };
   S.isBufferReadOnly = getBufferReadOnly(localVariables);
+  void rememberIds(doc, storageKind, documentId);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
   const openedText = serializeOrg(doc);
@@ -430,6 +432,7 @@ export async function saveTab(tabId) {
       savedText = serializeOrg(S.state.doc);
     }
     markTabSaved(tabId, savedText);
+    void rememberIds(tabId === S.activeTabId ? S.state.doc : doc, storageKind, documentId);
     setStatus(result.resolution === 'merged' ? 'Saved \u2014 merged with the changes made elsewhere.' : 'Saved (' + result.status + ').');
     scheduleSync(); // the agenda, or the contacts, may have changed
     requestApptScan(); // and so may the appointments

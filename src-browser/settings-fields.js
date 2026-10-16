@@ -239,6 +239,14 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#searching',
   },
   {
+    key: 'org-tags-exclude-from-inheritance',
+    label: 'Tags that are not inherited',
+    section: 'Search & tags',
+    type: 'text',
+    default: '',
+    helpAnchor: '#searching',
+  },
+  {
     key: 'org-use-property-inheritance',
     label: 'Property search matches inherited values',
     section: 'Search & tags',

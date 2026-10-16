@@ -311,14 +311,17 @@ export function renderExportFlow() {
       newBufferRow.appendChild(document.createTextNode('To: *new buffer*'));
       morePanel.appendChild(newBufferRow);
 
-      const narrowStatus = S.narrowedHeading || S.sparseNarrowScope ? document.createElement('div') : null;
+      const sparseScope = S.sparseNarrowScope;
+      const narrowStatus = S.narrowedHeading || sparseScope ? document.createElement('div') : null;
       if (narrowStatus) {
         narrowStatus.style.fontSize = '12px';
         narrowStatus.style.opacity = '0.7';
         narrowStatus.style.marginBottom = '8px';
         narrowStatus.textContent = S.narrowedHeading
           ? `"This file" will export just "${S.narrowedHeading.title || '(untitled)'}" \u2014 the outline is currently narrowed to it.`
-          : `"This file" will export just the ${S.sparseNarrowScope.matched.size} heading${S.sparseNarrowScope.matched.size === 1 ? '' : 's'} currently narrowed to via Search.`;
+          : sparseScope
+            ? `"This file" will export just the ${sparseScope.matched.size} heading${sparseScope.matched.size === 1 ? '' : 's'} currently narrowed to via Search.`
+            : '';
         morePanel.appendChild(narrowStatus);
       }
     } else {
@@ -582,7 +585,7 @@ function renderImportList() {
 }
 
 export function renderImportFlow() {
-  const format = /** @type {any} */ (IMPORT_FORMATS)[S.importFormat];
+  const format = S.importFormat ? /** @type {any} */ (IMPORT_FORMATS)[S.importFormat] : null;
   if (!format) {
     renderImportList();
     return;
@@ -649,9 +652,10 @@ export function renderImportFlow() {
   newBufferRow.style.cursor = 'pointer';
   const newBufferCheckbox = document.createElement('input');
   newBufferCheckbox.type = 'checkbox';
-  newBufferCheckbox.checked = S[format.newBufferField];
+  const newBufferField = /** @type {'importVcardToNewBuffer' | 'importIcalendarToNewBuffer'} */ (format.newBufferField);
+  newBufferCheckbox.checked = S[newBufferField];
   newBufferCheckbox.onchange = () => {
-    S[format.newBufferField] = newBufferCheckbox.checked;
+    S[newBufferField] = newBufferCheckbox.checked;
   };
   newBufferRow.appendChild(newBufferCheckbox);
   newBufferRow.appendChild(document.createTextNode('To: *new buffer*'));

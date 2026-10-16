@@ -4,6 +4,7 @@ import { collectContactsTriggers } from '../src/agenda.js';
 import { findDuplicateAgendaFiles, getAgendaFilesVar, getContactsFilesVar, getSearchExtraFilesVar, parseAgendaFilesVar } from '../src/local-variables.js';
 import { parseOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
+import { rememberIds } from './id-locations.js';
 import { scheduleCalendarSync } from './calendar-sync.js';
 import { S } from './app-state.js';
 import { platform } from './platform.js';
@@ -93,10 +94,9 @@ export function ensureAgendaFilesLoaded({ prompt = false } = {}) {
     const promise = adapter
       .read(path)
       .then((/** @type {any} */ result) => {
-        agendaFilesCache.set(
-          key,
-          result ? { doc: parseOrg(result.content), documentId: path } : { error: `"${path}" not found.` }
-        );
+        const loadedDoc = result ? parseOrg(result.content) : null;
+        agendaFilesCache.set(key, loadedDoc ? { doc: loadedDoc, documentId: path } : { error: `"${path}" not found.` });
+        if (loadedDoc) void rememberIds(loadedDoc, scheme, path);
         if (S.currentView === 'agenda' || S.currentView === 'tasklist') render();
         if (S.settingsOpen) renderSettingsView();
         if (S.searchOpen) renderSearchPanel();
