@@ -12,6 +12,7 @@ import { attachmentsAvailable, attachmentsFolderMissingMessage } from './attachm
 import { INLINE_LINK_ATTR } from './constants.js';
 import { openFileLink } from './documents-io.js';
 import { setStatus } from './editing.js';
+import { openIdLink } from './id-links.js';
 import { activeDiskAdapter } from './external-sync.js';
 import { navigateToHeading } from './navigation.js';
 import { imagePlaceholder, renderLatexNode } from './render-helpers.js';
@@ -105,7 +106,7 @@ export function renderImageNode(node, heading = null) {
   return imagePlaceholder(node.target);
 }
 
-/** @param {any} [node]
+/** @param {{ target: string, description?: string }} node
  * @param {Heading | null} [heading]
  */
 export function renderLinkNode(node, linkContext = /** @type {any} */ (null), heading = null) {
@@ -152,6 +153,21 @@ export function renderLinkNode(node, linkContext = /** @type {any} */ (null), he
       } else {
         navigateToHeading(resolution.heading);
       }
+    };
+    return a;
+  }
+
+  if (resolution.type === 'id' && !linkContext) {
+    // not in this file: it may be in another open tab or an Agenda File (id-links.js looks)
+    const a = document.createElement('a');
+    a.href = '#';
+    a.textContent = label;
+    a.style.color = 'var(--accent)';
+    a.setAttribute(INLINE_LINK_ATTR, '1');
+    a.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openIdLink(resolution.id, heading);
     };
     return a;
   }

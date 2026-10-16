@@ -21,24 +21,6 @@ import { render } from './render.js';
 import { kv } from './singletons.js';
 import { keepOverlayInVisibleViewport, tableActionButton } from './ui-widgets.js';
 
-/** Which adapter Save/Save-As-in-place should use — whatever storage kind
- *  the currently open document actually came from. This is the crux of
- *  "Save uses whatever mechanism was used to open the file". */
-/** CRITICAL DATA-LOSS FIX (defense in depth): every cross-file write
- *  that bypasses saveAndSync (capture-to-a-different-file, archive-to-
- *  a-different-file, refile, unarchive/restore-to-a-different-file)
- *  writes straight to disk via adapter.write, with no corresponding
- *  syncMeta update -- meaning this app's own record of "the last known
- *  hash of that file" would otherwise go stale the instant any of those
- *  ran, regardless of whether that target file was also the currently-
- *  open document. Later opening/editing/saving that same file could
- *  then miss a REAL external change entirely, since the conflict
- *  check's baseline no longer reflected reality. Call this right after
- *  every one of those direct writes succeeds, so syncMeta always
- *  tracks the true last-known-on-disk state no matter which code path
- *  performed the write -- the same bookkeeping saveAndSync's own
- *  syncDocument already keeps for the single-document save path, now
- *  kept consistently everywhere a write can happen. */
 /** Re-reads the currently open document fresh from disk/GitHub/WebDAV
  *  and replaces state.doc with it, discarding whatever was in memory.
  *  Used both by saveCurrent's own "keep disk" conflict resolution and
@@ -115,11 +97,19 @@ export function hideExternalChangeBanner() {
   syncContentOffset();
 }
 
-export function activeDiskAdapter() {
-  if (S.state.storageKind === 'github') return githubAdapter;
-  if (S.state.storageKind === 'webdav') return webdavAdapter;
-  if (S.state.storageKind === 'input') return inputFileAdapter;
+/** The adapter a document of this storage kind is read and written through.
+ * @param {string | null} storageKind */
+export function diskAdapterFor(storageKind) {
+  if (storageKind === 'github') return githubAdapter;
+  if (storageKind === 'webdav') return webdavAdapter;
+  if (storageKind === 'input') return inputFileAdapter;
   return filesystemAdapter;
+}
+
+/** Which adapter Save should use for the open tab: whatever storage kind the document actually came from ("Save uses whatever
+ *  mechanism was used to open the file"). */
+export function activeDiskAdapter() {
+  return diskAdapterFor(S.state.storageKind);
 }
 
 /**
@@ -379,12 +369,17 @@ export function openConflictResolver(/** @type {any} */ { documentId, plan }) {
 /** What Save does when the file changed underneath a pending edit:
  *  identical or metadata-only changes resolve silently, changes that
  *  fit together are merged automatically, and only genuinely
- *  overlapping edits reach the person (see planConflict). */
-export async function resolveSaveConflict(/** @type {any} */ { mine, disk, base }) {
-  const plan = planConflict(mine, disk, base);
-  if (plan.kind === 'same' || (plan.kind === 'auto' && plan.keepsMineOnly)) return 'mine';
-  if (plan.kind === 'auto') return { merged: plan.mergedText };
-  return openConflictResolver({ documentId: S.state.documentId, plan });
+ *  overlapping edits reach the person (see planConflict). The dialog names
+ *  the file being saved, which is not always the one on screen.
+ * @param {string} documentId
+ * @returns {(sides: { mine: string, disk: string, base: string | null }) => Promise<'mine' | { merged: string } | 'cancel'>} */
+export function conflictResolverFor(documentId) {
+  return async ({ mine, disk, base }) => {
+    const plan = planConflict(mine, disk, base);
+    if (plan.kind === 'same' || (plan.kind === 'auto' && plan.keepsMineOnly)) return 'mine';
+    if (plan.kind === 'auto') return { merged: plan.mergedText };
+    return openConflictResolver({ documentId, plan });
+  };
 }
 
 /** The banner's Merge: combines the unsaved local text with the version

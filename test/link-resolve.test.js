@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
 import {
+  findHeadingById,
+  findHeadingsById,
   isExternalUrl,
   isFileLink,
   isDoi,
@@ -532,4 +534,20 @@ test('resolveAttachmentDirectory: the heading’s own :ID: folder, else the near
   assert.equal(resolveAttachmentDirectory(doc, parent, 'org-pwa/foo.org'), 'org-pwa/data/ab/cdef-123');
   assert.equal(resolveAttachmentDirectory(doc, child, 'org-pwa/foo.org'), 'org-pwa/data/ab/cdef-123');
   assert.equal(resolveAttachmentDirectory(doc, other, 'org-pwa/foo.org'), null);
+});
+
+test('an id: link resolves to the heading with that :ID: here, ignoring case; elsewhere it is an id for the UI to look for', () => {
+  const doc = parseOrg('* One\n* Two\n:PROPERTIES:\n:ID: 3F2A-AAAA\n:END:\n** Child\n');
+  const hit = resolveLinkTarget(doc, 'id:3f2a-aaaa');
+  assert.equal(hit.type, 'heading');
+  assert.equal(hit.heading.title, 'Two');
+  assert.deepEqual(resolveLinkTarget(doc, 'id:not-here'), { type: 'id', id: 'not-here' });
+  assert.deepEqual(resolveLinkTarget(doc, 'ID: spaced '), { type: 'id', id: 'spaced' });
+});
+
+test('findHeadingsById counts every heading that shares an ID, and only a heading’s own :ID: counts', () => {
+  const doc = parseOrg('* A\n:PROPERTIES:\n:ID: dup\n:END:\n** Inherits\n* B\n:PROPERTIES:\n:ID: dup\n:END:\n');
+  assert.deepEqual(findHeadingsById(doc, 'dup').map((h) => h.title), ['A', 'B']);
+  assert.equal(findHeadingById(doc, 'dup').title, 'A');
+  assert.equal(findHeadingById(doc, ''), null);
 });

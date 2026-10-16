@@ -1,5 +1,6 @@
 // @ts-check
 /** @typedef {import('../src/types.js').Doc} Doc */
+/** @typedef {import('../src/types.js').TabSession} TabSession */
 // Buffers, the Emacs way: Capture, Refile and Archive into another file edit that file's buffer (its tab), never the file
 // behind the person's back. A file with no tab yet is loaded into a background tab first, as find-file-noselect does. The
 // tab shows the modified mark until it is saved, and Save Some Buffers (C-x s) offers to save each modified one. Revert Buffer
@@ -16,7 +17,7 @@ import { setSyncMeta } from '../src/sync-engine.js';
 import { createHistory, pushSnapshot } from '../src/undo-history.js';
 import { S } from './app-state.js';
 import { confirmDialog } from './dialogs.js';
-import { saveCurrent } from './documents-io.js';
+import { saveTab } from './documents-io.js';
 import { commitAndRender, commitTextModeIfActive, persistHistoryInBackground, setStatus } from './editing.js';
 import { activeDiskAdapter, reloadCurrentDocumentFromDisk } from './external-sync.js';
 import { closeFileMenu } from './file-menu.js';
@@ -36,7 +37,7 @@ export const UNSAVED_NOTE = ' — not saved yet';
  * @param {string} fileId */
 function findBackgroundSession(fileId) {
   const kind = S.state.storageKind;
-  return S.documentSessions.find((/** @type {Record<string, any>} */ s) => s.tabId !== S.activeTabId && s.state && s.state.documentId === fileId && s.state.storageKind === kind) || null;
+  return S.documentSessions.find((/** @type {TabSession} */ s) => s.tabId !== S.activeTabId && s.state && s.state.documentId === fileId && s.state.storageKind === kind) || null;
 }
 
 /**
@@ -60,7 +61,7 @@ function findBackgroundSession(fileId) {
  * clear, label-specific error -- callers just check `.ok` and bail out if false.
  * @param {string} fileId
  * @param {{ label: string, historyLabel?: string, allowMissing?: boolean, mutate: (doc: Doc) => unknown }} options
- * @returns {Promise<{ ok: boolean, result?: any }>}
+ * @returns {Promise<{ ok: boolean, result?: unknown }>}
  */
 export async function writeToOtherFile(fileId, options) {
   if (fileId === S.state.documentId) return editActiveBuffer(fileId, options);
@@ -84,7 +85,7 @@ function editActiveBuffer(fileId, { label, historyLabel, mutate }) {
   return { ok: true, result };
 }
 
-/** @param {Record<string, any>} session @param {string} fileId @param {{ label: string, historyLabel?: string, mutate: (doc: Doc) => unknown }} options */
+/** @param {TabSession} session @param {string} fileId @param {{ label: string, historyLabel?: string, mutate: (doc: Doc) => unknown }} options */
 async function editOpenBuffer(session, fileId, { label, historyLabel, mutate }) {
   if (session.isBufferReadOnly) return readOnlyRefusal(fileId, label);
   const doc = session.state.doc;
@@ -105,7 +106,7 @@ async function editOpenBuffer(session, fileId, { label, historyLabel, mutate }) 
 }
 
 /** @param {string} fileId @param {{ label: string, historyLabel?: string, allowMissing?: boolean, mutate: (doc: Doc) => unknown }} options
- * @returns {Promise<{ ok: boolean, result?: any }>} */
+ * @returns {Promise<{ ok: boolean, result?: unknown }>} */
 async function editNewBuffer(fileId, options) {
   const { label, historyLabel, allowMissing, mutate } = options;
   // An earlier session's unsaved change for this file (never synced) belongs to the buffer that file would open with;
@@ -173,7 +174,7 @@ async function editNewBuffer(fileId, options) {
     return { ok: false };
   }
 
-  /** @type {Record<string, any>} */
+  /** @type {TabSession} */
   const session = {
     tabId: S.nextTabId++,
     scrollTop: 0,
@@ -312,10 +313,10 @@ async function saveSomeBuffersRun(saveSilently) {
   let skipped = 0;
   for (let i = 0; i < ids.length; i++) {
     const tabId = ids[i];
-    if (!S.documentSessions.some((/** @type {Record<string, any>} */ s) => s.tabId === tabId)) continue; // closed while we asked
-    if (tabId !== S.activeTabId) switchToTab(tabId);
+    if (tabId !== S.activeTabId && !S.documentSessions.some((/** @type {TabSession} */ s) => s.tabId === tabId)) continue; // closed while we asked
     let stop = false;
     if (!silent) {
+      if (tabId !== S.activeTabId) switchToTab(tabId); // to ask about it: the modeline names it, and d shows its changes
       const label = documentDisplayLabel(S.state.documentId, S.state.doc);
       const key = await readKeyFromMinibuffer(`Save file ${label}? (y, n, !, ., q, d): `, 'yn!.qd', { stay: 'd', onStay: showBufferDiff }); // d shows the changes and asks again
       closeDiffPanel();
@@ -329,19 +330,15 @@ async function saveSomeBuffersRun(saveSilently) {
       }
       if (key === '!') silent = true;
       if (key === '.') stop = true;
-      if (S.activeTabId !== tabId) {
-        if (!S.documentSessions.some((/** @type {Record<string, any>} */ s) => s.tabId === tabId)) continue;
-        switchToTab(tabId); // the person moved to another tab while the question was open
-      }
     }
     attempted++;
-    if (await saveCurrent()) saved++;
+    if (await saveTab(tabId)) saved++; // saved where it is, whichever tab the person is on by now
     if (stop) {
       skipped += ids.length - i - 1;
       break;
     }
   }
-  if (S.activeTabId !== home && S.documentSessions.some((/** @type {Record<string, any>} */ s) => s.tabId === home)) switchToTab(home);
+  if (S.activeTabId !== home && S.documentSessions.some((/** @type {TabSession} */ s) => s.tabId === home)) switchToTab(home);
   const failed = attempted - saved;
   setStatus(`Saved ${saved} ${saved === 1 ? 'file' : 'files'}${failed ? `; ${failed} not saved — still marked ●` : ''}${skipped ? `; ${skipped} skipped` : ''}.`);
 }

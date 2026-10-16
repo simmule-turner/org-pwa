@@ -54,4 +54,14 @@
 /** @typedef {{ baseUrl: string, username: string, password: string }} WebdavConfig */
 /** @typedef {{ url: string, contactsUrl: string, username: string, password: string }} CaldavConfig */
 
+/** What a tab holds of its document: the parsed text and where it came from (`storageKind` is null for a buffer with no file yet). */
+/** @typedef {{ documentId: string, doc: Doc, storageKind: string | null, startupConfig?: any, localVariables?: LocalVars }} DocState */
+
+/** A tab that is not on screen, as tabs.js snapshots it. The tab on screen keeps the same fields in `S`. */
+/** @typedef {{ tabId: number, scrollTop: number, state: DocState, isDirty: boolean, isBufferReadOnly: boolean, lastSavedText: string | null, history: any, [key: string]: any }} TabSession */
+
+/** A place a document is read from and written to (GitHub, WebDAV, a local file, an imported file). `write`'s options carry
+ *  `expect`, the version the caller compared against, for the adapters that can refuse to replace a newer one. */
+/** @typedef {{ read(id: string, ...rest: any[]): Promise<{ content: string, hash: string | null } | null>, write(id: string, content: string, options?: { expect?: { exists: boolean, hash: string | null } }): Promise<{ hash: string | null }>, [key: string]: any }} DiskAdapter */
+
 export {};

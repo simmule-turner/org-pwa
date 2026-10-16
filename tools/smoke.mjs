@@ -5934,6 +5934,44 @@ check('buffers: Save Some Buffers asks per buffer in the minibuffer (y/Space, n/
   await context.close();
 });
 
+check('id: links: a link to a heading with that :ID: goes to it in another open tab or in an Agenda File, says so when nothing has it, and Copy link to heading makes the :ID: and the link', async () => {
+  dav.reset({
+    'a.org': ['* Source', '[[id:AAA-111][to B]] and [[id:ZZZ-999][far away]] and [[id:nope-000][nowhere]]', '# Local Variables:', '# org-agenda-files: webdav:c.org', '# End:', ''].join('\n'),
+    'b.org': '* Target\n:PROPERTIES:\n:ID: aaa-111\n:END:\n* Other\n',
+    'c.org': '* Far target\n:PROPERTIES:\n:ID: zzz-999\n:END:\n',
+  });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'b.org');
+  await openDav(page, 'a.org');
+  const link = (text) => page.locator('#outline a', { hasText: text }).first();
+  await link('to B').click();
+  await page.waitForFunction(() => /b\.org/.test(document.getElementById('modeline').textContent), null, { timeout: 5000 });
+  await page.locator('#tabBar > div', { hasText: 'a.org' }).first().click();
+  await link('far away').click(); // c.org is only an Agenda File: it has to be found there and opened
+  await page.waitForFunction(() => /c\.org/.test(document.getElementById('modeline').textContent), null, { timeout: 8000 });
+  await page.locator('#tabBar > div', { hasText: 'a.org' }).first().click();
+  await link('nowhere').click();
+  await waitForStatus(page, 'No heading with ID nope-000');
+  // Copy link to heading: adds an :ID: once, then reuses it
+  await page.evaluate(() => {
+    window.__clip = [];
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (t) => { window.__clip.push(t); } } });
+  });
+  const copy = () => page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { copyHeadingLink } = await import('/src-browser/id-links.js');
+    await copyHeadingLink(S.state.doc.children[0]);
+    return window.__clip[window.__clip.length - 1];
+  });
+  const first = await copy();
+  const m = /^\[\[id:([0-9a-f-]{36})\]\[Source\]\]$/.exec(first);
+  expect(m, `a link with a new UUID: ${first}`);
+  expect((await documentText(page)).includes(':ID: ' + m[1]), 'and the heading now has that :ID:');
+  expect((await copy()) === first, 'a second copy reuses the ID');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('minibuffer: a question replaced by another is answered (cancelled), not left waiting for ever, and Save Some Buffers will not start twice', async () => {
   dav.reset({ 'b.org': '* B one\n', 'c.org': '* C one\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });

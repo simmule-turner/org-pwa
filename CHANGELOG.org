@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v536 — ID links, and saving a tab without visiting it
+~[[id:…]]~ links now work in the app: tapping one finds the heading with that ~:ID:~ in the open file, your other tabs or your Agenda Files, opens the file if needed, and ⏎ comes back. *Copy link to heading* (~org-store-link~, ~C-c l~) gives a heading an ~:ID:~ and copies its link. Underneath, a save now takes a tab instead of assuming the one on screen, so File → Save Some Buffers saves every modified tab without switching to each, and Save As follows its tab as Save does.
+Verified: unit tests for ID lookup; browser checks for following an ID link, Copy link to heading, Save Some Buffers and Save.
+
 * v535 — Safer saves
 A slow save no longer marks the wrong tab as saved if you switch tabs, or hides text you typed while it ran; a second Save on the same tab waits for the first. GitHub and WebDAV now refuse to replace a file that another device saved after this app checked it, and ask you instead. A newer edit is no longer dropped from the queue when an older one finishes writing. Opening several files at once keeps them all in the open list, a replaced minibuffer question is cancelled instead of waiting for ever, and a failed Save As leaves the buffer as it was.
 Verified: unit tests for the queue, the retry and the open list; browser checks for a slow save, a racing save, and replaced questions.

@@ -1,6 +1,7 @@
 // @ts-check
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
+/** @typedef {{ type: 'external', url: string } | { type: 'heading', heading: Heading } | { type: 'id', id: string } | { type: 'attachment', target: string } | { type: 'file', scheme: string, path: string, inFileTarget: string | null, byId?: string } | { type: 'unresolved', target: string }} LinkResolution */
 /**
  * Resolves what an org link target actually points to, given a document.
  * Pure and DOM-free — the UI layer decides what to *do* with a resolution
@@ -14,6 +15,8 @@
  *     not itself a fetchable/openable URL, unlike http(s))
  *   - "*Heading text"                    -> heading lookup by exact title
  *   - "#custom-id"                       -> heading lookup by :CUSTOM_ID:
+ *   - "id:UUID"                          -> heading lookup by :ID: here; { type: 'id', id } when this
+ *                                           document has none (the UI looks in other files)
  *   - "file:...", "./...", "../...",
  *     "~/...", "/...", "github:...",
  *     "webdav:..."                       -> { type: 'file', scheme, path }
@@ -291,10 +294,10 @@ export function guessViewableMimeType(path) {
 
 /**
  * @param {Doc} doc
- * @param {any} [visit]
+ * @param {(heading: Heading) => void} visit
  */
 function walkHeadings(doc, visit) {
-  /** @param {any} [nodes] */
+  /** @param {Heading[]} nodes */
   function walk(nodes) {
     for (const node of nodes) {
       if (node.type !== 'heading') continue;
@@ -309,10 +312,11 @@ function walkHeadings(doc, visit) {
  * First heading (in document order) whose title exactly matches `title`, or null.
  * @param {Doc} doc
  * @param {string} title
+ * @returns {Heading | null}
  */
 export function findHeadingByTitle(doc, title) {
-  /** @type {any} */ let found = null;
-  walkHeadings(doc, (/** @type {any} */ node) => {
+  /** @type {Heading | null} */ let found = null;
+  walkHeadings(doc, (node) => {
     if (!found && node.title === title) found = node;
   });
   return found;
@@ -322,13 +326,43 @@ export function findHeadingByTitle(doc, title) {
  * First heading (in document order) whose :CUSTOM_ID: property exactly matches, or null.
  * @param {Doc} doc
  * @param {string} customId
+ * @returns {Heading | null}
  */
 export function findHeadingByCustomId(doc, customId) {
-  /** @type {any} */ let found = null;
-  walkHeadings(doc, (/** @type {any} */ node) => {
+  /** @type {Heading | null} */ let found = null;
+  walkHeadings(doc, (node) => {
     if (!found && getProperty(node, 'CUSTOM_ID') === customId) found = node;
   });
   return found;
+}
+
+/**
+ * Every heading (in document order) whose own :ID: property is `id`, for an `[[id:...]]` link. Only the heading's own property
+ * counts, not an inherited one, as in org-id. Org compares IDs as written; case is ignored here because one tool writes a UUID
+ * in lower case and another in upper, and they are still the same ID.
+ * @param {Doc} doc
+ * @param {string} id
+ * @returns {Heading[]}
+ */
+export function findHeadingsById(doc, id) {
+  const wanted = id.trim().toLowerCase();
+  /** @type {Heading[]} */ const found = [];
+  if (!wanted) return found;
+  walkHeadings(doc, (node) => {
+    const own = getProperty(node, 'ID');
+    if (typeof own === 'string' && own.trim().toLowerCase() === wanted) found.push(node);
+  });
+  return found;
+}
+
+/**
+ * The first heading with this :ID:, or null.
+ * @param {Doc} doc
+ * @param {string} id
+ * @returns {Heading | null}
+ */
+export function findHeadingById(doc, id) {
+  return findHeadingsById(doc, id)[0] || null;
 }
 
 /** Does `nodes` (a parsed inline-node array) contain a footnote-def node
@@ -447,10 +481,12 @@ export function splitFileLinkTarget(pathAndTarget) {
  * Resolves `rawTarget` against `doc`. Returns one of:
  *   { type: 'external', url }
  *   { type: 'heading', heading }
+ *   { type: 'id', id }
  *   { type: 'file', scheme, path, inFileTarget }
  *   { type: 'unresolved', target }
  * @param {Doc} doc
- * @param {any} [rawTarget]
+ * @param {unknown} rawTarget
+ * @returns {LinkResolution}
  */
 export function resolveLinkTarget(doc, rawTarget) {
   const target = String(rawTarget).trim();
@@ -475,6 +511,13 @@ export function resolveLinkTarget(doc, rawTarget) {
 
   if (/^attachment:/i.test(target)) {
     return { type: 'attachment', target };
+  }
+
+  if (/^id:/i.test(target)) {
+    // [[id:UUID]]: the heading in this document with that :ID:, else it may be in another file (see id-links.js)
+    const id = target.slice(3).replace(/::.*$/, '').trim();
+    const heading = findHeadingById(doc, id);
+    return heading ? { type: 'heading', heading } : { type: 'id', id };
   }
 
   if (isFileLink(target)) {

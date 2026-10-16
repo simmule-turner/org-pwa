@@ -363,8 +363,8 @@ function resolveSegments(segments, choices) {
  *       common ancestor was available, in which case every difference is
  *       shown (see diff2Segments).
  * @param {string} mine
- * @param {any} theirs
- * @param {string} base
+ * @param {string} theirs
+ * @param {string | null} base
  */
 function planConflict(mine, theirs, base) {
   if (mine === theirs) return { kind: 'same' };

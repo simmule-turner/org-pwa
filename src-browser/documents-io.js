@@ -1,6 +1,9 @@
 // @ts-check
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
+/** @typedef {import('../src/types.js').TabSession} TabSession */
+/** @typedef {import('../src/types.js').DiskAdapter} DiskAdapter */
+/** @typedef {Extract<import('../src/link-resolve.js').LinkResolution, { type: 'file' }>} FileLinkResolution */
 // Extracted from app.js: documents io.
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { findAncestorPath } from '../src/archive-model.js';
@@ -8,7 +11,7 @@ import { markDocumentClosed, markDocumentOpen, openDocument, saveAndSync } from 
 import { applyStartupVisibility } from '../src/fold-state.js';
 import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
 import { clearPersistedHistory, loadPersistedHistory } from '../src/history-store.js';
-import { findHeadingByTitle, resolveImagePath } from '../src/link-resolve.js';
+import { findHeadingById, findHeadingByTitle, resolveImagePath } from '../src/link-resolve.js';
 import { getBufferReadOnly, getCycleOpenArchivedTrees, getUsePropertyInheritance, getUseTagInheritance, parseLocalVariables } from '../src/local-variables.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { searchDocument } from '../src/search.js';
@@ -24,7 +27,7 @@ import { scrollContainer } from './chrome.js';
 import { NAVIGATION_BACK_STACK_LIMIT } from './constants.js';
 import { captureBtn, moreBtn, searchBtn, viewMenuBtn } from './dom.js';
 import { commitTextModeIfActive, persistHistoryInBackground, setStatus } from './editing.js';
-import { activeDiskAdapter, hideExternalChangeBanner, reloadCurrentDocumentFromDisk, resolveSaveConflict } from './external-sync.js';
+import { activeDiskAdapter, conflictResolverFor, diskAdapterFor, hideExternalChangeBanner, reloadCurrentDocumentFromDisk } from './external-sync.js';
 import { closeFileMenu } from './file-menu.js';
 import { isGithubConfigured } from './github-adapter.js';
 import { pickAndImportFile } from './input-file-adapter.js';
@@ -49,11 +52,11 @@ export function suggestedSaveAsName(fallback) {
 /** Common finish-up after any successful open/create, regardless of which
  * @param {string} documentId
  * @param {Doc} doc
- * @param {any} [storageKind]
+ * @param {string | null} [storageKind]
  *  backend it came from. */
 export async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCache = false, { replaceCurrentTab = false } = {}) {
   if (!replaceCurrentTab) {
-    const alreadyOpenTab = documentId && !documentId.startsWith(UNSAVED_DOCUMENT_ID) ? S.documentSessions.find((/** @type {any} */ s) => s.state && s.state.documentId === documentId && s.state.storageKind === storageKind) : null;
+    const alreadyOpenTab = documentId && !documentId.startsWith(UNSAVED_DOCUMENT_ID) ? S.documentSessions.find((/** @type {TabSession} */ s) => s.state && s.state.documentId === documentId && s.state.storageKind === storageKind) : null;
     if (alreadyOpenTab && alreadyOpenTab.tabId !== S.activeTabId) {
       switchToTab(alreadyOpenTab.tabId);
       return;
@@ -95,10 +98,10 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
   await recordRecentFile(kv, documentId, storageKind);
   S.currentView = 'org';
   S.agendaAnchorDate = new Date();
-  /** @type {any} */ (viewMenuBtn).disabled = false;
-  /** @type {any} */ (searchBtn).disabled = false;
-  /** @type {any} */ (captureBtn).disabled = false;
-  /** @type {any} */ (moreBtn).disabled = false;
+  /** @type {HTMLButtonElement} */ (viewMenuBtn).disabled = false;
+  /** @type {HTMLButtonElement} */ (searchBtn).disabled = false;
+  /** @type {HTMLButtonElement} */ (captureBtn).disabled = false;
+  /** @type {HTMLButtonElement} */ (moreBtn).disabled = false;
   S.searchOpen = false;
   S.searchQuery = '';
   renderSearchPanel();
@@ -116,7 +119,7 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
 /** A buffer name no open buffer already has: `*scratch*`, then `*scratch*<2>`, `*scratch*<3>`, as Emacs does.
  * @param {string} base */
 function uniqueBufferName(base) {
-  const taken = new Set([S.state.documentId, ...S.documentSessions.map((/** @type {any} */ x) => x.state && x.state.documentId)].filter(Boolean).map((id) => (id.includes('|') ? id.slice(id.indexOf('|') + 1) : '')));
+  const taken = new Set([S.state.documentId, ...S.documentSessions.map((/** @type {TabSession} */ x) => x.state && x.state.documentId)].filter(Boolean).map((id) => (id.includes('|') ? id.slice(id.indexOf('|') + 1) : '')));
   if (!taken.has(base)) return base;
   let n = 2;
   while (taken.has(`${base}<${n}>`)) n++;
@@ -199,7 +202,7 @@ export async function openFromImport() {
  *  function), `label` is the human-readable name used in status
  * @param {string} path
  * @param {string} kind
- * @param {any} diskAdapter
+ * @param {DiskAdapter} diskAdapter
  * @param {string} label
  *  messages ("GitHub" / "WebDAV"). */
 export async function openRemotePath(path, kind, diskAdapter, label) {
@@ -244,9 +247,10 @@ export async function openRemotePath(path, kind, diskAdapter, label) {
  * archiving/capture-to-file/images — can't open an arbitrary path
  * without a fresh picker gesture the browser requires per file, so
  * this shows a clear message rather than silently failing.
- * @param {any} [resolution]
+ * @param {FileLinkResolution} resolution
+ * @param {Heading | null} [containingHeading]
  */
-export async function openFileLink(resolution, containingHeading = /** @type {any} */ (null)) {
+export async function openFileLink(resolution, containingHeading = null) {
   let adapter, kind, label;
   if (resolution.scheme === 'github') {
     adapter = githubAdapter;
@@ -292,7 +296,7 @@ export async function openFileLink(resolution, containingHeading = /** @type {an
   // since applyStartupVisibility always re-applies the DEFAULT fold
   // state on every fresh open, not whatever the user had left it as.
   const originHeadingPath = containingHeading
-    ? [...(findAncestorPath(S.state.doc, containingHeading) || []).map((/** @type {any} */ h) => h.title), containingHeading.title]
+    ? [...(findAncestorPath(S.state.doc, containingHeading) || []).map((/** @type {Heading} */ h) => h.title), containingHeading.title]
     : null;
   const originEntry = {
     view: S.currentView,
@@ -317,6 +321,14 @@ export async function openFileLink(resolution, containingHeading = /** @type {an
   S.navigationBackStack.push(originEntry);
   if (S.navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) S.navigationBackStack.shift();
   syncNavBackButtonVisibility();
+
+  if (resolution.byId) {
+    // an [[id:...]] link that was found in this file: jump to the heading that has the ID
+    const heading = findHeadingById(S.state.doc, resolution.byId);
+    if (heading) navigateToHeading(heading, { pushToBackStack: false });
+    else setStatus(`Opened ${resolvedPath}, but couldn't find ID ${resolution.byId} in it.`);
+    return;
+  }
 
   if (!resolution.inFileTarget) return;
 
@@ -344,7 +356,7 @@ export async function openFileLink(resolution, containingHeading = /** @type {an
 }
 
 /** The tabs with a save under way. A second Save on the same tab waits for the answer to the first instead of racing it. */
-const savesInFlight = new Set();
+const savesInFlight = /** @type {Set<number>} */ (new Set());
 
 /** Records that `text` is now what the file holds, in whichever tab it was saved from -- that tab may no longer be the one on
  *  screen, and the person may have kept typing while the save ran: then it stays modified, against the text that was written.
@@ -356,27 +368,35 @@ function markTabSaved(tabId, text) {
     render();
     return;
   }
-  const session = S.documentSessions.find((/** @type {any} */ x) => x.tabId === tabId);
+  const session = S.documentSessions.find((/** @type {TabSession} */ x) => x.tabId === tabId);
   if (!session) return; // closed while it saved
   session.lastSavedText = text;
   session.isDirty = !session.state || !session.state.doc || serializeOrg(session.state.doc) !== text;
   renderTabBar();
 }
 
-/** @returns {Promise<boolean>} whether the document was saved (false: nothing to save it to, cancelled at a conflict, or failed) */
-export async function saveCurrent() {
-  if (!S.state.storageKind) return false;
-  if (commitTextModeIfActive()) render();
-  const tabId = S.activeTabId;
+/** Saves the tab on screen. See saveTab.
+ * @returns {Promise<boolean>} */
+export function saveCurrent() {
+  return saveTab(S.activeTabId);
+}
+
+/** Saves one tab -- the one on screen or a background one, which is saved where it is, without being switched to. Everything
+ *  follows that tab, not "the tab on screen": a slow save leaves the person free to switch tabs or keep typing.
+ * @param {number | null} tabId
+ * @returns {Promise<boolean>} whether the document was saved (false: nothing to save it to, cancelled at a conflict, or failed) */
+export async function saveTab(tabId) {
+  if (tabId === null) return false;
+  if (tabId === S.activeTabId && commitTextModeIfActive()) render();
+  const session = tabId === S.activeTabId ? null : S.documentSessions.find((/** @type {TabSession} */ x) => x.tabId === tabId);
+  const state = tabId === S.activeTabId ? S.state : session && session.state;
+  if (!state || !state.storageKind || !state.doc) return false;
   if (savesInFlight.has(tabId)) {
     setStatus('Already saving this buffer\u2026');
     return false;
   }
   savesInFlight.add(tabId);
-  // Everything below follows this tab, not "the tab on screen": a slow save leaves the person free to switch tabs or keep typing.
-  const documentId = S.state.documentId;
-  const doc = S.state.doc;
-  const diskAdapter = activeDiskAdapter();
+  const { documentId, doc, storageKind } = state;
   setStatus('Saving\u2026');
   let saved = false;
   try {
@@ -385,10 +405,10 @@ export async function saveCurrent() {
       documentId,
       doc,
       kvAdapter: kv,
-      diskAdapter,
-      resolveConflict: resolveSaveConflict,
+      diskAdapter: diskAdapterFor(storageKind),
+      resolveConflict: conflictResolverFor(documentId),
     });
-    const stillOpen = () => S.activeTabId === tabId || S.documentSessions.some((/** @type {any} */ x) => x.tabId === tabId);
+    const stillOpen = () => S.activeTabId === tabId || S.documentSessions.some((/** @type {TabSession} */ x) => x.tabId === tabId);
     if (result.status === 'conflict' && result.resolution === 'cancelled') {
       // Nothing was written anywhere and the local edit is still pending.
       setStatus('Save cancelled \u2014 the other version is untouched and your edits are still here.');
@@ -416,7 +436,7 @@ export async function saveCurrent() {
     emitExtensionEvent('save');
     saved = true;
   } catch (err) {
-    setStatus('Save failed: ' + err.message);
+    setStatus('Save failed: ' + /** @type {Error} */ (err).message);
   } finally {
     savesInFlight.delete(tabId);
     closeFileMenu();
@@ -427,6 +447,8 @@ export async function saveCurrent() {
 export async function saveAsFilesystem() {
   if (!S.state.doc) return;
   if (commitTextModeIfActive()) render();
+  const saveAsTab = /** @type {number} */ (S.activeTabId);
+  const saveAsText = serializeOrg(S.state.doc);
   if (!platform.localFiles.supported()) {
     setStatus('This browser lacks File System Access support.');
     return;
@@ -445,8 +467,7 @@ export async function saveAsFilesystem() {
       diskAdapter: filesystemAdapter,
       resolveConflict: ALWAYS_KEEP_MINE,
     });
-    S.isDirty = false;
-    S.lastSavedText = serializeOrg(S.state.doc);
+    markTabSaved(saveAsTab, saveAsText); // the tab that was saved, which a slow save may have left
     await recordRecentFile(kv, documentId, 'filesystem');
     setStatus('Saved as ' + documentId + '.');
     closeFileMenu();
@@ -461,7 +482,7 @@ export async function saveAsFilesystem() {
  * @param {{ read: (id: string) => Promise<any> }} adapter @param {string} kind @param {string} path @param {string} where */
 async function confirmReplaceOnServer(adapter, kind, path, where) {
   if (S.state.storageKind === kind && S.state.documentId === path) return true; // saving over itself is just Save
-  /** @type {any} */ let existing;
+  /** @type {{ content: string } | null | undefined} */ let existing;
   try {
     existing = await adapter.read(path);
   } catch {
@@ -472,7 +493,7 @@ async function confirmReplaceOnServer(adapter, kind, path, where) {
 }
 
 /** A Save As that failed leaves the buffer as it was, not renamed to a file that was never written.
- * @param {{ documentId: any, storageKind: any }} previous @param {string} path */
+ * @param {{ documentId: string, storageKind: string | null }} previous @param {string} path */
 function undoSaveAsRename(previous, path) {
   S.state.documentId = previous.documentId;
   S.state.storageKind = previous.storageKind;
@@ -483,6 +504,8 @@ function undoSaveAsRename(previous, path) {
 export async function saveAsGithub(chosenPath) {
   if (!S.state.doc) return;
   if (commitTextModeIfActive()) render();
+  const saveAsTab = /** @type {number} */ (S.activeTabId);
+  const saveAsText = serializeOrg(S.state.doc);
   const config = await getGithubConfig(kv);
   S.githubConfig = config;
   if (!isGithubConfigured(config)) {
@@ -509,8 +532,7 @@ export async function saveAsGithub(chosenPath) {
       resolveConflict: ALWAYS_KEEP_MINE,
     });
     written = true;
-    S.isDirty = false;
-    S.lastSavedText = serializeOrg(S.state.doc);
+    markTabSaved(saveAsTab, saveAsText); // the tab that was saved, which a slow save may have left
     await recordRecentFile(kv, path, 'github');
     setStatus('Saved to GitHub as ' + path + '.');
     closeFileMenu();
@@ -525,6 +547,8 @@ export async function saveAsGithub(chosenPath) {
 export async function saveAsWebdav(chosenPath) {
   if (!S.state.doc) return;
   if (commitTextModeIfActive()) render();
+  const saveAsTab = /** @type {number} */ (S.activeTabId);
+  const saveAsText = serializeOrg(S.state.doc);
   const config = await getWebdavConfig(kv);
   S.webdavConfig = config;
   if (!isWebdavConfigured(config)) {
@@ -551,8 +575,7 @@ export async function saveAsWebdav(chosenPath) {
       resolveConflict: ALWAYS_KEEP_MINE,
     });
     written = true;
-    S.isDirty = false;
-    S.lastSavedText = serializeOrg(S.state.doc);
+    markTabSaved(saveAsTab, saveAsText); // the tab that was saved, which a slow save may have left
     await recordRecentFile(kv, path, 'webdav');
     setStatus('Saved to WebDAV as ' + path + '.');
     closeFileMenu();
@@ -567,6 +590,8 @@ export async function saveAsWebdav(chosenPath) {
 export async function saveAsImport(chosenName) {
   if (!S.state.doc) return;
   if (commitTextModeIfActive()) render();
+  const saveAsTab = /** @type {number} */ (S.activeTabId);
+  const saveAsText = serializeOrg(S.state.doc);
   const name = chosenName || (await promptText('File name to save as:', suggestedSaveAsName('untitled.org'), { okLabel: 'Save' }));
   if (!name) return;
   S.state.documentId = name;
@@ -582,8 +607,7 @@ export async function saveAsImport(chosenName) {
       diskAdapter: inputFileAdapter,
       resolveConflict: ALWAYS_KEEP_MINE,
     });
-    S.isDirty = false;
-    S.lastSavedText = serializeOrg(S.state.doc);
+    markTabSaved(saveAsTab, saveAsText); // the tab that was saved, which a slow save may have left
     await recordRecentFile(kv, name, 'input');
     setStatus('Downloaded as ' + name + '.');
     closeFileMenu();

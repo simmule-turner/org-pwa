@@ -14,6 +14,7 @@ import { canRedo, canUndo } from '../src/undo-history.js';
 import { S } from './app-state.js';
 import { openAttachChoicePrompt } from './attachments-flow.js';
 import { modifiedFileBuffers, revertBuffer, saveSomeBuffers } from './buffers.js';
+import { copyHeadingLink } from './id-links.js';
 import { openCalendarPanel } from './calendar-panel.js';
 import { openCapturePrompt, renderCapturePanel } from './capture-ui.js';
 import { closeAllOverlayPanels } from './chrome.js';
@@ -275,7 +276,10 @@ export const GOD_MODE_ACTIONS = {
   'C-c |': () => godModeNotSupported('table creation needs a table-cell keyboard focus this app doesn\u2019t have -- use the \u25a6 Add table action instead'),
 
   // Section 6: Agenda, Hyperlinks & Babel Code Blocks
-  'C-c l': () => godModeNotSupported('there\u2019s no dedicated link-insertion command -- type or paste a URL directly'),
+  'C-c l': () => {
+    if (S.keyboardFocusedHeading) copyHeadingLink(S.keyboardFocusedHeading);
+    else godModeNotSupported('focus a heading first (Escape, then the arrow keys)');
+  },
   'C-c C-l': () => godModeNotSupported('there\u2019s no dedicated link-insertion command -- type or paste a URL directly'),
   'C-c C-o': () => godModeNotSupported('links are tappable directly -- there\u2019s no keyboard-cursor concept to open one from'),
   'C-c a': () => {
@@ -496,6 +500,7 @@ export function paletteCommandList() {
     { id: 'demote', label: 'Demote subtree', orgName: 'org-demote-subtree', keys: 'M-<right>', group: 'Heading', needs: HEAD, run: chord('M-<right>') },
     { id: 'move-up', label: 'Move subtree up', orgName: 'org-move-subtree-up', keys: 'M-<up>', group: 'Heading', needs: HEAD, run: chord('M-<up>') },
     { id: 'move-down', label: 'Move subtree down', orgName: 'org-move-subtree-down', keys: 'M-<down>', group: 'Heading', needs: HEAD, run: chord('M-<down>') },
+    { id: 'store-link', label: 'Copy link to heading', orgName: 'org-store-link', keys: 'C-c l', group: 'Heading', keywords: ['id', 'org-id-get-create', 'link', 'store link'], needs: ['doc', 'heading'], run: onHeading(copyHeadingLink) },
     { id: 'cut', label: 'Cut subtree', orgName: 'org-cut-subtree', keys: 'C-c C-x C-w', group: 'Heading', needs: HEAD, run: chord('C-c C-x C-w') },
     { id: 'paste', label: 'Paste subtree', orgName: 'org-paste-subtree', keys: 'C-c C-x C-y', group: 'Heading', needs: HEAD, run: chord('C-c C-x C-y') },
     { id: 'archive', label: 'Archive subtree', orgName: 'org-archive-subtree', group: 'Heading', needs: [...HEAD, 'notArchived'], run: onHeading(openArchiveRefilePanel) },
