@@ -168,3 +168,36 @@ export function openContentSheet({ title, subtitle, build }) {
   done.focus();
   return close;
 }
+
+/**
+ * A sheet with a form the caller builds, a Cancel (highlighted) and a submit button. `onSubmit` returns false to keep the sheet
+ * open (the form shows why); otherwise it closes. Phone: slides up from the bottom; laptop: the same panel, centred.
+ * @param {{ title: string, subtitle?: string, build: (panel: HTMLElement) => void, submitLabel: string, onSubmit: () => boolean | void | Promise<boolean | void> }} opts
+ * @returns {{ close: () => void, submit: () => void }}
+ */
+export function openFormSheet({ title, subtitle, build, submitLabel, onSubmit }) {
+  const { panel, close } = buildSheet(title, subtitle);
+  build(panel);
+  const buttons = document.createElement('div');
+  buttons.style.cssText = 'display:flex;gap:8px;margin-top:var(--space-3);';
+  const cancel = cancelButton('Cancel', close);
+  cancel.style.marginTop = '0';
+  cancel.style.width = 'auto';
+  cancel.style.flex = '1 1 0';
+  const submit = document.createElement('button');
+  submit.textContent = submitLabel;
+  submit.style.cssText = 'flex:1 1 0;min-height:var(--target);font-size:var(--text-body);font-weight:700;background:var(--accent);color:#fff;border-color:var(--accent);';
+  let busy = false;
+  submit.onclick = async () => {
+    if (busy) return;
+    busy = true;
+    try {
+      if ((await onSubmit()) !== false) close();
+    } finally {
+      busy = false;
+    }
+  };
+  buttons.append(cancel, submit);
+  panel.appendChild(buttons);
+  return { close, submit: () => submit.click() };
+}

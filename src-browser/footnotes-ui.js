@@ -1,6 +1,8 @@
-// The footnote commands of org-footnote.el (the rules are in src/footnotes.js). Insert footnote and the jump between a
-// reference and its definition use the cursor, so they work in Text view; sort, renumber, normalize and delete work from
-// any view.
+// The footnote commands of org-footnote.el (the rules are in src/footnotes.js). In the outline, a Footnote button in the
+// paragraph and list-item editors inserts a footnote at the cursor and tapping a reference opens its sheet (note, go to
+// definition, edit, delete); in Text view the same commands work on the cursor there. Sort, renumber, normalize and delete
+// work from any view.
+/** @typedef {import('../src/types.js').Heading} Heading */
 import {
   canInsertFootnoteAt,
   createFootnoteDefinition,
@@ -15,12 +17,18 @@ import {
   sortFootnotes,
   uniqueFootnoteLabel,
 } from '../src/footnotes.js';
+import { editListItemText, editParagraphText } from '../src/body-edit.js';
+import { findFootnoteDefinition as findOutlineDefinition } from '../src/link-resolve.js';
 import { getFootnoteAutoAdjust, getFootnoteAutoLabel, getFootnoteDefineInline, getFootnoteSection } from '../src/local-variables.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { S } from './app-state.js';
+import { hideUndoToast, showUndoToast } from './agenda-actions.js';
+import { openActionSheet, openFormSheet } from './bottom-sheet.js';
 import { confirmDialog } from './dialogs.js';
-import { commitTextModeIfActive, replaceDocumentText, setStatus } from './editing.js';
+import { commitTextModeIfActive, openListItemEditor, openParagraphEditor, replaceDocumentText, setStatus } from './editing.js';
+import { enterInsertModeAtCurrentLine } from './keyboard-focus.js';
 import { readFromMinibuffer, readKeyFromMinibuffer } from './minibuffer-prompt.js';
+import { navigateToHeading } from './navigation.js';
 import { render } from './render.js';
 
 /** @returns {any} */
@@ -99,9 +107,296 @@ function putText(work, next, label, cursor) {
     }
     return;
   }
+  replaceKeepingNarrowing(next, label);
+  render();
+}
+
+/** @param {any} root @param {any} target @returns {number[] | null} */
+function headingPath(root, target) {
+  const kids = root.children || [];
+  for (let i = 0; i < kids.length; i++) {
+    if (kids[i] === target) return [i];
+    const below = headingPath(kids[i], target);
+    if (below) return [i, ...below];
+  }
+  return null;
+}
+
+/** Replaces the whole document as one undoable edit and, if a subtree was narrowed, narrows to the same place again.
+ * @param {string} next @param {string} label */
+function replaceKeepingNarrowing(next, label) {
+  const path = S.narrowedHeading ? headingPath(S.state.doc, S.narrowedHeading) : null;
   S.narrowedHeading = null;
   replaceDocumentText(next, label);
-  render();
+  if (!path) return;
+  /** @type {any} */
+  let at = S.state.doc;
+  for (const i of path) at = at && at.children ? at.children[i] : null;
+  S.narrowedHeading = at || null;
+}
+
+// ---- the outline: Footnote in the editors, and the sheet of a reference --------------------------------------------------------
+
+const CARET = '\uE000\uE001';
+
+/** The whole file as it would be if the paragraph or list item being edited held `value`, with CARET at `caret`; the document
+ * itself is left as it was.
+ * @param {Heading} heading @param {'paragraph' | 'list-item'} kind @param {any} node @param {string} value @param {number} caret */
+function serializeWithCaret(heading, kind, node, value, caret) {
+  const savedLines = heading.bodyLines;
+  const savedBody = heading.body;
+  const marked = value.slice(0, caret) + CARET + value.slice(caret);
+  try {
+    heading.bodyLines = savedLines.slice();
+    if (kind === 'paragraph') editParagraphText(heading, node, marked);
+    else editListItemText(heading, node, marked.replace(/\n/g, ' '));
+    return serializeOrg(S.state.doc);
+  } finally {
+    heading.bodyLines = savedLines;
+    heading.body = savedBody;
+  }
+}
+
+/** @param {string} s */
+function bracketsPaired(s) {
+  let depth = 0;
+  for (const ch of s) {
+    if (ch === '[') depth++;
+    else if (ch === ']' && --depth < 0) return false;
+  }
+  return depth === 0;
+}
+
+/** The Footnote button of the paragraph and list-item editors.
+ * @param {Heading} heading @param {'paragraph' | 'list-item'} kind @param {any} node */
+export function footnoteEditorTool(heading, kind, node) {
+  return {
+    text: 'Footnote',
+    title: 'Add a footnote at the cursor',
+    id: 'footnote',
+    onClick: (/** @type {HTMLTextAreaElement} */ textarea, /** @type {() => void} */ closeEditor) => openNewFootnoteSheet(heading, kind, node, textarea, closeEditor),
+  };
+}
+
+/** @param {Heading} heading @param {'paragraph' | 'list-item'} kind @param {any} node @param {HTMLTextAreaElement} textarea @param {() => void} closeEditor */
+function openNewFootnoteSheet(heading, kind, node, textarea, closeEditor) {
+  if (S.isBufferReadOnly) {
+    setStatus('Buffer is read-only \u2014 change not applied.');
+    return;
+  }
+  const caret = textarea.selectionStart;
+  const marked = serializeWithCaret(heading, kind, node, textarea.value, caret);
+  const at = marked.indexOf(CARET);
+  const text = marked.replace(CARET, '');
+  if (at < 0 || !canInsertFootnoteAt(text, at)) {
+    setStatus('Put the cursor after the words the footnote belongs to \u2014 not at the start of a line or inside a link.');
+    return;
+  }
+  const options = footnoteOptions();
+  const auto = getFootnoteAutoLabel(footnoteVariables());
+  const proposed = auto === 'nil' ? '' : auto === 'random' ? Math.floor(Math.random() * 0x7fffffff).toString(16) : uniqueFootnoteLabel(text);
+  const existing = new Set(footnoteLabels(text));
+  const field = 'width:100%;box-sizing:border-box;min-height:var(--target);font-size:var(--text-body);margin:4px 0 10px;';
+  /** @type {HTMLInputElement} */ let labelInput;
+  /** @type {HTMLTextAreaElement} */ let noteInput;
+  /** @type {HTMLInputElement} */ let inlineBox;
+  /** @type {HTMLElement} */ let message;
+  /** @type {HTMLElement} */ let noteBlock;
+
+  const refresh = () => {
+    const label = labelFromAnswer(labelInput.value);
+    const bad = label !== null && /[\s[\]:]/.test(label);
+    const known = label !== null && existing.has(label);
+    noteBlock.style.display = known ? 'none' : '';
+    message.textContent = bad
+      ? 'A label has no spaces, brackets or colons.'
+      : known
+        ? `Footnote ${label} already exists \u2014 this adds another reference to it.`
+        : label === null
+          ? 'No label: the note is written right here in the text.'
+          : '';
+    return !bad;
+  };
+
+  const sheet = openFormSheet({
+    title: 'New footnote',
+    submitLabel: 'Insert',
+    build: (panel) => {
+      const labelCaption = document.createElement('label');
+      labelCaption.textContent = 'Label';
+      labelCaption.style.cssText = 'display:block;margin-top:var(--space-2);font-size:13px;opacity:0.75;';
+      labelInput = document.createElement('input');
+      labelInput.type = 'text';
+      labelInput.value = proposed;
+      labelInput.placeholder = 'Leave empty for an unlabelled note';
+      labelInput.setAttribute('autocapitalize', 'off');
+      labelInput.setAttribute('autocomplete', 'off');
+      labelInput.spellcheck = false;
+      labelInput.style.cssText = field;
+      labelInput.addEventListener('input', refresh);
+      labelInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          sheet.submit();
+        }
+      });
+      labelCaption.appendChild(labelInput);
+
+      noteBlock = document.createElement('div');
+      const noteCaption = document.createElement('label');
+      noteCaption.textContent = 'Note';
+      noteCaption.style.cssText = 'display:block;font-size:13px;opacity:0.75;';
+      noteInput = document.createElement('textarea');
+      noteInput.rows = 3;
+      noteInput.placeholder = 'The text of the note';
+      noteInput.style.cssText = field + 'resize:vertical;min-height:calc(var(--target) * 2);';
+      noteInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          sheet.submit();
+        }
+      });
+      noteCaption.appendChild(noteInput);
+      const inlineRow = document.createElement('label');
+      inlineRow.style.cssText = 'display:flex;align-items:center;gap:12px;min-height:var(--target);font-size:var(--text-body);cursor:pointer;';
+      inlineBox = document.createElement('input');
+      inlineBox.type = 'checkbox';
+      inlineBox.checked = options.defineInline;
+      inlineBox.style.cssText = 'width:22px;height:22px;flex-shrink:0;';
+      const inlineText = document.createElement('span');
+      inlineText.textContent = 'Write it inline, in the text';
+      inlineRow.append(inlineBox, inlineText);
+      noteBlock.append(noteCaption, inlineRow);
+
+      message = document.createElement('div');
+      message.setAttribute('role', 'status');
+      message.style.cssText = 'font-size:13px;min-height:1.3em;margin-top:2px;opacity:0.85;';
+      panel.append(labelCaption, noteBlock, message);
+      refresh();
+      setTimeout(() => (labelInput.value === '' || auto === 'nil' ? labelInput : noteInput).focus(), 0);
+    },
+    onSubmit: () => {
+      if (!refresh()) return false;
+      const label = labelFromAnswer(labelInput.value);
+      const known = label !== null && existing.has(label);
+      const note = known ? '' : noteInput.value.trim().replace(/\n\s*\n+/g, '\n');
+      const inline = label === null || inlineBox.checked;
+      if (!known && inline && !bracketsPaired(note)) {
+        message.textContent = 'Square brackets in an inline note must come in pairs.';
+        return false;
+      }
+      const result = insertFootnote(text, at, label, { ...options, defineInline: inline });
+      if (!result) {
+        message.textContent = 'A footnote cannot go here.';
+        return false;
+      }
+      const out = result.existing || !note ? result.text : result.text.slice(0, result.cursor) + note + result.text.slice(result.cursor);
+      closeEditor();
+      S.editingParagraph = null;
+      S.editingListItem = null;
+      replaceKeepingNarrowing(out, 'Inserted footnote');
+      render();
+      showUndoToast(label === null ? 'Footnote added' : result.existing ? `Reference to footnote ${label} added` : `Footnote ${label} added`, note ? note.slice(0, 80) : undefined);
+    },
+  });
+}
+
+/** The text of the note that begins at `begin` (inline: between the brackets; a definition: its first paragraph).
+ * @param {string} text @param {number} begin @param {string} label */
+function noteText(text, begin, label) {
+  const open = `[fn:${label}`;
+  if (text.startsWith(open + ':', begin)) {
+    let depth = 0;
+    for (let i = begin; i < text.length; i++) {
+      if (text[i] === '[') depth++;
+      else if (text[i] === ']' && --depth === 0) return text.slice(begin + open.length + 1, i).trim();
+    }
+  }
+  const start = begin + open.length + 1;
+  const stop = /\n[ \t]*\n|\n\[fn:|\n\*+ /.exec(text.slice(start));
+  return text.slice(start, stop ? start + stop.index : undefined).trim();
+}
+
+/** The sheet of a footnote reference in the outline: its note, and what can be done with it.
+ * @param {string} label */
+export function openFootnoteSheet(label) {
+  if (!S.state.doc) return;
+  hideUndoToast(); // it sits above sheets
+  const text = serializeOrg(S.state.doc);
+  const found = findFootnoteDefinition(text, label);
+  const def = /** @type {any} */ (findOutlineDefinition(S.state.doc, label));
+  const note = found ? noteText(text, found.begin, label) : '';
+  const writable = !S.isBufferReadOnly;
+  /** @type {import('./bottom-sheet.js').SheetAction[]} */
+  const actions = [];
+  if (!found) {
+    actions.push({
+      label: 'Create the note',
+      hint: 'Adds an empty definition in the footnote section',
+      disabled: !writable,
+      onClick: () => {
+        const made = createFootnoteDefinition(serializeOrg(S.state.doc), label, footnoteOptions());
+        replaceKeepingNarrowing(made.text, 'Created footnote definition');
+        render();
+        const created = /** @type {any} */ (findOutlineDefinition(S.state.doc, label));
+        if (created) editDefinitionNode(created);
+      },
+    });
+  } else {
+    actions.push({ label: 'Edit note', disabled: !writable || !def, onClick: () => def && editDefinitionNode(def) });
+    actions.push({
+      label: 'Go to the note',
+      disabled: !def,
+      onClick: () => def && navigateToHeading(def.heading, { revealOwnBody: true, targetNode: def.node }),
+    });
+  }
+  actions.push({
+    label: 'Delete footnote',
+    hint: 'Removes the note and every reference to it',
+    danger: true,
+    disabled: !writable,
+    onClick: () => {
+      const result = deleteFootnote(serializeOrg(S.state.doc), label, footnoteOptions());
+      if (result.references === 0 && result.definitions === 0) {
+        setStatus(`There is no footnote "${label}".`);
+        return;
+      }
+      replaceKeepingNarrowing(result.text, 'Deleted footnote');
+      render();
+      showUndoToast(`Footnote ${label} deleted`, `${result.references} reference${result.references === 1 ? '' : 's'}, ${result.definitions} note${result.definitions === 1 ? '' : 's'}`);
+    },
+  });
+  openActionSheet({ title: `Footnote ${label}`, subtitle: found ? (note.length > 240 ? note.slice(0, 237) + '\u2026' : note || '(empty note)') : 'This footnote has no note yet.', actions });
+}
+
+/** Opens the editor of the paragraph or list item that holds a footnote's note.
+ * @param {{ heading: any, kind: string, node: any }} def */
+function editDefinitionNode(def) {
+  S.pendingCursorPosition = 'end';
+  if (def.node.type === 'paragraph') {
+    S.editingParagraph = { heading: def.heading, paragraph: def.node };
+    render();
+    openParagraphEditor(def.heading, def.node);
+  } else if (def.node.type === 'list-item' || def.node.text !== undefined) {
+    S.editingListItem = { heading: def.heading, item: def.node };
+    render();
+    openListItemEditor(def.heading, def.node);
+  } else {
+    setStatus('This note is inside a table cell \u2014 edit it there.');
+  }
+}
+
+/** With a paragraph or list item selected in the outline: opens its editor and the New footnote sheet at its end.
+ * @returns {boolean} */
+function startFootnoteAtFocusedRow() {
+  const row = S.keyboardFocusedBodyRow;
+  if (!row || (row.rowType !== 'paragraph' && row.rowType !== 'list-item') || S.isBufferReadOnly) return false;
+  S.pendingCursorPosition = 'end';
+  enterInsertModeAtCurrentLine();
+  const button = /** @type {HTMLElement | null} */ (document.querySelector('[data-editor-tool="footnote"]'));
+  if (!button) return false;
+  button.click();
+  return true;
 }
 
 /** org-footnote-new: a reference at the cursor and, unless it is anonymous, inline or to an existing note, the start of its
@@ -110,7 +405,7 @@ export async function insertFootnoteCommand() {
   const editor = textEditor();
   if (!S.state.doc) return;
   if (!editor) {
-    setStatus('Insert footnote: open Text view and put the cursor where the footnote goes.');
+    if (!startFootnoteAtFocusedRow()) setStatus('Insert footnote: tap the paragraph, choose Edit text, put the cursor where it goes and tap Footnote.');
     return;
   }
   if (S.isBufferReadOnly || editor.readOnly) {
@@ -164,6 +459,7 @@ export async function footnoteActionCommand() {
   const editor = textEditor();
   if (!S.state.doc) return;
   if (!editor || S.narrowedTextModeRange) {
+    if (!editor && startFootnoteAtFocusedRow()) return;
     await footnoteMenu();
     return;
   }

@@ -17,6 +17,7 @@ import { openFileLink } from './documents-io.js';
 import { setStatus } from './editing.js';
 import { openIdLink } from './id-links.js';
 import { activeDiskAdapter } from './external-sync.js';
+import { openFootnoteSheet } from './footnotes-ui.js';
 import { navigateToHeading } from './navigation.js';
 import { imagePlaceholder, renderLatexNode } from './render-helpers.js';
 import { render } from './render.js';
@@ -305,6 +306,14 @@ export function renderFootnoteRefNode(node, linkContext = /** @type {any} */ (nu
   if (!result) {
     sup.style.color = 'var(--text-muted, #888)';
     sup.title = 'No definition found for footnote "' + node.label + '"';
+    if (!linkContext) {
+      sup.style.cursor = 'pointer';
+      sup.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openFootnoteSheet(node.label);
+      };
+    }
     return sup;
   }
   sup.style.color = 'var(--accent)';
@@ -316,7 +325,7 @@ export function renderFootnoteRefNode(node, linkContext = /** @type {any} */ (nu
       if (linkContext.onFootnoteRefClick) linkContext.onFootnoteRefClick(result);
       else linkContext.onHeadingLinkClick(result.heading);
     } else {
-      navigateToHeading(result.heading, { revealOwnBody: true, targetNode: result.node });
+      openFootnoteSheet(node.label);
     }
   };
   return sup;

@@ -436,8 +436,10 @@ export function openHeadingTextEditor(heading) {
   overlay.id = 'heading-text-edit-popup';
 }
 
-/** @param {{ label?: any, value?: any, defaultValue?: any, onSave?: any, onReset?: any, onCancel?: any, resetInPlace?: boolean, placeholder?: any, choices?: any }} options */
-export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset, onCancel, resetInPlace, placeholder, choices }) {
+/** `tools` are extra buttons at the left of the button row (Footnote, in the paragraph editor); each is given the textarea and a
+ * `close` that closes the popup without calling onCancel or onSave.
+ * @param {{ label?: any, value?: any, defaultValue?: any, onSave?: any, onReset?: any, onCancel?: any, resetInPlace?: boolean, placeholder?: any, choices?: any, tools?: { text: string, title?: string, id?: string, onClick: (textarea: HTMLTextAreaElement, close: () => void) => void }[] }} options */
+export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset, onCancel, resetInPlace, placeholder, choices, tools }) {
   const overlay = document.createElement('div');
   overlay.className = 'ui-overlay';
   overlay.style.overflow = 'hidden'; // the modal itself scrolls (see textarea below); the backdrop never should
@@ -524,6 +526,7 @@ export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset
     // (which also checks textFieldPopupOpen and steps aside) -- same
     // belt-and-suspenders reasoning as confirmDialog's own onKeyDown.
     if (e.key === 'Escape') {
+      if (document.querySelector('[data-bottom-sheet]')) return; // a sheet opened from a tool closes first
       e.preventDefault();
       e.stopPropagation();
       if (onCancel) onCancel();
@@ -531,6 +534,18 @@ export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset
     }
   }
   document.addEventListener('keydown', onKeyDown, true);
+
+  if (tools && tools.length) {
+    const toolBox = document.createElement('div');
+    toolBox.style.cssText = 'display:flex;gap:8px;margin-right:auto;';
+    for (const tool of tools) {
+      const btn = menuButton(tool.text, () => tool.onClick(textarea, close));
+      if (tool.title) btn.title = tool.title;
+      if (tool.id) btn.setAttribute('data-editor-tool', tool.id);
+      toolBox.appendChild(btn);
+    }
+    btnRow.appendChild(toolBox);
+  }
 
   btnRow.appendChild(
     menuButton('Cancel', () => {

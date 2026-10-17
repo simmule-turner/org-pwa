@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v543 — Footnotes in the outline
+Footnotes no longer need Text view. The paragraph and list-item editors have a Footnote button that opens a sheet (a centred dialog on a laptop) for the label and note, and tapping a reference shows its note with Edit, Go to and Delete. Narrowing is kept after a footnote is added or deleted.
+Verified: browser check of insert, reference sheet and delete at phone and laptop sizes.
 * v542 — The rest of the footnote commands
 Footnote (=C-c C-x f=) now jumps between a reference and its definition and offers the menu Emacs does, and Sort, Renumber (fn:N), Delete and the =org-footnote-auto-adjust= setting join Insert and Normalize, with =#+STARTUP: fnadjust= and the other footnote keywords. Everything follows Emacs 29.3 on 90 recorded cases.
 Verified: browser checks for the footnote commands in Text view, and Normalize from the outline.

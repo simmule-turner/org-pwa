@@ -6180,6 +6180,50 @@ check('footnotes: Insert footnote writes a reference at the cursor in Text view 
   await context.close();
 });
 
+check('footnotes: outline: the Footnote button in the paragraph editor inserts a footnote, tapping a reference opens its sheet, on a phone and a laptop', async () => {
+  for (const [width, height, laptop] of [[390, 844, false], [1280, 800, true]]) {
+    const { context, page, errors } = await freshPage();
+    page.setDefaultTimeout(4000);
+    await page.setViewportSize({ width, height });
+    await newDocument(page, '* One\nSome text here.\n');
+    const text = () => page.evaluate(async () => {
+      const { S } = await import('/src-browser/app-state.js');
+      const { serializeOrg } = await import('/src/org-parser.js');
+      return serializeOrg(S.state.doc);
+    });
+    await page.click('#outline >> text=Some text here.');
+    await page.click('[aria-label="Edit text"]');
+    await page.waitForSelector('#paragraph-edit-popup textarea', { timeout: 5000 });
+    await page.evaluate(() => { const t = document.querySelector('#paragraph-edit-popup textarea'); t.focus(); t.setSelectionRange(14, 14); });
+    await page.click('[data-editor-tool="footnote"]');
+    await page.waitForSelector('[data-bottom-sheet] input[type=text]', { timeout: 5000 });
+    const placed = await page.evaluate(() => {
+      const r = document.querySelector('[data-bottom-sheet] [role=dialog]').getBoundingClientRect();
+      return { label: document.querySelector('[data-bottom-sheet] input[type=text]').value, centre: (r.top + r.bottom) / 2, bottom: r.bottom, h: innerHeight };
+    });
+    expect(placed.label === '1', `label proposed: ${placed.label}`);
+    expect(laptop ? Math.abs(placed.centre - placed.h / 2) < 60 : placed.bottom > placed.h - 4, `sheet placement (${laptop ? 'laptop' : 'phone'}): ${JSON.stringify(placed)}`);
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('#paragraph-edit-popup textarea', { timeout: 3000 });
+    expect((await text()) === '* One\nSome text here.\n', 'Escape closed only the sheet and changed nothing');
+    await page.click('[data-editor-tool="footnote"]');
+    await page.waitForSelector('[data-bottom-sheet] textarea', { timeout: 5000 });
+    await page.fill('[data-bottom-sheet] textarea', 'The note.');
+    await page.click('[data-bottom-sheet] button:has-text("Insert")');
+    await page.waitForSelector('#undoToast', { timeout: 5000 });
+    expect((await text()) === '* One\nSome text here[fn:1].\n\n* Footnotes\n\n[fn:1] The note.\n', `inserted: ${JSON.stringify(await text())}`);
+    await page.click('#outline sup:has-text("[1]")');
+    await page.waitForSelector('[data-bottom-sheet]', { timeout: 5000 });
+    const sub = await page.evaluate(() => document.querySelector('[data-bottom-sheet]').innerText);
+    expect(/Footnote 1/.test(sub) && /The note\./.test(sub) && /Edit note/.test(sub) && /Delete footnote/.test(sub), `reference sheet: ${sub}`);
+    await page.click('[data-bottom-sheet] button:has-text("Delete footnote")');
+    await page.waitForFunction(() => !document.querySelector('[data-bottom-sheet]'), null, { timeout: 5000 });
+    expect((await text()) === '* One\nSome text here.\n\n* Footnotes\n', `deleted: ${JSON.stringify(await text())}`);
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+});
+
 check('id: links: a local file opened before is found again by its ID after its tab is closed', async () => {
   const { context, page, errors } = await freshPage();
   await page.setViewportSize({ width: 412, height: 900 });

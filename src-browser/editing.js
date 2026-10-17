@@ -3,6 +3,7 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: editing.
 import { editListItemText, editParagraphText } from '../src/body-edit.js';
+import { footnoteEditorTool } from './footnotes-ui.js';
 import { saveDocument } from '../src/document-store.js';
 import { applyStartupVisibility } from '../src/fold-state.js';
 import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
@@ -84,6 +85,7 @@ export function openParagraphEditor(heading, paragraph) {
     label: 'Edit paragraph',
     value: originalText,
     resetInPlace: true,
+    tools: [footnoteEditorTool(heading, 'paragraph', paragraph)],
     onCancel: () => {
       S.editingParagraph = null;
       render();
@@ -109,6 +111,7 @@ export function openListItemEditor(heading, item) {
     label: 'Edit list item',
     value: originalText,
     resetInPlace: true,
+    tools: [footnoteEditorTool(heading, 'list-item', item)],
     onCancel: () => {
       S.editingListItem = null;
       render();

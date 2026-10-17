@@ -331,6 +331,8 @@ Table cells render inline markup too. Tap a cell to see and edit its raw text, a
 :CUSTOM_ID: footnotes
 :END:
 
+In the outline, open a paragraph or list item with *Edit text*, put the cursor after the words the note belongs to and tap *Footnote*. A sheet (a dialog on a large screen) asks for the label, already the next free number, and the note, with a switch to write it inline; *Insert* adds the reference and the note under ~* Footnotes~, and Undo takes it back. Tap a reference to see its note and *Edit note*, *Go to the note* or *Delete footnote*; a reference with no note offers *Create the note*. With a paragraph selected from the keyboard, the *Footnote* command opens that paragraph's sheet.
+
 In Text view, *Footnote* (~org-footnote-action~, ~C-c C-x f~, palette) does the right thing at the cursor: on a reference it jumps to the definition (offering to create one if there is none), on a definition's label it jumps back to the reference, and anywhere else it adds a new footnote. Where a footnote can't go (start of a line, source blocks, comments, links, inside another reference) it offers the one-key menu: ~s~ort, ~r~enumber, ~S~ both, ~n~ormalize, ~d~elete.
 
 - *Insert footnote* (~org-footnote-new~): a reference at the cursor and the start of its definition under ~* Footnotes~ at the end of the file, with the cursor there to write it. The label is the next unused number; an existing label adds another reference to it, and an empty one makes an anonymous ~[fn::]~.
@@ -338,7 +340,7 @@ In Text view, *Footnote* (~org-footnote-action~, ~C-c C-x f~, palette) does the 
 - *Sort footnotes* (~org-footnote-sort~) puts the definitions in the order of their references. *Renumber footnotes* (~org-footnote-renumber-fn:N~) numbers ~fn:1~, ~fn:2~… by first reference.
 - *Delete footnote* (~org-footnote-delete~): the one at the cursor, or the label you give, with every definition and reference.
 
-Sort, renumber, normalize and delete work from any view, and Undo reverses them. Settings: ~org-footnote-section~ (the heading; ~nil~ keeps each definition at the end of its own section), ~org-footnote-auto-label~, ~org-footnote-define-inline~ and ~org-footnote-auto-adjust~ (renumber and/or sort after adding or deleting). ~#+STARTUP:~ accepts ~fninline~, ~fnlocal~, ~fnauto~, ~fnprompt~, ~fnconfirm~, ~fnplain~, ~fnadjust~ and ~nofnadjust~.
+Insert, sort, renumber, normalize and delete work from any view, and Undo reverses them. Settings: ~org-footnote-section~ (the heading; ~nil~ keeps each definition at the end of its own section), ~org-footnote-auto-label~, ~org-footnote-define-inline~ and ~org-footnote-auto-adjust~ (renumber and/or sort after adding or deleting). ~#+STARTUP:~ accepts ~fninline~, ~fnlocal~, ~fnauto~, ~fnprompt~, ~fnconfirm~, ~fnplain~, ~fnadjust~ and ~nofnadjust~.
 
 *** LaTeX math fragments
 :PROPERTIES:
@@ -2017,7 +2019,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Tables* (see [[#table-formulas][Table formulas]]): ~#+TBLFM:~ covers arithmetic, conditionals, named constants, scalar and aggregate functions, date and time arithmetic and formatting, and unit conversion. Complex numbers and basic vectors and matrices are covered; not reproduced: the rest of Emacs Calc (symbolic algebra), named-field references, and recalculation on every keystroke.
 
-*Footnotes* (see [[#footnotes][Footnote commands]]): the commands that need a cursor (Footnote, Insert footnote) work in Text view, and there is no ~org-ref~ integration.
+*Footnotes* (see [[#footnotes][Footnote commands]]): in the outline a footnote goes in through the Footnote button of the paragraph editor, and there is no ~org-ref~ integration.
 
 *Clocking* (see [[#clocking][Clocking]]): no custom ~org-duration-units~, no ~Effort_ALL+~, and no clock-in reminder beyond the modeline's over-estimate marker.
 
