@@ -30,7 +30,7 @@
  * their listed order.
  */
 
-/** @param {string} text */
+/** @param {string | null | undefined} text */
 function normalize(text) {
   return String(text == null ? '' : text)
     .toLowerCase()
@@ -50,7 +50,7 @@ function startsAWord(haystack, token) {
 /**
  * Lower is better; null when `token` matches nothing in the command.
  * @param {string} token
- * @param {any} [fields]
+ * @param {{ label: string, orgName: string, group: string, keywords: string[] }} fields
  */
 function scoreToken(token, fields) {
   /** @type {any} */ let best = null;
@@ -77,7 +77,7 @@ function scoreToken(token, fields) {
   return best;
 }
 
-/** @param {any} [command] */
+/** @param {import('./types.js').PaletteCommand} command */
 function fieldsOf(command) {
   return {
     label: normalize(command.label),
@@ -91,7 +91,7 @@ function fieldsOf(command) {
  * Returns the commands matching `query`, best first, as
  * `{ command, recent }` (`recent` is true for a command in `recentIds`).
  * `recentIds` is most-recent-first.
- * @param {any} commands
+ * @param {import('./types.js').PaletteCommand[]} commands
  * @param {string} query
  */
 function searchCommands(commands, query, /** @type {any} */ { recentIds = [] } = {}) {
@@ -100,17 +100,17 @@ function searchCommands(commands, query, /** @type {any} */ { recentIds = [] } =
     .map(normalize)
     .filter(Boolean);
   const recentRank = new Map(recentIds.map((/** @type {any} */ id, /** @type {any} */ i) => [id, i]));
-  /** @param {any} [command] */
+  /** @param {import('./types.js').PaletteCommand} command */
   const rankOf = (command) => (recentRank.get(command.id) ?? Infinity);
 
   if (tokens.length === 0) {
-    const recent = commands.filter((/** @type {any} */ c) => recentRank.has(c.id)).sort((/** @type {any} */ a, /** @type {any} */ b) => rankOf(a) - rankOf(b));
-    const rest = commands.filter((/** @type {any} */ c) => !recentRank.has(c.id));
-    return [...recent.map((/** @type {any} */ command) => ({ command, recent: true })), ...rest.map((/** @type {any} */ command) => ({ command, recent: false }))];
+    const recent = commands.filter((c) => recentRank.has(c.id)).sort((a, b) => rankOf(a) - rankOf(b));
+    const rest = commands.filter((c) => !recentRank.has(c.id));
+    return [...recent.map((command) => ({ command, recent: true })), ...rest.map((command) => ({ command, recent: false }))];
   }
 
   /** @type {any[]} */ const scored = [];
-  commands.forEach((/** @type {any} */ command, /** @type {number} */ index) => {
+  commands.forEach((command, /** @type {number} */ index) => {
     const fields = fieldsOf(command);
     let total = 0;
     for (const token of tokens) {
@@ -126,11 +126,11 @@ function searchCommands(commands, query, /** @type {any} */ { recentIds = [] } =
 
 /**
  * `recentIds` with `id` moved to the front, deduplicated and capped.
- * @param {any} recentIds
+ * @param {string[]} recentIds
  * @param {string} id
  */
 function pushRecent(recentIds, id, max = 8) {
-  return [id, ...recentIds.filter((/** @type {any} */ existing) => existing !== id)].slice(0, max);
+  return [id, ...recentIds.filter((existing) => existing !== id)].slice(0, max);
 }
 
 /**

@@ -83,7 +83,7 @@ export function scrollFocusedHeadingIntoView() {
 
 /** @param {Table} table */
 export function plotCacheKey(table) {
-  return JSON.stringify({ plot: table.plot, rows: table.rows.filter((/** @type {any} */ r) => r.type === 'row').map((/** @type {any} */ r) => r.cells) });
+  return JSON.stringify({ plot: table.plot, rows: table.rows.filter((r) => r.type === 'row').map((r) => r.cells) });
 }
 
 /** Returns the rendered SVG for `table`'s own current #+PLOT: line and
@@ -98,7 +98,7 @@ export function getOrRenderPlotSvg(table) {
   const key = plotCacheKey(table);
   const cached = plotSvgCache.get(key);
   if (cached !== undefined) return cached;
-  const svg = renderPlotSvg(table, parsePlotOptions(table.plot));
+  const svg = renderPlotSvg(table, parsePlotOptions(/** @type {string} */ (table.plot)));
   if (plotSvgCache.size >= PLOT_SVG_CACHE_LIMIT) {
     plotSvgCache.delete(plotSvgCache.keys().next().value);
   }

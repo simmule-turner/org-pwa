@@ -15,7 +15,7 @@ import { CAPTURE_TYPES } from './constants.js';
  * @param {Table} table
  *  happen, but a defined fallback beats an out-of-range index). */
 export function firstDataRowIndex(table) {
-  const idx = table.rows.findIndex((/** @type {any} */ r) => r.type !== 'rule');
+  const idx = table.rows.findIndex((r) => r.type !== 'rule');
   return idx === -1 ? 0 : idx;
 }
 
@@ -92,7 +92,7 @@ export function expandScopeWithAncestors(doc, matchedHeadings) {
 
 /** @param {Table} table */
 export function tableHasContent(table) {
-  return table.rows.some((/** @type {any} */ r) => r.type === 'row' && r.cells.some((/** @type {any} */ c) => c.trim() !== ''));
+  return table.rows.some((r) => r.type === 'row' && r.cells.some((c) => c.trim() !== ''));
 }
 
 /** @param {any} [paragraph] */
@@ -179,7 +179,7 @@ export function stripCommaEscapeApp(line) {
 /** Collects every heading in `doc`, in document order, regardless of
  *  fold state -- a heading buried under several collapsed ancestors
  *  must still be pickable as an export scope, unlike keyboard
- * @param {Heading[]} headings
+ * @param {{ heading: Heading }[]} headings
  *  navigation (which only moves between currently-visible rows). */
 export function vcardBodyHeadingsIn(headings) {
   const found = [];
@@ -192,7 +192,7 @@ export function vcardBodyHeadingsIn(headings) {
 
 /**
  * Like vcardBodyHeadingsIn, for iCalendar text: the body text of each heading whose own body starts with BEGIN:VCALENDAR.
- * @param {Heading[]} headings
+ * @param {{ heading: Heading }[]} headings
  */
 export function icalendarBodyHeadingsIn(headings) {
   const found = [];

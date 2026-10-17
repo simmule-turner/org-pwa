@@ -211,7 +211,7 @@ export function buildPropertiesFieldGroup(heading) {
   const docsForCompletion = completionDocs();
   function refreshKeyList() {
     keyList.innerHTML = '';
-    const current = currentProps.map((/** @type {any} */ p) => p.key).filter(Boolean);
+    const current = currentProps.map((p) => p.key).filter(Boolean);
     for (const key of suggestPropertyKeys({ docs: docsForCompletion, applied: current })) {
       const option = document.createElement('option');
       option.value = key;
@@ -223,7 +223,7 @@ export function buildPropertiesFieldGroup(heading) {
     refreshKeyList();
     habitBox.checked = currentProps.some((p) => isHabitRow(p) && String(p.value).trim() === 'habit');
     rowsContainer.innerHTML = '';
-    currentProps.forEach((/** @type {any} */ prop, /** @type {number} */ idx) => {
+    currentProps.forEach((prop, /** @type {number} */ idx) => {
       const row = document.createElement('div');
       row.style.display = 'flex';
       row.style.gap = '6px';

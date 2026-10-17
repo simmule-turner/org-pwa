@@ -584,7 +584,7 @@ export async function revealAttachmentFolder(heading) {
  */
 export async function attachOpenDocument(heading) {
   if (!(await requireAttachmentStorage())) return;
-  const documents = S.documentSessions.map((/** @type {any} */ session) => (session.tabId === S.activeTabId ? S.state : session.state));
+  const documents = S.documentSessions.map((session) => (session.tabId === S.activeTabId ? S.state : session.state));
   if (documents.length === 0) documents.push(S.state);
   /** @param {any} [state] */
   const attach = (state) => {
@@ -597,7 +597,7 @@ export async function attachOpenDocument(heading) {
   }
   openButtonChoiceModal({
     label: 'Attach which open document?',
-    buttons: [...documents.map((/** @type {any} */ state) => ({ text: String(state.documentId || 'document').split('/').pop(), onClick: () => attach(state) })), { text: 'Cancel', onClick: () => {} }],
+    buttons: [...documents.map((state) => ({ text: String(state.documentId || 'document').split('/').pop(), onClick: () => attach(state) })), { text: 'Cancel', onClick: () => {} }],
   });
 }
 

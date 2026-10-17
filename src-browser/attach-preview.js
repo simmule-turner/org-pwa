@@ -52,7 +52,7 @@ export function showAttachmentPreview(filename, mime, bytes) {
   } else {
     content = document.createElement(kind === 'image' ? 'img' : kind);
     content.src = url;
-    if (kind !== 'image') /** @type {any} */ (content).controls = true;
+    if (kind !== 'image') (content).controls = true;
     content.style.cssText = 'display:block;max-width:100%;max-height:70vh;margin:0 auto;';
     content.onerror = () => {
       const note = document.createElement('div');

@@ -187,10 +187,10 @@ const BODY_LIMIT = 400;
  *  a person to read). */
 export function eventDetails(heading) {
   /** @param {any} [k] */
-  const locationKey = (heading.propertyOrder || []).find((/** @type {any} */ k) => k.toLowerCase() === 'location');
+  const locationKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === 'location');
   const location = locationKey ? String(heading.properties[locationKey] || '').trim() : '';
   /** @param {string} line */
-  let body = (heading.bodyLines || []).filter((/** @type {any} */ line) => !line.trim().startsWith('%%(')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  let body = (heading.bodyLines || []).filter((line) => !line.trim().startsWith('%%(')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
   if (body.length > BODY_LIMIT) body = body.slice(0, BODY_LIMIT - 1).trimEnd() + '\u2026';
   return { location: location || null, categories: (heading.tags || []).filter(Boolean), body: body || null };
 }
@@ -214,7 +214,7 @@ export function titleWithoutTimestamps(title) {
  * already uses for its own `today` option.
  * @param {any} [docs]
  */
-export function exportToIcalendar(docs, opts = /** @type {any} */ ({})) {
+export function exportToIcalendar(docs, opts = ({})) {
   const events = collectCalendarEvents(docs, opts);
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//org-pwa//org-pwa//EN', 'CALSCALE:GREGORIAN', ...events.flatMap((e) => e.lines), 'END:VCALENDAR'];
   return lines.join('\r\n') + '\r\n';

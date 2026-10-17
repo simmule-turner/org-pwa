@@ -83,21 +83,21 @@ function parseExportOptions(doc) {
  *  used), trimmed, or null if the document has none at all. */
 function getDocTitle(doc) {
   /** @param {any} [k] */
-  const kw = (doc.keywords || []).find((/** @type {any} */ k) => k.key.toUpperCase() === 'TITLE');
+  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'TITLE');
   return kw ? kw.value.trim() : null;
 }
 
 /** @param {Doc} doc */
 function getDocAuthor(doc) {
   /** @param {any} [k] */
-  const kw = (doc.keywords || []).find((/** @type {any} */ k) => k.key.toUpperCase() === 'AUTHOR');
+  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'AUTHOR');
   return kw ? kw.value.trim() : null;
 }
 
 /** @param {Doc} doc */
 function getDocDate(doc) {
   /** @param {any} [k] */
-  const kw = (doc.keywords || []).find((/** @type {any} */ k) => k.key.toUpperCase() === 'DATE');
+  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'DATE');
   return kw ? kw.value.trim() : null;
 }
 
@@ -111,7 +111,7 @@ function getDocDate(doc) {
  * @param {Doc} doc
  *  real org itself never reads this keyword for any other backend. */
 function getHtmlHead(doc) {
-  const lines = (doc.keywords || []).filter((/** @type {any} */ k) => k.key.toUpperCase() === 'HTML_HEAD').map((/** @type {any} */ k) => k.value);
+  const lines = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'HTML_HEAD').map((k) => k.value);
   return lines.length > 0 ? lines.join('\n') : null;
 }
 

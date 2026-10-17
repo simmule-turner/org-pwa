@@ -41,7 +41,7 @@ export function recalculateOneTable(heading, table) {
     }
     table.rows = newRows;
     commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
-    const hasError = newRows.some((/** @type {any} */ row) => (row.cells || []).includes('#ERROR'));
+    const hasError = newRows.some((row) => (row.cells || []).includes('#ERROR'));
     return { result: 'changed', hasError };
   } catch (err) {
     return { result: 'error', message: err.message };

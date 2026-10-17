@@ -74,7 +74,7 @@ export function requestApptScan() {
 }
 
 export async function scanAppointments(now = new Date()) {
-  const settings = S.apptSettings;
+  const settings = /** @type {import('../src/types.js').ApptSettings} */ (S.apptSettings);
   if (!settings || !settings['appt-activate'] || runtime.scanning) return;
   runtime.scanning = true;
   try {
@@ -87,7 +87,7 @@ export async function scanAppointments(now = new Date()) {
     const all = upcomingAppointments(docs, now, { ...options, hours: horizon });
     runtime.appointments = all;
     await absorbDismissals(all);
-    const live = new Set(all.map((/** @type {any} */ a) => a.key));
+    const live = new Set(all.map((a) => a.key));
     runtime.silenced = new Set([...runtime.silenced].filter((key) => live.has(key))); // the memory only needs to cover what could still be announced
     runtime.lastScan = now.getTime();
     runtime.fired = pruneFired(runtime.fired, all, now);
@@ -105,7 +105,7 @@ export async function scanAppointments(now = new Date()) {
 async function holdPlatformNotifications(appointments, now) {
   const n = platform.notifications;
   if (!n.scheduled) return;
-  const settings = S.apptSettings;
+  const settings = /** @type {import('../src/types.js').ApptSettings} */ (S.apptSettings);
   try {
     if (settings['appt-display-format'] !== 'window' || (await n.permission()) !== 'granted') {
       runtime.held = new Set();
@@ -123,7 +123,7 @@ async function holdPlatformNotifications(appointments, now) {
 /** The once-in-a-while check (the app's existing 30-second timer calls it): rescan if it is time, announce what has come due, and
  *  keep the countdown. */
 export function apptTick(now = new Date()) {
-  const settings = S.apptSettings;
+  const settings = /** @type {import('../src/types.js').ApptSettings} */ (S.apptSettings);
   if (!settings || !settings['appt-activate']) return;
   if (now.getTime() - runtime.lastScan >= settings['appt-agenda-scan-interval'] * 60000) requestApptScan();
   tick(now);
@@ -131,10 +131,10 @@ export function apptTick(now = new Date()) {
 
 /** @param {Date} now */
 function tick(now) {
-  const settings = S.apptSettings;
+  const settings = /** @type {import('../src/types.js').ApptSettings} */ (S.apptSettings);
   if (!settings['appt-activate']) return;
   const warning = settings['appt-message-warning-time'];
-  for (const { appt, offset, minutes } of dueReminders(runtime.appointments.filter((/** @type {any} */ a) => !runtime.silenced.has(a.key)), now, warning, runtime.fired, settings['appt-display-interval'])) {
+  for (const { appt, offset, minutes } of dueReminders(runtime.appointments.filter((a) => !runtime.silenced.has(a.key)), now, warning, runtime.fired, settings['appt-display-interval'])) {
     runtime.fired.add(reminderSlot(appt, offset));
     announce(appt, offset, minutes);
   }
@@ -154,7 +154,7 @@ function refreshModeLine() {
  *  only. */
 function announce(appt, offset, minutes) {
   const text = reminderText(appt, minutes);
-  const settings = S.apptSettings;
+  const settings = /** @type {import('../src/types.js').ApptSettings} */ (S.apptSettings);
   if (settings['appt-display-format'] === 'echo') {
     setStatus(text);
     return;

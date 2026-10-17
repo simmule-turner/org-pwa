@@ -90,7 +90,7 @@ export function attachLongPress(el, callback, duration = 600) {
     }
   };
 
-  el.addEventListener('pointerdown', (/** @type {any} */ e) => {
+  el.addEventListener('pointerdown', (e) => {
     if (e.button !== undefined && e.button !== 0) return; // only the primary button/touch -- not right-click etc.
     startX = e.clientX;
     startY = e.clientY;
@@ -100,7 +100,7 @@ export function attachLongPress(el, callback, duration = 600) {
       callback(e);
     }, duration);
   });
-  el.addEventListener('pointermove', (/** @type {any} */ e) => {
+  el.addEventListener('pointermove', (e) => {
     if (!timer) return;
     if (Math.abs(e.clientX - startX) > MOVE_THRESHOLD || Math.abs(e.clientY - startY) > MOVE_THRESHOLD) cancel();
   });

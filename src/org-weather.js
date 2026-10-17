@@ -172,7 +172,7 @@ function formatWeatherLine(template, data, temperatureUnit, speedUnit, now = new
   // ever partially collide with them.
   const placeholders = Object.keys(values).sort((a, b) => b.length - a.length);
   const pattern = new RegExp(placeholders.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
-  return template.replace(pattern, (/** @type {any} */ match) => /** @type {any} */ (values)[match]);
+  return template.replace(pattern, (match) => /** @type {any} */ (values)[match]);
 }
 
 const ORG_WEATHER_RE = /^%%\(org-weather\)\s*$/;

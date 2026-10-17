@@ -306,7 +306,7 @@ function findHeadingByOutlinePath(doc, outlinePath) {
   /** @type {any} */
   let found = null;
   for (const title of outlinePath) {
-    found = (level || []).find((/** @type {any} */ h) => h.title === title);
+    found = (level || []).find((h) => h.title === title);
     if (!found) return null;
     level = found.children;
   }

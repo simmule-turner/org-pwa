@@ -14,7 +14,7 @@ const TYPED_NAMES = [
   'level', 'prefix', 'suffix', 'html', 'src', 'dest', 'str', 'string', 'heading', 'headings', 'doc', 'table',
 ];
 // `@param {any}` placeholders left on purpose (callbacks, per-file shapes, mixed meanings). Lower this when you remove some; never raise it.
-const MAX_ANY_PARAMS = 1150;
+const MAX_ANY_PARAMS = 1141;
 
 const found = [];
 let total = 0;
@@ -32,4 +32,12 @@ test('names with a known type are not typed any', () => {
 
 test('the number of @param {any} placeholders does not grow', () => {
   assert.ok(total <= MAX_ANY_PARAMS, `${total} placeholders, limit ${MAX_ANY_PARAMS}`);
+});
+
+test('no file has more `any` annotations than its budget (test/any-budget.json)', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const budget = JSON.parse(fs.readFileSync(path.join(ROOT, 'test/any-budget.json'), 'utf8'));
+  const now = JSON.parse(execFileSync('node', [path.join(ROOT, 'tools/any-report.mjs'), '--json'], { cwd: ROOT, encoding: 'utf8' })).files;
+  const over = Object.entries(now).filter(([f, n]) => n > (budget[f] ?? 0)).map(([f, n]) => `${f}: ${n} > ${budget[f] ?? 0}`);
+  assert.deepEqual(over, [], 'lower the number with tools/any-report.mjs --write-budget when you remove some; never raise it');
 });

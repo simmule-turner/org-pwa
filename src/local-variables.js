@@ -383,9 +383,9 @@ export function findDuplicateAgendaFiles(keys) {
 export function parseAgendaFilesVar(text) {
   const entries = (text || '')
     .split(';')
-    .map((/** @type {any} */ entry) => entry.trim())
+    .map((entry) => entry.trim())
     .filter(Boolean);
-  return entries.filter((/** @type {any} */ entry) => {
+  return entries.filter((entry) => {
     const colonIndex = entry.indexOf(':');
     if (colonIndex === -1) return false;
     const scheme = entry.slice(0, colonIndex);

@@ -48,7 +48,7 @@ export async function archiveHeadingToLocation(heading) {
     label: 'archive',
     historyLabel: 'Archived heading (from another file)',
     allowMissing: true,
-    mutate: (/** @type {any} */ doc) => {
+    mutate: (doc) => {
       insertAtArchiveLocation(doc, clone, headlinePart);
       return true;
     },
@@ -111,7 +111,7 @@ export async function unarchiveHeadingToOriginalLocation(heading) {
     label: 'restore',
     historyLabel: 'Restored (unarchived) heading (from another file)',
     allowMissing: false,
-    mutate: (/** @type {any} */ doc) => {
+    mutate: (doc) => {
       if (olpSegments.length > 0) {
         const target = resolveOlpTarget(doc, olpSegments);
         target.children.push(clone);

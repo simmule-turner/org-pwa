@@ -297,7 +297,7 @@ function effectiveTags(heading, ancestors, useInheritance) {
  */
 function effectivePropertyValue(heading, ancestors, key, useInheritance) {
   /** @param {any} [k] */
-  const ownKey = (heading.propertyOrder || []).find((/** @type {any} */ k) => k.toLowerCase() === key.toLowerCase());
+  const ownKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === key.toLowerCase());
   if (ownKey) return heading.properties[ownKey];
   if (!useInheritance) return null;
   for (let i = ancestors.length - 1; i >= 0; i--) {
@@ -323,7 +323,7 @@ function headingPassesFilters(heading, filters, ancestors, useTagInheritance, us
     let matched;
     if (filter.type === 'tag') {
       const tags = effectiveTags(heading, ancestors, useTagInheritance);
-      matched = filter.values.some((/** @type {any} */ v) => tags.some((/** @type {any} */ t) => t.toLowerCase() === v.toLowerCase()));
+      matched = filter.values.some((/** @type {any} */ v) => tags.some((t) => t.toLowerCase() === v.toLowerCase()));
     } else if (filter.type === 'todo') {
       matched = !!heading.todo && filter.values.some((/** @type {any} */ v) => /** @type {string} */ (heading.todo).toLowerCase() === v.toLowerCase());
     } else if (filter.type === 'priority') {
@@ -394,7 +394,7 @@ function bodyContainsKeyword(bodyNodes, matches) {
  *  searchTextWithinHeading's own walk need updating together. */
 function headingContainsKeyword(heading, matches) {
   if (matches(heading.title)) return true;
-  if ((heading.tags || []).some((/** @type {any} */ t) => matches(t))) return true;
+  if ((heading.tags || []).some((t) => matches(t))) return true;
   if (heading.todo && matches(heading.todo)) return true;
   if (heading.priority && matches(heading.priority)) return true;
   for (const key of heading.propertyOrder || []) {

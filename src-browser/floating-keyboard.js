@@ -166,7 +166,7 @@ export function positionFloatingKeyboard() {
     floatingKeyboard.style.right = SCREEN_MARGIN + 'px';
   }
   syncKeyboardToggle();
-  clearTimeout(S.floatingKeyboardSettleTimer);
+  clearTimeout(/** @type {number | undefined} */ (S.floatingKeyboardSettleTimer));
   S.floatingKeyboardSettleTimer = setTimeout(holdPosition, SETTLE_MS);
 }
 
@@ -174,7 +174,7 @@ export function positionFloatingKeyboard() {
  *  -- the one place that happens, whether the person tapped [g] again, god-mode
  *  ended some other way, or the device keyboard was dismissed. */
 export function closeFloatingKeyboard() {
-  clearTimeout(S.floatingKeyboardSettleTimer);
+  clearTimeout(/** @type {number | undefined} */ (S.floatingKeyboardSettleTimer));
   S.floatingKeyboardSettleTimer = null;
   S.floatingKeyboardOpen = false;
   S.floatingKeyboardShiftArmed = false;
@@ -206,7 +206,7 @@ function styleButton(btn, { armed = false } = {}) {
  * @param {HTMLDivElement} handle
  *  what's behind it can be seen, and a tap on the minimized handle restores it. */
 function wireHandle(handle) {
-  handle.addEventListener('pointerdown', (/** @type {any} */ e) => {
+  handle.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     e.stopPropagation(); // the app's document-level pointerdown clears the status line
     const startX = e.clientX;
@@ -477,7 +477,7 @@ if (godModeKeyboardInput) {
     S.godModeInputFedLength = value.length;
     // clearing mid-composition can make some keyboards re-insert the text, so
     // only start over once the composition has ended
-    if (!/** @type {any} */ (e).isComposing && value.length > 0) resetGodModeKeyboardInput();
+    if (!(e).isComposing && value.length > 0) resetGodModeKeyboardInput();
   });
 
   godModeKeyboardInput.addEventListener('compositionend', () => resetGodModeKeyboardInput());

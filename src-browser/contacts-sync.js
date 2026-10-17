@@ -144,7 +144,7 @@ function reportProblem(message, manual, report = setStatus) {
 /** Asks for a sync soon. Cheap to call from anywhere (a save, coming back to the app): calls close together become one. */
 export function scheduleContactsSync() {
   if (!effectiveContactsConfig() || S.contactsSyncPaused) return;
-  clearTimeout(S.contactsSyncTimer);
+  clearTimeout(/** @type {number | undefined} */ (S.contactsSyncTimer));
   S.contactsSyncTimer = setTimeout(() => {
     syncContactsToAddressBook().catch(() => {});
   }, AUTO_DELAY_MS);

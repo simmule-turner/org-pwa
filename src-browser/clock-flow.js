@@ -68,7 +68,7 @@ export function clockInHeading(heading) {
   if (running && !running.isActive) {
     if (clockOut(running.heading, timestamp, now)) {
       crossTabSwitchedFrom = running.heading;
-      const session = S.documentSessions.find((/** @type {any} */ s) => s.tabId === running.tabId);
+      const session = S.documentSessions.find((s) => s.tabId === running.tabId);
       if (session) {
         session.isDirty = true;
         saveDocument({ documentId: session.state.documentId, doc: session.state.doc, kvAdapter: kv }).catch((err) => setStatus('Save failed: ' + err.message));

@@ -369,7 +369,7 @@ export function renderHistoryPanel(target = S.historyRenderTarget) {
 
   const list = document.createElement('div');
 
-  S.history.entries.forEach((/** @type {any} */ entry, /** @type {number} */ idx) => {
+  S.history.entries.forEach((entry, /** @type {number} */ idx) => {
     const row = document.createElement('div');
     row.className = 'menu-list-item';
     row.style.cursor = 'pointer';

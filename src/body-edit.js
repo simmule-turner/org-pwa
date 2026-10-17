@@ -52,9 +52,9 @@ export function serializeTableRule(columnCount) {
 
 /** @param {Table} table */
 export function serializeTable(table) {
-  const dataRow = table.rows.find((/** @type {any} */ r) => r.type === 'row');
+  const dataRow = table.rows.find(/** @param {import('./types.js').TableRow} r @returns {r is import('./types.js').DataRow} */ (r) => r.type === 'row');
   const columnCount = dataRow ? dataRow.cells.length : 1;
-  const lines = table.rows.map((/** @type {any} */ row) =>
+  const lines = table.rows.map((row) =>
     row.type === 'rule' ? serializeTableRule(columnCount) : serializeTableRow(row.cells)
   );
   if (table.tblfm) lines.push('#+TBLFM: ' + table.tblfm);
@@ -85,7 +85,7 @@ export function serializeTable(table) {
 export function isTableHeaderRow(table, rowIndex) {
   const row = table.rows[rowIndex];
   if (!row || row.type !== 'row') return false;
-  const firstRuleIndex = table.rows.findIndex((/** @type {any} */ r) => r.type === 'rule');
+  const firstRuleIndex = table.rows.findIndex((r) => r.type === 'rule');
   if (firstRuleIndex === -1) return false; // no rule anywhere in the table -- no header at all
   return rowIndex < firstRuleIndex;
 }
@@ -101,7 +101,7 @@ export function isTableHeaderRow(table, rowIndex) {
 export function lastTableInBody(heading) {
   const body = heading.body || [];
   for (let i = body.length - 1; i >= 0; i--) {
-    if (body[i].type === 'table') return body[i];
+    if (body[i].type === 'table') return /** @type {import('./types.js').Table} */ (body[i]);
   }
   return null;
 }
@@ -118,7 +118,7 @@ export function lastTableInBody(heading) {
  * @param {Heading} heading
  *  a valid one. */
 export function allTablesInBody(heading) {
-  return (heading.body || []).filter((/** @type {any} */ node) => node.type === 'table');
+  return (heading.body || []).filter(/** @param {import('./types.js').BodyNode} node @returns {node is import('./types.js').Table} */ (node) => node.type === 'table');
 }
 
 // ---- commit: flush a mutated table/paragraph back to bodyLines ----------
@@ -171,9 +171,9 @@ export function setTableCell(heading, table, rowIndex, colIndex, value) {
  * @param {number} afterRowIndex
  *  very start), with the same column count as the table's existing rows. */
 export function insertTableRow(heading, table, afterRowIndex) {
-  const dataRow = table.rows.find((/** @type {any} */ r) => r.type === 'row');
+  const dataRow = table.rows.find(/** @param {import('./types.js').TableRow} r @returns {r is import('./types.js').DataRow} */ (r) => r.type === 'row');
   const columnCount = dataRow ? dataRow.cells.length : 1;
-  const newRow = { type: 'row', cells: Array(columnCount).fill('') };
+  const newRow = /** @type {import('./types.js').DataRow} */ ({ type: 'row', cells: Array(columnCount).fill('') });
   table.rows.splice(afterRowIndex + 1, 0, newRow);
   commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
 }
@@ -210,7 +210,7 @@ export function insertTableColumn(heading, table, afterColIndex) {
  * @param {number} colIndex
  */
 export function deleteTableColumn(heading, table, colIndex) {
-  const dataRow = table.rows.find((/** @type {any} */ r) => r.type === 'row');
+  const dataRow = table.rows.find(/** @param {import('./types.js').TableRow} r @returns {r is import('./types.js').DataRow} */ (r) => r.type === 'row');
   if (dataRow && dataRow.cells.length <= 1) {
     throw new Error('deleteTableColumn: refusing to delete the last column of a table');
   }
@@ -247,7 +247,7 @@ export function insertTable(heading, { rows = 2, cols = 2, headerRule = true } =
   const toInsert = needsSeparator ? ['', ...lines] : lines;
   commitLines(heading, insertAt, 0, toInsert);
 
-  return heading.body[heading.body.length - 1];
+  return /** @type {Table} */ (heading.body[heading.body.length - 1]);
 }
 
 // ---- list item edits --------------------------------------------------
@@ -306,7 +306,7 @@ export function insertListItem(heading, afterItem, text = '') {
   commitLines(heading, insertAt, 0, [line]);
 
   /** @param {any} [items] */
-  function findByLineIndex(/** @type {any} */ items) {
+  function findByLineIndex(items) {
     for (const item of items) {
       if (item.lineIndex === insertAt) return item;
       for (const nestedList of item.children || []) {
@@ -401,7 +401,7 @@ export function insertParagraphAfter(heading, afterParagraph, text = '') {
   commitLines(heading, insertAt, 0, toInsert);
 
   const newParagraphLineIndex = insertAt + 1;
-  return heading.body.find((/** @type {any} */ n) => n.type === 'paragraph' && n.lineIndex === newParagraphLineIndex) || null;
+  return heading.body.find(/** @param {import('./types.js').BodyNode} n @returns {n is import('./types.js').Paragraph} */ (n) => n.type === 'paragraph' && n.lineIndex === newParagraphLineIndex) || null;
 }
 
 // ---- heading "body text" (everything belonging to the heading) --------

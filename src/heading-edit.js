@@ -80,7 +80,7 @@ export function parseTagsInput(input) {
  * @param {string[]} tags
  *  see parseTagsInput for turning free-form user input into one). */
 export function setHeadingTags(heading, tags) {
-  const cleaned = tags.map((/** @type {any} */ t) => String(t).trim().replace(/:/g, '')).filter(Boolean);
+  const cleaned = tags.map((t) => String(t).trim().replace(/:/g, '')).filter(Boolean);
   heading.tags = cleaned;
   return cleaned;
 }
@@ -283,7 +283,7 @@ export function moveHeadingDown(doc, heading) {
  */
 function inSubtree(heading, node) {
   if (heading === node) return true;
-  return (heading.children || []).some((/** @type {any} */ child) => inSubtree(child, node));
+  return (heading.children || []).some((child) => inSubtree(child, node));
 }
 
 /** How many ancestors of `target` a drop "after target" may climb past: one for each level at which target (then that

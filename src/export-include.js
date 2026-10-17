@@ -234,7 +234,7 @@ async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlev
  * @param {Doc} doc
  *  rebuilding every single heading object just to find that out). */
 function hasAnyInclude(doc) {
-  if ((doc.keywords || []).some((/** @type {any} */ k) => k.key.toUpperCase() === 'INCLUDE')) return true;
+  if ((doc.keywords || []).some((k) => k.key.toUpperCase() === 'INCLUDE')) return true;
   return (function walk(headings) {
     for (const heading of headings || []) {
       if ((heading.bodyLines || []).some((/** @type {string} */ line) => INCLUDE_LINE_RE.test(line))) return true;
@@ -253,7 +253,7 @@ async function expandIncludes(doc, fetchPath, parseOrgFn) {
   if (!hasAnyInclude(doc)) return doc;
 
   /** @param {any} [k] */
-  const includeKeywords = (doc.keywords || []).filter((/** @type {any} */ k) => k.key.toUpperCase() === 'INCLUDE');
+  const includeKeywords = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'INCLUDE');
 
   const prependedHeadings = [];
   const appendedBodyLines = [];

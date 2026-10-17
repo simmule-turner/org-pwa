@@ -321,5 +321,5 @@ export function render() {
  *  it) rather than being set ad hoc in half a dozen different places. */
 export function updateSaveButtonState() {
   /** @type {any} */ (saveBtnEl).disabled = !S.state.doc || !S.state.storageKind || S.state.storageKind === 'help';
-  /** @type {any} */ (saveBtnEl).style.color = !/** @type {any} */ (saveBtnEl).disabled && S.isDirty ? '#c0392b' : '';
+  (saveBtnEl).style.color = !/** @type {any} */ (saveBtnEl).disabled && S.isDirty ? '#c0392b' : '';
 }

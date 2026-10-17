@@ -27,7 +27,7 @@ const GRIP_SVG =
  * @returns {boolean}
  */
 function inSubtree(heading, node) {
-  return heading === node || (heading.children || []).some((/** @type {any} */ child) => inSubtree(child, node));
+  return heading === node || (heading.children || []).some((child) => inSubtree(child, node));
 }
 
 /** @param {any} [node] */

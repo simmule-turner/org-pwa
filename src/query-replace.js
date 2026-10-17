@@ -180,7 +180,7 @@ function createQueryReplace(doc, re, replacement) {
    */
   function applyReplacement(target, match) {
     const text = target.getText();
-    const replaced = replacement.replace(/\$(\d)/g, (/** @type {any} */ _, /** @type {any} */ n) => match[n] ?? '');
+    const replaced = replacement.replace(/\$(\d)/g, (_, n) => match[n] ?? '');
     const newText = text.slice(0, match.index) + replaced + text.slice(match.index + match[0].length);
     target.setText(newText);
     replacedCount++;
@@ -276,7 +276,7 @@ function createTextQueryReplace(text, re, replacement) {
 
   /** @param {RegExpExecArray} match */
   function applyReplacement(match) {
-    const replaced = replacement.replace(/\$(\d)/g, (/** @type {any} */ _, /** @type {any} */ n) => match[n] ?? '');
+    const replaced = replacement.replace(/\$(\d)/g, (_, n) => match[n] ?? '');
     currentText = currentText.slice(0, match.index) + replaced + currentText.slice(match.index + match[0].length);
     replacedCount++;
     searchFrom = match.index + replaced.length;

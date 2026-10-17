@@ -386,11 +386,11 @@ export function renderAgendaView() {
   if (S.agendaEffortPanelOpen) container.appendChild(buildAgendaEffortPanel());
 
   if (S.agendaFilesConfig.length > 0) {
-    const entries = S.agendaFilesConfig.map((/** @type {any} */ f) => agendaFilesCache.get(f));
-    const loadingCount = entries.filter((/** @type {any} */ e) => e && e.loading).length;
+    const entries = S.agendaFilesConfig.map((f) => agendaFilesCache.get(f));
+    const loadingCount = entries.filter((e) => e && e.loading).length;
     const errored = S.agendaFilesConfig
-      .map((/** @type {any} */ f, /** @type {number} */ i) => ({ f, entry: entries[i] }))
-      .filter((/** @type {any} */ { entry }) => entry && entry.error);
+      .map((f, /** @type {number} */ i) => ({ f, entry: entries[i] }))
+      .filter(({ entry }) => entry && entry.error);
     if (loadingCount > 0 || errored.length > 0) {
       const agendaFilesStatus = document.createElement('div');
       agendaFilesStatus.style.fontSize = '11px';
@@ -399,7 +399,7 @@ export function renderAgendaView() {
       if (loadingCount > 0) parts.push(`Loading ${loadingCount} agenda file${loadingCount === 1 ? '' : 's'}\u2026`);
       if (errored.length > 0) {
         agendaFilesStatus.style.color = '#c0392b';
-        parts.push(errored.map((/** @type {any} */ { f, entry }) => `"${f}": ${entry.error}`).join('; '));
+        parts.push(errored.map(({ f, entry }) => `"${f}": ${entry.error}`).join('; '));
       }
       agendaFilesStatus.textContent = parts.join(' ');
       container.appendChild(agendaFilesStatus);

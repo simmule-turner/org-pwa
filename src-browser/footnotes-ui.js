@@ -326,7 +326,7 @@ export function openFootnoteSheet(label) {
   hideUndoToast(); // it sits above sheets
   const text = serializeOrg(S.state.doc);
   const found = findFootnoteDefinition(text, label);
-  const def = /** @type {any} */ (findOutlineDefinition(S.state.doc, label));
+  const def = (findOutlineDefinition(S.state.doc, label));
   const note = found ? noteText(text, found.begin, label) : '';
   const writable = !S.isBufferReadOnly;
   /** @type {import('./bottom-sheet.js').SheetAction[]} */
@@ -340,7 +340,7 @@ export function openFootnoteSheet(label) {
         const made = createFootnoteDefinition(serializeOrg(S.state.doc), label, footnoteOptions());
         replaceKeepingNarrowing(made.text, 'Created footnote definition');
         render();
-        const created = /** @type {any} */ (findOutlineDefinition(S.state.doc, label));
+        const created = (findOutlineDefinition(S.state.doc, label));
         if (created) editDefinitionNode(created);
       },
     });

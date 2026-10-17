@@ -50,7 +50,7 @@ const CONDITION_TOKEN_RE = /([+-]?)([A-Za-z_][A-Za-z0-9_]*)(?:(<>|<=|>=|=|<|>)"(
 function parseMatchQuery(query) {
   const trimmed = query.trim();
   if (!trimmed) throw new Error('Match query cannot be empty');
-  return trimmed.split('|').map((/** @type {any} */ groupText) => parseGroup(groupText.trim()));
+  return trimmed.split('|').map((groupText) => parseGroup(groupText.trim()));
 }
 
 /** @param {any} [groupText] */

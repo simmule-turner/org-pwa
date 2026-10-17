@@ -106,7 +106,7 @@ export async function performRefile(heading, targetDocumentId, targetOutlinePath
     label: 'refile',
     historyLabel: 'Refiled heading (from another file)',
     allowMissing: false,
-    mutate: (/** @type {any} */ doc) => {
+    mutate: (doc) => {
       const target = findHeadingByOutlinePath(doc, targetOutlinePath);
       if (!target) {
         setStatus(

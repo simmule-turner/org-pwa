@@ -95,7 +95,7 @@ function setProperty(heading, key, value) {
   // real org's own confirmed org-entry-put behavior exactly.
   delete heading.properties[existingKey];
   heading.properties[key] = value;
-  heading.propertyOrder = heading.propertyOrder.map((/** @type {any} */ k) => (k === existingKey ? key : k));
+  heading.propertyOrder = heading.propertyOrder.map((k) => (k === existingKey ? key : k));
 }
 
 /**
@@ -106,7 +106,7 @@ function deleteProperty(heading, key) {
   const existingKey = findPropertyKey(heading.properties, key);
   if (existingKey !== null) {
     delete heading.properties[existingKey];
-    heading.propertyOrder = heading.propertyOrder.filter((/** @type {any} */ k) => k !== existingKey);
+    heading.propertyOrder = heading.propertyOrder.filter((k) => k !== existingKey);
   }
 }
 
@@ -163,7 +163,7 @@ function cloneHeading(heading) {
  * @param {any} target
  * @param {string} path
  */
-function findAncestorPath(/** @type {any} */ root, /** @type {any} */ target, /** @type {any} */ path = []) {
+function findAncestorPath(root, target, /** @type {any} */ path = []) {
   const children = root.children || [];
   for (const child of children) {
     if (child === target) return path;
@@ -179,7 +179,7 @@ function findAncestorPath(/** @type {any} */ root, /** @type {any} */ target, /*
  * @param {any} [root]
  * @param {any} [target]
  */
-function findContainer(/** @type {any} */ root, /** @type {any} */ target) {
+function findContainer(root, target) {
   const children = root.children || [];
   const idx = children.indexOf(target);
   if (idx !== -1) return { container: children, index: idx };
@@ -262,7 +262,7 @@ function archiveInPlace(heading, { now = new Date() } = {}) {
  * @param {Heading} heading
  *  the fact that this was ever archived. */
 function unarchiveInPlace(heading) {
-  heading.tags = heading.tags.filter((/** @type {any} */ t) => t !== ARCHIVE_TAG);
+  heading.tags = heading.tags.filter((t) => t !== ARCHIVE_TAG);
   return heading;
 }
 
@@ -347,7 +347,7 @@ function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = /** @type
  * @param {Heading} heading
  * @param {any} [sourceFilePath]
  */
-function extractForArchive(sourceDoc, heading, sourceFilePath, opts = /** @type {any} */ ({})) {
+function extractForArchive(sourceDoc, heading, sourceFilePath, opts = ({})) {
   const clone = buildArchivedClone(sourceDoc, heading, sourceFilePath, opts);
 
   const located = findContainer(sourceDoc, heading);
@@ -381,7 +381,7 @@ function appendToArchive(archiveDoc, extractedHeading) {
  * @param {Heading} heading
  * @param {any} [sourceFilePath]
  */
-function archiveToSiblingFile(sourceDoc, archiveDoc, heading, sourceFilePath, opts = /** @type {any} */ ({})) {
+function archiveToSiblingFile(sourceDoc, archiveDoc, heading, sourceFilePath, opts = ({})) {
   const extracted = extractForArchive(sourceDoc, heading, sourceFilePath, opts);
   appendToArchive(archiveDoc, extracted);
   return extracted;
@@ -511,7 +511,7 @@ function getArchiveLocation(doc, heading) {
   const ownArchive = getProperty(heading, 'ARCHIVE');
   if (ownArchive) return ownArchive;
   /** @param {any} [k] */
-  const kw = (doc.keywords || []).find((/** @type {any} */ k) => k.key.toUpperCase() === 'ARCHIVE');
+  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'ARCHIVE');
   if (kw) return kw.value;
   return DEFAULT_ARCHIVE_LOCATION;
 }
@@ -601,7 +601,7 @@ function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart) {
  *  necessarily at the document's own top level. */
 function findHeadingAtLevel(doc, level, title) {
   /** @param {any} [nodes] */
-  function walk(/** @type {any} */ nodes) {
+  function walk(nodes) {
     for (const node of nodes) {
       if (node.level === level && node.title === title) return node;
       /** @type {any} */ const found = walk(node.children || []);

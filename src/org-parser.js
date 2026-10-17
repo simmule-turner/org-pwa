@@ -148,7 +148,7 @@ function parseTodoKeywordToken(token) {
  *  caller can use straightforward `in`/property-access checks. */
 function parseTodoSpecValue(value) {
   const hasBar = value.includes('|');
-  const [todoPart, donePart = ''] = value.split('|').map((/** @type {any} */ s) => s.trim());
+  const [todoPart, donePart = ''] = value.split('|').map((s) => s.trim());
   let todoTokens = todoPart.split(/\s+/).filter(Boolean).map(parseTodoKeywordToken);
   let doneTokens = donePart.split(/\s+/).filter(Boolean).map(parseTodoKeywordToken);
   if (!hasBar && todoTokens.length > 0) {
@@ -163,8 +163,8 @@ function parseTodoSpecValue(value) {
     if (t.logSpec) /** @type {any} */ (logSpecs)[t.keyword] = t.logSpec;
   }
   return {
-    todoKeywords: todoTokens.map((/** @type {any} */ t) => t.keyword),
-    doneKeywords: doneTokens.map((/** @type {any} */ t) => t.keyword),
+    todoKeywords: todoTokens.map((t) => t.keyword),
+    doneKeywords: doneTokens.map((t) => t.keyword),
     keySpecs,
     logSpecs,
   };
@@ -494,9 +494,9 @@ function serializeOrg(doc) {
   const out = [];
   const bodyLines = doc.bodyLines || [];
   const orderedKeywords = doc.keywords
-    .filter((/** @type {any} */ kw) => !kw.virtual)
-    .map((/** @type {any} */ kw, /** @type {any} */ originalIndex) => ({ kw, originalIndex }))
-    .sort((/** @type {any} */ a, /** @type {any} */ b) => {
+    .filter((kw) => !kw.virtual)
+    .map((kw, originalIndex) => ({ kw, originalIndex }))
+    .sort((a, b) => {
       const ai = a.kw.bodyLineIndex ?? 0;
       const bi = b.kw.bodyLineIndex ?? 0;
       return ai !== bi ? ai - bi : a.originalIndex - b.originalIndex;
@@ -542,7 +542,7 @@ function serializeHeadingSubtree(heading) {
  * @param {any} [targetHeading]
  */
 function findHeadingLineNumber(doc, targetHeading) {
-  let count = doc.keywords.filter((/** @type {any} */ kw) => !kw.virtual).length + (doc.bodyLines ? doc.bodyLines.length : 0);
+  let count = doc.keywords.filter((kw) => !kw.virtual).length + (doc.bodyLines ? doc.bodyLines.length : 0);
 
   /** @param {any} [node] */
   function walk(node) {
@@ -574,10 +574,10 @@ function findHeadingLineNumber(doc, targetHeading) {
  * @param {number} targetLine
  */
 function findHeadingAtLine(doc, targetLine) {
-  let count = doc.keywords.filter((/** @type {any} */ kw) => !kw.virtual).length + (doc.bodyLines ? doc.bodyLines.length : 0);
+  let count = doc.keywords.filter((kw) => !kw.virtual).length + (doc.bodyLines ? doc.bodyLines.length : 0);
 
   /** @param {any} [node] */
-  function walk(/** @type {any} */ node) {
+  function walk(node) {
     if (count === targetLine) return node;
     count += headingPreambleLines(node).length; // heading line, planning line and drawers, exactly as serialized
     count += (node.bodyLines || []).length;

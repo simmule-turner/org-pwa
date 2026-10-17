@@ -162,12 +162,12 @@ export function extractPlotData(table, options) {
   // every row is real, plottable data. Checked here, before rule rows
   // get filtered out below, since that's the only point this
   // information is still available at all.
-  const hasHeader = rawRows.some((/** @type {any} */ r) => r.type === 'rule');
+  const hasHeader = rawRows.some((r) => r.type === 'rule');
 
-  let rows = rawRows.filter((/** @type {any} */ r) => r.type === 'row').map((/** @type {any} */ r) => r.cells);
+  let rows = rawRows.filter((r) => r.type === 'row').map((r) => r.cells);
   if (options.transpose === 'yes' || options.transpose === 'y' || options.transpose === 't' || options.trans === 'yes' || options.trans === 'y' || options.trans === 't') {
-    const colCount = Math.max(0, ...rows.map((/** @type {any} */ r) => r.length));
-    rows = Array.from({ length: colCount }, (_, c) => rows.map((/** @type {any} */ r) => r[c] ?? ''));
+    const colCount = Math.max(0, ...rows.map((r) => r.length));
+    rows = Array.from({ length: colCount }, (_, c) => rows.map((r) => r[c] ?? ''));
   }
   const minRows = hasHeader ? 2 : 1;
   if (rows.length < minRows || (rows[0] || []).length < 2) {
@@ -193,7 +193,7 @@ export function extractPlotData(table, options) {
     label: labelsOption && labelsOption[i] !== undefined ? String(labelsOption[i]) : header ? String(header[idx] ?? `Column ${idx + 1}`) : `Column ${idx + 1}`,
   }));
 
-  const plotRows = dataRows.map((/** @type {any} */ cells) => ({
+  const plotRows = dataRows.map((cells) => ({
     ind: cells[indIdx],
     values: depIdxs.map((/** @type {number} */ idx) => {
       const n = Number(cells[idx]);

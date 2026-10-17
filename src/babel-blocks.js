@@ -29,7 +29,7 @@ export function removeIndentation(lines) {
     min = Math.min(min, (/^[ \t]*/.exec(l) || [''])[0].length);
   }
   if (!Number.isFinite(min) || min === 0) return lines.slice();
-  return lines.map((/** @type {any} */ l) => (l.trim() ? l.slice(min) : ''));
+  return lines.map((l) => (l.trim() ? l.slice(min) : ''));
 }
 
 /**
@@ -85,7 +85,7 @@ const isComment = (heading) => isCommentedHeading(heading);
 export function preambleLines(doc) {
   const lines = (doc.bodyLines || []).slice();
   /** @param {any} [k] */
-  const keywords = (doc.keywords || []).filter((/** @type {any} */ k) => /^(NAME|HEADERS?)$/i.test(k.key));
+  const keywords = (doc.keywords || []).filter((k) => /^(NAME|HEADERS?)$/i.test(k.key));
   for (const k of keywords.slice().reverse()) lines.splice(Math.min(k.bodyLineIndex || 0, lines.length), 0, `#+${k.key}: ${k.value}`);
   return lines;
 }

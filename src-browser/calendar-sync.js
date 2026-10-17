@@ -150,7 +150,7 @@ function reportProblem(message, manual, report = setStatus) {
 /** Asks for a sync soon. Cheap to call from anywhere (a save, coming back to the app): calls close together become one. */
 export function scheduleCalendarSync() {
   if (!effectiveCalendarConfig() || S.calendarSyncPaused) return;
-  clearTimeout(S.calendarSyncTimer);
+  clearTimeout(/** @type {number | undefined} */ (S.calendarSyncTimer));
   S.calendarSyncTimer = setTimeout(() => {
     syncAgendaToCalendar().catch(() => {});
   }, AUTO_DELAY_MS);

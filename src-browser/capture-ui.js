@@ -244,7 +244,7 @@ async function readClipboardIfUsed(template) {
  *  shown as a hint under the field, matching what window.prompt's own
  *  message text used to fold in), Capture/Cancel at the bottom. */
 export function renderCapturePromptForm() {
-  const template = S.capturePromptTemplate;
+  const template = /** @type {import('../src/types.js').CaptureTemplate} */ (S.capturePromptTemplate);
   const scanText = S.capturePromptSkipPrePost ? template.template : (template.preText || '') + template.template + (template.postText || '');
   const prompts = scanPrompts(scanText);
   const previewNow = new Date(); // captured once, not per-keystroke, so the displayed time doesn't visibly tick while typing
@@ -430,7 +430,7 @@ export async function runCaptureWithAnswers(template, answers) {
       label: 'capture',
       historyLabel: `Captured: ${template.description}`,
       allowMissing: true,
-      mutate: (/** @type {any} */ doc) => {
+      mutate: (doc) => {
         const target = resolveOlpTarget(doc, template.olp, { now, prepend: getOlpPrepend(template) });
         let tableRowNumber = null;
         if (template.type === 'table-line') {

@@ -39,8 +39,8 @@ function findResults(lines, endIndex, name) {
  * @param {string[]} lines
  */
 function rewriteLines(doc, blocks, heading, lines) {
-  const mine = blocks.filter((/** @type {any} */ b) => b.heading === heading);
-  if (!mine.length && !lines.some((/** @type {any} */ l) => RESULTS_LINE_RE.test(l))) return null;
+  const mine = blocks.filter((b) => b.heading === heading);
+  if (!mine.length && !lines.some((l) => RESULTS_LINE_RE.test(l))) return null;
   const drop = new Set();
   const replace = new Map();
   for (const b of mine) {
@@ -68,7 +68,7 @@ function rewriteLines(doc, blocks, heading, lines) {
     }
   }
   /** @type {any[]} */ const out = [];
-  lines.forEach((/** @type {any} */ l, /** @type {number} */ i) => {
+  lines.forEach((l, /** @type {number} */ i) => {
     if (replace.has(i)) out.push(...replace.get(i));
     else if (!drop.has(i) && !RESULTS_LINE_RE.test(l)) out.push(l); // a #+RESULTS: line is never shown
   });
@@ -92,7 +92,7 @@ export function prepareBabelExport(doc) {
     // The parser takes #+NAME: and #+HEADER: lines out of the preamble; put them back for the rewrite and drop them from the keywords.
     const lines = preambleLines(doc);
     const bodyLines = rewriteLines(doc, blocks, null, lines) || lines;
-    result = { ...doc, bodyLines, body: parseBody(bodyLines), keywords: (doc.keywords || []).filter((/** @type {any} */ k) => !/^(NAME|HEADERS?)$/i.test(k.key)) };
+    result = { ...doc, bodyLines, body: parseBody(bodyLines), keywords: (doc.keywords || []).filter((k) => !/^(NAME|HEADERS?)$/i.test(k.key)) };
   }
   return { ...result, children: (doc.children || []).map(walk) };
 }

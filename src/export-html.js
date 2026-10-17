@@ -148,7 +148,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
  */
 const keywordValue = (doc, key) => {
   /** @param {any} [k] */
-  const kw = (doc.keywords || []).filter((/** @type {any} */ k) => k.key.toUpperCase() === key).pop();
+  const kw = (doc.keywords || []).filter((k) => k.key.toUpperCase() === key).pop();
   return kw ? kw.value.trim() : null;
 };
 const keywordValues = (/** @type {any} */ doc, /** @type {string} */ key) => (doc.keywords || []).filter((/** @type {any} */ k) => k.key.toUpperCase() === key).map((/** @type {any} */ k) => k.value);
@@ -172,7 +172,7 @@ function removeIndentation(lines) {
   let min = Infinity;
   for (const l of lines) if (l.trim()) min = Math.min(min, (/^[ \t]*/.exec(l) || [''])[0].length);
   if (!Number.isFinite(min) || min === 0) return lines.slice();
-  return lines.map((/** @type {any} */ l) => (l.trim() ? l.slice(min) : ''));
+  return lines.map((l) => (l.trim() ? l.slice(min) : ''));
 }
 
 /** @param {string} title */
@@ -279,7 +279,7 @@ function expandMacros(state, text) {
   // verbatim and code spans show their text as written
   return text
     .split(/((?<![\w])[~=][^~=\n]+[~=](?![\w]))/)
-    .map((/** @type {any} */ part, /** @type {number} */ i) => (i % 2 ? part : expandMacrosIn(state, part)))
+    .map((part, /** @type {number} */ i) => (i % 2 ? part : expandMacrosIn(state, part)))
     .join('');
 }
 
@@ -288,10 +288,10 @@ function expandMacros(state, text) {
  * @param {string} text
  */
 function expandMacrosIn(state, text) {
-  return text.replace(/\{\{\{(\w[\w-]*)(?:\(([\s\S]*?)\))?\}\}\}/g, (/** @type {any} */ whole, /** @type {string} */ name, /** @type {any} */ argText) => {
+  return text.replace(/\{\{\{(\w[\w-]*)(?:\(([\s\S]*?)\))?\}\}\}/g, (whole, /** @type {string} */ name, argText) => {
     const args = argText === undefined ? [] : argText.split(/(?<!\\),/).map((/** @type {any} */ a) => a.replace(/\\,/g, ',').trim());
     const key = name.toLowerCase();
-    if (state.macros.has(name)) return (state.macros.get(name) || '').replace(/\$(\d)/g, (/** @type {any} */ w, /** @type {any} */ n) => args[Number(n) - 1] ?? '');
+    if (state.macros.has(name)) return (state.macros.get(name) || '').replace(/\$(\d)/g, (w, n) => args[Number(n) - 1] ?? '');
     /** @param {string} k */
     const kw = (k) => keywordValue(state.doc, k) || '';
     if (key === 'title') return kw('TITLE');
@@ -354,16 +354,16 @@ function targetsInLines(lines) {
 function renderInline(state, rawText) {
   let text = expandMacros(state, rawText);
   // forced line breaks: a line ending in two backslashes
-  text = text.replace(/\\\\[ \t]*(?:\n|$)/g, (/** @type {any} */ m) => addToken(state, '<br />', '\\\\') + (m.endsWith('\n') ? '\n' : ''));
+  text = text.replace(/\\\\[ \t]*(?:\n|$)/g, (m) => addToken(state, '<br />', '\\\\') + (m.endsWith('\n') ? '\n' : ''));
   // export snippets
-  text = text.replace(/@@([A-Za-z0-9-]+):([\s\S]*?)@@/g, (/** @type {any} */ whole, /** @type {any} */ backend, /** @type {any} */ value) => (backend.toLowerCase() === 'html' ? addToken(state, value, whole) : backend.toLowerCase() === 'comment' ? '' : ''));
+  text = text.replace(/@@([A-Za-z0-9-]+):([\s\S]*?)@@/g, (whole, backend, value) => (backend.toLowerCase() === 'html' ? addToken(state, value, whole) : backend.toLowerCase() === 'comment' ? '' : ''));
   // inline source code
-  text = text.replace(/\bsrc_([A-Za-z0-9_-]+)(?:\[[^\]\n]*\])?\{([^}\n]*)\}/g, (/** @type {any} */ whole, /** @type {any} */ lang, /** @type {any} */ code) => addToken(state, `<code class="src src-${escapeAttr(lang)}">${escapeHtml(code)}</code>`, whole));
+  text = text.replace(/\bsrc_([A-Za-z0-9_-]+)(?:\[[^\]\n]*\])?\{([^}\n]*)\}/g, (whole, lang, code) => addToken(state, `<code class="src src-${escapeAttr(lang)}">${escapeHtml(code)}</code>`, whole));
   // radio targets and targets (not inside =verbatim= or ~code~, where they are just characters)
   text = outsideVerbatim(text, (/** @type {string} */ piece) =>
     piece
-      .replace(/<<<([^<>\n]+)>>>/g, (/** @type {any} */ whole, /** @type {string} */ name) => addToken(state, `<a id="${targetId(state, name)}">${escapeHtml(name)}</a>`, whole))
-      .replace(/<<([^<>\n]+)>>/g, (/** @type {any} */ whole, /** @type {string} */ name) => addToken(state, `<a id="${targetId(state, name)}"></a>`, whole))
+      .replace(/<<<([^<>\n]+)>>>/g, (whole, /** @type {string} */ name) => addToken(state, `<a id="${targetId(state, name)}">${escapeHtml(name)}</a>`, whole))
+      .replace(/<<([^<>\n]+)>>/g, (whole, /** @type {string} */ name) => addToken(state, `<a id="${targetId(state, name)}"></a>`, whole))
   );
   // timestamps
   text = text.replace(TIMESTAMP_RE, (/** @type {any[]} */ ...m) => timestampHtml(state, m));
@@ -495,7 +495,7 @@ function linkHref(state, target) {
  * @param {string} name
  * @param {any} [value]
  */
-function findByProperty(/** @type {any} */ headings, /** @type {any} */ name, /** @type {any} */ value) {
+function findByProperty(headings, name, value) {
   for (const h of headings) {
     if (String(getProperty(h, name) || '').trim() === value) return h;
     /** @type {any} */ const r = findByProperty(h.children || [], name, value);
@@ -510,7 +510,7 @@ function findByProperty(/** @type {any} */ headings, /** @type {any} */ name, /*
  * @param {string} value
  */
 function literal(state, value) {
-  return escapeHtml(value.replace(TOKEN_RE, (/** @type {any} */ m, /** @type {any} */ n) => state.tokenSources[Number(n)]));
+  return escapeHtml(value.replace(TOKEN_RE, (m, n) => state.tokenSources[Number(n)]));
 }
 
 /**
@@ -518,7 +518,7 @@ function literal(state, value) {
  * @param {any} [nodes]
  */
 function renderNodes(state, nodes) {
-  if (state.cite) nodes = dropSilentCitations(nodes, (/** @type {any} */ c) => state.cite.formatCitation(c) === null);
+  if (state.cite) nodes = dropSilentCitations(nodes, (c) => state.cite.formatCitation(c) === null);
   return nodes.map((/** @type {any} */ n) => renderNode(state, n)).join('');
 }
 
@@ -649,7 +649,7 @@ function internalLinkLabel(state, rawTarget) {
   }
   const id = state.namedElements.get(t);
   if (id) {
-    const cap = state.captioned.find((/** @type {any} */ c) => c.id === id);
+    const cap = state.captioned.find((c) => c.id === id);
     if (cap) return String(cap.n);
   }
   return null;
@@ -908,7 +908,7 @@ function blockHtml(state, el, ctx) {
     case 'verse': {
       const lines = removeIndentation(el.lines.map(unescapeLine));
       const html = lines
-        .map((/** @type {any} */ l) => {
+        .map((l) => {
           const lead = (/^ */.exec(l) || [''])[0].length;
           return (NBSP.repeat(lead) + renderInline(state, l.slice(lead))).replace(/^$/, '') + '<br />';
         })
@@ -1019,7 +1019,7 @@ function buildFilter(state) {
    */
   const mark = (headings, inherited) => {
     for (const h of headings) {
-      const own = select.size && (h.tags || []).some((/** @type {any} */ t) => select.has(String(t).toLowerCase()));
+      const own = select.size && (h.tags || []).some((t) => select.has(String(t).toLowerCase()));
       if (own || inherited) selected.add(h);
       mark(h.children || [], own || inherited);
     }
@@ -1234,13 +1234,13 @@ function tocKeywordHtml(state, el) {
     return tocHtml(state, depth);
   }
   const wanted = kind === 'tables' ? 'table' : 'listing';
-  const entries = state.captioned.filter((/** @type {any} */ c) => c.kind === wanted);
+  const entries = state.captioned.filter((c) => c.kind === wanted);
   if (!entries.length) return '';
   const title = wanted === 'table' ? 'List of Tables' : 'List of Listings';
   const label = wanted === 'table' ? 'table-number' : 'listing-number';
   const word = wanted === 'table' ? 'Table' : 'Listing';
   const slug = wanted === 'table' ? 'list-of-tables' : 'list-of-listings';
-  const items = entries.map((/** @type {any} */ c) => `<li><a href="#${escapeAttr(c.id)}"><span class="${label}">${word} ${c.n}:</span> ${c.html}</a></li>`);
+  const items = entries.map((c) => `<li><a href="#${escapeAttr(c.id)}"><span class="${label}">${word} ${c.n}:</span> ${c.html}</a></li>`);
   return `<div id="${slug}">\n<h2>${title}</h2>\n<div id="text-${slug}">\n<ul>\n${items.join('\n')}\n</ul>\n</div>\n</div>`;
 }
 
@@ -1451,7 +1451,7 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
   for (const node of state.outline) {
     if (node.level <= options.H) out.push(sectionHtml(state, node));
   }
-  const deepTop = state.outline.filter((/** @type {any} */ n) => n.level > options.H);
+  const deepTop = state.outline.filter((n) => n.level > options.H);
   if (deepTop.length) out.push(deepListHtml(state, deepTop));
   const footnotes = footnotesHtml(state);
   if (footnotes) out.push(footnotes);
@@ -1577,7 +1577,7 @@ function preambleBody(doc) {
   const lines = (doc.bodyLines || []).slice();
   const FILE_LEVEL = /^(TITLE|AUTHOR|DATE|EMAIL|OPTIONS|LANGUAGE|DESCRIPTION|KEYWORDS|EXCLUDE_TAGS|SELECT_TAGS|TODO|SEQ_TODO|TYP_TODO|TAGS|STARTUP|PROPERTY|ARCHIVE|CATEGORY|COLUMNS|PRIORITIES|MACRO|HTML_HEAD|HTML_HEAD_EXTRA|SETUPFILE|LATEX_\w*|ODT_\w*|HTML_\w*|FILETAGS|CONSTANTS|LINK|SUBTITLE|CREATOR)$/i;
   /** @param {any} [k] */
-  const keywords = (doc.keywords || []).filter((/** @type {any} */ k) => !FILE_LEVEL.test(k.key));
+  const keywords = (doc.keywords || []).filter((k) => !FILE_LEVEL.test(k.key));
   for (const k of keywords.slice().reverse()) lines.splice(Math.min(k.bodyLineIndex || 0, lines.length), 0, `#+${k.key}: ${k.value}`);
   return lines;
 }

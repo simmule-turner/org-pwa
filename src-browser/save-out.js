@@ -26,7 +26,7 @@ export async function saveOut(name, content, mimeType, options = {}) {
 /** True when the share sheet took the file (or the person closed it); false when this device cannot share files.
  * @param {string} name @param {BlobPart} content @param {string | undefined} mimeType */
 async function shareFile(name, content, mimeType) {
-  const nav = /** @type {any} */ (typeof navigator === 'undefined' ? null : navigator);
+  const nav = (typeof navigator === 'undefined' ? null : navigator);
   if (!nav || typeof nav.share !== 'function' || typeof File === 'undefined') return false;
   const file = new File([content], name, { type: mimeType || 'text/plain' });
   if (typeof nav.canShare === 'function' && !nav.canShare({ files: [file] })) return false;

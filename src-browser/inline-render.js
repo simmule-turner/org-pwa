@@ -339,7 +339,7 @@ export function renderFootnoteRefNode(node, linkContext = /** @type {any} */ (nu
  *  reference to one elsewhere.
  * @param {Heading | null} [heading]
  */
-export function renderFootnoteDefNode(node, linkContext = /** @type {any} */ (null), heading = null) {
+export function renderFootnoteDefNode(node, linkContext = (null), heading = null) {
   const wrap = document.createElement('span');
   const labelEl = document.createElement('sup');
   labelEl.textContent = node.label ? '[' + node.label + ']' : '[*]';
@@ -409,7 +409,7 @@ export function currentInlineOpts() {
  *  resolveAttachmentTarget's own inheritance).
  * @param {Heading | null} [heading]
  */
-export function renderInlineNodes(nodes, container, linkContext = /** @type {any} */ (null), heading = null) {
+export function renderInlineNodes(nodes, container, linkContext = (null), heading = null) {
   for (const node of nodes) {
     switch (node.type) {
       case 'text':
@@ -495,7 +495,7 @@ export function renderInlineNodes(nodes, container, linkContext = /** @type {any
         // Org excludes comments from rendered/exported output; skipped here too.
         break;
       default:
-        container.appendChild(document.createTextNode(node.value || ''));
+        container.appendChild(document.createTextNode(/** @type {{ value?: string }} */ (node).value || ''));
     }
   }
 }

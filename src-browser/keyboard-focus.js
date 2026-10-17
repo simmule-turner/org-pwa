@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').ListItemRow} ListItemRow */
+/** @typedef {Exclude<import('../src/types.js').BodyRow, ListItemRow>} NodeRow */
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: keyboard focus.
@@ -39,8 +41,8 @@ export function visibleHeadingsInOrder() {
 export function rowMatchesKeyboardFocus(row) {
   if (row.rowType === 'heading') return !S.keyboardFocusedBodyRow && row.node === S.keyboardFocusedHeading;
   if (!S.keyboardFocusedBodyRow || S.keyboardFocusedBodyRow.rowType !== row.rowType) return false;
-  if (row.rowType === 'list-item') return row.item === S.keyboardFocusedBodyRow.item;
-  return row.node === S.keyboardFocusedBodyRow.node;
+  if (row.rowType === 'list-item') return row.item === /** @type {ListItemRow} */ (S.keyboardFocusedBodyRow).item;
+  return row.node === /** @type {NodeRow} */ (S.keyboardFocusedBodyRow).node;
 }
 
 /** Sets keyboard focus to `row` (one of flattenVisibleRows' own row
@@ -134,8 +136,8 @@ export function moveLineFocus(delta) {
 export function moveTableCellFocus(deltaRow, deltaCol) {
   if (!S.keyboardFocusedBodyRow || S.keyboardFocusedBodyRow.rowType !== 'table' || !S.keyboardFocusedCellPos) return;
   const table = S.keyboardFocusedBodyRow.node;
-  const dataRowIndices = table.rows.map((/** @type {any} */ r, /** @type {number} */ i) => i).filter((/** @type {number} */ i) => table.rows[i].type !== 'rule');
-  const colCount = Math.max(1, ...table.rows.filter((/** @type {any} */ r) => r.type !== 'rule').map((/** @type {any} */ r) => r.cells.length));
+  const dataRowIndices = table.rows.map((r, /** @type {number} */ i) => i).filter((/** @type {number} */ i) => table.rows[i].type !== 'rule');
+  const colCount = Math.max(1, ...table.rows.filter((r) => r.type !== 'rule').map((r) => r.cells.length));
   let { rowIndex, colIndex } = S.keyboardFocusedCellPos;
 
   if (deltaRow !== 0) {
@@ -284,15 +286,15 @@ export function moveToParentHeading() {
 export function resyncKeyboardFocusToBodyRow(heading, oldRowType, oldLineIndex) {
   if (!S.keyboardFocusedBodyRow || S.keyboardFocusedBodyRow.heading !== heading || S.keyboardFocusedBodyRow.rowType !== oldRowType) return;
   if (oldRowType === 'list-item') {
-    if (S.keyboardFocusedBodyRow.item.lineIndex !== oldLineIndex) return;
-    const freshItem = findListItemByLineIndex((heading.body || []).filter((/** @type {any} */ n) => n.type === 'list').flatMap((/** @type {any} */ n) => n.items), oldLineIndex);
-    if (freshItem) S.keyboardFocusedBodyRow = { ...S.keyboardFocusedBodyRow, item: freshItem };
+    if (/** @type {ListItemRow} */ (S.keyboardFocusedBodyRow).item.lineIndex !== oldLineIndex) return;
+    const freshItem = findListItemByLineIndex((heading.body || []).filter(/** @param {import('../src/types.js').BodyNode} n @returns {n is import('../src/types.js').List} */ (n) => n.type === 'list').flatMap((n) => n.items), oldLineIndex);
+    if (freshItem) S.keyboardFocusedBodyRow = { .../** @type {ListItemRow} */ (S.keyboardFocusedBodyRow), item: freshItem };
     return;
   }
-  if (S.keyboardFocusedBodyRow.node.lineIndex !== oldLineIndex) return;
+  if (/** @type {NodeRow} */ (S.keyboardFocusedBodyRow).node.lineIndex !== oldLineIndex) return;
   /** @param {any} [node] */
-  const freshNode = (heading.body || []).find((/** @type {any} */ node) => node.type === oldRowType && node.lineIndex === oldLineIndex);
-  if (freshNode) S.keyboardFocusedBodyRow = { ...S.keyboardFocusedBodyRow, node: freshNode };
+  const freshNode = (heading.body || []).find((node) => node.type === oldRowType && node.lineIndex === oldLineIndex);
+  if (freshNode) S.keyboardFocusedBodyRow = /** @type {NodeRow} */ ({ ...S.keyboardFocusedBodyRow, node: freshNode });
 }
 
 /** Wraps a body-mutating operation that adds new, unrelated content to
@@ -311,7 +313,7 @@ export function withKeyboardFocusPreserved(heading, mutate) {
     S.keyboardFocusedBodyRow && S.keyboardFocusedBodyRow.heading === heading
       ? {
           rowType: S.keyboardFocusedBodyRow.rowType,
-          lineIndex: S.keyboardFocusedBodyRow.rowType === 'list-item' ? S.keyboardFocusedBodyRow.item.lineIndex : S.keyboardFocusedBodyRow.node.lineIndex,
+          lineIndex: /** @type {number} */ (S.keyboardFocusedBodyRow.rowType === 'list-item' ? S.keyboardFocusedBodyRow.item.lineIndex : /** @type {NodeRow} */ (S.keyboardFocusedBodyRow).node.lineIndex),
         }
       : null;
   const result = mutate();
@@ -417,8 +419,8 @@ function tableCanMove(deltaRow, deltaCol) {
   const f = S.keyboardFocusedBodyRow;
   if (!f || f.rowType !== 'table' || !S.keyboardFocusedCellPos) return false;
   const rows = f.node.rows;
-  const data = rows.map((/** @type {any} */ r, /** @type {number} */ i) => i).filter((/** @type {number} */ i) => rows[i].type !== 'rule');
-  const colCount = Math.max(1, ...rows.filter((/** @type {any} */ r) => r.type !== 'rule').map((/** @type {any} */ r) => r.cells.length));
+  const data = rows.map((r, /** @type {number} */ i) => i).filter((/** @type {number} */ i) => rows[i].type !== 'rule');
+  const colCount = Math.max(1, ...rows.filter((r) => r.type !== 'rule').map((r) => r.cells.length));
   const { rowIndex, colIndex } = S.keyboardFocusedCellPos;
   if (deltaRow) {
     const at = data.indexOf(rowIndex) + deltaRow;

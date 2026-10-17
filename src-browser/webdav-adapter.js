@@ -50,7 +50,7 @@ function authHeader(config) {
 function encodePath(path) {
   return path
     .split('/')
-    .map((/** @type {any} */ segment) => encodeURIComponent(segment))
+    .map((segment) => encodeURIComponent(segment))
     .join('/');
 }
 
@@ -374,7 +374,7 @@ export function createWebdavAdapter(getConfig) {
       const name = relative.split('/').pop();
       results.push({ name, path: relative, type: entry.isCollection ? 'dir' : 'file' });
     }
-    return results.sort((/** @type {any} */ a, /** @type {any} */ b) => {
+    return results.sort((/** @type {any} */ a, b) => {
       if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
       return a.name.localeCompare(b.name);
     });

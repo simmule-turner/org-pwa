@@ -84,7 +84,7 @@ const ENTITY_RE = /\\(there4|sup[123]|frac[13][24]|[a-zA-Z]+)(\{\}|(?![A-Za-z]))
  * @param {string} text
  *  dash and ellipsis characters, as ox-ascii's special strings do. Code and verbatim text never reaches here. */
 function substituteCharacters(text) {
-  let t = text.replace(ENTITY_RE, (/** @type {any} */ whole, /** @type {string} */ name) => {
+  let t = text.replace(ENTITY_RE, (whole, /** @type {string} */ name) => {
     const entry = /** @type {any} */ (ENTITIES)[name];
     return entry ? entry[charsetAscii.column] : whole;
   });
@@ -101,7 +101,7 @@ const LINK_RE = /\[\[([^\]]+)\](?:\[([^\]]+)\])?\]/g;
  * @param {string} text
  *  backwards compatibility / direct testing). */
 function stripLinksForAscii(text) {
-  return text.replace(LINK_RE, (/** @type {any} */ _, /** @type {any} */ target, /** @type {any} */ description) => (description ? `${description} (${target})` : target));
+  return text.replace(LINK_RE, (_, target, description) => (description ? `${description} (${target})` : target));
 }
 
 /** Wraps `text` to `width` characters, breaking only at whitespace --
@@ -147,7 +147,7 @@ function footnoteLabelAscii(label) {
 
 /** @param {any} [nodes] */
 function renderInlineListAscii(nodes) {
-  if (citeAscii) nodes = dropSilentCitations(nodes, (/** @type {any} */ c) => citeAscii.formatCitation(c) === null);
+  if (citeAscii) nodes = dropSilentCitations(nodes, (c) => citeAscii.formatCitation(c) === null);
   return nodes.map(renderInlineNodeAscii).join('');
 }
 
@@ -464,7 +464,7 @@ function renderTableAscii(table, indent) {
   const dataRows = contentRows.filter((r) => r.type === 'row');
   if (dataRows.length === 0) return [];
 
-  const renderedRows = dataRows.map((row) => row.cells.map((/** @type {any} */ cell) => renderTextAscii(cell)));
+  const renderedRows = dataRows.map((row) => row.cells.map((cell) => renderTextAscii(cell)));
   const columnCount = Math.max(...renderedRows.map((cells) => cells.length));
 
   const columnWidths = [];
@@ -540,7 +540,7 @@ function parseBlockContent(lines) {
  * @param {any} [indent]
  * @param {any} [width]
  */
-function renderNodesAscii(/** @type {any} */ nodes, /** @type {any} */ indent, /** @type {any} */ width) {
+function renderNodesAscii(nodes, indent, width) {
   const out = [];
   for (const node of nodes) {
     /** @type {any} */ const rendered = renderBodyNodeAscii(node, indent, width);
@@ -572,7 +572,7 @@ const QUOTE_MARGIN = 6;
  * @param {any} [indent]
  * @param {any} [width]
  */
-function renderBlockAscii(/** @type {any} */ block, /** @type {any} */ indent, /** @type {any} */ width) {
+function renderBlockAscii(block, indent, width) {
   const name = (block.name || '').toUpperCase();
   switch (name) {
     case 'EXPORT':
@@ -649,7 +649,7 @@ function renderParagraphRuns(node, indent, width) {
  * @param {any} [indent]
  * @param {any} [width]
  */
-function renderBodyNodeAscii(/** @type {any} */ node, /** @type {any} */ indent, /** @type {any} */ width) {
+function renderBodyNodeAscii(node, indent, width) {
   if (node.type === 'paragraph') return renderParagraphRuns(node, indent, width);
   if (node.type === 'list') return renderListAscii(node, indent, width);
   if (node.type === 'table') return renderTableAscii(node, indent);

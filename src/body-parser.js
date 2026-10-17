@@ -97,7 +97,7 @@ function parseTableRow(line) {
     return { type: 'rule' };
   }
   const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
-  const cells = trimmed.split('|').map((/** @type {any} */ c) => c.trim());
+  const cells = trimmed.split('|').map((c) => c.trim());
   return { type: 'row', cells, cellsInline: cells.map(parseInline) };
 }
 

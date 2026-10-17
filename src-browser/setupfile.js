@@ -39,7 +39,7 @@ export async function fetchOne(path, documentId, storageKind, keptAs = kvKey) {
  * @param {import('../src/types.js').Doc} doc @param {string} documentId @param {string | null} storageKind
  * @returns {Promise<import('../src/types.js').Doc>} */
 export async function prefetchSetupFiles(doc, documentId, storageKind) {
-  const linesOf = () => doc.keywords.filter((/** @type {any} */ k) => !k.virtual).map((/** @type {any} */ k) => `#+${k.key}: ${k.value}`);
+  const linesOf = () => doc.keywords.filter((k) => !k.virtual).map((k) => `#+${k.key}: ${k.value}`);
   if (!doc || !setupFilePaths(linesOf()).length) return doc;
   let fetched = false;
   for (let round = 0; round < 6; round++) {

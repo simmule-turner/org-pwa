@@ -93,7 +93,7 @@ function splitRow(line) {
   let body = line.trim();
   body = body.replace(/^\|/, '');
   if (body.endsWith('|')) body = body.slice(0, -1);
-  return body.split('|').map((/** @type {any} */ c) => c.trim());
+  return body.split('|').map((c) => c.trim());
 }
 
 /**

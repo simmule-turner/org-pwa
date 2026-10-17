@@ -625,7 +625,7 @@ function roundToDigits(x, digits, roundFn) {
  *  JS string it represents. */
 function unescapeStringLiteral(tok) {
   const inner = tok.slice(1, -1);
-  return inner.replace(/\\(.)/g, (/** @type {any} */ _, /** @type {any} */ c) => (c === 'n' ? '\n' : c === 't' ? '\t' : c));
+  return inner.replace(/\\(.)/g, (_, c) => (c === 'n' ? '\n' : c === 't' ? '\t' : c));
 }
 
 const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -2163,7 +2163,7 @@ function parseFormulaStatement(statement) {
   const lhs = statement.slice(0, eq).trim();
   let rhs = statement.slice(eq + 1).trim();
   const formatSuffix = /;[^;]*$/.exec(rhs);
-  let mode = /** @type {any} */ ({ format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees', precision: null });
+  let mode = ({ format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees', precision: null });
   if (formatSuffix) {
     rhs = rhs.slice(0, formatSuffix.index).trim();
     mode = parseModeString(formatSuffix[0].slice(1)); // slice(1): drop the leading ";" itself
@@ -2386,9 +2386,9 @@ export function recalculateTable(table, options = {}) {
   // "@7$2=vsum(@2..@6)" through real Emacs's own org-table-recalculate
   // in batch mode and confirming it computes correctly, not by reading
   // the manual's own words about it and stopping there.
-  const dataRows = workingRows.filter((/** @type {any} */ r) => r.type === 'row');
+  const dataRows = workingRows.filter((r) => r.type === 'row');
   const dataRowCount = dataRows.length;
-  const colCount = dataRows.reduce((/** @type {any} */ max, /** @type {any} */ r) => Math.max(max, r.cells.length), 0);
+  const colCount = dataRows.reduce((max, r) => Math.max(max, r.cells.length), 0);
   // The header-row exclusion real org DOES have is narrower and
   // different from @N numbering: specifically, the column-formula
   // SHORTHAND ($N=, applied to every row at once) skips any row
@@ -2398,8 +2398,8 @@ export function recalculateTable(table, options = {}) {
   // targeted cell formula like @1$2=999 still freely modifies the
   // header when asked to. No hline anywhere at all means nothing is
   // excluded from column formulas either -- every row counts as data.
-  const firstRuleIndex = workingRows.findIndex((/** @type {any} */ r) => r.type === 'rule');
-  const headerRowCount = firstRuleIndex === -1 ? 0 : workingRows.slice(0, firstRuleIndex).filter((/** @type {any} */ r) => r.type === 'row').length;
+  const firstRuleIndex = workingRows.findIndex((r) => r.type === 'rule');
+  const headerRowCount = firstRuleIndex === -1 ? 0 : workingRows.slice(0, firstRuleIndex).filter((r) => r.type === 'row').length;
   const { positions: hlinePositions } = computeHlinePositions(workingRows);
 
   for (const { target, expr, mode } of statements) {

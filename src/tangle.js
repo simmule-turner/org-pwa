@@ -50,7 +50,7 @@ function commentOut(text, lang) {
   if (!syntax) throw new Error(`:comments is not supported for ${lang} blocks (no comment syntax known)`);
   return text
     .split('\n')
-    .map((/** @type {any} */ l) => (l.trim() === '' ? l : syntax[0] + l + syntax[1]))
+    .map((l) => (l.trim() === '' ? l : syntax[0] + l + syntax[1]))
     .join('\n');
 }
 
@@ -134,7 +134,7 @@ function precedingText(doc, block, blocks) {
     beginLine = block.beginIndex;
     skipLines = 0;
   }
-  const prior = blocks.filter((/** @type {any} */ b) => b.heading === own && b.beginIndex < block.beginIndex).pop();
+  const prior = blocks.filter((b) => b.heading === own && b.beginIndex < block.beginIndex).pop();
   let from = { line: 0, col: start };
   if (prior) {
     const endLine = skipLines + prior.endIndex;
@@ -172,7 +172,7 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
   /** @param {string} name */
   const lookupTable = (name) => {
     /** @param {any} [list] */
-    const walk = (/** @type {any} */ list) => {
+    const walk = (list) => {
       for (const h of list) {
         const rows = findNamedTable(h.bodyLines || [], name);
         if (rows) return rows;

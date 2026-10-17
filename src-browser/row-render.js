@@ -765,7 +765,7 @@ export function renderTableRow(row) {
           // trusting the closure-captured row.node directly, is what
           // makes this correct either way.
           /** @param {any} [n] */
-          const freshTable = (row.heading.body || []).find((/** @type {any} */ n) => n.type === 'table' && n.lineIndex === row.node.lineIndex) || row.node;
+          const freshTable = (row.heading.body || []).find(/** @param {import('../src/types.js').BodyNode} n @returns {n is import('../src/types.js').Table} */ (n) => n.type === 'table' && n.lineIndex === row.node.lineIndex) || row.node;
           S.editingCell = { heading: row.heading, table: freshTable, rowIndex, colIndex };
           commitAndRender('Edited table cell');
         });

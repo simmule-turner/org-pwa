@@ -1194,7 +1194,7 @@ async function bootstrap() {
     if (anyOpened) {
       const activeTabData = openTabsData.tabs[openTabsData.activeIndex];
       if (activeTabData) {
-        const matchingSession = S.documentSessions.find((/** @type {any} */ s) => s.state.documentId === activeTabData.documentId && s.state.storageKind === activeTabData.storageKind);
+        const matchingSession = S.documentSessions.find((s) => s.state.documentId === activeTabData.documentId && s.state.storageKind === activeTabData.storageKind);
         if (matchingSession) switchToTab(matchingSession.tabId);
       }
       updateSaveButtonState();

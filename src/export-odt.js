@@ -124,7 +124,7 @@ function resolveInternalLinkOdt(target) {
 
 /** @param {any} [nodes] */
 function renderInlineListOdt(nodes) {
-  if (citeOdt) nodes = dropSilentCitations(nodes, (/** @type {any} */ c) => citeOdt.formatCitation(c) === null);
+  if (citeOdt) nodes = dropSilentCitations(nodes, (c) => citeOdt.formatCitation(c) === null);
   return nodes.map(renderInlineNodeOdt).join('');
 }
 
@@ -273,7 +273,7 @@ function renderListOdt(list) {
 
 /** @param {Table} table */
 function renderTableOdt(table) {
-  const dataRows = table.rows.filter((/** @type {any} */ r) => r.type === 'row' && !isWidthCookieRow(r));
+  const dataRows = table.rows.filter((r) => r.type === 'row' && !isWidthCookieRow(r));
   if (dataRows.length === 0) return '';
   const colCount = Math.max(...dataRows.map((/** @type {any} */ r) => r.cellsInline.length));
   const columns = Array(colCount).fill('<table:table-column/>').join('');
@@ -519,7 +519,7 @@ function contentXml(bodyXml) {
 function buildTocListOdt(headings, level, maxDepth, numberingEnabled, numbers) {
   if (level > maxDepth || headings.length === 0) return '';
   const items = headings
-    .map((/** @type {any} */ heading) => {
+    .map((heading) => {
       numbers.length = level;
       numbers[level - 1] = (numbers[level - 1] || 0) + 1;
       const number = numbers.slice(0, level).join('.');
@@ -573,7 +573,7 @@ export function exportToOdt(doc, scope = /** @type {any} */ (null)) {
   const { doneKeywords } = resolveTodoSequence(doc);
   const out = [];
 
-  const titleSource = scope ? scope.title : (doc.keywords || []).find((/** @type {any} */ k) => k.key.toUpperCase() === 'TITLE');
+  const titleSource = scope ? scope.title : (doc.keywords || []).find((k) => k.key.toUpperCase() === 'TITLE');
   const title = scope ? scope.title : titleSource ? titleSource.value : 'Untitled';
   const author = !scope && options.author ? getDocAuthor(doc) : null;
   const date = !scope && options.date ? getDocDate(doc) : null;

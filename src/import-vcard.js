@@ -350,7 +350,7 @@ export function parseVcards(text, opts = /** @type {any} */ ({})) {
         const rawParts = parsed.value.split(';');
         const structured = rawParts
           .slice(0, 7)
-          .map((/** @type {any} */ part) => part.trim())
+          .map((part) => part.trim())
           .filter(Boolean)
           .join(', ');
         const googleLabel = cleanMode && rawParts.length >= 8 ? rawParts[7].trim() : '';
@@ -403,7 +403,7 @@ export function parseVcards(text, opts = /** @type {any} */ ({})) {
         current.org =
           parsed.value
             .split(';')
-            .map((/** @type {any} */ part) => part.trim())
+            .map((part) => part.trim())
             .filter(Boolean)
             .join(', ') || null;
         break;
@@ -450,7 +450,7 @@ export function parseVcards(text, opts = /** @type {any} */ ({})) {
       case 'CATEGORIES':
         current.categories = parsed.value
           .split(',')
-          .map((/** @type {any} */ s) => s.trim())
+          .map((s) => s.trim())
           .filter(Boolean);
         current.categoriesRaw = parsed.value;
         break;

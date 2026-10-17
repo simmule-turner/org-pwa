@@ -249,7 +249,7 @@ function radToAngle(x, D, degrees) {
  * @param {Domain} D
  * @param {boolean} degrees
  */
-function sinCosAngle(/** @type {any} */ t, /** @type {any} */ tf, /** @type {any} */ D, /** @type {any} */ degrees) {
+function sinCosAngle(t, tf, D, degrees) {
   if (D.guard) {
     const G = D.guard;
     /** @type {any} */ const out = sinCosAngle(G.m.bignumber(t.toString()), tf, G, degrees);

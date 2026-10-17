@@ -269,7 +269,7 @@ export async function startQueryReplace() {
  * @param {string} documentId
  *  rather than lose the rest of the walk over one file's own failure. */
 export async function switchToAgendaDoc(documentId) {
-  const existingSession = S.documentSessions.find((/** @type {any} */ s) => (s.tabId === S.activeTabId ? S.state.documentId : s.state.documentId) === documentId);
+  const existingSession = S.documentSessions.find((s) => (s.tabId === S.activeTabId ? S.state.documentId : s.state.documentId) === documentId);
   if (existingSession) {
     if (existingSession.tabId !== S.activeTabId) switchToTab(existingSession.tabId);
     return S.state.documentId === documentId;

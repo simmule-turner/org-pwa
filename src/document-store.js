@@ -137,7 +137,7 @@ const openListQueue = { tail: /** @type {Promise<unknown>} */ (Promise.resolve()
 
 /** @template T @param {() => Promise<T>} change @returns {Promise<T>} */
 function changeOpenList(change) {
-  const locks = typeof navigator !== 'undefined' && /** @type {any} */ (navigator).locks;
+  const locks = typeof navigator !== 'undefined' && (navigator).locks;
   const run = openListQueue.tail.then(() => (locks ? locks.request('org-pwa-open-documents', change) : change()));
   openListQueue.tail = run.catch(() => {});
   return run;

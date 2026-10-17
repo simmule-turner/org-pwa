@@ -323,7 +323,7 @@ function defaultEventDescription(propertyName) {
  *  keys are conventionally upper-case, but not enforced). */
 function getPropertyCaseInsensitive(heading, key) {
   /** @param {any} [k] */
-  const foundKey = (heading.propertyOrder || []).find((/** @type {any} */ k) => k.toLowerCase() === key.toLowerCase());
+  const foundKey = (heading.propertyOrder || []).find((k) => k.toLowerCase() === key.toLowerCase());
   return foundKey ? heading.properties[foundKey] : undefined;
 }
 
@@ -467,7 +467,7 @@ function applyAgendaEffortView(items, { sort = null, filter = null, maxMinutes =
  * @param {Heading} heading
  * @param {any} [fieldType]
  *  ("birthday", "anniversary", "spouse") -- returning its own title (the value, as tree style writes it) or null. */
-function findTreeStyleFieldValue(/** @type {any} */ heading, /** @type {any} */ fieldType) {
+function findTreeStyleFieldValue(heading, fieldType) {
   for (const child of heading.children || []) {
     if (child.type !== 'heading') continue;
     const type = getPropertyCaseInsensitive(child, 'FIELDTYPE');
@@ -754,7 +754,7 @@ function entryTimestampText(heading) {
  *  line here already treats case as not meaningful. */
 function getCategoryForDocument(doc, documentId) {
   /** @param {any} [kw] */
-  const categoryKw = (doc.keywords || []).find((/** @type {any} */ kw) => kw.key.toUpperCase() === 'CATEGORY');
+  const categoryKw = (doc.keywords || []).find((kw) => kw.key.toUpperCase() === 'CATEGORY');
   if (categoryKw && categoryKw.value.trim()) return categoryKw.value.trim();
   if (!documentId || documentId.startsWith(UNSAVED_DOCUMENT_ID)) return 'Untitled'; // an unsaved, in-memory-only document has no filename to derive a category from
   const base = (String(documentId).split('/').pop() || '').replace(/\.org$/i, '');

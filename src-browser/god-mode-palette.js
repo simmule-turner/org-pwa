@@ -414,8 +414,8 @@ export const PALETTE_NEEDS = {
 };
 
 /**
- * @param {any} [command]
- * @param {any} [target]
+ * @param {import('../src/types.js').PaletteCommand} command
+ * @param {object | null} [target]
  */
 export function paletteUnavailableReason(command, target) {
   for (const need of command.needs || []) {
@@ -435,8 +435,8 @@ export function findPaletteCommandByOrgName(name) {
 
 /** Runs `command` against `target` exactly as the palette does: a command that
  *  is unavailable right now says why instead of doing nothing, and one that
- * @param {any} [command]
- * @param {any} [target]
+ * @param {import('../src/types.js').PaletteCommand} command
+ * @param {object | null} [target]
  *  throws says so. Shared by the palette itself and the Extras menu. */
 export function runPaletteCommand(command, target) {
   const reason = paletteUnavailableReason(command, target);
@@ -596,7 +596,7 @@ export function paletteCommandList() {
     { id: 'display-info', label: 'Show display measurements', group: 'App', keywords: ['status bar', 'inset', 'viewport', 'keyboard', 'screen', 'notch', 'debug'], run: () => showDisplayMeasurements() },
     { id: 'capture-icon', label: 'Add a capture icon to the home screen', group: 'App', keywords: ['shortcut', 'launcher', 'pin', 'capture template'], needs: ['captureShortcuts'], run: () => addCaptureIconToHomeScreen() },
     { id: 'org-pwa-folder', label: 'Choose the org-pwa folder', group: 'App', keywords: ['folder', 'local', 'attachments', 'attach', 'documents', 'data'], needs: ['orgPwaFolder'], run: () => chooseAttachmentsFolder() },
-  ].concat(/** @type {any} */ (extensionPaletteEntries()));
+  ].concat((extensionPaletteEntries()));
 }
 
 /** Opens the palette. Resolves once it closes. */
@@ -683,7 +683,7 @@ export async function openCommandPalette() {
     const available = !paletteUnavailableReason(command, target);
     finish();
     if (available) {
-      S.paletteRecentIds = pushRecent(S.paletteRecentIds, command.id);
+      S.paletteRecentIds = pushRecent(/** @type {string[]} */ (S.paletteRecentIds), command.id);
       kv.set(PALETTE_RECENT_KEY, JSON.stringify(S.paletteRecentIds)).catch(() => {});
     }
     runPaletteCommand(command, target);

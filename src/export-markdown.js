@@ -158,7 +158,7 @@ function resolveLinkHrefMd(target) {
 
 /** @param {any} [nodes] */
 function renderInlineListMd(nodes) {
-  if (citeMd) nodes = dropSilentCitations(nodes, (/** @type {any} */ c) => citeMd.formatCitation(c) === null);
+  if (citeMd) nodes = dropSilentCitations(nodes, (c) => citeMd.formatCitation(c) === null);
   return nodes.map(renderInlineNodeMd).join('');
 }
 
@@ -333,19 +333,19 @@ function padCells(cells, count) {
 
 /** @param {Table} table */
 function renderTableMd(table) {
-  const dataRows = table.rows.filter((/** @type {any} */ r) => r.type === 'row' && !isWidthCookieRow(r));
+  const dataRows = table.rows.filter(/** @param {import('./types.js').TableRow} r @returns {r is import('./types.js').DataRow} */ (r) => r.type === 'row' && !isWidthCookieRow(r));
   if (dataRows.length === 0) return '';
-  const colCount = Math.max(...dataRows.map((/** @type {any} */ r) => r.cells.length));
+  const colCount = Math.max(...dataRows.map((r) => r.cells.length));
   const lines = [];
   const headerCells = padCells(
-    (dataRows[0].cellsInline || []).map((/** @type {any} */ c) => renderInlineListMd(c)),
+    (dataRows[0].cellsInline || []).map((c) => renderInlineListMd(c)),
     colCount
   );
   lines.push('| ' + headerCells.join(' | ') + ' |');
   lines.push('| ' + Array(colCount).fill('---').join(' | ') + ' |');
   for (const row of dataRows.slice(1)) {
     const cells = padCells(
-      (row.cellsInline || []).map((/** @type {any} */ c) => renderInlineListMd(c)),
+      (row.cellsInline || []).map((c) => renderInlineListMd(c)),
       colCount
     );
     lines.push('| ' + cells.join(' | ') + ' |');
@@ -461,7 +461,7 @@ function buildTocListMd(headings, level, maxDepth, numberingEnabled) {
   const indent = '  '.repeat(level - 1);
   const marker = numberingEnabled ? (/** @type {number} */ i) => `${i + 1}.` : () => '-';
   /** @type {any[]} */ const lines = [];
-  headings.forEach((/** @type {any} */ heading, /** @type {number} */ i) => {
+  headings.forEach((heading, /** @type {number} */ i) => {
     const slug = headingSlugMapMd.get(heading);
     const label = renderTextMd(heading.title) || '(untitled)';
     lines.push(`${indent}${marker(i)} [${label}](#${slug || ''})`);

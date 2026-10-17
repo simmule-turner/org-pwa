@@ -137,7 +137,7 @@ function span(face, text) {
   if (!face) return esc(text);
   return text
     .split('\n')
-    .map((/** @type {any} */ part) => (part === '' ? '' : `<span class="org-${face}">${esc(part)}</span>`))
+    .map((part) => (part === '' ? '' : `<span class="org-${face}">${esc(part)}</span>`))
     .join('\n');
 }
 

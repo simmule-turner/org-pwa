@@ -109,8 +109,8 @@ function buildMacroTable(doc) {
  *  three names. */
 function keywordValues(doc, name) {
   return (doc.keywords || [])
-    .filter((/** @type {any} */ k) => k.key.toUpperCase() === name.toUpperCase())
-    .map((/** @type {any} */ k) => k.value)
+    .filter((k) => k.key.toUpperCase() === name.toUpperCase())
+    .map((k) => k.value)
     .join(' ');
 }
 
@@ -126,7 +126,7 @@ function keywordValues(doc, name) {
  * @param {Date} now
  *  silently dropped. */
 function expandMacrosInText(text, macros, doc, now) {
-  return text.replace(MACRO_USE_RE, (/** @type {any} */ whole, /** @type {string} */ name, /** @type {any} */ _paren, /** @type {any} */ argsStr) => {
+  return text.replace(MACRO_USE_RE, (whole, /** @type {string} */ name, _paren, argsStr) => {
     const args = splitMacroArgs(argsStr);
     if (name === 'title') return keywordValues(doc, 'TITLE');
     if (name === 'author') return keywordValues(doc, 'AUTHOR');
@@ -170,14 +170,14 @@ function expandMacrosInText(text, macros, doc, now) {
 function expandMacros(doc, now) {
   const macros = buildMacroTable(doc);
   /** @param {string} line */
-  const newBodyLines = (doc.bodyLines || []).map((/** @type {any} */ line) => expandMacrosInText(line, macros, doc, now));
+  const newBodyLines = (doc.bodyLines || []).map((line) => expandMacrosInText(line, macros, doc, now));
 
   /** @param {Heading} heading
    *  @returns {any} */
   function walk(heading) {
     const newTitle = expandMacrosInText(heading.title, macros, doc, now);
     /** @param {string} line */
-    const newLines = (heading.bodyLines || []).map((/** @type {any} */ line) => expandMacrosInText(line, macros, doc, now));
+    const newLines = (heading.bodyLines || []).map((line) => expandMacrosInText(line, macros, doc, now));
     return {
       ...heading,
       title: newTitle,
@@ -287,9 +287,9 @@ function filterNoexportAndComments(doc) {
  *  falsy or the document already starts there. */
 function scaleHeadingLevels(doc, minlevel) {
   if (!minlevel || (doc.children || []).length === 0) return doc;
-  const currentMin = Math.min(...doc.children.map((/** @type {any} */ h) => h.level));
+  const currentMin = Math.min(...doc.children.map((h) => h.level));
   if (currentMin === minlevel) return doc;
-  const newChildren = doc.children.map((/** @type {any} */ h) => {
+  const newChildren = doc.children.map((h) => {
     const copy = structuredClone(h); // a shallow { ...h } would leave h.children pointing at the SAME nested objects as the original doc -- shiftLevels' own recursive walk mutates in place, so this needs to be a true, independent deep copy first
     shiftLevels(copy, minlevel + (h.level - currentMin));
     return copy;

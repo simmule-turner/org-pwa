@@ -82,7 +82,7 @@ function timezoneOffsetString(date) {
  * @param {string} format
  */
 function formatTime(date, format) {
-  return format.replace(/%(.)/g, (/** @type {any} */ whole, /** @type {string} */ spec) => {
+  return format.replace(/%(.)/g, (whole, /** @type {string} */ spec) => {
     switch (spec) {
       case 'Y':
         return String(date.getFullYear());
@@ -378,7 +378,7 @@ function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = tr
   for (const rawSegment of olpPath) {
     const wrapped = /^%<(.*)>$/.exec(rawSegment);
     const title = wrapped ? formatTime(at, wrapped[1]) : rawSegment;
-    found = siblings.find((/** @type {any} */ h) => h.title === title);
+    found = siblings.find((h) => h.title === title);
     if (!found) {
       if (!allowCreate) return null;
       found = parent ? insertChildHeading(parent, { title }, prepend) : insertTopLevelHeading(doc, { title }, prepend);
@@ -460,7 +460,7 @@ function mergeFragmentInto(target, fragment, prepend = false) {
  *  not need its own module either. */
 function splitTableRowLine(line) {
   const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
-  return trimmed.split('|').map((/** @type {any} */ c) => c.trim());
+  return trimmed.split('|').map((c) => c.trim());
 }
 
 /** Finds the last (most recently added) table in a heading's body, or
@@ -474,7 +474,7 @@ function splitTableRowLine(line) {
  *  of mutations the way a naive loop might assume. */
 function lastTableIn(heading) {
   for (let i = heading.body.length - 1; i >= 0; i--) {
-    if (heading.body[i].type === 'table') return heading.body[i];
+    if (heading.body[i].type === 'table') return /** @type {import('./types.js').Table} */ (heading.body[i]);
   }
   return null;
 }
@@ -601,7 +601,7 @@ function stripEmptyProperties(heading) {
   for (const key of [...heading.propertyOrder]) {
     if (!String(heading.properties[key] ?? '').trim()) {
       delete heading.properties[key];
-      heading.propertyOrder = heading.propertyOrder.filter((/** @type {any} */ k) => k !== key);
+      heading.propertyOrder = heading.propertyOrder.filter((k) => k !== key);
     }
   }
   const keptLines = heading.bodyLines.filter((/** @type {string} */ line) => !EMPTY_BODY_LINE_RE.test(line));
@@ -643,10 +643,10 @@ function insertCapture(target, type, expandedText, prepend = false, omitEmptyEnt
       const insertAfterIndex = prepend ? (hasLeadingRule ? 1 : -1) : table.rows.length - 1;
       const newRowIndex = insertAfterIndex + 1;
       insertTableRow(target, table, insertAfterIndex);
-      table = prepend ? firstTableIn(target) : lastTableIn(target); // re-fetch: insertTableRow's commitLines just re-parsed target.body
+      table = /** @type {import('./types.js').Table} */ (prepend ? firstTableIn(target) : lastTableIn(target)); // re-fetch: insertTableRow's commitLines just re-parsed target.body
       for (let i = 0; i < cells.length; i++) {
         setTableCell(target, table, newRowIndex, i, cells[i]);
-        table = prepend ? firstTableIn(target) : lastTableIn(target); // re-fetch after every cell too, same reason
+        table = /** @type {import('./types.js').Table} */ (prepend ? firstTableIn(target) : lastTableIn(target)); // re-fetch after every cell too, same reason
       }
     } else {
       // No table yet -- this IS the "once" moment: create it (exactly
@@ -659,7 +659,7 @@ function insertCapture(target, type, expandedText, prepend = false, omitEmptyEnt
       let newTable = insertTable(target, { rows: 1, cols: cells.length || 1, headerRule: false });
       for (let i = 0; i < cells.length; i++) {
         setTableCell(target, newTable, 0, i, cells[i]);
-        newTable = lastTableIn(target);
+        newTable = /** @type {import('./types.js').Table} */ (lastTableIn(target));
       }
       // Captured as plain numbers, not held as an object reference --
       // commitLines below invalidates any object reference the moment

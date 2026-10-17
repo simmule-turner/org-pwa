@@ -235,7 +235,7 @@ export function parseCslJson(text) {
       if ((field === 'author' || field === 'editor') && Array.isArray(value)) {
         entry[field] = value.map((p) => `${p.family ?? ''} ${p.given ?? ''}`).join(' and ');
       } else if (field === 'issued' && value && typeof value === 'object') {
-        const v = /** @type {any} */ (value);
+        const v = (value);
         const date = v['date-parts'] ?? v.literal ?? v.raw;
         if (Array.isArray(date)) {
           const year = Array.isArray(date[0]) ? date[0][0] : date[0];

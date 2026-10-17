@@ -303,7 +303,7 @@ const TREE_FIELDTYPE_TO_VCARD_LINE = {
  *  block exists at all. */
 function blockText(heading) {
   /** @param {any} [b] */
-  const block = (heading.body || []).find((/** @type {any} */ b) => b.type === 'block' && (b.name === 'VERSE' || b.name === 'QUOTE'));
+  const block = (heading.body || []).find(/** @param {import('./types.js').BodyNode} b @returns {b is import('./types.js').Block} */ (b) => b.type === 'block' && (b.name === 'VERSE' || b.name === 'QUOTE'));
   return block ? block.lines.join('\n') : null;
 }
 
@@ -326,7 +326,7 @@ function noteBlockText(heading) {
  * @param {Heading} heading
  * @param {any} [fieldType]
  *  encounter it. */
-function findFieldValue(/** @type {any} */ heading, /** @type {any} */ fieldType) {
+function findFieldValue(heading, fieldType) {
   for (const child of heading.children || []) {
     if (String(getProperty(child, 'FIELDTYPE') || '').toLowerCase() === fieldType) return child.title;
     /** @type {any} */ const nested = findFieldValue(child, fieldType);

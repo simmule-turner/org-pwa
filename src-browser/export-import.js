@@ -715,7 +715,7 @@ export function renderImportFlow() {
  *  doesn't require a specific heading to already be focused and never
  *  risks overwriting anything already in the file. A file with no
  *  valid (FN-bearing) contacts produces a clear status message rather
- * @param {Heading[]} headings
+ * @param {{ heading: Heading }[]} headings
  * @param {any} [sourceLabel]
  *  than silently doing nothing. */
 export async function importVcardFromHeadings(headings, sourceLabel) {
@@ -764,7 +764,7 @@ export async function importVcardFile(vcardText) {
 }
 
 /** The iCalendar twin of importVcardFromHeadings: reads the iCalendar text found in the bodies of `headings` (a heading whose own
- * @param {Heading[]} headings
+ * @param {{ heading: Heading }[]} headings
  * @param {any} [sourceLabel]
  *  body starts with "BEGIN:VCALENDAR", as Export > Calendar (.ics) > To: *new buffer* leaves it). */
 export async function importIcalendarFromHeadings(headings, sourceLabel) {

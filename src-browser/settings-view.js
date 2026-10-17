@@ -753,7 +753,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   };
   /**
    * @param {string} label
-   * @param {string} key
+   * @param {'appt-activate' | 'appt-display-mode-line'} key
    * @param {string} hint
    */
   const apptCheckbox = (label, key, hint) => {
@@ -778,7 +778,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   };
   /**
    * @param {string} label
-   * @param {string} key
+   * @param {'appt-message-warning-time' | 'appt-display-interval' | 'appt-agenda-scan-interval'} key
    * @param {string} hint
    * @param {number} step
    * @param {string} unit

@@ -62,7 +62,7 @@ function base64ToUtf8(base64) {
 function encodeGithubPath(path) {
   return path
     .split('/')
-    .map((/** @type {any} */ segment) => encodeURIComponent(segment))
+    .map((segment) => encodeURIComponent(segment))
     .join('/');
 }
 
