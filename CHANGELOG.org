@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v549 — Add paragraph below works again
+Choosing "Add paragraph below" from a paragraph's menu could do nothing but leave stray blank lines, because it inserted an empty paragraph, which is not a paragraph in org. It now opens a blank editor and adds the paragraph only when you press OK with some text; Cancel leaves the file untouched. A new check taps every action in the heading, paragraph and list-item menus, so a button that errors or does nothing is caught before release.
+Verified: the new checks fail on v548 and pass on this build.
+
 * v548 — Types for the calculators and extensions
 The complex and vector calculators, table plots and the extension sandbox (its page, flow and permission code) now have real types for calculator values, plot data, permission grants and the messages passed to a script, so wrong fields are caught before release. About 175 more loose annotations are gone; the few left sit where a script or the bundled maths library supplies the value. Nothing the app does has changed.
 Verified: the code is identical to v547 apart from comments; the type checker, linter and unit tests pass.

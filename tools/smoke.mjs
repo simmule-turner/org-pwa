@@ -6404,6 +6404,58 @@ check('buffers: Save Some Buffers is in the File menu (dimmed when nothing is mo
   await context.close();
 });
 
+check('every action in a row\'s tap menu runs without a page error and does something', async () => {
+  // The sweep that finds "I tapped it and nothing happened": for each kind of row, tap every action (except the
+  // ones that ask to delete or archive) on a fresh document; a thrown error, or no visible effect, fails.
+  const source = ['* Heading one', 'Para one', '', '- item one', '- item two', ''].join('\n');
+  const rows = ['Heading one', 'Para one', 'item one'];
+  const skip = /delete|archive|refile|remove|^save$/i;
+  const problems = [];
+  const open = async (rowText) => {
+    const made = await freshPage();
+    await newDocument(made.page, source);
+    await made.page.getByText(rowText, { exact: true }).first().click();
+    await made.page.waitForTimeout(150);
+    return made;
+  };
+  const visible = (page) => page.evaluate(() => document.body.innerText + '|' + document.querySelectorAll('textarea, input, [role=dialog]').length);
+  for (const rowText of rows) {
+    const first = await open(rowText);
+    const labels = (await first.page.locator('button.icon-btn[aria-label]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))).filter((l) => !skip.test(l));
+    await first.context.close();
+    for (const label of labels) {
+      const { context, page, errors } = await open(rowText);
+      const before = await visible(page);
+      await page.locator(`button.icon-btn[aria-label="${label}"]`).first().click({ timeout: 3000 }).catch(() => {});
+      await page.waitForTimeout(300);
+      if (errors.length) problems.push(`${rowText} / ${label}: ${errors[0]}`);
+      else if ((await visible(page)) === before) problems.push(`${rowText} / ${label}: nothing happened`);
+      await context.close();
+    }
+  }
+  expect(problems.length === 0, problems.join(' | '));
+});
+
+check('Add paragraph below opens an empty editor, adds the paragraph on OK and nothing on Cancel', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, ['* H', 'Para one', '', '- item', ''].join('\n'));
+  const add = async () => {
+    await page.getByText('Para one', { exact: true }).first().click();
+    await page.locator('button.icon-btn[aria-label="Add paragraph below"]').click();
+    await page.waitForSelector('#paragraph-edit-popup textarea', { timeout: 3000 });
+  };
+  await add();
+  await page.locator('#paragraph-edit-popup button', { hasText: /cancel/i }).first().click();
+  expect((await documentText(page)) === ['* H', 'Para one', '', '- item', ''].join('\n'), 'Cancel leaves the file as it was');
+  await add();
+  await page.locator('#paragraph-edit-popup textarea').fill('Second.');
+  await page.locator('#paragraph-edit-popup button', { hasText: /^ok$/i }).first().click();
+  await page.waitForTimeout(300);
+  expect((await documentText(page)).includes('Para one\n\nSecond.\n'), 'OK adds the paragraph after the first');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 // ---- runner -------------------------------------------------------------------
 
 const filter = process.argv[2];

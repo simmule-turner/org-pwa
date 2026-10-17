@@ -10,7 +10,7 @@
 // Extracted from app.js: row render.
 import { captionText, imageOptions, splitAffiliated } from '../src/affiliated.js';
 import { getPropertiesText, getProperty, isArchivedInPlace } from '../src/archive-model.js';
-import { deleteListItem, deleteParagraph, deleteTable, deleteTableColumn, deleteTableRow, insertListItem, insertParagraphAfter, insertTableColumn, insertTableRow, isTableHeaderRow, setTableCell } from '../src/body-edit.js';
+import { deleteListItem, deleteParagraph, deleteTable, deleteTableColumn, deleteTableRow, insertListItem, insertTableColumn, insertTableRow, isTableHeaderRow, setTableCell } from '../src/body-edit.js';
 import { updateCheckboxCookiesUpward } from '../src/checkbox-cookie.js';
 import { demoteHeading, insertChildHeading, moveHeadingDown, moveHeadingUp, promoteHeading } from '../src/heading-edit.js';
 import { extractLatexFragments, parseInline, stripLineBreakMarker } from '../src/inline-markup.js';
@@ -24,7 +24,7 @@ import { GLOBAL_TODO_DEFAULT, SIDE_PANEL_MIN_WIDTH } from './constants.js';
 import { confirmDialog, openHeadingTextEditor } from './dialogs.js';
 import { contactPhotoValueForHeading, stripCommaEscapeApp } from './doc-helpers.js';
 import { sidePanelDividerEl, sidePanelEl, splitRowEl } from './dom.js';
-import { commitAndRender, openListItemEditor, openParagraphEditor, renderHistoryPanel, setStatus, startEditingTitle } from './editing.js';
+import { commitAndRender, openListItemEditor, openNewParagraphEditor, openParagraphEditor, renderHistoryPanel, setStatus, startEditingTitle } from './editing.js';
 import { attachHeadingGrip } from './heading-drag.js';
 import { openGeneralEditor } from './general-editor.js';
 import { attachSlideLeftToFold, attachSlideRightToComplete, confirmListItemDelete, confirmParagraphDelete, confirmTableDelete, deleteHeadingWithConfirmation, narrowToHeading, widen } from './gestures-structure.js';
@@ -1086,12 +1086,8 @@ export function renderParagraphRow(row) {
           label: 'Add paragraph below',
           onClick: () => {
             S.actionMenuFor = null;
-            const oldLineIndex = row.node.lineIndex;
-            const newParagraph = insertParagraphAfter(row.heading, row.node, '');
-            resyncKeyboardFocusToBodyRow(row.heading, 'paragraph', oldLineIndex);
-            S.editingParagraph = { heading: row.heading, paragraph: /** @type {import('../src/types.js').Paragraph} */ (newParagraph) };
-            commitAndRender('Added paragraph');
-            openParagraphEditor(row.heading, newParagraph);
+            render();
+            openNewParagraphEditor(row.heading, row.node);
           },
         },
         {

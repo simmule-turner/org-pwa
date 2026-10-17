@@ -2,7 +2,7 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: editing.
-import { editListItemText, editParagraphText } from '../src/body-edit.js';
+import { editListItemText, editParagraphText, insertParagraphAfter } from '../src/body-edit.js';
 import { footnoteEditorTool } from './footnotes-ui.js';
 import { saveDocument } from '../src/document-store.js';
 import { applyStartupVisibility } from '../src/fold-state.js';
@@ -95,6 +95,30 @@ export function openParagraphEditor(heading, paragraph) {
       editParagraphText(heading, paragraph, newText);
       resyncKeyboardFocusToBodyRow(heading, 'paragraph', paragraph.lineIndex);
       commitAndRender('Edited paragraph text');
+    },
+  });
+  overlay.id = 'paragraph-edit-popup';
+  applyPendingCursorPosition(overlay.querySelector('textarea'));
+}
+
+/**
+ * "Add paragraph below": the paragraph exists only once there is text to save, since empty text is not a paragraph.
+ * Cancelling or saving nothing leaves the document untouched.
+ * @param {Heading} heading
+ * @param {import('../src/types.js').Paragraph} afterParagraph
+ */
+export function openNewParagraphEditor(heading, afterParagraph) {
+  const overlay = openTextFieldPopup({
+    label: 'New paragraph',
+    value: '',
+    resetInPlace: true,
+    onCancel: () => {},
+    onSave: (/** @type {string} */ newText) => {
+      if (!newText.trim()) return;
+      const oldLineIndex = afterParagraph.lineIndex;
+      insertParagraphAfter(heading, afterParagraph, newText);
+      resyncKeyboardFocusToBodyRow(heading, 'paragraph', oldLineIndex);
+      commitAndRender('Added paragraph');
     },
   });
   overlay.id = 'paragraph-edit-popup';
