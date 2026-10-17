@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v551 — One setting, not two
+HTML export's preamble, postamble and head, and the switch for JavaScript blocks, now live only on Org's own variables (=org-html-preamble=, =org-html-postamble=, =org-html-head=, =org-babel-load-languages=), and Settings reads and writes those. The older =org-xx-html-*= and =org-xx-babel-js= settings are moved across the first time the app starts, so nothing needs redoing. Page header and footer stay as they were, since Org has no setting for them.
+Verified: the move, the Settings screens and the JavaScript-block checks pass.
+
 * v550 — Org's own variables for HTML export and JavaScript
 HTML export now honours Org's own =org-html-head=, =org-html-preamble= and =org-html-postamble= when set in Global Variables, so a copied Emacs setting works; a file's own options still win. =(js . t)= in =org-babel-load-languages= lets JavaScript blocks run when the app's own switch is unset. The README no longer says Emacs shows agenda titles as written. New checks tap every action in the row, table, block, top-bar and palette menus and fail on any error or dead button.
 Verified: the new variable cases and the menu checks pass.

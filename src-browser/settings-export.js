@@ -1,7 +1,7 @@
 // @ts-check
 // The Export page's General and HTML cards: text for the preamble, postamble, head, page header and page footer, each with a switch.
 // Nothing is applied until its box is ticked, and anything the file itself says wins (see src/export-defaults.js).
-import { EXPORT_DEFAULT_ITEMS, encodeExportText, exportItemState } from '../src/export-defaults.js';
+import { EXPORT_DEFAULT_ITEMS, encodeExportText, encodeLispString, exportItemState } from '../src/export-defaults.js';
 import { S } from './app-state.js';
 import { setStatus } from './editing.js';
 import { commitGlobalVariableChange } from './settings-quick.js';
@@ -93,10 +93,17 @@ function itemRow(item, name, variable, multiline) {
   row.appendChild(field);
 
   box.onchange = async () => {
-    await commitGlobalVariableChange(item.key + '-on', box.checked ? 't' : null);
+    if (item.lisp) await commitGlobalVariableChange(item.key, box.checked ? encodeLispString(field.value.trim() === '' ? item.text : field.value) : null);
+    else await commitGlobalVariableChange(item.key + '-on', box.checked ? 't' : null);
     setStatus(`${name}: ${box.checked ? 'applied to every export that does not set its own' : 'not applied'}.`);
   };
   field.onchange = async () => {
+    if (item.lisp) {
+      if (field.value.trim() === '') field.value = item.text;
+      if (box.checked) await commitGlobalVariableChange(item.key, encodeLispString(field.value));
+      setStatus(box.checked ? `${name} text saved.` : `${name}: tick the box to apply it.`);
+      return;
+    }
     const same = field.value === item.text;
     await commitGlobalVariableChange(item.key, same || field.value.trim() === '' ? null : encodeExportText(field.value));
     if (field.value.trim() === '') field.value = item.text;
@@ -111,7 +118,7 @@ async function resetItems(ids) {
   for (const item of EXPORT_DEFAULT_ITEMS) {
     if (!ids.includes(item.id)) continue;
     await commitGlobalVariableChange(item.key, null);
-    await commitGlobalVariableChange(item.key + '-on', null);
+    if (!item.lisp) await commitGlobalVariableChange(item.key + '-on', null);
   }
 }
 
@@ -142,11 +149,11 @@ export function buildExportCards(rerender) {
   resetGeneral.appendChild(menuButton('Reset General', async () => { await resetItems(['pageHeader', 'pageFooter']); rerender(); }));
   general.appendChild(resetGeneral);
 
-  const html = cardShell('HTML', 'Web page export', 'A ticked item is added to every HTML export whose file does not set its own. Unticked keeps your text for later.');
+  const html = cardShell('HTML', 'Web page export', 'A ticked item sets the Org variable of that name, for every HTML export whose file does not set its own. Unticking removes it.');
   html.setAttribute('data-export-card', 'html');
-  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[0], 'Preamble', 'html-preamble', false));
-  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[1], 'Postamble', 'html-postamble', false));
-  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[2], 'Head', 'HTML_HEAD', true));
+  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[0], 'Preamble', 'org-html-preamble', false));
+  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[1], 'Postamble', 'org-html-postamble', false));
+  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[2], 'Head', 'org-html-head', true));
   html.appendChild(line('The head goes inside <head>. Lines the file gives with #+HTML_HEAD: come after it, so they can override it.', 'font-size: 11px; opacity: 0.65; margin-top: 4px'));
   html.appendChild(codesHelp(false));
   const resetHtml = document.createElement('div');

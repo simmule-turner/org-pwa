@@ -5,6 +5,7 @@ import { tokenize as tokenizeExtraMenuValue } from '../src/extra-menu.js';
 import { tokenizeMenuAliasValue } from '../src/menu-alias.js';
 import { DEFAULT_ORG_WEATHER_FORMAT } from '../src/org-weather.js';
 import { VISIBILITY_KEYWORDS } from '../src/startup-config.js';
+import { getBabelJs } from '../src/local-variables.js';
 
 /**
  * Quick Settings: one entry per Global/Local Variable this app knows
@@ -407,15 +408,17 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#extensions',
   },
   {
-    key: 'org-xx-babel-js',
+    key: 'org-babel-load-languages',
     label: 'Run JavaScript source blocks',
     section: 'Editing',
     type: 'select',
-    default: 'off',
+    default: '((emacs-lisp . t))',
     options: [
-      { value: 'off', label: 'Off' },
-      { value: 'on', label: 'On' },
+      { value: '((emacs-lisp . t))', label: 'Off' },
+      { value: '((emacs-lisp . t) (js . t))', label: 'On' },
     ],
+    // Any list that holds (js . t) reads as On, whatever else it names.
+    currentValue: (/** @type {string | undefined} */ raw) => (getBabelJs({ 'org-babel-load-languages': raw ?? '' }) ? '((emacs-lisp . t) (js . t))' : '((emacs-lisp . t))'),
     helpAnchor: '#source-blocks',
   },
   { key: 'org-refile-targets', label: 'Refile targets', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#refile' },

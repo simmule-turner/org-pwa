@@ -112,14 +112,12 @@ test('results keep the block indentation', () => {
   assert.deepEqual(apply(['  #+BEGIN_SRC js', '  return 1;', '  #+END_SRC'], [': 1']), ['  #+BEGIN_SRC js', '  return 1;', '  #+END_SRC', '', '  #+RESULTS:', '  : 1']);
 });
 
-test('org-xx-babel-js is off unless set to on', () => {
+test('JavaScript blocks run only when org-babel-load-languages lists (js . t)', () => {
   assert.equal(getBabelJs({}), false);
   assert.equal(getBabelJs(undefined), false);
-  assert.equal(getBabelJs({ 'org-xx-babel-js': 'on' }), true);
   assert.equal(getBabelJs({ 'org-babel-load-languages': '((emacs-lisp . t) (js . t))' }), true);
+  assert.equal(getBabelJs({ 'org-babel-load-languages': "'((js . t) (python . t))" }), true);
   assert.equal(getBabelJs({ 'org-babel-load-languages': "'((emacs-lisp . t))" }), false);
   assert.equal(getBabelJs({ 'org-babel-load-languages': '((js . nil))' }), false);
-  assert.equal(getBabelJs({ 'org-xx-babel-js': 'off', 'org-babel-load-languages': '((js . t))' }), false);
-  assert.equal(getBabelJs({ 'org-xx-babel-js': 'off' }), false);
-  assert.equal(getBabelJs({ 'org-xx-babel-js': 'nil' }), false);
+  assert.equal(getBabelJs({ 'org-xx-babel-js': 'on' }), false, 'the retired variable does nothing');
 });

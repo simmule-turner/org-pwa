@@ -582,18 +582,12 @@ export function getDragHandle(vars) {
   return DRAG_HANDLE_SIDES.has(trimmed) ? trimmed : 'right';
 }
 
-/** org-xx-babel-js: whether JavaScript source blocks may run ("on"/"off", default off). This app's own
- *  variable, which wins when set; otherwise `(js . t)` in org-babel-load-languages turns it on. Callers pass the app's GLOBAL variables only -- never a file's own Local Variables -- so a
- * @param {LocalVars} vars
- *  document cannot switch code execution on for itself. */
+/** Whether JavaScript source blocks may run: `(js . t)` in org-babel-load-languages, Org's own list of languages. Callers pass the
+ *  app's GLOBAL variables only -- never a file's own Local Variables -- so a document cannot switch code execution on for itself.
+ * @param {LocalVars} vars */
 export function getBabelJs(vars) {
-  const raw = (vars || {})['org-xx-babel-js'];
-  if (raw === undefined) {
-    // Without this app's own switch, Org's list of languages decides: ((emacs-lisp . t) (js . t)) lets js run.
-    const languages = (vars || {})['org-babel-load-languages'];
-    return typeof languages === 'string' && /\(\s*js\s+\.\s+t\s*\)/i.test(languages);
-  }
-  return /^(on|yes|t|true)$/i.test(raw ? String(raw).trim() : '');
+  const languages = (vars || {})['org-babel-load-languages'];
+  return typeof languages === 'string' && /\(\s*js\s+\.\s+t\s*\)/i.test(languages);
 }
 
 /** org-contacts-birthday-property: which property key holds a

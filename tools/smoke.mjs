@@ -4374,7 +4374,7 @@ check('settings: Export has General, ASCII and HTML in that order, every box sta
   await pre.locator('input[type=checkbox]').check();
   await page.waitForTimeout(300);
   const stored = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables);
-  expect(stored['org-xx-html-preamble'] === 'Hello %a' && stored['org-xx-html-preamble-on'] === 't', `stored: ${JSON.stringify(stored)}`);
+  expect(stored['org-html-preamble'] === '"Hello %a"' && !('org-xx-html-preamble' in stored), `stored: ${JSON.stringify(stored)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -4804,7 +4804,7 @@ const sandboxErrors = (errors) => errors.filter((e) => !/allow-same-origin/.test
 async function enableJavaScript(page) {
   await page.evaluate(async () => {
     const { S } = await import('/src-browser/app-state.js');
-    S.globalVariables = { ...S.globalVariables, 'org-xx-babel-js': 'on' };
+    S.globalVariables = { ...S.globalVariables, 'org-babel-load-languages': '((emacs-lisp . t) (js . t))' };
     const { render } = await import('/src-browser/render.js');
     render();
   });
@@ -4840,7 +4840,7 @@ check('Content-Security-Policy: starting the app breaks no rule, and an injected
 
 check('JavaScript blocks are off by default, and a file cannot switch them on for itself', async () => {
   const { context, page, errors } = await freshPage(main);
-  await newDocument(page, ['* Code', '#+BEGIN_SRC js', 'return 1;', '#+END_SRC', '', '# Local Variables:', '# org-xx-babel-js: on', '# End:', ''].join('\n'));
+  await newDocument(page, ['* Code', '#+BEGIN_SRC js', 'return 1;', '#+END_SRC', '', '# Local Variables:', '# org-babel-load-languages: ((js . t))', '# End:', ''].join('\n'));
   expect((await page.getByRole('button', { name: 'Run source block' }).count()) === 0, 'no Run button, even with the variable in the file');
   await enableJavaScript(page);
   expect((await page.getByRole('button', { name: 'Run source block' }).count()) === 1, 'Run button once Settings turns it on');
@@ -6400,6 +6400,30 @@ check('buffers: Save Some Buffers is in the File menu (dimmed when nothing is mo
   await page.evaluate(async () => (await import('/src-browser/editing.js')).performUndo());
   expect((await documentText(page)).includes('A typed'), 'Undo brings the discarded change back');
   expect(dav.get('a.org') === '* A one\n', 'and the file itself was never touched');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('saved org-xx-html-* and org-xx-babel-js settings move onto Org\'s own variables when the app starts', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.evaluate(
+    () =>
+      new Promise((resolve, reject) => {
+        const open = indexedDB.open('org-pwa', 1);
+        open.onsuccess = () => {
+          const tx = open.result.transaction('kv', 'readwrite');
+          tx.objectStore('kv').put(JSON.stringify('org-xx-html-preamble: Hi %a\norg-xx-html-preamble-on: t\norg-xx-babel-js: on\norg-xx-page-footer: keep'), 'settings:globalVariables');
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        };
+        open.onerror = () => reject(open.error);
+      })
+  );
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(600);
+  const stored = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables);
+  expect(stored['org-html-preamble'] === '"Hi %a"' && stored['org-babel-load-languages'] === '((emacs-lisp . t) (js . t))' && stored['org-xx-page-footer'] === 'keep', `stored: ${JSON.stringify(stored)}`);
+  expect(!Object.keys(stored).some((k) => /^org-xx-(html|babel)/.test(k)), `retired keys left: ${JSON.stringify(stored)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

@@ -221,7 +221,7 @@ export function renderQuickSettingField(field) {
   } else if (field.type === 'select') {
     const select = document.createElement('select');
     textInputStyle(select);
-    const current = rawValue !== undefined ? rawValue : field.default;
+    const current = field.currentValue ? field.currentValue(rawValue) : rawValue !== undefined ? rawValue : field.default;
     populateSelectOptions(select, field.options, current);
     select.onchange = async () => {
       await commitGlobalVariableChange(field.key, select.value === field.default ? null : select.value);
