@@ -1,0 +1,36 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{root}
+\date{\today}
+\title{Cite natbib}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Cite natbib},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\usepackage{natbib}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Cites}
+\label{sec:orgd2bc2e6}
+Plain \citep{doe99} and multiple \citep{doe99,roe05} and prefix \citep[see][p. 3]{doe99} and style \citet{doe99} and \nocite{roe05}.
+Bare \citeauthor*{doe99}. Suffix only \citep[, pp. 1-2]{doe99}. Empty prefix \citep{doe99,roe05}.
+
+\bibliography{/tmp/claude-0/-home-claude/e1114246-a127-5abf-b922-b0f9494c2d27/scratchpad/proj/test/fixtures/latex/refs}
+\end{document}

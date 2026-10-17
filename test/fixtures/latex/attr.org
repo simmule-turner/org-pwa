@@ -1,0 +1,94 @@
+#+TITLE: Attr
+#+LATEX_HEADER: \usepackage{tabularx}
+#+LATEX_HEADER: \usepackage{booktabs}
+* Tables
+#+ATTR_LATEX: :environment longtable :align lrl
+| a | b | c |
+|---+---+---|
+| 1 | 2 | 3 |
+
+#+ATTR_LATEX: :environment tabularx :width \textwidth :align XX
+| a | b |
+
+#+ATTR_LATEX: :float sideways
+#+CAPTION: Sideways table
+| a | b |
+
+#+ATTR_LATEX: :float nil
+#+CAPTION: Plain table
+| a | b |
+
+#+ATTR_LATEX: :center nil
+| a | b |
+
+#+ATTR_LATEX: :booktabs t
+| a | b |
+|---+---|
+| 1 | 2 |
+
+#+ATTR_LATEX: :font \small :placement [t]
+#+CAPTION: Small
+| a | b |
+
+#+ATTR_LATEX: :mode math :environment bmatrix
+| 1 | 2 |
+| 3 | 4 |
+
+#+ATTR_LATEX: :mode inline-math
+| 1 | 2 |
+
+#+ATTR_LATEX: :math-prefix {} :math-suffix {}
+| 1 | 2 |
+
+#+ATTR_LATEX: :caption \caption{Own caption}
+| a | b |
+* Blocks
+#+ATTR_LATEX: :options [leftmargin=1cm]
+#+begin_quote
+Quote with options
+#+end_quote
+
+#+ATTR_LATEX: :center nil
+#+begin_center
+Centered
+#+end_center
+
+#+ATTR_LATEX: :environment myenv :options [x]
+#+begin_example
+Example
+#+end_example
+
+#+begin_foo
+Special block
+#+end_foo
+
+#+ATTR_LATEX: :options {arg}
+#+begin_foo
+Special with options
+#+end_foo
+
+#+CAPTION: A source caption
+#+begin_src js
+let a;
+#+end_src
+
+#+NAME: srcname
+#+begin_src js
+let b;
+#+end_src
+
+#+CAPTION: Example caption
+#+begin_example
+ex
+#+end_example
+* Lists
+#+ATTR_LATEX: :environment enumerate*
+- a
+- b
+
+#+ATTR_LATEX: :options [label=\alph*)]
+1. one
+2. two
+
+#+ATTR_LATEX: :environment itemize :options [noitemsep]
+- tight

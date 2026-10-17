@@ -1,0 +1,150 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\author{root}
+\date{\today}
+\title{Attr two}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Attr two},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Longtables}
+\label{sec:orgdb4a436}
+\begin{longtable}{rr}
+\caption{Long caption}
+\\[0pt]
+h1 & h2\\[0pt]
+\hline
+\endfirsthead
+\multicolumn{2}{l}{Continued from previous page} \\[0pt]
+\hline
+
+h1 & h2 \\[0pt]
+
+\hline
+\endhead
+\hline\multicolumn{2}{r}{Continued on next page} \\
+\endfoot
+\endlastfoot
+\hline
+1 & 2\\[0pt]
+3 & 4\\[0pt]
+\end{longtable}
+
+\begin{longtable}{rr}
+no & header\\[0pt]
+1 & 2\\[0pt]
+\end{longtable}
+
+\begin{longtable}{rr}
+\label{tab:org67c91a9}
+\\[0pt]
+h1 & h2\\[0pt]
+\hline
+\endfirsthead
+\multicolumn{2}{l}{Continued from previous page} \\[0pt]
+\hline
+
+h1 & h2 \\[0pt]
+
+\hline
+\endhead
+\hline\multicolumn{2}{r}{Continued on next page} \\
+\endfoot
+\endlastfoot
+\hline
+1 & 2\\[0pt]
+\end{longtable}
+\section{Misc tables}
+\label{sec:orgbd59026}
+\begin{center}
+\begin{tabular*}{10cm}{lr}
+a & b\\[0pt]
+\end{tabular*}
+\end{center}
+
+\begin{table*}[htbp]
+\caption{Wide}
+\centering
+\begin{tabular}{ll}
+a & b\\[0pt]
+\end{tabular}
+\end{table*}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ll}
+a & b\\[0pt]
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\caption{\label{tab:org4290151}Cap and name}
+\centering
+\begin{tabular}{rr}
+a & b\\[0pt]
+\hline
+1 & 2\\[0pt]
+\end{tabular}
+\end{table}
+
+\begin{center}
+\begin{tabular}{rr}
+\toprule
+a & b\\[0pt]
+\midrule
+1 & 2\\[0pt]
+\midrule
+3 & 4\\[0pt]
+\bottomrule
+\end{tabular}
+\end{center}
+\section{Pictures}
+\label{sec:org5288788}
+\begin{figure*}
+\centering
+\includegraphics[width=.9\linewidth]{wide.png}
+\caption{Wide figure}
+\end{figure*}
+
+\begin{center}
+\includegraphics[width=\textwidth]{/abs/path/pic.png}
+\end{center}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=.9\linewidth]{placed.png}
+\caption{Placed}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.9\linewidth]{namedfloat.png}
+\label{orge887a9f}
+\end{figure}
+
+\begin{center}
+\includegraphics[width=.9\linewidth]{a.png}
+\end{center} \begin{center}
+\includegraphics[width=.9\linewidth]{b.png}
+\end{center}
+\end{document}

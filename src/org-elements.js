@@ -259,7 +259,8 @@ function interruptsParagraph(line) {
     isBlank(line) ||
     BLOCK_BEGIN_RE.test(line) ||
     AFFILIATED_RE.test(line) ||
-    /^[ \t]*#\+(HTML|TOC|INCLUDE|PRINT_BIBLIOGRAPHY):/i.test(line) ||
+    COMMENT_RE.test(line) ||
+    /^[ \t]*#\+(HTML|LATEX|TOC|INCLUDE|PRINT_BIBLIOGRAPHY):/i.test(line) ||
     TABLE_RE.test(line) ||
     HR_RE.test(line) ||
     FIXED_RE.test(line) ||
@@ -275,8 +276,10 @@ export function parseElements(lines) {
   /** @type {OrgElement[]} */ const out = [];
   /** @type {Affiliated | null} */
   let aff = null;
+  let afterComment = false; // the blank lines after a comment belong to the comment, not to the element before it
   /** @param {OrgElement} el */
   const push = (el) => {
+    afterComment = false;
     if (aff) el.aff = aff;
     else el.aff = null;
     aff = null;
@@ -287,7 +290,7 @@ export function parseElements(lines) {
     const line = lines[i];
     if (isBlank(line)) {
       const last = out[out.length - 1];
-      if (last && !aff) last.postBlank = (last.postBlank || 0) + 1;
+      if (last && !aff && !afterComment) last.postBlank = (last.postBlank || 0) + 1;
       i++;
       continue;
     }
@@ -321,6 +324,9 @@ export function parseElements(lines) {
       continue;
     }
     if (COMMENT_RE.test(line)) {
+      const last = out[out.length - 1];
+      if (last && !aff && i > 0 && !isBlank(lines[i - 1])) last.postBlank = Math.max(last.postBlank || 0, 1); // Org prints a blank line where a comment cut an element short
+      afterComment = true;
       i++;
       continue;
     }

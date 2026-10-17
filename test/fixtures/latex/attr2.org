@@ -1,0 +1,59 @@
+#+TITLE: Attr two
+#+LATEX_HEADER: \usepackage{booktabs}
+* Longtables
+#+ATTR_LATEX: :environment longtable
+#+CAPTION: Long caption
+| h1 | h2 |
+|----+----|
+| 1  | 2  |
+| 3  | 4  |
+
+#+ATTR_LATEX: :environment longtable
+| no | header |
+| 1  | 2  |
+
+#+ATTR_LATEX: :environment longtable
+#+NAME: lt
+| h1 | h2 |
+|----+----|
+| 1  | 2  |
+* Misc tables
+#+ATTR_LATEX: :environment tabular* :width 10cm :align lr
+| a | b |
+
+#+ATTR_LATEX: :float multicolumn
+#+CAPTION: Wide
+| a | b |
+
+#+ATTR_LATEX: :float t :placement [h]
+| a | b |
+
+#+CAPTION: Cap and name
+#+NAME: both
+| a | b |
+|---+---|
+| 1 | 2 |
+
+#+ATTR_LATEX: :booktabs t
+| a | b |
+|---+---|
+| 1 | 2 |
+|---+---|
+| 3 | 4 |
+* Pictures
+#+ATTR_LATEX: :float multicolumn
+#+CAPTION: Wide figure
+[[file:wide.png]]
+
+#+ATTR_LATEX: :width \textwidth
+[[file:/abs/path/pic.png]]
+
+#+ATTR_LATEX: :placement [h]
+#+CAPTION: Placed
+[[file:placed.png]]
+
+#+NAME: namedonly
+#+ATTR_LATEX: :float t
+[[file:namedfloat.png]]
+
+[[file:a.png]] [[file:b.png]]

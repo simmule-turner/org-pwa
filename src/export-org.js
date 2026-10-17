@@ -157,6 +157,35 @@ function expandMacrosInText(text, macros, doc, now) {
   });
 }
 
+/** `=verbatim=` and `~code~` spans: a macro written inside one is text, not a macro. */
+const CODE_SPAN_RE = /(^|[\s\-({'"])([=~])([^\s=~]|[^\s=~].*?[^\s=~])\2(?=$|[\s\-.,;:!?')}\]"])/g;
+/** Blocks whose lines are never searched for macros, as in Org (source, example, export and comment blocks, and `: ` lines). */
+const MACRO_FREE_BLOCK_RE = /^\s*#\+(begin|end)_(src|example|export|comment)\b/i;
+
+/**
+ * Expands the macros of body lines, leaving those inside code spans, source/example/export/comment blocks and fixed-width lines alone.
+ * @param {string[]} lines @param {(text: string) => string} expand
+ */
+function expandBodyLines(lines, expand) {
+  let inBlock = false;
+  return lines.map((line) => {
+    const fence = MACRO_FREE_BLOCK_RE.exec(line);
+    if (fence) {
+      inBlock = fence[1].toLowerCase() === 'begin';
+      return line;
+    }
+    if (inBlock || /^\s*:(\s|$)/.test(line) || !line.includes('{{{')) return line;
+    let out = '';
+    let last = 0;
+    for (const m of line.matchAll(CODE_SPAN_RE)) {
+      const start = (m.index || 0) + m[1].length;
+      out += expand(line.slice(last, start)) + line.slice(start, (m.index || 0) + m[0].length);
+      last = (m.index || 0) + m[0].length;
+    }
+    return out + expand(line.slice(last));
+  });
+}
+
 /** Applies expandMacrosInText across every real text line in `doc`
  *  (the document's own preamble bodyLines, and every heading's own
  *  title plus bodyLines, recursively) -- matching real org's own
@@ -169,15 +198,14 @@ function expandMacrosInText(text, macros, doc, now) {
  *  new doc; the input is never mutated. */
 function expandMacros(doc, now) {
   const macros = buildMacroTable(doc);
-  /** @param {string} line */
-  const newBodyLines = (doc.bodyLines || []).map((line) => expandMacrosInText(line, macros, doc, now));
+  const expand = (/** @type {string} */ text) => expandMacrosInText(text, macros, doc, now);
+  const newBodyLines = expandBodyLines(doc.bodyLines || [], expand);
 
   /** @param {Heading} heading
    *  @returns {any} */
   function walk(heading) {
     const newTitle = expandMacrosInText(heading.title, macros, doc, now);
-    /** @param {string} line */
-    const newLines = (heading.bodyLines || []).map((line) => expandMacrosInText(line, macros, doc, now));
+    const newLines = expandBodyLines(heading.bodyLines || [], expand);
     return {
       ...heading,
       title: newTitle,

@@ -1,0 +1,7 @@
+#+TITLE: Footsec
+* Body
+Text[fn:1] and more[fn:2].
+* Footnotes
+[fn:1] First note.
+
+[fn:2] Second note.

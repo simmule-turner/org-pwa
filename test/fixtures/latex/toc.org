@@ -1,0 +1,18 @@
+#+TITLE: Toc
+#+LATEX_HEADER: \usepackage{titletoc}
+#+LATEX_HEADER: \usepackage{listings}
+#+OPTIONS: toc:nil
+* One
+#+TOC: headlines 1
+** Two
+#+TOC: headlines 2 local
+*** Three
+#+TOC: tables
+#+TOC: listings
+text
+#+CAPTION: Table caption
+| a |
+#+CAPTION: Figure caption
+[[file:f.png]]
+* Four
+#+TOC: headlines

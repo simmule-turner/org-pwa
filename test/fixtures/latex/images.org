@@ -1,0 +1,36 @@
+#+TITLE: Images
+* Images
+Inline [[file:img/a.png]] picture and with desc [[file:img/b.jpg][a label]] and link to image [[file:d.svg][d]].
+
+[[file:figure.png]]
+
+#+CAPTION: A figure caption
+[[file:figure2.png]]
+
+#+CAPTION: Named figure
+#+NAME: fig:one
+[[file:figure3.png]]
+
+#+ATTR_LATEX: :width 5cm
+[[file:sized.png]]
+
+#+ATTR_LATEX: :width 5cm :height 3cm :options angle=90
+#+CAPTION: Attr and caption
+[[file:sized2.png]]
+
+#+ATTR_LATEX: :float wrap :placement {r}{0.5\textwidth}
+[[file:wrapped.png]]
+
+#+ATTR_LATEX: :float sideways
+#+CAPTION: Sideways
+[[file:side.png]]
+
+#+ATTR_LATEX: :float nil
+#+CAPTION: Not floated
+[[file:nofloat.png]]
+
+#+ATTR_LATEX: :center nil
+[[file:nocenter.png]]
+
+#+CAPTION[Short]: Long caption here
+[[file:short.png]]

@@ -9,27 +9,47 @@
  * center / example / src / export blocks. Labels are `sec:org` plus seven hex digits, as Org's are, but derived from
  * the heading's position so the same file always gives the same .tex.
  *
- * Not yet: images, `#+ATTR_LATEX` beyond `:align`, entities, citations, `#+INCLUDE`, `#+TOC`, babel `:exports`, other
- * link types (file, id, custom targets), the `listings` backend.
+ * Also: entities (spelled as org-entities does), links (file, id, headings, custom ids, targets, radio targets and named
+ * elements), pictures with their float options, `#+ATTR_LATEX` on tables, pictures, blocks and lists, `#+TOC`, and
+ * citations for the natbib and biblatex processors (any other processor prints text, as in the other exporters).
+ * `#+INCLUDE` and babel `:exports` are settled before the document gets here (expandIncludes, prepareBabelExport).
+ *
+ * Not yet: the `listings` backend, `#+LATEX_CLASS` beyond article/report/book.
  */
 
-import { parseElements } from './org-elements.js';
+import { parseElements, parseAttributes } from './org-elements.js';
 import { parseInline } from './inline-markup.js';
 import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
 import { preambleBody } from './export-html.js';
+import { expandMacrosForExport } from './export-org.js';
+import { LATEX_ENTITIES } from './entities-latex.js';
+import { latexTable } from './latex-table.js';
+import { natbibCitation, biblatexCitation } from './latex-cite.js';
+import { bibliographyFiles, citeDefaults, citeExportFor, citeExportSetting } from './cite.js';
+import { radioTargetRegExp } from './targets.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').InlineNode} InlineNode */
 /** @typedef {import('./org-elements.js').OrgElement} OrgElement */
 /** @typedef {{ label: string, title: string }} HeadingRef */
+/** @typedef {import('./cite.js').CitationNode} CitationNode */
 /**
  * @typedef {{
  *   sup: string,
  *   footnotes: Map<string, OrgElement[]>,
  *   footnoteLabels: Map<string, string>,
+ *   footnoteRefs: Map<string, number>,
  *   targets: Map<string, HeadingRef>,
  *   labels: Map<Heading, string>,
+ *   radioRe: RegExp | null,
+ *   processor: string,
+ *   cite: ReturnType<typeof citeExportFor> | null,
+ *   images: Map<string, string>,
+ *   imageTargets: string[],
+ *   current: Heading | null,
+ *   base: number,
+ *   localToc: Set<Heading>,
  *   anon: number,
  *   inLink: boolean,
  *   parsed: Map<string[], OrgElement[]>,
@@ -40,18 +60,17 @@ import { preambleBody } from './export-html.js';
 const BREAK = '\uE000';
 const LINE_BREAK_RE = /\\\\[ \t]*$/;
 /** A LaTeX command written in the text (`\textbf{x}`, `\alpha`, `\-`) goes through as written, like Org does. */
-const COMMAND_RE = /\\(?:[A-Za-z]+\*?(?:\{[^{}\n]*\}|\[[^\][{}\n]*\])*|-)/g;
+const COMMAND_RE = /\\(?:[A-Za-z]+\*?(?:\{[^{}\n]*\}|\[[^\][{}\n]*\])*|-)|\\_ +/g;
+/** An entity is `\\name`, with an empty `{}` allowed after it: `\\alpha{}beta`. */
+const ENTITY_RE = /\\(there4|sup[123]|frac[13][24]|[A-Za-z]+)(\{\})?/y;
 const TIMESTAMP_RE = /([<[])(\d{4}-\d{2}-\d{2})(?: ([^\s\d>\]+-]+))?(?: (\d{1,2}:\d{2})(?:-(\d{1,2}:\d{2}))?)?((?: [.+]?\+\d+[hdwmy](?:\/\d+[hdwmy])?| -\d+[hdwmy])*)([>\]])(?:--([<[])(\d{4}-\d{2}-\d{2})(?: ([^\s\d>\]+-]+))?(?: (\d{1,2}:\d{2}))?([>\]]))?/g;
-const NUMBER_RE = /^([<>]?[-+^.0-9]*[0-9][-+^.0-9eEdDx()%:]*|0[xX][0-9a-fA-F]+|nan|[-+u]?inf)$/;
-const COOKIE_RE = /^<[lrc]?\d*>$/;
-const COOKIE_ONLY_RE = /^<[lrc]\d*>$|^<\d+>$/;
 
 /** @type {LatexState} */
 let S = newState();
 
 /** @returns {LatexState} */
 function newState() {
-  return { sup: 't', footnotes: new Map(), footnoteLabels: new Map(), targets: new Map(), labels: new Map(), anon: 0, inLink: false, parsed: new Map() };
+  return { sup: 't', footnotes: new Map(), footnoteLabels: new Map(), footnoteRefs: new Map(), targets: new Map(), labels: new Map(), radioRe: null, processor: 'basic', cite: null, images: new Map(), imageTargets: [], current: null, base: 0, localToc: new Set(), anon: 0, inLink: false, parsed: new Map() };
 }
 
 /** Seven hex digits from a string, the way Org's `org1a2b3c4` labels look; stable for the same input. @param {string} s */
@@ -87,15 +106,46 @@ function protectTexttt(s) {
   });
 }
 
-/** Plain text: commands kept, special characters escaped, `...` as `\ldots{}`, forced breaks as `\\[0pt]`. @param {string} s */
+/** Plain text: entities spelled out, other commands kept, special characters escaped, `...` as `\ldots{}`, forced breaks as `\\[0pt]`. @param {string} s */
 function plain(s) {
   let out = '';
   let last = 0;
   for (const m of s.matchAll(COMMAND_RE)) {
-    out += plainPiece(s.slice(last, m.index)) + m[0];
-    last = (m.index || 0) + m[0].length;
+    const start = m.index || 0;
+    if (start < last) continue;
+    out += plainPiece(s.slice(last, start));
+    const entity = entityAt(s, start);
+    if (entity) {
+      out += entity.text;
+      last = entity.end;
+    } else {
+      out += m[0];
+      last = start + m[0].length;
+    }
   }
   return out + plainPiece(s.slice(last));
+}
+
+/** The entity written at `at` (`\alpha`, `\nbsp{}`, `\_ `), as LaTeX, and where it ends; null when it is not an entity. @param {string} s @param {number} at */
+function entityAt(s, at) {
+  const spaces = /^\\_( +)/.exec(s.slice(at));
+  /** @type {string | undefined} */
+  let key;
+  let length = 0;
+  if (spaces) {
+    key = '_' + spaces[1];
+    length = spaces[0].length;
+  } else {
+    ENTITY_RE.lastIndex = at;
+    const m = ENTITY_RE.exec(s);
+    if (m) {
+      key = m[1];
+      length = m[0].length;
+    }
+  }
+  const entry = key === undefined ? undefined : LATEX_ENTITIES[key];
+  if (!entry) return null;
+  return { text: entry[1] ? '\\(' + entry[0] + '\\)' : entry[0], end: at + length };
 }
 
 /** @param {string} s */
@@ -131,8 +181,13 @@ function textWithTimestamps(s) {
 
 /** Inline markup of a run of text (lines joined with newlines). @param {string} text */
 function inline(text) {
+  return nodes(parseText(text));
+}
+
+/** @param {string} text @returns {InlineNode[]} */
+function parseText(text) {
   const marked = text.split('\n').map((l) => (LINE_BREAK_RE.test(l) ? l.replace(LINE_BREAK_RE, BREAK) : l)).join('\n');
-  return nodes(parseInline(marked, { subSuperscriptMode: S.sup }));
+  return parseInline(marked, { subSuperscriptMode: S.sup, radioTargets: S.radioRe });
 }
 
 /** @param {InlineNode[]} list */
@@ -141,7 +196,7 @@ function nodes(list) {
 }
 
 /** @param {string} url */
-const isExternal = (url) => /^[A-Za-z][A-Za-z0-9+.-]*:/.test(url) && !/^(file|id|help|elisp|shell|attachment):/.test(url);
+const isExternal = (url) => /^[A-Za-z][A-Za-z0-9+.-]*:/.test(url) && !/^(file|id|help|elisp|shell|attachment):/i.test(url);
 
 /** @param {InlineNode} n @returns {string} */
 function node(n) {
@@ -170,14 +225,25 @@ function node(n) {
     case 'footnote-ref':
       return footnoteRef(n.label, null);
     case 'footnote-def':
-      return footnoteRef(n.label, n.children);
+      return footnoteRef(n.label, n.label && S.footnotes.has(n.label) ? null : n.children);
     case 'target':
+      return '\\label{' + targetLabel(n.name) + '}';
     case 'radio-target':
-      return protect(n.value || '');
+      return '\\label{' + targetLabel(n.name) + '}' + plain(n.name);
+    case 'image':
+      return '\\begin{center}\n' + includeGraphics(n.target, {}) + '\n\\end{center}';
+    case 'citation':
+      return citation(n);
     default:
       return '';
   }
 }
+
+/** A name compared without case or runs of blanks, as targets are. @param {string} name */
+const norm = (name) => name.trim().replace(/\s+/g, ' ').toLowerCase();
+
+/** @param {string} name */
+const targetLabel = (name) => 'org' + hash7('target:' + norm(name));
 
 /** Math is passed through as written; `$x$` becomes `\(x\)`. @param {Extract<InlineNode, { type: 'latex' }>} n */
 function latexFragment(n) {
@@ -185,18 +251,105 @@ function latexFragment(n) {
   return n.displayMode ? '\\[' + n.source + '\\]' : '\\(' + n.source + '\\)';
 }
 
+/** `\ref` for a link with no description, `\hyperref` for one with. @param {string} label @param {string | null} description */
+const reference = (label, description) => (description === null ? '\\ref{' + label + '}' : '\\hyperref[' + label + ']{' + description + '}');
+
+/** The thing an internal link points to, or null: a custom id, an id, a headline (`*Title`), or what a bare name matches
+ * (a target, a named element, a headline title, in that order). @param {string} target @returns {{ label: string } | null} */
+function resolveInternal(target) {
+  if (target.startsWith('#') || /^id:/i.test(target)) return S.targets.get(target.replace(/^ID:/i, 'id:')) || null;
+  if (target.startsWith('*')) return S.targets.get('head:' + target.slice(1).trim()) || null;
+  const bare = target.replace(/^file:/i, '');
+  return S.targets.get('target:' + norm(bare)) || S.targets.get('name:' + bare) || S.targets.get('head:' + bare) || null;
+}
+
 /** @param {Extract<InlineNode, { type: 'link' }>} n */
 function link(n) {
   const target = n.target;
   if (S.inLink) return protect(n.description === null ? target : n.description);
+  if (n.radio) {
+    const ref = S.targets.get('target:' + norm(target));
+    return ref ? reference(ref.label, protect(n.description || target)) : protect(n.description || target);
+  }
   S.inLink = true;
   const description = n.description === null ? null : inline(n.description);
   S.inLink = false;
+  if (/^file:/i.test(target) || (!/^[A-Za-z][A-Za-z0-9+.-]*:/.test(target) && /^(\.{0,2}\/|~\/)/.test(target))) {
+    let path = target.replace(/^file:(\/\/)?/i, '').replace(/::.*$/, '');
+    if (path.startsWith('/')) path = 'file://' + path;
+    return description === null ? '\\url{' + path + '}' : '\\href{' + protect(path) + '}{' + description + '}';
+  }
+  if (/^(elisp|shell):/i.test(target)) {
+    const rest = target.replace(/^[a-z]+:/i, '');
+    return description === null ? '\\url{' + rest + '}' : '\\href{' + protect(rest) + '}{' + description + '}';
+  }
   if (isExternal(target)) return description === null ? '\\url{' + target + '}' : '\\href{' + protect(target) + '}{' + description + '}';
-  const key = target.startsWith('*') ? target.slice(1) : target.startsWith('#') ? target : null;
-  const ref = key === null ? null : S.targets.get(key);
-  if (ref) return '\\hyperref[' + ref.label + ']{' + (description === null ? protect(ref.title) : description) + '}';
+  const ref = resolveInternal(target);
+  if (ref) return reference(ref.label, description);
   return description === null ? protect(target) : description;
+}
+
+// ---- pictures -------------------------------------------------------------
+
+/** `\includegraphics` for a picture link, with `:width`, `:height` and `:options`; the width defaults to .9\linewidth
+ * (0.48\textwidth in a wrapfigure). @param {string} target @param {Record<string, string>} attrs @param {boolean} [wrap] */
+function includeGraphics(target, attrs, wrap = false) {
+  let path = target.replace(/^file:(\/\/)?/i, '');
+  if (!S.imageTargets.includes(target)) S.imageTargets.push(target);
+  path = S.images.get(target) || path;
+  const options = [];
+  if (attrs.options) options.push(attrs.options);
+  if (attrs.width) options.push('width=' + attrs.width);
+  if (attrs.height) options.push('height=' + attrs.height);
+  if (!attrs.width && !attrs.height) options.push(wrap ? 'width=0.48\\textwidth' : 'width=.9\\linewidth');
+  return '\\includegraphics[' + options.join(',') + ']{' + path + '}';
+}
+
+/** A picture that is a paragraph of its own: a figure when it has a caption, else centred; `#+ATTR_LATEX` sets the float.
+ * @param {string} target @param {import('./org-elements.js').Affiliated | null | undefined} aff */
+function pictureBlock(target, aff) {
+  const attrs = parseAttributes(aff && aff.attr.latex);
+  const caption = aff && aff.caption.length ? aff.caption[aff.caption.length - 1] : null;
+  const name = aff && aff.name ? aff.name : null;
+  const center = attrs.center !== 'nil';
+  const floatAttr = attrs.float;
+  const wrap = floatAttr === 'wrap';
+  const floated = floatAttr === undefined ? !!caption : floatAttr !== 'nil';
+  const label = name ? (caption ? 'fig:org' : 'org') + hash7('name:' + name) : '';
+  const picture = includeGraphics(target, attrs, wrap);
+  const captionText = caption ? inline(caption.text) : '';
+  if (!floated) {
+    const lines = [picture];
+    if (caption) lines.push('\\captionof{figure}{' + (label ? '\\label{' + label + '}' : '') + captionText + '}');
+    else if (label) lines.push('\\label{' + label + '}');
+    return center ? '\\begin{center}\n' + lines.join('\n') + '\n\\end{center}\n' : lines.join('\n') + '\n';
+  }
+  const env = wrap ? 'wrapfigure' : floatAttr === 'sideways' ? 'sidewaysfigure' : floatAttr === 'multicolumn' ? 'figure*' : 'figure';
+  const placement = attrs.placement || (wrap ? '{r}{0.5\\textwidth}' : env === 'sidewaysfigure' || env === 'figure*' ? '' : '[htbp]');
+  const lines = ['\\begin{' + env + '}' + placement];
+  if (center) lines.push('\\centering');
+  lines.push(picture);
+  if (caption) lines.push('\\caption' + (caption.short ? '[' + inline(caption.short) + ']' : '') + '{' + (label ? '\\label{' + label + '}' : '') + captionText + '}');
+  else if (label) lines.push('\\label{' + label + '}');
+  lines.push('\\end{' + env + '}');
+  return lines.join('\n') + '\n';
+}
+
+// ---- citations ------------------------------------------------------------
+
+/** A citation: a natbib or biblatex command, or the text the basic processor makes. @param {CitationNode} n */
+function citation(n) {
+  const blanks = ' '.repeat(n.blanks || 0);
+  const affix = (/** @type {string} */ text) => inline(text).trim();
+  if (S.processor === 'natbib') return natbibCitation(n, affix) + blanks;
+  if (S.processor === 'biblatex') return biblatexCitation(n, affix) + blanks;
+  const segments = S.cite ? S.cite.formatCitation(n) : null;
+  return (segments ? citeSegments(segments).trim() : '') + blanks;
+}
+
+/** A citation processor's text as LaTeX: plain text escaped, affixes as Org text, emphasis as \emph. @param {import('./cite.js').Segment[]} segments @returns {string} */
+function citeSegments(segments) {
+  return segments.map((x) => (typeof x === 'string' ? plain(x) : 'org' in x ? inline(x.org) : '\\emph{' + citeSegments(x.italic) + '}')).join('');
 }
 
 /** @param {string | null} label @param {InlineNode[] | null} inlineDef */
@@ -209,7 +362,7 @@ function footnoteRef(label, inlineDef) {
   if (!def) return '';
   const id = 'org' + hash7('fn:' + label);
   S.footnoteLabels.set(label, id);
-  return '\\footnote{' + elements(def).replace(/\n+$/, '') + '\\label{' + id + '}}';
+  return '\\footnote{' + elements(def).replace(/\n+$/, '') + ((S.footnoteRefs.get(label) || 0) > 1 ? '\\label{' + id + '}' : '') + '}'; // a label only when a later reference needs it
 }
 
 // ---- elements -------------------------------------------------------------
@@ -227,13 +380,15 @@ function parsedLines(lines) {
 /** Elements joined, each followed by the blank lines it had in the source. @param {OrgElement[]} list */
 function elements(list) {
   let out = '';
-  for (const el of list) {
+  let lastShown = -1;
+  list.forEach((el, i) => {
     const text = element(el);
-    if (!text) continue;
+    if (!text) return;
     if (el.type === 'hr' && out && !out.endsWith('\n\n')) out += '\n';
     out += text + '\n'.repeat(el.postBlank || 0);
-  }
-  return out;
+    lastShown = i;
+  });
+  return lastShown >= 0 && lastShown < list.length - 1 ? trimEnd(out) : out; // elements that print nothing (footnote definitions ...) after the last one swallow its blank lines
 }
 
 /** @param {string} s */
@@ -242,8 +397,12 @@ const trimEnd = (s) => s.replace(/\n+$/, '') + '\n';
 /** @param {OrgElement} el @returns {string} */
 function element(el) {
   switch (el.type) {
-    case 'paragraph':
-      return inline([el.lines[0].trimStart(), ...el.lines.slice(1)].join('\n')) + '\n';
+    case 'paragraph': {
+      const parsed = parseText([el.lines[0].trimStart(), ...el.lines.slice(1)].join('\n'));
+      const content = parsed.filter((x) => !(x.type === 'text' && !x.value.trim()));
+      if (content.length === 1 && content[0].type === 'image') return pictureBlock(content[0].target, el.aff);
+      return nodes(parsed) + '\n';
+    }
     case 'list':
       return list(el, 1);
     case 'table':
@@ -251,7 +410,11 @@ function element(el) {
     case 'block':
       return block(el);
     case 'fixed':
-      return verbatim(el.lines) + '\n';
+      return namedLabel(el) + verbatim(el.lines) + '\n';
+    case 'toc':
+      return tocKeyword(el.value);
+    case 'print-bibliography':
+      return bibliography();
     case 'hr':
       return '\\noindent\\rule{\\textwidth}{0.5pt}\n';
     case 'latex-env':
@@ -270,25 +433,33 @@ function verbatim(lines) {
   return '\\begin{verbatim}\n' + lines.join('\n') + (lines.length ? '\n' : '') + '\\end{verbatim}\n';
 }
 
+/** The label Org puts before a named block that is not a table or a picture. @param {OrgElement} el */
+function namedLabel(el) {
+  return el.aff && el.aff.name ? '\\phantomsection\n\\label{org' + hash7('name:' + el.aff.name) + '}\n' : '';
+}
+
 /** @param {Extract<OrgElement, { type: 'block' }>} el */
 function block(el) {
   const lead = Math.min(Infinity, ...el.lines.filter((l) => l.trim()).map((l) => (/^[ \t]*/.exec(l) || [''])[0].length));
   const lines = el.lines.map((l) => l.slice(Number.isFinite(lead) ? Math.min(lead, (/^[ \t]*/.exec(l) || [''])[0].length) : 0));
+  const attrs = parseAttributes(el.aff && el.aff.attr.latex);
+  const wrapIn = (/** @type {string} */ env, /** @type {string} */ options) => '\\begin{' + env + '}' + options + '\n' + trimEnd(elements(parsedLines(lines))) + '\\end{' + env + '}\n';
   switch (el.name) {
     case 'src':
-    case 'example':
-      return verbatim(lines.map((l) => l.replace(/^(\s*),(\*|#\+)/, '$1$2')));
+    case 'example': {
+      const raw = lines.map((l) => l.replace(/^(\s*),(\*|#\+)/, '$1$2'));
+      if (attrs.environment) return namedLabel(el) + '\\begin{' + attrs.environment + '}\n' + raw.join('\n') + '\n\\end{' + attrs.environment + '}\n';
+      const caption = el.name === 'src' && el.aff && el.aff.caption.length ? el.aff.caption[el.aff.caption.length - 1] : null;
+      return (el.name === 'example' ? namedLabel(el) : '') + verbatim(raw) + (caption ? '\\captionof{figure}{' + inline(caption.text) + '}\n' : '');
+    }
     case 'comment':
       return '';
     case 'export':
       return /^latex\b/i.test(el.params) ? lines.join('\n') + '\n' : '';
-    case 'quote':
-    case 'center':
-      return '\\begin{' + el.name + '}\n' + trimEnd(elements(parsedLines(lines))) + '\\end{' + el.name + '}\n';
     case 'verse':
       return '\\begin{verse}\n' + lines.map(verseLine).join('') + '\\end{verse}\n';
     default:
-      return '\\begin{' + el.name + '}\n' + trimEnd(elements(parsedLines(lines))) + '\\end{' + el.name + '}\n';
+      return wrapIn(el.name, attrs.options || '');
   }
 }
 
@@ -303,9 +474,10 @@ function verseLine(line) {
 
 /** @param {Extract<OrgElement, { type: 'list' }>} el @param {number} depth */
 function list(el, depth) {
-  const env = el.listType === 'ordered' ? 'enumerate' : el.listType === 'descriptive' ? 'description' : 'itemize';
+  const attrs = parseAttributes(el.aff && el.aff.attr.latex);
+  const env = attrs.environment || (el.listType === 'ordered' ? 'enumerate' : el.listType === 'descriptive' ? 'description' : 'itemize');
   const counter = ['enumi', 'enumii', 'enumiii', 'enumiv'][Math.min(depth, 4) - 1];
-  let out = '\\begin{' + env + '}\n';
+  let out = '\\begin{' + env + '}' + (attrs.options || '') + '\n';
   for (const item of el.items) {
     if (item.counter !== null && el.listType === 'ordered') out += '\\setcounter{' + counter + '}{' + (item.counter - 1) + '}\n';
     const box = item.checkbox === null ? '' : ({ off: '$\\square$', on: '$\\boxtimes$', trans: '$\\boxminus$' }[item.checkbox] || '');
@@ -332,40 +504,40 @@ function itemBody(children, depth, last) {
 
 /** @param {Extract<OrgElement, { type: 'table' }>} el */
 function table(el) {
-  const rows = el.rows.map((r) => ('rule' in r && r.rule ? null : (r.cells || []).map((c) => c.trim())));
-  const cookieRow = (/** @type {string[] | null} */ cells) => !!cells && cells.some((c) => COOKIE_RE.test(c) && c !== '<>') && cells.every((c) => c === '' || COOKIE_RE.test(c));
-  /** @type {string[]} */
-  const cookies = [];
-  const kept = rows.filter((cells) => {
-    if (!cookieRow(cells)) return true;
-    /** @type {string[]} */ (cells).forEach((c, i) => {
-      if (COOKIE_ONLY_RE.test(c) && /[lrc]/.test(c)) cookies[i] = c.replace(/[^lrc]/g, '');
-    });
-    return false;
-  });
-  const standard = kept.filter((r) => r !== null);
-  const width = Math.max(0, ...standard.map((r) => /** @type {string[]} */ (r).length));
-  const attr = (el.aff && el.aff.attr.latex ? el.aff.attr.latex.join(' ') : '');
-  const alignMatch = /:align\s+(\S+)/.exec(attr);
-  let spec = '';
-  if (alignMatch) spec = alignMatch[1];
-  else {
-    for (let c = 0; c < width; c++) {
-      if (cookies[c]) {
-        spec += cookies[c];
-        continue;
-      }
-      const numeric = standard.filter((r) => NUMBER_RE.test(/** @type {string[]} */ (r)[c] || '')).length;
-      spec += standard.length && numeric / standard.length >= 0.5 ? 'r' : 'l';
-    }
-  }
-  const body = kept.map((cells) => (cells === null ? '\\hline\n' : cells.map(inline).join(' & ') + '\\\\[0pt]\n')).join('');
-  const tabular = '\\begin{tabular}{' + spec + '}\n' + body + '\\end{tabular}\n';
   const caption = el.aff && el.aff.caption.length ? el.aff.caption[el.aff.caption.length - 1] : null;
-  if (!caption) return '\\begin{center}\n' + tabular + '\\end{center}\n';
-  const label = el.aff && el.aff.name ? '\\label{tab:org' + hash7('tab:' + el.aff.name) + '}' : '';
-  const short = caption.short ? '[' + inline(caption.short) + ']' : '';
-  return '\\begin{table}[htbp]\n\\caption' + short + '{' + label + inline(caption.text) + '}\n\\centering\n' + tabular + '\\end{table}\n';
+  const label = el.aff && el.aff.name ? '\\label{tab:org' + hash7('name:' + el.aff.name) + '}' : '';
+  return latexTable(el, { cell: inline, caption: caption ? { short: caption.short ? inline(caption.short) : null, text: inline(caption.text) } : null, label });
+}
+
+// ---- #+TOC and bibliography -------------------------------------------------
+
+/** `#+TOC: headlines N [local]`, `tables` or `listings`. @param {string} value */
+function tocKeyword(value) {
+  if (/\btables\b/.test(value)) return '\\listoftables\n';
+  if (/\blistings\b/.test(value)) return '\\lstlistoflistings\n';
+  if (!/\bheadlines\b/.test(value)) return '';
+  const local = /\blocal\b/.test(value) && S.current !== null;
+  const level = local && S.current ? S.current.level - S.base : 0;
+  const given = /\b\d+\b/.exec(value);
+  const depth = given ? Number(given[0]) + (local ? level : 0) : null;
+  if (!local) return (depth === null ? '' : '\\setcounter{tocdepth}{' + depth + '}\n') + '\\tableofcontents\n';
+  if (S.current) S.localToc.add(S.current);
+  return '\\startcontents[level-' + level + ']\n\\printcontents[level-' + level + ']{}{0}{' + (depth === null ? '' : '\\setcounter{tocdepth}{' + depth + '}') + '}\n';
+}
+
+/** @type {Doc | null} */
+let activeDoc = null;
+
+/** `#+PRINT_BIBLIOGRAPHY:` as natbib's or biblatex's command, or the references the basic processor writes. */
+function bibliography() {
+  const doc = activeDoc;
+  if (!doc) return '';
+  const setting = citeExportSetting(doc);
+  const files = bibliographyFiles(doc, citeDefaults.globalFiles);
+  if (S.processor === 'natbib') return (setting.bibStyle ? '\\bibliographystyle{' + setting.bibStyle + '}\n' : '') + '\\bibliography{' + files.map((f) => f.replace(/\.[^./]*$/, '')).join(',') + '}\n';
+  if (S.processor === 'biblatex') return '\\printbibliography\n';
+  if (!S.cite) return '';
+  return S.cite.bibliography().map((/** @type {import('./cite.js').Segment[]} */ e) => citeSegments(e) + '\n').join('\n');
 }
 
 // ---- headings -------------------------------------------------------------
@@ -378,11 +550,11 @@ const SECTIONS = {
 
 const keywordList = (/** @type {Doc} */ doc, /** @type {string} */ key) => (doc.keywords || []).filter((k) => k.key.toUpperCase() === key).map((k) => k.value.trim());
 
-/** Which headings are exported: not COMMENT, not tagged for exclusion (`#+EXCLUDE_TAGS:`, `noexport` by default). @param {Doc} doc */
-function exclusion(doc) {
+/** Which headings are exported: not COMMENT, not tagged for exclusion (`#+EXCLUDE_TAGS:`, `noexport` by default), not the Footnotes section. @param {Doc} doc @param {boolean} [footnoteSection] */
+function exclusion(doc, footnoteSection = true) {
   const tags = keywordList(doc, 'EXCLUDE_TAGS').join(' ').split(/\s+/).filter(Boolean);
   const exclude = new Set(tags.length ? tags : ['noexport']);
-  return (/** @type {Heading} */ h) => /^COMMENT(\s|$)/.test(h.title) || h.tags.some((t) => exclude.has(t));
+  return (/** @type {Heading} */ h) => /^COMMENT(\s|$)/.test(h.title) || h.tags.some((t) => exclude.has(t)) || (footnoteSection && h.title.trim() === 'Footnotes'); // Org keeps its footnote section out of the export
 }
 
 /** @param {Heading} h */
@@ -436,9 +608,12 @@ function headingBody(h, ctx, base) {
   let lead = 0;
   while (lead < lines.length && !lines[lead].trim()) lead++;
   if ((h.propertyOrder || []).length || Object.values(h.planning || {}).some(Boolean)) lead = 0; // Org drops the blank line after a property drawer or planning line
+  S.current = h;
   const text = elements(parsedLines(lines));
   const body = text ? '\n'.repeat(lead) + text : '';
-  return body + headings(h.children || [], ctx, base);
+  const children = headings(h.children || [], ctx, base);
+  const stop = S.localToc.has(h) ? '\\stopcontents[level-' + (h.level - base) + ']\n' : '';
+  return body + children + stop;
 }
 
 /** A run of headings deeper than `H:` becomes one list; each item is the heading's title, its label and its text. @param {Heading[]} run @param {HeadingCtx} ctx @param {number} base */
@@ -459,10 +634,43 @@ function indexHeadings(children, ctx) {
     const label = 'sec:org' + hash7(path.join('.') + '|' + h.title);
     const ref = { label, title: h.title };
     S.labels.set(h, label);
-    S.targets.set(h.title, ref);
+    S.targets.set('head:' + h.title.trim(), ref);
     const custom = h.properties && h.properties.CUSTOM_ID;
     if (custom) S.targets.set('#' + custom.trim(), ref);
+    const id = h.properties && h.properties.ID;
+    if (id) S.targets.set('id:' + id.trim(), ref);
     indexHeadings(h.children || [], { ...ctx, path });
+  }
+}
+
+/** Labels for what links can point to besides headings: `<<targets>>`, `<<<radio targets>>>` and named elements.
+ * @param {OrgElement[]} list */
+function indexNames(list) {
+  for (const el of list) {
+    if (el.aff && el.aff.name) {
+      const name = el.aff.name;
+      const caption = el.aff.caption.length > 0;
+      let label = 'org' + hash7('name:' + name);
+      if (el.type === 'table') label = 'tab:' + label;
+      else if (el.type === 'paragraph' && caption) label = 'fig:' + label;
+      if (!(el.type === 'block' && el.name === 'src')) S.targets.set('name:' + name, { label, title: name });
+    }
+    /** @type {string[]} */
+    let texts = [];
+    if (el.type === 'paragraph') texts = el.lines;
+    else if (el.type === 'table') texts = el.rows.flatMap((r) => ('rule' in r && r.rule ? [] : r.cells || []));
+    else if (el.type === 'list') {
+      for (const item of el.items) {
+        if (item.tag) texts.push(item.tag);
+        indexNames(item.children);
+      }
+    } else if (el.type === 'drawer') indexNames(parsedLines(el.lines));
+    else if (el.type === 'block' && ['quote', 'center'].includes(el.name)) indexNames(parsedLines(el.lines));
+    else if (el.type === 'footnote-def') indexNames(el.children);
+    for (const m of texts.join('\n').matchAll(/<<<([^<>\n]+)>>>|<<([^<>\n]+)>>/g)) {
+      const name = m[1] || m[2];
+      S.targets.set('target:' + norm(name), { label: targetLabel(name), title: name });
+    }
   }
 }
 
@@ -489,10 +697,16 @@ const firstLine = (s) => s.replace(/\s*\n\s*/g, ' ').trim();
  * @param {Doc} doc
  * @param {Heading | null} [scope]
  */
-export function exportToLatex(doc, scope = null) {
+export function exportToLatex(doc, scope = null, { images = /** @type {Map<string, string> | null} */ (null) } = {}) {
+  ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
   S = newState();
+  activeDoc = doc;
+  if (images) S.images = images;
   const options = parseExportOptions(doc);
   S.sup = options.sup;
+  S.radioRe = radioTargetRegExp(doc);
+  S.processor = citeExportSetting(doc).processor;
+  S.base = scope ? scope.level : 0;
   const first = (/** @type {string} */ key) => keywordList(doc, key)[0];
 
   const declared = (first('LATEX_CLASS') || 'article').trim();
@@ -508,9 +722,21 @@ export function exportToLatex(doc, scope = null) {
   indexHeadings(roots, ctx);
 
   const preamble = scope ? scope.bodyLines || [] : preambleBody(doc);
-  for (const lines of [preamble, ...collectBodies(roots, skip)]) {
+  for (const lines of [preamble, ...collectBodies(roots, exclusion(doc, false))]) {
     for (const el of parsedLines(lines)) if (el.type === 'footnote-def') S.footnotes.set(el.label, el.children);
   }
+  for (const lines of [preamble, ...collectBodies(roots, skip)]) {
+    indexNames(parsedLines(lines));
+    for (const line of lines) {
+      for (const m of line.matchAll(/\[fn:([A-Za-z0-9_-]+)(?=[\]:])/g)) {
+        if (m.index === 0 && line[m[0].length] === ']') continue; // a definition, not a reference
+        S.footnoteRefs.set(m[1], (S.footnoteRefs.get(m[1]) || 0) + 1);
+      }
+    }
+  }
+  if (S.processor !== 'natbib' && S.processor !== 'biblatex') S.cite = citeExportFor(doc, exportedTree(roots, skip), parseInline, !scope);
+  const cited = S.processor === 'natbib' || S.processor === 'biblatex' ? hasCitations(preamble, roots, skip) : false;
+  const bibFiles = bibliographyFiles(doc, citeDefaults.globalFiles);
 
   const title = scope ? getDocTitle(doc) || scope.title : getDocTitle(doc);
   const author = getDocAuthor(doc);
@@ -542,6 +768,8 @@ export function exportToLatex(doc, scope = null) {
     ' pdfsubject={' + plain(firstLine(keywordList(doc, 'DESCRIPTION').join(' '))) + '},',
     ' pdfcreator={Org Mode PWA}, ',
     ' pdflang={' + (LANGUAGES[lang] || 'English') + '}}',
+    ...(cited && S.processor === 'natbib' ? ['\\usepackage{natbib}'] : []),
+    ...(cited && S.processor === 'biblatex' ? ['\\usepackage{biblatex}', ...bibFiles.map((f) => '\\addbibresource{' + f + '}')] : []),
     '\\begin{document}',
     '',
   ];
@@ -553,6 +781,22 @@ export function exportToLatex(doc, scope = null) {
 
   const body = elements(parsedLines(preamble)) + headings(roots, ctx, base);
   return head.join('\n') + '\n' + (body ? trimEnd(body) : '') + '\\end{document}\n';
+}
+
+/** The exported headings as a tree of copies, for the citation scan. @param {Heading[]} roots @param {(h: Heading) => boolean} skip @returns {Heading[]} */
+function exportedTree(roots, skip) {
+  return roots.filter((h) => !skip(h)).map((h) => ({ ...h, children: exportedTree(h.children || [], skip) }));
+}
+
+/** Is there a citation anywhere in what is exported? @param {string[]} preamble @param {Heading[]} roots @param {(h: Heading) => boolean} skip */
+function hasCitations(preamble, roots, skip) {
+  return [preamble, ...collectBodies(roots, skip)].some((lines) => lines.some((l) => /\[cite(?:\/[^:\]]*)?:/.test(l)));
+}
+
+/** The pictures the last export linked, as written in the links, for bundling them with the .tex file. @param {Doc} doc @param {Heading | null} [scope] */
+export function latexImageTargets(doc, scope = null) {
+  exportToLatex(doc, scope);
+  return [...S.imageTargets];
 }
 
 /** @param {Heading[]} children @param {(h: Heading) => boolean} skip @returns {string[][]} */

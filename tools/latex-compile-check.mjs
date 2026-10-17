@@ -24,6 +24,9 @@ const names = args.filter((a) => !a.startsWith('--'));
 const all = fs.readdirSync(fixtures).filter((f) => f.endsWith('.org')).map((f) => f.slice(0, -4)).sort();
 const todo = names.length ? names : all;
 
+// a 1x1 transparent PNG
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+
 const have = (cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
 if (!have('pdflatex')) {
   console.error('pdflatex is not installed; nothing to check.');
@@ -36,6 +39,15 @@ for (const name of todo) {
   const source = fs.readFileSync(path.join(fixtures, name + '.org'), 'utf8');
   let tex = exportToLatex(parseOrg(source));
   if (unicode) tex = tex.replace(/^\\usepackage\[(utf8|T1)\]\{(inputenc|fontenc)\}\n/gm, '');
+  // pictures and bibliographies the sample files name are stand-ins here: a 1x1 PNG for each, and absolute paths made relative
+  tex = tex.replace(/(\\includegraphics\[[^\]]*\]\{)\/[^}]*\/([^/}]+)\}/g, '$1$2}');
+  for (const m of tex.matchAll(/\\includegraphics\[[^\]]*\]\{([^}]+)\}/g)) {
+    if (/^https?:/i.test(m[1])) continue;
+    const target = path.join(work, m[1]);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, PNG);
+  }
+  fs.copyFileSync(path.join(fixtures, 'refs.bib'), path.join(work, 'refs.bib'));
   const compiler = unicode ? 'xelatex' : (/^% Intended LaTeX compiler: (\S+)/.exec(tex) || [])[1] || 'pdflatex';
   const file = path.join(work, name + '.tex');
   fs.writeFileSync(file, tex);

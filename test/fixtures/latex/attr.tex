@@ -1,0 +1,169 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\author{root}
+\date{\today}
+\title{Attr}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Attr},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Tables}
+\label{sec:orgaf83473}
+\begin{longtable}{lrl}
+a & b & c\\[0pt]
+\hline
+\endfirsthead
+\multicolumn{3}{l}{Continued from previous page} \\[0pt]
+\hline
+
+a & b & c \\[0pt]
+
+\hline
+\endhead
+\hline\multicolumn{3}{r}{Continued on next page} \\
+\endfoot
+\endlastfoot
+\hline
+1 & 2 & 3\\[0pt]
+\end{longtable}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{XX}
+a & b\\[0pt]
+\end{tabularx}
+\end{center}
+
+\begin{sidewaystable}[htbp]
+\caption{Sideways table}
+\centering
+\begin{tabular}{ll}
+a & b\\[0pt]
+\end{tabular}
+\end{sidewaystable}
+
+\begin{center}
+\captionof{table}{Plain table}
+\begin{tabular}{ll}
+a & b\\[0pt]
+\end{tabular}
+\end{center}
+
+\begin{tabular}{ll}
+a & b\\[0pt]
+\end{tabular}
+
+\begin{center}
+\begin{tabular}{rr}
+\toprule
+a & b\\[0pt]
+\midrule
+1 & 2\\[0pt]
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{table}[t]
+\caption{Small}
+\centering
+\small
+\begin{tabular}{ll}
+a & b\\[0pt]
+\end{tabular}
+\end{table}
+
+\[
+\begin{bmatrix}
+ 1 & 2 \\[0pt]
+ 3 & 4 \\[0pt]
+\end{bmatrix}
+\]
+
+\(\begin{tabular}{cc}
+ 1 & 2 \\[0pt]
+\end{tabular}
+\)
+
+\begin{center}
+\begin{tabular}{rr}
+1 & 2\\[0pt]
+\end{tabular}
+\end{center}
+
+\begin{table}[htbp]
+\caption{Own caption}
+\centering
+\begin{tabular}{ll}
+a & b\\[0pt]
+\end{tabular}
+\end{table}
+\section{Blocks}
+\label{sec:org73b4ef8}
+\begin{quote}[leftmargin=1cm]
+Quote with options
+\end{quote}
+
+\begin{center}
+Centered
+\end{center}
+
+\begin{myenv}
+Example
+\end{myenv}
+
+\begin{foo}
+Special block
+\end{foo}
+
+\begin{foo}{arg}
+Special with options
+\end{foo}
+
+\begin{verbatim}
+let a;
+\end{verbatim}
+\captionof{figure}{A source caption}
+
+\begin{verbatim}
+let b;
+\end{verbatim}
+
+\begin{verbatim}
+ex
+\end{verbatim}
+\section{Lists}
+\label{sec:org723479e}
+\begin{enumerate*}
+\item a
+\item b
+\end{enumerate*}
+
+\begin{enumerate}[label=\alph*)]
+\item one
+\item two
+\end{enumerate}
+
+\begin{itemize}[noitemsep]
+\item tight
+\end{itemize}
+\end{document}

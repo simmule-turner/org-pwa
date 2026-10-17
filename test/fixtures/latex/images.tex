@@ -1,0 +1,84 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{root}
+\date{\today}
+\title{Images}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Images},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Images}
+\label{sec:orgd903ec6}
+Inline \begin{center}
+\includegraphics[width=.9\linewidth]{img/a.png}
+\end{center} picture and with desc \href{img/b.jpg}{a label} and link to image \href{d.svg}{d}.
+
+\begin{center}
+\includegraphics[width=.9\linewidth]{figure.png}
+\end{center}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.9\linewidth]{figure2.png}
+\caption{A figure caption}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.9\linewidth]{figure3.png}
+\caption{\label{fig:orgad09f3d}Named figure}
+\end{figure}
+
+\begin{center}
+\includegraphics[width=5cm]{sized.png}
+\end{center}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[angle=90,width=5cm,height=3cm]{sized2.png}
+\caption{Attr and caption}
+\end{figure}
+
+\begin{wrapfigure}{r}{0.5\textwidth}
+\centering
+\includegraphics[width=0.48\textwidth]{wrapped.png}
+\end{wrapfigure}
+
+\begin{sidewaysfigure}
+\centering
+\includegraphics[width=.9\linewidth]{side.png}
+\caption{Sideways}
+\end{sidewaysfigure}
+
+\begin{center}
+\includegraphics[width=.9\linewidth]{nofloat.png}
+\captionof{figure}{Not floated}
+\end{center}
+
+\includegraphics[width=.9\linewidth]{nocenter.png}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.9\linewidth]{short.png}
+\caption[Short]{Long caption here}
+\end{figure}
+\end{document}

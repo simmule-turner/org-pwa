@@ -1,0 +1,8 @@
+#+TITLE: Cite biblatex
+#+CITE_EXPORT: biblatex
+#+BIBLIOGRAPHY: refs.bib
+* Cites
+Plain [cite:@doe99] and multiple [cite:@doe99;@roe05] and prefix [cite:see @doe99 p. 3] and style [cite/t:@doe99] and [cite/n:@roe05].
+Bare [cite/a/f:@doe99]. Suffix only [cite:@doe99, pp. 1-2]. Empty prefix [cite:@doe99;see @roe05].
+
+#+PRINT_BIBLIOGRAPHY:

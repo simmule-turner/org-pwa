@@ -1,0 +1,29 @@
+#+TITLE: Extras
+* Notes here
+One[fn:a] two[fn::anonymous *bold* note] three[fn:b:inline note] again[fn:a] twice[fn:b].
+
+[fn:a] Definition with two paragraphs.
+
+Second paragraph of definition.
+
+[fn:b] Plain def.
+* Misc
+Line one
+line two \\
+line three
+
+#+HTML: <b>html</b>
+#+BEGIN_EXPORT html
+<i>x</i>
+#+END_EXPORT
+#+BEGIN_EXPORT latex
+\textbf{raw}
+#+END_EXPORT
+
+- item with [[https://x.org][link]] and =verb=
+  - nested [X] ~code~
+
+Text with a radio <<<Radio>>> and use radio.
+Macro {{{keyword(1)}}} stays? and a COMMENT line:
+# comment line
+Text after.

@@ -1,0 +1,50 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{root}
+\date{\today}
+\title{Links two}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Links two},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Links}
+\label{sec:orgcb5fe53}
+File \href{other.org}{other file} and bare \url{other.org} and search \href{other.org}{in heading}.
+Relative \href{../up/x.txt}{up} and absolute \href{file:///tmp/x.txt}{abs}.
+Fuzzy heading \hyperref[sec:org09e8721]{fuzzy} and fuzzy no desc \ref{sec:org09e8721}.
+Named \hyperref[tab:orgbd79884]{the table} and dedicated \hyperref[org08af74e]{the target} and \label{org08af74e}here.
+Radio: the \hyperref[orgc2c7450]{radiotarget} word appears here, and \label{orgc2c7450}radiotarget defined.
+Id \hyperref[sec:org09e8721]{by id} and elisp \href{(message "hi")}{run} and shell \href{ls}{ls}.
+Mailto \href{mailto:a@b.org}{mail} and http \href{http://example.org/x y}{spaced} and ftp \href{ftp://example.org/f}{ftp}.
+Special chars \href{https://example.org/a\%20b?c=d\&e=f\#g}{desc with \_ and \&}.
+Custom id \ref{sec:org09e8721} no desc and heading no desc \ref{sec:org09e8721}.
+\begin{table}[htbp]
+\label{tab:orgbd79884}
+\centering
+\begin{tabular}{ll}
+a & b\\[0pt]
+\end{tabular}
+\end{table}
+\section{Target heading}
+\label{sec:org09e8721}
+text
+\end{document}

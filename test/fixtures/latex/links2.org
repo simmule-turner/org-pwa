@@ -1,0 +1,19 @@
+#+TITLE: Links two
+* Links
+File [[file:other.org][other file]] and bare [[file:other.org]] and search [[file:other.org::*Heading][in heading]].
+Relative [[file:../up/x.txt][up]] and absolute [[file:/tmp/x.txt][abs]].
+Fuzzy heading [[Target heading][fuzzy]] and fuzzy no desc [[Target heading]].
+Named [[tbl][the table]] and dedicated [[tgt][the target]] and <<tgt>>here.
+Radio: the radiotarget word appears here, and <<<radiotarget>>> defined.
+Id [[id:abc-123][by id]] and elisp [[elisp:(message "hi")][run]] and shell [[shell:ls][ls]].
+Mailto [[mailto:a@b.org][mail]] and http [[http://example.org/x y][spaced]] and ftp [[ftp://example.org/f][ftp]].
+Special chars [[https://example.org/a%20b?c=d&e=f#g][desc with _ and &]].
+Custom id [[#cid]] no desc and heading no desc [[*Target heading]].
+#+NAME: tbl
+| a | b |
+* Target heading
+:PROPERTIES:
+:CUSTOM_ID: cid
+:ID: abc-123
+:END:
+text

@@ -1,0 +1,58 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usepackage{titletoc}
+\usepackage{listings}
+\author{root}
+\date{\today}
+\title{Toc}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Toc},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\section{One}
+\label{sec:org9d51ff3}
+\setcounter{tocdepth}{1}
+\tableofcontents
+\subsection{Two}
+\label{sec:org7252fec}
+\startcontents[level-2]
+\printcontents[level-2]{}{0}{\setcounter{tocdepth}{4}}
+\subsubsection{Three}
+\label{sec:orgf011424}
+\listoftables
+\lstlistoflistings
+text
+\begin{table}[htbp]
+\caption{Table caption}
+\centering
+\begin{tabular}{l}
+a\\[0pt]
+\end{tabular}
+\end{table}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.9\linewidth]{f.png}
+\caption{Figure caption}
+\end{figure}
+\stopcontents[level-2]
+\section{Four}
+\label{sec:org6ffb563}
+\tableofcontents
+\end{document}

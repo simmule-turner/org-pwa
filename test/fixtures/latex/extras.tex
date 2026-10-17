@@ -1,0 +1,53 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{root}
+\date{\today}
+\title{Extras}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Extras},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Notes here}
+\label{sec:org6024e03}
+One\footnote{Definition with two paragraphs.
+
+Second paragraph of definition.\label{orgf90e91f}} two\footnote{anonymous \textbf{bold} note} three\footnote{Plain def.\label{org16e1dc4}} again\textsuperscript{\ref{orgf90e91f}} twice\textsuperscript{\ref{org16e1dc4}}.
+\section{Misc}
+\label{sec:orgac821d9}
+Line one
+line two \\[0pt]
+line three
+
+\textbf{raw}
+
+\begin{itemize}
+\item item with \href{https://x.org}{link} and \texttt{verb}
+\begin{itemize}
+\item nested [X] \texttt{code}
+\end{itemize}
+\end{itemize}
+
+Text with a \hyperref[org7caf573]{radio} \label{org7caf573}Radio and use \hyperref[org7caf573]{radio}.
+Macro  stays? and a COMMENT line:
+
+Text after.
+\end{document}

@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v553 — LaTeX export: links, pictures, citations, tables
+LaTeX export now writes entities (=\alpha=, =\nbsp=), links to headings, custom ids, targets, radio targets and named tables, pictures with their float options (and a .zip that packs them beside the .tex), =#+ATTR_LATEX= on tables, pictures, blocks and lists, =#+TOC=, and natbib and biblatex citations. Macros written inside code or a source block are no longer expanded in any export, as in Org. Still not in the Export menu.
+Verified: every sample and the README match Emacs and compile.
+
 * v552 — LaTeX export engine, checked against Emacs
 The first part of LaTeX export: a writer for the document skeleton and =\hypersetup=, headings (TODO, tags, =H:= levels, =num:= and =toc:=), inline markup, lists with checkboxes and counters, tables, quote, verse, center, example and source blocks, timestamps, math, footnotes and =#+LATEX:= lines, using Org's own =#+LATEX_CLASS=, =#+LATEX_HEADER= and =#+LATEX_COMPILER=. Nineteen sample files are compared with what Emacs's ox-latex writes. It is not in the Export menu yet.
 Verified: all nineteen match Emacs, and each compiles with pdflatex.

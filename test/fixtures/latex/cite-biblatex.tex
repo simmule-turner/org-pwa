@@ -1,0 +1,37 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{root}
+\date{\today}
+\title{Cite biblatex}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Cite biblatex},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\usepackage{biblatex}
+\addbibresource{/tmp/claude-0/-home-claude/e1114246-a127-5abf-b922-b0f9494c2d27/scratchpad/proj/test/fixtures/latex/refs.bib}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Cites}
+\label{sec:org7e97bcc}
+Plain \autocite{doe99} and multiple \autocite{doe99,roe05} and prefix \autocite[see][p. 3]{doe99} and style \textcite{doe99} and \nocite{roe05}.
+Bare \citeauthor{doe99}. Suffix only \autocite[, pp. 1-2]{doe99}. Empty prefix \autocites{doe99}[see][]{roe05}.
+
+\printbibliography
+\end{document}

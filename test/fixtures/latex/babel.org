@@ -1,0 +1,44 @@
+#+TITLE: Babel
+* Blocks
+#+begin_src js :eval no
+let a = 1;
+#+end_src
+
+#+RESULTS:
+: 1
+
+#+begin_src js :exports results :eval no
+let b = 2;
+#+end_src
+
+#+RESULTS:
+: 2
+
+#+begin_src js :exports both :eval no
+let c = 3;
+#+end_src
+
+#+RESULTS:
+: 3
+
+#+begin_src js :exports none :eval no
+let d = 4;
+#+end_src
+
+#+RESULTS:
+: 4
+
+#+begin_src js :exports results :eval no
+return [1,2];
+#+end_src
+
+#+RESULTS:
+| 1 | 2 |
+
+#+begin_src sh :results output :exports both :eval no
+echo hi
+#+end_src
+
+#+RESULTS:
+: hi
+

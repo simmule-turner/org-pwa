@@ -1,0 +1,18 @@
+#+TITLE: Refnamed
+* Named
+#+NAME: onlyname
+| a | b |
+
+#+NAME: imgname
+[[file:i.png]]
+
+#+NAME: blk
+#+begin_example
+x
+#+end_example
+
+See [[onlyname]] and [[imgname]] and [[blk]].
+
+<<dedic>>
+
+Target in text: see [[dedic]].

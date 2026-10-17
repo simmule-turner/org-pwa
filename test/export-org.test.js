@@ -219,3 +219,13 @@ test('exportAsOrg applies minlevel scaling as part of the same pipeline', async 
   assert.equal(result.children[0].level, 2);
   assert.equal(result.children[0].children[0].level, 3);
 });
+
+// ---- a macro written as code is text (checked against Emacs 29.3: ~{{{title}}}~, =...= and source/example blocks keep it) ----
+
+test('expandMacros leaves a macro inside code, verbatim, a source block, an example block or a fixed-width line alone', () => {
+  const doc = parseOrg('#+TITLE: T\n* H\nReal {{{title}}} and ~{{{title}}}~ and =x {{{title}}}=.\n#+begin_src text\n{{{title}}}\n#+end_src\n#+begin_example\n{{{title}}}\n#+end_example\n: {{{title}}}\n{{{title}}} again\n');
+  const lines = expandMacros(doc, new Date()).children[0].bodyLines;
+  assert.equal(lines[0], 'Real T and ~{{{title}}}~ and =x {{{title}}}=.');
+  assert.deepEqual(lines.slice(1, 8), ['#+begin_src text', '{{{title}}}', '#+end_src', '#+begin_example', '{{{title}}}', '#+end_example', ': {{{title}}}']);
+  assert.equal(lines[8], 'T again');
+});
