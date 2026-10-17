@@ -159,7 +159,7 @@ export async function renderCapturePanel() {
  *  allowCreate: false, which leaves the document completely untouched
  *  on a missing path rather than creating anything speculatively --
  *  this is purely a peek, not a real capture, so nothing should be
- * @param {any} [template]
+ * @param {import('../src/types.js').CaptureTemplate} template
  *  left behind even if the person then cancels. */
 export async function peekTableAlreadyExists(template) {
   const targetFileId = resolveCaptureFileId(template.file, S.state.documentId);
@@ -198,7 +198,7 @@ export async function peekTableAlreadyExists(template) {
  *  exists at the target, so a form-only-used-once prompt isn't asked
  *  on every subsequent capture when that can be determined cheaply;
  *  the decision is captured once, in capturePromptSkipPrePost, and
- * @param {any} [template]
+ * @param {import('../src/types.js').CaptureTemplate} template
  *  reused unchanged through to the actual commit. */
 export async function openCapturePrompt(template) {
   await readClipboardIfUsed(template); // first, while the tap that chose the template still counts as a gesture
@@ -227,7 +227,7 @@ function usesClipboardToken(text) {
 
 /** Reads the clipboard into S.captureClipboard, but only for a template that has %x, so a template that does not
  *  never touches it (the browser may ask permission, and iOS shows a Paste confirmation). A refusal or failure
- * @param {any} [template]
+ * @param {import('../src/types.js').CaptureTemplate} template
  *  leaves %x empty and says so, so the capture still goes ahead. */
 async function readClipboardIfUsed(template) {
   S.captureClipboard = '';
@@ -376,7 +376,7 @@ export function renderCapturePromptForm() {
 }
 
 /**
- * @param {any} [template]
+ * @param {import('../src/types.js').CaptureTemplate} template
  * @param {any} [answers]
  */
 export async function runCaptureWithAnswers(template, answers) {

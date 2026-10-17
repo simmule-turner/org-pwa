@@ -26,7 +26,7 @@ const CONTEXT_VALUES = {
 
 /**
  * Whether the block's `:noweb` value asks for expansion when it is tangled, run (`eval`) or exported.
- * @param {any} args
+ * @param {Record<string, string> | null | undefined} args
  * @param {string} context
  */
 export function nowebAllows(args, context) {
@@ -40,7 +40,7 @@ export function nowebAllows(args, context) {
  */
 export const stripReferences = (text) => text.replace(BARE_REF_RE, '');
 
-/** @param {any} [args] */
+/** @param {Record<string, string> | null} [args] */
 const isStrip = (args) => String((args && args.noweb) || '').split(/\s+/).includes('strip-tangle');
 
 /**

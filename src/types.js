@@ -37,6 +37,10 @@
 /** The file-local variables of a document (`# -*- ... -*-` and `Local Variables:`), by name. */
 /** @typedef {Record<string, any>} LocalVars */
 
+/** One node of parsed inline markup (see inline-markup.js). @typedef {{ type: string, [k: string]: any }} InlineNode */
+
+/** A capture template (org-capture-templates entry). @typedef {{ key?: string, description?: string, type: string, olp?: string[], template: string, emptyLines?: number, prepend?: boolean, omitEmptyEntries?: boolean, preText?: string, postText?: string, [k: string]: any }} CaptureTemplate */
+
 /**
  * One line of a table: a data row, or a horizontal rule (`type: 'rule'`, which has no cells).
  * @typedef {{ type: string, cells: string[], cellsInline?: any[], [key: string]: any }} TableRow
@@ -86,7 +90,7 @@ export {};
  *   currentView: string, navigationBackStack: BackStackEntry[], lastGlobalFoldState: string,
  *   editingHeading: Heading | null, editingIsNew: boolean, editingCell: EditingCell | null,
  *   editingParagraph: EditingParagraph | null, editingListItem: EditingListItem | null,
- *   editingHeadingText: Heading | null, editingGeneral: Heading | null, actionMenuFor: Heading | null,
+ *   editingHeadingText: Heading | null, editingGeneral: Heading | null, actionMenuFor: object | null,
  *   keyboardFocusedHeading: Heading | null, keyboardFocusedBodyRow: any, keyboardFocusedCellPos: { rowIndex: number, colIndex: number } | null,
  *   pendingCursorPosition: string | number | null, currentContextHeading: Heading | null,
  *   narrowedHeading: Heading | null, narrowedTextModeRange: NarrowedTextRange | null, sparseNarrowScope: SparseNarrowScope | null,

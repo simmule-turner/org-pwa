@@ -74,7 +74,7 @@ export function pickAndImportFile(kvAdapter, accept = '.org') {
 
 /** Triggers a browser download of `content` as a file named `fileId` —
  * @param {string} fileId
- * @param {any} [content]
+ * @param {BlobPart} content
  *  the "write" half, since there's no handle to write back to in place. */
 export function downloadFile(fileId, content, mimeType = 'text/plain') {
   const blob = new Blob([content], { type: mimeType });

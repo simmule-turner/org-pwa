@@ -18,7 +18,7 @@ import { agendaFilesCache, searchExtraFilesCache } from './singletons.js';
 import { isWideLayout } from './ui-widgets.js';
 import { openOrSwitchToHelp, switchToView } from './views.js';
 
-/** @param {any} [node] */
+/** @param {object | null} node */
 export function toggleActionMenu(node) {
   const opening = S.actionMenuFor !== node;
   S.actionMenuFor = opening ? node : null;

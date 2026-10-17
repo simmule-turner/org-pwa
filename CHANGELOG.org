@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v544 — Footnote in the heading text editor
+The heading text editor now has the Footnote button too, so a note can go into any body text from the outline. Behind the scenes the 50 most-used untyped function arguments now have real types (the button callbacks, undo history, complex-number arithmetic, variable maps and capture templates), so mistakes in how they are called show up before release.
+Verified: browser check of the heading text editor; the type checker accepts every caller.
 * v543 — Footnotes in the outline
 Footnotes no longer need Text view. The paragraph and list-item editors have a Footnote button that opens a sheet (a centred dialog on a laptop) for the label and note, and tapping a reference shows its note with Edit, Go to and Delete. Narrowing is kept after a footnote is added or deleted.
 Verified: browser check of insert, reference sheet and delete at phone and laptop sizes.

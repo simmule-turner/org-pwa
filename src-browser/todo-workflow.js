@@ -50,7 +50,7 @@ import { autoGrowTextarea, hideModalOverlay, menuButton } from './ui-widgets.js'
  * round-trip), and this check is cheap enough that re-parsing beats
  * risking a stale read.
  * @param {Heading} heading
- * @param {any} [performChange]
+ * @param {() => void} performChange
  */
 export function applyTodoTransition(heading, performChange) {
   const fromTodo = heading.todo;

@@ -279,7 +279,7 @@ export function moveToParentHeading() {
  *  keyboard focus wasn't actually on `oldRowType`-at-`oldLineIndex`
  * @param {Heading} heading
  * @param {string} oldRowType
- * @param {any} [oldLineIndex]
+ * @param {number} oldLineIndex
  *  to begin with. */
 export function resyncKeyboardFocusToBodyRow(heading, oldRowType, oldLineIndex) {
   if (!S.keyboardFocusedBodyRow || S.keyboardFocusedBodyRow.heading !== heading || S.keyboardFocusedBodyRow.rowType !== oldRowType) return;

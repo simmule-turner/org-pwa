@@ -8,7 +8,7 @@ import { platform } from './platform.js';
 
 /**
  * @param {string} name
- * @param {any} [content]
+ * @param {BlobPart} content
  * @param {string | undefined} [mimeType]
  * @param {{ share?: boolean }} [options] share: offer the file to the system share sheet (on iOS that has Save to Files; a
  *   downloaded .ics there goes straight to Calendar), and download it when the device cannot share files

@@ -146,7 +146,7 @@ export async function attachmentFiles(heading) {
  *  check (this itself doesn't re-check, since both current callers
  *  already have): only ever called once GitHub/WebDAV is confirmed
  * @param {Heading} heading
- * @param {any} [picked]
+ * @param {{ name: string, base64: string, type?: string }} picked
  *  connected. */
 export async function uploadAttachmentToHeading(heading, picked) {
   const tooBig = attachmentSizeCheck(String(picked.base64 || '').length, S.state.storageKind);
@@ -588,7 +588,7 @@ export async function attachOpenDocument(heading) {
   if (documents.length === 0) documents.push(S.state);
   /** @param {any} [state] */
   const attach = (state) => {
-    const name = String(state.documentId || 'document.org').split('/').pop();
+    const name = /** @type {string} */ (String(state.documentId || 'document.org').split('/').pop());
     return uploadAttachmentToHeading(heading, { name, type: 'text/plain', base64: utf8ToBase64(serializeOrg(state.doc)) });
   };
   if (documents.length === 1) {

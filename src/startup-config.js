@@ -175,8 +175,8 @@ function parseLispBooleanOrNull(raw) {
  *  dedicated function (progress-logging.js's getEffectiveLogDoneSetting)
  *  used directly wherever it's actually needed, not read from this
  * @param {Doc} doc
- * @param {any} [localVarsOnly]
- * @param {any} [globalVarsOnly]
+ * @param {import('./types.js').LocalVars | null} [localVarsOnly]
+ * @param {import('./types.js').LocalVars | null} [globalVarsOnly]
  *  config object anywhere in this codebase. */
 export function resolveEffectiveStartupConfig(doc, localVarsOnly, globalVarsOnly) {
   return {

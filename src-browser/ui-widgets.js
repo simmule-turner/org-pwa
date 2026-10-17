@@ -49,7 +49,7 @@ export const SWIPE_THRESHOLD_PX = 40;
 /**
  * @param {string} label
  * @param {string} ariaLabel
- * @param {any} [onClick]
+ * @param {(ev: MouseEvent) => any} [onClick]
  */
 export function smallButton(label, ariaLabel, onClick) {
   const btn = document.createElement('button');
@@ -57,7 +57,7 @@ export function smallButton(label, ariaLabel, onClick) {
   btn.setAttribute('aria-label', ariaLabel);
   btn.style.fontSize = '11px';
   btn.style.padding = '2px 6px';
-  btn.onclick = onClick;
+  btn.onclick = onClick || null;
   return btn;
 }
 
@@ -110,7 +110,7 @@ export function attachLongPress(el, callback, duration = 600) {
 }
 
 /**
- * @param {any} [el]
+ * @param {HTMLElement} el
  * @param {boolean | undefined} [compact]
  */
 export function textInputStyle(el, compact) {
@@ -192,7 +192,7 @@ export function entryFieldButtonStyle(btn) {
 
 /**
  * @param {string | null} labelText
- * @param {any} [inputEl]
+ * @param {HTMLElement} inputEl
  */
 export function fieldRow(labelText, inputEl) {
   const row = document.createElement('div');
@@ -266,7 +266,7 @@ export const LEADING_ICON_RE = /^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Ex
 
 /**
  * @param {string} label
- * @param {any} [onClick]
+ * @param {(ev: MouseEvent) => any} [onClick]
  * @param {boolean | undefined} [disabled]
  */
 export function menuButton(label, onClick, disabled) {
@@ -283,7 +283,7 @@ export function menuButton(label, onClick, disabled) {
     btn.textContent = label;
   }
   btn.disabled = !!disabled;
-  btn.onclick = onClick;
+  btn.onclick = onClick || null;
   if (/^[^A-Za-z]*Cancel$/.test(label)) btn.classList.add('ui-cancel'); // the safe choice is the emphasized one
   return btn;
 }
@@ -304,16 +304,16 @@ export function menuButton(label, onClick, disabled) {
  *  that no longer exists) is silently dropped from the reordering,
  *  the same tolerant-of-the-unexpected approach every other
  * @param {HTMLElement} container
- * @param {any} [aliasMap]
- * @param {any} [labeledButtons]
+ * @param {Record<string, string> | null | undefined} aliasMap
+ * @param {{ label: string, btn: HTMLElement | null }[]} labeledButtons
  *  recognized-subset parser in this codebase already takes. */
 export function appendMenuButtonsInOrder(container, aliasMap, labeledButtons) {
   const order = resolveMenuOrder(
     aliasMap,
-    labeledButtons.map((/** @type {any} */ { label }) => label)
+    labeledButtons.map(({ label }) => label)
   );
   for (const label of order) {
-    const entry = labeledButtons.find((/** @type {any} */ lb) => lb.label === label);
+    const entry = labeledButtons.find((lb) => lb.label === label);
     if (entry && entry.btn) container.appendChild(entry.btn);
   }
 }
@@ -366,8 +366,8 @@ export function positionPopupNearButton(panelEl, buttonEl) {
  *  native disabled attribute -- .menu-list-item-disabled (CSS) plus
  *  aria-disabled stand in for it, with the click handler simply never
  * @param {string} label
- * @param {any} [onClick]
- * @param {any} [disabled]
+ * @param {(ev: MouseEvent) => any} [onClick]
+ * @param {boolean} [disabled]
  *  attached at all rather than attached-but-blocked. */
 export function menuDivItem(label, onClick, disabled) {
   const el = document.createElement('div');
@@ -388,7 +388,7 @@ export function menuDivItem(label, onClick, disabled) {
     el.classList.add('menu-list-item-disabled');
     el.setAttribute('aria-disabled', 'true');
   } else {
-    el.onclick = onClick;
+    el.onclick = onClick || null;
     el.tabIndex = 0; // reachable with the arrow keys, see enhanceMenu
   }
   return el;
@@ -397,10 +397,10 @@ export function menuDivItem(label, onClick, disabled) {
 /** The div-item counterpart to aliasedMenuButton -- same org-xx-menu-
  *  aliases lookup/omission semantics exactly (see aliasedMenuButton's
  *  own docs for the full "menu:Label;alias" rules), just producing a
- * @param {any} aliasMap
+ * @param {Record<string, string> | null | undefined} aliasMap
  * @param {string} label
- * @param {any} [onClick]
- * @param {any} [disabled]
+ * @param {(ev: MouseEvent) => any} [onClick]
+ * @param {boolean} [disabled]
  *  menuDivItem instead of a menuButton. */
 export function aliasedMenuDivItem(aliasMap, label, onClick, disabled) {
   const alias = aliasMap ? aliasMap[label] : undefined;
@@ -411,9 +411,9 @@ export function aliasedMenuDivItem(aliasMap, label, onClick, disabled) {
 }
 
 /** The div-item counterpart to requiredMenuButton -- never omitted,
- * @param {any} aliasMap
+ * @param {Record<string, string> | null | undefined} aliasMap
  * @param {string} label
- * @param {any} [onClick]
+ * @param {(ev: MouseEvent) => any} [onClick]
  * @param {undefined} [disabled]
  *  same as requiredMenuButton's own semantics. */
 export function requiredMenuDivItem(aliasMap, label, onClick, disabled) {
@@ -428,7 +428,7 @@ export function requiredMenuDivItem(aliasMap, label, onClick, disabled) {
  *  .panel-classed container — e.g. the timestamp wizard's Save/Cancel,
  *  which otherwise fell back to bare, unstyled, visually cramped
  * @param {string} label
- * @param {any} [onClick]
+ * @param {(ev: MouseEvent) => any} [onClick]
  *  buttons since nothing in their ancestor chain provided sizing. */
 export function wizardButton(label, onClick) {
   const btn = menuButton(label, onClick);
@@ -441,8 +441,8 @@ export function wizardButton(label, onClick) {
 
 /**
  * @param {string} label
- * @param {any} [onClick]
- * @param {any} [disabled]
+ * @param {(ev: MouseEvent) => any} [onClick]
+ * @param {boolean} [disabled]
  */
 export function tableActionButton(label, onClick, disabled) {
   const btn = menuButton(label, onClick, disabled);
@@ -492,9 +492,9 @@ export function keepOverlayInVisibleViewport(overlay) {
   reposition();
   /** @type {any[]} */ const cleanups = [];
   /**
-   * @param {any} target
+   * @param {EventTarget} target
    * @param {string} evt
-   * @param {any} [handler]
+   * @param {EventListener} handler
    */
   function on(target, evt, handler) {
     target.addEventListener(evt, handler);

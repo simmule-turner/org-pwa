@@ -5,6 +5,7 @@
 import { getHeadingText, setHeadingText } from '../src/body-edit.js';
 import { addMinutesToTime, formatOrgTimestamp } from '../src/org-timestamp.js';
 import { S } from './app-state.js';
+import { footnoteEditorTool } from './footnotes-ui.js';
 import { scrollContainer } from './chrome.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { containTab, rememberOpener, restoreOpener } from './containers.js';
@@ -16,7 +17,7 @@ import { fieldRow, keepOverlayInVisibleViewport, menuButton, modalFieldRow, moda
  *  reach) but WITHOUT flex:1 -- for a button meant to sit alongside a
  *  sibling in the same row, sized to its own content, rather than
  *  stretching alone to fill the whole row the way a lone wizardButton
- * @param {any} [message]
+ * @param {string} message
  *  is meant to. */
 export function confirmDialog(message, { confirmLabel = 'Delete', cancelLabel = 'Cancel', danger = true } = {}) {
   return new Promise((resolve) => {
@@ -423,6 +424,7 @@ export function openHeadingTextEditor(heading) {
     value: originalText,
     placeholder: 'All content for this heading — lists, notes, etc. — as org text',
     resetInPlace: true,
+    tools: [footnoteEditorTool(heading, 'heading-text', null)],
     onCancel: () => {
       S.editingHeadingText = null;
       render();

@@ -17,7 +17,7 @@ import {
   sortFootnotes,
   uniqueFootnoteLabel,
 } from '../src/footnotes.js';
-import { editListItemText, editParagraphText } from '../src/body-edit.js';
+import { editListItemText, editParagraphText, setHeadingText } from '../src/body-edit.js';
 import { findFootnoteDefinition as findOutlineDefinition } from '../src/link-resolve.js';
 import { getFootnoteAutoAdjust, getFootnoteAutoLabel, getFootnoteDefineInline, getFootnoteSection } from '../src/local-variables.js';
 import { serializeOrg } from '../src/org-parser.js';
@@ -141,14 +141,15 @@ const CARET = '\uE000\uE001';
 
 /** The whole file as it would be if the paragraph or list item being edited held `value`, with CARET at `caret`; the document
  * itself is left as it was.
- * @param {Heading} heading @param {'paragraph' | 'list-item'} kind @param {any} node @param {string} value @param {number} caret */
+ * @param {Heading} heading @param {'paragraph' | 'list-item' | 'heading-text'} kind @param {any} node @param {string} value @param {number} caret */
 function serializeWithCaret(heading, kind, node, value, caret) {
   const savedLines = heading.bodyLines;
   const savedBody = heading.body;
   const marked = value.slice(0, caret) + CARET + value.slice(caret);
   try {
     heading.bodyLines = savedLines.slice();
-    if (kind === 'paragraph') editParagraphText(heading, node, marked);
+    if (kind === 'heading-text') setHeadingText(heading, marked);
+    else if (kind === 'paragraph') editParagraphText(heading, node, marked);
     else editListItemText(heading, node, marked.replace(/\n/g, ' '));
     return serializeOrg(S.state.doc);
   } finally {
@@ -168,7 +169,7 @@ function bracketsPaired(s) {
 }
 
 /** The Footnote button of the paragraph and list-item editors.
- * @param {Heading} heading @param {'paragraph' | 'list-item'} kind @param {any} node */
+ * @param {Heading} heading @param {'paragraph' | 'list-item' | 'heading-text'} kind @param {any} node */
 export function footnoteEditorTool(heading, kind, node) {
   return {
     text: 'Footnote',
@@ -178,7 +179,7 @@ export function footnoteEditorTool(heading, kind, node) {
   };
 }
 
-/** @param {Heading} heading @param {'paragraph' | 'list-item'} kind @param {any} node @param {HTMLTextAreaElement} textarea @param {() => void} closeEditor */
+/** @param {Heading} heading @param {'paragraph' | 'list-item' | 'heading-text'} kind @param {any} node @param {HTMLTextAreaElement} textarea @param {() => void} closeEditor */
 function openNewFootnoteSheet(heading, kind, node, textarea, closeEditor) {
   if (S.isBufferReadOnly) {
     setStatus('Buffer is read-only \u2014 change not applied.');
@@ -294,6 +295,7 @@ function openNewFootnoteSheet(heading, kind, node, textarea, closeEditor) {
       closeEditor();
       S.editingParagraph = null;
       S.editingListItem = null;
+      S.editingHeadingText = null;
       replaceKeepingNarrowing(out, 'Inserted footnote');
       render();
       showUndoToast(label === null ? 'Footnote added' : result.existing ? `Reference to footnote ${label} added` : `Footnote ${label} added`, note ? note.slice(0, 80) : undefined);

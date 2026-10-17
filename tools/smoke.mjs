@@ -6224,6 +6224,29 @@ check('footnotes: outline: the Footnote button in the paragraph editor inserts a
   }
 });
 
+check('footnotes: heading text: the Edit heading text popup has the Footnote button and inserts at the cursor', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await newDocument(page, '* One\nSome text here.\n- item\n');
+  await page.click('#outline >> text=One');
+  await page.click('[aria-label="Edit text"]');
+  await page.waitForSelector('#heading-text-edit-popup textarea', { timeout: 5000 });
+  await page.evaluate(() => { const t = document.querySelector('#heading-text-edit-popup textarea'); t.focus(); t.setSelectionRange(14, 14); });
+  await page.click('[data-editor-tool="footnote"]');
+  await page.waitForSelector('[data-bottom-sheet] textarea', { timeout: 5000 });
+  await page.fill('[data-bottom-sheet] textarea', 'A note.');
+  await page.click('[data-bottom-sheet] button:has-text("Insert")');
+  await page.waitForSelector('#undoToast', { timeout: 5000 });
+  const saved = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { serializeOrg } = await import('/src/org-parser.js');
+    return { text: serializeOrg(S.state.doc), editing: S.editingHeadingText, popup: !!document.getElementById('heading-text-edit-popup') };
+  });
+  expect(saved.text === '* One\nSome text here[fn:1].\n- item\n\n* Footnotes\n\n[fn:1] A note.\n' && !saved.editing && !saved.popup, `inserted from the heading text editor: ${JSON.stringify(saved)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('id: links: a local file opened before is found again by its ID after its tab is closed', async () => {
   const { context, page, errors } = await freshPage();
   await page.setViewportSize({ width: 412, height: 900 });

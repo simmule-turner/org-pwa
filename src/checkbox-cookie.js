@@ -173,8 +173,8 @@ export function updateHeadingCheckboxCookie(heading, doneKeywords = []) {
  * `doneKeywords` is passed straight through to updateHeadingCheckboxCookie
  * for each one. Returns true if anything actually changed.
  * @param {Doc} doc
- * @param {any} [owningHeading]
- * @param {any} [doneKeywords]
+ * @param {Heading | null} [owningHeading]
+ * @param {string[]} [doneKeywords]
  */
 export function updateCheckboxCookiesUpward(doc, owningHeading, doneKeywords = []) {
   const ancestors = findAncestorPath(doc, owningHeading) || [];

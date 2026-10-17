@@ -80,10 +80,10 @@ export function parseResultsSpec(value) {
 
 /**
  * `:timeout` seconds -> milliseconds, default 5 s, never above 60 s.
- * @param {any} [args]
+ * @param {Record<string, string> | null} [args]
  */
 export function timeoutMs(args) {
-  const seconds = Number.parseFloat(args && args.timeout);
+  const seconds = Number.parseFloat((args && args.timeout) || '');
   if (!Number.isFinite(seconds) || seconds <= 0) return 5000;
   return Math.min(seconds, 60) * 1000;
 }
@@ -170,7 +170,7 @@ const fixedWidth = (text) => String(text).split(/\r?\n/).map((l) => (l === '' ? 
 
 /** The lines to put under `#+RESULTS:` for a value (or for collected console
  *  output when `spec.collect` is `output`). `wrap` is a `:wrap` value such as `quote`
- * @param {any} [value]
+ * @param {unknown} [value]
  *  or `SRC json`. */
 export function formatResult(value, spec = parseResultsSpec(''), { wrap = '' } = {}) {
   const format = spec.format;

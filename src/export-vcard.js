@@ -412,7 +412,7 @@ function buildVcardFromTreeContact(heading) {
  * narrowing the outline first (Search's own Narrow button, or subtree
  * narrowing), then exporting "This file," not through any filter
  * option on the export itself.
- * @param {any} [docs]
+ * @param {{ doc: import('./types.js').Doc }[]} docs
  */
 export function exportToVcard(docs, opts = /** @type {any} */ ({})) {
   const { scope = null, birthdayProperty = 'BIRTHDAY', style = 'flat' } = opts;

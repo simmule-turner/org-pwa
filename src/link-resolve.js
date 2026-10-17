@@ -143,7 +143,7 @@ export function resolveImagePath(target, currentDocumentId) {
  * of taking the raw target text as-is.
  * @param {Doc} doc
  * @param {Heading | null} heading
- * @param {any} attachmentTarget
+ * @param {string} attachmentTarget
  * @param {string} documentId
  */
 export function resolveAttachmentTarget(doc, heading, attachmentTarget, documentId) {

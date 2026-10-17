@@ -404,7 +404,7 @@ export function currentInlineOpts() {
  *  no heading-owned attachments of its own to resolve), is threaded
  *  through to renderImageNode so an attachment: link can resolve
  *  against the right heading's own :ID: (or an ancestor's, via
- * @param {any} nodes
+ * @param {import('../src/types.js').InlineNode[]} nodes
  * @param {HTMLElement} container
  *  resolveAttachmentTarget's own inheritance).
  * @param {Heading | null} [heading]
@@ -469,7 +469,7 @@ export function renderInlineNodes(nodes, container, linkContext = /** @type {any
         container.appendChild(renderLatexNode(node));
         break;
       case 'link':
-        container.appendChild(renderLinkNode(node, linkContext, heading));
+        container.appendChild(renderLinkNode(/** @type {any} */ (node), linkContext, heading));
         break;
       case 'footnote-ref':
         container.appendChild(renderFootnoteRefNode(node, linkContext));

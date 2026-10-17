@@ -99,8 +99,8 @@ export function serializeGlobalVariables(vars) {
  * so passing this merged result in their place is enough to make
  * every existing accessor Global-Variables-aware for free, with no
  * changes needed to local-variables.js itself.
- * @param {any} [globalVars]
- * @param {any} [localVars]
+ * @param {import('./types.js').LocalVars | null} [globalVars]
+ * @param {import('./types.js').LocalVars | null} [localVars]
  */
 export function mergeGlobalAndLocalVariables(globalVars, localVars) {
   return { ...(globalVars || {}), ...(localVars || {}) };
