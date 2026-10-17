@@ -116,6 +116,10 @@ test('org-xx-babel-js is off unless set to on', () => {
   assert.equal(getBabelJs({}), false);
   assert.equal(getBabelJs(undefined), false);
   assert.equal(getBabelJs({ 'org-xx-babel-js': 'on' }), true);
+  assert.equal(getBabelJs({ 'org-babel-load-languages': '((emacs-lisp . t) (js . t))' }), true);
+  assert.equal(getBabelJs({ 'org-babel-load-languages': "'((emacs-lisp . t))" }), false);
+  assert.equal(getBabelJs({ 'org-babel-load-languages': '((js . nil))' }), false);
+  assert.equal(getBabelJs({ 'org-xx-babel-js': 'off', 'org-babel-load-languages': '((js . t))' }), false);
   assert.equal(getBabelJs({ 'org-xx-babel-js': 'off' }), false);
   assert.equal(getBabelJs({ 'org-xx-babel-js': 'nil' }), false);
 });

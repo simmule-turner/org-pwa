@@ -6407,9 +6407,9 @@ check('buffers: Save Some Buffers is in the File menu (dimmed when nothing is mo
 check('every action in a row\'s tap menu runs without a page error and does something', async () => {
   // The sweep that finds "I tapped it and nothing happened": for each kind of row, tap every action (except the
   // ones that ask to delete or archive) on a fresh document; a thrown error, or no visible effect, fails.
-  const source = ['* Heading one', 'Para one', '', '- item one', '- item two', ''].join('\n');
-  const rows = ['Heading one', 'Para one', 'item one'];
-  const skip = /delete|archive|refile|remove|^save$/i;
+  const source = ['* Heading one', 'Para one', '', '- item one', '- item two', '', '| name | qty |', '|------+-----|', '| apple | 3 |', '| pear | 4 |', '', '#+begin_quote', 'quoted words', '#+end_quote', '', '#+begin_src sh', 'echo hi', '#+end_src', ''].join('\n');
+  const rows = ['Heading one', 'Para one', 'item one', 'apple', 'quoted words', 'echo hi'];
+  const skip = /delete|archive|refile|remove|^save$|^more$|^file$|^view$|^search$|^capture$|^settings$|^go back|^extras menu|^drag |^god-mode|^toggle fold/i;
   const problems = [];
   const open = async (rowText) => {
     const made = await freshPage();
@@ -6421,17 +6421,29 @@ check('every action in a row\'s tap menu runs without a page error and does some
   const visible = (page) => page.evaluate(() => document.body.innerText + '|' + document.querySelectorAll('textarea, input, [role=dialog]').length);
   for (const rowText of rows) {
     const first = await open(rowText);
-    const labels = (await first.page.locator('button.icon-btn[aria-label]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))).filter((l) => !skip.test(l));
+    const labels = (await first.page.locator('button[aria-label]').evaluateAll((els) => els.filter((e) => !e.closest('#topBar, #tabBar, header')).map((e) => e.getAttribute('aria-label')))).filter((l) => !skip.test(l));
     await first.context.close();
+    if (process.env.SMOKE_FULL) console.log(`      ${rowText}: ${labels.join(', ')}`);
+    if (!labels.length) problems.push(`${rowText}: no menu actions found`);
     for (const label of labels) {
       const { context, page, errors } = await open(rowText);
       const before = await visible(page);
-      await page.locator(`button.icon-btn[aria-label="${label}"]`).first().click({ timeout: 3000 }).catch(() => {});
+      await page.locator(`button[aria-label="${label}"]`).first().click({ timeout: 3000 }).catch(() => {});
       await page.waitForTimeout(300);
       if (errors.length) problems.push(`${rowText} / ${label}: ${errors[0]}`);
       else if ((await visible(page)) === before) problems.push(`${rowText} / ${label}: nothing happened`);
       await context.close();
     }
+  }
+  // Parts of a table and a block that are tapped, not menu buttons: the table's label, a block's header, a cell.
+  for (const target of ['\u25a6 Table', /\u25be\s*src/i, /\u25be\s*quote/i, 'apple', 'pear']) {
+    const { context, page, errors } = await open('Heading one');
+    const before = await visible(page);
+    await page.getByText(target, typeof target === 'string' ? { exact: true } : {}).first().click({ timeout: 3000 }).catch((e) => problems.push(`${target}: could not be tapped (${String(e.message).split('\n')[0]})`));
+    await page.waitForTimeout(300);
+    if (errors.length) problems.push(`${target}: ${errors[0]}`);
+    else if ((await visible(page)) === before) problems.push(`${target}: nothing happened`);
+    await context.close();
   }
   expect(problems.length === 0, problems.join(' | '));
 });
@@ -6454,6 +6466,77 @@ check('Add paragraph below opens an empty editor, adds the paragraph on OK and n
   expect((await documentText(page)).includes('Para one\n\nSecond.\n'), 'OK adds the paragraph after the first');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
+});
+
+check('every item in the top bar\'s menus runs without a page error and does something', async () => {
+  const source = ['* Heading one', 'Para one', ''].join('\n');
+  const skip = /delete|clear|reset|remove|sign ?out|log ?out|discard|close|quit|wipe|revert|erase|purge|reload/i;
+  const problems = [];
+  const open = async (button) => {
+    const made = await freshPage();
+    await newDocument(made.page, source);
+    await made.page.click(button);
+    await made.page.waitForTimeout(200);
+    return made;
+  };
+  const visible = (page) => page.evaluate(() => document.body.innerText + '|' + document.querySelectorAll('textarea, input, [role=dialog]').length + '|' + [...document.querySelectorAll('.popup-menu')].filter((e) => e.style.display !== 'none').length);
+  const menus = [['#fileMenuBtn', '#fileMenuPanel'], ['#viewMenuBtn', '#viewMenuPanel'], ['#moreBtn', '#morePanel']];
+  for (const [button, panel] of menus) {
+    const first = await open(button);
+    const labels = (await first.page.locator(`${panel} button:not([disabled])`).evaluateAll((els) => els.map((e) => e.innerText.trim()))).filter((l) => l && !skip.test(l));
+    await first.context.close();
+    if (process.env.SMOKE_FULL) console.log(`      ${button}: ${labels.join(', ')}`);
+    if (!labels.length) problems.push(`${button}: no menu items found`);
+    for (const label of labels) {
+      const { context, page, errors } = await open(button);
+      const before = await visible(page);
+      await page.locator(`${panel} button:not([disabled])`).filter({ hasText: label }).first().click({ timeout: 3000 }).catch(() => {});
+      await page.waitForTimeout(400);
+      if (errors.length) problems.push(`${button} / ${label}: ${errors[0]}`);
+      else if ((await visible(page)) === before) problems.push(`${button} / ${label}: nothing happened`);
+      await context.close();
+    }
+  }
+  for (const button of ['#captureBtn', '#searchBtn', '#settingsBtn']) {
+    const { context, page, errors } = await open('#topBar');
+    const before = await visible(page);
+    await page.click(button).catch(() => {});
+    await page.waitForTimeout(400);
+    if (errors.length) problems.push(`${button}: ${errors[0]}`);
+    else if ((await visible(page)) === before) problems.push(`${button}: nothing happened`);
+    await context.close();
+  }
+  expect(problems.length === 0, problems.join(' | '));
+});
+
+check('every command in the palette runs without a page error and does something (or says why it cannot)', async () => {
+  const source = ['* Heading one', 'Para one', '', '- item one', '', '| a | b |', '| 1 | 2 |', ''].join('\n');
+  const skip = /delete|kill|clear|remove|archive|refile|quit|revert|wipe|reset|erase|discard|exit|sign|logout|reload/i;
+  const problems = [];
+  const prepare = async () => {
+    const made = await freshPage();
+    await newDocument(made.page, source);
+    await made.page.locator('.heading-title').first().click(); // the heading's menu is open, so commands act on it
+    await openPalette(made.page);
+    return made;
+  };
+  const first = await prepare();
+  const names = (await paletteRows(first.page)).map((t) => t.split('\n')).map((l) => ({ title: l[0], id: (l[2] || '').split(' \u00b7')[0].trim() })).filter((c) => c.id && !skip.test(c.title + ' ' + c.id));
+  await first.context.close();
+  if (names.length < 30) problems.push(`only ${names.length} commands found in the palette`);
+  if (process.env.SMOKE_FULL) console.log(`      ${names.length} commands`);
+  const visible = (page) => page.evaluate(() => document.body.innerText + '|' + document.querySelectorAll('textarea, input, [role=dialog]').length);
+  for (const { title, id } of names) {
+    const { context, page, errors } = await prepare();
+    const before = await visible(page);
+    await page.keyboard.type(id);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(350);
+    if (errors.length) problems.push(`${id}: ${errors[0]}`);
+    else if ((await visible(page)) === before && !(await page.locator('#command-palette').count() === 0)) problems.push(`${id} (${title}): nothing happened`);
+    await context.close();
+  }
+  expect(problems.length === 0, problems.join(' | '));
 });
 
 // ---- runner -------------------------------------------------------------------

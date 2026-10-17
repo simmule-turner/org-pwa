@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v550 — Org's own variables for HTML export and JavaScript
+HTML export now honours Org's own =org-html-head=, =org-html-preamble= and =org-html-postamble= when set in Global Variables, so a copied Emacs setting works; a file's own options still win. =(js . t)= in =org-babel-load-languages= lets JavaScript blocks run when the app's own switch is unset. The README no longer says Emacs shows agenda titles as written. New checks tap every action in the row, table, block, top-bar and palette menus and fail on any error or dead button.
+Verified: the new variable cases and the menu checks pass.
+
 * v549 — Add paragraph below works again
 Choosing "Add paragraph below" from a paragraph's menu could do nothing but leave stray blank lines, because it inserted an empty paragraph, which is not a paragraph in org. It now opens a blank editor and adds the paragraph only when you press OK with some text; Cancel leaves the file untouched. A new check taps every action in the heading, paragraph and list-item menus, so a button that errors or does nothing is caught before release.
 Verified: the new checks fail on v548 and pass on this build.

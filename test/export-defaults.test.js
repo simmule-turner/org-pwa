@@ -30,3 +30,12 @@ test('the defaults reach the page, and the file wins', () => {
   assert.doesNotMatch(own, /POST Ann/);
   assert.doesNotMatch(exportToHtml(doc('* A\n'), null), /PRE|counter\(page\)/);
 });
+
+test("Org's own org-html-head, org-html-preamble and org-html-postamble variables set the defaults; an item switched on wins", () => {
+  assert.deepEqual(htmlExportDefaults({ 'org-html-head': '"<style>p{}</style>"', 'org-html-preamble': '"%t by %a"', 'org-html-postamble': '"Made %d"' }), { head: '<style>p{}</style>', preamble: '%t by %a', postamble: 'Made %d' });
+  assert.deepEqual(htmlExportDefaults({ 'org-html-postamble': 'nil' }), { postamble: false });
+  assert.deepEqual(htmlExportDefaults({ 'org-html-postamble': 'auto', 'org-html-preamble': 't', 'org-html-head': 'nil' }), {});
+  assert.deepEqual(htmlExportDefaults({ 'org-html-preamble': '"mine"', 'org-xx-html-preamble': 'ours', 'org-xx-html-preamble-on': 't' }), { preamble: 'ours' });
+  assert.ok(!exportToHtml(doc('* A\nbody\n'), null, { defaults: htmlExportDefaults({ 'org-html-postamble': 'nil' }) }).includes('class="postamble"'));
+  assert.ok(exportToHtml(doc('* A\nbody\n'), null, { defaults: htmlExportDefaults({ 'org-html-postamble': '"Made by me"' }) }).includes('Made by me'));
+});
