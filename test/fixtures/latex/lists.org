@@ -1,0 +1,39 @@
+#+TITLE: Lists
+* Unordered
+- one
+- two
+  - nested a
+  - nested b
+- three
+* Plus and nested ordered
++ plus bullet
++ another
+  1. inner one
+  2. inner two
+* Ordered
+1. first
+2. second
+   1. inner
+3. third
+* Counter
+1. one
+2. [@5] five
+3. six
+* Checkboxes
+- [ ] open
+- [X] done
+- [-] partial
+* Description
+- term :: description
+- other :: more text
+- bare :: 
+* Item with paragraphs
+- First paragraph of item.
+
+  Second paragraph of item.
+- Item with a block
+  #+begin_example
+  code here
+  #+end_example
+- Item with continuation
+  line continues here

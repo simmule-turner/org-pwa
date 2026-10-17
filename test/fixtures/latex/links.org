@@ -1,0 +1,10 @@
+#+TITLE: Links
+* Links
+An [[https://example.org/a_b?x=1&y=2#frag][external link]] and a bare [[https://example.org][https://example.org]].
+A <https://angle.example.org/path> link and mailto [[mailto:a@b.org][mail]].
+Internal [[*Target heading][to heading]] and [[#cid][custom id]].
+* Target heading
+:PROPERTIES:
+:CUSTOM_ID: cid
+:END:
+text

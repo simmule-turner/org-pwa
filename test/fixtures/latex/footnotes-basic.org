@@ -1,0 +1,5 @@
+#+TITLE: Notes
+* Notes
+Reference[fn:1] and inline[fn:2:inline note *bold*] and again[fn:1].
+
+[fn:1] The first definition.

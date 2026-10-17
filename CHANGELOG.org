@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v552 — LaTeX export engine, checked against Emacs
+The first part of LaTeX export: a writer for the document skeleton and =\hypersetup=, headings (TODO, tags, =H:= levels, =num:= and =toc:=), inline markup, lists with checkboxes and counters, tables, quote, verse, center, example and source blocks, timestamps, math, footnotes and =#+LATEX:= lines, using Org's own =#+LATEX_CLASS=, =#+LATEX_HEADER= and =#+LATEX_COMPILER=. Nineteen sample files are compared with what Emacs's ox-latex writes. It is not in the Export menu yet.
+Verified: all nineteen match Emacs, and each compiles with pdflatex.
+
+* v552 — LaTeX export engine, checked against Emacs
+The first part of LaTeX export: a writer for the document skeleton, headings (TODO, tags, =H:=, =num:=, =toc:=), inline markup, lists with checkboxes and counters, tables, quote, verse, center, example and source blocks, timestamps, math, footnotes and =#+LATEX:= lines, using Org's own =#+LATEX_CLASS=, =#+LATEX_HEADER= and =#+LATEX_COMPILER=. Its output is compared with what Emacs's ox-latex writes for a set of sample files and for this README. It is not in the Export menu yet.
+Verified: every sample, README included, matches Emacs and compiles.
+
 * v551 — One setting, not two
 HTML export's preamble, postamble and head, and the switch for JavaScript blocks, now live only on Org's own variables (=org-html-preamble=, =org-html-postamble=, =org-html-head=, =org-babel-load-languages=), and Settings reads and writes those. The older =org-xx-html-*= and =org-xx-babel-js= settings are moved across the first time the app starts, so nothing needs redoing. Page header and footer stay as they were, since Org has no setting for them.
 Verified: the move, the Settings screens and the JavaScript-block checks pass.

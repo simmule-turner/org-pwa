@@ -1,0 +1,64 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{root}
+\date{\today}
+\title{Tables}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Tables},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Tables}
+\label{sec:orgd4d6284}
+\begin{center}
+\begin{tabular}{lrl}
+Name & Qty & Note\\[0pt]
+\hline
+apple & 3 & red\\[0pt]
+pear & 12 & green\\[0pt]
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{rr}
+a & b\\[0pt]
+1 & 2\\[0pt]
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{lrc}
+x \& y & 50\% & under\textsubscript{score}\\[0pt]
+\hline
+left & 1 & mid\\[0pt]
+\end{tabular}
+\end{center}
+
+\begin{table}[htbp]
+\caption{A captioned table}
+\centering
+\begin{tabular}{rr}
+h1 & h2\\[0pt]
+\hline
+1 & 2\\[0pt]
+\end{tabular}
+\end{table}
+\end{document}

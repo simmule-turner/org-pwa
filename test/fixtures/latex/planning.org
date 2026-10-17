@@ -1,0 +1,7 @@
+#+TITLE: Planning
+* TODO Task
+SCHEDULED: <2026-03-04 Wed> DEADLINE: <2026-03-10 Tue>
+Text with a timestamp <2026-03-04 Wed 10:00> and inactive [2026-03-05 Thu].
+:LOGBOOK:
+- note
+:END:

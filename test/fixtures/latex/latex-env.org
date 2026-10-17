@@ -1,0 +1,14 @@
+#+TITLE: Env
+* Env
+\begin{align}
+a &= b \\
+c &= d
+\end{align}
+
+Text after.
+
+* Drawer
+:MYDRAWER:
+drawer text
+:END:
+Text.

@@ -1,0 +1,41 @@
+#+TITLE: Blocks
+* Blocks
+#+begin_src js
+let a = 1 & 2; // 50%
+#+end_src
+
+#+begin_example
+raw  text
+  indented \ here
+#+end_example
+
+#+begin_quote
+Quoted *bold* text.
+
+Second paragraph of the quote.
+#+end_quote
+
+#+begin_verse
+Line one
+  line two indented
+Line three
+#+end_verse
+
+#+begin_center
+Centred text
+#+end_center
+
+#+begin_comment
+hidden
+#+end_comment
+
+: fixed width line
+: another
+
+-----
+
+#+begin_export latex
+\newpage
+#+end_export
+
+#+latex: \vspace{1em}

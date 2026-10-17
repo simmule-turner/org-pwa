@@ -1,0 +1,95 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{root}
+\date{\today}
+\title{Lists}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Lists},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Unordered}
+\label{sec:orgca023d3}
+\begin{itemize}
+\item one
+\item two
+\begin{itemize}
+\item nested a
+\item nested b
+\end{itemize}
+\item three
+\end{itemize}
+\section{Plus and nested ordered}
+\label{sec:orgc3ec209}
+\begin{itemize}
+\item plus bullet
+\item another
+\begin{enumerate}
+\item inner one
+\item inner two
+\end{enumerate}
+\end{itemize}
+\section{Ordered}
+\label{sec:org5b0c982}
+\begin{enumerate}
+\item first
+\item second
+\begin{enumerate}
+\item inner
+\end{enumerate}
+\item third
+\end{enumerate}
+\section{Counter}
+\label{sec:orga1025c7}
+\begin{enumerate}
+\item one
+\setcounter{enumi}{4}
+\item five
+\item six
+\end{enumerate}
+\section{Checkboxes}
+\label{sec:orga20c077}
+\begin{itemize}
+\item[{$\square$}] open
+\item[{$\boxtimes$}] done
+\item[{$\boxminus$}] partial
+\end{itemize}
+\section{Description}
+\label{sec:org119bb47}
+\begin{description}
+\item[{term}] description
+\item[{other}] more text
+\item[{bare}] 
+\end{description}
+\section{Item with paragraphs}
+\label{sec:org1a894f6}
+\begin{itemize}
+\item First paragraph of item.
+
+Second paragraph of item.
+\item Item with a block
+\begin{verbatim}
+code here
+\end{verbatim}
+\item Item with continuation
+line continues here
+\end{itemize}
+\end{document}

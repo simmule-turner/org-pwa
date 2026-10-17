@@ -16,6 +16,7 @@
  *   latex-env        { lines }
  *   footnote-def     { label, children }
  *   html-line        { value }     (`#+HTML:`)
+ *   latex-line       { value }     (`#+LATEX:`)
  *   toc              { value }     (`#+TOC:`)
  *   include          { value }     (`#+INCLUDE:`)
  *   print-bibliography { value }   (`#+PRINT_BIBLIOGRAPHY:`)
@@ -23,9 +24,9 @@
 
 /**
  * @typedef {{ caption: { short: string | null, text: string }[], name: string | null, attr: Record<string, string[]>, header: string[], results: boolean }} Affiliated
- * @typedef {{ bullet: string, checkbox: string | null, counter: number | null, tag: string | null, children: OrgElement[] }} ElementListItem
+ * @typedef {{ bullet: string, checkbox: string | null, counter: number | null, tag: string | null, children: OrgElement[], postBlank?: number }} ElementListItem
  * @typedef {{ rule: true } | { cells: string[], rule?: undefined }} ElementTableRow
- * @typedef {{ aff?: Affiliated | null, __id?: string }} AffField
+ * @typedef {{ aff?: Affiliated | null, __id?: string, postBlank?: number }} AffField
  * @typedef {AffField & (
  *   { type: 'paragraph', lines: string[] } |
  *   { type: 'list', listType: 'unordered' | 'ordered' | 'descriptive', items: ElementListItem[] } |
@@ -37,6 +38,7 @@
  *   { type: 'latex-env', lines: string[] } |
  *   { type: 'footnote-def', label: string, children: OrgElement[] } |
  *   { type: 'html-line', value: string } |
+ *   { type: 'latex-line', value: string } |
  *   { type: 'toc', value: string } |
  *   { type: 'include', value: string } |
  *   { type: 'print-bibliography', value: string }
@@ -213,7 +215,10 @@ function parseList(lines, start) {
     // a blank line (or two) between items is fine; the next item continues the list
     let k = i;
     while (k < lines.length && isBlank(lines[k])) k++;
-    if (k - i < 2 && k < lines.length && itemMatch(lines[k]) && indentOf(lines[k]) === baseIndent) i = k;
+    if (k - i < 2 && k < lines.length && itemMatch(lines[k]) && indentOf(lines[k]) === baseIndent) {
+      if (k > i) item.postBlank = k - i;
+      i = k;
+    }
   }
   const listType = items[0].tag !== null ? 'descriptive' : /^\d/.test(first[2]) ? 'ordered' : 'unordered';
   return [/** @type {OrgElement} */ ({ type: 'list', listType, items }), i];
@@ -281,6 +286,8 @@ export function parseElements(lines) {
   while (i < lines.length) {
     const line = lines[i];
     if (isBlank(line)) {
+      const last = out[out.length - 1];
+      if (last && !aff) last.postBlank = (last.postBlank || 0) + 1;
       i++;
       continue;
     }
@@ -305,6 +312,7 @@ export function parseElements(lines) {
     if (kw && !/^begin_|^end_/i.test(kw[1])) {
       const key = kw[1].toUpperCase();
       if (key === 'HTML') push({ type: 'html-line', value: kw[2] });
+      else if (key === 'LATEX') push({ type: 'latex-line', value: kw[2] });
       else if (key === 'TOC') push({ type: 'toc', value: kw[2] });
       else if (key === 'INCLUDE') push({ type: 'include', value: kw[2] });
       else if (key === 'PRINT_BIBLIOGRAPHY') push({ type: 'print-bibliography', value: kw[2] });
@@ -371,6 +379,9 @@ export function parseElements(lines) {
     if (itemMatch(line)) {
       const [list, next] = parseList(lines, i);
       push(list);
+      let tail = next;
+      while (tail > i && isBlank(lines[tail - 1])) tail--;
+      if (next > tail) list.postBlank = next - tail;
       i = next;
       continue;
     }

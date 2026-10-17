@@ -1,0 +1,73 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{root}
+\date{\today}
+\title{Tables two}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Tables two},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Cookies and widths}
+\label{sec:org9fa3c8b}
+\begin{center}
+\begin{tabular}{lrc}
+a & b & c\\[0pt]
+dd & 12 & x\\[0pt]
+\end{tabular}
+\end{center}
+\section{Groups}
+\label{sec:org50e5b38}
+\begin{center}
+\begin{tabular}{rr}
+a & b\\[0pt]
+\hline
+1 & 2\\[0pt]
+\hline
+3 & 4\\[0pt]
+\end{tabular}
+\end{center}
+\section{Empty and numbers}
+\label{sec:orga4615a4}
+\begin{center}
+\begin{tabular}{lrr}
+ & 1.5 & -3\\[0pt]
+x & 1e5 & 0x1F\\[0pt]
+\end{tabular}
+\end{center}
+\section{Attr}
+\label{sec:org715e5ba}
+\begin{center}
+\begin{tabular}{|l|r|}
+a & 1\\[0pt]
+b & 2\\[0pt]
+\end{tabular}
+\end{center}
+\section{Named and captioned}
+\label{sec:orgfb397fc}
+\begin{table}[htbp]
+\caption{\label{tab:org7f1c90c}Cap with \textbf{bold}}
+\centering
+\begin{tabular}{l}
+a\\[0pt]
+\end{tabular}
+\end{table}
+\end{document}

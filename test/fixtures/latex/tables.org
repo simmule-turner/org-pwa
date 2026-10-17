@@ -1,0 +1,19 @@
+#+TITLE: Tables
+* Tables
+| Name  | Qty | Note   |
+|-------+-----+--------|
+| apple |   3 | red    |
+| pear  |  12 | green  |
+
+| a | b |
+| 1 | 2 |
+
+| x & y | 50% | under_score |
+|-------+-----+-------------|
+| <l>   | <r> | <c>         |
+| left  |   1 | mid         |
+
+#+CAPTION: A captioned table
+| h1 | h2 |
+|----+----|
+| 1  | 2  |

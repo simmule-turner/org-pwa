@@ -1,0 +1,15 @@
+#+TITLE: Fixed
+* A
+: one
+text right after
+
+: two
+
+text after blank
+: three
+-----
+para
+-----
+- item
+
+-----

@@ -1,0 +1,9 @@
+#+TITLE: Specials & More_Title
+#+AUTHOR: A. Uthor & Co
+* Characters
+< > | [ ] @ ` ' " ! ? * + = / : ; , . ( ) 
+Unicode: café naïve — “curly” ‘single’ … → ✓ 1 < 2 > 0
+A path C:\dir\file and a ~tilde~ ~ and ^caret and 50% and #hash.
+Heading-like text: * not a heading
+Special strings: a\-b, a -- b, a --- b, 'x' ... done.
+Backslash alone \ here and a \dir command and \textbf{raw} text.

@@ -1,0 +1,6 @@
+#+TITLE: Toc depth
+#+OPTIONS: toc:2 H:2
+* One
+** Two
+*** Three
+**** Four

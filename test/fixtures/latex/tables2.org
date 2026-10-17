@@ -1,0 +1,22 @@
+#+TITLE: Tables two
+* Cookies and widths
+| <l5> | <r> | <c> |
+| a    | b   | c   |
+| dd   | 12  | x   |
+* Groups
+| a | b |
+|---+---|
+| 1 | 2 |
+|---+---|
+| 3 | 4 |
+* Empty and numbers
+|   | 1.5 | -3 |
+| x | 1e5 | 0x1F |
+* Attr
+#+ATTR_LATEX: :align |l|r|
+| a | 1 |
+| b | 2 |
+* Named and captioned
+#+NAME: tbl
+#+CAPTION: Cap with *bold*
+| a |

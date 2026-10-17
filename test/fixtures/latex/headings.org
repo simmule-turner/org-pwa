@@ -1,0 +1,15 @@
+#+TITLE: Headings
+#+AUTHOR: Estes
+#+DATE: 2026-01-02
+
+Before the first heading.
+
+* TODO [#A] First :tag:other:
+Body one.
+** DONE Second
+Body two.
+*** Third level
+**** Fourth level
+***** Fifth level
+* Plain heading with /italic/ and =code=
+text

@@ -1,0 +1,8 @@
+#+TITLE: Math
+* Math
+Inline \(a^2 + b^2\) and $c_1$ and display
+\[ E = mc^2 \]
+$$x = \frac{1}{2}$$
+\begin{equation}
+y = z
+\end{equation}

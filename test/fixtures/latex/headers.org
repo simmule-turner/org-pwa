@@ -1,0 +1,12 @@
+#+TITLE: Headers
+#+AUTHOR: Estes
+#+LATEX_CLASS: report
+#+LATEX_CLASS_OPTIONS: [12pt,a4paper]
+#+LATEX_HEADER: \usepackage{xcolor}
+#+LATEX_HEADER_EXTRA: \usepackage{lipsum}
+#+LATEX_COMPILER: xelatex
+#+DESCRIPTION: A description
+#+KEYWORDS: one, two
+#+LANGUAGE: en
+* One
+text

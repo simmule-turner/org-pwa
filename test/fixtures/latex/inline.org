@@ -1,0 +1,9 @@
+#+TITLE: Inline
+* Markup
+*bold* /italic/ _underline_ +strike+ =verbatim= ~code~ H_2O x^2 a_{sub} b^{sup}
+Plain special characters: # $ % & _ { } ~ ^ \ and 100% of $5 & more_under.
+Dashes -- and --- and ellipsis ... with "double" and 'single' quotes.
+A line ending in a break\\
+continues here.
+** Verbatim with specials
+=a_b & c%= and ~x#y~
