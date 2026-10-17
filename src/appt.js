@@ -55,7 +55,7 @@ export const clock = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())
 
 /**
  * The appointments from `now` to `now` + `hours`, soonest first.
- * @param {{ documentId: string, doc: object }[]} docs the open document and the loaded agenda files
+ * @param {{ documentId: string, doc: import('./types.js').Doc }[]} docs the open document and the loaded agenda files
  * @returns {{ key: string, id: number, documentId: string, title: string, start: Date, end: Date|null, detail: string|null }[]} `detail` is the start of the heading's body (up to 400 characters, as the calendar sync sends)
  * @param {Date} now
  */
@@ -72,7 +72,7 @@ export function upcomingAppointments(docs, now, { hours = 6, birthdayProperty = 
     includeArchived,
     includeCommented,
     deadlineWarningDays: 0,
-    todoFilter: (/** @type {any} */ todo) => !done.has(todo), // no isDone: nothing is carried forward, an appointment is on its own day
+    todoFilter: (todo) => !done.has(todo), // no isDone: nothing is carried forward, an appointment is on its own day
   });
   const found = [];
   const seen = new Set();

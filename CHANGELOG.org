@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v547 — Types for the engines and exporters
+The HTML, text, Markdown and OpenDocument exporters, the vCard importer and exporter, search, the agenda, refile targets, archiving and the org parser now share real types for document elements, contacts, agenda entries and search filters, so a wrong field or a missing check in them is caught before release. About 420 more loose annotations are gone. Nothing the app does has changed.
+Verified: the code is identical to v546 apart from comments; the type checker, linter and unit tests pass.
+
 * v546 — Types for the screens you use most
 The outline rows, keyboard focus, drag and swipe gestures, dialogs, settings storage, the command palette and the agenda controls now have real types, so a wrong argument or a misspelt field in those screens is caught before release. About 130 more loose annotations were removed or replaced, and the per-file ceiling dropped to match. Nothing the app does has changed.
 Verified: the code is identical to v545 apart from comments; the type checker, linter and unit tests pass.

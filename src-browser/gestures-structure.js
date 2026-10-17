@@ -224,7 +224,7 @@ export async function pasteSubtree(heading) {
 }
 
 export function extraMenuTargetHeading() {
-  if (S.actionMenuFor && S.state.doc && findContainer(S.state.doc, S.actionMenuFor)) return S.actionMenuFor;
+  if (S.actionMenuFor && S.state.doc && findContainer(S.state.doc, /** @type {Heading} */ (S.actionMenuFor))) return S.actionMenuFor;
   return S.keyboardFocusedHeading;
 }
 

@@ -53,7 +53,7 @@ function wrapEvent(eventLines) {
 
 /**
  * Every event the calendar should hold, keyed by the name it is stored under.
- * @param {{ documentId: string, doc: object }[]} allDocs the open document and the loaded agenda files
+ * @param {{ documentId: string, doc: import('./types.js').Doc }[]} allDocs the open document and the loaded agenda files
  * @returns {Map<string, { uid: string, documentId: string, ics: string, hash: string }>}
  * @param {{ today?: Date, daysBefore?: number, daysAfter?: number, [key: string]: any }} [opts]
  */

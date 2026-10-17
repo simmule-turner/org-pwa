@@ -159,15 +159,16 @@ function cloneHeading(heading) {
  * Depth-first search for `target` (by reference) inside `doc`/`root`.
  * Returns the path of ancestor headings from outermost to innermost,
  * NOT including `target` itself. Returns null if not found.
- * @param {any} root
- * @param {any} target
- * @param {string} path
+ * @param {Doc | Heading} root
+ * @param {Heading} target
+ * @param {Heading[]} [path]
+ * @returns {Heading[] | null}
  */
-function findAncestorPath(root, target, /** @type {any} */ path = []) {
+function findAncestorPath(root, target, path = []) {
   const children = root.children || [];
   for (const child of children) {
     if (child === target) return path;
-    /** @type {any} */ const found = findAncestorPath(child, target, [...path, child]);
+    const found = findAncestorPath(child, target, [...path, child]);
     if (found) return found;
   }
   return null;
@@ -176,15 +177,16 @@ function findAncestorPath(root, target, /** @type {any} */ path = []) {
 /**
  * Finds the array that directly contains `target` and its index within it,
  * so callers can splice it out or replace it in place.
- * @param {any} [root]
- * @param {any} [target]
+ * @param {Doc | Heading} root
+ * @param {Heading} target
+ * @returns {{ container: Heading[], index: number } | null}
  */
 function findContainer(root, target) {
   const children = root.children || [];
   const idx = children.indexOf(target);
   if (idx !== -1) return { container: children, index: idx };
   for (const child of children) {
-    /** @type {any} */ const found = findContainer(child, target);
+    const found = findContainer(child, target);
     if (found) return found;
   }
   return null;
@@ -192,12 +194,12 @@ function findContainer(root, target) {
 
 /**
  * Shifts a subtree's level (and all descendants') by newLevel - node.level.
- * @param {any} node
+ * @param {Heading} node
  * @param {number} newLevel
  */
 function shiftLevels(node, newLevel) {
   const delta = newLevel - node.level;
-  /** @param {any} [n] */
+  /** @param {Heading} n */
   const walk = (n) => {
     n.level += delta;
     for (const c of n.children || []) walk(c);
@@ -286,7 +288,7 @@ function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = /** @type
   if (ancestors === null) {
     throw new Error('buildArchivedClone: heading not found in sourceDoc');
   }
-  const olpath = ancestors.map((/** @type {any} */ h) => h.title).join('/');
+  const olpath = ancestors.map((h) => h.title).join('/');
   const category = ancestors.length > 0 ? ancestors[0].title : heading.title || null;
 
   const clone = cloneHeading(heading);
@@ -297,7 +299,7 @@ function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = /** @type
   setProperty(clone, 'ARCHIVE_TIME', formatOrgTimestamp(now));
   setProperty(clone, 'ARCHIVE_FILE', sourceFilePath);
   setProperty(clone, 'ARCHIVE_OLPATH', olpath);
-  setProperty(clone, 'ARCHIVE_CATEGORY', category);
+  setProperty(clone, 'ARCHIVE_CATEGORY', /** @type {string} */ (category));
 
   // Real org's own default org-archive-save-context-info is
   // '(time file olpath category todo itags) -- ARCHIVE_TODO records
@@ -321,7 +323,7 @@ function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = /** @type
   // org's own tag-storage convention everywhere else (":tag1:tag2:").
   // Omitted entirely when there's nothing to record, rather than
   // stamping an empty, meaningless value.
-  const inheritedTags = [...new Set(ancestors.flatMap((/** @type {any} */ h) => h.tags || []))];
+  const inheritedTags = [...new Set(ancestors.flatMap((h) => h.tags || []))];
   if (inheritedTags.length > 0) {
     setProperty(clone, 'ARCHIVE_ITAGS', ':' + inheritedTags.join(':') + ':');
   }

@@ -158,8 +158,8 @@ export function resolveAttachmentTarget(doc, heading, attachmentTarget, document
  * @param {string} documentId
  *  chain. */
 export function resolveAttachmentDirectory(doc, heading, documentId) {
-  const ancestors = findAncestorPath(doc, heading) || [];
-  const chain = [heading, ...ancestors.slice().reverse()];
+  const ancestors = findAncestorPath(doc, /** @type {Heading} */ (heading)) || [];
+  const chain = [/** @type {Heading} */ (heading), ...ancestors.slice().reverse()];
   for (const candidate of chain) {
     const dir = ownAttachmentDirectory(candidate, documentId);
     if (dir) return dir;

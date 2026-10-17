@@ -325,15 +325,15 @@ export function moveHeadingTo(doc, heading, target, position, climb = 0) {
   if (position === 'after') {
     if (climb > dropClimbLimit(doc, target, heading)) return false;
     for (let i = 0; i < climb; i += 1) {
-      const path = findAncestorPath(doc, anchor);
+      const path = /** @type {Heading[]} */ (findAncestorPath(doc, anchor));
       anchor = path[path.length - 1];
     }
     if (inSubtree(heading, anchor)) return false;
   }
-  const originParent = findAncestorPath(doc, heading).slice(-1)[0] || null;
+  const originParent = /** @type {Heading[]} */ (findAncestorPath(doc, heading)).slice(-1)[0] || null;
   const originIndex = origin.index;
   origin.container.splice(origin.index, 1);
-  const place = findContainer(doc, anchor);
+  const place = /** @type {{ container: Heading[], index: number }} */ (findContainer(doc, anchor));
   if (position === 'firstChild' || position === 'lastChild') {
     if (position === 'firstChild') anchor.children.unshift(heading);
     else anchor.children.push(heading);
@@ -343,8 +343,8 @@ export function moveHeadingTo(doc, heading, target, position, climb = 0) {
     place.container.splice(position === 'after' ? place.index + 1 : place.index, 0, heading);
     shiftLevels(heading, anchor.level);
   }
-  const now = findContainer(doc, heading);
-  const nowParent = findAncestorPath(doc, heading).slice(-1)[0] || null;
+  const now = /** @type {{ container: Heading[], index: number }} */ (findContainer(doc, heading));
+  const nowParent = /** @type {Heading[]} */ (findAncestorPath(doc, heading)).slice(-1)[0] || null;
   if (nowParent === originParent && now.index === originIndex) return false; // dropped where it already was
   return true;
 }

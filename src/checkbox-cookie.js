@@ -177,9 +177,9 @@ export function updateHeadingCheckboxCookie(heading, doneKeywords = []) {
  * @param {string[]} [doneKeywords]
  */
 export function updateCheckboxCookiesUpward(doc, owningHeading, doneKeywords = []) {
-  const ancestors = findAncestorPath(doc, owningHeading) || [];
+  const ancestors = findAncestorPath(doc, /** @type {Heading} */ (owningHeading)) || [];
   let changed = false;
-  for (const heading of [...ancestors, owningHeading]) {
+  for (const heading of [...ancestors, /** @type {Heading} */ (owningHeading)]) {
     if (updateHeadingCheckboxCookie(heading, doneKeywords)) changed = true;
   }
   return changed;

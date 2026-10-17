@@ -9,6 +9,9 @@
  * }} FormulaCtx
  */
 /** @typedef {import('./types.js').Table} Table */
+/** @typedef {{ type: 'absolute', n: number } | { type: 'relative', delta: number } | { type: 'first' } | { type: 'last' } | { type: 'hline', count: number, offset: number }} RowRef */
+/** @typedef {{ type: 'absolute', n: number } | { type: 'first' } | { type: 'last' }} ColRef */
+/** @typedef {{ asStart: number, asEnd: number }} HlineBoundary */
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
 /**
@@ -131,7 +134,7 @@ mathjsDefault.createUnit('tbsp', '1 tablespoon');
 // effectively free for the handful of distinct precisions any real
 // document would realistically use).
 const mathjsByPrecision = new Map();
-/** @param {any} [precision] */
+/** @param {number} precision */
 function mathjsForPrecision(precision) {
   let instance = mathjsByPrecision.get(precision);
   if (!instance) {
@@ -149,12 +152,12 @@ const TIME_FORMAT_MONTH_NAMES_FULL = [
 ];
 const TIME_FORMAT_MONTH_NAMES_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-/** @param {any} [n] */
+/** @param {number | string} n */
 function timeFormatPad(n, width = 2) {
   return String(n).padStart(width, '0');
 }
 
-/** @param {any} [date] */
+/** @param {Date} date */
 function timeFormatDayOfYear(date) {
   const start = new Date(date.getFullYear(), 0, 1);
   return Math.floor((date.getTime() - start.getTime()) / 86400000) + 1;
@@ -168,7 +171,7 @@ function timeFormatDayOfYear(date) {
  *  LOCAL getters throughout -- callers wanting UTC output construct a
  *  "fake local" Date from the UTC components first (see the
  *  formatTimeCall evaluator below), rather than this function having
- * @param {any} [date]
+ * @param {Date} date
  *  two separate code paths for the same formatting logic. */
 function timeFormatTimezoneAbbreviation(date) {
   const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(date);
@@ -176,7 +179,7 @@ function timeFormatTimezoneAbbreviation(date) {
   return tz ? tz.value : '';
 }
 
-/** @param {any} [date] */
+/** @param {Date} date */
 function timeFormatTimezoneOffsetString(date) {
   const totalMinutes = -date.getTimezoneOffset(); // getTimezoneOffset() is UTC-minus-local, the opposite sign from ±HHMM
   const sign = totalMinutes < 0 ? '-' : '+';
@@ -197,11 +200,11 @@ function timeFormatTimezoneOffsetString(date) {
  *  local" Date's own real timezone getters would report whatever zone
  *  the machine itself is actually in, not UTC), so `isUTC` short-
  *  circuits straight to the fixed, correct "UTC"/"+0000" for those
- * @param {any} [date]
- * @param {any} [format]
+ * @param {Date} date
+ * @param {string} format
  *  two codes only when set. */
 function formatTimeStringImpl(date, format, isUTC = false) {
-  return format.replace(/%(.)/g, (/** @type {any} */ whole, /** @type {string} */ spec) => {
+  return format.replace(/%(.)/g, (whole, /** @type {string} */ spec) => {
     switch (spec) {
       case 'Y':
         return String(date.getFullYear());
@@ -297,10 +300,10 @@ function parseColRef(text) {
  *  for @>/$> and for bounds-checking). Returns null for an
  *  out-of-range result (e.g. @-5 from row 2) rather than clamping --
  *  a formula reaching past the edge of the table is a real error to
- * @param {any} ref
- * @param {any} currentRow
- * @param {any} dataRowCount
- * @param {any} hlinePositions
+ * @param {RowRef} ref
+ * @param {number} currentRow
+ * @param {number} dataRowCount
+ * @param {HlineBoundary[]} hlinePositions
  * @param {boolean} asRangeStart
  *  surface, not something to silently reinterpret. */
 function resolveRowRef(ref, currentRow, dataRowCount, hlinePositions, asRangeStart) {
@@ -317,12 +320,13 @@ function resolveRowRef(ref, currentRow, dataRowCount, hlinePositions, asRangeSta
 }
 
 /**
- * @param {any} [ref]
- * @param {any} [colCount]
- * @param {any} [currentCol]
+ * @param {ColRef | null} ref
+ * @param {number} colCount
+ * @param {number} [currentCol]
+ * @returns {number | null}
  */
 function resolveColRef(ref, colCount, currentCol) {
-  if (ref === null) return currentCol; // no column specified in this ref at all -- real org's own actual convention for a bare row-only reference/range ("@2", "@2..@6"): defaults to the formula's own target column, the same way a bare row-less reference ("$2") already defaults to the current row
+  if (ref === null) return /** @type {number} */ (currentCol); // no column specified in this ref at all -- real org's own actual convention for a bare row-only reference/range ("@2", "@2..@6"): defaults to the formula's own target column, the same way a bare row-less reference ("$2") already defaults to the current row
   const n = ref.type === 'absolute' ? ref.n : ref.type === 'first' ? 1 : colCount;
   return n >= 1 && n <= colCount ? n : null;
 }
@@ -340,7 +344,7 @@ function resolveColRef(ref, colCount, currentCol) {
  *  hlines the table actually has still resolves rather than erroring
  *  -- also confirmed directly against real Emacs -- clamping to just
  *  past the table's own end (asStart) or the table's own actual last
- * @param {any} [workingRows]
+ * @param {import('./types.js').TableRow[]} workingRows
  *  row (asEnd). */
 function computeHlinePositions(workingRows) {
   const positions = [];
@@ -387,7 +391,7 @@ const HYPHENATED_FUNCTION_RE = /^(date-to-time|format-time-string|orgtbl-ascii-d
  *  names, and operators/punctuation. Throws on any character that
  *  doesn't match one of those shapes, rather than silently skipping
  *  it -- a malformed formula should surface as an error, not quietly
- * @param {any} [expr]
+ * @param {string} expr
  *  evaluate to something the person never actually wrote. */
 function tokenize(expr) {
   const tokens = [];
@@ -423,7 +427,7 @@ function tokenize(expr) {
 // language, not an approximation of it.
 /** Functions a script registered with org.tableFunction (names only; the answers come through options.userCall). */
 let userTableFunctionNames = new Set();
-/** @param {any} [names] */
+/** @param {string[]} [names] */
 export function setUserTableFunctions(names = []) {
   userTableFunctionNames = new Set(names);
 }
@@ -433,13 +437,13 @@ export function isBuiltinFormulaName(name) {
 }
 
 const AGGREGATE_FUNCTIONS = {
-  vsum: (/** @type {any} */ vals) => vals.reduce((/** @type {any} */ a, /** @type {any} */ b) => a + b, 0),
-  vmean: (/** @type {any} */ vals) => (vals.length === 0 ? 0 : vals.reduce((/** @type {any} */ a, /** @type {any} */ b) => a + b, 0) / vals.length),
-  vcount: (/** @type {any} */ vals) => vals.length,
-  vprod: (/** @type {any} */ vals) => vals.reduce((/** @type {any} */ a, /** @type {any} */ b) => a * b, 1),
-  vmin: (/** @type {any} */ vals) => (vals.length === 0 ? 0 : Math.min(...vals)),
-  vmax: (/** @type {any} */ vals) => (vals.length === 0 ? 0 : Math.max(...vals)),
-  vmedian: (/** @type {any} */ vals) => {
+  vsum: (/** @type {number[]} */ vals) => vals.reduce((a, b) => a + b, 0),
+  vmean: (/** @type {number[]} */ vals) => (vals.length === 0 ? 0 : vals.reduce((a, b) => a + b, 0) / vals.length),
+  vcount: (/** @type {number[]} */ vals) => vals.length,
+  vprod: (/** @type {number[]} */ vals) => vals.reduce((a, b) => a * b, 1),
+  vmin: (/** @type {number[]} */ vals) => (vals.length === 0 ? 0 : Math.min(...vals)),
+  vmax: (/** @type {number[]} */ vals) => (vals.length === 0 ? 0 : Math.max(...vals)),
+  vmedian: (/** @type {number[]} */ vals) => {
     if (vals.length === 0) return 0;
     const sorted = [...vals].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
@@ -452,24 +456,24 @@ const AGGREGATE_FUNCTIONS = {
   // "variance"/"stddev" name for either pair: which one someone means
   // by an unqualified name is exactly the kind of silent, wrong-answer
   // ambiguity this app would rather force an explicit choice on.
-  vvar: (/** @type {any} */ vals) => sampleVariance(vals),
-  vpvar: (/** @type {any} */ vals) => populationVariance(vals),
-  vsdev: (/** @type {any} */ vals) => Math.sqrt(sampleVariance(vals)),
-  vpsdev: (/** @type {any} */ vals) => Math.sqrt(populationVariance(vals)),
+  vvar: (/** @type {number[]} */ vals) => sampleVariance(vals),
+  vpvar: (/** @type {number[]} */ vals) => populationVariance(vals),
+  vsdev: (/** @type {number[]} */ vals) => Math.sqrt(sampleVariance(vals)),
+  vpsdev: (/** @type {number[]} */ vals) => Math.sqrt(populationVariance(vals)),
 };
 
-/** @param {any} [vals] */
+/** @param {number[]} vals */
 function populationVariance(vals) {
   if (vals.length === 0) return 0;
-  const mean = vals.reduce((/** @type {any} */ a, /** @type {any} */ b) => a + b, 0) / vals.length;
-  return vals.reduce((/** @type {any} */ acc, /** @type {any} */ x) => acc + (x - mean) * (x - mean), 0) / vals.length;
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  return vals.reduce((acc, x) => acc + (x - mean) * (x - mean), 0) / vals.length;
 }
 
-/** @param {any} [vals] */
+/** @param {number[]} vals */
 function sampleVariance(vals) {
   if (vals.length < 2) return 0; // n-1 divisor is undefined for n=0 or n=1 -- 0 rather than a division-by-zero NaN, matching this module's own existing "can't compute a real result" convention
-  const mean = vals.reduce((/** @type {any} */ a, /** @type {any} */ b) => a + b, 0) / vals.length;
-  return vals.reduce((/** @type {any} */ acc, /** @type {any} */ x) => acc + (x - mean) * (x - mean), 0) / (vals.length - 1);
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  return vals.reduce((acc, x) => acc + (x - mean) * (x - mean), 0) / (vals.length - 1);
 }
 
 // Single-value functions -- one number in, one number out, unlike

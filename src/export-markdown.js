@@ -96,7 +96,7 @@ export function gfmSlugify(title) {
  *  unrelated id-attribute scheme; matching GFM's own specific
  *  numbering is what makes the generated link actually correct once
  * @param {Heading[]} headings
- * @param {any} [usedSlugs]
+ * @param {Set<string>} usedSlugs
  *  rendered by a real GFM-compliant tool. */
 function assignHeadingSlugsMd(headings, usedSlugs) {
   for (const heading of headings) {
@@ -117,7 +117,7 @@ function assignHeadingSlugsMd(headings, usedSlugs) {
 /** GFM requires an explicit label on every footnote, unlike org's own
  *  anonymous [fn::...] form -- assigns a synthetic one for that case,
  *  distinguishable from any real user-chosen label so it can never
- * @param {string} label
+ * @param {string | null} label
  *  collide with one. */
 function footnoteLabelMd(label) {
   if (label !== null) return label;
@@ -145,7 +145,7 @@ function escapeMarkdownText(text) {
  *  for anything else (external URLs, file links, or a heading that
  *  resolves but lives outside this specific export's scope). Mirrors
  *  export-html.js's own resolveLinkHref exactly, adapted to GFM's
- * @param {any} [target]
+ * @param {string} target
  *  implicit slug-based anchors instead of an explicit id attribute. */
 function resolveLinkHrefMd(target) {
   if (!docForLinkResolutionMd) return target;
@@ -156,13 +156,13 @@ function resolveLinkHrefMd(target) {
   return target;
 }
 
-/** @param {any} [nodes] */
+/** @param {import('./types.js').InlineNode[]} nodes @returns {string} */
 function renderInlineListMd(nodes) {
   if (citeMd) nodes = dropSilentCitations(nodes, (c) => citeMd.formatCitation(c) === null);
   return nodes.map(renderInlineNodeMd).join('');
 }
 
-/** @param {any} [node] */
+/** @param {import('./types.js').InlineNode} node @returns {string} */
 function renderInlineNodeMd(node) {
   switch (node.type) {
     case 'text':
@@ -192,7 +192,7 @@ function renderInlineNodeMd(node) {
       return `<sup>${node.value}</sup>`;
     case 'link': {
       const info = linkCtxMd ? internalLink(linkCtxMd, node.target) : null;
-      if (node.radio && info && info.anchor) return `<a href="#${info.anchor}">${escapeHtmlMd(node.description)}</a>`; // a plain mention of a radio target
+      if (node.radio && info && info.anchor) return `<a href="#${info.anchor}">${escapeHtmlMd(/** @type {string} */ (node.description))}</a>`; // a plain mention of a radio target
       if (info && info.anchor) {
         const text = node.description ? escapeMarkdownText(node.description) : info.label !== null ? info.label : node.target;
         return `[${text}](#${info.anchor})`;
@@ -258,7 +258,7 @@ function renderTextMd(text) {
 
 // ---- body content -----------------------------------------------------
 
-/** @param {any} [node] @returns {string} */
+/** @param {import('./types.js').Paragraph} node @returns {string} */
 function renderParagraphMd(node) {
   if (node.footnoteLabel !== null) {
     const strippedFirstLine = node.lines[0].replace(
@@ -291,10 +291,11 @@ function renderParagraphMd(node) {
 }
 
 /**
- * @param {any} [list]
- * @param {any} [indent]
+ * @param {import('./types.js').List} list
+ * @param {number} indent
+ * @returns {string}
  */
-/** @returns {any} */ function renderListMd(/** @type {any} */ list, /** @type {any} */ indent) {
+function renderListMd(list, indent) {
   const lines = [];
   let counter = 0;
   for (const item of list.items) {
@@ -322,7 +323,7 @@ function renderParagraphMd(node) {
 }
 
 /**
- * @param {any} cells
+ * @param {string[]} cells
  * @param {number} count
  */
 function padCells(cells, count) {
@@ -361,7 +362,7 @@ function stripCommaEscape(line) {
   return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
 }
 
-/** @param {any} [block] */
+/** @param {import('./types.js').Block} block */
 function renderBlockMd(block) {
   const name = block.name;
   if (name === 'COMMENT') return ''; // matches real org's own export behavior -- comment blocks are excluded from every export backend
@@ -370,7 +371,7 @@ function renderBlockMd(block) {
     return backend === 'md' || backend === 'markdown' ? block.lines.join('\n') : '';
   }
   if (name === 'QUOTE') {
-    return block.lines.map(stripCommaEscape).map((/** @type {any} */ l) => (l.trim() === '' ? '>' : '> ' + renderTextMd(l))).join('\n');
+    return block.lines.map(stripCommaEscape).map((l) => (l.trim() === '' ? '>' : '> ' + renderTextMd(l))).join('\n');
   }
   if (name === 'SRC') {
     const lang = block.params.split(/\s+/)[0] || '';
@@ -382,7 +383,7 @@ function renderBlockMd(block) {
   return '```\n' + block.lines.map(stripCommaEscape).join('\n') + '\n```';
 }
 
-/** @param {any} [node] */
+/** @param {import('./types.js').BodyNode} node */
 function renderBodyNodeMd(node) {
   if (node.type === 'list') return renderListMd(node, 0);
   if (node.type === 'paragraph') return renderParagraphMd(node);
@@ -394,7 +395,7 @@ function renderBodyNodeMd(node) {
 
 // ---- headings -----------------------------------------------------------
 
-/** @param {any} [planning] */
+/** @param {Heading['planning'] | null | undefined} planning */
 function renderPlanningMd(planning) {
   if (!planning) return '';
   const parts = [];
@@ -423,7 +424,7 @@ function renderHeadingLineMd(heading, level) {
 /**
  * @param {Heading} heading
  * @param {number} levelOffset
- * @param {any} [out]
+ * @param {string[]} out
  */
 function renderHeadingMd(heading, levelOffset, out) {
   out.push(renderHeadingLineMd(heading, heading.level - levelOffset));
@@ -454,7 +455,7 @@ function renderHeadingMd(heading, levelOffset, out) {
  * @param {Heading[]} headings
  * @param {number} level
  * @param {number} maxDepth
- * @param {any} [numberingEnabled]
+ * @param {boolean} numberingEnabled
  *  all). */
 function buildTocListMd(headings, level, maxDepth, numberingEnabled) {
   if (level > maxDepth || headings.length === 0) return '';
@@ -482,8 +483,8 @@ function buildTocListMd(headings, level, maxDepth, numberingEnabled) {
  *  unordered ("-"), not whether headings are numbered at all (they
  *  never are). Returns '' when `toc` is false, or fewer than two
  * @param {Heading[]} headings
- * @param {any} [toc]
- * @param {any} [numberingEnabled]
+ * @param {number | boolean | null | undefined} toc
+ * @param {boolean} numberingEnabled
  *  headings are visible at `toc`'s own depth limit. */
 function buildTocMd(headings, toc, numberingEnabled) {
   if (!toc) return '';

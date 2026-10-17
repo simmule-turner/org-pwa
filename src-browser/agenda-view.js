@@ -1,4 +1,5 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
 // Extracted from app.js: agenda view.
 import { describeTaskDate, sortTasksByDate, taskDateInfo, viewFilterActive } from '../src/agenda-filter.js';
 import { applyAgendaEffortView, buildAgendaItems, buildTaskList, dayView, endOfDay, itemEffortText, monthView, startOfDay, startOfWeek, stripTitleStamps, weekView } from '../src/agenda.js';
@@ -465,7 +466,7 @@ export function renderAgendaView() {
     container.appendChild(empty);
   }
 
-  /** @param {any} [item] */
+  /** @param {import('../src/agenda.js').AgendaItem} item */
   function buildAgendaItemRow(item) {
     const row = document.createElement('div');
     row.className = 'menu-list-item';
@@ -522,7 +523,7 @@ export function renderAgendaView() {
     let rowTitle = item.title;
     if (getAgendaHideTitleStamps(S.state.localVariables) && item.heading) {
       rowTitle = stripTitleStamps(rowTitle);
-      if (item.rangeDays > 1) rowTitle += ` (day ${item.rangeDay}/${item.rangeDays})`;
+      if (/** @type {number} */ (item.rangeDays) > 1) rowTitle += ` (day ${item.rangeDay}/${item.rangeDays})`;
     }
     text.appendChild(document.createTextNode(rowTitle));
     if (item.heading && item.kind !== 'logbook') appendTagChips(text, item.heading, 'agenda');
@@ -583,7 +584,7 @@ export function renderAgendaView() {
       strip.style.cursor = 'pointer';
       strip.onclick = (e) => {
         e.stopPropagation(); // the strip opens the habit's history; the rest of the row still opens the heading
-        openHabitHistory(item.heading, (/** @type {string} */ kw) => todoSequence.doneKeywords.includes(kw));
+        openHabitHistory(/** @type {Heading} */ (item.heading), (/** @type {string} */ kw) => todoSequence.doneKeywords.includes(kw));
       };
       text.appendChild(strip);
     }
@@ -616,7 +617,7 @@ export function renderAgendaView() {
 
     row.onclick = () => {
       if (clickIsGestureEnd(row)) return; // the end of a long press or a swipe, not a tap
-      const outlinePath = outlinePathForHeadingInDocument(item.documentId, item.heading);
+      const outlinePath = outlinePathForHeadingInDocument(item.documentId, /** @type {Heading} */ (item.heading));
       if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath);
     };
     return withRowActions(row, item);
@@ -648,7 +649,7 @@ export function renderAgendaView() {
     return row;
   }
 
-  /** @param {any} [dayItems] */
+  /** @param {import('../src/agenda.js').AgendaItem[]} dayItems */
   function renderDayViewTimeline(dayItems) {
     const untimed = dayItems.filter((/** @type {any} */ i) => !i.hasTime);
     const timed = dayItems.filter((/** @type {any} */ i) => i.hasTime).sort((/** @type {any} */ a, /** @type {any} */ b) => a.date - b.date);

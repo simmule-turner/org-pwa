@@ -44,7 +44,7 @@ function countDescendants(node) {
 function ancestorAt(doc, node, climb) {
   let current = node;
   for (let i = 0; i < climb; i += 1) {
-    const path = findAncestorPath(doc, current);
+    const path = /** @type {Heading[]} */ (findAncestorPath(doc, current));
     current = path[path.length - 1];
   }
   return current;

@@ -138,20 +138,20 @@ function wrapText(text, width) {
 /** @type {any[]} */ let footnoteDefinitionsAscii = [];
 let anonymousFootnoteCounterAscii = 0;
 
-/** @param {string} label */
+/** @param {string | null} label @returns {string} */
 function footnoteLabelAscii(label) {
   if (label !== null) return label;
   anonymousFootnoteCounterAscii++;
   return 'fn' + anonymousFootnoteCounterAscii;
 }
 
-/** @param {any} [nodes] */
+/** @param {import('./types.js').InlineNode[]} nodes @returns {string} */
 function renderInlineListAscii(nodes) {
   if (citeAscii) nodes = dropSilentCitations(nodes, (c) => citeAscii.formatCitation(c) === null);
   return nodes.map(renderInlineNodeAscii).join('');
 }
 
-/** @param {any} [node] */
+/** @param {import('./types.js').InlineNode} node @returns {string} */
 function renderInlineNodeAscii(node) {
   switch (node.type) {
     case 'text':
@@ -277,7 +277,7 @@ function renderHeadingLineAscii(heading, level) {
 }
 
 /**
- * @param {any} planning
+ * @param {Heading['planning'] | null | undefined} planning
  * @param {string} indent
  */
 function renderPlanningAscii(planning, indent) {
@@ -289,8 +289,8 @@ function renderPlanningAscii(planning, indent) {
 }
 
 /**
- * @param {any} node
- * @param {any} indent
+ * @param {{ lines: string[] }} node
+ * @param {string} indent
  * @param {number} width
  */
 function renderParagraphAscii(node, indent, width) {
@@ -310,11 +310,12 @@ function renderParagraphAscii(node, indent, width) {
 }
 
 /**
- * @param {any} [list]
- * @param {any} [indent]
- * @param {any} [width]
+ * @param {import('./types.js').List} list
+ * @param {string} indent
+ * @param {number} width
+ * @returns {string[]}
  */
-/** @returns {any} */ function renderListAscii(/** @type {any} */ list, /** @type {any} */ indent, /** @type {any} */ width) {
+function renderListAscii(list, indent, width) {
   const out = [];
   let counter = 0;
   for (const item of list.items) {
@@ -364,7 +365,7 @@ function looksNumeric(text) {
  *  the first place, so this is normally exact, never truncated) is
  * @param {string} text
  * @param {number} width
- * @param {any} [alignRight]
+ * @param {boolean} alignRight
  *  returned unchanged rather than clipped. */
 function justify(text, width, alignRight) {
   const padding = ' '.repeat(Math.max(0, width - text.length));
@@ -381,7 +382,7 @@ function justify(text, width, alignRight) {
  *  in running text. Regular paragraph/list wrapping (wrapText itself)
  *  doesn't need this -- it's specific to the tighter, fixed-width
  * @param {string} text
- * @param {any} [width]
+ * @param {number} width
  *  constraint an explicit table column width actually creates. */
 function wrapTableCellAscii(text, width) {
   const words = text.trim().split(/\s+/).filter(Boolean);
@@ -536,9 +537,9 @@ function parseBlockContent(lines) {
 
 /**
  * Nodes rendered one after another with a blank line between, as a section's body is.
- * @param {any} [nodes]
- * @param {any} [indent]
- * @param {any} [width]
+ * @param {import('./types.js').BodyNode[]} nodes
+ * @param {string} indent
+ * @param {number} width
  */
 function renderNodesAscii(nodes, indent, width) {
   const out = [];
@@ -568,9 +569,9 @@ function centerLines(lines, indent, width) {
 const QUOTE_MARGIN = 6;
 
 /**
- * @param {any} [block]
- * @param {any} [indent]
- * @param {any} [width]
+ * @param {import('./types.js').Block} block
+ * @param {string} indent
+ * @param {number} width
  */
 function renderBlockAscii(block, indent, width) {
   const name = (block.name || '').toUpperCase();
@@ -608,9 +609,9 @@ function renderBlockAscii(block, indent, width) {
 
 /** A paragraph's lines in runs: affiliated keywords (`#+ATTR_ASCII:`, `#+NAME:`, ...) are consumed, `: ` lines are
  *  fixed-width text drawn in a frame, the rest is prose. `:width` on `#+ATTR_ASCII` changes nothing in Emacs's
- * @param {any} [node]
- * @param {any} [indent]
- * @param {any} [width]
+ * @param {import('./types.js').Paragraph} node
+ * @param {string} indent
+ * @param {number} width
  *  output for any element, so it is read and ignored. */
 function renderParagraphRuns(node, indent, width) {
   const AFFILIATED = /^\s*#\+(NAME|CAPTION|HEADERS?|ATTR_[A-Za-z0-9_-]+)\s*:/i;
@@ -645,9 +646,9 @@ function renderParagraphRuns(node, indent, width) {
 }
 
 /**
- * @param {any} [node]
- * @param {any} [indent]
- * @param {any} [width]
+ * @param {import('./types.js').BodyNode} node
+ * @param {string} indent
+ * @param {number} width
  */
 function renderBodyNodeAscii(node, indent, width) {
   if (node.type === 'paragraph') return renderParagraphRuns(node, indent, width);
@@ -662,7 +663,7 @@ function renderBodyNodeAscii(node, indent, width) {
  * @param {Heading} heading
  * @param {number} levelOffset
  * @param {number} width
- * @param {any} [out]
+ * @param {string[]} out
  */
 function renderHeadingAscii(heading, levelOffset, width, out) {
   const level = heading.level - levelOffset;
@@ -686,8 +687,8 @@ function renderHeadingAscii(heading, levelOffset, width, out) {
  *  TOC -- which has to appear BEFORE the headings themselves in the
  * @param {Heading[]} headings
  * @param {number} level
- * @param {any} [numbers]
- * @param {any} [out]
+ * @param {number[]} numbers
+ * @param {{ heading: Heading, level: number, number: string }[]} out
  *  output -- can reference numbers that end up matching exactly). */
 function collectHeadingsForToc(headings, level, numbers, out) {
   for (const heading of headings) {
@@ -704,8 +705,8 @@ function collectHeadingsForToc(headings, level, numbers, out) {
  *  matching depth (real org's own "make-string (1- indent) '.'"
  *  convention, here approximated as literal repeated dots), each
  * @param {Heading[]} headings
- * @param {any} [toc]
- * @param {any} [numberingEnabled]
+ * @param {number | boolean | null | undefined} toc
+ * @param {boolean} numberingEnabled
  *  prefixed with its own section number when numbering is on. */
 function renderToc(headings, toc, numberingEnabled) {
   if (!toc) return []; // toc:nil -- no Table of Contents at all, independent of num:

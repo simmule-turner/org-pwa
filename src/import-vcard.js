@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {{ value: string, type?: string | null, label: string | null, raw?: string | null }} ContactEntry */
+/** @typedef {{ fn: string | null, n: string | null, emails: ContactEntry[], tels: ContactEntry[], adrs: ContactEntry[], urls: ContactEntry[], nickname: string | null, note: string | null, bday: string | null, anniversary: string | null, spouse: string | null, org: string | null, jobTitle: string | null, photo: string | null, categories: string[], categoriesRaw: string | null }} Contact */
 /** Parses vCard 3.0/4.0 text (one or more BEGIN:VCARD...END:VCARD
  *  blocks, as produced by this app's own exportToVcard or any real
  *  contacts app) into org headings -- the reverse of export-vcard.js's
@@ -127,7 +129,7 @@ function splitRespectingQuotes(text, delimiter) {
  *  skipped rather than thrown on -- a real-world vCard file
  *  occasionally has stray blank lines, and one malformed line
  * @param {string} line
- * @param {any} [cleanMode]
+ * @param {boolean} cleanMode
  *  shouldn't abort parsing every other contact in the file. */
 function parseVcardLine(line, cleanMode) {
   const colonParts = splitRespectingQuotes(line, ':');
@@ -143,7 +145,7 @@ function parseVcardLine(line, cleanMode) {
     rawName = rawName.slice(dotIndex + 1);
   }
   const name = rawName.toUpperCase();
-  const params = {};
+  /** @type {Record<string, string>} */ const params = {};
   for (let i = 1; i < parts.length; i++) {
     const eq = parts[i].indexOf('=');
     if (eq === -1) continue;
@@ -156,10 +158,10 @@ function parseVcardLine(line, cleanMode) {
     } else {
       val = val.toUpperCase();
     }
-    if (/** @type {any} */ (params)[key] !== undefined) {
-      /** @type {any} */ (params)[key] += ',' + val; // repeated parameter -- accumulate, don't overwrite (real vCard 3.0 allows TYPE=INTERNET;TYPE=HOME to mean both apply)
+    if (params[key] !== undefined) {
+      params[key] += ',' + val; // repeated parameter -- accumulate, don't overwrite (real vCard 3.0 allows TYPE=INTERNET;TYPE=HOME to mean both apply)
     } else {
-      /** @type {any} */ (params)[key] = val;
+      params[key] = val;
     }
   }
   let value = unescapeVcardText(rawValue);
@@ -188,14 +190,14 @@ const AB_LABEL_PLACEHOLDER_RE = /^_\$!<(.*)>!\$_$/;
  *  (image/jpeg) directly; both are handled here. Falls back to
  *  image/jpeg (the most common real-world case for an embedded
  *  contact photo) when the type is missing or unrecognized, rather
- * @param {any} [typeParam]
+ * @param {string | null | undefined} typeParam
  *  than refusing to build a data: URI at all. */
 function vcardPhotoMimeType(typeParam) {
   const raw = String(typeParam || '').trim();
   if (raw.includes('/')) return raw.toLowerCase();
   const bareFormat = raw.toUpperCase();
   const KNOWN = { JPEG: 'image/jpeg', JPG: 'image/jpeg', PNG: 'image/png', GIF: 'image/gif', BMP: 'image/bmp', TIFF: 'image/tiff', WEBP: 'image/webp' };
-  return /** @type {any} */ (KNOWN)[bareFormat] || 'image/jpeg';
+  return /** @type {Record<string, string>} */ (KNOWN)[bareFormat] || 'image/jpeg';
 }
 
 /** @param {string} rawValue */
@@ -251,10 +253,10 @@ function interpretABLabel(rawValue) {
 export function parseVcards(text, opts = /** @type {any} */ ({})) {
   const { cleanMode = true, onUnmappedProperty = null, onEmbeddedPhotoImported = null } = opts;
   const lines = unfoldVcardLines(text);
-  const contacts = [];
-  /** @type {any} */
+  /** @type {Contact[]} */ const contacts = [];
+  /** @type {Contact | null} */
   let current = null;
-  /** @type {any} */
+  /** @type {Record<string, ContactEntry> | null} */
   let groupRefs = null; // { [groupName]: entry } -- reset per contact, populated by EMAIL/TEL/URL/ADR, read by a same-group X-ABLabel
   const warnedProperties = new Set(); // de-duplicates onUnmappedProperty calls across the whole file
 
@@ -319,15 +321,15 @@ export function parseVcards(text, opts = /** @type {any} */ ({})) {
         current.n = parsed.value || null;
         break;
       case 'EMAIL': {
-        const entry = { value: parsed.value, type: /** @type {any} */ (parsed.params).TYPE || null, label: null };
+        const entry = { value: parsed.value, type: parsed.params.TYPE || null, label: null };
         current.emails.push(entry);
-        if (parsed.group) groupRefs[parsed.group] = entry;
+        if (parsed.group) /** @type {Record<string, ContactEntry>} */ (groupRefs)[parsed.group] = entry;
         break;
       }
       case 'TEL': {
-        const entry = { value: parsed.value, type: /** @type {any} */ (parsed.params).TYPE || null, label: null };
+        const entry = { value: parsed.value, type: parsed.params.TYPE || null, label: null };
         current.tels.push(entry);
-        if (parsed.group) groupRefs[parsed.group] = entry;
+        if (parsed.group) /** @type {Record<string, ContactEntry>} */ (groupRefs)[parsed.group] = entry;
         break;
       }
       case 'ADR': {
@@ -354,7 +356,7 @@ export function parseVcards(text, opts = /** @type {any} */ ({})) {
           .filter(Boolean)
           .join(', ');
         const googleLabel = cleanMode && rawParts.length >= 8 ? rawParts[7].trim() : '';
-        const label = /** @type {any} */ (parsed.params).LABEL || googleLabel || null;
+        const label = parsed.params.LABEL || googleLabel || null;
         const value = structured || label || '';
         const finalLabel = structured ? label : null; // no structured value at all -- value already equals the label, so it's not stored a second time
         // THE FIX: the real 7 components, kept in their own original,
@@ -367,9 +369,9 @@ export function parseVcards(text, opts = /** @type {any} */ ({})) {
         while (raw7.length < 7) raw7.push('');
         const finalRaw = structured ? raw7.join(';') : null;
         if (value) {
-          const entry = { value, label: finalLabel, raw: finalRaw, type: /** @type {any} */ (parsed.params).TYPE || null };
+          const entry = { value, label: finalLabel, raw: finalRaw, type: parsed.params.TYPE || null };
           current.adrs.push(entry);
-          if (parsed.group) groupRefs[parsed.group] = entry;
+          if (parsed.group) /** @type {Record<string, ContactEntry>} */ (groupRefs)[parsed.group] = entry;
         }
         break;
       }
@@ -389,8 +391,8 @@ export function parseVcards(text, opts = /** @type {any} */ ({})) {
         // Only a spouse is carried over, and only when it is a NAME (VALUE=text, the usual form for one): a uri (a urn:uuid or a
         // link to another card) names no one. Any other relation (child, parent, friend ...) and a second spouse are reported
         // as skipped, like any property not carried over.
-        const types = String(/** @type {any} */ (parsed.params).TYPE || '').toLowerCase().split(',').map((t) => t.trim());
-        const isUri = /^uri$/i.test(String(/** @type {any} */ (parsed.params).VALUE || ''));
+        const types = String(parsed.params.TYPE || '').toLowerCase().split(',').map((t) => t.trim());
+        const isUri = /^uri$/i.test(String(parsed.params.VALUE || ''));
         if (types.includes('spouse') && !isUri && parsed.value && !current.spouse) current.spouse = parsed.value;
         else warnUnmapped('RELATED');
         break;
@@ -420,7 +422,7 @@ export function parseVcards(text, opts = /** @type {any} */ ({})) {
         if (!parsed.value) break;
         const entry = { value: parsed.value, label: null };
         current.urls.push(entry);
-        if (parsed.group) groupRefs[parsed.group] = entry;
+        if (parsed.group) /** @type {Record<string, ContactEntry>} */ (groupRefs)[parsed.group] = entry;
         break;
       }
       case 'PHOTO':
@@ -443,7 +445,7 @@ export function parseVcards(text, opts = /** @type {any} */ ({})) {
           // prefix would double it.
           current.photo = parsed.value;
         } else if (parsed.value) {
-          current.photo = `data:${vcardPhotoMimeType(/** @type {any} */ (parsed.params).TYPE)};base64,${parsed.value.replace(/\s+/g, '')}`;
+          current.photo = `data:${vcardPhotoMimeType(parsed.params.TYPE)};base64,${parsed.value.replace(/\s+/g, '')}`;
           if (onEmbeddedPhotoImported) onEmbeddedPhotoImported();
         }
         break;
@@ -464,7 +466,7 @@ export function parseVcards(text, opts = /** @type {any} */ ({})) {
         // warned about -- it never carried any data of its own beyond
         // the label it was meant to attach to something else.
         if (!parsed.group) break;
-        const ref = groupRefs[parsed.group];
+        const ref = /** @type {Record<string, ContactEntry>} */ (groupRefs)[parsed.group];
         if (!ref) break;
         const label = cleanMode ? interpretABLabel(parsed.value) : parsed.value.trim() || null;
         if (label && !ref.label) ref.label = label; // never override a label already set from a more specific source (e.g. ADR's own LABEL= parameter or Google's own 8th component)
@@ -526,20 +528,20 @@ const TEL_TYPE_TO_TREE_FIELDTYPE = { WORK: 'phone-work', HOME: 'phone-home', CEL
 const EMAIL_TYPE_TO_TREE_FIELDTYPE = { WORK: 'email-work', HOME: 'email-home' };
 const ADR_TYPE_TO_TREE_FIELDTYPE = { WORK: 'address-work', HOME: 'address-home' };
 
-/** @param {any} [tel] */
+/** @param {ContactEntry} tel */
 function telFieldType(tel) {
   const type = (tel.type || '').toUpperCase();
   for (const key of Object.keys(TEL_TYPE_TO_TREE_FIELDTYPE)) {
-    if (type.includes(key)) return /** @type {any} */ (TEL_TYPE_TO_TREE_FIELDTYPE)[key];
+    if (type.includes(key)) return /** @type {Record<string, string>} */ (TEL_TYPE_TO_TREE_FIELDTYPE)[key];
   }
   return 'phone';
 }
 
-/** @param {any} [email] */
+/** @param {ContactEntry} email */
 function emailFieldType(email) {
   const type = (email.type || '').toUpperCase();
   for (const key of Object.keys(EMAIL_TYPE_TO_TREE_FIELDTYPE)) {
-    if (type.includes(key)) return /** @type {any} */ (EMAIL_TYPE_TO_TREE_FIELDTYPE)[key];
+    if (type.includes(key)) return /** @type {Record<string, string>} */ (EMAIL_TYPE_TO_TREE_FIELDTYPE)[key];
   }
   return 'email';
 }
@@ -547,12 +549,12 @@ function emailFieldType(email) {
 /** THE FEATURE: mirrors email/tel's own TYPE-based mapping, now that
  *  adrs is a real list -- 'address-work'/'address-home', falling back
  *  to plain 'address' for an untyped ADR line or one with some other
- * @param {any} [adr]
+ * @param {ContactEntry} adr
  *  TYPE value (OTHER, PREF, etc.) neither WORK nor HOME covers. */
 function adrFieldType(adr) {
   const type = (adr.type || '').toUpperCase();
   for (const key of Object.keys(ADR_TYPE_TO_TREE_FIELDTYPE)) {
-    if (type.includes(key)) return /** @type {any} */ (ADR_TYPE_TO_TREE_FIELDTYPE)[key];
+    if (type.includes(key)) return /** @type {Record<string, string>} */ (ADR_TYPE_TO_TREE_FIELDTYPE)[key];
   }
   return 'address';
 }
@@ -582,11 +584,11 @@ function adrFieldType(adr) {
  *  THE FEATURE: a separate :ADDRESS_LABEL: property preserves an
  *  address's own label (see parseVcards' own ADR case above) when
  *  present, alongside :ADDRESS: -- never one discarded for the
- * @param {any} [contact]
+ * @param {Contact} contact
  *  other. */
 function buildFlatOrgFromContact(contact) {
-  const title = forHeadingTitle(contact.fn);
-  const tagSuffix = contact.categories.length ? `  :${contact.categories.map((/** @type {any} */ c) => c.replace(/[^A-Za-z0-9_@]/g, '_')).join(':')}:` : '';
+  const title = forHeadingTitle(/** @type {string} */ (contact.fn));
+  const tagSuffix = contact.categories.length ? `  :${contact.categories.map((c) => c.replace(/[^A-Za-z0-9_@]/g, '_')).join(':')}:` : '';
   const lines = [`* ${title}${tagSuffix}`];
 
   const propertyLines = [];
@@ -596,8 +598,8 @@ function buildFlatOrgFromContact(contact) {
     propertyLines.push(`:EMAIL: ${contact.emails[0].value}`);
     if (contact.emails[0].label) propertyLines.push(`:EMAIL_LABEL: ${forPropertyValue(contact.emails[0].label)}`);
   }
-  const nonWorkTel = contact.tels.find((/** @type {any} */ t) => !(t.type || '').toUpperCase().includes('WORK'));
-  const workTel = contact.tels.find((/** @type {any} */ t) => (t.type || '').toUpperCase().includes('WORK'));
+  const nonWorkTel = contact.tels.find((t) => !(t.type || '').toUpperCase().includes('WORK'));
+  const workTel = contact.tels.find((t) => (t.type || '').toUpperCase().includes('WORK'));
   if (nonWorkTel) {
     propertyLines.push(`:PHONE: ${nonWorkTel.value}`);
     if (nonWorkTel.label) propertyLines.push(`:PHONE_LABEL: ${forPropertyValue(nonWorkTel.label)}`);
@@ -689,10 +691,10 @@ const FIELDTYPE_LABELS = {
   spouse: 'Spouse',
 };
 
-/** @param {any} [contact] */
+/** @param {Contact} contact */
 function buildTreeOrgFromContact(contact) {
-  const title = forHeadingTitle(contact.fn);
-  const tagSuffix = contact.categories.length ? `  :${contact.categories.map((/** @type {any} */ c) => c.replace(/[^A-Za-z0-9_@]/g, '_')).join(':')}:` : '';
+  const title = forHeadingTitle(/** @type {string} */ (contact.fn));
+  const tagSuffix = contact.categories.length ? `  :${contact.categories.map((c) => c.replace(/[^A-Za-z0-9_@]/g, '_')).join(':')}:` : '';
   const contactProps = [':KIND: individual', ':FIELDTYPE: name'];
   if (contact.categoriesRaw) contactProps.push(`:CATEGORIES_RAW: ${forPropertyValue(contact.categoriesRaw)}`);
   const lines = [`* ${title}${tagSuffix}`, ':PROPERTIES:', ...contactProps, ':END:'];
@@ -709,7 +711,7 @@ function buildTreeOrgFromContact(contact) {
       }
     }
     if (forceBlock || value.includes('\n')) {
-      const label = /** @type {any} */ (FIELDTYPE_LABELS)[fieldType] || fieldType;
+      const label = /** @type {Record<string, string>} */ (FIELDTYPE_LABELS)[fieldType] || fieldType;
       lines.push(`** ${label}`, ':PROPERTIES:', ...propLines, ':END:', '#+BEGIN_VERSE', ...value.split('\n'), '#+END_VERSE');
     } else if (extraBlockText) {
       // Both a real, single-line title AND a separate body block --

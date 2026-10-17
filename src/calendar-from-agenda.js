@@ -77,7 +77,7 @@ function weatherDescription(data) {
 }
 
 /**
- * @param {{ documentId: string, doc: object }[]} docs the open document and the loaded agenda files
+ * @param {{ documentId: string, doc: import('./types.js').Doc }[]} docs the open document and the loaded agenda files
  * @param {{ today?: Date, window?: any, birthdayProperty?: string, contactsDocs?: any, agendaOptions?: any, alarmMinutes?: number }} [opts]
  *   window        { start, end } the days to cover (required)
  *   today         the date to measure ages and "today" against

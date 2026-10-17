@@ -1,4 +1,21 @@
 // @ts-check
+/**
+ * One entry of the agenda: a dated heading line, or a calendar line with no heading behind it (sunrise, anniversaries).
+ * @typedef {{
+ *   documentId: string, heading?: Heading, kind?: string, hasTime?: boolean, endDate?: Date | null, rangeDay?: number | null,
+ *   rangeDays?: number | null, repeater?: string | null, todo?: string | null, priority?: string | null, tags?: string[],
+ *   title: string, date: Date, daysOverdue?: number, habit?: any, age?: number | null, field?: string, spouse?: string | null,
+ *   weather?: boolean, category?: string, logNote?: string | null,
+ * }} AgendaItem
+ * @typedef {{
+ *   includeArchived?: boolean, includeCommented?: boolean, includeLogbook?: boolean, todoFilter?: ((todo: string) => boolean) | null,
+ *   tagFilter?: ((tags: string[]) => boolean) | null, rangeStart?: Date | null, rangeEnd?: Date | null, isDone?: ((todo: string) => boolean) | null,
+ *   today?: Date, birthdayProperty?: string, contactsDocs?: { documentId: string, doc: Doc }[] | null, deadlineWarningDays?: number,
+ *   scheduledDelayDays?: number, calendarLatitude?: number, calendarLongitude?: number, solarAmpm?: boolean, solarHideLabel?: boolean,
+ *   weatherData?: Record<string, any> | null, orgWeatherFormat?: string, orgWeatherTemperatureUnit?: string, orgWeatherSpeedUnit?: string,
+ *   habits?: { enabled: boolean, onlyForToday: boolean, showAllToday: boolean, precedingDays: number, followingDays: number } | null,
+ * }} AgendaOptions
+ */
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
 
@@ -108,10 +125,10 @@ function addInterval(date, amount, unit) {
  * Month/year units iterate directly (bounded to a small, reasonable
  * count even over decades, since calendar month/year lengths vary and
  * aren't worth the extra complexity of an approximate skip-ahead).
- * @param {any} [baseDate]
- * @param {any} [repeater]
- * @param {any} [rangeStart]
- * @param {any} [rangeEnd]
+ * @param {Date} baseDate
+ * @param {{ amount: number, unit: string } | null} repeater
+ * @param {Date} rangeStart
+ * @param {Date} rangeEnd
  */
 function expandRepeats(baseDate, repeater, rangeStart, rangeEnd) {
   if (!repeater || !repeater.amount || repeater.amount <= 0) return [];
@@ -173,10 +190,10 @@ function delayToDays(delay) {
  * Never on the other days between: Emacs lists an overdue or upcoming item only on today. Each date is kept to
  * [rangeStart, rangeEnd].
  * @param {string} kind
- * @param {any} [itemDate]
- * @param {any} [today]
- * @param {any} [rangeStart]
- * @param {any} [rangeEnd]
+ * @param {Date} itemDate
+ * @param {Date} today
+ * @param {Date} rangeStart
+ * @param {Date} rangeEnd
  */
 function emacsAgendaOccurrences(kind, itemDate, today, rangeStart, rangeEnd, warningDays = 0, scheduledDelayDays = 0) {
   const itemDay = startOfDay(itemDate);
@@ -248,7 +265,7 @@ function isContactsAnniversariesTrigger(line) {
 
 /**
  * Every distinct trigger across `docs` (the same line twice is one scan, so nothing shows twice).
- * @param {any} [docs]
+ * @param {{ documentId: string, doc: Doc }[]} docs
  */
 function collectContactsTriggers(docs) {
   const found = new Map();
@@ -329,7 +346,7 @@ function getPropertyCaseInsensitive(heading, key) {
 
 /** The EFFORT property of an agenda item's heading, trimmed, or null
  *  (also null for an item with no heading behind it -- a sunrise line,
- * @param {any} [item]
+ * @param {AgendaItem | null | undefined} item
  *  an anniversary). */
 function itemEffortText(item) {
   const raw = item && item.heading ? getPropertyCaseInsensitive(item.heading, 'EFFORT') : undefined;
@@ -337,7 +354,7 @@ function itemEffortText(item) {
 }
 
 /** That effort in minutes, or null when there is none or it isn't a
- * @param {any} [item]
+ * @param {AgendaItem | null | undefined} item
  *  valid org duration. */
 function itemEffortMinutes(item) {
   const text = itemEffortText(item);
@@ -361,7 +378,7 @@ const EFFORT_PLANNING_KINDS = new Set(['scheduled', 'deadline', 'timestamp']);
  * that's when the time is needed. `unestimated` counts only headings with
  * a TODO keyword and no usable estimate: an appointment without an effort
  * isn't a gap in the estimates, so it isn't counted as one.
- * @param {any} [items]
+ * @param {AgendaItem[]} items
  */
 function summarizeDayEffort(items) {
   const seen = new Set();
@@ -369,7 +386,7 @@ function summarizeDayEffort(items) {
   let estimated = 0;
   let unestimated = 0;
   for (const item of items) {
-    if (!item.heading || !EFFORT_PLANNING_KINDS.has(item.kind)) continue;
+    if (!item.heading || !EFFORT_PLANNING_KINDS.has(/** @type {string} */ (item.kind))) continue;
     if (seen.has(item.heading)) continue;
     seen.add(item.heading);
     const effort = itemEffortMinutes(item);
@@ -400,7 +417,7 @@ function summarizeDayEffort(items) {
 // they are never filtered or counted.
 
 /** Minutes for sorting/filtering/limiting an item: its effort, else the
- * @param {any} [item]
+ * @param {AgendaItem} item
  *  no-effort stand-in. */
 function effortSortValue(item, noEffortIsHigh = true) {
   const minutes = itemEffortMinutes(item);
@@ -410,29 +427,29 @@ function effortSortValue(item, noEffortIsHigh = true) {
 
 /**
  * A stably sorted copy: 'up' = least effort first, 'down' = most first.
- * @param {any} [items]
+ * @param {AgendaItem[]} items
  */
 function sortItemsByEffort(items, direction = 'up', noEffortIsHigh = true) {
   const sign = direction === 'down' ? -1 : 1;
   return items
-    .map((/** @type {any} */ item, /** @type {number} */ index) => ({ item, index, value: effortSortValue(item, noEffortIsHigh) }))
-    .sort((/** @type {any} */ a, /** @type {any} */ b) => (a.value === b.value ? a.index - b.index : sign * (a.value < b.value ? -1 : 1)))
-    .map((/** @type {any} */ entry) => entry.item);
+    .map((item, /** @type {number} */ index) => ({ item, index, value: effortSortValue(item, noEffortIsHigh) }))
+    .sort((a, b) => (a.value === b.value ? a.index - b.index : sign * (a.value < b.value ? -1 : 1)))
+    .map((entry) => entry.item);
 }
 
 /** Keeps items whose effort satisfies `{ op, minutes }` -- op '<' (at most),
- * @param {any} [items]
- * @param {any} [filter]
+ * @param {AgendaItem[]} items
+ * @param {{ op: string, minutes: number | null } | null | undefined} filter
  *  '>' (at least) or '=' (exactly). Non-task items are always kept. */
 function filterItemsByEffort(items, filter, noEffortIsHigh = true) {
   if (!filter) return items;
-  const test = /** @type {any} */ ({ '<': (/** @type {any} */ v) => v <= filter.minutes, '>': (/** @type {any} */ v) => v >= filter.minutes, '=': (/** @type {any} */ v) => v === filter.minutes })[filter.op];
+  const test = /** @type {Record<string, (v: number) => boolean>} */ ({ '<': (v) => v <= /** @type {number} */ (filter.minutes), '>': (v) => v >= /** @type {number} */ (filter.minutes), '=': (v) => v === filter.minutes })[filter.op];
   if (!test) return items;
-  return items.filter((/** @type {any} */ item) => !item.heading || test(effortSortValue(item, noEffortIsHigh)));
+  return items.filter((item) => !item.heading || test(effortSortValue(item, noEffortIsHigh)));
 }
 
 /** org-agenda-max-effort for one day's (already sorted) items: keeps items
- * @param {any} items
+ * @param {AgendaItem[]} items
  * @param {number | null | undefined} maxMinutes
  *  while the running total stays within `maxMinutes`. */
 function limitItemsByEffort(items, maxMinutes, noEffortIsHigh = true) {
@@ -589,9 +606,9 @@ function formatLogbookEntryLine(headingTitle, entry) {
  * for this edge case, stated rather than silently different.
  * @param {number} month
  * @param {number | undefined} day
- * @param {any} [rangeStart]
- * @param {any} [rangeEnd]
- * @param {any} [today]
+ * @param {Date | null} rangeStart
+ * @param {Date | null} rangeEnd
+ * @param {Date} today
  */
 function expandContactEventOccurrences(month, day, rangeStart, rangeEnd, today) {
   if (!rangeStart || !rangeEnd) {
@@ -761,8 +778,8 @@ function getCategoryForDocument(doc, documentId) {
   return base || documentId;
 }
 
-/** @param {any} [docs] */
-function buildAgendaItems(docs, opts = /** @type {any} */ ({})) {
+/** @param {{ documentId: string, doc: Doc }[]} docs */
+function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
   const {
     includeArchived = false,
     includeCommented = false,
@@ -1354,29 +1371,29 @@ function buildAgendaItems(docs, opts = /** @type {any} */ ({})) {
 
 /**
  * Items falling on the same calendar day as `date` (default: today).
- * @param {any} [items]
+ * @param {AgendaItem[]} items
  */
 function itemsForDate(items, date = new Date()) {
-  return items.filter((/** @type {any} */ item) => isSameDay(item.date, date));
+  return items.filter((item) => isSameDay(item.date, date));
 }
 
 /**
  * Items within [start, end], inclusive of the days start/end fall on.
- * @param {any} items
+ * @param {AgendaItem[]} items
  * @param {Date} start
  * @param {Date} end
  */
 function itemsInRange(items, start, end) {
   const startKey = dateKey(start);
   const endKey = dateKey(end);
-  return items.filter((/** @type {any} */ item) => {
+  return items.filter((item) => {
     const k = dateKey(item.date);
     return k >= startKey && k <= endKey;
   });
 }
 
 /** Groups items by calendar day, returning entries sorted chronologically:
- * @param {any} [items]
+ * @param {AgendaItem[]} items
  *  [{ date: 'YYYY-MM-DD', items: [...] }, ...] */
 function groupByDay(items) {
   const map = new Map();
@@ -1393,7 +1410,7 @@ function groupByDay(items) {
 
 /** A single day's items, grouped the same shape as the other *View
  *  functions (a one-entry array) for a consistent return shape callers
- * @param {any} [items]
+ * @param {AgendaItem[]} items
  *  can treat uniformly regardless of which view is active. */
 function dayView(items, date = new Date()) {
   const grouped = groupByDay(itemsForDate(items, date));
@@ -1403,7 +1420,7 @@ function dayView(items, date = new Date()) {
 
 /**
  * Midnight (00:00:00.000) of `date`'s calendar day.
- * @param {any} [date]
+ * @param {Date} date
  */
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -1456,7 +1473,7 @@ function startOfWeek(date, startOnWeekday = 1) {
  * which day you happened to open the agenda on, not on any consistent
  * notion of a week. Now it always resolves to the same 7-day window
  * (e.g. Monday-Sunday) no matter which day within that window you pass.
- * @param {any} [items]
+ * @param {AgendaItem[]} items
  */
 function weekView(items, anchorDate = new Date(), startOnWeekday = 1) {
   const start = startOfWeek(anchorDate, startOnWeekday);
@@ -1477,7 +1494,7 @@ function weekView(items, anchorDate = new Date(), startOnWeekday = 1) {
 /** A month view: every day in `date`'s calendar month, from the 1st
  *  through the actual last day of that month (28-31, handled correctly
  *  regardless of month length or leap years via the "day 0 of next
- * @param {any} [items]
+ * @param {AgendaItem[]} items
  *  month" trick). */
 function monthView(items, date = new Date()) {
   const start = new Date(date.getFullYear(), date.getMonth(), 1);
@@ -1510,9 +1527,9 @@ function monthView(items, date = new Date()) {
  *     deliberately not defaulted to some hardcoded "DONE" check, for the
  *     same reason buildAgendaItems isn't — the file's own #+TODO:
  *     sequence decides what counts as done, not this module.
- * @param {any} [docs]
+ * @param {{ documentId: string, doc: Doc }[]} docs
  */
-function buildTaskList(docs, opts = /** @type {any} */ ({})) {
+function buildTaskList(docs, opts = /** @type {AgendaOptions} */ ({})) {
   const { includeArchived = false, includeCommented = false, tagFilter = null, isDone = null } = opts;
   /** @type {any[]} */ const items = [];
 

@@ -28,6 +28,8 @@
 
 const MAX_EDIT_DISTANCE = 2500;
 
+/** @typedef {{ aStart: number, aEnd: number, bStart: number, bEnd: number }} Hunk */
+
 /** @param {string} text */
 function splitLines(text) {
   return String(text).split('\n');
@@ -36,9 +38,11 @@ function splitLines(text) {
 /** Myers diff over two line arrays. Returns hunks
  *  `{ aStart, aEnd, bStart, bEnd }` (half-open ranges: a[aStart..aEnd)
  *  became b[bStart..bEnd)), in order, or null if the inputs differ by
- * @param {any} [a]
- * @param {any} [b]
- *  more than MAX_EDIT_DISTANCE lines. */
+ * @param {string[]} a
+ * @param {string[]} b
+ *  more than MAX_EDIT_DISTANCE lines.
+ * @returns {Hunk[] | null}
+ */
 function diffHunksOfLines(a, b) {
   const n = a.length;
   const m = b.length;
@@ -57,12 +61,12 @@ function diffHunksOfLines(a, b) {
 
   // Turn the matched pairs (a-index, b-index, both relative to the
   // trimmed middle) into hunks over the whole arrays.
-  /** @type {any[]} */ const hunks = [];
+  /** @type {Hunk[]} */ const hunks = [];
   let ai = 0;
   let bi = 0;
   /**
-   * @param {any} [aEnd]
-   * @param {any} [bEnd]
+   * @param {number} aEnd
+   * @param {number} bEnd
    */
   const emit = (aEnd, bEnd) => {
     if (aEnd > ai || bEnd > bi) {
@@ -79,9 +83,11 @@ function diffHunksOfLines(a, b) {
 }
 
 /** Matched (a-index, b-index) pairs of a shortest edit script, in
- * @param {any} [a]
- * @param {any} [b]
- *  ascending order, or null past MAX_EDIT_DISTANCE. */
+ * @param {string[]} a
+ * @param {string[]} b
+ *  ascending order, or null past MAX_EDIT_DISTANCE.
+ * @returns {[number, number][] | null}
+ */
 function myersMatches(a, b) {
   const n = a.length;
   const m = b.length;
@@ -134,7 +140,7 @@ function myersMatches(a, b) {
   }
   if (foundD === -1) return null;
 
-  const matches = [];
+  /** @type {[number, number][]} */ const matches = [];
   let x = n;
   let y = m;
   for (let d = foundD; d >= 0; d--) {
@@ -161,8 +167,8 @@ function myersMatches(a, b) {
 /** `base` lines [start, end) with the given hunks applied. Each hunk's
  *  `lines` are its replacement text; hunks must be in order and lie
  * @param {string[]} base
- * @param {any} hunks
- * @param {any} start
+ * @param {(Hunk & { lines: string[] })[]} hunks
+ * @param {number} start
  * @param {number} end
  *  within [start, end] (an insertion sitting exactly at `end` counts). */
 function applyHunks(base, hunks, start, end) {
@@ -178,8 +184,8 @@ function applyHunks(base, hunks, start, end) {
 }
 
 /**
- * @param {any} [x]
- * @param {any} [y]
+ * @param {string[]} x
+ * @param {string[]} y
  */
 function sameLines(x, y) {
   if (x.length !== y.length) return false;
@@ -188,11 +194,12 @@ function sameLines(x, y) {
 }
 
 /**
- * @param {any} hunks
+ * @param {Hunk[]} hunks
  * @param {string[]} sideLines
+ * @returns {(Hunk & { lines: string[] })[]}
  */
 function withLines(hunks, sideLines) {
-  return hunks.map((/** @type {any} */ h) => ({ ...h, lines: sideLines.slice(h.bStart, h.bEnd) }));
+  return hunks.map((h) => ({ ...h, lines: sideLines.slice(h.bStart, h.bEnd) }));
 }
 
 /**

@@ -14,7 +14,7 @@ const TYPED_NAMES = [
   'level', 'prefix', 'suffix', 'html', 'src', 'dest', 'str', 'string', 'heading', 'headings', 'doc', 'table',
 ];
 // `@param {any}` placeholders left on purpose (callbacks, per-file shapes, mixed meanings). Lower this when you remove some; never raise it.
-const MAX_ANY_PARAMS = 1060;
+const MAX_ANY_PARAMS = 785;
 
 const found = [];
 let total = 0;

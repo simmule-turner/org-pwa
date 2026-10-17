@@ -4,16 +4,19 @@
  * The walk-wide bookkeeping of one HTML export.
  * @typedef {{
  *   doc: Doc, scope: any, options: Record<string, any>,
- *   headingIds: Map<any, string>, usedIds: Set<string>, targets: Map<string, string>, macros: Map<string, string>,
+ *   headingIds: Map<Heading, string>, usedIds: Set<string>, targets: Map<string, string>, macros: Map<string, string>,
  *   fnNumbers: Map<string, number>, fnOrder: string[], fnRefCount: Map<string, number>, fnDefs: Map<string, any>, fnInline: Map<string, any>,
  *   counters: { table: number, listing: number, figure: number }, math: boolean,
  *   tokens: string[], tokenSources: string[], doneKeywords: string[], todoKeywords: string[] | null,
- *   radioRe: RegExp | null, noRadio: boolean, namedElements: Map<string, string>, currentNode: any,
- *   parsed: Map<any, any>, fnDefsCollect?: any, outline: any[], captioned: any[],
- *   headingNodes: Map<any, any>, targetHeadings: Map<string, any>, cite: any,
+ *   radioRe: RegExp | null, noRadio: boolean, namedElements: Map<string, string>, currentNode: OutlineNode | null,
+ *   parsed: Map<Heading, import('./org-elements.js').OrgElement[]>, fnDefsCollect?: any, outline: OutlineNode[], captioned: { kind: string, n: number, id: string, html: string }[],
+ *   headingNodes: Map<Heading, OutlineNode>, targetHeadings: Map<string, OutlineNode>, cite: any,
  * }} ExportState
  */
 /** @typedef {import('./types.js').Doc} Doc */
+/** @template {import('./org-elements.js').OrgElement['type']} T @typedef {Extract<import('./org-elements.js').OrgElement, { type: T }>} OrgEl */
+/** @typedef {{ parent?: string, bare?: boolean, first?: boolean, footnote?: boolean }} ElCtx */
+/** @typedef {{ heading: Heading, level: number, number: number[], archived: boolean, children: OutlineNode[] }} OutlineNode */
 /**
  * HTML export, following Org's own `ox-html`: the same document structure (outline containers, `h2` for top-level
  * headings under an `h1` title, `org-ul` / `org-ol` / `org-dl` lists, tables with a `colgroup` and a `thead`, figures,
@@ -180,7 +183,7 @@ const slugify = (title) => String(title || '').toLowerCase().replace(/[^a-z0-9]+
 
 /**
  * Attributes from `#+ATTR_HTML:`, as an HTML attribute string (`:width 100 :class big` -> ` width="100" class="big"`).
- * @param {any} [aff]
+ * @param {import('./org-elements.js').Affiliated | null | undefined} aff
  * @param {string[]} [skip]
  */
 function htmlAttributes(aff, skip = []) {
@@ -261,7 +264,7 @@ const TIMESTAMP_RE = /<(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?(?: \d{1,2}:\
 
 /**
  * @param {ExportState} state
- * @param {any} [match]
+ * @param {RegExpExecArray} match
  */
 function timestampHtml(state, match) {
   const [whole] = match;
@@ -366,7 +369,7 @@ function renderInline(state, rawText) {
       .replace(/<<([^<>\n]+)>>/g, (whole, /** @type {string} */ name) => addToken(state, `<a id="${targetId(state, name)}"></a>`, whole))
   );
   // timestamps
-  text = text.replace(TIMESTAMP_RE, (/** @type {any[]} */ ...m) => timestampHtml(state, m));
+  text = text.replace(TIMESTAMP_RE, (/** @type {any} */ ...m) => timestampHtml(state, m));
 
   const { lines, fragments } = extractLatexFragments(text.split('\n'));
   const nodes = parseInline(lines.join('\n'), { latexFragments: fragments, subSuperscriptMode: state.options.sup });
@@ -400,7 +403,7 @@ const COOKIE_RE = /\[(\d*\/\d*|\d*%)\]/g;
 /**
  * Plain text -> HTML: escaping, entities, special strings, statistics cookies, and the placeholders set aside earlier.
  * @param {ExportState} state
- * @param {any} [value]
+ * @param {string} value
  */
 function renderText(state, value) {
   const { options } = state;
@@ -493,7 +496,7 @@ function linkHref(state, target) {
 /**
  * @param {Heading[]} headings
  * @param {string} name
- * @param {any} [value]
+ * @param {string} value
  */
 function findByProperty(headings, name, value) {
   for (const h of headings) {
@@ -515,19 +518,21 @@ function literal(state, value) {
 
 /**
  * @param {ExportState} state
- * @param {any} [nodes]
+ * @param {import('./types.js').InlineNode[]} nodes
+ * @returns {string}
  */
 function renderNodes(state, nodes) {
   if (state.cite) nodes = dropSilentCitations(nodes, (c) => state.cite.formatCitation(c) === null);
-  return nodes.map((/** @type {any} */ n) => renderNode(state, n)).join('');
+  return nodes.map((n) => renderNode(state, n)).join('');
 }
 
 /**
  * Emphasis as a tag, or with its markers kept as plain text when `#+OPTIONS: *:nil`.
  * @param {ExportState} state
- * @param {any} node
+ * @param {import('./types.js').EmphasisNode} node
  * @param {string} marker
  * @param {string} open
+ * @returns {string}
  */
 function emphasis(state, node, marker, open, close = open) {
   const inner = renderNodes(state, node.children);
@@ -555,7 +560,8 @@ function footnoteRef(state, label, inlineHtml) {
 
 /**
  * @param {ExportState} state
- * @param {any} [node]
+ * @param {import('./types.js').InlineNode} node
+ * @returns {string}
  */
 function renderNode(state, node) {
   switch (node.type) {
@@ -634,7 +640,7 @@ function imageHtml(target, alt, attrs = '') {
 function internalLinkLabel(state, rawTarget) {
   const t = rawTarget.trim();
   if (/^[a-z][a-z0-9+.-]*:/i.test(t) && !/^id:/i.test(t)) return null; // a URL or file link
-  /** @param {any} node */
+  /** @param {OutlineNode | undefined} node @returns {node is OutlineNode} */
   const numbered = (node) => !!node && !!state.options.num && !(typeof state.options.num === 'number' && node.level > state.options.num);
   const key = t.replace(/^#/, '').trim().replace(/\s+/g, ' ').toLowerCase();
   if (!t.startsWith('*') && !t.startsWith('#') && state.targets.has(key)) {
@@ -657,7 +663,7 @@ function internalLinkLabel(state, rawTarget) {
 
 /**
  * @param {ExportState} state
- * @param {any} [node]
+ * @param {import('./types.js').LinkNode} node
  */
 function linkHtml(state, node) {
   const target = node.target;
@@ -680,8 +686,8 @@ function linkHtml(state, node) {
 
 /**
  * @param {ExportState} state
- * @param {any} [source]
- * @param {any} [displayMode]
+ * @param {string} source
+ * @param {boolean} displayMode
  */
 function mathHtml(state, source, displayMode) {
   const { html, ok } = renderMathHtml(source, displayMode);
@@ -696,7 +702,7 @@ function mathHtml(state, source, displayMode) {
 
 /**
  * @param {ExportState} state
- * @param {any} [aff]
+ * @param {import('./org-elements.js').Affiliated | null | undefined} aff
  */
 function captionHtml(state, aff) {
   const c = aff && aff.caption.length ? aff.caption[aff.caption.length - 1] : null;
@@ -705,8 +711,8 @@ function captionHtml(state, aff) {
 
 /**
  * @param {ExportState} state
- * @param {any} [el]
- * @param {any} [ctx]
+ * @param {OrgEl<'paragraph'>} el
+ * @param {ElCtx} ctx
  */
 function paragraphHtml(state, el, ctx) {
   const text = el.lines.join('\n');
@@ -718,7 +724,7 @@ function paragraphHtml(state, el, ctx) {
   return `<p${cls}>\n${body}\n</p>`;
 }
 
-/** @param {any} [el] */
+/** @param {OrgEl<'paragraph'>} el */
 function standaloneImage(el) {
   const text = el.lines.join(' ').trim();
   const m = /^\[\[([^\]]+)\](?:\[([^\]]*)\])?\]$/.exec(text);
@@ -729,13 +735,13 @@ function standaloneImage(el) {
 
 /**
  * @param {ExportState} state
- * @param {any} [el]
+ * @param {OrgEl<'paragraph'>} el
  * @param {any} [image]
  */
 function figureHtml(state, el, image) {
   const aff = el.aff;
   const attrs = parseAttributes(aff && aff.attr.html);
-  const alt = /** @type {any} */ (attrs).alt !== undefined ? /** @type {any} */ (attrs).alt : undefined;
+  const alt = (attrs).alt !== undefined ? /** @type {any} */ (attrs).alt : undefined;
   const rest = htmlAttributes(aff, ['alt']);
   let img = imageHtml(image.thumb || image.target, alt, rest);
   if (image.link) img = `<a href="${escapeAttr(imageSrc(image.link))}">${img}</a>`;
@@ -749,27 +755,29 @@ function figureHtml(state, el, image) {
 
 /**
  * @param {ExportState} state
- * @param {any} [el]
- * @param {any} [ctx]
+ * @param {OrgEl<'list'>} el
+ * @param {ElCtx} ctx
+ * @returns {string}
  */
 function listHtml(state, el, ctx) {
   const tag = el.listType === 'ordered' ? 'ol' : el.listType === 'descriptive' ? 'dl' : 'ul';
   const attrs = htmlAttributes(el.aff);
-  const rows = el.items.map((/** @type {any} */ item) => itemHtml(state, item, el.listType));
+  const rows = el.items.map((item) => itemHtml(state, item, el.listType));
   return `<${tag} class="org-${tag}"${attrs}>\n${rows.join('\n')}\n</${tag}>`;
 }
 
 /**
  * @param {ExportState} state
- * @param {any} item
+ * @param {import('./org-elements.js').ElementListItem} item
  * @param {string} listType
+ * @returns {string}
  */
 function itemHtml(state, item, listType) {
   const children = item.children;
   const first = children[0];
   const lead = first && first.type === 'paragraph' && (children.length === 1 || (children.length === 2 && children[1].type === 'list'));
-  const parts = children.map((/** @type {any} */ c, /** @type {number} */ i) => elementHtml(state, c, { parent: 'item', bare: i === 0 && lead, first: i === 0 }));
-  let inner = parts.filter((/** @type {any} */ p) => p !== '').join('\n');
+  const parts = children.map((c, /** @type {number} */ i) => elementHtml(state, c, { parent: 'item', bare: i === 0 && lead, first: i === 0 }));
+  let inner = parts.filter((p) => p !== '').join('\n');
   if (item.checkbox && listType !== 'descriptive') {
     const box = `<input type="checkbox" disabled${item.checkbox === 'on' ? ' checked' : ''}>`;
     inner = `${box} ${inner}`.replace(/\s+$/, '');
@@ -789,17 +797,17 @@ const NUMBER_RE = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$|^[-+]?\d*\.?\d+(?
 
 /**
  * @param {ExportState} state
- * @param {any} [el]
+ * @param {OrgEl<'table'>} el
  */
 function tableHtml(state, el) {
   const aff = el.aff;
   // alignment/width cookie rows (`<l>`, `<r10>`, `<c>`, `<12>`) and the `/` marker column are table directives
   let rows = el.rows;
   /** @type {any[]} */ const cookieAlign = [];
-  rows = rows.filter((/** @type {any} */ row) => {
+  rows = rows.filter((row) => {
     if (row.rule) return true;
-    if (row.cells.length && row.cells.every((/** @type {any} */ c) => c === '' || /^<[lrc]?\d*>$/.test(c)) && row.cells.some((/** @type {any} */ c) => c)) {
-      row.cells.forEach((/** @type {any} */ c, /** @type {number} */ i) => {
+    if (row.cells.length && row.cells.every((c) => c === '' || /^<[lrc]?\d*>$/.test(c)) && row.cells.some((c) => c)) {
+      row.cells.forEach((c, /** @type {number} */ i) => {
         const m = /^<([lrc])?\d*>$/.exec(c);
         if (m && m[1]) cookieAlign[i] = m[1];
       });
@@ -807,17 +815,17 @@ function tableHtml(state, el) {
     }
     return true;
   });
-  const data = rows.filter((/** @type {any} */ r) => !r.rule);
+  const data = rows.filter((r) => !r.rule);
   if (!data.length) return '';
-  const columns = Math.max(...data.map((/** @type {any} */ r) => r.cells.length));
+  const columns = Math.max(...data.map((r) => r.cells.length));
   /** @type {any[]} */ const align = [];
   for (let c = 0; c < columns; c++) {
     if (cookieAlign[c]) {
       align.push(cookieAlign[c] === 'r' ? 'right' : cookieAlign[c] === 'c' ? 'center' : 'left');
       continue;
     }
-    const cells = data.map((/** @type {any} */ r) => (r.cells[c] || '').trim()).filter(Boolean);
-    const numbers = cells.filter((/** @type {any} */ x) => NUMBER_RE.test(x)).length;
+    const cells = data.map((r) => (r.cells[c] || '').trim()).filter(Boolean);
+    const numbers = cells.filter((x) => NUMBER_RE.test(x)).length;
     align.push(cells.length && numbers / cells.length >= 0.5 ? 'right' : 'left');
   }
   // groups of rows separated by rules; the first group is a header when a rule follows it and more rows come after
@@ -828,7 +836,7 @@ function tableHtml(state, el) {
     } else groups[groups.length - 1].push(row);
   }
   if (!groups[groups.length - 1].length) groups.pop();
-  const hasHeader = groups.length > 1 && rows.some((/** @type {any} */ r) => r.rule) && !rows[0].rule;
+  const hasHeader = groups.length > 1 && rows.some((r) => r.rule) && !rows[0].rule;
   const attrs = parseAttributes(aff && aff.attr.html);
   const base = { border: '2', cellspacing: '0', cellpadding: '6', rules: 'groups', frame: 'hsides' };
   let tableAttrs = '';
@@ -860,7 +868,7 @@ function tableHtml(state, el) {
 
 /**
  * @param {ExportState} state
- * @param {any} [el]
+ * @param {OrgEl<'block'>} el
  */
 function srcBlockHtml(state, el) {
   const params = el.params.trim();
@@ -879,8 +887,8 @@ function srcBlockHtml(state, el) {
 
 /**
  * @param {ExportState} state
- * @param {any} [el]
- * @param {any} [ctx]
+ * @param {OrgEl<'block'>} el
+ * @param {ElCtx} ctx
  */
 function blockHtml(state, el, ctx) {
   const { name } = el;
@@ -924,8 +932,8 @@ function blockHtml(state, el, ctx) {
 
 /**
  * @param {ExportState} state
- * @param {any} [el]
- * @param {any} [ctx]
+ * @param {OrgEl<'drawer'>} el
+ * @param {ElCtx} ctx
  */
 function drawerHtml(state, el, ctx) {
   const d = state.options.drawers;
@@ -937,7 +945,8 @@ function drawerHtml(state, el, ctx) {
 
 /**
  * @param {ExportState} state
- * @param {any} [el]
+ * @param {import('./org-elements.js').OrgElement} el
+ * @returns {string}
  */
 function elementHtml(state, el, ctx = {}) {
   switch (el.type) {
@@ -979,11 +988,11 @@ function elementHtml(state, el, ctx = {}) {
 
 /**
  * @param {ExportState} state
- * @param {any} [elements]
+ * @param {import('./org-elements.js').OrgElement[]} elements
  */
 function elementsHtml(state, elements, ctx = {}) {
   /** @type {any[]} */ const parts = [];
-  elements.forEach((/** @type {HTMLElement} */ el, /** @type {number} */ i) => {
+  elements.forEach((el, i) => {
     const html = elementHtml(state, el, { ...ctx, first: i === 0 });
     if (html !== '') parts.push(html);
   });
@@ -992,13 +1001,13 @@ function elementsHtml(state, elements, ctx = {}) {
 
 // ---- headings -----------------------------------------------------------------
 
-/** @param {any} [h] */
+/** @param {Heading} h */
 function isCommented(h) {
   return /^COMMENT(\s|$)/.test(h.title || '');
 }
 const hasTag = (/** @type {any} */ h, /** @type {string} */ tag) => (h.tags || []).some((/** @type {any} */ t) => String(t).toLowerCase() === tag.toLowerCase());
 
-/** @param {any} [h] */
+/** @param {Heading} h */
 function titleOf(h) {
   return h.title.replace(/^COMMENT\s+/, '');
 }
@@ -1063,11 +1072,12 @@ function isArchived(h) {
  * @param {ExportState} state
  * @param {Heading[]} headings
  * @param {number} levelOffset
- * @param {any} [filter]
- * @param {any} [numbers]
+ * @param {(h: Heading) => boolean} filter
+ * @param {number[]} numbers
+ * @returns {OutlineNode[]}
  */
 function buildOutline(state, headings, levelOffset, filter, numbers) {
-  const out = [];
+  /** @type {OutlineNode[]} */ const out = [];
   let n = 0;
   for (const heading of headings) {
     if (!filter(heading)) continue;
@@ -1078,7 +1088,7 @@ function buildOutline(state, headings, levelOffset, filter, numbers) {
       n--;
       continue;
     }
-    const node = { heading, level: heading.level - levelOffset, number, archived, children: /** @type {any[]} */ ([]) };
+    const node = { heading, level: heading.level - levelOffset, number, archived, children: /** @type {OutlineNode[]} */ ([]) };
     node.children = archived ? [] : buildOutline(state, heading.children || [], levelOffset, filter, number);
     out.push(node);
   }
@@ -1087,7 +1097,7 @@ function buildOutline(state, headings, levelOffset, filter, numbers) {
 
 /**
  * @param {ExportState} state
- * @param {any} [node]
+ * @param {OutlineNode} node
  */
 function headingTitleHtml(state, node, { inToc = false } = {}) {
   const { heading } = node;
@@ -1101,14 +1111,14 @@ function headingTitleHtml(state, node, { inToc = false } = {}) {
   parts.push(renderInline(state, titleOf(heading)) || '(untitled)');
   let html = parts.join(' ');
   if (options.tags && !(inToc && options.tags === 'not-in-toc') && heading.tags && heading.tags.length) {
-    html += `${NBSP}${NBSP}${NBSP}<span class="tag">${heading.tags.map((/** @type {any} */ t) => `<span class="${escapeAttr(String(t).replace(/[@#%]/g, '_'))}">${escapeHtml(t)}</span>`).join(NBSP)}</span>`;
+    html += `${NBSP}${NBSP}${NBSP}<span class="tag">${heading.tags.map((t) => `<span class="${escapeAttr(String(t).replace(/[@#%]/g, '_'))}">${escapeHtml(t)}</span>`).join(NBSP)}</span>`;
   }
   return html;
 }
 
 /**
  * @param {ExportState} state
- * @param {any} [node]
+ * @param {OutlineNode} node
  */
 function numberLabel(state, node) {
   const { num } = state.options;
@@ -1136,6 +1146,7 @@ function planningHtml(state, heading) {
 /**
  * @param {ExportState} state
  * @param {Heading} heading
+ * @param {OutlineNode | null} [node]
  */
 function bodyHtml(state, heading, node = null) {
   const elements = state.parsed.get(heading) || parseElements((heading.bodyLines || []).slice());
@@ -1145,8 +1156,8 @@ function bodyHtml(state, heading, node = null) {
 
 /**
  * @param {ExportState} state
- * @param {any} [node]
- * @param {any} [ids]
+ * @param {OutlineNode} node
+ * @param {Map<string, string>} [ids]
  */
 function sectionHtml(state, node, ids) {
   const { heading } = node;
@@ -1160,11 +1171,11 @@ function sectionHtml(state, node, ids) {
   out += `<h${hl} id="${escapeAttr(id)}">${numberLabel(state, node)}${headingTitleHtml(state, node)}</h${hl}>\n`;
   const planning = planningHtml(state, heading);
   const body = node.archived ? '' : bodyHtml(state, heading, node);
-  const deepChildren = node.children.filter((/** @type {any} */ c) => c.level > limit);
+  const deepChildren = node.children.filter((c) => c.level > limit);
   const content = [planning, body].filter(Boolean).join('\n');
   if (content) out += `<div class="outline-text-${node.level + 1}" id="text-${escapeAttr(textPath)}">\n${content}\n</div>\n`;
   const deep = deepChildren.length ? deepListHtml(state, deepChildren) : '';
-  const structural = node.children.filter((/** @type {any} */ c) => c.level <= limit);
+  const structural = node.children.filter((c) => c.level <= limit);
   for (const child of structural) out += sectionHtml(state, child) + '\n';
   if (deep) out += deep + '\n';
   return out.replace(/\n+$/, '\n') + '</div>';
@@ -1173,13 +1184,13 @@ function sectionHtml(state, node, ids) {
 /**
  * Headings deeper than `#+OPTIONS: H:` become list items.
  * @param {ExportState} state
- * @param {any} [nodes]
+ * @param {OutlineNode[]} nodes
  */
 function deepListHtml(state, nodes) {
   const num = state.options.num;
   const ordered = !!num && (num === true || nodes[0].level <= num);
   const tag = ordered ? 'ol' : 'ul';
-  const items = nodes.map((/** @type {any} */ node) => {
+  const items = nodes.map((node) => {
     const id = state.headingIds.get(node.heading) || '';
     let li = `<li><a id="${escapeAttr(id)}"></a>${headingTitleHtml(state, node)}<br />\n`;
     const body = node.archived ? '' : bodyHtml(state, node.heading, node);
@@ -1194,13 +1205,14 @@ function deepListHtml(state, nodes) {
 
 /**
  * @param {ExportState} state
- * @param {any} [nodes]
- * @param {any} [maxDepth]
+ * @param {OutlineNode[]} nodes
+ * @param {number} maxDepth
+ * @returns {string}
  */
 function tocListHtml(state, nodes, maxDepth, depth = 1) {
-  const visible = nodes.filter((/** @type {any} */ n) => n.level <= Math.min(state.options.H, maxDepth));
+  const visible = nodes.filter((n) => n.level <= Math.min(state.options.H, maxDepth));
   if (!visible.length) return '';
-  const items = visible.map((/** @type {any} */ node) => {
+  const items = visible.map((node) => {
     const id = state.headingIds.get(node.heading) || '';
     const label = (state.options.num && !(typeof state.options.num === 'number' && node.level > state.options.num) ? node.number.join('.') + '. ' : '') + headingTitleHtml(state, node, { inToc: true }).replace(/<a [^>]*>([\s\S]*?)<\/a>/g, '$1');
     const sub = tocListHtml(state, node.children, maxDepth, depth + 1);
@@ -1211,7 +1223,8 @@ function tocListHtml(state, nodes, maxDepth, depth = 1) {
 
 /**
  * @param {ExportState} state
- * @param {any} [depth]
+ * @param {number | true} depth
+ * @param {OutlineNode[]} [nodes]
  */
 function tocHtml(state, depth, nodes = state.outline) {
   const list = tocListHtml(state, nodes, depth === true ? Infinity : depth);
@@ -1221,7 +1234,7 @@ function tocHtml(state, depth, nodes = state.outline) {
 
 /**
  * @param {ExportState} state
- * @param {any} [el]
+ * @param {OrgEl<'toc'>} el
  */
 function tocKeywordHtml(state, el) {
   const v = el.value.trim();

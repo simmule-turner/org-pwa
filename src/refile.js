@@ -2,6 +2,11 @@
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
 /**
+ * @typedef {{ kind: 'level' | 'maxlevel', n: number } | { kind: 'tag', name: string } | { kind: 'todo', keyword: string } | { kind: 'regexp', source: string, regex: RegExp }} RefileCriterion
+ * @typedef {{ fileSpec: string, criteria: RefileCriterion[] }} RefileEntry
+ * @typedef {{ documentId: string, heading: Heading, outlinePath: string[] }} RefileTarget
+ */
+/**
  * org-refile-targets, translated into this app's own plain-text
  * Global/Local Variables format (a single line can't hold real org's
  * actual Lisp list-of-cons-cells syntax). One line, semicolon-separated
@@ -90,7 +95,7 @@ function parseOneEntry(entryText) {
     return { error: 'needs at least one criterion (level=, maxlevel=, tag=, todo=, or regexp=)' };
   }
 
-  const criteria = [];
+  /** @type {RefileCriterion[]} */ const criteria = [];
   while (rest) {
     const eq = rest.indexOf('=');
     const space = rest.search(/\s/);
@@ -116,7 +121,7 @@ function parseOneEntry(entryText) {
 
     if (key === 'level' || key === 'maxlevel') {
       if (!/^\d+$/.test(value)) return { error: `${key}= needs a whole number, not "${value}"` };
-      criteria.push({ kind: key, n: Number(value) });
+      criteria.push({ kind: /** @type {'level' | 'maxlevel'} */ (key), n: Number(value) });
     } else if (key === 'tag') {
       criteria.push({ kind: 'tag', name: value });
     } else if (key === 'todo') {
@@ -139,9 +144,9 @@ function parseOneEntry(entryText) {
  *  it rather than have a target quietly disappear. */
 function parseRefileTargetsWithErrors(text) {
   if (!text || !text.trim()) {
-    return { entries: [{ fileSpec: 'current', criteria: [{ kind: 'level', n: 1 }] }], errors: [] };
+    return { entries: /** @type {RefileEntry[]} */ ([{ fileSpec: 'current', criteria: [{ kind: 'level', n: 1 }] }]), errors: /** @type {string[]} */ ([]) };
   }
-  const entries = [];
+  /** @type {RefileEntry[]} */ const entries = [];
   const errors = [];
   for (const rawEntry of splitEntries(text)) {
     const entryText = rawEntry.trim();
@@ -161,10 +166,10 @@ function parseRefileTargets(text) {
 /**
  * Whether `heading` satisfies every criterion of one entry.
  * @param {Heading} heading
- * @param {any} [criteria]
+ * @param {RefileCriterion[]} criteria
  */
 function headingMatchesCriteria(heading, criteria) {
-  return criteria.every((/** @type {any} */ c) => {
+  return criteria.every((c) => {
     switch (c.kind) {
       case 'level':
         return heading.level === c.n;
@@ -187,7 +192,7 @@ function headingMatchesCriteria(heading, criteria) {
  *  docsById's own keys, aggregateAgendaDocs' own output) uses the bare
  *  path only, never the "scheme:" prefix; that prefix exists purely
  *  in agendaFilesConfig's own raw configuration strings, needed there
- * @param {string | string[]} key
+ * @param {string} key
  *  specifically to pick which adapter (github vs webdav) fetches it. */
 function stripScheme(key) {
   const colonIndex = key.indexOf(':');
@@ -195,9 +200,9 @@ function stripScheme(key) {
 }
 
 /**
- * @param {any} [entry]
- * @param {any} [currentFileId]
- * @param {any} [agendaFilesConfig]
+ * @param {RefileEntry} entry
+ * @param {string} currentFileId
+ * @param {string[] | null | undefined} agendaFilesConfig
  */
 function resolveEntryFileIds(entry, currentFileId, agendaFilesConfig) {
   if (entry.fileSpec === 'current') return [currentFileId];
@@ -220,10 +225,10 @@ function resolveEntryFileIds(entry, currentFileId, agendaFilesConfig) {
  * this function does no I/O of its own. A file-spec resolving to a
  * document not present in `docsById` is silently skipped (e.g. an
  * Agenda File that failed to load) rather than throwing.
- * @param {any} [targetsSpec]
- * @param {any} [docsById]
- * @param {any} [currentFileId]
- * @param {any} [agendaFilesConfig]
+ * @param {RefileEntry[]} targetsSpec
+ * @param {Record<string, Doc>} docsById
+ * @param {string} currentFileId
+ * @param {string[] | null | undefined} agendaFilesConfig
  * @param {Heading | null} [excludeHeading]
  */
 function getRefileCandidates(targetsSpec, docsById, currentFileId, agendaFilesConfig, excludeHeading = null) {
@@ -244,12 +249,12 @@ function getRefileCandidates(targetsSpec, docsById, currentFileId, agendaFilesCo
 
 /**
  * @param {Heading[]} headings
- * @param {any} outlinePath
- * @param {any} entry
+ * @param {string[]} outlinePath
+ * @param {RefileEntry} entry
  * @param {string} documentId
- * @param {any} [excludeSet]
- * @param {any} [candidates]
- * @param {any} [seen]
+ * @param {Set<Heading> | null} excludeSet
+ * @param {RefileTarget[]} candidates
+ * @param {Set<string>} seen
  */
 function walkForCandidates(headings, outlinePath, entry, documentId, excludeSet, candidates, seen) {
   for (const heading of headings) {
@@ -299,7 +304,7 @@ function collectSubtreeHeadings(heading) {
  *  user actually picks one (especially for a cross-file target, read
  *  once when the picker opened but possibly edited elsewhere since).
  * @param {Doc} doc
- * @param {any} [outlinePath]
+ * @param {string[]} outlinePath
  *  Returns null if the path no longer matches anything. */
 function findHeadingByOutlinePath(doc, outlinePath) {
   let level = doc.children;
@@ -321,25 +326,25 @@ function findHeadingByOutlinePath(doc, outlinePath) {
 // (the file, the heading, org-refile-targets and the refiled subtree's own
 // exclusion are all re-checked), so a stale entry never shows.
 
-/** @param {any} [target] */
+/** @param {{ documentId: string, outlinePath: string[] }} target */
 const refileTargetKey = (target) => target.documentId + '\u0000' + target.outlinePath.join('\u0001');
 
 /** `recent` with `target` moved to the front, de-duplicated and capped.
- * @param {any} [recent]
- * @param {any} [target]
+ * @param {{ documentId: string, outlinePath: string[] }[]} recent
+ * @param {{ documentId: string, outlinePath: string[] }} target
  *  Stores only what is needed to find the target again. */
 function pushRecentRefileTarget(recent, target, max = 8) {
   const entry = { documentId: target.documentId, outlinePath: [...target.outlinePath] };
   const key = refileTargetKey(entry);
-  return [entry, ...recent.filter((/** @type {any} */ r) => refileTargetKey(r) !== key)].slice(0, max);
+  return [entry, ...recent.filter((r) => refileTargetKey(r) !== key)].slice(0, max);
 }
 
 /** The current candidates that appear in `recent`, in recent-first order,
- * @param {any} [candidates]
- * @param {any} [recent]
+ * @param {RefileTarget[]} candidates
+ * @param {{ documentId: string, outlinePath: string[] }[]} recent
  *  at most `limit` of them. */
 function recentRefileCandidates(candidates, recent, limit = 5) {
-  const byKey = new Map(candidates.map((/** @type {any} */ c) => [refileTargetKey(c), c]));
+  const byKey = new Map(candidates.map((c) => [refileTargetKey(c), c]));
   const result = [];
   for (const r of recent) {
     const candidate = byKey.get(refileTargetKey(r));

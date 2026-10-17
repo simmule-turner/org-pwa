@@ -56,12 +56,12 @@ function vcardText(lines, uid) {
 
 /**
  * Every contact the address book should hold, keyed by the name it is stored under.
- * @param {{ documentId: string, doc: object }[]} allDocs the loaded contacts files
+ * @param {{ documentId: string, doc: import('./types.js').Doc }[]} allDocs the loaded contacts files
  * @returns {Map<string, { uid: string, documentId: string, vcf: string, hash: string }>}
  */
 function buildContactResources(allDocs, opts = {}) {
   const docs = allDocs.filter(({ documentId, doc }) => doc && documentId && !documentId.startsWith(UNSAVED_DOCUMENT_ID));
-  const cards = collectContactCards(docs, { birthdayProperty: /** @type {any} */ (opts).birthdayProperty || 'BIRTHDAY' });
+  const cards = collectContactCards(docs, { birthdayProperty: /** @type {{ birthdayProperty?: string }} */ (opts).birthdayProperty || 'BIRTHDAY' });
   const resources = new Map();
   const usedUids = new Set();
   const seen = new Map();
