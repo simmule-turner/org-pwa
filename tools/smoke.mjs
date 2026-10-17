@@ -6155,6 +6155,19 @@ check('footnotes: Insert footnote writes a reference at the cursor in Text view 
   await run('normalize footnotes');
   const norm = await area.inputValue();
   expect(/Another\[fn:2\] too\./.test(norm) && /\[fn:2\] inline note/.test(norm) && /\[fn:1\] Note one\./.test(norm), `normalized in Text view: ${JSON.stringify(norm)}`);
+  // from the reference to its definition and back, then Delete footnote with the cursor on the definition
+  const caretAt = () => area.evaluate((el) => el.selectionStart);
+  await area.evaluate((el) => { el.focus(); el.setSelectionRange(el.value.indexOf('[fn:1]') + 2, el.value.indexOf('[fn:1]') + 2); });
+  await run('go to definition or reference');
+  const defAt = (await area.inputValue()).indexOf('\n[fn:1] Note one.') + 1;
+  expect((await caretAt()) === defAt + 6, `jumped to the definition: ${await caretAt()} vs ${defAt}`);
+  await area.evaluate((el, p) => el.setSelectionRange(p + 2, p + 2), defAt);
+  await run('go to definition or reference');
+  expect((await caretAt()) === (await area.inputValue()).indexOf('[fn:1]'), `and back to the reference: ${await caretAt()}`);
+  await area.evaluate((el, p) => el.setSelectionRange(p + 2, p + 2), defAt);
+  await run('delete footnote');
+  const gone = await area.inputValue();
+  expect(!gone.includes('Note one.') && !gone.includes('[fn:1]'), `deleted its definition and reference: ${JSON.stringify(gone)}`);
   await newDocument(page, '* A\nText[fn:b] more[fn::anon].\n\n[fn:b] Bee.\n');
   await run('normalize footnotes');
   const outline = await page.evaluate(async () => {

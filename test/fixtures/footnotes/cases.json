@@ -230,5 +230,460 @@
   "pos": 14,
   "label": "1",
   "expected": null
+ },
+ {
+  "kind": "renumber",
+  "name": "r1",
+  "input": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:3] three\n\n[fn:7] orphan\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n",
+  "expected": "* A\nOne[fn:1] two[fn:2] three[fn:3] again[fn:1].\n\n[fn:2] one\n\n[fn:3] two\n\n[fn:1] three\n\n[fn:4] orphan\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n"
+ },
+ {
+  "kind": "sort",
+  "name": "r1",
+  "input": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:3] three\n\n[fn:7] orphan\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n",
+  "section": "Footnotes",
+  "expected": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n* B\nB text[fn:x].\n\n* Footnotes\n\n[fn:3] three\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:x] ex\n\n[fn:7] orphan\n"
+ },
+ {
+  "kind": "sort",
+  "name": "r1 (no section)",
+  "input": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:3] three\n\n[fn:7] orphan\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n",
+  "section": null,
+  "expected": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:3] three\n\n[fn:1] one\n\n[fn:2] two\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n\n[fn:7] orphan\n"
+ },
+ {
+  "kind": "renumber",
+  "name": "c1",
+  "input": "* A\nOne[fn:q] and unknown[fn:nodef] and [fn::anon [fn:z] nested\ncontinues here].\n\n[fn:q] Q one.\n\n[fn:q] duplicate Q.\n\n[fn:z] Zed.\n\n** Sub\nSub text.[fn:z]\n\n| a | b[fn:t] |\n\n[fn:t] table note\n\n\nAfter two blanks.\n\n* footnotes\n[fn:x] stray\n",
+  "expected": "* A\nOne[fn:q] and unknown[fn:nodef] and [fn::anon [fn:z] nested\ncontinues here].\n\n[fn:q] Q one.\n\n[fn:q] duplicate Q.\n\n[fn:z] Zed.\n\n** Sub\nSub text.[fn:z]\n\n| a | b[fn:t] |\n\n[fn:t] table note\n\n\nAfter two blanks.\n\n* footnotes\n[fn:x] stray\n"
+ },
+ {
+  "kind": "sort",
+  "name": "c1",
+  "input": "* A\nOne[fn:q] and unknown[fn:nodef] and [fn::anon [fn:z] nested\ncontinues here].\n\n[fn:q] Q one.\n\n[fn:q] duplicate Q.\n\n[fn:z] Zed.\n\n** Sub\nSub text.[fn:z]\n\n| a | b[fn:t] |\n\n[fn:t] table note\n\n\nAfter two blanks.\n\n* footnotes\n[fn:x] stray\n",
+  "section": "Footnotes",
+  "expected": "* A\nOne[fn:q] and unknown[fn:nodef] and [fn::anon [fn:z] nested\ncontinues here].\n\n[fn:q] duplicate Q.\n\n** Sub\nSub text.[fn:z]\n\n| a | b[fn:t] |\n\n\nAfter two blanks.\n\n* Footnotes\n\n[fn:q] Q one.\n\n[fn:nodef] DEFINITION NOT FOUND.\n\n[fn:z] Zed.\n\n[fn:t] table note\n\n[fn:x] stray\n"
+ },
+ {
+  "kind": "sort",
+  "name": "c1 (no section)",
+  "input": "* A\nOne[fn:q] and unknown[fn:nodef] and [fn::anon [fn:z] nested\ncontinues here].\n\n[fn:q] Q one.\n\n[fn:q] duplicate Q.\n\n[fn:z] Zed.\n\n** Sub\nSub text.[fn:z]\n\n| a | b[fn:t] |\n\n[fn:t] table note\n\n\nAfter two blanks.\n\n* footnotes\n[fn:x] stray\n",
+  "section": null,
+  "expected": "* A\nOne[fn:q] and unknown[fn:nodef] and [fn::anon [fn:z] nested\ncontinues here].\n\n[fn:q] duplicate Q.\n\n[fn:q] Q one.\n\n[fn:nodef] DEFINITION NOT FOUND.\n\n[fn:z] Zed.\n\n** Sub\nSub text.[fn:z]\n\n| a | b[fn:t] |\n\n\nAfter two blanks.\n\n[fn:t] table note\n\n[fn:x] stray\n\n* footnotes\n"
+ },
+ {
+  "kind": "renumber",
+  "name": "c4",
+  "input": "* A\ntext[fn:1] =code[fn:2]= and ~verb[fn:3]~ and [[http://x.org/a[fn:4]][label]] end\n#+begin_src sh\necho [fn:5]\n#+end_src\n# comment [fn:6]\n: fixed [fn:7]\n#+begin_quote\nquoted[fn:8]\n#+end_quote\n\n[fn:1] one\n[fn:8] eight\n",
+  "expected": "* A\ntext[fn:1] =code[fn:2]= and ~verb[fn:3]~ and [[http://x.org/a[fn:2]][label]] end\n#+begin_src sh\necho [fn:5]\n#+end_src\n# comment [fn:6]\n: fixed [fn:7]\n#+begin_quote\nquoted[fn:3]\n#+end_quote\n\n[fn:1] one\n[fn:3] eight\n"
+ },
+ {
+  "kind": "sort",
+  "name": "c4",
+  "input": "* A\ntext[fn:1] =code[fn:2]= and ~verb[fn:3]~ and [[http://x.org/a[fn:4]][label]] end\n#+begin_src sh\necho [fn:5]\n#+end_src\n# comment [fn:6]\n: fixed [fn:7]\n#+begin_quote\nquoted[fn:8]\n#+end_quote\n\n[fn:1] one\n[fn:8] eight\n",
+  "section": "Footnotes",
+  "expected": "* A\ntext[fn:1] =code[fn:2]= and ~verb[fn:3]~ and [[http://x.org/a[fn:4]][label]] end\n#+begin_src sh\necho [fn:5]\n#+end_src\n# comment [fn:6]\n: fixed [fn:7]\n#+begin_quote\nquoted[fn:8]\n#+end_quote\n\n* Footnotes\n\n[fn:1] one\n\n[fn:4] DEFINITION NOT FOUND.\n\n[fn:8] eight\n"
+ },
+ {
+  "kind": "sort",
+  "name": "c4 (no section)",
+  "input": "* A\ntext[fn:1] =code[fn:2]= and ~verb[fn:3]~ and [[http://x.org/a[fn:4]][label]] end\n#+begin_src sh\necho [fn:5]\n#+end_src\n# comment [fn:6]\n: fixed [fn:7]\n#+begin_quote\nquoted[fn:8]\n#+end_quote\n\n[fn:1] one\n[fn:8] eight\n",
+  "section": null,
+  "expected": "* A\ntext[fn:1] =code[fn:2]= and ~verb[fn:3]~ and [[http://x.org/a[fn:4]][label]] end\n#+begin_src sh\necho [fn:5]\n#+end_src\n# comment [fn:6]\n: fixed [fn:7]\n#+begin_quote\nquoted[fn:8]\n#+end_quote\n\n[fn:1] one\n\n[fn:4] DEFINITION NOT FOUND.\n\n[fn:8] eight\n"
+ },
+ {
+  "kind": "renumber",
+  "name": "c5",
+  "input": "* A\nx[fn:a] y[fn:b]\n[fn:a] A def\n* B\nz[fn:c]\n\n[fn:b] B def\n[fn:c] C def",
+  "expected": "* A\nx[fn:a] y[fn:b]\n[fn:a] A def\n* B\nz[fn:c]\n\n[fn:b] B def\n[fn:c] C def"
+ },
+ {
+  "kind": "sort",
+  "name": "c5",
+  "input": "* A\nx[fn:a] y[fn:b]\n[fn:a] A def\n* B\nz[fn:c]\n\n[fn:b] B def\n[fn:c] C def",
+  "section": "Footnotes",
+  "expected": "* A\nx[fn:a] y[fn:b]\n* B\nz[fn:c]\n\n* Footnotes\n\n[fn:a] A def\n\n[fn:b] B def\n\n[fn:c] C def\n"
+ },
+ {
+  "kind": "sort",
+  "name": "c5 (no section)",
+  "input": "* A\nx[fn:a] y[fn:b]\n[fn:a] A def\n* B\nz[fn:c]\n\n[fn:b] B def\n[fn:c] C def",
+  "section": null,
+  "expected": "* A\nx[fn:a] y[fn:b]\n\n[fn:a] A def\n\n[fn:b] B def\n* B\nz[fn:c]\n\n[fn:c] C def\n"
+ },
+ {
+  "kind": "renumber",
+  "name": "c6",
+  "input": "* A :t:\nx[fn:a]\n\n** Footnotes\n:PROPERTIES:\n:ID: 1\n:END:\n[fn:a] old\n\n* Next\nstuff\n",
+  "expected": "* A :t:\nx[fn:a]\n\n** Footnotes\n:PROPERTIES:\n:ID: 1\n:END:\n[fn:a] old\n\n* Next\nstuff\n"
+ },
+ {
+  "kind": "sort",
+  "name": "c6",
+  "input": "* A :t:\nx[fn:a]\n\n** Footnotes\n:PROPERTIES:\n:ID: 1\n:END:\n[fn:a] old\n\n* Next\nstuff\n",
+  "section": "Footnotes",
+  "expected": "* A :t:\nx[fn:a]\n\n* Next\nstuff\n\n* Footnotes\n\n[fn:a] old\n"
+ },
+ {
+  "kind": "sort",
+  "name": "c6 (no section)",
+  "input": "* A :t:\nx[fn:a]\n\n** Footnotes\n:PROPERTIES:\n:ID: 1\n:END:\n[fn:a] old\n\n* Next\nstuff\n",
+  "section": null,
+  "expected": "* A :t:\nx[fn:a]\n\n[fn:a] old\n\n** Footnotes\n:PROPERTIES:\n:ID: 1\n:END:\n\n* Next\nstuff\n"
+ },
+ {
+  "kind": "renumber",
+  "name": "fn1",
+  "input": "#+TITLE: T\n* One\nText with ref[fn:b] and another[fn:a] and inline[fn::anon inline] and named[fn:nm:named inline] and again[fn:b].\n\n* Two\nMore[fn:c].\n\n[fn:a] Alpha def.\n\n[fn:c] Gamma def\nsecond paragraph line.\n\n* Footnotes\n[fn:b] Beta def.\n",
+  "expected": "#+TITLE: T\n* One\nText with ref[fn:b] and another[fn:a] and inline[fn::anon inline] and named[fn:nm:named inline] and again[fn:b].\n\n* Two\nMore[fn:c].\n\n[fn:a] Alpha def.\n\n[fn:c] Gamma def\nsecond paragraph line.\n\n* Footnotes\n[fn:b] Beta def.\n"
+ },
+ {
+  "kind": "sort",
+  "name": "fn1",
+  "input": "#+TITLE: T\n* One\nText with ref[fn:b] and another[fn:a] and inline[fn::anon inline] and named[fn:nm:named inline] and again[fn:b].\n\n* Two\nMore[fn:c].\n\n[fn:a] Alpha def.\n\n[fn:c] Gamma def\nsecond paragraph line.\n\n* Footnotes\n[fn:b] Beta def.\n",
+  "section": "Footnotes",
+  "expected": "#+TITLE: T\n* One\nText with ref[fn:b] and another[fn:a] and inline[fn::anon inline] and named[fn:nm:named inline] and again[fn:b].\n\n* Two\nMore[fn:c].\n\n* Footnotes\n\n[fn:b] Beta def.\n\n[fn:a] Alpha def.\n\n[fn:c] Gamma def\nsecond paragraph line.\n"
+ },
+ {
+  "kind": "sort",
+  "name": "fn1 (no section)",
+  "input": "#+TITLE: T\n* One\nText with ref[fn:b] and another[fn:a] and inline[fn::anon inline] and named[fn:nm:named inline] and again[fn:b].\n\n* Two\nMore[fn:c].\n\n[fn:a] Alpha def.\n\n[fn:c] Gamma def\nsecond paragraph line.\n\n* Footnotes\n[fn:b] Beta def.\n",
+  "section": null,
+  "expected": "#+TITLE: T\n* One\nText with ref[fn:b] and another[fn:a] and inline[fn::anon inline] and named[fn:nm:named inline] and again[fn:b].\n\n[fn:b] Beta def.\n\n[fn:a] Alpha def.\n\n* Two\nMore[fn:c].\n\n[fn:c] Gamma def\nsecond paragraph line.\n\n* Footnotes\n"
+ },
+ {
+  "kind": "renumber",
+  "name": "fn3",
+  "input": "* A\nRef[fn:x] and nested.\n\n[fn:x] Def with nested[fn:y] ref.\n\n[fn:y] Why.\n\n[fn:orphan] Nobody refers here.\n\n#+begin_src text\ncode[fn:zz]\n#+end_src\n\n* Footnotes :noexport:\nSome intro text.\n\n[fn:late] Late def.\nUse late[fn:late] up top? no.\n",
+  "expected": "* A\nRef[fn:x] and nested.\n\n[fn:x] Def with nested[fn:y] ref.\n\n[fn:y] Why.\n\n[fn:orphan] Nobody refers here.\n\n#+begin_src text\ncode[fn:zz]\n#+end_src\n\n* Footnotes :noexport:\nSome intro text.\n\n[fn:late] Late def.\nUse late[fn:late] up top? no.\n"
+ },
+ {
+  "kind": "sort",
+  "name": "fn3",
+  "input": "* A\nRef[fn:x] and nested.\n\n[fn:x] Def with nested[fn:y] ref.\n\n[fn:y] Why.\n\n[fn:orphan] Nobody refers here.\n\n#+begin_src text\ncode[fn:zz]\n#+end_src\n\n* Footnotes :noexport:\nSome intro text.\n\n[fn:late] Late def.\nUse late[fn:late] up top? no.\n",
+  "section": "Footnotes",
+  "expected": "* A\nRef[fn:x] and nested.\n\n* Footnotes :noexport:\nSome intro text.\n\n* Footnotes\n\n[fn:x] Def with nested[fn:y] ref.\n\n[fn:y] Why.\n\n[fn:late] Late def.\nUse late[fn:late] up top? no.\n\n[fn:orphan] Nobody refers here.\n\n#+begin_src text\ncode[fn:zz]\n#+end_src\n"
+ },
+ {
+  "kind": "sort",
+  "name": "fn3 (no section)",
+  "input": "* A\nRef[fn:x] and nested.\n\n[fn:x] Def with nested[fn:y] ref.\n\n[fn:y] Why.\n\n[fn:orphan] Nobody refers here.\n\n#+begin_src text\ncode[fn:zz]\n#+end_src\n\n* Footnotes :noexport:\nSome intro text.\n\n[fn:late] Late def.\nUse late[fn:late] up top? no.\n",
+  "section": null,
+  "expected": "* A\nRef[fn:x] and nested.\n\n[fn:x] Def with nested[fn:y] ref.\n\n[fn:y] Why.\n\n[fn:late] Late def.\nUse late[fn:late] up top? no.\n\n[fn:orphan] Nobody refers here.\n\n#+begin_src text\ncode[fn:zz]\n#+end_src\n\n* Footnotes :noexport:\nSome intro text.\n"
+ },
+ {
+  "kind": "renumber",
+  "name": "fn5",
+  "input": "* A\nOne[fn:1] two[fn:3] three[fn:9].\n\n[fn:1] a\n[fn:3] c\n[fn:9] i",
+  "expected": "* A\nOne[fn:1] two[fn:2] three[fn:3].\n\n[fn:1] a\n[fn:2] c\n[fn:3] i"
+ },
+ {
+  "kind": "sort",
+  "name": "fn5",
+  "input": "* A\nOne[fn:1] two[fn:3] three[fn:9].\n\n[fn:1] a\n[fn:3] c\n[fn:9] i",
+  "section": "Footnotes",
+  "expected": "* A\nOne[fn:1] two[fn:3] three[fn:9].\n\n* Footnotes\n\n[fn:1] a\n\n[fn:3] c\n\n[fn:9] i\n"
+ },
+ {
+  "kind": "sort",
+  "name": "fn5 (no section)",
+  "input": "* A\nOne[fn:1] two[fn:3] three[fn:9].\n\n[fn:1] a\n[fn:3] c\n[fn:9] i",
+  "section": null,
+  "expected": "* A\nOne[fn:1] two[fn:3] three[fn:9].\n\n[fn:1] a\n\n[fn:3] c\n\n[fn:9] i\n"
+ },
+ {
+  "kind": "delete",
+  "name": "r1 3",
+  "input": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:3] three\n\n[fn:7] orphan\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n",
+  "label": "3",
+  "autoAdjust": "nil",
+  "expected": "* A\nOne two[fn:1] three[fn:2] again.\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:7] orphan\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n"
+ },
+ {
+  "kind": "delete",
+  "name": "r1 3 (auto-adjust)",
+  "input": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:3] three\n\n[fn:7] orphan\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n",
+  "label": "3",
+  "autoAdjust": "t",
+  "expected": "* A\nOne two[fn:1] three[fn:2] again.\n\n* B\nB text[fn:x].\n\n* Footnotes\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:x] ex\n\n[fn:3] orphan\n"
+ },
+ {
+  "kind": "delete",
+  "name": "r1 7",
+  "input": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:3] three\n\n[fn:7] orphan\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n",
+  "label": "7",
+  "autoAdjust": "nil",
+  "expected": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:3] three\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n"
+ },
+ {
+  "kind": "delete",
+  "name": "r1 7 (auto-adjust)",
+  "input": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:3] three\n\n[fn:7] orphan\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n",
+  "label": "7",
+  "autoAdjust": "t",
+  "expected": "* A\nOne[fn:1] two[fn:2] three[fn:3] again[fn:1].\n\n* B\nB text[fn:x].\n\n* Footnotes\n\n[fn:1] three\n\n[fn:2] one\n\n[fn:3] two\n\n[fn:x] ex\n"
+ },
+ {
+  "kind": "delete",
+  "name": "r1 x",
+  "input": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:3] three\n\n[fn:7] orphan\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n",
+  "label": "x",
+  "autoAdjust": "nil",
+  "expected": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:3] three\n\n[fn:7] orphan\n\n* B\nB text.\n"
+ },
+ {
+  "kind": "delete",
+  "name": "r1 x (auto-adjust)",
+  "input": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:3] three\n\n[fn:7] orphan\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n",
+  "label": "x",
+  "autoAdjust": "t",
+  "expected": "* A\nOne[fn:1] two[fn:2] three[fn:3] again[fn:1].\n\n* B\nB text.\n\n* Footnotes\n\n[fn:1] three\n\n[fn:2] one\n\n[fn:3] two\n\n[fn:4] orphan\n"
+ },
+ {
+  "kind": "delete",
+  "name": "r1 nope",
+  "input": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:3] three\n\n[fn:7] orphan\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n",
+  "label": "nope",
+  "autoAdjust": "nil",
+  "expected": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:3] three\n\n[fn:7] orphan\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n"
+ },
+ {
+  "kind": "delete",
+  "name": "r1 nope (auto-adjust)",
+  "input": "* A\nOne[fn:3] two[fn:1] three[fn:2] again[fn:3].\n\n[fn:1] one\n\n[fn:2] two\n\n[fn:3] three\n\n[fn:7] orphan\n\n* B\nB text[fn:x].\n\n[fn:x] ex\n",
+  "label": "nope",
+  "autoAdjust": "t",
+  "expected": "* A\nOne[fn:1] two[fn:2] three[fn:3] again[fn:1].\n\n* B\nB text[fn:x].\n\n* Footnotes\n\n[fn:1] three\n\n[fn:2] one\n\n[fn:3] two\n\n[fn:x] ex\n\n[fn:4] orphan\n"
+ },
+ {
+  "kind": "delete",
+  "name": "c1 q",
+  "input": "* A\nOne[fn:q] and unknown[fn:nodef] and [fn::anon [fn:z] nested\ncontinues here].\n\n[fn:q] Q one.\n\n[fn:q] duplicate Q.\n\n[fn:z] Zed.\n\n** Sub\nSub text.[fn:z]\n\n| a | b[fn:t] |\n\n[fn:t] table note\n\n\nAfter two blanks.\n\n* footnotes\n[fn:x] stray\n",
+  "label": "q",
+  "autoAdjust": "nil",
+  "expected": "* A\nOne and unknown[fn:nodef] and [fn::anon [fn:z] nested\ncontinues here].\n\n[fn:z] Zed.\n\n** Sub\nSub text.[fn:z]\n\n| a | b[fn:t] |\n\n[fn:t] table note\n\n\nAfter two blanks.\n\n* footnotes\n[fn:x] stray\n"
+ },
+ {
+  "kind": "delete",
+  "name": "c1 q (auto-adjust)",
+  "input": "* A\nOne[fn:q] and unknown[fn:nodef] and [fn::anon [fn:z] nested\ncontinues here].\n\n[fn:q] Q one.\n\n[fn:q] duplicate Q.\n\n[fn:z] Zed.\n\n** Sub\nSub text.[fn:z]\n\n| a | b[fn:t] |\n\n[fn:t] table note\n\n\nAfter two blanks.\n\n* footnotes\n[fn:x] stray\n",
+  "label": "q",
+  "autoAdjust": "t",
+  "expected": "* A\nOne and unknown[fn:nodef] and [fn::anon [fn:z] nested\ncontinues here].\n\n** Sub\nSub text.[fn:z]\n\n| a | b[fn:t] |\n\n\nAfter two blanks.\n\n* Footnotes\n\n[fn:nodef] DEFINITION NOT FOUND.\n\n[fn:z] Zed.\n\n[fn:t] table note\n\n[fn:x] stray\n"
+ },
+ {
+  "kind": "delete",
+  "name": "c1 z",
+  "input": "* A\nOne[fn:q] and unknown[fn:nodef] and [fn::anon [fn:z] nested\ncontinues here].\n\n[fn:q] Q one.\n\n[fn:q] duplicate Q.\n\n[fn:z] Zed.\n\n** Sub\nSub text.[fn:z]\n\n| a | b[fn:t] |\n\n[fn:t] table note\n\n\nAfter two blanks.\n\n* footnotes\n[fn:x] stray\n",
+  "label": "z",
+  "autoAdjust": "nil",
+  "expected": "* A\nOne[fn:q] and unknown[fn:nodef] and [fn::anon  nested\ncontinues here].\n\n[fn:q] Q one.\n\n[fn:q] duplicate Q.\n\n** Sub\nSub text.\n\n| a | b[fn:t] |\n\n[fn:t] table note\n\n\nAfter two blanks.\n\n* footnotes\n[fn:x] stray\n"
+ },
+ {
+  "kind": "delete",
+  "name": "c1 z (auto-adjust)",
+  "input": "* A\nOne[fn:q] and unknown[fn:nodef] and [fn::anon [fn:z] nested\ncontinues here].\n\n[fn:q] Q one.\n\n[fn:q] duplicate Q.\n\n[fn:z] Zed.\n\n** Sub\nSub text.[fn:z]\n\n| a | b[fn:t] |\n\n[fn:t] table note\n\n\nAfter two blanks.\n\n* footnotes\n[fn:x] stray\n",
+  "label": "z",
+  "autoAdjust": "t",
+  "expected": "* A\nOne[fn:q] and unknown[fn:nodef] and [fn::anon  nested\ncontinues here].\n\n[fn:q] duplicate Q.\n\n** Sub\nSub text.\n\n| a | b[fn:t] |\n\n\nAfter two blanks.\n\n* Footnotes\n\n[fn:q] Q one.\n\n[fn:nodef] DEFINITION NOT FOUND.\n\n[fn:t] table note\n\n[fn:x] stray\n"
+ },
+ {
+  "kind": "delete",
+  "name": "c4 1",
+  "input": "* A\ntext[fn:1] =code[fn:2]= and ~verb[fn:3]~ and [[http://x.org/a[fn:4]][label]] end\n#+begin_src sh\necho [fn:5]\n#+end_src\n# comment [fn:6]\n: fixed [fn:7]\n#+begin_quote\nquoted[fn:8]\n#+end_quote\n\n[fn:1] one\n[fn:8] eight\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "expected": "* A\ntext =code[fn:2]= and ~verb[fn:3]~ and [[http://x.org/a[fn:4]][label]] end\n#+begin_src sh\necho [fn:5]\n#+end_src\n# comment [fn:6]\n: fixed [fn:7]\n#+begin_quote\nquoted[fn:8]\n#+end_quote\n[fn:8] eight\n"
+ },
+ {
+  "kind": "delete",
+  "name": "c4 1 (auto-adjust)",
+  "input": "* A\ntext[fn:1] =code[fn:2]= and ~verb[fn:3]~ and [[http://x.org/a[fn:4]][label]] end\n#+begin_src sh\necho [fn:5]\n#+end_src\n# comment [fn:6]\n: fixed [fn:7]\n#+begin_quote\nquoted[fn:8]\n#+end_quote\n\n[fn:1] one\n[fn:8] eight\n",
+  "label": "1",
+  "autoAdjust": "t",
+  "expected": "* A\ntext =code[fn:2]= and ~verb[fn:3]~ and [[http://x.org/a[fn:1]][label]] end\n#+begin_src sh\necho [fn:5]\n#+end_src\n# comment [fn:6]\n: fixed [fn:7]\n#+begin_quote\nquoted[fn:2]\n#+end_quote\n\n* Footnotes\n\n[fn:1] DEFINITION NOT FOUND.\n\n[fn:2] eight\n"
+ },
+ {
+  "kind": "delete",
+  "name": "c5 b",
+  "input": "* A\nx[fn:a] y[fn:b]\n[fn:a] A def\n* B\nz[fn:c]\n\n[fn:b] B def\n[fn:c] C def",
+  "label": "b",
+  "autoAdjust": "nil",
+  "expected": "* A\nx[fn:a] y\n[fn:a] A def\n* B\nz[fn:c]\n[fn:c] C def"
+ },
+ {
+  "kind": "delete",
+  "name": "c5 b (auto-adjust)",
+  "input": "* A\nx[fn:a] y[fn:b]\n[fn:a] A def\n* B\nz[fn:c]\n\n[fn:b] B def\n[fn:c] C def",
+  "label": "b",
+  "autoAdjust": "t",
+  "expected": "* A\nx[fn:a] y\n* B\nz[fn:c]\n\n* Footnotes\n\n[fn:a] A def\n\n[fn:c] C def\n"
+ },
+ {
+  "kind": "delete",
+  "name": "fn1 nm",
+  "input": "#+TITLE: T\n* One\nText with ref[fn:b] and another[fn:a] and inline[fn::anon inline] and named[fn:nm:named inline] and again[fn:b].\n\n* Two\nMore[fn:c].\n\n[fn:a] Alpha def.\n\n[fn:c] Gamma def\nsecond paragraph line.\n\n* Footnotes\n[fn:b] Beta def.\n",
+  "label": "nm",
+  "autoAdjust": "nil",
+  "expected": "#+TITLE: T\n* One\nText with ref[fn:b] and another[fn:a] and inline[fn::anon inline] and named and again[fn:b].\n\n* Two\nMore[fn:c].\n\n[fn:a] Alpha def.\n\n[fn:c] Gamma def\nsecond paragraph line.\n\n* Footnotes\n[fn:b] Beta def.\n"
+ },
+ {
+  "kind": "delete",
+  "name": "fn1 nm (auto-adjust)",
+  "input": "#+TITLE: T\n* One\nText with ref[fn:b] and another[fn:a] and inline[fn::anon inline] and named[fn:nm:named inline] and again[fn:b].\n\n* Two\nMore[fn:c].\n\n[fn:a] Alpha def.\n\n[fn:c] Gamma def\nsecond paragraph line.\n\n* Footnotes\n[fn:b] Beta def.\n",
+  "label": "nm",
+  "autoAdjust": "t",
+  "expected": "#+TITLE: T\n* One\nText with ref[fn:b] and another[fn:a] and inline[fn::anon inline] and named and again[fn:b].\n\n* Two\nMore[fn:c].\n\n* Footnotes\n\n[fn:b] Beta def.\n\n[fn:a] Alpha def.\n\n[fn:c] Gamma def\nsecond paragraph line.\n"
+ },
+ {
+  "kind": "delete",
+  "name": "fn3 x",
+  "input": "* A\nRef[fn:x] and nested.\n\n[fn:x] Def with nested[fn:y] ref.\n\n[fn:y] Why.\n\n[fn:orphan] Nobody refers here.\n\n#+begin_src text\ncode[fn:zz]\n#+end_src\n\n* Footnotes :noexport:\nSome intro text.\n\n[fn:late] Late def.\nUse late[fn:late] up top? no.\n",
+  "label": "x",
+  "autoAdjust": "nil",
+  "expected": "* A\nRef and nested.\n\n[fn:y] Why.\n\n[fn:orphan] Nobody refers here.\n\n#+begin_src text\ncode[fn:zz]\n#+end_src\n\n* Footnotes :noexport:\nSome intro text.\n\n[fn:late] Late def.\nUse late[fn:late] up top? no.\n"
+ },
+ {
+  "kind": "delete",
+  "name": "fn3 x (auto-adjust)",
+  "input": "* A\nRef[fn:x] and nested.\n\n[fn:x] Def with nested[fn:y] ref.\n\n[fn:y] Why.\n\n[fn:orphan] Nobody refers here.\n\n#+begin_src text\ncode[fn:zz]\n#+end_src\n\n* Footnotes :noexport:\nSome intro text.\n\n[fn:late] Late def.\nUse late[fn:late] up top? no.\n",
+  "label": "x",
+  "autoAdjust": "t",
+  "expected": "* A\nRef and nested.\n\n* Footnotes :noexport:\nSome intro text.\n\n* Footnotes\n\n[fn:late] Late def.\nUse late[fn:late] up top? no.\n\n[fn:orphan] Nobody refers here.\n\n#+begin_src text\ncode[fn:zz]\n#+end_src\n\n[fn:y] Why.\n"
+ },
+ {
+  "kind": "new",
+  "name": "a2 at 12 label 2 (auto-adjust t)",
+  "input": "* A\nOne[fn:3] two[fn:1] here.\n\n[fn:1] one\n\n[fn:3] three\n\n* B\nB text.\n",
+  "pos": 12,
+  "label": "2",
+  "autoAdjust": "t",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "a2 at 12 label 2 (auto-adjust renumber)",
+  "input": "* A\nOne[fn:3] two[fn:1] here.\n\n[fn:1] one\n\n[fn:3] three\n\n* B\nB text.\n",
+  "pos": 12,
+  "label": "2",
+  "autoAdjust": "renumber",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "a2 at 12 label 2 (auto-adjust sort)",
+  "input": "* A\nOne[fn:3] two[fn:1] here.\n\n[fn:1] one\n\n[fn:3] three\n\n* B\nB text.\n",
+  "pos": 12,
+  "label": "2",
+  "autoAdjust": "sort",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "a2 at 12 label 9 (auto-adjust t)",
+  "input": "* A\nOne[fn:3] two[fn:1] here.\n\n[fn:1] one\n\n[fn:3] three\n\n* B\nB text.\n",
+  "pos": 12,
+  "label": "9",
+  "autoAdjust": "t",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "a2 at 12 label 9 (auto-adjust renumber)",
+  "input": "* A\nOne[fn:3] two[fn:1] here.\n\n[fn:1] one\n\n[fn:3] three\n\n* B\nB text.\n",
+  "pos": 12,
+  "label": "9",
+  "autoAdjust": "renumber",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "a2 at 12 label 9 (auto-adjust sort)",
+  "input": "* A\nOne[fn:3] two[fn:1] here.\n\n[fn:1] one\n\n[fn:3] three\n\n* B\nB text.\n",
+  "pos": 12,
+  "label": "9",
+  "autoAdjust": "sort",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "a2 at 12 label 1 (auto-adjust t)",
+  "input": "* A\nOne[fn:3] two[fn:1] here.\n\n[fn:1] one\n\n[fn:3] three\n\n* B\nB text.\n",
+  "pos": 12,
+  "label": "1",
+  "autoAdjust": "t",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "a2 at 12 label 1 (auto-adjust renumber)",
+  "input": "* A\nOne[fn:3] two[fn:1] here.\n\n[fn:1] one\n\n[fn:3] three\n\n* B\nB text.\n",
+  "pos": 12,
+  "label": "1",
+  "autoAdjust": "renumber",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "a2 at 12 label 1 (auto-adjust sort)",
+  "input": "* A\nOne[fn:3] two[fn:1] here.\n\n[fn:1] one\n\n[fn:3] three\n\n* B\nB text.\n",
+  "pos": 12,
+  "label": "1",
+  "autoAdjust": "sort",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "a2 at 12 label null (auto-adjust t)",
+  "input": "* A\nOne[fn:3] two[fn:1] here.\n\n[fn:1] one\n\n[fn:3] three\n\n* B\nB text.\n",
+  "pos": 12,
+  "label": null,
+  "autoAdjust": "t",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "a2 at 12 label null (auto-adjust renumber)",
+  "input": "* A\nOne[fn:3] two[fn:1] here.\n\n[fn:1] one\n\n[fn:3] three\n\n* B\nB text.\n",
+  "pos": 12,
+  "label": null,
+  "autoAdjust": "renumber",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "a2 at 12 label null (auto-adjust sort)",
+  "input": "* A\nOne[fn:3] two[fn:1] here.\n\n[fn:1] one\n\n[fn:3] three\n\n* B\nB text.\n",
+  "pos": 12,
+  "label": null,
+  "autoAdjust": "sort",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "n2 at 18 label 5 (auto-adjust t)",
+  "input": "* One\nSome text[fn:1] here.\n\n[fn:1] first\n\n* Footnotes\n\n[fn:2] second\n\n* Tail\nx\n",
+  "pos": 18,
+  "label": "5",
+  "autoAdjust": "t",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "n2 at 18 label 5 (auto-adjust renumber)",
+  "input": "* One\nSome text[fn:1] here.\n\n[fn:1] first\n\n* Footnotes\n\n[fn:2] second\n\n* Tail\nx\n",
+  "pos": 18,
+  "label": "5",
+  "autoAdjust": "renumber",
+  "expected": null
+ },
+ {
+  "kind": "new",
+  "name": "n2 at 18 label 5 (auto-adjust sort)",
+  "input": "* One\nSome text[fn:1] here.\n\n[fn:1] first\n\n* Footnotes\n\n[fn:2] second\n\n* Tail\nx\n",
+  "pos": 18,
+  "label": "5",
+  "autoAdjust": "sort",
+  "expected": null
  }
 ]

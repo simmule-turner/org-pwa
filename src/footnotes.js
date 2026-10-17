@@ -16,12 +16,12 @@ const REF_START_RE = new RegExp(`\\[fn:(?:(${WORD}+)?(:)|(${WORD}+)\\])`, 'uy');
 const FORBIDDEN_BLOCKS = new Set(['comment', 'example', 'export', 'src']);
 
 /**
- * @typedef {{ section: string | null, defineInline: boolean }} FootnoteOptions
+ * @typedef {{ section: string | null, defineInline: boolean, autoAdjust: 'nil' | 'renumber' | 'sort' | 't' }} FootnoteOptions
  * @typedef {{ label: string | null, begin: number, end: number, inline: boolean, contentsBegin: number, contentsEnd: number, top: boolean }} FootnoteRef
  */
 
 /** @type {FootnoteOptions} */
-export const footnoteDefaults = { section: 'Footnotes', defineInline: false };
+export const footnoteDefaults = { section: 'Footnotes', defineInline: false, autoAdjust: 'nil' };
 
 // ---- a text with positions that follow edits (the markers of Emacs) ---------------------------------------------
 
@@ -31,6 +31,8 @@ class Buf {
     this.text = text;
     /** @type {{ at: number }[]} */
     this.marks = [];
+    /** where the last definition was taken out (Org's point is left there) */
+    this.lastDelete = 0;
   }
 
   /** @param {number} at */
@@ -310,6 +312,7 @@ function takeDefinitions(buf) {
     const end = nl < 0 ? text.length : nl + 1;
     found.unshift({ label: el.label, def: text.slice(beg, end).trim() });
     buf.replace(beg, end, '');
+    buf.lastDelete = beg;
     searchFrom = beg;
   }
   return found;
@@ -503,6 +506,154 @@ export function normalizeFootnotes(text, options) {
   return buf.text;
 }
 
+// ---- renumbering, sorting, deleting ----------------------------------------------------------------------------------
+
+/** Order the numbered footnotes (fn:1, fn:2, ...) by their first reference; definitions nobody refers to follow
+ * (org-footnote-renumber-fn:N). Returns the new text and which new number each old one got.
+ * @param {string} text @returns {{ text: string, map: Map<string, string> }} */
+export function renumberFootnotes(text) {
+  const refs = collectReferences(text, false).filter((r) => /^[0-9]+$/.test(/** @type {string} */ (r.label)));
+  /** @type {Map<string, string>} */
+  const map = new Map();
+  let c = 0;
+  for (const r of refs) if (!map.has(/** @type {string} */ (r.label))) map.set(/** @type {string} */ (r.label), String(++c));
+  const buf = new Buf(text);
+  const marks = refs.map((r) => buf.mark(r.begin));
+  refs.forEach((r, i) => {
+    const at = marks[i].at + 4;
+    const word = new RegExp(`^${WORD}+`, 'u').exec(buf.text.slice(at));
+    if (word) buf.replace(at, at + word[0].length, /** @type {string} */ (map.get(/** @type {string} */ (r.label))));
+  });
+  const re = /^\[fn:([0-9]+)\]/gm;
+  let m;
+  while ((m = re.exec(buf.text))) {
+    const to = map.get(m[1]) ?? String(++c);
+    buf.replace(m.index + 4, m.index + 4 + m[1].length, to);
+    re.lastIndex = m.index + 4 + to.length;
+  }
+  return { text: buf.text, map };
+}
+
+/** Rearrange the definitions to follow the order of their references, in the footnote section or at the end of the
+ * section holding each reference; inline footnotes are left alone (org-footnote-sort).
+ * @param {string} text @param {Partial<FootnoteOptions>} [options] @returns {string} */
+export function sortFootnotes(text, options) {
+  const opt = { ...footnoteDefaults, ...options };
+  const refs = collectReferences(text, false);
+  const buf = new Buf(text);
+  const marks = new Map(refs.map((r) => [r, buf.mark(r.begin)]));
+  const definitions = takeDefinitions(buf);
+  const point = buf.mark(opt.section ? clearFootnoteSection(buf, opt.section) : buf.lastDelete);
+  const inserted = new Set();
+  /** @param {string} entry */
+  const put = (entry) => {
+    const at = point.at;
+    buf.insert(at, '\n' + entry + '\n');
+    point.at = at + entry.length + 2;
+  };
+  for (const r of refs) {
+    const label = /** @type {string} */ (r.label);
+    if (inserted.has(label) || r.inline) continue;
+    inserted.add(label);
+    if (!opt.section && r.top) point.at = localInsertionPoint(buf, /** @type {{ at: number }} */ (marks.get(r)).at);
+    const found = definitions.find((d) => d.label === label);
+    put(found ? found.def : `[fn:${label}] DEFINITION NOT FOUND.`);
+  }
+  for (const d of definitions) if (!inserted.has(d.label)) put(d.def);
+  return buf.text;
+}
+
+/** Renumber and/or sort after a change, as org-footnote-auto-adjust asks.
+ * @param {string} text @param {Partial<FootnoteOptions>} [options] @returns {{ text: string, map: Map<string, string> }} */
+export function adjustFootnotes(text, options) {
+  const opt = { ...footnoteDefaults, ...options };
+  let map = /** @type {Map<string, string>} */ (new Map());
+  if (opt.autoAdjust === 't' || opt.autoAdjust === 'renumber') {
+    const r = renumberFootnotes(text);
+    text = r.text;
+    map = r.map;
+  }
+  if (opt.autoAdjust === 't' || opt.autoAdjust === 'sort') text = sortFootnotes(text, opt);
+  return { text, map };
+}
+
+/** Removes every definition of `label` (and the blank lines before each); returns how many.
+ * @param {Buf} buf @param {string} label */
+function removeDefinitionsOf(buf, label) {
+  let count = 0;
+  let searchFrom = 0;
+  for (;;) {
+    const { elements } = findDefinitionElements(buf.text);
+    const el = elements.find((e) => e.begin >= searchFrom && e.label === label);
+    if (!el) break;
+    const text = buf.text;
+    let b = el.begin;
+    while (b > 0 && /[ \r\t\n]/.test(text[b - 1])) b--;
+    let beg = 0;
+    if (b !== 0) {
+      const nl0 = text.indexOf('\n', b);
+      beg = nl0 < 0 ? text.length : nl0 + 1;
+    }
+    let e = el.end;
+    while (e > 0 && /[ \r\t\n]/.test(text[e - 1])) e--;
+    const nl = text.indexOf('\n', e);
+    buf.replace(beg, nl < 0 ? text.length : nl + 1, '');
+    count++;
+    searchFrom = beg;
+  }
+  return count;
+}
+
+/** Deletes footnote `label`: its definitions and every reference to it (org-footnote-delete).
+ * @param {string} text @param {string} label @param {Partial<FootnoteOptions>} [options]
+ * @returns {{ text: string, references: number, definitions: number }} */
+export function deleteFootnote(text, label, options) {
+  const buf = new Buf(text);
+  let references = 0;
+  for (;;) {
+    const ref = scanReferences(buf.text).find((r) => r.label === label);
+    if (!ref) break;
+    buf.replace(ref.begin, ref.end, '');
+    references++;
+  }
+  const definitions = removeDefinitionsOf(buf, label);
+  return { text: adjustFootnotes(buf.text, options).text, references, definitions };
+}
+
+/** What a footnote is at `pos`: a reference or its definition label, to act on (org-footnote-at-reference-p and -at-definition-p).
+ * @param {string} text @param {number} pos
+ * @returns {{ kind: 'reference', label: string | null, begin: number, end: number, inline: boolean, contentsBegin: number } | { kind: 'definition', label: string, begin: number, end: number, onLabel: boolean } | null} */
+export function footnoteAt(text, pos) {
+  for (const r of scanReferences(text)) {
+    if (pos >= r.begin && pos < r.end) return { kind: 'reference', label: r.label, begin: r.begin, end: r.end, inline: r.inline, contentsBegin: r.contentsBegin };
+  }
+  for (const d of findDefinitionElements(text).elements) {
+    let e = d.end;
+    while (e > d.begin && /[ \r\t\n]/.test(text[e - 1])) e--;
+    if (pos >= d.begin && pos <= e) return { kind: 'definition', label: d.label, begin: d.begin, end: e, onLabel: pos <= d.begin + d.label.length + 5 };
+  }
+  return null;
+}
+
+/** Where the definition of `label` is: where the cursor goes to write in it (org-footnote-goto-definition), or null.
+ * @param {string} text @param {string} label */
+export function findFootnoteDefinition(text, label) {
+  const def = findDefinitionElements(text).elements.find((d) => d.label === label);
+  const inline = scanReferences(text).find((r) => r.label === label && r.inline);
+  if (def && (!inline || def.begin < inline.begin)) return { begin: def.begin, cursor: def.begin + label.length + 5 };
+  if (inline) return { begin: inline.begin, cursor: inline.begin + label.length + 5 };
+  return null;
+}
+
+/** The reference to `label` nearest before `pos`, or the first after it (org-footnote-goto-previous-reference); null if none.
+ * @param {string} text @param {number} pos @param {string} label */
+export function findFootnoteReference(text, pos, label) {
+  const refs = scanReferences(text).filter((r) => r.label === label);
+  let before = null;
+  for (const r of refs) if (r.begin < pos) before = r;
+  return before || refs.find((r) => r.begin >= pos) || null;
+}
+
 // ---- org-footnote-new --------------------------------------------------------------------------------------------
 
 /** Whether a footnote reference can be typed at `pos` (org-footnote--allow-reference-p).
@@ -540,6 +691,42 @@ export function canInsertFootnoteAt(text, pos) {
   return true;
 }
 
+/** Starts the definition of `label` in the footnote section (org-footnote-create-definition) and returns the text and the cursor
+ * position for writing it.
+ * @param {string} text @param {string} label @param {Partial<FootnoteOptions>} [options]
+ * @returns {{ text: string, cursor: number }} */
+export function createFootnoteDefinition(text, label, options) {
+  const opt = { ...footnoteDefaults, ...options };
+  const buf = new Buf(text);
+  let at;
+  if (!opt.section) {
+    at = text.length;
+    if (at > 0 && buf.text[at - 1] !== '\n') {
+      buf.insert(at, '\n');
+      at++;
+    }
+  } else {
+    const start = existingSectionStart(buf.text, opt.section);
+    if (start === null) at = clearFootnoteSection(buf, opt.section);
+    else {
+      at = start;
+      if (at > 0 && buf.text[at - 1] !== '\n') {
+        buf.insert(at, '\n');
+        at++;
+      }
+    }
+  }
+  const back = backOverEmptyLines(buf.text, at);
+  at = back.pos;
+  if (back.count === 0) {
+    buf.insert(at, '\n');
+    at++;
+  }
+  const entry = `[fn:${label}] `;
+  buf.insert(at, entry + '\n');
+  return { text: buf.text, cursor: at + entry.length };
+}
+
 /** Inserts a new footnote at `pos`. `label` is null for an anonymous one, the name of an existing footnote for another
  * reference to it, or a new label for a footnote with a definition. Returns the new text and where the cursor goes (in the
  * definition when there is one to write), or null where a footnote can't go.
@@ -560,7 +747,11 @@ export function insertFootnote(text, pos, label, options) {
   }
   if (opt.defineInline) {
     buf.insert(pos, `[fn:${label}:]`);
-    return { text: buf.text, cursor: pos + label.length + 5, existing: false };
+    if (opt.autoAdjust === 'nil') return { text: buf.text, cursor: pos + label.length + 5, existing: false };
+    const adjusted = adjustFootnotes(buf.text, opt);
+    const now = adjusted.map.get(label) ?? label;
+    const ref = scanReferences(adjusted.text).find((r) => r.label === now && r.inline && r.contentsEnd === r.contentsBegin);
+    return { text: adjusted.text, cursor: ref ? ref.contentsBegin : pos + label.length + 5, existing: false };
   }
   buf.insert(pos, `[fn:${label}]`);
   const entry = `[fn:${label}] `;
@@ -586,5 +777,15 @@ export function insertFootnote(text, pos, label, options) {
     at++;
   }
   buf.insert(at, entry + '\n');
-  return { text: buf.text, cursor: at + entry.length, existing: false };
+  if (opt.autoAdjust === 'nil') return { text: buf.text, cursor: at + entry.length, existing: false };
+  const adjusted = adjustFootnotes(buf.text, opt);
+  const now = adjusted.map.get(label) ?? label;
+  let result = adjusted.text;
+  if (opt.autoAdjust === 't' || opt.autoAdjust === 'sort') {
+    // sorting trims the definition; Org then puts one space back after the label, where the cursor is
+    const line = new RegExp(`^\\[fn:${now.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\][ \\t]*`, 'm').exec(result);
+    if (line) result = result.slice(0, line.index) + `[fn:${now}] ` + result.slice(line.index + line[0].length);
+  }
+  const where = findFootnoteDefinition(result, now);
+  return { text: result, cursor: where ? where.cursor + 1 : result.length, existing: false };
 }

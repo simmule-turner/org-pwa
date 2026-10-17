@@ -331,11 +331,14 @@ Table cells render inline markup too. Tap a cell to see and edit its raw text, a
 :CUSTOM_ID: footnotes
 :END:
 
-*Insert footnote* (~org-footnote-new~, ~C-c C-x f~, palette) puts a reference at the cursor in Text view and starts its definition under a ~* Footnotes~ heading at the end of the file, with the cursor ready to write it. The label is the next unused number; typing the label of an existing footnote adds another reference to it, and an empty label makes an anonymous ~[fn::]~. It is refused where Org refuses a footnote (start of a line, source blocks, comments, links, inside another reference).
+In Text view, *Footnote* (~org-footnote-action~, ~C-c C-x f~, palette) does the right thing at the cursor: on a reference it jumps to the definition (offering to create one if there is none), on a definition's label it jumps back to the reference, and anywhere else it adds a new footnote. Where a footnote can't go (start of a line, source blocks, comments, links, inside another reference) it offers the one-key menu: ~s~ort, ~r~enumber, ~S~ both, ~n~ormalize, ~d~elete.
 
-*Normalize footnotes* (~org-footnote-normalize~, palette) turns every footnote into a numbered one in reading order: inline and anonymous notes become definitions, and all definitions move under ~* Footnotes~, with ~DEFINITION NOT FOUND.~ for a reference nobody defined. It works from any view and Undo reverses it.
+- *Insert footnote* (~org-footnote-new~): a reference at the cursor and the start of its definition under ~* Footnotes~ at the end of the file, with the cursor there to write it. The label is the next unused number; an existing label adds another reference to it, and an empty one makes an anonymous ~[fn::]~.
+- *Normalize footnotes* (~org-footnote-normalize~): every footnote becomes a numbered one in reading order, inline and anonymous notes become definitions, and all definitions move under ~* Footnotes~ (~DEFINITION NOT FOUND.~ for a reference nobody defined).
+- *Sort footnotes* (~org-footnote-sort~) puts the definitions in the order of their references. *Renumber footnotes* (~org-footnote-renumber-fn:N~) numbers ~fn:1~, ~fn:2~… by first reference.
+- *Delete footnote* (~org-footnote-delete~): the one at the cursor, or the label you give, with every definition and reference.
 
-Settings: ~org-footnote-section~ (the heading; ~nil~ keeps each definition at the end of its own section), ~org-footnote-auto-label~ (~t~, ~confirm~, ~nil~ or ~random~) and ~org-footnote-define-inline~.
+Sort, renumber, normalize and delete work from any view, and Undo reverses them. Settings: ~org-footnote-section~ (the heading; ~nil~ keeps each definition at the end of its own section), ~org-footnote-auto-label~, ~org-footnote-define-inline~ and ~org-footnote-auto-adjust~ (renumber and/or sort after adding or deleting). ~#+STARTUP:~ accepts ~fninline~, ~fnlocal~, ~fnauto~, ~fnprompt~, ~fnconfirm~, ~fnplain~, ~fnadjust~ and ~nofnadjust~.
 
 *** LaTeX math fragments
 :PROPERTIES:
@@ -595,6 +598,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-footnote-section~ | ~Footnotes~ | Heading that holds footnote definitions; ~nil~ puts each at the end of its own section (see [[#footnotes][Footnote commands]]) |
 | ~org-footnote-auto-label~ | ~t~ | Label for a new footnote: ~t~ next number, ~confirm~ next number you can edit, ~nil~ ask, ~random~ |
 | ~org-footnote-define-inline~ | ~nil~ | Write new footnotes as ~[fn:label:text]~ at the reference |
+| ~org-footnote-auto-adjust~ | ~nil~ | After adding or deleting a footnote: ~renumber~ fn:N, ~sort~ the definitions, both (~t~) or neither |
 | ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (~** COMMENT draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
 | ~org-xx-agenda-hide-title-stamps~ | ~t~ | Leave active timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written |
 | ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
@@ -2013,7 +2017,7 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Tables* (see [[#table-formulas][Table formulas]]): ~#+TBLFM:~ covers arithmetic, conditionals, named constants, scalar and aggregate functions, date and time arithmetic and formatting, and unit conversion. Complex numbers and basic vectors and matrices are covered; not reproduced: the rest of Emacs Calc (symbolic algebra), named-field references, and recalculation on every keystroke.
 
-*Footnotes* (see [[#footnotes][Footnote commands]]): no ~org-footnote-sort~, ~org-footnote-delete~ or ~org-footnote-auto-adjust~, Insert footnote needs Text view, and there is no ~org-ref~ integration.
+*Footnotes* (see [[#footnotes][Footnote commands]]): the commands that need a cursor (Footnote, Insert footnote) work in Text view, and there is no ~org-ref~ integration.
 
 *Clocking* (see [[#clocking][Clocking]]): no custom ~org-duration-units~, no ~Effort_ALL+~, and no clock-in reminder beyond the modeline's over-estimate marker.
 

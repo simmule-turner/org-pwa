@@ -285,6 +285,20 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#footnotes',
   },
   {
+    key: 'org-footnote-auto-adjust',
+    label: 'After adding or deleting a footnote',
+    section: 'Footnotes',
+    type: 'select',
+    default: 'nil',
+    options: [
+      { value: 'nil', label: 'Leave the others alone' },
+      { value: 'renumber', label: 'Renumber fn:N' },
+      { value: 'sort', label: 'Sort the definitions' },
+      { value: 't', label: 'Renumber and sort' },
+    ],
+    helpAnchor: '#footnotes',
+  },
+  {
     key: 'org-footnote-define-inline',
     label: 'Write new footnotes inline, where they are cited',
     section: 'Footnotes',

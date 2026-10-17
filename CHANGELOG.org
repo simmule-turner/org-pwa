@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v542 — The rest of the footnote commands
+Footnote (=C-c C-x f=) now jumps between a reference and its definition and offers the menu Emacs does, and Sort, Renumber (fn:N), Delete and the =org-footnote-auto-adjust= setting join Insert and Normalize, with =#+STARTUP: fnadjust= and the other footnote keywords. Everything follows Emacs 29.3 on 90 recorded cases.
+Verified: browser checks for the footnote commands in Text view, and Normalize from the outline.
 * v541 — Footnote commands
 Insert footnote (=C-c C-x f=) and Normalize footnotes work as in Emacs: a new reference at the cursor in Text view with its definition started under =* Footnotes=, and one command to number every footnote in reading order and gather the definitions. A rewritten file with the same text no longer counts as a conflict, a failed Save As to a local file leaves the buffer as it was, and the save and sync code is now typed.
 Verified: results match Emacs 29.3 on 31 cases; browser checks for footnotes, Save As and local files.

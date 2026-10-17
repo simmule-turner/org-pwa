@@ -513,6 +513,13 @@ export function getFootnoteAutoLabel(vars) {
   return v === 'nil' || v === 'confirm' || v === 'random' ? v : 't';
 }
 
+/** org-footnote-auto-adjust: after a footnote is added or deleted, renumber fn:N (renumber), sort the definitions (sort), both (t) or neither (nil).
+ * @param {LocalVars} vars @returns {'nil' | 'renumber' | 'sort' | 't'} */
+export function getFootnoteAutoAdjust(vars) {
+  const v = String((vars || {})['org-footnote-auto-adjust'] ?? 'nil').trim().replace(/^'/, '').toLowerCase();
+  return v === 't' || v === 'renumber' || v === 'sort' ? v : 'nil';
+}
+
 /** org-xx-show-inherited-tags (this app's own): whether outline headings show the tags they inherit, dimmed.
  * @param {LocalVars} vars */
 export function getShowInheritedTagsOutline(vars) {
