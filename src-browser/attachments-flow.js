@@ -597,7 +597,7 @@ export async function attachOpenDocument(heading) {
   }
   openButtonChoiceModal({
     label: 'Attach which open document?',
-    buttons: [...documents.map((state) => ({ text: String(state.documentId || 'document').split('/').pop(), onClick: () => attach(state) })), { text: 'Cancel', onClick: () => {} }],
+    buttons: [...documents.map((state) => ({ text: /** @type {string} */ (String(state.documentId || 'document').split('/').pop()), onClick: () => attach(state) })), { text: 'Cancel', onClick: () => {} }],
   });
 }
 

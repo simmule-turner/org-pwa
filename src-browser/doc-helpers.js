@@ -2,6 +2,9 @@
 /** @typedef {import('../src/types.js').Table} Table */
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
+/** @typedef {import('../src/types.js').ListItem} ListItem */
+/** @typedef {import('../src/types.js').Paragraph} Paragraph */
+/** @typedef {import('../src/types.js').CaptureTemplate} CaptureTemplate */
 // Extracted from app.js: doc helpers. These have no dependency on the app's shared mutable state,
 // so they moved verbatim (see tools/ notes in CHANGELOG v412).
 import { emacsRegexToJs } from '../src/emacs-regex.js';
@@ -43,16 +46,14 @@ export function hasBodyContent(heading) {
 /** Recursively finds the list item at `lineIndex`, possibly nested
  *  within a sub-list -- list items aren't direct heading.body
  *  children the way a paragraph/table/block is, so finding a fresh
- * @param {any} [items]
- * @param {any} [lineIndex]
  *  one after a re-parse needs to walk this nested structure. */
-/** @returns {any} */
-export function findListItemByLineIndex(/** @type {any} */ items, /** @type {any} */ lineIndex) {
+/** @param {ListItem[]} items @param {number} lineIndex @returns {ListItem | null} */
+export function findListItemByLineIndex(items, lineIndex) {
   for (const item of items) {
     if (item.lineIndex === lineIndex) return item;
     for (const child of item.children) {
       if (child.type === 'list') {
-        /** @type {any} */ const found = findListItemByLineIndex(child.items, lineIndex);
+        const found = findListItemByLineIndex(child.items, lineIndex);
         if (found) return found;
       }
     }
@@ -68,13 +69,13 @@ export function findListItemByLineIndex(/** @type {any} */ items, /** @type {any
  *  position in the outline, with enough of its own ancestor chain kept
  *  visible to make sense of where it sits, rather than being shown as a
  * @param {Doc} doc
- * @param {any} [matchedHeadings]
+ * @param {Set<Heading>} matchedHeadings
  *  flat, context-free list. */
 export function expandScopeWithAncestors(doc, matchedHeadings) {
-  const visible = new Set();
+  /** @type {Set<Heading>} */ const visible = new Set();
   /**
-   * @param {any} [nodes]
-   * @param {any} [ancestors]
+   * @param {Heading[]} nodes
+   * @param {Heading[]} ancestors
    */
   function walk(nodes, ancestors) {
     for (const node of nodes) {
@@ -95,9 +96,9 @@ export function tableHasContent(table) {
   return table.rows.some((r) => r.type === 'row' && r.cells.some((c) => c.trim() !== ''));
 }
 
-/** @param {any} [paragraph] */
+/** @param {Paragraph} paragraph */
 export function paragraphHasContent(paragraph) {
-  return paragraph.lines.some((/** @type {any} */ l) => l.trim() !== '');
+  return paragraph.lines.some((l) => l.trim() !== '');
 }
 
 // Counts every item nested under `item`, at any depth — used by
@@ -111,7 +112,7 @@ export function paragraphHasContent(paragraph) {
 // checkbox task like "Buy milk" never got a confirmation at all, since
 // it has no children of its own. That was the actual bug, not a
 // deliberate friction/safety tradeoff.
-/** @param {any} [item] */
+/** @param {ListItem} item */
 export function listItemDescendantCount(item) {
   let count = 0;
   for (const nestedList of item.children || []) {
@@ -210,9 +211,9 @@ export function icalendarBodyHeadingsIn(headings) {
  * @param {Heading} heading
  *  never for indentation display. */
 export function headingsInSubtree(heading) {
-  /** @type {any[]} */ const out = [];
+  /** @type {{ heading: Heading, depth: number }[]} */ const out = [];
   /**
-   * @param {any} node
+   * @param {Heading} node
    * @param {number} depth
    */
   function walk(node, depth) {
@@ -225,9 +226,9 @@ export function headingsInSubtree(heading) {
 
 /** @param {Doc} doc */
 export function allHeadingsInOrder(doc) {
-  /** @type {any[]} */ const out = [];
+  /** @type {{ heading: Heading, depth: number }[]} */ const out = [];
   /**
-   * @param {any} nodes
+   * @param {Heading[]} nodes
    * @param {number} depth
    */
   function walk(nodes, depth) {
@@ -243,7 +244,7 @@ export function allHeadingsInOrder(doc) {
 
 /**
  * @param {string} query
- * @param {any} [useRegex]
+ * @param {boolean} [useRegex]
  */
 export function buildQueryReplacePattern(query, useRegex) {
   if (useRegex) return emacsRegexToJs(query, 'gi');
@@ -308,7 +309,7 @@ export function validateCaptureTemplates(parsed) {
  *  common, sensible combination); item/checkitem/plain reuse the same
  *  prepend value for both, since for those three "where does the
  *  container heading go" and "where does the content go" are the same
- * @param {any} [template]
+ * @param {CaptureTemplate} template
  *  decision applied at two tree levels, not two independent ones. */
 export function getOlpPrepend(template) {
   return template.type === 'table-line' ? !!template.prependHeading : !!template.prepend;

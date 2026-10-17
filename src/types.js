@@ -23,7 +23,7 @@
  *   body: BodyNode[],
  *   raw?: HeadingRaw,
  *   drawersHidden?: boolean | null,
- *   plotVisible?: boolean | null,
+ *   plotVisible?: Set<number> | null,
  * }} Heading
  */
 
@@ -116,8 +116,8 @@ export {};
 /** @typedef {{ heading: Heading, fromTodo: string | null, toTodo: string | null, timestamp: string }} PendingLogNote */
 /** @typedef {{ heading: Heading, mode: string, loading: boolean, candidates: any[], errors: any[], recent: any[], selected: any, query: string }} PendingRefile */
 /** @typedef {{ heading: Heading, table: Table, rowIndex: number, colIndex: number }} EditingCell */
-/** @typedef {{ heading: Heading, paragraph: any }} EditingParagraph */
-/** @typedef {{ heading: Heading, item: any }} EditingListItem */
+/** @typedef {{ heading: Heading, paragraph: Paragraph }} EditingParagraph */
+/** @typedef {{ heading: Heading, item: ListItem }} EditingListItem */
 /** @typedef {{ startLine: number, lineCount: number }} NarrowedTextRange */
 /** @typedef {{ matched: Set<Heading>, visible: Set<Heading> }} SparseNarrowScope */
 /** @typedef {{ chord: string, label: string }} GodLastCommand */

@@ -23,22 +23,22 @@ const GRIP_SVG =
 
 /**
  * @param {Heading} heading
- * @param {any} [node]
+ * @param {Heading} node
  * @returns {boolean}
  */
 function inSubtree(heading, node) {
   return heading === node || (heading.children || []).some((child) => inSubtree(child, node));
 }
 
-/** @param {any} [node] */
+/** @param {Heading} node @returns {number} */
 function countDescendants(node) {
-  return (node.children || []).reduce((/** @type {any} */ n, /** @type {any} */ child) => n + 1 + countDescendants(child), 0);
+  return (node.children || []).reduce((n, child) => n + 1 + countDescendants(child), 0);
 }
 
 /**
  * The heading `climb` levels above `node` (node itself for 0).
  * @param {Doc} doc
- * @param {any} node
+ * @param {Heading} node
  * @param {number} climb
  */
 function ancestorAt(doc, node, climb) {
@@ -62,7 +62,8 @@ function scrollParent(el) {
 /**
  * Builds the grip for a heading row and registers the row as a drop target.
  * @param {HTMLDivElement} rowEl
- * @param {any} [row]
+ * @param {import('../src/types.js').HeadingRow} row
+ * @param {string} [side]
  */
 export function attachHeadingGrip(rowEl, row, side = 'right') {
   rowInfo.set(rowEl, { node: row.node, row });
@@ -92,7 +93,7 @@ function outlineBand() {
  * @param {PointerEvent} e
  * @param {HTMLButtonElement} grip
  * @param {HTMLDivElement} rowEl
- * @param {any} node
+ * @param {Heading} node
  * @param {string} side
  */
 function beginDrag(e, grip, rowEl, node, side) {
@@ -104,13 +105,10 @@ function beginDrag(e, grip, rowEl, node, side) {
   const pointerId = e.pointerId;
   let started = false;
   /** @type {HTMLDivElement | null} */
-  /** @type {any} */
   let ghost = null;
   /** @type {HTMLDivElement | null} */
-  /** @type {any} */
   let line = null;
   /** @type {HTMLDivElement | null} */
-  /** @type {any} */
   let tagEl = null;
   let zoneEls = /** @type {Record<string, any>} */ ({ top: null, bottom: null });
   let cancelling = false;
@@ -163,15 +161,15 @@ function beginDrag(e, grip, rowEl, node, side) {
   function update() {
     if (!started) return;
     // keep the floating label clear of the finger, on the open side of the screen
-    ghost.style.left = (side === 'right' ? Math.max(4, last.x - ghost.offsetWidth - 16) : last.x + 16) + 'px';
-    ghost.style.top = last.y - 18 + 'px';
+    /** @type {HTMLDivElement} */ (ghost).style.left = (side === 'right' ? Math.max(4, last.x - /** @type {HTMLDivElement} */ (ghost).offsetWidth - 16) : last.x + 16) + 'px';
+    /** @type {HTMLDivElement} */ (ghost).style.top = last.y - 18 + 'px';
     clearIndicator();
     drop = null;
     const band = outlineBand();
     const zone = last.y < band.top ? 'top' : last.y > band.bottom ? 'bottom' : null;
     cancelling = zone !== null;
-    ghost.style.opacity = cancelling ? '0.55' : '';
-    ghost.style.borderColor = cancelling ? '#8a94a0' : LINE_COLOR;
+    /** @type {HTMLDivElement} */ (ghost).style.opacity = cancelling ? '0.55' : '';
+    /** @type {HTMLDivElement} */ (ghost).style.borderColor = cancelling ? '#8a94a0' : LINE_COLOR;
     for (const which of ['top', 'bottom']) zoneEls[which].style.display = which === zone ? 'flex' : 'none';
     if (zone === 'top') Object.assign(zoneEls.top.style, { top: '0px', height: band.top + 'px', bottom: '' });
     if (zone === 'bottom') Object.assign(zoneEls.bottom.style, { top: band.bottom + 'px', bottom: '0px', height: '' });
@@ -217,10 +215,10 @@ function beginDrag(e, grip, rowEl, node, side) {
 
     const lineLeft = anchor + best.depth * INDENT_PX;
     const lineTop = (next ? next.rect.top : prev.el.parentElement.lastElementChild.getBoundingClientRect().bottom) - 1;
-    line.style.left = lineLeft + 'px';
-    line.style.width = Math.max(40, (next || prev).rect.right - lineLeft - 8) + 'px';
-    line.style.top = lineTop + 'px';
-    line.style.display = 'block';
+    /** @type {HTMLDivElement} */ (line).style.left = lineLeft + 'px';
+    /** @type {HTMLDivElement} */ (line).style.width = Math.max(40, (next || prev).rect.right - lineLeft - 8) + 'px';
+    /** @type {HTMLDivElement} */ (line).style.top = lineTop + 'px';
+    /** @type {HTMLDivElement} */ (line).style.display = 'block';
     /** @param {any} [n] */
     const name = (n) => n.title || '(untitled)';
     let says;

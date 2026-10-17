@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v546 — Types for the screens you use most
+The outline rows, keyboard focus, drag and swipe gestures, dialogs, settings storage, the command palette and the agenda controls now have real types, so a wrong argument or a misspelt field in those screens is caught before release. About 130 more loose annotations were removed or replaced, and the per-file ceiling dropped to match. Nothing the app does has changed.
+Verified: the code is identical to v545 apart from comments; the type checker, linter and unit tests pass.
+
 * v545 — Types for the document model
 Headings no longer accept any property by name; paragraphs, lists, tables, rows and inline nodes, the app state and palette commands now have real types, so a misspelt field is caught before release. 223 annotations that the checker can now work out were removed, and a per-file ceiling stops new ones creeping in. Nothing the app does has changed.
 Verified: the code is identical to v544 apart from comments; the type checker, linter and unit tests pass.

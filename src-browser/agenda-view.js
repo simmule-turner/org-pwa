@@ -30,7 +30,7 @@ import { agendaSexpOptions } from './agenda-settings.js';
 
 /**
  * @param {string} viewType
- * @param {any} [anchorDate]
+ * @param {Date} anchorDate
  */
 export function agendaRangeFor(viewType, anchorDate) {
   if (viewType === 'day') {
@@ -100,8 +100,8 @@ export function buildAgendaEffortPanel() {
   };
   /**
    * @param {string[][]} options
-   * @param {any} [current]
-   * @param {any} [onChange]
+   * @param {string} current
+   * @param {(value: string) => void} onChange
    */
   const select = (options, current, onChange) => {
     const el = document.createElement('select');
@@ -120,7 +120,7 @@ export function buildAgendaEffortPanel() {
   const sortSelect = select(
     [['', 'Off'], ['up', 'Least effort first'], ['down', 'Most effort first']],
     S.agendaEffortSort || '',
-    (/** @type {any} */ v) => {
+    (v) => {
       S.agendaEffortSort = v || null;
       render();
     }
@@ -131,7 +131,7 @@ export function buildAgendaEffortPanel() {
   const allowed = getAllowedEffortValues({ doc: S.state.doc, globalProperties: getGlobalProperties(S.state.localVariables) });
   const values = allowed.length > 0 ? allowed : DEFAULT_EFFORT_FILTER_VALUES;
   /**
-   * @param {any} op
+   * @param {string} op
    * @param {string} text
    */
   const applyFilter = (op, text) => {
@@ -141,7 +141,7 @@ export function buildAgendaEffortPanel() {
   const filterOp = select(
     [['', 'Off'], ['<', 'At most'], ['>', 'At least'], ['=', 'Exactly']],
     S.agendaEffortFilter ? S.agendaEffortFilter.op : '',
-    (/** @type {any} */ op) => applyFilter(op, valueSelect.value)
+    (op) => applyFilter(op, valueSelect.value)
   );
   filterOp.setAttribute('data-effort-filter-op', '');
   const valueSelect = select(

@@ -1,4 +1,6 @@
 // @ts-check
+/** @typedef {import('../src/types.js').Heading} Heading */
+/** @typedef {import('../src/types.js').PaletteCommand} PaletteCommand */
 // Extracted from app.js: god mode palette.
 import { findAncestorPath, isArchivedInPlace } from '../src/archive-model.js';
 import { computeNonCollidingKeys } from '../src/capture-template.js';
@@ -79,7 +81,7 @@ export function godModeNotSupported(reason) {
 /** Opens the File menu already on a specific step (Save As, Open) --
  *  shared by the palette's own Save as / Open commands and their
  *  matching god-mode chords (C-x C-w / C-x C-f), so both routes run
- * @param {any} [step]
+ * @param {Parameters<typeof openFileScreen>[0]} step
  *  through exactly the same code. */
 function openFileMenuAt(step) {
   openFileScreen(step);
@@ -103,7 +105,7 @@ function openFileMenuAt(step) {
  *
  * `opts` is passed straight through to createHeading (e.g. `{ todo:
  * 'TODO' }` for M-S-RET). No-op if there's no open document.
- * @param {any} [opts]
+ * @param {Parameters<typeof insertHeadingAfter>[2]} [opts]
  */
 function insertHeadingSmart(opts) {
   if (!S.state.doc) return;
@@ -370,8 +372,8 @@ export const GOD_MODE_ACTIONS = {
  *  read-only from the file's own buffer-read-only local variable ONLY
  *  if that variable itself changed -- otherwise a runtime C-x C-q
  *  toggle would be silently reverted, unlike real Emacs, where the
- * @param {any} [previousVars]
- * @param {any} [newVars]
+ * @param {Parameters<typeof getBufferReadOnly>[0]} previousVars
+ * @param {Parameters<typeof getBufferReadOnly>[0]} newVars
  *  local variable only applies when the file is loaded. */
 export function reconcileReadOnlyAfterReparse(previousVars, newVars) {
   const before = getBufferReadOnly(previousVars);
@@ -394,7 +396,7 @@ export function toggleBufferReadOnly() {
 /** Why a command can't run right now, or null if it can. */
 export const PALETTE_NEEDS = {
   doc: () => (S.state.doc ? null : 'open a document first'),
-  heading: (/** @type {any} */ target) => (target ? null : 'tap a heading first, or focus one with Escape'),
+  heading: (/** @type {object | null | undefined} */ target) => (target ? null : 'tap a heading first, or focus one with Escape'),
   writable: () => (S.isBufferReadOnly ? 'the buffer is read-only \u2014 run Toggle read-only (C-x C-q)' : null),
   storage: () => (S.state.storageKind ? null : 'this document has no file yet \u2014 use Save as'),
   modifiedBuffers: () => (modifiedFileBuffers().length ? null : '(No files need saving)'),
@@ -457,12 +459,12 @@ export function runPaletteCommand(command, target) {
  *  table really binds that chord, and those commands run through the
  *  same table entry, so the palette and the keyboard can't drift apart. */
 export function paletteCommandList() {
-  const chord = (/** @type {any} */ c) => (/** @type {any} */ target) => {
+  const chord = (/** @type {string} */ c) => (/** @type {Heading | null | undefined} */ target) => {
     S.actionMenuFor = null;
     if (target) setKeyboardFocusToHeading(target);
-    /** @type {any} */ (GOD_MODE_ACTIONS)[c]();
+    /** @type {Record<string, () => void>} */ (GOD_MODE_ACTIONS)[c]();
   };
-  const onHeading = (/** @type {Function} */ fn) => (/** @type {any} */ target) => {
+  const onHeading = (/** @type {Function} */ fn) => (/** @type {object | null | undefined} */ target) => {
     S.actionMenuFor = null;
     fn(target);
   };
@@ -677,7 +679,7 @@ export async function openCommandPalette() {
     overlay.remove();
   }
 
-  /** @param {any} [entry] */
+  /** @param {{ command: PaletteCommand }} entry */
   function run(entry) {
     const { command } = entry;
     const available = !paletteUnavailableReason(command, target);
@@ -759,7 +761,7 @@ export async function openCommandPalette() {
     renderList();
   }
 
-  /** @param {any} [e] */
+  /** @param {KeyboardEvent} e */
   function onKeyDown(e) {
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -844,7 +846,7 @@ export function isValidGodModePrefix(chordString) {
 const CHORD_LABELS = new Map();
 
 /** The palette label for the command a completed chord runs, or null when the
- * @param {any} [chordString]
+ * @param {string} chordString
  *  chord has no palette command (Tab, the arrows, C-f, ...). */
 export function labelForChord(chordString) {
   if (CHORD_LABELS.size === 0) {

@@ -115,7 +115,7 @@ const DEFAULT_SIDE_PANEL_WIDTH = 420; // px -- matches the previous hard-coded s
 const DEFAULT_FONT_SIZE = 16; // px
 const DEFAULT_TABLES_FONT_SIZE = 13; // px -- matches the previous hard-coded table font size, so introducing this setting doesn't change anyone's current appearance until they actually adjust it
 
-/** @param {any} [result] */
+/** @param {unknown} result */
 function unwrap(result) {
   return result && typeof result === 'object' && 'value' in result ? result.value : result;
 }
@@ -140,7 +140,7 @@ async function getJson(kvAdapter, key, fallback) {
 /**
  * @param {KvAdapter} kvAdapter
  * @param {string} key
- * @param {any} [value]
+ * @param {unknown} value
  */
 async function setJson(kvAdapter, key, value) {
   await kvAdapter.set(key, JSON.stringify(value));
@@ -216,7 +216,7 @@ export async function getCaldavSyncState(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [state]
+ * @param {unknown} state
  */
 export async function setCaldavSyncState(kvAdapter, state) {
   await setJson(kvAdapter, CALDAV_SYNC_KEY, state);
@@ -232,7 +232,7 @@ export async function getCarddavSyncState(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [state]
+ * @param {unknown} state
  */
 export async function setCarddavSyncState(kvAdapter, state) {
   await setJson(kvAdapter, CARDDAV_SYNC_KEY, state);
@@ -266,7 +266,7 @@ export async function setAttachLinkMode(kvAdapter, mode) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [settings]
+ * @param {Parameters<typeof normalizeApptSettings>[0]} settings
  */
 export async function setApptSettings(kvAdapter, settings) {
   const merged = normalizeApptSettings(settings);
@@ -304,7 +304,7 @@ export async function getCustomThemeColors(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [colors]
+ * @param {unknown} colors
  */
 export async function setCustomThemeColors(kvAdapter, colors) {
   await setJson(kvAdapter, KEYS.customThemeColors, colors);
@@ -351,7 +351,7 @@ export async function setMenuSize(kvAdapter, menuSize) {
 /** Forces a spacing value into the allowed whole-pixel range. Anything that is
  *  not a finite number -- a missing key, a hand-edited or imported bundle
  *  holding text, null -- falls back to the DEFAULT rather than to 0, so a bad
- * @param {any} [value]
+ * @param {unknown} value
  *  value can never silently pack everything together. */
 export function clampSpacing(value, fallback = DEFAULT_PARAGRAPH_SPACING) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
@@ -373,7 +373,7 @@ export async function getParagraphSpacing(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [px]
+ * @param {unknown} px
  */
 export async function setParagraphSpacing(kvAdapter, px) {
   await setJson(kvAdapter, KEYS.paragraphSpacing, clampSpacing(px, DEFAULT_PARAGRAPH_SPACING));
@@ -391,7 +391,7 @@ export async function getTablesSpacing(kvAdapter) {
  *  corner) -- or null when the value is missing or malformed, so a bad stored value falls back to the
  *  default spot and never moves the panel somewhere unreachable. The panel's own placement code still
  *  keeps whatever is restored on screen and clear of the mode line, so a position saved on one screen
- * @param {any} [value]
+ * @param {{ bottom?: unknown, left?: unknown } | null | undefined} value
  *  size is safe on another. */
 export function normalizeFloatingKeyboardPos(value) {
   if (!value || typeof value !== 'object') return null;
@@ -412,7 +412,7 @@ export async function getFloatingKeyboardPos(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [pos]
+ * @param {{ bottom?: unknown, left?: unknown } | null | undefined} pos
  */
 export async function setFloatingKeyboardPos(kvAdapter, pos) {
   await setJson(kvAdapter, KEYS.floatingKeyboardPos, normalizeFloatingKeyboardPos(pos));
@@ -420,7 +420,7 @@ export async function setFloatingKeyboardPos(kvAdapter, pos) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [px]
+ * @param {unknown} px
  */
 export async function setTablesSpacing(kvAdapter, px) {
   await setJson(kvAdapter, KEYS.tablesSpacing, clampSpacing(px, DEFAULT_TABLES_SPACING));
@@ -591,10 +591,10 @@ export async function setExtensionApproval(kvAdapter, hash) {
  * @param {KvAdapter} kvAdapter
  */
 export async function exportAllSettings(kvAdapter) {
-  const settings = {};
+  /** @type {Record<string, unknown>} */ const settings = {};
   for (const name of Object.keys(KEYS)) {
-    const value = await getJson(kvAdapter, /** @type {any} */ (KEYS)[name], undefined);
-    if (value !== undefined) /** @type {any} */ (settings)[name] = value;
+    const value = await getJson(kvAdapter, /** @type {Record<string, string>} */ (KEYS)[name], undefined);
+    if (value !== undefined) settings[name] = value;
   }
   return { format: 'org-pwa-settings', version: 1, exportedAt: new Date().toISOString(), settings };
 }
@@ -613,13 +613,13 @@ export async function exportAllSettings(kvAdapter) {
  * Returns the list of setting names actually written, so the caller
  * can report back what was imported.
  * @param {KvAdapter} kvAdapter
- * @param {any} [bundle]
+ * @param {{ settings?: Record<string, unknown> } | null | undefined} bundle
  */
 export async function importAllSettings(kvAdapter, bundle) {
   const settings = (bundle && typeof bundle === 'object' && bundle.settings) || {};
   const imported = [];
   for (const [name, value] of Object.entries(settings)) {
-    const key = /** @type {any} */ (KEYS)[name];
+    const key = /** @type {Record<string, string>} */ (KEYS)[name];
     if (!key) continue;
     await setJson(kvAdapter, key, value);
     imported.push(name);
@@ -655,7 +655,7 @@ export async function getLastActiveDocument(kvAdapter) {
 /**
  * @param {KvAdapter} kvAdapter
  * @param {string} documentId
- * @param {any} [storageKind]
+ * @param {string | null | undefined} storageKind
  */
 export async function setLastActiveDocument(kvAdapter, documentId, storageKind) {
   await setJson(kvAdapter, KEYS.lastActiveDocument, documentId ? { documentId, storageKind } : null);
@@ -674,8 +674,8 @@ export async function getOpenTabs(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [tabs]
- * @param {any} [activeIndex]
+ * @param {unknown[] | null | undefined} tabs
+ * @param {number} [activeIndex]
  */
 export async function setOpenTabs(kvAdapter, tabs, activeIndex) {
   await setJson(kvAdapter, KEYS.openTabs, tabs && tabs.length ? { tabs, activeIndex } : null);
@@ -685,7 +685,7 @@ export async function setOpenTabs(kvAdapter, tabs, activeIndex) {
 
 const RECENT_FILES_STORE_LIMIT = 6; // the five shown plus the open file, which is never listed; a removed entry must not be replaced by an older one
 
-/** @param {KvAdapter} kvAdapter */
+/** @param {KvAdapter} kvAdapter @returns {Promise<{ documentId: string, storageKind: string, openedAt: number }[]>} */
 export async function getRecentFiles(kvAdapter) {
   return getJson(kvAdapter, KEYS.recentFiles, []);
 }
@@ -693,12 +693,12 @@ export async function getRecentFiles(kvAdapter) {
 /**
  * @param {KvAdapter} kvAdapter
  * @param {string} documentId
- * @param {any} [storageKind]
+ * @param {string | null | undefined} storageKind
  */
 export async function recordRecentFile(kvAdapter, documentId, storageKind) {
   if (!documentId || !storageKind) return;
   const existing = await getRecentFiles(kvAdapter);
-  const deduped = existing.filter((/** @type {any} */ f) => !(f.documentId === documentId && f.storageKind === storageKind));
+  const deduped = existing.filter((f) => !(f.documentId === documentId && f.storageKind === storageKind));
   deduped.unshift({ documentId, storageKind, openedAt: Date.now() });
   await setJson(kvAdapter, KEYS.recentFiles, deduped.slice(0, RECENT_FILES_STORE_LIMIT));
 }
@@ -707,7 +707,7 @@ export async function recordRecentFile(kvAdapter, documentId, storageKind) {
  * @param {KvAdapter} kvAdapter @param {string} documentId @param {string} storageKind */
 export async function removeRecentFile(kvAdapter, documentId, storageKind) {
   const existing = await getRecentFiles(kvAdapter);
-  await setJson(kvAdapter, KEYS.recentFiles, existing.filter((/** @type {any} */ f) => !(f.documentId === documentId && f.storageKind === storageKind)));
+  await setJson(kvAdapter, KEYS.recentFiles, existing.filter((f) => !(f.documentId === documentId && f.storageKind === storageKind)));
 }
 
 /**
@@ -740,7 +740,7 @@ export async function getCaptureTemplates(kvAdapter) {
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {any} [templates]
+ * @param {unknown} templates
  */
 export async function setCaptureTemplates(kvAdapter, templates) {
   await setJson(kvAdapter, KEYS.captureTemplates, templates);

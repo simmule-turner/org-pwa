@@ -544,7 +544,7 @@ export function hideModalOverlay(overlayEl) {
  * @param {string | null} labelText
  * @param {string} type
  * @param {string} value
- * @param {string} placeholder
+ * @param {string} [placeholder]
  *  reusing the general-purpose labeledInput as-is produced. */
 export function modalFieldRow(labelText, type, value, placeholder) {
   const wrap = document.createElement('div');

@@ -2,6 +2,7 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: dialogs.
+/** @typedef {{ text: string, key?: string, disabled?: boolean, onClick: () => any }} ChoiceButton */
 import { getHeadingText, setHeadingText } from '../src/body-edit.js';
 import { addMinutesToTime, formatOrgTimestamp } from '../src/org-timestamp.js';
 import { S } from './app-state.js';
@@ -88,7 +89,7 @@ export function confirmDialog(message, { confirmLabel = 'Delete', cancelLabel = 
       if (e.target === overlay) finish(false);
     };
 
-    /** @param {any} [e] */
+    /** @param {KeyboardEvent} e */
     function onKeyDown(e) {
       // Capture phase, ahead of the global god-mode handler's own guard
       // (which also checks confirmDialogOpen and steps aside) -- belt
@@ -330,7 +331,7 @@ export function openTimestampPickerPopup(kind) {
       if (e.target === overlay) finish(null);
     };
 
-    /** @param {any} [e] */
+    /** @param {KeyboardEvent} e */
     function onKeyDown(e) {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -384,7 +385,7 @@ export function lockBackgroundScroll(overlay) {
   document.body.style.overflow = 'hidden';
   scrollEl.style.overflow = 'hidden';
 
-  /** @param {any} [e] */
+  /** @param {Event} e */
   const preventBackdropTouchMove = (e) => {
     if (e.target === overlay) e.preventDefault();
   };
@@ -522,7 +523,7 @@ export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset
     document.body.removeChild(overlay);
   }
 
-  /** @param {any} [e] */
+  /** @param {KeyboardEvent} e */
   function onKeyDown(e) {
     // Capture phase, ahead of the global god-mode handler's own guard
     // (which also checks textFieldPopupOpen and steps aside) -- same
@@ -594,7 +595,8 @@ export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset
  *  for every field, already trimmed for 'text' fields (a password
  *  field's own leading/trailing whitespace is preserved, since it
  *  might genuinely be part of the password). */
-export function openButtonChoiceModal(/** @type {any} */ { label, buttons }) {
+/** @param {{ label: string, buttons: ChoiceButton[] }} opts */
+export function openButtonChoiceModal({ label, buttons }) {
   const overlay = document.createElement('div');
   overlay.className = 'ui-overlay';
   overlay.style.overflow = 'hidden';
@@ -632,7 +634,7 @@ export function openButtonChoiceModal(/** @type {any} */ { label, buttons }) {
     document.body.removeChild(overlay);
   }
 
-  /** @param {any} [e] */
+  /** @param {KeyboardEvent} e */
   function onKeyDown(e) {
     // Capture phase, ahead of the global god-mode handler's own guard
     // (which also checks buttonChoiceModalOpen and steps aside) -- same
@@ -669,7 +671,8 @@ export function openButtonChoiceModal(/** @type {any} */ { label, buttons }) {
 /** A modal of buttons in a two-column grid, styled like the Capture template picker: a small dim heading, left-aligned buttons at
  *  least 44px tall, and a Close row. `buttons` is [{ key, text, onClick, disabled }]. A button with a `key` runs when that key is
  *  pressed (case matters: `o` and `O` are different buttons), and always shows the key as a badge. `showKeys` is for a phone keyboard: it focuses a hidden field so typed letters arrive. */
-export function openGridChoiceModal(/** @type {any} */ { label, buttons, showKeys = false }) {
+/** @param {{ label: string, buttons: ChoiceButton[], showKeys?: boolean }} opts */
+export function openGridChoiceModal({ label, buttons, showKeys = false }) {
   const overlay = document.createElement('div');
   overlay.className = 'ui-overlay';
   overlay.style.overflow = 'hidden';
@@ -694,12 +697,12 @@ export function openGridChoiceModal(/** @type {any} */ { label, buttons, showKey
     unlockScroll();
     if (overlay.parentNode) document.body.removeChild(overlay);
   }
-  /** @param {any} [button] */
+  /** @param {ChoiceButton} button */
   const choose = async (button) => {
     close();
     await button.onClick();
   };
-  /** @param {any} [e] */
+  /** @param {KeyboardEvent} e */
   function onKeyDown(e) {
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -708,7 +711,7 @@ export function openGridChoiceModal(/** @type {any} */ { label, buttons, showKey
       return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    const button = buttons.find((/** @type {any} */ b) => b.key === e.key && !b.disabled);
+    const button = buttons.find((b) => b.key === e.key && !b.disabled);
     if (!button) return;
     e.preventDefault();
     e.stopPropagation();
@@ -732,7 +735,7 @@ export function openGridChoiceModal(/** @type {any} */ { label, buttons, showKey
     /** @param {string} text */
     const feed = (text) => {
       for (const ch of text) {
-        const button = buttons.find((/** @type {any} */ b) => b.key === ch && !b.disabled);
+        const button = buttons.find((b) => b.key === ch && !b.disabled);
         if (button) {
           choose(button);
           return;
@@ -787,7 +790,8 @@ export function openGridChoiceModal(/** @type {any} */ { label, buttons, showKey
   return overlay;
 }
 
-export function openMultiFieldPopup(/** @type {any} */ { label, fields, onSave }) {
+/** @param {{ label: string, fields: { key: string, label: string, type: string, value: string, placeholder?: string }[], onSave: (values: Record<string, string>) => any }} opts */
+export function openMultiFieldPopup({ label, fields, onSave }) {
   const overlay = document.createElement('div');
   overlay.className = 'ui-overlay';
   overlay.style.overflow = 'hidden';
@@ -810,7 +814,7 @@ export function openMultiFieldPopup(/** @type {any} */ { label, fields, onSave }
   titleEl.style.marginBottom = '14px';
   modal.appendChild(titleEl);
 
-  const fieldEntries = fields.map((/** @type {any} */ f) => ({ key: f.key, type: f.type, entry: modalFieldRow(f.label, f.type, f.value, f.placeholder) }));
+  const fieldEntries = fields.map((f) => ({ key: f.key, type: f.type, entry: modalFieldRow(f.label, f.type, f.value, f.placeholder) }));
   for (const { entry } of fieldEntries) {
     modal.appendChild(entry.wrap);
   }
@@ -837,7 +841,7 @@ export function openMultiFieldPopup(/** @type {any} */ { label, fields, onSave }
   btnRow.appendChild(
     menuButton('Reset', () => {
       for (const { key, entry } of fieldEntries) {
-        const original = fields.find((/** @type {any} */ f) => f.key === key).value;
+        const original = /** @type {{ value?: string | null }} */ (fields.find((f) => f.key === key)).value;
         entry.input.value = original !== undefined && original !== null ? original : '';
       }
       fieldEntries[0]?.entry.input.focus();
@@ -845,9 +849,9 @@ export function openMultiFieldPopup(/** @type {any} */ { label, fields, onSave }
   );
   btnRow.appendChild(
     menuButton('OK', async () => {
-      const values = {};
+      /** @type {Record<string, string>} */ const values = {};
       for (const { key, type, entry } of fieldEntries) {
-        /** @type {any} */ (values)[key] = type === 'password' ? entry.input.value : entry.input.value.trim();
+        values[key] = type === 'password' ? entry.input.value : entry.input.value.trim();
       }
       await onSave(values);
       close();
@@ -867,8 +871,8 @@ export function openMultiFieldPopup(/** @type {any} */ { label, fields, onSave }
  *  rear camera as a picker option alongside the usual photo library/
  *  file browser, the actual motivating case for this feature; most
  *  mobile browsers still offer the other options too even with this
- * @param {any} [capture]
- * @param {any} [accept]
+ * @param {string | undefined} [capture]
+ * @param {string | undefined} [accept]
  *  set, so it's additive, never a restriction. */
 export function pickBinaryFile(capture, accept) {
   return pickBinaryFiles(capture, accept, false).then((files) => files[0]);
@@ -896,7 +900,7 @@ export function pickBinaryFiles(capture, accept, multiple = true) {
       }
       setStatus('Reading file\u2026');
       render();
-      /** @param {any} [file] */
+      /** @param {File} file */
       const readOne = (file) =>
         new Promise((res, rej) => {
           const reader = new FileReader();

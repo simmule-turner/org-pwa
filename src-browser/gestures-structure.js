@@ -2,6 +2,8 @@
 /** @typedef {import('../src/types.js').Table} Table */
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
+/** @typedef {import('../src/types.js').Paragraph} Paragraph */
+/** @typedef {import('../src/types.js').ListItem} ListItem */
 // Extracted from app.js: gestures structure.
 import { findContainer, shiftLevels } from '../src/archive-model.js';
 import { cycleFoldLevel } from '../src/fold-state.js';
@@ -30,33 +32,34 @@ import { platform } from './platform.js';
 /**
  * @param {HTMLDivElement} el
  * @param {Heading} heading
+ * @param {{ onFolded?: () => void, archiveVisibility?: string }} [opts]
  */
 export function attachSlideLeftToFold(el, heading, opts = {}) {
-  const onFolded = /** @type {any} */ (opts).onFolded || render;
+  const onFolded = opts.onFolded || render;
   const archiveVisibility =
-    /** @type {any} */ (opts).archiveVisibility || (getCycleOpenArchivedTrees(S.state.localVariables) ? 'noarchived' : 'archived');
-  /** @type {any} */
+    opts.archiveVisibility || (getCycleOpenArchivedTrees(S.state.localVariables) ? 'noarchived' : 'archived');
+  /** @type {number | null} */
   let startX = null;
-  /** @type {any} */
+  /** @type {number | null} */
   let startY = null;
   let active = false;
 
-  el.addEventListener('pointerdown', (/** @type {any} */ e) => {
+  el.addEventListener('pointerdown', (/** @type {PointerEvent} */ e) => {
     // Don't hijack taps meant for an actual control (fold button, TODO
     // badge, title, add/delete buttons, links) — only bare row space and
     // plain text starts a swipe candidate.
-    if (e.target.closest('button, a, input, textarea, [data-inline-link]')) return;
+    if (/** @type {Element} */ (e.target).closest('button, a, input, textarea, [data-inline-link]')) return;
     startX = e.clientX;
     startY = e.clientY;
     active = true;
   });
 
-  /** @param {any} [e] */
+  /** @param {PointerEvent} e */
   const finish = (e) => {
     if (!active) return;
     active = false;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
+    const dx = e.clientX - /** @type {number} */ (startX);
+    const dy = e.clientY - /** @type {number} */ (startY);
     const isLeftSwipe = dx < -SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.5;
     if (!isLeftSwipe) return;
     cycleFoldLevel(heading, { archiveVisibility });
@@ -72,28 +75,29 @@ export function attachSlideLeftToFold(el, heading, opts = {}) {
 /**
  * @param {HTMLDivElement} el
  * @param {Heading} heading
+ * @param {{ onDone?: () => void }} [opts]
  */
 export function attachSlideRightToComplete(el, heading, opts = {}) {
-  const onDone = /** @type {any} */ (opts).onDone || (() => commitAndRender('Completed via swipe'));
-  /** @type {any} */
+  const onDone = opts.onDone || (() => commitAndRender('Completed via swipe'));
+  /** @type {number | null} */
   let startX = null;
-  /** @type {any} */
+  /** @type {number | null} */
   let startY = null;
   let active = false;
 
-  el.addEventListener('pointerdown', (/** @type {any} */ e) => {
-    if (e.target.closest('button, a, input, textarea, [data-inline-link]')) return;
+  el.addEventListener('pointerdown', (/** @type {PointerEvent} */ e) => {
+    if (/** @type {Element} */ (e.target).closest('button, a, input, textarea, [data-inline-link]')) return;
     startX = e.clientX;
     startY = e.clientY;
     active = true;
   });
 
-  /** @param {any} [e] */
+  /** @param {PointerEvent} e */
   const finish = (e) => {
     if (!active) return;
     active = false;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
+    const dx = e.clientX - /** @type {number} */ (startX);
+    const dy = e.clientY - /** @type {number} */ (startY);
     const isRightSwipe = dx > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.5;
     if (!isRightSwipe) return;
 
@@ -115,27 +119,27 @@ export function attachSlideRightToComplete(el, heading, opts = {}) {
 
 /** @param {HTMLDivElement} el */
 export function attachAgendaSwipeNav(el) {
-  /** @type {any} */
+  /** @type {number | null} */
   let startX = null;
-  /** @type {any} */
+  /** @type {number | null} */
   let startY = null;
   let active = false;
   let startedOnSwipeRow = false;
 
-  el.addEventListener('pointerdown', (/** @type {any} */ e) => {
-    if (e.target.closest('button, a, input, textarea, [data-inline-link]')) return;
+  el.addEventListener('pointerdown', (/** @type {PointerEvent} */ e) => {
+    if (/** @type {Element} */ (e.target).closest('button, a, input, textarea, [data-inline-link]')) return;
     startX = e.clientX;
     startY = e.clientY;
     active = true;
-    startedOnSwipeRow = !!e.target.closest('[data-swipe-row]'); // on a row that can be marked done, a swipe to the right does that (agenda-actions.js)
+    startedOnSwipeRow = !!/** @type {Element} */ (e.target).closest('[data-swipe-row]'); // on a row that can be marked done, a swipe to the right does that (agenda-actions.js)
   });
 
-  /** @param {any} [e] */
+  /** @param {PointerEvent} e */
   const finish = (e) => {
     if (!active) return;
     active = false;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
+    const dx = e.clientX - /** @type {number} */ (startX);
+    const dy = e.clientY - /** @type {number} */ (startY);
     if (Math.abs(dx) <= SWIPE_THRESHOLD_PX || Math.abs(dx) <= Math.abs(dy) * 1.5) return;
     if (startedOnSwipeRow && dx > 0) return;
     S.agendaAnchorDate = agendaStepAnchor(S.agendaViewType, S.agendaAnchorDate, dx < 0 ? 1 : -1);
@@ -250,7 +254,7 @@ export function widen() {
  *  additional row filter alongside narrowedHeading; see
  *  sparseNarrowScope's own doc comment above for how the two compose.
  *  Saved per document (as outline paths, like narrowedHeading), so it
- * @param {any} [matchedHeadings]
+ * @param {Set<Heading>} matchedHeadings
  *  survives a reload. */
 export function narrowToSparseMatches(matchedHeadings) {
   S.sparseNarrowScope = { matched: matchedHeadings, visible: expandScopeWithAncestors(S.state.doc, matchedHeadings) };
@@ -358,13 +362,13 @@ export async function confirmTableDelete(table) {
   return confirmDialog('Delete this table and all its data?');
 }
 
-/** @param {any} [paragraph] */
+/** @param {Paragraph} paragraph */
 export async function confirmParagraphDelete(paragraph) {
   if (!paragraphHasContent(paragraph)) return true;
   return confirmDialog('Delete this note?');
 }
 
-/** @param {any} [item] */
+/** @param {ListItem} item */
 export async function confirmListItemDelete(item) {
   const count = listItemDescendantCount(item);
   const hasOwnContent = (item.text && item.text.trim() !== '') || (item.tag && item.tag.trim() !== '');

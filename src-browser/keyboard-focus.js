@@ -3,6 +3,8 @@
 /** @typedef {Exclude<import('../src/types.js').BodyRow, ListItemRow>} NodeRow */
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
+/** @typedef {import('../src/types.js').OutlineRow} OutlineRow */
+/** @typedef {import('../src/types.js').BodyRow} BodyRow */
 // Extracted from app.js: keyboard focus.
 import { findAncestorPath } from '../src/archive-model.js';
 import { flattenVisibleRows } from '../src/outline-view-model.js';
@@ -36,7 +38,7 @@ export function visibleHeadingsInOrder() {
  *  at -- matched by the row's own underlying node/item identity, not
  *  the row-wrapper object itself, since flattenVisibleRows rebuilds a
  *  fresh wrapper on every single call even when the underlying AST
- * @param {any} [row]
+ * @param {OutlineRow} row
  *  hasn't changed at all. */
 export function rowMatchesKeyboardFocus(row) {
   if (row.rowType === 'heading') return !S.keyboardFocusedBodyRow && row.node === S.keyboardFocusedHeading;
@@ -53,7 +55,7 @@ export function rowMatchesKeyboardFocus(row) {
  *  regardless of where the line-cursor has actually drilled to.
  *  Landing on a table also initializes keyboardFocusedCellPos to its
  *  own first data row/first column -- the entry point Shift+arrow's
- * @param {any} [row]
+ * @param {OutlineRow} row
  *  cell-by-cell stepping (moveTableCellFocus) then moves from. */
 export function setKeyboardFocusToRow(row) {
   if (row.rowType === 'heading') {
@@ -292,7 +294,6 @@ export function resyncKeyboardFocusToBodyRow(heading, oldRowType, oldLineIndex) 
     return;
   }
   if (/** @type {NodeRow} */ (S.keyboardFocusedBodyRow).node.lineIndex !== oldLineIndex) return;
-  /** @param {any} [node] */
   const freshNode = (heading.body || []).find((node) => node.type === oldRowType && node.lineIndex === oldLineIndex);
   if (freshNode) S.keyboardFocusedBodyRow = /** @type {NodeRow} */ ({ ...S.keyboardFocusedBodyRow, node: freshNode });
 }
@@ -306,7 +307,7 @@ export function resyncKeyboardFocusToBodyRow(heading, oldRowType, oldLineIndex) 
  *  `mutate`, then re-syncs it afterward. Returns whatever `mutate`
  *  itself returns, so this can wrap a call whose own return value the
  * @param {Heading} heading
- * @param {any} [mutate]
+ * @param {() => any} mutate
  *  caller still needs (e.g. a newly-inserted node). */
 export function withKeyboardFocusPreserved(heading, mutate) {
   const prior =
@@ -326,7 +327,7 @@ export function withKeyboardFocusPreserved(heading, mutate) {
  *  type shares, factored out here since keyboard focus can now land
  *  on any visible row (not just headings), and every one of this
  * @param {HTMLDivElement} el
- * @param {any} [row]
+ * @param {OutlineRow} row
  *  function's own callers needs the identical treatment. */
 export function applyKeyboardFocusHighlight(el, row) {
   el.dataset.rowKey = row.key; // lets "where is the screen" be turned back into a row (see rowNearViewportTop)
@@ -337,7 +338,7 @@ export function applyKeyboardFocusHighlight(el, row) {
   el.style.borderRadius = '4px';
 }
 
-/** @param {any} [e] */
+/** @param {MouseEvent & { target: Element }} e */
 export function clearStaleKeyboardFocusIfClickedElsewhere(e) {
   // A fresh edit session may have already started -- and already
   // rendered once, correctly -- as part of THIS SAME click, if it
@@ -369,20 +370,20 @@ export function clearStaleKeyboardFocusIfClickedElsewhere(e) {
   if (changed) render(); // avoid a pointless re-render on every ordinary click that has nothing to clear
 }
 
-/** @param {any} [row] */
+/** @param {BodyRow} row */
 const lineIndexOf = (row) => (row.rowType === 'list-item' ? row.item.lineIndex : row.node.lineIndex);
 
 /** After an edit that re-parsed a heading's body (writing a result, say), the focused body row is a new object, so
  *  nothing matches it any more: the highlight vanishes and the next arrow starts from the top. This finds the same row
- * @param {any} [rows]
+ * @param {OutlineRow[]} rows
  *  again by its heading, kind and line, or falls back to the heading. `rows` is flattenVisibleRows(doc). */
 export function repairBodyFocus(rows) {
   const f = S.keyboardFocusedBodyRow;
   if (!f || rows.some(rowMatchesKeyboardFocus)) return;
   const at = lineIndexOf(f);
-  const same = rows.find((/** @type {any} */ r) => r.rowType === f.rowType && r.heading === f.heading && r.rowType !== 'heading' && lineIndexOf(r) === at);
+  const same = /** @type {BodyRow | undefined} */ (rows.find((r) => r.rowType === f.rowType && r.heading === f.heading && /** @type {string} */ (r.rowType) !== 'heading' && lineIndexOf(r) === at));
   if (same) S.keyboardFocusedBodyRow = same;
-  else if (rows.some((/** @type {any} */ r) => r.rowType === 'heading' && r.node === f.heading)) setKeyboardFocusToHeading(f.heading);
+  else if (rows.some((r) => r.rowType === 'heading' && r.node === f.heading)) setKeyboardFocusToHeading(f.heading);
 }
 
 /** The row at the top of the screen, for starting keyboard focus near where the person is reading. */

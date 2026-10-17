@@ -35,7 +35,7 @@ export async function loadApptSettings() {
 }
 
 /** Stores new settings and applies them: turning it off cancels what is pending and clears the countdown; turning it on (or changing
- * @param {any} [next]
+ * @param {Parameters<typeof import('../src/appt.js').normalizeApptSettings>[0]} next
  *  the warning time) scans again at once. */
 export async function saveApptSettings(next) {
   const was = S.apptSettings;

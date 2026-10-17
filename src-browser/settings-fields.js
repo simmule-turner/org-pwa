@@ -32,6 +32,8 @@ import { VISIBILITY_KEYWORDS } from '../src/startup-config.js';
  *   - 'subsuper': org-use-sub-superscripts' own three-state value
  *     space (t / nil / {}), not a plain boolean.
  */
+/** @typedef {{ key: string, label: string, section: string, type: string, default?: any, helpAnchor?: string, [k: string]: any }} QuickSettingField */
+/** @type {QuickSettingField[]} */
 export const QUICK_SETTINGS_FIELDS = [
   {
     key: 'org-startup-folded',

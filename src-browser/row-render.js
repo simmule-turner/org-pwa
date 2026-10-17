@@ -1,6 +1,12 @@
 // @ts-check
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
+/** @typedef {import('../src/types.js').HeadingRow} HeadingRow */
+/** @typedef {import('../src/types.js').OutlineRow} OutlineRow */
+/** @typedef {import('../src/types.js').ParagraphRow} ParagraphRow */
+/** @typedef {import('../src/types.js').TableBodyRow} TableBodyRow */
+/** @typedef {import('../src/types.js').BlockRow} BlockRow */
+/** @typedef {import('../src/types.js').HrRow} HrRow */
 // Extracted from app.js: row render.
 import { captionText, imageOptions, splitAffiliated } from '../src/affiliated.js';
 import { getPropertiesText, getProperty, isArchivedInPlace } from '../src/archive-model.js';
@@ -67,7 +73,7 @@ function actionSlot(label) {
 
 /** The heading's action grid: the buttons lay themselves out by the row's own width (4, 6 or 12 across), keep the shared tap
  *  size, show their names on hover, and move with the arrow keys; Esc closes the row.
- * @param {{ icon: string, label: string, onClick: () => void }[]} actions */
+ * @param {{ icon: string, label: string, onClick: (e: MouseEvent) => void | Promise<void> }[]} actions */
 function renderActionGrid(actions) {
   const wrap = document.createElement('div');
   wrap.className = 'action-wrap';
@@ -137,7 +143,7 @@ function renderActionGrid(actions) {
   return wrap;
 }
 
-/** @param {any} [actions] */
+/** @param {{ icon: string, label: string, onClick: (e: MouseEvent) => void | Promise<void> }[]} actions */
 export function renderActionMenu(actions, columns = 5) {
   if (columns === 0) return renderActionGrid(actions);
   const menu = document.createElement('div');
@@ -171,7 +177,7 @@ export function renderActionMenu(actions, columns = 5) {
 }
 
 /**
- * @param {any} [row]
+ * @param {OutlineRow} row
  * @param {any} [todoSequence]
  */
 export function renderRow(row, todoSequence) {
@@ -530,7 +536,7 @@ export function renderRow(row, todoSequence) {
           {
             icon: '\u270f\ufe0f',
             label: 'Edit text',
-            onClick: (/** @type {any} */ e) => {
+            onClick: (e) => {
               e.stopPropagation();
               S.actionMenuFor = null;
               S.editingListItem = { heading: row.heading, item: row.item };
@@ -541,7 +547,7 @@ export function renderRow(row, todoSequence) {
           {
             icon: '+',
             label: 'Add item below',
-            onClick: (/** @type {any} */ e) => {
+            onClick: (e) => {
               e.stopPropagation();
               S.actionMenuFor = null;
               const oldLineIndex = row.item.lineIndex;
@@ -556,7 +562,7 @@ export function renderRow(row, todoSequence) {
           {
             icon: '\u2715',
             label: 'Delete item',
-            onClick: async (/** @type {any} */ e) => {
+            onClick: async (e) => {
               e.stopPropagation();
               if (!(await confirmListItemDelete(row.item))) return;
               S.actionMenuFor = null;
@@ -585,14 +591,14 @@ export function renderRow(row, todoSequence) {
 
   const el = document.createElement('div');
   el.className = 'row';
-  el.style.paddingLeft = 8 + row.depth * 16 + 'px';
+  el.style.paddingLeft = 8 + /** @type {{ depth: number }} */ (row).depth * 16 + 'px';
   el.style.opacity = '0.6';
   el.style.fontStyle = 'italic';
-  el.textContent = '[' + row.rowType + ']';
+  el.textContent = '[' + /** @type {{ rowType: string }} */ (row).rowType + ']';
   return el;
 }
 
-/** @param {any} [row] */
+/** @param {TableBodyRow} row */
 export function renderTableRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
@@ -644,10 +650,10 @@ export function renderTableRow(row) {
   tableEl.style.borderCollapse = 'collapse';
   tableEl.style.fontSize = 'var(--app-font-size-tables)';
 
-  row.node.rows.forEach((/** @type {any} */ tr, /** @type {any} */ rowIndex) => {
+  row.node.rows.forEach((tr, rowIndex) => {
     if (tr.type === 'rule') return; // shown implicitly via the header row's styling, not as its own grid row
     const trEl = document.createElement('tr');
-    tr.cells.forEach((/** @type {any} */ cellText, /** @type {any} */ colIndex) => {
+    tr.cells.forEach((cellText, colIndex) => {
       const tdEl = document.createElement('td');
       tdEl.style.border = '1px solid #8886';
       tdEl.style.padding = '3px 6px';
@@ -764,7 +770,6 @@ export function renderTableRow(row) {
           // heading. Re-finding it fresh by lineIndex, rather than
           // trusting the closure-captured row.node directly, is what
           // makes this correct either way.
-          /** @param {any} [n] */
           const freshTable = (row.heading.body || []).find(/** @param {import('../src/types.js').BodyNode} n @returns {n is import('../src/types.js').Table} */ (n) => n.type === 'table' && n.lineIndex === row.node.lineIndex) || row.node;
           S.editingCell = { heading: row.heading, table: freshTable, rowIndex, colIndex };
           commitAndRender('Edited table cell');
@@ -786,21 +791,21 @@ export function renderTableRow(row) {
   controls.style.gap = '4px';
   controls.style.marginTop = '4px';
 
-  const dataRowCount = () => row.node.rows.filter((/** @type {any} */ r) => r.type === 'row').length;
+  const dataRowCount = () => row.node.rows.filter(/** @param {import('../src/types.js').TableRow} r @returns {r is import('../src/types.js').DataRow} */ (r) => r.type === 'row').length;
   const colCount = () => {
-    const dr = row.node.rows.find((/** @type {any} */ r) => r.type === 'row');
+    const dr = row.node.rows.find(/** @param {import('../src/types.js').TableRow} r @returns {r is import('../src/types.js').DataRow} */ (r) => r.type === 'row');
     return dr ? dr.cells.length : 1;
   };
 
   function lastDataRowHasContent() {
-    const dataRows = row.node.rows.filter((/** @type {any} */ r) => r.type === 'row');
+    const dataRows = row.node.rows.filter(/** @param {import('../src/types.js').TableRow} r @returns {r is import('../src/types.js').DataRow} */ (r) => r.type === 'row');
     const last = dataRows[dataRows.length - 1];
-    return last ? last.cells.some((/** @type {any} */ c) => c.trim() !== '') : false;
+    return last ? last.cells.some((c) => c.trim() !== '') : false;
   }
   function lastColumnHasContent() {
-    const dataRows = row.node.rows.filter((/** @type {any} */ r) => r.type === 'row');
+    const dataRows = row.node.rows.filter(/** @param {import('../src/types.js').TableRow} r @returns {r is import('../src/types.js').DataRow} */ (r) => r.type === 'row');
     const lastColIndex = colCount() - 1;
-    return dataRows.some((/** @type {any} */ r) => (r.cells[lastColIndex] || '').trim() !== '');
+    return dataRows.some((r) => (r.cells[lastColIndex] || '').trim() !== '');
   }
 
   controls.appendChild(
@@ -872,7 +877,7 @@ export function renderTableRow(row) {
     controls.appendChild(
       smallButton(isPlotVisible ? '\ud83d\udcca Hide plot' : '\ud83d\udcca Plot', isPlotVisible ? "Hide this table's plot" : "Show this table's plot", () => {
         if (isPlotVisible) {
-          row.heading.plotVisible.delete(row.node.lineIndex);
+          /** @type {Set<number>} */ (row.heading.plotVisible).delete(row.node.lineIndex);
           render();
           return;
         }
@@ -952,7 +957,7 @@ export function renderTableRow(row) {
 /** A horizontal rule (5+ dashes on their own line) -- purely visual, no
  *  action menu, since there's nothing meaningful to edit on it beyond
  *  what the plain-text editor or the heading's own "Edit text" action
- * @param {any} [row]
+ * @param {HrRow} row
  *  already cover for arbitrary raw content. */
 export function renderHrRow(row) {
   const wrap = document.createElement('div');
@@ -969,15 +974,15 @@ export function renderHrRow(row) {
 }
 
 /** The `#+NAME:`, `#+ATTR_*:`, `#+HEADER:` and `#+RESULTS:` lines above a paragraph, as small muted text
- * @param {any} [affiliated]
+ * @param {{ key: string, value: string, line: string }[]} affiliated
  *  (shown, not hidden, since they are part of the document). `#+CAPTION:` is not here; see renderCaption. */
 function renderAffiliatedPrefix(affiliated) {
-  const lines = affiliated.filter((/** @type {any} */ a) => a.key !== 'CAPTION');
+  const lines = affiliated.filter((a) => a.key !== 'CAPTION');
   if (!lines.length) return null;
   const box = document.createElement('div');
   box.setAttribute('data-affiliated', 'meta');
   box.style.cssText = 'font-size:11px;opacity:0.6;font-family:monospace;white-space:pre-wrap;overflow-wrap:anywhere;';
-  box.textContent = lines.map((/** @type {any} */ a) => a.line.trim()).join('\n');
+  box.textContent = lines.map((a) => a.line.trim()).join('\n');
   return box;
 }
 
@@ -994,7 +999,7 @@ function renderCaption(text, heading) {
   return el;
 }
 
-/** @param {any} [row] */
+/** @param {ParagraphRow} row */
 export function renderParagraphRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
@@ -1084,7 +1089,7 @@ export function renderParagraphRow(row) {
             const oldLineIndex = row.node.lineIndex;
             const newParagraph = insertParagraphAfter(row.heading, row.node, '');
             resyncKeyboardFocusToBodyRow(row.heading, 'paragraph', oldLineIndex);
-            S.editingParagraph = { heading: row.heading, paragraph: newParagraph };
+            S.editingParagraph = { heading: row.heading, paragraph: /** @type {import('../src/types.js').Paragraph} */ (newParagraph) };
             commitAndRender('Added paragraph');
             openParagraphEditor(row.heading, newParagraph);
           },
@@ -1111,7 +1116,7 @@ export function renderParagraphRow(row) {
 }
 
 /**
- * @param {any} block
+ * @param {import('../src/types.js').Block} block
  * @param {HTMLElement} container
  * @param {null} linkContext
  */
@@ -1215,7 +1220,7 @@ export function renderBlockContent(block, container, linkContext) {
   container.appendChild(pre);
 }
 
-/** @param {any} [row] */
+/** @param {BlockRow} row */
 export function renderBlockRow(row) {
   const wrap = document.createElement('div');
   wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';

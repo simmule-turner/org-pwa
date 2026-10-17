@@ -36,7 +36,7 @@ import { renderSettingsView } from './settings-view.js';
  *  alternate "default value" a future release could ever change out
  *  from under it (empty always means the same thing: nothing
  *  configured), so there's nothing to protect against and nothing
- * @param {any} [field]
+ * @param {import('./settings-fields.js').QuickSettingField} field
  *  meaningful to bake in. */
 export function resolveQuickSettingValue(field) {
   const rawValue = S.globalVariables[field.key];
@@ -78,7 +78,7 @@ export function buildFullyResolvedGlobalVariablesText() {
   const resolved = { ...parseGlobalVariables(S.globalVariablesText) };
   for (const field of QUICK_SETTINGS_FIELDS) {
     const value = resolveQuickSettingValue(field);
-    if (value !== null) /** @type {any} */ (resolved)[field.key] = value;
+    if (value !== null) resolved[field.key] = value;
   }
   return serializeGlobalVariables(resolved);
 }
@@ -96,9 +96,9 @@ export async function commitGlobalVariableChange(key, rawValue) {
   const normalizedValue = typeof rawValue === 'string' ? normalizeSmartQuotes(rawValue) : rawValue;
   const vars = parseGlobalVariables(S.globalVariablesText);
   if (normalizedValue === null) {
-    delete /** @type {any} */ (vars)[key];
+    delete vars[key];
   } else {
-    /** @type {any} */ (vars)[key] = normalizedValue;
+    vars[key] = normalizedValue;
   }
   S.globalVariablesText = serializeGlobalVariables(vars);
   S.globalVariables = vars;
@@ -112,7 +112,7 @@ export async function commitGlobalVariableChange(key, rawValue) {
 
 /**
  * Builds one Quick Settings field's own label + control row.
- * @param {any} [field]
+ * @param {import('./settings-fields.js').QuickSettingField} field
  */
 export function renderQuickSettingField(field) {
   const row = document.createElement('div');
@@ -367,7 +367,7 @@ export function renderQuickSettingField(field) {
     helpLink.style.fontSize = '13px';
     helpLink.style.cursor = 'pointer';
     helpLink.style.padding = '0 4px';
-    helpLink.onclick = () => openDocsAtHeading(field.helpAnchor);
+    helpLink.onclick = () => openDocsAtHeading(/** @type {string} */ (field.helpAnchor));
     headerRow.appendChild(helpLink);
   }
   row.appendChild(headerRow);

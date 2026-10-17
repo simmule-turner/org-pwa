@@ -63,13 +63,13 @@ function joinContinuedLines(text) {
 
 /** @param {string} text */
 export function parseGlobalVariables(text) {
-  const vars = {};
+  /** @type {Record<string, string>} */ const vars = {};
   if (!text) return vars;
   for (const rawLine of joinContinuedLines(text)) {
     const line = rawLine.trim();
     if (!line) continue;
     const m = GLOBAL_VAR_LINE_RE.exec(line);
-    if (m) /** @type {any} */ (vars)[m[1]] = m[2].trim();
+    if (m) vars[m[1]] = m[2].trim();
   }
   return vars;
 }
