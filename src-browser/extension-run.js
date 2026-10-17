@@ -16,14 +16,14 @@ function extensionMain() {
   const uiLines = new Map();
   const linkTypes = new Map();
   const exporters = new Map();
-  /** @type {any} */
+  /** @type {{ document: unknown, edits: unknown[], notices: string[] } | null} */
   let current = null; // the command being run: { document, edits, notices }
   /** @type {any[]} */ const logs = [];
   const waiting = new Map();
   let lastRid = 0;
   /**
    * @param {string} method
-   * @param {any} [args]
+   * @param {unknown} [args]
    */
   const rpc = (method, args) =>
     new Promise((resolve, reject) => {
@@ -31,7 +31,7 @@ function extensionMain() {
       waiting.set(rid, { resolve, reject });
       self.postMessage({ type: 'rpc', rid, method, args });
     });
-  /** @param {any} [v] */
+  /** @param {unknown} [v] */
   const show = (v) => {
     if (typeof v === 'string') return v;
     try {
@@ -43,9 +43,9 @@ function extensionMain() {
   const log = (/** @type {any[]} */ ...a) => {
     if (logs.length < 50) logs.push(a.map(show).join(' ').slice(0, 500));
   };
-  /** @param {any} [v] */
+  /** @param {unknown} [v] */
   const plain = (v) => (v === true || typeof v === 'string' || (typeof v === 'number' && Number.isFinite(v)) ? v : null);
-  /** @param {any} [key] */
+  /** @param {string} key */
   const dayParts = (key) => {
     const [y, m, d] = key.split('-').map(Number);
     return { date: key, year: y, month: m, day: d, weekday: new Date(Date.UTC(y, m - 1, d)).getUTCDay() };
@@ -58,26 +58,26 @@ function extensionMain() {
       waiting.delete(m.rid);
       if (w) (m.ok ? w.resolve(m.value) : w.reject(new Error(m.message)));
     } else if (m.type === 'init') {
-      /** @param {any} [op] */
+      /** @param {unknown} [op] */
       const pushEdit = (op) => {
         if (!current) throw new Error('org.edit can only be used while a command is running');
         if (current.edits.length >= 500) throw new Error('too many edits in one command (500 at most)');
         current.edits.push(JSON.parse(JSON.stringify(op)));
       };
-      const edit = Object.assign((/** @type {any} */ op) => pushEdit(op), {
-        setTitle: (/** @type {any} */ heading, /** @type {string} */ title) => pushEdit({ op: 'set-title', heading, title }),
-        setTodo: (/** @type {any} */ heading, /** @type {any} */ todo) => pushEdit({ op: 'set-todo', heading, todo }),
-        setTags: (/** @type {any} */ heading, /** @type {any} */ tags) => pushEdit({ op: 'set-tags', heading, tags }),
-        setProperty: (/** @type {any} */ heading, /** @type {string} */ name, /** @type {any} */ value) => pushEdit({ op: 'set-property', heading, name, value }),
-        deleteProperty: (/** @type {any} */ heading, /** @type {string} */ name) => pushEdit({ op: 'delete-property', heading, name }),
-        appendBody: (/** @type {any} */ heading, /** @type {string} */ text) => pushEdit({ op: 'append-body', heading, text }),
+      const edit = Object.assign((/** @type {unknown} */ op) => pushEdit(op), {
+        setTitle: (/** @type {unknown} */ heading, /** @type {string} */ title) => pushEdit({ op: 'set-title', heading, title }),
+        setTodo: (/** @type {unknown} */ heading, /** @type {unknown} */ todo) => pushEdit({ op: 'set-todo', heading, todo }),
+        setTags: (/** @type {unknown} */ heading, /** @type {unknown} */ tags) => pushEdit({ op: 'set-tags', heading, tags }),
+        setProperty: (/** @type {unknown} */ heading, /** @type {string} */ name, /** @type {unknown} */ value) => pushEdit({ op: 'set-property', heading, name, value }),
+        deleteProperty: (/** @type {unknown} */ heading, /** @type {string} */ name) => pushEdit({ op: 'delete-property', heading, name }),
+        appendBody: (/** @type {unknown} */ heading, /** @type {string} */ text) => pushEdit({ op: 'append-body', heading, text }),
       });
       const org = Object.freeze({
         apiVersion: 1,
         vars: Object.freeze({ get: (/** @type {string} */ name) => (Object.prototype.hasOwnProperty.call(m.variables, name) ? m.variables[name] : null) }),
         /**
          * @param {string} name
-         * @param {any} [fn]
+         * @param {unknown} [fn]
          */
         sexp(name, fn) {
           if (typeof name !== 'string' || typeof fn !== 'function') throw new TypeError('org.sexp(name, function) expects a name and a function');
@@ -86,7 +86,7 @@ function extensionMain() {
         /**
          * @param {string} id
          * @param {string} label
-         * @param {any} [fn]
+         * @param {unknown} [fn]
          */
         command(id, label, fn) {
           if (typeof id !== 'string' || !/^[A-Za-z][A-Za-z0-9-]*$/.test(id) || typeof label !== 'string' || !label.trim() || typeof fn !== 'function') {
@@ -96,7 +96,7 @@ function extensionMain() {
         },
         /**
          * @param {string} event
-         * @param {any} [fn]
+         * @param {unknown} [fn]
          */
         on(event, fn) {
           if (!['open', 'save', 'todo-change', 'capture'].includes(event) || typeof fn !== 'function') {
@@ -107,7 +107,7 @@ function extensionMain() {
         },
         /**
          * @param {string} name
-         * @param {any} [fn]
+         * @param {unknown} [fn]
          */
         tableFunction(name, fn) {
           if (typeof name !== 'string' || typeof fn !== 'function') throw new TypeError('org.tableFunction(name, function) expects a name and a function');
@@ -115,7 +115,7 @@ function extensionMain() {
         },
         /**
          * @param {string} prefix
-         * @param {any} [fn]
+         * @param {unknown} [fn]
          */
         linkType(prefix, fn) {
           if (typeof prefix !== 'string' || typeof fn !== 'function') throw new TypeError('org.linkType(prefix, function) expects a prefix and a function');
@@ -124,7 +124,7 @@ function extensionMain() {
         /**
          * @param {string} id
          * @param {string} label
-         * @param {any} [fn]
+         * @param {unknown} [fn]
          */
         exportBackend(id, label, fn) {
           if (typeof id !== 'string' || !/^[A-Za-z][A-Za-z0-9-]*$/.test(id) || typeof label !== 'string' || !label.trim() || typeof fn !== 'function') {
@@ -143,7 +143,7 @@ function extensionMain() {
         agenda: Object.freeze({
           /**
            * @param {string} name
-           * @param {any} [fn]
+           * @param {unknown} [fn]
            */
           source(name, fn) {
             if (typeof name !== 'string' || !/^[A-Za-z][A-Za-z0-9-]*$/.test(name) || typeof fn !== 'function') throw new TypeError('org.agenda.source(name, function): the name is letters, digits and dashes');
@@ -153,7 +153,7 @@ function extensionMain() {
         ui: Object.freeze({
           /**
            * @param {string} id
-           * @param {any} [fn]
+           * @param {unknown} [fn]
            */
           line(id, fn) {
             if (typeof id !== 'string' || !/^[A-Za-z][A-Za-z0-9-]*$/.test(id) || typeof fn !== 'function') throw new TypeError('org.ui.line(id, function): the id is letters, digits and dashes');
@@ -162,16 +162,16 @@ function extensionMain() {
         }),
         location: Object.freeze({ get: () => rpc('location.get', []) }),
         cache: Object.freeze({
-          get: async (/** @type {string} */ key, /** @type {any} */ maxAgeMs) => {
+          get: async (/** @type {string} */ key, /** @type {unknown} */ maxAgeMs) => {
           const r = await rpc('cache.get', [key, maxAgeMs === undefined ? null : maxAgeMs]);
           return r.found ? r.value : null;
         },
-          set: async (/** @type {string} */ key, /** @type {any} */ value) => {
+          set: async (/** @type {string} */ key, /** @type {unknown} */ value) => {
             await rpc('cache.set', [key, value]);
             return value;
           },
         }),
-        fetch: async (/** @type {string} */ url, /** @type {any} */ options) => {
+        fetch: async (/** @type {string} */ url, /** @type {unknown} */ options) => {
           const r = await rpc('fetch', [String(url), options === undefined ? null : JSON.parse(JSON.stringify(options))]);
           return Object.freeze({ status: r.status, ok: r.ok, url: r.url, text: async () => r.body, json: async () => JSON.parse(r.body) });
         },
@@ -232,7 +232,7 @@ function extensionMain() {
       self.postMessage({ type: 'agenda-done', id: m.id, items, error, logs: logs.splice(0) });
     } else if (m.type === 'line') {
       const fn = uiLines.get(m.name);
-      /** @type {any} */
+      /** @type {unknown} */
       let text = null;
       /** @type {string | null} */
       let error = null;
@@ -246,7 +246,7 @@ function extensionMain() {
       self.postMessage({ type: 'line-done', id: m.id, text, error, logs: logs.splice(0) });
     } else if (m.type === 'link') {
       const fn = linkTypes.get(m.prefix);
-      /** @type {any} */
+      /** @type {unknown} */
       let url = null;
       /** @type {string | null} */
       let error = null;
@@ -261,7 +261,7 @@ function extensionMain() {
     } else if (m.type === 'export') {
       const ex = exporters.get(m.name);
       current = { document: m.document, edits: [], notices: [] };
-      /** @type {any} */
+      /** @type {unknown} */
       let output = null;
       /** @type {string | null} */
       let error = null;
@@ -284,7 +284,7 @@ function extensionMain() {
       } catch (err) {
         error = String((err && err.message) || err);
       }
-      const done = current;
+      const done = /** @type {NonNullable<typeof current>} */ (current);
       current = null;
       self.postMessage({ type: 'event-done', id: m.id, edits: error ? [] : done.edits, notices: done.notices, error, logs: logs.splice(0) });
     } else if (m.type === 'command') {
@@ -302,7 +302,7 @@ function extensionMain() {
       } catch (err) {
         error = String((err && err.message) || err);
       }
-      const done = current;
+      const done = /** @type {NonNullable<typeof current>} */ (current);
       current = null;
       self.postMessage({ type: 'command-done', id: m.id, edits: error ? [] : done.edits, notices: done.notices, message, error, logs: logs.splice(0) });
     }
@@ -314,7 +314,7 @@ function extensionMain() {
  * or { ok: false, message, logs }. A call that takes longer than `callTimeoutMs` closes the sandbox and
  * rejects, so a script that hangs cannot stay running.
  */
-export async function startExtension(/** @type {any} */ { code, variables = {}, onRpc = /** @type {((method: any, args: any) => any) | null} */ (null), initTimeoutMs = 3000, callTimeoutMs = 3000, commandTimeoutMs = 5000, eventTimeoutMs = 2000 }) {
+export async function startExtension(/** @type {{ code: string, variables?: Record<string, unknown>, onRpc?: ((method: any, args: any) => any) | null, initTimeoutMs?: number, callTimeoutMs?: number, commandTimeoutMs?: number, eventTimeoutMs?: number }} */ { code, variables = {}, onRpc = /** @type {((method: any, args: any) => any) | null} */ (null), initTimeoutMs = 3000, callTimeoutMs = 3000, commandTimeoutMs = 5000, eventTimeoutMs = 2000 }) {
   const box = await startSandbox(extensionMain, { onRpc });
   if (!box.ok) return { ok: false, message: box.message, logs: [] };
   let nextId = 1;
@@ -329,14 +329,14 @@ export async function startExtension(/** @type {any} */ { code, variables = {}, 
 
   /**
    * A timer that does not run while the script waits for the page (network, position), up to a hard limit.
-   * @param {any} timeoutMs
+   * @param {number} timeoutMs
    * @param {() => void} onTimeout
    */
   const deadline = (timeoutMs, onTimeout) => {
     const started = Date.now();
     /** @type {number | null} */
     let timer = null;
-    /** @param {any} [delay] */
+    /** @param {number} [delay] */
     const arm = (delay) => {
       timer = setTimeout(() => {
         const elapsed = Date.now() - started;
@@ -365,9 +365,9 @@ export async function startExtension(/** @type {any} */ { code, variables = {}, 
 
   /**
    * One request to the worker, answered by its id. Past the timeout the sandbox is closed, so a script that hangs cannot stay running.
-   * @param {any} message
+   * @param {Record<string, unknown>} message
    * @param {string} label
-   * @param {any} [timeoutMs]
+   * @param {number} timeoutMs
    */
   const request = (message, label, timeoutMs) =>
     new Promise((resolve, reject) => {
@@ -397,13 +397,13 @@ export async function startExtension(/** @type {any} */ { code, variables = {}, 
     exporters: init.exporters || [],
     logs: init.logs || [],
     close: box.close,
-    call: (/** @type {string} */ name, /** @type {any} */ context, /** @type {any} */ args, /** @type {any} */ days) => request({ type: 'call', name, context, args, days }, name, callTimeoutMs),
-    runCommand: (/** @type {string} */ name, /** @type {any} */ document) => request({ type: 'command', name, document }, name, commandTimeoutMs),
-    fetchAgenda: (/** @type {string} */ name, /** @type {any} */ from, /** @type {any} */ to) => request({ type: 'agenda', name, from, to }, `the ${name} agenda source`, 8000),
+    call: (/** @type {string} */ name, /** @type {unknown} */ context, /** @type {unknown} */ args, /** @type {unknown} */ days) => request({ type: 'call', name, context, args, days }, name, callTimeoutMs),
+    runCommand: (/** @type {string} */ name, /** @type {unknown} */ document) => request({ type: 'command', name, document }, name, commandTimeoutMs),
+    fetchAgenda: (/** @type {string} */ name, /** @type {unknown} */ from, /** @type {unknown} */ to) => request({ type: 'agenda', name, from, to }, `the ${name} agenda source`, 8000),
     fetchLine: (/** @type {string} */ name) => request({ type: 'line', name }, `the ${name} line`, 8000),
-    callTable: (/** @type {string} */ name, /** @type {any} */ calls) => request({ type: 'table', name, calls }, name, callTimeoutMs),
-    resolveLink: (/** @type {string} */ prefix, /** @type {string} */ path, /** @type {any} */ target, /** @type {any} */ description) => request({ type: 'link', prefix, path, target, description }, `the ${prefix} link`, callTimeoutMs),
-    runExport: (/** @type {string} */ name, /** @type {any} */ document) => request({ type: 'export', name, document }, `the ${name} export`, commandTimeoutMs),
-    runEvent: (/** @type {string} */ name, /** @type {any} */ document, /** @type {any} */ payload) => request({ type: 'event', name, document, payload }, `the ${name} hook`, eventTimeoutMs),
+    callTable: (/** @type {string} */ name, /** @type {unknown} */ calls) => request({ type: 'table', name, calls }, name, callTimeoutMs),
+    resolveLink: (/** @type {string} */ prefix, /** @type {string} */ path, /** @type {unknown} */ target, /** @type {unknown} */ description) => request({ type: 'link', prefix, path, target, description }, `the ${prefix} link`, callTimeoutMs),
+    runExport: (/** @type {string} */ name, /** @type {unknown} */ document) => request({ type: 'export', name, document }, `the ${name} export`, commandTimeoutMs),
+    runEvent: (/** @type {string} */ name, /** @type {unknown} */ document, /** @type {unknown} */ payload) => request({ type: 'event', name, document, payload }, `the ${name} hook`, eventTimeoutMs),
   };
 }

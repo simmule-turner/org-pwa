@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v548 — Types for the calculators and extensions
+The complex and vector calculators, table plots and the extension sandbox (its page, flow and permission code) now have real types for calculator values, plot data, permission grants and the messages passed to a script, so wrong fields are caught before release. About 175 more loose annotations are gone; the few left sit where a script or the bundled maths library supplies the value. Nothing the app does has changed.
+Verified: the code is identical to v547 apart from comments; the type checker, linter and unit tests pass.
+
 * v547 — Types for the engines and exporters
 The HTML, text, Markdown and OpenDocument exporters, the vCard importer and exporter, search, the agenda, refile targets, archiving and the org parser now share real types for document elements, contacts, agenda entries and search filters, so a wrong field or a missing check in them is caught before release. About 420 more loose annotations are gone. Nothing the app does has changed.
 Verified: the code is identical to v546 apart from comments; the type checker, linter and unit tests pass.

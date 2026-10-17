@@ -24,6 +24,9 @@ function storedGrants() {
   }
 }
 
+/** What a person has allowed one script or block to do. @typedef {{ hosts: string[], location: boolean }} Grant */
+/** What a block's header says it needs. @typedef {{ hosts: string[], location: boolean }} Declared */
+
 /** @param {string} owner */
 function readGrant(owner) {
   if (owner.startsWith('session:')) return sessionGrants.get(owner) || { hosts: [], location: false };
@@ -33,7 +36,7 @@ function readGrant(owner) {
 
 /**
  * @param {string} owner
- * @param {any} [grant]
+ * @param {Grant} grant
  */
 function writeGrant(owner, grant) {
   if (owner.startsWith('session:')) {
@@ -88,7 +91,7 @@ async function writeCache(owner, scope) {
 
 /**
  * One reading. Code 3 is the browser's "timeout"; 1 is "refused".
- * @param {any} [options]
+ * @param {PositionOptions} [options]
  */
 function askPosition(options) {
   return new Promise((resolve, reject) => {
@@ -139,8 +142,8 @@ async function readBody(response) {
 
 /**
  * @param {string} url
- * @param {any} [options]
- * @param {any} [isHostOk]
+ * @param {unknown} options
+ * @param {(host: string, mayAsk: boolean) => Promise<boolean>} isHostOk
  */
 async function doFetch(url, options, isHostOk) {
   const target = checkFetchUrl(url);
@@ -166,16 +169,16 @@ async function doFetch(url, options, isHostOk) {
  * The request handler for one script or block. `declared` is { hosts, location } when the code's header
  * lists what it needs (source blocks); null for the init script, which is asked as it goes.
  */
-export function createServices(/** @type {any} */ { owner, declared = (null) }) {
+export function createServices(/** @type {{ owner: string, declared?: Declared | null }} */ { owner, declared = (null) }) {
   const refused = new Map(); // host -> when it was refused: not asked again for a while, so a script in a loop cannot flood the person with questions
   /**
-   * @param {any} [host]
-   * @param {any} [mayAsk]
+   * @param {string} host
+   * @param {boolean} [mayAsk]
    */
   const isHostOk = async (host, mayAsk) => {
     const grant = readGrant(owner);
     if (declared && !hostAllowed(host, declared.hosts)) throw new Error(`This block did not ask for ${host}; add it to :net`);
-    if (grant.hosts.includes(host) || (declared && declared.hosts.some((/** @type {any} */ h) => hostAllowed(host, [h]) && grant.hosts.includes(h)))) return true;
+    if (grant.hosts.includes(host) || (declared && declared.hosts.some((/** @type {string} */ h) => hostAllowed(host, [h]) && grant.hosts.includes(h)))) return true;
     if (!mayAsk || Date.now() - (refused.get(host) || 0) < REFUSAL_MEMORY_MS) throw new Error(`Network access to ${host} was not allowed`);
     const ok = await confirmDialog(`Allow this code to contact ${host}? It can send anything it can read, including the text of the open file, to that site.`, { confirmLabel: 'Allow', danger: false });
     if (!ok) {
@@ -193,7 +196,7 @@ export function createServices(/** @type {any} */ { owner, declared = (null) }) 
     if (!ok) throw new Error('Reading the position was not allowed');
     writeGrant(owner, { ...readGrant(owner), location: true });
   };
-  return async (/** @type {any} */ method, /** @type {any} */ args) => {
+  return async (/** @type {string} */ method, /** @type {any[]} */ args) => {
     if (method === 'ics.parse') {
       const text = String(args[0] === undefined || args[0] === null ? '' : args[0]);
       if (text.length > MAX_RESPONSE_BYTES) throw new Error('The calendar text is larger than 1 MB');
@@ -221,11 +224,11 @@ export function createServices(/** @type {any} */ { owner, declared = (null) }) 
 /**
  * Before a block runs: asks for the hosts and the position its header lists, unless granted already.
  * @param {string} owner
- * @param {any} [declared]
+ * @param {Declared} declared
  */
 export async function authorizeBlock(owner, declared) {
   const grant = readGrant(owner);
-  const hosts = declared.hosts.filter((/** @type {any} */ h) => !grant.hosts.includes(h));
+  const hosts = declared.hosts.filter((h) => !grant.hosts.includes(h));
   const needLocation = declared.location && !grant.location;
   if (!hosts.length && !needLocation) return true;
   const parts = [];

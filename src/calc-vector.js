@@ -78,6 +78,7 @@ const ZERO = (D) => toReal(0, D);
  * @param {boolean} degrees
  */
 function sum(list, D, degrees) {
+  /** @type {import('./calc-complex.js').Value} */
   let total = ZERO(D);
   for (const x of list) total = cAdd(total, x, D, degrees);
   return total;
@@ -285,6 +286,7 @@ function determinant(rows, D, degrees) {
   const n = rows.length;
   if (n === 1) return rows[0][0];
   if (n === 2) return cSub(cMul(rows[0][0], rows[1][1], D, degrees), cMul(rows[0][1], rows[1][0], D, degrees), D, degrees);
+  /** @type {import('./calc-complex.js').Value} */
   let total = ZERO(D);
   for (let j = 0; j < n; j++) {
     const term = cMul(rows[0][j], determinant(minor(rows, 0, j), D, degrees), D, degrees);

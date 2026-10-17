@@ -33,7 +33,7 @@ export function headingsInOrder(doc) {
 /** A read-only copy of the file for a script: `{ name, headings, focused, truncated }`. `focused` is the index of
  * @param {Doc} doc
  *  the heading the command was run on, or null. */
-export function snapshotDocument(doc, { name = '', focusedHeading = null } = {}) {
+export function snapshotDocument(doc, /** @type {{ name?: string, focusedHeading?: Heading | null }} */ { name = '', focusedHeading = null } = {}) {
   const all = headingsInOrder(doc);
   const stack = [];
   let total = 0;

@@ -1,6 +1,7 @@
 // @ts-check
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
+/** @typedef {import('../src/types.js').Table} Table */
 // The init script: load it, answer its diary functions, report how it is doing.
 import { deleteProperty, setProperty } from '../src/archive-model.js';
 import { commitLines } from '../src/body-edit.js';
@@ -80,7 +81,7 @@ function stop() {
   setUserSexps();
 }
 
-/** @param {any} [date] */
+/** @param {Date} date */
 const dayKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 function context() {
@@ -92,8 +93,8 @@ function context() {
 
 /** Answers the agenda for one function and day from the cache. A miss is "no entry" for now: it is queued,
  * @param {string} name
- * @param {any} [args]
- * @param {any} [date]
+ * @param {unknown[]} args
+ * @param {Date} date
  *  fetched in one batch, and the page is drawn again when the answers arrive. */
 function answer(name, args, date) {
   const key = userSexpKey(name, args, dayKey(date));
@@ -231,8 +232,8 @@ export async function loadExtensions() {
  * A click on [[prefix:path]]: the script's link function answers with an address, which is checked and opened.
  * @param {string} prefix
  * @param {string} path
- * @param {any} [target]
- * @param {any} [description]
+ * @param {unknown} [target]
+ * @param {unknown} [description]
  */
 async function openCustomLink(prefix, path, target, description) {
   const active = run.handle;
@@ -263,7 +264,7 @@ export const tableFunctionsActive = () => !!run.handle && info.tableFunctions.le
 /**
  * The answer to a table function during a recalculation: what the script already gave, or an error.
  * @param {string} name
- * @param {any} [args]
+ * @param {unknown[]} args
  */
 export function tableUserCall(name, args) {
   const hit = tableCache.get(JSON.stringify([name, args]));
@@ -272,20 +273,20 @@ export function tableUserCall(name, args) {
 }
 
 /** Before tables are recalculated: finds the script-function calls their formulas make and gets the answers
- * @param {any} [tables]
+ * @param {Table[]} tables
  *  from the script, so the (synchronous) recalculation can use them. Nested calls take another round. */
 export async function warmTableFunctions(tables) {
   const active = run.handle;
   if (!active || !info.tableFunctions.length) return;
   tableCache.clear();
-  const mine = tables.filter((/** @type {any} */ t) => t.tblfm && info.tableFunctions.some((n) => t.tblfm.includes(n + '(')));
+  const mine = tables.filter((t) => t.tblfm && info.tableFunctions.some((n) => /** @type {string} */ (t.tblfm).includes(n + '(')));
   const options = { hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables), constants: parseTableConstants(S.state.doc) };
   let total = 0;
   for (let pass = 0; pass < 3 && mine.length; pass++) {
     const misses = new Map();
     /**
      * @param {string} name
-     * @param {any} [args]
+     * @param {unknown[]} args
      */
     const userCall = (name, args) => {
       const key = JSON.stringify([name, args]);
@@ -332,7 +333,7 @@ export async function warmTableFunctions(tables) {
 /**
  * Runs one of the script's export backends on the open file and saves what it returns.
  * @param {string} id
- * @param {any} [target]
+ * @param {Heading | null} [target]
  */
 export async function runExtensionExport(id, target) {
   const backend = info.exporters.find((x) => x.id === id);
@@ -400,7 +401,7 @@ export function extensionPaletteEntries() {
     group: 'Extensions',
     keywords: ['script', 'extension', 'export'],
     needs: ['doc'],
-    run: (/** @type {any} */ target) => runExtensionExport(x.id, target),
+    run: (/** @type {Heading | null} */ target) => runExtensionExport(x.id, target),
   }));
   return exports.concat(info.commands.map((c) => ({
     id: 'ext-' + c.id,
@@ -420,7 +421,7 @@ const appendBody = (heading, lines) => commitLines(heading, (heading.bodyLines |
 
 /** Runs one of the script's commands on the open file. The command sees a read-only snapshot and answers with
  * @param {string} id
- * @param {any} [target]
+ * @param {Heading | null} [target]
  *  edits; they are checked, then applied together as a single undo step. */
 export async function runExtensionCommand(id, target) {
   const command = info.commands.find((c) => c.id === id);

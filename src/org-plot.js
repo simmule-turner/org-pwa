@@ -1,5 +1,8 @@
 // @ts-check
 /** @typedef {import('./types.js').Table} Table */
+/** The parsed #+PLOT: options: values are strings, numbers or lists, whatever the option's own key takes. @typedef {Record<string, any>} PlotOptions */
+/** @typedef {{ ind: string, values: (number | null)[] }} PlotRow */
+/** @typedef {{ indLabel: string, rows: PlotRow[], series: { index: number, label: string }[] }} PlotData */
 /** Real org-mode's own Org Plot feature (org-plot.el): draws 2D and
  *  radar graphs of information stored in an org table, driven by a
  *  #+PLOT: line directly above it. Real org-plot shells out to an
@@ -84,7 +87,7 @@ const MULTI_VALUE_KEYS = new Set(['set', 'line']);
 /** Mirrors real elisp's own (read-from-string ...) for exactly the
  * @param {string} text
  *  three value shapes parsePlotOptions's own regex can ever capture. */
-/** @returns {any} */ function readPlotValue(/** @type {any} */ text) {
+/** @returns {any} */ function readPlotValue(/** @type {string} */ text) {
   if (text.startsWith('"') && text.endsWith('"')) return text.slice(1, -1);
   if (text.startsWith('(') && text.endsWith(')')) {
     const inner = text.slice(1, -1).trim();
@@ -109,6 +112,7 @@ const MULTI_VALUE_KEYS = new Set(['set', 'line']);
  * @param {string} text
  *  option names and leaving anything else in the line untouched. */
 export function parsePlotOptions(text) {
+  /** @type {PlotOptions} */
   const options = {};
   for (const key of OPTION_KEYS) {
     const pattern = `${key}:("[^"]+?"|\\([^)]+?\\)|[^ \\t\\n\\r;,]*)`;
@@ -117,10 +121,10 @@ export function parsePlotOptions(text) {
       const all = [];
       let m;
       while ((m = re.exec(text))) all.push(readPlotValue(m[1]));
-      if (all.length) /** @type {any} */ (options)[key] = all;
+      if (all.length) (options)[key] = all;
     } else {
       const m = new RegExp(pattern).exec(text);
-      if (m) /** @type {any} */ (options)[key] = readPlotValue(m[1]);
+      if (m) (options)[key] = readPlotValue(m[1]);
     }
   }
   return options;
@@ -151,7 +155,7 @@ export function parsePlotOptions(text) {
  *  plotting the rest of a real, otherwise-good table. Throws only
  *  when there's genuinely nothing plottable at all (fewer than 2
  * @param {Table} table
- * @param {any} [options]
+ * @param {PlotOptions} options
  *  columns, or no real data rows). */
 export function extractPlotData(table, options) {
   const rawRows = table.rows || [];
@@ -182,7 +186,7 @@ export function extractPlotData(table, options) {
   if (indIdx < 0 || indIdx >= colCount) throw new Error(`ind:${indCol} is out of range for a table with ${colCount} columns.`);
 
   const depsOption = Array.isArray(options.deps) ? options.deps : options.deps !== undefined ? [options.deps] : null;
-  const depIdxs = depsOption ? depsOption.map((/** @type {any} */ n) => Number(n) - 1) : Array.from({ length: colCount }, (_, i) => i).filter((i) => i !== indIdx);
+  const depIdxs = depsOption ? depsOption.map((n) => Number(n) - 1) : Array.from({ length: colCount }, (_, i) => i).filter((i) => i !== indIdx);
   for (const idx of depIdxs) {
     if (idx < 0 || idx >= colCount) throw new Error(`deps column ${idx + 1} is out of range for a table with ${colCount} columns.`);
   }
@@ -206,7 +210,7 @@ export function extractPlotData(table, options) {
 
 const SERIES_COLORS = ['#4C78A8', '#F58518', '#54A24B', '#E45756', '#72B7B2', '#EECA3B', '#B279A2', '#FF9DA6', '#9D755D', '#BAB0AC'];
 
-/** @param {any} [s] */
+/** @param {unknown} s */
 function escapeXml(s) {
   return String(s).replace(/[&<>"']/g, (c) => /** @type {any} */ ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]);
 }
@@ -229,8 +233,8 @@ function escapeXml(s) {
  *  missing cell, see extractPlotData) is simply skipped within its
  *  own series -- a broken line/missing bar at that one position,
  *  never a thrown error over one bad cell in an otherwise-good
- * @param {any} [data]
- * @param {any} [options]
+ * @param {PlotData} data
+ * @param {PlotOptions} options
  *  table. */
 function render2dSvg(data, options) {
   const width = 480;
@@ -241,23 +245,23 @@ function render2dSvg(data, options) {
   const plotH = height - margin.top - margin.bottom;
 
   const withStyle = options.with === 'histograms' ? 'boxes' : options.with || 'lines';
-  const allValues = data.rows.flatMap((/** @type {any} */ r) => r.values).filter((/** @type {any} */ v) => v !== null);
+  const allValues = data.rows.flatMap((r) => r.values).filter((v) => v !== null);
   const dataMin = allValues.length ? Math.min(0, ...allValues) : 0;
   const dataMax = allValues.length ? Math.max(...allValues) : 1;
   const yMin = Number.isFinite(options.ymin) ? options.ymin : Number.isFinite(options.min) ? options.min : dataMin;
   const yMax = Number.isFinite(options.ymax) ? options.ymax : Number.isFinite(options.max) ? options.max : dataMax;
   const yRange = yMax - yMin || 1;
-  /** @param {any} [v] */
+  /** @param {number} v */
   const yToPx = (v) => margin.top + plotH - ((v - yMin) / yRange) * plotH;
 
-  const indNumeric = data.rows.length > 0 && data.rows.every((/** @type {any} */ r) => r.ind !== '' && !Number.isNaN(Number(r.ind)));
-  const xMinData = indNumeric ? Math.min(...data.rows.map((/** @type {any} */ r) => Number(r.ind))) : 0;
-  const xMaxData = indNumeric ? Math.max(...data.rows.map((/** @type {any} */ r) => Number(r.ind))) : Math.max(1, data.rows.length - 1);
+  const indNumeric = data.rows.length > 0 && data.rows.every((r) => r.ind !== '' && !Number.isNaN(Number(r.ind)));
+  const xMinData = indNumeric ? Math.min(...data.rows.map((r) => Number(r.ind))) : 0;
+  const xMaxData = indNumeric ? Math.max(...data.rows.map((r) => Number(r.ind))) : Math.max(1, data.rows.length - 1);
   const xMin = Number.isFinite(options.xmin) ? options.xmin : xMinData;
   const xMax = Number.isFinite(options.xmax) ? options.xmax : xMaxData;
   const xRange = xMax - xMin || 1;
   /**
-   * @param {any} row
+   * @param {PlotRow} row
    * @param {number} i
    */
   const xToPx = (row, i) => margin.left + (indNumeric ? ((Number(row.ind) - xMin) / xRange) * plotW : (i + 0.5) * (plotW / data.rows.length));
@@ -279,7 +283,7 @@ function render2dSvg(data, options) {
   parts.push(`<line x1="${margin.left}" y1="${margin.top + plotH}" x2="${width - margin.right}" y2="${margin.top + plotH}" stroke="#888"/>`);
 
   // x-axis labels (one per data row)
-  data.rows.forEach((/** @type {any} */ row, /** @type {number} */ i) => {
+  data.rows.forEach((row, /** @type {number} */ i) => {
     const px = xToPx(row, i);
     parts.push(`<text x="${px}" y="${margin.top + plotH + 16}" text-anchor="middle" fill="#666">${escapeXml(row.ind)}</text>`);
   });
@@ -289,9 +293,9 @@ function render2dSvg(data, options) {
   const groupW = data.rows.length > 1 ? plotW / data.rows.length : plotW;
   const barW = Math.max(2, (groupW * 0.7) / Math.max(1, seriesCount));
 
-  data.series.forEach((/** @type {any} */ series, /** @type {any} */ sIdx) => {
+  data.series.forEach((series, sIdx) => {
     const color = SERIES_COLORS[sIdx % SERIES_COLORS.length];
-    const points = data.rows.map((/** @type {any} */ row, /** @type {number} */ i) => ({ x: xToPx(row, i), y: row.values[sIdx] === null ? null : yToPx(row.values[sIdx]), v: row.values[sIdx] }));
+    const points = data.rows.map((row, /** @type {number} */ i) => ({ x: xToPx(row, i), y: row.values[sIdx] === null ? null : yToPx(row.values[sIdx]), v: row.values[sIdx] }));
 
     if (withStyle === 'lines') {
       const segments = [];
@@ -312,7 +316,7 @@ function render2dSvg(data, options) {
     } else if (withStyle === 'points') {
       for (const p of points) if (p.y !== null) parts.push(`<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${color}"/>`);
     } else if (withStyle === 'boxes') {
-      points.forEach((/** @type {any} */ p, /** @type {number} */ i) => {
+      points.forEach((p, /** @type {number} */ i) => {
         if (p.y === null) return;
         const x = xToPx(data.rows[i], i) - (seriesCount * barW) / 2 + sIdx * barW;
         const y0 = yToPx(0);
@@ -331,10 +335,10 @@ function render2dSvg(data, options) {
   // since that risked overlapping the first data point.
   if (hasLegend) {
     const legendY = options.title ? 30 : 10;
-    const entryWidths = data.series.map((/** @type {any} */ s) => 16 + s.label.length * 6.5 + 14);
-    const totalWidth = entryWidths.reduce((/** @type {any} */ a, /** @type {any} */ b) => a + b, 0);
+    const entryWidths = data.series.map((s) => 16 + s.label.length * 6.5 + 14);
+    const totalWidth = entryWidths.reduce((a, b) => a + b, 0);
     let x = margin.left + plotW / 2 - totalWidth / 2;
-    data.series.forEach((/** @type {any} */ series, /** @type {number} */ i) => {
+    data.series.forEach((series, /** @type {number} */ i) => {
       parts.push(`<rect x="${x}" y="${legendY}" width="10" height="10" fill="${SERIES_COLORS[i % SERIES_COLORS.length]}"/>`);
       parts.push(`<text x="${x + 14}" y="${legendY + 9}" fill="#333">${escapeXml(series.label)}</text>`);
       x += entryWidths[i];
@@ -345,7 +349,7 @@ function render2dSvg(data, options) {
   return parts.join('');
 }
 
-/** @param {any} [n] */
+/** @param {number} n */
 function formatPlotNumber(n) {
   return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
 }
@@ -361,8 +365,8 @@ function formatPlotNumber(n) {
  *  share one scale (`min`/`max`, default the data's own overall
  *  range), matching the manual's own radar example, which sets a
  *  single min/max applying to every axis at once rather than a
- * @param {any} [data]
- * @param {any} [options]
+ * @param {PlotData} data
+ * @param {PlotOptions} options
  *  separate range per axis. */
 function renderRadarSvg(data, options) {
   const width = 520;
@@ -371,7 +375,7 @@ function renderRadarSvg(data, options) {
   const cy = height / 2 + (options.title ? 8 : 0);
   const radius = Math.min(width, height) / 2 - 90;
 
-  const allValues = data.rows.flatMap((/** @type {any} */ r) => r.values).filter((/** @type {any} */ v) => v !== null);
+  const allValues = data.rows.flatMap((r) => r.values).filter((v) => v !== null);
   const dataMin = allValues.length ? Math.min(0, ...allValues) : 0;
   const dataMax = allValues.length ? Math.max(...allValues) : 1;
   const min = Number.isFinite(options.min) ? options.min : dataMin;
@@ -383,7 +387,7 @@ function renderRadarSvg(data, options) {
   const angleFor = (i) => -Math.PI / 2 + (2 * Math.PI * i) / n;
   /**
    * @param {number} i
-   * @param {any} [value]
+   * @param {number} value
    */
   const pointFor = (i, value) => {
     const r = Math.max(0, ((value - min) / range) * radius);
@@ -406,7 +410,7 @@ function renderRadarSvg(data, options) {
   }
 
   // spokes and axis labels
-  data.rows.forEach((/** @type {any} */ row, /** @type {number} */ i) => {
+  data.rows.forEach((row, /** @type {number} */ i) => {
     const a = angleFor(i);
     const outerX = cx + radius * Math.cos(a);
     const outerY = cy + radius * Math.sin(a);
@@ -418,16 +422,16 @@ function renderRadarSvg(data, options) {
   });
 
   // one polygon per series
-  data.series.forEach((/** @type {any} */ series, /** @type {any} */ sIdx) => {
+  data.series.forEach((series, sIdx) => {
     const color = SERIES_COLORS[sIdx % SERIES_COLORS.length];
-    const pts = data.rows.map((/** @type {any} */ row, /** @type {number} */ i) => (row.values[sIdx] === null ? pointFor(i, min) : pointFor(i, row.values[sIdx])));
-    parts.push(`<polygon points="${pts.map((/** @type {any} */ p) => `${p.x},${p.y}`).join(' ')}" fill="${color}" fill-opacity="0.15" stroke="${color}" stroke-width="2"/>`);
+    const pts = data.rows.map((row, /** @type {number} */ i) => (row.values[sIdx] === null ? pointFor(i, min) : pointFor(i, row.values[sIdx])));
+    parts.push(`<polygon points="${pts.map((p) => `${p.x},${p.y}`).join(' ')}" fill="${color}" fill-opacity="0.15" stroke="${color}" stroke-width="2"/>`);
     for (const p of pts) parts.push(`<circle cx="${p.x}" cy="${p.y}" r="2.5" fill="${color}"/>`);
   });
 
   // legend
   if (data.series.length > 1) {
-    data.series.forEach((/** @type {any} */ series, /** @type {number} */ i) => {
+    data.series.forEach((series, /** @type {number} */ i) => {
       const ly = 8 + i * 14;
       parts.push(`<rect x="8" y="${ly}" width="10" height="10" fill="${SERIES_COLORS[i % SERIES_COLORS.length]}"/>`);
       parts.push(`<text x="22" y="${ly + 9}" fill="#333">${escapeXml(series.label)}</text>`);
@@ -449,7 +453,7 @@ const SUPPORTED_PLOT_TYPES = new Set(['2d', 'radar']);
  *  or any other unrecognized type -- deliberately not silently
  *  falling back to a 2D rendering of data that was never meant to be
  * @param {Table} table
- * @param {any} [options]
+ * @param {PlotOptions} options
  *  shown that way. */
 export function renderPlotSvg(table, options) {
   const type = options.type || '2d';

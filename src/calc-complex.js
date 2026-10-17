@@ -21,7 +21,7 @@
  * @typedef {object} Domain the arithmetic one number system provides
  * @property {string} kind 'big' or 'fraction'
  * @property {number} digits
- * @property {any} m the mathjs instance
+ * @property {MathJs} m the mathjs instance
  * @property {Domain} [guard] the wider domain a transcendental function works in
  * @property {(x: unknown) => Scalar} from
  * @property {() => Scalar} zero
@@ -46,6 +46,9 @@
  * @property {(a: Scalar) => Scalar} atan
  */
 
+/** The vendored mathjs instance (untyped library): every function on it takes and returns engine values. @typedef {Record<string, (...args: any[]) => any>} MathJs */
+/** @typedef {{ isZero(): boolean, toSignificantDigits(n: number): BigNum, equals(o: BigNum): boolean, toExponential(digits?: number): string }} BigNum a mathjs BigNumber, as far as this module reads one */
+/** @typedef {{ s: number, n: number, d: number, toFixed(digits?: number): string }} FracNum a mathjs Fraction, as far as this module reads one */
 /** @typedef {{ isReal: true, x: Scalar, f: boolean }} Real */
 /** @typedef {{ isComplex: true, polar: false, re: Scalar, im: Scalar, rf: boolean, imf: boolean }} Rect */
 /** @typedef {{ isComplex: true, polar: true, r: Scalar, t: Scalar, rf: boolean, tf: boolean }} Polar */
@@ -62,7 +65,7 @@ export const isReal = (v) => v !== null && typeof v === 'object' && /** @type {a
 
 /**
  * Decimal arithmetic at `digits` significant digits (mathjs BigNumber). `m` must be created with that precision.
- * @param {any} m
+ * @param {MathJs} m
  * @param {number} digits
  * @param {undefined} [mGuard]
  */
@@ -105,8 +108,8 @@ export function bigDomain(m, digits, mGuard) {
 
 /**
  * Exact fractions for + - * /; anything transcendental goes through `big` (a bigDomain) and is converted back.
- * @param {any} [m]
- * @param {any} [big]
+ * @param {MathJs} m
+ * @param {Domain} big
  */
 export function fractionDomain(m, big) {
   /** @param {any} [a] */
@@ -149,20 +152,20 @@ export function fractionDomain(m, big) {
 // ---- guard digits ----------------------------------------------------------------------------------------------
 
 /**
- * @param {any} [v]
- * @param {any} [f]
+ * @param {Value} v
+ * @param {(x: Scalar) => Scalar} f
  */
 function mapParts(v, f) {
   if (isReal(v)) return { ...v, x: f(v.x) };
   if (v.polar) return { ...v, r: f(v.r), t: f(v.t) };
   return { ...v, re: f(v.re), im: f(v.im) };
 }
-const liftValue = (/** @type {any} */ v, /** @type {any} */ D, /** @type {any} */ G) => (D === G ? v : mapParts(v, (/** @type {any} */ x) => G.m.bignumber(x.toString())));
-const lowerValue = (/** @type {any} */ v, /** @type {any} */ D) => mapParts(v, (/** @type {any} */ x) => D.m.bignumber(x.toString()).toSignificantDigits(D.digits));
+const liftValue = (/** @type {any} */ v, /** @type {any} */ D, /** @type {any} */ G) => (D === G ? v : mapParts(v, (x) => G.m.bignumber(x.toString())));
+const lowerValue = (/** @type {any} */ v, /** @type {any} */ D) => mapParts(v, (x) => D.m.bignumber(x.toString()).toSignificantDigits(D.digits));
 /**
  * Runs `fn(G)` in the wider guard domain (when there is one) and rounds the result back to D's precision.
  * @param {Domain} D
- * @param {any} [fn]
+ * @param {(G: Domain) => Value} fn
  */
 function viaGuard(D, fn) {
   if (!D.guard) return fn(D);
@@ -172,24 +175,24 @@ function viaGuard(D, fn) {
 // ---- construction ----------------------------------------------------------------------------------------------
 
 /**
- * @param {any} [x]
- * @param {any} [f]
+ * @param {Scalar} x
+ * @param {boolean} f
  * @returns {Real}
  */
 const real = (x, f) => ({ isReal: /** @type {true} */ (true), x, f: !!f });
 /**
- * @param {any} [re]
- * @param {any} [rf]
- * @param {any} [im]
- * @param {any} [imf]
+ * @param {Scalar} re
+ * @param {boolean} rf
+ * @param {Scalar} im
+ * @param {boolean} imf
  * @returns {Rect}
  */
 const rect = (re, rf, im, imf) => ({ isComplex: /** @type {true} */ (true), polar: /** @type {false} */ (false), re, im, rf: !!rf, imf: !!imf });
 /**
- * @param {any} [r]
- * @param {any} [rf]
- * @param {any} [t]
- * @param {any} [tf]
+ * @param {Scalar} r
+ * @param {boolean} rf
+ * @param {Scalar} t
+ * @param {boolean} tf
  * @returns {Polar}
  */
 const polarForm = (r, rf, t, tf) => ({ isComplex: /** @type {true} */ (true), polar: /** @type {true} */ (true), r, t, rf: !!rf, tf: !!tf });
@@ -213,9 +216,9 @@ export function toReal(v, D) {
 
 /**
  * The engine's own representation of a real result: a JS number by default, the mathjs value under pN / F.
- * @param {any} r
+ * @param {Real} r
  * @param {Domain} D
- * @param {any} [numericMode]
+ * @param {{ kind: string, instance: MathJs } | null | undefined} numericMode
  */
 export function realToEngine(r, D, numericMode) {
   if (!numericMode) return D.toNumber(r.x);
@@ -224,7 +227,7 @@ export function realToEngine(r, D, numericMode) {
 }
 
 /**
- * @param {any} x
+ * @param {Scalar} x
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -233,7 +236,7 @@ function angleToRad(x, D, degrees) {
   return D.div(D.mul(x, D.pi()), D.from(180));
 }
 /**
- * @param {any} x
+ * @param {Scalar} x
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -244,8 +247,8 @@ function radToAngle(x, D, degrees) {
 
 // sin/cos of an angle that is exact where Calc is: multiples of 90 degrees
 /**
- * @param {any} t
- * @param {any} tf
+ * @param {Scalar} t
+ * @param {boolean} tf
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -278,7 +281,7 @@ function sinCosAngle(t, tf, D, degrees) {
 
 /**
  * Rectangular parts of any complex.
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -294,7 +297,7 @@ function toRect(z, D, degrees) {
 }
 
 /**
- * @param {any} t
+ * @param {Scalar} t
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -311,7 +314,7 @@ function normalizeAngle(t, D, degrees) {
 
 /**
  * Collapses to a real when there is no imaginary part (or a polar angle of 0 or 180 degrees).
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -326,8 +329,8 @@ function norm(z, D, degrees) {
 }
 
 /**
- * @param {any} re
- * @param {any} im
+ * @param {Real} re
+ * @param {Real} im
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -337,8 +340,8 @@ export function makeRect(re, im, D, degrees) {
 
 /**
  * (r; theta) from a literal in a cell.
- * @param {any} r
- * @param {any} t
+ * @param {Real} r
+ * @param {Real} t
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -539,7 +542,9 @@ export function cPow(a, b, D, degrees) {
       const nn = D.from(n);
       return norm(polarForm(powReal(base.r, n, D), base.rf, normalizeAngle(D.mul(base.t, nn), D, degrees), base.tf), D, degrees);
     }
+    /** @type {Value | null} */
     let result = null;
+    /** @type {Value} */
     let square = base;
     let k = Math.abs(n);
     while (k > 0) {
@@ -547,7 +552,7 @@ export function cPow(a, b, D, degrees) {
       k = Math.floor(k / 2);
       if (k > 0) square = cMul(square, square, D, degrees);
     }
-    return n < 0 ? cDiv(real(D.one(), false), result, D, degrees) : result;
+    return n < 0 ? cDiv(real(D.one(), false), /** @type {Value} */ (result), D, degrees) : /** @type {Value} */ (result);
   }
   // a real base with a real exponent only needs the complex route when the base is negative
   if (isReal(base) && isReal(exp) && !D.isNeg(base.x)) {
@@ -561,7 +566,7 @@ export function cPow(a, b, D, degrees) {
     if (isReal(root)) return real(root.x, true);
     return root.polar ? { ...root, rf: true, tf: true } : { ...root, rf: true, imf: true };
   }
-  return viaGuard(D, (/** @type {any} */ G) => {
+  return viaGuard(D, (G) => {
     const b = liftValue(isReal(base) || isComplex(base) ? base : toReal(base, D), D, G);
     const e = liftValue(exp, D, G);
     return cExp(cMul(e, cLn(b, G, degrees), G, degrees), G, degrees);
@@ -583,7 +588,7 @@ function powReal(x, n, D) {
 
 /**
  * |z| and the angle in radians, for a complex or real value.
- * @param {any} z
+ * @param {Value} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -602,7 +607,7 @@ function absAndAngle(z, D, degrees) {
 }
 
 /**
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -615,7 +620,7 @@ function cAbsImpl(z, D, degrees) {
 }
 
 /**
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -653,7 +658,7 @@ export function cIm(z, D, degrees) {
 
 /**
  * polar(z): the (r; theta) form.
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -675,7 +680,7 @@ export function cToRect(z, D, degrees) {
 }
 
 /**
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -703,7 +708,7 @@ function cSqrtImpl(z, D, degrees) {
 }
 
 /**
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -716,7 +721,7 @@ function cExpImpl(z, D, degrees) {
 
 /**
  * ln(z); `allowNegative` lets the real route reach negative numbers (they have a complex logarithm).
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -730,7 +735,7 @@ function cLnImpl(z, D, degrees) {
 }
 
 /**
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -743,7 +748,7 @@ function cLog10Impl(z, D, degrees) {
  * @param {boolean} degrees
  */
 export function cAbs(z, D, degrees) {
-  return viaGuard(D, (/** @type {any} */ G) => cAbsImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
+  return viaGuard(D, (G) => cAbsImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
 }
 /**
  * @param {Operand} z
@@ -751,7 +756,7 @@ export function cAbs(z, D, degrees) {
  * @param {boolean} degrees
  */
 export function cArg(z, D, degrees) {
-  return viaGuard(D, (/** @type {any} */ G) => cArgImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
+  return viaGuard(D, (G) => cArgImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
 }
 /**
  * @param {Operand} z
@@ -759,7 +764,7 @@ export function cArg(z, D, degrees) {
  * @param {boolean} degrees
  */
 export function cToPolar(z, D, degrees) {
-  return viaGuard(D, (/** @type {any} */ G) => cToPolarImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
+  return viaGuard(D, (G) => cToPolarImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
 }
 /**
  * @param {Operand} z
@@ -767,7 +772,7 @@ export function cToPolar(z, D, degrees) {
  * @param {boolean} degrees
  */
 export function cSqrt(z, D, degrees) {
-  return viaGuard(D, (/** @type {any} */ G) => cSqrtImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
+  return viaGuard(D, (G) => cSqrtImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
 }
 /**
  * @param {Operand} z
@@ -775,7 +780,7 @@ export function cSqrt(z, D, degrees) {
  * @param {boolean} degrees
  */
 export function cExp(z, D, degrees) {
-  return viaGuard(D, (/** @type {any} */ G) => cExpImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
+  return viaGuard(D, (G) => cExpImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
 }
 /**
  * @param {Operand} z
@@ -783,7 +788,7 @@ export function cExp(z, D, degrees) {
  * @param {boolean} degrees
  */
 export function cLn(z, D, degrees) {
-  return viaGuard(D, (/** @type {any} */ G) => cLnImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
+  return viaGuard(D, (G) => cLnImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
 }
 /**
  * @param {Operand} z
@@ -791,7 +796,7 @@ export function cLn(z, D, degrees) {
  * @param {boolean} degrees
  */
 export function cLog10(z, D, degrees) {
-  return viaGuard(D, (/** @type {any} */ G) => cLog10Impl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
+  return viaGuard(D, (G) => cLog10Impl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
 }
 /**
  * @param {Operand} z
@@ -799,7 +804,7 @@ export function cLog10(z, D, degrees) {
  * @param {boolean} degrees
  */
 export function cSin(z, D, degrees) {
-  return viaGuard(D, (/** @type {any} */ G) => cSinImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
+  return viaGuard(D, (G) => cSinImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
 }
 /**
  * @param {Operand} z
@@ -807,7 +812,7 @@ export function cSin(z, D, degrees) {
  * @param {boolean} degrees
  */
 export function cCos(z, D, degrees) {
-  return viaGuard(D, (/** @type {any} */ G) => cCosImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
+  return viaGuard(D, (G) => cCosImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
 }
 /**
  * @param {Operand} z
@@ -815,7 +820,7 @@ export function cCos(z, D, degrees) {
  * @param {boolean} degrees
  */
 export function cTan(z, D, degrees) {
-  return viaGuard(D, (/** @type {any} */ G) => cTanImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
+  return viaGuard(D, (G) => cTanImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
 }
 /**
  * @param {Operand} z
@@ -823,7 +828,7 @@ export function cTan(z, D, degrees) {
  * @param {boolean} degrees
  */
 export function cAsin(z, D, degrees) {
-  return viaGuard(D, (/** @type {any} */ G) => cAsinImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
+  return viaGuard(D, (G) => cAsinImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
 }
 /**
  * @param {Operand} z
@@ -831,7 +836,7 @@ export function cAsin(z, D, degrees) {
  * @param {boolean} degrees
  */
 export function cAcos(z, D, degrees) {
-  return viaGuard(D, (/** @type {any} */ G) => cAcosImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
+  return viaGuard(D, (G) => cAcosImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
 }
 /**
  * @param {Operand} z
@@ -839,7 +844,7 @@ export function cAcos(z, D, degrees) {
  * @param {boolean} degrees
  */
 export function cAtan(z, D, degrees) {
-  return viaGuard(D, (/** @type {any} */ G) => cAtanImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
+  return viaGuard(D, (G) => cAtanImpl(isReal(z) || isComplex(z) ? liftValue(z, D, G) : z, G, degrees));
 }
 /**
  * @param {Operand} z
@@ -852,7 +857,7 @@ export function cLog(z, base, D, degrees) {
 }
 
 /**
- * @param {any} x
+ * @param {Scalar} x
  * @param {Domain} D
  */
 function cosh(x, D) {
@@ -860,7 +865,7 @@ function cosh(x, D) {
   return D.div(D.add(e, D.div(D.one(), e)), D.from(2));
 }
 /**
- * @param {any} x
+ * @param {Scalar} x
  * @param {Domain} D
  */
 function sinh(x, D) {
@@ -869,7 +874,7 @@ function sinh(x, D) {
 }
 
 /**
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -879,7 +884,7 @@ function trigArg(z, D, degrees) {
 }
 
 /**
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -888,7 +893,7 @@ function cSinImpl(z, D, degrees) {
   return norm(rect(D.mul(D.sin(a), cosh(b, D)), true, D.mul(D.cos(a), sinh(b, D)), true), D, degrees);
 }
 /**
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -897,7 +902,7 @@ function cCosImpl(z, D, degrees) {
   return norm(rect(D.mul(D.cos(a), cosh(b, D)), true, D.neg(D.mul(D.sin(a), sinh(b, D))), true), D, degrees);
 }
 /**
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -909,7 +914,7 @@ function cTanImpl(z, D, degrees) {
 const I = (D) => rect(D.zero(), false, D.one(), false);
 
 /**
- * @param {any} z
+ * @param {Value} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -921,7 +926,7 @@ function toAngles(z, D, degrees) {
 
 // asin(z) = -i ln(iz + sqrt(1 - z^2)), in radians until the end
 /**
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -933,7 +938,7 @@ function cAsinImpl(z, D, degrees) {
   return toAngles(cMul(cNeg(I(D), D, true), logged, D, true), D, degrees);
 }
 /**
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -949,7 +954,7 @@ function cAcosImpl(z, D, degrees) {
 }
 // atan(z) = (i/2) (ln(1 - iz) - ln(1 + iz))
 /**
- * @param {any} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {boolean} degrees
  */
@@ -977,7 +982,7 @@ export function cEquals(a, b, D, degrees) {
 }
 
 /**
- * @param {Value} z
+ * @param {Complex} z
  * @param {Domain} D
  */
 export function cIsZero(z, D) {
@@ -989,17 +994,18 @@ export function cIsZero(z, D) {
 /**
  * vsum / vmean / vprod / vcount over a list that holds at least one complex value.
  * @param {string} name
- * @param {any} values
+ * @param {Operand[]} values
  * @param {Domain} D
  * @param {boolean} degrees
  */
 export function cAggregate(name, values, D, degrees) {
-  const list = values.map((/** @type {any} */ v) => (isComplex(v) || isReal(v) ? v : toReal(v, D)));
+  const list = values.map((v) => (isComplex(v) || isReal(v) ? v : toReal(v, D)));
   switch (name) {
     case 'vcount':
       return real(D.from(list.length), false);
     case 'vsum':
     case 'vmean': {
+      /** @type {Value} */
       let total = real(D.zero(), false);
       for (const v of list) total = cAdd(total, v, D, degrees);
       if (name === 'vsum') return total;
@@ -1007,6 +1013,7 @@ export function cAggregate(name, values, D, degrees) {
       return cDiv(total, real(D.from(list.length), false), D, degrees);
     }
     case 'vprod': {
+      /** @type {Value} */
       let product = real(D.one(), false);
       for (const v of list) product = cMul(product, v, D, degrees);
       return product;
@@ -1024,7 +1031,7 @@ function digitsOf(x) {
 }
 
 /** One float component the way Calc prints it: 8 significant digits (fewer under a smaller pN), `1.5e12` for the
- * @param {any} x
+ * @param {BigNum} x
  * @param {Domain} D
  *  very large and very small, a trailing "." on a whole float, and trailing zeros only where rounding left them. */
 function floatText(x, D, /** @type {any} */ { spec, applySpec }) {
@@ -1052,23 +1059,23 @@ function floatText(x, D, /** @type {any} */ { spec, applySpec }) {
 }
 
 /**
- * @param {any} x
- * @param {any} f
+ * @param {Scalar} x
+ * @param {boolean} f
  * @param {Domain} D
  * @param {any} [fmt]
  */
 function componentText(x, f, D, fmt) {
   if (D.kind === 'fraction') {
-    const n = Number(x.s) * Number(x.n);
-    return D.isInt(x) ? String(n) : `${n}:${Number(x.d)}`;
+    const n = Number(/** @type {FracNum} */ (x).s) * Number(/** @type {FracNum} */ (x).n);
+    return D.isInt(x) ? String(n) : `${n}:${Number(/** @type {FracNum} */ (x).d)}`;
   }
-  if (!f) return x.toFixed();
-  return floatText(x, D, fmt);
+  if (!f) return /** @type {FracNum} */ (x).toFixed();
+  return floatText(/** @type {BigNum} */ (x), D, fmt);
 }
 
 /**
  * The cell text for a complex value (or a real produced by a complex operation).
- * @param {Value} z
+ * @param {Complex} z
  * @param {Domain} D
  * @param {any} [fmt]
  */
