@@ -631,6 +631,8 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-html-head~ | unset | A quoted string added to the ~<head>~ of every HTML export; a file's own ~#+HTML_HEAD:~ is added after it. Settings → Export sets it |
 | ~org-html-preamble~ | unset (none) | A quoted format string shown above the content of every HTML export (~%t~ title, ~%s~ subtitle, ~%a~ author, ~%d~ date, ~%e~ email). A file's own ~#+OPTIONS: html-preamble:~ wins |
 | ~org-html-postamble~ | ~auto~ | A quoted format string for the foot of every HTML export, or ~nil~ for none. A file's own ~#+OPTIONS: html-postamble:~ wins |
+| ~org-latex-default-class~ | ~article~ | ~article~, ~report~ or ~book~: the class of every LaTeX export whose file has no ~#+LATEX_CLASS:~. Settings → Export sets it |
+| ~org-latex-compiler~ | ~pdflatex~ | ~pdflatex~, ~xelatex~ or ~lualatex~, for files with no ~#+LATEX_COMPILER:~ |
 | ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
 | ~org-babel-load-languages~ | ~((emacs-lisp . t))~ | ~(js . t)~ in the list lets ~js~ source blocks run (see [[#source-blocks][Source blocks]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
 | ~org-xx-extensions~ | ~off~ | (own) ~on~ lets the approved init script run (see [[#extensions][Extensions]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
@@ -865,7 +867,7 @@ Header arguments are inherited as in Org: a ~#+PROPERTY: header-args :results ou
 
 *Cache*: ~:cache yes~ skips a block whose code, variables and ~:results~ shape are unchanged since its last run; the hash is kept in its results line (~#+RESULTS[hash]:~). Delete the results to run it again. Do not cache a block that reads the time or a live feed.
 
-*Export* shows what ~:exports~ asks: ~code~ (the default; stored results are not shown), ~results~, ~both~ or ~none`. Nothing is run on export; ~results~ shows what ~#+RESULTS:~ already holds. This applies to ASCII, HTML, Markdown, ODT and Org export.
+*Export* shows what ~:exports~ asks: ~code~ (the default; stored results are not shown), ~results~, ~both~ or ~none`. Nothing is run on export; ~results~ shows what ~#+RESULTS:~ already holds. This applies to ASCII, HTML, LaTeX, Markdown, ODT and Org export.
 
 *The init script from an Org file*: in Settings → Extensions, *Use an Org file…* takes ~github:path~, ~webdav:path~ or ~local:name~, then ~::target~ (default ~::init.js~). The blocks of that file that tangle to the target become the init script, Noweb included. Only the file you name is read; the approval covers the assembled text, so a change to the file asks again.
 
@@ -1446,7 +1448,7 @@ The real labels of each menu, as used in ~"menu:Label;alias"~:
 |----------+--------|
 | ~file~ | ~Export~, ~New~, ~Open~, ~Save~, ~Save As~, ~Save Some Buffers~ |
 | ~more~ | ~Commands~, ~Export~, ~Import~, ~Settings~ |
-| ~export~ | ~ASCII~, ~As-org~, ~Calendar (.ics)~, ~Contacts (.vcf)~, ~HTML~, ~Markdown~, ~ODT~ |
+| ~export~ | ~ASCII~, ~As-org~, ~Calendar (.ics)~, ~Contacts (.vcf)~, ~HTML~, ~Markdown~, ~ODT~, ~LaTeX~ |
 | ~import~ | ~Contacts (.vcf)~, ~iCalendar (.ics)~ |
 | ~view~ | ~Agenda~, ~Org~, ~Text~, ~TODO~ |
 
@@ -1499,7 +1501,7 @@ The full set of open tabs persists across closing and reopening the app, each re
 *Org-cite citations* work as in Emacs's default (~basic~) processor. Write ~[cite:@knuth84]~, ~[cite/t:@knuth84 p. 5]~ or ~[cite:see @a; @b, ch. 2]~ and point at your references with ~#+BIBLIOGRAPHY: refs.bib~ (BibTeX or CSL-JSON, read from the same place as the document, one line per file). In the outline a citation stays as typed, dimmed, and tapping a key shows its entry; a key with no entry is dotted underlined.
 
 - Styles: default (author, year), ~/t~ (text), ~/a~ (author), ~/na~ (no author), ~/n~ (nothing printed), ~/b~ (numeric), with ~/c~ and ~/b~ variants for capitals and bare form.
-- ~#+PRINT_BIBLIOGRAPHY:~ marks where the reference list goes in HTML, Markdown, ASCII and ODT exports. ~#+CITE_EXPORT: basic plain~ (or ~numeric~) picks the list style.
+- ~#+PRINT_BIBLIOGRAPHY:~ marks where the reference list goes in HTML, Markdown, ASCII, ODT and LaTeX exports. ~#+CITE_EXPORT: basic plain~ (or ~numeric~) picks the list style.
 - Settings (see [[#local-variables][Local Variables]]): ~org-cite-global-bibliography~ (files used by every document), ~org-cite-basic-sorting-field~ and ~org-cite-basic-author-year-separator~.
 
 -----
@@ -1509,7 +1511,7 @@ The full set of open tabs persists across closing and reopening the app, each re
 :CUSTOM_ID: export
 :END:
 
-*More → Export* gets a document out as ASCII, Markdown, HTML, ODT, As-org, a calendar file (.ics) or contacts (.vcf). File keywords such as ~#+TITLE~ and ~#+OPTIONS:~ match case-insensitively, as in org.
+*More → Export* gets a document out as ASCII, Markdown, HTML, ODT, LaTeX, As-org, a calendar file (.ics) or contacts (.vcf). File keywords such as ~#+TITLE~ and ~#+OPTIONS:~ match case-insensitively, as in org.
 
 *Scope*: *Choose a heading…* exports just that heading and its descendants, and every heading is listed, even folded ones. The chosen heading becomes the top level of the output. *This file* exports everything. Calendar and Contacts also offer *This file + Agenda Files* or *This file + Contacts Files* once those are configured, fetched fresh at export time. In Tree style, Contacts lists only contacts (headings with ~:KIND:~).
 
@@ -1594,6 +1596,12 @@ The CSS is print-aware (headings, tables, figures and code stay whole across pag
 *** ODT
 
 A standalone ~.odt~ that opens in LibreOffice, Word (with the ODF filter) and Google Docs. Headings are outline levels; bold, italic, underline, strikethrough and code use named character styles; checkboxes show as ☐ and ☑; footnotes are real, editable ODF footnotes; and internal links are bookmark references. Images are referenced by path, not embedded.
+
+*** LaTeX
+
+A ~.tex~ file that compiles with ~pdflatex~, ~xelatex~ or ~lualatex~, laid out the way Emacs's ~org-latex-export-to-latex~ lays it out: sections, lists, tables (with ~#+ATTR_LATEX:~), figures, footnotes, citations, links, math and source blocks. When the document links pictures this app can read (GitHub, WebDAV, attachments), the export is a ~.zip~ with the pictures in ~images/~ beside the ~.tex~; otherwise it is the ~.tex~ alone. The palette command is ~org-latex-export-to-latex~.
+
+~#+LATEX_CLASS:~ (~article~, ~report~ or ~book~), ~#+LATEX_CLASS_OPTIONS:~, ~#+LATEX_COMPILER:~ and ~#+LATEX_HEADER:~ are read from the file. Settings → Export → LaTeX sets the class and compiler for files that do not. Not included: Beamer, ~minted~ or ~listings~ source blocks (code is exported as ~verbatim~) and other document classes.
 
 *** As-org
 

@@ -1,7 +1,7 @@
 // @ts-check
 // The Export page's General and HTML cards: text for the preamble, postamble, head, page header and page footer, each with a switch.
 // Nothing is applied until its box is ticked, and anything the file itself says wins (see src/export-defaults.js).
-import { EXPORT_DEFAULT_ITEMS, encodeExportText, encodeLispString, exportItemState } from '../src/export-defaults.js';
+import { EXPORT_DEFAULT_ITEMS, LATEX_CLASSES, LATEX_COMPILERS, encodeExportText, encodeLispString, exportItemState, latexExportDefaults } from '../src/export-defaults.js';
 import { S } from './app-state.js';
 import { setStatus } from './editing.js';
 import { commitGlobalVariableChange } from './settings-quick.js';
@@ -137,7 +137,7 @@ function cardShell(title, sub, intro) {
 
 /**
  * @param {() => void} rerender
- * @returns {{ general: HTMLElement, html: HTMLElement }} */
+ * @returns {{ general: HTMLElement, html: HTMLElement, latex: HTMLElement }} */
 export function buildExportCards(rerender) {
   const general = cardShell('General', 'Printed pages and PDF', 'Written as left | centre | right. A ticked item is used for every export that does not set its own.');
   general.setAttribute('data-export-card', 'general');
@@ -160,5 +160,43 @@ export function buildExportCards(rerender) {
   resetHtml.className = 'panel-row';
   resetHtml.appendChild(menuButton('Reset HTML', async () => { await resetItems(['preamble', 'postamble', 'head']); rerender(); }));
   html.appendChild(resetHtml);
-  return { general, html };
+
+  const latex = cardShell('LaTeX', 'LaTeX export', 'Used for every LaTeX export whose file does not set its own #+LATEX_CLASS: or #+LATEX_COMPILER:.');
+  latex.setAttribute('data-export-card', 'latex');
+  const current = latexExportDefaults(S.globalVariables);
+  latex.appendChild(choiceRow('Document class', 'org-latex-default-class', LATEX_CLASSES, current.cls || 'article'));
+  latex.appendChild(choiceRow('Compiler', 'org-latex-compiler', LATEX_COMPILERS, current.compiler || 'pdflatex'));
+  latex.appendChild(line('xelatex and lualatex write Unicode text as it is; pdflatex gets the inputenc and fontenc packages.', 'font-size: 11px; opacity: 0.65; margin-top: 4px'));
+  return { general, html, latex };
+}
+
+/** A labelled list of words that sets one Org variable; the first word is the variable's own default and is stored as unset.
+ * @param {string} name @param {string} variable @param {string[]} words @param {string} current */
+function choiceRow(name, variable, words, current) {
+  const row = document.createElement('div');
+  row.setAttribute('data-export-choice', variable);
+  row.style.cssText = 'margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border)';
+  const label = document.createElement('label');
+  label.style.cssText = 'display: flex; flex-direction: column; gap: 4px; font-size: 14px';
+  const head = document.createElement('span');
+  head.style.fontWeight = '700';
+  head.textContent = name;
+  label.appendChild(head);
+  label.appendChild(line(variable, 'font-size: 12px; opacity: 0.65'));
+  const select = document.createElement('select');
+  select.style.cssText = 'min-height: 44px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--bg); color: var(--fg); font-size: 14px';
+  for (const w of words) {
+    const o = document.createElement('option');
+    o.value = w;
+    o.textContent = w;
+    o.selected = w === current;
+    select.appendChild(o);
+  }
+  select.onchange = async () => {
+    await commitGlobalVariableChange(variable, select.value === words[0] ? null : encodeLispString(select.value));
+    setStatus(`${name}: ${select.value}.`);
+  };
+  label.appendChild(select);
+  row.appendChild(label);
+  return row;
 }

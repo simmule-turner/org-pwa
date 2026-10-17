@@ -105,3 +105,23 @@ export function migrateRetiredVariables(vars) {
 export function countExportItemsOn(vars, ids) {
   return EXPORT_DEFAULT_ITEMS.filter((item) => ids.includes(item.id) && exportItemState(vars, item).on).length;
 }
+
+/** The LaTeX defaults from the Global Variables: `org-latex-default-class` and `org-latex-compiler`, each a quoted string; anything else is ignored.
+ * @param {Record<string, string> | null | undefined} vars
+ * @returns {{ cls?: string, compiler?: string }} */
+export function latexExportDefaults(vars) {
+  const v = vars || {};
+  const word = (/** @type {string} */ key, /** @type {string[]} */ allowed) => {
+    const t = String(v[key] ?? '').trim().replace(/^"(.*)"$/s, '$1');
+    return allowed.includes(t) ? t : undefined;
+  };
+  /** @type {{ cls?: string, compiler?: string }} */ const out = {};
+  const cls = word('org-latex-default-class', LATEX_CLASSES);
+  const compiler = word('org-latex-compiler', LATEX_COMPILERS);
+  if (cls) out.cls = cls;
+  if (compiler) out.compiler = compiler;
+  return out;
+}
+
+export const LATEX_CLASSES = ['article', 'report', 'book'];
+export const LATEX_COMPILERS = ['pdflatex', 'xelatex', 'lualatex'];

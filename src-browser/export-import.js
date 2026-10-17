@@ -2,10 +2,12 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: export import.
-import { htmlExportDefaults } from '../src/export-defaults.js';
+import { htmlExportDefaults, latexExportDefaults } from '../src/export-defaults.js';
 import { exportToAscii } from '../src/export-ascii.js';
 import { prefetchBibliography } from './bibliography.js';
 import { exportToHtml } from '../src/export-html.js';
+import { exportToLatex } from '../src/export-latex.js';
+import { exportLatexZip } from '../src/export-latex-zip.js';
 import { exportToIcalendar } from '../src/export-icalendar.js';
 import { prepareBabelExport } from '../src/babel-export.js';
 import { expandIncludes } from '../src/export-include.js';
@@ -57,6 +59,17 @@ export async function resolveIncludePath(path) {
   return activeDiskAdapter().read(path);
 }
 
+/** The bytes of a `data:` URL, or null.
+ * @param {string | undefined} url */
+function dataUrlBytes(url) {
+  const m = /^data:[^,]*;base64,(.*)$/s.exec(url || '');
+  if (!m) return null;
+  const bin = atob(m[1]);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
 /** Generates the export text for `format`/`scope` and triggers a
  *  download -- the actual terminal step of the export flow, closing
  *  the file menu and resetting its state back to the top level once
@@ -66,7 +79,7 @@ export async function resolveIncludePath(path) {
 export async function performExport(format, scope) {
   const rawName = scope && typeof scope === 'object' ? scope.title : suggestedSaveAsName('export').replace(/\.[a-zA-Z0-9]+$/, '');
   const baseName = rawName.replace(/[\\/:*?"<>|]/g, '_').trim() || 'export';
-  if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt') {
+  if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt' || format === 'latex') {
     await prefetchBibliography(S.state.doc, S.state.documentId, S.state.storageKind, { again: true }); // #+BIBLIOGRAPHY: files, for citations
     const doc = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg));
     if (format === 'ascii') {
@@ -75,6 +88,17 @@ export async function performExport(format, scope) {
       saveOut(baseName + '.md', exportToMarkdown(doc, scope), 'text/markdown');
     } else if (format === 'html') {
       saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), defaults: htmlExportDefaults(S.globalVariables) }), 'text/html');
+    } else if (format === 'latex') {
+      const defaults = latexExportDefaults(S.globalVariables);
+      const heading = scope && typeof scope === 'object' ? scope : null;
+      // pictures this app can read go into a .zip beside the .tex; with none, the .tex alone
+      const pictures = await collectExportImages(doc, heading);
+      if (pictures.size) {
+        const bytes = await exportLatexZip(doc, heading, { baseName, defaults, readImage: async (target) => dataUrlBytes(pictures.get(target)) });
+        saveOut(baseName + '.zip', bytes.slice(), 'application/zip');
+      } else {
+        saveOut(baseName + '.tex', exportToLatex(doc, heading, { defaults }), 'application/x-tex');
+      }
     } else {
       saveOut(baseName + '.odt', exportToOdt(doc, scope), 'application/vnd.oasis.opendocument.text');
     }
@@ -153,7 +177,7 @@ export async function performExport(format, scope) {
   S.exportFormat = null;
   S.exportPickingHeading = false;
   setStatus(
-    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : format === 'vcard' ? 'Contacts (.vcf)' : 'Calendar (.ics)'}.`
+    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : format === 'latex' ? 'LaTeX' : format === 'vcard' ? 'Contacts (.vcf)' : 'Calendar (.ics)'}.`
   );
   renderMoreMenu();
   render();
@@ -228,6 +252,10 @@ export function renderExportFlow() {
       S.exportFormat = 'odt';
       renderMoreMenu();
     });
+    const latexBtn = aliasedMenuDivItem(exportMenuAliases, 'LaTeX', () => {
+      S.exportFormat = 'latex';
+      renderMoreMenu();
+    });
     const orgexportBtn = aliasedMenuDivItem(exportMenuAliases, 'As-org', async () => {
       S.moreOpen = false;
       S.moreMenuStep = null;
@@ -244,6 +272,7 @@ export function renderExportFlow() {
       { label: 'HTML', btn: htmlBtn },
       { label: 'Markdown', btn: mdBtn },
       { label: 'ODT', btn: odtBtn },
+      { label: 'LaTeX', btn: latexBtn },
     ]);
     const backRow = document.createElement('div');
     backRow.className = 'panel-row';
@@ -461,7 +490,7 @@ export function renderExportFlow() {
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '4px';
-  label.textContent = `Export ${S.exportFormat === 'ascii' ? 'ASCII' : S.exportFormat === 'markdown' ? 'Markdown' : S.exportFormat === 'html' ? 'HTML' : S.exportFormat === 'odt' ? 'ODT' : 'Calendar (.ics)'} for:`;
+  label.textContent = `Export ${S.exportFormat === 'ascii' ? 'ASCII' : S.exportFormat === 'markdown' ? 'Markdown' : S.exportFormat === 'html' ? 'HTML' : S.exportFormat === 'odt' ? 'ODT' : S.exportFormat === 'latex' ? 'LaTeX' : 'Calendar (.ics)'} for:`;
   morePanel.appendChild(label);
 
   morePanel.appendChild(

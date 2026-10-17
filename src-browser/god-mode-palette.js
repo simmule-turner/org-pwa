@@ -582,6 +582,7 @@ export function paletteCommandList() {
     { id: 'export-markdown', label: 'Export this file as Markdown', orgName: 'org-md-export-to-markdown', group: 'Export', needs: ['doc'], run: exportAs('markdown') },
     { id: 'export-ascii', label: 'Export this file as ASCII', orgName: 'org-ascii-export-to-ascii', group: 'Export', needs: ['doc'], run: exportAs('ascii') },
     { id: 'export-odt', label: 'Export this file as ODT', orgName: 'org-odt-export-to-odt', group: 'Export', needs: ['doc'], run: exportAs('odt') },
+    { id: 'export-latex', label: 'Export this file as LaTeX', orgName: 'org-latex-export-to-latex', group: 'Export', keywords: ['tex', 'pdf'], needs: ['doc'], run: exportAs('latex') },
     // Two commands that used to exist only as Extras-menu functions; now ordinary palette commands, so every
     // quoted function an Extras entry can name is a palette command (see runExtraMenuEntry)
     // -- Import: the two panels of More > Import, opened the way C-c C-e opens More > Export

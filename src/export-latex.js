@@ -697,7 +697,7 @@ const firstLine = (s) => s.replace(/\s*\n\s*/g, ' ').trim();
  * @param {Doc} doc
  * @param {Heading | null} [scope]
  */
-export function exportToLatex(doc, scope = null, { images = /** @type {Map<string, string> | null} */ (null) } = {}) {
+export function exportToLatex(doc, scope = null, { images = /** @type {Map<string, string> | null} */ (null), defaults = /** @type {{ cls?: string, compiler?: string }} */ ({}) } = {}) {
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
   S = newState();
   activeDoc = doc;
@@ -709,9 +709,9 @@ export function exportToLatex(doc, scope = null, { images = /** @type {Map<strin
   S.base = scope ? scope.level : 0;
   const first = (/** @type {string} */ key) => keywordList(doc, key)[0];
 
-  const declared = (first('LATEX_CLASS') || 'article').trim();
+  const declared = (first('LATEX_CLASS') || defaults.cls || 'article').trim();
   const kind = /** @type {'article' | 'report' | 'book'} */ (declared in SECTIONS ? declared : 'article');
-  const compiler = (first('LATEX_COMPILER') || 'pdflatex').trim();
+  const compiler = (first('LATEX_COMPILER') || defaults.compiler || 'pdflatex').trim();
   const classOptions = (first('LATEX_CLASS_OPTIONS') || '[11pt]').replace(/^\s*\[?/, '[').replace(/\]?\s*$/, ']');
   const unicodeCompiler = compiler !== 'pdflatex';
 

@@ -370,6 +370,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   const exportCards = buildExportCards(() => renderSettingsView());
   cards.set('export-general', exportCards.general);
   cards.set('export-html', exportCards.html);
+  cards.set('export-latex', exportCards.latex);
 
   const globalVarsSection = document.createElement('div');
   globalVarsSection.className = 'settings-section';

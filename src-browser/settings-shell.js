@@ -37,6 +37,7 @@ function customizedCount(category) {
     else if (id === 'webdav') n += S.webdavConfig && S.webdavConfig.baseUrl ? 1 : 0;
     else if (id === 'calendar') n += S.caldavConfig && (S.caldavConfig.url || S.caldavConfig.contactsUrl) ? 1 : 0;
     else if (id === 'export-general') n += countExportItemsOn(S.globalVariables, ['pageHeader', 'pageFooter']);
+    else if (id === 'export-latex') n += ['org-latex-default-class', 'org-latex-compiler'].filter((k) => S.globalVariables[k] !== undefined).length;
     else if (id === 'export-html') n += countExportItemsOn(S.globalVariables, ['preamble', 'postamble', 'head']);
   }
   return n;

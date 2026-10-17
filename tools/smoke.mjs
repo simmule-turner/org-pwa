@@ -4379,6 +4379,46 @@ check('settings: Export has General, ASCII and HTML in that order, every box sta
   await context.close();
 });
 
+check('LaTeX export: the Export menu ends with LaTeX, Settings → Export → LaTeX sets the class and compiler, and the saved .tex follows them unless the file says otherwise', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    window.__saved = [];
+    installPlatform({ saveFile: async (name, content) => { window.__saved.push({ name, content: String(content) }); return { where: 'test' }; } });
+  });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await settingsCategory(page, 'export');
+  const card = page.locator('[data-export-card="latex"]');
+  await card.waitFor({ state: 'visible', timeout: 8000 });
+  await card.locator('[data-export-choice="org-latex-default-class"] select').selectOption('report');
+  await card.locator('[data-export-choice="org-latex-compiler"] select').selectOption('xelatex');
+  await page.waitForTimeout(300);
+  const stored = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables);
+  expect(stored['org-latex-default-class'] === '"report"' && stored['org-latex-compiler'] === '"xelatex"', `stored: ${JSON.stringify(stored)}`);
+  await page.locator('[data-settings-back]').first().click();
+  await page.locator('[data-settings-back]').first().click().catch(() => {});
+  await newDocument(page, '#+TITLE: Hello\n* One\nbody\n');
+  const exportLatex = async () => {
+    await page.evaluate(() => { window.__saved = []; });
+    await page.click('#moreBtn');
+    await pick(page, '#morePanel', 'Export');
+    const items = (await page.locator('#morePanel [role=menuitem]').allInnerTexts()).map((t) => t.trim());
+    expect(items[items.length - 1] === 'LaTeX' && items[items.length - 2] === 'ODT', `LaTeX is appended last: ${items.join(',')}`);
+    await pick(page, '#morePanel', 'LaTeX');
+    await pick(page, '#morePanel', 'This file');
+    for (let n = 0; n < 40 && !(await page.evaluate(() => window.__saved.length)); n++) await page.waitForTimeout(250);
+    return (await page.evaluate(() => window.__saved.slice()))[0];
+  };
+  const saved = await exportLatex();
+  expect(saved && saved.name.endsWith('.tex') && saved.content.includes('\\documentclass[11pt]{report}') && !saved.content.includes('inputenc'), `the settings apply: ${saved && saved.content.slice(0, 200)}`);
+  await setDocumentText(page, '#+LATEX_CLASS: book\n#+LATEX_COMPILER: pdflatex\n* One\nbody\n');
+  const own = await exportLatex();
+  expect(own && own.content.includes('{book}') && own.content.includes('inputenc'), `the file's own keywords win: ${own && own.content.slice(0, 200)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('settings: with a service worker the update block shows the worker’s version, an enabled button, and a red bold status on the version line', async () => {
   const { context, page, errors } = await freshPage(main, { serviceWorkers: 'allow' });
   await page.waitForTimeout(2500);
@@ -6507,14 +6547,14 @@ check('every item in the top bar\'s menus runs without a page error and does som
   const menus = [['#fileMenuBtn', '#fileMenuPanel'], ['#viewMenuBtn', '#viewMenuPanel'], ['#moreBtn', '#morePanel']];
   for (const [button, panel] of menus) {
     const first = await open(button);
-    const labels = (await first.page.locator(`${panel} button:not([disabled])`).evaluateAll((els) => els.map((e) => e.innerText.trim()))).filter((l) => l && !skip.test(l));
+    const labels = (await first.page.locator(`${panel} [role=menuitem]:not([aria-disabled=true])`).evaluateAll((els) => els.map((e) => e.innerText.trim()))).filter((l) => l && !skip.test(l));
     await first.context.close();
     if (process.env.SMOKE_FULL) console.log(`      ${button}: ${labels.join(', ')}`);
     if (!labels.length) problems.push(`${button}: no menu items found`);
     for (const label of labels) {
       const { context, page, errors } = await open(button);
       const before = await visible(page);
-      await page.locator(`${panel} button:not([disabled])`).filter({ hasText: label }).first().click({ timeout: 3000 }).catch(() => {});
+      await page.locator(`${panel} [role=menuitem]:not([aria-disabled=true])`).filter({ hasText: label }).first().click({ timeout: 3000 }).catch(() => {});
       await page.waitForTimeout(400);
       if (errors.length) problems.push(`${button} / ${label}: ${errors[0]}`);
       else if ((await visible(page)) === before) problems.push(`${button} / ${label}: nothing happened`);

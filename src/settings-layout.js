@@ -11,7 +11,7 @@ export const DEFAULT_SETTINGS_CATEGORIES = /** @type {SettingsCategory[]} */ ([
   { id: 'editing', title: 'Editing and startup', blurb: 'Startup view, keyboard, modeline, search, logging', cards: ['quick:Startup', 'quick:Editing', 'quick:Modeline', 'quick:Keyboard', 'quick:Progress logging', 'quick:Search & tags'] },
   { id: 'agenda', title: 'Agenda and weather', blurb: 'Agenda, reminders, weather, location, contacts', cards: ['quick:Agenda', 'appt', 'quick:Weather', 'quick:Contacts & Calendar'] },
   { id: 'sync', title: 'Sync and storage', blurb: 'GitHub, WebDAV, calendar, attachments, backup', cards: ['github', 'webdav', 'calendar', 'attach', 'pending', 'backup'] },
-  { id: 'export', title: 'Export', blurb: 'Printed pages, ASCII, HTML', cards: ['export-general', 'quick:ASCII', 'export-html'] },
+  { id: 'export', title: 'Export', blurb: 'Printed pages, ASCII, HTML, LaTeX', cards: ['export-general', 'quick:ASCII', 'export-html', 'export-latex'] },
   { id: 'advanced', title: 'Advanced', blurb: 'Variables, capture templates, extensions, order of settings', cards: ['global-vars', 'capture', 'extensions', 'quick:Advanced (raw syntax)', 'order'] },
 ]);
 

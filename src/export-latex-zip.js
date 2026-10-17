@@ -13,10 +13,10 @@ import { exportToLatex, latexImageTargets } from './export-latex.js';
 /**
  * @param {Doc} doc
  * @param {Heading | null} scope
- * @param {{ baseName: string, readImage: (target: string) => Promise<Uint8Array | null> }} options
+ * @param {{ baseName: string, readImage: (target: string) => Promise<Uint8Array | null>, defaults?: { cls?: string, compiler?: string } }} options
  * @returns {Promise<Uint8Array>}
  */
-export async function exportLatexZip(doc, scope, { baseName, readImage }) {
+export async function exportLatexZip(doc, scope, { baseName, readImage, defaults }) {
   /** @type {Map<string, string>} link as written -> path inside the zip */
   const images = new Map();
   /** @type {{ name: string, content: Uint8Array }[]} */
@@ -33,5 +33,5 @@ export async function exportLatexZip(doc, scope, { baseName, readImage }) {
     images.set(target, name);
     files.push({ name, content: bytes });
   }
-  return createZip([{ name: baseName + '.tex', content: exportToLatex(doc, scope, { images }) }, ...files]);
+  return createZip([{ name: baseName + '.tex', content: exportToLatex(doc, scope, { images, defaults }) }, ...files]);
 }
