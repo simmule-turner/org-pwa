@@ -4,6 +4,7 @@
 // The filter row shared by the Agenda and the TODO view (tag, TODO state, category), and the date the TODO view shows on a
 // row. Pure functions: the views in src-browser/ draw them.
 import { startOfDay } from './agenda.js';
+import { emacsRegexToJs } from './emacs-regex.js';
 import { parseOrgTimestamp } from './org-timestamp.js';
 
 /**
@@ -32,11 +33,11 @@ function rowText(item) {
   return `${item.todo ? item.todo + ' ' : ''}${item.title || ''}${tags}`;
 }
 
-/** A regexp from a filter, case-insensitive as Emacs's default; null when it is not valid.
+/** A regexp from a filter, written in Emacs's syntax and case-insensitive as its default; null when it is not valid.
  * @param {string} source */
 export function filterRegexp(source) {
   try {
-    return new RegExp(source, 'i');
+    return emacsRegexToJs(source, 'i');
   } catch {
     return null;
   }

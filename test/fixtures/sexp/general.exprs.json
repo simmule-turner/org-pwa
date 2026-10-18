@@ -27,5 +27,10 @@
 "(org-class 2026 1 1 2029 12 31 1 'holidays)",
 "(org-class 2026 1 1 2029 12 31 5 'holidays 10)",
 "(calendar-check-holidays date)",
-"(and (calendar-check-holidays date) (= (calendar-day-of-week date) 1))"
+"(and (calendar-check-holidays date) (= (calendar-day-of-week date) 1))",
+"(diary-day-of-year)",
+"(diary-iso-date)",
+"(diary-julian-date)",
+"(diary-astro-day-number)",
+"(diary-lunar-phases)"
 ]

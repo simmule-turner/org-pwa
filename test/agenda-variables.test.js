@@ -54,7 +54,7 @@ test('filter presets: signs, no sign, and the effort preset', () => {
 });
 
 test('a regexp that is not valid is ignored, not an error', () => {
-  const filter = { ...emptyViewFilter(), regexps: ['(unclosed'] };
+  const filter = { ...emptyViewFilter(), regexps: ['\\(unclosed'] };
   assert.equal(applyViewFilter(items, filter).length, items.length);
 });
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v562';
+const CACHE_NAME = 'org-pwa-shell-v563';
 
 const SHELL_FILES = [
   './',
@@ -46,6 +46,7 @@ const SHELL_FILES = [
   './src/agenda-variables.js',
   './src/agenda-prefix.js',
   './src/holidays.js',
+  './src/diary-calendar.js',
   './src-browser/local-file-add.js',
   './src-browser/agenda-seed.js',
   './src/caldav-client.js',

@@ -64,6 +64,25 @@
   "regexp:[\"+^NEXT\"]": [
    2
   ],
+  "regexp:[\"+rent\\\\|dentist\"]": [
+   1,
+   2
+  ],
+  "regexp:[\"+\\\\(TODO\\\\|NEXT\\\\) .*report\"]": [
+   0
+  ],
+  "regexp:[\"-\\\\<call\\\\>\"]": [
+   0,
+   1,
+   3,
+   4,
+   5
+  ],
+  "regexp:[\"+pay (rent)\"]": [],
+  "regexp:[\"+re.\\\\{2\\\\}\"]": [
+   0,
+   1
+  ],
   "combined:{\"tag\":[\"+work\"],\"category\":[\"-House\"],\"regexp\":[\"+TODO\"]}": [
    0
   ],

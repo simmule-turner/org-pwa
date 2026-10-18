@@ -9,7 +9,7 @@
  ],
  "tag": [["+work"], ["+work", "+home"], ["+work", "-urgent"], ["-later"], ["-work", "-home"], ["+urgent", "+work", "-home"]],
  "category": [["+Projects"], ["+Projects", "+House"], ["-House"], ["-House", "-Inbox"]],
- "regexp": [["+TODO"], ["+TODO", "+rent"], ["-TODO"], ["+report", "-urgent"], ["+^NEXT"]],
+ "regexp": [["+TODO"], ["+TODO", "+rent"], ["-TODO"], ["+report", "-urgent"], ["+^NEXT"], ["+rent\\|dentist"], ["+\\(TODO\\|NEXT\\) .*report"], ["-\\<call\\>"], ["+pay (rent)"], ["+re.\\{2\\}"]],
  "combined": [
   {"tag": ["+work"], "category": ["-House"], "regexp": ["+TODO"]},
   {"tag": ["-later"], "category": ["+Projects", "+House"], "regexp": []}

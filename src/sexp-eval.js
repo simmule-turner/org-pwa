@@ -40,6 +40,7 @@
 import { sexpArgToValue, userSexpResult } from './extensions.js';
 import { startOfDay } from './agenda.js';
 import { holidaysOn } from './holidays.js';
+import { astroDayNumberLine, dayOfYearLine, isoDateLine, julianDateLine, lunarPhasesLine } from './diary-calendar.js';
 import { formatWeatherLine, isOrgWeatherLine } from './org-weather.js';
 import {
   expandOrgAnniversaryOccurrences,
@@ -414,6 +415,25 @@ function canonicalDiaryLine(line, style) {
       const dayOverride = args[3] ? args[3].value : null;
       const yearFilter = args[4] ? args[4].value : null;
       return occursOn(expandDiaryFloatOccurrences, context.candidateDate, monthSpec, dayname, n, dayOverride, yearFilter);
+    }
+
+    // The display-only calendar lines. Each shows the day's text, or matches nothing when there is none.
+    case 'diary-day-of-year':
+    case 'diary-iso-date':
+    case 'diary-julian-date':
+    case 'diary-astro-day-number':
+    case 'diary-lunar-phases': {
+      const c = context.candidateDate;
+      const y = c.getFullYear();
+      const m = c.getMonth() + 1;
+      const d = c.getDate();
+      const line =
+        head.value === 'diary-day-of-year' ? dayOfYearLine(y, m, d)
+        : head.value === 'diary-iso-date' ? isoDateLine(y, m, d)
+        : head.value === 'diary-julian-date' ? julianDateLine(y, m, d)
+        : head.value === 'diary-astro-day-number' ? astroDayNumberLine(y, m, d)
+        : lunarPhasesLine(y, m, d, context.timeZone);
+      return line || false;
     }
 
     case 'diary-sunrise':
@@ -847,7 +867,7 @@ function documentUsesOrgWeather(doc) {
 // for. Every other function a body line can use (org-anniversary, org-cyclic,
 // org-block, diary-float, the solar lines, org-weather) has its own dedicated
 // form in diary-sexp.js, with its own text handling, and is left to that.
-const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date', 'diary-date']);
+const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date', 'diary-date', 'diary-day-of-year', 'diary-iso-date', 'diary-julian-date', 'diary-astro-day-number', 'diary-lunar-phases']);
 
 /** Parses a `%%(expr) text` body line whose expression is one the general
  *  evaluator handles -- so `%%(and (org-block ...) (diary-float ...)) Term`

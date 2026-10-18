@@ -24,7 +24,7 @@ const el = `
       (while (<= abs end)
         (let* ((g (calendar-gregorian-from-absolute abs))
                (date (list (nth 0 g) (nth 1 g) (nth 2 g))) (entry "ENTRY"))
-          (let ((v (eval form nil))) (when v (push (list (format "%04d-%02d-%02d" (nth 2 g) (nth 0 g) (nth 1 g)) (if (stringp v) v "t")) days))))
+          (let ((v (eval form nil))) (when v (push (list (format "%04d-%02d-%02d" (nth 2 g) (nth 0 g) (nth 1 g)) (cond ((and (consp v) (stringp (cdr v))) (cdr v)) ((stringp v) v) (t "t"))) days))))
         (setq abs (1+ abs)))
       (push (list src (vconcat (mapcar (lambda (d) (vector (car d) (cadr d))) (nreverse days)))) out)))
   (with-temp-file (getenv "ORACLE_OUT") (insert (json-encode (vconcat (mapcar (lambda (r) (vector (car r) (cadr r))) (nreverse out)))))))
@@ -33,7 +33,7 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sexp-oracle-'));
 const elFile = path.join(dir, 'run.el');
 const outFile = path.join(dir, 'out.json');
 fs.writeFileSync(elFile, el);
-const r = spawnSync('emacs', ['--batch', '-Q', '-l', elFile], { env: { ...process.env, SEXP_EXPRS: JSON.stringify(exprs), ORACLE_OUT: outFile }, encoding: 'utf8', input: '' });
+const r = spawnSync('emacs', ['--batch', '-Q', '-l', elFile], { env: { ...process.env, TZ: 'America/New_York', SEXP_EXPRS: JSON.stringify(exprs), ORACLE_OUT: outFile }, encoding: 'utf8', input: '' });
 if (r.status !== 0) {
   console.error(r.stderr || r.error);
   process.exit(1);

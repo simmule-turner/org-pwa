@@ -596,7 +596,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
 | ~org-agenda-max-effort~ | ~nil~ | Per-day effort limit the ⏱ panel starts with: minutes, such as ~240~, or ~((agenda . 240) (todo . 120))~ |
 | ~org-agenda-prefix-format~ | unset | Text before each row, such as ~"  %-12:c%?-12t% s"~, or an alist by view, ~((agenda . "…") (todo . "…"))~: ~%c~ category, ~%t~ time, ~%s~ Scheduled:/Deadline:, ~%e~ effort; ~%-12c~ pads right, ~%12c~ left, ~%?~ leaves the part out when empty. Unset keeps the usual row |
-| ~org-agenda-regexp-filter-preset~ | unset | Search chip to start with: ~("+rent" "-later")~; every ~+~ pattern must match, no ~-~ pattern may |
+| ~org-agenda-regexp-filter-preset~ | unset | Search chip to start with: ~("+rent" "-later")~; Emacs regular expressions; every ~+~ pattern must match, no ~-~ pattern may |
 | ~org-agenda-remove-times-when-in-prefix~ | ~t~ | Leave timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written. Emacs removes only a time of day; this removes the whole stamp |
 | ~org-agenda-show-inherited-tags~ | ~t~ | Whether Agenda and TODO list rows show inherited tags, dimmed after the title |
 | ~org-agenda-skip-archived-trees~ | ~t~ | Exclude archived headings (tagged ~:ARCHIVE:~) from the agenda; ~nil~ includes them |
@@ -999,7 +999,7 @@ Tap *View → Agenda* for everything with a date, in Day, Week or Month view. On
 *Filter chips* under the controls narrow the list; a chip shows its choice and an ✕ clears it. They last for the session and combine with *and*:
 
 - *Tag*, *State*, *Category*: pick values, then say what they do: show only items with *any* of them, with *all* of them (tags), or hide items with any (Emacs's ~-~ prefix). Tags include inherited ones (~org-use-tag-inheritance~).
-- *Search*: a regular expression, not case sensitive, matched against the keyword, title and tags (Emacs's ~=~ filter). A box can hide the matching rows instead.
+- *Search*: an Emacs regular expression (~\(~ ~\)~ group, ~\|~ alternates), not case sensitive, matched against the keyword, title and tags (Emacs's ~=~ filter). A box can hide the matching rows instead.
 - *Top heading*: only items under the chosen top-level headings (Emacs's ~^~).
 - *Effort* (TODO view): at most, at least or exactly a duration, as in the ⏱ panel.
 
@@ -1134,6 +1134,7 @@ The evaluator is a small, safe Lisp subset, not Emacs's interpreter. Each day is
 - ~calendar-day-of-week~ (0 is Sunday), ~calendar-last-day-of-month~, ~calendar-leap-year-p~, ~calendar-extract-month~, ~-day~, ~-year~ and ~calendar-current-date~: ~<%%(and (= (cadr date) (calendar-last-day-of-month (car date) (nth 2 date))) (memq (calendar-day-of-week date) '(1 2 3 4 5)))>~ is the last day of each month when it is a weekday.
 - ~calendar-absolute-from-gregorian~ and ~calendar-gregorian-from-absolute~ turn a date into a day count and back (day 1 is 1 January, year 1), plus ~min~, ~max~ and ~abs~. A count makes "every other week" and "N days until" rules easy: ~<%%(let ((n (- (calendar-absolute-from-gregorian '(12 25 2026)) (calendar-absolute-from-gregorian date)))) (and (>= n 0) (<= n 30) (format "%d days until Christmas" n)))>~ counts down for the 30 days before.
 - ~(diary-remind SEXP DAYS)~: shows the entry on the day SEXP matches, and "Reminder: Only 3 days until ..." on the DAYS before it. ~DAYS~ is a number, a list (~'(1 3 7)~), or a negative number for every day up to it. ~%%(diary-remind '(diary-float 11 4 4) 7) Thanksgiving~ starts a week ahead. The variable ~entry~ is the text of the line, so ~(and (org-block 2026 12 20 2026 12 25) entry)~ also works.
+- ~(diary-day-of-year)~, ~(diary-iso-date)~, ~(diary-julian-date)~, ~(diary-astro-day-number)~ and ~(diary-lunar-phases)~ show the day's line as Emacs words it: "Day 290 of 2026; 75 days remaining in the year", "ISO date: Day 6 of week 42 of 2026", "Julian date: October 4, 2026", "Astronomical (Julian) day number at noon UTC: 2461331.0" and, on the day of a quarter, "Full Moon 12:09am (EDT)" in this device's time zone. ~%%(diary-lunar-phases)~ also works as a body line.
 - ~(today-p)~: this app's shorthand for ~(equal date (calendar-current-date))~. ~<%%(when (today-p) (diary-sunrise))>~ shows sunrise only today.
 - ~(org-block Y M D Y M D)~ is an inclusive range, in either order. ~(org-date Y M D)~ takes, for each field, an integer, a list or ~t~: ~(org-date t '(10 11 12) 22)~ is the 22nd of October, November and December every year. Every date is year month day, and impossible dates match nothing.
 - ~(org-class Y1 M1 D1 Y2 M2 D2 DAYNAME [SKIP-WEEK...])~: DAYNAME (0 Sunday to 6) every week between the two dates, except the listed ISO week numbers. Add ~'holidays~ to the list to skip public holidays as well: the US holidays of Emacs's ~holiday-general-holidays~ and the Christian ones (Ash Wednesday, Good Friday, Easter, Christmas). ~(calendar-check-holidays date)~ gives a day's holiday names. Hebrew, Islamic and other calendars' holidays aren't included.
@@ -1141,7 +1142,7 @@ The evaluator is a small, safe Lisp subset, not Emacs's interpreter. Each day is
 - ~(format FORMAT-STRING ARG...)~ combines string-returning functions into one line: ~<%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn)))>~ shows "Rise 06:30 Sunrise (06:02 Dawn)", or "Rise 06:30 (06:02)" with ~solar-hide-label~. Placeholders are ~%s~ (any value), ~%d~ (a number) and ~%%~, with an optional width such as ~%02d~, ~%5s~ or ~%-5s~; each evaluates its argument, including a nested ~format~. Extra arguments are ignored; too few give no match. A title that is only the timestamp shows the result exactly as built, with no title prefix.
 - Anything else (an unknown function, a malformed expression, a bare value) is no match, never an error.
 
-*Not included*: assignment (~setq~), ~lambda~ and ~defun~, and anything with side effects, so the Emacs manual's "pay check" example (which uses ~setq~) needs a ~let*~ rewrite. Also not implemented: the display-only ~diary-day-of-year~, ~diary-iso-date~, ~diary-julian-date~, ~diary-astro-day-number~ and ~diary-lunar-phases~; and alternate calendars and Hebrew observances (~diary-yahrzeit~, ~diary-rosh-hodesh~ and the rest).
+*Not included*: assignment (~setq~), ~lambda~ and ~defun~, and anything with side effects, so the Emacs manual's "pay check" example (which uses ~setq~) needs a ~let*~ rewrite. Also not implemented: alternate calendars and Hebrew observances (~diary-yahrzeit~, ~diary-rosh-hodesh~ and the rest).
 
 *** Other agenda behavior
 :PROPERTIES:
@@ -2052,7 +2053,7 @@ For readers who know Emacs org-mode: where org-pwa does less or differs. A topic
 
 *Clocking* (see [[#clocking][Clocking]]): no custom ~org-duration-units~, no ~Effort_ALL+~, and no clock-in reminder beyond the modeline's over-estimate marker.
 
-*Agenda* (see [[#agenda][Agenda]]): only the effort keys of ~org-agenda-sorting-strategy~ are read. A filter's regular expression is a JavaScript one. ~org-agenda-prefix-format~ knows ~%c~, ~%t~, ~%s~ and ~%e~. The sexp evaluator is a Lisp subset without ~setq~ or function definitions, and ~org-class~ skips only US and Christian holidays. A ~local:~ agenda file is read-only.
+*Agenda* (see [[#agenda][Agenda]]): only the effort keys of ~org-agenda-sorting-strategy~ are read. ~org-agenda-prefix-format~ knows ~%c~, ~%t~, ~%s~ and ~%e~. The sexp evaluator is a Lisp subset without ~setq~ or function definitions, and ~org-class~ skips only US and Christian holidays. A ~local:~ agenda file is read-only.
 
 *Babel*: ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). These do not exist: blocks in any other language, ~:session~, running one block from inside another (~<<name()>>~), and results that refresh when a file is opened.
 

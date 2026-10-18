@@ -13,7 +13,7 @@ for (const [src, days] of Object.entries(fixture.expected)) {
     const expr = parseSexpr(src);
     /** @type {Record<string, string>} */ const got = {};
     for (let d = new Date(2026, 0, 1); d <= new Date(2029, 11, 31); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
-      const result = evaluateSexpr(expr, { candidateDate: d, today: new Date(2026, 9, 11), entryText: 'ENTRY' });
+      const result = evaluateSexpr(expr, { candidateDate: d, today: new Date(2026, 9, 11), entryText: 'ENTRY', timeZone: 'America/New_York' });
       if (result) got[iso(d)] = typeof result === 'string' && result !== 'ENTRY' ? result : 't';
     }
     const want = Object.fromEntries(Object.entries(days).map(([d, v]) => [d, v === 'ENTRY' ? 't' : v]));

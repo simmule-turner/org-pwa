@@ -158,7 +158,7 @@ export function buildViewFilterRow(items, onChange, extraChips = []) {
           onSubmit: () => {
             const text = input.value.trim();
             if (text !== '' && filterRegexp(text) === null) {
-              setStatus('Not a valid regular expression \u2014 filter not changed.');
+              setStatus('Not a valid Emacs regular expression \u2014 filter not changed.');
               return false;
             }
             filter.regexps = text && !hide.checked ? [text] : [];
