@@ -1,0 +1,83 @@
+[
+  {
+    "name": "american",
+    "file": "american.diary",
+    "style": "american"
+  },
+  {
+    "name": "american-no-holidays",
+    "file": "american.diary",
+    "style": "american",
+    "showHolidays": false
+  },
+  {
+    "name": "american-full-year-only",
+    "file": "american.diary",
+    "style": "american",
+    "abbreviatedYear": false
+  },
+  {
+    "name": "european",
+    "file": "european.diary",
+    "style": "european"
+  },
+  {
+    "name": "iso",
+    "file": "iso.diary",
+    "style": "iso"
+  },
+  {
+    "name": "american-in-iso",
+    "file": "american.diary",
+    "style": "iso"
+  },
+  {
+    "name": "include-off",
+    "file": "include-main.diary",
+    "style": "american",
+    "included": [
+      "include-other.diary"
+    ]
+  },
+  {
+    "name": "include-on",
+    "file": "include-main.diary",
+    "style": "american",
+    "included": [
+      "include-other.diary"
+    ],
+    "hooks": [
+      "diary-include-other-diary-files"
+    ]
+  },
+  {
+    "name": "sorted",
+    "file": "sort.diary",
+    "style": "american",
+    "hooks": [
+      "diary-sort-entries"
+    ]
+  },
+  {
+    "name": "unsorted",
+    "file": "sort.diary",
+    "style": "american"
+  },
+  {
+    "name": "include-and-sort",
+    "file": "include-main.diary",
+    "style": "american",
+    "included": [
+      "include-other.diary"
+    ],
+    "hooks": [
+      "diary-include-other-diary-files",
+      "diary-sort-entries"
+    ]
+  },
+  {
+    "name": "edge",
+    "file": "edge.diary",
+    "style": "american"
+  }
+]

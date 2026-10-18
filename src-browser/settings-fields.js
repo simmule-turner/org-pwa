@@ -153,6 +153,10 @@ export const QUICK_SETTINGS_FIELDS = [
     default: false,
     helpAnchor: '#archiving',
   },
+  { key: 'org-agenda-include-diary', label: 'Include the diary file in the Agenda', section: 'Agenda', type: 'boolean', default: false, helpAnchor: '#diary-file' },
+  { key: 'diary-show-holidays-flag', label: 'Diary: show the day\u2019s holidays with its entries', section: 'Agenda', type: 'boolean', default: true, helpAnchor: '#diary-file' },
+  { key: 'diary-abbreviated-year-flag', label: 'Diary: read a two-digit year as the year it ends', section: 'Agenda', type: 'boolean', default: true, helpAnchor: '#diary-file' },
+  { key: 'org-xx-diary-merge-rows', label: 'Diary: join entries without a time into the row before, as Org does', section: 'Agenda', type: 'boolean', default: false, helpAnchor: '#diary-file' },
   {
     key: 'org-contacts-birthday-property',
     label: 'Birthday property name',
@@ -197,7 +201,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#agenda-diary-sexp',
   },
   {
-    key: 'solar-ampm',
+    key: 'org-xx-solar-ampm',
     label: 'Solar times: use am/pm (else 24-hour)',
     section: 'Contacts & Calendar',
     type: 'boolean',
@@ -205,7 +209,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#agenda-diary-sexp',
   },
   {
-    key: 'solar-hide-label',
+    key: 'org-xx-solar-hide-label',
     label: 'Solar times: hide label (e.g. "Sunrise")',
     section: 'Contacts & Calendar',
     type: 'boolean',
@@ -440,5 +444,7 @@ export const QUICK_SETTINGS_FIELDS = [
   { key: 'org-contacts-files', label: 'Contacts files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#contacts-files' },
   { key: 'org-agenda-text-search-extra-files', label: 'Search extra files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#search-extra-files' },
   { key: 'org-xx-extra-menu', label: 'Extras menu (\u2630)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#extras-menu', entryTokenizer: tokenizeExtraMenuValue },
-  { key: 'org-xx-menu-aliases', label: 'Menu labels (File/More/Export/View)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization', entryTokenizer: tokenizeMenuAliasValue },
+  { key: 'org-xx-menu-aliases', label: 'Menu labels (File/More/Export/View)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization', entryTokenizer: tokenizeMenuAliasValue },  { key: 'diary-file', label: 'Diary file', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
+  { key: 'diary-list-entries-hook', label: 'Diary hook (diary-include-other-diary-files, diary-sort-entries)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
+  { key: 'diary-date-forms', label: 'Diary date forms (Lisp list)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
 ];

@@ -1,0 +1,3 @@
+12/24  From the main file
+#include "@DIR@/include-other.diary"
+12/25  Main file again

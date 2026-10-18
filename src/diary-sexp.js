@@ -548,9 +548,9 @@ function formatSunTime24(utcHours, offsetMinutes) {
  *  default -- 24-hour, zero-filled time (formatSunTime24 above), 'n/a'
  *  in place of the time for whichever value doesn't occur that day at
  *  this latitude. Two of this app's own extension variables (see
- *  local-variables.js) adjust the output: solar-ampm (default nil)
+ *  local-variables.js) adjust the output: org-xx-solar-ampm (default nil)
  *  switches from 24-hour to 12-hour am/pm (formatSunTimeOrPlaceholder
- *  above) when non-nil; solar-hide-label (default nil) omits the
+ *  above) when non-nil; org-xx-solar-hide-label (default nil) omits the
  * @param {Date} date
  * @param {any} [latitude]
  * @param {any} [longitude]
@@ -649,8 +649,8 @@ function formatAstronomicalDuskLine(date, latitude, longitude, offsetMinutes = -
 /** diary-day-length -- this app's own extension too: total daylight
  *  duration (computeDaylightHours above) as "HH:MM daylight", always
  *  24-hour zero-filled (a duration, not a time-of-day -- there's no
- *  am/pm distinction to switch to, so solar-ampm has no effect here
- *  at all, only solar-hide-label does, per the explicit
+ *  am/pm distinction to switch to, so org-xx-solar-ampm has no effect here
+ *  at all, only org-xx-solar-hide-label does, per the explicit
  *  clarification that a duration still has a label to hide even
  * @param {Date} date
  * @param {any} [latitude]

@@ -7,6 +7,7 @@ import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { rememberIds } from './id-locations.js';
 import { prefetchSetupFiles } from './setupfile.js';
 import { scheduleCalendarSync } from './calendar-sync.js';
+import { ensureDiaryLoaded, refreshDiary } from './diary-file-load.js';
 import { S } from './app-state.js';
 import { platform } from './platform.js';
 import { render } from './render.js';
@@ -52,6 +53,7 @@ import { agendaFilesCache, contactsFilesCache, searchExtraFilesCache } from './s
 export function syncAgendaFilesConfig() {
   S.agendaFilesConfig = parseAgendaFilesVar(getAgendaFilesVar(S.state.doc ? S.state.localVariables : S.globalVariables));
   ensureAgendaFilesLoaded();
+  ensureDiaryLoaded(); // the diary file is read from the same variables, when org-agenda-include-diary is on
 }
 
 /** Kicks off a fetch for every configured agenda file not already
@@ -192,6 +194,7 @@ export function refreshAgendaFiles() {
   agendaFilesCache.clear();
   S.agendaFilesCacheLoadedFor = null;
   ensureAgendaFilesLoaded({ prompt: true }); // a tap on the refresh button is the one thing allowed to ask for a local file's permission
+  refreshDiary();
   render();
   scheduleCalendarSync(); // freshly fetched files may hold different dates
 }

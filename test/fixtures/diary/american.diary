@@ -1,0 +1,35 @@
+Notes about this file are ignored.
+4/20/27  Switch-over to new tabulation system
+apr. 25  Start tabulating annual results
+4/30  Results for April are due
+*/25  Monthly cycle finishes
+Friday  Don't leave without backing up files
+&12/24  Non-marking entry
+12/25  10:00am Brunch
+   at Mom's
+12/25  Second entry
+12/26
+   Entry that starts on the next line
+12/27
+
+1/1  Date alone, no entry
+Mar 3, 2027  Long form with year
+MARCH 4  Upper-case month
+Mar. 05  Zero-padded day
+04/06  Zero-padded month and day
+7/8/26  Two-digit year
+7/9/2026  Four-digit year
+fri.  Abbreviated day name
+Mon  Monday abbreviation
+5/*  Every day of May
+*/*/2027  Every day of 2027
+*  1  Star month name
+Jun 1 9:30pm Late call
+Jun 2 7pm Dinner
+Jun 3 8am Breakfast
+   with the team
+   10am Standup
+Jun 4 Something at noon
+%%(diary-float 11 4 4) Thanksgiving
+%%(diary-float t 1 2) Second Monday
+&%%(diary-float 5 1 -1) Memorial day entry

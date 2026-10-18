@@ -74,31 +74,6 @@ export function htmlExportDefaults(vars) {
   return out;
 }
 
-/** Moves the retired switch-and-text variables (org-xx-html-*, org-xx-babel-js) onto Org's own, once. Returns null when there is
- *  nothing to move. An Org variable that is already set is kept.
- * @param {Record<string, string>} vars
- * @returns {Record<string, string> | null} */
-export function migrateRetiredVariables(vars) {
-  const legacy = ['preamble', 'postamble', 'head'].map((id) => 'org-xx-html-' + id);
-  if (![...legacy, 'org-xx-babel-js'].some((k) => k in vars || k + '-on' in vars)) return null;
-  const out = { ...vars };
-  for (const id of ['preamble', 'postamble', 'head']) {
-    const old = 'org-xx-html-' + id;
-    const item = EXPORT_DEFAULT_ITEMS.find((i) => i.id === id);
-    if (item && isOn(out[old + '-on']) && out[item.key] === undefined) {
-      const text = old in out ? decodeExportText(out[old]) : item.text;
-      if (text.trim() !== '') out[item.key] = encodeLispString(text);
-    }
-    delete out[old];
-    delete out[old + '-on'];
-  }
-  if ('org-xx-babel-js' in out) {
-    if (/^(on|yes|t|true)$/i.test(String(out['org-xx-babel-js']).trim()) && out['org-babel-load-languages'] === undefined) out['org-babel-load-languages'] = '((emacs-lisp . t) (js . t))';
-    delete out['org-xx-babel-js'];
-  }
-  return out;
-}
-
 /** How many items are switched on, for the "N set" count.
  * @param {Record<string, string> | null | undefined} vars
  * @param {string[]} ids */

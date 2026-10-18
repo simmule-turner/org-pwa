@@ -1,0 +1,20 @@
+Friday: colon after day name
+Thu, comma after day name
+4/30:5 Colon after date
+4/30,x comma right after
+Apr 3rd text
+Apr 4 2027 year without comma
+Apr 5, 27 two digit year
+Apr 6,2027 no space after comma
+12/31/26 two-digit year
+Sat	tab after day name
+Sun
+	tab indented next line
+2/3/2026x letter after year
+10/10 été accent
+May  7
+  indented but not a date
+	May 8 indented date is not an entry
+June 9 and again
+JUNE 9 upper case
+j 10 not a month

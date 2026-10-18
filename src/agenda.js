@@ -14,6 +14,7 @@
  *   scheduledDelayDays?: number, calendarLatitude?: number, calendarLongitude?: number, calendarDateStyle?: string, solarAmpm?: boolean, solarHideLabel?: boolean,
  *   weatherData?: Record<string, any> | null, orgWeatherFormat?: string, orgWeatherTemperatureUnit?: string, orgWeatherSpeedUnit?: string,
  *   habits?: { enabled: boolean, onlyForToday: boolean, showAllToday: boolean, precedingDays: number, followingDays: number } | null,
+ *   diary?: import('./agenda-diary.js').DiarySource | null,
  * }} AgendaOptions
  */
 /** @typedef {import('./types.js').Heading} Heading */
@@ -73,6 +74,7 @@ import {
   unquoteDiaryFloatMonthList,
 } from './diary-sexp.js';
 import { isOrgWeatherLine, formatWeatherLine, DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
+import { buildDiaryItems } from './agenda-diary.js';
 
 const UNSAVED_DOCUMENT_ID = '\u0000unsaved-new-document';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -803,6 +805,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
     orgWeatherFormat = DEFAULT_ORG_WEATHER_FORMAT,
     orgWeatherTemperatureUnit = '\u00b0F',
     orgWeatherSpeedUnit = 'mph',
+    diary = null, // the diary file (org-agenda-include-diary), already read; null leaves it out
     habits = null, // { enabled, onlyForToday, showAllToday, precedingDays, followingDays }: org-habit's agenda behaviour; null leaves habits as ordinary repeating tasks
   } = opts;
   /** @type {any[]} */ const items = [];
@@ -1369,6 +1372,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
   for (const item of items) {
     item.category = categoryByDocument.get(item.documentId) || item.documentId;
   }
+  if (diary && rangeStart && rangeEnd) items.push(...buildDiaryItems(diary, rangeStart, rangeEnd, opts, buildAgendaItems));
 
   items.sort((a, b) => a.date - b.date);
   return items;

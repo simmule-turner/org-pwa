@@ -363,8 +363,8 @@ test('THE FIX: getSolarAmpm defaults to false (24-hour), matching what was origi
 });
 
 test('THE FIX: getSolarAmpm reads t as true (12-hour am/pm)', () => {
-  assert.equal(getSolarAmpm({ 'solar-ampm': 't' }), true);
-  assert.equal(getSolarAmpm({ 'solar-ampm': 'nil' }), false);
+  assert.equal(getSolarAmpm({ 'org-xx-solar-ampm': 't' }), true);
+  assert.equal(getSolarAmpm({ 'org-xx-solar-ampm': 'nil' }), false);
 });
 
 test('THE FIX: getSolarHideLabel defaults to false (label shown)', () => {
@@ -373,8 +373,8 @@ test('THE FIX: getSolarHideLabel defaults to false (label shown)', () => {
 });
 
 test('THE FIX: getSolarHideLabel reads t as true (label hidden)', () => {
-  assert.equal(getSolarHideLabel({ 'solar-hide-label': 't' }), true);
-  assert.equal(getSolarHideLabel({ 'solar-hide-label': 'nil' }), false);
+  assert.equal(getSolarHideLabel({ 'org-xx-solar-hide-label': 't' }), true);
+  assert.equal(getSolarHideLabel({ 'org-xx-solar-hide-label': 'nil' }), false);
 });
 
 test('THE FIX: getOrgWeatherFormat defaults to the exact format given in the original request', () => {

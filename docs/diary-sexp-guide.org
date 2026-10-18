@@ -1,0 +1,211 @@
+#+TITLE: Diary expressions in org-pwa: a guide with examples
+#+STARTUP: overview
+
+Diary expressions (sexps) let one line in an Org file stand for a whole pattern of days: "the last working day of the month", "every other Thursday", "two weeks before a birthday". This guide shows how to write them in org-pwa and what each one does. Every example was run in the app and compared with Emacs 29.3 over 2026 and 2027; the dates shown are the real results.
+
+* Where to put one
+Two places work, and they behave the same.
+
+- *A line in a heading's body* starting with ~%%(~, followed by the text to show:
+  #+BEGIN_EXAMPLE
+  * Calendar
+  %%(diary-float 11 4 4) Thanksgiving
+  #+END_EXAMPLE
+- *A timestamp-like marker in a heading's title*, ~<%%(...)>~. The heading's own title is the text:
+  #+BEGIN_EXAMPLE
+  * Recycling <%%(and (= 4 (calendar-day-of-week date)) (zerop (mod (/ (calendar-absolute-from-gregorian date) 7) 2)))>
+  #+END_EXAMPLE
+
+Write the whole expression on *one line*. Emacs also reads an expression spread over several lines; org-pwa reads a body line at a time, so a broken-up expression matches nothing.
+
+* What a sexp answers
+The agenda asks the expression one question for each day it draws: "does this day match?"
+
+- ~nil~ (or an error) means no entry that day.
+- ~t~ or any other value means an entry, shown with the line's own text (or the heading's title).
+- A *string* result replaces that text. ~(format "%d days until Christmas" n)~ and the calendar lines in section 6 work this way.
+
+Two names are always available:
+
+- ~date~ is the day being checked, as a list ~(month day year)~. ~(car date)~ is the month, ~(cadr date)~ the day, ~(nth 2 date)~ the year.
+- ~entry~ is the text of the line (or the heading's title).
+
+An expression that is malformed, runs for more than 20,000 steps, or divides by zero matches nothing instead of showing an error.
+
+* The language
+A small Lisp, with no way to change anything and no file or network access.
+
+| Kind | What is there |
+|------+---------------|
+| Choosing | ~if~, ~when~, ~unless~, ~cond~, ~and~, ~or~, ~not~ |
+| Naming | ~let~, ~let*~, ~progn~ |
+| Numbers | ~+ - * /~, ~mod~, ~%~, ~1+~, ~1-~, ~min~, ~max~, ~abs~ |
+| Comparing | ~= /= < > <= >=~, ~zerop~, ~equal~, ~eq~ |
+| Lists | ~list~, ~car~, ~cadr~, ~cdr~, ~nth~, ~length~, ~memq~, ~member~; a quoted list such as ~'(1 2 3)~ |
+| Text | ~format~ with ~%s~, ~%d~, ~%%~ and widths such as ~%02d~ or ~%-5s~ |
+| Calendar | ~calendar-current-date~, ~calendar-day-of-week~ (0 is Sunday), ~calendar-last-day-of-month~, ~calendar-leap-year-p~, ~calendar-extract-month~ / ~-day~ / ~-year~, ~calendar-absolute-from-gregorian~, ~calendar-gregorian-from-absolute~, ~calendar-check-holidays~ |
+| Diary | ~diary-float~, ~diary-remind~, ~diary-anniversary~, ~diary-cyclic~, ~diary-block~, ~diary-date~, and the calendar lines in section 6 |
+| Org's own | ~org-anniversary~, ~org-cyclic~, ~org-block~, ~org-date~, ~org-class~ |
+| App shorthand | ~(today-p)~ |
+
+Not included: ~setq~, ~lambda~, ~defun~ and anything else with side effects. The Emacs manual's "pay check" example uses ~setq~; example 1 below is the ~let*~ version.
+
+* Examples
+Each line is written as it goes in a heading's body. "Dates" are those the line shows in 2026.
+
+** 1. Pay day: the last working day of the month
+Pay arrives on the last weekday of the month. When the month ends on a weekend, it moves to the Friday before.
+#+BEGIN_EXAMPLE
+%%(let* ((last (calendar-last-day-of-month (car date) (nth 2 date))) (dow (calendar-day-of-week date)) (day (cadr date))) (or (and (= day last) (memq dow '(1 2 3 4 5))) (and (= dow 5) (memq day (list (- last 1) (- last 2)))))) Pay day
+#+END_EXAMPLE
+Dates: Jan 30, Feb 27, Mar 31, Apr 30, and so on. Shows ~let*~, ~date~, ~calendar-last-day-of-month~, ~calendar-day-of-week~, ~memq~, and ~or~/~and~.
+
+** 2. US Election Day: the first Tuesday after a Monday, in even years only
+#+BEGIN_EXAMPLE
+%%(and (zerop (mod (nth 2 date) 2)) (diary-float 11 2 1 2)) Election Day
+#+END_EXAMPLE
+Dates: Nov 3, 2026. There is no entry in 2027. A plain yearly repeat would show a false entry in odd years; the year test fixes that. ~(diary-float 11 2 1 2)~ means November, Tuesday (2), the first one on or after the 2nd.
+
+** 3. A different rule in summer
+#+BEGIN_EXAMPLE
+%%(if (memq (car date) '(6 7 8)) (= 6 (calendar-day-of-week date)) (diary-float t 6 1)) Farmers market
+#+END_EXAMPLE
+Dates: every Saturday in June, July and August; the first Saturday in the other months (Jan 3, Feb 7, Mar 7, Apr 4...). ~if~ picks which rule to use from the month.
+
+** 4. A heads-up before an event
+~diary-remind~ checks a second expression on *future* days and shows a "Reminder" line. The number says how far ahead:
+#+BEGIN_EXAMPLE
+%%(diary-remind '(org-anniversary 1948 10 31) 14) Dad's birthday
+#+END_EXAMPLE
+A plain number is *one* day ahead: this shows "Reminder: Only 2 weeks until Dad's birthday" on Oct 17, and the entry itself on Oct 31. For every day up to the event, use a negative number:
+#+BEGIN_EXAMPLE
+%%(diary-remind '(org-anniversary 1948 10 31) -14) Dad's birthday
+#+END_EXAMPLE
+Oct 17 shows "Only 2 weeks", Oct 18 "Only 13 days", and so on down to "Only 1 day" on Oct 30, then the entry on Oct 31. For chosen days, give a list:
+#+BEGIN_EXAMPLE
+%%(diary-remind '(org-anniversary 1948 10 31) '(1 7 14)) Dad's birthday
+#+END_EXAMPLE
+This shows reminders on Oct 17, Oct 24 and Oct 30, then the entry. It works for yearly events a DEADLINE warning can't repeat:
+#+BEGIN_EXAMPLE
+%%(diary-remind '(diary-float 11 4 4) 7) Thanksgiving: order the turkey
+#+END_EXAMPLE
+Nov 19 shows "Reminder: Only 1 week until Thanksgiving: order the turkey"; Nov 26 shows the entry.
+
+** 5. Every other week, with no start date to keep
+#+BEGIN_EXAMPLE
+%%(and (= 4 (calendar-day-of-week date)) (zerop (mod (/ (calendar-absolute-from-gregorian date) 7) 2))) Recycling
+#+END_EXAMPLE
+Dates: Jan 8, Jan 22, Feb 5, Feb 19... Every other Thursday, counted from the calendar's own day numbers. Unlike ~org-cyclic~ it needs no anchor date, but the "on" weeks are fixed by the calendar; flip them by comparing with ~1~ instead of ~zerop~.
+
+** 6. A countdown in the title
+#+BEGIN_EXAMPLE
+%%(let ((n (- (calendar-absolute-from-gregorian '(12 25 2026)) (calendar-absolute-from-gregorian date)))) (and (>= n 0) (<= n 30) (format "%d days until Christmas" n)))
+#+END_EXAMPLE
+Dates: Nov 25 shows "30 days until Christmas", Nov 26 "29 days until Christmas", and so on to Dec 25. The string replaces the line's text.
+
+** 7. A class that skips holidays
+#+BEGIN_EXAMPLE
+%%(org-class 2026 9 1 2026 12 18 1 'holidays) Seminar
+#+END_EXAMPLE
+Every Monday from Sep 1 to Dec 18 except holidays: Sep 14, Sep 21, Sep 28... (Sep 7 is Labor Day). Skipped ISO weeks go in the same list: ~(org-class 2026 9 1 2026 12 18 1 'holidays 47)~ also skips week 47.
+
+* Diary dates in your own order
+~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~ read their dates in the order of the variable ~calendar-date-style~ (Settings → Contacts & Calendar, or a Local Variable). The default is =american=: month day year.
+
+| Style | Example: 31 October 1948 | Cyclic: every 14 days from 5 Jan 2026 | Block: 20 Dec 2026 to 5 Jan 2027 |
+|-------+--------------------------+----------------------------------------+----------------------------------|
+| ~american~ | ~(diary-anniversary 10 31 1948)~ | ~(diary-cyclic 14 1 5 2026)~ | ~(diary-block 12 20 2026 1 5 2027)~ |
+| ~european~ | ~(diary-anniversary 31 10 1948)~ | ~(diary-cyclic 14 5 1 2026)~ | ~(diary-block 20 12 2026 5 1 2027)~ |
+| ~iso~ | ~(diary-anniversary 1948 10 31)~ | ~(diary-cyclic 14 2026 1 5)~ | ~(diary-block 2026 12 20 2027 1 5)~ |
+
+As body lines they take the usual text, with =%d= (years) and =%s= (the "st", "nd", "th" ending):
+#+BEGIN_EXAMPLE
+%%(diary-anniversary 10 31 1948) Dad's %d%s birthday
+#+END_EXAMPLE
+On Oct 31, 2026 this shows "Dad's 78th birthday". ~diary-date~ takes a month, a day and a year, each a number, a list, or ~t~ for every value: ~(diary-date 10 22 2026)~, ~(diary-date 12 25 t)~ (every 25 December), ~(diary-date '(3 6 9 12) 15 t)~.
+
+The ~org-*~ twins (~org-anniversary~, ~org-cyclic~, ~org-block~, ~org-date~) always read year month day whatever the style.
+
+* Lines that show something about the day
+These take no arguments and show a line for each day (the moon only on a day with a quarter).
+
+| Line | Shows, for 17 October 2026 |
+|------+----------------------------|
+| ~%%(diary-day-of-year)~ | Day 290 of 2026; 75 days remaining in the year |
+| ~%%(diary-iso-date)~ | ISO date: Day 6 of week 42 of 2026 |
+| ~%%(diary-julian-date)~ | Julian date: October 4, 2026 |
+| ~%%(diary-astro-day-number)~ | Astronomical (Julian) day number at noon UTC: 2461331.0 |
+| ~%%(diary-lunar-phases)~ | nothing; on 18 October: First Quarter Moon 12:14pm (EDT) |
+
+Moon times are in this device's time zone. The line is the whole entry, so no text follows it.
+
+The solar lines (~%%(diary-sunrise)~, ~diary-sunset~, the dawn and dusk forms, ~diary-day-length~) use ~calendar-latitude~ and ~calendar-longitude~; ~org-xx-solar-ampm~ and ~org-xx-solar-hide-label~ change how they read.
+
+* Holidays in your agenda
+The app knows a list of holidays and can show them on the agenda, or use them in a rule. Nothing appears until you add a line to an agenda file.
+
+** The holidays it knows
+Emacs's US list: New Year's Day, Martin Luther King Day, President's Day, Memorial Day, Independence Day, Labor Day, Columbus Day, Veteran's Day, Thanksgiving, and the lesser days Emacs lists (Groundhog Day, Valentine's Day, St. Patrick's Day, April Fools' Day, Mother's Day, Father's Day, Flag Day, Halloween). Plus the Christian ones: Ash Wednesday, Good Friday, Easter Sunday and Christmas. Hebrew, Islamic and other calendars' holidays are not included; for those, or for your country's days, add them yourself with ~org-date~ or ~diary-date~ (below).
+
+** Show each holiday on its day
+Add this to the body of any heading in a file listed in your agenda files (Settings → Quick Settings → Agenda files). A heading called "Holidays" keeps them together:
+#+BEGIN_EXAMPLE
+  * Holidays
+  %%(let ((h (calendar-check-holidays date))) (and h (car h)))
+#+END_EXAMPLE
+~(calendar-check-holidays date)~ looks the day up. It gives back the holiday's name in a list, such as ~("Martin Luther King Day")~ on 19 January 2026, or nothing on an ordinary day. The line keeps only the first name (~car~) and uses it as the entry, so the agenda shows:
+- 1 Jan: New Year's Day
+- 19 Jan: Martin Luther King Day
+- 14 Feb: Valentine's Day
+- 5 Apr: Easter Sunday
+- ...and nothing on days without a holiday.
+There is no text after the closing parenthesis because the holiday's name is the text. To mark them, wrap the name:
+#+BEGIN_EXAMPLE
+%%(let ((h (calendar-check-holidays date))) (and h (format "Holiday: %s" (car h))))
+#+END_EXAMPLE
+This shows "Holiday: New Year's Day", "Holiday: Martin Luther King Day", and so on. It lists the minor days too (Groundhog Day, Halloween); to show a few, name them as in the next section.
+
+** Show only the holidays you pick
+~member~ asks whether a name is in the day's list. The line shows its own text on those days only:
+#+BEGIN_EXAMPLE
+%%(and (member "Labor Day" (calendar-check-holidays date)) t) Labor Day: office closed
+#+END_EXAMPLE
+Shows "Labor Day: office closed" on 7 September 2026 and no other day. Use one such line per holiday you want. (The names must be spelled as above, including "President's Day" and "Veteran's Day".)
+
+** Use holidays in a rule
+Any day that is a holiday satisfies ~(calendar-check-holidays date)~, so it fits inside ~and~, ~or~ and ~not~. Holidays that fall on a Monday:
+#+BEGIN_EXAMPLE
+%%(and (calendar-check-holidays date) (= 1 (calendar-day-of-week date))) Holiday Monday
+#+END_EXAMPLE
+Here the test is "is it a holiday, and is it a Monday", so the line's own text, "Holiday Monday", is shown on 19 Jan, 2 Feb, 16 Feb, 25 May and so on.
+
+For a class that should not meet on holidays, put ~'holidays~ at the end of ~org-class~ (example 7).
+
+** Add days that are not on the list
+For a day the app doesn't know, add it directly. These show on their day, whichever year:
+#+BEGIN_EXAMPLE
+%%(diary-date 12 26 t) Boxing Day
+%%(diary-date 7 1 t) Canada Day
+#+END_EXAMPLE
+Written for a single year, they use ~org-date~ (year, month, day): ~%%(org-date 2026 11 27) Day after Thanksgiving~.
+
+* Mixing and combining
+Anything that gives a yes or no can sit inside ~and~, ~or~ and ~not~. A block of days with a weekday rule:
+#+BEGIN_EXAMPLE
+%%(and (org-block 2026 12 20 2027 1 5) (not (memq (calendar-day-of-week date) '(0 6)))) Winter break (weekdays)
+#+END_EXAMPLE
+Seven days before each month's last day:
+#+BEGIN_EXAMPLE
+%%(= (cadr date) (- (calendar-last-day-of-month (car date) (nth 2 date)) 7)) Send invoices
+#+END_EXAMPLE
+
+* Troubleshooting
+- *Nothing shows.* Check the parentheses first: an unbalanced expression matches nothing. Then check that the line starts with ~%%(~ (indentation is fine) and is all on one line.
+- *The wrong day.* Remember ~calendar-day-of-week~ counts from 0 for Sunday, and ~date~ is month first.
+- *A function from Emacs isn't recognized.* It matches nothing. The language list above is complete; anything else (~setq~, ~defun~, alternate calendars, Hebrew observances) is not available.
+
+* Reference
+- Emacs manual, [[https://www.gnu.org/s/emacs/manual/html_node/emacs/Sexp-Diary-Entries.html][Sexp Diary Entries]]: the diary functions and their arguments.
+- Emacs manual, [[https://www.gnu.org/s/emacs/manual/html_node/emacs/Date-Display-Format.html][Date Display Format]], and the variable [[https://doc.emacsen.de/29.4/var/calendar-date-style.html][calendar-date-style]].
+- Org manual, [[https://www.gnu.org/software/emacs/manual/html_node/org/Weekly_002fdaily-agenda.html][Weekly/daily agenda]]: sexp entries in an Org file, ~org-class~, ~org-anniversary~.
+- This app's README: the section "General sexp timestamps" and the Local Variables table.

@@ -1,0 +1,12 @@
+2027-04-20  Year first
+2027/04/21  With slashes
+04-22  No year
+4/23  Slash month day
+Apr 24  Month name
+Apr 25, 2027  With comma
+2027 Apr 26  Year then name
+2027 April 27 Long
+Sat  Weekend
+*-12-25  Wildcard year
+2026-*-15  Mid month of 2026
+%%(diary-float t 5 2) Second Friday

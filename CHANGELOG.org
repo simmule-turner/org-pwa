@@ -7,6 +7,13 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v565 — Emacs diary file in the Agenda
+Set =org-agenda-include-diary= and =diary-file= and the Agenda shows your Emacs diary: dated lines in your =calendar-date-style= (=4/30=, =apr. 25=, =*/25=, =Friday=, two-digit years, =&= lines, continuation lines), times of day, =%%(…)= lines and the day's holidays, as Emacs lists them. =#include= and sorting come from =diary-list-entries-hook=, and =diary-date-forms= can change which dates are recognised. Two new guides ship in docs/ (diary expressions, diary-file design), and the README's list of differences from Emacs is shorter.
+Verified: 12 sample diaries against Emacs 29.3.
+
+* v564 — Own settings named org-xx-
+The two solar display settings are now =org-xx-solar-ampm= and =org-xx-solar-hide-label=, like the app's other own settings, so Emacs's names stay Emacs's. The old names, the old =org-xx-agenda-hide-title-stamps= and the one-time conversion of retired HTML and Babel settings are gone; a file that still uses them falls back to the defaults.
+
 * v563 — Moon phases, calendar lines, Emacs regexps in filters
 The diary's =diary-day-of-year=, =diary-iso-date=, =diary-julian-date=, =diary-astro-day-number= and =diary-lunar-phases= now work, and the Agenda's Search chip and =org-agenda-regexp-filter-preset= take Emacs regular expressions (=\(…\|…\)=), as the Search box already did. Verified: the five lines match Emacs 29.3 on every day of 2026–2029, as do the regexp filters.
 

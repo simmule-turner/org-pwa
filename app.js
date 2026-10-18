@@ -3,8 +3,7 @@ import { hasPendingChange } from './src/outbox.js';
 import { parseOrg } from './src/org-parser.js';
 import { cycleFoldLevel } from './src/fold-state.js';
 import { getCycleOpenArchivedTrees } from './src/local-variables.js';
-import { parseGlobalVariables, serializeGlobalVariables } from './src/global-variables.js';
-import { migrateRetiredVariables } from './src/export-defaults.js';
+import { parseGlobalVariables } from './src/global-variables.js';
 import { createHistory } from './src/undo-history.js';
 import { setTableCell } from './src/body-edit.js';
 import { initialState as godModeInitialState } from './src/god-mode.js';
@@ -28,7 +27,6 @@ import {
   getBufferNames,
   getOpenTabs,
   getGlobalVariables,
-  setGlobalVariables,
 } from './src-browser/settings.js';
 import { applyFontFamily, applyFontSize, applyMenuSize, applyParagraphSpacing, applyTablesSpacing, applyReadingWidth, applyTablesFontSize } from './src-browser/appearance.js';
 import { getServiceWorkerVersion, scrollFocusedHeadingIntoView } from './src-browser/render-helpers.js';
@@ -1157,12 +1155,6 @@ async function bootstrap() {
   await loadCachedWeatherData();
   S.globalVariablesText = await getGlobalVariables(kv);
   S.globalVariables = parseGlobalVariables(S.globalVariablesText);
-  const moved = migrateRetiredVariables(S.globalVariables); // org-xx-html-* and org-xx-babel-js now live on Org's own variables
-  if (moved) {
-    S.globalVariables = moved;
-    S.globalVariablesText = serializeGlobalVariables(moved);
-    await setGlobalVariables(kv, S.globalVariablesText);
-  }
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
   loadExtensions().catch((err) => console.error('extensions:', err));

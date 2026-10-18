@@ -63,10 +63,9 @@ test('top headings keep only the items under them', () => {
   assert.equal(applyViewFilter(rowsWithTop, { ...emptyViewFilter(), tops: ['Home'] }).length, 3);
 });
 
-test('the title-stamp setting reads the Emacs variable, then the old org-xx one, then defaults to t', () => {
+test('the title-stamp setting reads the Emacs variable, then defaults to t', () => {
   assert.equal(getAgendaHideTitleStamps({}), true);
   assert.equal(getAgendaHideTitleStamps({ 'org-agenda-remove-times-when-in-prefix': 'nil' }), false);
   assert.equal(getAgendaHideTitleStamps({ 'org-agenda-remove-times-when-in-prefix': 'beg' }), true);
-  assert.equal(getAgendaHideTitleStamps({ 'org-xx-agenda-hide-title-stamps': 'nil' }), false);
-  assert.equal(getAgendaHideTitleStamps({ 'org-agenda-remove-times-when-in-prefix': 't', 'org-xx-agenda-hide-title-stamps': 'nil' }), true);
+  assert.equal(getAgendaHideTitleStamps({ 'org-xx-agenda-hide-title-stamps': 'nil' }), true, 'the old name is not read');
 });

@@ -23,6 +23,7 @@ import { attachAgendaSwipeNav } from './gestures-structure.js';
 import { navigateToHeadingByPath, outlinePathForHeadingInDocument } from './navigation.js';
 import { render } from './render.js';
 import { agendaFilesCache } from './singletons.js';
+import { diaryStatus } from './diary-file-load.js';
 import { openFormSheet } from './bottom-sheet.js';
 import { seedAgendaDefaults } from './agenda-seed.js';
 import { buildViewFilterRow, filterItemsForView } from './view-filter-ui.js';
@@ -406,6 +407,16 @@ export function renderAgendaView() {
   const filterSlot = document.createElement('div'); // the filter chips, filled once the items are known
   container.appendChild(filterSlot);
   if (S.agendaEffortPanelOpen) container.appendChild(buildAgendaEffortPanel());
+
+  const diaryNote = diaryStatus();
+  if (diaryNote.loading || diaryNote.error) {
+    const diaryLine = document.createElement('div');
+    diaryLine.style.fontSize = '11px';
+    diaryLine.style.marginBottom = '8px';
+    if (diaryNote.error) diaryLine.style.color = '#c0392b';
+    diaryLine.textContent = diaryNote.error || 'Loading the diary\u2026';
+    container.appendChild(diaryLine);
+  }
 
   if (S.agendaFilesConfig.length > 0) {
     const entries = S.agendaFilesConfig.map((f) => agendaFilesCache.get(f));

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { EXPORT_DEFAULT_ITEMS, countExportItemsOn, decodeExportText, encodeExportText, encodeLispString, hasLatexTocFix, hasPagedToc, htmlExportDefaults, LATEX_HEADER_KEY, LATEX_TOC_FIX_HEADER, latexExportDefaults, withLatexTocFix, migrateRetiredVariables, PAGED_TOC_HEAD, withPagedToc } from '../src/export-defaults.js';
+import { countExportItemsOn, decodeExportText, encodeExportText, encodeLispString, hasLatexTocFix, hasPagedToc, htmlExportDefaults, LATEX_HEADER_KEY, LATEX_TOC_FIX_HEADER, latexExportDefaults, withLatexTocFix, PAGED_TOC_HEAD, withPagedToc } from '../src/export-defaults.js';
 import { exportToHtml } from '../src/export-html.js';
 import { exportToLatex } from '../src/export-latex.js';
 import { exportToAscii } from '../src/export-ascii.js';
@@ -51,15 +51,6 @@ test("Org's own org-html-head, org-html-preamble and org-html-postamble variable
 test('a text is written as the quoted Lisp string Org reads, and read back', () => {
   const text = 'a "b" \\ c\nd';
   assert.deepEqual(htmlExportDefaults({ 'org-html-preamble': encodeLispString(text) }), { preamble: text });
-});
-
-test('the retired org-xx-html-* and org-xx-babel-js variables move onto Org\'s own, once', () => {
-  assert.equal(migrateRetiredVariables({ 'org-todo-keywords': 'x' }), null);
-  assert.deepEqual(
-    migrateRetiredVariables({ 'org-xx-html-preamble': 'Hi\\n%a', 'org-xx-html-preamble-on': 't', 'org-xx-html-postamble': 'kept but off', 'org-xx-html-head-on': 't', 'org-xx-babel-js': 'on', 'org-xx-page-footer': 'f' }),
-    { 'org-html-preamble': '"Hi\\n%a"', 'org-html-head': encodeLispString(EXPORT_DEFAULT_ITEMS[2].text), 'org-babel-load-languages': '((emacs-lisp . t) (js . t))', 'org-xx-page-footer': 'f' }
-  );
-  assert.deepEqual(migrateRetiredVariables({ 'org-xx-html-preamble': 'old', 'org-xx-html-preamble-on': 't', 'org-html-preamble': '"mine"', 'org-xx-babel-js': 'off' }), { 'org-html-preamble': '"mine"' });
 });
 
 test('org-use-sub-superscripts reaches HTML and LaTeX export, and #+OPTIONS: ^: in the file still wins', () => {

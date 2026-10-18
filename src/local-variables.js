@@ -555,12 +555,11 @@ export function getBufferReadOnly(vars) {
 
 /** org-agenda-remove-times-when-in-prefix: whether an Agenda row leaves the timestamps out of its title (the day and the
  *  time column already say it). t (the default) and `beg` leave them out; nil shows the title as written. Emacs removes only a
- *  time of day, while this app removes the whole stamp. A file written before this variable was used may still carry the old
- *  org-xx-agenda-hide-title-stamps, which is read when the Emacs variable is not set.
+ *  time of day, while this app removes the whole stamp.
  * @param {LocalVars} vars */
 export function getAgendaHideTitleStamps(vars) {
   const v = vars || {};
-  return parseLispBoolean(v['org-agenda-remove-times-when-in-prefix'] ?? v['org-xx-agenda-hide-title-stamps'], true);
+  return parseLispBoolean(v['org-agenda-remove-times-when-in-prefix'], true);
 }
 
 /** org-xx-god-mode-button: whether the floating [g] button (god-mode
@@ -626,7 +625,7 @@ export function getCalendarLongitude(vars) {
   return n >= -180 && n <= 180 ? n : -78.8986;
 }
 
-/** solar-ampm: this app's own extension, not a real elisp/org
+/** org-xx-solar-ampm: this app's own extension, not a real elisp/org
  *  variable -- controls the time format for the eight single-value
  *  solar functions (diary-sunrise/diary-sunset/diary-civil-dawn/
  *  diary-civil-dusk/diary-nautical-dawn/diary-nautical-dusk/
@@ -636,21 +635,21 @@ export function getCalendarLongitude(vars) {
  * @param {LocalVars} vars
  *  there's no "am/pm" for a duration. */
 export function getSolarAmpm(vars) {
-  return parseLispBoolean((vars || {})['solar-ampm'], false);
+  return parseLispBoolean((vars || {})['org-xx-solar-ampm'], false);
 }
 
-/** solar-hide-label: this app's own extension too -- controls
+/** org-xx-solar-hide-label: this app's own extension too -- controls
  *  whether the eight single-value solar functions above, and
  *  diary-day-length, show their own trailing label ("Sunrise",
  *  "Dawn", "daylight", ...) at all. Default nil (label shown,
  *  matching the format originally requested); t omits it, leaving
- *  just the bare time or duration. Unlike solar-ampm, this one DOES
+ *  just the bare time or duration. Unlike org-xx-solar-ampm, this one DOES
  *  apply to diary-day-length as well as the eight solar functions --
  *  a duration still has a label to hide ("daylight"), even though it
  * @param {LocalVars} vars
  *  has no time-of-day format to switch between 12-/24-hour. */
 export function getSolarHideLabel(vars) {
-  return parseLispBoolean((vars || {})['solar-hide-label'], false);
+  return parseLispBoolean((vars || {})['org-xx-solar-hide-label'], false);
 }
 
 /** org-table-duration-hour-zero-padding: real org's own actual
@@ -742,4 +741,62 @@ export function getUseSubSuperscripts(vars) {
 export function getCalendarDateStyle(vars) {
   const v = String((vars || {})['calendar-date-style'] ?? '').trim().replace(/^'/, '').toLowerCase();
   return v === 'european' || v === 'iso' ? v : 'american';
+}
+
+/** org-agenda-include-diary: show the Emacs diary file (diary-file) in the Agenda. Default nil.
+ * @param {LocalVars} vars */
+export function getAgendaIncludeDiary(vars) {
+  return parseLispBoolean((vars || {})['org-agenda-include-diary'], false);
+}
+
+/** A string variable as Emacs writes it: with or without the double quotes.
+ * @param {unknown} raw
+ * @param {string} fallback */
+function parseLispString(raw, fallback) {
+  if (raw === undefined || raw === null) return fallback;
+  const v = String(raw).trim();
+  const m = /^"((?:[^"\\]|\\.)*)"$/.exec(v);
+  return m ? m[1].replace(/\\(.)/g, '$1') : v || fallback;
+}
+
+/** diary-file: the diary, written like an agenda file: `github:diary`, `webdav:diary` or `local:diary`. Empty when not set.
+ * @param {LocalVars} vars */
+export function getDiaryFile(vars) {
+  const v = parseLispString((vars || {})['diary-file'], '');
+  return parseAgendaFilesVar(v)[0] || '';
+}
+
+/** diary-abbreviated-year-flag: a two-digit year in a diary date means the year with those last digits. Default t.
+ * @param {LocalVars} vars */
+export function getDiaryAbbreviatedYearFlag(vars) {
+  return parseLispBoolean((vars || {})['diary-abbreviated-year-flag'], true);
+}
+
+/** diary-show-holidays-flag: the holidays of a day come with its diary entries. Default t.
+ * @param {LocalVars} vars */
+export function getDiaryShowHolidaysFlag(vars) {
+  return parseLispBoolean((vars || {})['diary-show-holidays-flag'], true);
+}
+
+/** diary-nonmarking-symbol (default "&"), diary-sexp-entry-symbol (default "%%") and diary-include-string (default "#include").
+ * @param {LocalVars} vars
+ * @param {'diary-nonmarking-symbol' | 'diary-sexp-entry-symbol' | 'diary-include-string'} name */
+export function getDiarySymbol(vars, name) {
+  const fallback = name === 'diary-nonmarking-symbol' ? '&' : name === 'diary-sexp-entry-symbol' ? '%%' : '#include';
+  return parseLispString((vars || {})[name], fallback);
+}
+
+/** diary-list-entries-hook: the functions it names that the diary understands (diary-include-other-diary-files, diary-sort-entries).
+ * @param {LocalVars} vars
+ * @returns {string[]} */
+export function getDiaryListEntriesHook(vars) {
+  const raw = String((vars || {})['diary-list-entries-hook'] ?? '');
+  return (raw.match(/diary-include-other-diary-files|diary-sort-entries/g) || []).filter((n, i, all) => all.indexOf(n) === i);
+}
+
+/** org-xx-diary-merge-rows: show a day's diary as Org does, with every entry that does not start with a time joined into the
+ *  row before it. Default nil: one row per entry.
+ * @param {LocalVars} vars */
+export function getDiaryMergeRows(vars) {
+  return parseLispBoolean((vars || {})['org-xx-diary-merge-rows'], false);
 }

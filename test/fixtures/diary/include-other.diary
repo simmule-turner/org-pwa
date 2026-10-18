@@ -1,0 +1,4 @@
+12/24  From the included file
+12/25  9:00am Included morning
+12/25  Included afternoon
+%%(diary-float 11 4 4) Included sexp
