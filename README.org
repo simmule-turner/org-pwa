@@ -312,7 +312,7 @@ A marker opens where it follows the start of a line, whitespace or one of ~-({'"
 
 *Hard line break*: a line ending in two backslashes (~\\~) is org's explicit line break. Source lines in an ordinary paragraph or list item otherwise reflow together with a space (org's ~org-export-preserve-breaks~ is ~nil~ by default). The marker forces a break exactly where it is written, in paragraphs, [[#editing-your-outline][QUOTE or CENTER blocks]] and all four document export formats (HTML, Markdown, ASCII, ODT).
 
-*Subscript and superscript*: ~_~ and ~^~ mark them. ~x_i~ and ~x^2~ work without braces, and braces (~x_{alpha}~, ~10^{100}~) are always accepted, mainly for readability. ~org-use-sub-superscripts~ (see [[#local-variables][Local Variables]]) controls them:
+*Subscript and superscript*: ~_~ and ~^~ mark them. ~x_i~ and ~x^2~ work without braces, and braces (~x_{alpha}~, ~10^{100}~) are always accepted, mainly for readability. ~org-use-sub-superscripts~ (see [[#local-variables][Local Variables]]) controls them, in HTML and LaTeX export as well as in the outline (a file's ~#+OPTIONS: ^:~ wins; ASCII, Markdown and ODT export always use ~t~):
 
 | Value | Behavior |
 |---+---|
@@ -632,6 +632,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-html-preamble~ | unset (none) | A quoted format string shown above the content of every HTML export (~%t~ title, ~%s~ subtitle, ~%a~ author, ~%d~ date, ~%e~ email). A file's own ~#+OPTIONS: html-preamble:~ wins |
 | ~org-html-postamble~ | ~auto~ | A quoted format string for the foot of every HTML export, or ~nil~ for none. A file's own ~#+OPTIONS: html-postamble:~ wins |
 | ~org-latex-default-class~ | ~article~ | ~article~, ~report~ or ~book~: the class of every LaTeX export whose file has no ~#+LATEX_CLASS:~. Settings → Export sets it |
+| ~org-xx-latex-header~ | unset | (own) A quoted string of preamble lines added to every LaTeX export before the file's own ~#+LATEX_HEADER:~ lines. Settings → Export → LaTeX fills it for *Fix wide TOC numbers* |
 | ~org-latex-compiler~ | ~pdflatex~ | ~pdflatex~, ~xelatex~ or ~lualatex~, for files with no ~#+LATEX_COMPILER:~ |
 | ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
 | ~org-babel-load-languages~ | ~((emacs-lisp . t))~ | ~(js . t)~ in the list lets ~js~ source blocks run (see [[#source-blocks][Source blocks]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
@@ -1593,13 +1594,15 @@ A complete standalone page laid out like Emacs's ~ox-html~: the title as ~h1~, t
 
 The CSS is print-aware (headings, tables, figures and code stay whole across pages, and long code lines wrap), so the browser's *Print → Save as PDF* is the route to PDF.
 
+For a table of contents with page numbers, tick *Add TOC with page numbers* in Settings → Export → HTML. It fills ~org-html-head~ with the Paged.js script and a little CSS (text at 70%, the size to change if you want more or less per page), and the file needs ~#+OPTIONS: toc:2~ (or another depth). Open the exported page in Chrome, wait a few seconds for it to lay out the sheets, then print at Scale 100%. The page loads the script from the web, so it must be online when opened.
+
 *** ODT
 
 A standalone ~.odt~ that opens in LibreOffice, Word (with the ODF filter) and Google Docs. Headings are outline levels; bold, italic, underline, strikethrough and code use named character styles; checkboxes show as ☐ and ☑; footnotes are real, editable ODF footnotes; and internal links are bookmark references. Images are referenced by path, not embedded.
 
 *** LaTeX
 
-A ~.tex~ file that compiles with ~pdflatex~, ~xelatex~ or ~lualatex~, laid out the way Emacs's ~org-latex-export-to-latex~ lays it out: sections, lists, tables (with ~#+ATTR_LATEX:~), figures, footnotes, citations, links, math and source blocks. When the document links pictures this app can read (GitHub, WebDAV, attachments), the export is a ~.zip~ with the pictures in ~images/~ beside the ~.tex~; otherwise it is the ~.tex~ alone. The palette command is ~org-latex-export-to-latex~.
+A ~.tex~ file that compiles with ~pdflatex~, ~xelatex~ or ~lualatex~, laid out the way Emacs's ~org-latex-export-to-latex~ lays it out: sections, lists, tables (with ~#+ATTR_LATEX:~), figures, footnotes, citations, links, math and source blocks. When the document links pictures this app can read (GitHub, WebDAV, attachments), the export is a ~.zip~ with the pictures in ~images/~ beside the ~.tex~; otherwise it is the ~.tex~ alone. The palette command is ~org-latex-export-to-latex~. Settings → Export → LaTeX also has *Fix wide TOC numbers*, which adds the ~tocloft~ lines that keep section numbers such as 1.11.1 from running into their titles in the PDF's table of contents.
 
 ~#+LATEX_CLASS:~ (~article~, ~report~ or ~book~), ~#+LATEX_CLASS_OPTIONS:~, ~#+LATEX_COMPILER:~ and ~#+LATEX_HEADER:~ are read from the file. Settings → Export → LaTeX sets the class and compiler for files that do not. Not included: Beamer, ~minted~ or ~listings~ source blocks (code is exported as ~verbatim~) and other document classes.
 

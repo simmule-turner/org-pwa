@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { EXPORT_DEFAULT_ITEMS, countExportItemsOn, decodeExportText, encodeExportText, encodeLispString, htmlExportDefaults, migrateRetiredVariables } from '../src/export-defaults.js';
+import { EXPORT_DEFAULT_ITEMS, countExportItemsOn, decodeExportText, encodeExportText, encodeLispString, hasLatexTocFix, hasPagedToc, htmlExportDefaults, LATEX_HEADER_KEY, LATEX_TOC_FIX_HEADER, latexExportDefaults, withLatexTocFix, migrateRetiredVariables, PAGED_TOC_HEAD, withPagedToc } from '../src/export-defaults.js';
 import { exportToHtml } from '../src/export-html.js';
+import { exportToLatex } from '../src/export-latex.js';
 import { parseOrg } from '../src/org-parser.js';
 
 const doc = (text) => parseOrg(text);
@@ -52,4 +53,40 @@ test('the retired org-xx-html-* and org-xx-babel-js variables move onto Org\'s o
     { 'org-html-preamble': '"Hi\\n%a"', 'org-html-head': encodeLispString(EXPORT_DEFAULT_ITEMS[2].text), 'org-babel-load-languages': '((emacs-lisp . t) (js . t))', 'org-xx-page-footer': 'f' }
   );
   assert.deepEqual(migrateRetiredVariables({ 'org-xx-html-preamble': 'old', 'org-xx-html-preamble-on': 't', 'org-html-preamble': '"mine"', 'org-xx-babel-js': 'off' }), { 'org-html-preamble': '"mine"' });
+});
+
+test('org-use-sub-superscripts reaches HTML and LaTeX export, and #+OPTIONS: ^: in the file still wins', () => {
+  const org = '* Effort_ALL: values\nSee x_{1} and a_b.\n';
+  const html = exportToHtml(doc(org), null, { defaults: { sup: '{}' } });
+  assert.match(html, /Effort_ALL: values/);
+  assert.match(html, /x<sub>1<\/sub> and a_b/);
+  assert.match(exportToHtml(doc(org)), /Effort<sub>ALL<\/sub>: values/); // org's own default is t
+  assert.match(exportToHtml(doc('#+OPTIONS: ^:t\n' + org), null, { defaults: { sup: '{}' } }), /Effort<sub>ALL<\/sub>/);
+  const tex = exportToLatex(doc(org), null, { defaults: { sup: '{}' } });
+  assert.match(tex, /Effort\\_ALL: values/);
+  assert.match(tex, /x\\textsubscript\{1\} and a\\_b/);
+  assert.match(exportToLatex(doc(org)), /Effort\\textsubscript\{ALL\}/);
+});
+
+test('"Add TOC with page numbers" adds and removes its text in org-html-head and leaves the rest alone', () => {
+  assert.ok(!hasPagedToc('<style>p {}</style>'));
+  const on = withPagedToc('<style>p {}</style>', true);
+  assert.ok(on.startsWith('<style>p {}</style>\n') && on.endsWith(PAGED_TOC_HEAD) && hasPagedToc(on));
+  assert.equal(withPagedToc(on, true), on); // ticking again does not add it twice
+  assert.equal(withPagedToc(on, false), '<style>p {}</style>');
+  assert.equal(withPagedToc(withPagedToc('', true), false), '');
+  assert.ok(PAGED_TOC_HEAD.includes('li { break-inside: auto; page-break-inside: auto }') && PAGED_TOC_HEAD.includes('paged.polyfill.min.js'));
+});
+
+test('"Fix wide TOC numbers" is stored in org-xx-latex-header and written before the file\'s own #+LATEX_HEADER: lines', () => {
+  const on = withLatexTocFix('', true);
+  assert.equal(on, LATEX_TOC_FIX_HEADER);
+  assert.ok(hasLatexTocFix(on) && !hasLatexTocFix('\\usepackage{x}'));
+  assert.equal(withLatexTocFix(withLatexTocFix('\\usepackage{x}', true), false), '\\usepackage{x}');
+  const vars = { [LATEX_HEADER_KEY]: encodeLispString(on) };
+  assert.equal(latexExportDefaults(vars).header, on); // a backslash survives the round trip through the stored string
+  assert.equal(latexExportDefaults({}).header, undefined);
+  const tex = exportToLatex(doc('#+LATEX_HEADER: \\usepackage{mine}\n* One\n'), null, { defaults: latexExportDefaults(vars) });
+  const at = (text) => tex.indexOf(text);
+  assert.ok(at('\\usepackage{tocloft}') > at('\\usepackage{hyperref}') && at('\\cftsubsubsecnumwidth') < at('\\usepackage{mine}'), tex.slice(0, 600));
 });

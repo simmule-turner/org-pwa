@@ -4419,6 +4419,85 @@ check('LaTeX export: the Export menu ends with LaTeX, Settings → Export → La
   await context.close();
 });
 
+check('HTML export: "Add TOC with page numbers" fills and clears org-html-head, and org-use-sub-superscripts {} keeps Effort_ALL unsubscripted', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    window.__saved = [];
+    installPlatform({ saveFile: async (name, content) => { window.__saved.push({ name, content: String(content) }); return { where: 'test' }; } });
+  });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await settingsCategory(page, 'export');
+  const box = page.locator('[data-export-paged-toc] input[type=checkbox]');
+  await box.waitFor({ state: 'visible', timeout: 8000 });
+  expect(!(await box.isChecked()), 'starts unticked');
+  await box.check();
+  await page.waitForTimeout(400);
+  const head = async () => page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables['org-html-head'] || '');
+  const on = await head();
+  expect(on.includes('paged.polyfill.min.js') && on.includes('break-inside: auto') && on.includes('target-counter'), `Head holds the script and CSS: ${on.slice(0, 120)}`);
+  expect(await page.locator('[data-export-paged-toc] input[type=checkbox]').isChecked(), 'and stays ticked after the page redraws');
+  await page.locator('[data-export-paged-toc] input[type=checkbox]').uncheck();
+  await page.waitForTimeout(400);
+  expect((await head()) === '', `unticking clears it: ${await head()}`);
+  await page.evaluate(async () => (await import('/src-browser/settings-quick.js')).commitGlobalVariableChange('org-use-sub-superscripts', '{}'));
+  await page.locator('[data-settings-back]').first().click().catch(() => {});
+  await page.locator('[data-settings-back]').first().click().catch(() => {});
+  await newDocument(page, '* Effort_ALL: values\nbody a_b\n');
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Export');
+  await pick(page, '#morePanel', 'HTML');
+  await pick(page, '#morePanel', 'This file');
+  for (let n = 0; n < 40 && !(await page.evaluate(() => window.__saved.length)); n++) await page.waitForTimeout(250);
+  const html = (await page.evaluate(() => window.__saved.slice()))[0];
+  expect(html && html.content.includes('Effort_ALL: values') && !html.content.includes('<sub>'), `no subscripts: ${html && (html.content.match(/Effort[^<]*(<sub>[^<]*<\/sub>)?/) || [])[0]}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('LaTeX export: "Fix wide TOC numbers" adds the tocloft lines to the saved .tex and unticking removes them', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    window.__saved = [];
+    installPlatform({ saveFile: async (name, content) => { window.__saved.push({ name, content: String(content) }); return { where: 'test' }; } });
+  });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await settingsCategory(page, 'export');
+  const box = page.locator('[data-export-latex-toc-fix] input[type=checkbox]');
+  await box.waitFor({ state: 'visible', timeout: 8000 });
+  await box.check();
+  await page.waitForTimeout(400);
+  const stored = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables['org-xx-latex-header'] || '');
+  expect(stored.includes('cftsubsubsecnumwidth'), `stored: ${stored.slice(0, 80)}`);
+  await page.locator('[data-settings-back]').first().click().catch(() => {});
+  await page.locator('[data-settings-back]').first().click().catch(() => {});
+  await newDocument(page, '#+LATEX_HEADER: \\usepackage{mine}\n* One\nbody\n');
+  const exportTex = async () => {
+    await page.evaluate(() => { window.__saved = []; });
+    await page.click('#moreBtn');
+    await pick(page, '#morePanel', 'Export');
+    await pick(page, '#morePanel', 'LaTeX');
+    await pick(page, '#morePanel', 'This file');
+    for (let n = 0; n < 40 && !(await page.evaluate(() => window.__saved.length)); n++) await page.waitForTimeout(250);
+    return (await page.evaluate(() => window.__saved.slice()))[0].content;
+  };
+  const tex = await exportTex();
+  expect(tex.includes('\\usepackage{tocloft}') && tex.indexOf('\\usepackage{tocloft}') < tex.indexOf('\\usepackage{mine}'), 'the fix is in the preamble, before the file\'s own line');
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await settingsCategory(page, 'export');
+  await page.locator('[data-export-latex-toc-fix] input[type=checkbox]').uncheck();
+  await page.waitForTimeout(400);
+  await page.locator('[data-settings-back]').first().click().catch(() => {});
+  await page.locator('[data-settings-back]').first().click().catch(() => {});
+  expect(!(await exportTex()).includes('tocloft'), 'unticking removes it');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('settings: with a service worker the update block shows the worker’s version, an enabled button, and a red bold status on the version line', async () => {
   const { context, page, errors } = await freshPage(main, { serviceWorkers: 'allow' });
   await page.waitForTimeout(2500);

@@ -57,7 +57,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
     todo: true,
     pri: false,
     brk: false,
-    sup: 't',
+    sup: defaults.sup ?? 't', // org-use-sub-superscripts, unless the file's #+OPTIONS: ^: says otherwise
     special: true,
     emph: true,
     entities: true,

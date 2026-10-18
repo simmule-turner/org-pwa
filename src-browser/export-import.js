@@ -17,7 +17,7 @@ import { exportAsOrg } from '../src/export-org.js';
 import { exportToVcard } from '../src/export-vcard.js';
 import { importIcalendarAsOrgText } from '../src/import-icalendar.js';
 import { importVcardsAsOrgText } from '../src/import-vcard.js';
-import { getAsciiTextWidth, getAsciiCharset, getContactsBirthdayProperty, getMenuAliases } from '../src/local-variables.js';
+import { getAsciiTextWidth, getAsciiCharset, getContactsBirthdayProperty, getMenuAliases, getUseSubSuperscripts } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
@@ -87,9 +87,9 @@ export async function performExport(format, scope) {
     } else if (format === 'markdown') {
       saveOut(baseName + '.md', exportToMarkdown(doc, scope), 'text/markdown');
     } else if (format === 'html') {
-      saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), defaults: htmlExportDefaults(S.globalVariables) }), 'text/html');
+      saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), defaults: { ...htmlExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables) } }), 'text/html');
     } else if (format === 'latex') {
-      const defaults = latexExportDefaults(S.globalVariables);
+      const defaults = { ...latexExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables) };
       const heading = scope && typeof scope === 'object' ? scope : null;
       // pictures this app can read go into a .zip beside the .tex; with none, the .tex alone
       const pictures = await collectExportImages(doc, heading);

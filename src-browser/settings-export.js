@@ -1,7 +1,7 @@
 // @ts-check
 // The Export page's General and HTML cards: text for the preamble, postamble, head, page header and page footer, each with a switch.
 // Nothing is applied until its box is ticked, and anything the file itself says wins (see src/export-defaults.js).
-import { EXPORT_DEFAULT_ITEMS, LATEX_CLASSES, LATEX_COMPILERS, encodeExportText, encodeLispString, exportItemState, latexExportDefaults } from '../src/export-defaults.js';
+import { EXPORT_DEFAULT_ITEMS, LATEX_CLASSES, LATEX_COMPILERS, encodeExportText, encodeLispString, exportItemState, hasLatexTocFix, hasPagedToc, LATEX_HEADER_KEY, latexExportDefaults, withLatexTocFix, withPagedToc } from '../src/export-defaults.js';
 import { S } from './app-state.js';
 import { setStatus } from './editing.js';
 import { commitGlobalVariableChange } from './settings-quick.js';
@@ -154,6 +154,7 @@ export function buildExportCards(rerender) {
   html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[0], 'Preamble', 'org-html-preamble', false));
   html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[1], 'Postamble', 'org-html-postamble', false));
   html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[2], 'Head', 'org-html-head', true));
+  html.appendChild(pagedTocRow(rerender));
   html.appendChild(line('The head goes inside <head>. Lines the file gives with #+HTML_HEAD: come after it, so they can override it.', 'font-size: 11px; opacity: 0.65; margin-top: 4px'));
   html.appendChild(codesHelp(false));
   const resetHtml = document.createElement('div');
@@ -166,8 +167,60 @@ export function buildExportCards(rerender) {
   const current = latexExportDefaults(S.globalVariables);
   latex.appendChild(choiceRow('Document class', 'org-latex-default-class', LATEX_CLASSES, current.cls || 'article'));
   latex.appendChild(choiceRow('Compiler', 'org-latex-compiler', LATEX_COMPILERS, current.compiler || 'pdflatex'));
+  latex.appendChild(latexTocFixRow(rerender, current.header || ''));
   latex.appendChild(line('xelatex and lualatex write Unicode text as it is; pdflatex gets the inputenc and fontenc packages.', 'font-size: 11px; opacity: 0.65; margin-top: 4px'));
   return { general, html, latex };
+}
+
+/** "Add TOC with page numbers": adds or removes the Paged.js script and its CSS in org-html-head, so the text box above shows it.
+ * @param {() => void} rerender */
+function pagedTocRow(rerender) {
+  const head = EXPORT_DEFAULT_ITEMS[2];
+  const state = exportItemState(S.globalVariables, head);
+  const row = document.createElement('label');
+  row.setAttribute('data-export-paged-toc', '');
+  row.style.cssText = 'display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 10px; font-size: 14px; cursor: pointer';
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = state.on && hasPagedToc(state.text);
+  box.style.cssText = 'width: 22px; height: 22px; margin: 0';
+  row.appendChild(box);
+  const text = document.createElement('span');
+  text.textContent = 'Add TOC with page numbers';
+  text.style.fontWeight = '700';
+  row.appendChild(text);
+  box.onchange = async () => {
+    const next = withPagedToc(state.on ? state.text : '', box.checked);
+    await commitGlobalVariableChange(head.key, next.trim() === '' ? null : encodeLispString(next));
+    setStatus(box.checked ? 'Table of contents with page numbers added to Head. Needs #+OPTIONS: toc:… in the file, and a network connection when the HTML is opened.' : 'Page-number table of contents removed from Head.');
+    rerender();
+  };
+  return row;
+}
+
+/** "Fix wide TOC numbers": adds or removes the tocloft lines in the LaTeX header kept in org-xx-latex-header.
+ * @param {() => void} rerender @param {string} header */
+function latexTocFixRow(rerender, header) {
+  const row = document.createElement('label');
+  row.setAttribute('data-export-latex-toc-fix', '');
+  row.style.cssText = 'display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 10px; font-size: 14px; cursor: pointer';
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = hasLatexTocFix(header);
+  box.style.cssText = 'width: 22px; height: 22px; margin: 0';
+  row.appendChild(box);
+  const text = document.createElement('span');
+  text.textContent = 'Fix wide TOC numbers';
+  text.style.fontWeight = '700';
+  row.appendChild(text);
+  row.appendChild(line(LATEX_HEADER_KEY, 'font-size: 12px; opacity: 0.65'));
+  box.onchange = async () => {
+    const next = withLatexTocFix(header, box.checked);
+    await commitGlobalVariableChange(LATEX_HEADER_KEY, next.trim() === '' ? null : encodeLispString(next));
+    setStatus(box.checked ? 'Table-of-contents number fix added to every LaTeX export (needs the tocloft package).' : 'Table-of-contents number fix removed.');
+    rerender();
+  };
+  return row;
 }
 
 /** A labelled list of words that sets one Org variable; the first word is the variable's own default and is stored as unset.

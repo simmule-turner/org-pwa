@@ -3,7 +3,7 @@
 // The HTML items are Org's own variables, set in the Global Variables; the page header and footer have their own text and an "apply" switch. Off unless set. A value written in the file
 // itself (#+OPTIONS:, #+HTML_HEAD:) always wins over these.
 
-/** @typedef {{ preamble?: string, postamble?: string | false, head?: string, pageHeader?: string, pageFooter?: string }} HtmlExportDefaults */
+/** @typedef {{ preamble?: string, postamble?: string | false, head?: string, pageHeader?: string, pageFooter?: string, sup?: string }} HtmlExportDefaults */
 
 /** The items, with the text offered before the person has typed anything. `key` is the Global Variable that holds the text.
  *  `lisp` items are Org's own variables (org-html-preamble, -postamble, -head): the value is a quoted string and being set
@@ -108,14 +108,16 @@ export function countExportItemsOn(vars, ids) {
 
 /** The LaTeX defaults from the Global Variables: `org-latex-default-class` and `org-latex-compiler`, each a quoted string; anything else is ignored.
  * @param {Record<string, string> | null | undefined} vars
- * @returns {{ cls?: string, compiler?: string }} */
+ * @returns {{ cls?: string, compiler?: string, header?: string }} */
 export function latexExportDefaults(vars) {
   const v = vars || {};
   const word = (/** @type {string} */ key, /** @type {string[]} */ allowed) => {
     const t = String(v[key] ?? '').trim().replace(/^"(.*)"$/s, '$1');
     return allowed.includes(t) ? t : undefined;
   };
-  /** @type {{ cls?: string, compiler?: string }} */ const out = {};
+  /** @type {{ cls?: string, compiler?: string, header?: string }} */ const out = {};
+  const header = lispStringValue(v[LATEX_HEADER_KEY]);
+  if (header !== null && header.trim() !== '') out.header = header;
   const cls = word('org-latex-default-class', LATEX_CLASSES);
   const compiler = word('org-latex-compiler', LATEX_COMPILERS);
   if (cls) out.cls = cls;
@@ -125,3 +127,55 @@ export function latexExportDefaults(vars) {
 
 export const LATEX_CLASSES = ['article', 'report', 'book'];
 export const LATEX_COMPILERS = ['pdflatex', 'xelatex', 'lualatex'];
+
+/** What "Add TOC with page numbers" puts in org-html-head: Paged.js splits the page into printed sheets in the browser, and the CSS gives
+ *  each table-of-contents entry the number of the sheet its heading lands on. The text size (70%) is set here because the print dialog's
+ *  Scale does not repaginate. */
+export const PAGED_TOC_HEAD = `<script src="https://unpkg.com/pagedjs@0.4.3/dist/paged.polyfill.min.js"></script>
+<style>
+#text-table-of-contents li { break-inside: auto; page-break-inside: auto }
+@page { size: Letter; margin: 0.6in; @bottom-center { content: counter(page) " / " counter(pages); font-size: 9pt } }
+html { font-size: 70% }
+#text-table-of-contents a { display: flex; border-bottom: 1px dotted #999; margin-top: 2px; text-decoration: none; color: inherit }
+#text-table-of-contents a::after { content: target-counter(attr(href url), page); margin-left: auto; padding-left: 1em }
+#text-table-of-contents ul { list-style: none }
+#table-of-contents { break-after: page }
+</style>`;
+
+/** Whether a head text already carries the page-number table of contents.
+ * @param {string} head */
+export function hasPagedToc(head) {
+  return head.includes(PAGED_TOC_HEAD) || head.includes('paged.polyfill');
+}
+
+/** The head text with the page-number table of contents added or removed.
+ * @param {string} head @param {boolean} on */
+export function withPagedToc(head, on) {
+  const bare = head.split(PAGED_TOC_HEAD).join('').replace(/\n{3,}/g, '\n\n').trim();
+  return on ? (bare ? bare + '\n' : '') + PAGED_TOC_HEAD : bare;
+}
+
+/** The Global Variable that holds extra preamble lines for every LaTeX export (own; Org has no single variable for it). */
+export const LATEX_HEADER_KEY = 'org-xx-latex-header';
+
+/** What "Fix wide TOC numbers" adds: LaTeX's table of contents gives a section number a fixed box, so numbers such as 1.11 and 1.11.1
+ *  run into the title. These widen the boxes (tocloft is part of TeX Live). */
+export const LATEX_TOC_FIX_HEADER = `\\usepackage{tocloft}
+\\setlength{\\cftsecnumwidth}{2.6em}
+\\setlength{\\cftsubsecindent}{2.6em}
+\\setlength{\\cftsubsecnumwidth}{3.4em}
+\\setlength{\\cftsubsubsecindent}{6em}
+\\setlength{\\cftsubsubsecnumwidth}{4.2em}`;
+
+/** Whether a header text already carries the table-of-contents fix.
+ * @param {string} header */
+export function hasLatexTocFix(header) {
+  return header.includes('\\cftsubsubsecnumwidth');
+}
+
+/** The header text with the table-of-contents fix added or removed.
+ * @param {string} header @param {boolean} on */
+export function withLatexTocFix(header, on) {
+  const bare = header.split(LATEX_TOC_FIX_HEADER).join('').replace(/\n{3,}/g, '\n\n').trim();
+  return on ? (bare ? bare + '\n' : '') + LATEX_TOC_FIX_HEADER : bare;
+}

@@ -13,7 +13,7 @@ import { exportToLatex, latexImageTargets } from './export-latex.js';
 /**
  * @param {Doc} doc
  * @param {Heading | null} scope
- * @param {{ baseName: string, readImage: (target: string) => Promise<Uint8Array | null>, defaults?: { cls?: string, compiler?: string } }} options
+ * @param {{ baseName: string, readImage: (target: string) => Promise<Uint8Array | null>, defaults?: { cls?: string, compiler?: string, sup?: string, header?: string } }} options
  * @returns {Promise<Uint8Array>}
  */
 export async function exportLatexZip(doc, scope, { baseName, readImage, defaults }) {

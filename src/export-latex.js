@@ -697,12 +697,12 @@ const firstLine = (s) => s.replace(/\s*\n\s*/g, ' ').trim();
  * @param {Doc} doc
  * @param {Heading | null} [scope]
  */
-export function exportToLatex(doc, scope = null, { images = /** @type {Map<string, string> | null} */ (null), defaults = /** @type {{ cls?: string, compiler?: string }} */ ({}) } = {}) {
+export function exportToLatex(doc, scope = null, { images = /** @type {Map<string, string> | null} */ (null), defaults = /** @type {{ cls?: string, compiler?: string, sup?: string, header?: string }} */ ({}) } = {}) {
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
   S = newState();
   activeDoc = doc;
   if (images) S.images = images;
-  const options = parseExportOptions(doc);
+  const options = parseExportOptions(doc, defaults.sup);
   S.sup = options.sup;
   S.radioRe = radioTargetRegExp(doc);
   S.processor = citeExportSetting(doc).processor;
@@ -756,6 +756,7 @@ export function exportToLatex(doc, scope = null, { images = /** @type {Map<strin
     '\\usepackage{amssymb}',
     '\\usepackage{capt-of}',
     '\\usepackage{hyperref}',
+    ...(defaults.header ? defaults.header.split('\n').filter((l) => l.trim() !== '') : []), // the Settings header, before the file's own lines
     ...keywordList(doc, 'LATEX_HEADER'),
     ...keywordList(doc, 'LATEX_HEADER_EXTRA'),
     '\\author{' + (options.author && author ? plain(author) : '') + '}',
